@@ -1,0 +1,27 @@
+{
+  "name": "greenfield",
+  "version": "1.0.0",
+  "description": "HTML5 Wayland compositor",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/udevbe/greenfield.git"
+  },
+  "keywords": [
+    "wayland",
+    "html5",
+    "compositor",
+    "linux",
+    "display",
+    "server"
+  ],
+  "author": "Erik De Rijcke <derijcke.erik@gmail.com> (http://www.udev.be)",
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/udevbe/greenfield/issues"
+  },
+  "homepage": "https://github.com/udevbe/greenfield#readme"
+}
