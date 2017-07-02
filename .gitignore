@@ -104,3 +104,4 @@ crashlytics-build.properties
 fabric.properties
 
 .idea
+idea/vcs.xml

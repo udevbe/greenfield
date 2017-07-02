@@ -1,8 +1,7 @@
 {
-  "name": "greenfield",
+  "name": "greenfield-client",
   "version": "1.0.0",
-  "description": "HTML5 Wayland compositor",
-  "main": "index.js",
+  "description": "HTML5 Wayland compositor client",
   "scripts": {
     "test": "test"
   },
@@ -23,5 +22,11 @@
   "bugs": {
     "url": "https://github.com/udevbe/greenfield/issues"
   },
-  "homepage": "https://github.com/udevbe/greenfield#readme"
+  "homepage": "https://github.com/udevbe/greenfield#readme",
+  "dependencies": {
+    "westfield-runtime-client": "0.0.2"
+  },
+  "devDependencies": {
+    "westfield-scanner-client": "0.0.2"
+  }
 }
