@@ -105,3 +105,6 @@ fabric.properties
 
 .idea
 idea/vcs.xml
+/client/src/protocol/greenfield-client-protocol.js
+/server/src/protocol/greenfield-server-protocol.js
+/client/public/compositor-client.bundle.js

@@ -1,0 +1,42 @@
+{
+  "name": "greenfield-client",
+  "version": "1.0.0",
+  "description": "HTML5 Wayland compositor",
+  "scripts": {
+    "prepare:server:generate": "westfield-scanner-server protocol/greenfield.xml -o server/src/protocol/greenfield-server-protocol.js",
+    "prepare:client:generate": "westfield-scanner-client protocol/greenfield.xml -o client/src/protocol/greenfield-client-protocol.js",
+    "prepare:client:webpack": "webpack --config webpack.config.js",
+    "prepare": "npm run prepare:server:generate && npm run prepare:client:generate && npm run prepare:client:webpack",
+    "start": "node server/src/compositor-server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/udevbe/greenfield.git"
+  },
+  "keywords": [
+    "wayland",
+    "html5",
+    "compositor",
+    "linux",
+    "display",
+    "server"
+  ],
+  "author": "Erik De Rijcke <derijcke.erik@gmail.com> (http://www.udev.be)",
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/udevbe/greenfield/issues"
+  },
+  "homepage": "https://github.com/udevbe/greenfield#readme",
+  "dependencies": {
+    "express": "4.15.3",
+    "ws": "3.0.0",
+    "wrtc": "0.0.61",
+    "westfield-runtime-client": "0.0.2",
+    "westfield-runtime-server": "0.0.2"
+  },
+  "devDependencies": {
+    "webpack": "2.5.1",
+    "westfield-scanner-client": "0.0.2",
+    "westfield-scanner-server": "0.0.2"
+  }
+}
