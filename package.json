@@ -30,13 +30,13 @@
   "dependencies": {
     "express": "4.15.3",
     "ws": "3.0.0",
-    "wrtc": "0.0.61",
-    "westfield-runtime-client": "0.0.2",
-    "westfield-runtime-server": "0.0.2"
+    "wrtc": "0.0.62",
+    "westfield-runtime-client": "0.0.3",
+    "westfield-runtime-server": "0.0.3"
   },
   "devDependencies": {
     "webpack": "2.5.1",
-    "westfield-scanner-client": "0.0.2",
-    "westfield-scanner-server": "0.0.2"
+    "westfield-scanner-client": "0.0.3",
+    "westfield-scanner-server": "0.0.3"
   }
 }
