@@ -162,9 +162,10 @@ function pushFrames(client, dataChannel) {
                 "clockoverlay", "!",
                 "videorate", "!", "video/x-raw,framerate=60/1", "!",
                 "videoconvert", "!", "video/x-raw,format=I420,width=1920,height=1080", "!",
-                "vaapih264enc", "keyframe-period=120", "rate-control=vbr", "bitrate=20000", "!",
+                "vaapih264enc", "keyframe-period=60", "rate-control=vbr", "bitrate=20000", "!",
+                //"x264enc", "key-int-max=1", "pass=pass1", "aud=false", "b-adapt=false", "bframes=0", "tune=zerolatency", "sliced-threads=false", "speed-preset=veryfast", "qp-max=30", "qp-min=20", "ip-factor=2", "intra-refresh=true", "!",
                 "video/x-h264,profile=constrained-baseline,framerate=60/1", "!",
-                "rtph264pay", "config-interval=-1", "mtu=10000", "!",
+                "rtph264pay", "config-interval=-1", "mtu=5000", "!",
                 "rtpstreampay", "!",
                 "filesink", "location=" + fifoPath, "append=true", "buffer-mode=unbuffered", "sync=false"]);
 

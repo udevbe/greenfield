@@ -99,10 +99,7 @@ export class H264Remuxer extends BaseRemuxer {
 
             mp4Sample = {
                 size: unit.getSize(),
-                duration: ///this.lastDTS ? sample.dts - this.lastDTS :
-                    1500,
-                duration: //this.lastDTS ? sample.dts - this.lastDTS :
-                    1500,
+                duration: this.lastDTS ? sample.dts - this.lastDTS : 1440,
                 cts: 0,
                 flags: {
                     isLeading: 0,
