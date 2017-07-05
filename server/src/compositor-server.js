@@ -24,7 +24,7 @@ function onBindClient(client, id, version) {
     webrtcSignaling.implementation.client_ice_candidates = onClientIceCandidates;
     webrtcSignaling.implementation.client_sdp_offer = onClientSdpOffer;
 
-    setupChannel(webrtcSignaling);
+    setupChannel(client, webrtcSignaling);
 }
 
 function onClientIceCandidates(webrtcSignaling, description) {
@@ -54,7 +54,7 @@ function onClientSdpOffer(webrtcSignaling, description) {
 /**
  * @param {webrtc_signaling} webrtcSignaling
  */
-function setupChannel(webrtcSignaling) {
+function setupChannel(client, webrtcSignaling) {
 
     webrtcSignaling.implementation.peerConnection.onicecandidate = (evt) => {
         if (evt.candidate !== null) {
@@ -66,7 +66,7 @@ function setupChannel(webrtcSignaling) {
         const datachannel = event.channel;
 
         datachannel.onopen = function (event) {
-            pushFrames(webrtcSignaling, datachannel);
+            pushFrames(client, datachannel);
         };
     };
 }
@@ -150,30 +150,13 @@ class RtpFrameReader {
     }
 }
 
-function pushFrames(webrtcSignaling, dataChannel) {
+function pushFrames(client, dataChannel) {
     //crate named pipe and get fd to it:
     const fifoPath = "/tmp/tmp.fifo";
 
     fs.unlink(fifoPath, (error) => {
         child_process.execSync("mkfifo " + fifoPath);
 
-        fs.open(fifoPath, "r", (err, fd) => {
-            if (err) {
-                console.error("Error: Failure when opening video pipe", error);
-                webrtcSignaling.client.close();
-            } else {
-                const rtpStream = fs.createReadStream(null, {
-                    fd: fd
-                });
-
-                new RtpFrameReader(rtpStream).onRtpFrame = (rtpFrame) => {
-                    dataChannel.send(rtpFrame);
-                };
-                rtpStream.on('end', () => {
-                    consoler.error('rtp stream closed\n');
-                });
-            }
-        });
         const rtpStreamProcess = child_process.spawn("gst-launch-1.0",
             ["videotestsrc", "pattern=0", "is-live=true", "do-timestamp=true", "!",
                 "clockoverlay", "!",
@@ -184,11 +167,29 @@ function pushFrames(webrtcSignaling, dataChannel) {
                 "rtph264pay", "config-interval=-1", "mtu=10000", "!",
                 "rtpstreampay", "!",
                 "filesink", "location=" + fifoPath, "append=true", "buffer-mode=unbuffered", "sync=false"]);
-        //immediately unlink the file, the resulting file descriptor won't be cleaned up until the child process is terminated.
 
         rtpStreamProcess.on("exit", (exit) => {
             console.log("gst-launch exited: " + exit);
         });
+
+        const fd = fs.openSync(fifoPath, "r");
+
+        const rtpStream = fs.createReadStream(null, {
+            fd: fd
+        });
+
+        const rtpFrameReader = new RtpFrameReader(rtpStream).onRtpFrame = (rtpFrame) => {
+            if (dataChannel.readyState === "open") {
+                dataChannel.send(rtpFrame);
+            }
+        };
+
+        fs.unlinkSync(fifoPath);
+
+        client.onclose = (event) => {
+            rtpStreamProcess.kill(0);
+            rtpStream.destroy();
+        };
     });
 }
 
@@ -253,6 +254,9 @@ wss.on('connection', function connection(ws) {
     //Wire closing of the websocket to our client object.
     ws.onclose = function () {
         client.close();
+        if(typeof client.onclose === "function"){
+            client.onclose();
+        }
     };
 
     //Tell the client object we ready to handle protocol communication.
