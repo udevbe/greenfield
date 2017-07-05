@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "HTML5 Wayland compositor",
   "scripts": {
-    "prepare:server:generate": "westfield-scanner-server protocol/greenfield.xml -o server/src/protocol/greenfield-server-protocol.js",
-    "prepare:client:generate": "westfield-scanner-client protocol/greenfield.xml -o client/src/protocol/greenfield-client-protocol.js",
+    "prepare:server:generate": "mkdir -p server/src/protocol/ && westfield-scanner-server protocol/greenfield.xml -o server/src/protocol/greenfield-server-protocol.js",
+    "prepare:client:generate": "mkdir -p client/src/protocol/ && westfield-scanner-client protocol/greenfield.xml -o client/src/protocol/greenfield-client-protocol.js",
     "prepare:client:webpack": "webpack --config webpack.config.js",
     "prepare": "npm run prepare:server:generate && npm run prepare:client:generate && npm run prepare:client:webpack",
     "start": "node server/src/compositor-server.js"
