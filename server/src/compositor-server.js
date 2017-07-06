@@ -66,7 +66,7 @@ function setupChannel(client, webrtcSignaling) {
         const datachannel = event.channel;
 
         datachannel.onopen = function (event) {
-            pushFrames(client, datachannel);
+            pushFrames(client, datachannel, webrtcSignaling);
         };
     };
 }
@@ -150,7 +150,7 @@ class RtpFrameReader {
     }
 }
 
-function pushFrames(client, dataChannel) {
+function pushFrames(client, dataChannel, webrtcSignaling) {
     //crate named pipe and get fd to it:
     const fifoPath = "/tmp/tmp.fifo";
 
@@ -188,6 +188,7 @@ function pushFrames(client, dataChannel) {
         fs.unlinkSync(fifoPath);
 
         client.onclose = (event) => {
+            webrtcSignaling.implementation.peerConnection.close();
             rtpStreamProcess.kill(0);
             rtpStream.destroy();
         };
@@ -255,7 +256,7 @@ wss.on('connection', function connection(ws) {
     //Wire closing of the websocket to our client object.
     ws.onclose = function () {
         client.close();
-        if(typeof client.onclose === "function"){
+        if (typeof client.onclose === "function") {
             client.onclose();
         }
     };
