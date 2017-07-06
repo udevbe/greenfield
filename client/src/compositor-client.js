@@ -63,7 +63,9 @@ function setupDataChannels(webrtcSignaling) {
         const remuxer = new Remuxer(track);
         return remuxer.addVideo(video).then((mse) => {
             const channel = peerConnection.createDataChannel(webrtcSignaling.id, {ordered: false, maxRetransmits: 0});
-            setupStreamChannel(channel, rtpFactory, sdpParser, remuxer, mse);
+            channel.onopen = (event) => {
+                setupStreamChannel(channel, rtpFactory, sdpParser, remuxer, mse);
+            };
         });
     }).then(() => {
         return peerConnection.createOffer({
