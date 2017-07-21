@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<protocol name="streams" version="1">
+<protocol name="Grfield" version="1">
     <copyright>
         Example HTML5 Protocol
         Copyright (C) 2017 Erik De Rijcke
@@ -18,39 +18,471 @@
         along with this program. If not, see &gt;http://www.gnu.org/licenses/&lt;.
     </copyright>
 
-    <interface name="webrtc_signaling" version="1">
-        <description>
-            A global singleton. Functions as a signaling server to setup a web rtc peer connection.
+    <interface name="GrCompositor" version="4">
+        <description summary="the compositor singleton">
+            A compositor.  This object is a singleton global.  The
+            compositor is in charge of combining the contents of multiple
+            surfaces into one displayable output.
         </description>
 
-        <request name="client_ice_candidates" since="1">
-            <description/>
-            <arg name="description" type="string" summary=""/>
+        <request name="createSurface">
+            <description summary="create new surface">
+                Ask the compositor to create a new surface.
+            </description>
+            <arg name="id" type="new_id" interface="GrSurface"/>
         </request>
 
-        <request name="client_sdp_offer" since="1">
-            <description/>
-            <arg name="description" type="string" summary=""/>
+        <request name="createRegion">
+            <description summary="create new region">
+                Ask the compositor to create a new region.
+            </description>
+            <arg name="id" type="new_id" interface="GrRegion"/>
+        </request>
+    </interface>
+
+    <interface name="GrBuffer" version="1">
+        <description summary="content for a GrSurface">
+            A buffer provides the content for a GrSurface. Buffers are
+            created through separate factory interfaces. A buffer has a width
+            and a height and can be attached to a GrSurface, but the
+            mechanism by which a client provides and updates the contents is
+            defined by the buffer factory interface.
+
+            A buffer factory interface also defines whether a GrBuffer can
+            be used multiple times or only once after created, and whether it
+            is possible to update the content of the buffer after it has been
+            created. Failure to follow the restrictions set by the factory
+            will lead to a protocol error.
+
+            When a GrBuffer is created from a factory interface, it will
+            usually start to transfer the content immediately, and results in
+            a 'complete' event once the transfer is completed.
+        </description>
+
+        <enum name="error">
+            <description summary="errors related to buffer usage">
+                Buffer factory interface specify what kind of uses of a
+                GrBuffer created from them is valid and what is an error. The
+                errors would usually happen at GrSurface.attach or
+                GrSurface.commit time, but the error itself is more related
+                to the GrBuffer than the surface or even the factory.
+            </description>
+            <entry name="illegalUse" value="0"
+                   summary="the buffer cannot be used here"/>
+            <entry name="stale" value="1"
+                   summary="the buffer cannot be used again"/>
+        </enum>
+
+        <request name="destroy" type="destructor">
+            <description summary="destroy a buffer">
+            </description>
         </request>
 
-        <request name="client_sdp_reply" since="1">
-            <description/>
-            <arg name="description" type="string" summary=""/>
+        <event name="complete">
+            <description summary="buffer content transfer is complete">
+                This event signifies that the compositor has received all the
+                contents of this buffer, and is now able to use it.
+
+                The serial argument is defined by the buffer factory, or zero if
+                not meaningful. It is usually used with factories that can
+                update buffer contents, to identify which content update has
+                completed.
+            </description>
+            <arg name="serial" type="uint" summary="factory-specific serial"/>
+        </event>
+    </interface>
+
+    <interface name="GrSurface" version="4">
+        <description summary="an onscreen surface">
+            A surface is a rectangular area that is displayed on the screen.
+            It has a location, size and pixel contents.
+
+            The size of a surface (and relative positions on it) is described
+            in surface local coordinates, which may differ from the buffer
+            local coordinates of the pixel content, in case a bufferTransform
+            or a bufferScale is used.
+
+            A surface without a "role" is fairly useless, a compositor does
+            not know where, when or how to present it. The role is the
+            purpose of a GrSurface. Examples of roles are a cursor for a
+            pointer (as set by GrPointer.setCursor), a drag icon
+            (GrDataDevice.startDrag), a sub-surface
+            (GrSubcompositor.getSubsurface), and a window as defined by a
+            shell protocol (e.g. GrShell.getShellSurface).
+
+            A surface can have only one role at a time. Initially a
+            GrSurface does not have a role. Once a GrSurface is given a
+            role, it is set permanently for the whole lifetime of the
+            GrSurface object. Giving the current role again is allowed,
+            unless explicitly forbidden by the relevant interface
+            specification.
+
+            Surface roles are given by requests in other interfaces such as
+            GrPointer.setCursor. The request should explicitly mention
+            that this request gives a role to a GrSurface. Often, this
+            request also creates a new protocol object that represents the
+            role and adds additional functionality to GrSurface. When a
+            client wants to destroy a GrSurface, they must destroy this 'role
+            object' before the GrSurface.
+
+            Destroying the role object does not remove the role from the
+            GrSurface, but it may stop the GrSurface from "playing the role".
+            For instance, if a GrSubsurface object is destroyed, the GrSurface
+            it was created for will be unmapped and forget its position and
+            z-order. It is allowed to create a GrSubsurface for the same
+            GrSurface again, but it is not allowed to use the GrSurface as
+            a cursor (cursor is a different role than sub-surface, and role
+            switching is not allowed).
+        </description>
+
+        <enum name="error">
+            <description summary="GrSurface error values">
+                These errors can be emitted in response to GrSurface requests.
+            </description>
+            <entry name="invalidScale" value="0" summary="buffer scale value is invalid"/>
+            <entry name="invalidTransform" value="1" summary="buffer transform value is invalid"/>
+        </enum>
+
+        <request name="destroy" type="destructor">
+            <description summary="delete surface">
+                Deletes the surface and invalidates its object ID.
+            </description>
         </request>
 
-        <event name="server_sdp_reply" since="1">
-            <description/>
-            <arg name="description" type="string" summary=""/>
+        <request name="attach">
+            <description summary="set the surface contents">
+                Set a buffer as the content of this surface.
+
+                The new size of the surface is calculated based on the buffer
+                size transformed by the inverse bufferTransform and the
+                inverse bufferScale. This means that the supplied buffer
+                must be an integer multiple of the bufferScale.
+
+                The x and y arguments specify the location of the new pending
+                buffer's upper left corner, relative to the current buffer's upper
+                left corner, in surface local coordinates. In other words, the
+                x and y, combined with the new surface size define in which
+                directions the surface's size changes.
+
+                Surface contents are double-buffered state, see GrSurface.commit.
+
+                The initial surface contents are void; there is no content.
+                GrSurface.attach assigns the given GrBuffer as the pending
+                GrBuffer. GrSurface.commit makes the pending GrBuffer the new
+                surface contents, and the size of the surface becomes the size
+                calculated from the GrBuffer, as described above. After commit,
+                there is no pending buffer until the next attach.
+
+                Committing a pending GrBuffer allows the compositor to read the
+                pixels in the GrBuffer. The compositor may access the pixels at
+                any time after the GrSurface.commit request. It may take some
+                time for the contents to arrive at the compositor if they have
+                not been transferred already. The compositor will continue using
+                old surface content and state until the new content has arrived.
+                See also GrBuffer.complete.
+
+                If it is possible to re-use a GrBuffer or update its
+                contents, the respective buffer factory shall define how that
+                works.
+
+                Destroying the GrBuffer after GrBuffer.complete does not change
+                the surface contents. However, if the client destroys the
+                GrBuffer before receiving the GrBuffer.complete event, the surface
+                contents become undefined immediately.
+
+                If GrSurface.attach is sent with a NULL GrBuffer, the
+                following GrSurface.commit will remove the surface content.
+            </description>
+
+            <arg name="buffer" type="object" interface="GrBuffer" allow-null="true"/>
+            <arg name="x" type="int"/>
+            <arg name="y" type="int"/>
+        </request>
+
+        <request name="damage">
+            <description summary="mark part of the surface damaged">
+                This request is used to describe the regions where the pending
+                buffer is different from the current surface contents, and where
+                the surface therefore needs to be repainted. The compositor
+                ignores the parts of the damage that fall outside of the surface.
+
+                Damage is double-buffered state, see GrSurface.commit.
+
+                The damage rectangle is specified in surface local coordinates.
+
+                The initial value for pending damage is empty: no damage.
+                GrSurface.damage adds pending damage: the new pending damage
+                is the union of old pending damage and the given rectangle.
+
+                GrSurface.commit assigns pending damage as the current damage,
+                and clears pending damage. The server will clear the current
+                damage as it repaints the surface.
+
+                Alternatively, damage can be posted with GrSurface.damageBuffer
+                which uses buffer co-ordinates instead of surface co-ordinates,
+                and is probably the preferred and intuitive way of doing this.
+
+                The factory behind the the GrBuffer might imply full surface
+                damage, overriding this request. This is common when the factory
+                uses a video encoder, where regions outside the original changes
+                may improve in quality.
+            </description>
+
+            <arg name="x" type="int"/>
+            <arg name="y" type="int"/>
+            <arg name="width" type="int"/>
+            <arg name="height" type="int"/>
+        </request>
+
+        <request name="frame">
+            <description summary="request a frame throttling hint">
+                Request a notification when it is a good time start drawing a new
+                frame, by creating a frame callback. This is useful for throttling
+                redrawing operations, and driving animations.
+
+                When a client is animating on a GrSurface, it can use the 'frame'
+                request to get notified when it is a good time to draw and commit the
+                next frame of animation. If the client commits an update earlier than
+                that, it is likely that some updates will not make it to the display,
+                and the client is wasting resources by drawing too often.
+
+                The frame request will take effect on the next GrSurface.commit.
+                The notification will only be posted for one frame unless
+                requested again. For a GrSurface, the notifications are posted in
+                the order the frame requests were committed.
+
+                The server must send the notifications so that a client
+                will not send excessive updates, while still allowing
+                the highest possible update rate for clients that wait for the reply
+                before drawing again. The server should give some time for the client
+                to draw and commit after sending the frame callback events to let them
+                hit the next output refresh.
+
+                A server should avoid signalling the frame callbacks if the
+                surface is not visible in any way, e.g. the surface is off-screen,
+                or completely obscured by other opaque surfaces.
+
+                The object returned by this request will be destroyed by the
+                compositor after the callback is fired and as such the client must not
+                attempt to use it after that point.
+
+                The callbackData passed in the callback is the current time, in
+                milliseconds, with an undefined base.
+            </description>
+
+            <arg name="callback" type="new_id" interface="GrCallback"/>
+        </request>
+
+        <request name="setOpaqueRegion">
+            <description summary="set opaque region">
+                This request sets the region of the surface that contains
+                opaque content.
+
+                The opaque region is an optimization hint for the compositor
+                that lets it optimize out redrawing of content behind opaque
+                regions.  Setting an opaque region is not required for correct
+                behaviour, but marking transparent content as opaque will result
+                in repaint artifacts.
+
+                The opaque region is specified in surface local coordinates.
+
+                The compositor ignores the parts of the opaque region that fall
+                outside of the surface.
+
+                Opaque region is double-buffered state, see GrSurface.commit.
+
+                GrSurface.setOpaqueRegion changes the pending opaque region.
+                GrSurface.commit copies the pending region to the current region.
+                Otherwise, the pending and current regions are never changed.
+
+                The initial value for opaque region is empty. Setting the pending
+                opaque region has copy semantics, and the GrRegion object can be
+                destroyed immediately. A NULL GrRegion causes the pending opaque
+                region to be set to empty.
+            </description>
+
+            <arg name="region" type="object" interface="GrRegion" allow-null="true"/>
+        </request>
+
+        <request name="setInputRegion">
+            <description summary="set input region">
+                This request sets the region of the surface that can receive
+                pointer and touch events.
+
+                Input events happening outside of this region will try the next
+                surface in the server surface stack. The compositor ignores the
+                parts of the input region that fall outside of the surface.
+
+                The input region is specified in surface local coordinates.
+
+                Input region is double-buffered state, see GrSurface.commit.
+
+                GrSurface.setInputRegion changes the pending input region.
+                GrSurface.commit copies the pending region to the current region.
+                Otherwise the pending and current regions are never changed,
+                except cursor and icon surfaces are special cases, see
+                GrPointer.setCursor and GrDataDevice.startDrag.
+
+                The initial value for input region is infinite. That means the
+                whole surface will accept input. Setting the pending input region
+                has copy semantics, and the GrRegion object can be destroyed
+                immediately. A NULL GrRegion causes the input region to be set
+                to infinite.
+            </description>
+
+            <arg name="region" type="object" interface="GrRegion" allow-null="true"/>
+        </request>
+
+        <request name="commit">
+            <description summary="commit pending surface state">
+                Surface state (input, opaque, and damage regions, attached buffers,
+                etc.) is double-buffered. Protocol requests modify the pending
+                state, as opposed to current state in use by the compositor. Commit
+                request atomically applies all pending state, replacing the current
+                state. After commit, the new pending state is as documented for each
+                related request.
+
+                On commit, a pending GrBuffer is applied first, all other state
+                second. This means that all coordinates in double-buffered state are
+                relative to the new GrBuffer coming into use, except for
+                GrSurface.attach itself. If there is no pending GrBuffer, the
+                coordinates are relative to the current surface contents.
+
+                All requests that need a commit to become effective are documented
+                to affect double-buffered state.
+
+                Other interfaces may add further double-buffered surface state.
+            </description>
+        </request>
+
+        <event name="enter">
+            <description summary="surface enters an output">
+                This is emitted whenever a surface's creation, movement, or resizing
+                results in some part of it being within the scanout region of an
+                output.
+
+                Note that a surface may be overlapping with zero or more outputs.
+            </description>
+            <arg name="output" type="object" interface="GrOutput"/>
         </event>
 
-        <event name="server_sdp_offer" since="1">
-            <description/>
-            <arg name="description" type="string" summary=""/>
+        <event name="leave">
+            <description summary="surface leaves an output">
+                This is emitted whenever a surface's creation, movement, or resizing
+                results in it no longer having any part of it within the scanout region
+                of an output.
+            </description>
+            <arg name="output" type="object" interface="GrOutput"/>
         </event>
 
-        <event name="server_ice_candidates" since="1">
-            <description/>
-            <arg name="description" type="string" summary=""/>
-        </event>
+        <!-- Version 2 additions -->
+
+        <request name="setBufferTransform" since="2">
+            <description summary="sets the buffer transformation">
+                This request sets an optional transformation on how the compositor
+                interprets the contents of the buffer attached to the surface. The
+                accepted values for the transform parameter are the values for
+                GrOutput.transform.
+
+                Buffer transform is double-buffered state, see GrSurface.commit.
+
+                A newly created surface has its buffer transformation set to normal.
+
+                GrSurface.setBufferTransform changes the pending buffer
+                transformation. GrSurface.commit copies the pending buffer
+                transformation to the current one. Otherwise, the pending and current
+                values are never changed.
+
+                The purpose of this request is to allow clients to render content
+                according to the output transform, thus permiting the compositor to
+                use certain optimizations even if the display is rotated. Using
+                hardware overlays and scanning out a client buffer for fullscreen
+                surfaces are examples of such optimizations. Those optimizations are
+                highly dependent on the compositor implementation, so the use of this
+                request should be considered on a case-by-case basis.
+
+                Note that if the transform value includes 90 or 270 degree rotation,
+                the width of the buffer will become the surface height and the height
+                of the buffer will become the surface width.
+
+                If transform is not one of the values from the
+                GrOutput.transform enum the invalidTransform protocol error
+                is raised.
+            </description>
+            <arg name="transform" type="int"/>
+        </request>
+
+        <!-- Version 3 additions -->
+
+        <request name="setBufferScale" since="3">
+            <description summary="sets the buffer scaling factor">
+                This request sets an optional scaling factor on how the compositor
+                interprets the contents of the buffer attached to the window.
+
+                Buffer scale is double-buffered state, see GrSurface.commit.
+
+                A newly created surface has its buffer scale set to 1.
+
+                GrSurface.setBufferScale changes the pending buffer scale.
+                GrSurface.commit copies the pending buffer scale to the current one.
+                Otherwise, the pending and current values are never changed.
+
+                The purpose of this request is to allow clients to supply higher
+                resolution buffer data for use on high resolution outputs. Its
+                intended that you pick the same	buffer scale as the scale of the
+                output that the surface is displayed on.This means the compositor
+                can avoid scaling when rendering the surface on that output.
+
+                Note that if the scale is larger than 1, then you have to attach
+                a buffer that is larger (by a factor of scale in each dimension)
+                than the desired surface size.
+
+                If scale is not positive the invalidScale protocol error is
+                raised.
+            </description>
+            <arg name="scale" type="int"/>
+        </request>
+
+        <!-- Version 4 additions -->
+        <request name="damageBuffer" since="4">
+            <description summary="mark part of the surface damaged using buffer co-ordinates">
+                This request is used to describe the regions where the pending
+                buffer is different from the current surface contents, and where
+                the surface therefore needs to be repainted. The compositor
+                ignores the parts of the damage that fall outside of the surface.
+
+                Damage is double-buffered state, see GrSurface.commit.
+
+                The damage rectangle is specified in buffer coordinates.
+
+                The initial value for pending damage is empty: no damage.
+                GrSurface.damageBuffer adds pending damage: the new pending
+                damage is the union of old pending damage and the given rectangle.
+
+                GrSurface.commit assigns pending damage as the current damage,
+                and clears pending damage. The server will clear the current
+                damage as it repaints the surface.
+
+                This request differs from GrSurface.damage in only one way - it
+                takes damage in buffer co-ordinates instead of surface local
+                co-ordinates. While this generally is more intuitive than surface
+                co-ordinates, it is especially desirable when using wpViewport
+                or when a drawing library (like EGL) is unaware of buffer scale
+                and buffer transform.
+
+                Note: Because buffer transformation changes and damage requests may
+                be interleaved in the protocol stream, It is impossible to determine
+                the actual mapping between surface and buffer damage until
+                GrSurface.commit time. Therefore, compositors wishing to take both
+                kinds of damage into account will have to accumulate damage from the
+                two requests separately and only transform from one to the other
+                after receiving the GrSurface.commit.
+            </description>
+
+            <arg name="x" type="int"/>
+            <arg name="y" type="int"/>
+            <arg name="width" type="int"/>
+            <arg name="height" type="int"/>
+        </request>
     </interface>
 </protocol>

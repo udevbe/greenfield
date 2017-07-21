@@ -108,3 +108,12 @@ idea/vcs.xml
 /client/src/protocol/greenfield-client-protocol.js
 /server/src/protocol/greenfield-server-protocol.js
 /client/public/compositor-client.bundle.js
+/browser/src/protocol/greenfield-server-protocol.js
+/browser/src/protocol/dcbuffer-server-protocol.js
+/browser/src/protocol/session-client-protocol.js
+/package-lock.json
+/browser/public/browser.bundle.js
+/node_modules/
+/node/src/protocol/session-server-protocol.js
+/node/src/protocol/greenfield-client-protocol.js
+/node/src/protocol/dcbuffer-client-protocol.js

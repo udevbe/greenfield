@@ -3,10 +3,18 @@
   "version": "1.0.0",
   "description": "HTML5 Wayland compositor",
   "scripts": {
-    "prepare:server:generate": "mkdir -p server/src/protocol/ && westfield-scanner-server protocol/greenfield.xml -o server/src/protocol/greenfield-server-protocol.js",
-    "prepare:client:generate": "mkdir -p client/src/protocol/ && westfield-scanner-client protocol/greenfield.xml -o client/src/protocol/greenfield-client-protocol.js",
-    "prepare:client:webpack": "webpack --config webpack.config.js",
-    "prepare": "npm run prepare:server:generate && npm run prepare:client:generate && npm run prepare:client:webpack",
+    "prepare:browser:generate:session": "westfield-scanner-client protocol/session.xml -o browser/src/protocol/session-client-protocol.js",
+    "prepare:server:generate:session": "westfield-scanner-server protocol/session.xml -o node/src/protocol/session-server-protocol.js",
+    "prepare:browser:generate:dcbuffer": "westfield-scanner-server protocol/dcbuffer.xml -o browser/src/protocol/dcbuffer-server-protocol.js",
+    "prepare:server:generate:dcbuffer": "westfield-scanner-client protocol/dcbuffer.xml -o node/src/protocol/dcbuffer-client-protocol.js",
+    "prepare:browser:generate:greenfield": "westfield-scanner-server protocol/greenfield.xml -o browser/src/protocol/greenfield-server-protocol.js",
+    "prepare:server:generate:greenfield": "westfield-scanner-client protocol/greenfield.xml -o node/src/protocol/greenfield-client-protocol.js",
+    "prepare:browser:generate": "mkdir -p browser/src/protocol/ && npm run prepare:browser:generate:greenfield && npm run prepare:browser:generate:dcbuffer && npm run prepare:browser:generate:session",
+    "prepare:server:generate": "mkdir -p node/src/protocol/ && npm run prepare:server:generate:greenfield && npm run prepare:server:generate:dcbuffer && npm run prepare:server:generate:session",
+    "prepare:browser:webpack": "webpack --config webpack.config.js",
+    "prepare:browser": "npm run prepare:browser:generate && npm run prepare:browser:webpack",
+    "prepare:server": "npm run prepare:server:generate",
+    "prepare": "npm run prepare:server && npm run prepare:browser",
     "start": "node server/src/compositor-server.js"
   },
   "repository": {
@@ -29,14 +37,15 @@
   "homepage": "https://github.com/udevbe/greenfield#readme",
   "dependencies": {
     "express": "4.15.3",
-    "ws": "3.0.0",
+    "westfield-runtime-client": "0.0.6",
+    "westfield-runtime-server": "0.0.6",
     "wrtc": "0.0.62",
-    "westfield-runtime-client": "0.0.3",
-    "westfield-runtime-server": "0.0.3"
+    "ws": "3.0.0"
   },
   "devDependencies": {
+    "standard": "^10.0.2",
     "webpack": "2.5.1",
-    "westfield-scanner-client": "0.0.3",
-    "westfield-scanner-server": "0.0.3"
+    "westfield-scanner-client": "0.0.6",
+    "westfield-scanner-server": "0.0.6"
   }
 }

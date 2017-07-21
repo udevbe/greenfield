@@ -1,9 +1,9 @@
 const path = require('path');
 
 module.exports = {
-    entry: './client/src/compositor-client.js',
+    entry: './browser/src/index.js',
     output: {
-        path: path.resolve(__dirname, 'client/public'),
-        filename: 'compositor-client.bundle.js'
+        path: path.resolve(__dirname, 'browser/public'),
+        filename: 'browser.bundle.js'
     }
 };
