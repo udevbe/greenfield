@@ -4,6 +4,12 @@ import cd from './protocol/session-client-protocol'
  * Listens for client announcements from the server.
  */
 export default class Session {
+
+  /**
+   *
+   * @param {String} url websocket session url
+   * @returns {Promise<Session>}
+   */
   static create (url) {
     return new Promise((resolve, reject) => {
       const ws = new window.WebSocket(url, 'session')// create new websocket connection
@@ -41,5 +47,8 @@ export default class Session {
     })
   }
 
+  /**
+   * Notifies that a new client is available on the native remote
+   */
   onClient () {}
 }

@@ -1,6 +1,4 @@
-/**
- * @property bleh
- */
+
 export default class ClientConnection {
   /**
    *
@@ -68,6 +66,7 @@ export default class ClientConnection {
   /**
    * Use ClientConnection.create(server, clientConnectionUrl) instead.
    *
+   * @private
    * @param {Server} server
    * @param {WebSocket} ws
    * @param {Client} client

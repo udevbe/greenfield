@@ -1,10 +1,21 @@
 export default class BrowserSurface {
+
+  /**
+   *
+   * @param {GrSurface} grSurface
+   * @returns {BrowserSurface}
+   */
   create (grSurface) {
     const browserSurface = new BrowserSurface(grSurface)
     grSurface.implementation = browserSurface
     return browserSurface
   }
 
+  /**
+   * Use BrowserSurface.create(grSurface) instead.
+   * @private
+   * @param {GrSurface} grSurface
+   */
   constructor (grSurface) {
     this.grSurface = grSurface
   }

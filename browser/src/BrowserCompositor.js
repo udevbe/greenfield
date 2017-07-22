@@ -3,12 +3,23 @@ import gfs from './protocol/greenfield-server-protocol'
 import BrowserSurface from './BrowserSurface'
 
 export default class BrowserCompositor extends wfs.Global {
+
+  /**
+   *
+   * @param {Server} server
+   * @returns {BrowserCompositor}
+   */
   static create (server) {
     const browserCompositor = new BrowserCompositor(server)
     this.server.registry.register(browserCompositor)
     return browserCompositor
   }
 
+  /**
+   * Use BrowserCompositor.create(server) instead.
+   * @private
+   * @param {Server} server
+   */
   constructor (server) {
     super('GrCompositor', 4)
     this.server = server
@@ -36,7 +47,7 @@ export default class BrowserCompositor extends wfs.Global {
 
   /**
    *
-   *                Ask the compositor to create a new surface.
+   * Ask the compositor to create a new surface.
    *
    *
    * @param {GrCompositor} resource
@@ -65,7 +76,7 @@ export default class BrowserCompositor extends wfs.Global {
 
   /**
    *
-   *                Ask the compositor to create a new region.
+   * Ask the compositor to create a new region.
    *
    *
    * @param {GrCompositor} resource
