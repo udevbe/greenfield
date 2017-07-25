@@ -20,7 +20,7 @@
 
     <interface name="GrCompositor" version="4">
         <description summary="the compositor singleton">
-            A compositor.  This object is a singleton global.  The
+            A compositor. This object is a singleton global. The
             compositor is in charge of combining the contents of multiple
             surfaces into one displayable output.
         </description>
@@ -280,7 +280,7 @@
 
                 The opaque region is an optimization hint for the compositor
                 that lets it optimize out redrawing of content behind opaque
-                regions.  Setting an opaque region is not required for correct
+                regions. Setting an opaque region is not required for correct
                 behaviour, but marking transparent content as opaque will result
                 in repaint artifacts.
 
@@ -429,7 +429,7 @@
 
                 The purpose of this request is to allow clients to supply higher
                 resolution buffer data for use on high resolution outputs. Its
-                intended that you pick the same	buffer scale as the scale of the
+                intended that you pick the same buffer scale as the scale of the
                 output that the surface is displayed on.This means the compositor
                 can avoid scaling when rendering the surface on that output.
 
@@ -484,5 +484,43 @@
             <arg name="width" type="int"/>
             <arg name="height" type="int"/>
         </request>
+    </interface>
+
+    <interface name="GrRegion" version="1">
+        <description summary="region interface">
+            A region object describes an area.
+
+            Region objects are used to describe the opaque and input
+            regions of a surface.
+        </description>
+
+        <request name="destroy" type="destructor">
+            <description summary="destroy region">
+                Destroy the region. This will invalidate the object ID.
+            </description>
+        </request>
+
+        <request name="add">
+            <description summary="add rectangle to region">
+                Add the specified rectangle to the region.
+            </description>
+
+            <arg name="x" type="int"/>
+            <arg name="y" type="int"/>
+            <arg name="width" type="int"/>
+            <arg name="height" type="int"/>
+        </request>
+
+        <request name="subtract">
+            <description summary="subtract rectangle from region">
+                Subtract the specified rectangle from the region.
+            </description>
+
+            <arg name="x" type="int"/>
+            <arg name="y" type="int"/>
+            <arg name="width" type="int"/>
+            <arg name="height" type="int"/>
+        </request>
+
     </interface>
 </protocol>

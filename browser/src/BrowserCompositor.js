@@ -1,16 +1,16 @@
 import wfs from 'westfield-runtime-server'
 import gfs from './protocol/greenfield-server-protocol'
 import BrowserSurface from './BrowserSurface'
+import BrowserRegion from './BrowserRegion'
 
 export default class BrowserCompositor extends wfs.Global {
-
   /**
    *
    * @param {Server} server
    * @returns {BrowserCompositor}
    */
-  static create (server) {
-    const browserCompositor = new BrowserCompositor(server)
+  static create () {
+    const browserCompositor = new BrowserCompositor()
     this.server.registry.register(browserCompositor)
     return browserCompositor
   }
@@ -18,11 +18,9 @@ export default class BrowserCompositor extends wfs.Global {
   /**
    * Use BrowserCompositor.create(server) instead.
    * @private
-   * @param {Server} server
    */
-  constructor (server) {
+  constructor () {
     super('GrCompositor', 4)
-    this.server = server
   }
 
   bindClient (client, id, version) {
@@ -86,6 +84,7 @@ export default class BrowserCompositor extends wfs.Global {
    *
    */
   createRegion (resource, id) {
-
+    const grRegion = new gfs.GrRegion(resource.client, id, 1)
+    BrowserRegion.create(grRegion)
   }
 }
