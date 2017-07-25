@@ -9,9 +9,9 @@ export default class BrowserCompositor extends wfs.Global {
    * @param {Server} server
    * @returns {BrowserCompositor}
    */
-  static create () {
+  static create (server) {
     const browserCompositor = new BrowserCompositor()
-    this.server.registry.register(browserCompositor)
+    server.registry.register(browserCompositor)
     return browserCompositor
   }
 

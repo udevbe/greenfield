@@ -74,7 +74,7 @@ export default class BrowserRegion {
    *
    */
   subtract (resource, x, y, width, height) {
-    const deltaPixmanRegion = pixman._malloc(4 + 4 + 4 + 4 + 4)
+    const deltaPixmanRegion = pixman._malloc(20)
     pixman._pixman_region32_init_rect(deltaPixmanRegion, x, y, width, height)
     pixman._pixman_region32_subtract(this.pixmanRegion, this.pixmanRegion, deltaPixmanRegion)
     pixman._pixman_region32_fini(deltaPixmanRegion)

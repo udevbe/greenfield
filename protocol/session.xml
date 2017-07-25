@@ -23,10 +23,12 @@
             A global singleton. Functions as a client announcement mechanism.
         </description>
 
-        <event name="client" since="1">
-            <description/>
-        </event>
+        <request name="client" since="1">
+            <description>
+                Request a new client session. The remote browser compositor is expected to
+                initiate a new websocket connection as a response. This enables the local server to use the newly
+                established websocket connection for client to browser compositor communication.
+            </description>
+        </request>
     </interface>
-
-
 </protocol>

@@ -1,7 +1,3 @@
-import pixmanModule from './lib/pixman/libpixman-1'
-
-const pixman = pixmanModule()
-
 export default class BrowserSurface {
   /**
    *

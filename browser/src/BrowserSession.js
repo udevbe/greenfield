@@ -1,54 +1,105 @@
-import cd from './protocol/session-client-protocol'
+import wfs from './protocol/greenfield-browser-protocol'
+import ses from './protocol/session-browser-protocol'
 
 /**
  * Listens for client announcements from the server.
  */
-export default class Session {
-
+export default class BrowserSession extends wfs.Global {
   /**
    *
-   * @param {String} url websocket session url
-   * @returns {Promise<Session>}
+   * @param {Server}wfsServer
+   * @param {string} url
+   * @returns {Promise<Client>}
+   * @private
    */
-  static create (url) {
+  static _createConnection (wfsServer, url) {
     return new Promise((resolve, reject) => {
-      const ws = new window.WebSocket(url, 'session')// create new websocket connection
-      ws.binaryType = 'arraybuffer'// set socket type to array buffer, required for wfc connection to work.
+      const ws = new window.WebSocket(url)
+      ws.binaryType = 'arraybuffer'
 
       ws.onerror = (event) => {
-        if (ws.readyState === 'CONNECTING') {
+        if (ws.readyState === window.WebSocket.CONNECTING) {
           reject(event)
         }
       }
 
-      const connection = new cd.Connection()// create connection
-      connection.onSend = (data) => {
-        ws.send(data)
-      }// wire connection send to websocket
-      ws.onmessage = (event) => {
-        connection.unmarshall(event.data)
-      }// wire websocket message to connection unmarshall
+      ws.on('connection', () => {
+        ws._socket.setKeepAlive(true)
 
-      ws.onopen = (event) => {
-        const registry = connection.createRegistry() // create a registry that will notify us of any current and new globals
-        registry.listener.global = (name, interface_, version) => { // register a listener to will be notified if a new global appears
-          if (interface_ === 'GrSession') { // check if we support the global
-            const grSession = registry.bind(name, interface_, version)// create a new object that will be bound to the global
-            const session = new Session()
+        const client = wfsServer.createClient()
 
-            grSession.listener.client = () => {
-              session.onClient()
-            }
+        client.onSend = (wireMsg) => {
+          if (ws.readyState === window.WebSocket.CLOSING || ws.readyState === window.WebSocket.CLOSED) {
+            // Fail silently as we will soon receive the close event which will trigger the cleanup.
+            return
+          }
 
-            resolve(session)
+          try {
+            ws.send(wireMsg, (error) => {
+              if (error !== undefined) {
+                console.error(error)
+                ws.close()
+              }
+            })
+          } catch (error) {
+            console.error(error)
+            ws.close()
           }
         }
-      }
+
+        ws.onmessage = (message) => {
+          try {
+            client.message(message.data.buffer.slice(message.data.offset, message.data.length + message.data.offset))
+          } catch (error) {
+            console.error(error)
+            ws.close()
+          }
+        }
+
+        ws.onclose = () => {
+          client.close()
+        }
+
+        resolve(client)
+      })
     })
   }
 
   /**
-   * Notifies that a new client is available on the native remote
+   *
+   * @param {String} url websocket session url
+   * @returns {Promise<BrowserSession>}
    */
-  onClient () {}
+  static create (url) {
+    const wfsServer = new wfs.Server()
+
+    return this._createConnection(wfsServer, url).then((client) => {
+      const browserSession = new BrowserSession(url, wfsServer, client)
+      wfsServer.registry.register(browserSession)
+      return browserSession
+    })
+  }
+
+  constructor (url, wfsServer, client) {
+    super('Session', 1)
+    this.url = url
+    this.wfsServer = wfsServer
+    this.client = client
+  }
+
+  bindClient (client, id, version) {
+    const grSessionResource = new ses.GrSession(client, id, version)
+    grSessionResource.implementation = this
+  }
+
+  /**
+   *
+   * @param {GrSession} resource
+   *
+   * @since 1
+   *
+   */
+  client (resource) {
+    BrowserSession._createConnection(this.wfsServer, this.url)
+  }
 }

@@ -1,24 +1,15 @@
 'use strict'
 
 import BrowserSession from './BrowserSession'
-import wfs from 'westfield-runtime-server'
-import ClientConnection from './ClientConnection'
 import BrowserCompositor from './BrowserCompositor'
 import pixman from './lib/pixman/libpixman-1'
 
-function onBrowserSession (session) {
-  const server = new wfs.Server()
-  const browserCompositor = BrowserCompositor.create()
-
-  session.onClient = () => {
-    ClientConnection.create(server, 'ws://' + window.location.host).then(browserCompositor.onClientConnection).catch((error) => {
-      console.log(error) // TODO gracefully handle error
-    })
-  }
+function setupGlobals (browserSession) {
+  BrowserCompositor.create(browserSession.wfsServer)
 }
 
 function main () {
-  BrowserSession.create('ws://' + window.location.host).then(onBrowserSession).catch((error) => {
+  BrowserSession.create('ws://' + window.location.host).then(setupGlobals).catch((error) => {
     console.log(error) // TODO gracefully handle error
   })
 }
