@@ -23,9 +23,7 @@ export default class BrowserSession extends wfs.Global {
         }
       }
 
-      ws.on('connection', () => {
-        ws._socket.setKeepAlive(true)
-
+      ws.onopen = () => {
         const client = wfsServer.createClient()
 
         client.onSend = (wireMsg) => {
@@ -49,7 +47,7 @@ export default class BrowserSession extends wfs.Global {
 
         ws.onmessage = (message) => {
           try {
-            client.message(message.data.buffer.slice(message.data.offset, message.data.length + message.data.offset))
+            client.message(message.data)
           } catch (error) {
             console.error(error)
             ws.close()
@@ -61,7 +59,7 @@ export default class BrowserSession extends wfs.Global {
         }
 
         resolve(client)
-      })
+      }
     })
   }
 
@@ -74,17 +72,16 @@ export default class BrowserSession extends wfs.Global {
     const wfsServer = new wfs.Server()
 
     return this._createConnection(wfsServer, url).then((client) => {
-      const browserSession = new BrowserSession(url, wfsServer, client)
+      const browserSession = new BrowserSession(url, wfsServer)
       wfsServer.registry.register(browserSession)
       return browserSession
     })
   }
 
-  constructor (url, wfsServer, client) {
-    super('Session', 1)
+  constructor (url, wfsServer) {
+    super('GrSession', 1)
     this.url = url
     this.wfsServer = wfsServer
-    this.client = client
   }
 
   bindClient (client, id, version) {

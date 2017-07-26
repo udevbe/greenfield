@@ -7,7 +7,7 @@ module.exports = class LocalClient {
 
       const registry = connection.createRegistry()
       // FIXME listen for global removal
-      registry.registry.listener.global = (name, interface_, version) => {
+      registry.listener.global = (name, interface_, version) => {
         if (interface_ === 'GrCompositor') {
           const grCompositoryProxy = registry.bind(name, interface_, version)
           const localCompositor = LocalCompositor.create(grCompositoryProxy)

@@ -9,7 +9,7 @@ function setupGlobals (browserSession) {
 }
 
 function main () {
-  BrowserSession.create('ws://' + window.location.host).then(setupGlobals).catch((error) => {
+  BrowserSession.create('ws://' + window.location.host + '/greenfield').then(setupGlobals).catch((error) => {
     console.log(error) // TODO gracefully handle error
   })
 }
@@ -22,14 +22,13 @@ function loadNativeModule (module) {
       module.onRuntimeInitialized = () => {
         resolve()
       }
-      module()
     }
   })
 }
 
 window.onload = () => {
   // make sure all native modules are ready for use before we start our main flow
-  loadNativeModule(pixman).then(() => {
+  loadNativeModule(pixman()).then(() => {
     main()
   })
 }

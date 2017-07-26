@@ -1,6 +1,8 @@
-const pixman = require('./lib/pixman/libpixman-1')
+import pixmanModule from './lib/pixman/libpixman-1'
 
-module.exports = class BrowserRegion {
+const pixman = pixmanModule()
+
+export default class BrowserRegion {
   /**
    *
    * @param {GrRegion} grRegion

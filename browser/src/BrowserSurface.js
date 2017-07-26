@@ -4,7 +4,7 @@ export default class BrowserSurface {
    * @param {GrSurface} grSurface
    * @returns {BrowserSurface}
    */
-  create (grSurface) {
+  static create (grSurface) {
     const browserSurface = new BrowserSurface(grSurface)
     grSurface.implementation = browserSurface
     return browserSurface
