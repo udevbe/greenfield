@@ -2,11 +2,14 @@
 
 'use strict'
 
-import LocalSession from './LocalSession'
-import LocalClient from './LocalClient'
+const LocalSession = require('./LocalSession')
+const LocalClient = require('./LocalClient')
 
 function testClient (localClient) {
   const grSurfaceProxy = localClient.compositor.grCompositorProxy.createSurface()
+  const grRegionProxy = localClient.compositor.grCompositorProxy.createRegion()
+  grRegionProxy.add(0, 0, 100, 200)
+  grSurfaceProxy.setOpaqueRegion(grRegionProxy)
 }
 
 function main () {

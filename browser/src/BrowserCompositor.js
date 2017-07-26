@@ -1,5 +1,5 @@
 import wfs from 'westfield-runtime-server'
-import gfs from './protocol/greenfield-server-protocol'
+import gfs from './protocol/greenfield-browser-protocol'
 import BrowserSurface from './BrowserSurface'
 import BrowserRegion from './BrowserRegion'
 

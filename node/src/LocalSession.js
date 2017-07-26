@@ -1,12 +1,11 @@
 'use strict'
 
-const scp = require('./protocol/session-client-protocol')
 const wfc = require('./protocol/greenfield-client-protocol')
 const WebSocket = require('ws')
 const express = require('express')
 const http = require('http')
 
-export default class LocalSession {
+module.exports = class LocalSession {
   static create () {
     return new Promise((resolve, reject) => {
       const app = express()
@@ -16,7 +15,7 @@ export default class LocalSession {
       server.on('request', app)
       const wss = new WebSocket.Server({
         server: server,
-        path: '/westfield'
+        path: '/greenfield'
       })
 
       const serverSession = new LocalSession(resolve)

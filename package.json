@@ -2,6 +2,9 @@
   "name": "greenfield-client",
   "version": "1.0.0",
   "description": "HTML5 Wayland compositor",
+  "bin": {
+    "greenfield": "./node/src/index.js"
+  },
   "scripts": {
     "prepare:browser:generate:session": "westfield-scanner-server protocol/session.xml -o browser/src/protocol/session-browser-protocol.js",
     "prepare:server:generate:session": "westfield-scanner-client protocol/session.xml -o node/src/protocol/session-client-protocol.js",
@@ -15,7 +18,7 @@
     "prepare:browser": "npm run prepare:browser:generate && npm run prepare:browser:webpack",
     "prepare:server": "npm run prepare:server:generate",
     "prepare": "npm run prepare:server && npm run prepare:browser",
-    "start": "node server/src/compositor-server.js"
+    "start": "node ./node/src/index.js"
   },
   "repository": {
     "type": "git",

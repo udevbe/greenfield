@@ -1,6 +1,6 @@
-import LocalCompositor from './LocalCompositor'
+const LocalCompositor = require('./LocalCompositor')
 
-export default class LocalClient {
+module.exports = class LocalClient {
   static create (connection) {
     return new Promise((resolve, reject) => {
       const localClient = new LocalClient(connection)
