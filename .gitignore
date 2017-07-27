@@ -117,3 +117,7 @@ idea/vcs.xml
 /node/src/protocol/session-server-protocol.js
 /node/src/protocol/greenfield-client-protocol.js
 /node/src/protocol/dcbuffer-client-protocol.js
+/browser/src/protocol/dcbuffer-browser-protocol.js
+/browser/src/protocol/session-browser-protocol.js
+/browser/src/protocol/greenfield-browser-protocol.js
+/node/src/protocol/session-client-protocol.js
