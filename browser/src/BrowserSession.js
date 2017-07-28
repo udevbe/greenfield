@@ -1,10 +1,10 @@
-import wfs from './protocol/greenfield-browser-protocol'
-import ses from './protocol/session-browser-protocol'
+import westfield from 'westfield-runtime-server'
+import session from './protocol/session-browser-protocol'
 
 /**
  * Listens for client announcements from the server.
  */
-export default class BrowserSession extends wfs.Global {
+export default class BrowserSession extends westfield.Global {
   /**
    *
    * @param {Server}wfsServer
@@ -69,7 +69,7 @@ export default class BrowserSession extends wfs.Global {
    * @returns {Promise<BrowserSession>}
    */
   static create (url) {
-    const wfsServer = new wfs.Server()
+    const wfsServer = new westfield.Server()
 
     return this._createConnection(wfsServer, url).then((client) => {
       const browserSession = new BrowserSession(url, wfsServer)
@@ -79,13 +79,14 @@ export default class BrowserSession extends wfs.Global {
   }
 
   constructor (url, wfsServer) {
+    // FIXME Don't harcode the interface name, instead get it from an imported namespace
     super('GrSession', 1)
     this.url = url
     this.wfsServer = wfsServer
   }
 
   bindClient (client, id, version) {
-    const grSessionResource = new ses.GrSession(client, id, version)
+    const grSessionResource = new session.GrSession(client, id, version)
     grSessionResource.implementation = this
   }
 

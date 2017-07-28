@@ -1,3 +1,4 @@
+const greenfield = require('./protocol/greenfield-client-protocol')
 const LocalCompositor = require('./LocalCompositor')
 
 module.exports = class LocalClient {
@@ -8,6 +9,7 @@ module.exports = class LocalClient {
       const registry = connection.createRegistry()
       // FIXME listen for global removal
       registry.listener.global = (name, interface_, version) => {
+        //FIXME Don't harcode the interface name, instead get it from an imported namespace
         if (interface_ === 'GrCompositor') {
           const grCompositoryProxy = registry.bind(name, interface_, version)
           const localCompositor = LocalCompositor.create(grCompositoryProxy)

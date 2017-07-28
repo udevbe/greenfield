@@ -1,9 +1,9 @@
-import wfs from 'westfield-runtime-server'
-import gfs from './protocol/greenfield-browser-protocol'
+import westfield from 'westfield-runtime-server'
+import greenfield from './protocol/greenfield-browser-protocol'
 import BrowserSurface from './BrowserSurface'
 import BrowserRegion from './BrowserRegion'
 
-export default class BrowserCompositor extends wfs.Global {
+export default class BrowserCompositor extends westfield.Global {
   /**
    *
    * @param {Server} server
@@ -20,6 +20,7 @@ export default class BrowserCompositor extends wfs.Global {
    * @private
    */
   constructor () {
+    // FIXME Don't harcode the interface name, instead get it from an imported namespace
     super('GrCompositor', 4)
   }
 
@@ -27,16 +28,16 @@ export default class BrowserCompositor extends wfs.Global {
     let grCompositor
     switch (version) {
       case 1:
-        grCompositor = new gfs.GrCompositor(client, id, 1)
+        grCompositor = new greenfield.GrCompositor(client, id, 1)
         break
       case 2:
-        grCompositor = new gfs.GrCompositorV2(client, id, 2)
+        grCompositor = new greenfield.GrCompositorV2(client, id, 2)
         break
       case 3:
-        grCompositor = new gfs.GrCompositorV3(client, id, 3)
+        grCompositor = new greenfield.GrCompositorV3(client, id, 3)
         break
       default:
-        grCompositor = new gfs.GrCompositorV4(client, id, 4)
+        grCompositor = new greenfield.GrCompositorV4(client, id, 4)
     }
     grCompositor.implementation = this
   }
@@ -58,16 +59,16 @@ export default class BrowserCompositor extends wfs.Global {
     let grSurface
     switch (resource.version) {
       case 1:
-        grSurface = new gfs.GrSurface(resource.client, id, 1)
+        grSurface = new greenfield.GrSurface(resource.client, id, 1)
         break
       case 2:
-        grSurface = new gfs.GrSurfaceV2(resource.client, id, 2)
+        grSurface = new greenfield.GrSurfaceV2(resource.client, id, 2)
         break
       case 3:
-        grSurface = new gfs.GrSurfaceV3(resource.client, id, 3)
+        grSurface = new greenfield.GrSurfaceV3(resource.client, id, 3)
         break
       default:
-        grSurface = new gfs.GrSurfaceV4(resource.client, id, 4)
+        grSurface = new greenfield.GrSurfaceV4(resource.client, id, 4)
     }
     BrowserSurface.create(grSurface)
   }
@@ -84,7 +85,7 @@ export default class BrowserCompositor extends wfs.Global {
    *
    */
   createRegion (resource, id) {
-    const grRegion = new gfs.GrRegion(resource.client, id, 1)
+    const grRegion = new greenfield.GrRegion(resource.client, id, 1)
     BrowserRegion.create(grRegion)
   }
 }

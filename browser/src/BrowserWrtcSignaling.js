@@ -1,8 +1,7 @@
-import wfs from '../../protocol/greenfield-browser-protocol'
-import wrtc from '../../protocol/dcbuffer-browser-protocol'
+import westfield from 'westfield-runtime-server'
+import dcbuffer from './protocol/dcbuffer-browser-protocol'
 
-export default class BrowserWrtcSignaling extends wfs.Global {
-
+export default class BrowserWrtcSignaling extends westfield.Global {
   static create (server) {
     const browserWrtcSignaling = new BrowserWrtcSignaling()
     server.registry.register(browserWrtcSignaling)
@@ -10,10 +9,11 @@ export default class BrowserWrtcSignaling extends wfs.Global {
   }
 
   constructor () {
+    // FIXME Don't harcode the interface name, instead get it from an imported namespace
     super('WrtcSignaling', 1)
   }
 
-  _setupPeerConnecton (client, webrtcSignaling) {
+  _createPeerConnecton (client, webrtcSignaling) {
     const peerConnection = new window.RTCPeerConnection({
       'iceServers': [
         {'urls': 'stun:stun.wtfismyip.com/'}
@@ -53,15 +53,15 @@ export default class BrowserWrtcSignaling extends wfs.Global {
       this.onPeerConnectionError(client, error)
     })
 
-    return peerConnection
+    // store the peer connection in the signaling instance so we can find it again when we create a dc buffer later on.
+    webrtcSignaling.implementation.peerConnection = peerConnection
   }
 
   bindClient (client, id, version) {
-    const wrtcSignalingResource = new wrtc.WebrtcSignaling(client, id, version)
-    this.onPeerConnection(client, this._setupPeerConnecton(client, wrtcSignalingResource))
+    const wrtcSignalingResource = new dcbuffer.WebrtcSignaling(client, id, version)
+    this._createPeerConnecton(client, wrtcSignalingResource)
   }
 
-  onPeerConnection (client, peerConnection) {}
-
+  // FIXME signal error to client & disconnect
   onPeerConnectionError (client, error) {}
 }

@@ -1,7 +1,9 @@
 'use strict'
 
-const gfs = require('./protocol/session-client-protocol')
-const wfc = require('./protocol/greenfield-client-protocol')
+// import session so we can bind to it's proxies in 'registry.listener.global = ...'
+// FIXME Force the user to import this namespace by eg. exposing the interface name as a scoped variable
+const session = require('./protocol/session-client-protocol')
+const westfield = require('westfield-runtime-client')
 const WebSocket = require('ws')
 const express = require('express')
 const http = require('http')
@@ -21,7 +23,7 @@ module.exports = class LocalSession {
 
       const localSession = new LocalSession(wss, resolve)
       wss.on('connection', (ws) => {
-        const connection = new wfc.Connection()
+        const connection = new westfield.Connection()
 
         connection.onSend = (data) => {
           ws.send(data)
@@ -44,6 +46,7 @@ module.exports = class LocalSession {
 
           const registry = connection.createRegistry()
           registry.listener.global = (name, interface_, version) => {
+            //FIXME Don't harcode the interface name, instead get it from an imported namespace
             if (interface_ === 'GrSession') {
               const grSessionProxy = registry.bind(name, interface_, version)
               grSessionProxy.listener = localSession
@@ -67,7 +70,7 @@ module.exports = class LocalSession {
 
   /**
    *
-   * @returns {Promise<wfc.Connection>}
+   * @returns {Promise<westfield.Connection>}
    */
   createConnection () {
     return new Promise((resolve, reject) => {
