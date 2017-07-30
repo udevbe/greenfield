@@ -1,12 +1,12 @@
 export default class BrowserBuffer {
-  static create (grBuffer) {
-    const browserBuffer = new BrowserBuffer(grBuffer)
-    grBuffer.implementation = browserBuffer
+  static create (grBufferResource) {
+    const browserBuffer = new BrowserBuffer(grBufferResource)
+    grBufferResource.implementation = browserBuffer
     return browserBuffer
   }
 
-  constructor (grBuffer) {
-    this.grBuffer = grBuffer
+  constructor (grBufferResource) {
+    this.grBufferResource = grBufferResource
   }
 
   /**

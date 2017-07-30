@@ -25,21 +25,21 @@ export default class BrowserCompositor extends westfield.Global {
   }
 
   bindClient (client, id, version) {
-    let grCompositor
+    let grCompositorResource
     switch (version) {
       case 1:
-        grCompositor = new greenfield.GrCompositor(client, id, 1)
+        grCompositorResource = new greenfield.GrCompositor(client, id, 1)
         break
       case 2:
-        grCompositor = new greenfield.GrCompositorV2(client, id, 2)
+        grCompositorResource = new greenfield.GrCompositorV2(client, id, 2)
         break
       case 3:
-        grCompositor = new greenfield.GrCompositorV3(client, id, 3)
+        grCompositorResource = new greenfield.GrCompositorV3(client, id, 3)
         break
       default:
-        grCompositor = new greenfield.GrCompositorV4(client, id, 4)
+        grCompositorResource = new greenfield.GrCompositorV4(client, id, 4)
     }
-    grCompositor.implementation = this
+    grCompositorResource.implementation = this
   }
 
   onClientConnection (clientConnection) {}
@@ -56,21 +56,21 @@ export default class BrowserCompositor extends westfield.Global {
    *
    */
   createSurface (resource, id) {
-    let grSurface
+    let grSurfaceResource
     switch (resource.version) {
       case 1:
-        grSurface = new greenfield.GrSurface(resource.client, id, 1)
+        grSurfaceResource = new greenfield.GrSurface(resource.client, id, 1)
         break
       case 2:
-        grSurface = new greenfield.GrSurfaceV2(resource.client, id, 2)
+        grSurfaceResource = new greenfield.GrSurfaceV2(resource.client, id, 2)
         break
       case 3:
-        grSurface = new greenfield.GrSurfaceV3(resource.client, id, 3)
+        grSurfaceResource = new greenfield.GrSurfaceV3(resource.client, id, 3)
         break
       default:
-        grSurface = new greenfield.GrSurfaceV4(resource.client, id, 4)
+        grSurfaceResource = new greenfield.GrSurfaceV4(resource.client, id, 4)
     }
-    BrowserSurface.create(grSurface)
+    BrowserSurface.create(grSurfaceResource)
   }
 
   /**
@@ -85,7 +85,7 @@ export default class BrowserCompositor extends westfield.Global {
    *
    */
   createRegion (resource, id) {
-    const grRegion = new greenfield.GrRegion(resource.client, id, 1)
-    BrowserRegion.create(grRegion)
+    const grRegionResource = new greenfield.GrRegion(resource.client, id, 1)
+    BrowserRegion.create(grRegionResource)
   }
 }

@@ -1,19 +1,19 @@
 import westfield from 'westfield-runtime-server'
-import dcbuffer from './protocol/dcbuffer-browser-protocol'
+import rtc from './protocol/rtc-browser-protocol'
 
-export default class BrowserWrtcSignaling extends westfield.Global {
+export default class BrowserRtcPeerConnection extends westfield.Global {
   static create (server) {
-    const browserWrtcSignaling = new BrowserWrtcSignaling()
-    server.registry.register(browserWrtcSignaling)
-    return browserWrtcSignaling
+    const browserRtcPeerConnection = new BrowserRtcPeerConnection()
+    server.registry.register(browserRtcPeerConnection)
+    return browserRtcPeerConnection
   }
 
   constructor () {
     // FIXME Don't harcode the interface name, instead get it from an imported namespace
-    super('WrtcSignaling', 1)
+    super('RtcPeerConnection', 1)
   }
 
-  _createPeerConnecton (client, webrtcSignaling) {
+  _createPeerConnecton (client, rtcPeerConnectionResource) {
     const peerConnection = new window.RTCPeerConnection({
       'iceServers': [
         {'urls': 'stun:stun.wtfismyip.com/'}
@@ -22,18 +22,18 @@ export default class BrowserWrtcSignaling extends westfield.Global {
 
     peerConnection.onicecandidate = (evt) => {
       if (evt.candidate !== null) {
-        webrtcSignaling.serverIceCandidates(JSON.stringify({'candidate': evt.candidate}))
+        rtcPeerConnectionResource.serverIceCandidates(JSON.stringify({'candidate': evt.candidate}))
       }
     }
 
-    webrtcSignaling.listener.clientIceCandidates = (description) => {
+    rtcPeerConnectionResource.implementation.clientIceCandidates = (description) => {
       const signal = JSON.parse(description)
       peerConnection.addIceCandidate(new window.RTCIceCandidate(signal.candidate)).catch(error => {
         this.onPeerConnectionError(client, error)
       })
     }
 
-    webrtcSignaling.listener.clientSdpReply = (description) => {
+    rtcPeerConnectionResource.implementation.clientSdpReply = (description) => {
       const signal = JSON.parse(description)
       peerConnection.setRemoteDescription(new window.RTCSessionDescription(signal.sdp)).catch((error) => {
         this.onPeerConnectionError(client, error)
@@ -48,18 +48,18 @@ export default class BrowserWrtcSignaling extends westfield.Global {
     }).then((desc) => {
       return peerConnection.setLocalDescription(desc)
     }).then(() => {
-      webrtcSignaling.serverSdpOffer(JSON.stringify({'sdp': peerConnection.localDescription}))
+      rtcPeerConnectionResource.serverSdpOffer(JSON.stringify({'sdp': peerConnection.localDescription}))
     }).catch((error) => {
       this.onPeerConnectionError(client, error)
     })
 
-    // store the peer connection in the signaling instance so we can find it again when we create a dc buffer later on.
-    webrtcSignaling.implementation.peerConnection = peerConnection
+    // store the peer connection in the implementation so we can find it again when we create a dc buffer later on.
+    rtcPeerConnectionResource.implementation.peerConnection = peerConnection
   }
 
   bindClient (client, id, version) {
-    const wrtcSignalingResource = new dcbuffer.WebrtcSignaling(client, id, version)
-    this._createPeerConnecton(client, wrtcSignalingResource)
+    const rtcPeerConnectionResource = new rtc.RtcPeerConnection(client, id, version)
+    this._createPeerConnecton(client, rtcPeerConnectionResource)
   }
 
   // FIXME signal error to client & disconnect

@@ -28,7 +28,7 @@ coverage
 # Bower dependency directory (https://bower.io/)
 bower_components
 
-# node-waf configuration
+# local-waf configuration
 .lock-wscript
 
 # Compiled binary addons (http://nodejs.org/api/addons.html)
@@ -114,10 +114,12 @@ idea/vcs.xml
 /package-lock.json
 /browser/public/browser.bundle.js
 /node_modules/
-/node/src/protocol/session-server-protocol.js
-/node/src/protocol/greenfield-client-protocol.js
-/node/src/protocol/dcbuffer-client-protocol.js
+/local/src/protocol/session-server-protocol.js
+/local/src/protocol/greenfield-client-protocol.js
+/local/src/protocol/dcbuffer-client-protocol.js
 /browser/src/protocol/dcbuffer-browser-protocol.js
 /browser/src/protocol/session-browser-protocol.js
 /browser/src/protocol/greenfield-browser-protocol.js
-/node/src/protocol/session-client-protocol.js
+/local/src/protocol/session-client-protocol.js
+/browser/src/protocol/rtc-browser-protocol.js
+/local/src/protocol/rtc-client-protocol.js

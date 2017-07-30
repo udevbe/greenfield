@@ -20,8 +20,8 @@ function main () {
   // This means that LocalSession will become invalid as soon as the browser disconnects.
   LocalSession.create().then((localSession) => {
     return localSession.createConnection()
-  }).then((connection) => {
-    return LocalClient.create(connection)
+  }).then((wfcConnection) => {
+    return LocalClient.create(wfcConnection)
   }).then((localClient) => {
     testClient(localClient)
   })

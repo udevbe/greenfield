@@ -1,27 +1,27 @@
 export default class BrowserSurface {
   /**
    *
-   * @param {GrSurface} grSurface
+   * @param {GrSurface} grSurfaceResource
    * @returns {BrowserSurface}
    */
-  static create (grSurface) {
-    const browserSurface = new BrowserSurface(grSurface)
-    grSurface.implementation = browserSurface
+  static create (grSurfaceResource) {
+    const browserSurface = new BrowserSurface(grSurfaceResource)
+    grSurfaceResource.implementation = browserSurface
     return browserSurface
   }
 
   /**
-   * Use BrowserSurface.create(grSurface) instead.
+   * Use BrowserSurface.create(grSurfaceResource) instead.
    * @private
-   * @param {GrSurface} grSurface
+   * @param {GrSurface} grSurfaceResource
    */
-  constructor (grSurface) {
-    this.grSurface = grSurface
+  constructor (grSurfaceResource) {
+    this.grSurfaceResource = grSurfaceResource
   }
 
   /**
    *
-   *                Deletes the surface and invalidates its object ID.
+   * Deletes the surface and invalidates its object ID.
    *
    *
    * @param {GrSurface} resource

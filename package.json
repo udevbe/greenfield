@@ -3,22 +3,22 @@
   "version": "1.0.0",
   "description": "HTML5 Wayland compositor",
   "bin": {
-    "greenfield": "./node/src/index.js"
+    "greenfield": "./local/src/index.js"
   },
   "scripts": {
     "prepare:browser:generate:session": "westfield-scanner-server protocol/session.xml -o browser/src/protocol/session-browser-protocol.js",
-    "prepare:server:generate:session": "westfield-scanner-client protocol/session.xml -o node/src/protocol/session-client-protocol.js",
-    "prepare:browser:generate:dcbuffer": "westfield-scanner-server protocol/dcbuffer.xml -o browser/src/protocol/dcbuffer-browser-protocol.js",
-    "prepare:server:generate:dcbuffer": "westfield-scanner-client protocol/dcbuffer.xml -o node/src/protocol/dcbuffer-client-protocol.js",
+    "prepare:server:generate:session": "westfield-scanner-client protocol/session.xml -o local/src/protocol/session-client-protocol.js",
+    "prepare:browser:generate:rtc": "westfield-scanner-server protocol/rtc.xml -o browser/src/protocol/rtc-browser-protocol.js",
+    "prepare:server:generate:rtc": "westfield-scanner-client protocol/rtc.xml -o local/src/protocol/rtc-client-protocol.js",
     "prepare:browser:generate:greenfield": "westfield-scanner-server protocol/greenfield.xml -o browser/src/protocol/greenfield-browser-protocol.js",
-    "prepare:server:generate:greenfield": "westfield-scanner-client protocol/greenfield.xml -o node/src/protocol/greenfield-client-protocol.js",
-    "prepare:browser:generate": "mkdir -p browser/src/protocol/ && npm run prepare:browser:generate:greenfield && npm run prepare:browser:generate:dcbuffer && npm run prepare:browser:generate:session",
-    "prepare:server:generate": "mkdir -p node/src/protocol/ && npm run prepare:server:generate:greenfield && npm run prepare:server:generate:dcbuffer && npm run prepare:server:generate:session",
+    "prepare:server:generate:greenfield": "westfield-scanner-client protocol/greenfield.xml -o local/src/protocol/greenfield-client-protocol.js",
+    "prepare:browser:generate": "mkdir -p browser/src/protocol/ && npm run prepare:browser:generate:greenfield && npm run prepare:browser:generate:rtc && npm run prepare:browser:generate:session",
+    "prepare:server:generate": "mkdir -p local/src/protocol/ && npm run prepare:server:generate:greenfield && npm run prepare:server:generate:rtc && npm run prepare:server:generate:session",
     "prepare:browser:webpack": "webpack --config webpack.config.js",
     "prepare:browser": "npm run prepare:browser:generate && npm run prepare:browser:webpack",
     "prepare:server": "npm run prepare:server:generate",
     "prepare": "npm run prepare:server && npm run prepare:browser",
-    "start": "node ./node/src/index.js"
+    "start": "node ./local/src/index.js"
   },
   "repository": {
     "type": "git",

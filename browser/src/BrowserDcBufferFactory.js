@@ -1,29 +1,29 @@
 import westfield from 'westfield-runtime-server'
 import greenfield from './protocol/greenfield-browser-protocol'
-import dcbuffer from './protocol/dcbuffer-browser-protocol'
+import rtc from './protocol/rtc-browser-protocol'
 
 import BrowserBuffer from './BrowserBuffer'
-import BrowserDcBuffer from './BrowserDcBuffer'
+import BrowserRtcDcBuffer from './BrowserRtcDcBuffer'
 
-export default class BrowserDcBufferFactory extends westfield.Global {
+export default class BrowserRtcBufferFactory extends westfield.Global {
   /**
    *
-   * @param {wfs.GrBuffer} grBuffer
-   * @returns {BrowserDcBuffer}
+   * @param {wfs.GrBuffer} grBufferResource
+   * @returns {BrowserRtcDcBuffer}
    */
-  static get (grBuffer) {
-    return grBuffer.implementation.dcBuffer
+  static get (grBufferResource) {
+    return grBufferResource.implementation.browserRtcDcBuffer
   }
 
   /**
    *
-   * @param {wfs.Server} server
-   * @returns {BrowserDcBufferFactory}
+   * @param {wfs.Server} wfsServer
+   * @returns {BrowserRtcBufferFactory}
    */
-  static create (server) {
-    const browserDcBufferFactory = new BrowserDcBufferFactory()
-    server.registry.register(browserDcBufferFactory)
-    return browserDcBufferFactory
+  static create (wfsServer) {
+    const browserRtcBufferFactory = new BrowserRtcBufferFactory()
+    wfsServer.registry.register(browserRtcBufferFactory)
+    return browserRtcBufferFactory
   }
 
   /**
@@ -32,7 +32,7 @@ export default class BrowserDcBufferFactory extends westfield.Global {
    */
   constructor () {
     // FIXME Don't harcode the interface name, instead get it from an imported namespace
-    super('DcBufferFactory', 1)
+    super('RtcBufferFactory', 1)
   }
 
   /**
@@ -45,36 +45,36 @@ export default class BrowserDcBufferFactory extends westfield.Global {
    * @param {Number} version
    */
   bindClient (client, id, version) {
-    const dcBufferFactory = new dcbuffer.DcBufferFactory(client, id, version)
-    dcBufferFactory.implementation = this
+    const rtcBufferFactoryResource = new rtc.RtcBufferFactory(client, id, version)
+    rtcBufferFactoryResource.implementation = this
   }
 
   /**
    *
-   * @param {DcBufferFactory} resource
+   * @param {RtcBufferFactory} resource
    * @param {*} id A new generic buffer
    *
    * @since 1
    *
    */
   createBuffer (resource, id) {
-    const grBuffer = new greenfield.GrBuffer(resource.client, id, resource.version)
-    BrowserBuffer.create(grBuffer)
+    const grBufferResource = new greenfield.GrBuffer(resource.client, id, resource.version)
+    BrowserBuffer.create(grBufferResource)
   }
 
   /**
    *
-   * @param {DcBufferFactory} resource
+   * @param {wfs.RtcBufferFactory} resource
    * @param {Number} id A new datachannel buffer
    * @param {Number} channelId 16-bit id of the data channel
-   * @param {wfs.WrtcSignaling} wrtcSignaling The bound wrtc signaling instance who's peer connection will be used to setup the data channel
-   * @param {wfs.GrBuffer} buffer The generic buffer that will implement the new datachannel buffer
+   * @param {wfs.RtcPeerConnection} rtcPeerConnectionResource The bound wrtc signaling instance who's peer connection will be used to setup the data channel
+   * @param {wfs.GrBuffer} grBufferResource The generic buffer that will implement the new datachannel buffer
    *
    * @since 1
    *
    */
-  createDcBuffer (resource, id, channelId, wrtcSignaling, buffer) {
-    const peerConnection = wrtcSignaling.implementation.peerConnection
+  createDcBuffer (resource, id, channelId, rtcPeerConnectionResource, grBufferResource) {
+    const peerConnection = rtcPeerConnectionResource.implementation.peerConnection
     const dataChannel = peerConnection.createDataChannel(null, {
       ordered: false,
       maxRetransmits: 0,
@@ -82,7 +82,7 @@ export default class BrowserDcBufferFactory extends westfield.Global {
       id: channelId
     })
 
-    const dcBuffer = new dcbuffer.DcBuffer(resource.client, id, resource.version)
-    BrowserDcBuffer.create(buffer, dcBuffer, dataChannel)
+    const rtcDcBufferResource = new rtc.RtcDcBuffer(resource.client, id, resource.version)
+    BrowserRtcDcBuffer.create(grBufferResource, rtcDcBufferResource, dataChannel)
   }
 }

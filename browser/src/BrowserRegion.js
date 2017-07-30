@@ -5,25 +5,25 @@ const pixman = pixmanModule()
 export default class BrowserRegion {
   /**
    *
-   * @param {GrRegion} grRegion
+   * @param {GrRegion} grRegionResource
    * @returns {BrowserRegion}
    */
-  static create (grRegion) {
+  static create (grRegionResource) {
     const pixmanRegion = pixman._malloc(20)// region struct is pointer + 4*uint32 = 5*4 = 20
     pixman._pixman_region32_init(pixmanRegion)
-    const browserRegion = new BrowserRegion(grRegion, pixmanRegion)
-    grRegion.implementation = browserRegion
+    const browserRegion = new BrowserRegion(grRegionResource, pixmanRegion)
+    grRegionResource.implementation = browserRegion
     return browserRegion
   }
 
   /**
-   * Use BrowserRegion.create()
+   * Use BrowserRegion.create(..) instead.
    * @private
-   * @param grRegion
-   * @param pixmanRegion
+   * @param grRegionResource
+   * @param pixmanRegiongrRegion
    */
-  constructor (grRegion, pixmanRegion) {
-    this.grRegion = grRegion
+  constructor (grRegionResource, pixmanRegion) {
+    this.grRegionResource = grRegionResource
     this.pixmanRegion = pixmanRegion
   }
 

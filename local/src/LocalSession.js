@@ -23,32 +23,32 @@ module.exports = class LocalSession {
 
       const localSession = new LocalSession(wss, resolve)
       wss.on('connection', (ws) => {
-        const connection = new westfield.Connection()
+        const wfcConnection = new westfield.Connection()
 
-        connection.onSend = (data) => {
+        wfcConnection.onSend = (data) => {
           ws.send(data)
         }
 
         ws.onmessage = (event) => {
           const b = event.data
           const arrayBuffer = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)
-          connection.unmarshall(arrayBuffer)
+          wfcConnection.unmarshall(arrayBuffer)
         }
 
-        //TODO listen for disconnect
-        //TODO listen for error
-        //TODO tie localSession &  to primaryConnection lifecycle
+        // TODO listen for disconnect
+        // TODO listen for error
+        // TODO tie localSession &  to primaryConnection lifecycle
 
         if (localSession.primaryConnection) {
-          localSession.connectionPromises.shift()(connection)
+          localSession.connectionPromises.shift()(wfcConnection)
         } else {
-          localSession.primaryConnection = connection
+          localSession.primaryConnection = wfcConnection
 
-          const registry = connection.createRegistry()
-          registry.listener.global = (name, interface_, version) => {
-            //FIXME Don't harcode the interface name, instead get it from an imported namespace
+          const registryProxy = wfcConnection.createRegistry()
+          registryProxy.listener.global = (name, interface_, version) => {
+            // FIXME Don't harcode the interface name, instead get it from an imported namespace
             if (interface_ === 'GrSession') {
-              const grSessionProxy = registry.bind(name, interface_, version)
+              const grSessionProxy = registryProxy.bind(name, interface_, version)
               grSessionProxy.listener = localSession
               localSession.grSessionProxy = grSessionProxy
 
@@ -70,21 +70,12 @@ module.exports = class LocalSession {
 
   /**
    *
-   * @returns {Promise<westfield.Connection>}
+   * @returns {Promise<wfc.Connection>}
    */
   createConnection () {
     return new Promise((resolve, reject) => {
       this.connectionPromises.push(resolve)
       this.grSessionProxy.client()
     })
-  }
-
-  /**
-   *
-   * @param {WebSocket} ws
-   * @private
-   */
-  _onWsConnection (ws) {
-
   }
 }
