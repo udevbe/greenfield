@@ -3,9 +3,13 @@
 import BrowserSession from './BrowserSession'
 import BrowserCompositor from './BrowserCompositor'
 import pixman from './lib/pixman/libpixman-1'
+import BrowserRtcPeerConnection from './BrowserRtcPeerConnection'
+import BrowserRtcBufferFactory from './BrowserDcBufferFactory'
 
 function setupGlobals (browserSession) {
   BrowserCompositor.create(browserSession.wfsServer)
+  BrowserRtcPeerConnection.create(browserSession.wfsServer)
+  BrowserRtcBufferFactory.create(browserSession.wfsServer)
 }
 
 function main () {

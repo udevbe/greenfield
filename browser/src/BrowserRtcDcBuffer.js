@@ -45,7 +45,9 @@ export default class BrowserRtcDcBuffer {
 
   _onOpen (event) {}
 
-  _onMessage (event) {}
+  _onMessage (event) {
+    console.log(event.data)
+  }
 
   _onClose (event) {}
 

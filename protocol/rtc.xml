@@ -29,7 +29,7 @@
 
         <request name="createDcBuffer">
             <description>Create a dc buffer implementation for the given buffer argument.</description>
-            <arg name="id" type="new_id" interface="DcBuffer" summary="A new datachannel buffer"/>
+            <arg name="id" type="new_id" interface="RtcDcBuffer" summary="A new datachannel buffer"/>
             <arg name="channelId" type="uint" summary="16-bit id of the data channel"/>
             <arg name="wrtcSignaling" type="object" interface="WrtcSignaling"
                  summary="The bound wrtc signaling instance who's peer connection will be used to setup the data channel"/>

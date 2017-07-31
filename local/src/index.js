@@ -4,12 +4,20 @@
 
 const LocalSession = require('./LocalSession')
 const LocalClient = require('./LocalClient')
+const LocalRtcBufferFactory = require('./LocalRtcBufferFactory')
 
 function testClient (localClient) {
   const grSurfaceProxy = localClient.compositor.grCompositorProxy.createSurface()
   const grRegionProxy = localClient.compositor.grCompositorProxy.createRegion()
   grRegionProxy.add(0, 0, 100, 200)
   grSurfaceProxy.setOpaqueRegion(grRegionProxy)
+
+  LocalRtcBufferFactory.create(localClient).then((localRtcBufferFactory) => {
+    const localRtcDcBuffer = localRtcBufferFactory.createLocalRtcDcBuffer()
+    localRtcDcBuffer.dataChannel.onopen = (evet) => {
+      localRtcDcBuffer.dataChannel.send('test123')
+    }
+  })
 }
 
 function main () {
@@ -24,6 +32,8 @@ function main () {
     return LocalClient.create(wfcConnection)
   }).then((localClient) => {
     testClient(localClient)
+  }).catch((error) => {
+    console.error(error)
   })
 }
 

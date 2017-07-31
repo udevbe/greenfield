@@ -26,32 +26,36 @@ export default class BrowserRtcPeerConnection extends westfield.Global {
       }
     }
 
-    rtcPeerConnectionResource.implementation.clientIceCandidates = (description) => {
+    rtcPeerConnectionResource.implementation.clientIceCandidates = (resource, description) => {
       const signal = JSON.parse(description)
       peerConnection.addIceCandidate(new window.RTCIceCandidate(signal.candidate)).catch(error => {
         this.onPeerConnectionError(client, error)
       })
     }
 
-    rtcPeerConnectionResource.implementation.clientSdpReply = (description) => {
+    rtcPeerConnectionResource.implementation.clientSdpReply = (resource, description) => {
       const signal = JSON.parse(description)
       peerConnection.setRemoteDescription(new window.RTCSessionDescription(signal.sdp)).catch((error) => {
         this.onPeerConnectionError(client, error)
       })
     }
 
-    peerConnection.createOffer({
-      offerToReceiveAudio: false,
-      offerToReceiveVideo: false,
-      voiceActivityDetection: false,
-      iceRestart: false
-    }).then((desc) => {
-      return peerConnection.setLocalDescription(desc)
-    }).then(() => {
-      rtcPeerConnectionResource.serverSdpOffer(JSON.stringify({'sdp': peerConnection.localDescription}))
-    }).catch((error) => {
-      this.onPeerConnectionError(client, error)
-    })
+    const negotiate = () => {
+      peerConnection.createOffer({
+        offerToReceiveAudio: false,
+        offerToReceiveVideo: false,
+        voiceActivityDetection: false,
+        iceRestart: false
+      }).then((desc) => {
+        return peerConnection.setLocalDescription(desc)
+      }).then(() => {
+        rtcPeerConnectionResource.serverSdpOffer(JSON.stringify({'sdp': peerConnection.localDescription}))
+      }).catch((error) => {
+        this.onPeerConnectionError(client, error)
+      })
+    }
+
+    peerConnection.onnegotiationneeded = negotiate
 
     // store the peer connection in the implementation so we can find it again when we create a dc buffer later on.
     rtcPeerConnectionResource.implementation.peerConnection = peerConnection

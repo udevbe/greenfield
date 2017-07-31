@@ -7,7 +7,7 @@ module.exports = class LocalRtcPeerConnection {
    * @returns {LocalRtcPeerConnection}
    */
   static create (rtcPeerConnectionProxy) {
-    const peerConnection = new window.RTCPeerConnection({
+    const peerConnection = new webRTC.RTCPeerConnection({
       'iceServers': [
         {'urls': 'stun:stun.wtfismyip.com/'}
       ]
@@ -65,7 +65,7 @@ module.exports = class LocalRtcPeerConnection {
     }).then((desc) => {
       return this.peerConnection.setLocalDescription(desc)
     }).then(() => {
-      this.rtcPeerConnectionProxy.serverSdpReply(JSON.stringify({'sdp': this.peerConnection.localDescription}))
+      this.rtcPeerConnectionProxy.clientSdpReply(JSON.stringify({'sdp': this.peerConnection.localDescription}))
     }).catch((error) => {
       console.error(error)
       // FIXME handle error state (disconnect?)
