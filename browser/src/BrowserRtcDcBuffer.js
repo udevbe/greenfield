@@ -41,7 +41,9 @@ export default class BrowserRtcDcBuffer {
    * @since 1
    *
    */
-  syn (resource, serial) {}
+  syn (resource, serial) {
+
+  }
 
   _onOpen (event) {}
 

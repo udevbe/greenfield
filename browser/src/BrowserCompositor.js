@@ -2,6 +2,8 @@ import westfield from 'westfield-runtime-server'
 import greenfield from './protocol/greenfield-browser-protocol'
 import BrowserSurface from './BrowserSurface'
 import BrowserRegion from './BrowserRegion'
+import BrowserScene from './BrowserScene'
+import BrowserRenderer from './BrowserRenderer'
 
 export default class BrowserCompositor extends westfield.Global {
   /**
@@ -10,7 +12,10 @@ export default class BrowserCompositor extends westfield.Global {
    * @returns {BrowserCompositor}
    */
   static create (server) {
-    const browserCompositor = new BrowserCompositor()
+    const browserScene = BrowserScene.create()
+    const browserRenderer = BrowserRenderer.create()
+
+    const browserCompositor = new BrowserCompositor(browserScene, browserRenderer)
     server.registry.register(browserCompositor)
     return browserCompositor
   }
@@ -19,9 +24,11 @@ export default class BrowserCompositor extends westfield.Global {
    * Use BrowserCompositor.create(server) instead.
    * @private
    */
-  constructor () {
+  constructor (browserScene, browserRenderer) {
     // FIXME Don't harcode the interface name, instead get it from an imported namespace
     super('GrCompositor', 4)
+    this.browserScene = browserScene
+    this.browserRenderer = browserRenderer
   }
 
   bindClient (client, id, version) {
@@ -70,7 +77,7 @@ export default class BrowserCompositor extends westfield.Global {
       default:
         grSurfaceResource = new greenfield.GrSurfaceV4(resource.client, id, 4)
     }
-    BrowserSurface.create(grSurfaceResource)
+    BrowserSurface.create(grSurfaceResource, this)
   }
 
   /**
@@ -87,5 +94,10 @@ export default class BrowserCompositor extends westfield.Global {
   createRegion (resource, id) {
     const grRegionResource = new greenfield.GrRegion(resource.client, id, 1)
     BrowserRegion.create(grRegionResource)
+  }
+
+  render () {
+    const browserSurfaceViewStack = this.browserScene.createBrowserSurfaceViewStack()
+    this.browserRrenderer.render(browserSurfaceViewStack)
   }
 }

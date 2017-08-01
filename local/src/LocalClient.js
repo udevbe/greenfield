@@ -14,13 +14,12 @@ module.exports = class LocalClient {
       const registryProxy = wfsConnection.createRegistry()
       // FIXME listen for global removal
       registryProxy.listener.global = (name, interface_, version) => {
-        // FIXME Don't harcode the interface name, instead get it from an imported namespace
-        if (interface_ === 'GrCompositor') {
+        if (interface_ === greenfield.GrCompositorName) {
           const grCompositoryProxy = registryProxy.bind(name, interface_, version)
           const localCompositor = LocalCompositor.create(grCompositoryProxy)
           grCompositoryProxy.listener = localCompositor
 
-          localClient.compositor = localCompositor
+          localClient.localCompositor = localCompositor
         }
 
         // only resolve if we have all minimum required globals
@@ -33,6 +32,6 @@ module.exports = class LocalClient {
 
   constructor (connection) {
     this.connection = connection
-    this.compositor = null
+    this.localCompositor = null
   }
 }

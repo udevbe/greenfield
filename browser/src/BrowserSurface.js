@@ -1,12 +1,19 @@
+import BrowserSurfaceView from './BrowserSurfaceView'
+
 export default class BrowserSurface {
   /**
    *
    * @param {GrSurface} grSurfaceResource
+   * @param {BrowserCompositor} browserCompositor
    * @returns {BrowserSurface}
    */
-  static create (grSurfaceResource) {
-    const browserSurface = new BrowserSurface(grSurfaceResource)
+  static create (grSurfaceResource, browserCompositor) {
+    const browserSurface = new BrowserSurface(grSurfaceResource, browserCompositor)
     grSurfaceResource.implementation = browserSurface
+
+    const browserSurfaceView = BrowserSurfaceView.create(0, 0, browserSurface)
+    browserSurface.browserSurfaceViews.push(browserSurfaceView)
+
     return browserSurface
   }
 
@@ -14,9 +21,19 @@ export default class BrowserSurface {
    * Use BrowserSurface.create(grSurfaceResource) instead.
    * @private
    * @param {GrSurface} grSurfaceResource
+   * @param {BrowserCompositor} browserCompositor
    */
-  constructor (grSurfaceResource) {
+  constructor (grSurfaceResource, browserCompositor) {
     this.grSurfaceResource = grSurfaceResource
+    this.browserCompositor = browserCompositor
+
+    this.pendingBrowserBuffer = null
+    this.pendingBrowserBufferDestroyListener = (grBufferResource) => {
+      this.pendingBrowserBuffer = null
+    }
+    this.browserBuffer = null
+
+    this.browserSurfaceViews = []
   }
 
   /**
@@ -30,6 +47,7 @@ export default class BrowserSurface {
    *
    */
   destroy (resource) {
+    resource.destroy()
   }
 
   /**
@@ -86,7 +104,18 @@ export default class BrowserSurface {
    *
    */
   attach (resource, buffer, x, y) {
+    if (this.pendingBrowserBuffer) {
+      this.pendingBrowserBuffer.grBufferResource.removeDestroyListener(this.pendingBrowserBufferDestroyListener)
+    }
 
+    this.pendingBrowserBuffer = BrowserBuffer.create(buffer)
+    this.pendingBrowserBuffer.grBufferResource.addDestroyListener(this.pendingBrowserBufferDestroyListener)
+
+    this.pendingBrowserSurfaceViews.forEach((browserSurfaceView) => {
+      const newGlobalX = browserSurfaceView.position.x + x
+      const newGlobalY = browserSurfaceView.position.y + y
+      browserSurfaceView.setPosition({x: newGlobalX, y: newGlobalY})
+    })
   }
 
   /**
@@ -278,7 +307,12 @@ export default class BrowserSurface {
    *
    */
   commit (resource) {
-
+    if (this.pendingBrowserBuffer) {
+      this.pendingBrowserBuffer.grBufferResource.removeDestroyListener(this.pendingBrowserBufferDestroyListener)
+    }
+    this.browserBuffer = this.pendingBrowserBuffer
+    this.pendingBrowserBuffer = null
+    this.browserCompositor.render()
   }
 
   /**
