@@ -31,7 +31,18 @@ export default class BrowserRtcDcBuffer {
     this.grBufferResource = grBufferResource
     this.rtcDcBufferResource = rtcDcBufferResource
     this.dataChannel = dataChannel
+    this._syncSerial = 0
+    this.h264Nal = null
+    this._futureH264Nal = null
+    this._futureH264NalSerial = 0
+    this.state = 'pending' // or 'complete'
   }
+
+  /**
+   *
+   * @param {string} state 'pending' or 'complete'
+   */
+  onStateChanged (state) {}
 
   /**
    *
@@ -42,16 +53,49 @@ export default class BrowserRtcDcBuffer {
    *
    */
   syn (resource, serial) {
-
+    this._syncSerial = serial
+    this.state = 'pending'
+    this.onStateChanged(this.state)
+    this._checkNal(this._futureH264NalSerial, this._futureH264Nal)
   }
 
   _onOpen (event) {}
 
+  /**
+   *
+   * @param {number} h264NalSerial
+   * @param {Uint8Array} h264Nal
+   * @private
+   */
+  _checkNal (h264NalSerial, h264Nal) {
+    // if serial is < than this._syncSerial than the buffer has already expired
+    if (h264NalSerial < this._syncSerial) {
+      return
+    } else if (h264NalSerial > this._syncSerial) {
+      // else if the serial is > the nal might be used in the future
+      this._futureH264Nal = h264Nal
+      this._futureH264NalSerial = h264NalSerial
+    } else if (h264NalSerial === this._syncSerial) {
+      // else it matches what is expected and thus makes this buffer complete
+      this.h264Nal = h264Nal
+      this.state = 'complete'
+      this.onStateChanged(this.state)
+      this.rtcDcBufferResource.ack(h264NalSerial)
+    }
+  }
+
   _onMessage (event) {
-    console.log(event.data)
+    // get first int as serial, and replace it with 0x00 00 00 01 (rfc nal header)
+    const h264Nal = new Uint8Array(event.data)
+    const header = new Uint32Array(event.data, 0, 1)
+    const h264NalSerial = header[0]
+    header[0] = 0x00000001
+
+    this._checkNal(h264NalSerial, h264Nal)
   }
 
   _onClose (event) {}
 
   _onError (event) {}
+
 }
