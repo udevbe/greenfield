@@ -85,7 +85,7 @@ export default class BrowserRtcDcBuffer {
   }
 
   _onMessage (event) {
-    // get first int as serial, and replace it with 0x00 00 00 01 (rfc nal header)
+    // get first int as serial, and replace it with 0x00 00 00 01 (H.264/AVC video coding standard byte stream header)
     const h264Nal = new Uint8Array(event.data)
     const header = new Uint32Array(event.data, 0, 1)
     const h264NalSerial = header[0]

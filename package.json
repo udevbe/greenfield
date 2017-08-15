@@ -40,6 +40,7 @@
   "homepage": "https://github.com/udevbe/greenfield#readme",
   "dependencies": {
     "express": "4.15.3",
+    "stream-split": "^1.1.0",
     "westfield-runtime-client": "0.0.8",
     "westfield-runtime-server": "0.0.8",
     "wrtc": "0.0.62",

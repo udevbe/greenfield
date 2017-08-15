@@ -31,8 +31,7 @@ export default class BrowserRtcBufferFactory extends westfield.Global {
    * @private
    */
   constructor () {
-    // FIXME Don't harcode the interface name, instead get it from an imported namespace
-    super('RtcBufferFactory', 1)
+    super(rtc.RtcBufferFactoryName, 1)
   }
 
   /**

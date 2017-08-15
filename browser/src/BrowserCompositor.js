@@ -25,8 +25,7 @@ export default class BrowserCompositor extends westfield.Global {
    * @private
    */
   constructor (browserScene, browserRenderer) {
-    // FIXME Don't harcode the interface name, instead get it from an imported namespace
-    super('GrCompositor', 4)
+    super(greenfield.GrCompositorName, 4)
     this.browserScene = browserScene
     this.browserRenderer = browserRenderer
   }
@@ -98,6 +97,6 @@ export default class BrowserCompositor extends westfield.Global {
 
   render () {
     const browserSurfaceViewStack = this.browserScene.createBrowserSurfaceViewStack()
-    this.browserRrenderer.render(browserSurfaceViewStack)
+    this.browserRenderer.render(browserSurfaceViewStack)
   }
 }

@@ -4,7 +4,7 @@ const LocalCompositor = require('./LocalCompositor')
 module.exports = class LocalClient {
   /**
    *
-   * @param {wfs.Connection} wfsConnection
+   * @param {wfc.Connection} wfsConnection
    * @returns {Promise<LocalClient>}
    */
   static create (wfsConnection) {
@@ -30,6 +30,10 @@ module.exports = class LocalClient {
     })
   }
 
+  /**
+   *
+   * @param {wfc.Connection} connection
+   */
   constructor (connection) {
     this.connection = connection
     this.localCompositor = null
