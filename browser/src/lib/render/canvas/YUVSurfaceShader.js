@@ -3,7 +3,7 @@ import Program from './Program'
 import Shader from './Shader'
 import Texture from './Texture'
 import Script from './Script'
-import WebGLCanvas from './WebGLCanvas'
+import WebGLCanvas from './SurfaceShader'
 
 const vertexShaderScript = Script.createFromSource('x-shader/x-vertex', `
   attribute vec3 aVertexPosition;

@@ -1,12 +1,11 @@
 'use strict'
 // import Avc from '../broadway/Decoder'
 import Size from '../utils/Size'
-import YUVWebGLCanvas from '../canvas/YUVWebGLCanvas'
+import YUVWebGLCanvas from '../canvas/YUVSurfaceShader'
 
-export default class AvcPlayer {
+export default class H264NalPlayer {
   static create (canvas, width, height) {
     const colorConversionCanvas = new YUVWebGLCanvas(canvas, new Size(width, height))
-    // this.avc.onPictureDecoded = colorConversionCanvas.decode.bind(colorConversionCanvas)
 
     canvas.width = width
     canvas.height = height
@@ -28,15 +27,12 @@ export default class AvcPlayer {
       }
     })
 
-    return new AvcPlayer(canvas, worker)
+    return new H264NalPlayer(canvas, worker)
   }
 
   constructor (canvas, worker) {
     this.canvas = canvas
     this._worker = worker
-
-    // AVC codec initialization
-    // this.avc = new Avc()
   }
 
   decode (data, parInfo) {

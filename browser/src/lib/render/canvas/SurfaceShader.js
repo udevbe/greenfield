@@ -34,7 +34,7 @@ const fragmentShaderScript = Script.createFromSource('x-shader/x-fragment', `
   }
 `)
 
-export default class WebGLCanvas {
+export default class WebGLSurfaceShader {
   constructor (canvas, size, useFrameBuffer) {
     this.canvas = canvas
     this.size = size

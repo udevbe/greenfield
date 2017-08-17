@@ -1,5 +1,5 @@
 'use strict'
-import WebGLCanvas from './WebGLCanvas'
+import WebGLCanvas from './SurfaceShader'
 import Program from './Program'
 import Shader from './Shader'
 import Texture from './Texture'
