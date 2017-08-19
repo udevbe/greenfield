@@ -1,28 +1,53 @@
 import Decoder from './broadway/Decoder.js'
-import YUVSurfaceShader from './canvas/YUVSurfaceShader'
-import Size from './utils/Size'
+import Texture from './canvas/Texture'
 
 export default class H264ViewState {
-  static create (canvas, viewWidth, viewHeight) {
+  static create (gl, size) {
     const decoder = new Decoder()
-    // TODO the given canvas is the target rendering canvas, it has however a different size -> accommodate for this
-    const yuvSurfaceShader = new YUVSurfaceShader(canvas, new Size(viewWidth, viewHeight))
-    decoder.onPictureDecoded = yuvSurfaceShader.decode
 
-    return new H264ViewState(decoder, yuvSurfaceShader)
+    const YTexture = new Texture(gl, size)
+    const UTexture = new Texture(gl, size.getHalfSize())
+    const VTexture = new Texture(gl, size.getHalfSize())
+
+    const transformM4 = [
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1
+    ]
+
+    const h264ViewState = new H264ViewState(decoder, transformM4, YTexture, UTexture, VTexture)
+    decoder.onPictureDecoded = h264ViewState.onPictureDecoded
+
+    return h264ViewState
   }
 
-  constructor (decoder, yuvSurfaceShader) {
+  constructor (decoder, transformM4, YTexture, UTexture, VTexture) {
     this.decoder = decoder
-    this.yuvSurfaceShader = yuvSurfaceShader
+    this.transformM4 = transformM4
+    this.YTexture = YTexture
+    this.UTexture = UTexture
+    this.VTexture = VTexture
   }
 
   decode (h264Nal) {
     this.decoder.decode(h264Nal)
   }
 
-  position (globalX, globalY) {
+  setPosition (globalX, globalY) {
+    this.positionV4[3] = globalX
+    this.positionV4[7] = globalY
+  }
 
+  onPictureDecoded (buffer, width, height) {
+    if (!buffer) { return }
+
+    const lumaSize = width * height
+    const chromaSize = lumaSize >> 2
+
+    this.YTexture.fill(buffer.subarray(0, lumaSize))
+    this.UTexture.fill(buffer.subarray(lumaSize, lumaSize + chromaSize))
+    this.VTexture.fill(buffer.subarray(lumaSize + chromaSize, lumaSize + 2 * chromaSize))
   }
 
   // TODO handle state destruction

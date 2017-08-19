@@ -1,23 +1,22 @@
 import Program from './Program'
 import ShaderCompiler from './ShaderCompiler'
-import { vertexQuad, fragmentYUV } from './ShaderSources'
+import { vertexQuad, fragmentRGBA } from './ShaderSources'
 
-export default class YUVSurfaceShader {
+export default class RGBASurfaceShader {
   static create (gl) {
     const program = this._initShaders(gl)
     const shaderArgs = this._initShaderArgs(gl, program)
     const vertexBuffer = this._initBuffers(gl, shaderArgs)
 
-    return new YUVSurfaceShader(gl, vertexBuffer)
+    return new RGBASurfaceShader(gl, vertexBuffer)
   }
 
   static _initShaders (gl) {
     const program = new Program(gl)
     program.attach(ShaderCompiler.compile(gl, vertexQuad))
-    program.attach(ShaderCompiler.compile(gl, fragmentYUV))
+    program.attach(ShaderCompiler.compile(gl, fragmentRGBA))
     program.link()
     program.use()
-
     return program
   }
 
@@ -25,9 +24,7 @@ export default class YUVSurfaceShader {
     // find shader arguments
     const shaderArgs = {}
     shaderArgs.u_projection = program.getUniformLocation('u_projection')
-    shaderArgs.YTexture = program.getUniformLocation('YTexture')
-    shaderArgs.UTexture = program.getUniformLocation('UTexture')
-    shaderArgs.VTexture = program.getUniformLocation('VTexture')
+    shaderArgs.u_texture0 = program.getUniformLocation('u_texture0')
     shaderArgs.u_transform = program.getUniformLocation('u_transform')
     shaderArgs.a_position = program.getAttributeLocation('a_position')
     gl.enableVertexAttribArray(shaderArgs.a_position)
@@ -82,24 +79,13 @@ export default class YUVSurfaceShader {
 
   /**
    *
-   * @param {Texture} textureY
-   * @param {Texture} textureU
-   * @param {Texture} textureV
+   * @param {Texture} texture
    */
-  setTexture (textureY, textureU, textureV) {
+  setTexture (texture) {
     const gl = this.gl
-
     gl.activeTexture(gl.TEXTURE0)
-    gl.bindTexture(gl.TEXTURE_2D, textureY.texture)
-    gl.uniform1i(this.shaderArgs.YTexture, 0)
-
-    gl.activeTexture(gl.TEXTURE1)
-    gl.bindTexture(gl.TEXTURE_2D, textureU.texture)
-    gl.uniform1i(this.shaderArgs.UTexture, 0)
-
-    gl.activeTexture(gl.TEXTURE2)
-    gl.bindTexture(gl.TEXTURE_2D, textureV.texture)
-    gl.uniform1i(this.shaderArgs.VTexture, 0)
+    gl.bindTexture(gl.TEXTURE_2D, texture.texture)
+    gl.uniform1i(this.shaderArgs.u_texture0, 0)
   }
 
   draw () {

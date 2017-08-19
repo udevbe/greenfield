@@ -8,7 +8,7 @@ export default class Program {
   }
 
   attach (shader) {
-    this.gl.attachShader(this.program, shader.shader)
+    this.gl.attachShader(this.program, shader)
   }
 
   link () {
@@ -26,8 +26,11 @@ export default class Program {
     return this.gl.getAttribLocation(this.program, name)
   }
 
-  setMatrixUniform (name, array) {
-    const uniform = this.gl.getUniformLocation(this.program, name)
-    this.gl.uniformMatrix4fv(uniform, false, array)
+  getUniformLocation (name) {
+    return this.gl.getUniformLocation(this.program, name)
+  }
+
+  setUniformM4 (uniformLocation, array) {
+    this.gl.uniformMatrix4fv(uniformLocation, false, array)
   }
 }

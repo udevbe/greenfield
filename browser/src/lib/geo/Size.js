@@ -17,8 +17,4 @@ export default class Size {
   getHalfSize () {
     return new Size(this.w >>> 1, this.h >>> 1)
   }
-
-  length () {
-    return this.w * this.h
-  }
 }
