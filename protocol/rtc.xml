@@ -39,7 +39,25 @@
     </interface>
 
     <interface name="RtcDcBuffer" version="1">
-        <description>A web rtc datachannel buffer. Contents are communicated over a udp datachannel.</description>
+        <description>A web rtc datachannel buffer.It's contents are communicated over an out of band udp datachannel.
+
+            A buffer is considered to be either in the 'pending' or 'complete' state.
+
+            A buffer's expected contents are described through the serial argument in a syn request. The same serial
+            must be issued in the buffer contents send over a udp datachannel. If a buffers contents matches the
+            expected serial, a buffer is considered 'complete'. A buffer who's syn request does not have matching buffer
+            content is considered 'pending'. A syn serial is expected to increment on each newer buffer content as to
+            chronologically distinguish between arriving buffer contents.
+
+            A committed surface with a buffer in the 'pending' state will have all of it's drawing state stored and will
+            not be visually updated until the buffer goes into the 'complete' state.
+
+            A buffer must have a size set with the size request for it to be considered 'complete'. A
+            buffer that does not have a size shall remain in the 'pending' state. The latest size request is considered
+            applicable to the buffer contents matching or exceeding the currently set syn serial, as such a size request
+            should always be done after the earliest matching syn request and before the sending of the earliest
+            matching buffer contents else races and unexpected behaviour might occur.
+        </description>
 
         <request name="destroy" type="destructor">
             <description summary="destroy a dc buffer">
@@ -53,10 +71,18 @@
             <arg name="serial" type="uint" summary="Serial of the send buffer contents"/>
         </request>
 
+        <request name="size">
+            <description>The size in pixels of the buffer content. The serial argument in the syn request is
+                first buffer that will have the new size. All subsequent buffers with higher serials will have the same
+                size until a new size request has been issued.
+            </description>
+            <arg name="width" type="uint" summary="The width in pixels of the buffer content"/>
+            <arg name="height" type="uint" summary="The height in pixels of the buffer content"/>
+        </request>
+
         <event name="ack">
             <description>Acknowledgement of the compositor about the arrival of the buffer content. This enables the
-                client
-                to resend the buffer content should the acknowledgment time out.
+                client have feedback of previously send buffer content.
             </description>
             <arg name="serial" type="uint" summary="Serial of the received buffer contents"/>
         </event>

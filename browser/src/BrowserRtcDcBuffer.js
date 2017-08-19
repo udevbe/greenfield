@@ -1,3 +1,5 @@
+import Size from './lib/geo/Size'
+
 export default class BrowserRtcDcBuffer {
   /**
    *
@@ -36,13 +38,39 @@ export default class BrowserRtcDcBuffer {
     this._futureH264Nal = null
     this._futureH264NalSerial = 0
     this.state = 'pending' // or 'complete'
+    this.geo = null
+    this._oneShotCompletionListeners = []
   }
 
   /**
    *
-   * @param {string} state 'pending' or 'complete'
+   * @private
    */
-  onStateChanged (state) {}
+  _onStateChanged () {
+    if (this.state === 'complete') {
+      // resolve all pending promisses
+      this._oneShotCompletionListeners.forEach((listener) => {
+        listener()
+      })
+      this._oneShotCompletionListeners = []
+    }
+  }
+
+  /**
+   * Returns a promise that will resolve as soon as the buffer is in the 'complete' state.
+   */
+  whenComplete () {
+    if (this.state === 'complete') {
+      return new Promise((resolve, reject) => {
+        resolve()
+      })
+    } else {
+      // store it for later resolution
+      return new Promise((resolve, reject) => {
+        this._oneShotCompletionListeners.push(resolve)
+      })
+    }
+  }
 
   /**
    *
@@ -55,8 +83,12 @@ export default class BrowserRtcDcBuffer {
   syn (resource, serial) {
     this._syncSerial = serial
     this.state = 'pending'
-    this.onStateChanged(this.state)
+    this._onStateChanged(this.state)
     this._checkNal(this._futureH264NalSerial, this._futureH264Nal)
+  }
+
+  size (resource, width, height) {
+    this.geo = new Size(width, height)
   }
 
   _onOpen (event) {}
@@ -78,9 +110,11 @@ export default class BrowserRtcDcBuffer {
     } else if (h264NalSerial === this._syncSerial) {
       // else it matches what is expected and thus makes this buffer complete
       this.h264Nal = h264Nal
-      this.state = 'complete'
-      this.onStateChanged(this.state)
-      this.rtcDcBufferResource.ack(h264NalSerial)
+      if (this.size) {
+        this.state = 'complete'
+        this._onStateChanged(this.state)
+        this.rtcDcBufferResource.ack(h264NalSerial)
+      }
     }
   }
 
