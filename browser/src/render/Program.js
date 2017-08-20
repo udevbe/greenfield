@@ -1,5 +1,4 @@
 'use strict'
-import assert from '../utils/assert'
 
 export default class Program {
   constructor (gl) {
@@ -14,8 +13,9 @@ export default class Program {
   link () {
     this.gl.linkProgram(this.program)
     // If creating the shader program failed, alert.
-    assert(this.gl.getProgramParameter(this.program, this.gl.LINK_STATUS),
-      'Unable to initialize the shader program.')
+    if (!this.gl.getProgramParameter(this.program, this.gl.LINK_STATUS)) {
+      console.error('Unable to initialize the shader program.')
+    }
   }
 
   use () {

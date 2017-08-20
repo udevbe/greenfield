@@ -1,4 +1,4 @@
-import Size from './lib/geo/Size'
+import Size from './Size'
 
 export default class BrowserRtcDcBuffer {
   /**
@@ -33,7 +33,7 @@ export default class BrowserRtcDcBuffer {
     this.grBufferResource = grBufferResource
     this.rtcDcBufferResource = rtcDcBufferResource
     this.dataChannel = dataChannel
-    this._syncSerial = 0
+    this.syncSerial = 0
     this.h264Nal = null
     this._futureH264Nal = null
     this._futureH264NalSerial = 0
@@ -50,7 +50,7 @@ export default class BrowserRtcDcBuffer {
     if (this.state === 'complete') {
       // resolve all pending promisses
       this._oneShotCompletionListeners.forEach((listener) => {
-        listener()
+        listener(this.syncSerial)
       })
       this._oneShotCompletionListeners = []
     }
@@ -62,7 +62,7 @@ export default class BrowserRtcDcBuffer {
   whenComplete () {
     if (this.state === 'complete') {
       return new Promise((resolve, reject) => {
-        resolve()
+        resolve(this.syncSerial)
       })
     } else {
       // store it for later resolution
@@ -81,7 +81,7 @@ export default class BrowserRtcDcBuffer {
    *
    */
   syn (resource, serial) {
-    this._syncSerial = serial
+    this.syncSerial = serial
     this.state = 'pending'
     this._onStateChanged(this.state)
     this._checkNal(this._futureH264NalSerial, this._futureH264Nal)
@@ -100,14 +100,14 @@ export default class BrowserRtcDcBuffer {
    * @private
    */
   _checkNal (h264NalSerial, h264Nal) {
-    // if serial is < than this._syncSerial than the buffer has already expired
-    if (h264NalSerial < this._syncSerial) {
+    // if serial is < than this.syncSerial than the buffer has already expired
+    if (h264NalSerial < this.syncSerial) {
       return
-    } else if (h264NalSerial > this._syncSerial) {
+    } else if (h264NalSerial > this.syncSerial) {
       // else if the serial is > the nal might be used in the future
       this._futureH264Nal = h264Nal
       this._futureH264NalSerial = h264NalSerial
-    } else if (h264NalSerial === this._syncSerial) {
+    } else if (h264NalSerial === this.syncSerial) {
       // else it matches what is expected and thus makes this buffer complete
       this.h264Nal = h264Nal
       if (this.size) {

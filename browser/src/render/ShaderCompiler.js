@@ -1,5 +1,4 @@
 'use strict'
-import error from '../utils/error'
 
 /**
  * Represents a WebGL shader object and provides a mechanism to load shaders from HTML
@@ -15,7 +14,7 @@ export default class ShaderCompiler {
     } else if (script.type === 'x-shader/x-vertex') {
       shader = gl.createShader(gl.VERTEX_SHADER)
     } else {
-      error('Unknown shader type: ' + script.type)
+      console.error('Unknown shader type: ' + script.type)
       return
     }
 
@@ -27,7 +26,7 @@ export default class ShaderCompiler {
 
     // See if it compiled successfully.
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      error('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader))
+      console.error('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader))
     }
 
     return shader

@@ -1,6 +1,6 @@
 'use strict'
 // import Avc from '../broadway/Decoder'
-import Size from '../../geo/Size'
+import Size from '../../Size'
 import YUVWebGLCanvas from '../canvas/YUVSurface'
 
 export default class H264NalPlayer {

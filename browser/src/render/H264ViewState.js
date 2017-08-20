@@ -1,5 +1,7 @@
-import Decoder from './broadway/Decoder.js'
-import Texture from './canvas/Texture'
+'use strict'
+
+import Decoder from '../lib/broadway/Decoder.js'
+import Texture from './Texture'
 
 export default class H264ViewState {
   static create (gl, size) {
@@ -9,37 +11,28 @@ export default class H264ViewState {
     const UTexture = new Texture(gl, size.getHalfSize())
     const VTexture = new Texture(gl, size.getHalfSize())
 
-    const transformM4 = [
-      1, 0, 0, 0,
-      0, 1, 0, 0,
-      0, 0, 1, 0,
-      0, 0, 0, 1
-    ]
-
-    const h264ViewState = new H264ViewState(decoder, transformM4, YTexture, UTexture, VTexture)
-    decoder.onPictureDecoded = h264ViewState.onPictureDecoded
+    const h264ViewState = new H264ViewState(decoder, YTexture, UTexture, VTexture, size)
+    decoder.onPictureDecoded = h264ViewState._onPictureDecoded
 
     return h264ViewState
   }
 
-  constructor (decoder, transformM4, YTexture, UTexture, VTexture) {
+  constructor (decoder, YTexture, UTexture, VTexture, size) {
     this.decoder = decoder
-    this.transformM4 = transformM4
     this.YTexture = YTexture
     this.UTexture = UTexture
     this.VTexture = VTexture
+    this.size = size
+    // TODO We might also want to introduce blob images (ie png) that can be rendered either directly without the need
+    // of gl or decoders (functional similar to hw planes) or the RGBASurfaceShader can be used.
+    this.type = 'h264'
   }
 
   decode (h264Nal) {
     this.decoder.decode(h264Nal)
   }
 
-  setPosition (globalX, globalY) {
-    this.positionV4[3] = globalX
-    this.positionV4[7] = globalY
-  }
-
-  onPictureDecoded (buffer, width, height) {
+  _onPictureDecoded (buffer, width, height) {
     if (!buffer) { return }
 
     const lumaSize = width * height

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <protocol name="dcbuffer" version="1">
     <copyright>
-        Example HTML5 Protocol
+        Greenfield WebRTC Protocol
         Copyright (C) 2017 Erik De Rijcke
 
         This program is free software: you can redistribute it and/or modify
@@ -43,20 +43,20 @@
 
             A buffer is considered to be either in the 'pending' or 'complete' state.
 
-            A buffer's expected contents are described through the serial argument in a syn request. The same serial
-            must be issued in the buffer contents send over a udp datachannel. If a buffers contents matches the
-            expected serial, a buffer is considered 'complete'. A buffer who's syn request does not have matching buffer
-            content is considered 'pending'. A syn serial is expected to increment on each newer buffer content as to
-            chronologically distinguish between arriving buffer contents.
+            A buffer's expected contents are identified through the serial argument in a syn request. The same serial
+            must be issued in the buffer contents send over a separate udp datachannel. If a buffers contents matches
+            the expected serial, a buffer is considered 'complete'. A buffer who's syn request does not have matching
+            buffer content is considered 'pending'. A syn serial is expected to increment on each newer buffer content
+            as to chronologically distinguish between arriving buffer contents.
 
-            A committed surface with a buffer in the 'pending' state will have all of it's drawing state stored and will
-            not be visually updated until the buffer goes into the 'complete' state.
+            A committed surface with a buffer in the 'pending' state should have all of it's drawing state stored and
+            should not be visually updated until the buffer goes into the 'complete' state.
 
-            A buffer must have a size set with the size request for it to be considered 'complete'. A
-            buffer that does not have a size shall remain in the 'pending' state. The latest size request is considered
-            applicable to the buffer contents matching or exceeding the currently set syn serial, as such a size request
-            should always be done after the earliest matching syn request and before the sending of the earliest
-            matching buffer contents else races and unexpected behaviour might occur.
+            A buffer must have a size set with the size request for it to be considered 'complete'. A buffer that does
+            not have a size shall remain in the 'pending' state. The latest size request is considered applicable to the
+            buffer contents matching or exceeding the currently set syn serial, as such a size request should always be
+            done after the earliest matching syn request and before the sending of the earliest matching buffer contents
+            else races and unexpected behaviour might occur.
         </description>
 
         <request name="destroy" type="destructor">

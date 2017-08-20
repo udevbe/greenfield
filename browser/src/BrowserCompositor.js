@@ -3,7 +3,7 @@ import greenfield from './protocol/greenfield-browser-protocol'
 import BrowserSurface from './BrowserSurface'
 import BrowserRegion from './BrowserRegion'
 import BrowserScene from './BrowserScene'
-import BrowserRenderer from './BrowserRenderer'
+import GLRenderer from './render/GLRenderer'
 
 export default class BrowserCompositor extends westfield.Global {
   /**
@@ -13,9 +13,9 @@ export default class BrowserCompositor extends westfield.Global {
    */
   static create (server) {
     const browserScene = BrowserScene.create()
-    const browserRenderer = BrowserRenderer.create()
+    const glRenderer = GLRenderer.create()
 
-    const browserCompositor = new BrowserCompositor(browserScene, browserRenderer)
+    const browserCompositor = new BrowserCompositor(browserScene, glRenderer)
     server.registry.register(browserCompositor)
     return browserCompositor
   }
@@ -24,10 +24,10 @@ export default class BrowserCompositor extends westfield.Global {
    * Use BrowserCompositor.create(server) instead.
    * @private
    */
-  constructor (browserScene, browserRenderer) {
+  constructor (browserScene, glRenderer) {
     super(greenfield.GrCompositorName, 4)
     this.browserScene = browserScene
-    this.browserRenderer = browserRenderer
+    this.glRenderer = glRenderer
   }
 
   bindClient (client, id, version) {
@@ -97,6 +97,8 @@ export default class BrowserCompositor extends westfield.Global {
 
   render () {
     const browserSurfaceViewStack = this.browserScene.createBrowserSurfaceViewStack()
-    this.browserRenderer.render(browserSurfaceViewStack)
+    browserSurfaceViewStack.forEach((browserSurfaceView) => {
+      this.glRenderer.render(browserSurfaceView)
+    })
   }
 }
