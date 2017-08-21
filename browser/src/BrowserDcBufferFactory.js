@@ -1,3 +1,5 @@
+'use strict'
+
 import westfield from 'westfield-runtime-server'
 import greenfield from './protocol/greenfield-browser-protocol'
 import rtc from './protocol/rtc-browser-protocol'

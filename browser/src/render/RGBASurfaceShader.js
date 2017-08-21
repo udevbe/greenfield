@@ -1,8 +1,16 @@
+'use strict'
+
 import Program from './Program'
 import ShaderCompiler from './ShaderCompiler'
 import { vertexQuad, fragmentRGBA } from './ShaderSources'
 
 export default class RGBASurfaceShader {
+
+  /**
+   *
+   * @param {WebGLRenderingContext} gl
+   * @returns {RGBASurfaceShader}
+   */
   static create (gl) {
     const program = this._initShaders(gl)
     const shaderArgs = this._initShaderArgs(gl, program)

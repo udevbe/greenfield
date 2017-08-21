@@ -1,4 +1,7 @@
+'use strict'
+
 import BrowserSurfaceView from './BrowserSurfaceView'
+import BrowserBuffer from './BrowserBuffer'
 
 export default class BrowserSurface {
   /**
@@ -312,7 +315,7 @@ export default class BrowserSurface {
     }
     this.browserBuffer = this.pendingBrowserBuffer
     this.pendingBrowserBuffer = null
-    this.browserCompositor.render()
+    this.browserCompositor.requestRender()
   }
 
   /**

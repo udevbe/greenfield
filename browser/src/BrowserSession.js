@@ -1,3 +1,5 @@
+'use strict'
+
 import westfield from 'westfield-runtime-server'
 import session from './protocol/session-browser-protocol'
 

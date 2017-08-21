@@ -1,3 +1,5 @@
+'use strict'
+
 export default class BrowserScene {
   static create () {
     return new BrowserScene()

@@ -1,3 +1,5 @@
+'use strict'
+
 export const vertexQuad = {
   type: 'x-shader/x-vertex',
   source: `

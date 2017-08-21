@@ -1,3 +1,5 @@
+'use strict'
+
 import westfield from 'westfield-runtime-server'
 import greenfield from './protocol/greenfield-browser-protocol'
 import BrowserSurface from './BrowserSurface'
@@ -13,7 +15,7 @@ export default class BrowserCompositor extends westfield.Global {
    */
   static create (server) {
     const browserScene = BrowserScene.create()
-    const glRenderer = GLRenderer.create()
+    const glRenderer = GLRenderer.create(this._createCanvas())
 
     const browserCompositor = new BrowserCompositor(browserScene, glRenderer)
     server.registry.register(browserCompositor)
@@ -21,13 +23,27 @@ export default class BrowserCompositor extends westfield.Global {
   }
 
   /**
+   * @returns {HTMLCanvasElement}
+   * @private
+   */
+  static _createCanvas () {
+    const canvas = document.createElement('canvas')
+    canvas.width = document.body.clientWidth
+    canvas.height = document.body.clientHeight
+    document.body.appendChild(canvas)
+  }
+
+  /**
    * Use BrowserCompositor.create(server) instead.
+   * @param {BrowserScene} browserScene
+   * @param {GLRenderer} glRenderer
    * @private
    */
   constructor (browserScene, glRenderer) {
     super(greenfield.GrCompositorName, 4)
     this.browserScene = browserScene
     this.glRenderer = glRenderer
+    this._renderBusy = false
   }
 
   bindClient (client, id, version) {
@@ -95,10 +111,16 @@ export default class BrowserCompositor extends westfield.Global {
     BrowserRegion.create(grRegionResource)
   }
 
-  render () {
-    const browserSurfaceViewStack = this.browserScene.createBrowserSurfaceViewStack()
-    browserSurfaceViewStack.forEach((browserSurfaceView) => {
-      this.glRenderer.render(browserSurfaceView)
-    })
+  requestRender () {
+    if (!this._renderBusy) {
+      this._renderBusy = true
+      setTimeout(() => {
+        const browserSurfaceViewStack = this.browserScene.createBrowserSurfaceViewStack()
+        browserSurfaceViewStack.forEach((browserSurfaceView) => {
+          this.glRenderer.render(browserSurfaceView)
+        })
+        this._renderBusy = false
+      }, 0)
+    }
   }
 }

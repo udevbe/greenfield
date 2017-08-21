@@ -1,3 +1,5 @@
+'use strict'
+
 import Size from './Size'
 
 export default class BrowserRtcDcBuffer {
@@ -48,7 +50,7 @@ export default class BrowserRtcDcBuffer {
    */
   _onStateChanged () {
     if (this.state === 'complete') {
-      // resolve all pending promisses
+      // resolve all pending promises
       this._oneShotCompletionListeners.forEach((listener) => {
         listener(this.syncSerial)
       })
@@ -56,20 +58,29 @@ export default class BrowserRtcDcBuffer {
     }
   }
 
+  // TODO add timeout argument(?)
   /**
-   * Returns a promise that will resolve as soon as the buffer is in the 'complete' state.
+   * Returns a promise that will resolve as soon as the buffer is in the 'complete' state with the given serial.
+   * @param {number} serial
+   * @returns {Promise}
    */
-  whenComplete () {
-    if (this.state === 'complete') {
-      return new Promise((resolve, reject) => {
-        resolve(this.syncSerial)
-      })
-    } else {
-      // store it for later resolution
-      return new Promise((resolve, reject) => {
-        this._oneShotCompletionListeners.push(resolve)
-      })
-    }
+  whenComplete (serial) {
+    return new Promise((resolve, reject) => {
+      if (serial < this.syncSerial) {
+        reject(new Error('Buffer contents expired.'))
+      } else if (this.state === 'complete' && this.syncSerial === serial) {
+        resolve()
+      } else {
+        this._oneShotCompletionListeners.push(() => {
+          if (serial === this.syncSerial) {
+            resolve()
+            // don't keep the listener after it has been fired (=false)
+          } else if (serial < this.syncSerial) {
+            reject(new Error('Buffer contents expired.'))
+          }
+        })
+      }
+    })
   }
 
   /**
@@ -81,6 +92,11 @@ export default class BrowserRtcDcBuffer {
    *
    */
   syn (resource, serial) {
+    if (serial < this.syncSerial) {
+      // TODO return an error to the client
+      throw new Error('Buffer sync serial was not sequential.')
+    }
+
     this.syncSerial = serial
     this.state = 'pending'
     this._onStateChanged(this.state)
@@ -102,7 +118,7 @@ export default class BrowserRtcDcBuffer {
   _checkNal (h264NalSerial, h264Nal) {
     // if serial is < than this.syncSerial than the buffer has already expired
     if (h264NalSerial < this.syncSerial) {
-      return
+
     } else if (h264NalSerial > this.syncSerial) {
       // else if the serial is > the nal might be used in the future
       this._futureH264Nal = h264Nal
@@ -131,5 +147,4 @@ export default class BrowserRtcDcBuffer {
   _onClose (event) {}
 
   _onError (event) {}
-
 }

@@ -1,8 +1,16 @@
+'use strict'
+
 import Program from './Program'
 import ShaderCompiler from './ShaderCompiler'
 import { vertexQuad, fragmentYUV } from './ShaderSources'
 
 export default class YUVSurfaceShader {
+
+  /**
+   *
+   * @param {WebGLRenderingContext} gl
+   * @returns {YUVSurfaceShader}
+   */
   static create (gl) {
     const program = this._initShaders(gl)
     const shaderArgs = this._initShaderArgs(gl, program)

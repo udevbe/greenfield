@@ -1,7 +1,9 @@
+'use strict'
+
 export default class BrowserBuffer {
   /**
    *
-   * @param grBufferResource
+   * @param {wfs.GrBuffer} grBufferResource
    * @return {BrowserBuffer}
    */
   static create (grBufferResource) {
@@ -21,7 +23,7 @@ export default class BrowserBuffer {
 
   /**
    *
-   * @param {GrBuffer} resource
+   * @param {wfs.GrBuffer} resource
    *
    * @since 1
    *

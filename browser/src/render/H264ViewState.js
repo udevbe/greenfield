@@ -4,6 +4,13 @@ import Decoder from '../lib/broadway/Decoder.js'
 import Texture from './Texture'
 
 export default class H264ViewState {
+
+  /**
+   *
+   * @param {WebGLRenderingContext} gl
+   * @param {Size} size
+   * @returns {H264ViewState}
+   */
   static create (gl, size) {
     const decoder = new Decoder()
 
@@ -17,6 +24,14 @@ export default class H264ViewState {
     return h264ViewState
   }
 
+  /**
+   *
+   * @param decoder
+   * @param {Texture} YTexture
+   * @param {Texture}UTexture
+   * @param {Texture}VTexture
+   * @param {Size} size
+   */
   constructor (decoder, YTexture, UTexture, VTexture, size) {
     this.decoder = decoder
     this.YTexture = YTexture
@@ -28,6 +43,10 @@ export default class H264ViewState {
     this.type = 'h264'
   }
 
+  /**
+   *
+   * @param {Uint8Array} h264Nal
+   */
   decode (h264Nal) {
     this.decoder.decode(h264Nal)
   }

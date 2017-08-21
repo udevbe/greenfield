@@ -1,3 +1,5 @@
+'use strict'
+
 import pixmanModule from './lib/pixman/libpixman-1'
 
 const pixman = pixmanModule()

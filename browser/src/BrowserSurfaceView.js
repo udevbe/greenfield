@@ -1,6 +1,15 @@
-export default class BrowserSurfaceView {
-  static create (globalX, globalY, browserSurface) {
+'use strict'
 
+export default class BrowserSurfaceView {
+
+  /**
+   *
+   * @param {number} globalX
+   * @param {number} globalY
+   * @param {BrowserSurfaceView} browserSurface
+   * @returns {BrowserSurfaceView}
+   */
+  static create (globalX, globalY, browserSurface) {
     return new BrowserSurfaceView(globalX, globalY, browserSurface,)
   }
 
@@ -16,6 +25,12 @@ export default class BrowserSurfaceView {
     this.renderState = null
   }
 
+  /**
+   *
+   * @param position
+   * @param {number} position.x global x coordinate
+   * @param {number} position.y global y coordinate
+   */
   setPosition (position) {
     this.position = position
   }

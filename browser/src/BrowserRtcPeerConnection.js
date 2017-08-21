@@ -1,7 +1,14 @@
+'use strict'
+
 import westfield from 'westfield-runtime-server'
 import rtc from './protocol/rtc-browser-protocol'
 
 export default class BrowserRtcPeerConnection extends westfield.Global {
+  /**
+   *
+   * @param {wfs.Server} server
+   * @returns {BrowserRtcPeerConnection}
+   */
   static create (server) {
     const browserRtcPeerConnection = new BrowserRtcPeerConnection()
     server.registry.register(browserRtcPeerConnection)
