@@ -2,13 +2,16 @@
 
 // import session so we can bind to it's proxies in 'registry.listener.global = ...'
 // FIXME Force the user to import this namespace by eg. exposing the interface name as a scoped variable
-const session = require('./protocol/session-client-protocol')
 const westfield = require('westfield-runtime-client')
 const WebSocket = require('ws')
 const express = require('express')
 const http = require('http')
 
 module.exports = class LocalSession {
+  /**
+   *
+   * @returns {Promise<LocalSession>}
+   */
   static create () {
     return new Promise((resolve, reject) => {
       const app = express()
@@ -62,6 +65,10 @@ module.exports = class LocalSession {
     })
   }
 
+  /**
+   *
+   * @param {WebSocket.Server} wss
+   */
   constructor (wss) {
     this._wss = wss
     this.primaryConnection = null

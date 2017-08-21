@@ -1,3 +1,5 @@
+'use strict'
+
 const greenfield = require('./protocol/greenfield-client-protocol')
 const LocalCompositor = require('./LocalCompositor')
 

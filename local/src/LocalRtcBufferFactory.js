@@ -1,3 +1,5 @@
+'use strict'
+
 const rtc = require('./protocol/rtc-client-protocol')
 const LocalRtcPeerConnection = require('./LocalRtcPeerConnection')
 const LocalRtcDcBuffer = require('./LocalRtcDcBuffer')

@@ -1,3 +1,5 @@
+'use strict'
+
 const webRTC = require('wrtc')
 
 module.exports = class LocalRtcPeerConnection {
