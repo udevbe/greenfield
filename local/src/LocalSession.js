@@ -41,7 +41,7 @@ module.exports = class LocalSession {
 
         // TODO listen for disconnect
         // TODO listen for error
-        // TODO tie localSession &  to primaryConnection lifecycle
+        // TODO tie localSession to primaryConnection lifecycle, wayland apps should be tied to their own connection
 
         if (localSession.primaryConnection) {
           localSession.connectionPromises.shift()(wfcConnection)
@@ -54,7 +54,6 @@ module.exports = class LocalSession {
               const grSessionProxy = registryProxy.bind(name, interface_, version)
               grSessionProxy.listener = localSession
               localSession.grSessionProxy = grSessionProxy
-
               resolve(localSession)
             }
           }
