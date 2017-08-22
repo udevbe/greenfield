@@ -31,6 +31,7 @@ export default class BrowserCompositor extends westfield.Global {
     canvas.width = document.body.clientWidth
     canvas.height = document.body.clientHeight
     document.body.appendChild(canvas)
+    return canvas
   }
 
   /**
