@@ -93,7 +93,8 @@ export default class BrowserCompositor extends westfield.Global {
       default:
         grSurfaceResource = new greenfield.GrSurfaceV4(resource.client, id, 4)
     }
-    BrowserSurface.create(grSurfaceResource, this)
+    const browserSurface = BrowserSurface.create(grSurfaceResource, this)
+    this.browserScene.browserSurfaces.push(browserSurface)
   }
 
   /**
