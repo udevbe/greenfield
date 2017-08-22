@@ -16,7 +16,7 @@ export default class YUVSurfaceShader {
     const shaderArgs = this._initShaderArgs(gl, program)
     const vertexBuffer = this._initBuffers(gl, shaderArgs)
 
-    return new YUVSurfaceShader(gl, vertexBuffer)
+    return new YUVSurfaceShader(gl, vertexBuffer, shaderArgs, program)
   }
 
   static _initShaders (gl) {

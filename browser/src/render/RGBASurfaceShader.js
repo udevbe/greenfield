@@ -15,7 +15,7 @@ export default class RGBASurfaceShader {
     const shaderArgs = this._initShaderArgs(gl, program)
     const vertexBuffer = this._initBuffers(gl, shaderArgs)
 
-    return new RGBASurfaceShader(gl, vertexBuffer)
+    return new RGBASurfaceShader(gl, vertexBuffer, shaderArgs, program)
   }
 
   static _initShaders (gl) {
