@@ -50,7 +50,7 @@ function pushTestClientFrames (localClient, localRtcDcBuffer, grSurfaceProxy) {
           if (frameCounter === 1) {
             localRtcDcBuffer.rtcDcBufferProxy.size(800, 600)
           }
-          frameHeader.writeUInt32BE(frameCounter, 0, false)
+          frameHeader.writeUInt32LE(frameCounter, 0, false)
           const h264Nal = Buffer.concat([frameHeader, data])
           dataChannel.send(h264Nal.buffer.slice(h264Nal.byteOffset, h264Nal.byteOffset + h264Nal.byteLength))
 
