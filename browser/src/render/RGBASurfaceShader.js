@@ -5,7 +5,6 @@ import ShaderCompiler from './ShaderCompiler'
 import { vertexQuad, fragmentRGBA } from './ShaderSources'
 
 export default class RGBASurfaceShader {
-
   /**
    *
    * @param {WebGLRenderingContext} gl
@@ -44,7 +43,7 @@ export default class RGBASurfaceShader {
   static _initBuffers (gl, shaderArgs) {
     // Create vertex buffer object.
     const vbo = gl.createBuffer()
-    gl.bindBuffer(this.gl.ARRAY_BUFFER, vbo)
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo)
     gl.vertexAttribPointer(shaderArgs.a_position, 2, gl.FLOAT, false, 16, 0)
     gl.vertexAttribPointer(shaderArgs.a_texCoord, 2, gl.FLOAT, false, 16, 8)
     return vbo
