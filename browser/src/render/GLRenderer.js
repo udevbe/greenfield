@@ -70,8 +70,8 @@ export default class GLRenderer {
    * @param {BrowserSurfaceView} view
    */
   render (view) {
-    const browserBuffer = view.browserSurface.browserBuffer
-    const browserRtcDcBuffer = BrowserDcBufferFactory.get(browserBuffer.grBufferResource)
+    const grBuffer = view.browserSurface.browserBuffer
+    const browserRtcDcBuffer = BrowserDcBufferFactory.get(grBuffer)
 
     const drawSyncSerial = browserRtcDcBuffer.syncSerial
     const bufferSize = browserRtcDcBuffer.geo
@@ -82,16 +82,18 @@ export default class GLRenderer {
 
       if (!view.renderState || view.renderState.size.w !== bufferSize.w || view.renderState.size.h !== bufferSize.h) {
         view.renderState = H264ViewState.create(this.gl, bufferSize)
+        view.renderState.onDecode = () => {
+          // paint the textures
+          this.yuvSurfaceShader.setSize(view.renderState.size)
+          this.yuvSurfaceShader.setTexture(view.renderState.YTexture, view.renderState.UTexture, view.renderState.VTexture)
+          this.yuvSurfaceShader.setProjection(this.projectionTransform)
+          this.yuvSurfaceShader.setTransform(view.getTransform())
+          this.yuvSurfaceShader.draw()
+        }
       }
 
       // updates the renderState's yuv textures
       view.renderState.decode(browserRtcDcBuffer.h264Nal)
-      // paint the textures
-      this.yuvSurfaceShader.setSize(view.renderState.size)
-      this.yuvSurfaceShader.setTexture(view.renderState.YTexture, view.renderState.UTexture, view.renderState.VTexture)
-      this.yuvSurfaceShader.setProjection(this.projectionTransform)
-      this.yuvSurfaceShader.setTransform(view.getTransform())
-      this.yuvSurfaceShader.draw()
     })
   }
 }
