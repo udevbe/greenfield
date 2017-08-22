@@ -139,11 +139,10 @@ export default class BrowserRtcDcBuffer {
     const h264Nal = new Uint8Array(event.data)
     const header = new Uint32Array(event.data, 0, 1)
     const h264NalSerial = header[0]
-    header[0] = 0x00000001
+    header[0] = 0x01000000 // little endian
 
     this._checkNal(h264NalSerial, h264Nal)
   }
-
   _onClose (event) {}
 
   _onError (event) {}
