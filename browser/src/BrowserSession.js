@@ -81,8 +81,7 @@ export default class BrowserSession extends westfield.Global {
   }
 
   constructor (url, wfsServer) {
-    // FIXME Don't harcode the interface name, instead get it from an imported namespace
-    super('GrSession', 1)
+    super(session.GrSessionName, 1)
     this.url = url
     this.wfsServer = wfsServer
   }
