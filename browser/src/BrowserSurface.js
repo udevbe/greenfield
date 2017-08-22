@@ -108,11 +108,11 @@ export default class BrowserSurface {
    */
   attach (resource, buffer, x, y) {
     if (this.pendingBrowserBuffer) {
-      this.pendingBrowserBuffer.grBufferResource.removeDestroyListener(this.pendingBrowserBufferDestroyListener)
+      this.pendingBrowserBuffer.removeDestroyListener(this.pendingBrowserBufferDestroyListener)
     }
 
-    this.pendingBrowserBuffer = BrowserBuffer.create(buffer)
-    this.pendingBrowserBuffer.grBufferResource.addDestroyListener(this.pendingBrowserBufferDestroyListener)
+    this.pendingBrowserBuffer = buffer
+    this.pendingBrowserBuffer.addDestroyListener(this.pendingBrowserBufferDestroyListener)
 
     this.browserSurfaceViews.forEach((browserSurfaceView) => {
       const newGlobalX = browserSurfaceView.position.x + x
@@ -311,7 +311,7 @@ export default class BrowserSurface {
    */
   commit (resource) {
     if (this.pendingBrowserBuffer) {
-      this.pendingBrowserBuffer.grBufferResource.removeDestroyListener(this.pendingBrowserBufferDestroyListener)
+      this.pendingBrowserBuffer.removeDestroyListener(this.pendingBrowserBufferDestroyListener)
     }
     this.browserBuffer = this.pendingBrowserBuffer
     this.pendingBrowserBuffer = null
