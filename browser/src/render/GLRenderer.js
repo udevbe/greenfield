@@ -76,13 +76,13 @@ export default class GLRenderer {
     const drawSyncSerial = browserRtcDcBuffer.syncSerial
     const bufferSize = browserRtcDcBuffer.geo
 
-    if (!view.renderState || view.renderState.size.w !== bufferSize.w || view.renderState.size.h !== bufferSize.h) {
-      view.renderState = H264ViewState.create(this.gl, bufferSize)
-    }
-
     browserRtcDcBuffer.whenComplete(drawSyncSerial).then(() => {
       // TODO use a scheduled rendering task that fires when no more tasks are to be done
       // TODO use a webworker for decoding & rendering
+
+      if (!view.renderState || view.renderState.size.w !== bufferSize.w || view.renderState.size.h !== bufferSize.h) {
+        view.renderState = H264ViewState.create(this.gl, bufferSize)
+      }
 
       // updates the renderState's yuv textures
       view.renderState.decode(browserRtcDcBuffer.h264Nal)
