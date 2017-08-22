@@ -14,6 +14,7 @@ export default class BrowserRtcBufferFactory extends westfield.Global {
    * @returns {BrowserRtcDcBuffer}
    */
   static get (grBufferResource) {
+    // TODO do some kind of type check magic and return null if the implementation is not of the expected type
     return grBufferResource.implementation.browserRtcDcBuffer
   }
 
