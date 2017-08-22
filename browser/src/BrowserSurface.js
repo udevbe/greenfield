@@ -114,7 +114,7 @@ export default class BrowserSurface {
     this.pendingBrowserBuffer = BrowserBuffer.create(buffer)
     this.pendingBrowserBuffer.grBufferResource.addDestroyListener(this.pendingBrowserBufferDestroyListener)
 
-    this.pendingBrowserSurfaceViews.forEach((browserSurfaceView) => {
+    this.browserSurfaceViews.forEach((browserSurfaceView) => {
       const newGlobalX = browserSurfaceView.position.x + x
       const newGlobalY = browserSurfaceView.position.y + y
       browserSurfaceView.setPosition({x: newGlobalX, y: newGlobalY})
