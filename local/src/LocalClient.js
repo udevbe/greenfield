@@ -25,7 +25,7 @@ module.exports = class LocalClient {
         }
 
         // only resolve if we have all minimum required globals
-        if (localClient.compositor) {
+        if (localClient.localCompositor) {
           resolve(localClient)
         }
       }
