@@ -14,12 +14,12 @@ export default class H264ViewState {
   static create (gl, size) {
     const decoder = new Decoder()
 
-    const YTexture = new Texture(gl, size)
-    const UTexture = new Texture(gl, size.getHalfSize())
-    const VTexture = new Texture(gl, size.getHalfSize())
+    const YTexture = Texture.create(gl, size, gl.LUMINANCE)
+    const UTexture = Texture.create(gl, size.getHalfSize(), gl.LUMINANCE)
+    const VTexture = Texture.create(gl, size.getHalfSize(), gl.LUMINANCE)
 
     const h264ViewState = new H264ViewState(decoder, YTexture, UTexture, VTexture, size)
-    decoder.onPictureDecoded = h264ViewState._onPictureDecoded
+    decoder.onPictureDecoded = h264ViewState._onPictureDecoded.bind(h264ViewState)
 
     return h264ViewState
   }
@@ -61,6 +61,8 @@ export default class H264ViewState {
     this.UTexture.fill(buffer.subarray(lumaSize, lumaSize + chromaSize))
     this.VTexture.fill(buffer.subarray(lumaSize + chromaSize, lumaSize + 2 * chromaSize))
   }
+
+  onDecode () {}
 
   // TODO handle state destruction
   // TODO optimize texture uploading by using surface/view damage info
