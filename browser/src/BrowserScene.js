@@ -14,9 +14,9 @@ export default class BrowserScene {
    * @return {Array<BrowserSurfaceView>}
    */
   createBrowserSurfaceViewStack () {
-    const browserSurfaceViewStack = []
+    let browserSurfaceViewStack = []
     this.browserSurfaces.forEach((browserSurface) => {
-      browserSurfaceViewStack.concat(browserSurface.browserSurfaceViews)
+      browserSurfaceViewStack = browserSurfaceViewStack.concat(browserSurface.browserSurfaceViews)
     })
     return browserSurfaceViewStack
   }
