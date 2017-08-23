@@ -28,8 +28,8 @@ export default class BrowserCompositor extends westfield.Global {
    */
   static _createCanvas () {
     const canvas = document.createElement('canvas')
-    canvas.width = document.body.clientWidth
-    canvas.height = document.body.clientHeight
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
     document.body.appendChild(canvas)
     return canvas
   }
