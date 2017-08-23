@@ -1,6 +1,5 @@
 'use strict'
 
-import RGBASurfaceShader from './RGBASurfaceShader'
 import YUVSurfaceShader from './YUVSurfaceShader'
 import H264ViewState from './H264ViewState'
 import BrowserDcBufferFactory from '../BrowserDcBufferFactory'
@@ -12,7 +11,7 @@ export default class GLRenderer {
    * @returns {GLRenderer}
    */
   static create (canvas) {
-    const gl = canvas.getContext('webgl')
+    const gl = window.WebGLDebugUtils.makeDebugContext(canvas.getContext('webgl'))
     if (!gl) {
       throw new Error('This browser doesn\'t support WebGL!')
     }
@@ -26,10 +25,9 @@ export default class GLRenderer {
       0, 0, 0, 1
     ]
 
-    const rgbaSurfaceShader = RGBASurfaceShader.create(gl)
     const yuvSurfaceShader = YUVSurfaceShader.create(gl)
 
-    return new GLRenderer(gl, projectionTransform, rgbaSurfaceShader, yuvSurfaceShader)
+    return new GLRenderer(gl, projectionTransform, yuvSurfaceShader)
   }
 
   /**
@@ -52,13 +50,11 @@ export default class GLRenderer {
    *
    * @param {WebGLRenderingContext} gl
    * @param {Array} projectionTransform
-   * @param {RGBASurfaceShader} rgbaSurfaceShader
    * @param {YUVSurfaceShader} yuvSurfaceShader
    */
-  constructor (gl, projectionTransform, rgbaSurfaceShader, yuvSurfaceShader) {
+  constructor (gl, projectionTransform, yuvSurfaceShader) {
     this.gl = gl
     this.projectionTransform = projectionTransform
-    this.rgbaSurfaceShader = rgbaSurfaceShader
     this.yuvSurfaceShader = yuvSurfaceShader
 
     // TODO introduce a cursor layer and handle blob images that are placed above the rendered canvas. This allows
