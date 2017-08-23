@@ -60,6 +60,8 @@ export default class H264ViewState {
     this.YTexture.fill(buffer.subarray(0, lumaSize))
     this.UTexture.fill(buffer.subarray(lumaSize, lumaSize + chromaSize))
     this.VTexture.fill(buffer.subarray(lumaSize + chromaSize, lumaSize + 2 * chromaSize))
+
+    this.onDecode()
   }
 
   onDecode () {}
