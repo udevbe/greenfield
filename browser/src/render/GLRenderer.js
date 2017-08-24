@@ -19,10 +19,10 @@ export default class GLRenderer {
     this._initViewport(gl, canvas)
     // TODO this needs to be updated each time the canvas changes it's dimensions
     const projectionTransform = [
-      2.0 / canvas.width, 0, 0, -1,
-      0, 2.0 / -canvas.height, 0, 1,
+      2.0 / canvas.width, 0, 0, 0,
+      0, 2.0 / -canvas.height, 0, 0,
       0, 0, 1, 0,
-      0, 0, 0, 1
+      -1, 1, 0, 1
     ]
 
     const yuvSurfaceShader = YUVSurfaceShader.create(gl)
