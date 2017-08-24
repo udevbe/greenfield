@@ -74,11 +74,11 @@ export default class RGBASurfaceShader {
     // TODO we could also do 3 subdata calls (probably faster as we have to transfer less data)
     gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
       // top right:
-      size.width, 0.0, 1.0, 0.0,
+      size.w, 0.0, 1.0, 0.0,
       // bottom right:
-      size.width, size.height, 1.0, 1.0,
+      size.w, size.h, 1.0, 1.0,
       // bottom left:
-      0.0, size.height, 0.0, 1.0,
+      0.0, size.h, 0.0, 1.0,
       // top left:
       0.0, 0.0, 0.0, 0.0
     ]), this.gl.DYNAMIC_DRAW)
