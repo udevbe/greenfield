@@ -41,6 +41,7 @@
   "dependencies": {
     "cookies": "^0.7.1",
     "express": "4.15.3",
+    "gstreamer-superficial": "0.0.4",
     "stream-split": "^1.1.0",
     "westfield-runtime-client": "0.0.8",
     "westfield-runtime-server": "0.0.8",
