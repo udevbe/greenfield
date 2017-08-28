@@ -12,8 +12,15 @@ function setupGlobals (browserSession) {
   BrowserRtcBufferFactory.create(browserSession.wfsServer)
 }
 
+function uuidv4 () {
+  return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+    (c ^ window.crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+  )
+}
+
 function main () {
-  BrowserSession.create('ws://' + window.location.host + '/greenfield').then(setupGlobals).catch((error) => {
+  const sessionId = uuidv4()
+  BrowserSession.create(sessionId).then(setupGlobals).catch((error) => {
     console.log(error) // TODO gracefully handle error
   })
 }

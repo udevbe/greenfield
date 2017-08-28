@@ -70,9 +70,9 @@ export default class BrowserSession extends westfield.Global {
    * @param {String} url websocket session url
    * @returns {Promise<BrowserSession>}
    */
-  static create (url) {
+  static create (sessionId) {
     const wfsServer = new westfield.Server()
-
+    const url = 'ws://' + window.location.host + '/' + sessionId
     return this._createConnection(wfsServer, url).then((client) => {
       const browserSession = new BrowserSession(url, wfsServer)
       wfsServer.registry.register(browserSession)
