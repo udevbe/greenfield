@@ -1,32 +1,26 @@
 'use strict'
 
-// import session so we can bind to it's proxies in 'registry.listener.global = ...'
-// FIXME Force the user to import this namespace by eg. exposing the interface name as a scoped variable
 const westfield = require('westfield-runtime-client')
 const session = require('./protocol/session-client-protocol')
 const WebSocket = require('ws')
-const express = require('express')
-const http = require('http')
 
 module.exports = class LocalSession {
   /**
-   *
+   * @param request http ws upgrade request
+   * @param socket http socket
    * @returns {Promise<LocalSession>}
    */
-  static create () {
+  static create (request, socket) {
+    const wss = new WebSocket.Server({
+      noServer: true
+      // path: '/greenfield'
+    })
+    return new LocalSession(wss).handleUpgrade(request, socket)
+  }
+
+  handleUpgrade (request, socket) {
     return new Promise((resolve, reject) => {
-      const app = express()
-      app.use(express.static('/home/zubzub/git/greenfield/browser/public'))
-
-      const server = http.createServer()
-      server.on('request', app)
-      const wss = new WebSocket.Server({
-        server: server,
-        path: '/greenfield'
-      })
-
-      const localSession = new LocalSession(wss, resolve)
-      wss.on('connection', (ws) => {
+      this._wss.handleUpgrade(request, socket, undefined, (ws) => {
         const wfcConnection = new westfield.Connection()
 
         wfcConnection.onSend = (data) => {
@@ -43,24 +37,23 @@ module.exports = class LocalSession {
         // TODO listen for error
         // TODO tie localSession to primaryConnection lifecycle, wayland apps should be tied to their own connection
 
-        if (localSession.primaryConnection) {
-          localSession.connectionPromises.shift()(wfcConnection)
+        if (this.primaryConnection) {
+          this.connectionPromises.shift()(wfcConnection)
+          resolve(this)
         } else {
-          localSession.primaryConnection = wfcConnection
+          this.primaryConnection = wfcConnection
 
           const registryProxy = wfcConnection.createRegistry()
           registryProxy.listener.global = (name, interface_, version) => {
             if (interface_ === session.GrSessionName) {
               const grSessionProxy = registryProxy.bind(name, interface_, version)
-              grSessionProxy.listener = localSession
-              localSession.grSessionProxy = grSessionProxy
-              resolve(localSession)
+              grSessionProxy.listener = this
+              this.grSessionProxy = grSessionProxy
+              resolve(this)
             }
           }
         }
       })
-
-      server.listen(8080)
     })
   }
 

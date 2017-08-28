@@ -39,6 +39,7 @@
   },
   "homepage": "https://github.com/udevbe/greenfield#readme",
   "dependencies": {
+    "cookies": "^0.7.1",
     "express": "4.15.3",
     "stream-split": "^1.1.0",
     "westfield-runtime-client": "0.0.8",
