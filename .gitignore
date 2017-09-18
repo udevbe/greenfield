@@ -123,3 +123,4 @@ idea/vcs.xml
 /local/src/protocol/session-client-protocol.js
 /browser/src/protocol/rtc-browser-protocol.js
 /local/src/protocol/rtc-client-protocol.js
+/local/src/protocol/wayland
