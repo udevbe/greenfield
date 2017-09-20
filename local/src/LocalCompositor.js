@@ -11,7 +11,7 @@ module.exports = class LocalCompositor {
   }
 
   constructor () {
-    //set when resource is created
+    // set when resource is created
     this.resource = null
   }
 
