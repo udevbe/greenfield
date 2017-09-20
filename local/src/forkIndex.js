@@ -85,6 +85,9 @@ function main () {
       const shimCompositorGlobal = ShimCompositorGlobal.create(wlDisplay, localClients)
 
       shimSession.startLoop()
+    }).catch((error) => {
+      console.error(error)
+      // FIXME handle error state (disconnect?)
     })
   })
 }

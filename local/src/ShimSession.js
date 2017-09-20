@@ -37,6 +37,9 @@ module.exports = class ShimSession {
       this.localClients.push(localClient)
       // client can now safely bind to shim globals
       this.startLoop()
+    }).catch((error) => {
+      console.error(error)
+      // FIXME handle error state (disconnect?)
     })
   }
 
