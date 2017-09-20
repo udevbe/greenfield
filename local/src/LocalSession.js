@@ -15,10 +15,10 @@ module.exports = class LocalSession {
       noServer: true
       // path: '/greenfield'
     })
-    return new LocalSession(wss).handleUpgrade(request, socket)
+    return new LocalSession(wss)._handleUpgrade(request, socket)
   }
 
-  handleUpgrade (request, socket) {
+  _handleUpgrade (request, socket) {
     return new Promise((resolve, reject) => {
       this._wss.handleUpgrade(request, socket, undefined, (ws) => {
         const wfcConnection = new westfield.Connection()

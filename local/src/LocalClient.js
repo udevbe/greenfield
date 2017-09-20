@@ -6,14 +6,15 @@ const LocalCompositor = require('./LocalCompositor')
 module.exports = class LocalClient {
   /**
    *
-   * @param {wfc.Connection} wfsConnection
+   * @param {wfc.Connection} wfcConnection westfield client connection
+   * @param {wsb.Client} wlClient A native wayland client
    * @returns {Promise<LocalClient>}
    */
-  static create (wfsConnection) {
+  static create (wfcConnection, wlClient) {
     return new Promise((resolve, reject) => {
-      const localClient = new LocalClient(wfsConnection)
+      const localClient = new LocalClient(wfcConnection, wlClient)
 
-      const registryProxy = wfsConnection.createRegistry()
+      const registryProxy = wfcConnection.createRegistry()
       // FIXME listen for global removal
       registryProxy.listener.global = (name, interface_, version) => {
         if (interface_ === greenfield.GrCompositorName) {
@@ -36,8 +37,9 @@ module.exports = class LocalClient {
    *
    * @param {wfc.Connection} connection
    */
-  constructor (connection) {
+  constructor (connection, wlClient) {
     this.connection = connection
+    this.wlClient = wlClient
     this.localCompositor = null
   }
 }

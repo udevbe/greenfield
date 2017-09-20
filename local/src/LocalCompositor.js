@@ -1,21 +1,19 @@
 'use strict'
 
 module.exports = class LocalCompositor {
-
   /**
    *
    * @param {wfc.GrCompositor} grCompositoryProxy
    * @returns {module.LocalCompositor}
    */
-  static create (grCompositoryProxy) {
-    return new LocalCompositor(grCompositoryProxy)
+  static create () {
+    return new LocalCompositor()
   }
 
-  /**
-   *
-   * @param {wfc.GrCompositor} grCompositorProxy
-   */
-  constructor (grCompositorProxy) {
-    this.grCompositorProxy = grCompositorProxy
+  constructor () {
+    //set when resource is created
+    this.resource = null
   }
+
+  // no compositor events to relay
 }
