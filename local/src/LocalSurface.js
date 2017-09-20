@@ -10,8 +10,8 @@ module.exports = class LocalSurface {
   }
 
   enter (output) {
-    const outputProxy = output.implementation.proxy
-    this.resource.enter(outputProxy)
+    const outputResource = output.listener.resource
+    this.resource.enter(outputResource)
   }
 
   /**
@@ -27,7 +27,7 @@ module.exports = class LocalSurface {
    *
    */
   leave (output) {
-    const outputProxy = output.implementation.proxy
-    this.resource.leave(outputProxy)
+    const outputResource = output.listener.resource
+    this.resource.leave(outputResource)
   }
 }
