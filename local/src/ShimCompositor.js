@@ -1,6 +1,6 @@
 'use strict'
 
-const wl_surfaceV4 = require('./protocol/wayland/wl_surfaceV4')
+const wl_surface = require('./protocol/wayland/wl_surface')
 const wl_compositor_requests = require('./protocol/wayland/wl_compositor_requests')
 
 const LocalSurface = require('./LocalSurface')
@@ -45,7 +45,7 @@ module.exports = class LocalCompositor extends wl_compositor_requests {
 
     // wire future surface requests to proxy
     const shimSurface = ShimSurface.create(grSurfaceProxy)
-    localSurface.resource = wl_surfaceV4.create(resource.client, 4, id, shimSurface, null)
+    localSurface.resource = wl_surface.create(resource.client, 4, id, shimSurface, null)
   }
 
   /**
