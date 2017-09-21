@@ -7,7 +7,7 @@ const ShimCompositorGlobal = require('./ShimCompositorGlobal')
 
 const LocalSession = require('./LocalSession')
 
-const LocalRtcBufferFactory = require('./LocalRtcBufferFactory')
+// const LocalRtcBufferFactory = require('./LocalRtcBufferFactory')
 // const H264Encoder = require('./H264Encoder')
 
 // /**
@@ -70,19 +70,40 @@ const LocalRtcBufferFactory = require('./LocalRtcBufferFactory')
 //   })
 // }
 
+let shimCompositorGlobal
+
 function main () {
+  process.on('uncaughtException', (error) => {
+    console.log(error)
+  })
+
   process.once('message', (request, socket) => {
     LocalSession.create(request[0], socket, request[1]).then((localSession) => {
-      process.on('message', (request, socket, head) => {
-        localSession._handleUpgrade(request, socket, head)
+      process.on('message', (request, socket) => {
+        localSession._handleUpgrade(request[0], socket, request[1])
       })
 
       const shimSession = ShimSession.create(localSession)
       const wlDisplay = shimSession.wlDisplay
       const localClients = shimSession.localClients
 
+      const cleanUp = () => {
+        shimSession.end('shim-compositor closed.')
+        process.exit(0)
+      }
+
+      process.on('SIGINT', cleanUp)
+      process.on('SIGTERM', cleanUp)
+      process.on('SIGBREAK', cleanUp)
+      process.on('SIGHUP', cleanUp)
+
+      localSession.primaryConnection.onClose = () => {
+        shimSession.end('remote end closed.')
+        process.exit(0)
+      }
+
       // create shim globals
-      const shimCompositorGlobal = ShimCompositorGlobal.create(wlDisplay, localClients)
+      shimCompositorGlobal = ShimCompositorGlobal.create(wlDisplay, localClients)
 
       shimSession.startLoop()
     }).catch((error) => {

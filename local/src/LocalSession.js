@@ -8,6 +8,7 @@ module.exports = class LocalSession {
   /**
    * @param request http ws upgrade request
    * @param socket http socket
+   * @param head http head
    * @returns {Promise<LocalSession>}
    */
   static create (request, socket, head) {
@@ -33,9 +34,11 @@ module.exports = class LocalSession {
           wfcConnection.unmarshall(arrayBuffer)
         }
 
-        // TODO listen for disconnect
+        ws.on('close', () => {
+          wfcConnection.close()
+        })
+
         // TODO listen for error
-        // TODO tie localSession to primaryConnection lifecycle, wayland apps should be tied to their own connection
 
         if (this.primaryConnection) {
           this.connectionPromises.shift()(wfcConnection)
