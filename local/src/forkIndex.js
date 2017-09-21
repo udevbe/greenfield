@@ -72,9 +72,9 @@ const LocalRtcBufferFactory = require('./LocalRtcBufferFactory')
 
 function main () {
   process.once('message', (request, socket) => {
-    LocalSession.create(request, socket).then((localSession) => {
-      process.on('message', (request, socket) => {
-        localSession._handleUpgrade(request, socket)
+    LocalSession.create(request[0], socket, request[1]).then((localSession) => {
+      process.on('message', (request, socket, head) => {
+        localSession._handleUpgrade(request, socket, head)
       })
 
       const shimSession = ShimSession.create(localSession)

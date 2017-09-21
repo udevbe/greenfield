@@ -14,7 +14,7 @@ module.exports = class ShimCompositorGlobal extends Global {
   }
 
   constructor (wlDisplay, localClients) {
-    super(wlDisplay, wl_compositor.interface, 4, null, (client, data, version, id) => { this.bind(client, data, version, id) })
+    super(wlDisplay, wl_compositor.interface_, 4, null, (client, data, version, id) => { this.bind(client, data, version, id) })
     this._localClients = localClients
   }
 

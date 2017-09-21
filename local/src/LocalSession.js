@@ -10,17 +10,17 @@ module.exports = class LocalSession {
    * @param socket http socket
    * @returns {Promise<LocalSession>}
    */
-  static create (request, socket) {
+  static create (request, socket, head) {
     const wss = new WebSocket.Server({
       noServer: true
       // path: '/greenfield'
     })
-    return new LocalSession(wss)._handleUpgrade(request, socket)
+    return new LocalSession(wss)._handleUpgrade(request, socket, head)
   }
 
-  _handleUpgrade (request, socket) {
+  _handleUpgrade (request, socket, head) {
     return new Promise((resolve, reject) => {
-      this._wss.handleUpgrade(request, socket, undefined, (ws) => {
+      this._wss.handleUpgrade(request, socket, head, (ws) => {
         const wfcConnection = new westfield.Connection()
 
         wfcConnection.onSend = (data) => {

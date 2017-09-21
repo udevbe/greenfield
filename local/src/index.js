@@ -29,12 +29,12 @@ function main () {
   const server = http.createServer()
   server.on('request', app)
 
-  server.on('upgrade', (request, socket) => {
+  server.on('upgrade', (request, socket, head) => {
     let child = ensureFork(request.url.substring(1))
-    child.send({
+    child.send([{
       headers: request.headers,
       method: request.method
-    }, socket)
+    }, head], socket)
   })
 
   server.listen(8080)
