@@ -41,7 +41,6 @@ module.exports = class ShimSession {
     // stop the wayland loop to keep clients from trying to bind to shim globals
     this.stopLoop()
     const client = new Client(clientPtr)
-    // TODO listen for client destruction
 
     this.localSession.createConnection().then((wfcConnection) => {
       wfcConnection.onClose = () => {
@@ -52,6 +51,9 @@ module.exports = class ShimSession {
       this.localClients.push(localClient)
       // client can now safely bind to shim globals
       this.startLoop()
+      return localClient.onDestroy()
+    }).then((localClient) => {
+      this.localClients.splice(this.localClients.indexOf(localClient), 1)
     }).catch((error) => {
       console.error(error)
       // FIXME handle error state (disconnect?)
