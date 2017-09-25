@@ -56,9 +56,8 @@ export default class BrowserSession extends westfield.Global {
           }
         }
 
-        ws.onclose = () => {
-          client.close()
-        }
+        ws.onclose = () => client.close()
+        client.onClose().then(() => ws.close())
 
         resolve(client)
       }
@@ -67,16 +66,19 @@ export default class BrowserSession extends westfield.Global {
 
   /**
    *
-   * @param {String} url websocket session url
+   * @param {String} sessionId websocket session
    * @returns {Promise<BrowserSession>}
    */
   static create (sessionId) {
+    console.log('Starting new browser session.')
     const wfsServer = new westfield.Server()
     const url = 'ws://' + window.location.host + '/' + sessionId
     return this._createConnection(wfsServer, url).then((client) => {
       const browserSession = new BrowserSession(url, wfsServer)
       wfsServer.registry.register(browserSession)
       return browserSession
+    }).catch((error) => {
+      console.log('Received session connection error ' + error)
     })
   }
 
@@ -99,6 +101,9 @@ export default class BrowserSession extends westfield.Global {
    *
    */
   client (resource) {
-    BrowserSession._createConnection(this.wfsServer, this.url)
+    console.log('New client connected.')
+    BrowserSession._createConnection(this.wfsServer, this.url).catch((error) => {
+      console.log('Received client connection error ' + error)
+    })
   }
 }

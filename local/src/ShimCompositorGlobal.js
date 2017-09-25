@@ -1,11 +1,7 @@
 'use strict'
 
-const wsb = require('wayland-server-bindings-runtime')
-const Global = wsb.Global
-const Client = wsb.Client
-
+const {Global, Client} = require('wayland-server-bindings-runtime')
 const wl_compositor = require('./protocol/wayland/wl_compositor')
-
 const ShimCompositor = require('./ShimCompositor')
 
 module.exports = class ShimCompositorGlobal extends Global {

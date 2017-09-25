@@ -34,9 +34,8 @@ module.exports = class LocalSession {
           wfcConnection.unmarshall(arrayBuffer)
         }
 
-        ws.on('close', () => {
-          wfcConnection.close()
-        })
+        ws.on('close', () => wfcConnection.close())
+        wfcConnection.onClose().then(() => ws.close())
 
         // TODO listen for error
 

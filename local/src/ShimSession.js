@@ -1,11 +1,7 @@
 'use strict'
 
 const LocalClient = require('./LocalClient')
-
-const wsb = require('wayland-server-bindings-runtime')
-const Display = wsb.Display
-const Listener = wsb.Listener
-const Client = wsb.Client
+const {Display, Listener, Client} = require('wayland-server-bindings-runtime')
 
 module.exports = class ShimSession {
   static create (localSession) {
@@ -24,7 +20,7 @@ module.exports = class ShimSession {
   }
 
   end (reason) {
-    console.log('Closing shim compositor. Reason: ' + reason)
+    console.log('Closing shim compositor: %s', reason)
     this.stopLoop()
     this.wlDisplay.destroy()
   }
@@ -33,7 +29,6 @@ module.exports = class ShimSession {
     this.localSession = localSession
     this.wlDisplay = wlDisplay
     this.localClients = []
-    this.clientListener = null
   }
 
   onClientCreated (listenerPtr, clientPtr) {
@@ -43,9 +38,6 @@ module.exports = class ShimSession {
     const client = new Client(clientPtr)
 
     this.localSession.createConnection().then((wfcConnection) => {
-      wfcConnection.onClose = () => {
-        client.destroy()
-      }
       return LocalClient.create(wfcConnection, client)
     }).then((localClient) => {
       this.localClients.push(localClient)
@@ -68,8 +60,8 @@ module.exports = class ShimSession {
   _doLoop () {
     setImmediate(() => {
       if (this._loop) {
-        this.wlDisplay.eventLoop.dispatch(1)
         this.wlDisplay.flushClients()
+        this.wlDisplay.eventLoop.dispatch(0)
         this._doLoop()
       }
     })
