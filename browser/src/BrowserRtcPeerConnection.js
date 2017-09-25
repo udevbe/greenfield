@@ -16,8 +16,7 @@ export default class BrowserRtcPeerConnection extends westfield.Global {
   }
 
   constructor () {
-    // FIXME Don't harcode the interface name, instead get it from an imported namespace
-    super('RtcPeerConnection', 1)
+    super(rtc.RtcPeerConnection.name, 1)
   }
 
   _createPeerConnecton (client, rtcPeerConnectionResource) {
@@ -47,7 +46,7 @@ export default class BrowserRtcPeerConnection extends westfield.Global {
       })
     }
 
-    const negotiate = () => {
+    peerConnection.onnegotiationneeded = () => {
       peerConnection.createOffer({
         offerToReceiveAudio: false,
         offerToReceiveVideo: false,
@@ -61,8 +60,6 @@ export default class BrowserRtcPeerConnection extends westfield.Global {
         this.onPeerConnectionError(client, error)
       })
     }
-
-    peerConnection.onnegotiationneeded = negotiate
 
     // store the peer connection in the implementation so we can find it again when we create a dc buffer later on.
     rtcPeerConnectionResource.implementation.peerConnection = peerConnection

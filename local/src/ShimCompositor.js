@@ -1,13 +1,12 @@
 'use strict'
 
-const wl_surface = require('./protocol/wayland/wl_surface')
-const wl_compositor_requests = require('./protocol/wayland/wl_compositor_requests')
+const WlSurface = require('./protocol/wayland/WlSurface')
+const WlCompositorRequests = require('./protocol/wayland/WlCompositorRequests')
 
 const LocalSurface = require('./LocalSurface')
 const ShimSurface = require('./ShimSurface')
 
-module.exports = class LocalCompositor extends wl_compositor_requests {
-
+module.exports = class LocalCompositor extends WlCompositorRequests {
   /**
    *
    * @param {wfc.GrCompositor} grCompositoryProxy
@@ -31,13 +30,13 @@ module.exports = class LocalCompositor extends wl_compositor_requests {
    *  Ask the compositor to create a new surface.
    *
    *
-   * @param {wl_compositor} resource
+   * @param {WlCompositor} resource
    * @param {*} id the new surface
    *
    * @since 1
    *
    */
-  create_surface (resource, id) {
+  createSurface (resource, id) {
     // delegate request to browser
     const grSurfaceProxy = this.grCompositorProxy.createSurface()
     const localSurface = LocalSurface.create()
@@ -45,7 +44,7 @@ module.exports = class LocalCompositor extends wl_compositor_requests {
 
     // wire future surface requests to proxy
     const shimSurface = ShimSurface.create(grSurfaceProxy)
-    localSurface.resource = wl_surface.create(resource.client, 4, id, shimSurface, null)
+    localSurface.resource = WlSurface.create(resource.client, 4, id, shimSurface, null)
   }
 
   /**
@@ -53,13 +52,13 @@ module.exports = class LocalCompositor extends wl_compositor_requests {
    *  Ask the compositor to create a new region.
    *
    *
-   * @param {wl_compositor} resource
+   * @param {WlCompositor} resource
    * @param {*} id the new region
    *
    * @since 1
    *
    */
-  create_region (resource, id) {
+  createRegion (resource, id) {
     const grRegionProxy = this.grCompositorProxy.createRegion()
     // TODO create new region resource & link it to the proxy
   }

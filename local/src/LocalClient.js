@@ -19,13 +19,11 @@ module.exports = class LocalClient {
       // wfcConnection.onClose = () => { if (localClient.wlClient !== null) { localClient.wlClient.destroy() } }
       const listener = Listener.create(localClient._handleDestroy.bind(localClient))
       wlClient.addDestroyListener(listener)
-      localClient._destroyListener = listener
 
       const registryProxy = wfcConnection.createRegistry()
       // FIXME listen for global removal
       registryProxy.listener.global = (name, interface_, version) => {
-        if (interface_ === greenfield.GrCompositorName) {
-
+        if (interface_ === greenfield.GrCompositor.name) {
           const grCompositoryProxy = registryProxy.bind(name, interface_, version)
           const localCompositor = LocalCompositor.create(grCompositoryProxy)
           grCompositoryProxy.listener = localCompositor
@@ -50,7 +48,6 @@ module.exports = class LocalClient {
     this.connection = connection
     this.wlClient = wlClient
     this.localCompositor = null
-    this._destroyListener = null
 
     this._wlClientDetroyedPromise = new Promise((resolve) => {
       this._destroyedResolver = resolve
@@ -69,8 +66,6 @@ module.exports = class LocalClient {
     if (this.wlClient === null) {
       return
     }
-    this._destroyListener.unref()
-    this._destroyListener = null
     this.wlClient = null
 
     console.log('Wayland client closed.')

@@ -20,7 +20,7 @@ module.exports = class LocalSession {
   }
 
   _handleUpgrade (request, socket, head) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       this._wss.handleUpgrade(request, socket, head, (ws) => {
         const wfcConnection = new westfield.Connection()
 
@@ -47,7 +47,7 @@ module.exports = class LocalSession {
 
           const registryProxy = wfcConnection.createRegistry()
           registryProxy.listener.global = (name, interface_, version) => {
-            if (interface_ === session.GrSessionName) {
+            if (interface_ === session.GrSession.name) {
               const grSessionProxy = registryProxy.bind(name, interface_, version)
               grSessionProxy.listener = this
               this.grSessionProxy = grSessionProxy
@@ -74,7 +74,7 @@ module.exports = class LocalSession {
    * @returns {Promise<wfc.Connection>}
    */
   createConnection () {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       this.connectionPromises.push(resolve)
       this.grSessionProxy.client()
     })

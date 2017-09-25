@@ -41,7 +41,7 @@ export default class BrowserCompositor extends westfield.Global {
    * @private
    */
   constructor (browserScene, glRenderer) {
-    super(greenfield.GrCompositorName, 4)
+    super(greenfield.GrCompositor.name, 4)
     this.browserScene = browserScene
     this.glRenderer = glRenderer
     this._renderBusy = false

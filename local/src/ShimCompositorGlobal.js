@@ -1,7 +1,7 @@
 'use strict'
 
 const {Global, Client} = require('wayland-server-bindings-runtime')
-const wl_compositor = require('./protocol/wayland/wl_compositor')
+const WlCompositor = require('./protocol/wayland/WlCompositor')
 const ShimCompositor = require('./ShimCompositor')
 
 module.exports = class ShimCompositorGlobal extends Global {
@@ -10,7 +10,7 @@ module.exports = class ShimCompositorGlobal extends Global {
   }
 
   constructor (wlDisplay, localClients) {
-    super(wlDisplay, wl_compositor.interface_, 4, null, (client, data, version, id) => { this.bind(client, data, version, id) })
+    super(wlDisplay, WlCompositor.interface_, 4, null, (client, data, version, id) => { this.bind(client, data, version, id) })
     this._localClients = localClients
   }
 
@@ -24,6 +24,6 @@ module.exports = class ShimCompositorGlobal extends Global {
     const grCompositorProxy = localCompositor.grCompositorProxy
     const shimCompositor = ShimCompositor.create(grCompositorProxy)
 
-    localCompositor.resource = wl_compositor.create(new Client(wlClient), version, id, shimCompositor, null)
+    localCompositor.resource = WlCompositor.create(new Client(wlClient), version, id, shimCompositor, null)
   }
 }

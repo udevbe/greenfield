@@ -73,7 +73,7 @@ export default class BrowserSession extends westfield.Global {
     console.log('Starting new browser session.')
     const wfsServer = new westfield.Server()
     const url = 'ws://' + window.location.host + '/' + sessionId
-    return this._createConnection(wfsServer, url).then((client) => {
+    return this._createConnection(wfsServer, url).then(() => {
       const browserSession = new BrowserSession(url, wfsServer)
       wfsServer.registry.register(browserSession)
       return browserSession
@@ -83,7 +83,7 @@ export default class BrowserSession extends westfield.Global {
   }
 
   constructor (url, wfsServer) {
-    super(session.GrSessionName, 1)
+    super(session.GrSession.name, 1)
     this.url = url
     this.wfsServer = wfsServer
   }

@@ -70,6 +70,7 @@ const LocalSession = require('./LocalSession')
 //   })
 // }
 
+// keep a ref to globals to avoid them being gc'ed.
 let shimCompositorGlobal
 
 function main () {

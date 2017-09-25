@@ -1,9 +1,8 @@
 'use strict'
 
-const wl_surface_requests = require('./protocol/wayland/wl_surface_requests')
+const WlSurfaceRequests = require('./protocol/wayland/WlSurfaceRequests')
 
-module.exports = class ShimSurface extends wl_surface_requests {
-
+module.exports = class ShimSurface extends WlSurfaceRequests {
   static create (grSurfaceProxy) {
     return new ShimSurface(grSurfaceProxy)
   }
@@ -19,7 +18,7 @@ module.exports = class ShimSurface extends wl_surface_requests {
 
   attach (resource, buffer, x, y) {
     // TODO buffer conversion
-    //this.grSurfaceProxy.attach()
+    // this.grSurfaceProxy.attach()
   }
 
   damage (resource, x, y, width, height) {
@@ -31,12 +30,12 @@ module.exports = class ShimSurface extends wl_surface_requests {
     this.proxy.frame(callbackProxy)
   }
 
-  set_opaque_region (resource, region) {
+  setOpaqueRegion (resource, region) {
     const regionProxy = region.implementation.proxy
     this.proxy.setOpaqueRegion(regionProxy)
   }
 
-  set_input_region (resource, region) {
+  setInputRegion (resource, region) {
     const regionProxy = region.implementation.proxy
     this.proxy.setInputRegion(regionProxy)
   }
@@ -45,15 +44,15 @@ module.exports = class ShimSurface extends wl_surface_requests {
     this.proxy.commit()
   }
 
-  set_buffer_transform (resource, transform) {
+  setBufferTransform (resource, transform) {
     this.proxy.setBufferTransform(transform)
   }
 
-  set_buffer_scale (resource, scale) {
+  setBufferScale (resource, scale) {
     this.proxy.setBufferScale(scale)
   }
 
-  damage_buffer (resource, x, y, width, height) {
+  damageBuffer (resource, x, y, width, height) {
     this.proxy.damageBuffer(x, y, width, height)
   }
 }

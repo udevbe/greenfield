@@ -1,23 +1,22 @@
 'use strict'
 
 export default class BrowserSurfaceView {
-
   /**
    *
    * @param {number} globalX
    * @param {number} globalY
-   * @param {BrowserSurfaceView} browserSurface
+   * @param {BrowserSurface} browserSurface
    * @returns {BrowserSurfaceView}
    */
   static create (globalX, globalY, browserSurface) {
-    return new BrowserSurfaceView(globalX, globalY, browserSurface,)
+    return new BrowserSurfaceView(globalX, globalY, browserSurface)
   }
 
   /**
    *
    * @param {number} globalX
    * @param {number} globalY
-   * @param {BrowserBuffer} browserSurface
+   * @param {BrowserSurface} browserSurface
    */
   constructor (globalX, globalY, browserSurface) {
     this.position = {x: globalX, y: globalY}

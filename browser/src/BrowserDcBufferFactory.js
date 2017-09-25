@@ -34,7 +34,7 @@ export default class BrowserRtcBufferFactory extends westfield.Global {
    * @private
    */
   constructor () {
-    super(rtc.RtcBufferFactoryName, 1)
+    super(rtc.RtcBufferFactory.name, 1)
   }
 
   /**

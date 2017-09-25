@@ -11,15 +11,15 @@ module.exports = class LocalRtcBufferFactory {
    * @return {Promise<LocalRtcBufferFactory>}
    */
   static create (localClient) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const registryProxy = localClient.connection.createRegistry()
       const localRtcBufferFactory = new LocalRtcBufferFactory()
 
       // FIXME listen for global removal
       registryProxy.listener.global = (name, interface_, version) => {
-        if (interface_ === rtc.RtcPeerConnectionName) {
+        if (interface_ === rtc.RtcPeerConnection.name) {
           localRtcBufferFactory.localRtcPeerConnection = LocalRtcPeerConnection.create(registryProxy.bind(name, interface_, version))
-        } else if (interface_ === rtc.RtcBufferFactoryName) {
+        } else if (interface_ === rtc.RtcBufferFactory.name) {
           const rtcBufferFactoryProxy = registryProxy.bind(name, interface_, version)
           rtcBufferFactoryProxy.listener = localRtcBufferFactory
           localRtcBufferFactory.rtcBufferFactoryProxy = rtcBufferFactoryProxy

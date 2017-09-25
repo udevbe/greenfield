@@ -1218,7 +1218,7 @@
 	file name (or the full path if it is a non-standard location) of
 	the application's .desktop file as the class.
       </description>
-      <arg name="class_" type="string" summary="surface class"/>
+      <arg name="clazz" type="string" summary="surface class"/>
     </request>
 
     <event name="ping">
