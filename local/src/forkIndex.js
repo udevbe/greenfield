@@ -3,7 +3,6 @@
 'use strict'
 
 const ShimSession = require('./ShimSession')
-const ShimCompositorGlobal = require('./ShimCompositorGlobal')
 
 const LocalSession = require('./LocalSession')
 
@@ -59,8 +58,8 @@ const LocalSession = require('./LocalSession')
 //  * @param {LocalClient} localClient
 //  */
 // function testClient (localClient) {
-//   const grSurfaceProxy = localClient.localCompositor.grCompositorProxy.createSurface()
-//   const grRegionProxy = localClient.localCompositor.grCompositorProxy.createRegion()
+//   const grSurfaceProxy = localClient.localCompositor.proxy.createSurface()
+//   const grRegionProxy = localClient.localCompositor.proxy.createRegion()
 //   grRegionProxy.add(0, 0, 800, 600)
 //   grSurfaceProxy.setOpaqueRegion(grRegionProxy)
 //
@@ -70,23 +69,16 @@ const LocalSession = require('./LocalSession')
 //   })
 // }
 
-// keep a ref to globals to avoid them being gc'ed.
-let shimCompositorGlobal
-
 function main () {
   process.on('uncaughtException', (error) => {
     console.log(error)
   })
 
   process.once('message', (request, socket) => {
-    LocalSession.create(request[0], socket, request[1]).then((localSession) => {
+    ShimSession.create(request[0], socket, request[1]).then((shimSession) => {
       process.on('message', (request, socket) => {
-        localSession._handleUpgrade(request[0], socket, request[1])
+        shimSession.localSession._handleUpgrade(request[0], socket, request[1])
       })
-
-      const shimSession = ShimSession.create(localSession)
-      const wlDisplay = shimSession.wlDisplay
-      const localClients = shimSession.localClients
 
       const cleanUp = () => {
         shimSession.end('shim-compositor closed.')
@@ -98,14 +90,10 @@ function main () {
       process.on('SIGBREAK', cleanUp)
       process.on('SIGHUP', cleanUp)
 
-      localSession.primaryConnection.onClose = () => {
+      shimSession.localSession.primaryConnection.onClose = () => {
         shimSession.end('remote end closed.')
         process.exit(0)
       }
-
-      // create shim globals
-      shimCompositorGlobal = ShimCompositorGlobal.create(wlDisplay, localClients)
-
       shimSession.startLoop()
     }).catch((error) => {
       console.error(error)

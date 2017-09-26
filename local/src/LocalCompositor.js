@@ -4,7 +4,7 @@ module.exports = class LocalCompositor {
   /**
    *
    * @param {wfc.GrCompositor} grCompositoryProxy
-   * @returns {module.LocalCompositor}
+   * @returns {module.ShimCompositor}
    */
   static create () {
     return new LocalCompositor()

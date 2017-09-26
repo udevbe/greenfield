@@ -1,22 +1,25 @@
 'use strict'
 
-const LocalClient = require('./LocalClient')
+const LocalSession = require('./LocalSession')
 const {Display, Listener, Client} = require('wayland-server-bindings-runtime')
 
 module.exports = class ShimSession {
-  static create (localSession) {
+  static create (request, socket, head) {
     const wlDisplay = Display.create()
-    const socket = wlDisplay.addSocketAuto()
+    const waylandSocket = wlDisplay.addSocketAuto()
+    console.log('Created wayland socket: ' + waylandSocket)
     wlDisplay.initShm()
 
-    console.log('Created wayland socket: ' + socket)
+    // promisify shim session & resolve whe local session resolves
+    return LocalSession.create(request, socket, head, wlDisplay).then((localSession) => {
 
-    const shimSession = new ShimSession(localSession, wlDisplay)
-    const clientListener = Listener.create(shimSession.onClientCreated.bind(shimSession))
-    shimSession.clientListener = clientListener
-    wlDisplay.addClientCreatedListener(clientListener)
+      const shimSession = new ShimSession(localSession, wlDisplay)
+      const clientListener = Listener.create(shimSession.onClientCreated.bind(shimSession))
+      shimSession.clientListener = clientListener
+      wlDisplay.addClientCreatedListener(clientListener)
 
-    return shimSession
+      return shimSession
+    })
   }
 
   end (reason) {
@@ -28,24 +31,17 @@ module.exports = class ShimSession {
   constructor (localSession, wlDisplay) {
     this.localSession = localSession
     this.wlDisplay = wlDisplay
-    this.localClients = []
   }
 
   onClientCreated (listenerPtr, clientPtr) {
     console.log('Wayland client connected.')
     // stop the wayland loop to keep clients from trying to bind to shim globals
-    this.stopLoop()
     const client = new Client(clientPtr)
 
-    this.localSession.createConnection().then((wfcConnection) => {
-      return LocalClient.create(wfcConnection, client)
-    }).then((localClient) => {
-      this.localClients.push(localClient)
+    this.stopLoop()
+    this.localSession.createConnection(client).then((localClient) => {
       // client can now safely bind to shim globals
       this.startLoop()
-      return localClient.onDestroy()
-    }).then((localClient) => {
-      this.localClients.splice(this.localClients.indexOf(localClient), 1)
     }).catch((error) => {
       console.error(error)
       // FIXME handle error state (disconnect?)

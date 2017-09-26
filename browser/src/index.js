@@ -5,17 +5,16 @@ import BrowserCompositor from './BrowserCompositor'
 import pixman from './lib/pixman/libpixman-1'
 import BrowserRtcPeerConnection from './BrowserRtcPeerConnection'
 import BrowserRtcBufferFactory from './BrowserDcBufferFactory'
+import BrowserShell from './BrowserShell'
+import BrowserSeat from './BrowserSeat'
 
 function setupGlobals (browserSession) {
   BrowserCompositor.create(browserSession.wfsServer)
+  BrowserShell.create(browserSession.wfsServer)
+  BrowserSeat.create(browserSession.wfsServer)
+
   BrowserRtcPeerConnection.create(browserSession.wfsServer)
   BrowserRtcBufferFactory.create(browserSession.wfsServer)
-}
-
-function uuidv4 () {
-  return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
-    (c ^ window.crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-  )
 }
 
 function main () {
@@ -35,6 +34,12 @@ function loadNativeModule (module) {
       }
     }
   })
+}
+
+function uuidv4 () {
+  return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+    (c ^ window.crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+  )
 }
 
 window.onload = () => {

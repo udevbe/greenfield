@@ -4,19 +4,23 @@ const westfield = require('westfield-runtime-client')
 const session = require('./protocol/session-client-protocol')
 const WebSocket = require('ws')
 
+const ShimGlobal = require('./ShimGlobal')
+const LocalClient = require('./LocalClient')
+
 module.exports = class LocalSession {
   /**
    * @param request http ws upgrade request
    * @param socket http socket
    * @param head http head
+   * @param wlDisplay
    * @returns {Promise<LocalSession>}
    */
-  static create (request, socket, head) {
+  static create (request, socket, head, wlDisplay) {
     const wss = new WebSocket.Server({
       noServer: true
       // path: '/greenfield'
     })
-    return new LocalSession(wss)._handleUpgrade(request, socket, head)
+    return new LocalSession(wss, wlDisplay)._handleUpgrade(request, socket, head)
   }
 
   _handleUpgrade (request, socket, head) {
@@ -35,13 +39,22 @@ module.exports = class LocalSession {
         }
 
         ws.on('close', () => wfcConnection.close())
-        wfcConnection.onClose().then(() => ws.close())
+        wfcConnection.onClose().then(() => ws.close()).catch((error) => console.log(error))
 
         // TODO listen for error
 
         if (this.primaryConnection) {
-          this.connectionPromises.shift()(wfcConnection)
-          resolve(this)
+          const resolve = this.connectionPromises.shift()
+          const wlClient = resolve._wlClient
+          delete resolve._wlClient
+          const localClient = LocalClient.create(wfcConnection, wlClient)
+
+          const clientRegistryProxy = localClient.connection.createRegistry()
+          Object.values(this.globals).forEach((global) => {
+            global.announceClient(wlClient, clientRegistryProxy)
+          })
+
+          resolve(localClient)
         } else {
           this.primaryConnection = wfcConnection
 
@@ -51,8 +64,15 @@ module.exports = class LocalSession {
               const grSessionProxy = registryProxy.bind(name, interface_, version)
               grSessionProxy.listener = this
               this.grSessionProxy = grSessionProxy
+
               resolve(this)
+            } else if (interface_.startsWith('Gr')) {
+              this._setupShimGlobal(name, interface_, version)
             }
+          }
+
+          registryProxy.listener.globalRemove = (name) => {
+            this._tearDownShimGlobal(name)
           }
         }
       })
@@ -62,19 +82,32 @@ module.exports = class LocalSession {
   /**
    *
    * @param {WebSocket.Server} wss
+   * @param wlDisplay
    */
-  constructor (wss) {
+  constructor (wss, wlDisplay) {
     this._wss = wss
+    this.wlDisplay = wlDisplay
     this.primaryConnection = null
     this.connectionPromises = []
+    this.globals = {}
+  }
+
+  _setupShimGlobal (name, interface_, version) {
+    this.globals[name] = ShimGlobal.create(this.wlDisplay, name, interface_, version)
+  }
+
+  _tearDownShimGlobal (name) {
+    delete this.globals[name]
+    // TODO remove native wayland global
   }
 
   /**
-   *
+   *@param wlClient
    * @returns {Promise<wfc.Connection>}
    */
-  createConnection () {
+  createConnection (wlClient) {
     return new Promise((resolve) => {
+      resolve._wlClient = wlClient
       this.connectionPromises.push(resolve)
       this.grSessionProxy.client()
     })

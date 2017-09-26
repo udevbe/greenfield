@@ -13,9 +13,7 @@ const forks = {}
 function ensureFork (grSessionId) {
   let child = forks[grSessionId]
   if (child == null) {
-    // if (debug) {
     // process.execArgv.push('--inspect-brk=0')
-    // }
 
     console.log('Remote endpoint detected. Starting new shim-compositor.')
     child = childProcess.fork(path.join(__dirname, 'forkIndex.js'))

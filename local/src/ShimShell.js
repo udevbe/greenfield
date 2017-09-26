@@ -1,6 +1,6 @@
 'use strict'
 
-const WlShellRequests = require('./protocol/wayland/wlShellRequests')
+const WlShellRequests = require('./protocol/wayland/WlShellRequests')
 const WlShellSurface = require('./protocol/wayland/WlShellSurface')
 
 const ShimShellSurface = require('./ShimShellSurface')

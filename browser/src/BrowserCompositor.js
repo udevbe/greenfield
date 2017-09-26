@@ -48,20 +48,7 @@ export default class BrowserCompositor extends westfield.Global {
   }
 
   bindClient (client, id, version) {
-    let grCompositorResource
-    switch (version) {
-      case 1:
-        grCompositorResource = new greenfield.GrCompositor(client, id, 1)
-        break
-      case 2:
-        grCompositorResource = new greenfield.GrCompositorV2(client, id, 2)
-        break
-      case 3:
-        grCompositorResource = new greenfield.GrCompositorV3(client, id, 3)
-        break
-      default:
-        grCompositorResource = new greenfield.GrCompositorV4(client, id, 4)
-    }
+    const grCompositorResource = new greenfield.GrCompositor(client, id, version)
     grCompositorResource.implementation = this
   }
 
@@ -79,20 +66,7 @@ export default class BrowserCompositor extends westfield.Global {
    *
    */
   createSurface (resource, id) {
-    let grSurfaceResource
-    switch (resource.version) {
-      case 1:
-        grSurfaceResource = new greenfield.GrSurface(resource.client, id, 1)
-        break
-      case 2:
-        grSurfaceResource = new greenfield.GrSurfaceV2(resource.client, id, 2)
-        break
-      case 3:
-        grSurfaceResource = new greenfield.GrSurfaceV3(resource.client, id, 3)
-        break
-      default:
-        grSurfaceResource = new greenfield.GrSurfaceV4(resource.client, id, 4)
-    }
+    const grSurfaceResource = new greenfield.GrSurface(resource.client, id, resource.version)
     const browserSurface = BrowserSurface.create(grSurfaceResource, this)
     this.browserScene.browserSurfaces.push(browserSurface)
   }

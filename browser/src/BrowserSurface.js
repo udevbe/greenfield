@@ -1,7 +1,6 @@
 'use strict'
 
 import BrowserSurfaceView from './BrowserSurfaceView'
-import BrowserBuffer from './BrowserBuffer'
 
 export default class BrowserSurface {
   /**
