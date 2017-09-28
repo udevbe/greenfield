@@ -11,7 +11,8 @@ import BrowserSeat from './BrowserSeat'
 function setupGlobals (browserSession) {
   BrowserCompositor.create(browserSession.wfsServer)
   BrowserShell.create(browserSession.wfsServer)
-  BrowserSeat.create(browserSession.wfsServer)
+  // TODO implement seat
+  // BrowserSeat.create(browserSession.wfsServer)
 
   BrowserRtcPeerConnection.create(browserSession.wfsServer)
   BrowserRtcBufferFactory.create(browserSession.wfsServer)
