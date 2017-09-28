@@ -29,13 +29,32 @@ module.exports = class LocalSession {
         const wfcConnection = new westfield.Connection()
 
         wfcConnection.onSend = (data) => {
-          ws.send(data)
+          if (ws.readyState === WebSocket.OPEN) {
+            try {
+              ws.send(data, (error) => {
+                if (error !== undefined) {
+                  console.error(error)
+                  ws.close()
+                }
+              })
+            } catch (error) {
+              console.error(error)
+              ws.close()
+            }
+          }
         }
 
         ws.onmessage = (event) => {
-          const b = event.data
-          const arrayBuffer = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)
-          wfcConnection.unmarshall(arrayBuffer)
+          if (ws.readyState === WebSocket.OPEN) {
+            try {
+              const b = event.data
+              const arrayBuffer = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)
+              wfcConnection.unmarshall(arrayBuffer)
+            } catch (error) {
+              console.error(error)
+              ws.close()
+            }
+          }
         }
 
         ws.on('close', () => wfcConnection.close())

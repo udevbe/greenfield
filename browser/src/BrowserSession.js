@@ -29,21 +29,18 @@ export default class BrowserSession extends westfield.Global {
         const client = wfsServer.createClient()
 
         client.onSend = (wireMsg) => {
-          if (ws.readyState === window.WebSocket.CLOSING || ws.readyState === window.WebSocket.CLOSED) {
-            // Fail silently as we will soon receive the close event which will trigger the cleanup.
-            return
-          }
-
-          try {
-            ws.send(wireMsg, (error) => {
-              if (error !== undefined) {
-                console.error(error)
-                ws.close()
-              }
-            })
-          } catch (error) {
-            console.error(error)
-            ws.close()
+          if (ws.readyState === window.WebSocket.OPEN) {
+            try {
+              ws.send(wireMsg, (error) => {
+                if (error !== undefined) {
+                  console.error(error)
+                  ws.close()
+                }
+              })
+            } catch (error) {
+              console.error(error)
+              ws.close()
+            }
           }
         }
 
