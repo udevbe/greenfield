@@ -13,6 +13,8 @@ module.exports = class LocalClient {
     const localClient = new LocalClient(wfcConnection, wlClient)
 
     const listener = Listener.create(localClient._handleDestroy.bind(localClient))
+    // always keep ref to listener to avoid gc.
+    process.on('exit', () => {listener})
     wlClient.addDestroyListener(listener)
     return localClient
   }

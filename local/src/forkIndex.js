@@ -71,7 +71,7 @@ const LocalSession = require('./LocalSession')
 
 function main () {
   process.on('uncaughtException', (error) => {
-    console.log(error)
+    console.log('Error: %s', error)
   })
 
   process.once('message', (request, socket) => {

@@ -10,11 +10,14 @@ module.exports = class ShimSession {
     console.log('Created wayland socket: ' + waylandSocket)
     wlDisplay.initShm()
 
-    // promisify shim session & resolve whe local session resolves
+    // promisify shim session & resolve when local session resolves
     return LocalSession.create(request, socket, head, wlDisplay).then((localSession) => {
 
       const shimSession = new ShimSession(localSession, wlDisplay)
       const clientListener = Listener.create(shimSession.onClientCreated.bind(shimSession))
+      // always keep ref to listener to avoid gc.
+      process.on('exit', () => {clientListener})
+
       shimSession.clientListener = clientListener
       wlDisplay.addClientCreatedListener(clientListener)
 
