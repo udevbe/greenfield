@@ -11,11 +11,7 @@ module.exports = class LocalClient {
    */
   static create (wfcConnection, wlClient) {
     const localClient = new LocalClient(wfcConnection, wlClient)
-
-    const listener = Listener.create(localClient._handleDestroy.bind(localClient))
-    // always keep ref to listener to avoid gc.
-    process.on('exit', () => {listener})
-    wlClient.addDestroyListener(listener)
+    wlClient.addDestroyListener(Listener.create(localClient._handleDestroy.bind(localClient)))
     return localClient
   }
 
@@ -41,6 +37,8 @@ module.exports = class LocalClient {
   }
 
   _handleDestroy () {
+    // TODO unref listener
+
     if (this.wlClient === null) {
       return
     }
