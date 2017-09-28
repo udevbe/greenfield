@@ -2,8 +2,16 @@
 
 const WlSeatRequests = require('./protocol/wayland/WlSeatRequests')
 
-module.exports = class ShimSeat extends WlSeatRequests {
+const WlPointer = require('./protocol/wayland/WlPointer')
+const WlKeyboard = require('./protocol/wayland/WlKeyboard')
 
+const ShimPointer = require('./ShimPointer')
+const ShimKeyboard = require('./ShimKeyboard')
+
+const LocalPointer = require('./LocalPointer')
+const LocalKeyboard = require('./LocalKeyboard')
+
+module.exports = class ShimSeat extends WlSeatRequests {
   static create (grSeatProxy) {
     return new ShimSeat(grSeatProxy)
   }
@@ -30,7 +38,14 @@ module.exports = class ShimSeat extends WlSeatRequests {
    * @since 1
    *
    */
-  getPointer (resource, id) {}
+  getPointer (resource, id) {
+    const grPointerProxy = this.proxy.getPointer()
+    const localPointer = LocalPointer.create()
+    grPointerProxy.listener = localPointer
+
+    const shimPointer = ShimPointer.create(grPointerProxy)
+    localPointer.resource = WlPointer.create(resource.client, 6, id, shimPointer, null)
+  }
 
   /**
    *
@@ -49,7 +64,14 @@ module.exports = class ShimSeat extends WlSeatRequests {
    * @since 1
    *
    */
-  getKeyboard (resource, id) {}
+  getKeyboard (resource, id) {
+    const grKeyboardProxy = this.proxy.getKeyboard()
+    const localKeyboard = LocalKeyboard.create()
+    grKeyboardProxy.listener = localKeyboard
+
+    const shimKeyboard = ShimKeyboard.create(grKeyboardProxy)
+    localKeyboard.resource = WlKeyboard.create(resource.client, 6, id, shimKeyboard, null)
+  }
 
   /**
    *
@@ -81,5 +103,7 @@ module.exports = class ShimSeat extends WlSeatRequests {
    * @since 5
    *
    */
-  release (resource) {}
+  release (resource) {
+    this.proxy.release()
+  }
 }
