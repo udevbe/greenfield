@@ -2,15 +2,18 @@
 
 export default class BrowserShellSurface {
   static create (grShellSurfaceResource, grSurfaceResource) {
-    const browserShellSurface = new BrowserShellSurface(grSurfaceResource)
+    const browserShellSurface = new BrowserShellSurface(grShellSurfaceResource, grSurfaceResource)
     browserShellSurface.implementation = browserShellSurface
 
-    //TODO listen for surface destruction & destroy shell surface resource
+    grSurfaceResource.onDestroy().then(() => {
+      grShellSurfaceResource.destroy()
+    })
 
     return browserShellSurface
   }
 
-  constructor (grSurfaceResource) {
+  constructor (grShellSurfaceResource, grSurfaceResource) {
+    this.resource = grShellSurfaceResource
     this.grSurfaceResource = grSurfaceResource
     this.title = ''
     this.clazz = ''

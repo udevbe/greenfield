@@ -25,7 +25,7 @@ export default class BrowserRegion {
    * @param pixmanRegiongrRegion
    */
   constructor (grRegionResource, pixmanRegion) {
-    this.grRegionResource = grRegionResource
+    this.resource = grRegionResource
     this.pixmanRegion = pixmanRegion
   }
 

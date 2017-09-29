@@ -23,6 +23,11 @@ export default class BrowserSeat extends westfield.Global {
     const grSeatResource = new greenfield.GrSeat(client, id, version)
     grSeatResource.implementation = this
     this.resources.push(grSeatResource)
+
+    grSeatResource.onDestroy().then((resource) => {
+      const index = this.resources.indexOf(resource)
+      this.resources.splice(index, 1)
+    })
   }
 
   /**
@@ -44,7 +49,7 @@ export default class BrowserSeat extends westfield.Global {
    */
   getPointer (resource, id) {
     // TODO check capability
-    // TODO check if given resource is still bound
+
     const grPointerResource = new greenfield.GrPointer(resource.client, id, 6)
     const browserPointer = BrowserPointer.create(grPointerResource)
   }
@@ -68,7 +73,7 @@ export default class BrowserSeat extends westfield.Global {
    */
   getKeyboard (resource, id) {
     // TODO check capability
-    // TODO check if given resource is still bound
+
     const grKeyboardResource = new greenfield.GrKeyboard(resource.client, id, 6)
     const browserKeyboard = BrowserKeyboard.create(grKeyboardResource)
   }
@@ -92,7 +97,7 @@ export default class BrowserSeat extends westfield.Global {
    */
   getTouch (resource, id) {
     // TODO check capability
-    // TODO check if given resource is still bound
+
     const grTouchResource = new greenfield.GrTouch(resource.client, id, 6)
     const browserTouch = BrowserTouch.create(grTouchResource)
   }
@@ -109,15 +114,6 @@ export default class BrowserSeat extends westfield.Global {
    *
    */
   release (resource) {
-    const storedResource = this.resources.find((element) => {
-      return resource.ptr.address() === element.ptr.address()
-    })
-
-    if (typeof storedResource === 'undefined') {
-      // TODO protocol error
-    } else {
-      const index = this.resources.indexOf(storedResource)
-      this.resources.splice(index, 1)
-    }
+    resource.destroy()
   }
 }

@@ -52,8 +52,6 @@ export default class BrowserCompositor extends westfield.Global {
     grCompositorResource.implementation = this
   }
 
-  onClientConnection (clientConnection) {}
-
   /**
    *
    * Ask the compositor to create a new surface.

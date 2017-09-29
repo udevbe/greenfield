@@ -8,7 +8,7 @@ export default class BrowserTouch {
   }
 
   constructor (grTouchResource) {
-    this.grTouchResource = grTouchResource
+    this.resource = grTouchResource
   }
 
   /**

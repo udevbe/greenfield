@@ -22,7 +22,10 @@ module.exports = class LocalKeyboard {
    * @since 1
    *
    */
-  keymap (format, transfer, size) {}
+  keymap (format, transfer, size) {
+    // TODO implement blob transfer
+    // this.resource.keymap(format, transfer, size)
+  }
 
   /**
    *
@@ -37,7 +40,10 @@ module.exports = class LocalKeyboard {
    * @since 1
    *
    */
-  enter (serial, surface, keys) {}
+  enter (serial, surface, keys) {
+    const wlSurfaceResource = surface.listener.resource
+    this.resource.enter(serial, wlSurfaceResource, keys)
+  }
 
   /**
    *
@@ -54,7 +60,10 @@ module.exports = class LocalKeyboard {
    * @since 1
    *
    */
-  leave (serial, surface) {}
+  leave (serial, surface) {
+    const wlSurfaceResource = surface.listener.resource
+    this.resource.leave(serial, wlSurfaceResource)
+  }
 
   /**
    *
@@ -71,7 +80,9 @@ module.exports = class LocalKeyboard {
    * @since 1
    *
    */
-  key (serial, time, key, state) {}
+  key (serial, time, key, state) {
+    this.resource.key(serial, time, key, state)
+  }
 
   /**
    *
@@ -88,7 +99,9 @@ module.exports = class LocalKeyboard {
    * @since 1
    *
    */
-  modifiers (serial, modsDepressed, modsLatched, modsLocked, group) {}
+  modifiers (serial, modsDepressed, modsLatched, modsLocked, group) {
+    this.resource.modifiers(serial, modsDepressed, modsLatched, modsLocked, group)
+  }
 
   /**
    *
@@ -112,5 +125,7 @@ module.exports = class LocalKeyboard {
    * @since 4
    *
    */
-  repeatInfo (rate, delay) {}
+  repeatInfo (rate, delay) {
+    this.resource.repeatInfo(rate, delay)
+  }
 }

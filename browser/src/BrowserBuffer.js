@@ -18,7 +18,7 @@ export default class BrowserBuffer {
    * @param grBufferResource
    */
   constructor (grBufferResource) {
-    this.grBufferResource = grBufferResource
+    this.resource = grBufferResource
   }
 
   /**

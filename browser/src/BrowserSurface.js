@@ -26,7 +26,7 @@ export default class BrowserSurface {
    * @param {BrowserCompositor} browserCompositor
    */
   constructor (grSurfaceResource, browserCompositor) {
-    this.grSurfaceResource = grSurfaceResource
+    this.resource = grSurfaceResource``
     this.browserCompositor = browserCompositor
 
     this.pendingBrowserBuffer = null

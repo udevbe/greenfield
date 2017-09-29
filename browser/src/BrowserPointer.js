@@ -8,7 +8,7 @@ export default class BrowserPointer {
   }
 
   constructor (grPointerResource) {
-    this.grPointerResource = grPointerResource
+    this.resource = grPointerResource
   }
 
   /**

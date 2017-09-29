@@ -33,7 +33,7 @@ export default class BrowserRtcDcBuffer {
    */
   constructor (grBufferResource, rtcDcBufferResource, dataChannel) {
     this.grBufferResource = grBufferResource
-    this.rtcDcBufferResource = rtcDcBufferResource
+    this.resource = rtcDcBufferResource
     this.dataChannel = dataChannel
     this.syncSerial = 0
     this.h264Nal = null
@@ -100,7 +100,7 @@ export default class BrowserRtcDcBuffer {
     this.syncSerial = serial
     this.state = 'pending'
     this._onStateChanged(this.state)
-    this._checkNal(this._futureH264NalSerial, this._futureH264Nal)
+    this._checkNal(resource, this._futureH264NalSerial, this._futureH264Nal)
   }
 
   size (resource, width, height) {
@@ -115,7 +115,7 @@ export default class BrowserRtcDcBuffer {
    * @param {Uint8Array} h264Nal
    * @private
    */
-  _checkNal (h264NalSerial, h264Nal) {
+  _checkNal (resource, h264NalSerial, h264Nal) {
     // if serial is < than this.syncSerial than the buffer has already expired
     if (h264NalSerial < this.syncSerial) {
 
@@ -129,7 +129,7 @@ export default class BrowserRtcDcBuffer {
       if (this.size) {
         this.state = 'complete'
         this._onStateChanged(this.state)
-        this.rtcDcBufferResource.ack(h264NalSerial)
+        resource.ack(h264NalSerial)
       }
     }
   }

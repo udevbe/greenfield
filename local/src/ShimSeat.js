@@ -4,12 +4,15 @@ const WlSeatRequests = require('./protocol/wayland/WlSeatRequests')
 
 const WlPointer = require('./protocol/wayland/WlPointer')
 const WlKeyboard = require('./protocol/wayland/WlKeyboard')
+const WlTouch = require('./protocol/wayland/WlTouch')
 
 const ShimPointer = require('./ShimPointer')
 const ShimKeyboard = require('./ShimKeyboard')
+const ShimTouch = require('./ShimTouch')
 
 const LocalPointer = require('./LocalPointer')
 const LocalKeyboard = require('./LocalKeyboard')
+const LocalTouch = require('./LocalTouch')
 
 module.exports = class ShimSeat extends WlSeatRequests {
   static create (grSeatProxy) {
@@ -90,7 +93,14 @@ module.exports = class ShimSeat extends WlSeatRequests {
    * @since 1
    *
    */
-  getTouch (resource, id) {}
+  getTouch (resource, id) {
+    const grTouchProxy = this.proxy.getTouch()
+    const localTouch = LocalTouch.create()
+    grTouchProxy.listener = localTouch
+
+    const shimTouch = ShimTouch.create(grTouchProxy)
+    localTouch.resource = WlTouch.create(resource.client, 6, id, shimTouch, null)
+  }
 
   /**
    *

@@ -8,7 +8,7 @@ export default class BrowserKeyboard {
   }
 
   constructor (grKeyboardResource) {
-    this.grKeyboardResource = grKeyboardResource
+    this.resource = grKeyboardResource
   }
 
   /**
