@@ -1,6 +1,8 @@
 'use strict'
 
+require('./protocol/greenfield-client-protocol')
 const {Global, Client} = require('wayland-server-bindings-runtime')
+const NULL = require('fastcall').ref.NULL_POINTER
 const util = require('util')
 
 module.exports = class ShimGlobal extends Global {
@@ -12,7 +14,7 @@ module.exports = class ShimGlobal extends Global {
   }
 
   constructor (wlDisplay, wlGlobalClass, localGlobalClass, shimGlobalClass, name, interface_, version) {
-    super(wlDisplay, wlGlobalClass.interface_, version, null, (client, data, version, id) => { this.bind(client, data, version, id) })
+    super(wlDisplay, wlGlobalClass.interface_, version, NULL, (client, data, version, id) => { this.bind(client, version, id) })
     this._wlGlobalClass = wlGlobalClass
     this._localGlobalClass = localGlobalClass
     this._shimGlobalClass = shimGlobalClass
@@ -22,16 +24,20 @@ module.exports = class ShimGlobal extends Global {
     this._clientRegistryProxies = {}
   }
 
-  bind (wlClient, data, version, id) {
-    // find matching proxy based on wayland wlClient
-    const clientRegistryProxy = this._clientRegistryProxies[wlClient.ptr.address()]
-    const globalProxy = clientRegistryProxy.bind(this._name, this._interface_, this._version)
+  bind (wlClientPtr, version, id) {
+    try {
+      // find matching proxy based on wayland wlClientPtr
+      const clientRegistryProxy = this._clientRegistryProxies[wlClientPtr.address()]
+      const globalProxy = clientRegistryProxy.bind(this._name, this._interface_, this._version)
 
-    const localGlobal = this._localGlobalClass.create()
-    globalProxy.listener = localGlobal
-    const shimGlobal = this._shimGlobalClass.create(globalProxy)
+      const localGlobal = this._localGlobalClass.create()
+      globalProxy.listener = localGlobal
+      const shimGlobal = this._shimGlobalClass.create(globalProxy)
 
-    localGlobal.resource = this._wlGlobalClass.create(new Client(wlClient), version, id, shimGlobal, null)
+      localGlobal.resource = this._wlGlobalClass.create(new Client(wlClientPtr), version, id, shimGlobal, null)
+    } catch (error) {
+      console.log(error)
+    }
   }
 
   announceClient (wlClient, clientRegistryProxy) {
