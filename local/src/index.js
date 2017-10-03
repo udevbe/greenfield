@@ -35,7 +35,7 @@ function ensureFork (grSessionId) {
 
 function main () {
   process.on('uncaughtException', (error) => {
-    console.log('Error: %s', error)
+    console.error(error)
   })
 
   const app = express()
