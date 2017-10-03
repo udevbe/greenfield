@@ -7,6 +7,10 @@ const ShimShellSurface = require('./ShimShellSurface')
 const LocalShellSurface = require('./LocalShellSurface')
 
 module.exports = class ShimShell extends WlShellRequests {
+  static create (grShellProxy) {
+    return new ShimShell(grShellProxy)
+  }
+
   constructor (grShellProxy) {
     super()
     this.proxy = grShellProxy
@@ -31,7 +35,7 @@ module.exports = class ShimShell extends WlShellRequests {
   getShellSurface (resource, id, surface) {
     const grSurfaceProxy = surface.implementation.proxy
     const localShellSurface = LocalShellSurface.create()
-    const grShellSurfaceProxy = this.proxy.get_shell_surface(grSurfaceProxy)
+    const grShellSurfaceProxy = this.proxy.getShellSurface(grSurfaceProxy)
     grShellSurfaceProxy.listener = localShellSurface
 
     const shimShellSurface = ShimShellSurface.create(grShellSurfaceProxy)
