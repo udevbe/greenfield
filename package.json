@@ -45,17 +45,17 @@
     "fastcall": "^0.2.4",
     "gstreamer-superficial": "^0.0.4",
     "stream-split": "^1.1.0",
-    "wayland-server-bindings-runtime": "0.0.21",
-    "westfield-runtime-client": "0.0.14",
-    "westfield-runtime-server": "0.0.14",
+    "wayland-server-bindings-runtime": "0.0.33",
+    "westfield-runtime-client": "0.0.16",
+    "westfield-runtime-server": "0.0.16",
     "wrtc": "^0.0.62",
     "ws": "^3.2.0"
   },
   "devDependencies": {
     "standard": "^10.0.2",
-    "wayland-server-bindings-generator": "0.0.21",
+    "wayland-server-bindings-generator": "0.0.33",
     "webpack": "3.6.0",
-    "westfield-scanner-client": "0.0.14",
-    "westfield-scanner-server": "0.0.14"
+    "westfield-scanner-client": "0.0.16",
+    "westfield-scanner-server": "0.0.16"
   }
 }
