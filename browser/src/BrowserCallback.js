@@ -1,7 +1,7 @@
 'use strict'
 
 export default class BrowserCallback {
-  create (grCallbackResource) {
+  static create (grCallbackResource) {
     return new BrowserCallback(grCallbackResource)
   }
 
