@@ -1,6 +1,7 @@
 'use strict'
 
 import BrowserSurfaceView from './BrowserSurfaceView'
+import BrowserCallback from './BrowserCallback'
 
 export default class BrowserSurface {
   /**
@@ -26,7 +27,7 @@ export default class BrowserSurface {
    * @param {BrowserCompositor} browserCompositor
    */
   constructor (grSurfaceResource, browserCompositor) {
-    this.resource = grSurfaceResource``
+    this.resource = grSurfaceResource
     this.browserCompositor = browserCompositor
 
     this.pendingBrowserBuffer = null
@@ -205,7 +206,10 @@ export default class BrowserSurface {
    *
    */
   frame (resource, callback) {
-
+    if (this.frameCallback) {
+      this.frameCallback.resource.destroy()
+    }
+    this.frameCallback = BrowserCallback.create(callback)
   }
 
   /**
