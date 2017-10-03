@@ -1,6 +1,9 @@
 'use strict'
 
 const WlSurfaceRequests = require('./protocol/wayland/WlSurfaceRequests')
+const WlCallback = require('./protocol/wayland/WlCallback')
+const LocalCallback = require('./LocalCallback')
+const ShimCallback = require('./ShimCallback')
 
 module.exports = class ShimSurface extends WlSurfaceRequests {
   static create (grSurfaceProxy) {
@@ -26,8 +29,12 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
   }
 
   frame (resource, callback) {
-    const callbackProxy = callback.implementation.proxy
-    this.proxy.frame(callbackProxy)
+    const callbackProxy = this.proxy.frame()
+    const localCallback = LocalCallback.create()
+    callbackProxy.listener = localCallback
+
+    const shimCallback = ShimCallback.create(callbackProxy)
+    localCallback.resource = WlCallback.create(resource.client, 4, callback, shimCallback, null)
   }
 
   setOpaqueRegion (resource, region) {
