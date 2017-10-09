@@ -6,12 +6,14 @@ module.exports = class LocalClient {
   /**
    *
    * @param {wfc.Connection} wfcConnection westfield client connection
-   * @param {wsb.Client} wlClient A native wayland client
+   * @param {Client} wlClient A native wayland client
    * @returns {LocalClient}
    */
   static create (wfcConnection, wlClient) {
     const localClient = new LocalClient(wfcConnection, wlClient)
-    wlClient.addDestroyListener(Listener.create(localClient._handleDestroy.bind(localClient)))
+    const listener = Listener.create(localClient._handleDestroy.bind(localClient))
+    // process.on('exit', () => {listener})
+    wlClient.addDestroyListener(listener)
     return localClient
   }
 

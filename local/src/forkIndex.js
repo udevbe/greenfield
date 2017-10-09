@@ -4,8 +4,6 @@
 
 const ShimSession = require('./ShimSession')
 
-const LocalSession = require('./LocalSession')
-
 // const LocalRtcBufferFactory = require('./LocalRtcBufferFactory')
 // const H264Encoder = require('./H264Encoder')
 
@@ -71,7 +69,7 @@ const LocalSession = require('./LocalSession')
 
 function main () {
   process.on('uncaughtException', (error) => {
-    console.error(error)
+    console.error(error.stack)
   })
 
   process.once('message', (request, socket) => {
@@ -94,7 +92,8 @@ function main () {
         shimSession.end('remote end closed.')
         process.exit(0)
       }
-      shimSession.startLoop()
+
+      shimSession.start()
     }).catch((error) => {
       console.error(error)
       // FIXME handle error state (disconnect?)

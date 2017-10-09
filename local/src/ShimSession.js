@@ -1,73 +1,80 @@
 'use strict'
 
-const LocalSession = require('./LocalSession')
+const SocketWatcher = require('socketwatcher').SocketWatcher
 const {Display, Listener, Client} = require('wayland-server-bindings-runtime')
-const WlShmFormat = require('./protocol/wayland/WlShmFormat')
+
+const LocalSession = require('./LocalSession')
+const LocalRtcBufferFactory = require('./LocalRtcBufferFactory')
 
 module.exports = class ShimSession {
   static create (request, socket, head) {
     const wlDisplay = Display.create()
-    wlDisplay.addShmFormat(WlShmFormat.xrgb8888)
-    wlDisplay.addShmFormat(WlShmFormat.argb8888)
     wlDisplay.initShm()
     const waylandSocket = wlDisplay.addSocketAuto()
     console.log('Created wayland socket: ' + waylandSocket)
 
     return LocalSession.create(request, socket, head, wlDisplay).then((localSession) => {
       const shimSession = new ShimSession(localSession, wlDisplay)
+
       const listener = Listener.create(shimSession.onClientCreated.bind(shimSession))
       wlDisplay.addClientCreatedListener(listener)
-      shimSession.startLoop()
+
       return shimSession
     })
   }
 
   end (reason) {
     console.log('Closing shim compositor: %s', reason)
-    this.stopLoop()
+    this.stop()
     this.wlDisplay.destroy()
   }
 
   constructor (localSession, wlDisplay) {
     this.localSession = localSession
     this.wlDisplay = wlDisplay
+    this._fdWatcher = null
   }
 
   onClientCreated (listenerPtr, clientPtr) {
     console.log('Wayland client connected.')
-    // stop the wayland loop to keep clients from trying to bind to shim globals
     const client = new Client(clientPtr)
-
-    this.stopLoop()
+    this.stop()
     this.localSession.createConnection(client).then((localClient) => {
-      // new connection with browser set up, client can now safely bind to shim globals
-      this.startLoop()
+      this.start()
+      return LocalRtcBufferFactory.create(localClient)
+    }).then((localClient, localRtcBufferFactory) => {
+      // create & link rtc buffer factory to client
+      localClient._rtcBufferFactory = localRtcBufferFactory
     }).catch((error) => {
       console.error(error)
       // FIXME handle error state (disconnect?)
     })
   }
 
-  startLoop () {
-    this._loop = true
-    this._doLoop()
+  start () {
+    if (this._fdWatcher === null) {
+      const fdWatcher = new SocketWatcher()
+      fdWatcher.callback = () => { this._doLoop() }
+      fdWatcher.set(this.wlDisplay.eventLoop.fd, true, false)
+      this._fdWatcher = fdWatcher
+    }
+
+    this.wlDisplay.flushClients()
+    this._fdWatcher.start()
   }
 
   _doLoop () {
-    setImmediate(() => {
-      try {
-        if (this._loop) {
-          this.wlDisplay.flushClients()
-          this.wlDisplay.eventLoop.dispatch(-1)
-          this._doLoop()
-        }
-      } catch (error) {
-        console.error(error)
-      }
-    })
+    this.wlDisplay.eventLoop.dispatch(0)
+    if (this._fdWatcher !== null) {
+      this.wlDisplay.flushClients()
+    }
   }
 
-  stopLoop () {
-    this._loop = false
+  stop () {
+    if (this._fdWatcher !== null) {
+      this._fdWatcher.stop()
+    }
+    this._fdWatcher.callback = null
+    this._fdWatcher = null
   }
 }

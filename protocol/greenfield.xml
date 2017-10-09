@@ -107,19 +107,6 @@
                 optimization for GL(ES) compositors with gr_shm clients.
             </description>
         </event>
-
-        <event name="complete">
-            <description summary="buffer content transfer is complete">
-                This event signifies that the compositor has received all the
-                contents of this buffer, and is now able to use it.
-
-                The serial argument is defined by the buffer factory, or zero if
-                not meaningful. It is usually used with factories that can
-                update buffer contents, to identify which content update has
-                completed.
-            </description>
-            <arg name="serial" type="uint" summary="factory-specific serial"/>
-        </event>
     </interface>
 
     <interface name="gr_data_offer" version="3">

@@ -2,10 +2,9 @@
 
 require('./protocol/greenfield-client-protocol')
 const {Global, Client} = require('wayland-server-bindings-runtime')
-const NULL = require('fastcall').ref.NULL_POINTER
 const util = require('util')
 
-module.exports = class ShimGlobal extends Global {
+class ShimGlobal extends Global {
   static create (wlDisplay, name, interface_, version) {
     const wlGlobalClass = require(util.format('./protocol/wayland/%s', interface_.replace('Gr', 'Wl')))
     const localGlobalClass = require(util.format('./%s', interface_.replace('Gr', 'Local')))
@@ -14,20 +13,19 @@ module.exports = class ShimGlobal extends Global {
   }
 
   constructor (wlDisplay, wlGlobalClass, localGlobalClass, shimGlobalClass, name, interface_, version) {
-    super(wlDisplay, wlGlobalClass.interface_, version, NULL, (client, data, version, id) => { this.bind(client, version, id) })
+    super(wlDisplay, wlGlobalClass.interface_, version)
     this._wlGlobalClass = wlGlobalClass
     this._localGlobalClass = localGlobalClass
     this._shimGlobalClass = shimGlobalClass
     this._name = name
     this._interface_ = interface_
     this._version = version
-    this._clientRegistryProxies = {}
   }
 
   bind (wlClientPtr, version, id) {
     try {
       // find matching proxy based on wayland wlClientPtr
-      const clientRegistryProxy = this._clientRegistryProxies[wlClientPtr.address()]
+      const clientRegistryProxy = ShimGlobal._clientRegistryProxies[wlClientPtr.address()]
       const globalProxy = clientRegistryProxy.bind(this._name, this._interface_, this._version)
 
       const localGlobal = this._localGlobalClass.create()
@@ -39,8 +37,8 @@ module.exports = class ShimGlobal extends Global {
       console.log(error)
     }
   }
-
-  announceClient (wlClient, clientRegistryProxy) {
-    this._clientRegistryProxies[wlClient.ptr.address()] = clientRegistryProxy
-  }
 }
+
+ShimGlobal._clientRegistryProxies = {}
+
+module.exports = ShimGlobal

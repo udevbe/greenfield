@@ -69,10 +69,9 @@ module.exports = class LocalSession {
           const localClient = LocalClient.create(wfcConnection, wlClient)
 
           const clientRegistryProxy = localClient.connection.createRegistry()
-          Object.values(this.globals).forEach((global) => {
-            global.announceClient(wlClient, clientRegistryProxy)
-          })
-
+          const wlClientAddress = wlClient.ptr.address()
+          // TODO remove proxy once wayland or greenfield client is destroyed
+          ShimGlobal._clientRegistryProxies[wlClientAddress] = clientRegistryProxy
           resolve(localClient)
         } else {
           this.primaryConnection = wfcConnection

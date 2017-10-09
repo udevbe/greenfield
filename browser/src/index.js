@@ -9,9 +9,9 @@ import BrowserShell from './BrowserShell'
 import BrowserSeat from './BrowserSeat'
 
 function setupGlobals (browserSession) {
+  BrowserSeat.create(browserSession.wfsServer)
   BrowserCompositor.create(browserSession.wfsServer)
   BrowserShell.create(browserSession.wfsServer)
-  BrowserSeat.create(browserSession.wfsServer)
 
   BrowserRtcPeerConnection.create(browserSession.wfsServer)
   BrowserRtcBufferFactory.create(browserSession.wfsServer)

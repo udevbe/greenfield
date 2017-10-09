@@ -8,7 +8,7 @@ module.exports = class LocalRtcBufferFactory {
   /**
    *
    * @param {LocalClient} localClient
-   * @return {Promise<LocalRtcBufferFactory>}
+   * @return {Promise<LocalClient, LocalRtcBufferFactory>}
    */
   static create (localClient) {
     return new Promise((resolve) => {
@@ -26,7 +26,7 @@ module.exports = class LocalRtcBufferFactory {
         }
 
         if (localRtcBufferFactory.localRtcPeerConnection && localRtcBufferFactory.rtcBufferFactoryProxy) {
-          resolve(localRtcBufferFactory)
+          resolve(localClient, localRtcBufferFactory)
         }
       }
     })
