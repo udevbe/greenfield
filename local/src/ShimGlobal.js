@@ -1,7 +1,7 @@
 'use strict'
 
 require('./protocol/greenfield-client-protocol')
-const {Global, Client} = require('wayland-server-bindings-runtime')
+const {Global} = require('wayland-server-bindings-runtime')
 const util = require('util')
 
 class ShimGlobal extends Global {
@@ -22,23 +22,22 @@ class ShimGlobal extends Global {
     this._version = version
   }
 
-  bind (wlClientPtr, version, id) {
+  bind (wlClient, version, id) {
     try {
-      // find matching proxy based on wayland wlClientPtr
-      const clientRegistryProxy = ShimGlobal._clientRegistryProxies[wlClientPtr.address()]
+      // find matching proxy based on wayland wlClient pointer address
+      const clientRegistryProxy = wlClient._clientRegistryProxy
       const globalProxy = clientRegistryProxy.bind(this._name, this._interface_, this._version)
 
       const localGlobal = this._localGlobalClass.create()
       globalProxy.listener = localGlobal
       const shimGlobal = this._shimGlobalClass.create(globalProxy)
 
-      localGlobal.resource = this._wlGlobalClass.create(new Client(wlClientPtr), version, id, shimGlobal, null)
+      localGlobal.resource = this._wlGlobalClass.create(wlClient, version, id, shimGlobal, null)
     } catch (error) {
       console.log(error)
+      process.exit(1)
     }
   }
 }
-
-ShimGlobal._clientRegistryProxies = {}
 
 module.exports = ShimGlobal

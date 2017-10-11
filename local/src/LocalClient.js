@@ -1,7 +1,5 @@
 'use strict'
 
-const {Listener} = require('wayland-server-bindings-runtime')
-
 module.exports = class LocalClient {
   /**
    *
@@ -11,9 +9,7 @@ module.exports = class LocalClient {
    */
   static create (wfcConnection, wlClient) {
     const localClient = new LocalClient(wfcConnection, wlClient)
-    const listener = Listener.create(localClient._handleDestroy.bind(localClient))
-    // process.on('exit', () => {listener})
-    wlClient.addDestroyListener(listener)
+    wlClient.onDestroy().then(localClient._handleDestroy.bind(localClient))
     return localClient
   }
 
@@ -39,8 +35,6 @@ module.exports = class LocalClient {
   }
 
   _handleDestroy () {
-    // TODO unref listener
-
     if (this.wlClient === null) {
       return
     }

@@ -1,7 +1,7 @@
 'use strict'
 
 const SocketWatcher = require('socketwatcher').SocketWatcher
-const {Display, Listener, Client} = require('wayland-server-bindings-runtime')
+const { Display } = require('wayland-server-bindings-runtime')
 
 const LocalSession = require('./LocalSession')
 const LocalRtcBufferFactory = require('./LocalRtcBufferFactory')
@@ -15,10 +15,7 @@ module.exports = class ShimSession {
 
     return LocalSession.create(request, socket, head, wlDisplay).then((localSession) => {
       const shimSession = new ShimSession(localSession, wlDisplay)
-
-      const listener = Listener.create(shimSession.onClientCreated.bind(shimSession))
-      wlDisplay.addClientCreatedListener(listener)
-
+      wlDisplay.addClientCreatedListener(shimSession.onClientCreated.bind(shimSession))
       return shimSession
     })
   }
@@ -35,9 +32,8 @@ module.exports = class ShimSession {
     this._fdWatcher = null
   }
 
-  onClientCreated (listenerPtr, clientPtr) {
+  onClientCreated (client) {
     console.log('Wayland client connected.')
-    const client = new Client(clientPtr)
     this.stop()
     this.localSession.createConnection(client).then((localClient) => {
       this.start()
