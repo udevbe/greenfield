@@ -75,7 +75,10 @@ function main () {
   process.once('message', (request, socket) => {
     ShimSession.create(request[0], socket, request[1]).then((shimSession) => {
       process.on('message', (request, socket) => {
-        shimSession.localSession._handleUpgrade(request[0], socket, request[1])
+        shimSession.localSession._handleUpgrade(request[0], socket, request[1]).catch((error) => {
+          console.error(error)
+          // TODO disconnection client here?
+        })
       })
 
       const cleanUp = () => {

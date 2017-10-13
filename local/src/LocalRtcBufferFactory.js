@@ -26,7 +26,7 @@ module.exports = class LocalRtcBufferFactory {
         }
 
         if (localRtcBufferFactory.localRtcPeerConnection && localRtcBufferFactory.rtcBufferFactoryProxy) {
-          resolve(localClient, localRtcBufferFactory)
+          resolve(localRtcBufferFactory)
         }
       }
     })
