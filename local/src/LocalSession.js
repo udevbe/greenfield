@@ -133,7 +133,7 @@ module.exports = class LocalSession {
    *
    */
   flush () {
-    console.log('flushing')
+    // console.log('flushing')
     this.wlDisplay.flushClients()
   }
 }
