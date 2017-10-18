@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <protocol name="session" version="1">
     <copyright>
-        Example HTML5 Protocol
+        Session Protocol for use with an HTML5 Wayland compositor.
         Copyright (C) 2017 Erik De Rijcke
 
         This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,8 @@
 
     <interface name="GrSession" version="1">
         <description>
-            A global singleton. Functions as a client announcement mechanism.
+            A global singleton. Functions as a general communication mechanism between a native shim compositor and a
+            browser implemented compositor.
         </description>
 
         <request name="client" since="1">
@@ -30,5 +31,12 @@
                 established websocket connection for client to browser compositor communication.
             </description>
         </request>
+
+        <event name="flush" since="1">
+            <description>
+                Notifies the shim compositor that it expects a flush to happen for all currently connected client
+                connections.
+            </description>
+        </event>
     </interface>
 </protocol>
