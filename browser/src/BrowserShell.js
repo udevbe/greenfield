@@ -6,9 +6,9 @@ import greenfield from './protocol/greenfield-browser-protocol'
 import BrowserShellSurface from './BrowserShellSurface'
 
 export default class BrowserShell extends westfield.Global {
-  static create (server) {
+  static create (browserSession) {
     const browserShell = new BrowserShell()
-    server.registry.register(browserShell)
+    browserSession.wfsServer.registry.register(browserShell)
     return browserShell
   }
 
