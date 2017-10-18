@@ -4,7 +4,6 @@ import Decoder from '../lib/broadway/Decoder.js'
 import Texture from './Texture'
 
 export default class H264ViewState {
-
   /**
    *
    * @param {WebGLRenderingContext} gl
@@ -14,11 +13,7 @@ export default class H264ViewState {
   static create (gl, size) {
     const decoder = new Decoder()
 
-    const YTexture = Texture.create(gl, size, gl.LUMINANCE)
-    const UTexture = Texture.create(gl, size.getHalfSize(), gl.LUMINANCE)
-    const VTexture = Texture.create(gl, size.getHalfSize(), gl.LUMINANCE)
-
-    const h264ViewState = new H264ViewState(decoder, YTexture, UTexture, VTexture, size)
+    const h264ViewState = new H264ViewState(decoder, size, gl)
     decoder.onPictureDecoded = h264ViewState._onPictureDecoded.bind(h264ViewState)
 
     return h264ViewState
@@ -32,11 +27,12 @@ export default class H264ViewState {
    * @param {Texture}VTexture
    * @param {Size} size
    */
-  constructor (decoder, YTexture, UTexture, VTexture, size) {
+  constructor (decoder, size, gl) {
     this.decoder = decoder
-    this.YTexture = YTexture
-    this.UTexture = UTexture
-    this.VTexture = VTexture
+    this.YTexture = null
+    this.UTexture = null
+    this.VTexture = null
+    this.gl = gl
     this.size = size
     // TODO We might also want to introduce blob images (ie png) that can be rendered either directly without the need
     // of gl or decoders (functional similar to hw planes) or the RGBASurfaceShader can be used.
@@ -57,9 +53,20 @@ export default class H264ViewState {
     const lumaSize = width * height
     const chromaSize = lumaSize >> 2
 
+    if (!this.YTexture) {
+      this.YTexture = Texture.create(this.gl, {w: width, h: height}, this.gl.LUMINANCE)
+    }
+    if (!this.UTexture) {
+      this.UTexture = Texture.create(this.gl, {w: width / 2, h: height / 2}, this.gl.LUMINANCE)
+    }
+
+    if (!this.VTexture) {
+      this.VTexture = Texture.create(this.gl, {w: width / 2, h: height / 2}, this.gl.LUMINANCE)
+    }
+
     this.YTexture.fill(buffer.subarray(0, lumaSize))
     this.UTexture.fill(buffer.subarray(lumaSize, lumaSize + chromaSize))
-    this.VTexture.fill(buffer.subarray(lumaSize + chromaSize, lumaSize + 2 * chromaSize))
+    this.VTexture.fill(buffer.subarray(lumaSize + chromaSize, lumaSize + (2 * chromaSize)))
 
     this.onDecode()
   }
