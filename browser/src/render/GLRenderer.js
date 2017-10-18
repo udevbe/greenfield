@@ -72,24 +72,35 @@ export default class GLRenderer {
     const drawSyncSerial = browserRtcDcBuffer.syncSerial
     const bufferSize = browserRtcDcBuffer.geo
 
+    const projectionTransform = this.projectionTransform
+    const viewTransform = view.getTransform()
+
     browserRtcDcBuffer.whenComplete(drawSyncSerial).then(() => {
       // TODO use a scheduled rendering task that fires when no more tasks are to be done
       // TODO use a webworker for decoding & rendering
 
       if (!view.renderState || view.renderState.size.w !== bufferSize.w || view.renderState.size.h !== bufferSize.h) {
         view.renderState = H264ViewState.create(this.gl, bufferSize)
-        view.renderState.onDecode = () => {
-          // paint the textures
-          this.yuvSurfaceShader.setSize(view.renderState.size)
-          this.yuvSurfaceShader.setTexture(view.renderState.YTexture, view.renderState.UTexture, view.renderState.VTexture)
-          this.yuvSurfaceShader.setProjection(this.projectionTransform)
-          this.yuvSurfaceShader.setTransform(view.getTransform())
-          this.yuvSurfaceShader.draw()
-        }
+      }
+
+      const size = view.renderState.size
+      const YTexture = view.renderState.YTexture
+      const UTexture = view.renderState.UTexture
+      const VTexture = view.renderState.VTexture
+
+      view.renderState.onDecode = () => {
+        // paint the textures
+        this.yuvSurfaceShader.setSize(size)
+        this.yuvSurfaceShader.setTexture(YTexture, UTexture, VTexture)
+        this.yuvSurfaceShader.setProjection(projectionTransform)
+        this.yuvSurfaceShader.setTransform(viewTransform)
+        this.yuvSurfaceShader.draw()
       }
 
       // updates the renderState's yuv textures
       view.renderState.decode(browserRtcDcBuffer.h264Nal)
+    }).catch((error) => {
+      console.log(error)
     })
   }
 }

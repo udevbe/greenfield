@@ -90,22 +90,21 @@ export default class BrowserCompositor extends westfield.Global {
   requestRender () {
     if (!this._renderBusy) {
       this._renderBusy = true
-      const browserSurfaceViewStack = this.browserScene.createBrowserSurfaceViewStack()
-
-      browserSurfaceViewStack.forEach((view) => {
-        this.glRenderer.render(view)
-
-        if (view.browserSurface.frameCallback) {
-          view.browserSurface.frameCallback.done(new Date().getTime() | 0) // | 0 is js' way of casting to an int...
-          view.browserSurface.frameCallback = null
-        }
-      })
-
       window.requestAnimationFrame(() => {
-        this.browserSession.flush()
-      })
+        const browserSurfaceViewStack = this.browserScene.createBrowserSurfaceViewStack()
 
-      this._renderBusy = false
+        browserSurfaceViewStack.forEach((view) => {
+          this.glRenderer.render(view)
+
+          if (view.browserSurface.frameCallback) {
+            view.browserSurface.frameCallback.done(new Date().getTime() | 0) // | 0 is js' way of casting to an int...
+            view.browserSurface.frameCallback = null
+          }
+        })
+
+        this.browserSession.flush()
+        this._renderBusy = false
+      })
     }
   }
 }
