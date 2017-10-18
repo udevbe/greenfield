@@ -83,11 +83,13 @@ export default class BrowserSession extends westfield.Global {
     super(session.GrSession.name, 1)
     this.url = url
     this.wfsServer = wfsServer
+    this.resources = []
   }
 
   bindClient (client, id, version) {
     const grSessionResource = new session.GrSession(client, id, version)
     grSessionResource.implementation = this
+    this.resources.push(grSessionResource)
   }
 
   /**
@@ -102,5 +104,9 @@ export default class BrowserSession extends westfield.Global {
     BrowserSession._createConnection(this.wfsServer, this.url).catch((error) => {
       console.log('Received client connection error ' + error)
     })
+  }
+
+  flush () {
+    this.resources.forEach((resource) => { resource.flush() })
   }
 }
