@@ -52,7 +52,11 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     }
 
     if (!this.pendingBuffer.localRtcDcBuffer) {
+      const shm = Shm.get(buffer)
+      const bufferWidth = shm.getWidth()
+      const bufferHeight = shm.getHeight()
       this.pendingBuffer.localRtcDcBuffer = this.rtcBufferFactory.createLocalRtcDcBuffer()
+      this.pendingBuffer.localRtcDcBuffer.rtcDcBufferProxy.size(bufferWidth, bufferHeight)
     }
 
     this.proxy.attach(this.pendingBuffer.localRtcDcBuffer.grBufferProxy, x, y)
@@ -91,26 +95,36 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       const bufferWidth = shm.getWidth()
       const bufferHeight = shm.getHeight()
 
+      // TODO we interpret the buffer as always being xRGB. However we could also support ARGB if we split out the
+      // the alpha channel as a greyscale yuv and send it as a second h264 frame. We can then reconstruct in the browser
+      // into ARGB using the grayscale as the alpha channel with the use of a simple webgl shader.
+
+      const pixelBuffer = shm.getData().reinterpret(bufferWidth * bufferHeight * 4)
+
       // TODO how to dynamically update the pipeline video resolution?
       if (!this.h264Encoder || this.h264Encoder.width !== bufferWidth || this.h264Encoder.height !== bufferHeight) {
         this.buffer.localRtcDcBuffer.rtcDcBufferProxy.size(bufferWidth, bufferHeight)
         this.h264Encoder = H264Encoder.create(bufferWidth, bufferHeight)
+        // BGRx because of little endian blob
+        this.h264Encoder.src.setCapsFromString('video/x-raw,format=BGRx,width=' + bufferWidth + ',height=' + bufferHeight + ',bpp=32,depth=32,framerate=30/1')
+        this.h264Encoder.pipeline.play()
       }
 
-      // TODO we interpret the buffer as always being xRGB. However we could also support ARGB if we split out the
-      // the alpha channel as a greyscale and send it as a second h264 frame we reconstruct in the browser into ARGB
-      // after decoding with the aid of a simple webgl shader.
-      this.h264Encoder.src.push(shm)
+      // shm.beginAccess()
+      // console.log('pushing buffer')
+      this.h264Encoder.src.push(pixelBuffer)
       const pullFrame = () => {
         // TODO use gst_app_sink_set_callbacks instead. Requires modifications to the node-gstreamer-superficial lib.
-        this.h264Encoder.sink.pull((buf) => {
-          if (buf) {
+        this.h264Encoder.sink.pull((h264Nal) => {
+          // console.log('pulled encoded buffer: ' + h264Nal.toString('hex'))
+          if (h264Nal) {
+            // shm.endAccess()
             // resolve
-            buf.writeUInt32LE(synSerial, 0, false)
-            resolve(buf)
+            h264Nal.writeUInt32LE(synSerial, 0, false)
+            resolve(h264Nal)
           } else {
-            // frame not yet encoded, retry
-            setTimeout(pullFrame, 33)
+            // console.log('frame not yet encoded, retry')
+            setTimeout(pullFrame, 50)
           }
         })
       }
@@ -118,29 +132,38 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     })
   }
 
-  sendBuffer (buf, localRtcDcBuffer, synSerial) {
-    localRtcDcBuffer.dataChannel.send(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength))
+  sendBuffer (h264Nal, localRtcDcBuffer, synSerial) {
+    if (localRtcDcBuffer.dataChannel.readyState === 'open') {
+      // console.log('sending buffer ' + h264Nal.toString('hex'))
+      localRtcDcBuffer.dataChannel.send(h264Nal.buffer.slice(h264Nal.byteOffset, h264Nal.byteOffset + h264Nal.byteLength))
+    } else {
+      // console.log('buffer channel not yet open')
+      localRtcDcBuffer.dataChannel.onopen = () => {
+        localRtcDcBuffer.dataChannel.onopen = null
+        // make sure we don't send an old buffer
+        if (synSerial >= this.synSerial) {
+          this.sendBuffer(h264Nal, localRtcDcBuffer, synSerial)
+        }
+      }
+    }
     // if the ack times out & no newer serial is expected, we can retry sending the buffer contents
     setTimeout(() => {
-      // If the syn serial at the time the timer was created is greater than the latest received ack serial,
+      // If the syn serial at the time the timer was created is greater than the latest received ack serial and no newer serial is expected,
       // then we have not received an ack that matches or is newer than the syn we're checking. We resend the frame.
-      if (synSerial > this.ackSerial) {
-        this.sendBuffer(buf, this.buffer.localRtcDcBuffer)
+      if (synSerial > this.ackSerial && synSerial === this.synSerial) {
+        // console.log('send timed out. resending')
+        this.sendBuffer(h264Nal, localRtcDcBuffer, synSerial)
       }
-      // TODO dynamically adjust to expected roundtrip time which could (naively) be calculated by measuring the time
-      // between a syn & ack.
-    }, 250)
+      // TODO dynamically adjust to expected roundtrip time which could (naively) be calculated by measuring the latency
+      // between a (syn & ack)/2 + frame bandwidth.
+    }, 1000)
   }
 
   commit (resource) {
     this.pendingBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
     this.buffer = this.pendingBuffer
     this.pendingBuffer = null
-    // TODO handle destruction of committed buffer
-
-    // TODO get buffer width & height
-    // TODO create encoder if it doesn't exist
-    // TODO create encoder if it's width & height don't match the buffer
+    // TODO handle destruction of committed buffer?
 
     this.buffer.localRtcDcBuffer.ack = (serial) => {
       if (serial > this.ackSerial) {
@@ -152,8 +175,8 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     const currentSynSerial = this.synSerial
 
     this.buffer.localRtcDcBuffer.rtcDcBufferProxy.syn(currentSynSerial)
-    this.encodeBuffer(this.buffer, currentSynSerial).then((buf) => {
-      this.sendBuffer(buf, this.buffer.localRtcDcBuffer, currentSynSerial)
+    this.encodeBuffer(this.buffer, currentSynSerial).then((h264Nal) => {
+      this.sendBuffer(h264Nal, this.buffer.localRtcDcBuffer, currentSynSerial)
     }).catch((error) => {
       console.log(error)
       // TODO Failed to encode buffer. What to do here?
