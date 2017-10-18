@@ -127,4 +127,13 @@ module.exports = class LocalSession {
       this.grSessionProxy.client()
     })
   }
+
+  /**
+   * @since 1
+   *
+   */
+  flush () {
+    console.log('flushing')
+    this.wlDisplay.flushClients()
+  }
 }
