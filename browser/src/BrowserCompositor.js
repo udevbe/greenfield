@@ -10,15 +10,15 @@ import GLRenderer from './render/GLRenderer'
 export default class BrowserCompositor extends westfield.Global {
   /**
    *
-   * @param {Server} server
+   * @param {BrowserSession} browserSession
    * @returns {BrowserCompositor}
    */
-  static create (server) {
+  static create (browserSession) {
     const browserScene = BrowserScene.create()
     const glRenderer = GLRenderer.create(this._createCanvas())
 
-    const browserCompositor = new BrowserCompositor(browserScene, glRenderer)
-    server.registry.register(browserCompositor)
+    const browserCompositor = new BrowserCompositor(browserSession, browserScene, glRenderer)
+    browserSession.wfsServer.registry.register(browserCompositor)
     return browserCompositor
   }
 
@@ -36,12 +36,14 @@ export default class BrowserCompositor extends westfield.Global {
 
   /**
    * Use BrowserCompositor.create(server) instead.
+   * @param {BrowserSession} browserSession
    * @param {BrowserScene} browserScene
    * @param {GLRenderer} glRenderer
    * @private
    */
-  constructor (browserScene, glRenderer) {
+  constructor (browserSession, browserScene, glRenderer) {
     super(greenfield.GrCompositor.name, 4)
+    this.browserSession = browserSession
     this.browserScene = browserScene
     this.glRenderer = glRenderer
     this._renderBusy = false
@@ -88,13 +90,22 @@ export default class BrowserCompositor extends westfield.Global {
   requestRender () {
     if (!this._renderBusy) {
       this._renderBusy = true
-      setTimeout(() => {
-        const browserSurfaceViewStack = this.browserScene.createBrowserSurfaceViewStack()
-        browserSurfaceViewStack.forEach((browserSurfaceView) => {
-          this.glRenderer.render(browserSurfaceView)
-        })
-        this._renderBusy = false
-      }, 0)
+      const browserSurfaceViewStack = this.browserScene.createBrowserSurfaceViewStack()
+
+      browserSurfaceViewStack.forEach((view) => {
+        this.glRenderer.render(view)
+
+        if (view.browserSurface.frameCallback) {
+          view.browserSurface.frameCallback.done(new Date().getTime() | 0) // | 0 is js' way of casting to an int...
+          view.browserSurface.frameCallback = null
+        }
+      })
+
+      window.requestAnimationFrame(() => {
+        this.browserSession.flush()
+      })
+
+      this._renderBusy = false
     }
   }
 }
