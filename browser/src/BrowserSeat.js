@@ -8,9 +8,9 @@ import BrowserKeyboard from './BrowserKeyboard'
 import BrowserTouch from './BrowserTouch'
 
 export default class BrowserSeat extends westfield.Global {
-  static create (server) {
+  static create (browserSession) {
     const browserSeat = new BrowserSeat()
-    server.registry.register(browserSeat)
+    browserSession.wfsServer.registry.register(browserSeat)
     return browserSeat
   }
 
