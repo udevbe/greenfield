@@ -20,12 +20,12 @@ export default class BrowserRtcBufferFactory extends westfield.Global {
 
   /**
    *
-   * @param {wfs.Server} wfsServer
+   * @param {BrowserSession} browserSession
    * @returns {BrowserRtcBufferFactory}
    */
-  static create (wfsServer) {
+  static create (browserSession) {
     const browserRtcBufferFactory = new BrowserRtcBufferFactory()
-    wfsServer.registry.register(browserRtcBufferFactory)
+    browserSession.wfsServer.registry.register(browserRtcBufferFactory)
     return browserRtcBufferFactory
   }
 
@@ -83,6 +83,7 @@ export default class BrowserRtcBufferFactory extends westfield.Global {
       negotiated: true,
       id: channelId
     })
+    dataChannel.binaryType = 'arraybuffer'
 
     const rtcDcBufferResource = new rtc.RtcDcBuffer(resource.client, id, resource.version)
     BrowserRtcDcBuffer.create(grBufferResource, rtcDcBufferResource, dataChannel)
