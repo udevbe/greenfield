@@ -56,6 +56,7 @@ module.exports = class LocalRtcBufferFactory {
       negotiated: true,
       id: channelId
     })
+    dataChannel.binaryType = 'arraybuffer'
 
     const localRtcDcBuffer = LocalRtcDcBuffer.create(grBufferProxy, rtcDcBufferProxy, dataChannel)
     rtcDcBufferProxy.listener = localRtcDcBuffer
