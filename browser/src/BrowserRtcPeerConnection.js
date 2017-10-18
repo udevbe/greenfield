@@ -6,12 +6,12 @@ import rtc from './protocol/rtc-browser-protocol'
 export default class BrowserRtcPeerConnection extends westfield.Global {
   /**
    *
-   * @param {wfs.Server} server
+   * @param {BrowserSession} browserSession
    * @returns {BrowserRtcPeerConnection}
    */
-  static create (server) {
+  static create (browserSession) {
     const browserRtcPeerConnection = new BrowserRtcPeerConnection()
-    server.registry.register(browserRtcPeerConnection)
+    browserSession.wfsServer.registry.register(browserRtcPeerConnection)
     return browserRtcPeerConnection
   }
 
