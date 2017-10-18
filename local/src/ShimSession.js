@@ -71,8 +71,8 @@ module.exports = class ShimSession {
   stop () {
     if (this._fdWatcher !== null) {
       this._fdWatcher.stop()
+      this._fdWatcher.callback = null
     }
-    this._fdWatcher.callback = null
     this._fdWatcher = null
   }
 }
