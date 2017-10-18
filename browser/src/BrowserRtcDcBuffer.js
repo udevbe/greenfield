@@ -100,7 +100,7 @@ export default class BrowserRtcDcBuffer {
     this.syncSerial = serial
     this.state = 'pending'
     this._onStateChanged(this.state)
-    this._checkNal(resource, this._futureH264NalSerial, this._futureH264Nal)
+    this._checkNal(this._futureH264NalSerial, this._futureH264Nal)
   }
 
   size (resource, width, height) {
@@ -115,10 +115,9 @@ export default class BrowserRtcDcBuffer {
    * @param {Uint8Array} h264Nal
    * @private
    */
-  _checkNal (resource, h264NalSerial, h264Nal) {
+  _checkNal (h264NalSerial, h264Nal) {
     // if serial is < than this.syncSerial than the buffer has already expired
     if (h264NalSerial < this.syncSerial) {
-
     } else if (h264NalSerial > this.syncSerial) {
       // else if the serial is > the nal might be used in the future
       this._futureH264Nal = h264Nal
@@ -129,7 +128,6 @@ export default class BrowserRtcDcBuffer {
       if (this.size) {
         this.state = 'complete'
         this._onStateChanged(this.state)
-        resource.ack(h264NalSerial)
       }
     }
   }
@@ -140,9 +138,10 @@ export default class BrowserRtcDcBuffer {
     const header = new Uint32Array(event.data, 0, 1)
     const h264NalSerial = header[0]
     header[0] = 0x01000000 // little endian
-
+    this.resource.ack(h264NalSerial)
     this._checkNal(h264NalSerial, h264Nal)
   }
+
   _onClose (event) {}
 
   _onError (event) {}
