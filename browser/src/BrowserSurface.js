@@ -1,5 +1,6 @@
 'use strict'
 
+import greenfield from './protocol/greenfield-browser-protocol'
 import BrowserSurfaceView from './BrowserSurfaceView'
 import BrowserCallback from './BrowserCallback'
 
@@ -208,8 +209,9 @@ export default class BrowserSurface {
   frame (resource, callback) {
     if (this.frameCallback) {
       this.frameCallback.resource.destroy()
+      this.frameCallback = null
     }
-    this.frameCallback = BrowserCallback.create(callback)
+    this.frameCallback = BrowserCallback.create(new greenfield.GrCallback(resource.client, callback, 1))
   }
 
   /**
