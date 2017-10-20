@@ -48,9 +48,7 @@ export default class YUVSurfaceShader {
 
   static _initBuffers (gl) {
     // Create vertex buffer object.
-    const vbo = gl.createBuffer()
-
-    return vbo
+    return gl.createBuffer()
   }
 
   constructor (gl, vertexBuffer, shaderArgs, program) {
@@ -85,17 +83,18 @@ export default class YUVSurfaceShader {
   setTexture (textureY, textureU, textureV) {
     const gl = this.gl
 
+    gl.uniform1i(this.shaderArgs.YTexture, 0)
+    gl.uniform1i(this.shaderArgs.UTexture, 1)
+    gl.uniform1i(this.shaderArgs.VTexture, 2)
+
     gl.activeTexture(gl.TEXTURE0)
     gl.bindTexture(gl.TEXTURE_2D, textureY.texture)
-    gl.uniform1i(this.shaderArgs.YTexture, 0)
 
     gl.activeTexture(gl.TEXTURE1)
     gl.bindTexture(gl.TEXTURE_2D, textureU.texture)
-    gl.uniform1i(this.shaderArgs.UTexture, 1)
 
     gl.activeTexture(gl.TEXTURE2)
     gl.bindTexture(gl.TEXTURE_2D, textureV.texture)
-    gl.uniform1i(this.shaderArgs.VTexture, 2)
   }
 
   draw () {
@@ -120,5 +119,9 @@ export default class YUVSurfaceShader {
     gl.vertexAttribPointer(this.shaderArgs.a_position, 2, gl.FLOAT, false, 16, 0)
     gl.vertexAttribPointer(this.shaderArgs.a_texCoord, 2, gl.FLOAT, false, 16, 8)
     gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 6)
+
+    gl.bindTexture(gl.TEXTURE_2D, null)
+    gl.bindBuffer(gl.ARRAY_BUFFER, null)
+    gl.useProgram(null)
   }
 }

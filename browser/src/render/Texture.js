@@ -12,6 +12,7 @@ export default class Texture {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    gl.bindTexture(gl.TEXTURE_2D, null)
 
     return new Texture(gl, size, format, texture)
   }
@@ -27,5 +28,6 @@ export default class Texture {
     const gl = this.gl
     gl.bindTexture(gl.TEXTURE_2D, this.texture)
     gl.texImage2D(gl.TEXTURE_2D, 0, this.format, this.size.w, this.size.h, 0, this.format, gl.UNSIGNED_BYTE, textureData)
+    gl.bindTexture(gl.TEXTURE_2D, null)
   }
 }

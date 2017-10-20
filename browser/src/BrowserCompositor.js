@@ -15,7 +15,7 @@ export default class BrowserCompositor extends westfield.Global {
    */
   static create (browserSession) {
     const browserScene = BrowserScene.create()
-    const glRenderer = GLRenderer.create(this._createCanvas())
+    const glRenderer = GLRenderer.create(this._createCanvas(), browserScene, browserSession)
 
     const browserCompositor = new BrowserCompositor(browserSession, browserScene, glRenderer)
     browserSession.wfsServer.registry.register(browserCompositor)
@@ -88,23 +88,6 @@ export default class BrowserCompositor extends westfield.Global {
   }
 
   requestRender () {
-    if (!this._renderBusy) {
-      this._renderBusy = true
-      window.requestAnimationFrame(() => {
-        const browserSurfaceViewStack = this.browserScene.createBrowserSurfaceViewStack()
-
-        browserSurfaceViewStack.forEach((view) => {
-          this.glRenderer.render(view)
-
-          if (view.browserSurface.frameCallback) {
-            view.browserSurface.frameCallback.done(new Date().getTime() | 0) // | 0 is js' way of casting to an int...
-            view.browserSurface.frameCallback = null
-          }
-        })
-
-        this.browserSession.flush()
-        this._renderBusy = false
-      })
-    }
+    this.glRenderer.renderAll()
   }
 }

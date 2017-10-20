@@ -1,6 +1,5 @@
 'use strict'
 
-import Decoder from '../lib/broadway/Decoder.js'
 import Texture from './Texture'
 
 export default class H264ViewState {
@@ -11,24 +10,15 @@ export default class H264ViewState {
    * @returns {H264ViewState}
    */
   static create (gl, size) {
-    const decoder = new Decoder()
-
-    const h264ViewState = new H264ViewState(decoder, size, gl)
-    decoder.onPictureDecoded = h264ViewState._onPictureDecoded.bind(h264ViewState)
-
-    return h264ViewState
+    return new H264ViewState(size, gl)
   }
 
   /**
    *
-   * @param decoder
-   * @param {Texture} YTexture
-   * @param {Texture}UTexture
-   * @param {Texture}VTexture
    * @param {Size} size
+   * @param gl
    */
-  constructor (decoder, size, gl) {
-    this.decoder = decoder
+  constructor (size, gl) {
     this.YTexture = null
     this.UTexture = null
     this.VTexture = null
@@ -39,15 +29,7 @@ export default class H264ViewState {
     this.type = 'h264'
   }
 
-  /**
-   *
-   * @param {Uint8Array} h264Nal
-   */
-  decode (h264Nal) {
-    this.decoder.decode(h264Nal)
-  }
-
-  _onPictureDecoded (buffer, width, height) {
+  update (buffer, width, height) {
     if (!buffer) { return }
 
     const lumaSize = width * height
@@ -59,7 +41,6 @@ export default class H264ViewState {
     if (!this.UTexture) {
       this.UTexture = Texture.create(this.gl, {w: width / 2, h: height / 2}, this.gl.LUMINANCE)
     }
-
     if (!this.VTexture) {
       this.VTexture = Texture.create(this.gl, {w: width / 2, h: height / 2}, this.gl.LUMINANCE)
     }
@@ -67,11 +48,7 @@ export default class H264ViewState {
     this.YTexture.fill(buffer.subarray(0, lumaSize))
     this.UTexture.fill(buffer.subarray(lumaSize, lumaSize + chromaSize))
     this.VTexture.fill(buffer.subarray(lumaSize + chromaSize, lumaSize + (2 * chromaSize)))
-
-    this.onDecode()
   }
-
-  onDecode () {}
 
   // TODO handle state destruction
   // TODO optimize texture uploading by using surface/view damage info

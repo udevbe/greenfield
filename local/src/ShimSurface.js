@@ -26,10 +26,14 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     this.ackSerial = 0
     this.h264Encoder = null
 
+    // use a single buffer to communicate with the browser. Contents of the buffer will be copied when send.
+    this.localRtcDcBuffer = this.rtcBufferFactory.createLocalRtcDcBuffer()
+    this.localRtcDcBufferWidth = 0
+    this.localRtcDcBufferHeight = 0
+
     this.pendingBufferDestroyListener = () => {
-      this.pendingBuffer.localRtcDcBuffer.grBufferProxy.destroy()
-      this.pendingBuffer.localRtcDcBuffer.rtcDcBufferProxy.destroy()
-      delete this.pendingBuffer.localRtcDcBuffer
+      this.localRtcDcBuffer.grBufferProxy.destroy()
+      this.localRtcDcBuffer.rtcDcBufferProxy.destroy()
       this.pendingBuffer = null
     }
   }
@@ -39,9 +43,6 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
   }
 
   attach (resource, buffer, x, y) {
-    if (this.buffer) {
-      this.buffer.release()
-    }
     // TODO listen for buffer destruction & signal buffer proxy & remove local pending buffer
     if (this.pendingBuffer) {
       this.pendingBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
@@ -51,15 +52,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       this.pendingBuffer.addDestroyListener(this.pendingBufferDestroyListener)
     }
 
-    if (!this.pendingBuffer.localRtcDcBuffer) {
-      const shm = Shm.get(buffer)
-      const bufferWidth = shm.getWidth()
-      const bufferHeight = shm.getHeight()
-      this.pendingBuffer.localRtcDcBuffer = this.rtcBufferFactory.createLocalRtcDcBuffer()
-      this.pendingBuffer.localRtcDcBuffer.rtcDcBufferProxy.size(bufferWidth, bufferHeight)
-    }
-
-    this.proxy.attach(this.pendingBuffer.localRtcDcBuffer.grBufferProxy, x, y)
+    this.proxy.attach(this.localRtcDcBuffer.grBufferProxy, x, y)
   }
 
   damage (resource, x, y, width, height) {
@@ -103,7 +96,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
 
       // TODO how to dynamically update the pipeline video resolution?
       if (!this.h264Encoder || this.h264Encoder.width !== bufferWidth || this.h264Encoder.height !== bufferHeight) {
-        this.buffer.localRtcDcBuffer.rtcDcBufferProxy.size(bufferWidth, bufferHeight)
+        this.localRtcDcBuffer.rtcDcBufferProxy.size(bufferWidth, bufferHeight)
         this.h264Encoder = H264Encoder.create(bufferWidth, bufferHeight)
         // BGRx because of little endian blob
         this.h264Encoder.src.setCapsFromString('video/x-raw,format=BGRx,width=' + bufferWidth + ',height=' + bufferHeight + ',bpp=32,depth=32,framerate=30/1')
@@ -160,12 +153,16 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
   }
 
   commit (resource) {
+    if (this.buffer) {
+      this.buffer.release()
+    }
+
     this.pendingBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
     this.buffer = this.pendingBuffer
     this.pendingBuffer = null
     // TODO handle destruction of committed buffer?
 
-    this.buffer.localRtcDcBuffer.ack = (serial) => {
+    this.localRtcDcBuffer.ack = (serial) => {
       if (serial > this.ackSerial) {
         this.ackSerial = serial
       } // else we received an outdated ack serial, ignore it.
@@ -174,9 +171,17 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     this.synSerial++
     const currentSynSerial = this.synSerial
 
-    this.buffer.localRtcDcBuffer.rtcDcBufferProxy.syn(currentSynSerial)
+    const shm = Shm.get(this.buffer)
+    const bufferWidth = shm.getWidth()
+    const bufferHeight = shm.getHeight()
+    if (bufferWidth !== this.localRtcDcBufferWidth || bufferHeight !== this.localRtcDcBufferHeight) {
+      this.localRtcDcBuffer.rtcDcBufferProxy.size(bufferWidth, bufferHeight)
+      this.localRtcDcBufferWidth = bufferWidth
+      this.localRtcDcBufferHeight = bufferHeight
+    }
+    this.localRtcDcBuffer.rtcDcBufferProxy.syn(currentSynSerial)
     this.encodeBuffer(this.buffer, currentSynSerial).then((h264Nal) => {
-      this.sendBuffer(h264Nal, this.buffer.localRtcDcBuffer, currentSynSerial)
+      this.sendBuffer(h264Nal, this.localRtcDcBuffer, currentSynSerial)
     }).catch((error) => {
       console.log(error)
       // TODO Failed to encode buffer. What to do here?

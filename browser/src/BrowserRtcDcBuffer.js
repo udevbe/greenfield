@@ -1,5 +1,6 @@
 'use strict'
 
+import Decoder from './lib/broadway/Decoder.js'
 import Size from './Size'
 
 export default class BrowserRtcDcBuffer {
@@ -11,7 +12,10 @@ export default class BrowserRtcDcBuffer {
    * @returns {BrowserRtcDcBuffer}
    */
   static create (grBufferResource, rtcDcBufferResource, dataChannel) {
-    const browserRtcDcBuffer = new BrowserRtcDcBuffer(grBufferResource, rtcDcBufferResource, dataChannel)
+    const decoder = new Decoder()
+    const browserRtcDcBuffer = new BrowserRtcDcBuffer(decoder, grBufferResource, rtcDcBufferResource, dataChannel)
+    decoder.onPictureDecoded = browserRtcDcBuffer._onPictureDecoded.bind(browserRtcDcBuffer)
+
     rtcDcBufferResource.implementation = browserRtcDcBuffer
     grBufferResource.implementation.browserRtcDcBuffer = browserRtcDcBuffer
 
@@ -27,21 +31,27 @@ export default class BrowserRtcDcBuffer {
    * Instead use BrowserRtcDcBuffer.create(..)
    *
    * @private
+   * @param decoder
    * @param {wfs.GrBuffer} grBufferResource
    * @param {wfs.RtcDcBuffer} rtcDcBufferResource
    * @param {RTCDataChannel} dataChannel
    */
-  constructor (grBufferResource, rtcDcBufferResource, dataChannel) {
+  constructor (decoder, grBufferResource, rtcDcBufferResource, dataChannel) {
+    this.decoder = decoder
+
     this.grBufferResource = grBufferResource
     this.resource = rtcDcBufferResource
     this.dataChannel = dataChannel
     this.syncSerial = 0
-    this.h264Nal = null
     this._futureH264Nal = null
     this._futureH264NalSerial = 0
     this.state = 'pending' // or 'complete'
     this.geo = null
     this._oneShotCompletionListeners = []
+
+    this.yuvContent = null
+    this.yuvWidth = 0
+    this.yuvHeight = 0
   }
 
   /**
@@ -58,6 +68,10 @@ export default class BrowserRtcDcBuffer {
     }
   }
 
+  isComplete (serial) {
+    return this.state === 'complete' && this.syncSerial === serial
+  }
+
   // TODO add timeout argument(?)
   /**
    * Returns a promise that will resolve as soon as the buffer is in the 'complete' state with the given serial.
@@ -68,7 +82,7 @@ export default class BrowserRtcDcBuffer {
     return new Promise((resolve, reject) => {
       if (serial < this.syncSerial) {
         reject(new Error('Buffer contents expired.'))
-      } else if (this.state === 'complete' && this.syncSerial === serial) {
+      } else if (this.isComplete(serial)) {
         resolve()
       } else {
         this._oneShotCompletionListeners.push(() => {
@@ -103,6 +117,7 @@ export default class BrowserRtcDcBuffer {
     this._checkNal(this._futureH264NalSerial, this._futureH264Nal)
   }
 
+  // FIXME link size to buffer content somehow
   size (resource, width, height) {
     this.geo = new Size(width, height)
   }
@@ -123,12 +138,7 @@ export default class BrowserRtcDcBuffer {
       this._futureH264Nal = h264Nal
       this._futureH264NalSerial = h264NalSerial
     } else if (h264NalSerial === this.syncSerial) {
-      // else it matches what is expected and thus makes this buffer complete
-      this.h264Nal = h264Nal
-      if (this.size) {
-        this.state = 'complete'
-        this._onStateChanged(this.state)
-      }
+      this.decoder.decode(h264Nal)
     }
   }
 
@@ -145,4 +155,15 @@ export default class BrowserRtcDcBuffer {
   _onClose (event) {}
 
   _onError (event) {}
+
+  _onPictureDecoded (buffer, width, height) {
+    if (!buffer) { return }
+
+    this.yuvContent = buffer
+    this.yuvWidth = width
+    this.yuvHeight = height
+
+    this.state = 'complete'
+    this._onStateChanged(this.state)
+  }
 }
