@@ -5,7 +5,7 @@ import greenfield from './protocol/greenfield-browser-protocol'
 import BrowserSurface from './BrowserSurface'
 import BrowserRegion from './BrowserRegion'
 import BrowserScene from './BrowserScene'
-import GLRenderer from './render/GLRenderer'
+import GLRenderer from './render/Renderer'
 
 export default class BrowserCompositor extends westfield.Global {
   /**
@@ -15,37 +15,25 @@ export default class BrowserCompositor extends westfield.Global {
    */
   static create (browserSession) {
     const browserScene = BrowserScene.create()
-    const glRenderer = GLRenderer.create(this._createCanvas(), browserScene, browserSession)
+    const glCanvasRenderer = GLRenderer.create(browserScene, browserSession)
 
-    const browserCompositor = new BrowserCompositor(browserSession, browserScene, glRenderer)
+    const browserCompositor = new BrowserCompositor(browserSession, browserScene, glCanvasRenderer)
     browserSession.wfsServer.registry.register(browserCompositor)
     return browserCompositor
-  }
-
-  /**
-   * @returns {HTMLCanvasElement}
-   * @private
-   */
-  static _createCanvas () {
-    const canvas = document.createElement('canvas')
-    canvas.width = window.innerWidth
-    canvas.height = window.innerHeight
-    document.body.appendChild(canvas)
-    return canvas
   }
 
   /**
    * Use BrowserCompositor.create(server) instead.
    * @param {BrowserSession} browserSession
    * @param {BrowserScene} browserScene
-   * @param {GLRenderer} glRenderer
+   * @param {Renderer} renderer
    * @private
    */
-  constructor (browserSession, browserScene, glRenderer) {
+  constructor (browserSession, browserScene, renderer) {
     super(greenfield.GrCompositor.name, 4)
     this.browserSession = browserSession
     this.browserScene = browserScene
-    this.glRenderer = glRenderer
+    this.renderer = renderer
     this._renderBusy = false
   }
 
@@ -88,6 +76,6 @@ export default class BrowserCompositor extends westfield.Global {
   }
 
   requestRender () {
-    this.glRenderer.renderAll()
+    this.renderer.renderAll()
   }
 }

@@ -36,7 +36,6 @@ export default class YUVSurfaceShader {
     shaderArgs.VTexture = program.getUniformLocation('VTexture')
 
     shaderArgs.u_projection = program.getUniformLocation('u_projection')
-    shaderArgs.u_transform = program.getUniformLocation('u_transform')
 
     shaderArgs.a_position = program.getAttributeLocation('a_position')
     gl.enableVertexAttribArray(shaderArgs.a_position)
@@ -60,10 +59,6 @@ export default class YUVSurfaceShader {
 
   setProjection (projection) {
     this.program.setUniformM4(this.shaderArgs.u_projection, projection)
-  }
-
-  setTransform (transform) {
-    this.program.setUniformM4(this.shaderArgs.u_transform, transform)
   }
 
   /**
@@ -97,9 +92,17 @@ export default class YUVSurfaceShader {
     gl.bindTexture(gl.TEXTURE_2D, textureV.texture)
   }
 
+  use () {
+    this.program.use()
+  }
+
+  release () {
+    const gl = this.gl
+    gl.useProgram(null)
+  }
+
   draw () {
     const gl = this.gl
-    this.program.use()
     gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
     // TODO we could also do 3 subdata calls (probably faster as we have to transfer less data)
     gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
@@ -119,9 +122,8 @@ export default class YUVSurfaceShader {
     gl.vertexAttribPointer(this.shaderArgs.a_position, 2, gl.FLOAT, false, 16, 0)
     gl.vertexAttribPointer(this.shaderArgs.a_texCoord, 2, gl.FLOAT, false, 16, 8)
     gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 6)
-
     gl.bindTexture(gl.TEXTURE_2D, null)
     gl.bindBuffer(gl.ARRAY_BUFFER, null)
-    gl.useProgram(null)
+
   }
 }

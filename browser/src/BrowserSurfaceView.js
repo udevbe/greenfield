@@ -3,43 +3,35 @@
 export default class BrowserSurfaceView {
   /**
    *
-   * @param {number} globalX
-   * @param {number} globalY
    * @param {BrowserSurface} browserSurface
    * @returns {BrowserSurfaceView}
    */
-  static create (globalX, globalY, browserSurface) {
-    return new BrowserSurfaceView(globalX, globalY, browserSurface)
+  static create (browserSurface) {
+    const canvas = this._createCanvas()
+    return new BrowserSurfaceView(browserSurface, canvas)
+  }
+
+  /**
+   * @returns {HTMLCanvasElement}
+   * @private
+   */
+  static _createCanvas () {
+    const canvas = document.createElement('canvas')
+    canvas.style.left = '0px'
+    canvas.style.top = '0px'
+    canvas.style.position = 'relative'
+    document.body.appendChild(canvas)
+    return canvas
   }
 
   /**
    *
-   * @param {number} globalX
-   * @param {number} globalY
    * @param {BrowserSurface} browserSurface
+   * @param canvas
    */
-  constructor (globalX, globalY, browserSurface) {
-    this.position = {x: globalX, y: globalY}
+  constructor (browserSurface, canvas) {
     this.browserSurface = browserSurface
     this.renderState = null
-  }
-
-  /**
-   *
-   * @param position
-   * @param {number} position.x global x coordinate
-   * @param {number} position.y global y coordinate
-   */
-  setPosition (position) {
-    this.position = position
-  }
-
-  getTransform () {
-    return [
-      1, 0, 0, this.position.x,
-      0, 1, 0, this.position.y,
-      0, 0, 1, 0,
-      0, 0, 0, 1
-    ]
+    this.canvas = canvas
   }
 }

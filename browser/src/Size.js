@@ -5,6 +5,10 @@
  */
 
 export default class Size {
+  static create (width, height) {
+    return new Size(width, height)
+  }
+
   /**
    *
    * @param {number} w

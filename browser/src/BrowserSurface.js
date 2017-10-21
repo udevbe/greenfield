@@ -15,7 +15,7 @@ export default class BrowserSurface {
     const browserSurface = new BrowserSurface(grSurfaceResource, browserCompositor)
     grSurfaceResource.implementation = browserSurface
 
-    const browserSurfaceView = BrowserSurfaceView.create(0, 0, browserSurface)
+    const browserSurfaceView = BrowserSurfaceView.create(browserSurface)
     browserSurface.browserSurfaceViews.push(browserSurfaceView)
 
     return browserSurface
@@ -116,9 +116,8 @@ export default class BrowserSurface {
     this.pendingBrowserBuffer.addDestroyListener(this.pendingBrowserBufferDestroyListener)
 
     this.browserSurfaceViews.forEach((browserSurfaceView) => {
-      const newGlobalX = browserSurfaceView.position.x + x
-      const newGlobalY = browserSurfaceView.position.y + y
-      browserSurfaceView.setPosition({x: newGlobalX, y: newGlobalY})
+      browserSurfaceView.canvas.style.left = browserSurfaceView.canvas.style.left + x
+      browserSurfaceView.canvas.style.top = browserSurfaceView.canvas.style.top + y
     })
   }
 
