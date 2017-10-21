@@ -21,7 +21,21 @@ export default class ViewState {
 
     const state = new ViewState(size, gl, YUVSurfaceShader.create(gl), YTexture, UTexture, VTexture)
     state.init(view, size)
+
+    this._unfade(view.canvas, 0.1)
+
     return state
+  }
+
+  static _unfade (element, op) {
+    if (op < 1) {
+      window.requestAnimationFrame(() => {
+        this._unfade(element, op)
+      })
+    }
+    element.style.opacity = op
+    element.style.filter = 'alpha(opacity=' + op * 100 + ')'
+    op += op * 0.1
   }
 
   _initViewport () {
