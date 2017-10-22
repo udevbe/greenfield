@@ -51,6 +51,9 @@ export default class Renderer {
    */
   _render (view) {
     const grBuffer = view.browserSurface.browserBuffer
+    if (grBuffer === null) {
+      return
+    }
     const browserRtcDcBuffer = BrowserDcBufferFactory.get(grBuffer)
 
     const drawSyncSerial = browserRtcDcBuffer.syncSerial
