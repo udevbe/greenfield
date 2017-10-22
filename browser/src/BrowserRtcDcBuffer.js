@@ -1,6 +1,5 @@
 'use strict'
 
-import Decoder from './lib/broadway/Decoder.js'
 import Size from './Size'
 
 export default class BrowserRtcDcBuffer {
@@ -12,9 +11,23 @@ export default class BrowserRtcDcBuffer {
    * @returns {BrowserRtcDcBuffer}
    */
   static create (grBufferResource, rtcDcBufferResource, dataChannel) {
-    const decoder = new Decoder()
+    const decoder = new window.Worker('./lib/broadway/Decoder.js')
     const browserRtcDcBuffer = new BrowserRtcDcBuffer(decoder, grBufferResource, rtcDcBufferResource, dataChannel)
-    decoder.onPictureDecoded = browserRtcDcBuffer._onPictureDecoded.bind(browserRtcDcBuffer)
+
+    decoder.addEventListener('message', function (e) {
+      const data = e.data
+      if (data.consoleLog) {
+        console.log(data.consoleLog)
+        return
+      }
+      browserRtcDcBuffer._onPictureDecoded(new Uint8Array(data.buf, 0, data.length), data.width, data.height)
+    }, false)
+    decoder.postMessage({
+      type: 'Broadway.js - Worker init',
+      options: {
+        rgb: false
+      }
+    })
 
     rtcDcBufferResource.implementation = browserRtcDcBuffer
     grBufferResource.implementation.browserRtcDcBuffer = browserRtcDcBuffer
@@ -138,7 +151,7 @@ export default class BrowserRtcDcBuffer {
       this._futureH264Nal = h264Nal
       this._futureH264NalSerial = h264NalSerial
     } else if (h264NalSerial === this.syncSerial) {
-      this.decoder.decode(h264Nal)
+      this._decode(h264Nal)
     }
   }
 
@@ -155,6 +168,14 @@ export default class BrowserRtcDcBuffer {
   _onClose (event) {}
 
   _onError (event) {}
+
+  _decode (h264Nal) {
+    this.decoder.postMessage({
+      buf: h264Nal.buffer,
+      offset: h264Nal.byteOffset,
+      length: h264Nal.length
+    }, [h264Nal.buffer])
+  }
 
   _onPictureDecoded (buffer, width, height) {
     if (!buffer) { return }
