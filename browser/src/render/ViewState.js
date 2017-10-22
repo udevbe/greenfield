@@ -40,7 +40,7 @@ export default class ViewState {
 
   _initViewport () {
     // first time render for this output, clear it.
-    this.gl.viewport(0, 0, this.size.w, this.size.h)
+    this.gl.viewport(0, 0, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight)
     this.gl.clearColor(1.0, 1.0, 1.0, 1.0)
     this.gl.clear(this.gl.COLOR_BUFFER_BIT)
   }
