@@ -52,6 +52,7 @@ export default class Renderer {
   _render (view) {
     const grBuffer = view.browserSurface.browserBuffer
     if (grBuffer === null) {
+      this._nextFrame(view)
       return
     }
     const browserRtcDcBuffer = BrowserDcBufferFactory.get(grBuffer)
@@ -67,11 +68,7 @@ export default class Renderer {
       }
       // we have all required information to draw the view
       view.renderState.update(browserRtcDcBuffer.yuvContent, browserRtcDcBuffer.yuvWidth, browserRtcDcBuffer.yuvHeight)
-      if (view.browserSurface.frameCallback) {
-        const time = new Date().getTime() - this._timeOffset
-        view.browserSurface.frameCallback.done(time)
-        view.browserSurface.frameCallback = null
-      }
+      this._nextFrame(view)
     } else {
       // buffer contents have not yet arrived, reschedule a scene repaint as soon as the buffer arrives.
       // The old state will be used to draw the view
@@ -85,6 +82,14 @@ export default class Renderer {
     // paint the textures
     if (view.renderState) {
       view.renderState.paint()
+    }
+  }
+
+  _nextFrame (view) {
+    if (view.browserSurface.frameCallback) {
+      const time = new Date().getTime() - this._timeOffset
+      view.browserSurface.frameCallback.done(time)
+      view.browserSurface.frameCallback = null
     }
   }
 }
