@@ -9,19 +9,7 @@ module.exports = class LocalRtcPeerConnection {
    * @returns {LocalRtcPeerConnection}
    */
   static create (rtcPeerConnectionProxy) {
-    const peerConnection = new webRTC.RTCPeerConnection({
-      'iceServers': [
-        {
-          'urls': [
-            'stun.l.google.com:19302',
-            'stun1.l.google.com:19302',
-            'stun2.l.google.com:19302',
-            'stun3.l.google.com:19302',
-            'stun4.l.google.com:19302'
-          ]
-        }
-      ]
-    })
+    const peerConnection = new webRTC.RTCPeerConnection()
 
     peerConnection.onicecandidate = (evt) => {
       if (evt.candidate !== null) {
