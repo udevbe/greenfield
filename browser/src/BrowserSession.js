@@ -56,6 +56,7 @@ export default class BrowserSession extends westfield.Global {
         ws.onclose = () => client.close()
         client.onClose().then(() => ws.close())
 
+        client.__ws = ws
         resolve(client)
       }
     })
@@ -107,6 +108,11 @@ export default class BrowserSession extends westfield.Global {
   }
 
   flush () {
+    // block until each client has emptied it's buffer
+    this.wfsServer.clients.forEach((client) => {
+      while (client.__ws.bufferedAmount > 0) {}
+    })
+    // notify the shim compositor to do a local flush
     this.resources.forEach((resource) => { resource.flush() })
   }
 }
