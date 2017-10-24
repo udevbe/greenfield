@@ -109,10 +109,14 @@ export default class BrowserSession extends westfield.Global {
 
   flush () {
     // block until each client has emptied it's buffer
-    this.wfsServer.clients.forEach((client) => {
-      while (client.__ws.bufferedAmount > 0) {}
-    })
-    // notify the shim compositor to do a local flush
+    for (const client of this.wfsServer.clients) {
+      if (client.__ws.bufferedAmount > 0) {
+        // still data to be send. Reschedule and give main loop time to send.
+        window.setTimeout(() => { this.flush() }, 0)
+        return
+      }
+    }
+    // all data send. Notify the shim compositor to do a local flush
     this.resources.forEach((resource) => { resource.flush() })
   }
 }
