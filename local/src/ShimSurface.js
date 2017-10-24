@@ -127,7 +127,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
 
   sendBuffer (h264Nal, localRtcDcBuffer, synSerial) {
     if (localRtcDcBuffer.dataChannel.readyState === 'open') {
-      // console.log('sending buffer ' + h264Nal.toString('hex'))
+      // console.log('sending buffer')
       localRtcDcBuffer.dataChannel.send(h264Nal.buffer.slice(h264Nal.byteOffset, h264Nal.byteOffset + h264Nal.byteLength))
     } else {
       // console.log('buffer channel not yet open')
@@ -144,12 +144,12 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       // If the syn serial at the time the timer was created is greater than the latest received ack serial and no newer serial is expected,
       // then we have not received an ack that matches or is newer than the syn we're checking. We resend the frame.
       if (synSerial > this.ackSerial && synSerial === this.synSerial) {
-        // console.log('send timed out. resending')
+        console.log('send timed out. resending')
         this.sendBuffer(h264Nal, localRtcDcBuffer, synSerial)
       }
       // TODO dynamically adjust to expected roundtrip time which could (naively) be calculated by measuring the latency
       // between a (syn & ack)/2 + frame bandwidth.
-    }, 1000)
+    }, 500)
   }
 
   commit (resource) {
