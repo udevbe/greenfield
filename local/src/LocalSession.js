@@ -134,6 +134,8 @@ module.exports = class LocalSession {
    */
   flush () {
     // console.log('flushing')
-    this.wlDisplay.flushClients()
+    setTimeout(() => {
+      this.wlDisplay.flushClients()
+    }, 0)
   }
 }
