@@ -62,6 +62,7 @@ export default class Renderer {
   _render (view) {
     const grBuffer = view.browserSurface.browserBuffer
     if (grBuffer === null) {
+      view.renderState = null
       this._nextFrame(view)
       return
     }
@@ -73,11 +74,12 @@ export default class Renderer {
 
     if (browserRtcDcBuffer.isComplete(drawSyncSerial)) {
       const bufferSize = browserRtcDcBuffer.geo
-      if (!view.renderState) {
-        view.renderState = ViewState.create(gl, view)
-      }
       view.canvas.width = bufferSize.w
       view.canvas.height = bufferSize.h
+      if (!view.renderState) {
+        view.renderState = ViewState.create(gl, view)
+        view.unfade()
+      }
       // we have all required information to draw the view
       view.renderState.update(browserRtcDcBuffer.yuvContent, browserRtcDcBuffer.yuvWidth, browserRtcDcBuffer.yuvHeight)
       this._nextFrame(view)

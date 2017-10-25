@@ -30,6 +30,7 @@ export default class BrowserSurfaceView {
    *
    * @param {BrowserSurface} browserSurface
    * @param canvas
+   * @param ctx
    */
   constructor (browserSurface, canvas, ctx) {
     this.browserSurface = browserSurface
@@ -47,17 +48,17 @@ export default class BrowserSurfaceView {
   }
 
   unfade () {
-    this._unfade(0.1)
+    this._unfade(0.08)
   }
 
   _unfade (opacity) {
     if (opacity < 1) {
       window.requestAnimationFrame(() => {
-        this._unfade(this.canvas, opacity)
+        this._unfade(opacity)
       })
     }
     this.canvas.style.opacity = opacity
     this.canvas.style.filter = 'alpha(opacity=' + opacity * 100 + ')'
-    opacity += opacity * 0.1
+    opacity *= 1.1
   }
 }
