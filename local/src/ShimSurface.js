@@ -28,8 +28,6 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
 
     // use a single buffer to communicate with the browser. Contents of the buffer will be copied when send.
     this.localRtcDcBuffer = this.rtcBufferFactory.createLocalRtcDcBuffer()
-    this.localRtcDcBufferWidth = 0
-    this.localRtcDcBufferHeight = 0
 
     this.pendingBufferDestroyListener = () => {
       this.localRtcDcBuffer.grBufferProxy.destroy()
@@ -90,13 +88,12 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
 
       // TODO we interpret the buffer as always being xRGB. However we could also support ARGB if we split out the
       // the alpha channel as a greyscale yuv and send it as a second h264 frame. We can then reconstruct in the browser
-      // into ARGB using the grayscale as the alpha channel with the use of a simple webgl shader.
+      // into RGBA using the grayscale as the alpha channel with the use of a simple webgl shader.
 
       const pixelBuffer = shm.getData().reinterpret(bufferWidth * bufferHeight * 4)
 
       // TODO how to dynamically update the pipeline video resolution?
       if (!this.h264Encoder || this.h264Encoder.width !== bufferWidth || this.h264Encoder.height !== bufferHeight) {
-        this.localRtcDcBuffer.rtcDcBufferProxy.size(bufferWidth, bufferHeight)
         this.h264Encoder = H264Encoder.create(bufferWidth, bufferHeight)
         // BGRx because of little endian blob
         this.h264Encoder.src.setCapsFromString('video/x-raw,format=BGRx,width=' + bufferWidth + ',height=' + bufferHeight + ',bpp=32,depth=32,framerate=30/1')
@@ -174,12 +171,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     const shm = Shm.get(this.buffer)
     const bufferWidth = shm.getWidth()
     const bufferHeight = shm.getHeight()
-    if (bufferWidth !== this.localRtcDcBufferWidth || bufferHeight !== this.localRtcDcBufferHeight) {
-      this.localRtcDcBuffer.rtcDcBufferProxy.size(bufferWidth, bufferHeight)
-      this.localRtcDcBufferWidth = bufferWidth
-      this.localRtcDcBufferHeight = bufferHeight
-    }
-    this.localRtcDcBuffer.rtcDcBufferProxy.syn(currentSynSerial)
+    this.localRtcDcBuffer.rtcDcBufferProxy.syn(currentSynSerial, bufferWidth, bufferHeight)
     this.encodeBuffer(this.buffer, currentSynSerial).then((h264Nal) => {
       this.sendBuffer(h264Nal, this.localRtcDcBuffer, currentSynSerial)
     }).catch((error) => {

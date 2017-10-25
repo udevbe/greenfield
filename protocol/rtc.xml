@@ -69,15 +69,8 @@
                 to synchronize a buffer commit with the out of band content that arrives over the udp datachannel.
             </description>
             <arg name="serial" type="uint" summary="Serial of the send buffer contents"/>
-        </request>
-
-        <request name="size">
-            <description>The size in pixels of the buffer content. The serial argument in the syn request is
-                first buffer that will have the new size. All subsequent buffers with higher serials will have the same
-                size until a new size request has been issued.
-            </description>
-            <arg name="width" type="uint" summary="The width in pixels of the buffer content"/>
-            <arg name="height" type="uint" summary="The height in pixels of the buffer content"/>
+            <arg name="width" type="uint" summary="width of the send buffer contents"/>
+            <arg name="height" type="uint" summary="height of the send buffer contents"/>
         </request>
 
         <event name="ack">

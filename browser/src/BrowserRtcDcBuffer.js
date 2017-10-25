@@ -115,24 +115,22 @@ export default class BrowserRtcDcBuffer {
    * @param {wfs.RtcDcBuffer} resource
    * @param {Number} serial Serial of the send buffer contents
    *
+   * @param width
+   * @param height
    * @since 1
    *
    */
-  syn (resource, serial) {
+  syn (resource, serial, width, height) {
     if (serial < this.syncSerial) {
       // TODO return an error to the client
       throw new Error('Buffer sync serial was not sequential.')
     }
 
     this.syncSerial = serial
+    this.geo = new Size(width, height)
     this.state = 'pending'
     this._onStateChanged(this.state)
     this._checkNal(this._futureH264NalSerial, this._futureH264Nal)
-  }
-
-  // FIXME link size to buffer content somehow
-  size (resource, width, height) {
-    this.geo = new Size(width, height)
   }
 
   _onOpen (event) {}
