@@ -5,6 +5,12 @@
  */
 
 export default class Size {
+  /**
+   *
+   * @param {number} width
+   * @param {number} height
+   * @returns {Size}
+   */
   static create (width, height) {
     return new Size(width, height)
   }
@@ -12,7 +18,7 @@ export default class Size {
   /**
    *
    * @param {number} w
-   * @param {height} h
+   * @param {number} h
    */
   constructor (w, h) {
     this.w = w

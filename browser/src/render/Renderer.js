@@ -2,6 +2,7 @@
 
 import ViewState from './ViewState'
 import BrowserDcBufferFactory from '../BrowserDcBufferFactory'
+import YUVSurfaceShader from './YUVSurfaceShader'
 
 export default class Renderer {
   /**
@@ -11,23 +12,35 @@ export default class Renderer {
    * @returns {Renderer}
    */
   static create (browserScene, browserSession) {
-    return new Renderer(browserScene, browserSession)
+    // create offscreen gl context
+    const canvas = document.createElement('canvas')
+    let gl = canvas.getContext('webgl')
+    if (!gl) {
+      throw new Error('This browser doesn\'t support WebGL!')
+    }
+
+    const yuvShader = YUVSurfaceShader.create(gl)
+    yuvShader.use()
+    return new Renderer(browserScene, browserSession, gl, yuvShader, canvas)
   }
 
   /**
    *
    * @param browserScene
    * @param browserSession
+   * @param gl
+   * @param yuvShader
+   * @param canvas
    */
-  constructor (browserScene, browserSession) {
+  constructor (browserScene, browserSession, gl, yuvShader, canvas) {
     this.browserScene = browserScene
     this.browserSession = browserSession
+    this.gl = gl
+    this.yuvShader = yuvShader
+    this.canvas = canvas
+
     this._renderBusy = false
-
     this._timeOffset = new Date().getTime()
-
-    // TODO introduce a cursor layer and handle blob images that are placed above the rendered canvas. This allows
-    // to implement a mouse cursor that can be moved without the main canvas scene to be updated
   }
 
   renderAll () {
@@ -36,10 +49,7 @@ export default class Renderer {
       window.requestAnimationFrame(() => {
         this._renderBusy = false
         const browserSurfaceViewStack = this.browserScene.createBrowserSurfaceViewStack()
-        browserSurfaceViewStack.forEach((view) => {
-          this._render(view)
-        })
-
+        browserSurfaceViewStack.forEach((view) => { this._render(view) })
         this.browserSession.flush()
       })
     }
@@ -55,6 +65,8 @@ export default class Renderer {
       this._nextFrame(view)
       return
     }
+
+    const gl = this.gl
     const browserRtcDcBuffer = BrowserDcBufferFactory.get(grBuffer)
 
     const drawSyncSerial = browserRtcDcBuffer.syncSerial
@@ -62,10 +74,10 @@ export default class Renderer {
     if (browserRtcDcBuffer.isComplete(drawSyncSerial)) {
       const bufferSize = browserRtcDcBuffer.geo
       if (!view.renderState) {
-        view.renderState = ViewState.create(view, bufferSize)
-      } else if (view.renderState.size.w !== bufferSize.w || view.renderState.size.h !== bufferSize.h) {
-        view.renderState.init(view, bufferSize)
+        view.renderState = ViewState.create(gl, view)
       }
+      view.canvas.width = bufferSize.w
+      view.canvas.height = bufferSize.h
       // we have all required information to draw the view
       view.renderState.update(browserRtcDcBuffer.yuvContent, browserRtcDcBuffer.yuvWidth, browserRtcDcBuffer.yuvHeight)
       this._nextFrame(view)
@@ -81,8 +93,29 @@ export default class Renderer {
 
     // paint the textures
     if (view.renderState) {
-      view.renderState.paint()
+      this._paint(view)
+      view.drawImage(gl)
     }
+  }
+
+  _paint (view) {
+    const gl = this.gl
+
+    gl.viewport(0, 0, view.canvas.width, view.canvas.height)
+    gl.clearColor(0, 0, 0, 0)
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+    this.canvas.width = view.canvas.width
+    this.canvas.height = view.canvas.height
+
+    this.yuvShader.setProjection([
+      2.0 / view.canvas.width, 0, 0, 0,
+      0, 2.0 / -view.canvas.height, 0, 0,
+      0, 0, 1, 0,
+      -1, 1, 0, 1
+    ])
+    this.yuvShader.setTexture(view.renderState.YTexture, view.renderState.UTexture, view.renderState.VTexture)
+    this.yuvShader.draw({w: view.canvas.width, h: view.canvas.height})
   }
 
   _nextFrame (view) {

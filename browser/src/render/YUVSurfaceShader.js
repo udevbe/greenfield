@@ -63,14 +63,6 @@ export default class YUVSurfaceShader {
 
   /**
    *
-   * @param {Size} size
-   */
-  setSize (size) {
-    this.size = size
-  }
-
-  /**
-   *
    * @param {Texture} textureY
    * @param {Texture} textureU
    * @param {Texture} textureV
@@ -101,7 +93,7 @@ export default class YUVSurfaceShader {
     gl.useProgram(null)
   }
 
-  draw () {
+  draw (size) {
     const gl = this.gl
     gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
     // TODO we could also do 3 subdata calls (probably faster as we have to transfer less data)
@@ -109,13 +101,13 @@ export default class YUVSurfaceShader {
       // top left:
       0, 0, 0, 0,
       // top right:
-      this.size.w, 0, 1, 0,
+      size.w, 0, 1, 0,
       // bottom right:
-      this.size.w, this.size.h, 1, 1,
+      size.w, size.h, 1, 1,
       // bottom right:
-      this.size.w, this.size.h, 1, 1,
+      size.w, size.h, 1, 1,
       // bottom left:
-      0, this.size.h, 0, 1,
+      0, size.h, 0, 1,
       // top left:
       0, 0, 0, 0
     ]), this.gl.DYNAMIC_DRAW)
@@ -124,6 +116,5 @@ export default class YUVSurfaceShader {
     gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 6)
     gl.bindTexture(gl.TEXTURE_2D, null)
     gl.bindBuffer(gl.ARRAY_BUFFER, null)
-
   }
 }

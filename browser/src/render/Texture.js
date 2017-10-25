@@ -24,6 +24,7 @@ export default class Texture {
   fill (textureData, size) {
     const gl = this.gl
     gl.bindTexture(gl.TEXTURE_2D, this.texture)
+    // TODO use texSubimage2d if size hasn't changed
     gl.texImage2D(gl.TEXTURE_2D, 0, this.format, size.w, size.h, 0, this.format, gl.UNSIGNED_BYTE, textureData)
     gl.bindTexture(gl.TEXTURE_2D, null)
   }
