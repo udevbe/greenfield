@@ -39,12 +39,19 @@ export default class BrowserSurfaceView {
     this.ctx = ctx
   }
 
-  drawImage (gl) {
+  /**
+   *
+   * @param {ImageData} imageData
+   */
+  draw (imageData) {
+    this.ctx.putImageData(imageData, 0, 0)
+  }
+
+  get pixelBuffer () {
     if (!this._pixelBuffer || this._pixelBuffer.length !== this.canvas.width * this.canvas.height * 4) {
       this._pixelBuffer = new Uint8Array(this.canvas.width * this.canvas.height * 4)
     }
-    gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, this._pixelBuffer)
-    this.ctx.putImageData(new window.ImageData(new Uint8ClampedArray(this._pixelBuffer), this.canvas.width, this.canvas.height), 0, 0)
+    return this._pixelBuffer
   }
 
   unfade () {

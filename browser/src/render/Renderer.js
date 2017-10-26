@@ -63,7 +63,6 @@ export default class Renderer {
     const grBuffer = view.browserSurface.browserBuffer
     if (grBuffer === null) {
       view.renderState = null
-      this._nextFrame(view)
       return
     }
 
@@ -96,7 +95,9 @@ export default class Renderer {
     // paint the textures
     if (view.renderState) {
       this._paint(view)
-      view.drawImage(gl)
+      gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, view.pixelBuffer)
+      const imageData = new window.ImageData(new Uint8ClampedArray(view.pixelBuffer), this.canvas.width, this.canvas.height)
+      view.draw(imageData)
     }
   }
 
