@@ -73,11 +73,8 @@ export default class BrowserRtcDcBuffer {
    */
   _onStateChanged () {
     if (this.state === 'complete') {
-      // resolve all pending promises
-      this._oneShotCompletionListeners.forEach((listener) => {
-        listener(this.syncSerial)
-      })
-      this._oneShotCompletionListeners = []
+      // resolve matching promises
+      this._oneShotCompletionListeners = this._oneShotCompletionListeners.filter((listener) => { return listener(this.syncSerial) })
     }
   }
 
@@ -98,12 +95,17 @@ export default class BrowserRtcDcBuffer {
       } else if (this.isComplete(serial)) {
         resolve()
       } else {
-        this._oneShotCompletionListeners.push(() => {
-          if (serial === this.syncSerial) {
+        this._oneShotCompletionListeners.push((completionSerial) => {
+          if (serial === completionSerial) {
             resolve()
-            // don't keep the listener after it has been fired (=false)
-          } else if (serial < this.syncSerial) {
+            // don't keep the listener after it has been fired (=true)
+            return false
+          } else if (serial < completionSerial) {
             reject(new Error('Buffer contents expired.'))
+            // don't keep the listener after it has been fired (=true)
+            return false
+          } else {
+            return true
           }
         })
       }
