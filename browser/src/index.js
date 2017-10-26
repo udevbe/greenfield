@@ -7,6 +7,7 @@ import BrowserRtcPeerConnection from './BrowserRtcPeerConnection'
 import BrowserRtcBufferFactory from './BrowserDcBufferFactory'
 import BrowserShell from './BrowserShell'
 import BrowserSeat from './BrowserSeat'
+import BrowserClientSession from './BrowserClientSession'
 
 function setupGlobals (browserSession) {
   BrowserSeat.create(browserSession)
@@ -19,7 +20,8 @@ function setupGlobals (browserSession) {
 
 function main () {
   const sessionId = uuidv4()
-  BrowserSession.create(sessionId).then(setupGlobals).catch((error) => {
+  const browserClientSession = BrowserClientSession.create()
+  BrowserSession.create(sessionId, browserClientSession).then(setupGlobals).catch((error) => {
     console.log(error) // TODO gracefully handle error
   })
 }

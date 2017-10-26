@@ -65,14 +65,15 @@ export default class BrowserSession extends westfield.Global {
   /**
    *
    * @param {String} sessionId websocket session
+   * @param {BrowserClientSession} browserClientSession
    * @returns {Promise<BrowserSession>}
    */
-  static create (sessionId) {
+  static create (sessionId, browserClientSession) {
     console.log('Starting new browser session.')
     const wfsServer = new westfield.Server()
     const url = 'ws://' + window.location.host + '/' + sessionId
     return this._createConnection(wfsServer, url).then(() => {
-      const browserSession = new BrowserSession(url, wfsServer)
+      const browserSession = new BrowserSession(url, wfsServer, browserClientSession)
       wfsServer.registry.register(browserSession)
       return browserSession
     }).catch((error) => {
@@ -80,10 +81,11 @@ export default class BrowserSession extends westfield.Global {
     })
   }
 
-  constructor (url, wfsServer) {
+  constructor (url, wfsServer, browserClientSession) {
     super(session.GrSession.name, 1)
     this.url = url
     this.wfsServer = wfsServer
+    this.browserClientSession = browserClientSession
     this.resources = []
   }
 
@@ -108,11 +110,16 @@ export default class BrowserSession extends westfield.Global {
   }
 
   flush () {
+    this.browserClientSession.markFlush()
+    this._flush()
+  }
+
+  _flush () {
     // block until each client has emptied it's buffer
     for (const client of this.wfsServer.clients) {
       if (client.__ws.bufferedAmount > 0) {
         // still data to be send. Reschedule and give main loop time to send.
-        window.setTimeout(() => { this.flush() }, 0)
+        window.setTimeout(() => { this._flush() }, 0)
         return
       }
     }

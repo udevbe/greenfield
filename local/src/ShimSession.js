@@ -38,7 +38,7 @@ module.exports = class ShimSession {
     // FIXME this blocks the whole native wayland loop, instead we should only block the native client. For this a change in libwayland itself is required.
     this.stop()
     this.localSession.createConnection(client).then((localClient) => {
-      LocalRtcBufferFactory.create(localClient).then((localRtcBufferFactory) => {
+      return LocalRtcBufferFactory.create(localClient).then((localRtcBufferFactory) => {
         // create & link rtc buffer factory to client connection
         localClient.connection._rtcBufferFactory = localRtcBufferFactory
         this.start()
