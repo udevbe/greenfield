@@ -34,7 +34,6 @@ export default class BrowserSurfaceView {
    */
   constructor (browserSurface, canvas, context2d) {
     this.browserSurface = browserSurface
-    this.renderState = null
     this.canvas = canvas
     this.context2d = context2d
   }

@@ -20,8 +20,7 @@ function setupGlobals (browserSession) {
 
 function main () {
   const sessionId = uuidv4()
-  const browserClientSession = BrowserClientSession.create()
-  BrowserSession.create(sessionId, browserClientSession).then(setupGlobals).catch((error) => {
+  BrowserSession.create(sessionId).then(setupGlobals).catch((error) => {
     console.log(error) // TODO gracefully handle error
   })
 }

@@ -7,11 +7,10 @@ import YUVSurfaceShader from './YUVSurfaceShader'
 export default class Renderer {
   /**
    *
-   * @param browserScene
-   * @param browserSession
+   * @param {BrowserSession} browserSession
    * @returns {Renderer}
    */
-  static create (browserScene, browserSession) {
+  static create (browserSession) {
     // create offscreen gl context
     const canvas = document.createElement('canvas')
     let gl = canvas.getContext('webgl')
@@ -22,48 +21,43 @@ export default class Renderer {
     gl.clearColor(0, 0, 0, 0)
     const yuvShader = YUVSurfaceShader.create(gl)
     yuvShader.use()
-    return new Renderer(browserScene, browserSession, gl, yuvShader, canvas)
+    return new Renderer(browserSession, gl, yuvShader, canvas)
   }
 
   /**
    *
-   * @param browserScene
    * @param browserSession
    * @param gl
    * @param yuvShader
    * @param canvas
    */
-  constructor (browserScene, browserSession, gl, yuvShader, canvas) {
-    this.browserScene = browserScene
+  constructor (browserSession, gl, yuvShader, canvas) {
     this.browserSession = browserSession
     this.gl = gl
     this.yuvShader = yuvShader
     this.canvas = canvas
 
-    this._renderBusy = false
     this._timeOffset = new Date().getTime()
-  }
-
-  renderAll () {
-    if (!this._renderBusy) {
-      this._renderBusy = true
-      window.requestAnimationFrame(() => {
-        this._renderBusy = false
-        const browserSurfaceViewStack = this.browserScene.createBrowserSurfaceViewStack()
-        browserSurfaceViewStack.forEach((view) => { this._render(view) })
-        this.browserSession.flush()
-      })
-    }
   }
 
   /**
    *
-   * @param {BrowserSurfaceView} view
+   * @param {BrowserSurface} browserSurface
    */
-  _render (view) {
-    const grBuffer = view.browserSurface.browserBuffer
+  render (browserSurface) {
+    window.requestAnimationFrame(() => {
+      this._render(browserSurface)
+      this.browserSession.flush()
+    })
+  }
+
+  /**
+   *
+   */
+  _render (browserSurface) {
+    const grBuffer = browserSurface.browserBuffer
     if (grBuffer === null) {
-      view.renderState = null
+      browserSurface.renderState = null
       return
     }
 
@@ -74,56 +68,69 @@ export default class Renderer {
 
     if (browserRtcDcBuffer.isComplete(drawSyncSerial)) {
       const bufferSize = browserRtcDcBuffer.geo
-      view.canvas.width = bufferSize.w
-      view.canvas.height = bufferSize.h
-      if (!view.renderState) {
-        view.renderState = ViewState.create(gl)
-        view.unfade()
+
+      // TODO implement event to notify views of buffer size changes
+      browserSurface.browserSurfaceViews.forEach((view) => {
+        view.canvas.width = bufferSize.w
+        view.canvas.height = bufferSize.h
+      })
+
+      if (!browserSurface.renderState) {
+        browserSurface.renderState = ViewState.create(gl)
+        // FIXME don't create views here, instead let role manage views
+        if (browserSurface.browserSurfaceViews.length === 0) {
+          browserSurface.createView(bufferSize).unfade()
+        }
       }
-      // we have all required information to draw the view
-      view.renderState.update(browserRtcDcBuffer.yuvContent, browserRtcDcBuffer.yuvWidth, browserRtcDcBuffer.yuvHeight)
-      this._nextFrame(view)
+
+      // update textures
+      browserSurface.renderState.update(browserRtcDcBuffer.yuvContent, browserRtcDcBuffer.yuvWidth, browserRtcDcBuffer.yuvHeight)
+      this._nextFrame(browserSurface)
     } else {
       // buffer contents have not yet arrived, reschedule a scene repaint as soon as the buffer arrives.
       // The old state will be used to draw the view
       browserRtcDcBuffer.whenComplete(drawSyncSerial).then(() => {
-        this.renderAll()
+        this.render(browserSurface)
       }).catch((error) => {
         console.log(error)
       })
     }
 
     // paint the textures
-    if (view.renderState) {
-      this._paint(view)
-      view.context2d.drawImage(this.canvas, 0, 0)
+    if (browserSurface.renderState) {
+      this._paint(browserSurface.renderState, browserRtcDcBuffer.geo)
+
+      // blit rendered texture into view canvas
+      browserSurface.browserSurfaceViews.forEach((view) => {
+        view.context2d.drawImage(this.canvas, 0, 0)
+      })
     }
   }
 
-  _paint (view) {
+  _paint (renderState, bufferSize) {
     const gl = this.gl
 
-    gl.viewport(0, 0, view.canvas.width, view.canvas.height)
+    gl.viewport(0, 0, bufferSize.w, bufferSize.h)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-    this.canvas.width = view.canvas.width
-    this.canvas.height = view.canvas.height
+    this.canvas.width = bufferSize.w
+    this.canvas.height = bufferSize.h
 
     this.yuvShader.setProjection([
-      2.0 / view.canvas.width, 0, 0, 0,
-      0, 2.0 / -view.canvas.height, 0, 0,
+      2.0 / bufferSize.w, 0, 0, 0,
+      0, 2.0 / -bufferSize.h, 0, 0,
       0, 0, 1, 0,
       -1, 1, 0, 1
     ])
-    this.yuvShader.setTexture(view.renderState.YTexture, view.renderState.UTexture, view.renderState.VTexture)
-    this.yuvShader.draw({w: view.canvas.width, h: view.canvas.height})
+    this.yuvShader.setTexture(renderState.YTexture, renderState.UTexture, renderState.VTexture)
+    this.yuvShader.draw(bufferSize)
   }
 
-  _nextFrame (view) {
-    if (view.browserSurface.frameCallback) {
+  _nextFrame (browserSurface) {
+    if (browserSurface.frameCallback) {
       const time = new Date().getTime() - this._timeOffset
-      view.browserSurface.frameCallback.done(time)
-      view.browserSurface.frameCallback = null
+      browserSurface.frameCallback.done(time)
+      browserSurface.frameCallback = null
     }
   }
 }

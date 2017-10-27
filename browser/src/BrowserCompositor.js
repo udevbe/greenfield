@@ -4,7 +4,6 @@ import westfield from 'westfield-runtime-server'
 import greenfield from './protocol/greenfield-browser-protocol'
 import BrowserSurface from './BrowserSurface'
 import BrowserRegion from './BrowserRegion'
-import BrowserScene from './BrowserScene'
 import GLRenderer from './render/Renderer'
 
 export default class BrowserCompositor extends westfield.Global {
@@ -14,10 +13,9 @@ export default class BrowserCompositor extends westfield.Global {
    * @returns {BrowserCompositor}
    */
   static create (browserSession) {
-    const browserScene = BrowserScene.create()
-    const glCanvasRenderer = GLRenderer.create(browserScene, browserSession)
+    const glCanvasRenderer = GLRenderer.create(browserSession)
 
-    const browserCompositor = new BrowserCompositor(browserSession, browserScene, glCanvasRenderer)
+    const browserCompositor = new BrowserCompositor(browserSession, glCanvasRenderer)
     browserSession.wfsServer.registry.register(browserCompositor)
     return browserCompositor
   }
@@ -25,16 +23,13 @@ export default class BrowserCompositor extends westfield.Global {
   /**
    * Use BrowserCompositor.create(server) instead.
    * @param {BrowserSession} browserSession
-   * @param {BrowserScene} browserScene
    * @param {Renderer} renderer
    * @private
    */
-  constructor (browserSession, browserScene, renderer) {
+  constructor (browserSession, renderer) {
     super(greenfield.GrCompositor.name, 4)
     this.browserSession = browserSession
-    this.browserScene = browserScene
     this.renderer = renderer
-    this._renderBusy = false
   }
 
   bindClient (client, id, version) {
@@ -55,8 +50,7 @@ export default class BrowserCompositor extends westfield.Global {
    */
   createSurface (resource, id) {
     const grSurfaceResource = new greenfield.GrSurface(resource.client, id, resource.version)
-    const browserSurface = BrowserSurface.create(grSurfaceResource, this)
-    this.browserScene.browserSurfaces.push(browserSurface)
+    BrowserSurface.create(grSurfaceResource, this.renderer)
   }
 
   /**
@@ -73,9 +67,5 @@ export default class BrowserCompositor extends westfield.Global {
   createRegion (resource, id) {
     const grRegionResource = new greenfield.GrRegion(resource.client, id, 1)
     BrowserRegion.create(grRegionResource)
-  }
-
-  requestRender () {
-    this.renderer.renderAll()
   }
 }

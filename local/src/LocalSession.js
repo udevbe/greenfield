@@ -127,65 +127,32 @@ module.exports = class LocalSession {
     const localClient = LocalClient.create(wfcConnection, wlClient)
 
     // TODO destroy proxies once wayland or greenfield client is destroyed
-    this._setupLocalClientSession(localClient)
     // create a 'public' registry for use with public protocol globals
     wlClient._clientRegistryProxy = localClient.connection.createRegistry()
     resolve(localClient)
   }
 
-  _setupLocalClientSession (localClient) {
-    // create 'private' registry proxy to bind to private protocol globals
-    const privateClientRegistryProxy = localClient.connection.createRegistry()
-    privateClientRegistryProxy.listener.global = (name, interface_, version) => {
-      if (interface_ === session.GrClientSession.name) {
-        const grClientSessionProxy = privateClientRegistryProxy.bind(name, interface_, version)
-        const localClientSession = LocalClientSession.create()
-        grClientSessionProxy.listener = localClientSession
-        this._clientSessions.push(localClientSession)
-
-        // remove client session object if client disconnects
-        localClient.connection.onClose().then(() => {
-          const index = this._clientSessions.indexOf(localClientSession)
-          if (index > -1) {
-            this._clientSessions.splice(index, 1)
-          }
-        }).catch((error) => console.log(error))
-      }
-    }
-  }
-
   /**
-   *@param wlClient
+   * @param wlClient
    * @returns {Promise<wfc.Connection>}
    */
   createConnection (wlClient) {
     return new Promise((resolve) => {
       resolve._wlClient = wlClient
       this.connectionPromises.push(resolve)
-      this.grSessionProxy.client()
+
+      const grClientSessionProxy = this.grSessionProxy.client()
+      const localClientSession = LocalClientSession.create(this._clientSessions, this.wlDisplay)
+      grClientSessionProxy.listener = localClientSession
+      this._clientSessions.push(localClientSession)
+
+      // TODO listen for client destruction & notify browser compositor
+      // localClient.connection.onClose().then(() => {
+      //   const index = this._clientSessions.indexOf(localClientSession)
+      //   if (index > -1) {
+      //     this._clientSessions.splice(index, 1)
+      //   }
+      // }).catch((error) => console.log(error))
     })
-  }
-
-  /**
-   * @since 1
-   *
-   */
-  flush () {
-    // console.log('flushing')
-    setTimeout(() => {
-      // if we encounter a client session who's flush mark is net yet set, reschedule and return
-      for (const clientSession of this._clientSessions) {
-        if (clientSession.flush === false) {
-          this.flush()
-          return
-        }
-      }
-
-      // all client sessions flush marks have been set, perform the flush and set back the marks
-      this.wlDisplay.flushClients()
-      this._clientSessions.forEach((clientSession) => {
-        clientSession.flush = false
-      })
-    }, 0)
   }
 }

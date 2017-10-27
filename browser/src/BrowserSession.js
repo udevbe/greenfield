@@ -2,6 +2,7 @@
 
 import westfield from 'westfield-runtime-server'
 import session from './protocol/session-browser-protocol'
+import BrowserClientSession from './BrowserClientSession'
 
 /**
  * Listens for client announcements from the server.
@@ -65,15 +66,14 @@ export default class BrowserSession extends westfield.Global {
   /**
    *
    * @param {String} sessionId websocket session
-   * @param {BrowserClientSession} browserClientSession
    * @returns {Promise<BrowserSession>}
    */
-  static create (sessionId, browserClientSession) {
+  static create (sessionId) {
     console.log('Starting new browser session.')
     const wfsServer = new westfield.Server()
     const url = 'ws://' + window.location.host + '/' + sessionId
     return this._createConnection(wfsServer, url).then(() => {
-      const browserSession = new BrowserSession(url, wfsServer, browserClientSession)
+      const browserSession = new BrowserSession(url, wfsServer)
       wfsServer.registry.register(browserSession)
       return browserSession
     }).catch((error) => {
@@ -81,11 +81,11 @@ export default class BrowserSession extends westfield.Global {
     })
   }
 
-  constructor (url, wfsServer, browserClientSession) {
+  constructor (url, wfsServer) {
     super(session.GrSession.name, 1)
     this.url = url
     this.wfsServer = wfsServer
-    this.browserClientSession = browserClientSession
+    this.browserClientSessions = []
     this.resources = []
   }
 
@@ -102,28 +102,17 @@ export default class BrowserSession extends westfield.Global {
    * @since 1
    *
    */
-  client (resource) {
+  client (resource, id) {
     console.log('New client connected.')
+    const grClientSessionResource = new session.GrClientSession(resource.client, id, resource.version)
+    this.browserClientSessions.push(BrowserClientSession.create(grClientSessionResource))
+
     BrowserSession._createConnection(this.wfsServer, this.url).catch((error) => {
       console.log('Received client connection error ' + error)
     })
   }
 
   flush () {
-    this.browserClientSession.markFlush()
-    this._flush()
-  }
-
-  _flush () {
-    // block until each client has emptied it's buffer
-    for (const client of this.wfsServer.clients) {
-      if (client.__ws.bufferedAmount > 0) {
-        // still data to be send. Reschedule and give main loop time to send.
-        window.setTimeout(() => { this._flush() }, 0)
-        return
-      }
-    }
-    // all data send. Notify the shim compositor to do a local flush
-    this.resources.forEach((resource) => { resource.flush() })
+    this.browserClientSessions.forEach(browserClietnSession => { browserClietnSession.markFlush() })
   }
 }

@@ -8,15 +8,12 @@ export default class BrowserSurface {
   /**
    *
    * @param {GrSurface} grSurfaceResource
-   * @param {BrowserCompositor} browserCompositor
+   * @param {Renderer} renderer
    * @returns {BrowserSurface}
    */
-  static create (grSurfaceResource, browserCompositor) {
-    const browserSurface = new BrowserSurface(grSurfaceResource, browserCompositor)
+  static create (grSurfaceResource, renderer) {
+    const browserSurface = new BrowserSurface(grSurfaceResource, renderer)
     grSurfaceResource.implementation = browserSurface
-
-    const browserSurfaceView = BrowserSurfaceView.create(browserSurface)
-    browserSurface.browserSurfaceViews.push(browserSurfaceView)
 
     return browserSurface
   }
@@ -25,11 +22,12 @@ export default class BrowserSurface {
    * Use BrowserSurface.create(grSurfaceResource) instead.
    * @private
    * @param {GrSurface} grSurfaceResource
-   * @param {BrowserCompositor} browserCompositor
+   * @param {Renderer} renderer
    */
-  constructor (grSurfaceResource, browserCompositor) {
+  constructor (grSurfaceResource, renderer) {
     this.resource = grSurfaceResource
-    this.browserCompositor = browserCompositor
+    this.renderer = renderer
+    this.renderState = null
 
     this.pendingBrowserBuffer = null
     this.pendingBrowserBufferDestroyListener = (grBufferResource) => {
@@ -38,6 +36,14 @@ export default class BrowserSurface {
     this.browserBuffer = null
 
     this.browserSurfaceViews = []
+  }
+
+  createView (size) {
+    const browserSurfaceView = BrowserSurfaceView.create(this)
+    browserSurfaceView.canvas.width = size.w
+    browserSurfaceView.canvas.height = size.h
+    this.browserSurfaceViews.push(browserSurfaceView)
+    return browserSurfaceView
   }
 
   /**
@@ -319,7 +325,7 @@ export default class BrowserSurface {
     }
     this.browserBuffer = this.pendingBrowserBuffer
     this.pendingBrowserBuffer = null
-    this.browserCompositor.requestRender()
+    this.renderer.render(this)
   }
 
   /**

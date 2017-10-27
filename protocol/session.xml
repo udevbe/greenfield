@@ -20,8 +20,7 @@
 
     <interface name="GrClientSession" version="1">
         <description>
-            A global singleton. Functions as a general communication mechanism between a native shim compositor and a
-            browser implemented compositor.
+            A client session.
         </description>
 
         <event name="mark_flush" since="1">
@@ -45,13 +44,7 @@
                 initiate a new websocket connection as a response. This enables the local server to use the newly
                 established websocket connection for client to browser compositor communication.
             </description>
+            <arg name="id" type="new_id" interface="GrClientSession" summary="the new client session"/>
         </request>
-
-        <event name="flush" since="1">
-            <description>
-                Notifies the shim compositor that it expects a flush to happen for all currently connected client
-                connections. The actual local flush should only happen if all clients' mark_flush flag has been set.
-            </description>
-        </event>
     </interface>
 </protocol>
