@@ -19,6 +19,7 @@ export default class Renderer {
       throw new Error('This browser doesn\'t support WebGL!')
     }
 
+    gl.clearColor(0, 0, 0, 0)
     const yuvShader = YUVSurfaceShader.create(gl)
     yuvShader.use()
     return new Renderer(browserScene, browserSession, gl, yuvShader, canvas)
@@ -76,7 +77,7 @@ export default class Renderer {
       view.canvas.width = bufferSize.w
       view.canvas.height = bufferSize.h
       if (!view.renderState) {
-        view.renderState = ViewState.create(gl, view)
+        view.renderState = ViewState.create(gl)
         view.unfade()
       }
       // we have all required information to draw the view
@@ -95,9 +96,7 @@ export default class Renderer {
     // paint the textures
     if (view.renderState) {
       this._paint(view)
-      gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, view.pixelBuffer)
-      const imageData = new window.ImageData(new Uint8ClampedArray(view.pixelBuffer), this.canvas.width, this.canvas.height)
-      view.draw(imageData)
+      view.context2d.drawImage(this.canvas, 0, 0)
     }
   }
 
@@ -105,7 +104,6 @@ export default class Renderer {
     const gl = this.gl
 
     gl.viewport(0, 0, view.canvas.width, view.canvas.height)
-    gl.clearColor(0, 0, 0, 0)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
     this.canvas.width = view.canvas.width

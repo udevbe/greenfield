@@ -8,7 +8,7 @@ export default class ViewState {
    *
    * @returns {ViewState}
    */
-  static create (gl, view) {
+  static create (gl) {
     const YTexture = Texture.create(gl, gl.LUMINANCE)
     const UTexture = Texture.create(gl, gl.LUMINANCE)
     const VTexture = Texture.create(gl, gl.LUMINANCE)

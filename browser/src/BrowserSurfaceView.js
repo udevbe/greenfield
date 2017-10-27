@@ -8,9 +8,9 @@ export default class BrowserSurfaceView {
    */
   static create (browserSurface) {
     const canvas = this._createCanvas()
-    const ctx = canvas.getContext('2d')
+    const context2d = canvas.getContext('2d')
 
-    return new BrowserSurfaceView(browserSurface, canvas, ctx)
+    return new BrowserSurfaceView(browserSurface, canvas, context2d)
   }
 
   /**
@@ -30,28 +30,13 @@ export default class BrowserSurfaceView {
    *
    * @param {BrowserSurface} browserSurface
    * @param canvas
-   * @param ctx
+   * @param context2d
    */
-  constructor (browserSurface, canvas, ctx) {
+  constructor (browserSurface, canvas, context2d) {
     this.browserSurface = browserSurface
     this.renderState = null
     this.canvas = canvas
-    this.ctx = ctx
-  }
-
-  /**
-   *
-   * @param {ImageData} imageData
-   */
-  draw (imageData) {
-    this.ctx.putImageData(imageData, 0, 0)
-  }
-
-  get pixelBuffer () {
-    if (!this._pixelBuffer || this._pixelBuffer.length !== this.canvas.width * this.canvas.height * 4) {
-      this._pixelBuffer = new Uint8Array(this.canvas.width * this.canvas.height * 4)
-    }
-    return this._pixelBuffer
+    this.context2d = context2d
   }
 
   unfade () {

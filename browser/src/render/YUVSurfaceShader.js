@@ -115,6 +115,5 @@ export default class YUVSurfaceShader {
     gl.vertexAttribPointer(this.shaderArgs.a_texCoord, 2, gl.FLOAT, false, 16, 8)
     gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 6)
     gl.bindTexture(gl.TEXTURE_2D, null)
-    gl.bindBuffer(gl.ARRAY_BUFFER, null)
   }
 }
