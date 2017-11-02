@@ -14,6 +14,7 @@ export default class BrowserSurface {
   static create (grSurfaceResource, renderer) {
     const browserSurface = new BrowserSurface(grSurfaceResource, renderer)
     grSurfaceResource.implementation = browserSurface
+    grSurfaceResource.onDestroy().then(() => browserSurface._handleDestruction())
 
     return browserSurface
   }
@@ -57,7 +58,14 @@ export default class BrowserSurface {
    *
    */
   destroy (resource) {
+    this._handleDestruction()
     resource.destroy()
+  }
+
+  _handleDestruction () {
+    this.browserSurfaceViews.forEach(browserSurfaceView => {
+      browserSurfaceView.destroy()
+    })
   }
 
   /**

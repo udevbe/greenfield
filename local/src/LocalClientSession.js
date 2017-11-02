@@ -5,14 +5,15 @@ const westfield = require('westfield-runtime-client')
 const LocalClient = require('./LocalClient')
 
 module.exports = class LocalClientSession {
-  static create (localSession, resolve, wlClient) {
-    return new LocalClientSession(localSession, resolve, wlClient)
+  static create (localSession, resolve, wlClient, clientSessionProxy) {
+    return new LocalClientSession(localSession, resolve, wlClient, clientSessionProxy)
   }
 
-  constructor (localSession, resolve, wlClient) {
+  constructor (localSession, resolve, wlClient, clientSessionProxy) {
     this._localSession = localSession
     this._resolve = resolve
     this._wlClient = wlClient
+    this._proxy = clientSessionProxy
   }
 
   /**
@@ -29,6 +30,9 @@ module.exports = class LocalClientSession {
 
     const localClient = LocalClient.create(wfcConnection, this._wlClient)
     this._wlClient._clientRegistryProxy = localClient.connection.createRegistry()
+    localClient.onDestroy().then(() => {
+      this._proxy.destroy()
+    })
     this._resolve(localClient)
   }
 }

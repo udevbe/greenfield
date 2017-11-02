@@ -52,4 +52,25 @@ export default class BrowserSurfaceView {
     this.canvas.style.filter = 'alpha(opacity=' + opacity * 100 + ')'
     opacity *= 1.1
   }
+
+  fade () {
+    this._fade(1)
+  }
+
+  _fade (opacity) {
+    if (opacity > 0.1) {
+      window.requestAnimationFrame(() => {
+        this._fade(opacity)
+      })
+    } else {
+      document.body.removeChild(this.canvas)
+    }
+    this.canvas.style.opacity = opacity
+    this.canvas.style.filter = 'alpha(opacity=' + opacity * 100 + ')'
+    opacity *= 0.8
+  }
+
+  destroy () {
+    this.fade()
+  }
 }

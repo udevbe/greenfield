@@ -125,7 +125,7 @@ module.exports = class LocalSession {
     // TODO implement a timeout for the browser compositor to respond to the new client announcement
     return new Promise((resolve) => {
       const grClientSessionProxy = this.grSessionProxy.client()
-      grClientSessionProxy.listener = LocalClientSession.create(this, resolve, wlClient)
+      grClientSessionProxy.listener = LocalClientSession.create(this, resolve, wlClient, grClientSessionProxy)
     })
   }
 

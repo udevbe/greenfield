@@ -34,6 +34,7 @@ export default class BrowserSession extends westfield.Global {
     this._nextClientSessionId = 1
     this._ws = null
     this.resources = []
+    this._primaryConnection = null
   }
 
   /**
@@ -56,7 +57,7 @@ export default class BrowserSession extends westfield.Global {
       ws.onopen = () => {
         this._ws = ws
         this._setupWebsocket()
-        this._setupPrimaryConnection()
+        this._primaryConnection = this._setupPrimaryConnection()
         resolve()
       }
     })
@@ -86,13 +87,14 @@ export default class BrowserSession extends westfield.Global {
   }
 
   _setupPrimaryConnection () {
-    this._setupConnection(0)
+    return this._setupConnection(0)
   }
 
   _setupConnection (clientSessionId) {
     const client = this.wfsServer.createClient()
     this._clients[clientSessionId] = client
     this._setupClientConnection(client, clientSessionId)
+    return client
   }
 
   _setupClientConnection (client, clientSessionId) {
@@ -128,9 +130,9 @@ export default class BrowserSession extends westfield.Global {
   client (resource, id) {
     console.log('New client connected.')
     const clientSessionId = this._nextClientSessionId++
-    this._setupConnection(clientSessionId)
+    const clientConnection = this._setupConnection(clientSessionId)
     const grClientSessionResource = new session.GrClientSession(resource.client, id, resource.version)
-    grClientSessionResource.implementation = BrowserClientSession.create(this._ws)
+    grClientSessionResource.implementation = BrowserClientSession.create(clientConnection)
     grClientSessionResource.session(clientSessionId)
   }
 

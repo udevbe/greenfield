@@ -1,15 +1,16 @@
 'use strict'
 
 export default class BrowserClientSession {
-  static create (ws) {
-    return new BrowserClientSession(ws)
+  static create (clientConnection) {
+    return new BrowserClientSession(clientConnection)
   }
 
-  constructor (ws) {
-    this._ws = ws
+  constructor (clientConnection) {
+    this._clientConnection = clientConnection
   }
 
   destroy (resource) {
-
+    this._clientConnection.close()
+    resource.destroy()
   }
 }
