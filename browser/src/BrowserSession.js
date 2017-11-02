@@ -84,6 +84,17 @@ export default class BrowserSession extends westfield.Global {
         }
       }
     }
+
+    window.onbeforeunload = function (e) {
+      const dialogText = 'dummytext'
+      e.returnValue = dialogText
+      return dialogText
+    }
+
+    window.unload = function () {
+      this._ws.onclose = function () {} // disable onclose handler first
+      this._ws.close()
+    }
   }
 
   _setupPrimaryConnection () {

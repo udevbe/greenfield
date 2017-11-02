@@ -69,7 +69,12 @@ module.exports = class LocalSession {
         }
       }
     }
-    // TODO listen for error
+    this._ws.onclose = () => {
+      console.log('closing compositor')
+      this.wlDisplay.terminate()
+      process.exit(0)
+    }
+    // TODO listen for error(?)
   }
 
   _setupPrimaryConnection (resolve) {
