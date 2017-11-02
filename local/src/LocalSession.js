@@ -5,7 +5,6 @@ const session = require('./protocol/session-client-protocol')
 const WebSocket = require('ws')
 
 const ShimGlobal = require('./ShimGlobal')
-const LocalClient = require('./LocalClient')
 const LocalClientSession = require('./LocalClientSession')
 
 module.exports = class LocalSession {
@@ -32,22 +31,16 @@ module.exports = class LocalSession {
   constructor (wss, wlDisplay) {
     this._wss = wss
     this.wlDisplay = wlDisplay
-    this.primaryConnection = null
-    this.connectionPromises = []
+    this._connections = {}
     this.globals = {}
-    this._clientSessions = []
   }
 
   _handleUpgrade (request, socket, head) {
     return new Promise((resolve) => {
       this._wss.handleUpgrade(request, socket, head, (ws) => {
-        const wfcConnection = new westfield.Connection()
-        this._setupWebsocket(wfcConnection, ws)
-        if (this.primaryConnection) {
-          this._setupClientConnection(wfcConnection)
-        } else {
-          this._setupPrimaryConnection(wfcConnection, resolve)
-        }
+        this._ws = ws
+        this._setupWebsocket()
+        this._setupPrimaryConnection(resolve)
       })
     })
   }
@@ -58,49 +51,31 @@ module.exports = class LocalSession {
 
   _tearDownShimGlobal (name) {
     delete this.globals[name]
-    // TODO remove native wayland global
+    // TODO remove native wayland global?
   }
 
-  _setupWebsocket (wfcConnection, ws) {
-    wfcConnection.onSend = (data) => {
-      if (ws.readyState === WebSocket.OPEN) {
+  _setupWebsocket () {
+    this._ws.onmessage = (event) => {
+      if (this._ws.readyState === WebSocket.OPEN) {
         try {
-          ws.send(data, (error) => {
-            if (error !== undefined) {
-              console.error(error)
-              ws.close()
-            }
-          })
+          const buf = event.data
+          const sessionId = buf.readUInt32LE(0, true)
+          const arrayBuffer = buf.buffer.slice(buf.byteOffset + 4, buf.byteOffset + 4 + buf.byteLength)
+
+          this._connections[sessionId].unmarshall(arrayBuffer)
         } catch (error) {
           console.error(error)
-          ws.close()
+          this._ws.close()
         }
       }
     }
-
-    ws.onmessage = (event) => {
-      if (ws.readyState === WebSocket.OPEN) {
-        try {
-          const b = event.data
-          const arrayBuffer = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)
-          wfcConnection.unmarshall(arrayBuffer)
-        } catch (error) {
-          console.error(error)
-          ws.close()
-        }
-      }
-    }
-
-    ws.on('close', () => wfcConnection.close())
-    wfcConnection.onClose().then(() => {
-      ws.close()
-    }).catch((error) => console.log(error))
-
     // TODO listen for error
   }
 
-  _setupPrimaryConnection (wfcConnection, resolve) {
-    this.primaryConnection = wfcConnection
+  _setupPrimaryConnection (resolve) {
+    const wfcConnection = new westfield.Connection()
+    this._connections[0] = wfcConnection
+    this._setupWfcConnection(wfcConnection, 0)
 
     const registryProxy = wfcConnection.createRegistry()
     registryProxy.listener.global = (name, interface_, version) => {
@@ -120,39 +95,41 @@ module.exports = class LocalSession {
     }
   }
 
-  _setupClientConnection (wfcConnection) {
-    const resolve = this.connectionPromises.shift()
-    const wlClient = resolve._wlClient
-    delete resolve._wlClient
-    const localClient = LocalClient.create(wfcConnection, wlClient)
+  _setupWfcConnection (wfcConnection, sessionId) {
+    wfcConnection.onSend = (arrayBuffer) => {
+      if (this._ws.readyState === WebSocket.OPEN) {
+        try {
+          const targetBuffer = Buffer.allocUnsafe(arrayBuffer.byteLength + 4)
+          const sourceBuffer = Buffer.from(arrayBuffer)
+          targetBuffer.fill(sourceBuffer, 4).writeUInt32LE(sessionId, 0, true)
 
-    // TODO destroy proxies once wayland or greenfield client is destroyed
-    // create a 'public' registry for use with public protocol globals
-    wlClient._clientRegistryProxy = localClient.connection.createRegistry()
-    resolve(localClient)
+          this._ws.send(targetBuffer.buffer.slice(targetBuffer.byteOffset, targetBuffer.byteOffset + targetBuffer.byteLength), (error) => {
+            if (error !== undefined) {
+              console.error(error)
+              this._ws.close()
+            }
+          })
+        } catch (error) {
+          console.error(error)
+          this._ws.close()
+        }
+      }
+    }
   }
 
   /**
    * @param wlClient
-   * @returns {Promise<wfc.Connection>}
+   * @returns {Promise<LocalClient>}
    */
   createConnection (wlClient) {
+    // TODO implement a timeout for the browser compositor to respond to the new client announcement
     return new Promise((resolve) => {
-      resolve._wlClient = wlClient
-      this.connectionPromises.push(resolve)
-
       const grClientSessionProxy = this.grSessionProxy.client()
-      const localClientSession = LocalClientSession.create(this._clientSessions, this.wlDisplay)
-      grClientSessionProxy.listener = localClientSession
-      this._clientSessions.push(localClientSession)
-
-      // TODO listen for client destruction & notify browser compositor
-      // localClient.connection.onClose().then(() => {
-      //   const index = this._clientSessions.indexOf(localClientSession)
-      //   if (index > -1) {
-      //     this._clientSessions.splice(index, 1)
-      //   }
-      // }).catch((error) => console.log(error))
+      grClientSessionProxy.listener = LocalClientSession.create(this, resolve, wlClient)
     })
+  }
+
+  flush () {
+    this.wlDisplay.flushClients()
   }
 }

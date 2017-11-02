@@ -28,11 +28,6 @@ function main () {
       process.on('SIGBREAK', cleanUp)
       process.on('SIGHUP', cleanUp)
 
-      shimSession.localSession.primaryConnection.onClose = () => {
-        shimSession.end('remote end closed.')
-        process.exit(0)
-      }
-
       shimSession.start()
     }).catch((error) => {
       console.error(error)

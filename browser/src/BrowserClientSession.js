@@ -1,15 +1,15 @@
 'use strict'
 
 export default class BrowserClientSession {
-  static create (grClientSessionResource) {
-    return new BrowserClientSession(grClientSessionResource)
+  static create (ws) {
+    return new BrowserClientSession(ws)
   }
 
-  constructor (grClientSessionResource) {
-    this.resource = grClientSessionResource
+  constructor (ws) {
+    this._ws = ws
   }
 
-  markFlush () {
-    this.resource.markFlush()
+  destroy (resource) {
+
   }
 }

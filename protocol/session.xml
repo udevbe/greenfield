@@ -23,13 +23,18 @@
             A client session.
         </description>
 
-        <event name="mark_flush" since="1">
+        <event name="session" since="1">
             <description>
-                Marks the remote client to be flushed. This call should be made for each bound client and ensures
-                all data for this client is send when doing a local flush. After the actual local flush is performed
-                the mark flag should be removed.
+                Identify a new client session. The session id is meant to set up a means of communication.
             </description>
+            <arg name="session_id" type="uint" summary="the new client session"/>
         </event>
+
+        <request name="destroy" since="1">
+            <description>
+                Request the browser compositor to destroy this client object and all related resources.
+            </description>
+        </request>
     </interface>
 
     <interface name="GrSession" version="1">
@@ -46,5 +51,11 @@
             </description>
             <arg name="id" type="new_id" interface="GrClientSession" summary="the new client session"/>
         </request>
+
+        <event name="flush" since="1">
+            <description>
+                Notify the native shim compositor to flush his connection with native wayland clients.
+            </description>
+        </event>
     </interface>
 </protocol>

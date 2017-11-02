@@ -1,27 +1,34 @@
 'use strict'
 
+const westfield = require('westfield-runtime-client')
+
+const LocalClient = require('./LocalClient')
+
 module.exports = class LocalClientSession {
-  static create (clientSessions, wlDisplay) {
-    return new LocalClientSession(clientSessions, wlDisplay)
+  static create (localSession, resolve, wlClient) {
+    return new LocalClientSession(localSession, resolve, wlClient)
   }
 
-  constructor (clientSessions, wlDisplay) {
-    this.flush = false
-    this.wlDisplay = wlDisplay
-    this._clientSessions = clientSessions
+  constructor (localSession, resolve, wlClient) {
+    this._localSession = localSession
+    this._resolve = resolve
+    this._wlClient = wlClient
   }
 
-  markFlush () {
-    this.flush = true
-    for (const clientSession of this._clientSessions) {
-      if (!clientSession.flush) {
-        return
-      }
-    }
-    this.flush = false
-    for (const clientSession of this._clientSessions) {
-      clientSession.flush = false
-    }
-    this.wlDisplay.flushClients()
+  /**
+   *
+   * @param {Number} sessionId the new client session
+   *
+   * @since 1
+   *
+   */
+  session (sessionId) {
+    const wfcConnection = new westfield.Connection()
+    this._localSession._connections[sessionId] = wfcConnection
+    this._localSession._setupWfcConnection(wfcConnection, sessionId)
+
+    const localClient = LocalClient.create(wfcConnection, this._wlClient)
+    this._wlClient._clientRegistryProxy = localClient.connection.createRegistry()
+    this._resolve(localClient)
   }
 }

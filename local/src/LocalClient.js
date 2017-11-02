@@ -16,7 +16,7 @@ module.exports = class LocalClient {
   /**
    *
    * @param {wfc.Connection} connection
-   * @param {wsb.Client} wlClient A native wayland client
+   * @param {Client} wlClient A native wayland client
    */
   constructor (connection, wlClient) {
     this.connection = connection
