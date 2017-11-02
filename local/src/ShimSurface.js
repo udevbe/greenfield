@@ -141,7 +141,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       // If the syn serial at the time the timer was created is greater than the latest received ack serial and no newer serial is expected,
       // then we have not received an ack that matches or is newer than the syn we're checking. We resend the frame.
       if (synSerial > this.ackSerial && synSerial === this.synSerial) {
-        console.log('send timed out. resending')
+        // console.log('send timed out. resending')
         this.sendBuffer(h264Nal, localRtcDcBuffer, synSerial)
       }
       // TODO dynamically adjust to expected roundtrip time which could (naively) be calculated by measuring the latency

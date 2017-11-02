@@ -62,7 +62,10 @@ module.exports = class LocalSession {
           const sessionId = buf.readUInt32LE(0, true)
           const arrayBuffer = buf.buffer.slice(buf.byteOffset + 4, buf.byteOffset + 4 + buf.byteLength)
 
-          this._connections[sessionId].unmarshall(arrayBuffer)
+          const connection = this._connections[sessionId]
+          if (connection) {
+            connection.unmarshall(arrayBuffer)
+          }
         } catch (error) {
           console.error(error)
           this._ws.close()
@@ -70,7 +73,6 @@ module.exports = class LocalSession {
       }
     }
     this._ws.onclose = () => {
-      console.log('closing compositor')
       this.wlDisplay.terminate()
       process.exit(0)
     }
@@ -101,6 +103,10 @@ module.exports = class LocalSession {
   }
 
   _setupWfcConnection (wfcConnection, sessionId) {
+    this._connections[sessionId] = wfcConnection
+    wfcConnection.onClose().then(() => {
+      delete this._connections[sessionId]
+    })
     wfcConnection.onSend = (arrayBuffer) => {
       if (this._ws.readyState === WebSocket.OPEN) {
         try {

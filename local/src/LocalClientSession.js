@@ -25,7 +25,6 @@ module.exports = class LocalClientSession {
    */
   session (sessionId) {
     const wfcConnection = new westfield.Connection()
-    this._localSession._connections[sessionId] = wfcConnection
     this._localSession._setupWfcConnection(wfcConnection, sessionId)
 
     const localClient = LocalClient.create(wfcConnection, this._wlClient)
