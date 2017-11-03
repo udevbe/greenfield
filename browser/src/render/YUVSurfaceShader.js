@@ -55,10 +55,11 @@ export default class YUVSurfaceShader {
     this.vertexBuffer = vertexBuffer
     this.shaderArgs = shaderArgs
     this.program = program
+    this._bufferSize = null
   }
 
-  setProjection (projection) {
-    this.program.setUniformM4(this.shaderArgs.u_projection, projection)
+  _setProjection (bufferSize) {
+
   }
 
   /**
@@ -67,7 +68,7 @@ export default class YUVSurfaceShader {
    * @param {Texture} textureU
    * @param {Texture} textureV
    */
-  setTexture (textureY, textureU, textureV) {
+  _setTexture (textureY, textureU, textureV) {
     const gl = this.gl
 
     gl.uniform1i(this.shaderArgs.YTexture, 0)
@@ -93,26 +94,37 @@ export default class YUVSurfaceShader {
     gl.useProgram(null)
   }
 
-  draw (size) {
+  draw (textureY, textureU, textureV, bufferSize) {
     const gl = this.gl
-    gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
-    // TODO we could also do 3 subdata calls (probably faster as we have to transfer less data)
-    gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
-      // top left:
-      0, 0, 0, 0,
-      // top right:
-      size.w, 0, 1, 0,
-      // bottom right:
-      size.w, size.h, 1, 1,
-      // bottom right:
-      size.w, size.h, 1, 1,
-      // bottom left:
-      0, size.h, 0, 1,
-      // top left:
-      0, 0, 0, 0
-    ]), this.gl.DYNAMIC_DRAW)
-    gl.vertexAttribPointer(this.shaderArgs.a_position, 2, gl.FLOAT, false, 16, 0)
-    gl.vertexAttribPointer(this.shaderArgs.a_texCoord, 2, gl.FLOAT, false, 16, 8)
+    this._setTexture(textureY, textureU, textureV)
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+    if (this._bufferSize === null || this._bufferSize.w !== bufferSize.w || this._bufferSize.h !== bufferSize.h) {
+      this._bufferSize = bufferSize
+      gl.viewport(0, 0, bufferSize.w, bufferSize.h)
+      this.program.setUniformM4(this.shaderArgs.u_projection, [
+        2.0 / bufferSize.w, 0, 0, 0,
+        0, 2.0 / -bufferSize.h, 0, 0,
+        0, 0, 1, 0,
+        -1, 1, 0, 1
+      ])
+      gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
+      gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
+        // top left:
+        0, 0, 0, 0,
+        // top right:
+        bufferSize.w, 0, 1, 0,
+        // bottom right:
+        bufferSize.w, bufferSize.h, 1, 1,
+        // bottom right:
+        bufferSize.w, bufferSize.h, 1, 1,
+        // bottom left:
+        0, bufferSize.h, 0, 1,
+        // top left:
+        0, 0, 0, 0
+      ]), this.gl.DYNAMIC_DRAW)
+      gl.vertexAttribPointer(this.shaderArgs.a_position, 2, gl.FLOAT, false, 16, 0)
+      gl.vertexAttribPointer(this.shaderArgs.a_texCoord, 2, gl.FLOAT, false, 16, 8)
+    }
     gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 6)
     gl.bindTexture(gl.TEXTURE_2D, null)
   }

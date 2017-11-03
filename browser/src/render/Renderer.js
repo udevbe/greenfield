@@ -108,22 +108,9 @@ export default class Renderer {
   }
 
   _paint (renderState, bufferSize) {
-    const gl = this.gl
-
-    gl.viewport(0, 0, bufferSize.w, bufferSize.h)
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
     this.canvas.width = bufferSize.w
     this.canvas.height = bufferSize.h
-
-    this.yuvShader.setProjection([
-      2.0 / bufferSize.w, 0, 0, 0,
-      0, 2.0 / -bufferSize.h, 0, 0,
-      0, 0, 1, 0,
-      -1, 1, 0, 1
-    ])
-    this.yuvShader.setTexture(renderState.YTexture, renderState.UTexture, renderState.VTexture)
-    this.yuvShader.draw(bufferSize)
+    this.yuvShader.draw(renderState.YTexture, renderState.UTexture, renderState.VTexture, bufferSize)
   }
 
   _nextFrame (browserSurface) {

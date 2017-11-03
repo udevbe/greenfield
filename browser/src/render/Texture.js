@@ -19,13 +19,19 @@ export default class Texture {
     this.gl = gl
     this.texture = texture
     this.format = format
+    this.size = null
   }
 
   fill (textureData, size) {
     const gl = this.gl
     gl.bindTexture(gl.TEXTURE_2D, this.texture)
     // TODO use texSubimage2d if size hasn't changed
-    gl.texImage2D(gl.TEXTURE_2D, 0, this.format, size.w, size.h, 0, this.format, gl.UNSIGNED_BYTE, textureData)
+    if (this.size === null || this.size.w !== size.w || this.size.h !== size.h) {
+      this.size = size
+      gl.texImage2D(gl.TEXTURE_2D, 0, this.format, size.w, size.h, 0, this.format, gl.UNSIGNED_BYTE, textureData)
+    } else {
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, size.w, size.h, this.format, gl.UNSIGNED_BYTE, textureData)
+    }
     gl.bindTexture(gl.TEXTURE_2D, null)
   }
 }
