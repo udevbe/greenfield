@@ -7,7 +7,6 @@ import BrowserRtcPeerConnection from './BrowserRtcPeerConnection'
 import BrowserRtcBufferFactory from './BrowserDcBufferFactory'
 import BrowserShell from './BrowserShell'
 import BrowserSeat from './BrowserSeat'
-import BrowserClientSession from './BrowserClientSession'
 
 function setupGlobals (browserSession) {
   BrowserSeat.create(browserSession)

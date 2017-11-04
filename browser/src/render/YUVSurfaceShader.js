@@ -58,10 +58,6 @@ export default class YUVSurfaceShader {
     this._bufferSize = null
   }
 
-  _setProjection (bufferSize) {
-
-  }
-
   /**
    *
    * @param {Texture} textureY
