@@ -1,6 +1,6 @@
 'use strict'
 
-import pixmanModule from './lib/pixman/libpixman-1'
+import pixmanModule from './lib/libpixman-1'
 
 const pixman = pixmanModule()
 

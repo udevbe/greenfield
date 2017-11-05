@@ -2,7 +2,8 @@
 
 import BrowserSession from './BrowserSession'
 import BrowserCompositor from './BrowserCompositor'
-import pixman from './lib/pixman/libpixman-1'
+import pixman from './lib/libpixman-1'
+import libxkbcommon from './lib/libxkbcommon'
 import BrowserRtcPeerConnection from './BrowserRtcPeerConnection'
 import BrowserRtcBufferFactory from './BrowserDcBufferFactory'
 import BrowserShell from './BrowserShell'
@@ -25,7 +26,7 @@ function main () {
 }
 
 function loadNativeModule (module) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     if (module.calledRun) {
       resolve()
     } else {
@@ -45,6 +46,8 @@ function uuidv4 () {
 window.onload = () => {
   // make sure all native modules are ready for use before we start our main flow
   loadNativeModule(pixman()).then(() => {
+    return loadNativeModule(libxkbcommon())
+  }).then(() => {
     main()
   })
 }

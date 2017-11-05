@@ -8,7 +8,8 @@ module.exports = {
   },
   module: {
     noParse: [
-      /libpixman-1.js/
+      /libpixman-1.js/,
+      /libxkbcommon.js/
     ]
   }
 }
