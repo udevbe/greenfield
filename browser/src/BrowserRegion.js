@@ -1,7 +1,6 @@
 'use strict'
 
 import pixmanModule from './lib/libpixman-1'
-
 const pixman = pixmanModule()
 
 export default class BrowserRegion {
@@ -22,7 +21,7 @@ export default class BrowserRegion {
    * Use BrowserRegion.create(..) instead.
    * @private
    * @param grRegionResource
-   * @param pixmanRegiongrRegion
+   * @param pixmanRegion
    */
   constructor (grRegionResource, pixmanRegion) {
     this.resource = grRegionResource

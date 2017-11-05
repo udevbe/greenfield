@@ -3,6 +3,9 @@
 import greenfield from './protocol/greenfield-browser-protocol'
 import BrowserSurfaceView from './BrowserSurfaceView'
 import BrowserCallback from './BrowserCallback'
+import pixmanModule from './lib/libpixman-1'
+
+const pixman = pixmanModule()
 
 export default class BrowserSurface {
   /**
@@ -12,9 +15,27 @@ export default class BrowserSurface {
    * @returns {BrowserSurface}
    */
   static create (grSurfaceResource, renderer) {
-    const browserSurface = new BrowserSurface(grSurfaceResource, renderer)
+    const pendingDamageRegion = pixman._malloc(20)// region struct is pointer + 4*uint32 = 5*4 = 20
+    pixman._pixman_region32_init(pendingDamageRegion)
+    const damageRegion = pixman._malloc(20)
+    pixman._pixman_region32_init(damageRegion)
+
+    const pendingBufferDamageRegion = pixman._malloc(20)
+    pixman._pixman_region32_init(pendingBufferDamageRegion)
+    const bufferDamageRegion = pixman._malloc(20)
+    pixman._pixman_region32_init(bufferDamageRegion)
+
+    const browserSurface = new BrowserSurface(
+      grSurfaceResource,
+      renderer,
+      pendingDamageRegion,
+      damageRegion,
+      pendingBufferDamageRegion,
+      bufferDamageRegion
+    )
     grSurfaceResource.implementation = browserSurface
     grSurfaceResource.onDestroy().then(() => browserSurface._handleDestruction())
+
     return browserSurface
   }
 
@@ -23,9 +44,14 @@ export default class BrowserSurface {
    * @private
    * @param {GrSurface} grSurfaceResource
    * @param {Renderer} renderer
+   * @param {Number} pendingDamageRegion
+   * @param {Number} damageRegion
+   * @param {Number} pendingBufferDamageRegion
+   * @param {Number} bufferDamageRegion
    */
-  constructor (grSurfaceResource, renderer) {
+  constructor (grSurfaceResource, renderer, pendingDamageRegion, damageRegion, pendingBufferDamageRegion, bufferDamageRegion) {
     this.resource = grSurfaceResource
+
     this.renderer = renderer
     this.renderState = null
 
@@ -34,6 +60,11 @@ export default class BrowserSurface {
       this.pendingBrowserBuffer = null
     }
     this.browserBuffer = null
+
+    this._pendingDamageRegion = pendingDamageRegion
+    this._damageRegion = damageRegion
+    this._pendingBufferDamageRegion = pendingBufferDamageRegion
+    this._bufferDamageRegion = bufferDamageRegion
 
     this.browserSurfaceViews = []
   }
@@ -173,7 +204,7 @@ export default class BrowserSurface {
    *
    */
   damage (resource, x, y, width, height) {
-
+    pixman._pixman_region32_union_rect(this._pendingDamageRegion, this._pendingDamageRegion, x, y, width, height)
   }
 
   /**
@@ -330,6 +361,19 @@ export default class BrowserSurface {
     if (this.pendingBrowserBuffer) {
       this.pendingBrowserBuffer.removeDestroyListener(this.pendingBrowserBufferDestroyListener)
     }
+    // swap damage regions and clear new pending damage
+    const pendingDamageRegion = this._damageRegion
+    this._damageRegion = this._pendingDamageRegion
+    this._pendingDamageRegion = pendingDamageRegion
+    pixman._pixman_region32_clear(this._pendingDamageRegion)
+
+    const pendingBufferDamageRegion = this._bufferDamageRegion
+    this._bufferDamageRegion = this._pendingBufferDamageRegion
+    this._pendingBufferDamageRegion = pendingBufferDamageRegion
+    pixman._pixman_region32_clear(this._pendingBufferDamageRegion)
+
+    // TODO translate from surface damage to buffer damage and unionize both damages
+
     this.browserBuffer = this.pendingBrowserBuffer
     this.pendingBrowserBuffer = null
     this.renderer.render(this)
@@ -460,6 +504,6 @@ export default class BrowserSurface {
    *
    */
   damageBuffer (resource, x, y, width, height) {
-
+    pixman._pixman_region32_union_rect(this._pendingBufferDamageRegion, this._pendingBufferDamageRegion, x, y, width, height)
   }
 }
