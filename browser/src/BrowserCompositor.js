@@ -8,14 +8,14 @@ import GLRenderer from './render/Renderer'
 
 export default class BrowserCompositor extends westfield.Global {
   /**
-   *
    * @param {BrowserSession} browserSession
+   * @param {BrowserSeat} browserSeat
    * @returns {BrowserCompositor}
    */
-  static create (browserSession) {
+  static create (browserSession, browserSeat) {
     const glCanvasRenderer = GLRenderer.create(browserSession)
 
-    const browserCompositor = new BrowserCompositor(browserSession, glCanvasRenderer)
+    const browserCompositor = new BrowserCompositor(browserSession, glCanvasRenderer, browserSeat)
     browserSession.wfsServer.registry.register(browserCompositor)
     return browserCompositor
   }
@@ -24,12 +24,14 @@ export default class BrowserCompositor extends westfield.Global {
    * Use BrowserCompositor.create(server) instead.
    * @param {BrowserSession} browserSession
    * @param {Renderer} renderer
+   * @param {BrowserSeat} browserSeat
    * @private
    */
-  constructor (browserSession, renderer) {
+  constructor (browserSession, renderer, browserSeat) {
     super(greenfield.GrCompositor.name, 4)
     this.browserSession = browserSession
     this.renderer = renderer
+    this.browserSeat = browserSeat
   }
 
   bindClient (client, id, version) {
@@ -50,7 +52,7 @@ export default class BrowserCompositor extends westfield.Global {
    */
   createSurface (resource, id) {
     const grSurfaceResource = new greenfield.GrSurface(resource.client, id, resource.version)
-    BrowserSurface.create(grSurfaceResource, this.renderer)
+    BrowserSurface.create(grSurfaceResource, this.renderer, this.browserSeat)
   }
 
   /**

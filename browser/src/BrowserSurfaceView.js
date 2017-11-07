@@ -9,8 +9,9 @@ export default class BrowserSurfaceView {
   static create (browserSurface) {
     const canvas = this._createCanvas()
     const context2d = canvas.getContext('2d')
+    this._setupMouseListeners(canvas, browserSurface)
 
-    return new BrowserSurfaceView(browserSurface, canvas, context2d)
+    return new BrowserSurfaceView(canvas, context2d)
   }
 
   /**
@@ -26,14 +27,26 @@ export default class BrowserSurfaceView {
     return canvas
   }
 
+  static _setupMouseListeners (canvas, browserSurface) {
+    const browserPointer = browserSurface.browserSeat.browserPointer
+    canvas.addEventListener('mousedown', (event) => {
+      browserPointer.onMouseDown(event, browserSurface)
+    }, true)
+    canvas.addEventListener('mouseenter', (event) => {
+      browserPointer.onMouseEnter(event, browserSurface)
+    }, true)
+    canvas.addEventListener('mouseleave', (event) => {
+      browserPointer.onMouseLeave(event, browserSurface)
+    }, true)
+    // other mouse listeners are set in the browser pointer class
+  }
+
   /**
    *
-   * @param {BrowserSurface} browserSurface
    * @param canvas
    * @param context2d
    */
-  constructor (browserSurface, canvas, context2d) {
-    this.browserSurface = browserSurface
+  constructor (canvas, context2d) {
     this.canvas = canvas
     this.context2d = context2d
   }

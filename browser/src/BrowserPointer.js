@@ -1,14 +1,24 @@
 'use strict'
 
 export default class BrowserPointer {
-  create (grPointerResource) {
-    const browserPointer = new BrowserPointer(grPointerResource)
-    grPointerResource.implementation = browserPointer
+  /**
+   * @returns {BrowserPointer}
+   */
+  static create () {
+    const browserPointer = new BrowserPointer()
+    // TODO these listeners should be added on document level as they are send to the grabbed surface, and not on the focussed surface
+    document.addEventListener('mousemove', (event) => {
+      browserPointer.onMouseMove(event)
+    }, true)
+    document.addEventListener('mouseup', (event) => {
+      browserPointer.onMouseUp(event)
+    }, true)
+    // other mouse events are set in the browser surface view class
     return browserPointer
   }
 
-  constructor (grPointerResource) {
-    this.resource = grPointerResource
+  constructor () {
+    this.resources = []
   }
 
   /**
@@ -74,6 +84,48 @@ export default class BrowserPointer {
    *
    */
   release (resource) {
+    resource.destroy()
+    const index = this.resources.indexOf(resource)
+    if (index > -1) {
+      this.resources.splice(index, 1)
+    }
+  }
 
+  /**
+   * @param {MouseEvent}event
+   */
+  onMouseMove (event) {
+    // TODO
+  }
+
+  /**
+   * @param {MouseEvent}event
+   */
+  onMouseUp (event) {
+    // TODO
+  }
+
+  /**
+   * @param {MouseEvent}event
+   * @param {BrowserSurface}browserSurface
+   */
+  onMouseDown (event, browserSurface) {
+    // TODO
+  }
+
+  /**
+   * @param {MouseEvent}event
+   * @param {BrowserSurface}browserSurface
+   */
+  onMouseEnter (event, browserSurface) {
+    // TODO
+  }
+
+  /**
+   * @param {MouseEvent}event
+   * @param {BrowserSurface}browserSurface
+   */
+  onMouseLeave (event, browserSurface) {
+    // TODO
   }
 }

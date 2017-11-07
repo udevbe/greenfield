@@ -10,8 +10,8 @@ import BrowserShell from './BrowserShell'
 import BrowserSeat from './BrowserSeat'
 
 function setupGlobals (browserSession) {
-  BrowserSeat.create(browserSession)
-  BrowserCompositor.create(browserSession)
+  const browserSeat = BrowserSeat.create(browserSession)
+  BrowserCompositor.create(browserSession, browserSeat)
   BrowserShell.create(browserSession)
 
   BrowserRtcPeerConnection.create(browserSession)

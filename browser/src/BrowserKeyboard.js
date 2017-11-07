@@ -1,14 +1,15 @@
 'use strict'
 
 export default class BrowserKeyboard {
-  static create (grKeyboardResource) {
-    const browserKeyboard = new BrowserKeyboard(grKeyboardResource)
-    grKeyboardResource.implementation = browserKeyboard
-    return browserKeyboard
+  /**
+   * @returns {BrowserKeyboard}
+   */
+  static create () {
+    return new BrowserKeyboard()
   }
 
-  constructor (grKeyboardResource) {
-    this.resource = grKeyboardResource
+  constructor () {
+    this.resources = []
   }
 
   /**
@@ -19,6 +20,10 @@ export default class BrowserKeyboard {
    *
    */
   release (resource) {
-
+    resource.destroy()
+    const index = this.resources.indexOf(resource)
+    if (index > -1) {
+      this.resources.splice(index, 1)
+    }
   }
 }

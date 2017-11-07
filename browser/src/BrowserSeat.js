@@ -8,15 +8,35 @@ import BrowserKeyboard from './BrowserKeyboard'
 import BrowserTouch from './BrowserTouch'
 
 export default class BrowserSeat extends westfield.Global {
+  /**
+   * @param {BrowserSession} browserSession
+   * @returns {BrowserSeat}
+   */
   static create (browserSession) {
-    const browserSeat = new BrowserSeat()
+    const browserPointer = BrowserPointer.create()
+    const browserKeyboard = BrowserKeyboard.create()
+    const browserTouch = BrowserTouch.create()
+    const hasTouch = 'ontouchstart' in document.documentElement
+
+    const browserSeat = new BrowserSeat(browserPointer, browserKeyboard, browserTouch, hasTouch)
     browserSession.wfsServer.registry.register(browserSeat)
     return browserSeat
   }
 
-  constructor () {
+  /**
+   * @param {BrowserPointer} browserPointer
+   * @param {BrowserKeyboard} browserKeyboard
+   * @param {BrowserTouch} browserTouch
+   * @param {boolean} hasTouch
+   */
+  constructor (browserPointer, browserKeyboard, browserTouch, hasTouch) {
     super(greenfield.GrSeat.name, 6)
+    this.browserPointer = browserPointer
+    this.browserKeyboard = browserKeyboard
+    this.browserTouch = browserTouch
+    this.hasTouch = hasTouch
     this.resources = []
+    this._name = 'browser-seat0'
   }
 
   bindClient (client, id, version) {
@@ -28,6 +48,21 @@ export default class BrowserSeat extends westfield.Global {
       const index = this.resources.indexOf(resource)
       this.resources.splice(index, 1)
     })
+
+    this._emitCapabilities(grSeatResource)
+    this._emitName()
+  }
+
+  _emitCapabilities (grSeatResource) {
+    let caps = 0 | greenfield.GrSeat.Capability.pointer | greenfield.GrSeat.Capability.keyboard
+    if (this.hasTouch) {
+      caps |= greenfield.GrSeat.Capability.touch
+    }
+    grSeatResource.capabilities(caps)
+  }
+
+  _emitName (grSeatResource) {
+    grSeatResource.name(this._name)
   }
 
   /**
@@ -48,10 +83,9 @@ export default class BrowserSeat extends westfield.Global {
    *
    */
   getPointer (resource, id) {
-    // TODO check capability
-
     const grPointerResource = new greenfield.GrPointer(resource.client, id, 6)
-    const browserPointer = BrowserPointer.create(grPointerResource)
+    grPointerResource.implementation = this.browserPointer
+    this.browserPointer.resources.push(grPointerResource)
   }
 
   /**
@@ -72,10 +106,9 @@ export default class BrowserSeat extends westfield.Global {
    *
    */
   getKeyboard (resource, id) {
-    // TODO check capability
-
     const grKeyboardResource = new greenfield.GrKeyboard(resource.client, id, 6)
-    const browserKeyboard = BrowserKeyboard.create(grKeyboardResource)
+    grKeyboardResource.implementation = this.browserKeyboard
+    this.browserKeyboard.resources.push(grKeyboardResource)
   }
 
   /**
@@ -96,10 +129,13 @@ export default class BrowserSeat extends westfield.Global {
    *
    */
   getTouch (resource, id) {
-    // TODO check capability
-
-    const grTouchResource = new greenfield.GrTouch(resource.client, id, 6)
-    const browserTouch = BrowserTouch.create(grTouchResource)
+    if (this.hasTouch) {
+      const grTouchResource = new greenfield.GrTouch(resource.client, id, 6)
+      grTouchResource.implementation = this.browserTouch
+      this.browserTouch.resources.push(grTouchResource)
+    } else {
+      // TODO raise protocol error
+    }
   }
 
   /**
@@ -115,5 +151,9 @@ export default class BrowserSeat extends westfield.Global {
    */
   release (resource) {
     resource.destroy()
+    const index = this.resources.indexOf(resource)
+    if (index > -1) {
+      this.resources.splice(index, 1)
+    }
   }
 }

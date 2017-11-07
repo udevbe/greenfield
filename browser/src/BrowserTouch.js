@@ -1,14 +1,15 @@
 'use strict'
 
 export default class BrowserTouch {
-  static create (grTouchResource) {
-    const browserTouch = new BrowserTouch(grTouchResource)
-    grTouchResource.implementation = browserTouch
-    return browserTouch
+  /**
+   * @returns {BrowserTouch}
+   */
+  static create () {
+    return new BrowserTouch()
   }
 
-  constructor (grTouchResource) {
-    this.resource = grTouchResource
+  constructor () {
+    this.resources = []
   }
 
   /**
@@ -18,5 +19,11 @@ export default class BrowserTouch {
    * @since 3
    *
    */
-  release (resource) {}
+  release (resource) {
+    resource.destroy()
+    const index = this.resources.indexOf(resource)
+    if (index > -1) {
+      this.resources.splice(index, 1)
+    }
+  }
 }
