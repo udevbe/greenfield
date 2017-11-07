@@ -4,8 +4,23 @@ import greenfield from './protocol/greenfield-browser-protocol'
 import BrowserSurfaceView from './BrowserSurfaceView'
 import BrowserCallback from './BrowserCallback'
 import pixmanModule from './lib/libpixman-1'
+import BrowserRegion from './BrowserRegion'
+import Rect from './math/Rect'
+import Mat4 from './math/Mat4'
+import { NORMAL, _90, _180, _270, FLIPPED, FLIPPED_90, FLIPPED_180, FLIPPED_270 } from './math/Transformations'
 
 const pixman = pixmanModule()
+
+const transformations = {
+  0: NORMAL,
+  1: _90,
+  2: _180,
+  3: _270,
+  4: FLIPPED,
+  5: FLIPPED_90,
+  6: FLIPPED_180,
+  7: FLIPPED_270
+}
 
 export default class BrowserSurface {
   /**
@@ -15,23 +30,21 @@ export default class BrowserSurface {
    * @returns {BrowserSurface}
    */
   static create (grSurfaceResource, renderer) {
-    const pendingDamageRegion = pixman._malloc(20)// region struct is pointer + 4*uint32 = 5*4 = 20
-    pixman._pixman_region32_init(pendingDamageRegion)
     const damageRegion = pixman._malloc(20)
     pixman._pixman_region32_init(damageRegion)
 
-    const pendingBufferDamageRegion = pixman._malloc(20)
-    pixman._pixman_region32_init(pendingBufferDamageRegion)
     const bufferDamageRegion = pixman._malloc(20)
     pixman._pixman_region32_init(bufferDamageRegion)
+
+    const bufferDamage = pixman._malloc(20)
+    pixman._pixman_region32_init(bufferDamage)
 
     const browserSurface = new BrowserSurface(
       grSurfaceResource,
       renderer,
-      pendingDamageRegion,
       damageRegion,
-      pendingBufferDamageRegion,
-      bufferDamageRegion
+      bufferDamageRegion,
+      bufferDamage
     )
     grSurfaceResource.implementation = browserSurface
     grSurfaceResource.onDestroy().then(() => browserSurface._handleDestruction())
@@ -44,12 +57,11 @@ export default class BrowserSurface {
    * @private
    * @param {GrSurface} grSurfaceResource
    * @param {Renderer} renderer
-   * @param {Number} pendingDamageRegion
    * @param {Number} damageRegion
-   * @param {Number} pendingBufferDamageRegion
    * @param {Number} bufferDamageRegion
+   * @param {Number} bufferDamage
    */
-  constructor (grSurfaceResource, renderer, pendingDamageRegion, damageRegion, pendingBufferDamageRegion, bufferDamageRegion) {
+  constructor (grSurfaceResource, renderer, damageRegion, bufferDamageRegion, bufferDamage) {
     this.resource = grSurfaceResource
 
     this.renderer = renderer
@@ -61,10 +73,19 @@ export default class BrowserSurface {
     }
     this.browserBuffer = null
 
-    this._pendingDamageRegion = pendingDamageRegion
+    this._pendingDamageRects = []
     this._damageRegion = damageRegion
-    this._pendingBufferDamageRegion = pendingBufferDamageRegion
+    this._pendingBufferDamageRects = []
     this._bufferDamageRegion = bufferDamageRegion
+    this.bufferDamage = bufferDamage
+
+    this.opaqueRegion = null
+    this.inputRegion = null
+
+    this._pendingBufferTransform = 0
+    this.bufferTransform = 0
+    this._pendingBufferScale = 1
+    this.bufferScale = 1
 
     this.browserSurfaceViews = []
   }
@@ -204,7 +225,7 @@ export default class BrowserSurface {
    *
    */
   damage (resource, x, y, width, height) {
-    pixman._pixman_region32_union_rect(this._pendingDamageRegion, this._pendingDamageRegion, x, y, width, height)
+    this._pendingDamageRects.push(Rect.create(x, y, x + width, y + height))
   }
 
   /**
@@ -292,7 +313,11 @@ export default class BrowserSurface {
    *
    */
   setOpaqueRegion (resource, region) {
+    const grRegionResource = new greenfield.GrRegion(resource.client, region, resource.version)
+    const browserRegion = BrowserRegion.create(grRegionResource)
+    grRegionResource.implementation = browserRegion
 
+    this.opaqueRegion = browserRegion
   }
 
   /**
@@ -328,7 +353,11 @@ export default class BrowserSurface {
    *
    */
   setInputRegion (resource, region) {
+    const grRegionResource = new greenfield.GrRegion(resource.client, region, resource.version)
+    const browserRegion = BrowserRegion.create(grRegionResource)
+    grRegionResource.implementation = browserRegion
 
+    this.inputRegion = browserRegion
   }
 
   /**
@@ -361,21 +390,33 @@ export default class BrowserSurface {
     if (this.pendingBrowserBuffer) {
       this.pendingBrowserBuffer.removeDestroyListener(this.pendingBrowserBufferDestroyListener)
     }
-    // swap damage regions and clear new pending damage
-    const pendingDamageRegion = this._damageRegion
-    this._damageRegion = this._pendingDamageRegion
-    this._pendingDamageRegion = pendingDamageRegion
-    pixman._pixman_region32_clear(this._pendingDamageRegion)
-
-    const pendingBufferDamageRegion = this._bufferDamageRegion
-    this._bufferDamageRegion = this._pendingBufferDamageRegion
-    this._pendingBufferDamageRegion = pendingBufferDamageRegion
-    pixman._pixman_region32_clear(this._pendingBufferDamageRegion)
-
-    // TODO translate from surface damage to buffer damage and unionize both damages
 
     this.browserBuffer = this.pendingBrowserBuffer
     this.pendingBrowserBuffer = null
+
+    this.bufferTransform = this._pendingBufferTransform
+    this.bufferScale = this._pendingBufferScale
+
+    const bufferScaleTransform = Mat4.scalar(this.bufferScale)
+    const bufferTransform = transformations[this.bufferTransform]
+
+    pixman._pixman_region32_clear(this._damageRegion)
+    this._pendingDamageRects.forEach(rect => {
+      const scaledRect = bufferScaleTransform.timesRect(rect)
+      const bufferDamage = bufferTransform.timesRect(scaledRect)
+      pixman._pixman_region32_union_rect(this._damageRegion, this._damageRegion, bufferDamage.x, bufferDamage.y, bufferDamage.width, bufferDamage.height)
+    })
+    this._pendingDamageRects = []
+
+    pixman._pixman_region32_clear(this._bufferDamageRegion)
+    this._pendingBufferDamageRects.forEach(rect => {
+      pixman._pixman_region32_union_rect(this._bufferDamageRegion, this._bufferDamageRegion, rect.x, rect.y, rect.width, rect.height)
+    })
+    this._pendingBufferDamageRects = []
+
+    pixman._pixman_region32_clear(this.bufferDamage)
+    pixman._pixman_region32_union(this.bufferDamage, this._bufferDamageRegion, this._damageRegion)
+
     this.renderer.render(this)
   }
 
@@ -396,7 +437,7 @@ export default class BrowserSurface {
    *                values are never changed.
    *
    *                The purpose of this request is to allow clients to render content
-   *                according to the output transform, thus permiting the compositor to
+   *                according to the output transform, thus permitting the compositor to
    *                use certain optimizations even if the display is rotated. Using
    *                hardware overlays and scanning out a client buffer for fullscreen
    *                surfaces are examples of such optimizations. Those optimizations are
@@ -419,7 +460,11 @@ export default class BrowserSurface {
    *
    */
   setBufferTransform (resource, transform) {
-
+    if (Object.values(greenfield.GrOutput.Transform).includes(transform)) {
+      this._pendingBufferTransform = transform
+    } else {
+      // TODO send error to client
+    }
   }
 
   /**
@@ -456,7 +501,10 @@ export default class BrowserSurface {
    *
    */
   setBufferScale (resource, scale) {
-
+    if (scale < 1) {
+      // TODO raise error
+    }
+    this._pendingBufferScale = scale
   }
 
   /**
@@ -504,6 +552,6 @@ export default class BrowserSurface {
    *
    */
   damageBuffer (resource, x, y, width, height) {
-    pixman._pixman_region32_union_rect(this._pendingBufferDamageRegion, this._pendingBufferDamageRegion, x, y, width, height)
+    this._pendingBufferDamageRects.push(Rect.create(x, y, x + width, y + height))
   }
 }
