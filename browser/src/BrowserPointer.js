@@ -1,5 +1,21 @@
 'use strict'
 
+import greenfield from './protocol/greenfield-browser-protocol'
+
+// translates between browser button codes & kernel code as expected by wayland protocol
+const linuxInput = {
+  // left
+  0: 0x110,
+  // middle
+  1: 0x112,
+  // right
+  2: 0x111,
+  // browser back
+  3: 0x116,
+  // browser forward
+  4: 0x115
+}
+
 export default class BrowserPointer {
   /**
    * @returns {BrowserPointer}
@@ -13,12 +29,23 @@ export default class BrowserPointer {
     document.addEventListener('mouseup', (event) => {
       browserPointer.onMouseUp(event)
     }, true)
+    document.addEventListener('mousedown', (event) => {
+      browserPointer.onMouseDown(event)
+    }, true)
     // other mouse events are set in the browser surface view class
     return browserPointer
   }
 
   constructor () {
     this.resources = []
+    this.focus = null
+    this.grab = null
+    this._focusDestroyListener = () => {
+      this.grab = null
+      this.onMouseLeave(this.focus)
+      // TODO recalculate enter and consequently focus
+    }
+    this._btnDwnCount = 0
   }
 
   /**
@@ -95,22 +122,55 @@ export default class BrowserPointer {
    * @param {MouseEvent}event
    */
   onMouseMove (event) {
-    // TODO
+    if (this.focus) {
+      this._doPointerEventFor(this.focus, (pointerResource) => {
+        // FIXME we need to accommodate for canvas dimensions (clientX, clientY) being possibly different than surface dimensions (which should actually be send)
+        pointerResource.motion(event.timeStamp, greenfield.parseFixed(event.clientX), greenfield.parseFixed(event.clientY))
+      })
+    }
+  }
+
+  _doPointerEventFor (browserSurface, action) {
+    this.resources.forEach(pointerResource => {
+      if (pointerResource.client === browserSurface.resource.client) {
+        action(pointerResource)
+      }
+    })
   }
 
   /**
    * @param {MouseEvent}event
    */
   onMouseUp (event) {
-    // TODO
+    if (this.focus === null || this.grab === null) {
+      return
+    }
+
+    this._doPointerEventFor(this.focus, (pointerResource) => {
+      pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.released)
+    })
+    this._btnDwnCount--
+    if (this._btnDwnCount === 0) {
+      this.grab = null
+    }
   }
 
   /**
    * @param {MouseEvent}event
-   * @param {BrowserSurface}browserSurface
    */
-  onMouseDown (event, browserSurface) {
-    // TODO
+  onMouseDown (event) {
+    if (this.focus === null) {
+      return
+    }
+
+    if (this.grab === null) {
+      this.grab = this.focus
+    }
+
+    this._btnDwnCount++
+    this._doPointerEventFor(this.focus, (pointerResource) => {
+      pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.pressed)
+    })
   }
 
   /**
@@ -118,14 +178,33 @@ export default class BrowserPointer {
    * @param {BrowserSurface}browserSurface
    */
   onMouseEnter (event, browserSurface) {
-    // TODO
+    if (this.grab) {
+      return
+    }
+    this.focus = browserSurface
+    this.focus.resource.addDestroyListener(this._focusDestroyListener)
+
+    this._doPointerEventFor(this.focus, (pointerResource) => {
+      // FIXME we need to accommodate for canvas dimensions (clientX, clientY) being possibly different than surface dimensions (which should actually be send)
+      pointerResource.enter(this._nextEnterSerial(), this.focus.resource, greenfield.parseFixed(event.clientX), greenfield.parseFixed(event.clientY))
+    })
   }
 
   /**
-   * @param {MouseEvent}event
    * @param {BrowserSurface}browserSurface
    */
-  onMouseLeave (event, browserSurface) {
-    // TODO
+  onMouseLeave (browserSurface) {
+    if (this.grab) {
+      return
+    }
+
+    if (this.focus === browserSurface) {
+      this.focus.resource.removeDestroyListener(this._focusDestroyListener)
+      this._doPointerEventFor(this.focus, (pointerResource) => {
+        // FIXME we need to accommodate for canvas dimensions (clientX, clientY) being possibly different than surface dimensions (which should actually be send)
+        pointerResource.leave(this._nextLeaveSerial(), this.focus.resource)
+      })
+      this.focus = null
+    }
   }
 }

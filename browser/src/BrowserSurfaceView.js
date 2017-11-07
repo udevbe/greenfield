@@ -29,14 +29,11 @@ export default class BrowserSurfaceView {
 
   static _setupMouseListeners (canvas, browserSurface) {
     const browserPointer = browserSurface.browserSeat.browserPointer
-    canvas.addEventListener('mousedown', (event) => {
-      browserPointer.onMouseDown(event, browserSurface)
-    }, true)
     canvas.addEventListener('mouseenter', (event) => {
       browserPointer.onMouseEnter(event, browserSurface)
     }, true)
-    canvas.addEventListener('mouseleave', (event) => {
-      browserPointer.onMouseLeave(event, browserSurface)
+    canvas.addEventListener('mouseleave', () => {
+      browserPointer.onMouseLeave(browserSurface)
     }, true)
     // other mouse listeners are set in the browser pointer class
   }
