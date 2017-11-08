@@ -1,3 +1,5 @@
+'use strict'
+
 import Mat4 from './Mat4'
 
 const NORMAL = Mat4.IDENTITY()

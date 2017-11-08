@@ -1,3 +1,5 @@
+'use strict'
+
 import Vec4 from './Vect4'
 import Point from './Point'
 import Rect from './Rect'
@@ -34,6 +36,9 @@ export default class Mat4 {
     )
   }
 
+  /**
+   * @returns {Mat4}
+   */
   static IDENTITY () {
     return this.create(
       1, 0, 0, 0,
@@ -42,15 +47,37 @@ export default class Mat4 {
       0, 0, 0, 1)
   }
 
+  /**
+   * @param {Number}scale
+   * @returns {Mat4}
+   */
   static scalar (scale) {
     return this.create(
       scale, 0, 0, 0,
       0, scale, 0, 0,
-      0, 0, scale, 0,
+      0, 0, 1, 0,
       0, 0, 0, 1
     )
   }
 
+  /**
+   * @param {Vect4}vect4
+   * @returns {Mat4}
+   */
+  static scalarVector (vect4) {
+    return this.create(
+      vect4.x, 0, 0, 0,
+      0, vect4.y, 0, 0,
+      0, 0, vect4.z, 0,
+      0, 0, 0, vect4.w
+    )
+  }
+
+  /**
+   * @param {Number}x
+   * @param {Number}y
+   * @returns {Mat4}
+   */
   static translation (x, y) {
     return this.create(
       1, 0, 0, x,
@@ -107,7 +134,7 @@ export default class Mat4 {
 
   /**
    * Multiply a vector using this matrix, resulting in a new vector.
-   * @param {Vec4} right
+   * @param {Vect4} right
    */
   timesVec4 (right) {
     const rightX = right.x

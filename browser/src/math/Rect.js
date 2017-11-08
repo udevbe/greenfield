@@ -1,9 +1,11 @@
+'use strict'
+
 export default class Rect {
   /**
-   * @param {Number} x0
-   * @param {Number} y0
-   * @param {Number} x1
-   * @param {Number} y1
+   * @param {Number} x0 top left x
+   * @param {Number} y0 top left y
+   * @param {Number} x1 bottom right x
+   * @param {Number} y1 bottom right y
    * @returns {Rect}
    */
   static create (x0, y0, x1, y1) {
