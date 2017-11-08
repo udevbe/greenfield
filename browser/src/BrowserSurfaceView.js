@@ -1,4 +1,6 @@
 'use strict'
+import Vect4 from './math/Vect4'
+import Mat4 from './math/Mat4'
 
 export default class BrowserSurfaceView {
   /**
@@ -11,7 +13,9 @@ export default class BrowserSurfaceView {
     const context2d = canvas.getContext('2d')
     this._setupMouseListeners(canvas, browserSurface)
 
-    return new BrowserSurfaceView(canvas, context2d)
+    const browserSurfaceView = new BrowserSurfaceView(canvas, context2d, browserSurface)
+    canvas.view = browserSurfaceView
+    return browserSurfaceView
   }
 
   /**
@@ -39,13 +43,30 @@ export default class BrowserSurfaceView {
   }
 
   /**
-   *
+   * @private
    * @param canvas
    * @param context2d
+   * @param browserSurface
    */
-  constructor (canvas, context2d) {
+  constructor (canvas, context2d, browserSurface) {
     this.canvas = canvas
     this.context2d = context2d
+    this.browserSurface = browserSurface
+  }
+
+  /**
+   * @param {Point} canvasPoint
+   * @return {Point}
+   */
+  toSurfaceSpace (canvasPoint) {
+    const surfaceWidth = this.browserSurface.size.w
+    const surfaceHeight = this.browserSurface.size.h
+    const canvasWidth = this.canvas.width
+    const canvasHeight = this.canvas.height
+
+    const scalarVector = Vect4.create(surfaceWidth / canvasWidth, surfaceHeight / canvasHeight, 1, 1)
+
+    return Mat4.scalarVector(scalarVector).timesPoint(canvasPoint)
   }
 
   unfade () {
