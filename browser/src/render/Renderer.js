@@ -3,6 +3,7 @@
 import ViewState from './ViewState'
 import BrowserDcBufferFactory from '../BrowserDcBufferFactory'
 import YUVSurfaceShader from './YUVSurfaceShader'
+import Size from '../Size'
 
 export default class Renderer {
   /**
@@ -41,6 +42,31 @@ export default class Renderer {
   }
 
   /**
+   * @param {BrowserSurface}browserSurface
+   * @return Size
+   */
+  surfaceSize (browserSurface) {
+    const grBuffer = browserSurface.grBuffer
+    const bufferSize = this.bufferSize(grBuffer)
+    const surfaceWidth = bufferSize.w / browserSurface.bufferScale
+    const surfaceHeight = bufferSize.h / browserSurface.bufferScale
+    return Size.create(surfaceWidth, surfaceHeight)
+  }
+
+  /**
+   * @param {GrBuffer}grBuffer
+   * @return Size
+   */
+  bufferSize (grBuffer) {
+    if (grBuffer === null) {
+      return Size.create(0, 0)
+    }
+    // TODO we could check for null here in case we are dealing with a different kind of buffer
+    const browserRtcDcBuffer = BrowserDcBufferFactory.get(grBuffer)
+    return browserRtcDcBuffer.geo
+  }
+
+  /**
    *
    * @param {BrowserSurface} browserSurface
    */
@@ -52,24 +78,25 @@ export default class Renderer {
   }
 
   /**
-   *
+   * @param {BrowserSurface} browserSurface
+   * @private
    */
   _render (browserSurface) {
-    const grBuffer = browserSurface.browserBuffer
+    const grBuffer = browserSurface.grBuffer
     if (grBuffer === null) {
       browserSurface.renderState = null
       return
     }
 
     const gl = this.gl
+    // TODO we could check for null here in case we are dealing with a different kind of buffer
     const browserRtcDcBuffer = BrowserDcBufferFactory.get(grBuffer)
 
     const drawSyncSerial = browserRtcDcBuffer.syncSerial
-
     if (browserRtcDcBuffer.isComplete(drawSyncSerial)) {
-      const bufferSize = browserRtcDcBuffer.geo
+      const bufferSize = this.bufferSize(grBuffer)
 
-      // TODO implement event to notify views of buffer size changes
+      // canvas units are in pixels, so we can simply use the buffer size
       browserSurface.browserSurfaceViews.forEach((view) => {
         view.canvas.width = bufferSize.w
         view.canvas.height = bufferSize.h
