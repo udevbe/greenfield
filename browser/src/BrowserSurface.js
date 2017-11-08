@@ -8,6 +8,7 @@ import BrowserRegion from './BrowserRegion'
 import Rect from './math/Rect'
 import Mat4 from './math/Mat4'
 import { NORMAL, _90, _180, _270, FLIPPED, FLIPPED_90, FLIPPED_180, FLIPPED_270 } from './math/Transformations'
+import Size from './Size'
 
 const pixman = pixmanModule()
 
@@ -70,11 +71,11 @@ export default class BrowserSurface {
     this.renderer = renderer
     this.renderState = null
 
-    this.pendingBrowserBuffer = null
+    this.pendingGrBuffer = null
     this.pendingBrowserBufferDestroyListener = (grBufferResource) => {
-      this.pendingBrowserBuffer = null
+      this.pendingGrBuffer = null
     }
-    this.browserBuffer = null
+    this.grBuffer = null
 
     this._pendingDamageRects = []
     this._damageRegion = damageRegion
@@ -89,6 +90,7 @@ export default class BrowserSurface {
     this.bufferTransform = 0
     this._pendingBufferScale = 1
     this.bufferScale = 1
+    this.size = Size.create(0, 0)
 
     this.browserSurfaceViews = []
 
@@ -178,12 +180,15 @@ export default class BrowserSurface {
    *
    */
   attach (resource, buffer, x, y) {
-    if (this.pendingBrowserBuffer) {
-      this.pendingBrowserBuffer.removeDestroyListener(this.pendingBrowserBufferDestroyListener)
+    if (this.pendingGrBuffer) {
+      this.pendingGrBuffer.removeDestroyListener(this.pendingBrowserBufferDestroyListener)
     }
 
-    this.pendingBrowserBuffer = buffer
-    this.pendingBrowserBuffer.addDestroyListener(this.pendingBrowserBufferDestroyListener)
+    this.pendingGrBuffer = buffer
+    // buffer can be null
+    if (this.pendingGrBuffer) {
+      this.pendingGrBuffer.addDestroyListener(this.pendingBrowserBufferDestroyListener)
+    }
 
     this.browserSurfaceViews.forEach((browserSurfaceView) => {
       browserSurfaceView.canvas.style.left = browserSurfaceView.canvas.style.left + x
@@ -392,12 +397,12 @@ export default class BrowserSurface {
    *
    */
   commit (resource) {
-    if (this.pendingBrowserBuffer) {
-      this.pendingBrowserBuffer.removeDestroyListener(this.pendingBrowserBufferDestroyListener)
+    if (this.pendingGrBuffer) {
+      this.pendingGrBuffer.removeDestroyListener(this.pendingBrowserBufferDestroyListener)
     }
 
-    this.browserBuffer = this.pendingBrowserBuffer
-    this.pendingBrowserBuffer = null
+    this.grBuffer = this.pendingGrBuffer
+    this.pendingGrBuffer = null
 
     this.bufferTransform = this._pendingBufferTransform
     this.bufferScale = this._pendingBufferScale
@@ -422,6 +427,8 @@ export default class BrowserSurface {
     pixman._pixman_region32_clear(this.bufferDamage)
     pixman._pixman_region32_union(this.bufferDamage, this._bufferDamageRegion, this._damageRegion)
 
+    // TODO we could implement a flag so we don't always recalculate the surface size
+    this.size = this.renderer.surfaceSize(this)
     this.renderer.render(this)
   }
 
