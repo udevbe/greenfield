@@ -17,16 +17,15 @@ class ShimGlobal extends Global {
     this._wlGlobalClass = wlGlobalClass
     this._localGlobalClass = localGlobalClass
     this._shimGlobalClass = shimGlobalClass
-    this._name = name
+    this._seatName = name
     this._interface_ = interface_
-    this._version = version
   }
 
   bind (wlClient, version, id) {
     try {
       // find matching proxy based on wayland wlClient pointer address
       const clientRegistryProxy = wlClient._clientRegistryProxy
-      const globalProxy = clientRegistryProxy.bind(this._name, this._interface_, this._version)
+      const globalProxy = clientRegistryProxy.bind(this._seatName, this._interface_, version)
 
       const localGlobal = this._localGlobalClass.create()
       globalProxy.listener = localGlobal
