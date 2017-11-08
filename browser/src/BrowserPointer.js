@@ -1,6 +1,7 @@
 'use strict'
 
 import greenfield from './protocol/greenfield-browser-protocol'
+import Point from './math/Point'
 
 // translates between browser button codes & kernel code as expected by wayland protocol
 const linuxInput = {
@@ -46,6 +47,9 @@ export default class BrowserPointer {
       // TODO recalculate enter and consequently focus
     }
     this._btnDwnCount = 0
+    this.btnSerial = 0
+    this.enterSerial = 0
+    this.leaveSerial = 0
   }
 
   /**
@@ -123,16 +127,24 @@ export default class BrowserPointer {
    */
   onMouseMove (event) {
     if (this.focus) {
-      this._doPointerEventFor(this.focus, (pointerResource) => {
-        // FIXME we need to accommodate for canvas dimensions (clientX, clientY) being possibly different than surface dimensions (which should actually be send)
-        pointerResource.motion(event.timeStamp, greenfield.parseFixed(event.clientX), greenfield.parseFixed(event.clientY))
+      const canvasPoint = Point.create(event.clientX, event.clientY)
+      const surfacePoint = this.focus.view.toSurfaceSpace(canvasPoint)
+
+      const surfaceResource = this.focus.view.browserSurface.resource
+      this._doPointerEventFor(surfaceResource, (pointerResource) => {
+        pointerResource.motion(event.timeStamp, greenfield.parseFixed(surfacePoint.x), greenfield.parseFixed(surfacePoint.y))
       })
     }
   }
 
-  _doPointerEventFor (browserSurface, action) {
+  /**
+   * @param {GrSurface} surfaceResource
+   * @param action
+   * @private
+   */
+  _doPointerEventFor (surfaceResource, action) {
     this.resources.forEach(pointerResource => {
-      if (pointerResource.client === browserSurface.resource.client) {
+      if (pointerResource.client === surfaceResource.client) {
         action(pointerResource)
       }
     })
@@ -146,7 +158,8 @@ export default class BrowserPointer {
       return
     }
 
-    this._doPointerEventFor(this.focus, (pointerResource) => {
+    const surfaceResource = this.focus.view.browserSurface.resource
+    this._doPointerEventFor(surfaceResource, (pointerResource) => {
       pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.released)
     })
     this._btnDwnCount--
@@ -168,43 +181,60 @@ export default class BrowserPointer {
     }
 
     this._btnDwnCount++
-    this._doPointerEventFor(this.focus, (pointerResource) => {
+    const surfaceResource = this.focus.view.browserSurface.resource
+    this._doPointerEventFor(surfaceResource, (pointerResource) => {
       pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.pressed)
     })
   }
 
   /**
    * @param {MouseEvent}event
-   * @param {BrowserSurface}browserSurface
    */
-  onMouseEnter (event, browserSurface) {
+  onMouseEnter (event) {
     if (this.grab) {
       return
     }
-    this.focus = browserSurface
-    this.focus.resource.addDestroyListener(this._focusDestroyListener)
 
-    this._doPointerEventFor(this.focus, (pointerResource) => {
-      // FIXME we need to accommodate for canvas dimensions (clientX, clientY) being possibly different than surface dimensions (which should actually be send)
-      pointerResource.enter(this._nextEnterSerial(), this.focus.resource, greenfield.parseFixed(event.clientX), greenfield.parseFixed(event.clientY))
+    this.focus = event.target
+    const surfaceResource = this.focus.view.browserSurface.resource
+    surfaceResource.addDestroyListener(this._focusDestroyListener)
+
+    const canvasPoint = Point.create(event.clientX, event.clientY)
+    const surfacePoint = this.focus.view.toSurfaceSpace(canvasPoint)
+
+    this._doPointerEventFor(surfaceResource, (pointerResource) => {
+      pointerResource.enter(this._nextEnterSerial(), surfaceResource, greenfield.parseFixed(surfacePoint.x), greenfield.parseFixed(surfacePoint.y))
     })
   }
 
   /**
-   * @param {BrowserSurface}browserSurface
+   * @param {MouseEvent}event
    */
-  onMouseLeave (browserSurface) {
+  onMouseLeave (event) {
     if (this.grab) {
       return
     }
 
-    if (this.focus === browserSurface) {
-      this.focus.resource.removeDestroyListener(this._focusDestroyListener)
-      this._doPointerEventFor(this.focus, (pointerResource) => {
-        // FIXME we need to accommodate for canvas dimensions (clientX, clientY) being possibly different than surface dimensions (which should actually be send)
-        pointerResource.leave(this._nextLeaveSerial(), this.focus.resource)
+    if (this.focus === event.target) {
+      const surfaceResource = this.focus.view.browserSurface.resource
+      surfaceResource.removeDestroyListener(this._focusDestroyListener)
+
+      this._doPointerEventFor(surfaceResource, (pointerResource) => {
+        pointerResource.leave(this._nextLeaveSerial(), surfaceResource)
       })
       this.focus = null
     }
+  }
+
+  _nextButtonSerial () {
+    return this.btnSerial++
+  }
+
+  _nextEnterSerial () {
+    return this.enterSerial++
+  }
+
+  _nextLeaveSerial () {
+    return this.leaveSerial++
   }
 }
