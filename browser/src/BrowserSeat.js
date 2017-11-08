@@ -36,7 +36,7 @@ export default class BrowserSeat extends westfield.Global {
     this.browserTouch = browserTouch
     this.hasTouch = hasTouch
     this.resources = []
-    this._name = 'browser-seat0'
+    this._seatName = 'browser-seat0'
   }
 
   bindClient (client, id, version) {
@@ -50,7 +50,7 @@ export default class BrowserSeat extends westfield.Global {
     })
 
     this._emitCapabilities(grSeatResource)
-    this._emitName()
+    this._emitName(grSeatResource)
   }
 
   _emitCapabilities (grSeatResource) {
@@ -62,7 +62,9 @@ export default class BrowserSeat extends westfield.Global {
   }
 
   _emitName (grSeatResource) {
-    grSeatResource.name(this._name)
+    if (grSeatResource.version > 1) {
+      grSeatResource.name(this._seatName)
+    }
   }
 
   /**
