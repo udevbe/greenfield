@@ -85,7 +85,7 @@ export default class BrowserSeat extends westfield.Global {
    *
    */
   getPointer (resource, id) {
-    const grPointerResource = new greenfield.GrPointer(resource.client, id, 6)
+    const grPointerResource = new greenfield.GrPointer(resource.client, id, resource.version)
     grPointerResource.implementation = this.browserPointer
     this.browserPointer.resources.push(grPointerResource)
   }
@@ -108,7 +108,7 @@ export default class BrowserSeat extends westfield.Global {
    *
    */
   getKeyboard (resource, id) {
-    const grKeyboardResource = new greenfield.GrKeyboard(resource.client, id, 6)
+    const grKeyboardResource = new greenfield.GrKeyboard(resource.client, id, resource.version)
     grKeyboardResource.implementation = this.browserKeyboard
     this.browserKeyboard.resources.push(grKeyboardResource)
   }
@@ -132,7 +132,7 @@ export default class BrowserSeat extends westfield.Global {
    */
   getTouch (resource, id) {
     if (this.hasTouch) {
-      const grTouchResource = new greenfield.GrTouch(resource.client, id, 6)
+      const grTouchResource = new greenfield.GrTouch(resource.client, id, resource.version)
       grTouchResource.implementation = this.browserTouch
       this.browserTouch.resources.push(grTouchResource)
     } else {

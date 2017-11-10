@@ -2,6 +2,8 @@
 
 import westfield from 'westfield-runtime-server'
 import greenfield from './protocol/greenfield-browser-protocol'
+import BrowserDataSource from './BrowserDataSource'
+import BrowserDataDevice from './BrowserDataDevice'
 
 export default class BrowserDataDeviceManager extends westfield.Global {
   static create (browserSession) {
@@ -30,7 +32,10 @@ export default class BrowserDataDeviceManager extends westfield.Global {
    * @since 1
    *
    */
-  createDataSource (resource, id) {}
+  createDataSource (resource, id) {
+    const grDataSourceResource = new greenfield.GrDataSource(resource.client, id, resource.version)
+    BrowserDataSource.create(grDataSourceResource)
+  }
 
   /**
    *
@@ -44,5 +49,8 @@ export default class BrowserDataDeviceManager extends westfield.Global {
    * @since 1
    *
    */
-  getDataDevice (resource, id, seat) {}
+  getDataDevice (resource, id, seat) {
+    const grDataDeviceResource = new greenfield.GrDataDevice(resource.client, id, resource.version)
+    BrowserDataDevice.create(grDataDeviceResource, seat)
+  }
 }

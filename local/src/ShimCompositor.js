@@ -9,7 +9,7 @@ const ShimSurface = require('./ShimSurface')
 module.exports = class ShimCompositor extends WlCompositorRequests {
   /**
    *
-   * @param {wfc.GrCompositor} grCompositoryProxy
+   * @param {GrCompositor} grCompositoryProxy
    * @returns {module.ShimCompositor}
    */
   static create (grCompositoryProxy) {
@@ -17,25 +17,14 @@ module.exports = class ShimCompositor extends WlCompositorRequests {
   }
 
   /**
-   *
-   * @param {wfc.GrCompositor} grCompositorProxy
+   * @private
+   * @param {GrCompositor} grCompositorProxy
    */
   constructor (grCompositorProxy) {
     super()
     this.proxy = grCompositorProxy
   }
 
-  /**
-   *
-   *  Ask the compositor to create a new surface.
-   *
-   *
-   * @param {WlCompositor} resource
-   * @param {*} id the new surface
-   *
-   * @since 1
-   *
-   */
   createSurface (resource, id) {
     // delegate request to browser
     const grSurfaceProxy = this.proxy.createSurface()
@@ -44,20 +33,9 @@ module.exports = class ShimCompositor extends WlCompositorRequests {
 
     // wire future surface requests to proxy
     const shimSurface = ShimSurface.create(grSurfaceProxy)
-    localSurface.resource = WlSurface.create(resource.client, 4, id, shimSurface, null)
+    localSurface.resource = WlSurface.create(resource.client, resource.version, id, shimSurface, null)
   }
 
-  /**
-   *
-   *  Ask the compositor to create a new region.
-   *
-   *
-   * @param {WlCompositor} resource
-   * @param {*} id the new region
-   *
-   * @since 1
-   *
-   */
   createRegion (resource, id) {
     const grRegionProxy = this.proxy.createRegion()
     // TODO create new region resource & link it to the proxy

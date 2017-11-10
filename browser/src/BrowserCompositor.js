@@ -67,7 +67,7 @@ export default class BrowserCompositor extends westfield.Global {
    *
    */
   createRegion (resource, id) {
-    const grRegionResource = new greenfield.GrRegion(resource.client, id, 1)
+    const grRegionResource = new greenfield.GrRegion(resource.client, id, resource.version)
     BrowserRegion.create(grRegionResource)
   }
 }

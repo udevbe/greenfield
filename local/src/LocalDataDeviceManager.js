@@ -1,12 +1,11 @@
 'use strict'
 
-module.exports = class LocalCompositor {
+module.exports = class LocalDataDeviceManager {
   static create () {
-    return new LocalCompositor()
+    return new LocalDataDeviceManager()
   }
 
   constructor () {
-    // set when resource is created
     this.resource = null
   }
 

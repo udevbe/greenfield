@@ -12,14 +12,8 @@ module.exports = class ShimTouch extends WlTouchRequests {
     this.proxy = grTouchProxy
   }
 
-  /**
-   *
-   * @param {WlTouch} resource
-   *
-   * @since 3
-   *
-   */
   release (resource) {
     this.proxy.release()
+    resource.destroy()
   }
 }

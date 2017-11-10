@@ -21,5 +21,6 @@ module.exports = class ShimKeyboard extends WlKeyboardRequests {
    */
   release (resource) {
     this.proxy.release()
+    resource.destroy()
   }
 }

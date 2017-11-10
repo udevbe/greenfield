@@ -38,6 +38,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
 
   destroy (resource) {
     this.proxy.destroy()
+    resource.destroy()
   }
 
   attach (resource, buffer, x, y) {

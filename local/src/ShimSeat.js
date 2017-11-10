@@ -115,5 +115,6 @@ module.exports = class ShimSeat extends WlSeatRequests {
    */
   release (resource) {
     this.proxy.release()
+    resource.destroy()
   }
 }
