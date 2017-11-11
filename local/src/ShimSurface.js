@@ -47,11 +47,12 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       this.pendingBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
     }
     this.pendingBuffer = buffer
-    if (this.pendingBuffer !== null) {
+    if (this.pendingBuffer) {
       this.pendingBuffer.addDestroyListener(this.pendingBufferDestroyListener)
+      this.proxy.attach(this.localRtcDcBuffer.grBufferProxy, x, y)
+    } else {
+      this.proxy.attach(null, x, y)
     }
-
-    this.proxy.attach(this.localRtcDcBuffer.grBufferProxy, x, y)
   }
 
   damage (resource, x, y, width, height) {
@@ -68,12 +69,12 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
   }
 
   setOpaqueRegion (resource, region) {
-    const regionProxy = region.implementation.proxy
+    const regionProxy = region === null ? null : region.implementation.proxy
     this.proxy.setOpaqueRegion(regionProxy)
   }
 
   setInputRegion (resource, region) {
-    const regionProxy = region.implementation.proxy
+    const regionProxy = region === null ? null : region.implementation.proxy
     this.proxy.setInputRegion(regionProxy)
   }
 
@@ -155,30 +156,35 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       this.buffer.release()
     }
 
-    this.pendingBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
+    if (this.pendingBuffer) {
+      this.pendingBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
+    }
     this.buffer = this.pendingBuffer
     this.pendingBuffer = null
     // TODO handle destruction of committed buffer?
 
-    this.localRtcDcBuffer.ack = (serial) => {
-      if (serial > this.ackSerial) {
-        this.ackSerial = serial
-      } // else we received an outdated ack serial, ignore it.
+    if (this.buffer) {
+      this.localRtcDcBuffer.ack = (serial) => {
+        if (serial > this.ackSerial) {
+          this.ackSerial = serial
+        } // else we received an outdated ack serial, ignore it.
+      }
+
+      this.synSerial++
+      const currentSynSerial = this.synSerial
+
+      const shm = Shm.get(this.buffer)
+      const bufferWidth = shm.getWidth()
+      const bufferHeight = shm.getHeight()
+      this.localRtcDcBuffer.rtcDcBufferProxy.syn(currentSynSerial, bufferWidth, bufferHeight)
+      this.encodeBuffer(this.buffer, currentSynSerial).then((h264Nal) => {
+        this.sendBuffer(h264Nal, this.localRtcDcBuffer, currentSynSerial)
+      }).catch((error) => {
+        console.log(error)
+        // TODO Failed to encode buffer. What to do here?
+      })
     }
 
-    this.synSerial++
-    const currentSynSerial = this.synSerial
-
-    const shm = Shm.get(this.buffer)
-    const bufferWidth = shm.getWidth()
-    const bufferHeight = shm.getHeight()
-    this.localRtcDcBuffer.rtcDcBufferProxy.syn(currentSynSerial, bufferWidth, bufferHeight)
-    this.encodeBuffer(this.buffer, currentSynSerial).then((h264Nal) => {
-      this.sendBuffer(h264Nal, this.localRtcDcBuffer, currentSynSerial)
-    }).catch((error) => {
-      console.log(error)
-      // TODO Failed to encode buffer. What to do here?
-    })
     this.proxy.commit()
   }
 

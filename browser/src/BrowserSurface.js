@@ -323,11 +323,14 @@ export default class BrowserSurface {
    *
    */
   setOpaqueRegion (resource, region) {
-    const grRegionResource = new greenfield.GrRegion(resource.client, region, resource.version)
-    const browserRegion = BrowserRegion.create(grRegionResource)
-    grRegionResource.implementation = browserRegion
-
-    this.opaqueRegion = browserRegion
+    if (region) {
+      const grRegionResource = new greenfield.GrRegion(resource.client, region, resource.version)
+      const browserRegion = BrowserRegion.create(grRegionResource)
+      grRegionResource.implementation = browserRegion
+      this.opaqueRegion = browserRegion
+    } else {
+      this.opaqueRegion = null
+    }
   }
 
   /**
@@ -363,11 +366,14 @@ export default class BrowserSurface {
    *
    */
   setInputRegion (resource, region) {
-    const grRegionResource = new greenfield.GrRegion(resource.client, region, resource.version)
-    const browserRegion = BrowserRegion.create(grRegionResource)
-    grRegionResource.implementation = browserRegion
-
-    this.inputRegion = browserRegion
+    if (region) {
+      const grRegionResource = new greenfield.GrRegion(resource.client, region, resource.version)
+      const browserRegion = BrowserRegion.create(grRegionResource)
+      grRegionResource.implementation = browserRegion
+      this.inputRegion = browserRegion
+    } else {
+      this.inputRegion = null
+    }
   }
 
   /**
@@ -403,6 +409,8 @@ export default class BrowserSurface {
 
     this.grBuffer = this.pendingGrBuffer
     this.pendingGrBuffer = null
+
+    // FIXME properly handle null buffer
 
     this.bufferTransform = this._pendingBufferTransform
     this.bufferScale = this._pendingBufferScale
