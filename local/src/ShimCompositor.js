@@ -2,9 +2,13 @@
 
 const WlSurface = require('./protocol/wayland/WlSurface')
 const WlCompositorRequests = require('./protocol/wayland/WlCompositorRequests')
+const WlRegion = require('./protocol/wayland/WlRegion')
 
 const LocalSurface = require('./LocalSurface')
 const ShimSurface = require('./ShimSurface')
+
+const LocalRegion = require('./LocalRegion')
+const ShimRegion = require('./ShimRegion')
 
 module.exports = class ShimCompositor extends WlCompositorRequests {
   /**
@@ -38,6 +42,10 @@ module.exports = class ShimCompositor extends WlCompositorRequests {
 
   createRegion (resource, id) {
     const grRegionProxy = this.proxy.createRegion()
-    // TODO create new region resource & link it to the proxy
+    const localRegion = LocalRegion.create()
+    grRegionProxy.listener = localRegion
+
+    const shimRegion = ShimRegion.create(grRegionProxy)
+    localRegion.resource = WlRegion.create(resource.client, resource.version, id, shimRegion, null)
   }
 }
