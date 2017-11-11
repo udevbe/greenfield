@@ -13,7 +13,7 @@ export default class BrowserDataDeviceManager extends westfield.Global {
   }
 
   constructor () {
-    super(greenfield.GrDataDeviceManager.name, 1)
+    super(greenfield.GrDataDeviceManager.name, 3)
   }
 
   bindClient (client, id, version) {
