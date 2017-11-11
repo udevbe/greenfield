@@ -8,8 +8,10 @@ import BrowserRtcPeerConnection from './BrowserRtcPeerConnection'
 import BrowserRtcBufferFactory from './BrowserDcBufferFactory'
 import BrowserShell from './BrowserShell'
 import BrowserSeat from './BrowserSeat'
+import BrowserDataDeviceManager from './BrowserDataDeviceManager'
 
 function setupGlobals (browserSession) {
+  BrowserDataDeviceManager.create(browserSession)
   const browserSeat = BrowserSeat.create(browserSession)
   BrowserCompositor.create(browserSession, browserSeat)
   BrowserShell.create(browserSession)
