@@ -41,10 +41,18 @@ export default class BrowserPointer {
     this.resources = []
     this.focus = null
     this.grab = null
+    this.x = 0
+    this.y = 0
     this._focusDestroyListener = () => {
+      const surfaceResource = this.focus.view.browserSurface.resource
+      surfaceResource.removeDestroyListener(this._focusDestroyListener)
+      this.focus = null
       this.grab = null
-      this.onMouseLeave(this.focus)
-      // TODO recalculate enter and consequently focus
+      // recalculate focus and consequently enter event
+      const focusElement = document.elementFromPoint(this.x, this.y)
+      if (focusElement.view != null) {
+        this._updateFocus(focusElement)
+      }
     }
     this._btnDwnCount = 0
     this.btnSerial = 0
@@ -126,12 +134,17 @@ export default class BrowserPointer {
    * @param {MouseEvent}event
    */
   onMouseMove (event) {
+    this.x = event.clientX
+    this.y = event.clientY
+
     if (this.focus) {
-      const canvasPoint = Point.create(event.clientX, event.clientY)
+      const elementRect = this.focus.getBoundingClientRect()
+      const canvasPoint = Point.create(this.x - elementRect.x, this.y - elementRect.y)
       const surfacePoint = this.focus.view.toSurfaceSpace(canvasPoint)
 
       const surfaceResource = this.focus.view.browserSurface.resource
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
+        console.log('motion( %f, %f, %f )', event.timeStamp, greenfield.parseFixed(surfacePoint.x).asInt(), greenfield.parseFixed(surfacePoint.y).asInt())
         pointerResource.motion(event.timeStamp, greenfield.parseFixed(surfacePoint.x), greenfield.parseFixed(surfacePoint.y))
       })
     }
@@ -160,6 +173,7 @@ export default class BrowserPointer {
 
     const surfaceResource = this.focus.view.browserSurface.resource
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
+      console.log('button( %f, %f, %f, %s )', this.btnSerial + 1, event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.released)
       pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.released)
     })
     this._btnDwnCount--
@@ -183,6 +197,7 @@ export default class BrowserPointer {
     this._btnDwnCount++
     const surfaceResource = this.focus.view.browserSurface.resource
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
+      console.log('button( %f, %f, %f, %s )', this.btnSerial + 1, event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.pressed)
       pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.pressed)
     })
   }
@@ -195,14 +210,20 @@ export default class BrowserPointer {
       return
     }
 
-    this.focus = event.target
+    this._updateFocus(event.target)
+  }
+
+  _updateFocus (newFocus) {
+    this.focus = newFocus
     const surfaceResource = this.focus.view.browserSurface.resource
     surfaceResource.addDestroyListener(this._focusDestroyListener)
 
-    const canvasPoint = Point.create(event.clientX, event.clientY)
+    const elementRect = this.focus.getBoundingClientRect()
+    const canvasPoint = Point.create(this.x - elementRect.x, this.y - elementRect.y)
     const surfacePoint = this.focus.view.toSurfaceSpace(canvasPoint)
 
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
+      console.log('enter( %f, %s, %f, %f )', this.enterSerial + 1, surfaceResource, greenfield.parseFixed(surfacePoint.x).asInt(), greenfield.parseFixed(surfacePoint.y).asInt())
       pointerResource.enter(this._nextEnterSerial(), surfaceResource, greenfield.parseFixed(surfacePoint.x), greenfield.parseFixed(surfacePoint.y))
     })
   }
@@ -220,6 +241,7 @@ export default class BrowserPointer {
       surfaceResource.removeDestroyListener(this._focusDestroyListener)
 
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
+        console.log('leave( %f, %s )', this.leaveSerial + 1, surfaceResource)
         pointerResource.leave(this._nextLeaveSerial(), surfaceResource)
       })
       this.focus = null

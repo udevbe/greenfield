@@ -34,10 +34,10 @@ export default class BrowserSurfaceView {
   static _setupMouseListeners (canvas, browserSurface) {
     const browserPointer = browserSurface.browserSeat.browserPointer
     canvas.addEventListener('mouseenter', (event) => {
-      browserPointer.onMouseEnter(event, browserSurface)
+      browserPointer.onMouseEnter(event)
     }, true)
-    canvas.addEventListener('mouseleave', () => {
-      browserPointer.onMouseLeave(browserSurface)
+    canvas.addEventListener('mouseleave', (event) => {
+      browserPointer.onMouseLeave(event)
     }, true)
     // other mouse listeners are set in the browser pointer class
   }
@@ -63,6 +63,10 @@ export default class BrowserSurfaceView {
     const surfaceHeight = this.browserSurface.size.h
     const canvasWidth = this.canvas.width
     const canvasHeight = this.canvas.height
+
+    if (canvasWidth === surfaceWidth && canvasHeight === surfaceHeight) {
+      return canvasPoint
+    }
 
     const scalarVector = Vect4.create(surfaceWidth / canvasWidth, surfaceHeight / canvasHeight, 1, 1)
 
