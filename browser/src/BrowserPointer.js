@@ -144,8 +144,8 @@ export default class BrowserPointer {
 
       const surfaceResource = this.focus.view.browserSurface.resource
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
-        console.log('motion( %f, %f, %f )', event.timeStamp, greenfield.parseFixed(surfacePoint.x).asInt(), greenfield.parseFixed(surfacePoint.y).asInt())
-        pointerResource.motion(event.timeStamp, greenfield.parseFixed(surfacePoint.x), greenfield.parseFixed(surfacePoint.y))
+        console.log('motion( %f, %f, %f )', event.timeStamp, surfacePoint.x, surfacePoint.y)
+        pointerResource.motion(event.timeStamp, greenfield.parseFixed(surfacePoint.x >> 0), greenfield.parseFixed(surfacePoint.y >> 0))
       })
     }
   }
@@ -223,8 +223,8 @@ export default class BrowserPointer {
     const surfacePoint = this.focus.view.toSurfaceSpace(canvasPoint)
 
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
-      console.log('enter( %f, %s, %f, %f )', this.enterSerial + 1, surfaceResource, greenfield.parseFixed(surfacePoint.x).asInt(), greenfield.parseFixed(surfacePoint.y).asInt())
-      pointerResource.enter(this._nextEnterSerial(), surfaceResource, greenfield.parseFixed(surfacePoint.x), greenfield.parseFixed(surfacePoint.y))
+      console.log('enter( %f, %s, %f, %f )', this.enterSerial + 1, surfaceResource, surfacePoint.x, surfacePoint.y)
+      pointerResource.enter(this._nextEnterSerial(), surfaceResource, greenfield.parseFixed((surfacePoint.x + 1) >> 0), greenfield.parseFixed((surfacePoint.y + 1) >> 0))
     })
   }
 
