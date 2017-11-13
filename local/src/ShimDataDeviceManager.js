@@ -38,7 +38,7 @@ module.exports = class ShimDataDeviceManager extends WlDataDeviceManagerRequests
   }
 
   getDataDevice (resource, id, seat) {
-    const grDataDeviceProxy = this.proxy.createDataDevice(seat.implementation.proxy)
+    const grDataDeviceProxy = this.proxy.getDataDevice(seat.implementation.proxy)
     const localDataDevice = LocalDataDevice.create(seat.implementation.proxy.connection)
     grDataDeviceProxy.listener = localDataDevice
 
