@@ -219,12 +219,12 @@ export default class BrowserPointer {
     surfaceResource.addDestroyListener(this._focusDestroyListener)
 
     const elementRect = this.focus.getBoundingClientRect()
-    const canvasPoint = Point.create(this.x - elementRect.x, this.y - elementRect.y)
+    const canvasPoint = Point.create(this.x - (elementRect.x - 1), this.y - (elementRect.y - 1))
     const surfacePoint = this.focus.view.toSurfaceSpace(canvasPoint)
 
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
       console.log('enter( %f, %s, %f, %f )', this.enterSerial + 1, surfaceResource, surfacePoint.x, surfacePoint.y)
-      pointerResource.enter(this._nextEnterSerial(), surfaceResource, greenfield.parseFixed((surfacePoint.x + 1) >> 0), greenfield.parseFixed((surfacePoint.y + 1) >> 0))
+      pointerResource.enter(this._nextEnterSerial(), surfaceResource, greenfield.parseFixed((surfacePoint.x)), greenfield.parseFixed((surfacePoint.y)))
     })
   }
 
