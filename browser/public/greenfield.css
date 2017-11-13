@@ -1,4 +1,6 @@
 body {
     background-image: url(pattern.png);
     background-size: auto;
+    margin: 0px;
+    padding: 0px;
 }
