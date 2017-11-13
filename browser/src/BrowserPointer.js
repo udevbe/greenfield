@@ -144,7 +144,7 @@ export default class BrowserPointer {
 
       const surfaceResource = this.focus.view.browserSurface.resource
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
-        console.log('motion( %f, %f, %f )', event.timeStamp, surfacePoint.x, surfacePoint.y)
+        // console.log('motion( %f, %f, %f )', event.timeStamp, surfacePoint.x, surfacePoint.y)
         pointerResource.motion(event.timeStamp, greenfield.parseFixed(surfacePoint.x >> 0), greenfield.parseFixed(surfacePoint.y >> 0))
       })
     }
@@ -173,7 +173,7 @@ export default class BrowserPointer {
 
     const surfaceResource = this.focus.view.browserSurface.resource
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
-      console.log('button( %f, %f, %f, %s )', this.btnSerial + 1, event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.released)
+      // console.log('button( %f, %f, %f, %s )', this.btnSerial + 1, event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.released)
       pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.released)
     })
     this._btnDwnCount--
@@ -197,7 +197,7 @@ export default class BrowserPointer {
     this._btnDwnCount++
     const surfaceResource = this.focus.view.browserSurface.resource
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
-      console.log('button( %f, %f, %f, %s )', this.btnSerial + 1, event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.pressed)
+      // console.log('button( %f, %f, %f, %s )', this.btnSerial + 1, event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.pressed)
       pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.pressed)
     })
   }
@@ -223,7 +223,7 @@ export default class BrowserPointer {
     const surfacePoint = this.focus.view.toSurfaceSpace(canvasPoint)
 
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
-      console.log('enter( %f, %s, %f, %f )', this.enterSerial + 1, surfaceResource, surfacePoint.x, surfacePoint.y)
+      // console.log('enter( %f, %s, %f, %f )', this.enterSerial + 1, surfaceResource, surfacePoint.x, surfacePoint.y)
       pointerResource.enter(this._nextEnterSerial(), surfaceResource, greenfield.parseFixed((surfacePoint.x)), greenfield.parseFixed((surfacePoint.y)))
     })
   }
@@ -241,7 +241,7 @@ export default class BrowserPointer {
       surfaceResource.removeDestroyListener(this._focusDestroyListener)
 
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
-        console.log('leave( %f, %s )', this.leaveSerial + 1, surfaceResource)
+        // console.log('leave( %f, %s )', this.leaveSerial + 1, surfaceResource)
         pointerResource.leave(this._nextLeaveSerial(), surfaceResource)
       })
       this.focus = null

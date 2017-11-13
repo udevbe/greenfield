@@ -19,14 +19,10 @@ export default class BrowserRtcBufferFactory extends westfield.Global {
   }
 
   /**
-   *
-   * @param {BrowserSession} browserSession
    * @returns {BrowserRtcBufferFactory}
    */
-  static create (browserSession) {
-    const browserRtcBufferFactory = new BrowserRtcBufferFactory()
-    browserSession.wfsServer.registry.register(browserRtcBufferFactory)
-    return browserRtcBufferFactory
+  static create () {
+    return new BrowserRtcBufferFactory()
   }
 
   /**

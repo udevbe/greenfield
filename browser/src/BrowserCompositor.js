@@ -14,10 +14,7 @@ export default class BrowserCompositor extends westfield.Global {
    */
   static create (browserSession, browserSeat) {
     const glCanvasRenderer = GLRenderer.create(browserSession)
-
-    const browserCompositor = new BrowserCompositor(browserSession, glCanvasRenderer, browserSeat)
-    browserSession.wfsServer.registry.register(browserCompositor)
-    return browserCompositor
+    return new BrowserCompositor(browserSession, glCanvasRenderer, browserSeat)
   }
 
   /**

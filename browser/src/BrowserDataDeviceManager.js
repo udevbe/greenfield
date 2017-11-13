@@ -6,10 +6,8 @@ import BrowserDataSource from './BrowserDataSource'
 import BrowserDataDevice from './BrowserDataDevice'
 
 export default class BrowserDataDeviceManager extends westfield.Global {
-  static create (browserSession) {
-    const browserDataDeviceManager = new BrowserDataDeviceManager()
-    browserSession.wfsServer.registry.register(browserDataDeviceManager)
-    return browserDataDeviceManager
+  static create () {
+    return new BrowserDataDeviceManager()
   }
 
   constructor () {

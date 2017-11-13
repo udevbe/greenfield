@@ -11,13 +11,20 @@ import BrowserSeat from './BrowserSeat'
 import BrowserDataDeviceManager from './BrowserDataDeviceManager'
 
 function setupGlobals (browserSession) {
-  BrowserDataDeviceManager.create(browserSession)
-  const browserSeat = BrowserSeat.create(browserSession)
-  BrowserCompositor.create(browserSession, browserSeat)
-  BrowserShell.create(browserSession)
+  const browserSeat = BrowserSeat.create()
+  const browserCompositor = BrowserCompositor.create(browserSession, browserSeat)
+  const browserDataDeviceManager = BrowserDataDeviceManager.create()
+  const browserShell = BrowserShell.create()
 
-  BrowserRtcPeerConnection.create(browserSession)
-  BrowserRtcBufferFactory.create(browserSession)
+  const browserRtcPeerConnection = BrowserRtcPeerConnection.create()
+  const browserRtcBufferFactory = BrowserRtcBufferFactory.create()
+
+  browserSession.wfsServer.registry.register(browserCompositor)
+  browserSession.wfsServer.registry.register(browserDataDeviceManager)
+  browserSession.wfsServer.registry.register(browserSeat)
+  browserSession.wfsServer.registry.register(browserShell)
+  browserSession.wfsServer.registry.register(browserRtcPeerConnection)
+  browserSession.wfsServer.registry.register(browserRtcBufferFactory)
 }
 
 function main () {
