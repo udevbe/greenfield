@@ -65,6 +65,7 @@ module.exports = class LocalSession {
           const connection = this._connections[sessionId]
           if (connection) {
             connection.unmarshall(arrayBuffer)
+            this.flush()
           }
         } catch (error) {
           console.error(error)
