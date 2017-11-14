@@ -161,7 +161,9 @@ export default class BrowserRtcDcBuffer {
     const header = new Uint32Array(event.data, 0, 1)
     const h264NalSerial = header[0]
     header[0] = 0x01000000 // little endian
-    this.resource.ack(h264NalSerial)
+    if (this.resource) {
+      this.resource.ack(h264NalSerial)
+    }
     this._checkNal(h264NalSerial, h264Nal)
   }
 
@@ -186,5 +188,10 @@ export default class BrowserRtcDcBuffer {
 
     this.state = 'complete'
     this._onStateChanged(this.state)
+  }
+
+  destroy () {
+    this.dataChannel = null
+    this.resource = null
   }
 }

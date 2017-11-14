@@ -38,6 +38,10 @@ module.exports = class ShimCompositor extends WlCompositorRequests {
     // wire future surface requests to proxy
     const shimSurface = ShimSurface.create(grSurfaceProxy)
     localSurface.resource = WlSurface.create(resource.client, resource.version, id, shimSurface, null)
+    localSurface.resource.onDestroy().then(() => {
+      shimSurface.localRtcDcBuffer.destroy()
+      shimSurface.localRtcDcBuffer = null
+    })
   }
 
   createRegion (resource, id) {

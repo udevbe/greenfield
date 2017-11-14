@@ -25,6 +25,16 @@ module.exports = class LocalRtcDcBuffer {
     this.dataChannel = dataChannel
   }
 
+  destroy () {
+    this.grBufferProxy.destroy()
+    this.rtcDcBufferProxy.destroy()
+    this.dataChannel.close()
+
+    this.grBufferProxy = null
+    this.rtcDcBufferProxy = null
+    this.dataChannel = null
+  }
+
   /**
    *
    * @param {Number} serial Serial of the received buffer contents

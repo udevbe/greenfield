@@ -9,17 +9,28 @@ const ShimCallback = require('./ShimCallback')
 const H264Encoder = require('./H264Encoder')
 
 module.exports = class ShimSurface extends WlSurfaceRequests {
-  static create (grSurfaceProxy) {
+
+  /**
+   * @param grSurfaceProxy
+   * @param grSurfaceResource
+   * @return {module.ShimSurface}
+   */
+  static create (grSurfaceProxy, grSurfaceResource) {
     const rtcBufferFactory = grSurfaceProxy.connection._rtcBufferFactory
-    return new ShimSurface(grSurfaceProxy, rtcBufferFactory)
+    return new ShimSurface(grSurfaceProxy, rtcBufferFactory, grSurfaceResource)
   }
 
+  /**
+   * @private
+   * @param grSurfaceProxy
+   * @param rtcBufferFactory
+   * @param grSurfaceResource
+   */
   constructor (grSurfaceProxy, rtcBufferFactory) {
     super()
     this.proxy = grSurfaceProxy
     this.rtcBufferFactory = rtcBufferFactory
 
-    this.pendingBufferDestroyListener = null
     this.pendingBuffer = null
     this.buffer = null
     this.synSerial = 0
@@ -30,15 +41,18 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     this.localRtcDcBuffer = this.rtcBufferFactory.createLocalRtcDcBuffer()
 
     this.pendingBufferDestroyListener = () => {
-      this.localRtcDcBuffer.grBufferProxy.destroy()
-      this.localRtcDcBuffer.rtcDcBufferProxy.destroy()
       this.pendingBuffer = null
+    }
+    this.bufferDestroyListener = () => {
+      this.buffer = null
     }
   }
 
   destroy (resource) {
     this.proxy.destroy()
     resource.destroy()
+    this.localRtcDcBuffer.destroy()
+    this.localRtcDcBuffer = null
   }
 
   attach (resource, buffer, x, y) {
@@ -124,17 +138,21 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     })
   }
 
-  sendBuffer (h264Nal, localRtcDcBuffer, synSerial) {
-    if (localRtcDcBuffer.dataChannel.readyState === 'open') {
+  sendBuffer (h264Nal, synSerial) {
+    if (this.localRtcDcBuffer === null) {
+      return
+    }
+
+    if (this.localRtcDcBuffer.dataChannel.readyState === 'open') {
       // console.log('sending buffer')
-      localRtcDcBuffer.dataChannel.send(h264Nal.buffer.slice(h264Nal.byteOffset, h264Nal.byteOffset + h264Nal.byteLength))
+      this.localRtcDcBuffer.dataChannel.send(h264Nal.buffer.slice(h264Nal.byteOffset, h264Nal.byteOffset + h264Nal.byteLength))
     } else {
       // console.log('buffer channel not yet open')
-      localRtcDcBuffer.dataChannel.onopen = () => {
-        localRtcDcBuffer.dataChannel.onopen = null
+      this.localRtcDcBuffer.dataChannel.onopen = () => {
+        this.localRtcDcBuffer.dataChannel.onopen = null
         // make sure we don't send an old buffer
         if (synSerial >= this.synSerial) {
-          this.sendBuffer(h264Nal, localRtcDcBuffer, synSerial)
+          this.sendBuffer(h264Nal, synSerial)
         }
       }
     }
@@ -144,7 +162,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       // then we have not received an ack that matches or is newer than the syn we're checking. We resend the frame.
       if (synSerial > this.ackSerial && synSerial === this.synSerial) {
         // console.log('send timed out. resending')
-        this.sendBuffer(h264Nal, localRtcDcBuffer, synSerial)
+        this.sendBuffer(h264Nal, synSerial)
       }
       // TODO dynamically adjust to expected roundtrip time which could (naively) be calculated by measuring the latency
       // between a (syn & ack)/2 + frame bandwidth.
@@ -154,6 +172,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
   commit (resource) {
     if (this.buffer) {
       this.buffer.release()
+      this.buffer.removeDestroyListener(this.bufferDestroyListener)
     }
 
     if (this.pendingBuffer) {
@@ -163,7 +182,8 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     this.pendingBuffer = null
     // TODO handle destruction of committed buffer?
 
-    if (this.buffer) {
+    if (this.buffer && this.localRtcDcBuffer) {
+      this.buffer.addDestroyListener(this.bufferDestroyListener)
       this.localRtcDcBuffer.ack = (serial) => {
         if (serial > this.ackSerial) {
           this.ackSerial = serial
@@ -178,7 +198,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       const bufferHeight = shm.getHeight()
       this.localRtcDcBuffer.rtcDcBufferProxy.syn(currentSynSerial, bufferWidth, bufferHeight)
       this.encodeBuffer(this.buffer, currentSynSerial).then((h264Nal) => {
-        this.sendBuffer(h264Nal, this.localRtcDcBuffer, currentSynSerial)
+        this.sendBuffer(h264Nal, currentSynSerial)
       }).catch((error) => {
         console.log(error)
         // TODO Failed to encode buffer. What to do here?
