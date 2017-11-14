@@ -19,24 +19,28 @@ const linuxInput = {
 
 export default class BrowserPointer {
   /**
+   * @param {BrowserSession} browserSession
    * @returns {BrowserPointer}
    */
-  static create () {
+  static create (browserSession) {
     const browserPointer = new BrowserPointer()
     // TODO these listeners should be added on document level as they are send to the grabbed surface, and not on the focussed surface
-    document.addEventListener('mousemove', (event) => {
+    document.addEventListener('mousemove', browserSession.eventSource((event) => {
       browserPointer.onMouseMove(event)
-    }, true)
-    document.addEventListener('mouseup', (event) => {
+    }), true)
+    document.addEventListener('mouseup', browserSession.eventSource((event) => {
       browserPointer.onMouseUp(event)
-    }, true)
-    document.addEventListener('mousedown', (event) => {
+    }), true)
+    document.addEventListener('mousedown', browserSession.eventSource((event) => {
       browserPointer.onMouseDown(event)
-    }, true)
+    }), true)
     // other mouse events are set in the browser surface view class
     return browserPointer
   }
 
+  /**
+   * @private
+   */
   constructor () {
     this.resources = []
     this.focus = null
@@ -50,7 +54,7 @@ export default class BrowserPointer {
       this.grab = null
       // recalculate focus and consequently enter event
       const focusElement = document.elementFromPoint(this.x, this.y)
-      if (focusElement.view != null) {
+      if (focusElement.view) {
         this._updateFocus(focusElement)
       }
     }

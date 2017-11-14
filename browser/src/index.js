@@ -11,7 +11,7 @@ import BrowserSeat from './BrowserSeat'
 import BrowserDataDeviceManager from './BrowserDataDeviceManager'
 
 function setupGlobals (browserSession) {
-  const browserSeat = BrowserSeat.create()
+  const browserSeat = BrowserSeat.create(browserSession)
   const browserCompositor = BrowserCompositor.create(browserSession, browserSeat)
   const browserDataDeviceManager = BrowserDataDeviceManager.create()
   const browserShell = BrowserShell.create()

@@ -9,10 +9,11 @@ import BrowserTouch from './BrowserTouch'
 
 export default class BrowserSeat extends westfield.Global {
   /**
+   * @param {BrowserSession} browserSession
    * @returns {BrowserSeat}
    */
-  static create () {
-    const browserPointer = BrowserPointer.create()
+  static create (browserSession) {
+    const browserPointer = BrowserPointer.create(browserSession)
     const browserKeyboard = BrowserKeyboard.create()
     const browserTouch = BrowserTouch.create()
     const hasTouch = 'ontouchstart' in document.documentElement

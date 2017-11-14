@@ -29,9 +29,10 @@ export default class BrowserSurface {
    * @param {GrSurface} grSurfaceResource
    * @param {Renderer} renderer
    * @param {BrowserSeat} browserSeat
+   * @param {BrowserSession} browserSession
    * @returns {BrowserSurface}
    */
-  static create (grSurfaceResource, renderer, browserSeat) {
+  static create (grSurfaceResource, renderer, browserSeat, browserSession) {
     const damageRegion = pixman._malloc(20)
     pixman._pixman_region32_init(damageRegion)
 
@@ -47,7 +48,8 @@ export default class BrowserSurface {
       damageRegion,
       bufferDamageRegion,
       bufferDamage,
-      browserSeat
+      browserSeat,
+      browserSession
     )
     grSurfaceResource.implementation = browserSurface
     grSurfaceResource.onDestroy().then(() => browserSurface._handleDestruction())
@@ -64,8 +66,9 @@ export default class BrowserSurface {
    * @param {Number} bufferDamageRegion
    * @param {Number} bufferDamage
    * @param {BrowserSeat} browserSeat
+   * @param {BrowserSession} browserSession
    */
-  constructor (grSurfaceResource, renderer, damageRegion, bufferDamageRegion, bufferDamage, browserSeat) {
+  constructor (grSurfaceResource, renderer, damageRegion, bufferDamageRegion, bufferDamage, browserSeat, browserSession) {
     this.resource = grSurfaceResource
 
     this.renderer = renderer
@@ -95,6 +98,7 @@ export default class BrowserSurface {
     this.browserSurfaceViews = []
 
     this.browserSeat = browserSeat
+    this.browserSession = browserSession
   }
 
   createView (size) {

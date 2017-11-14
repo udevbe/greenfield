@@ -28,6 +28,7 @@ export default class BrowserSession extends westfield.Global {
 
   constructor (url, wfsServer) {
     super(session.GrSession.name, 1)
+    this._flush = false
     this.url = url
     this.wfsServer = wfsServer
     this._clients = {}
@@ -70,7 +71,7 @@ export default class BrowserSession extends westfield.Global {
   }
 
   _setupWebsocket () {
-    this._ws.onmessage = (event) => {
+    this._ws.onmessage = this.eventSource((event) => {
       if (this._ws.readyState === window.WebSocket.OPEN) {
         try {
           const buf = event.data
@@ -83,7 +84,7 @@ export default class BrowserSession extends westfield.Global {
           this._ws.close()
         }
       }
-    }
+    })
 
     window.onbeforeunload = function (e) {
       const dialogText = 'dummytext'
@@ -131,6 +132,19 @@ export default class BrowserSession extends westfield.Global {
   }
 
   /**
+   * Wraps a lambda so a flush is guaranteed after the lambda executes
+   * @param lambda
+   * @return {Function}
+   */
+  eventSource (lambda) {
+    const self = this
+    return function () {
+      lambda.apply(this, arguments)
+      self.flush()
+    }
+  }
+
+  /**
    *
    * @param {GrSession} resource
    *
@@ -148,6 +162,12 @@ export default class BrowserSession extends westfield.Global {
   }
 
   flush () {
-    this.resources.forEach(resource => resource.flush())
+    if (!this._flush) {
+      this._flush = true
+      setTimeout(() => {
+        this._flush = false
+        this.resources.forEach(resource => resource.flush())
+      }, 0)
+    }
   }
 }
