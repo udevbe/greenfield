@@ -132,6 +132,8 @@ export default class BrowserPointer {
         this.view = browserSurface.browserSurfaceViews[0]
       }
 
+      this._scaleCursor(browserSurface)
+
       this.focus.style.cursor = 'url("' + this.view.canvas.toDataURL() + '") ' + hotspotX + ' ' + hotspotY + ' , pointer'
       this.view.addDrawListener((browserSurfaceView) => {
         if (browserSurfaceView === this.view) {
@@ -144,9 +146,13 @@ export default class BrowserPointer {
   }
 
   onCommit (browserSurface) {
+    this._scaleCursor(browserSurface)
+  }
+
+  _scaleCursor (browserSurface) {
     if (this.view.browserSurface === browserSurface) {
-      this.view.canvas.width = browserSurface.bufferSize.w
-      this.view.canvas.height = browserSurface.bufferSize.h
+      this.view.canvas.width = browserSurface.bufferSize.w > 32 ? 32 : browserSurface.bufferSize.w
+      this.view.canvas.height = browserSurface.bufferSize.h > 32 ? 32 : browserSurface.bufferSize.h
     }
   }
 
