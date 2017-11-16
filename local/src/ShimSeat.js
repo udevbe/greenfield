@@ -47,7 +47,7 @@ module.exports = class ShimSeat extends WlSeatRequests {
     grPointerProxy.listener = localPointer
 
     const shimPointer = ShimPointer.create(grPointerProxy)
-    localPointer.resource = WlPointer.create(resource.client, 6, id, shimPointer, null)
+    localPointer.resource = WlPointer.create(resource.client, resource.version, id, shimPointer, null)
   }
 
   /**
@@ -73,7 +73,7 @@ module.exports = class ShimSeat extends WlSeatRequests {
     grKeyboardProxy.listener = localKeyboard
 
     const shimKeyboard = ShimKeyboard.create(grKeyboardProxy)
-    localKeyboard.resource = WlKeyboard.create(resource.client, 6, id, shimKeyboard, null)
+    localKeyboard.resource = WlKeyboard.create(resource.client, resource.version, id, shimKeyboard, null)
   }
 
   /**
@@ -99,7 +99,7 @@ module.exports = class ShimSeat extends WlSeatRequests {
     grTouchProxy.listener = localTouch
 
     const shimTouch = ShimTouch.create(grTouchProxy)
-    localTouch.resource = WlTouch.create(resource.client, 6, id, shimTouch, null)
+    localTouch.resource = WlTouch.create(resource.client, resource.version, id, shimTouch, null)
   }
 
   /**

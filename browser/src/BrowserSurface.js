@@ -131,6 +131,7 @@ export default class BrowserSurface {
     this.browserSurfaceViews.forEach(browserSurfaceView => {
       browserSurfaceView.destroy()
     })
+    this.browserSurfaceViews = []
   }
 
   /**
@@ -446,8 +447,8 @@ export default class BrowserSurface {
     this.size = this.renderer.surfaceSize(this)
     this.bufferSize = this.renderer.bufferSize(this.grBuffer)
 
-    if (this.role) {
-      this.role.onCommit()
+    if (this.role && typeof this.role.onCommit === 'function') {
+      this.role.onCommit(this)
     }
     this.renderer.render(this)
   }

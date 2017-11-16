@@ -4,7 +4,7 @@ const WlPointerRequests = require('./protocol/wayland/WlPointerRequests')
 
 module.exports = class ShimPointer extends WlPointerRequests {
   static create (grPointerProxy) {
-    return new WlPointerRequests(grPointerProxy)
+    return new ShimPointer(grPointerProxy)
   }
 
   constructor (grPointerProxy) {
@@ -13,7 +13,7 @@ module.exports = class ShimPointer extends WlPointerRequests {
   }
 
   setCursor (resource, serial, surface, hotspotX, hotspotY) {
-    const grSurfaceProxy = surface.implementation.proxy
+    const grSurfaceProxy = surface === null ? null : surface.implementation.proxy
     this.proxy.setCursor(serial, grSurfaceProxy, hotspotX, hotspotY)
   }
 

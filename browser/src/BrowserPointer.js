@@ -60,12 +60,15 @@ export default class BrowserPointer {
     }
     this._btnDwnCount = 0
     this.buttonSerial = 0
-    this.enterSerial = 0
-    this.leaveSerial = 0
+    this.focusSerial = 0
 
     this.zOrderCounter = 1
 
     this._mouseMoveListeners = []
+
+    this.hotspotX = 0
+    this.hotspotY = 0
+    this.view = null
   }
 
   /**
@@ -113,7 +116,41 @@ export default class BrowserPointer {
    *
    */
   setCursor (resource, serial, surface, hotspotX, hotspotY) {
+    const browserSurface = surface.implementation
+    if (browserSurface.role && browserSurface.role !== this) {
+      // TODO raise protocol error
+    }
 
+    if (serial !== this.focusSerial) {
+      return
+    }
+
+    browserSurface.role = this
+    this.hotspotX = hotspotX
+    this.hotspotY = hotspotY
+
+    const oldView = this.view
+    if (browserSurface.browserSurfaceViews.length === 0) {
+      this.view = browserSurface.createView()
+    } else {
+      this.view = browserSurface.browserSurfaceViews[0]
+    }
+
+    this.focus.style.cursor = 'none'
+    this.view.canvas.style.left = (this.x - this.hotspotX) + 'px'
+    this.view.canvas.style.top = (this.y - this.hotspotY) + 'px'
+    this.view.canvas.style.zIndex = Number.MAX_SAFE_INTEGER
+    document.body.appendChild(this.view.canvas)
+    if (oldView) {
+      document.body.removeChild(oldView.canvas)
+    }
+  }
+
+  onCommit (browserSurface) {
+    if (this.view.browserSurface === browserSurface) {
+      this.view.canvas.width = browserSurface.bufferSize.w
+      this.view.canvas.height = browserSurface.bufferSize.h
+    }
   }
 
   /**
@@ -155,6 +192,10 @@ export default class BrowserPointer {
   onMouseMove (event) {
     this.x = event.clientX
     this.y = event.clientY
+    if (this.view) {
+      this.view.canvas.style.left = (this.x - this.hotspotX) + 'px'
+      this.view.canvas.style.top = (this.y - this.hotspotY) + 'px'
+    }
 
     this._mouseMoveListeners.forEach(listener => listener())
 
@@ -247,8 +288,7 @@ export default class BrowserPointer {
     const surfacePoint = this.focus.view.toSurfaceSpace(canvasPoint)
 
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
-      // console.log('enter( %f, %s, %f, %f )', this.enterSerial + 1, surfaceResource, surfacePoint.x, surfacePoint.y)
-      pointerResource.enter(this._nextEnterSerial(), surfaceResource, greenfield.parseFixed((surfacePoint.x)), greenfield.parseFixed((surfacePoint.y)))
+      pointerResource.enter(this._nextFocusSerial(), surfaceResource, greenfield.parseFixed((surfacePoint.x)), greenfield.parseFixed((surfacePoint.y)))
     })
   }
 
@@ -266,8 +306,9 @@ export default class BrowserPointer {
 
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
         // console.log('leave( %f, %s )', this.leaveSerial + 1, surfaceResource)
-        pointerResource.leave(this._nextLeaveSerial(), surfaceResource)
+        pointerResource.leave(this._nextFocusSerial(), surfaceResource)
       })
+      this.focus.style.cursor = 'auto'
       this.focus = null
     }
   }
@@ -277,13 +318,8 @@ export default class BrowserPointer {
     return this.buttonSerial
   }
 
-  _nextEnterSerial () {
-    this.enterSerial++
-    return this.enterSerial
-  }
-
-  _nextLeaveSerial () {
-    this.leaveSerial++
-    return this.leaveSerial
+  _nextFocusSerial () {
+    this.focusSerial++
+    return this.focusSerial
   }
 }
