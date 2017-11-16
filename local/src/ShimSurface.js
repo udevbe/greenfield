@@ -112,7 +112,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       if (!this.h264Encoder || this.h264Encoder.width !== bufferWidth || this.h264Encoder.height !== bufferHeight) {
         this.h264Encoder = H264Encoder.create(bufferWidth, bufferHeight)
         // BGRx because of little endian blob
-        this.h264Encoder.src.setCapsFromString('video/x-raw,format=BGRx,width=' + bufferWidth + ',height=' + bufferHeight + ',bpp=32,depth=32,framerate=30/1')
+        this.h264Encoder.src.setCapsFromString('video/x-raw,format=BGRx,width=' + bufferWidth + ',height=' + bufferHeight + ',bpp=32,depth=24,framerate=30/1')
         this.h264Encoder.pipeline.play()
       }
 

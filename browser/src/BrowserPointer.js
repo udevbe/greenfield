@@ -65,9 +65,6 @@ export default class BrowserPointer {
     this.zOrderCounter = 1
 
     this._mouseMoveListeners = []
-
-    this.hotspotX = 0
-    this.hotspotY = 0
     this.view = null
   }
 
@@ -116,33 +113,33 @@ export default class BrowserPointer {
    *
    */
   setCursor (resource, serial, surface, hotspotX, hotspotY) {
-    const browserSurface = surface.implementation
-    if (browserSurface.role && browserSurface.role !== this) {
-      // TODO raise protocol error
-    }
-
     if (serial !== this.focusSerial) {
       return
     }
 
-    browserSurface.role = this
-    this.hotspotX = hotspotX
-    this.hotspotY = hotspotY
+    if (surface) {
+      const browserSurface = surface.implementation
+      if (browserSurface.role && browserSurface.role !== this) {
+        // TODO raise protocol error
+        return
+      }
 
-    const oldView = this.view
-    if (browserSurface.browserSurfaceViews.length === 0) {
-      this.view = browserSurface.createView()
+      browserSurface.role = this
+
+      if (browserSurface.browserSurfaceViews.length === 0) {
+        this.view = browserSurface.createView()
+      } else {
+        this.view = browserSurface.browserSurfaceViews[0]
+      }
+
+      this.focus.style.cursor = 'url("' + this.view.canvas.toDataURL() + '") ' + hotspotX + ' ' + hotspotY + ' , pointer'
+      this.view.addDrawListener((browserSurfaceView) => {
+        if (browserSurfaceView === this.view) {
+          this.focus.style.cursor = 'url("' + this.view.canvas.toDataURL() + '") ' + hotspotX + ' ' + hotspotY + ' , pointer'
+        }
+      })
     } else {
-      this.view = browserSurface.browserSurfaceViews[0]
-    }
-
-    this.focus.style.cursor = 'none'
-    this.view.canvas.style.left = (this.x - this.hotspotX) + 'px'
-    this.view.canvas.style.top = (this.y - this.hotspotY) + 'px'
-    this.view.canvas.style.zIndex = Number.MAX_SAFE_INTEGER
-    document.body.appendChild(this.view.canvas)
-    if (oldView) {
-      document.body.removeChild(oldView.canvas)
+      this.focus.style.cursor = 'none'
     }
   }
 
@@ -192,10 +189,6 @@ export default class BrowserPointer {
   onMouseMove (event) {
     this.x = event.clientX
     this.y = event.clientY
-    if (this.view) {
-      this.view.canvas.style.left = (this.x - this.hotspotX) + 'px'
-      this.view.canvas.style.top = (this.y - this.hotspotY) + 'px'
-    }
 
     this._mouseMoveListeners.forEach(listener => listener())
 
@@ -206,7 +199,6 @@ export default class BrowserPointer {
 
       const surfaceResource = this.focus.view.browserSurface.resource
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
-        // console.log('motion( %f, %f, %f )', event.timeStamp, surfacePoint.x, surfacePoint.y)
         pointerResource.motion(event.timeStamp, greenfield.parseFixed(surfacePoint.x >> 0), greenfield.parseFixed(surfacePoint.y >> 0))
       })
     }

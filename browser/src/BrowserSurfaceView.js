@@ -11,8 +11,6 @@ export default class BrowserSurfaceView {
   static create (browserSurface) {
     const canvas = this._createCanvas()
     const context2d = canvas.getContext('2d')
-    this._setupMouseListeners(canvas, browserSurface)
-
     const browserSurfaceView = new BrowserSurfaceView(canvas, context2d, browserSurface)
     canvas.view = browserSurfaceView
     return browserSurfaceView
@@ -31,16 +29,15 @@ export default class BrowserSurfaceView {
     return canvas
   }
 
-  static _setupMouseListeners (canvas, browserSurface) {
-    const browserPointer = browserSurface.browserSeat.browserPointer
-    const browserSession = browserSurface.browserSession
-    canvas.addEventListener('mouseenter', browserSession.eventSource((event) => {
-      browserPointer.onMouseEnter(event)
-    }), true)
-    canvas.addEventListener('mouseleave', browserSession.eventSource((event) => {
-      browserPointer.onMouseLeave(event)
-    }), true)
+  enableMouseListeners () {
+    this.canvas.addEventListener('mouseenter', this._mouseEnterListener, true)
+    this.canvas.addEventListener('mouseleave', this._mouseLeaveListener, true)
     // other mouse listeners are set in the browser pointer class
+  }
+
+  disableMouseListeners () {
+    this.canvas.removeEventListener('mouseenter', this._mouseEnterListener, true)
+    this.canvas.removeEventListener('mouseleave', this._mouseLeaveListener, true)
   }
 
   /**
@@ -53,6 +50,34 @@ export default class BrowserSurfaceView {
     this.canvas = canvas
     this.context2d = context2d
     this.browserSurface = browserSurface
+    this._drawListeners = []
+
+    const browserPointer = this.browserSurface.browserSeat.browserPointer
+    const browserSession = this.browserSurface.browserSession
+    this._mouseEnterListener = browserSession.eventSource((event) => {
+      browserPointer.onMouseEnter(event)
+    })
+    this._mouseLeaveListener = browserSession.eventSource((event) => {
+      browserPointer.onMouseLeave(event)
+    })
+  }
+
+  draw (sourceCanvas) {
+    this.context2d.drawImage(sourceCanvas, 0, 0)
+    this._drawListeners.forEach(listener => {
+      listener(this)
+    })
+  }
+
+  addDrawListener (listener) {
+    this._drawListeners.push(listener)
+  }
+
+  removeDrawListener (listener) {
+    const index = this._drawListeners.indexOf(listener)
+    if (index > 0) {
+      this._drawListeners.splice(index, 1)
+    }
   }
 
   /**

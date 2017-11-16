@@ -125,7 +125,7 @@ export default class Renderer {
 
       // blit rendered texture into view canvas
       browserSurface.browserSurfaceViews.forEach((view) => {
-        view.context2d.drawImage(this.canvas, 0, 0)
+        view.draw(this.canvas)
       })
     }
   }

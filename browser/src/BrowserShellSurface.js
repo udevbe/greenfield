@@ -17,6 +17,7 @@ export default class BrowserShellSurface {
   static create (grShellSurfaceResource, grSurfaceResource) {
     const browserSurface = grSurfaceResource.implementation
     const browserSurfaceView = browserSurface.createView()
+    browserSurfaceView.enableMouseListeners()
     document.body.appendChild(browserSurfaceView.canvas)
 
     const browserShellSurface = new BrowserShellSurface(grShellSurfaceResource, grSurfaceResource, browserSurfaceView)
