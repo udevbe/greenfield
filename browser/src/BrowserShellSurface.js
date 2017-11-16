@@ -1,22 +1,48 @@
 'use strict'
 
+const SurfaceStates = {
+  TOP_LEVEL: 'toplevel',
+  MAXIMIZED: 'maximized',
+  TRANSIENT: 'transient',
+  FULLSCREEN: 'fullscreen',
+  POPUP: 'popup'
+}
+
 export default class BrowserShellSurface {
+  /**
+   * @param {GrShellSurface}grShellSurfaceResource
+   * @param {GrSurface}grSurfaceResource
+   * @return {BrowserShellSurface}
+   */
   static create (grShellSurfaceResource, grSurfaceResource) {
-    const browserShellSurface = new BrowserShellSurface(grShellSurfaceResource, grSurfaceResource)
+    const browserSurface = grSurfaceResource.implementation
+    const browserSurfaceView = browserSurface.createView()
+    document.body.appendChild(browserSurfaceView.canvas)
+
+    const browserShellSurface = new BrowserShellSurface(grShellSurfaceResource, grSurfaceResource, browserSurfaceView)
     browserShellSurface.implementation = browserShellSurface
 
     grSurfaceResource.onDestroy().then(() => {
       grShellSurfaceResource.destroy()
     })
 
+    browserSurface.role = browserShellSurface
     return browserShellSurface
   }
 
-  constructor (grShellSurfaceResource, grSurfaceResource) {
+  /**
+   * @private
+   * @param {GrShellSurface}grShellSurfaceResource
+   * @param {GrSurface}grSurfaceResource
+   * @param {BrowserSurfaceView}browserSurfaceView
+   */
+  constructor (grShellSurfaceResource, grSurfaceResource, browserSurfaceView) {
     this.resource = grShellSurfaceResource
     this.grSurfaceResource = grSurfaceResource
     this.title = ''
     this.clazz = ''
+    this.view = browserSurfaceView
+    this.state = SurfaceStates.TOP_LEVEL
   }
 
   /**
@@ -35,6 +61,11 @@ export default class BrowserShellSurface {
     window.setTimeout(() => resource.ping(), 3000)
   }
 
+  onCommit () {
+    this.view.canvas.width = this.grSurfaceResource.implementation.bufferSize.w
+    this.view.canvas.height = this.grSurfaceResource.implementation.bufferSize.h
+  }
+
   /**
    *
    *                Start a pointer-driven move of the surface.
@@ -51,7 +82,33 @@ export default class BrowserShellSurface {
    * @since 1
    *
    */
-  move (resource, seat, serial) {}
+  move (resource, seat, serial) {
+    if (this.state === SurfaceStates.FULLSCREEN || this.state === SurfaceStates.MAXIMIZED) {
+      return
+    }
+    const browserSeat = seat.implementation
+    const browserPointer = browserSeat.browserPointer
+    if (browserPointer.buttonSerial === serial) {
+      const canvasX = parseInt(this.view.canvas.style.left, 10)
+      const canvasY = parseInt(this.view.canvas.style.top, 10)
+
+      const pointerX = browserPointer.x
+      const pointerY = browserPointer.y
+
+      const moveListener = () => {
+        if (browserPointer.grab && browserPointer.grab.view.browserSurface === this.grSurfaceResource.implementation) {
+          const deltaX = browserPointer.x - pointerX
+          const deltaY = browserPointer.y - pointerY
+
+          this.view.canvas.style.left = (canvasX + deltaX) + 'px'
+          this.view.canvas.style.top = (canvasY + deltaY) + 'px'
+        } else {
+          browserPointer.removeMouseMoveListener(moveListener)
+        }
+      }
+      browserPointer.addMouseMoveListener(moveListener)
+    }
+  }
 
   /**
    *
@@ -84,7 +141,10 @@ export default class BrowserShellSurface {
    * @since 1
    *
    */
-  setToplevel (resource) {}
+  setToplevel (resource) {
+    this.state = SurfaceStates.TOP_LEVEL
+    document.body.appendChild(this.view.canvas)
+  }
 
   /**
    *
@@ -106,7 +166,9 @@ export default class BrowserShellSurface {
    * @since 1
    *
    */
-  setTransient (resource, parent, x, y, flags) {}
+  setTransient (resource, parent, x, y, flags) {
+
+  }
 
   /**
    *

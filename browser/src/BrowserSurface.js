@@ -94,17 +94,20 @@ export default class BrowserSurface {
     this._pendingBufferScale = 1
     this.bufferScale = 1
     this.size = Size.create(0, 0)
+    this.bufferSize = Size.create(0, 0)
 
     this.browserSurfaceViews = []
 
     this.browserSeat = browserSeat
     this.browserSession = browserSession
+
+    this.role = null
   }
 
-  createView (size) {
+  createView () {
     const browserSurfaceView = BrowserSurfaceView.create(this)
-    browserSurfaceView.canvas.width = size.w
-    browserSurfaceView.canvas.height = size.h
+    browserSurfaceView.canvas.width = this.bufferSize.w
+    browserSurfaceView.canvas.height = this.bufferSize.h
     this.browserSurfaceViews.push(browserSurfaceView)
     return browserSurfaceView
   }
@@ -441,6 +444,11 @@ export default class BrowserSurface {
 
     // TODO we could implement a flag so we don't always recalculate the surface size
     this.size = this.renderer.surfaceSize(this)
+    this.bufferSize = this.renderer.bufferSize(this.grBuffer)
+
+    if (this.role) {
+      this.role.onCommit()
+    }
     this.renderer.render(this)
   }
 

@@ -39,6 +39,6 @@ module.exports = class ShimShell extends WlShellRequests {
     grShellSurfaceProxy.listener = localShellSurface
 
     const shimShellSurface = ShimShellSurface.create(grShellSurfaceProxy)
-    localShellSurface.resource = WlShellSurface.create(resource.client, 1, id, shimShellSurface, null)
+    localShellSurface.resource = WlShellSurface.create(resource.client, resource.version, id, shimShellSurface, null)
   }
 }

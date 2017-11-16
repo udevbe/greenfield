@@ -27,7 +27,6 @@ export default class BrowserSurfaceView {
     canvas.style.left = '0px'
     canvas.style.top = '0px'
     canvas.style.position = 'relative'
-    document.body.appendChild(canvas)
     return canvas
   }
 

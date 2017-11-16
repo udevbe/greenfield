@@ -59,9 +59,11 @@ export default class BrowserPointer {
       }
     }
     this._btnDwnCount = 0
-    this.btnSerial = 0
+    this.buttonSerial = 0
     this.enterSerial = 0
     this.leaveSerial = 0
+
+    this._mouseMoveListeners = []
   }
 
   /**
@@ -134,12 +136,25 @@ export default class BrowserPointer {
     }
   }
 
+  addMouseMoveListener (func) {
+    this._mouseMoveListeners.push(func)
+  }
+
+  removeMouseMoveListener (func) {
+    const index = this._mouseMoveListeners.indexOf(func)
+    if (index > -1) {
+      this._mouseMoveListeners.splice(index, 1)
+    }
+  }
+
   /**
    * @param {MouseEvent}event
    */
   onMouseMove (event) {
     this.x = event.clientX
     this.y = event.clientY
+
+    this._mouseMoveListeners.forEach(listener => listener())
 
     if (this.focus) {
       const elementRect = this.focus.getBoundingClientRect()
@@ -177,7 +192,7 @@ export default class BrowserPointer {
 
     const surfaceResource = this.focus.view.browserSurface.resource
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
-      // console.log('button( %f, %f, %f, %s )', this.btnSerial + 1, event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.released)
+      // console.log('button( %f, %f, %f, %s )', this.buttonSerial + 1, event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.released)
       pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.released)
     })
     this._btnDwnCount--
@@ -201,7 +216,7 @@ export default class BrowserPointer {
     this._btnDwnCount++
     const surfaceResource = this.focus.view.browserSurface.resource
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
-      // console.log('button( %f, %f, %f, %s )', this.btnSerial + 1, event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.pressed)
+      // console.log('button( %f, %f, %f, %s )', this.buttonSerial + 1, event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.pressed)
       pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.pressed)
     })
   }
@@ -253,14 +268,17 @@ export default class BrowserPointer {
   }
 
   _nextButtonSerial () {
-    return this.btnSerial++
+    this.buttonSerial++
+    return this.buttonSerial
   }
 
   _nextEnterSerial () {
-    return this.enterSerial++
+    this.enterSerial++
+    return this.enterSerial
   }
 
   _nextLeaveSerial () {
-    return this.leaveSerial++
+    this.leaveSerial++
+    return this.leaveSerial
   }
 }

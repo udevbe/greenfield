@@ -104,10 +104,6 @@ export default class Renderer {
 
       if (!browserSurface.renderState) {
         browserSurface.renderState = ViewState.create(gl)
-        // FIXME don't create views here, instead let role manage views
-        if (browserSurface.browserSurfaceViews.length === 0) {
-          browserSurface.createView(bufferSize).unfade()
-        }
       }
 
       // update textures
