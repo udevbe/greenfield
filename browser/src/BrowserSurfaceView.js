@@ -26,7 +26,8 @@ export default class BrowserSurfaceView {
     const canvas = document.createElement('canvas')
     canvas.style.left = '0px'
     canvas.style.top = '0px'
-    canvas.style.position = 'relative'
+    canvas.style.position = 'absolute'
+    canvas.style.zIndex = 0
     return canvas
   }
 

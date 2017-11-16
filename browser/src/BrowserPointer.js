@@ -63,6 +63,8 @@ export default class BrowserPointer {
     this.enterSerial = 0
     this.leaveSerial = 0
 
+    this.zOrderCounter = 1
+
     this._mouseMoveListeners = []
   }
 
@@ -211,6 +213,9 @@ export default class BrowserPointer {
 
     if (this.grab === null) {
       this.grab = this.focus
+      // elements with a same zIndex will be display in document order, to avoid a previously grabbed canvas being shown below another,
+      // we need to assign it an absolute zIndex greater than the last one.
+      this.grab.style.zIndex = ++this.zOrderCounter
     }
 
     this._btnDwnCount++
