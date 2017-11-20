@@ -102,7 +102,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       const bufferWidth = shm.getWidth()
       const bufferHeight = shm.getHeight()
 
-      // TODO we interpret the buffer as always being xRGB. However we could also support ARGB if we split out the
+      // TODO Support ARGB by splitting out the
       // the alpha channel as a greyscale yuv and send it as a second h264 frame. We can then reconstruct in the browser
       // into RGBA using the grayscale as the alpha channel with the use of a simple webgl shader.
 
@@ -116,25 +116,36 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
         this.h264Encoder.pipeline.play()
       }
 
-      // shm.beginAccess()
-      // console.log('pushing buffer')
       this.h264Encoder.src.push(pixelBuffer)
-      const pullFrame = () => {
-        // TODO use gst_app_sink_set_callbacks instead. Requires modifications to the node-gstreamer-superficial lib.
-        this.h264Encoder.sink.pull((h264Nal) => {
-          // console.log('pulled encoded buffer: ' + h264Nal.toString('hex'))
-          if (h264Nal) {
-            // shm.endAccess()
-            // resolve
-            h264Nal.writeUInt32LE(synSerial, 0, false)
-            resolve(h264Nal)
-          } else {
-            // console.log('frame not yet encoded, retry')
-            setTimeout(pullFrame, 50)
+      // TODO use gst_app_sink_set_callbacks instead. Requires modifications to the node-gstreamer-superficial lib.
+
+      const ret = {opaque: null, alpha: null}
+
+      this.h264Encoder.sink.pull((opaqueH264Nal) => {
+        if (opaqueH264Nal) {
+          opaqueH264Nal.writeUInt32LE(synSerial, 0, false)
+          ret.opaque = opaqueH264Nal
+
+          if (ret.opaque && ret.alpha) {
+            resolve(ret)
           }
-        })
-      }
-      pullFrame()
+        } else {
+          // TODO error?
+        }
+      })
+
+      this.h264Encoder.alpha.pull((alphaH264Nal) => {
+        if (alphaH264Nal) {
+          alphaH264Nal.writeUInt32LE(synSerial, 0, false)
+          ret.alpha = alphaH264Nal
+
+          if (ret.opaque && ret.alpha) {
+            resolve(ret)
+          }
+        } else {
+          // TODO error?
+        }
+      })
     })
   }
 
@@ -197,8 +208,8 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       const bufferWidth = shm.getWidth()
       const bufferHeight = shm.getHeight()
       this.localRtcDcBuffer.rtcDcBufferProxy.syn(currentSynSerial, bufferWidth, bufferHeight)
-      this.encodeBuffer(this.buffer, currentSynSerial).then((h264Nal) => {
-        this.sendBuffer(h264Nal, currentSynSerial)
+      this.encodeBuffer(this.buffer, currentSynSerial).then((ret) => {
+        this.sendBuffer(ret.opaque, currentSynSerial)
       }).catch((error) => {
         console.log(error)
         // TODO Failed to encode buffer. What to do here?
