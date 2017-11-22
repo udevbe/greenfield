@@ -4,8 +4,8 @@ const gstreamer = require('gstreamer-superficial')
 
 module.exports = class H264Encoder {
   static create (width, height) {
-    const scaledWidth = width - (width % 2)
-    const scaledHeight = height - (height % 2)
+    const scaledWidth = width + (width % 2)
+    const scaledHeight = height + (height % 2)
 
     const pipeline = new gstreamer.Pipeline(
       // scale & convert to RGBA
@@ -34,7 +34,7 @@ module.exports = class H264Encoder {
       " ! ` +
       'glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! ' +
       'gldownload ! ' +
-      'x264enc byte-stream=true key-int-max=20 pass=pass1 tune=zerolatency threads=2 ip-factor=2 speed-preset=veryfast intra-refresh=0 qp-max=38 ! ' +
+      'x264enc byte-stream=true key-int-max=100 pass=pass1 tune=zerolatency threads=2 ip-factor=2 speed-preset=veryfast intra-refresh=0 ! ' +
       'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,framerate=30/1 ! ' +
       'appsink name=alphasink ' +
 
@@ -42,7 +42,7 @@ module.exports = class H264Encoder {
       't. ! queue ! ' +
       'glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! ' +
       'gldownload ! ' +
-      'x264enc byte-stream=true key-int-max=20 pass=pass1 tune=zerolatency threads=2 ip-factor=2 speed-preset=veryfast intra-refresh=0 qp-max=38 ! ' +
+      'x264enc byte-stream=true key-int-max=100 pass=pass1 tune=zerolatency threads=2 ip-factor=2 speed-preset=veryfast intra-refresh=0 ! ' +
       'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,framerate=30/1 ! ' +
       'appsink name=sink'
     )

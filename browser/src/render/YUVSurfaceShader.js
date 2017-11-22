@@ -31,9 +31,10 @@ export default class YUVSurfaceShader {
   static _initShaderArgs (gl, program) {
     // find shader arguments
     const shaderArgs = {}
-    shaderArgs.YTexture = program.getUniformLocation('YTexture')
-    shaderArgs.UTexture = program.getUniformLocation('UTexture')
-    shaderArgs.VTexture = program.getUniformLocation('VTexture')
+    shaderArgs.yTexture = program.getUniformLocation('yTexture')
+    shaderArgs.uTexture = program.getUniformLocation('uTexture')
+    shaderArgs.vTexture = program.getUniformLocation('vTexture')
+    shaderArgs.alphaYTexture = program.getUniformLocation('alphaYTexture')
 
     shaderArgs.u_projection = program.getUniformLocation('u_projection')
 
@@ -63,13 +64,15 @@ export default class YUVSurfaceShader {
    * @param {Texture} textureY
    * @param {Texture} textureU
    * @param {Texture} textureV
+   * @param {Texture} textureAlphaY
    */
-  _setTexture (textureY, textureU, textureV) {
+  _setTexture (textureY, textureU, textureV, textureAlphaY) {
     const gl = this.gl
 
-    gl.uniform1i(this.shaderArgs.YTexture, 0)
-    gl.uniform1i(this.shaderArgs.UTexture, 1)
-    gl.uniform1i(this.shaderArgs.VTexture, 2)
+    gl.uniform1i(this.shaderArgs.yTexture, 0)
+    gl.uniform1i(this.shaderArgs.uTexture, 1)
+    gl.uniform1i(this.shaderArgs.vTexture, 2)
+    gl.uniform1i(this.shaderArgs.alphaYTexture, 3)
 
     gl.activeTexture(gl.TEXTURE0)
     gl.bindTexture(gl.TEXTURE_2D, textureY.texture)
@@ -79,6 +82,9 @@ export default class YUVSurfaceShader {
 
     gl.activeTexture(gl.TEXTURE2)
     gl.bindTexture(gl.TEXTURE_2D, textureV.texture)
+
+    gl.activeTexture(gl.TEXTURE3)
+    gl.bindTexture(gl.TEXTURE_2D, textureAlphaY.texture)
   }
 
   use () {
@@ -90,9 +96,9 @@ export default class YUVSurfaceShader {
     gl.useProgram(null)
   }
 
-  draw (textureY, textureU, textureV, bufferSize) {
+  draw (textureY, textureU, textureV, textureAlphaY, bufferSize) {
     const gl = this.gl
-    this._setTexture(textureY, textureU, textureV)
+    this._setTexture(textureY, textureU, textureV, textureAlphaY)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
     if (this._bufferSize === null || this._bufferSize.w !== bufferSize.w || this._bufferSize.h !== bufferSize.h) {
       this._bufferSize = bufferSize

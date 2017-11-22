@@ -107,7 +107,7 @@ export default class Renderer {
       }
 
       // update textures
-      browserSurface.renderState.update(browserRtcDcBuffer.yuvContent, browserRtcDcBuffer.yuvWidth, browserRtcDcBuffer.yuvHeight)
+      browserSurface.renderState.update(browserRtcDcBuffer)
       this._nextFrame(browserSurface)
     } else {
       // buffer contents have not yet arrived, reschedule a scene repaint as soon as the buffer arrives.
@@ -133,7 +133,8 @@ export default class Renderer {
   _paint (renderState, bufferSize) {
     this.canvas.width = bufferSize.w
     this.canvas.height = bufferSize.h
-    this.yuvShader.draw(renderState.YTexture, renderState.UTexture, renderState.VTexture, bufferSize)
+    // FIXME support case where we don't have an alpha channel
+    this.yuvShader.draw(renderState.yTexture, renderState.uTexture, renderState.vTexture, renderState.alphaYTexture, bufferSize)
   }
 
   _nextFrame (browserSurface) {
