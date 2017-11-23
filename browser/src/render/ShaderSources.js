@@ -47,7 +47,7 @@ export const fragmentYUV = {
 
   void main(void) {
    vec4 pix = vec4(texture2D(yTexture,  v_texCoord).x, texture2D(uTexture, v_texCoord).x, texture2D(vTexture, v_texCoord).x, 1) * YUV2RGB;
-   pix.w = (texture2D(alphaYTexture,  v_texCoord).x - (16.0 / 255.0)) * (255.0 / 235.0);
+   pix.w = (texture2D(alphaYTexture,  v_texCoord).x - (16.0 / 255.0)) * (255.0 / (235.0-16.0));
    // pix.w = 1.0;
    gl_FragColor = pix;
   }
