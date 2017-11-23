@@ -16,11 +16,7 @@ export default class BrowserRtcPeerConnection extends westfield.Global {
   }
 
   _createPeerConnecton (client, rtcPeerConnectionResource) {
-    const peerConnection = new window.RTCPeerConnection({
-      'iceServers': [
-        {'urls': 'stun:stun.wtfismyip.com/'}
-      ]
-    })
+    const peerConnection = new window.RTCPeerConnection()
 
     peerConnection.onicecandidate = (evt) => {
       if (evt.candidate !== null) {
