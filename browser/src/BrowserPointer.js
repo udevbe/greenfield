@@ -128,6 +128,11 @@ export default class BrowserPointer {
 
       if (browserSurface.browserSurfaceViews.length === 0) {
         this.view = browserSurface.createView()
+        this.view.addDrawListener((browserSurfaceView) => {
+          if (browserSurfaceView === this.view && this.focus !== null) {
+            this.focus.style.cursor = 'url("' + this.view.canvas.toDataURL() + '") ' + hotspotX + ' ' + hotspotY + ' , pointer'
+          }
+        })
       } else {
         this.view = browserSurface.browserSurfaceViews[0]
       }
@@ -135,12 +140,8 @@ export default class BrowserPointer {
       this._scaleCursor(browserSurface)
 
       this.focus.style.cursor = 'url("' + this.view.canvas.toDataURL() + '") ' + hotspotX + ' ' + hotspotY + ' , pointer'
-      this.view.addDrawListener((browserSurfaceView) => {
-        if (browserSurfaceView === this.view) {
-          this.focus.style.cursor = 'url("' + this.view.canvas.toDataURL() + '") ' + hotspotX + ' ' + hotspotY + ' , pointer'
-        }
-      })
     } else {
+      this.view = null
       this.focus.style.cursor = 'none'
     }
   }
