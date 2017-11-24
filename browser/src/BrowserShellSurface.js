@@ -25,6 +25,7 @@ export default class BrowserShellSurface {
 
     grSurfaceResource.onDestroy().then(() => {
       grShellSurfaceResource.destroy()
+      browserShellSurface._handelDestroy()
     })
 
     browserSurface.role = browserShellSurface
@@ -46,6 +47,19 @@ export default class BrowserShellSurface {
     this.state = SurfaceStates.TOP_LEVEL
   }
 
+  _handelDestroy () {
+    // listen for fade updates so we can remove the canvas after the fade is done.
+    new window.MutationObserver(() => {
+      if (this.view.canvas.style.opacity < 0.1) {
+        document.body.removeChild(this.view.canvas)
+      }
+    }).observe(this.view.canvas, {
+      attributes: true,
+      attributeFilter: ['style']
+    })
+    this.view.fade()
+  }
+
   /**
    *
    *                A client must respond to a ping event with a pong request or
@@ -60,11 +74,6 @@ export default class BrowserShellSurface {
    */
   pong (resource, serial) {
     window.setTimeout(() => resource.ping(), 3000)
-  }
-
-  onCommit () {
-    this.view.canvas.width = this.grSurfaceResource.implementation.bufferSize.w
-    this.view.canvas.height = this.grSurfaceResource.implementation.bufferSize.h
   }
 
   /**

@@ -48,6 +48,9 @@ export default class Renderer {
   surfaceSize (browserSurface) {
     const grBuffer = browserSurface.grBuffer
     const bufferSize = this.bufferSize(grBuffer)
+    if (browserSurface.bufferScale === 1) {
+      return bufferSize
+    }
     const surfaceWidth = bufferSize.w / browserSurface.bufferScale
     const surfaceHeight = bufferSize.h / browserSurface.bufferScale
     return Size.create(surfaceWidth, surfaceHeight)
@@ -91,16 +94,12 @@ export default class Renderer {
     const gl = this.gl
     // TODO we could check for null here in case we are dealing with a different kind of buffer
     const browserRtcDcBuffer = BrowserDcBufferFactory.get(grBuffer)
+    const bufferSize = this.bufferSize(grBuffer)
 
     const drawSyncSerial = browserRtcDcBuffer.syncSerial
     if (browserRtcDcBuffer.isComplete(drawSyncSerial)) {
-      const bufferSize = this.bufferSize(grBuffer)
-
-      // canvas units are in pixels, so we can simply use the buffer size
-      browserSurface.browserSurfaceViews.forEach((view) => {
-        view.canvas.width = bufferSize.w
-        view.canvas.height = bufferSize.h
-      })
+      browserSurface.size = this.surfaceSize(browserSurface)
+      browserSurface.bufferSize = bufferSize
 
       if (!browserSurface.renderState) {
         browserSurface.renderState = ViewState.create(gl)

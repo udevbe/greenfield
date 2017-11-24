@@ -51,12 +51,6 @@
 
             A committed surface with a buffer in the 'pending' state should have all of it's drawing state stored and
             should not be visually updated until the buffer goes into the 'complete' state.
-
-            A buffer must have a size set with the size request for it to be considered 'complete'. A buffer that does
-            not have a size shall remain in the 'pending' state. The latest size request is considered applicable to the
-            buffer contents matching or exceeding the currently set syn serial, as such a size request should always be
-            done after the earliest matching syn request and before the sending of the earliest matching buffer contents
-            else races and unexpected behaviour might occur.
         </description>
 
         <request name="destroy" type="destructor">
@@ -69,8 +63,6 @@
                 to synchronize a buffer commit with the out of band content that arrives over the udp datachannel.
             </description>
             <arg name="serial" type="uint" summary="Serial of the send buffer contents"/>
-            <arg name="width" type="uint" summary="width of the send buffer contents"/>
-            <arg name="height" type="uint" summary="height of the send buffer contents"/>
         </request>
 
         <event name="ack">

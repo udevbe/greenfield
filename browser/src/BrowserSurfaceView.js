@@ -60,9 +60,15 @@ export default class BrowserSurfaceView {
     this._mouseLeaveListener = browserSession.eventSource((event) => {
       browserPointer.onMouseLeave(event)
     })
+
+    this._destroyPromise = new Promise((resolve) => {
+      this._destroyResolve = resolve
+    })
   }
 
   draw (sourceCanvas) {
+    this.canvas.width = sourceCanvas.width
+    this.canvas.height = sourceCanvas.height
     this.context2d.drawImage(sourceCanvas, 0, 0)
     this._drawListeners.forEach(listener => {
       listener(this)
@@ -123,8 +129,6 @@ export default class BrowserSurfaceView {
       window.requestAnimationFrame(() => {
         this._fade(opacity)
       })
-    } else {
-      document.body.removeChild(this.canvas)
     }
     this.canvas.style.opacity = opacity
     this.canvas.style.filter = 'alpha(opacity=' + opacity * 100 + ')'
@@ -132,6 +136,11 @@ export default class BrowserSurfaceView {
   }
 
   destroy () {
-    this.fade()
+    this._destroyResolve()
   }
+
+  onDestroy () {
+    return this._destroyPromise
+  }
+
 }

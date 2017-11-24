@@ -102,31 +102,31 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       const bufferWidth = shm.getWidth()
       const bufferHeight = shm.getHeight()
 
-      // TODO Support ARGB by splitting out the
-      // the alpha channel as a greyscale yuv and send it as a second h264 frame. We can then reconstruct in the browser
-      // into RGBA using the grayscale as the alpha channel with the use of a simple webgl shader.
-
       const pixelBuffer = shm.getData().reinterpret(bufferWidth * bufferHeight * 4)
 
       // TODO how to dynamically update the pipeline video resolution?
       if (!this.h264Encoder || this.h264Encoder.width !== bufferWidth || this.h264Encoder.height !== bufferHeight) {
         this.h264Encoder = H264Encoder.create(bufferWidth, bufferHeight)
-        // BGRx because of little endian blob
         // FIXME derive fromat from actual shm format
         this.h264Encoder.src.setCapsFromString('video/x-raw,format=BGRA,width=' + bufferWidth + ',height=' + bufferHeight + ',framerate=30/1')
         this.h264Encoder.pipeline.play()
       }
 
       this.h264Encoder.src.push(pixelBuffer)
-      // TODO use gst_app_sink_set_callbacks instead. Requires modifications to the node-gstreamer-superficial lib.
 
-      const frame = {opaque: null, alpha: null}
+      const frame = {
+        width: bufferWidth,
+        height: bufferHeight,
+        synSerial: synSerial,
+        opaque: null,
+        alpha: null
+      }
+
+      // FIXME check buffer format if alpha is required. If not, use an empty buffer instead.
 
       this.h264Encoder.sink.pull((opaqueH264Nal) => {
         if (opaqueH264Nal) {
-          opaqueH264Nal.writeUInt32LE(synSerial, 0, false)
           frame.opaque = opaqueH264Nal
-
           if (frame.opaque && frame.alpha) {
             resolve(frame)
           }
@@ -137,9 +137,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
 
       this.h264Encoder.alpha.pull((alphaH264Nal) => {
         if (alphaH264Nal) {
-          alphaH264Nal.writeUInt32LE(synSerial, 0, false)
           frame.alpha = alphaH264Nal
-
           if (frame.opaque && frame.alpha) {
             resolve(frame)
           }
@@ -150,27 +148,33 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     })
   }
 
-  sendBuffer (frame, synSerial) {
+  _frameToBuffer (frame) {
+    const header = Buffer.allocUnsafe(12)
+    const frameBuffer = Buffer.concat([header, frame.opaque, frame.alpha], header.length + frame.opaque.length + frame.alpha.length)
+
+    frameBuffer.writeUInt16BE(frameBuffer.length, 0, true) // total buffer length
+    frameBuffer.writeUInt16BE(header.length + frame.opaque.length, 2, true) // alpha offset
+    frameBuffer.writeUInt16BE(frame.width, 4, true) // buffer width
+    frameBuffer.writeUInt16BE(frame.height, 6, true) // buffer height
+    frameBuffer.writeUInt32BE(frame.synSerial, 8, true) // frame serial
+
+    return frameBuffer
+  }
+
+  sendFrame (frame) {
     if (this.localRtcDcBuffer === null) {
       return
     }
 
     if (this.localRtcDcBuffer.dataChannel.readyState === 'open') {
-      // console.log('sending buffer')
-      const header = Buffer.allocUnsafe(4)
-      // set first bit == indicate alpha frame after opaque frame
-      // set opaque frame length
-      header.writeUInt8(0x80, 0, true)
-      header.writeUInt16BE(frame.opaque.length, 2, true)
-      const frameBuffer = Buffer.concat([header, frame.opaque, frame.alpha], header.length + frame.opaque.length + frame.alpha.length)
+      const frameBuffer = this._frameToBuffer(frame)
       this.localRtcDcBuffer.dataChannel.send(frameBuffer.buffer.slice(frameBuffer.byteOffset, frameBuffer.byteOffset + frameBuffer.byteLength))
     } else {
-      // console.log('buffer channel not yet open')
       this.localRtcDcBuffer.dataChannel.onopen = () => {
         this.localRtcDcBuffer.dataChannel.onopen = null
         // make sure we don't send an old buffer
-        if (synSerial >= this.synSerial) {
-          this.sendBuffer(frame, synSerial)
+        if (frame.synSerial >= this.synSerial) {
+          this.sendFrame(frame)
         }
       }
     }
@@ -178,9 +182,9 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     setTimeout(() => {
       // If the syn serial at the time the timer was created is greater than the latest received ack serial and no newer serial is expected,
       // then we have not received an ack that matches or is newer than the syn we're checking. We resend the frame.
-      if (synSerial > this.ackSerial && synSerial === this.synSerial) {
+      if (frame.synSerial > this.ackSerial && frame.synSerial === this.synSerial) {
         // console.log('send timed out. resending')
-        this.sendBuffer(frame, synSerial)
+        this.sendFrame(frame)
       }
       // TODO dynamically adjust to expected roundtrip time which could (naively) be calculated by measuring the latency
       // between a (syn & ack)/2 + frame bandwidth.
@@ -209,14 +213,11 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       }
 
       this.synSerial++
-      const currentSynSerial = this.synSerial
+      const synSerial = this.synSerial
 
-      const shm = Shm.get(this.buffer)
-      const bufferWidth = shm.getWidth()
-      const bufferHeight = shm.getHeight()
-      this.localRtcDcBuffer.rtcDcBufferProxy.syn(currentSynSerial, bufferWidth, bufferHeight)
-      this.encodeBuffer(this.buffer, currentSynSerial).then((frame) => {
-        this.sendBuffer(frame, currentSynSerial)
+      this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
+      this.encodeBuffer(this.buffer, synSerial).then((frame) => {
+        this.sendFrame(frame)
       }).catch((error) => {
         console.log(error)
         // TODO Failed to encode buffer. What to do here?

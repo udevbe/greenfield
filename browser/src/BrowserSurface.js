@@ -109,6 +109,14 @@ export default class BrowserSurface {
     browserSurfaceView.canvas.width = this.bufferSize.w
     browserSurfaceView.canvas.height = this.bufferSize.h
     this.browserSurfaceViews.push(browserSurfaceView)
+
+    browserSurfaceView.onDestroy().then(() => {
+      const idx = this.browserSurfaceViews.indexOf(browserSurfaceView)
+      if (idx > -1) {
+        this.browserSurfaceViews.splice(idx, 1)
+      }
+    })
+
     return browserSurfaceView
   }
 
@@ -131,7 +139,6 @@ export default class BrowserSurface {
     this.browserSurfaceViews.forEach(browserSurfaceView => {
       browserSurfaceView.destroy()
     })
-    this.browserSurfaceViews = []
   }
 
   /**
@@ -442,10 +449,6 @@ export default class BrowserSurface {
 
     pixman._pixman_region32_clear(this.bufferDamage)
     pixman._pixman_region32_union(this.bufferDamage, this._bufferDamageRegion, this._damageRegion)
-
-    // TODO we could implement a flag so we don't always recalculate the surface size
-    this.size = this.renderer.surfaceSize(this)
-    this.bufferSize = this.renderer.bufferSize(this.grBuffer)
 
     if (this.role && typeof this.role.onCommit === 'function') {
       this.role.onCommit(this)

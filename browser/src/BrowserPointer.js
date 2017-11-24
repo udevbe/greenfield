@@ -65,6 +65,8 @@ export default class BrowserPointer {
     this.zOrderCounter = 1
 
     this._mouseMoveListeners = []
+
+    this.cursorBrowserSurface = null
     this.view = null
   }
 
@@ -117,6 +119,9 @@ export default class BrowserPointer {
       return
     }
 
+    this.hotspotX = hotspotX
+    this.hotspotY = hotspotY
+
     if (surface) {
       const browserSurface = surface.implementation
       if (browserSurface.role && browserSurface.role !== this) {
@@ -126,34 +131,33 @@ export default class BrowserPointer {
 
       browserSurface.role = this
 
-      if (browserSurface.browserSurfaceViews.length === 0) {
-        this.view = browserSurface.createView()
-        this.view.addDrawListener((browserSurfaceView) => {
-          if (browserSurfaceView === this.view && this.focus !== null) {
-            this.focus.style.cursor = 'url("' + this.view.canvas.toDataURL() + '") ' + hotspotX + ' ' + hotspotY + ' , pointer'
-          }
-        })
-      } else {
-        this.view = browserSurface.browserSurfaceViews[0]
+      if (this.view) {
+        this.view.destroy()
       }
 
-      this._scaleCursor(browserSurface)
+      this.cursorBrowserSurface = browserSurface
+      this.view = browserSurface.createView()
 
-      this.focus.style.cursor = 'url("' + this.view.canvas.toDataURL() + '") ' + hotspotX + ' ' + hotspotY + ' , pointer'
+      const cursorFocusSurface = this.focus
+      const cursorView = this.view
+
+      const drawListener = (cursorSurfaceView) => {
+        if (cursorFocusSurface === this.focus && browserSurface === this.cursorBrowserSurface) {
+          cursorFocusSurface.style.cursor = 'url("' + cursorSurfaceView.canvas.toDataURL() + '") ' + (this.hotspotX) + ' ' + (this.hotspotY) + ' , pointer'
+        } else {
+          cursorFocusSurface.style.cursor = 'none'
+          cursorView.removeDrawListener(drawListener)
+        }
+      }
+      this.view.addDrawListener(drawListener)
+      this.view.onDestroy().then(() => {
+        cursorView.removeDrawListener(drawListener)
+      })
+
+      this.focus.style.cursor = 'url("' + this.view.canvas.toDataURL() + '") ' + (hotspotX) + ' ' + (hotspotY) + ' , pointer'
     } else {
-      this.view = null
+      this.cursorBrowserSurface = null
       this.focus.style.cursor = 'none'
-    }
-  }
-
-  onCommit (browserSurface) {
-    this._scaleCursor(browserSurface)
-  }
-
-  _scaleCursor (browserSurface) {
-    if (this.view.browserSurface === browserSurface) {
-      this.view.canvas.width = browserSurface.bufferSize.w > 32 ? 32 : browserSurface.bufferSize.w
-      this.view.canvas.height = browserSurface.bufferSize.h > 32 ? 32 : browserSurface.bufferSize.h
     }
   }
 
@@ -309,6 +313,7 @@ export default class BrowserPointer {
       })
       this.focus.style.cursor = 'auto'
       this.focus = null
+      this.view = null
     }
   }
 

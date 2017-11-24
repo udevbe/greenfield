@@ -73,7 +73,8 @@ export default class BrowserRtcDcBuffer {
     this._futureFrame = null
     this._futureFrameSerial = 0
     this.state = 'pending' // or 'pending_alpha' or 'pending_opaque' or 'complete'
-    this.geo = null
+    this._pendingGeo = Size.create(0, 0) // becomes geo after decode
+    this.geo = Size.create(0, 0)
     this._oneShotCompletionListeners = []
 
     this.yuvContent = null
@@ -91,6 +92,7 @@ export default class BrowserRtcDcBuffer {
    */
   _onComplete () {
     // resolve matching promises
+    this.geo = this._pendingGeo
     this._oneShotCompletionListeners = this._oneShotCompletionListeners.filter((listener) => { return listener(this.syncSerial) })
   }
 
@@ -132,20 +134,16 @@ export default class BrowserRtcDcBuffer {
    *
    * @param {wfs.RtcDcBuffer} resource
    * @param {Number} serial Serial of the send buffer contents
-   *
-   * @param width
-   * @param height
    * @since 1
    *
    */
-  syn (resource, serial, width, height) {
+  syn (resource, serial) {
     if (serial < this.syncSerial) {
       // TODO return an error to the client
       throw new Error('Buffer sync serial was not sequential.')
     }
 
     this.syncSerial = serial
-    this.geo = new Size(width, height)
     this.state = 'pending'
     this._checkFrame(this._futureFrameSerial, this._futureFrame)
   }
@@ -155,7 +153,7 @@ export default class BrowserRtcDcBuffer {
   /**
    *
    * @param {number} h264NalSerial
-   * @param {ArrayBuffer} frame
+   * @param frame
    * @private
    */
   _checkFrame (h264NalSerial, frame) {
@@ -166,34 +164,53 @@ export default class BrowserRtcDcBuffer {
       this._futureFrame = frame
       this._futureFrameSerial = h264NalSerial
     } else if (h264NalSerial === this.syncSerial) {
+      // We can decode the frame
       this._decode(frame)
     }
   }
 
   _onMessage (event) {
-    // get first int as serial, and replace it with 0x00 00 00 01 (H.264/AVC video coding standard byte stream h264NalHeader)
-    const h264NalHeader = new Uint32Array(event.data, 4, 1)
-    const h264NalSerial = h264NalHeader[0]
+    const frame = this._parseFrameBuffer(event.data)
+    const h264NalSerial = frame.synSerial
     if (this.resource) {
       this.resource.ack(h264NalSerial)
     }
-    this._checkFrame(h264NalSerial, event.data)
+    this._checkFrame(h264NalSerial, frame)
   }
 
   _onClose (event) {}
 
   _onError (event) {}
 
-  _decode (frame) {
-    const header = new DataView(frame, 0, 4)
-    const hasAlpha = header.getUint8(0) !== 0
-    const opaqueLength = header.getUint16(2, false)
+  _parseFrameBuffer (frameBuffer) {
+    const headerSize = 12
+    const header = new DataView(frameBuffer, 0, headerSize)
+    const length = header.getUint16(0, false)
+    const alphaOffset = header.getUint16(2, false)
+    const bufferWidth = header.getUint16(4, false)
+    const bufferHeight = header.getUint16(6, false)
+    const synSerial = header.getUint32(8, false)
 
-    if (hasAlpha) {
-      const alphaH264NalHeader = new DataView(frame, 4 + opaqueLength, 4)
-      alphaH264NalHeader.setUint32(0, 1, false)
-      // create a copy of the arraybuffer so we can zero-copy the opaque part
-      const alphaH264Nal = new Uint8Array(frame.slice(4 + opaqueLength))
+    const opaque = new Uint8Array(frameBuffer, headerSize, alphaOffset)
+    const alpha = length === alphaOffset ? null : new Uint8Array(frameBuffer, alphaOffset)
+
+    return {
+      length: length,
+      alphaOffset: alphaOffset,
+      bufferWidth: bufferWidth,
+      bufferHeight: bufferHeight,
+      synSerial: synSerial,
+      opaque: opaque,
+      alpha: alpha
+    }
+  }
+
+  _decode (frame) {
+    this._pendingGeo = Size.create(frame.bufferWidth, frame.bufferHeight)
+
+    if (frame.alpha) {
+      // create a copy of the arraybuffer so we can zero-copy the opaque part (after zero-copying, we can no longer use the underlying array in any way)
+      const alphaH264Nal = new Uint8Array(frame.alpha.slice())
       this.alphaDecoder.postMessage({
         buf: alphaH264Nal.buffer,
         offset: alphaH264Nal.byteOffset,
@@ -203,9 +220,7 @@ export default class BrowserRtcDcBuffer {
       this.state = 'pending_opaque'
     }
 
-    const opaqueH264NalHeader = new DataView(frame, 4, 4)
-    opaqueH264NalHeader.setUint32(0, 1, false) // all nals must begin with this code
-    const opaqueH264Nal = new Uint8Array(frame, 4, opaqueLength)
+    const opaqueH264Nal = new Uint8Array(frame.opaque)
     this.decoder.postMessage({
       buf: opaqueH264Nal.buffer,
       offset: opaqueH264Nal.byteOffset,
