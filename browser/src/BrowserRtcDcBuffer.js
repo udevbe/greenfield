@@ -71,11 +71,17 @@ export default class BrowserRtcDcBuffer {
     this.dataChannel = dataChannel
     this.syncSerial = 0
     this._futureFrame = null
-    this._futureFrameSerial = 0
     this.state = 'pending' // or 'pending_alpha' or 'pending_opaque' or 'complete'
     this._pendingGeo = Size.create(0, 0) // becomes geo after decode
     this.geo = Size.create(0, 0)
-    this._oneShotCompletionListeners = []
+
+    this._completionPromise = null
+    this._completionResolve = null
+    this._completionReject = null
+    this._completionPromise = new Promise((resolve, reject) => {
+      this._completionResolve = resolve
+      this._completionReject = reject
+    })
 
     this.yuvContent = null
     this.yuvWidth = 0
@@ -91,43 +97,21 @@ export default class BrowserRtcDcBuffer {
    * @private
    */
   _onComplete () {
-    // resolve matching promises
+    this.state = 'complete'
     this.geo = this._pendingGeo
-    this._oneShotCompletionListeners = this._oneShotCompletionListeners.filter((listener) => { return listener(this.syncSerial) })
+    this._completionResolve(this.syncSerial)
   }
 
   isComplete (serial) {
     return this.state === 'complete' && this.syncSerial === serial
   }
 
-  // TODO add timeout argument(?)
   /**
-   * Returns a promise that will resolve as soon as the buffer is in the 'complete' state with the given serial.
-   * @param {number} serial
+   * Returns a promise that will resolve as soon as the buffer is in the 'complete' state.
    * @returns {Promise}
    */
-  whenComplete (serial) {
-    return new Promise((resolve, reject) => {
-      if (serial < this.syncSerial) {
-        reject(new Error('Buffer contents expired.'))
-      } else if (this.isComplete(serial)) {
-        resolve()
-      } else {
-        this._oneShotCompletionListeners.push((completionSerial) => {
-          if (serial === completionSerial) {
-            resolve()
-            // don't keep the listener after it has been fired (=true)
-            return false
-          } else if (serial < completionSerial) {
-            reject(new Error('Buffer contents expired.'))
-            // don't keep the listener after it has been fired (=true)
-            return false
-          } else {
-            return true
-          }
-        })
-      }
-    })
+  whenComplete () {
+    return this._completionPromise
   }
 
   /**
@@ -143,39 +127,62 @@ export default class BrowserRtcDcBuffer {
       throw new Error('Buffer sync serial was not sequential.')
     }
 
+    // console.log('received syn ' + serial)
+
+    if (this.syncSerial !== 0) {
+      if (this.state !== 'complete') {
+        // previous state never completed, reject old promise
+        // FIXME this can lead to a buffer that will never be complete if the buffer content arrival is more than one syn call behind.
+        this._completionReject(new Error('Buffer contents expired ' + this.syncSerial))
+      }
+
+      this._completionPromise = new Promise((resolve, reject) => {
+        this._completionResolve = resolve
+        this._completionReject = reject
+      })
+    }
+
     this.syncSerial = serial
     this.state = 'pending'
-    this._checkFrame(this._futureFrameSerial, this._futureFrame)
+    if (this._futureFrame) {
+      this._checkFrame(this._futureFrame)
+    }
   }
 
   _onOpen (event) {}
 
   /**
-   *
-   * @param {number} h264NalSerial
    * @param frame
    * @private
    */
-  _checkFrame (h264NalSerial, frame) {
+  _checkFrame (frame) {
     // if serial is < than this.syncSerial than the buffer has already expired
-    if (h264NalSerial < this.syncSerial) {
-    } else if (h264NalSerial > this.syncSerial) {
+    if (frame.synSerial < this.syncSerial) {
+      // console.log('received expired buffer contents frame: ', frame.synSerial, ' syn: ', this.syncSerial)
+    } else if (frame.synSerial > this.syncSerial) {
       // else if the serial is > the nal might be used in the future
+      if (this._futureFrame && this._futureFrame.synSerial > frame.synSerial) {
+        return
+      }
+      // console.log('received future frame ', frame.synSerial)
       this._futureFrame = frame
-      this._futureFrameSerial = h264NalSerial
-    } else if (h264NalSerial === this.syncSerial) {
+    } else if (frame.synSerial === this.syncSerial) {
+      // console.log('received matching frame ', frame.synSerial)
       // We can decode the frame
+      if (this._futureFrame === frame) {
+        this._futureFrame = null
+      }
       this._decode(frame)
     }
   }
 
   _onMessage (event) {
     const frame = this._parseFrameBuffer(event.data)
-    const h264NalSerial = frame.synSerial
     if (this.resource) {
-      this.resource.ack(h264NalSerial)
+      // console.log('received frame ' + frame.synSerial)
+      this.resource.ack(frame.synSerial)
     }
-    this._checkFrame(h264NalSerial, frame)
+    this._checkFrame(frame)
   }
 
   _onClose (event) {}
@@ -229,6 +236,8 @@ export default class BrowserRtcDcBuffer {
   }
 
   _onPictureDecoded (buffer, width, height) {
+    // console.log('opaque decoded: ', width, ' ', height)
+
     if (!buffer) { return }
 
     this.yuvContent = buffer
@@ -236,7 +245,6 @@ export default class BrowserRtcDcBuffer {
     this.yuvHeight = height
 
     if (this.state === 'pending_opaque') {
-      this.state = 'complete'
       this._onComplete()
     } else {
       this.state = 'pending_alpha'
@@ -244,6 +252,7 @@ export default class BrowserRtcDcBuffer {
   }
 
   _onAlphaPictureDecoded (buffer, width, height) {
+    // console.log('alpha decoded: ', width, ' ', height)
     if (!buffer) { return }
 
     this.alphaYuvContent = buffer
@@ -251,7 +260,6 @@ export default class BrowserRtcDcBuffer {
     this.alphaYuvHeight = height
 
     if (this.state === 'pending_alpha') {
-      this.state = 'complete'
       this._onComplete()
     } else {
       this.state = 'pending_opaque'

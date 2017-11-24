@@ -111,7 +111,7 @@ export default class Renderer {
     } else {
       // buffer contents have not yet arrived, reschedule a scene repaint as soon as the buffer arrives.
       // The old state will be used to draw the view
-      browserRtcDcBuffer.whenComplete(drawSyncSerial).then(() => {
+      browserRtcDcBuffer.whenComplete().then(() => {
         this.render(browserSurface)
       }).catch((error) => {
         console.log(error)
