@@ -46,12 +46,9 @@ export default class ViewState {
     const lumaSize = opaqueWidth * opaqueHeight
     const chromaSize = lumaSize >> 2
 
-    const size = Size.create(opaqueWidth, opaqueHeight)
-    const halfSize = size.getHalfSize()
-
-    this.yTexture.fill(opaqueBuffer.subarray(0, lumaSize), size)
-    this.uTexture.fill(opaqueBuffer.subarray(lumaSize, lumaSize + chromaSize), halfSize)
-    this.vTexture.fill(opaqueBuffer.subarray(lumaSize + chromaSize, lumaSize + (2 * chromaSize)), halfSize)
+    this.yTexture.fill(opaqueBuffer.subarray(0, lumaSize), browserRtcDcBuffer.geo, opaqueWidth)
+    this.uTexture.fill(opaqueBuffer.subarray(lumaSize, lumaSize + chromaSize), browserRtcDcBuffer.geo.getHalfSize(), opaqueWidth / 2)
+    this.vTexture.fill(opaqueBuffer.subarray(lumaSize + chromaSize, lumaSize + (2 * chromaSize)), browserRtcDcBuffer.geo.getHalfSize(), opaqueWidth / 2)
 
     const alphaBuffer = browserRtcDcBuffer.alphaYuvContent
     if (alphaBuffer) {
@@ -59,9 +56,7 @@ export default class ViewState {
       const alphaHeight = browserRtcDcBuffer.alphaYuvHeight
       const alphaLumaSize = alphaWidth * alphaHeight
 
-      const alphaSize = Size.create(alphaWidth, alphaHeight)
-
-      this.alphaYTexture.fill(alphaBuffer.subarray(0, alphaLumaSize), alphaSize)
+      this.alphaYTexture.fill(alphaBuffer.subarray(0, alphaLumaSize), browserRtcDcBuffer.geo, alphaWidth)
     }
   }
 

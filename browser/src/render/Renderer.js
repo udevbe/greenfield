@@ -14,9 +14,9 @@ export default class Renderer {
   static create (browserSession) {
     // create offscreen gl context
     const canvas = document.createElement('canvas')
-    let gl = canvas.getContext('webgl')
+    let gl = canvas.getContext('webgl2')
     if (!gl) {
-      throw new Error('This browser doesn\'t support WebGL!')
+      throw new Error('This browser doesn\'t support WebGL2!')
     }
 
     gl.clearColor(0, 0, 0, 0)
