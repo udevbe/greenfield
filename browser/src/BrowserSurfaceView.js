@@ -81,7 +81,7 @@ export default class BrowserSurfaceView {
 
   removeDrawListener (listener) {
     const index = this._drawListeners.indexOf(listener)
-    if (index > 0) {
+    if (index > -1) {
       this._drawListeners.splice(index, 1)
     }
   }
