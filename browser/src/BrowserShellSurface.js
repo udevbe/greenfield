@@ -1,5 +1,10 @@
 'use strict'
 
+import Point from './math/Point'
+import greenfield from './protocol/greenfield-browser-protocol'
+
+const Resize = greenfield.GrShellSurface.Resize
+
 const SurfaceStates = {
   TOP_LEVEL: 'toplevel',
   MAXIMIZED: 'maximized',
@@ -73,7 +78,8 @@ export default class BrowserShellSurface {
    *
    */
   pong (resource, serial) {
-    window.setTimeout(() => resource.ping(), 3000)
+    // TODO properly check serial & timeout
+    window.setTimeout(() => resource.ping(serial), 3000)
   }
 
   /**
@@ -137,7 +143,245 @@ export default class BrowserShellSurface {
    * @since 1
    *
    */
-  resize (resource, seat, serial, edges) {}
+  resize (resource, seat, serial, edges) {
+    if (this.state === SurfaceStates.FULLSCREEN || this.state === SurfaceStates.MAXIMIZED) {
+      return
+    }
+
+    const browserSeat = seat.implementation
+    const browserPointer = browserSeat.browserPointer
+    if (browserPointer.buttonSerial === serial) {
+      const pointerX = browserPointer.x
+      const pointerY = browserPointer.y
+
+      const canvasWidth = this.view.canvas.width
+      const canvasHeight = this.view.canvas.height
+
+      const surfaceDim = this.view.toSurfaceSpace(Point.create(canvasWidth, canvasHeight))
+      const surfaceWidth = surfaceDim.x
+      const surfaceHeight = surfaceDim.y
+
+      const viewY = parseInt(this.view.canvas.style.top)
+      const viewX = parseInt(this.view.canvas.style.left)
+
+      switch (edges) {
+        case Resize.none: {
+          break
+        }
+
+        case Resize.top: {
+          // separate draw listener is used to delay the repositioning of the surface until the buffer contents have arrived
+          const resizeListener = () => {
+            if (browserPointer.buttonSerial === serial) {
+              // FIXME this naively assume no transformation of the surface (pointer space ~= surface space) which isn't
+              // always the case...
+              const deltaY = browserPointer.y - pointerY
+              let width = surfaceWidth
+              let height = surfaceHeight
+              height -= deltaY
+
+              this.resource.configure(edges, width, height)
+            } else {
+              browserPointer.removeMouseMoveListener(resizeListener)
+            }
+          }
+
+          const drawListener = () => {
+            const newHeight = this.view.canvas.height
+            const yPosDelta = canvasHeight - newHeight
+            this.view.canvas.style.top = (viewY + yPosDelta) + 'px'
+
+            if (browserPointer.buttonSerial !== serial) {
+              this.view.removeDrawListener(drawListener)
+            }
+          }
+
+          browserPointer.addMouseMoveListener(resizeListener)
+          this.view.addDrawListener(drawListener)
+          break
+        }
+
+        case Resize.bottom: {
+          const resizeListener = () => {
+            if (browserPointer.buttonSerial === serial) {
+              const deltaY = browserPointer.y - pointerY
+              let width = surfaceWidth
+              let height = surfaceHeight
+              height += deltaY
+
+              this.resource.configure(edges, width, height)
+            } else {
+              browserPointer.removeMouseMoveListener(resizeListener)
+            }
+          }
+
+          browserPointer.addMouseMoveListener(resizeListener)
+          break
+        }
+
+        case Resize.left: {
+          const resizeListener = () => {
+            if (browserPointer.buttonSerial === serial) {
+              const deltaX = browserPointer.x - pointerX
+              let width = surfaceWidth
+              let height = surfaceHeight
+              width -= deltaX
+
+              this.resource.configure(edges, width, height)
+            } else {
+              browserPointer.removeMouseMoveListener(resizeListener)
+            }
+          }
+
+          const drawListener = () => {
+            const newWidth = this.view.canvas.width
+            const xPosDelta = canvasWidth - newWidth
+            this.view.canvas.style.left = (viewX + xPosDelta) + 'px'
+
+            if (browserPointer.buttonSerial !== serial) {
+              this.view.removeDrawListener(drawListener)
+            }
+          }
+
+          browserPointer.addMouseMoveListener(resizeListener)
+          this.view.addDrawListener(drawListener)
+          break
+        }
+
+        case Resize.topLeft: {
+          const resizeListener = () => {
+            if (browserPointer.buttonSerial === serial) {
+              const deltaX = browserPointer.x - pointerX
+              const deltaY = browserPointer.y - pointerY
+              let width = surfaceWidth
+              let height = surfaceHeight
+              width -= deltaX
+              height -= deltaY
+
+              this.resource.configure(edges, width, height)
+            } else {
+              browserPointer.removeMouseMoveListener(resizeListener)
+            }
+          }
+
+          const drawListener = () => {
+            const newWidth = this.view.canvas.width
+            const xPosDelta = canvasWidth - newWidth
+            const newHeight = this.view.canvas.height
+            const yPosDelta = canvasHeight - newHeight
+            this.view.canvas.style.left = (viewX + xPosDelta) + 'px'
+            this.view.canvas.style.top = (viewY + yPosDelta) + 'px'
+
+            if (browserPointer.buttonSerial !== serial) {
+              this.view.removeDrawListener(drawListener)
+            }
+          }
+
+          browserPointer.addMouseMoveListener(resizeListener)
+          this.view.addDrawListener(drawListener)
+          break
+        }
+
+        case Resize.bottomLeft: {
+          const resizeListener = () => {
+            if (browserPointer.buttonSerial === serial) {
+              const deltaX = browserPointer.x - pointerX
+              const deltaY = browserPointer.y - pointerY
+              let width = surfaceWidth
+              let height = surfaceHeight
+              height += deltaY
+              width -= deltaX
+
+              this.resource.configure(edges, width, height)
+            } else {
+              browserPointer.removeMouseMoveListener(resizeListener)
+            }
+          }
+
+          const drawListener = () => {
+            const newWidth = this.view.canvas.width
+            const xPosDelta = canvasWidth - newWidth
+            this.view.canvas.style.left = (viewX + xPosDelta) + 'px'
+
+            if (browserPointer.buttonSerial !== serial) {
+              this.view.removeDrawListener(drawListener)
+            }
+          }
+
+          browserPointer.addMouseMoveListener(resizeListener)
+          this.view.addDrawListener(drawListener)
+          break
+        }
+
+        case Resize.right: {
+          const resizeListener = () => {
+            if (browserPointer.buttonSerial === serial) {
+              const deltaX = browserPointer.x - pointerX
+              let width = surfaceWidth
+              let height = surfaceHeight
+              width += deltaX
+
+              this.resource.configure(edges, width, height)
+            } else {
+              browserPointer.removeMouseMoveListener(resizeListener)
+            }
+          }
+
+          browserPointer.addMouseMoveListener(resizeListener)
+          break
+        }
+        case Resize.topRight: {
+          const resizeListener = () => {
+            if (browserPointer.buttonSerial === serial) {
+              const deltaX = browserPointer.x - pointerX
+              const deltaY = browserPointer.y - pointerY
+              let width = surfaceWidth
+              let height = surfaceHeight
+              height -= deltaY
+              width += deltaX
+
+              this.resource.configure(edges, width, height)
+            } else {
+              browserPointer.removeMouseMoveListener(resizeListener)
+            }
+          }
+
+          const drawListener = () => {
+            const newHeight = this.view.canvas.height
+            const yPosDelta = canvasHeight - newHeight
+            this.view.canvas.style.top = (viewY + yPosDelta) + 'px'
+            if (browserPointer.buttonSerial !== serial) {
+              this.view.removeDrawListener(drawListener)
+            }
+          }
+
+          browserPointer.addMouseMoveListener(resizeListener)
+          this.view.addDrawListener(drawListener)
+          break
+        }
+
+        case Resize.bottomRight: {
+          const resizeListener = () => {
+            if (browserPointer.buttonSerial === serial) {
+              const deltaX = browserPointer.x - pointerX
+              const deltaY = browserPointer.y - pointerY
+              let width = surfaceWidth
+              let height = surfaceHeight
+              height += deltaY
+              width += deltaX
+
+              this.resource.configure(edges, width, height)
+            } else {
+              browserPointer.removeMouseMoveListener(resizeListener)
+            }
+          }
+
+          browserPointer.addMouseMoveListener(resizeListener)
+          break
+        }
+      }
+    }
+  }
 
   /**
    *

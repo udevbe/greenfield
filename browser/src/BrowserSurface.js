@@ -204,11 +204,6 @@ export default class BrowserSurface {
     if (this.pendingGrBuffer) {
       this.pendingGrBuffer.addDestroyListener(this.pendingBrowserBufferDestroyListener)
     }
-
-    this.browserSurfaceViews.forEach((browserSurfaceView) => {
-      browserSurfaceView.canvas.style.left = browserSurfaceView.canvas.style.left + x
-      browserSurfaceView.canvas.style.top = browserSurfaceView.canvas.style.top + y
-    })
   }
 
   /**
