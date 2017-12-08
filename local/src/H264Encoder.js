@@ -34,16 +34,16 @@ module.exports = class H264Encoder {
       " ! ` +
       'glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! ' +
       'gldownload ! ' +
-      'x264enc key-int-max=1 byte-stream=true vbv-buf-capacity=500 bitrate=3000 tune=zerolatency ip-factor=2 speed-preset=veryfast intra-refresh=0 ! ' +
-      'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,framerate=30/1 ! ' +
+      'x264enc key-int-max=1000 byte-stream=true pass=pass1 qp-max=40 tune=zerolatency speed-preset=medium intra-refresh=0 ! ' +
+      'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! ' +
       'appsink name=alphasink ' +
 
       // branch[1] convert rgb to h264
       't. ! queue ! ' +
       'glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! ' +
       'gldownload ! ' +
-      'x264enc key-int-max=1 byte-stream=true vbv-buf-capacity=1500 bitrate=9000 tune=zerolatency ip-factor=2 speed-preset=veryfast intra-refresh=0 ! ' +
-      'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,framerate=30/1 ! ' +
+      'x264enc key-int-max=1000 byte-stream=true pass=pass1 qp-max=40 tune=zerolatency speed-preset=medium intra-refresh=0 ! ' +
+      'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! ' +
       'appsink name=sink'
     )
 
