@@ -112,7 +112,7 @@ export default class BrowserShellSurface {
       const pointerY = browserPointer.y
 
       const moveListener = () => {
-        if (browserPointer.grab && browserPointer.grab.view.browserSurface === this.grSurfaceResource.implementation) {
+        if (browserPointer.buttonSerial === serial) {
           const deltaX = browserPointer.x - pointerX
           const deltaY = browserPointer.y - pointerY
 
