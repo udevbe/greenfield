@@ -2,6 +2,8 @@
 
 import Size from './Size'
 
+// import Decoder from './lib/Decoder'
+
 export default class BrowserRtcDcBuffer {
   /**
    *
@@ -12,8 +14,14 @@ export default class BrowserRtcDcBuffer {
    */
   static create (grBufferResource, rtcDcBufferResource, dataChannel) {
     const decoder = new window.Worker('./lib/broadway/Decoder.js')
+    // const decoder = new Decoder()
+
     const alphaDecoder = new window.Worker('./lib/broadway/Decoder.js')
     const browserRtcDcBuffer = new BrowserRtcDcBuffer(decoder, alphaDecoder, rtcDcBufferResource, dataChannel)
+
+    // decoder.onPictureDecoded = (data, width, height) => {
+    //   browserRtcDcBuffer._onPictureDecoded(data, width, height)
+    // }
 
     decoder.addEventListener('message', function (e) {
       const data = e.data
@@ -26,7 +34,8 @@ export default class BrowserRtcDcBuffer {
     decoder.postMessage({
       type: 'Broadway.js - Worker init',
       options: {
-        rgb: false
+        rgb: false,
+        reuseMemory: true
       }
     })
     alphaDecoder.addEventListener('message', function (e) {
@@ -40,7 +49,8 @@ export default class BrowserRtcDcBuffer {
     alphaDecoder.postMessage({
       type: 'Broadway.js - Worker init',
       options: {
-        rgb: false
+        rgb: false,
+        reuseMemory: true
       }
     })
 
@@ -60,6 +70,7 @@ export default class BrowserRtcDcBuffer {
    *
    * @private
    * @param decoder
+   * @param alphaDecoder
    * @param {wfs.RtcDcBuffer} rtcDcBufferResource
    * @param {RTCDataChannel} dataChannel
    */
@@ -70,18 +81,11 @@ export default class BrowserRtcDcBuffer {
     this.resource = rtcDcBufferResource
     this.dataChannel = dataChannel
     this.syncSerial = 0
-    this._futureFrame = null
     this.state = 'pending' // or 'pending_alpha' or 'pending_opaque' or 'complete'
-    this._pendingGeo = Size.create(0, 0) // becomes geo after decode
+    this._pendingGeo = Size.create(0, 0)
     this.geo = Size.create(0, 0)
 
-    this._completionPromise = null
-    this._completionResolve = null
-    this._completionReject = null
-    this._completionPromise = new Promise((resolve, reject) => {
-      this._completionResolve = resolve
-      this._completionReject = reject
-    })
+    this._frameStates = {}
 
     this.yuvContent = null
     this.yuvWidth = 0
@@ -92,6 +96,8 @@ export default class BrowserRtcDcBuffer {
     this.alphaYuvHeight = 0
   }
 
+  _onOpen (event) {}
+
   /**
    *
    * @private
@@ -99,11 +105,26 @@ export default class BrowserRtcDcBuffer {
   _onComplete () {
     this.state = 'complete'
     this.geo = this._pendingGeo
-    this._completionResolve(this.syncSerial)
+    this._frameStates[this.syncSerial].completionResolve(this.syncSerial)
   }
 
   isComplete (serial) {
     return this.state === 'complete' && this.syncSerial === serial
+  }
+
+  _newFrameState (syncSerial) {
+    const frameState = {
+      completionPromise: null,
+      completionResolve: null,
+      completionReject: null,
+      frame: null
+    }
+    frameState.completionPromise = new Promise((resolve, reject) => {
+      frameState.completionResolve = resolve
+      frameState.completionReject = reject
+    })
+    this._frameStates[syncSerial] = frameState
+    return frameState
   }
 
   /**
@@ -111,7 +132,7 @@ export default class BrowserRtcDcBuffer {
    * @returns {Promise}
    */
   whenComplete () {
-    return this._completionPromise
+    return this._frameStates[this.syncSerial].completionPromise
   }
 
   /**
@@ -126,60 +147,59 @@ export default class BrowserRtcDcBuffer {
       // TODO return an error to the client
       throw new Error('Buffer sync serial was not sequential.')
     }
-
-    // console.log('received syn ' + serial)
-
-    if (this.syncSerial !== 0) {
-      if (this.state !== 'complete') {
-        // previous state never completed, reject old promise
-        // FIXME this can lead to a buffer that will never be complete if the buffer content arrival is more than one syn call behind.
-        this._completionReject(new Error('Buffer contents expired ' + this.syncSerial))
-      }
-
-      this._completionPromise = new Promise((resolve, reject) => {
-        this._completionResolve = resolve
-        this._completionReject = reject
-      })
-    }
-
     this.syncSerial = serial
     this.state = 'pending'
-    if (this._futureFrame) {
-      this._checkFrame(this._futureFrame)
+
+    if (this._frameStates[serial]) {
+      // state already exists, this means the contents arrived before this call, which means we can now decode it
+      this._frameStateComplete(serial)
+    } else {
+      // state does not exist yet, create a new state and wait for contents to arrive
+      this._newFrameState(serial)
     }
   }
 
-  _onOpen (event) {}
+  _frameStateComplete (serial) {
+    const frame = this._frameStates[serial].frame
+
+    // remove expired states
+    for (const oldSerial in this._frameStates) {
+      if (oldSerial < serial) {
+        this._frameStates[oldSerial].completionReject(new Error('Buffer contents expired ' + oldSerial))
+        delete this._frameStates[oldSerial]
+      }
+    }
+
+    this._decode(frame)
+  }
 
   /**
    * @param frame
    * @private
    */
   _checkFrame (frame) {
-    // if serial is < than this.syncSerial than the buffer has already expired
+    // if serial is < than this.syncSerial than the frame has already expired
     if (frame.synSerial < this.syncSerial) {
-      // console.log('received expired buffer contents frame: ', frame.synSerial, ' syn: ', this.syncSerial)
-    } else if (frame.synSerial > this.syncSerial) {
-      // else if the serial is > the nal might be used in the future
-      if (this._futureFrame && this._futureFrame.synSerial > frame.synSerial) {
-        return
-      }
-      // console.log('received future frame ', frame.synSerial)
-      this._futureFrame = frame
-    } else if (frame.synSerial === this.syncSerial) {
-      // console.log('received matching frame ', frame.synSerial)
-      // We can decode the frame
-      if (this._futureFrame === frame) {
-        this._futureFrame = null
-      }
-      this._decode(frame)
+      if (this._frameStates[frame.synSerial]) {
+        this._frameStates[frame.synSerial].completionReject(new Error('Buffer contents expired ' + frame.synSerial))
+        delete this._frameStates[frame.synSerial]
+      } // else frame state was already deleted
+      return
+    }
+
+    if (this._frameStates[frame.synSerial]) {
+      // state already exists, this means the syn call arrived before this call, which means we can now decode it
+      this._frameStates[frame.synSerial].frame = frame
+      this._frameStateComplete(frame.synSerial)
+    } else {
+      // state does not exist yet, create a new state and wait for syn to arrive
+      this._newFrameState(frame.synSerial).frame = frame
     }
   }
 
   _onMessage (event) {
     const frame = this._parseFrameBuffer(event.data)
     if (this.resource) {
-      // console.log('received frame ' + frame.synSerial)
       this.resource.ack(frame.synSerial)
     }
     this._checkFrame(frame)
@@ -233,13 +253,10 @@ export default class BrowserRtcDcBuffer {
       offset: opaqueH264Nal.byteOffset,
       length: opaqueH264Nal.length
     }, [opaqueH264Nal.buffer])
+    // this.decoder.decode(frame.opaque)
   }
 
   _onPictureDecoded (buffer, width, height) {
-    // console.log('opaque decoded: ', width, ' ', height)
-
-    if (!buffer) { return }
-
     this.yuvContent = buffer
     this.yuvWidth = width
     this.yuvHeight = height
@@ -252,9 +269,6 @@ export default class BrowserRtcDcBuffer {
   }
 
   _onAlphaPictureDecoded (buffer, width, height) {
-    // console.log('alpha decoded: ', width, ' ', height)
-    if (!buffer) { return }
-
     this.alphaYuvContent = buffer
     this.alphaYuvWidth = width
     this.alphaYuvHeight = height
