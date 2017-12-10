@@ -154,8 +154,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     const header = Buffer.allocUnsafe(12)
     const frameBuffer = Buffer.concat([header, frame.opaque, frame.alpha], header.length + frame.opaque.length + frame.alpha.length)
 
-    frameBuffer.writeUInt16BE(frameBuffer.length, 0, true) // total buffer length
-    frameBuffer.writeUInt16BE(header.length + frame.opaque.length, 2, true) // alpha offset
+    frameBuffer.writeUInt32BE(header.length + frame.opaque.length, 0, true) // alpha offset
     frameBuffer.writeUInt16BE(frame.width, 4, true) // buffer width
     frameBuffer.writeUInt16BE(frame.height, 6, true) // buffer height
     frameBuffer.writeUInt32BE(frame.synSerial, 8, true) // frame serial

@@ -212,17 +212,16 @@ export default class BrowserRtcDcBuffer {
   _parseFrameBuffer (frameBuffer) {
     const headerSize = 12
     const header = new DataView(frameBuffer, 0, headerSize)
-    const length = header.getUint16(0, false)
-    const alphaOffset = header.getUint16(2, false)
+    const alphaOffset = header.getUint32(0, false)
     const bufferWidth = header.getUint16(4, false)
     const bufferHeight = header.getUint16(6, false)
     const synSerial = header.getUint32(8, false)
 
     const opaque = new Uint8Array(frameBuffer, headerSize, alphaOffset)
-    const alpha = length === alphaOffset ? null : new Uint8Array(frameBuffer, alphaOffset)
+    const alpha = frameBuffer.byteLength === alphaOffset ? null : new Uint8Array(frameBuffer, alphaOffset)
 
     return {
-      length: length,
+      length: frameBuffer.byteLength,
       alphaOffset: alphaOffset,
       bufferWidth: bufferWidth,
       bufferHeight: bufferHeight,
