@@ -86,6 +86,7 @@ export default class BrowserRtcDcBuffer {
     this.geo = Size.create(0, 0)
 
     this._frameStates = {}
+    this._frameChunks = {}
 
     this.yuvContent = null
     this.yuvWidth = 0
@@ -197,12 +198,58 @@ export default class BrowserRtcDcBuffer {
     }
   }
 
-  _onMessage (event) {
-    const frame = this._parseFrameBuffer(event.data)
-    if (this.resource) {
-      this.resource.ack(frame.synSerial)
+  /**
+   *
+   * @param {ArrayBuffer}chunk
+   * @returns {ArrayBuffer}
+   * @private
+   */
+  _checkChunk (chunk) {
+    // parse chunk header
+    const headerSize = 12
+    const chunkHeader = new DataView(chunk, 0, headerSize)
+    const synSerial = chunkHeader.getUint32(0, false)
+    const nroChunks = chunkHeader.getUint32(4, false)
+    const chunkIdx = chunkHeader.getUint32(8, false)
+
+    // assign chunk to an aggregating data structure
+    let frameChunk = this._frameChunks[synSerial]
+    if (!frameChunk) {
+      frameChunk = {
+        chunks: new Array(nroChunks),
+        received: 0,
+        totalSize: 0
+      }
+      this._frameChunks[synSerial] = frameChunk
     }
-    this._checkFrame(frame)
+    const headerlessChunk = chunk.slice(headerSize)
+    frameChunk.chunks[chunkIdx] = headerlessChunk
+    frameChunk.received++
+    frameChunk.totalSize += headerlessChunk.byteLength
+
+    // check if we have all required chunks & reconstruct frame buffer if so.
+    const chunkSize = 16 * (1024 - 12)
+    if (frameChunk.received === nroChunks) {
+      const frameBuffer = new Uint8Array(frameChunk.totalSize)
+      frameChunk.chunks.forEach((chunk, idx) => {
+        frameBuffer.set(new Uint8Array(chunk), idx * chunkSize)
+      })
+      delete this._frameChunks[synSerial]
+      return frameBuffer.buffer
+    } else {
+      return null
+    }
+  }
+
+  _onMessage (event) {
+    const frameBuffer = this._checkChunk(event.data)
+    if (frameBuffer) {
+      const frame = this._parseFrameBuffer(frameBuffer)
+      if (this.resource) {
+        this.resource.ack(frame.synSerial)
+      }
+      this._checkFrame(frame)
+    }
   }
 
   _onClose (event) {}

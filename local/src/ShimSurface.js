@@ -162,6 +162,33 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     return frameBuffer
   }
 
+  _toBufferChunks (buffer, serial) {
+    // certain webrtc implementations don't like it when data is > 16kb, so have have to split our buffer in chunks
+    // TODO we could also set our chunk size to MTU (~1280 bytes) so they fit into a single UDP packet, on the receiving
+    // end we could reconstruct these chunks and construct an incomplete NAL for partial decoding in case a chunk is missing.
+    // ...patches welcome!
+    const chunkSize = 16 * (1024 - 12) // 1012 because we reserve another 12 for the chunk header 1012+12=1024
+    let nroChunks = 1
+    if (buffer.length > chunkSize) {
+      nroChunks = Math.ceil(buffer.length / chunkSize)
+    }
+
+    const chunks = []
+    let chunkIdx = nroChunks
+    while (chunkIdx > 0) {
+      chunkIdx--
+      const chunkHeader = Buffer.allocUnsafe(12)
+      chunkHeader.writeUInt32BE(serial, 0, true)
+      chunkHeader.writeUInt32BE(nroChunks, 4, true)
+      chunkHeader.writeUInt32BE(chunkIdx, 8, true)
+      const chunkStart = chunkIdx * chunkSize
+      const chunkEnd = chunkStart + chunkSize
+      const bufferChunk = Buffer.concat([chunkHeader, buffer.slice(chunkStart, chunkEnd)])
+      chunks.push(bufferChunk)
+    }
+    return chunks
+  }
+
   sendFrame (frame) {
     if (this.localRtcDcBuffer === null) {
       return
@@ -169,7 +196,10 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
 
     if (this.localRtcDcBuffer.dataChannel.readyState === 'open') {
       const frameBuffer = this._frameToBuffer(frame)
-      this.localRtcDcBuffer.dataChannel.send(frameBuffer.buffer.slice(frameBuffer.byteOffset, frameBuffer.byteOffset + frameBuffer.byteLength))
+      const bufferChunks = this._toBufferChunks(frameBuffer, frame.synSerial)
+      bufferChunks.forEach((chunk) => {
+        this.localRtcDcBuffer.dataChannel.send(chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength))
+      })
     } else {
       this.localRtcDcBuffer.dataChannel.onopen = () => {
         this.localRtcDcBuffer.dataChannel.onopen = null
