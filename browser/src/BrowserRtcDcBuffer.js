@@ -14,14 +14,9 @@ export default class BrowserRtcDcBuffer {
    */
   static create (grBufferResource, rtcDcBufferResource, dataChannel) {
     const decoder = new window.Worker('./lib/broadway/Decoder.js')
-    // const decoder = new Decoder()
 
     const alphaDecoder = new window.Worker('./lib/broadway/Decoder.js')
     const browserRtcDcBuffer = new BrowserRtcDcBuffer(decoder, alphaDecoder, rtcDcBufferResource, dataChannel)
-
-    // decoder.onPictureDecoded = (data, width, height) => {
-    //   browserRtcDcBuffer._onPictureDecoded(data, width, height)
-    // }
 
     decoder.addEventListener('message', function (e) {
       const data = e.data
@@ -299,7 +294,6 @@ export default class BrowserRtcDcBuffer {
       offset: opaqueH264Nal.byteOffset,
       length: opaqueH264Nal.length
     }, [opaqueH264Nal.buffer])
-    // this.decoder.decode(frame.opaque)
   }
 
   _onPictureDecoded (buffer, width, height) {
