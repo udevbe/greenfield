@@ -9,15 +9,7 @@ module.exports = class LocalRtcPeerConnection {
    * @returns {LocalRtcPeerConnection}
    */
   static create (rtcPeerConnectionProxy) {
-    const peerConnection = new webRTC.RTCPeerConnection()
-
-    peerConnection.onicecandidate = (evt) => {
-      if (evt.candidate !== null) {
-        rtcPeerConnectionProxy.clientIceCandidates(JSON.stringify({'candidate': evt.candidate}))
-      }
-    }
-
-    const localRtcPeerConnection = new LocalRtcPeerConnection(rtcPeerConnectionProxy, peerConnection)
+    const localRtcPeerConnection = new LocalRtcPeerConnection(rtcPeerConnectionProxy)
     rtcPeerConnectionProxy.listener = localRtcPeerConnection
     return localRtcPeerConnection
   }
@@ -26,11 +18,49 @@ module.exports = class LocalRtcPeerConnection {
    * Instead use LocalRtcPeerConnection.create(..)
    * @private
    * @param {wfs.RtcPeerConnection} rtcPeerConnectionProxy
-   * @param {RTCPeerConnection} peerConnection
    */
-  constructor (rtcPeerConnectionProxy, peerConnection) {
+  constructor (rtcPeerConnectionProxy) {
     this.rtcPeerConnectionProxy = rtcPeerConnectionProxy
-    this.peerConnection = peerConnection
+    this.peerConnection = null
+  }
+
+  /**
+   * Notify the client that it should start
+   * initializing this peer connection. After initialization,
+   * this rtc peer connection can be connected with any other rtc peer connection. It's an error to
+   * initialize an already initialized peer connection.
+   *
+   * @since 1
+   *
+   */
+  init () {
+    if (this.peerConnection) {
+      // TODO this should normally never happen as it's the server that initiates this call and the server is perfect(TM).
+      console.error('Peer connection was initialized more than once')
+      return
+    }
+
+    this.peerConnection = new webRTC.RTCPeerConnection()
+    this.peerConnection.onicecandidate = (evt) => {
+      if (evt.candidate !== null) {
+        this.rtcPeerConnectionProxy.clientIceCandidates(JSON.stringify({'candidate': evt.candidate}))
+      }
+    }
+
+    this.peerConnection.onnegotiationneeded = () => {
+      this.peerConnection.createOffer({
+        offerToReceiveAudio: false,
+        offerToReceiveVideo: false,
+        voiceActivityDetection: false,
+        iceRestart: false
+      }).then((desc) => {
+        return this.peerConnection.setLocalDescription(desc)
+      }).then(() => {
+        this.rtcPeerConnectionProxy.clientSdpOffer(JSON.stringify({'sdp': this.peerConnection.localDescription}))
+      }).catch((error) => {
+        this.onPeerConnectionError(error)
+      })
+    }
   }
 
   /**
@@ -84,4 +114,7 @@ module.exports = class LocalRtcPeerConnection {
       // FIXME handle error state (disconnect?)
     })
   }
+
+  // FIXME signal error to client & disconnect
+  onPeerConnectionError (error) {}
 }

@@ -35,6 +35,23 @@
             effectively transferred asynchronous using an implementation specific mechanism. A blob transfer object
             acts as a hook into an implementation specific mechanism to send and get the actual blob data.
         </description>
+
+        <event name="release">
+            <description>
+                Notify the client that this blob transfer object will not be used anymore.
+            </description>
+        </event>
+        <request name="close">
+            <description>
+                Destroy this blob transfer object.
+            </description>
+        </request>
+        <request name="accept">
+            <description>Tell the server that the client is ready to accept data.</description>
+        </request>
+        <event name="send">
+            <description>Notify the client that it can send data.</description>
+        </event>
     </interface>
 
     <interface name="gr_callback" version="1">
@@ -1807,7 +1824,7 @@
                 memory-mapped to provide a keyboard mapping description.
             </description>
             <arg name="format" type="uint" enum="keymap_format" summary="keymap format"/>
-            <arg name="transfer" type="object" interface="gr_blob_transfer" summary="keymap file descriptor"/>
+            <arg name="transfer" type="object" interface="gr_blob_transfer" summary="keymap descriptor that will be send using the blob transfer object"/>
             <arg name="size" type="uint" summary="keymap size, in bytes"/>
         </event>
 

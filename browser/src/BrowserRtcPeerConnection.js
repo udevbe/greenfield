@@ -1,65 +1,91 @@
 'use strict'
 
-import westfield from 'westfield-runtime-server'
-import rtc from './protocol/rtc-browser-protocol'
-
-export default class BrowserRtcPeerConnection extends westfield.Global {
+export default class BrowserRtcPeerConnection {
   /**
    * @returns {BrowserRtcPeerConnection}
    */
-  static create () {
-    return new BrowserRtcPeerConnection()
+  static create (rtcPeerConnectionResource) {
+    const browserRtcPeerConnection = new BrowserRtcPeerConnection(rtcPeerConnectionResource)
+    rtcPeerConnectionResource.implementation = browserRtcPeerConnection
+    return browserRtcPeerConnection
   }
 
-  constructor () {
-    super(rtc.RtcPeerConnection.name, 1)
+  constructor (rtcPeerConnectionResource) {
+    this.rtcPeerConnectionResource = rtcPeerConnectionResource
+    this._delegate = null
   }
 
-  _createPeerConnecton (client, rtcPeerConnectionResource) {
-    const peerConnection = new window.RTCPeerConnection()
+  initP2Server () {
+    this._delegate = {
+      peerConnection: new window.RTCPeerConnection(),
 
-    peerConnection.onicecandidate = (evt) => {
-      if (evt.candidate !== null) {
-        rtcPeerConnectionResource.serverIceCandidates(JSON.stringify({'candidate': evt.candidate}))
+      clientIceCandidates: (resource, description) => {
+        const signal = JSON.parse(description)
+        this._delegate.peerConnection.addIceCandidate(new window.RTCIceCandidate(signal.candidate)).catch(error => {
+          this.onPeerConnectionError(resource.client, error)
+        })
+      },
+
+      clientSdpReply: (resource, description) => {
+        const signal = JSON.parse(description)
+        this._delegate.peerConnection.setRemoteDescription(new window.RTCSessionDescription(signal.sdp)).catch((error) => {
+          this.onPeerConnectionError(resource.client, error)
+        })
+      },
+
+      clientSdpOffer: (resource, description) => {
+        const signal = JSON.parse(description)
+        this._delegate.peerConnection.setRemoteDescription(new window.RTCSessionDescription(signal.sdp)).then(() => {
+          return this._delegate.peerConnection.createAnswer()
+        }).then((desc) => {
+          return this._delegate.peerConnection.setLocalDescription(desc)
+        }).then(() => {
+          this.rtcPeerConnectionResource.serverSdpReply(JSON.stringify({'sdp': this._delegate.peerConnection.localDescription}))
+        }).catch((error) => {
+          // FIXME handle error state (disconnect?)
+          this.onPeerConnectionError(resource.client, error)
+        })
       }
     }
 
-    rtcPeerConnectionResource.implementation.clientIceCandidates = (resource, description) => {
-      const signal = JSON.parse(description)
-      peerConnection.addIceCandidate(new window.RTCIceCandidate(signal.candidate)).catch(error => {
-        this.onPeerConnectionError(client, error)
-      })
+    this._delegate.peerConnection.onicecandidate = (evt) => {
+      if (evt.candidate !== null) {
+        this.rtcPeerConnectionResource.serverIceCandidates(JSON.stringify({'candidate': evt.candidate}))
+      }
     }
 
-    rtcPeerConnectionResource.implementation.clientSdpReply = (resource, description) => {
-      const signal = JSON.parse(description)
-      peerConnection.setRemoteDescription(new window.RTCSessionDescription(signal.sdp)).catch((error) => {
-        this.onPeerConnectionError(client, error)
-      })
-    }
-
-    peerConnection.onnegotiationneeded = () => {
-      peerConnection.createOffer({
-        offerToReceiveAudio: false,
-        offerToReceiveVideo: false,
-        voiceActivityDetection: false,
-        iceRestart: false
-      }).then((desc) => {
-        return peerConnection.setLocalDescription(desc)
-      }).then(() => {
-        rtcPeerConnectionResource.serverSdpOffer(JSON.stringify({'sdp': peerConnection.localDescription}))
-      }).catch((error) => {
-        this.onPeerConnectionError(client, error)
-      })
-    }
-
-    // store the peer connection in the implementation so we can find it again when we create a dc buffer later on.
-    rtcPeerConnectionResource.implementation.peerConnection = peerConnection
+    this.rtcPeerConnectionResource.init()
   }
 
-  bindClient (client, id, version) {
-    const rtcPeerConnectionResource = new rtc.RtcPeerConnection(client, id, version)
-    this._createPeerConnecton(client, rtcPeerConnectionResource)
+  initP2P (otherRtcPeerConnectionResource) {
+    this._delegate = {
+      otherRtcPeerConnectionResource: otherRtcPeerConnectionResource,
+      clientIceCandidates: (resource, description) => {
+        this._delegate.otherRtcPeerConnectionResource.serverIceCandidates(description)
+      },
+
+      clientSdpReply: (resource, description) => {
+        this._delegate.otherRtcPeerConnectionResource.serverSdpReply(description)
+      },
+
+      clientSdpOffer: (resource, description) => {
+        this._delegate.otherRtcPeerConnectionResource.serverSdpOffer(description)
+      }
+    }
+
+    this.rtcPeerConnectionResource.init()
+  }
+
+  clientIceCandidates (resource, description) {
+    this._delegate.clientIceCandidates(resource, description)
+  }
+
+  clientSdpReply (resource, description) {
+    this._delegate.clientSdpReply(resource, description)
+  }
+
+  clientSdpOffer (resource, description) {
+    this._delegate.clientSdpOffer(resource, description)
   }
 
   // FIXME signal error to client & disconnect

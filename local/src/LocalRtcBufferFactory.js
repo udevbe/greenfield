@@ -17,8 +17,10 @@ module.exports = class LocalRtcBufferFactory {
 
       // FIXME listen for global removal
       registryProxy.listener.global = (name, interface_, version) => {
-        if (interface_ === rtc.RtcPeerConnection.name) {
-          localRtcBufferFactory.localRtcPeerConnection = LocalRtcPeerConnection.create(registryProxy.bind(name, interface_, version))
+        if (interface_ === rtc.RtcPeerConnectionFactory.name) {
+          const rtcPeerConnectionFactoryProxy = registryProxy.bind(name, interface_, version)
+          const rtcPeerConnection = rtcPeerConnectionFactoryProxy.createRtcPeerConnection()
+          localRtcBufferFactory.localRtcPeerConnection = LocalRtcPeerConnection.create(rtcPeerConnection)
         } else if (interface_ === rtc.RtcBufferFactory.name) {
           const rtcBufferFactoryProxy = registryProxy.bind(name, interface_, version)
           rtcBufferFactoryProxy.listener = localRtcBufferFactory
