@@ -20,8 +20,13 @@ module.exports = class LocalRtcPeerConnection {
    * @param {wfs.RtcPeerConnection} rtcPeerConnectionProxy
    */
   constructor (rtcPeerConnectionProxy) {
-    this.rtcPeerConnectionProxy = rtcPeerConnectionProxy
+    this.proxy = rtcPeerConnectionProxy
     this.peerConnection = null
+    this._nextDataChannelId = 0
+  }
+
+  nextDataChannelId () {
+    return ++this._nextDataChannelId
   }
 
   /**
@@ -43,7 +48,7 @@ module.exports = class LocalRtcPeerConnection {
     this.peerConnection = new webRTC.RTCPeerConnection()
     this.peerConnection.onicecandidate = (evt) => {
       if (evt.candidate !== null) {
-        this.rtcPeerConnectionProxy.clientIceCandidates(JSON.stringify({'candidate': evt.candidate}))
+        this.proxy.clientIceCandidates(JSON.stringify({'candidate': evt.candidate}))
       }
     }
 
@@ -56,7 +61,7 @@ module.exports = class LocalRtcPeerConnection {
       }).then((desc) => {
         return this.peerConnection.setLocalDescription(desc)
       }).then(() => {
-        this.rtcPeerConnectionProxy.clientSdpOffer(JSON.stringify({'sdp': this.peerConnection.localDescription}))
+        this.proxy.clientSdpOffer(JSON.stringify({'sdp': this.peerConnection.localDescription}))
       }).catch((error) => {
         this.onPeerConnectionError(error)
       })
@@ -93,7 +98,7 @@ module.exports = class LocalRtcPeerConnection {
     }).then((desc) => {
       return this.peerConnection.setLocalDescription(desc)
     }).then(() => {
-      this.rtcPeerConnectionProxy.clientSdpReply(JSON.stringify({'sdp': this.peerConnection.localDescription}))
+      this.proxy.clientSdpReply(JSON.stringify({'sdp': this.peerConnection.localDescription}))
     }).catch((error) => {
       console.error(error)
       // FIXME handle error state (disconnect?)
@@ -114,7 +119,4 @@ module.exports = class LocalRtcPeerConnection {
       // FIXME handle error state (disconnect?)
     })
   }
-
-  // FIXME signal error to client & disconnect
-  onPeerConnectionError (error) {}
 }

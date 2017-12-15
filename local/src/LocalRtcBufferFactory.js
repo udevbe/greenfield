@@ -1,33 +1,25 @@
 'use strict'
 
 const rtc = require('./protocol/rtc-client-protocol')
-const LocalRtcPeerConnection = require('./LocalRtcPeerConnection')
 const LocalRtcDcBuffer = require('./LocalRtcDcBuffer')
 
 module.exports = class LocalRtcBufferFactory {
   /**
    *
    * @param {LocalClient} localClient
-   * @return {Promise<LocalClient, LocalRtcBufferFactory>}
+   * @return {Promise<LocalRtcBufferFactory>}
    */
   static create (localClient) {
     return new Promise((resolve) => {
       const registryProxy = localClient.connection.createRegistry()
-      const localRtcBufferFactory = new LocalRtcBufferFactory()
 
       // FIXME listen for global removal
       registryProxy.listener.global = (name, interface_, version) => {
-        if (interface_ === rtc.RtcPeerConnectionFactory.name) {
-          const rtcPeerConnectionFactoryProxy = registryProxy.bind(name, interface_, version)
-          const rtcPeerConnection = rtcPeerConnectionFactoryProxy.createRtcPeerConnection()
-          localRtcBufferFactory.localRtcPeerConnection = LocalRtcPeerConnection.create(rtcPeerConnection)
-        } else if (interface_ === rtc.RtcBufferFactory.name) {
+        if (interface_ === rtc.RtcBufferFactory.name) {
           const rtcBufferFactoryProxy = registryProxy.bind(name, interface_, version)
+          const localRtcBufferFactory = new LocalRtcBufferFactory()
           rtcBufferFactoryProxy.listener = localRtcBufferFactory
           localRtcBufferFactory.rtcBufferFactoryProxy = rtcBufferFactoryProxy
-        }
-
-        if (localRtcBufferFactory.localRtcPeerConnection && localRtcBufferFactory.rtcBufferFactoryProxy) {
           resolve(localRtcBufferFactory)
         }
       }
@@ -39,28 +31,17 @@ module.exports = class LocalRtcBufferFactory {
    * @private
    */
   constructor () {
-    this.localRtcPeerConnection = null
     this.rtcBufferFactoryProxy = null
-    this._nextChannelId = 1
   }
 
   /**
    *
    * @return {LocalRtcDcBuffer}
    */
-  createLocalRtcDcBuffer () {
+  createLocalRtcDcBuffer (localRtcBlobTransfer) {
     const grBufferProxy = this.rtcBufferFactoryProxy.createBuffer()
-    const channelId = this._nextChannelId++
-    const rtcDcBufferProxy = this.rtcBufferFactoryProxy.createDcBuffer(channelId, this.localRtcPeerConnection.rtcPeerConnectionProxy, grBufferProxy)
-    const dataChannel = this.localRtcPeerConnection.peerConnection.createDataChannel(null, {
-      ordered: false,
-      maxRetransmits: 0,
-      negotiated: true,
-      id: channelId
-    })
-    dataChannel.binaryType = 'arraybuffer'
-
-    const localRtcDcBuffer = LocalRtcDcBuffer.create(grBufferProxy, rtcDcBufferProxy, dataChannel)
+    const rtcDcBufferProxy = this.rtcBufferFactoryProxy.createDcBuffer(localRtcBlobTransfer.proxy, grBufferProxy)
+    const localRtcDcBuffer = LocalRtcDcBuffer.create(grBufferProxy, rtcDcBufferProxy)
     rtcDcBufferProxy.listener = localRtcDcBuffer
 
     return localRtcDcBuffer

@@ -46,12 +46,6 @@
                 Destroy this blob transfer object.
             </description>
         </request>
-        <request name="accept">
-            <description>Tell the server that the client is ready to accept data.</description>
-        </request>
-        <event name="send">
-            <description>Notify the client that it can send data.</description>
-        </event>
     </interface>
 
     <interface name="gr_callback" version="1">
