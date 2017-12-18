@@ -18,26 +18,6 @@
         along with this program. If not, see &gt;http://www.gnu.org/licenses/&lt;.
     </copyright>
 
-    <interface name="rtc_blob_transfer_factory" version="1">
-        <description>
-            A Global singleton to create blob transfer objects based on a blob transfer descriptor. A blob transfer
-            descriptor is implementation specific but generally includes instructions on how to set up an rtc data
-            channel, as well as a unique identifier for the blob transfer object. This allows for the server to create a
-            blob descriptor and send it to the client. The client in return can use this descriptor to create a blob
-            transfer object and receive data on it. Vice versa, a client can directly create a blob transfer object
-            using it's own created blob descriptor, and send the whole blob transfer object over the wire to indicate
-            that the server can receive data on this blob transfer object.
-        </description>
-
-        <request name="createBlobTransfer">
-            <arg name="id" type="new_id" interface="gr_blob_transfer"
-                 summary="Returns new blob transfer object who's data will be send over the given rtc peer connection"/>
-            <arg name="descriptor" type="string" summary="blob transfer descriptor"/>
-            <arg name="connection" type="object" interface="rtc_peer_connection"
-                 summary="An rtc peer connection to send the data over"/>
-        </request>
-    </interface>
-
     <interface name="rtc_buffer_factory" version="1">
         <description>
             A global data channel buffer factory. Used to create and associate dc buffers with the generic buffer.
@@ -111,8 +91,25 @@
 
     <interface name="rtc_peer_connection" version="1">
         <description>
-            Rtc peer connection. Interface allows setting up a web rtc peer connection.
+            Rtc peer connection object functions as a signaling mechanism to set up a web rtc peer connection.
         </description>
+
+        <request name="createBlobTransfer">
+            <description>
+                Creates a blob transfer objects based on a blob transfer descriptor. A blob transfer
+                descriptor is implementation specific but generally includes instructions on how to set up an rtc data
+                channel, as well as a unique identifier for the blob transfer object. This allows for the server to
+                create a blob descriptor and send it to the client. The client in return can use this descriptor to
+                create a blob transfer object and receive data on it. Vice versa, a client can directly create a blob
+                transfer object using it's own created blob descriptor, and send the whole blob transfer object over the
+                wire to indicate that the server can receive data on this blob transfer object.
+
+                The lifecycle of a blob transfer is tied to that of the rtc peer connection it was created from.
+            </description>
+            <arg name="id" type="new_id" interface="gr_blob_transfer"
+                 summary="Returns new blob transfer object who's data will be send over the given rtc peer connection"/>
+            <arg name="descriptor" type="string" summary="blob transfer descriptor"/>
+        </request>
 
         <event name="init">
             <description summary="Start a client side connection initialization.">

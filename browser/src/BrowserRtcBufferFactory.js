@@ -64,24 +64,17 @@ export default class BrowserRtcBufferFactory extends westfield.Global {
    *
    * @param {wfs.RtcBufferFactory} resource
    * @param {Number} id A new datachannel buffer
-   * @param {Number} channelId 16-bit id of the data channel
-   * @param {wfs.RtcPeerConnection} rtcPeerConnectionResource The bound wrtc signaling instance who's peer connection will be used to setup the data channel
+   * @param {GrBlobTransfer} blobTransferResource
    * @param {wfs.GrBuffer} grBufferResource The generic buffer that will implement the new datachannel buffer
    *
    * @since 1
    *
    */
-  createDcBuffer (resource, id, channelId, rtcPeerConnectionResource, grBufferResource) {
-    const peerConnection = rtcPeerConnectionResource.implementation.peerConnection
-    const dataChannel = peerConnection.createDataChannel(null, {
-      ordered: false,
-      maxRetransmits: 0,
-      negotiated: true,
-      id: channelId
-    })
-    dataChannel.binaryType = 'arraybuffer'
+  createDcBuffer (resource, id, blobTransferResource, grBufferResource) {
+    // TODO try/catch & report error to client
+    blobTransferResource.implementation.browserRtcPeerConnection.initP2S()
 
     const rtcDcBufferResource = new rtc.RtcDcBuffer(resource.client, id, resource.version)
-    BrowserRtcDcBuffer.create(grBufferResource, rtcDcBufferResource, dataChannel)
+    BrowserRtcDcBuffer.create(grBufferResource, rtcDcBufferResource, blobTransferResource)
   }
 }

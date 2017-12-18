@@ -2,21 +2,19 @@
 
 import Size from './Size'
 
-// import Decoder from './lib/Decoder'
-
 export default class BrowserRtcDcBuffer {
   /**
    *
-   * @param {wfs.GrBuffer} grBufferResource
-   * @param {wfs.RtcDcBuffer} rtcDcBufferResource
-   * @param {RTCDataChannel} dataChannel
+   * @param {GrBuffer} grBufferResource
+   * @param {RtcDcBuffer} rtcDcBufferResource
+   * @param {GrBlobTransfer} blobTransferResource
    * @returns {BrowserRtcDcBuffer}
    */
-  static create (grBufferResource, rtcDcBufferResource, dataChannel) {
+  static create (grBufferResource, rtcDcBufferResource, blobTransferResource) {
     const decoder = new window.Worker('./lib/broadway/Decoder.js')
 
     const alphaDecoder = new window.Worker('./lib/broadway/Decoder.js')
-    const browserRtcDcBuffer = new BrowserRtcDcBuffer(decoder, alphaDecoder, rtcDcBufferResource, dataChannel)
+    const browserRtcDcBuffer = new BrowserRtcDcBuffer(decoder, alphaDecoder, rtcDcBufferResource, blobTransferResource)
 
     decoder.addEventListener('message', function (e) {
       const data = e.data
@@ -52,10 +50,10 @@ export default class BrowserRtcDcBuffer {
     rtcDcBufferResource.implementation = browserRtcDcBuffer
     grBufferResource.implementation.browserRtcDcBuffer = browserRtcDcBuffer
 
-    dataChannel.onopen = browserRtcDcBuffer._onOpen.bind(browserRtcDcBuffer)
-    dataChannel.onmessage = browserRtcDcBuffer._onMessage.bind(browserRtcDcBuffer)
-    dataChannel.onclose = browserRtcDcBuffer._onClose.bind(browserRtcDcBuffer)
-    dataChannel.onerror = browserRtcDcBuffer._onError.bind(browserRtcDcBuffer)
+    blobTransferResource.implementation.open().then((dataChannel) => {
+      dataChannel.onmessage = browserRtcDcBuffer._onMessage.bind(browserRtcDcBuffer)
+      dataChannel.onerror = browserRtcDcBuffer._onError.bind(browserRtcDcBuffer)
+    })
 
     return browserRtcDcBuffer
   }
@@ -66,15 +64,15 @@ export default class BrowserRtcDcBuffer {
    * @private
    * @param decoder
    * @param alphaDecoder
-   * @param {wfs.RtcDcBuffer} rtcDcBufferResource
-   * @param {RTCDataChannel} dataChannel
+   * @param {RtcDcBuffer} rtcDcBufferResource
+   * @param {GrBlobTransfer} blobTransferResource
    */
-  constructor (decoder, alphaDecoder, rtcDcBufferResource, dataChannel) {
+  constructor (decoder, alphaDecoder, rtcDcBufferResource, blobTransferResource) {
     this.decoder = decoder
     this.alphaDecoder = alphaDecoder
 
     this.resource = rtcDcBufferResource
-    this.dataChannel = dataChannel
+    this._blobTransferResource = blobTransferResource
     this.syncSerial = 0
     this.state = 'pending' // or 'pending_alpha' or 'pending_opaque' or 'complete'
     this._pendingGeo = Size.create(0, 0)
@@ -91,8 +89,6 @@ export default class BrowserRtcDcBuffer {
     this.alphaYuvWidth = 0
     this.alphaYuvHeight = 0
   }
-
-  _onOpen (event) {}
 
   /**
    *
@@ -247,8 +243,6 @@ export default class BrowserRtcDcBuffer {
     }
   }
 
-  _onClose (event) {}
-
   _onError (event) {}
 
   _parseFrameBuffer (frameBuffer) {
@@ -321,7 +315,7 @@ export default class BrowserRtcDcBuffer {
   }
 
   destroy () {
-    this.dataChannel = null
-    this.resource = null
+    this._blobTransferResource.release()
+    this.this.resource = null
   }
 }

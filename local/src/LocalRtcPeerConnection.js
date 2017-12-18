@@ -1,6 +1,9 @@
 'use strict'
 
+const crypto = require('crypto')
 const webRTC = require('wrtc')
+
+const LocalRtcBlobTransfer = require('./LocalRtcBlobTransfer')
 
 module.exports = class LocalRtcPeerConnection {
   /**
@@ -27,6 +30,43 @@ module.exports = class LocalRtcPeerConnection {
 
   nextDataChannelId () {
     return ++this._nextDataChannelId
+  }
+
+  _createDescriptorObject (reliable) {
+    const dataChannelId = this.nextDataChannelId()
+    // descriptor object somewhat corresponds to rtc data channel config dictionary
+    return {
+      negotiated: true,
+      maxRetransmits: reliable ? null : 0,
+      id: dataChannelId,
+      ordered: reliable,
+      label: this._uuidv4(),
+      binaryType: 'arraybuffer'
+    }
+  }
+
+  _uuidv4 () {
+    return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+      (c ^ crypto.randomFillSync(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+    )
+  }
+
+  /**
+   * @param {String}blobDescriptor
+   * @return {LocalRtcBlobTransfer}
+   */
+  createBlobTransferFromDescriptor (blobDescriptor) {
+    const descriptorObj = JSON.parse(blobDescriptor)
+    if (descriptorObj.id === -1) {
+      descriptorObj.id = this.nextDataChannelId()
+    }
+    const blobTransferProxy = this.proxy.createBlobTransfer(JSON.stringify(descriptorObj))
+    return LocalRtcBlobTransfer.create(blobTransferProxy, descriptorObj, this)
+  }
+
+  createBlobTransfer (reliable) {
+    const dataChannelInitDict = this._createDescriptorObject(reliable)
+    return this.createBlobTransferFromDescriptor(JSON.stringify(dataChannelInitDict))
   }
 
   /**

@@ -35,11 +35,12 @@ module.exports = class LocalRtcBufferFactory {
   }
 
   /**
-   *
+   * @param  {LocalRtcPeerConnection}localRtcPeerConnection
    * @return {LocalRtcDcBuffer}
    */
-  createLocalRtcDcBuffer (localRtcBlobTransfer) {
+  createLocalRtcDcBuffer (localRtcPeerConnection) {
     const grBufferProxy = this.rtcBufferFactoryProxy.createBuffer()
+    const localRtcBlobTransfer = localRtcPeerConnection.createBlobTransfer(false)
     const rtcDcBufferProxy = this.rtcBufferFactoryProxy.createDcBuffer(localRtcBlobTransfer.proxy, grBufferProxy)
     const localRtcDcBuffer = LocalRtcDcBuffer.create(grBufferProxy, rtcDcBufferProxy)
     rtcDcBufferProxy.listener = localRtcDcBuffer
