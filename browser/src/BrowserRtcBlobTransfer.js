@@ -1,5 +1,13 @@
 export default class BrowserRtcBlobTransfer {
-  static create (resource, blobDescriptor, browserRtcPeerConnection) {
+  /**
+   * Called by the parent rtc peer connection when a client creates a new blob transfer.
+   * @private
+   * @param resource
+   * @param blobDescriptor
+   * @param browserRtcPeerConnection
+   * @return {*}
+   */
+  static _create (resource, blobDescriptor, browserRtcPeerConnection) {
     const descriptorObj = JSON.parse(blobDescriptor)
     const browserRtcBlobTransfer = new BrowserRtcBlobTransfer(resource, descriptorObj, browserRtcPeerConnection)
 
@@ -23,8 +31,15 @@ export default class BrowserRtcBlobTransfer {
     )
   }
 
+  /**
+   * Returns a promise that will resolve to a BrowserRtcBlobTransfer as soon as the client has setup their end of the
+   * blob transfer using this descriptor.
+   * @param blobDescriptor
+   * @return {Promise<BrowserRtcBlobTransfer>}
+   */
   static get (blobDescriptor) {
     const descriptorObj = JSON.parse(blobDescriptor)
+    // entries are created when a descriptor is created through createDescriptor
     const blobTransferEntry = this._blobTransferEntries[descriptorObj.label]
     if (blobTransferEntry) {
       return blobTransferEntry.promise
@@ -33,6 +48,13 @@ export default class BrowserRtcBlobTransfer {
     }
   }
 
+  /**
+   * Create a blob transfer descriptor that can be send to a client. The client in turn can use the descriptor to create
+   * the actual blob transfer. After the descriptor is send, the server can use the descriptor to find the matching
+   * blob transfer with BrowserRtcBlobTransfer.get(blobDescriptor).
+   * @param reliable
+   * @return {string} a blob transfer descriptor
+   */
   static createDescriptor (reliable) {
     const label = this._uuidv4()
     const blobTransferEntry = {
@@ -50,8 +72,8 @@ export default class BrowserRtcBlobTransfer {
       maxRetransmits: reliable ? null : 0,
       id: -1,
       ordered: reliable,
-      label: label,
-      binaryType: 'arraybuffer'
+      label: label, // not part of config dictionary
+      binaryType: 'arraybuffer' // not part of config dictionary
     })
   }
 
@@ -66,6 +88,9 @@ export default class BrowserRtcBlobTransfer {
   }
 
   /**
+   * Setup this blob transfer so it can begin receiving and sending data. The behavior of the resulting rtc data channel
+   * depends on the descriptor that was used to create the blob transfer. Opening the blob transfer multiple times will
+   * return the same rtc data channel promise. After a blob transfer is closed, it can no longer be opened.
    * @return {Promise<RTCDataChannel>}
    */
   open () {
@@ -88,7 +113,15 @@ export default class BrowserRtcBlobTransfer {
     return this._dataChannelOpenPromise
   }
 
-  _close () {
+  /**
+   * Close and seal this blob transfer. A closed blob transfer can no longer be opened. Closing a blob transfer that
+   * was not opened has no effect. Closing blob transfer multiple times has no effect.
+   */
+  closeAndSeal () {
+    if (this.resource) {
+      this.resource.release()
+      this.resource = null
+    }
     if (this._dataChannel) {
       this._dataChannel.close()
       this._dataChannel = null
@@ -97,15 +130,8 @@ export default class BrowserRtcBlobTransfer {
     }
   }
 
-  closeAndSeal () {
-    if (this._dataChannel) {
-      this.resource.release()
-      this._close()
-    }
-  }
-
   close (resource) {
-    this._close()
+    this.closeAndSeal()
   }
 }
 BrowserRtcBlobTransfer._blobTransferEntries = {}

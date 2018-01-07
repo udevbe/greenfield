@@ -32,9 +32,12 @@ export default class BrowserRtcPeerConnection {
     // TODO check if the descriptor label matches one we send out earlier and notify whoever created that descriptor
     // that there is now a blob transfer object available
     const blobTransferResource = new greenfield.GrBlobTransfer(resource.client, id, resource.version)
-    BrowserRtcBlobTransfer.create(blobTransferResource, descriptor, this)
+    BrowserRtcBlobTransfer._create(blobTransferResource, descriptor, this)
   }
 
+  /**
+   * Setup the peer connection for client (local) to server (browser) communication.
+   */
   initP2S () {
     if (this._delegate && this._delegate.peerConnection) {
       return
@@ -83,6 +86,10 @@ export default class BrowserRtcPeerConnection {
     this.rtcPeerConnectionResource.init()
   }
 
+  /**
+   * Setup the peer connection for client (local) to client (local) communication.
+   * @param otherRtcPeerConnectionResource
+   */
   initP2P (otherRtcPeerConnectionResource) {
     if (this._delegate && this._delegate.peerConnection) {
       throw new Error('Rtc peer connection already initialized in P2S mode.')
