@@ -36,7 +36,7 @@ module.exports = class LocalRtcBufferFactory {
   constructor (localClient, localRtcPeerConnection) {
     this.localClient = localClient
     this.localRtcPeerConnection = localRtcPeerConnection
-    this.rtcBufferFactoryProxy = null
+    this.rtcBufferFactoryProxy = null // set in LocalRtcBufferFactory.create(..)
   }
 
   /**

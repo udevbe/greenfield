@@ -85,23 +85,23 @@ export default class BrowserRtcBlobTransfer {
     this._dataChannel = null
     this._dataChannelResolve = null
     this._dataChannelReject = null
-    this._dataChannelPromise = null
+    this._dataChannelPromise = new Promise((resolve, reject) => {
+      this._dataChannelResolve = resolve
+      this._dataChannelReject = reject
+    })
+    this._peerConnectionPromise = null
   }
 
   /**
    * Setup this blob transfer so it can begin receiving and sending data. The behavior of the resulting rtc data channel
    * depends on the descriptor that was used to create the blob transfer. Opening the blob transfer multiple times will
-   * return the same rtc data channel promise. After a blob transfer is closed, it can no longer be opened.
+   * return the same rtc data channel promise. After a blob transfer is closed, calls to open will return null.
    * @return {Promise<RTCDataChannel>}
    */
   open () {
-    if (!this._dataChannelPromise) {
-      this._dataChannelPromise = new Promise((resolve, reject) => {
-        this._dataChannelResolve = resolve
-        this._dataChannelReject = reject
-      })
-
-      this.browserRtcPeerConnection.onPeerConnection().then((peerConnection) => {
+    if (!this._peerConnectionPromise) {
+      this._peerConnectionPromise = this.browserRtcPeerConnection.onPeerConnection()
+      this._peerConnectionPromise.then((peerConnection) => {
         const dataChannelInitDict = Object.assign({}, this._descriptorObj)
         const label = dataChannelInitDict.label
         const binaryType = dataChannelInitDict.binaryType
@@ -125,6 +125,9 @@ export default class BrowserRtcBlobTransfer {
    * was not opened has no effect. Closing blob transfer multiple times has no effect.
    */
   closeAndSeal () {
+    if (this._dataChannelPromise) {
+      this._dataChannelPromise = null
+    }
     if (this.resource) {
       this.resource.release()
       this.resource = null

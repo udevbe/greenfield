@@ -41,5 +41,6 @@ module.exports = class LocalRtcDcBuffer {
    *
    */
   ack (serial) {
+    // implemented in ShimSurface
   }
 }

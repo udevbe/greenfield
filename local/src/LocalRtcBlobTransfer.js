@@ -8,7 +8,6 @@ module.exports = class LocalRtcBlobTransfer {
    * @return {LocalRtcBlobTransfer}
    */
   static create (blobTransferProxy, descriptorObj, localRtcPeerConnection) {
-
     const dataChannelInitDict = Object.assign({}, descriptorObj)
     const label = dataChannelInitDict.label
     const binaryType = dataChannelInitDict.binaryType
@@ -59,6 +58,8 @@ module.exports = class LocalRtcBlobTransfer {
       this.proxy.close()
       this._dataChannel.close()
       this._dataChannel = null
+      this._dataChannelPromise = null
+      this._dataChannelResolve = null
     }
   }
 
@@ -71,8 +72,7 @@ module.exports = class LocalRtcBlobTransfer {
 
   /**
    * Opens this blob transfer so it's data can be read. Once opened, blob transfer data should be read immediately.
-   * Multiple calls to open will return the same promise. Opening an already closed blob transfer will return the closed
-   * rtc data channel.
+   * Multiple calls to open will return the same promise. Opening an already closed blob transfer will return null.
    * @return {Promise<RTCDataChannel>}
    */
   open () {
