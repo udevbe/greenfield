@@ -12,17 +12,6 @@ Clone this repo and inside the cloned directory run:
 
 `npm install`
 
-Next you will need a patched node-gstreamer-superficial.
-
-https://github.com/udevbe/node-gstreamer-superficial
-
-clone it and go back to the greenfield directory.
-
-Now link the node-gstreamer-superficial project so it can be used by greenfield.
-
-`npm link <path to node-gstreamer-superficial>`
-
-
 You will also need gstreamer-1.x and the following plugins:
 - appsrc
 - glupload
