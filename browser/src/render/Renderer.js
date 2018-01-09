@@ -1,7 +1,7 @@
 'use strict'
 
 import ViewState from './ViewState'
-import BrowserDcBufferFactory from '../BrowserDcBufferFactory'
+import BrowserRtcBufferFactory from '../BrowserRtcBufferFactory'
 import YUVSurfaceShader from './YUVSurfaceShader'
 import Size from '../Size'
 
@@ -65,7 +65,7 @@ export default class Renderer {
       return Size.create(0, 0)
     }
     // TODO we could check for null here in case we are dealing with a different kind of buffer
-    const browserRtcDcBuffer = BrowserDcBufferFactory.get(grBuffer)
+    const browserRtcDcBuffer = BrowserRtcBufferFactory.get(grBuffer)
     return browserRtcDcBuffer.geo
   }
 
@@ -93,7 +93,7 @@ export default class Renderer {
 
     const gl = this.gl
     // TODO we could check for null here in case we are dealing with a different kind of buffer
-    const browserRtcDcBuffer = BrowserDcBufferFactory.get(grBuffer)
+    const browserRtcDcBuffer = BrowserRtcBufferFactory.get(grBuffer)
     const bufferSize = this.bufferSize(grBuffer)
 
     const drawSyncSerial = browserRtcDcBuffer.syncSerial

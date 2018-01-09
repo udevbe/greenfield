@@ -3,23 +3,18 @@ export default class BrowserRtcBlobTransfer {
    * Called by the parent rtc peer connection when a client creates a new blob transfer.
    * @private
    * @param resource
-   * @param blobDescriptor
-   * @param browserRtcPeerConnection
-   * @return {*}
+   * @param {string}blobDescriptor
+   * @param {BrowserRtcPeerConnection}browserRtcPeerConnection
+   * @return {BrowserRtcBlobTransfer}
    */
   static _create (resource, blobDescriptor, browserRtcPeerConnection) {
     const descriptorObj = JSON.parse(blobDescriptor)
     const browserRtcBlobTransfer = new BrowserRtcBlobTransfer(resource, descriptorObj, browserRtcPeerConnection)
-
-    browserRtcPeerConnection.peerConnection.addEventListener('close', () => {
-      browserRtcBlobTransfer.closeAndSeal()
-    })
-
     resource.implementation = browserRtcBlobTransfer
 
     const blobTransferEntry = this._blobTransferEntries[descriptorObj.label]
     if (blobTransferEntry) {
-      return blobTransferEntry.resolve(browserRtcBlobTransfer)
+      blobTransferEntry.resolve(browserRtcBlobTransfer)
     }
 
     return browserRtcBlobTransfer
@@ -70,21 +65,27 @@ export default class BrowserRtcBlobTransfer {
     return JSON.stringify({
       negotiated: true,
       maxRetransmits: reliable ? null : 0,
-      id: -1,
-      ordered: reliable,
-      label: label, // not part of config dictionary
-      binaryType: 'arraybuffer' // not part of config dictionary
+      id: -1, // the id is filled in by the client
+      ordered: reliable, // making the channel ordered initiates it as a tcp connection, thus making it reliable.
+      label: label, // not part of rtc data channel config dictionary
+      binaryType: 'arraybuffer' // not part of rtc data channel config dictionary
     })
   }
 
+  /**
+   * @private
+   * @param resource
+   * @param descriptorObj
+   * @param browserRtcPeerConnection
+   */
   constructor (resource, descriptorObj, browserRtcPeerConnection) {
     this.resource = resource
     this._descriptorObj = descriptorObj
     this.browserRtcPeerConnection = browserRtcPeerConnection
     this._dataChannel = null
-    this._dataChannelOpenPromise = new Promise((resolve) => {
-      this._dataChannelOpenResolve = resolve
-    })
+    this._dataChannelResolve = null
+    this._dataChannelReject = null
+    this._dataChannelPromise = null
   }
 
   /**
@@ -94,23 +95,29 @@ export default class BrowserRtcBlobTransfer {
    * @return {Promise<RTCDataChannel>}
    */
   open () {
-    if (!this._dataChannelOpenPromise) {
-      throw new Error('Blob transfer is closed and sealed.')
+    if (!this._dataChannelPromise) {
+      this._dataChannelPromise = new Promise((resolve, reject) => {
+        this._dataChannelResolve = resolve
+        this._dataChannelReject = reject
+      })
+
+      this.browserRtcPeerConnection.onPeerConnection().then((peerConnection) => {
+        const dataChannelInitDict = Object.assign({}, this._descriptorObj)
+        const label = dataChannelInitDict.label
+        const binaryType = dataChannelInitDict.binaryType
+        delete dataChannelInitDict.label
+        delete dataChannelInitDict.binaryType
+        this._dataChannel = peerConnection.createDataChannel(label, dataChannelInitDict)
+        this._dataChannel.binaryType = binaryType
+        this._dataChannel.onopen = () => {
+          this._dataChannelResolve(this._dataChannel)
+        }
+      }).catch((error) => {
+        this._dataChannelReject(error)
+      })
     }
 
-    if (!this._dataChannel) {
-      const dataChannelInitDict = Object.assign({}, this._descriptorObj)
-      const label = dataChannelInitDict.label
-      const binaryType = dataChannelInitDict.binaryType
-      delete dataChannelInitDict.label
-      delete dataChannelInitDict.binaryType
-      this._dataChannel = this.browserRtcPeerConnection.peerConnection.createDataChannel(label, dataChannelInitDict)
-      this._dataChannel.binaryType = binaryType
-      this._dataChannel.onopen = () => {
-        this._dataChannelOpenResolve(this._dataChannel)
-      }
-    }
-    return this._dataChannelOpenPromise
+    return this._dataChannelPromise
   }
 
   /**
@@ -125,8 +132,6 @@ export default class BrowserRtcBlobTransfer {
     if (this._dataChannel) {
       this._dataChannel.close()
       this._dataChannel = null
-      this._dataChannelOpenPromise = null
-      this._dataChannelOpenResolve = null
     }
   }
 

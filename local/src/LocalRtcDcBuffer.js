@@ -5,16 +5,24 @@ module.exports = class LocalRtcDcBuffer {
    *
    * @param {wfc.GrBuffer} grBufferProxy
    * @param {wfc.RtcDcBuffer} rtcDcBufferProxy
+   * @param {LocalRtcBlobTransfer} localRtcBlobTransfer
    *
    * @return {LocalRtcDcBuffer}
    */
-  static create (grBufferProxy, rtcDcBufferProxy) {
-    return new LocalRtcDcBuffer(grBufferProxy, rtcDcBufferProxy)
+  static create (grBufferProxy, rtcDcBufferProxy, localRtcBlobTransfer) {
+    return new LocalRtcDcBuffer(grBufferProxy, rtcDcBufferProxy, localRtcBlobTransfer)
   }
 
-  constructor (grBufferProxy, rtcDcBufferProxy) {
+  /**
+   * @private
+   * @param grBufferProxy
+   * @param rtcDcBufferProxy
+   * @param {LocalRtcBlobTransfer} localRtcBlobTransfer
+   */
+  constructor (grBufferProxy, rtcDcBufferProxy, localRtcBlobTransfer) {
     this.grBufferProxy = grBufferProxy
     this.rtcDcBufferProxy = rtcDcBufferProxy
+    this.localRtcBlobTransfer = localRtcBlobTransfer
   }
 
   destroy () {

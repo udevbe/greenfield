@@ -38,7 +38,7 @@
 
         <event name="release">
             <description>
-                Notify the client that this blob transfer object will not be used anymore.
+                Notifies the client that this blob transfer object will not be used anymore.
             </description>
         </event>
         <request name="close">

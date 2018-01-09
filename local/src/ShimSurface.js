@@ -9,7 +9,6 @@ const ShimCallback = require('./ShimCallback')
 const H264Encoder = require('./H264Encoder')
 
 module.exports = class ShimSurface extends WlSurfaceRequests {
-
   /**
    * @param grSurfaceProxy
    * @param grSurfaceResource
@@ -24,7 +23,6 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
    * @private
    * @param grSurfaceProxy
    * @param rtcBufferFactory
-   * @param grSurfaceResource
    */
   constructor (grSurfaceProxy, rtcBufferFactory) {
     super()
@@ -194,21 +192,17 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       return
     }
 
-    if (this.localRtcDcBuffer.dataChannel.readyState === 'open') {
-      const frameBuffer = this._frameToBuffer(frame)
-      const bufferChunks = this._toBufferChunks(frameBuffer, frame.synSerial)
-      bufferChunks.forEach((chunk) => {
-        this.localRtcDcBuffer.dataChannel.send(chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength))
-      })
-    } else {
-      this.localRtcDcBuffer.dataChannel.onopen = () => {
-        this.localRtcDcBuffer.dataChannel.onopen = null
-        // make sure we don't send an old buffer
-        if (frame.synSerial >= this.synSerial) {
-          this.sendFrame(frame)
-        }
+    this.localRtcDcBuffer.localRtcBlobTransfer.open().then((dataChannel) => {
+      // make sure we don't send an old buffer
+      if (frame.synSerial >= this.synSerial) {
+        const frameBuffer = this._frameToBuffer(frame)
+        const bufferChunks = this._toBufferChunks(frameBuffer, frame.synSerial)
+        bufferChunks.forEach((chunk) => {
+          dataChannel.send(chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength))
+        })
       }
-    }
+    })
+
     // if the ack times out & no newer serial is expected, we can retry sending the buffer contents
     setTimeout(() => {
       // If the syn serial at the time the timer was created is greater than the latest received ack serial and no newer serial is expected,

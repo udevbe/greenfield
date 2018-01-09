@@ -14,7 +14,7 @@ module.exports = class LocalRtcPeerConnectionFactory {
       registryProxy.listener.global = (name, interface_, version) => {
         if (interface_ === rtc.RtcPeerConnectionFactory.name) {
           const rtcPeerConnectionFactoryProxy = registryProxy.bind(name, interface_, version)
-          const localRtcPeerConnectionFactory = new LocalRtcPeerConnectionFactory(rtcPeerConnectionFactoryProxy)
+          const localRtcPeerConnectionFactory = new LocalRtcPeerConnectionFactory(localClient, rtcPeerConnectionFactoryProxy)
           rtcPeerConnectionFactoryProxy.listener = localRtcPeerConnectionFactory
           resolve(localRtcPeerConnectionFactory)
         }
@@ -22,7 +22,14 @@ module.exports = class LocalRtcPeerConnectionFactory {
     })
   }
 
-  constructor (proxy) {
+  /**
+   * Use LocalRtcPeerConnectionFactory.create(...)
+   * @private
+   * @param {LocalClient}localClient
+   * @param proxy
+   */
+  constructor (localClient, proxy) {
+    this.localClient = localClient
     this.proxy = proxy
   }
 

@@ -4,6 +4,7 @@ const SocketWatcher = require('socketwatcher').SocketWatcher
 const {Display} = require('wayland-server-bindings-runtime')
 
 const LocalSession = require('./LocalSession')
+const LocalRtcPeerConnectionFactory = require('./LocalRtcPeerConnectionFactory')
 const LocalRtcBufferFactory = require('./LocalRtcBufferFactory')
 
 module.exports = class ShimSession {
@@ -38,11 +39,15 @@ module.exports = class ShimSession {
     // FIXME this blocks the whole native wayland loop, instead we should only block the native client. For this a change in libwayland itself is required.
     this.stop()
     this.localSession.createConnection(client).then((localClient) => {
-      return LocalRtcBufferFactory.create(localClient).then((localRtcBufferFactory) => {
-        // create & link rtc buffer factory to client connection
-        localClient.connection._rtcBufferFactory = localRtcBufferFactory
-        this.start()
-      })
+      return LocalRtcPeerConnectionFactory.create(localClient)
+    }).then((localRtcPeerConnectionFactory) => {
+      const localClient = localRtcPeerConnectionFactory.localClient
+      const localRtcPeerConnection = localRtcPeerConnectionFactory.createRtcPeerConnection()
+      return LocalRtcBufferFactory.create(localClient, localRtcPeerConnection)
+    }).then((localRtcBufferFactory) => {
+      // create & link rtc buffer factory to client connection
+      localRtcBufferFactory.localClient.connection._rtcBufferFactory = localRtcBufferFactory
+      this.start()
     }).catch((error) => {
       console.error(error)
       // FIXME handle error state (disconnect?)

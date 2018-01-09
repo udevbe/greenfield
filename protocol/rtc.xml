@@ -115,8 +115,7 @@
             <description summary="Start a client side connection initialization.">
                 Notify the client that it should start initializing this peer connection. After initialization, this rtc
                 peer connection is connected with another rtc peer connection. The other end can either be a server side
-                peer connection, or a peer connection created by another client, depending on the mode that was used
-                when creating this peer connection.
+                peer connection, or a peer connection created by another client.
             </description>
         </event>
 

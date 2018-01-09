@@ -4,8 +4,8 @@ import BrowserSession from './BrowserSession'
 import BrowserCompositor from './BrowserCompositor'
 import pixman from './lib/libpixman-1'
 import libxkbcommon from './lib/libxkbcommon'
-import BrowserRtcPeerConnection from './BrowserRtcPeerConnection'
-import BrowserRtcBufferFactory from './BrowserDcBufferFactory'
+import BrowserRtcPeerConnectionFactory from './BrowserRtcPeerConnectionFactory'
+import BrowserRtcBufferFactory from './BrowserRtcBufferFactory'
 import BrowserShell from './BrowserShell'
 import BrowserSeat from './BrowserSeat'
 import BrowserDataDeviceManager from './BrowserDataDeviceManager'
@@ -16,14 +16,14 @@ function setupGlobals (browserSession) {
   const browserDataDeviceManager = BrowserDataDeviceManager.create()
   const browserShell = BrowserShell.create()
 
-  const browserRtcPeerConnection = BrowserRtcPeerConnection.create()
+  const browserRtcPeerConnectionFactory = BrowserRtcPeerConnectionFactory.create()
   const browserRtcBufferFactory = BrowserRtcBufferFactory.create()
 
   browserSession.wfsServer.registry.register(browserCompositor)
   browserSession.wfsServer.registry.register(browserDataDeviceManager)
   browserSession.wfsServer.registry.register(browserSeat)
   browserSession.wfsServer.registry.register(browserShell)
-  browserSession.wfsServer.registry.register(browserRtcPeerConnection)
+  browserSession.wfsServer.registry.register(browserRtcPeerConnectionFactory)
   browserSession.wfsServer.registry.register(browserRtcBufferFactory)
 }
 
