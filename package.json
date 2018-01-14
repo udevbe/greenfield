@@ -41,6 +41,7 @@
   "homepage": "https://github.com/udevbe/greenfield#readme",
   "dependencies": {
     "express": "^4.15.5",
+    "fastcall": "^0.2.4",
     "gstreamer-superficial": "^0.0.5",
     "socketwatcher": "0.3.0",
     "wayland-server-bindings-runtime": "0.0.44",

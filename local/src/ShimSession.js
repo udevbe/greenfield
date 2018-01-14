@@ -43,9 +43,11 @@ module.exports = class ShimSession {
     }).then((localRtcPeerConnectionFactory) => {
       const localClient = localRtcPeerConnectionFactory.localClient
       const localRtcPeerConnection = localRtcPeerConnectionFactory.createRtcPeerConnection()
+      // store the peer connection in the westfield connection object and reuse it for all blob transfers that require a peer to server connection.
+      localClient.connection._localRtcPeerConnection = localRtcPeerConnection
       return LocalRtcBufferFactory.create(localClient, localRtcPeerConnection)
     }).then((localRtcBufferFactory) => {
-      // create & link rtc buffer factory to client connection
+      // create & link rtc buffer factory to the wayland client's westfield connection
       localRtcBufferFactory.localClient.connection._rtcBufferFactory = localRtcBufferFactory
       this.start()
     }).catch((error) => {
