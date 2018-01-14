@@ -32,7 +32,7 @@
             <description>Create an rtc data channel buffer implementation for the given generic buffer.</description>
             <arg name="id" type="new_id" interface="rtc_dc_buffer" summary="A new data channel buffer"/>
             <arg name="blobTransfer" type="object" interface="gr_blob_transfer"
-                 summary="The blob transfer used to send buffer data."/>
+                 summary="The blob transfer of a peer connection in server mode used to send buffer data."/>
             <arg name="buffer" type="object" interface="GrBuffer"
                  summary="The generic buffer that will implement the new datachannel buffer"/>
         </request>

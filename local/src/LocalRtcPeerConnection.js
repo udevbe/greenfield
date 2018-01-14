@@ -41,7 +41,7 @@ module.exports = class LocalRtcPeerConnection {
     return ++this._nextDataChannelId
   }
 
-  _createDescriptorObject (reliable) {
+  _createDescriptorObject (reliable, binaryType) {
     const dataChannelId = this._getNextDataChannelId()
     // descriptor object somewhat corresponds to rtc data channel config dictionary
     return {
@@ -50,7 +50,7 @@ module.exports = class LocalRtcPeerConnection {
       id: dataChannelId,
       ordered: reliable,
       label: this._uuidv4(),
-      binaryType: 'arraybuffer'
+      binaryType: binaryType
     }
   }
 
@@ -79,10 +79,11 @@ module.exports = class LocalRtcPeerConnection {
   /**
    * Create a new blob transfer.
    * @param reliable
+   * @param {string}binaryType data type of the content ('string', 'arraybuffer', 'blob')
    * @return {LocalRtcBlobTransfer}
    */
-  createBlobTransfer (reliable) {
-    const dataChannelInitDict = this._createDescriptorObject(reliable)
+  createBlobTransfer (reliable, binaryType) {
+    const dataChannelInitDict = this._createDescriptorObject(reliable, binaryType)
     return this.createBlobTransferFromDescriptor(JSON.stringify(dataChannelInitDict))
   }
 

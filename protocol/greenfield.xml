@@ -181,7 +181,7 @@
                 determine acceptance.
             </description>
             <arg name="mime_type" type="string" summary="mime type desired by receiver"/>
-            <arg name="transfer" type="object" interface="gr_blob_transfer" summary="blob transfer for data"/>
+            <arg name="transfer" type="object" interface="gr_blob_transfer" summary="blob transfer of a new peer connection in client mode used to receive data"/>
         </request>
 
         <request name="destroy" type="destructor">
@@ -352,7 +352,7 @@
                 close it.
             </description>
             <arg name="mime_type" type="string" summary="mime type for the data"/>
-            <arg name="transfer" type="object" interface="string" summary="blob transfer descriptor for the data"/>
+            <arg name="transfer" type="object" interface="string" summary="blob transfer descriptor of a new peer connection in client mode, use to send the data"/>
         </event>
 
         <event name="cancelled">

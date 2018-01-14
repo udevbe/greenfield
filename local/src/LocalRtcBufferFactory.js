@@ -44,7 +44,7 @@ module.exports = class LocalRtcBufferFactory {
    */
   createLocalRtcDcBuffer () {
     const grBufferProxy = this.rtcBufferFactoryProxy.createBuffer()
-    const localRtcBlobTransfer = this.localRtcPeerConnection.createBlobTransfer(false)
+    const localRtcBlobTransfer = this.localRtcPeerConnection.createBlobTransfer(false, 'arraybuffer')
     const rtcDcBufferProxy = this.rtcBufferFactoryProxy.createDcBuffer(localRtcBlobTransfer.proxy, grBufferProxy)
     const localRtcDcBuffer = LocalRtcDcBuffer.create(grBufferProxy, rtcDcBufferProxy, localRtcBlobTransfer)
     rtcDcBufferProxy.listener = localRtcDcBuffer

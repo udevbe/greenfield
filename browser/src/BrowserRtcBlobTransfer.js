@@ -48,9 +48,10 @@ export default class BrowserRtcBlobTransfer {
    * the actual blob transfer. After the descriptor is send, the server can use the descriptor to find the matching
    * blob transfer with BrowserRtcBlobTransfer.get(blobDescriptor).
    * @param reliable
+   * @param {string}binaryType data type of the content ('string', 'arraybuffer', 'blob')
    * @return {string} a blob transfer descriptor
    */
-  static createDescriptor (reliable) {
+  static createDescriptor (reliable, binaryType) {
     const label = this._uuidv4()
     const blobTransferEntry = {
       promise: null,
@@ -68,7 +69,7 @@ export default class BrowserRtcBlobTransfer {
       id: -1, // the id is filled in by the client
       ordered: reliable, // making the channel ordered initiates it as a tcp connection, thus making it reliable.
       label: label, // not part of rtc data channel config dictionary
-      binaryType: 'arraybuffer' // not part of rtc data channel config dictionary
+      binaryType: binaryType // not part of rtc data channel config dictionary
     })
   }
 

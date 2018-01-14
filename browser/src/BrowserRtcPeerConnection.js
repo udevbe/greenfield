@@ -49,7 +49,7 @@ export default class BrowserRtcPeerConnection {
   /**
    * Setup the peer connection for client (local) to server (browser) communication.
    */
-  initP2S () {
+  ensureP2S () {
     if (this._delegate && this._delegate._peerConnection) {
       // already initialized as p2s, return early.
       return
@@ -104,7 +104,7 @@ export default class BrowserRtcPeerConnection {
    * Setup the peer connection for client (local) to client (local) communication.
    * @param otherRtcPeerConnectionResource
    */
-  initP2P (otherRtcPeerConnectionResource) {
+  ensureP2P (otherRtcPeerConnectionResource) {
     if (this._delegate && this._delegate._peerConnection) {
       // TODO we probably want to report this error to the client.
       throw new Error('Rtc peer connection already initialized in P2S mode.')
