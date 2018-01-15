@@ -4,8 +4,10 @@ import xkbModule from './lib/libxkbcommon'
 
 const xkb = xkbModule()
 
-const XKB_KEYMAP_FORMAT_TEXT_V1 = 0
-const XKB_CONTEXT_NO_FLAGS = 0
+const XKB_KEYMAP_FORMAT_TEXT_V1 = 1
+const XKB_CONTEXT_NO_DEFAULT_INCLUDES = 1 << 0
+const XKB_CONTEXT_NO_ENVIRONMENT_NAMES = 1 << 1
+const XKB_KEYMAP_COMPILE_NO_FLAGS = 0
 
 export default class BrowserXkb {
   /**
@@ -17,16 +19,18 @@ export default class BrowserXkb {
       const xhr = new window.XMLHttpRequest()
 
       xhr.onreadystatechange = () => {
-        const mappingFile = xhr.responseText
-        try {
-          const browserXkb = BrowserXkb.create(mappingFile)
-          resolve(browserXkb)
-        } catch (error) {
-          reject(error)
-        }
+        if (xhr.readyState === window.XMLHttpRequest.DONE && xhr.status === 200) {
+          const mappingFile = xhr.responseText
+          try {
+            const browserXkb = BrowserXkb.create(mappingFile)
+            resolve(browserXkb)
+          } catch (error) {
+            reject(error)
+          }
+        } // TODO reject if we have something else than 2xx
       }
 
-      xhr.open('GET', resource)
+      xhr.open('GET', '/' + resource)
       xhr.send()
     })
   }
@@ -36,11 +40,14 @@ export default class BrowserXkb {
    * @return {BrowserXkb}
    */
   static create (keymapLayout) {
-    const keymapLayoutPtr = xkb.allocate(xkb.intArrayFromString(keymapLayout), 'i8', xkb.ALLOC_NORMAL)
-    const xkbContext = xkb._xkb_context_new(0)
+    const keymapLayoutPtr = xkb._malloc(xkb.lengthBytesUTF8(keymapLayout) + 1)
+    xkb.stringToUTF8(keymapLayout, keymapLayoutPtr, xkb.lengthBytesUTF8(keymapLayout) + 1)
 
-    const keymap = xkb._xkb_keymap_new_from_string(xkbContext, keymapLayoutPtr, XKB_KEYMAP_FORMAT_TEXT_V1, XKB_CONTEXT_NO_FLAGS)
+    const xkbContext = xkb._xkb_context_new(XKB_CONTEXT_NO_DEFAULT_INCLUDES | XKB_CONTEXT_NO_ENVIRONMENT_NAMES)
+    const keymap = xkb._xkb_keymap_new_from_string(xkbContext, keymapLayoutPtr, XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS)
     const state = xkb._xkb_state_new(keymap)
+
+    xkb._free(keymapLayoutPtr)
 
     return new BrowserXkb(xkbContext, keymap, state)
   }

@@ -109,6 +109,7 @@ export default class BrowserSeat extends westfield.Global {
     const grKeyboardResource = new greenfield.GrKeyboard(resource.client, id, resource.version)
     grKeyboardResource.implementation = this.browserKeyboard
     this.browserKeyboard.resources.push(grKeyboardResource)
+    this.browserKeyboard.emitKeymap()
   }
 
   /**

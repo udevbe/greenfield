@@ -598,7 +598,7 @@ xkb_compatibility "complete" {
 
     interpret.useModMapMods= AnyLevel;
     interpret.repeat= False;
-    interpret.locking= False;
+
     interpret ISO_Level2_Latch+Exactly(Shift) {
         useModMapMods=level1;
         action= LatchMods(modifiers=Shift,clearLocks,latchToLock);
@@ -1054,12 +1054,10 @@ xkb_compatibility "complete" {
         action= SetMods(modifiers=modMapMods,clearLocks);
     };
     indicator "Caps Lock" {
-        !allowExplicit;
         whichModState= locked;
         modifiers= Lock;
     };
     indicator "Num Lock" {
-        !allowExplicit;
         whichModState= locked;
         modifiers= NumLock;
     };
@@ -1068,16 +1066,13 @@ xkb_compatibility "complete" {
         modifiers= ScrollLock;
     };
     indicator "Shift Lock" {
-        !allowExplicit;
         whichModState= locked;
         modifiers= Shift;
     };
     indicator "Group 2" {
-        !allowExplicit;
         groups= 0xfe;
     };
     indicator "Mouse Keys" {
-        indicatorDrivesKeyboard;
         controls= mouseKeys;
     };
 };

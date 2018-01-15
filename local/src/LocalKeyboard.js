@@ -1,5 +1,6 @@
 'use strict'
 
+const os = require('os')
 const util = require('util')
 const fs = require('fs')
 const path = require('path')
@@ -15,96 +16,77 @@ module.exports = class LocalKeyboard {
   constructor (grKeyboardProxy) {
     this.resource = null
     this.proxy = grKeyboardProxy
-    this._newKeymapString = ''
-    this.keymapString = ''
-    this.keymapFormat = ''
-    this.keymapFd = 0
+    this._keymapString = ''
+    this._keymapFilePtr = null
   }
 
   /**
    *
-   *                This event provides a file descriptor to the client which can be
-   *                memory-mapped to provide a keyboard mapping description.
+   * This event provides a file descriptor to the client which can be
+   * memory-mapped to provide a keyboard mapping description.
    *
    *
    * @param {Number} format keymap format
-   * @param {string} transfer keymap blob transfer descriptor
+   * @param {string} blobDescriptor keymap blob transfer descriptor
    * @param {Number} size keymap size, in bytes
    *
    * @since 1
    *
    */
-  keymap (format, transfer, size) {
+  keymap (format, blobDescriptor, size) {
     const localRtcPeerConnection = this.proxy.connection._localRtcPeerConnection
-    const localRtcBlobTransfer = localRtcPeerConnection.createBlobTransferFromDescriptor(transfer)
+    const localRtcBlobTransfer = localRtcPeerConnection.createBlobTransferFromDescriptor(blobDescriptor)
     localRtcBlobTransfer.open().then((rtcDataChannel) => {
       return new Promise((resolve, reject) => {
-        // We use an intermediate new keymap field, to ensure we don't send out partially constructed keymaps
-        // when we are in the process of receiving. Only when the full keymap is received do we actually update
-        // the field that is used to send out a keymap
-        this._newKeymapString = ''
+        let newKeymapString = ''
         rtcDataChannel.onmessage = (event) => {
-          this._newKeymapString += event.data
-          if (this._newKeymapString.length === size) {
-            this.keymapString = this._newKeymapString
-            // TODO close channel?
+          newKeymapString += event.data
+          if (newKeymapString.length === size) {
+            // unmap any previous mapping
+            if (this._keymapFilePtr) {
+              // TODO check munmap return value?
+              libc.interface.munmap(this._keymapFilePtr, this._keymapString.length + 1)
+              this._keymapFilePtr = null
+            }
+            this._keymapString = newKeymapString
+            rtcDataChannel.close()
             resolve()
           }
         }
         rtcDataChannel.onerror = (event) => {
-          // TODO close channel?
+          rtcDataChannel.close()
           reject(event)
         }
       })
     }).then(() => {
-      return this._updateKeymap(format)
-    }).then(() => {
-      return this.emitKeymap()
+      return this._createAnonymousFile(this._keymapString.length + 1)
+    }).then((fd) => {
+      const PROT_READ = 0x1
+      const PROT_WRITE = 0x2
+      const MAP_SHARED = 0x01
+      this._keymapFilePtr = libc.interface.mmap(null, this._keymapString.length + 1, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)
+      fastcall.ref.writeCString(this._keymapFilePtr, 0, this._keymapString, 'utf8')
+      return Promise.all([
+        fd,
+        format,
+        util.promisify(fs.close)(fd)
+      ])
+    }).then((values) => {
+      const fd = values[0]
+      const format = values[1]
+      this.resource.keymap(format, fd, this._keymapString.length)
     }).catch((error) => {
       console.log(error)
     })
   }
 
-  _updateKeymap (format) {
-    // TODO unmap any previous keymap?
-
-    // size+1 for null terminator
-    this._createAnonymousFile(this.keymapString.length + 1).then((fd) => {
-      const PROT_READ = 0x1
-      const PROT_WRITE = 0x2
-      const MAP_SHARED = 0x01
-      const keymapFilePtr = libc.interface.mmap(null, this.keymapString.length + 1, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)
-      fastcall.ref.writeCString(keymapFilePtr, 0, this.keymapString, 'utf8')
-      this.keymapFd = fd
-      this.keymapFormat = format
-      return util.promisify(fs.close)(fd)
-    })
-  }
-
-  emitKeymap () {
-    this.resource.keymap(this.keymapFormat, this.keymapFd, this.keymapString.length)
-  }
-
-  /**
-   * Create a new, unique, anonymous file of the given size, and return the file descriptor for it. The file
-   * descriptor is set CLOEXEC. The file is immediately suitable for mmap()'ing the given size at offset zero.
-   *
-   *
-   * The file should not have a permanent backing store like a disk, but may have if XDG_RUNTIME_DIR is not properly
-   * implemented in OS.
-   *
-   *
-   * The file name is deleted from the file system.
-   *
-   *
-   * The file is suitable for buffer sharing between processes by transmitting the file descriptor over Unix sockets
-   * using the SCM_RIGHTS methods.
-   */
   _createAnonymousFile (size) {
-    const xdgPath = process.env.XDG_RUNTIME_DIR
-    if (xdgPath == null) return Promise.reject(new Error('Cannot create temporary file: XDG_RUNTIME_DIR not set'))
+    let dirPath = process.env.XDG_RUNTIME_DIR
+    if (dirPath == null) {
+      dirPath = os.tmpdir()
+    }
 
-    return util.promisify(fs.mkdtemp)(path.join(xdgPath, 'keymap-')).then((folder) => {
+    return util.promisify(fs.mkdtemp)(path.join(dirPath, 'keymap-')).then((folder) => {
       const filePath = path.join(folder, 'keymap')
       return Promise.all([
         filePath,
@@ -114,8 +96,15 @@ module.exports = class LocalKeyboard {
       const filePath = values[0]
       const fd = values[1]
       return Promise.all([
+        filePath,
         fd,
-        util.promisify(fs.ftruncate)(fd, size),
+        util.promisify(fs.ftruncate)(fd, size)
+      ])
+    }).then((values) => {
+      const filePath = values[0]
+      const fd = values[1]
+      return Promise.all([
+        fd,
         util.promisify(fs.unlink)(filePath)
       ])
     }).then((values) => {

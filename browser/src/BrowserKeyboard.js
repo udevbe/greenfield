@@ -10,7 +10,9 @@ export default class BrowserKeyboard {
    * @returns {BrowserKeyboard}
    */
   static create () {
-    return new BrowserKeyboard()
+    const browserKeyboard = new BrowserKeyboard()
+    browserKeyboard.updateKeymap('qwerty.xkb')
+    return browserKeyboard
   }
 
   constructor (browserXkb) {
@@ -38,15 +40,18 @@ export default class BrowserKeyboard {
       if (this._browserXkb) {
         // cleanup previous keymap state
       }
-
       this._browserXkb = browserXkb
-      this._emitKeymap()
+      this.emitKeymap()
     }).catch((error) => {
       console.log(error)
     })
   }
 
-  _emitKeymap () {
+  emitKeymap () {
+    if (this.resources.length === 0) {
+      return
+    }
+
     const keymapString = this._browserXkb.asString()
     const blobDescriptor = BrowserRtcBlobTransfer.createDescriptor(true, 'string')
 
@@ -54,7 +59,17 @@ export default class BrowserKeyboard {
       browserRtcBlobTransfer.browserRtcPeerConnection.ensureP2S()
       return browserRtcBlobTransfer.open()
     }).then((rtcDataChannel) => {
-      rtcDataChannel.send(keymapString)
+      // chrome doesn't like chunks > 16KB
+      const maxChunkSize = 16 * 1000 // 1000 instead of 1024 to be on the safe side.
+      if (keymapString > maxChunkSize) {
+        const nroChunks = Math.ceil(keymapString.length / maxChunkSize)
+        for (let i = 0; i < nroChunks; i++) {
+          const chunk = keymapString.substring(i * maxChunkSize, (i + 1) * maxChunkSize)
+          rtcDataChannel.send(chunk)
+        }
+      } else {
+        rtcDataChannel.send(keymapString)
+      }
     }).catch((error) => {
       console.log(error)
     })
