@@ -14,7 +14,7 @@ export default class BrowserSeat extends westfield.Global {
    */
   static create (browserSession) {
     const browserPointer = BrowserPointer.create(browserSession)
-    const browserKeyboard = BrowserKeyboard.create()
+    const browserKeyboard = BrowserKeyboard.create(browserSession, browserPointer)
     const browserTouch = BrowserTouch.create()
     const hasTouch = 'ontouchstart' in document.documentElement
 
@@ -110,6 +110,7 @@ export default class BrowserSeat extends westfield.Global {
     grKeyboardResource.implementation = this.browserKeyboard
     this.browserKeyboard.resources.push(grKeyboardResource)
     this.browserKeyboard.emitKeymap()
+    this.browserKeyboard.emitRepeatInfo()
   }
 
   /**

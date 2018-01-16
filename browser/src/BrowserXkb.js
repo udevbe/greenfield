@@ -8,6 +8,12 @@ const XKB_KEYMAP_FORMAT_TEXT_V1 = 1
 const XKB_CONTEXT_NO_DEFAULT_INCLUDES = 1 << 0
 const XKB_CONTEXT_NO_ENVIRONMENT_NAMES = 1 << 1
 const XKB_KEYMAP_COMPILE_NO_FLAGS = 0
+const XKB_KEY_UP = 0
+const XKB_KEY_DOWN = 1
+const XKB_STATE_MODS_DEPRESSED = (1 << 0)
+const XKB_STATE_MODS_LATCHED = (1 << 1)
+const XKB_STATE_MODS_LOCKED = (1 << 2)
+const XKB_STATE_LAYOUT_EFFECTIVE = (1 << 7)
 
 export default class BrowserXkb {
   /**
@@ -63,11 +69,60 @@ export default class BrowserXkb {
     this.xkbContext = xkbContext
     this.keymap = keymap
     this.state = state
+    this._stateComponentMask = 0
   }
 
   asString () {
     const keymapStringPtr = xkb._xkb_keymap_get_as_string(this.keymap, XKB_KEYMAP_FORMAT_TEXT_V1)
     return xkb.Pointer_stringify(keymapStringPtr)
+  }
+
+  /**
+   *
+   * @param {number}linuxKeyCode
+   */
+  keyUp (linuxKeyCode) {
+    this._stateComponentMask = xkb._xkb_state_update_key(this.state, linuxKeyCode, XKB_KEY_UP)
+  }
+
+  /**
+   *
+   * @param {number}linuxKeyCode
+   */
+  keyDown (linuxKeyCode) {
+    this._stateComponentMask = xkb._xkb_state_update_key(this.state, linuxKeyCode, XKB_KEY_DOWN)
+  }
+
+  get modsDepressed () {
+    if ((this._stateComponentMask & XKB_STATE_MODS_DEPRESSED) !== 0) {
+      return xkb._xkb_state_serialize_mods(this.state, XKB_STATE_MODS_DEPRESSED)
+    } else {
+      return 0
+    }
+  }
+
+  get modsLatched () {
+    if ((this._stateComponentMask & XKB_STATE_MODS_LATCHED) !== 0) {
+      return xkb._xkb_state_serialize_mods(this.state, XKB_STATE_MODS_LATCHED)
+    } else {
+      return 0
+    }
+  }
+
+  get modsLocked () {
+    if ((this._stateComponentMask & XKB_STATE_MODS_LOCKED) !== 0) {
+      return xkb._xkb_state_serialize_mods(this.state, XKB_STATE_MODS_LOCKED)
+    } else {
+      return 0
+    }
+  }
+
+  get group () {
+    if ((this._stateComponentMask & XKB_STATE_LAYOUT_EFFECTIVE) !== 0) {
+      return xkb._xkb_state_serialize_layout(this.state, XKB_STATE_LAYOUT_EFFECTIVE)
+    } else {
+      return 0
+    }
   }
 }
 // convert browser neutral key codes (which are strings *sigh*) to linux (x11) keycode
