@@ -38,7 +38,7 @@ export default class BrowserKeyboard {
   updateKeymap (keymapFileName) {
     BrowserXkb.createFromResource(keymapFileName).then((browserXkb) => {
       if (this._browserXkb) {
-        // cleanup previous keymap state
+        // TODO cleanup previous keymap state
       }
       this._browserXkb = browserXkb
       this.emitKeymap()
