@@ -1,5 +1,5 @@
-/** @module BrowserKeyboard */
 'use strict'
+/** @module BrowserKeyboard */
 
 import greenfield from './protocol/greenfield-browser-protocol'
 
@@ -30,6 +30,7 @@ export default class BrowserKeyboard {
     browserPointer.focusListeners.push(() => {
       browserPointer.focus === null ? browserKeyboard._focusLost() : browserKeyboard._focusGained(browserPointer.focus)
     })
+    browserPointer.focus === null ? browserKeyboard._focusLost() : browserKeyboard._focusGained(browserPointer.focus)
 
     return browserKeyboard
   }
@@ -62,6 +63,12 @@ export default class BrowserKeyboard {
      * @private
      */
     this._keys = []
+
+    this._focusDestroyListener = () => {
+      const surfaceResource = this.focus.view.browserSurface.resource
+      surfaceResource.removeDestroyListener(this._focusDestroyListener)
+      this.focus = null
+    }
   }
 
   /**
@@ -87,27 +94,31 @@ export default class BrowserKeyboard {
     }
   }
 
+  /**
+   * @param {string}keymapFileName
+   */
   updateKeymap (keymapFileName) {
     BrowserXkb.createFromResource(keymapFileName).then((browserXkb) => {
       if (this._browserXkb) {
         // TODO cleanup previous keymap state
       }
       this._browserXkb = browserXkb
-      this.emitKeymap()
+      this.resources.forEach((resource) => {
+        this.emitKeymap(resource)
+      })
     }).catch((error) => {
       console.log(error)
     })
   }
 
-  emitKeymap () {
-    if (this.resources.length === 0) {
-      return
-    }
-
+  /**
+   * @param {GrKeyboard}resource
+   */
+  emitKeymap (resource) {
     const keymapString = this._browserXkb.asString()
     const blobDescriptor = BrowserRtcBlobTransfer.createDescriptor(true, 'string')
 
-    // FIXME we probably want some kind of blob transfer cleanup too
+    // cleanup of the blob transfer is initiated at the other end.
     BrowserRtcBlobTransfer.get(blobDescriptor).then((browserRtcBlobTransfer) => {
       browserRtcBlobTransfer.browserRtcPeerConnection.ensureP2S()
       return browserRtcBlobTransfer.open()
@@ -127,9 +138,7 @@ export default class BrowserKeyboard {
       console.log(error)
     })
 
-    this.resources.forEach((resource) => {
-      resource.keymap(greenfield.GrKeyboard.KeymapFormat.xkbV1, blobDescriptor, keymapString.length)
-    })
+    resource.keymap(greenfield.GrKeyboard.KeymapFormat.xkbV1, blobDescriptor, keymapString.length)
   }
 
   /**
@@ -137,8 +146,14 @@ export default class BrowserKeyboard {
    * @private
    */
   _focusGained (focus) {
-    // FIXME listen for focus destruction
+    if (this.focus === focus) {
+      return
+    }
+    this._focusLost()
+
     this.focus = focus
+    const surfaceResource = this.focus.view.browserSurface.resource
+    surfaceResource.addDestroyListener(this._focusDestroyListener)
 
     const serial = this._nextSerial()
     const surface = this.focus.view.browserSurface.resource
@@ -152,6 +167,10 @@ export default class BrowserKeyboard {
   }
 
   _focusLost () {
+    if (this.focus === null) {
+      return
+    }
+
     const serial = this._nextSerial()
     const surface = this.focus.view.browserSurface.resource
 
@@ -161,19 +180,22 @@ export default class BrowserKeyboard {
       resource.leave(serial, surface)
     })
 
-    // FIXME remove focus destroy listener
+    const surfaceResource = this.focus.view.browserSurface.resource
+    surfaceResource.removeDestroyListener(this._focusDestroyListener)
     this.focus = null
   }
 
   /**
-   *
    * @param {KeyboardEvent}event
    */
   onKeyUp (event) {
     const keyCode = event.code
     const linuxKeyCode = BrowserXkb.linuxKeycode[keyCode]
     this._browserXkb.keyUp(linuxKeyCode)
-    this._keys.push(linuxKeyCode)
+    const index = this._keys.indexOf(linuxKeyCode)
+    if (index > -1) {
+      this._keys.splice(index, 1)
+    }
 
     if (this.focus === null) {
       return
@@ -189,7 +211,6 @@ export default class BrowserKeyboard {
     const modsLocked = this._browserXkb.modsLocked
     const group = this._browserXkb.group
 
-    // TODO match keyboard resources with surface focus
     this.resources.filter((resource) => {
       return resource.client === this.focus.view.browserSurface.resource.client
     }).forEach((resource) => {
@@ -199,18 +220,13 @@ export default class BrowserKeyboard {
   }
 
   /**
-   *
    * @param {KeyboardEvent}event
    */
   onKeyDown (event) {
     const keyCode = event.code
     const linuxKeyCode = BrowserXkb.linuxKeycode[keyCode]
     this._browserXkb.keyDown(linuxKeyCode)
-
-    const index = this._keys.indexOf(linuxKeyCode)
-    if (index > -1) {
-      this._keys.splice(index, 1)
-    }
+    this._keys.push(linuxKeyCode)
 
     if (this.focus === null) {
       return
@@ -226,7 +242,6 @@ export default class BrowserKeyboard {
     const modsLocked = this._browserXkb.modsLocked
     const group = this._browserXkb.group
 
-    // TODO match keyboard resources with surface focus
     this.resources.filter((resource) => {
       return resource.client === this.focus.view.browserSurface.resource.client
     }).forEach((resource) => {
@@ -235,7 +250,10 @@ export default class BrowserKeyboard {
     })
   }
 
-  emitRepeatInfo () {
+  /**
+   * @param {GrKeyboard}resource
+   */
+  emitKeyRepeatInfo (resource) {
     // TODO
   }
 }

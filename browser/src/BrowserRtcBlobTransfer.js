@@ -1,8 +1,14 @@
+'use strict'
+/** @module  BrowserRtcBlobTransfer */
+
+/**
+ * @class
+ */
 export default class BrowserRtcBlobTransfer {
   /**
    * Called by the parent rtc peer connection when a client creates a new blob transfer.
    * @private
-   * @param resource
+   * @param {GrBlobTransfer}resource
    * @param {string}blobDescriptor
    * @param {BrowserRtcPeerConnection}browserRtcPeerConnection
    * @return {BrowserRtcBlobTransfer}
@@ -20,6 +26,10 @@ export default class BrowserRtcBlobTransfer {
     return browserRtcBlobTransfer
   }
 
+  /**
+   * @return {string}
+   * @private
+   */
   static _uuidv4 () {
     return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
       (c ^ window.crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
@@ -29,7 +39,7 @@ export default class BrowserRtcBlobTransfer {
   /**
    * Returns a promise that will resolve to a BrowserRtcBlobTransfer as soon as the client has setup their end of the
    * blob transfer using this descriptor.
-   * @param blobDescriptor
+   * @param {string}blobDescriptor
    * @return {Promise<BrowserRtcBlobTransfer>}
    */
   static get (blobDescriptor) {
@@ -47,7 +57,7 @@ export default class BrowserRtcBlobTransfer {
    * Create a blob transfer descriptor that can be send to a client. The client in turn can use the descriptor to create
    * the actual blob transfer. After the descriptor is send, the server can use the descriptor to find the matching
    * blob transfer with BrowserRtcBlobTransfer.get(blobDescriptor).
-   * @param reliable
+   * @param {boolean}reliable
    * @param {string}binaryType data type of the content ('string', 'arraybuffer', 'blob')
    * @return {string} a blob transfer descriptor
    */
@@ -75,15 +85,30 @@ export default class BrowserRtcBlobTransfer {
 
   /**
    * @private
-   * @param resource
-   * @param descriptorObj
-   * @param browserRtcPeerConnection
+   * @param {GrBlobTransfer}resource
+   * @param {string}descriptorObj
+   * @param {BrowserRtcPeerConnection}browserRtcPeerConnection
    */
   constructor (resource, descriptorObj, browserRtcPeerConnection) {
+    /**
+     * @type {GrBlobTransfer}
+     */
     this.resource = resource
+    /**
+     * @type {string}
+     * @private
+     */
     this._descriptorObj = descriptorObj
+    /**
+     * @type {BrowserRtcPeerConnection}
+     */
     this.browserRtcPeerConnection = browserRtcPeerConnection
+    /**
+     * @type {RTCDataChannel}
+     * @private
+     */
     this._dataChannel = null
+
     this._dataChannelResolve = null
     this._dataChannelReject = null
     this._dataChannelPromise = new Promise((resolve, reject) => {
@@ -139,6 +164,9 @@ export default class BrowserRtcBlobTransfer {
     }
   }
 
+  /**
+   * @param {GrBlobTransfer}resource
+   */
   close (resource) {
     this.closeAndSeal()
   }

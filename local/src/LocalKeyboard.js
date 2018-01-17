@@ -18,7 +18,7 @@ module.exports = class LocalKeyboard {
     this.proxy = grKeyboardProxy
     this._keymapString = ''
     this._keymapFilePtr = null
-    // this._keymapFd = -1
+    this._keymapFd = -1
   }
 
   /**
@@ -54,12 +54,12 @@ module.exports = class LocalKeyboard {
               this._keymapFd = -1
             }
             this._keymapString = newKeymapString
-            rtcDataChannel.close()
+            localRtcBlobTransfer.closeAndSeal()
             resolve()
           }
         }
         rtcDataChannel.onerror = (event) => {
-          rtcDataChannel.close()
+          localRtcBlobTransfer.closeAndSeal()
           reject(event)
         }
       })
