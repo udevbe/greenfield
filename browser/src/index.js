@@ -27,11 +27,10 @@ function setupGlobals (browserSession) {
   browserSession.wfsServer.registry.register(browserRtcBufferFactory)
 }
 
-function main () {
+async function main () {
   const sessionId = uuidv4()
-  BrowserSession.create(sessionId).then(setupGlobals).catch((error) => {
-    console.log(error) // TODO gracefully handle error
-  })
+  const browserSession = await BrowserSession.create(sessionId)
+  setupGlobals(browserSession)
 }
 
 function loadNativeModule (module) {
@@ -52,11 +51,9 @@ function uuidv4 () {
   )
 }
 
-window.onload = () => {
+window.onload = async () => {
   // make sure all native modules are ready for use before we start our main flow
-  loadNativeModule(pixman()).then(() => {
-    return loadNativeModule(libxkbcommon())
-  }).then(() => {
-    main()
-  })
+  await loadNativeModule(pixman())
+  await loadNativeModule(libxkbcommon())
+  main()
 }

@@ -1,30 +1,100 @@
 'use strict'
 
+const os = require('os')
+const util = require('util')
+const fs = require('fs')
+const path = require('path')
+const {StringDecoder} = require('string_decoder')
+
+const fastcall = require('fastcall')
+const libc = require('./native').libc
+
 module.exports = class LocalKeyboard {
-  static create () {
-    return new LocalKeyboard()
+  static create (grKeyboardProxy) {
+    return new LocalKeyboard(grKeyboardProxy)
   }
 
-  constructor () {
+  constructor (grKeyboardProxy) {
     this.resource = null
+    this.proxy = grKeyboardProxy
+    this._keymapString = ''
+    this._keymapFilePtr = null
+    this._keymapFd = -1
   }
 
   /**
    *
-   *                This event provides a file descriptor to the client which can be
-   *                memory-mapped to provide a keyboard mapping description.
+   * This event provides a file descriptor to the client which can be
+   * memory-mapped to provide a keyboard mapping description.
    *
    *
    * @param {Number} format keymap format
-   * @param {*} transfer keymap file descriptor
+   * @param {string} blobDescriptor keymap blob transfer descriptor
    * @param {Number} size keymap size, in bytes
    *
    * @since 1
    *
    */
-  keymap (format, transfer, size) {
-    // TODO implement blob transfer
-    // this.resource.keymap(format, transfer, size)
+  async keymap (format, blobDescriptor, size) {
+    const localRtcPeerConnection = this.proxy.connection._localRtcPeerConnection
+    const localRtcBlobTransfer = localRtcPeerConnection.createBlobTransferFromDescriptor(blobDescriptor)
+    const decoder = new StringDecoder('utf8')
+    const rtcDataChannel = await localRtcBlobTransfer.open()
+
+    let receivedSize = 0
+    let newKeymapString = ''
+    rtcDataChannel.onmessage = async (event) => {
+      const arrayBuffer = event.data
+      receivedSize += arrayBuffer.byteLength
+      if (receivedSize === size) {
+        newKeymapString += decoder.end(Buffer.from(arrayBuffer))
+        // unmap any previous mapping
+        if (this._keymapFilePtr) {
+          // TODO check munmap return value?
+          libc.interface.munmap(this._keymapFilePtr, this._keymapString.length + 1)
+          this._keymapFilePtr = null
+        }
+        if (this._keymapFd >= 0) {
+          fs.closeSync(this._keymapFd)
+          this._keymapFd = -1
+        }
+        this._keymapString = newKeymapString
+        localRtcBlobTransfer.closeAndSeal()
+
+        const fd = await this._createAnonymousFile(size + 1)
+        this._keymapFd = fd
+
+        const PROT_READ = 0x1
+        const PROT_WRITE = 0x2
+        const MAP_SHARED = 0x01
+        this._keymapFilePtr = libc.interface.mmap(null, size + 1, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)
+        this._keymapFilePtr = fastcall.ref.reinterpret(this._keymapFilePtr, size + 1, 0)
+        fastcall.ref.writeCString(this._keymapFilePtr, 0, this._keymapString, 'utf8')
+
+        this.resource.keymap(format, fd, size)
+      } else {
+        newKeymapString += decoder.write(Buffer.from(arrayBuffer))
+      }
+    }
+    rtcDataChannel.onerror = (event) => {
+      localRtcBlobTransfer.closeAndSeal()
+      throw new Error(event)
+    }
+  }
+
+  async _createAnonymousFile (size) {
+    let dirPath = process.env.XDG_RUNTIME_DIR
+    if (dirPath == null) {
+      dirPath = os.tmpdir()
+    }
+
+    const tempFolder = await util.promisify(fs.mkdtemp)(path.join(dirPath, 'keymap-'))
+    const filePath = path.join(tempFolder, 'keymap')
+    const fd = await util.promisify(fs.open)(filePath, 'w+', 0o600)
+    await util.promisify(fs.ftruncate)(fd, size)
+    await util.promisify(fs.unlink)(filePath)
+    await util.promisify(fs.rmdir)(tempFolder)
+    return fd
   }
 
   /**

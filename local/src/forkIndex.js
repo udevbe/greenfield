@@ -9,30 +9,26 @@ function main () {
     console.error(error.stack)
   })
 
-  process.once('message', (request, socket) => {
-    ShimSession.create(request[0], socket, request[1]).then((shimSession) => {
-      process.on('message', (request, socket) => {
-        shimSession.localSession._handleUpgrade(request[0], socket, request[1]).catch((error) => {
-          console.error(error)
-          // TODO disconnection client here?
-        })
+  process.once('message', async (request, socket) => {
+    const shimSession = await ShimSession.create(request[0], socket, request[1])
+    process.on('message', (request, socket) => {
+      shimSession.localSession._handleUpgrade(request[0], socket, request[1]).catch((error) => {
+        console.error(error)
+        // TODO disconnection client here?
       })
-
-      const cleanUp = () => {
-        shimSession.end('shim-compositor closed.')
-        process.exit(0)
-      }
-
-      process.on('SIGINT', cleanUp)
-      process.on('SIGTERM', cleanUp)
-      process.on('SIGBREAK', cleanUp)
-      process.on('SIGHUP', cleanUp)
-
-      shimSession.start()
-    }).catch((error) => {
-      console.error(error)
-      // FIXME handle error state (disconnect?)
     })
+
+    const cleanUp = () => {
+      shimSession.end('shim-compositor closed.')
+      process.exit(0)
+    }
+
+    process.on('SIGINT', cleanUp)
+    process.on('SIGTERM', cleanUp)
+    process.on('SIGBREAK', cleanUp)
+    process.on('SIGHUP', cleanUp)
+
+    shimSession.start()
   })
 }
 

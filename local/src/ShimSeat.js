@@ -69,7 +69,7 @@ module.exports = class ShimSeat extends WlSeatRequests {
    */
   getKeyboard (resource, id) {
     const grKeyboardProxy = this.proxy.getKeyboard()
-    const localKeyboard = LocalKeyboard.create()
+    const localKeyboard = LocalKeyboard.create(grKeyboardProxy)
     grKeyboardProxy.listener = localKeyboard
 
     const shimKeyboard = ShimKeyboard.create(grKeyboardProxy)

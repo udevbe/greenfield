@@ -181,7 +181,7 @@
                 determine acceptance.
             </description>
             <arg name="mime_type" type="string" summary="mime type desired by receiver"/>
-            <arg name="transfer" type="object" interface="gr_blob_transfer" summary="file descriptor for data transfer"/>
+            <arg name="transfer" type="object" interface="gr_blob_transfer" summary="blob transfer of a new peer connection in client mode used to receive data"/>
         </request>
 
         <request name="destroy" type="destructor">
@@ -352,7 +352,7 @@
                 close it.
             </description>
             <arg name="mime_type" type="string" summary="mime type for the data"/>
-            <arg name="transfer" type="object" interface="gr_blob_transfer" summary="file descriptor for the data"/>
+            <arg name="transfer" type="object" interface="string" summary="blob transfer descriptor of a new peer connection in client mode, use to send the data"/>
         </event>
 
         <event name="cancelled">
@@ -1818,7 +1818,7 @@
                 memory-mapped to provide a keyboard mapping description.
             </description>
             <arg name="format" type="uint" enum="keymap_format" summary="keymap format"/>
-            <arg name="transfer" type="object" interface="gr_blob_transfer" summary="keymap descriptor that will be send using the blob transfer object"/>
+            <arg name="transfer" type="string" summary="keymap that will be send using a blob transfer described by the given blob transfer descriptor"/>
             <arg name="size" type="uint" summary="keymap size, in bytes"/>
         </event>
 

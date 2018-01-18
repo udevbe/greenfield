@@ -75,7 +75,7 @@ export default class BrowserSurface {
     this.renderState = null
 
     this.pendingGrBuffer = null
-    this.pendingBrowserBufferDestroyListener = (grBufferResource) => {
+    this.pendingBrowserBufferDestroyListener = () => {
       this.pendingGrBuffer = null
     }
     this.grBuffer = null
@@ -187,7 +187,7 @@ export default class BrowserSurface {
    *
    *
    * @param {GrSurface} resource
-   * @param {?*} buffer undefined
+   * @param {GrBuffer|null} buffer undefined
    * @param {Number} x undefined
    * @param {Number} y undefined
    *
@@ -285,7 +285,7 @@ export default class BrowserSurface {
    *
    *
    * @param {GrSurface} resource
-   * @param {*} callback undefined
+   * @param {number} callback id
    *
    * @since 1
    *
@@ -327,20 +327,13 @@ export default class BrowserSurface {
    *
    *
    * @param {GrSurface} resource
-   * @param {?*} region undefined
+   * @param {GrRegion|null} region undefined
    *
    * @since 1
    *
    */
   setOpaqueRegion (resource, region) {
-    if (region) {
-      const grRegionResource = new greenfield.GrRegion(resource.client, region, resource.version)
-      const browserRegion = BrowserRegion.create(grRegionResource)
-      grRegionResource.implementation = browserRegion
-      this.opaqueRegion = browserRegion
-    } else {
-      this.opaqueRegion = null
-    }
+    this.opaqueRegion = region
   }
 
   /**
@@ -370,20 +363,13 @@ export default class BrowserSurface {
    *
    *
    * @param {GrSurface} resource
-   * @param {?*} region undefined
+   * @param {GrRegion|null} region undefined
    *
    * @since 1
    *
    */
   setInputRegion (resource, region) {
-    if (region) {
-      const grRegionResource = new greenfield.GrRegion(resource.client, region, resource.version)
-      const browserRegion = BrowserRegion.create(grRegionResource)
-      grRegionResource.implementation = browserRegion
-      this.inputRegion = browserRegion
-    } else {
-      this.inputRegion = null
-    }
+    this.inputRegion = region
   }
 
   /**

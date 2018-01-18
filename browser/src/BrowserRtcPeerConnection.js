@@ -49,7 +49,7 @@ export default class BrowserRtcPeerConnection {
   /**
    * Setup the peer connection for client (local) to server (browser) communication.
    */
-  initP2S () {
+  ensureP2S () {
     if (this._delegate && this._delegate._peerConnection) {
       // already initialized as p2s, return early.
       return
@@ -61,32 +61,22 @@ export default class BrowserRtcPeerConnection {
     this._delegate = {
       _peerConnection: new window.RTCPeerConnection(),
 
-      clientIceCandidates: (resource, description) => {
+      clientIceCandidates: async (resource, description) => {
         const signal = JSON.parse(description)
-        this._delegate._peerConnection.addIceCandidate(new window.RTCIceCandidate(signal.candidate)).catch(error => {
-          this.onPeerConnectionError(resource.client, error)
-        })
+        await this._delegate._peerConnection.addIceCandidate(new window.RTCIceCandidate(signal.candidate))
       },
 
-      clientSdpReply: (resource, description) => {
+      clientSdpReply: async (resource, description) => {
         const signal = JSON.parse(description)
-        this._delegate._peerConnection.setRemoteDescription(new window.RTCSessionDescription(signal.sdp)).catch((error) => {
-          this.onPeerConnectionError(resource.client, error)
-        })
+        await this._delegate._peerConnection.setRemoteDescription(new window.RTCSessionDescription(signal.sdp))
       },
 
-      clientSdpOffer: (resource, description) => {
+      clientSdpOffer: async (resource, description) => {
         const signal = JSON.parse(description)
-        this._delegate._peerConnection.setRemoteDescription(new window.RTCSessionDescription(signal.sdp)).then(() => {
-          return this._delegate._peerConnection.createAnswer()
-        }).then((desc) => {
-          return this._delegate._peerConnection.setLocalDescription(desc)
-        }).then(() => {
-          this.rtcPeerConnectionResource.serverSdpReply(JSON.stringify({'sdp': this._delegate._peerConnection.localDescription}))
-        }).catch((error) => {
-          // FIXME handle error state (disconnect?)
-          this.onPeerConnectionError(resource.client, error)
-        })
+        await this._delegate._peerConnection.setRemoteDescription(new window.RTCSessionDescription(signal.sdp))
+        const desc = await this._delegate._peerConnection.createAnswer()
+        await this._delegate._peerConnection.setLocalDescription(desc)
+        await this.rtcPeerConnectionResource.serverSdpReply(JSON.stringify({'sdp': this._delegate._peerConnection.localDescription}))
       }
     }
 
@@ -104,7 +94,7 @@ export default class BrowserRtcPeerConnection {
    * Setup the peer connection for client (local) to client (local) communication.
    * @param otherRtcPeerConnectionResource
    */
-  initP2P (otherRtcPeerConnectionResource) {
+  ensureP2P (otherRtcPeerConnectionResource) {
     if (this._delegate && this._delegate._peerConnection) {
       // TODO we probably want to report this error to the client.
       throw new Error('Rtc peer connection already initialized in P2S mode.')
@@ -146,7 +136,4 @@ export default class BrowserRtcPeerConnection {
   clientSdpOffer (resource, description) {
     this._delegate.clientSdpOffer(resource, description)
   }
-
-  // FIXME signal error to client & disconnect
-  onPeerConnectionError (client, error) {}
 }

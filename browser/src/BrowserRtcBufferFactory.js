@@ -72,7 +72,7 @@ export default class BrowserRtcBufferFactory extends westfield.Global {
    */
   createDcBuffer (resource, id, blobTransferResource, grBufferResource) {
     // TODO try/catch & report error to client
-    blobTransferResource.implementation.browserRtcPeerConnection.initP2S()
+    blobTransferResource.implementation.browserRtcPeerConnection.ensureP2S()
 
     const rtcDcBufferResource = new rtc.RtcDcBuffer(resource.client, id, resource.version)
     BrowserRtcDcBuffer.create(grBufferResource, rtcDcBufferResource, blobTransferResource)

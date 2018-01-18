@@ -26,12 +26,15 @@ export default class BrowserPointer {
     const browserPointer = new BrowserPointer()
     // TODO these listeners should be added on document level as they are send to the grabbed surface, and not on the focussed surface
     document.addEventListener('mousemove', browserSession.eventSource((event) => {
+      event.preventDefault()
       browserPointer.onMouseMove(event)
     }), true)
     document.addEventListener('mouseup', browserSession.eventSource((event) => {
+      event.preventDefault()
       browserPointer.onMouseUp(event)
     }), true)
     document.addEventListener('mousedown', browserSession.eventSource((event) => {
+      event.preventDefault()
       browserPointer.onMouseDown(event)
     }), true)
     // other mouse events are set in the browser surface view class
@@ -44,6 +47,7 @@ export default class BrowserPointer {
   constructor () {
     this.resources = []
     this.focus = null
+    this.focusListeners = []
     this.grab = null
     this.x = 0
     this.y = 0
@@ -51,6 +55,7 @@ export default class BrowserPointer {
       const surfaceResource = this.focus.view.browserSurface.resource
       surfaceResource.removeDestroyListener(this._focusDestroyListener)
       this.focus = null
+      this._emitFocusChanged()
       this.grab = null
       // recalculate focus and consequently enter event
       const focusElement = document.elementFromPoint(this.x, this.y)
@@ -281,8 +286,19 @@ export default class BrowserPointer {
     this._updateFocus(event.target)
   }
 
+  _emitFocusChanged () {
+    this.focusListeners.forEach((listener) => {
+      listener()
+    })
+  }
+
+  /**
+   * @param {HTMLCanvasElement}newFocus
+   * @private
+   */
   _updateFocus (newFocus) {
     this.focus = newFocus
+    this._emitFocusChanged()
     const surfaceResource = this.focus.view.browserSurface.resource
     surfaceResource.addDestroyListener(this._focusDestroyListener)
 
@@ -313,6 +329,7 @@ export default class BrowserPointer {
       })
       this.focus.style.cursor = 'auto'
       this.focus = null
+      this._emitFocusChanged()
       this.view = null
     }
   }

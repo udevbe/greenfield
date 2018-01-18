@@ -13,17 +13,14 @@ export default class BrowserSession extends westfield.Global {
    * @param {String} sessionId unique random browser compositor session id
    * @returns {Promise<BrowserSession>}
    */
-  static create (sessionId) {
+  static async create (sessionId) {
     console.log('Starting new browser session.')
     const wfsServer = new westfield.Server()
     const url = 'ws://' + window.location.host + '/' + sessionId
     const browserSession = new BrowserSession(url, wfsServer)
-    return browserSession._createConnection(url).then(() => {
-      wfsServer.registry.register(browserSession)
-      return browserSession
-    }).catch((error) => {
-      console.log('Received session connection error ' + error)
-    })
+    await browserSession._createConnection(url)
+    wfsServer.registry.register(browserSession)
+    return browserSession
   }
 
   constructor (url, wfsServer) {
@@ -35,7 +32,6 @@ export default class BrowserSession extends westfield.Global {
     this._nextClientSessionId = 1
     this._ws = null
     this.resources = []
-    this._primaryConnection = null
   }
 
   /**

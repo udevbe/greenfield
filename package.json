@@ -41,18 +41,19 @@
   "homepage": "https://github.com/udevbe/greenfield#readme",
   "dependencies": {
     "express": "^4.15.5",
+    "fastcall": "0.2.4",
     "gstreamer-superficial": "^0.0.5",
     "socketwatcher": "0.3.0",
-    "wayland-server-bindings-runtime": "0.0.44",
+    "wayland-server-bindings-runtime": "0.0.46",
     "westfield-runtime-client": "0.0.16",
     "westfield-runtime-server": "0.0.16",
     "wrtc": "^0.0.65",
-    "ws": "^3.3.1"
+    "ws": "^4.0.0"
   },
   "devDependencies": {
     "standard": "^10.0.2",
-    "wayland-server-bindings-generator": "0.0.44",
-    "webpack": "^3.8.1",
+    "wayland-server-bindings-generator": "0.0.46",
+    "webpack": "^3.10.0",
     "westfield-scanner-client": "0.0.16",
     "westfield-scanner-server": "0.0.16"
   }
