@@ -17,15 +17,16 @@ export default class BrowserKeyboard {
    */
   static create (browserSession, browserPointer) {
     const browserKeyboard = new BrowserKeyboard()
+    // TODO get the keymap from some config source
     browserKeyboard.updateKeymap('qwerty.xkb')
 
     document.addEventListener('keyup', browserSession.eventSource((event) => {
-      // event.preventDefault()
-      browserKeyboard.onKeyUp(event)
+      event.preventDefault()
+      browserKeyboard.onKey(event, false)
     }), true)
     document.addEventListener('keydown', browserSession.eventSource((event) => {
-      // event.preventDefault()
-      browserKeyboard.onKeyDown(event)
+      event.preventDefault()
+      browserKeyboard.onKey(event, true)
     }), true)
 
     // sync pointer focus with keyboard focus
@@ -184,49 +185,27 @@ export default class BrowserKeyboard {
   }
 
   /**
+   *
    * @param {KeyboardEvent}event
+   * @param {boolean}down
    */
-  onKeyUp (event) {
+  onKey (event, down) {
     const keyCode = event.code
     const linuxKeyCode = BrowserXkb.linuxKeycode[keyCode]
-    const modsUpdate = this._browserXkb.keyUp(linuxKeyCode)
-    const index = this._keys.indexOf(linuxKeyCode)
-    if (index > -1) {
-      this._keys.splice(index, 1)
-    }
-
-    if (this.focus === null) {
+    if (down && this._keys.includes(linuxKeyCode)) {
+      // prevent key repeat from browser
       return
     }
 
-    const serial = this._nextSerial()
-    const time = event.timeStamp
-    const evdevKeyCode = linuxKeyCode - 8
-    const state = greenfield.GrKeyboard.KeyState.released
-
-    const modsDepressed = this._browserXkb.modsDepressed
-    const modsLatched = this._browserXkb.modsLatched
-    const modsLocked = this._browserXkb.modsLocked
-    const group = this._browserXkb.group
-
-    this.resources.filter((resource) => {
-      return resource.client === this.focus.view.browserSurface.resource.client
-    }).forEach((resource) => {
-      resource.key(serial, time, evdevKeyCode, state)
-      if (modsUpdate) {
-        resource.modifiers(serial, modsDepressed, modsLatched, modsLocked, group)
+    const modsUpdate = down ? this._browserXkb.keyDown(linuxKeyCode) : this._browserXkb.keyUp(linuxKeyCode)
+    if (down) {
+      this._keys.push(linuxKeyCode)
+    } else {
+      const index = this._keys.indexOf(linuxKeyCode)
+      if (index > -1) {
+        this._keys.splice(index, 1)
       }
-    })
-  }
-
-  /**
-   * @param {KeyboardEvent}event
-   */
-  onKeyDown (event) {
-    const keyCode = event.code
-    const linuxKeyCode = BrowserXkb.linuxKeycode[keyCode]
-    const modsUpdate = this._browserXkb.keyDown(linuxKeyCode)
-    this._keys.push(linuxKeyCode)
+    }
 
     if (this.focus === null) {
       return
@@ -235,7 +214,7 @@ export default class BrowserKeyboard {
     const serial = this._nextSerial()
     const time = event.timeStamp
     const evdevKeyCode = linuxKeyCode - 8
-    const state = greenfield.GrKeyboard.KeyState.pressed
+    const state = down ? greenfield.GrKeyboard.KeyState.pressed : greenfield.GrKeyboard.KeyState.released
 
     const modsDepressed = this._browserXkb.modsDepressed
     const modsLatched = this._browserXkb.modsLatched
@@ -256,6 +235,9 @@ export default class BrowserKeyboard {
    * @param {GrKeyboard}resource
    */
   emitKeyRepeatInfo (resource) {
-    // TODO
+    if (resource.version >= 4) {
+      // TODO get this from some config source
+      resource.repeatInfo(40, 400)
+    }
   }
 }
