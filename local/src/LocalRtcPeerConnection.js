@@ -99,19 +99,15 @@ module.exports = class LocalRtcPeerConnection {
     this._sendOffer()
   }
 
-  _sendOffer () {
-    this._peerConnection.createOffer({
+  async _sendOffer () {
+    const desc = await this._peerConnection.createOffer({
       offerToReceiveAudio: false,
       offerToReceiveVideo: false,
       voiceActivityDetection: false,
       iceRestart: false
-    }).then((desc) => {
-      return this._peerConnection.setLocalDescription(desc)
-    }).then(() => {
-      this.proxy.clientSdpOffer(JSON.stringify({'sdp': this._peerConnection.localDescription}))
-    }).catch((error) => {
-      console.log(error)
     })
+    await this._peerConnection.setLocalDescription(desc)
+    this.proxy.clientSdpOffer(JSON.stringify({'sdp': this._peerConnection.localDescription}))
   }
 
   /**
@@ -121,12 +117,9 @@ module.exports = class LocalRtcPeerConnection {
    * @since 1
    *
    */
-  serverSdpReply (description) {
+  async serverSdpReply (description) {
     const signal = JSON.parse(description)
-    this._peerConnection.setRemoteDescription(new webRTC.RTCSessionDescription(signal.sdp)).catch((error) => {
-      console.log('Error: Failure during setRemoteDescription()', error)
-      // FIXME handle error state (disconnect?)
-    })
+    await this._peerConnection.setRemoteDescription(new webRTC.RTCSessionDescription(signal.sdp))
   }
 
   /**
@@ -136,19 +129,13 @@ module.exports = class LocalRtcPeerConnection {
    * @since 1
    *
    */
-  serverSdpOffer (description) {
+  async serverSdpOffer (description) {
     const signal = JSON.parse(description)
 
-    this._peerConnection.setRemoteDescription(new webRTC.RTCSessionDescription(signal.sdp)).then(() => {
-      return this._peerConnection.createAnswer()
-    }).then((desc) => {
-      return this._peerConnection.setLocalDescription(desc)
-    }).then(() => {
-      this.proxy.clientSdpReply(JSON.stringify({'sdp': this._peerConnection.localDescription}))
-    }).catch((error) => {
-      console.error(error)
-      // FIXME handle error state (disconnect?)
-    })
+    await this._peerConnection.setRemoteDescription(new webRTC.RTCSessionDescription(signal.sdp))
+    const desc = await this._peerConnection.createAnswer()
+    await this._peerConnection.setLocalDescription(desc)
+    this.proxy.clientSdpReply(JSON.stringify({'sdp': this._peerConnection.localDescription}))
   }
 
   /**
@@ -158,11 +145,8 @@ module.exports = class LocalRtcPeerConnection {
    * @since 1
    *
    */
-  serverIceCandidates (description) {
+  async serverIceCandidates (description) {
     const signal = JSON.parse(description)
-    this._peerConnection.addIceCandidate(new webRTC.RTCIceCandidate(signal.candidate)).catch(error => {
-      console.log('Error: Failure during addIceCandidate()', error)
-      // FIXME handle error state (disconnect?)
-    })
+    await this._peerConnection.addIceCandidate(new webRTC.RTCIceCandidate(signal.candidate))
   }
 }

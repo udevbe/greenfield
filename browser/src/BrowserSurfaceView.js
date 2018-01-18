@@ -55,9 +55,11 @@ export default class BrowserSurfaceView {
     const browserPointer = this.browserSurface.browserSeat.browserPointer
     const browserSession = this.browserSurface.browserSession
     this._mouseEnterListener = browserSession.eventSource((event) => {
+      event.preventDefault()
       browserPointer.onMouseEnter(event)
     })
     this._mouseLeaveListener = browserSession.eventSource((event) => {
+      event.preventDefault()
       browserPointer.onMouseLeave(event)
     })
 

@@ -20,9 +20,11 @@ export default class BrowserKeyboard {
     browserKeyboard.updateKeymap('qwerty.xkb')
 
     document.addEventListener('keyup', browserSession.eventSource((event) => {
+      // event.preventDefault()
       browserKeyboard.onKeyUp(event)
     }), true)
     document.addEventListener('keydown', browserSession.eventSource((event) => {
+      // event.preventDefault()
       browserKeyboard.onKeyDown(event)
     }), true)
 
@@ -97,48 +99,44 @@ export default class BrowserKeyboard {
   /**
    * @param {string}keymapFileName
    */
-  updateKeymap (keymapFileName) {
-    BrowserXkb.createFromResource(keymapFileName).then((browserXkb) => {
-      if (this._browserXkb) {
-        // TODO cleanup previous keymap state
-      }
-      this._browserXkb = browserXkb
-      this.resources.forEach((resource) => {
-        this.emitKeymap(resource)
-      })
-    }).catch((error) => {
-      console.log(error)
+  async updateKeymap (keymapFileName) {
+    const browserXkb = await BrowserXkb.createFromResource(keymapFileName)
+    if (this._browserXkb) {
+      // TODO cleanup previous keymap state
+    }
+    this._browserXkb = browserXkb
+    this.resources.forEach((resource) => {
+      this.emitKeymap(resource)
     })
   }
 
   /**
    * @param {GrKeyboard}resource
    */
-  emitKeymap (resource) {
+  async emitKeymap (resource) {
     const keymapString = this._browserXkb.asString()
-    const blobDescriptor = BrowserRtcBlobTransfer.createDescriptor(true, 'string')
+    const textEncoder = new window.TextEncoder('utf-8')
+    const keymapBuffer = textEncoder.encode(keymapString)
+    const keymapBufferLength = keymapBuffer.buffer.byteLength
+    const blobDescriptor = BrowserRtcBlobTransfer.createDescriptor(true, 'arraybuffer')
+    resource.keymap(greenfield.GrKeyboard.KeymapFormat.xkbV1, blobDescriptor, keymapBufferLength)
 
     // cleanup of the blob transfer is initiated at the other end.
-    BrowserRtcBlobTransfer.get(blobDescriptor).then((browserRtcBlobTransfer) => {
-      browserRtcBlobTransfer.browserRtcPeerConnection.ensureP2S()
-      return browserRtcBlobTransfer.open()
-    }).then((rtcDataChannel) => {
-      // chrome doesn't like chunks > 16KB
-      const maxChunkSize = 16 * 1000 // 1000 instead of 1024 to be on the safe side.
-      if (keymapString > maxChunkSize) {
-        const nroChunks = Math.ceil(keymapString.length / maxChunkSize)
-        for (let i = 0; i < nroChunks; i++) {
-          const chunk = keymapString.substring(i * maxChunkSize, (i + 1) * maxChunkSize)
-          rtcDataChannel.send(chunk)
-        }
-      } else {
-        rtcDataChannel.send(keymapString)
-      }
-    }).catch((error) => {
-      console.log(error)
-    })
+    const browserRtcBlobTransfer = await BrowserRtcBlobTransfer.get(blobDescriptor)
+    browserRtcBlobTransfer.browserRtcPeerConnection.ensureP2S()
+    const rtcDataChannel = await browserRtcBlobTransfer.open()
+    // chrome doesn't like chunks > 16KB
+    const maxChunkSize = 16 * 1000 // 1000 instead of 1024 to be on the safe side.
 
-    resource.keymap(greenfield.GrKeyboard.KeymapFormat.xkbV1, blobDescriptor, keymapString.length)
+    if (keymapBufferLength > maxChunkSize) {
+      const nroChunks = Math.ceil(keymapBufferLength / maxChunkSize)
+      for (let i = 0; i < nroChunks; i++) {
+        const chunk = keymapBuffer.slice(i * maxChunkSize, (i + 1) * maxChunkSize)
+        rtcDataChannel.send(chunk.buffer)
+      }
+    } else {
+      rtcDataChannel.send(keymapBuffer.buffer)
+    }
   }
 
   /**
@@ -191,7 +189,7 @@ export default class BrowserKeyboard {
   onKeyUp (event) {
     const keyCode = event.code
     const linuxKeyCode = BrowserXkb.linuxKeycode[keyCode]
-    this._browserXkb.keyUp(linuxKeyCode)
+    const modsUpdate = this._browserXkb.keyUp(linuxKeyCode)
     const index = this._keys.indexOf(linuxKeyCode)
     if (index > -1) {
       this._keys.splice(index, 1)
@@ -215,7 +213,9 @@ export default class BrowserKeyboard {
       return resource.client === this.focus.view.browserSurface.resource.client
     }).forEach((resource) => {
       resource.key(serial, time, evdevKeyCode, state)
-      resource.modifiers(serial, modsDepressed, modsLatched, modsLocked, group)
+      if (modsUpdate) {
+        resource.modifiers(serial, modsDepressed, modsLatched, modsLocked, group)
+      }
     })
   }
 
@@ -225,7 +225,7 @@ export default class BrowserKeyboard {
   onKeyDown (event) {
     const keyCode = event.code
     const linuxKeyCode = BrowserXkb.linuxKeycode[keyCode]
-    this._browserXkb.keyDown(linuxKeyCode)
+    const modsUpdate = this._browserXkb.keyDown(linuxKeyCode)
     this._keys.push(linuxKeyCode)
 
     if (this.focus === null) {
@@ -246,7 +246,9 @@ export default class BrowserKeyboard {
       return resource.client === this.focus.view.browserSurface.resource.client
     }).forEach((resource) => {
       resource.key(serial, time, evdevKeyCode, state)
-      resource.modifiers(serial, modsDepressed, modsLatched, modsLocked, group)
+      if (modsUpdate) {
+        resource.modifiers(serial, modsDepressed, modsLatched, modsLocked, group)
+      }
     })
   }
 

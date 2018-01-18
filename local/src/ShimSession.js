@@ -1,4 +1,5 @@
 'use strict'
+/** @module ShimSession */
 
 const SocketWatcher = require('socketwatcher').SocketWatcher
 const {Display} = require('wayland-server-bindings-runtime')
@@ -7,18 +8,26 @@ const LocalSession = require('./LocalSession')
 const LocalRtcPeerConnectionFactory = require('./LocalRtcPeerConnectionFactory')
 const LocalRtcBufferFactory = require('./LocalRtcBufferFactory')
 
+/**
+ * @class ShimSession
+ */
 module.exports = class ShimSession {
-  static create (request, socket, head) {
+  /**
+   * @param request
+   * @param socket
+   * @param head
+   * @return {Promise<ShimSession>}
+   */
+  static async create (request, socket, head) {
     const wlDisplay = Display.create()
     wlDisplay.initShm()
     const waylandSocket = wlDisplay.addSocketAuto()
     console.log('Created wayland socket: ' + waylandSocket)
 
-    return LocalSession.create(request, socket, head, wlDisplay).then((localSession) => {
-      const shimSession = new ShimSession(localSession, wlDisplay)
-      wlDisplay.addClientCreatedListener(shimSession.onClientCreated.bind(shimSession))
-      return shimSession
-    })
+    const localSession = await LocalSession.create(request, socket, head, wlDisplay)
+    const shimSession = new ShimSession(localSession, wlDisplay)
+    wlDisplay.addClientCreatedListener(shimSession.onClientCreated.bind(shimSession))
+    return shimSession
   }
 
   end (reason) {
@@ -27,33 +36,32 @@ module.exports = class ShimSession {
     this.wlDisplay.destroy()
   }
 
+  /**
+   * Use ShimSession.create(..) instead.
+   * @private
+   * @param localSession
+   * @param wlDisplay
+   */
   constructor (localSession, wlDisplay) {
     this.localSession = localSession
     this.wlDisplay = wlDisplay
     this._fdWatcher = null
   }
 
-  onClientCreated (client) {
+  async onClientCreated (client) {
     console.log('Wayland client connected.')
     // block the native client from making any calls until the setup with the browser is complete.
     // FIXME this blocks the whole native wayland loop, instead we should only block the native client. For this a change in libwayland itself is required.
     this.stop()
-    this.localSession.createConnection(client).then((localClient) => {
-      return LocalRtcPeerConnectionFactory.create(localClient)
-    }).then((localRtcPeerConnectionFactory) => {
-      const localClient = localRtcPeerConnectionFactory.localClient
-      const localRtcPeerConnection = localRtcPeerConnectionFactory.createRtcPeerConnection()
-      // store the peer connection in the westfield connection object and reuse it for all blob transfers that require a peer to server connection.
-      localClient.connection._localRtcPeerConnection = localRtcPeerConnection
-      return LocalRtcBufferFactory.create(localClient, localRtcPeerConnection)
-    }).then((localRtcBufferFactory) => {
-      // create & link rtc buffer factory to the wayland client's westfield connection
-      localRtcBufferFactory.localClient.connection._rtcBufferFactory = localRtcBufferFactory
-      this.start()
-    }).catch((error) => {
-      console.error(error)
-      // FIXME handle error state (disconnect?)
-    })
+    const localClient = await this.localSession.createConnection(client)
+    const localRtcPeerConnectionFactory = await LocalRtcPeerConnectionFactory.create(localClient)
+    const localRtcPeerConnection = localRtcPeerConnectionFactory.createRtcPeerConnection()
+    // store the peer connection in the westfield connection object and reuse it for all blob transfers that require a peer to server connection.
+    localClient.connection._localRtcPeerConnection = localRtcPeerConnection
+    const localRtcBufferFactory = await LocalRtcBufferFactory.create(localClient, localRtcPeerConnection)
+    // create & link rtc buffer factory to the wayland client's westfield connection
+    localRtcBufferFactory.localClient.connection._rtcBufferFactory = localRtcBufferFactory
+    this.start()
   }
 
   start () {

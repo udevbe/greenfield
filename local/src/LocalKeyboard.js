@@ -4,6 +4,7 @@ const os = require('os')
 const util = require('util')
 const fs = require('fs')
 const path = require('path')
+const {StringDecoder} = require('string_decoder')
 
 const fastcall = require('fastcall')
 const libc = require('./native').libc
@@ -34,102 +35,66 @@ module.exports = class LocalKeyboard {
    * @since 1
    *
    */
-  keymap (format, blobDescriptor, size) {
+  async keymap (format, blobDescriptor, size) {
     const localRtcPeerConnection = this.proxy.connection._localRtcPeerConnection
     const localRtcBlobTransfer = localRtcPeerConnection.createBlobTransferFromDescriptor(blobDescriptor)
-    localRtcBlobTransfer.open().then((rtcDataChannel) => {
-      return new Promise((resolve, reject) => {
-        let newKeymapString = ''
-        rtcDataChannel.onmessage = (event) => {
-          newKeymapString += event.data
-          if (newKeymapString.length === size) {
-            // unmap any previous mapping
-            if (this._keymapFilePtr) {
-              // TODO check munmap return value?
-              libc.interface.munmap(this._keymapFilePtr, this._keymapString.length + 1)
-              this._keymapFilePtr = null
-            }
-            if (this._keymapFd >= 0) {
-              fs.closeSync(this._keymapFd)
-              this._keymapFd = -1
-            }
-            this._keymapString = newKeymapString
-            localRtcBlobTransfer.closeAndSeal()
-            resolve()
-          }
-        }
-        rtcDataChannel.onerror = (event) => {
-          localRtcBlobTransfer.closeAndSeal()
-          reject(event)
-        }
-      })
-    }).then(() => {
-      return this._createAnonymousFile(this._keymapString.length + 1)
-    }).then((fd) => {
-      this._keymapFd = fd
+    const decoder = new StringDecoder('utf8')
+    const rtcDataChannel = await localRtcBlobTransfer.open()
 
-      const PROT_READ = 0x1
-      const PROT_WRITE = 0x2
-      const MAP_SHARED = 0x01
-      this._keymapFilePtr = libc.interface.mmap(null, this._keymapString.length + 1, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)
-      this._keymapFilePtr = fastcall.ref.reinterpret(this._keymapFilePtr, this._keymapString.length + 1, 0)
-      fastcall.ref.writeCString(this._keymapFilePtr, 0, this._keymapString, 'utf8')
-      return Promise.all([
-        fd,
-        format
-      ])
-    }).then((values) => {
-      const fd = values[0]
-      const format = values[1]
-      this.resource.keymap(format, fd, this._keymapString.length)
-    }).catch((error) => {
-      console.log(error)
-    })
+    let receivedSize = 0
+    let newKeymapString = ''
+    rtcDataChannel.onmessage = async (event) => {
+      const arrayBuffer = event.data
+      receivedSize += arrayBuffer.byteLength
+      if (receivedSize === size) {
+        newKeymapString += decoder.end(Buffer.from(arrayBuffer))
+        // unmap any previous mapping
+        if (this._keymapFilePtr) {
+          // TODO check munmap return value?
+          libc.interface.munmap(this._keymapFilePtr, this._keymapString.length + 1)
+          this._keymapFilePtr = null
+        }
+        if (this._keymapFd >= 0) {
+          fs.closeSync(this._keymapFd)
+          this._keymapFd = -1
+        }
+        this._keymapString = newKeymapString
+        localRtcBlobTransfer.closeAndSeal()
+
+        const fd = await this._createAnonymousFile(size + 1)
+        this._keymapFd = fd
+
+        const PROT_READ = 0x1
+        const PROT_WRITE = 0x2
+        const MAP_SHARED = 0x01
+        this._keymapFilePtr = libc.interface.mmap(null, size + 1, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)
+        this._keymapFilePtr = fastcall.ref.reinterpret(this._keymapFilePtr, size + 1, 0)
+        fastcall.ref.writeCString(this._keymapFilePtr, 0, this._keymapString, 'utf8')
+
+        this.resource.keymap(format, fd, size)
+      } else {
+        newKeymapString += decoder.write(Buffer.from(arrayBuffer))
+      }
+    }
+    rtcDataChannel.onerror = (event) => {
+      localRtcBlobTransfer.closeAndSeal()
+      throw new Error(event)
+    }
   }
 
-  _createAnonymousFile (size) {
+  async _createAnonymousFile (size) {
     let dirPath = process.env.XDG_RUNTIME_DIR
     if (dirPath == null) {
       dirPath = os.tmpdir()
     }
 
-    return util.promisify(fs.mkdtemp)(path.join(dirPath, 'keymap-')).then((tempFolder) => {
-      const filePath = path.join(tempFolder, 'keymap')
-      return Promise.all([
-        filePath,
-        util.promisify(fs.open)(filePath, 'w+', 0o600),
-        tempFolder
-      ])
-    }).then((values) => {
-      const filePath = values[0]
-      const fd = values[1]
-      const tempFolder = values[2]
-      return Promise.all([
-        filePath,
-        fd,
-        tempFolder,
-        util.promisify(fs.ftruncate)(fd, size)
-      ])
-    }).then((values) => {
-      const filePath = values[0]
-      const fd = values[1]
-      const tempFolder = values[2]
-      return Promise.all([
-        fd,
-        tempFolder,
-        util.promisify(fs.unlink)(filePath)
-      ])
-    }).then((values) => {
-      const fd = values[0]
-      const tempFolder = values[1]
-      return Promise.all([
-        fd,
-        util.promisify(fs.rmdir)(tempFolder)
-      ])
-    }).then((values) => {
-      const fd = values[0]
-      return Promise.resolve(fd)
-    })
+    const tempFolder = await util.promisify(fs.mkdtemp)(path.join(dirPath, 'keymap-'))
+    const filePath = path.join(tempFolder, 'keymap')
+    const fd = await util.promisify(fs.open)(filePath, 'w+', 0o600)
+    await util.promisify(fs.ftruncate)(fd, size)
+    await util.promisify(fs.unlink)(filePath)
+    await util.promisify(fs.rmdir)(tempFolder)
+    return fd
   }
 
   /**
