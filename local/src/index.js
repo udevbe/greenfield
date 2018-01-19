@@ -40,7 +40,7 @@ function main () {
   })
 
   const app = express()
-  app.use(express.static('/home/zubzub/git/greenfield/browser/public'))
+  app.use(express.static(path.join(__dirname, '../../browser/public')))
 
   const server = http.createServer()
   server.on('request', app)
