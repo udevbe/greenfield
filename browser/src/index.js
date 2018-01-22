@@ -9,8 +9,10 @@ import BrowserRtcBufferFactory from './BrowserRtcBufferFactory'
 import BrowserShell from './BrowserShell'
 import BrowserSeat from './BrowserSeat'
 import BrowserDataDeviceManager from './BrowserDataDeviceManager'
+import BrowserOutput from './BrowserOutput'
 
 function setupGlobals (browserSession) {
+  const browserOutput = BrowserOutput.create()
   const browserSeat = BrowserSeat.create(browserSession)
   const browserCompositor = BrowserCompositor.create(browserSession, browserSeat)
   const browserDataDeviceManager = BrowserDataDeviceManager.create()
@@ -19,6 +21,7 @@ function setupGlobals (browserSession) {
   const browserRtcPeerConnectionFactory = BrowserRtcPeerConnectionFactory.create()
   const browserRtcBufferFactory = BrowserRtcBufferFactory.create()
 
+  browserSession.wfsServer.registry.register(browserOutput)
   browserSession.wfsServer.registry.register(browserCompositor)
   browserSession.wfsServer.registry.register(browserDataDeviceManager)
   browserSession.wfsServer.registry.register(browserSeat)
