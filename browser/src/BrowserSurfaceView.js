@@ -144,5 +144,4 @@ export default class BrowserSurfaceView {
   onDestroy () {
     return this._destroyPromise
   }
-
 }
