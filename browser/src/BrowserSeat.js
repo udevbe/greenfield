@@ -6,6 +6,7 @@ import greenfield from './protocol/greenfield-browser-protocol'
 import BrowserPointer from './BrowserPointer'
 import BrowserKeyboard from './BrowserKeyboard'
 import BrowserTouch from './BrowserTouch'
+import BrowserDataDevice from './BrowserDataDevice'
 
 export default class BrowserSeat extends westfield.Global {
   /**
@@ -13,25 +14,45 @@ export default class BrowserSeat extends westfield.Global {
    * @returns {BrowserSeat}
    */
   static create (browserSession) {
+    const browserDataDevice = BrowserDataDevice.create()
     const browserPointer = BrowserPointer.create(browserSession)
     const browserKeyboard = BrowserKeyboard.create(browserSession, browserPointer)
     const browserTouch = BrowserTouch.create()
     const hasTouch = 'ontouchstart' in document.documentElement
 
-    return new BrowserSeat(browserPointer, browserKeyboard, browserTouch, hasTouch)
+    const browserSeat = new BrowserSeat(browserDataDevice, browserPointer, browserKeyboard, browserTouch, hasTouch)
+    browserDataDevice.browserSeat = browserSeat
+    return browserSeat
   }
 
   /**
+   * @param {BrowserDataDevice} browserDataDevice
    * @param {BrowserPointer} browserPointer
    * @param {BrowserKeyboard} browserKeyboard
    * @param {BrowserTouch} browserTouch
    * @param {boolean} hasTouch
    */
-  constructor (browserPointer, browserKeyboard, browserTouch, hasTouch) {
+  constructor (browserDataDevice, browserPointer, browserKeyboard, browserTouch, hasTouch) {
     super(greenfield.GrSeat.name, 6)
+    /**
+     * @type {BrowserDataDevice}
+     */
+    this.browserDataDevice = browserDataDevice
+    /**
+     * @type {BrowserPointer}
+     */
     this.browserPointer = browserPointer
+    /**
+     * @type {BrowserKeyboard}
+     */
     this.browserKeyboard = browserKeyboard
+    /**
+     * @type {BrowserTouch}
+     */
     this.browserTouch = browserTouch
+    /**
+     * @type {boolean}
+     */
     this.hasTouch = hasTouch
     this.resources = []
     this._seatName = 'browser-seat0'
@@ -60,7 +81,7 @@ export default class BrowserSeat extends westfield.Global {
   }
 
   _emitName (grSeatResource) {
-    if (grSeatResource.version > 1) {
+    if (grSeatResource.version >= 2) {
       grSeatResource.name(this._seatName)
     }
   }
