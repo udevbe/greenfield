@@ -4,7 +4,6 @@ import greenfield from './protocol/greenfield-browser-protocol'
 import BrowserSurfaceView from './BrowserSurfaceView'
 import BrowserCallback from './BrowserCallback'
 import pixmanModule from './lib/libpixman-1'
-import BrowserRegion from './BrowserRegion'
 import Rect from './math/Rect'
 import Mat4 from './math/Mat4'
 import { NORMAL, _90, _180, _270, FLIPPED, FLIPPED_90, FLIPPED_180, FLIPPED_270 } from './math/Transformations'
@@ -86,8 +85,15 @@ export default class BrowserSurface {
     this._bufferDamageRegion = bufferDamageRegion
     this.bufferDamage = bufferDamage
 
+    this._pendingOpaqueRegion = null
     this.opaqueRegion = null
+    this._pendingInputRegion = null
     this.inputRegion = null
+
+    this._pendingDx = 0
+    this.dx = 0
+    this._pendingDy = 0
+    this.dy = 0
 
     this._pendingBufferTransform = 0
     this.bufferTransform = 0
@@ -195,6 +201,9 @@ export default class BrowserSurface {
    *
    */
   attach (resource, buffer, x, y) {
+    this.dx = x
+    this.dy = y
+
     if (this.pendingGrBuffer) {
       this.pendingGrBuffer.removeDestroyListener(this.pendingBrowserBufferDestroyListener)
     }
@@ -333,7 +342,7 @@ export default class BrowserSurface {
    *
    */
   setOpaqueRegion (resource, region) {
-    this.opaqueRegion = region
+    this._pendingOpaqueRegion = region
   }
 
   /**
@@ -369,7 +378,7 @@ export default class BrowserSurface {
    *
    */
   setInputRegion (resource, region) {
-    this.inputRegion = region
+    this._pendingInputRegion = region
   }
 
   /**
@@ -405,9 +414,21 @@ export default class BrowserSurface {
 
     this.grBuffer = this.pendingGrBuffer
     this.pendingGrBuffer = null
+    this.dx = this._pendingDx
+    this._pendingDx = 0
+    this.dy = this._pendingDy
+    this._pendingDy = 0
 
     // FIXME properly handle null buffer
 
+    if (this._pendingInputRegion) {
+      this.inputRegion = this._pendingInputRegion
+      this._pendingInputRegion = null
+    }
+    if (this._pendingOpaqueRegion) {
+      this.opaqueRegion = this._pendingOpaqueRegion
+      this._pendingOpaqueRegion = null
+    }
     this.bufferTransform = this._pendingBufferTransform
     this.bufferScale = this._pendingBufferScale
 
