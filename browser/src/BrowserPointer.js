@@ -42,12 +42,19 @@ export default class BrowserPointer {
   }
 
   /**
+   * Use BrowserPointer.create(..) instead.
    * @private
    */
   constructor () {
     this.resources = []
+    /**
+     * @type {HTMLCanvasElement}
+     */
     this.focus = null
     this.focusListeners = []
+    /**
+     * @type {HTMLCanvasElement}
+     */
     this.grab = null
     this.x = 0
     this.y = 0
@@ -70,6 +77,8 @@ export default class BrowserPointer {
     this.zOrderCounter = 1
 
     this._mouseMoveListeners = []
+    this._mouseEnterListeners = []
+    this._mouseLeaveListeners = []
 
     this.cursorBrowserSurface = null
     this.view = null
@@ -112,7 +121,7 @@ export default class BrowserPointer {
    *
    * @param {GrPointer} resource
    * @param {Number} serial serial number of the enter event
-   * @param {?*} surface pointer surface
+   * @param {GrSurface|null} surface pointer surface
    * @param {Number} hotspotX surface-local x coordinate
    * @param {Number} hotspotY surface-local y coordinate
    *
@@ -127,6 +136,22 @@ export default class BrowserPointer {
     this.hotspotX = hotspotX
     this.hotspotY = hotspotY
 
+    this.setCursorInternal(surface)
+  }
+
+  /**
+   * @param {BrowserSurface}browserSurface
+   */
+  onCommit (browserSurface) {
+    this.hotspotX = this.hotspotX - browserSurface.dx
+    this.hotspotY = this.hotspotY - browserSurface.dy
+    // cursor will be updated when draw listener fires
+  }
+
+  /**
+   * @param {GrSurface|null}surface
+   */
+  setCursorInternal (surface) {
     if (surface) {
       const browserSurface = surface.implementation
       if (browserSurface.role && browserSurface.role !== this) {
@@ -135,6 +160,8 @@ export default class BrowserPointer {
       }
 
       browserSurface.role = this
+      browserSurface.inputRegion = null
+      browserSurface._pendingInputRegion = null
 
       if (this.view) {
         this.view.destroy()
@@ -159,7 +186,7 @@ export default class BrowserPointer {
         cursorView.removeDrawListener(drawListener)
       })
 
-      this.focus.style.cursor = 'url("' + this.view.canvas.toDataURL() + '") ' + (hotspotX) + ' ' + (hotspotY) + ' , pointer'
+      this.focus.style.cursor = 'url("' + this.view.canvas.toDataURL() + '") ' + (this.hotspotX) + ' ' + (this.hotspotY) + ' , pointer'
     } else {
       this.cursorBrowserSurface = null
       this.focus.style.cursor = 'none'
@@ -188,10 +215,44 @@ export default class BrowserPointer {
     }
   }
 
+  addMouseLeaveListener (func) {
+    this._mouseLeaveListeners.push(func)
+  }
+
+  removeMouseLeaveListener (func) {
+    const index = this._mouseLeaveListeners.indexOf(func)
+    if (index > -1) {
+      this._mouseLeaveListeners.splice(index, 1)
+    }
+  }
+
+  /**
+   * @param {function}func
+   */
+  addMouseEnterListener (func) {
+    this._mouseEnterListeners.push(func)
+  }
+
+  /**
+   * @param {function}func
+   */
+  removeMouseEnterListener (func) {
+    const index = this._mouseEnterListeners.indexOf(func)
+    if (index > -1) {
+      this._mouseEnterListeners.splice(index, 1)
+    }
+  }
+
+  /**
+   * @param {function}func
+   */
   addMouseMoveListener (func) {
     this._mouseMoveListeners.push(func)
   }
 
+  /**
+   * @param {function}func
+   */
   removeMouseMoveListener (func) {
     const index = this._mouseMoveListeners.indexOf(func)
     if (index > -1) {
@@ -279,6 +340,10 @@ export default class BrowserPointer {
    * @param {MouseEvent}event
    */
   onMouseEnter (event) {
+    this._mouseEnterListeners.forEach((listener) => {
+      listener(event.target)
+    })
+
     if (this.grab) {
       return
     }
@@ -307,7 +372,7 @@ export default class BrowserPointer {
     const surfacePoint = this.focus.view.toSurfaceSpace(canvasPoint)
 
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
-      pointerResource.enter(this._nextFocusSerial(), surfaceResource, greenfield.parseFixed((surfacePoint.x)), greenfield.parseFixed((surfacePoint.y)))
+      pointerResource.enter(this._nextFocusSerial(), surfaceResource, greenfield.parseFixed(surfacePoint.x), greenfield.parseFixed(surfacePoint.y))
     })
   }
 
@@ -315,6 +380,10 @@ export default class BrowserPointer {
    * @param {MouseEvent}event
    */
   onMouseLeave (event) {
+    this._mouseEnterListeners.forEach((listener) => {
+      listener(event.target)
+    })
+
     if (this.grab) {
       return
     }
