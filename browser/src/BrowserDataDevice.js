@@ -1,25 +1,31 @@
 'use strict'
 
+import Point from './math/Point'
+import greenfield from './protocol/greenfield-browser-protocol'
+import BrowserDataOffer from './BrowserDataOffer'
+
 export default class BrowserDataDevice {
   /**
-   * @param {GrDataDevice} grDataDeviceResource
-   * @param {GrSeat} grSeatResource
    * @return {BrowserDataDevice}
    */
-  static create (grDataDeviceResource, grSeatResource) {
-    const browserDataDevice = new BrowserDataDevice(grDataDeviceResource)
-    grDataDeviceResource.implementation = browserDataDevice
-    return browserDataDevice
+  static create () {
+    return new BrowserDataDevice()
   }
 
   /**
-   *
-   * @param {GrDataDevice} grDataDeviceResource
-   * @param {GrSeat} grSeatResource
+   * Use BrowserDataDevice.create(..) instead.
+   * @private
    */
-  constructor (grDataDeviceResource, grSeatResource) {
-    this.resource = grDataDeviceResource
-    this.seat = grSeatResource
+  constructor () {
+    this.resources = []
+    /**
+     * @type {BrowserSeat}
+     */
+    this.browserSeat = null
+    /**
+     * @type {GrDataSource}
+     */
+    this.source = null
   }
 
   /**
@@ -54,15 +60,66 @@ export default class BrowserDataDevice {
    *
    *
    * @param {GrDataDevice} resource
-   * @param {?*} source data source for the eventual transfer
-   * @param {*} origin surface where the drag originates
-   * @param {?*} icon drag-and-drop icon surface
+   * @param {GrDataSource|null} source data source for the eventual transfer
+   * @param {GrSurface} origin surface where the drag originates
+   * @param {GrSurface|null} icon drag-and-drop icon surface
    * @param {Number} serial serial number of the implicit grab on the origin
    *
    * @since 1
    *
    */
-  startDrag (resource, source, origin, icon, serial) {}
+  startDrag (resource, source, origin, icon, serial) {
+    const browserPointer = this.browserSeat.browserPointer
+
+    if (browserPointer.buttonSerial !== serial) {
+      return
+    }
+    if (browserPointer.grab.view.browserSurface.resource !== origin) {
+      return
+    }
+
+    if (icon !== null) {
+      browserPointer.setCursorInternal(icon)
+    }
+
+    this.source = source
+
+    browserPointer.addMouseEnterListener((canvas) => {
+      const serial = browserPointer._nextFocusSerial()
+      const surfaceResource = canvas.view.browserSurface.resource
+
+      const elementRect = canvas.getBoundingClientRect()
+      const canvasPoint = Point.create(browserPointer.x - (elementRect.x - 1), browserPointer.y - (elementRect.y - 1))
+      const surfacePoint = canvas.view.toSurfaceSpace(canvasPoint)
+
+      const x = greenfield.parseFixed(surfacePoint.x)
+      const y = greenfield.parseFixed(surfacePoint.y)
+
+      const client = surfaceResource.client
+
+      this.resources.filter((dataDeviceResource) => {
+        return dataDeviceResource.client === client
+      }).forEach((dataDeviceResource) => {
+        const offer = this._createDataOffer(dataDeviceResource)
+        dataDeviceResource.userData.offer = offer
+        dataDeviceResource.enter(serial, surfaceResource, x, y, offer)
+        const dndActions = this.source.implementation.dndActions
+        this.source.implementation.offers.push(offer)
+        offer.implementation.source = this.source
+        offer.sourceActions(dndActions)
+      })
+    })
+  }
+
+  _createDataOffer (dataDeviceResource) {
+    const offerId = dataDeviceResource.dataOffer()
+    const browserDataOffer = BrowserDataOffer.create()
+    const offer = new greenfield.GrDataOffer(dataDeviceResource.client, offerId, dataDeviceResource.version, browserDataOffer)
+    this.source.implementation.mimeTypes.forEach((mimeType) => {
+      offer.offer(mimeType)
+    })
+    return offer
+  }
 
   /**
    *
@@ -73,13 +130,24 @@ export default class BrowserDataDevice {
    *
    *
    * @param {GrDataDevice} resource
-   * @param {?*} source data source for the selection
+   * @param {GrDataSource|null} source data source for the selection
    * @param {Number} serial serial number of the event that triggered this request
    *
    * @since 1
    *
    */
-  setSelection (resource, source, serial) {}
+  setSelection (resource, source, serial) {
+    // FIXME what should the serial correspond to?
+    if (source.implementation.dndActions) {
+      // TODO raise protocol error
+      return
+    }
+    this.source = source
+
+    const browserKeyboard = this.browserSeat.browserKeyboard
+
+    // TODO
+  }
 
   /**
    *
@@ -92,6 +160,10 @@ export default class BrowserDataDevice {
    *
    */
   release (resource) {
+    const index = this.resources.indexOf(resource)
+    if (index > -1) {
+      this.resources.splice(index, 1)
+    }
     resource.destroy()
   }
 }

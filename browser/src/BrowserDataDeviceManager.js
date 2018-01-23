@@ -25,7 +25,7 @@ export default class BrowserDataDeviceManager extends westfield.Global {
    *
    *
    * @param {GrDataDeviceManager} resource
-   * @param {*} id data source to create
+   * @param {number} id data source to create
    *
    * @since 1
    *
@@ -41,14 +41,16 @@ export default class BrowserDataDeviceManager extends westfield.Global {
    *
    *
    * @param {GrDataDeviceManager} resource
-   * @param {*} id data device to create
-   * @param {*} seat seat associated with the data device
+   * @param {number} id data device to create
+   * @param {GrSeat} seat seat associated with the data device
    *
    * @since 1
    *
    */
   getDataDevice (resource, id, seat) {
     const grDataDeviceResource = new greenfield.GrDataDevice(resource.client, id, resource.version)
-    BrowserDataDevice.create(grDataDeviceResource, seat)
+    grDataDeviceResource.implementation = seat.implementation.browserDataDevice
+    grDataDeviceResource.userData = {offer: null}
+    seat.implementation.browserDataDevice.resources.push(grDataDeviceResource)
   }
 }

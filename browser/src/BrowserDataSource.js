@@ -16,6 +16,12 @@ export default class BrowserDataSource {
    */
   constructor (grDataSource) {
     this.resource = grDataSource
+    this.mimeTypes = []
+    this.dndActions = 0
+    /**
+     * @type {Array<GrDataOffer>}
+     */
+    this.offers = []
   }
 
   /**
@@ -31,7 +37,9 @@ export default class BrowserDataSource {
    * @since 1
    *
    */
-  offer (resource, mimeType) {}
+  offer (resource, mimeType) {
+    this.mimeTypes.push(mimeType)
+  }
 
   /**
    *
@@ -70,5 +78,10 @@ export default class BrowserDataSource {
    * @since 3
    *
    */
-  setActions (resource, dndActions) {}
+  setActions (resource, dndActions) {
+    this.dndActions = dndActions
+    this.offers.forEach((offer) => {
+      offer.sourceActions(this.dndActions)
+    })
+  }
 }
