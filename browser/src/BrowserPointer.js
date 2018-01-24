@@ -20,10 +20,12 @@ const linuxInput = {
 export default class BrowserPointer {
   /**
    * @param {BrowserSession} browserSession
+   * @param {BrowserDataDevice} browserDataDevice
+   * @param {BrowserKeyboard} browserKeyboard
    * @returns {BrowserPointer}
    */
-  static create (browserSession) {
-    const browserPointer = new BrowserPointer()
+  static create (browserSession, browserDataDevice, browserKeyboard) {
+    const browserPointer = new BrowserPointer(browserDataDevice, browserKeyboard)
     // TODO these listeners should be added on document level as they are send to the grabbed surface, and not on the focussed surface
     document.addEventListener('mousemove', browserSession.eventSource((event) => {
       event.preventDefault()
@@ -44,14 +46,25 @@ export default class BrowserPointer {
   /**
    * Use BrowserPointer.create(..) instead.
    * @private
+   * @param {BrowserDataDevice} browserDataDevice
+   * @param {BrowserKeyboard} browserKeyboard
    */
-  constructor () {
+  constructor (browserDataDevice, browserKeyboard) {
+    /**
+     * @type {BrowserDataDevice}
+     * @private
+     */
+    this._browserDataDevice = browserDataDevice
+    /**
+     * @type {BrowserKeyboard}
+     * @private
+     */
+    this._browserKeyboard = browserKeyboard
     this.resources = []
     /**
      * @type {HTMLCanvasElement}
      */
     this.focus = null
-    this.focusListeners = []
     /**
      * @type {HTMLCanvasElement}
      */
@@ -77,10 +90,11 @@ export default class BrowserPointer {
     this.zOrderCounter = 1
 
     this._mouseMoveListeners = []
-    this._mouseEnterListeners = []
-    this._mouseLeaveListeners = []
 
     this.cursorBrowserSurface = null
+    /**
+     * @type {BrowserSurfaceView}
+     */
     this.view = null
   }
 
@@ -215,43 +229,15 @@ export default class BrowserPointer {
     }
   }
 
-  addMouseLeaveListener (func) {
-    this._mouseLeaveListeners.push(func)
-  }
-
-  removeMouseLeaveListener (func) {
-    const index = this._mouseLeaveListeners.indexOf(func)
-    if (index > -1) {
-      this._mouseLeaveListeners.splice(index, 1)
-    }
-  }
-
   /**
-   * @param {function}func
-   */
-  addMouseEnterListener (func) {
-    this._mouseEnterListeners.push(func)
-  }
-
-  /**
-   * @param {function}func
-   */
-  removeMouseEnterListener (func) {
-    const index = this._mouseEnterListeners.indexOf(func)
-    if (index > -1) {
-      this._mouseEnterListeners.splice(index, 1)
-    }
-  }
-
-  /**
-   * @param {function}func
+   * @param {Function}func
    */
   addMouseMoveListener (func) {
     this._mouseMoveListeners.push(func)
   }
 
   /**
-   * @param {function}func
+   * @param {Function}func
    */
   removeMouseMoveListener (func) {
     const index = this._mouseMoveListeners.indexOf(func)
@@ -267,7 +253,8 @@ export default class BrowserPointer {
     this.x = event.clientX
     this.y = event.clientY
 
-    this._mouseMoveListeners.forEach(listener => listener())
+    this._browserDataDevice.onMouseMotion()
+    this._mouseMoveListeners.forEach(listener => listener(event.target))
 
     if (this.focus) {
       const elementRect = this.focus.getBoundingClientRect()
@@ -304,12 +291,12 @@ export default class BrowserPointer {
 
     const surfaceResource = this.focus.view.browserSurface.resource
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
-      // console.log('button( %f, %f, %f, %s )', this.buttonSerial + 1, event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.released)
       pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.released)
     })
     this._btnDwnCount--
     if (this._btnDwnCount === 0) {
       this.grab = null
+      this._browserDataDevice.onMouseGrabLost()
     }
   }
 
@@ -340,9 +327,7 @@ export default class BrowserPointer {
    * @param {MouseEvent}event
    */
   onMouseEnter (event) {
-    this._mouseEnterListeners.forEach((listener) => {
-      listener(event.target)
-    })
+    this._browserDataDevice.onMouseEnter(event.target)
 
     if (this.grab) {
       return
@@ -351,19 +336,13 @@ export default class BrowserPointer {
     this._updateFocus(event.target)
   }
 
-  _emitFocusChanged () {
-    this.focusListeners.forEach((listener) => {
-      listener()
-    })
-  }
-
   /**
    * @param {HTMLCanvasElement}newFocus
    * @private
    */
   _updateFocus (newFocus) {
     this.focus = newFocus
-    this._emitFocusChanged()
+    this._browserKeyboard.focusGained(newFocus)
     const surfaceResource = this.focus.view.browserSurface.resource
     surfaceResource.addDestroyListener(this._focusDestroyListener)
 
@@ -380,9 +359,7 @@ export default class BrowserPointer {
    * @param {MouseEvent}event
    */
   onMouseLeave (event) {
-    this._mouseEnterListeners.forEach((listener) => {
-      listener(event.target)
-    })
+    this._browserDataDevice.onMouseLeave(event.target)
 
     if (this.grab) {
       return
@@ -398,7 +375,7 @@ export default class BrowserPointer {
       })
       this.focus.style.cursor = 'auto'
       this.focus = null
-      this._emitFocusChanged()
+      this._browserKeyboard.focusLost()
       this.view = null
     }
   }

@@ -15,13 +15,14 @@ export default class BrowserSeat extends westfield.Global {
    */
   static create (browserSession) {
     const browserDataDevice = BrowserDataDevice.create()
-    const browserPointer = BrowserPointer.create(browserSession)
-    const browserKeyboard = BrowserKeyboard.create(browserSession, browserPointer)
+    const browserKeyboard = BrowserKeyboard.create(browserSession, browserDataDevice)
+    const browserPointer = BrowserPointer.create(browserSession, browserDataDevice, browserKeyboard)
     const browserTouch = BrowserTouch.create()
     const hasTouch = 'ontouchstart' in document.documentElement
 
     const browserSeat = new BrowserSeat(browserDataDevice, browserPointer, browserKeyboard, browserTouch, hasTouch)
     browserDataDevice.browserSeat = browserSeat
+
     return browserSeat
   }
 

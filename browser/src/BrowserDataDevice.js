@@ -25,7 +25,26 @@ export default class BrowserDataDevice {
     /**
      * @type {GrDataSource}
      */
-    this.source = null
+    this.dndSource = null
+    /**
+     * @type {GrDataSource}
+     */
+    this.selectionSource = null
+    /**
+     * @type {HTMLCanvasElement}
+     * @private
+     */
+    this._dndFocus = null
+    /**
+     * @type {Client}
+     * @private
+     */
+    this._dndSourceClient = null
+    /**
+     * @type {HTMLCanvasElement}
+     * @private
+     */
+    this._selectionFocus = null
   }
 
   /**
@@ -78,47 +97,115 @@ export default class BrowserDataDevice {
       return
     }
 
+    this._dndSourceClient = resource.client
+
     if (icon !== null) {
       browserPointer.setCursorInternal(icon)
     }
 
-    this.source = source
+    /*
+     * From the specs:
+     * For objects of version 2 or older, gr_data_source.cancelled will only be emitted if the data source was
+     * replaced by another data source.
+     */
+    if (this.dndSource && source && this.dndSource.version <= 2) {
+      this.dndSource.cancelled()
+    }
 
-    browserPointer.addMouseEnterListener((canvas) => {
-      const serial = browserPointer._nextFocusSerial()
-      const surfaceResource = canvas.view.browserSurface.resource
+    this.dndSource = source
+  }
 
-      const elementRect = canvas.getBoundingClientRect()
-      const canvasPoint = Point.create(browserPointer.x - (elementRect.x - 1), browserPointer.y - (elementRect.y - 1))
-      const surfacePoint = canvas.view.toSurfaceSpace(canvasPoint)
+  onMouseMotion () {
+    const surfaceResource = this._dndFocus.view.browserSurface.resource
+    const client = surfaceResource.client
 
-      const x = greenfield.parseFixed(surfacePoint.x)
-      const y = greenfield.parseFixed(surfacePoint.y)
+    // if source is null, only transfers within the same client can take place
+    if (this.dndSource === null && client !== this._dndSourceClient) {
+      return
+    }
 
-      const client = surfaceResource.client
+    const browserPointer = this.browserSeat.browserPointer
+    const elementRect = this._dndFocus.getBoundingClientRect()
+    const canvasPoint = Point.create(browserPointer.x - (elementRect.x - 1), browserPointer.y - (elementRect.y - 1))
+    const surfacePoint = this._dndFocus.view.toSurfaceSpace(canvasPoint)
 
-      this.resources.filter((dataDeviceResource) => {
-        return dataDeviceResource.client === client
-      }).forEach((dataDeviceResource) => {
-        const offer = this._createDataOffer(dataDeviceResource)
-        dataDeviceResource.userData.offer = offer
-        dataDeviceResource.enter(serial, surfaceResource, x, y, offer)
-        const dndActions = this.source.implementation.dndActions
-        this.source.implementation.offers.push(offer)
-        offer.implementation.source = this.source
-        offer.sourceActions(dndActions)
-      })
+    this.resources.filter((dataDeviceResource) => {
+      return dataDeviceResource.client === client
+    }).forEach((dataDeviceResource) => {
+      dataDeviceResource.motion(Date.now(), greenfield.parseFixed(surfacePoint.x), greenfield.parseFixed(surfacePoint.y))
     })
   }
 
-  _createDataOffer (dataDeviceResource) {
-    const offerId = dataDeviceResource.dataOffer()
-    const browserDataOffer = BrowserDataOffer.create()
-    const offer = new greenfield.GrDataOffer(dataDeviceResource.client, offerId, dataDeviceResource.version, browserDataOffer)
-    this.source.implementation.mimeTypes.forEach((mimeType) => {
-      offer.offer(mimeType)
+  /**
+   * @param {HTMLCanvasElement}canvas
+   */
+  onMouseEnter (canvas) {
+    this._dndFocus = canvas
+
+    const surfaceResource = canvas.view.browserSurface.resource
+    const client = surfaceResource.client
+
+    // if source is null, only transfers within the same client can take place
+    if (this.dndSource === null && client !== this._dndSourceClient) {
+      return
+    }
+
+    const browserPointer = this.browserSeat.browserPointer
+    const serial = browserPointer._nextFocusSerial()
+
+    const elementRect = canvas.getBoundingClientRect()
+    const canvasPoint = Point.create(browserPointer.x - (elementRect.x - 1), browserPointer.y - (elementRect.y - 1))
+    const surfacePoint = canvas.view.toSurfaceSpace(canvasPoint)
+
+    const x = greenfield.parseFixed(surfacePoint.x)
+    const y = greenfield.parseFixed(surfacePoint.y)
+
+    this.resources.filter((dataDeviceResource) => {
+      return dataDeviceResource.client === client
+    }).forEach((dataDeviceResource) => {
+      const grDataOffer = this._createDataOffer(this.dndSource, dataDeviceResource)
+      dataDeviceResource.enter(serial, surfaceResource, x, y, grDataOffer)
+
+      const dndActions = this.dndSource.implementation.dndActions
+      this.dndSource.implementation.offers.push(grDataOffer)
+      grDataOffer.sourceActions(dndActions)
     })
-    return offer
+  }
+
+  /**
+   * @param {HTMLCanvasElement}canvas
+   */
+  onMouseLeave (canvas) {
+    this._dndFocus = null
+
+    const surfaceResource = canvas.view.browserSurface.resource
+    const client = surfaceResource.client
+
+    // if source is null, only transfers within the same client can take place
+    if (this.dndSource === null && client !== this._dndSourceClient) {
+      return
+    }
+
+    this.resources.filter((dataDeviceResource) => {
+      return dataDeviceResource.client === client
+    }).forEach((dataDeviceResource) => {
+      dataDeviceResource.leave()
+      this.dndSource.implementation.offers = []
+    })
+  }
+
+  onMouseGrabLost () {
+    // TODO
+  }
+
+  _createDataOffer (source, dataDeviceResource) {
+    const offerId = dataDeviceResource.dataOffer()
+    const browserDataOffer = BrowserDataOffer.create(source)
+    const grDataOffer = new greenfield.GrDataOffer(dataDeviceResource.client, offerId, dataDeviceResource.version, browserDataOffer)
+    source.implementation.mimeTypes.forEach((mimeType) => {
+      grDataOffer.offer(mimeType)
+    })
+    return grDataOffer
   }
 
   /**
@@ -138,15 +225,67 @@ export default class BrowserDataDevice {
    */
   setSelection (resource, source, serial) {
     // FIXME what should the serial correspond to?
-    if (source.implementation.dndActions) {
+    if (source && source.implementation.dndActions) {
       // TODO raise protocol error
       return
     }
-    this.source = source
 
-    const browserKeyboard = this.browserSeat.browserKeyboard
+    if (this.selectionSource) {
+      /*
+       * From the specs:
+       * For objects of version 2 or older, gr_data_source.cancelled will only be emitted if the data source was
+       * replaced by another data source.
+       */
+      if (source && this.selectionSource.version <= 2) {
+        this.selectionSource.cancelled()
+      }
+    }
 
-    // TODO
+    this.selectionSource = source
+    // send out selection if there is a keyboard focus
+    if (this._selectionFocus) {
+      this.onKeyboardFocusGained(this._selectionFocus)
+    }
+  }
+
+  /**
+   * @param {HTMLCanvasElement}newSelectionFocus
+   */
+  onKeyboardFocusGained (newSelectionFocus) {
+    this._selectionFocus = newSelectionFocus
+
+    if (this.selectionSource === null) {
+      return
+    }
+
+    const surfaceResource = this._selectionFocus.view.browserSurface.resource
+    const client = surfaceResource.client
+
+    this.resources.filter((dataDeviceResource) => {
+      return dataDeviceResource.client === client
+    }).forEach((dataDeviceResource) => {
+      const grDataOffer = this._createDataOffer(this.selectionSource)
+      dataDeviceResource.selection(grDataOffer)
+      this.selectionSource.implementation.offers.push(grDataOffer)
+    })
+  }
+
+  onKeyboardFocusLost () {
+    const surfaceResource = this._selectionFocus.view.browserSurface.resource
+    const client = surfaceResource.client
+
+    this._selectionFocus = null
+
+    if (this.selectionSource === null) {
+      return
+    }
+
+    this.resources.filter((dataDeviceResource) => {
+      return dataDeviceResource.client === client
+    }).forEach((dataDeviceResource) => {
+      dataDeviceResource.selection(null)
+      this.selectionSource.implementation.offers = []
+    })
   }
 
   /**

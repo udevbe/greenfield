@@ -12,11 +12,11 @@ import BrowserRtcBlobTransfer from './BrowserRtcBlobTransfer'
 export default class BrowserKeyboard {
   /**
    * @param {BrowserSession}browserSession
-   * @param {BrowserPointer}browserPointer
+   * @param {BrowserDataDevice} browserDataDevice
    * @return {BrowserKeyboard}
    */
-  static create (browserSession, browserPointer) {
-    const browserKeyboard = new BrowserKeyboard()
+  static create (browserSession, browserDataDevice) {
+    const browserKeyboard = new BrowserKeyboard(browserDataDevice)
     // TODO get the keymap from some config source
     browserKeyboard.updateKeymap('qwerty.xkb')
 
@@ -29,20 +29,20 @@ export default class BrowserKeyboard {
       browserKeyboard.onKey(event, true)
     }), true)
 
-    // sync pointer focus with keyboard focus
-    browserPointer.focusListeners.push(() => {
-      browserPointer.focus === null ? browserKeyboard._focusLost() : browserKeyboard._focusGained(browserPointer.focus)
-    })
-    browserPointer.focus === null ? browserKeyboard._focusLost() : browserKeyboard._focusGained(browserPointer.focus)
-
     return browserKeyboard
   }
 
   /**
    * Use BrowserKeyboard.create(..) instead.
    * @private
+   * @param {BrowserDataDevice} browserDataDevice
    */
-  constructor () {
+  constructor (browserDataDevice) {
+    /**
+     * @type {BrowserDataDevice}
+     * @private
+     */
+    this._browserDataDevice = browserDataDevice
     /**
      * @type {Array}
      */
@@ -142,15 +142,16 @@ export default class BrowserKeyboard {
 
   /**
    * @param {HTMLCanvasElement}focus
-   * @private
    */
-  _focusGained (focus) {
+  focusGained (focus) {
     if (this.focus === focus) {
       return
     }
     this._focusLost()
 
     this.focus = focus
+    this._browserDataDevice.onKeyboardFocusGained()
+
     const surfaceResource = this.focus.view.browserSurface.resource
     surfaceResource.addDestroyListener(this._focusDestroyListener)
 
@@ -165,7 +166,7 @@ export default class BrowserKeyboard {
     })
   }
 
-  _focusLost () {
+  focusLost () {
     if (this.focus === null) {
       return
     }
@@ -182,6 +183,7 @@ export default class BrowserKeyboard {
     const surfaceResource = this.focus.view.browserSurface.resource
     surfaceResource.removeDestroyListener(this._focusDestroyListener)
     this.focus = null
+    this._browserDataDevice.onKeyboardFocusLost()
   }
 
   /**

@@ -1,17 +1,33 @@
 'use strict'
 
 export default class BrowserDataOffer {
-  static create () {
-    return new BrowserDataOffer()
+  /**
+   * @param {GrDataSource}source
+   * @return {BrowserDataOffer}
+   */
+  static create (source) {
+    return new BrowserDataOffer(source)
   }
 
-  constructor () {
+  /**
+   * Use BrowserDataOffer.create(..) instead.
+   * @private
+   * @param {GrDataSource}source
+   */
+  constructor (source) {
+    /**
+     * @type {string}
+     */
     this.mimeType = null
     this.acceptSerial = null
     /**
      * @type {GrDataSource}
      */
-    this.source = null
+    this.source = source
+    /**
+     * @type {boolean}
+     * @private
+     */
     this._finished = false
   }
 

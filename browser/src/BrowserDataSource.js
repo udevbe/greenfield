@@ -39,6 +39,9 @@ export default class BrowserDataSource {
    */
   offer (resource, mimeType) {
     this.mimeTypes.push(mimeType)
+    this.offers.forEach((grDataOffer) => {
+      grDataOffer.offer(mimeType)
+    })
   }
 
   /**
@@ -80,8 +83,8 @@ export default class BrowserDataSource {
    */
   setActions (resource, dndActions) {
     this.dndActions = dndActions
-    this.offers.forEach((offer) => {
-      offer.sourceActions(this.dndActions)
+    this.offers.forEach((grDataOffer) => {
+      grDataOffer.sourceActions(this.dndActions)
     })
   }
 }
