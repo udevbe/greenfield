@@ -190,12 +190,25 @@ export default class BrowserDataDevice {
       return dataDeviceResource.client === client
     }).forEach((dataDeviceResource) => {
       dataDeviceResource.leave()
+      // set offers source to null to indicate they are no longer valid
+      this.dndSource.implementation.offers.forEach((grDataOffer) => {
+        grDataOffer.implementation.source = null
+      })
       this.dndSource.implementation.offers = []
     })
   }
 
   onMouseGrabLost () {
-    // TODO
+    if (this._dndFocus) {
+      this.resources.forEach((resource) => {
+        resource.drop()
+      })
+      if (this.dndSource.version >= 3) {
+        this.dndSource.dndDropPerformed()
+      }
+    } else if (this.dndSource.version >= 3) {
+      this.dndSource.cancelled()
+    }
   }
 
   _createDataOffer (source, dataDeviceResource) {

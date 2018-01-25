@@ -176,12 +176,12 @@
                 complete.
 
                 This request may happen multiple times for different mime types,
-                both before and after gr_data_device.drop. Drag-and-drop destination
+                both before and after wl_data_device.drop. Drag-and-drop destination
                 clients may preemptively fetch data or examine it more closely to
                 determine acceptance.
             </description>
             <arg name="mime_type" type="string" summary="mime type desired by receiver"/>
-            <arg name="transfer" type="object" interface="gr_blob_transfer" summary="blob transfer of a new peer connection in client mode used to receive data"/>
+            <arg name="fd" type="uint" summary="file descriptor for data transfer"/>
         </request>
 
         <request name="destroy" type="destructor">
@@ -352,7 +352,7 @@
                 close it.
             </description>
             <arg name="mime_type" type="string" summary="mime type for the data"/>
-            <arg name="transfer" type="object" interface="string" summary="blob transfer descriptor of a new peer connection in client mode, use to send the data"/>
+            <arg name="fd" type="uint" summary="file descriptor for the data"/>
         </event>
 
         <event name="cancelled">

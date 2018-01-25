@@ -18,8 +18,12 @@ export default class BrowserDataOffer {
     /**
      * @type {string}
      */
-    this.mimeType = null
+    this.acceptMimeType = null
     this.acceptSerial = null
+    /**
+     * @type {number}
+     */
+    this.preferredAction = null
     /**
      * @type {GrDataSource}
      */
@@ -57,16 +61,19 @@ export default class BrowserDataOffer {
    *
    */
   accept (resource, serial, mimeType) {
+    if (!this.source) {
+      // TODO raise protocol error (offer no longer valid)
+    }
     if (this._finished) {
       // TODO raise protocol error
     }
 
     this.acceptSerial = serial
-    this.mimeType = mimeType
-    if (resource.version >= 3 && mimeType === null) {
+    this.acceptMimeType = mimeType
+    this.source.target(mimeType)
+
+    if (resource.version >= 3 && !mimeType) {
       this.source.cancelled()
-    } else {
-      this.source.target(mimeType)
     }
   }
 
@@ -84,24 +91,26 @@ export default class BrowserDataOffer {
    *                complete.
    *
    *                This request may happen multiple times for different mime types,
-   *                both before and after gr_data_device.drop. Drag-and-drop destination
+   *                both before and after wl_data_device.drop. Drag-and-drop destination
    *                clients may preemptively fetch data or examine it more closely to
    *                determine acceptance.
    *
    *
    * @param {GrDataOffer} resource
    * @param {string} mimeType mime type desired by receiver
-   * @param {GrBlobTransfer} transfer blob transfer of a new peer connection in client mode used to receive data
+   * @param {Number} fd file descriptor for data transfer
    *
    * @since 1
    *
    */
-  receive (resource, mimeType, transfer) {
+  receive (resource, mimeType, fd) {
+    if (!this.source) {
+      // TODO raise protocol error (offer no longer valid)
+    }
     if (this._finished) {
       // TODO raise protocol error
     }
-
-    // TODO
+    this.source.send(mimeType, fd)
   }
 
   /**
@@ -115,7 +124,7 @@ export default class BrowserDataOffer {
    *
    */
   destroy (resource) {
-    // TODO
+    resource.destroy()
   }
 
   /**
@@ -139,7 +148,10 @@ export default class BrowserDataOffer {
    *
    */
   finish (resource) {
-    if (this.mimeType === null || this._finished) {
+    if (!this.source) {
+      // TODO raise protocol error (offer no longer valid)
+    }
+    if (!this.acceptMimeType || this._finished || !this.preferredAction) {
       // TODO raise protocol error
     }
     this.source.dndFinished()
@@ -189,10 +201,27 @@ export default class BrowserDataOffer {
    *
    */
   setActions (resource, dndActions, preferredAction) {
+    if (!this.source) {
+      // TODO raise protocol error (offer no longer valid)
+    }
     if (this._finished) {
       // TODO raise protocol error
     }
+    if (!(this.source.implementation.dndActions & preferredAction)) {
+      // TODO raise protocol error
+      return
+    }
 
-    // TODO
+    // TODO check dndActions is part of OR'ed enum
+    // TODO check if preferredAction is part of enum
+
+    // just use default preferred action for now
+    if (preferredAction) {
+      this.source.action(preferredAction)
+      resource.action(preferredAction)
+      this.preferredAction = preferredAction
+    } else {
+      this.source.cancelled()
+    }
   }
 }

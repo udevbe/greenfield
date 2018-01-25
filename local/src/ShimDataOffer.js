@@ -21,9 +21,7 @@ module.exports = class ShimDataOffer extends WlDataOfferRequests {
   }
 
   receive (resource, mimeType, fd) {
-    // TODO implement blob transfer
-    // TODO implement c/p in such a way that we don't transfer data to the browser when copying between native clients
-    // this.proxy.receive(mimeType, fd)
+    this.proxy.receive(mimeType, fd)
   }
 
   destroy (resource) {

@@ -13,10 +13,8 @@ module.exports = class LocalDataSource {
     this.resource.target(mimeType)
   }
 
-  send (mimeType, transfer) {
-    // TODO implement blob transfer
-    // TODO implement c/p in such a way that we don't transfer data to the browser when copying between native clients
-    // this.resource.send(mimeType, transfer)
+  send (mimeType, fd) {
+    this.resource.send(mimeType, fd)
   }
 
   cancelled () {
