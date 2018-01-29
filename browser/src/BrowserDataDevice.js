@@ -60,6 +60,9 @@ export default class BrowserDataDevice {
     const dataDeviceResource = this.resources.find((dataDeviceResource) => {
       return dataDeviceResource.client === this._dndSourceClient
     })
+    if (dataDeviceResource == null) {
+      return
+    }
     dataDeviceResource.leave()
     this._dndSourceClient = null
   }
@@ -137,7 +140,10 @@ export default class BrowserDataDevice {
       this.dndSource.addDestroyListener(this._dndSourceDestroyListener)
     }
 
-    // TODO listen for source destruction & handle destruction as a lost focus
+    const dndFocus = this.browserSeat.browserPointer.focus
+    if (dndFocus) {
+      this.onMouseEnter(dndFocus)
+    }
   }
 
   onMouseMotion () {
@@ -199,7 +205,6 @@ export default class BrowserDataDevice {
     let grDataOffer = null
     if (this.dndSource) {
       grDataOffer = this._createDataOffer(this.dndSource, dataDeviceResource)
-      this.dndSource.implementation.grDataOffer = grDataOffer
       grDataOffer.implementation.updateAction()
       this.dndSource.accepted = false
     }
@@ -268,6 +273,7 @@ export default class BrowserDataDevice {
   _createDataOffer (source, dataDeviceResource) {
     const offerId = dataDeviceResource.dataOffer()
     const browserDataOffer = BrowserDataOffer.create(source, offerId)
+    source.implementation.grDataOffer = browserDataOffer.resource
     source.implementation.mimeTypes.forEach((mimeType) => {
       browserDataOffer.resource.offer(mimeType)
     })
@@ -330,6 +336,9 @@ export default class BrowserDataDevice {
     const dataDeviceResource = this.resources.find((dataDeviceResource) => {
       return dataDeviceResource.client === client
     })
+    if (dataDeviceResource == null) {
+      return
+    }
     const grDataOffer = this._createDataOffer(this.selectionSource)
     dataDeviceResource.selection(grDataOffer)
     this.selectionSource.implementation.grDataOffer = grDataOffer
@@ -348,6 +357,9 @@ export default class BrowserDataDevice {
     const dataDeviceResource = this.resources.find((dataDeviceResource) => {
       return dataDeviceResource.client === client
     })
+    if (dataDeviceResource == null) {
+      return
+    }
     dataDeviceResource.selection(null)
     this.selectionSource.implementation.grDataOffer = null
   }
@@ -363,6 +375,10 @@ export default class BrowserDataDevice {
    *
    */
   release (resource) {
+    if (this.dndSource) {
+      this.dndSource.removeDestroyListener(this._dndSourceDestroyListener)
+    }
+
     const index = this.resources.indexOf(resource)
     if (index > -1) {
       this.resources.splice(index, 1)

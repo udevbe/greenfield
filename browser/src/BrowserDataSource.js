@@ -50,7 +50,9 @@ export default class BrowserDataSource {
    */
   offer (resource, mimeType) {
     this.mimeTypes.push(mimeType)
-    this.grDataOffer.offer(mimeType)
+    if (this.grDataOffer) {
+      this.grDataOffer.offer(mimeType)
+    }
   }
 
   /**

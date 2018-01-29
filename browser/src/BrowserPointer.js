@@ -75,7 +75,6 @@ export default class BrowserPointer {
       const surfaceResource = this.focus.view.browserSurface.resource
       surfaceResource.removeDestroyListener(this._focusDestroyListener)
       this.focus = null
-      this._emitFocusChanged()
       this.grab = null
       // recalculate focus and consequently enter event
       const focusElement = document.elementFromPoint(this.x, this.y)

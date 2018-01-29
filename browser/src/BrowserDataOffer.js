@@ -13,7 +13,8 @@ export default class BrowserDataOffer {
    */
   static create (source, offerId) {
     const browserDataOffer = new BrowserDataOffer(source)
-    const grDataOffer = new greenfield.GrDataOffer(source.client, offerId, source.version, browserDataOffer)
+    const grDataOffer = new greenfield.GrDataOffer(source.client, offerId, source.version)
+    grDataOffer.implementation = browserDataOffer
     browserDataOffer.resource = grDataOffer
     grDataOffer.onDestroy().then(() => {
       browserDataOffer._handleDestroy()

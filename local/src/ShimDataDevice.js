@@ -17,7 +17,7 @@ module.exports = class ShimDataDevice extends WlDataDeviceRequests {
   }
 
   startDrag (resource, source, origin, icon, serial) {
-    this.proxy.startDrag(source.proxy, origin.proxy, icon.proxy, serial)
+    this.proxy.startDrag(source === null ? null : source.implementation.proxy, origin.implementation.proxy, icon === null ? null : icon.implementation.proxy, serial)
   }
 
   setSelection (resource, source, serial) {
