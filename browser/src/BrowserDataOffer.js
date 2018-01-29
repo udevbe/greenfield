@@ -1,12 +1,25 @@
 'use strict'
 
+import greenfield from './protocol/greenfield-browser-protocol'
+
+const DndAction = greenfield.GrDataDeviceManager.DndAction
+const ALL_ACTIONS = (DndAction.copy | DndAction.move | DndAction.ask)
+
 export default class BrowserDataOffer {
   /**
    * @param {GrDataSource}source
+   * @param {number}offerId
    * @return {BrowserDataOffer}
    */
-  static create (source) {
-    return new BrowserDataOffer(source)
+  static create (source, offerId) {
+    const browserDataOffer = new BrowserDataOffer(source)
+    const grDataOffer = new greenfield.GrDataOffer(source.client, offerId, source.version, browserDataOffer)
+    browserDataOffer.resource = grDataOffer
+    grDataOffer.onDestroy().then(() => {
+      browserDataOffer._handleDestroy()
+    })
+
+    return browserDataOffer
   }
 
   /**
@@ -15,24 +28,56 @@ export default class BrowserDataOffer {
    * @param {GrDataSource}source
    */
   constructor (source) {
+    // set when offer is created
+    /**
+     * @type {GrDataOffer}
+     */
+    this.resource = null
     /**
      * @type {string}
      */
     this.acceptMimeType = null
-    this.acceptSerial = null
     /**
      * @type {number}
      */
     this.preferredAction = null
     /**
+     * @type {number}
+     */
+    this.dndActions = greenfield.GrDataDeviceManager.DndAction.none
+    /**
      * @type {GrDataSource}
      */
-    this.source = source
+    this.grDataSource = source
     /**
      * @type {boolean}
      * @private
      */
     this._finished = false
+    this.inAsk = false
+  }
+
+  _handleDestroy () {
+    if (!this.grDataSource) { return }
+
+    // TODO remove source destroy listener
+    // TODO add source destroy listener
+    // wl_list_remove(&offer->source_destroy_listener.link);
+
+    if (this.grDataSource.implementation.grDataOffer !== this.resource) { return }
+
+    /* If the drag destination has version < 3, wl_data_offer.finish
+     * won't be called, so do this here as a safety net, because
+     * we still want the version >=3 drag source to be happy.
+     */
+    if (this.resource < 3) {
+      this.grDataSource.implementation.notifyFinish()
+    } else if (this.grDataSource.resource &&
+      this.grDataSource.resource.version >= 3) {
+      this.grDataSource.resource.cancelled()
+    }
+
+    this.grDataSource.implementation.grDataOffer = null
   }
 
   /**
@@ -61,20 +106,16 @@ export default class BrowserDataOffer {
    *
    */
   accept (resource, serial, mimeType) {
-    if (!this.source) {
-      // TODO raise protocol error (offer no longer valid)
+    if (!this.grDataSource || !this.grDataSource.implementation.grDataOffer) {
+      return
     }
     if (this._finished) {
       // TODO raise protocol error
     }
 
-    this.acceptSerial = serial
     this.acceptMimeType = mimeType
-    this.source.target(mimeType)
-
-    if (resource.version >= 3 && !mimeType) {
-      this.source.cancelled()
-    }
+    this.grDataSource.target(mimeType)
+    this.grDataSource.implementation.accepted = mimeType !== null
   }
 
   /**
@@ -104,13 +145,14 @@ export default class BrowserDataOffer {
    *
    */
   receive (resource, mimeType, fd) {
-    if (!this.source) {
-      // TODO raise protocol error (offer no longer valid)
-    }
     if (this._finished) {
       // TODO raise protocol error
     }
-    this.source.send(mimeType, fd)
+    if (this.grDataSource) {
+      this.grDataSource.send(mimeType, fd)
+    } else {
+      this.grDataSource.send('', -1)
+    }
   }
 
   /**
@@ -148,14 +190,43 @@ export default class BrowserDataOffer {
    *
    */
   finish (resource) {
-    if (!this.source) {
-      // TODO raise protocol error (offer no longer valid)
+    if (this.grDataSource || !this.preferredAction) {
+      return
     }
-    if (!this.acceptMimeType || this._finished || !this.preferredAction) {
+    if (!this.acceptMimeType || this._finished) {
+      return
+    }
+
+    /* Disallow finish while we have a grab driving drag-and-drop, or
+     * if the negotiation is not at the right stage
+     */
+    if (!this.grDataSource.implementation.accepted) {
       // TODO raise protocol error
+      // wl_resource_post_error(offer->resource,
+      //   WL_DATA_OFFER_ERROR_INVALID_FINISH,
+      //   "premature finish request");
+      return
     }
-    this.source.dndFinished()
-    this._finished = true
+
+    switch (this.grDataSource.implementation.currentDndAction) {
+      case greenfield.GrDataDeviceManager.DndAction.none:
+      case greenfield.GrDataDeviceManager.DndAction.ask:
+        // TODO raise protocol error
+        // wl_resource_post_error(offer->resource,
+        //   WL_DATA_OFFER_ERROR_INVALID_OFFER,
+        //   'offer finished with an invalid action')
+        return
+      default:
+        break
+    }
+
+    this.grDataSource.implementation.notifyFinish()
+  }
+
+  _bitCount (u) {
+    // https://blogs.msdn.microsoft.com/jeuge/2005/06/08/bit-fiddling-3/
+    const uCount = u - ((u >> 1) & 0o33333333333) - ((u >> 2) & 0o11111111111)
+    return ((uCount + (uCount >> 3)) & 0o30707070707) % 63
   }
 
   /**
@@ -201,27 +272,86 @@ export default class BrowserDataOffer {
    *
    */
   setActions (resource, dndActions, preferredAction) {
-    if (!this.source) {
-      // TODO raise protocol error (offer no longer valid)
+    if (!this.grDataSource) {
+      return
     }
     if (this._finished) {
       // TODO raise protocol error
     }
-    if (!(this.source.implementation.dndActions & preferredAction)) {
-      // TODO raise protocol error
+
+    if (dndActions & ~ALL_ACTIONS) {
+      // TODO protocol error
+      // wl_resource_post_error(offer->resource,
+      //   WL_DATA_OFFER_ERROR_INVALID_ACTION_MASK,
+      //   'invalid action mask %x', dnd_actions)
       return
     }
 
-    // TODO check dndActions is part of OR'ed enum
-    // TODO check if preferredAction is part of enum
-
-    // just use default preferred action for now
-    if (preferredAction) {
-      this.source.action(preferredAction)
-      resource.action(preferredAction)
-      this.preferredAction = preferredAction
-    } else {
-      this.source.cancelled()
+    if (preferredAction &&
+      (!(preferredAction & dndActions) ||
+        this._bitCount(preferredAction) > 1)) {
+      // TODO protocol error
+      // wl_resource_post_error(offer->resource,
+      //   WL_DATA_OFFER_ERROR_INVALID_ACTION,
+      //   'invalid action %x', preferred_action)
+      return
     }
+
+    this.dndActions = dndActions
+    this.preferredAction = preferredAction
+    this.updateAction()
+  }
+
+  updateAction () {
+    if (!this.grDataSource) { return }
+
+    const action = this._chooseAction()
+
+    if (this.grDataSource.implementation.currentDndAction === action) { return }
+
+    this.grDataSource.implementation.currentDndAction = action
+
+    if (this.inAsk) { return }
+
+    if (this.grDataSource.version >= 3) {
+      this.grDataSource.action(action)
+    }
+
+    if (this.resource.version >= 3) {
+      this.resource.action(action)
+    }
+  }
+
+  _chooseAction () {
+    let offerActions = DndAction.none
+    let preferredAction = DndAction.none
+    if (this.resource >= 3) {
+      offerActions = this.dndActions
+      preferredAction = this.preferredAction
+    } else {
+      offerActions = DndAction.copy
+    }
+
+    let sourceActions = DndAction.none
+    if (this.grDataSource.version >= 3) {
+      sourceActions = this.grDataSource.implementation.dndActions
+    } else {
+      sourceActions = DndAction.copy
+    }
+    const availableActions = offerActions & sourceActions
+
+    if (!availableActions) {
+      return DndAction.none
+    }
+
+    // TODO a compositor defined action could be returned here
+
+    /* If the dest side has a preferred DnD action, use it */
+    if ((preferredAction & availableActions) !== 0) {
+      return preferredAction
+    }
+
+    /* Use the first found action, in bit order */
+    return 1 << (Math.floor(Math.log2(availableActions)) - 1)
   }
 }

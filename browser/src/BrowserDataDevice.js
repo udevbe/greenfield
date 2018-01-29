@@ -4,6 +4,8 @@ import Point from './math/Point'
 import greenfield from './protocol/greenfield-browser-protocol'
 import BrowserDataOffer from './BrowserDataOffer'
 
+const DndAction = greenfield.GrDataDeviceManager.DndAction
+
 export default class BrowserDataDevice {
   /**
    * @return {BrowserDataDevice}
@@ -45,6 +47,21 @@ export default class BrowserDataDevice {
      * @private
      */
     this._selectionFocus = null
+    /**
+     * @type Function
+     * @private
+     */
+    this._dndSourceDestroyListener = () => {
+      this._handleDndSourceDestroy()
+    }
+  }
+
+  _handleDndSourceDestroy () {
+    const dataDeviceResource = this.resources.find((dataDeviceResource) => {
+      return dataDeviceResource.client === this._dndSourceClient
+    })
+    dataDeviceResource.leave()
+    this._dndSourceClient = null
   }
 
   /**
@@ -108,14 +125,26 @@ export default class BrowserDataDevice {
      * For objects of version 2 or older, gr_data_source.cancelled will only be emitted if the data source was
      * replaced by another data source.
      */
-    if (this.dndSource && source && this.dndSource.version <= 2) {
-      this.dndSource.cancelled()
+    if (this.dndSource) {
+      this.dndSource.removeDestroyListener(this._dndSourceDestroyListener)
+      if (source && this.dndSource.version <= 2) {
+        this.dndSource.cancelled()
+      }
     }
 
     this.dndSource = source
+    if (this.dndSource) {
+      this.dndSource.addDestroyListener(this._dndSourceDestroyListener)
+    }
+
+    // TODO listen for source destruction & handle destruction as a lost focus
   }
 
   onMouseMotion () {
+    if (!this._dndSourceClient) {
+      return
+    }
+
     const surfaceResource = this._dndFocus.view.browserSurface.resource
     const client = surfaceResource.client
 
@@ -141,6 +170,9 @@ export default class BrowserDataDevice {
    */
   onMouseEnter (canvas) {
     this._dndFocus = canvas
+    if (!this._dndSourceClient) {
+      return
+    }
 
     const surfaceResource = canvas.view.browserSurface.resource
     const client = surfaceResource.client
@@ -160,16 +192,25 @@ export default class BrowserDataDevice {
     const x = greenfield.parseFixed(surfacePoint.x)
     const y = greenfield.parseFixed(surfacePoint.y)
 
-    this.resources.filter((dataDeviceResource) => {
+    const dataDeviceResource = this.resources.find((dataDeviceResource) => {
       return dataDeviceResource.client === client
-    }).forEach((dataDeviceResource) => {
-      const grDataOffer = this._createDataOffer(this.dndSource, dataDeviceResource)
-      dataDeviceResource.enter(serial, surfaceResource, x, y, grDataOffer)
-
-      const dndActions = this.dndSource.implementation.dndActions
-      this.dndSource.implementation.offers.push(grDataOffer)
-      grDataOffer.sourceActions(dndActions)
     })
+
+    let grDataOffer = null
+    if (this.dndSource) {
+      grDataOffer = this._createDataOffer(this.dndSource, dataDeviceResource)
+      this.dndSource.implementation.grDataOffer = grDataOffer
+      grDataOffer.implementation.updateAction()
+      this.dndSource.accepted = false
+    }
+    dataDeviceResource.enter(serial, surfaceResource, x, y, grDataOffer)
+
+    if (grDataOffer) {
+      const dndActions = this.dndSource.implementation.dndActions
+      if (grDataOffer.version >= 3) {
+        grDataOffer.sourceActions(dndActions)
+      }
+    }
   }
 
   /**
@@ -177,6 +218,9 @@ export default class BrowserDataDevice {
    */
   onMouseLeave (canvas) {
     this._dndFocus = null
+    if (!this._dndSourceClient) {
+      return
+    }
 
     const surfaceResource = canvas.view.browserSurface.resource
     const client = surfaceResource.client
@@ -186,39 +230,48 @@ export default class BrowserDataDevice {
       return
     }
 
-    this.resources.filter((dataDeviceResource) => {
+    const dataDeviceResource = this.resources.find((dataDeviceResource) => {
       return dataDeviceResource.client === client
-    }).forEach((dataDeviceResource) => {
-      dataDeviceResource.leave()
-      // set offers source to null to indicate they are no longer valid
-      this.dndSource.implementation.offers.forEach((grDataOffer) => {
-        grDataOffer.implementation.source = null
-      })
-      this.dndSource.implementation.offers = []
     })
+    dataDeviceResource.leave()
   }
 
   onMouseGrabLost () {
-    if (this._dndFocus) {
-      this.resources.forEach((resource) => {
-        resource.drop()
-      })
-      if (this.dndSource.version >= 3) {
-        this.dndSource.dndDropPerformed()
-      }
-    } else if (this.dndSource.version >= 3) {
-      this.dndSource.cancelled()
+    if (!this._dndSourceClient) {
+      return
     }
+    if (this.dndSource && this._dndFocus) {
+      if (this.dndSource.implementation.accepted &&
+        this.dndSource.implementation.currentDndAction) {
+        const surfaceResource = this._dndFocus.view.browserSurface.resource
+        const client = surfaceResource.client
+
+        const dataDeviceResource = this.resources.find((dataDeviceResource) => {
+          return dataDeviceResource.client === client
+        })
+        dataDeviceResource.drop()
+
+        if (this.dndSource.version >= 3) {
+          this.dndSource.dndDropPerformed()
+        }
+
+        this.dndSource.implementation.grDataOffer.implementation.inAsk = this.dndSource.currentDndAction === DndAction.ask
+      } else if (this.dndSource && this.dndSource.version >= 3) {
+        this.dndSource.cancelled()
+      }
+    }
+    this._dndSourceClient = null
   }
+
+  // TODO handle touch events
 
   _createDataOffer (source, dataDeviceResource) {
     const offerId = dataDeviceResource.dataOffer()
-    const browserDataOffer = BrowserDataOffer.create(source)
-    const grDataOffer = new greenfield.GrDataOffer(dataDeviceResource.client, offerId, dataDeviceResource.version, browserDataOffer)
+    const browserDataOffer = BrowserDataOffer.create(source, offerId)
     source.implementation.mimeTypes.forEach((mimeType) => {
-      grDataOffer.offer(mimeType)
+      browserDataOffer.resource.offer(mimeType)
     })
-    return grDataOffer
+    return browserDataOffer.resource
   }
 
   /**
@@ -274,13 +327,12 @@ export default class BrowserDataDevice {
     const surfaceResource = this._selectionFocus.view.browserSurface.resource
     const client = surfaceResource.client
 
-    this.resources.filter((dataDeviceResource) => {
+    const dataDeviceResource = this.resources.find((dataDeviceResource) => {
       return dataDeviceResource.client === client
-    }).forEach((dataDeviceResource) => {
-      const grDataOffer = this._createDataOffer(this.selectionSource)
-      dataDeviceResource.selection(grDataOffer)
-      this.selectionSource.implementation.offers.push(grDataOffer)
     })
+    const grDataOffer = this._createDataOffer(this.selectionSource)
+    dataDeviceResource.selection(grDataOffer)
+    this.selectionSource.implementation.grDataOffer = grDataOffer
   }
 
   onKeyboardFocusLost () {
@@ -293,12 +345,11 @@ export default class BrowserDataDevice {
       return
     }
 
-    this.resources.filter((dataDeviceResource) => {
+    const dataDeviceResource = this.resources.find((dataDeviceResource) => {
       return dataDeviceResource.client === client
-    }).forEach((dataDeviceResource) => {
-      dataDeviceResource.selection(null)
-      this.selectionSource.implementation.offers = []
     })
+    dataDeviceResource.selection(null)
+    this.selectionSource.implementation.grDataOffer = null
   }
 
   /**

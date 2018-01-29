@@ -1,5 +1,10 @@
 'use strict'
 
+import greenfield from './protocol/greenfield-browser-protocol'
+
+const DndAction = greenfield.GrDataDeviceManager.DndAction
+const ALL_ACTIONS = (DndAction.copy | DndAction.move | DndAction.ask)
+
 export default class BrowserDataSource {
   /**
    * @param {GrDataSource} grDataSource
@@ -15,13 +20,19 @@ export default class BrowserDataSource {
    * @param {GrDataSource} grDataSource
    */
   constructor (grDataSource) {
+    /**
+     * @type {GrDataSource}
+     */
     this.resource = grDataSource
     this.mimeTypes = []
     this.dndActions = 0
+    this._actionsSet = false
+    this.currentDndAction = DndAction.none
+    this.accepted = false
     /**
-     * @type {Array<GrDataOffer>}
+     * @type {GrDataOffer}
      */
-    this.offers = []
+    this.grDataOffer = null
   }
 
   /**
@@ -39,9 +50,7 @@ export default class BrowserDataSource {
    */
   offer (resource, mimeType) {
     this.mimeTypes.push(mimeType)
-    this.offers.forEach((grDataOffer) => {
-      grDataOffer.offer(mimeType)
-    })
+    this.grDataOffer.offer(mimeType)
   }
 
   /**
@@ -55,7 +64,7 @@ export default class BrowserDataSource {
    *
    */
   destroy (resource) {
-    this.resource.destroy()
+    resource.destroy()
   }
 
   /**
@@ -82,9 +91,48 @@ export default class BrowserDataSource {
    *
    */
   setActions (resource, dndActions) {
+
+    if (this._actionsSet) {
+      // TODO protocol error
+      // wl_resource_post_error(source->resource,
+      //   WL_DATA_SOURCE_ERROR_INVALID_ACTION_MASK,
+      //   "cannot set actions more than once");
+      return
+    }
+
+    if (this.dndActions & ~ALL_ACTIONS) {
+      // TODO protocol error
+      // wl_resource_post_error(source->resource,
+      //   WL_DATA_SOURCE_ERROR_INVALID_ACTION_MASK,
+      //   "invalid action mask %x", dnd_actions);
+      return
+    }
+
+    // if (source->seat) {
+    //   wl_resource_post_error(source->resource,
+    //     WL_DATA_SOURCE_ERROR_INVALID_ACTION_MASK,
+    //     "invalid action change after "
+    //   "wl_data_device.start_drag");
+    //   return;
+    // }
+
     this.dndActions = dndActions
-    this.offers.forEach((grDataOffer) => {
-      grDataOffer.sourceActions(this.dndActions)
-    })
+    this._actionsSet = true
+  }
+
+  notifyFinish () {
+    if (!this.dndActions) {
+      return
+    }
+
+    if (this.grDataOffer.implementation.inAsk && this.resource.version >= 3) {
+      this.resource.action(this.currentDndAction)
+    }
+
+    if (this.resource >= 3) {
+      this.resource.dndFinished()
+    }
+
+    this.grDataOffer = null
   }
 }

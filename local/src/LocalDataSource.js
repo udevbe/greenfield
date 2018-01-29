@@ -1,5 +1,7 @@
 'use strict'
 
+const fs = require('fs')
+
 module.exports = class LocalDataSource {
   static create () {
     return new LocalDataSource()
@@ -14,7 +16,11 @@ module.exports = class LocalDataSource {
   }
 
   send (mimeType, fd) {
-    this.resource.send(mimeType, fd)
+    if (fd === -1) {
+      fs.close(fd, (err) => { console.error(err) })
+    } else {
+      this.resource.send(mimeType, fd)
+    }
   }
 
   cancelled () {
