@@ -38,7 +38,7 @@ module.exports = class LocalDataDevice {
     const wlDataOfferResource = WlDataOffer.create(this.resource.client, this.resource.version, 0, shimDataOffer, null)
     localDataOffer.resource = wlDataOfferResource
 
-    this.resource.dataOffer(wlDataOfferResource.id)
+    this.resource.dataOffer(wlDataOfferResource)
   }
 
   enter (serial, surface, x, y, id) {
