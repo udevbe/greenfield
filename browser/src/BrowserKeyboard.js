@@ -21,11 +21,11 @@ export default class BrowserKeyboard {
     browserKeyboard.updateKeymap('qwerty.xkb')
 
     document.addEventListener('keyup', browserSession.eventSource((event) => {
-      event.preventDefault()
+      // event.preventDefault()
       browserKeyboard.onKey(event, false)
     }), true)
     document.addEventListener('keydown', browserSession.eventSource((event) => {
-      event.preventDefault()
+      // event.preventDefault()
       browserKeyboard.onKey(event, true)
     }), true)
 
@@ -147,10 +147,10 @@ export default class BrowserKeyboard {
     if (this.focus === focus) {
       return
     }
-    this._focusLost()
+    this.focusLost()
 
     this.focus = focus
-    this._browserDataDevice.onKeyboardFocusGained()
+    this._browserDataDevice.onKeyboardFocusGained(focus)
 
     const surfaceResource = this.focus.view.browserSurface.resource
     surfaceResource.addDestroyListener(this._focusDestroyListener)

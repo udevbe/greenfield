@@ -79,7 +79,7 @@ export default class BrowserPointer {
       // recalculate focus and consequently enter event
       const focusElement = document.elementFromPoint(this.x, this.y)
       if (focusElement.view) {
-        this._updateFocus(focusElement)
+        this.mouseEnterInternal(focusElement)
       }
     }
     this._btnDwnCount = 0
@@ -183,14 +183,12 @@ export default class BrowserPointer {
       this.cursorBrowserSurface = browserSurface
       this.view = browserSurface.createView()
 
-      const cursorFocusSurface = this.focus
       const cursorView = this.view
 
       const drawListener = (cursorSurfaceView) => {
-        if (cursorFocusSurface === this.focus && browserSurface === this.cursorBrowserSurface) {
-          cursorFocusSurface.style.cursor = 'url("' + cursorSurfaceView.canvas.toDataURL() + '") ' + (this.hotspotX) + ' ' + (this.hotspotY) + ' , pointer'
+        if (browserSurface === this.cursorBrowserSurface) {
+          window.document.body.style.cursor = 'url("' + cursorSurfaceView.canvas.toDataURL() + '") ' + (this.hotspotX) + ' ' + (this.hotspotY) + ' , pointer'
         } else {
-          cursorFocusSurface.style.cursor = 'none'
           cursorView.removeDrawListener(drawListener)
         }
       }
@@ -199,10 +197,9 @@ export default class BrowserPointer {
         cursorView.removeDrawListener(drawListener)
       })
 
-      this.focus.style.cursor = 'url("' + this.view.canvas.toDataURL() + '") ' + (this.hotspotX) + ' ' + (this.hotspotY) + ' , pointer'
+      window.document.body.style.cursor = 'url("' + this.view.canvas.toDataURL() + '") ' + (this.hotspotX) + ' ' + (this.hotspotY) + ' , pointer'
     } else {
-      this.cursorBrowserSurface = null
-      this.focus.style.cursor = 'none'
+      window.document.body.style.cursor = 'none'
     }
   }
 
@@ -288,6 +285,11 @@ export default class BrowserPointer {
    * @param {MouseEvent}event
    */
   onMouseUp (event) {
+    if (this._browserDataDevice.dndSourceClient) {
+      this._browserDataDevice.onMouseUp()
+      return
+    }
+
     if (this.focus === null || this.grab === null) {
       return
     }
@@ -295,10 +297,6 @@ export default class BrowserPointer {
     this._btnDwnCount--
     if (this._btnDwnCount === 0) {
       this.grab = null
-      if (this._browserDataDevice.dndSourceClient) {
-        this._browserDataDevice.onMouseGrabLost()
-        return
-      }
     }
 
     const surfaceResource = this.focus.view.browserSurface.resource
@@ -343,14 +341,14 @@ export default class BrowserPointer {
       return
     }
 
-    this._updateFocus(event.target)
+    this.mouseEnterInternal(event.target)
   }
 
   /**
    * @param {HTMLCanvasElement}newFocus
    * @private
    */
-  _updateFocus (newFocus) {
+  mouseEnterInternal (newFocus) {
     this.focus = newFocus
     this._browserKeyboard.focusGained(newFocus)
     const surfaceResource = this.focus.view.browserSurface.resource
@@ -379,18 +377,30 @@ export default class BrowserPointer {
     }
 
     if (this.focus === event.target) {
+      this.mouseLeaveInternal()
+    }
+  }
+
+  mouseLeaveInternal () {
+    if (this.focus) {
       const surfaceResource = this.focus.view.browserSurface.resource
       surfaceResource.removeDestroyListener(this._focusDestroyListener)
 
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
-        // console.log('leave( %f, %s )', this.leaveSerial + 1, surfaceResource)
         pointerResource.leave(this._nextFocusSerial(), surfaceResource)
       })
-      this.focus.style.cursor = 'auto'
-      this.focus = null
+      this.setDefaultCursor()
       this._browserKeyboard.focusLost()
+      this.focus = null
+      this.grab = null
       this.view = null
+      this._btnDwnCount = 0
     }
+  }
+
+  setDefaultCursor () {
+    window.document.body.style.cursor = 'auto'
+    this.cursorBrowserSurface = null
   }
 
   _nextButtonSerial () {

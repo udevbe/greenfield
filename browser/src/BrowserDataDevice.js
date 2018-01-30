@@ -119,6 +119,8 @@ export default class BrowserDataDevice {
 
     this.dndSourceClient = resource.client
 
+    const dndFocus = browserPointer.focus
+    browserPointer.mouseLeaveInternal()
     if (icon !== null) {
       browserPointer.setCursorInternal(icon)
     }
@@ -140,13 +142,16 @@ export default class BrowserDataDevice {
       this.dndSource.addDestroyListener(this._dndSourceDestroyListener)
     }
 
-    const dndFocus = this.browserSeat.browserPointer.focus
     if (dndFocus) {
       this.onMouseEnter(dndFocus)
     }
   }
 
   onMouseMotion () {
+    if (!this._dndFocus) {
+      return
+    }
+
     const surfaceResource = this._dndFocus.view.browserSurface.resource
     const client = surfaceResource.client
 
@@ -237,7 +242,7 @@ export default class BrowserDataDevice {
     dataDeviceResource.leave()
   }
 
-  onMouseGrabLost () {
+  onMouseUp () {
     if (this.dndSource && this._dndFocus) {
       if (this.dndSource.implementation.accepted &&
         this.dndSource.implementation.currentDndAction) {
@@ -259,6 +264,13 @@ export default class BrowserDataDevice {
       }
     }
     this.dndSourceClient = null
+
+    const browserPointer = this.browserSeat.browserPointer
+    if (this._dndFocus) {
+      browserPointer.mouseEnterInternal(this._dndFocus)
+    } else {
+      browserPointer.setDefaultCursor()
+    }
   }
 
   // TODO handle touch events
