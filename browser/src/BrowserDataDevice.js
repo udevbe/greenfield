@@ -41,7 +41,7 @@ export default class BrowserDataDevice {
      * @type {Client}
      * @private
      */
-    this._dndSourceClient = null
+    this.dndSourceClient = null
     /**
      * @type {HTMLCanvasElement}
      * @private
@@ -58,13 +58,13 @@ export default class BrowserDataDevice {
 
   _handleDndSourceDestroy () {
     const dataDeviceResource = this.resources.find((dataDeviceResource) => {
-      return dataDeviceResource.client === this._dndSourceClient
+      return dataDeviceResource.client === this.dndSourceClient
     })
     if (dataDeviceResource == null) {
       return
     }
     dataDeviceResource.leave()
-    this._dndSourceClient = null
+    this.dndSourceClient = null
   }
 
   /**
@@ -117,7 +117,7 @@ export default class BrowserDataDevice {
       return
     }
 
-    this._dndSourceClient = resource.client
+    this.dndSourceClient = resource.client
 
     if (icon !== null) {
       browserPointer.setCursorInternal(icon)
@@ -147,15 +147,11 @@ export default class BrowserDataDevice {
   }
 
   onMouseMotion () {
-    if (!this._dndSourceClient) {
-      return
-    }
-
     const surfaceResource = this._dndFocus.view.browserSurface.resource
     const client = surfaceResource.client
 
     // if source is null, only transfers within the same client can take place
-    if (this.dndSource === null && client !== this._dndSourceClient) {
+    if (this.dndSource === null && client !== this.dndSourceClient) {
       return
     }
 
@@ -176,7 +172,7 @@ export default class BrowserDataDevice {
    */
   onMouseEnter (canvas) {
     this._dndFocus = canvas
-    if (!this._dndSourceClient) {
+    if (!this.dndSourceClient) {
       return
     }
 
@@ -184,7 +180,7 @@ export default class BrowserDataDevice {
     const client = surfaceResource.client
 
     // if source is null, only transfers within the same client can take place
-    if (this.dndSource === null && client !== this._dndSourceClient) {
+    if (this.dndSource === null && client !== this.dndSourceClient) {
       return
     }
 
@@ -223,7 +219,7 @@ export default class BrowserDataDevice {
    */
   onMouseLeave (canvas) {
     this._dndFocus = null
-    if (!this._dndSourceClient) {
+    if (!this.dndSourceClient) {
       return
     }
 
@@ -231,7 +227,7 @@ export default class BrowserDataDevice {
     const client = surfaceResource.client
 
     // if source is null, only transfers within the same client can take place
-    if (this.dndSource === null && client !== this._dndSourceClient) {
+    if (this.dndSource === null && client !== this.dndSourceClient) {
       return
     }
 
@@ -242,9 +238,6 @@ export default class BrowserDataDevice {
   }
 
   onMouseGrabLost () {
-    if (!this._dndSourceClient) {
-      return
-    }
     if (this.dndSource && this._dndFocus) {
       if (this.dndSource.implementation.accepted &&
         this.dndSource.implementation.currentDndAction) {
@@ -265,7 +258,7 @@ export default class BrowserDataDevice {
         this.dndSource.cancelled()
       }
     }
-    this._dndSourceClient = null
+    this.dndSourceClient = null
   }
 
   // TODO handle touch events

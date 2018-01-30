@@ -252,7 +252,11 @@ export default class BrowserPointer {
     this.x = event.clientX
     this.y = event.clientY
 
-    this._browserDataDevice.onMouseMotion()
+    if (this._browserDataDevice.dndSourceClient) {
+      this._browserDataDevice.onMouseMotion()
+      return
+    }
+
     this._mouseMoveListeners.forEach(listener => listener(event.target))
 
     if (this.focus) {
@@ -288,15 +292,19 @@ export default class BrowserPointer {
       return
     }
 
+    this._btnDwnCount--
+    if (this._btnDwnCount === 0) {
+      this.grab = null
+      if (this._browserDataDevice.dndSourceClient) {
+        this._browserDataDevice.onMouseGrabLost()
+        return
+      }
+    }
+
     const surfaceResource = this.focus.view.browserSurface.resource
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
       pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.released)
     })
-    this._btnDwnCount--
-    if (this._btnDwnCount === 0) {
-      this.grab = null
-      this._browserDataDevice.onMouseGrabLost()
-    }
   }
 
   /**
@@ -326,7 +334,10 @@ export default class BrowserPointer {
    * @param {MouseEvent}event
    */
   onMouseEnter (event) {
-    this._browserDataDevice.onMouseEnter(event.target)
+    if (this._browserDataDevice.dndSourceClient) {
+      this._browserDataDevice.onMouseEnter(event.target)
+      return
+    }
 
     if (this.grab) {
       return
@@ -358,7 +369,10 @@ export default class BrowserPointer {
    * @param {MouseEvent}event
    */
   onMouseLeave (event) {
-    this._browserDataDevice.onMouseLeave(event.target)
+    if (this._browserDataDevice.dndSourceClient) {
+      this._browserDataDevice.onMouseLeave(event.target)
+      return
+    }
 
     if (this.grab) {
       return
