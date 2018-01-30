@@ -44,7 +44,7 @@
     "fastcall": "0.2.4",
     "gstreamer-superficial": "^0.0.5",
     "socketwatcher": "0.3.0",
-    "wayland-server-bindings-runtime": "0.0.47",
+    "wayland-server-bindings-runtime": "0.0.48",
     "westfield-runtime-client": "0.0.17",
     "westfield-runtime-server": "0.0.17",
     "wrtc": "^0.0.65",
@@ -52,7 +52,7 @@
   },
   "devDependencies": {
     "standard": "^10.0.2",
-    "wayland-server-bindings-generator": "0.0.47",
+    "wayland-server-bindings-generator": "0.0.48",
     "webpack": "^3.10.0",
     "westfield-scanner-client": "0.0.17",
     "westfield-scanner-server": "0.0.17"
