@@ -96,8 +96,7 @@ export default class Renderer {
     const browserRtcDcBuffer = BrowserRtcBufferFactory.get(grBuffer)
     const bufferSize = this.bufferSize(grBuffer)
 
-    const drawSyncSerial = browserRtcDcBuffer.syncSerial
-    if (browserRtcDcBuffer.isComplete(drawSyncSerial)) {
+    if (browserRtcDcBuffer.isComplete()) {
       browserSurface.size = this.surfaceSize(browserSurface)
       browserSurface.bufferSize = bufferSize
 

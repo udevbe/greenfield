@@ -205,14 +205,11 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     }, 500)
 
     const dataChannel = await this.localRtcDcBuffer.localRtcBlobTransfer.open()
-    // make sure we don't send an old buffer
-    if (frame.synSerial >= this.synSerial) {
-      const frameBuffer = this._frameToBuffer(frame)
-      const bufferChunks = this._toBufferChunks(frameBuffer, frame.synSerial)
-      bufferChunks.forEach((chunk) => {
-        dataChannel.send(chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength))
-      })
-    }
+    const frameBuffer = this._frameToBuffer(frame)
+    const bufferChunks = this._toBufferChunks(frameBuffer, frame.synSerial)
+    bufferChunks.forEach((chunk) => {
+      dataChannel.send(chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength))
+    })
   }
 
   async commit (resource) {
@@ -228,8 +225,6 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     this.pendingBuffer = null
     // TODO handle destruction of committed buffer?
 
-    this.proxy.commit()
-
     if (this.buffer && this.localRtcDcBuffer) {
       this.buffer.addDestroyListener(this.bufferDestroyListener)
       this.localRtcDcBuffer.ack = (serial) => {
@@ -242,6 +237,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       const synSerial = this.synSerial
 
       this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
+      this.proxy.commit()
       const frame = await this.encodeBuffer(this.buffer, synSerial)
       this.sendFrame(frame)
     }
