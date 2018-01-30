@@ -15,22 +15,17 @@ module.exports = class LocalDataDevice {
     this._connection = connection
   }
 
-  dataOffer (id) {
+  dataOffer (grDataOfferProxy) {
     /*
      * This is a bit of a mess.
      *
      * The wayland protocol always makes the client initiate object creation...except for this case.
      *
-     * We need to create a proxy object in 'response' of a server (browser) side created data offer resource.
-     * Next we need to create a listener for this proxy.
+     * We need to create a listener for this proxy.
      * This listener must delegate it's events to the shim resource. Which we have to create first. By assigning
      * it an id '0', libwayland will know it's a server side create object. We then send the assigned id to the
      * client.
      */
-    const grDataOfferProxy = new greenfield.GrDataOffer(this._connection)
-    grDataOfferProxy._id = id
-    this._connection._objects.set(id, grDataOfferProxy)
-
     const localDataOffer = LocalDataOffer.create()
     grDataOfferProxy.listener = localDataOffer
 
