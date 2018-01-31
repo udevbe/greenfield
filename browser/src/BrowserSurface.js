@@ -201,8 +201,8 @@ export default class BrowserSurface {
    *
    */
   attach (resource, buffer, x, y) {
-    this.dx = x
-    this.dy = y
+    this._pendingDx = x
+    this._pendingDy = y
 
     if (this.pendingGrBuffer) {
       this.pendingGrBuffer.removeDestroyListener(this.pendingBrowserBufferDestroyListener)
@@ -415,9 +415,7 @@ export default class BrowserSurface {
     this.grBuffer = this.pendingGrBuffer
     this.pendingGrBuffer = null
     this.dx = this._pendingDx
-    this._pendingDx = 0
     this.dy = this._pendingDy
-    this._pendingDy = 0
 
     // FIXME properly handle null buffer
 

@@ -90,11 +90,20 @@ export default class BrowserPointer {
 
     this._mouseMoveListeners = []
 
-    this.cursorBrowserSurface = null
+    this._hotspotX = 0
+    this._hotspotY = 0
+    this._drawListener = (cursorSurfaceView) => {
+      this._uploadCursor(cursorSurfaceView)
+    }
     /**
      * @type {BrowserSurfaceView}
      */
     this.view = null
+  }
+
+  onCommit (browserSurface) {
+    this._hotspotX -= browserSurface.dx
+    this._hotspotY -= browserSurface.dy
   }
 
   /**
@@ -145,26 +154,24 @@ export default class BrowserPointer {
     if (serial !== this.focusSerial) {
       return
     }
-
-    this.hotspotX = hotspotX
-    this.hotspotY = hotspotY
-
-    this.setCursorInternal(surface)
-  }
-
-  /**
-   * @param {BrowserSurface}browserSurface
-   */
-  onCommit (browserSurface) {
-    this.hotspotX = this.hotspotX - browserSurface.dx
-    this.hotspotY = this.hotspotY - browserSurface.dy
-    // cursor will be updated when draw listener fires
+    this.setCursorInternal(surface, hotspotX, hotspotY)
   }
 
   /**
    * @param {GrSurface|null}surface
+   * @param {Number} hotspotX surface-local x coordinate
+   * @param {Number} hotspotY surface-local y coordinate
    */
-  setCursorInternal (surface) {
+  setCursorInternal (surface, hotspotX, hotspotY) {
+    this._hotspotX = hotspotX
+    this._hotspotY = hotspotY
+
+    if (this.view) {
+      this.view.removeDrawListener(this._drawListener)
+      this.view.destroy()
+      this.view = null
+    }
+
     if (surface) {
       const browserSurface = surface.implementation
       if (browserSurface.role && browserSurface.role !== this) {
@@ -176,31 +183,22 @@ export default class BrowserPointer {
       browserSurface.inputRegion = null
       browserSurface._pendingInputRegion = null
 
-      if (this.view) {
-        this.view.destroy()
-      }
-
-      this.cursorBrowserSurface = browserSurface
       this.view = browserSurface.createView()
+      this.view.addDrawListener(this._drawListener)
 
       const cursorView = this.view
-
-      const drawListener = (cursorSurfaceView) => {
-        if (browserSurface === this.cursorBrowserSurface) {
-          window.document.body.style.cursor = 'url("' + cursorSurfaceView.canvas.toDataURL() + '") ' + (this.hotspotX) + ' ' + (this.hotspotY) + ' , pointer'
-        } else {
-          cursorView.removeDrawListener(drawListener)
-        }
-      }
-      this.view.addDrawListener(drawListener)
       this.view.onDestroy().then(() => {
-        cursorView.removeDrawListener(drawListener)
+        cursorView.removeDrawListener(this._drawListener)
       })
 
-      window.document.body.style.cursor = 'url("' + this.view.canvas.toDataURL() + '") ' + (this.hotspotX) + ' ' + (this.hotspotY) + ' , pointer'
+      this._uploadCursor(this.view)
     } else {
       window.document.body.style.cursor = 'none'
     }
+  }
+
+  _uploadCursor (cursorSurfaceView) {
+    window.document.body.style.cursor = 'url("' + cursorSurfaceView.canvas.toDataURL() + '") ' + (this._hotspotX) + ' ' + (this._hotspotY) + ' , pointer'
   }
 
   /**
@@ -323,7 +321,6 @@ export default class BrowserPointer {
     this._btnDwnCount++
     const surfaceResource = this.focus.view.browserSurface.resource
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
-      // console.log('button( %f, %f, %f, %s )', this.buttonSerial + 1, event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.pressed)
       pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.pressed)
     })
   }

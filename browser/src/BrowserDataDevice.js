@@ -122,7 +122,7 @@ export default class BrowserDataDevice {
     const dndFocus = browserPointer.focus
     browserPointer.mouseLeaveInternal()
     if (icon !== null) {
-      browserPointer.setCursorInternal(icon)
+      browserPointer.setCursorInternal(icon, 0, 0)
     }
 
     /*
@@ -132,9 +132,6 @@ export default class BrowserDataDevice {
      */
     if (this.dndSource) {
       this.dndSource.removeDestroyListener(this._dndSourceDestroyListener)
-      if (source && this.dndSource.version <= 2) {
-        this.dndSource.cancelled()
-      }
     }
 
     this.dndSource = source
@@ -313,9 +310,7 @@ export default class BrowserDataDevice {
        * For objects of version 2 or older, gr_data_source.cancelled will only be emitted if the data source was
        * replaced by another data source.
        */
-      if (source && this.selectionSource.version <= 2) {
-        this.selectionSource.cancelled()
-      }
+      this.selectionSource.cancelled()
     }
 
     this.selectionSource = source
