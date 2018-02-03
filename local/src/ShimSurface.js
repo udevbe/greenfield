@@ -6,7 +6,7 @@ const WlSurfaceRequests = require('./protocol/wayland/WlSurfaceRequests')
 const WlCallback = require('./protocol/wayland/WlCallback')
 const LocalCallback = require('./LocalCallback')
 const ShimCallback = require('./ShimCallback')
-const H264Encoder = require('./H264Encoder')
+const Encoder = require('./Encoder')
 
 module.exports = class ShimSurface extends WlSurfaceRequests {
   /**
@@ -33,7 +33,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     this.buffer = null
     this.synSerial = 0
     this.ackSerial = 0
-    this._h264Encoder = null
+    this._encoder = Encoder.create()
 
     // use a single buffer to communicate with the browser. Contents of the buffer will be copied when send.
     this.localRtcDcBuffer = this.rtcBufferFactory.createLocalRtcDcBuffer()
@@ -90,72 +90,29 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     this.proxy.setInputRegion(regionProxy)
   }
 
-  encodeBuffer (buffer, synSerial) {
-    return new Promise((resolve, reject) => {
-      const shm = Shm.get(buffer)
-      if (shm === null) {
-        reject(new Error('Unsupported buffer format.'))
-      }
+  _encodeBuffer (buffer, synSerial) {
+    const shm = Shm.get(buffer)
+    if (shm === null) {
+      // FIXME protocol error & disconnect client
+      throw new Error('Unsupported buffer format.')
+    }
 
-      const bufferWidth = shm.getWidth()
-      const bufferHeight = shm.getHeight()
+    const bufferWidth = shm.getWidth()
+    const bufferHeight = shm.getHeight()
+    const pixelBuffer = shm.getData().reinterpret(bufferWidth * bufferHeight * 4)
 
-      const pixelBuffer = shm.getData().reinterpret(bufferWidth * bufferHeight * 4)
-
-      // TODO how to dynamically update the pipeline video resolution?
-      if (!this._h264Encoder || this._h264Encoder.width !== bufferWidth || this._h264Encoder.height !== bufferHeight) {
-        this._h264Encoder = H264Encoder.create(bufferWidth, bufferHeight)
-        // FIXME derive fromat from actual shm format
-        this._h264Encoder.src.setCapsFromString('video/x-raw,format=BGRA,width=' + bufferWidth + ',height=' + bufferHeight)
-        this._h264Encoder.pipeline.play()
-      }
-
-      this._h264Encoder.src.push(pixelBuffer)
-
-      const frame = {
-        width: bufferWidth,
-        height: bufferHeight,
-        synSerial: synSerial,
-        opaque: null,
-        alpha: null
-      }
-
-      // FIXME check buffer format if alpha is required. If not, use an empty buffer instead.
-
-      this._h264Encoder.sink.pull((opaqueH264Nal) => {
-        if (opaqueH264Nal) {
-          frame.opaque = opaqueH264Nal
-          if (frame.opaque && frame.alpha) {
-            resolve(frame)
-          }
-        } else {
-          // TODO error?
-          console.log('pulled empty buffer')
-        }
-      })
-
-      this._h264Encoder.alpha.pull((alphaH264Nal) => {
-        if (alphaH264Nal) {
-          frame.alpha = alphaH264Nal
-          if (frame.opaque && frame.alpha) {
-            resolve(frame)
-          }
-        } else {
-          // TODO error?
-          console.log('pulled empty buffer')
-        }
-      })
-    })
+    return this._encoder.encodeBuffer(pixelBuffer, bufferWidth, bufferHeight, synSerial)
   }
 
   _frameToBuffer (frame) {
-    const header = Buffer.allocUnsafe(12)
+    const header = Buffer.allocUnsafe(13)
     const frameBuffer = Buffer.concat([header, frame.opaque, frame.alpha], header.length + frame.opaque.length + frame.alpha.length)
 
     frameBuffer.writeUInt32BE(header.length + frame.opaque.length, 0, true) // alpha offset
     frameBuffer.writeUInt16BE(frame.width, 4, true) // buffer width
     frameBuffer.writeUInt16BE(frame.height, 6, true) // buffer height
     frameBuffer.writeUInt32BE(frame.synSerial, 8, true) // frame serial
+    frameBuffer.writeUInt8(frame.type, 12, true) // frame type
 
     return frameBuffer
   }
@@ -238,7 +195,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
 
       this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
       this.proxy.commit()
-      const frame = await this.encodeBuffer(this.buffer, synSerial)
+      const frame = await this._encodeBuffer(this.buffer, synSerial)
       this.sendFrame(frame)
     }
   }

@@ -11,41 +11,7 @@ export default class BrowserRtcDcBuffer {
    * @returns {BrowserRtcDcBuffer}
    */
   static create (grBufferResource, rtcDcBufferResource, blobTransferResource) {
-    const decoder = new window.Worker('./lib/broadway/Decoder.js')
-
-    const alphaDecoder = new window.Worker('./lib/broadway/Decoder.js')
-    const browserRtcDcBuffer = new BrowserRtcDcBuffer(decoder, alphaDecoder, rtcDcBufferResource, blobTransferResource)
-
-    decoder.addEventListener('message', function (e) {
-      const data = e.data
-      if (data.consoleLog) {
-        console.log(data.consoleLog)
-        return
-      }
-      browserRtcDcBuffer._onPictureDecoded(new Uint8Array(data.buf, 0, data.length), data.width, data.height)
-    }, false)
-    decoder.postMessage({
-      type: 'Broadway.js - Worker init',
-      options: {
-        rgb: false,
-        reuseMemory: true
-      }
-    })
-    alphaDecoder.addEventListener('message', function (e) {
-      const data = e.data
-      if (data.consoleLog) {
-        console.log(data.consoleLog)
-        return
-      }
-      browserRtcDcBuffer._onAlphaPictureDecoded(new Uint8Array(data.buf, 0, data.length), data.width, data.height)
-    }, false)
-    alphaDecoder.postMessage({
-      type: 'Broadway.js - Worker init',
-      options: {
-        rgb: false,
-        reuseMemory: true
-      }
-    })
+    const browserRtcDcBuffer = new BrowserRtcDcBuffer(rtcDcBufferResource, blobTransferResource)
 
     rtcDcBufferResource.implementation = browserRtcDcBuffer
     grBufferResource.implementation.browserRtcDcBuffer = browserRtcDcBuffer
@@ -62,15 +28,13 @@ export default class BrowserRtcDcBuffer {
    * Instead use BrowserRtcDcBuffer.create(..)
    *
    * @private
-   * @param decoder
-   * @param alphaDecoder
    * @param {RtcDcBuffer} rtcDcBufferResource
    * @param {GrBlobTransfer} blobTransferResource
    */
-  constructor (decoder, alphaDecoder, rtcDcBufferResource, blobTransferResource) {
-    this.decoder = decoder
+  constructor (rtcDcBufferResource, blobTransferResource) {
+    this.decoder = null
     this._decodingSerialsQueue = []
-    this.alphaDecoder = alphaDecoder
+    this.alphaDecoder = null
     this._decodingAlphaSerialsQueue = []
 
     this.resource = rtcDcBufferResource
@@ -90,6 +54,44 @@ export default class BrowserRtcDcBuffer {
     this.alphaYuvContent = null
     this.alphaYuvWidth = 0
     this.alphaYuvHeight = 0
+
+    this.pngContent = null
+  }
+
+  _initH264Decoders () {
+    const decoder = new window.Worker('./lib/broadway/Decoder.js')
+    const alphaDecoder = new window.Worker('./lib/broadway/Decoder.js')
+
+    decoder.addEventListener('message', function (e) {
+      const data = e.data
+      if (data.consoleLog) {
+        console.log(data.consoleLog)
+        return
+      }
+      this._onPictureDecoded(new Uint8Array(data.buf, 0, data.length), data.width, data.height)
+    }, false)
+    decoder.postMessage({
+      type: 'Broadway.js - Worker init',
+      options: {
+        rgb: false,
+        reuseMemory: true
+      }
+    })
+    alphaDecoder.addEventListener('message', function (e) {
+      const data = e.data
+      if (data.consoleLog) {
+        console.log(data.consoleLog)
+        return
+      }
+      this._onAlphaPictureDecoded(new Uint8Array(data.buf, 0, data.length), data.width, data.height)
+    }, false)
+    alphaDecoder.postMessage({
+      type: 'Broadway.js - Worker init',
+      options: {
+        rgb: false,
+        reuseMemory: true
+      }
+    })
   }
 
   /**
@@ -160,19 +162,21 @@ export default class BrowserRtcDcBuffer {
 
     if (this._frameStates[serial] && this._frameStates[serial].frame) {
       // state already exists, this means the contents arrived before this call, which means we can now decode it
-      this._frameStateComplete(serial)
+      this._frameStateComplete(this._frameStates[serial].frame, serial)
     } else {
       // state does not exist yet, create a new state and wait for contents to arrive
       this._newFrameState(serial)
     }
   }
 
-  _frameStateComplete (serial) {
-    this._decodingSerialsQueue.push(serial)
-    this._decodingAlphaSerialsQueue.push(serial)
-    const frame = this._frameStates[serial].frame
+  _frameStateComplete (frame, serial) {
     this._frameStates[serial].geo = Size.create(frame.bufferWidth, frame.bufferHeight)
-    this._decode(frame)
+
+    if (frame.type === 'h264') {
+      this._decodeH264(frame, serial)
+    } else {
+      this._decodePNG(frame, serial)
+    }
   }
 
   /**
@@ -183,7 +187,7 @@ export default class BrowserRtcDcBuffer {
     if (this._frameStates[frame.synSerial]) {
       // state already exists, this means the syn call arrived before this call, which means we can now decode it
       this._frameStates[frame.synSerial].frame = frame
-      this._frameStateComplete(frame.synSerial)
+      this._frameStateComplete(frame, frame.synSerial)
     } else if (frame.synSerial >= this._lastCompleteSerial) {
       // state does not exist yet, create a new state and wait for contents to arrive
       this._newFrameState(frame.synSerial).frame = frame
@@ -247,12 +251,13 @@ export default class BrowserRtcDcBuffer {
   _onError (event) {}
 
   _parseFrameBuffer (frameBuffer) {
-    const headerSize = 12
+    const headerSize = 13
     const header = new DataView(frameBuffer, 0, headerSize)
     const alphaOffset = header.getUint32(0, false)
     const bufferWidth = header.getUint16(4, false)
     const bufferHeight = header.getUint16(6, false)
     const synSerial = header.getUint32(8, false)
+    const type = header.getUint8(12)
 
     const opaque = new Uint8Array(frameBuffer, headerSize, alphaOffset)
     const alpha = frameBuffer.byteLength === alphaOffset ? null : new Uint8Array(frameBuffer, alphaOffset)
@@ -264,11 +269,21 @@ export default class BrowserRtcDcBuffer {
       bufferHeight: bufferHeight,
       synSerial: synSerial,
       opaque: opaque,
-      alpha: alpha
+      alpha: alpha,
+      type: type === 0 ? 'h264' : 'png'
     }
   }
 
-  _decode (frame) {
+  _decodePNG (frame, serial) {
+    // decode might not be the best name, as we're not doing any decoding.
+    this.pngContent = frame.opaque
+    this._onComplete(serial)
+  }
+
+  _decodeH264 (frame, serial) {
+    this._decodingSerialsQueue.push(serial)
+    this._decodingAlphaSerialsQueue.push(serial)
+
     if (frame.alpha) {
       // create a copy of the arraybuffer so we can zero-copy the opaque part (after zero-copying, we can no longer use the underlying array in any way)
       const alphaH264Nal = new Uint8Array(frame.alpha.slice())
