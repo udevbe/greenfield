@@ -33,7 +33,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     this.buffer = null
     this.synSerial = 0
     this.ackSerial = 0
-    this.h264Encoder = null
+    this._h264Encoder = null
 
     // use a single buffer to communicate with the browser. Contents of the buffer will be copied when send.
     this.localRtcDcBuffer = this.rtcBufferFactory.createLocalRtcDcBuffer()
@@ -103,14 +103,14 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       const pixelBuffer = shm.getData().reinterpret(bufferWidth * bufferHeight * 4)
 
       // TODO how to dynamically update the pipeline video resolution?
-      if (!this.h264Encoder || this.h264Encoder.width !== bufferWidth || this.h264Encoder.height !== bufferHeight) {
-        this.h264Encoder = H264Encoder.create(bufferWidth, bufferHeight)
+      if (!this._h264Encoder || this._h264Encoder.width !== bufferWidth || this._h264Encoder.height !== bufferHeight) {
+        this._h264Encoder = H264Encoder.create(bufferWidth, bufferHeight)
         // FIXME derive fromat from actual shm format
-        this.h264Encoder.src.setCapsFromString('video/x-raw,format=BGRA,width=' + bufferWidth + ',height=' + bufferHeight)
-        this.h264Encoder.pipeline.play()
+        this._h264Encoder.src.setCapsFromString('video/x-raw,format=BGRA,width=' + bufferWidth + ',height=' + bufferHeight)
+        this._h264Encoder.pipeline.play()
       }
 
-      this.h264Encoder.src.push(pixelBuffer)
+      this._h264Encoder.src.push(pixelBuffer)
 
       const frame = {
         width: bufferWidth,
@@ -122,7 +122,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
 
       // FIXME check buffer format if alpha is required. If not, use an empty buffer instead.
 
-      this.h264Encoder.sink.pull((opaqueH264Nal) => {
+      this._h264Encoder.sink.pull((opaqueH264Nal) => {
         if (opaqueH264Nal) {
           frame.opaque = opaqueH264Nal
           if (frame.opaque && frame.alpha) {
@@ -134,7 +134,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
         }
       })
 
-      this.h264Encoder.alpha.pull((alphaH264Nal) => {
+      this._h264Encoder.alpha.pull((alphaH264Nal) => {
         if (alphaH264Nal) {
           frame.alpha = alphaH264Nal
           if (frame.opaque && frame.alpha) {

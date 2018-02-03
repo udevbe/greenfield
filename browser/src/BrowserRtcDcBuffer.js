@@ -326,5 +326,9 @@ export default class BrowserRtcDcBuffer {
   destroy () {
     this._blobTransferResource.release()
     this.resource = null
+    this.decoder.terminate()
+    this.alphaDecoder.terminate()
+    this.decoder = null
+    this.alphaDecoder = null
   }
 }

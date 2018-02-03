@@ -52,6 +52,7 @@ export default class BrowserSurface {
     )
     grSurfaceResource.implementation = browserSurface
     grSurfaceResource.onDestroy().then(() => browserSurface._handleDestruction())
+    browserSurface.defaultSurfaceView = browserSurface.createView()
 
     return browserSurface
   }
@@ -68,9 +69,15 @@ export default class BrowserSurface {
    * @param {BrowserSession} browserSession
    */
   constructor (grSurfaceResource, renderer, damageRegion, bufferDamageRegion, bufferDamage, browserSeat, browserSession) {
+    /**
+     * @type {GrSurface}
+     */
     this.resource = grSurfaceResource
 
     this.renderer = renderer
+    /**
+     * @type {ViewState}
+     */
     this.renderState = null
 
     this.pendingGrBuffer = null
@@ -103,6 +110,10 @@ export default class BrowserSurface {
     this.bufferSize = Size.create(0, 0)
 
     this.browserSurfaceViews = []
+    /**
+     * @type {BrowserSurfaceView}
+     */
+    this.defaultSurfaceView = null
 
     this.browserSeat = browserSeat
     this.browserSession = browserSession

@@ -13,6 +13,7 @@ export default class BrowserSurfaceView {
     const context2d = canvas.getContext('2d')
     const browserSurfaceView = new BrowserSurfaceView(canvas, context2d, browserSurface)
     canvas.view = browserSurfaceView
+    browserSurfaceView._armDrawPromise()
     return browserSurfaceView
   }
 
@@ -52,6 +53,19 @@ export default class BrowserSurfaceView {
     this.browserSurface = browserSurface
     this._drawListeners = []
 
+    /**
+     *
+     * @type {Function}
+     * @private
+     */
+    this._drawResolve = null
+    /**
+     *
+     * @type {Promise}
+     * @private
+     */
+    this._drawPromise = null
+
     const browserPointer = this.browserSurface.browserSeat.browserPointer
     const browserSession = this.browserSurface.browserSession
     this._mouseEnterListener = browserSession.eventSource((event) => {
@@ -72,9 +86,26 @@ export default class BrowserSurfaceView {
     this.canvas.width = sourceCanvas.width
     this.canvas.height = sourceCanvas.height
     this.context2d.drawImage(sourceCanvas, 0, 0)
+    this._drawResolve(this)
     this._drawListeners.forEach(listener => {
       listener(this)
     })
+    this._armDrawPromise()
+  }
+
+  _armDrawPromise () {
+    this._drawResolve = null
+    this._drawPromise = new Promise((resolve) => {
+      this._drawResolve = resolve
+    })
+  }
+
+  /**
+   * One shot draw promise.
+   * @return {Promise}
+   */
+  onDraw () {
+    return this._drawPromise
   }
 
   addDrawListener (listener) {
