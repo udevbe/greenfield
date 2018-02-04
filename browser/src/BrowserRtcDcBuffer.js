@@ -32,29 +32,65 @@ export default class BrowserRtcDcBuffer {
    * @param {GrBlobTransfer} blobTransferResource
    */
   constructor (rtcDcBufferResource, blobTransferResource) {
-    this.decoder = null
+    this._decoder = null
     this._decodingSerialsQueue = []
-    this.alphaDecoder = null
+    this._alphaDecoder = null
     this._decodingAlphaSerialsQueue = []
 
+    /**
+     * @type {RtcDcBuffer}
+     */
     this.resource = rtcDcBufferResource
     this._blobTransferResource = blobTransferResource
+    /**
+     * @type {number}
+     */
     this.syncSerial = 0
     this._lastCompleteSerial = 0
 
+    /**
+     * @type {Size}
+     */
     this.geo = Size.create(0, 0)
 
     this._frameStates = {}
     this._frameChunks = {}
 
+    /**
+     * 'h264' or 'png'
+     * @type {string}
+     */
+    this.type = null
+
+    /**
+     * @type {Uint8Array}
+     */
     this.yuvContent = null
+    /**
+     * @type {number}
+     */
     this.yuvWidth = 0
+    /**
+     * @type {number}
+     */
     this.yuvHeight = 0
 
+    /**
+     * @type {Uint8Array}
+     */
     this.alphaYuvContent = null
+    /**
+     * @type {number}
+     */
     this.alphaYuvWidth = 0
+    /**
+     * @type {number}
+     */
     this.alphaYuvHeight = 0
 
+    /**
+     * @type {Uint8Array}
+     */
     this.pngContent = null
   }
 
@@ -62,8 +98,8 @@ export default class BrowserRtcDcBuffer {
     const decoder = new window.Worker('./lib/broadway/Decoder.js')
     const alphaDecoder = new window.Worker('./lib/broadway/Decoder.js')
 
-    decoder.addEventListener('message', function (e) {
-      const data = e.data
+    decoder.addEventListener('message', (event) => {
+      const data = event.data
       if (data.consoleLog) {
         console.log(data.consoleLog)
         return
@@ -77,8 +113,8 @@ export default class BrowserRtcDcBuffer {
         reuseMemory: true
       }
     })
-    alphaDecoder.addEventListener('message', function (e) {
-      const data = e.data
+    alphaDecoder.addEventListener('message', (event) => {
+      const data = event.data
       if (data.consoleLog) {
         console.log(data.consoleLog)
         return
@@ -92,6 +128,9 @@ export default class BrowserRtcDcBuffer {
         reuseMemory: true
       }
     })
+
+    this._decoder = decoder
+    this._alphaDecoder = alphaDecoder
   }
 
   /**
@@ -250,6 +289,11 @@ export default class BrowserRtcDcBuffer {
 
   _onError (event) {}
 
+  /**
+   * @param {ArrayBuffer}frameBuffer
+   * @return {{length: number, alphaOffset: number, bufferWidth: number, bufferHeight: number, synSerial: number, opaque: Uint8Array, alpha: *, type: string}}
+   * @private
+   */
   _parseFrameBuffer (frameBuffer) {
     const headerSize = 13
     const header = new DataView(frameBuffer, 0, headerSize)
@@ -259,7 +303,12 @@ export default class BrowserRtcDcBuffer {
     const synSerial = header.getUint32(8, false)
     const type = header.getUint8(12)
 
-    const opaque = new Uint8Array(frameBuffer, headerSize, alphaOffset)
+    let opaque = null
+    if (frameBuffer.byteLength === alphaOffset) {
+      opaque = new Uint8Array(frameBuffer, headerSize)
+    } else {
+      opaque = new Uint8Array(frameBuffer, headerSize, alphaOffset)
+    }
     const alpha = frameBuffer.byteLength === alphaOffset ? null : new Uint8Array(frameBuffer, alphaOffset)
 
     return {
@@ -276,18 +325,28 @@ export default class BrowserRtcDcBuffer {
 
   _decodePNG (frame, serial) {
     // decode might not be the best name, as we're not doing any decoding.
+    if (this._decoder) {
+      // FIXME a h264 decode might still be in progress, how to properly handle this?
+      this._destroyH264()
+    }
+
     this.pngContent = frame.opaque
+    this.type = 'png'
     this._onComplete(serial)
   }
 
   _decodeH264 (frame, serial) {
+    if (!this._decoder) {
+      this._initH264Decoders()
+    }
+
     this._decodingSerialsQueue.push(serial)
     this._decodingAlphaSerialsQueue.push(serial)
 
     if (frame.alpha) {
       // create a copy of the arraybuffer so we can zero-copy the opaque part (after zero-copying, we can no longer use the underlying array in any way)
       const alphaH264Nal = new Uint8Array(frame.alpha.slice())
-      this.alphaDecoder.postMessage({
+      this._alphaDecoder.postMessage({
         buf: alphaH264Nal.buffer,
         offset: alphaH264Nal.byteOffset,
         length: alphaH264Nal.length
@@ -297,7 +356,7 @@ export default class BrowserRtcDcBuffer {
     }
 
     const opaqueH264Nal = new Uint8Array(frame.opaque)
-    this.decoder.postMessage({
+    this._decoder.postMessage({
       buf: opaqueH264Nal.buffer,
       offset: opaqueH264Nal.byteOffset,
       length: opaqueH264Nal.length
@@ -310,11 +369,12 @@ export default class BrowserRtcDcBuffer {
     this.yuvHeight = height
 
     const frameSerial = this._decodingSerialsQueue.shift()
-    if (frameSerial < this._lastCompleteSerial) {
+    if (!frameSerial || frameSerial < this._lastCompleteSerial) {
       return
     }
 
     if (this._frameStates[frameSerial].state === 'pending_opaque') {
+      this.type = 'h264'
       this._onComplete(frameSerial)
     } else {
       this._frameStates[frameSerial].state = 'pending_alpha'
@@ -327,11 +387,12 @@ export default class BrowserRtcDcBuffer {
     this.alphaYuvHeight = height
 
     const frameSerial = this._decodingAlphaSerialsQueue.shift()
-    if (frameSerial < this._lastCompleteSerial) {
+    if (!frameSerial || frameSerial < this._lastCompleteSerial) {
       return
     }
 
     if (this._frameStates[frameSerial].state === 'pending_alpha') {
+      this.type = 'h264'
       this._onComplete(frameSerial)
     } else {
       this._frameStates[frameSerial].state = 'pending_opaque'
@@ -341,9 +402,19 @@ export default class BrowserRtcDcBuffer {
   destroy () {
     this._blobTransferResource.release()
     this.resource = null
-    this.decoder.terminate()
-    this.alphaDecoder.terminate()
-    this.decoder = null
-    this.alphaDecoder = null
+    this._destroyH264()
+  }
+
+  _destroyH264 () {
+    if (this._decoder) {
+      this._decoder.terminate()
+      this._decoder = null
+    }
+    if (this._alphaDecoder) {
+      this._alphaDecoder.terminate()
+      this._alphaDecoder = null
+    }
+    this._decodingSerialsQueue = []
+    this._decodingAlphaSerialsQueue = []
   }
 }

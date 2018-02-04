@@ -13,7 +13,8 @@ export default class ViewState {
     const UTexture = Texture.create(gl, gl.LUMINANCE)
     const VTexture = Texture.create(gl, gl.LUMINANCE)
     const alphaYTexture = Texture.create(gl, gl.LUMINANCE)
-    return new ViewState(gl, YTexture, UTexture, VTexture, alphaYTexture)
+    const pngImg = new window.Image()
+    return new ViewState(gl, YTexture, UTexture, VTexture, alphaYTexture, pngImg)
   }
 
   /**
@@ -23,13 +24,15 @@ export default class ViewState {
    * @param UTexture
    * @param VTexture
    * @param alphaYTexture
+   * @param pngImage
    */
-  constructor (gl, YTexture, UTexture, VTexture, alphaYTexture) {
+  constructor (gl, YTexture, UTexture, VTexture, alphaYTexture, pngImage) {
     this.yTexture = YTexture
     this.uTexture = UTexture
     this.vTexture = VTexture
     this.alphaYTexture = alphaYTexture
     this.gl = gl
+    this.pngImage = pngImage
   }
 
   /**
@@ -37,6 +40,14 @@ export default class ViewState {
    * @param {BrowserRtcDcBuffer}browserRtcDcBuffer
    */
   update (browserRtcDcBuffer) {
+    // if (browserRtcDcBuffer.type === 'h264') {
+    this._updateH264(browserRtcDcBuffer)
+    // } else { // if(type === 'png')
+    //   await this._updatePNG(browserRtcDcBuffer)
+    // }
+  }
+
+  _updateH264 (browserRtcDcBuffer) {
     const opaqueBuffer = browserRtcDcBuffer.yuvContent
     if (!opaqueBuffer) { return }
 
@@ -58,6 +69,18 @@ export default class ViewState {
 
       this.alphaYTexture.fill(alphaBuffer.subarray(0, alphaLumaSize), browserRtcDcBuffer.geo, alphaWidth)
     }
+  }
+
+  _updatePNG (browserRtcDcBuffer) {
+    return new Promise((resolve) => {
+      const pngArray = browserRtcDcBuffer.pngContent
+      const pngBlob = new window.Blob([pngArray], {'type': 'image/png'})
+      const pngBlobURL = window.URL.createObjectURL(pngBlob)
+      this.pngImage.onload = () => {
+        resolve()
+      }
+      this.pngImage.src = pngBlobURL
+    })
   }
 
   // TODO handle state destruction

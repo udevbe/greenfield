@@ -1,6 +1,7 @@
 'use strict'
 
 const H264Encoder = require('./H264Encoder')
+const PNGEncoder = require('./PNGEncoder')
 
 module.exports = class Encoder {
   static create () {
@@ -31,7 +32,7 @@ module.exports = class Encoder {
   _encodeBufferPNG (pixelBuffer, bufferWidth, bufferHeight, synSerial) {
     return new Promise((resolve, reject) => {
       if (!this._pngEncoder) {
-        this._pngEncoder = this._pngEncoder.create(bufferWidth, bufferHeight)
+        this._pngEncoder = PNGEncoder.create(bufferWidth, bufferHeight)
         // FIXME derive fromat from actual shm format
         this._pngEncoder.src.setCapsFromString('video/x-raw,format=BGRA,width=' + bufferWidth + ',height=' + bufferHeight)
         this._pngEncoder.pipeline.play()

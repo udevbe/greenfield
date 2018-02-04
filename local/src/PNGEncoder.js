@@ -3,6 +3,11 @@
 const gstreamer = require('gstreamer-superficial')
 
 module.exports = class PNGEncoder {
+  /**
+   * @param {number}width
+   * @param {number}height
+   * @return {module.PNGEncoder}
+   */
   static create (width, height) {
     const pipeline = new gstreamer.Pipeline(
       'appsrc name=source ! ' +
@@ -18,6 +23,7 @@ module.exports = class PNGEncoder {
   constructor (pipeline, appsink, appsrc, width, height) {
     this.pipeline = pipeline
     this.sink = appsink
+    this.src = appsrc
     this.width = width
     this.height = height
   }
