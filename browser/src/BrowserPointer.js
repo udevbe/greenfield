@@ -114,7 +114,9 @@ export default class BrowserPointer {
     const hotspotY = this.hotspotY
 
     browserSurface.defaultSurfaceView.onDraw().then((browserSurfaceView) => {
-      this._uploadCursor(browserSurfaceView, hotspotX, hotspotY)
+      if (browserSurface.role) {
+        this._uploadCursor(browserSurfaceView, hotspotX, hotspotY)
+      }
     })
   }
 
@@ -163,6 +165,9 @@ export default class BrowserPointer {
    *
    */
   setCursor (resource, serial, surface, hotspotX, hotspotY) {
+    if (this._browserDataDevice.dndSourceClient) {
+      return
+    }
     if (serial !== this.focusSerial) {
       return
     }
@@ -180,6 +185,7 @@ export default class BrowserPointer {
 
     if (this._cursorSurface) {
       this._cursorSurface.removeDestroyListener(this._cursorDestroyListener)
+      this._cursorSurface.implementation.role = null
     }
     this._cursorSurface = surface
 
@@ -200,7 +206,8 @@ export default class BrowserPointer {
   }
 
   _uploadCursor (cursorSurfaceView, hotspotX, hotspotY) {
-    window.document.body.style.cursor = 'url("' + cursorSurfaceView.canvas.toDataURL() + '") ' + (hotspotX) + ' ' + (hotspotY) + ' , pointer'
+    const dataURL = cursorSurfaceView.canvas.toDataURL()
+    window.document.body.style.cursor = 'url("' + dataURL + '") ' + (hotspotX) + ' ' + (hotspotY) + ', pointer'
   }
 
   /**
@@ -377,6 +384,7 @@ export default class BrowserPointer {
 
     if (this.focus === event.target) {
       this.mouseLeaveInternal()
+      this.setDefaultCursor()
     }
   }
 
@@ -388,18 +396,20 @@ export default class BrowserPointer {
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
         pointerResource.leave(this._nextFocusSerial(), surfaceResource)
       })
-      this.setDefaultCursor()
       this._browserKeyboard.focusLost()
       this.focus = null
       this.grab = null
       this.view = null
       this._btnDwnCount = 0
+      if (this._cursorSurface) {
+        this._cursorSurface.implementation.role = null
+        this._cursorSurface = null
+      }
     }
   }
 
   setDefaultCursor () {
     window.document.body.style.cursor = 'auto'
-    this.cursorBrowserSurface = null
   }
 
   _nextButtonSerial () {
