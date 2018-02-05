@@ -119,12 +119,17 @@ export default class Renderer {
 
     // paint the textures
     if (browserSurface.renderState) {
-      this._paint(browserSurface.renderState, browserRtcDcBuffer.geo)
-
-      // blit rendered texture into view canvas
-      browserSurface.browserSurfaceViews.forEach((view) => {
-        view.draw(this.canvas)
-      })
+      if (browserRtcDcBuffer.type === 'h264') {
+        this._paint(browserSurface.renderState, browserRtcDcBuffer.geo)
+        // blit rendered texture into view canvas
+        browserSurface.browserSurfaceViews.forEach((view) => {
+          view.drawCanvas(this.canvas)
+        })
+      } else { // if (browserRtcDcBuffer.type === 'png')
+        browserSurface.browserSurfaceViews.forEach((view) => {
+          view.drawPNG(browserSurface.renderState.pngImage)
+        })
+      }
     }
   }
 

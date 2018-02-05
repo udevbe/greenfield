@@ -194,8 +194,6 @@ export default class BrowserPointer {
       browserSurface.role = this
       browserSurface.inputRegion = null
       browserSurface._pendingInputRegion = null
-
-      // this._uploadCursor(browserSurface.defaultSurfaceView, hotspotX, hotspotY)
     } else {
       window.document.body.style.cursor = 'none'
     }

@@ -82,10 +82,24 @@ export default class BrowserSurfaceView {
     })
   }
 
-  draw (sourceCanvas) {
-    this.canvas.width = sourceCanvas.width
-    this.canvas.height = sourceCanvas.height
-    this.context2d.drawImage(sourceCanvas, 0, 0)
+  drawPNG (sourceImage) {
+    if (sourceImage.complete && sourceImage.naturalHeight !== 0) {
+      this._draw(sourceImage, sourceImage.naturalWidth, sourceImage.naturalHeight)
+    } else {
+      sourceImage.onload = () => {
+        this._draw(sourceImage, sourceImage.naturalWidth, sourceImage.naturalHeight)
+      }
+    }
+  }
+
+  drawCanvas (sourceCanvas) {
+    this._draw(sourceCanvas, sourceCanvas.width, sourceCanvas.height)
+  }
+
+  _draw (source, width, height) {
+    this.canvas.width = width
+    this.canvas.height = height
+    this.context2d.drawImage(source, 0, 0)
     this._drawResolve(this)
     this._drawListeners.forEach(listener => {
       listener(this)

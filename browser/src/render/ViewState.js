@@ -40,11 +40,11 @@ export default class ViewState {
    * @param {BrowserRtcDcBuffer}browserRtcDcBuffer
    */
   update (browserRtcDcBuffer) {
-    // if (browserRtcDcBuffer.type === 'h264') {
-    this._updateH264(browserRtcDcBuffer)
-    // } else { // if(type === 'png')
-    //   await this._updatePNG(browserRtcDcBuffer)
-    // }
+    if (browserRtcDcBuffer.type === 'h264') {
+      this._updateH264(browserRtcDcBuffer)
+    } else { // if(type === 'png')
+      this._updatePNG(browserRtcDcBuffer)
+    }
   }
 
   _updateH264 (browserRtcDcBuffer) {
@@ -72,15 +72,9 @@ export default class ViewState {
   }
 
   _updatePNG (browserRtcDcBuffer) {
-    return new Promise((resolve) => {
-      const pngArray = browserRtcDcBuffer.pngContent
-      const pngBlob = new window.Blob([pngArray], {'type': 'image/png'})
-      const pngBlobURL = window.URL.createObjectURL(pngBlob)
-      this.pngImage.onload = () => {
-        resolve()
-      }
-      this.pngImage.src = pngBlobURL
-    })
+    const pngArray = browserRtcDcBuffer.pngContent
+    const pngBlob = new window.Blob([pngArray], {'type': 'image/png'})
+    this.pngImage.src = window.URL.createObjectURL(pngBlob)
   }
 
   // TODO handle state destruction
