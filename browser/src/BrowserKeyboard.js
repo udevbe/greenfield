@@ -21,11 +21,11 @@ export default class BrowserKeyboard {
     browserKeyboard.updateKeymap('qwerty.xkb')
 
     document.addEventListener('keyup', browserSession.eventSource((event) => {
-      // event.preventDefault()
+      event.preventDefault()
       browserKeyboard.onKey(event, false)
     }), true)
     document.addEventListener('keydown', browserSession.eventSource((event) => {
-      // event.preventDefault()
+      event.preventDefault()
       browserKeyboard.onKey(event, true)
     }), true)
 
