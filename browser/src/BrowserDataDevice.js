@@ -241,14 +241,14 @@ export default class BrowserDataDevice {
 
   onMouseUp () {
     if (this.dndSource && this._dndFocus) {
+      const surfaceResource = this._dndFocus.view.browserSurface.resource
+      const client = surfaceResource.client
+      const dataDeviceResource = this.resources.find((dataDeviceResource) => {
+        return dataDeviceResource.client === client
+      })
+
       if (this.dndSource.implementation.accepted &&
         this.dndSource.implementation.currentDndAction) {
-        const surfaceResource = this._dndFocus.view.browserSurface.resource
-        const client = surfaceResource.client
-
-        const dataDeviceResource = this.resources.find((dataDeviceResource) => {
-          return dataDeviceResource.client === client
-        })
         dataDeviceResource.drop()
 
         if (this.dndSource.version >= 3) {
@@ -259,6 +259,8 @@ export default class BrowserDataDevice {
       } else if (this.dndSource && this.dndSource.version >= 3) {
         this.dndSource.cancelled()
       }
+
+      dataDeviceResource.leave()
     }
     this.dndSourceClient = null
 
@@ -274,7 +276,7 @@ export default class BrowserDataDevice {
 
   _createDataOffer (source, dataDeviceResource) {
     const offerId = dataDeviceResource.dataOffer()
-    const browserDataOffer = BrowserDataOffer.create(source, offerId)
+    const browserDataOffer = BrowserDataOffer.create(source, offerId, dataDeviceResource)
     source.implementation.grDataOffer = browserDataOffer.resource
     source.implementation.mimeTypes.forEach((mimeType) => {
       browserDataOffer.resource.offer(mimeType)

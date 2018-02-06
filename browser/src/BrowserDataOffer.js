@@ -9,11 +9,12 @@ export default class BrowserDataOffer {
   /**
    * @param {GrDataSource}source
    * @param {number}offerId
+   * @param {GrDataDevice}dataDeviceResource
    * @return {BrowserDataOffer}
    */
-  static create (source, offerId) {
+  static create (source, offerId, dataDeviceResource) {
     const browserDataOffer = new BrowserDataOffer(source)
-    const grDataOffer = new greenfield.GrDataOffer(source.client, offerId, source.version)
+    const grDataOffer = new greenfield.GrDataOffer(dataDeviceResource.client, offerId, dataDeviceResource.version)
     grDataOffer.implementation = browserDataOffer
     browserDataOffer.resource = grDataOffer
     grDataOffer.onDestroy().then(() => {
