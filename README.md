@@ -21,6 +21,7 @@ You will also need gstreamer-1.x and the following plugins:
 - glshader
 - gldownload
 - x264enc
+- pngenc
 - appsink
 
 Running
