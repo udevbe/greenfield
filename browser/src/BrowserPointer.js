@@ -71,7 +71,10 @@ export default class BrowserPointer {
     this.grab = null
     this.x = 0
     this.y = 0
-    this._focusDestroyListener = () => {
+    this._focusDestroyListener = (resource) => {
+      if (this.focus && resource.implementation.defaultView !== this.focus.view) {
+        return
+      }
       const surfaceResource = this.focus.view.browserSurface.resource
       surfaceResource.removeDestroyListener(this._focusDestroyListener)
       this.focus = null
@@ -352,7 +355,6 @@ export default class BrowserPointer {
 
   /**
    * @param {HTMLCanvasElement}newFocus
-   * @private
    */
   mouseEnterInternal (newFocus) {
     this.focus = newFocus

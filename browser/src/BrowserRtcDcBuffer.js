@@ -47,14 +47,13 @@ export default class BrowserRtcDcBuffer {
      */
     this.syncSerial = 0
     this._lastCompleteSerial = 0
-
     /**
      * @type {Size}
      */
     this.geo = Size.create(0, 0)
 
-    this._frameStates = {}
-    this._frameChunks = {}
+    this._frameStates = {} // map like object, keys are numbers
+    this._frameChunks = {} // map like object, keys are numbers
 
     /**
      * 'h264' or 'png'
@@ -94,43 +93,55 @@ export default class BrowserRtcDcBuffer {
     this.pngContent = null
   }
 
-  _initH264Decoders () {
-    const decoder = new window.Worker('./lib/broadway/Decoder.js')
-    const alphaDecoder = new window.Worker('./lib/broadway/Decoder.js')
+  /**
+   * @param {boolean}hasAlpha
+   * @private
+   */
+  _ensureH264Decoders (hasAlpha) {
+    if (!this._decoder) {
+      const decoder = new window.Worker('./lib/broadway/Decoder.js')
+      decoder.addEventListener('message', (event) => {
+        const data = event.data
+        if (data.consoleLog) {
+          console.log(data.consoleLog)
+          return
+        }
+        this._onPictureDecoded(new Uint8Array(data.buf, 0, data.length), data.width, data.height)
+      }, false)
+      decoder.postMessage({
+        type: 'Broadway.js - Worker init',
+        options: {
+          rgb: false,
+          reuseMemory: true
+        }
+      })
+      this._decoder = decoder
+    }
 
-    decoder.addEventListener('message', (event) => {
-      const data = event.data
-      if (data.consoleLog) {
-        console.log(data.consoleLog)
-        return
-      }
-      this._onPictureDecoded(new Uint8Array(data.buf, 0, data.length), data.width, data.height)
-    }, false)
-    decoder.postMessage({
-      type: 'Broadway.js - Worker init',
-      options: {
-        rgb: false,
-        reuseMemory: true
-      }
-    })
-    alphaDecoder.addEventListener('message', (event) => {
-      const data = event.data
-      if (data.consoleLog) {
-        console.log(data.consoleLog)
-        return
-      }
-      this._onAlphaPictureDecoded(new Uint8Array(data.buf, 0, data.length), data.width, data.height)
-    }, false)
-    alphaDecoder.postMessage({
-      type: 'Broadway.js - Worker init',
-      options: {
-        rgb: false,
-        reuseMemory: true
-      }
-    })
+    if (hasAlpha && !this._alphaDecoder) {
+      const alphaDecoder = new window.Worker('./lib/broadway/Decoder.js')
+      alphaDecoder.addEventListener('message', (event) => {
+        const data = event.data
+        if (data.consoleLog) {
+          console.log(data.consoleLog)
+          return
+        }
+        this._onAlphaPictureDecoded(new Uint8Array(data.buf, 0, data.length), data.width, data.height)
+      }, false)
+      alphaDecoder.postMessage({
+        type: 'Broadway.js - Worker init',
+        options: {
+          rgb: false,
+          reuseMemory: true
+        }
+      })
+      this._alphaDecoder = alphaDecoder
+    }
 
-    this._decoder = decoder
-    this._alphaDecoder = alphaDecoder
+    if (!hasAlpha && this._alphaDecoder) {
+      this._alphaDecoder.terminate()
+      this._alphaDecoder = null
+    }
   }
 
   /**
@@ -336,14 +347,15 @@ export default class BrowserRtcDcBuffer {
   }
 
   _decodeH264 (frame, serial) {
-    if (!this._decoder) {
-      this._initH264Decoders()
-    }
+    const hasAlpha = frame.alpha !== null
+    this._ensureH264Decoders(hasAlpha)
 
     this._decodingSerialsQueue.push(serial)
-    this._decodingAlphaSerialsQueue.push(serial)
+    if (hasAlpha) {
+      this._decodingAlphaSerialsQueue.push(serial)
+    }
 
-    if (frame.alpha) {
+    if (hasAlpha) {
       // create a copy of the arraybuffer so we can zero-copy the opaque part (after zero-copying, we can no longer use the underlying array in any way)
       const alphaH264Nal = new Uint8Array(frame.alpha.slice())
       this._alphaDecoder.postMessage({
@@ -352,7 +364,7 @@ export default class BrowserRtcDcBuffer {
         length: alphaH264Nal.length
       }, [alphaH264Nal.buffer])
     } else {
-      this.state = 'pending_opaque'
+      this._frameStates[serial].state = 'pending_opaque'
     }
 
     const opaqueH264Nal = new Uint8Array(frame.opaque)

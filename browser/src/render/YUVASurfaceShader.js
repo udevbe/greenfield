@@ -2,26 +2,26 @@
 
 import Program from './Program'
 import ShaderCompiler from './ShaderCompiler'
-import { vertexQuad, fragmentYUV } from './ShaderSources'
+import { vertexQuad, fragmentYUVA } from './ShaderSources'
 
-export default class YUVSurfaceShader {
+export default class YUVASurfaceShader {
   /**
    *
    * @param {WebGLRenderingContext} gl
-   * @returns {YUVSurfaceShader}
+   * @returns {YUVASurfaceShader}
    */
   static create (gl) {
     const program = this._initShaders(gl)
     const shaderArgs = this._initShaderArgs(gl, program)
     const vertexBuffer = this._initBuffers(gl)
 
-    return new YUVSurfaceShader(gl, vertexBuffer, shaderArgs, program)
+    return new YUVASurfaceShader(gl, vertexBuffer, shaderArgs, program)
   }
 
   static _initShaders (gl) {
     const program = new Program(gl)
     program.attach(ShaderCompiler.compile(gl, vertexQuad))
-    program.attach(ShaderCompiler.compile(gl, fragmentYUV))
+    program.attach(ShaderCompiler.compile(gl, fragmentYUVA))
     program.link()
     program.use()
 
@@ -34,6 +34,7 @@ export default class YUVSurfaceShader {
     shaderArgs.yTexture = program.getUniformLocation('yTexture')
     shaderArgs.uTexture = program.getUniformLocation('uTexture')
     shaderArgs.vTexture = program.getUniformLocation('vTexture')
+    shaderArgs.alphaYTexture = program.getUniformLocation('alphaYTexture')
 
     shaderArgs.u_projection = program.getUniformLocation('u_projection')
 
@@ -62,13 +63,15 @@ export default class YUVSurfaceShader {
    * @param {Texture} textureY
    * @param {Texture} textureU
    * @param {Texture} textureV
+   * @param {Texture} textureAlphaY
    */
-  _setTexture (textureY, textureU, textureV) {
+  _setTexture (textureY, textureU, textureV, textureAlphaY) {
     const gl = this.gl
 
     gl.uniform1i(this.shaderArgs.yTexture, 0)
     gl.uniform1i(this.shaderArgs.uTexture, 1)
     gl.uniform1i(this.shaderArgs.vTexture, 2)
+    gl.uniform1i(this.shaderArgs.alphaYTexture, 3)
 
     gl.activeTexture(gl.TEXTURE0)
     gl.bindTexture(gl.TEXTURE_2D, textureY.texture)
@@ -78,6 +81,9 @@ export default class YUVSurfaceShader {
 
     gl.activeTexture(gl.TEXTURE2)
     gl.bindTexture(gl.TEXTURE_2D, textureV.texture)
+
+    gl.activeTexture(gl.TEXTURE3)
+    gl.bindTexture(gl.TEXTURE_2D, textureAlphaY.texture)
   }
 
   use () {
@@ -89,9 +95,9 @@ export default class YUVSurfaceShader {
     gl.useProgram(null)
   }
 
-  draw (textureY, textureU, textureV, bufferSize, viewPortUpdate) {
+  draw (textureY, textureU, textureV, textureAlphaY, bufferSize, viewPortUpdate) {
     const gl = this.gl
-    this._setTexture(textureY, textureU, textureV)
+    this._setTexture(textureY, textureU, textureV, textureAlphaY)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
     if (viewPortUpdate) {
       gl.viewport(0, 0, bufferSize.w, bufferSize.h)

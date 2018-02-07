@@ -2,6 +2,7 @@
 
 import ViewState from './ViewState'
 import BrowserRtcBufferFactory from '../BrowserRtcBufferFactory'
+import YUVASurfaceShader from './YUVASurfaceShader'
 import YUVSurfaceShader from './YUVSurfaceShader'
 import Size from '../Size'
 
@@ -20,24 +21,27 @@ export default class Renderer {
     }
 
     gl.clearColor(0, 0, 0, 0)
+    const yuvaShader = YUVASurfaceShader.create(gl)
     const yuvShader = YUVSurfaceShader.create(gl)
-    yuvShader.use()
-    return new Renderer(browserSession, gl, yuvShader, canvas)
+
+    return new Renderer(browserSession, gl, yuvaShader, yuvShader, canvas)
   }
 
   /**
-   *
+   * Use Renderer.create(..) instead.
+   * @private
    * @param browserSession
    * @param gl
+   * @param yuvaShader
    * @param yuvShader
    * @param canvas
    */
-  constructor (browserSession, gl, yuvShader, canvas) {
+  constructor (browserSession, gl, yuvaShader, yuvShader, canvas) {
     this.browserSession = browserSession
     this.gl = gl
+    this.yuvaShader = yuvaShader
     this.yuvShader = yuvShader
     this.canvas = canvas
-
     this._timeOffset = new Date().getTime()
   }
 
@@ -120,24 +124,38 @@ export default class Renderer {
     // paint the textures
     if (browserSurface.renderState) {
       if (browserRtcDcBuffer.type === 'h264') {
-        this._paint(browserSurface.renderState, browserRtcDcBuffer.geo)
-        // blit rendered texture into view canvas
-        browserSurface.browserSurfaceViews.forEach((view) => {
-          view.drawCanvas(this.canvas)
-        })
+        this._drawH264(browserSurface, browserRtcDcBuffer)
       } else { // if (browserRtcDcBuffer.type === 'png')
-        browserSurface.browserSurfaceViews.forEach((view) => {
-          view.drawPNG(browserSurface.renderState.pngImage)
-        })
+        this._drawPNG(browserSurface)
       }
     }
   }
 
-  _paint (renderState, bufferSize) {
+  _drawH264 (browserSurface, browserRtcDcBuffer) {
+    const bufferSize = browserRtcDcBuffer.geo
+    const renderState = browserSurface.renderState
+    const viewPortUpdate = this.canvas.width !== bufferSize.w || this.canvas.height !== bufferSize.h
     this.canvas.width = bufferSize.w
     this.canvas.height = bufferSize.h
-    // FIXME support case where we don't have an alpha channel
-    this.yuvShader.draw(renderState.yTexture, renderState.uTexture, renderState.vTexture, renderState.alphaYTexture, bufferSize)
+
+    if (browserRtcDcBuffer.alphaYuvContent) {
+      this.yuvaShader.use()
+      this.yuvaShader.draw(renderState.yTexture, renderState.uTexture, renderState.vTexture, renderState.alphaYTexture, bufferSize, viewPortUpdate)
+    } else {
+      this.yuvShader.use()
+      this.yuvShader.draw(renderState.yTexture, renderState.uTexture, renderState.vTexture, bufferSize, viewPortUpdate)
+    }
+
+    // blit rendered texture into view canvas
+    browserSurface.browserSurfaceViews.forEach((view) => {
+      view.drawCanvas(this.canvas)
+    })
+  }
+
+  _drawPNG (browserSurface) {
+    browserSurface.browserSurfaceViews.forEach((view) => {
+      view.drawPNG(browserSurface.renderState.pngImage)
+    })
   }
 
   _nextFrame (browserSurface) {
