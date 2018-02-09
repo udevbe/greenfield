@@ -53,6 +53,6 @@ module.exports = class LocalDataDevice {
   }
 
   selection (id) {
-    this.resource.selection(id.listener.resource)
+    this.resource.selection(id === null ? null : id.listener.resource)
   }
 }

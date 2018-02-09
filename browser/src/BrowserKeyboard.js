@@ -183,7 +183,6 @@ export default class BrowserKeyboard {
     const surfaceResource = this.focus.view.browserSurface.resource
     surfaceResource.removeDestroyListener(this._focusDestroyListener)
     this.focus = null
-    this._browserDataDevice.onKeyboardFocusLost()
   }
 
   /**

@@ -48,11 +48,18 @@ export default class BrowserDataDevice {
      */
     this._selectionFocus = null
     /**
-     * @type Function
+     * @type {Function}
      * @private
      */
     this._dndSourceDestroyListener = () => {
       this._handleDndSourceDestroy()
+    }
+    /**
+     * @type {Function}
+     * @private
+     */
+    this._selectionSourceDestroyListener = () => {
+      this._handleSelectionSourceDestroy()
     }
   }
 
@@ -60,11 +67,30 @@ export default class BrowserDataDevice {
     const dataDeviceResource = this.resources.find((dataDeviceResource) => {
       return dataDeviceResource.client === this.dndSourceClient
     })
-    if (dataDeviceResource == null) {
+    if (dataDeviceResource === null) {
       return
     }
     dataDeviceResource.leave()
     this.dndSourceClient = null
+  }
+
+  _handleSelectionSourceDestroy () {
+    if (this._selectionFocus === null) {
+      return
+    }
+
+    const surfaceResource = this._selectionFocus.view.browserSurface.resource
+    const client = surfaceResource.client
+
+    const dataDeviceResource = this.resources.find((dataDeviceResource) => {
+      return dataDeviceResource.client === client
+    })
+    if (dataDeviceResource == null) {
+      return
+    }
+
+    dataDeviceResource.selection(null)
+    this.selectionSource = null
   }
 
   /**
@@ -274,6 +300,12 @@ export default class BrowserDataDevice {
 
   // TODO handle touch events
 
+  /**
+   * @param {GrDataSource}source
+   * @param {GrDataDevice}dataDeviceResource
+   * @return {GrDataOffer}
+   * @private
+   */
   _createDataOffer (source, dataDeviceResource) {
     const offerId = dataDeviceResource.dataOffer()
     const browserDataOffer = BrowserDataOffer.create(source, offerId, dataDeviceResource)
@@ -300,13 +332,14 @@ export default class BrowserDataDevice {
    *
    */
   setSelection (resource, source, serial) {
-    // FIXME what should the serial correspond to?
+    // FIXME what should the serial correspond to? Looking at weston, the serial is quite useless...
     if (source && source.implementation.dndActions) {
       // TODO raise protocol error
       return
     }
 
     if (this.selectionSource) {
+      this.selectionSource.removeDestroyListener(this._selectionSourceDestroyListener)
       /*
        * From the specs:
        * For objects of version 2 or older, gr_data_source.cancelled will only be emitted if the data source was
@@ -316,6 +349,7 @@ export default class BrowserDataDevice {
     }
 
     this.selectionSource = source
+    this.selectionSource.addDestroyListener(this._selectionSourceDestroyListener)
     // send out selection if there is a keyboard focus
     if (this._selectionFocus) {
       this.onKeyboardFocusGained(this._selectionFocus)
@@ -328,10 +362,6 @@ export default class BrowserDataDevice {
   onKeyboardFocusGained (newSelectionFocus) {
     this._selectionFocus = newSelectionFocus
 
-    if (this.selectionSource === null) {
-      return
-    }
-
     const surfaceResource = this._selectionFocus.view.browserSurface.resource
     const client = surfaceResource.client
 
@@ -341,29 +371,14 @@ export default class BrowserDataDevice {
     if (dataDeviceResource == null) {
       return
     }
-    const grDataOffer = this._createDataOffer(this.selectionSource)
-    dataDeviceResource.selection(grDataOffer)
-    this.selectionSource.implementation.grDataOffer = grDataOffer
-  }
-
-  onKeyboardFocusLost () {
-    const surfaceResource = this._selectionFocus.view.browserSurface.resource
-    const client = surfaceResource.client
-
-    this._selectionFocus = null
 
     if (this.selectionSource === null) {
-      return
+      dataDeviceResource.selection(null)
+    } else {
+      const grDataOffer = this._createDataOffer(this.selectionSource, dataDeviceResource)
+      dataDeviceResource.selection(grDataOffer)
+      this.selectionSource.implementation.grDataOffer = grDataOffer
     }
-
-    const dataDeviceResource = this.resources.find((dataDeviceResource) => {
-      return dataDeviceResource.client === client
-    })
-    if (dataDeviceResource == null) {
-      return
-    }
-    dataDeviceResource.selection(null)
-    this.selectionSource.implementation.grDataOffer = null
   }
 
   /**

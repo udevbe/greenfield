@@ -21,7 +21,7 @@ module.exports = class ShimDataDevice extends WlDataDeviceRequests {
   }
 
   setSelection (resource, source, serial) {
-    this.proxy.setSelection(source.proxy, serial)
+    this.proxy.setSelection(source === null ? null : source.implementation.proxy, serial)
   }
 
   release (resource) {

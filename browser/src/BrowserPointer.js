@@ -69,8 +69,19 @@ export default class BrowserPointer {
      * @type {HTMLCanvasElement}
      */
     this.grab = null
+    /**
+     * @type {number}
+     */
     this.x = 0
+    /**
+     * @type {number}
+     */
     this.y = 0
+    /**
+     * @type {Function}
+     * @param {GrSurface}resource
+     * @private
+     */
     this._focusDestroyListener = (resource) => {
       if (this.focus && resource.implementation.defaultView !== this.focus.view) {
         return
@@ -90,19 +101,36 @@ export default class BrowserPointer {
      * @private
      */
     this._cursorSurface = null
+    /**
+     * @type {Function}
+     * @private
+     */
     this._cursorDestroyListener = () => {
       this._cursorSurface = null
       this.setDefaultCursor()
     }
     this._btnDwnCount = 0
+    /**
+     * @type {number}
+     */
     this.buttonSerial = 0
+    /**
+     * @type {number}
+     */
     this.focusSerial = 0
-
+    /**
+     * @type {number}
+     */
     this.zOrderCounter = 1
 
     this._mouseMoveListeners = []
-
+    /**
+     * @type {number}
+     */
     this.hotspotX = 0
+    /**
+     * @type {number}
+     */
     this.hotspotY = 0
   }
 
