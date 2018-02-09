@@ -284,21 +284,31 @@ export default class BrowserPointer {
    * @param {MouseEvent}event
    */
   onMouseMove (event) {
-    this.x = event.clientX
-    this.y = event.clientY
+    this.x = event.clientX < 0 ? 0 : event.clientX
+    this.y = event.clientY < 0 ? 0 : event.clientY
+    const currentFocus = this.calculateFocus()
 
     if (this._browserDataDevice.dndSourceClient) {
-      this._browserDataDevice.onMouseMotion()
+      this._browserDataDevice.onMouseMotion(currentFocus)
       return
     }
 
-    this._mouseMoveListeners.forEach(listener => listener(event.target))
+    // if we don't have a grab, update the focus
+    if (!this.grab) {
+      if (currentFocus !== this.focus) {
+        this.unsetFocus()
+        if (currentFocus) {
+          this.setFocus(currentFocus)
+        } else {
+          this.setDefaultCursor()
+        }
+      }
+    }
+
+    this._mouseMoveListeners.forEach(listener => listener(this.focus))
 
     if (this.focus) {
-      const elementRect = this.focus.getBoundingClientRect()
-      const canvasPoint = Point.create(this.x - elementRect.x, this.y - elementRect.y)
-      const surfacePoint = this.focus.view.toSurfaceSpace(canvasPoint)
-
+      const surfacePoint = this._calculateSurfacePoint(this.focus)
       const surfaceResource = this.focus.view.browserSurface.resource
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
         pointerResource.motion(event.timeStamp, greenfield.parseFixed(surfacePoint.x >> 0), greenfield.parseFixed(surfacePoint.y >> 0))
@@ -308,7 +318,7 @@ export default class BrowserPointer {
 
   /**
    * @param {GrSurface} surfaceResource
-   * @param action
+   * @param {Function}action
    * @private
    */
   _doPointerEventFor (surfaceResource, action) {
@@ -366,59 +376,65 @@ export default class BrowserPointer {
   }
 
   /**
-   * @param {MouseEvent}event
+   * @param {HTMLCanvasElement}canvas
+   * @return {Point}
+   * @private
    */
-  onMouseEnter (event) {
-    if (this._browserDataDevice.dndSourceClient) {
-      this._browserDataDevice.onMouseEnter(event.target)
-      return
-    }
+  _calculateSurfacePoint (canvas) {
+    const elementRect = canvas.getBoundingClientRect()
+    const canvasPoint = Point.create(this.x - (elementRect.x - 1), this.y - (elementRect.y - 1))
+    return canvas.view.toSurfaceSpace(canvasPoint)
+  }
 
-    if (this.grab) {
-      return
+  /**
+   * @param {HTMLCanvasElement}canvas
+   * @return {Boolean}
+   * @private
+   */
+  _isPointerWithinInputRegion (canvas) {
+    if (canvas.view) {
+      if (canvas.view.browserSurface.inputRegion) {
+        // FIXME clip surface point to surface boundaries, this is needed to properly handle input regions that
+        // exceed the surface they are set on
+        const surfacePoint = this._calculateSurfacePoint(canvas)
+        return canvas.view.browserSurface.inputRegion.implementation.contains(surfacePoint)
+      } else {
+        return true
+      }
+    } else {
+      return false
     }
+  }
 
-    this.mouseEnterInternal(event.target)
+  /**
+   * @return {HTMLCanvasElement | null}
+   */
+  calculateFocus () {
+    const focusCandidates = window.document.elementsFromPoint(this.x, this.y)
+    const focus = focusCandidates.find((focusCandidate) => {
+      return this._isPointerWithinInputRegion(focusCandidate)
+    })
+    // ensures we return null instead of undefined
+    return focus == null ? null : focus
   }
 
   /**
    * @param {HTMLCanvasElement}newFocus
+   * @private
    */
-  mouseEnterInternal (newFocus) {
+  setFocus (newFocus) {
     this.focus = newFocus
     this._browserKeyboard.focusGained(newFocus)
     const surfaceResource = this.focus.view.browserSurface.resource
     surfaceResource.addDestroyListener(this._focusDestroyListener)
 
-    const elementRect = this.focus.getBoundingClientRect()
-    const canvasPoint = Point.create(this.x - (elementRect.x - 1), this.y - (elementRect.y - 1))
-    const surfacePoint = this.focus.view.toSurfaceSpace(canvasPoint)
-
+    const surfacePoint = this._calculateSurfacePoint(newFocus)
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
       pointerResource.enter(this._nextFocusSerial(), surfaceResource, greenfield.parseFixed(surfacePoint.x), greenfield.parseFixed(surfacePoint.y))
     })
   }
 
-  /**
-   * @param {MouseEvent}event
-   */
-  onMouseLeave (event) {
-    if (this._browserDataDevice.dndSourceClient) {
-      this._browserDataDevice.onMouseLeave(event.target)
-      return
-    }
-
-    if (this.grab) {
-      return
-    }
-
-    if (this.focus === event.target) {
-      this.mouseLeaveInternal()
-      this.setDefaultCursor()
-    }
-  }
-
-  mouseLeaveInternal () {
+  unsetFocus () {
     if (this.focus) {
       const surfaceResource = this.focus.view.browserSurface.resource
       surfaceResource.removeDestroyListener(this._focusDestroyListener)
@@ -426,15 +442,16 @@ export default class BrowserPointer {
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
         pointerResource.leave(this._nextFocusSerial(), surfaceResource)
       })
-      this._browserKeyboard.focusLost()
-      this.focus = null
-      this.grab = null
-      this.view = null
-      this._btnDwnCount = 0
-      if (this._cursorSurface) {
-        this._cursorSurface.implementation.role = null
-        this._cursorSurface = null
-      }
+    }
+
+    this._browserKeyboard.focusLost()
+    this.focus = null
+    this.grab = null
+    this.view = null
+    this._btnDwnCount = 0
+    if (this._cursorSurface) {
+      this._cursorSurface.implementation.role = null
+      this._cursorSurface = null
     }
   }
 

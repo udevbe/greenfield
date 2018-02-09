@@ -83,4 +83,12 @@ export default class BrowserRegion {
     pixman._pixman_region32_fini(deltaPixmanRegion)
     pixman._free(deltaPixmanRegion)
   }
+
+  /**
+   * @param {Point}point
+   * @return {Boolean}
+   */
+  contains (point) {
+    return pixman._pixman_region32_contains_point(this.pixmanRegion, point.x, point.y, null) !== 0
+  }
 }

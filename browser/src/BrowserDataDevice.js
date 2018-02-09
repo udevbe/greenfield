@@ -34,9 +34,8 @@ export default class BrowserDataDevice {
     this.selectionSource = null
     /**
      * @type {HTMLCanvasElement}
-     * @private
      */
-    this._dndFocus = null
+    this.dndFocus = null
     /**
      * @type {Client}
      * @private
@@ -143,13 +142,14 @@ export default class BrowserDataDevice {
       return
     }
 
-    this.dndSourceClient = resource.client
-
     const dndFocus = browserPointer.focus
-    browserPointer.mouseLeaveInternal()
+    // clear all previous mouse state (focus+grab)
+    browserPointer.unsetFocus()
     if (icon !== null) {
       browserPointer.setCursorInternal(icon, 0, 0)
     }
+
+    this.dndSourceClient = resource.client
 
     /*
      * From the specs:
@@ -166,16 +166,29 @@ export default class BrowserDataDevice {
     }
 
     if (dndFocus) {
-      this.onMouseEnter(dndFocus)
+      this._onFocusGained(dndFocus)
     }
   }
 
-  onMouseMotion () {
-    if (!this._dndFocus) {
+  /**
+   * @param {HTMLCanvasElement}focus
+   */
+  onMouseMotion (focus) {
+    if (this.dndFocus !== focus) {
+      if (this.dndFocus) {
+        this._onFocusLost()
+      }
+      if (focus) {
+        this._onFocusGained(focus)
+      }
+    }
+
+    this.dndFocus = focus
+    if (!this.dndFocus) {
       return
     }
 
-    const surfaceResource = this._dndFocus.view.browserSurface.resource
+    const surfaceResource = this.dndFocus.view.browserSurface.resource
     const client = surfaceResource.client
 
     // if source is null, only transfers within the same client can take place
@@ -184,9 +197,9 @@ export default class BrowserDataDevice {
     }
 
     const browserPointer = this.browserSeat.browserPointer
-    const elementRect = this._dndFocus.getBoundingClientRect()
+    const elementRect = this.dndFocus.getBoundingClientRect()
     const canvasPoint = Point.create(browserPointer.x - (elementRect.x - 1), browserPointer.y - (elementRect.y - 1))
-    const surfacePoint = this._dndFocus.view.toSurfaceSpace(canvasPoint)
+    const surfacePoint = this.dndFocus.view.toSurfaceSpace(canvasPoint)
 
     this.resources.filter((dataDeviceResource) => {
       return dataDeviceResource.client === client
@@ -197,9 +210,10 @@ export default class BrowserDataDevice {
 
   /**
    * @param {HTMLCanvasElement}canvas
+   * @private
    */
-  onMouseEnter (canvas) {
-    this._dndFocus = canvas
+  _onFocusGained (canvas) {
+    this.dndFocus = canvas
     if (!this.dndSourceClient) {
       return
     }
@@ -242,16 +256,12 @@ export default class BrowserDataDevice {
     }
   }
 
-  /**
-   * @param {HTMLCanvasElement}canvas
-   */
-  onMouseLeave (canvas) {
-    this._dndFocus = null
+  _onFocusLost () {
     if (!this.dndSourceClient) {
       return
     }
 
-    const surfaceResource = canvas.view.browserSurface.resource
+    const surfaceResource = this.dndFocus.view.browserSurface.resource
     const client = surfaceResource.client
 
     // if source is null, only transfers within the same client can take place
@@ -263,11 +273,12 @@ export default class BrowserDataDevice {
       return dataDeviceResource.client === client
     })
     dataDeviceResource.leave()
+    this.dndFocus = null
   }
 
   onMouseUp () {
-    if (this.dndSource && this._dndFocus) {
-      const surfaceResource = this._dndFocus.view.browserSurface.resource
+    if (this.dndSource && this.dndFocus) {
+      const surfaceResource = this.dndFocus.view.browserSurface.resource
       const client = surfaceResource.client
       const dataDeviceResource = this.resources.find((dataDeviceResource) => {
         return dataDeviceResource.client === client
@@ -291,8 +302,8 @@ export default class BrowserDataDevice {
     this.dndSourceClient = null
 
     const browserPointer = this.browserSeat.browserPointer
-    if (this._dndFocus) {
-      browserPointer.mouseEnterInternal(this._dndFocus)
+    if (this.dndFocus) {
+      browserPointer.setFocus(this.dndFocus)
     } else {
       browserPointer.setDefaultCursor()
     }

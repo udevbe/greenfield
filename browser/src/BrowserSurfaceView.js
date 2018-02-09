@@ -30,29 +30,31 @@ export default class BrowserSurfaceView {
     return canvas
   }
 
-  enableMouseListeners () {
-    this.canvas.addEventListener('mouseenter', this._mouseEnterListener, true)
-    this.canvas.addEventListener('mouseleave', this._mouseLeaveListener, true)
-    // other mouse listeners are set in the browser pointer class
-  }
-
-  disableMouseListeners () {
-    this.canvas.removeEventListener('mouseenter', this._mouseEnterListener, true)
-    this.canvas.removeEventListener('mouseleave', this._mouseLeaveListener, true)
-  }
-
   /**
+   * Use BrowserSurfaceView.create(..) instead.
    * @private
-   * @param canvas
-   * @param context2d
-   * @param browserSurface
+   * @param {HTMLCanvasElement}canvas
+   * @param {CanvasRenderingContext2D}context2d
+   * @param {BrowserSurface}browserSurface
    */
   constructor (canvas, context2d, browserSurface) {
+    /**
+     * @type {HTMLCanvasElement}
+     */
     this.canvas = canvas
+    /**
+     * @type {CanvasRenderingContext2D}
+     */
     this.context2d = context2d
+    /**
+     * @type {BrowserSurface}
+     */
     this.browserSurface = browserSurface
+    /**
+     * @type {Array}
+     * @private
+     */
     this._drawListeners = []
-
     /**
      *
      * @type {Function}
@@ -60,7 +62,6 @@ export default class BrowserSurfaceView {
      */
     this._drawResolve = null
     /**
-     *
      * @type {Promise}
      * @private
      */
@@ -70,18 +71,24 @@ export default class BrowserSurfaceView {
     const browserSession = this.browserSurface.browserSession
     this._mouseEnterListener = browserSession.eventSource((event) => {
       event.preventDefault()
-      browserPointer.onMouseEnter(event)
+      browserPointer._onFocusGained(event)
     })
     this._mouseLeaveListener = browserSession.eventSource((event) => {
       event.preventDefault()
-      browserPointer.onMouseLeave(event)
+      browserPointer._onFocusLost(event)
     })
-
+    /**
+     * @type {Promise}
+     * @private
+     */
     this._destroyPromise = new Promise((resolve) => {
       this._destroyResolve = resolve
     })
   }
 
+  /**
+   * @param {HTMLImageElement }sourceImage
+   */
   drawPNG (sourceImage) {
     if (sourceImage.complete && sourceImage.naturalHeight !== 0) {
       this._draw(sourceImage, sourceImage.naturalWidth, sourceImage.naturalHeight)
@@ -92,10 +99,19 @@ export default class BrowserSurfaceView {
     }
   }
 
+  /**
+   * @param {HTMLCanvasElement}sourceCanvas
+   */
   drawCanvas (sourceCanvas) {
     this._draw(sourceCanvas, sourceCanvas.width, sourceCanvas.height)
   }
 
+  /**
+   * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap}source
+   * @param {number}width
+   * @param {number}height
+   * @private
+   */
   _draw (source, width, height) {
     this.canvas.width = width
     this.canvas.height = height
@@ -122,10 +138,16 @@ export default class BrowserSurfaceView {
     return this._drawPromise
   }
 
+  /**
+   * @param {Function}listener
+   */
   addDrawListener (listener) {
     this._drawListeners.push(listener)
   }
 
+  /**
+   * @param {Function}listener
+   */
   removeDrawListener (listener) {
     const index = this._drawListeners.indexOf(listener)
     if (index > -1) {
