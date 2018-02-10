@@ -1,6 +1,7 @@
 'use strict'
 
 import pixmanModule from './lib/libpixman-1'
+
 const pixman = pixmanModule()
 
 export default class BrowserRegion {
@@ -10,11 +11,21 @@ export default class BrowserRegion {
    * @returns {BrowserRegion}
    */
   static create (grRegionResource) {
-    const pixmanRegion = pixman._malloc(20)// region struct is pointer + 4*uint32 = 5*4 = 20
-    pixman._pixman_region32_init(pixmanRegion)
+    const pixmanRegion = BrowserRegion.createPixmanRegion()
     const browserRegion = new BrowserRegion(grRegionResource, pixmanRegion)
     grRegionResource.implementation = browserRegion
     return browserRegion
+  }
+
+  static createPixmanRegion () {
+    const pixmanRegion = pixman._malloc(20)// region struct is pointer + 4*uint32 = 5*4 = 20
+    pixman._pixman_region32_init(pixmanRegion)
+    return pixmanRegion
+  }
+
+  static destroyPixmanRegion (pixmanRegion) {
+    pixman._pixman_region32_fini(this.pixmanRegion)
+    pixman._free(pixmanRegion)
   }
 
   /**
@@ -39,8 +50,7 @@ export default class BrowserRegion {
    *
    */
   destroy (resource) {
-    pixman._pixman_region32_fini(this.pixmanRegion)
-    pixman._free(this.pixmanRegion)
+    BrowserRegion.destroyPixmanRegion(this.pixmanRegion)
     resource.destroy()
   }
 
@@ -85,10 +95,18 @@ export default class BrowserRegion {
   }
 
   /**
+   * @param {number} pixmanRegion
    * @param {Point}point
    * @return {Boolean}
    */
-  contains (point) {
-    return pixman._pixman_region32_contains_point(this.pixmanRegion, point.x, point.y, null) !== 0
+  static contains (pixmanRegion, point) {
+    return pixman._pixman_region32_contains_point(pixmanRegion, point.x, point.y, null) !== 0
+  }
+
+  /**
+   * @param {number} pixmanRegion
+   */
+  copyTo (pixmanRegion) {
+    pixman._pixman_region32_copy(pixmanRegion, this.pixmanRegion)
   }
 }

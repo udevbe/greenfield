@@ -62,10 +62,21 @@ export default class BrowserDataDevice {
     }
   }
 
-  _handleDndSourceDestroy () {
+  /**
+   * @param {Client}client
+   * @return {GrDataDevice | null}
+   * @private
+   */
+  _dataDeviceForClient (client) {
     const dataDeviceResource = this.resources.find((dataDeviceResource) => {
-      return dataDeviceResource.client === this.dndSourceClient
+      return dataDeviceResource.client === client
     })
+    // safeguard against undefined
+    return dataDeviceResource == null ? null : dataDeviceResource
+  }
+
+  _handleDndSourceDestroy () {
+    const dataDeviceResource = this._dataDeviceForClient(this.dndSourceClient)
     if (dataDeviceResource === null) {
       return
     }
@@ -81,9 +92,7 @@ export default class BrowserDataDevice {
     const surfaceResource = this._selectionFocus.view.browserSurface.resource
     const client = surfaceResource.client
 
-    const dataDeviceResource = this.resources.find((dataDeviceResource) => {
-      return dataDeviceResource.client === client
-    })
+    const dataDeviceResource = this._dataDeviceForClient(client)
     if (dataDeviceResource == null) {
       return
     }
@@ -236,9 +245,7 @@ export default class BrowserDataDevice {
     const x = greenfield.parseFixed(surfacePoint.x)
     const y = greenfield.parseFixed(surfacePoint.y)
 
-    const dataDeviceResource = this.resources.find((dataDeviceResource) => {
-      return dataDeviceResource.client === client
-    })
+    const dataDeviceResource = this._dataDeviceForClient(client)
 
     let grDataOffer = null
     if (this.dndSource) {
@@ -269,9 +276,7 @@ export default class BrowserDataDevice {
       return
     }
 
-    const dataDeviceResource = this.resources.find((dataDeviceResource) => {
-      return dataDeviceResource.client === client
-    })
+    const dataDeviceResource = this._dataDeviceForClient(client)
     dataDeviceResource.leave()
     this.dndFocus = null
   }
@@ -280,9 +285,7 @@ export default class BrowserDataDevice {
     if (this.dndSource && this.dndFocus) {
       const surfaceResource = this.dndFocus.view.browserSurface.resource
       const client = surfaceResource.client
-      const dataDeviceResource = this.resources.find((dataDeviceResource) => {
-        return dataDeviceResource.client === client
-      })
+      const dataDeviceResource = this._dataDeviceForClient(client)
 
       if (this.dndSource.implementation.accepted &&
         this.dndSource.implementation.currentDndAction) {
@@ -376,9 +379,7 @@ export default class BrowserDataDevice {
     const surfaceResource = this._selectionFocus.view.browserSurface.resource
     const client = surfaceResource.client
 
-    const dataDeviceResource = this.resources.find((dataDeviceResource) => {
-      return dataDeviceResource.client === client
-    })
+    const dataDeviceResource = this._dataDeviceForClient(client)
     if (dataDeviceResource == null) {
       return
     }

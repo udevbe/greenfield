@@ -2,6 +2,7 @@
 
 import greenfield from './protocol/greenfield-browser-protocol'
 import Point from './math/Point'
+import BrowserRegion from './BrowserRegion'
 
 // translates between browser button codes & kernel code as expected by wayland protocol
 const linuxInput = {
@@ -363,6 +364,7 @@ export default class BrowserPointer {
 
     if (this.grab === null) {
       this.grab = this.focus
+      this._browserKeyboard.focusGained(this.grab)
       // elements with a same zIndex will be display in document order, to avoid a previously grabbed canvas being shown below another,
       // we need to assign it an absolute zIndex greater than the last one.
       this.grab.style.zIndex = ++this.zOrderCounter
@@ -393,11 +395,11 @@ export default class BrowserPointer {
    */
   _isPointerWithinInputRegion (canvas) {
     if (canvas.view) {
-      if (canvas.view.browserSurface.inputRegion) {
+      if (canvas.view.browserSurface.inputPixmanRegion) {
         // FIXME clip surface point to surface boundaries, this is needed to properly handle input regions that
         // exceed the surface they are set on
         const surfacePoint = this._calculateSurfacePoint(canvas)
-        return canvas.view.browserSurface.inputRegion.implementation.contains(surfacePoint)
+        return BrowserRegion.contains(canvas.view.browserSurface.inputPixmanRegion, surfacePoint)
       } else {
         return true
       }
@@ -411,11 +413,17 @@ export default class BrowserPointer {
    */
   calculateFocus () {
     const focusCandidates = window.document.elementsFromPoint(this.x, this.y)
-    const focus = focusCandidates.find((focusCandidate) => {
-      return this._isPointerWithinInputRegion(focusCandidate)
+
+    let zOrder = -1
+    let focus = null
+    focusCandidates.forEach(focusCandidate => {
+      if (this._isPointerWithinInputRegion(focusCandidate) && focusCandidate.style.zIndex > zOrder) {
+        zOrder = focusCandidate.style.zIndex
+        focus = focusCandidate
+      }
     })
-    // ensures we return null instead of undefined
-    return focus == null ? null : focus
+
+    return focus
   }
 
   /**
@@ -424,7 +432,6 @@ export default class BrowserPointer {
    */
   setFocus (newFocus) {
     this.focus = newFocus
-    this._browserKeyboard.focusGained(newFocus)
     const surfaceResource = this.focus.view.browserSurface.resource
     surfaceResource.addDestroyListener(this._focusDestroyListener)
 

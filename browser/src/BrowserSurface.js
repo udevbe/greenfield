@@ -8,6 +8,7 @@ import Rect from './math/Rect'
 import Mat4 from './math/Mat4'
 import { NORMAL, _90, _180, _270, FLIPPED, FLIPPED_90, FLIPPED_180, FLIPPED_270 } from './math/Transformations'
 import Size from './Size'
+import BrowserRegion from './BrowserRegion'
 
 const pixman = pixmanModule()
 
@@ -93,9 +94,15 @@ export default class BrowserSurface {
     this.bufferDamage = bufferDamage
 
     this._pendingOpaqueRegion = null
-    this.opaqueRegion = null
+    /**
+     * @type {number}
+     */
+    this.opaquePixmanRegion = null
     this._pendingInputRegion = null
-    this.inputRegion = null
+    /**
+     * @type {number}
+     */
+    this.inputPixmanRegion = null
 
     this._pendingDx = 0
     this.dx = 0
@@ -430,14 +437,29 @@ export default class BrowserSurface {
 
     // FIXME properly handle null buffer
 
+    // input region
     if (this._pendingInputRegion) {
-      this.inputRegion = this._pendingInputRegion
+      if (!this.inputPixmanRegion) {
+        this.inputPixmanRegion = BrowserRegion.createPixmanRegion()
+      }
+      this._pendingInputRegion.implementation.copyTo(this.inputPixmanRegion)
       this._pendingInputRegion = null
+    } else if (this.inputPixmanRegion) {
+      BrowserRegion.destroyPixmanRegion(this.inputPixmanRegion)
+      this.inputPixmanRegion = null
     }
+
+    // opaque region
     if (this._pendingOpaqueRegion) {
-      this.opaqueRegion = this._pendingOpaqueRegion
-      this._pendingOpaqueRegion = null
+      if (!this.opaquePixmanRegion) {
+        this.opaquePixmanRegion = BrowserRegion.createPixmanRegion()
+      }
+      this._pendingOpaqueRegion.implementation.copyTo(this.opaquePixmanRegion)
+    } else if (this.opaquePixmanRegion) {
+      BrowserRegion.destroyPixmanRegion(this.opaquePixmanRegion)
+      this.opaquePixmanRegion = null
     }
+
     this.bufferTransform = this._pendingBufferTransform
     this.bufferScale = this._pendingBufferScale
 
