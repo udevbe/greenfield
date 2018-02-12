@@ -71,6 +71,8 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     this.proxy.damage(x, y, width, height)
   }
 
+  // TODO implement a smart algorithm that can fire the frame callback before the browser compositor does as to compensate
+  // for network latency and encoding/decoding delays.
   frame (resource, callback) {
     const callbackProxy = this.proxy.frame()
     const localCallback = LocalCallback.create()
@@ -197,7 +199,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
       this.proxy.commit()
       const frame = await this._encodeBuffer(this.buffer, synSerial)
-      this.sendFrame(frame)
+      await this.sendFrame(frame)
     }
   }
 

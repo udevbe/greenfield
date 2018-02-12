@@ -31,6 +31,7 @@ class Encoder {
    */
   encodeBuffer (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, synSerial) {
     if (this._bufferFormat !== bufferFormat) {
+      this._bufferFormat = bufferFormat
       this._gstFormat = Encoder.types[bufferFormat].gstFormat
       this._frameEncoder = null
     }
@@ -60,6 +61,7 @@ class Encoder {
 // wayland to gstreamer mappings
 Encoder.types = {}
 // TODO add more types
+// TODO different frame encoders could probably share code from a common super class
 Encoder.types[WlShmFormat.argb8888] = {
   gstFormat: 'BGRA',
   FrameEncoder: H264AlphaEncoder

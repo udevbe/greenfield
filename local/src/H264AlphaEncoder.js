@@ -68,12 +68,12 @@ module.exports = class H264AlphaEncoder {
     this.format = gstBufferFormat
     this.pipeline.pause()
     // source caps describe what goes in
-    this.src.setCapsFromString(`video/x-raw,format=${gstBufferFormat},width=${width},height=${height}`)
+    this.src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height}`
     // x264 encoder requires size to be a multiple of 2
     const vidWidth = width + (width % 2)
     const vidHeight = height + (height % 2)
     // target caps describe what we want
-    this.scale.setCapsFromString(`video/x-raw(memory:GLMemory),width=${vidWidth},height=${vidHeight}`)
+    this.scale.caps = `video/x-raw(memory:GLMemory),width=${vidWidth},height=${vidHeight}`
     this.pipeline.play()
   }
 

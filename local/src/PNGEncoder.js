@@ -34,8 +34,8 @@ module.exports = class PNGEncoder {
     this.height = height
     this.format = gstBufferFormat
     this.pipeline.pause()
-    this.src.setCapsFromString(`video/x-raw,format=${gstBufferFormat},width=${width},height=${height}`)
-    this.scale.setCapsFromString(`video/x-raw,format=RGBA,width=${width},height=${height}`)
+    this.src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height}`
+    this.scale.caps = `video/x-raw,format=RGBA,width=${width},height=${height}`
     this.pipeline.play()
   }
 
