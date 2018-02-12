@@ -4,7 +4,6 @@ const {Shm} = require('wayland-server-bindings-runtime')
 
 const WlSurfaceRequests = require('./protocol/wayland/WlSurfaceRequests')
 const WlCallback = require('./protocol/wayland/WlCallback')
-const WlShmFormat = require('./protocol/wayland/WlShmFormat')
 const LocalCallback = require('./LocalCallback')
 const ShimCallback = require('./ShimCallback')
 const Encoder = require('./Encoder')
@@ -102,19 +101,8 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     const bufferHeight = shm.getHeight()
     const pixelBuffer = shm.getData().reinterpret(bufferWidth * bufferHeight * 4)
     const format = shm.getFormat()
-    let alpha = false
-    // TODO: we could actually support more formats as long as gstreamer can convert them. Make a mapping from
-    // wayland format to gstreamer caps format+alpha boolean and use that
-    if (format === WlShmFormat.argb8888) {
-      alpha = true
-    } else if (format === WlShmFormat.xrgb8888) {
-      alpha = false
-    } else {
-      // FIXME protocol error & disconnect client
-      throw new Error('Unsupported shm buffer format.')
-    }
 
-    return this._encoder.encodeBuffer(pixelBuffer, bufferWidth, bufferHeight, synSerial, alpha)
+    return this._encoder.encodeBuffer(pixelBuffer, format, bufferWidth, bufferHeight, synSerial)
   }
 
   _frameToBuffer (frame) {

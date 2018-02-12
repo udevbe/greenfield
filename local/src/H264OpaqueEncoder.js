@@ -3,40 +3,12 @@
 const gstreamer = require('gstreamer-superficial')
 
 module.exports = class H264AlphaEncoder {
-  static create () {
+  static create (width, height) {
     const pipeline = new gstreamer.Pipeline(
-      // scale & convert to RGBA
       'appsrc name=source ! ' + // source caps are set in configure method
       'glupload ! ' +
       'glcolorconvert ! video/x-raw(memory:GLMemory),format=RGBA ! ' +
-      'glcolorscale ! capsfilter name=scale ! ' + // target caps are set in configure method
-
-      // branch[0] convert alpha to grayscale h264
-      'tee name=t ! queue ! ' +
-      `glshader fragment="
-        #version 100
-        #ifdef GL_ES
-        precision mediump float;
-        #endif
-        varying vec2 v_texcoord;
-        uniform sampler2D tex;
-        uniform float time;
-        uniform float width;
-        uniform float height;
-
-        void main () {
-          vec4 pix = texture2D(tex, v_texcoord);
-          gl_FragColor = vec4(pix.a,pix.a,pix.a,0);
-        }
-      " ! ` +
-      'glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! ' +
-      'gldownload ! ' +
-      'x264enc key-int-max=900 byte-stream=true pass=pass1 qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ' +
-      'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=20/1 ! ' +
-      'appsink name=alphasink ' +
-
-      // branch[1] convert rgb to h264
-      't. ! queue ! ' +
+      'glcolorscale ! capsfilter name=scale' + ' ! ' + // target caps are set in configure method
       'glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! ' +
       'gldownload ! ' +
       'x264enc key-int-max=900 byte-stream=true pass=pass1 qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ' +
@@ -48,18 +20,17 @@ module.exports = class H264AlphaEncoder {
     const alphasink = pipeline.findChild('alphasink')
     const appsrc = pipeline.findChild('source')
     const scale = pipeline.findChild('scale')
-    return new H264AlphaEncoder(pipeline, appsink, alphasink, appsrc, scale)
+    return new H264AlphaEncoder(pipeline, appsink, alphasink, appsrc, scale, width, height)
   }
 
-  constructor (pipeline, appsink, alphasink, appsrc, scale) {
+  constructor (pipeline, appsink, alphasink, appsrc, scale, width, height) {
     this.pipeline = pipeline
     this.sink = appsink
     this.alpha = alphasink
     this.src = appsrc
     this.scale = scale
-    this.width = null
-    this.height = null
-    this.format = null
+    this.width = width
+    this.height = height
   }
 
   configure (width, height, gstBufferFormat) {
@@ -90,29 +61,16 @@ module.exports = class H264AlphaEncoder {
         width: bufferWidth,
         height: bufferHeight,
         synSerial: synSerial,
-        opaque: null,
-        alpha: null
+        opaque: null, // only use opaque, as plain h264 has no alpha channel
+        alpha: Buffer.allocUnsafe(0) // alloc empty buffer to avoid null errors
       }
 
       this.sink.pull((opaqueH264Nal) => {
         if (opaqueH264Nal) {
           frame.opaque = opaqueH264Nal
-          if (frame.opaque && frame.alpha) {
-            resolve(frame)
-          }
+          resolve(frame)
         } else {
-          reject(new Error('Pulled empty opaque buffer. Gstreamer h264+alpha encoder pipeline is probably in error.'))
-        }
-      })
-
-      this.alpha.pull((alphaH264Nal) => {
-        if (alphaH264Nal) {
-          frame.alpha = alphaH264Nal
-          if (frame.opaque && frame.alpha) {
-            resolve(frame)
-          }
-        } else {
-          reject(new Error('Pulled empty alpha buffer. Gstreamer h264+alpha encoder pipeline is probably in error.'))
+          reject(new Error('Pulled empty buffer. Gstreamer h264 encoder pipeline is probably in error.'))
         }
       })
     })
