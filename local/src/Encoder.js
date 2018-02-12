@@ -15,9 +15,25 @@ class Encoder {
    * @private
    */
   constructor () {
+    /**
+     * @type {number}
+     * @private
+     */
     this._bufferFormat = null
+    /**
+     * @type {string}
+     * @private
+     */
     this._gstFormat = null
+    /**
+     * @type {H264AlphaEncoder | H264OpaqueEncoder}
+     * @private
+     */
     this._frameEncoder = null
+    /**
+     * @type {PNGEncoder}
+     * @private
+     */
     this._pngFrameEncoder = null
   }
 
@@ -43,6 +59,15 @@ class Encoder {
     }
   }
 
+  /**
+   * @param {Buffer}pixelBuffer
+   * @param {string}bufferFormat
+   * @param {number}bufferWidth
+   * @param {number}bufferHeight
+   * @param {number}synSerial
+   * @return {Promise<{type:number, width:number, height:number, synSerial:number, opaque: Buffer, alpha: Buffer}>}
+   * @private
+   */
   _encodePNGFrame (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, synSerial) {
     if (!this._pngFrameEncoder) {
       this._pngFrameEncoder = PNGEncoder.create()
@@ -50,6 +75,15 @@ class Encoder {
     return this._pngFrameEncoder.encode(pixelBuffer, this._gstFormat, bufferWidth, bufferHeight, synSerial)
   }
 
+  /**
+   * @param {Buffer}pixelBuffer
+   * @param {string}bufferFormat
+   * @param {number}bufferWidth
+   * @param {number}bufferHeight
+   * @param {number}synSerial
+   * @return {Promise<{type:number, width:number, height:number, synSerial:number, opaque: Buffer, alpha: Buffer}>}
+   * @private
+   */
   _encodeFrame (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, synSerial) {
     if (!this._frameEncoder) {
       this._frameEncoder = Encoder.types[this._bufferFormat].FrameEncoder.create()

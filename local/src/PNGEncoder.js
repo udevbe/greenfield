@@ -9,7 +9,7 @@ module.exports = class PNGEncoder {
   static create () {
     const pipeline = new gstreamer.Pipeline(
       'appsrc name=source ! ' + // source caps are set in configure method
-      'videoconvert ! capsfilter name=scale !' + // target caps are set in configure method
+      'videoconvert ! capsfilter name=scale caps-change-mode=1 !' + // target caps are set in configure method
       'pngenc !' +
       'appsink name=sink'
     )
@@ -29,6 +29,11 @@ module.exports = class PNGEncoder {
     this.format = null
   }
 
+  /**
+   * @param {number}width
+   * @param {number}height
+   * @param {string}gstBufferFormat
+   */
   configure (width, height, gstBufferFormat) {
     this.width = width
     this.height = height
@@ -39,6 +44,13 @@ module.exports = class PNGEncoder {
     this.pipeline.play()
   }
 
+  /**
+   * @param {Buffer}pixelBuffer
+   * @param {string}gstBufferFormat
+   * @param {number}bufferWidth
+   * @param {number}bufferHeight
+   * @param {number}synSerial
+   */
   encode (pixelBuffer, gstBufferFormat, bufferWidth, bufferHeight, synSerial) {
     return new Promise((resolve, reject) => {
       if (this.width !== bufferWidth || this.height !== bufferHeight || this.format !== gstBufferFormat) {
