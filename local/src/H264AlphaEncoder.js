@@ -3,14 +3,13 @@
 const gstreamer = require('gstreamer-superficial')
 
 module.exports = class H264AlphaEncoder {
-  static create () {
-    const multipassCacheFileName0 = `x264_${Math.random() * 1024}.log`
-    const multipassCacheFileName1 = `x264_${Math.random() * 1024}.log`
+  static create (width, height, gstBufferFormat) {
+    const multipassCacheFileName0 = `x264_${(Math.random() * 1024) << 0}.log`
+    const multipassCacheFileName1 = `x264_${(Math.random() * 1024) << 0}.log`
     const pipeline = new gstreamer.Pipeline(
       // scale & convert to RGBA
-      'appsrc name=source ! ' + // source caps are set in configure method
-      'videoconvert ! videoscale ! ' +
-      'capsfilter name=scale ! ' + // target caps are set in configure method
+      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=20/1 ! ` +
+      `videoscale ! capsfilter name=scale caps=video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)} ! ` +
 
       // branch[0] convert alpha to grayscale h264
       'tee name=t ! queue ! ' +
@@ -40,17 +39,19 @@ module.exports = class H264AlphaEncoder {
 
       // branch[1] convert rgb to h264
       't. ! queue ! ' +
-      'videoconvert ! videoscale ! video/x-raw,format=I420 ! ' +
+      'videoconvert ! video/x-raw,format=I420 ! ' +
       `x264enc multipass-cache-file=${multipassCacheFileName1} key-int-max=900 byte-stream=true pass=pass1 qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ` +
       'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=20/1 ! ' +
       'appsink name=sink'
     )
 
-    const appsink = pipeline.findChild('sink')
     const alphasink = pipeline.findChild('alphasink')
-    const appsrc = pipeline.findChild('source')
+    const sink = pipeline.findChild('sink')
+    const src = pipeline.findChild('source')
     const scale = pipeline.findChild('scale')
-    return new H264AlphaEncoder(pipeline, appsink, alphasink, appsrc, scale)
+    pipeline.play()
+
+    return new H264AlphaEncoder(pipeline, sink, alphasink, src, scale)
   }
 
   constructor (pipeline, appsink, alphasink, appsrc, scale) {
@@ -77,10 +78,8 @@ module.exports = class H264AlphaEncoder {
     // source caps describe what goes in
     this.src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=20/1`
     // x264 encoder requires size to be a multiple of 2
-    const vidWidth = width + (width % 2)
-    const vidHeight = height + (height % 2)
     // target caps describe what we want
-    this.scale.caps = `video/x-raw,width=${vidWidth},height=${vidHeight}`
+    this.scale.caps = `video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)}`
     this.pipeline.play()
   }
 

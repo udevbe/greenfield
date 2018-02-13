@@ -70,7 +70,7 @@ class Encoder {
    */
   _encodePNGFrame (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, synSerial) {
     if (!this._pngFrameEncoder) {
-      this._pngFrameEncoder = PNGEncoder.create()
+      this._pngFrameEncoder = PNGEncoder.create(bufferWidth, bufferHeight, this._gstFormat)
     }
     return this._pngFrameEncoder.encode(pixelBuffer, this._gstFormat, bufferWidth, bufferHeight, synSerial)
   }
@@ -86,7 +86,7 @@ class Encoder {
    */
   _encodeFrame (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, synSerial) {
     if (!this._frameEncoder) {
-      this._frameEncoder = Encoder.types[this._bufferFormat].FrameEncoder.create()
+      this._frameEncoder = Encoder.types[this._bufferFormat].FrameEncoder.create(bufferWidth, bufferHeight, this._gstFormat)
     }
     return this._frameEncoder.encode(pixelBuffer, this._gstFormat, bufferWidth, bufferHeight, synSerial)
   }

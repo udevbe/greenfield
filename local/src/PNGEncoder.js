@@ -6,27 +6,29 @@ module.exports = class PNGEncoder {
   /**
    * @return {module.PNGEncoder}
    */
-  static create () {
+  static create (width, height, gstBufferFormat) {
     const pipeline = new gstreamer.Pipeline(
-      'appsrc name=source ! ' + // source caps are set in configure method
-      'videoconvert ! capsfilter name=scale caps-change-mode=1 !' + // target caps are set in configure method
+      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=0/1 ! ` +
+      `videoconvert ! videoscale  ! capsfilter name=scale caps=video/x-raw,width=${width},height=${height},framerate=0/1 !` +
       'pngenc !' +
       'appsink name=sink'
     )
-    const appsink = pipeline.findChild('sink')
-    const appsrc = pipeline.findChild('source')
+    const sink = pipeline.findChild('sink')
+    const src = pipeline.findChild('source')
     const scale = pipeline.findChild('scale')
-    return new PNGEncoder(pipeline, appsink, appsrc, scale)
+    pipeline.play()
+
+    return new PNGEncoder(pipeline, sink, src, scale, width, height, gstBufferFormat)
   }
 
-  constructor (pipeline, appsink, appsrc, scale) {
+  constructor (pipeline, sink, src, scale, width, height, gstBufferFormat) {
     this.pipeline = pipeline
-    this.sink = appsink
-    this.src = appsrc
+    this.sink = sink
+    this.src = src
     this.scale = scale
-    this.width = null
-    this.height = null
-    this.format = null
+    this.width = width
+    this.height = height
+    this.format = gstBufferFormat
   }
 
   /**
@@ -35,13 +37,10 @@ module.exports = class PNGEncoder {
    * @param {string}gstBufferFormat
    */
   configure (width, height, gstBufferFormat) {
-    this.width = width
-    this.height = height
-    this.format = gstBufferFormat
-    this.pipeline.pause()
-    this.src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height}`
-    this.scale.caps = `video/x-raw,format=RGBA,width=${width},height=${height}`
-    this.pipeline.play()
+    // source caps describe what goes in
+    this.src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=0/1`
+    // target caps describe what we want
+    this.scale.caps = `video/x-raw,width=${width},height=${height},framerate=0/1`
   }
 
   /**
