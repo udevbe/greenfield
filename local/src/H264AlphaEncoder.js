@@ -1,6 +1,8 @@
 'use strict'
 
 const gstreamer = require('gstreamer-superficial')
+const fs = require('fs')
+const path = require('path')
 
 module.exports = class H264AlphaEncoder {
   static create (width, height, gstBufferFormat) {
@@ -50,6 +52,14 @@ module.exports = class H264AlphaEncoder {
     const src = pipeline.findChild('source')
     const scale = pipeline.findChild('scale')
     pipeline.play()
+
+    process.on('exit', () => {
+      pipeline.stop()
+      fs.unlink(path.join(process.cwd(), multipassCacheFileName0), (err) => { console.log(err) })
+      fs.unlink(path.join(process.cwd(), `${multipassCacheFileName0}.temp`), (err) => { console.log(err) })
+      fs.unlink(path.join(process.cwd(), multipassCacheFileName1), (err) => { console.log(err) })
+      fs.unlink(path.join(process.cwd(), `${multipassCacheFileName1}.temp`), (err) => { console.log(err) })
+    })
 
     return new H264AlphaEncoder(pipeline, sink, alphasink, src, scale)
   }
