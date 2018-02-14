@@ -1,13 +1,9 @@
 'use strict'
 
 const gstreamer = require('gstreamer-superficial')
-const fs = require('fs')
-const path = require('path')
 
 module.exports = class H264AlphaEncoder {
   static create (width, height, gstBufferFormat) {
-    const multipassCacheFileName0 = `x264_${(Math.random() * 1024) << 0}.log`
-    const multipassCacheFileName1 = `x264_${(Math.random() * 1024) << 0}.log`
     const pipeline = new gstreamer.Pipeline(
       // scale & convert to RGBA
       `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=20/1 ! ` +
@@ -35,14 +31,14 @@ module.exports = class H264AlphaEncoder {
       " ! ` +
       'glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! ' +
       'gldownload ! ' +
-      `x264enc multipass-cache-file=${multipassCacheFileName0} key-int-max=900 byte-stream=true pass=pass1 qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ` +
+      `x264enc key-int-max=900 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ` +
       'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=20/1 ! ' +
       'appsink name=alphasink ' +
 
       // branch[1] convert rgb to h264
       't. ! queue ! ' +
       'videoconvert ! video/x-raw,format=I420 ! ' +
-      `x264enc multipass-cache-file=${multipassCacheFileName1} key-int-max=900 byte-stream=true pass=pass1 qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ` +
+      `x264enc key-int-max=900 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ` +
       'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=20/1 ! ' +
       'appsink name=sink'
     )
@@ -52,14 +48,6 @@ module.exports = class H264AlphaEncoder {
     const src = pipeline.findChild('source')
     const scale = pipeline.findChild('scale')
     pipeline.play()
-
-    process.on('exit', () => {
-      pipeline.stop()
-      fs.unlink(path.join(process.cwd(), multipassCacheFileName0), (err) => { console.log(err) })
-      fs.unlink(path.join(process.cwd(), `${multipassCacheFileName0}.temp`), (err) => { console.log(err) })
-      fs.unlink(path.join(process.cwd(), multipassCacheFileName1), (err) => { console.log(err) })
-      fs.unlink(path.join(process.cwd(), `${multipassCacheFileName1}.temp`), (err) => { console.log(err) })
-    })
 
     return new H264AlphaEncoder(pipeline, sink, alphasink, src, scale)
   }
