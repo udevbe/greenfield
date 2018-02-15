@@ -72,6 +72,14 @@
             </description>
             <arg name="serial" type="uint" summary="Serial of the received buffer contents"/>
         </event>
+        <event name="latency">
+            <description>
+                Decode latency in milliseconds. This is an optional event send out by the compositor so the encoding
+                process can do a more accurate anticipation as to when the next frame callback should be fired.
+            </description>
+            <arg name="serial" type="uint" summary="Serial of the buffer contents that was decoded"/>
+            <arg name="duration" type="uint" summary="Time it took to decode the buffer."/>
+        </event>
     </interface>
 
     <interface name="rtc_peer_connection_factory" version="1">

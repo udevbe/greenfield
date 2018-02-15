@@ -20,9 +20,11 @@ module.exports = class LocalCallback {
    *
    */
   done (callbackData) {
-    this.resource.done(callbackData)
-    this.resource.destroy()
-    this.resource.implementation = null
-    this.resource = null
+    if (this.resource) {
+      this.resource.done(callbackData)
+      this.resource.destroy()
+      this.resource.implementation = null
+      this.resource = null
+    }
   }
 }

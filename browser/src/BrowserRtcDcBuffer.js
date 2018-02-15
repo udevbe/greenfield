@@ -145,7 +145,7 @@ export default class BrowserRtcDcBuffer {
   }
 
   /**
-   *
+   * @param {number}serial
    * @private
    */
   _onComplete (serial) {

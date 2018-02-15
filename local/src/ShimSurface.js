@@ -4,8 +4,6 @@ const {Shm} = require('wayland-server-bindings-runtime')
 
 const WlSurfaceRequests = require('./protocol/wayland/WlSurfaceRequests')
 const WlCallback = require('./protocol/wayland/WlCallback')
-const LocalCallback = require('./LocalCallback')
-const ShimCallback = require('./ShimCallback')
 const Encoder = require('./Encoder')
 
 module.exports = class ShimSurface extends WlSurfaceRequests {
@@ -37,6 +35,14 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
 
     // use a single buffer to communicate with the browser. Contents of the buffer will be copied when send.
     this.localRtcDcBuffer = this.rtcBufferFactory.createLocalRtcDcBuffer()
+    this.localRtcDcBuffer.ack = (serial) => {
+      if (serial > this.ackSerial) {
+        this.ackSerial = serial
+      } // else we received an outdated ack serial, ignore it.
+    }
+    this.localRtcDcBuffer.latency = (serial, frameDuration) => {
+      this._frameDuration = frameDuration
+    }
 
     this.pendingBufferDestroyListener = () => {
       this.pendingBuffer = null
@@ -44,6 +50,10 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     this.bufferDestroyListener = () => {
       this.buffer = null
     }
+
+    this._timeOffset = Date.now()
+    this._frameDuration = 0
+    this._commitDuration = 0
   }
 
   destroy (resource) {
@@ -71,15 +81,33 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     this.proxy.damage(x, y, width, height)
   }
 
-  // TODO implement a smart algorithm that can fire the frame callback before the browser compositor does as to compensate
+  // This implements a smart algorithm that can fire the frame callback before the browser compositor does as to compensate
   // for network latency and encoding/decoding delays.
   frame (resource, callback) {
-    const callbackProxy = this.proxy.frame()
-    const localCallback = LocalCallback.create()
-    callbackProxy.listener = localCallback
+    const callbackResource = WlCallback.create(resource.client, 4, callback, {}, null)
 
-    const shimCallback = ShimCallback.create(callbackProxy)
-    localCallback.resource = WlCallback.create(resource.client, 4, callback, shimCallback, null)
+    let timeoutId = -1
+    if (this._frameDuration) {
+      timeoutId = setTimeout(() => {
+        const time = Date.now() - this._timeOffset
+        callbackResource.done(time)
+        timeoutId = 0
+      }, this._frameDuration + this._commitDuration)
+    }
+
+    const callbackProxy = this.proxy.frame()
+    // done will be called when the browser is done rendering the frame
+    callbackProxy.listener.done = (browserTimestamp) => {
+      if (timeoutId) {
+        // timeout hasn't fired yet, so fire it now since we are sure that the browser is done rendering.
+        if (timeoutId !== -1) {
+          clearTimeout(timeoutId)
+        }
+        const time = Date.now() - this._timeOffset
+        callbackResource.done(time)
+        timeoutId = 0
+      }
+    }
   }
 
   setOpaqueRegion (resource, region) {
@@ -153,16 +181,16 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     }
 
     // if the ack times out & no newer serial is expected, we can retry sending the buffer contents
-    setTimeout(() => {
-      // If the syn serial at the time the timer was created is greater than the latest received ack serial and no newer serial is expected,
-      // then we have not received an ack that matches or is newer than the syn we're checking. We resend the frame.
-      if (frame.synSerial > this.ackSerial && frame.synSerial === this.synSerial) {
-        // console.log('send timed out. resending')
-        this.sendFrame(frame)
-      }
-      // TODO dynamically adjust to expected roundtrip time which could (naively) be calculated by measuring the latency
-      // between a (syn & ack)/2 + frame bandwidth.
-    }, 500)
+    // TODO cancel timeout of we received the corresponding ack
+    // setTimeout(async () => {
+    //   // If the syn serial at the time the timer was created is greater than the latest received ack serial and no newer serial is expected,
+    //   // then we have not received an ack that matches or is newer than the syn we're checking. We resend the frame.
+    //   if (frame.synSerial > this.ackSerial && frame.synSerial === this.synSerial) {
+    //     await this.sendFrame(frame)
+    //   }
+    //   // TODO dynamically adjust to expected roundtrip time which could be calculated by measuring the latency
+    //   // between a syn & ack
+    // }, 500)
 
     const dataChannel = await this.localRtcDcBuffer.localRtcBlobTransfer.open()
     const frameBuffer = this._frameToBuffer(frame)
@@ -173,6 +201,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
   }
 
   async commit (resource) {
+    const commitStart = Date.now()
     if (this.buffer) {
       this.buffer.release()
       this.buffer.removeDestroyListener(this.bufferDestroyListener)
@@ -183,23 +212,17 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     }
     this.buffer = this.pendingBuffer
     this.pendingBuffer = null
-    // TODO handle destruction of committed buffer?
 
     if (this.buffer && this.localRtcDcBuffer) {
       this.buffer.addDestroyListener(this.bufferDestroyListener)
-      this.localRtcDcBuffer.ack = (serial) => {
-        if (serial > this.ackSerial) {
-          this.ackSerial = serial
-        } // else we received an outdated ack serial, ignore it.
-      }
 
       this.synSerial++
       const synSerial = this.synSerial
-
+      const frame = await this._encodeBuffer(this.buffer, synSerial)
       this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
       this.proxy.commit()
-      const frame = await this._encodeBuffer(this.buffer, synSerial)
       await this.sendFrame(frame)
+      this._commitDuration = Date.now() - commitStart
     }
   }
 

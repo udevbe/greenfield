@@ -43,4 +43,16 @@ module.exports = class LocalRtcDcBuffer {
   ack (serial) {
     // implemented in ShimSurface
   }
+
+  /**
+   *
+   * @param {Number} serial Serial of the buffer contents that was decoded
+   * @param {Number} duration Time it took to decode the buffer.
+   *
+   * @since 1
+   *
+   */
+  latency (serial, duration) {
+    // implemented in ShimSurface
+  }
 }

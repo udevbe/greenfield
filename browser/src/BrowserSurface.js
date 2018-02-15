@@ -25,7 +25,6 @@ const transformations = {
 
 export default class BrowserSurface {
   /**
-   *
    * @param {GrSurface} grSurfaceResource
    * @param {Renderer} renderer
    * @param {BrowserSeat} browserSeat
@@ -426,6 +425,8 @@ export default class BrowserSurface {
    *
    */
   commit (resource) {
+    const renderStart = Date.now()
+
     if (this.pendingGrBuffer) {
       this.pendingGrBuffer.removeDestroyListener(this.pendingBrowserBufferDestroyListener)
     }
@@ -486,7 +487,7 @@ export default class BrowserSurface {
     if (this.role && typeof this.role.onCommit === 'function') {
       this.role.onCommit(this)
     }
-    this.renderer.render(this)
+    this.renderer.render(this, renderStart)
   }
 
   /**
