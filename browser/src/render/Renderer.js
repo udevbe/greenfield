@@ -72,79 +72,86 @@ export default class Renderer {
     return browserRtcDcBuffer.geo
   }
 
-  /**
-   * @param {BrowserSurface} browserSurface
-   * @param {number} renderStart
-   */
-  render (browserSurface, renderStart) {
-    window.requestAnimationFrame((frameTimeStamp) => {
-      this._render(browserSurface, renderStart, frameTimeStamp)
-      this.browserSession.flush()
-    })
-  }
-
-  /**
-   * @param {BrowserSurface} browserSurface
-   * @param {number} renderStart
-   * @param {number} frameTimeStamp
-   * @private
-   */
-  _render (browserSurface, renderStart, frameTimeStamp) {
+  async requestRender (browserSurface) {
+    const renderStart = Date.now()
     const grBuffer = browserSurface.grBuffer
     if (grBuffer === null) {
       browserSurface.renderState = null
       return
     }
 
-    const gl = this.gl
-    // TODO we could check for null here in case we are dealing with a different kind of buffer
+    let viewState = browserSurface.renderState
+    if (!viewState) {
+      viewState = ViewState.create(this.gl)
+      browserSurface.renderState = viewState
+    }
+
     const browserRtcDcBuffer = BrowserRtcBufferFactory.get(grBuffer)
-    const bufferSize = this.bufferSize(grBuffer)
+    const frameCallback = browserSurface.frameCallback
 
-    if (browserRtcDcBuffer.isComplete()) {
-      browserSurface.size = this.surfaceSize(browserSurface)
-      browserSurface.bufferSize = bufferSize
+    browserSurface.frameCallback = null
+    const views = browserSurface.browserSurfaceViews
 
-      if (!browserSurface.renderState) {
-        browserSurface.renderState = ViewState.create(gl)
-      }
+    const syncSerial = await browserRtcDcBuffer.whenComplete()
 
-      // update textures
-      browserSurface.renderState.update(browserRtcDcBuffer)
+    browserSurface.size = this.surfaceSize(browserSurface)
+    browserSurface.bufferSize = browserRtcDcBuffer.geo
 
-      // paint the textures
-      if (browserRtcDcBuffer.type === 'h264') {
-        this._drawH264(browserSurface, browserRtcDcBuffer)
-      } else { // if (browserRtcDcBuffer.type === 'png')
-        this._drawPNG(browserSurface)
-      }
+    // copy state into a separate object so we don't read a different state when our animation frame fires
+    const state = {
+      buffer: {
+        type: browserRtcDcBuffer.type,
+        pngContent: browserRtcDcBuffer.pngContent,
+        yuvContent: browserRtcDcBuffer.yuvContent,
+        yuvWidth: browserRtcDcBuffer.yuvWidth,
+        yuvHeight: browserRtcDcBuffer.yuvHeight,
+        alphaYuvContent: browserRtcDcBuffer.alphaYuvContent,
+        alphaYuvWidth: browserRtcDcBuffer.alphaYuvWidth,
+        alphaYuvHeight: browserRtcDcBuffer.alphaYuvHeight,
+        geo: browserRtcDcBuffer.geo,
+        resource: browserRtcDcBuffer.resource
+      },
 
-      const renderDuration = Date.now() - renderStart
-      browserRtcDcBuffer.resource.latency(browserRtcDcBuffer.syncSerial, renderDuration)
-      this._nextFrame(browserSurface, frameTimeStamp)
-    } else {
-      // buffer contents have not yet arrived and decoded, reschedule a scene repaint as soon as the buffer arrives.
-      browserRtcDcBuffer.whenComplete().then(() => {
-        this.render(browserSurface, renderStart)
-      }).catch((error) => {
-        console.log(error)
-      })
+      syncSerial: syncSerial,
+      renderStart: renderStart,
+      frameCallback: frameCallback,
+      views: views
+    }
+
+    window.requestAnimationFrame((frameTimeStamp) => {
+      this._render(viewState, frameTimeStamp, state)
+      this.browserSession.flush()
+    })
+  }
+
+  _render (viewState, frameTimeStamp, state) {
+    // update textures
+    viewState.update(state)
+    this._draw(frameTimeStamp, state, viewState)
+
+    const renderDuration = Date.now() - state.renderStart
+    state.buffer.resource.latency(state.syncSerial, renderDuration)
+    if (state.frameCallback) {
+      state.frameCallback.done(frameTimeStamp << 0)
     }
   }
 
-  /**
-   * @param {BrowserSurface}browserSurface
-   * @param {BrowserRtcDcBuffer}browserRtcDcBuffer
-   * @private
-   */
-  _drawH264 (browserSurface, browserRtcDcBuffer) {
-    const bufferSize = browserRtcDcBuffer.geo
-    const renderState = browserSurface.renderState
+  _draw (frameTimeStamp, state, renderState) {
+    // paint the textures
+    if (state.buffer.type === 'h264') {
+      this._drawH264(state, renderState)
+    } else { // if (browserRtcDcBuffer.type === 'png')
+      this._drawPNG(state, renderState)
+    }
+  }
+
+  _drawH264 (state, renderState) {
+    const bufferSize = state.buffer.geo
     const viewPortUpdate = this.canvas.width !== bufferSize.w || this.canvas.height !== bufferSize.h
     this.canvas.width = bufferSize.w
     this.canvas.height = bufferSize.h
 
-    if (browserRtcDcBuffer.alphaYuvContent) {
+    if (state.buffer.alphaYuvContent != null) {
       this.yuvaShader.use()
       this.yuvaShader.draw(renderState.yTexture, renderState.uTexture, renderState.vTexture, renderState.alphaYTexture, bufferSize, viewPortUpdate)
     } else {
@@ -153,30 +160,14 @@ export default class Renderer {
     }
 
     // blit rendered texture from render canvas into view canvasses
-    browserSurface.browserSurfaceViews.forEach((view) => {
+    state.views.forEach((view) => {
       view.drawCanvas(this.canvas)
     })
   }
 
-  /**
-   * @param {BrowserSurface}browserSurface
-   * @private
-   */
-  _drawPNG (browserSurface) {
-    browserSurface.browserSurfaceViews.forEach((view) => {
-      view.drawPNG(browserSurface.renderState.pngImage)
+  _drawPNG (state, renderState) {
+    state.views.forEach((view) => {
+      view.drawPNG(renderState.pngImage)
     })
-  }
-
-  /**
-   * @param {BrowserSurface}browserSurface
-   * @param {number}frameTimeStamp
-   * @private
-   */
-  _nextFrame (browserSurface, frameTimeStamp) {
-    if (browserSurface.frameCallback) {
-      browserSurface.frameCallback.done(frameTimeStamp << 0)
-      browserSurface.frameCallback = null
-    }
   }
 }

@@ -35,44 +35,40 @@ export default class ViewState {
     this.pngImage = pngImage
   }
 
-  /**
-   *
-   * @param {BrowserRtcDcBuffer}browserRtcDcBuffer
-   */
-  update (browserRtcDcBuffer) {
-    if (browserRtcDcBuffer.type === 'h264') {
-      this._updateH264(browserRtcDcBuffer)
+  update (state) {
+    if (state.buffer.type === 'h264') {
+      this._updateH264(state)
     } else { // if(type === 'png')
-      this._updatePNG(browserRtcDcBuffer)
+      this._updatePNG(state)
     }
   }
 
-  _updateH264 (browserRtcDcBuffer) {
-    const opaqueBuffer = browserRtcDcBuffer.yuvContent
+  _updateH264 (state) {
+    const opaqueBuffer = state.buffer.yuvContent
     if (!opaqueBuffer) { return }
 
-    const opaqueWidth = browserRtcDcBuffer.yuvWidth
-    const opaqueHeight = browserRtcDcBuffer.yuvHeight
+    const opaqueWidth = state.buffer.yuvWidth
+    const opaqueHeight = state.buffer.yuvHeight
 
     const lumaSize = opaqueWidth * opaqueHeight
     const chromaSize = lumaSize >> 2
 
-    this.yTexture.fill(opaqueBuffer.subarray(0, lumaSize), browserRtcDcBuffer.geo, opaqueWidth)
-    this.uTexture.fill(opaqueBuffer.subarray(lumaSize, lumaSize + chromaSize), browserRtcDcBuffer.geo.getHalfSize(), opaqueWidth / 2)
-    this.vTexture.fill(opaqueBuffer.subarray(lumaSize + chromaSize, lumaSize + (2 * chromaSize)), browserRtcDcBuffer.geo.getHalfSize(), opaqueWidth / 2)
+    this.yTexture.fill(opaqueBuffer.subarray(0, lumaSize), state.buffer.geo, opaqueWidth)
+    this.uTexture.fill(opaqueBuffer.subarray(lumaSize, lumaSize + chromaSize), state.buffer.geo.getHalfSize(), opaqueWidth / 2)
+    this.vTexture.fill(opaqueBuffer.subarray(lumaSize + chromaSize, lumaSize + (2 * chromaSize)), state.buffer.geo.getHalfSize(), opaqueWidth / 2)
 
-    const alphaBuffer = browserRtcDcBuffer.alphaYuvContent
+    const alphaBuffer = state.buffer.alphaYuvContent
     if (alphaBuffer) {
-      const alphaWidth = browserRtcDcBuffer.alphaYuvWidth
-      const alphaHeight = browserRtcDcBuffer.alphaYuvHeight
+      const alphaWidth = state.buffer.alphaYuvWidth
+      const alphaHeight = state.buffer.alphaYuvHeight
       const alphaLumaSize = alphaWidth * alphaHeight
 
-      this.alphaYTexture.fill(alphaBuffer.subarray(0, alphaLumaSize), browserRtcDcBuffer.geo, alphaWidth)
+      this.alphaYTexture.fill(alphaBuffer.subarray(0, alphaLumaSize), state.buffer.geo, alphaWidth)
     }
   }
 
-  _updatePNG (browserRtcDcBuffer) {
-    const pngArray = browserRtcDcBuffer.pngContent
+  _updatePNG (state) {
+    const pngArray = state.buffer.pngContent
     const pngBlob = new window.Blob([pngArray], {'type': 'image/png'})
     this.pngImage.src = window.URL.createObjectURL(pngBlob)
   }

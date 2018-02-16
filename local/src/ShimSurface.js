@@ -93,6 +93,9 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
         callbackResource.done(time)
         timeoutId = 0
       }, this._frameDuration + this._commitDuration)
+      callbackResource.onDestroy().then(() => {
+        clearTimeout(timeoutId)
+      })
     }
 
     const callbackProxy = this.proxy.frame()
@@ -218,9 +221,9 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
 
       this.synSerial++
       const synSerial = this.synSerial
-      const frame = await this._encodeBuffer(this.buffer, synSerial)
       this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
       this.proxy.commit()
+      const frame = await this._encodeBuffer(this.buffer, synSerial)
       await this.sendFrame(frame)
       this._commitDuration = Date.now() - commitStart
     }

@@ -317,10 +317,6 @@ export default class BrowserSurface {
    *
    */
   frame (resource, callback) {
-    if (this.frameCallback) {
-      this.frameCallback.resource.destroy()
-      this.frameCallback = null
-    }
     this.frameCallback = BrowserCallback.create(new greenfield.GrCallback(resource.client, callback, 1))
   }
 
@@ -424,9 +420,7 @@ export default class BrowserSurface {
    * @since 1
    *
    */
-  commit (resource) {
-    const renderStart = Date.now()
-
+  async commit (resource) {
     if (this.pendingGrBuffer) {
       this.pendingGrBuffer.removeDestroyListener(this.pendingBrowserBufferDestroyListener)
     }
@@ -487,7 +481,8 @@ export default class BrowserSurface {
     if (this.role && typeof this.role.onCommit === 'function') {
       this.role.onCommit(this)
     }
-    this.renderer.render(this, renderStart)
+
+    await this.renderer.requestRender(this)
   }
 
   /**
