@@ -451,7 +451,6 @@ export default class BrowserPointer {
       })
     }
 
-    this._browserKeyboard.focusLost()
     this.focus = null
     this.grab = null
     this.view = null
