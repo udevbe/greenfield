@@ -1,6 +1,7 @@
 'use strict'
 
 import Size from './Size'
+import BrowserH264Decoder from './BrowserH264Decoder'
 
 export default class BrowserRtcDcBuffer {
   /**
@@ -32,8 +33,16 @@ export default class BrowserRtcDcBuffer {
    * @param {GrBlobTransfer} blobTransferResource
    */
   constructor (rtcDcBufferResource, blobTransferResource) {
+    /**
+     * @type {BrowserH264Decoder}
+     * @private
+     */
     this._decoder = null
     this._decodingSerialsQueue = []
+    /**
+     * @type {BrowserH264Decoder}
+     * @private
+     */
     this._alphaDecoder = null
     this._decodingAlphaSerialsQueue = []
 
@@ -97,44 +106,20 @@ export default class BrowserRtcDcBuffer {
    * @param {boolean}hasAlpha
    * @private
    */
-  _ensureH264Decoders (hasAlpha) {
+  async _ensureH264Decoders (hasAlpha) {
     if (!this._decoder) {
-      const decoder = new window.Worker('./lib/broadway/Decoder.js')
-      decoder.addEventListener('message', (event) => {
-        const data = event.data
-        if (data.consoleLog) {
-          console.log(data.consoleLog)
-          return
-        }
-        this._onPictureDecoded(new Uint8Array(data.buf, 0, data.length), data.width, data.height)
-      }, false)
-      decoder.postMessage({
-        type: 'Broadway.js - Worker init',
-        options: {
-          rgb: false,
-          reuseMemory: true
-        }
-      })
+      const decoder = await BrowserH264Decoder.create()
+      decoder.onPicture = (buffer, width, height) => {
+        this._onPictureDecoded(buffer, width, height)
+      }
       this._decoder = decoder
     }
 
     if (hasAlpha && !this._alphaDecoder) {
-      const alphaDecoder = new window.Worker('./lib/broadway/Decoder.js')
-      alphaDecoder.addEventListener('message', (event) => {
-        const data = event.data
-        if (data.consoleLog) {
-          console.log(data.consoleLog)
-          return
-        }
-        this._onAlphaPictureDecoded(new Uint8Array(data.buf, 0, data.length), data.width, data.height)
-      }, false)
-      alphaDecoder.postMessage({
-        type: 'Broadway.js - Worker init',
-        options: {
-          rgb: false,
-          reuseMemory: true
-        }
-      })
+      const alphaDecoder = await BrowserH264Decoder.create()
+      alphaDecoder.onPicture = (buffer, width, height) => {
+        this._onAlphaPictureDecoded(buffer, width, height)
+      }
       this._alphaDecoder = alphaDecoder
     }
 
@@ -346,33 +331,22 @@ export default class BrowserRtcDcBuffer {
     this._onComplete(serial)
   }
 
-  _decodeH264 (frame, serial) {
+  async _decodeH264 (frame, serial) {
     const hasAlpha = frame.alpha !== null
-    this._ensureH264Decoders(hasAlpha)
+    await this._ensureH264Decoders(hasAlpha)
 
-    this._decodingSerialsQueue.push(serial)
     if (hasAlpha) {
       this._decodingAlphaSerialsQueue.push(serial)
-    }
-
-    if (hasAlpha) {
       // create a copy of the arraybuffer so we can zero-copy the opaque part (after zero-copying, we can no longer use the underlying array in any way)
       const alphaH264Nal = new Uint8Array(frame.alpha.slice())
-      this._alphaDecoder.postMessage({
-        buf: alphaH264Nal.buffer,
-        offset: alphaH264Nal.byteOffset,
-        length: alphaH264Nal.length
-      }, [alphaH264Nal.buffer])
+      this._alphaDecoder.decode(alphaH264Nal)
     } else {
       this._frameStates[serial].state = 'pending_opaque'
     }
 
+    this._decodingSerialsQueue.push(serial)
     const opaqueH264Nal = new Uint8Array(frame.opaque)
-    this._decoder.postMessage({
-      buf: opaqueH264Nal.buffer,
-      offset: opaqueH264Nal.byteOffset,
-      length: opaqueH264Nal.length
-    }, [opaqueH264Nal.buffer])
+    this._decoder.decode(opaqueH264Nal)
   }
 
   _onPictureDecoded (buffer, width, height) {
