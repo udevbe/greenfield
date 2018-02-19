@@ -24,7 +24,7 @@ export default class BrowserRegion {
   }
 
   static destroyPixmanRegion (pixmanRegion) {
-    pixman._pixman_region32_fini(this.pixmanRegion)
+    pixman._pixman_region32_fini(pixmanRegion)
     pixman._free(pixmanRegion)
   }
 
@@ -90,8 +90,7 @@ export default class BrowserRegion {
     const deltaPixmanRegion = pixman._malloc(20)
     pixman._pixman_region32_init_rect(deltaPixmanRegion, x, y, width, height)
     pixman._pixman_region32_subtract(this.pixmanRegion, this.pixmanRegion, deltaPixmanRegion)
-    pixman._pixman_region32_fini(deltaPixmanRegion)
-    pixman._free(deltaPixmanRegion)
+    BrowserRegion.destroyPixmanRegion(deltaPixmanRegion)
   }
 
   /**
