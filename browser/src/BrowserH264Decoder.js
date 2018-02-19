@@ -3,46 +3,38 @@
 export default class BrowserH264Decoder {
   static create () {
     return new Promise((resolve) => {
-      const decoder = new window.Worker('./lib/broadway/Decoder.js')
-      const browserH264Decoder = new BrowserH264Decoder(decoder)
-      decoder.addEventListener('message', (event) => {
-        const data = event.data
-        if (data.consoleLog) {
-          console.log(data.consoleLog)
-          return
-        }
-        browserH264Decoder._onPictureReady(event)
-        this._onPictureDecoded()
-      }, false)
-      decoder.postMessage({
-        type: 'Broadway.js - Worker init',
-        options: {
-          rgb: false,
-          reuseMemory: true
+      const h264BsdWorker = new window.Worker('TinyH264Worker.js')
+      const browserH264Decoder = new BrowserH264Decoder(h264BsdWorker)
+      h264BsdWorker.addEventListener('message', (e) => {
+        const message = e.data
+        switch (message.type) {
+          case 'pictureReady':
+            browserH264Decoder._onPictureReady(message)
+            break
+          case 'decoderReady':
+            resolve(browserH264Decoder)
+            break
         }
       })
-      resolve(browserH264Decoder)
     })
   }
 
-  constructor (decoder) {
-    this._decoder = decoder
+  constructor (h264BsdWorker) {
+    this._h264BsdWorker = h264BsdWorker
   }
 
   /**
    * @param {Uint8Array} h264Nal
    */
   decode (h264Nal) {
-    this._decoder.postMessage({
-      buf: h264Nal.buffer,
-      offset: h264Nal.byteOffset,
-      length: h264Nal.length
-    }, [h264Nal.buffer])
+    this._h264BsdWorker.postMessage({type: 'decode', data: h264Nal.buffer}, [h264Nal.buffer])
   }
 
   _onPictureReady (message) {
-    const data = message.data
-    this.onPicture(new Uint8Array(data.buf, 0, data.length), data.width, data.height)
+    const width = message.width
+    const height = message.height
+    const buffer = message.data
+    this.onPicture(new Uint8Array(buffer), width, height)
   }
 
   /**
@@ -53,6 +45,6 @@ export default class BrowserH264Decoder {
   onPicture (buffer, width, height) {}
 
   terminate () {
-    this._decoder.terminate()
+    this._h264BsdWorker.terminate()
   }
 }
