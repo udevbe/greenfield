@@ -42,6 +42,15 @@ export default class Renderer {
     this.yuvaShader = yuvaShader
     this.yuvShader = yuvShader
     this.canvas = canvas
+
+    this._animationScheduled = false
+    this._sceneUpdates = []
+    this._updateScene = (timestamp) => {
+      this._sceneUpdates.forEach(frameUpdate => { frameUpdate() })
+      this.browserSession.flush()
+      this._sceneUpdates = []
+      this._animationScheduled = false
+    }
   }
 
   /**
@@ -77,6 +86,10 @@ export default class Renderer {
     const grBuffer = browserSurface.grBuffer
     if (grBuffer === null) {
       browserSurface.renderState = null
+      if (browserSurface.frameCallback) {
+        browserSurface.frameCallback.done(Date.now() & 0x7fffffff)
+      }
+      this.browserSession.flush()
       return
     }
 
@@ -118,10 +131,13 @@ export default class Renderer {
       views: views
     }
 
-    window.requestAnimationFrame((frameTimeStamp) => {
-      this._render(viewState, frameTimeStamp, state)
-      this.browserSession.flush()
+    this._sceneUpdates.push(() => {
+      this._render(viewState, Date.now() & 0x7fffffff, state)
     })
+    if (!this._animationScheduled) {
+      this._animationScheduled = true
+      window.requestAnimationFrame(this._updateScene)
+    }
   }
 
   _render (viewState, frameTimeStamp, state) {
