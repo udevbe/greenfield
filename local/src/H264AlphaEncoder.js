@@ -5,14 +5,13 @@ const gstreamer = require('gstreamer-superficial')
 module.exports = class H264AlphaEncoder {
   static create (width, height, gstBufferFormat) {
     const pipeline = new gstreamer.Pipeline(
-      // scale & convert to RGBA
-      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=20/1 ! ` +
-      `videoscale ! capsfilter name=scale caps=video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)} ! ` +
+      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height} ! ` +
+      'glupload ! ' +
+      'glcolorconvert ! video/x-raw(memory:GLMemory),format=RGBA ! ' +
+      `glcolorscale ! capsfilter name=scale caps=video/x-raw(memory:GLMemory),width=${width + (width % 2)},height=${height + (height % 2)} ! ` +
 
       // branch[0] convert alpha to grayscale h264
       'tee name=t ! queue ! ' +
-      'glupload ! ' +
-      'glcolorconvert ! ' +
       `glshader fragment="
         #version 100
         #ifdef GL_ES
@@ -31,14 +30,15 @@ module.exports = class H264AlphaEncoder {
       " ! ` +
       'glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! ' +
       'gldownload ! ' +
-      `x264enc key-int-max=900 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ` +
+      `x264enc key-int-max=900 byte-stream=true pass=quant qp-max=28 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ` +
       'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=20/1 ! ' +
       'appsink name=alphasink ' +
 
       // branch[1] convert rgb to h264
       't. ! queue ! ' +
-      'videoconvert ! video/x-raw,format=I420 ! ' +
-      `x264enc key-int-max=900 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ` +
+      'glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! ' +
+      'gldownload ! ' +
+      `x264enc key-int-max=900 byte-stream=true pass=quant qp-max=28 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ` +
       'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=20/1 ! ' +
       'appsink name=sink'
     )
@@ -74,18 +74,18 @@ module.exports = class H264AlphaEncoder {
     this.format = gstBufferFormat
     this.pipeline.pause()
     // source caps describe what goes in
-    this.src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=20/1`
+    this.src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height}`
     // x264 encoder requires size to be a multiple of 2
     // target caps describe what we want
-    this.scale.caps = `video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)}`
+    this.scale.caps = `video/x-raw(memory:GLMemory),width=${width + (width % 2)},height=${height + (height % 2)}`
     this.pipeline.play()
   }
 
   /**
    * @param {Buffer}pixelBuffer
-   * @param {number}gstBufferFormat
+   * @param {string}gstBufferFormat
    * @param {number}bufferWidth
-   * @param {height}bufferHeight
+   * @param {number}bufferHeight
    * @param {number}synSerial
    */
   encode (pixelBuffer, gstBufferFormat, bufferWidth, bufferHeight, synSerial) {
