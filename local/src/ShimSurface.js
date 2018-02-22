@@ -51,7 +51,6 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       this.buffer = null
     }
 
-    this._timeOffset = Date.now()
     this._frameDuration = 0
     this._commitDuration = 0
   }
@@ -81,36 +80,9 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     this.proxy.damage(x, y, width, height)
   }
 
-  // This implements a smart algorithm that can fire the frame callback before the browser compositor does as to compensate
-  // for network latency and encoding/decoding delays.
   frame (resource, callback) {
-    const callbackResource = WlCallback.create(resource.client, 4, callback, {}, null)
-
-    let timeoutId = -1
-    if (this._frameDuration) {
-      timeoutId = setTimeout(() => {
-        const time = Date.now() - this._timeOffset
-        callbackResource.done(time)
-        timeoutId = 0
-      }, this._frameDuration + this._commitDuration)
-      callbackResource.onDestroy().then(() => {
-        clearTimeout(timeoutId)
-      })
-    }
-
-    const callbackProxy = this.proxy.frame()
-    // done will be called when the browser is done rendering the frame
-    callbackProxy.listener.done = (browserTimestamp) => {
-      if (timeoutId) {
-        // timeout hasn't fired yet, so fire it now since we are sure that the browser is done rendering.
-        if (timeoutId !== -1) {
-          clearTimeout(timeoutId)
-        }
-        const time = Date.now() - this._timeOffset
-        callbackResource.done(time)
-        timeoutId = 0
-      }
-    }
+    this._callbackResource = WlCallback.create(resource.client, 4, callback, {}, null)
+    this._callbackProxy = this.proxy.frame()
   }
 
   setOpaqueRegion (resource, region) {
@@ -205,6 +177,11 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
 
   async commit (resource) {
     const commitStart = Date.now()
+
+    const callbackResource = this._callbackResource
+    const callbackProxy = this._callbackProxy
+    const wlDisplay = resource.client.display
+
     if (this.buffer) {
       this.buffer.release()
       this.buffer.removeDestroyListener(this.bufferDestroyListener)
@@ -226,6 +203,41 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       const frame = await this._encodeBuffer(this.buffer, synSerial)
       await this.sendFrame(frame)
       this._commitDuration = Date.now() - commitStart
+    }
+
+    let timeoutId = -1
+    const frameFunc = () => {
+      callbackResource.done(Date.now() & 0x7fffffff)
+      wlDisplay.flushClients()
+      timeoutId = 0
+    }
+
+    // This implements a smart algorithm that can fire the frame callback before the browser compositor does as to compensate
+    // for network latency and encoding/decoding delays.
+    if (this._frameDuration && callbackResource) {
+      if (this._frameDuration > this._commitDuration) {
+        timeoutId = setTimeout(frameFunc, (this._frameDuration - this._commitDuration))
+        callbackResource.onDestroy().then(() => {
+          clearTimeout(timeoutId)
+          timeoutId = 0
+        })
+      } else {
+        frameFunc()
+      }
+    }
+
+    // done will be called when the browser is done rendering the frame
+    if (callbackProxy) {
+      callbackProxy.listener.done = (browserTimestamp) => {
+        if (timeoutId) {
+          // timeout hasn't fired yet, so fire it now since we are sure that the browser is done rendering.
+          if (timeoutId !== -1) {
+            clearTimeout(timeoutId)
+          }
+          frameFunc()
+        }
+      }
+      this._callbackProxy = null
     }
   }
 
