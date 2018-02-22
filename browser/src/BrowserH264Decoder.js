@@ -21,19 +21,37 @@ export default class BrowserH264Decoder {
 
   constructor (h264BsdWorker) {
     this._h264BsdWorker = h264BsdWorker
+    this._busy = false
+    this._decodeQueue = []
   }
 
   /**
    * @param {Uint8Array} h264Nal
    */
   decode (h264Nal) {
+    if (this._busy) {
+      // TODO We could drop older frames if the queue becomes too big. This means the server is sending frames faster
+      // than we can decode. This can happen if the server hasn't yet received our suddenly greatly increased decoding
+      // time feedback.
+      console.log('Decoder busy. Queueing h264 NAL')
+      this._decodeQueue.push(h264Nal)
+      return
+    }
     this._h264BsdWorker.postMessage({type: 'decode', data: h264Nal.buffer}, [h264Nal.buffer])
+    this._busy = true
   }
 
   _onPictureReady (message) {
     const width = message.width
     const height = message.height
     const buffer = message.data
+
+    if (this._decodeQueue.length > 0) {
+      const h264Nal = this._decodeQueue.shift()
+      this._h264BsdWorker.postMessage({type: 'decode', data: h264Nal.buffer}, [h264Nal.buffer])
+    } else {
+      this._busy = false
+    }
     this.onPicture(new Uint8Array(buffer), width, height)
   }
 
