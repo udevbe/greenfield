@@ -26,11 +26,11 @@ function ensureFork (grSessionId) {
 
     child.on('exit', removeChild)
     child.on('SIGINT', function () {
-      console.log('received SIGINT')
+      console.log('child received SIGINT')
       child.exit()
     })
     child.on('SIGTERM', function () {
-      console.log('received SIGTERM')
+      console.log('child received SIGTERM')
       child.exit()
     })
 
@@ -63,7 +63,7 @@ function main () {
     for (const grSessionId in forks) {
       const child = forks[grSessionId]
       if (child != null) {
-        console.log('killing child')
+        console.log('sending child SIGKILL')
         child.disconnect()
         child.kill('SIGKILL')
       }
@@ -72,11 +72,11 @@ function main () {
 
   process.on('exit', cleanUp)
   process.on('SIGINT', () => {
-    console.log('received SIGINT')
+    console.log('parent received SIGINT')
     process.exit()
   })
   process.on('SIGTERM', () => {
-    console.log('received SIGTERM')
+    console.log('parent received SIGTERM')
     process.exit()
   })
 
