@@ -20,14 +20,19 @@ function ensureFork (grSessionId) {
     child = childProcess.fork(path.join(__dirname, 'forkIndex.js'))
 
     const removeChild = () => {
+      console.log('child exit')
       delete forks[grSessionId]
     }
 
-    child.on('disconnect', removeChild)
-    child.on('SIGINT', removeChild)
-    child.on('SIGTERM', removeChild)
-    child.on('SIGBREAK', removeChild)
-    child.on('SIGHUP', removeChild)
+    child.on('exit', removeChild)
+    child.on('SIGINT', function () {
+      console.log('received SIGINT')
+      child.exit()
+    })
+    child.on('SIGTERM', function () {
+      console.log('received SIGTERM')
+      child.exit()
+    })
 
     forks[grSessionId] = child
   }
@@ -54,20 +59,26 @@ function main () {
   })
 
   const cleanUp = () => {
+    console.log('parent exit')
     for (const grSessionId in forks) {
       const child = forks[grSessionId]
       if (child != null) {
-        child.kill('SIGTERM')
+        console.log('killing child')
+        child.disconnect()
+        child.kill('SIGKILL')
       }
     }
-    process.exit(0)
   }
 
   process.on('exit', cleanUp)
-  process.on('SIGINT', cleanUp)
-  process.on('SIGTERM', cleanUp)
-  process.on('SIGBREAK', cleanUp)
-  process.on('SIGHUP', cleanUp)
+  process.on('SIGINT', () => {
+    console.log('received SIGINT')
+    process.exit()
+  })
+  process.on('SIGTERM', () => {
+    console.log('received SIGTERM')
+    process.exit()
+  })
 
   server.listen(8080)
 }
