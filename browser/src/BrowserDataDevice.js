@@ -246,6 +246,10 @@ export default class BrowserDataDevice {
     const y = greenfield.parseFixed(surfacePoint.y)
 
     const dataDeviceResource = this._dataDeviceForClient(client)
+    if (dataDeviceResource === null) {
+      // target doesn't support dnd
+      return
+    }
 
     let grDataOffer = null
     if (this.dndSource) {
@@ -277,7 +281,9 @@ export default class BrowserDataDevice {
     }
 
     const dataDeviceResource = this._dataDeviceForClient(client)
-    dataDeviceResource.leave()
+    if (dataDeviceResource) {
+      dataDeviceResource.leave()
+    }
     this.dndFocus = null
   }
 
@@ -287,21 +293,24 @@ export default class BrowserDataDevice {
       const client = surfaceResource.client
       const dataDeviceResource = this._dataDeviceForClient(client)
 
-      if (this.dndSource.implementation.accepted &&
-        this.dndSource.implementation.currentDndAction) {
-        dataDeviceResource.drop()
+      if (dataDeviceResource) {
+        if (this.dndSource.implementation.accepted &&
+          this.dndSource.implementation.currentDndAction) {
+          dataDeviceResource.drop()
 
-        if (this.dndSource.version >= 3) {
-          this.dndSource.dndDropPerformed()
+          if (this.dndSource.version >= 3) {
+            this.dndSource.dndDropPerformed()
+          }
+
+          this.dndSource.implementation.grDataOffer.implementation.inAsk = this.dndSource.currentDndAction === DndAction.ask
+        } else if (this.dndSource && this.dndSource.version >= 3) {
+          this.dndSource.cancelled()
         }
 
-        this.dndSource.implementation.grDataOffer.implementation.inAsk = this.dndSource.currentDndAction === DndAction.ask
-      } else if (this.dndSource && this.dndSource.version >= 3) {
-        this.dndSource.cancelled()
+        dataDeviceResource.leave()
       }
-
-      dataDeviceResource.leave()
     }
+
     this.dndSourceClient = null
 
     const browserPointer = this.browserSeat.browserPointer
