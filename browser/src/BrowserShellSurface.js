@@ -33,6 +33,8 @@ export default class BrowserShellSurface {
     })
 
     browserSurface.role = browserShellSurface
+    browserShellSurface._doPing(grShellSurfaceResource)
+
     return browserShellSurface
   }
 
@@ -43,12 +45,43 @@ export default class BrowserShellSurface {
    * @param {BrowserSurfaceView}browserSurfaceView
    */
   constructor (grShellSurfaceResource, grSurfaceResource, browserSurfaceView) {
+    /**
+     * @type {GrShellSurface}
+     */
     this.resource = grShellSurfaceResource
+    /**
+     * @type {GrSurface}
+     */
     this.grSurfaceResource = grSurfaceResource
+    /**
+     * @type {string}
+     */
     this.title = ''
+    /**
+     * @type {string}
+     */
     this.clazz = ''
+    /**
+     * @type {BrowserSurfaceView}
+     */
     this.view = browserSurfaceView
+    /**
+     * @type {string}
+     */
     this.state = SurfaceStates.TOP_LEVEL
+    /**
+     * @type {boolean}
+     * @private
+     */
+    this._pingTimeoutActive = false
+
+    const disconnected = new window.Image()
+    disconnected.src = 'disconnected.png' // 182x128
+    this._drawDisconnectImage = (browserSurfaceView) => {
+      const x = (browserSurfaceView.canvas.width > 128 ? browserSurfaceView.canvas.width - 128 : 0) / 2
+      const y = (browserSurfaceView.canvas.height > 128 ? browserSurfaceView.canvas.height - 128 : 0) / 2
+      browserSurfaceView.context2d.drawImage(disconnected, x, y)
+    }
   }
 
   _handelDestroy () {
@@ -77,8 +110,43 @@ export default class BrowserShellSurface {
    *
    */
   pong (resource, serial) {
-    // TODO properly check serial & timeout
-    window.setTimeout(() => resource.ping(serial), 3000)
+    if (this._pingTimeoutActive) {
+      this.view.canvas.style.filter = `grayscale(0%)`
+      this._pingTimeoutActive = false
+      this.view.removeDrawListener(this._drawDisconnectImage)
+    }
+    window.clearTimeout(serial)
+    window.setTimeout(() => {
+      this._doPing(resource)
+    }, 3000)
+  }
+
+  _doPing (resource) {
+    let serial = window.setTimeout(() => {
+      if (!this._pingTimeoutActive) {
+        // ping timed out, make view gray
+        this._pingTimeoutActive = true
+        this._fadeToGray(0)
+      }
+    }, 5000)
+    resource.ping(serial)
+  }
+
+  _fadeToGray (perc) {
+    if (this._pingTimeoutActive && perc <= 100) {
+      // adding set timeout will add another delay so our fade out will go a bit slower.
+      window.setTimeout(() => {
+        window.requestAnimationFrame(() => {
+          this.view.canvas.style.filter = `grayscale(${perc}%)`
+          this._fadeToGray(++perc)
+        })
+        if (perc === 100) {
+          // show disconnect icon
+          this._drawDisconnectImage(this.view)
+          this.view.addDrawListener(this._drawDisconnectImage)
+        }
+      }, 5)
+    }
   }
 
   /**
