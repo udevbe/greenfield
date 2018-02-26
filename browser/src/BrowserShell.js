@@ -6,12 +6,17 @@ import greenfield from './protocol/greenfield-browser-protocol'
 import BrowserShellSurface from './BrowserShellSurface'
 
 export default class BrowserShell extends westfield.Global {
-  static create () {
-    return new BrowserShell()
+  /**
+   * @param {BrowserSession} browserSession
+   * @return {BrowserShell}
+   */
+  static create (browserSession) {
+    return new BrowserShell(browserSession)
   }
 
-  constructor () {
+  constructor (browserSession) {
     super(greenfield.GrShell.name, 1)
+    this.browserSession = browserSession
   }
 
   bindClient (client, id, version) {
@@ -37,6 +42,6 @@ export default class BrowserShell extends westfield.Global {
    */
   getShellSurface (resource, id, surface) {
     const grShellSurfaceResource = new greenfield.GrShellSurface(resource.client, id, resource.version)
-    grShellSurfaceResource.implementation = BrowserShellSurface.create(grShellSurfaceResource, surface)
+    grShellSurfaceResource.implementation = BrowserShellSurface.create(grShellSurfaceResource, surface, this.browserSession)
   }
 }

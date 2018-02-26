@@ -17,14 +17,15 @@ export default class BrowserShellSurface {
   /**
    * @param {GrShellSurface}grShellSurfaceResource
    * @param {GrSurface}grSurfaceResource
+   * @param {BrowserSession} browserSession
    * @return {BrowserShellSurface}
    */
-  static create (grShellSurfaceResource, grSurfaceResource) {
+  static create (grShellSurfaceResource, grSurfaceResource, browserSession) {
     const browserSurface = grSurfaceResource.implementation
     const browserSurfaceView = browserSurface.defaultSurfaceView
     document.body.appendChild(browserSurfaceView.canvas)
 
-    const browserShellSurface = new BrowserShellSurface(grShellSurfaceResource, grSurfaceResource, browserSurfaceView)
+    const browserShellSurface = new BrowserShellSurface(grShellSurfaceResource, grSurfaceResource, browserSurfaceView, browserSession)
     browserShellSurface.implementation = browserShellSurface
 
     grSurfaceResource.onDestroy().then(() => {
@@ -43,8 +44,9 @@ export default class BrowserShellSurface {
    * @param {GrShellSurface}grShellSurfaceResource
    * @param {GrSurface}grSurfaceResource
    * @param {BrowserSurfaceView}browserSurfaceView
+   * @param {BrowserSession} browserSession
    */
-  constructor (grShellSurfaceResource, grSurfaceResource, browserSurfaceView) {
+  constructor (grShellSurfaceResource, grSurfaceResource, browserSurfaceView, browserSession) {
     /**
      * @type {GrShellSurface}
      */
@@ -70,16 +72,20 @@ export default class BrowserShellSurface {
      */
     this.state = SurfaceStates.TOP_LEVEL
     /**
+     * @type {BrowserSession}
+     */
+    this.browserSession = browserSession
+    /**
      * @type {boolean}
      * @private
      */
     this._pingTimeoutActive = false
 
     const disconnected = new window.Image()
-    disconnected.src = 'disconnected.png' // 182x128
+    disconnected.src = 'disconnected-80x80.png'
     this._drawDisconnectImage = (browserSurfaceView) => {
-      const x = (browserSurfaceView.canvas.width > 128 ? browserSurfaceView.canvas.width - 128 : 0) / 2
-      const y = (browserSurfaceView.canvas.height > 128 ? browserSurfaceView.canvas.height - 128 : 0) / 2
+      const x = (browserSurfaceView.canvas.width > 80 ? browserSurfaceView.canvas.width - 80 : 0) / 2
+      const y = (browserSurfaceView.canvas.height > 80 ? browserSurfaceView.canvas.height - 80 : 0) / 2
       browserSurfaceView.context2d.drawImage(disconnected, x, y)
     }
   }
@@ -111,25 +117,26 @@ export default class BrowserShellSurface {
    */
   pong (resource, serial) {
     if (this._pingTimeoutActive) {
-      this.view.canvas.style.filter = `grayscale(0%)`
+      this._darkenView(0)
       this._pingTimeoutActive = false
       this.view.removeDrawListener(this._drawDisconnectImage)
     }
-    window.clearTimeout(serial)
+    window.clearTimeout(this._timeoutTimer)
     window.setTimeout(() => {
       this._doPing(resource)
-    }, 3000)
+    }, 1000)
   }
 
   _doPing (resource) {
-    let serial = window.setTimeout(() => {
+    this._timeoutTimer = window.setTimeout(() => {
       if (!this._pingTimeoutActive) {
         // ping timed out, make view gray
         this._pingTimeoutActive = true
         this._fadeToGray(0)
       }
-    }, 5000)
-    resource.ping(serial)
+    }, 3000)
+    resource.ping(0)
+    this.browserSession.flush()
   }
 
   _fadeToGray (perc) {
@@ -137,7 +144,7 @@ export default class BrowserShellSurface {
       // adding set timeout will add another delay so our fade out will go a bit slower.
       window.setTimeout(() => {
         window.requestAnimationFrame(() => {
-          this.view.canvas.style.filter = `grayscale(${perc}%)`
+          this._darkenView(perc)
           this._fadeToGray(++perc)
         })
         if (perc === 100) {
@@ -145,8 +152,12 @@ export default class BrowserShellSurface {
           this._drawDisconnectImage(this.view)
           this.view.addDrawListener(this._drawDisconnectImage)
         }
-      }, 5)
+      }, 10)
     }
+  }
+
+  _darkenView (perc) {
+    this.view.canvas.style.filter = `grayscale(${perc}%) brightness(${100 - (perc / 2)}%)`
   }
 
   /**

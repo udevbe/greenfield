@@ -16,7 +16,7 @@ function setupGlobals (browserSession) {
   const browserSeat = BrowserSeat.create(browserSession)
   const browserCompositor = BrowserCompositor.create(browserSession, browserSeat)
   const browserDataDeviceManager = BrowserDataDeviceManager.create()
-  const browserShell = BrowserShell.create()
+  const browserShell = BrowserShell.create(browserSession)
 
   const browserRtcPeerConnectionFactory = BrowserRtcPeerConnectionFactory.create()
   const browserRtcBufferFactory = BrowserRtcBufferFactory.create()
