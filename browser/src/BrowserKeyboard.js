@@ -58,7 +58,7 @@ export default class BrowserKeyboard {
      */
     this._serial = 0
     /**
-     * @type {HTMLCanvasElement}
+     * @type {BrowserSurfaceView}
      */
     this.focus = null
     /**
@@ -68,7 +68,7 @@ export default class BrowserKeyboard {
     this._keys = []
 
     this._focusDestroyListener = () => {
-      const surfaceResource = this.focus.view.browserSurface.resource
+      const surfaceResource = this.focus.browserSurface.resource
       surfaceResource.removeDestroyListener(this._focusDestroyListener)
       this.focus = null
     }
@@ -141,7 +141,7 @@ export default class BrowserKeyboard {
   }
 
   /**
-   * @param {HTMLCanvasElement}focus
+   * @param {BrowserSurfaceView}focus
    */
   focusGained (focus) {
     if (this.focus === focus) {
@@ -152,15 +152,15 @@ export default class BrowserKeyboard {
     this.focus = focus
     this._browserDataDevice.onKeyboardFocusGained(focus)
 
-    const surfaceResource = this.focus.view.browserSurface.resource
+    const surfaceResource = this.focus.browserSurface.resource
     surfaceResource.addDestroyListener(this._focusDestroyListener)
 
     const serial = this._nextSerial()
-    const surface = this.focus.view.browserSurface.resource
+    const surface = this.focus.browserSurface.resource
     const keys = new Uint8Array(this._keys).buffer
 
     this.resources.filter((resource) => {
-      return resource.client === this.focus.view.browserSurface.resource.client
+      return resource.client === this.focus.browserSurface.resource.client
     }).forEach((resource) => {
       resource.enter(serial, surface, keys)
     })
@@ -172,15 +172,15 @@ export default class BrowserKeyboard {
     }
 
     const serial = this._nextSerial()
-    const surface = this.focus.view.browserSurface.resource
+    const surface = this.focus.browserSurface.resource
 
     this.resources.filter((resource) => {
-      return resource.client === this.focus.view.browserSurface.resource.client
+      return resource.client === this.focus.browserSurface.resource.client
     }).forEach((resource) => {
       resource.leave(serial, surface)
     })
 
-    const surfaceResource = this.focus.view.browserSurface.resource
+    const surfaceResource = this.focus.browserSurface.resource
     surfaceResource.removeDestroyListener(this._focusDestroyListener)
     this.focus = null
   }
@@ -223,7 +223,7 @@ export default class BrowserKeyboard {
     const group = this._browserXkb.group
 
     this.resources.filter((resource) => {
-      return resource.client === this.focus.view.browserSurface.resource.client
+      return resource.client === this.focus.browserSurface.resource.client
     }).forEach((resource) => {
       resource.key(serial, time, evdevKeyCode, state)
       if (modsUpdate) {

@@ -63,11 +63,11 @@ export default class BrowserPointer {
     this._browserKeyboard = browserKeyboard
     this.resources = []
     /**
-     * @type {HTMLCanvasElement}
+     * @type {BrowserSurfaceView}
      */
     this.focus = null
     /**
-     * @type {HTMLCanvasElement}
+     * @type {BrowserSurfaceView}
      */
     this.grab = null
     /**
@@ -84,17 +84,17 @@ export default class BrowserPointer {
      * @private
      */
     this._focusDestroyListener = (resource) => {
-      if (this.focus && resource.implementation.defaultView !== this.focus.view) {
+      if (this.focus && resource.implementation.defaultView !== this.focus) {
         return
       }
-      const surfaceResource = this.focus.view.browserSurface.resource
+      const surfaceResource = this.focus.browserSurface.resource
       surfaceResource.removeDestroyListener(this._focusDestroyListener)
       this.focus = null
       this.grab = null
       // recalculate focus and consequently enter event
-      const focusElement = document.elementFromPoint(this.x, this.y)
-      if (focusElement.view) {
-        this.mouseEnterInternal(focusElement)
+      const focus = this.calculateFocus()
+      if (focus) {
+        this.setFocus(focus)
       }
     }
     /**
@@ -310,7 +310,7 @@ export default class BrowserPointer {
 
     if (this.focus) {
       const surfacePoint = this._calculateSurfacePoint(this.focus)
-      const surfaceResource = this.focus.view.browserSurface.resource
+      const surfaceResource = this.focus.browserSurface.resource
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
         pointerResource.motion(event.timeStamp, greenfield.parseFixed(surfacePoint.x >> 0), greenfield.parseFixed(surfacePoint.y >> 0))
       })
@@ -348,7 +348,7 @@ export default class BrowserPointer {
       this.grab = null
     }
 
-    const surfaceResource = this.focus.view.browserSurface.resource
+    const surfaceResource = this.focus.browserSurface.resource
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
       pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.released)
     })
@@ -367,24 +367,24 @@ export default class BrowserPointer {
       this._browserKeyboard.focusGained(this.grab)
       // elements with a same zIndex will be display in document order, to avoid a previously grabbed canvas being shown below another,
       // we need to assign it an absolute zIndex greater than the last one.
-      this.grab.view.bufferedCanvas.zIndex = ++this.zOrderCounter
+      this.grab.bufferedCanvas.zIndex = ++this.zOrderCounter
     }
 
     this._btnDwnCount++
-    const surfaceResource = this.focus.view.browserSurface.resource
+    const surfaceResource = this.focus.browserSurface.resource
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
       pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.pressed)
     })
   }
 
   /**
-   * @param {HTMLCanvasElement}canvas
+   * @param {BrowserSurfaceView}browserSurfaceView
    * @return {Point}
    * @private
    */
-  _calculateSurfacePoint (canvas) {
+  _calculateSurfacePoint (browserSurfaceView) {
     const mousePoint = Point.create(this.x, this.y)
-    return canvas.view.toSurfaceSpace(mousePoint)
+    return browserSurfaceView.toSurfaceSpace(mousePoint)
   }
 
   /**
@@ -394,11 +394,12 @@ export default class BrowserPointer {
    */
   _isPointerWithinInputRegion (canvas) {
     if (canvas.view) {
-      if (canvas.view.browserSurface.inputPixmanRegion) {
+      const browserSurfaceView = canvas.view
+      if (browserSurfaceView.browserSurface.inputPixmanRegion) {
         // FIXME clip surface point to surface boundaries, this is needed to properly handle input regions that
         // exceed the surface they are set on
-        const surfacePoint = this._calculateSurfacePoint(canvas)
-        return BrowserRegion.contains(canvas.view.browserSurface.inputPixmanRegion, surfacePoint)
+        const surfacePoint = this._calculateSurfacePoint(browserSurfaceView)
+        return BrowserRegion.contains(browserSurfaceView.browserSurface.inputPixmanRegion, surfacePoint)
       } else {
         return true
       }
@@ -408,29 +409,29 @@ export default class BrowserPointer {
   }
 
   /**
-   * @return {HTMLCanvasElement | null}
+   * @return {BrowserSurfaceView | null}
    */
   calculateFocus () {
     const focusCandidates = window.document.elementsFromPoint(this.x, this.y)
 
     let zOrder = -1
-    let focus = null
+    let focus = {view: null}
     focusCandidates.forEach(focusCandidate => {
-      if (this._isPointerWithinInputRegion(focusCandidate) && window.parseInt(focusCandidate.style.zIndex) > zOrder) {
+      if (focusCandidate.view && this._isPointerWithinInputRegion(focusCandidate) && window.parseInt(focusCandidate.style.zIndex) > zOrder) {
         zOrder = focusCandidate.style.zIndex
         focus = focusCandidate
       }
     })
 
-    return focus
+    return focus.view
   }
 
   /**
-   * @param {HTMLCanvasElement}newFocus
+   * @param {BrowserSurfaceView}newFocus
    */
   setFocus (newFocus) {
     this.focus = newFocus
-    const surfaceResource = this.focus.view.browserSurface.resource
+    const surfaceResource = this.focus.browserSurface.resource
     surfaceResource.addDestroyListener(this._focusDestroyListener)
 
     const surfacePoint = this._calculateSurfacePoint(newFocus)
@@ -441,7 +442,7 @@ export default class BrowserPointer {
 
   unsetFocus () {
     if (this.focus) {
-      const surfaceResource = this.focus.view.browserSurface.resource
+      const surfaceResource = this.focus.browserSurface.resource
       surfaceResource.removeDestroyListener(this._focusDestroyListener)
 
       this._doPointerEventFor(surfaceResource, (pointerResource) => {

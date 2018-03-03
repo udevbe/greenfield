@@ -1,6 +1,6 @@
 'use strict'
 import Mat4 from './math/Mat4'
-import BufferedCanvas from './BrowserCanvas'
+import BufferedCanvas from './BufferedCanvas'
 
 export default class BrowserSurfaceView {
   /**

@@ -158,6 +158,12 @@ export default class BrowserSession extends westfield.Global {
   }
 
   flush () {
-    this.resources.forEach(resource => resource.flush())
+    if (!this._flush) {
+      this._flush = true
+      setTimeout(() => {
+        this._flush = false
+        this.resources.forEach(resource => resource.flush())
+      }, 0)
+    }
   }
 }

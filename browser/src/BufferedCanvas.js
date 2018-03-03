@@ -2,6 +2,12 @@
 
 import Size from './Size'
 
+/**
+ * A double buffered canvas. Required as canvas resizing & css transform is not atomic and can result in flickering.
+ * This class has 2 canvasses that can be swapped. Ideally one would render to the invisible 'back' canvas, once done
+ * a call to requestAnimation frame can be used to perform a swapBuffers(). This will make the 'back' canvas the 'front'
+ * canvas, and effectivily make it visible. The 'front' canvas will become the 'back' canvas.
+ */
 export default class BufferedCanvas {
   /**
    * @param width

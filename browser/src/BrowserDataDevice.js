@@ -33,7 +33,7 @@ export default class BrowserDataDevice {
      */
     this.selectionSource = null
     /**
-     * @type {HTMLCanvasElement}
+     * @type {BrowserSurfaceView}
      */
     this.dndFocus = null
     /**
@@ -42,7 +42,7 @@ export default class BrowserDataDevice {
      */
     this.dndSourceClient = null
     /**
-     * @type {HTMLCanvasElement}
+     * @type {BrowserSurfaceView}
      * @private
      */
     this._selectionFocus = null
@@ -89,7 +89,7 @@ export default class BrowserDataDevice {
       return
     }
 
-    const surfaceResource = this._selectionFocus.view.browserSurface.resource
+    const surfaceResource = this._selectionFocus.browserSurface.resource
     const client = surfaceResource.client
 
     const dataDeviceResource = this._dataDeviceForClient(client)
@@ -147,7 +147,7 @@ export default class BrowserDataDevice {
     if (browserPointer.buttonSerial !== serial) {
       return
     }
-    if (browserPointer.grab.view.browserSurface.resource !== origin) {
+    if (browserPointer.grab.browserSurface.resource !== origin) {
       return
     }
 
@@ -180,7 +180,7 @@ export default class BrowserDataDevice {
   }
 
   /**
-   * @param {HTMLCanvasElement}focus
+   * @param {BrowserSurfaceView}focus
    */
   onMouseMotion (focus) {
     if (this.dndFocus !== focus) {
@@ -197,7 +197,7 @@ export default class BrowserDataDevice {
       return
     }
 
-    const surfaceResource = this.dndFocus.view.browserSurface.resource
+    const surfaceResource = this.dndFocus.browserSurface.resource
     const client = surfaceResource.client
 
     // if source is null, only transfers within the same client can take place
@@ -207,7 +207,7 @@ export default class BrowserDataDevice {
 
     const browserPointer = this.browserSeat.browserPointer
     const mousePoint = Point.create(browserPointer.x, browserPointer.y)
-    const surfacePoint = this.dndFocus.view.toSurfaceSpace(mousePoint)
+    const surfacePoint = this.dndFocus.toSurfaceSpace(mousePoint)
 
     this.resources.filter((dataDeviceResource) => {
       return dataDeviceResource.client === client
@@ -217,16 +217,16 @@ export default class BrowserDataDevice {
   }
 
   /**
-   * @param {HTMLCanvasElement}canvas
+   * @param {BrowserSurfaceView}browserSurfaceView
    * @private
    */
-  _onFocusGained (canvas) {
-    this.dndFocus = canvas
+  _onFocusGained (browserSurfaceView) {
+    this.dndFocus = browserSurfaceView
     if (!this.dndSourceClient) {
       return
     }
 
-    const surfaceResource = canvas.view.browserSurface.resource
+    const surfaceResource = browserSurfaceView.browserSurface.resource
     const client = surfaceResource.client
 
     // if source is null, only transfers within the same client can take place
@@ -236,7 +236,7 @@ export default class BrowserDataDevice {
 
     const browserPointer = this.browserSeat.browserPointer
     const mousePoint = Point.create(browserPointer.x, browserPointer.y)
-    const surfacePoint = canvas.view.toSurfaceSpace(mousePoint)
+    const surfacePoint = browserSurfaceView.toSurfaceSpace(mousePoint)
     const serial = browserPointer._nextFocusSerial()
 
     const x = greenfield.parseFixed(surfacePoint.x)
@@ -269,7 +269,7 @@ export default class BrowserDataDevice {
       return
     }
 
-    const surfaceResource = this.dndFocus.view.browserSurface.resource
+    const surfaceResource = this.dndFocus.browserSurface.resource
     const client = surfaceResource.client
 
     // if source is null, only transfers within the same client can take place
@@ -286,7 +286,7 @@ export default class BrowserDataDevice {
 
   onMouseUp () {
     if (this.dndSource && this.dndFocus) {
-      const surfaceResource = this.dndFocus.view.browserSurface.resource
+      const surfaceResource = this.dndFocus.browserSurface.resource
       const client = surfaceResource.client
       const dataDeviceResource = this._dataDeviceForClient(client)
 
@@ -377,12 +377,12 @@ export default class BrowserDataDevice {
   }
 
   /**
-   * @param {HTMLCanvasElement}newSelectionFocus
+   * @param {BrowserSurfaceView}newSelectionFocus
    */
   onKeyboardFocusGained (newSelectionFocus) {
     this._selectionFocus = newSelectionFocus
 
-    const surfaceResource = this._selectionFocus.view.browserSurface.resource
+    const surfaceResource = this._selectionFocus.browserSurface.resource
     const client = surfaceResource.client
 
     const dataDeviceResource = this._dataDeviceForClient(client)
