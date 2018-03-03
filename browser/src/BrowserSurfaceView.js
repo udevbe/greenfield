@@ -1,60 +1,45 @@
 'use strict'
-import Vect4 from './math/Vect4'
 import Mat4 from './math/Mat4'
+import BufferedCanvas from './BrowserCanvas'
 
 export default class BrowserSurfaceView {
   /**
    *
    * @param {BrowserSurface} browserSurface
+   * @param {number} width
+   * @param {number} height
    * @returns {BrowserSurfaceView}
    */
-  static create (browserSurface) {
-    const canvas = this._createCanvas()
-    const context2d = canvas.getContext('2d')
-    const browserSurfaceView = new BrowserSurfaceView(canvas, context2d, browserSurface)
-    canvas.view = browserSurfaceView
+  static create (browserSurface, width, height) {
+    const bufferedCanvas = BufferedCanvas.create(width, height)
+    const browserSurfaceView = new BrowserSurfaceView(bufferedCanvas, browserSurface, Mat4.IDENTITY())
+    bufferedCanvas.frontContext.canvas.view = browserSurfaceView
+    bufferedCanvas.backContext.canvas.view = browserSurfaceView
     browserSurfaceView._armDrawPromise()
     return browserSurfaceView
   }
 
   /**
-   * @returns {HTMLCanvasElement}
-   * @private
-   */
-  static _createCanvas () {
-    const canvas = document.createElement('canvas')
-    canvas.style.left = '0px'
-    canvas.style.top = '0px'
-    canvas.style.position = 'absolute'
-    canvas.style.zIndex = 0
-    return canvas
-  }
-
-  /**
    * Use BrowserSurfaceView.create(..) instead.
    * @private
-   * @param {HTMLCanvasElement}canvas
-   * @param {CanvasRenderingContext2D}context2d
+   * @param {BufferedCanvas}bufferedCanvas
    * @param {BrowserSurface}browserSurface
+   * @param {Mat4} transformation
    */
-  constructor (canvas, context2d, browserSurface) {
+  constructor (bufferedCanvas, browserSurface, transformation) {
     /**
      * @type {HTMLCanvasElement}
      */
-    this.canvas = canvas
-    /**
-     * @type {CanvasRenderingContext2D}
-     */
-    this.context2d = context2d
+    this.bufferedCanvas = bufferedCanvas
     /**
      * @type {BrowserSurface}
      */
     this.browserSurface = browserSurface
     /**
-     * @type {Array}
-     * @private
+     * @type {Mat4}
      */
-    this._drawListeners = []
+    this._transformation = transformation
+    this.inverseTransformation = transformation.invert()
     /**
      *
      * @type {Function}
@@ -66,17 +51,6 @@ export default class BrowserSurfaceView {
      * @private
      */
     this._drawPromise = null
-
-    const browserPointer = this.browserSurface.browserSeat.browserPointer
-    const browserSession = this.browserSurface.browserSession
-    this._mouseEnterListener = browserSession.eventSource((event) => {
-      event.preventDefault()
-      browserPointer._onFocusGained(event)
-    })
-    this._mouseLeaveListener = browserSession.eventSource((event) => {
-      event.preventDefault()
-      browserPointer._onFocusLost(event)
-    })
     /**
      * @type {Promise}
      * @private
@@ -99,6 +73,19 @@ export default class BrowserSurfaceView {
     }
   }
 
+  set transformation (transformation) {
+    this._transformation = transformation
+    this.inverseTransformation = transformation.invert()
+  }
+
+  get transformation () {
+    return this._transformation
+  }
+
+  applyTransformation () {
+    this.bufferedCanvas.frontContext.canvas.style.transform = this.transformation.toCssMatrix()
+  }
+
   /**
    * @param {HTMLCanvasElement}sourceCanvas
    */
@@ -113,14 +100,14 @@ export default class BrowserSurfaceView {
    * @private
    */
   _draw (source, width, height) {
-    this.canvas.width = width
-    this.canvas.height = height
-    this.context2d.drawImage(source, 0, 0)
-    this._drawResolve(this)
-    this._drawListeners.forEach(listener => {
-      listener(this)
+    // FIXME adjust final transformation with additional transformations defined in the browser surface
+    this.bufferedCanvas.drawBackBuffer(source, width, height, this.transformation)
+
+    window.requestAnimationFrame((presentationTime) => {
+      this.bufferedCanvas.swapBuffers()
+      this._drawResolve(presentationTime)
+      this._armDrawPromise()
     })
-    this._armDrawPromise()
   }
 
   _armDrawPromise () {
@@ -139,69 +126,33 @@ export default class BrowserSurfaceView {
   }
 
   /**
-   * @param {Function}listener
+   * @param {Point} viewPoint point in view coordinates with respect to view transformations
+   * @return {Point} point in browser coordinates
    */
-  addDrawListener (listener) {
-    this._drawListeners.push(listener)
+  toBrowserSpace (viewPoint) {
+    return this.transformation.timesPoint(viewPoint)
   }
 
   /**
-   * @param {Function}listener
+   * @param {Point} browserPoint point in browser coordinates
+   * @return {Point} point in view coordinates with respect to view transformations
    */
-  removeDrawListener (listener) {
-    const index = this._drawListeners.indexOf(listener)
-    if (index > -1) {
-      this._drawListeners.splice(index, 1)
-    }
+  toViewSpace (browserPoint) {
+    // FIXME isn't this the same as toSurfaceSpace?
+    return this.inverseTransformation.timesPoint(browserPoint)
   }
 
   /**
-   * @param {Point} canvasPoint
+   * @param {Point} browserPoint point in browser coordinates
    * @return {Point}
    */
-  toSurfaceSpace (canvasPoint) {
-    const surfaceWidth = this.browserSurface.size.w
-    const surfaceHeight = this.browserSurface.size.h
-    const canvasWidth = this.canvas.width
-    const canvasHeight = this.canvas.height
-
-    if (canvasWidth === surfaceWidth && canvasHeight === surfaceHeight) {
-      return canvasPoint
-    }
-
-    const scalarVector = Vect4.create(surfaceWidth / canvasWidth, surfaceHeight / canvasHeight, 1, 1)
-
-    return Mat4.scalarVector(scalarVector).timesPoint(canvasPoint)
+  toSurfaceSpace (browserPoint) {
+    // FIXME adjust for surface<->buffer transformations
+    return this.toViewSpace(browserPoint)
   }
 
-  unfade () {
-    this._unfade(0.08)
-  }
-
-  _unfade (opacity) {
-    if (opacity < 1) {
-      window.requestAnimationFrame(() => {
-        this._unfade(opacity)
-      })
-    }
-    this.canvas.style.opacity = opacity
-    this.canvas.style.filter = 'alpha(opacity=' + opacity * 100 + ')'
-    opacity *= 1.1
-  }
-
-  fade () {
-    this._fade(1)
-  }
-
-  _fade (opacity) {
-    if (opacity > 0.1) {
-      window.requestAnimationFrame(() => {
-        this._fade(opacity)
-      })
-    }
-    this.canvas.style.opacity = opacity
-    this.canvas.style.filter = 'alpha(opacity=' + opacity * 100 + ')'
-    opacity *= 0.8
+  fadeOut () {
+    this.bufferedCanvas.addCssClass('fadeToHidden')
   }
 
   destroy () {

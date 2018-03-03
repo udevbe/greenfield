@@ -145,9 +145,9 @@ export default class BrowserPointer {
     const hotspotX = this.hotspotX
     const hotspotY = this.hotspotY
 
-    browserSurface.defaultSurfaceView.onDraw().then((browserSurfaceView) => {
+    browserSurface.defaultSurfaceView.onDraw().then(() => {
       if (browserSurface.role) {
-        this._uploadCursor(browserSurfaceView, hotspotX, hotspotY)
+        this._uploadCursor(browserSurface.defaultSurfaceView, hotspotX, hotspotY)
       }
     })
   }
@@ -238,7 +238,7 @@ export default class BrowserPointer {
   }
 
   _uploadCursor (cursorSurfaceView, hotspotX, hotspotY) {
-    const dataURL = cursorSurfaceView.canvas.toDataURL()
+    const dataURL = cursorSurfaceView.bufferedCanvas.frontContext.canvas.toDataURL()
     window.document.body.style.cursor = 'url("' + dataURL + '") ' + (hotspotX) + ' ' + (hotspotY) + ', pointer'
   }
 
@@ -367,7 +367,7 @@ export default class BrowserPointer {
       this._browserKeyboard.focusGained(this.grab)
       // elements with a same zIndex will be display in document order, to avoid a previously grabbed canvas being shown below another,
       // we need to assign it an absolute zIndex greater than the last one.
-      this.grab.style.zIndex = ++this.zOrderCounter
+      this.grab.view.bufferedCanvas.zIndex = ++this.zOrderCounter
     }
 
     this._btnDwnCount++
@@ -383,9 +383,8 @@ export default class BrowserPointer {
    * @private
    */
   _calculateSurfacePoint (canvas) {
-    const elementRect = canvas.getBoundingClientRect()
-    const canvasPoint = Point.create(this.x - (elementRect.x - 1), this.y - (elementRect.y - 1))
-    return canvas.view.toSurfaceSpace(canvasPoint)
+    const mousePoint = Point.create(this.x, this.y)
+    return canvas.view.toSurfaceSpace(mousePoint)
   }
 
   /**
@@ -417,7 +416,7 @@ export default class BrowserPointer {
     let zOrder = -1
     let focus = null
     focusCandidates.forEach(focusCandidate => {
-      if (this._isPointerWithinInputRegion(focusCandidate) && focusCandidate.style.zIndex > zOrder) {
+      if (this._isPointerWithinInputRegion(focusCandidate) && window.parseInt(focusCandidate.style.zIndex) > zOrder) {
         zOrder = focusCandidate.style.zIndex
         focus = focusCandidate
       }
@@ -428,7 +427,6 @@ export default class BrowserPointer {
 
   /**
    * @param {HTMLCanvasElement}newFocus
-   * @private
    */
   setFocus (newFocus) {
     this.focus = newFocus

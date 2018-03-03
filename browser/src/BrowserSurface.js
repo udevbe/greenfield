@@ -128,9 +128,7 @@ export default class BrowserSurface {
   }
 
   createView () {
-    const browserSurfaceView = BrowserSurfaceView.create(this)
-    browserSurfaceView.canvas.width = this.bufferSize.w
-    browserSurfaceView.canvas.height = this.bufferSize.h
+    const browserSurfaceView = BrowserSurfaceView.create(this, this.bufferSize.w, this.bufferSize.h)
     this.browserSurfaceViews.push(browserSurfaceView)
 
     browserSurfaceView.onDestroy().then(() => {
@@ -482,7 +480,14 @@ export default class BrowserSurface {
       this.role.onCommit(this)
     }
 
-    await this.renderer.requestRender(this)
+    const viewPresentationTimes = await this.renderer.requestRender(this)
+    if (this.frameCallback) {
+      if (viewPresentationTimes.length > 0) {
+        this.frameCallback.done(viewPresentationTimes[0] & 0x7fffffff)
+      }
+      this.frameCallback = null
+    }
+    this.browserSession.flush()
   }
 
   /**

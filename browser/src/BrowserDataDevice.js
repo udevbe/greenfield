@@ -206,9 +206,8 @@ export default class BrowserDataDevice {
     }
 
     const browserPointer = this.browserSeat.browserPointer
-    const elementRect = this.dndFocus.getBoundingClientRect()
-    const canvasPoint = Point.create(browserPointer.x - (elementRect.x - 1), browserPointer.y - (elementRect.y - 1))
-    const surfacePoint = this.dndFocus.view.toSurfaceSpace(canvasPoint)
+    const mousePoint = Point.create(browserPointer.x, browserPointer.y)
+    const surfacePoint = this.dndFocus.view.toSurfaceSpace(mousePoint)
 
     this.resources.filter((dataDeviceResource) => {
       return dataDeviceResource.client === client
@@ -236,11 +235,9 @@ export default class BrowserDataDevice {
     }
 
     const browserPointer = this.browserSeat.browserPointer
+    const mousePoint = Point.create(browserPointer.x, browserPointer.y)
+    const surfacePoint = canvas.view.toSurfaceSpace(mousePoint)
     const serial = browserPointer._nextFocusSerial()
-
-    const elementRect = canvas.getBoundingClientRect()
-    const canvasPoint = Point.create(browserPointer.x - (elementRect.x - 1), browserPointer.y - (elementRect.y - 1))
-    const surfacePoint = canvas.view.toSurfaceSpace(canvasPoint)
 
     const x = greenfield.parseFixed(surfacePoint.x)
     const y = greenfield.parseFixed(surfacePoint.y)

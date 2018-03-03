@@ -15,7 +15,12 @@ export default class Renderer {
   static create (browserSession) {
     // create offscreen gl context
     const canvas = document.createElement('canvas')
-    let gl = canvas.getContext('webgl2')
+    let gl = canvas.getContext('webgl2', {
+      antialias: false,
+      depth: false,
+      alpha: true,
+      preserveDrawingBuffer: false
+    })
     if (!gl) {
       throw new Error('This browser doesn\'t support WebGL2!')
     }
@@ -42,15 +47,6 @@ export default class Renderer {
     this.yuvaShader = yuvaShader
     this.yuvShader = yuvShader
     this.canvas = canvas
-
-    this._animationScheduled = false
-    this._sceneUpdates = []
-    this._updateScene = (timestamp) => {
-      this._sceneUpdates.forEach(frameUpdate => { frameUpdate() })
-      this.browserSession.flush()
-      this._sceneUpdates = []
-      this._animationScheduled = false
-    }
   }
 
   /**
@@ -83,13 +79,10 @@ export default class Renderer {
 
   async requestRender (browserSurface) {
     const renderStart = Date.now()
+
     const grBuffer = browserSurface.grBuffer
     if (grBuffer === null) {
       browserSurface.renderState = null
-      if (browserSurface.frameCallback) {
-        browserSurface.frameCallback.done(Date.now() & 0x7fffffff)
-      }
-      this.browserSession.flush()
       return
     }
 
@@ -100,9 +93,6 @@ export default class Renderer {
     }
 
     const browserRtcDcBuffer = BrowserRtcBufferFactory.get(grBuffer)
-    const frameCallback = browserSurface.frameCallback
-
-    browserSurface.frameCallback = null
     const views = browserSurface.browserSurfaceViews
 
     const syncSerial = await browserRtcDcBuffer.whenComplete()
@@ -126,33 +116,29 @@ export default class Renderer {
       },
 
       syncSerial: syncSerial,
-      renderStart: renderStart,
-      frameCallback: frameCallback,
       views: views
     }
 
-    this._sceneUpdates.push(() => {
-      this._render(viewState, Date.now() & 0x7fffffff, state)
+    this._render(viewState, state)
+
+    const renderDuration = Date.now() - renderStart
+    state.buffer.resource.latency(state.syncSerial, renderDuration)
+
+    const drawPromises = []
+    state.views.forEach(browserSurfaceView => {
+      drawPromises.push(browserSurfaceView.onDraw())
     })
-    if (!this._animationScheduled) {
-      this._animationScheduled = true
-      window.requestAnimationFrame(this._updateScene)
-    }
+
+    return window.Promise.all(drawPromises)
   }
 
-  _render (viewState, frameTimeStamp, state) {
+  _render (viewState, state) {
     // update textures
     viewState.update(state)
-    this._draw(frameTimeStamp, state, viewState)
-
-    const renderDuration = Date.now() - state.renderStart
-    state.buffer.resource.latency(state.syncSerial, renderDuration)
-    if (state.frameCallback) {
-      state.frameCallback.done(frameTimeStamp << 0)
-    }
+    this._draw(state, viewState)
   }
 
-  _draw (frameTimeStamp, state, renderState) {
+  _draw (state, renderState) {
     // paint the textures
     if (state.buffer.type === 'h264') {
       this._drawH264(state, renderState)

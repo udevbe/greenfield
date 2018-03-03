@@ -1,8 +1,23 @@
 body {
     background-image: url(pattern.png);
     background-size: auto;
-    margin: 0px;
-    padding: 0px;
+    margin: 0;
+    padding: 0;
     height: 100vh;
     min-height: 100vh;
+}
+
+canvas {
+    will-change: transform, contents, display;
+}
+
+.fadeToHidden {
+    visibility: hidden;
+    opacity: 0;
+    transition: visibility 250ms, opacity 250ms ease-in-out;
+}
+
+.fadeToUnresponsive {
+    filter: grayscale(0.9) brightness(0.6) contrast(1.3) blur(1px);
+    transition: filter 1000ms ease-in-out;
 }

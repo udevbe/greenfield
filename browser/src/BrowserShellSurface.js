@@ -2,6 +2,7 @@
 
 import Point from './math/Point'
 import greenfield from './protocol/greenfield-browser-protocol'
+import Mat4 from './math/Mat4'
 
 const Resize = greenfield.GrShellSurface.Resize
 
@@ -23,7 +24,7 @@ export default class BrowserShellSurface {
   static create (grShellSurfaceResource, grSurfaceResource, browserSession) {
     const browserSurface = grSurfaceResource.implementation
     const browserSurfaceView = browserSurface.defaultSurfaceView
-    document.body.appendChild(browserSurfaceView.canvas)
+    browserSurfaceView.bufferedCanvas.attach()
 
     const browserShellSurface = new BrowserShellSurface(grShellSurfaceResource, grSurfaceResource, browserSurfaceView, browserSession)
     browserShellSurface.implementation = browserShellSurface
@@ -80,27 +81,20 @@ export default class BrowserShellSurface {
      * @private
      */
     this._pingTimeoutActive = false
-
-    const disconnected = new window.Image()
-    disconnected.src = 'disconnected-80x80.png'
-    this._drawDisconnectImage = (browserSurfaceView) => {
-      const x = (browserSurfaceView.canvas.width > 80 ? browserSurfaceView.canvas.width - 80 : 0) / 2
-      const y = (browserSurfaceView.canvas.height > 80 ? browserSurfaceView.canvas.height - 80 : 0) / 2
-      browserSurfaceView.context2d.drawImage(disconnected, x, y)
-    }
   }
 
   _handelDestroy () {
     // listen for fade updates so we can remove the canvas after the fade is done.
-    new window.MutationObserver(() => {
-      if (this.view.canvas.style.opacity < 0.1) {
-        document.body.removeChild(this.view.canvas)
-      }
-    }).observe(this.view.canvas, {
-      attributes: true,
-      attributeFilter: ['style']
-    })
-    this.view.fade()
+    this.view.bufferedCanvas.frontContext.canvas.addEventListener('animationend', () => {
+      this.view.bufferedCanvas.detach()
+    }, false)
+    this.view.fadeOut()
+  }
+
+  onCommit (browserSurface) {
+    const dx = browserSurface.dx
+    const dy = browserSurface.dy
+    this.view.transformation = this.view.transformation.timesMat4(Mat4.translation(dx, dy))
   }
 
   /**
@@ -117,9 +111,8 @@ export default class BrowserShellSurface {
    */
   pong (resource, serial) {
     if (this._pingTimeoutActive) {
-      this._darkenView(0)
+      this.view.bufferedCanvas.removeCssClass('fadeToUnresponsive')
       this._pingTimeoutActive = false
-      this.view.removeDrawListener(this._drawDisconnectImage)
     }
     window.clearTimeout(this._timeoutTimer)
     window.setTimeout(() => {
@@ -132,32 +125,11 @@ export default class BrowserShellSurface {
       if (!this._pingTimeoutActive) {
         // ping timed out, make view gray
         this._pingTimeoutActive = true
-        this._fadeToGray(0)
+        this.view.bufferedCanvas.addCssClass('fadeToUnresponsive')
       }
     }, 3000)
     resource.ping(0)
     this.browserSession.flush()
-  }
-
-  _fadeToGray (perc) {
-    if (this._pingTimeoutActive && perc <= 100) {
-      // adding set timeout will add another delay so our fade out will go a bit slower.
-      window.setTimeout(() => {
-        window.requestAnimationFrame(() => {
-          this._darkenView(perc)
-          this._fadeToGray(++perc)
-        })
-        if (perc === 100) {
-          // show disconnect icon
-          this._drawDisconnectImage(this.view)
-          this.view.addDrawListener(this._drawDisconnectImage)
-        }
-      }, 10)
-    }
-  }
-
-  _darkenView (perc) {
-    this.view.canvas.style.filter = `grayscale(${perc}%) brightness(${100 - (perc / 2)}%)`
   }
 
   /**
@@ -183,8 +155,7 @@ export default class BrowserShellSurface {
     const browserSeat = seat.implementation
     const browserPointer = browserSeat.browserPointer
     if (browserPointer.buttonSerial === serial) {
-      const canvasX = parseInt(this.view.canvas.style.left, 10)
-      const canvasY = parseInt(this.view.canvas.style.top, 10)
+      const origTransformation = this.view.transformation
 
       const pointerX = browserPointer.x
       const pointerY = browserPointer.y
@@ -194,8 +165,8 @@ export default class BrowserShellSurface {
           const deltaX = browserPointer.x - pointerX
           const deltaY = browserPointer.y - pointerY
 
-          this.view.canvas.style.left = (canvasX + deltaX) + 'px'
-          this.view.canvas.style.top = (canvasY + deltaY) + 'px'
+          this.view.transformation = origTransformation.timesMat4(Mat4.translation(deltaX, deltaY))
+          this.view.applyTransformation()
         } else {
           browserPointer.removeMouseMoveListener(moveListener)
         }
@@ -232,15 +203,10 @@ export default class BrowserShellSurface {
       const pointerX = browserPointer.x
       const pointerY = browserPointer.y
 
-      const canvasWidth = this.view.canvas.width
-      const canvasHeight = this.view.canvas.height
+      const browserSurfaceSize = this.grSurfaceResource.implementation.size
 
-      const surfaceDim = this.view.toSurfaceSpace(Point.create(canvasWidth, canvasHeight))
-      const surfaceWidth = surfaceDim.x
-      const surfaceHeight = surfaceDim.y
-
-      const viewY = parseInt(this.view.canvas.style.top)
-      const viewX = parseInt(this.view.canvas.style.left)
+      const surfaceWidth = browserSurfaceSize.w
+      const surfaceHeight = browserSurfaceSize.h
 
       switch (edges) {
         case Resize.none: {
@@ -248,7 +214,6 @@ export default class BrowserShellSurface {
         }
 
         case Resize.top: {
-          // separate draw listener is used to delay the repositioning of the surface until the buffer contents have arrived
           const resizeListener = () => {
             if (browserPointer.buttonSerial === serial) {
               // FIXME this naively assume no transformation of the surface (pointer space ~= surface space) which isn't
@@ -264,18 +229,7 @@ export default class BrowserShellSurface {
             }
           }
 
-          const drawListener = () => {
-            const newHeight = this.view.canvas.height
-            const yPosDelta = canvasHeight - newHeight
-            this.view.canvas.style.top = (viewY + yPosDelta) + 'px'
-
-            if (browserPointer.buttonSerial !== serial) {
-              this.view.removeDrawListener(drawListener)
-            }
-          }
-
           browserPointer.addMouseMoveListener(resizeListener)
-          this.view.addDrawListener(drawListener)
           break
         }
 
@@ -311,18 +265,7 @@ export default class BrowserShellSurface {
             }
           }
 
-          const drawListener = () => {
-            const newWidth = this.view.canvas.width
-            const xPosDelta = canvasWidth - newWidth
-            this.view.canvas.style.left = (viewX + xPosDelta) + 'px'
-
-            if (browserPointer.buttonSerial !== serial) {
-              this.view.removeDrawListener(drawListener)
-            }
-          }
-
           browserPointer.addMouseMoveListener(resizeListener)
-          this.view.addDrawListener(drawListener)
           break
         }
 
@@ -342,21 +285,7 @@ export default class BrowserShellSurface {
             }
           }
 
-          const drawListener = () => {
-            const newWidth = this.view.canvas.width
-            const xPosDelta = canvasWidth - newWidth
-            const newHeight = this.view.canvas.height
-            const yPosDelta = canvasHeight - newHeight
-            this.view.canvas.style.left = (viewX + xPosDelta) + 'px'
-            this.view.canvas.style.top = (viewY + yPosDelta) + 'px'
-
-            if (browserPointer.buttonSerial !== serial) {
-              this.view.removeDrawListener(drawListener)
-            }
-          }
-
           browserPointer.addMouseMoveListener(resizeListener)
-          this.view.addDrawListener(drawListener)
           break
         }
 
@@ -376,18 +305,7 @@ export default class BrowserShellSurface {
             }
           }
 
-          const drawListener = () => {
-            const newWidth = this.view.canvas.width
-            const xPosDelta = canvasWidth - newWidth
-            this.view.canvas.style.left = (viewX + xPosDelta) + 'px'
-
-            if (browserPointer.buttonSerial !== serial) {
-              this.view.removeDrawListener(drawListener)
-            }
-          }
-
           browserPointer.addMouseMoveListener(resizeListener)
-          this.view.addDrawListener(drawListener)
           break
         }
 
@@ -424,17 +342,7 @@ export default class BrowserShellSurface {
             }
           }
 
-          const drawListener = () => {
-            const newHeight = this.view.canvas.height
-            const yPosDelta = canvasHeight - newHeight
-            this.view.canvas.style.top = (viewY + yPosDelta) + 'px'
-            if (browserPointer.buttonSerial !== serial) {
-              this.view.removeDrawListener(drawListener)
-            }
-          }
-
           browserPointer.addMouseMoveListener(resizeListener)
-          this.view.addDrawListener(drawListener)
           break
         }
 
@@ -475,7 +383,6 @@ export default class BrowserShellSurface {
    */
   setToplevel (resource) {
     this.state = SurfaceStates.TOP_LEVEL
-    document.body.appendChild(this.view.canvas)
   }
 
   /**
@@ -499,7 +406,8 @@ export default class BrowserShellSurface {
    *
    */
   setTransient (resource, parent, x, y, flags) {
-
+    this.state = SurfaceStates.TRANSIENT
+    // TODO transient windows
   }
 
   /**
@@ -547,7 +455,10 @@ export default class BrowserShellSurface {
    * @since 1
    *
    */
-  setFullscreen (resource, method, framerate, output) {}
+  setFullscreen (resource, method, framerate, output) {
+    this.state = SurfaceStates.FULLSCREEN
+    // TODO fullscreen windows + optimize renderer for fullscreen
+  }
 
   /**
    *
@@ -583,7 +494,10 @@ export default class BrowserShellSurface {
    * @since 1
    *
    */
-  setPopup (resource, seat, serial, parent, x, y, flags) {}
+  setPopup (resource, seat, serial, parent, x, y, flags) {
+    this.state = SurfaceStates.POPUP
+    // TODO popup window
+  }
 
   /**
    *
@@ -613,7 +527,10 @@ export default class BrowserShellSurface {
    * @since 1
    *
    */
-  setMaximized (resource, output) {}
+  setMaximized (resource, output) {
+    this.state = SurfaceStates.POPUP
+    // TODO popup windows
+  }
 
   /**
    *

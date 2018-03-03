@@ -15,6 +15,10 @@ export default class Vect4 {
     return new Vect4(x, y, z, w)
   }
 
+  static create2D (x, y) {
+    return this.create(x, y, 1, 1)
+  }
+
   /**
    * @param {Number }x
    * @param {Number} y
