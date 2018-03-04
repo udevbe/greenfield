@@ -208,164 +208,77 @@ export default class BrowserShellSurface {
       const surfaceWidth = browserSurfaceSize.w
       const surfaceHeight = browserSurfaceSize.h
 
+      // assigned in switch statement
+      let sizeAdjustment = (width, height, deltaX, deltaY) => {}
+
       switch (edges) {
-        case Resize.none: {
+        case Resize.bottomRight: {
+          sizeAdjustment = (width, height, deltaX, deltaY) => {
+            return {w: width + deltaX, h: height + deltaY}
+          }
           break
         }
-
         case Resize.top: {
-          const resizeListener = () => {
-            if (browserPointer.buttonSerial === serial) {
-              // FIXME this naively assume no transformation of the surface (pointer space ~= surface space) which isn't
-              // always the case...
-              const deltaY = browserPointer.y - pointerY
-              let width = surfaceWidth
-              let height = surfaceHeight
-              height -= deltaY
-
-              this.resource.configure(edges, width, height)
-            } else {
-              browserPointer.removeMouseMoveListener(resizeListener)
-            }
+          sizeAdjustment = (width, height, deltaX, deltaY) => {
+            return {w: width, h: height - deltaY}
           }
-
-          browserPointer.addMouseMoveListener(resizeListener)
           break
         }
-
         case Resize.bottom: {
-          const resizeListener = () => {
-            if (browserPointer.buttonSerial === serial) {
-              const deltaY = browserPointer.y - pointerY
-              let width = surfaceWidth
-              let height = surfaceHeight
-              height += deltaY
-
-              this.resource.configure(edges, width, height)
-            } else {
-              browserPointer.removeMouseMoveListener(resizeListener)
-            }
+          sizeAdjustment = (width, height, deltaX, deltaY) => {
+            return {w: width, h: height + deltaY}
           }
-
-          browserPointer.addMouseMoveListener(resizeListener)
           break
         }
-
         case Resize.left: {
-          const resizeListener = () => {
-            if (browserPointer.buttonSerial === serial) {
-              const deltaX = browserPointer.x - pointerX
-              let width = surfaceWidth
-              let height = surfaceHeight
-              width -= deltaX
-
-              this.resource.configure(edges, width, height)
-            } else {
-              browserPointer.removeMouseMoveListener(resizeListener)
-            }
+          sizeAdjustment = (width, height, deltaX, deltaY) => {
+            return {w: width - deltaX, h: height}
           }
-
-          browserPointer.addMouseMoveListener(resizeListener)
           break
         }
-
         case Resize.topLeft: {
-          const resizeListener = () => {
-            if (browserPointer.buttonSerial === serial) {
-              const deltaX = browserPointer.x - pointerX
-              const deltaY = browserPointer.y - pointerY
-              let width = surfaceWidth
-              let height = surfaceHeight
-              width -= deltaX
-              height -= deltaY
-
-              this.resource.configure(edges, width, height)
-            } else {
-              browserPointer.removeMouseMoveListener(resizeListener)
-            }
+          sizeAdjustment = (width, height, deltaX, deltaY) => {
+            return {w: width - deltaX, h: height - deltaY}
           }
-
-          browserPointer.addMouseMoveListener(resizeListener)
           break
         }
-
         case Resize.bottomLeft: {
-          const resizeListener = () => {
-            if (browserPointer.buttonSerial === serial) {
-              const deltaX = browserPointer.x - pointerX
-              const deltaY = browserPointer.y - pointerY
-              let width = surfaceWidth
-              let height = surfaceHeight
-              height += deltaY
-              width -= deltaX
-
-              this.resource.configure(edges, width, height)
-            } else {
-              browserPointer.removeMouseMoveListener(resizeListener)
-            }
+          sizeAdjustment = (width, height, deltaX, deltaY) => {
+            return {w: width - deltaX, h: height + deltaY}
           }
-
-          browserPointer.addMouseMoveListener(resizeListener)
           break
         }
-
         case Resize.right: {
-          const resizeListener = () => {
-            if (browserPointer.buttonSerial === serial) {
-              const deltaX = browserPointer.x - pointerX
-              let width = surfaceWidth
-              let height = surfaceHeight
-              width += deltaX
-
-              this.resource.configure(edges, width, height)
-            } else {
-              browserPointer.removeMouseMoveListener(resizeListener)
-            }
+          sizeAdjustment = (width, height, deltaX, deltaY) => {
+            return {w: width + deltaX, h: height}
           }
-
-          browserPointer.addMouseMoveListener(resizeListener)
           break
         }
         case Resize.topRight: {
-          const resizeListener = () => {
-            if (browserPointer.buttonSerial === serial) {
-              const deltaX = browserPointer.x - pointerX
-              const deltaY = browserPointer.y - pointerY
-              let width = surfaceWidth
-              let height = surfaceHeight
-              height -= deltaY
-              width += deltaX
-
-              this.resource.configure(edges, width, height)
-            } else {
-              browserPointer.removeMouseMoveListener(resizeListener)
-            }
+          sizeAdjustment = (width, height, deltaX, deltaY) => {
+            return {w: width + deltaX, h: height - deltaY}
           }
-
-          browserPointer.addMouseMoveListener(resizeListener)
           break
         }
-
-        case Resize.bottomRight: {
-          const resizeListener = () => {
-            if (browserPointer.buttonSerial === serial) {
-              const deltaX = browserPointer.x - pointerX
-              const deltaY = browserPointer.y - pointerY
-              let width = surfaceWidth
-              let height = surfaceHeight
-              height += deltaY
-              width += deltaX
-
-              this.resource.configure(edges, width, height)
-            } else {
-              browserPointer.removeMouseMoveListener(resizeListener)
-            }
+        case Resize.none:
+        default: {
+          sizeAdjustment = (width, height, deltaX, deltaY) => {
+            return {w: width, h: height}
           }
-
-          browserPointer.addMouseMoveListener(resizeListener)
           break
         }
       }
+      const resizeListener = () => {
+        if (browserPointer.buttonSerial === serial) {
+          const deltaX = browserPointer.x - pointerX
+          const deltaY = browserPointer.y - pointerY
+          const size = sizeAdjustment(surfaceWidth, surfaceHeight, deltaX, deltaY)
+          this.resource.configure(edges, size.w, size.h)
+        } else {
+          browserPointer.removeMouseMoveListener(resizeListener)
+        }
+      }
+      browserPointer.addMouseMoveListener(resizeListener)
     }
   }
 
