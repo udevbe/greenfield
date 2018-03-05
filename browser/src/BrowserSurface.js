@@ -9,6 +9,7 @@ import Mat4 from './math/Mat4'
 import { NORMAL, _90, _180, _270, FLIPPED, FLIPPED_90, FLIPPED_180, FLIPPED_270 } from './math/Transformations'
 import Size from './Size'
 import BrowserRegion from './BrowserRegion'
+import BrowserSurfaceChild from './BrowserSurfaceChild'
 
 const pixman = pixmanModule()
 
@@ -91,42 +92,99 @@ export default class BrowserSurface {
     this._pendingBufferDamageRects = []
     this._bufferDamageRegion = bufferDamageRegion
     this.bufferDamage = bufferDamage
-
+    /**
+     * @type {number}
+     * @private
+     */
     this._pendingOpaqueRegion = null
     /**
      * @type {number}
      */
     this.opaquePixmanRegion = null
+    /**
+     * @type {number}
+     * @private
+     */
     this._pendingInputRegion = null
     /**
      * @type {number}
      */
     this.inputPixmanRegion = null
-
+    /**
+     * @type {number}
+     * @private
+     */
     this._pendingDx = 0
+    /**
+     * @type {number}
+     */
     this.dx = 0
+    /**
+     * @type {number}
+     * @private
+     */
     this._pendingDy = 0
+    /**
+     * @type {number}
+     */
     this.dy = 0
-
+    /**
+     * @type {number}
+     * @private
+     */
     this._pendingBufferTransform = 0
+    /**
+     * @type {number}
+     */
     this.bufferTransform = 0
+    /**
+     * @type {number}
+     * @private
+     */
     this._pendingBufferScale = 1
+    /**
+     * @type {number}
+     */
     this.bufferScale = 1
+    /**
+     * @type {Size}
+     */
     this.size = Size.create(0, 0)
+    /**
+     * @type {Size}
+     */
     this.bufferSize = Size.create(0, 0)
-
+    /**
+     * @type {BrowserSurfaceView[]}
+     */
     this.browserSurfaceViews = []
     /**
      * @type {BrowserSurfaceView}
      */
     this.defaultSurfaceView = null
-
+    /**
+     * @type {BrowserSeat}
+     */
     this.browserSeat = browserSeat
+    /**
+     * @type {BrowserSession}
+     */
     this.browserSession = browserSession
-
+    /**
+     * @type {?}
+     */
     this.role = null
+    /**
+     * All child surfaces of this BrowserSurface + this browser surface. This allows for child surfaces to be displayed
+     * below it's parent, as the order of this list determines the zOrder between parent & children.
+     * @type {BrowserSurfaceChild[]}
+     */
+    this.browserSurfaceChildren = [BrowserSurfaceChild.create(this)]
   }
 
+  /**
+   * @return {BrowserSurfaceView}
+   */
   createView () {
     const browserSurfaceView = BrowserSurfaceView.create(this, this.bufferSize.w, this.bufferSize.h)
     this.browserSurfaceViews.push(browserSurfaceView)
@@ -138,7 +196,60 @@ export default class BrowserSurface {
       }
     })
 
+    this.browserSurfaceChildren.forEach(browserSurfaceChild => {
+      this._ensureChildView(browserSurfaceChild, browserSurfaceView)
+    })
+
     return browserSurfaceView
+  }
+
+  /**
+   * @param {BrowserSurfaceChild}browserSurfaceChild
+   * @param {BrowserSurfaceView}browserSurfaceView
+   * @private
+   */
+  _ensureChildView (browserSurfaceChild, browserSurfaceView) {
+    if (browserSurfaceChild.browserSurface === this) {
+      return
+    }
+
+    const hasThisParentView = browserSurfaceChild.browserSurface.browserSurfaceViews.some(browserSurfaceView => {
+      return browserSurfaceView.parent === browserSurfaceView
+    })
+    if (hasThisParentView) {
+      // Child already has a view with this surface as it's parent view. Do nothing.
+      return
+    }
+
+    const childView = browserSurfaceChild.browserSurface.createView()
+    childView.parent = browserSurfaceView
+  }
+
+  /**
+   * @param {BrowserSurfaceChild}browserSurfaceChild
+   */
+  addChild (browserSurfaceChild) {
+    this.browserSurfaceViews.forEach((browserSurfaceView) => {
+      this._ensureChildView(browserSurfaceChild, browserSurfaceView)
+    })
+
+    this.browserSurfaceChildren.push(browserSurfaceChild)
+    browserSurfaceChild.browserSurface.resource.onDestroy().then(() => {
+      this.removeChild(browserSurfaceChild)
+    })
+  }
+
+  /**
+   * @param {BrowserSurfaceChild}browserSurfaceChild
+   */
+  removeChild (browserSurfaceChild) {
+    const index = this.browserSurfaceChildren.indexOf(browserSurfaceChild)
+    if (index > -1) {
+      this.browserSurfaceChildren.splice(index, 1)
+      browserSurfaceChild.browserSurface.browserSurfaceViews.forEach((browserSurfaceView) => {
+        browserSurfaceView.parent = null
+      })
+    }
   }
 
   /**

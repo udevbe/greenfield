@@ -120,10 +120,9 @@ export default class BrowserPointer {
      */
     this.focusSerial = 0
     /**
-     * @type {number}
+     * @type {Function[]}
+     * @private
      */
-    this.zOrderCounter = 1
-
     this._mouseMoveListeners = []
     /**
      * @type {number}
@@ -367,7 +366,7 @@ export default class BrowserPointer {
       this._browserKeyboard.focusGained(this.grab)
       // elements with a same zIndex will be display in document order, to avoid a previously grabbed canvas being shown below another,
       // we need to assign it an absolute zIndex greater than the last one.
-      this.grab.bufferedCanvas.zIndex = ++this.zOrderCounter
+      this.grab.raise()
     }
 
     this._btnDwnCount++

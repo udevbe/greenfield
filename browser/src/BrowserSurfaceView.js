@@ -1,6 +1,7 @@
 'use strict'
 import Mat4 from './math/Mat4'
 import BufferedCanvas from './BufferedCanvas'
+import Renderer from './render/Renderer'
 
 export default class BrowserSurfaceView {
   /**
@@ -19,6 +20,11 @@ export default class BrowserSurfaceView {
     return browserSurfaceView
   }
 
+  static _nextTopZIndex () {
+    this._topZIndex++
+    return this._topZIndex
+  }
+
   /**
    * Use BrowserSurfaceView.create(..) instead.
    * @private
@@ -28,7 +34,7 @@ export default class BrowserSurfaceView {
    */
   constructor (bufferedCanvas, browserSurface, transformation) {
     /**
-     * @type {HTMLCanvasElement}
+     * @type {BufferedCanvas}
      */
     this.bufferedCanvas = bufferedCanvas
     /**
@@ -58,6 +64,11 @@ export default class BrowserSurfaceView {
     this._destroyPromise = new Promise((resolve) => {
       this._destroyResolve = resolve
     })
+    /**
+     * @type {BrowserSurfaceView}
+     * @private
+     */
+    this._parent = null
   }
 
   /**
@@ -73,6 +84,36 @@ export default class BrowserSurfaceView {
     }
   }
 
+  /**
+   * @param {BrowserSurfaceView}parent
+   */
+  set parent (parent) {
+    this._parent = parent
+
+    // get global (browser) position of new child view, based on the relative position of the child (relative to us)
+    const browserSurfaceChild = parent.browserSurface.browserSurfaceChildren.find((browserSurfaceChild) => {
+      return browserSurfaceChild.browserSurface === this.browserSurface
+    })
+
+    this.syncTransformationToParent(browserSurfaceChild.position)
+  }
+
+  syncTransformationToParent (childPosition) {
+    // FIXME this cancels out any special transformations that were set on the child view as the child now
+    // inherits the parent's transformations. A solution is to store these transformations in a separate field and
+    // apply them here again.
+    const {x, y} = this.parent.toBrowserSpace(childPosition)
+    this.transformation = Mat4.translation(x, y).timesMat4(this.parent.transformation)
+    this.applyTransformation()
+  }
+
+  /**
+   * @return {BrowserSurfaceView}
+   */
+  get parent () {
+    return this._parent
+  }
+
   set transformation (transformation) {
     this._transformation = transformation
     this.inverseTransformation = transformation.invert()
@@ -83,14 +124,45 @@ export default class BrowserSurfaceView {
   }
 
   applyTransformation () {
+    // We could be doing a transform on the back-buffer and wait for animation frame before doing as swap.
+    // However this has some performance implications as we'd also have to keep both buffer contents in sync.
+    // As for new we just do it immediately on the front-buffer. If it has noticeable visual artifact we might
+    // consider using the back-buffer method.
+
     this.bufferedCanvas.frontContext.canvas.style.transform = this.transformation.toCssMatrix()
+
+    // find all child views who have this view as it's parent and update their transformation
+    this.browserSurface.browserSurfaceChildren.forEach((browserSurfaceChild) => {
+      const childViews = browserSurfaceChild.browserSurface.browserSurfaceViews.filter((browserSurfaceView) => {
+        return browserSurfaceView.parent === this || browserSurfaceView === this
+      })
+
+      childViews.forEach((childView) => {
+        childView.syncTransformationToParent(browserSurfaceChild.position)
+      })
+    })
+  }
+
+  raise () {
+    // See remark in applyTransformation. Same applies here.
+
+    // raise all child views in order they are declared in the browserSurfaceChildren list
+    this.browserSurface.browserSurfaceChildren.forEach((browserSurfaceChild) => {
+      const childViews = browserSurfaceChild.browserSurface.browserSurfaceViews.filter((childView) => {
+        return childView.parent === this || childView === this
+      })
+      childViews.forEach((childView) => {
+        this.bufferedCanvas.zIndex = BrowserSurfaceView._nextTopZIndex()
+        childView.raise()
+      })
+    })
   }
 
   /**
    * @param {HTMLCanvasElement}sourceCanvas
    */
-  drawCanvas (sourceCanvas) {
-    this._draw(sourceCanvas, sourceCanvas.width, sourceCanvas.height)
+  async drawCanvas (sourceCanvas) {
+    await this._draw(sourceCanvas, sourceCanvas.width, sourceCanvas.height)
   }
 
   /**
@@ -99,15 +171,14 @@ export default class BrowserSurfaceView {
    * @param {number}height
    * @private
    */
-  _draw (source, width, height) {
+  async _draw (source, width, height) {
     // FIXME adjust final transformation with additional transformations defined in the browser surface
     this.bufferedCanvas.drawBackBuffer(source, width, height, this.transformation)
 
-    window.requestAnimationFrame((presentationTime) => {
-      this.bufferedCanvas.swapBuffers()
-      this._drawResolve(presentationTime)
-      this._armDrawPromise()
-    })
+    const presentationTime = await Renderer.onAnimationFrame()
+    this.bufferedCanvas.swapBuffers()
+    this._drawResolve(presentationTime)
+    this._armDrawPromise()
   }
 
   _armDrawPromise () {
@@ -121,7 +192,7 @@ export default class BrowserSurfaceView {
    * One shot draw promise.
    * @return {Promise}
    */
-  onDraw () {
+  async onDraw () {
     return this._drawPromise
   }
 
@@ -163,3 +234,10 @@ export default class BrowserSurfaceView {
     return this._destroyPromise
   }
 }
+
+/**
+ *
+ * @type {number}
+ * @private
+ */
+BrowserSurfaceView._topZIndex = 0
