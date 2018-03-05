@@ -27,7 +27,6 @@ export default class BrowserPointer {
    */
   static create (browserSession, browserDataDevice, browserKeyboard) {
     const browserPointer = new BrowserPointer(browserDataDevice, browserKeyboard)
-    // TODO these listeners should be added on document level as they are send to the grabbed surface, and not on the focussed surface
     document.addEventListener('mousemove', browserSession.eventSource((event) => {
       event.preventDefault()
       browserPointer.onMouseMove(event)
@@ -71,6 +70,21 @@ export default class BrowserPointer {
      */
     this.grab = null
     /**
+     * @type {GrSurface}
+     * @private
+     */
+    this._popup = null
+    /**
+     * @type {Function}
+     * @private
+     */
+    this._popupGrabEndResolve = null
+    /**
+     * @type {Promise}
+     * @private
+     */
+    this._popupGrabEndPromise = null
+    /**
      * @type {number}
      */
     this.x = 0
@@ -79,29 +93,15 @@ export default class BrowserPointer {
      */
     this.y = 0
     /**
-     * @type {Function}
-     * @param {GrSurface}resource
-     * @private
-     */
-    this._focusDestroyListener = (resource) => {
-      if (this.focus && resource.implementation.defaultView !== this.focus) {
-        return
-      }
-      const surfaceResource = this.focus.browserSurface.resource
-      surfaceResource.removeDestroyListener(this._focusDestroyListener)
-      this.focus = null
-      this.grab = null
-      // recalculate focus and consequently enter event
-      const focus = this.calculateFocus()
-      if (focus) {
-        this.setFocus(focus)
-      }
-    }
-    /**
      * @type {BrowserSurface}
      * @private
      */
     this._cursorSurface = null
+    /**
+     * @type {BrowserSurfaceView}
+     * @private
+     */
+    this._view = null
     /**
      * @type {Function}
      * @private
@@ -120,10 +120,9 @@ export default class BrowserPointer {
      */
     this.focusSerial = 0
     /**
-     * @type {number}
+     * @type {Function[]}
+     * @private
      */
-    this.zOrderCounter = 1
-
     this._mouseMoveListeners = []
     /**
      * @type {number}
@@ -145,9 +144,9 @@ export default class BrowserPointer {
     const hotspotX = this.hotspotX
     const hotspotY = this.hotspotY
 
-    browserSurface.defaultSurfaceView.onDraw().then(() => {
-      if (browserSurface.role) {
-        this._uploadCursor(browserSurface.defaultSurfaceView, hotspotX, hotspotY)
+    this._view.onDraw().then(() => {
+      if (this._cursorSurface && this._cursorSurface.implementation === browserSurface) {
+        this._uploadCursor(this._view, hotspotX, hotspotY)
       }
     })
   }
@@ -207,6 +206,38 @@ export default class BrowserPointer {
   }
 
   /**
+   * @param {GrSurface}popup
+   * @return {Promise}
+   */
+  popupGrab (popup) {
+    // release any previous active popup grab
+    if (!this._popupGrabEndPromise) {
+      this._popupGrabEndPromise = new Promise((resolve) => {
+        this._popup = popup
+        this._popupGrabEndResolve = resolve
+
+        popup.onDestroy().then(() => {
+          if (this._popup === popup) {
+            this._popupGrabEndResolve()
+          }
+        })
+      }).then(() => {
+        this._popup = null
+        this._popupGrabEndResolve = null
+        this._popupGrabEndPromise = null
+        const focus = this.calculateFocus()
+        if (focus) {
+          this.setFocus(focus)
+        } else {
+          this.unsetFocus()
+        }
+      })
+    }
+
+    return this._popupGrabEndPromise
+  }
+
+  /**
    * @param {GrSurface|null}surface
    * @param {Number} hotspotX surface-local x coordinate
    * @param {Number} hotspotY surface-local y coordinate
@@ -228,6 +259,10 @@ export default class BrowserPointer {
         return
       }
 
+      if (this._view) {
+        this._view.destroy()
+      }
+      this._view = browserSurface.createView()
       browserSurface.resource.addDestroyListener(this._cursorDestroyListener)
       browserSurface.role = this
       browserSurface.inputRegion = null
@@ -287,7 +322,10 @@ export default class BrowserPointer {
   onMouseMove (event) {
     this.x = event.clientX < 0 ? 0 : event.clientX
     this.y = event.clientY < 0 ? 0 : event.clientY
-    const currentFocus = this.calculateFocus()
+    let currentFocus = this.calculateFocus()
+    if (this._popup && currentFocus && currentFocus.browserSurface.resource.client !== this._popup.client) {
+      currentFocus = null
+    }
 
     if (this._browserDataDevice.dndSourceClient) {
       this._browserDataDevice.onMouseMotion(currentFocus)
@@ -358,6 +396,15 @@ export default class BrowserPointer {
    * @param {MouseEvent}event
    */
   onMouseDown (event) {
+    if (this._popupGrabEndResolve) {
+      const focus = this.calculateFocus()
+      // popup grab ends when user clicks on another client's surface
+      if (focus && focus.browserSurface.resource.client !== this._popup.client) {
+        this._popupGrabEndResolve()
+        this._popupGrabEndResolve = null
+      }
+    }
+
     if (this.focus === null) {
       return
     }
@@ -365,9 +412,6 @@ export default class BrowserPointer {
     if (this.grab === null) {
       this.grab = this.focus
       this._browserKeyboard.focusGained(this.grab)
-      // elements with a same zIndex will be display in document order, to avoid a previously grabbed canvas being shown below another,
-      // we need to assign it an absolute zIndex greater than the last one.
-      this.grab.bufferedCanvas.zIndex = ++this.zOrderCounter
     }
 
     this._btnDwnCount++
@@ -417,7 +461,11 @@ export default class BrowserPointer {
     let zOrder = -1
     let focus = {view: null}
     focusCandidates.forEach(focusCandidate => {
-      if (focusCandidate.view && this._isPointerWithinInputRegion(focusCandidate) && window.parseInt(focusCandidate.style.zIndex) > zOrder) {
+      if (focusCandidate.view &&
+        focusCandidate.view.browserSurface.hasPointerInput &&
+        this._isPointerWithinInputRegion(focusCandidate) &&
+        window.parseInt(focusCandidate.style.zIndex) > zOrder &&
+        !focusCandidate.view.destroyed) {
         zOrder = focusCandidate.style.zIndex
         focus = focusCandidate
       }
@@ -432,7 +480,22 @@ export default class BrowserPointer {
   setFocus (newFocus) {
     this.focus = newFocus
     const surfaceResource = this.focus.browserSurface.resource
-    surfaceResource.addDestroyListener(this._focusDestroyListener)
+    surfaceResource.onDestroy().then((resource) => {
+      if (!this.focus) {
+        return
+      }
+      const surfaceResource = this.focus.browserSurface.resource
+      if (resource !== surfaceResource) {
+        return
+      }
+      // recalculate focus and consequently enter event
+      const focus = this.calculateFocus()
+      if (focus) {
+        this.setFocus(focus)
+      } else {
+        this.unsetFocus()
+      }
+    })
 
     const surfacePoint = this._calculateSurfacePoint(newFocus)
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
@@ -443,8 +506,6 @@ export default class BrowserPointer {
   unsetFocus () {
     if (this.focus) {
       const surfaceResource = this.focus.browserSurface.resource
-      surfaceResource.removeDestroyListener(this._focusDestroyListener)
-
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
         pointerResource.leave(this._nextFocusSerial(), surfaceResource)
       })

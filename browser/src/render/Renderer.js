@@ -33,19 +33,63 @@ export default class Renderer {
   }
 
   /**
+   * @param {GrBuffer}grBuffer
+   * @return Size
+   */
+  static bufferSize (grBuffer) {
+    if (grBuffer === null) {
+      return Size.create(0, 0)
+    }
+    // TODO we could check for null here in case we are dealing with a different kind of buffer
+    const browserRtcDcBuffer = BrowserRtcBufferFactory.get(grBuffer)
+    return browserRtcDcBuffer.geo
+  }
+
+  static onAnimationFrame () {
+    if (this._animationPromise === null) {
+      this._armAnimationFramePromise()
+    }
+    return this._animationPromise
+  }
+
+  static _armAnimationFramePromise () {
+    this._animationPromise = new Promise((resolve) => {
+      window.requestAnimationFrame((time) => {
+        this._animationPromise = null
+        resolve(time)
+      })
+    })
+  }
+
+  /**
    * Use Renderer.create(..) instead.
    * @private
-   * @param browserSession
-   * @param gl
-   * @param yuvaShader
-   * @param yuvShader
-   * @param canvas
+   * @param {BrowserSession}browserSession
+   * @param {WebGLRenderingContext}gl
+   * @param {YUVASurfaceShader}yuvaShader
+   * @param {YUVSurfaceShader}yuvShader
+   * @param {HTMLCanvasElement}canvas
    */
   constructor (browserSession, gl, yuvaShader, yuvShader, canvas) {
+    /**
+     * @type {BrowserSession}
+     */
     this.browserSession = browserSession
+    /**
+     * @type {WebGLRenderingContext}
+     */
     this.gl = gl
+    /**
+     * @type {YUVASurfaceShader}
+     */
     this.yuvaShader = yuvaShader
+    /**
+     * @type {YUVSurfaceShader}
+     */
     this.yuvShader = yuvShader
+    /**
+     * @type {HTMLCanvasElement}
+     */
     this.canvas = canvas
   }
 
@@ -55,26 +99,13 @@ export default class Renderer {
    */
   surfaceSize (browserSurface) {
     const grBuffer = browserSurface.grBuffer
-    const bufferSize = this.bufferSize(grBuffer)
+    const bufferSize = Renderer.bufferSize(grBuffer)
     if (browserSurface.bufferScale === 1) {
       return bufferSize
     }
     const surfaceWidth = bufferSize.w / browserSurface.bufferScale
     const surfaceHeight = bufferSize.h / browserSurface.bufferScale
     return Size.create(surfaceWidth, surfaceHeight)
-  }
-
-  /**
-   * @param {GrBuffer}grBuffer
-   * @return Size
-   */
-  bufferSize (grBuffer) {
-    if (grBuffer === null) {
-      return Size.create(0, 0)
-    }
-    // TODO we could check for null here in case we are dealing with a different kind of buffer
-    const browserRtcDcBuffer = BrowserRtcBufferFactory.get(grBuffer)
-    return browserRtcDcBuffer.geo
   }
 
   async requestRender (browserSurface) {
@@ -173,3 +204,8 @@ export default class Renderer {
     })
   }
 }
+/**
+ * @type {Promise<number>}
+ * @private
+ */
+Renderer._animationPromise = null

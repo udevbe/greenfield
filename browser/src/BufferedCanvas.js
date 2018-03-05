@@ -58,16 +58,6 @@ export default class BufferedCanvas {
   }
 
   /**
-   * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap}source
-   * @param {number}width
-   * @param {number}height
-   * @param {Mat4|null} transformation
-   */
-  drawFrontBuffer (source, width, height, transformation) {
-    this._draw(this.frontContext, source, width, height, transformation)
-  }
-
-  /**
    * @param {CanvasRenderingContext2D} context2d
    * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap}source
    * @param {number}width
@@ -89,37 +79,25 @@ export default class BufferedCanvas {
   }
 
   swapBuffers () {
+    // swap canvasses
     const oldFront = this.frontContext
     this.frontContext = this.backContext
     this.backContext = oldFront
+
+    // make back canvas invisible
     this.backContext.canvas.style.display = 'none'
+    // make new front canvas visible
     this.frontContext.canvas.style.display = 'inline'
+    // update transformation
+    this.backContext.canvas.style.transform = this.frontContext.canvas.style.transform
   }
 
   /**
    * @param {number}index
    */
   set zIndex (index) {
-    this.frontContext.canvas.style.zIndex = index.toString(10)
     this.backContext.canvas.style.zIndex = index.toString(10)
-  }
-
-  attach () {
-    document.body.appendChild(this.frontContext.canvas)
-    document.body.appendChild(this.backContext.canvas)
-  }
-
-  detach () {
-    this._removeCanvas(this.frontContext)
-    this._removeCanvas(this.backContext)
-  }
-
-  _removeCanvas (context) {
-    const canvas = context.canvas
-    const parent = canvas.parentElement
-    if (parent) {
-      parent.removeChild(canvas)
-    }
+    this.frontContext.canvas.style.zIndex = index.toString(10)
   }
 
   /**

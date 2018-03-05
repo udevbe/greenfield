@@ -36,7 +36,7 @@ module.exports = class ShimShellSurface extends WlShellSurfaceRequests {
   }
 
   setFullscreen (resource, method, framerate, output) {
-    const grOutputProxy = output.implementation.proxy
+    const grOutputProxy = output === null ? null : output.implementation.proxy
     this.proxy.setFullscreen(method, framerate, grOutputProxy)
   }
 

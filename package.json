@@ -47,7 +47,7 @@
     "wayland-server-bindings-runtime": "0.0.49",
     "westfield-runtime-client": "0.0.17",
     "westfield-runtime-server": "0.0.17",
-    "wrtc": "^0.0.65",
+    "wrtc": "0.0.67",
     "ws": "^4.0.0"
   },
   "devDependencies": {

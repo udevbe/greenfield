@@ -1,6 +1,7 @@
 'use strict'
 import Mat4 from './math/Mat4'
 import BufferedCanvas from './BufferedCanvas'
+import Renderer from './render/Renderer'
 
 export default class BrowserSurfaceView {
   /**
@@ -19,6 +20,11 @@ export default class BrowserSurfaceView {
     return browserSurfaceView
   }
 
+  static _nextTopZIndex () {
+    this._topZIndex++
+    return this._topZIndex
+  }
+
   /**
    * Use BrowserSurfaceView.create(..) instead.
    * @private
@@ -28,7 +34,7 @@ export default class BrowserSurfaceView {
    */
   constructor (bufferedCanvas, browserSurface, transformation) {
     /**
-     * @type {HTMLCanvasElement}
+     * @type {BufferedCanvas}
      */
     this.bufferedCanvas = bufferedCanvas
     /**
@@ -58,10 +64,19 @@ export default class BrowserSurfaceView {
     this._destroyPromise = new Promise((resolve) => {
       this._destroyResolve = resolve
     })
+    /**
+     * @type {boolean}
+     */
+    this.destroyed = false
+    /**
+     * @type {BrowserSurfaceView}
+     * @private
+     */
+    this._parent = null
   }
 
   /**
-   * @param {HTMLImageElement }sourceImage
+   * @param {HTMLImageElement}sourceImage
    */
   drawPNG (sourceImage) {
     if (sourceImage.complete && sourceImage.naturalHeight !== 0) {
@@ -73,6 +88,36 @@ export default class BrowserSurfaceView {
     }
   }
 
+  /**
+   * @param {BrowserSurfaceView}parent
+   */
+  set parent (parent) {
+    this._parent = parent
+
+    if (this._parent) {
+      parent.onDestroy().then(() => {
+        if (this.parent === parent) {
+          this.destroy()
+          this.parent = null
+        }
+      })
+
+      this.updateTransformation()
+      if (this._parent.isAttached()) {
+        this.attach()
+      } else {
+        this.detach()
+      }
+    }
+  }
+
+  /**
+   * @return {BrowserSurfaceView}
+   */
+  get parent () {
+    return this._parent
+  }
+
   set transformation (transformation) {
     this._transformation = transformation
     this.inverseTransformation = transformation.invert()
@@ -82,15 +127,70 @@ export default class BrowserSurfaceView {
     return this._transformation
   }
 
-  applyTransformation () {
+  updateTransformation () {
+    // We could be doing a transform on the back-buffer and wait for animation frame before doing as swap.
+    // However this has some performance implications as we'd also have to keep both buffer contents in sync.
+    // As for now we just do it immediately on the front-buffer. If it has noticeable visual artifact we might
+    // consider using the back-buffer method.
+
+    // inherit parent transformation
+    let parentTransformation = Mat4.IDENTITY()
+    if (this._parent) {
+      parentTransformation = this._parent.transformation
+    }
+
+    // setup position
+    const browserSurfaceChild = this.browserSurface.browserSurfaceChildSelf
+    const {x, y} = browserSurfaceChild.position
+    const positionTransformation = Mat4.translation(x, y)
+
+    // TODO other transformations
+
+    // store final transformation
+    this.transformation = parentTransformation.timesMat4(positionTransformation)
+
+    // update on-screen canvas
     this.bufferedCanvas.frontContext.canvas.style.transform = this.transformation.toCssMatrix()
+
+    // find all child views who have this view as it's parent and update their transformation
+    this.browserSurface.browserSurfaceChildren.forEach((browserSurfaceChild) => {
+      const childViews = browserSurfaceChild.browserSurface.browserSurfaceViews.filter((browserSurfaceView) => {
+        return browserSurfaceView.parent === this
+      })
+
+      childViews.forEach((childView) => {
+        childView.updateTransformation()
+      })
+    })
+  }
+
+  raise () {
+    this.zIndex = BrowserSurfaceView._nextTopZIndex()
+    this.browserSurface.updateChildViewsZIndexes()
+  }
+
+  /**
+   * @param {number}index
+   */
+  set zIndex (index) {
+    if (index >= BrowserSurfaceView._topZIndex) {
+      BrowserSurfaceView._topZIndex = index
+    }
+    this.bufferedCanvas.zIndex = index
+  }
+
+  /**
+   * @return {number}
+   */
+  get zIndex () {
+    return parseInt(this.bufferedCanvas.frontContext.canvas.style.zIndex, 10)
   }
 
   /**
    * @param {HTMLCanvasElement}sourceCanvas
    */
-  drawCanvas (sourceCanvas) {
-    this._draw(sourceCanvas, sourceCanvas.width, sourceCanvas.height)
+  async drawCanvas (sourceCanvas) {
+    await this._draw(sourceCanvas, sourceCanvas.width, sourceCanvas.height)
   }
 
   /**
@@ -99,15 +199,14 @@ export default class BrowserSurfaceView {
    * @param {number}height
    * @private
    */
-  _draw (source, width, height) {
+  async _draw (source, width, height) {
     // FIXME adjust final transformation with additional transformations defined in the browser surface
     this.bufferedCanvas.drawBackBuffer(source, width, height, this.transformation)
 
-    window.requestAnimationFrame((presentationTime) => {
-      this.bufferedCanvas.swapBuffers()
-      this._drawResolve(presentationTime)
-      this._armDrawPromise()
-    })
+    const presentationTime = await Renderer.onAnimationFrame()
+    this.bufferedCanvas.swapBuffers()
+    this._drawResolve(presentationTime)
+    this._armDrawPromise()
   }
 
   _armDrawPromise () {
@@ -121,7 +220,7 @@ export default class BrowserSurfaceView {
    * One shot draw promise.
    * @return {Promise}
    */
-  onDraw () {
+  async onDraw () {
     return this._drawPromise
   }
 
@@ -156,10 +255,53 @@ export default class BrowserSurfaceView {
   }
 
   destroy () {
+    this.destroyed = true
     this._destroyResolve()
   }
 
   onDestroy () {
     return this._destroyPromise
   }
+
+  isAttached () {
+    return this.bufferedCanvas.frontContext.canvas.parentElement && this.bufferedCanvas.backContext.canvas.parentElement
+  }
+
+  attach () {
+    if (!this.bufferedCanvas.frontContext.canvas.parentElement) {
+      document.body.appendChild(this.bufferedCanvas.frontContext.canvas)
+    }
+    if (!this.bufferedCanvas.backContext.canvas.parentElement) {
+      document.body.appendChild(this.bufferedCanvas.backContext.canvas)
+    }
+
+    // attach child views
+    this.browserSurface.browserSurfaceChildren.forEach((browserSurfaceChild) => {
+      browserSurfaceChild.browserSurface.browserSurfaceViews.filter((childView) => {
+        return childView.parent === this
+      }).forEach((childView) => {
+        childView.attach()
+      })
+    })
+  }
+
+  detach () {
+    this._removeCanvas(this.bufferedCanvas.frontContext)
+    this._removeCanvas(this.bufferedCanvas.backContext)
+  }
+
+  _removeCanvas (context) {
+    const canvas = context.canvas
+    const parent = canvas.parentElement
+    if (parent) {
+      parent.removeChild(canvas)
+    }
+  }
 }
+
+/**
+ *
+ * @type {number}
+ * @private
+ */
+BrowserSurfaceView._topZIndex = 0

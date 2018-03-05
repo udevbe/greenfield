@@ -9,6 +9,7 @@ import Mat4 from './math/Mat4'
 import { NORMAL, _90, _180, _270, FLIPPED, FLIPPED_90, FLIPPED_180, FLIPPED_270 } from './math/Transformations'
 import Size from './Size'
 import BrowserRegion from './BrowserRegion'
+import BrowserSurfaceChild from './BrowserSurfaceChild'
 
 const pixman = pixmanModule()
 
@@ -52,7 +53,6 @@ export default class BrowserSurface {
     )
     grSurfaceResource.implementation = browserSurface
     grSurfaceResource.onDestroy().then(() => browserSurface._handleDestruction())
-    browserSurface.defaultSurfaceView = browserSurface.createView()
 
     return browserSurface
   }
@@ -91,42 +91,142 @@ export default class BrowserSurface {
     this._pendingBufferDamageRects = []
     this._bufferDamageRegion = bufferDamageRegion
     this.bufferDamage = bufferDamage
-
+    /**
+     * @type {number}
+     * @private
+     */
     this._pendingOpaqueRegion = null
     /**
      * @type {number}
      */
     this.opaquePixmanRegion = null
+    /**
+     * @type {number}
+     * @private
+     */
     this._pendingInputRegion = null
     /**
      * @type {number}
      */
     this.inputPixmanRegion = null
-
+    /**
+     * @type {number}
+     * @private
+     */
     this._pendingDx = 0
+    /**
+     * @type {number}
+     */
     this.dx = 0
+    /**
+     * @type {number}
+     * @private
+     */
     this._pendingDy = 0
+    /**
+     * @type {number}
+     */
     this.dy = 0
-
+    /**
+     * @type {number}
+     * @private
+     */
     this._pendingBufferTransform = 0
+    /**
+     * @type {number}
+     */
     this.bufferTransform = 0
+    /**
+     * @type {number}
+     * @private
+     */
     this._pendingBufferScale = 1
+    /**
+     * @type {number}
+     */
     this.bufferScale = 1
+    /**
+     * @type {Size}
+     */
     this.size = Size.create(0, 0)
+    /**
+     * @type {Size}
+     */
     this.bufferSize = Size.create(0, 0)
-
+    /**
+     * @type {BrowserSurfaceView[]}
+     */
     this.browserSurfaceViews = []
     /**
-     * @type {BrowserSurfaceView}
+     * @type {BrowserSeat}
      */
-    this.defaultSurfaceView = null
-
     this.browserSeat = browserSeat
+    /**
+     * @type {BrowserSession}
+     */
     this.browserSession = browserSession
-
+    /**
+     * @type {boolean}
+     */
+    this.hasKeyboardInput = false
+    /**
+     * @type {boolean}
+     */
+    this.hasPointerInput = false
+    /**
+     * @type {boolean}
+     */
+    this.hasTouchInput = false
+    /**
+     * @type {?}
+     */
     this.role = null
+    this.browserSurfaceChildSelf = BrowserSurfaceChild.create(this)
+    /**
+     * All child surfaces of this BrowserSurface + this browser surface. This allows for child surfaces to be displayed
+     * below it's parent, as the order of this list determines the zOrder between parent & children.
+     * @type {BrowserSurfaceChild[]}
+     */
+    this.browserSurfaceChildren = [this.browserSurfaceChildSelf]
   }
 
+  updateChildViewsZIndexes () {
+    let parentPosition = this.browserSurfaceChildren.indexOf(this.browserSurfaceChildSelf)
+    this.browserSurfaceViews.forEach(view => {
+      const parentViewZIndex = view.zIndex
+      // Children can be displayed below their parent, therefor we have to subtract the parent position from it's zIndex
+      // to get the starting zIndexOffset
+      const zIndexOffset = parentViewZIndex - parentPosition
+      this._updateZIndex(view, zIndexOffset)
+    })
+  }
+
+  /**
+   * @param {BrowserSurfaceView}parentView
+   * @param {number}zIndexOffset
+   * @return {number}
+   * @private
+   */
+  _updateZIndex (parentView, zIndexOffset) {
+    let newZIndex = 0
+    let newZIndexOffset = zIndexOffset
+    this.browserSurfaceChildren.forEach((browserSurfaceChild, index) => {
+      newZIndex = newZIndexOffset + index
+      if (browserSurfaceChild.browserSurface === this) {
+        parentView.zIndex = newZIndex
+      } else {
+        const childView = browserSurfaceChild.browserSurface.browserSurfaceViews.find(view => {
+          return view.parent === parentView
+        })
+        newZIndexOffset = browserSurfaceChild.browserSurface._updateZIndex(childView, newZIndex)
+      }
+    })
+    return newZIndex
+  }
+
+  /**
+   * @return {BrowserSurfaceView}
+   */
   createView () {
     const browserSurfaceView = BrowserSurfaceView.create(this, this.bufferSize.w, this.bufferSize.h)
     this.browserSurfaceViews.push(browserSurfaceView)
@@ -138,7 +238,56 @@ export default class BrowserSurface {
       }
     })
 
+    this.browserSurfaceChildren.forEach(browserSurfaceChild => {
+      this._ensureChildView(browserSurfaceChild, browserSurfaceView)
+    })
+
+    this.updateChildViewsZIndexes()
+
     return browserSurfaceView
+  }
+
+  /**
+   * @param {BrowserSurfaceChild}browserSurfaceChild
+   * @param {BrowserSurfaceView}browserSurfaceView
+   * @private
+   */
+  _ensureChildView (browserSurfaceChild, browserSurfaceView) {
+    if (browserSurfaceChild.browserSurface === this) {
+      return
+    }
+
+    const childView = browserSurfaceChild.browserSurface.createView()
+    const zIndexOrder = this.browserSurfaceChildren.indexOf(browserSurfaceChild)
+    childView.zIndex = browserSurfaceView.bufferedCanvas.frontContext.canvas.style.zIndex + zIndexOrder
+
+    childView.parent = browserSurfaceView
+  }
+
+  /**
+   * @param {BrowserSurfaceChild}browserSurfaceChild
+   */
+  addChild (browserSurfaceChild) {
+    this.browserSurfaceChildren.push(browserSurfaceChild)
+
+    this.browserSurfaceViews.forEach((browserSurfaceView) => {
+      this._ensureChildView(browserSurfaceChild, browserSurfaceView)
+    })
+    browserSurfaceChild.browserSurface.resource.onDestroy().then(() => {
+      this.removeChild(browserSurfaceChild)
+    })
+    this.updateChildViewsZIndexes()
+  }
+
+  /**
+   * @param {BrowserSurfaceChild}browserSurfaceChild
+   */
+  removeChild (browserSurfaceChild) {
+    const index = this.browserSurfaceChildren.indexOf(browserSurfaceChild)
+    if (index > -1) {
+      this.browserSurfaceChildren.splice(index, 1)
+      this.updateChildViewsZIndexes()
+    }
   }
 
   /**

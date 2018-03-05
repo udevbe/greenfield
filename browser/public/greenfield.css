@@ -14,7 +14,7 @@ canvas {
 .fadeToHidden {
     visibility: hidden;
     opacity: 0;
-    transition: visibility 250ms, opacity 250ms ease-in-out;
+    transition: visibility 200ms, opacity 200ms ease-in-out;
 }
 
 .fadeToUnresponsive {
