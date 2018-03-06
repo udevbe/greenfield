@@ -53,7 +53,6 @@ export default class BrowserSurface {
     )
     grSurfaceResource.implementation = browserSurface
     grSurfaceResource.onDestroy().then(() => browserSurface._handleDestruction())
-    browserSurface.defaultSurfaceView = browserSurface.createView()
 
     return browserSurface
   }
@@ -159,10 +158,6 @@ export default class BrowserSurface {
      */
     this.browserSurfaceViews = []
     /**
-     * @type {BrowserSurfaceView}
-     */
-    this.defaultSurfaceView = null
-    /**
      * @type {BrowserSeat}
      */
     this.browserSeat = browserSeat
@@ -171,15 +166,62 @@ export default class BrowserSurface {
      */
     this.browserSession = browserSession
     /**
+     * @type {boolean}
+     */
+    this.hasKeyboardInput = false
+    /**
+     * @type {boolean}
+     */
+    this.hasPointerInput = false
+    /**
+     * @type {boolean}
+     */
+    this.hasTouchInput = false
+    /**
      * @type {?}
      */
     this.role = null
+    this.browserSurfaceChildSelf = BrowserSurfaceChild.create(this)
     /**
      * All child surfaces of this BrowserSurface + this browser surface. This allows for child surfaces to be displayed
      * below it's parent, as the order of this list determines the zOrder between parent & children.
      * @type {BrowserSurfaceChild[]}
      */
-    this.browserSurfaceChildren = [BrowserSurfaceChild.create(this)]
+    this.browserSurfaceChildren = [this.browserSurfaceChildSelf]
+  }
+
+  updateChildViewsZIndexes () {
+    let parentPosition = this.browserSurfaceChildren.indexOf(this.browserSurfaceChildSelf)
+    this.browserSurfaceViews.forEach(view => {
+      const parentViewZIndex = view.zIndex
+      // Children can be displayed below their parent, therefor we have to subtract the parent position from it's zIndex
+      // to get the starting zIndexOffset
+      const zIndexOffset = parentViewZIndex - parentPosition
+      this._updateZIndex(view, zIndexOffset)
+    })
+  }
+
+  /**
+   * @param {BrowserSurfaceView}parentView
+   * @param {number}zIndexOffset
+   * @return {number}
+   * @private
+   */
+  _updateZIndex (parentView, zIndexOffset) {
+    let newZIndex = 0
+    let newZIndexOffset = zIndexOffset
+    this.browserSurfaceChildren.forEach((browserSurfaceChild, index) => {
+      newZIndex = newZIndexOffset + index
+      if (browserSurfaceChild.browserSurface === this) {
+        parentView.zIndex = newZIndex
+      } else {
+        const childView = browserSurfaceChild.browserSurface.browserSurfaceViews.find(view => {
+          return view.parent === parentView
+        })
+        newZIndexOffset = browserSurfaceChild.browserSurface._updateZIndex(childView, newZIndex)
+      }
+    })
+    return newZIndex
   }
 
   /**
@@ -200,6 +242,8 @@ export default class BrowserSurface {
       this._ensureChildView(browserSurfaceChild, browserSurfaceView)
     })
 
+    this.updateChildViewsZIndexes()
+
     return browserSurfaceView
   }
 
@@ -213,15 +257,10 @@ export default class BrowserSurface {
       return
     }
 
-    const hasThisParentView = browserSurfaceChild.browserSurface.browserSurfaceViews.some(browserSurfaceView => {
-      return browserSurfaceView.parent === browserSurfaceView
-    })
-    if (hasThisParentView) {
-      // Child already has a view with this surface as it's parent view. Do nothing.
-      return
-    }
-
     const childView = browserSurfaceChild.browserSurface.createView()
+    const zIndexOrder = this.browserSurfaceChildren.indexOf(browserSurfaceChild)
+    childView.zIndex = browserSurfaceView.bufferedCanvas.frontContext.canvas.style.zIndex + zIndexOrder
+
     childView.parent = browserSurfaceView
   }
 
@@ -229,14 +268,15 @@ export default class BrowserSurface {
    * @param {BrowserSurfaceChild}browserSurfaceChild
    */
   addChild (browserSurfaceChild) {
+    this.browserSurfaceChildren.push(browserSurfaceChild)
+
     this.browserSurfaceViews.forEach((browserSurfaceView) => {
       this._ensureChildView(browserSurfaceChild, browserSurfaceView)
     })
-
-    this.browserSurfaceChildren.push(browserSurfaceChild)
     browserSurfaceChild.browserSurface.resource.onDestroy().then(() => {
       this.removeChild(browserSurfaceChild)
     })
+    this.updateChildViewsZIndexes()
   }
 
   /**
@@ -246,9 +286,7 @@ export default class BrowserSurface {
     const index = this.browserSurfaceChildren.indexOf(browserSurfaceChild)
     if (index > -1) {
       this.browserSurfaceChildren.splice(index, 1)
-      browserSurfaceChild.browserSurface.browserSurfaceViews.forEach((browserSurfaceView) => {
-        browserSurfaceView.parent = null
-      })
+      this.updateChildViewsZIndexes()
     }
   }
 

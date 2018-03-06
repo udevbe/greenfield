@@ -1,11 +1,14 @@
 'use strict'
 
 import Point from './math/Point'
+import Mat4 from './math/Mat4'
 
 export default class BrowserSurfaceChild {
   /**
+   * Use browserSurface.browserSurfaceChildSelf
    * @param {BrowserSurface} browserSurface
    * @return {BrowserSurfaceChild}
+   * @private
    */
   static create (browserSurface) {
     return new BrowserSurfaceChild(browserSurface)
@@ -30,8 +33,13 @@ export default class BrowserSurfaceChild {
    * @param {Point} relativePoint
    */
   set position (relativePoint) {
+    const deltaX = relativePoint.x - this._position.x
+    const deltaY = relativePoint.y - this._position.y
     this._position = relativePoint
-    // TODO emit event so child views can update their position
+    this.browserSurface.browserSurfaceViews.forEach((view) => {
+      view.transformation = view.transformation.timesMat4(Mat4.translation(deltaX, deltaY))
+      view.applyTransformation()
+    })
   }
 
   /**

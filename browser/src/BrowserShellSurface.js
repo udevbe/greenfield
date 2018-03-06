@@ -3,6 +3,7 @@
 import Point from './math/Point'
 import greenfield from './protocol/greenfield-browser-protocol'
 import Mat4 from './math/Mat4'
+import BrowserSurfaceChild from './BrowserSurfaceChild'
 
 const Resize = greenfield.GrShellSurface.Resize
 
@@ -23,15 +24,13 @@ export default class BrowserShellSurface {
    */
   static create (grShellSurfaceResource, grSurfaceResource, browserSession) {
     const browserSurface = grSurfaceResource.implementation
-    const browserSurfaceView = browserSurface.defaultSurfaceView
-    browserSurfaceView.bufferedCanvas.attach()
 
-    const browserShellSurface = new BrowserShellSurface(grShellSurfaceResource, grSurfaceResource, browserSurfaceView, browserSession)
+    const browserShellSurface = new BrowserShellSurface(grShellSurfaceResource, grSurfaceResource, browserSession)
     browserShellSurface.implementation = browserShellSurface
 
+    // destroy the shell-surface if the surface is destroyed.
     grSurfaceResource.onDestroy().then(() => {
       grShellSurfaceResource.destroy()
-      browserShellSurface._handelDestroy()
     })
 
     browserSurface.role = browserShellSurface
@@ -44,10 +43,9 @@ export default class BrowserShellSurface {
    * @private
    * @param {GrShellSurface}grShellSurfaceResource
    * @param {GrSurface}grSurfaceResource
-   * @param {BrowserSurfaceView}browserSurfaceView
    * @param {BrowserSession} browserSession
    */
-  constructor (grShellSurfaceResource, grSurfaceResource, browserSurfaceView, browserSession) {
+  constructor (grShellSurfaceResource, grSurfaceResource, browserSession) {
     /**
      * @type {GrShellSurface}
      */
@@ -65,13 +63,9 @@ export default class BrowserShellSurface {
      */
     this.clazz = ''
     /**
-     * @type {BrowserSurfaceView}
-     */
-    this.view = browserSurfaceView
-    /**
      * @type {string}
      */
-    this.state = SurfaceStates.TOP_LEVEL
+    this.state = null
     /**
      * @type {BrowserSession}
      */
@@ -83,18 +77,15 @@ export default class BrowserShellSurface {
     this._pingTimeoutActive = false
   }
 
-  _handelDestroy () {
-    // listen for fade updates so we can remove the canvas after the fade is done.
-    this.view.bufferedCanvas.frontContext.canvas.addEventListener('animationend', () => {
-      this.view.bufferedCanvas.detach()
-    }, false)
-    this.view.fadeOut()
-  }
-
+  /**
+   * @param {BrowserSurface}browserSurface
+   */
   onCommit (browserSurface) {
-    const dx = browserSurface.dx
-    const dy = browserSurface.dy
-    this.view.transformation = this.view.transformation.timesMat4(Mat4.translation(dx, dy))
+    browserSurface.browserSurfaceViews.forEach((view) => {
+      const dx = browserSurface.dx
+      const dy = browserSurface.dy
+      view.transformation = view.transformation.timesMat4(Mat4.translation(dx, dy))
+    })
   }
 
   /**
@@ -111,13 +102,18 @@ export default class BrowserShellSurface {
    */
   pong (resource, serial) {
     if (this._pingTimeoutActive) {
-      this.view.bufferedCanvas.removeCssClass('fadeToUnresponsive')
+      this.grSurfaceResource.implementation.browserSurfaceViews.forEach((view) => {
+        view.bufferedCanvas.removeCssClass('fadeToUnresponsive')
+      })
       this._pingTimeoutActive = false
     }
     window.clearTimeout(this._timeoutTimer)
-    window.setTimeout(() => {
+    const doPingTimer = window.setTimeout(() => {
       this._doPing(resource)
     }, 1000)
+    this.grSurfaceResource.onDestroy().then(() => {
+      window.clearTimeout(doPingTimer)
+    })
   }
 
   _doPing (resource) {
@@ -125,9 +121,14 @@ export default class BrowserShellSurface {
       if (!this._pingTimeoutActive) {
         // ping timed out, make view gray
         this._pingTimeoutActive = true
-        this.view.bufferedCanvas.addCssClass('fadeToUnresponsive')
+        this.grSurfaceResource.implementation.browserSurfaceViews.forEach((view) => {
+          view.bufferedCanvas.addCssClass('fadeToUnresponsive')
+        })
       }
     }, 3000)
+    this.grSurfaceResource.onDestroy().then(() => {
+      window.clearTimeout(this._timeoutTimer)
+    })
     resource.ping(0)
     this.browserSession.flush()
   }
@@ -154,9 +155,11 @@ export default class BrowserShellSurface {
     }
     const browserSeat = seat.implementation
     const browserPointer = browserSeat.browserPointer
-    if (browserPointer.buttonSerial === serial) {
-      const origTransformation = this.view.transformation
+    const browserSurface = this.grSurfaceResource.implementation
+    const browserSurfaceChildSelf = browserSurface.browserSurfaceChildSelf
+    const origPosition = browserSurfaceChildSelf.position
 
+    if (browserPointer.buttonSerial === serial) {
       const pointerX = browserPointer.x
       const pointerY = browserPointer.y
 
@@ -164,9 +167,7 @@ export default class BrowserShellSurface {
         if (browserPointer.buttonSerial === serial) {
           const deltaX = browserPointer.x - pointerX
           const deltaY = browserPointer.y - pointerY
-
-          this.view.transformation = origTransformation.timesMat4(Mat4.translation(deltaX, deltaY))
-          this.view.applyTransformation()
+          browserSurfaceChildSelf.position = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
         } else {
           browserPointer.removeMouseMoveListener(moveListener)
         }
@@ -295,7 +296,36 @@ export default class BrowserShellSurface {
    *
    */
   setToplevel (resource) {
+    if (this.state) {
+      return
+    }
     this.state = SurfaceStates.TOP_LEVEL
+
+    // create a view and attach it to the scene
+    const view = this.grSurfaceResource.implementation.createView()
+    view.attach()
+    this._fadeOutViewOnDestroy(view)
+
+    // destroy the view if the shell-surface is destroyed
+    this.resource.onDestroy().then(() => {
+      view.destroy()
+    })
+
+    this.grSurfaceResource.implementation.hasKeyboardInput = true
+    this.grSurfaceResource.implementation.hasPointerInput = true
+    this.grSurfaceResource.implementation.hasTouchInput = true
+  }
+
+  _fadeOutViewOnDestroy (view) {
+    // play a nice fade out animation if the view is destroyed
+    view.onDestroy().then(() => {
+      view.bufferedCanvas.frontContext.canvas.addEventListener('animationend', () => {
+        // after the animation has ended, detach the view from the scene
+        view.detach()
+      }, false)
+      // play the animation
+      view.fadeOut()
+    })
   }
 
   /**
@@ -310,7 +340,7 @@ export default class BrowserShellSurface {
    *
    *
    * @param {GrShellSurface} resource
-   * @param {*} parent parent surface
+   * @param {GrSurface} parent parent surface
    * @param {Number} x surface-local x coordinate
    * @param {Number} y surface-local y coordinate
    * @param {Number} flags transient surface behavior
@@ -319,8 +349,23 @@ export default class BrowserShellSurface {
    *
    */
   setTransient (resource, parent, x, y, flags) {
+    if (this.state) {
+      return
+    }
     this.state = SurfaceStates.TRANSIENT
-    // TODO transient windows
+
+    const browserSurface = this.grSurfaceResource.implementation
+    const browserSurfaceChild = browserSurface.browserSurfaceChildSelf
+    browserSurfaceChild.position = Point.create(x, y)
+    parent.implementation.addChild(browserSurfaceChild)
+    // having added this shell-surface to a parent will have it create a view for each parent view
+    browserSurface.browserSurfaceViews.forEach((view) => {
+      this._fadeOutViewOnDestroy(view)
+    })
+
+    this.grSurfaceResource.implementation.hasPointerInput = true
+    this.grSurfaceResource.implementation.hasTouchInput = true
+    this.grSurfaceResource.implementation.hasKeyboardInput = (flags & greenfield.GrShellSurface.Transient.inactive) === 0
   }
 
   /**
@@ -408,8 +453,23 @@ export default class BrowserShellSurface {
    *
    */
   setPopup (resource, seat, serial, parent, x, y, flags) {
+    if (this.state) {
+      return
+    }
     this.state = SurfaceStates.POPUP
-    // TODO popup window
+    const browserSurface = this.grSurfaceResource.implementation
+    const browserSurfaceChild = browserSurface.browserSurfaceChildSelf
+    browserSurfaceChild.position = Point.create(x, y)
+    parent.implementation.addChild(browserSurfaceChild)
+    // having added this shell-surface to a parent will have it create a view for each parent view
+    browserSurface.browserSurfaceViews.forEach((view) => {
+      this._fadeOutViewOnDestroy(view)
+    })
+
+    this.grSurfaceResource.implementation.hasPointerInput = true
+    this.grSurfaceResource.implementation.hasTouchInput = true
+    this.grSurfaceResource.implementation.hasKeyboardInput = (flags & greenfield.GrShellSurface.Transient.inactive) === 0
+    // TODO popup window grab
   }
 
   /**
@@ -442,7 +502,7 @@ export default class BrowserShellSurface {
    */
   setMaximized (resource, output) {
     this.state = SurfaceStates.POPUP
-    // TODO popup windows
+    // TODO maximize window
   }
 
   /**

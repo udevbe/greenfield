@@ -72,7 +72,7 @@ export default class BrowserSurfaceView {
   }
 
   /**
-   * @param {HTMLImageElement }sourceImage
+   * @param {HTMLImageElement}sourceImage
    */
   drawPNG (sourceImage) {
     if (sourceImage.complete && sourceImage.naturalHeight !== 0) {
@@ -90,21 +90,34 @@ export default class BrowserSurfaceView {
   set parent (parent) {
     this._parent = parent
 
-    // get global (browser) position of new child view, based on the relative position of the child (relative to us)
-    const browserSurfaceChild = parent.browserSurface.browserSurfaceChildren.find((browserSurfaceChild) => {
-      return browserSurfaceChild.browserSurface === this.browserSurface
-    })
+    if (this._parent) {
+      parent.onDestroy().then(() => {
+        if (this.parent === parent) {
+          this.destroy()
+          this.parent = null
+        }
+      })
 
-    this.syncTransformationToParent(browserSurfaceChild.position)
+      // get global (browser) position of new child view, based on the relative position of the child (relative to us)
+      const browserSurfaceChild = parent.browserSurface.browserSurfaceChildSelf
+      this.syncTransformationToParent(browserSurfaceChild.position)
+      if (this._parent.isAttached()) {
+        this.attach()
+      } else {
+        this.detach()
+      }
+    }
   }
 
   syncTransformationToParent (childPosition) {
-    // FIXME this cancels out any special transformations that were set on the child view as the child now
-    // inherits the parent's transformations. A solution is to store these transformations in a separate field and
-    // apply them here again.
-    const {x, y} = this.parent.toBrowserSpace(childPosition)
-    this.transformation = Mat4.translation(x, y).timesMat4(this.parent.transformation)
-    this.applyTransformation()
+    if (this._parent) {
+      // FIXME this cancels out any special transformations that were set on the child view as the child now
+      // inherits the parent's transformations. A solution is to store these transformations in a separate field and
+      // apply them here again.
+      const {x, y} = childPosition
+      this.transformation = Mat4.translation(x, y).timesMat4(this.parent.transformation)
+      this.applyTransformation()
+    }
   }
 
   /**
@@ -126,7 +139,7 @@ export default class BrowserSurfaceView {
   applyTransformation () {
     // We could be doing a transform on the back-buffer and wait for animation frame before doing as swap.
     // However this has some performance implications as we'd also have to keep both buffer contents in sync.
-    // As for new we just do it immediately on the front-buffer. If it has noticeable visual artifact we might
+    // As for now we just do it immediately on the front-buffer. If it has noticeable visual artifact we might
     // consider using the back-buffer method.
 
     this.bufferedCanvas.frontContext.canvas.style.transform = this.transformation.toCssMatrix()
@@ -134,7 +147,7 @@ export default class BrowserSurfaceView {
     // find all child views who have this view as it's parent and update their transformation
     this.browserSurface.browserSurfaceChildren.forEach((browserSurfaceChild) => {
       const childViews = browserSurfaceChild.browserSurface.browserSurfaceViews.filter((browserSurfaceView) => {
-        return browserSurfaceView.parent === this || browserSurfaceView === this
+        return browserSurfaceView.parent === this
       })
 
       childViews.forEach((childView) => {
@@ -144,18 +157,25 @@ export default class BrowserSurfaceView {
   }
 
   raise () {
-    // See remark in applyTransformation. Same applies here.
+    this.zIndex = BrowserSurfaceView._nextTopZIndex()
+    this.browserSurface.updateChildViewsZIndexes()
+  }
 
-    // raise all child views in order they are declared in the browserSurfaceChildren list
-    this.browserSurface.browserSurfaceChildren.forEach((browserSurfaceChild) => {
-      const childViews = browserSurfaceChild.browserSurface.browserSurfaceViews.filter((childView) => {
-        return childView.parent === this || childView === this
-      })
-      childViews.forEach((childView) => {
-        this.bufferedCanvas.zIndex = BrowserSurfaceView._nextTopZIndex()
-        childView.raise()
-      })
-    })
+  /**
+   * @param {number}index
+   */
+  set zIndex (index) {
+    if (index >= BrowserSurfaceView._topZIndex) {
+      BrowserSurfaceView._topZIndex = index
+    }
+    this.bufferedCanvas.zIndex = index
+  }
+
+  /**
+   * @return {number}
+   */
+  get zIndex () {
+    return parseInt(this.bufferedCanvas.frontContext.canvas.style.zIndex, 10)
   }
 
   /**
@@ -232,6 +252,41 @@ export default class BrowserSurfaceView {
 
   onDestroy () {
     return this._destroyPromise
+  }
+
+  isAttached () {
+    return this.bufferedCanvas.frontContext.canvas.parentElement && this.bufferedCanvas.backContext.canvas.parentElement
+  }
+
+  attach () {
+    if (!this.bufferedCanvas.frontContext.canvas.parentElement) {
+      document.body.appendChild(this.bufferedCanvas.frontContext.canvas)
+    }
+    if (!this.bufferedCanvas.backContext.canvas.parentElement) {
+      document.body.appendChild(this.bufferedCanvas.backContext.canvas)
+    }
+
+    // attach child views
+    this.browserSurface.browserSurfaceChildren.forEach((browserSurfaceChild) => {
+      browserSurfaceChild.browserSurface.browserSurfaceViews.filter((childView) => {
+        return childView.parent === this
+      }).forEach((childView) => {
+        childView.attach()
+      })
+    })
+  }
+
+  detach () {
+    this._removeCanvas(this.bufferedCanvas.frontContext)
+    this._removeCanvas(this.bufferedCanvas.backContext)
+  }
+
+  _removeCanvas (context) {
+    const canvas = context.canvas
+    const parent = canvas.parentElement
+    if (parent) {
+      parent.removeChild(canvas)
+    }
   }
 }
 

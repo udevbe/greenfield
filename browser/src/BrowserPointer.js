@@ -27,7 +27,6 @@ export default class BrowserPointer {
    */
   static create (browserSession, browserDataDevice, browserKeyboard) {
     const browserPointer = new BrowserPointer(browserDataDevice, browserKeyboard)
-    // TODO these listeners should be added on document level as they are send to the grabbed surface, and not on the focussed surface
     document.addEventListener('mousemove', browserSession.eventSource((event) => {
       event.preventDefault()
       browserPointer.onMouseMove(event)
@@ -103,6 +102,11 @@ export default class BrowserPointer {
      */
     this._cursorSurface = null
     /**
+     * @type {BrowserSurfaceView}
+     * @private
+     */
+    this._view = null
+    /**
      * @type {Function}
      * @private
      */
@@ -144,9 +148,9 @@ export default class BrowserPointer {
     const hotspotX = this.hotspotX
     const hotspotY = this.hotspotY
 
-    browserSurface.defaultSurfaceView.onDraw().then(() => {
-      if (browserSurface.role) {
-        this._uploadCursor(browserSurface.defaultSurfaceView, hotspotX, hotspotY)
+    this._view.onDraw().then(() => {
+      if (this._cursorSurface && this._cursorSurface.implementation === browserSurface) {
+        this._uploadCursor(this._view, hotspotX, hotspotY)
       }
     })
   }
@@ -227,6 +231,10 @@ export default class BrowserPointer {
         return
       }
 
+      if (this._view) {
+        this._view.destroy()
+      }
+      this._view = browserSurface.createView()
       browserSurface.resource.addDestroyListener(this._cursorDestroyListener)
       browserSurface.role = this
       browserSurface.inputRegion = null
@@ -364,9 +372,6 @@ export default class BrowserPointer {
     if (this.grab === null) {
       this.grab = this.focus
       this._browserKeyboard.focusGained(this.grab)
-      // elements with a same zIndex will be display in document order, to avoid a previously grabbed canvas being shown below another,
-      // we need to assign it an absolute zIndex greater than the last one.
-      this.grab.raise()
     }
 
     this._btnDwnCount++
@@ -416,7 +421,10 @@ export default class BrowserPointer {
     let zOrder = -1
     let focus = {view: null}
     focusCandidates.forEach(focusCandidate => {
-      if (focusCandidate.view && this._isPointerWithinInputRegion(focusCandidate) && window.parseInt(focusCandidate.style.zIndex) > zOrder) {
+      if (focusCandidate.view &&
+        focusCandidate.view.browserSurface.hasPointerInput &&
+        this._isPointerWithinInputRegion(focusCandidate) &&
+        window.parseInt(focusCandidate.style.zIndex) > zOrder) {
         zOrder = focusCandidate.style.zIndex
         focus = focusCandidate
       }

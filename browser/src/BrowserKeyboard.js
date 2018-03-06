@@ -144,11 +144,12 @@ export default class BrowserKeyboard {
    * @param {BrowserSurfaceView}focus
    */
   focusGained (focus) {
-    if (this.focus === focus) {
+    if (!focus.browserSurface.hasKeyboardInput || this.focus === focus) {
       return
     }
     this.focusLost()
 
+    focus.raise()
     this.focus = focus
     this._browserDataDevice.onKeyboardFocusGained(focus)
 
