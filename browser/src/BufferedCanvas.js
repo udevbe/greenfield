@@ -88,8 +88,6 @@ export default class BufferedCanvas {
     this.backContext.canvas.style.display = 'none'
     // make new front canvas visible
     this.frontContext.canvas.style.display = 'inline'
-    // update transformation
-    this.backContext.canvas.style.transform = this.frontContext.canvas.style.transform
   }
 
   /**

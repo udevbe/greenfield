@@ -34,9 +34,6 @@ export default class BrowserSurfaceChild {
    */
   set position (relativePoint) {
     this._position = relativePoint
-    this.browserSurface.browserSurfaceViews.forEach((view) => {
-      view.updateTransformation()
-    })
   }
 
   /**

@@ -80,11 +80,8 @@ export default class BrowserShellSurface {
    * @param {BrowserSurface}browserSurface
    */
   onCommit (browserSurface) {
-    browserSurface.browserSurfaceViews.forEach((view) => {
-      const dx = browserSurface.dx
-      const dy = browserSurface.dy
-      view.transformation = view.transformation.timesMat4(Mat4.translation(dx, dy))
-    })
+    const oldPosition = browserSurface.browserSurfaceChildSelf.position
+    browserSurface.browserSurfaceChildSelf.position = Point.create(oldPosition.x + browserSurface.dx, oldPosition.y + browserSurface.dy)
   }
 
   /**
@@ -167,6 +164,9 @@ export default class BrowserShellSurface {
           const deltaX = browserPointer.x - pointerX
           const deltaY = browserPointer.y - pointerY
           browserSurfaceChildSelf.position = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
+          browserSurface.browserSurfaceViews.forEach((view) => {
+            view.applyTransformations()
+          })
         } else {
           browserPointer.removeMouseMoveListener(moveListener)
         }
@@ -360,6 +360,7 @@ export default class BrowserShellSurface {
     parent.implementation.addChild(browserSurfaceChild)
     // having added this shell-surface to a parent will have it create a view for each parent view
     browserSurface.browserSurfaceViews.forEach((view) => {
+      view.applyTransformations()
       this._fadeOutViewOnDestroy(view)
     })
 
@@ -466,6 +467,7 @@ export default class BrowserShellSurface {
       parent.implementation.addChild(browserSurfaceChild)
       // having added this shell-surface to a parent will have it create a view for each parent view
       browserSurface.browserSurfaceViews.forEach((view) => {
+        view.applyTransformations()
         this._fadeOutViewOnDestroy(view)
       })
 

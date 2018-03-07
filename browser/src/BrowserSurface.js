@@ -181,6 +181,9 @@ export default class BrowserSurface {
      * @type {?}
      */
     this.role = null
+    /**
+     * @type {BrowserSurfaceChild}
+     */
     this.browserSurfaceChildSelf = BrowserSurfaceChild.create(this)
     /**
      * All child surfaces of this BrowserSurface + this browser surface. This allows for child surfaces to be displayed

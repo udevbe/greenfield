@@ -45,7 +45,10 @@ export default class BrowserSurfaceView {
      * @type {Mat4}
      */
     this._transformation = transformation
-    this.inverseTransformation = transformation.invert()
+    /**
+     * @type {Mat4}
+     */
+    this._inverseTransformation = transformation.invert()
     /**
      *
      * @type {Function}
@@ -102,7 +105,7 @@ export default class BrowserSurfaceView {
         }
       })
 
-      this.updateTransformation()
+      this.applyTransformations()
       if (this._parent.isAttached()) {
         this.attach()
       } else {
@@ -120,14 +123,18 @@ export default class BrowserSurfaceView {
 
   set transformation (transformation) {
     this._transformation = transformation
-    this.inverseTransformation = transformation.invert()
+    this._inverseTransformation = transformation.invert()
   }
 
   get transformation () {
     return this._transformation
   }
 
-  updateTransformation () {
+  applyTransformations () {
+    this._applyTransformations(this.bufferedCanvas.frontContext)
+  }
+
+  _applyTransformations (canvasContext) {
     // We could be doing a transform on the back-buffer and wait for animation frame before doing as swap.
     // However this has some performance implications as we'd also have to keep both buffer contents in sync.
     // As for now we just do it immediately on the front-buffer. If it has noticeable visual artifact we might
@@ -149,8 +156,8 @@ export default class BrowserSurfaceView {
     // store final transformation
     this.transformation = parentTransformation.timesMat4(positionTransformation)
 
-    // update on-screen canvas
-    this.bufferedCanvas.frontContext.canvas.style.transform = this.transformation.toCssMatrix()
+    // update canvas
+    canvasContext.canvas.style.transform = this.transformation.toCssMatrix()
 
     // find all child views who have this view as it's parent and update their transformation
     this.browserSurface.browserSurfaceChildren.forEach((browserSurfaceChild) => {
@@ -159,7 +166,7 @@ export default class BrowserSurfaceView {
       })
 
       childViews.forEach((childView) => {
-        childView.updateTransformation()
+        childView.applyTransformations()
       })
     })
   }
@@ -202,6 +209,7 @@ export default class BrowserSurfaceView {
   async _draw (source, width, height) {
     // FIXME adjust final transformation with additional transformations defined in the browser surface
     this.bufferedCanvas.drawBackBuffer(source, width, height, this.transformation)
+    this._applyTransformations(this.bufferedCanvas.backContext)
 
     const presentationTime = await Renderer.onAnimationFrame()
     this.bufferedCanvas.swapBuffers()
@@ -238,7 +246,7 @@ export default class BrowserSurfaceView {
    */
   toViewSpace (browserPoint) {
     // FIXME isn't this the same as toSurfaceSpace?
-    return this.inverseTransformation.timesPoint(browserPoint)
+    return this._inverseTransformation.timesPoint(browserPoint)
   }
 
   /**
