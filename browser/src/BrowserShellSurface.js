@@ -303,8 +303,9 @@ export default class BrowserShellSurface {
 
     // create a view and attach it to the scene
     const view = this.grSurfaceResource.implementation.createView()
-    view.attach()
     this._fadeOutViewOnDestroy(view)
+    view.attach()
+    view.raise()
 
     // destroy the view if the shell-surface is destroyed
     this.resource.onDestroy().then(() => {
@@ -452,7 +453,7 @@ export default class BrowserShellSurface {
    * @since 1
    *
    */
-  setPopup (resource, seat, serial, parent, x, y, flags) {
+  async setPopup (resource, seat, serial, parent, x, y, flags) {
     if (this.state) {
       return
     }
@@ -469,7 +470,13 @@ export default class BrowserShellSurface {
     this.grSurfaceResource.implementation.hasPointerInput = true
     this.grSurfaceResource.implementation.hasTouchInput = true
     this.grSurfaceResource.implementation.hasKeyboardInput = (flags & greenfield.GrShellSurface.Transient.inactive) === 0
-    // TODO popup window grab
+
+    // handle popup window grab
+    const browserPointer = seat.implementation.browserPointer
+    if (browserPointer.buttonSerial === serial) {
+      await browserPointer.popupGrab(this.grSurfaceResource)
+      resource.popupDone()
+    }
   }
 
   /**

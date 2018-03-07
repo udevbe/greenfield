@@ -70,6 +70,21 @@ export default class BrowserPointer {
      */
     this.grab = null
     /**
+     * @type {GrSurface}
+     * @private
+     */
+    this._popup = null
+    /**
+     * @type {Function}
+     * @private
+     */
+    this._popupGrabEndResolve = null
+    /**
+     * @type {Promise}
+     * @private
+     */
+    this._popupGrabEndPromise = null
+    /**
      * @type {number}
      */
     this.x = 0
@@ -210,6 +225,34 @@ export default class BrowserPointer {
   }
 
   /**
+   * @param {GrSurface}popup
+   * @return {Promise}
+   */
+  popupGrab (popup) {
+    // release any previous active popup grab
+    if (!this._popupGrabEndPromise) {
+      this._popupGrabEndPromise = new Promise((resolve) => {
+        this._popup = popup
+        this._popupGrabEndResolve = resolve
+
+        popup.onDestroy().then(() => {
+          if (this._popup === popup) {
+            this._popupGrabEndResolve()
+          }
+        })
+      }).then(() => {
+        this._popup = null
+        this._popupGrabEndResolve = null
+        this._popupGrabEndPromise = null
+        const focus = this.calculateFocus()
+        this.setFocus(focus)
+      })
+    }
+
+    return this._popupGrabEndPromise
+  }
+
+  /**
    * @param {GrSurface|null}surface
    * @param {Number} hotspotX surface-local x coordinate
    * @param {Number} hotspotY surface-local y coordinate
@@ -294,7 +337,10 @@ export default class BrowserPointer {
   onMouseMove (event) {
     this.x = event.clientX < 0 ? 0 : event.clientX
     this.y = event.clientY < 0 ? 0 : event.clientY
-    const currentFocus = this.calculateFocus()
+    let currentFocus = this.calculateFocus()
+    if (this._popup && currentFocus && currentFocus.browserSurface.resource.client !== this._popup.client) {
+      currentFocus = null
+    }
 
     if (this._browserDataDevice.dndSourceClient) {
       this._browserDataDevice.onMouseMotion(currentFocus)
@@ -365,6 +411,15 @@ export default class BrowserPointer {
    * @param {MouseEvent}event
    */
   onMouseDown (event) {
+    if (this._popupGrabEndResolve) {
+      const focus = this.calculateFocus()
+      // popup grab ends when user clicks on another client's surface
+      if (focus && focus.browserSurface.resource.client !== this._popup.client) {
+        this._popupGrabEndResolve()
+        this._popupGrabEndResolve = null
+      }
+    }
+
     if (this.focus === null) {
       return
     }

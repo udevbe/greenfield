@@ -98,25 +98,12 @@ export default class BrowserSurfaceView {
         }
       })
 
-      // get global (browser) position of new child view, based on the relative position of the child (relative to us)
-      const browserSurfaceChild = parent.browserSurface.browserSurfaceChildSelf
-      this.syncTransformationToParent(browserSurfaceChild.position)
+      this.updateTransformation()
       if (this._parent.isAttached()) {
         this.attach()
       } else {
         this.detach()
       }
-    }
-  }
-
-  syncTransformationToParent (childPosition) {
-    if (this._parent) {
-      // FIXME this cancels out any special transformations that were set on the child view as the child now
-      // inherits the parent's transformations. A solution is to store these transformations in a separate field and
-      // apply them here again.
-      const {x, y} = childPosition
-      this.transformation = Mat4.translation(x, y).timesMat4(this.parent.transformation)
-      this.applyTransformation()
     }
   }
 
@@ -136,12 +123,29 @@ export default class BrowserSurfaceView {
     return this._transformation
   }
 
-  applyTransformation () {
+  updateTransformation () {
     // We could be doing a transform on the back-buffer and wait for animation frame before doing as swap.
     // However this has some performance implications as we'd also have to keep both buffer contents in sync.
     // As for now we just do it immediately on the front-buffer. If it has noticeable visual artifact we might
     // consider using the back-buffer method.
 
+    // inherit parent transformation
+    let parentTransformation = Mat4.IDENTITY()
+    if (this._parent) {
+      parentTransformation = this._parent.transformation
+    }
+
+    // setup position
+    const browserSurfaceChild = this.browserSurface.browserSurfaceChildSelf
+    const {x, y} = browserSurfaceChild.position
+    const positionTransformation = Mat4.translation(x, y)
+
+    // TODO other transformations
+
+    // store final transformation
+    this.transformation = parentTransformation.timesMat4(positionTransformation)
+
+    // update on-screen canvas
     this.bufferedCanvas.frontContext.canvas.style.transform = this.transformation.toCssMatrix()
 
     // find all child views who have this view as it's parent and update their transformation
@@ -151,7 +155,7 @@ export default class BrowserSurfaceView {
       })
 
       childViews.forEach((childView) => {
-        childView.syncTransformationToParent(browserSurfaceChild.position)
+        childView.updateTransformation()
       })
     })
   }

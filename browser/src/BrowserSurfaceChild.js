@@ -33,12 +33,9 @@ export default class BrowserSurfaceChild {
    * @param {Point} relativePoint
    */
   set position (relativePoint) {
-    const deltaX = relativePoint.x - this._position.x
-    const deltaY = relativePoint.y - this._position.y
     this._position = relativePoint
     this.browserSurface.browserSurfaceViews.forEach((view) => {
-      view.transformation = view.transformation.timesMat4(Mat4.translation(deltaX, deltaY))
-      view.applyTransformation()
+      view.updateTransformation()
     })
   }
 
