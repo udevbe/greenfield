@@ -54,9 +54,8 @@ export default class BrowserKeyboard {
     this._browserXkb = null
     /**
      * @type {number}
-     * @private
      */
-    this._serial = 0
+    this.keySerial = 0
     /**
      * @type {BrowserSurfaceView}
      */
@@ -79,7 +78,7 @@ export default class BrowserKeyboard {
    * @private
    */
   _nextSerial () {
-    return ++this._serial
+    return ++this.keySerial
   }
 
   /**

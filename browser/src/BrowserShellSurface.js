@@ -3,7 +3,6 @@
 import Point from './math/Point'
 import greenfield from './protocol/greenfield-browser-protocol'
 import Mat4 from './math/Mat4'
-import BrowserSurfaceChild from './BrowserSurfaceChild'
 
 const Resize = greenfield.GrShellSurface.Resize
 
@@ -454,26 +453,27 @@ export default class BrowserShellSurface {
    *
    */
   async setPopup (resource, seat, serial, parent, x, y, flags) {
-    if (this.state) {
-      return
-    }
-    this.state = SurfaceStates.POPUP
-    const browserSurface = this.grSurfaceResource.implementation
-    const browserSurfaceChild = browserSurface.browserSurfaceChildSelf
-    browserSurfaceChild.position = Point.create(x, y)
-    parent.implementation.addChild(browserSurfaceChild)
-    // having added this shell-surface to a parent will have it create a view for each parent view
-    browserSurface.browserSurfaceViews.forEach((view) => {
-      this._fadeOutViewOnDestroy(view)
-    })
+    if (this.state) { return }
 
-    this.grSurfaceResource.implementation.hasPointerInput = true
-    this.grSurfaceResource.implementation.hasTouchInput = true
-    this.grSurfaceResource.implementation.hasKeyboardInput = (flags & greenfield.GrShellSurface.Transient.inactive) === 0
+    const browserSeat = seat.implementation
+    const browserPointer = browserSeat.browserPointer
+    const browserKeyboard = browserSeat.browserKeyboard
+    if (browserPointer.buttonSerial === serial || browserKeyboard.keySerial === serial) {
+      this.state = SurfaceStates.POPUP
+      const browserSurface = this.grSurfaceResource.implementation
+      const browserSurfaceChild = browserSurface.browserSurfaceChildSelf
+      browserSurfaceChild.position = Point.create(x, y)
+      parent.implementation.addChild(browserSurfaceChild)
+      // having added this shell-surface to a parent will have it create a view for each parent view
+      browserSurface.browserSurfaceViews.forEach((view) => {
+        this._fadeOutViewOnDestroy(view)
+      })
 
-    // handle popup window grab
-    const browserPointer = seat.implementation.browserPointer
-    if (browserPointer.buttonSerial === serial) {
+      this.grSurfaceResource.implementation.hasPointerInput = true
+      this.grSurfaceResource.implementation.hasTouchInput = true
+      this.grSurfaceResource.implementation.hasKeyboardInput = (flags & greenfield.GrShellSurface.Transient.inactive) === 0
+
+      // handle popup window grab
       await browserPointer.popupGrab(this.grSurfaceResource)
       resource.popupDone()
     }
