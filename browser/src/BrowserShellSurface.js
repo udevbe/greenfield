@@ -319,7 +319,7 @@ export default class BrowserShellSurface {
   _fadeOutViewOnDestroy (view) {
     // play a nice fade out animation if the view is destroyed
     view.onDestroy().then(() => {
-      view.bufferedCanvas.frontContext.canvas.addEventListener('animationend', () => {
+      view.bufferedCanvas.frontContext.canvas.addEventListener('transitionend', () => {
         // after the animation has ended, detach the view from the scene
         view.detach()
       }, false)
