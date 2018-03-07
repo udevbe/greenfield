@@ -93,25 +93,6 @@ export default class BrowserPointer {
      */
     this.y = 0
     /**
-     * @type {Function}
-     * @param {GrSurface}resource
-     * @private
-     */
-    this._focusDestroyListener = (resource) => {
-      if (this.focus && resource.implementation.defaultView !== this.focus) {
-        return
-      }
-      const surfaceResource = this.focus.browserSurface.resource
-      surfaceResource.removeDestroyListener(this._focusDestroyListener)
-      this.focus = null
-      this.grab = null
-      // recalculate focus and consequently enter event
-      const focus = this.calculateFocus()
-      if (focus) {
-        this.setFocus(focus)
-      }
-    }
-    /**
      * @type {BrowserSurface}
      * @private
      */
@@ -245,7 +226,11 @@ export default class BrowserPointer {
         this._popupGrabEndResolve = null
         this._popupGrabEndPromise = null
         const focus = this.calculateFocus()
-        this.setFocus(focus)
+        if (focus) {
+          this.setFocus(focus)
+        } else {
+          this.unsetFocus()
+        }
       })
     }
 
@@ -479,7 +464,8 @@ export default class BrowserPointer {
       if (focusCandidate.view &&
         focusCandidate.view.browserSurface.hasPointerInput &&
         this._isPointerWithinInputRegion(focusCandidate) &&
-        window.parseInt(focusCandidate.style.zIndex) > zOrder) {
+        window.parseInt(focusCandidate.style.zIndex) > zOrder &&
+        !focusCandidate.view.destroyed) {
         zOrder = focusCandidate.style.zIndex
         focus = focusCandidate
       }
@@ -494,7 +480,22 @@ export default class BrowserPointer {
   setFocus (newFocus) {
     this.focus = newFocus
     const surfaceResource = this.focus.browserSurface.resource
-    surfaceResource.addDestroyListener(this._focusDestroyListener)
+    surfaceResource.onDestroy().then((resource) => {
+      if (!this.focus) {
+        return
+      }
+      const surfaceResource = this.focus.browserSurface.resource
+      if (resource !== surfaceResource) {
+        return
+      }
+      // recalculate focus and consequently enter event
+      const focus = this.calculateFocus()
+      if (focus) {
+        this.setFocus(focus)
+      } else {
+        this.unsetFocus()
+      }
+    })
 
     const surfacePoint = this._calculateSurfacePoint(newFocus)
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
@@ -505,8 +506,6 @@ export default class BrowserPointer {
   unsetFocus () {
     if (this.focus) {
       const surfaceResource = this.focus.browserSurface.resource
-      surfaceResource.removeDestroyListener(this._focusDestroyListener)
-
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
         pointerResource.leave(this._nextFocusSerial(), surfaceResource)
       })

@@ -65,6 +65,10 @@ export default class BrowserSurfaceView {
       this._destroyResolve = resolve
     })
     /**
+     * @type {boolean}
+     */
+    this.destroyed = false
+    /**
      * @type {BrowserSurfaceView}
      * @private
      */
@@ -251,6 +255,7 @@ export default class BrowserSurfaceView {
   }
 
   destroy () {
+    this.destroyed = true
     this._destroyResolve()
   }
 
