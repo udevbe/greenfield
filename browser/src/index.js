@@ -10,13 +10,16 @@ import BrowserShell from './BrowserShell'
 import BrowserSeat from './BrowserSeat'
 import BrowserDataDeviceManager from './BrowserDataDeviceManager'
 import BrowserOutput from './BrowserOutput'
+import DesktopShell from './DesktopShell'
 
 function setupGlobals (browserSession) {
+  const desktopShell = DesktopShell.create()
+
   const browserOutput = BrowserOutput.create()
   const browserSeat = BrowserSeat.create(browserSession)
   const browserCompositor = BrowserCompositor.create(browserSession, browserSeat)
   const browserDataDeviceManager = BrowserDataDeviceManager.create()
-  const browserShell = BrowserShell.create(browserSession)
+  const browserShell = BrowserShell.create(browserSession, desktopShell)
 
   const browserRtcPeerConnectionFactory = BrowserRtcPeerConnectionFactory.create()
   const browserRtcBufferFactory = BrowserRtcBufferFactory.create()

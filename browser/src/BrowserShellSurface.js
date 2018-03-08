@@ -3,6 +3,7 @@
 import Point from './math/Point'
 import greenfield from './protocol/greenfield-browser-protocol'
 import Mat4 from './math/Mat4'
+import BrowserSession from './BrowserSession'
 
 const Resize = greenfield.GrShellSurface.Resize
 
@@ -19,12 +20,13 @@ export default class BrowserShellSurface {
    * @param {GrShellSurface}grShellSurfaceResource
    * @param {GrSurface}grSurfaceResource
    * @param {BrowserSession} browserSession
+   * @param {DesktopShell}desktopShell
    * @return {BrowserShellSurface}
    */
-  static create (grShellSurfaceResource, grSurfaceResource, browserSession) {
+  static create (grShellSurfaceResource, grSurfaceResource, browserSession, desktopShell) {
     const browserSurface = grSurfaceResource.implementation
 
-    const browserShellSurface = new BrowserShellSurface(grShellSurfaceResource, grSurfaceResource, browserSession)
+    const browserShellSurface = new BrowserShellSurface(grShellSurfaceResource, grSurfaceResource, browserSession, desktopShell)
     browserShellSurface.implementation = browserShellSurface
 
     // destroy the shell-surface if the surface is destroyed.
@@ -43,8 +45,9 @@ export default class BrowserShellSurface {
    * @param {GrShellSurface}grShellSurfaceResource
    * @param {GrSurface}grSurfaceResource
    * @param {BrowserSession} browserSession
+   * @param {DesktopShell}desktopShell
    */
-  constructor (grShellSurfaceResource, grSurfaceResource, browserSession) {
+  constructor (grShellSurfaceResource, grSurfaceResource, browserSession, desktopShell) {
     /**
      * @type {GrShellSurface}
      */
@@ -69,6 +72,11 @@ export default class BrowserShellSurface {
      * @type {BrowserSession}
      */
     this.browserSession = browserSession
+    /**
+     * @type {DesktopShell}
+     * @private
+     */
+    this._desktopShell = desktopShell
     /**
      * @type {boolean}
      * @private
@@ -300,32 +308,11 @@ export default class BrowserShellSurface {
     }
     this.state = SurfaceStates.TOP_LEVEL
 
-    // create a view and attach it to the scene
-    const view = this.grSurfaceResource.implementation.createView()
-    this._fadeOutViewOnDestroy(view)
-    view.attach()
-    view.raise()
-
-    // destroy the view if the shell-surface is destroyed
-    this.resource.onDestroy().then(() => {
-      view.destroy()
-    })
+    this._desktopShell.manage(this.grSurfaceResource.implementation)
 
     this.grSurfaceResource.implementation.hasKeyboardInput = true
     this.grSurfaceResource.implementation.hasPointerInput = true
     this.grSurfaceResource.implementation.hasTouchInput = true
-  }
-
-  _fadeOutViewOnDestroy (view) {
-    // play a nice fade out animation if the view is destroyed
-    view.onDestroy().then(() => {
-      view.bufferedCanvas.frontContext.canvas.addEventListener('transitionend', () => {
-        // after the animation has ended, detach the view from the scene
-        view.detach()
-      }, false)
-      // play the animation
-      view.fadeOut()
-    })
   }
 
   /**
@@ -361,11 +348,7 @@ export default class BrowserShellSurface {
     // FIXME we probably want to provide a method to translate from (abstract) surface space to global space
     browserSurfaceChild.position = Point.create(parentPosition.x + x, parentPosition.y + y)
 
-    // create a view and attach it to the scene
-    const view = browserSurface.createView()
-    this._fadeOutViewOnDestroy(view)
-    view.attach()
-    view.raise()
+    this._desktopShell.manage(browserSurface)
 
     this.grSurfaceResource.implementation.hasPointerInput = true
     this.grSurfaceResource.implementation.hasTouchInput = true
@@ -419,6 +402,8 @@ export default class BrowserShellSurface {
    */
   setFullscreen (resource, method, framerate, output) {
     this.state = SurfaceStates.FULLSCREEN
+    const browserSurface = this.grSurfaceResource.implementation
+    this._desktopShell.manage(browserSurface)
     // TODO fullscreen windows + optimize renderer for fullscreen
   }
 
@@ -471,7 +456,7 @@ export default class BrowserShellSurface {
       // having added this shell-surface to a parent will have it create a view for each parent view
       browserSurface.browserSurfaceViews.forEach((view) => {
         view.applyTransformations()
-        this._fadeOutViewOnDestroy(view)
+        this._desktopShell.fadeOutViewOnDestroy(view)
       })
 
       this.grSurfaceResource.implementation.hasPointerInput = true
@@ -514,7 +499,16 @@ export default class BrowserShellSurface {
    */
   setMaximized (resource, output) {
     this.state = SurfaceStates.POPUP
-    // TODO maximize window
+    const browserSurface = this.grSurfaceResource.implementation
+    this._desktopShell.manage(browserSurface)
+
+    // TODO get proper size in surface coordinates instead of assume surface space === global space
+    const x = 0
+    const {height: y} = this._desktopShell.panel.getBoundingClientRect()
+    const {width, height} = this._desktopShell.workspace.getBoundingClientRect()
+
+    browserSurface.browserSurfaceChildSelf.position = Point.create(x, y)
+    this.resource.configure(Resize.none, width, height)
   }
 
   /**

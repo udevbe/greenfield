@@ -47,7 +47,7 @@ module.exports = class ShimShellSurface extends WlShellSurfaceRequests {
   }
 
   setMaximized (resource, output) {
-    const grOutputProxy = output.implementation.proxy
+    const grOutputProxy = output === null ? null : output.implementation.proxy
     this.proxy.setMaximized(grOutputProxy)
   }
 

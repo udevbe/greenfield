@@ -107,7 +107,7 @@ export default class BrowserSurfaceView {
 
       this.applyTransformations()
       if (this._parent.isAttached()) {
-        this.attach()
+        this.attachTo(this._parent.parentElement())
       } else {
         this.detach()
       }
@@ -121,11 +121,17 @@ export default class BrowserSurfaceView {
     return this._parent
   }
 
+  /**
+   * @param {Mat4}transformation
+   */
   set transformation (transformation) {
     this._transformation = transformation
     this._inverseTransformation = transformation.invert()
   }
 
+  /**
+   * @return {Mat4}
+   */
   get transformation () {
     return this._transformation
   }
@@ -275,12 +281,15 @@ export default class BrowserSurfaceView {
     return this.bufferedCanvas.frontContext.canvas.parentElement && this.bufferedCanvas.backContext.canvas.parentElement
   }
 
-  attach () {
+  /**
+   * @param {HTMLElement}element
+   */
+  attachTo (element) {
     if (!this.bufferedCanvas.frontContext.canvas.parentElement) {
-      document.body.appendChild(this.bufferedCanvas.frontContext.canvas)
+      element.appendChild(this.bufferedCanvas.frontContext.canvas)
     }
     if (!this.bufferedCanvas.backContext.canvas.parentElement) {
-      document.body.appendChild(this.bufferedCanvas.backContext.canvas)
+      element.appendChild(this.bufferedCanvas.backContext.canvas)
     }
 
     // attach child views
@@ -288,9 +297,16 @@ export default class BrowserSurfaceView {
       browserSurfaceChild.browserSurface.browserSurfaceViews.filter((childView) => {
         return childView.parent === this
       }).forEach((childView) => {
-        childView.attach()
+        childView.attachTo(element)
       })
     })
+  }
+
+  /**
+   * @return {HTMLElement}
+   */
+  parentElement () {
+    return this.bufferedCanvas.frontContext.canvas.parentElement
   }
 
   detach () {
