@@ -354,15 +354,18 @@ export default class BrowserShellSurface {
     }
     this.state = SurfaceStates.TRANSIENT
 
+    const parentPosition = parent.implementation.browserSurfaceChildSelf.position
+
     const browserSurface = this.grSurfaceResource.implementation
     const browserSurfaceChild = browserSurface.browserSurfaceChildSelf
-    browserSurfaceChild.position = Point.create(x, y)
-    parent.implementation.addChild(browserSurfaceChild)
-    // having added this shell-surface to a parent will have it create a view for each parent view
-    browserSurface.browserSurfaceViews.forEach((view) => {
-      view.applyTransformations()
-      this._fadeOutViewOnDestroy(view)
-    })
+    // FIXME we probably want to provide a method to translate from (abstract) surface space to global space
+    browserSurfaceChild.position = Point.create(parentPosition.x + x, parentPosition.y + y)
+
+    // create a view and attach it to the scene
+    const view = browserSurface.createView()
+    this._fadeOutViewOnDestroy(view)
+    view.attach()
+    view.raise()
 
     this.grSurfaceResource.implementation.hasPointerInput = true
     this.grSurfaceResource.implementation.hasTouchInput = true
