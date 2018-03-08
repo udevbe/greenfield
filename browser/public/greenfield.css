@@ -7,7 +7,7 @@ body {
 
 #workspace {
     z-index: -65535;
-    background-image: url(pattern.png);
+    background-image: url(pattern_light.png);
     background-size: auto;
 }
 
