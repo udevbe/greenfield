@@ -6,6 +6,7 @@ import BrowserRtcBlobTransfer from './BrowserRtcBlobTransfer'
 
 export default class BrowserRtcPeerConnection {
   /**
+   * @param {RtcPeerConnection}rtcPeerConnectionResource
    * @returns {BrowserRtcPeerConnection}
    */
   static create (rtcPeerConnectionResource) {
@@ -14,11 +15,19 @@ export default class BrowserRtcPeerConnection {
     return browserRtcPeerConnection
   }
 
+  /**
+   * Use BrowserRtcPeerConnection.create(..)
+   * @param {RtcPeerConnection}rtcPeerConnectionResource
+   * @private
+   */
   constructor (rtcPeerConnectionResource) {
+    /**
+     * @type {RtcPeerConnection}
+     */
     this.rtcPeerConnectionResource = rtcPeerConnectionResource
     this._delegate = null
     this._peerConnectionResolve = null
-    this._peerConnectionPromise = new Promise((resolve, reject) => {
+    this._peerConnectionPromise = new Promise((resolve) => {
       this._peerConnectionResolve = resolve
     })
   }
@@ -49,7 +58,7 @@ export default class BrowserRtcPeerConnection {
   /**
    * Setup the peer connection for client (local) to server (browser) communication.
    */
-  ensureP2S () {
+  async ensureP2S () {
     if (this._delegate && this._delegate._peerConnection) {
       // already initialized as p2s, return early.
       return
@@ -59,17 +68,20 @@ export default class BrowserRtcPeerConnection {
     }
 
     this._delegate = {
-      _peerConnection: new window.RTCPeerConnection({
-        'iceServers': [
-          {
-            'url': 'stun:stun.l.google.com:19302'
-          },
-          {
-            'url': 'turn:greenfield@badger.pfoe.be',
-            'credential': 'water'
-          }
-        ]
-      }),
+      _peerConnection: new window.RTCPeerConnection(
+        {
+          'iceServers': [
+            {
+              'url': 'stun:stun.l.google.com:19302'
+            },
+            {
+              'url': 'turn:badger.pfoe.be',
+              'username': 'greenfield',
+              'credential': 'water'
+            }
+          ]
+        }
+      ),
 
       clientIceCandidates: async (resource, description) => {
         const signal = JSON.parse(description)
@@ -95,9 +107,22 @@ export default class BrowserRtcPeerConnection {
         this.rtcPeerConnectionResource.serverIceCandidates(JSON.stringify({'candidate': evt.candidate}))
       }
     }
+    this._delegate._peerConnection.onnegotiationneeded = async () => {
+      this._sendOffer()
+    }
 
-    this.rtcPeerConnectionResource.init()
     this._peerConnectionResolve(this._delegate._peerConnection)
+  }
+
+  async _sendOffer () {
+    const desc = await this._delegate._peerConnection.createOffer({
+      offerToReceiveAudio: false,
+      offerToReceiveVideo: false,
+      voiceActivityDetection: false,
+      iceRestart: false
+    })
+    await this._delegate._peerConnection.setLocalDescription(desc)
+    this.rtcPeerConnectionResource.serverSdpOffer(JSON.stringify({'sdp': this._delegate._peerConnection.localDescription}))
   }
 
   /**

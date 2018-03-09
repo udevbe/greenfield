@@ -26,24 +26,27 @@ module.exports = class LocalRtcPeerConnection {
     this.proxy = rtcPeerConnectionProxy
     this._nextDataChannelId = 0
 
-    this._peerConnection = new webRTC.RTCPeerConnection({
-      'iceServers': [
-        {
-          'url': 'stun:stun.l.google.com:19302'
-        },
-        {
-          'url': 'turn:greenfield@badger.pfoe.be',
-          'credential': 'water'
-        }
-      ]
-    })
+    this._peerConnection = new webRTC.RTCPeerConnection(
+      {
+        'iceServers': [
+          {
+            'url': 'stun:stun.l.google.com:19302'
+          },
+          {
+            'url': 'turn:badger.pfoe.be',
+            'username': 'greenfield',
+            'credential': 'water'
+          }
+        ]
+      }
+    )
     this._peerConnection.onicecandidate = (evt) => {
       if (evt.candidate !== null) {
         this.proxy.clientIceCandidates(JSON.stringify({'candidate': evt.candidate}))
       }
     }
     this._peerConnection.onnegotiationneeded = () => {
-      this._sendOffer()
+      this.proxy.clientSdpOffer(JSON.stringify({'sdp': this._peerConnection.localDescription}))
     }
   }
 
@@ -117,7 +120,6 @@ module.exports = class LocalRtcPeerConnection {
       iceRestart: false
     })
     await this._peerConnection.setLocalDescription(desc)
-    this.proxy.clientSdpOffer(JSON.stringify({'sdp': this._peerConnection.localDescription}))
   }
 
   /**
@@ -141,6 +143,8 @@ module.exports = class LocalRtcPeerConnection {
    */
   async serverSdpOffer (description) {
     const signal = JSON.parse(description)
+    // console.log(this._peerConnection.readyState)
+    console.log(this._peerConnection.signalingState)
 
     await this._peerConnection.setRemoteDescription(new webRTC.RTCSessionDescription(signal.sdp))
     const desc = await this._peerConnection.createAnswer()
