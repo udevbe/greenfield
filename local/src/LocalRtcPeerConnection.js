@@ -26,7 +26,17 @@ module.exports = class LocalRtcPeerConnection {
     this.proxy = rtcPeerConnectionProxy
     this._nextDataChannelId = 0
 
-    this._peerConnection = new webRTC.RTCPeerConnection()
+    this._peerConnection = new webRTC.RTCPeerConnection({
+      'iceServers': [
+        {
+          'url': 'stun:stun.l.google.com:19302'
+        },
+        {
+          'url': 'turn:greenfield@badger.pfoe.be',
+          'credential': 'water'
+        }
+      ]
+    })
     this._peerConnection.onicecandidate = (evt) => {
       if (evt.candidate !== null) {
         this.proxy.clientIceCandidates(JSON.stringify({'candidate': evt.candidate}))

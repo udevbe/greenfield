@@ -59,7 +59,17 @@ export default class BrowserRtcPeerConnection {
     }
 
     this._delegate = {
-      _peerConnection: new window.RTCPeerConnection(),
+      _peerConnection: new window.RTCPeerConnection({
+        'iceServers': [
+          {
+            'url': 'stun:stun.l.google.com:19302'
+          },
+          {
+            'url': 'turn:greenfield@badger.pfoe.be',
+            'credential': 'water'
+          }
+        ]
+      }),
 
       clientIceCandidates: async (resource, description) => {
         const signal = JSON.parse(description)
