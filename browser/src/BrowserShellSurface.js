@@ -82,10 +82,10 @@ export default class BrowserShellSurface {
      */
     this._pingTimeoutActive = false
     /**
-     * @type {HTMLDivElement}
+     * @type {DesktopShellEntry}
      * @private
      */
-    this._desktopEntry = null
+    this._desktopShellEntry = null
   }
 
   /**
@@ -312,8 +312,7 @@ export default class BrowserShellSurface {
     }
     this.state = SurfaceStates.TOP_LEVEL
 
-    const entry = this._desktopShell.manage(this.grSurfaceResource.implementation)
-    this._desktopEntry = entry
+    this._desktopShellEntry = this._desktopShell.manage(this.grSurfaceResource.implementation)
 
     this.grSurfaceResource.implementation.hasKeyboardInput = true
     this.grSurfaceResource.implementation.hasPointerInput = true
@@ -353,8 +352,7 @@ export default class BrowserShellSurface {
     // FIXME we probably want to provide a method to translate from (abstract) surface space to global space
     browserSurfaceChild.position = Point.create(parentPosition.x + x, parentPosition.y + y)
 
-    const entry = this._desktopShell.manage(browserSurface)
-    this._desktopEntry = entry
+    this._desktopShellEntry = this._desktopShell.manage(browserSurface)
 
     this.grSurfaceResource.implementation.hasPointerInput = true
     this.grSurfaceResource.implementation.hasTouchInput = true
@@ -460,7 +458,9 @@ export default class BrowserShellSurface {
       // having added this shell-surface to a parent will have it create a view for each parent view
       browserSurface.browserSurfaceViews.forEach((view) => {
         view.applyTransformations()
-        this._desktopShell.fadeOutViewOnDestroy(view)
+        view.onDestroy().then(() => {
+          view.detach()
+        })
       })
 
       this.grSurfaceResource.implementation.hasPointerInput = true
@@ -533,8 +533,8 @@ export default class BrowserShellSurface {
    */
   setTitle (resource, title) {
     this.title = title
-    if (this._desktopEntry) {
-      this._desktopEntry.textContent = `${this.title}`
+    if (this._desktopShellEntry) {
+      this._desktopShellEntry.entry.textContent = `${this.title}`
     }
   }
 

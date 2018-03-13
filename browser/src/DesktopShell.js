@@ -1,5 +1,7 @@
 'use strict'
 
+import DesktopShellEntry from './DesktopShellEntry'
+
 export default class DesktopShell {
   static create () {
     const body = document.body
@@ -50,58 +52,27 @@ export default class DesktopShell {
      */
     this.menu = menu
     /**
+     * This field is set when browserKeyboard is created.
      * @type {BrowserKeyboard}
      */
     this.browserKeyboard = null
     /**
-     * @type {{view: BrowserSurfaceView, browserSurface: BrowserSurface, entry: HTMLDivElement}[]}
+     * @type {DesktopShellEntry[]}
      */
     this.entries = []
   }
 
   /**
    * @param {BrowserSurface}browserSurface
-   * @return {HTMLDivElement}
+   * @return {DesktopShellEntry}
    */
   manage (browserSurface) {
     // create a view and attach it to the scene
-    const view = browserSurface.createView()
-    this.fadeOutViewOnDestroy(view)
-    view.attachTo(document.body)
-    view.raise()
+    const desktopShellEntry = DesktopShellEntry.create(this.browserKeyboard, browserSurface)
+    this.entryContainer.appendChild(desktopShellEntry.entry)
+    this.entries.push(desktopShellEntry)
 
-    // destroy the view if the shell-surface is destroyed
-    browserSurface.resource.onDestroy().then(() => {
-      view.destroy()
-    })
-
-    const entry = document.createElement('div')
-    entry.classList.add('entry')
-    this.entryContainer.appendChild(entry)
-
-    view.onDestroy().then(() => {
-      if (entry.parentElement) {
-        entry.addEventListener('transitionend', () => {
-          entry.parentElement.removeChild(entry)
-        })
-        entry.classList.add('entry-removed')
-      }
-    })
-
-    entry.addEventListener('click', () => {
-      view.raise()
-      this.browserKeyboard.focusGained(view)
-      // TODO give it keyboard focus
-    })
-
-    // TODO create dedicated entry class
-    this.entries.push({
-      view: view,
-      browserSurface: browserSurface,
-      entry: entry
-    })
-
-    return entry
+    return desktopShellEntry
   }
 
   onKeyboardFocusGained (view) {
@@ -112,17 +83,5 @@ export default class DesktopShell {
       return entry.view === view
     })
     entry.entry.classList.add('entry-focus')
-  }
-
-  fadeOutViewOnDestroy (view) {
-    // play a nice fade out animation if the view is destroyed
-    view.onDestroy().then(() => {
-      view.bufferedCanvas.frontContext.canvas.addEventListener('transitionend', () => {
-        // after the animation has ended, detach the view from the scene
-        view.detach()
-      }, false)
-      // play the animation
-      view.fadeOut()
-    })
   }
 }
