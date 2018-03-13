@@ -16,7 +16,7 @@ function setupGlobals (browserSession) {
   const desktopShell = DesktopShell.create()
 
   const browserOutput = BrowserOutput.create()
-  const browserSeat = BrowserSeat.create(browserSession)
+  const browserSeat = BrowserSeat.create(browserSession, desktopShell)
   const browserCompositor = BrowserCompositor.create(browserSession, browserSeat)
   const browserDataDeviceManager = BrowserDataDeviceManager.create()
   const browserShell = BrowserShell.create(browserSession, desktopShell)

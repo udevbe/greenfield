@@ -9,10 +9,70 @@ body {
 }
 
 .hpanel {
-    z-index: -2;
-    min-height: 30px;
+    z-index: 0;
+    min-height: 4vh;
+    background-color: rgb(211, 211, 211);
+    box-shadow: 0 1px 5px 0 rgba(0, 0, 0, 0.75);
+
     display: flex;
+    flex-wrap: nowrap;
     flex-direction: row;
-    background-color: rgb(211,211,211);
-    box-shadow: 0px 5px 15px 0px rgba(0, 0, 0, 0.75);
+}
+
+.entry-container {
+    flex-grow: 1;
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    align-items: center;
+    border-right: 0.3vh groove rgb(211, 211, 211);
+}
+
+
+.entry {
+    flex-grow: 1;
+    min-width: 4vw;
+    height: 4vh;
+
+    background: rgb(170, 170, 170);
+
+    font-family: sans-serif;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+    line-height: 4vh;
+    color: black;
+
+    box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.75);
+
+    transition: opacity 200ms ease-in-out;
+}
+
+.entry-removed {
+    opacity: 0;
+}
+
+.entry-focus {
+    background: rgb(211, 211, 211);
+}
+
+.entry:hover {
+    background: rgb(211, 211, 211);
+    transition: background 150ms linear;
+}
+
+.menu {
+    min-height: 4vh;
+    height: 4vh;
+    min-width: 4vh;
+    width: 4vh;
+    background: url(menu.svg) no-repeat center;
+    background-size: 2vh 3vh;
+}
+
+.menu:hover {
+    filter: invert(100%);
+    transition: filter 150ms linear;
 }

@@ -324,8 +324,7 @@ export default class BrowserSurfaceView {
 }
 
 /**
- *
  * @type {number}
  * @private
  */
-BrowserSurfaceView._topZIndex = 0
+BrowserSurfaceView._topZIndex = 20

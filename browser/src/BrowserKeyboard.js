@@ -13,10 +13,12 @@ export default class BrowserKeyboard {
   /**
    * @param {BrowserSession}browserSession
    * @param {BrowserDataDevice} browserDataDevice
+   * @param {DesktopShell} desktopShell
    * @return {BrowserKeyboard}
    */
-  static create (browserSession, browserDataDevice) {
-    const browserKeyboard = new BrowserKeyboard(browserDataDevice)
+  static create (browserSession, browserDataDevice, desktopShell) {
+    const browserKeyboard = new BrowserKeyboard(browserDataDevice, desktopShell)
+    desktopShell.browserKeyboard = browserKeyboard
     // TODO get the keymap from some config source
     browserKeyboard.updateKeymap('qwerty.xkb')
 
@@ -36,13 +38,19 @@ export default class BrowserKeyboard {
    * Use BrowserKeyboard.create(..) instead.
    * @private
    * @param {BrowserDataDevice} browserDataDevice
+   * @param {DesktopShell} desktopShell
    */
-  constructor (browserDataDevice) {
+  constructor (browserDataDevice, desktopShell) {
     /**
      * @type {BrowserDataDevice}
      * @private
      */
     this._browserDataDevice = browserDataDevice
+    /**
+     * @type {DesktopShell}
+     * @private
+     */
+    this._desktopShell = desktopShell
     /**
      * @type {Array}
      */
@@ -151,6 +159,7 @@ export default class BrowserKeyboard {
     focus.raise()
     this.focus = focus
     this._browserDataDevice.onKeyboardFocusGained(focus)
+    this._desktopShell.onKeyboardFocusGained(focus)
 
     const surfaceResource = this.focus.browserSurface.resource
     surfaceResource.addDestroyListener(this._focusDestroyListener)

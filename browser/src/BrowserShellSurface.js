@@ -2,7 +2,6 @@
 
 import Point from './math/Point'
 import greenfield from './protocol/greenfield-browser-protocol'
-import Mat4 from './math/Mat4'
 import BrowserSession from './BrowserSession'
 
 const Resize = greenfield.GrShellSurface.Resize
@@ -82,6 +81,11 @@ export default class BrowserShellSurface {
      * @private
      */
     this._pingTimeoutActive = false
+    /**
+     * @type {HTMLDivElement}
+     * @private
+     */
+    this._desktopEntry = null
   }
 
   /**
@@ -308,7 +312,8 @@ export default class BrowserShellSurface {
     }
     this.state = SurfaceStates.TOP_LEVEL
 
-    this._desktopShell.manage(this.grSurfaceResource.implementation)
+    const entry = this._desktopShell.manage(this.grSurfaceResource.implementation)
+    this._desktopEntry = entry
 
     this.grSurfaceResource.implementation.hasKeyboardInput = true
     this.grSurfaceResource.implementation.hasPointerInput = true
@@ -348,7 +353,8 @@ export default class BrowserShellSurface {
     // FIXME we probably want to provide a method to translate from (abstract) surface space to global space
     browserSurfaceChild.position = Point.create(parentPosition.x + x, parentPosition.y + y)
 
-    this._desktopShell.manage(browserSurface)
+    const entry = this._desktopShell.manage(browserSurface)
+    this._desktopEntry = entry
 
     this.grSurfaceResource.implementation.hasPointerInput = true
     this.grSurfaceResource.implementation.hasTouchInput = true
@@ -402,8 +408,6 @@ export default class BrowserShellSurface {
    */
   setFullscreen (resource, method, framerate, output) {
     this.state = SurfaceStates.FULLSCREEN
-    const browserSurface = this.grSurfaceResource.implementation
-    this._desktopShell.manage(browserSurface)
     // TODO fullscreen windows + optimize renderer for fullscreen
   }
 
@@ -500,7 +504,6 @@ export default class BrowserShellSurface {
   setMaximized (resource, output) {
     this.state = SurfaceStates.POPUP
     const browserSurface = this.grSurfaceResource.implementation
-    this._desktopShell.manage(browserSurface)
 
     // TODO get proper size in surface coordinates instead of assume surface space === global space
     const x = 0
@@ -530,6 +533,9 @@ export default class BrowserShellSurface {
    */
   setTitle (resource, title) {
     this.title = title
+    if (this._desktopEntry) {
+      this._desktopEntry.textContent = `${this.title}`
+    }
   }
 
   /**

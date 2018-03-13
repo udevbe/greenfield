@@ -11,11 +11,12 @@ import BrowserDataDevice from './BrowserDataDevice'
 export default class BrowserSeat extends westfield.Global {
   /**
    * @param {BrowserSession} browserSession
+   * @param {DesktopShell} desktopShell
    * @returns {BrowserSeat}
    */
-  static create (browserSession) {
+  static create (browserSession, desktopShell) {
     const browserDataDevice = BrowserDataDevice.create()
-    const browserKeyboard = BrowserKeyboard.create(browserSession, browserDataDevice)
+    const browserKeyboard = BrowserKeyboard.create(browserSession, browserDataDevice, desktopShell)
     const browserPointer = BrowserPointer.create(browserSession, browserDataDevice, browserKeyboard)
     const browserTouch = BrowserTouch.create()
     const hasTouch = 'ontouchstart' in document.documentElement
