@@ -154,7 +154,9 @@ export default class BrowserKeyboard {
     if (!focus.browserSurface.hasKeyboardInput || this.focus === focus) {
       return
     }
-    this.focusLost()
+    if (!this.focus.destroyed) {
+      this.focusLost()
+    }
 
     focus.raise()
     this.focus = focus
