@@ -17,13 +17,13 @@ export default class DesktopShellEntry {
       mainView.destroy()
     })
 
-    const entry = document.createElement('div')
-    entry.classList.add('entry')
-    this.fadeOutEntryOnDestroy(mainView, entry)
+    const divElement = document.createElement('div')
+    divElement.classList.add('entry')
+    this.fadeOutEntryOnDestroy(mainView, divElement)
 
-    const desktopShellEntry = new DesktopShellEntry(browserKeyboard, browserSurface, mainView, entry)
+    const desktopShellEntry = new DesktopShellEntry(browserKeyboard, browserSurface, mainView, divElement)
 
-    entry.addEventListener('click', () => {
+    divElement.addEventListener('click', () => {
       desktopShellEntry.makeActive()
     })
 
@@ -58,14 +58,26 @@ export default class DesktopShellEntry {
    * @param {BrowserKeyboard}browserKeyboard
    * @param {BrowserSurface}browserSurface
    * @param {BrowserSurfaceView}mainView
-   * @param {HTMLDivElement}entry
+   * @param {HTMLDivElement}divElement
    * @private
    */
-  constructor (browserKeyboard, browserSurface, mainView, entry) {
+  constructor (browserKeyboard, browserSurface, mainView, divElement) {
+    /**
+     * @type {BrowserKeyboard}
+     */
     this.browserKeyboard = browserKeyboard
+    /**
+     * @type {BrowserSurface}
+     */
     this.browserSurface = browserSurface
+    /**
+     * @type {BrowserSurfaceView}
+     */
     this.mainView = mainView
-    this.entry = entry
+    /**
+     * @type {HTMLDivElement}
+     */
+    this.divElement = divElement
   }
 
   makeActive () {
@@ -77,14 +89,14 @@ export default class DesktopShellEntry {
    * @param {String}title
    */
   updateTitle (title) {
-    this.entry.textContent = title
+    this.divElement.textContent = title
   }
 
   onKeyboardFocusLost () {
-    this.entry.classList.remove('entry-focus')
+    this.divElement.classList.remove('entry-focus')
   }
 
   onKeyboardFocusGained () {
-    this.entry.classList.add('entry-focus')
+    this.divElement.classList.add('entry-focus')
   }
 }

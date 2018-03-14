@@ -1,6 +1,7 @@
 'use strict'
 
 import DesktopShellEntry from './DesktopShellEntry'
+import DesktopShellMenu from './DesktopShellMenu'
 
 export default class DesktopShell {
   static create () {
@@ -14,29 +15,27 @@ export default class DesktopShell {
     entryContainer.classList.add('entry-container')
     panel.appendChild(entryContainer)
 
-    const menu = document.createElement('div')
-    menu.classList.add('menu')
-    panel.appendChild(menu)
+    const desktopShellMenu = DesktopShellMenu.create()
+    panel.appendChild(desktopShellMenu.divElement)
 
-    return new DesktopShell(body, workspace, panel, entryContainer, menu)
+    return new DesktopShell(body, workspace, panel, entryContainer)
   }
 
   /**
    * Use DesktopShell.create(..)
-   * @param {HTMLBodyElement}body
-   * @param {HTMLDivElement}workspace
+   * @param {HTMLElement}body
+   * @param {HTMLElement}workspace
    * @param {HTMLDivElement}panel
    * @param {HTMLDivElement}entryContainer
-   * @param {HTMLDivElement}menu
    * @private
    */
-  constructor (body, workspace, panel, entryContainer, menu) {
+  constructor (body, workspace, panel, entryContainer) {
     /**
-     * @type{HTMLBodyElement}
+     * @type{HTMLElement}
      */
     this.body = body
     /**
-     * @type{HTMLDivElement}
+     * @type{HTMLElement}
      */
     this.workspace = workspace
     /**
@@ -47,10 +46,6 @@ export default class DesktopShell {
      * @type{HTMLDivElement}
      */
     this.entryContainer = entryContainer
-    /**
-     * @type{HTMLDivElement}
-     */
-    this.menu = menu
     /**
      * This field is set when browserKeyboard is created.
      * @type {BrowserKeyboard}
@@ -69,7 +64,7 @@ export default class DesktopShell {
   manage (browserSurface) {
     // create a view and attach it to the scene
     const desktopShellEntry = DesktopShellEntry.create(this.browserKeyboard, browserSurface)
-    this.entryContainer.appendChild(desktopShellEntry.entry)
+    this.entryContainer.appendChild(desktopShellEntry.divElement)
     this.desktopShellEntries.push(desktopShellEntry)
     // delay the activation as keyboard resource might still come in late
     window.setTimeout(() => {

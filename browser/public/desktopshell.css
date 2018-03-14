@@ -16,7 +16,7 @@ body {
     flex-wrap: nowrap;
     flex-direction: row;
 
-    box-shadow: 0px 2px 2px 0px rgba(0,0,0,0.75);
+    box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.75);
 }
 
 .entry-container {
@@ -43,7 +43,7 @@ body {
     line-height: 3vh;
     color: black;
 
-    box-shadow: inset 0 -0.4vh 0.1vh -0.3vh rgba(252,104,42,0.20);
+    box-shadow: inset 0 -0.4vh 0.1vh -0.3vh rgba(252, 104, 42, 0.20);
 
     transition: all 200ms ease-in-out;
 }
@@ -53,17 +53,17 @@ body {
 }
 
 .entry-focus {
-    box-shadow: inset 0 -0.4vh 0.1vh -0.3vh rgba(42,190,252,1);
+    box-shadow: inset 0 -0.4vh 0.1vh -0.3vh rgba(42, 190, 252, 1);
     background: rgb(220, 220, 220);
 }
 
 .entry:hover:not(.entry-focus) {
-    box-shadow: inset 0 -0.4vh 0.1vh -0.3vh rgba(252,104,42,0.60);
-    background: rgb(211, 211, 211);
+    box-shadow: inset 0 -0.4vh 0.1vh -0.3vh rgba(252, 104, 42, 0.60);
+    background: rgb(210, 210, 210);
     transition: all 150ms linear;
 }
 
-.menu {
+.menu-button {
     min-height: 3vh;
     height: 3vh;
     min-width: 3vh;
@@ -71,10 +71,48 @@ body {
     background: url(menu.svg) no-repeat center;
     background-size: 2vh 3vh;
     transition: all 200ms ease-in-out;
+
+    position: relative;
 }
 
-.menu:hover {
+.menu-button:hover {
     border-radius: 0.5vh;
     background-color: rgb(200, 200, 200);
     transition: all 200ms ease-in-out;
+}
+
+.menu-button-active {
+    border-radius: 0.5vh;
+    background-color: rgb(200, 200, 200);
+    transition: all 200ms ease-in-out;
+}
+
+.menu {
+    position: absolute;
+
+    right: 0.3vh;
+    top: 3.50vh;
+
+    width: 30vh;
+    height: 95vh;
+
+    border-radius: 0.5vh;
+    opacity: 0;
+    background: rgb(200, 200, 200);
+    box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.75);
+
+    transition: all 100ms ease-in-out;
+}
+
+.menu-active {
+    opacity: 1;
+    transition: all 100ms ease-in-out;
+}
+
+.menu-container {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
 }
