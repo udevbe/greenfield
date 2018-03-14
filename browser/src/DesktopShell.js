@@ -59,7 +59,7 @@ export default class DesktopShell {
     /**
      * @type {DesktopShellEntry[]}
      */
-    this.entries = []
+    this.desktopShellEntries = []
   }
 
   /**
@@ -70,18 +70,20 @@ export default class DesktopShell {
     // create a view and attach it to the scene
     const desktopShellEntry = DesktopShellEntry.create(this.browserKeyboard, browserSurface)
     this.entryContainer.appendChild(desktopShellEntry.entry)
-    this.entries.push(desktopShellEntry)
+    this.desktopShellEntries.push(desktopShellEntry)
 
     return desktopShellEntry
   }
 
   onKeyboardFocusGained (view) {
-    this.entries.forEach((entry) => {
-      entry.entry.classList.remove('entry-focus')
+    const desktopShellEntry = this.desktopShellEntries.find((desktopShellEntry) => {
+      return desktopShellEntry.mainView === view
     })
-    const entry = this.entries.find((entry) => {
-      return entry.view === view
-    })
-    entry.entry.classList.add('entry-focus')
+    if (desktopShellEntry) {
+      this.desktopShellEntries.forEach((desktopShellEntry) => {
+        desktopShellEntry.onKeyboardFocusLost()
+      })
+      desktopShellEntry.onKeyboardFocusGained()
+    }
   }
 }

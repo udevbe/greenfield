@@ -534,7 +534,7 @@ export default class BrowserShellSurface {
   setTitle (resource, title) {
     this.title = title
     if (this._desktopShellEntry) {
-      this._desktopShellEntry.entry.textContent = `${this.title}`
+      this._desktopShellEntry.updateTitle(title)
     }
   }
 

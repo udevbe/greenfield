@@ -65,19 +65,27 @@ export default class DesktopShellEntry {
   constructor (browserKeyboard, browserSurface, mainView, entry) {
     this.browserKeyboard = browserKeyboard
     this.browserSurface = browserSurface
-    this.view = mainView
+    this.mainView = mainView
     this.entry = entry
   }
 
   onClick () {
-    this.view.raise()
-    this.browserKeyboard.focusGained(this.view)
+    this.mainView.raise()
+    this.browserKeyboard.focusGained(this.mainView)
   }
 
   /**
    * @param {String}title
    */
   updateTitle (title) {
+    this.entry.textContent = title
+  }
 
+  onKeyboardFocusLost () {
+    this.entry.classList.remove('entry-focus')
+  }
+
+  onKeyboardFocusGained () {
+    this.entry.classList.add('entry-focus')
   }
 }
