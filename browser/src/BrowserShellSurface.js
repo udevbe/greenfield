@@ -2,16 +2,18 @@
 
 import Point from './math/Point'
 import greenfield from './protocol/greenfield-browser-protocol'
-import BrowserSession from './BrowserSession'
 
 const Resize = greenfield.GrShellSurface.Resize
 
 const SurfaceStates = {
-  TOP_LEVEL: 'toplevel',
   MAXIMIZED: 'maximized',
-  TRANSIENT: 'transient',
-  FULLSCREEN: 'fullscreen',
-  POPUP: 'popup'
+  FULLSCREEN: 'fullscreen'
+}
+
+const SurfaceType = {
+  POPUP: 'maximized',
+  TRANSIENT: 'fullscreen',
+  TOP_LEVEL: 'top_level'
 }
 
 export default class BrowserShellSurface {
@@ -67,6 +69,10 @@ export default class BrowserShellSurface {
      * @type {string}
      */
     this.state = null
+    /**
+     * @type {null}
+     */
+    this.type = null
     /**
      * @type {BrowserSession}
      */
@@ -307,16 +313,17 @@ export default class BrowserShellSurface {
    *
    */
   setToplevel (resource) {
-    if (this.state) {
+    if (this.type) {
       return
     }
-    this.state = SurfaceStates.TOP_LEVEL
 
-    this._desktopShellEntry = this._desktopShell.manage(this.grSurfaceResource.implementation)
+    this.type = SurfaceType.TOP_LEVEL
 
     this.grSurfaceResource.implementation.hasKeyboardInput = true
     this.grSurfaceResource.implementation.hasPointerInput = true
     this.grSurfaceResource.implementation.hasTouchInput = true
+
+    this._desktopShellEntry = this._desktopShell.manage(this.grSurfaceResource.implementation)
   }
 
   /**
@@ -340,10 +347,11 @@ export default class BrowserShellSurface {
    *
    */
   setTransient (resource, parent, x, y, flags) {
-    if (this.state) {
+    if (this.type) {
       return
     }
-    this.state = SurfaceStates.TRANSIENT
+
+    this.type = SurfaceType.TRANSIENT
 
     const parentPosition = parent.implementation.browserSurfaceChildSelf.position
 
@@ -352,11 +360,11 @@ export default class BrowserShellSurface {
     // FIXME we probably want to provide a method to translate from (abstract) surface space to global space
     browserSurfaceChild.position = Point.create(parentPosition.x + x, parentPosition.y + y)
 
-    this._desktopShellEntry = this._desktopShell.manage(browserSurface)
-
     this.grSurfaceResource.implementation.hasPointerInput = true
     this.grSurfaceResource.implementation.hasTouchInput = true
     this.grSurfaceResource.implementation.hasKeyboardInput = (flags & greenfield.GrShellSurface.Transient.inactive) === 0
+
+    this._desktopShellEntry = this._desktopShell.manage(browserSurface)
   }
 
   /**
@@ -444,13 +452,13 @@ export default class BrowserShellSurface {
    *
    */
   async setPopup (resource, seat, serial, parent, x, y, flags) {
-    if (this.state) { return }
+    if (this.type) { return }
 
     const browserSeat = seat.implementation
     const browserPointer = browserSeat.browserPointer
     const browserKeyboard = browserSeat.browserKeyboard
     if (browserPointer.buttonSerial === serial || browserKeyboard.keySerial === serial) {
-      this.state = SurfaceStates.POPUP
+      this.type = SurfaceType.POPUP
       const browserSurface = this.grSurfaceResource.implementation
       const browserSurfaceChild = browserSurface.browserSurfaceChildSelf
       browserSurfaceChild.position = Point.create(x, y)
@@ -502,7 +510,7 @@ export default class BrowserShellSurface {
    *
    */
   setMaximized (resource, output) {
-    this.state = SurfaceStates.POPUP
+    this.state = SurfaceStates.MAXIMIZED
     const browserSurface = this.grSurfaceResource.implementation
 
     // TODO get proper size in surface coordinates instead of assume surface space === global space

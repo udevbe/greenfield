@@ -11,7 +11,6 @@ export default class DesktopShellEntry {
     const mainView = browserSurface.createView()
     this.fadeOutViewOnDestroy(mainView)
     mainView.attachTo(document.body)
-    mainView.raise()
 
     // destroy the mainView if the shell-surface is destroyed
     browserSurface.resource.onDestroy().then(() => {
@@ -25,7 +24,7 @@ export default class DesktopShellEntry {
     const desktopShellEntry = new DesktopShellEntry(browserKeyboard, browserSurface, mainView, entry)
 
     entry.addEventListener('click', () => {
-      desktopShellEntry.onClick()
+      desktopShellEntry.makeActive()
     })
 
     return desktopShellEntry
@@ -69,7 +68,7 @@ export default class DesktopShellEntry {
     this.entry = entry
   }
 
-  onClick () {
+  makeActive () {
     this.mainView.raise()
     this.browserKeyboard.focusGained(this.mainView)
   }

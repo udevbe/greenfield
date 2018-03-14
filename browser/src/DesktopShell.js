@@ -71,6 +71,10 @@ export default class DesktopShell {
     const desktopShellEntry = DesktopShellEntry.create(this.browserKeyboard, browserSurface)
     this.entryContainer.appendChild(desktopShellEntry.entry)
     this.desktopShellEntries.push(desktopShellEntry)
+    // delay the activation as keyboard resource might still come in late
+    window.setTimeout(() => {
+      desktopShellEntry.makeActive()
+    }, 250)
 
     return desktopShellEntry
   }
