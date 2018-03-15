@@ -29,6 +29,11 @@ export default class DesktopShellMenu {
     divElementMenuContainer.style.visibility = 'hidden'
     divElementMenuContainer.style.zIndex = '-65535'
     window.document.body.appendChild(divElementMenuContainer)
+
+    const divElementMenuTriangleUp = document.createElement('div')
+    divElementMenuTriangleUp.classList.add('menu-triangle-up')
+    divElementMenuContainer.appendChild(divElementMenuTriangleUp)
+
     return divElementMenuContainer
   }
 

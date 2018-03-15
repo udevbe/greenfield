@@ -10,7 +10,7 @@ body {
 
 .hpanel {
     z-index: 0;
-    background-color: rgb(220, 220, 220);
+    background-color: rgb(230, 230, 230);
 
     display: flex;
     flex-wrap: nowrap;
@@ -32,7 +32,7 @@ body {
     min-width: 4vw;
     height: 3vh;
 
-    background: rgb(140, 140, 140);
+    background: rgb(150, 150, 150);
 
     font-family: sans-serif;
     text-align: center;
@@ -54,7 +54,7 @@ body {
 
 .entry-focus {
     box-shadow: inset 0 -0.4vh 0.1vh -0.3vh rgba(42, 190, 252, 1);
-    background: rgb(220, 220, 220);
+    background: rgb(230, 230, 230);
 }
 
 .entry:hover:not(.entry-focus) {
@@ -69,7 +69,7 @@ body {
     min-width: 3vh;
     width: 3vh;
     background: url(menu.svg) no-repeat center;
-    background-size: 2vh 3vh;
+    background-size: 2vh 2.5vh;
     transition: all 200ms ease-in-out;
 
     position: relative;
@@ -78,15 +78,15 @@ body {
 .menu-button:hover {
     border-radius: 0.5vh;
     background-color: rgb(200, 200, 200);
-    transition: all 200ms ease-in-out;
+    transition: all 200ms ease-out;
 }
 
 .menu-button-active {
     border-radius: 0.5vh;
     background: rgb(200, 200, 200) url(menu-active.svg) no-repeat center;
-    background-size: 2vh 3vh;
+    background-size: 2vh 2.5vh;
 
-    transition: all 200ms ease-in-out;
+    transition: all 200ms ease-out;
 }
 
 .menu {
@@ -102,15 +102,15 @@ body {
 
     border-radius: 0.5vh;
     opacity: 0;
-    background: rgb(200, 200, 200);
+    background: rgb(220, 220, 220);
     box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.75);
 
-    transition: all 100ms ease-in-out;
+    transition: all 200ms ease-in-out;
 }
 
 .menu-active {
     opacity: 1;
-    transition: all 100ms ease-in-out;
+    transition: all 200ms ease-in-out;
 }
 
 .menu-container {
@@ -121,12 +121,25 @@ body {
     height: 100%;
 }
 
+.menu-triangle-up {
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 1vh solid transparent;
+    border-right: 1vh solid transparent;
+    
+    right: 1vh;
+    top: 2.5vh;
+
+    border-bottom: 1vh solid rgb(220, 220, 220);
+}
+
 .search-container {
     margin: 2vh;
     display: flex;
 
     border-radius: 2vh;
-    background: rgb(140, 140, 140);
+    background: rgb(150, 150, 150);
 }
 
 .search-icon {
@@ -142,5 +155,16 @@ body {
 
 .search-input {
     background: transparent;
+    width: 100%;
     border: 0 black;
+    outline-style: none;
+    box-shadow: none;
+    border-color: transparent;
+    font-family: sans-serif;
+    color: white;
+}
+
+input::placeholder {
+  color: white;
+  opacity: 1;
 }
