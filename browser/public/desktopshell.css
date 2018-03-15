@@ -83,18 +83,22 @@ body {
 
 .menu-button-active {
     border-radius: 0.5vh;
-    background-color: rgb(200, 200, 200);
+    background: rgb(200, 200, 200) url(menu-active.svg) no-repeat center;
+    background-size: 2vh 3vh;
+
     transition: all 200ms ease-in-out;
 }
 
 .menu {
+    display: flex;
+    flex-direction: column;
     position: absolute;
 
     right: 0.3vh;
     top: 3.50vh;
 
     width: 30vh;
-    height: 95vh;
+    height: calc(100% - 4vh);
 
     border-radius: 0.5vh;
     opacity: 0;
@@ -115,4 +119,28 @@ body {
     top: 0;
     width: 100%;
     height: 100%;
+}
+
+.search-container {
+    margin: 2vh;
+    display: flex;
+
+    border-radius: 2vh;
+    background: rgb(140, 140, 140);
+}
+
+.search-icon {
+    margin: 0.25vh;
+    min-height: 2vh;
+    height: 2vh;
+    min-width: 2vh;
+    width: 2vh;
+
+    background: url(search.svg) no-repeat center;
+    background-size: 2vh 2vh;
+}
+
+.search-input {
+    background: transparent;
+    border: 0 black;
 }

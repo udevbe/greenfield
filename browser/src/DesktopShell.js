@@ -16,7 +16,7 @@ export default class DesktopShell {
     panel.appendChild(entryContainer)
 
     const desktopShellMenu = DesktopShellMenu.create()
-    panel.appendChild(desktopShellMenu.divElement)
+    panel.appendChild(desktopShellMenu.divElementMenuButton)
 
     return new DesktopShell(body, workspace, panel, entryContainer)
   }

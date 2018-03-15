@@ -32,11 +32,15 @@ export default class BrowserPointer {
       browserPointer.onMouseMove(event)
     }))
     document.addEventListener('mouseup', browserSession.eventSource((event) => {
-      event.preventDefault()
+      if (!event.target.classList.contains('enable-default')) {
+        event.preventDefault()
+      }
       browserPointer.onMouseUp(event)
     }))
     document.addEventListener('mousedown', browserSession.eventSource((event) => {
-      event.preventDefault()
+      if (!event.target.classList.contains('enable-default')) {
+        event.preventDefault()
+      }
       browserPointer.onMouseDown(event)
     }))
     // other mouse events are set in the browser surface view class

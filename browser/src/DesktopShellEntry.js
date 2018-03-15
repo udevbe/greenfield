@@ -23,7 +23,7 @@ export default class DesktopShellEntry {
 
     const desktopShellEntry = new DesktopShellEntry(browserKeyboard, browserSurface, mainView, divElement)
 
-    divElement.addEventListener('click', () => {
+    divElement.addEventListener('mousedown', () => {
       desktopShellEntry.makeActive()
     })
 

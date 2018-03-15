@@ -6,9 +6,6 @@ import greenfield from './protocol/greenfield-browser-protocol'
 import BrowserXkb from './BrowserXkb'
 import BrowserRtcBlobTransfer from './BrowserRtcBlobTransfer'
 
-/**
- * @class
- */
 export default class BrowserKeyboard {
   /**
    * @param {BrowserSession}browserSession
@@ -23,13 +20,17 @@ export default class BrowserKeyboard {
     browserKeyboard.updateKeymap('qwerty.xkb')
 
     document.addEventListener('keyup', browserSession.eventSource((event) => {
-      event.preventDefault()
+      if (!event.target.classList.contains('enable-default')) {
+        event.preventDefault()
+      }
       browserKeyboard.onKey(event, false)
-    }), true)
+    }))
     document.addEventListener('keydown', browserSession.eventSource((event) => {
-      event.preventDefault()
+      if (!event.target.classList.contains('enable-default')) {
+        event.preventDefault()
+      }
       browserKeyboard.onKey(event, true)
-    }), true)
+    }))
 
     return browserKeyboard
   }
