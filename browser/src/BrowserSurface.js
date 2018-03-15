@@ -310,6 +310,7 @@ export default class BrowserSurface {
 
   _handleDestruction () {
     this.browserSurfaceViews.forEach(browserSurfaceView => {
+      delete browserSurfaceView.browserSurface
       browserSurfaceView.destroy()
     })
   }

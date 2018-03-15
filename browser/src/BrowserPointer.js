@@ -350,7 +350,7 @@ export default class BrowserPointer {
 
     this._mouseMoveListeners.forEach(listener => listener(this.focus))
 
-    if (this.focus) {
+    if (this.focus && this.focus.browserSurface) {
       const surfacePoint = this._calculateSurfacePoint(this.focus)
       const surfaceResource = this.focus.browserSurface.resource
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
@@ -381,19 +381,17 @@ export default class BrowserPointer {
       return
     }
 
-    if (this.focus === null || this.grab === null) {
-      return
-    }
+    if (this.focus && this.focus.browserSurface && this.grab) {
+      this._btnDwnCount--
+      if (this._btnDwnCount === 0) {
+        this.grab = null
+      }
 
-    this._btnDwnCount--
-    if (this._btnDwnCount === 0) {
-      this.grab = null
+      const surfaceResource = this.focus.browserSurface.resource
+      this._doPointerEventFor(surfaceResource, (pointerResource) => {
+        pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.released)
+      })
     }
-
-    const surfaceResource = this.focus.browserSurface.resource
-    this._doPointerEventFor(surfaceResource, (pointerResource) => {
-      pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.released)
-    })
   }
 
   /**
@@ -409,20 +407,18 @@ export default class BrowserPointer {
       }
     }
 
-    if (this.focus === null) {
-      return
-    }
+    if (this.focus && this.focus.browserSurface) {
+      if (this.grab === null) {
+        this.grab = this.focus
+        this._browserKeyboard.focusGained(this.grab)
+      }
 
-    if (this.grab === null) {
-      this.grab = this.focus
-      this._browserKeyboard.focusGained(this.grab)
+      this._btnDwnCount++
+      const surfaceResource = this.focus.browserSurface.resource
+      this._doPointerEventFor(surfaceResource, (pointerResource) => {
+        pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.pressed)
+      })
     }
-
-    this._btnDwnCount++
-    const surfaceResource = this.focus.browserSurface.resource
-    this._doPointerEventFor(surfaceResource, (pointerResource) => {
-      pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.pressed)
-    })
   }
 
   /**
@@ -466,10 +462,10 @@ export default class BrowserPointer {
     let focus = {view: null}
     focusCandidates.forEach(focusCandidate => {
       if (focusCandidate.view &&
+        focusCandidate.view.browserSurface &&
         focusCandidate.view.browserSurface.hasPointerInput &&
         this._isPointerWithinInputRegion(focusCandidate) &&
-        window.parseInt(focusCandidate.style.zIndex) > zOrder &&
-        !focusCandidate.view.destroyed) {
+        window.parseInt(focusCandidate.style.zIndex) > zOrder) {
         zOrder = focusCandidate.style.zIndex
         focus = focusCandidate
       }
@@ -484,12 +480,11 @@ export default class BrowserPointer {
   setFocus (newFocus) {
     this.focus = newFocus
     const surfaceResource = this.focus.browserSurface.resource
-    surfaceResource.onDestroy().then((resource) => {
+    newFocus.onDestroy().then(() => {
       if (!this.focus) {
         return
       }
-      const surfaceResource = this.focus.browserSurface.resource
-      if (resource !== surfaceResource) {
+      if (newFocus !== this.focus) {
         return
       }
       // recalculate focus and consequently enter event
@@ -508,7 +503,7 @@ export default class BrowserPointer {
   }
 
   unsetFocus () {
-    if (this.focus) {
+    if (this.focus && this.focus.browserSurface) {
       const surfaceResource = this.focus.browserSurface.resource
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
         pointerResource.leave(this._nextFocusSerial(), surfaceResource)

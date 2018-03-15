@@ -155,46 +155,46 @@ export default class BrowserKeyboard {
     if (!focus.browserSurface.hasKeyboardInput || this.focus === focus) {
       return
     }
-    if (this.focus && !this.focus.destroyed) {
+    if (this.focus) {
       this.focusLost()
     }
 
-    focus.raise()
-    this.focus = focus
-    this._browserDataDevice.onKeyboardFocusGained(focus)
-    this._desktopShell.onKeyboardFocusGained(focus)
+    if (focus && focus.browserSurface) {
+      focus.raise()
+      this.focus = focus
+      this._browserDataDevice.onKeyboardFocusGained(focus)
+      this._desktopShell.onKeyboardFocusGained(focus)
 
-    const surfaceResource = this.focus.browserSurface.resource
-    surfaceResource.addDestroyListener(this._focusDestroyListener)
+      const surfaceResource = this.focus.browserSurface.resource
+      surfaceResource.addDestroyListener(this._focusDestroyListener)
 
-    const serial = this._nextSerial()
-    const surface = this.focus.browserSurface.resource
-    const keys = new Uint8Array(this._keys).buffer
+      const serial = this._nextSerial()
+      const surface = this.focus.browserSurface.resource
+      const keys = new Uint8Array(this._keys).buffer
 
-    this.resources.filter((resource) => {
-      return resource.client === this.focus.browserSurface.resource.client
-    }).forEach((resource) => {
-      resource.enter(serial, surface, keys)
-    })
+      this.resources.filter((resource) => {
+        return resource.client === this.focus.browserSurface.resource.client
+      }).forEach((resource) => {
+        resource.enter(serial, surface, keys)
+      })
+    }
   }
 
   focusLost () {
-    if (this.focus === null) {
-      return
+    if (this.focus && this.focus.browserSurface) {
+      const serial = this._nextSerial()
+      const surface = this.focus.browserSurface.resource
+
+      this.resources.filter((resource) => {
+        return resource.client === this.focus.browserSurface.resource.client
+      }).forEach((resource) => {
+        resource.leave(serial, surface)
+      })
+
+      const surfaceResource = this.focus.browserSurface.resource
+      surfaceResource.removeDestroyListener(this._focusDestroyListener)
+      this.focus = null
     }
-
-    const serial = this._nextSerial()
-    const surface = this.focus.browserSurface.resource
-
-    this.resources.filter((resource) => {
-      return resource.client === this.focus.browserSurface.resource.client
-    }).forEach((resource) => {
-      resource.leave(serial, surface)
-    })
-
-    const surfaceResource = this.focus.browserSurface.resource
-    surfaceResource.removeDestroyListener(this._focusDestroyListener)
-    this.focus = null
   }
 
   /**
@@ -220,28 +220,26 @@ export default class BrowserKeyboard {
       }
     }
 
-    if (this.focus === null) {
-      return
+    if (this.focus && this.focus.browserSurface) {
+      const serial = this._nextSerial()
+      const time = event.timeStamp
+      const evdevKeyCode = linuxKeyCode - 8
+      const state = down ? greenfield.GrKeyboard.KeyState.pressed : greenfield.GrKeyboard.KeyState.released
+
+      const modsDepressed = this._browserXkb.modsDepressed
+      const modsLatched = this._browserXkb.modsLatched
+      const modsLocked = this._browserXkb.modsLocked
+      const group = this._browserXkb.group
+
+      this.resources.filter((resource) => {
+        return resource.client === this.focus.browserSurface.resource.client
+      }).forEach((resource) => {
+        resource.key(serial, time, evdevKeyCode, state)
+        if (modsUpdate) {
+          resource.modifiers(serial, modsDepressed, modsLatched, modsLocked, group)
+        }
+      })
     }
-
-    const serial = this._nextSerial()
-    const time = event.timeStamp
-    const evdevKeyCode = linuxKeyCode - 8
-    const state = down ? greenfield.GrKeyboard.KeyState.pressed : greenfield.GrKeyboard.KeyState.released
-
-    const modsDepressed = this._browserXkb.modsDepressed
-    const modsLatched = this._browserXkb.modsLatched
-    const modsLocked = this._browserXkb.modsLocked
-    const group = this._browserXkb.group
-
-    this.resources.filter((resource) => {
-      return resource.client === this.focus.browserSurface.resource.client
-    }).forEach((resource) => {
-      resource.key(serial, time, evdevKeyCode, state)
-      if (modsUpdate) {
-        resource.modifiers(serial, modsDepressed, modsLatched, modsLocked, group)
-      }
-    })
   }
 
   /**

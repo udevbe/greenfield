@@ -32,12 +32,12 @@ export default class DesktopShellEntry {
 
   static fadeOutEntryOnDestroy (view, entry) {
     view.onDestroy().then(() => {
-      if (entry.parentElement) {
-        entry.addEventListener('transitionend', () => {
+      entry.addEventListener('transitionend', () => {
+        if (entry.parentElement) {
           entry.parentElement.removeChild(entry)
-        })
-        entry.classList.add('entry-removed')
-      }
+        }
+      })
+      entry.classList.add('entry-removed')
     })
   }
 

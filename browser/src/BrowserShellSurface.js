@@ -7,12 +7,9 @@ const Resize = greenfield.GrShellSurface.Resize
 
 const SurfaceStates = {
   MAXIMIZED: 'maximized',
-  FULLSCREEN: 'fullscreen'
-}
-
-const SurfaceType = {
-  POPUP: 'maximized',
-  TRANSIENT: 'fullscreen',
+  FULLSCREEN: 'fullscreen',
+  POPUP: 'popup',
+  TRANSIENT: 'transient',
   TOP_LEVEL: 'top_level'
 }
 
@@ -69,10 +66,6 @@ export default class BrowserShellSurface {
      * @type {string}
      */
     this.state = null
-    /**
-     * @type {null}
-     */
-    this.type = null
     /**
      * @type {BrowserSession}
      */
@@ -313,17 +306,20 @@ export default class BrowserShellSurface {
    *
    */
   setToplevel (resource) {
-    if (this.type) {
+    if (this.state === SurfaceStates.POPUP || this.state === SurfaceStates.TRANSIENT) {
       return
     }
-
-    this.type = SurfaceType.TOP_LEVEL
 
     this.grSurfaceResource.implementation.hasKeyboardInput = true
     this.grSurfaceResource.implementation.hasPointerInput = true
     this.grSurfaceResource.implementation.hasTouchInput = true
 
-    this._desktopShellEntry = this._desktopShell.manage(this.grSurfaceResource.implementation)
+    if (!this.state) {
+      // first time state is set, so manage this shell surface.
+      this._desktopShellEntry = this._desktopShell.manage(this.grSurfaceResource.implementation)
+    }
+
+    this.state = SurfaceStates.TOP_LEVEL
   }
 
   /**
@@ -347,11 +343,9 @@ export default class BrowserShellSurface {
    *
    */
   setTransient (resource, parent, x, y, flags) {
-    if (this.type) {
+    if (this.state === SurfaceStates.POPUP || this.state === SurfaceStates.TOP_LEVEL) {
       return
     }
-
-    this.type = SurfaceType.TRANSIENT
 
     const parentPosition = parent.implementation.browserSurfaceChildSelf.position
 
@@ -364,7 +358,11 @@ export default class BrowserShellSurface {
     this.grSurfaceResource.implementation.hasTouchInput = true
     this.grSurfaceResource.implementation.hasKeyboardInput = (flags & greenfield.GrShellSurface.Transient.inactive) === 0
 
-    this._desktopShellEntry = this._desktopShell.manage(browserSurface)
+    if (!this.state) {
+      // first time state is set, so manage this shell surface.
+      this._desktopShellEntry = this._desktopShell.manage(this.grSurfaceResource.implementation)
+    }
+    this.state = SurfaceStates.TRANSIENT
   }
 
   /**
@@ -452,13 +450,13 @@ export default class BrowserShellSurface {
    *
    */
   async setPopup (resource, seat, serial, parent, x, y, flags) {
-    if (this.type) { return }
+    if (this.state) { return }
 
     const browserSeat = seat.implementation
     const browserPointer = browserSeat.browserPointer
     const browserKeyboard = browserSeat.browserKeyboard
     if (browserPointer.buttonSerial === serial || browserKeyboard.keySerial === serial) {
-      this.type = SurfaceType.POPUP
+      this.state = SurfaceStates.POPUP
       const browserSurface = this.grSurfaceResource.implementation
       const browserSurfaceChild = browserSurface.browserSurfaceChildSelf
       browserSurfaceChild.position = Point.create(x, y)
