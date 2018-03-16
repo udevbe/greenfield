@@ -10,7 +10,7 @@ import BrowserRtcDcBuffer from './BrowserRtcDcBuffer'
 export default class BrowserRtcBufferFactory extends westfield.Global {
   /**
    *
-   * @param {wfs.GrBuffer} grBufferResource
+   * @param {GrBuffer} grBufferResource
    * @returns {BrowserRtcDcBuffer}
    */
   static get (grBufferResource) {
