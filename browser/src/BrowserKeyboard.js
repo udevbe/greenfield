@@ -1,5 +1,4 @@
 'use strict'
-/** @module BrowserKeyboard */
 
 import greenfield from './protocol/greenfield-browser-protocol'
 
@@ -74,12 +73,6 @@ export default class BrowserKeyboard {
      * @private
      */
     this._keys = []
-
-    this._focusDestroyListener = () => {
-      const surfaceResource = this.focus.browserSurface.resource
-      surfaceResource.removeDestroyListener(this._focusDestroyListener)
-      this.focus = null
-    }
   }
 
   /**
@@ -165,8 +158,11 @@ export default class BrowserKeyboard {
       this._browserDataDevice.onKeyboardFocusGained(focus)
       this._desktopShell.onKeyboardFocusGained(focus)
 
-      const surfaceResource = this.focus.browserSurface.resource
-      surfaceResource.addDestroyListener(this._focusDestroyListener)
+      focus.onDestroy().then(() => {
+        if (this.focus === focus) {
+          this.focus = null
+        }
+      })
 
       const serial = this._nextSerial()
       const surface = this.focus.browserSurface.resource
@@ -191,8 +187,6 @@ export default class BrowserKeyboard {
         resource.leave(serial, surface)
       })
 
-      const surfaceResource = this.focus.browserSurface.resource
-      surfaceResource.removeDestroyListener(this._focusDestroyListener)
       this.focus = null
     }
   }
