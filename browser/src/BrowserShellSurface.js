@@ -412,7 +412,10 @@ export default class BrowserShellSurface {
    */
   setFullscreen (resource, method, framerate, output) {
     this.state = SurfaceStates.FULLSCREEN
-    // TODO fullscreen windows + optimize renderer for fullscreen
+    const browserSurface = this.grSurfaceResource.implementation
+    // TODO get proper size in surface coordinates instead of assume surface space === global space
+    browserSurface.browserSurfaceChildSelf.position = Point.create(0, 0)
+    this.resource.configure(Resize.none, window.innerWidth, window.innerHeight)
   }
 
   /**
