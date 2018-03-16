@@ -73,23 +73,51 @@ export default class BrowserSurface {
      * @type {GrSurface}
      */
     this.resource = grSurfaceResource
-
+    /**
+     * @type {Renderer}
+     */
     this.renderer = renderer
     /**
      * @type {ViewState}
      */
     this.renderState = null
-
+    /**
+     * @type {GrBuffer}
+     */
     this.pendingGrBuffer = null
+    /**
+     * @type {Function}
+     */
     this.pendingBrowserBufferDestroyListener = () => {
       this.pendingGrBuffer = null
     }
+    /**
+     * @type {GrBuffer}
+     */
     this.grBuffer = null
-
+    /**
+     * @type {Number[]}
+     * @private
+     */
     this._pendingDamageRects = []
+    /**
+     * @type {Number}
+     * @private
+     */
     this._damageRegion = damageRegion
+    /**
+     * @type {Number[]}
+     * @private
+     */
     this._pendingBufferDamageRects = []
+    /**
+     * @type {Number}
+     * @private
+     */
     this._bufferDamageRegion = bufferDamageRegion
+    /**
+     * @type {Number}
+     */
     this.bufferDamage = bufferDamage
     /**
      * @type {number}
