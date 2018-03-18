@@ -26,11 +26,25 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     super()
     this.proxy = grSurfaceProxy
     this.rtcBufferFactory = rtcBufferFactory
-
+    /**
+     * @type {WlBuffer}
+     */
     this.pendingBuffer = null
+    /**
+     * @type {WlBuffer}
+     */
     this.buffer = null
+    /**
+     * @type {number}
+     */
     this.synSerial = 0
+    /**
+     * @type {number}
+     */
     this.ackSerial = 0
+    /**
+     * @type {Encoder}
+     */
     this._encoder = Encoder.create()
 
     // use a single buffer to communicate with the browser. Contents of the buffer will be copied when send.
@@ -62,6 +76,12 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     this.localRtcDcBuffer = null
   }
 
+  /**
+   * @param {WlSurface}resource
+   * @param {WlBuffer}buffer
+   * @param {number}x
+   * @param {number}y
+   */
   attach (resource, buffer, x, y) {
     // TODO listen for buffer destruction & signal buffer proxy & remove local pending buffer
     if (this.pendingBuffer) {
@@ -95,6 +115,12 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     this.proxy.setInputRegion(regionProxy)
   }
 
+  /**
+   * @param buffer
+   * @param {number}synSerial
+   * @return {Promise<{type: number, width: number, height: number, synSerial: number, opaque: Buffer, alpha: Buffer}>}
+   * @private
+   */
   _encodeBuffer (buffer, synSerial) {
     const shm = Shm.get(buffer)
     if (shm === null) {
@@ -110,6 +136,11 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     return this._encoder.encodeBuffer(pixelBuffer, format, bufferWidth, bufferHeight, synSerial)
   }
 
+  /**
+   * @param {{type: number, width: number, height: number, synSerial: number, opaque: Buffer, alpha: Buffer}}frame
+   * @return {Buffer}
+   * @private
+   */
   _frameToBuffer (frame) {
     const header = Buffer.allocUnsafe(13)
     const frameBuffer = Buffer.concat([header, frame.opaque, frame.alpha], header.length + frame.opaque.length + frame.alpha.length)
@@ -123,6 +154,12 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     return frameBuffer
   }
 
+  /**
+   * @param {Buffer}buffer
+   * @param {number}serial
+   * @return {Buffer[]}
+   * @private
+   */
   _toBufferChunks (buffer, serial) {
     // certain webrtc implementations don't like it when data is > 16kb, so have have to split our buffer in chunks
     // TODO we could also set our chunk size to MTU (~1280 bytes) so they fit into a single UDP packet, on the receiving
@@ -150,6 +187,10 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     return chunks
   }
 
+  /**
+   * @param {{type: number, width: number, height: number, synSerial: number, opaque: Buffer, alpha: Buffer}}frame
+   * @return {Promise<void>}
+   */
   async sendFrame (frame) {
     if (this.localRtcDcBuffer === null) {
       return
@@ -175,6 +216,10 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     })
   }
 
+  /**
+   * @param {WlSurface}resource
+   * @return {Promise<void>}
+   */
   async commit (resource) {
     // FIXME because the commit method is async, the surface can be destroyed while it is busy. Leading to certain
     // resources like frame callback to be destroyed but still called after this commit finishes.
@@ -201,6 +246,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
       this.proxy.commit()
       const frame = await this._encodeBuffer(this.buffer, synSerial)
+
       await this.sendFrame(frame)
     }
 

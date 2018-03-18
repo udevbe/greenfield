@@ -22,6 +22,11 @@ export default class Texture {
     this.size = null
   }
 
+  /**
+   * @param {Buffer}textureData
+   * @param {Size}size
+   * @param {number}stride
+   */
   fill (textureData, size, stride) {
     const gl = this.gl
 
