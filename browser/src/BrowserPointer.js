@@ -493,6 +493,7 @@ export default class BrowserPointer {
         this.setFocus(focus)
       } else {
         this.unsetFocus()
+        this.setDefaultCursor()
       }
     })
 
