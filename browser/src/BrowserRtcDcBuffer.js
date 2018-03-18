@@ -38,14 +38,21 @@ export default class BrowserRtcDcBuffer {
      * @private
      */
     this._decoder = null
+    /**
+     * @type {number[]}
+     * @private
+     */
     this._decodingSerialsQueue = []
     /**
      * @type {BrowserH264Decoder}
      * @private
      */
     this._alphaDecoder = null
+    /**
+     * @type {number[]}
+     * @private
+     */
     this._decodingAlphaSerialsQueue = []
-
     /**
      * @type {RtcDcBuffer}
      */
@@ -55,6 +62,10 @@ export default class BrowserRtcDcBuffer {
      * @type {number}
      */
     this.syncSerial = 0
+    /**
+     * @type {number}
+     * @private
+     */
     this._lastCompleteSerial = 0
     /**
      * @type {Size}
