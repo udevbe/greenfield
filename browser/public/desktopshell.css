@@ -69,7 +69,7 @@ body {
     min-width: 3vh;
     width: 3vh;
     background: url(menu.svg) no-repeat center;
-    background-size: 0.5vh 2.5vh;
+    background-size: 0.4vh 2.5vh;
     transition: all 200ms ease-in-out;
 
     position: relative;
@@ -127,7 +127,7 @@ body {
     height: 0;
     border-left: 1vh solid transparent;
     border-right: 1vh solid transparent;
-    
+
     right: 0.6vh;
     top: 2.2vh;
 
@@ -156,7 +156,6 @@ body {
 .search-input {
     background: transparent;
     width: 100%;
-    border: 0 black;
     outline-style: none;
     box-shadow: none;
     border-color: transparent;

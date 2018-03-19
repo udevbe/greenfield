@@ -27,10 +27,11 @@ export default class DesktopShellMenu {
     const divElementMenuContainer = document.createElement('div')
     divElementMenuContainer.classList.add('menu-container')
     divElementMenuContainer.style.visibility = 'hidden'
-    divElementMenuContainer.style.zIndex = '-65535'
+    divElementMenuContainer.style.zIndex = '65534'
     window.document.body.appendChild(divElementMenuContainer)
 
     const divElementMenuTriangleUp = document.createElement('div')
+    divElementMenuTriangleUp.style.zIndex = '65535'
     divElementMenuTriangleUp.classList.add('menu-triangle-up')
     divElementMenuContainer.appendChild(divElementMenuTriangleUp)
 
@@ -118,7 +119,6 @@ export default class DesktopShellMenu {
     })
 
     this.divElementMenuContainer.style.visibility = 'visible'
-    this.divElementMenuContainer.style.zIndex = '65535'
     this.divElementMenu.classList.add('menu-active')
     this.divElementMenuButton.classList.add('menu-button-active')
   }
@@ -129,7 +129,7 @@ export default class DesktopShellMenu {
     this.searchBar.inputElementSearchInput.value = ''
 
     this.divElementMenuContainer.style.visibility = 'hidden'
-    this.divElementMenuContainer.style.zIndex = '-65535'
+    // this.divElementMenuContainer.style.zIndex = '-65535'
     this.divElementMenu.classList.remove('menu-active')
     this.divElementMenuButton.classList.remove('menu-button-active')
   }
