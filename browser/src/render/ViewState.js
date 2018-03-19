@@ -1,7 +1,6 @@
 'use strict'
 
 import Texture from './Texture'
-import Size from '../Size'
 
 export default class ViewState {
   /**
