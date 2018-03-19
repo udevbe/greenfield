@@ -3,6 +3,8 @@
 export const vertexQuad = {
   type: 'x-shader/x-vertex',
   source: `
+  precision mediump float;
+
   uniform mat4 u_projection;
   attribute vec2 a_position;
   attribute vec2 a_texCoord;
@@ -14,22 +16,11 @@ export const vertexQuad = {
 `
 }
 
-export const fragmentRGBA = {
-  type: 'x-shader/x-fragment',
-  source: `
-  precision mediump float;
-  uniform sampler2D u_texture0;
-  varying vec2 v_texCoord;
-  void main(){
-      gl_FragColor = texture2D(u_texture0, v_texCoord);
-  }
-`
-}
-
 export const fragmentYUVA = {
   type: 'x-shader/x-fragment',
   source: `
-  precision mediump float;
+  precision lowp float;
+  
   varying vec2 v_texCoord;
   
   uniform sampler2D yTexture;
@@ -56,7 +47,8 @@ export const fragmentYUVA = {
 export const fragmentYUV = {
   type: 'x-shader/x-fragment',
   source: `
-  precision mediump float;
+  precision lowp float;
+  
   varying vec2 v_texCoord;
   
   uniform sampler2D yTexture;
