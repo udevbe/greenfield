@@ -1,15 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="application-name" content="greenfield">
+    <meta name="description" content="HTML5 Wayland compositor">
+
+    <title>Greenfield</title>
+
+    <link rel="license" href="license.txt">
+
+    <link rel="preload" href="qwerty.xkb" as="fetch">
+    <link rel="preload" href="TinyH264.wasm" as="fetch">
+    <link rel="preload" href="libpixman-1.wasm" as="fetch">
+    <link rel="preload" href="libxkbcommon.wasm" as="fetch">
+
+    <link rel="preload" href="TinyH264.js" as="script">
+    <link rel="preload" href="TinyH264Decoder.js" as="script">
+    <link rel="preload" href="TinyH264Worker.js" as="worker">
+    <link rel="preload" href="greenfield.css" as="style">
+    <link rel="preload" href="desktopshell.css" as="style">
+    <link rel="preload" href="browser.bundle.js" as="script">
+
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+
     <link rel="stylesheet" type="text/css" href="greenfield.css">
     <link rel="stylesheet" type="text/css" href="desktopshell.css">
 
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <meta name="theme-color" content="#ffffff">
-
-    <meta charset="UTF-8">
-    <title>Greenfield</title>
     <script src="browser.bundle.js"></script>
 </head>
 <body oncontextmenu="return false;">
