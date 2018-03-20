@@ -56,7 +56,11 @@ export default class BrowserShell extends westfield.Global {
    *
    */
   getShellSurface (resource, id, surface) {
+    if (surface.implementation.role) {
+      // TODO protocol error
+    }
+
     const grShellSurfaceResource = new greenfield.GrShellSurface(resource.client, id, resource.version)
-    grShellSurfaceResource.implementation = BrowserShellSurface.create(grShellSurfaceResource, surface, this.browserSession, this.desktopShell)
+    BrowserShellSurface.create(grShellSurfaceResource, surface, this.browserSession, this.desktopShell)
   }
 }
