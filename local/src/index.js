@@ -44,6 +44,7 @@ function main () {
     console.error(error)
   })
 
+  express.static.mime.define({'application/wasm': ['wasm']})
   const app = express()
   app.use(express.static(path.join(__dirname, '../../browser/public')))
 
