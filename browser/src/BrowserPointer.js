@@ -142,8 +142,8 @@ export default class BrowserPointer {
    * @param {BrowserSurface}browserSurface
    */
   onCommit (browserSurface) {
-    this.hotspotX -= browserSurface.dx
-    this.hotspotY -= browserSurface.dy
+    this.hotspotX -= browserSurface.state.dx
+    this.hotspotY -= browserSurface.state.dy
 
     const hotspotX = this.hotspotX
     const hotspotY = this.hotspotY
@@ -153,6 +153,7 @@ export default class BrowserPointer {
         this._uploadCursor(this._view, hotspotX, hotspotY)
       }
     })
+    return true
   }
 
   /**
@@ -439,11 +440,11 @@ export default class BrowserPointer {
   _isPointerWithinInputRegion (canvas) {
     if (canvas.view) {
       const browserSurfaceView = canvas.view
-      if (browserSurfaceView.browserSurface.inputPixmanRegion) {
+      if (browserSurfaceView.browserSurface.state.inputPixmanRegion) {
         // FIXME clip surface point to surface boundaries, this is needed to properly handle input regions that
         // exceed the surface they are set on
         const surfacePoint = this._calculateSurfacePoint(browserSurfaceView)
-        return BrowserRegion.contains(browserSurfaceView.browserSurface.inputPixmanRegion, surfacePoint)
+        return BrowserRegion.contains(browserSurfaceView.browserSurface.state.inputPixmanRegion, surfacePoint)
       } else {
         return true
       }

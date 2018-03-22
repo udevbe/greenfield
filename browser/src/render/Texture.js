@@ -4,6 +4,11 @@
  * Represents a WebGL texture object.
  */
 export default class Texture {
+  /**
+   * @param {WebGLRenderingContext}gl
+   * @param {number}format
+   * @return {Texture}
+   */
   static create (gl, format) {
     const texture = gl.createTexture()
     gl.bindTexture(gl.TEXTURE_2D, texture)
@@ -15,15 +20,34 @@ export default class Texture {
     return new Texture(gl, format, texture)
   }
 
+  /**
+   * Use Texture.create(..) instead.
+   * @param {WebGLRenderingContext}gl
+   * @param {number}format
+   * @param {WebGLTexture}texture
+   * @private
+   */
   constructor (gl, format, texture) {
+    /**
+     * @type {WebGLRenderingContext}
+     */
     this.gl = gl
+    /**
+     * @type {WebGLTexture}
+     */
     this.texture = texture
+    /**
+     * @type {number}
+     */
     this.format = format
+    /**
+     * @type {Size}
+     */
     this.size = null
   }
 
   /**
-   * @param {Buffer}textureData
+   * @param {Uint8Array}textureData
    * @param {Size}size
    * @param {number}stride
    */

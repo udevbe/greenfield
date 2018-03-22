@@ -1,15 +1,138 @@
 'use strict'
 
+import Point from './math/Point'
+
 export default class BrowserSubsurface {
-  static create (grSurfaceResource, grSubsurfaceResource) {
-    const browserSubsurface = new BrowserSubsurface(grSurfaceResource, grSubsurfaceResource)
+  /**
+   * @param {GrSurface}parentGrSurfaceResource
+   * @param {GrSurface}grSurfaceResource
+   * @param {GrSubsurface}grSubsurfaceResource
+   * @return {BrowserSubsurface}
+   */
+  static create (parentGrSurfaceResource, grSurfaceResource, grSubsurfaceResource) {
+    const browserSubsurface = new BrowserSubsurface(parentGrSurfaceResource, grSurfaceResource, grSubsurfaceResource)
     grSubsurfaceResource.implementation = browserSubsurface
+
+    grSurfaceResource.onDestroy().then(() => {
+      browserSubsurface._inert = true
+    })
+
+    parentGrSurfaceResource.onDestroy().then(() => {
+      // TODO unmap
+    })
+
+    // TODO sync viewable/hidden state with parent
+
+    grSurfaceResource.implementation.role = browserSubsurface
+
     return browserSubsurface
   }
 
-  constructor (grSurfaceResource, grSubsurfaceResource) {
+  /**
+   * Use BrowserSubsurface.create(..) instead.
+   * @param {GrSurface}parentGrSurfaceResource
+   * @param {GrSurface}grSurfaceResource
+   * @param {GrSubsurface}grSubsurfaceResource
+   * @private
+   */
+  constructor (parentGrSurfaceResource, grSurfaceResource, grSubsurfaceResource) {
+    /**
+     * @type {GrSurface}
+     */
+    this.parentGrSurfaceResource = parentGrSurfaceResource
+    /**
+     * @type {GrSurface}
+     */
     this.grSurfaceResource = grSurfaceResource
+    /**
+     * @type {GrSubsurface}
+     */
     this.resource = grSubsurfaceResource
+    /**
+     * @type {boolean}
+     * @private
+     */
+    this._sync = true
+    /**
+     * @type {Point}
+     * @private
+     */
+    this._pendingPosition = Point.create(0, 0)
+    /**
+     * @type {{grBuffer: null, damagePixmanRegion: Number, bufferDamagePixmanRegion: Number, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number}}
+     */
+    this._activeState = Object.assign({}, grSurfaceResource.implementation.state)
+    /**
+     * @type {{grBuffer: null, damagePixmanRegion: Number, bufferDamagePixmanRegion: Number, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number}}
+     */
+    this._cachedState = null
+    /**
+     * @type {boolean}
+     * @private
+     */
+    this._inert = false
+  }
+
+  onParentCommit () {
+    if (this._inert) {
+      return
+    }
+
+    const browserSurface = this.grSurfaceResource.implementation
+    // sibling stacking order is committed by the parent itself so no need to do it here.
+    this._applyPosition(browserSurface)
+    if (this._effectiveSync && this._cachedState) {
+      this._applyCachedState(browserSurface)
+      browserSurface.render()
+    } else {
+      browserSurface.browserSurfaceViews.forEach((view) => {
+        view.applyTransformations()
+      })
+    }
+  }
+
+  /**
+   * @param {BrowserSurface}browserSurface
+   * @return {boolean}
+   */
+  onCommit (browserSurface) {
+    if (this._inert) {
+      return false
+    }
+
+    let doRender = true
+    if (this._effectiveSync) {
+      doRender = false
+      this._cachedState = Object.assign({}, browserSurface.state)
+      browserSurface.state = Object.assign({}, this._activeState)
+    } else if (this._cachedState) {
+      browserSurface.flushState(this._cachedState)
+      this._applyCachedState(browserSurface)
+    }
+    return doRender
+  }
+
+  /**
+   * @param {BrowserSurface}browserSurface
+   * @private
+   */
+  _applyCachedState (browserSurface) {
+    browserSurface.state = this._cachedState
+    this._activeState = Object.assign({}, browserSurface.state)
+    this._cachedState = null
+  }
+
+  /**
+   * @param {BrowserSurface}browserSurface
+   * @private
+   */
+  _applyPosition (browserSurface) {
+    if (this._pendingPosition) {
+      const browserSurface = this.grSurfaceResource.implementation
+      const browserSurfaceChildSelf = browserSurface.browserSurfaceChildSelf
+      browserSurfaceChildSelf.position = this._pendingPosition
+      this._pendingPosition = null
+    }
   }
 
   /**
@@ -58,7 +181,11 @@ export default class BrowserSubsurface {
    *
    */
   setPosition (resource, x, y) {
-    // TODO
+    if (this._inert) {
+      return
+    }
+
+    this._pendingPosition = Point.create(x, y)
   }
 
   /**
@@ -81,13 +208,25 @@ export default class BrowserSubsurface {
    *
    *
    * @param {GrSubsurface} resource
-   * @param {*} sibling the reference surface
+   * @param {GrSurface} sibling the reference surface
    *
    * @since 1
    *
    */
   placeAbove (resource, sibling) {
-    // TODO
+    if (this._inert) {
+      return
+    }
+
+    const parentBrowserSurface = this.parentGrSurfaceResource.implementation
+    const browserSurface = this.grSurfaceResource.implementation
+
+    const currentIdx = parentBrowserSurface.pendingBrowserSubsurfaceChildren.indexOf(browserSurface.browserSurfaceChildSelf)
+    parentBrowserSurface.pendingBrowserSubsurfaceChildren.splice(currentIdx, 1)
+
+    const siblingIdx = parentBrowserSurface.pendingBrowserSubsurfaceChildren.indexOf(sibling.implementation.browserSurface.browserSurfaceChildSelf)
+    const newIdx = siblingIdx + 1
+    parentBrowserSurface.pendingBrowserSubsurfaceChildren.splice(newIdx, 0, browserSurface.browserSurfaceChildSelf)
   }
 
   /**
@@ -97,13 +236,38 @@ export default class BrowserSubsurface {
    *
    *
    * @param {GrSubsurface} resource
-   * @param {*} sibling the reference surface
+   * @param {GrSurface} sibling the reference surface
    *
    * @since 1
    *
    */
   placeBelow (resource, sibling) {
-    // TODO
+    if (this._inert) {
+      return
+    }
+
+    const parentBrowserSurface = this.parentGrSurfaceResource.implementation
+    const browserSurface = this.grSurfaceResource.implementation
+
+    const currentIdx = parentBrowserSurface.pendingBrowserSubsurfaceChildren.indexOf(browserSurface.browserSurfaceChildSelf)
+    parentBrowserSurface.pendingBrowserSubsurfaceChildren.splice(currentIdx, 1)
+
+    const newIdx = parentBrowserSurface.pendingBrowserSubsurfaceChildren.indexOf(sibling.implementation.browserSurface.browserSurfaceChildSelf)
+    parentBrowserSurface.pendingBrowserSubsurfaceChildren.splice(newIdx, 0, browserSurface.browserSurfaceChildSelf)
+  }
+
+  get _effectiveSync () {
+    let effectiveSync
+
+    const parentRole = this.parentGrSurfaceResource.implementation.role
+    if (!this._sync && parentRole && parentRole instanceof BrowserSubsurface) {
+      const parentSync = parentRole._sync
+      effectiveSync = parentSync ? true : parentRole._effectiveSync
+    } else {
+      effectiveSync = this._sync
+    }
+
+    return effectiveSync
   }
 
   /**
@@ -129,7 +293,11 @@ export default class BrowserSubsurface {
    *
    */
   setSync (resource) {
-    // TODO
+    if (this._inert) {
+      return
+    }
+
+    this._sync = true
   }
 
   /**
@@ -161,6 +329,14 @@ export default class BrowserSubsurface {
    *
    */
   setDesync (resource) {
-    // TODO
+    if (this._inert) {
+      return
+    }
+
+    this._sync = false
+    if (!this._effectiveSync && this._cachedState) {
+      const browserSurface = this.grSurfaceResource.implementation
+      this._applyCachedState(browserSurface)
+    }
   }
 }

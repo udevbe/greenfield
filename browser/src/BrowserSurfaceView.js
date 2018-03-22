@@ -20,6 +20,10 @@ export default class BrowserSurfaceView {
     return browserSurfaceView
   }
 
+  /**
+   * @return {number}
+   * @private
+   */
   static _nextTopZIndex () {
     this._topZIndex++
     return this._topZIndex
@@ -140,12 +144,11 @@ export default class BrowserSurfaceView {
     this._applyTransformations(this.bufferedCanvas.frontContext)
   }
 
+  /**
+   * @param {CanvasRenderingContext2D}canvasContext
+   * @private
+   */
   _applyTransformations (canvasContext) {
-    // We could be doing a transform on the back-buffer and wait for animation frame before doing as swap.
-    // However this has some performance implications as we'd also have to keep both buffer contents in sync.
-    // As for now we just do it immediately on the front-buffer. If it has noticeable visual artifact we might
-    // consider using the back-buffer method.
-
     // inherit parent transformation
     let parentTransformation = Mat4.IDENTITY()
     if (this._parent) {
@@ -273,6 +276,9 @@ export default class BrowserSurfaceView {
     this._destroyResolve()
   }
 
+  /**
+   * @return {Promise}
+   */
   onDestroy () {
     return this._destroyPromise
   }

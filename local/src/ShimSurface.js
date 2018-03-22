@@ -228,25 +228,33 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     const callbackProxy = this._callbackProxy
 
     if (this.buffer) {
-      this.buffer.release()
       this.buffer.removeDestroyListener(this.bufferDestroyListener)
     }
-
     if (this.pendingBuffer) {
       this.pendingBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
     }
+
     this.buffer = this.pendingBuffer
     this.pendingBuffer = null
-
-    if (this.buffer && this.localRtcDcBuffer) {
+    if (this.buffer) {
       this.buffer.addDestroyListener(this.bufferDestroyListener)
+    }
 
-      this.synSerial++
-      const synSerial = this.synSerial
+    this.synSerial++
+    const synSerial = this.synSerial
+    if (this.buffer) {
       this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
-      this.proxy.commit()
-      const frame = await this._encodeBuffer(this.buffer, synSerial)
+    }
+    this.proxy.commit()
 
+    if (this.buffer) {
+      const buffer = this.buffer
+      const frame = await this._encodeBuffer(buffer, synSerial)
+      // make sure buffer was not destroyed
+      if (buffer.ptr) {
+        buffer.release()
+        resource.client.display.flushClients()
+      }
       await this.sendFrame(frame)
     }
 

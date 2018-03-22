@@ -38,7 +38,15 @@ export default class BrowserSubcompositor extends westfield.Global {
    *
    */
   getSubsurface (resource, id, surface, parent) {
+    if (surface.implementation.role) {
+      // TODO protocol error
+    }
+
     const grSubsurface = new greenfield.GrSubsurface(resource.client, id, resource.version)
-    BrowserSubsurface.create(surface, grSubsurface)
+    BrowserSubsurface.create(parent, surface, grSubsurface)
+
+    const parentBrowserSurface = parent.implementation
+    parentBrowserSurface.addSubsurface(surface.implementation.browserSurfaceChildSelf)
+
   }
 }

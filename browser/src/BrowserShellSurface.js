@@ -22,17 +22,15 @@ export default class BrowserShellSurface {
    * @return {BrowserShellSurface}
    */
   static create (grShellSurfaceResource, grSurfaceResource, browserSession, desktopShell) {
-    const browserSurface = grSurfaceResource.implementation
-
     const browserShellSurface = new BrowserShellSurface(grShellSurfaceResource, grSurfaceResource, browserSession, desktopShell)
-    browserShellSurface.implementation = browserShellSurface
+    grShellSurfaceResource.implementation = browserShellSurface
 
     // destroy the shell-surface if the surface is destroyed.
     grSurfaceResource.onDestroy().then(() => {
       grShellSurfaceResource.destroy()
     })
 
-    browserSurface.role = browserShellSurface
+    grSurfaceResource.implementation.role = browserShellSurface
     browserShellSurface._doPing(grShellSurfaceResource)
 
     return browserShellSurface
@@ -89,10 +87,12 @@ export default class BrowserShellSurface {
 
   /**
    * @param {BrowserSurface}browserSurface
+   * @return {boolean}
    */
   onCommit (browserSurface) {
     const oldPosition = browserSurface.browserSurfaceChildSelf.position
-    browserSurface.browserSurfaceChildSelf.position = Point.create(oldPosition.x + browserSurface.dx, oldPosition.y + browserSurface.dy)
+    browserSurface.browserSurfaceChildSelf.position = Point.create(oldPosition.x + browserSurface.state.dx, oldPosition.y + browserSurface.state.dy)
+    return true
   }
 
   /**
@@ -109,9 +109,7 @@ export default class BrowserShellSurface {
    */
   pong (resource, serial) {
     if (this._pingTimeoutActive) {
-      this.grSurfaceResource.implementation.browserSurfaceViews.forEach((view) => {
-        view.bufferedCanvas.removeCssClass('fadeToUnresponsive')
-      })
+      this._removeClassRecursively(this.grSurfaceResource.implementation, 'fadeToUnresponsive')
       this._pingTimeoutActive = false
     }
     window.clearTimeout(this._timeoutTimer)
@@ -128,9 +126,7 @@ export default class BrowserShellSurface {
       if (!this._pingTimeoutActive) {
         // ping timed out, make view gray
         this._pingTimeoutActive = true
-        this.grSurfaceResource.implementation.browserSurfaceViews.forEach((view) => {
-          view.bufferedCanvas.addCssClass('fadeToUnresponsive')
-        })
+        this._addClassRecursively(this.grSurfaceResource.implementation, 'fadeToUnresponsive')
       }
     }, 3000)
     this.grSurfaceResource.onDestroy().then(() => {
@@ -138,6 +134,38 @@ export default class BrowserShellSurface {
     })
     resource.ping(0)
     this.browserSession.flush()
+  }
+
+  /**
+   * @param {BrowserSurface}browserSurface
+   * @param {string}cssClass
+   * @private
+   */
+  _removeClassRecursively (browserSurface, cssClass) {
+    browserSurface.browserSurfaceViews.forEach((view) => {
+      view.bufferedCanvas.removeCssClass(cssClass)
+    })
+    browserSurface.browserSurfaceChildren.forEach((browserSurfaceChild) => {
+      if (browserSurfaceChild.browserSurface !== browserSurface) {
+        this._removeClassRecursively(browserSurfaceChild.browserSurface, cssClass)
+      }
+    })
+  }
+
+  /**
+   * @param {BrowserSurface}browserSurface
+   * @param {string}cssClass
+   * @private
+   */
+  _addClassRecursively (browserSurface, cssClass) {
+    browserSurface.browserSurfaceViews.forEach((view) => {
+      view.bufferedCanvas.addCssClass(cssClass)
+    })
+    browserSurface.browserSurfaceChildren.forEach((browserSurfaceChild) => {
+      if (browserSurfaceChild.browserSurface !== browserSurface) {
+        this._addClassRecursively(browserSurfaceChild.browserSurface, cssClass)
+      }
+    })
   }
 
   /**

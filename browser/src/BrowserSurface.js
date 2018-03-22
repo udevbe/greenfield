@@ -81,6 +81,53 @@ export default class BrowserSurface {
      * @type {ViewState}
      */
     this.renderState = null
+
+    /**
+     * @type {{grBuffer: null, damagePixmanRegion: Number, bufferDamagePixmanRegion: Number, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number}}
+     */
+    this.state = {
+      /**
+       * @type {GrBuffer}
+       */
+      grBuffer: null,
+      /**
+       * @type {number}
+       */
+      damagePixmanRegion: damageRegion,
+      /**
+       * @type {number}
+       */
+      bufferDamagePixmanRegion: bufferDamageRegion,
+      /**
+       * @type {number}
+       */
+      bufferDamage: bufferDamage,
+      /**
+       * @type{number}
+       */
+      opaquePixmanRegion: 0,
+      /**
+       * @type{number}
+       */
+      inputPixmanRegion: 0,
+      /**
+       * @type{number}
+       */
+      dx: 0,
+      /**
+       * @type{number}
+       */
+      dy: 0,
+      /**
+       * @type{number}
+       */
+      bufferTransform: 0,
+      /**
+       * @type{number}
+       */
+      bufferScale: 1
+    }
+
     /**
      * @type {GrBuffer}
      */
@@ -92,33 +139,15 @@ export default class BrowserSurface {
       this.pendingGrBuffer = null
     }
     /**
-     * @type {GrBuffer}
-     */
-    this.grBuffer = null
-    /**
-     * @type {Number[]}
+     * @type {Rect[]}
      * @private
      */
     this._pendingDamageRects = []
-    /**
-     * @type {Number}
-     * @private
-     */
-    this._damageRegion = damageRegion
     /**
      * @type {Number[]}
      * @private
      */
     this._pendingBufferDamageRects = []
-    /**
-     * @type {Number}
-     * @private
-     */
-    this._bufferDamageRegion = bufferDamageRegion
-    /**
-     * @type {Number}
-     */
-    this.bufferDamage = bufferDamage
     /**
      * @type {number}
      * @private
@@ -126,17 +155,9 @@ export default class BrowserSurface {
     this._pendingOpaqueRegion = null
     /**
      * @type {number}
-     */
-    this.opaquePixmanRegion = null
-    /**
-     * @type {number}
      * @private
      */
     this._pendingInputRegion = null
-    /**
-     * @type {number}
-     */
-    this.inputPixmanRegion = null
     /**
      * @type {number}
      * @private
@@ -144,17 +165,9 @@ export default class BrowserSurface {
     this._pendingDx = 0
     /**
      * @type {number}
-     */
-    this.dx = 0
-    /**
-     * @type {number}
      * @private
      */
     this._pendingDy = 0
-    /**
-     * @type {number}
-     */
-    this.dy = 0
     /**
      * @type {number}
      * @private
@@ -162,17 +175,9 @@ export default class BrowserSurface {
     this._pendingBufferTransform = 0
     /**
      * @type {number}
-     */
-    this.bufferTransform = 0
-    /**
-     * @type {number}
      * @private
      */
     this._pendingBufferScale = 1
-    /**
-     * @type {number}
-     */
-    this.bufferScale = 1
     /**
      * @type {Size}
      */
@@ -206,7 +211,7 @@ export default class BrowserSurface {
      */
     this.hasTouchInput = false
     /**
-     * @type {?}
+     * @type {{onCommit: Function}}
      */
     this.role = null
     /**
@@ -218,7 +223,20 @@ export default class BrowserSurface {
      * below it's parent, as the order of this list determines the zOrder between parent & children.
      * @type {BrowserSurfaceChild[]}
      */
-    this.browserSurfaceChildren = [this.browserSurfaceChildSelf]
+    this._browserSurfaceChildren = []
+    /**
+     * @type {BrowserSurfaceChild[]}
+     * @private
+     */
+    this._browserSubsurfaceChildren = [this.browserSurfaceChildSelf]
+    /**
+     * @type {BrowserSurfaceChild[]}
+     */
+    this.pendingBrowserSubsurfaceChildren = [this.browserSurfaceChildSelf]
+  }
+
+  get browserSurfaceChildren () {
+    return this._browserSubsurfaceChildren.concat(this._browserSurfaceChildren)
   }
 
   updateChildViewsZIndexes () {
@@ -295,11 +313,38 @@ export default class BrowserSurface {
     childView.parent = browserSurfaceView
   }
 
+  addSubsurface (browserSurfaceChild) {
+    this._addChild(browserSurfaceChild, this._browserSubsurfaceChildren)
+    this.pendingBrowserSubsurfaceChildren.push(browserSurfaceChild)
+  }
+
+  removeSubsurface (browserSurfaceChild) {
+    this._removeChild(browserSurfaceChild, this._browserSubsurfaceChildren)
+    this._removeChild(browserSurfaceChild, this.pendingBrowserSubsurfaceChildren)
+  }
+
   /**
    * @param {BrowserSurfaceChild}browserSurfaceChild
    */
   addChild (browserSurfaceChild) {
-    this.browserSurfaceChildren.push(browserSurfaceChild)
+    this._addChild(browserSurfaceChild, this._browserSurfaceChildren)
+  }
+
+  /**
+   * @param {BrowserSurfaceChild}browserSurfaceChild
+   */
+  removeChild (browserSurfaceChild) {
+    this._removeChild(browserSurfaceChild, this._browserSubsurfaceChildren)
+  }
+
+  /**
+   *
+   * @param {BrowserSurfaceChild}browserSurfaceChild
+   * @param {BrowserSurfaceChild[]}siblings
+   * @private
+   */
+  _addChild (browserSurfaceChild, siblings) {
+    siblings.push(browserSurfaceChild)
 
     this.browserSurfaceViews.forEach((browserSurfaceView) => {
       this._ensureChildView(browserSurfaceChild, browserSurfaceView)
@@ -312,9 +357,11 @@ export default class BrowserSurface {
 
   /**
    * @param {BrowserSurfaceChild}browserSurfaceChild
+   * @param {BrowserSurfaceChild[]}siblings
+   * @private
    */
-  removeChild (browserSurfaceChild) {
-    const index = this.browserSurfaceChildren.indexOf(browserSurfaceChild)
+  _removeChild (browserSurfaceChild, siblings) {
+    const index = siblings.indexOf(browserSurfaceChild)
     if (index > -1) {
       this.browserSurfaceChildren.splice(index, 1)
       this.updateChildViewsZIndexes()
@@ -604,63 +651,86 @@ export default class BrowserSurface {
       this.pendingGrBuffer.removeDestroyListener(this.pendingBrowserBufferDestroyListener)
     }
 
-    this.grBuffer = this.pendingGrBuffer
-    this.pendingGrBuffer = null
-    this.dx = this._pendingDx
-    this.dy = this._pendingDy
+    this.flushState(this.state)
 
-    // FIXME properly handle null buffer
+    this._browserSubsurfaceChildren = this.pendingBrowserSubsurfaceChildren.slice()
+    this.updateChildViewsZIndexes()
+
+    let doRender = true
+    if (this.role && typeof this.role.onCommit === 'function') {
+      doRender = this.role.onCommit(this)
+    }
+    this._browserSubsurfaceChildren.forEach((browserSurfaceChild) => {
+      if (browserSurfaceChild !== this.browserSurfaceChildSelf) {
+        browserSurfaceChild.browserSurface.role.onParentCommit(this)
+      }
+    })
+
+    this.pendingGrBuffer = null
+    this._pendingDamageRects = []
+    this._pendingBufferDamageRects = []
+
+    if (doRender) {
+      await this.render()
+    }
+    this.browserSession.flush()
+  }
+
+  /**
+   * @param {{grBuffer: null, damagePixmanRegion: Number, bufferDamagePixmanRegion: Number, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number}}targetState
+   */
+  flushState (targetState) {
+    targetState.grBuffer = this.pendingGrBuffer
+    targetState.dx = this._pendingDx
+    targetState.dy = this._pendingDy
 
     // input region
     if (this._pendingInputRegion) {
-      if (!this.inputPixmanRegion) {
-        this.inputPixmanRegion = BrowserRegion.createPixmanRegion()
+      if (!targetState.inputPixmanRegion) {
+        targetState.inputPixmanRegion = BrowserRegion.createPixmanRegion()
       }
-      this._pendingInputRegion.implementation.copyTo(this.inputPixmanRegion)
+      this._pendingInputRegion.implementation.copyTo(targetState.inputPixmanRegion)
       this._pendingInputRegion = null
-    } else if (this.inputPixmanRegion) {
-      BrowserRegion.destroyPixmanRegion(this.inputPixmanRegion)
-      this.inputPixmanRegion = null
+    } else if (targetState.inputPixmanRegion) {
+      BrowserRegion.destroyPixmanRegion(targetState.inputPixmanRegion)
+      targetState.inputPixmanRegion = 0
     }
 
     // opaque region
     if (this._pendingOpaqueRegion) {
-      if (!this.opaquePixmanRegion) {
-        this.opaquePixmanRegion = BrowserRegion.createPixmanRegion()
+      if (!targetState.opaquePixmanRegion) {
+        targetState.opaquePixmanRegion = BrowserRegion.createPixmanRegion()
       }
-      this._pendingOpaqueRegion.implementation.copyTo(this.opaquePixmanRegion)
-    } else if (this.opaquePixmanRegion) {
-      BrowserRegion.destroyPixmanRegion(this.opaquePixmanRegion)
-      this.opaquePixmanRegion = null
+      this._pendingOpaqueRegion.implementation.copyTo(targetState.opaquePixmanRegion)
+    } else if (targetState.opaquePixmanRegion) {
+      BrowserRegion.destroyPixmanRegion(targetState.opaquePixmanRegion)
+      targetState.opaquePixmanRegion = 0
     }
 
-    this.bufferTransform = this._pendingBufferTransform
-    this.bufferScale = this._pendingBufferScale
+    targetState.bufferTransform = this._pendingBufferTransform
+    targetState.bufferScale = this._pendingBufferScale
 
-    const bufferScaleTransform = Mat4.scalar(this.bufferScale)
-    const bufferTransform = transformations[this.bufferTransform]
+    const bufferScaleTransform = Mat4.scalar(targetState.bufferScale)
+    const bufferTransform = transformations[targetState.bufferTransform]
 
-    pixman._pixman_region32_clear(this._damageRegion)
+    pixman._pixman_region32_clear(targetState.damagePixmanRegion)
     this._pendingDamageRects.forEach(rect => {
       const scaledRect = bufferScaleTransform.timesRect(rect)
       const bufferDamage = bufferTransform.timesRect(scaledRect)
-      pixman._pixman_region32_union_rect(this._damageRegion, this._damageRegion, bufferDamage.x, bufferDamage.y, bufferDamage.width, bufferDamage.height)
+      pixman._pixman_region32_union_rect(targetState.damagePixmanRegion, targetState.damagePixmanRegion, bufferDamage.x, bufferDamage.y, bufferDamage.width, bufferDamage.height)
     })
-    this._pendingDamageRects = []
 
-    pixman._pixman_region32_clear(this._bufferDamageRegion)
+    pixman._pixman_region32_clear(targetState.bufferDamagePixmanRegion)
     this._pendingBufferDamageRects.forEach(rect => {
-      pixman._pixman_region32_union_rect(this._bufferDamageRegion, this._bufferDamageRegion, rect.x, rect.y, rect.width, rect.height)
+      pixman._pixman_region32_union_rect(targetState.bufferDamagePixmanRegion, targetState.bufferDamagePixmanRegion, rect.x, rect.y, rect.width, rect.height)
     })
-    this._pendingBufferDamageRects = []
 
-    pixman._pixman_region32_clear(this.bufferDamage)
-    pixman._pixman_region32_union(this.bufferDamage, this._bufferDamageRegion, this._damageRegion)
+    // Why we do this? ->
+    pixman._pixman_region32_clear(this.state.bufferDamage)
+    pixman._pixman_region32_union(this.state.bufferDamage, this.state.bufferDamagePixmanRegion, this.state.damagePixmanRegion)
+  }
 
-    if (this.role && typeof this.role.onCommit === 'function') {
-      this.role.onCommit(this)
-    }
-
+  async render () {
     const viewPresentationTimes = await this.renderer.requestRender(this)
     if (this.frameCallback) {
       if (viewPresentationTimes.length > 0) {
@@ -668,7 +738,6 @@ export default class BrowserSurface {
       }
       this.frameCallback = null
     }
-    this.browserSession.flush()
   }
 
   /**

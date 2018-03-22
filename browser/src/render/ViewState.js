@@ -4,7 +4,7 @@ import Texture from './Texture'
 
 export default class ViewState {
   /**
-   *
+   * @param {WebGLRenderingContext}gl
    * @returns {ViewState}
    */
   static create (gl) {
@@ -17,57 +17,85 @@ export default class ViewState {
   }
 
   /**
-   *
-   * @param gl
-   * @param YTexture
-   * @param UTexture
-   * @param VTexture
-   * @param alphaYTexture
-   * @param pngImage
+   * Use ViewState.create(..) instead.
+   * @param {WebGLRenderingContext}gl
+   * @param {Texture}YTexture
+   * @param {Texture}UTexture
+   * @param {Texture}VTexture
+   * @param {Texture}alphaYTexture
+   * @param {HTMLImageElement}pngImage
+   * @private
    */
   constructor (gl, YTexture, UTexture, VTexture, alphaYTexture, pngImage) {
+    /**
+     * @type {Texture}
+     */
     this.yTexture = YTexture
+    /**
+     * @type {Texture}
+     */
     this.uTexture = UTexture
+    /**
+     * @type {Texture}
+     */
     this.vTexture = VTexture
+    /**
+     * @type {Texture}
+     */
     this.alphaYTexture = alphaYTexture
+    /**
+     * @type {WebGLRenderingContext}
+     */
     this.gl = gl
+    /**
+     * @type {HTMLImageElement}
+     */
     this.pngImage = pngImage
   }
 
-  update (state) {
-    if (state.buffer.type === 'h264') {
-      this._updateH264(state)
+  /**
+   * @param {BrowserRtcDcBuffer}browserRtcDcBuffer
+   */
+  update (browserRtcDcBuffer) {
+    if (browserRtcDcBuffer.type === 'h264') {
+      this._updateH264(browserRtcDcBuffer)
     } else { // if(type === 'png')
-      this._updatePNG(state)
+      this._updatePNG(browserRtcDcBuffer)
     }
   }
 
-  _updateH264 (state) {
-    const opaqueBuffer = state.buffer.yuvContent
+  /**
+   * @param {BrowserRtcDcBuffer}browserRtcDcBuffer
+   */
+  _updateH264 (browserRtcDcBuffer) {
+    const opaqueBuffer = browserRtcDcBuffer.yuvContent
     if (!opaqueBuffer) { return }
 
-    const opaqueWidth = state.buffer.yuvWidth
-    const opaqueHeight = state.buffer.yuvHeight
+    const opaqueWidth = browserRtcDcBuffer.yuvWidth
+    const opaqueHeight = browserRtcDcBuffer.yuvHeight
 
     const lumaSize = opaqueWidth * opaqueHeight
     const chromaSize = lumaSize >> 2
 
-    this.yTexture.fill(opaqueBuffer.subarray(0, lumaSize), state.buffer.geo, opaqueWidth)
-    this.uTexture.fill(opaqueBuffer.subarray(lumaSize, lumaSize + chromaSize), state.buffer.geo.getHalfSize(), opaqueWidth / 2)
-    this.vTexture.fill(opaqueBuffer.subarray(lumaSize + chromaSize, lumaSize + (2 * chromaSize)), state.buffer.geo.getHalfSize(), opaqueWidth / 2)
+    this.yTexture.fill(opaqueBuffer.subarray(0, lumaSize), browserRtcDcBuffer.geo, opaqueWidth)
+    this.uTexture.fill(opaqueBuffer.subarray(lumaSize, lumaSize + chromaSize), browserRtcDcBuffer.geo.getHalfSize(), opaqueWidth / 2)
+    this.vTexture.fill(opaqueBuffer.subarray(lumaSize + chromaSize, lumaSize + (2 * chromaSize)), browserRtcDcBuffer.geo.getHalfSize(), opaqueWidth / 2)
 
-    const alphaBuffer = state.buffer.alphaYuvContent
+    const alphaBuffer = browserRtcDcBuffer.alphaYuvContent
     if (alphaBuffer) {
-      const alphaWidth = state.buffer.alphaYuvWidth
-      const alphaHeight = state.buffer.alphaYuvHeight
+      const alphaWidth = browserRtcDcBuffer.alphaYuvWidth
+      const alphaHeight = browserRtcDcBuffer.alphaYuvHeight
       const alphaLumaSize = alphaWidth * alphaHeight
 
-      this.alphaYTexture.fill(alphaBuffer.subarray(0, alphaLumaSize), state.buffer.geo, alphaWidth)
+      this.alphaYTexture.fill(alphaBuffer.subarray(0, alphaLumaSize), browserRtcDcBuffer.geo, alphaWidth)
     }
   }
 
-  _updatePNG (state) {
-    const pngArray = state.buffer.pngContent
+  /**
+   * @param {BrowserRtcDcBuffer}browserRtcDcBuffer
+   */
+  _updatePNG (browserRtcDcBuffer) {
+    const pngArray = browserRtcDcBuffer.pngContent
     const pngBlob = new window.Blob([pngArray], {'type': 'image/png'})
     this.pngImage.src = window.URL.createObjectURL(pngBlob)
   }
