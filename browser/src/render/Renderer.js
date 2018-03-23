@@ -45,20 +45,26 @@ export default class Renderer {
     return browserRtcDcBuffer.geo
   }
 
-  static onAnimationFrame () {
-    if (this._animationPromise === null) {
-      this._armAnimationFramePromise()
-    }
-    return this._animationPromise
-  }
-
-  static _armAnimationFramePromise () {
-    this._animationPromise = new Promise((resolve) => {
-      window.requestAnimationFrame((time) => {
-        this._animationPromise = null
-        resolve(time)
-      })
+  /**
+   * @name RenderFrame
+   * @type{Promise<number>}
+   * @property {Function} fire
+   */
+  /**
+   * @return {RenderFrame}
+   */
+  static createRenderFrame () {
+    let animationResolve = null
+    const animationPromise = new Promise((resolve) => {
+      animationResolve = resolve
     })
+    animationPromise._animationResolve = animationResolve
+    animationPromise.fire = () => {
+      window.requestAnimationFrame((time) => {
+        animationPromise._animationResolve(time)
+      })
+    }
+    return animationPromise
   }
 
   /**
@@ -110,20 +116,21 @@ export default class Renderer {
 
   /**
    * @param {BrowserSurface}browserSurface
-   * @return {Promise<number[]>}
    */
-  async requestRender (browserSurface) {
+  async renderBackBuffer (browserSurface) {
     const renderStart = Date.now()
 
     const grBuffer = browserSurface.state.grBuffer
     const views = browserSurface.browserSurfaceViews
 
     if (grBuffer === null) {
-      views.forEach((browserSurfaceView) => {
+      await window.Promise.all(views.map(async (browserSurfaceView) => {
         const emptyImage = new window.Image()
         emptyImage.src = '//:0'
-        browserSurfaceView.drawPNG(emptyImage)
-      })
+        await browserSurfaceView.drawPNG(emptyImage)
+      }))
+      browserSurface.size = Size.create(0, 0)
+      browserSurface.bufferSize = Size.create(0, 0)
     } else {
       let viewState = browserSurface.renderState
       if (!viewState) {
@@ -138,34 +145,28 @@ export default class Renderer {
       browserSurface.size = this.surfaceSize(browserSurface)
       browserSurface.bufferSize = browserRtcDcBuffer.geo
 
-      this._draw(browserRtcDcBuffer, viewState, views)
+      await this._draw(browserRtcDcBuffer, viewState, views)
 
       const renderDuration = Date.now() - renderStart
       browserRtcDcBuffer.resource.latency(syncSerial, renderDuration)
     }
-
-    const drawPromises = []
-    views.forEach(browserSurfaceView => {
-      drawPromises.push(browserSurfaceView.onDraw())
-    })
-
-    return window.Promise.all(drawPromises)
   }
 
   /**
    * @param {BrowserRtcDcBuffer}browserRtcDcBuffer
    * @param {ViewState}viewState
    * @param {BrowserSurfaceView[]}views
+   * @return {Promise<void>}
    * @private
    */
-  _draw (browserRtcDcBuffer, viewState, views) {
+  async _draw (browserRtcDcBuffer, viewState, views) {
     // update textures or image
     viewState.update(browserRtcDcBuffer)
     // paint the textures
     if (browserRtcDcBuffer.type === 'h264') {
       this._drawH264(browserRtcDcBuffer, viewState, views)
     } else { // if (browserRtcDcBuffer.type === 'png')
-      this._drawPNG(viewState, views)
+      await this._drawPNG(viewState, views)
     }
   }
 
@@ -200,10 +201,10 @@ export default class Renderer {
    * @param {BrowserSurfaceView[]}views
    * @private
    */
-  _drawPNG (viewState, views) {
-    views.forEach((view) => {
-      view.drawPNG(viewState.pngImage)
-    })
+  async _drawPNG (viewState, views) {
+    await window.Promise.all(views.map(async (view) => {
+      await view.drawPNG(viewState.pngImage)
+    }))
   }
 }
 /**
@@ -211,3 +212,8 @@ export default class Renderer {
  * @private
  */
 Renderer._animationPromise = null
+/**
+ * @type {Function}
+ * @private
+ */
+Renderer._animationResolve = null

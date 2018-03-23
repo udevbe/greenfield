@@ -84,15 +84,20 @@ export default class BrowserSurfaceView {
 
   /**
    * @param {HTMLImageElement}sourceImage
+   * @return {Promise<void>}
    */
-  drawPNG (sourceImage) {
-    if (sourceImage.complete && sourceImage.naturalHeight !== 0) {
-      this._draw(sourceImage, sourceImage.naturalWidth, sourceImage.naturalHeight)
-    } else {
-      sourceImage.onload = () => {
+  async drawPNG (sourceImage) {
+    return new Promise((resolve) => {
+      if (sourceImage.complete && sourceImage.naturalHeight !== 0) {
         this._draw(sourceImage, sourceImage.naturalWidth, sourceImage.naturalHeight)
+        resolve()
+      } else {
+        sourceImage.onload = () => {
+          this._draw(sourceImage, sourceImage.naturalWidth, sourceImage.naturalHeight)
+          resolve()
+        }
       }
-    }
+    })
   }
 
   /**
@@ -142,6 +147,28 @@ export default class BrowserSurfaceView {
 
   applyTransformations () {
     this._applyTransformations(this.bufferedCanvas.frontContext)
+    // find all child views who have this view as it's parent and update their transformation
+    this.browserSurface.browserSurfaceChildren.forEach((browserSurfaceChild) => {
+      const childViews = browserSurfaceChild.browserSurface.browserSurfaceViews.filter((browserSurfaceView) => {
+        return browserSurfaceView.parent === this
+      })
+      childViews.forEach((childView) => {
+        childView.applyTransformations()
+      })
+    })
+  }
+
+  applyTransformationsBackBuffer () {
+    this._applyTransformations(this.bufferedCanvas.frontContext)
+    // find all child views who have this view as it's parent and update their transformation
+    this.browserSurface.browserSurfaceChildren.forEach((browserSurfaceChild) => {
+      const childViews = browserSurfaceChild.browserSurface.browserSurfaceViews.filter((browserSurfaceView) => {
+        return browserSurfaceView.parent === this
+      })
+      childViews.forEach((childView) => {
+        childView.applyTransformationsBackBuffer()
+      })
+    })
   }
 
   /**
@@ -167,17 +194,6 @@ export default class BrowserSurfaceView {
 
     // update canvas
     canvasContext.canvas.style.transform = this.transformation.toCssMatrix()
-
-    // find all child views who have this view as it's parent and update their transformation
-    this.browserSurface.browserSurfaceChildren.forEach((browserSurfaceChild) => {
-      const childViews = browserSurfaceChild.browserSurface.browserSurfaceViews.filter((browserSurfaceView) => {
-        return browserSurfaceView.parent === this
-      })
-
-      childViews.forEach((childView) => {
-        childView.applyTransformations()
-      })
-    })
   }
 
   raise () {
@@ -205,8 +221,8 @@ export default class BrowserSurfaceView {
   /**
    * @param {HTMLCanvasElement}sourceCanvas
    */
-  async drawCanvas (sourceCanvas) {
-    await this._draw(sourceCanvas, sourceCanvas.width, sourceCanvas.height)
+  drawCanvas (sourceCanvas) {
+    this._draw(sourceCanvas, sourceCanvas.width, sourceCanvas.height)
   }
 
   /**
@@ -215,15 +231,10 @@ export default class BrowserSurfaceView {
    * @param {number}height
    * @private
    */
-  async _draw (source, width, height) {
+  _draw (source, width, height) {
     // FIXME adjust final transformation with additional transformations defined in the browser surface
     this.bufferedCanvas.drawBackBuffer(source, width, height, this.transformation)
     this._applyTransformations(this.bufferedCanvas.backContext)
-
-    const presentationTime = await Renderer.onAnimationFrame()
-    this.bufferedCanvas.swapBuffers()
-    this._drawResolve(presentationTime)
-    this._armDrawPromise()
   }
 
   _armDrawPromise () {
@@ -231,6 +242,12 @@ export default class BrowserSurfaceView {
     this._drawPromise = new Promise((resolve) => {
       this._drawResolve = resolve
     })
+  }
+
+  swapBuffers () {
+    this.bufferedCanvas.swapBuffers()
+    this._drawResolve()
+    this._armDrawPromise()
   }
 
   /**

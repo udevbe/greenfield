@@ -1,12 +1,13 @@
 'use strict'
 
 module.exports = class LocalCallback {
-  static create () {
-    return new LocalCallback()
+  static create (proxy) {
+    return new LocalCallback(proxy)
   }
 
-  constructor () {
+  constructor (proxy) {
     this.resource = null
+    this.proxy = proxy
   }
 
   /**

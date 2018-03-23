@@ -39,7 +39,7 @@ class Encoder {
 
   /**
    * @param {Buffer}pixelBuffer
-   * @param {string}bufferFormat
+   * @param {number}bufferFormat
    * @param {number}bufferWidth
    * @param {number}bufferHeight
    * @param {number}synSerial
@@ -52,7 +52,7 @@ class Encoder {
       this._frameEncoder = null
     }
 
-    if (bufferWidth <= 128 || bufferHeight <= 128) {
+    if (bufferWidth <= 48 || bufferHeight <= 48) {
       return this._encodePNGFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, synSerial)
     } else {
       return this._encodeFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, synSerial)
@@ -61,7 +61,7 @@ class Encoder {
 
   /**
    * @param {Buffer}pixelBuffer
-   * @param {string}bufferFormat
+   * @param {number}bufferFormat
    * @param {number}bufferWidth
    * @param {number}bufferHeight
    * @param {number}synSerial
@@ -77,7 +77,7 @@ class Encoder {
 
   /**
    * @param {Buffer}pixelBuffer
-   * @param {string}bufferFormat
+   * @param {number}bufferFormat
    * @param {number}bufferWidth
    * @param {number}bufferHeight
    * @param {number}synSerial

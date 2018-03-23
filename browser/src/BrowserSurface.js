@@ -10,6 +10,7 @@ import { NORMAL, _90, _180, _270, FLIPPED, FLIPPED_90, FLIPPED_180, FLIPPED_270 
 import Size from './Size'
 import BrowserRegion from './BrowserRegion'
 import BrowserSurfaceChild from './BrowserSurfaceChild'
+import Renderer from './render/Renderer'
 
 const pixman = pixmanModule()
 
@@ -233,6 +234,8 @@ export default class BrowserSurface {
      * @type {BrowserSurfaceChild[]}
      */
     this.pendingBrowserSubsurfaceChildren = [this.browserSurfaceChildSelf]
+
+    this._frameCallbacks = []
   }
 
   get browserSurfaceChildren () {
@@ -543,7 +546,7 @@ export default class BrowserSurface {
    *
    */
   frame (resource, callback) {
-    this.frameCallback = BrowserCallback.create(new greenfield.GrCallback(resource.client, callback, 1))
+    this._frameCallbacks.push(BrowserCallback.create(new greenfield.GrCallback(resource.client, callback, 1)))
   }
 
   /**
@@ -652,28 +655,47 @@ export default class BrowserSurface {
     }
 
     this.flushState(this.state)
-
     this._browserSubsurfaceChildren = this.pendingBrowserSubsurfaceChildren.slice()
     this.updateChildViewsZIndexes()
 
-    let doRender = true
     if (this.role && typeof this.role.onCommit === 'function') {
-      doRender = this.role.onCommit(this)
+      const animationFrame = Renderer.createRenderFrame()
+      await this.role.onCommit(this, animationFrame)
     }
-    this._browserSubsurfaceChildren.forEach((browserSurfaceChild) => {
-      if (browserSurfaceChild !== this.browserSurfaceChildSelf) {
-        browserSurfaceChild.browserSurface.role.onParentCommit(this)
-      }
-    })
 
     this.pendingGrBuffer = null
     this._pendingDamageRects = []
     this._pendingBufferDamageRects = []
+  }
 
-    if (doRender) {
-      await this.render()
+  /**
+   * @param {RenderFrame}renderFrame
+   * @return {Promise<void>}
+   */
+  async render (renderFrame) {
+    await this.renderer.renderBackBuffer(this)
+
+    renderFrame.then((timestamp) => {
+      this.browserSurfaceViews.forEach(browserSurfaceView => {
+        browserSurfaceView.swapBuffers()
+      })
+
+      this._frameCallbacks.forEach((frameCallback) => {
+        frameCallback.done(timestamp & 0x7fffffff)
+      })
+      this._frameCallbacks = []
+      this.browserSession.flush()
+    })
+
+    if (this._browserSubsurfaceChildren.length > 1) {
+      await window.Promise.all(this._browserSubsurfaceChildren.map(async (browserSurfaceChild) => {
+        const siblingBrowserSurface = browserSurfaceChild.browserSurface
+        if (siblingBrowserSurface !== this) {
+          // cascade scene update to subsurface children
+          await siblingBrowserSurface.role.onParentCommit(this, renderFrame)
+        }
+      }))
     }
-    this.browserSession.flush()
   }
 
   /**
@@ -728,16 +750,6 @@ export default class BrowserSurface {
     // Why we do this? ->
     pixman._pixman_region32_clear(this.state.bufferDamage)
     pixman._pixman_region32_union(this.state.bufferDamage, this.state.bufferDamagePixmanRegion, this.state.damagePixmanRegion)
-  }
-
-  async render () {
-    const viewPresentationTimes = await this.renderer.requestRender(this)
-    if (this.frameCallback) {
-      if (viewPresentationTimes.length > 0) {
-        this.frameCallback.done(viewPresentationTimes[0] & 0x7fffffff)
-      }
-      this.frameCallback = null
-    }
   }
 
   /**

@@ -2,6 +2,7 @@
 
 import Point from './math/Point'
 import greenfield from './protocol/greenfield-browser-protocol'
+import Renderer from './render/Renderer'
 
 const Resize = greenfield.GrShellSurface.Resize
 
@@ -87,12 +88,14 @@ export default class BrowserShellSurface {
 
   /**
    * @param {BrowserSurface}browserSurface
-   * @return {boolean}
+   * @param {RenderFrame}renderFrame
+   * @return {Promise<void>}
    */
-  onCommit (browserSurface) {
+  async onCommit (browserSurface, renderFrame) {
     const oldPosition = browserSurface.browserSurfaceChildSelf.position
     browserSurface.browserSurfaceChildSelf.position = Point.create(oldPosition.x + browserSurface.state.dx, oldPosition.y + browserSurface.state.dy)
-    return true
+    await browserSurface.render(renderFrame)
+    renderFrame.fire()
   }
 
   /**

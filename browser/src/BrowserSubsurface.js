@@ -1,6 +1,7 @@
 'use strict'
 
 import Point from './math/Point'
+import Renderer from './render/Renderer'
 
 export default class BrowserSubsurface {
   /**
@@ -73,65 +74,54 @@ export default class BrowserSubsurface {
     this._inert = false
   }
 
-  onParentCommit () {
+  /**
+   * @param {BrowserSurface}parentBrowserSurface
+   * @param {RenderFrame}renderFrame
+   * @return {Promise<void>}
+   */
+  async onParentCommit (parentBrowserSurface, renderFrame) {
     if (this._inert) {
       return
     }
 
     const browserSurface = this.grSurfaceResource.implementation
     // sibling stacking order is committed by the parent itself so no need to do it here.
-    this._applyPosition(browserSurface)
-    if (this._effectiveSync && this._cachedState) {
-      this._applyCachedState(browserSurface)
-      browserSurface.render()
-    } else {
-      browserSurface.browserSurfaceViews.forEach((view) => {
-        view.applyTransformations()
-      })
-    }
-  }
 
-  /**
-   * @param {BrowserSurface}browserSurface
-   * @return {boolean}
-   */
-  onCommit (browserSurface) {
-    if (this._inert) {
-      return false
-    }
-
-    let doRender = true
-    if (this._effectiveSync) {
-      doRender = false
-      this._cachedState = Object.assign({}, browserSurface.state)
-      browserSurface.state = Object.assign({}, this._activeState)
-    } else if (this._cachedState) {
-      browserSurface.flushState(this._cachedState)
-      this._applyCachedState(browserSurface)
-    }
-    return doRender
-  }
-
-  /**
-   * @param {BrowserSurface}browserSurface
-   * @private
-   */
-  _applyCachedState (browserSurface) {
-    browserSurface.state = this._cachedState
-    this._activeState = Object.assign({}, browserSurface.state)
-    this._cachedState = null
-  }
-
-  /**
-   * @param {BrowserSurface}browserSurface
-   * @private
-   */
-  _applyPosition (browserSurface) {
     if (this._pendingPosition) {
       const browserSurface = this.grSurfaceResource.implementation
       const browserSurfaceChildSelf = browserSurface.browserSurfaceChildSelf
       browserSurfaceChildSelf.position = this._pendingPosition
-      this._pendingPosition = null
+    }
+
+    if (this._effectiveSync && this._cachedState) {
+      browserSurface.state = this._cachedState
+      this._activeState = Object.assign({}, this._cachedState)
+      this._cachedState = null
+      await browserSurface.render(renderFrame)
+    } else if (!this._effectiveSync && this._pendingPosition) {
+      browserSurface.browserSurfaceViews.forEach((view) => {
+        view.applyTransformations()
+      })
+    }
+    this._pendingPosition = null
+  }
+
+  /**
+   * @param {BrowserSurface}browserSurface
+   * @param {RenderFrame}renderFrame
+   * @return {Promise<void>}
+   */
+  async onCommit (browserSurface, renderFrame) {
+    if (this._inert) {
+      return
+    }
+
+    if (this._effectiveSync) {
+      this._cachedState = Object.assign({}, browserSurface.state)
+      browserSurface.state = this._activeState
+    } else {
+      await browserSurface.render(renderFrame)
+      renderFrame.fire()
     }
   }
 
@@ -257,17 +247,18 @@ export default class BrowserSubsurface {
   }
 
   get _effectiveSync () {
-    let effectiveSync
+    return this._sync | this._parentEffectiveSync
+  }
+
+  get _parentEffectiveSync () {
+    let parentEffectiveSync = false
 
     const parentRole = this.parentGrSurfaceResource.implementation.role
-    if (!this._sync && parentRole && parentRole instanceof BrowserSubsurface) {
-      const parentSync = parentRole._sync
-      effectiveSync = parentSync ? true : parentRole._effectiveSync
-    } else {
-      effectiveSync = this._sync
+    if (parentRole && parentRole instanceof BrowserSubsurface) {
+      parentEffectiveSync = parentRole._effectiveSync
     }
 
-    return effectiveSync
+    return parentEffectiveSync
   }
 
   /**
@@ -328,7 +319,7 @@ export default class BrowserSubsurface {
    * @since 1
    *
    */
-  setDesync (resource) {
+  async setDesync (resource) {
     if (this._inert) {
       return
     }
@@ -336,7 +327,14 @@ export default class BrowserSubsurface {
     this._sync = false
     if (!this._effectiveSync && this._cachedState) {
       const browserSurface = this.grSurfaceResource.implementation
-      this._applyCachedState(browserSurface)
+      if (this._cachedState) {
+        browserSurface.state = this._cachedState
+        this._activeState = Object.assign({}, this._cachedState)
+        this._cachedState = null
+      }
+      const renderFrame = Renderer.createRenderFrame()
+      await browserSurface.render(renderFrame)
+      renderFrame.fire()
     }
   }
 }

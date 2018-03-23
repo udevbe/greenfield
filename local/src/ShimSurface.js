@@ -6,6 +6,8 @@ const WlSurfaceRequests = require('./protocol/wayland/WlSurfaceRequests')
 const WlCallback = require('./protocol/wayland/WlCallback')
 const Encoder = require('./Encoder')
 
+const LocalCallback = require('./LocalCallback')
+
 module.exports = class ShimSurface extends WlSurfaceRequests {
   /**
    * @param grSurfaceProxy
@@ -101,8 +103,10 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
   }
 
   frame (resource, callback) {
-    this._callbackResource = WlCallback.create(resource.client, 4, callback, {}, null)
-    this._callbackProxy = this.proxy.frame()
+    const callbackProxy = this.proxy.frame()
+    const localCallback = LocalCallback.create(callbackProxy)
+    localCallback.resource = WlCallback.create(resource.client, 4, callback, {}, null)
+    callbackProxy.listener = localCallback
   }
 
   setOpaqueRegion (resource, region) {
@@ -223,11 +227,8 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
   async commit (resource) {
     // FIXME because the commit method is async, the surface can be destroyed while it is busy. Leading to certain
     // resources like frame callback to be destroyed but still called after this commit finishes.
-
-    const callbackResource = this._callbackResource
-    const callbackProxy = this._callbackProxy
-
     if (this.buffer) {
+      this.buffer.release()
       this.buffer.removeDestroyListener(this.bufferDestroyListener)
     }
     if (this.pendingBuffer) {
@@ -250,19 +251,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     if (this.buffer) {
       const buffer = this.buffer
       const frame = await this._encodeBuffer(buffer, synSerial)
-      // make sure buffer was not destroyed
-      if (buffer.ptr) {
-        buffer.release()
-        resource.client.display.flushClients()
-      }
       await this.sendFrame(frame)
-    }
-
-    if (callbackProxy) {
-      callbackProxy.listener.done = (time) => {
-        callbackResource.done(time)
-      }
-      this._callbackProxy = null
     }
   }
 
