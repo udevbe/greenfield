@@ -16,7 +16,6 @@ export default class BrowserSurfaceView {
     const browserSurfaceView = new BrowserSurfaceView(bufferedCanvas, browserSurface, Mat4.IDENTITY())
     bufferedCanvas.frontContext.canvas.view = browserSurfaceView
     bufferedCanvas.backContext.canvas.view = browserSurfaceView
-    browserSurfaceView._armDrawPromise()
     return browserSurfaceView
   }
 
@@ -54,17 +53,6 @@ export default class BrowserSurfaceView {
      */
     this._inverseTransformation = transformation.invert()
     /**
-     *
-     * @type {Function}
-     * @private
-     */
-    this._drawResolve = null
-    /**
-     * @type {Promise}
-     * @private
-     */
-    this._drawPromise = null
-    /**
      * @type {Promise}
      * @private
      */
@@ -84,20 +72,9 @@ export default class BrowserSurfaceView {
 
   /**
    * @param {HTMLImageElement}sourceImage
-   * @return {Promise<void>}
    */
-  async drawPNG (sourceImage) {
-    return new Promise((resolve) => {
-      if (sourceImage.complete && sourceImage.naturalHeight !== 0) {
-        this._draw(sourceImage, sourceImage.naturalWidth, sourceImage.naturalHeight)
-        resolve()
-      } else {
-        sourceImage.onload = () => {
-          this._draw(sourceImage, sourceImage.naturalWidth, sourceImage.naturalHeight)
-          resolve()
-        }
-      }
-    })
+  drawImage (sourceImage) {
+    this._draw(sourceImage, sourceImage.naturalWidth, sourceImage.naturalHeight)
   }
 
   /**
@@ -247,33 +224,14 @@ export default class BrowserSurfaceView {
    */
   _draw (source, width, height) {
     // FIXME adjust final transformation with additional transformations defined in the browser surface
-    this.bufferedCanvas.drawBackBuffer(source, width, height, this.transformation)
     this.applyTransformationsBackBuffer()
-  }
-
-  _armDrawPromise () {
-    this._drawResolve = null
-    this._drawPromise = new Promise((resolve) => {
-      this._drawResolve = resolve
-    })
+    this.bufferedCanvas.drawBackBuffer(source, width, height, this.transformation)
   }
 
   swapBuffers () {
     this.bufferedCanvas.swapBuffers()
-    // make sure the new back buffer has the same transformations as the new front buffer
-    this._applyTransformations(this.bufferedCanvas.backContext)
     // update child transformations as new parent buffer is visible
     this._applyTransformationsChild()
-    this._drawResolve()
-    this._armDrawPromise()
-  }
-
-  /**
-   * One shot draw promise.
-   * @return {Promise}
-   */
-  async onDraw () {
-    return this._drawPromise
   }
 
   /**

@@ -141,15 +141,17 @@ export default class BrowserPointer {
   /**
    * @param {BrowserSurface}browserSurface
    * @param {RenderFrame}renderFrame
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, damagePixmanRegion: Number, bufferDamagePixmanRegion: Number, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number}} shadowState
+   * @return {Promise<void>}
    */
-  async onCommit (browserSurface, renderFrame) {
-    this.hotspotX -= browserSurface.state.dx
-    this.hotspotY -= browserSurface.state.dy
+  async onCommit (browserSurface, renderFrame, shadowState) {
+    this.hotspotX -= shadowState.dx
+    this.hotspotY -= shadowState.dy
 
     const hotspotX = this.hotspotX
     const hotspotY = this.hotspotY
 
-    await browserSurface.render(renderFrame)
+    await browserSurface.render(renderFrame, shadowState)
     renderFrame.fire()
     await renderFrame
 

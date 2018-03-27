@@ -88,13 +88,14 @@ export default class BrowserShellSurface {
   /**
    * @param {BrowserSurface}browserSurface
    * @param {RenderFrame}renderFrame
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number}} newState
    * @return {Promise<void>}
    */
-  async onCommit (browserSurface, renderFrame) {
+  async onCommit (browserSurface, renderFrame, newState) {
     const oldPosition = browserSurface.browserSurfaceChildSelf.position
-    browserSurface.browserSurfaceChildSelf.position = Point.create(oldPosition.x + browserSurface.state.dx, oldPosition.y + browserSurface.state.dy)
+    browserSurface.browserSurfaceChildSelf.position = Point.create(oldPosition.x + newState.dx, oldPosition.y + newState.dy)
 
-    await browserSurface.render(renderFrame)
+    await browserSurface.render(renderFrame, newState)
     renderFrame.fire()
     await renderFrame
     this.browserSession.flush()

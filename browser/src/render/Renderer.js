@@ -33,19 +33,6 @@ export default class Renderer {
   }
 
   /**
-   * @param {GrBuffer}grBuffer
-   * @return Size
-   */
-  static bufferSize (grBuffer) {
-    if (grBuffer === null) {
-      return Size.create(0, 0)
-    }
-    // TODO we could check for null here in case we are dealing with a different kind of buffer
-    const browserRtcDcBuffer = BrowserRtcBufferFactory.get(grBuffer)
-    return browserRtcDcBuffer.geo
-  }
-
-  /**
    * @name RenderFrame
    * @type{Promise<number>}
    * @property {Function} fire
@@ -98,91 +85,68 @@ export default class Renderer {
      * @type {HTMLCanvasElement}
      */
     this.canvas = canvas
+    /**
+     * @type {HTMLImageElement}
+     * @private
+     */
+    this._emptyImage = new window.Image()
+    this._emptyImage.src = '//:0'
   }
 
   /**
    * @param {BrowserSurface}browserSurface
-   * @return Size
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number}} newState
    */
-  surfaceSize (browserSurface) {
-    const grBuffer = browserSurface.state.grBuffer
-    const bufferSize = Renderer.bufferSize(grBuffer)
-    if (browserSurface.state.bufferScale === 1) {
-      return bufferSize
-    }
-    const surfaceWidth = bufferSize.w / browserSurface.state.bufferScale
-    const surfaceHeight = bufferSize.h / browserSurface.state.bufferScale
-    return Size.create(surfaceWidth, surfaceHeight)
-  }
-
-  /**
-   * @param {BrowserSurface}browserSurface
-   */
-  async renderBackBuffer (browserSurface) {
-    const renderStart = Date.now()
-
-    const grBuffer = browserSurface.shadowState.grBuffer
+  async renderBackBuffer (browserSurface, newState) {
     const views = browserSurface.browserSurfaceViews
+    const bufferContents = newState.bufferContents
 
-    if (grBuffer) {
+    if (bufferContents) {
       let viewState = browserSurface.renderState
       if (!viewState) {
         viewState = ViewState.create(this.gl)
         browserSurface.renderState = viewState
       }
 
-      const browserRtcDcBuffer = BrowserRtcBufferFactory.get(grBuffer)
-      const syncSerial = await browserRtcDcBuffer.whenComplete()
-
-      browserSurface.size = this.surfaceSize(browserSurface)
-      browserSurface.bufferSize = browserRtcDcBuffer.geo
-
-      await this._draw(browserRtcDcBuffer, viewState, views)
-
-      const renderDuration = Date.now() - renderStart
-      browserRtcDcBuffer.resource.latency(syncSerial, renderDuration)
+      this._draw(bufferContents, viewState, views)
     } else {
-      await window.Promise.all(views.map(async (browserSurfaceView) => {
-        const emptyImage = new window.Image()
-        emptyImage.src = '//:0'
-        await browserSurfaceView.drawPNG(emptyImage)
-      }))
-      browserSurface.size = Size.create(0, 0)
-      browserSurface.bufferSize = Size.create(0, 0)
+      console.trace('rendering empty surface')
+      views.forEach((browserSurfaceView) => {
+        browserSurfaceView.drawImage(this._emptyImage)
+      })
     }
   }
 
   /**
-   * @param {BrowserRtcDcBuffer}browserRtcDcBuffer
+   * @param {{type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}}bufferContents
    * @param {ViewState}viewState
    * @param {BrowserSurfaceView[]}views
-   * @return {Promise<void>}
    * @private
    */
-  async _draw (browserRtcDcBuffer, viewState, views) {
+  _draw (bufferContents, viewState, views) {
     // update textures or image
-    viewState.update(browserRtcDcBuffer)
+    viewState.update(bufferContents)
     // paint the textures
-    if (browserRtcDcBuffer.type === 'h264') {
-      this._drawH264(browserRtcDcBuffer, viewState, views)
+    if (bufferContents.type === 'h264') {
+      this._drawH264(bufferContents, viewState, views)
     } else { // if (browserRtcDcBuffer.type === 'png')
-      await this._drawPNG(viewState, views)
+      this._drawImage(viewState, views)
     }
   }
 
   /**
-   * @param {BrowserRtcDcBuffer}browserRtcDcBuffer
+   * @param {{type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}}bufferContents
    * @param {ViewState}viewState
    * @param {BrowserSurfaceView[]}views
    * @private
    */
-  _drawH264 (browserRtcDcBuffer, viewState, views) {
-    const bufferSize = browserRtcDcBuffer.geo
+  _drawH264 (bufferContents, viewState, views) {
+    const bufferSize = bufferContents.geo
     const viewPortUpdate = this.canvas.width !== bufferSize.w || this.canvas.height !== bufferSize.h
     this.canvas.width = bufferSize.w
     this.canvas.height = bufferSize.h
 
-    if (browserRtcDcBuffer.alphaYuvContent != null) {
+    if (bufferContents.alphaYuvContent != null) {
       this.yuvaShader.use()
       this.yuvaShader.draw(viewState.yTexture, viewState.uTexture, viewState.vTexture, viewState.alphaYTexture, bufferSize, viewPortUpdate)
     } else {
@@ -201,10 +165,10 @@ export default class Renderer {
    * @param {BrowserSurfaceView[]}views
    * @private
    */
-  async _drawPNG (viewState, views) {
-    await window.Promise.all(views.map(async (view) => {
-      await view.drawPNG(viewState.pngImage)
-    }))
+  _drawImage (viewState, views) {
+    views.forEach((view) => {
+      view.drawImage(viewState.image)
+    })
   }
 }
 /**

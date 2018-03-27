@@ -2,7 +2,7 @@ var Module = {
   onRuntimeInitialized: function () {
     decoder = new H264bsdDecoder(Module)
     decoder.onPictureReady = onPictureReady
-    postMessage({'type': 'decoderReady'})
+    postMessage({type: 'decoderReady'})
   }
 }
 
@@ -21,10 +21,10 @@ function onMessage (e) {
 
 function onPictureReady (output, width, height) {
   postMessage({
-    'type': 'pictureReady',
-    'width': width,
-    'height': height,
-    'data': output.buffer,
+    type: 'pictureReady',
+    width: width,
+    height: height,
+    data: output.buffer,
   }, [output.buffer])
 }
 

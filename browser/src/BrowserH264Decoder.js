@@ -12,7 +12,9 @@ export default class BrowserH264Decoder {
             browserH264Decoder._onPictureReady(message)
             break
           case 'decoderReady':
-            resolve(browserH264Decoder)
+            window.setTimeout(() => {
+              resolve(browserH264Decoder)
+            }, 33)
             break
         }
       })
