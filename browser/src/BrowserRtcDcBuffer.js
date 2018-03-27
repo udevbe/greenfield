@@ -39,6 +39,11 @@ export default class BrowserRtcDcBuffer {
      */
     this._decoder = null
     /**
+     * @type {Promise<BrowserH264Decoder>}
+     * @private
+     */
+    this._decoderFactory = null
+    /**
      * @type {number[]}
      * @private
      */
@@ -48,6 +53,11 @@ export default class BrowserRtcDcBuffer {
      * @private
      */
     this._alphaDecoder = null
+    /**
+     * @type {Promise<BrowserH264Decoder>}
+     * @private
+     */
+    this._alphaDecoderFactory = null
     /**
      * @type {number[]}
      * @private
@@ -60,8 +70,9 @@ export default class BrowserRtcDcBuffer {
     this._blobTransferResource = blobTransferResource
     /**
      * @type {number}
+     * @private
      */
-    this.syncSerial = 0
+    this._syncSerial = 0
     /**
      * @type {number}
      * @private
@@ -69,48 +80,56 @@ export default class BrowserRtcDcBuffer {
     this._lastCompleteSerial = 0
     /**
      * @type {Size}
+     * @private
      */
-    this.geo = Size.create(0, 0)
+    this._geo = Size.create(0, 0)
 
     this._frameStates = {} // map like object, keys are numbers
     this._frameChunks = {} // map like object, keys are numbers
-
     /**
      * 'h264' or 'png'
      * @type {string}
+     * @private
      */
-    this.type = null
+    this._type = null
 
     /**
      * @type {Uint8Array}
+     * @private
      */
-    this.yuvContent = null
+    this._yuvContent = null
     /**
      * @type {number}
+     * @private
      */
-    this.yuvWidth = 0
+    this._yuvWidth = 0
     /**
      * @type {number}
+     * @private
      */
-    this.yuvHeight = 0
+    this._yuvHeight = 0
 
     /**
      * @type {Uint8Array}
+     * @private
      */
-    this.alphaYuvContent = null
+    this._alphaYuvContent = null
     /**
      * @type {number}
+     * @private
      */
-    this.alphaYuvWidth = 0
+    this._alphaYuvWidth = 0
     /**
      * @type {number}
+     * @private
      */
-    this.alphaYuvHeight = 0
+    this._alphaYuvHeight = 0
 
     /**
-     * @type {Uint8Array}
+     * @type {HTMLImageElement}
+     * @private
      */
-    this.pngContent = null
+    this._pngImage = null
   }
 
   /**
@@ -118,20 +137,28 @@ export default class BrowserRtcDcBuffer {
    * @private
    */
   async _ensureH264Decoders (hasAlpha) {
-    if (!this._decoder) {
-      const decoder = await BrowserH264Decoder.create()
+    if (this._decoderFactory) {
+      await this._decoderFactory
+    } else {
+      this._decoderFactory = BrowserH264Decoder.create()
+      const decoder = await this._decoderFactory
       decoder.onPicture = (buffer, width, height) => {
         this._onPictureDecoded(buffer, width, height)
       }
       this._decoder = decoder
     }
 
-    if (hasAlpha && !this._alphaDecoder) {
-      const alphaDecoder = await BrowserH264Decoder.create()
-      alphaDecoder.onPicture = (buffer, width, height) => {
-        this._onAlphaPictureDecoded(buffer, width, height)
+    if (hasAlpha) {
+      if (this._alphaDecoderFactory) {
+        await this._alphaDecoderFactory
+      } else {
+        this._alphaDecoderFactory = BrowserH264Decoder.create()
+        const alphaDecoder = await this._alphaDecoderFactory
+        alphaDecoder.onPicture = (buffer, width, height) => {
+          this._onAlphaPictureDecoded(buffer, width, height)
+        }
+        this._alphaDecoder = alphaDecoder
       }
-      this._alphaDecoder = alphaDecoder
     }
 
     if (!hasAlpha && this._alphaDecoder) {
@@ -141,12 +168,31 @@ export default class BrowserRtcDcBuffer {
   }
 
   /**
+   * @return {{type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}}
+   * @private
+   */
+  get _bufferContents () {
+    return {
+      type: this._type,
+      syncSerial: this._syncSerial,
+      geo: this._geo,
+      yuvContent: this._yuvContent,
+      yuvWidth: this._yuvWidth,
+      yuvHeight: this._yuvHeight,
+      alphaYuvContent: this._alphaYuvContent,
+      alphaYuvWidth: this._alphaYuvWidth,
+      alphaYuvHeight: this._alphaYuvHeight,
+      pngImage: this._pngImage
+    }
+  }
+
+  /**
    * @param {number}serial
    * @private
    */
   _onComplete (serial) {
     this._frameStates[serial].state = 'complete'
-    this.geo = this._frameStates[serial].geo
+    this._geo = this._frameStates[serial]._geo
     this._lastCompleteSerial = serial
 
     // remove old states
@@ -159,11 +205,7 @@ export default class BrowserRtcDcBuffer {
       }
     }
 
-    this._frameStates[serial].completionResolve(serial)
-  }
-
-  isComplete () {
-    return this._lastCompleteSerial === this.syncSerial
+    this._frameStates[serial].completionResolve(this._bufferContents)
   }
 
   _newFrameState (syncSerial) {
@@ -172,7 +214,7 @@ export default class BrowserRtcDcBuffer {
       completionResolve: null,
       completionReject: null,
       state: 'pending', // or 'pending_alpha' or 'pending_opaque' or 'complete'
-      geo: Size.create(0, 0),
+      _geo: Size.create(0, 0),
       frame: null
     }
     frameState.completionPromise = new Promise((resolve, reject) => {
@@ -185,10 +227,10 @@ export default class BrowserRtcDcBuffer {
 
   /**
    * Returns a promise that will resolve as soon as the buffer is in the 'complete' state.
-   * @returns {Promise}
+   * @returns {Promise<{type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}>}
    */
   whenComplete () {
-    const frameState = this._frameStates[this.syncSerial]
+    const frameState = this._frameStates[this._syncSerial]
     return frameState.completionPromise
   }
 
@@ -200,11 +242,11 @@ export default class BrowserRtcDcBuffer {
    *
    */
   syn (resource, serial) {
-    if (serial < this.syncSerial) {
+    if (serial < this._syncSerial) {
       // TODO return an error to the client
       throw new Error('Buffer sync serial was not sequential.')
     }
-    this.syncSerial = serial
+    this._syncSerial = serial
 
     if (this._frameStates[serial] && this._frameStates[serial].frame) {
       // state already exists, this means the contents arrived before this call, which means we can now decode it
@@ -216,7 +258,7 @@ export default class BrowserRtcDcBuffer {
   }
 
   _frameStateComplete (frame, serial) {
-    this._frameStates[serial].geo = Size.create(frame.bufferWidth, frame.bufferHeight)
+    this._frameStates[serial]._geo = Size.create(frame.bufferWidth, frame.bufferHeight)
 
     if (frame.type === 'h264') {
       this._decodeH264(frame, serial)
@@ -337,12 +379,25 @@ export default class BrowserRtcDcBuffer {
       this._destroyH264()
     }
 
-    this.pngContent = frame.opaque
-    this.type = 'png'
-    this._onComplete(serial)
+    const pngImg = new window.Image()
+    const pngArray = frame.opaque
+    const pngBlob = new window.Blob([pngArray], {'type': 'image/png'})
+    pngImg.src = window.URL.createObjectURL(pngBlob)
+    this._pngImage = pngImg
+    this._type = 'png'
+
+    if (pngImg.complete && pngImg.naturalHeight !== 0) {
+      this._onComplete(serial)
+    } else {
+      pngImg.onload = () => {
+        this._onComplete(serial)
+      }
+    }
   }
 
   async _decodeH264 (frame, serial) {
+    this._type = 'h264'
+
     const hasAlpha = frame.alpha !== null
     await this._ensureH264Decoders(hasAlpha)
 
@@ -361,9 +416,9 @@ export default class BrowserRtcDcBuffer {
   }
 
   _onPictureDecoded (buffer, width, height) {
-    this.yuvContent = buffer
-    this.yuvWidth = width
-    this.yuvHeight = height
+    this._yuvContent = buffer
+    this._yuvWidth = width
+    this._yuvHeight = height
 
     const frameSerial = this._decodingSerialsQueue.shift()
     if (!frameSerial || frameSerial < this._lastCompleteSerial) {
@@ -371,7 +426,6 @@ export default class BrowserRtcDcBuffer {
     }
 
     if (this._frameStates[frameSerial].state === 'pending_opaque') {
-      this.type = 'h264'
       this._onComplete(frameSerial)
     } else {
       this._frameStates[frameSerial].state = 'pending_alpha'
@@ -379,9 +433,9 @@ export default class BrowserRtcDcBuffer {
   }
 
   _onAlphaPictureDecoded (buffer, width, height) {
-    this.alphaYuvContent = buffer
-    this.alphaYuvWidth = width
-    this.alphaYuvHeight = height
+    this._alphaYuvContent = buffer
+    this._alphaYuvWidth = width
+    this._alphaYuvHeight = height
 
     const frameSerial = this._decodingAlphaSerialsQueue.shift()
     if (!frameSerial || frameSerial < this._lastCompleteSerial) {
@@ -389,7 +443,6 @@ export default class BrowserRtcDcBuffer {
     }
 
     if (this._frameStates[frameSerial].state === 'pending_alpha') {
-      this.type = 'h264'
       this._onComplete(frameSerial)
     } else {
       this._frameStates[frameSerial].state = 'pending_opaque'

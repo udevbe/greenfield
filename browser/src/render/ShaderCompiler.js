@@ -6,6 +6,11 @@
  */
 
 export default class ShaderCompiler {
+  /**
+   * @param {WebGLRenderingContext}gl
+   * @param {{type: string, source: string}}script
+   * @return {WebGLShader}
+   */
   static compile (gl, script) {
     let shader
     // Now figure out what type of shader script we have, based on its MIME type.
@@ -14,8 +19,7 @@ export default class ShaderCompiler {
     } else if (script.type === 'x-shader/x-vertex') {
       shader = gl.createShader(gl.VERTEX_SHADER)
     } else {
-      console.error('Unknown shader type: ' + script.type)
-      return
+      throw new Error('Unknown shader type: ' + script.type)
     }
 
     // Send the source to the shader object.
@@ -26,7 +30,7 @@ export default class ShaderCompiler {
 
     // See if it compiled successfully.
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      console.error('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader))
+      throw new Error('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader))
     }
 
     return shader

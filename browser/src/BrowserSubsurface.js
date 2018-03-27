@@ -2,6 +2,7 @@
 
 import Point from './math/Point'
 import Renderer from './render/Renderer'
+import BrowserSurface from './BrowserSurface'
 
 export default class BrowserSubsurface {
   /**
@@ -60,9 +61,9 @@ export default class BrowserSubsurface {
      */
     this.pendingPosition = Point.create(0, 0)
     /**
-     * @type {{grBuffer: null, damagePixmanRegion: Number, bufferDamagePixmanRegion: Number, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number}}
+     * @type {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}
      */
-    this._cachedState = {}
+    this._cachedState = grSurfaceResource.implementation.state
     /**
      * @type {boolean}
      * @private
@@ -73,9 +74,8 @@ export default class BrowserSubsurface {
   /**
    * @param {BrowserSurface}parentBrowserSurface
    * @param {RenderFrame}renderFrame
-   * @return {Promise<void>}
    */
-  async onParentCommit (parentBrowserSurface, renderFrame) {
+  onParentCommit (parentBrowserSurface, renderFrame) {
     if (this._inert) {
       return
     }
@@ -84,34 +84,33 @@ export default class BrowserSubsurface {
     // sibling stacking order & position is committed by the parent itself so no need to do it here.
 
     if (this._effectiveSync && this._cachedState) {
-      browserSurface.shadowState = Object.assign({}, this._cachedState)
+      browserSurface.render(renderFrame, this._cachedState)
       this._cachedState = null
-      await browserSurface.render(renderFrame)
     }
   }
 
   /**
    * @param {BrowserSurface}browserSurface
    * @param {RenderFrame}renderFrame
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}newState
    * @return {Promise<void>}
    */
-  async onCommit (browserSurface, renderFrame) {
+  async onCommit (browserSurface, renderFrame, newState) {
     if (this._inert) {
       return
     }
 
     if (this._effectiveSync) {
       if (!this._cachedState) {
-        this._cachedState = {}
+        this._cachedState = browserSurface.state
       }
-      browserSurface.flushState(this._cachedState)
+      BrowserSurface.mergeState(this._cachedState, newState)
     } else {
       if (this._cachedState) {
-        browserSurface.flushState(this._cachedState)
-        browserSurface.shadowState = Object.assign({}, this._cachedState)
+        BrowserSurface.mergeState(newState, this._cachedState)
         this._cachedState = null
       }
-      await browserSurface.render(renderFrame)
+      browserSurface.render(renderFrame, newState)
       renderFrame.fire()
       await renderFrame
       browserSurface.browserSession.flush()
@@ -320,13 +319,9 @@ export default class BrowserSubsurface {
     this._sync = false
     if (!this._effectiveSync && this._cachedState) {
       const browserSurface = this.grSurfaceResource.implementation
-      if (this._cachedState) {
-        browserSurface.flushState(this._cachedState)
-        browserSurface.shadowState = Object.assign({}, this._cachedState)
-        this._cachedState = null
-      }
       const renderFrame = Renderer.createRenderFrame()
-      await browserSurface.render(renderFrame)
+      browserSurface.render(renderFrame, this._cachedState)
+      this._cachedState = null
       renderFrame.fire()
       await renderFrame
       browserSurface.browserSession.flush()

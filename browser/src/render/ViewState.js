@@ -12,8 +12,8 @@ export default class ViewState {
     const UTexture = Texture.create(gl, gl.LUMINANCE)
     const VTexture = Texture.create(gl, gl.LUMINANCE)
     const alphaYTexture = Texture.create(gl, gl.LUMINANCE)
-    const pngImg = new window.Image()
-    return new ViewState(gl, YTexture, UTexture, VTexture, alphaYTexture, pngImg)
+    const image = new window.Image()
+    return new ViewState(gl, YTexture, UTexture, VTexture, alphaYTexture, image)
   }
 
   /**
@@ -23,10 +23,10 @@ export default class ViewState {
    * @param {Texture}UTexture
    * @param {Texture}VTexture
    * @param {Texture}alphaYTexture
-   * @param {HTMLImageElement}pngImage
+   * @param {HTMLImageElement}image
    * @private
    */
-  constructor (gl, YTexture, UTexture, VTexture, alphaYTexture, pngImage) {
+  constructor (gl, YTexture, UTexture, VTexture, alphaYTexture, image) {
     /**
      * @type {Texture}
      */
@@ -50,54 +50,52 @@ export default class ViewState {
     /**
      * @type {HTMLImageElement}
      */
-    this.pngImage = pngImage
+    this.image = image
   }
 
   /**
-   * @param {BrowserRtcDcBuffer}browserRtcDcBuffer
+   * @param {{type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}}bufferContents
    */
-  update (browserRtcDcBuffer) {
-    if (browserRtcDcBuffer.type === 'h264') {
-      this._updateH264(browserRtcDcBuffer)
+  update (bufferContents) {
+    if (bufferContents.type === 'h264') {
+      this._updateH264(bufferContents)
     } else { // if(type === 'png')
-      this._updatePNG(browserRtcDcBuffer)
+      this._updateImage(bufferContents)
     }
   }
 
   /**
-   * @param {BrowserRtcDcBuffer}browserRtcDcBuffer
+   * @param {{type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}}bufferContents
    */
-  _updateH264 (browserRtcDcBuffer) {
-    const opaqueBuffer = browserRtcDcBuffer.yuvContent
+  _updateH264 (bufferContents) {
+    const opaqueBuffer = bufferContents.yuvContent
     if (!opaqueBuffer) { return }
 
-    const opaqueWidth = browserRtcDcBuffer.yuvWidth
-    const opaqueHeight = browserRtcDcBuffer.yuvHeight
+    const opaqueWidth = bufferContents.yuvWidth
+    const opaqueHeight = bufferContents.yuvHeight
 
     const lumaSize = opaqueWidth * opaqueHeight
     const chromaSize = lumaSize >> 2
 
-    this.yTexture.fill(opaqueBuffer.subarray(0, lumaSize), browserRtcDcBuffer.geo, opaqueWidth)
-    this.uTexture.fill(opaqueBuffer.subarray(lumaSize, lumaSize + chromaSize), browserRtcDcBuffer.geo.getHalfSize(), opaqueWidth / 2)
-    this.vTexture.fill(opaqueBuffer.subarray(lumaSize + chromaSize, lumaSize + (2 * chromaSize)), browserRtcDcBuffer.geo.getHalfSize(), opaqueWidth / 2)
+    this.yTexture.fill(opaqueBuffer.subarray(0, lumaSize), bufferContents.geo, opaqueWidth)
+    this.uTexture.fill(opaqueBuffer.subarray(lumaSize, lumaSize + chromaSize), bufferContents.geo.getHalfSize(), opaqueWidth / 2)
+    this.vTexture.fill(opaqueBuffer.subarray(lumaSize + chromaSize, lumaSize + (2 * chromaSize)), bufferContents.geo.getHalfSize(), opaqueWidth / 2)
 
-    const alphaBuffer = browserRtcDcBuffer.alphaYuvContent
+    const alphaBuffer = bufferContents.alphaYuvContent
     if (alphaBuffer) {
-      const alphaWidth = browserRtcDcBuffer.alphaYuvWidth
-      const alphaHeight = browserRtcDcBuffer.alphaYuvHeight
+      const alphaWidth = bufferContents.alphaYuvWidth
+      const alphaHeight = bufferContents.alphaYuvHeight
       const alphaLumaSize = alphaWidth * alphaHeight
 
-      this.alphaYTexture.fill(alphaBuffer.subarray(0, alphaLumaSize), browserRtcDcBuffer.geo, alphaWidth)
+      this.alphaYTexture.fill(alphaBuffer.subarray(0, alphaLumaSize), bufferContents.geo, alphaWidth)
     }
   }
 
   /**
-   * @param {BrowserRtcDcBuffer}browserRtcDcBuffer
+   * @param {{type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}}bufferContents
    */
-  _updatePNG (browserRtcDcBuffer) {
-    const pngArray = browserRtcDcBuffer.pngContent
-    const pngBlob = new window.Blob([pngArray], {'type': 'image/png'})
-    this.pngImage.src = window.URL.createObjectURL(pngBlob)
+  _updateImage (bufferContents) {
+    this.image = bufferContents.pngImage
   }
 
   // TODO handle state destruction

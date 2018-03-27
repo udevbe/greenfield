@@ -1,5 +1,8 @@
 'use strict'
 
+/**
+ * @type {{type: string, source: string}}
+ */
 export const vertexQuad = {
   type: 'x-shader/x-vertex',
   source: `
@@ -16,6 +19,9 @@ export const vertexQuad = {
 `
 }
 
+/**
+ * @type {{type: string, source: string}}
+ */
 export const fragmentYUVA = {
   type: 'x-shader/x-fragment',
   source: `
@@ -44,6 +50,9 @@ export const fragmentYUVA = {
 `
 }
 
+/**
+ * @type {{type: string, source: string}}
+ */
 export const fragmentYUV = {
   type: 'x-shader/x-fragment',
   source: `
