@@ -2,7 +2,6 @@
 
 import Point from './math/Point'
 import greenfield from './protocol/greenfield-browser-protocol'
-import Renderer from './render/Renderer'
 
 const Resize = greenfield.GrShellSurface.Resize
 
@@ -94,8 +93,11 @@ export default class BrowserShellSurface {
   async onCommit (browserSurface, renderFrame) {
     const oldPosition = browserSurface.browserSurfaceChildSelf.position
     browserSurface.browserSurfaceChildSelf.position = Point.create(oldPosition.x + browserSurface.state.dx, oldPosition.y + browserSurface.state.dy)
+
     await browserSurface.render(renderFrame)
     renderFrame.fire()
+    await renderFrame
+    this.browserSession.flush()
   }
 
   /**
@@ -242,14 +244,6 @@ export default class BrowserShellSurface {
     const browserSeat = seat.implementation
     const browserPointer = browserSeat.browserPointer
     if (browserPointer.buttonSerial === serial) {
-      const pointerX = browserPointer.x
-      const pointerY = browserPointer.y
-
-      const browserSurfaceSize = this.grSurfaceResource.implementation.size
-
-      const surfaceWidth = browserSurfaceSize.w
-      const surfaceHeight = browserSurfaceSize.h
-
       // assigned in switch statement
       let sizeAdjustment = (width, height, deltaX, deltaY) => {}
 
@@ -310,10 +304,16 @@ export default class BrowserShellSurface {
           break
         }
       }
+
+      const pointerX = browserPointer.x
+      const pointerY = browserPointer.y
+      const {w: surfaceWidth, h: surfaceHeight} = this.grSurfaceResource.implementation.size
+
       const resizeListener = () => {
         if (browserPointer.buttonSerial === serial) {
           const deltaX = browserPointer.x - pointerX
           const deltaY = browserPointer.y - pointerY
+
           const size = sizeAdjustment(surfaceWidth, surfaceHeight, deltaX, deltaY)
           this.resource.configure(edges, size.w, size.h)
         } else {
@@ -494,14 +494,17 @@ export default class BrowserShellSurface {
       const browserSurface = this.grSurfaceResource.implementation
       const browserSurfaceChild = browserSurface.browserSurfaceChildSelf
       browserSurfaceChild.position = Point.create(x, y)
-      parent.implementation.addChild(browserSurfaceChild)
-      // having added this shell-surface to a parent will have it create a view for each parent view
-      browserSurface.browserSurfaceViews.forEach((view) => {
+      const onNewView = (view) => {
         view.applyTransformations()
         view.onDestroy().then(() => {
           view.detach()
         })
-      })
+      }
+      // having added this shell-surface to a parent will have it create a view for each parent view
+      const views = parent.implementation.addChild(browserSurfaceChild)
+      views.forEach(onNewView)
+      // this handles the case where a view is created later on (ie if a new parent view is created)
+      browserSurface.onViewCreated = onNewView
 
       this.grSurfaceResource.implementation.hasPointerInput = true
       this.grSurfaceResource.implementation.hasTouchInput = true

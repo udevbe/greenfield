@@ -140,20 +140,24 @@ export default class BrowserPointer {
 
   /**
    * @param {BrowserSurface}browserSurface
+   * @param {RenderFrame}renderFrame
    */
-  onCommit (browserSurface) {
+  async onCommit (browserSurface, renderFrame) {
     this.hotspotX -= browserSurface.state.dx
     this.hotspotY -= browserSurface.state.dy
 
     const hotspotX = this.hotspotX
     const hotspotY = this.hotspotY
 
-    this._view.onDraw().then(() => {
-      if (this._cursorSurface && this._cursorSurface.implementation === browserSurface) {
-        this._uploadCursor(this._view, hotspotX, hotspotY)
-      }
-    })
-    return true
+    await browserSurface.render(renderFrame)
+    renderFrame.fire()
+    await renderFrame
+
+    if (this._cursorSurface && this._cursorSurface.implementation === browserSurface) {
+      this._uploadCursor(this._view, hotspotX, hotspotY)
+    }
+
+    browserSurface.browserSession.flush()
   }
 
   /**
@@ -355,7 +359,7 @@ export default class BrowserPointer {
       const surfacePoint = this._calculateSurfacePoint(this.focus)
       const surfaceResource = this.focus.browserSurface.resource
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
-        pointerResource.motion(event.timeStamp, greenfield.parseFixed(surfacePoint.x >> 0), greenfield.parseFixed(surfacePoint.y >> 0))
+        pointerResource.motion(event.timeStamp, greenfield.parseFixed(surfacePoint.x), greenfield.parseFixed(surfacePoint.y))
       })
     }
   }

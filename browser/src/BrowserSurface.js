@@ -11,6 +11,7 @@ import Size from './Size'
 import BrowserRegion from './BrowserRegion'
 import BrowserSurfaceChild from './BrowserSurfaceChild'
 import Renderer from './render/Renderer'
+import BrowserRtcBufferFactory from './BrowserRtcBufferFactory'
 
 const pixman = pixmanModule()
 
@@ -277,6 +278,11 @@ export default class BrowserSurface {
   }
 
   /**
+   * @param {BrowserSurfaceView}browserSurfaceView
+   */
+  onViewCreated (browserSurfaceView) {}
+
+  /**
    * @return {BrowserSurfaceView}
    */
   createView () {
@@ -295,6 +301,7 @@ export default class BrowserSurface {
     })
 
     this.updateChildViewsZIndexes()
+    this.onViewCreated(browserSurfaceView)
 
     return browserSurfaceView
   }
@@ -302,25 +309,35 @@ export default class BrowserSurface {
   /**
    * @param {BrowserSurfaceChild}browserSurfaceChild
    * @param {BrowserSurfaceView}browserSurfaceView
+   * @return {BrowserSurfaceView|null}
    * @private
    */
   _ensureChildView (browserSurfaceChild, browserSurfaceView) {
     if (browserSurfaceChild.browserSurface === this) {
-      return
+      return null
     }
 
     const childView = browserSurfaceChild.browserSurface.createView()
     const zIndexOrder = this.browserSurfaceChildren.indexOf(browserSurfaceChild)
     childView.zIndex = browserSurfaceView.bufferedCanvas.frontContext.canvas.style.zIndex + zIndexOrder
-
     childView.parent = browserSurfaceView
+
+    return childView
   }
 
+  /**
+   * @param {BrowserSurfaceChild}browserSurfaceChild
+   * @return {BrowserSurfaceView[]}
+   */
   addSubsurface (browserSurfaceChild) {
-    this._addChild(browserSurfaceChild, this._browserSubsurfaceChildren)
+    const childViews = this._addChild(browserSurfaceChild, this._browserSubsurfaceChildren)
     this.pendingBrowserSubsurfaceChildren.push(browserSurfaceChild)
+    return childViews
   }
 
+  /**
+   * @param {BrowserSurfaceChild}browserSurfaceChild
+   */
   removeSubsurface (browserSurfaceChild) {
     this._removeChild(browserSurfaceChild, this._browserSubsurfaceChildren)
     this._removeChild(browserSurfaceChild, this.pendingBrowserSubsurfaceChildren)
@@ -328,9 +345,10 @@ export default class BrowserSurface {
 
   /**
    * @param {BrowserSurfaceChild}browserSurfaceChild
+   * @return {BrowserSurfaceView[]}
    */
   addChild (browserSurfaceChild) {
-    this._addChild(browserSurfaceChild, this._browserSurfaceChildren)
+    return this._addChild(browserSurfaceChild, this._browserSurfaceChildren)
   }
 
   /**
@@ -341,21 +359,26 @@ export default class BrowserSurface {
   }
 
   /**
-   *
    * @param {BrowserSurfaceChild}browserSurfaceChild
    * @param {BrowserSurfaceChild[]}siblings
+   * @return {BrowserSurfaceView[]}
    * @private
    */
   _addChild (browserSurfaceChild, siblings) {
     siblings.push(browserSurfaceChild)
 
+    const childViews = []
     this.browserSurfaceViews.forEach((browserSurfaceView) => {
-      this._ensureChildView(browserSurfaceChild, browserSurfaceView)
+      const childView = this._ensureChildView(browserSurfaceChild, browserSurfaceView)
+      if (childView) {
+        childViews.push(childView)
+      }
     })
     browserSurfaceChild.browserSurface.resource.onDestroy().then(() => {
       this.removeChild(browserSurfaceChild)
     })
     this.updateChildViewsZIndexes()
+    return childViews
   }
 
   /**
@@ -654,6 +677,9 @@ export default class BrowserSurface {
       this.pendingGrBuffer.removeDestroyListener(this.pendingBrowserBufferDestroyListener)
     }
 
+    const browserRtcDcBuffer = BrowserRtcBufferFactory.get(this.pendingGrBuffer)
+    const syncSerial = await browserRtcDcBuffer.whenComplete()
+
     this.flushState(this.state)
     this._browserSubsurfaceChildren = this.pendingBrowserSubsurfaceChildren.slice()
     this.updateChildViewsZIndexes()
@@ -673,8 +699,6 @@ export default class BrowserSurface {
    * @return {Promise<void>}
    */
   async render (renderFrame) {
-    await this.renderer.renderBackBuffer(this)
-
     renderFrame.then((timestamp) => {
       this.browserSurfaceViews.forEach(browserSurfaceView => {
         browserSurfaceView.swapBuffers()
@@ -684,24 +708,34 @@ export default class BrowserSurface {
         frameCallback.done(timestamp & 0x7fffffff)
       })
       this._frameCallbacks = []
-      this.browserSession.flush()
     })
 
     if (this._browserSubsurfaceChildren.length > 1) {
       await window.Promise.all(this._browserSubsurfaceChildren.map(async (browserSurfaceChild) => {
         const siblingBrowserSurface = browserSurfaceChild.browserSurface
         if (siblingBrowserSurface !== this) {
+          const siblingSubsurface = siblingBrowserSurface.role
           // cascade scene update to subsurface children
-          await siblingBrowserSurface.role.onParentCommit(this, renderFrame)
+          if (siblingSubsurface.pendingPosition) {
+            browserSurfaceChild.position = siblingSubsurface.pendingPosition
+            siblingSubsurface.pendingPosition = null
+          }
+          await siblingSubsurface.onParentCommit(this, renderFrame)
         }
       }))
     }
+
+    await this.renderer.renderBackBuffer(this)
   }
 
   /**
    * @param {{grBuffer: null, damagePixmanRegion: Number, bufferDamagePixmanRegion: Number, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number}}targetState
    */
   flushState (targetState) {
+    if (targetState === null) {
+      console.trace()
+    }
+
     targetState.grBuffer = this.pendingGrBuffer
     targetState.dx = this._pendingDx
     targetState.dy = this._pendingDy

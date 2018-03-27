@@ -58,15 +58,11 @@ export default class BrowserSubsurface {
      * @type {Point}
      * @private
      */
-    this._pendingPosition = Point.create(0, 0)
+    this.pendingPosition = Point.create(0, 0)
     /**
      * @type {{grBuffer: null, damagePixmanRegion: Number, bufferDamagePixmanRegion: Number, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number}}
      */
-    this._activeState = Object.assign({}, grSurfaceResource.implementation.state)
-    /**
-     * @type {{grBuffer: null, damagePixmanRegion: Number, bufferDamagePixmanRegion: Number, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number}}
-     */
-    this._cachedState = null
+    this._cachedState = {}
     /**
      * @type {boolean}
      * @private
@@ -85,25 +81,13 @@ export default class BrowserSubsurface {
     }
 
     const browserSurface = this.grSurfaceResource.implementation
-    // sibling stacking order is committed by the parent itself so no need to do it here.
-
-    if (this._pendingPosition) {
-      const browserSurface = this.grSurfaceResource.implementation
-      const browserSurfaceChildSelf = browserSurface.browserSurfaceChildSelf
-      browserSurfaceChildSelf.position = this._pendingPosition
-    }
+    // sibling stacking order & position is committed by the parent itself so no need to do it here.
 
     if (this._effectiveSync && this._cachedState) {
-      browserSurface.state = this._cachedState
-      this._activeState = Object.assign({}, this._cachedState)
+      browserSurface.shadowState = Object.assign({}, this._cachedState)
       this._cachedState = null
       await browserSurface.render(renderFrame)
-    } else if (!this._effectiveSync && this._pendingPosition) {
-      browserSurface.browserSurfaceViews.forEach((view) => {
-        view.applyTransformations()
-      })
     }
-    this._pendingPosition = null
   }
 
   /**
@@ -117,11 +101,20 @@ export default class BrowserSubsurface {
     }
 
     if (this._effectiveSync) {
-      this._cachedState = Object.assign({}, browserSurface.state)
-      browserSurface.state = this._activeState
+      if (!this._cachedState) {
+        this._cachedState = {}
+      }
+      browserSurface.flushState(this._cachedState)
     } else {
+      if (this._cachedState) {
+        browserSurface.flushState(this._cachedState)
+        browserSurface.shadowState = Object.assign({}, this._cachedState)
+        this._cachedState = null
+      }
       await browserSurface.render(renderFrame)
       renderFrame.fire()
+      await renderFrame
+      browserSurface.browserSession.flush()
     }
   }
 
@@ -175,7 +168,7 @@ export default class BrowserSubsurface {
       return
     }
 
-    this._pendingPosition = Point.create(x, y)
+    this.pendingPosition = Point.create(x, y)
   }
 
   /**
@@ -328,13 +321,15 @@ export default class BrowserSubsurface {
     if (!this._effectiveSync && this._cachedState) {
       const browserSurface = this.grSurfaceResource.implementation
       if (this._cachedState) {
-        browserSurface.state = this._cachedState
-        this._activeState = Object.assign({}, this._cachedState)
+        browserSurface.flushState(this._cachedState)
+        browserSurface.shadowState = Object.assign({}, this._cachedState)
         this._cachedState = null
       }
       const renderFrame = Renderer.createRenderFrame()
       await browserSurface.render(renderFrame)
       renderFrame.fire()
+      await renderFrame
+      browserSurface.browserSession.flush()
     }
   }
 }

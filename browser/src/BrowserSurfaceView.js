@@ -147,26 +147,40 @@ export default class BrowserSurfaceView {
 
   applyTransformations () {
     this._applyTransformations(this.bufferedCanvas.frontContext)
+    this._applyTransformationsChild()
+  }
+
+  _applyTransformationsChild () {
     // find all child views who have this view as it's parent and update their transformation
     this.browserSurface.browserSurfaceChildren.forEach((browserSurfaceChild) => {
-      const childViews = browserSurfaceChild.browserSurface.browserSurfaceViews.filter((browserSurfaceView) => {
+      if (browserSurfaceChild.browserSurface === this.browserSurface) {
+        return
+      }
+
+      browserSurfaceChild.browserSurface.browserSurfaceViews.filter((browserSurfaceView) => {
         return browserSurfaceView.parent === this
-      })
-      childViews.forEach((childView) => {
+      }).forEach((childView) => {
         childView.applyTransformations()
       })
     })
   }
 
   applyTransformationsBackBuffer () {
-    this._applyTransformations(this.bufferedCanvas.frontContext)
+    this._applyTransformations(this.bufferedCanvas.backContext)
+    this._applyTransformationsChildBackBuffer()
+  }
+
+  _applyTransformationsChildBackBuffer () {
     // find all child views who have this view as it's parent and update their transformation
     this.browserSurface.browserSurfaceChildren.forEach((browserSurfaceChild) => {
-      const childViews = browserSurfaceChild.browserSurface.browserSurfaceViews.filter((browserSurfaceView) => {
+      if (browserSurfaceChild.browserSurface === this.browserSurface) {
+        return
+      }
+
+      browserSurfaceChild.browserSurface.browserSurfaceViews.filter((browserSurfaceView) => {
         return browserSurfaceView.parent === this
-      })
-      childViews.forEach((childView) => {
-        childView.applyTransformationsBackBuffer()
+      }).forEach((childView) => {
+        childView.applyTransformations()
       })
     })
   }
@@ -234,7 +248,7 @@ export default class BrowserSurfaceView {
   _draw (source, width, height) {
     // FIXME adjust final transformation with additional transformations defined in the browser surface
     this.bufferedCanvas.drawBackBuffer(source, width, height, this.transformation)
-    this._applyTransformations(this.bufferedCanvas.backContext)
+    this.applyTransformationsBackBuffer()
   }
 
   _armDrawPromise () {
@@ -246,6 +260,10 @@ export default class BrowserSurfaceView {
 
   swapBuffers () {
     this.bufferedCanvas.swapBuffers()
+    // make sure the new back buffer has the same transformations as the new front buffer
+    this._applyTransformations(this.bufferedCanvas.backContext)
+    // update child transformations as new parent buffer is visible
+    this._applyTransformationsChild()
     this._drawResolve()
     this._armDrawPromise()
   }

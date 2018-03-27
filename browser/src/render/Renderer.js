@@ -49,6 +49,7 @@ export default class Renderer {
    * @name RenderFrame
    * @type{Promise<number>}
    * @property {Function} fire
+   * @property {Function} then
    */
   /**
    * @return {RenderFrame}
@@ -120,18 +121,10 @@ export default class Renderer {
   async renderBackBuffer (browserSurface) {
     const renderStart = Date.now()
 
-    const grBuffer = browserSurface.state.grBuffer
+    const grBuffer = browserSurface.shadowState.grBuffer
     const views = browserSurface.browserSurfaceViews
 
-    if (grBuffer === null) {
-      await window.Promise.all(views.map(async (browserSurfaceView) => {
-        const emptyImage = new window.Image()
-        emptyImage.src = '//:0'
-        await browserSurfaceView.drawPNG(emptyImage)
-      }))
-      browserSurface.size = Size.create(0, 0)
-      browserSurface.bufferSize = Size.create(0, 0)
-    } else {
+    if (grBuffer) {
       let viewState = browserSurface.renderState
       if (!viewState) {
         viewState = ViewState.create(this.gl)
@@ -139,7 +132,6 @@ export default class Renderer {
       }
 
       const browserRtcDcBuffer = BrowserRtcBufferFactory.get(grBuffer)
-
       const syncSerial = await browserRtcDcBuffer.whenComplete()
 
       browserSurface.size = this.surfaceSize(browserSurface)
@@ -149,6 +141,14 @@ export default class Renderer {
 
       const renderDuration = Date.now() - renderStart
       browserRtcDcBuffer.resource.latency(syncSerial, renderDuration)
+    } else {
+      await window.Promise.all(views.map(async (browserSurfaceView) => {
+        const emptyImage = new window.Image()
+        emptyImage.src = '//:0'
+        await browserSurfaceView.drawPNG(emptyImage)
+      }))
+      browserSurface.size = Size.create(0, 0)
+      browserSurface.bufferSize = Size.create(0, 0)
     }
   }
 

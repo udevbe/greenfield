@@ -52,7 +52,8 @@ class Encoder {
       this._frameEncoder = null
     }
 
-    if (bufferWidth <= 48 || bufferHeight <= 48) {
+    const bufferArea = bufferWidth * bufferHeight
+    if (bufferArea <= (384 * 384)) {
       return this._encodePNGFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, synSerial)
     } else {
       return this._encodeFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, synSerial)

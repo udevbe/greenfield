@@ -38,7 +38,8 @@ export default class BrowserSubcompositor extends westfield.Global {
    *
    */
   getSubsurface (resource, id, surface, parent) {
-    if (surface.implementation.role) {
+    const browserSurface = surface.implementation
+    if (browserSurface.role) {
       // TODO protocol error
     }
 
@@ -46,7 +47,16 @@ export default class BrowserSubcompositor extends westfield.Global {
     BrowserSubsurface.create(parent, surface, grSubsurface)
 
     const parentBrowserSurface = parent.implementation
-    parentBrowserSurface.addSubsurface(surface.implementation.browserSurfaceChildSelf)
 
+    // having added this sub-surface to a parent will have it create a view for each parent view
+    const views = parentBrowserSurface.addSubsurface(browserSurface.browserSurfaceChildSelf)
+    const onNewView = (view) => {
+      view.onDestroy().then(() => {
+        view.detach()
+      })
+    }
+    views.forEach(onNewView)
+    // this handles the case where a view is created later on (ie if a new parent view is created)
+    browserSurface.onViewCreated = onNewView
   }
 }
