@@ -86,7 +86,7 @@ export default class DesktopShellEntry {
   }
 
   /**
-   * @param {String}title
+   * @param {string}title
    */
   updateTitle (title) {
     this.divElement.textContent = title
