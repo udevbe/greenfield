@@ -10,7 +10,7 @@ import BrowserClientSession from './BrowserClientSession'
 export default class BrowserSession extends westfield.Global {
   /**
    *
-   * @param {String} sessionId unique random browser compositor session id
+   * @param {string} sessionId unique random browser compositor session id
    * @returns {Promise<BrowserSession>}
    */
   static async create (sessionId) {
