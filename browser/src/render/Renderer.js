@@ -110,7 +110,6 @@ export default class Renderer {
 
       this._draw(bufferContents, viewState, views)
     } else {
-      console.trace('rendering empty surface')
       views.forEach((browserSurfaceView) => {
         browserSurfaceView.drawImage(this._emptyImage)
       })
