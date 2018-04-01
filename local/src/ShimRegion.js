@@ -22,6 +22,6 @@ module.exports = class ShimRegion extends WlRegionRequests {
   }
 
   subtract (resource, x, y, width, height) {
-    this.proxy.substract(x, y, width, height)
+    this.proxy.subtract(x, y, width, height)
   }
 }

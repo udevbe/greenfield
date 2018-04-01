@@ -134,12 +134,22 @@ export default class BrowserSurface {
      * @type {number}
      * @private
      */
-    this._pendingOpaqueRegion = null
+    this._pendingOpaqueRegion = BrowserRegion.createPixmanRegion()
+    /**
+     * @type {boolean}
+     * @private
+     */
+    this._opaqueRegionChanged = false
     /**
      * @type {number}
      * @private
      */
-    this._pendingInputRegion = null
+    this._pendingInputRegion = BrowserRegion.createPixmanRegion()
+    /**
+     * @type {boolean}
+     * @private
+     */
+    this._inputRegionChanged = false
     /**
      * @type {number}
      * @private
@@ -541,6 +551,7 @@ export default class BrowserSurface {
    * @param {GrSurface} resource
    * @param {number} callback id
    *
+   *
    * @since 1
    *
    */
@@ -584,6 +595,16 @@ export default class BrowserSurface {
    */
   setOpaqueRegion (resource, region) {
     this._pendingOpaqueRegion = region
+    if (region) {
+      if (!this._pendingOpaqueRegion) {
+        this._pendingOpaqueRegion = BrowserRegion.createPixmanRegion()
+      }
+      region.implementation.copyTo(this._pendingOpaqueRegion)
+    } else if (this._pendingOpaqueRegion) {
+      BrowserRegion.destroyPixmanRegion(this._pendingOpaqueRegion)
+      this._pendingOpaqueRegion = 0
+    }
+    this._opaqueRegionChanged = true
   }
 
   /**
@@ -619,7 +640,16 @@ export default class BrowserSurface {
    *
    */
   setInputRegion (resource, region) {
-    this._pendingInputRegion = region
+    if (region) {
+      if (!this._pendingInputRegion) {
+        this._pendingInputRegion = BrowserRegion.createPixmanRegion()
+      }
+      region.implementation.copyTo(this._pendingInputRegion)
+    } else if (this._pendingInputRegion) {
+      BrowserRegion.destroyPixmanRegion(this._pendingInputRegion)
+      this._pendingInputRegion = 0
+    }
+    this._inputRegionChanged = true
   }
 
   /**
@@ -721,36 +751,42 @@ export default class BrowserSurface {
 
   /**
    * This will invalidate the source state.
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}targetState
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}sourceState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: *, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}targetState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: *, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}sourceState
    */
   static mergeState (targetState, sourceState) {
     targetState.dx = sourceState.dx
     targetState.dy = sourceState.dy
 
-    if (sourceState.inputPixmanRegion) {
-      if (!targetState.inputPixmanRegion) {
-        targetState.inputPixmanRegion = BrowserRegion.createPixmanRegion()
+    if (sourceState.inputRegionChanged) {
+      if (sourceState.inputPixmanRegion) {
+        if (targetState.inputPixmanRegion) {
+          pixman._pixman_region32_union(targetState.inputPixmanRegion, targetState.inputPixmanRegion, sourceState.inputPixmanRegion)
+          BrowserRegion.destroyPixmanRegion(sourceState.inputPixmanRegion)
+          sourceState.inputPixmanRegion = 0
+        } else {
+          targetState.inputPixmanRegion = sourceState.inputPixmanRegion
+        }
+      } else if (targetState.inputPixmanRegion) {
+        BrowserRegion.destroyPixmanRegion(targetState.inputPixmanRegion)
+        targetState.inputPixmanRegion = 0
       }
-      pixman._pixman_region32_copy(targetState.inputPixmanRegion, sourceState.inputPixmanRegion)
-    } else if (targetState.inputPixmanRegion) {
-      BrowserRegion.destroyPixmanRegion(targetState.inputPixmanRegion)
-      targetState.inputPixmanRegion = 0
     }
-    BrowserRegion.destroyPixmanRegion(sourceState.inputPixmanRegion)
-    sourceState.inputPixmanRegion = 0
 
-    if (sourceState.opaquePixmanRegion) {
-      if (!targetState.opaquePixmanRegion) {
-        targetState.opaquePixmanRegion = BrowserRegion.createPixmanRegion()
+    if (sourceState.opaqueRegionChanged) {
+      if (sourceState.opaquePixmanRegion) {
+        if (targetState.opaquePixmanRegion) {
+          pixman._pixman_region32_union(targetState.opaquePixmanRegion, targetState.opaquePixmanRegion, sourceState.opaquePixmanRegion)
+          BrowserRegion.destroyPixmanRegion(sourceState.opaquePixmanRegion)
+          sourceState.opaquePixmanRegion = 0
+        } else {
+          targetState.opaquePixmanRegion = sourceState.opaquePixmanRegion
+        }
+      } else if (targetState.opaquePixmanRegion) {
+        BrowserRegion.destroyPixmanRegion(targetState.opaquePixmanRegion)
+        targetState.opaquePixmanRegion = 0
       }
-      pixman._pixman_region32_copy(targetState.opaquePixmanRegion, sourceState.opaquePixmanRegion)
-    } else if (targetState.opaquePixmanRegion) {
-      BrowserRegion.destroyPixmanRegion(targetState.opaquePixmanRegion)
-      targetState.opaquePixmanRegion = 0
     }
-    BrowserRegion.destroyPixmanRegion(sourceState.opaquePixmanRegion)
-    sourceState.opaquePixmanRegion = 0
 
     targetState.bufferTransform = sourceState.bufferTransform
     targetState.bufferScale = sourceState.bufferScale
@@ -765,14 +801,14 @@ export default class BrowserSurface {
   }
 
   /**
-   * @return {Promise<{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}>}
+   * @return {Promise<{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: *, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}>}
    * @private
    */
   async _flushState (pendingGrBuffer) {
     const bufferTotalDamagePixmanRegion = pixman._malloc(20)
     pixman._pixman_region32_init(bufferTotalDamagePixmanRegion)
     /**
-     * @type {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}
+     * @type {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: *, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}
      */
     const newState = {
       /**
@@ -788,9 +824,17 @@ export default class BrowserSurface {
        */
       opaquePixmanRegion: 0,
       /**
+       * @type{boolean}
+       */
+      opaqueRegionChanged: false,
+      /**
        * @type{number}
        */
       inputPixmanRegion: 0,
+      /**
+       * @type{boolean}
+       */
+      inputRegionChanged: false,
       /**
        * @type{number}
        */
@@ -818,21 +862,23 @@ export default class BrowserSurface {
     newState.dy = this._pendingDy
 
     // input region
-    if (this._pendingInputRegion) {
-      newState.inputPixmanRegion = BrowserRegion.createPixmanRegion()
-      this._pendingInputRegion.implementation.copyTo(newState.inputPixmanRegion)
-      this._pendingInputRegion = null
-    } else if (this.state.inputPixmanRegion) {
-      newState.inputPixmanRegion = 0
+    if (this._inputRegionChanged) {
+      if (this._pendingInputRegion) {
+        newState.inputPixmanRegion = this._pendingInputRegion
+        this._pendingInputRegion = 0
+      }
+      newState.inputRegionChanged = true
+      this._inputRegionChanged = false
     }
 
     // opaque region
-    if (this._pendingOpaqueRegion) {
-      newState.opaquePixmanRegion = BrowserRegion.createPixmanRegion()
-      this._pendingOpaqueRegion.implementation.copyTo(newState.opaquePixmanRegion)
-      this._pendingOpaqueRegion = null
-    } else if (this.state.opaquePixmanRegion) {
-      newState.opaquePixmanRegion = 0
+    if (this._opaqueRegionChanged) {
+      if (this._pendingOpaqueRegion) {
+        newState.opaquePixmanRegion = this._pendingOpaqueRegion
+        this._pendingOpaqueRegion = 0
+      }
+      newState.opaqueRegionChanged = true
+      this._opaqueRegionChanged = false
     }
 
     newState.bufferTransform = this._pendingBufferTransform
