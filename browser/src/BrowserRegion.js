@@ -23,6 +23,18 @@ export default class BrowserRegion {
     return pixmanRegion
   }
 
+  static makeInfinite (pixmanRegion) {
+    pixman._pixman_region32_init_rect(pixmanRegion, -0x7FFFFFFF, -0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
+  }
+
+  static union (result, left, right) {
+    pixman._pixman_region32_union(result, left, right)
+  }
+
+  static unionRect (result, left, x, y, width, height) {
+    pixman._pixman_region32_union_rect(result, left, x, y, width, height)
+  }
+
   static destroyPixmanRegion (pixmanRegion) {
     pixman._pixman_region32_fini(pixmanRegion)
     pixman._free(pixmanRegion)
@@ -103,9 +115,10 @@ export default class BrowserRegion {
   }
 
   /**
-   * @param {number} pixmanRegion
+   * @param {number} destination
+   * @param {number} source
    */
-  copyTo (pixmanRegion) {
-    pixman._pixman_region32_copy(pixmanRegion, this.pixmanRegion)
+  static copyTo (destination, source) {
+    pixman._pixman_region32_copy(destination, source)
   }
 }

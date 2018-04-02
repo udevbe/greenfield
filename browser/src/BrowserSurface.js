@@ -3,7 +3,6 @@
 import greenfield from './protocol/greenfield-browser-protocol'
 import BrowserSurfaceView from './BrowserSurfaceView'
 import BrowserCallback from './BrowserCallback'
-import pixmanModule from './lib/libpixman-1'
 import Rect from './math/Rect'
 import Mat4 from './math/Mat4'
 import { NORMAL, _90, _180, _270, FLIPPED, FLIPPED_90, FLIPPED_180, FLIPPED_270 } from './math/Transformations'
@@ -12,8 +11,6 @@ import BrowserRegion from './BrowserRegion'
 import BrowserSurfaceChild from './BrowserSurfaceChild'
 import Renderer from './render/Renderer'
 import BrowserRtcBufferFactory from './BrowserRtcBufferFactory'
-
-const pixman = pixmanModule()
 
 const transformations = {
   0: NORMAL,
@@ -596,13 +593,9 @@ export default class BrowserSurface {
   setOpaqueRegion (resource, region) {
     this._pendingOpaqueRegion = region
     if (region) {
-      if (!this._pendingOpaqueRegion) {
-        this._pendingOpaqueRegion = BrowserRegion.createPixmanRegion()
-      }
-      region.implementation.copyTo(this._pendingOpaqueRegion)
-    } else if (this._pendingOpaqueRegion) {
-      BrowserRegion.destroyPixmanRegion(this._pendingOpaqueRegion)
-      this._pendingOpaqueRegion = 0
+      BrowserRegion.copyTo(this._pendingOpaqueRegion, region.implementation.pixmanRegion)
+    } else {
+      BrowserRegion.makeInfinite(this._pendingOpaqueRegion)
     }
     this._opaqueRegionChanged = true
   }
@@ -641,13 +634,10 @@ export default class BrowserSurface {
    */
   setInputRegion (resource, region) {
     if (region) {
-      if (!this._pendingInputRegion) {
-        this._pendingInputRegion = BrowserRegion.createPixmanRegion()
-      }
-      region.implementation.copyTo(this._pendingInputRegion)
-    } else if (this._pendingInputRegion) {
-      BrowserRegion.destroyPixmanRegion(this._pendingInputRegion)
-      this._pendingInputRegion = 0
+      BrowserRegion.copyTo(this._pendingInputRegion, region.implementation.pixmanRegion)
+    } else {
+      // 'infinite' region
+      BrowserRegion.makeInfinite(this._pendingInputRegion)
     }
     this._inputRegionChanged = true
   }
@@ -759,32 +749,22 @@ export default class BrowserSurface {
     targetState.dy = sourceState.dy
 
     if (sourceState.inputRegionChanged) {
-      if (sourceState.inputPixmanRegion) {
-        if (targetState.inputPixmanRegion) {
-          pixman._pixman_region32_union(targetState.inputPixmanRegion, targetState.inputPixmanRegion, sourceState.inputPixmanRegion)
-          BrowserRegion.destroyPixmanRegion(sourceState.inputPixmanRegion)
-          sourceState.inputPixmanRegion = 0
-        } else {
-          targetState.inputPixmanRegion = sourceState.inputPixmanRegion
-        }
-      } else if (targetState.inputPixmanRegion) {
-        BrowserRegion.destroyPixmanRegion(targetState.inputPixmanRegion)
-        targetState.inputPixmanRegion = 0
+      if (targetState.inputPixmanRegion) {
+        BrowserRegion.union(targetState.inputPixmanRegion, targetState.inputPixmanRegion, sourceState.inputPixmanRegion)
+        BrowserRegion.destroyPixmanRegion(sourceState.inputPixmanRegion)
+        sourceState.inputPixmanRegion = 0
+      } else {
+        targetState.inputPixmanRegion = sourceState.inputPixmanRegion
       }
     }
 
     if (sourceState.opaqueRegionChanged) {
-      if (sourceState.opaquePixmanRegion) {
-        if (targetState.opaquePixmanRegion) {
-          pixman._pixman_region32_union(targetState.opaquePixmanRegion, targetState.opaquePixmanRegion, sourceState.opaquePixmanRegion)
-          BrowserRegion.destroyPixmanRegion(sourceState.opaquePixmanRegion)
-          sourceState.opaquePixmanRegion = 0
-        } else {
-          targetState.opaquePixmanRegion = sourceState.opaquePixmanRegion
-        }
-      } else if (targetState.opaquePixmanRegion) {
-        BrowserRegion.destroyPixmanRegion(targetState.opaquePixmanRegion)
-        targetState.opaquePixmanRegion = 0
+      if (targetState.opaquePixmanRegion) {
+        BrowserRegion.union(targetState.opaquePixmanRegion, targetState.opaquePixmanRegion, sourceState.opaquePixmanRegion)
+        BrowserRegion.destroyPixmanRegion(sourceState.opaquePixmanRegion)
+        sourceState.opaquePixmanRegion = 0
+      } else {
+        targetState.opaquePixmanRegion = sourceState.opaquePixmanRegion
       }
     }
 
@@ -805,8 +785,6 @@ export default class BrowserSurface {
    * @private
    */
   async _flushState (pendingGrBuffer) {
-    const bufferTotalDamagePixmanRegion = pixman._malloc(20)
-    pixman._pixman_region32_init(bufferTotalDamagePixmanRegion)
     /**
      * @type {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: *, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}
      */
@@ -818,11 +796,11 @@ export default class BrowserSurface {
       /**
        * @type {number}
        */
-      bufferDamage: bufferTotalDamagePixmanRegion,
+      bufferDamage: BrowserRegion.createPixmanRegion(),
       /**
        * @type{number}
        */
-      opaquePixmanRegion: 0,
+      opaquePixmanRegion: BrowserRegion.createPixmanRegion(),
       /**
        * @type{boolean}
        */
@@ -830,7 +808,7 @@ export default class BrowserSurface {
       /**
        * @type{number}
        */
-      inputPixmanRegion: 0,
+      inputPixmanRegion: BrowserRegion.createPixmanRegion(),
       /**
        * @type{boolean}
        */
@@ -863,20 +841,14 @@ export default class BrowserSurface {
 
     // input region
     if (this._inputRegionChanged) {
-      if (this._pendingInputRegion) {
-        newState.inputPixmanRegion = this._pendingInputRegion
-        this._pendingInputRegion = 0
-      }
+      BrowserRegion.copyTo(newState.inputPixmanRegion, this._pendingInputRegion)
       newState.inputRegionChanged = true
       this._inputRegionChanged = false
     }
 
     // opaque region
     if (this._opaqueRegionChanged) {
-      if (this._pendingOpaqueRegion) {
-        newState.opaquePixmanRegion = this._pendingOpaqueRegion
-        this._pendingOpaqueRegion = 0
-      }
+      BrowserRegion.copyTo(newState.opaquePixmanRegion, this._pendingOpaqueRegion)
       newState.opaqueRegionChanged = true
       this._opaqueRegionChanged = false
     }
@@ -887,24 +859,22 @@ export default class BrowserSurface {
     const bufferScaleTransform = Mat4.scalar(newState.bufferScale)
     const bufferTransform = transformations[newState.bufferTransform]
 
-    const surfaceDamagePixmanRegion = pixman._malloc(20)
-    pixman._pixman_region32_init(surfaceDamagePixmanRegion)
+    const surfaceDamagePixmanRegion = BrowserRegion.createPixmanRegion()
     this._pendingDamageRects.forEach(rect => {
       const scaledRect = bufferScaleTransform.timesRect(rect)
       const bufferDamage = bufferTransform.timesRect(scaledRect)
-      pixman._pixman_region32_union_rect(surfaceDamagePixmanRegion, surfaceDamagePixmanRegion, bufferDamage.x, bufferDamage.y, bufferDamage.width, bufferDamage.height)
+      BrowserRegion.unionRect(surfaceDamagePixmanRegion, surfaceDamagePixmanRegion, bufferDamage.x, bufferDamage.y, bufferDamage.width, bufferDamage.height)
     })
     this._pendingDamageRects = []
 
-    const bufferDamagePixmanRegion = pixman._malloc(20)
-    pixman._pixman_region32_init(bufferDamagePixmanRegion)
+    const bufferDamagePixmanRegion = BrowserRegion.createPixmanRegion()
     this._pendingBufferDamageRects.forEach(rect => {
-      pixman._pixman_region32_union_rect(bufferDamagePixmanRegion, bufferDamagePixmanRegion, rect.x, rect.y, rect.width, rect.height)
+      BrowserRegion.unionRect(bufferDamagePixmanRegion, bufferDamagePixmanRegion, rect.x, rect.y, rect.width, rect.height)
     })
     this._pendingBufferDamageRects = []
 
     // marge (surface) damage & buffer damage into total buffer damage region
-    pixman._pixman_region32_union(bufferTotalDamagePixmanRegion, bufferDamagePixmanRegion, surfaceDamagePixmanRegion)
+    BrowserRegion.union(newState.bufferDamage, bufferDamagePixmanRegion, surfaceDamagePixmanRegion)
     BrowserRegion.destroyPixmanRegion(bufferDamagePixmanRegion)
     BrowserRegion.destroyPixmanRegion(surfaceDamagePixmanRegion)
 
