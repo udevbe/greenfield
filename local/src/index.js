@@ -46,7 +46,7 @@ function main () {
 
   express.static.mime.define({'application/wasm': ['wasm']})
   const app = express()
-  app.use(express.static(path.join(__dirname, '../../browser/public')))
+  app.use(express.static(path.join(__dirname, '../../browser/dist')))
 
   const server = http.createServer()
   server.on('request', app)

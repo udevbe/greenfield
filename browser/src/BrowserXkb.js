@@ -36,7 +36,7 @@ export default class BrowserXkb {
         } // TODO reject if we have something else than 2xx
       }
 
-      xhr.open('GET', '/' + resource)
+      xhr.open('GET', `/keymaps/${resource}`)
       xhr.send()
     })
   }
