@@ -238,10 +238,18 @@ export default class BrowserSubsurface {
     parentBrowserSurface.pendingBrowserSubsurfaceChildren.splice(newIdx, 0, browserSurface.browserSurfaceChildSelf)
   }
 
+  /**
+   * @return {boolean}
+   * @private
+   */
   get _effectiveSync () {
-    return this._sync | this._parentEffectiveSync
+    return this._sync || this._parentEffectiveSync
   }
 
+  /**
+   * @return {boolean}
+   * @private
+   */
   get _parentEffectiveSync () {
     let parentEffectiveSync = false
 

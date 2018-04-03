@@ -8,6 +8,12 @@ const HtmlWebpackPlugin = require('html-webpack-plugin')
 const htmlTemplate = 'index.template.html'
 const htmlIndex = 'index.html'
 
+/**
+ * @param {string}appBundle
+ * @param {string}buildDir
+ * @param {boolean}debug
+ * @return {{entry: string, output: {path: string, filename: string}, plugins: *[]}}
+ */
 const commonConfig = (appBundle, buildDir, debug) => {
   return {
     entry: './browser/src/index.js',

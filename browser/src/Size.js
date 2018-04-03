@@ -16,7 +16,6 @@ export default class Size {
   }
 
   /**
-   *
    * @param {number} w
    * @param {number} h
    */
@@ -26,7 +25,6 @@ export default class Size {
   }
 
   /**
-   *
    * @returns {string}
    */
   toString () {
@@ -34,7 +32,6 @@ export default class Size {
   }
 
   /**
-   *
    * @returns {Size}
    */
   getHalfSize () {

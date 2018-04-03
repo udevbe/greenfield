@@ -5,6 +5,9 @@ import greenfield from './protocol/greenfield-browser-protocol'
 import BrowserSubsurface from './BrowserSubsurface'
 
 export default class BrowserSubcompositor extends westfield.Global {
+  /**
+   * @return {BrowserSubcompositor}
+   */
   static create () {
     return new BrowserSubcompositor()
   }
@@ -13,6 +16,11 @@ export default class BrowserSubcompositor extends westfield.Global {
     super(greenfield.GrSubcompositor.name, 1)
   }
 
+  /**
+   * @param {Client}client
+   * @param {number}id
+   * @param {number}version
+   */
   bindClient (client, id, version) {
     const grSubcompositorResource = new greenfield.GrSubcompositor(client, id, version)
     grSubcompositorResource.implementation = this

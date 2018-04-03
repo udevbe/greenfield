@@ -13,6 +13,9 @@ import BrowserOutput from './BrowserOutput'
 import DesktopShell from './DesktopShell'
 import BrowserSubcompositor from './BrowserSubcompositor'
 
+/**
+ * @param {BrowserSession}browserSession
+ */
 function setupGlobals (browserSession) {
   const desktopShell = DesktopShell.create()
 
@@ -37,12 +40,18 @@ function setupGlobals (browserSession) {
   browserSession.wfsServer.registry.register(browserRtcBufferFactory)
 }
 
+/**
+ * @return {Promise<void>}
+ */
 async function main () {
   const sessionId = uuidv4()
   const browserSession = await BrowserSession.create(sessionId)
   setupGlobals(browserSession)
 }
 
+/**
+ * @param {*}module
+ */
 function loadNativeModule (module) {
   return new Promise((resolve) => {
     if (module.calledRun) {
@@ -55,6 +64,9 @@ function loadNativeModule (module) {
   })
 }
 
+/**
+ * @return {string}
+ */
 function uuidv4 () {
   return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
     (c ^ window.crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)

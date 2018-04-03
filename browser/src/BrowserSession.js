@@ -9,7 +9,6 @@ import BrowserClientSession from './BrowserClientSession'
  */
 export default class BrowserSession extends westfield.Global {
   /**
-   *
    * @param {string} sessionId unique random browser compositor session id
    * @returns {Promise<BrowserSession>}
    */
@@ -23,6 +22,12 @@ export default class BrowserSession extends westfield.Global {
     return browserSession
   }
 
+  /**
+   * Use BrowserSession.create(..) instead
+   * @param {string}url
+   * @param {Server}wfsServer
+   * @private
+   */
   constructor (url, wfsServer) {
     super(session.GrSession.name, 1)
     this._flush = false
@@ -35,9 +40,8 @@ export default class BrowserSession extends westfield.Global {
   }
 
   /**
-   *
    * @param {string} url
-   * @returns {Promise<>}
+   * @returns {Promise<void>}
    * @private
    */
   _createConnection (url) {
@@ -60,6 +64,11 @@ export default class BrowserSession extends westfield.Global {
     })
   }
 
+  /**
+   * @param {Client}client
+   * @param {number}id
+   * @param {number}version
+   */
   bindClient (client, id, version) {
     const grSessionResource = new session.GrSession(client, id, version)
     grSessionResource.implementation = this
@@ -98,6 +107,11 @@ export default class BrowserSession extends westfield.Global {
     return this._setupConnection(0)
   }
 
+  /**
+   * @param {number}clientSessionId
+   * @return {Client}
+   * @private
+   */
   _setupConnection (clientSessionId) {
     const client = this.wfsServer.createClient()
     this._clients[clientSessionId] = client
@@ -105,6 +119,11 @@ export default class BrowserSession extends westfield.Global {
     return client
   }
 
+  /**
+   * @param {Client}client
+   * @param {number}clientSessionId
+   * @private
+   */
   _setupClientConnection (client, clientSessionId) {
     client.onSend = (arrayBuffer) => {
       if (this._ws.readyState === window.WebSocket.OPEN) {
@@ -143,8 +162,7 @@ export default class BrowserSession extends westfield.Global {
   /**
    *
    * @param {GrSession} resource
-   *
-   * @param id client session resource id
+   * @param {number}id client session resource id
    * @since 1
    *
    */

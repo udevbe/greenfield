@@ -127,6 +127,10 @@ export default class BrowserShellSurface {
     })
   }
 
+  /**
+   * @param {GrShellSurface} resource
+   * @private
+   */
   _doPing (resource) {
     this._timeoutTimer = window.setTimeout(() => {
       if (!this._pingTimeoutActive) {
