@@ -15,10 +15,10 @@
     "prepare:server:generate:wayland": "wayland-server-bindings-generator protocol/wayland.xml -o local/src/protocol/wayland",
     "prepare:browser:generate": "mkdir -p browser/src/protocol/ && npm run prepare:browser:generate:greenfield && npm run prepare:browser:generate:rtc && npm run prepare:browser:generate:session",
     "prepare:server:generate": "rm -rf local/src/protocol && mkdir -p local/src/protocol/wayland && npm run prepare:server:generate:wayland && mkdir -p local/src/protocol/ && npm run prepare:server:generate:greenfield && npm run prepare:server:generate:rtc && npm run prepare:server:generate:session",
-    "prepare:browser:webpack": "webpack --config browser/build.config/webpack.config.common.js",
-    "prepare:browser": "npm run prepare:browser:generate && npm run prepare:browser:webpack",
-    "prepare:server": "npm run prepare:server:generate",
-    "prepare": "npm run prepare:server && npm run prepare:browser",
+    "prepare:browser:webpack:prod": "webpack --config browser/build.config/webpack.config.prod.js",
+    "prepare": "npm run prepare:server:generate && npm run prepare:browser:generate && npm run prepare:browser:webpack:prod",
+    "prepare:browser:webpack:dev": "webpack --config browser/build.config/webpack.config.dev.js",
+    "prepare:dev": "npm run prepare:server:generate && npm run prepare:browser:generate && npm run prepare:browser:webpack:dev",
     "start": "node ./local/src/index.js"
   },
   "repository": {
@@ -54,11 +54,12 @@
     "clean-webpack-plugin": "^0.1.19",
     "copy-webpack-plugin": "^4.5.1",
     "html-webpack-plugin": "^3.1.0",
-    "webpack-closure-compiler": "2.1.6",
     "standard": "11.0.1",
     "wayland-server-bindings-generator": "0.0.49",
     "webpack": "4.4.1",
     "webpack-cli": "2.0.13",
+    "webpack-closure-compiler": "2.1.6",
+    "webpack-merge": "^4.1.2",
     "westfield-scanner-client": "0.0.19",
     "westfield-scanner-server": "0.0.19"
   }

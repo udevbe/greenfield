@@ -125,3 +125,4 @@ idea/vcs.xml
 /local/src/protocol/rtc-client-protocol.js
 /local/src/protocol/wayland
 /browser/dist/
+/browser/dev/
