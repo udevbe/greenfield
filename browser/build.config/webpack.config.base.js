@@ -8,6 +8,13 @@ const HtmlWebpackPlugin = require('html-webpack-plugin')
 const htmlTemplate = 'index.template.html'
 const htmlIndex = 'index.html'
 
+const entryFile = path.resolve(__dirname, '../src/index.js')
+const assetsDir = path.resolve(__dirname, '../public/assets')
+const styleDir = path.resolve(__dirname, '../public/style')
+const keymapsDir = path.resolve(__dirname, '../public/keymaps')
+const rootFiles = path.resolve(__dirname, '../public/*.*')
+const htmlTemplateFile = path.resolve(__dirname, `../public/${htmlTemplate}`)
+
 /**
  * @param {string}appBundle
  * @param {string}buildDir
@@ -16,20 +23,21 @@ const htmlIndex = 'index.html'
  */
 const commonConfig = (appBundle, buildDir, debug) => {
   return {
-    entry: './browser/src/index.js',
+    entry: [entryFile],
     output: {
       path: path.resolve(__dirname, `../${buildDir}`),
+      publicPath: '/',
       filename: appBundle
     },
     plugins: [
       new CopyWebpackPlugin([
-        {from: 'browser/public/assets', to: 'assets'},
-        {from: 'browser/public/style', to: 'style'},
-        {from: 'browser/public/keymaps', to: 'keymaps'},
-        {from: 'browser/public/*.*', to: '.', flatten: true, ignore: [htmlTemplate]}
+        {from: assetsDir, to: 'assets'},
+        {from: styleDir, to: 'style'},
+        {from: keymapsDir, to: 'keymaps'},
+        {from: rootFiles, to: '.', flatten: true, ignore: [htmlTemplateFile]}
       ]),
       new HtmlWebpackPlugin({
-        template: `browser/public/${htmlTemplate}`,
+        template: htmlTemplateFile,
         file: htmlIndex,
         app: appBundle,
         minify: debug ? false : {

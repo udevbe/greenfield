@@ -39,11 +39,8 @@ function ensureFork (grSessionId) {
   return child
 }
 
-function main () {
-  process.on('uncaughtException', (error) => {
-    console.error(error)
-  })
-
+function run () {
+  console.log('>>> Running in PRODUCTION mode <<<\n')
   express.static.mime.define({'application/wasm': ['wasm']})
   const app = express()
   app.use(express.static(path.join(__dirname, '../../browser/dist')))
@@ -81,7 +78,19 @@ function main () {
     process.exit()
   })
 
-  server.listen(8080)
+  server.listen(80)
+}
+
+function main () {
+  process.on('uncaughtException', (error) => {
+    console.error(error)
+  })
+
+  if (process.env.NODE_ENV === 'production') {
+    run()
+  } else {
+    require('./devIndex')()
+  }
 }
 
 main()

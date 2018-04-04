@@ -54,6 +54,8 @@ module.exports = class LocalSession {
     // TODO remove native wayland global?
   }
 
+  onTerminate () {}
+
   _setupWebsocket () {
     this._ws.onmessage = (event) => {
       if (this._ws.readyState === WebSocket.OPEN) {
@@ -74,7 +76,8 @@ module.exports = class LocalSession {
     }
     this._ws.onclose = () => {
       this.wlDisplay.terminate()
-      process.exit(0)
+      this.wlDisplay.destroy()
+      this.onTerminate()
     }
     // TODO listen for error(?)
   }

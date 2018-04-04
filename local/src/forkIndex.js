@@ -28,6 +28,9 @@ function main () {
     process.on('SIGBREAK', cleanUp)
     process.on('SIGHUP', cleanUp)
 
+    shimSession.localSession.onTerminate = () => {
+      process.exit(0)
+    }
     shimSession.start()
   })
 }
