@@ -30,7 +30,7 @@ Running
 
 Open a browser, preferably Firefox or Chrome.
 
-###Development mode 
+### Development mode 
 - Hot module redeploy support
 - Single server process
 - Max 1 connection
@@ -39,7 +39,7 @@ Open a browser, preferably Firefox or Chrome.
 
 `npm run start:dev`
 
-###Production mode
+### Production mode
  - Optimized and minimized build
  - One parent http server process for incoming connections
  - Separate child process for each accepted connection. (one server side child process per spawned compositor instance)
@@ -47,5 +47,5 @@ Open a browser, preferably Firefox or Chrome.
 
 `npm start`  
 
-###Clients
+### Clients
 You can try some wayland clients. Preferably the Weston 1.4 (early version) test clients, as xdg_shell support is not yet implemented.
