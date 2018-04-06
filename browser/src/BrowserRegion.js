@@ -23,8 +23,26 @@ export default class BrowserRegion {
     return pixmanRegion
   }
 
-  static makeInfinite (pixmanRegion) {
-    pixman._pixman_region32_init_rect(pixmanRegion, -0x7FFFFFFF, -0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
+  /**
+   * @param {number} pixmanRegion
+   */
+  static fini (pixmanRegion) {
+    pixman._pixman_region32_fini(pixmanRegion)
+  }
+
+  /**
+   * @param {number} pixmanRegion
+   */
+  static initInfinite (pixmanRegion) {
+    pixman._pixman_region32_init_rect(pixmanRegion, -0x3FFFFFFF, -0x3FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
+  }
+
+  /**
+   * @param {number}pixmanRegion
+   * @param {Rect}rect
+   */
+  static initRect (pixmanRegion, rect) {
+    pixman._pixman_region32_init_rect(pixmanRegion, rect.x0, rect.y0, rect.x1 - rect.x0, rect.y1 - rect.y0)
   }
 
   static union (result, left, right) {

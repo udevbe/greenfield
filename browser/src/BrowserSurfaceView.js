@@ -1,7 +1,7 @@
 'use strict'
 import Mat4 from './math/Mat4'
 import BufferedCanvas from './BufferedCanvas'
-import Renderer from './render/Renderer'
+import Vec4 from './math/Vec4'
 
 export default class BrowserSurfaceView {
   /**
@@ -243,11 +243,28 @@ export default class BrowserSurfaceView {
   }
 
   /**
+   * @param {Point}viewPoint
+   * @return {Point}
+   */
+  toBufferSpace (viewPoint) {
+    const canvas = this.bufferedCanvas.frontContext.canvas
+    const canvasStyleWidth = canvas.clientWidth
+    const canvasStyleHeight = canvas.clientHeight
+    const bufferGeo = this.browserSurface.state.bufferContents.geo
+    const bufferWidth = bufferGeo.w
+    const bufferHeight = bufferGeo.h
+    if (bufferWidth === canvasStyleWidth && bufferHeight === canvasStyleHeight) {
+      return viewPoint
+    } else {
+      return Mat4.scalarVector(Vec4.create2D(bufferWidth / canvasStyleWidth, bufferHeight / canvasStyleHeight)).timesPoint(viewPoint)
+    }
+  }
+
+  /**
    * @param {Point} browserPoint point in browser coordinates
    * @return {Point} point in view coordinates with respect to view transformations
    */
   toViewSpace (browserPoint) {
-    // FIXME isn't this the same as toSurfaceSpace?
     return this._inverseTransformation.timesPoint(browserPoint)
   }
 
@@ -256,8 +273,9 @@ export default class BrowserSurfaceView {
    * @return {Point}
    */
   toSurfaceSpace (browserPoint) {
-    // FIXME adjust for surface<->buffer transformations
-    return this.toViewSpace(browserPoint)
+    const viewPoint = this.toViewSpace(browserPoint)
+    const bufferPoint = this.toBufferSpace(viewPoint)
+    return this.browserSurface.toSurfaceSpace(bufferPoint)
   }
 
   fadeOut () {

@@ -11,20 +11,20 @@ import BrowserRegion from './BrowserRegion'
 import BrowserSurfaceChild from './BrowserSurfaceChild'
 import Renderer from './render/Renderer'
 import BrowserRtcBufferFactory from './BrowserRtcBufferFactory'
-import Vec4 from './math/Vec4'
+import Point from './math/Point'
 
 /**
- * @type {Mat4[]}
+ * @type {{transformation: Mat4, inverseTransformation:Mat4}[]}
  */
-const transformations = [
-  NORMAL, // 0
-  _90, // 1
-  _180, // 2
-  _270, // 3
-  FLIPPED, // 4
-  FLIPPED_90, // 5
-  FLIPPED_180, // 6
-  FLIPPED_270 // 7
+const bufferTransformations = [
+  {transformation: NORMAL, inverseTransformation: NORMAL.invert()}, // 0
+  {transformation: _90, inverseTransformation: _90.invert()}, // 1
+  {transformation: _180, inverseTransformation: _180.invert()}, // 2
+  {transformation: _270, inverseTransformation: _270.invert()}, // 3
+  {transformation: FLIPPED, inverseTransformation: FLIPPED.invert()}, // 4
+  {transformation: FLIPPED_90, inverseTransformation: FLIPPED_90.invert()}, // 5
+  {transformation: FLIPPED_180, inverseTransformation: FLIPPED_180.invert()}, // 6
+  {transformation: FLIPPED_270, inverseTransformation: FLIPPED_270.invert()} // 7
 ]
 
 export default class BrowserSurface {
@@ -36,12 +36,15 @@ export default class BrowserSurface {
    * @returns {BrowserSurface}
    */
   static create (grSurfaceResource, renderer, browserSeat, browserSession) {
-    const browserSurface = new BrowserSurface(
-      grSurfaceResource,
-      renderer,
-      browserSeat,
-      browserSession
-    )
+    const bufferDamage = BrowserRegion.createPixmanRegion()
+    const opaquePixmanRegion = BrowserRegion.createPixmanRegion()
+    const inputPixmanRegion = BrowserRegion.createPixmanRegion()
+
+    BrowserRegion.initInfinite(bufferDamage)
+    BrowserRegion.initInfinite(opaquePixmanRegion)
+    BrowserRegion.initInfinite(inputPixmanRegion)
+
+    const browserSurface = new BrowserSurface(grSurfaceResource, renderer, browserSeat, browserSession, bufferDamage, opaquePixmanRegion, inputPixmanRegion)
     grSurfaceResource.implementation = browserSurface
     grSurfaceResource.onDestroy().then(() => browserSurface._handleDestruction())
 
@@ -55,8 +58,11 @@ export default class BrowserSurface {
    * @param {Renderer} renderer
    * @param {BrowserSeat} browserSeat
    * @param {BrowserSession} browserSession
+   * @param {number} bufferDamage
+   * @param {number} opaquePixmanRegion
+   * @param {number} inputPixmanRegion
    */
-  constructor (grSurfaceResource, renderer, browserSeat, browserSession) {
+  constructor (grSurfaceResource, renderer, browserSeat, browserSession, bufferDamage, opaquePixmanRegion, inputPixmanRegion) {
     /**
      * @type {GrSurface}
      */
@@ -70,7 +76,7 @@ export default class BrowserSurface {
      */
     this.renderState = null
     /**
-     * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}sourceState
+     * @param{{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: *, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}
      */
     this.state = {
       /**
@@ -80,15 +86,23 @@ export default class BrowserSurface {
       /**
        * @type {number}
        */
-      bufferDamage: 0,
+      bufferDamage: bufferDamage,
       /**
        * @type{number}
        */
-      opaquePixmanRegion: 0,
+      opaquePixmanRegion: opaquePixmanRegion,
+      /**
+       * @type{boolean}
+       */
+      opaqueRegionChanged: false,
       /**
        * @type{number}
        */
-      inputPixmanRegion: 0,
+      inputPixmanRegion: inputPixmanRegion,
+      /**
+       * @type{boolean}
+       */
+      inputRegionChanged: false,
       /**
        * @type{number}
        */
@@ -110,7 +124,6 @@ export default class BrowserSurface {
        */
       frameCallbacks: []
     }
-
     /**
      * @type {GrBuffer}
      */
@@ -223,10 +236,85 @@ export default class BrowserSurface {
      * @private
      */
     this._pendingFrameCallbacks = []
+
+    // derived states below ->
+    /**
+     * @type {Mat4}
+     * @private
+     */
+    this._inverseBufferTransformation = Mat4.IDENTITY()
+    /**
+     * @type {Mat4}
+     * @private
+     */
+    this._bufferTransformation = Mat4.IDENTITY()
+    /**
+     * A pixman region in surface coordinates, representing the entire surface.
+     * @type {number}
+     * @private
+     */
+    this.pixmanRegion = BrowserRegion.createPixmanRegion()
+    /**
+     * @type {Size}
+     */
+    this.size = Size.create(0, 0)
   }
 
   get browserSurfaceChildren () {
     return this._browserSubsurfaceChildren.concat(this._browserSurfaceChildren)
+  }
+
+  /**
+   * @param {Point}surfacePoint
+   * @return boolean
+   */
+  isWithinInputRegion (surfacePoint) {
+    const withinInput = BrowserRegion.contains(this.state.inputPixmanRegion, surfacePoint)
+    const withinSurface = BrowserRegion.contains(this.pixmanRegion, surfacePoint)
+    return withinSurface && withinInput
+  }
+
+  /**
+   * @param {number}newBufferScale
+   * @param {number}newBufferTransform
+   * @private
+   */
+  _updateBufferTransformation (newBufferScale, newBufferTransform) {
+    const bufferScale = newBufferScale
+    const bufferTransform = bufferTransformations[newBufferTransform]
+
+    if (bufferScale === 1) {
+      this._bufferTransformation = bufferTransform.transformation
+      this._inverseBufferTransformation = bufferTransform.inverseTransformation
+    } else {
+      this._bufferTransformation = Mat4.scalar(bufferScale).timesMat4(bufferTransform.transformation)
+      this._inverseBufferTransformation = this._bufferTransformation.invert()
+    }
+  }
+
+  /**
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: *, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}newState
+   * @private
+   */
+  _updateDerivedState (newState) {
+    let needsGeoUpdate = false
+    if (newState.bufferScale !== this.state.bufferScale || newState.bufferTransform !== this.state.bufferTransform) {
+      this._updateBufferTransformation(newState.bufferScale, newState.bufferTransform)
+      needsGeoUpdate = true
+    }
+
+    const oldBufferSize = this.state.bufferContents ? this.state.bufferContents.geo : Size.create(0, 0)
+    const newBufferSize = newState.bufferContents ? newState.bufferContents.geo : Size.create(0, 0)
+    if (oldBufferSize.w !== newBufferSize.w || oldBufferSize.h !== newBufferSize.h) {
+      needsGeoUpdate = true
+    }
+
+    if (needsGeoUpdate) {
+      const surfacePoint = this.toSurfaceSpace(Point.create(newBufferSize.w, newBufferSize.h))
+      this.size = Size.create(surfacePoint.x, surfacePoint.y)
+      BrowserRegion.fini(this.pixmanRegion)
+      BrowserRegion.initRect(this.pixmanRegion, Rect.create(0, 0, this.size.w, this.size.h))
+    }
   }
 
   updateChildViewsZIndexes () {
@@ -599,7 +687,7 @@ export default class BrowserSurface {
     if (region) {
       BrowserRegion.copyTo(this._pendingOpaqueRegion, region.implementation.pixmanRegion)
     } else {
-      BrowserRegion.makeInfinite(this._pendingOpaqueRegion)
+      BrowserRegion.initInfinite(this._pendingOpaqueRegion)
     }
     this._opaqueRegionChanged = true
   }
@@ -641,28 +729,17 @@ export default class BrowserSurface {
       BrowserRegion.copyTo(this._pendingInputRegion, region.implementation.pixmanRegion)
     } else {
       // 'infinite' region
-      BrowserRegion.makeInfinite(this._pendingInputRegion)
+      BrowserRegion.initInfinite(this._pendingInputRegion)
     }
     this._inputRegionChanged = true
   }
 
   /**
-   * @return Size
+   * @param {Point}bufferPoint
+   * @return {Point}
    */
-  get size () {
-    if (this.state.bufferContents) {
-      const bufferSize = this.state.bufferContents.geo
-      if (this.state.bufferScale === 1) {
-        return bufferSize
-      }
-      const surfaceWidth = bufferSize.w / this.state.bufferScale
-      const surfaceHeight = bufferSize.h / this.state.bufferScale
-      const sizeVec = transformations[this.state.bufferTransform].invert().timesVec4(Vec4.create2D(surfaceWidth, surfaceHeight))
-
-      return Size.create(sizeVec.x, sizeVec.y)
-    } else {
-      return Size.create(0, 0)
-    }
+  toSurfaceSpace (bufferPoint) {
+    return this._inverseBufferTransformation.timesPoint(bufferPoint)
   }
 
   /**
@@ -707,7 +784,7 @@ export default class BrowserSurface {
 
   /**
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}newState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: *, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}newState
    */
   render (renderFrame, newState) {
     renderFrame.then((timestamp) => {
@@ -724,6 +801,7 @@ export default class BrowserSurface {
         frameCallback.done(timestamp & 0x7fffffff)
       })
       newState.frameCallbacks = []
+      this._updateDerivedState(newState)
       BrowserSurface.mergeState(this.state, newState)
     })
 
@@ -756,7 +834,7 @@ export default class BrowserSurface {
 
     if (sourceState.inputRegionChanged) {
       if (targetState.inputPixmanRegion) {
-        BrowserRegion.union(targetState.inputPixmanRegion, targetState.inputPixmanRegion, sourceState.inputPixmanRegion)
+        BrowserRegion.copyTo(targetState.inputPixmanRegion, sourceState.inputPixmanRegion)
         BrowserRegion.destroyPixmanRegion(sourceState.inputPixmanRegion)
         sourceState.inputPixmanRegion = 0
       } else {
@@ -766,7 +844,7 @@ export default class BrowserSurface {
 
     if (sourceState.opaqueRegionChanged) {
       if (targetState.opaquePixmanRegion) {
-        BrowserRegion.union(targetState.opaquePixmanRegion, targetState.opaquePixmanRegion, sourceState.opaquePixmanRegion)
+        BrowserRegion.copyTo(targetState.opaquePixmanRegion, sourceState.opaquePixmanRegion)
         BrowserRegion.destroyPixmanRegion(sourceState.opaquePixmanRegion)
         sourceState.opaquePixmanRegion = 0
       } else {
@@ -862,13 +940,9 @@ export default class BrowserSurface {
     newState.bufferTransform = this._pendingBufferTransform
     newState.bufferScale = this._pendingBufferScale
 
-    const bufferScaleTransform = Mat4.scalar(newState.bufferScale)
-    const bufferTransform = transformations[newState.bufferTransform]
-
     const surfaceDamagePixmanRegion = BrowserRegion.createPixmanRegion()
     this._pendingDamageRects.forEach(rect => {
-      const scaledRect = bufferScaleTransform.timesRect(rect)
-      const bufferDamage = bufferTransform.timesRect(scaledRect)
+      const bufferDamage = this._bufferTransformation.timesRect(rect)
       BrowserRegion.unionRect(surfaceDamagePixmanRegion, surfaceDamagePixmanRegion, bufferDamage.x, bufferDamage.y, bufferDamage.width, bufferDamage.height)
     })
     this._pendingDamageRects = []
