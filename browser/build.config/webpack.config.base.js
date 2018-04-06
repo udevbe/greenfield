@@ -10,7 +10,7 @@ const htmlIndex = 'index.html'
 
 const entryFile = path.resolve(__dirname, '../src/index.js')
 const assetsDir = path.resolve(__dirname, '../public/assets')
-const styleDir = path.resolve(__dirname, '../public/style')
+// const styleDir = path.resolve(__dirname, '../public/style')
 const keymapsDir = path.resolve(__dirname, '../public/keymaps')
 const rootFiles = path.resolve(__dirname, '../public/*.*')
 const htmlTemplateFile = path.resolve(__dirname, `../public/${htmlTemplate}`)
@@ -32,9 +32,8 @@ const commonConfig = (appBundle, buildDir, debug) => {
     plugins: [
       new CopyWebpackPlugin([
         {from: assetsDir, to: 'assets'},
-        {from: styleDir, to: 'style'},
         {from: keymapsDir, to: 'keymaps'},
-        {from: rootFiles, to: '.', flatten: true, ignore: [htmlTemplateFile]}
+        {from: rootFiles, to: '.', flatten: true, ignore: [htmlTemplate]}
       ]),
       new HtmlWebpackPlugin({
         template: htmlTemplateFile,
@@ -49,7 +48,15 @@ const commonConfig = (appBundle, buildDir, debug) => {
           removeEmptyAttributes: true
         }
       })
-    ]
+    ],
+    module: {
+      rules: [
+        {
+          test: /\.css$/,
+          use: ['style-loader', 'css-loader']
+        }
+      ]
+    }
   }
 }
 

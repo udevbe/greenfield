@@ -13,6 +13,8 @@ import BrowserOutput from './BrowserOutput'
 import DesktopShell from './DesktopShell'
 import BrowserSubcompositor from './BrowserSubcompositor'
 
+import './style/greenfield.css'
+
 /**
  * @param {BrowserSession}browserSession
  */

@@ -11,7 +11,6 @@
 
     <link rel="license" href="license.txt">
 
-    <link rel="preload" href="keymaps/qwerty.xkb" as="fetch">
     <link rel="preload" href="TinyH264.wasm" as="fetch">
     <link rel="preload" href="libpixman-1.wasm" as="fetch">
     <link rel="preload" href="libxkbcommon.wasm" as="fetch">
@@ -20,18 +19,12 @@
     <link rel="preload" href="TinyH264Decoder.js" as="script">
     <link rel="preload" href="TinyH264Worker.js" as="worker">
 
-    <link rel="preload" href="style/greenfield.css" as="style">
-    <link rel="preload" href="style/desktopshell.css" as="style">
-
     <link rel="preload" href="<%= htmlWebpackPlugin.options.app %>" as="script">
 
     <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
 
-    <link rel="stylesheet" type="text/css" href="style/greenfield.css">
-    <link rel="stylesheet" type="text/css" href="style/desktopshell.css">
-
-    <script src="<%= htmlWebpackPlugin.options.app %>"></script>
+    <!--<script src="<%= htmlWebpackPlugin.options.app %>"></script>-->
 </head>
 <body oncontextmenu="return false;">
 <div id="workspace">

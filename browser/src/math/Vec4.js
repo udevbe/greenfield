@@ -1,18 +1,18 @@
 import Point from './Point'
 
-export default class Vect4 {
+export default class Vec4 {
   /**
    * @param x
    * @param y
    * @param z
    * @param w
-   * @returns {Vect4}
+   * @returns {Vec4}
    */
   static create (x,
                  y,
                  z,
                  w) {
-    return new Vect4(x, y, z, w)
+    return new Vec4(x, y, z, w)
   }
 
   static create2D (x, y) {
@@ -36,11 +36,11 @@ export default class Vect4 {
   }
 
   /**
-   * @param {Vect4} right
-   * @returns {Vect4}
+   * @param {Vec4} right
+   * @returns {Vec4}
    */
   plus (right) {
-    return Vect4.create(
+    return Vec4.create(
       this.x + right.x,
       this.y + right.y,
       this.z + right.z,
@@ -49,11 +49,11 @@ export default class Vect4 {
   }
 
   /**
-   * @param {Vect4} right
-   * @returns {Vect4}
+   * @param {Vec4} right
+   * @returns {Vec4}
    */
   minus (right) {
-    return Vect4.create(
+    return Vec4.create(
       this.x - right.x,
       this.y - right.y,
       this.z - right.z,

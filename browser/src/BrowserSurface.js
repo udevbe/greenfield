@@ -11,17 +11,21 @@ import BrowserRegion from './BrowserRegion'
 import BrowserSurfaceChild from './BrowserSurfaceChild'
 import Renderer from './render/Renderer'
 import BrowserRtcBufferFactory from './BrowserRtcBufferFactory'
+import Vec4 from './math/Vec4'
 
-const transformations = {
-  0: NORMAL,
-  1: _90,
-  2: _180,
-  3: _270,
-  4: FLIPPED,
-  5: FLIPPED_90,
-  6: FLIPPED_180,
-  7: FLIPPED_270
-}
+/**
+ * @type {Mat4[]}
+ */
+const transformations = [
+  NORMAL, // 0
+  _90, // 1
+  _180, // 2
+  _270, // 3
+  FLIPPED, // 4
+  FLIPPED_90, // 5
+  FLIPPED_180, // 6
+  FLIPPED_270 // 7
+]
 
 export default class BrowserSurface {
   /**
@@ -653,7 +657,9 @@ export default class BrowserSurface {
       }
       const surfaceWidth = bufferSize.w / this.state.bufferScale
       const surfaceHeight = bufferSize.h / this.state.bufferScale
-      return Size.create(surfaceWidth, surfaceHeight)
+      const sizeVec = transformations[this.state.bufferTransform].invert().timesVec4(Vec4.create2D(surfaceWidth, surfaceHeight))
+
+      return Size.create(sizeVec.x, sizeVec.y)
     } else {
       return Size.create(0, 0)
     }

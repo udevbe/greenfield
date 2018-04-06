@@ -68,7 +68,7 @@ body {
     height: 3vh;
     min-width: 3vh;
     width: 3vh;
-    background: url(../assets/menu.svg) no-repeat center;
+    background: url(/assets/menu.svg) no-repeat center;
     background-size: 0.4vh 2.5vh;
     transition: all 200ms ease-in-out;
 
@@ -83,7 +83,7 @@ body {
 
 .menu-button-active {
     border-radius: 0.5vh;
-    background: rgb(200, 200, 200) url(../assets/menu-active.svg) no-repeat center;
+    background: rgb(200, 200, 200) url(/assets/menu-active.svg) no-repeat center;
     background-size: 2vh 2.5vh;
 
     transition: all 200ms ease-out;
@@ -149,7 +149,7 @@ body {
     min-width: 2vh;
     width: 2vh;
 
-    background: url(../assets/search.svg) no-repeat center;
+    background: url(/assets/search.svg) no-repeat center;
     background-size: 2vh 2vh;
 }
 

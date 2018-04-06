@@ -3,6 +3,8 @@
 import DesktopShellEntry from './DesktopShellEntry'
 import DesktopShellMenu from './DesktopShellMenu'
 
+import './style/desktopshell.css'
+
 export default class DesktopShell {
   static create () {
     const body = document.body

@@ -1,6 +1,6 @@
 'use strict'
 
-import Vec4 from './Vect4'
+import Vec4 from './Vec4'
 import Point from './Point'
 import Rect from './Rect'
 
@@ -61,7 +61,7 @@ export default class Mat4 {
   }
 
   /**
-   * @param {Vect4}vect4
+   * @param {Vec4}vect4
    * @returns {Mat4}
    */
   static scalarVector (vect4) {
@@ -134,7 +134,8 @@ export default class Mat4 {
 
   /**
    * Multiply a vector using this matrix, resulting in a new vector.
-   * @param {Vect4} right
+   * @param {Vec4} right
+   * @return {Vec4}
    */
   timesVec4 (right) {
     const rightX = right.x

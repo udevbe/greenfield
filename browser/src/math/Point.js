@@ -1,6 +1,6 @@
 'use strict'
 
-import Vec4 from './Vect4'
+import Vec4 from './Vec4'
 
 export default class Point {
   /**
@@ -23,7 +23,7 @@ export default class Point {
   }
 
   /**
-   * @returns {Vect4}
+   * @returns {Vec4}
    */
   toVec4 () {
     return Vec4.create(
