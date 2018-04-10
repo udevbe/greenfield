@@ -13,6 +13,7 @@ body {
 
 canvas {
     will-change: transform, contents, display;
+    transform-origin: top left;
 }
 
 .fadeToHidden {

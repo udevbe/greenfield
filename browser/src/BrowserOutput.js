@@ -16,6 +16,11 @@ export default class BrowserOutput extends westfield.Global {
     super(greenfield.GrOutput.name, 3)
   }
 
+  /**
+   * @param {Client}client
+   * @param {number}id
+   * @param {number}version
+   */
   bindClient (client, id, version) {
     const grOutputResource = new greenfield.GrOutput(client, id, version)
     grOutputResource.implementation = this
@@ -29,7 +34,7 @@ export default class BrowserOutput extends westfield.Global {
     // TODO we might want to listen for window/document size changes and emit on update
     this._emitGeomtry(grOutputResource)
     this._emitMode(grOutputResource)
-    // TODO scaling info using window.devicePixelRatio
+    // TODO scaling info using window.devicePixelRatio (+allow manual override in settings)
     if (grOutputResource.version >= 2) {
       grOutputResource.done()
     }

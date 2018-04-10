@@ -9,12 +9,6 @@ export default class Rect {
    * @returns {Rect}
    */
   static create (x0, y0, x1, y1) {
-    if (x0 > x1) {
-      throw new Error('x1 must be greater than x0')
-    }
-    if (y0 > y1) {
-      throw new Error('y1 must be greater than y0')
-    }
     return new Rect(x0, y0, x1, y1)
   }
 

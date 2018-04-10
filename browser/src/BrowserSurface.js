@@ -239,15 +239,17 @@ export default class BrowserSurface {
 
     // derived states below ->
     /**
+     * buffer2surface
      * @type {Mat4}
      * @private
      */
-    this._inverseBufferTransformation = Mat4.IDENTITY()
+    this.inverseBufferTransformation = Mat4.IDENTITY()
     /**
+     * surface2buffer
      * @type {Mat4}
      * @private
      */
-    this._bufferTransformation = Mat4.IDENTITY()
+    this.bufferTransformation = Mat4.IDENTITY()
     /**
      * A pixman region in surface coordinates, representing the entire surface.
      * @type {number}
@@ -258,6 +260,7 @@ export default class BrowserSurface {
      * @type {Size}
      */
     this.size = Size.create(0, 0)
+    // <- derived states above
   }
 
   get browserSurfaceChildren () {
@@ -274,21 +277,32 @@ export default class BrowserSurface {
     return withinSurface && withinInput
   }
 
-  /**
-   * @param {number}newBufferScale
-   * @param {number}newBufferTransform
-   * @private
-   */
-  _updateBufferTransformation (newBufferScale, newBufferTransform) {
-    const bufferScale = newBufferScale
-    const bufferTransform = bufferTransformations[newBufferTransform]
-
-    if (bufferScale === 1) {
-      this._bufferTransformation = bufferTransform.transformation
-      this._inverseBufferTransformation = bufferTransform.inverseTransformation
-    } else {
-      this._bufferTransformation = Mat4.scalar(bufferScale).timesMat4(bufferTransform.transformation)
-      this._inverseBufferTransformation = this._bufferTransformation.invert()
+  _applyBufferTransformWithPositionCorrection (newBufferTransform, bufferTransformation) {
+    switch (newBufferTransform) {
+      case 3: // 270
+      case 4: { // flipped
+        this.bufferTransformation = bufferTransformation.timesMat4(Mat4.translation(this.size.w, 0).invert())
+        this.inverseBufferTransformation = this.bufferTransformation.invert()
+        break
+      }
+      case 2: // 180
+      case 5: { // 90 flipped
+        this.bufferTransformation = bufferTransformation.timesMat4(Mat4.translation(this.size.w, this.size.h).invert())
+        this.inverseBufferTransformation = this.bufferTransformation.invert()
+        break
+      }
+      case 1: // 90
+      case 6: { // 180 flipped
+        this.bufferTransformation = bufferTransformation.timesMat4(Mat4.translation(0, this.size.h).invert())
+        this.inverseBufferTransformation = this.bufferTransformation.invert()
+        break
+      }
+      case 0: // normal
+      case 7: { // 270 flipped
+        this.bufferTransformation = bufferTransformation.timesMat4(Mat4.translation(0, 0))
+        this.inverseBufferTransformation = this.bufferTransformation.invert()
+        break
+      }
     }
   }
 
@@ -297,23 +311,23 @@ export default class BrowserSurface {
    * @private
    */
   _updateDerivedState (newState) {
-    let needsGeoUpdate = false
-    if (newState.bufferScale !== this.state.bufferScale || newState.bufferTransform !== this.state.bufferTransform) {
-      this._updateBufferTransformation(newState.bufferScale, newState.bufferTransform)
-      needsGeoUpdate = true
-    }
-
     const oldBufferSize = this.state.bufferContents ? this.state.bufferContents.geo : Size.create(0, 0)
     const newBufferSize = newState.bufferContents ? newState.bufferContents.geo : Size.create(0, 0)
-    if (oldBufferSize.w !== newBufferSize.w || oldBufferSize.h !== newBufferSize.h) {
-      needsGeoUpdate = true
-    }
 
-    if (needsGeoUpdate) {
-      const surfacePoint = this.toSurfaceSpace(Point.create(newBufferSize.w, newBufferSize.h))
-      this.size = Size.create(surfacePoint.x, surfacePoint.y)
+    if (newState.bufferScale !== this.state.bufferScale ||
+      newState.bufferTransform !== this.state.bufferTransform ||
+      oldBufferSize.w !== newBufferSize.w ||
+      oldBufferSize.h !== newBufferSize.h) {
+      const transformations = bufferTransformations[newState.bufferTransform]
+      const bufferTransformation = newState.bufferScale === 1 ? transformations.transformation : transformations.transformation.timesMat4(Mat4.scalar(newState.bufferScale))
+      const inverseBufferTransformation = newState.bufferScale === 1 ? transformations.inverseTransformation : bufferTransformation.invert()
+
+      const surfacePoint = inverseBufferTransformation.timesPoint(Point.create(newBufferSize.w, newBufferSize.h))
+      this.size = Size.create(Math.abs(surfacePoint.x), Math.abs(surfacePoint.y))
       BrowserRegion.fini(this.pixmanRegion)
       BrowserRegion.initRect(this.pixmanRegion, Rect.create(0, 0, this.size.w, this.size.h))
+
+      this._applyBufferTransformWithPositionCorrection(newState.bufferTransform, bufferTransformation)
     }
   }
 
@@ -739,7 +753,7 @@ export default class BrowserSurface {
    * @return {Point}
    */
   toSurfaceSpace (bufferPoint) {
-    return this._inverseBufferTransformation.timesPoint(bufferPoint)
+    return this.inverseBufferTransformation.timesPoint(bufferPoint)
   }
 
   /**
@@ -801,9 +815,10 @@ export default class BrowserSurface {
         frameCallback.done(timestamp & 0x7fffffff)
       })
       newState.frameCallbacks = []
-      this._updateDerivedState(newState)
       BrowserSurface.mergeState(this.state, newState)
     })
+
+    this._updateDerivedState(newState)
 
     if (this._browserSubsurfaceChildren.length > 1) {
       this._browserSubsurfaceChildren.forEach((browserSurfaceChild) => {
@@ -888,7 +903,7 @@ export default class BrowserSurface {
       /**
        * @type{boolean}
        */
-      opaqueRegionChanged: false,
+      opaqueRegionChanged: this._opaqueRegionChanged,
       /**
        * @type{number}
        */
@@ -896,23 +911,23 @@ export default class BrowserSurface {
       /**
        * @type{boolean}
        */
-      inputRegionChanged: false,
+      inputRegionChanged: this._inputRegionChanged,
       /**
        * @type{number}
        */
-      dx: 0,
+      dx: this._pendingDx,
       /**
        * @type{number}
        */
-      dy: 0,
+      dy: this._pendingDy,
       /**
        * @type{number}
        */
-      bufferTransform: 0,
+      bufferTransform: this._pendingBufferTransform,
       /**
        * @type{number}
        */
-      bufferScale: 1,
+      bufferScale: this._pendingBufferScale,
       /**
        * @type {BrowserCallback[]}
        */
@@ -920,29 +935,21 @@ export default class BrowserSurface {
     }
     this._pendingFrameCallbacks = []
 
-    newState.dx = this._pendingDx
-    newState.dy = this._pendingDy
-
     // input region
     if (this._inputRegionChanged) {
       BrowserRegion.copyTo(newState.inputPixmanRegion, this._pendingInputRegion)
-      newState.inputRegionChanged = true
       this._inputRegionChanged = false
     }
 
     // opaque region
     if (this._opaqueRegionChanged) {
       BrowserRegion.copyTo(newState.opaquePixmanRegion, this._pendingOpaqueRegion)
-      newState.opaqueRegionChanged = true
       this._opaqueRegionChanged = false
     }
 
-    newState.bufferTransform = this._pendingBufferTransform
-    newState.bufferScale = this._pendingBufferScale
-
     const surfaceDamagePixmanRegion = BrowserRegion.createPixmanRegion()
     this._pendingDamageRects.forEach(rect => {
-      const bufferDamage = this._bufferTransformation.timesRect(rect)
+      const bufferDamage = this.bufferTransformation.timesRect(rect)
       BrowserRegion.unionRect(surfaceDamagePixmanRegion, surfaceDamagePixmanRegion, bufferDamage.x, bufferDamage.y, bufferDamage.width, bufferDamage.height)
     })
     this._pendingDamageRects = []

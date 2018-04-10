@@ -123,8 +123,10 @@ export default class BrowserSurfaceView {
   }
 
   applyTransformations () {
-    this._applyTransformations(this.bufferedCanvas.frontContext)
-    this._applyTransformationsChild()
+    const transformationUpdated = this._applyTransformations(this.bufferedCanvas.frontContext)
+    if (transformationUpdated) {
+      this._applyTransformationsChild()
+    }
   }
 
   _applyTransformationsChild () {
@@ -143,8 +145,10 @@ export default class BrowserSurfaceView {
   }
 
   applyTransformationsBackBuffer () {
-    this._applyTransformations(this.bufferedCanvas.backContext)
-    this._applyTransformationsChildBackBuffer()
+    const transformationUpdated = this._applyTransformations(this.bufferedCanvas.backContext)
+    if (transformationUpdated) {
+      this._applyTransformationsChildBackBuffer()
+    }
   }
 
   _applyTransformationsChildBackBuffer () {
@@ -164,27 +168,34 @@ export default class BrowserSurfaceView {
 
   /**
    * @param {CanvasRenderingContext2D}canvasContext
+   * @return {boolean}
    * @private
    */
   _applyTransformations (canvasContext) {
+    // TODO we might want to keep some 'transformation dirty' flags to avoid needless matrix multiplications
+
     // inherit parent transformation
     let parentTransformation = Mat4.IDENTITY()
     if (this._parent) {
       parentTransformation = this._parent.transformation
     }
 
-    // setup position
+    // position transformation
     const browserSurfaceChild = this.browserSurface.browserSurfaceChildSelf
     const {x, y} = browserSurfaceChild.position
     const positionTransformation = Mat4.translation(x, y)
 
-    // TODO other transformations
-
-    // store final transformation
     this.transformation = parentTransformation.timesMat4(positionTransformation)
+    const bufferToViewTransformation = this.transformation.timesMat4(this.browserSurface.inverseBufferTransformation)
 
     // update canvas
-    canvasContext.canvas.style.transform = this.transformation.toCssMatrix()
+    const newCssTransform = bufferToViewTransformation.toCssMatrix()
+    if (newCssTransform !== canvasContext.canvas.style.transform) {
+      canvasContext.canvas.style.transform = newCssTransform
+      return true
+    } else {
+      return false
+    }
   }
 
   raise () {
@@ -225,7 +236,7 @@ export default class BrowserSurfaceView {
   _draw (source, width, height) {
     // FIXME adjust final transformation with additional transformations defined in the browser surface
     this.applyTransformationsBackBuffer()
-    this.bufferedCanvas.drawBackBuffer(source, width, height, this.transformation)
+    this.bufferedCanvas.drawBackBuffer(source, width, height)
   }
 
   swapBuffers () {
@@ -243,24 +254,6 @@ export default class BrowserSurfaceView {
   }
 
   /**
-   * @param {Point}viewPoint
-   * @return {Point}
-   */
-  toBufferSpace (viewPoint) {
-    const canvas = this.bufferedCanvas.frontContext.canvas
-    const canvasStyleWidth = canvas.clientWidth
-    const canvasStyleHeight = canvas.clientHeight
-    const bufferGeo = this.browserSurface.state.bufferContents.geo
-    const bufferWidth = bufferGeo.w
-    const bufferHeight = bufferGeo.h
-    if (bufferWidth === canvasStyleWidth && bufferHeight === canvasStyleHeight) {
-      return viewPoint
-    } else {
-      return Mat4.scalarVector(Vec4.create2D(bufferWidth / canvasStyleWidth, bufferHeight / canvasStyleHeight)).timesPoint(viewPoint)
-    }
-  }
-
-  /**
    * @param {Point} browserPoint point in browser coordinates
    * @return {Point} point in view coordinates with respect to view transformations
    */
@@ -274,8 +267,19 @@ export default class BrowserSurfaceView {
    */
   toSurfaceSpace (browserPoint) {
     const viewPoint = this.toViewSpace(browserPoint)
-    const bufferPoint = this.toBufferSpace(viewPoint)
-    return this.browserSurface.toSurfaceSpace(bufferPoint)
+
+    const canvas = this.bufferedCanvas.frontContext.canvas
+    const boundingRect = canvas.getBoundingClientRect()
+    const canvasWidth = boundingRect.width
+    const canvasHeight = boundingRect.height
+    const surfaceSize = this.browserSurface.size
+    const surfaceWidth = surfaceSize.w
+    const surfaceHeight = surfaceSize.h
+    if (surfaceWidth === canvasWidth && surfaceHeight === canvasHeight) {
+      return viewPoint
+    } else {
+      return Mat4.scalarVector(Vec4.create2D(surfaceWidth / canvasWidth, surfaceHeight / canvasHeight)).timesPoint(viewPoint)
+    }
   }
 
   fadeOut () {

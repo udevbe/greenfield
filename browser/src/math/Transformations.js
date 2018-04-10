@@ -17,7 +17,7 @@ const _180 = Mat4.create(
 )
 const _270 = Mat4.create(
   0, 1, 0, 0,
-  -1, -0, 0, 0,
+  -1, 0, 0, 0,
   0, 0, 1, 0,
   0, 0, 0, 1
 )
@@ -28,8 +28,8 @@ const FLIPPED = Mat4.create(
   0, 0, 0, 1
 )
 const FLIPPED_90 = Mat4.create(
-  0, 1, 0, 0,
-  1, 0, 0, 0,
+  0, -1, 0, 0,
+  -1, 0, 0, 0,
   0, 0, 1, 0,
   0, 0, 0, 1
 )
@@ -40,8 +40,8 @@ const FLIPPED_180 = Mat4.create(
   0, 0, 0, 1
 )
 const FLIPPED_270 = Mat4.create(
-  0, -1, 0, 0,
-  -1, 0, 0, 0,
+  0, 1, 0, 0,
+  1, 0, 0, 0,
   0, 0, 1, 0,
   0, 0, 0, 1
 )

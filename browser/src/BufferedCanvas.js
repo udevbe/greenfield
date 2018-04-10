@@ -51,10 +51,9 @@ export default class BufferedCanvas {
    * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap}source
    * @param {number}width
    * @param {number}height
-   * @param {Mat4|null} transformation
    */
-  drawBackBuffer (source, width, height, transformation) {
-    this._draw(this.backContext, source, width, height, transformation)
+  drawBackBuffer (source, width, height) {
+    this._draw(this.backContext, source, width, height)
   }
 
   /**
@@ -62,10 +61,9 @@ export default class BufferedCanvas {
    * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap}source
    * @param {number}width
    * @param {number}height
-   * @param {Mat4} transformation
    * @private
    */
-  _draw (context2d, source, width, height, transformation) {
+  _draw (context2d, source, width, height) {
     const canvas = context2d.canvas
     if (canvas.width !== width || canvas.height !== height) {
       // resizing clears the canvas
@@ -75,7 +73,6 @@ export default class BufferedCanvas {
       context2d.clearRect(0, 0, canvas.width, canvas.height)
     }
     context2d.drawImage(source, 0, 0)
-    canvas.style.transform = transformation.toCssMatrix()
   }
 
   swapBuffers () {
