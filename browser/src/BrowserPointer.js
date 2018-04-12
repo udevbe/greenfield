@@ -2,7 +2,6 @@
 
 import greenfield from './protocol/greenfield-browser-protocol'
 import Point from './math/Point'
-import BrowserRegion from './BrowserRegion'
 
 // translates between browser button codes & kernel code as expected by wayland protocol
 const linuxInput = {
@@ -156,7 +155,7 @@ export default class BrowserPointer {
     await renderFrame
 
     if (this._cursorSurface && this._cursorSurface.implementation === browserSurface) {
-      this._uploadCursor(this._view, hotspotX, hotspotY)
+      this._uploadCursor(newState, hotspotX, hotspotY)
     }
 
     browserSurface.browserSession.flush()
@@ -283,9 +282,20 @@ export default class BrowserPointer {
     }
   }
 
-  _uploadCursor (cursorSurfaceView, hotspotX, hotspotY) {
-    const dataURL = cursorSurfaceView.bufferedCanvas.frontContext.canvas.toDataURL()
-    window.document.body.style.cursor = 'url("' + dataURL + '") ' + (hotspotX) + ' ' + (hotspotY) + ', pointer'
+  /**
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number}} newState
+   * @param {number}hotspotX
+   * @param {number}hotspotY
+   * @private
+   */
+  _uploadCursor (newState, hotspotX, hotspotY) {
+    if (newState.bufferContents.pngImage) {
+      const pngBufferDataSrc = newState.bufferContents.pngImage.src
+      window.document.body.style.cursor = `url("${pngBufferDataSrc}") ${hotspotX} ${hotspotY}, pointer`
+    } else {
+      const dataURL = this._view.bufferedCanvas.frontContext.canvas.toDataURL()
+      window.document.body.style.cursor = `url("${dataURL}") ${hotspotX} ${hotspotY}, pointer`
+    }
   }
 
   /**

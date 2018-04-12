@@ -277,6 +277,11 @@ export default class BrowserSurface {
     return withinSurface && withinInput
   }
 
+  /**
+   * @param {number}newBufferTransform
+   * @param {Mat4}bufferTransformation
+   * @private
+   */
   _applyBufferTransformWithPositionCorrection (newBufferTransform, bufferTransformation) {
     switch (newBufferTransform) {
       case 3: // 270

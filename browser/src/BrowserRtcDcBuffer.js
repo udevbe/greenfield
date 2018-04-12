@@ -191,8 +191,12 @@ export default class BrowserRtcDcBuffer {
    * @private
    */
   _onComplete (serial) {
-    this._frameStates[serial].state = 'complete'
-    this._geo = this._frameStates[serial]._geo
+    if (serial < this._lastCompleteSerial) {
+      return
+    }
+    const frameState = this._frameStates[serial]
+    frameState.state = 'complete'
+    this._geo = frameState._geo
     this._lastCompleteSerial = serial
 
     // remove old states
@@ -205,7 +209,7 @@ export default class BrowserRtcDcBuffer {
       }
     }
 
-    this._frameStates[serial].completionResolve(this._bufferContents)
+    frameState.completionResolve(this._bufferContents)
   }
 
   _newFrameState (syncSerial) {
