@@ -449,7 +449,7 @@ export default class BrowserSurface {
    * @param {BrowserSurfaceChild}browserSurfaceChild
    */
   removeChild (browserSurfaceChild) {
-    this._removeChild(browserSurfaceChild, this._browserSubsurfaceChildren)
+    this._removeChild(browserSurfaceChild, this._browserSurfaceChildren)
   }
 
   /**
@@ -483,7 +483,7 @@ export default class BrowserSurface {
   _removeChild (browserSurfaceChild, siblings) {
     const index = siblings.indexOf(browserSurfaceChild)
     if (index > -1) {
-      this.browserSurfaceChildren.splice(index, 1)
+      siblings.splice(index, 1)
       this.updateChildViewsZIndexes()
     }
   }

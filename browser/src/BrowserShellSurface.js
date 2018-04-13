@@ -478,12 +478,12 @@ export default class BrowserShellSurface {
    *
    *
    * @param {GrShellSurface} resource
-   * @param {*} seat seat whose pointer is used
-   * @param {Number} serial serial number of the implicit grab on the pointer
-   * @param {*} parent parent surface
-   * @param {Number} x surface-local x coordinate
-   * @param {Number} y surface-local y coordinate
-   * @param {Number} flags transient surface behavior
+   * @param {GrSeat} seat seat whose pointer is used
+   * @param {number} serial serial number of the implicit grab on the pointer
+   * @param {GrSurface} parent parent surface
+   * @param {number} x surface-local x coordinate
+   * @param {number} y surface-local y coordinate
+   * @param {number} flags transient surface behavior
    *
    * @since 1
    *
