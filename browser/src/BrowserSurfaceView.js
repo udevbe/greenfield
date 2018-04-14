@@ -217,7 +217,7 @@ export default class BrowserSurfaceView {
    * @return {number}
    */
   get zIndex () {
-    return parseInt(this.bufferedCanvas.frontContext.canvas.style.zIndex, 10)
+    return window.parseInt(this.bufferedCanvas.frontContext.canvas.style.zIndex, 10)
   }
 
   /**

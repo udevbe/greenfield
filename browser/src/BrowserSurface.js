@@ -413,7 +413,7 @@ export default class BrowserSurface {
 
     const childView = browserSurfaceChild.browserSurface.createView()
     const zIndexOrder = this.browserSurfaceChildren.indexOf(browserSurfaceChild)
-    childView.zIndex = browserSurfaceView.bufferedCanvas.frontContext.canvas.style.zIndex + zIndexOrder
+    childView.zIndex = browserSurfaceView.zIndex + zIndexOrder
     childView.parent = browserSurfaceView
 
     return childView
