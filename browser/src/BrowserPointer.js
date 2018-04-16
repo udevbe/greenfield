@@ -42,6 +42,12 @@ export default class BrowserPointer {
       }
       browserPointer.onMouseDown(event)
     }))
+    document.addEventListener('wheel', browserSession.eventSource((event) => {
+      if (!event.target.classList.contains('enable-default')) {
+        event.preventDefault()
+      }
+      browserPointer.onWheel(event)
+    }))
     // other mouse events are set in the browser surface view class
     return browserPointer
   }
@@ -544,5 +550,64 @@ export default class BrowserPointer {
   _nextFocusSerial () {
     this.focusSerial++
     return this.focusSerial
+  }
+
+  /**
+   * @param {WheelEvent}event
+   */
+  onWheel (event) {
+    if (this.focus && this.focus.browserSurface) {
+      // TODO configure the scoll transform through the config menu
+      /**
+       * @type{Function}
+       */
+      let deltaTransform
+      switch (event.deltaMode) {
+        case event.DOM_DELTA_LINE: {
+          /**
+           * @param {number}delta
+           * @return {number}
+           */
+          deltaTransform = (delta) => { return delta * 18 } // We hard code line height.
+          break
+        }
+        case event.DOM_DELTA_PAGE: {
+          /**
+           * @param {number}delta
+           * @param {number}axis
+           * @return {number}
+           */
+          deltaTransform = (delta, axis) => {
+            if (axis === greenfield.GrPointer.Axis.verticalScroll) {
+              return delta * this.focus.browserSurface.size.h
+            } else { // horizontalScroll
+              return delta * this.focus.browserSurface.size.w
+            }
+          }
+          break
+        }
+        case event.DOM_DELTA_PIXEL:
+        default: {
+          /**
+           * @param {number}delta
+           * @return {number}
+           */
+          deltaTransform = (delta) => { return delta }
+          break
+        }
+      }
+
+      const surfaceResource = this.focus.browserSurface.resource
+      this._doPointerEventFor(surfaceResource, (pointerResource) => {
+        if (event.deltaX) {
+          const scrollAmount = deltaTransform(event.deltaX, greenfield.GrPointer.Axis.horizontalScroll)
+          pointerResource.axis(event.timeStamp, greenfield.GrPointer.Axis.horizontalScroll, scrollAmount)
+        }
+        if (event.deltaY) {
+          const scrollAmount = deltaTransform(event.deltaX, greenfield.GrPointer.Axis.verticalScroll)
+          pointerResource.axis(event.timeStamp, greenfield.GrPointer.Axis.verticalScroll, scrollAmount)
+        }
+      })
+    }
   }
 }
