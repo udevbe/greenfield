@@ -1,3 +1,10 @@
 language: node_js
 node_js:
   - "node"
+cache:
+  directories:
+    - "node_modules"
+
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y libgstreamer1.0-dev
