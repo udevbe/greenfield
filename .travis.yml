@@ -7,4 +7,4 @@ cache:
 
 before_install:
   - sudo apt-get -qq update
-  - sudo apt-get install -y libgstreamer1.0-dev
+  - sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
