@@ -15,7 +15,8 @@ export default class BrowserSession extends westfield.Global {
   static async create (sessionId) {
     console.log('Starting new browser session.')
     const wfsServer = new westfield.Server()
-    const url = 'ws://' + window.location.host + '/' + sessionId
+    const websocketProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
+    const url = `${websocketProtocol}://${window.location.host}/${sessionId}`
     const browserSession = new BrowserSession(url, wfsServer)
     await browserSession._createConnection(url)
     wfsServer.registry.register(browserSession)
