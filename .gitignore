@@ -126,3 +126,5 @@ idea/vcs.xml
 /local/src/protocol/wayland
 /browser/dist/
 /browser/dev/
+/local/dist/
+/dist/
