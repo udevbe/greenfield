@@ -15,7 +15,6 @@ function ensure_dist_dir {
 function build_dist {
     patch -p0 < ${FIX_WRTC_REQUIRE_PATCH}
     pkg -t node9-linux-x64 ./package.json --output ${DIST_DIR}/${RUN_GF_FILE}
-    echo -e '#!/usr/bin/env bash\n\nNODE_ENV=production ./greenfield' > ${DIST_DIR}/${RUN_GF_PROD_FILE}
     chmod +x ${DIST_DIR}/${RUN_GF_PROD_FILE}
 }
 

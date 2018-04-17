@@ -7,7 +7,11 @@ const webpackConfig = require('../../browser/build.config/webpack.config.dev')
 const middleware = require('webpack-dev-middleware')
 const ShimSession = require('./ShimSession')
 
-function runDevelopment () {
+function main () {
+  process.on('uncaughtException', (error) => {
+    console.error(error)
+  })
+
   console.warn('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
   console.warn('!!! Running in DEVELOPMENT mode !!!')
   console.warn('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
@@ -44,4 +48,4 @@ function runDevelopment () {
   server.listen(8080)
 }
 
-module.exports = runDevelopment
+main()

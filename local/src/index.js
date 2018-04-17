@@ -2,6 +2,7 @@
 
 const express = require('express')
 const http = require('http')
+const fs = require('fs')
 
 const childProcess = require('child_process')
 const path = require('path')
@@ -37,8 +38,11 @@ function ensureFork (grSessionId) {
   return child
 }
 
-function run () {
+function run (config) {
   console.log('>>> Running in PRODUCTION mode <<<\n')
+  console.log(' --- configuration ---')
+  console.log(config)
+  console.log(' --------------------- ')
   express.static.mime.define({'application/wasm': ['wasm']})
   const app = express()
   app.use(express.static(path.join(__dirname, '../../browser/dist')))
@@ -84,11 +88,15 @@ function main () {
     console.error(error)
   })
 
-  if (process.env.NODE_ENV === 'production') {
-    run()
+  let configFile = process.argv[2]
+  let config
+  if (configFile) {
+    config = JSON.parse(fs.readFileSync(process.cwd() + '/' + configFile))
   } else {
-    require('./devIndex')()
+    config = JSON.parse(fs.readFileSync(path.join(__dirname, 'DefaultConfig.json')))
   }
+
+  run(config)
 }
 
 main()
