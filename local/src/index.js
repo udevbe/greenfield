@@ -15,7 +15,7 @@ function ensureFork (grSessionId) {
     // uncomment next line for debugging support
     // process.execArgv.push('--inspect-brk=0')
 
-    console.log('Remote endpoint detected. Starting new shim-compositor.')
+    console.log('Creating new child process.')
     child = childProcess.fork(path.join(__dirname, 'forkIndex.js'))
 
     const removeChild = () => {

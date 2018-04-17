@@ -16,7 +16,7 @@ module.exports = class LocalSession {
    * @returns {Promise<LocalSession>}
    */
   static create (request, socket, head, wlDisplay) {
-    console.log('Child setting up websocket server logic.')
+    console.log(`Child ${process.pid} setting up websocket server logic.`)
     const wss = new WebSocket.Server({
       noServer: true
     })
@@ -36,7 +36,7 @@ module.exports = class LocalSession {
   }
 
   _handleUpgrade (request, socket, head) {
-    console.log('Child received websocket upgrade request. Will establish websocket connection.')
+    console.log(`Child ${process.pid} received websocket upgrade request. Will establish websocket connection.`)
     return new Promise((resolve) => {
       this._wss.handleUpgrade(request, socket, head, (ws) => {
         this._ws = ws
