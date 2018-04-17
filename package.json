@@ -67,5 +67,15 @@
     "webpack-merge": "^4.1.2",
     "westfield-scanner-client": "0.0.19",
     "westfield-scanner-server": "0.0.19"
+  },
+  "pkg": {
+    "scripts": [
+      "./local/src/*.js",
+      "local/src/protocol/wayland/*.js",
+      "./node_modules/wayland-server-bindings-runtime/src"
+    ],
+    "assets": [
+      "./browser/dist/**/*"
+    ]
   }
 }

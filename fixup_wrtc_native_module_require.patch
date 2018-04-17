@@ -1,0 +1,12 @@
+Index: node_modules/wrtc/lib/binding.js
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- node_modules/wrtc/lib/binding.js	(date 1523965084000)
++++ node_modules/wrtc/lib/binding.js	(date 1523965084000)
+@@ -1,3 +1,3 @@
+ 'use strict';
+ 
+-module.exports = require('node-cmake')('wrtc', true);
++module.exports = require('../build/Release/wrtc');
