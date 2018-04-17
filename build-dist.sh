@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 DIST_DIR="dist"
-FIX_WRTC_REQUIRE_PATCH="fixup_wrtc_native_module_require.patch"
+FIX_WRTC_REQUIRE_PATCH="fix_wrtc_native_module_require.patch"
+FIX_FASTCALL_REQUIRE_REF_PATCH="fix_fastcall_native_module_require_ref.patch"
 RUN_GF_FILE="greenfield"
 
 function ensure_dist_dir {
@@ -13,6 +14,7 @@ function ensure_dist_dir {
 
 function build_dist {
     patch -p0 < ${FIX_WRTC_REQUIRE_PATCH}
+    patch -p0 < ${FIX_FASTCALL_REQUIRE_REF_PATCH}
     pkg -t node9-linux-x64 ./package.json --output ${DIST_DIR}/${RUN_GF_FILE}
 }
 
@@ -20,6 +22,7 @@ function add_native_modules {
     cp ./node_modules/gstreamer-superficial/build/Release/gstreamer-superficial.node ${DIST_DIR}
     cp ./node_modules/socketwatcher/build/Release/socketwatcher.node ${DIST_DIR}
     cp ./node_modules/wrtc/build/Release/wrtc.node ${DIST_DIR}
+    cp ./node_modules/fastcall/build/Release/ref.node ${DIST_DIR}
 }
 
 function main {
