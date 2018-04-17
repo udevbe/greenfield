@@ -51,6 +51,7 @@ function run (config) {
   server.on('request', app)
 
   server.on('upgrade', (request, socket, head) => {
+    console.log('Parent received websocket upgrade request. Will delegating to new child process.')
     let child = ensureFork(request.url.substring(1))
     child.send([{
       headers: request.headers,
@@ -59,7 +60,7 @@ function run (config) {
   })
 
   const cleanUp = () => {
-    console.log('parent exit')
+    console.log('Parent exit. Cleaning up child processes.')
     for (const grSessionId in forks) {
       const child = forks[grSessionId]
       if (child != null) {
