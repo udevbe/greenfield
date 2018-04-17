@@ -39,6 +39,7 @@ module.exports = class LocalSession {
     console.log(`Child ${process.pid} received websocket upgrade request. Will establish websocket connection.`)
     return new Promise((resolve) => {
       this._wss.handleUpgrade(request, socket, head, (ws) => {
+        console.log(`Child ${process.pid} websocket is open.`)
         this._ws = ws
         this._setupWebsocket()
         this._setupPrimaryConnection(resolve)
@@ -70,12 +71,13 @@ module.exports = class LocalSession {
             connection.unmarshall(arrayBuffer)
           }
         } catch (error) {
-          console.error(error)
+          console.error(`Child ${process.pid} ${error}`)
           this._ws.close()
         }
       }
     }
     this._ws.onclose = () => {
+      console.log(`Child ${process.pid} websocket is closed.`)
       this.wlDisplay.terminate()
       this.wlDisplay.destroy()
       this.onTerminate()
