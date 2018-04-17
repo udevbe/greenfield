@@ -3,7 +3,6 @@
 DIST_DIR="dist"
 FIX_WRTC_REQUIRE_PATCH="fixup_wrtc_native_module_require.patch"
 RUN_GF_FILE="greenfield"
-RUN_GF_PROD_FILE="run_greenfield_prod.sh"
 
 function ensure_dist_dir {
     if [ -d ${DIST_DIR} ]; then
@@ -15,7 +14,6 @@ function ensure_dist_dir {
 function build_dist {
     patch -p0 < ${FIX_WRTC_REQUIRE_PATCH}
     pkg -t node9-linux-x64 ./package.json --output ${DIST_DIR}/${RUN_GF_FILE}
-    chmod +x ${DIST_DIR}/${RUN_GF_PROD_FILE}
 }
 
 function add_native_modules {
