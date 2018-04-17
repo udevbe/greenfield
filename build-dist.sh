@@ -22,9 +22,9 @@ function build_dist {
 }
 
 function add_native_modules {
-    cp ./node_modules/gstreamer-superficial/build/Release/gstreamer-superficial.node dist
-    cp ./node_modules/socketwatcher/build/Release/socketwatcher.node dist
-    cp ./node_modules/wrtc/build/Release/wrtc.node dist
+    cp ./node_modules/gstreamer-superficial/build/Release/gstreamer-superficial.node ${DIST_DIR}
+    cp ./node_modules/socketwatcher/build/Release/socketwatcher.node ${DIST_DIR}
+    cp ./node_modules/wrtc/build/Release/wrtc.node ${DIST_DIR}
 }
 
 function main {
