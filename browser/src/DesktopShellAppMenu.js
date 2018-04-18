@@ -1,33 +1,33 @@
 'use strict'
 
-export default class DesktopShellMenu {
+export default class DesktopShellAppMenu {
   static create () {
-    const divElementMenuButton = this._createDivElementMenuButton()
-    const divElementMenuContainer = this._createDivElementMenuContainer()
-    const divElementMenu = this._createDivElementMenu()
-    divElementMenuContainer.appendChild(divElementMenu)
-    const searchBar = this._createSearchBar(divElementMenuContainer)
-    divElementMenu.appendChild(searchBar.divElementSearchContainer)
+    const divElementAppMenuButton = this._createDivElementAppMenuButton()
+    const divElementAppMenuContainer = this._createDivElementAppMenuContainer()
+    const divElementAppMenu = this._createDivElementAppMenu()
+    divElementAppMenuContainer.appendChild(divElementAppMenu)
+    const searchBar = this._createSearchBar(divElementAppMenuContainer)
+    divElementAppMenu.appendChild(searchBar.divElementSearchContainer)
 
-    const desktopShellMenu = new DesktopShellMenu(divElementMenuButton, divElementMenuContainer, divElementMenu, searchBar)
+    const desktopShellAppMenu = new DesktopShellAppMenu(divElementAppMenuButton, divElementAppMenuContainer, divElementAppMenu, searchBar)
 
     // event listeners
-    this._addEventListeners(desktopShellMenu)
+    this._addEventListeners(desktopShellAppMenu)
 
-    return desktopShellMenu
+    return desktopShellAppMenu
   }
 
-  static _createDivElementMenuButton () {
+  static _createDivElementAppMenuButton () {
     const divElementMenuButton = document.createElement('div')
     divElementMenuButton.classList.add('menu-button')
-    divElementMenuButton.classList.add('config')
+    divElementMenuButton.classList.add('apps')
     return divElementMenuButton
   }
 
-  static _createDivElementMenuContainer () {
+  static _createDivElementAppMenuContainer () {
     const divElementMenuContainer = document.createElement('div')
     divElementMenuContainer.classList.add('menu-container')
-    divElementMenuContainer.classList.add('config')
+    divElementMenuContainer.classList.add('apps')
     divElementMenuContainer.style.visibility = 'hidden'
     divElementMenuContainer.style.zIndex = '65534'
     window.document.body.appendChild(divElementMenuContainer)
@@ -35,25 +35,25 @@ export default class DesktopShellMenu {
     const divElementMenuTriangleUp = document.createElement('div')
     divElementMenuTriangleUp.style.zIndex = '65535'
     divElementMenuTriangleUp.classList.add('menu-triangle-up')
-    divElementMenuTriangleUp.classList.add('config')
+    divElementMenuTriangleUp.classList.add('apps')
     divElementMenuContainer.appendChild(divElementMenuTriangleUp)
 
     return divElementMenuContainer
   }
 
-  static _createDivElementMenu () {
+  static _createDivElementAppMenu () {
     const divElementMenu = document.createElement('div')
     divElementMenu.classList.add('menu')
-    divElementMenu.classList.add('config')
+    divElementMenu.classList.add('apps')
     return divElementMenu
   }
 
   /**
-   * @param {HTMLDivElement}divElementMenuContainer
+   * @param {HTMLDivElement}divElementAppMenuContainer
    * @return {{divElementSearchContainer: HTMLDivElement, divElementSearchIcon: HTMLDivElement, inputElementSearchInput: HTMLInputElement}}
    * @private
    */
-  static _createSearchBar (divElementMenuContainer) {
+  static _createSearchBar (divElementAppMenuContainer) {
     const divElementSearchContainer = document.createElement('div')
     const divElementSearchIcon = document.createElement('div')
     const inputElementSearchInput = document.createElement('input')
@@ -77,39 +77,39 @@ export default class DesktopShellMenu {
   }
 
   /**
-   * @param {DesktopShellMenu}desktopShellMenu
+   * @param {DesktopShellAppMenu}desktopShellAppMenu
    * @private
    */
-  static _addEventListeners (desktopShellMenu) {
-    desktopShellMenu.divElementMenuButton.addEventListener('mousedown', () => {
-      desktopShellMenu.activate()
+  static _addEventListeners (desktopShellAppMenu) {
+    desktopShellAppMenu.divElementAppMenuButton.addEventListener('mousedown', () => {
+      desktopShellAppMenu.activate()
     })
-    desktopShellMenu.divElementMenuContainer.addEventListener('mousedown', (event) => {
-      if (event.target === desktopShellMenu.divElementMenuContainer) {
-        desktopShellMenu.deactivate()
+    desktopShellAppMenu.divElementAppMenuContainer.addEventListener('mousedown', (event) => {
+      if (event.target === desktopShellAppMenu.divElementAppMenuContainer) {
+        desktopShellAppMenu.deactivate()
       }
     })
   }
 
   /**
-   * @param {HTMLDivElement}divElementMenuButton
-   * @param {HTMLDivElement}divElementMenuContainer
-   * @param {HTMLDivElement}divElementMenu
+   * @param {HTMLDivElement}divElementAppMenuButton
+   * @param {HTMLDivElement}divElementAppMenuContainer
+   * @param {HTMLDivElement}divElementAppMenu
    * @param {{divElementSearchContainer: HTMLDivElement, divElementSearchIcon: HTMLDivElement, inputElementSearchInput: HTMLInputElement}}searchBar
    */
-  constructor (divElementMenuButton, divElementMenuContainer, divElementMenu, searchBar) {
+  constructor (divElementAppMenuButton, divElementAppMenuContainer, divElementAppMenu, searchBar) {
     /**
      * @type {HTMLDivElement}
      */
-    this.divElementMenuButton = divElementMenuButton
+    this.divElementAppMenuButton = divElementAppMenuButton
     /**
      * @type {HTMLDivElement}
      */
-    this.divElementMenuContainer = divElementMenuContainer
+    this.divElementAppMenuContainer = divElementAppMenuContainer
     /**
      * @type {HTMLDivElement}
      */
-    this.divElementMenu = divElementMenu
+    this.divElementAppMenu = divElementAppMenu
     /**
      * @type {{divElementSearchContainer: HTMLDivElement, divElementSearchIcon: HTMLDivElement, inputElementSearchInput: HTMLInputElement}}
      */
@@ -117,14 +117,14 @@ export default class DesktopShellMenu {
   }
 
   activate () {
-    this.divElementMenuContainer.addEventListener('transitionend', () => {
+    this.divElementAppMenuContainer.addEventListener('transitionend', () => {
       this.searchBar.inputElementSearchInput.classList.add('enable-default')
       this.searchBar.inputElementSearchInput.focus()
     })
 
-    this.divElementMenuContainer.style.visibility = 'visible'
-    this.divElementMenu.classList.add('menu-active')
-    this.divElementMenuButton.classList.add('menu-button-active')
+    this.divElementAppMenuContainer.style.visibility = 'visible'
+    this.divElementAppMenu.classList.add('menu-active')
+    this.divElementAppMenuButton.classList.add('menu-button-active')
   }
 
   deactivate () {
@@ -132,9 +132,9 @@ export default class DesktopShellMenu {
     this.searchBar.inputElementSearchInput.classList.remove('enable-default')
     this.searchBar.inputElementSearchInput.value = ''
 
-    this.divElementMenuContainer.style.visibility = 'hidden'
+    this.divElementAppMenuContainer.style.visibility = 'hidden'
     // this.divElementMenuContainer.style.zIndex = '-65535'
-    this.divElementMenu.classList.remove('menu-active')
-    this.divElementMenuButton.classList.remove('menu-button-active')
+    this.divElementAppMenu.classList.remove('menu-active')
+    this.divElementAppMenuButton.classList.remove('menu-button-active')
   }
 }

@@ -68,11 +68,18 @@ body {
     height: 3vh;
     min-width: 3vh;
     width: 3vh;
+    transition: all 200ms ease-in-out;
+    position: relative;
+}
+
+.menu-button.config {
     background: url(/assets/menu.svg) no-repeat center;
     background-size: 0.4vh 2.5vh;
-    transition: all 200ms ease-in-out;
+}
 
-    position: relative;
+.menu-button.apps {
+    background: url(/assets/menu-apps.svg) no-repeat center;
+    background-size: 1.2vh 1.50vh;
 }
 
 .menu-button:hover {
@@ -83,10 +90,17 @@ body {
 
 .menu-button-active {
     border-radius: 0.5vh;
+    transition: all 200ms ease-out;
+}
+
+.menu-button-active.config {
     background: rgb(200, 200, 200) url(/assets/menu-active.svg) no-repeat center;
     background-size: 2vh 2.5vh;
+}
 
-    transition: all 200ms ease-out;
+.menu-button-active.apps {
+    background: rgb(200, 200, 200) url(/assets/menu-apps-active.svg) no-repeat center;
+    background-size: 2vh 2.5vh;
 }
 
 .menu {
@@ -94,18 +108,28 @@ body {
     flex-direction: column;
     position: absolute;
 
-    right: 0.3vh;
-    top: 3.50vh;
-
-    width: 30vh;
-    height: calc(100% - 4vh);
-
     border-radius: 0.5vh;
     opacity: 0;
     background: rgb(220, 220, 220);
     box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.75);
 
     transition: all 200ms ease-in-out;
+}
+
+.menu.config {
+    right: 0.3vh;
+    top: 3.70vh;
+
+    width: 40vh;
+    height: calc(100% - 5vh);
+}
+
+.menu.apps {
+    right: 1vh;
+    top: 3.70vh;
+
+    width: 40vh;
+    height: 40vh;
 }
 
 .menu-active {
@@ -128,10 +152,17 @@ body {
     border-left: 1vh solid transparent;
     border-right: 1vh solid transparent;
 
-    right: 0.6vh;
-    top: 2.2vh;
-
     border-bottom: 1.3vh solid rgb(220, 220, 220);
+}
+
+.menu-triangle-up.config {
+    right: 0.6vh;
+    top: 2.5vh;
+}
+
+.menu-triangle-up.apps {
+    right: 3.5vh;
+    top: 2.5vh;
 }
 
 .search-container {
@@ -164,6 +195,6 @@ body {
 }
 
 input::placeholder {
-  color: white;
-  opacity: 1;
+    color: white;
+    opacity: 1;
 }

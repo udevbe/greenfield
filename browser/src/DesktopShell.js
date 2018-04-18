@@ -4,6 +4,7 @@ import DesktopShellEntry from './DesktopShellEntry'
 import DesktopShellMenu from './DesktopShellMenu'
 
 import './style/desktopshell.css'
+import DesktopShellAppMenu from './DesktopShellAppMenu'
 
 export default class DesktopShell {
   static create () {
@@ -16,6 +17,9 @@ export default class DesktopShell {
     const entryContainer = document.createElement('div')
     entryContainer.classList.add('entry-container')
     panel.appendChild(entryContainer)
+
+    const desktopShellAppMenu = DesktopShellAppMenu.create()
+    panel.appendChild(desktopShellAppMenu.divElementAppMenuButton)
 
     const desktopShellMenu = DesktopShellMenu.create()
     panel.appendChild(desktopShellMenu.divElementMenuButton)
