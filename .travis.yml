@@ -1,16 +1,22 @@
 language: node_js
 node_js:
 - node
-cache:
-  directories:
-  - node_modules
+
+addons:
+  ssh_known_hosts: badger.pfoe.be
+
 before_install:
-  - openssl aes-256-cbc -K $encrypted_dacd01900361_key -iv $encrypted_dacd01900361_iv -in .id_rsa.enc -out .id_rsa -d
-  - sudo add-apt-repository -y ppa:dan-witt/gstreamer
-  - sudo apt-get -qq update
-  - sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-after_success:
-  - eval "$(ssh-agent -s)"
-  - chmod 600 .id_rsa
-  - ssh-add .id_rsa
-  - tar zcvf dist.tar.gz dist
+- openssl aes-256-cbc -K $encrypted_dacd01900361_key -iv $encrypted_dacd01900361_iv
+  -in deploy_rsa.enc -out /tmp/deploy_rsa -d
+- eval "$(ssh-agent -s)"
+- chmod 600 /tmp/deploy_rsa
+- ssh-add /tmp/deploy_rsa
+- sudo add-apt-repository -y ppa:dan-witt/gstreamer
+- sudo apt-get -qq update
+- sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+deploy:
+  provider: script
+  skip_cleanup: true
+  script: bash .travis_deploy.sh
+  on:
+    branch: master

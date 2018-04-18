@@ -29,6 +29,7 @@ function main () {
     process.on('SIGHUP', cleanUp)
 
     shimSession.localSession.onTerminate = () => {
+      console.log(`Child ${process.pid} will exit.`)
       process.exit(0)
     }
     shimSession.start()

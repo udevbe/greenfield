@@ -22,7 +22,7 @@ module.exports = class ShimSession {
     const wlDisplay = Display.create()
     wlDisplay.initShm()
     const waylandSocket = wlDisplay.addSocketAuto()
-    console.log('Created wayland socket: ' + waylandSocket)
+    console.log(`Child ${process.pid} created new wayland server socket: ${waylandSocket}`)
 
     const localSession = await LocalSession.create(request, socket, head, wlDisplay)
     const shimSession = new ShimSession(localSession, wlDisplay)

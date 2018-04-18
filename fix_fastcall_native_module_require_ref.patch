@@ -1,0 +1,16 @@
+Index: node_modules/fastcall/lib/ref-libs/ref.js
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- node_modules/fastcall/lib/ref-libs/ref.js	(date 1524000393000)
++++ node_modules/fastcall/lib/ref-libs/ref.js	(date 1524000393000)
+@@ -2,7 +2,7 @@
+ var assert = require('assert')
+ var debug = require('debug')('ref')
+ 
+-exports = module.exports = require('bindings')('ref')
++exports = module.exports = require('../../build/Release/ref')
+ 
+ /**
+  * A `Buffer` that references the C NULL pointer. That is, its memory address

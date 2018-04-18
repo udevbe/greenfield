@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 
 DIST_DIR="dist"
-FIX_WRTC_REQUIRE_PATCH="fixup_wrtc_native_module_require.patch"
+FIX_WRTC_REQUIRE_PATCH="fix_wrtc_native_module_require.patch"
+FIX_FASTCALL_REQUIRE_REF_PATCH="fix_fastcall_native_module_require_ref.patch"
+FIX_FASTCALL_REQUIRE_FASTCALL_PATCH="fix_fastcall_native_module_require_fastcall.patch"
+FIX_FASTCALL_OPTIMIZATION_FLAG_PATCH="fix_fastcall_native_module_optimization_flag.patch"
 RUN_GF_FILE="greenfield"
-RUN_GF_PROD_FILE="run_greenfield_prod.sh"
 
 function ensure_dist_dir {
     if [ -d ${DIST_DIR} ]; then
@@ -13,18 +15,20 @@ function ensure_dist_dir {
 }
 
 function build_dist {
-    rm -rf "node_modules"
-    npm install
     patch -p0 < ${FIX_WRTC_REQUIRE_PATCH}
-    pkg -t node9-linux-x64 ./package.json --output ./dist/${RUN_GF_FILE}
-    printf '#!/usr/bin/env bash\n\nNODE_ENV=production ./greenfield' > ./dist/${RUN_GF_PROD_FILE}
-    chmod +x ./dist/${RUN_GF_PROD_FILE}
+    patch -p0 < ${FIX_FASTCALL_REQUIRE_REF_PATCH}
+    patch -p0 < ${FIX_FASTCALL_REQUIRE_FASTCALL_PATCH}
+    patch -p0 < ${FIX_FASTCALL_OPTIMIZATION_FLAG_PATCH}
+    npm build ./node_modules/fastcall
+    pkg -t node9-linux-x64 ./package.json --output ${DIST_DIR}/${RUN_GF_FILE}
 }
 
 function add_native_modules {
-    cp ./node_modules/gstreamer-superficial/build/Release/gstreamer-superficial.node dist
-    cp ./node_modules/socketwatcher/build/Release/socketwatcher.node dist
-    cp ./node_modules/wrtc/build/Release/wrtc.node dist
+    cp ./node_modules/gstreamer-superficial/build/Release/gstreamer-superficial.node ${DIST_DIR}
+    cp ./node_modules/socketwatcher/build/Release/socketwatcher.node ${DIST_DIR}
+    cp ./node_modules/wrtc/build/Release/wrtc.node ${DIST_DIR}
+    cp ./node_modules/fastcall/build/Release/ref.node ${DIST_DIR}
+    cp ./node_modules/fastcall/build/Release/fastcall.node ${DIST_DIR}
 }
 
 function main {

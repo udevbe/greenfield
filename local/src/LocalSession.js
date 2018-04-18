@@ -16,9 +16,9 @@ module.exports = class LocalSession {
    * @returns {Promise<LocalSession>}
    */
   static create (request, socket, head, wlDisplay) {
+    console.log(`Child ${process.pid} setting up websocket server logic.`)
     const wss = new WebSocket.Server({
       noServer: true
-      // path: '/greenfield'
     })
     return new LocalSession(wss, wlDisplay)._handleUpgrade(request, socket, head)
   }
@@ -36,8 +36,10 @@ module.exports = class LocalSession {
   }
 
   _handleUpgrade (request, socket, head) {
+    console.log(`Child ${process.pid} received websocket upgrade request. Will establish websocket connection.`)
     return new Promise((resolve) => {
       this._wss.handleUpgrade(request, socket, head, (ws) => {
+        console.log(`Child ${process.pid} websocket is open.`)
         this._ws = ws
         this._setupWebsocket()
         this._setupPrimaryConnection(resolve)
@@ -69,12 +71,13 @@ module.exports = class LocalSession {
             connection.unmarshall(arrayBuffer)
           }
         } catch (error) {
-          console.error(error)
+          console.error(`Child ${process.pid} ${error}`)
           this._ws.close()
         }
       }
     }
     this._ws.onclose = () => {
+      console.log(`Child ${process.pid} websocket is closed.`)
       this.wlDisplay.terminate()
       this.wlDisplay.destroy()
       this.onTerminate()

@@ -2,6 +2,7 @@
 
 const express = require('express')
 const http = require('http')
+const fs = require('fs')
 
 const childProcess = require('child_process')
 const path = require('path')
@@ -14,7 +15,7 @@ function ensureFork (grSessionId) {
     // uncomment next line for debugging support
     // process.execArgv.push('--inspect-brk=0')
 
-    console.log('Remote endpoint detected. Starting new shim-compositor.')
+    console.log('Creating new child process.')
     child = childProcess.fork(path.join(__dirname, 'forkIndex.js'))
 
     const removeChild = () => {
@@ -37,8 +38,11 @@ function ensureFork (grSessionId) {
   return child
 }
 
-function run () {
+function run (config) {
   console.log('>>> Running in PRODUCTION mode <<<\n')
+  console.log(' --- configuration ---')
+  console.log(config)
+  console.log(' --------------------- ')
   express.static.mime.define({'application/wasm': ['wasm']})
   const app = express()
   app.use(express.static(path.join(__dirname, '../../browser/dist')))
@@ -47,6 +51,7 @@ function run () {
   server.on('request', app)
 
   server.on('upgrade', (request, socket, head) => {
+    console.log('Parent received websocket upgrade request. Will delegating to new child process.')
     let child = ensureFork(request.url.substring(1))
     child.send([{
       headers: request.headers,
@@ -55,7 +60,7 @@ function run () {
   })
 
   const cleanUp = () => {
-    console.log('parent exit')
+    console.log('Parent exit. Cleaning up child processes.')
     for (const grSessionId in forks) {
       const child = forks[grSessionId]
       if (child != null) {
@@ -84,11 +89,15 @@ function main () {
     console.error(error)
   })
 
-  if (process.env.NODE_ENV === 'production') {
-    run()
+  let configFile = process.argv[2]
+  let config
+  if (configFile) {
+    config = JSON.parse(fs.readFileSync(process.cwd() + '/' + configFile))
   } else {
-    require('./devIndex')()
+    config = JSON.parse(fs.readFileSync(path.join(__dirname, 'DefaultConfig.json')))
   }
+
+  run(config)
 }
 
 main()

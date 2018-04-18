@@ -19,8 +19,8 @@
     "prepare": "npm run prepare:server:generate && npm run prepare:browser:generate && npm run prepare:browser:webpack:prod",
     "prepare:browser:webpack:dev": "webpack --config browser/build.config/webpack.config.dev.js",
     "prepare:dev": "npm run prepare:server:generate && npm run prepare:browser:generate && npm run prepare:browser:webpack:dev",
-    "start": "NODE_ENV=production node ./local/src/index.js",
-    "start:dev": "node ./local/src/index.js"
+    "start": "node ./local/src/index.js",
+    "start:dev": "node ./local/src/devIndex.js"
   },
   "repository": {
     "type": "git",
