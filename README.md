@@ -13,7 +13,7 @@ Clone this repo and inside the cloned directory run:
 
 `npm install`
 
-You will also need gstreamer-1.x and the following plugins:
+At runtime you will also need gstreamer-1.x with the following plugins:
 - appsrc
 - glupload
 - glcolorconvert
@@ -43,9 +43,34 @@ Open a browser, preferably Firefox or Chrome.
  - Optimized and minimized build
  - One parent http server process for incoming connections
  - Separate child process for each accepted connection. (one server side child process per spawned compositor instance)
- - Port `80`
+ - Configurable
 
-`npm start`  
+`npm start` 
+
+To create a distributable build, run `./build-dist.sh`. This will create a `dist` folder with a `greenfield` executable.
+This executable is a self contained node instance with all bundled javascript sources. The native *.node dependencies 
+inside the dist folder must be located next to the `greenfield` executable. Gstreamer dependencies are expected to be
+present on the system.
+
+A production build accepts a config file in json format. The config file is specified as the first argument to the greenfield
+executable.
+
+key |value
+:----:|:----:
+port|port number (default `8080`)
+
+example_config.json
+```json
+{
+  "port":80
+}
+```
+
+`./greenfield example_config.json` 
+
+or
+
+`npm start -- example_config.json`
 
 ### Clients
 You can try some wayland clients. Preferably the Weston 1.4 (early version) test clients, as xdg_shell support is not yet implemented.
