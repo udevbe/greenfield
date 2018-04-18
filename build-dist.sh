@@ -4,6 +4,7 @@ DIST_DIR="dist"
 FIX_WRTC_REQUIRE_PATCH="fix_wrtc_native_module_require.patch"
 FIX_FASTCALL_REQUIRE_REF_PATCH="fix_fastcall_native_module_require_ref.patch"
 FIX_FASTCALL_REQUIRE_FASTCALL_PATCH="fix_fastcall_native_module_require_fastcall.patch"
+FIX_FASTCALL_OPTIMIZATION_FLAG_PATCH="fix_fastcall_native_module_optimization_flag.patch"
 RUN_GF_FILE="greenfield"
 
 function ensure_dist_dir {
@@ -17,6 +18,8 @@ function build_dist {
     patch -p0 < ${FIX_WRTC_REQUIRE_PATCH}
     patch -p0 < ${FIX_FASTCALL_REQUIRE_REF_PATCH}
     patch -p0 < ${FIX_FASTCALL_REQUIRE_FASTCALL_PATCH}
+    patch -p0 < ${FIX_FASTCALL_OPTIMIZATION_FLAG_PATCH}
+    npm build ./node_modules/fastcall
     pkg -t node9-linux-x64 ./package.json --output ${DIST_DIR}/${RUN_GF_FILE}
 }
 
