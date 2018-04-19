@@ -12,10 +12,7 @@ const forks = {}
 function ensureFork (grSessionId) {
   let child = forks[grSessionId]
   if (child == null) {
-    // uncomment next line for debugging support
-    // process.execArgv.push('--inspect-brk=0')
-
-    console.log('Creating new child process.')
+    console.log('Parent creating new child process.')
     child = childProcess.fork(path.join(__dirname, 'forkIndex.js'))
 
     const removeChild = () => {
@@ -25,11 +22,11 @@ function ensureFork (grSessionId) {
 
     child.on('exit', removeChild)
     child.on('SIGINT', function () {
-      console.log('child received SIGINT')
+      console.log(`Child ${child.pid} received SIGINT`)
       child.exit()
     })
     child.on('SIGTERM', function () {
-      console.log('child received SIGTERM')
+      console.log(`Child ${child.pid} received SIGTERM.`)
       child.exit()
     })
 
@@ -38,6 +35,9 @@ function ensureFork (grSessionId) {
   return child
 }
 
+/**
+ * @param {{port:number}}config
+ */
 function run (config) {
   console.log('>>> Running in PRODUCTION mode <<<\n')
   console.log(' --- configuration ---')
@@ -46,6 +46,7 @@ function run (config) {
   express.static.mime.define({'application/wasm': ['wasm']})
   const app = express()
   app.use(express.static(path.join(__dirname, '../../browser/dist')))
+  app.use(express.query)
 
   const server = http.createServer()
   server.on('request', app)
@@ -64,7 +65,7 @@ function run (config) {
     for (const grSessionId in forks) {
       const child = forks[grSessionId]
       if (child != null) {
-        console.log('sending child SIGKILL')
+        console.log(`Parent sending child ${child.pid} SIGKILL`)
         child.disconnect()
         child.kill('SIGKILL')
       }
@@ -73,15 +74,15 @@ function run (config) {
 
   process.on('exit', cleanUp)
   process.on('SIGINT', () => {
-    console.log('parent received SIGINT')
+    console.log('Parent received SIGINT')
     process.exit()
   })
   process.on('SIGTERM', () => {
-    console.log('parent received SIGTERM')
+    console.log('Parent received SIGTERM')
     process.exit()
   })
 
-  server.listen(8080)
+  server.listen(config.port)
 }
 
 function main () {
