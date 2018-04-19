@@ -28,12 +28,9 @@ export default class DesktopShellAppMenu {
     const divElementMenuContainer = document.createElement('div')
     divElementMenuContainer.classList.add('menu-container')
     divElementMenuContainer.classList.add('apps')
-    divElementMenuContainer.style.visibility = 'hidden'
-    divElementMenuContainer.style.zIndex = '65534'
     window.document.body.appendChild(divElementMenuContainer)
 
     const divElementMenuTriangleUp = document.createElement('div')
-    divElementMenuTriangleUp.style.zIndex = '65535'
     divElementMenuTriangleUp.classList.add('menu-triangle-up')
     divElementMenuTriangleUp.classList.add('apps')
     divElementMenuContainer.appendChild(divElementMenuTriangleUp)
@@ -82,11 +79,13 @@ export default class DesktopShellAppMenu {
    */
   static _addEventListeners (desktopShellAppMenu) {
     desktopShellAppMenu.divElementAppMenuButton.addEventListener('mousedown', () => {
-      desktopShellAppMenu.activate()
+      desktopShellAppMenu.showMenu()
     })
-    desktopShellAppMenu.divElementAppMenuContainer.addEventListener('mousedown', (event) => {
-      if (event.target === desktopShellAppMenu.divElementAppMenuContainer) {
-        desktopShellAppMenu.deactivate()
+    window.document.addEventListener('mousedown', (event) => {
+      if (event.target !== desktopShellAppMenu.divElementAppMenu && event.target !== desktopShellAppMenu.divElementAppMenuButton) {
+        console.log(event.target)
+        console.log(desktopShellAppMenu.divElementAppMenu)
+        desktopShellAppMenu.hideMenu()
       }
     })
   }
@@ -116,7 +115,7 @@ export default class DesktopShellAppMenu {
     this.searchBar = searchBar
   }
 
-  activate () {
+  showMenu () {
     this.divElementAppMenuContainer.addEventListener('transitionend', () => {
       this.searchBar.inputElementSearchInput.classList.add('enable-default')
       this.searchBar.inputElementSearchInput.focus()
@@ -127,7 +126,7 @@ export default class DesktopShellAppMenu {
     this.divElementAppMenuButton.classList.add('menu-button-active')
   }
 
-  deactivate () {
+  hideMenu () {
     this.searchBar.inputElementSearchInput.blur()
     this.searchBar.inputElementSearchInput.classList.remove('enable-default')
     this.searchBar.inputElementSearchInput.value = ''

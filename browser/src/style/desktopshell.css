@@ -79,7 +79,7 @@ body {
 
 .menu-button.apps {
     background: url(/assets/menu-apps.svg) no-repeat center;
-    background-size: 1.2vh 1.50vh;
+    background-size: 1.2vh 1.2vh;
 }
 
 .menu-button:hover {
@@ -94,40 +94,38 @@ body {
 }
 
 .menu-button-active.config {
-    background: rgb(200, 200, 200) url(/assets/menu-active.svg) no-repeat center;
+    background: rgb(210, 210, 210) url(/assets/menu-active.svg) no-repeat center;
     background-size: 2vh 2.5vh;
 }
 
 .menu-button-active.apps {
-    background: rgb(200, 200, 200) url(/assets/menu-apps-active.svg) no-repeat center;
-    background-size: 2vh 2.5vh;
+    background: rgb(210, 210, 210) url(/assets/menu-apps-active.svg) no-repeat center;
+    background-size: 2.3vh 2.3vh;
 }
 
 .menu {
     display: flex;
     flex-direction: column;
     position: absolute;
+    right: 0.5vh;
+    top: 4vh;
 
     border-radius: 0.5vh;
     opacity: 0;
-    background: rgb(220, 220, 220);
-    box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.75);
+    background: rgb(210, 210, 210);
+    box-shadow: 0 0 3px 0 rgba(0, 0, 0, 0.75);
 
     transition: all 200ms ease-in-out;
+
+    pointer-events: auto;
 }
 
 .menu.config {
-    right: 0.3vh;
-    top: 3.70vh;
-
     width: 40vh;
     height: calc(100% - 5vh);
 }
 
 .menu.apps {
-    right: 1vh;
-    top: 3.70vh;
-
     width: 40vh;
     height: 40vh;
 }
@@ -143,26 +141,29 @@ body {
     top: 0;
     width: 100%;
     height: 100%;
+    z-index: 65534;
+    visibility: hidden;
+    pointer-events: none;
 }
 
 .menu-triangle-up {
     position: absolute;
+    top: 2.6vh;
     width: 0;
     height: 0;
+    z-index: 65535;
     border-left: 1vh solid transparent;
     border-right: 1vh solid transparent;
 
-    border-bottom: 1.3vh solid rgb(220, 220, 220);
+    border-bottom: 1.4vh solid rgb(210, 210, 210);
 }
 
 .menu-triangle-up.config {
-    right: 0.6vh;
-    top: 2.5vh;
+    right: 0.7vh;
 }
 
 .menu-triangle-up.apps {
     right: 3.5vh;
-    top: 2.5vh;
 }
 
 .search-container {

@@ -28,12 +28,9 @@ export default class DesktopShellMenu {
     const divElementMenuContainer = document.createElement('div')
     divElementMenuContainer.classList.add('menu-container')
     divElementMenuContainer.classList.add('config')
-    divElementMenuContainer.style.visibility = 'hidden'
-    divElementMenuContainer.style.zIndex = '65534'
     window.document.body.appendChild(divElementMenuContainer)
 
     const divElementMenuTriangleUp = document.createElement('div')
-    divElementMenuTriangleUp.style.zIndex = '65535'
     divElementMenuTriangleUp.classList.add('menu-triangle-up')
     divElementMenuTriangleUp.classList.add('config')
     divElementMenuContainer.appendChild(divElementMenuTriangleUp)
@@ -82,11 +79,11 @@ export default class DesktopShellMenu {
    */
   static _addEventListeners (desktopShellMenu) {
     desktopShellMenu.divElementMenuButton.addEventListener('mousedown', () => {
-      desktopShellMenu.activate()
+      desktopShellMenu.showMenu()
     })
-    desktopShellMenu.divElementMenuContainer.addEventListener('mousedown', (event) => {
-      if (event.target === desktopShellMenu.divElementMenuContainer) {
-        desktopShellMenu.deactivate()
+    window.document.addEventListener('mousedown', (event) => {
+      if (event.target !== desktopShellMenu.divElementMenu && event.target !== desktopShellMenu.divElementMenuButton) {
+        desktopShellMenu.hideMenu()
       }
     })
   }
@@ -116,7 +113,7 @@ export default class DesktopShellMenu {
     this.searchBar = searchBar
   }
 
-  activate () {
+  showMenu () {
     this.divElementMenuContainer.addEventListener('transitionend', () => {
       this.searchBar.inputElementSearchInput.classList.add('enable-default')
       this.searchBar.inputElementSearchInput.focus()
@@ -127,13 +124,12 @@ export default class DesktopShellMenu {
     this.divElementMenuButton.classList.add('menu-button-active')
   }
 
-  deactivate () {
+  hideMenu () {
     this.searchBar.inputElementSearchInput.blur()
     this.searchBar.inputElementSearchInput.classList.remove('enable-default')
     this.searchBar.inputElementSearchInput.value = ''
 
     this.divElementMenuContainer.style.visibility = 'hidden'
-    // this.divElementMenuContainer.style.zIndex = '-65535'
     this.divElementMenu.classList.remove('menu-active')
     this.divElementMenuButton.classList.remove('menu-button-active')
   }
