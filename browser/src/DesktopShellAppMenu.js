@@ -1,7 +1,11 @@
 'use strict'
 
 export default class DesktopShellAppMenu {
-  static create () {
+  /**
+   * @param {BrowserSession}browserSession
+   * @return {DesktopShellAppMenu}
+   */
+  static create (browserSession) {
     const divElementAppMenuButton = this._createDivElementAppMenuButton()
     const divElementAppMenuContainer = this._createDivElementAppMenuContainer()
     const divElementAppMenu = this._createDivElementAppMenu()
@@ -13,6 +17,7 @@ export default class DesktopShellAppMenu {
 
     // event listeners
     this._addEventListeners(desktopShellAppMenu)
+    desktopShellAppMenu._setupWebsocketConnection(browserSession)
 
     return desktopShellAppMenu
   }
@@ -113,6 +118,55 @@ export default class DesktopShellAppMenu {
      * @type {{divElementSearchContainer: HTMLDivElement, divElementSearchIcon: HTMLDivElement, inputElementSearchInput: HTMLInputElement}}
      */
     this.searchBar = searchBar
+  }
+
+  /**
+   * @param {BrowserSession}browserSession
+   * @private
+   */
+  _setupWebsocketConnection (browserSession) {
+    const sessionId = browserSession.sessionId
+    const websocketProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
+    const url = `${websocketProtocol}://${window.location.host}/${sessionId}/apps`
+
+    const ws = new window.WebSocket(url)
+    ws.onerror = (event) => {
+      if (ws.readyState === window.WebSocket.CONNECTING) {
+        // TODO log error?
+      }
+    }
+
+    ws.onopen = () => {
+      this._setupWebsocket(ws)
+      ws.send(JSON.stringify({
+        action: '_query',
+        data: ''
+      }))
+    }
+  }
+
+  _setupWebsocket (ws) {
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data)
+      const action = message.action
+      this[action](message.data)
+    }
+
+    window.unload = () => {
+      ws.onclose = function () {} // disable onclose handler first
+      ws.close()
+    }
+  }
+
+  /**
+   * @param {{ executable:string, localized:{ en:{ name: string, description: string } }, icon: { path: string }}[]}appsList
+   * @private
+   */
+  _query (appsList) {
+    appsList.forEach((appDescription) => {
+      const executable = appDescription.executable
+
+    })
   }
 
   showMenu () {

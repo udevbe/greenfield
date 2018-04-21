@@ -3,20 +3,37 @@
 'use strict'
 
 const ShimSession = require('./ShimSession')
+const DesktopShellAppsController = require('./DesktopShellAppsController')
+
+const controllers = {
+  'apps': DesktopShellAppsController
+}
 
 function main () {
   process.on('uncaughtException', (error) => {
     console.error(error.stack)
   })
 
+  // TODO we probably want to differentiate actions based on the path elements, including setting up a new session.
+  // FIXME define path for creating a new session instead of using an empty path
+  let shimSessionPromise = null
   process.once('message', async (request, socket) => {
-    const shimSession = await ShimSession.create(request[0], socket, request[1])
-    process.on('message', (request, socket) => {
-      shimSession.localSession._handleUpgrade(request[0], socket, request[1]).catch((error) => {
-        console.error(error)
-        // TODO disconnection client here?
-      })
+    shimSessionPromise = ShimSession.create(request[0], socket, request[1])
+
+    process.on('message', async (request, socket) => {
+      const pathElements = request[0].pathElements
+      await shimSessionPromise
+      // handle other non-session websocket connections
+      const controllerId = pathElements.shift()
+      if (controllerId) {
+        const controller = controllers[controllerId]
+        if (controller) {
+          controller.create(request[0], socket, pathElements)
+        }
+      }
     })
+
+    const shimSession = await shimSessionPromise
 
     const cleanUp = () => {
       shimSession.end('shim-compositor closed.')
@@ -32,6 +49,7 @@ function main () {
       console.log(`Child ${process.pid} will exit.`)
       process.exit(0)
     }
+
     shimSession.start()
   })
 }

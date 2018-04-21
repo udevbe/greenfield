@@ -8,21 +8,29 @@ const childProcess = require('child_process')
 const path = require('path')
 
 const forks = {}
+const uuidRegEx = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
 
-function ensureFork (grSessionId) {
-  let child = forks[grSessionId]
+/**
+ * @param {string} sessionId
+ * @return {ChildProcess}
+ */
+function ensureFork (sessionId) {
+  let child = forks[sessionId]
   if (child == null) {
+    // uncomment next line for debugging support in the child process
+    // process.execArgv.push('--inspect-brk=0')
+
     console.log('Parent creating new child process.')
     child = childProcess.fork(path.join(__dirname, 'forkIndex.js'))
 
     const removeChild = () => {
-      console.log('child exit')
-      delete forks[grSessionId]
+      console.log(`Child ${child.pid} exit.`)
+      delete forks[sessionId]
     }
 
     child.on('exit', removeChild)
     child.on('SIGINT', function () {
-      console.log(`Child ${child.pid} received SIGINT`)
+      console.log(`Child ${child.pid} received SIGINT.`)
       child.exit()
     })
     child.on('SIGTERM', function () {
@@ -30,7 +38,7 @@ function ensureFork (grSessionId) {
       child.exit()
     })
 
-    forks[grSessionId] = child
+    forks[sessionId] = child
   }
   return child
 }
@@ -46,18 +54,23 @@ function run (config) {
   express.static.mime.define({'application/wasm': ['wasm']})
   const app = express()
   app.use(express.static(path.join(__dirname, '../../browser/dist')))
-  app.use(express.query)
 
   const server = http.createServer()
   server.on('request', app)
 
   server.on('upgrade', (request, socket, head) => {
-    console.log('Parent received websocket upgrade request. Will delegating to new child process.')
-    let child = ensureFork(request.url.substring(1))
-    child.send([{
-      headers: request.headers,
-      method: request.method
-    }, head], socket)
+    console.log('Parent received websocket upgrade request. Will delegating to child process.')
+    const pathElements = request.url.split('/')
+    pathElements.shift() // empty element
+    const sessionId = pathElements.shift()
+    if (sessionId && uuidRegEx.test(sessionId)) {
+      let child = ensureFork(sessionId)
+      child.send([{
+        headers: request.headers,
+        method: request.method,
+        pathElements: pathElements
+      }, head], socket)
+    }
   })
 
   const cleanUp = () => {

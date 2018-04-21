@@ -17,7 +17,7 @@ export default class BrowserSession extends westfield.Global {
     const wfsServer = new westfield.Server()
     const websocketProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
     const url = `${websocketProtocol}://${window.location.host}/${sessionId}`
-    const browserSession = new BrowserSession(url, wfsServer)
+    const browserSession = new BrowserSession(url, wfsServer, sessionId)
     await browserSession._createConnection(url)
     wfsServer.registry.register(browserSession)
     return browserSession
@@ -27,16 +27,46 @@ export default class BrowserSession extends westfield.Global {
    * Use BrowserSession.create(..) instead
    * @param {string}url
    * @param {Server}wfsServer
+   * @param {string}sessionId
    * @private
    */
-  constructor (url, wfsServer) {
+  constructor (url, wfsServer, sessionId) {
     super(session.GrSession.name, 1)
+    /**
+     * @type {boolean}
+     * @private
+     */
     this._flush = false
+    /**
+     * @type {string}
+     */
     this.url = url
+    /**
+     * @type {Server}
+     */
     this.wfsServer = wfsServer
+    /**
+     * @type {string}
+     */
+    this.sessionId = sessionId
+    /**
+     * @type {{}}
+     * @private
+     */
     this._clients = {}
+    /**
+     * @type {number}
+     * @private
+     */
     this._nextClientSessionId = 1
+    /**
+     * @type {WebSocket}
+     * @private
+     */
     this._ws = null
+    /**
+     * @type {Array}
+     */
     this.resources = []
   }
 
@@ -92,13 +122,13 @@ export default class BrowserSession extends westfield.Global {
       }
     })
 
-    window.onbeforeunload = function (e) {
+    window.onbeforeunload = (e) => {
       const dialogText = 'dummytext'
       e.returnValue = dialogText
       return dialogText
     }
 
-    window.unload = function () {
+    window.unload = () => {
       this._ws.onclose = function () {} // disable onclose handler first
       this._ws.close()
     }

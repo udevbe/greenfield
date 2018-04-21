@@ -29,7 +29,16 @@ module.exports = class LocalSession {
    * @param wlDisplay
    */
   constructor (wss, wlDisplay) {
+    /**
+     * @type {WebSocket.Server}
+     * @private
+     */
     this._wss = wss
+    /**
+     * @type {WebSocket}
+     * @private
+     */
+    this._ws = null
     this.wlDisplay = wlDisplay
     this._connections = {}
     this.globals = {}

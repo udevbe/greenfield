@@ -19,7 +19,7 @@ import './style/greenfield.css'
  * @param {BrowserSession}browserSession
  */
 function setupGlobals (browserSession) {
-  const desktopShell = DesktopShell.create()
+  const desktopShell = DesktopShell.create(browserSession)
 
   const browserOutput = BrowserOutput.create()
   const browserSeat = BrowserSeat.create(browserSession, desktopShell)

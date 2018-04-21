@@ -1,6 +1,9 @@
 'use strict'
 
 export default class DesktopShellMenu {
+  /**
+   * @return {DesktopShellMenu}
+   */
   static create () {
     const divElementMenuButton = this._createDivElementMenuButton()
     const divElementMenuContainer = this._createDivElementMenuContainer()
@@ -17,6 +20,10 @@ export default class DesktopShellMenu {
     return desktopShellMenu
   }
 
+  /**
+   * @return {HTMLDivElement}
+   * @private
+   */
   static _createDivElementMenuButton () {
     const divElementMenuButton = document.createElement('div')
     divElementMenuButton.classList.add('menu-button')
@@ -24,6 +31,10 @@ export default class DesktopShellMenu {
     return divElementMenuButton
   }
 
+  /**
+   * @return {HTMLDivElement}
+   * @private
+   */
   static _createDivElementMenuContainer () {
     const divElementMenuContainer = document.createElement('div')
     divElementMenuContainer.classList.add('menu-container')
@@ -38,6 +49,10 @@ export default class DesktopShellMenu {
     return divElementMenuContainer
   }
 
+  /**
+   * @return {HTMLDivElement}
+   * @private
+   */
   static _createDivElementMenu () {
     const divElementMenu = document.createElement('div')
     divElementMenu.classList.add('menu')
