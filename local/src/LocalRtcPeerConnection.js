@@ -143,8 +143,6 @@ module.exports = class LocalRtcPeerConnection {
    */
   async serverSdpOffer (description) {
     const signal = JSON.parse(description)
-    // console.log(this._peerConnection.readyState)
-    console.log(this._peerConnection.signalingState)
 
     await this._peerConnection.setRemoteDescription(new webRTC.RTCSessionDescription(signal.sdp))
     const desc = await this._peerConnection.createAnswer()

@@ -86,10 +86,12 @@ body {
     border-radius: 0.5vh;
     background-color: rgb(200, 200, 200);
     transition: all 200ms ease-out;
+    box-shadow: 0 0 1px 0 rgba(0, 0, 0, 0.75);
 }
 
 .menu-button-active {
     border-radius: 0.5vh;
+    box-shadow: 0 0 1px 0 rgba(0, 0, 0, 0.75);
     transition: all 200ms ease-out;
 }
 
@@ -199,3 +201,29 @@ input::placeholder {
     color: white;
     opacity: 1;
 }
+
+.app-menu-item {
+    display: flex;
+    flex-direction: column;
+
+    width: 9vh;
+    margin: 1vh;
+    padding: 1vh;
+}
+
+.app-menu-item:hover {
+    border-radius: 0.5vh;
+    box-shadow: 0 0 3px 0 rgba(0, 0, 0, 0.75);
+    background: rgb(220, 220, 220);
+    transition: all 200ms ease-in-out;
+}
+
+.app-menu-item img {
+    width: 9vh;
+    height: 9vh;
+}
+
+.app-menu-item .name {
+    text-align: center;
+}
+

@@ -1,5 +1,7 @@
 'use strict'
 
+import DesktopShellAppMenuItem from './DesktopShellAppMenuItem'
+
 export default class DesktopShellAppMenu {
   /**
    * @param {BrowserSession}browserSession
@@ -13,7 +15,7 @@ export default class DesktopShellAppMenu {
     const searchBar = this._createSearchBar(divElementAppMenuContainer)
     divElementAppMenu.appendChild(searchBar.divElementSearchContainer)
 
-    const desktopShellAppMenu = new DesktopShellAppMenu(divElementAppMenuButton, divElementAppMenuContainer, divElementAppMenu, searchBar)
+    const desktopShellAppMenu = new DesktopShellAppMenu(divElementAppMenuButton, divElementAppMenuContainer, divElementAppMenu, searchBar, browserSession)
 
     // event listeners
     this._addEventListeners(desktopShellAppMenu)
@@ -88,8 +90,6 @@ export default class DesktopShellAppMenu {
     })
     window.document.addEventListener('mousedown', (event) => {
       if (event.target !== desktopShellAppMenu.divElementAppMenu && event.target !== desktopShellAppMenu.divElementAppMenuButton) {
-        console.log(event.target)
-        console.log(desktopShellAppMenu.divElementAppMenu)
         desktopShellAppMenu.hideMenu()
       }
     })
@@ -100,8 +100,9 @@ export default class DesktopShellAppMenu {
    * @param {HTMLDivElement}divElementAppMenuContainer
    * @param {HTMLDivElement}divElementAppMenu
    * @param {{divElementSearchContainer: HTMLDivElement, divElementSearchIcon: HTMLDivElement, inputElementSearchInput: HTMLInputElement}}searchBar
+   * @param {BrowserSession}browserSession
    */
-  constructor (divElementAppMenuButton, divElementAppMenuContainer, divElementAppMenu, searchBar) {
+  constructor (divElementAppMenuButton, divElementAppMenuContainer, divElementAppMenu, searchBar, browserSession) {
     /**
      * @type {HTMLDivElement}
      */
@@ -118,6 +119,16 @@ export default class DesktopShellAppMenu {
      * @type {{divElementSearchContainer: HTMLDivElement, divElementSearchIcon: HTMLDivElement, inputElementSearchInput: HTMLInputElement}}
      */
     this.searchBar = searchBar
+    /**
+     * @type {BrowserSession}
+     * @private
+     */
+    this._browserSession = browserSession
+    /**
+     * @type {window.WebSocket}
+     * @private
+     */
+    this._ws = null
   }
 
   /**
@@ -143,6 +154,7 @@ export default class DesktopShellAppMenu {
         data: ''
       }))
     }
+    this._ws = ws
   }
 
   _setupWebsocket (ws) {
@@ -159,13 +171,19 @@ export default class DesktopShellAppMenu {
   }
 
   /**
-   * @param {{ executable:string, localized:{ en:{ name: string, description: string } }, icon: { path: string }}[]}appsList
+   * @param {{ executable:string, name: string, description: string, icon: string }[]}appsList
    * @private
    */
   _query (appsList) {
     appsList.forEach((appDescription) => {
       const executable = appDescription.executable
+      const name = appDescription.name
+      const description = appDescription.description
+      const iconPath = appDescription.icon
+      const iconUrl = `${window.location.protocol}/${iconPath}`
 
+      const desktopShellAppMenuItem = DesktopShellAppMenuItem.create(this._ws, executable, iconUrl, name, description)
+      this.divElementAppMenu.appendChild(desktopShellAppMenuItem.divElementItem)
     })
   }
 
@@ -186,7 +204,6 @@ export default class DesktopShellAppMenu {
     this.searchBar.inputElementSearchInput.value = ''
 
     this.divElementAppMenuContainer.style.visibility = 'hidden'
-    // this.divElementMenuContainer.style.zIndex = '-65535'
     this.divElementAppMenu.classList.remove('menu-active')
     this.divElementAppMenuButton.classList.remove('menu-button-active')
   }
