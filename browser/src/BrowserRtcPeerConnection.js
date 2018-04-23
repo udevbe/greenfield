@@ -72,12 +72,12 @@ export default class BrowserRtcPeerConnection {
         {
           'iceServers': [
             {
-              'url': 'stun:stun.l.google.com:19302'
-            },
-            {
-              'url': 'turn:badger.pfoe.be',
+              'urls': 'turn:badger.pfoe.be',
               'username': 'greenfield',
               'credential': 'water'
+            },
+            {
+              'urls': 'stun:stun.l.google.com:19302'
             }
           ]
         }
@@ -85,32 +85,44 @@ export default class BrowserRtcPeerConnection {
 
       clientIceCandidates: async (resource, description) => {
         const signal = JSON.parse(description)
+        console.log(`webrtc received remote ice candidate: ${description}`)
         await this._delegate._peerConnection.addIceCandidate(new window.RTCIceCandidate(signal.candidate))
       },
 
       clientSdpReply: async (resource, description) => {
         const signal = JSON.parse(description)
+        console.log(`webrtc received remote sdp answer: ${description}`)
         await this._delegate._peerConnection.setRemoteDescription(new window.RTCSessionDescription(signal.sdp))
       },
 
       clientSdpOffer: async (resource, description) => {
         const signal = JSON.parse(description)
+        console.log(`webrtc received remote sdp offer: ${description}`)
         await this._delegate._peerConnection.setRemoteDescription(new window.RTCSessionDescription(signal.sdp))
         const desc = await this._delegate._peerConnection.createAnswer()
         await this._delegate._peerConnection.setLocalDescription(desc)
+        console.log(`Child ${process.pid} webrtc sending local sdp answer: ${JSON.stringify(this._delegate._peerConnection.localDescription)}`)
         await this.rtcPeerConnectionResource.serverSdpReply(JSON.stringify({'sdp': this._delegate._peerConnection.localDescription}))
       }
     }
 
+    console.log(`webrtc created new peer connection with connection state: ${this._delegate._peerConnection.connectionState}`)
+    this._delegate._peerConnection.onconnectionstatechange = () => {
+      console.log(`webrtc peer connection connection state changed to: ${this._delegate._peerConnection.connectionState}`)
+    }
+
     this._delegate._peerConnection.onicecandidate = (evt) => {
       if (evt.candidate !== null) {
+        console.log(`webrtc sending local ice candide: ${JSON.stringify(evt.candidate)}`)
         this.rtcPeerConnectionResource.serverIceCandidates(JSON.stringify({'candidate': evt.candidate}))
       }
     }
     this._delegate._peerConnection.onnegotiationneeded = async () => {
+      // TODO is this correct?
       this._sendOffer()
     }
 
+    // this._sendOffer()
     this._peerConnectionResolve(this._delegate._peerConnection)
   }
 
