@@ -155,13 +155,13 @@ module.exports = class DesktopShellAppsController {
     // TODO hard coded list for now. Programmatically discover/define apps based on logged in user's permission.
     return [
       {
-        executable: '/home/zubzub/git/weston14/clients/weston-terminal', // The name or path of the executable file to run.
+        executable: '/home/zubzub/git/weston/clients/weston-terminal', // The name or path of the executable file to run.
         name: 'Weston Terminal', // TODO localize string based on this._locales
         description: 'A minimal terminal emulator', // TODO localize string based on this._locales
         icon: 'assets/terminal.svg' // path relative to https(s)://<host>/<sessionId>/
       },
       {
-        executable: '/home/zubzub/git/weston14/clients/weston-simple-egl', // The name or path of the executable file to run.
+        executable: '/home/zubzub/git/weston/clients/weston-simple-egl', // The name or path of the executable file to run.
         name: 'Weston Simple EGL', // TODO localize string based on this._locales
         description: 'A spinning rgb triangle', // TODO localize string based on this._locales
         icon: 'assets/rgb-triangle.svg' // path relative to https(s)://<host>/<sessionId>/
