@@ -117,8 +117,8 @@ export default class BrowserRtcPeerConnection {
         this.rtcPeerConnectionResource.serverIceCandidates(JSON.stringify({'candidate': evt.candidate}))
       }
     }
-    this._delegate._peerConnection.onnegotiationneeded = async () => {
-      // TODO is this correct?
+    this._delegate._peerConnection.onnegotiationneeded = () => {
+      console.log(`webrtc negotiation needed`)
       this._sendOffer()
     }
 
@@ -127,14 +127,19 @@ export default class BrowserRtcPeerConnection {
   }
 
   async _sendOffer () {
-    const desc = await this._delegate._peerConnection.createOffer({
-      offerToReceiveAudio: false,
-      offerToReceiveVideo: false,
-      voiceActivityDetection: false,
-      iceRestart: false
-    })
-    await this._delegate._peerConnection.setLocalDescription(desc)
-    this.rtcPeerConnectionResource.serverSdpOffer(JSON.stringify({'sdp': this._delegate._peerConnection.localDescription}))
+    try {
+      const desc = await this._delegate._peerConnection.createOffer({
+        offerToReceiveAudio: false,
+        offerToReceiveVideo: false,
+        voiceActivityDetection: false,
+        iceRestart: false
+      })
+      await this._delegate._peerConnection.setLocalDescription(desc)
+      console.log(` webrtc sending local sdp offer: ${JSON.stringify(this._delegate._peerConnection.localDescription)}`)
+      this.rtcPeerConnectionResource.serverSdpOffer(JSON.stringify({'sdp': this._delegate._peerConnection.localDescription}))
+    } catch (error) {
+      console.error(error)
+    }
   }
 
   /**
