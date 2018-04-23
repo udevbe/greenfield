@@ -25,7 +25,7 @@ module.exports = class ShimSession {
     console.log(`Child ${process.pid} created new wayland server socket: ${waylandSocket}`)
 
     const localSession = await LocalSession.create(request, socket, head, wlDisplay)
-    const shimSession = new ShimSession(localSession, wlDisplay)
+    const shimSession = new ShimSession(localSession, wlDisplay, waylandSocket)
     wlDisplay.addClientCreatedListener(shimSession.onClientCreated.bind(shimSession))
     return shimSession
   }
@@ -39,12 +39,23 @@ module.exports = class ShimSession {
   /**
    * Use ShimSession.create(..) instead.
    * @private
-   * @param localSession
-   * @param wlDisplay
+   * @param {LocalSession}localSession
+   * @param {WlDisplay}wlDisplay
+   * @param {string}waylandSocket
    */
-  constructor (localSession, wlDisplay) {
+  constructor (localSession, wlDisplay, waylandSocket) {
+    /**
+     * @type {LocalSession}
+     */
     this.localSession = localSession
+    /**
+     * @type {WlDisplay}
+     */
     this.wlDisplay = wlDisplay
+    /**
+     * @type {string}
+     */
+    this.waylandSocket = waylandSocket
     this._fdWatcher = null
   }
 

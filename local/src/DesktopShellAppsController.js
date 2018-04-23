@@ -10,14 +10,16 @@ module.exports = class DesktopShellAppsController {
    * @param request
    * @param socket
    * @param head
+   * @param {ShimSession}shimSession
    * @return {DesktopShellAppsController}
    */
-  static create (request, socket, head) {
+  static create (request, socket, head, shimSession) {
     const wss = new WebSocket.Server({
       noServer: true
     })
     const locales = this._parseAcceptLangs(request.headers['accept-language'])
-    const desktopShellAppsController = new DesktopShellAppsController(wss, locales)
+    const waylandSocket = shimSession.waylandSocket
+    const desktopShellAppsController = new DesktopShellAppsController(wss, locales, waylandSocket)
     desktopShellAppsController._handleUpgrade(request, socket, head)
     return desktopShellAppsController
   }
@@ -42,8 +44,9 @@ module.exports = class DesktopShellAppsController {
   /**
    * @param {WebSocket.Server}wss
    * @param {[string,number][]}locales
+   * @param {string}waylandSocket
    */
-  constructor (wss, locales) {
+  constructor (wss, locales, waylandSocket) {
     /**
      * @type {WebSocket.Server}
      * @private
@@ -54,6 +57,11 @@ module.exports = class DesktopShellAppsController {
      * @private
      */
     this._locales = locales
+    /**
+     * @type {string}
+     * @private
+     */
+    this._waylandSocket = waylandSocket
     /**
      * @type {WebSocket}
      * @private
@@ -113,9 +121,18 @@ module.exports = class DesktopShellAppsController {
    * @private
    */
   async _doLaunch (executable) {
-    console.log(`Child ${process.pid} launching ${executable}.`)
-    const {stdout} = await execFile(executable)
-    console.log(stdout)
+    try {
+      console.log(`Child ${process.pid} launching ${executable}.`)
+      const childEnv = {'WAYLAND_DISPLAY': this._waylandSocket}
+      Object.assign(childEnv, process.env)
+      const {stdout, stderr} = await execFile(executable, [], {
+        env: childEnv
+      })
+      console.log(stdout)
+      console.error(stderr)
+    } catch (error) {
+      console.error(error)
+    }
   }
 
   /**

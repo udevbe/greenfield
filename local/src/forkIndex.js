@@ -16,19 +16,18 @@ function main () {
 
   // TODO we probably want to differentiate actions based on the path elements, including setting up a new session.
   // FIXME define path for creating a new session instead of using an empty path
-  let shimSessionPromise = null
   process.once('message', async (request, socket) => {
-    shimSessionPromise = ShimSession.create(request[0], socket, request[1])
+    const shimSessionPromise = ShimSession.create(request[0], socket, request[1])
 
     process.on('message', async (request, socket) => {
       const pathElements = request[0].pathElements
-      await shimSessionPromise
+      const shimSession = await shimSessionPromise
       // handle other non-session websocket connections
       const controllerId = pathElements.shift()
       if (controllerId) {
         const controller = controllers[controllerId]
         if (controller) {
-          controller.create(request[0], socket, pathElements)
+          controller.create(request[0], socket, pathElements, shimSession)
         }
       }
     })

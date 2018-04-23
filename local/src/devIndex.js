@@ -38,7 +38,7 @@ function main () {
 
   server.on('upgrade', async (request, socket, head) => {
     if (shimSessionPromise) {
-      await shimSessionPromise
+      const shimSession = await shimSessionPromise
       // handle other non-session websocket connections
       const pathElements = request.url.split('/')
       pathElements.shift() // empty element
@@ -47,7 +47,7 @@ function main () {
       const controllerId = pathElements.shift()
       const controller = controllers[controllerId]
       if (controller) {
-        controller.create(request, socket, pathElements)
+        controller.create(request, socket, pathElements, shimSession)
       }
     } else {
       shimSessionPromise = ShimSession.create(request, socket, head)
