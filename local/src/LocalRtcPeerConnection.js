@@ -57,16 +57,9 @@ module.exports = class LocalRtcPeerConnection {
 
     this._peerConnection.onicecandidate = (evt) => {
       if (evt.candidate !== null) {
-        console.log(`Child ${process.pid} webrtc sending local ice candide: ${JSON.stringify(evt.candidate)}`)
+        console.log(`Child ${process.pid} webrtc sending local ice candide`)
         this.proxy.clientIceCandidates(JSON.stringify({'candidate': evt.candidate}))
       }
-    }
-    this._peerConnection.onnegotiationneeded = async () => {
-      console.log(`Child ${process.pid} webrtc negotiation needed`)
-      const desc = await this._peerConnection.createAnswer()
-      await this._peerConnection.setLocalDescription(desc)
-      console.log(`Child ${process.pid} webrtc sending local sdp answer: ${JSON.stringify(this._peerConnection.localDescription)}`)
-      this.proxy.clientSdpReply(JSON.stringify({'sdp': this._peerConnection.localDescription}))
     }
   }
 
@@ -133,14 +126,18 @@ module.exports = class LocalRtcPeerConnection {
   }
 
   async _setLocalDescription () {
-    const desc = await this._peerConnection.createOffer({
-      offerToReceiveAudio: false,
-      offerToReceiveVideo: false,
-      voiceActivityDetection: false,
-      iceRestart: false
-    })
-    console.log(`Child ${process.pid} webrtc set local sdp offer: ${desc.toJSON()}`)
-    await this._peerConnection.setLocalDescription(desc)
+    try {
+      const desc = await this._peerConnection.createOffer({
+        offerToReceiveAudio: false,
+        offerToReceiveVideo: false,
+        voiceActivityDetection: false,
+        iceRestart: false
+      })
+      console.log(`Child ${process.pid} webrtc set local sdp offer`)
+      await this._peerConnection.setLocalDescription(desc)
+    } catch (error) {
+      console.error(error)
+    }
   }
 
   /**
@@ -151,22 +148,9 @@ module.exports = class LocalRtcPeerConnection {
    *
    */
   async serverSdpReply (description) {
-    const signal = JSON.parse(description)
-    console.log(`Child ${process.pid} webrtc received remote sdp answer: ${description}`)
-    await this._peerConnection.setRemoteDescription(new webRTC.RTCSessionDescription(signal.sdp))
-  }
-
-  /**
-   *
-   * @param {string} description
-   *
-   * @since 1
-   *
-   */
-  async serverSdpOffer (description) {
-    const signal = JSON.parse(description)
-    console.log(`Child ${process.pid} webrtc received remote sdp offer: ${description}`)
     try {
+      const signal = JSON.parse(description)
+      console.log(`Child ${process.pid} webrtc received remote sdp answer`)
       await this._peerConnection.setRemoteDescription(new webRTC.RTCSessionDescription(signal.sdp))
     } catch (error) {
       console.error(error)
@@ -180,9 +164,34 @@ module.exports = class LocalRtcPeerConnection {
    * @since 1
    *
    */
+  async serverSdpOffer (description) {
+    try {
+      const signal = JSON.parse(description)
+      console.log(`Child ${process.pid} webrtc received remote sdp offer`)
+      await this._peerConnection.setRemoteDescription(new webRTC.RTCSessionDescription(signal.sdp))
+      const desc = await this._peerConnection.createAnswer()
+      await this._peerConnection.setLocalDescription(desc)
+      console.log(`Child ${process.pid} webrtc sending local sdp`)
+      this.proxy.clientSdpReply(JSON.stringify({'sdp': this._peerConnection.localDescription}))
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  /**
+   *
+   * @param {string} description
+   *
+   * @since 1
+   *
+   */
   async serverIceCandidates (description) {
-    const signal = JSON.parse(description)
-    console.log(`Child ${process.pid} webrtc received remote ice candidate: ${description}`)
-    await this._peerConnection.addIceCandidate(new webRTC.RTCIceCandidate(signal.candidate))
+    try {
+      const signal = JSON.parse(description)
+      console.log(`Child ${process.pid} webrtc received remote ice candidate`)
+      await this._peerConnection.addIceCandidate(new webRTC.RTCIceCandidate(signal.candidate))
+    } catch (error) {
+      console.error(error)
+    }
   }
 }
