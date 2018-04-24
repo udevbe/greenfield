@@ -1,8 +1,8 @@
 'use strict'
 /** @module ShimSession */
 
-const SocketWatcher = require('socketwatcher').SocketWatcher
 const {Display} = require('wayland-server-bindings-runtime')
+const {Epoll} = require('epoll')
 
 const LocalSession = require('./LocalSession')
 const LocalRtcPeerConnectionFactory = require('./LocalRtcPeerConnectionFactory')
@@ -77,14 +77,18 @@ module.exports = class ShimSession {
 
   start () {
     if (this._fdWatcher === null) {
-      const fdWatcher = new SocketWatcher()
-      fdWatcher.callback = () => { this._doLoop() }
-      fdWatcher.set(this.wlDisplay.eventLoop.fd, true, false)
+      const fdWatcher = new Epoll((err, fd, events) => {
+        if (err) {
+          console.error(err)
+        } else {
+          this._doLoop()
+        }
+      })
+      fdWatcher.add(this.wlDisplay.eventLoop.fd, Epoll.EPOLLPRI | Epoll.EPOLLIN | Epoll.EPOLLERR)
       this._fdWatcher = fdWatcher
     }
 
     this.wlDisplay.flushClients()
-    this._fdWatcher.start()
   }
 
   _doLoop () {
@@ -96,7 +100,7 @@ module.exports = class ShimSession {
 
   stop () {
     if (this._fdWatcher !== null) {
-      this._fdWatcher.stop()
+      this._fdWatcher.remove(this.wlDisplay.eventLoop.fd)
       this._fdWatcher.callback = null
     }
     this._fdWatcher = null
