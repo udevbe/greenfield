@@ -18,7 +18,8 @@ module.exports = class LocalSession {
   static create (request, socket, head, wlDisplay) {
     console.log(`Child ${process.pid} setting up websocket server logic.`)
     const wss = new WebSocket.Server({
-      noServer: true
+      noServer: true,
+      handshakeTimeout: 2000
     })
     return new LocalSession(wss, wlDisplay)._handleUpgrade(request, socket, head)
   }
