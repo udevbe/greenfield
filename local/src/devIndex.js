@@ -33,6 +33,7 @@ function main () {
 
   const server = http.createServer()
   server.on('request', app)
+  server.setTimeout(6000)
 
   let shimSessionPromise = null
 

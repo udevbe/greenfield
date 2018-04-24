@@ -57,6 +57,7 @@ function run (config) {
 
   const server = http.createServer()
   server.on('request', app)
+  server.setTimeout(6000)
 
   server.on('upgrade', (request, socket, head) => {
     console.log('Parent received websocket upgrade request. Will delegating to child process.')
