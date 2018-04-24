@@ -47,6 +47,16 @@ module.exports = class H264AlphaEncoder {
     const sink = pipeline.findChild('sink')
     const src = pipeline.findChild('source')
     const scale = pipeline.findChild('scale')
+    pipeline.pollBus((event) => {
+      switch (event.type) {
+        case 'error':
+          console.error(event)
+          break
+        case 'warning':
+          console.warn(event)
+          break
+      }
+    })
     pipeline.play()
 
     return new H264AlphaEncoder(pipeline, sink, alphasink, src, scale)
@@ -78,6 +88,7 @@ module.exports = class H264AlphaEncoder {
     // x264 encoder requires size to be a multiple of 2
     // target caps describe what we want
     this.scale.caps = `video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)}`
+
     this.pipeline.play()
   }
 

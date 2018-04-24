@@ -16,6 +16,16 @@ module.exports = class PNGEncoder {
     const sink = pipeline.findChild('sink')
     const src = pipeline.findChild('source')
     const scale = pipeline.findChild('scale')
+    pipeline.pollBus((event) => {
+      switch (event.type) {
+        case 'error':
+          console.error(event)
+          break
+        case 'warning':
+          console.warn(event)
+          break
+      }
+    })
     pipeline.play()
 
     return new PNGEncoder(pipeline, sink, src, scale, width, height, gstBufferFormat)
