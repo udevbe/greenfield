@@ -68,6 +68,23 @@ module.exports = class LocalSession {
   onTerminate () {}
 
   _setupWebsocket () {
+    this._ws.isAlive = true
+    this._ws.on('pong', () => {
+      this._ws.isAlive = true
+    })
+
+    let interval = null
+    interval = setInterval(() => {
+      if (this._ws.isAlive === false) {
+        console.error(`Child ${process.pid} did not receive websocket pong reply after 5 seconds. Will terminate connection.`)
+        clearInterval(interval)
+        this._ws.terminate()
+      } else {
+        this._ws.isAlive = false
+        this._ws.ping(() => {})
+      }
+    }, 5000)
+
     this._ws.onmessage = (event) => {
       if (this._ws.readyState === WebSocket.OPEN) {
         try {
@@ -81,7 +98,7 @@ module.exports = class LocalSession {
           }
         } catch (error) {
           console.error(`Child ${process.pid} ${error}`)
-          this._ws.close()
+          this._ws.close(1, 'received an illegal message')
         }
       }
     }
@@ -91,7 +108,10 @@ module.exports = class LocalSession {
       this.wlDisplay.destroy()
       this.onTerminate()
     }
-    // TODO listen for error(?)
+    this._ws.onerror = (error) => {
+      console.error(`Child ${process.pid} websocket is in error. ${error}`)
+      this._ws.terminate()
+    }
   }
 
   _setupPrimaryConnection (resolve) {
@@ -132,12 +152,12 @@ module.exports = class LocalSession {
           this._ws.send(targetBuffer.buffer.slice(targetBuffer.byteOffset, targetBuffer.byteOffset + targetBuffer.byteLength), (error) => {
             if (error !== undefined) {
               console.error(error)
-              this._ws.close()
+              this._ws.terminate()
             }
           })
         } catch (error) {
           console.error(error)
-          this._ws.close()
+          this._ws.terminate()
         }
       }
     }
