@@ -77,5 +77,8 @@
     "assets": [
       "./browser/dist/**/*"
     ]
+  },
+  "optionalDependencies": {
+    "bufferutil": "^3.0.4"
   }
 }
