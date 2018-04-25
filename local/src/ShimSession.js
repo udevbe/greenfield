@@ -19,8 +19,6 @@ module.exports = class ShimSession {
    * @return {Promise<ShimSession>}
    */
   static async create (request, socket, head) {
-    delete process.env.WAYLAND_DISPLAY
-    delete process.env.DISPLAY
     const wlDisplay = Display.create()
     wlDisplay.initShm()
     const waylandSocket = wlDisplay.addSocketAuto()
