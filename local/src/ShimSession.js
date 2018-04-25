@@ -19,10 +19,16 @@ module.exports = class ShimSession {
    * @return {Promise<ShimSession>}
    */
   static async create (request, socket, head) {
+    delete process.env.WAYLAND_DISPLAY
+    delete process.env.DISPLAY
     const wlDisplay = Display.create()
     wlDisplay.initShm()
     const waylandSocket = wlDisplay.addSocketAuto()
     console.log(`Child ${process.pid} created new wayland server socket: ${waylandSocket}`)
+
+    // set the waylan display to something non existing, else gstreamer will connect to us with a fallback value and
+    // block, while in turn we wait for gstreamer, resulting in a deadlock!
+    process.env.WAYLAND_DISPLAY = 'doesntExist'
 
     const localSession = await LocalSession.create(request, socket, head, wlDisplay)
     const shimSession = new ShimSession(localSession, wlDisplay, waylandSocket)

@@ -123,11 +123,12 @@ module.exports = class DesktopShellAppsController {
   async _doLaunch (executable) {
     try {
       console.log(`Child ${process.pid} launching ${executable}.`)
-      const childEnv = {'WAYLAND_DISPLAY': this._waylandSocket}
+      const childEnv = {}
       Object.assign(childEnv, process.env)
       const {stdout, stderr} = await execFile(executable, [], {
         env: childEnv
       })
+      childEnv.WAYLAND_DISPLAY = this._waylandSocket
       console.log(stdout)
       console.error(stderr)
     } catch (error) {
