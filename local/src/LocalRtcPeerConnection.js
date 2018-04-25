@@ -40,7 +40,7 @@ module.exports = class LocalRtcPeerConnection {
       {
         'iceServers': [
           {
-            'urls': 'turn:badger.pfoe.be?transport=tcp',
+            'urls': 'turn:badger.pfoe.be?transport=tls',
             'username': 'greenfield',
             'credential': 'water'
           },
@@ -136,7 +136,7 @@ module.exports = class LocalRtcPeerConnection {
       console.log(`Child ${process.pid} webrtc set local sdp offer`)
       await this._peerConnection.setLocalDescription(desc)
     } catch (error) {
-      console.error(error)
+      console.trace(error)
     }
   }
 
@@ -153,7 +153,7 @@ module.exports = class LocalRtcPeerConnection {
       console.log(`Child ${process.pid} webrtc received remote sdp answer`)
       await this._peerConnection.setRemoteDescription(new webRTC.RTCSessionDescription(signal.sdp))
     } catch (error) {
-      console.error(error)
+      console.trace(error)
     }
   }
 
@@ -174,7 +174,7 @@ module.exports = class LocalRtcPeerConnection {
       console.log(`Child ${process.pid} webrtc sending local sdp`)
       this.proxy.clientSdpReply(JSON.stringify({'sdp': this._peerConnection.localDescription}))
     } catch (error) {
-      console.error(error)
+      console.trace(error)
     }
   }
 
@@ -191,7 +191,7 @@ module.exports = class LocalRtcPeerConnection {
       console.log(`Child ${process.pid} webrtc received remote ice candidate`)
       await this._peerConnection.addIceCandidate(new webRTC.RTCIceCandidate(signal.candidate))
     } catch (error) {
-      console.error(error)
+      console.trace(error)
     }
   }
 }

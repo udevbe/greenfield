@@ -72,7 +72,7 @@ export default class BrowserRtcPeerConnection {
         {
           'iceServers': [
             {
-              'urls': 'turn:badger.pfoe.be?transport=tcp',
+              'urls': 'turn:badger.pfoe.be?transport=tls',
               'username': 'greenfield',
               'credential': 'water'
             },
