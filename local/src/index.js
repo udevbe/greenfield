@@ -21,7 +21,8 @@ function ensureFork (sessionId) {
     // process.execArgv.push('--inspect-brk=0')
 
     console.log('Parent creating new child process.')
-    child = childProcess.fork(path.join(__dirname, 'forkIndex.js'), process.argv[2])
+    const configPath = process.argv[2]
+    child = childProcess.fork(path.join(__dirname, 'forkIndex.js'), configPath == null ? [] : [`${configPath}`])
 
     const removeChild = () => {
       console.log(`Child ${child.pid} exit.`)
