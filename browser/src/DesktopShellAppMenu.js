@@ -166,7 +166,7 @@ export default class DesktopShellAppMenu {
 
     window.unload = () => {
       ws.onclose = function () {} // disable onclose handler first
-      ws.close()
+      ws.close(1000, 'User closed tab.')
     }
   }
 

@@ -87,7 +87,7 @@ module.exports = class DesktopShellAppsController {
           this._handleMessage(message)
         } catch (error) {
           console.error(`Child ${process.pid} ${error}`)
-          this._ws.close(1, 'Error while handling incoming message.')
+          this._ws.close(1007, 'Error while handling incoming message.')
         }
       }
     }
