@@ -1,4 +1,5 @@
 'use strict'
+const config = require('./config')
 
 const express = require('express')
 const http = require('http')
@@ -33,7 +34,7 @@ function main () {
 
   const server = http.createServer()
   server.on('request', app)
-  server.setTimeout(6000)
+  server.setTimeout(config['http-server']['socket-timeout'])
 
   let shimSessionPromise = null
 
@@ -61,7 +62,7 @@ function main () {
     }
   })
 
-  server.listen(8080)
+  server.listen(config['http-server']['port'])
 }
 
 main()

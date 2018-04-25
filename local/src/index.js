@@ -1,8 +1,8 @@
 'use strict'
 
+const config = require('./config')
 const express = require('express')
 const http = require('http')
-const fs = require('fs')
 
 const childProcess = require('child_process')
 const path = require('path')
@@ -43,21 +43,15 @@ function ensureFork (sessionId) {
   return child
 }
 
-/**
- * @param {{port:number}}config
- */
-function run (config) {
+function run () {
   console.log('>>> Running in PRODUCTION mode <<<\n')
-  console.log(' --- configuration ---')
-  console.log(config)
-  console.log(' --------------------- ')
   express.static.mime.define({'application/wasm': ['wasm']})
   const app = express()
   app.use(express.static(path.join(__dirname, '../../browser/dist')))
 
   const server = http.createServer()
   server.on('request', app)
-  server.setTimeout(6000)
+  server.setTimeout(config['http-server']['socket-timeout'])
 
   server.on('upgrade', (request, socket, head) => {
     console.log('Parent received websocket upgrade request. Will delegating to child process.')
@@ -96,23 +90,14 @@ function run (config) {
     process.exit()
   })
 
-  server.listen(config.port)
+  server.listen(config['http-server']['port'])
 }
 
 function main () {
   process.on('uncaughtException', (error) => {
     console.error(error)
   })
-
-  let configFile = process.argv[2]
-  let config
-  if (configFile) {
-    config = JSON.parse(fs.readFileSync(process.cwd() + '/' + configFile))
-  } else {
-    config = JSON.parse(fs.readFileSync(path.join(__dirname, 'DefaultConfig.json')))
-  }
-
-  run(config)
+  run()
 }
 
 main()
