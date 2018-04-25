@@ -28,7 +28,7 @@ function build_dist {
 
 function add_native_modules {
     cp ./node_modules/gstreamer-superficial/build/Release/gstreamer-superficial.node ${DIST_DIR}
-    cp ./node_modules/epoll/build/Release/socketwatcher.node ${DIST_DIR}
+    cp ./node_modules/epoll/build/Release/epoll.node ${DIST_DIR}
     cp ./node_modules/wrtc/build/Release/wrtc.node ${DIST_DIR}
     cp ./node_modules/fastcall/build/Release/ref.node ${DIST_DIR}
     cp ./node_modules/fastcall/build/Release/fastcall.node ${DIST_DIR}
