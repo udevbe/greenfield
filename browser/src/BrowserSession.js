@@ -85,7 +85,7 @@ export default class BrowserSession extends westfield.Global {
           reject(event)
         } else {
           console.error(`Websocket is in error. ${event}`)
-          ws.close(1, 'Websocket is in error.')
+          ws.close(1002, 'Websocket is in error.')
         }
       }
 
@@ -120,7 +120,7 @@ export default class BrowserSession extends westfield.Global {
           this._clients[sessionId].message(arrayBuffer)
         } catch (error) {
           console.error(`Websocket is in error. ${event}`)
-          this._ws.close(1, 'Websocket is in error.')
+          this._ws.close(1002, 'Websocket is in error.')
         }
       }
     })
@@ -134,7 +134,7 @@ export default class BrowserSession extends westfield.Global {
     window.unload = () => {
       this._ws.onclose = function () {} // disable onclose handler first
       console.log('User closed tab.')
-      this._ws.close(0, 'User closed tab.')
+      this._ws.close(1000, 'User closed tab.')
     }
   }
 
@@ -170,7 +170,7 @@ export default class BrowserSession extends westfield.Global {
           this._ws.send(b.buffer)
         } catch (error) {
           console.error(error)
-          this._ws.close(1, 'Websocket is in error.')
+          this._ws.close(1002, 'Websocket is in error.')
         }
       }
     }

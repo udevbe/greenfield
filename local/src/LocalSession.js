@@ -99,7 +99,7 @@ module.exports = class LocalSession {
           }
         } catch (error) {
           console.error(`Child ${process.pid} ${error}`)
-          this._ws.close(1, 'received an illegal message')
+          this._ws.close(1007, 'received an illegal message')
         }
       }
     }
