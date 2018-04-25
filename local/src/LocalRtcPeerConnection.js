@@ -40,7 +40,7 @@ module.exports = class LocalRtcPeerConnection {
       {
         'iceServers': [
           {
-            'urls': 'turn:badger.pfoe.be',
+            'urls': 'turn:badger.pfoe.be?transport=tcp',
             'username': 'greenfield',
             'credential': 'water'
           },
