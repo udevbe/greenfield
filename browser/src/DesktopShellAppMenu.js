@@ -141,13 +141,16 @@ export default class DesktopShellAppMenu {
     const url = `${websocketProtocol}://${window.location.host}/${sessionId}/apps`
 
     const ws = new window.WebSocket(url)
-    ws.onerror = (event) => {
-      if (ws.readyState === window.WebSocket.CONNECTING) {
-        // TODO log error?
-      }
+    ws.onerror = () => {
+      console.error(`Apps web socket is in error.`)
+    }
+
+    ws.onclose = (event) => {
+      console.log(`Apps web socket is closed: ${event.code}: ${event.reason}`)
     }
 
     ws.onopen = () => {
+      console.log('Apps web socket is open.')
       this._setupWebsocket(ws)
       ws.send(JSON.stringify({
         action: '_query',
@@ -159,13 +162,17 @@ export default class DesktopShellAppMenu {
 
   _setupWebsocket (ws) {
     ws.onmessage = (event) => {
-      const message = JSON.parse(event.data)
-      const action = message.action
-      this[action](message.data)
+      try {
+        const message = JSON.parse(event.data)
+        const action = message.action
+        this[action](message.data)
+      } catch (error) {
+        console.trace(`Apps web socket failed to handle incoming message: $${JSON.stringify(event)}\n${event.message}\n${error.stack}`)
+        this._ws.close(4007, 'Apps web socket received an illegal message')
+      }
     }
 
     window.unload = () => {
-      ws.onclose = function () {} // disable onclose handler first
       ws.close(1000, 'User closed tab.')
     }
   }

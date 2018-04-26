@@ -81,19 +81,22 @@ export default class BrowserSession extends westfield.Global {
       ws.binaryType = 'arraybuffer'
 
       ws.onerror = (event) => {
+        console.error(`Session web socket is in error.`)
         if (ws.readyState === window.WebSocket.CONNECTING) {
           reject(event)
-        } else {
-          console.error(`Websocket is in error. ${event}`)
-          ws.close(1002, 'Websocket is in error.')
         }
       }
 
       ws.onopen = () => {
-        this._ws = ws
-        this._setupWebsocket()
-        this._primaryConnection = this._setupPrimaryConnection()
-        resolve()
+        try {
+          console.log('Session web socket is open.')
+          this._ws = ws
+          this._setupWebsocket()
+          this._primaryConnection = this._setupPrimaryConnection()
+          resolve()
+        } catch (error) {
+          reject(error)
+        }
       }
     })
   }
@@ -111,19 +114,21 @@ export default class BrowserSession extends westfield.Global {
 
   _setupWebsocket () {
     this._ws.onmessage = this.eventSource((event) => {
-      if (this._ws.readyState === window.WebSocket.OPEN) {
-        try {
-          const buf = event.data
-          const sessionId = new DataView(buf).getUint32(0, true)
-          const arrayBuffer = buf.slice(4, buf.byteLength)
+      try {
+        const buf = event.data
+        const sessionId = new DataView(buf).getUint32(0, true)
+        const arrayBuffer = buf.slice(4, buf.byteLength)
 
-          this._clients[sessionId].message(arrayBuffer)
-        } catch (error) {
-          console.error(`Websocket is in error. ${event}`)
-          this._ws.close(1002, 'Websocket is in error.')
-        }
+        this._clients[sessionId].message(arrayBuffer)
+      } catch (error) {
+        console.error(`Session web socket failed to handle incomding message. ${JSON.stringify(event)}\n${event.message}\n${error.stack}`)
+        this._ws.close(4007, 'Session web socket received an illegal message')
       }
     })
+
+    this._ws.onclose = (event) => {
+      console.log(`Web socket closed. ${event.code}:${event.reason}`)
+    }
 
     window.onbeforeunload = (e) => {
       const dialogText = 'dummytext'
@@ -132,7 +137,6 @@ export default class BrowserSession extends westfield.Global {
     }
 
     window.unload = () => {
-      this._ws.onclose = function () {} // disable onclose handler first
       console.log('User closed tab.')
       this._ws.close(1000, 'User closed tab.')
     }
@@ -161,17 +165,15 @@ export default class BrowserSession extends westfield.Global {
    */
   _setupClientConnection (client, clientSessionId) {
     client.onSend = (arrayBuffer) => {
-      if (this._ws.readyState === window.WebSocket.OPEN) {
-        try {
-          const b = new Uint8Array(arrayBuffer.byteLength + 4)
-          new window.DataView(b.buffer).setUint32(0, clientSessionId, true)
-          b.set(new Uint8Array(arrayBuffer), 4)
+      try {
+        const b = new Uint8Array(arrayBuffer.byteLength + 4)
+        new window.DataView(b.buffer).setUint32(0, clientSessionId, true)
+        b.set(new Uint8Array(arrayBuffer), 4)
 
-          this._ws.send(b.buffer)
-        } catch (error) {
-          console.error(error)
-          this._ws.close(1002, 'Websocket is in error.')
-        }
+        this._ws.send(b.buffer)
+      } catch (error) {
+        console.error(error.stack)
+        this._ws.close(4002, 'Session web socket is in error.')
       }
     }
   }

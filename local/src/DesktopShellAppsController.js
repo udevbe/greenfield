@@ -70,9 +70,9 @@ module.exports = class DesktopShellAppsController {
   }
 
   _handleUpgrade (request, socket, head) {
-    console.log(`Child ${process.pid} received websocket upgrade request for apps controller. Will establish websocket connection.`)
+    console.log(`Child ${process.pid} received web socket upgrade request for apps controller. Will establish web socket connection.`)
     this._wss.handleUpgrade(request, socket, head, (ws) => {
-      console.log(`Child ${process.pid} apps websocket is open.`)
+      console.log(`Child ${process.pid} apps web socket is open.`)
       this._ws = ws
       this._setupWebsocket()
     })
@@ -80,21 +80,21 @@ module.exports = class DesktopShellAppsController {
 
   _setupWebsocket () {
     this._ws.onmessage = (event) => {
-      if (this._ws.readyState === WebSocket.OPEN) {
+      try {
         const jsonMessage = event.data
-        try {
-          const message = JSON.parse(jsonMessage)
-          this._handleMessage(message)
-        } catch (error) {
-          console.error(`Child ${process.pid} ${error}`)
-          this._ws.close(1007, 'Error while handling incoming message.')
-        }
+        const message = JSON.parse(jsonMessage)
+        this._handleMessage(message)
+      } catch (error) {
+        console.trace(`Child ${process.pid} failed to handle incoming message. ${JSON.stringify(event)}\n${event.message}\n${error.stack}`)
+        this._ws.close(4007, 'Apps web socket received an illegal message')
       }
     }
-    this._ws.onclose = () => {
-      console.log(`Child ${process.pid} apps websocket is closed.`)
+    this._ws.onclose = (event) => {
+      console.log(`Child ${process.pid} apps web socket is closed. ${event.code}: ${event.reason}`)
     }
-    // TODO listen for error(?)
+    this._ws.onerror = () => {
+      console.error(`Session web socket is in error.`)
+    }
   }
 
   /**
@@ -126,7 +126,7 @@ module.exports = class DesktopShellAppsController {
       const childEnv = {}
       Object.assign(childEnv, process.env)
       childEnv.WAYLAND_DISPLAY = this._waylandSocket
-      const {stdout, stderr} = await execFile(executable, [], { env: childEnv })
+      const {stdout, stderr} = await execFile(executable, [], {env: childEnv})
       console.log(stdout)
       console.error(stderr)
     } catch (error) {
