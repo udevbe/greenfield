@@ -17,16 +17,6 @@ module.exports = class H264AlphaEncoder {
     const sink = pipeline.findChild('sink')
     const src = pipeline.findChild('source')
     const scale = pipeline.findChild('scale')
-    pipeline.pollBus((event) => {
-      switch (event.type) {
-        case 'error':
-          console.error(event)
-          break
-        case 'warning':
-          console.warn(event)
-          break
-      }
-    })
     pipeline.play()
 
     return new H264AlphaEncoder(pipeline, sink, alphasink, src, scale, width, height)
