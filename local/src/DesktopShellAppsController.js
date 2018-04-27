@@ -2,8 +2,12 @@
 
 const util = require('util')
 const execFile = util.promisify(require('child_process').execFile)
+const url = require('url')
+const fs = require('fs')
 
 const WebSocket = require('ws')
+
+const config = require('./config')
 
 module.exports = class DesktopShellAppsController {
   /**
@@ -138,9 +142,9 @@ module.exports = class DesktopShellAppsController {
    * @param {{action: string, data: string}}message
    * @private
    */
-  _query (message) {
+  async _query (message) {
     const filter = message.data
-    const appsList = this._doQuery(filter)
+    const appsList = await this._doQuery(filter)
     const appsListJSON = JSON.stringify({action: '_query', data: appsList})
     this._ws.send(appsListJSON)
   }
@@ -150,21 +154,69 @@ module.exports = class DesktopShellAppsController {
    * @return {{ executable:string, name: string, description: string, icon: string }[]}
    * @private
    */
-  _doQuery (filter) {
-    // TODO hard coded list for now. Programmatically discover/define apps based on logged in user's permission.
-    return [
-      {
-        executable: '/home/zubzub/git/weston/clients/weston-terminal', // The name or path of the executable file to run.
-        name: 'Weston Terminal', // TODO localize string based on this._locales
-        description: 'A minimal terminal emulator', // TODO localize string based on this._locales
-        icon: 'assets/terminal.svg' // path relative to https(s)://<host>/<sessionId>/
-      },
-      {
-        executable: '/home/zubzub/git/weston/clients/weston-simple-egl', // The name or path of the executable file to run.
-        name: 'Weston Simple EGL', // TODO localize string based on this._locales
-        description: 'A spinning rgb triangle', // TODO localize string based on this._locales
-        icon: 'assets/rgb-triangle.svg' // path relative to https(s)://<host>/<sessionId>/
+  async _doQuery (filter) {
+    const appsEntriesURL = new url.URL(config['desktop-shell']['apps-controller']['app-entries-url'])
+    const protocol = appsEntriesURL.protocol
+    switch (protocol) {
+      case 'file:':
+        return this._queryEntriesFromFileSystem(filter)
+      case 'http:':
+      case 'https:':
+        return this._queryEntriesFromHttp(filter, appsEntriesURL)
+      default:
+        console.error(`Unsupported protocol for apps-entries-url. Supported protocols are file, http, https. Got: ${protocol}`)
+    }
+  }
+
+  /**
+   * @param {string}filter
+   * @return {*[]}
+   * @private
+   */
+  async _queryEntriesFromFileSystem (filter) {
+    let entries = []
+
+    const appsEntriesURL = new url.URL(config['desktop-shell']['apps-controller']['app-entries-url'], `file:${process.cwd()}/`)
+    try {
+      const appsEntriesStats = await util.promisify(fs.stat)(appsEntriesURL)
+      if (appsEntriesStats.isFile()) {
+        // parse single json file with array elements
+        const appsEntriesJSON = await util.promisify(fs.readFile)(appsEntriesURL)
+        try {
+          entries = JSON.parse(appsEntriesJSON)
+        } catch (error) {
+          console.error(`Failed to JSON parse app entries: ${appsEntriesURL}. ${error.message}`)
+        }
+      } else {
+        // list directory and add each json file as a separate element
+        const files = await util.promisify(fs.readdir)(appsEntriesURL.pathname)
+        await Promise.all(files.map(async (file) => {
+          if (file.endsWith('.json')) {
+            const appEntryURL = new url.URL(file, `${appsEntriesURL.href}/`)
+            const appEntryJSON = await util.promisify(fs.readFile)(appEntryURL)
+            try {
+              entries.push(JSON.parse(appEntryJSON))
+            } catch (error) {
+              console.error(`Failed to JSON parse app entry: ${appEntryURL}. ${error.message}`)
+            }
+          }
+        }))
       }
-    ]
+    } catch (error) {
+      console.error(error.message)
+    }
+
+    return entries
+  }
+
+  /**
+   * @param {string}filter
+   * @param {URL}appsEntriesURL
+   * @return {*[]}
+   * @private
+   */
+  _queryEntriesFromHttp (filter, appsEntriesURL) {
+    // TODO make http get call
+    return []
   }
 }

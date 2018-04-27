@@ -5,5 +5,10 @@
   },
   "png-encoder": {
     "max-target-buffer-size": 4096
+  },
+  "desktop-shell": {
+    "apps-controller": {
+      "app-entries-url": "file:app-entries/"
+    }
   }
 }
