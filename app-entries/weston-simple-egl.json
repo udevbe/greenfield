@@ -2,5 +2,5 @@
   "executable": "/path/to/weston-simple-egl",
   "name": "Weston Simple EGL",
   "description": "A spinning rgb triangle",
-  "icon": "assets/rgb-triangle.svg"
+  "icon": "apps/icons/weston-simple-egl.svg"
 }

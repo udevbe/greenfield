@@ -12,12 +12,11 @@ try {
   } else {
     configPath = path.join(__dirname, 'DefaultConfig.json')
   }
-  const config = JSON.parse(fs.readFileSync(configPath))
+  const configJSON = fs.readFileSync(configPath, {'encoding': 'utf8'})
+  const config = JSON.parse(configJSON)
 
   console.log(` --- Loaded configuration: ${configPath} ---`)
-  console.log('')
-  console.log(config)
-  console.log('')
+  console.log(configJSON)
 
   module.exports = config
 } catch (error) {

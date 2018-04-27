@@ -4,6 +4,7 @@ const util = require('util')
 const execFile = util.promisify(require('child_process').execFile)
 const url = require('url')
 const fs = require('fs')
+const path = require('path')
 
 const WebSocket = require('ws')
 
@@ -155,28 +156,39 @@ module.exports = class DesktopShellAppsController {
    * @private
    */
   async _doQuery (filter) {
-    const appsEntriesURL = new url.URL(config['desktop-shell']['apps-controller']['app-entries-url'])
-    const protocol = appsEntriesURL.protocol
-    switch (protocol) {
-      case 'file:':
-        return this._queryEntriesFromFileSystem(filter)
-      case 'http:':
-      case 'https:':
-        return this._queryEntriesFromHttp(filter, appsEntriesURL)
-      default:
-        console.error(`Unsupported protocol for apps-entries-url. Supported protocols are file, http, https. Got: ${protocol}`)
-    }
+    const appsEntries = config['desktop-shell']['apps-controller']['app-entries-urls']
+    const queryResults = await Promise.all(appsEntries.map(async (appsEntry) => {
+      const appsEntriesURL = new url.URL(appsEntry)
+      const protocol = appsEntriesURL.protocol
+      switch (protocol) {
+        case 'file:':
+          return this._queryEntriesFromFileSystem(filter, appsEntry)
+        case 'http:':
+        case 'https:':
+          return this._queryEntriesFromHttp(filter, appsEntriesURL)
+        default:
+          console.error(`Unsupported protocol for apps-entries-url. Supported protocols are file, http, https. Got: ${protocol}`)
+      }
+    }))
+
+    let query = []
+    queryResults.forEach((queryResult) => {
+      query = query.concat(queryResult)
+    })
+
+    return query
   }
 
   /**
    * @param {string}filter
-   * @return {*[]}
+   * @param {string} appsEntry
+   * @return {{ executable:string, name: string, description: string, icon: string }[]}
    * @private
    */
-  async _queryEntriesFromFileSystem (filter) {
+  async _queryEntriesFromFileSystem (filter, appsEntry) {
     let entries = []
 
-    const appsEntriesURL = new url.URL(config['desktop-shell']['apps-controller']['app-entries-url'], `file:${process.cwd()}/`)
+    const appsEntriesURL = new url.URL(appsEntry, `file:${process.cwd()}/`)
     try {
       const appsEntriesStats = await util.promisify(fs.stat)(appsEntriesURL)
       if (appsEntriesStats.isFile()) {
@@ -212,7 +224,7 @@ module.exports = class DesktopShellAppsController {
   /**
    * @param {string}filter
    * @param {URL}appsEntriesURL
-   * @return {*[]}
+   * @return {{ executable:string, name: string, description: string, icon: string }[]}
    * @private
    */
   _queryEntriesFromHttp (filter, appsEntriesURL) {

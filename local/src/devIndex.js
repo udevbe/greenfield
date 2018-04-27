@@ -3,6 +3,7 @@ const config = require('./config')
 
 const express = require('express')
 const http = require('http')
+const path = require('path')
 const webpack = require('webpack')
 const webpackConfig = require('../../browser/build.config/webpack.config.dev')
 const middleware = require('webpack-dev-middleware')
@@ -30,6 +31,13 @@ function main () {
     noInfo: true,
     publicPath: webpackConfig.output.publicPath
   }))
+  const staticDirs = config['http-server']['static-dirs']
+  staticDirs.forEach((staticDir) => {
+    const httpPath = staticDir['http-path']
+    const fsPath = staticDir['fs-path']
+
+    app.use(httpPath, express.static(path.resolve(fsPath)))
+  })
   app.use(require('webpack-hot-middleware')(compiler))
 
   const server = http.createServer()

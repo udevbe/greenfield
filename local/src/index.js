@@ -49,6 +49,13 @@ function run () {
   express.static.mime.define({'application/wasm': ['wasm']})
   const app = express()
   app.use(express.static(path.join(__dirname, '../../browser/dist')))
+  const staticDirs = config['http-server']['static-dirs']
+  staticDirs.forEach((staticDir) => {
+    const httpPath = staticDir['http-path']
+    const fsPath = staticDir['fs-path']
+
+    app.use(httpPath, express.static(path.resolve(fsPath)))
+  })
 
   const server = http.createServer()
   server.on('request', app)
