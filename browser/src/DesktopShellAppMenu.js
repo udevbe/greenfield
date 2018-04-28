@@ -11,11 +11,14 @@ export default class DesktopShellAppMenu {
     const divElementAppMenuButton = this._createDivElementAppMenuButton()
     const divElementAppMenuContainer = this._createDivElementAppMenuContainer()
     const divElementAppMenu = this._createDivElementAppMenu()
+    const divElementAppMenuAppsContainer = this._createDivElementAppMenuAppsContainer()
+
     divElementAppMenuContainer.appendChild(divElementAppMenu)
     const searchBar = this._createSearchBar(divElementAppMenuContainer)
     divElementAppMenu.appendChild(searchBar.divElementSearchContainer)
+    divElementAppMenu.appendChild(divElementAppMenuAppsContainer)
 
-    const desktopShellAppMenu = new DesktopShellAppMenu(divElementAppMenuButton, divElementAppMenuContainer, divElementAppMenu, searchBar, browserSession)
+    const desktopShellAppMenu = new DesktopShellAppMenu(divElementAppMenuButton, divElementAppMenuContainer, divElementAppMenu, searchBar, divElementAppMenuAppsContainer, browserSession)
 
     // event listeners
     this._addEventListeners(desktopShellAppMenu)
@@ -50,6 +53,12 @@ export default class DesktopShellAppMenu {
     divElementMenu.classList.add('menu')
     divElementMenu.classList.add('apps')
     return divElementMenu
+  }
+
+  static _createDivElementAppMenuAppsContainer () {
+    const divElementAppsContainer = document.createElement('div')
+    divElementAppsContainer.classList.add('app-menu-item-container')
+    return divElementAppsContainer
   }
 
   /**
@@ -100,9 +109,10 @@ export default class DesktopShellAppMenu {
    * @param {HTMLDivElement}divElementAppMenuContainer
    * @param {HTMLDivElement}divElementAppMenu
    * @param {{divElementSearchContainer: HTMLDivElement, divElementSearchIcon: HTMLDivElement, inputElementSearchInput: HTMLInputElement}}searchBar
+   * @param {HTMLDivElement}divElementAppMenuAppsContainer
    * @param {BrowserSession}browserSession
    */
-  constructor (divElementAppMenuButton, divElementAppMenuContainer, divElementAppMenu, searchBar, browserSession) {
+  constructor (divElementAppMenuButton, divElementAppMenuContainer, divElementAppMenu, searchBar, divElementAppMenuAppsContainer, browserSession) {
     /**
      * @type {HTMLDivElement}
      */
@@ -119,6 +129,10 @@ export default class DesktopShellAppMenu {
      * @type {{divElementSearchContainer: HTMLDivElement, divElementSearchIcon: HTMLDivElement, inputElementSearchInput: HTMLInputElement}}
      */
     this.searchBar = searchBar
+    /**
+     * @type {HTMLDivElement}
+     */
+    this.divElementAppMenuAppsContainer = divElementAppMenuAppsContainer
     /**
      * @type {BrowserSession}
      * @private
@@ -190,7 +204,7 @@ export default class DesktopShellAppMenu {
       const iconUrl = `${window.location.protocol}/${iconPath}`
 
       const desktopShellAppMenuItem = DesktopShellAppMenuItem.create(this._ws, executable, iconUrl, name, description)
-      this.divElementAppMenu.appendChild(desktopShellAppMenuItem.divElementItem)
+      this.divElementAppMenuAppsContainer.appendChild(desktopShellAppMenuItem.divElementItem)
     })
   }
 

@@ -225,5 +225,15 @@ input::placeholder {
 
 .app-menu-item .name {
     text-align: center;
+
+    font-family: sans-serif;
+    vertical-align: middle;
+    line-height: 2vh;
+    color: black;
+}
+
+.app-menu-item-container {
+    display: flex;
+    flex-wrap: wrap;
 }
 
