@@ -52,19 +52,45 @@ This executable is a self contained node instance with all bundled javascript so
 inside the dist folder must be located next to the `greenfield` executable. Gstreamer dependencies are expected to be
 present on the system.
 
-A production build accepts a config file in json format. The config file is specified as the first argument to the greenfield
+
+### Configuration
+A production or development build accepts a config file in json format. The config file can be specified as the first argument to the greenfield
 executable.
 
-key |value
-:----:|:----:
-port|port number (default `8080`)
 
 example_config.json
 ```json
 {
-  "port":80
+  "http-server": {
+    "port": 8080,
+    "socket-timeout": 6000,
+    "static-dirs": [
+      {
+        "http-path": "/apps/icons",
+        "fs-path": "./app-entries/"
+      }
+    ]
+  },
+  "png-encoder": {
+    "max-target-buffer-size": 4096
+  },
+  "desktop-shell": {
+    "apps-controller": {
+      "app-entries-urls": [
+        "file:./app-entries/"
+      ]
+    }
+  }
 }
 ```
+
+key |value
+:----|:----
+http-server.port|port number (default `8080`)
+http-server.socket-timeout| socket connection timeout (default `6000`)
+http-server.static-dirs|Array of object with keys `http-path` and `fs-path`, denoting the mapping between the http url and the directory on disk. The primary use case of this property is to expose directories containing application icons.
+png-encoder.max-target-buffer-size| Maximum number of pixels before the encoding process will switch from png encoding to h264.
+desktop-shell.apps-controller.app-entries-urls| Array of url strings describing where app entry definitions can be found. Accepted `app-entries-url` location protocols are `file`, `http` or `https`.
 
 `./greenfield example_config.json` 
 
@@ -72,5 +98,40 @@ or
 
 `npm start -- example_config.json`
 
-### Clients
-You can try some wayland clients. Preferably the Weston 1.4 (early version) test clients, as xdg_shell support is not yet implemented.
+#### Application Entries
+Greenfield uses so called application entries to dynamically expose available applications to a connected user. Application entry sources are defined using
+the config proprety: `desktop-shell.apps-controller.app-entries-urls`.
+
+Application entries can be queried from an `http`, `https` GET or a single `file` on disk.
+
+`all-entries.json`
+```json
+[
+  {
+    "executable": "/path/to/weston-simple-egl",
+    "name": "Weston Simple EGL",
+    "description": "A spinning rgb triangle",
+    "icon": "apps/icons/weston-simple-egl.svg"
+  },
+  {
+    "executable": "/path/to/weston-terminal",
+    "name": "Weston Terminal",
+    "description": "A minimal terminal emulator",
+    "icon": "apps/icons/weston-terminal.svg"
+  }
+]
+```
+
+Alternatively, in case the `file` url points to a directory, individual entries can be specified in a separates files.
+
+key |value
+:----|:----
+executable|The binary that will be executed once the user clicks this application's icon.
+name|The name of the application that will be shown to the user under the application icon
+description|The description of the application that will be shown to the user on mouse over.
+icon|the relative http path where the application icon can be found
+
+
+### Compatible Clients
+For now only the core wayland protocol is implemented. As such it is only possible to run application that do not require xdg_shell (which rules out gtk for now).
+To try some wayland clients, the Weston 1.4 (early version) test clients are nearly all fully supported.
