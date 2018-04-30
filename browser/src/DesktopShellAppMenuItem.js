@@ -17,7 +17,7 @@ export default class DesktopShellAppMenuItem {
     divElementItem.appendChild(divElementName)
 
     this._setupEventHandlers(ws, divElementItem, executable)
-    return new DesktopShellAppMenuItem(divElementItem)
+    return new DesktopShellAppMenuItem(divElementItem, name)
   }
 
   /**
@@ -69,8 +69,16 @@ export default class DesktopShellAppMenuItem {
 
   /**
    * @param {HTMLDivElement}divElementItem
+   * @param {string}name
    */
-  constructor (divElementItem) {
+  constructor (divElementItem, name) {
+    /**
+     * @type {HTMLDivElement}
+     */
     this.divElementItem = divElementItem
+    /**
+     * @type {string}
+     */
+    this.name = name
   }
 }

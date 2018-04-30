@@ -102,6 +102,19 @@ export default class DesktopShellAppMenu {
         desktopShellAppMenu.hideMenu()
       }
     })
+    desktopShellAppMenu.searchBar.inputElementSearchInput.addEventListener('input', (inputEvent) => {
+      const searchText = desktopShellAppMenu.searchBar.inputElementSearchInput.value
+      for (const desktopShellAppMenuItem of desktopShellAppMenu._desktopShellAppMenuItems) {
+        const candidateString = `${desktopShellAppMenuItem.name}`
+        if (candidateString.toLowerCase().includes(searchText.toLowerCase())) {
+          desktopShellAppMenuItem.divElementItem.classList.add('search-match')
+          desktopShellAppMenuItem.divElementItem.scrollIntoView({block: 'end', behavior: 'smooth'})
+          break
+        } else {
+          desktopShellAppMenuItem.divElementItem.classList.remove('search-match')
+        }
+      }
+    })
   }
 
   /**
@@ -143,6 +156,11 @@ export default class DesktopShellAppMenu {
      * @private
      */
     this._ws = null
+    /**
+     * @type {DesktopShellAppMenuItem[]}
+     * @private
+     */
+    this._desktopShellAppMenuItems = []
   }
 
   /**
@@ -192,10 +210,17 @@ export default class DesktopShellAppMenu {
   }
 
   /**
+   * Dynamically called by ws.onmessage, as specified by the action property in the received message.
    * @param {{ executable:string, name: string, description: string, icon: string }[]}appsList
    * @private
    */
   _query (appsList) {
+    this._desktopShellAppMenuItems.forEach((desktopShellAppMenuItem) => {
+      if (desktopShellAppMenuItem.divElementItem.parentElement) {
+        desktopShellAppMenuItem.divElementItem.parentElement.removeChild(desktopShellAppMenuItem.divElementItem)
+      }
+    })
+    this._desktopShellAppMenuItems = []
     appsList.forEach((appDescription) => {
       const executable = appDescription.executable
       const name = appDescription.name
@@ -204,6 +229,7 @@ export default class DesktopShellAppMenu {
       const iconUrl = `${window.location.protocol}/${iconPath}`
 
       const desktopShellAppMenuItem = DesktopShellAppMenuItem.create(this._ws, executable, iconUrl, name, description)
+      this._desktopShellAppMenuItems.push(desktopShellAppMenuItem)
       this.divElementAppMenuAppsContainer.appendChild(desktopShellAppMenuItem.divElementItem)
     })
   }

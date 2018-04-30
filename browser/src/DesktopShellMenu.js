@@ -101,6 +101,10 @@ export default class DesktopShellMenu {
         desktopShellMenu.hideMenu()
       }
     })
+    desktopShellMenu.searchBar.inputElementSearchInput.addEventListener('input', (inputEvent) => {
+      const searchText = inputEvent.data
+      // TODO scroll matching menu item into view
+    })
   }
 
   /**

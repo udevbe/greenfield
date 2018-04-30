@@ -43,7 +43,7 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     vertical-align: middle;
-    line-height:4vh;
+    line-height: 4vh;
     color: black;
 
     box-shadow: inset 0 -0.6vh 0.1vh -0.3vh rgba(252, 104, 42, 0.20);
@@ -130,8 +130,8 @@ body {
 }
 
 .menu.apps {
-    width: 40vh;
-    height: 40vh;
+    width: 42vh;
+    height: 42vh;
 }
 
 .menu-active {
@@ -213,7 +213,7 @@ input::placeholder {
     padding: 1vh;
 }
 
-.app-menu-item:hover {
+.app-menu-item:hover, .app-menu-item.search-match {
     border-radius: 0.5vh;
     box-shadow: 0 0 3px 0 rgba(0, 0, 0, 0.75);
     background: rgb(220, 220, 220);
@@ -237,5 +237,7 @@ input::placeholder {
 .app-menu-item-container {
     display: flex;
     flex-wrap: wrap;
+    overflow-y: scroll;
+    scroll-behavior: smooth;
 }
 
