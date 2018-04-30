@@ -1,5 +1,5 @@
 {
-  "executable": "/home/zubzub/git/weston14/clients/weston-flower",
+  "executable": "/path/to/weston-flower",
   "name": "Weston Flower",
   "description": "A drag-and-drow flower",
   "icon": "apps/icons/weston-flower.svg"

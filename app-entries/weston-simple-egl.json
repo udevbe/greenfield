@@ -1,5 +1,5 @@
 {
-  "executable": "/home/zubzub/git/weston14/clients/weston-simple-egl",
+  "executable": "/path/to/weston-simple-egl",
   "name": "Weston Simple EGL",
   "description": "A spinning rgb triangle",
   "icon": "apps/icons/weston-simple-egl.svg"
