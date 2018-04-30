@@ -102,18 +102,24 @@ export default class DesktopShellAppMenu {
         desktopShellAppMenu.hideMenu()
       }
     })
-    desktopShellAppMenu.searchBar.inputElementSearchInput.addEventListener('input', (inputEvent) => {
+    desktopShellAppMenu.searchBar.inputElementSearchInput.addEventListener('input', () => {
       const searchText = desktopShellAppMenu.searchBar.inputElementSearchInput.value
-      for (const desktopShellAppMenuItem of desktopShellAppMenu._desktopShellAppMenuItems) {
-        const candidateString = `${desktopShellAppMenuItem.name}`
-        if (candidateString.toLowerCase().includes(searchText.toLowerCase())) {
-          desktopShellAppMenuItem.divElementItem.classList.add('search-match')
-          desktopShellAppMenuItem.divElementItem.scrollIntoView({block: 'end', behavior: 'smooth'})
-          break
-        } else {
-          desktopShellAppMenuItem.divElementItem.classList.remove('search-match')
+      desktopShellAppMenu._desktopShellAppMenuItems.forEach((desktopShellAppMenuItem) => {
+        desktopShellAppMenuItem.divElementItem.classList.remove('search-match')
+      })
+      if (searchText) {
+        for (const desktopShellAppMenuItem of desktopShellAppMenu._desktopShellAppMenuItems) {
+          const candidateString = `${desktopShellAppMenuItem.name}`
+          if (candidateString.toLowerCase().includes(searchText.toLowerCase())) {
+            desktopShellAppMenuItem.divElementItem.classList.add('search-match')
+            desktopShellAppMenuItem.divElementItem.scrollIntoView({block: 'end', behavior: 'smooth'})
+            break
+          }
         }
       }
+      // TODO let enter launch found application
+      // TODO let escape close the menu
+      // FIXME don't close menu when user clicks search inpt
     })
   }
 
