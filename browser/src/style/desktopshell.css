@@ -125,13 +125,13 @@ body {
 }
 
 .menu.config {
-    width: 40vh;
-    height: calc(100% - 5vh);
+    width: 42vh;
+    height: calc(100% - 6vh);
 }
 
 .menu.apps {
     width: 42vh;
-    height: 42vh;
+    height: 40vh;
 }
 
 .menu-active {
@@ -237,7 +237,7 @@ input::placeholder {
 .app-menu-item-container {
     display: flex;
     flex-wrap: wrap;
-    overflow-y: scroll;
+    overflow-y: auto;
     scroll-behavior: smooth;
 }
 
