@@ -1,5 +1,5 @@
 {
-  "executable": "/path/to//weston-simple-shm",
+  "executable": "/path/to/weston-simple-shm",
   "name": "Weston Simple Shm",
   "description": "A dead simple shared memory demo application",
   "icon": "apps/icons/weston-simple-shm.svg"
