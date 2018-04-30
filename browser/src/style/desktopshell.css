@@ -10,7 +10,7 @@ body {
 
 .hpanel {
     z-index: 0;
-    background-color: rgb(230, 230, 230);
+    background-color: rgb(200, 200, 200);
 
     display: flex;
     flex-wrap: nowrap;
@@ -29,21 +29,24 @@ body {
 
 .entry {
     flex-grow: 1;
-    min-width: 4vw;
-    height: 3vh;
+    min-width: 100px;
+    max-width: 20vw;
+    height: 3.6vh;
 
     background: rgb(150, 150, 150);
 
     font-family: sans-serif;
-    text-align: center;
+    font-size: small;
+    text-align: left;
+    padding-left: 1vh;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     vertical-align: middle;
-    line-height: 3vh;
+    line-height:4vh;
     color: black;
 
-    box-shadow: inset 0 -0.4vh 0.1vh -0.3vh rgba(252, 104, 42, 0.20);
+    box-shadow: inset 0 -0.6vh 0.1vh -0.3vh rgba(252, 104, 42, 0.20);
 
     transition: all 200ms ease-in-out;
 }
@@ -53,12 +56,12 @@ body {
 }
 
 .entry-focus {
-    box-shadow: inset 0 -0.4vh 0.1vh -0.3vh rgba(42, 190, 252, 1);
+    box-shadow: inset 0 -0.6vh 0.1vh -0.3vh rgba(42, 190, 252, 1);
     background: rgb(230, 230, 230);
 }
 
 .entry:hover:not(.entry-focus) {
-    box-shadow: inset 0 -0.4vh 0.1vh -0.3vh rgba(252, 104, 42, 0.60);
+    box-shadow: inset 0 -0.6vh 0.1vh -0.3vh rgba(252, 104, 42, 0.60);
     background: rgb(210, 210, 210);
     transition: all 150ms linear;
 }
@@ -68,41 +71,40 @@ body {
     height: 3vh;
     min-width: 3vh;
     width: 3vh;
+    margin: 0.3vh;
     transition: all 200ms ease-in-out;
     position: relative;
 }
 
 .menu-button.config {
     background: url(/assets/menu.svg) no-repeat center;
-    background-size: 0.4vh 2.5vh;
+    background-size: 0.5vh 3.1vh;
 }
 
 .menu-button.apps {
     background: url(/assets/menu-apps.svg) no-repeat center;
-    background-size: 1.2vh 1.2vh;
+    background-size: 1.3vh 1.3vh;
 }
 
 .menu-button:hover {
     border-radius: 0.5vh;
-    background-color: rgb(200, 200, 200);
-    transition: all 200ms ease-out;
+    background-color: rgb(215, 215, 215);
     box-shadow: 0 0 1px 0 rgba(0, 0, 0, 0.75);
 }
 
 .menu-button-active {
     border-radius: 0.5vh;
     box-shadow: 0 0 1px 0 rgba(0, 0, 0, 0.75);
-    transition: all 200ms ease-out;
 }
 
 .menu-button-active.config {
-    background: rgb(210, 210, 210) url(/assets/menu-active.svg) no-repeat center;
-    background-size: 2vh 2.5vh;
+    background: rgb(220, 220, 220) url(/assets/menu-active.svg) no-repeat center;
+    background-size: 2.5vh 3vh;
 }
 
 .menu-button-active.apps {
-    background: rgb(210, 210, 210) url(/assets/menu-apps-active.svg) no-repeat center;
-    background-size: 2.3vh 2.3vh;
+    background: rgb(220, 220, 220) url(/assets/menu-apps-active.svg) no-repeat center;
+    background-size: 2.4vh 2.4vh;
 }
 
 .menu {
@@ -110,7 +112,7 @@ body {
     flex-direction: column;
     position: absolute;
     right: 0.5vh;
-    top: 4vh;
+    top: 4.5vh;
 
     border-radius: 0.5vh;
     opacity: 0;
@@ -150,7 +152,7 @@ body {
 
 .menu-triangle-up {
     position: absolute;
-    top: 2.6vh;
+    top: 3.1vh;
     width: 0;
     height: 0;
     z-index: 65535;
