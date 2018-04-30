@@ -98,7 +98,12 @@ export default class DesktopShellAppMenu {
       desktopShellAppMenu.showMenu()
     })
     window.document.addEventListener('mousedown', (event) => {
-      if (event.target !== desktopShellAppMenu.divElementAppMenu && event.target !== desktopShellAppMenu.divElementAppMenuButton) {
+      // FIXME Find a better way.
+      if (event.target !== desktopShellAppMenu.divElementAppMenu &&
+        event.target !== desktopShellAppMenu.divElementAppMenuButton &&
+        event.target !== desktopShellAppMenu.searchBar.inputElementSearchInput &&
+        event.target !== desktopShellAppMenu.searchBar.divElementSearchContainer &&
+        event.target !== desktopShellAppMenu.searchBar.divElementSearchIcon) {
         desktopShellAppMenu.hideMenu()
       }
     })
@@ -119,7 +124,6 @@ export default class DesktopShellAppMenu {
       }
       // TODO let enter launch found application
       // TODO let escape close the menu
-      // FIXME don't close menu when user clicks search inpt
     })
   }
 
