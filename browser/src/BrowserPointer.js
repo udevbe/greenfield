@@ -31,19 +31,19 @@ export default class BrowserPointer {
       browserPointer.onMouseMove(event)
     }))
     document.addEventListener('mouseup', browserSession.eventSource((event) => {
-      if (!event.target.classList.contains('enable-default')) {
+      if (event.target.classList && !event.target.classList.contains('enable-default')) {
         event.preventDefault()
       }
       browserPointer.onMouseUp(event)
     }))
     document.addEventListener('mousedown', browserSession.eventSource((event) => {
-      if (!event.target.classList.contains('enable-default')) {
+      if (event.target.classList && !event.target.classList.contains('enable-default')) {
         event.preventDefault()
       }
       browserPointer.onMouseDown(event)
     }))
     document.addEventListener('wheel', browserSession.eventSource((event) => {
-      if (!event.target.classList.contains('enable-default')) {
+      if (event.target.classList && !event.target.classList.contains('enable-default')) {
         event.preventDefault()
       }
       browserPointer.onWheel(event)
@@ -378,6 +378,9 @@ export default class BrowserPointer {
       const surfaceResource = this.focus.browserSurface.resource
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
         pointerResource.motion(event.timeStamp, greenfield.parseFixed(surfacePoint.x), greenfield.parseFixed(surfacePoint.y))
+        if (pointerResource.version >= 5) {
+          pointerResource.frame()
+        }
       })
     }
   }
@@ -413,6 +416,9 @@ export default class BrowserPointer {
       const surfaceResource = this.focus.browserSurface.resource
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
         pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.released)
+        if (pointerResource.version >= 5) {
+          pointerResource.frame()
+        }
       })
     }
   }
@@ -440,6 +446,9 @@ export default class BrowserPointer {
       const surfaceResource = this.focus.browserSurface.resource
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
         pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.pressed)
+        if (pointerResource.version >= 5) {
+          pointerResource.frame()
+        }
       })
     }
   }
@@ -525,6 +534,9 @@ export default class BrowserPointer {
       const surfaceResource = this.focus.browserSurface.resource
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
         pointerResource.leave(this._nextFocusSerial(), surfaceResource)
+        if (pointerResource.version >= 5) {
+          pointerResource.frame()
+        }
       })
     }
 
@@ -599,13 +611,27 @@ export default class BrowserPointer {
 
       const surfaceResource = this.focus.browserSurface.resource
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
-        if (event.deltaX) {
-          const scrollAmount = deltaTransform(event.deltaX, greenfield.GrPointer.Axis.horizontalScroll)
-          pointerResource.axis(event.timeStamp, greenfield.GrPointer.Axis.horizontalScroll, scrollAmount)
+        const deltaX = event.deltaX
+        if (deltaX) {
+          const xAxis = greenfield.GrPointer.Axis.horizontalScroll
+          if (pointerResource.version >= 5) {
+            pointerResource.axisDiscrete(xAxis, deltaX)
+          }
+          const scrollAmount = deltaTransform(deltaX, xAxis)
+          pointerResource.axis(event.timeStamp, xAxis, greenfield.parseFixed(scrollAmount))
         }
-        if (event.deltaY) {
-          const scrollAmount = deltaTransform(event.deltaX, greenfield.GrPointer.Axis.verticalScroll)
-          pointerResource.axis(event.timeStamp, greenfield.GrPointer.Axis.verticalScroll, scrollAmount)
+        const deltaY = event.deltaY
+        if (deltaY) {
+          const yAxis = greenfield.GrPointer.Axis.verticalScroll
+          if (pointerResource.version >= 5) {
+            pointerResource.axisDiscrete(yAxis, deltaY)
+          }
+          const scrollAmount = deltaTransform(deltaY, yAxis)
+          pointerResource.axis(event.timeStamp, yAxis, greenfield.parseFixed(scrollAmount))
+        }
+        if (pointerResource.version >= 5) {
+          pointerResource.axisSource(greenfield.GrPointer.AxisSource.wheel)
+          pointerResource.frame()
         }
       })
     }
