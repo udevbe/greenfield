@@ -23,30 +23,43 @@ module.exports = class LocalRtcPeerConnection {
    * @param {wfs.RtcPeerConnection} rtcPeerConnectionProxy
    */
   constructor (rtcPeerConnectionProxy) {
+    /**
+     * @type {wfs.RtcPeerConnection}
+     */
     this.proxy = rtcPeerConnectionProxy
+    /**
+     * @type {number}
+     * @private
+     */
     this._nextDataChannelId = 0
-
+    /**
+     * @type {RTCPeerConnection}
+     * @private
+     */
     this._peerConnection = new webRTC.RTCPeerConnection(
       {
         'iceServers': [
           {
-            'url': 'stun:stun.l.google.com:19302'
-          },
-          {
-            'url': 'turn:badger.pfoe.be',
+            'urls': 'turn:badger.pfoe.be?transport=tcp',
             'username': 'greenfield',
             'credential': 'water'
+          },
+          {
+            'urls': 'stun:stun.l.google.com:19302'
           }
         ]
       }
     )
+    console.log(`Child ${process.pid} webrtc created new peer connection with connection state: ${this._peerConnection.connectionState}`)
+    this._peerConnection.onconnectionstatechange = () => {
+      console.log(`Child ${process.pid} webrtc peer connection connection state changed to: ${this._peerConnection.connectionState}`)
+    }
+
     this._peerConnection.onicecandidate = (evt) => {
       if (evt.candidate !== null) {
+        console.log(`Child ${process.pid} webrtc sending local ice candide`)
         this.proxy.clientIceCandidates(JSON.stringify({'candidate': evt.candidate}))
       }
-    }
-    this._peerConnection.onnegotiationneeded = () => {
-      this.proxy.clientSdpOffer(JSON.stringify({'sdp': this._peerConnection.localDescription}))
     }
   }
 
@@ -109,17 +122,22 @@ module.exports = class LocalRtcPeerConnection {
    *
    */
   init () {
-    this._sendOffer()
+    this._setLocalDescription()
   }
 
-  async _sendOffer () {
-    const desc = await this._peerConnection.createOffer({
-      offerToReceiveAudio: false,
-      offerToReceiveVideo: false,
-      voiceActivityDetection: false,
-      iceRestart: false
-    })
-    await this._peerConnection.setLocalDescription(desc)
+  async _setLocalDescription () {
+    try {
+      const desc = await this._peerConnection.createOffer({
+        offerToReceiveAudio: false,
+        offerToReceiveVideo: false,
+        voiceActivityDetection: false,
+        iceRestart: false
+      })
+      console.log(`Child ${process.pid} webrtc set local sdp offer`)
+      await this._peerConnection.setLocalDescription(desc)
+    } catch (error) {
+      console.trace(error)
+    }
   }
 
   /**
@@ -130,8 +148,13 @@ module.exports = class LocalRtcPeerConnection {
    *
    */
   async serverSdpReply (description) {
-    const signal = JSON.parse(description)
-    await this._peerConnection.setRemoteDescription(new webRTC.RTCSessionDescription(signal.sdp))
+    try {
+      const signal = JSON.parse(description)
+      console.log(`Child ${process.pid} webrtc received remote sdp answer`)
+      await this._peerConnection.setRemoteDescription(new webRTC.RTCSessionDescription(signal.sdp))
+    } catch (error) {
+      console.trace(error)
+    }
   }
 
   /**
@@ -142,14 +165,17 @@ module.exports = class LocalRtcPeerConnection {
    *
    */
   async serverSdpOffer (description) {
-    const signal = JSON.parse(description)
-    // console.log(this._peerConnection.readyState)
-    console.log(this._peerConnection.signalingState)
-
-    await this._peerConnection.setRemoteDescription(new webRTC.RTCSessionDescription(signal.sdp))
-    const desc = await this._peerConnection.createAnswer()
-    await this._peerConnection.setLocalDescription(desc)
-    this.proxy.clientSdpReply(JSON.stringify({'sdp': this._peerConnection.localDescription}))
+    try {
+      const signal = JSON.parse(description)
+      console.log(`Child ${process.pid} webrtc received remote sdp offer`)
+      await this._peerConnection.setRemoteDescription(new webRTC.RTCSessionDescription(signal.sdp))
+      const desc = await this._peerConnection.createAnswer()
+      await this._peerConnection.setLocalDescription(desc)
+      console.log(`Child ${process.pid} webrtc sending local sdp`)
+      this.proxy.clientSdpReply(JSON.stringify({'sdp': this._peerConnection.localDescription}))
+    } catch (error) {
+      console.trace(error)
+    }
   }
 
   /**
@@ -160,7 +186,12 @@ module.exports = class LocalRtcPeerConnection {
    *
    */
   async serverIceCandidates (description) {
-    const signal = JSON.parse(description)
-    await this._peerConnection.addIceCandidate(new webRTC.RTCIceCandidate(signal.candidate))
+    try {
+      const signal = JSON.parse(description)
+      console.log(`Child ${process.pid} webrtc received remote ice candidate`)
+      await this._peerConnection.addIceCandidate(new webRTC.RTCIceCandidate(signal.candidate))
+    } catch (error) {
+      console.trace(error)
+    }
   }
 }

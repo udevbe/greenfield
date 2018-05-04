@@ -78,6 +78,7 @@ module.exports = class H264AlphaEncoder {
     // x264 encoder requires size to be a multiple of 2
     // target caps describe what we want
     this.scale.caps = `video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)}`
+
     this.pipeline.play()
   }
 
@@ -105,6 +106,7 @@ module.exports = class H264AlphaEncoder {
         alpha: null
       }
 
+      // FIXME add a timer to detect stalled encoding pipeline.
       this.sink.pull((opaqueH264Nal) => {
         if (opaqueH264Nal) {
           frame.opaque = opaqueH264Nal

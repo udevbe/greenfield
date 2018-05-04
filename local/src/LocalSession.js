@@ -16,9 +16,10 @@ module.exports = class LocalSession {
    * @returns {Promise<LocalSession>}
    */
   static create (request, socket, head, wlDisplay) {
-    console.log(`Child ${process.pid} setting up websocket server logic.`)
+    console.log(`Child ${process.pid} setting up session web socket server logic.`)
     const wss = new WebSocket.Server({
-      noServer: true
+      noServer: true,
+      handshakeTimeout: 2000
     })
     return new LocalSession(wss, wlDisplay)._handleUpgrade(request, socket, head)
   }
@@ -29,17 +30,26 @@ module.exports = class LocalSession {
    * @param wlDisplay
    */
   constructor (wss, wlDisplay) {
+    /**
+     * @type {WebSocket.Server}
+     * @private
+     */
     this._wss = wss
+    /**
+     * @type {WebSocket}
+     * @private
+     */
+    this._ws = null
     this.wlDisplay = wlDisplay
     this._connections = {}
     this.globals = {}
   }
 
   _handleUpgrade (request, socket, head) {
-    console.log(`Child ${process.pid} received websocket upgrade request. Will establish websocket connection.`)
+    console.log(`Child ${process.pid} received session web socket upgrade request. Will establish session web socket connection.`)
     return new Promise((resolve) => {
       this._wss.handleUpgrade(request, socket, head, (ws) => {
-        console.log(`Child ${process.pid} websocket is open.`)
+        console.log(`Child ${process.pid} session web socket is open.`)
         this._ws = ws
         this._setupWebsocket()
         this._setupPrimaryConnection(resolve)
@@ -59,30 +69,47 @@ module.exports = class LocalSession {
   onTerminate () {}
 
   _setupWebsocket () {
-    this._ws.onmessage = (event) => {
-      if (this._ws.readyState === WebSocket.OPEN) {
-        try {
-          const buf = event.data
-          const sessionId = buf.readUInt32LE(0, true)
-          const arrayBuffer = buf.buffer.slice(buf.byteOffset + 4, buf.byteOffset + 4 + buf.byteLength)
+    this._ws.isAlive = true
+    this._ws.on('pong', () => {
+      this._ws.isAlive = true
+    })
 
-          const connection = this._connections[sessionId]
-          if (connection) {
-            connection.unmarshall(arrayBuffer)
-          }
-        } catch (error) {
-          console.error(`Child ${process.pid} ${error}`)
-          this._ws.close()
+    let interval = null
+    interval = setInterval(() => {
+      if (this._ws.isAlive === false) {
+        console.error(`Child ${process.pid} did not receive session web socket pong reply after 5 seconds. Will terminate connection.`)
+        clearInterval(interval)
+        this._ws.terminate()
+      } else {
+        this._ws.isAlive = false
+        this._ws.ping(() => {})
+      }
+    }, 5000)
+
+    this._ws.onmessage = (event) => {
+      try {
+        const buf = event.data
+        const sessionId = buf.readUInt32LE(0, true)
+        const arrayBuffer = buf.buffer.slice(buf.byteOffset + 4, buf.byteOffset + 4 + buf.byteLength)
+
+        const connection = this._connections[sessionId]
+        if (connection) {
+          connection.unmarshall(arrayBuffer)
         }
+      } catch (error) {
+        console.error(`Child ${process.pid} failed to handle incoming message. ${JSON.stringify(event)}\n${event.message}\n${error.stack}`)
+        this._ws.close(4007, 'Session web socket received an illegal message')
       }
     }
-    this._ws.onclose = () => {
-      console.log(`Child ${process.pid} websocket is closed.`)
+    this._ws.onclose = (event) => {
+      console.log(`Child ${process.pid} session web socket is closed. ${event.code}: ${event.reason}`)
       this.wlDisplay.terminate()
       this.wlDisplay.destroy()
       this.onTerminate()
     }
-    // TODO listen for error(?)
+    this._ws.onerror = () => {
+      console.error(`Child ${process.pid} session web socket is in error.`)
+    }
   }
 
   _setupPrimaryConnection (resolve) {
@@ -123,12 +150,12 @@ module.exports = class LocalSession {
           this._ws.send(targetBuffer.buffer.slice(targetBuffer.byteOffset, targetBuffer.byteOffset + targetBuffer.byteLength), (error) => {
             if (error !== undefined) {
               console.error(error)
-              this._ws.close()
+              this._ws.terminate()
             }
           })
         } catch (error) {
           console.error(error)
-          this._ws.close()
+          this._ws.terminate()
         }
       }
     }

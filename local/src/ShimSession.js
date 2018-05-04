@@ -1,8 +1,8 @@
 'use strict'
 /** @module ShimSession */
 
-const SocketWatcher = require('socketwatcher').SocketWatcher
 const {Display} = require('wayland-server-bindings-runtime')
+const {Epoll} = require('epoll')
 
 const LocalSession = require('./LocalSession')
 const LocalRtcPeerConnectionFactory = require('./LocalRtcPeerConnectionFactory')
@@ -24,8 +24,12 @@ module.exports = class ShimSession {
     const waylandSocket = wlDisplay.addSocketAuto()
     console.log(`Child ${process.pid} created new wayland server socket: ${waylandSocket}`)
 
+    // set the waylan display to something non existing, else gstreamer will connect to us with a fallback value and
+    // block, while in turn we wait for gstreamer, resulting in a deadlock!
+    process.env.WAYLAND_DISPLAY = 'doesntExist'
+
     const localSession = await LocalSession.create(request, socket, head, wlDisplay)
-    const shimSession = new ShimSession(localSession, wlDisplay)
+    const shimSession = new ShimSession(localSession, wlDisplay, waylandSocket)
     wlDisplay.addClientCreatedListener(shimSession.onClientCreated.bind(shimSession))
     return shimSession
   }
@@ -39,12 +43,23 @@ module.exports = class ShimSession {
   /**
    * Use ShimSession.create(..) instead.
    * @private
-   * @param localSession
-   * @param wlDisplay
+   * @param {LocalSession}localSession
+   * @param {WlDisplay}wlDisplay
+   * @param {string}waylandSocket
    */
-  constructor (localSession, wlDisplay) {
+  constructor (localSession, wlDisplay, waylandSocket) {
+    /**
+     * @type {LocalSession}
+     */
     this.localSession = localSession
+    /**
+     * @type {WlDisplay}
+     */
     this.wlDisplay = wlDisplay
+    /**
+     * @type {string}
+     */
+    this.waylandSocket = waylandSocket
     this._fdWatcher = null
   }
 
@@ -66,14 +81,18 @@ module.exports = class ShimSession {
 
   start () {
     if (this._fdWatcher === null) {
-      const fdWatcher = new SocketWatcher()
-      fdWatcher.callback = () => { this._doLoop() }
-      fdWatcher.set(this.wlDisplay.eventLoop.fd, true, false)
+      const fdWatcher = new Epoll((err, fd, events) => {
+        if (err) {
+          console.error(err)
+        } else {
+          this._doLoop()
+        }
+      })
+      fdWatcher.add(this.wlDisplay.eventLoop.fd, Epoll.EPOLLPRI | Epoll.EPOLLIN | Epoll.EPOLLERR)
       this._fdWatcher = fdWatcher
     }
 
     this.wlDisplay.flushClients()
-    this._fdWatcher.start()
   }
 
   _doLoop () {
@@ -85,7 +104,7 @@ module.exports = class ShimSession {
 
   stop () {
     if (this._fdWatcher !== null) {
-      this._fdWatcher.stop()
+      this._fdWatcher.remove(this.wlDisplay.eventLoop.fd)
       this._fdWatcher.callback = null
     }
     this._fdWatcher = null

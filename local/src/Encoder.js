@@ -1,5 +1,7 @@
 'use strict'
 
+const config = require('./config')
+
 const H264OpaqueEncoder = require('./H264AlphaEncoder')
 const H264AlphaEncoder = require('./H264AlphaEncoder')
 const PNGEncoder = require('./PNGEncoder')
@@ -53,7 +55,7 @@ class Encoder {
     }
 
     const bufferArea = bufferWidth * bufferHeight
-    if (bufferArea <= (64 * 64)) {
+    if (bufferArea <= config['png-encoder']['max-target-buffer-size']) {
       return this._encodePNGFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, synSerial)
     } else {
       return this._encodeFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, synSerial)

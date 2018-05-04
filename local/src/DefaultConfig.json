@@ -1,3 +1,22 @@
 {
-  "port": 8080
+  "http-server": {
+    "port": 8080,
+    "socket-timeout": 6000,
+    "static-dirs": [
+      {
+        "http-path": "/apps/icons",
+        "fs-path": "./app-entries/"
+      }
+    ]
+  },
+  "png-encoder": {
+    "max-target-buffer-size": 4096
+  },
+  "desktop-shell": {
+    "apps-controller": {
+      "app-entries-urls": [
+        "file:./app-entries/"
+      ]
+    }
+  }
 }

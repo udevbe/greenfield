@@ -10,24 +10,23 @@ const LocalCallback = require('./LocalCallback')
 
 module.exports = class ShimSurface extends WlSurfaceRequests {
   /**
-   * @param grSurfaceProxy
-   * @param grSurfaceResource
+   * @param {GrSurface}grSurfaceProxy
    * @return {module.ShimSurface}
    */
   static create (grSurfaceProxy, grSurfaceResource) {
     const rtcBufferFactory = grSurfaceProxy.connection._rtcBufferFactory
-    return new ShimSurface(grSurfaceProxy, rtcBufferFactory, grSurfaceResource)
+    const localRtcDcBuffer = rtcBufferFactory.createLocalRtcDcBuffer()
+    return new ShimSurface(grSurfaceProxy, localRtcDcBuffer)
   }
 
   /**
    * @private
-   * @param grSurfaceProxy
-   * @param rtcBufferFactory
+   * @param {GrSurface}grSurfaceProxy
+   * @param {LocalRtcDcBuffer}localRtcDcBuffer
    */
-  constructor (grSurfaceProxy, rtcBufferFactory) {
+  constructor (grSurfaceProxy, localRtcDcBuffer) {
     super()
     this.proxy = grSurfaceProxy
-    this.rtcBufferFactory = rtcBufferFactory
     /**
      * @type {WlBuffer}
      */
@@ -48,9 +47,12 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
      * @type {Encoder}
      */
     this._encoder = Encoder.create()
+    /**
+     * @type {LocalRtcDcBuffer}
+     */
+    this.localRtcDcBuffer = localRtcDcBuffer
 
     // use a single buffer to communicate with the browser. Contents of the buffer will be copied when send.
-    this.localRtcDcBuffer = this.rtcBufferFactory.createLocalRtcDcBuffer()
     this.localRtcDcBuffer.ack = (serial) => {
       if (serial > this.ackSerial) {
         this.ackSerial = serial

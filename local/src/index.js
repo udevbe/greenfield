@@ -1,62 +1,79 @@
 'use strict'
 
+const config = require('./config')
 const express = require('express')
 const http = require('http')
-const fs = require('fs')
 
 const childProcess = require('child_process')
 const path = require('path')
 
 const forks = {}
+const uuidRegEx = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
 
-function ensureFork (grSessionId) {
-  let child = forks[grSessionId]
+/**
+ * @param {string} sessionId
+ * @return {ChildProcess}
+ */
+function ensureFork (sessionId) {
+  let child = forks[sessionId]
   if (child == null) {
-    // uncomment next line for debugging support
+    // uncomment next line for debugging support in the child process
     // process.execArgv.push('--inspect-brk=0')
 
-    console.log('Creating new child process.')
-    child = childProcess.fork(path.join(__dirname, 'forkIndex.js'))
+    console.log('Parent creating new child process.')
+    const configPath = process.argv[2]
+    child = childProcess.fork(path.join(__dirname, 'forkIndex.js'), configPath == null ? [] : [`${configPath}`])
 
     const removeChild = () => {
-      console.log('child exit')
-      delete forks[grSessionId]
+      console.log(`Child ${child.pid} exit.`)
+      delete forks[sessionId]
     }
 
     child.on('exit', removeChild)
     child.on('SIGINT', function () {
-      console.log('child received SIGINT')
+      console.log(`Child ${child.pid} received SIGINT.`)
       child.exit()
     })
     child.on('SIGTERM', function () {
-      console.log('child received SIGTERM')
+      console.log(`Child ${child.pid} received SIGTERM.`)
       child.exit()
     })
 
-    forks[grSessionId] = child
+    forks[sessionId] = child
   }
   return child
 }
 
-function run (config) {
+function run () {
   console.log('>>> Running in PRODUCTION mode <<<\n')
-  console.log(' --- configuration ---')
-  console.log(config)
-  console.log(' --------------------- ')
   express.static.mime.define({'application/wasm': ['wasm']})
   const app = express()
   app.use(express.static(path.join(__dirname, '../../browser/dist')))
+  const staticDirs = config['http-server']['static-dirs']
+  staticDirs.forEach((staticDir) => {
+    const httpPath = staticDir['http-path']
+    const fsPath = staticDir['fs-path']
+
+    app.use(httpPath, express.static(path.resolve(fsPath)))
+  })
 
   const server = http.createServer()
   server.on('request', app)
+  server.setTimeout(config['http-server']['socket-timeout'])
 
   server.on('upgrade', (request, socket, head) => {
-    console.log('Parent received websocket upgrade request. Will delegating to new child process.')
-    let child = ensureFork(request.url.substring(1))
-    child.send([{
-      headers: request.headers,
-      method: request.method
-    }, head], socket)
+    console.log('Parent received websocket upgrade request. Will delegating to child process.')
+    const pathElements = request.url.split('/')
+    pathElements.shift() // empty element
+    const sessionId = pathElements.shift()
+    if (sessionId && uuidRegEx.test(sessionId)) {
+      let child = ensureFork(sessionId)
+      child.send([{
+        headers: request.headers,
+        method: request.method,
+        pathElements: pathElements
+      }, head], socket)
+    }
   })
 
   const cleanUp = () => {
@@ -64,7 +81,7 @@ function run (config) {
     for (const grSessionId in forks) {
       const child = forks[grSessionId]
       if (child != null) {
-        console.log('sending child SIGKILL')
+        console.log(`Parent sending child ${child.pid} SIGKILL`)
         child.disconnect()
         child.kill('SIGKILL')
       }
@@ -73,31 +90,22 @@ function run (config) {
 
   process.on('exit', cleanUp)
   process.on('SIGINT', () => {
-    console.log('parent received SIGINT')
+    console.log('Parent received SIGINT')
     process.exit()
   })
   process.on('SIGTERM', () => {
-    console.log('parent received SIGTERM')
+    console.log('Parent received SIGTERM')
     process.exit()
   })
 
-  server.listen(8080)
+  server.listen(config['http-server']['port'])
 }
 
 function main () {
   process.on('uncaughtException', (error) => {
     console.error(error)
   })
-
-  let configFile = process.argv[2]
-  let config
-  if (configFile) {
-    config = JSON.parse(fs.readFileSync(process.cwd() + '/' + configFile))
-  } else {
-    config = JSON.parse(fs.readFileSync(path.join(__dirname, 'DefaultConfig.json')))
-  }
-
-  run(config)
+  run()
 }
 
 main()
