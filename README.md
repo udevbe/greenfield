@@ -5,6 +5,26 @@ Experiment in using [Westfield](https://github.com/udevbe/westfield) together wi
 
 [![Alt text](https://img.youtube.com/vi/2lyihdFK7EE/0.jpg)](https://www.youtube.com/watch?v=2lyihdFK7EE)
 
+Greenfield is different from existing solutions like VNC or RDP who tend to stream the final server side generated screen image to a remote.
+
+Greenfield makes sure each individual application will have it's raw content live encoded on the server to a h264 frame,
+after which it's send to the browser using a dedicated webrtc datachannel. On reception, the h264 
+frame is decoded using a WASM h264 decoder & a WebGL color conversion shader and subsequently drawn in it's own 
+'private' HTML5 canvas. As such the entire image you see in the browser is using nothing but ordinary DOM elements. 
+
+This advantage of this approach is that it retains the entire desktop context and allows for powerful features like 
+application positioning, application naming, custom taskbars, notificatons, css styling, webrtc VOIP integration and 
+much more. All directly and seamlessly integrated inside the browser.
+
+#### Future
+
+Greenfield is in essence an entire Wayland compositor running in the browser. As such it does not care where and how
+client applications run. This neat feature allows for clients applications to run directly in the browser inside a web 
+worker. All that is required is a Javascript widget toolkit that can:
+ - render it's content in an ArrayBuffer as web workers do not have their own DOM
+ - communicating with the compositor using the Wayland protocol.
+This allows for a pure client side browser application to run without the drawback of network latency or server load, while 
+still being able to interact (c/p & dnd) with server side native applications.
 
 Installation
 ============
