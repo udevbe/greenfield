@@ -1,4 +1,4 @@
-# :seedling: Greenfield
+# Greenfield :seedling:
 in-browser wayland compositor
 
 Experiment in using [Westfield](https://github.com/udevbe/westfield) together with [webrtc](https://webrtc.org/faq/#what-is-webrtc)/[object-rtc](https://ortc.org/) to create an in-browser wayland compositor.
@@ -14,7 +14,7 @@ The advantage of this approach is that it retains the entire desktop context whi
 context aware application positioning & naming, custom task-bars, custom REST api integrations, notifications, css styling, WebRTC VOIP integration and 
 much more. All of which can be directly and seamlessly integrated inside the browser.
 
-#### :unicorn: :rainbow: Future
+## Future :unicorn: :rainbow:
 
 Greenfield is in essence an entire Wayland compositor running in the browser. As such it does not care where and how
 client applications run. This has some interesting implications as it allows for client applications to run directly in the browser inside a web 
@@ -25,7 +25,7 @@ worker. All that is required is a Javascript widget toolkit that can:
 This approach allows for a pure client side application to run inside the browser without the drawbacks of network latency or server load,
 while still being able to interact (copy/paste & drag'n drop) with native server-side applications.
 
-:computer: Installation
+Installation :computer:
 ============
 
 Clone this repo and inside the cloned directory run:
@@ -44,12 +44,12 @@ At runtime you will also need gstreamer-1.x with the following plugins:
 - pngenc
 - appsink
 
-:running_man: Running
+Running :running_man:
 =======
 
 Open a browser, preferably Firefox or Chrome.
 
-### :hammer_and_wrench: Development mode
+### Development mode :hammer_and_wrench:
 - Hot module redeploy support
 - Single server process
 - Max 1 connection
@@ -58,7 +58,7 @@ Open a browser, preferably Firefox or Chrome.
 
 `npm run start:dev`
 
-### :racing_car: Production mode
+### Production mode :racing_car:
  - Optimized and minimized build
  - One parent http server process for incoming connections
  - Separate child process for each accepted connection. (one server side child process per spawned compositor instance)
@@ -72,7 +72,7 @@ inside the dist folder must be located next to the `greenfield` executable. Gstr
 present on the system.
 
 
-### :scroll: Configuration
+### Configuration :scroll:
 A production or development build accepts a config file in json format. The config file can be specified as the first argument to the greenfield
 executable.
 
@@ -117,7 +117,7 @@ or
 
 `npm start -- example_config.json`
 
-#### :rocket: Application Entries
+### Application Entries :rocket:
 Greenfield uses so called application entries to dynamically expose available applications to a connected user. Application entry sources are defined using
 the config proprety: `desktop-shell.apps-controller.app-entries-urls`.
 
@@ -151,6 +151,6 @@ description|The description of the application that will be shown to the user on
 icon|the relative http path where the application icon can be found
 
 
-### :butterfly: Compatible Clients
+### Compatible Clients :butterfly:
 For now only the core wayland protocol is implemented. As such it is only possible to run application that do not require xdg_shell (which rules out gtk for now).
 To try some wayland clients, the Weston 1.4 (early version) test clients are nearly all fully supported.
