@@ -1,5 +1,17 @@
 'use strict'
 
+/**
+ *
+ *            The gr_touch interface represents a touchscreen
+ *            associated with a seat.
+ *
+ *            Touch interactions can consist of one or more contacts.
+ *            For each contact, a series of events is generated, starting
+ *            with a down event, followed by zero or more motion events,
+ *            and ending with an up event. Events relating to the same
+ *            contact point can be identified by the ID of the sequence.
+ *
+ */
 export default class BrowserTouch {
   /**
    * @returns {BrowserTouch}
@@ -9,7 +21,14 @@ export default class BrowserTouch {
   }
 
   constructor () {
+    /**
+     * @type {Array<GrTouch>}
+     */
     this.resources = []
+    /**
+     * @type {BrowserSeat}
+     */
+    this.browserSeat = null
   }
 
   /**

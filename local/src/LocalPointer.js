@@ -1,10 +1,16 @@
 'use strict'
 
 module.exports = class LocalPointer {
+  /**
+   * @return {LocalPointer}
+   */
   static create () {
     return new LocalPointer()
   }
 
+  /**
+   * @private
+   */
   constructor () {
     this.resource = null
   }
@@ -28,6 +34,10 @@ module.exports = class LocalPointer {
    *
    */
   enter (serial, surface, surfaceX, surfaceY) {
+    if (surface == null) {
+      // object argument was destroyed by the client before the server noticed.
+      return
+    }
     const wlSurfaceResource = surface.listener.resource
     this.resource.enter(serial, wlSurfaceResource, surfaceX, surfaceY)
   }
@@ -48,6 +58,10 @@ module.exports = class LocalPointer {
    *
    */
   leave (serial, surface) {
+    if (surface == null) {
+      // object argument was destroyed by the client before the server noticed.
+      return
+    }
     const wlSurfaceResource = surface.listener.resource
     this.resource.leave(serial, wlSurfaceResource)
   }
@@ -278,6 +292,6 @@ module.exports = class LocalPointer {
    *
    */
   axisDiscrete (axis, discrete) {
-    this.axisDiscrete(axis, discrete)
+    this.resource.axisDiscrete(axis, discrete)
   }
 }

@@ -1,6 +1,6 @@
 'use strict'
 
-const westfield = require('westfield-runtime-client')
+const {Connection} = require('westfield-runtime-client')
 const session = require('./protocol/session-client-protocol')
 const WebSocket = require('ws')
 
@@ -97,7 +97,7 @@ module.exports = class LocalSession {
           connection.unmarshall(arrayBuffer)
         }
       } catch (error) {
-        console.error(`Child ${process.pid} failed to handle incoming message. ${JSON.stringify(event)}\n${event.message}\n${error.stack}`)
+        console.error(`Child ${process.pid} failed to handle incoming message. \n${error}\n${error.stack}`)
         this._ws.close(4007, 'Session web socket received an illegal message')
       }
     }
@@ -113,7 +113,7 @@ module.exports = class LocalSession {
   }
 
   _setupPrimaryConnection (resolve) {
-    const wfcConnection = new westfield.Connection()
+    const wfcConnection = new Connection()
     this._connections[0] = wfcConnection
     this._setupWfcConnection(wfcConnection, 0)
 
@@ -125,7 +125,7 @@ module.exports = class LocalSession {
         this.grSessionProxy = grSessionProxy
 
         resolve(this)
-      } else if (interface_.startsWith('Gr')) {
+      } else if (interface_.startsWith('Gr') || interface_.startsWith('Xdg')) {
         this._setupShimGlobal(name, interface_, version)
       }
     }
@@ -149,12 +149,12 @@ module.exports = class LocalSession {
 
           this._ws.send(targetBuffer.buffer.slice(targetBuffer.byteOffset, targetBuffer.byteOffset + targetBuffer.byteLength), (error) => {
             if (error !== undefined) {
-              console.error(error)
+              console.error(error, error.stack)
               this._ws.terminate()
             }
           })
         } catch (error) {
-          console.error(error)
+          console.error(error, error.stack)
           this._ws.terminate()
         }
       }

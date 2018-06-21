@@ -16,7 +16,7 @@ const controllers = {
 
 function main () {
   process.on('uncaughtException', (error) => {
-    console.error(error)
+    console.error(error, error.stack)
   })
 
   console.warn('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
@@ -70,7 +70,7 @@ function main () {
         console.log('Development session started.')
       }
     } catch (error) {
-      console.error(`${error.message}\n${error.stack}`)
+      console.error(`${error}\n${error.stack}`)
     }
   })
 

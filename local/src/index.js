@@ -103,7 +103,7 @@ function run () {
 
 function main () {
   process.on('uncaughtException', (error) => {
-    console.error(error)
+    console.error(error, error.stack)
   })
   run()
 }

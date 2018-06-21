@@ -2,6 +2,8 @@
 import Mat4 from './math/Mat4'
 import BufferedCanvas from './BufferedCanvas'
 import Vec4 from './math/Vec4'
+import BrowserRegion from './BrowserRegion'
+import Renderer from './render/Renderer'
 
 export default class BrowserSurfaceView {
   /**
@@ -14,8 +16,8 @@ export default class BrowserSurfaceView {
   static create (browserSurface, width, height) {
     const bufferedCanvas = BufferedCanvas.create(width, height)
     const browserSurfaceView = new BrowserSurfaceView(bufferedCanvas, browserSurface, Mat4.IDENTITY())
-    bufferedCanvas.frontContext.canvas.view = browserSurfaceView
-    bufferedCanvas.backContext.canvas.view = browserSurfaceView
+    bufferedCanvas.view = browserSurfaceView
+    browserSurfaceView.updateInputRegion()
     return browserSurfaceView
   }
 
@@ -51,6 +53,10 @@ export default class BrowserSurfaceView {
     /**
      * @type {Mat4}
      */
+    this._backBufferTransformation = transformation
+    /**
+     * @type {Mat4}
+     */
     this._inverseTransformation = transformation.invert()
     /**
      * @type {Promise}
@@ -68,6 +74,11 @@ export default class BrowserSurfaceView {
      * @private
      */
     this._parent = null
+    /**
+     * @type {boolean}
+     * @private
+     */
+    this._primary = false
   }
 
   /**
@@ -84,20 +95,39 @@ export default class BrowserSurfaceView {
     this._parent = parent
 
     if (this._parent) {
+      this.primary = parent.primary
+
       parent.onDestroy().then(() => {
         if (this.parent === parent) {
           this.destroy()
           this.parent = null
         }
       })
-
-      this.applyTransformations()
+      const renderFrame = Renderer.createRenderFrame()
+      this.applyTransformations(renderFrame)
+      renderFrame.fire()
       if (this._parent.isAttached()) {
         this.attachTo(this._parent.parentElement())
       } else {
         this.detach()
       }
     }
+  }
+
+  set primary (primary) {
+    this._primary = primary
+    this.browserSurface.browserSurfaceChildren.forEach(browserSurfaceChild => {
+      if (browserSurfaceChild === this.browserSurface.browserSurfaceChildSelf) return
+      browserSurfaceChild.browserSurface.browserSurfaceViews.filter(browserSurfaceView => {
+        return browserSurfaceView.parent === this
+      }).forEach(browserSurfaceView => {
+        browserSurfaceView.primary = primary
+      })
+    })
+  }
+
+  get primary () {
+    return this._primary
   }
 
   /**
@@ -122,36 +152,26 @@ export default class BrowserSurfaceView {
     return this._transformation
   }
 
-  applyTransformations () {
-    const transformationUpdated = this._applyTransformations(this.bufferedCanvas.frontContext)
-    if (transformationUpdated) {
-      this._applyTransformationsChild()
-    }
-  }
-
-  _applyTransformationsChild () {
-    // find all child views who have this view as it's parent and update their transformation
-    this.browserSurface.browserSurfaceChildren.forEach((browserSurfaceChild) => {
-      if (browserSurfaceChild.browserSurface === this.browserSurface) {
-        return
-      }
-
-      browserSurfaceChild.browserSurface.browserSurfaceViews.filter((browserSurfaceView) => {
-        return browserSurfaceView.parent === this
-      }).forEach((childView) => {
-        childView.applyTransformations()
-      })
+  /**
+   * @param {RenderFrame}renderFrame
+   */
+  applyTransformations (renderFrame) {
+    const transformation = this._calculateTransformation()
+    this.transformation = transformation
+    const bufferToViewTransformation = transformation.timesMat4(this.browserSurface.inverseBufferTransformation)
+    // update canvas
+    const newCssTransform = bufferToViewTransformation.toCssMatrix()
+    renderFrame.then(() => {
+      this.bufferedCanvas.setElementTransformation(newCssTransform)
     })
+    this._applyTransformationsChild(renderFrame)
   }
 
-  applyTransformationsBackBuffer () {
-    const transformationUpdated = this._applyTransformations(this.bufferedCanvas.backContext)
-    if (transformationUpdated) {
-      this._applyTransformationsChildBackBuffer()
-    }
-  }
-
-  _applyTransformationsChildBackBuffer () {
+  /**
+   * @param renderFrame
+   * @private
+   */
+  _applyTransformationsChild (renderFrame) {
     // find all child views who have this view as it's parent and update their transformation
     this.browserSurface.browserSurfaceChildren.forEach((browserSurfaceChild) => {
       if (browserSurfaceChild.browserSurface === this.browserSurface) {
@@ -161,17 +181,28 @@ export default class BrowserSurfaceView {
       browserSurfaceChild.browserSurface.browserSurfaceViews.filter((browserSurfaceView) => {
         return browserSurfaceView.parent === this
       }).forEach((childView) => {
-        childView.applyTransformations()
+        childView.applyTransformations(renderFrame)
       })
     })
   }
 
   /**
-   * @param {CanvasRenderingContext2D}canvasContext
-   * @return {boolean}
    * @private
    */
-  _applyTransformations (canvasContext) {
+  _applyTransformationsBackBuffer () {
+    const transformation = this._calculateTransformation()
+    this._backBufferTransformation = transformation
+    const bufferToViewTransformation = transformation.timesMat4(this.browserSurface.inverseBufferTransformation)
+    // update canvas
+    const newCssTransform = bufferToViewTransformation.toCssMatrix()
+    this.bufferedCanvas.setBackBufferElementTransformation(newCssTransform)
+  }
+
+  /**
+   * @return {Mat4}
+   * @private
+   */
+  _calculateTransformation () {
     // TODO we might want to keep some 'transformation dirty' flags to avoid needless matrix multiplications
 
     // inherit parent transformation
@@ -185,17 +216,7 @@ export default class BrowserSurfaceView {
     const {x, y} = browserSurfaceChild.position
     const positionTransformation = Mat4.translation(x, y)
 
-    this.transformation = parentTransformation.timesMat4(positionTransformation)
-    const bufferToViewTransformation = this.transformation.timesMat4(this.browserSurface.inverseBufferTransformation)
-
-    // update canvas
-    const newCssTransform = bufferToViewTransformation.toCssMatrix()
-    if (newCssTransform !== canvasContext.canvas.style.transform) {
-      canvasContext.canvas.style.transform = newCssTransform
-      return true
-    } else {
-      return false
-    }
+    return parentTransformation.timesMat4(positionTransformation)
   }
 
   raise () {
@@ -235,14 +256,20 @@ export default class BrowserSurfaceView {
    */
   _draw (source, width, height) {
     // FIXME adjust final transformation with additional transformations defined in the browser surface
-    this.applyTransformationsBackBuffer()
+    this._applyTransformationsBackBuffer()
     this.bufferedCanvas.drawBackBuffer(source, width, height)
   }
 
-  swapBuffers () {
-    this.bufferedCanvas.swapBuffers()
+  /**
+   * @param {RenderFrame}renderFrame
+   */
+  swapBuffers (renderFrame) {
+    this.transformation = this._backBufferTransformation
+    renderFrame.then(() => {
+      this.bufferedCanvas.swapBuffers()
+    })
     // update child transformations as new parent buffer is visible
-    this._applyTransformationsChild()
+    this._applyTransformationsChild(renderFrame)
   }
 
   /**
@@ -270,8 +297,8 @@ export default class BrowserSurfaceView {
 
     const canvas = this.bufferedCanvas.frontContext.canvas
     const boundingRect = canvas.getBoundingClientRect()
-    const canvasWidth = boundingRect.width
-    const canvasHeight = boundingRect.height
+    const canvasWidth = Math.round(boundingRect.width)
+    const canvasHeight = Math.round(boundingRect.height)
     const surfaceSize = this.browserSurface.size
     const surfaceWidth = surfaceSize.w
     const surfaceHeight = surfaceSize.h
@@ -284,6 +311,10 @@ export default class BrowserSurfaceView {
 
   fadeOut () {
     this.bufferedCanvas.addCssClass('fadeToHidden')
+  }
+
+  show () {
+    this.bufferedCanvas.removeCssClass('fadeToHidden')
   }
 
   destroy () {
@@ -299,19 +330,14 @@ export default class BrowserSurfaceView {
   }
 
   isAttached () {
-    return this.bufferedCanvas.frontContext.canvas.parentElement && this.bufferedCanvas.backContext.canvas.parentElement
+    return this.bufferedCanvas.isAttachedToElement()
   }
 
   /**
    * @param {HTMLElement}element
    */
   attachTo (element) {
-    if (!this.bufferedCanvas.frontContext.canvas.parentElement) {
-      element.appendChild(this.bufferedCanvas.frontContext.canvas)
-    }
-    if (!this.bufferedCanvas.backContext.canvas.parentElement) {
-      element.appendChild(this.bufferedCanvas.backContext.canvas)
-    }
+    this.bufferedCanvas.attachToElement(element)
 
     // attach child views
     this.browserSurface.browserSurfaceChildren.forEach((browserSurfaceChild) => {
@@ -331,16 +357,15 @@ export default class BrowserSurfaceView {
   }
 
   detach () {
-    this._removeCanvas(this.bufferedCanvas.frontContext)
-    this._removeCanvas(this.bufferedCanvas.backContext)
+    this.bufferedCanvas.detachFromElement()
   }
 
-  _removeCanvas (context) {
-    const canvas = context.canvas
-    const parent = canvas.parentElement
-    if (parent) {
-      parent.removeChild(canvas)
-    }
+  updateInputRegion () {
+    const inputPixmanRegion = this.browserSurface.state.inputPixmanRegion
+    const surfacePixmanRegion = this.browserSurface.pixmanRegion
+    BrowserRegion.intersect(inputPixmanRegion, inputPixmanRegion, surfacePixmanRegion)
+    const inputRectangles = BrowserRegion.rectangles(inputPixmanRegion)
+    this.bufferedCanvas.updateInputRegionElements(inputRectangles)
   }
 }
 

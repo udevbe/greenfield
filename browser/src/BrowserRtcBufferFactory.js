@@ -1,13 +1,13 @@
 'use strict'
 
-import westfield from 'westfield-runtime-server'
-import greenfield from './protocol/greenfield-browser-protocol'
-import rtc from './protocol/rtc-browser-protocol'
+import { Global } from 'westfield-runtime-server'
+import { GrBuffer } from './protocol/greenfield-browser-protocol'
+import { RtcBufferFactory, RtcDcBuffer } from './protocol/rtc-browser-protocol'
 
 import BrowserBuffer from './BrowserBuffer'
 import BrowserRtcDcBuffer from './BrowserRtcDcBuffer'
 
-export default class BrowserRtcBufferFactory extends westfield.Global {
+export default class BrowserRtcBufferFactory extends Global {
   /**
    *
    * @param {GrBuffer} grBufferResource
@@ -30,7 +30,7 @@ export default class BrowserRtcBufferFactory extends westfield.Global {
    * @private
    */
   constructor () {
-    super(rtc.RtcBufferFactory.name, 1)
+    super(RtcBufferFactory.name, 1)
   }
 
   /**
@@ -43,7 +43,7 @@ export default class BrowserRtcBufferFactory extends westfield.Global {
    * @param {Number} version
    */
   bindClient (client, id, version) {
-    const rtcBufferFactoryResource = new rtc.RtcBufferFactory(client, id, version)
+    const rtcBufferFactoryResource = new RtcBufferFactory(client, id, version)
     rtcBufferFactoryResource.implementation = this
   }
 
@@ -56,7 +56,7 @@ export default class BrowserRtcBufferFactory extends westfield.Global {
    *
    */
   createBuffer (resource, id) {
-    const grBufferResource = new greenfield.GrBuffer(resource.client, id, resource.version)
+    const grBufferResource = new GrBuffer(resource.client, id, resource.version)
     BrowserBuffer.create(grBufferResource)
   }
 
@@ -74,7 +74,7 @@ export default class BrowserRtcBufferFactory extends westfield.Global {
     // TODO try/catch & report error to client
     blobTransferResource.implementation.browserRtcPeerConnection.ensureP2S()
 
-    const rtcDcBufferResource = new rtc.RtcDcBuffer(resource.client, id, resource.version)
+    const rtcDcBufferResource = new RtcDcBuffer(resource.client, id, resource.version)
     BrowserRtcDcBuffer.create(grBufferResource, rtcDcBufferResource, blobTransferResource)
   }
 }

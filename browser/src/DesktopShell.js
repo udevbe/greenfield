@@ -9,9 +9,10 @@ import DesktopShellAppMenu from './DesktopShellAppMenu'
 export default class DesktopShell {
   /**
    * @param {BrowserSession}browserSession
+   * @param {BrowserSeat} browserSeat
    * @return {DesktopShell}
    */
-  static create (browserSession) {
+  static create (browserSession, browserSeat) {
     const body = document.body
     const workspace = document.getElementById('workspace')
     const panel = document.createElement('div')
@@ -28,7 +29,14 @@ export default class DesktopShell {
     const desktopShellMenu = DesktopShellMenu.create()
     panel.appendChild(desktopShellMenu.divElementMenuButton)
 
-    return new DesktopShell(body, workspace, panel, entryContainer)
+    const desktopShell = new DesktopShell(body, workspace, panel, entryContainer, browserSeat)
+    browserSeat.browserKeyboard.addKeyboardFocusListener(() => {
+      if (browserSeat.browserKeyboard.focus) {
+        desktopShell.onKeyboardFocusGained(browserSeat.browserKeyboard.focus)
+      }
+    })
+
+    return desktopShell
   }
 
   /**
@@ -37,9 +45,10 @@ export default class DesktopShell {
    * @param {HTMLElement}workspace
    * @param {HTMLDivElement}panel
    * @param {HTMLDivElement}entryContainer
+   * @param {BrowserSeat}browserSeat
    * @private
    */
-  constructor (body, workspace, panel, entryContainer) {
+  constructor (body, workspace, panel, entryContainer, browserSeat) {
     /**
      * @type{HTMLElement}
      */
@@ -57,14 +66,14 @@ export default class DesktopShell {
      */
     this.entryContainer = entryContainer
     /**
-     * This field is set when browserKeyboard is created.
-     * @type {BrowserKeyboard}
-     */
-    this.browserKeyboard = null
-    /**
      * @type {DesktopShellEntry[]}
      */
     this.desktopShellEntries = []
+    /**
+     * @type {BrowserSeat}
+     * @private
+     */
+    this._browserSeat = browserSeat
   }
 
   /**
@@ -73,20 +82,20 @@ export default class DesktopShell {
    */
   manage (browserSurface) {
     // create a view and attach it to the scene
-    const desktopShellEntry = DesktopShellEntry.create(this.browserKeyboard, browserSurface)
+    const desktopShellEntry = DesktopShellEntry.create(browserSurface, this._browserSeat)
     this.entryContainer.appendChild(desktopShellEntry.divElement)
     this.desktopShellEntries.push(desktopShellEntry)
     // delay the activation as keyboard resource might still come in late
     window.setTimeout(() => {
       desktopShellEntry.makeActive()
-    }, 250)
+    }, 300)
 
     return desktopShellEntry
   }
 
-  onKeyboardFocusGained (view) {
+  onKeyboardFocusGained (browserSurface) {
     const desktopShellEntry = this.desktopShellEntries.find((desktopShellEntry) => {
-      return desktopShellEntry.mainView === view
+      return desktopShellEntry.mainView.browserSurface === browserSurface
     })
     if (desktopShellEntry) {
       this.desktopShellEntries.forEach((desktopShellEntry) => {

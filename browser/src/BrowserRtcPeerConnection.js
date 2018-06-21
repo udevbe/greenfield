@@ -1,6 +1,6 @@
 'use strict'
 
-import greenfield from './protocol/greenfield-browser-protocol'
+import { GrBlobTransfer } from './protocol/greenfield-browser-protocol'
 
 import BrowserRtcBlobTransfer from './BrowserRtcBlobTransfer'
 
@@ -44,7 +44,7 @@ export default class BrowserRtcPeerConnection {
   createBlobTransfer (resource, id, descriptor) {
     // TODO check if the descriptor label matches one we send out earlier and notify whoever created that descriptor
     // that there is now a blob transfer object available
-    const blobTransferResource = new greenfield.GrBlobTransfer(resource.client, id, resource.version)
+    const blobTransferResource = new GrBlobTransfer(resource.client, id, resource.version)
     BrowserRtcBlobTransfer._create(blobTransferResource, descriptor, this)
   }
 
@@ -89,7 +89,7 @@ export default class BrowserRtcPeerConnection {
           console.log(`webrtc received remote ice candidate`)
           await this._delegate._peerConnection.addIceCandidate(new window.RTCIceCandidate(signal.candidate))
         } catch (error) {
-          console.error(error)
+          console.error(error, error.stack)
         }
       },
 
@@ -99,7 +99,7 @@ export default class BrowserRtcPeerConnection {
           console.log(`webrtc received remote sdp answer`)
           await this._delegate._peerConnection.setRemoteDescription(new window.RTCSessionDescription(signal.sdp))
         } catch (error) {
-          console.error(error)
+          console.error(error, error.stack)
         }
       },
 
@@ -113,7 +113,7 @@ export default class BrowserRtcPeerConnection {
           console.log(`Child ${process.pid} webrtc sending local sdp answer`)
           await this.rtcPeerConnectionResource.serverSdpReply(JSON.stringify({'sdp': this._delegate._peerConnection.localDescription}))
         } catch (error) {
-          console.error(error)
+          console.error(error, error.stack)
         }
       }
     }
@@ -150,7 +150,7 @@ export default class BrowserRtcPeerConnection {
       console.log(`webrtc sending local sdp offer`)
       this.rtcPeerConnectionResource.serverSdpOffer(JSON.stringify({'sdp': this._delegate._peerConnection.localDescription}))
     } catch (error) {
-      console.error(error)
+      console.error(error, error.stack)
     }
   }
 

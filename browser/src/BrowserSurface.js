@@ -1,6 +1,6 @@
 'use strict'
 
-import greenfield from './protocol/greenfield-browser-protocol'
+import { GrCallback, GrOutput } from './protocol/greenfield-browser-protocol'
 import BrowserSurfaceView from './BrowserSurfaceView'
 import BrowserCallback from './BrowserCallback'
 import Rect from './math/Rect'
@@ -27,6 +27,49 @@ const bufferTransformations = [
   {transformation: FLIPPED_270, inverseTransformation: FLIPPED_270.invert()} // 7
 ]
 
+/**
+ *
+ *            A surface is a rectangular area that is displayed on the screen.
+ *            It has a location, size and pixel contents.
+ *
+ *            The size of a surface (and relative positions on it) is described
+ *            in surface-local coordinates, which may differ from the buffer
+ *            coordinates of the pixel content, in case a buffer_transform
+ *            or a buffer_scale is used.
+ *
+ *            A surface without a "role" is fairly useless: a compositor does
+ *            not know where, when or how to present it. The role is the
+ *            purpose of a gr_surface. Examples of roles are a cursor for a
+ *            pointer (as set by gr_pointer.set_cursor), a drag icon
+ *            (gr_data_device.start_drag), a sub-surface
+ *            (gr_subcompositor.get_subsurface), and a window as defined by a
+ *            shell protocol (e.g. gr_shell.get_shell_surface).
+ *
+ *            A surface can have only one role at a time. Initially a
+ *            gr_surface does not have a role. Once a gr_surface is given a
+ *            role, it is set permanently for the whole lifetime of the
+ *            gr_surface object. Giving the current role again is allowed,
+ *            unless explicitly forbidden by the relevant interface
+ *            specification.
+ *
+ *            Surface roles are given by requests in other interfaces such as
+ *            gr_pointer.set_cursor. The request should explicitly mention
+ *            that this request gives a role to a gr_surface. Often, this
+ *            request also creates a new protocol object that represents the
+ *            role and adds additional functionality to gr_surface. When a
+ *            client wants to destroy a gr_surface, they must destroy this 'role
+ *            object' before the gr_surface.
+ *
+ *            Destroying the role object does not remove the role from the
+ *            gr_surface, but it may stop the gr_surface from "playing the role".
+ *            For instance, if a gr_subsurface object is destroyed, the gr_surface
+ *            it was created for will be unmapped and forget its position and
+ *            z-order. It is allowed to create a gr_subsurface for the same
+ *            gr_surface again, but it is not allowed to use the gr_surface as
+ *            a cursor (cursor is a different role than sub-surface, and role
+ *            switching is not allowed).
+ *
+ */
 export default class BrowserSurface {
   /**
    * @param {GrSurface} grSurfaceResource
@@ -149,21 +192,23 @@ export default class BrowserSurface {
      * @private
      */
     this._pendingOpaqueRegion = BrowserRegion.createPixmanRegion()
+    BrowserRegion.initInfinite(this._pendingOpaqueRegion)
     /**
      * @type {boolean}
      * @private
      */
-    this._opaqueRegionChanged = false
+    this._opaqueRegionChanged = true
     /**
      * @type {number}
      * @private
      */
     this._pendingInputRegion = BrowserRegion.createPixmanRegion()
+    BrowserRegion.initInfinite(this._pendingInputRegion)
     /**
      * @type {boolean}
      * @private
      */
-    this._inputRegionChanged = false
+    this._inputRegionChanged = true
     /**
      * @type {number}
      * @private
@@ -199,17 +244,17 @@ export default class BrowserSurface {
     /**
      * @type {boolean}
      */
-    this.hasKeyboardInput = false
+    this.hasKeyboardInput = true
     /**
      * @type {boolean}
      */
-    this.hasPointerInput = false
+    this.hasPointerInput = true
     /**
      * @type {boolean}
      */
-    this.hasTouchInput = false
+    this.hasTouchInput = true
     /**
-     * @type {{onCommit: Function}}
+     * @type {{onCommit: Function, captureRoleState: Function, setRoleState: Function}}
      */
     this.role = null
     /**
@@ -224,9 +269,8 @@ export default class BrowserSurface {
     this._browserSurfaceChildren = []
     /**
      * @type {BrowserSurfaceChild[]}
-     * @private
      */
-    this._browserSubsurfaceChildren = [this.browserSurfaceChildSelf]
+    this.browserSubsurfaceChildren = [this.browserSurfaceChildSelf]
     /**
      * @type {BrowserSurfaceChild[]}
      */
@@ -263,8 +307,11 @@ export default class BrowserSurface {
     // <- derived states above
   }
 
+  /**
+   * @return {BrowserSurfaceChild[]}
+   */
   get browserSurfaceChildren () {
-    return this._browserSubsurfaceChildren.concat(this._browserSurfaceChildren)
+    return this.browserSubsurfaceChildren.concat(this._browserSurfaceChildren)
   }
 
   /**
@@ -312,7 +359,7 @@ export default class BrowserSurface {
   }
 
   /**
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: *, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}newState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}newState
    * @private
    */
   _updateDerivedState (newState) {
@@ -364,7 +411,9 @@ export default class BrowserSurface {
         const childView = browserSurfaceChild.browserSurface.browserSurfaceViews.find(view => {
           return view.parent === parentView
         })
-        newZIndexOffset = browserSurfaceChild.browserSurface._updateZIndex(childView, newZIndex)
+        if (childView) {
+          newZIndexOffset = browserSurfaceChild.browserSurface._updateZIndex(childView, newZIndex)
+        }
       }
     })
     return newZIndex
@@ -381,6 +430,9 @@ export default class BrowserSurface {
   createView () {
     const bufferSize = this.state.bufferContents ? this.state.bufferContents.geo : Size.create(0, 0)
     const browserSurfaceView = BrowserSurfaceView.create(this, bufferSize.w, bufferSize.h)
+    if (this.browserSurfaceViews.length === 0) {
+      browserSurfaceView.primary = true
+    }
     this.browserSurfaceViews.push(browserSurfaceView)
 
     browserSurfaceView.onDestroy().then(() => {
@@ -420,11 +472,12 @@ export default class BrowserSurface {
   }
 
   /**
+   * Returns all newly created child views
    * @param {BrowserSurfaceChild}browserSurfaceChild
    * @return {BrowserSurfaceView[]}
    */
   addSubsurface (browserSurfaceChild) {
-    const childViews = this._addChild(browserSurfaceChild, this._browserSubsurfaceChildren)
+    const childViews = this._addChild(browserSurfaceChild, this.browserSubsurfaceChildren)
     this.pendingBrowserSubsurfaceChildren.push(browserSurfaceChild)
     return childViews
   }
@@ -433,11 +486,12 @@ export default class BrowserSurface {
    * @param {BrowserSurfaceChild}browserSurfaceChild
    */
   removeSubsurface (browserSurfaceChild) {
-    this._removeChild(browserSurfaceChild, this._browserSubsurfaceChildren)
+    this._removeChild(browserSurfaceChild, this.browserSubsurfaceChildren)
     this._removeChild(browserSurfaceChild, this.pendingBrowserSubsurfaceChildren)
   }
 
   /**
+   * Returns all newly created child views
    * @param {BrowserSurfaceChild}browserSurfaceChild
    * @return {BrowserSurfaceView[]}
    */
@@ -664,7 +718,7 @@ export default class BrowserSurface {
    *
    */
   frame (resource, callback) {
-    this._pendingFrameCallbacks.push(BrowserCallback.create(new greenfield.GrCallback(resource.client, callback, 1)))
+    this._pendingFrameCallbacks.push(BrowserCallback.create(new GrCallback(resource.client, callback, 1)))
   }
 
   /**
@@ -793,7 +847,7 @@ export default class BrowserSurface {
     }
 
     const pendingGrBuffer = this.pendingGrBuffer
-    const newState = await this._flushState(pendingGrBuffer)
+    const newState = await this._captureState(pendingGrBuffer)
 
     if (this.role && typeof this.role.onCommit === 'function') {
       const animationFrame = Renderer.createRenderFrame()
@@ -803,30 +857,37 @@ export default class BrowserSurface {
 
   /**
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: *, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}newState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}newState
    */
   render (renderFrame, newState) {
     renderFrame.then((timestamp) => {
-      if (this._browserSubsurfaceChildren.length > 1) {
-        this._browserSubsurfaceChildren = this.pendingBrowserSubsurfaceChildren.slice()
+      if (this.browserSubsurfaceChildren.length > 1) {
+        this.browserSubsurfaceChildren = this.pendingBrowserSubsurfaceChildren.slice()
         this.updateChildViewsZIndexes()
       }
-
-      this.browserSurfaceViews.forEach(browserSurfaceView => {
-        browserSurfaceView.swapBuffers()
-      })
 
       newState.frameCallbacks.forEach((frameCallback) => {
         frameCallback.done(timestamp & 0x7fffffff)
       })
       newState.frameCallbacks = []
       BrowserSurface.mergeState(this.state, newState)
+
+      if (this.role && this.role.setRoleState) {
+        this.role.setRoleState(newState.roleState)
+      }
+
+      const inputRegionChanged = newState.inputRegionChanged
+      this.browserSurfaceViews.forEach(browserSurfaceView => {
+        if (inputRegionChanged) {
+          browserSurfaceView.updateInputRegion()
+        }
+      })
     })
 
     this._updateDerivedState(newState)
 
-    if (this._browserSubsurfaceChildren.length > 1) {
-      this._browserSubsurfaceChildren.forEach((browserSurfaceChild) => {
+    if (this.browserSubsurfaceChildren.length > 1) {
+      this.browserSubsurfaceChildren.forEach((browserSurfaceChild) => {
         const siblingBrowserSurface = browserSurfaceChild.browserSurface
         if (siblingBrowserSurface !== this) {
           const siblingSubsurface = siblingBrowserSurface.role
@@ -841,12 +902,16 @@ export default class BrowserSurface {
     }
 
     this.renderer.renderBackBuffer(this, newState)
+
+    this.browserSurfaceViews.forEach(browserSurfaceView => {
+      browserSurfaceView.swapBuffers(renderFrame)
+    })
   }
 
   /**
    * This will invalidate the source state.
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: *, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}targetState
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: *, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}sourceState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: *, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}targetState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}sourceState
    */
   static mergeState (targetState, sourceState) {
     targetState.dx = sourceState.dx
@@ -885,12 +950,12 @@ export default class BrowserSurface {
   }
 
   /**
-   * @return {Promise<{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: *, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}>}
+   * @return {Promise<{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: number, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}>}
    * @private
    */
-  async _flushState (pendingGrBuffer) {
+  async _captureState (pendingGrBuffer) {
     /**
-     * @type {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: *, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}
+     * @type {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: number, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}
      */
     const newState = {
       /**
@@ -936,7 +1001,11 @@ export default class BrowserSurface {
       /**
        * @type {BrowserCallback[]}
        */
-      frameCallbacks: this._pendingFrameCallbacks
+      frameCallbacks: this._pendingFrameCallbacks,
+      /**
+       * @type {*}
+       */
+      roleState: {}
     }
     this._pendingFrameCallbacks = []
 
@@ -969,6 +1038,10 @@ export default class BrowserSurface {
     BrowserRegion.union(newState.bufferDamage, bufferDamagePixmanRegion, surfaceDamagePixmanRegion)
     BrowserRegion.destroyPixmanRegion(bufferDamagePixmanRegion)
     BrowserRegion.destroyPixmanRegion(surfaceDamagePixmanRegion)
+
+    if (this.role && this.role.captureRoleState) {
+      newState.roleState = this.role.captureRoleState()
+    }
 
     if (pendingGrBuffer) {
       const browserRtcDcBuffer = BrowserRtcBufferFactory.get(pendingGrBuffer)
@@ -1020,7 +1093,7 @@ export default class BrowserSurface {
    *
    */
   setBufferTransform (resource, transform) {
-    if (Object.values(greenfield.GrOutput.Transform).includes(transform)) {
+    if (Object.values(GrOutput.Transform).includes(transform)) {
       this._pendingBufferTransform = transform
     } else {
       // TODO send error to client

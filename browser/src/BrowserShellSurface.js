@@ -1,9 +1,11 @@
 'use strict'
 
 import Point from './math/Point'
-import greenfield from './protocol/greenfield-browser-protocol'
+import { GrShellSurface } from './protocol/greenfield-browser-protocol'
+import Renderer from './render/Renderer'
 
-const Resize = greenfield.GrShellSurface.Resize
+const {bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight} = GrShellSurface.Resize
+const {inactive} = GrShellSurface.Transient
 
 const SurfaceStates = {
   MAXIMIZED: 'maximized',
@@ -13,6 +15,21 @@ const SurfaceStates = {
   TOP_LEVEL: 'top_level'
 }
 
+/**
+ *
+ *            An interface that may be implemented by a gr_surface, for
+ *            implementations that provide a desktop-style user interface.
+ *
+ *            It provides requests to treat surfaces like toplevel, fullscreen
+ *            or popup windows, move, resize or maximize them, associate
+ *            metadata like title and class, etc.
+ *
+ *            On the server side the object is automatically destroyed when
+ *            the related gr_surface is destroyed. On the client side,
+ *            gr_shell_surface_destroy() must be called before destroying
+ *            the gr_surface object.
+ *
+ */
 export default class BrowserShellSurface {
   /**
    * @param {GrShellSurface}grShellSurfaceResource
@@ -83,6 +100,11 @@ export default class BrowserShellSurface {
      * @private
      */
     this._desktopShellEntry = null
+    /**
+     * @type {number}
+     * @private
+     */
+    this._timeoutTimer = 0
   }
 
   /**
@@ -204,22 +226,27 @@ export default class BrowserShellSurface {
     const browserSurfaceChildSelf = browserSurface.browserSurfaceChildSelf
     const origPosition = browserSurfaceChildSelf.position
 
-    if (browserPointer.buttonSerial === serial) {
+    if (browserSeat.serial === serial) {
       const pointerX = browserPointer.x
       const pointerY = browserPointer.y
 
       const moveListener = () => {
-        if (browserPointer.buttonSerial === serial) {
-          const deltaX = browserPointer.x - pointerX
-          const deltaY = browserPointer.y - pointerY
-          browserSurfaceChildSelf.position = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
-          browserSurface.browserSurfaceViews.forEach((view) => {
-            view.applyTransformations()
-          })
-        } else {
-          browserPointer.removeMouseMoveListener(moveListener)
-        }
+        const deltaX = browserPointer.x - pointerX
+        const deltaY = browserPointer.y - pointerY
+
+        // TODO we could try to be smart, and only apply the latest move, depending on how often the render frame fires.
+        browserSurfaceChildSelf.position = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
+
+        const renderFrame = Renderer.createRenderFrame()
+        browserSurface.browserSurfaceViews.forEach((view) => {
+          view.applyTransformations(renderFrame)
+        })
+        renderFrame.fire()
       }
+
+      browserPointer.onButtonRelease().then(() => {
+        browserPointer.removeMouseMoveListener(moveListener)
+      })
       browserPointer.addMouseMoveListener(moveListener)
     }
   }
@@ -248,60 +275,60 @@ export default class BrowserShellSurface {
 
     const browserSeat = seat.implementation
     const browserPointer = browserSeat.browserPointer
-    if (browserPointer.buttonSerial === serial) {
+    if (browserSeat.serial === serial) {
       // assigned in switch statement
       let sizeAdjustment = (width, height, deltaX, deltaY) => {}
 
       switch (edges) {
-        case Resize.bottomRight: {
+        case bottomRight: {
           sizeAdjustment = (width, height, deltaX, deltaY) => {
             return {w: width + deltaX, h: height + deltaY}
           }
           break
         }
-        case Resize.top: {
+        case top: {
           sizeAdjustment = (width, height, deltaX, deltaY) => {
             return {w: width, h: height - deltaY}
           }
           break
         }
-        case Resize.bottom: {
+        case bottom: {
           sizeAdjustment = (width, height, deltaX, deltaY) => {
             return {w: width, h: height + deltaY}
           }
           break
         }
-        case Resize.left: {
+        case left: {
           sizeAdjustment = (width, height, deltaX, deltaY) => {
             return {w: width - deltaX, h: height}
           }
           break
         }
-        case Resize.topLeft: {
+        case topLeft: {
           sizeAdjustment = (width, height, deltaX, deltaY) => {
             return {w: width - deltaX, h: height - deltaY}
           }
           break
         }
-        case Resize.bottomLeft: {
+        case bottomLeft: {
           sizeAdjustment = (width, height, deltaX, deltaY) => {
             return {w: width - deltaX, h: height + deltaY}
           }
           break
         }
-        case Resize.right: {
+        case right: {
           sizeAdjustment = (width, height, deltaX, deltaY) => {
             return {w: width + deltaX, h: height}
           }
           break
         }
-        case Resize.topRight: {
+        case topRight: {
           sizeAdjustment = (width, height, deltaX, deltaY) => {
             return {w: width + deltaX, h: height - deltaY}
           }
           break
         }
-        case Resize.none:
+        case none:
         default: {
           sizeAdjustment = (width, height, deltaX, deltaY) => {
             return {w: width, h: height}
@@ -315,16 +342,15 @@ export default class BrowserShellSurface {
       const {w: surfaceWidth, h: surfaceHeight} = this.grSurfaceResource.implementation.size
 
       const resizeListener = () => {
-        if (browserPointer.buttonSerial === serial) {
-          const deltaX = browserPointer.x - pointerX
-          const deltaY = browserPointer.y - pointerY
+        const deltaX = browserPointer.x - pointerX
+        const deltaY = browserPointer.y - pointerY
 
-          const size = sizeAdjustment(surfaceWidth, surfaceHeight, deltaX, deltaY)
-          this.resource.configure(edges, size.w, size.h)
-        } else {
-          browserPointer.removeMouseMoveListener(resizeListener)
-        }
+        const size = sizeAdjustment(surfaceWidth, surfaceHeight, deltaX, deltaY)
+        this.resource.configure(edges, size.w, size.h)
       }
+      browserPointer.onButtonRelease().then(() => {
+        browserPointer.removeMouseMoveListener(resizeListener)
+      })
       browserPointer.addMouseMoveListener(resizeListener)
     }
   }
@@ -345,10 +371,6 @@ export default class BrowserShellSurface {
     if (this.state === SurfaceStates.POPUP || this.state === SurfaceStates.TRANSIENT) {
       return
     }
-
-    this.grSurfaceResource.implementation.hasKeyboardInput = true
-    this.grSurfaceResource.implementation.hasPointerInput = true
-    this.grSurfaceResource.implementation.hasTouchInput = true
 
     if (!this.state) {
       // first time state is set, so manage this shell surface.
@@ -390,9 +412,7 @@ export default class BrowserShellSurface {
     // FIXME we probably want to provide a method to translate from (abstract) surface space to global space
     browserSurfaceChild.position = Point.create(parentPosition.x + x, parentPosition.y + y)
 
-    this.grSurfaceResource.implementation.hasPointerInput = true
-    this.grSurfaceResource.implementation.hasTouchInput = true
-    this.grSurfaceResource.implementation.hasKeyboardInput = (flags & greenfield.GrShellSurface.Transient.inactive) === 0
+    this.grSurfaceResource.implementation.hasKeyboardInput = (flags & inactive) === 0
 
     if (!this.state) {
       // first time state is set, so manage this shell surface.
@@ -451,7 +471,7 @@ export default class BrowserShellSurface {
     const browserSurface = this.grSurfaceResource.implementation
     // TODO get proper size in surface coordinates instead of assume surface space === global space
     browserSurface.browserSurfaceChildSelf.position = Point.create(0, 0)
-    this.resource.configure(Resize.none, window.innerWidth, window.innerHeight)
+    this.resource.configure(none, window.innerWidth, window.innerHeight)
   }
 
   /**
@@ -493,14 +513,15 @@ export default class BrowserShellSurface {
 
     const browserSeat = seat.implementation
     const browserPointer = browserSeat.browserPointer
-    const browserKeyboard = browserSeat.browserKeyboard
-    if (browserPointer.buttonSerial === serial || browserKeyboard.keySerial === serial) {
+    if (browserSeat.serial === serial) {
       this.state = SurfaceStates.POPUP
       const browserSurface = this.grSurfaceResource.implementation
       const browserSurfaceChild = browserSurface.browserSurfaceChildSelf
       browserSurfaceChild.position = Point.create(x, y)
       const onNewView = (view) => {
-        view.applyTransformations()
+        const renderFrame = Renderer.createRenderFrame()
+        view.applyTransformations(renderFrame)
+        renderFrame.fire()
         view.onDestroy().then(() => {
           view.detach()
         })
@@ -511,9 +532,7 @@ export default class BrowserShellSurface {
       // this handles the case where a view is created later on (ie if a new parent view is created)
       browserSurface.onViewCreated = onNewView
 
-      this.grSurfaceResource.implementation.hasPointerInput = true
-      this.grSurfaceResource.implementation.hasTouchInput = true
-      this.grSurfaceResource.implementation.hasKeyboardInput = (flags & greenfield.GrShellSurface.Transient.inactive) === 0
+      this.grSurfaceResource.implementation.hasKeyboardInput = (flags & inactive) === 0
 
       // handle popup window grab
       await browserPointer.popupGrab(this.grSurfaceResource)
@@ -559,7 +578,7 @@ export default class BrowserShellSurface {
     const {width, height} = this._desktopShell.workspace.getBoundingClientRect()
 
     browserSurface.browserSurfaceChildSelf.position = Point.create(x, y)
-    this.resource.configure(Resize.none, width, height)
+    this.resource.configure(none, width, height)
   }
 
   /**

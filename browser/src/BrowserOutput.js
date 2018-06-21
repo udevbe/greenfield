@@ -1,9 +1,19 @@
 'use strict'
 
-import westfield from 'westfield-runtime-server'
-import greenfield from './protocol/greenfield-browser-protocol'
+import { Global } from 'westfield-runtime-server'
+import { GrOutput } from './protocol/greenfield-browser-protocol'
 
-export default class BrowserOutput extends westfield.Global {
+/**
+ *
+ *            An output describes part of the compositor geometry.  The
+ *            compositor works in the 'compositor coordinate system' and an
+ *            output corresponds to a rectangular area in that space that is
+ *            actually visible.  This typically corresponds to a monitor that
+ *            displays part of the compositor space.  This object is published
+ *            as global during start up, or when a monitor is hotplugged.
+ *
+ */
+export default class BrowserOutput extends Global {
   static create () {
     return new BrowserOutput()
   }
@@ -13,7 +23,7 @@ export default class BrowserOutput extends westfield.Global {
    * @private
    */
   constructor () {
-    super(greenfield.GrOutput.name, 3)
+    super(GrOutput.name, 3)
   }
 
   /**
@@ -22,7 +32,7 @@ export default class BrowserOutput extends westfield.Global {
    * @param {number}version
    */
   bindClient (client, id, version) {
-    const grOutputResource = new greenfield.GrOutput(client, id, version)
+    const grOutputResource = new GrOutput(client, id, version)
     grOutputResource.implementation = this
     this.emitSpecs(grOutputResource)
   }
@@ -44,7 +54,7 @@ export default class BrowserOutput extends westfield.Global {
    * @param {GrOutput}grOutputResource
    */
   _emitMode (grOutputResource) {
-    const flags = greenfield.GrOutput.Mode.current
+    const flags = GrOutput.Mode.current
     const width = Math.ceil(window.innerWidth * window.devicePixelRatio)
     const height = Math.ceil(window.innerHeight * window.devicePixelRatio)
     // the refresh rate is impossible to query without manual measuring, which is error prone.
@@ -63,29 +73,29 @@ export default class BrowserOutput extends westfield.Global {
     // TODO test this on high dpi devices
     const physicalWidth = Math.ceil(window.innerWidth * 0.2646)
     const physicalHeight = Math.ceil(window.innerHeight * 0.2646)
-    const subpixel = greenfield.GrOutput.Subpixel.unknown
+    const subpixel = GrOutput.Subpixel.unknown
     const make = 'Greenfield'
     const model = window.navigator.userAgent
 
     const orientation = window.screen.orientation.type
-    let transform = greenfield.GrOutput.Transform.normal
+    let transform = GrOutput.Transform.normal
 
     // TODO this will probably require some experimentation to get it right
     switch (orientation) {
       case 'portrait-primary': {
-        transform = greenfield.GrOutput.Transform.normal
+        transform = GrOutput.Transform.normal
         break
       }
       case 'portrait-secondary': {
-        transform = greenfield.GrOutput.Transform['180']
+        transform = GrOutput.Transform['180']
         break
       }
       case 'landscape-primary': {
-        transform = greenfield.GrOutput.Transform.normal
+        transform = GrOutput.Transform.normal
         break
       }
       case 'landscape-secondary': {
-        transform = greenfield.GrOutput.Transform['180']
+        transform = GrOutput.Transform['180']
         break
       }
     }

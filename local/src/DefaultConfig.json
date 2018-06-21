@@ -10,7 +10,7 @@
     ]
   },
   "png-encoder": {
-    "max-target-buffer-size": 4096
+    "max-target-buffer-size": 65536
   },
   "desktop-shell": {
     "apps-controller": {

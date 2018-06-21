@@ -4,7 +4,6 @@ const util = require('util')
 const execFile = util.promisify(require('child_process').execFile)
 const url = require('url')
 const fs = require('fs')
-const path = require('path')
 
 const WebSocket = require('ws')
 
@@ -135,7 +134,7 @@ module.exports = class DesktopShellAppsController {
       console.log(stdout)
       console.error(stderr)
     } catch (error) {
-      console.error(error)
+      console.error(error, error.stack)
     }
   }
 
@@ -197,7 +196,7 @@ module.exports = class DesktopShellAppsController {
         try {
           entries = JSON.parse(appsEntriesJSON)
         } catch (error) {
-          console.error(`Failed to JSON parse app entries: ${appsEntriesURL}. ${error.message}`)
+          console.error(`Failed to JSON parse app entries: ${appsEntriesURL}. ${error}`)
         }
       } else {
         // list directory and add each json file as a separate element
@@ -209,13 +208,13 @@ module.exports = class DesktopShellAppsController {
             try {
               entries.push(JSON.parse(appEntryJSON))
             } catch (error) {
-              console.error(`Failed to JSON parse app entry: ${appEntryURL}. ${error.message}`)
+              console.error(`Failed to JSON parse app entry: ${appEntryURL}. ${error}`)
             }
           }
         }))
       }
     } catch (error) {
-      console.error(error.message)
+      console.error(error, error.stack)
     }
 
     return entries

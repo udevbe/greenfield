@@ -7,13 +7,13 @@ body {
 
 #workspace {
     z-index: -65535;
-    background-image: url(/assets/pattern_light.png);
-    background-size: auto;
 }
 
 canvas {
     will-change: transform, contents, display;
     transform-origin: top left;
+    pointer-events: none;
+    position: absolute;
 }
 
 .fadeToHidden {
@@ -25,4 +25,11 @@ canvas {
 .fadeToUnresponsive {
     filter: grayscale(0.9) brightness(0.6) contrast(1.3) blur(1px);
     transition: filter 1000ms ease-in-out;
+}
+
+.inputRegion {
+    transform-origin: top left;
+    position: absolute;
+    display: inline-block;
+    transform: inherit;
 }

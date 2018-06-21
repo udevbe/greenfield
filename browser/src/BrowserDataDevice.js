@@ -1,11 +1,20 @@
 'use strict'
 
 import Point from './math/Point'
-import greenfield from './protocol/greenfield-browser-protocol'
+import { GrDataDeviceManager, parseFixed } from './protocol/greenfield-browser-protocol'
 import BrowserDataOffer from './BrowserDataOffer'
 
-const DndAction = greenfield.GrDataDeviceManager.DndAction
+const DndAction = GrDataDeviceManager.DndAction
 
+/**
+ *
+ *            There is one gr_data_device per seat which can be obtained
+ *            from the global gr_data_device_manager singleton.
+ *
+ *            A gr_data_device provides access to inter-client data transfer
+ *            mechanisms such as copy-and-paste and drag-and-drop.
+ *
+ */
 export default class BrowserDataDevice {
   /**
    * @return {BrowserDataDevice}
@@ -42,7 +51,7 @@ export default class BrowserDataDevice {
      */
     this.dndSourceClient = null
     /**
-     * @type {BrowserSurfaceView}
+     * @type {BrowserSurface}
      * @private
      */
     this._selectionFocus = null
@@ -89,7 +98,7 @@ export default class BrowserDataDevice {
       return
     }
 
-    const surfaceResource = this._selectionFocus.browserSurface.resource
+    const surfaceResource = this._selectionFocus.resource
     const client = surfaceResource.client
 
     const dataDeviceResource = this._dataDeviceForClient(client)
@@ -144,7 +153,7 @@ export default class BrowserDataDevice {
   startDrag (resource, source, origin, icon, serial) {
     const browserPointer = this.browserSeat.browserPointer
 
-    if (browserPointer.buttonSerial !== serial) {
+    if (this.browserSeat.serial !== serial) {
       return
     }
     if (browserPointer.grab.browserSurface.resource !== origin) {
@@ -212,7 +221,7 @@ export default class BrowserDataDevice {
     this.resources.filter((dataDeviceResource) => {
       return dataDeviceResource.client === client
     }).forEach((dataDeviceResource) => {
-      dataDeviceResource.motion(Date.now(), greenfield.parseFixed(surfacePoint.x), greenfield.parseFixed(surfacePoint.y))
+      dataDeviceResource.motion(Date.now(), parseFixed(surfacePoint.x), parseFixed(surfacePoint.y))
     })
   }
 
@@ -237,10 +246,10 @@ export default class BrowserDataDevice {
     const browserPointer = this.browserSeat.browserPointer
     const mousePoint = Point.create(browserPointer.x, browserPointer.y)
     const surfacePoint = browserSurfaceView.toSurfaceSpace(mousePoint)
-    const serial = browserPointer._nextFocusSerial()
+    const serial = this.browserSeat.nextSerial()
 
-    const x = greenfield.parseFixed(surfacePoint.x)
-    const y = greenfield.parseFixed(surfacePoint.y)
+    const x = parseFixed(surfacePoint.x)
+    const y = parseFixed(surfacePoint.y)
 
     const dataDeviceResource = this._dataDeviceForClient(client)
     if (dataDeviceResource === null) {
@@ -377,12 +386,12 @@ export default class BrowserDataDevice {
   }
 
   /**
-   * @param {BrowserSurfaceView}newSelectionFocus
+   * @param {BrowserSurface}newSelectionFocus
    */
   onKeyboardFocusGained (newSelectionFocus) {
     this._selectionFocus = newSelectionFocus
 
-    const surfaceResource = this._selectionFocus.browserSurface.resource
+    const surfaceResource = this._selectionFocus.resource
     const client = surfaceResource.client
 
     const dataDeviceResource = this._dataDeviceForClient(client)

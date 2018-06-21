@@ -1,9 +1,16 @@
 'use strict'
 
-import pixmanModule from './lib/libpixman-1'
+import pixman from './lib/libpixman-1'
+import Rect from './math/Rect'
 
-const pixman = pixmanModule()
-
+/**
+ *
+ *            A region object describes an area.
+ *
+ *            Region objects are used to describe the opaque and input
+ *            regions of a surface.
+ *
+ */
 export default class BrowserRegion {
   /**
    *
@@ -17,6 +24,9 @@ export default class BrowserRegion {
     return browserRegion
   }
 
+  /**
+   * @return {number}
+   */
   static createPixmanRegion () {
     const pixmanRegion = pixman._malloc(20)// region struct is pointer + 4*uint32 = 5*4 = 20
     pixman._pixman_region32_init(pixmanRegion)
@@ -45,17 +55,64 @@ export default class BrowserRegion {
     pixman._pixman_region32_init_rect(pixmanRegion, rect.x0, rect.y0, rect.x1 - rect.x0, rect.y1 - rect.y0)
   }
 
+  /**
+   * @param {number}result
+   * @param {number}left
+   * @param {number}right
+   */
   static union (result, left, right) {
     pixman._pixman_region32_union(result, left, right)
   }
 
+  /**
+   * @param {number}result
+   * @param {number}left
+   * @param {number}right
+   */
+  static intersect (result, left, right) {
+    pixman._pixman_region32_intersect(result, left, right)
+  }
+
+  /**
+   * @param {number}result
+   * @param {number}left
+   * @param {number}x
+   * @param {number}y
+   * @param {number}width
+   * @param {number}height
+   */
   static unionRect (result, left, x, y, width, height) {
     pixman._pixman_region32_union_rect(result, left, x, y, width, height)
   }
 
+  /**
+   * @param {number}pixmanRegion
+   */
   static destroyPixmanRegion (pixmanRegion) {
     pixman._pixman_region32_fini(pixmanRegion)
     pixman._free(pixmanRegion)
+  }
+
+  /**
+   * @param {number}pixmanRegion
+   * @return {Array<Rect>}
+   */
+  static rectangles (pixmanRegion) {
+    const nroRectsPtr = pixman._malloc(4) // uint32
+    const pixmanBoxPtr = pixman._pixman_region32_rectangles(pixmanRegion, nroRectsPtr)
+    const rectangles = []
+    const nroRects = new DataView(pixman.HEAPU8.buffer, nroRectsPtr, 4).getUint32(0, true)
+    const rectangleStructs = new DataView(pixman.HEAPU8.buffer, pixmanBoxPtr, (4 * 4 * nroRects))
+    for (let i = 0; i < nroRects; i++) {
+      const x0 = rectangleStructs.getUint32(i * 16, true)
+      const y0 = rectangleStructs.getUint32((i * 16) + 4, true)
+      const x1 = rectangleStructs.getUint32((i * 16) + 8, true)
+      const y1 = rectangleStructs.getUint32((i * 16) + 12, true)
+      rectangles.push(Rect.create(x0, y0, x1, y1))
+    }
+    pixman._free(nroRectsPtr)
+
+    return rectangles
   }
 
   /**

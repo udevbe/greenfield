@@ -1,4 +1,4 @@
-const rtc = require('./protocol/rtc-client-protocol')
+const {RtcPeerConnectionFactory} = require('./protocol/rtc-client-protocol')
 
 const LocalRtcPeerConnection = require('./LocalRtcPeerConnection')
 
@@ -12,7 +12,7 @@ module.exports = class LocalRtcPeerConnectionFactory {
       const registryProxy = localClient.connection.createRegistry()
 
       registryProxy.listener.global = (name, interface_, version) => {
-        if (interface_ === rtc.RtcPeerConnectionFactory.name) {
+        if (interface_ === RtcPeerConnectionFactory.name) {
           const rtcPeerConnectionFactoryProxy = registryProxy.bind(name, interface_, version)
           const localRtcPeerConnectionFactory = new LocalRtcPeerConnectionFactory(localClient, rtcPeerConnectionFactoryProxy)
           rtcPeerConnectionFactoryProxy.listener = localRtcPeerConnectionFactory

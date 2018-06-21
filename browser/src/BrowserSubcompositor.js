@@ -1,10 +1,33 @@
 'use strict'
 
-import westfield from 'westfield-runtime-server'
-import greenfield from './protocol/greenfield-browser-protocol'
+import { Global } from 'westfield-runtime-server'
+import { GrSubcompositor, GrSubsurface } from './protocol/greenfield-browser-protocol'
 import BrowserSubsurface from './BrowserSubsurface'
 
-export default class BrowserSubcompositor extends westfield.Global {
+/**
+ *
+ *            The global interface exposing sub-surface compositing capabilities.
+ *            A gr_surface, that has sub-surfaces associated, is called the
+ *            parent surface. Sub-surfaces can be arbitrarily nested and create
+ *            a tree of sub-surfaces.
+ *
+ *            The root surface in a tree of sub-surfaces is the main
+ *            surface. The main surface cannot be a sub-surface, because
+ *            sub-surfaces must always have a parent.
+ *
+ *            A main surface with its sub-surfaces forms a (compound) window.
+ *            For window management purposes, this set of gr_surface objects is
+ *            to be considered as a single window, and it should also behave as
+ *            such.
+ *
+ *            The aim of sub-surfaces is to offload some of the compositing work
+ *            within a window from clients to the compositor. A prime example is
+ *            a video player with decorations and video in separate gr_surface
+ *            objects. This should allow the compositor to pass YUV video buffer
+ *            processing to dedicated overlay hardware when possible.
+ *
+ */
+export default class BrowserSubcompositor extends Global {
   /**
    * @return {BrowserSubcompositor}
    */
@@ -13,7 +36,7 @@ export default class BrowserSubcompositor extends westfield.Global {
   }
 
   constructor () {
-    super(greenfield.GrSubcompositor.name, 1)
+    super(GrSubcompositor.name, 1)
   }
 
   /**
@@ -22,7 +45,7 @@ export default class BrowserSubcompositor extends westfield.Global {
    * @param {number}version
    */
   bindClient (client, id, version) {
-    const grSubcompositorResource = new greenfield.GrSubcompositor(client, id, version)
+    const grSubcompositorResource = new GrSubcompositor(client, id, version)
     grSubcompositorResource.implementation = this
   }
 
@@ -51,7 +74,7 @@ export default class BrowserSubcompositor extends westfield.Global {
       // TODO protocol error
     }
 
-    const grSubsurface = new greenfield.GrSubsurface(resource.client, id, resource.version)
+    const grSubsurface = new GrSubsurface(resource.client, id, resource.version)
     BrowserSubsurface.create(parent, surface, grSubsurface)
 
     const parentBrowserSurface = parent.implementation

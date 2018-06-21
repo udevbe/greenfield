@@ -1,9 +1,9 @@
-import westfield from 'westfield-runtime-server'
+import { Global } from 'westfield-runtime-server'
 import rtc from './protocol/rtc-browser-protocol'
 
 import BrowserRtcPeerConnection from './BrowserRtcPeerConnection'
 
-export default class BrowserRtcPeerConnectionFactory extends westfield.Global {
+export default class BrowserRtcPeerConnectionFactory extends Global {
   static create () {
     return new BrowserRtcPeerConnectionFactory()
   }

@@ -2,11 +2,11 @@
 
 export default class DesktopShellEntry {
   /**
-   * @param {BrowserKeyboard}browserKeyboard
    * @param {BrowserSurface}browserSurface
+   * @param {BrowserSeat}browserSeat
    * @return {DesktopShellEntry}
    */
-  static create (browserKeyboard, browserSurface) {
+  static create (browserSurface, browserSeat) {
     // create a mainView and attach it to the scene
     const mainView = browserSurface.createView()
     this.fadeOutViewOnDestroy(mainView)
@@ -21,7 +21,7 @@ export default class DesktopShellEntry {
     divElement.classList.add('entry')
     this.fadeOutEntryOnDestroy(mainView, divElement)
 
-    const desktopShellEntry = new DesktopShellEntry(browserKeyboard, browserSurface, mainView, divElement)
+    const desktopShellEntry = new DesktopShellEntry(browserSurface, mainView, divElement, browserSeat)
 
     divElement.addEventListener('mousedown', () => {
       desktopShellEntry.makeActive()
@@ -30,6 +30,10 @@ export default class DesktopShellEntry {
     return desktopShellEntry
   }
 
+  /**
+   * @param {BrowserSurfaceView}view
+   * @param {HTMLElement}entry
+   */
   static fadeOutEntryOnDestroy (view, entry) {
     view.onDestroy().then(() => {
       entry.addEventListener('transitionend', () => {
@@ -41,6 +45,9 @@ export default class DesktopShellEntry {
     })
   }
 
+  /**
+   * @param {BrowserSurfaceView}view
+   */
   static fadeOutViewOnDestroy (view) {
     // play a nice fade out animation if the view is destroyed
     view.onDestroy().then(() => {
@@ -55,17 +62,13 @@ export default class DesktopShellEntry {
 
   /**
    * Use DesktopShellEntry.create(..) instead.
-   * @param {BrowserKeyboard}browserKeyboard
    * @param {BrowserSurface}browserSurface
    * @param {BrowserSurfaceView}mainView
    * @param {HTMLDivElement}divElement
+   * @param {BrowserSeat}browserSeat
    * @private
    */
-  constructor (browserKeyboard, browserSurface, mainView, divElement) {
-    /**
-     * @type {BrowserKeyboard}
-     */
-    this.browserKeyboard = browserKeyboard
+  constructor (browserSurface, mainView, divElement, browserSeat) {
     /**
      * @type {BrowserSurface}
      */
@@ -78,11 +81,17 @@ export default class DesktopShellEntry {
      * @type {HTMLDivElement}
      */
     this.divElement = divElement
+    /**
+     * @type {BrowserSeat}
+     * @private
+     */
+    this._browserSeat = browserSeat
   }
 
   makeActive () {
+    this.mainView.show()
     this.mainView.raise()
-    this.browserKeyboard.focusGained(this.mainView)
+    this._browserSeat.browserKeyboard.focusGained(this.mainView.browserSurface)
   }
 
   /**
@@ -98,5 +107,9 @@ export default class DesktopShellEntry {
 
   onKeyboardFocusGained () {
     this.divElement.classList.add('entry-focus')
+  }
+
+  hide () {
+    this.mainView.fadeOut()
   }
 }

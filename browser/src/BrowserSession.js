@@ -1,20 +1,20 @@
 'use strict'
 
-import westfield from 'westfield-runtime-server'
+import { Global, Server } from 'westfield-runtime-server'
 import session from './protocol/session-browser-protocol'
 import BrowserClientSession from './BrowserClientSession'
 
 /**
  * Listens for client announcements from the server.
  */
-export default class BrowserSession extends westfield.Global {
+export default class BrowserSession extends Global {
   /**
    * @param {string} sessionId unique random browser compositor session id
    * @returns {Promise<BrowserSession>}
    */
   static async create (sessionId) {
     console.log('Starting new browser session.')
-    const wfsServer = new westfield.Server()
+    const wfsServer = new Server()
     const websocketProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
     const url = `${websocketProtocol}://${window.location.host}/${sessionId}`
     const browserSession = new BrowserSession(url, wfsServer, sessionId)
@@ -121,7 +121,7 @@ export default class BrowserSession extends westfield.Global {
 
         this._clients[sessionId].message(arrayBuffer)
       } catch (error) {
-        console.error(`Session web socket failed to handle incomding message. ${JSON.stringify(event)}\n${event.message}\n${error.stack}`)
+        console.error(`Session web socket failed to handle incoming message. \n${error.stack}`)
         this._ws.close(4007, 'Session web socket received an illegal message')
       }
     })

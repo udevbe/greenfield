@@ -1,10 +1,18 @@
 'use strict'
 
-import greenfield from './protocol/greenfield-browser-protocol'
+import { GrDataDeviceManager } from './protocol/greenfield-browser-protocol'
 
-const DndAction = greenfield.GrDataDeviceManager.DndAction
-const ALL_ACTIONS = (DndAction.copy | DndAction.move | DndAction.ask)
+const {copy, move, ask, none} = GrDataDeviceManager.DndAction
+const ALL_ACTIONS = (copy | move | ask)
 
+/**
+ *
+ *            The gr_data_source object is the source side of a gr_data_offer.
+ *            It is created by the source client in a data transfer and
+ *            provides a way to describe the offered data and a way to respond
+ *            to requests to transfer the data.
+ *
+ */
 export default class BrowserDataSource {
   /**
    * @param {GrDataSource} grDataSource
@@ -27,7 +35,7 @@ export default class BrowserDataSource {
     this.mimeTypes = []
     this.dndActions = 0
     this._actionsSet = false
-    this.currentDndAction = DndAction.none
+    this.currentDndAction = none
     this.accepted = false
     /**
      * @type {GrDataOffer}
@@ -93,7 +101,6 @@ export default class BrowserDataSource {
    *
    */
   setActions (resource, dndActions) {
-
     if (this._actionsSet) {
       // TODO protocol error
       // wl_resource_post_error(source->resource,

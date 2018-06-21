@@ -1,6 +1,6 @@
 'use strict'
 
-const westfield = require('westfield-runtime-client')
+const {Connection} = require('westfield-runtime-client')
 
 const LocalClient = require('./LocalClient')
 
@@ -24,7 +24,7 @@ module.exports = class LocalClientSession {
    *
    */
   session (sessionId) {
-    const wfcConnection = new westfield.Connection()
+    const wfcConnection = new Connection()
     this._localSession._setupWfcConnection(wfcConnection, sessionId)
 
     const localClient = LocalClient.create(wfcConnection, this._wlClient)

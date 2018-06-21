@@ -137,33 +137,30 @@ export default class BrowserRtcDcBuffer {
    * @private
    */
   async _ensureH264Decoders (hasAlpha) {
-    if (this._decoderFactory) {
-      await this._decoderFactory
-    } else {
+    if (!this._decoderFactory) {
       this._decoderFactory = BrowserH264Decoder.create()
-      const decoder = await this._decoderFactory
-      decoder.onPicture = (buffer, width, height) => {
-        this._onPictureDecoded(buffer, width, height)
-      }
-      this._decoder = decoder
     }
+    const decoder = await this._decoderFactory
+    decoder.onPicture = (buffer, width, height) => {
+      this._onPictureDecoded(buffer, width, height)
+    }
+    this._decoder = decoder
 
     if (hasAlpha) {
-      if (this._alphaDecoderFactory) {
-        await this._alphaDecoderFactory
-      } else {
+      if (!this._alphaDecoderFactory) {
         this._alphaDecoderFactory = BrowserH264Decoder.create()
-        const alphaDecoder = await this._alphaDecoderFactory
-        alphaDecoder.onPicture = (buffer, width, height) => {
-          this._onAlphaPictureDecoded(buffer, width, height)
-        }
-        this._alphaDecoder = alphaDecoder
       }
+      const alphaDecoder = await this._alphaDecoderFactory
+      alphaDecoder.onPicture = (buffer, width, height) => {
+        this._onAlphaPictureDecoded(buffer, width, height)
+      }
+      this._alphaDecoder = alphaDecoder
     }
 
     if (!hasAlpha && this._alphaDecoder) {
       this._alphaDecoder.terminate()
       this._alphaDecoder = null
+      this._alphaDecoderFactory = null
     }
   }
 
@@ -463,10 +460,12 @@ export default class BrowserRtcDcBuffer {
     if (this._decoder) {
       this._decoder.terminate()
       this._decoder = null
+      this._decoderFactory = null
     }
     if (this._alphaDecoder) {
       this._alphaDecoder.terminate()
       this._alphaDecoder = null
+      this._alphaDecoderFactory = null
     }
     this._decodingSerialsQueue = []
     this._decodingAlphaSerialsQueue = []

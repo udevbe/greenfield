@@ -911,8 +911,14 @@ let Module = function (Module) {
   const _pixman_region32_init = Module['_pixman_region32_init'] = function () {
     return Module['asm']['_pixman_region32_init'].apply(null, arguments)
   }
+  const _pixman_region32_intersect = Module['_pixman_region32_intersect'] = function () {
+    return Module['asm']['_pixman_region32_intersect'].apply(null, arguments)
+  }
   const _pixman_region32_init_rect = Module['_pixman_region32_init_rect'] = function () {
     return Module['asm']['_pixman_region32_init_rect'].apply(null, arguments)
+  }
+  const _pixman_region32_rectangles = Module['_pixman_region32_rectangles'] = function () {
+    return Module['asm']['_pixman_region32_rectangles'].apply(null, arguments)
   }
   const _pixman_region32_subtract = Module['_pixman_region32_subtract'] = function () {
     return Module['asm']['_pixman_region32_subtract'].apply(null, arguments)
@@ -1032,5 +1038,4 @@ let Module = function (Module) {
 
   return Module
 }
-//if (typeof exports === 'object' && typeof module === 'object') { module.exports = Module } else if (typeof define === 'function' && define['amd']) { define([], function () { return Module }) } else if (typeof exports === 'object') { exports['Module'] = Module }
-export default Module
+export default Module()

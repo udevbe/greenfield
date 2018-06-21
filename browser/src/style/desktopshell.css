@@ -6,6 +6,8 @@ body {
 #workspace {
     flex-grow: 1;
     display: inline;
+    background-image: url(/assets/pattern_light.png);
+    background-size: auto;
 }
 
 .hpanel {
@@ -36,7 +38,7 @@ body {
     background: rgb(150, 150, 150);
 
     font-family: sans-serif;
-    font-size: small;
+    font-size: medium;
     text-align: left;
     padding-left: 1vh;
     white-space: nowrap;

@@ -1,8 +1,11 @@
 'use strict'
-/** @module  BrowserRtcBlobTransfer */
 
 /**
- * @class
+ *
+ *            Clients and compositor can send out-of-band data using a blob transfer object. Data is
+ *            effectively transferred asynchronous using an implementation specific mechanism. A blob transfer object
+ *            acts as a hook into an implementation specific mechanism to send and get the actual blob data.
+ *
  */
 export default class BrowserRtcBlobTransfer {
   /**

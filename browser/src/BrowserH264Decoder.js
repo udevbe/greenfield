@@ -3,9 +3,9 @@
 export default class BrowserH264Decoder {
   static create () {
     return new Promise((resolve) => {
-      const h264BsdWorker = new window.Worker('TinyH264Worker.js')
-      const browserH264Decoder = new BrowserH264Decoder(h264BsdWorker)
-      h264BsdWorker.addEventListener('message', (e) => {
+      const tinyH264Worker = new window.Worker('TinyH264Worker.js')
+      const browserH264Decoder = new BrowserH264Decoder(tinyH264Worker)
+      tinyH264Worker.addEventListener('message', (e) => {
         const message = e.data
         switch (message.type) {
           case 'pictureReady':

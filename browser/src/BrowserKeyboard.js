@@ -1,34 +1,41 @@
 'use strict'
 
-import greenfield from './protocol/greenfield-browser-protocol'
+import { GrKeyboard } from './protocol/greenfield-browser-protocol'
 
 import BrowserXkb from './BrowserXkb'
 import BrowserRtcBlobTransfer from './BrowserRtcBlobTransfer'
 
+const {pressed, released} = GrKeyboard.KeyState
+const {xkbV1} = GrKeyboard.KeymapFormat
+
+/**
+ *
+ *            The gr_keyboard interface represents one or more keyboards
+ *            associated with a seat.
+ *
+ */
 export default class BrowserKeyboard {
   /**
    * @param {BrowserSession}browserSession
    * @param {BrowserDataDevice} browserDataDevice
-   * @param {DesktopShell} desktopShell
    * @return {BrowserKeyboard}
    */
-  static create (browserSession, browserDataDevice, desktopShell) {
-    const browserKeyboard = new BrowserKeyboard(browserDataDevice, desktopShell)
-    desktopShell.browserKeyboard = browserKeyboard
+  static create (browserSession, browserDataDevice) {
+    const browserKeyboard = new BrowserKeyboard(browserDataDevice)
     // TODO get the keymap from some config source
     browserKeyboard.updateKeymap('qwerty.xkb')
 
     document.addEventListener('keyup', browserSession.eventSource((event) => {
-      if (!event.target.classList.contains('enable-default')) {
+      if (browserKeyboard._handleKey(event, false)) {
         event.preventDefault()
+        event.stopPropagation()
       }
-      browserKeyboard.onKey(event, false)
     }))
     document.addEventListener('keydown', browserSession.eventSource((event) => {
-      if (!event.target.classList.contains('enable-default')) {
+      if (browserKeyboard._handleKey(event, true)) {
         event.preventDefault()
+        event.stopPropagation()
       }
-      browserKeyboard.onKey(event, true)
     }))
 
     return browserKeyboard
@@ -38,21 +45,15 @@ export default class BrowserKeyboard {
    * Use BrowserKeyboard.create(..) instead.
    * @private
    * @param {BrowserDataDevice} browserDataDevice
-   * @param {DesktopShell} desktopShell
    */
-  constructor (browserDataDevice, desktopShell) {
+  constructor (browserDataDevice) {
     /**
      * @type {BrowserDataDevice}
      * @private
      */
     this._browserDataDevice = browserDataDevice
     /**
-     * @type {DesktopShell}
-     * @private
-     */
-    this._desktopShell = desktopShell
-    /**
-     * @type {Array}
+     * @type {Array<GrKeyboard>}
      */
     this.resources = []
     /**
@@ -61,26 +62,66 @@ export default class BrowserKeyboard {
      */
     this._browserXkb = null
     /**
-     * @type {number}
+     * @type {BrowserSurface|null}
      */
-    this.keySerial = 0
-    /**
-     * @type {BrowserSurfaceView}
-     */
-    this.focus = null
+    this._focus = null
     /**
      * @type {Array<number>}
      * @private
      */
     this._keys = []
+    /**
+     * @type {Array<function():void>}
+     * @private
+     */
+    this._keyboardFocusListeners = []
+    /**
+     * @type {function():void|null}
+     * @private
+     */
+    this._keyboardFocusResolve = null
+    /**
+     * @type {Promise}
+     * @private
+     */
+    this._keyboardFocusPromise = null
+    /**
+     * @type {BrowserSeat}
+     */
+    this.browserSeat = null
   }
 
   /**
-   * @return {number}
-   * @private
+   * @param {function():void}listener
    */
-  _nextSerial () {
-    return ++this.keySerial
+  addKeyboardFocusListener (listener) {
+    this._keyboardFocusListeners.push(listener)
+  }
+
+  /**
+   * @param {function():void}listener
+   */
+  removeKeyboardFocusListener (listener) {
+    const idx = this._keyboardFocusListeners.indexOf(listener)
+    if (idx > 0) {
+      this._keyboardFocusListeners.splice(idx, 1)
+    }
+  }
+
+  /**
+   * @return {Promise}
+   */
+  onKeyboardFocusChanged () {
+    if (!this._keyboardFocusPromise) {
+      this._keyboardFocusPromise = new Promise((resolve) => {
+        this._keyboardFocusResolve = resolve
+      }).then(() => {
+        this._keyboardFocusPromise = null
+        this._keyboardFocusResolve = null
+      })
+    }
+
+    return this._keyboardFocusPromise
   }
 
   /**
@@ -121,7 +162,7 @@ export default class BrowserKeyboard {
     const keymapBuffer = textEncoder.encode(keymapString)
     const keymapBufferLength = keymapBuffer.buffer.byteLength
     const blobDescriptor = BrowserRtcBlobTransfer.createDescriptor(true, 'arraybuffer')
-    resource.keymap(greenfield.GrKeyboard.KeymapFormat.xkbV1, blobDescriptor, keymapBufferLength)
+    resource.keymap(xkbV1, blobDescriptor, keymapBufferLength)
 
     // cleanup of the blob transfer is initiated at the other end.
     const browserRtcBlobTransfer = await BrowserRtcBlobTransfer.get(blobDescriptor)
@@ -142,47 +183,51 @@ export default class BrowserKeyboard {
   }
 
   /**
-   * @param {BrowserSurfaceView}focus
+   * @param {BrowserSurface}focus
    */
   focusGained (focus) {
-    if (!focus.browserSurface.hasKeyboardInput || this.focus === focus) {
+    if (!focus.hasKeyboardInput || this.focus === focus) {
       return
     }
     if (this.focus) {
       this.focusLost()
     }
 
-    if (focus && focus.browserSurface) {
-      focus.raise()
+    if (focus) {
       this.focus = focus
       this._browserDataDevice.onKeyboardFocusGained(focus)
-      this._desktopShell.onKeyboardFocusGained(focus)
 
-      focus.onDestroy().then(() => {
+      focus.resource.onDestroy().then(() => {
         if (this.focus === focus) {
           this.focus = null
         }
       })
 
-      const serial = this._nextSerial()
-      const surface = this.focus.browserSurface.resource
+      const serial = this.browserSeat.nextSerial()
+      const surface = this.focus.resource
       const keys = new Uint8Array(this._keys).buffer
 
       this.resources.filter((resource) => {
-        return resource.client === this.focus.browserSurface.resource.client
+        return resource.client === this.focus.resource.client
       }).forEach((resource) => {
         resource.enter(serial, surface, keys)
+      })
+      if (this._keyboardFocusResolve) {
+        this._keyboardFocusResolve()
+      }
+      this._keyboardFocusListeners.forEach((listener) => {
+        listener()
       })
     }
   }
 
   focusLost () {
-    if (this.focus && this.focus.browserSurface) {
-      const serial = this._nextSerial()
-      const surface = this.focus.browserSurface.resource
+    if (this.focus) {
+      const serial = this.browserSeat.nextSerial()
+      const surface = this.focus.resource
 
       this.resources.filter((resource) => {
-        return resource.client === this.focus.browserSurface.resource.client
+        return resource.client === this.focus.resource.client
       }).forEach((resource) => {
         resource.leave(serial, surface)
       })
@@ -191,17 +236,33 @@ export default class BrowserKeyboard {
     }
   }
 
+  set focus (browserSurface) {
+    this._focus = browserSurface
+    if (this._keyboardFocusResolve) {
+      this._keyboardFocusResolve()
+    }
+    this._keyboardFocusListeners.forEach((listener) => {
+      listener()
+    })
+  }
+
+  get focus () {
+    return this._focus
+  }
+
   /**
    *
    * @param {KeyboardEvent}event
    * @param {boolean}down
+   * @return {boolean}
    */
-  onKey (event, down) {
+  _handleKey (event, down) {
+    let consumed = false
     const keyCode = event.code
     const linuxKeyCode = BrowserXkb.linuxKeycode[keyCode]
     if (down && this._keys.includes(linuxKeyCode)) {
       // prevent key repeat from browser
-      return
+      return false
     }
 
     const modsUpdate = down ? this._browserXkb.keyDown(linuxKeyCode) : this._browserXkb.keyUp(linuxKeyCode)
@@ -214,11 +275,12 @@ export default class BrowserKeyboard {
       }
     }
 
-    if (this.focus && this.focus.browserSurface) {
-      const serial = this._nextSerial()
+    if (this.focus) {
+      consumed = true
+      const serial = this.browserSeat.nextSerial()
       const time = event.timeStamp
       const evdevKeyCode = linuxKeyCode - 8
-      const state = down ? greenfield.GrKeyboard.KeyState.pressed : greenfield.GrKeyboard.KeyState.released
+      const state = down ? pressed : released
 
       const modsDepressed = this._browserXkb.modsDepressed
       const modsLatched = this._browserXkb.modsLatched
@@ -226,7 +288,7 @@ export default class BrowserKeyboard {
       const group = this._browserXkb.group
 
       this.resources.filter((resource) => {
-        return resource.client === this.focus.browserSurface.resource.client
+        return resource.client === this.focus.resource.client
       }).forEach((resource) => {
         resource.key(serial, time, evdevKeyCode, state)
         if (modsUpdate) {
@@ -234,6 +296,8 @@ export default class BrowserKeyboard {
         }
       })
     }
+
+    return consumed
   }
 
   /**

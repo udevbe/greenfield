@@ -129,3 +129,5 @@ idea/vcs.xml
 /local/dist/
 /dist/
 /dist.tar.gz
+/local/src/protocol/xdgshell/
+/browser/src/protocol/xdg-shell-browser-protocol.js

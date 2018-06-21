@@ -27,6 +27,10 @@ module.exports = class LocalSurface {
    *
    */
   leave (output) {
+    if (output == null) {
+      // object argument was destroyed by the client before the server noticed.
+      return
+    }
     const outputResource = output.listener.resource
     this.resource.leave(outputResource)
   }

@@ -1,7 +1,6 @@
 'use strict'
 
 import Point from './math/Point'
-import Mat4 from './math/Mat4'
 
 export default class BrowserSurfaceChild {
   /**

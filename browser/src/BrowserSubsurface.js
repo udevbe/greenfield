@@ -4,6 +4,59 @@ import Point from './math/Point'
 import Renderer from './render/Renderer'
 import BrowserSurface from './BrowserSurface'
 
+/**
+ *
+ *            An additional interface to a gr_surface object, which has been
+ *            made a sub-surface. A sub-surface has one parent surface. A
+ *            sub-surface's size and position are not limited to that of the parent.
+ *            Particularly, a sub-surface is not automatically clipped to its
+ *            parent's area.
+ *
+ *            A sub-surface becomes mapped, when a non-NULL gr_buffer is applied
+ *            and the parent surface is mapped. The order of which one happens
+ *            first is irrelevant. A sub-surface is hidden if the parent becomes
+ *            hidden, or if a NULL gr_buffer is applied. These rules apply
+ *            recursively through the tree of surfaces.
+ *
+ *            The behaviour of a gr_surface.commit request on a sub-surface
+ *            depends on the sub-surface's mode. The possible modes are
+ *            synchronized and desynchronized, see methods
+ *            gr_subsurface.set_sync and gr_subsurface.set_desync. Synchronized
+ *            mode caches the gr_surface state to be applied when the parent's
+ *            state gets applied, and desynchronized mode applies the pending
+ *            gr_surface state directly. A sub-surface is initially in the
+ *            synchronized mode.
+ *
+ *            Sub-surfaces have also other kind of state, which is managed by
+ *            gr_subsurface requests, as opposed to gr_surface requests. This
+ *            state includes the sub-surface position relative to the parent
+ *            surface (gr_subsurface.set_position), and the stacking order of
+ *            the parent and its sub-surfaces (gr_subsurface.place_above and
+ *            .place_below). This state is applied when the parent surface's
+ *            gr_surface state is applied, regardless of the sub-surface's mode.
+ *            As the exception, set_sync and set_desync are effective immediately.
+ *
+ *            The main surface can be thought to be always in desynchronized mode,
+ *            since it does not have a parent in the sub-surfaces sense.
+ *
+ *            Even if a sub-surface is in desynchronized mode, it will behave as
+ *            in synchronized mode, if its parent surface behaves as in
+ *            synchronized mode. This rule is applied recursively throughout the
+ *            tree of surfaces. This means, that one can set a sub-surface into
+ *            synchronized mode, and then assume that all its child and grand-child
+ *            sub-surfaces are synchronized, too, without explicitly setting them.
+ *
+ *            If the gr_surface associated with the gr_subsurface is destroyed, the
+ *            gr_subsurface object becomes inert. Note, that destroying either object
+ *            takes effect immediately. If you need to synchronize the removal
+ *            of a sub-surface to the parent surface update, unmap the sub-surface
+ *            first by attaching a NULL gr_buffer, update parent, and then destroy
+ *            the sub-surface.
+ *
+ *            If the parent gr_surface object is destroyed, the sub-surface is
+ *            unmapped.
+ *
+ */
 export default class BrowserSubsurface {
   /**
    * @param {GrSurface}parentGrSurfaceResource

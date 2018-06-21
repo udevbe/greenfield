@@ -1,6 +1,6 @@
 'use strict'
 
-const rtc = require('./protocol/rtc-client-protocol')
+const {RtcBufferFactory} = require('./protocol/rtc-client-protocol')
 const LocalRtcDcBuffer = require('./LocalRtcDcBuffer')
 
 module.exports = class LocalRtcBufferFactory {
@@ -16,7 +16,7 @@ module.exports = class LocalRtcBufferFactory {
 
       // FIXME listen for global removal
       registryProxy.listener.global = (name, interface_, version) => {
-        if (interface_ === rtc.RtcBufferFactory.name) {
+        if (interface_ === RtcBufferFactory.name) {
           const rtcBufferFactoryProxy = registryProxy.bind(name, interface_, version)
           const localRtcBufferFactory = new LocalRtcBufferFactory(localClient, localRtcPeerConnection)
           rtcBufferFactoryProxy.listener = localRtcBufferFactory

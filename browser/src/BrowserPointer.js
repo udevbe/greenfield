@@ -1,7 +1,11 @@
 'use strict'
 
-import greenfield from './protocol/greenfield-browser-protocol'
+import { parseFixed, GrPointer } from './protocol/greenfield-browser-protocol'
 import Point from './math/Point'
+
+const {pressed, released} = GrPointer.ButtonState
+const {horizontalScroll, verticalScroll} = GrPointer.Axis
+const {wheel} = GrPointer.AxisSource
 
 // translates between browser button codes & kernel code as expected by wayland protocol
 const linuxInput = {
@@ -17,6 +21,18 @@ const linuxInput = {
   4: 0x115
 }
 
+/**
+ *
+ *            The gr_pointer interface represents one or more input devices,
+ *            such as mice, which control the pointer location and pointer_focus
+ *            of a seat.
+ *
+ *            The gr_pointer interface generates motion, enter and leave
+ *            events for the surfaces that the pointer is located over,
+ *            and button and axis events for button presses, button releases
+ *            and scrolling.
+ *
+ */
 export default class BrowserPointer {
   /**
    * @param {BrowserSession} browserSession
@@ -27,26 +43,28 @@ export default class BrowserPointer {
   static create (browserSession, browserDataDevice, browserKeyboard) {
     const browserPointer = new BrowserPointer(browserDataDevice, browserKeyboard)
     document.addEventListener('mousemove', browserSession.eventSource((event) => {
-      event.preventDefault()
-      browserPointer.onMouseMove(event)
+      if (browserPointer._handleMouseMove(event)) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
     }))
     document.addEventListener('mouseup', browserSession.eventSource((event) => {
-      if (event.target.classList && !event.target.classList.contains('enable-default')) {
+      if (browserPointer._handleMouseUp(event)) {
         event.preventDefault()
+        event.stopPropagation()
       }
-      browserPointer.onMouseUp(event)
     }))
     document.addEventListener('mousedown', browserSession.eventSource((event) => {
-      if (event.target.classList && !event.target.classList.contains('enable-default')) {
+      if (browserPointer._handleMouseDown(event)) {
         event.preventDefault()
+        event.stopPropagation()
       }
-      browserPointer.onMouseDown(event)
     }))
     document.addEventListener('wheel', browserSession.eventSource((event) => {
-      if (event.target.classList && !event.target.classList.contains('enable-default')) {
+      if (browserPointer._handleWheel(event)) {
         event.preventDefault()
+        event.stopPropagation()
       }
-      browserPointer.onWheel(event)
     }))
     // other mouse events are set in the browser surface view class
     return browserPointer
@@ -69,30 +87,24 @@ export default class BrowserPointer {
      * @private
      */
     this._browserKeyboard = browserKeyboard
+    /**
+     * @type {GrPointer[]}
+     */
     this.resources = []
     /**
-     * @type {BrowserSurfaceView}
+     * @type {BrowserSurfaceView|null}
      */
     this.focus = null
     /**
-     * @type {BrowserSurfaceView}
+     * Currently active surface grab (if any)
+     * @type {BrowserSurfaceView|null}
      */
     this.grab = null
     /**
-     * @type {GrSurface}
+     * @type {{popup: GrSurface, resolve: Function, promise: Promise}[]}
      * @private
      */
-    this._popup = null
-    /**
-     * @type {Function}
-     * @private
-     */
-    this._popupGrabEndResolve = null
-    /**
-     * @type {Promise}
-     * @private
-     */
-    this._popupGrabEndPromise = null
+    this._popupStack = []
     /**
      * @type {number}
      */
@@ -121,14 +133,6 @@ export default class BrowserPointer {
     }
     this._btnDwnCount = 0
     /**
-     * @type {number}
-     */
-    this.buttonSerial = 0
-    /**
-     * @type {number}
-     */
-    this.focusSerial = 0
-    /**
      * @type {Function[]}
      * @private
      */
@@ -141,6 +145,54 @@ export default class BrowserPointer {
      * @type {number}
      */
     this.hotspotY = 0
+    /**
+     * @type {Promise}
+     * @private
+     */
+    this._buttonPressPromise = null
+    /**
+     * @type {function(MouseEvent):void}
+     * @private
+     */
+    this._buttonPressResolve = null
+    /**
+     * @type {Promise}
+     * @private
+     */
+    this._buttonReleasePromise = null
+    /**
+     * @type {function(MouseEvent):void}
+     * @private
+     */
+    this._buttonReleaseResolve = null
+    /**
+     * @type {BrowserSeat}
+     */
+    this.browserSeat = null
+  }
+
+  onButtonPress () {
+    if (!this._buttonPressPromise) {
+      this._buttonPressPromise = new Promise((resolve) => {
+        this._buttonPressResolve = resolve
+      }).then(() => {
+        this._buttonPressPromise = null
+        this._buttonPressResolve = null
+      })
+    }
+    return this._buttonPressPromise
+  }
+
+  onButtonRelease () {
+    if (!this._buttonReleasePromise) {
+      this._buttonReleasePromise = new Promise((resolve) => {
+        this._buttonReleaseResolve = resolve
+      }).then(() => {
+        this._buttonReleasePromise = null
+        this._buttonReleaseResolve = null
+      })
+    }
+    return this._buttonReleasePromise
   }
 
   /**
@@ -215,7 +267,7 @@ export default class BrowserPointer {
     if (this._browserDataDevice.dndSourceClient) {
       return
     }
-    if (serial !== this.focusSerial) {
+    if (serial !== this.browserSeat.serial) {
       return
     }
     this.setCursorInternal(surface, hotspotX, hotspotY)
@@ -226,31 +278,80 @@ export default class BrowserPointer {
    * @return {Promise}
    */
   popupGrab (popup) {
-    // release any previous active popup grab
-    if (!this._popupGrabEndPromise) {
-      this._popupGrabEndPromise = new Promise((resolve) => {
-        this._popup = popup
-        this._popupGrabEndResolve = resolve
-
-        popup.onDestroy().then(() => {
-          if (this._popup === popup) {
-            this._popupGrabEndResolve()
-          }
-        })
-      }).then(() => {
-        this._popup = null
-        this._popupGrabEndResolve = null
-        this._popupGrabEndPromise = null
-        const focus = this.calculateFocus()
-        if (focus) {
-          this.setFocus(focus)
-        } else {
-          this.unsetFocus()
-        }
-      })
+    // check if there already is an existing grab
+    let popupGrab = this.findPopupGrab(popup)
+    if (this.findPopupGrab(popup)) {
+      // TODO return null instead? (grabbing something already grabbed is smelly)
+      return popupGrab.promise
     }
 
-    return this._popupGrabEndPromise
+    let popupGrabEndResolve = null
+    let popupGrabEndPromise = new Promise((resolve) => {
+      popup.onDestroy().then(() => {
+        resolve()
+      })
+      popupGrabEndResolve = resolve
+    })
+
+    popupGrab = {
+      popup: popup,
+      resolve: popupGrabEndResolve,
+      promise: popupGrabEndPromise
+    }
+    this._popupStack.push(popupGrab)
+
+    popupGrabEndPromise.then(() => {
+      const popupGrabIdx = this._popupStack.indexOf(popupGrab)
+      if (popupGrabIdx > -1) {
+        const nestedPopupGrabs = this._popupStack.slice(popupGrabIdx)
+        // all nested popup grabs above the resolved popup grab also need to be removed
+        this._popupStack.splice(popupGrabIdx)
+        // nested array includes the already closed popup, shift will remove it from the array
+        nestedPopupGrabs.shift()
+        nestedPopupGrabs.reverse().forEach((nestedPopupGrab) => {
+          nestedPopupGrab.resolve()
+        })
+
+        if (this._popupStack.length) {
+          const nextPopupGrab = this._popupStack[this._popupStack.length - 1]
+          this._updatePopupKeyboardFocus(nextPopupGrab.popup, nextPopupGrab.resolve)
+        }
+      }
+    })
+
+    this._updatePopupKeyboardFocus(popup, popupGrabEndResolve)
+    // clear any pointer button press grab
+    this.grab = null
+    this._btnDwnCount = 0
+
+    return popupGrabEndPromise
+  }
+
+  /**
+   * @param {GrSurface}popup
+   * @param {function():void}popupGrabEndResolve
+   * @private
+   */
+  _updatePopupKeyboardFocus (popup, popupGrabEndResolve) {
+    this._browserKeyboard.focusGained(popup.implementation)
+    // if the keyboard or focus changes to a different client, we have to dismiss the popup
+    this._browserKeyboard.onKeyboardFocusChanged().then(() => {
+      if (!this._browserKeyboard.focus || this._browserKeyboard.focus.resource.client !== popup.client) {
+        popupGrabEndResolve()
+      }
+    })
+  }
+
+  /**
+   * @param {GrSurface}popup
+   * @return {{popup: GrSurface, resolve: Function, promise: Promise} | null}
+   */
+  findPopupGrab (popup) {
+    const popupGrab = this._popupStack.find((popupGrab) => {
+      return popupGrab.popup === popup
+    })
+    // do the OR, else we're returning 'undefined'
+    return popupGrab || null
   }
 
   /**
@@ -346,17 +447,40 @@ export default class BrowserPointer {
   /**
    * @param {MouseEvent}event
    */
-  onMouseMove (event) {
+  _focusFromEvent (event) {
+    const focusCandidate = event.target
+
+    if (focusCandidate.view &&
+      !focusCandidate.view.destroyed &&
+      focusCandidate.view.browserSurface &&
+      focusCandidate.view.browserSurface.hasPointerInput) {
+      return focusCandidate.view
+    }
+
+    return null
+  }
+
+  /**
+   * @param {MouseEvent}event
+   * @return {boolean}
+   * @private
+   */
+  _handleMouseMove (event) {
+    let consumed = false
     this.x = event.clientX < 0 ? 0 : event.clientX
     this.y = event.clientY < 0 ? 0 : event.clientY
-    let currentFocus = this.calculateFocus()
-    if (this._popup && currentFocus && currentFocus.browserSurface.resource.client !== this._popup.client) {
+
+    let currentFocus = this._focusFromEvent(event)
+
+    const nroPopups = this._popupStack.length
+    if (nroPopups && currentFocus &&
+      currentFocus.browserSurface.resource.client !== this._popupStack[nroPopups - 1].popup.client) {
       currentFocus = null
     }
 
     if (this._browserDataDevice.dndSourceClient) {
       this._browserDataDevice.onMouseMotion(currentFocus)
-      return
+      return true
     }
 
     // if we don't have a grab, update the focus
@@ -374,15 +498,18 @@ export default class BrowserPointer {
     this._mouseMoveListeners.forEach(listener => listener(this.focus))
 
     if (this.focus && this.focus.browserSurface) {
+      consumed = true
       const surfacePoint = this._calculateSurfacePoint(this.focus)
       const surfaceResource = this.focus.browserSurface.resource
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
-        pointerResource.motion(event.timeStamp, greenfield.parseFixed(surfacePoint.x), greenfield.parseFixed(surfacePoint.y))
+        pointerResource.motion(event.timeStamp, parseFixed(surfacePoint.x), parseFixed(surfacePoint.y))
         if (pointerResource.version >= 5) {
           pointerResource.frame()
         }
       })
     }
+
+    return consumed
   }
 
   /**
@@ -400,57 +527,87 @@ export default class BrowserPointer {
 
   /**
    * @param {MouseEvent}event
+   * @return {boolean}
+   * @private
    */
-  onMouseUp (event) {
+  _handleMouseUp (event) {
+    let consumed = false
     if (this._browserDataDevice.dndSourceClient) {
       this._browserDataDevice.onMouseUp()
-      return
+      return true
     }
 
-    if (this.focus && this.focus.browserSurface && this.grab) {
-      this._btnDwnCount--
-      if (this._btnDwnCount === 0) {
-        this.grab = null
+    const nroPopups = this._popupStack.length
+
+    if (this.focus && this.focus.browserSurface) {
+      consumed = true
+
+      if (this.grab || nroPopups) {
+        const surfaceResource = this.focus.browserSurface.resource
+        this._doPointerEventFor(surfaceResource, (pointerResource) => {
+          pointerResource.button(this.browserSeat.nextSerial(), event.timeStamp, linuxInput[event.button], released)
+          if (pointerResource.version >= 5) {
+            pointerResource.frame()
+          }
+        })
       }
 
-      const surfaceResource = this.focus.browserSurface.resource
-      this._doPointerEventFor(surfaceResource, (pointerResource) => {
-        pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.released)
-        if (pointerResource.version >= 5) {
-          pointerResource.frame()
+      if (this.grab) {
+        this._btnDwnCount--
+        if (this._btnDwnCount === 0) {
+          this.grab = null
         }
-      })
+      }
+    } else if (nroPopups) {
+      const focus = this._focusFromEvent(event)
+      // popup grab ends when user has clicked on another client's surface
+      const popupGrab = this._popupStack[nroPopups - 1]
+      if (!focus || (popupGrab.popup.implementation.state.bufferContents && focus.browserSurface.resource.client !== popupGrab.popup.client)) {
+        popupGrab.resolve()
+      }
     }
+
+    if (this._buttonReleaseResolve) {
+      this._buttonReleaseResolve(event)
+    }
+
+    return consumed
   }
 
   /**
    * @param {MouseEvent}event
+   * @return {boolean}
+   * @private
    */
-  onMouseDown (event) {
-    if (this._popupGrabEndResolve) {
-      const focus = this.calculateFocus()
-      // popup grab ends when user clicks on another client's surface
-      if (focus && focus.browserSurface.resource.client !== this._popup.client) {
-        this._popupGrabEndResolve()
-        this._popupGrabEndResolve = null
-      }
-    }
+  _handleMouseDown (event) {
+    let consumed = this._handleMouseMove(event)
 
     if (this.focus && this.focus.browserSurface) {
-      if (this.grab === null) {
+      consumed = true
+      if (this.grab === null && this._popupStack.length === 0) {
         this.grab = this.focus
-        this._browserKeyboard.focusGained(this.grab)
+        this._browserKeyboard.focusGained(this.grab.browserSurface)
+        this.focus.raise()
       }
 
-      this._btnDwnCount++
+      if (!this._popupStack.length) {
+        this._btnDwnCount++
+      }
+
       const surfaceResource = this.focus.browserSurface.resource
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
-        pointerResource.button(this._nextButtonSerial(), event.timeStamp, linuxInput[event.button], greenfield.GrPointer.ButtonState.pressed)
+        pointerResource.button(this.browserSeat.nextSerial(), event.timeStamp, linuxInput[event.button], pressed)
         if (pointerResource.version >= 5) {
           pointerResource.frame()
         }
       })
     }
+
+    if (this._buttonPressResolve) {
+      this._buttonPressResolve(event)
+    }
+
+    return consumed
   }
 
   /**
@@ -488,6 +645,7 @@ export default class BrowserPointer {
     let focus = {view: null}
     focusCandidates.forEach(focusCandidate => {
       if (focusCandidate.view &&
+        !focusCandidate.view.destroyed &&
         focusCandidate.view.browserSurface &&
         focusCandidate.view.browserSurface.hasPointerInput &&
         this._isPointerWithinInputRegion(focusCandidate) &&
@@ -525,15 +683,15 @@ export default class BrowserPointer {
 
     const surfacePoint = this._calculateSurfacePoint(newFocus)
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
-      pointerResource.enter(this._nextFocusSerial(), surfaceResource, greenfield.parseFixed(surfacePoint.x), greenfield.parseFixed(surfacePoint.y))
+      pointerResource.enter(this.browserSeat.nextSerial(), surfaceResource, parseFixed(surfacePoint.x), parseFixed(surfacePoint.y))
     })
   }
 
   unsetFocus () {
-    if (this.focus && this.focus.browserSurface) {
+    if (this.focus && !this.focus.destroyed && this.focus.browserSurface) {
       const surfaceResource = this.focus.browserSurface.resource
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
-        pointerResource.leave(this._nextFocusSerial(), surfaceResource)
+        pointerResource.leave(this.browserSeat.nextSerial(), surfaceResource)
         if (pointerResource.version >= 5) {
           pointerResource.frame()
         }
@@ -554,21 +712,14 @@ export default class BrowserPointer {
     window.document.body.style.cursor = 'auto'
   }
 
-  _nextButtonSerial () {
-    this.buttonSerial++
-    return this.buttonSerial
-  }
-
-  _nextFocusSerial () {
-    this.focusSerial++
-    return this.focusSerial
-  }
-
   /**
    * @param {WheelEvent}event
+   * @return {boolean}
    */
-  onWheel (event) {
+  _handleWheel (event) {
+    let consumed = false
     if (this.focus && this.focus.browserSurface) {
+      consumed = true
       // TODO configure the scoll transform through the config menu
       /**
        * @type{Function}
@@ -580,7 +731,7 @@ export default class BrowserPointer {
            * @param {number}delta
            * @return {number}
            */
-          deltaTransform = (delta) => { return delta * 18 } // We hard code line height.
+          deltaTransform = (delta) => { return delta * 18 } // FIXME We hard code line height.
           break
         }
         case event.DOM_DELTA_PAGE: {
@@ -590,7 +741,7 @@ export default class BrowserPointer {
            * @return {number}
            */
           deltaTransform = (delta, axis) => {
-            if (axis === greenfield.GrPointer.Axis.verticalScroll) {
+            if (axis === verticalScroll) {
               return delta * this.focus.browserSurface.size.h
             } else { // horizontalScroll
               return delta * this.focus.browserSurface.size.w
@@ -613,27 +764,28 @@ export default class BrowserPointer {
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
         const deltaX = event.deltaX
         if (deltaX) {
-          const xAxis = greenfield.GrPointer.Axis.horizontalScroll
+          const xAxis = horizontalScroll
           if (pointerResource.version >= 5) {
             pointerResource.axisDiscrete(xAxis, deltaX)
           }
           const scrollAmount = deltaTransform(deltaX, xAxis)
-          pointerResource.axis(event.timeStamp, xAxis, greenfield.parseFixed(scrollAmount))
+          pointerResource.axis(event.timeStamp, xAxis, parseFixed(scrollAmount))
         }
         const deltaY = event.deltaY
         if (deltaY) {
-          const yAxis = greenfield.GrPointer.Axis.verticalScroll
+          const yAxis = verticalScroll
           if (pointerResource.version >= 5) {
             pointerResource.axisDiscrete(yAxis, deltaY)
           }
           const scrollAmount = deltaTransform(deltaY, yAxis)
-          pointerResource.axis(event.timeStamp, yAxis, greenfield.parseFixed(scrollAmount))
+          pointerResource.axis(event.timeStamp, yAxis, parseFixed(scrollAmount))
         }
         if (pointerResource.version >= 5) {
-          pointerResource.axisSource(greenfield.GrPointer.AxisSource.wheel)
+          pointerResource.axisSource(wheel)
           pointerResource.frame()
         }
       })
     }
+    return consumed
   }
 }

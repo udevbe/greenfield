@@ -28,6 +28,10 @@ module.exports = class LocalTouch {
    *
    */
   down (serial, time, surface, id, x, y) {
+    if (surface == null) {
+      // object argument was destroyed by the client before the server noticed.
+      return
+    }
     const wlSurfaceResource = surface.listener.resource
     this.resource.down(serial, time, wlSurfaceResource, id, x, y)
   }

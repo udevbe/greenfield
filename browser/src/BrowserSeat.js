@@ -1,28 +1,41 @@
 'use strict'
 
-import westfield from 'westfield-runtime-server'
-import greenfield from './protocol/greenfield-browser-protocol'
+import { Global } from 'westfield-runtime-server'
+import { GrSeat, GrPointer, GrKeyboard, GrTouch } from './protocol/greenfield-browser-protocol'
 
 import BrowserPointer from './BrowserPointer'
 import BrowserKeyboard from './BrowserKeyboard'
 import BrowserTouch from './BrowserTouch'
 import BrowserDataDevice from './BrowserDataDevice'
 
-export default class BrowserSeat extends westfield.Global {
+const {keyboard, pointer, touch} = GrSeat.Capability
+
+/**
+ *
+ *            A seat is a group of keyboards, pointer and touch devices. This
+ *            object is published as a global during start up, or when such a
+ *            device is hot plugged.  A seat typically has a pointer and
+ *            maintains a keyboard focus and a pointer focus.
+ *
+ */
+export default class BrowserSeat extends Global {
   /**
    * @param {BrowserSession} browserSession
-   * @param {DesktopShell} desktopShell
    * @returns {BrowserSeat}
    */
-  static create (browserSession, desktopShell) {
+  static create (browserSession) {
     const browserDataDevice = BrowserDataDevice.create()
-    const browserKeyboard = BrowserKeyboard.create(browserSession, browserDataDevice, desktopShell)
+    const browserKeyboard = BrowserKeyboard.create(browserSession, browserDataDevice)
     const browserPointer = BrowserPointer.create(browserSession, browserDataDevice, browserKeyboard)
     const browserTouch = BrowserTouch.create()
     const hasTouch = 'ontouchstart' in document.documentElement
 
     const browserSeat = new BrowserSeat(browserDataDevice, browserPointer, browserKeyboard, browserTouch, hasTouch)
     browserDataDevice.browserSeat = browserSeat
+
+    browserKeyboard.browserSeat = browserSeat
+    browserPointer.browserSeat = browserSeat
+    browserTouch.browserSeat = browserSeat
 
     return browserSeat
   }
@@ -35,7 +48,7 @@ export default class BrowserSeat extends westfield.Global {
    * @param {boolean} hasTouch
    */
   constructor (browserDataDevice, browserPointer, browserKeyboard, browserTouch, hasTouch) {
-    super(greenfield.GrSeat.name, 6)
+    super(GrSeat.name, 6)
     /**
      * @type {BrowserDataDevice}
      */
@@ -58,10 +71,14 @@ export default class BrowserSeat extends westfield.Global {
     this.hasTouch = hasTouch
     this.resources = []
     this._seatName = 'browser-seat0'
+    /**
+     * @type {number}
+     */
+    this.serial = 0
   }
 
   bindClient (client, id, version) {
-    const grSeatResource = new greenfield.GrSeat(client, id, version)
+    const grSeatResource = new GrSeat(client, id, version)
     grSeatResource.implementation = this
     this.resources.push(grSeatResource)
 
@@ -75,9 +92,9 @@ export default class BrowserSeat extends westfield.Global {
   }
 
   _emitCapabilities (grSeatResource) {
-    let caps = 0 | greenfield.GrSeat.Capability.pointer | greenfield.GrSeat.Capability.keyboard
+    let caps = pointer | keyboard
     if (this.hasTouch) {
-      caps |= greenfield.GrSeat.Capability.touch
+      caps |= touch
     }
     grSeatResource.capabilities(caps)
   }
@@ -86,6 +103,10 @@ export default class BrowserSeat extends westfield.Global {
     if (grSeatResource.version >= 2) {
       grSeatResource.name(this._seatName)
     }
+  }
+
+  nextSerial () {
+    return ++this.serial
   }
 
   /**
@@ -100,13 +121,13 @@ export default class BrowserSeat extends westfield.Global {
    *
    *
    * @param {GrSeat} resource
-   * @param {*} id seat pointer
+   * @param {number} id seat pointer
    *
    * @since 1
    *
    */
   getPointer (resource, id) {
-    const grPointerResource = new greenfield.GrPointer(resource.client, id, resource.version)
+    const grPointerResource = new GrPointer(resource.client, id, resource.version)
     grPointerResource.implementation = this.browserPointer
     this.browserPointer.resources.push(grPointerResource)
     grPointerResource.onDestroy().then(() => {
@@ -129,13 +150,13 @@ export default class BrowserSeat extends westfield.Global {
    *
    *
    * @param {GrSeat} resource
-   * @param {*} id seat keyboard
+   * @param {number} id seat keyboard
    *
    * @since 1
    *
    */
   getKeyboard (resource, id) {
-    const grKeyboardResource = new greenfield.GrKeyboard(resource.client, id, resource.version)
+    const grKeyboardResource = new GrKeyboard(resource.client, id, resource.version)
     grKeyboardResource.implementation = this.browserKeyboard
     this.browserKeyboard.resources.push(grKeyboardResource)
     grKeyboardResource.onDestroy().then(() => {
@@ -161,14 +182,14 @@ export default class BrowserSeat extends westfield.Global {
    *
    *
    * @param {GrSeat} resource
-   * @param {*} id seat touch interface
+   * @param {number} id seat touch interface
    *
    * @since 1
    *
    */
   getTouch (resource, id) {
     if (this.hasTouch) {
-      const grTouchResource = new greenfield.GrTouch(resource.client, id, resource.version)
+      const grTouchResource = new GrTouch(resource.client, id, resource.version)
       grTouchResource.implementation = this.browserTouch
       this.browserTouch.resources.push(grTouchResource)
     } else {

@@ -1,12 +1,19 @@
 'use strict'
 
-import westfield from 'westfield-runtime-server'
-import greenfield from './protocol/greenfield-browser-protocol'
+import { Global } from 'westfield-runtime-server'
+import { GrCompositor, GrSurface, GrRegion } from './protocol/greenfield-browser-protocol'
 import BrowserSurface from './BrowserSurface'
 import BrowserRegion from './BrowserRegion'
 import GLRenderer from './render/Renderer'
 
-export default class BrowserCompositor extends westfield.Global {
+/**
+ *
+ *            A compositor.  This object is a singleton global.  The
+ *            compositor is in charge of combining the contents of multiple
+ *            surfaces into one displayable output.
+ *
+ */
+export default class BrowserCompositor extends Global {
   /**
    * @param {BrowserSession} browserSession
    * @param {BrowserSeat} browserSeat
@@ -25,14 +32,14 @@ export default class BrowserCompositor extends westfield.Global {
    * @private
    */
   constructor (browserSession, renderer, browserSeat) {
-    super(greenfield.GrCompositor.name, 4)
+    super(GrCompositor.name, 4)
     this.browserSession = browserSession
     this.renderer = renderer
     this.browserSeat = browserSeat
   }
 
   bindClient (client, id, version) {
-    const grCompositorResource = new greenfield.GrCompositor(client, id, version)
+    const grCompositorResource = new GrCompositor(client, id, version)
     grCompositorResource.implementation = this
   }
 
@@ -48,7 +55,7 @@ export default class BrowserCompositor extends westfield.Global {
    *
    */
   createSurface (resource, id) {
-    const grSurfaceResource = new greenfield.GrSurface(resource.client, id, resource.version)
+    const grSurfaceResource = new GrSurface(resource.client, id, resource.version)
     BrowserSurface.create(grSurfaceResource, this.renderer, this.browserSeat, this.browserSession)
   }
 
@@ -64,7 +71,7 @@ export default class BrowserCompositor extends westfield.Global {
    *
    */
   createRegion (resource, id) {
-    const grRegionResource = new greenfield.GrRegion(resource.client, id, resource.version)
+    const grRegionResource = new GrRegion(resource.client, id, resource.version)
     BrowserRegion.create(grRegionResource)
   }
 }

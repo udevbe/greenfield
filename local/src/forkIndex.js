@@ -11,7 +11,7 @@ const controllers = {
 
 function main () {
   process.on('uncaughtException', (error) => {
-    console.error(error.stack)
+    console.error(error, error.stack)
   })
 
   // TODO we probably want to differentiate actions based on the path elements, including setting up a new session.

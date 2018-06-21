@@ -1,12 +1,20 @@
 'use strict'
 
-import westfield from 'westfield-runtime-server'
-import greenfield from './protocol/greenfield-browser-protocol'
+import { Global } from 'westfield-runtime-server'
+import { GrShell, GrShellSurface } from './protocol/greenfield-browser-protocol'
 
 import BrowserShellSurface from './BrowserShellSurface'
-import BrowserSession from './BrowserSession'
 
-export default class BrowserShell extends westfield.Global {
+/**
+ *
+ *            This interface is implemented by servers that provide
+ *            desktop-style user interfaces.
+ *
+ *            It allows clients to associate a gr_shell_surface with
+ *            a basic surface.
+ *
+ */
+export default class BrowserShell extends Global {
   /**
    * @param {BrowserSession} browserSession
    * @param {DesktopShell}desktopShell
@@ -23,7 +31,7 @@ export default class BrowserShell extends westfield.Global {
    * @private
    */
   constructor (browserSession, desktopShell) {
-    super(greenfield.GrShell.name, 1)
+    super(GrShell.name, 1)
     /**
      * @type {BrowserSession}
      */
@@ -35,7 +43,7 @@ export default class BrowserShell extends westfield.Global {
   }
 
   bindClient (client, id, version) {
-    const grShellResource = new greenfield.GrShell(client, id, version)
+    const grShellResource = new GrShell(client, id, version)
     grShellResource.implementation = this
   }
 
@@ -60,7 +68,7 @@ export default class BrowserShell extends westfield.Global {
       // TODO protocol error
     }
 
-    const grShellSurfaceResource = new greenfield.GrShellSurface(resource.client, id, resource.version)
+    const grShellSurfaceResource = new GrShellSurface(resource.client, id, resource.version)
     BrowserShellSurface.create(grShellSurfaceResource, surface, this.browserSession, this.desktopShell)
   }
 }

@@ -1,7 +1,6 @@
 'use strict'
 
 const WlDataOffer = require('./protocol/wayland/WlDataOffer')
-const greenfield = require('./protocol/greenfield-client-protocol')
 const LocalDataOffer = require('./LocalDataOffer')
 const ShimDataOffer = require('./ShimDataOffer')
 
@@ -16,6 +15,10 @@ module.exports = class LocalDataDevice {
   }
 
   dataOffer (grDataOfferProxy) {
+    if (grDataOfferProxy == null) {
+      // object argument was destroyed by the client before the server noticed.
+      return
+    }
     /*
      * This is a bit of a mess.
      *
@@ -37,6 +40,10 @@ module.exports = class LocalDataDevice {
   }
 
   enter (serial, surface, x, y, id) {
+    if (surface == null) {
+      // object argument was destroyed by the client before the server noticed.
+      return
+    }
     this.resource.enter(serial, surface.listener.resource, x, y, id.listener.resource)
   }
 

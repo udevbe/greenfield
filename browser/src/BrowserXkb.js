@@ -1,8 +1,6 @@
 'use strict'
 
-import xkbModule from './lib/libxkbcommon'
-
-const xkb = xkbModule()
+import xkb from './lib/libxkbcommon'
 
 const XKB_KEYMAP_FORMAT_TEXT_V1 = 1
 const XKB_CONTEXT_NO_DEFAULT_INCLUDES = 1 << 0

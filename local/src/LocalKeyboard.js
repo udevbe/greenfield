@@ -111,6 +111,10 @@ module.exports = class LocalKeyboard {
    *
    */
   enter (serial, surface, keys) {
+    if (surface == null) {
+      // object argument was destroyed by the client before the server noticed.
+      return
+    }
     const wlSurfaceResource = surface.listener.resource
     this.resource.enter(serial, wlSurfaceResource, keys)
   }
@@ -131,6 +135,10 @@ module.exports = class LocalKeyboard {
    *
    */
   leave (serial, surface) {
+    if (surface == null) {
+      // object argument was destroyed by the client before the server noticed.
+      return
+    }
     const wlSurfaceResource = surface.listener.resource
     this.resource.leave(serial, wlSurfaceResource)
   }

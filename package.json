@@ -6,6 +6,7 @@
     "greenfield": "./local/src/index.js"
   },
   "scripts": {
+    "prepare:browser:generate:xdgshell": "westfield-scanner-server protocol/xdg-shell.xml -o browser/src/protocol/xdg-shell-browser-protocol.js",
     "prepare:browser:generate:session": "westfield-scanner-server protocol/session.xml -o browser/src/protocol/session-browser-protocol.js",
     "prepare:server:generate:session": "westfield-scanner-client protocol/session.xml -o local/src/protocol/session-client-protocol.js",
     "prepare:browser:generate:rtc": "westfield-scanner-server protocol/rtc.xml -o browser/src/protocol/rtc-browser-protocol.js",
@@ -13,8 +14,9 @@
     "prepare:browser:generate:greenfield": "westfield-scanner-server protocol/greenfield.xml -o browser/src/protocol/greenfield-browser-protocol.js",
     "prepare:server:generate:greenfield": "westfield-scanner-client protocol/greenfield.xml -o local/src/protocol/greenfield-client-protocol.js",
     "prepare:server:generate:wayland": "wayland-server-bindings-generator protocol/wayland.xml -o local/src/protocol/wayland",
-    "prepare:browser:generate": "mkdir -p browser/src/protocol/ && npm run prepare:browser:generate:greenfield && npm run prepare:browser:generate:rtc && npm run prepare:browser:generate:session",
-    "prepare:server:generate": "rm -rf local/src/protocol && mkdir -p local/src/protocol/wayland && npm run prepare:server:generate:wayland && mkdir -p local/src/protocol/ && npm run prepare:server:generate:greenfield && npm run prepare:server:generate:rtc && npm run prepare:server:generate:session",
+    "prepare:server:generate:xdgshell": "wayland-server-bindings-generator protocol/xdg-shell.xml -o local/src/protocol/wayland && westfield-scanner-client protocol/xdg-shell.xml -o local/src/protocol/xdg-shell-client-protocol.js",
+    "prepare:browser:generate": "mkdir -p browser/src/protocol/ && npm run prepare:browser:generate:greenfield && npm run prepare:browser:generate:rtc && npm run prepare:browser:generate:session && npm run prepare:browser:generate:xdgshell",
+    "prepare:server:generate": "rm -rf local/src/protocol && mkdir -p local/src/protocol/wayland && npm run prepare:server:generate:wayland && npm run prepare:server:generate:xdgshell && mkdir -p local/src/protocol/ && npm run prepare:server:generate:greenfield && npm run prepare:server:generate:rtc && npm run prepare:server:generate:session",
     "prepare:browser:webpack:prod": "webpack --config browser/build.config/webpack.config.prod.js",
     "prepare": "npm run prepare:server:generate && npm run prepare:browser:generate && npm run prepare:browser:webpack:prod",
     "prepare:browser:webpack:dev": "webpack --config browser/build.config/webpack.config.dev.js",
@@ -45,9 +47,9 @@
     "express": "4.16.3",
     "fastcall": "^0.2.6",
     "gstreamer-superficial": "1.0.0",
-    "wayland-server-bindings-runtime": "0.0.49",
-    "westfield-runtime-client": "0.0.19",
-    "westfield-runtime-server": "0.0.19",
+    "wayland-server-bindings-runtime": "0.0.50",
+    "westfield-runtime-client": "0.0.20",
+    "westfield-runtime-server": "0.0.20",
     "wrtc": "^0.1.5",
     "ws": "^5.2.0"
   },
@@ -58,15 +60,15 @@
     "html-webpack-plugin": "^3.2.0",
     "standard": "11.0.1",
     "style-loader": "^0.20.3",
-    "wayland-server-bindings-generator": "0.0.49",
+    "wayland-server-bindings-generator": "0.0.50",
     "webpack": "^4.12.0",
     "webpack-cli": "^2.1.5",
     "webpack-closure-compiler": "2.1.6",
     "webpack-dev-middleware": "^3.1.3",
     "webpack-hot-middleware": "^2.22.2",
     "webpack-merge": "^4.1.3",
-    "westfield-scanner-client": "0.0.19",
-    "westfield-scanner-server": "0.0.19"
+    "westfield-scanner-client": "0.0.20",
+    "westfield-scanner-server": "0.0.20"
   },
   "pkg": {
     "scripts": [
@@ -79,6 +81,6 @@
     ]
   },
   "optionalDependencies": {
-    "bufferutil": "^3.0.4"
+    "bufferutil": "^3.0.5"
   }
 }

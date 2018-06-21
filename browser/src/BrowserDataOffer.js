@@ -1,10 +1,20 @@
 'use strict'
 
-import greenfield from './protocol/greenfield-browser-protocol'
+import { GrDataOffer, GrDataDeviceManager } from './protocol/greenfield-browser-protocol'
 
-const DndAction = greenfield.GrDataDeviceManager.DndAction
-const ALL_ACTIONS = (DndAction.copy | DndAction.move | DndAction.ask)
+const {copy, move, ask, none} = GrDataDeviceManager.DndAction
+const ALL_ACTIONS = (copy | move | ask)
 
+/**
+ *
+ *            A gr_data_offer represents a piece of data offered for transfer
+ *            by another client (the source client).  It is used by the
+ *            copy-and-paste and drag-and-drop mechanisms.  The offer
+ *            describes the different mime types that the data can be
+ *            converted to and provides the mechanism for transferring the
+ *            data directly from the source client.
+ *
+ */
 export default class BrowserDataOffer {
   /**
    * @param {GrDataSource}source
@@ -14,7 +24,7 @@ export default class BrowserDataOffer {
    */
   static create (source, offerId, dataDeviceResource) {
     const browserDataOffer = new BrowserDataOffer(source)
-    const grDataOffer = new greenfield.GrDataOffer(dataDeviceResource.client, offerId, dataDeviceResource.version)
+    const grDataOffer = new GrDataOffer(dataDeviceResource.client, offerId, dataDeviceResource.version)
     grDataOffer.implementation = browserDataOffer
     browserDataOffer.resource = grDataOffer
     grDataOffer.onDestroy().then(() => {
@@ -46,7 +56,7 @@ export default class BrowserDataOffer {
     /**
      * @type {number}
      */
-    this.dndActions = greenfield.GrDataDeviceManager.DndAction.none
+    this.dndActions = none
     /**
      * @type {GrDataSource}
      */
@@ -211,8 +221,8 @@ export default class BrowserDataOffer {
     }
 
     switch (this.grDataSource.implementation.currentDndAction) {
-      case greenfield.GrDataDeviceManager.DndAction.none:
-      case greenfield.GrDataDeviceManager.DndAction.ask:
+      case none:
+      case ask:
         // TODO raise protocol error
         // wl_resource_post_error(offer->resource,
         //   WL_DATA_OFFER_ERROR_INVALID_OFFER,
@@ -325,25 +335,25 @@ export default class BrowserDataOffer {
   }
 
   _chooseAction () {
-    let offerActions = DndAction.none
-    let preferredAction = DndAction.none
+    let offerActions = none
+    let preferredAction = none
     if (this.resource >= 3) {
       offerActions = this.dndActions
       preferredAction = this.preferredAction
     } else {
-      offerActions = DndAction.copy
+      offerActions = copy
     }
 
-    let sourceActions = DndAction.none
+    let sourceActions = none
     if (this.grDataSource.version >= 3) {
       sourceActions = this.grDataSource.implementation.dndActions
     } else {
-      sourceActions = DndAction.copy
+      sourceActions = copy
     }
     const availableActions = offerActions & sourceActions
 
     if (!availableActions) {
-      return DndAction.none
+      return none
     }
 
     // TODO a compositor defined action could be returned here
