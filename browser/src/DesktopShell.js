@@ -85,10 +85,21 @@ export default class DesktopShell {
     const desktopShellEntry = DesktopShellEntry.create(browserSurface, this._browserSeat)
     this.entryContainer.appendChild(desktopShellEntry.divElement)
     this.desktopShellEntries.push(desktopShellEntry)
+
+    // TODO can we make this work without a timeout?
     // delay the activation as keyboard resource might still come in late
-    window.setTimeout(() => {
+    const activationTimer = window.setTimeout(() => {
       desktopShellEntry.makeActive()
     }, 300)
+
+    // remove the entry if the surface is destroyed
+    browserSurface.resource.onDestroy().then(() => {
+      const idx = this.desktopShellEntries.indexOf(desktopShellEntry)
+      if (idx > -1) {
+        this.desktopShellEntries.splice(idx, 1)
+        window.clearTimeout(activationTimer)
+      }
+    })
 
     return desktopShellEntry
   }

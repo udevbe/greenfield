@@ -136,16 +136,14 @@ export default class BufferedCanvas {
    * @param {string}cssClass
    */
   addCssClass (cssClass) {
-    this.frontContext.canvas.classList.add(cssClass)
-    this.backContext.canvas.classList.add(cssClass)
+    this.containerDiv.classList.add(cssClass)
   }
 
   /**
    * @param {string}cssClass
    */
   removeCssClass (cssClass) {
-    this.frontContext.canvas.classList.remove(cssClass)
-    this.backContext.canvas.classList.remove(cssClass)
+    this.containerDiv.classList.remove(cssClass)
   }
 
   _detachInputDivs () {

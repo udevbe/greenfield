@@ -954,6 +954,7 @@ export default class BrowserSurface {
    * @private
    */
   async _captureState (pendingGrBuffer) {
+    const self = this
     /**
      * @type {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: number, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}
      */
@@ -973,7 +974,7 @@ export default class BrowserSurface {
       /**
        * @type{boolean}
        */
-      opaqueRegionChanged: this._opaqueRegionChanged,
+      opaqueRegionChanged: self._opaqueRegionChanged,
       /**
        * @type{number}
        */
@@ -981,27 +982,27 @@ export default class BrowserSurface {
       /**
        * @type{boolean}
        */
-      inputRegionChanged: this._inputRegionChanged,
+      inputRegionChanged: self._inputRegionChanged,
       /**
        * @type{number}
        */
-      dx: this._pendingDx,
+      dx: self._pendingDx,
       /**
        * @type{number}
        */
-      dy: this._pendingDy,
+      dy: self._pendingDy,
       /**
        * @type{number}
        */
-      bufferTransform: this._pendingBufferTransform,
+      bufferTransform: self._pendingBufferTransform,
       /**
        * @type{number}
        */
-      bufferScale: this._pendingBufferScale,
+      bufferScale: self._pendingBufferScale,
       /**
        * @type {BrowserCallback[]}
        */
-      frameCallbacks: this._pendingFrameCallbacks,
+      frameCallbacks: self._pendingFrameCallbacks,
       /**
        * @type {*}
        */

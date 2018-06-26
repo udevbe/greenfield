@@ -51,10 +51,10 @@ export default class DesktopShellEntry {
   static fadeOutViewOnDestroy (view) {
     // play a nice fade out animation if the view is destroyed
     view.onDestroy().then(() => {
-      view.bufferedCanvas.frontContext.canvas.addEventListener('transitionend', () => {
-        // after the animation has ended, detach the view from the scene
+      // after the animation has ended, detach the view from the scene
+      view.bufferedCanvas.containerDiv.addEventListener('transitionend', () => {
         view.detach()
-      }, false)
+      })
       // play the animation
       view.fadeOut()
     })
@@ -89,6 +89,9 @@ export default class DesktopShellEntry {
   }
 
   makeActive () {
+    if (this.mainView.destroyed) {
+      return
+    }
     this.mainView.show()
     this.mainView.raise()
     this._browserSeat.browserKeyboard.focusGained(this.mainView.browserSurface)
@@ -110,6 +113,9 @@ export default class DesktopShellEntry {
   }
 
   hide () {
+    if (this.mainView.destroyed) {
+      return
+    }
     this.mainView.fadeOut()
   }
 }

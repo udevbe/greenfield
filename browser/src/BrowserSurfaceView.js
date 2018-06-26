@@ -85,6 +85,9 @@ export default class BrowserSurfaceView {
    * @param {HTMLImageElement}sourceImage
    */
   drawImage (sourceImage) {
+    if (this.destroyed) {
+      return
+    }
     this._draw(sourceImage, sourceImage.naturalWidth, sourceImage.naturalHeight)
   }
 
@@ -92,6 +95,9 @@ export default class BrowserSurfaceView {
    * @param {BrowserSurfaceView}parent
    */
   set parent (parent) {
+    if (this.destroyed) {
+      return
+    }
     this._parent = parent
 
     if (this._parent) {
@@ -115,6 +121,9 @@ export default class BrowserSurfaceView {
   }
 
   set primary (primary) {
+    if (this.destroyed) {
+      return
+    }
     this._primary = primary
     this.browserSurface.browserSurfaceChildren.forEach(browserSurfaceChild => {
       if (browserSurfaceChild === this.browserSurface.browserSurfaceChildSelf) return
@@ -141,6 +150,9 @@ export default class BrowserSurfaceView {
    * @param {Mat4}transformation
    */
   set transformation (transformation) {
+    if (this.destroyed) {
+      return
+    }
     this._transformation = transformation
     this._inverseTransformation = transformation.invert()
   }
@@ -156,6 +168,9 @@ export default class BrowserSurfaceView {
    * @param {RenderFrame}renderFrame
    */
   applyTransformations (renderFrame) {
+    if (this.destroyed) {
+      return
+    }
     const transformation = this._calculateTransformation()
     this.transformation = transformation
     const bufferToViewTransformation = transformation.timesMat4(this.browserSurface.inverseBufferTransformation)
@@ -220,6 +235,9 @@ export default class BrowserSurfaceView {
   }
 
   raise () {
+    if (this.destroyed) {
+      return
+    }
     this.zIndex = BrowserSurfaceView._nextTopZIndex()
     this.browserSurface.updateChildViewsZIndexes()
   }
@@ -228,6 +246,9 @@ export default class BrowserSurfaceView {
    * @param {number}index
    */
   set zIndex (index) {
+    if (this.destroyed) {
+      return
+    }
     if (index >= BrowserSurfaceView._topZIndex) {
       BrowserSurfaceView._topZIndex = index
     }
@@ -245,6 +266,9 @@ export default class BrowserSurfaceView {
    * @param {HTMLCanvasElement}sourceCanvas
    */
   drawCanvas (sourceCanvas) {
+    if (this.destroyed) {
+      return
+    }
     this._draw(sourceCanvas, sourceCanvas.width, sourceCanvas.height)
   }
 
@@ -264,6 +288,9 @@ export default class BrowserSurfaceView {
    * @param {RenderFrame}renderFrame
    */
   swapBuffers (renderFrame) {
+    if (this.destroyed) {
+      return
+    }
     this.transformation = this._backBufferTransformation
     renderFrame.then(() => {
       this.bufferedCanvas.swapBuffers()
@@ -314,6 +341,9 @@ export default class BrowserSurfaceView {
   }
 
   show () {
+    if (this.destroyed) {
+      return
+    }
     this.bufferedCanvas.removeCssClass('fadeToHidden')
   }
 
@@ -337,6 +367,9 @@ export default class BrowserSurfaceView {
    * @param {HTMLElement}element
    */
   attachTo (element) {
+    if (this.destroyed) {
+      return
+    }
     this.bufferedCanvas.attachToElement(element)
 
     // attach child views
@@ -361,6 +394,9 @@ export default class BrowserSurfaceView {
   }
 
   updateInputRegion () {
+    if (this.destroyed) {
+      return
+    }
     const inputPixmanRegion = this.browserSurface.state.inputPixmanRegion
     const surfacePixmanRegion = this.browserSurface.pixmanRegion
     BrowserRegion.intersect(inputPixmanRegion, inputPixmanRegion, surfacePixmanRegion)

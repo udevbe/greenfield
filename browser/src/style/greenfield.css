@@ -14,6 +14,9 @@ canvas {
     transform-origin: top left;
     pointer-events: none;
     position: absolute;
+    transition: inherit;
+    visibility: inherit;
+    opacity: inherit;
 }
 
 .fadeToHidden {
