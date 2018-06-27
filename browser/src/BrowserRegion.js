@@ -21,6 +21,7 @@ class BrowserRegion {
     const pixmanRegion = BrowserRegion.createPixmanRegion()
     const browserRegion = new BrowserRegion(grRegionResource, pixmanRegion)
     grRegionResource.implementation = browserRegion
+    grRegionResource.onDestroy().then(() => { BrowserRegion.destroyPixmanRegion(pixmanRegion) })
     return browserRegion
   }
 
@@ -30,8 +31,6 @@ class BrowserRegion {
   static createPixmanRegion () {
     const pixmanRegion = pixman._malloc(20)// region struct is pointer + 4*uint32 = 5*4 = 20
     pixman._pixman_region32_init(pixmanRegion)
-    // FIXME a lot of regions are created that are not freed. Fix this memory leak.
-    BrowserRegion._regions.push(pixmanRegion)
     return pixmanRegion
   }
 
@@ -91,14 +90,8 @@ class BrowserRegion {
    * @param {number}pixmanRegion
    */
   static destroyPixmanRegion (pixmanRegion) {
-    const idx = BrowserRegion._regions.indexOf(pixmanRegion)
-    if (idx > -1) {
-      BrowserRegion._regions.splice(idx, 1)
-      pixman._pixman_region32_fini(pixmanRegion)
-      pixman._free(pixmanRegion)
-    } else {
-      console.error(`Attempted to free illegal region ${pixmanRegion}`)
-    }
+    pixman._pixman_region32_fini(pixmanRegion)
+    pixman._free(pixmanRegion)
   }
 
   /**
@@ -145,7 +138,6 @@ class BrowserRegion {
    *
    */
   destroy (resource) {
-    BrowserRegion.destroyPixmanRegion(this.pixmanRegion)
     resource.destroy()
   }
 
@@ -206,6 +198,6 @@ class BrowserRegion {
   }
 }
 
-BrowserRegion._regions = []
+BrowserRegion._regions = {}
 
 export default BrowserRegion

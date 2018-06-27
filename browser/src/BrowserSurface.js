@@ -82,14 +82,21 @@ export default class BrowserSurface {
     const bufferDamage = BrowserRegion.createPixmanRegion()
     const opaquePixmanRegion = BrowserRegion.createPixmanRegion()
     const inputPixmanRegion = BrowserRegion.createPixmanRegion()
+    const surfacePixmanRegion = BrowserRegion.createPixmanRegion()
 
     BrowserRegion.initInfinite(bufferDamage)
     BrowserRegion.initInfinite(opaquePixmanRegion)
     BrowserRegion.initInfinite(inputPixmanRegion)
 
-    const browserSurface = new BrowserSurface(grSurfaceResource, renderer, browserSeat, browserSession, bufferDamage, opaquePixmanRegion, inputPixmanRegion)
+    const browserSurface = new BrowserSurface(grSurfaceResource, renderer, browserSeat, browserSession, bufferDamage, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion)
     grSurfaceResource.implementation = browserSurface
-    grSurfaceResource.onDestroy().then(() => browserSurface._handleDestruction())
+    grSurfaceResource.onDestroy().then(() => {
+      BrowserRegion.destroyPixmanRegion(bufferDamage)
+      BrowserRegion.destroyPixmanRegion(opaquePixmanRegion)
+      BrowserRegion.destroyPixmanRegion(inputPixmanRegion)
+      BrowserRegion.destroyPixmanRegion(surfacePixmanRegion)
+      browserSurface._handleDestruction()
+    })
 
     return browserSurface
   }
@@ -104,8 +111,9 @@ export default class BrowserSurface {
    * @param {number} bufferDamage
    * @param {number} opaquePixmanRegion
    * @param {number} inputPixmanRegion
+   * @param {number} surfacePixmanRegion
    */
-  constructor (grSurfaceResource, renderer, browserSeat, browserSession, bufferDamage, opaquePixmanRegion, inputPixmanRegion) {
+  constructor (grSurfaceResource, renderer, browserSeat, browserSession, bufferDamage, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion) {
     /**
      * @type {GrSurface}
      */
@@ -279,7 +287,7 @@ export default class BrowserSurface {
      * @type {number}
      * @private
      */
-    this.pixmanRegion = BrowserRegion.createPixmanRegion()
+    this.pixmanRegion = surfacePixmanRegion
     /**
      * @type {Size}
      */
@@ -538,12 +546,8 @@ export default class BrowserSurface {
    *
    */
   destroy (resource) {
-    this._handleDestruction()
+    // this._handleDestruction()
     resource.destroy()
-
-    BrowserRegion.destroyPixmanRegion(this.state.bufferDamage)
-    BrowserRegion.destroyPixmanRegion(this.state.opaquePixmanRegion)
-    BrowserRegion.destroyPixmanRegion(this.state.inputPixmanRegion)
   }
 
   _handleDestruction () {
@@ -847,7 +851,6 @@ export default class BrowserSurface {
       if (newState.opaquePixmanRegion) {
         BrowserRegion.destroyPixmanRegion(newState.opaquePixmanRegion)
       }
-      BrowserRegion.destroyPixmanRegion(newState.bufferDamage)
     }
   }
 
@@ -937,17 +940,17 @@ export default class BrowserSurface {
        */
       bufferContents: null,
       /**
-       * @type {number}
+       * @type {Array<Rect>}
        */
-      bufferDamage: BrowserRegion.createPixmanRegion(),
+      bufferDamageRects: [],
       /**
        * @type{number}
        */
-      opaquePixmanRegion: this._pendingOpaqueRegion,
+      opaquePixmanRegion: self._pendingOpaqueRegion,
       /**
        * @type{number}
        */
-      inputPixmanRegion: this._pendingInputRegion,
+      inputPixmanRegion: self._pendingInputRegion,
       /**
        * @type{number}
        */
@@ -978,23 +981,9 @@ export default class BrowserSurface {
     this._pendingInputRegion = 0
     this._pendingOpaqueRegion = 0
 
-    const surfaceDamagePixmanRegion = BrowserRegion.createPixmanRegion()
-    this._pendingDamageRects.forEach(rect => {
-      const bufferDamage = this.bufferTransformation.timesRect(rect)
-      BrowserRegion.unionRect(surfaceDamagePixmanRegion, surfaceDamagePixmanRegion, bufferDamage.x, bufferDamage.y, bufferDamage.width, bufferDamage.height)
-    })
+    newState.bufferDamageRects = this._pendingDamageRects.map(rect => this.bufferTransformation.timesRect(rect)).concat(this._pendingBufferDamageRects)
     this._pendingDamageRects = []
-
-    const bufferDamagePixmanRegion = BrowserRegion.createPixmanRegion()
-    this._pendingBufferDamageRects.forEach(rect => {
-      BrowserRegion.unionRect(bufferDamagePixmanRegion, bufferDamagePixmanRegion, rect.x, rect.y, rect.width, rect.height)
-    })
     this._pendingBufferDamageRects = []
-
-    // marge (surface) damage & buffer damage into total buffer damage region
-    BrowserRegion.union(newState.bufferDamage, bufferDamagePixmanRegion, surfaceDamagePixmanRegion)
-    BrowserRegion.destroyPixmanRegion(bufferDamagePixmanRegion)
-    BrowserRegion.destroyPixmanRegion(surfaceDamagePixmanRegion)
 
     if (this.role && this.role.captureRoleState) {
       newState.roleState = this.role.captureRoleState()
