@@ -14,6 +14,12 @@ The advantage of this approach is that it retains the entire desktop context whi
 context aware application positioning & naming, custom task-bars, custom REST api integrations, notifications, css styling, WebRTC VOIP integration and 
 much more. All of which can be directly and seamlessly integrated inside the browser.
 
+### Compatible Clients & Toolkits :butterfly:
+The core wayland protocol is implemented as well as the *stable* xdg shell protocol. As such it is possible to run applications with a compatible widget toolkit.
+Supported toolkits are:
+ - GTK+ 3.22.30 (tested)
+ - Qt 5.11 (untested)
+
 ## Future :unicorn: :rainbow:
 
 Greenfield is in essence an entire Wayland compositor running in the browser. As such it does not care where and how
@@ -149,8 +155,3 @@ executable|The binary that will be executed once the user clicks this applicatio
 name|The name of the application that will be shown to the user under the application icon
 description|The description of the application that will be shown to the user on mouse over.
 icon|the relative http path where the application icon can be found
-
-
-### Compatible Clients :butterfly:
-For now only the core wayland protocol is implemented. As such it is only possible to run application that do not require xdg_shell (which rules out gtk for now).
-To try some wayland clients, the Weston 1.4 (early version) test clients are nearly all fully supported.
