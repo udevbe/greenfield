@@ -135,17 +135,9 @@ export default class BrowserSurface {
        */
       opaquePixmanRegion: opaquePixmanRegion,
       /**
-       * @type{boolean}
-       */
-      opaqueRegionChanged: false,
-      /**
        * @type{number}
        */
       inputPixmanRegion: inputPixmanRegion,
-      /**
-       * @type{boolean}
-       */
-      inputRegionChanged: false,
       /**
        * @type{number}
        */
@@ -191,24 +183,12 @@ export default class BrowserSurface {
      * @type {number}
      * @private
      */
-    this._pendingOpaqueRegion = BrowserRegion.createPixmanRegion()
-    BrowserRegion.initInfinite(this._pendingOpaqueRegion)
-    /**
-     * @type {boolean}
-     * @private
-     */
-    this._opaqueRegionChanged = true
+    this._pendingOpaqueRegion = 0
     /**
      * @type {number}
      * @private
      */
-    this._pendingInputRegion = BrowserRegion.createPixmanRegion()
-    BrowserRegion.initInfinite(this._pendingInputRegion)
-    /**
-     * @type {boolean}
-     * @private
-     */
-    this._inputRegionChanged = true
+    this._pendingInputRegion = 0
     /**
      * @type {number}
      * @private
@@ -479,6 +459,11 @@ export default class BrowserSurface {
   addSubsurface (browserSurfaceChild) {
     const childViews = this._addChild(browserSurfaceChild, this.browserSubsurfaceChildren)
     this.pendingBrowserSubsurfaceChildren.push(browserSurfaceChild)
+
+    browserSurfaceChild.browserSurface.resource.onDestroy().then(() => {
+      this.removeSubsurface(browserSurfaceChild)
+    })
+
     return childViews
   }
 
@@ -555,6 +540,10 @@ export default class BrowserSurface {
   destroy (resource) {
     this._handleDestruction()
     resource.destroy()
+
+    BrowserRegion.destroyPixmanRegion(this.state.bufferDamage)
+    BrowserRegion.destroyPixmanRegion(this.state.opaquePixmanRegion)
+    BrowserRegion.destroyPixmanRegion(this.state.inputPixmanRegion)
   }
 
   _handleDestruction () {
@@ -756,13 +745,13 @@ export default class BrowserSurface {
    *
    */
   setOpaqueRegion (resource, region) {
-    this._pendingOpaqueRegion = region
+    this._pendingOpaqueRegion = BrowserRegion.createPixmanRegion()
     if (region) {
       BrowserRegion.copyTo(this._pendingOpaqueRegion, region.implementation.pixmanRegion)
     } else {
       BrowserRegion.initInfinite(this._pendingOpaqueRegion)
     }
-    this._opaqueRegionChanged = true
+    // this._opaqueRegionChanged = true
   }
 
   /**
@@ -798,13 +787,13 @@ export default class BrowserSurface {
    *
    */
   setInputRegion (resource, region) {
+    this._pendingInputRegion = BrowserRegion.createPixmanRegion()
     if (region) {
       BrowserRegion.copyTo(this._pendingInputRegion, region.implementation.pixmanRegion)
     } else {
       // 'infinite' region
       BrowserRegion.initInfinite(this._pendingInputRegion)
     }
-    this._inputRegionChanged = true
   }
 
   /**
@@ -852,6 +841,13 @@ export default class BrowserSurface {
     if (this.role && typeof this.role.onCommit === 'function') {
       const animationFrame = Renderer.createRenderFrame()
       await this.role.onCommit(this, animationFrame, newState)
+      if (newState.inputPixmanRegion) {
+        BrowserRegion.destroyPixmanRegion(newState.inputPixmanRegion)
+      }
+      if (newState.opaquePixmanRegion) {
+        BrowserRegion.destroyPixmanRegion(newState.opaquePixmanRegion)
+      }
+      BrowserRegion.destroyPixmanRegion(newState.bufferDamage)
     }
   }
 
@@ -860,33 +856,21 @@ export default class BrowserSurface {
    * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}newState
    */
   render (renderFrame, newState) {
+    const callbacks = newState.frameCallbacks
+    newState.frameCallbacks = []
     renderFrame.then((timestamp) => {
-      if (this.browserSubsurfaceChildren.length > 1) {
-        this.browserSubsurfaceChildren = this.pendingBrowserSubsurfaceChildren.slice()
-        this.updateChildViewsZIndexes()
-      }
-
-      newState.frameCallbacks.forEach((frameCallback) => {
+      callbacks.forEach((frameCallback) => {
         frameCallback.done(timestamp & 0x7fffffff)
       })
-      newState.frameCallbacks = []
-      BrowserSurface.mergeState(this.state, newState)
-
       if (this.role && this.role.setRoleState) {
         this.role.setRoleState(newState.roleState)
       }
-
-      const inputRegionChanged = newState.inputRegionChanged
-      this.browserSurfaceViews.forEach(browserSurfaceView => {
-        if (inputRegionChanged) {
-          browserSurfaceView.updateInputRegion()
-        }
-      })
     })
 
-    this._updateDerivedState(newState)
-
     if (this.browserSubsurfaceChildren.length > 1) {
+      this.browserSubsurfaceChildren = this.pendingBrowserSubsurfaceChildren.slice()
+      this.updateChildViewsZIndexes()
+
       this.browserSubsurfaceChildren.forEach((browserSurfaceChild) => {
         const siblingBrowserSurface = browserSurfaceChild.browserSurface
         if (siblingBrowserSurface !== this) {
@@ -903,6 +887,16 @@ export default class BrowserSurface {
 
     this.renderer.renderBackBuffer(this, newState)
 
+    const {w: oldWidth, h: oldHeight} = this.size
+    this._updateDerivedState(newState)
+    BrowserSurface.mergeState(this.state, newState)
+
+    if (newState.inputPixmanRegion || oldWidth !== this.size.w || oldHeight !== this.size.h) {
+      this.browserSurfaceViews.forEach(browserSurfaceView => {
+        browserSurfaceView.updateInputRegion()
+      })
+    }
+
     this.browserSurfaceViews.forEach(browserSurfaceView => {
       browserSurfaceView.swapBuffers(renderFrame)
     })
@@ -911,39 +905,18 @@ export default class BrowserSurface {
   /**
    * This will invalidate the source state.
    * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: *, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}targetState
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}sourceState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: *, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}sourceState
    */
   static mergeState (targetState, sourceState) {
     targetState.dx = sourceState.dx
     targetState.dy = sourceState.dy
 
-    if (sourceState.inputRegionChanged) {
-      if (targetState.inputPixmanRegion) {
-        BrowserRegion.copyTo(targetState.inputPixmanRegion, sourceState.inputPixmanRegion)
-        BrowserRegion.destroyPixmanRegion(sourceState.inputPixmanRegion)
-        sourceState.inputPixmanRegion = 0
-      } else {
-        targetState.inputPixmanRegion = sourceState.inputPixmanRegion
-      }
-    }
-
-    if (sourceState.opaqueRegionChanged) {
-      if (targetState.opaquePixmanRegion) {
-        BrowserRegion.copyTo(targetState.opaquePixmanRegion, sourceState.opaquePixmanRegion)
-        BrowserRegion.destroyPixmanRegion(sourceState.opaquePixmanRegion)
-        sourceState.opaquePixmanRegion = 0
-      } else {
-        targetState.opaquePixmanRegion = sourceState.opaquePixmanRegion
-      }
-    }
+    BrowserRegion.copyTo(targetState.inputPixmanRegion, sourceState.inputPixmanRegion)
+    BrowserRegion.copyTo(targetState.opaquePixmanRegion, sourceState.opaquePixmanRegion)
+    BrowserRegion.copyTo(targetState.bufferDamage, sourceState.bufferDamage)
 
     targetState.bufferTransform = sourceState.bufferTransform
     targetState.bufferScale = sourceState.bufferScale
-
-    if (targetState.bufferDamage) {
-      BrowserRegion.destroyPixmanRegion(targetState.bufferDamage)
-    }
-    targetState.bufferDamage = sourceState.bufferDamage
 
     targetState.bufferContents = sourceState.bufferContents
     targetState.frameCallbacks = targetState.frameCallbacks.concat(sourceState.frameCallbacks)
@@ -970,19 +943,11 @@ export default class BrowserSurface {
       /**
        * @type{number}
        */
-      opaquePixmanRegion: BrowserRegion.createPixmanRegion(),
-      /**
-       * @type{boolean}
-       */
-      opaqueRegionChanged: self._opaqueRegionChanged,
+      opaquePixmanRegion: this._pendingOpaqueRegion,
       /**
        * @type{number}
        */
-      inputPixmanRegion: BrowserRegion.createPixmanRegion(),
-      /**
-       * @type{boolean}
-       */
-      inputRegionChanged: self._inputRegionChanged,
+      inputPixmanRegion: this._pendingInputRegion,
       /**
        * @type{number}
        */
@@ -1010,17 +975,8 @@ export default class BrowserSurface {
     }
     this._pendingFrameCallbacks = []
 
-    // input region
-    if (this._inputRegionChanged) {
-      BrowserRegion.copyTo(newState.inputPixmanRegion, this._pendingInputRegion)
-      this._inputRegionChanged = false
-    }
-
-    // opaque region
-    if (this._opaqueRegionChanged) {
-      BrowserRegion.copyTo(newState.opaquePixmanRegion, this._pendingOpaqueRegion)
-      this._opaqueRegionChanged = false
-    }
+    this._pendingInputRegion = 0
+    this._pendingOpaqueRegion = 0
 
     const surfaceDamagePixmanRegion = BrowserRegion.createPixmanRegion()
     this._pendingDamageRects.forEach(rect => {

@@ -138,6 +138,7 @@ export default class BrowserSubsurface {
 
     if (this._effectiveSync && this._cachedState) {
       browserSurface.render(renderFrame, this._cachedState)
+      // TODO if we throw away cached state, we need to free the pixman regions in it
       this._cachedState = null
     }
   }
@@ -160,7 +161,9 @@ export default class BrowserSubsurface {
       BrowserSurface.mergeState(this._cachedState, newState)
     } else {
       if (this._cachedState) {
+        // FIXME this will probably overwrite newer state with old cached state? :-/ How to fix this?
         BrowserSurface.mergeState(newState, this._cachedState)
+        // TODO if we throw away cached state, we need to free the pixman regions in it
         this._cachedState = null
       }
       browserSurface.render(renderFrame, newState)
@@ -382,6 +385,7 @@ export default class BrowserSubsurface {
       const browserSurface = this.grSurfaceResource.implementation
       const renderFrame = Renderer.createRenderFrame()
       browserSurface.render(renderFrame, this._cachedState)
+      // TODO if we throw away cached state, we need to free the pixman regions in it
       this._cachedState = null
       renderFrame.fire()
       await renderFrame

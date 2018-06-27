@@ -11,7 +11,7 @@ import Rect from './math/Rect'
  *            regions of a surface.
  *
  */
-export default class BrowserRegion {
+class BrowserRegion {
   /**
    *
    * @param {GrRegion} grRegionResource
@@ -30,6 +30,8 @@ export default class BrowserRegion {
   static createPixmanRegion () {
     const pixmanRegion = pixman._malloc(20)// region struct is pointer + 4*uint32 = 5*4 = 20
     pixman._pixman_region32_init(pixmanRegion)
+    // FIXME a lot of regions are created that are not freed. Fix this memory leak.
+    BrowserRegion._regions.push(pixmanRegion)
     return pixmanRegion
   }
 
@@ -89,8 +91,14 @@ export default class BrowserRegion {
    * @param {number}pixmanRegion
    */
   static destroyPixmanRegion (pixmanRegion) {
-    pixman._pixman_region32_fini(pixmanRegion)
-    pixman._free(pixmanRegion)
+    const idx = BrowserRegion._regions.indexOf(pixmanRegion)
+    if (idx > -1) {
+      BrowserRegion._regions.splice(idx, 1)
+      pixman._pixman_region32_fini(pixmanRegion)
+      pixman._free(pixmanRegion)
+    } else {
+      console.error(`Attempted to free illegal region ${pixmanRegion}`)
+    }
   }
 
   /**
@@ -197,3 +205,7 @@ export default class BrowserRegion {
     pixman._pixman_region32_copy(destination, source)
   }
 }
+
+BrowserRegion._regions = []
+
+export default BrowserRegion

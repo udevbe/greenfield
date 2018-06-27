@@ -331,7 +331,7 @@ let Module = function (Module) {
 
   HEAP32[0] = 1668509029
   HEAP16[1] = 25459
-  if (HEAPU8[2] !== 115 || HEAPU8[3] !== 99) throw 'Runtime error: expected the system to be little-endian!'
+  if (HEAPU8[2] !== 115 || HEAPU8[3] !== 99) throw new Error('Runtime error: expected the system to be little-endian!')
 
   function callRuntimeCallbacks (callbacks) {
     while (callbacks.length > 0) {
@@ -524,7 +524,7 @@ let Module = function (Module) {
         if (Module['readBinary']) {
           return Module['readBinary'](wasmBinaryFile)
         } else {
-          throw 'on the web, we need the wasm binary to be preloaded and set on Module[\'wasmBinary\']. emcc.py will do that for you when generating HTML (but not JS)'
+          throw new Error('on the web, we need the wasm binary to be preloaded and set on Module[\'wasmBinary\']. emcc.py will do that for you when generating HTML (but not JS)')
         }
       } catch (err) {
         abort(err)
@@ -537,7 +537,7 @@ let Module = function (Module) {
           credentials: 'same-origin'
         }).then(function (response) {
           if (!response['ok']) {
-            throw 'failed to load wasm binary file at \'' + wasmBinaryFile + '\''
+            throw new Error('failed to load wasm binary file at \'' + wasmBinaryFile + '\'')
           }
           return response['arrayBuffer']()
         }).catch(function () {
@@ -1023,7 +1023,7 @@ let Module = function (Module) {
     }
     ABORT = true
     EXITSTATUS = 1
-    throw 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.'
+    throw new Error('abort(' + what + '). Build with -s ASSERTIONS=1 for more info.')
   }
 
   Module['abort'] = abort
