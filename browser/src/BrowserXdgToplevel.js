@@ -621,10 +621,8 @@ export default class BrowserXdgToplevel {
       this.browserXdgSurface.grSurfaceResource.implementation.hasPointerInput = true
       browserPointer.removeMouseMoveListener(moveListener)
       browserPointer.setDefaultCursor()
-      this._emitConfigure(resource, w, h, [activated], none)
     })
 
-    this._emitConfigure(resource, w, h, [], none)
     this.browserXdgSurface.grSurfaceResource.implementation.hasPointerInput = false
     browserPointer.unsetFocus()
     browserPointer.addMouseMoveListener(moveListener)
@@ -773,7 +771,7 @@ export default class BrowserXdgToplevel {
         }
 
         const {w: width, h: height} = sizeCalculation()
-        this._emitConfigure(resource, width, height, [resizing], edges)
+        this._emitConfigure(resource, width, height, [activated, resizing], edges)
       }
 
       browserPointer.onButtonRelease().then(() => {
