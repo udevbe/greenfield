@@ -33,11 +33,6 @@ export default class BrowserSession extends Global {
   constructor (url, wfsServer, sessionId) {
     super(session.GrSession.name, 1)
     /**
-     * @type {boolean}
-     * @private
-     */
-    this._flush = false
-    /**
      * @type {string}
      */
     this.url = url
@@ -208,12 +203,6 @@ export default class BrowserSession extends Global {
   }
 
   flush () {
-    if (!this._flush) {
-      this._flush = true
-      setTimeout(() => {
-        this._flush = false
-        this.resources.forEach(resource => resource.flush())
-      }, 0)
-    }
+    this.resources.forEach(resource => resource.flush())
   }
 }
