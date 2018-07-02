@@ -198,12 +198,9 @@ export default class BrowserXdgToplevel {
     if (!this._desktopShellEntry) {
       this._desktopShellEntry = this._desktopShell.manage(browserSurface)
       this._desktopShellEntry.updateTitle(this._title)
-      this._updateParentView()
+      this._emitConfigure(this.resource, 0, 0, [activated], none)
     }
-    this._onMap()
   }
-
-  _onMap () {}
 
   _unmap () {
     this.mapped = false
@@ -211,32 +208,6 @@ export default class BrowserXdgToplevel {
     if (this._desktopShellEntry) {
       this._desktopShellEntry.mainView.destroy()
       this._desktopShellEntry = null
-    }
-    this._onUnmap()
-  }
-
-  _onUnmap () {}
-
-  _updateParentView () {
-    if (this._desktopShellEntry) {
-      const mappedParent = this._findMappedParent()
-      if (mappedParent) {
-        this._desktopShellEntry.mainView.parent = mappedParent.implementation._desktopShellEntry.mainView
-      }
-    }
-  }
-
-  /**
-   * @return {XdgToplevel}
-   * @private
-   */
-  _findMappedParent () {
-    if (this._parent && this._parent.implementation.mapped) {
-      return this._parent
-    } else if (this._parent) {
-      return this._parent.implementation._findMappedParent()
-    } else {
-      return null
     }
   }
 
@@ -436,19 +407,21 @@ export default class BrowserXdgToplevel {
    *
    */
   setParent (resource, parent) {
-    this._parent = parent
-    if (parent) {
-      parent.onDestroy().then(() => {
-        this._parent = null
-        this._updateParentView()
-      })
-      parent.implementation.onMap = () => {
-        this._updateParentView()
-      }
-      parent.implementation.onUnmap = () => {
-        this._updateParentView()
-      }
+    if (this._parent) {
+      const oldParentBrowserXdgSurface = this._parent.implemention.browserXdgSurface
+      const oldParentBrowserSurface = oldParentBrowserXdgSurface.grSurfaceResource.implementation
+      const browserSurface = this.browserXdgSurface.grSurfaceResource.implementation
+      oldParentBrowserSurface.removeChild(browserSurface.browserSurfaceChildSelf)
     }
+
+    if (parent) {
+      const parentBrowserXdgSurface = parent.implemention.browserXdgSurface
+      const parentBrowserSurface = parentBrowserXdgSurface.grSurfaceResource.implementation
+      const browserSurface = this.browserXdgSurface.grSurfaceResource.implementation
+      parentBrowserSurface.addChild(browserSurface.browserSurfaceChildSelf)
+    }
+
+    this._parent = parent
   }
 
   /**
