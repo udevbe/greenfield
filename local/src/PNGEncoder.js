@@ -9,7 +9,7 @@ module.exports = class PNGEncoder {
   static create (width, height, gstBufferFormat) {
     const pipeline = new gstreamer.Pipeline(
       `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=0/1 ! ` +
-      `videoconvert ! videoscale  ! capsfilter name=scale caps=video/x-raw,format=RGBA,width=${width},height=${height},framerate=0/1 !` +
+      `videoconvert ! capsfilter name=scale caps=video/x-raw,format=RGBA,width=${width},height=${height},framerate=0/1 !` +
       'pngenc !' +
       'appsink name=sink'
     )
@@ -39,8 +39,6 @@ module.exports = class PNGEncoder {
   configure (width, height, gstBufferFormat) {
     // source caps describe what goes in
     this.src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=0/1`
-    // target caps describe what we want
-    this.scale.caps = `video/x-raw,width=${width},height=${height},framerate=0/1`
   }
 
   /**

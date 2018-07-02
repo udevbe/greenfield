@@ -2,7 +2,7 @@
 
 const config = require('./config')
 
-const H264OpaqueEncoder = require('./H264AlphaEncoder')
+const H264OpaqueEncoder = require('./H264OpaqueEncoder')
 const H264AlphaEncoder = require('./H264AlphaEncoder')
 const PNGEncoder = require('./PNGEncoder')
 const WlShmFormat = require('./protocol/wayland/WlShmFormat')

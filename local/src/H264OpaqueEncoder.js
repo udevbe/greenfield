@@ -2,13 +2,15 @@
 
 const gstreamer = require('gstreamer-superficial')
 
-module.exports = class H264AlphaEncoder {
+module.exports = class H264OpaqueEncoder {
   static create (width, height, gstBufferFormat) {
     const pipeline = new gstreamer.Pipeline(
       `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=20/1 ! ` +
-      'videoconvert ! video/x-raw,format=I420 ! ' +
       `videoscale ! capsfilter name=scale caps=video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)} ! ` +
-      `x264enc key-int-max=900 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ` +
+      'glupload ! ' +
+      'glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! ' +
+      'gldownload ! ' +
+      `x264enc key-int-max=1 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ` +
       'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=20/1 ! ' +
       'appsink name=sink'
     )
@@ -19,7 +21,7 @@ module.exports = class H264AlphaEncoder {
     const scale = pipeline.findChild('scale')
     pipeline.play()
 
-    return new H264AlphaEncoder(pipeline, sink, alphasink, src, scale, width, height)
+    return new H264OpaqueEncoder(pipeline, sink, alphasink, src, scale, width, height)
   }
 
   constructor (pipeline, appsink, alphasink, appsrc, scale, width, height) {
