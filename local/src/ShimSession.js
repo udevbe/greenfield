@@ -24,7 +24,7 @@ module.exports = class ShimSession {
     const waylandSocket = wlDisplay.addSocketAuto()
     console.log(`Child ${process.pid} created new wayland server socket: ${waylandSocket}`)
 
-    // set the waylan display to something non existing, else gstreamer will connect to us with a fallback value and
+    // set the wayland display to something non existing, else gstreamer will connect to us with a fallback value and
     // block, while in turn we wait for gstreamer, resulting in a deadlock!
     process.env.WAYLAND_DISPLAY = 'doesntExist'
 

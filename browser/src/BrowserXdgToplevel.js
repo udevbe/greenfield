@@ -432,14 +432,14 @@ export default class BrowserXdgToplevel {
    */
   setParent (resource, parent) {
     if (this._parent) {
-      const oldParentBrowserXdgSurface = this._parent.implemention.browserXdgSurface
+      const oldParentBrowserXdgSurface = this._parent.implementation.browserXdgSurface
       const oldParentBrowserSurface = oldParentBrowserXdgSurface.grSurfaceResource.implementation
       const browserSurface = this.browserXdgSurface.grSurfaceResource.implementation
       oldParentBrowserSurface.removeChild(browserSurface.browserSurfaceChildSelf)
     }
 
     if (parent) {
-      const parentBrowserXdgSurface = parent.implemention.browserXdgSurface
+      const parentBrowserXdgSurface = parent.implementation.browserXdgSurface
       const parentBrowserSurface = parentBrowserXdgSurface.grSurfaceResource.implementation
       const browserSurface = this.browserXdgSurface.grSurfaceResource.implementation
       parentBrowserSurface.addChild(browserSurface.browserSurfaceChildSelf)
