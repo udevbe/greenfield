@@ -236,6 +236,9 @@ export default class BrowserKeyboard {
     }
   }
 
+  /**
+   * @param {BrowserSurface}browserSurface
+   */
   set focus (browserSurface) {
     this._focus = browserSurface
     if (this._keyboardFocusResolve) {
@@ -246,6 +249,9 @@ export default class BrowserKeyboard {
     })
   }
 
+  /**
+   * @return {BrowserSurface}
+   */
   get focus () {
     return this._focus
   }

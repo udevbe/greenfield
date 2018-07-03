@@ -865,9 +865,6 @@ export default class BrowserSurface {
       callbacks.forEach((frameCallback) => {
         frameCallback.done(timestamp & 0x7fffffff)
       })
-      if (this.role && this.role.setRoleState) {
-        this.role.setRoleState(newState.roleState)
-      }
     })
 
     if (this.browserSubsurfaceChildren.length > 1) {
@@ -893,6 +890,9 @@ export default class BrowserSurface {
     const {w: oldWidth, h: oldHeight} = this.size
     this._updateDerivedState(newState)
     BrowserSurface.mergeState(this.state, newState)
+    if (this.role && this.role.setRoleState) {
+      this.role.setRoleState(newState.roleState)
+    }
 
     if (newState.inputPixmanRegion || oldWidth !== this.size.w || oldHeight !== this.size.h) {
       this.browserSurfaceViews.forEach(browserSurfaceView => {

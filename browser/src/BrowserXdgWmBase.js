@@ -17,7 +17,7 @@ import BrowserXdgPositioner from './BrowserXdgPositioner'
 export default class BrowserXdgWmBase extends Global {
   /**
    * @param {BrowserSession} browserSession
-   * @param {DesktopShell}desktopShell
+   * @param {DesktopUserShell}desktopShell
    * @return {BrowserXdgWmBase}
    */
   static create (browserSession, desktopShell) {
@@ -26,7 +26,7 @@ export default class BrowserXdgWmBase extends Global {
 
   /**
    * @param {BrowserSession} browserSession
-   * @param {DesktopShell}desktopShell
+   * @param {DesktopUserShell}desktopShell
    * @private
    */
   constructor (browserSession, desktopShell) {
@@ -37,7 +37,7 @@ export default class BrowserXdgWmBase extends Global {
      */
     this._browserSession = browserSession
     /**
-     * @type {DesktopShell}
+     * @type {DesktopUserShell}
      * @private
      */
     this._desktopShell = desktopShell

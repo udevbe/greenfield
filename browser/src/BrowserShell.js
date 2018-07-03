@@ -17,29 +17,29 @@ import BrowserShellSurface from './BrowserShellSurface'
 export default class BrowserShell extends Global {
   /**
    * @param {BrowserSession} browserSession
-   * @param {DesktopShell}desktopShell
+   * @param {UserShell}userShell
    * @return {BrowserShell}
    */
-  static create (browserSession, desktopShell) {
-    return new BrowserShell(browserSession, desktopShell)
+  static create (browserSession, userShell) {
+    return new BrowserShell(browserSession, userShell)
   }
 
   /**
    * Use BrowserShell.create(..)
    * @param {BrowserSession} browserSession
-   * @param {DesktopShell}desktopShell
+   * @param {UserShell}userShell
    * @private
    */
-  constructor (browserSession, desktopShell) {
+  constructor (browserSession, userShell) {
     super(GrShell.name, 1)
     /**
      * @type {BrowserSession}
      */
     this.browserSession = browserSession
     /**
-     * @type {DesktopShell}
+     * @type {UserShell}
      */
-    this.desktopShell = desktopShell
+    this.userShell = userShell
   }
 
   bindClient (client, id, version) {
@@ -69,6 +69,6 @@ export default class BrowserShell extends Global {
     }
 
     const grShellSurfaceResource = new GrShellSurface(resource.client, id, resource.version)
-    BrowserShellSurface.create(grShellSurfaceResource, surface, this.browserSession, this.desktopShell)
+    BrowserShellSurface.create(grShellSurfaceResource, surface, this.browserSession, this.userShell)
   }
 }

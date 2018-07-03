@@ -52,11 +52,11 @@ export default class BrowserXdgSurface {
    * @param {XdgSurface}xdgSurfaceResource
    * @param {GrSurface}grSurfaceResource
    * @param {BrowserSession} browserSession
-   * @param {DesktopShell}desktopShell
+   * @param {UserShell}userShell
    * @return {BrowserXdgSurface}
    */
-  static create (xdgSurfaceResource, grSurfaceResource, browserSession, desktopShell) {
-    const browserXdgSurface = new BrowserXdgSurface(xdgSurfaceResource, grSurfaceResource, browserSession, desktopShell)
+  static create (xdgSurfaceResource, grSurfaceResource, browserSession, userShell) {
+    const browserXdgSurface = new BrowserXdgSurface(xdgSurfaceResource, grSurfaceResource, browserSession, userShell)
     xdgSurfaceResource.implementation = browserXdgSurface
     const browserSurface = grSurfaceResource.implementation
     browserSurface.hasKeyboardInput = true
@@ -69,10 +69,10 @@ export default class BrowserXdgSurface {
    * @param {XdgSurface}xdgSurfaceResource
    * @param {GrSurface}grSurfaceResource
    * @param {BrowserSession} browserSession
-   * @param {DesktopShell}desktopShell
+   * @param {UserShell}userShell
    * @private
    */
-  constructor (xdgSurfaceResource, grSurfaceResource, browserSession, desktopShell) {
+  constructor (xdgSurfaceResource, grSurfaceResource, browserSession, userShell) {
     /**
      * @type {XdgSurface}
      */
@@ -87,10 +87,10 @@ export default class BrowserXdgSurface {
      */
     this._browserSession = browserSession
     /**
-     * @type {DesktopShell}
+     * @type {UserShell}
      * @private
      */
-    this._desktopShell = desktopShell
+    this._userShell = userShell
     /**
      * @type {Rect}
      */
@@ -142,7 +142,7 @@ export default class BrowserXdgSurface {
       return
     }
     const xdgToplevelResource = new XdgToplevel(resource.client, id, resource.version)
-    const browserXdgToplevel = BrowserXdgToplevel.create(xdgToplevelResource, this, this._browserSession, this._desktopShell)
+    const browserXdgToplevel = BrowserXdgToplevel.create(xdgToplevelResource, this, this._browserSession, this._userShell)
     this.ackConfigure = (resource, serial) => {
       browserXdgToplevel.ackConfigure(serial)
     }

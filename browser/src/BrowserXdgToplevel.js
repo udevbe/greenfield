@@ -30,13 +30,18 @@ export default class BrowserXdgToplevel {
    * @param {XdgToplevel}xdgToplevelResource
    * @param {BrowserXdgSurface}browserXdgSurface
    * @param {BrowserSession} browserSession
-   * @param {DesktopShell}desktopShell
+   * @param {UserShell}userShell
    */
-  static create (xdgToplevelResource, browserXdgSurface, browserSession, desktopShell) {
-    const browserXdgToplevel = new BrowserXdgToplevel(xdgToplevelResource, browserXdgSurface, browserSession, desktopShell)
+  static create (xdgToplevelResource, browserXdgSurface, browserSession, userShell) {
+    const browserXdgToplevel = new BrowserXdgToplevel(xdgToplevelResource, browserXdgSurface, browserSession, userShell)
     xdgToplevelResource.implementation = browserXdgToplevel
     browserXdgSurface.grSurfaceResource.implementation.role = browserXdgToplevel
     browserXdgToplevel._emitConfigure(xdgToplevelResource, 0, 0, [], none)
+    xdgToplevelResource.onDestroy().then(() => {
+      if (browserXdgToplevel._userShellSurface) {
+        browserXdgToplevel._userShellSurface.destroy()
+      }
+    })
     return browserXdgToplevel
   }
 
@@ -45,10 +50,10 @@ export default class BrowserXdgToplevel {
    * @param {XdgToplevel}xdgToplevelResource
    * @param {BrowserXdgSurface}browserXdgSurface
    * @param {BrowserSession} browserSession
-   * @param {DesktopShell}desktopShell
+   * @param {UserShell}userShell
    * @private
    */
-  constructor (xdgToplevelResource, browserXdgSurface, browserSession, desktopShell) {
+  constructor (xdgToplevelResource, browserXdgSurface, browserSession, userShell) {
     /**
      * @type {XdgToplevel}
      */
@@ -63,15 +68,15 @@ export default class BrowserXdgToplevel {
      */
     this._browserSession = browserSession
     /**
-     * @type {DesktopShell}
+     * @type {UserShell}
      * @private
      */
-    this._desktopShell = desktopShell
+    this._userShell = userShell
     /**
-     * @type {DesktopShellEntry|null}
+     * @type {UserShellSurface|null}
      * @private
      */
-    this._desktopShellEntry = null
+    this._userShellSurface = null
     /**
      * @type {XdgToplevel|null}
      * @private
@@ -126,7 +131,7 @@ export default class BrowserXdgToplevel {
      */
     this._configureState = {serial: 0, state: [], width: 0, height: 0, resizeEdge: 0}
     /**
-     * @type {Rect|null}
+     * @type {Rect|Null}
      * @private
      */
     this._previousGeometry = null
@@ -134,6 +139,11 @@ export default class BrowserXdgToplevel {
      * @type {boolean}
      */
     this.mapped = false
+    /**
+     * @type {boolean}
+     * @private
+     */
+    this._activationRequested = false
   }
 
   /**
@@ -156,6 +166,11 @@ export default class BrowserXdgToplevel {
     this._minSize = roleState.minSize
     this._configureState = roleState.configureState
     this.browserXdgSurface.updateWindowGeometry(roleState.windowGeometry)
+
+    if (this._userShellSurface && this._activationRequested && this._configureState.state.includes(activated)) {
+      this._activationRequested = false
+      this._userShellSurface.activationAck()
+    }
   }
 
   /**
@@ -195,19 +210,28 @@ export default class BrowserXdgToplevel {
    */
   _map (browserSurface) {
     this.mapped = true
-    if (!this._desktopShellEntry) {
-      this._desktopShellEntry = this._desktopShell.manage(browserSurface)
-      this._desktopShellEntry.updateTitle(this._title)
-      this._emitConfigure(this.resource, 0, 0, [activated], none)
+    if (!this._userShellSurface) {
+      this._userShellSurface = this._userShell.manage(browserSurface)
+      this._userShellSurface.onActivationRequest = () => {
+        if (!this._activationRequested) {
+          this._activationRequested = true
+          this._emitConfigure(this.resource, 0, 0, [activated], none)
+        }
+      }
+      this._userShellSurface.onInactive = () => {
+        this._emitConfigure(this.resource, 0, 0, [], none)
+      }
+      this._userShellSurface.title = this._title
+      this._userShellSurface.appId = this._appId
+      this._userShellSurface.mapped = true
     }
   }
 
   _unmap () {
     this.mapped = false
     this._configureState = {state: [], width: 0, height: 0, resizeEdge: 0}
-    if (this._desktopShellEntry) {
-      this._desktopShellEntry.mainView.destroy()
-      this._desktopShellEntry = null
+    if (this._userShellSurface) {
+      this._userShellSurface.mapped = false
     }
   }
 
@@ -282,7 +306,7 @@ export default class BrowserXdgToplevel {
       this._unfullscreenConfigureState = null
     }
     const x = 0
-    const {height: y} = this._desktopShell.panel.getBoundingClientRect()
+    const {height: y} = this._userShell.panel.getBoundingClientRect()
     const windowGeoPositionOffset = newState.roleState.windowGeometry.position
 
     browserSurface.browserSurfaceChildSelf.position = Point.create(x - windowGeoPositionOffset.x, y - windowGeoPositionOffset.y)
@@ -443,8 +467,8 @@ export default class BrowserXdgToplevel {
    */
   setTitle (resource, title) {
     this._title = title
-    if (this._desktopShellEntry) {
-      this._desktopShellEntry.updateTitle(title)
+    if (this._userShellSurface) {
+      this._userShellSurface.title = title
     }
   }
 
@@ -480,6 +504,9 @@ export default class BrowserXdgToplevel {
    */
   setAppId (resource, appId) {
     this._appId = appId
+    if (this._userShellSurface) {
+      this._userShellSurface.appId = appId
+    }
   }
 
   /**
@@ -587,8 +614,6 @@ export default class BrowserXdgToplevel {
       })
       renderFrame.fire()
     }
-
-    const {w, h} = this.browserXdgSurface.windowGeometry.size
 
     browserPointer.onButtonRelease().then(() => {
       this.browserXdgSurface.grSurfaceResource.implementation.hasPointerInput = true
@@ -925,7 +950,7 @@ export default class BrowserXdgToplevel {
       return
     }
 
-    const {width: workspaceWidth, height: workspaceHeight} = this._desktopShell.workspace.getBoundingClientRect()
+    const {width: workspaceWidth, height: workspaceHeight} = this._userShell.workspace.getBoundingClientRect()
     const maxWidth = Math.round(workspaceWidth)
     const maxHeight = Math.round(workspaceHeight)
 
@@ -1080,6 +1105,6 @@ export default class BrowserXdgToplevel {
    *
    */
   setMinimized (resource) {
-    this._desktopShellEntry.mainView.fadeOut()
+    this._userShellSurface.minimize()
   }
 }

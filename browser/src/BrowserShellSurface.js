@@ -35,11 +35,11 @@ export default class BrowserShellSurface {
    * @param {GrShellSurface}grShellSurfaceResource
    * @param {GrSurface}grSurfaceResource
    * @param {BrowserSession} browserSession
-   * @param {DesktopShell}desktopShell
+   * @param {UserShell}userShell
    * @return {BrowserShellSurface}
    */
-  static create (grShellSurfaceResource, grSurfaceResource, browserSession, desktopShell) {
-    const browserShellSurface = new BrowserShellSurface(grShellSurfaceResource, grSurfaceResource, browserSession, desktopShell)
+  static create (grShellSurfaceResource, grSurfaceResource, browserSession, userShell) {
+    const browserShellSurface = new BrowserShellSurface(grShellSurfaceResource, grSurfaceResource, browserSession, userShell)
     grShellSurfaceResource.implementation = browserShellSurface
 
     // destroy the shell-surface if the surface is destroyed.
@@ -50,6 +50,11 @@ export default class BrowserShellSurface {
     grSurfaceResource.implementation.role = browserShellSurface
     browserShellSurface._doPing(grShellSurfaceResource)
 
+    grShellSurfaceResource.onDestroy().then(() => {
+      browserShellSurface._unmap()
+      browserShellSurface._userShellSurface.destroy()
+    })
+
     return browserShellSurface
   }
 
@@ -58,9 +63,9 @@ export default class BrowserShellSurface {
    * @param {GrShellSurface}grShellSurfaceResource
    * @param {GrSurface}grSurfaceResource
    * @param {BrowserSession} browserSession
-   * @param {DesktopShell}desktopShell
+   * @param {UserShell}userShell
    */
-  constructor (grShellSurfaceResource, grSurfaceResource, browserSession, desktopShell) {
+  constructor (grShellSurfaceResource, grSurfaceResource, browserSession, userShell) {
     /**
      * @type {GrShellSurface}
      */
@@ -71,12 +76,14 @@ export default class BrowserShellSurface {
     this.grSurfaceResource = grSurfaceResource
     /**
      * @type {string}
+     * @private
      */
-    this.title = ''
+    this._title = ''
     /**
      * @type {string}
+     * @private
      */
-    this.clazz = ''
+    this._clazz = ''
     /**
      * @type {string}
      */
@@ -86,25 +93,30 @@ export default class BrowserShellSurface {
      */
     this.browserSession = browserSession
     /**
-     * @type {DesktopShell}
+     * @type {UserShell}
      * @private
      */
-    this._desktopShell = desktopShell
+    this._userShell = userShell
     /**
      * @type {boolean}
      * @private
      */
     this._pingTimeoutActive = false
     /**
-     * @type {DesktopShellEntry}
+     * @type {UserShellSurface}
      * @private
      */
-    this._desktopShellEntry = null
+    this._userShellSurface = null
     /**
      * @type {number}
      * @private
      */
     this._timeoutTimer = 0
+    /**
+     * @type {boolean}
+     * @private
+     */
+    this._mapped = false
   }
 
   /**
@@ -117,10 +129,34 @@ export default class BrowserShellSurface {
     const oldPosition = browserSurface.browserSurfaceChildSelf.position
     browserSurface.browserSurfaceChildSelf.position = Point.create(oldPosition.x + newState.dx, oldPosition.y + newState.dy)
 
+    if (newState.bufferContents) {
+      if (!this._mapped) {
+        this._map()
+      }
+    } else {
+      if (this._mapped) {
+        this._unmap()
+      }
+    }
+
     browserSurface.render(renderFrame, newState)
     renderFrame.fire()
     await renderFrame
     this.browserSession.flush()
+  }
+
+  _map () {
+    this._mapped = true
+    if (this._userShellSurface) {
+      this._userShellSurface.mapped = true
+    }
+  }
+
+  _unmap () {
+    this._mapped = false
+    if (this._userShellSurface) {
+      this._userShellSurface.mapped = false
+    }
   }
 
   /**
@@ -355,6 +391,19 @@ export default class BrowserShellSurface {
     }
   }
 
+  _createUserShellSurface () {
+    this._userShellSurface = this._userShell.manage(this.grSurfaceResource.implementation)
+    this._userShellSurface.onActivationRequest = () => {
+      this._userShellSurface.activationAck()
+    }
+    this._userShellSurface.onInactive = () => {
+      // I don't think we need to do something here?
+    }
+    this._userShellSurface.title = this._title
+    this._userShellSurface.appId = this._clazz
+    this._userShellSurface.mapped = this._mapped
+  }
+
   /**
    *
    *                Map the surface as a toplevel surface.
@@ -372,11 +421,9 @@ export default class BrowserShellSurface {
       return
     }
 
-    if (!this.state) {
-      // first time state is set, so manage this shell surface.
-      this._desktopShellEntry = this._desktopShell.manage(this.grSurfaceResource.implementation)
+    if (!this._userShellSurface) {
+      this._createUserShellSurface()
     }
-
     this.state = SurfaceStates.TOP_LEVEL
   }
 
@@ -414,9 +461,8 @@ export default class BrowserShellSurface {
 
     this.grSurfaceResource.implementation.hasKeyboardInput = (flags & inactive) === 0
 
-    if (!this.state) {
-      // first time state is set, so manage this shell surface.
-      this._desktopShellEntry = this._desktopShell.manage(this.grSurfaceResource.implementation)
+    if (!this._userShellSurface) {
+      this._createUserShellSurface()
     }
     this.state = SurfaceStates.TRANSIENT
   }
@@ -574,8 +620,8 @@ export default class BrowserShellSurface {
 
     // TODO get proper size in surface coordinates instead of assume surface space === global space
     const x = 0
-    const {height: y} = this._desktopShell.panel.getBoundingClientRect()
-    const {width, height} = this._desktopShell.workspace.getBoundingClientRect()
+    const {height: y} = this._userShell.panel.getBoundingClientRect()
+    const {width, height} = this._userShell.workspace.getBoundingClientRect()
 
     browserSurface.browserSurfaceChildSelf.position = Point.create(x, y)
     this.resource.configure(none, width, height)
@@ -599,9 +645,9 @@ export default class BrowserShellSurface {
    *
    */
   setTitle (resource, title) {
-    this.title = title
-    if (this._desktopShellEntry) {
-      this._desktopShellEntry.updateTitle(title)
+    this._title = title
+    if (this._userShellSurface) {
+      this._userShellSurface.title = title
     }
   }
 
@@ -622,6 +668,9 @@ export default class BrowserShellSurface {
    *
    */
   setClass (resource, clazz) {
-    this.clazz = clazz
+    this._clazz = clazz
+    if (this._userShellSurface) {
+      this._userShellSurface.appId = clazz
+    }
   }
 }
