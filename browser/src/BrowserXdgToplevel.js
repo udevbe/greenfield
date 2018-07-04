@@ -296,7 +296,7 @@ export default class BrowserXdgToplevel {
       this._unfullscreenConfigureState = null
     }
     const x = 0
-    const {height: y} = this._userShell.panel.getBoundingClientRect()
+    const {y} = document.getElementById('workspace').getBoundingClientRect()
     const windowGeoPositionOffset = newState.roleState.windowGeometry.position
 
     browserSurface.browserSurfaceChildSelf.position = Point.create(x - windowGeoPositionOffset.x, y - windowGeoPositionOffset.y)
@@ -939,7 +939,7 @@ export default class BrowserXdgToplevel {
       return
     }
 
-    const {width: workspaceWidth, height: workspaceHeight} = this._userShell.workspace.getBoundingClientRect()
+    const {width: workspaceWidth, height: workspaceHeight} = document.getElementById('workspace').getBoundingClientRect()
     const maxWidth = Math.round(workspaceWidth)
     const maxHeight = Math.round(workspaceHeight)
 
