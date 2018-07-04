@@ -199,7 +199,7 @@ export default class BrowserXdgToplevel {
       } else if (newState.roleState.configureState.state.includes(activated)) {
         this._normalCommit(browserSurface, renderFrame, newState)
       }
-    } else {
+    } else if (this.mapped) {
       this._unmap()
     }
 
@@ -421,19 +421,22 @@ export default class BrowserXdgToplevel {
    *
    */
   setParent (resource, parent) {
-    if (this._parent) {
-      const oldParentBrowserXdgSurface = this._parent.implementation.browserXdgSurface
-      const oldParentBrowserSurface = oldParentBrowserXdgSurface.grSurfaceResource.implementation
-      const browserSurface = this.browserXdgSurface.grSurfaceResource.implementation
-      oldParentBrowserSurface.removeChild(browserSurface.browserSurfaceChildSelf)
-    }
+    // TODO
 
-    if (parent) {
-      const parentBrowserXdgSurface = parent.implementation.browserXdgSurface
-      const parentBrowserSurface = parentBrowserXdgSurface.grSurfaceResource.implementation
-      const browserSurface = this.browserXdgSurface.grSurfaceResource.implementation
-      parentBrowserSurface.addChild(browserSurface.browserSurfaceChildSelf)
-    }
+    // if (this._parent) {
+    //   const oldParentBrowserXdgSurface = this._parent.implementation.browserXdgSurface
+    //   const oldParentBrowserSurface = oldParentBrowserXdgSurface.grSurfaceResource.implementation
+    //   const browserSurface = this.browserXdgSurface.grSurfaceResource.implementation
+    //   oldParentBrowserSurface.removeChild(browserSurface.browserSurfaceChildSelf)
+    // }
+
+    // FIXME this causes multiple views to be created
+    // if (parent) {
+    //   const parentBrowserXdgSurface = parent.implementation.browserXdgSurface
+    //   const parentBrowserSurface = parentBrowserXdgSurface.grSurfaceResource.implementation
+    //   const browserSurface = this.browserXdgSurface.grSurfaceResource.implementation
+    //   parentBrowserSurface.addChild(browserSurface.browserSurfaceChildSelf)
+    // }
 
     this._parent = parent
   }
