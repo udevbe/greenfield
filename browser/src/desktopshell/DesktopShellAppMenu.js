@@ -213,10 +213,6 @@ export default class DesktopShellAppMenu {
         this._ws.close(4007, 'Apps web socket received an illegal message')
       }
     }
-
-    window.unload = () => {
-      ws.close(1000, 'User closed tab.')
-    }
   }
 
   /**

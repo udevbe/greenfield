@@ -136,11 +136,6 @@ export default class BrowserSession extends Global {
       e.returnValue = dialogText
       return dialogText
     }
-
-    window.unload = () => {
-      console.log('User closed tab.')
-      this._ws.close(1000, 'User closed tab.')
-    }
   }
 
   _setupPrimaryConnection () {
