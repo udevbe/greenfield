@@ -574,9 +574,10 @@ export default class BrowserXdgToplevel {
 
     const browserSeat = seat.implementation
 
-    if (serial !== browserSeat.serial) {
-      return
-    }
+    // FIXME implement input serials
+    // if (serial !== browserSeat.serial) {
+    //   return
+    // }
 
     const browserPointer = browserSeat.browserPointer
     const browserSurface = this.browserXdgSurface.grSurfaceResource.implementation
@@ -665,115 +666,118 @@ export default class BrowserXdgToplevel {
 
     const browserSeat = seat.implementation
     const browserPointer = browserSeat.browserPointer
-    if (browserSeat.serial === serial) {
-      // assigned in switch statement
-      let sizeAdjustment = (width, height, deltaX, deltaY) => {}
 
-      switch (edges) {
-        case bottomRight: {
-          window.document.body.style.cursor = 'nwse-resize'
-          sizeAdjustment = (width, height, deltaX, deltaY) => {
-            return {w: width + deltaX, h: height + deltaY}
-          }
-          break
+    // FIXME implement input serial
+    // if (browserSeat.serial !== serial) {
+    //   return
+    // }
+    // assigned in switch statement
+    let sizeAdjustment = (width, height, deltaX, deltaY) => {}
+
+    switch (edges) {
+      case bottomRight: {
+        window.document.body.style.cursor = 'nwse-resize'
+        sizeAdjustment = (width, height, deltaX, deltaY) => {
+          return {w: width + deltaX, h: height + deltaY}
         }
-        case top: {
-          window.document.body.style.cursor = 'ns-resize'
-          sizeAdjustment = (width, height, deltaX, deltaY) => {
-            return {w: width, h: height - deltaY}
-          }
-          break
-        }
-        case bottom: {
-          window.document.body.style.cursor = 'ns-resize'
-          sizeAdjustment = (width, height, deltaX, deltaY) => {
-            return {w: width, h: height + deltaY}
-          }
-          break
-        }
-        case left: {
-          window.document.body.style.cursor = 'ew-resize'
-          sizeAdjustment = (width, height, deltaX, deltaY) => {
-            return {w: width - deltaX, h: height}
-          }
-          break
-        }
-        case topLeft: {
-          window.document.body.style.cursor = 'nwse-resize'
-          sizeAdjustment = (width, height, deltaX, deltaY) => {
-            return {w: width - deltaX, h: height - deltaY}
-          }
-          break
-        }
-        case bottomLeft: {
-          window.document.body.style.cursor = 'nesw-resize'
-          sizeAdjustment = (width, height, deltaX, deltaY) => {
-            return {w: width - deltaX, h: height + deltaY}
-          }
-          break
-        }
-        case right: {
-          window.document.body.style.cursor = 'ew-resize'
-          sizeAdjustment = (width, height, deltaX, deltaY) => {
-            return {w: width + deltaX, h: height}
-          }
-          break
-        }
-        case topRight: {
-          window.document.body.style.cursor = 'nesw-resize'
-          sizeAdjustment = (width, height, deltaX, deltaY) => {
-            return {w: width + deltaX, h: height - deltaY}
-          }
-          break
-        }
-        case none:
-        default: {
-          browserPointer.setDefaultCursor()
-          sizeAdjustment = (width, height, deltaX, deltaY) => {
-            return {w: width, h: height}
-          }
-          break
-        }
+        break
       }
-
-      const pointerX = browserPointer.x
-      const pointerY = browserPointer.y
-      const {width: windowGeometryWidth, height: windowGeometryHeight} = this.browserXdgSurface.windowGeometry
-
-      const sizeCalculation = () => {
-        const deltaX = browserPointer.x - pointerX
-        const deltaY = browserPointer.y - pointerY
-
-        const size = sizeAdjustment(windowGeometryWidth, windowGeometryHeight, deltaX, deltaY)
-        const width = Math.max(this._minSize.x, Math.min(size.w, this._maxSize.x))
-        const height = Math.max(this._minSize.y, Math.min(size.h, this._maxSize.y))
-
-        return Size.create(width, height)
-      }
-
-      const resizeListener = () => {
-        if (!this.mapped) {
-          browserPointer.removeMouseMoveListener(resizeListener)
-          return
+      case top: {
+        window.document.body.style.cursor = 'ns-resize'
+        sizeAdjustment = (width, height, deltaX, deltaY) => {
+          return {w: width, h: height - deltaY}
         }
-
-        const {w: width, h: height} = sizeCalculation()
-        this._emitConfigure(resource, width, height, [activated, resizing], edges)
+        break
       }
-
-      browserPointer.onButtonRelease().then(() => {
-        this.browserXdgSurface.grSurfaceResource.implementation.hasPointerInput = true
-        browserPointer.removeMouseMoveListener(resizeListener)
+      case bottom: {
+        window.document.body.style.cursor = 'ns-resize'
+        sizeAdjustment = (width, height, deltaX, deltaY) => {
+          return {w: width, h: height + deltaY}
+        }
+        break
+      }
+      case left: {
+        window.document.body.style.cursor = 'ew-resize'
+        sizeAdjustment = (width, height, deltaX, deltaY) => {
+          return {w: width - deltaX, h: height}
+        }
+        break
+      }
+      case topLeft: {
+        window.document.body.style.cursor = 'nwse-resize'
+        sizeAdjustment = (width, height, deltaX, deltaY) => {
+          return {w: width - deltaX, h: height - deltaY}
+        }
+        break
+      }
+      case bottomLeft: {
+        window.document.body.style.cursor = 'nesw-resize'
+        sizeAdjustment = (width, height, deltaX, deltaY) => {
+          return {w: width - deltaX, h: height + deltaY}
+        }
+        break
+      }
+      case right: {
+        window.document.body.style.cursor = 'ew-resize'
+        sizeAdjustment = (width, height, deltaX, deltaY) => {
+          return {w: width + deltaX, h: height}
+        }
+        break
+      }
+      case topRight: {
+        window.document.body.style.cursor = 'nesw-resize'
+        sizeAdjustment = (width, height, deltaX, deltaY) => {
+          return {w: width + deltaX, h: height - deltaY}
+        }
+        break
+      }
+      case none:
+      default: {
         browserPointer.setDefaultCursor()
-
-        const {w: width, h: height} = sizeCalculation()
-        this._emitConfigure(resource, width, height, [activated], none)
-      })
-
-      this.browserXdgSurface.grSurfaceResource.implementation.hasPointerInput = false
-      browserPointer.unsetFocus()
-      browserPointer.addMouseMoveListener(resizeListener)
+        sizeAdjustment = (width, height, deltaX, deltaY) => {
+          return {w: width, h: height}
+        }
+        break
+      }
     }
+
+    const pointerX = browserPointer.x
+    const pointerY = browserPointer.y
+    const {width: windowGeometryWidth, height: windowGeometryHeight} = this.browserXdgSurface.windowGeometry
+
+    const sizeCalculation = () => {
+      const deltaX = browserPointer.x - pointerX
+      const deltaY = browserPointer.y - pointerY
+
+      const size = sizeAdjustment(windowGeometryWidth, windowGeometryHeight, deltaX, deltaY)
+      const width = Math.max(this._minSize.x, Math.min(size.w, this._maxSize.x))
+      const height = Math.max(this._minSize.y, Math.min(size.h, this._maxSize.y))
+
+      return Size.create(width, height)
+    }
+
+    const resizeListener = () => {
+      if (!this.mapped) {
+        browserPointer.removeMouseMoveListener(resizeListener)
+        return
+      }
+
+      const {w: width, h: height} = sizeCalculation()
+      this._emitConfigure(resource, width, height, [activated, resizing], edges)
+    }
+
+    browserPointer.onButtonRelease().then(() => {
+      this.browserXdgSurface.grSurfaceResource.implementation.hasPointerInput = true
+      browserPointer.removeMouseMoveListener(resizeListener)
+      browserPointer.setDefaultCursor()
+
+      const {w: width, h: height} = sizeCalculation()
+      this._emitConfigure(resource, width, height, [activated], none)
+    })
+
+    this.browserXdgSurface.grSurfaceResource.implementation.hasPointerInput = false
+    browserPointer.unsetFocus()
+    browserPointer.addMouseMoveListener(resizeListener)
   }
 
   /**
