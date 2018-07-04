@@ -14,6 +14,8 @@ export default class DesktopUserShellSurface extends UserShellSurface {
     mainView.attachTo(document.body)
 
     const divElement = document.createElement('div')
+    // divElement will become visible once surface is mapped
+    divElement.style.display = 'none'
     divElement.classList.add('entry')
     this._fadeOutAndDetachEntryOnDestroy(mainView, divElement)
 
@@ -27,7 +29,7 @@ export default class DesktopUserShellSurface extends UserShellSurface {
       desktopUserShellSurface.destroy()
     })
 
-    DesktopUserShellSurface._desktopUserShellSurfaces.push(desktopUserShellSurface)
+    DesktopUserShellSurface.desktopUserShellSurfaces.push(desktopUserShellSurface)
 
     return desktopUserShellSurface
   }
@@ -81,10 +83,10 @@ export default class DesktopUserShellSurface extends UserShellSurface {
      */
     this.divElement = divElement
     /**
-     * @type {function}
+     * @type {Function|null}
      * @private
      */
-    this._activeCallback = () => {}
+    this._activeCallback = null
     /**
      * @type {function}
      * @private
@@ -112,6 +114,8 @@ export default class DesktopUserShellSurface extends UserShellSurface {
     }
 
     if (!this.active) {
+      this.active = true
+
       this.mainView.show()
       this.mainView.raise()
       this.divElement.classList.add('entry-focus')
@@ -120,42 +124,70 @@ export default class DesktopUserShellSurface extends UserShellSurface {
         this._giveKeyboardFocus()
       }
 
-      this.active = true
+      DesktopUserShellSurface.desktopUserShellSurfaces.forEach((desktopUserShellSurface) => {
+        if (desktopUserShellSurface !== this) {
+          desktopUserShellSurface._deactivate()
+        }
+      })
     }
   }
 
+  /**
+   * @param {GrKeyboard}grKeyboard
+   */
   set grKeyboard (grKeyboard) {
-    if (grKeyboard && this.active) {
+    if (this.mainView.destroyed) {
+      return
+    }
+
+    if (this.active && this._grKeyboard.implementation.focus !== this.mainView.browserSurface) {
       this._giveKeyboardFocus()
     }
+    this._grKeyboard = grKeyboard
+    this._grKeyboard.onDestroy().then(() => {
+      this._grKeyboard = null
+    })
   }
 
+  /**
+   * @private
+   */
   _giveKeyboardFocus () {
     const browserKeyboard = this._grKeyboard.implementation
     browserKeyboard.focusGained(this.mainView.browserSurface)
     browserKeyboard.onKeyboardFocusChanged().then(() => {
       if (browserKeyboard.focus !== this.mainView.browserSurface) {
-        this.deactivate()
+        this._deactivate()
       }
     })
   }
 
-  deactivate () {
+  /**
+   * @private
+   */
+  _deactivate () {
     if (this.active) {
-      this.divElement.classList.remove('entry-focus')
       this.active = false
+      this.divElement.classList.remove('entry-focus')
       this._inactivateCallback()
     }
   }
 
   /**
-   * Indicates of the surface contents can be displayed on screen.
+   * Indicates if the surface contents can be displayed on screen.
    * @param {boolean}mapped
    * @override
    */
   set mapped (mapped) {
+    // TODO we probably want to use a style class here instead of display = ..
     if (mapped) {
-      this._activeCallback()
+      this.divElement.style.display = 'inline'
+      this.divElement.classList.remove('entry-removed')
+    } else {
+      this.divElement.addEventListener('transitionend', () => {
+        this.divElement.style.display = 'none'
+      })
+      this.divElement.classList.add('entry-removed')
     }
   }
 
@@ -165,6 +197,9 @@ export default class DesktopUserShellSurface extends UserShellSurface {
    */
   set onActivationRequest (activeCallback) {
     this._activeCallback = activeCallback
+    if (!this.active) {
+      this._activeCallback()
+    }
   }
 
   /**
@@ -208,22 +243,17 @@ export default class DesktopUserShellSurface extends UserShellSurface {
 
   /**
    * Notifies the user shell that it should destroy all resources associated with the surface
+   * @override
    */
   destroy () {
-    if (this.mainView.destroyed) {
-      return
-    }
-    // the view destroy listener will detach the html elements we create earlier on
-    this.mainView.destroy()
-    const idx = DesktopUserShellSurface._desktopUserShellSurfaces.indexOf(this)
+    const idx = DesktopUserShellSurface.desktopUserShellSurfaces.indexOf(this)
     if (idx > -1) {
-      DesktopUserShellSurface._desktopUserShellSurfaces.splice(idx, 1)
+      DesktopUserShellSurface.desktopUserShellSurfaces.splice(idx, 1)
     }
   }
 }
 
 /**
  * @type {Array<DesktopUserShellSurface>}
- * @private
  */
-DesktopUserShellSurface._desktopUserShellSurfaces = []
+DesktopUserShellSurface.desktopUserShellSurfaces = []

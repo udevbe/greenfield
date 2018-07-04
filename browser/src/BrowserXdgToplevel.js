@@ -33,15 +33,26 @@ export default class BrowserXdgToplevel {
    * @param {UserShell}userShell
    */
   static create (xdgToplevelResource, browserXdgSurface, browserSession, userShell) {
-    const browserXdgToplevel = new BrowserXdgToplevel(xdgToplevelResource, browserXdgSurface, browserSession, userShell)
+    const userShellSurface = userShell.manage(browserXdgSurface.grSurfaceResource.implementation)
+    const browserXdgToplevel = new BrowserXdgToplevel(xdgToplevelResource, browserXdgSurface, browserSession, userShellSurface)
     xdgToplevelResource.implementation = browserXdgToplevel
     browserXdgSurface.grSurfaceResource.implementation.role = browserXdgToplevel
-    browserXdgToplevel._emitConfigure(xdgToplevelResource, 0, 0, [], none)
     xdgToplevelResource.onDestroy().then(() => {
       if (browserXdgToplevel._userShellSurface) {
         browserXdgToplevel._userShellSurface.destroy()
       }
     })
+
+    userShellSurface.onActivationRequest = () => {
+      if (!browserXdgToplevel._activationRequested) {
+        browserXdgToplevel._activationRequested = true
+        browserXdgToplevel._emitConfigure(xdgToplevelResource, 0, 0, [activated], none)
+      }
+    }
+    userShellSurface.onInactive = () => {
+      browserXdgToplevel._emitConfigure(xdgToplevelResource, 0, 0, [], none)
+    }
+
     return browserXdgToplevel
   }
 
@@ -50,10 +61,10 @@ export default class BrowserXdgToplevel {
    * @param {XdgToplevel}xdgToplevelResource
    * @param {BrowserXdgSurface}browserXdgSurface
    * @param {BrowserSession} browserSession
-   * @param {UserShell}userShell
+   * @param {UserShellSurface} userShellSurface
    * @private
    */
-  constructor (xdgToplevelResource, browserXdgSurface, browserSession, userShell) {
+  constructor (xdgToplevelResource, browserXdgSurface, browserSession, userShellSurface) {
     /**
      * @type {XdgToplevel}
      */
@@ -68,15 +79,10 @@ export default class BrowserXdgToplevel {
      */
     this._browserSession = browserSession
     /**
-     * @type {UserShell}
+     * @type {UserShellSurface}
      * @private
      */
-    this._userShell = userShell
-    /**
-     * @type {UserShellSurface|null}
-     * @private
-     */
-    this._userShellSurface = null
+    this._userShellSurface = userShellSurface
     /**
      * @type {XdgToplevel|null}
      * @private
@@ -167,7 +173,7 @@ export default class BrowserXdgToplevel {
     this._configureState = roleState.configureState
     this.browserXdgSurface.updateWindowGeometry(roleState.windowGeometry)
 
-    if (this._userShellSurface && this._activationRequested && this._configureState.state.includes(activated)) {
+    if (this._activationRequested && this._configureState.state.includes(activated)) {
       this._activationRequested = false
       this._userShellSurface.activationAck()
     }
@@ -210,29 +216,13 @@ export default class BrowserXdgToplevel {
    */
   _map (browserSurface) {
     this.mapped = true
-    if (!this._userShellSurface) {
-      this._userShellSurface = this._userShell.manage(browserSurface)
-      this._userShellSurface.onActivationRequest = () => {
-        if (!this._activationRequested) {
-          this._activationRequested = true
-          this._emitConfigure(this.resource, 0, 0, [activated], none)
-        }
-      }
-      this._userShellSurface.onInactive = () => {
-        this._emitConfigure(this.resource, 0, 0, [], none)
-      }
-      this._userShellSurface.title = this._title
-      this._userShellSurface.appId = this._appId
-      this._userShellSurface.mapped = true
-    }
+    this._userShellSurface.mapped = true
   }
 
   _unmap () {
     this.mapped = false
     this._configureState = {state: [], width: 0, height: 0, resizeEdge: 0}
-    if (this._userShellSurface) {
-      this._userShellSurface.mapped = false
-    }
+    this._userShellSurface.mapped = false
   }
 
   /**
@@ -467,9 +457,7 @@ export default class BrowserXdgToplevel {
    */
   setTitle (resource, title) {
     this._title = title
-    if (this._userShellSurface) {
-      this._userShellSurface.title = title
-    }
+    this._userShellSurface.title = title
   }
 
   /**
@@ -504,9 +492,7 @@ export default class BrowserXdgToplevel {
    */
   setAppId (resource, appId) {
     this._appId = appId
-    if (this._userShellSurface) {
-      this._userShellSurface.appId = appId
-    }
+    this._userShellSurface.appId = appId
   }
 
   /**

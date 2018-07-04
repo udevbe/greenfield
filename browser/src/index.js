@@ -10,18 +10,20 @@ import BrowserShell from './BrowserShell'
 import BrowserSeat from './BrowserSeat'
 import BrowserDataDeviceManager from './BrowserDataDeviceManager'
 import BrowserOutput from './BrowserOutput'
-import DesktopShell from './DesktopShell'
 import BrowserSubcompositor from './BrowserSubcompositor'
 
 import './style/greenfield.css'
 import BrowserXdgWmBase from './BrowserXdgWmBase'
+import DesktopUserShell from './desktopshell/DesktopUserShell'
 
 /**
  * @param {BrowserSession}browserSession
  */
 function setupGlobals (browserSession) {
+  const desktopUserShell = DesktopUserShell.create(browserSession)
+
   const browserOutput = BrowserOutput.create()
-  const browserSeat = BrowserSeat.create(browserSession)
+  const browserSeat = BrowserSeat.create(browserSession, desktopUserShell)
   const browserCompositor = BrowserCompositor.create(browserSession, browserSeat)
   const browserDataDeviceManager = BrowserDataDeviceManager.create()
   const browserSubcompositor = BrowserSubcompositor.create()
@@ -29,10 +31,8 @@ function setupGlobals (browserSession) {
   const browserRtcPeerConnectionFactory = BrowserRtcPeerConnectionFactory.create()
   const browserRtcBufferFactory = BrowserRtcBufferFactory.create()
 
-  const desktopShell = DesktopShell.create(browserSession, browserSeat)
-
-  const browserShell = BrowserShell.create(browserSession, desktopShell)
-  const browserXdgWmBase = BrowserXdgWmBase.create(browserSession, desktopShell)
+  const browserShell = BrowserShell.create(browserSession, desktopUserShell)
+  const browserXdgWmBase = BrowserXdgWmBase.create(browserSession, desktopUserShell)
 
   browserSession.wfsServer.registry.register(browserOutput)
   browserSession.wfsServer.registry.register(browserCompositor)
@@ -84,5 +84,5 @@ window.onload = async () => {
   // make sure all native modules are ready for use before we start our main flow
   await loadNativeModule(pixman)
   await loadNativeModule(libxkbcommon)
-  main()
+  await main()
 }

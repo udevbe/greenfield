@@ -21,16 +21,17 @@ const {keyboard, pointer, touch} = GrSeat.Capability
 export default class BrowserSeat extends Global {
   /**
    * @param {BrowserSession} browserSession
+   * @param {UserShell}userShell
    * @returns {BrowserSeat}
    */
-  static create (browserSession) {
+  static create (browserSession, userShell) {
     const browserDataDevice = BrowserDataDevice.create()
     const browserKeyboard = BrowserKeyboard.create(browserSession, browserDataDevice)
     const browserPointer = BrowserPointer.create(browserSession, browserDataDevice, browserKeyboard)
     const browserTouch = BrowserTouch.create()
     const hasTouch = 'ontouchstart' in document.documentElement
 
-    const browserSeat = new BrowserSeat(browserDataDevice, browserPointer, browserKeyboard, browserTouch, hasTouch)
+    const browserSeat = new BrowserSeat(userShell, browserDataDevice, browserPointer, browserKeyboard, browserTouch, hasTouch)
     browserDataDevice.browserSeat = browserSeat
 
     browserKeyboard.browserSeat = browserSeat
@@ -41,14 +42,21 @@ export default class BrowserSeat extends Global {
   }
 
   /**
+   * @param {UserShell}userShell
    * @param {BrowserDataDevice} browserDataDevice
    * @param {BrowserPointer} browserPointer
    * @param {BrowserKeyboard} browserKeyboard
    * @param {BrowserTouch} browserTouch
    * @param {boolean} hasTouch
+   * @private
    */
-  constructor (browserDataDevice, browserPointer, browserKeyboard, browserTouch, hasTouch) {
+  constructor (userShell, browserDataDevice, browserPointer, browserKeyboard, browserTouch, hasTouch) {
     super(GrSeat.name, 6)
+    /**
+     * @type {UserShell}
+     * @private
+     */
+    this._userShell = userShell
     /**
      * @type {BrowserDataDevice}
      */
@@ -77,6 +85,11 @@ export default class BrowserSeat extends Global {
     this.serial = 0
   }
 
+  /**
+   * @param {Client}client
+   * @param {number}id
+   * @param {number}version
+   */
   bindClient (client, id, version) {
     const grSeatResource = new GrSeat(client, id, version)
     grSeatResource.implementation = this
@@ -91,6 +104,10 @@ export default class BrowserSeat extends Global {
     this._emitName(grSeatResource)
   }
 
+  /**
+   * @param {GrSeat}grSeatResource
+   * @private
+   */
   _emitCapabilities (grSeatResource) {
     let caps = pointer | keyboard
     if (this.hasTouch) {
@@ -99,12 +116,19 @@ export default class BrowserSeat extends Global {
     grSeatResource.capabilities(caps)
   }
 
+  /**
+   * @param {GrSeat}grSeatResource
+   * @private
+   */
   _emitName (grSeatResource) {
     if (grSeatResource.version >= 2) {
       grSeatResource.name(this._seatName)
     }
   }
 
+  /**
+   * @return {number}
+   */
   nextSerial () {
     return ++this.serial
   }
@@ -168,6 +192,7 @@ export default class BrowserSeat extends Global {
 
     this.browserKeyboard.emitKeymap(grKeyboardResource)
     this.browserKeyboard.emitKeyRepeatInfo(grKeyboardResource)
+    this._userShell.keyboardAvailable(grKeyboardResource)
   }
 
   /**

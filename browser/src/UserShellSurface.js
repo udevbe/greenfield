@@ -15,13 +15,13 @@ export default class UserShellSurface {
   set appId (appId) {}
 
   /**
-   * Indicates of the surface contents can be displayed on screen.
+   * Indicates if the surface contents can be displayed on screen.
    * @param {boolean}mapped
    */
   set mapped (mapped) {}
 
   /**
-   * Indicates of the application is responding.
+   * Indicates if the application is responding.
    * @param {boolean}unresponsive
    */
   set unresponsive (unresponsive) {}
@@ -49,7 +49,7 @@ export default class UserShellSurface {
   destroy () {}
 
   /**
-   * Notifies the user shell that the surface should no longer be displayed. If a surface is still mapped then the
+   * Notifies the user shell that the surface should no longer be displayed. If the surface is still mapped then the
    * surface contents can still be displayed ie in a live updating tile.
    */
   minimize () {}

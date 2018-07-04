@@ -3,7 +3,7 @@
 import DesktopUserShellSurface from './DesktopUserShellSurface'
 import DesktopShellMenu from './DesktopShellMenu'
 
-import './style/desktopshell.css'
+import './desktopshell.css'
 import DesktopShellAppMenu from './DesktopShellAppMenu'
 import UserShell from '../UserShell'
 
@@ -58,50 +58,31 @@ export default class DesktopUserShell extends UserShell {
      * @type{HTMLDivElement}
      */
     this.entryContainer = entryContainer
-    /**
-     * @type {DesktopUserShellSurface[]}
-     */
-    this.desktopShellEntries = []
   }
 
   /**
    * @param {BrowserSurface}browserSurface
+   * @param {function}activeCallback
    * @return {UserShellSurface}
+   * @override
    */
-  manage (browserSurface) {
-    // create a view and attach it to the scene
-    const desktopShellEntry = DesktopUserShellSurface.create(browserSurface, this._browserSeat)
+  manage (browserSurface, activeCallback) {
+    const desktopShellEntry = DesktopUserShellSurface.create(browserSurface, activeCallback)
     this.entryContainer.appendChild(desktopShellEntry.divElement)
-    this.desktopShellEntries.push(desktopShellEntry)
-
-    // remove the entry if the surface is destroyed
-    browserSurface.resource.onDestroy().then(() => {
-      const idx = this.desktopShellEntries.indexOf(desktopShellEntry)
-      if (idx > -1) {
-        this.desktopShellEntries.splice(idx, 1)
-      }
-    })
-
     return desktopShellEntry
   }
 
   /**
-   * @param {BrowserSurface|null}browserSurface
-   * @private
+   * Signal the user shell that a keyboard resource is available [for a particular client]. Useful to decide if a
+   * surface can be given keyboard input.
+   * @param {GrKeyboard}grKeyboard
+   * @override
    */
-  _onKeyboardFocusChanged (browserSurface) {
-    if (browserSurface) {
-      const desktopShellEntry = this.desktopShellEntries.find((desktopShellEntry) => {
-        return desktopShellEntry.mainView.browserSurface === browserSurface
-      })
-      if (desktopShellEntry) {
-        this.desktopShellEntries.forEach((desktopShellEntry) => {
-          desktopShellEntry.onKeyboardFocusLost()
-        })
-        desktopShellEntry.onKeyboardFocusGained()
+  keyboardAvailable (grKeyboard) {
+    DesktopUserShellSurface.desktopUserShellSurfaces.forEach((desktopUserShellSurface) => {
+      if (desktopUserShellSurface.mainView.browserSurface.resource.client === grKeyboard.client) {
+        desktopUserShellSurface.grKeyboard = grKeyboard
       }
-    } else {
-
-    }
+    })
   }
 }
