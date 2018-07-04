@@ -20,16 +20,16 @@ import DesktopUserShell from './desktopshell/DesktopUserShell'
  * @param {BrowserSession}browserSession
  */
 function setupGlobals (browserSession) {
-  const desktopUserShell = DesktopUserShell.create(browserSession)
-
   const browserOutput = BrowserOutput.create()
-  const browserSeat = BrowserSeat.create(browserSession, desktopUserShell)
+  const browserSeat = BrowserSeat.create(browserSession)
   const browserCompositor = BrowserCompositor.create(browserSession, browserSeat)
   const browserDataDeviceManager = BrowserDataDeviceManager.create()
   const browserSubcompositor = BrowserSubcompositor.create()
 
   const browserRtcPeerConnectionFactory = BrowserRtcPeerConnectionFactory.create()
   const browserRtcBufferFactory = BrowserRtcBufferFactory.create()
+
+  const desktopUserShell = DesktopUserShell.create(browserSession, browserSeat)
 
   const browserShell = BrowserShell.create(browserSession, desktopUserShell)
   const browserXdgWmBase = BrowserXdgWmBase.create(browserSession, desktopUserShell)

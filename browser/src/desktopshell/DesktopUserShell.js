@@ -10,9 +10,10 @@ import UserShell from '../UserShell'
 export default class DesktopUserShell extends UserShell {
   /**
    * @param {BrowserSession}browserSession
+   * @param {BrowserSeat}browserSeat
    * @return {DesktopUserShell}
    */
-  static create (browserSession) {
+  static create (browserSession, browserSeat) {
     const body = document.body
     const workspace = document.getElementById('workspace')
     const panel = document.createElement('div')
@@ -29,7 +30,12 @@ export default class DesktopUserShell extends UserShell {
     const desktopShellMenu = DesktopShellMenu.create()
     panel.appendChild(desktopShellMenu.divElementMenuButton)
 
-    return new DesktopUserShell(body, workspace, panel, entryContainer)
+    const desktopUserShell = new DesktopUserShell(body, workspace, panel, entryContainer, browserSeat)
+    browserSeat.addKeyboardResourceListener((grKeyboard) => {
+      desktopUserShell._keyboardAvailable(grKeyboard)
+    })
+
+    return desktopUserShell
   }
 
   /**
@@ -38,9 +44,10 @@ export default class DesktopUserShell extends UserShell {
    * @param {HTMLElement}workspace
    * @param {HTMLDivElement}panel
    * @param {HTMLDivElement}entryContainer
+   * @param {BrowserSeat}browserSeat
    * @private
    */
-  constructor (body, workspace, panel, entryContainer) {
+  constructor (body, workspace, panel, entryContainer, browserSeat) {
     super()
     /**
      * @type{HTMLElement}
@@ -58,27 +65,29 @@ export default class DesktopUserShell extends UserShell {
      * @type{HTMLDivElement}
      */
     this.entryContainer = entryContainer
+    /**
+     * @type {BrowserSeat}
+     * @private
+     */
+    this._browserSeat = browserSeat
   }
 
   /**
    * @param {BrowserSurface}browserSurface
-   * @param {function}activeCallback
    * @return {UserShellSurface}
    * @override
    */
-  manage (browserSurface, activeCallback) {
-    const desktopShellEntry = DesktopUserShellSurface.create(browserSurface, activeCallback)
+  manage (browserSurface) {
+    const desktopShellEntry = DesktopUserShellSurface.create(browserSurface, this._browserSeat)
     this.entryContainer.appendChild(desktopShellEntry.divElement)
     return desktopShellEntry
   }
 
   /**
-   * Signal the user shell that a keyboard resource is available [for a particular client]. Useful to decide if a
-   * surface can be given keyboard input.
    * @param {GrKeyboard}grKeyboard
-   * @override
+   * @private
    */
-  keyboardAvailable (grKeyboard) {
+  _keyboardAvailable (grKeyboard) {
     DesktopUserShellSurface.desktopUserShellSurfaces.forEach((desktopUserShellSurface) => {
       if (desktopUserShellSurface.mainView.browserSurface.resource.client === grKeyboard.client) {
         desktopUserShellSurface.grKeyboard = grKeyboard

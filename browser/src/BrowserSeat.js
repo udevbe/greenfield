@@ -21,17 +21,16 @@ const {keyboard, pointer, touch} = GrSeat.Capability
 export default class BrowserSeat extends Global {
   /**
    * @param {BrowserSession} browserSession
-   * @param {UserShell}userShell
    * @returns {BrowserSeat}
    */
-  static create (browserSession, userShell) {
+  static create (browserSession) {
     const browserDataDevice = BrowserDataDevice.create()
     const browserKeyboard = BrowserKeyboard.create(browserSession, browserDataDevice)
     const browserPointer = BrowserPointer.create(browserSession, browserDataDevice, browserKeyboard)
     const browserTouch = BrowserTouch.create()
     const hasTouch = 'ontouchstart' in document.documentElement
 
-    const browserSeat = new BrowserSeat(userShell, browserDataDevice, browserPointer, browserKeyboard, browserTouch, hasTouch)
+    const browserSeat = new BrowserSeat(browserDataDevice, browserPointer, browserKeyboard, browserTouch, hasTouch)
     browserDataDevice.browserSeat = browserSeat
 
     browserKeyboard.browserSeat = browserSeat
@@ -42,7 +41,6 @@ export default class BrowserSeat extends Global {
   }
 
   /**
-   * @param {UserShell}userShell
    * @param {BrowserDataDevice} browserDataDevice
    * @param {BrowserPointer} browserPointer
    * @param {BrowserKeyboard} browserKeyboard
@@ -50,13 +48,8 @@ export default class BrowserSeat extends Global {
    * @param {boolean} hasTouch
    * @private
    */
-  constructor (userShell, browserDataDevice, browserPointer, browserKeyboard, browserTouch, hasTouch) {
+  constructor (browserDataDevice, browserPointer, browserKeyboard, browserTouch, hasTouch) {
     super(GrSeat.name, 6)
-    /**
-     * @type {UserShell}
-     * @private
-     */
-    this._userShell = userShell
     /**
      * @type {BrowserDataDevice}
      */
@@ -83,6 +76,11 @@ export default class BrowserSeat extends Global {
      * @type {number}
      */
     this.serial = 0
+    /**
+     * @type {Array<function(GrKeyboard):void>}
+     * @private
+     */
+    this._keyboardResourceListeners = []
   }
 
   /**
@@ -192,7 +190,21 @@ export default class BrowserSeat extends Global {
 
     this.browserKeyboard.emitKeymap(grKeyboardResource)
     this.browserKeyboard.emitKeyRepeatInfo(grKeyboardResource)
-    this._userShell.keyboardAvailable(grKeyboardResource)
+    this._keyboardResourceListeners.forEach((listener) => listener(grKeyboardResource))
+  }
+
+  /**
+   * @param {function(GrKeyboard):void}listener
+   */
+  addKeyboardResourceListener (listener) {
+    this._keyboardResourceListeners.push(listener)
+  }
+
+  removeKeyboardResourceListener (listener) {
+    const idx = this._keyboardResourceListeners.indexOf(listener)
+    if (idx > -1) {
+      this._keyboardResourceListeners.splice(idx, 1)
+    }
   }
 
   /**

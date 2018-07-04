@@ -586,8 +586,6 @@ export default class BrowserPointer {
       consumed = true
       if (this.grab === null && this._popupStack.length === 0) {
         this.grab = this.focus
-        this._browserKeyboard.focusGained(this.grab.browserSurface)
-        this.focus.raise()
       }
 
       if (!this._popupStack.length) {

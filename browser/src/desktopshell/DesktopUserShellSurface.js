@@ -5,9 +5,10 @@ import UserShellSurface from '../UserShellSurface'
 export default class DesktopUserShellSurface extends UserShellSurface {
   /**
    * @param {BrowserSurface}browserSurface
+   * @param {BrowserSeat}browserSeat
    * @return {DesktopUserShellSurface}
    */
-  static create (browserSurface) {
+  static create (browserSurface, browserSeat) {
     // create a mainView and attach it to the scene
     const mainView = browserSurface.createView()
     this._fadeOutAndDetachViewOnDestroy(mainView)
@@ -19,7 +20,8 @@ export default class DesktopUserShellSurface extends UserShellSurface {
     divElement.classList.add('entry')
     this._fadeOutAndDetachEntryOnDestroy(mainView, divElement)
 
-    const desktopUserShellSurface = new DesktopUserShellSurface(mainView, divElement)
+    const desktopUserShellSurface = new DesktopUserShellSurface(mainView, divElement, browserSeat)
+    desktopUserShellSurface._activateOnPointerButton()
 
     divElement.addEventListener('mousedown', () => {
       desktopUserShellSurface._activeCallback()
@@ -70,9 +72,10 @@ export default class DesktopUserShellSurface extends UserShellSurface {
    * Use DesktopShellEntry.create(..) instead.
    * @param {BrowserSurfaceView}mainView
    * @param {HTMLDivElement}divElement
+   * @param {BrowserSeat}browserSeat
    * @private
    */
-  constructor (mainView, divElement) {
+  constructor (mainView, divElement, browserSeat) {
     super()
     /**
      * @type {BrowserSurfaceView}
@@ -102,6 +105,30 @@ export default class DesktopUserShellSurface extends UserShellSurface {
      * @type {boolean}
      */
     this.active = false
+    /**
+     * @type {BrowserSeat}
+     * @private
+     */
+    this._browserSeat = browserSeat
+  }
+
+  /**
+   * @private
+   */
+  _activateOnPointerButton () {
+    this._browserSeat.browserPointer.onButtonPress().then(() => {
+      if (this.mainView.destroyed) {
+        return
+      }
+
+      if (!this.active &&
+        this._browserSeat.browserPointer.focus &&
+        this._browserSeat.browserPointer.focus.browserSurface === this.mainView.browserSurface) {
+        this._activeCallback()
+      }
+
+      this._activateOnPointerButton()
+    })
   }
 
   /**

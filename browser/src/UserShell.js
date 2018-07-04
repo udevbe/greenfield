@@ -8,11 +8,4 @@ export default class UserShell {
    * @return {UserShellSurface}
    */
   manage (browserSurface) {}
-
-  /**
-   * Signal the user shell that a keyboard resource is available [for a particular client]. Useful to decide if a
-   * surface can be given keyboard input.
-   * @param {GrKeyboard}grKeyboard
-   */
-  keyboardAvailable (grKeyboard) {}
 }
