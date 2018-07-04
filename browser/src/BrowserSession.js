@@ -60,6 +60,11 @@ export default class BrowserSession extends Global {
      */
     this._ws = null
     /**
+     * @type {boolean}
+     * @private
+     */
+    this._flushScheduled = false
+    /**
      * @type {Array}
      */
     this.resources = []
@@ -108,18 +113,19 @@ export default class BrowserSession extends Global {
   }
 
   _setupWebsocket () {
-    this._ws.onmessage = this.eventSource((event) => {
+    this._ws.onmessage = (event) => {
       try {
         const buf = event.data
         const sessionId = new DataView(buf).getUint32(0, true)
         const arrayBuffer = buf.slice(4, buf.byteLength)
 
         this._clients[sessionId].message(arrayBuffer)
+        this.flush()
       } catch (error) {
         console.error(`Session web socket failed to handle incoming message. \n${error.stack}`)
         this._ws.close(4007, 'Session web socket received an illegal message')
       }
-    })
+    }
 
     this._ws.onclose = (event) => {
       console.log(`Web socket closed. ${event.code}:${event.reason}`)
@@ -164,25 +170,11 @@ export default class BrowserSession extends Global {
         const b = new Uint8Array(arrayBuffer.byteLength + 4)
         new window.DataView(b.buffer).setUint32(0, clientSessionId, true)
         b.set(new Uint8Array(arrayBuffer), 4)
-
         this._ws.send(b.buffer)
       } catch (error) {
         console.error(error.stack)
         this._ws.close(4002, 'Session web socket is in error.')
       }
-    }
-  }
-
-  /**
-   * Wraps a lambda so a flush is guaranteed after the lambda executes
-   * @param lambda
-   * @return {Function}
-   */
-  eventSource (lambda) {
-    const self = this
-    return function () {
-      lambda.apply(this, arguments)
-      self.flush()
     }
   }
 
@@ -203,6 +195,15 @@ export default class BrowserSession extends Global {
   }
 
   flush () {
-    this.resources.forEach(resource => resource.flush())
+    if (this._flushScheduled) {
+      return
+    }
+    this._flushScheduled = true
+    // we don't want to flush more than needed, and we don't want the build-in browser delay to be used when
+    // a timeout of 0 is given. Hence this hack/trick.
+    window.setZeroTimeout(() => {
+      this._flushScheduled = false
+      this.resources.forEach(resource => resource.flush())
+    })
   }
 }

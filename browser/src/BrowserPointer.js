@@ -42,30 +42,34 @@ export default class BrowserPointer {
    */
   static create (browserSession, browserDataDevice, browserKeyboard) {
     const browserPointer = new BrowserPointer(browserDataDevice, browserKeyboard)
-    document.addEventListener('mousemove', browserSession.eventSource((event) => {
+    document.addEventListener('mousemove', (event) => {
       if (browserPointer._handleMouseMove(event)) {
         event.preventDefault()
         event.stopPropagation()
       }
-    }))
-    document.addEventListener('mouseup', browserSession.eventSource((event) => {
+      browserSession.flush()
+    })
+    document.addEventListener('mouseup', (event) => {
       if (browserPointer._handleMouseUp(event)) {
         event.preventDefault()
         event.stopPropagation()
       }
-    }))
-    document.addEventListener('mousedown', browserSession.eventSource((event) => {
+      browserSession.flush()
+    })
+    document.addEventListener('mousedown', (event) => {
       if (browserPointer._handleMouseDown(event)) {
         event.preventDefault()
         event.stopPropagation()
       }
-    }))
-    document.addEventListener('wheel', browserSession.eventSource((event) => {
+      browserSession.flush()
+    })
+    document.addEventListener('wheel', (event) => {
       if (browserPointer._handleWheel(event)) {
         event.preventDefault()
         event.stopPropagation()
       }
-    }))
+      browserSession.flush()
+    })
     // other mouse events are set in the browser surface view class
     return browserPointer
   }

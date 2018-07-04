@@ -25,18 +25,20 @@ export default class BrowserKeyboard {
     // TODO get the keymap from some config source
     browserKeyboard.updateKeymap('qwerty.xkb')
 
-    document.addEventListener('keyup', browserSession.eventSource((event) => {
+    document.addEventListener('keyup', (event) => {
       if (browserKeyboard._handleKey(event, false)) {
         event.preventDefault()
         event.stopPropagation()
       }
-    }))
-    document.addEventListener('keydown', browserSession.eventSource((event) => {
+      browserSession.flush()
+    })
+    document.addEventListener('keydown', (event) => {
       if (browserKeyboard._handleKey(event, true)) {
         event.preventDefault()
         event.stopPropagation()
       }
-    }))
+      browserSession.flush()
+    })
 
     return browserKeyboard
   }
