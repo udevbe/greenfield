@@ -17,19 +17,21 @@ import BrowserXdgPositioner from './BrowserXdgPositioner'
 export default class BrowserXdgWmBase extends Global {
   /**
    * @param {BrowserSession} browserSession
-   * @param {DesktopUserShell}desktopShell
+   * @param {UserShell}userShell
+   * @param {BrowserSeat}browserSeat
    * @return {BrowserXdgWmBase}
    */
-  static create (browserSession, desktopShell) {
-    return new BrowserXdgWmBase(browserSession, desktopShell)
+  static create (browserSession, userShell, browserSeat) {
+    return new BrowserXdgWmBase(browserSession, userShell, browserSeat)
   }
 
   /**
    * @param {BrowserSession} browserSession
-   * @param {DesktopUserShell}desktopShell
+   * @param {UserShell}userShell
+   * @param {BrowserSeat}browserSeat
    * @private
    */
-  constructor (browserSession, desktopShell) {
+  constructor (browserSession, userShell, browserSeat) {
     super(XdgWmBase.name, 1)
     /**
      * @type {BrowserSession}
@@ -37,10 +39,15 @@ export default class BrowserXdgWmBase extends Global {
      */
     this._browserSession = browserSession
     /**
-     * @type {DesktopUserShell}
+     * @type {UserShell}
      * @private
      */
-    this._desktopShell = desktopShell
+    this._userShell = userShell
+    /**
+     * @type {BrowserSeat}
+     * @private
+     */
+    this._browserSeat = browserSeat
     /**
      * @type {number}
      * @private
@@ -148,7 +155,7 @@ export default class BrowserXdgWmBase extends Global {
     }
 
     const xdgSurfaceResource = new XdgSurface(resource.client, id, resource.version)
-    BrowserXdgSurface.create(xdgSurfaceResource, surface, this._browserSession, this._desktopShell)
+    BrowserXdgSurface.create(xdgSurfaceResource, surface, this._browserSession, this._userShell, this._browserSeat)
     this._grSurfaceResources.push(surface)
     surface.onDestroy().then(() => {
       const index = this._grSurfaceResources.indexOf(surface)

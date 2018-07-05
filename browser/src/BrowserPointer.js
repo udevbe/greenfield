@@ -37,11 +37,10 @@ export default class BrowserPointer {
   /**
    * @param {BrowserSession} browserSession
    * @param {BrowserDataDevice} browserDataDevice
-   * @param {BrowserKeyboard} browserKeyboard
    * @returns {BrowserPointer}
    */
-  static create (browserSession, browserDataDevice, browserKeyboard) {
-    const browserPointer = new BrowserPointer(browserDataDevice, browserKeyboard)
+  static create (browserSession, browserDataDevice) {
+    const browserPointer = new BrowserPointer(browserDataDevice)
     document.addEventListener('mousemove', (event) => {
       if (browserPointer._handleMouseMove(event)) {
         event.preventDefault()
@@ -78,19 +77,13 @@ export default class BrowserPointer {
    * Use BrowserPointer.create(..) instead.
    * @private
    * @param {BrowserDataDevice} browserDataDevice
-   * @param {BrowserKeyboard} browserKeyboard
    */
-  constructor (browserDataDevice, browserKeyboard) {
+  constructor (browserDataDevice) {
     /**
      * @type {BrowserDataDevice}
      * @private
      */
     this._browserDataDevice = browserDataDevice
-    /**
-     * @type {BrowserKeyboard}
-     * @private
-     */
-    this._browserKeyboard = browserKeyboard
     /**
      * @type {GrPointer[]}
      */
@@ -315,35 +308,14 @@ export default class BrowserPointer {
         nestedPopupGrabs.reverse().forEach((nestedPopupGrab) => {
           nestedPopupGrab.resolve()
         })
-
-        if (this._popupStack.length) {
-          const nextPopupGrab = this._popupStack[this._popupStack.length - 1]
-          this._updatePopupKeyboardFocus(nextPopupGrab.popup, nextPopupGrab.resolve)
-        }
       }
     })
 
-    this._updatePopupKeyboardFocus(popup, popupGrabEndResolve)
     // clear any pointer button press grab
     this.grab = null
     this._btnDwnCount = 0
 
     return popupGrabEndPromise
-  }
-
-  /**
-   * @param {GrSurface}popup
-   * @param {function():void}popupGrabEndResolve
-   * @private
-   */
-  _updatePopupKeyboardFocus (popup, popupGrabEndResolve) {
-    this._browserKeyboard.focusGained(popup.implementation)
-    // if the keyboard or focus changes to a different client, we have to dismiss the popup
-    this._browserKeyboard.onKeyboardFocusChanged().then(() => {
-      if (!this._browserKeyboard.focus || this._browserKeyboard.focus.resource.client !== popup.client) {
-        popupGrabEndResolve()
-      }
-    })
   }
 
   /**

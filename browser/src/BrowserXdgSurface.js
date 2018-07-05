@@ -53,10 +53,11 @@ export default class BrowserXdgSurface {
    * @param {GrSurface}grSurfaceResource
    * @param {BrowserSession} browserSession
    * @param {UserShell}userShell
+   * @param {BrowserSeat}browserSeat
    * @return {BrowserXdgSurface}
    */
-  static create (xdgSurfaceResource, grSurfaceResource, browserSession, userShell) {
-    const browserXdgSurface = new BrowserXdgSurface(xdgSurfaceResource, grSurfaceResource, browserSession, userShell)
+  static create (xdgSurfaceResource, grSurfaceResource, browserSession, userShell, browserSeat) {
+    const browserXdgSurface = new BrowserXdgSurface(xdgSurfaceResource, grSurfaceResource, browserSession, userShell, browserSeat)
     xdgSurfaceResource.implementation = browserXdgSurface
     const browserSurface = grSurfaceResource.implementation
     browserSurface.hasKeyboardInput = true
@@ -70,9 +71,10 @@ export default class BrowserXdgSurface {
    * @param {GrSurface}grSurfaceResource
    * @param {BrowserSession} browserSession
    * @param {UserShell}userShell
+   * @param {BrowserSeat}browserSeat
    * @private
    */
-  constructor (xdgSurfaceResource, grSurfaceResource, browserSession, userShell) {
+  constructor (xdgSurfaceResource, grSurfaceResource, browserSession, userShell, browserSeat) {
     /**
      * @type {XdgSurface}
      */
@@ -91,6 +93,11 @@ export default class BrowserXdgSurface {
      * @private
      */
     this._userShell = userShell
+    /**
+     * @type {BrowserSeat}
+     * @private
+     */
+    this._browserSeat = browserSeat
     /**
      * @type {Rect}
      */
@@ -186,7 +193,7 @@ export default class BrowserXdgSurface {
     const positionerState = browserXdgPositioner.createStateCopy()
 
     const xdgPopupResource = new XdgPopup(resource.client, id, resource.version)
-    const browserXdgPopup = BrowserXdgPopup.create(xdgPopupResource, this, parent, positionerState, this._browserSession)
+    const browserXdgPopup = BrowserXdgPopup.create(xdgPopupResource, this, parent, positionerState, this._browserSession, this._browserSeat)
     this.ackConfigure = (resource, serial) => {
       browserXdgPopup.ackConfigure(serial)
     }

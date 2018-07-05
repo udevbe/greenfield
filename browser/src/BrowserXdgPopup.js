@@ -144,11 +144,12 @@ export default class BrowserXdgPopup {
    * @param {BrowserXdgSurface}browserXdgSurface
    * @param {XdgSurface|null}parent
    * @param {{size: Rect, anchorRect: Rect, anchor: number, gravity: number, constraintAdjustment: number, offset: Point, surfaceSpaceAnchorPoint: (function(BrowserXdgSurface): Point), checkScreenConstraints: (function(BrowserXdgSurface, BrowserSurfaceView): {topViolation: number, rightViolation: number, bottomViolation: number, leftViolation: number})}}positionerState
-   * @param {BrowserSession} browserSession
+   * @param {BrowserSession}browserSession
+   * @param {BrowserSeat}browserSeat
    * @return {BrowserXdgPopup}
    */
-  static create (xdgPopupResource, browserXdgSurface, parent, positionerState, browserSession) {
-    const browserXdgPopup = new BrowserXdgPopup(xdgPopupResource, browserXdgSurface, parent, positionerState, browserSession)
+  static create (xdgPopupResource, browserXdgSurface, parent, positionerState, browserSession, browserSeat) {
+    const browserXdgPopup = new BrowserXdgPopup(xdgPopupResource, browserXdgSurface, parent, positionerState, browserSession, browserSeat)
     xdgPopupResource.implementation = browserXdgPopup
     browserXdgSurface.grSurfaceResource.implementation.role = browserXdgPopup
     browserXdgPopup.ensureGeometryConstraints(parent, positionerState)
@@ -161,9 +162,10 @@ export default class BrowserXdgPopup {
    * @param {BrowserXdgSurface}browserXdgSurface
    * @param {XdgSurface|null}parent
    * @param {{size: Rect, anchorRect: Rect, anchor: number, gravity: number, constraintAdjustment: number, offset: Point, surfaceSpaceAnchorPoint: (function(BrowserXdgSurface): Point), checkScreenConstraints: (function(BrowserXdgSurface, BrowserSurfaceView): {topViolation: number, rightViolation: number, bottomViolation: number, leftViolation: number})}}positionerState
-   * @param {BrowserSession} browserSession
+   * @param {BrowserSession}browserSession
+   * @param {BrowserSeat}browserSeat
    */
-  constructor (xdgPopupResource, browserXdgSurface, parent, positionerState, browserSession) {
+  constructor (xdgPopupResource, browserXdgSurface, parent, positionerState, browserSession, browserSeat) {
     /**
      * @type {XdgPopup}
      */
@@ -189,15 +191,15 @@ export default class BrowserXdgPopup {
      */
     this.dismissed = false
     /**
-     * @type {BrowserPointer|null}
-     * @private
-     */
-    this._browserPointer = null
-    /**
      * @type {BrowserSession}
      * @private
      */
     this._browserSession = browserSession
+    /**
+     * @type {BrowserSeat}
+     * @private
+     */
+    this._browserSeat = browserSeat
   }
 
   /**
@@ -259,8 +261,8 @@ export default class BrowserXdgPopup {
   _dismiss () {
     if (!this.dismissed) {
       this.dismissed = true
-      if (this._browserPointer) {
-        const popupGrab = this._browserPointer.findPopupGrab(this.browserXdgSurface.grSurfaceResource)
+      if (this._browserSeat.browserPointer) {
+        const popupGrab = this._browserSeat.browserPointer.findPopupGrab(this.browserXdgSurface.grSurfaceResource)
         if (popupGrab) {
           popupGrab.resolve()
         }
@@ -268,7 +270,21 @@ export default class BrowserXdgPopup {
       this.resource.popupDone()
       const parentBrowserSurface = this.parent.implementation.grSurfaceResource.implementation
       parentBrowserSurface.removeChild(this.browserXdgSurface.grSurfaceResource.implementation.browserSurfaceChildSelf)
+      this._browserSeat.browserKeyboard.focusGained(parentBrowserSurface)
     }
+  }
+
+  /**
+   * @private
+   */
+  _updatePopupKeyboardFocus () {
+    this._browserKeyboard.focusGained(this.browserXdgSurface.grSurfaceResource.implementation)
+    // if the keyboard or focus changes to a different client, we have to dismiss the popup
+    this._browserKeyboard.onKeyboardFocusChanged().then(() => {
+      if (!this._browserKeyboard.focus || this._browserKeyboard.focus.resource.client !== this.resource.client) {
+        this._dismiss()
+      }
+    })
   }
 
   /**
@@ -370,6 +386,7 @@ export default class BrowserXdgPopup {
       }
     }
 
+    this._updatePopupKeyboardFocus()
     await browserPointer.popupGrab(this.browserXdgSurface.grSurfaceResource)
     this._dismiss()
   }
@@ -461,7 +478,6 @@ export default class BrowserXdgPopup {
     if ((violations.topViolation || violations.bottomViolation) &&
       positionerState.size.height < window.document.body.clientHeight) {
       if (canFlipY) {
-        // TODO try flipping
         const oldAnchor = positionerState.anchor
         const oldGravity = positionerState.gravity
 

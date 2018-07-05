@@ -182,11 +182,6 @@ export default class DesktopUserShellSurface extends UserShellSurface {
   _giveKeyboardFocus () {
     const browserKeyboard = this._grKeyboard.implementation
     browserKeyboard.focusGained(this.mainView.browserSurface)
-    browserKeyboard.onKeyboardFocusChanged().then(() => {
-      if (browserKeyboard.focus !== this.mainView.browserSurface) {
-        this._deactivate()
-      }
-    })
   }
 
   /**

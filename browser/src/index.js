@@ -32,7 +32,7 @@ function setupGlobals (browserSession) {
   const desktopUserShell = DesktopUserShell.create(browserSession, browserSeat)
 
   const browserShell = BrowserShell.create(browserSession, desktopUserShell)
-  const browserXdgWmBase = BrowserXdgWmBase.create(browserSession, desktopUserShell)
+  const browserXdgWmBase = BrowserXdgWmBase.create(browserSession, desktopUserShell, browserSeat)
 
   browserSession.wfsServer.registry.register(browserOutput)
   browserSession.wfsServer.registry.register(browserCompositor)
@@ -86,6 +86,9 @@ window.onload = async () => {
   await loadNativeModule(libxkbcommon)
   await main()
 }
+
+// This adds a zero timeout 'run later' mechanism:
+// https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/setTimeout#Reasons_for_delays_longer_than_specified
 
 // Only add setZeroTimeout to the window object, and hide everything
 // else in a closure.
