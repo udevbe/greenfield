@@ -278,10 +278,10 @@ export default class BrowserXdgPopup {
    * @private
    */
   _updatePopupKeyboardFocus () {
-    this._browserKeyboard.focusGained(this.browserXdgSurface.grSurfaceResource.implementation)
+    this._browserSeat.browserKeyboard.focusGained(this.browserXdgSurface.grSurfaceResource.implementation)
     // if the keyboard or focus changes to a different client, we have to dismiss the popup
-    this._browserKeyboard.onKeyboardFocusChanged().then(() => {
-      if (!this._browserKeyboard.focus || this._browserKeyboard.focus.resource.client !== this.resource.client) {
+    this._browserSeat.browserKeyboard.onKeyboardFocusChanged().then(() => {
+      if (!this._browserSeat.browserKeyboard.focus || this._browserSeat.browserKeyboard.focus.resource.client !== this.resource.client) {
         this._dismiss()
       }
     })
