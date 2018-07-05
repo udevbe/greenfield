@@ -46,11 +46,11 @@ export default class BrowserXdgToplevel {
     userShellSurface.onActivationRequest = () => {
       if (!browserXdgToplevel._activationRequested) {
         browserXdgToplevel._activationRequested = true
-        browserXdgToplevel._emitConfigure(xdgToplevelResource, 0, 0, [activated], none)
+        browserXdgToplevel._emitConfigure(xdgToplevelResource, browserXdgToplevel._configureState.width, browserXdgToplevel._configureState.height, [activated], none)
       }
     }
     userShellSurface.onInactive = () => {
-      browserXdgToplevel._emitConfigure(xdgToplevelResource, 0, 0, [], none)
+      browserXdgToplevel._emitConfigure(xdgToplevelResource, browserXdgToplevel._configureState.width, browserXdgToplevel._configureState.height, [], none)
     }
 
     return browserXdgToplevel
