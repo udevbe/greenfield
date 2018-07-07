@@ -378,9 +378,9 @@ export default class BrowserDataDevice {
     }
 
     this.selectionSource = source
-    this.selectionSource.addDestroyListener(this._selectionSourceDestroyListener)
     // send out selection if there is a keyboard focus
     if (this._selectionFocus) {
+      this.selectionSource.addDestroyListener(this._selectionSourceDestroyListener)
       this.onKeyboardFocusGained(this._selectionFocus)
     }
   }
