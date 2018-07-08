@@ -5,9 +5,11 @@ import DesktopShellMenu from './DesktopShellMenu'
 
 import './desktopshell.css'
 import DesktopShellAppMenu from './DesktopShellAppMenu'
-import UserShell from '../UserShell'
 
-export default class DesktopUserShell extends UserShell {
+/**
+ * @implements UserShell
+ */
+export default class DesktopUserShell {
   /**
    * @param {BrowserSession}browserSession
    * @param {BrowserSeat}browserSeat
@@ -48,7 +50,6 @@ export default class DesktopUserShell extends UserShell {
    * @private
    */
   constructor (body, workspace, panel, entryContainer, browserSeat) {
-    super()
     /**
      * @type{HTMLElement}
      */

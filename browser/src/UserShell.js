@@ -1,5 +1,6 @@
 /**
  * Implementations are expected to extend this class.
+ * @interface
  */
 export default class UserShell {
   /**
