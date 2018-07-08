@@ -31,6 +31,7 @@ const linuxInput = {
  *            events for the surfaces that the pointer is located over,
  *            and button and axis events for button presses, button releases
  *            and scrolling.
+ *            @implements BrowserSurfaceRole
  *
  */
 export default class BrowserPointer {
@@ -195,8 +196,9 @@ export default class BrowserPointer {
   /**
    * @param {BrowserSurface}browserSurface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}newState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @return {Promise<void>}
+   * @override
    */
   async onCommit (browserSurface, renderFrame, newState) {
     this.hotspotX -= newState.dx
@@ -366,18 +368,20 @@ export default class BrowserPointer {
   }
 
   /**
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number}} newState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @param {number}hotspotX
    * @param {number}hotspotY
    * @private
    */
   _uploadCursor (newState, hotspotX, hotspotY) {
-    if (newState.bufferContents.pngImage) {
-      const pngBufferDataSrc = newState.bufferContents.pngImage.src
-      window.document.body.style.cursor = `url("${pngBufferDataSrc}") ${hotspotX} ${hotspotY}, pointer`
-    } else {
-      const dataURL = this._view.bufferedCanvas.frontContext.canvas.toDataURL()
-      window.document.body.style.cursor = `url("${dataURL}") ${hotspotX} ${hotspotY}, pointer`
+    if (newState.bufferContents) {
+      if (newState.bufferContents.pngImage) {
+        const pngBufferDataSrc = newState.bufferContents.pngImage.src
+        window.document.body.style.cursor = `url("${pngBufferDataSrc}") ${hotspotX} ${hotspotY}, pointer`
+      } else {
+        const dataURL = this._view.bufferedCanvas.frontContext.canvas.toDataURL()
+        window.document.body.style.cursor = `url("${dataURL}") ${hotspotX} ${hotspotY}, pointer`
+      }
     }
   }
 
@@ -761,5 +765,20 @@ export default class BrowserPointer {
       })
     }
     return consumed
+  }
+
+  /**
+   * @override
+   */
+  captureRoleState () {
+    // NO-OP
+  }
+
+  /**
+   * @param roleState
+   * @override
+   */
+  setRoleState (roleState) {
+    // NO-OP
   }
 }

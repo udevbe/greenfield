@@ -4,6 +4,7 @@ import { XdgToplevel } from './protocol/xdg-shell-browser-protocol'
 import Point from './math/Point'
 import Size from './Size'
 import Renderer from './render/Renderer'
+import BrowserSurfaceRole from './BrowserSurfaceRole'
 
 const {none, bottom, bottomLeft, bottomRight, left, right, top, topLeft, topRight} = XdgToplevel.ResizeEdge
 const {fullscreen, activated, maximized, resizing} = XdgToplevel.State
@@ -25,7 +26,7 @@ const {fullscreen, activated, maximized, resizing} = XdgToplevel.State
  *      Attaching a null buffer to a toplevel unmaps the surface.
  *
  */
-export default class BrowserXdgToplevel {
+export default class BrowserXdgToplevel extends BrowserSurfaceRole {
   /**
    * @param {XdgToplevel}xdgToplevelResource
    * @param {BrowserXdgSurface}browserXdgSurface
@@ -65,6 +66,7 @@ export default class BrowserXdgToplevel {
    * @private
    */
   constructor (xdgToplevelResource, browserXdgSurface, browserSession, userShellSurface) {
+    super()
     /**
      * @type {XdgToplevel}
      */
@@ -154,6 +156,7 @@ export default class BrowserXdgToplevel {
 
   /**
    * @return {{windowGeometry: Rect, maxSize: Point, minSize: Point, configureState: {serial: number, state: number[], width: number, height: number}}}
+   * @override
    */
   captureRoleState () {
     return {
@@ -166,6 +169,7 @@ export default class BrowserXdgToplevel {
 
   /**
    * @param {{windowGeometry: Rect, maxSize: Point, minSize: Point, configureState: {serial: number, state: number[], width: number, height: number}}}roleState
+   * @override
    */
   setRoleState (roleState) {
     this._maxSize = roleState.maxSize
@@ -182,8 +186,9 @@ export default class BrowserXdgToplevel {
   /**
    * @param {BrowserSurface}browserSurface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: {windowGeometry: Rect, maxSize: Point, minSize: Point, configureState: {serial: number, state: number[], width: number, height: number}}}}newState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @return {Promise<void>}
+   * @override
    */
   async onCommit (browserSurface, renderFrame, newState) {
     if (newState.bufferContents) {
@@ -228,7 +233,7 @@ export default class BrowserXdgToplevel {
   /**
    * @param {BrowserSurface}browserSurface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: {windowGeometry: Rect, maxSize: Point, minSize: Point, configureState: {serial: number, state: number[], width: number, height: number}}}}newState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @private
    */
   _resizingCommit (browserSurface, renderFrame, newState) {
@@ -277,7 +282,7 @@ export default class BrowserXdgToplevel {
   /**
    * @param {BrowserSurface}browserSurface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: {windowGeometry: Rect, maxSize: Point, minSize: Point, configureState: {serial: number, state: number[], width: number, height: number}}}}newState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @private
    */
   _maximizedCommit (browserSurface, renderFrame, newState) {
@@ -308,7 +313,7 @@ export default class BrowserXdgToplevel {
   /**
    * @param {BrowserSurface}browserSurface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: {windowGeometry: Rect, maxSize: Point, minSize: Point, configureState: {serial: number, state: number[], width: number, height: number}}}}newState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @private
    */
   _fullscreenCommit (browserSurface, renderFrame, newState) {
@@ -341,7 +346,7 @@ export default class BrowserXdgToplevel {
   /**
    * @param {BrowserSurface}browserSurface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: {windowGeometry: Rect, maxSize: Point, minSize: Point, configureState: {serial: number, state: number[], width: number, height: number}}}}newState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @private
    */
   _normalCommit (browserSurface, renderFrame, newState) {

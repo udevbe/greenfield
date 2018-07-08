@@ -126,8 +126,9 @@ export default class BrowserSurface {
      * @type {ViewState}
      */
     this.renderState = null
+
     /**
-     * @param{{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: *, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}
+     * @type {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}
      */
     this.state = {
       /**
@@ -135,9 +136,9 @@ export default class BrowserSurface {
        */
       bufferContents: null,
       /**
-       * @type {number}
+       * @type {Array<Rect>}
        */
-      bufferDamage: bufferDamage,
+      bufferDamageRects: [],
       /**
        * @type{number}
        */
@@ -165,8 +166,13 @@ export default class BrowserSurface {
       /**
        * @type {BrowserCallback[]}
        */
-      frameCallbacks: []
+      frameCallbacks: [],
+      /**
+       * @type {*}
+       */
+      roleState: {}
     }
+
     /**
      * @type {GrBuffer}
      */
@@ -178,12 +184,12 @@ export default class BrowserSurface {
       this.pendingGrBuffer = null
     }
     /**
-     * @type {Rect[]}
+     * @type {Array<Rect>}
      * @private
      */
     this._pendingDamageRects = []
     /**
-     * @type {Number[]}
+     * @type {Array<Number>}
      * @private
      */
     this._pendingBufferDamageRects = []
@@ -218,7 +224,7 @@ export default class BrowserSurface {
      */
     this._pendingBufferScale = 1
     /**
-     * @type {BrowserSurfaceView[]}
+     * @type {Array<BrowserSurfaceView>}
      */
     this.browserSurfaceViews = []
     /**
@@ -242,7 +248,7 @@ export default class BrowserSurface {
      */
     this.hasTouchInput = true
     /**
-     * @type {{onCommit: Function, captureRoleState: Function, setRoleState: Function}}
+     * @type {BrowserSurfaceRole|null}
      */
     this.role = null
     /**
@@ -252,19 +258,19 @@ export default class BrowserSurface {
     /**
      * All child surfaces of this BrowserSurface + this browser surface. This allows for child surfaces to be displayed
      * below it's parent, as the order of this list determines the zOrder between parent & children.
-     * @type {BrowserSurfaceChild[]}
+     * @type {Array<BrowserSurfaceChild>}
      */
     this._browserSurfaceChildren = []
     /**
-     * @type {BrowserSurfaceChild[]}
+     * @type {Array<BrowserSurfaceChild>}
      */
     this.browserSubsurfaceChildren = [this.browserSurfaceChildSelf]
     /**
-     * @type {BrowserSurfaceChild[]}
+     * @type {Array<BrowserSurfaceChild>}
      */
     this.pendingBrowserSubsurfaceChildren = [this.browserSurfaceChildSelf]
     /**
-     * @type {BrowserCallback[]}
+     * @type {Array<BrowserCallback>}
      * @private
      */
     this._pendingFrameCallbacks = []
@@ -296,7 +302,7 @@ export default class BrowserSurface {
   }
 
   /**
-   * @return {BrowserSurfaceChild[]}
+   * @return {Array<BrowserSurfaceChild>}
    */
   get browserSurfaceChildren () {
     return this.browserSubsurfaceChildren.concat(this._browserSurfaceChildren)
@@ -347,7 +353,7 @@ export default class BrowserSurface {
   }
 
   /**
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}newState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @private
    */
   _updateDerivedState (newState) {
@@ -751,7 +757,8 @@ export default class BrowserSurface {
   setOpaqueRegion (resource, region) {
     this._pendingOpaqueRegion = BrowserRegion.createPixmanRegion()
     if (region) {
-      BrowserRegion.copyTo(this._pendingOpaqueRegion, region.implementation.pixmanRegion)
+      const browserRegion = /** @type BrowserRegion */(region.implementation)
+      BrowserRegion.copyTo(this._pendingOpaqueRegion, browserRegion.pixmanRegion)
     } else {
       BrowserRegion.initInfinite(this._pendingOpaqueRegion)
     }
@@ -793,7 +800,8 @@ export default class BrowserSurface {
   setInputRegion (resource, region) {
     this._pendingInputRegion = BrowserRegion.createPixmanRegion()
     if (region) {
-      BrowserRegion.copyTo(this._pendingInputRegion, region.implementation.pixmanRegion)
+      const browserRegion = /** @type BrowserRegion */(region.implementation)
+      BrowserRegion.copyTo(this._pendingInputRegion, browserRegion.pixmanRegion)
     } else {
       // 'infinite' region
       BrowserRegion.initInfinite(this._pendingInputRegion)
@@ -856,7 +864,7 @@ export default class BrowserSurface {
 
   /**
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}newState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    */
   render (renderFrame, newState) {
     const callbacks = newState.frameCallbacks
@@ -874,7 +882,7 @@ export default class BrowserSurface {
       this.browserSubsurfaceChildren.forEach((browserSurfaceChild) => {
         const siblingBrowserSurface = browserSurfaceChild.browserSurface
         if (siblingBrowserSurface !== this) {
-          const siblingSubsurface = siblingBrowserSurface.role
+          const siblingSubsurface = /** @type BrowserSubsurface */ (siblingBrowserSurface.role)
           // cascade scene update to subsurface children
           if (siblingSubsurface.pendingPosition) {
             browserSurfaceChild.position = siblingSubsurface.pendingPosition
@@ -907,8 +915,8 @@ export default class BrowserSurface {
 
   /**
    * This will invalidate the source state.
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: *, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}targetState
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: *, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}sourceState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}targetState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}sourceState
    */
   static mergeState (targetState, sourceState) {
     targetState.dx = sourceState.dx
@@ -916,7 +924,7 @@ export default class BrowserSurface {
 
     BrowserRegion.copyTo(targetState.inputPixmanRegion, sourceState.inputPixmanRegion)
     BrowserRegion.copyTo(targetState.opaquePixmanRegion, sourceState.opaquePixmanRegion)
-    BrowserRegion.copyTo(targetState.bufferDamage, sourceState.bufferDamage)
+    targetState.bufferDamageRects = sourceState.bufferDamageRects.slice()
 
     targetState.bufferTransform = sourceState.bufferTransform
     targetState.bufferScale = sourceState.bufferScale
@@ -926,13 +934,13 @@ export default class BrowserSurface {
   }
 
   /**
-   * @return {Promise<{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: number, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}>}
+   * @return {Promise<{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}>}
    * @private
    */
   async _captureState (pendingGrBuffer) {
     const self = this
     /**
-     * @type {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: number, opaquePixmanRegion: number, opaqueRegionChanged: boolean, inputPixmanRegion: number, inputRegionChanged: boolean, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}
+     * @type {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}
      */
     const newState = {
       /**

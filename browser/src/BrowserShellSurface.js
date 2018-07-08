@@ -28,6 +28,7 @@ const SurfaceStates = {
  *            the related gr_surface is destroyed. On the client side,
  *            gr_shell_surface_destroy() must be called before destroying
  *            the gr_surface object.
+ *            @implements BrowserSurfaceRole
  *
  */
 export default class BrowserShellSurface {
@@ -122,8 +123,9 @@ export default class BrowserShellSurface {
   /**
    * @param {BrowserSurface}browserSurface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}newState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @return {Promise<void>}
+   * @override
    */
   async onCommit (browserSurface, renderFrame, newState) {
     const oldPosition = browserSurface.browserSurfaceChildSelf.position
@@ -672,5 +674,20 @@ export default class BrowserShellSurface {
     if (this._userShellSurface) {
       this._userShellSurface.appId = clazz
     }
+  }
+
+  /**
+   * @override
+   */
+  captureRoleState () {
+    // NO-OP
+  }
+
+  /**
+   * @param roleState
+   * @override
+   */
+  setRoleState (roleState) {
+    // NO-OP
   }
 }
