@@ -2,6 +2,7 @@
 
 import { XdgPositioner } from './protocol/xdg-shell-browser-protocol'
 import Point from './math/Point'
+import BrowserSurfaceRole from './BrowserSurfaceRole'
 
 const {none, slideX, slideY, flipX, flipY, resizeX, resizeY} = XdgPositioner.ConstraintAdjustment
 
@@ -138,7 +139,7 @@ const inverseX = {
  *      for the xdg_popup state to take effect.
  *
  */
-export default class BrowserXdgPopup {
+export default class BrowserXdgPopup extends BrowserSurfaceRole {
   /**
    * @param {XdgPopup}xdgPopupResource
    * @param {BrowserXdgSurface}browserXdgSurface
@@ -166,6 +167,7 @@ export default class BrowserXdgPopup {
    * @param {BrowserSeat}browserSeat
    */
   constructor (xdgPopupResource, browserXdgSurface, parent, positionerState, browserSession, browserSeat) {
+    super()
     /**
      * @type {XdgPopup}
      */
@@ -204,6 +206,7 @@ export default class BrowserXdgPopup {
 
   /**
    * @return {{windowGeometry: Rect}}
+   * @override
    */
   captureRoleState () {
     return {
@@ -213,6 +216,7 @@ export default class BrowserXdgPopup {
 
   /**
    * @param {{windowGeometry: Rect}}roleState
+   * @override
    */
   setRoleState (roleState) {
     this.browserXdgSurface.updateWindowGeometry(roleState.windowGeometry)
@@ -221,8 +225,9 @@ export default class BrowserXdgPopup {
   /**
    * @param {BrowserSurface}browserSurface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState:{windowGeometry: Rect}}}newState
+   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @return {Promise<void>}
+   * @override
    */
   async onCommit (browserSurface, renderFrame, newState) {
     if (this.dismissed) {
@@ -311,8 +316,7 @@ export default class BrowserXdgPopup {
       }
     }
 
-    this.dismissed = true
-    this.mapped = false
+    this._dismiss()
     resource.destroy()
   }
 
