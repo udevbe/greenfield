@@ -26,9 +26,16 @@ module.exports = class ShimCompositor extends WlCompositorRequests {
    */
   constructor (grCompositorProxy) {
     super()
+    /**
+     * @type {GrCompositor}
+     */
     this.proxy = grCompositorProxy
   }
 
+  /**
+   * @param {WlCompositor}resource
+   * @param {number}id
+   */
   createSurface (resource, id) {
     // delegate request to browser
     const grSurfaceProxy = this.proxy.createSurface()
@@ -46,6 +53,10 @@ module.exports = class ShimCompositor extends WlCompositorRequests {
     })
   }
 
+  /**
+   * @param {WlCompositor}resource
+   * @param {number}id
+   */
   createRegion (resource, id) {
     const grRegionProxy = this.proxy.createRegion()
     const localRegion = LocalRegion.create()

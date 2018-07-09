@@ -13,7 +13,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
    * @param {GrSurface}grSurfaceProxy
    * @return {module.ShimSurface}
    */
-  static create (grSurfaceProxy, grSurfaceResource) {
+  static create (grSurfaceProxy) {
     const rtcBufferFactory = grSurfaceProxy.connection._rtcBufferFactory
     const localRtcDcBuffer = rtcBufferFactory.createLocalRtcDcBuffer()
     return new ShimSurface(grSurfaceProxy, localRtcDcBuffer)
@@ -26,6 +26,9 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
    */
   constructor (grSurfaceProxy, localRtcDcBuffer) {
     super()
+    /**
+     * @type {GrSurface}
+     */
     this.proxy = grSurfaceProxy
     /**
      * @type {WlBuffer}
@@ -51,20 +54,33 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
      * @type {LocalRtcDcBuffer}
      */
     this.localRtcDcBuffer = localRtcDcBuffer
-
+    /**
+     * @type {function(number):void}
+     * @param serial
+     */
     // use a single buffer to communicate with the browser. Contents of the buffer will be copied when send.
     this.localRtcDcBuffer.ack = (serial) => {
       if (serial > this.ackSerial) {
         this.ackSerial = serial
       } // else we received an outdated ack serial, ignore it.
     }
+    /**
+     * @type {function(number,number):void}
+     * @param serial
+     * @param frameDuration
+     */
     this.localRtcDcBuffer.latency = (serial, frameDuration) => {
       this._frameDuration = frameDuration
     }
-
+    /**
+     * @type {function():void}
+     */
     this.pendingBufferDestroyListener = () => {
       this.pendingBuffer = null
     }
+    /**
+     * @type {function():void}
+     */
     this.bufferDestroyListener = () => {
       this.buffer = null
     }
@@ -73,6 +89,9 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     this._commitDuration = 0
   }
 
+  /**
+   * @param {WlSurface}resource
+   */
   destroy (resource) {
     this.proxy.destroy()
     resource.destroy()
@@ -100,10 +119,21 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     }
   }
 
+  /**
+   * @param {WlSurface}resource
+   * @param {number}x
+   * @param {number}y
+   * @param {number}width
+   * @param {number}height
+   */
   damage (resource, x, y, width, height) {
     this.proxy.damage(x, y, width, height)
   }
 
+  /**
+   * @param {WlSurface}resource
+   * @param {WlCallback}callback
+   */
   frame (resource, callback) {
     const callbackProxy = this.proxy.frame()
     const localCallback = LocalCallback.create(callbackProxy)
@@ -111,11 +141,19 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     callbackProxy.listener = localCallback
   }
 
+  /**
+   * @param {WlSurface}resource
+   * @param {WlRegion}region
+   */
   setOpaqueRegion (resource, region) {
     const regionProxy = region === null ? null : region.implementation.proxy
     this.proxy.setOpaqueRegion(regionProxy)
   }
 
+  /**
+   * @param {WlSurface}resource
+   * @param {WlRegion}region
+   */
   setInputRegion (resource, region) {
     const regionProxy = region === null ? null : region.implementation.proxy
     this.proxy.setInputRegion(regionProxy)
@@ -257,14 +295,29 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     }
   }
 
+  /**
+   * @param {WlSurface}resource
+   * @param {number}transform
+   */
   setBufferTransform (resource, transform) {
     this.proxy.setBufferTransform(transform)
   }
 
+  /**
+   * @param {WlSurface}resource
+   * @param {number}scale
+   */
   setBufferScale (resource, scale) {
     this.proxy.setBufferScale(scale)
   }
 
+  /**
+   * @param {WlSurface}resource
+   * @param {number}x
+   * @param {number}y
+   * @param {number}width
+   * @param {number}height
+   */
   damageBuffer (resource, x, y, width, height) {
     this.proxy.damageBuffer(x, y, width, height)
   }
