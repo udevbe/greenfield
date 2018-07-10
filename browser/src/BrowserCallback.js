@@ -37,8 +37,10 @@ export default class BrowserCallback {
    *
    */
   done (data) {
-    this.resource.done(data)
-    this.resource.destroy()
-    this.resource = null
+    if (this.resource) {
+      this.resource.done(data)
+      this.resource.destroy()
+      this.resource = null
+    }
   }
 }

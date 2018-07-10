@@ -222,6 +222,11 @@ export default class BrowserRtcDcBuffer {
       this._frameChunks[synSerial] = frameChunk
     }
     const headerlessChunk = chunk.slice(headerSize)
+
+    if (frameChunk.chunks[chunkIdx]) {
+      // chunk already received, we're probably dealing with a resend
+      return null
+    }
     frameChunk.chunks[chunkIdx] = headerlessChunk
     frameChunk.received++
     frameChunk.totalSize += headerlessChunk.byteLength

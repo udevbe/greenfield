@@ -209,7 +209,6 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
     }
 
     browserSurface.render(renderFrame, newState)
-
     renderFrame.fire()
     await renderFrame
     this._browserSession.flush()

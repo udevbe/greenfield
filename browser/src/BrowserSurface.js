@@ -867,12 +867,11 @@ export default class BrowserSurface {
    * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    */
   render (renderFrame, newState) {
-    const callbacks = newState.frameCallbacks
-    newState.frameCallbacks = []
     renderFrame.then((timestamp) => {
-      callbacks.forEach((frameCallback) => {
+      this.state.frameCallbacks.forEach((frameCallback) => {
         frameCallback.done(timestamp & 0x7fffffff)
       })
+      this.state.frameCallbacks = []
     })
 
     if (this.browserSubsurfaceChildren.length > 1) {

@@ -240,17 +240,18 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       return
     }
 
+    // TODO we could also try to ack each individual chunk, and only resend missing ones
     // if the ack times out & no newer serial is expected, we can retry sending the buffer contents
     // TODO cancel timeout of we received the corresponding ack
-    // setTimeout(async () => {
-    //   // If the syn serial at the time the timer was created is greater than the latest received ack serial and no newer serial is expected,
-    //   // then we have not received an ack that matches or is newer than the syn we're checking. We resend the frame.
-    //   if (frame.synSerial > this.ackSerial && frame.synSerial === this.synSerial) {
-    //     await this.sendFrame(frame)
-    //   }
-    //   // TODO dynamically adjust to expected roundtrip time which could be calculated by measuring the latency
-    //   // between a syn & ack
-    // }, 500)
+    setTimeout(async () => {
+      // If the syn serial at the time the timer was created is greater than the latest received ack serial and no newer serial is expected,
+      // then we have not received an ack that matches or is newer than the syn we're checking. We resend the frame.
+      if (frame.synSerial > this.ackSerial && frame.synSerial === this.synSerial) {
+        await this.sendFrame(frame)
+      }
+      // TODO dynamically adjust to expected roundtrip time which could be calculated by measuring the latency
+      // between a syn & ack
+    }, 250)
 
     const dataChannel = await this.localRtcDcBuffer.localRtcBlobTransfer.open()
     const frameBuffer = this._frameToBuffer(frame)
