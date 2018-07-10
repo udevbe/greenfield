@@ -452,7 +452,7 @@ module.exports = class ShimXdgToplevel extends XdgToplevelRequests {
    *
    */
   unsetFullscreen (resource) {
-    this.proxy.unsetFuscreen()
+    this.proxy.unsetFullscreen()
   }
 
   /**
