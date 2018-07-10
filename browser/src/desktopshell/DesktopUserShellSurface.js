@@ -167,7 +167,7 @@ export default class DesktopUserShellSurface {
       return
     }
 
-    if (this.active && this._grKeyboard.implementation.focus !== this.mainView.browserSurface) {
+    if (this.active && this._grKeyboard && this._grKeyboard.implementation.focus !== this.mainView.browserSurface) {
       this._giveKeyboardFocus()
     }
     this._grKeyboard = grKeyboard
