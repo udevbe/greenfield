@@ -1,9 +1,10 @@
 const gstreamer = require('gstreamer-superficial')
 
+// TODO replace gstreamer pipeline with a custom opengl accelrated jpeg encoder implementation
 module.exports = class JpegAlphaEncoder {
   static create (width, height, gstBufferFormat) {
     const pipeline = new gstreamer.Pipeline(
-      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=0/1 ! 
+      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! 
 
       tee name=t ! queue ! 
       glupload ! 
@@ -24,7 +25,7 @@ module.exports = class JpegAlphaEncoder {
           gl_FragColor = vec4(pix.a,pix.a,pix.a,1);
         }
       " ! 
-      glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! 
+      glcolorconvert ! video/x-raw(memory:GLMemory),format=GRAY8 ! 
       gldownload ! 
       jpegenc ! 
       appsink name=alphasink 
@@ -66,7 +67,7 @@ module.exports = class JpegAlphaEncoder {
     this.format = gstBufferFormat
     this.pipeline.pause()
     // source caps describe what goes in
-    this.src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=0/1`
+    this.src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1`
     this.pipeline.play()
   }
 
@@ -83,8 +84,6 @@ module.exports = class JpegAlphaEncoder {
         this.configure(bufferWidth, bufferHeight, gstBufferFormat)
       }
 
-      this.src.push(pixelBuffer)
-
       const frame = {
         type: 2, // 2=jpeg
         width: bufferWidth,
@@ -95,27 +94,29 @@ module.exports = class JpegAlphaEncoder {
       }
 
       // FIXME add a timer to detect stalled encoding pipeline?
-      this.sink.pull((opaqueH264Nal) => {
-        if (opaqueH264Nal) {
-          frame.opaque = opaqueH264Nal
+      this.sink.pull((opaqueJpeg) => {
+        if (opaqueJpeg) {
+          frame.opaque = opaqueJpeg
           if (frame.opaque && frame.alpha) {
             resolve(frame)
           }
         } else {
-          reject(new Error('Pulled empty opaque buffer. Gstreamer h264+alpha encoder pipeline is probably in error.'))
+          reject(new Error('Pulled empty opaque buffer. Gstreamer opaque jpeg encoder pipeline is probably in error.'))
         }
       })
 
-      this.alpha.pull((alphaH264Nal) => {
-        if (alphaH264Nal) {
-          frame.alpha = alphaH264Nal
+      this.alpha.pull((alphaJpeg) => {
+        if (alphaJpeg) {
+          frame.alpha = alphaJpeg
           if (frame.opaque && frame.alpha) {
             resolve(frame)
           }
         } else {
-          reject(new Error('Pulled empty alpha buffer. Gstreamer h264+alpha encoder pipeline is probably in error.'))
+          reject(new Error('Pulled empty alpha buffer. Gstreamer alpha jpeg encoder pipeline is probably in error.'))
         }
       })
+
+      this.src.push(pixelBuffer)
     })
   }
 }

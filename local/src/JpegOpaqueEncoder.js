@@ -2,10 +2,11 @@
 
 const gstreamer = require('gstreamer-superficial')
 
+// TODO replace gstreamer pipeline with a custom opengl accelrated jpeg encoder implementation
 module.exports = class H264OpaqueEncoder {
   static create (width, height, gstBufferFormat) {
     const pipeline = new gstreamer.Pipeline(
-      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=0/1 ! 
+      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! 
       glupload ! 
       glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! 
       gldownload ! 
@@ -57,8 +58,6 @@ module.exports = class H264OpaqueEncoder {
         this.configure(bufferWidth, bufferHeight, gstBufferFormat)
       }
 
-      this.src.push(pixelBuffer)
-
       const frame = {
         type: 2, // 0=jpeg
         width: bufferWidth,
@@ -76,6 +75,8 @@ module.exports = class H264OpaqueEncoder {
           reject(new Error('Pulled empty buffer. Gstreamer h264 encoder pipeline is probably in error.'))
         }
       })
+
+      this.src.push(pixelBuffer)
     })
   }
 }

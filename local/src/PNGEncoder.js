@@ -2,16 +2,17 @@
 
 const gstreamer = require('gstreamer-superficial')
 
+// TODO replace gstreamer pipeline with a custom libpng implementation
 module.exports = class PNGEncoder {
   /**
    * @return {module.PNGEncoder}
    */
   static create (width, height, gstBufferFormat) {
     const pipeline = new gstreamer.Pipeline(
-      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=0/1 ! ` +
-      `videoconvert ! videoscale  ! capsfilter name=scale caps=video/x-raw,format=RGBA,width=${width},height=${height},framerate=0/1 !` +
-      'pngenc !' +
-      'appsink name=sink'
+      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! 
+      videoconvert ! videoscale  ! capsfilter name=scale caps=video/x-raw,format=RGBA,width=${width},height=${height},framerate=60/1 ! 
+      pngenc ! 
+      appsink name=sink`
     )
     const sink = pipeline.findChild('sink')
     const src = pipeline.findChild('source')
@@ -38,8 +39,8 @@ module.exports = class PNGEncoder {
    */
   configure (width, height, gstBufferFormat) {
     // source caps describe what goes in
-    this.src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=0/1`
-    this.scale.caps = `video/x-raw,width=${width},height=${height},framerate=0/1`
+    this.src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1`
+    this.scale.caps = `video/x-raw,width=${width},height=${height},framerate=60/1`
   }
 
   /**
@@ -54,8 +55,6 @@ module.exports = class PNGEncoder {
       if (this.width !== bufferWidth || this.height !== bufferHeight || this.format !== gstBufferFormat) {
         this.configure(bufferWidth, bufferHeight, gstBufferFormat)
       }
-
-      this.src.push(pixelBuffer)
 
       const frame = {
         type: 1, // 1=png
@@ -74,6 +73,8 @@ module.exports = class PNGEncoder {
           reject(new Error('Pulled empty buffer. Gstreamer png encoder pipeline is probably in error.'))
         }
       })
+
+      this.src.push(pixelBuffer)
     })
   }
 }
