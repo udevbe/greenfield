@@ -47,23 +47,20 @@ export default class Texture {
   }
 
   /**
-   * @param {Uint8Array}textureData
+   * @param {HTMLImageElement}textureData
    * @param {Size}size
-   * @param {number}stride
    */
-  fill (textureData, size, stride) {
+  fill (textureData, size) {
     const gl = this.gl
 
-    gl.pixelStorei(gl.UNPACK_ROW_LENGTH, stride)
     gl.bindTexture(gl.TEXTURE_2D, this.texture)
     // TODO use texSubimage2d if size hasn't changed
     if (this.size === null || this.size.w !== size.w || this.size.h !== size.h) {
       this.size = size
-      gl.texImage2D(gl.TEXTURE_2D, 0, this.format, size.w, size.h, 0, this.format, gl.UNSIGNED_BYTE, textureData)
+      gl.texImage2D(gl.TEXTURE_2D, 0, this.format, this.format, gl.UNSIGNED_BYTE, textureData)
     } else {
-      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, size.w, size.h, this.format, gl.UNSIGNED_BYTE, textureData)
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, this.format, gl.UNSIGNED_BYTE, textureData)
     }
     gl.bindTexture(gl.TEXTURE_2D, null)
-    gl.pixelStorei(gl.UNPACK_ROW_LENGTH, 0)
   }
 }

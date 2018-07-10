@@ -1,7 +1,6 @@
 'use strict'
 
 import Size from './Size'
-import BrowserH264Decoder from './BrowserH264Decoder'
 
 export default class BrowserRtcDcBuffer {
   /**
@@ -34,39 +33,13 @@ export default class BrowserRtcDcBuffer {
    */
   constructor (rtcDcBufferResource, blobTransferResource) {
     /**
-     * @type {BrowserH264Decoder}
-     * @private
-     */
-    this._decoder = null
-    /**
-     * @type {Promise<BrowserH264Decoder>}
-     * @private
-     */
-    this._decoderFactory = null
-    /**
-     * @type {number[]}
-     * @private
-     */
-    this._decodingSerialsQueue = []
-    /**
-     * @type {BrowserH264Decoder}
-     * @private
-     */
-    this._alphaDecoder = null
-    /**
-     * @type {Promise<BrowserH264Decoder>}
-     * @private
-     */
-    this._alphaDecoderFactory = null
-    /**
-     * @type {number[]}
-     * @private
-     */
-    this._decodingAlphaSerialsQueue = []
-    /**
      * @type {RtcDcBuffer}
      */
     this.resource = rtcDcBufferResource
+    /**
+     * @type {GrBlobTransfer}
+     * @private
+     */
     this._blobTransferResource = blobTransferResource
     /**
      * @type {number}
@@ -87,85 +60,30 @@ export default class BrowserRtcDcBuffer {
     this._frameStates = {} // map like object, keys are numbers
     this._frameChunks = {} // map like object, keys are numbers
     /**
-     * 'h264' or 'png'
-     * @type {string}
+     * 'jpeg' or 'png'
+     * @type {string|null}
      * @private
      */
     this._type = null
-
-    /**
-     * @type {Uint8Array}
-     * @private
-     */
-    this._yuvContent = null
-    /**
-     * @type {number}
-     * @private
-     */
-    this._yuvWidth = 0
-    /**
-     * @type {number}
-     * @private
-     */
-    this._yuvHeight = 0
-
-    /**
-     * @type {Uint8Array}
-     * @private
-     */
-    this._alphaYuvContent = null
-    /**
-     * @type {number}
-     * @private
-     */
-    this._alphaYuvWidth = 0
-    /**
-     * @type {number}
-     * @private
-     */
-    this._alphaYuvHeight = 0
-
     /**
      * @type {HTMLImageElement}
      * @private
      */
     this._pngImage = null
+    /**
+     * @type {HTMLImageElement}
+     * @private
+     */
+    this._content = null
+    /**
+     * @type {HTMLImageElement}
+     * @private
+     */
+    this._alphaContent = null
   }
 
   /**
-   * @param {boolean}hasAlpha
-   * @private
-   */
-  async _ensureH264Decoders (hasAlpha) {
-    if (!this._decoderFactory) {
-      this._decoderFactory = BrowserH264Decoder.create()
-    }
-    const decoder = await this._decoderFactory
-    decoder.onPicture = (buffer, width, height) => {
-      this._onPictureDecoded(buffer, width, height)
-    }
-    this._decoder = decoder
-
-    if (hasAlpha) {
-      if (!this._alphaDecoderFactory) {
-        this._alphaDecoderFactory = BrowserH264Decoder.create()
-      }
-      const alphaDecoder = await this._alphaDecoderFactory
-      alphaDecoder.onPicture = (buffer, width, height) => {
-        this._onAlphaPictureDecoded(buffer, width, height)
-      }
-      this._alphaDecoder = alphaDecoder
-    }
-
-    if (!hasAlpha && this._alphaDecoder) {
-      this._alphaDecoder.terminate()
-      this._alphaDecoder = null
-      this._alphaDecoderFactory = null
-    }
-  }
-
-  /**
-   * @return {{type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}}
+   * @return {{type: string, syncSerial: number, geo: Size, pngImage: HTMLImageElement, content: HTMLImageElement, alphaContent: HTMLImageElement}}
    * @private
    */
   get _bufferContents () {
@@ -173,12 +91,8 @@ export default class BrowserRtcDcBuffer {
       type: this._type,
       syncSerial: this._syncSerial,
       geo: this._geo,
-      yuvContent: this._yuvContent,
-      yuvWidth: this._yuvWidth,
-      yuvHeight: this._yuvHeight,
-      alphaYuvContent: this._alphaYuvContent,
-      alphaYuvWidth: this._alphaYuvWidth,
-      alphaYuvHeight: this._alphaYuvHeight,
+      content: this._content,
+      alphaContent: this._alphaContent,
       pngImage: this._pngImage
     }
   }
@@ -261,8 +175,8 @@ export default class BrowserRtcDcBuffer {
   _frameStateComplete (frame, serial) {
     this._frameStates[serial]._geo = Size.create(frame.bufferWidth, frame.bufferHeight)
 
-    if (frame.type === 'h264') {
-      this._decodeH264(frame, serial)
+    if (frame.type === 'jpeg') {
+      this._decodeJpeg(frame, serial)
     } else {
       this._decodePNG(frame, serial)
     }
@@ -369,16 +283,12 @@ export default class BrowserRtcDcBuffer {
       synSerial: synSerial,
       opaque: opaque,
       alpha: alpha,
-      type: type === 0 ? 'h264' : 'png'
+      type: type === 1 ? 'png' : 'jpeg'
     }
   }
 
   _decodePNG (frame, serial) {
     // decode might not be the best name, as we're not doing any decoding.
-    if (this._decoder) {
-      // FIXME a h264 decode might still be in progress, how to properly handle this?
-      this._destroyH264()
-    }
 
     const pngImg = new window.Image()
     const pngArray = frame.opaque
@@ -396,78 +306,64 @@ export default class BrowserRtcDcBuffer {
     }
   }
 
-  async _decodeH264 (frame, serial) {
-    this._type = 'h264'
+  _decodeJpeg (frame, serial) {
+    this._type = 'jpeg'
 
     const hasAlpha = frame.alpha !== null
-    await this._ensureH264Decoders(hasAlpha)
+
+    const jpegImg = new window.Image()
+    const jpegArray = frame.opaque
+    const jpegBlob = new window.Blob([jpegArray], {'type': 'image/jpeg'})
+    jpegImg.src = window.URL.createObjectURL(jpegBlob)
+    this._content = jpegImg
 
     if (hasAlpha) {
-      this._decodingAlphaSerialsQueue.push(serial)
-      // create a copy of the arraybuffer so we can zero-copy the opaque part (after zero-copying, we can no longer use the underlying array in any way)
-      const alphaH264Nal = new Uint8Array(frame.alpha.slice())
-      this._alphaDecoder.decode(alphaH264Nal)
+      const jpegAlphaImg = new window.Image()
+      const jpegAlphaArray = frame.alpha
+      const jpegAlphaBlob = new window.Blob([jpegAlphaArray], {'type': 'image/jpeg'})
+      jpegAlphaImg.src = window.URL.createObjectURL(jpegAlphaBlob)
+      this._alphaContent = jpegAlphaImg
+
+      let opaqueComplete = false
+      let alphaComplete = false
+
+      if (jpegImg.complete && jpegImg.naturalHeight !== 0) {
+        opaqueComplete = true
+      } else {
+        jpegImg.onload = () => {
+          opaqueComplete = true
+          if (opaqueComplete && alphaComplete) {
+            this._onComplete(serial)
+          }
+        }
+      }
+
+      if (jpegAlphaImg.complete && jpegAlphaImg.naturalHeight !== 0) {
+        alphaComplete = true
+        if (opaqueComplete && alphaComplete) {
+          this._onComplete(serial)
+        }
+      } else {
+        jpegAlphaImg.onload = () => {
+          alphaComplete = true
+          if (opaqueComplete && alphaComplete) {
+            this._onComplete(serial)
+          }
+        }
+      }
     } else {
-      this._frameStates[serial].state = 'pending_opaque'
-    }
-
-    this._decodingSerialsQueue.push(serial)
-    const opaqueH264Nal = new Uint8Array(frame.opaque)
-    this._decoder.decode(opaqueH264Nal)
-  }
-
-  _onPictureDecoded (buffer, width, height) {
-    this._yuvContent = buffer
-    this._yuvWidth = width
-    this._yuvHeight = height
-
-    const frameSerial = this._decodingSerialsQueue.shift()
-    if (!frameSerial || frameSerial < this._lastCompleteSerial) {
-      return
-    }
-
-    if (this._frameStates[frameSerial].state === 'pending_opaque') {
-      this._onComplete(frameSerial)
-    } else {
-      this._frameStates[frameSerial].state = 'pending_alpha'
-    }
-  }
-
-  _onAlphaPictureDecoded (buffer, width, height) {
-    this._alphaYuvContent = buffer
-    this._alphaYuvWidth = width
-    this._alphaYuvHeight = height
-
-    const frameSerial = this._decodingAlphaSerialsQueue.shift()
-    if (!frameSerial || frameSerial < this._lastCompleteSerial) {
-      return
-    }
-
-    if (this._frameStates[frameSerial].state === 'pending_alpha') {
-      this._onComplete(frameSerial)
-    } else {
-      this._frameStates[frameSerial].state = 'pending_opaque'
+      if (jpegImg.complete && jpegImg.naturalHeight !== 0) {
+        this._onComplete(serial)
+      } else {
+        jpegImg.onload = () => {
+          this._onComplete(serial)
+        }
+      }
     }
   }
 
   destroy () {
     this._blobTransferResource.release()
     this.resource = null
-    this._destroyH264()
-  }
-
-  _destroyH264 () {
-    if (this._decoder) {
-      this._decoder.terminate()
-      this._decoder = null
-      this._decoderFactory = null
-    }
-    if (this._alphaDecoder) {
-      this._alphaDecoder.terminate()
-      this._alphaDecoder = null
-      this._alphaDecoderFactory = null
-    }
-    this._decodingSerialsQueue = []
-    this._decodingAlphaSerialsQueue = []
   }
 }

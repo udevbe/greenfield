@@ -1,19 +1,14 @@
-'use strict'
-
 const gstreamer = require('gstreamer-superficial')
 
-module.exports = class H264AlphaEncoder {
+module.exports = class JpegAlphaEncoder {
   static create (width, height, gstBufferFormat) {
     const pipeline = new gstreamer.Pipeline(
-      // scale & convert to RGBA
-      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=20/1 ! ` +
-      `videoscale ! capsfilter name=scale caps=video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)} ! ` +
+      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=0/1 ! 
 
-      // branch[0] convert alpha to grayscale h264
-      'tee name=t ! queue ! ' +
-      'glupload ! ' +
-      'glcolorconvert ! ' +
-      `glshader fragment="
+      tee name=t ! queue ! 
+      glupload ! 
+      glcolorconvert ! 
+      glshader fragment="
         #version 100
         #ifdef GL_ES
         precision mediump float;
@@ -26,38 +21,35 @@ module.exports = class H264AlphaEncoder {
 
         void main () {
           vec4 pix = texture2D(tex, v_texcoord);
-          gl_FragColor = vec4(pix.a,pix.a,pix.a,0);
+          gl_FragColor = vec4(pix.a,pix.a,pix.a,1);
         }
-      " ! ` +
-      'glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! ' +
-      'gldownload ! ' +
-      `x264enc key-int-max=900 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ` +
-      'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=20/1 ! ' +
-      'appsink name=alphasink ' +
+      " ! 
+      glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! 
+      gldownload ! 
+      jpegenc ! 
+      appsink name=alphasink 
 
-      // branch[1] convert rgb to h264
-      't. ! queue ! ' +
-      'videoconvert ! video/x-raw,format=I420 ! ' +
-      `x264enc key-int-max=900 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ` +
-      'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=20/1 ! ' +
-      'appsink name=sink'
+      t. ! queue ! 
+      glupload ! 
+      glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! 
+      gldownload ! 
+      jpegenc ! 
+      appsink name=sink`
     )
 
     const alphasink = pipeline.findChild('alphasink')
     const sink = pipeline.findChild('sink')
     const src = pipeline.findChild('source')
-    const scale = pipeline.findChild('scale')
     pipeline.play()
 
-    return new H264AlphaEncoder(pipeline, sink, alphasink, src, scale)
+    return new JpegAlphaEncoder(pipeline, sink, alphasink, src)
   }
 
-  constructor (pipeline, appsink, alphasink, appsrc, scale) {
+  constructor (pipeline, appsink, alphasink, appsrc) {
     this.pipeline = pipeline
     this.sink = appsink
     this.alpha = alphasink
     this.src = appsrc
-    this.scale = scale
     this.width = null
     this.height = null
     this.format = null
@@ -74,11 +66,7 @@ module.exports = class H264AlphaEncoder {
     this.format = gstBufferFormat
     this.pipeline.pause()
     // source caps describe what goes in
-    this.src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=20/1`
-    // x264 encoder requires size to be a multiple of 2
-    // target caps describe what we want
-    this.scale.caps = `video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)}`
-
+    this.src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=0/1`
     this.pipeline.play()
   }
 
@@ -98,7 +86,7 @@ module.exports = class H264AlphaEncoder {
       this.src.push(pixelBuffer)
 
       const frame = {
-        type: 0, // 0=h264
+        type: 2, // 2=jpeg
         width: bufferWidth,
         height: bufferHeight,
         synSerial: synSerial,
@@ -106,7 +94,7 @@ module.exports = class H264AlphaEncoder {
         alpha: null
       }
 
-      // FIXME add a timer to detect stalled encoding pipeline.
+      // FIXME add a timer to detect stalled encoding pipeline?
       this.sink.pull((opaqueH264Nal) => {
         if (opaqueH264Nal) {
           frame.opaque = opaqueH264Nal

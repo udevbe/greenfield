@@ -5,31 +5,27 @@ const gstreamer = require('gstreamer-superficial')
 module.exports = class H264OpaqueEncoder {
   static create (width, height, gstBufferFormat) {
     const pipeline = new gstreamer.Pipeline(
-      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=20/1 ! ` +
-      `videoscale ! capsfilter name=scale caps=video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)} ! ` +
-      'glupload ! ' +
-      'glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! ' +
-      'gldownload ! ' +
-      `x264enc key-int-max=1 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ` +
-      'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=20/1 ! ' +
-      'appsink name=sink'
+      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=0/1 ! 
+      glupload ! 
+      glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! 
+      gldownload ! 
+      jpegenc ! 
+      appsink name=sink`
     )
 
     const alphasink = pipeline.findChild('alphasink')
     const sink = pipeline.findChild('sink')
     const src = pipeline.findChild('source')
-    const scale = pipeline.findChild('scale')
     pipeline.play()
 
-    return new H264OpaqueEncoder(pipeline, sink, alphasink, src, scale, width, height)
+    return new H264OpaqueEncoder(pipeline, sink, alphasink, src, width, height)
   }
 
-  constructor (pipeline, appsink, alphasink, appsrc, scale, width, height) {
+  constructor (pipeline, appsink, alphasink, appsrc, width, height) {
     this.pipeline = pipeline
     this.sink = appsink
     this.alpha = alphasink
     this.src = appsrc
-    this.scale = scale
     this.width = width
     this.height = height
   }
@@ -44,11 +40,7 @@ module.exports = class H264OpaqueEncoder {
     this.height = height
     this.format = gstBufferFormat
     this.pipeline.pause()
-    // source caps describe what goes in
-    this.src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=20/1`
-    // x264 encoder requires size to be a multiple of 2
-    // target caps describe what we want
-    this.scale.caps = `video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)}`
+    this.src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=0/1`
     this.pipeline.play()
   }
 
@@ -68,11 +60,11 @@ module.exports = class H264OpaqueEncoder {
       this.src.push(pixelBuffer)
 
       const frame = {
-        type: 0, // 0=h264
+        type: 2, // 0=jpeg
         width: bufferWidth,
         height: bufferHeight,
         synSerial: synSerial,
-        opaque: null, // only use opaque, as plain h264 has no alpha channel
+        opaque: null, // only use opaque, as plain jpeg has no alpha channel
         alpha: Buffer.allocUnsafe(0) // alloc empty buffer to avoid null errors
       }
 

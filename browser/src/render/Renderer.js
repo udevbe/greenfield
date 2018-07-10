@@ -1,14 +1,10 @@
 'use strict'
 
 import ViewState from './ViewState'
-import BrowserRtcBufferFactory from '../BrowserRtcBufferFactory'
-import YUVASurfaceShader from './YUVASurfaceShader'
-import YUVSurfaceShader from './YUVSurfaceShader'
-import Size from '../Size'
+import JpegAlphaSurfaceShader from './JpegAlphaSurfaceShader'
 
 export default class Renderer {
   /**
-   *
    * @param {BrowserSession} browserSession
    * @returns {Renderer}
    */
@@ -26,10 +22,9 @@ export default class Renderer {
     }
 
     gl.clearColor(0, 0, 0, 0)
-    const yuvaShader = YUVASurfaceShader.create(gl)
-    const yuvShader = YUVSurfaceShader.create(gl)
+    const jpegAlphaSurfaceShader = JpegAlphaSurfaceShader.create(gl)
 
-    return new Renderer(browserSession, gl, yuvaShader, yuvShader, canvas)
+    return new Renderer(browserSession, gl, jpegAlphaSurfaceShader, canvas)
   }
 
   /**
@@ -60,11 +55,10 @@ export default class Renderer {
    * @private
    * @param {BrowserSession}browserSession
    * @param {WebGLRenderingContext}gl
-   * @param {YUVASurfaceShader}yuvaShader
-   * @param {YUVSurfaceShader}yuvShader
+   * @param {JpegAlphaSurfaceShader}jpegAlphaSurfaceShader
    * @param {HTMLCanvasElement}canvas
    */
-  constructor (browserSession, gl, yuvaShader, yuvShader, canvas) {
+  constructor (browserSession, gl, jpegAlphaSurfaceShader, canvas) {
     /**
      * @type {BrowserSession}
      */
@@ -74,13 +68,9 @@ export default class Renderer {
      */
     this.gl = gl
     /**
-     * @type {YUVASurfaceShader}
+     * @type {JpegAlphaSurfaceShader}
      */
-    this.yuvaShader = yuvaShader
-    /**
-     * @type {YUVSurfaceShader}
-     */
-    this.yuvShader = yuvShader
+    this.jpegAlphaSurfaceShader = jpegAlphaSurfaceShader
     /**
      * @type {HTMLCanvasElement}
      */
@@ -117,7 +107,7 @@ export default class Renderer {
   }
 
   /**
-   * @param {{type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}}bufferContents
+   * @param {{type: string, syncSerial: number, geo: Size, pngImage: HTMLImageElement, content: HTMLImageElement, alphaContent: HTMLImageElement}}bufferContents
    * @param {ViewState}viewState
    * @param {BrowserSurfaceView[]}views
    * @private
@@ -126,37 +116,35 @@ export default class Renderer {
     // update textures or image
     viewState.update(bufferContents)
     // paint the textures
-    if (bufferContents.type === 'h264') {
-      this._drawH264(bufferContents, viewState, views)
+    if (bufferContents.type === 'jpeg') {
+      this._drawJpeg(bufferContents, viewState, views)
     } else { // if (browserRtcDcBuffer.type === 'png')
       this._drawImage(viewState, views)
     }
   }
 
   /**
-   * @param {{type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}}bufferContents
+   * @param {{type: string, syncSerial: number, geo: Size, pngImage: HTMLImageElement, content: HTMLImageElement, alphaContent: HTMLImageElement}}bufferContents
    * @param {ViewState}viewState
    * @param {BrowserSurfaceView[]}views
    * @private
    */
-  _drawH264 (bufferContents, viewState, views) {
+  _drawJpeg (bufferContents, viewState, views) {
     const bufferSize = bufferContents.geo
     const viewPortUpdate = this.canvas.width !== bufferSize.w || this.canvas.height !== bufferSize.h
     this.canvas.width = bufferSize.w
     this.canvas.height = bufferSize.h
 
-    if (bufferContents.alphaYuvContent != null) {
-      this.yuvaShader.use()
-      this.yuvaShader.draw(viewState.yTexture, viewState.uTexture, viewState.vTexture, viewState.alphaYTexture, bufferSize, viewPortUpdate)
+    if (bufferContents.alphaContent != null) {
+      this.jpegAlphaSurfaceShader.use()
+      this.jpegAlphaSurfaceShader.draw(viewState.opaqueTexture, viewState.alphaTexture, bufferSize, viewPortUpdate)
+      // blit rendered texture from render canvas into view canvasses
+      views.forEach((view) => {
+        view.drawCanvas(this.canvas)
+      })
     } else {
-      this.yuvShader.use()
-      this.yuvShader.draw(viewState.yTexture, viewState.uTexture, viewState.vTexture, bufferSize, viewPortUpdate)
+      this._drawImage(viewState, views)
     }
-
-    // blit rendered texture from render canvas into view canvasses
-    views.forEach((view) => {
-      view.drawCanvas(this.canvas)
-    })
   }
 
   /**
