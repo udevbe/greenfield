@@ -1,0 +1,46 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Server stats.</title>
+
+    <style type="text/css">
+        body, html {
+            font-family: sans-serif;
+        }
+
+        .vis-item.frame {
+            background-color: #ff6961;
+        }
+
+        .vis-item.commit {
+            background-color: #77dd77;
+        }
+
+        .vis-item.encode {
+            background-color: #779ecb;
+        }
+    </style>
+
+    <script src="./vis.min.js"></script>
+    <script src="./stats.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css"/>
+</head>
+<body>
+<div id="visualization"></div>
+
+<script type="text/javascript">
+  // DOM element where the Timeline will be attached
+  const container = document.getElementById('visualization')
+
+  // Create a DataSet (allows two way data-binding)
+  const options = {
+    template: (item, element, data) => {
+      return `<h5>${item.title}</h5><p>${item.end === 0 ? 0 : item.end - item.start}ms</p>`
+    }
+  }
+
+  // Create a Timeline, items variable is imported from stats.js
+  const timeline = new vis.Timeline(container, items, options)
+</script>
+</body>
+</html>

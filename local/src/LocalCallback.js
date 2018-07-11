@@ -1,5 +1,7 @@
 'use strict'
 
+const Measurement = require('./Measurement')
+
 module.exports = class LocalCallback {
   static create (proxy) {
     return new LocalCallback(proxy)
@@ -8,6 +10,9 @@ module.exports = class LocalCallback {
   constructor (proxy) {
     this.resource = null
     this.proxy = proxy
+
+    this._frameMeasurement = Measurement.create({content: 'frame'})
+    this._frameMeasurement.begin()
   }
 
   /**
@@ -26,6 +31,8 @@ module.exports = class LocalCallback {
       this.resource.destroy()
       this.resource.implementation = null
       this.resource = null
+      this._frameMeasurement.end()
+      this._frameMeasurement.register()
     }
   }
 }

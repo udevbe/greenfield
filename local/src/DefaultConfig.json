@@ -6,6 +6,10 @@
       {
         "http-path": "/apps/icons",
         "fs-path": "./app-entries/"
+      },
+      {
+        "http-path": "/stats",
+        "fs-path": "./stats/"
       }
     ]
   },
@@ -18,5 +22,9 @@
         "file:./app-entries/"
       ]
     }
+  },
+  "stats": {
+    "output": "./stats/stats.js",
+    "enabled": true
   }
 }

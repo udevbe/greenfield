@@ -5,6 +5,7 @@ const {Shm} = require('wayland-server-bindings-runtime')
 const WlSurfaceRequests = require('./protocol/wayland/WlSurfaceRequests')
 const WlCallback = require('./protocol/wayland/WlCallback')
 const Encoder = require('./Encoder')
+const Measurement = require('./Measurement')
 
 const LocalCallback = require('./LocalCallback')
 
@@ -13,7 +14,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
    * @param {GrSurface}grSurfaceProxy
    * @return {module.ShimSurface}
    */
-  static create (grSurfaceProxy, grSurfaceResource) {
+  static create (grSurfaceProxy) {
     const rtcBufferFactory = grSurfaceProxy.connection._rtcBufferFactory
     const localRtcDcBuffer = rtcBufferFactory.createLocalRtcDcBuffer()
     return new ShimSurface(grSurfaceProxy, localRtcDcBuffer)
@@ -26,6 +27,9 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
    */
   constructor (grSurfaceProxy, localRtcDcBuffer) {
     super()
+    /**
+     * @type {GrSurface}
+     */
     this.proxy = grSurfaceProxy
     /**
      * @type {WlBuffer}
@@ -227,6 +231,11 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
    * @return {Promise<void>}
    */
   async commit (resource) {
+    const commitMeasurement = Measurement.create({content: 'commit'})
+    commitMeasurement.begin()
+
+    this.synSerial++
+    const synSerial = this.synSerial
     // FIXME because the commit method is async, the surface can be destroyed while it is busy. Leading to certain
     // resources like frame callback to be destroyed but still called after this commit finishes.
     if (this.buffer) {
@@ -243,18 +252,25 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       this.buffer.addDestroyListener(this.bufferDestroyListener)
     }
 
-    this.synSerial++
-    const synSerial = this.synSerial
     if (this.buffer) {
       this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
     }
     this.proxy.commit()
+
+    const encodeMeasurement = Measurement.create({content: 'encode'})
+    encodeMeasurement.begin()
 
     if (this.buffer) {
       const buffer = this.buffer
       const frame = await this._encodeBuffer(buffer, synSerial)
       await this.sendFrame(frame)
     }
+
+    encodeMeasurement.end()
+    encodeMeasurement.register()
+
+    commitMeasurement.end()
+    commitMeasurement.register()
   }
 
   setBufferTransform (resource, transform) {
