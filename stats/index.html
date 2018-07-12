@@ -29,6 +29,9 @@
 <div id="visualization"></div>
 
 <script type="text/javascript">
+  // items variable is imported from stats.js
+  const data = items.slice(-500)
+
   // DOM element where the Timeline will be attached
   const container = document.getElementById('visualization')
 
@@ -39,8 +42,8 @@
     }
   }
 
-  // Create a Timeline, items variable is imported from stats.js
-  const timeline = new vis.Timeline(container, items, options)
+  // Create a Timeline,
+  const timeline = new vis.Timeline(container, data, options)
 </script>
 </body>
 </html>
