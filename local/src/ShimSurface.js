@@ -163,7 +163,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
   /**
    * @param buffer
    * @param {number}synSerial
-   * @return {Promise<{type: number, width: number, height: number, synSerial: number, opaque: Buffer, alpha: Buffer}>}
+   * @return {Promise<EncodedFrame>}
    * @private
    */
   _encodeBuffer (buffer, synSerial) {
@@ -179,24 +179,6 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     const format = shm.getFormat()
 
     return this._encoder.encodeBuffer(pixelBuffer, format, bufferWidth, bufferHeight, synSerial)
-  }
-
-  /**
-   * @param {{type: number, width: number, height: number, synSerial: number, opaque: Buffer, alpha: Buffer}}frame
-   * @return {Buffer}
-   * @private
-   */
-  _frameToBuffer (frame) {
-    const header = Buffer.allocUnsafe(13)
-    const frameBuffer = Buffer.concat([header, frame.opaque, frame.alpha], header.length + frame.opaque.length + frame.alpha.length)
-
-    frameBuffer.writeUInt32BE(header.length + frame.opaque.length, 0, true) // alpha offset
-    frameBuffer.writeUInt16BE(frame.width, 4, true) // buffer width
-    frameBuffer.writeUInt16BE(frame.height, 6, true) // buffer height
-    frameBuffer.writeUInt32BE(frame.synSerial, 8, true) // frame serial
-    frameBuffer.writeUInt8(frame.type, 12, true) // frame type
-
-    return frameBuffer
   }
 
   /**
@@ -233,7 +215,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
   }
 
   /**
-   * @param {{type: number, width: number, height: number, synSerial: number, opaque: Buffer, alpha: Buffer}}frame
+   * @param {EncodedFrame}frame
    * @return {Promise<void>}
    */
   async sendFrame (frame) {
@@ -247,7 +229,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     setTimeout(async () => {
       // If the syn serial at the time the timer was created is greater than the latest received ack serial and no newer serial is expected,
       // then we have not received an ack that matches or is newer than the syn we're checking. We resend the frame.
-      if (frame.synSerial > this.ackSerial && frame.synSerial === this.synSerial) {
+      if (frame.serial > this.ackSerial && frame.serial === this.synSerial) {
         await this.sendFrame(frame)
       }
       // TODO dynamically adjust to expected roundtrip time which could be calculated by measuring the latency
@@ -255,8 +237,8 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     }, 250)
 
     const dataChannel = await this.localRtcDcBuffer.localRtcBlobTransfer.open()
-    const frameBuffer = this._frameToBuffer(frame)
-    const bufferChunks = this._toBufferChunks(frameBuffer, frame.synSerial)
+    const frameBuffer = frame.toBuffer()
+    const bufferChunks = this._toBufferChunks(frameBuffer, frame.serial)
     bufferChunks.forEach((chunk) => {
       dataChannel.send(chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength))
     })

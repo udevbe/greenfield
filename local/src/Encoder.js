@@ -7,6 +7,9 @@ const JpegAlphaEncoder = require('./JpegAlphaEncoder')
 const PNGEncoder = require('./PNGEncoder')
 const WlShmFormat = require('./protocol/wayland/WlShmFormat')
 
+/**
+ * @implements FrameEncoder
+ */
 class Encoder {
   static create () {
     return new Encoder()
@@ -44,21 +47,22 @@ class Encoder {
    * @param {number}bufferFormat
    * @param {number}bufferWidth
    * @param {number}bufferHeight
-   * @param {number}synSerial
-   * @return {Promise<{type:number, width:number, height:number, synSerial:number, opaque: Buffer, alpha: Buffer}>}
+   * @param {number}serial
+   * @param {Array<Rect>}damageRects
+   * @return {Promise<EncodedFrame>}
+   * @override
    */
-  encodeBuffer (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, synSerial) {
+  encodeBuffer (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, damageRects) {
     if (this._bufferFormat !== bufferFormat) {
       this._bufferFormat = bufferFormat
-      this._gstFormat = Encoder.types[bufferFormat].gstFormat
       this._frameEncoder = null
     }
 
     const bufferArea = bufferWidth * bufferHeight
     if (bufferArea <= config['png-encoder']['max-target-buffer-size']) {
-      return this._encodePNGFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, synSerial)
+      return this._encodePNGFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, damageRects)
     } else {
-      return this._encodeFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, synSerial)
+      return this._encodeFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, damageRects)
     }
   }
 
@@ -67,15 +71,16 @@ class Encoder {
    * @param {number}bufferFormat
    * @param {number}bufferWidth
    * @param {number}bufferHeight
-   * @param {number}synSerial
-   * @return {Promise<{type:number, width:number, height:number, synSerial:number, opaque: Buffer, alpha: Buffer}>}
+   * @param {number}serial
+   * @param {Array<Rect>}damageRects
+   * @return {Promise<EncodedFrame>}
    * @private
    */
-  _encodePNGFrame (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, synSerial) {
+  _encodePNGFrame (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, damageRects) {
     if (!this._pngFrameEncoder) {
-      this._pngFrameEncoder = PNGEncoder.create(bufferWidth, bufferHeight, this._gstFormat)
+      this._pngFrameEncoder = PNGEncoder.create(bufferWidth, bufferHeight, bufferFormat)
     }
-    return this._pngFrameEncoder.encode(pixelBuffer, this._gstFormat, bufferWidth, bufferHeight, synSerial)
+    return this._pngFrameEncoder.encode(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, damageRects)
   }
 
   /**
@@ -83,15 +88,16 @@ class Encoder {
    * @param {number}bufferFormat
    * @param {number}bufferWidth
    * @param {number}bufferHeight
-   * @param {number}synSerial
-   * @return {Promise<{type:number, width:number, height:number, synSerial:number, opaque: Buffer, alpha: Buffer}>}
+   * @param {number}serial
+   * @param {Array<Rect>}damageRects
+   * @return {Promise<EncodedFrame>}
    * @private
    */
-  _encodeFrame (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, synSerial) {
+  _encodeFrame (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, damageRects) {
     if (!this._frameEncoder) {
-      this._frameEncoder = Encoder.types[this._bufferFormat].FrameEncoder.create(bufferWidth, bufferHeight, this._gstFormat)
+      this._frameEncoder = Encoder.types[bufferFormat].FrameEncoder.create(bufferWidth, bufferHeight, bufferFormat)
     }
-    return this._frameEncoder.encode(pixelBuffer, this._gstFormat, bufferWidth, bufferHeight, synSerial)
+    return this._frameEncoder.encode(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, damageRects)
   }
 }
 
@@ -100,11 +106,11 @@ Encoder.types = {}
 // TODO add more types
 // TODO different frame encoders could probably share code from a common super class
 Encoder.types[WlShmFormat.argb8888] = {
-  gstFormat: 'BGRA',
+  // gstFormat: 'BGRA',
   FrameEncoder: JpegAlphaEncoder
 }
 Encoder.types[WlShmFormat.xrgb8888] = {
-  gstFormat: 'BGRx',
+  // gstFormat: 'BGRx',
   FrameEncoder: JpegOpaqueEncoder
 }
 

@@ -1,8 +1,29 @@
 const gstreamer = require('gstreamer-superficial')
+const WlShmFormat = require('./protocol/wayland/WlShmFormat')
+
+const EncodedFrame = require('./EncodedFrame')
+const EncodedBuffer = require('./EncodedBuffer')
+
+const {jpeg} = require('./EncodingTypes')
+
+const gstFormats = {
+  [WlShmFormat.argb8888]: 'BGRA',
+  [WlShmFormat.xrgb8888]: 'BGRx'
+}
 
 // TODO replace gstreamer pipeline with a custom opengl accelrated jpeg encoder implementation
-module.exports = class JpegAlphaEncoder {
-  static create (width, height, gstBufferFormat) {
+/**
+ * @implements FrameEncoder
+ */
+class JpegAlphaEncoder {
+  /**
+   * @param {number}width
+   * @param {number}height
+   * @param {number}wlShmFormat
+   * @return {JpegAlphaEncoder}
+   */
+  static create (width, height, wlShmFormat) {
+    const gstBufferFormat = gstFormats[wlShmFormat]
     const pipeline = new gstreamer.Pipeline(
       `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! 
 
@@ -43,80 +64,119 @@ module.exports = class JpegAlphaEncoder {
     const src = pipeline.findChild('source')
     pipeline.play()
 
-    return new JpegAlphaEncoder(pipeline, sink, alphasink, src)
+    return new JpegAlphaEncoder(pipeline, sink, alphasink, src, width, height, wlShmFormat)
   }
 
-  constructor (pipeline, appsink, alphasink, appsrc) {
-    this.pipeline = pipeline
-    this.sink = appsink
-    this.alpha = alphasink
-    this.src = appsrc
-    this.width = null
-    this.height = null
-    this.format = null
+  /**
+   * @param {Object}pipeline
+   * @param {Object}sink
+   * @param {Object}alphaSink
+   * @param {Object}src
+   * @param {number}width
+   * @param {number}height
+   * @param {number}wlShmFormat
+   * @private
+   */
+  constructor (pipeline, sink, alphaSink, src, width, height, wlShmFormat) {
+    /**
+     * @type {Object}
+     * @private
+     */
+    this._pipeline = pipeline
+    /**
+     * @type {Object}
+     * @private
+     */
+    this._sink = sink
+    /**
+     * @type {Object}
+     * @private
+     */
+    this._alphaSink = alphaSink
+    /**
+     * @type {Object}
+     * @private
+     */
+    this._src = src
+    /**
+     * @type {number}
+     * @private
+     */
+    this._width = width
+    /**
+     * @type {number}
+     * @private
+     */
+    this._height = height
+    /**
+     * @type {number}
+     * @private
+     */
+    this._wlShmFormat = wlShmFormat
   }
 
   /**
    * @param {number}width
    * @param {number}height
    * @param {string}gstBufferFormat
+   * @private
    */
-  configure (width, height, gstBufferFormat) {
-    this.width = width
-    this.height = height
-    this.format = gstBufferFormat
-    this.pipeline.pause()
-    // source caps describe what goes in
-    this.src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1`
-    this.pipeline.play()
+  _configure (width, height, gstBufferFormat) {
+    this._src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1`
   }
 
   /**
    * @param {Buffer}pixelBuffer
-   * @param {number}gstBufferFormat
+   * @param {number}wlShmFormat
    * @param {number}bufferWidth
-   * @param {height}bufferHeight
-   * @param {number}synSerial
+   * @param {number}bufferHeight
+   * @param {number}serial
+   * @param {Array<Rect>}damageRects
+   * @return {Promise<EncodedFrame>}
+   * @override
    */
-  encode (pixelBuffer, gstBufferFormat, bufferWidth, bufferHeight, synSerial) {
+  encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial, damageRects) {
+    // TODO use damage rects & pixman to only encode those parts of the pixelBuffer that have changed
+
     return new Promise((resolve, reject) => {
-      if (this.width !== bufferWidth || this.height !== bufferHeight || this.format !== gstBufferFormat) {
-        this.configure(bufferWidth, bufferHeight, gstBufferFormat)
+      if (this._width !== bufferWidth || this._height !== bufferHeight || this._wlShmFormat !== wlShmFormat) {
+        this._width = bufferWidth
+        this._height = bufferHeight
+        this._wlShmFormat = wlShmFormat
+
+        const gstBufferFormat = gstFormats[wlShmFormat]
+        this._configure(bufferWidth, bufferHeight, gstBufferFormat)
       }
 
-      const frame = {
-        type: 2, // 2=jpeg
-        width: bufferWidth,
-        height: bufferHeight,
-        synSerial: synSerial,
-        opaque: null,
-        alpha: null
-      }
+      const opaqueEncodedBuffers = []
+      const alphaEncodedBuffers = []
+      const encodedFrame = EncodedFrame.create(serial, jpeg, bufferWidth, bufferHeight, opaqueEncodedBuffers, alphaEncodedBuffers)
 
-      // FIXME add a timer to detect stalled encoding pipeline?
-      this.sink.pull((opaqueJpeg) => {
+      this._sink.pull((opaqueJpeg) => {
         if (opaqueJpeg) {
-          frame.opaque = opaqueJpeg
-          if (frame.opaque && frame.alpha) {
-            resolve(frame)
+          opaqueEncodedBuffers.push(EncodedBuffer.create(0, 0, bufferWidth, bufferHeight, opaqueJpeg))
+          if (opaqueEncodedBuffers.length && alphaEncodedBuffers.length) {
+            resolve(encodedFrame)
           }
         } else {
           reject(new Error('Pulled empty opaque buffer. Gstreamer opaque jpeg encoder pipeline is probably in error.'))
         }
       })
 
-      this.alpha.pull((alphaJpeg) => {
+      this._alphaSink.pull((alphaJpeg) => {
         if (alphaJpeg) {
-          frame.alpha = alphaJpeg
-          if (frame.opaque && frame.alpha) {
-            resolve(frame)
+          alphaEncodedBuffers.push(EncodedBuffer.create(0, 0, bufferWidth, bufferHeight, alphaJpeg))
+          if (opaqueEncodedBuffers.length && alphaEncodedBuffers.length) {
+            resolve(encodedFrame)
           }
         } else {
           reject(new Error('Pulled empty alpha buffer. Gstreamer alpha jpeg encoder pipeline is probably in error.'))
         }
       })
 
-      this.src.push(pixelBuffer)
+      this._src.push(pixelBuffer)
     })
   }
 }
+
+module.exports = JpegAlphaEncoder

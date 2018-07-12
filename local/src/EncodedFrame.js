@@ -1,23 +1,30 @@
-module.exports = class EncodedFrame {
+class EncodedFrame {
   /**
+   * @param {number} serial
    * @param {number}encodingType
    * @param {number}width
    * @param {number}height
    * @param {Array<EncodedBuffer>}opaqueEncodedBuffers
    * @param {Array<EncodedBuffer>}alphaEncodedBuffers
+   * @return {EncodedFrame}
    */
-  static create (encodingType, width, height, opaqueEncodedBuffers, alphaEncodedBuffers) {
-    return new EncodedFrame(encodingType, width, height, opaqueEncodedBuffers, alphaEncodedBuffers)
+  static create (serial, encodingType, width, height, opaqueEncodedBuffers, alphaEncodedBuffers) {
+    return new EncodedFrame(serial, encodingType, width, height, opaqueEncodedBuffers, alphaEncodedBuffers)
   }
 
   /**
+   * @param {number}serial
    * @param {number}encodingType
    * @param {number}width
    * @param {number}height
    * @param {Array<EncodedBuffer>}opaqueEncodedBuffers
    * @param {Array<EncodedBuffer>}alphaEncodedBuffers
    */
-  constructor (encodingType, width, height, opaqueEncodedBuffers, alphaEncodedBuffers) {
+  constructor (serial, encodingType, width, height, opaqueEncodedBuffers, alphaEncodedBuffers) {
+    /**
+     * @type {number}
+     */
+    this.serial = serial
     /**
      * @type {number}
      * @private
@@ -113,3 +120,5 @@ module.exports = class EncodedFrame {
     return frameBuffer
   }
 }
+
+module.exports = EncodedFrame

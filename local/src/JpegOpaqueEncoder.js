@@ -1,10 +1,31 @@
 'use strict'
 
 const gstreamer = require('gstreamer-superficial')
+const WlShmFormat = require('./protocol/wayland/WlShmFormat')
+
+const EncodedFrame = require('./EncodedFrame')
+const EncodedBuffer = require('./EncodedBuffer')
+
+const {jpeg} = require('./EncodingTypes')
+
+const gstFormats = {
+  [WlShmFormat.argb8888]: 'BGRA',
+  [WlShmFormat.xrgb8888]: 'BGRx'
+}
 
 // TODO replace gstreamer pipeline with a custom opengl accelrated jpeg encoder implementation
-module.exports = class H264OpaqueEncoder {
-  static create (width, height, gstBufferFormat) {
+/**
+ * @implements FrameEncoder
+ */
+class JpegOpaqueEncoder {
+  /**
+   * @param {number}width
+   * @param {number}height
+   * @param {number}wlShmFormat
+   * @return {JpegOpaqueEncoder}
+   */
+  static create (width, height, wlShmFormat) {
+    const gstBufferFormat = gstFormats[wlShmFormat]
     const pipeline = new gstreamer.Pipeline(
       `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! 
       glupload ! 
@@ -14,69 +35,106 @@ module.exports = class H264OpaqueEncoder {
       appsink name=sink`
     )
 
-    const alphasink = pipeline.findChild('alphasink')
     const sink = pipeline.findChild('sink')
     const src = pipeline.findChild('source')
     pipeline.play()
 
-    return new H264OpaqueEncoder(pipeline, sink, alphasink, src, width, height)
+    return new JpegOpaqueEncoder(pipeline, sink, src, width, height, wlShmFormat)
   }
 
-  constructor (pipeline, appsink, alphasink, appsrc, width, height) {
-    this.pipeline = pipeline
-    this.sink = appsink
-    this.alpha = alphasink
-    this.src = appsrc
-    this.width = width
-    this.height = height
+  /**
+   * @param {Object}pipeline
+   * @param {Object}sink
+   * @param {Object}src
+   * @param {number}width
+   * @param {number}height
+   * @param {number}wlShmFormat
+   * @private
+   */
+  constructor (pipeline, sink, src, width, height, wlShmFormat) {
+    /**
+     * @type {Object}
+     * @private
+     */
+    this._pipeline = pipeline
+    /**
+     * @type {Object}
+     * @private
+     */
+    this._sink = sink
+    /**
+     * @type {Object}
+     * @private
+     */
+    this._src = src
+    /**
+     * @type {number}
+     * @private
+     */
+    this._width = width
+    /**
+     * @type {number}
+     * @private
+     */
+    this._height = height
+    /**
+     * @type {number}
+     * @private
+     */
+    this._wlShmFormat = wlShmFormat
   }
 
   /**
    * @param {number}width
    * @param {number}height
    * @param {string}gstBufferFormat
+   * @private
    */
-  configure (width, height, gstBufferFormat) {
-    this.width = width
-    this.height = height
-    this.format = gstBufferFormat
-    this.pipeline.pause()
-    this.src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=0/1`
-    this.pipeline.play()
+  _configure (width, height, gstBufferFormat) {
+    this._src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1`
   }
 
   /**
    * @param {Buffer}pixelBuffer
-   * @param {string}gstBufferFormat
+   * @param {number}wlShmFormat
    * @param {number}bufferWidth
    * @param {number}bufferHeight
-   * @param {number}synSerial
+   * @param {number}serial
+   * @param {Array<Rect>}damageRects
+   * @return {Promise<EncodedFrame>}
+   * @override
    */
-  encode (pixelBuffer, gstBufferFormat, bufferWidth, bufferHeight, synSerial) {
+  encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial, damageRects) {
+    // TODO use damage rects & pixman to only encode those parts of the pixelBuffer that have changed
+
     return new Promise((resolve, reject) => {
-      if (this.width !== bufferWidth || this.height !== bufferHeight || this.format !== gstBufferFormat) {
-        this.configure(bufferWidth, bufferHeight, gstBufferFormat)
+      if (this._width !== bufferWidth || this._height !== bufferHeight || this._wlShmFormat !== wlShmFormat) {
+        this._width = bufferWidth
+        this._height = bufferHeight
+        this._wlShmFormat = wlShmFormat
+
+        const gstBufferFormat = gstFormats[wlShmFormat]
+        this._configure(bufferWidth, bufferHeight, gstBufferFormat)
       }
 
-      const frame = {
-        type: 2, // 0=jpeg
-        width: bufferWidth,
-        height: bufferHeight,
-        synSerial: synSerial,
-        opaque: null, // only use opaque, as plain jpeg has no alpha channel
-        alpha: Buffer.allocUnsafe(0) // alloc empty buffer to avoid null errors
-      }
+      const opaqueEncodedBuffers = []
+      const alphaEncodedBuffers = []
+      const encodedFrame = EncodedFrame.create(serial, jpeg, bufferWidth, bufferHeight, opaqueEncodedBuffers, alphaEncodedBuffers)
 
-      this.sink.pull((opaqueH264Nal) => {
-        if (opaqueH264Nal) {
-          frame.opaque = opaqueH264Nal
-          resolve(frame)
+      this._sink.pull((opaqueJpeg) => {
+        if (opaqueJpeg) {
+          opaqueEncodedBuffers.push(EncodedBuffer.create(0, 0, bufferWidth, bufferHeight, opaqueJpeg))
+          if (opaqueEncodedBuffers.length) {
+            resolve(encodedFrame)
+          }
         } else {
-          reject(new Error('Pulled empty buffer. Gstreamer h264 encoder pipeline is probably in error.'))
+          reject(new Error('Pulled empty opaque buffer. Gstreamer opaque jpeg encoder pipeline is probably in error.'))
         }
       })
 
-      this.src.push(pixelBuffer)
+      this._src.push(pixelBuffer)
     })
   }
 }
+
+module.exports = JpegOpaqueEncoder

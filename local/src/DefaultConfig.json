@@ -25,6 +25,6 @@
   },
   "stats": {
     "output": "./stats/stats.js",
-    "enabled": true
+    "enabled": false
   }
 }
