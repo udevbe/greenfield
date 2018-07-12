@@ -143,7 +143,9 @@ export default class Renderer {
         view.drawCanvas(this.canvas)
       })
     } else {
-      this._drawImage(viewState, views)
+      views.forEach((view) => {
+        view.drawImage(bufferContents.content)
+      })
     }
   }
 
