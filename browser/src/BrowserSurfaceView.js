@@ -83,8 +83,10 @@ export default class BrowserSurfaceView {
 
   /**
    * @param {HTMLImageElement}sourceImage
+   * @param {number}destinationX
+   * @param {number}destinationY
    */
-  drawImage (sourceImage) {
+  drawImage (sourceImage, destinationX, destinationY) {
     if (this.destroyed) {
       return
     }
@@ -264,24 +266,28 @@ export default class BrowserSurfaceView {
 
   /**
    * @param {HTMLCanvasElement}sourceCanvas
+   * @param {number}destinationX
+   * @param {number}destinationY
    */
-  drawCanvas (sourceCanvas) {
+  drawCanvas (sourceCanvas, destinationX, destinationY) {
     if (this.destroyed) {
       return
     }
-    this._draw(sourceCanvas, sourceCanvas.width, sourceCanvas.height)
+    this._draw(sourceCanvas, sourceCanvas.width, sourceCanvas.height, destinationX, destinationY)
   }
 
   /**
    * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap}source
    * @param {number}width
    * @param {number}height
+   * @param {number}destinationX
+   * @param {number}destinationY
    * @private
    */
-  _draw (source, width, height) {
+  _draw (source, width, height, destinationX, destinationY) {
     // FIXME adjust final transformation with additional transformations defined in the browser surface
     this._applyTransformationsBackBuffer()
-    this.bufferedCanvas.drawBackBuffer(source, width, height)
+    this.bufferedCanvas.drawBackBuffer(source, width, height, destinationX, destinationY)
   }
 
   /**

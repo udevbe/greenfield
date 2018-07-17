@@ -35,43 +35,16 @@ export default class ViewState {
      * @type {WebGLRenderingContext}
      */
     this.gl = gl
-    /**
-     * @type {HTMLImageElement}
-     */
-    this.image = image
   }
 
   /**
-   * @param {{type: string, syncSerial: number, geo: Size, pngImage: HTMLImageElement, content: HTMLImageElement, alphaContent: HTMLImageElement}}bufferContents
+   * @param {BrowserEncodedFrameFragment}fragment
    */
-  update (bufferContents) {
-    if (bufferContents.type === 'jpeg') {
-      this._updateJpeg(bufferContents)
-    } else { // if(type === 'png')
-      this._updateImage(bufferContents)
-    }
-  }
-
-  /**
-   * @param {{type: string, syncSerial: number, geo: Size, pngImage: HTMLImageElement, content: HTMLImageElement, alphaContent: HTMLImageElement}}bufferContents
-   */
-  _updateJpeg (bufferContents) {
-    const opaqueJpeg = bufferContents.content
-    if (!opaqueJpeg) { return }
-
-    this.opaqueTexture.fill(opaqueJpeg, bufferContents.geo)
-
-    const alphaJpeg = bufferContents.alphaContent
-    if (alphaJpeg) {
-      this.alphaTexture.fill(alphaJpeg, bufferContents.geo)
-    }
-  }
-
-  /**
-   * @param {{type: string, syncSerial: number, geo: Size, pngImage: HTMLImageElement, content: HTMLImageElement, alphaContent: HTMLImageElement}}bufferContents
-   */
-  _updateImage (bufferContents) {
-    this.image = bufferContents.pngImage
+  async updateFragment (fragment) {
+    const opaqueImage = fragment.asOpaqueImageElement()
+    const alphaImage = fragment.asAlphaImageElement()
+    this.opaqueTexture.fill(await opaqueImage)
+    this.alphaTexture.fill(await alphaImage)
   }
 
   // TODO handle state destruction

@@ -72,9 +72,11 @@ export default class BufferedCanvas {
    * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap}source
    * @param {number}width
    * @param {number}height
+   * @param {number}destinationX
+   * @param {number}destinationY
    */
-  drawBackBuffer (source, width, height) {
-    this._draw(this.backContext, source, width, height)
+  drawBackBuffer (source, width, height, destinationX, destinationY) {
+    this._draw(this.backContext, source, width, height, destinationX, destinationY)
   }
 
   /**
@@ -82,9 +84,12 @@ export default class BufferedCanvas {
    * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap}source
    * @param {number}width
    * @param {number}height
+   * @param {number}destinationX
+   * @param {number}destinationY
    * @private
    */
-  _draw (context2d, source, width, height) {
+  _draw (context2d, source, width, height, destinationX, destinationY) {
+    // TODO use ImageBitmapRenderingContext.transferFromImageBitmap()
     const canvas = context2d.canvas
     if (canvas.width !== width || canvas.height !== height) {
       // resizing clears the canvas
@@ -93,7 +98,7 @@ export default class BufferedCanvas {
     } else {
       context2d.clearRect(0, 0, canvas.width, canvas.height)
     }
-    context2d.drawImage(source, 0, 0)
+    context2d.drawImage(source, destinationX, destinationY)
   }
 
   swapBuffers () {

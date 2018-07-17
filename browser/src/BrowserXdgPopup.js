@@ -225,7 +225,7 @@ export default class BrowserXdgPopup extends BrowserSurfaceRole {
   /**
    * @param {BrowserSurface}browserSurface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
+   * @param {{bufferContents: BrowserEncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @return {Promise<void>}
    * @override
    */
@@ -242,7 +242,7 @@ export default class BrowserXdgPopup extends BrowserSurfaceRole {
       this._dismiss()
     }
 
-    browserSurface.render(renderFrame, newState)
+    await browserSurface.render(renderFrame, newState)
     renderFrame.fire()
     await renderFrame
     this._browserSession.flush()

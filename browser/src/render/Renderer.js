@@ -85,9 +85,9 @@ export default class Renderer {
 
   /**
    * @param {BrowserSurface}browserSurface
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
+   * @param {{bufferContents: BrowserEncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    */
-  renderBackBuffer (browserSurface, newState) {
+  async renderBackBuffer (browserSurface, newState) {
     const views = browserSurface.browserSurfaceViews
     const bufferContents = newState.bufferContents
 
@@ -98,65 +98,65 @@ export default class Renderer {
         browserSurface.renderState = viewState
       }
 
-      this._draw(bufferContents, viewState, views)
+      await this._draw(bufferContents, viewState, views)
     } else {
-      views.forEach((browserSurfaceView) => {
-        browserSurfaceView.drawImage(this._emptyImage)
-      })
+      this._drawImage(this._emptyImage, views, 0, 0)
     }
   }
 
   /**
-   * @param {{type: string, syncSerial: number, geo: Size, pngImage: HTMLImageElement, content: HTMLImageElement, alphaContent: HTMLImageElement}}bufferContents
+   * @param {BrowserEncodedFrame}bufferContents
    * @param {ViewState}viewState
-   * @param {BrowserSurfaceView[]}views
+   * @param {Array<BrowserSurfaceView>}views
    * @private
    */
-  _draw (bufferContents, viewState, views) {
-    // update textures or image
-    viewState.update(bufferContents)
-    // paint the textures
-    if (bufferContents.type === 'jpeg') {
-      this._drawJpeg(bufferContents, viewState, views)
+  async _draw (bufferContents, viewState, views) {
+    if (bufferContents.encodingType === 'jpeg') {
+      await Promise.all(bufferContents.fragments.map(async (fragment) => {
+        if (fragment.alpha.length) {
+          await this._drawJpegFragment(viewState, views, fragment)
+        } else {
+          this._drawImage(await fragment.asOpaqueImageElement(), views, fragment.geo.x0, fragment.geo.y0)
+        }
+      }))
     } else { // if (browserRtcDcBuffer.type === 'png')
-      this._drawImage(viewState, views)
-    }
-  }
-
-  /**
-   * @param {{type: string, syncSerial: number, geo: Size, pngImage: HTMLImageElement, content: HTMLImageElement, alphaContent: HTMLImageElement}}bufferContents
-   * @param {ViewState}viewState
-   * @param {BrowserSurfaceView[]}views
-   * @private
-   */
-  _drawJpeg (bufferContents, viewState, views) {
-    const bufferSize = bufferContents.geo
-    const viewPortUpdate = this.canvas.width !== bufferSize.w || this.canvas.height !== bufferSize.h
-    this.canvas.width = bufferSize.w
-    this.canvas.height = bufferSize.h
-
-    if (bufferContents.alphaContent != null) {
-      this.jpegAlphaSurfaceShader.use()
-      this.jpegAlphaSurfaceShader.draw(viewState.opaqueTexture, viewState.alphaTexture, bufferSize, viewPortUpdate)
-      // blit rendered texture from render canvas into view canvasses
-      views.forEach((view) => {
-        view.drawCanvas(this.canvas)
-      })
-    } else {
-      views.forEach((view) => {
-        view.drawImage(bufferContents.content)
-      })
+      this._drawImage(await bufferContents.fragments[0].asOpaqueImageElement(), views, 0, 0)
     }
   }
 
   /**
    * @param {ViewState}viewState
-   * @param {BrowserSurfaceView[]}views
+   * @param {Array<BrowserSurfaceView>}views
+   * @param {BrowserEncodedFrameFragment}fragment
    * @private
    */
-  _drawImage (viewState, views) {
+  async _drawJpegFragment (viewState, views, fragment) {
+    await viewState.updateFragment(fragment)
+    if (this.canvas.width !== fragment.geo.width) {
+      this.canvas.width = fragment.geo.width
+    }
+    if (this.canvas.height !== fragment.geo.height) {
+      this.canvas.height = fragment.geo.height
+    }
+
+    this.jpegAlphaSurfaceShader.use()
+    this.jpegAlphaSurfaceShader.draw(viewState.opaqueTexture, viewState.alphaTexture, fragment.geo)
+    // blit rendered texture from render canvas into view canvasses
     views.forEach((view) => {
-      view.drawImage(viewState.image)
+      view.drawCanvas(this.canvas, fragment.geo.x0, fragment.geo.y0)
+    })
+  }
+
+  /**
+   * @param {HTMLImageElement}image
+   * @param {Array<BrowserSurfaceView>}views
+   * @param {number}destinationX
+   * @param {number}destinationY
+   * @private
+   */
+  _drawImage (image, views, destinationX, destinationY) {
+    views.forEach((view) => {
+      view.drawImage(image, destinationX, destinationY)
     })
   }
 }

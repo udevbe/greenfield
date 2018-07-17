@@ -8,7 +8,7 @@ fs.writeFileSync('stats/stats.js', `
 const items = []\n
 `)
 
-module.exports = class Measurement {
+class Measurement {
   /**
    * @param {{content:string}}args
    * @return {Measurement}
@@ -50,3 +50,5 @@ module.exports = class Measurement {
     }
   }
 }
+
+module.exports = Measurement

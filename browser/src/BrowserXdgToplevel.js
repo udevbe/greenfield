@@ -186,7 +186,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
   /**
    * @param {BrowserSurface}browserSurface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
+   * @param {{bufferContents: BrowserEncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @return {Promise<void>}
    * @override
    */
@@ -208,7 +208,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
       this._unmap()
     }
 
-    browserSurface.render(renderFrame, newState)
+    await browserSurface.render(renderFrame, newState)
     renderFrame.fire()
     await renderFrame
     this._browserSession.flush()
@@ -232,7 +232,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
   /**
    * @param {BrowserSurface}browserSurface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
+   * @param {{bufferContents: BrowserEncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @private
    */
   _resizingCommit (browserSurface, renderFrame, newState) {
@@ -281,7 +281,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
   /**
    * @param {BrowserSurface}browserSurface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
+   * @param {{bufferContents: BrowserEncodedFrame|null bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @private
    */
   _maximizedCommit (browserSurface, renderFrame, newState) {
@@ -312,11 +312,11 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
   /**
    * @param {BrowserSurface}browserSurface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
+   * @param {{bufferContents: BrowserEncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @private
    */
   _fullscreenCommit (browserSurface, renderFrame, newState) {
-    const bufferSize = newState.bufferContents.geo
+    const bufferSize = newState.bufferContents.size
     const {x: newSurfaceWidth, y: newSurfaceHeight} = browserSurface.toSurfaceSpace(Point.create(bufferSize.w, bufferSize.h))
     if (newSurfaceWidth > this._configureState.width || newSurfaceHeight > this._configureState.height) {
       // TODO raise protocol error
@@ -345,7 +345,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
   /**
    * @param {BrowserSurface}browserSurface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
+   * @param {{bufferContents: BrowserEncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @private
    */
   _normalCommit (browserSurface, renderFrame, newState) {

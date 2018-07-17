@@ -8,10 +8,10 @@ class FrameEncoder {
    * @param {number}bufferWidth
    * @param {number}bufferHeight
    * @param {number}serial
-   * @param {Array<Rect>}damageRects
+   * @param {Array<{x:number, y:number, width:number, height:number}>}bufferDamage
    * @return {Promise<EncodedFrame>}
    */
-  encodeBuffer (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, damageRects) {}
+  encodeBuffer (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, bufferDamage) {}
 }
 
 module.exports = FrameEncoder

@@ -196,7 +196,7 @@ export default class BrowserPointer {
   /**
    * @param {BrowserSurface}browserSurface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
+   * @param {{bufferContents: BrowserEncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @return {Promise<void>}
    * @override
    */
@@ -207,12 +207,12 @@ export default class BrowserPointer {
     const hotspotX = this.hotspotX
     const hotspotY = this.hotspotY
 
-    browserSurface.render(renderFrame, newState)
+    await browserSurface.render(renderFrame, newState)
     renderFrame.fire()
     await renderFrame
 
     if (this._cursorSurface && this._cursorSurface.implementation === browserSurface) {
-      this._uploadCursor(newState, hotspotX, hotspotY)
+      await this._uploadCursor(newState, hotspotX, hotspotY)
     }
 
     browserSurface.browserSession.flush()
@@ -368,16 +368,16 @@ export default class BrowserPointer {
   }
 
   /**
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
+   * @param {{bufferContents: BrowserEncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @param {number}hotspotX
    * @param {number}hotspotY
    * @private
    */
-  _uploadCursor (newState, hotspotX, hotspotY) {
+  async _uploadCursor (newState, hotspotX, hotspotY) {
     if (newState.bufferContents) {
-      if (newState.bufferContents.pngImage) {
-        const pngBufferDataSrc = newState.bufferContents.pngImage.src
-        window.document.body.style.cursor = `url("${pngBufferDataSrc}") ${hotspotX} ${hotspotY}, pointer`
+      if (newState.bufferContents.encodingType === 'png') { // This is a dirty shortcut. We assume that pngs always come as a single buffer
+        const imageBlob = new window.Blob([newState.bufferContents.fragments[0].opaque], {'type': 'png'})
+        window.document.body.style.cursor = `url("${window.URL.createObjectURL(imageBlob)}") ${hotspotX} ${hotspotY}, pointer`
       } else {
         const dataURL = this._view.bufferedCanvas.frontContext.canvas.toDataURL()
         window.document.body.style.cursor = `url("${dataURL}") ${hotspotX} ${hotspotY}, pointer`

@@ -115,7 +115,7 @@ export default class BrowserSubsurface {
      */
     this.pendingPosition = Point.create(0, 0)
     /**
-     * @type {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamage: Number, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[]}}
+     * @type {{bufferContents: BrowserEncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}
      */
     this._cachedState = grSurfaceResource.implementation.state
     /**
@@ -147,7 +147,7 @@ export default class BrowserSubsurface {
   /**
    * @param {BrowserSurface}browserSurface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
+   * @param {{bufferContents: BrowserEncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @return {Promise<void>}
    * @override
    */
@@ -168,7 +168,7 @@ export default class BrowserSubsurface {
         // TODO if we throw away cached state, we need to free the pixman regions in it
         this._cachedState = null
       }
-      browserSurface.render(renderFrame, newState)
+      await browserSurface.render(renderFrame, newState)
       renderFrame.fire()
       await renderFrame
       browserSurface.browserSession.flush()

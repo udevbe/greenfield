@@ -5,7 +5,7 @@ const gstreamer = require('gstreamer-superficial')
 const WlShmFormat = require('./protocol/wayland/WlShmFormat')
 
 const EncodedFrame = require('./EncodedFrame')
-const EncodedBuffer = require('./EncodedBuffer')
+const EncodedFrameFragment = require('./EncodedFrameFragment')
 const {png} = require('./EncodingTypes')
 
 const gstFormats = {
@@ -100,40 +100,60 @@ class PNGEncoder {
   /**
    * @param {Buffer}pixelBuffer
    * @param {number}wlShmFormat
+   * @param {number}x
+   * @param {number}y
+   * @param {number}width
+   * @param {number}height
+   * @return {Promise<EncodedFrameFragment>}
+   * @private
+   */
+  async _encodeFragment (pixelBuffer, wlShmFormat, x, y, width, height) {
+    if (this._width !== width || this._height !== height || this._wlShmFormat !== wlShmFormat) {
+      this._width = width
+      this._height = height
+      this._wlShmFormat = wlShmFormat
+
+      const gstBufferFormat = gstFormats[wlShmFormat]
+      this._configure(width, height, gstBufferFormat)
+    }
+
+    // TODO we probably want to put this in it's own process so we can easily run this long running task in parallel
+    const opaquePromise = new Promise((resolve, reject) => {
+      this._sink.pull((pngImage) => {
+        if (pngImage) {
+          resolve(pngImage)
+        } else {
+          reject(new Error('Pulled empty opaque buffer. Gstreamer png encoder pipeline is probably in error.'))
+        }
+      })
+    })
+
+    this._src.push(pixelBuffer)
+
+    const opaque = await opaquePromise
+    return EncodedFrameFragment.create(x, y, width, height, opaque, Buffer.allocUnsafe(0))
+  }
+
+  /**
+   * @param {Buffer}pixelBuffer
+   * @param {number}wlShmFormat
    * @param {number}bufferWidth
    * @param {number}bufferHeight
    * @param {number}serial
-   * @param {Array<Rect>}damageRects
+   * @param {Array<{x:number, y:number, width:number, height:number}>}damage
    * @return {Promise<EncodedFrame>}
    * @override
    */
-  encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial, damageRects) {
-    // TODO use damage rects & pixman to only encode those parts of the pixelBuffer that have changed
-
-    return new Promise((resolve, reject) => {
-      if (this._width !== bufferWidth || this._height !== bufferHeight || this._wlShmFormat !== wlShmFormat) {
-        this._width = bufferWidth
-        this._height = bufferHeight
-        this._wlShmFormat = wlShmFormat
-
-        const gstBufferFormat = gstFormats[wlShmFormat]
-        this._configure(bufferWidth, bufferHeight, gstBufferFormat)
-      }
-
-      // TODO use libpng directly
-      this._sink.pull((pngImage) => {
-        if (pngImage) {
-          const encodedFrame = EncodedFrame.create(serial, png, bufferWidth, bufferHeight, [
-            EncodedBuffer.create(0, 0, bufferWidth, bufferHeight, pngImage)
-          ], [])
-          resolve(encodedFrame)
-        } else {
-          reject(new Error('Pulled empty buffer. Gstreamer png encoder pipeline is probably in error.'))
-        }
-      })
-
-      this._src.push(pixelBuffer)
-    })
+  async encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial, damage) {
+    if (damage.length) {
+      const encodedFrameFragments = await Promise.all(damage.map(damageRect => {
+        return this._encodeFragment(pixelBuffer, wlShmFormat, damageRect.x, damageRect.y, damageRect.width, damageRect.height)
+      }))
+      return EncodedFrame.create(serial, png, bufferWidth, bufferHeight, encodedFrameFragments)
+    } else {
+      const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)
+      return EncodedFrame.create(serial, png, bufferWidth, bufferHeight, [encodedFrameFragment])
+    }
   }
 }
 

@@ -1,15 +1,14 @@
 class EncodedFrame {
   /**
-   * @param {number} serial
+   * @param {number}serial
    * @param {number}encodingType
    * @param {number}width
    * @param {number}height
-   * @param {Array<EncodedBuffer>}opaqueEncodedBuffers
-   * @param {Array<EncodedBuffer>}alphaEncodedBuffers
+   * @param {Array<EncodedFrameFragment>}fragments
    * @return {EncodedFrame}
    */
-  static create (serial, encodingType, width, height, opaqueEncodedBuffers, alphaEncodedBuffers) {
-    return new EncodedFrame(serial, encodingType, width, height, opaqueEncodedBuffers, alphaEncodedBuffers)
+  static create (serial, encodingType, width, height, fragments) {
+    return new EncodedFrame(serial, encodingType, width, height, fragments)
   }
 
   /**
@@ -17,10 +16,9 @@ class EncodedFrame {
    * @param {number}encodingType
    * @param {number}width
    * @param {number}height
-   * @param {Array<EncodedBuffer>}opaqueEncodedBuffers
-   * @param {Array<EncodedBuffer>}alphaEncodedBuffers
+   * @param {Array<EncodedFrameFragment>}fragments
    */
-  constructor (serial, encodingType, width, height, opaqueEncodedBuffers, alphaEncodedBuffers) {
+  constructor (serial, encodingType, width, height, fragments) {
     /**
      * @type {number}
      */
@@ -41,80 +39,63 @@ class EncodedFrame {
      */
     this._height = height
     /**
-     * @type {Array<EncodedBuffer>}
+     * @type {Array<EncodedFrameFragment>}
      * @private
      */
-    this._opaqueEncodedBuffers = opaqueEncodedBuffers
-    /**
-     * @type {Array<EncodedBuffer>}
-     * @private
-     */
-    this._alphaEncodedBuffers = alphaEncodedBuffers
+    this._fragments = fragments
   }
 
   /**
    * A single byte array as native buffer:
    * [
-   * encodingType: uint8,
-   * width: uint16,
-   * height: uint16,
-   * opaqueEncodedBuffersByteLength: uint32,
-   * opaqueEncodedBuffers: uint8[opaqueLength]=[elementLength:uint32, element: uint8[], elementLength:uint32, element: uint8[], ...],
-   * alphaEncodedBuffersByteLength: uint32,
-   * alphaEncodedBuffers: uint8[alphaLength]=[elementLength:uint32, element: uint8[], elementLength:uint32, element: uint8[], ...],
+   * serial: uin32LE
+   * encodingType: uint16LE,
+   * encodingOptions: uint16LE,
+   * width: uint16LE,
+   * height: uint16LE,
+   * fragmentElements: uint32LE,
+   * fragments: uint8[fragmentElements * fragmentSize]=[fragmentLength:uint32LE, fragment: uint8[], fragmentLength:uint32LE, fragment: uint8[], ...],
    * ]
    * @return {Buffer}
    */
   toBuffer () {
-    /**
-     * @type {Array<Buffer>}
-     */
-    const opaqueBuffers = []
-    let opaqueBuffersSize = 0
-    /**
-     * @type {Array<Buffer>}
-     */
-    const alphaBuffers = []
-    let alphaBuffersSize = 0
+    let fragmentsSize = 0
 
-    this._opaqueEncodedBuffers.forEach((opaqueEncodedBuffer) => {
-      const opaqueBuffer = opaqueEncodedBuffer.toBuffer()
-      opaqueBuffersSize += opaqueBuffer.length
-      opaqueBuffers.push(opaqueBuffer)
+    this._fragments.forEach((fragment) => {
+      fragmentsSize += fragment.size
     })
 
-    this._alphaEncodedBuffers.forEach((alphaEncodedBuffer) => {
-      const alphaBuffer = alphaEncodedBuffer.toBuffer()
-      alphaBuffersSize += alphaBuffer.length
-      alphaBuffers.push(alphaBuffer)
-    })
-
-    const frameBuffer = Buffer.allocUnsafe(1 + 2 + 2 + 4 + opaqueBuffersSize + 4 + alphaBuffersSize)
+    const frameBuffer = Buffer.allocUnsafe(
+      4 + // serial: uin32LE
+      2 + // encodingType: uint16LE
+      2 + // encodingOptions: uint16LE
+      2 + // width: uint16LE
+      2 + // height: uint16LE
+      4 + // fragmentElements: uint32LE
+      fragmentsSize // fragments data: uint8[]
+    )
     let offset = 0
 
-    frameBuffer.writeUInt8(this._encodingType, offset, true)
-    offset += 1
-
-    frameBuffer.writeUInt16BE(this._width, offset, true)
-    offset += 2
-
-    frameBuffer.writeUInt16BE(this._height, offset, true)
-    offset += 2
-
-    frameBuffer.writeUInt32BE(opaqueBuffersSize, offset, true)
+    frameBuffer.writeUInt32LE(this.serial, offset, true)
     offset += 4
 
-    opaqueBuffers.forEach((opaqueBuffer) => {
-      opaqueBuffer.copy(frameBuffer, offset)
-      offset += frameBuffer.length
-    })
+    frameBuffer.writeUInt16LE(this._encodingType, offset, true)
+    offset += 2
 
-    frameBuffer.writeUInt32BE(alphaBuffersSize, offset, true)
+    frameBuffer.writeUInt16LE(0, offset, true) // no options for now
+    offset += 2
+
+    frameBuffer.writeUInt16LE(this._width, offset, true)
+    offset += 2
+
+    frameBuffer.writeUInt16LE(this._height, offset, true)
+    offset += 2
+
+    frameBuffer.writeUInt32LE(this._fragments.length, offset, true)
     offset += 4
 
-    alphaBuffers.forEach((alphaBuffer) => {
-      alphaBuffer.copy(frameBuffer, offset)
-      offset += frameBuffer.length
+    this._fragments.forEach((fragment) => {
+      offset += fragment.writeToBuffer(frameBuffer, offset)
     })
 
     return frameBuffer

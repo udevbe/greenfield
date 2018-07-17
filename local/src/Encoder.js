@@ -48,11 +48,11 @@ class Encoder {
    * @param {number}bufferWidth
    * @param {number}bufferHeight
    * @param {number}serial
-   * @param {Array<Rect>}damageRects
+   * @param {Array<{x:number, y:number, width:number, height:number}>}bufferDamage
    * @return {Promise<EncodedFrame>}
    * @override
    */
-  encodeBuffer (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, damageRects) {
+  encodeBuffer (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, bufferDamage) {
     if (this._bufferFormat !== bufferFormat) {
       this._bufferFormat = bufferFormat
       this._frameEncoder = null
@@ -60,9 +60,9 @@ class Encoder {
 
     const bufferArea = bufferWidth * bufferHeight
     if (bufferArea <= config['png-encoder']['max-target-buffer-size']) {
-      return this._encodePNGFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, damageRects)
+      return this._encodePNGFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, bufferDamage)
     } else {
-      return this._encodeFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, damageRects)
+      return this._encodeFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, bufferDamage)
     }
   }
 
@@ -72,15 +72,15 @@ class Encoder {
    * @param {number}bufferWidth
    * @param {number}bufferHeight
    * @param {number}serial
-   * @param {Array<Rect>}damageRects
+   * @param {Array<{x:number, y:number, width:number, height:number}>}bufferDamage
    * @return {Promise<EncodedFrame>}
    * @private
    */
-  _encodePNGFrame (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, damageRects) {
+  _encodePNGFrame (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, bufferDamage) {
     if (!this._pngFrameEncoder) {
       this._pngFrameEncoder = PNGEncoder.create(bufferWidth, bufferHeight, bufferFormat)
     }
-    return this._pngFrameEncoder.encode(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, damageRects)
+    return this._pngFrameEncoder.encodeBuffer(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, bufferDamage)
   }
 
   /**
@@ -89,15 +89,15 @@ class Encoder {
    * @param {number}bufferWidth
    * @param {number}bufferHeight
    * @param {number}serial
-   * @param {Array<Rect>}damageRects
+   * @param {Array<{x:number, y:number, width:number, height:number}>}bufferDamage
    * @return {Promise<EncodedFrame>}
    * @private
    */
-  _encodeFrame (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, damageRects) {
+  _encodeFrame (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, bufferDamage) {
     if (!this._frameEncoder) {
       this._frameEncoder = Encoder.types[bufferFormat].FrameEncoder.create(bufferWidth, bufferHeight, bufferFormat)
     }
-    return this._frameEncoder.encode(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, damageRects)
+    return this._frameEncoder.encodeBuffer(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, bufferDamage)
   }
 }
 

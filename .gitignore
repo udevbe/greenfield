@@ -131,3 +131,17 @@ idea/vcs.xml
 /dist.tar.gz
 /local/src/protocol/xdgshell/
 /browser/src/protocol/xdg-shell-browser-protocol.js
+### CMake template
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+
+/local/native/cmake-build-debug/
+/local/native/build/
+/stats/stats.js

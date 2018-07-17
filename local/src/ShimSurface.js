@@ -32,23 +32,70 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
      */
     this.proxy = grSurfaceProxy
     /**
-     * @type {WlBuffer}
+     * @type {{buffer: WlBuffer|null, bufferTransform: number, bufferScale: number, bufferDamage: Array<{x:number, y:number, width:number, height:number}>, surfaceDamage: Array<{x:number, y:number, width:number, height:number}>}}
+     * @private
      */
-    this.pendingBuffer = null
+    this._pending = {
+      /**
+       * @type {WlBuffer|null}
+       */
+      buffer: null,
+      /**
+       * @type {number}
+       */
+      bufferTransform: 0,
+      /**
+       * @type {number}
+       */
+      bufferScale: 1,
+      /**
+       * @type {Array<{x:number, y:number, width:number, height:number}>}
+       */
+      bufferDamage: [],
+      /**
+       * @type {Array<{x:number, y:number, width:number, height:number}>}
+       */
+      surfaceDamage: []
+    }
     /**
-     * @type {WlBuffer}
+     * @type {WlBuffer|null}
+     * @private
      */
-    this.buffer = null
+    this._buffer = null
     /**
      * @type {number}
+     * @private
      */
-    this.synSerial = 0
+    this._bufferTransform = 0
     /**
      * @type {number}
+     * @private
      */
-    this.ackSerial = 0
+    this._bufferScale = 1
+    /**
+     * @type {Array<{x:number, y:number, width:number, height:number}>}s
+     * @private
+     */
+    this._bufferDamage = []
+    /**
+     * @type {Array<{x:number, y:number, width:number, height:number}>}
+     * @private
+     */
+    this._surfaceDamage = []
+
+    /**
+     * @type {number}
+     * @private
+     */
+    this._synSerial = 0
+    /**
+     * @private
+     * @type {number}
+     */
+    this._ackSerial = 0
     /**
      * @type {Encoder}
+     * @private
      */
     this._encoder = Encoder.create()
     /**
@@ -61,8 +108,8 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
      */
     // use a single buffer to communicate with the browser. Contents of the buffer will be copied when send.
     this.localRtcDcBuffer.ack = (serial) => {
-      if (serial > this.ackSerial) {
-        this.ackSerial = serial
+      if (serial > this._ackSerial) {
+        this._ackSerial = serial
       } // else we received an outdated ack serial, ignore it.
     }
     /**
@@ -75,18 +122,27 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     }
     /**
      * @type {function():void}
+     * @private
      */
-    this.pendingBufferDestroyListener = () => {
-      this.pendingBuffer = null
+    this._pendingBufferDestroyListener = () => {
+      this._pendingBuffer = null
     }
     /**
      * @type {function():void}
+     * @private
      */
-    this.bufferDestroyListener = () => {
-      this.buffer = null
+    this._bufferDestroyListener = () => {
+      this._buffer = null
     }
-
+    /**
+     * @type {number}
+     * @private
+     */
     this._frameDuration = 0
+    /**
+     * @type {number}
+     * @private
+     */
     this._commitDuration = 0
   }
 
@@ -108,12 +164,12 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
    */
   attach (resource, buffer, x, y) {
     // TODO listen for buffer destruction & signal buffer proxy & remove local pending buffer
-    if (this.pendingBuffer) {
-      this.pendingBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
+    if (this._pending.buffer) {
+      this._pending.buffer.removeDestroyListener(this._pendingBufferDestroyListener)
     }
-    this.pendingBuffer = buffer
-    if (this.pendingBuffer) {
-      this.pendingBuffer.addDestroyListener(this.pendingBufferDestroyListener)
+    this._pending.buffer = buffer
+    if (this._pending.buffer) {
+      this._pending.buffer.addDestroyListener(this._pendingBufferDestroyListener)
       this.proxy.attach(this.localRtcDcBuffer.grBufferProxy, x, y)
     } else {
       this.proxy.attach(null, x, y)
@@ -128,6 +184,12 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
    * @param {number}height
    */
   damage (resource, x, y, width, height) {
+    this._surfaceDamage.push({
+      x: x,
+      y: y,
+      width: width,
+      height: height
+    })
     this.proxy.damage(x, y, width, height)
   }
 
@@ -178,7 +240,8 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     const pixelBuffer = shm.getData().reinterpret(bufferWidth * bufferHeight * 4)
     const format = shm.getFormat()
 
-    return this._encoder.encodeBuffer(pixelBuffer, format, bufferWidth, bufferHeight, synSerial)
+    const bufferDamage = [] // TODO calculate buffer damage rectangles in native code using pixman & surface 2 buffer transformations
+    return this._encoder.encodeBuffer(pixelBuffer, format, bufferWidth, bufferHeight, synSerial, bufferDamage)
   }
 
   /**
@@ -229,11 +292,10 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     setTimeout(async () => {
       // If the syn serial at the time the timer was created is greater than the latest received ack serial and no newer serial is expected,
       // then we have not received an ack that matches or is newer than the syn we're checking. We resend the frame.
-      if (frame.serial > this.ackSerial && frame.serial === this.synSerial) {
+      if (frame.serial > this._ackSerial && frame.serial === this._synSerial) {
         await this.sendFrame(frame)
       }
-      // TODO dynamically adjust to expected roundtrip time which could be calculated by measuring the latency
-      // between a syn & ack
+      // TODO keep sending until we received an ack
     }, 250)
 
     const dataChannel = await this.localRtcDcBuffer.localRtcBlobTransfer.open()
@@ -252,25 +314,24 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     const commitMeasurement = Measurement.create({content: 'commit'})
     commitMeasurement.begin()
 
-    this.synSerial++
-    const synSerial = this.synSerial
+    this._synSerial++
+    const synSerial = this._synSerial
     // FIXME because the commit method is async, the surface can be destroyed while it is busy. Leading to certain
     // resources like frame callback to be destroyed but still called after this commit finishes.
-    if (this.buffer) {
-      this.buffer.release()
-      this.buffer.removeDestroyListener(this.bufferDestroyListener)
+    if (this._buffer) {
+      this._buffer.release()
+      this._buffer.removeDestroyListener(this._bufferDestroyListener)
     }
-    if (this.pendingBuffer) {
-      this.pendingBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
-    }
-
-    this.buffer = this.pendingBuffer
-    this.pendingBuffer = null
-    if (this.buffer) {
-      this.buffer.addDestroyListener(this.bufferDestroyListener)
+    if (this._pending.buffer) {
+      this._pending.buffer.removeDestroyListener(this._pendingBufferDestroyListener)
     }
 
-    if (this.buffer) {
+    this._buffer = this._pending.buffer
+    if (this._buffer) {
+      this._buffer.addDestroyListener(this._bufferDestroyListener)
+    }
+
+    if (this._buffer) {
       this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
     }
     this.proxy.commit()
@@ -278,11 +339,13 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     const encodeMeasurement = Measurement.create({content: 'encode'})
     encodeMeasurement.begin()
 
-    if (this.buffer) {
-      const buffer = this.buffer
+    if (this._buffer) {
+      const buffer = this._buffer
       const frame = await this._encodeBuffer(buffer, synSerial)
       await this.sendFrame(frame)
     }
+
+    this._resetPendingState()
 
     encodeMeasurement.end()
     encodeMeasurement.register()
@@ -291,11 +354,18 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     commitMeasurement.register()
   }
 
+  _resetPendingState () {
+    this._pending.buffer = null
+    this._pending.bufferDamage = []
+    this._pending.surfaceDamage = []
+  }
+
   /**
    * @param {WlSurface}resource
    * @param {number}transform
    */
   setBufferTransform (resource, transform) {
+    this._pending.bufferTransform = transform
     this.proxy.setBufferTransform(transform)
   }
 
@@ -304,6 +374,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
    * @param {number}scale
    */
   setBufferScale (resource, scale) {
+    this._pending.bufferScale = scale
     this.proxy.setBufferScale(scale)
   }
 
@@ -315,6 +386,12 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
    * @param {number}height
    */
   damageBuffer (resource, x, y, width, height) {
+    this._bufferDamage.push({
+      x: x,
+      y: y,
+      width,
+      height: height
+    })
     this.proxy.damageBuffer(x, y, width, height)
   }
 }

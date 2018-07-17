@@ -106,39 +106,39 @@ export default class JpegAlphaSurfaceShader {
   /**
    * @param {Texture}textureOpaque
    * @param {Texture}textureAlpha
-   * @param {Size}bufferSize
-   * @param {boolean}viewPortUpdate
+   * @param {Rect}fragmentRect
    */
-  draw (textureOpaque, textureAlpha, bufferSize, viewPortUpdate) {
+  draw (textureOpaque, textureAlpha, fragmentRect) {
+    const fragmentSize = fragmentRect.size
     const gl = this.gl
     this._setTexture(textureOpaque, textureAlpha)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-    if (viewPortUpdate) {
-      gl.viewport(0, 0, bufferSize.w, bufferSize.h)
-      this.program.setUniformM4(this.shaderArgs.u_projection, [
-        2.0 / bufferSize.w, 0, 0, 0,
-        0, 2.0 / -bufferSize.h, 0, 0,
-        0, 0, 1, 0,
-        -1, 1, 0, 1
-      ])
-      gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
-      gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
-        // top left:
-        0, 0, 0, 0,
-        // top right:
-        bufferSize.w, 0, 1, 0,
-        // bottom right:
-        bufferSize.w, bufferSize.h, 1, 1,
-        // bottom right:
-        bufferSize.w, bufferSize.h, 1, 1,
-        // bottom left:
-        0, bufferSize.h, 0, 1,
-        // top left:
-        0, 0, 0, 0
-      ]), this.gl.DYNAMIC_DRAW)
-      gl.vertexAttribPointer(this.shaderArgs.a_position, 2, gl.FLOAT, false, 16, 0)
-      gl.vertexAttribPointer(this.shaderArgs.a_texCoord, 2, gl.FLOAT, false, 16, 8)
-    }
+
+    gl.viewport(0, 0, fragmentSize.w, fragmentSize.h)
+    this.program.setUniformM4(this.shaderArgs.u_projection, [
+      2.0 / fragmentSize.w, 0, 0, 0,
+      0, 2.0 / -fragmentSize.h, 0, 0,
+      0, 0, 1, 0,
+      -1, 1, 0, 1
+    ])
+    gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
+    gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
+      // top left:
+      0, 0, 0, 0,
+      // top right:
+      fragmentSize.w, 0, 1, 0,
+      // bottom right:
+      fragmentSize.w, fragmentSize.h, 1, 1,
+      // bottom right:
+      fragmentSize.w, fragmentSize.h, 1, 1,
+      // bottom left:
+      0, fragmentSize.h, 0, 1,
+      // top left:
+      0, 0, 0, 0
+    ]), this.gl.DYNAMIC_DRAW)
+    gl.vertexAttribPointer(this.shaderArgs.a_position, 2, gl.FLOAT, false, 16, 0)
+    gl.vertexAttribPointer(this.shaderArgs.a_texCoord, 2, gl.FLOAT, false, 16, 8)
+
     gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 6)
     gl.bindTexture(gl.TEXTURE_2D, null)
   }

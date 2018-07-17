@@ -40,27 +40,16 @@ export default class Texture {
      * @type {number}
      */
     this.format = format
-    /**
-     * @type {Size}
-     */
-    this.size = null
   }
 
   /**
-   * @param {HTMLImageElement}textureData
-   * @param {Size}size
+   * @param {HTMLImageElement}imageElement
    */
-  fill (textureData, size) {
+  fill (imageElement) {
     const gl = this.gl
 
     gl.bindTexture(gl.TEXTURE_2D, this.texture)
-    // TODO use texSubimage2d if size hasn't changed
-    if (this.size === null || this.size.w !== size.w || this.size.h !== size.h) {
-      this.size = size
-      gl.texImage2D(gl.TEXTURE_2D, 0, this.format, this.format, gl.UNSIGNED_BYTE, textureData)
-    } else {
-      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, this.format, gl.UNSIGNED_BYTE, textureData)
-    }
+    gl.texImage2D(gl.TEXTURE_2D, 0, this.format, this.format, gl.UNSIGNED_BYTE, imageElement)
     gl.bindTexture(gl.TEXTURE_2D, null)
   }
 }
