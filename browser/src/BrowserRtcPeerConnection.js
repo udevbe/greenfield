@@ -6,8 +6,8 @@ import BrowserRtcBlobTransfer from './BrowserRtcBlobTransfer'
 
 export default class BrowserRtcPeerConnection {
   /**
-   * @param {RtcPeerConnection}rtcPeerConnectionResource
-   * @returns {BrowserRtcPeerConnection}
+   * @param {!RtcPeerConnection}rtcPeerConnectionResource
+   * @returns {!BrowserRtcPeerConnection}
    */
   static create (rtcPeerConnectionResource) {
     const browserRtcPeerConnection = new BrowserRtcPeerConnection(rtcPeerConnectionResource)
@@ -17,16 +17,29 @@ export default class BrowserRtcPeerConnection {
 
   /**
    * Use BrowserRtcPeerConnection.create(..)
-   * @param {RtcPeerConnection}rtcPeerConnectionResource
+   * @param {!RtcPeerConnection}rtcPeerConnectionResource
    * @private
    */
   constructor (rtcPeerConnectionResource) {
     /**
-     * @type {RtcPeerConnection}
+     * @type {!RtcPeerConnection}
+     * @const
      */
     this.rtcPeerConnectionResource = rtcPeerConnectionResource
+    /**
+     * @type {?{_peerConnection:window.RTCPeerConnection, clientIceCandidates:Function, clientSdpReply:Function, clientSdpOffer: Function}}
+     * @private
+     */
     this._delegate = null
+    /**
+     * @type {?Function}
+     * @private
+     */
     this._peerConnectionResolve = null
+    /**
+     * @type {!Promise}
+     * @private
+     */
     this._peerConnectionPromise = new Promise((resolve) => {
       this._peerConnectionResolve = resolve
     })
@@ -34,9 +47,9 @@ export default class BrowserRtcPeerConnection {
 
   /**
    *
-   * @param {RtcPeerConnection} resource
-   * @param {*} id Returns new blob transfer object who's data will be send over the given rtc peer connection
-   * @param {string} descriptor blob transfer descriptor
+   * @param {!RtcPeerConnection} resource
+   * @param {!number} id Returns new blob transfer object who's data will be send over the given rtc peer connection
+   * @param {!string} descriptor blob transfer descriptor
    *
    * @since 1
    *
@@ -49,7 +62,7 @@ export default class BrowserRtcPeerConnection {
   }
 
   /**
-   * @return {Promise<RTCPeerConnection>}
+   * @return {!Promise<RTCPeerConnection>}
    */
   onPeerConnection () {
     return this._peerConnectionPromise
@@ -138,6 +151,10 @@ export default class BrowserRtcPeerConnection {
     this._peerConnectionResolve(this._delegate._peerConnection)
   }
 
+  /**
+   * @return {Promise<void>}
+   * @private
+   */
   async _sendOffer () {
     try {
       const desc = await this._delegate._peerConnection.createOffer({
@@ -189,14 +206,26 @@ export default class BrowserRtcPeerConnection {
     // in the p2p case, we will never have a peer connection as it is the client peer connections that will be linked
   }
 
+  /**
+   * @param {!RtcPeerConnection} resource
+   * @param {!string}description
+   */
   clientIceCandidates (resource, description) {
     this._delegate.clientIceCandidates(resource, description)
   }
 
+  /**
+   * @param {!RtcPeerConnection} resource
+   * @param {!string}description
+   */
   clientSdpReply (resource, description) {
     this._delegate.clientSdpReply(resource, description)
   }
 
+  /**
+   * @param {!RtcPeerConnection} resource
+   * @param {!string}description
+   */
   clientSdpOffer (resource, description) {
     this._delegate.clientSdpOffer(resource, description)
   }

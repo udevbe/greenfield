@@ -5,10 +5,10 @@ import BrowserEncodedFrame from './BrowserEncodedFrame'
 export default class BrowserRtcDcBuffer {
   /**
    *
-   * @param {GrBuffer} grBufferResource
-   * @param {RtcDcBuffer} rtcDcBufferResource
-   * @param {GrBlobTransfer} blobTransferResource
-   * @returns {BrowserRtcDcBuffer}
+   * @param {!GrBuffer} grBufferResource
+   * @param {!RtcDcBuffer} rtcDcBufferResource
+   * @param {!GrBlobTransfer} blobTransferResource
+   * @returns {!BrowserRtcDcBuffer}
    */
   static create (grBufferResource, rtcDcBufferResource, blobTransferResource) {
     const browserRtcDcBuffer = new BrowserRtcDcBuffer(rtcDcBufferResource, blobTransferResource)
@@ -28,37 +28,46 @@ export default class BrowserRtcDcBuffer {
    * Instead use BrowserRtcDcBuffer.create(..)
    *
    * @private
-   * @param {RtcDcBuffer} rtcDcBufferResource
-   * @param {GrBlobTransfer} blobTransferResource
+   * @param {!RtcDcBuffer} rtcDcBufferResource
+   * @param {!GrBlobTransfer} blobTransferResource
    */
   constructor (rtcDcBufferResource, blobTransferResource) {
     /**
-     * @type {RtcDcBuffer}
+     * @type {!RtcDcBuffer}
+     * @const
      */
     this.resource = rtcDcBufferResource
     /**
-     * @type {GrBlobTransfer}
+     * @type {!GrBlobTransfer}
+     * @const
      * @private
      */
     this._blobTransferResource = blobTransferResource
     /**
-     * @type {number}
+     * @type {!number}
      * @private
      */
     this._syncSerial = 0
     /**
-     * @type {number}
+     * @type {!number}
      * @private
      */
     this._lastCompleteSerial = 0
-
+    /**
+     * @type {!Object}
+     * @private
+     */
     this._bufferStates = {} // map like object, keys are numbers, values are {completionPromise: Promise, completionResolve: function, completionReject: function, state: string, browserEncodedFrame: BrowserEncodedFrame}
+    /**
+     * @type {!Object}
+     * @private
+     */
     this._bufferChunks = {} // map like object, keys are numbers, values are {completionPromise: Promise, completionResolve: function, completionReject: function, state: string, browserEncodedFrame: BrowserEncodedFrame}
   }
 
   /**
-   * @param {number}serial
-   * @param {BrowserEncodedFrame}browserEncodedFrame
+   * @param {!number}serial
+   * @param {!BrowserEncodedFrame}browserEncodedFrame
    * @private
    */
   _onComplete (serial, browserEncodedFrame) {
@@ -82,6 +91,11 @@ export default class BrowserRtcDcBuffer {
     bufferState.completionResolve(browserEncodedFrame)
   }
 
+  /**
+   * @param {!number}syncSerial
+   * @return {!{completionPromise: Promise<BrowserEncodedFrame>, completionResolve: Function, completionReject: Function, state: string, browserEncodedFrame: (BrowserEncodedFrame|null)}}
+   * @private
+   */
   _newBufferState (syncSerial) {
     /**
      * @type {{completionPromise: Promise<BrowserEncodedFrame>, completionResolve: function, completionReject: function, state: string, browserEncodedFrame: BrowserEncodedFrame|null}}
@@ -103,7 +117,7 @@ export default class BrowserRtcDcBuffer {
 
   /**
    * Returns a promise that will resolve as soon as the buffer is in the 'complete' state.
-   * @returns {Promise<BrowserEncodedFrame>}
+   * @returns {!Promise<BrowserEncodedFrame>}
    */
   whenComplete () {
     const bufferState = this._bufferStates[this._syncSerial]
@@ -112,8 +126,8 @@ export default class BrowserRtcDcBuffer {
 
   /**
    *
-   * @param {wfs.RtcDcBuffer} resource
-   * @param {Number} serial Serial of the send buffer contents
+   * @param {!RtcDcBuffer} resource
+   * @param {!number} serial Serial of the send buffer contents
    * @since 1
    *
    */
@@ -134,7 +148,7 @@ export default class BrowserRtcDcBuffer {
   }
 
   /**
-   * @param {BrowserEncodedFrame}browserEncodedFrame
+   * @param {!BrowserEncodedFrame}browserEncodedFrame
    * @private
    */
   async _checkBufferState (browserEncodedFrame) {
@@ -150,8 +164,8 @@ export default class BrowserRtcDcBuffer {
 
   /**
    *
-   * @param {ArrayBuffer}chunk
-   * @returns {ArrayBuffer}
+   * @param {!ArrayBuffer}chunk
+   * @returns {?ArrayBuffer}
    * @private
    */
   _checkChunk (chunk) {
@@ -199,7 +213,7 @@ export default class BrowserRtcDcBuffer {
   }
 
   /**
-   * @param {MessageEvent}event
+   * @param {!MessageEvent}event
    * @private
    */
   async _onMessage (event) {
@@ -213,6 +227,10 @@ export default class BrowserRtcDcBuffer {
     } // else we haven't received the full frame yet.
   }
 
+  /**
+   * @param event
+   * @private
+   */
   _onError (event) {}
 
   destroy () {

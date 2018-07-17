@@ -8,20 +8,21 @@
  */
 export default class BrowserCallback {
   /**
-   * @param {GrCallback}grCallbackResource
-   * @return {BrowserCallback}
+   * @param {!GrCallback}grCallbackResource
+   * @return {!BrowserCallback}
    */
   static create (grCallbackResource) {
     return new BrowserCallback(grCallbackResource)
   }
 
   /**
-   * @param {GrCallback}grCallbackResource
+   * @param {!GrCallback}grCallbackResource
    * @private
    */
   constructor (grCallbackResource) {
     /**
-     * @type {GrCallback}
+     * @type {!GrCallback}
+     * @const
      */
     this.resource = grCallbackResource
   }
@@ -31,7 +32,7 @@ export default class BrowserCallback {
    *                Notify the client when the related request is done.
    *
    *
-   * @param {Number} data request-specific data for the callback
+   * @param {!number} data request-specific data for the callback
    *
    * @since 1
    *

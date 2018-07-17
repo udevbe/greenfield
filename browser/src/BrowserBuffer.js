@@ -12,8 +12,8 @@
 export default class BrowserBuffer {
   /**
    *
-   * @param {wfs.GrBuffer} grBufferResource
-   * @return {BrowserBuffer}
+   * @param {!GrBuffer} grBufferResource
+   * @return {!BrowserBuffer}
    */
   static create (grBufferResource) {
     const browserBuffer = new BrowserBuffer(grBufferResource)
@@ -24,15 +24,19 @@ export default class BrowserBuffer {
   /**
    * Instead use BrowserBuffer.create(..)
    * @private
-   * @param grBufferResource
+   * @param {!GrBuffer}grBufferResource
    */
   constructor (grBufferResource) {
+    /**
+     * @type {!GrBuffer}
+     * @const
+     */
     this.resource = grBufferResource
   }
 
   /**
    *
-   * @param {wfs.GrBuffer} resource
+   * @param {!GrBuffer} resource
    *
    * @since 1
    *

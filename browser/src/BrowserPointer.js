@@ -36,9 +36,9 @@ const linuxInput = {
  */
 export default class BrowserPointer {
   /**
-   * @param {BrowserSession} browserSession
-   * @param {BrowserDataDevice} browserDataDevice
-   * @returns {BrowserPointer}
+   * @param {!BrowserSession} browserSession
+   * @param {!BrowserDataDevice} browserDataDevice
+   * @returns {!BrowserPointer}
    */
   static create (browserSession, browserDataDevice) {
     const browserPointer = new BrowserPointer(browserDataDevice)
@@ -77,94 +77,99 @@ export default class BrowserPointer {
   /**
    * Use BrowserPointer.create(..) instead.
    * @private
-   * @param {BrowserDataDevice} browserDataDevice
+   * @param {!BrowserDataDevice} browserDataDevice
    */
   constructor (browserDataDevice) {
     /**
-     * @type {BrowserDataDevice}
+     * @type {!BrowserDataDevice}
+     * @const
      * @private
      */
     this._browserDataDevice = browserDataDevice
     /**
-     * @type {GrPointer[]}
+     * @type {!GrPointer[]}
      */
     this.resources = []
     /**
-     * @type {BrowserSurfaceView|null}
+     * @type {?BrowserSurfaceView}
      */
     this.focus = null
     /**
      * Currently active surface grab (if any)
-     * @type {BrowserSurfaceView|null}
+     * @type {?BrowserSurfaceView}
      */
     this.grab = null
     /**
-     * @type {{popup: GrSurface, resolve: Function, promise: Promise}[]}
+     * @type {!Array<{popup: GrSurface, resolve: Function, promise: Promise}>}
      * @private
      */
     this._popupStack = []
     /**
-     * @type {number}
+     * @type {!number}
      */
     this.x = 0
     /**
-     * @type {number}
+     * @type {!number}
      */
     this.y = 0
     /**
-     * @type {BrowserSurface}
+     * @type {?BrowserSurface}
      * @private
      */
     this._cursorSurface = null
     /**
-     * @type {BrowserSurfaceView}
+     * @type {?BrowserSurfaceView}
      * @private
      */
     this._view = null
     /**
-     * @type {Function}
+     * @type {!function}
      * @private
      */
     this._cursorDestroyListener = () => {
       this._cursorSurface = null
       this.setDefaultCursor()
     }
+    /**
+     * @type {!number}
+     * @private
+     */
     this._btnDwnCount = 0
     /**
-     * @type {Function[]}
+     * @type {!Array<function>}
      * @private
      */
     this._mouseMoveListeners = []
     /**
-     * @type {number}
+     * @type {!number}
      */
     this.hotspotX = 0
     /**
-     * @type {number}
+     * @type {!number}
      */
     this.hotspotY = 0
     /**
-     * @type {Promise}
+     * @type {?Promise}
      * @private
      */
     this._buttonPressPromise = null
     /**
-     * @type {function(MouseEvent):void}
+     * @type {?function(MouseEvent):void}
      * @private
      */
     this._buttonPressResolve = null
     /**
-     * @type {Promise}
+     * @type {?Promise}
      * @private
      */
     this._buttonReleasePromise = null
     /**
-     * @type {function(MouseEvent):void}
+     * @type {?function(MouseEvent):void}
      * @private
      */
     this._buttonReleaseResolve = null
     /**
-     * @type {BrowserSeat}
+     * @type {?BrowserSeat}
      */
     this.browserSeat = null
   }
@@ -207,12 +212,26 @@ export default class BrowserPointer {
     const hotspotX = this.hotspotX
     const hotspotY = this.hotspotY
 
-    await browserSurface.render(renderFrame, newState)
-    renderFrame.fire()
-    await renderFrame
-
     if (this._cursorSurface && this._cursorSurface.implementation === browserSurface) {
-      await this._uploadCursor(newState, hotspotX, hotspotY)
+      if (newState.bufferContents) {
+        if (newState.bufferContents.encodingType === 'png') { // This is a dirty shortcut. We assume that pngs always come as a single buffer
+          await browserSurface.render(renderFrame, newState, true)
+
+          const imageBlob = new window.Blob([newState.bufferContents.fragments[0].opaque], {'type': 'png'})
+          window.document.body.style.cursor = `url("${window.URL.createObjectURL(imageBlob)}") ${hotspotX} ${hotspotY}, pointer`
+
+          renderFrame.fire()
+          await renderFrame
+        } else {
+          await browserSurface.render(renderFrame, newState)
+
+          const dataURL = this._view.bufferedCanvas.frontContext.canvas.toDataURL()
+          window.document.body.style.cursor = `url("${dataURL}") ${hotspotX} ${hotspotY}, pointer`
+
+          renderFrame.fire()
+          await renderFrame
+        }
+      }
     }
 
     browserSurface.browserSession.flush()
@@ -364,24 +383,6 @@ export default class BrowserPointer {
       browserSurface._pendingInputRegion = null
     } else {
       window.document.body.style.cursor = 'none'
-    }
-  }
-
-  /**
-   * @param {{bufferContents: BrowserEncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
-   * @param {number}hotspotX
-   * @param {number}hotspotY
-   * @private
-   */
-  async _uploadCursor (newState, hotspotX, hotspotY) {
-    if (newState.bufferContents) {
-      if (newState.bufferContents.encodingType === 'png') { // This is a dirty shortcut. We assume that pngs always come as a single buffer
-        const imageBlob = new window.Blob([newState.bufferContents.fragments[0].opaque], {'type': 'png'})
-        window.document.body.style.cursor = `url("${window.URL.createObjectURL(imageBlob)}") ${hotspotX} ${hotspotY}, pointer`
-      } else {
-        const dataURL = this._view.bufferedCanvas.frontContext.canvas.toDataURL()
-        window.document.body.style.cursor = `url("${dataURL}") ${hotspotX} ${hotspotY}, pointer`
-      }
     }
   }
 

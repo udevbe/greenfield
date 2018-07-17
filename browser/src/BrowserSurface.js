@@ -81,11 +81,11 @@ const bufferTransformations = [
  */
 export default class BrowserSurface {
   /**
-   * @param {GrSurface} grSurfaceResource
-   * @param {Renderer} renderer
-   * @param {BrowserSeat} browserSeat
-   * @param {BrowserSession} browserSession
-   * @returns {BrowserSurface}
+   * @param {!GrSurface} grSurfaceResource
+   * @param {!Renderer} renderer
+   * @param {!BrowserSeat} browserSeat
+   * @param {!BrowserSession} browserSession
+   * @returns {!BrowserSurface}
    */
   static create (grSurfaceResource, renderer, browserSeat, browserSession) {
     const bufferDamage = BrowserRegion.createPixmanRegion()
@@ -113,31 +113,32 @@ export default class BrowserSurface {
   /**
    * Use BrowserSurface.create(grSurfaceResource) instead.
    * @private
-   * @param {GrSurface} grSurfaceResource
-   * @param {Renderer} renderer
-   * @param {BrowserSeat} browserSeat
-   * @param {BrowserSession} browserSession
-   * @param {number} bufferDamage
-   * @param {number} opaquePixmanRegion
-   * @param {number} inputPixmanRegion
-   * @param {number} surfacePixmanRegion
+   * @param {!GrSurface} grSurfaceResource
+   * @param {!Renderer} renderer
+   * @param {!BrowserSeat} browserSeat
+   * @param {!BrowserSession} browserSession
+   * @param {!number} bufferDamage
+   * @param {!number} opaquePixmanRegion
+   * @param {!number} inputPixmanRegion
+   * @param {!number} surfacePixmanRegion
    */
   constructor (grSurfaceResource, renderer, browserSeat, browserSession, bufferDamage, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion) {
     /**
-     * @type {GrSurface}
+     * @type {!GrSurface}
+     * @const
      */
     this.resource = grSurfaceResource
     /**
-     * @type {Renderer}
+     * @type {!Renderer}
+     * @const
      */
     this.renderer = renderer
     /**
-     * @type {ViewState}
+     * @type {?ViewState}
      */
     this.renderState = null
-
     /**
-     * @type {{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}
+     * @type {!{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: BrowserCallback[], roleState: *}}
      */
     this.state = {
       /**
@@ -181,105 +182,107 @@ export default class BrowserSurface {
        */
       roleState: {}
     }
-
     /**
-     * @type {GrBuffer}
+     * @type {?GrBuffer}
      */
     this.pendingGrBuffer = null
     /**
-     * @type {Function}
+     * @type {!function}
      */
     this.pendingBrowserBufferDestroyListener = () => {
       this.pendingGrBuffer = null
     }
     /**
-     * @type {Array<Rect>}
+     * @type {!Array<Rect>}
      * @private
      */
     this._pendingDamageRects = []
     /**
-     * @type {Array<Number>}
+     * @type {!Array<Number>}
      * @private
      */
     this._pendingBufferDamageRects = []
     /**
-     * @type {number}
+     * @type {!number}
      * @private
      */
     this._pendingOpaqueRegion = 0
     /**
-     * @type {number}
+     * @type {!number}
      * @private
      */
     this._pendingInputRegion = 0
     /**
-     * @type {number}
+     * @type {!number}
      * @private
      */
     this._pendingDx = 0
     /**
-     * @type {number}
+     * @type {!number}
      * @private
      */
     this._pendingDy = 0
     /**
-     * @type {number}
+     * @type {!number}
      * @private
      */
     this._pendingBufferTransform = 0
     /**
-     * @type {number}
+     * @type {!number}
      * @private
      */
     this._pendingBufferScale = 1
     /**
-     * @type {Array<BrowserSurfaceView>}
+     * @type {!Array<BrowserSurfaceView>}
      */
     this.browserSurfaceViews = []
     /**
-     * @type {BrowserSeat}
+     * @type {!BrowserSeat}
+     * @const
      */
     this.browserSeat = browserSeat
     /**
-     * @type {BrowserSession}
+     * @type {!BrowserSession}
+     * @const
      */
     this.browserSession = browserSession
     /**
-     * @type {boolean}
+     * @type {!boolean}
      */
     this.hasKeyboardInput = true
     /**
-     * @type {boolean}
+     * @type {!boolean}
      */
     this.hasPointerInput = true
     /**
-     * @type {boolean}
+     * @type {!boolean}
      */
     this.hasTouchInput = true
     /**
-     * @type {BrowserSurfaceRole|null}
+     * @type {?BrowserSurfaceRole}
      */
     this.role = null
     /**
-     * @type {BrowserSurfaceChild}
+     * @type {!BrowserSurfaceChild}
+     * @const
      */
     this.browserSurfaceChildSelf = BrowserSurfaceChild.create(this)
     /**
      * All child surfaces of this BrowserSurface + this browser surface. This allows for child surfaces to be displayed
      * below it's parent, as the order of this list determines the zOrder between parent & children.
-     * @type {Array<BrowserSurfaceChild>}
+     * @type {!Array<BrowserSurfaceChild>}
      */
     this._browserSurfaceChildren = []
     /**
-     * @type {Array<BrowserSurfaceChild>}
+     * @type {!Array<BrowserSurfaceChild>}
      */
     this.browserSubsurfaceChildren = [this.browserSurfaceChildSelf]
     /**
-     * @type {Array<BrowserSurfaceChild>}
+     * @type {!Array<BrowserSurfaceChild>}
      */
     this.pendingBrowserSubsurfaceChildren = [this.browserSurfaceChildSelf]
     /**
-     * @type {Array<BrowserCallback>}
+     * @type {!Array<BrowserCallback>}
      * @private
      */
     this._pendingFrameCallbacks = []
@@ -287,21 +290,21 @@ export default class BrowserSurface {
     // derived states below ->
     /**
      * buffer2surface
-     * @type {Mat4}
+     * @type {!Mat4}
      */
     this.inverseBufferTransformation = Mat4.IDENTITY()
     /**
      * surface2buffer
-     * @type {Mat4}
+     * @type {!Mat4}
      */
     this.bufferTransformation = Mat4.IDENTITY()
     /**
      * A pixman region in surface coordinates, representing the entire surface.
-     * @type {number}
+     * @type {!number}
      */
     this.pixmanRegion = surfacePixmanRegion
     /**
-     * @type {Size}
+     * @type {!Size}
      */
     this.size = Size.create(0, 0)
     // <- derived states above
@@ -562,6 +565,9 @@ export default class BrowserSurface {
     resource.destroy()
   }
 
+  /**
+   * @private
+   */
   _handleDestruction () {
     this.browserSurfaceViews.forEach(browserSurfaceView => {
       delete browserSurfaceView.browserSurface
@@ -871,8 +877,13 @@ export default class BrowserSurface {
   /**
    * @param {RenderFrame}renderFrame
    * @param {{bufferContents: BrowserEncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
+   * @param {boolean=}skipDraw
    */
-  async render (renderFrame, newState) {
+  async render (renderFrame, newState, skipDraw) {
+    if (skipDraw == null) {
+      skipDraw = false
+    }
+
     renderFrame.then((timestamp) => {
       this.state.frameCallbacks.forEach((frameCallback) => {
         frameCallback.done(timestamp & 0x7fffffff)
@@ -898,7 +909,9 @@ export default class BrowserSurface {
       })
     }
 
-    await this.renderer.renderBackBuffer(this, newState)
+    if (!skipDraw) {
+      await this.renderer.renderBackBuffer(this, newState)
+    }
 
     const {w: oldWidth, h: oldHeight} = this.size
     this._updateDerivedState(newState)

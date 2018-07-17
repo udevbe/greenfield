@@ -10,8 +10,8 @@ import BrowserRtcDcBuffer from './BrowserRtcDcBuffer'
 export default class BrowserRtcBufferFactory extends Global {
   /**
    *
-   * @param {GrBuffer} grBufferResource
-   * @returns {BrowserRtcDcBuffer}
+   * @param {!GrBuffer} grBufferResource
+   * @returns {!BrowserRtcDcBuffer}
    */
   static get (grBufferResource) {
     // TODO do some kind of type check magic and return null if the implementation is not of the expected type
@@ -19,7 +19,7 @@ export default class BrowserRtcBufferFactory extends Global {
   }
 
   /**
-   * @returns {BrowserRtcBufferFactory}
+   * @returns {!BrowserRtcBufferFactory}
    */
   static create () {
     return new BrowserRtcBufferFactory()
@@ -38,9 +38,9 @@ export default class BrowserRtcBufferFactory extends Global {
    * Invoked when a client binds to this global. Subclasses implement this method so they can instantiate a
    * corresponding wfs.Resource subtype.
    *
-   * @param {wfs.Client} client
-   * @param {Number} id
-   * @param {Number} version
+   * @param {!Client} client
+   * @param {!number} id
+   * @param {!number} version
    */
   bindClient (client, id, version) {
     const rtcBufferFactoryResource = new RtcBufferFactory(client, id, version)
@@ -49,8 +49,8 @@ export default class BrowserRtcBufferFactory extends Global {
 
   /**
    *
-   * @param {RtcBufferFactory} resource
-   * @param {*} id A new generic buffer
+   * @param {!RtcBufferFactory} resource
+   * @param {!number} id A new generic buffer
    *
    * @since 1
    *
@@ -62,10 +62,10 @@ export default class BrowserRtcBufferFactory extends Global {
 
   /**
    *
-   * @param {wfs.RtcBufferFactory} resource
-   * @param {Number} id A new datachannel buffer
-   * @param {GrBlobTransfer} blobTransferResource
-   * @param {wfs.GrBuffer} grBufferResource The generic buffer that will implement the new datachannel buffer
+   * @param {!RtcBufferFactory} resource
+   * @param {!number} id A new datachannel buffer
+   * @param {!GrBlobTransfer} blobTransferResource
+   * @param {!GrBuffer} grBufferResource The generic buffer that will implement the new datachannel buffer
    *
    * @since 1
    *

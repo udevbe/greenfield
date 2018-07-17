@@ -14,8 +14,8 @@ import Rect from './math/Rect'
 class BrowserRegion {
   /**
    *
-   * @param {GrRegion} grRegionResource
-   * @returns {BrowserRegion}
+   * @param {!GrRegion} grRegionResource
+   * @returns {!BrowserRegion}
    */
   static create (grRegionResource) {
     const pixmanRegion = BrowserRegion.createPixmanRegion()
@@ -26,7 +26,7 @@ class BrowserRegion {
   }
 
   /**
-   * @return {number}
+   * @return {!number}
    */
   static createPixmanRegion () {
     const pixmanRegion = pixman._malloc(20)// region struct is pointer + 4*uint32 = 5*4 = 20
@@ -35,59 +35,59 @@ class BrowserRegion {
   }
 
   /**
-   * @param {number} pixmanRegion
+   * @param {!number} pixmanRegion
    */
   static fini (pixmanRegion) {
     pixman._pixman_region32_fini(pixmanRegion)
   }
 
   /**
-   * @param {number} pixmanRegion
+   * @param {!number} pixmanRegion
    */
   static initInfinite (pixmanRegion) {
     pixman._pixman_region32_init_rect(pixmanRegion, -0x3FFFFFFF, -0x3FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
   }
 
   /**
-   * @param {number}pixmanRegion
-   * @param {Rect}rect
+   * @param {!number}pixmanRegion
+   * @param {!Rect}rect
    */
   static initRect (pixmanRegion, rect) {
     pixman._pixman_region32_init_rect(pixmanRegion, rect.x0, rect.y0, rect.x1 - rect.x0, rect.y1 - rect.y0)
   }
 
   /**
-   * @param {number}result
-   * @param {number}left
-   * @param {number}right
+   * @param {!number}result
+   * @param {!number}left
+   * @param {!number}right
    */
   static union (result, left, right) {
     pixman._pixman_region32_union(result, left, right)
   }
 
   /**
-   * @param {number}result
-   * @param {number}left
-   * @param {number}right
+   * @param {!number}result
+   * @param {!number}left
+   * @param {!number}right
    */
   static intersect (result, left, right) {
     pixman._pixman_region32_intersect(result, left, right)
   }
 
   /**
-   * @param {number}result
-   * @param {number}left
-   * @param {number}x
-   * @param {number}y
-   * @param {number}width
-   * @param {number}height
+   * @param {!number}result
+   * @param {!number}left
+   * @param {!number}x
+   * @param {!number}y
+   * @param {!number}width
+   * @param {!number}height
    */
   static unionRect (result, left, x, y, width, height) {
     pixman._pixman_region32_union_rect(result, left, x, y, width, height)
   }
 
   /**
-   * @param {number}pixmanRegion
+   * @param {!number}pixmanRegion
    */
   static destroyPixmanRegion (pixmanRegion) {
     pixman._pixman_region32_fini(pixmanRegion)
@@ -95,8 +95,8 @@ class BrowserRegion {
   }
 
   /**
-   * @param {number}pixmanRegion
-   * @return {Array<Rect>}
+   * @param {!number}pixmanRegion
+   * @return {!Array<Rect>}
    */
   static rectangles (pixmanRegion) {
     const nroRectsPtr = pixman._malloc(4) // uint32
@@ -119,11 +119,19 @@ class BrowserRegion {
   /**
    * Use BrowserRegion.create(..) instead.
    * @private
-   * @param grRegionResource
-   * @param pixmanRegion
+   * @param {!GrRegion}grRegionResource
+   * @param {!number}pixmanRegion
    */
   constructor (grRegionResource, pixmanRegion) {
+    /**
+     * @type {!GrRegion}
+     * @const
+     */
     this.resource = grRegionResource
+    /**
+     * @type {!number}
+     * @const
+     */
     this.pixmanRegion = pixmanRegion
   }
 
@@ -132,7 +140,7 @@ class BrowserRegion {
    * Destroy the region. This will invalidate the object ID.
    *
    *
-   * @param {GrRegion} resource
+   * @param {!GrRegion} resource
    *
    * @since 1
    *
@@ -146,11 +154,11 @@ class BrowserRegion {
    *  Add the specified rectangle to the region.
    *
    *
-   * @param {GrRegion} resource
-   * @param {Number} x undefined
-   * @param {Number} y undefined
-   * @param {Number} width undefined
-   * @param {Number} height undefined
+   * @param {!GrRegion} resource
+   * @param {!number} x undefined
+   * @param {!number} y undefined
+   * @param {!number} width undefined
+   * @param {!number} height undefined
    *
    * @since 1
    *
@@ -164,11 +172,11 @@ class BrowserRegion {
    * Subtract the specified rectangle from the region.
    *
    *
-   * @param {GrRegion} resource
-   * @param {Number} x undefined
-   * @param {Number} y undefined
-   * @param {Number} width undefined
-   * @param {Number} height undefined
+   * @param {!GrRegion} resource
+   * @param {!number} x undefined
+   * @param {!number} y undefined
+   * @param {!number} width undefined
+   * @param {!number} height undefined
    *
    * @since 1
    *
@@ -181,23 +189,21 @@ class BrowserRegion {
   }
 
   /**
-   * @param {number} pixmanRegion
-   * @param {Point}point
-   * @return {Boolean}
+   * @param {!number} pixmanRegion
+   * @param {!Point}point
+   * @return {!boolean}
    */
   static contains (pixmanRegion, point) {
     return pixman._pixman_region32_contains_point(pixmanRegion, point.x, point.y, null) !== 0
   }
 
   /**
-   * @param {number} destination
-   * @param {number} source
+   * @param {!number} destination
+   * @param {!number} source
    */
   static copyTo (destination, source) {
     pixman._pixman_region32_copy(destination, source)
   }
 }
-
-BrowserRegion._regions = {}
 
 export default BrowserRegion

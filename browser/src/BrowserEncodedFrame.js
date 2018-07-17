@@ -4,8 +4,8 @@ import Size from './Size'
 
 export default class BrowserEncodedFrame {
   /**
-   * @param {ArrayBuffer}buffer
-   * @return {BrowserEncodedFrame}
+   * @param {!ArrayBuffer}buffer
+   * @return {!BrowserEncodedFrame}
    */
   static create (buffer) {
     const dataView = new window.DataView(buffer)
@@ -55,46 +55,51 @@ export default class BrowserEncodedFrame {
 
   /**
    * @private
-   * @param {number}serial
-   * @param {string}encodingType
-   * @param {number}encodingOptions
-   * @param {Size}size
-   * @param {Array<BrowserEncodedFrameFragment>}fragments
+   * @param {!number}serial
+   * @param {!string}encodingType
+   * @param {!number}encodingOptions
+   * @param {!Size}size
+   * @param {!Array<BrowserEncodedFrameFragment>}fragments
    */
   constructor (serial, encodingType, encodingOptions, size, fragments) {
     /**
      * @type {number}
+     * @const
      */
     this.serial = serial
     /**
      * @type {string}
+     * @const
      */
     this.encodingType = encodingType
     /**
      * @type {number}
+     * @const
      */
     this.encodingOptions = encodingOptions
     /**
      * @type {Size}
+     * @const
      */
     this.size = size
     /**
      * @type {Array<BrowserEncodedFrameFragment>}
+     * @const
      */
     this.fragments = fragments
   }
 
   /**
-   * @param {number}fragmentIndex
-   * @return Promise<HTMLImageElement>
+   * @param {!number}fragmentIndex
+   * @return {!Promise<HTMLImageElement>}
    */
   asOpaqueImageElement (fragmentIndex) {
     return this.fragments[fragmentIndex].asOpaqueImageElement()
   }
 
   /**
-   * @param {number}fragmentIndex
-   * @return Promise<HTMLImageElement>
+   * @param {!number}fragmentIndex
+   * @return {!Promise<HTMLImageElement>}
    */
   asAlphaImageElement (fragmentIndex) {
     return this.fragments[fragmentIndex].asAlphaImageElement()

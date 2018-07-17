@@ -16,9 +16,9 @@ const {xkbV1} = GrKeyboard.KeymapFormat
  */
 export default class BrowserKeyboard {
   /**
-   * @param {BrowserSession}browserSession
-   * @param {BrowserDataDevice} browserDataDevice
-   * @return {BrowserKeyboard}
+   * @param {!BrowserSession}browserSession
+   * @param {!BrowserDataDevice} browserDataDevice
+   * @return {!BrowserKeyboard}
    */
   static create (browserSession, browserDataDevice) {
     const browserKeyboard = new BrowserKeyboard(browserDataDevice)
@@ -46,62 +46,63 @@ export default class BrowserKeyboard {
   /**
    * Use BrowserKeyboard.create(..) instead.
    * @private
-   * @param {BrowserDataDevice} browserDataDevice
+   * @param {!BrowserDataDevice} browserDataDevice
    */
   constructor (browserDataDevice) {
     /**
-     * @type {BrowserDataDevice}
+     * @type {!BrowserDataDevice}
+     * @const
      * @private
      */
     this._browserDataDevice = browserDataDevice
     /**
-     * @type {Array<GrKeyboard>}
+     * @type {!Array<GrKeyboard>}
      */
     this.resources = []
     /**
-     * @type {BrowserXkb}
+     * @type {?BrowserXkb}
      * @private
      */
     this._browserXkb = null
     /**
-     * @type {BrowserSurface|null}
+     * @type {?BrowserSurface}
      */
     this._focus = null
     /**
-     * @type {Array<number>}
+     * @type {?Array<number>}
      * @private
      */
     this._keys = []
     /**
-     * @type {Array<function():void>}
+     * @type {?Array<function():void>}
      * @private
      */
     this._keyboardFocusListeners = []
     /**
-     * @type {function():void|null}
+     * @type {?function():void|null}
      * @private
      */
     this._keyboardFocusResolve = null
     /**
-     * @type {Promise}
+     * @type {?Promise}
      * @private
      */
     this._keyboardFocusPromise = null
     /**
-     * @type {BrowserSeat}
+     * @type {?BrowserSeat}
      */
     this.browserSeat = null
   }
 
   /**
-   * @param {function():void}listener
+   * @param {!function():void}listener
    */
   addKeyboardFocusListener (listener) {
     this._keyboardFocusListeners.push(listener)
   }
 
   /**
-   * @param {function():void}listener
+   * @param {!function():void}listener
    */
   removeKeyboardFocusListener (listener) {
     const idx = this._keyboardFocusListeners.indexOf(listener)
@@ -111,7 +112,7 @@ export default class BrowserKeyboard {
   }
 
   /**
-   * @return {Promise}
+   * @return {!Promise}
    */
   onKeyboardFocusChanged () {
     if (!this._keyboardFocusPromise) {
@@ -128,7 +129,7 @@ export default class BrowserKeyboard {
 
   /**
    *
-   * @param {GrKeyboard} resource
+   * @param {!GrKeyboard} resource
    *
    * @since 3
    *
@@ -142,7 +143,7 @@ export default class BrowserKeyboard {
   }
 
   /**
-   * @param {string}keymapFileName
+   * @param {!string}keymapFileName
    */
   async updateKeymap (keymapFileName) {
     const browserXkb = await BrowserXkb.createFromResource(keymapFileName)
@@ -150,13 +151,13 @@ export default class BrowserKeyboard {
       // TODO cleanup previous keymap state
     }
     this._browserXkb = browserXkb
-    this.resources.forEach((resource) => {
-      this.emitKeymap(resource)
+    this.resources.forEach(async (resource) => {
+      await this.emitKeymap(resource)
     })
   }
 
   /**
-   * @param {GrKeyboard}resource
+   * @param {!GrKeyboard}resource
    */
   async emitKeymap (resource) {
     const keymapString = this._browserXkb.asString()
@@ -185,7 +186,7 @@ export default class BrowserKeyboard {
   }
 
   /**
-   * @param {BrowserSurface}focus
+   * @param {!BrowserSurface}focus
    */
   focusGained (focus) {
     if (!focus.hasKeyboardInput || this.focus === focus) {
@@ -239,7 +240,7 @@ export default class BrowserKeyboard {
   }
 
   /**
-   * @param {BrowserSurface}browserSurface
+   * @param {?BrowserSurface}browserSurface
    */
   set focus (browserSurface) {
     this._focus = browserSurface
@@ -252,7 +253,7 @@ export default class BrowserKeyboard {
   }
 
   /**
-   * @return {BrowserSurface}
+   * @return {?BrowserSurface}
    */
   get focus () {
     return this._focus
@@ -260,9 +261,9 @@ export default class BrowserKeyboard {
 
   /**
    *
-   * @param {KeyboardEvent}event
-   * @param {boolean}down
-   * @return {boolean}
+   * @param {!KeyboardEvent}event
+   * @param {!boolean}down
+   * @return {!boolean}
    */
   _handleKey (event, down) {
     let consumed = false
@@ -309,7 +310,7 @@ export default class BrowserKeyboard {
   }
 
   /**
-   * @param {GrKeyboard}resource
+   * @param {!GrKeyboard}resource
    */
   emitKeyRepeatInfo (resource) {
     if (resource.version >= 4) {

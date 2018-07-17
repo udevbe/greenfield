@@ -14,6 +14,9 @@ import { GrOutput } from './protocol/greenfield-browser-protocol'
  *
  */
 export default class BrowserOutput extends Global {
+  /**
+   * @return {!BrowserOutput}
+   */
   static create () {
     return new BrowserOutput()
   }
@@ -27,9 +30,9 @@ export default class BrowserOutput extends Global {
   }
 
   /**
-   * @param {Client}client
-   * @param {number}id
-   * @param {number}version
+   * @param {!Client}client
+   * @param {!number}id
+   * @param {!number}version
    */
   bindClient (client, id, version) {
     const grOutputResource = new GrOutput(client, id, version)
@@ -38,7 +41,7 @@ export default class BrowserOutput extends Global {
   }
 
   /**
-   * @param {GrOutput}grOutputResource
+   * @param {!GrOutput}grOutputResource
    */
   emitSpecs (grOutputResource) {
     // TODO we might want to listen for window/document size changes and emit on update
@@ -51,7 +54,7 @@ export default class BrowserOutput extends Global {
   }
 
   /**
-   * @param {GrOutput}grOutputResource
+   * @param {!GrOutput}grOutputResource
    */
   _emitMode (grOutputResource) {
     const flags = GrOutput.Mode.current
@@ -63,7 +66,7 @@ export default class BrowserOutput extends Global {
   }
 
   /**
-   * @param {GrOutput}grOutputResource
+   * @param {!GrOutput}grOutputResource
    */
   _emitGeomtry (grOutputResource) {
     const x = 0
@@ -109,7 +112,7 @@ export default class BrowserOutput extends Global {
    *                use the output object anymore.
    *
    *
-   * @param {GrOutput} resource
+   * @param {!GrOutput} resource
    *
    * @since 3
    *

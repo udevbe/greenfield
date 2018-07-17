@@ -143,8 +143,8 @@ export default class BrowserSession extends Global {
   }
 
   /**
-   * @param {number}clientSessionId
-   * @return {Client}
+   * @param {!number}clientSessionId
+   * @return {!Client}
    * @private
    */
   _setupConnection (clientSessionId) {
@@ -155,8 +155,8 @@ export default class BrowserSession extends Global {
   }
 
   /**
-   * @param {Client}client
-   * @param {number}clientSessionId
+   * @param {!Client}client
+   * @param {!number}clientSessionId
    * @private
    */
   _setupClientConnection (client, clientSessionId) {
