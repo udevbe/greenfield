@@ -191,7 +191,6 @@ export default class BrowserRtcDcBuffer {
     const headerlessChunk = chunk.slice(headerSize)
 
     if (bufferChunk.chunks[chunkIdx]) {
-      console.log('chunk already received, we\'re probably dealing with a resend', this._syncSerial)
       return null
     }
     bufferChunk.chunks[chunkIdx] = headerlessChunk
@@ -208,7 +207,6 @@ export default class BrowserRtcDcBuffer {
       delete this._bufferChunks[synSerial]
       return bufferContents.buffer
     } else {
-      console.log('Not all chunks have been received yet', this._syncSerial)
       return null
     }
   }

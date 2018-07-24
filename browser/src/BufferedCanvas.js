@@ -125,7 +125,6 @@ export default class BufferedCanvas {
 
     // make sure the new back canvas has the same content as the new front canvas
     if (this.frontContext.canvas.width !== 0 && this.frontContext.canvas.height !== 0) {
-      console.log('drawing front context into back context')
       const imageBitmap = await window.createImageBitmap(
         this.frontContext.canvas,
         0, 0,

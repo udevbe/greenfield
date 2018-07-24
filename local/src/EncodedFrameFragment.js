@@ -9,7 +9,15 @@ class EncodedFrameFragment {
    * @return {EncodedFrameFragment}
    */
   static create (fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha) {
-    return new EncodedFrameFragment(fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha)
+    const size = 2 + // fragmentX (uint16LE)
+      2 + // fragmentY (uint16LE)
+      2 + // fragmentWidth (uint16LE)
+      2 + // fragmentHeight (uint16LE)
+      4 + // fragment opaque length (uin32LE)
+      opaque.length + // opaque (uint8array)
+      4 + // fragment alpha length (uin32LE)
+      alpha.length // alpha (uint8array)
+    return new EncodedFrameFragment(fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha, size)
   }
 
   /**
@@ -20,8 +28,9 @@ class EncodedFrameFragment {
    * @param {number}fragmentHeight
    * @param {Buffer}opaque
    * @param {Buffer}alpha
+   * @param {number}size
    */
-  constructor (fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha) {
+  constructor (fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha, size) {
     /**
      * @type {number}
      * @private
@@ -52,17 +61,10 @@ class EncodedFrameFragment {
      * @private
      */
     this._alpha = alpha
-  }
-
-  get size () {
-    return 2 + // fragmentX (uint16LE)
-      2 + // fragmentY (uint16LE)
-      2 + // fragmentWidth (uint16LE)
-      2 + // fragmentHeight (uint16LE)
-      4 + // fragment opaque length (uin32LE)
-      this._opaque.byteLength + // opaque (uint8array)
-      4 + // fragment alpha length (uin32LE)
-      this._alpha.byteLength // alpha (uint8array)
+    /**
+     * @type {number}
+     */
+    this.size = size
   }
 
   /**

@@ -54,7 +54,7 @@ class EncodedFrame {
    * width: uint16LE,
    * height: uint16LE,
    * fragmentElements: uint32LE,
-   * fragments: uint8[fragmentElements * fragmentSize]=[fragmentLength:uint32LE, fragment: uint8[], fragmentLength:uint32LE, fragment: uint8[], ...],
+   * fragments: uint8[fragmentElements * fragmentSize],
    * ]
    * @return {Buffer}
    */
@@ -65,7 +65,7 @@ class EncodedFrame {
       fragmentsSize += fragment.size
     })
 
-    const frameBuffer = Buffer.allocUnsafe(
+    const totalFrameSize =
       4 + // serial: uin32LE
       2 + // encodingType: uint16LE
       2 + // encodingOptions: uint16LE
@@ -73,7 +73,7 @@ class EncodedFrame {
       2 + // height: uint16LE
       4 + // fragmentElements: uint32LE
       fragmentsSize // fragments data: uint8[]
-    )
+    const frameBuffer = Buffer.allocUnsafe(totalFrameSize)
 
     let offset = 0
 
@@ -96,7 +96,7 @@ class EncodedFrame {
     offset += 4
 
     this._fragments.forEach((fragment) => {
-      offset += fragment.writeToBuffer(frameBuffer, offset)
+      offset = fragment.writeToBuffer(frameBuffer, offset)
     })
 
     return frameBuffer

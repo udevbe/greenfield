@@ -94,13 +94,10 @@ class Encoder {
    * @private
    */
   async _encodeFrame (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, bufferDamage) {
-    console.log(`encoding buffer to alpha jpeg...`, serial)
     if (!this._frameEncoder) {
       this._frameEncoder = Encoder.types[bufferFormat].FrameEncoder.create(bufferWidth, bufferHeight, bufferFormat)
     }
-    const encodedFrame = await this._frameEncoder.encodeBuffer(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, bufferDamage)
-    console.log('... done encoding buffer to alpha jpeg', serial)
-    return encodedFrame
+    return this._frameEncoder.encodeBuffer(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, bufferDamage)
   }
 }
 

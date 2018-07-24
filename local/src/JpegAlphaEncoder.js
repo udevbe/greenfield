@@ -138,7 +138,6 @@ class JpegAlphaEncoder {
    * @private
    */
   async _encodeFragment (pixelBuffer, wlShmFormat, x, y, width, height) {
-    console.log(`encoding alpha jpeg fragment: ${width}x${height}`)
     if (this._width !== width || this._height !== height || this._wlShmFormat !== wlShmFormat) {
       this._width = width
       this._height = height

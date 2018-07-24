@@ -29,7 +29,8 @@ export default class BrowserEncodedFrame {
     const encodedFragmentElements = dataView.getUint32(offset, true)
     offset += 4
 
-    const encodedFragments = Array(encodedFragmentElements).fill(undefined).map(() => {
+    const encodedFragments = []
+    for (let i = 0; i < encodedFragmentElements; i++) {
       const fragmentX = dataView.getUint16(offset, true)
       offset += 2
       const fragmentY = dataView.getUint16(offset, true)
@@ -47,8 +48,8 @@ export default class BrowserEncodedFrame {
       const alpha = new Uint8Array(buffer, offset, alphaLength)
       offset += alphaLength
 
-      return BrowserEncodedFrameFragment.create(encodingType, fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha)
-    })
+      encodedFragments.push(BrowserEncodedFrameFragment.create(encodingType, fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha))
+    }
 
     return new BrowserEncodedFrame(serial, encodingType, encodingOptions, Size.create(width, height), encodedFragments)
   }
