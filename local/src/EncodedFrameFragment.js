@@ -60,18 +60,16 @@ class EncodedFrameFragment {
       2 + // fragmentWidth (uint16LE)
       2 + // fragmentHeight (uint16LE)
       4 + // fragment opaque length (uin32LE)
-      this._opaque.length + // opaque (uint8array)
+      this._opaque.byteLength + // opaque (uint8array)
       4 + // fragment alpha length (uin32LE)
-      this._alpha.length // alpha (uint8array)
+      this._alpha.byteLength // alpha (uint8array)
   }
 
   /**
    * @param {Buffer}buffer
-   * @param {number}bufferOffset
+   * @param {number}offset
    */
-  writeToBuffer (buffer, bufferOffset) {
-    let offset = bufferOffset
-
+  writeToBuffer (buffer, offset) {
     buffer.writeUInt16LE(this._fragmentX, offset, true)
     offset += 2
 
@@ -88,13 +86,13 @@ class EncodedFrameFragment {
     offset += 4
 
     this._opaque.copy(buffer, offset)
-    offset += this._opaque.length
+    offset += this._opaque.byteLength
 
     buffer.writeUInt32LE(this._alpha.length, offset, true)
     offset += 4
 
     this._alpha.copy(buffer, offset)
-    offset += this._alpha.length
+    offset += this._alpha.byteLength
 
     return offset
   }

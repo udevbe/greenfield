@@ -58,11 +58,6 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       surfaceDamage: []
     }
     /**
-     * @type {WlBuffer|null}
-     * @private
-     */
-    this._buffer = null
-    /**
      * @type {number}
      * @private
      */
@@ -72,16 +67,6 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
      * @private
      */
     this._bufferScale = 1
-    /**
-     * @type {Array<{x:number, y:number, width:number, height:number}>}s
-     * @private
-     */
-    this._bufferDamage = []
-    /**
-     * @type {Array<{x:number, y:number, width:number, height:number}>}
-     * @private
-     */
-    this._surfaceDamage = []
 
     /**
      * @type {number}
@@ -125,14 +110,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
      * @private
      */
     this._pendingBufferDestroyListener = () => {
-      this._pendingBuffer = null
-    }
-    /**
-     * @type {function():void}
-     * @private
-     */
-    this._bufferDestroyListener = () => {
-      this._buffer = null
+      this._pending.buffer = null
     }
     /**
      * @type {number}
@@ -184,7 +162,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
    * @param {number}height
    */
   damage (resource, x, y, width, height) {
-    this._surfaceDamage.push({
+    this._pending.surfaceDamage.push({
       x: x,
       y: y,
       width: width,
@@ -225,10 +203,11 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
   /**
    * @param buffer
    * @param {number}synSerial
+   * @param {Array<{x:number, y:number, width:number, height:number}>}surfaceDamage
    * @return {Promise<EncodedFrame>}
    * @private
    */
-  _encodeBuffer (buffer, synSerial) {
+  _encodeBuffer (buffer, synSerial, surfaceDamage) {
     const shm = Shm.get(buffer)
     if (shm === null) {
       // FIXME protocol error & disconnect client
@@ -240,7 +219,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     const pixelBuffer = shm.getData().reinterpret(bufferWidth * bufferHeight * 4)
     const format = shm.getFormat()
 
-    const bufferDamage = [] // TODO calculate buffer damage rectangles in native code using pixman & surface 2 buffer transformations
+    const bufferDamage = surfaceDamage // TODO calculate buffer damage rectangles in native code using pixman & surface 2 buffer transformations
     return this._encoder.encodeBuffer(pixelBuffer, format, bufferWidth, bufferHeight, synSerial, bufferDamage)
   }
 
@@ -286,21 +265,22 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       return
     }
 
-    // TODO we could also try to ack each individual chunk, and only resend missing ones
-    // if the ack times out & no newer serial is expected, we can retry sending the buffer contents
-    // TODO cancel timeout of we received the corresponding ack
-    setTimeout(async () => {
-      // If the syn serial at the time the timer was created is greater than the latest received ack serial and no newer serial is expected,
-      // then we have not received an ack that matches or is newer than the syn we're checking. We resend the frame.
-      if (frame.serial > this._ackSerial && frame.serial === this._synSerial) {
-        await this.sendFrame(frame)
-      }
-      // TODO keep sending until we received an ack
-    }, 250)
+    // // TODO we could also try to ack each individual chunk, and only re-send missing ones
+    // // if the ack times out & no newer serial is expected, we can retry sending the buffer contents
+    // // TODO cancel timeout of we received the corresponding ack
+    // setTimeout(async () => {
+    //   // If the syn serial at the time the timer was created is greater than the latest received ack serial and no newer serial is expected,
+    //   // then we have not received an ack that matches or is newer than the syn we're checking. We resend the frame.
+    //   if (frame.serial > this._ackSerial && frame.serial === this._synSerial) {
+    //     await this.sendFrame(frame)
+    //   }
+    //   // TODO keep sending until we received an ack
+    // }, 250)
 
     const dataChannel = await this.localRtcDcBuffer.localRtcBlobTransfer.open()
     const frameBuffer = frame.toBuffer()
     const bufferChunks = this._toBufferChunks(frameBuffer, frame.serial)
+    // console.log('sending buffer', frame.serial)
     bufferChunks.forEach((chunk) => {
       dataChannel.send(chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength))
     })
@@ -311,47 +291,29 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
    * @return {Promise<void>}
    */
   async commit (resource) {
-    const commitMeasurement = Measurement.create({content: 'commit'})
-    commitMeasurement.begin()
-
+    // copy state to local variables
     this._synSerial++
     const synSerial = this._synSerial
-    // FIXME because the commit method is async, the surface can be destroyed while it is busy. Leading to certain
-    // resources like frame callback to be destroyed but still called after this commit finishes.
-    if (this._buffer) {
-      this._buffer.release()
-      this._buffer.removeDestroyListener(this._bufferDestroyListener)
-    }
-    if (this._pending.buffer) {
-      this._pending.buffer.removeDestroyListener(this._pendingBufferDestroyListener)
-    }
-
-    this._buffer = this._pending.buffer
-    if (this._buffer) {
-      this._buffer.addDestroyListener(this._bufferDestroyListener)
-    }
-
-    if (this._buffer) {
-      this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
-    }
-    this.proxy.commit()
-
-    const encodeMeasurement = Measurement.create({content: 'encode'})
-    encodeMeasurement.begin()
-
-    if (this._buffer) {
-      const buffer = this._buffer
-      const frame = await this._encodeBuffer(buffer, synSerial)
-      await this.sendFrame(frame)
-    }
-
+    const buffer = this._pending.buffer
+    const surfaceDamage = this._pending.surfaceDamage
     this._resetPendingState()
 
-    encodeMeasurement.end()
-    encodeMeasurement.register()
+    if (buffer) {
+      buffer.removeDestroyListener(this._pendingBufferDestroyListener)
+      // console.log('sending sync serial', synSerial)
+      this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
+      const frame = await this._encodeBuffer(buffer, synSerial, surfaceDamage)
+      buffer.release()
 
-    commitMeasurement.end()
-    commitMeasurement.register()
+      // console.log('committing', synSerial)
+      this.proxy.commit()
+      await this.sendFrame(frame)
+    } else {
+      this.proxy.commit()
+    }
+
+    // FIXME because the commit method is async, the surface can be destroyed while it is busy. Leading to certain
+    // resources like frame callback to be destroyed but still called after this commit finishes.
   }
 
   _resetPendingState () {
@@ -386,7 +348,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
    * @param {number}height
    */
   damageBuffer (resource, x, y, width, height) {
-    this._bufferDamage.push({
+    this._pending.bufferDamage.push({
       x: x,
       y: y,
       width,

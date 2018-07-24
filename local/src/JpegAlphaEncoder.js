@@ -1,4 +1,6 @@
 const gstreamer = require('gstreamer-superficial')
+const greenfieldNative = require('greenfield-native')
+
 const WlShmFormat = require('./protocol/wayland/WlShmFormat')
 
 const EncodedFrame = require('./EncodedFrame')
@@ -25,7 +27,7 @@ class JpegAlphaEncoder {
   static create (width, height, wlShmFormat) {
     const gstBufferFormat = gstFormats[wlShmFormat]
     const pipeline = new gstreamer.Pipeline(
-      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! 
+      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=0/1 ! 
 
       tee name=t ! queue ! 
       glupload ! 
@@ -122,7 +124,7 @@ class JpegAlphaEncoder {
    * @private
    */
   _configure (width, height, gstBufferFormat) {
-    this._src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1`
+    this._src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=0/1`
   }
 
   /**
@@ -136,6 +138,7 @@ class JpegAlphaEncoder {
    * @private
    */
   async _encodeFragment (pixelBuffer, wlShmFormat, x, y, width, height) {
+    console.log(`encoding alpha jpeg fragment: ${width}x${height}`)
     if (this._width !== width || this._height !== height || this._wlShmFormat !== wlShmFormat) {
       this._width = width
       this._height = height
@@ -146,29 +149,28 @@ class JpegAlphaEncoder {
     }
 
     // TODO we probably want to put this in it's own process so we can easily run this long running task in parallel
-    const opaquePromise = new Promise((resolve, reject) => {
+    const encodingPromise = new Promise((resolve, reject) => {
+      let opaque = null
+      let alpha = null
       this._sink.pull((opaqueJpeg) => {
-        if (opaqueJpeg) {
-          resolve(opaqueJpeg)
-        } else {
-          reject(new Error('Pulled empty opaque buffer. Gstreamer opaque jpeg encoder pipeline is probably in error.'))
+        opaque = opaqueJpeg
+        if (opaque && alpha) {
+          resolve({opaque: opaque, alpha: alpha})
         }
       })
-    })
 
-    const alphaPromise = new Promise((resolve, reject) => {
       this._alphaSink.pull((alphaJpeg) => {
-        if (alphaJpeg) {
-          resolve(alphaJpeg)
-        } else {
-          reject(new Error('Pulled empty alpha buffer. Gstreamer alpha jpeg encoder pipeline is probably in error.'))
+        alpha = alphaJpeg
+        if (opaque && alpha) {
+          resolve({opaque: opaque, alpha: alpha})
         }
       })
     })
 
     this._src.push(pixelBuffer)
+    const {opaque, alpha} = await encodingPromise
 
-    return EncodedFrameFragment.create(x, y, width, height, await opaquePromise, await alphaPromise)
+    return EncodedFrameFragment.create(x, y, width, height, opaque, alpha)
   }
 
   /**
@@ -183,9 +185,19 @@ class JpegAlphaEncoder {
    */
   async encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial, damage) {
     if (damage.length) {
-      const encodedFrameFragments = await Promise.all(damage.map(damageRect => {
-        return this._encodeFragment(pixelBuffer, wlShmFormat, damageRect.x, damageRect.y, damageRect.width, damageRect.height)
-      }))
+      const encodedFrameFragments = []
+      for (let i = 0; i < damage.length; i++) {
+        const damageRect = damage[i]
+        // ensure at least 16 width & 16 height, else jpeg encoding fails
+        damageRect.width = damageRect.width < 16 ? 16 : damageRect.width
+        damageRect.height = damageRect.height < 16 ? 16 : damageRect.height
+        // compensate x & y clipping offset in case we go out of bounds
+        damageRect.x = damageRect.x + damageRect.width > bufferWidth ? damageRect.x - (damageRect.x + damageRect.width - bufferWidth) : damageRect.x
+        damageRect.y = damageRect.y + damageRect.height > bufferHeight ? damageRect.y - (damageRect.y + damageRect.height - bufferHeight) : damageRect.y
+
+        const clippedBuffer = greenfieldNative.clip(pixelBuffer, bufferWidth, bufferHeight, damageRect.x, damageRect.y, damageRect.width, damageRect.height)
+        encodedFrameFragments.push(await this._encodeFragment(clippedBuffer, wlShmFormat, damageRect.x, damageRect.y, damageRect.width, damageRect.height))
+      }
       return EncodedFrame.create(serial, jpeg, bufferWidth, bufferHeight, encodedFrameFragments)
     } else {
       const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)

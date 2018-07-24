@@ -82,18 +82,6 @@ export default class BrowserSurfaceView {
   }
 
   /**
-   * @param {HTMLImageElement}sourceImage
-   * @param {number}destinationX
-   * @param {number}destinationY
-   */
-  drawImage (sourceImage, destinationX, destinationY) {
-    if (this.destroyed) {
-      return
-    }
-    this._draw(sourceImage, sourceImage.naturalWidth, sourceImage.naturalHeight)
-  }
-
-  /**
    * @param {BrowserSurfaceView}parent
    */
   set parent (parent) {
@@ -265,29 +253,31 @@ export default class BrowserSurfaceView {
   }
 
   /**
-   * @param {HTMLCanvasElement}sourceCanvas
-   * @param {number}destinationX
-   * @param {number}destinationY
+   * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap}image
+   * @param {number}frameWidth
+   * @param {number}frameHeight
+   * @param {number}fragmentX
+   * @param {number}fragmentY
    */
-  drawCanvas (sourceCanvas, destinationX, destinationY) {
+  draw (image, frameWidth, frameHeight, fragmentX, fragmentY) {
     if (this.destroyed) {
       return
     }
-    this._draw(sourceCanvas, sourceCanvas.width, sourceCanvas.height, destinationX, destinationY)
+    this._draw(image, frameWidth, frameHeight, fragmentX, fragmentY)
   }
 
   /**
-   * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap}source
-   * @param {number}width
-   * @param {number}height
-   * @param {number}destinationX
-   * @param {number}destinationY
+   * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap}imageBitmap
+   * @param {number}frameWidth
+   * @param {number}frameHeight
+   * @param {number}fragmentX
+   * @param {number}fragmentY
    * @private
    */
-  _draw (source, width, height, destinationX, destinationY) {
+  _draw (imageBitmap, frameWidth, frameHeight, fragmentX, fragmentY) {
     // FIXME adjust final transformation with additional transformations defined in the browser surface
     this._applyTransformationsBackBuffer()
-    this.bufferedCanvas.drawBackBuffer(source, width, height, destinationX, destinationY)
+    this.bufferedCanvas.drawBackBuffer(imageBitmap, frameWidth, frameHeight, fragmentX, fragmentY)
   }
 
   /**
@@ -298,8 +288,8 @@ export default class BrowserSurfaceView {
       return
     }
     this.transformation = this._backBufferTransformation
-    renderFrame.then(() => {
-      this.bufferedCanvas.swapBuffers()
+    renderFrame.then(async () => {
+      await this.bufferedCanvas.swapBuffers()
     })
     // update child transformations as new parent buffer is visible
     this._applyTransformationsChild(renderFrame)

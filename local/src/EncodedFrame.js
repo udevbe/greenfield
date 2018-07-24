@@ -74,6 +74,7 @@ class EncodedFrame {
       4 + // fragmentElements: uint32LE
       fragmentsSize // fragments data: uint8[]
     )
+
     let offset = 0
 
     frameBuffer.writeUInt32LE(this.serial, offset, true)

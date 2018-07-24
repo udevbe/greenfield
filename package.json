@@ -51,7 +51,8 @@
     "westfield-runtime-client": "0.0.20",
     "westfield-runtime-server": "0.0.20",
     "wrtc": "^0.1.5",
-    "ws": "^5.2.0"
+    "ws": "^5.2.0",
+    "greenfield-native": "file:./local/native"
   },
   "devDependencies": {
     "clean-webpack-plugin": "^0.1.19",
@@ -68,8 +69,7 @@
     "webpack-hot-middleware": "^2.22.2",
     "webpack-merge": "^4.1.3",
     "westfield-scanner-client": "0.0.20",
-    "westfield-scanner-server": "0.0.20",
-    "cmake-js": "3.7.3"
+    "westfield-scanner-server": "0.0.20"
   },
   "pkg": {
     "scripts": [

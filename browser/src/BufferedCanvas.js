@@ -22,6 +22,7 @@ export default class BufferedCanvas {
     frontCanvas.style.zIndex = '0'
     const frontContext = frontCanvas.getContext('2d')
     frontContext.imageSmoothingEnabled = false
+    frontContext.globalCompositeOperation = 'source-over'
 
     const backCanvas = document.createElement('canvas')
     backCanvas.width = width
@@ -30,6 +31,7 @@ export default class BufferedCanvas {
     backCanvas.style.zIndex = '0'
     const backContext = backCanvas.getContext('2d')
     backContext.imageSmoothingEnabled = false
+    backContext.globalCompositeOperation = 'source-over'
 
     const containerDiv = document.createElement('div')
     containerDiv.style.display = 'contents'
@@ -69,39 +71,43 @@ export default class BufferedCanvas {
   }
 
   /**
-   * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap}source
-   * @param {number}width
-   * @param {number}height
-   * @param {number}destinationX
-   * @param {number}destinationY
+   * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap}image
+   * @param {number}frameWidth
+   * @param {number}frameHeight
+   * @param {number}fragmentX
+   * @param {number}fragmentY
    */
-  drawBackBuffer (source, width, height, destinationX, destinationY) {
-    this._draw(this.backContext, source, width, height, destinationX, destinationY)
+  drawBackBuffer (image, frameWidth, frameHeight, fragmentX, fragmentY) {
+    this._draw(this.backContext, image, frameWidth, frameHeight, fragmentX, fragmentY)
   }
 
   /**
    * @param {CanvasRenderingContext2D} context2d
-   * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap}source
-   * @param {number}width
-   * @param {number}height
-   * @param {number}destinationX
-   * @param {number}destinationY
+   * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap}image
+   * @param {number}frameWidth
+   * @param {number}frameHeight
+   * @param {number}fragmentX
+   * @param {number}fragmentY
    * @private
    */
-  _draw (context2d, source, width, height, destinationX, destinationY) {
+  _draw (context2d, image, frameWidth, frameHeight, fragmentX, fragmentY) {
     // TODO use ImageBitmapRenderingContext.transferFromImageBitmap()
     const canvas = context2d.canvas
-    if (canvas.width !== width || canvas.height !== height) {
+    if (canvas.width !== frameWidth || canvas.height !== frameHeight) {
       // resizing clears the canvas
-      canvas.width = width
-      canvas.height = height
-    } else {
-      context2d.clearRect(0, 0, canvas.width, canvas.height)
+      console.log('resizing back canvas')
+      canvas.width = frameWidth
+      canvas.height = frameHeight
     }
-    context2d.drawImage(source, destinationX, destinationY)
+    // if (image instanceof window.ImageData) {
+    //   context2d.putImageData(image, fragmentX, fragmentY)
+    // } else if (image instanceof window.HTMLImageElement) {
+    context2d.clearRect(fragmentX, fragmentY, image.width, image.height)
+    context2d.drawImage(image, fragmentX, fragmentY)
+    // /}
   }
 
-  swapBuffers () {
+  async swapBuffers () {
     // swap canvasses
     const oldFront = this.frontContext
     this.frontContext = this.backContext
@@ -116,6 +122,17 @@ export default class BufferedCanvas {
     this.containerDiv.style.transform = this.frontContext.canvas.style.transform
     this.frontContext.canvas.style.transform = 'inherit'
     this.backContext.canvas.style.transform = this.containerDiv.style.transform
+
+    // make sure the new back canvas has the same content as the new front canvas
+    if (this.frontContext.canvas.width !== 0 && this.frontContext.canvas.height !== 0) {
+      console.log('drawing front context into back context')
+      const imageBitmap = await window.createImageBitmap(
+        this.frontContext.canvas,
+        0, 0,
+        this.frontContext.canvas.width, this.frontContext.canvas.height
+      )
+      this.drawBackBuffer(imageBitmap, this.frontContext.canvas.width, this.frontContext.canvas.height, 0, 0)
+    }
   }
 
   /**

@@ -56,13 +56,13 @@ export default class BrowserEncodedFrameFragment {
     const imageBlob = new window.Blob([buffer], {'type': this.encodingType})
     image.src = window.URL.createObjectURL(imageBlob)
 
+    if (image.complete && image.naturalHeight !== 0) {
+      return Promise.resolve(image)
+    }
+
     return new Promise((resolve) => {
-      if (image.complete && image.naturalHeight !== 0) {
+      image.onload = () => {
         resolve(image)
-      } else {
-        image.onload = () => {
-          resolve(image)
-        }
       }
     })
   }

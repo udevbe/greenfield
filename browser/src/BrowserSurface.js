@@ -1017,7 +1017,9 @@ export default class BrowserSurface {
 
     if (pendingGrBuffer) {
       const browserRtcDcBuffer = BrowserRtcBufferFactory.get(pendingGrBuffer)
+      console.log('waiting for buffer contents', browserRtcDcBuffer._syncSerial)
       newState.bufferContents = await browserRtcDcBuffer.whenComplete()
+      console.log('buffer contents received', newState.bufferContents.serial)
     } else {
       newState.bufferContents = null
     }

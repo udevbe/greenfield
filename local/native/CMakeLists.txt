@@ -41,7 +41,11 @@ project (greenfield-native C)
 
 parse_cmakejs_properties()
 
-include_directories(${CMAKE_JS_INC})
-add_library(${PROJECT_NAME} SHARED src/greenfield-native.h src/greenfield-native.c)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
+
+find_package(pixman REQUIRED)
+
+include_directories(${CMAKE_JS_INC} ${PIXMAN_INCLUDE_DIRS})
+add_library(${PROJECT_NAME} SHARED src/greenfield-native.c)
 set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".node")
-target_link_libraries(${PROJECT_NAME} ${CMAKE_JS_LIB})
+target_link_libraries(${PROJECT_NAME} ${CMAKE_JS_LIB} ${PIXMAN_LIBRARIES})
