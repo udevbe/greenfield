@@ -40,11 +40,9 @@ export default class ViewState {
   /**
    * @param {BrowserEncodedFrameFragment}fragment
    */
-  async updateFragment (fragment) {
-    const opaqueImage = fragment.asOpaqueImageElement()
-    const alphaImage = fragment.asAlphaImageElement()
-    this.opaqueTexture.fill(await opaqueImage)
-    this.alphaTexture.fill(await alphaImage)
+  updateFragment (fragment) {
+    this.opaqueTexture.fill(fragment.opaqueImageBitmap)
+    this.alphaTexture.fill(fragment.alphaImageBitmap)
   }
 
   // TODO handle state destruction

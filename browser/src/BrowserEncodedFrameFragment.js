@@ -11,9 +11,15 @@ export default class BrowserEncodedFrameFragment {
    * @param {!Uint8Array}alpha
    * @return {!BrowserEncodedFrameFragment}
    */
-  static create (encodingType, fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha) {
+  static async create (encodingType, fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha) {
     const geo = Rect.create(fragmentX, fragmentY, fragmentX + fragmentWidth, fragmentY + fragmentHeight)
-    return new BrowserEncodedFrameFragment(encodingType, geo, opaque, alpha)
+
+    const opaqueImageBlob = new window.Blob([opaque], {'type': encodingType})
+    const opaqueImageBitmap = await window.createImageBitmap(opaqueImageBlob, 0, 0, fragmentWidth, fragmentHeight)
+
+    const alphaImageBitmap = alpha.length ? await window.createImageBitmap(new window.Blob([alpha], {'type': encodingType}), 0, 0, fragmentWidth, fragmentHeight) : null
+
+    return new BrowserEncodedFrameFragment(encodingType, geo, opaque, alpha, opaqueImageBitmap, alphaImageBitmap)
   }
 
   /**
@@ -21,9 +27,11 @@ export default class BrowserEncodedFrameFragment {
    * @param {!Rect}geo
    * @param {!Uint8Array}opaque
    * @param {!Uint8Array}alpha
+   * @param {!ImageBitmap}opaqueImageBitmap
+   * @param {?ImageBitmap}alphaImageBitmap
    * @private
    */
-  constructor (encodingType, geo, opaque, alpha) {
+  constructor (encodingType, geo, opaque, alpha, opaqueImageBitmap, alphaImageBitmap) {
     /**
      * @type {!string}
      * @const
@@ -44,41 +52,14 @@ export default class BrowserEncodedFrameFragment {
      * @const
      */
     this.alpha = alpha
-  }
-
-  /**
-   * @param {!Uint8Array}buffer
-   * @return {!Promise<HTMLImageElement>}
-   * @private
-   */
-  _asImage (buffer) {
-    const image = new window.Image()
-    const imageBlob = new window.Blob([buffer], {'type': this.encodingType})
-    image.src = window.URL.createObjectURL(imageBlob)
-
-    if (image.complete && image.naturalHeight !== 0) {
-      return Promise.resolve(image)
-    }
-
-    return new Promise((resolve) => {
-      image.onload = () => {
-        resolve(image)
-      }
-    })
-  }
-
-  /**
-   * @return {!Promise<HTMLImageElement>}
-   */
-  asOpaqueImageElement () {
-    return this._asImage(this.opaque)
-  }
-
-  /**
-   * @return {!Promise<HTMLImageElement>}
-   */
-  asAlphaImageElement () {
-    return this._asImage(this.alpha)
+    /**
+     * @type {!ImageBitmap}
+     */
+    this.opaqueImageBitmap = opaqueImageBitmap
+    /**
+     * @type {?ImageBitmap}
+     */
+    this.alphaImageBitmap = alphaImageBitmap
   }
 
   // TODO add jpeg webgl decoding

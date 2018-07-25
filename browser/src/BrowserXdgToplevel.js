@@ -208,7 +208,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
       this._unmap()
     }
 
-    await browserSurface.render(renderFrame, newState)
+    browserSurface.render(renderFrame, newState)
     renderFrame.fire()
     await renderFrame
     this._browserSession.flush()
@@ -281,7 +281,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
   /**
    * @param {BrowserSurface}browserSurface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: BrowserEncodedFrame|null bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
+   * @param {{bufferContents: BrowserEncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @private
    */
   _maximizedCommit (browserSurface, renderFrame, newState) {

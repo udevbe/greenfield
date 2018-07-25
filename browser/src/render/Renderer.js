@@ -87,7 +87,7 @@ export default class Renderer {
    * @param {BrowserSurface}browserSurface
    * @param {{bufferContents: BrowserEncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    */
-  async renderBackBuffer (browserSurface, newState) {
+  renderBackBuffer (browserSurface, newState) {
     const views = browserSurface.browserSurfaceViews
     const bufferContents = newState.bufferContents
 
@@ -97,12 +97,9 @@ export default class Renderer {
         viewState = ViewState.create(this.gl)
         browserSurface.renderState = viewState
       }
-
-      await this._draw(bufferContents, viewState, views)
+      this._draw(bufferContents, viewState, views)
     } else {
-      views.forEach((view) => {
-        view.draw(this._emptyImage, 0, 0, 0, 0)
-      })
+      this._drawViews(this._emptyImage, views, 0, 0, 0, 0)
     }
   }
 
@@ -112,15 +109,16 @@ export default class Renderer {
    * @param {Array<BrowserSurfaceView>}views
    * @private
    */
-  async _draw (bufferContents, viewState, views) {
+  _draw (bufferContents, viewState, views) {
     if (bufferContents.encodingType === 'jpeg') {
       for (let i = 0; i < bufferContents.fragments.length; i++) {
         const fragment = bufferContents.fragments[i]
         const {w: frameWidth, h: frameHeight} = bufferContents.size
         const {x0: fragmentX, y0: fragmentY} = fragment.geo
 
+        let image = null
         if (fragment.alpha.length) {
-          await viewState.updateFragment(fragment)
+          viewState.updateFragment(fragment)
           if (this.canvas.width !== fragment.geo.width) {
             this.canvas.width = fragment.geo.width
           }
@@ -131,46 +129,29 @@ export default class Renderer {
           this.jpegAlphaSurfaceShader.use()
           this.jpegAlphaSurfaceShader.draw(viewState.opaqueTexture, viewState.alphaTexture, fragment.geo)
           // blit rendered texture from render canvas into view canvasses
-          const imageBitmap = await window.createImageBitmap(this.canvas)
-          views.forEach((view) => {
-            view.draw(imageBitmap, frameWidth, frameHeight, fragmentX, fragmentY)
-          })
+          image = this.canvas
         } else {
-          const opaqueImageBlob = new window.Blob([fragment.opaque], {'type': bufferContents.encodingType})
-          await this._drawImage(
-            opaqueImageBlob, views,
-            frameWidth, frameHeight, fragmentX, fragmentY,
-            fragment.geo.width, fragment.geo.height
-          )
+          image = fragment.opaqueImageBitmap
         }
+        this._drawViews(image, views, frameWidth, frameHeight, fragmentX, fragmentY)
       }
     } else { // if (browserRtcDcBuffer.type === 'png')
-      const opaqueImageBlob = new window.Blob([bufferContents.fragments[0].opaque], {'type': bufferContents.encodingType})
-      await this._drawImage(
-        opaqueImageBlob,
-        views,
-        bufferContents.size.w, bufferContents.size.h,
-        0, 0,
-        bufferContents.size.w, bufferContents.size.h
-      )
+      this._drawViews(bufferContents.fragments[0].opaqueImageBitmap, views, bufferContents.size.w, bufferContents.size.h, 0, 0)
     }
   }
 
   /**
-   * @param {Blob}imageBlob
+   * @param {ImageBitmap|HTMLCanvasElement|HTMLImageElement}image
    * @param {Array<BrowserSurfaceView>}views
    * @param {number}frameWidth
    * @param {number}frameHeight
    * @param {number}fragmentX
    * @param {number}fragmentY
-   * @param {number}fragmentWidth
-   * @param {number}fragmentHeight
    * @private
    */
-  async _drawImage (imageBlob, views, frameWidth, frameHeight, fragmentX, fragmentY, fragmentWidth, fragmentHeight) {
-    const imageBitmap = await window.createImageBitmap(imageBlob)
+  _drawViews (image, views, frameWidth, frameHeight, fragmentX, fragmentY) {
     views.forEach((view) => {
-      view.draw(imageBitmap, frameWidth, frameHeight, fragmentX, fragmentY)
+      view.draw(image, frameWidth, frameHeight, fragmentX, fragmentY)
     })
   }
 }

@@ -288,8 +288,8 @@ export default class BrowserSurfaceView {
       return
     }
     this.transformation = this._backBufferTransformation
-    renderFrame.then(async () => {
-      await this.bufferedCanvas.swapBuffers()
+    renderFrame.then(() => {
+      this.bufferedCanvas.swapBuffers()
     })
     // update child transformations as new parent buffer is visible
     this._applyTransformationsChild(renderFrame)

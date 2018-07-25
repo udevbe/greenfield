@@ -107,7 +107,7 @@ export default class BufferedCanvas {
     // /}
   }
 
-  async swapBuffers () {
+  swapBuffers () {
     // swap canvasses
     const oldFront = this.frontContext
     this.frontContext = this.backContext
@@ -125,12 +125,7 @@ export default class BufferedCanvas {
 
     // make sure the new back canvas has the same content as the new front canvas
     if (this.frontContext.canvas.width !== 0 && this.frontContext.canvas.height !== 0) {
-      const imageBitmap = await window.createImageBitmap(
-        this.frontContext.canvas,
-        0, 0,
-        this.frontContext.canvas.width, this.frontContext.canvas.height
-      )
-      this.drawBackBuffer(imageBitmap, this.frontContext.canvas.width, this.frontContext.canvas.height, 0, 0)
+      this.drawBackBuffer(this.frontContext.canvas, this.frontContext.canvas.width, this.frontContext.canvas.height, 0, 0)
     }
   }
 

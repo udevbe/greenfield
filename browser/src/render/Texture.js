@@ -43,7 +43,7 @@ export default class Texture {
   }
 
   /**
-   * @param {HTMLImageElement}imageElement
+   * @param {ImageBitmap}imageElement
    */
   fill (imageElement) {
     const gl = this.gl

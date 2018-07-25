@@ -215,7 +215,7 @@ export default class BrowserPointer {
     if (this._cursorSurface && this._cursorSurface.implementation === browserSurface) {
       if (newState.bufferContents) {
         if (newState.bufferContents.encodingType === 'png') { // This is a dirty shortcut. We assume that pngs always come as a single buffer
-          await browserSurface.render(renderFrame, newState, true)
+          browserSurface.render(renderFrame, newState, true)
 
           const imageBlob = new window.Blob([newState.bufferContents.fragments[0].opaque], {'type': 'png'})
           window.document.body.style.cursor = `url("${window.URL.createObjectURL(imageBlob)}") ${hotspotX} ${hotspotY}, pointer`
@@ -223,7 +223,7 @@ export default class BrowserPointer {
           renderFrame.fire()
           await renderFrame
         } else {
-          await browserSurface.render(renderFrame, newState)
+          browserSurface.render(renderFrame, newState)
 
           const dataURL = this._view.bufferedCanvas.frontContext.canvas.toDataURL()
           window.document.body.style.cursor = `url("${dataURL}") ${hotspotX} ${hotspotY}, pointer`

@@ -7,7 +7,7 @@ export default class BrowserEncodedFrame {
    * @param {!ArrayBuffer}buffer
    * @return {!BrowserEncodedFrame}
    */
-  static create (buffer) {
+  static async create (buffer) {
     const dataView = new window.DataView(buffer)
     let offset = 0
 
@@ -48,9 +48,8 @@ export default class BrowserEncodedFrame {
       const alpha = new Uint8Array(buffer, offset, alphaLength)
       offset += alphaLength
 
-      encodedFragments.push(BrowserEncodedFrameFragment.create(encodingType, fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha))
+      encodedFragments.push(await BrowserEncodedFrameFragment.create(encodingType, fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha))
     }
-
     return new BrowserEncodedFrame(serial, encodingType, encodingOptions, Size.create(width, height), encodedFragments)
   }
 
@@ -88,21 +87,5 @@ export default class BrowserEncodedFrame {
      * @const
      */
     this.fragments = fragments
-  }
-
-  /**
-   * @param {!number}fragmentIndex
-   * @return {!Promise<HTMLImageElement>}
-   */
-  asOpaqueImageElement (fragmentIndex) {
-    return this.fragments[fragmentIndex].asOpaqueImageElement()
-  }
-
-  /**
-   * @param {!number}fragmentIndex
-   * @return {!Promise<HTMLImageElement>}
-   */
-  asAlphaImageElement (fragmentIndex) {
-    return this.fragments[fragmentIndex].asAlphaImageElement()
   }
 }

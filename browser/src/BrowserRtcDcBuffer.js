@@ -218,7 +218,7 @@ export default class BrowserRtcDcBuffer {
   async _onMessage (event) {
     const arrayBuffer = this._checkChunk(event.data)
     if (arrayBuffer) {
-      const browserEncodedFrame = BrowserEncodedFrame.create(arrayBuffer)
+      const browserEncodedFrame = await BrowserEncodedFrame.create(arrayBuffer)
       if (this.resource) {
         this.resource.ack(browserEncodedFrame.serial)
       }
