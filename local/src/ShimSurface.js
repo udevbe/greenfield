@@ -122,6 +122,11 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
      * @private
      */
     this._commitDuration = 0
+    /**
+     * @type {boolean}
+     * @private
+     */
+    this._destroyed = false
   }
 
   /**
@@ -132,6 +137,11 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     resource.destroy()
     this.localRtcDcBuffer.destroy()
     this.localRtcDcBuffer = null
+    this._destroyed = true
+  }
+
+  get destroyed () {
+    return this._destroyed
   }
 
   /**
@@ -304,16 +314,16 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
       const frame = await this._encodeBuffer(buffer, synSerial, surfaceDamage)
       buffer.release()
-
+      // surface might have been destroyed while we were busy encoding.
+      if (this.destroyed) {
+        return
+      }
       // console.log('committing', synSerial)
       this.proxy.commit()
       await this.sendFrame(frame)
     } else {
       this.proxy.commit()
     }
-
-    // FIXME because the commit method is async, the surface can be destroyed while it is busy. Leading to certain
-    // resources like frame callback to be destroyed but still called after this commit finishes.
   }
 
   _resetPendingState () {
