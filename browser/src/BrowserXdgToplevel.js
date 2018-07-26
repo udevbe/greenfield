@@ -208,7 +208,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
       this._unmap()
     }
 
-    browserSurface.render(renderFrame, newState)
+    await browserSurface.render(renderFrame, newState)
     renderFrame.fire()
     await renderFrame
     this._browserSession.flush()
@@ -241,7 +241,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
 
     if (newSurfaceWidth > roleState.configureState.width || newSurfaceHeight > roleState.configureState.height) {
       // TODO raise protocol error
-      throw new Error('TODO protocol error')
+      // throw new Error('TODO protocol error')
     }
     const {w: oldSurfaceWidth, h: oldSurfaceHeight} = this.browserXdgSurface.windowGeometry.size
 
@@ -290,7 +290,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
 
     if (newSurfaceWidth !== roleState.configureState.width || newSurfaceHeight !== roleState.configureState.height) {
       // TODO raise protocol error
-      throw new Error('TODO protocol error')
+      // throw new Error('TODO protocol error')
     }
 
     if (!this._previousGeometry) {
@@ -320,7 +320,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
     const {x: newSurfaceWidth, y: newSurfaceHeight} = browserSurface.toSurfaceSpace(Point.create(bufferSize.w, bufferSize.h))
     if (newSurfaceWidth > this._configureState.width || newSurfaceHeight > this._configureState.height) {
       // TODO raise protocol error
-      return
+      // return
     }
 
     if (!this._unfullscreenConfigureState) {
@@ -852,7 +852,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
   setMaxSize (resource, width, height) {
     if (width < 0 || height < 0 || width < this._minSize.x || height < this._minSize.y) {
       // TODO raise protocol error
-      return
+      // return
     }
     this._pendingMaxSize = Point.create(
       width === 0 ? Number.MAX_SAFE_INTEGER : width,
@@ -908,7 +908,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
   setMinSize (resource, width, height) {
     if (width < 0 || height < 0 || width > this._maxSize.x || height > this._maxSize.y) {
       // TODO raise protocol error
-      return
+      // return
     }
     this._pendingMinSize = Point.create(width, height)
   }

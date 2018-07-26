@@ -87,7 +87,7 @@ export default class Renderer {
    * @param {BrowserSurface}browserSurface
    * @param {{bufferContents: BrowserEncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    */
-  renderBackBuffer (browserSurface, newState) {
+  async renderBackBuffer (browserSurface, newState) {
     const views = browserSurface.browserSurfaceViews
     const bufferContents = newState.bufferContents
 
@@ -97,9 +97,9 @@ export default class Renderer {
         viewState = ViewState.create(this.gl)
         browserSurface.renderState = viewState
       }
-      this._draw(bufferContents, viewState, views)
+      await this._draw(bufferContents, viewState, views)
     } else {
-      this._drawViews(this._emptyImage, views, 0, 0, 0, 0)
+      await this._drawViews(this._emptyImage, views, 0, 0, 0, 0)
     }
   }
 
@@ -109,8 +109,8 @@ export default class Renderer {
    * @param {Array<BrowserSurfaceView>}views
    * @private
    */
-  _draw (bufferContents, viewState, views) {
-    if (bufferContents.encodingType === 'jpeg') {
+  async _draw (bufferContents, viewState, views) {
+    if (bufferContents.encodingType === 'image/jpeg') {
       for (let i = 0; i < bufferContents.fragments.length; i++) {
         const fragment = bufferContents.fragments[i]
         const {w: frameWidth, h: frameHeight} = bufferContents.size
@@ -118,7 +118,7 @@ export default class Renderer {
 
         let image = null
         if (fragment.alpha.length) {
-          viewState.updateFragment(fragment)
+          await viewState.updateFragment(fragment)
           if (this.canvas.width !== fragment.geo.width) {
             this.canvas.width = fragment.geo.width
           }
@@ -129,14 +129,14 @@ export default class Renderer {
           this.jpegAlphaSurfaceShader.use()
           this.jpegAlphaSurfaceShader.draw(viewState.opaqueTexture, viewState.alphaTexture, fragment.geo)
           // blit rendered texture from render canvas into view canvasses
-          image = this.canvas
+          image = await window.createImageBitmap(this.canvas)
         } else {
-          image = fragment.opaqueImageBitmap
+          image = await fragment.opaqueImageBitmap
         }
-        this._drawViews(image, views, frameWidth, frameHeight, fragmentX, fragmentY)
+        await this._drawViews(image, views, frameWidth, frameHeight, fragmentX, fragmentY)
       }
     } else { // if (browserRtcDcBuffer.type === 'png')
-      this._drawViews(bufferContents.fragments[0].opaqueImageBitmap, views, bufferContents.size.w, bufferContents.size.h, 0, 0)
+      await this._drawViews(await bufferContents.fragments[0].opaqueImageBitmap, views, bufferContents.size.w, bufferContents.size.h, 0, 0)
     }
   }
 
@@ -149,10 +149,10 @@ export default class Renderer {
    * @param {number}fragmentY
    * @private
    */
-  _drawViews (image, views, frameWidth, frameHeight, fragmentX, fragmentY) {
-    views.forEach((view) => {
-      view.draw(image, frameWidth, frameHeight, fragmentX, fragmentY)
-    })
+  async _drawViews (image, views, frameWidth, frameHeight, fragmentX, fragmentY) {
+    await Promise.all(views.map(async (view) => {
+      await view.draw(image, frameWidth, frameHeight, fragmentX, fragmentY)
+    }))
   }
 }
 /**

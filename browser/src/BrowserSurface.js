@@ -879,7 +879,7 @@ export default class BrowserSurface {
    * @param {{bufferContents: BrowserEncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @param {boolean=}skipDraw
    */
-  render (renderFrame, newState, skipDraw) {
+  async render (renderFrame, newState, skipDraw) {
     if (skipDraw == null) {
       skipDraw = false
     }
@@ -910,7 +910,7 @@ export default class BrowserSurface {
     }
 
     if (!skipDraw) {
-      this.renderer.renderBackBuffer(this, newState)
+      await this.renderer.renderBackBuffer(this, newState)
     }
 
     const {w: oldWidth, h: oldHeight} = this.size

@@ -259,25 +259,13 @@ export default class BrowserSurfaceView {
    * @param {number}fragmentX
    * @param {number}fragmentY
    */
-  draw (image, frameWidth, frameHeight, fragmentX, fragmentY) {
+  async draw (image, frameWidth, frameHeight, fragmentX, fragmentY) {
     if (this.destroyed) {
       return
     }
-    this._draw(image, frameWidth, frameHeight, fragmentX, fragmentY)
-  }
-
-  /**
-   * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap}imageBitmap
-   * @param {number}frameWidth
-   * @param {number}frameHeight
-   * @param {number}fragmentX
-   * @param {number}fragmentY
-   * @private
-   */
-  _draw (imageBitmap, frameWidth, frameHeight, fragmentX, fragmentY) {
     // FIXME adjust final transformation with additional transformations defined in the browser surface
     this._applyTransformationsBackBuffer()
-    this.bufferedCanvas.drawBackBuffer(imageBitmap, frameWidth, frameHeight, fragmentX, fragmentY)
+    await this.bufferedCanvas.drawBackBuffer(image, frameWidth, frameHeight, fragmentX, fragmentY)
   }
 
   /**

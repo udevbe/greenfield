@@ -6,15 +6,15 @@ module.exports = {
    * @type {string}
    * @const
    */
-  0: 'h264',
+  0: 'video/h264',
   /**
    * @type {string}
    * @const
    */
-  1: 'png',
+  1: 'image/png',
   /**
    * @type {string}
    * @const
    */
-  2: 'jpeg'
+  2: 'image/jpeg'
 }

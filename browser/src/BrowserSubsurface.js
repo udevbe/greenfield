@@ -168,7 +168,7 @@ export default class BrowserSubsurface {
         // TODO if we throw away cached state, we need to free the pixman regions in it
         this._cachedState = null
       }
-      browserSurface.render(renderFrame, newState)
+      await browserSurface.render(renderFrame, newState)
       renderFrame.fire()
       await renderFrame
       browserSurface.browserSession.flush()

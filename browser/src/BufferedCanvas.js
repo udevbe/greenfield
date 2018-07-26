@@ -68,6 +68,11 @@ export default class BufferedCanvas {
      * @type {BrowserSurfaceView}
      */
     this.view = null
+    /**
+     * @type {?Promise<void>}
+     * @private
+     */
+    this._backBufferSync = null
   }
 
   /**
@@ -77,7 +82,11 @@ export default class BufferedCanvas {
    * @param {number}fragmentX
    * @param {number}fragmentY
    */
-  drawBackBuffer (image, frameWidth, frameHeight, fragmentX, fragmentY) {
+  async drawBackBuffer (image, frameWidth, frameHeight, fragmentX, fragmentY) {
+    if (this._backBufferSync) {
+      await this._backBufferSync
+      this._backBufferSync = null
+    }
     this._draw(this.backContext, image, frameWidth, frameHeight, fragmentX, fragmentY)
   }
 
@@ -93,18 +102,20 @@ export default class BufferedCanvas {
   _draw (context2d, image, frameWidth, frameHeight, fragmentX, fragmentY) {
     // TODO use ImageBitmapRenderingContext.transferFromImageBitmap()
     const canvas = context2d.canvas
+
+    let canvasCleared = false
     if (canvas.width !== frameWidth || canvas.height !== frameHeight) {
       // resizing clears the canvas
       console.log('resizing back canvas')
       canvas.width = frameWidth
       canvas.height = frameHeight
+      canvasCleared = true
     }
-    // if (image instanceof window.ImageData) {
-    //   context2d.putImageData(image, fragmentX, fragmentY)
-    // } else if (image instanceof window.HTMLImageElement) {
-    context2d.clearRect(fragmentX, fragmentY, image.width, image.height)
+
+    if (!canvasCleared) {
+      context2d.clearRect(fragmentX, fragmentY, image.width, image.height)
+    }
     context2d.drawImage(image, fragmentX, fragmentY)
-    // /}
   }
 
   swapBuffers () {
@@ -125,8 +136,13 @@ export default class BufferedCanvas {
 
     // make sure the new back canvas has the same content as the new front canvas
     if (this.frontContext.canvas.width !== 0 && this.frontContext.canvas.height !== 0) {
-      this.drawBackBuffer(this.frontContext.canvas, this.frontContext.canvas.width, this.frontContext.canvas.height, 0, 0)
+      this._backBufferSync = this._syncBackBuffer()
     }
+  }
+
+  async _syncBackBuffer () {
+    const frontCanvasImageBitmap = await window.createImageBitmap(this.frontContext.canvas)
+    this._draw(this.backContext, frontCanvasImageBitmap, this.frontContext.canvas.width, this.frontContext.canvas.height, 0, 0)
   }
 
   /**

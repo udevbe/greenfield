@@ -242,7 +242,7 @@ export default class BrowserXdgPopup extends BrowserSurfaceRole {
       this._dismiss()
     }
 
-    browserSurface.render(renderFrame, newState)
+    await browserSurface.render(renderFrame, newState)
     renderFrame.fire()
     await renderFrame
     this._browserSession.flush()

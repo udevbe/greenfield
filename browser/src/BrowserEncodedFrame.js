@@ -7,7 +7,7 @@ export default class BrowserEncodedFrame {
    * @param {!ArrayBuffer}buffer
    * @return {!BrowserEncodedFrame}
    */
-  static async create (buffer) {
+  static create (buffer) {
     const dataView = new window.DataView(buffer)
     let offset = 0
 
@@ -48,7 +48,7 @@ export default class BrowserEncodedFrame {
       const alpha = new Uint8Array(buffer, offset, alphaLength)
       offset += alphaLength
 
-      encodedFragments.push(await BrowserEncodedFrameFragment.create(encodingType, fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha))
+      encodedFragments.push(BrowserEncodedFrameFragment.create(encodingType, fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha))
     }
     return new BrowserEncodedFrame(serial, encodingType, encodingOptions, Size.create(width, height), encodedFragments)
   }

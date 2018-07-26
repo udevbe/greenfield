@@ -216,14 +216,18 @@ export default class BrowserRtcDcBuffer {
    * @private
    */
   async _onMessage (event) {
-    const arrayBuffer = this._checkChunk(event.data)
-    if (arrayBuffer) {
-      const browserEncodedFrame = await BrowserEncodedFrame.create(arrayBuffer)
-      if (this.resource) {
-        this.resource.ack(browserEncodedFrame.serial)
-      }
-      await this._checkBufferState(browserEncodedFrame)
-    } // else we haven't received the full frame yet.
+    try {
+      const arrayBuffer = this._checkChunk(event.data)
+      if (arrayBuffer) {
+        const browserEncodedFrame = BrowserEncodedFrame.create(arrayBuffer)
+        if (this.resource) {
+          this.resource.ack(browserEncodedFrame.serial)
+        }
+        await this._checkBufferState(browserEncodedFrame)
+      } // else we haven't received the full frame yet.
+    } catch (e) {
+      console.error(e)
+    }
   }
 
   /**

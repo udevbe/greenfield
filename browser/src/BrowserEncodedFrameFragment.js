@@ -11,13 +11,13 @@ export default class BrowserEncodedFrameFragment {
    * @param {!Uint8Array}alpha
    * @return {!BrowserEncodedFrameFragment}
    */
-  static async create (encodingType, fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha) {
+  static create (encodingType, fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha) {
     const geo = Rect.create(fragmentX, fragmentY, fragmentX + fragmentWidth, fragmentY + fragmentHeight)
 
     const opaqueImageBlob = new window.Blob([opaque], {'type': encodingType})
-    const opaqueImageBitmap = await window.createImageBitmap(opaqueImageBlob, 0, 0, fragmentWidth, fragmentHeight)
+    const opaqueImageBitmap = window.createImageBitmap(opaqueImageBlob, 0, 0, fragmentWidth, fragmentHeight)
 
-    const alphaImageBitmap = alpha.length ? await window.createImageBitmap(new window.Blob([alpha], {'type': encodingType}), 0, 0, fragmentWidth, fragmentHeight) : null
+    const alphaImageBitmap = alpha.length ? window.createImageBitmap(new window.Blob([alpha], {'type': encodingType}), 0, 0, fragmentWidth, fragmentHeight) : null
 
     return new BrowserEncodedFrameFragment(encodingType, geo, opaque, alpha, opaqueImageBitmap, alphaImageBitmap)
   }
@@ -27,8 +27,8 @@ export default class BrowserEncodedFrameFragment {
    * @param {!Rect}geo
    * @param {!Uint8Array}opaque
    * @param {!Uint8Array}alpha
-   * @param {!ImageBitmap}opaqueImageBitmap
-   * @param {?ImageBitmap}alphaImageBitmap
+   * @param {!Promise<ImageBitmap>}opaqueImageBitmap
+   * @param {?Promise<ImageBitmap>}alphaImageBitmap
    * @private
    */
   constructor (encodingType, geo, opaque, alpha, opaqueImageBitmap, alphaImageBitmap) {
@@ -53,14 +53,12 @@ export default class BrowserEncodedFrameFragment {
      */
     this.alpha = alpha
     /**
-     * @type {!ImageBitmap}
+     * @type {!Promise<ImageBitmap>}
      */
     this.opaqueImageBitmap = opaqueImageBitmap
     /**
-     * @type {?ImageBitmap}
+     * @type {?Promise<ImageBitmap>}
      */
     this.alphaImageBitmap = alphaImageBitmap
   }
-
-  // TODO add jpeg webgl decoding
 }

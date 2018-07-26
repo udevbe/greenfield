@@ -141,7 +141,7 @@ export default class BrowserShellSurface {
       }
     }
 
-    browserSurface.render(renderFrame, newState)
+    await browserSurface.render(renderFrame, newState)
     renderFrame.fire()
     await renderFrame
     this.browserSession.flush()
