@@ -120,7 +120,6 @@ export default class Renderer {
 
       for (let i = 0; i < bufferContents.fragments.length; i++) {
         const fragment = bufferContents.fragments[i]
-        // if (fragment.alpha.length) {
         await viewState.updateFragment(bufferContents.size, fragment)
 
         this.jpegAlphaSurfaceShader.use()

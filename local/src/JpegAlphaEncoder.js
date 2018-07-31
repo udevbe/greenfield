@@ -27,7 +27,7 @@ class JpegAlphaEncoder {
   static create (width, height, wlShmFormat) {
     const gstBufferFormat = gstFormats[wlShmFormat]
     const pipeline = new gstreamer.Pipeline(
-      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! 
+      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=0/1 ! 
 
       tee name=t ! queue ! 
       glupload ! 
@@ -48,14 +48,16 @@ class JpegAlphaEncoder {
           gl_FragColor = vec4(pix.a,pix.a,pix.a,1);
         }
       " ! 
-      glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! 
+      glcolorconvert ! video/x-raw(memory:GLMemory),format=GRAY8 ! 
       gldownload ! 
-      vaapijpegenc ! 
+      jpegenc ! 
       appsink name=alphasink 
 
       t. ! queue ! 
-      vaapipostproc ! video/x-raw(memory:VASurface),format=I420 ! 
-      vaapijpegenc ! 
+      glupload ! 
+      glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! 
+      gldownload ! 
+      jpegenc ! 
       appsink name=sink`
     )
 
@@ -122,7 +124,7 @@ class JpegAlphaEncoder {
    * @private
    */
   _configure (width, height, gstBufferFormat) {
-    this._src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1`
+    this._src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=0/1`
   }
 
   /**

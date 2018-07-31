@@ -126,6 +126,9 @@ class ShimSurface extends WlSurfaceRequests {
      * @private
      */
     this._destroyed = false
+
+    this._total = 0
+    this._count = 0
   }
 
   /**
@@ -323,7 +326,10 @@ class ShimSurface extends WlSurfaceRequests {
     } else {
       this.proxy.commit()
     }
-    console.log('commit took', Date.now() - start)
+
+    this._total += (Date.now() - start)
+    this._count++
+    console.log('commit avg', this._total / this._count)
   }
 
   _resetPendingState () {

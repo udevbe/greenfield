@@ -308,6 +308,10 @@ export default class BrowserSurface {
      */
     this.size = Size.create(0, 0)
     // <- derived states above
+
+    this._count = 0
+    this._total = 0
+    this._start = 0
   }
 
   /**
@@ -855,6 +859,7 @@ export default class BrowserSurface {
    *
    */
   async commit (resource) {
+    this._start = Date.now()
     if (this.pendingGrBuffer) {
       this.pendingGrBuffer.removeDestroyListener(this.pendingBrowserBufferDestroyListener)
     }
@@ -929,6 +934,10 @@ export default class BrowserSurface {
     this.browserSurfaceViews.forEach(browserSurfaceView => {
       browserSurfaceView.swapBuffers(renderFrame)
     })
+
+    this._total += (Date.now() - this._start)
+    this._count++
+    console.log('commit avg', this._total / this._count)
   }
 
   /**
