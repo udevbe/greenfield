@@ -127,6 +127,9 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
      * @private
      */
     this._destroyed = false
+
+    this._total = 0
+    this._count = 0
   }
 
   /**
@@ -290,7 +293,6 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     const dataChannel = await this.localRtcDcBuffer.localRtcBlobTransfer.open()
     const frameBuffer = frame.toBuffer()
     const bufferChunks = this._toBufferChunks(frameBuffer, frame.serial)
-    // console.log('sending buffer', frame.serial)
     bufferChunks.forEach((chunk) => {
       dataChannel.send(chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength))
     })
@@ -301,6 +303,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
    * @return {Promise<void>}
    */
   async commit (resource) {
+    const start = Date.now()
     // copy state to local variables
     this._synSerial++
     const synSerial = this._synSerial
@@ -310,7 +313,6 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
 
     if (buffer) {
       buffer.removeDestroyListener(this._pendingBufferDestroyListener)
-      // console.log('sending sync serial', synSerial)
       this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
       const frame = await this._encodeBuffer(buffer, synSerial, surfaceDamage)
       buffer.release()
@@ -318,12 +320,15 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
       if (this.destroyed) {
         return
       }
-      // console.log('committing', synSerial)
       this.proxy.commit()
       await this.sendFrame(frame)
     } else {
       this.proxy.commit()
     }
+
+    this._total += (Date.now() - start)
+    this._count++
+    console.log('commit avg', this._total / this._count)
   }
 
   _resetPendingState () {
