@@ -1,48 +1,56 @@
 'use strict'
 
 import Texture from './Texture'
+import Size from '../Size'
 
 export default class ViewState {
   /**
-   * @param {WebGLRenderingContext}gl
-   * @returns {ViewState}
+   * @param {!WebGLRenderingContext}gl
+   * @returns {!ViewState}
    */
   static create (gl) {
-    const opaqueTexture = Texture.create(gl, gl.RGBA)
-    const alphaTexture = Texture.create(gl, gl.RGBA)
-    const image = new window.Image()
-    return new ViewState(gl, opaqueTexture, alphaTexture, image)
+    return new ViewState(gl)
   }
 
   /**
    * Use ViewState.create(..) instead.
-   * @param {WebGLRenderingContext}gl
-   * @param {Texture}opaqueTexture
-   * @param {Texture}alphaTexture
-   * @param {HTMLImageElement}image
+   * @param {!WebGLRenderingContext}gl
    * @private
    */
-  constructor (gl, opaqueTexture, alphaTexture, image) {
+  constructor (gl) {
     /**
-     * @type {Texture}
-     */
-    this.opaqueTexture = opaqueTexture
-    /**
-     * @type {Texture}
-     */
-    this.alphaTexture = alphaTexture
-    /**
-     * @type {WebGLRenderingContext}
+     * @type {!WebGLRenderingContext}
      */
     this.gl = gl
+    /**
+     * @type {!Texture}
+     */
+    this.opaqueTexture = Texture.create(this.gl, this.gl.RGBA)
+    /**
+     * @type {!Texture}
+     */
+    this.alphaTexture = Texture.create(this.gl, this.gl.RGBA)
+    /**
+     * @type {!Size}
+     * @private
+     */
+    this._size = Size.create(0, 0)
   }
 
   /**
-   * @param {BrowserEncodedFrameFragment}fragment
+   * @param {!BrowserEncodedFrameFragment}fragment
    */
-  async updateFragment (fragment) {
-    this.opaqueTexture.fill(await fragment.opaqueImageBitmap)
-    this.alphaTexture.fill(await fragment.alphaImageBitmap)
+  async updateFragment (frameSize, fragment) {
+    const opaqueImageBitmap = await fragment.opaqueImageBitmap
+    const alphaImageBitmap = await fragment.alphaImageBitmap
+    if (this._size.w !== frameSize.w || this._size.h !== frameSize.h) {
+      this.opaqueTexture.image2d(opaqueImageBitmap)
+      this.alphaTexture.image2d(alphaImageBitmap)
+      this._size = frameSize
+    } else {
+      this.opaqueTexture.subimage2d(opaqueImageBitmap, fragment.geo)
+      this.alphaTexture.subimage2d(alphaImageBitmap, fragment.geo)
+    }
   }
 
   // TODO handle state destruction

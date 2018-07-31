@@ -104,40 +104,42 @@ export default class JpegAlphaSurfaceShader {
   }
 
   /**
-   * @param {Texture}textureOpaque
-   * @param {Texture}textureAlpha
-   * @param {Rect}fragmentRect
+   * @param {!Texture}textureOpaque
+   * @param {!Texture}textureAlpha
+   * @param {!Size}viewportSize
+   * @param {!boolean}canvasSizeChanged
    */
-  draw (textureOpaque, textureAlpha, fragmentRect) {
-    const fragmentSize = fragmentRect.size
+  draw (textureOpaque, textureAlpha, viewportSize, canvasSizeChanged) {
+    const {w, h} = viewportSize
     const gl = this.gl
     this._setTexture(textureOpaque, textureAlpha)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
-    gl.viewport(0, 0, fragmentSize.w, fragmentSize.h)
-    this.program.setUniformM4(this.shaderArgs.u_projection, [
-      2.0 / fragmentSize.w, 0, 0, 0,
-      0, 2.0 / -fragmentSize.h, 0, 0,
-      0, 0, 1, 0,
-      -1, 1, 0, 1
-    ])
-    gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
-    gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
-      // top left:
-      0, 0, 0, 0,
-      // top right:
-      fragmentSize.w, 0, 1, 0,
-      // bottom right:
-      fragmentSize.w, fragmentSize.h, 1, 1,
-      // bottom right:
-      fragmentSize.w, fragmentSize.h, 1, 1,
-      // bottom left:
-      0, fragmentSize.h, 0, 1,
-      // top left:
-      0, 0, 0, 0
-    ]), this.gl.DYNAMIC_DRAW)
-    gl.vertexAttribPointer(this.shaderArgs.a_position, 2, gl.FLOAT, false, 16, 0)
-    gl.vertexAttribPointer(this.shaderArgs.a_texCoord, 2, gl.FLOAT, false, 16, 8)
+    if (canvasSizeChanged) {
+      gl.viewport(0, 0, w, h)
+      this.program.setUniformM4(this.shaderArgs.u_projection, [
+        2.0 / w, 0, 0, 0,
+        0, 2.0 / -h, 0, 0,
+        0, 0, 1, 0,
+        -1, 1, 0, 1
+      ])
+      gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
+      gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
+        // top left:
+        0, 0, 0, 0,
+        // top right:
+        w, 0, 1, 0,
+        // bottom right:
+        w, h, 1, 1,
+        // bottom right:
+        w, h, 1, 1,
+        // bottom left:
+        0, h, 0, 1,
+        // top left:
+        0, 0, 0, 0
+      ]), this.gl.DYNAMIC_DRAW)
+      gl.vertexAttribPointer(this.shaderArgs.a_position, 2, gl.FLOAT, false, 16, 0)
+      gl.vertexAttribPointer(this.shaderArgs.a_texCoord, 2, gl.FLOAT, false, 16, 8)
+    }
 
     gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 6)
     gl.bindTexture(gl.TEXTURE_2D, null)

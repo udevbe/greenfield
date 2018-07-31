@@ -5,9 +5,9 @@
  */
 export default class Texture {
   /**
-   * @param {WebGLRenderingContext}gl
-   * @param {number}format
-   * @return {Texture}
+   * @param {!WebGLRenderingContext}gl
+   * @param {!number}format
+   * @return {!Texture}
    */
   static create (gl, format) {
     const texture = gl.createTexture()
@@ -43,9 +43,21 @@ export default class Texture {
   }
 
   /**
-   * @param {ImageBitmap}imageElement
+   * @param {!ImageBitmap}imageElement
+   * @param {!Rect}geo
    */
-  fill (imageElement) {
+  subimage2d (imageElement, geo) {
+    const gl = this.gl
+
+    gl.bindTexture(gl.TEXTURE_2D, this.texture)
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, geo.x0, geo.y0, this.format, gl.UNSIGNED_BYTE, imageElement)
+    gl.bindTexture(gl.TEXTURE_2D, null)
+  }
+
+  /**
+   * @param {!ImageBitmap}imageElement
+   */
+  image2d (imageElement) {
     const gl = this.gl
 
     gl.bindTexture(gl.TEXTURE_2D, this.texture)

@@ -20,18 +20,20 @@ export default class BufferedCanvas {
     frontCanvas.height = height
     frontCanvas.style.display = 'inline'
     frontCanvas.style.zIndex = '0'
-    const frontContext = frontCanvas.getContext('2d')
-    frontContext.imageSmoothingEnabled = false
-    frontContext.globalCompositeOperation = 'source-over'
+    const frontContext = frontCanvas.getContext('bitmaprenderer')
+    if (!frontContext.canvas) {
+      frontContext.canvas = frontCanvas
+    }
 
     const backCanvas = document.createElement('canvas')
     backCanvas.width = width
     backCanvas.height = height
     backCanvas.style.display = 'none'
     backCanvas.style.zIndex = '0'
-    const backContext = backCanvas.getContext('2d')
-    backContext.imageSmoothingEnabled = false
-    backContext.globalCompositeOperation = 'source-over'
+    const backContext = backCanvas.getContext('bitmaprenderer')
+    if (!backContext.canvas) {
+      backContext.canvas = backCanvas
+    }
 
     const containerDiv = document.createElement('div')
     containerDiv.style.display = 'contents'
@@ -42,17 +44,17 @@ export default class BufferedCanvas {
   }
 
   /**
-   * @param {CanvasRenderingContext2D}frontContext
-   * @param {CanvasRenderingContext2D}backContext
+   * @param {ImageBitmapRenderingContext}frontContext
+   * @param {ImageBitmapRenderingContext}backContext
    * @param {HTMLDivElement}containerDiv
    */
   constructor (frontContext, backContext, containerDiv) {
     /**
-     * @type {CanvasRenderingContext2D}
+     * @type {ImageBitmapRenderingContext}
      */
     this.frontContext = frontContext
     /**
-     * @type {CanvasRenderingContext2D}
+     * @type {ImageBitmapRenderingContext}
      */
     this.backContext = backContext
     /**
@@ -76,46 +78,33 @@ export default class BufferedCanvas {
   }
 
   /**
-   * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap}image
-   * @param {number}frameWidth
-   * @param {number}frameHeight
-   * @param {number}fragmentX
-   * @param {number}fragmentY
+   * @param {ImageBitmap}image
    */
-  async drawBackBuffer (image, frameWidth, frameHeight, fragmentX, fragmentY) {
+  async drawBackBuffer (image) {
     if (this._backBufferSync) {
       await this._backBufferSync
       this._backBufferSync = null
     }
-    this._draw(this.backContext, image, frameWidth, frameHeight, fragmentX, fragmentY)
+    this._draw(this.backContext, image)
   }
 
   /**
-   * @param {CanvasRenderingContext2D} context2d
-   * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap}image
-   * @param {number}frameWidth
-   * @param {number}frameHeight
-   * @param {number}fragmentX
-   * @param {number}fragmentY
+   * @param {ImageBitmapRenderingContext} context2d
+   * @param {ImageBitmap}image
    * @private
    */
-  _draw (context2d, image, frameWidth, frameHeight, fragmentX, fragmentY) {
+  _draw (context2d, image) {
     // TODO use ImageBitmapRenderingContext.transferFromImageBitmap()
     const canvas = context2d.canvas
 
-    let canvasCleared = false
-    if (canvas.width !== frameWidth || canvas.height !== frameHeight) {
+    if (canvas.width !== image.width || canvas.height !== image.height) {
       // resizing clears the canvas
       console.log('resizing back canvas')
-      canvas.width = frameWidth
-      canvas.height = frameHeight
-      canvasCleared = true
+      canvas.width = image.width
+      canvas.height = image.height
     }
 
-    if (!canvasCleared) {
-      context2d.clearRect(fragmentX, fragmentY, image.width, image.height)
-    }
-    context2d.drawImage(image, fragmentX, fragmentY)
+    context2d.transferFromImageBitmap(image)
   }
 
   swapBuffers () {
@@ -133,16 +122,6 @@ export default class BufferedCanvas {
     this.containerDiv.style.transform = this.frontContext.canvas.style.transform
     this.frontContext.canvas.style.transform = 'inherit'
     this.backContext.canvas.style.transform = this.containerDiv.style.transform
-
-    // make sure the new back canvas has the same content as the new front canvas
-    if (this.frontContext.canvas.width !== 0 && this.frontContext.canvas.height !== 0) {
-      this._backBufferSync = this._syncBackBuffer()
-    }
-  }
-
-  async _syncBackBuffer () {
-    const frontCanvasImageBitmap = await window.createImageBitmap(this.frontContext.canvas)
-    this._draw(this.backContext, frontCanvasImageBitmap, this.frontContext.canvas.width, this.frontContext.canvas.height, 0, 0)
   }
 
   /**

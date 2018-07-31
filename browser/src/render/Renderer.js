@@ -75,12 +75,6 @@ export default class Renderer {
      * @type {HTMLCanvasElement}
      */
     this.canvas = canvas
-    /**
-     * @type {HTMLImageElement}
-     * @private
-     */
-    this._emptyImage = new window.Image(0, 0)
-    this._emptyImage.src = '//:0'
   }
 
   /**
@@ -99,7 +93,12 @@ export default class Renderer {
       }
       await this._draw(bufferContents, viewState, views)
     } else {
-      await this._drawViews(this._emptyImage, views, 0, 0, 0, 0)
+      const emptyImage = new window.Image(0, 0)
+      emptyImage.onload = async () => {
+        const image = await window.createImageBitmap(this.canvas)
+        await this._drawViews(image, views)
+      }
+      emptyImage.src = '//:0'
     }
   }
 
@@ -110,48 +109,38 @@ export default class Renderer {
    * @private
    */
   async _draw (bufferContents, viewState, views) {
+    const {w: frameWidth, h: frameHeight} = bufferContents.size
+
     if (bufferContents.encodingType === 'image/jpeg') {
+      const canvasSizeChanged = (this.canvas.width !== frameWidth) || (this.canvas.height !== frameHeight)
+      if (canvasSizeChanged) {
+        this.canvas.width = frameWidth
+        this.canvas.height = frameHeight
+      }
+
       for (let i = 0; i < bufferContents.fragments.length; i++) {
         const fragment = bufferContents.fragments[i]
-        const {w: frameWidth, h: frameHeight} = bufferContents.size
-        const {x0: fragmentX, y0: fragmentY} = fragment.geo
+        // if (fragment.alpha.length) {
+        await viewState.updateFragment(bufferContents.size, fragment)
 
-        let image = null
-        if (fragment.alpha.length) {
-          await viewState.updateFragment(fragment)
-          if (this.canvas.width !== fragment.geo.width) {
-            this.canvas.width = fragment.geo.width
-          }
-          if (this.canvas.height !== fragment.geo.height) {
-            this.canvas.height = fragment.geo.height
-          }
-
-          this.jpegAlphaSurfaceShader.use()
-          this.jpegAlphaSurfaceShader.draw(viewState.opaqueTexture, viewState.alphaTexture, fragment.geo)
-          // blit rendered texture from render canvas into view canvasses
-          image = await window.createImageBitmap(this.canvas)
-        } else {
-          image = await fragment.opaqueImageBitmap
-        }
-        await this._drawViews(image, views, frameWidth, frameHeight, fragmentX, fragmentY)
+        this.jpegAlphaSurfaceShader.use()
+        this.jpegAlphaSurfaceShader.draw(viewState.opaqueTexture, viewState.alphaTexture, bufferContents.size, canvasSizeChanged)
       }
+      const image = await window.createImageBitmap(this.canvas)
+      await this._drawViews(image, views)
     } else { // if (browserRtcDcBuffer.type === 'png')
-      await this._drawViews(await bufferContents.fragments[0].opaqueImageBitmap, views, bufferContents.size.w, bufferContents.size.h, 0, 0)
+      await this._drawViews(await bufferContents.fragments[0].opaqueImageBitmap, views)
     }
   }
 
   /**
    * @param {ImageBitmap|HTMLCanvasElement|HTMLImageElement}image
    * @param {Array<BrowserSurfaceView>}views
-   * @param {number}frameWidth
-   * @param {number}frameHeight
-   * @param {number}fragmentX
-   * @param {number}fragmentY
    * @private
    */
-  async _drawViews (image, views, frameWidth, frameHeight, fragmentX, fragmentY) {
+  async _drawViews (image, views) {
     await Promise.all(views.map(async (view) => {
-      await view.draw(image, frameWidth, frameHeight, fragmentX, fragmentY)
+      await view.draw(image)
     }))
   }
 }
