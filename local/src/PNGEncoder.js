@@ -6,6 +6,7 @@ const WlShmFormat = require('./protocol/wayland/WlShmFormat')
 
 const EncodedFrame = require('./EncodedFrame')
 const EncodedFrameFragment = require('./EncodedFrameFragment')
+const EncodingOptions = require('./EncodingOptions')
 const {png} = require('./EncodingTypes')
 
 const gstFormats = {
@@ -140,20 +141,13 @@ class PNGEncoder {
    * @param {number}bufferWidth
    * @param {number}bufferHeight
    * @param {number}serial
-   * @param {Array<{x:number, y:number, width:number, height:number}>}damage
    * @return {Promise<EncodedFrame>}
    * @override
    */
-  async encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial, damage) {
-    if (damage.length) {
-      const encodedFrameFragments = await Promise.all(damage.map(damageRect => {
-        return this._encodeFragment(pixelBuffer, wlShmFormat, damageRect.x, damageRect.y, damageRect.width, damageRect.height)
-      }))
-      return EncodedFrame.create(serial, png, bufferWidth, bufferHeight, encodedFrameFragments)
-    } else {
-      const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)
-      return EncodedFrame.create(serial, png, bufferWidth, bufferHeight, [encodedFrameFragment])
-    }
+  async encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial) {
+    const encodingOptions = EncodingOptions.fullFrame(0)
+    const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)
+    return EncodedFrame.create(serial, png, encodingOptions, bufferWidth, bufferHeight, [encodedFrameFragment])
   }
 }
 

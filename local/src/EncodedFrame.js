@@ -2,23 +2,25 @@ class EncodedFrame {
   /**
    * @param {number}serial
    * @param {number}encodingType
+   * @param {number}encodingOptions
    * @param {number}width
    * @param {number}height
    * @param {Array<EncodedFrameFragment>}fragments
    * @return {EncodedFrame}
    */
-  static create (serial, encodingType, width, height, fragments) {
-    return new EncodedFrame(serial, encodingType, width, height, fragments)
+  static create (serial, encodingType, encodingOptions, width, height, fragments) {
+    return new EncodedFrame(serial, encodingType, encodingOptions, width, height, fragments)
   }
 
   /**
    * @param {number}serial
    * @param {number}encodingType
+   * @param {number}encodingOptions
    * @param {number}width
    * @param {number}height
    * @param {Array<EncodedFrameFragment>}fragments
    */
-  constructor (serial, encodingType, width, height, fragments) {
+  constructor (serial, encodingType, encodingOptions, width, height, fragments) {
     /**
      * @type {number}
      */
@@ -28,6 +30,11 @@ class EncodedFrame {
      * @private
      */
     this._encodingType = encodingType
+    /**
+     * @type {number}
+     * @private
+     */
+    this._encodingOptions = encodingOptions
     /**
      * @type {number}
      * @private
@@ -83,7 +90,7 @@ class EncodedFrame {
     frameBuffer.writeUInt16LE(this._encodingType, offset, true)
     offset += 2
 
-    frameBuffer.writeUInt16LE(0, offset, true) // no options for now
+    frameBuffer.writeUInt16LE(this._encodingOptions, offset, true)
     offset += 2
 
     frameBuffer.writeUInt16LE(this._width, offset, true)

@@ -5,6 +5,7 @@ const WlShmFormat = require('./protocol/wayland/WlShmFormat')
 
 const EncodedFrame = require('./EncodedFrame')
 const EncodedFrameFragment = require('./EncodedFrameFragment')
+const EncodingOptions = require('./EncodingOptions')
 
 const {jpeg} = require('./EncodingTypes')
 
@@ -142,14 +143,16 @@ class JpegOpaqueEncoder {
    * @override
    */
   async encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial, damage) {
+    let encodingOptions = 0
     if (damage.length) {
       const encodedFrameFragments = await Promise.all(damage.map(damageRect => {
         return this._encodeFragment(pixelBuffer, wlShmFormat, damageRect.x, damageRect.y, damageRect.width, damageRect.height)
       }))
-      return EncodedFrame.create(serial, jpeg, bufferWidth, bufferHeight, encodedFrameFragments)
+      return EncodedFrame.create(serial, jpeg, encodingOptions, bufferWidth, bufferHeight, encodedFrameFragments)
     } else {
+      encodingOptions = EncodingOptions.fullFrame(encodingOptions)
       const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)
-      return EncodedFrame.create(serial, jpeg, bufferWidth, bufferHeight, [encodedFrameFragment])
+      return EncodedFrame.create(serial, jpeg, encodingOptions, bufferWidth, bufferHeight, [encodedFrameFragment])
     }
   }
 }

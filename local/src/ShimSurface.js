@@ -5,14 +5,13 @@ const {Shm} = require('wayland-server-bindings-runtime')
 const WlSurfaceRequests = require('./protocol/wayland/WlSurfaceRequests')
 const WlCallback = require('./protocol/wayland/WlCallback')
 const Encoder = require('./Encoder')
-const Measurement = require('./Measurement')
 
 const LocalCallback = require('./LocalCallback')
 
-module.exports = class ShimSurface extends WlSurfaceRequests {
+class ShimSurface extends WlSurfaceRequests {
   /**
    * @param {GrSurface}grSurfaceProxy
-   * @return {module.ShimSurface}
+   * @return {ShimSurface}
    */
   static create (grSurfaceProxy) {
     const rtcBufferFactory = grSurfaceProxy.connection._rtcBufferFactory
@@ -232,7 +231,7 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     const pixelBuffer = shm.getData().reinterpret(bufferWidth * bufferHeight * 4)
     const format = shm.getFormat()
 
-    const bufferDamage = surfaceDamage // TODO calculate buffer damage rectangles in native code using pixman & surface 2 buffer transformations
+    const bufferDamage = [] // TODO calculate buffer damage rectangles in native code using pixman & surface 2 buffer transformations
     return this._encoder.encodeBuffer(pixelBuffer, format, bufferWidth, bufferHeight, synSerial, bufferDamage)
   }
 
@@ -290,9 +289,10 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     //   // TODO keep sending until we received an ack
     // }, 250)
 
-    const dataChannel = await this.localRtcDcBuffer.localRtcBlobTransfer.open()
+    const dataChannelPromise = this.localRtcDcBuffer.localRtcBlobTransfer.open()
     const frameBuffer = frame.toBuffer()
     const bufferChunks = this._toBufferChunks(frameBuffer, frame.serial)
+    const dataChannel = await dataChannelPromise
     bufferChunks.forEach((chunk) => {
       dataChannel.send(chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength))
     })
@@ -313,14 +313,15 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
 
     if (buffer) {
       buffer.removeDestroyListener(this._pendingBufferDestroyListener)
-      this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
       const frame = await this._encodeBuffer(buffer, synSerial, surfaceDamage)
-      buffer.release()
       // surface might have been destroyed while we were busy encoding.
       if (this.destroyed) {
         return
       }
+      buffer.release()
+      this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
       this.proxy.commit()
+
       await this.sendFrame(frame)
     } else {
       this.proxy.commit()
@@ -372,3 +373,5 @@ module.exports = class ShimSurface extends WlSurfaceRequests {
     this.proxy.damageBuffer(x, y, width, height)
   }
 }
+
+module.exports = ShimSurface

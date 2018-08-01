@@ -309,9 +309,11 @@ export default class BrowserSurface {
     this.size = Size.create(0, 0)
     // <- derived states above
 
-    this._start = 0
-    this._total = 0
     this._count = 0
+    this._total = 0
+    this._start = 0
+    this._preRenderTotal = 0
+    this._postRenderTotal = 0
   }
 
   /**
@@ -860,6 +862,7 @@ export default class BrowserSurface {
    */
   async commit (resource) {
     this._start = Date.now()
+    this._count++
     if (this.pendingGrBuffer) {
       this.pendingGrBuffer.removeDestroyListener(this.pendingBrowserBufferDestroyListener)
     }
@@ -914,9 +917,12 @@ export default class BrowserSurface {
       })
     }
 
+    this._preRenderTotal += Date.now() - this._start
+    console.log('pre-render avg', this._preRenderTotal / this._count)
     if (!skipDraw) {
       await this.renderer.renderBackBuffer(this, newState)
     }
+    const postRenderStart = Date.now()
 
     const {w: oldWidth, h: oldHeight} = this.size
     this._updateDerivedState(newState)
@@ -935,9 +941,11 @@ export default class BrowserSurface {
       browserSurfaceView.swapBuffers(renderFrame)
     })
 
-    this._total += (Date.now() - this._start)
-    this._count++
-    console.log('commit avg', this._total / this._count)
+    const now = Date.now()
+    this._postRenderTotal += (now - postRenderStart)
+    this._total += (now - this._start)
+    console.log('post-render avg', this._postRenderTotal / this._count)
+    console.log('---> commit avg', this._total / this._count)
   }
 
   /**

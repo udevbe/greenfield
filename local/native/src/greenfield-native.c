@@ -70,8 +70,8 @@ clip(napi_env env, napi_callback_info info) {
 
 napi_value
 init(napi_env env, napi_value exports) {
-    napi_status status;
     napi_property_descriptor desc = DECLARE_NAPI_METHOD("clip", clip);
+    napi_status status;
     status = napi_define_properties(env, exports, 1, &desc);
     assert(status == napi_ok);
     return exports;

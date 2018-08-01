@@ -20,7 +20,13 @@ export default class Size {
    * @param {number} h
    */
   constructor (w, h) {
+    /**
+     * @type {number}
+     */
     this.w = w
+    /**
+     * @type {number}
+     */
     this.h = h
   }
 

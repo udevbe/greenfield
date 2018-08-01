@@ -1,4 +1,4 @@
-module.exports = class LocalRtcBlobTransfer {
+class LocalRtcBlobTransfer {
 
   /**
    *
@@ -87,3 +87,5 @@ module.exports = class LocalRtcBlobTransfer {
     this._release()
   }
 }
+
+module.exports = LocalRtcBlobTransfer
