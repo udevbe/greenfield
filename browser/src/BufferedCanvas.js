@@ -80,22 +80,18 @@ export default class BufferedCanvas {
   /**
    * @param {ImageBitmap}image
    */
-  async drawBackBuffer (image) {
-    if (this._backBufferSync) {
-      await this._backBufferSync
-      this._backBufferSync = null
-    }
+  drawBackBuffer (image) {
     this._draw(this.backContext, image)
   }
 
   /**
-   * @param {ImageBitmapRenderingContext} context2d
+   * @param {ImageBitmapRenderingContext} bitmapRenderingContext
    * @param {ImageBitmap}image
    * @private
    */
-  _draw (context2d, image) {
+  _draw (bitmapRenderingContext, image) {
     // TODO use ImageBitmapRenderingContext.transferFromImageBitmap()
-    const canvas = context2d.canvas
+    const canvas = bitmapRenderingContext.canvas
 
     if (canvas.width !== image.width || canvas.height !== image.height) {
       // resizing clears the canvas
@@ -104,7 +100,7 @@ export default class BufferedCanvas {
       canvas.height = image.height
     }
 
-    context2d.transferFromImageBitmap(image)
+    bitmapRenderingContext.transferFromImageBitmap(image)
   }
 
   swapBuffers () {

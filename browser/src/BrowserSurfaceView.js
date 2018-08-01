@@ -255,13 +255,13 @@ export default class BrowserSurfaceView {
   /**
    * @param {ImageBitmap}image
    */
-  async draw (image) {
+  draw (image) {
     if (this.destroyed) {
       return
     }
     // FIXME adjust final transformation with additional transformations defined in the browser surface
     this._applyTransformationsBackBuffer()
-    await this.bufferedCanvas.drawBackBuffer(image)
+    this.bufferedCanvas.drawBackBuffer(image)
   }
 
   /**

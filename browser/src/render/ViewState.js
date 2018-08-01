@@ -38,18 +38,29 @@ export default class ViewState {
   }
 
   /**
+   * @param {Size}frameSize
    * @param {!BrowserEncodedFrameFragment}fragment
    */
   async updateFragment (frameSize, fragment) {
-    const opaqueImageBitmap = await fragment.opaqueImageBitmap
-    const alphaImageBitmap = await fragment.alphaImageBitmap
-    if (this._size.w !== frameSize.w || this._size.h !== frameSize.h) {
-      this.opaqueTexture.image2d(opaqueImageBitmap)
-      this.alphaTexture.image2d(alphaImageBitmap)
-      this._size = frameSize
+    if (fragment.alphaImageBitmap) {
+      const opaqueImageBitmap = await fragment.opaqueImageBitmap
+      const alphaImageBitmap = await fragment.alphaImageBitmap
+      if (this._size.w !== frameSize.w || this._size.h !== frameSize.h) {
+        this.opaqueTexture.image2d(opaqueImageBitmap)
+        this.alphaTexture.image2d(alphaImageBitmap)
+        this._size = frameSize
+      } else {
+        this.opaqueTexture.subimage2d(opaqueImageBitmap, fragment.geo)
+        this.alphaTexture.subimage2d(alphaImageBitmap, fragment.geo)
+      }
     } else {
-      this.opaqueTexture.subimage2d(opaqueImageBitmap, fragment.geo)
-      this.alphaTexture.subimage2d(alphaImageBitmap, fragment.geo)
+      const opaqueImageBitmap = await fragment.opaqueImageBitmap
+      if (this._size.w !== frameSize.w || this._size.h !== frameSize.h) {
+        this.opaqueTexture.image2d(opaqueImageBitmap)
+        this._size = frameSize
+      } else {
+        this.opaqueTexture.subimage2d(opaqueImageBitmap, fragment.geo)
+      }
     }
   }
 

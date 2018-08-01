@@ -2,20 +2,20 @@
 
 import Program from './Program'
 import ShaderCompiler from './ShaderCompiler'
-import { vertexQuad, fragmentJpegAlpha } from './ShaderSources'
+import { vertexQuad, fragmentJpeg } from './ShaderSources'
 
-export default class JpegAlphaSurfaceShader {
+export default class JpegSurfaceShader {
   /**
    *
    * @param {WebGLRenderingContext} gl
-   * @returns {JpegAlphaSurfaceShader}
+   * @returns {JpegSurfaceShader}
    */
   static create (gl) {
     const program = this._initShaders(gl)
     const shaderArgs = this._initShaderArgs(gl, program)
     const vertexBuffer = this._initBuffers(gl)
 
-    return new JpegAlphaSurfaceShader(gl, vertexBuffer, shaderArgs, program)
+    return new JpegSurfaceShader(gl, vertexBuffer, shaderArgs, program)
   }
 
   /**
@@ -26,7 +26,7 @@ export default class JpegAlphaSurfaceShader {
   static _initShaders (gl) {
     const program = new Program(gl)
     program.attach(ShaderCompiler.compile(gl, vertexQuad))
-    program.attach(ShaderCompiler.compile(gl, fragmentJpegAlpha))
+    program.attach(ShaderCompiler.compile(gl, fragmentJpeg))
     program.link()
     program.use()
 
@@ -43,7 +43,6 @@ export default class JpegAlphaSurfaceShader {
     // find shader arguments
     const shaderArgs = {}
     shaderArgs.opaqueTexture = program.getUniformLocation('opaqueTexture')
-    shaderArgs.alphaTexture = program.getUniformLocation('alphaTexture')
 
     shaderArgs.u_projection = program.getUniformLocation('u_projection')
 
@@ -80,9 +79,8 @@ export default class JpegAlphaSurfaceShader {
 
   /**
    * @param {Texture} textureOpaque
-   * @param {Texture} textureAlpha
    */
-  setTexture (textureOpaque, textureAlpha) {
+  setTexture (textureOpaque) {
     const gl = this.gl
 
     gl.uniform1i(this.shaderArgs.opaqueTexture, 0)
@@ -90,8 +88,6 @@ export default class JpegAlphaSurfaceShader {
 
     gl.activeTexture(gl.TEXTURE0)
     gl.bindTexture(gl.TEXTURE_2D, textureOpaque.texture)
-    gl.activeTexture(gl.TEXTURE1)
-    gl.bindTexture(gl.TEXTURE_2D, textureAlpha.texture)
   }
 
   use () {

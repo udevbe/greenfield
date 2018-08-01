@@ -313,15 +313,15 @@ class ShimSurface extends WlSurfaceRequests {
 
     if (buffer) {
       buffer.removeDestroyListener(this._pendingBufferDestroyListener)
-      this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
-      this.proxy.commit()
       const frame = await this._encodeBuffer(buffer, synSerial, surfaceDamage)
       // surface might have been destroyed while we were busy encoding.
       if (this.destroyed) {
         return
-      } else {
-        buffer.release()
       }
+      buffer.release()
+      this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
+      this.proxy.commit()
+
       await this.sendFrame(frame)
     } else {
       this.proxy.commit()

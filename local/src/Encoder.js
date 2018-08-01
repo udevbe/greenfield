@@ -60,7 +60,8 @@ class Encoder {
 
     const bufferArea = bufferWidth * bufferHeight
     if (bufferArea <= config['png-encoder']['max-target-buffer-size']) {
-      return this._encodePNGFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, bufferDamage)
+      // We don't bother with damage when encoding to a small png image.
+      return this._encodePNGFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial)
     } else {
       return this._encodeFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, bufferDamage)
     }
@@ -72,15 +73,14 @@ class Encoder {
    * @param {number}bufferWidth
    * @param {number}bufferHeight
    * @param {number}serial
-   * @param {Array<{x:number, y:number, width:number, height:number}>}bufferDamage
    * @return {Promise<EncodedFrame>}
    * @private
    */
-  _encodePNGFrame (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, bufferDamage) {
+  _encodePNGFrame (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial) {
     if (!this._pngFrameEncoder) {
       this._pngFrameEncoder = PNGEncoder.create(bufferWidth, bufferHeight, bufferFormat)
     }
-    return this._pngFrameEncoder.encodeBuffer(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, bufferDamage)
+    return this._pngFrameEncoder.encodeBuffer(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial)
   }
 
   /**

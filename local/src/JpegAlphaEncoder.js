@@ -5,6 +5,7 @@ const WlShmFormat = require('./protocol/wayland/WlShmFormat')
 
 const EncodedFrame = require('./EncodedFrame')
 const EncodedFrameFragment = require('./EncodedFrameFragment')
+const EncodingOptions = require('./EncodingOptions')
 
 const {jpeg} = require('./EncodingTypes')
 
@@ -183,6 +184,9 @@ class JpegAlphaEncoder {
    * @override
    */
   async encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial, damage) {
+    let encodingOptions = 0
+    encodingOptions = EncodingOptions.splitAlpha(encodingOptions)
+
     if (damage.length) {
       const encodedFrameFragments = []
       for (let i = 0; i < damage.length; i++) {
@@ -197,10 +201,11 @@ class JpegAlphaEncoder {
         const clippedBuffer = greenfieldNative.clip(pixelBuffer, bufferWidth, bufferHeight, damageRect.x, damageRect.y, damageRect.width, damageRect.height)
         encodedFrameFragments.push(await this._encodeFragment(clippedBuffer, wlShmFormat, damageRect.x, damageRect.y, damageRect.width, damageRect.height))
       }
-      return EncodedFrame.create(serial, jpeg, bufferWidth, bufferHeight, encodedFrameFragments)
+      return EncodedFrame.create(serial, jpeg, encodingOptions, bufferWidth, bufferHeight, encodedFrameFragments)
     } else {
+      encodingOptions = EncodingOptions.fullFrame(encodingOptions)
       const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)
-      return EncodedFrame.create(serial, jpeg, bufferWidth, bufferHeight, [encodedFrameFragment])
+      return EncodedFrame.create(serial, jpeg, encodingOptions, bufferWidth, bufferHeight, [encodedFrameFragment])
     }
   }
 }

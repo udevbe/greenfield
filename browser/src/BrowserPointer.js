@@ -2,6 +2,7 @@
 
 import { parseFixed, GrPointer } from './protocol/greenfield-browser-protocol'
 import Point from './math/Point'
+import BrowserEncodingOptions from './BrowserEncodingOptions'
 
 const {pressed, released} = GrPointer.ButtonState
 const {horizontalScroll, verticalScroll} = GrPointer.Axis
@@ -214,9 +215,10 @@ export default class BrowserPointer {
 
     if (this._cursorSurface && this._cursorSurface.implementation === browserSurface) {
       if (newState.bufferContents) {
-        if (newState.bufferContents.encodingType === 'image/png') { // This is a dirty shortcut. We assume that pngs always come as a single buffer
+        const fullFrame = BrowserEncodingOptions.fullFrame(newState.bufferContents.encodingOptions)
+        const splitAlpha = BrowserEncodingOptions.splitAlpha(newState.bufferContents.encodingOptions)
+        if (fullFrame && !splitAlpha) {
           await browserSurface.render(renderFrame, newState, true)
-
           const imageBlob = new window.Blob([newState.bufferContents.fragments[0].opaque], {'type': newState.bufferContents.encodingType})
           window.document.body.style.cursor = `url("${window.URL.createObjectURL(imageBlob)}") ${hotspotX} ${hotspotY}, pointer`
 
