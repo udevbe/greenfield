@@ -128,6 +128,7 @@ class ShimSurface extends WlSurfaceRequests {
     this._destroyed = false
 
     this._total = 0
+    this._encodingTotal = 0
     this._count = 0
   }
 
@@ -314,13 +315,15 @@ class ShimSurface extends WlSurfaceRequests {
     if (buffer) {
       buffer.removeDestroyListener(this._pendingBufferDestroyListener)
       const frame = await this._encodeBuffer(buffer, synSerial, surfaceDamage)
+      this._encodingTotal += (Date.now() - start)
+      console.log('encoding avg', this._encodingTotal / this._count)
+      this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
+      this.proxy.commit()
       // surface might have been destroyed while we were busy encoding.
       if (this.destroyed) {
         return
       }
       buffer.release()
-      this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
-      this.proxy.commit()
 
       await this.sendFrame(frame)
     } else {
@@ -329,7 +332,7 @@ class ShimSurface extends WlSurfaceRequests {
 
     this._total += (Date.now() - start)
     this._count++
-    console.log('commit avg', this._total / this._count)
+    console.log('---> commit avg', this._total / this._count)
   }
 
   _resetPendingState () {

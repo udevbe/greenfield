@@ -144,18 +144,18 @@ export default class Renderer {
       // calls to _draw() while we're in await. If we were to do this call later, this.canvas will have state specifically
       // for our _draw() call, yet because we are in (a late) await, another call might adjust our canvas, which results
       // in bad draws/flashing/flickering/...
+      let start = Date.now()
       await Promise.all(bufferContents.fragments.map(async (fragment) => {
         await viewState.updateFragment(bufferContents.size, fragment)
       }))
+      this._textureUpdateTotal += Date.now() - start
+      console.log('updating textures avg', this._textureUpdateTotal / this._count)
 
       if (BrowserEncodingOptions.splitAlpha(bufferContents.encodingOptions)) {
         // Image is in jpeg format with a separate alpha channel, shade & decode alpha & opaque fragments together using webgl.
-        let start = Date.now()
 
-        this._textureUpdateTotal += Date.now() - start
         this._jpegAlphaSurfaceShader.use()
         this._jpegAlphaSurfaceShader.setTexture(viewState.opaqueTexture, viewState.alphaTexture)
-        console.log('updating textures avg', this._textureUpdateTotal / this._count)
 
         start = Date.now()
         const canvasSizeChanged = (this._canvas.width !== frameWidth) || (this._canvas.height !== frameHeight)

@@ -312,8 +312,9 @@ export default class BrowserSurface {
     this._count = 0
     this._total = 0
     this._start = 0
-    this._preRenderTotal = 0
+    this._bufferCompletionTotal = 0
     this._postRenderTotal = 0
+    this._bufferSizeTotal = 0
   }
 
   /**
@@ -917,8 +918,6 @@ export default class BrowserSurface {
       })
     }
 
-    this._preRenderTotal += Date.now() - this._start
-    console.log('pre-render avg', this._preRenderTotal / this._count)
     if (!skipDraw) {
       await this.renderer.renderBackBuffer(this, newState)
     }
@@ -1032,12 +1031,29 @@ export default class BrowserSurface {
       newState.roleState = this.role.captureRoleState()
     }
 
+    const bufferReceiveStart = Date.now()
     if (pendingGrBuffer) {
       const browserRtcDcBuffer = BrowserRtcBufferFactory.get(pendingGrBuffer)
       newState.bufferContents = await browserRtcDcBuffer.whenComplete()
     } else {
       newState.bufferContents = null
     }
+    const bufferCompletion = Date.now() - bufferReceiveStart
+    this._bufferCompletionTotal += bufferCompletion
+    console.log(
+      'buffer completion avg', this._bufferCompletionTotal / this._count,
+      'current', bufferCompletion
+    )
+    let bufferSize = 0
+    newState.bufferContents.fragments.forEach(fragment => {
+      bufferSize += fragment.opaque.byteLength
+      bufferSize += fragment.alpha.byteLength
+    })
+    this._bufferSizeTotal += bufferSize
+    console.log(
+      'buffer transfer avg (kb/s)', (this._bufferSizeTotal / 1024) / (this._bufferCompletionTotal / 1000),
+      'current', (bufferSize / 1024) / (bufferCompletion / 1000)
+    )
 
     return newState
   }
