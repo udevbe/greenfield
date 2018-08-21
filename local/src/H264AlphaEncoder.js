@@ -1,5 +1,4 @@
 const gstreamer = require('gstreamer-superficial')
-const greenfieldNative = require('greenfield-native')
 
 const WlShmFormat = require('./protocol/wayland/WlShmFormat')
 
@@ -7,33 +6,35 @@ const EncodedFrame = require('./EncodedFrame')
 const EncodedFrameFragment = require('./EncodedFrameFragment')
 const EncodingOptions = require('./EncodingOptions')
 
-const {jpeg} = require('./EncodingTypes')
+const {h264} = require('./EncodingTypes')
 
 const gstFormats = {
   [WlShmFormat.argb8888]: 'BGRA',
   [WlShmFormat.xrgb8888]: 'BGRx'
 }
 
-// TODO replace gstreamer pipeline with a custom opengl accelrated jpeg encoder implementation
 /**
  * @implements FrameEncoder
  */
-class JpegAlphaEncoder {
+class H264AlphaEncoder {
   /**
    * @param {number}width
    * @param {number}height
    * @param {number}wlShmFormat
-   * @return {JpegAlphaEncoder}
+   * @return {H264AlphaEncoder}
    */
   static create (width, height, wlShmFormat) {
     const gstBufferFormat = gstFormats[wlShmFormat]
     const pipeline = new gstreamer.Pipeline(
-      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=0/1 ! 
+      // scale & convert to RGBA
+      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! ` +
+      `videoscale ! capsfilter name=scale caps=video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)} ! ` +
 
-      tee name=t ! queue ! 
-      glupload ! 
-      glcolorconvert ! 
-      glshader fragment="
+      // branch[0] convert alpha to grayscale h264
+      'tee name=t ! queue ! ' +
+      'glupload ! ' +
+      'glcolorconvert ! ' +
+      `glshader fragment="
         #version 100
         #ifdef GL_ES
         precision mediump float;
@@ -46,28 +47,30 @@ class JpegAlphaEncoder {
 
         void main () {
           vec4 pix = texture2D(tex, v_texcoord);
-          gl_FragColor = vec4(pix.a,pix.a,pix.a,1);
+          gl_FragColor = vec4(pix.a,pix.a,pix.a,0);
         }
-      " ! 
-      glcolorconvert ! video/x-raw(memory:GLMemory),format=GRAY8 ! 
-      gldownload ! 
-      jpegenc ! 
-      appsink name=alphasink 
+      " ! ` +
+      'glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! ' +
+      'gldownload ! ' +
+      `x264enc key-int-max=900 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ` +
+      'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! ' +
+      'appsink name=alphasink ' +
 
-      t. ! queue ! 
-      glupload ! 
-      glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! 
-      gldownload ! 
-      jpegenc ! 
-      appsink name=sink`
+      // branch[1] convert rgb to h264
+      't. ! queue ! ' +
+      'videoconvert ! video/x-raw,format=I420 ! ' +
+      `x264enc key-int-max=900 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ` +
+      'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! ' +
+      'appsink name=sink'
     )
 
     const alphasink = pipeline.findChild('alphasink')
     const sink = pipeline.findChild('sink')
     const src = pipeline.findChild('source')
+    const scale = pipeline.findChild('scale')
     pipeline.play()
 
-    return new JpegAlphaEncoder(pipeline, sink, alphasink, src, width, height, wlShmFormat)
+    return new H264AlphaEncoder(pipeline, sink, alphasink, src, width, height, wlShmFormat, scale)
   }
 
   /**
@@ -78,9 +81,10 @@ class JpegAlphaEncoder {
    * @param {number}width
    * @param {number}height
    * @param {number}wlShmFormat
+   * @param {Object}scale
    * @private
    */
-  constructor (pipeline, sink, alphaSink, src, width, height, wlShmFormat) {
+  constructor (pipeline, sink, alphaSink, src, width, height, wlShmFormat, scale) {
     /**
      * @type {Object}
      * @private
@@ -116,6 +120,11 @@ class JpegAlphaEncoder {
      * @private
      */
     this._wlShmFormat = wlShmFormat
+    /**
+     * @type {Object}
+     * @private
+     */
+    this._scale = scale
   }
 
   /**
@@ -125,7 +134,10 @@ class JpegAlphaEncoder {
    * @private
    */
   _configure (width, height, gstBufferFormat) {
-    this._src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=0/1`
+    this._pipeline.pause()
+    this._src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1`
+    this._scale.caps = `video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)}`
+    this._pipeline.play()
   }
 
   /**
@@ -149,18 +161,18 @@ class JpegAlphaEncoder {
     }
 
     // TODO we probably want to put this in it's own process so we can easily run this long running task in parallel
-    const encodingPromise = new Promise((resolve, reject) => {
+    const encodingPromise = new Promise((resolve) => {
       let opaque = null
       let alpha = null
-      this._sink.pull((opaqueJpeg) => {
-        opaque = opaqueJpeg
+      this._sink.pull((opaqueH264) => {
+        opaque = opaqueH264
         if (opaque && alpha) {
           resolve({opaque: opaque, alpha: alpha})
         }
       })
 
-      this._alphaSink.pull((alphaJpeg) => {
-        alpha = alphaJpeg
+      this._alphaSink.pull((alphaH264) => {
+        alpha = alphaH264
         if (opaque && alpha) {
           resolve({opaque: opaque, alpha: alpha})
         }
@@ -186,28 +198,10 @@ class JpegAlphaEncoder {
   async encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial, damage) {
     let encodingOptions = 0
     encodingOptions = EncodingOptions.enableSplitAlpha(encodingOptions)
-
-    if (damage.length) {
-      const encodedFrameFragments = []
-      for (let i = 0; i < damage.length; i++) {
-        const damageRect = damage[i]
-        // ensure at least 16 width & 16 height, else jpeg encoding fails
-        damageRect.width = damageRect.width < 16 ? 16 : damageRect.width
-        damageRect.height = damageRect.height < 16 ? 16 : damageRect.height
-        // compensate x & y clipping offset in case we go out of bounds
-        damageRect.x = damageRect.x + damageRect.width > bufferWidth ? damageRect.x - (damageRect.x + damageRect.width - bufferWidth) : damageRect.x
-        damageRect.y = damageRect.y + damageRect.height > bufferHeight ? damageRect.y - (damageRect.y + damageRect.height - bufferHeight) : damageRect.y
-
-        const clippedBuffer = greenfieldNative.clip(pixelBuffer, bufferWidth, bufferHeight, damageRect.x, damageRect.y, damageRect.width, damageRect.height)
-        encodedFrameFragments.push(await this._encodeFragment(clippedBuffer, wlShmFormat, damageRect.x, damageRect.y, damageRect.width, damageRect.height))
-      }
-      return EncodedFrame.create(serial, jpeg, encodingOptions, bufferWidth, bufferHeight, encodedFrameFragments)
-    } else {
-      encodingOptions = EncodingOptions.enableFullFrame(encodingOptions)
-      const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)
-      return EncodedFrame.create(serial, jpeg, encodingOptions, bufferWidth, bufferHeight, [encodedFrameFragment])
-    }
+    encodingOptions = EncodingOptions.enableFullFrame(encodingOptions)
+    const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)
+    return EncodedFrame.create(serial, h264, encodingOptions, bufferWidth, bufferHeight, [encodedFrameFragment])
   }
 }
 
-module.exports = JpegAlphaEncoder
+module.exports = H264AlphaEncoder

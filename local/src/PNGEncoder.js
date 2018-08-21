@@ -145,7 +145,7 @@ class PNGEncoder {
    * @override
    */
   async encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial) {
-    const encodingOptions = EncodingOptions.fullFrame(0)
+    const encodingOptions = EncodingOptions.enableFullFrame(0)
     const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)
     return EncodedFrame.create(serial, png, encodingOptions, bufferWidth, bufferHeight, [encodedFrameFragment])
   }

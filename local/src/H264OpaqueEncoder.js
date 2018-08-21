@@ -7,40 +7,42 @@ const EncodedFrame = require('./EncodedFrame')
 const EncodedFrameFragment = require('./EncodedFrameFragment')
 const EncodingOptions = require('./EncodingOptions')
 
-const {jpeg} = require('./EncodingTypes')
+const {h264} = require('./EncodingTypes')
 
 const gstFormats = {
   [WlShmFormat.argb8888]: 'BGRA',
   [WlShmFormat.xrgb8888]: 'BGRx'
 }
 
-// TODO replace gstreamer pipeline with a custom opengl accelrated jpeg encoder implementation
 /**
  * @implements FrameEncoder
  */
-class JpegOpaqueEncoder {
+class H264OpaqueEncoder {
   /**
    * @param {number}width
    * @param {number}height
    * @param {number}wlShmFormat
-   * @return {JpegOpaqueEncoder}
+   * @return {H264OpaqueEncoder}
    */
   static create (width, height, wlShmFormat) {
     const gstBufferFormat = gstFormats[wlShmFormat]
     const pipeline = new gstreamer.Pipeline(
-      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! 
-      glupload ! 
-      glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! 
-      gldownload ! 
-      jpegenc ! 
-      appsink name=sink`
+      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! ` +
+      `videoscale ! capsfilter name=scale caps=video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)} ! ` +
+      'glupload ! ' +
+      'glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! ' +
+      'gldownload ! ' +
+      `x264enc key-int-max=1 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ` +
+      'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! ' +
+      'appsink name=sink'
     )
 
     const sink = pipeline.findChild('sink')
     const src = pipeline.findChild('source')
+    const scale = pipeline.findChild('scale')
     pipeline.play()
 
-    return new JpegOpaqueEncoder(pipeline, sink, src, width, height, wlShmFormat)
+    return new H264OpaqueEncoder(pipeline, sink, src, width, height, wlShmFormat, scale)
   }
 
   /**
@@ -50,9 +52,10 @@ class JpegOpaqueEncoder {
    * @param {number}width
    * @param {number}height
    * @param {number}wlShmFormat
+   * @param {Object}scale
    * @private
    */
-  constructor (pipeline, sink, src, width, height, wlShmFormat) {
+  constructor (pipeline, sink, src, width, height, wlShmFormat, scale) {
     /**
      * @type {Object}
      * @private
@@ -83,6 +86,11 @@ class JpegOpaqueEncoder {
      * @private
      */
     this._wlShmFormat = wlShmFormat
+    /**
+     * @type {Object}
+     * @private
+     */
+    this._scale = scale
   }
 
   /**
@@ -92,7 +100,10 @@ class JpegOpaqueEncoder {
    * @private
    */
   _configure (width, height, gstBufferFormat) {
+    this._pipeline.pause()
     this._src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1`
+    this._scale.caps = `video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)}`
+    this._pipeline.play()
   }
 
   /**
@@ -115,13 +126,12 @@ class JpegOpaqueEncoder {
       this._configure(width, height, gstBufferFormat)
     }
 
-    // TODO we probably want to put this in it's own process so we can easily run this long running task in parallel
     const opaquePromise = new Promise((resolve, reject) => {
-      this._sink.pull((opaqueJpeg) => {
-        if (opaqueJpeg) {
-          resolve(opaqueJpeg)
+      this._sink.pull((opaqueH264) => {
+        if (opaqueH264) {
+          resolve(opaqueH264)
         } else {
-          reject(new Error('Pulled empty opaque buffer. Gstreamer opaque jpeg encoder pipeline is probably in error.'))
+          reject(new Error('Pulled empty opaque buffer. Gstreamer opaque h264 encoder pipeline is probably in error.'))
         }
       })
     })
@@ -148,13 +158,13 @@ class JpegOpaqueEncoder {
       const encodedFrameFragments = await Promise.all(damage.map(damageRect => {
         return this._encodeFragment(pixelBuffer, wlShmFormat, damageRect.x, damageRect.y, damageRect.width, damageRect.height)
       }))
-      return EncodedFrame.create(serial, jpeg, encodingOptions, bufferWidth, bufferHeight, encodedFrameFragments)
+      return EncodedFrame.create(serial, h264, encodingOptions, bufferWidth, bufferHeight, encodedFrameFragments)
     } else {
       encodingOptions = EncodingOptions.enableFullFrame(encodingOptions)
       const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)
-      return EncodedFrame.create(serial, jpeg, encodingOptions, bufferWidth, bufferHeight, [encodedFrameFragment])
+      return EncodedFrame.create(serial, h264, encodingOptions, bufferWidth, bufferHeight, [encodedFrameFragment])
     }
   }
 }
 
-module.exports = JpegOpaqueEncoder
+module.exports = H264OpaqueEncoder

@@ -53,7 +53,7 @@ export default class H264BufferContentDecoder {
 
   /**
    * @param {BrowserEncodedFrame}bufferContents
-   * @return {Promise<{serial: number, resolve:Function, state: 'pending'|'pending_opaque'|'pending_alpha'|'complete', result: {opaque: {buffer:Uint8Array, width: number, height:number}, alpha:{buffer:Uint8Array, width: number, height:number}}}>}
+   * @return {Promise<{opaque: {buffer:Uint8Array, width: number, height:number}, alpha:{buffer:Uint8Array, width: number, height:number}}>}
    */
   async decode (bufferContents) {
     return new Promise((resolve) => {

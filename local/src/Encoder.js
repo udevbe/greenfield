@@ -2,8 +2,10 @@
 
 const config = require('./config')
 
-const JpegOpaqueEncoder = require('./JpegOpaqueEncoder')
-const JpegAlphaEncoder = require('./JpegAlphaEncoder')
+// const JpegOpaqueEncoder = require('./JpegOpaqueEncoder')
+// const JpegAlphaEncoder = require('./JpegAlphaEncoder')
+const H264OpaqueEncoder = require('./H264OpaqueEncoder')
+const H264AlphaEncoder = require('./H264AlphaEncoder')
 const PNGEncoder = require('./PNGEncoder')
 const WlShmFormat = require('./protocol/wayland/WlShmFormat')
 
@@ -107,11 +109,11 @@ Encoder.types = {}
 // TODO different frame encoders could probably share code from a common super class
 Encoder.types[WlShmFormat.argb8888] = {
   // gstFormat: 'BGRA',
-  FrameEncoder: JpegAlphaEncoder
+  FrameEncoder: H264AlphaEncoder
 }
 Encoder.types[WlShmFormat.xrgb8888] = {
   // gstFormat: 'BGRx',
-  FrameEncoder: JpegOpaqueEncoder
+  FrameEncoder: H264OpaqueEncoder
 }
 
 module.exports = Encoder

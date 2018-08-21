@@ -64,7 +64,7 @@ export default class H264RenderState extends RenderState {
    * @override
    */
   async update (browserEncodedFrame) {
-    const {alpha, opaque} = (await this._h264BufferContentDecoder.decode(browserEncodedFrame)).result
+    const {alpha, opaque} = await this._h264BufferContentDecoder.decode(browserEncodedFrame)
 
     // the width & height returned are actually paddded, so we have to use the frame size to get the real image dimension
     // when uploading to texture

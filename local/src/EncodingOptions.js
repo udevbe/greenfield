@@ -3,7 +3,7 @@ class EncodingOptions {
    * @param {number}encodingOptions
    * @return {number}
    */
-  static splitAlpha (encodingOptions) {
+  static enableSplitAlpha (encodingOptions) {
     return (encodingOptions | EncodingOptions._ALPHA)
   }
 
@@ -11,7 +11,7 @@ class EncodingOptions {
    * @param encodingOptions
    * @return {number}
    */
-  static fullFrame (encodingOptions) {
+  static enableFullFrame (encodingOptions) {
     return (encodingOptions | EncodingOptions._FULL_FRAME)
   }
 }

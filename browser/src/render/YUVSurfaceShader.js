@@ -63,7 +63,7 @@ export default class YUVSurfaceShader {
    * @param {Texture} textureU
    * @param {Texture} textureV
    */
-  _setTexture (textureY, textureU, textureV) {
+  setTexture (textureY, textureU, textureV) {
     const gl = this.gl
 
     gl.uniform1i(this.shaderArgs.yTexture, 0)
@@ -89,36 +89,41 @@ export default class YUVSurfaceShader {
     gl.useProgram(null)
   }
 
-  draw (textureY, textureU, textureV, bufferSize, viewPortUpdate) {
+  /**
+   * @param {!Size}viewportSize
+   */
+  updatePerspective (viewportSize) {
     const gl = this.gl
-    this._setTexture(textureY, textureU, textureV)
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-    if (viewPortUpdate) {
-      gl.viewport(0, 0, bufferSize.w, bufferSize.h)
-      this.program.setUniformM4(this.shaderArgs.u_projection, [
-        2.0 / bufferSize.w, 0, 0, 0,
-        0, 2.0 / -bufferSize.h, 0, 0,
-        0, 0, 1, 0,
-        -1, 1, 0, 1
-      ])
-      gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
-      gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
-        // top left:
-        0, 0, 0, 0,
-        // top right:
-        bufferSize.w, 0, 1, 0,
-        // bottom right:
-        bufferSize.w, bufferSize.h, 1, 1,
-        // bottom right:
-        bufferSize.w, bufferSize.h, 1, 1,
-        // bottom left:
-        0, bufferSize.h, 0, 1,
-        // top left:
-        0, 0, 0, 0
-      ]), this.gl.DYNAMIC_DRAW)
-      gl.vertexAttribPointer(this.shaderArgs.a_position, 2, gl.FLOAT, false, 16, 0)
-      gl.vertexAttribPointer(this.shaderArgs.a_texCoord, 2, gl.FLOAT, false, 16, 8)
-    }
+    const {w, h} = viewportSize
+    gl.viewport(0, 0, w, h)
+    this.program.setUniformM4(this.shaderArgs.u_projection, [
+      2.0 / w, 0, 0, 0,
+      0, 2.0 / -h, 0, 0,
+      0, 0, 1, 0,
+      -1, 1, 0, 1
+    ])
+    gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
+    gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
+      // top left:
+      0, 0, 0, 0,
+      // top right:
+      w, 0, 1, 0,
+      // bottom right:
+      w, h, 1, 1,
+      // bottom right:
+      w, h, 1, 1,
+      // bottom left:
+      0, h, 0, 1,
+      // top left:
+      0, 0, 0, 0
+    ]), this.gl.DYNAMIC_DRAW)
+    gl.vertexAttribPointer(this.shaderArgs.a_position, 2, gl.FLOAT, false, 16, 0)
+    gl.vertexAttribPointer(this.shaderArgs.a_texCoord, 2, gl.FLOAT, false, 16, 8)
+  }
+
+  draw () {
+    const gl = this.gl
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
     gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 6)
     gl.bindTexture(gl.TEXTURE_2D, null)
   }
