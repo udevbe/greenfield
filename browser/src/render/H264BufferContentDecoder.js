@@ -61,7 +61,10 @@ export default class H264BufferContentDecoder {
         serial: bufferContents.serial,
         resolve: resolve,
         state: 'pending',
-        result: null
+        result: {
+          opaque: null,
+          alpha: null
+        }
       }
 
       this._decodeH264(bufferContents)

@@ -43,4 +43,12 @@ export default class Size {
   getHalfSize () {
     return new Size(this.w >>> 1, this.h >>> 1)
   }
+
+  /**
+   * @param {Size}size
+   * @return {boolean}
+   */
+  equals (size) {
+    return size.w === this.w && size.h === this.h
+  }
 }

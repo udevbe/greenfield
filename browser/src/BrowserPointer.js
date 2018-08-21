@@ -3,6 +3,7 @@
 import { parseFixed, GrPointer } from './protocol/greenfield-browser-protocol'
 import Point from './math/Point'
 import BrowserEncodingOptions from './BrowserEncodingOptions'
+import BrowserSurfaceRole from './BrowserSurfaceRole'
 
 const {pressed, released} = GrPointer.ButtonState
 const {horizontalScroll, verticalScroll} = GrPointer.Axis
@@ -35,7 +36,7 @@ const linuxInput = {
  *            @implements BrowserSurfaceRole
  *
  */
-export default class BrowserPointer {
+export default class BrowserPointer extends BrowserSurfaceRole {
   /**
    * @param {!BrowserSession} browserSession
    * @param {!BrowserDataDevice} browserDataDevice
@@ -81,6 +82,7 @@ export default class BrowserPointer {
    * @param {!BrowserDataDevice} browserDataDevice
    */
   constructor (browserDataDevice) {
+    super()
     /**
      * @type {!BrowserDataDevice}
      * @const

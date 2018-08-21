@@ -1,20 +1,21 @@
 'use strict'
 
 export default class H264NALDecoder {
+  /**
+   * @return {Promise<H264NALDecoder>}
+   */
   static create () {
     return new Promise((resolve) => {
       const tinyH264Worker = new window.Worker('TinyH264Worker.js')
       const browserH264Decoder = new H264NALDecoder(tinyH264Worker)
       tinyH264Worker.addEventListener('message', (e) => {
-        const message = e.data
+        const message = /** @type {{type:string, width:number, height:number, data:ArrayBuffer}} */e.data
         switch (message.type) {
           case 'pictureReady':
             browserH264Decoder._onPictureReady(message)
             break
           case 'decoderReady':
-            window.setTimeout(() => {
-              resolve(browserH264Decoder)
-            }, 33)
+            resolve(browserH264Decoder)
             break
         }
       })
@@ -46,6 +47,10 @@ export default class H264NALDecoder {
     this._busy = true
   }
 
+  /**
+   * @param {{width:number, height:number, data: ArrayBuffer}}message
+   * @private
+   */
   _onPictureReady (message) {
     const width = message.width
     const height = message.height

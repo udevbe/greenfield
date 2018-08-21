@@ -24,6 +24,7 @@ const {fullscreen, activated, maximized, resizing} = XdgToplevel.State
  *      an xdg_toplevel surface when it is unmapped.
  *
  *      Attaching a null buffer to a toplevel unmaps the surface.
+ *      @implements BrowserSurfaceRole
  *
  */
 export default class BrowserXdgToplevel extends BrowserSurfaceRole {

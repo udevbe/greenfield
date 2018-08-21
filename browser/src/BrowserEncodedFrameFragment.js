@@ -13,13 +13,7 @@ export default class BrowserEncodedFrameFragment {
    */
   static create (encodingType, fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha) {
     const geo = Rect.create(fragmentX, fragmentY, fragmentX + fragmentWidth, fragmentY + fragmentHeight)
-
-    const opaqueImageBlob = new window.Blob([opaque], {'type': encodingType})
-    const opaqueImageBitmap = window.createImageBitmap(opaqueImageBlob, 0, 0, fragmentWidth, fragmentHeight)
-
-    const alphaImageBitmap = alpha.length ? window.createImageBitmap(new window.Blob([alpha], {'type': encodingType}), 0, 0, fragmentWidth, fragmentHeight) : null
-
-    return new BrowserEncodedFrameFragment(encodingType, geo, opaque, alpha, opaqueImageBitmap, alphaImageBitmap)
+    return new BrowserEncodedFrameFragment(encodingType, geo, opaque, alpha)
   }
 
   /**
@@ -27,11 +21,9 @@ export default class BrowserEncodedFrameFragment {
    * @param {!Rect}geo
    * @param {!Uint8Array}opaque
    * @param {!Uint8Array}alpha
-   * @param {!Promise<ImageBitmap>}opaqueImageBitmap
-   * @param {?Promise<ImageBitmap>}alphaImageBitmap
    * @private
    */
-  constructor (encodingType, geo, opaque, alpha, opaqueImageBitmap, alphaImageBitmap) {
+  constructor (encodingType, geo, opaque, alpha) {
     /**
      * @type {!string}
      * @const
@@ -52,13 +44,5 @@ export default class BrowserEncodedFrameFragment {
      * @const
      */
     this.alpha = alpha
-    /**
-     * @type {!Promise<ImageBitmap>}
-     */
-    this.opaqueImageBitmap = opaqueImageBitmap
-    /**
-     * @type {?Promise<ImageBitmap>}
-     */
-    this.alphaImageBitmap = alphaImageBitmap
   }
 }

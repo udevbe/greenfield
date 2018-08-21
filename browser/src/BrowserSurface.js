@@ -134,7 +134,7 @@ export default class BrowserSurface {
      */
     this.renderer = renderer
     /**
-     * @type {?ViewState}
+     * @type {?RenderState}
      */
     this.renderState = null
     /**
@@ -919,7 +919,7 @@ export default class BrowserSurface {
     }
 
     if (!skipDraw) {
-      await this.renderer.renderBackBuffer(this, newState)
+      await this.renderer.render(this, newState)
     }
     const postRenderStart = Date.now()
 
@@ -1035,25 +1035,26 @@ export default class BrowserSurface {
     if (pendingGrBuffer) {
       const browserRtcDcBuffer = BrowserRtcBufferFactory.get(pendingGrBuffer)
       newState.bufferContents = await browserRtcDcBuffer.whenComplete()
+
+      const bufferCompletion = Date.now() - bufferReceiveStart
+      this._bufferCompletionTotal += bufferCompletion
+      console.log(
+        'buffer completion avg', this._bufferCompletionTotal / this._count,
+        'current', bufferCompletion
+      )
+      let bufferSize = 0
+      newState.bufferContents.fragments.forEach(fragment => {
+        bufferSize += fragment.opaque.byteLength
+        bufferSize += fragment.alpha.byteLength
+      })
+      this._bufferSizeTotal += bufferSize
+      console.log(
+        'buffer transfer avg (kb/s)', (this._bufferSizeTotal / 1024) / (this._bufferCompletionTotal / 1000),
+        'current', (bufferSize / 1024) / (bufferCompletion / 1000)
+      )
     } else {
       newState.bufferContents = null
     }
-    const bufferCompletion = Date.now() - bufferReceiveStart
-    this._bufferCompletionTotal += bufferCompletion
-    console.log(
-      'buffer completion avg', this._bufferCompletionTotal / this._count,
-      'current', bufferCompletion
-    )
-    let bufferSize = 0
-    newState.bufferContents.fragments.forEach(fragment => {
-      bufferSize += fragment.opaque.byteLength
-      bufferSize += fragment.alpha.byteLength
-    })
-    this._bufferSizeTotal += bufferSize
-    console.log(
-      'buffer transfer avg (kb/s)', (this._bufferSizeTotal / 1024) / (this._bufferCompletionTotal / 1000),
-      'current', (bufferSize / 1024) / (bufferCompletion / 1000)
-    )
 
     return newState
   }

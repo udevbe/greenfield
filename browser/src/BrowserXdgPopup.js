@@ -138,6 +138,7 @@ const inverseX = {
  *      The client must call wl_surface.commit on the corresponding wl_surface
  *      for the xdg_popup state to take effect.
  *
+ * @implements BrowserSurfaceRole
  */
 export default class BrowserXdgPopup extends BrowserSurfaceRole {
   /**

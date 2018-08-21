@@ -3,6 +3,7 @@
 import Point from './math/Point'
 import { GrShellSurface } from './protocol/greenfield-browser-protocol'
 import Renderer from './render/Renderer'
+import BrowserSurfaceRole from './BrowserSurfaceRole'
 
 const {bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight} = GrShellSurface.Resize
 const {inactive} = GrShellSurface.Transient
@@ -31,7 +32,7 @@ const SurfaceStates = {
  *            @implements BrowserSurfaceRole
  *
  */
-export default class BrowserShellSurface {
+export default class BrowserShellSurface extends BrowserSurfaceRole {
   /**
    * @param {GrShellSurface}grShellSurfaceResource
    * @param {GrSurface}grSurfaceResource
@@ -67,6 +68,7 @@ export default class BrowserShellSurface {
    * @param {UserShell}userShell
    */
   constructor (grShellSurfaceResource, grSurfaceResource, browserSession, userShell) {
+    super()
     /**
      * @type {GrShellSurface}
      */
@@ -147,6 +149,9 @@ export default class BrowserShellSurface {
     this.browserSession.flush()
   }
 
+  /**
+   * @private
+   */
   _map () {
     this._mapped = true
     if (this._userShellSurface) {
@@ -154,6 +159,9 @@ export default class BrowserShellSurface {
     }
   }
 
+  /**
+   * @private
+   */
   _unmap () {
     this._mapped = false
     if (this._userShellSurface) {
@@ -679,15 +687,11 @@ export default class BrowserShellSurface {
   /**
    * @override
    */
-  captureRoleState () {
-    // NO-OP
-  }
+  captureRoleState () {}
 
   /**
    * @param roleState
    * @override
    */
-  setRoleState (roleState) {
-    // NO-OP
-  }
+  setRoleState (roleState) {}
 }

@@ -3,6 +3,7 @@
 import Point from './math/Point'
 import Renderer from './render/Renderer'
 import BrowserSurface from './BrowserSurface'
+import BrowserSurfaceRole from './BrowserSurfaceRole'
 
 /**
  *
@@ -58,7 +59,7 @@ import BrowserSurface from './BrowserSurface'
  *            @implements BrowserSurfaceRole
  *
  */
-export default class BrowserSubsurface {
+export default class BrowserSubsurface extends BrowserSurfaceRole {
   /**
    * @param {GrSurface}parentGrSurfaceResource
    * @param {GrSurface}grSurfaceResource
@@ -92,6 +93,7 @@ export default class BrowserSubsurface {
    * @private
    */
   constructor (parentGrSurfaceResource, grSurfaceResource, grSubsurfaceResource) {
+    super()
     /**
      * @type {GrSurface}
      */
@@ -398,15 +400,11 @@ export default class BrowserSubsurface {
   /**
    * @override
    */
-  captureRoleState () {
-    // NO-OP
-  }
+  captureRoleState () {}
 
   /**
    * @param roleState
    * @override
    */
-  setRoleState (roleState) {
-    // NO-OP
-  }
+  setRoleState (roleState) {}
 }
