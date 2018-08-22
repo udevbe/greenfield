@@ -185,4 +185,9 @@ export default class H264BufferContentDecoder {
       this._frameStates[frameSerial].state = 'pending_opaque'
     }
   }
+
+  destroy () {
+    this._decoder.terminate()
+    this._alphaDecoder.terminate()
+  }
 }

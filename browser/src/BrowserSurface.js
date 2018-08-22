@@ -570,6 +570,10 @@ export default class BrowserSurface {
   destroy (resource) {
     // this._handleDestruction()
     resource.destroy()
+    if (this.renderState) {
+      this.renderState.destroy()
+      this.renderState = null
+    }
   }
 
   /**

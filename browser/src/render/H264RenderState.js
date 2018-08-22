@@ -116,5 +116,6 @@ export default class H264RenderState extends RenderState {
     this.uTexture.delete()
     this.vTexture.delete()
     this.alphaTexture.delete()
+    this._h264BufferContentDecoder.destroy()
   }
 }

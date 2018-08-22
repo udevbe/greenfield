@@ -99,6 +99,9 @@ export default class Renderer {
      */
     this._canvas = canvas
 
+    this._emptyImage = new window.Image(0, 0)
+    this._emptyImage.src = '//:0'
+
     this._viewDrawTotal = 0
     this._textureUpdateTotal = 0
     this._shaderInvocationTotal = 0
@@ -116,12 +119,7 @@ export default class Renderer {
     if (bufferContents) {
       await this._draw(bufferContents, browserSurface, views)
     } else {
-      const emptyImage = new window.Image(0, 0)
-      emptyImage.onload = async () => {
-        const emptyImageBitmap = await window.createImageBitmap(this._canvas)
-        views.forEach((view) => { view.draw(emptyImageBitmap) })
-      }
-      emptyImage.src = '//:0'
+      views.forEach((view) => { view.draw(this._emptyImage) })
     }
   }
 
@@ -195,9 +193,7 @@ export default class Renderer {
 
       this._jpegSurfaceShader.draw(browserEncodedFrame.size, canvasSizeChanged)
       this._jpegSurfaceShader.release()
-
-      const image = await window.createImageBitmap(this._canvas)
-      views.forEach((view) => { view.draw(image) })
+      views.forEach((view) => { view.draw(this._canvas) })
     }
   }
 
@@ -290,8 +286,7 @@ export default class Renderer {
       this._yuvSurfaceShader.draw(browserEncodedFrame.size, canvasSizeChanged)
       this._yuvSurfaceShader.release()
 
-      const image = await window.createImageBitmap(this._canvas)
-      views.forEach((view) => { view.draw(image) })
+      views.forEach((view) => { view.draw(this._canvas) })
     }
   }
 

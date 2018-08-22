@@ -253,7 +253,7 @@ export default class BrowserSurfaceView {
   }
 
   /**
-   * @param {ImageBitmap}image
+   * @param {HTMLImageElement|HTMLCanvasElement|HTMLVideoElement|ImageBitmap}image
    */
   draw (image) {
     if (this.destroyed) {

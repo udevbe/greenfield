@@ -20,7 +20,7 @@ export default class BufferedCanvas {
     frontCanvas.height = height
     frontCanvas.style.display = 'inline'
     frontCanvas.style.zIndex = '0'
-    const frontContext = frontCanvas.getContext('bitmaprenderer')
+    const frontContext = frontCanvas.getContext('2d')
     if (!frontContext.canvas) {
       frontContext.canvas = frontCanvas
     }
@@ -30,7 +30,7 @@ export default class BufferedCanvas {
     backCanvas.height = height
     backCanvas.style.display = 'none'
     backCanvas.style.zIndex = '0'
-    const backContext = backCanvas.getContext('bitmaprenderer')
+    const backContext = backCanvas.getContext('2d')
     if (!backContext.canvas) {
       backContext.canvas = backCanvas
     }
@@ -44,17 +44,17 @@ export default class BufferedCanvas {
   }
 
   /**
-   * @param {ImageBitmapRenderingContext}frontContext
-   * @param {ImageBitmapRenderingContext}backContext
+   * @param {CanvasRenderingContext2D}frontContext
+   * @param {CanvasRenderingContext2D}backContext
    * @param {HTMLDivElement}containerDiv
    */
   constructor (frontContext, backContext, containerDiv) {
     /**
-     * @type {ImageBitmapRenderingContext}
+     * @type {CanvasRenderingContext2D}
      */
     this.frontContext = frontContext
     /**
-     * @type {ImageBitmapRenderingContext}
+     * @type {CanvasRenderingContext2D}
      */
     this.backContext = backContext
     /**
@@ -78,29 +78,31 @@ export default class BufferedCanvas {
   }
 
   /**
-   * @param {ImageBitmap}image
+   * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap}image
    */
   drawBackBuffer (image) {
     this._draw(this.backContext, image)
   }
 
   /**
-   * @param {ImageBitmapRenderingContext} bitmapRenderingContext
-   * @param {ImageBitmap}image
+   * @param {CanvasRenderingContext2D} renderingContext
+   * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap}image
    * @private
    */
-  _draw (bitmapRenderingContext, image) {
-    // TODO use ImageBitmapRenderingContext.transferFromImageBitmap()
-    const canvas = bitmapRenderingContext.canvas
+  _draw (renderingContext, image) {
+    const canvas = renderingContext.canvas
 
     if (canvas.width !== image.width || canvas.height !== image.height) {
       // resizing clears the canvas
       console.log('resizing back canvas')
       canvas.width = image.width
       canvas.height = image.height
+    } else {
+      // clear canvas
+      renderingContext.clearRect(0, 0, canvas.width, canvas.height)
     }
 
-    bitmapRenderingContext.transferFromImageBitmap(image)
+    renderingContext.drawImage(image, 0, 0)
   }
 
   swapBuffers () {
