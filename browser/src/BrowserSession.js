@@ -13,7 +13,7 @@ export default class BrowserSession extends Global {
    * @returns {Promise<BrowserSession>}
    */
   static async create (sessionId) {
-    console.log('Starting new browser session.')
+    DEBUG && console.log('Starting new browser session.')
     const wfsServer = new Server()
     const websocketProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
     const url = `${websocketProtocol}://${window.location.host}/${sessionId}`
@@ -89,7 +89,7 @@ export default class BrowserSession extends Global {
 
       ws.onopen = () => {
         try {
-          console.log('Session web socket is open.')
+          DEBUG && console.log('Session web socket is open.')
           this._ws = ws
           this._setupWebsocket()
           this._primaryConnection = this._setupPrimaryConnection()
@@ -128,7 +128,7 @@ export default class BrowserSession extends Global {
     }
 
     this._ws.onclose = (event) => {
-      console.log(`Web socket closed. ${event.code}:${event.reason}`)
+      DEBUG && console.log(`Web socket closed. ${event.code}:${event.reason}`)
     }
 
     window.onbeforeunload = (e) => {
@@ -181,7 +181,7 @@ export default class BrowserSession extends Global {
    *
    */
   client (resource, id) {
-    console.log('New client connected.')
+    DEBUG && console.log('New client connected.')
     const clientSessionId = this._nextClientSessionId++
     const clientConnection = this._setupConnection(clientSessionId)
     const grClientSessionResource = new session.GrClientSession(resource.client, id, resource.version)

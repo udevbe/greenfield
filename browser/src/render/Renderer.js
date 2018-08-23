@@ -152,7 +152,7 @@ export default class Renderer {
     let start = Date.now()
     await jpegRenderState.update(browserEncodedFrame)
     this._textureUpdateTotal += Date.now() - start
-    console.log('updating textures avg', this._textureUpdateTotal / this._count)
+    DEBUG && console.log('updating textures avg', this._textureUpdateTotal / this._count)
 
     if (BrowserEncodingOptions.splitAlpha(browserEncodedFrame.encodingOptions)) {
       // Image is in jpeg format with a separate alpha channel, shade & decode alpha & opaque fragments together using webgl.
@@ -172,13 +172,13 @@ export default class Renderer {
       this._jpegAlphaSurfaceShader.draw(browserEncodedFrame.size, canvasSizeChanged)
       this._jpegAlphaSurfaceShader.release()
       this._shaderInvocationTotal += (Date.now() - start)
-      console.log('shader invocation avg', this._shaderInvocationTotal / this._count)
+      DEBUG && console.log('shader invocation avg', this._shaderInvocationTotal / this._count)
 
       start = Date.now()
       const image = await window.createImageBitmap(this._canvas)
       views.forEach((view) => { view.draw(image) })
       this._viewDrawTotal += Date.now() - start
-      console.log('drawing views avg', this._viewDrawTotal / this._count)
+      DEBUG && console.log('drawing views avg', this._viewDrawTotal / this._count)
     } else {
       // Image is in jpeg format with no separate alpha channel, shade & decode opaque fragments using webgl.
       this._jpegSurfaceShader.use()
@@ -246,6 +246,8 @@ export default class Renderer {
     // in bad draws/flashing/flickering/...
     let start = Date.now()
     await h264RenderState.update(browserEncodedFrame)
+    this._textureUpdateTotal += Date.now() - start
+    DEBUG && console.log('updating textures avg', this._textureUpdateTotal / this._count)
 
     if (BrowserEncodingOptions.splitAlpha(browserEncodedFrame.encodingOptions)) {
       // Image is in h264 format with a separate alpha channel, color convert alpha & yuv fragments to rgba using webgl.
@@ -264,13 +266,13 @@ export default class Renderer {
       this._yuvaSurfaceShader.draw(browserEncodedFrame.size, canvasSizeChanged)
       this._yuvaSurfaceShader.release()
       this._shaderInvocationTotal += (Date.now() - start)
-      console.log('shader invocation avg', this._shaderInvocationTotal / this._count)
+      DEBUG && console.log('shader invocation avg', this._shaderInvocationTotal / this._count)
 
       start = Date.now()
       const image = await window.createImageBitmap(this._canvas)
       views.forEach((view) => { view.draw(image) })
       this._viewDrawTotal += Date.now() - start
-      console.log('drawing views avg', this._viewDrawTotal / this._count)
+      DEBUG && console.log('drawing views avg', this._viewDrawTotal / this._count)
     } else {
       // Image is in h264 format with no separate alpha channel, color convert yuv fragments to rgb using webgl.
       this._yuvSurfaceShader.use()

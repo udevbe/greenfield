@@ -16,7 +16,10 @@ const dev = {
   ],
   plugins: [
     new webpack.NamedModulesPlugin(),
-    new webpack.HotModuleReplacementPlugin()
+    new webpack.HotModuleReplacementPlugin(),
+    new webpack.DefinePlugin({
+      DEBUG: JSON.stringify(true)
+    })
   ]
 }
 

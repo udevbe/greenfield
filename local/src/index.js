@@ -1,5 +1,7 @@
 'use strict'
 
+global.DEBUG = false
+
 const config = require('./config')
 const express = require('express')
 const http = require('http')
@@ -31,11 +33,11 @@ function ensureFork (sessionId) {
 
     child.on('exit', removeChild)
     child.on('SIGINT', function () {
-      console.log(`Child ${child.pid} received SIGINT.`)
+      global.DEBUG && console.log(`Child ${child.pid} received SIGINT.`)
       child.exit()
     })
     child.on('SIGTERM', function () {
-      console.log(`Child ${child.pid} received SIGTERM.`)
+      global.DEBUG && console.log(`Child ${child.pid} received SIGTERM.`)
       child.exit()
     })
 

@@ -1,4 +1,6 @@
 'use strict'
+global.DEBUG = true
+
 const config = require('./config')
 
 const express = require('express')

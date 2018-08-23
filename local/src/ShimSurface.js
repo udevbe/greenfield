@@ -320,7 +320,7 @@ class ShimSurface extends WlSurfaceRequests {
         return
       }
       this._encodingTotal += (Date.now() - start)
-      console.log('encoding avg', this._encodingTotal / this._count)
+      global.DEBUG && console.log('encoding avg', this._encodingTotal / this._count)
       this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
       this.proxy.commit()
 
@@ -333,7 +333,7 @@ class ShimSurface extends WlSurfaceRequests {
 
     this._total += (Date.now() - start)
     this._count++
-    console.log('---> commit avg', this._total / this._count)
+    global.DEBUG && console.log('---> commit avg', this._total / this._count)
   }
 
   _resetPendingState () {

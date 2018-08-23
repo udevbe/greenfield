@@ -94,7 +94,6 @@ export default class BufferedCanvas {
 
     if (canvas.width !== image.width || canvas.height !== image.height) {
       // resizing clears the canvas
-      console.log('resizing back canvas')
       canvas.width = image.width
       canvas.height = image.height
     } else {

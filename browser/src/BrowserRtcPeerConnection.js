@@ -99,7 +99,7 @@ export default class BrowserRtcPeerConnection {
       clientIceCandidates: async (resource, description) => {
         try {
           const signal = JSON.parse(description)
-          // console.log(`webrtc received remote ice candidate`)
+          DEBUG && console.log(`webrtc received remote ice candidate`)
           await this._delegate._peerConnection.addIceCandidate(new window.RTCIceCandidate(signal.candidate))
         } catch (error) {
           console.error(error, error.stack)
@@ -109,7 +109,7 @@ export default class BrowserRtcPeerConnection {
       clientSdpReply: async (resource, description) => {
         try {
           const signal = JSON.parse(description)
-          // console.log(`webrtc received remote sdp answer`)
+          DEBUG && console.log(`webrtc received remote sdp answer`)
           await this._delegate._peerConnection.setRemoteDescription(new window.RTCSessionDescription(signal.sdp))
         } catch (error) {
           console.error(error, error.stack)
@@ -119,11 +119,11 @@ export default class BrowserRtcPeerConnection {
       clientSdpOffer: async (resource, description) => {
         try {
           const signal = JSON.parse(description)
-          // console.log(`webrtc received remote sdp offer`)
+          DEBUG && console.log(`webrtc received remote sdp offer`)
           await this._delegate._peerConnection.setRemoteDescription(new window.RTCSessionDescription(signal.sdp))
           const desc = await this._delegate._peerConnection.createAnswer()
           await this._delegate._peerConnection.setLocalDescription(desc)
-          // console.log(`Child ${process.pid} webrtc sending local sdp answer`)
+          DEBUG && console.log(`Child ${process.pid} webrtc sending local sdp answer`)
           await this.rtcPeerConnectionResource.serverSdpReply(JSON.stringify({'sdp': this._delegate._peerConnection.localDescription}))
         } catch (error) {
           console.error(error, error.stack)
@@ -131,23 +131,22 @@ export default class BrowserRtcPeerConnection {
       }
     }
 
-    // console.log(`webrtc created new peer connection with connection state: ${this._delegate._peerConnection.connectionState}`)
+    DEBUG && console.log(`webrtc created new peer connection with connection state: ${this._delegate._peerConnection.connectionState}`)
     this._delegate._peerConnection.onconnectionstatechange = () => {
-      // console.log(`webrtc peer connection connection state changed to: ${this._delegate._peerConnection.connectionState}`)
+      DEBUG && console.log(`webrtc peer connection connection state changed to: ${this._delegate._peerConnection.connectionState}`)
     }
 
     this._delegate._peerConnection.onicecandidate = (evt) => {
       if (evt.candidate !== null) {
-        // console.log(`webrtc sending local ice candide`)
+        DEBUG && console.log(`webrtc sending local ice candide`)
         this.rtcPeerConnectionResource.serverIceCandidates(JSON.stringify({'candidate': evt.candidate}))
       }
     }
     this._delegate._peerConnection.onnegotiationneeded = () => {
-      // console.log(`webrtc negotiation needed`)
+      DEBUG && console.log(`webrtc negotiation needed`)
       this._sendOffer()
     }
 
-    // this._sendOffer()
     this._peerConnectionResolve(this._delegate._peerConnection)
   }
 
@@ -164,7 +163,7 @@ export default class BrowserRtcPeerConnection {
         iceRestart: false
       })
       await this._delegate._peerConnection.setLocalDescription(desc)
-      // console.log(`webrtc sending local sdp offer`)
+      DEBUG && console.log(`webrtc sending local sdp offer`)
       this.rtcPeerConnectionResource.serverSdpOffer(JSON.stringify({'sdp': this._delegate._peerConnection.localDescription}))
     } catch (error) {
       console.error(error, error.stack)

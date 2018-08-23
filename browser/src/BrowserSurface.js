@@ -947,8 +947,8 @@ export default class BrowserSurface {
     const now = Date.now()
     this._postRenderTotal += (now - postRenderStart)
     this._total += (now - this._start)
-    console.log('post-render avg', this._postRenderTotal / this._count)
-    console.log('---> commit avg', this._total / this._count)
+    DEBUG && console.log('post-render avg', this._postRenderTotal / this._count)
+    DEBUG && console.log('---> commit avg', this._total / this._count)
   }
 
   /**
@@ -1042,7 +1042,7 @@ export default class BrowserSurface {
 
       const bufferCompletion = Date.now() - bufferReceiveStart
       this._bufferCompletionTotal += bufferCompletion
-      console.log(
+      DEBUG && console.log(
         'buffer completion avg', this._bufferCompletionTotal / this._count,
         'current', bufferCompletion
       )
@@ -1052,7 +1052,7 @@ export default class BrowserSurface {
         bufferSize += fragment.alpha.byteLength
       })
       this._bufferSizeTotal += bufferSize
-      console.log(
+      DEBUG && console.log(
         'buffer transfer avg (kb/s)', (this._bufferSizeTotal / 1024) / (this._bufferCompletionTotal / 1000),
         'current', (bufferSize / 1024) / (bufferCompletion / 1000)
       )

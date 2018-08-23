@@ -188,11 +188,11 @@ export default class DesktopShellAppMenu {
     }
 
     ws.onclose = (event) => {
-      console.log(`Apps web socket is closed: ${event.code}: ${event.reason}`)
+      DEBUG && console.log(`Apps web socket is closed: ${event.code}: ${event.reason}`)
     }
 
     ws.onopen = () => {
-      console.log('Apps web socket is open.')
+      DEBUG && console.log('Apps web socket is open.')
       this._setupWebsocket(ws)
       ws.send(JSON.stringify({
         action: '_query',
