@@ -237,7 +237,7 @@ export default class BrowserXdgPopup extends BrowserSurfaceRole {
 
     if (newState.bufferContents) {
       if (!this.mapped) {
-        this._map(browserSurface)
+        this._map(browserSurface, newState)
       }
     } else if (this.mapped) {
       this._dismiss()
@@ -251,16 +251,17 @@ export default class BrowserXdgPopup extends BrowserSurfaceRole {
 
   /**
    * @param {BrowserSurface}browserSurface
+   * @param {{bufferContents: BrowserEncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
    * @private
    */
-  _map (browserSurface) {
+  _map (browserSurface, newState) {
     // TODO check if parent is mapped
 
     this.mapped = true
     const parentBrowserSurface = this.parent.implementation.grSurfaceResource.implementation
 
     // set position based on positioner object
-    browserSurface.browserSurfaceChildSelf.position = this.positionerState.surfaceSpaceAnchorPoint(this.parent.implementation)
+    browserSurface.browserSurfaceChildSelf.position = this.positionerState.surfaceSpaceAnchorPoint(this.parent.implementation).minus(newState.roleState.windowGeometry.position)
     parentBrowserSurface.addChild(browserSurface.browserSurfaceChildSelf)
   }
 
