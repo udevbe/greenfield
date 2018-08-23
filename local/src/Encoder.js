@@ -26,14 +26,9 @@ class Encoder {
      * @type {number}
      * @private
      */
-    this._bufferFormat = null
+    this._bufferFormat = 0
     /**
-     * @type {string}
-     * @private
-     */
-    this._gstFormat = null
-    /**
-     * @type {JpegAlphaEncoder | JpegOpaqueEncoder}
+     * @type {JpegAlphaEncoder | JpegOpaqueEncoder | H264AlphaEncoder | H264OpaqueEncoder}
      * @private
      */
     this._frameEncoder = null
@@ -108,11 +103,9 @@ Encoder.types = {}
 // TODO add more types
 // TODO different frame encoders could probably share code from a common super class
 Encoder.types[WlShmFormat.argb8888] = {
-  // gstFormat: 'BGRA',
   FrameEncoder: H264AlphaEncoder
 }
 Encoder.types[WlShmFormat.xrgb8888] = {
-  // gstFormat: 'BGRx',
   FrameEncoder: H264OpaqueEncoder
 }
 

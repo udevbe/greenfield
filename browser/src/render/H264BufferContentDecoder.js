@@ -187,7 +187,15 @@ export default class H264BufferContentDecoder {
   }
 
   destroy () {
-    this._decoder.terminate()
-    this._alphaDecoder.terminate()
+    if (this._decoder) {
+      this._decoder.terminate()
+      this._decoderFactory = null
+      this._decoder = null
+    }
+    if (this._alphaDecoder) {
+      this._alphaDecoder.terminate()
+      this._alphaDecoderFactory = null
+      this._alphaDecoder = null
+    }
   }
 }
