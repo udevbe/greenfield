@@ -2,31 +2,23 @@
 
 export default class H264NALDecoder {
   /**
+   * @param {number}renderStateId
    * @return {Promise<H264NALDecoder>}
    */
-  static create () {
-    return new Promise((resolve) => {
-      const tinyH264Worker = new window.Worker('TinyH264Worker.js')
-      const browserH264Decoder = new H264NALDecoder(tinyH264Worker)
-      tinyH264Worker.addEventListener('message', (e) => {
-        const message = /** @type {{type:string, width:number, height:number, data:ArrayBuffer}} */e.data
-        switch (message.type) {
-          case 'pictureReady':
-            browserH264Decoder._onPictureReady(message)
-            break
-          case 'decoderReady':
-            resolve(browserH264Decoder)
-            break
-        }
-      })
-    })
+  static async create (renderStateId) {
+    const tinyH264Worker = await H264NALDecoder._tinyH264WorkerPromise
+    const h264NALDecoder = new H264NALDecoder(tinyH264Worker, renderStateId)
+    H264NALDecoder.h264NalDecoders[renderStateId] = h264NALDecoder
+    return h264NALDecoder
   }
 
   /**
    * @param {Worker}tinyH264Worker
+   * @param {number}renderStateId
    */
-  constructor (tinyH264Worker) {
+  constructor (tinyH264Worker, renderStateId) {
     this._tinyH264Worker = tinyH264Worker
+    this._renderStateId = renderStateId
     this._busy = false
     this._decodeQueue = []
   }
@@ -36,33 +28,35 @@ export default class H264NALDecoder {
    */
   decode (h264Nal) {
     if (this._busy) {
-      // TODO We could drop older frames if the queue becomes too big. This means the server is sending frames faster
-      // than we can decode. This can happen if the server hasn't yet received our suddenly greatly increased decoding
-      // time feedback.
       console.log('Decoder busy. Queueing h264 NAL')
       this._decodeQueue.push(h264Nal)
       return
     }
-    this._tinyH264Worker.postMessage({type: 'decode', data: h264Nal.buffer}, [h264Nal.buffer])
+    this._tinyH264Worker.postMessage({
+      type: 'decode',
+      data: h264Nal.buffer,
+      renderStateId: this._renderStateId
+    }, [h264Nal.buffer])
     this._busy = true
   }
 
   /**
    * @param {{width:number, height:number, data: ArrayBuffer}}message
-   * @private
    */
-  _onPictureReady (message) {
-    const width = message.width
-    const height = message.height
-    const buffer = message.data
+  onPictureReady (message) {
+    const {width, height, data} = message
 
     if (this._decodeQueue.length > 0) {
       const h264Nal = this._decodeQueue.shift()
-      this._tinyH264Worker.postMessage({type: 'decode', data: h264Nal.buffer}, [h264Nal.buffer])
+      this._tinyH264Worker.postMessage({
+        type: 'decode',
+        data: h264Nal.buffer,
+        renderStateId: this._renderStateId
+      }, [h264Nal.buffer])
     } else {
       this._busy = false
     }
-    this.onPicture(new Uint8Array(buffer), width, height)
+    this.onPicture(new Uint8Array(data), width, height)
   }
 
   /**
@@ -72,7 +66,38 @@ export default class H264NALDecoder {
    */
   onPicture (buffer, width, height) {}
 
-  terminate () {
-    this._tinyH264Worker.terminate()
+  release () {
+    if (this._tinyH264Worker) {
+      this._tinyH264Worker.postMessage({type: 'release', renderStateId: this._renderStateId})
+      this._tinyH264Worker = null
+    }
   }
 }
+
+/**
+ * @type {Object.<number,H264NALDecoder>}
+ */
+H264NALDecoder.h264NalDecoders = {}
+
+/**
+ * @type {Promise<Worker>}
+ * @private
+ */
+H264NALDecoder._tinyH264WorkerPromise = new Promise((resolve) => {
+  /**
+   * @type {Worker}
+   * @private
+   */
+  const tinyH264Worker = new window.Worker('TinyH264Worker.js')
+  tinyH264Worker.addEventListener('message', (e) => {
+    const message = /** @type {{type:string, width:number, height:number, data:ArrayBuffer, renderStateId:number}} */e.data
+    switch (message.type) {
+      case 'pictureReady':
+        H264NALDecoder.h264NalDecoders[message.renderStateId].onPictureReady(message)
+        break
+      case 'decoderReady':
+        resolve(tinyH264Worker)
+        break
+    }
+  })
+})

@@ -3,16 +3,12 @@ import BrowserEncodingOptions from '../BrowserEncodingOptions'
 
 export default class H264BufferContentDecoder {
   /**
-   * @param {WebGLRenderingContext}gl
    * @return {H264BufferContentDecoder}
    */
   static create () {
     return new H264BufferContentDecoder()
   }
 
-  /**
-   * @param {WebGLRenderingContext}gl
-   */
   constructor () {
     /**
      * @type {H264NALDecoder}
@@ -78,7 +74,7 @@ export default class H264BufferContentDecoder {
   async _ensureH264Decoders (hasAlpha) {
     if (!this._decoder) {
       if (!this._decoderFactory) {
-        this._decoderFactory = H264NALDecoder.create()
+        this._decoderFactory = H264NALDecoder.create(H264BufferContentDecoder._nextDecoderId++)
       }
       const decoder = await this._decoderFactory
       decoder.onPicture = (buffer, width, height) => {
@@ -89,7 +85,7 @@ export default class H264BufferContentDecoder {
 
     if (hasAlpha && !this._alphaDecoder) {
       if (!this._alphaDecoderFactory) {
-        this._alphaDecoderFactory = H264NALDecoder.create()
+        this._alphaDecoderFactory = H264NALDecoder.create(H264BufferContentDecoder._nextDecoderId++)
       }
       const alphaDecoder = await this._alphaDecoderFactory
       alphaDecoder.onPicture = (buffer, width, height) => {
@@ -99,7 +95,7 @@ export default class H264BufferContentDecoder {
     }
 
     if (!hasAlpha && this._alphaDecoder) {
-      this._alphaDecoder.terminate()
+      this._alphaDecoder.release()
       this._alphaDecoder = null
       this._alphaDecoderFactory = null
     }
@@ -188,14 +184,20 @@ export default class H264BufferContentDecoder {
 
   destroy () {
     if (this._decoder) {
-      this._decoder.terminate()
+      this._decoder.release()
       this._decoderFactory = null
       this._decoder = null
     }
     if (this._alphaDecoder) {
-      this._alphaDecoder.terminate()
+      this._alphaDecoder.release()
       this._alphaDecoderFactory = null
       this._alphaDecoder = null
     }
   }
 }
+
+/**
+ * @type {number}
+ * @private
+ */
+H264BufferContentDecoder._nextDecoderId = 0
