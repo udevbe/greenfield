@@ -1,9 +1,11 @@
 'use strict'
 
+import UserShellSurface from '../UserShellSurface'
+
 /**
  * @implements UserShellSurface
  */
-export default class DesktopUserShellSurface {
+export default class DesktopUserShellSurface extends UserShellSurface{
   /**
    * @param {BrowserSurface}browserSurface
    * @param {BrowserSeat}browserSeat
@@ -77,6 +79,7 @@ export default class DesktopUserShellSurface {
    * @private
    */
   constructor (mainView, divElement, browserSeat) {
+    super()
     /**
      * @type {BrowserSurfaceView}
      */

@@ -517,6 +517,25 @@ export default class BrowserSurface {
   /**
    * @param {BrowserSurfaceChild}browserSurfaceChild
    */
+  addToplevelChild (browserSurfaceChild) {
+    this._browserSurfaceChildren.push(browserSurfaceChild)
+
+    const primaryChildView = browserSurfaceChild.browserSurface.browserSurfaceViews.find((view) => view.primary)
+    const primaryView = this.browserSurfaceViews.find((view) => view.primary)
+
+    const zIndexOrder = this.browserSurfaceChildren.indexOf(browserSurfaceChild)
+    primaryChildView.zIndex = primaryView.zIndex + zIndexOrder
+    primaryChildView.parent = primaryView
+
+    browserSurfaceChild.browserSurface.resource.onDestroy().then(() => {
+      this.removeChild(browserSurfaceChild)
+    })
+    this.updateChildViewsZIndexes()
+  }
+
+  /**
+   * @param {BrowserSurfaceChild}browserSurfaceChild
+   */
   removeChild (browserSurfaceChild) {
     this._removeChild(browserSurfaceChild, this._browserSurfaceChildren)
   }

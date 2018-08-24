@@ -426,22 +426,20 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
    *
    */
   setParent (resource, parent) {
-    // TODO
 
-    // if (this._parent) {
-    //   const oldParentBrowserXdgSurface = this._parent.implementation.browserXdgSurface
-    //   const oldParentBrowserSurface = oldParentBrowserXdgSurface.grSurfaceResource.implementation
-    //   const browserSurface = this.browserXdgSurface.grSurfaceResource.implementation
-    //   oldParentBrowserSurface.removeChild(browserSurface.browserSurfaceChildSelf)
-    // }
+    if (this._parent) {
+      const oldParentBrowserXdgSurface = this._parent.implementation.browserXdgSurface
+      const oldParentBrowserSurface = oldParentBrowserXdgSurface.grSurfaceResource.implementation
+      const browserSurface = this.browserXdgSurface.grSurfaceResource.implementation
+      oldParentBrowserSurface.removeChild(browserSurface.browserSurfaceChildSelf)
+    }
 
-    // FIXME this causes multiple views to be created
-    // if (parent) {
-    //   const parentBrowserXdgSurface = parent.implementation.browserXdgSurface
-    //   const parentBrowserSurface = parentBrowserXdgSurface.grSurfaceResource.implementation
-    //   const browserSurface = this.browserXdgSurface.grSurfaceResource.implementation
-    //   parentBrowserSurface.addChild(browserSurface.browserSurfaceChildSelf)
-    // }
+    if (parent) {
+      const parentBrowserXdgSurface = parent.implementation.browserXdgSurface
+      const parentBrowserSurface = parentBrowserXdgSurface.grSurfaceResource.implementation
+      const browserSurface = this.browserXdgSurface.grSurfaceResource.implementation
+      parentBrowserSurface.addToplevelChild(browserSurface.browserSurfaceChildSelf)
+    }
 
     this._parent = parent
   }
