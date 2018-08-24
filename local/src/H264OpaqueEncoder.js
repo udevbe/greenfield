@@ -27,14 +27,14 @@ class H264OpaqueEncoder {
   static create (width, height, wlShmFormat) {
     const gstBufferFormat = gstFormats[wlShmFormat]
     const pipeline = new gstreamer.Pipeline(
-      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! ` +
-      `videoscale ! capsfilter name=scale caps=video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)} ! ` +
-      'glupload ! ' +
-      'glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! ' +
-      'gldownload ! ' +
-      `x264enc key-int-max=1 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ` +
-      'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! ' +
-      'appsink name=sink'
+      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! 
+      videoscale ! capsfilter name=scale caps=video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)} ! 
+      glupload ! 
+      glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! 
+      gldownload ! 
+      x264enc key-int-max=1 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! 
+      video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! 
+      appsink name=sink`
     )
 
     const sink = pipeline.findChild('sink')

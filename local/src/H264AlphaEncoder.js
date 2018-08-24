@@ -27,14 +27,13 @@ class H264AlphaEncoder {
     const gstBufferFormat = gstFormats[wlShmFormat]
     const pipeline = new gstreamer.Pipeline(
       // scale & convert to RGBA
-      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! ` +
-      `videoscale ! capsfilter name=scale caps=video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)} ! ` +
-
-      // branch[0] convert alpha to grayscale h264
-      'tee name=t ! queue ! ' +
-      'glupload ! ' +
-      'glcolorconvert ! ' +
-      `glshader fragment="
+      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! 
+      videoscale ! capsfilter name=scale caps=video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)} ! 
+      
+      tee name=t ! queue ! 
+      glupload ! 
+      glcolorconvert ! 
+      glshader fragment="
         #version 100
         #ifdef GL_ES
         precision mediump float;
@@ -49,19 +48,18 @@ class H264AlphaEncoder {
           vec4 pix = texture2D(tex, v_texcoord);
           gl_FragColor = vec4(pix.a,pix.a,pix.a,0);
         }
-      " ! ` +
-      'glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! ' +
-      'gldownload ! ' +
-      `x264enc key-int-max=900 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ` +
-      'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! ' +
-      'appsink name=alphasink ' +
-
-      // branch[1] convert rgb to h264
-      't. ! queue ! ' +
-      'videoconvert ! video/x-raw,format=I420 ! ' +
-      `x264enc key-int-max=900 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! ` +
-      'video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! ' +
-      'appsink name=sink'
+      " ! 
+      glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! 
+      gldownload ! 
+      x264enc key-int-max=900 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! 
+      video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! 
+      appsink name=alphasink 
+      
+      t. ! queue ! 
+      videoconvert ! video/x-raw,format=I420 ! 
+      x264enc key-int-max=900 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! 
+      video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! 
+      appsink name=sink`
     )
 
     const alphasink = pipeline.findChild('alphasink')
