@@ -73,8 +73,11 @@ class ShimGlobal extends Global {
       const shimGlobal = this._shimGlobalClass.create(globalProxy)
 
       localGlobal.resource = this._wlGlobalClass.create(wlClient, version, id, shimGlobal, null)
+      globalProxy.onError = (code, message) => {
+        localGlobal.resource.postError(code, message)
+      }
     } catch (error) {
-      console.log(JSON.stringify(this), error)
+      console.error(JSON.stringify(this), error)
       process.exit(1)
     }
   }

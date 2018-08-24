@@ -1,6 +1,6 @@
 'use strict'
 
-module.exports = class LocalXdgSurface {
+class LocalXdgSurface {
   /**
    * @return {LocalXdgSurface}
    */
@@ -47,3 +47,5 @@ module.exports = class LocalXdgSurface {
     this.resource.configure(serial)
   }
 }
+
+module.exports = LocalXdgSurface

@@ -7,12 +7,12 @@ const WebSocket = require('ws')
 const ShimGlobal = require('./ShimGlobal')
 const LocalClientSession = require('./LocalClientSession')
 
-module.exports = class LocalSession {
+class LocalSession {
   /**
    * @param request http ws upgrade request
    * @param socket http socket
    * @param head http head
-   * @param wlDisplay
+   * @param {WlDisplay}wlDisplay
    * @returns {Promise<LocalSession>}
    */
   static create (request, socket, head, wlDisplay) {
@@ -27,7 +27,7 @@ module.exports = class LocalSession {
   /**
    *
    * @param {WebSocket.Server} wss
-   * @param wlDisplay
+   * @param {WlDisplay}wlDisplay
    */
   constructor (wss, wlDisplay) {
     /**
@@ -45,6 +45,13 @@ module.exports = class LocalSession {
     this.globals = {}
   }
 
+  /**
+   * @param request
+   * @param socket
+   * @param head
+   * @return {Promise}
+   * @private
+   */
   _handleUpgrade (request, socket, head) {
     console.log(`Child ${process.pid} received session web socket upgrade request. Will establish session web socket connection.`)
     return new Promise((resolve) => {
@@ -57,10 +64,20 @@ module.exports = class LocalSession {
     })
   }
 
+  /**
+   * @param {number}name
+   * @param {string}interface_
+   * @param {number}version
+   * @private
+   */
   _setupShimGlobal (name, interface_, version) {
     this.globals[name] = ShimGlobal.create(this.wlDisplay, name, interface_, version)
   }
 
+  /**
+   * @param {string}name
+   * @private
+   */
   _tearDownShimGlobal (name) {
     delete this.globals[name]
     // TODO remove native wayland global?
@@ -112,6 +129,10 @@ module.exports = class LocalSession {
     }
   }
 
+  /**
+   * @param {function(Object):void}resolve
+   * @private
+   */
   _setupPrimaryConnection (resolve) {
     const wfcConnection = new Connection()
     this._connections[0] = wfcConnection
@@ -135,6 +156,11 @@ module.exports = class LocalSession {
     }
   }
 
+  /**
+   * @param {wfc.Connection}wfcConnection
+   * @param {number}sessionId
+   * @private
+   */
   _setupWfcConnection (wfcConnection, sessionId) {
     this._connections[sessionId] = wfcConnection
     wfcConnection.onClose().then(() => {
@@ -177,3 +203,5 @@ module.exports = class LocalSession {
     this.wlDisplay.flushClients()
   }
 }
+
+module.exports = LocalSession

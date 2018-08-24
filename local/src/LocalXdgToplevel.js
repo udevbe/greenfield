@@ -1,6 +1,6 @@
 'use strict'
 
-module.exports = class LocalXdgToplevel {
+class LocalXdgToplevel {
   /**
    * @return {LocalXdgToplevel}
    */
@@ -70,3 +70,5 @@ module.exports = class LocalXdgToplevel {
     this.resource.close()
   }
 }
+
+module.exports = LocalXdgToplevel

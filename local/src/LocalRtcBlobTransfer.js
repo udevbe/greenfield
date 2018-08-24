@@ -3,7 +3,7 @@ class LocalRtcBlobTransfer {
   /**
    *
    * @param {GrBlobTransfer}blobTransferProxy
-   * @param {*}descriptorObj
+   * @param {{negotiated: boolean, maxRetransmits: null|number, id: number, ordered: boolean, label: string, binaryType: string}}descriptorObj
    * @param {LocalRtcPeerConnection}localRtcPeerConnection
    * @return {LocalRtcBlobTransfer}
    */

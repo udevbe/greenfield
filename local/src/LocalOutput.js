@@ -1,12 +1,19 @@
 'use strict'
 
-module.exports = class LocalOutput {
+// Wayland Global
+class LocalOutput {
+  /**
+   * @return {LocalOutput}
+   */
   static create () {
     return new LocalOutput()
   }
 
   constructor () {
     // set when resource is created
+    /**
+     * @type {WlOutput|null}
+     */
     this.resource = null
   }
 
@@ -108,3 +115,5 @@ module.exports = class LocalOutput {
     this.resource.scale(factor)
   }
 }
+
+module.exports = LocalOutput

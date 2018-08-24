@@ -9,11 +9,11 @@ const WebSocket = require('ws')
 
 const config = require('./config')
 
-module.exports = class DesktopShellAppsController {
+class DesktopShellAppsController {
   /**
-   * @param request
-   * @param socket
-   * @param head
+   * @param {http.IncomingMessage} request The request object
+   * @param {net.Socket} socket The network socket between the server and client
+   * @param {Buffer} head The first packet of the upgraded stream
    * @param {ShimSession}shimSession
    * @return {DesktopShellAppsController}
    */
@@ -73,6 +73,12 @@ module.exports = class DesktopShellAppsController {
     this._ws = null
   }
 
+  /**
+   * @param {http.IncomingMessage} request The request object
+   * @param {net.Socket} socket The network socket between the server and client
+   * @param {Buffer} head The first packet of the upgraded stream
+   * @private
+   */
   _handleUpgrade (request, socket, head) {
     console.log(`Child ${process.pid} received web socket upgrade request for apps controller. Will establish web socket connection.`)
     this._wss.handleUpgrade(request, socket, head, (ws) => {
@@ -231,3 +237,5 @@ module.exports = class DesktopShellAppsController {
     return []
   }
 }
+
+module.exports = DesktopShellAppsController

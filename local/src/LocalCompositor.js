@@ -1,6 +1,7 @@
 'use strict'
 
-module.exports = class LocalCompositor {
+// Wayland Global
+class LocalCompositor {
   static create () {
     return new LocalCompositor()
   }
@@ -12,3 +13,5 @@ module.exports = class LocalCompositor {
 
   // no events to relay
 }
+
+module.exports = LocalCompositor

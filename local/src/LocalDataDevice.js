@@ -4,16 +4,34 @@ const WlDataOffer = require('./protocol/wayland/WlDataOffer')
 const LocalDataOffer = require('./LocalDataOffer')
 const ShimDataOffer = require('./ShimDataOffer')
 
-module.exports = class LocalDataDevice {
+class LocalDataDevice {
+  /**
+   * @param {wfc.Connection}connection
+   * @return {LocalDataDevice}
+   */
   static create (connection) {
     return new LocalDataDevice(connection)
   }
 
+  /**
+   * @param {wfc.Connection}connection
+   * @private
+   */
   constructor (connection) {
+    /**
+     * @type {WlDataDevice|null}
+     */
     this.resource = null
+    /**
+     * @type {wfc.Connection}
+     * @private
+     */
     this._connection = connection
   }
 
+  /**
+   * @param {wfc.GrDataOffer}grDataOfferProxy
+   */
   dataOffer (grDataOfferProxy) {
     if (grDataOfferProxy == null) {
       // object argument was destroyed by the client before the server noticed.
@@ -36,9 +54,20 @@ module.exports = class LocalDataDevice {
     const wlDataOfferResource = WlDataOffer.create(this.resource.client, this.resource.version, 0, shimDataOffer, null)
     localDataOffer.resource = wlDataOfferResource
 
+    grDataOfferProxy.onError = (code, message) => {
+      localDataOffer.resource.postError(code, message)
+    }
+
     this.resource.dataOffer(wlDataOfferResource)
   }
 
+  /**
+   * @param {number}serial
+   * @param {wfc.GrSurface}surface
+   * @param {number}x
+   * @param {number}y
+   * @param {wfc.GrDataOffer}id
+   */
   enter (serial, surface, x, y, id) {
     if (surface == null) {
       // object argument was destroyed by the client before the server noticed.
@@ -51,6 +80,11 @@ module.exports = class LocalDataDevice {
     this.resource.leave()
   }
 
+  /**
+   * @param {number}time
+   * @param {number}x
+   * @param {number}y
+   */
   motion (time, x, y) {
     this.resource.motion(time, x, y)
   }
@@ -59,7 +93,12 @@ module.exports = class LocalDataDevice {
     this.resource.drop()
   }
 
+  /**
+   * @param {wfc.GrDataOffer}id
+   */
   selection (id) {
     this.resource.selection(id === null ? null : id.listener.resource)
   }
 }
+
+module.exports = LocalDataDevice

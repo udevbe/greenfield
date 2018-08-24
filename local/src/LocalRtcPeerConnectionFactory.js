@@ -2,7 +2,8 @@ const {RtcPeerConnectionFactory} = require('./protocol/rtc-client-protocol')
 
 const LocalRtcPeerConnection = require('./LocalRtcPeerConnection')
 
-module.exports = class LocalRtcPeerConnectionFactory {
+// Wayland Global
+class LocalRtcPeerConnectionFactory {
   /**
    * @param {LocalClient}localClient
    * @return {Promise<LocalRtcPeerConnectionFactory>}
@@ -26,15 +27,26 @@ module.exports = class LocalRtcPeerConnectionFactory {
    * Use LocalRtcPeerConnectionFactory.create(...)
    * @private
    * @param {LocalClient}localClient
-   * @param proxy
+   * @param {RtcPeerConnectionFactory}proxy
    */
   constructor (localClient, proxy) {
+    /**
+     * @type {LocalClient}
+     */
     this.localClient = localClient
+    /**
+     * @type {RtcPeerConnectionFactory}
+     */
     this.proxy = proxy
   }
 
+  /**
+   * @return {LocalRtcPeerConnection}
+   */
   createRtcPeerConnection () {
     const rtcPeerConnectionProxy = this.proxy.createRtcPeerConnection()
     return LocalRtcPeerConnection.create(rtcPeerConnectionProxy)
   }
 }
+
+module.exports = LocalRtcPeerConnectionFactory

@@ -10,11 +10,12 @@ const ShimSurface = require('./ShimSurface')
 const LocalRegion = require('./LocalRegion')
 const ShimRegion = require('./ShimRegion')
 
-module.exports = class ShimCompositor extends WlCompositorRequests {
+// Wayland Global
+class ShimCompositor extends WlCompositorRequests {
   /**
    *
    * @param {GrCompositor} grCompositoryProxy
-   * @returns {module.ShimCompositor}
+   * @returns {ShimCompositor}
    */
   static create (grCompositoryProxy) {
     return new ShimCompositor(grCompositoryProxy)
@@ -33,8 +34,15 @@ module.exports = class ShimCompositor extends WlCompositorRequests {
   }
 
   /**
-   * @param {WlCompositor}resource
-   * @param {number}id
+   *
+   *  Ask the compositor to create a new surface.
+   *
+   *
+   * @param {WlCompositor} resource
+   * @param {number} id the new surface
+   *
+   * @since 1
+   *
    */
   createSurface (resource, id) {
     // delegate request to browser
@@ -51,11 +59,22 @@ module.exports = class ShimCompositor extends WlCompositorRequests {
         shimSurface.localRtcDcBuffer = null
       }
     })
+
+    grSurfaceProxy.onError = (code, message) => {
+      localSurface.resource.postError(code, message)
+    }
   }
 
   /**
-   * @param {WlCompositor}resource
-   * @param {number}id
+   *
+   *  Ask the compositor to create a new region.
+   *
+   *
+   * @param {WlCompositor} resource
+   * @param {number} id the new region
+   *
+   * @since 1
+   *
    */
   createRegion (resource, id) {
     const grRegionProxy = this.proxy.createRegion()
@@ -64,5 +83,11 @@ module.exports = class ShimCompositor extends WlCompositorRequests {
 
     const shimRegion = ShimRegion.create(grRegionProxy)
     localRegion.resource = WlRegion.create(resource.client, resource.version, id, shimRegion, null)
+
+    grRegionProxy.onError = (code, message) => {
+      localRegion.resource.postError(code, message)
+    }
   }
 }
+
+module.exports = ShimCompositor

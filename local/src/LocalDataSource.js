@@ -2,7 +2,10 @@
 
 const fs = require('fs')
 
-module.exports = class LocalDataSource {
+class LocalDataSource {
+  /**
+   * @return {LocalDataSource}
+   */
   static create () {
     return new LocalDataSource()
   }
@@ -39,3 +42,5 @@ module.exports = class LocalDataSource {
     this.resource.action(dndAction)
   }
 }
+
+module.exports = LocalDataSource

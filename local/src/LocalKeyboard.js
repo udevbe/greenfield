@@ -9,16 +9,41 @@ const {StringDecoder} = require('string_decoder')
 const fastcall = require('fastcall')
 const libc = require('./native').libc
 
-module.exports = class LocalKeyboard {
+class LocalKeyboard {
+  /**
+   * @param {wfc.GrKeyboard}grKeyboardProxy
+   * @return {LocalKeyboard}
+   */
   static create (grKeyboardProxy) {
     return new LocalKeyboard(grKeyboardProxy)
   }
 
+  /**
+   * @param {wfc.GrKeyboard}grKeyboardProxy
+   */
   constructor (grKeyboardProxy) {
+    /**
+     * @type {WlKeyboard|null}
+     */
     this.resource = null
+    /**
+     * @type {wfc.GrKeyboard}
+     */
     this.proxy = grKeyboardProxy
+    /**
+     * @type {string}
+     * @private
+     */
     this._keymapString = ''
+    /**
+     * @type {Buffer|null}
+     * @private
+     */
     this._keymapFilePtr = null
+    /**
+     * @type {number}
+     * @private
+     */
     this._keymapFd = -1
   }
 
@@ -207,3 +232,5 @@ module.exports = class LocalKeyboard {
     this.resource.repeatInfo(rate, delay)
   }
 }
+
+module.exports = LocalKeyboard

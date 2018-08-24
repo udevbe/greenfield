@@ -9,7 +9,7 @@ const LocalXdgPopup = require('./LocalXdgPopup')
 const ShimXdgPopup = require('./ShimXdgPopup')
 const XdgPopup = require('./protocol/wayland/XdgPopup')
 
-module.exports = class ShimXdgSurface extends XdgSurfaceRequests {
+class ShimXdgSurface extends XdgSurfaceRequests {
   /**
    * @param {XdgSurface}xdgSurfaceProxy
    * @return {ShimXdgSurface}
@@ -68,6 +68,10 @@ module.exports = class ShimXdgSurface extends XdgSurfaceRequests {
 
     const shimXdgToplevel = ShimXdgToplevel.create(xdgTopLevelProxy)
     localXdgToplevel.resource = XdgToplevel.create(resource.client, resource.version, id, shimXdgToplevel, null)
+
+    xdgTopLevelProxy.onError = (code, message) => {
+      localXdgToplevel.resource.postError(code, message)
+    }
   }
 
   /**
@@ -97,6 +101,10 @@ module.exports = class ShimXdgSurface extends XdgSurfaceRequests {
 
     const shimdXdgPopup = ShimXdgPopup.create(xdgPopupProxy)
     localXdgPopup.resource = XdgPopup.create(resource.client, resource.version, id, shimdXdgPopup, null)
+
+    xdgPopupProxy.onError = (code, message) => {
+      localXdgPopup.resource.postError(code, message)
+    }
   }
 
   /**
@@ -178,3 +186,5 @@ module.exports = class ShimXdgSurface extends XdgSurfaceRequests {
     this.proxy.ackConfigure(serial)
   }
 }
+
+module.exports = ShimXdgSurface

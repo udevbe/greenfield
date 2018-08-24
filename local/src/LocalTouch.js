@@ -1,11 +1,17 @@
 'use strict'
 
-module.exports = class LocalTouch {
+class LocalTouch {
+  /**
+   * @return {LocalTouch}
+   */
   static create () {
     return new LocalTouch()
   }
 
   constructor () {
+    /**
+     * @type {WlTouch|null}
+     */
     this.resource = null
   }
 
@@ -182,3 +188,5 @@ module.exports = class LocalTouch {
     this.resource.orientation(id, orientation)
   }
 }
+
+module.exports = LocalTouch

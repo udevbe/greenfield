@@ -1,11 +1,17 @@
 'use strict'
 
-module.exports = class LocalShellSurface {
+class LocalShellSurface {
+  /**
+   * @return {LocalShellSurface}
+   */
   static create () {
     return new LocalShellSurface()
   }
 
   constructor () {
+    /**
+     * @type {WlShellSurface}
+     */
     this.resource = null
   }
 
@@ -69,3 +75,5 @@ module.exports = class LocalShellSurface {
     this.resource.popupDone()
   }
 }
+
+module.exports = LocalShellSurface

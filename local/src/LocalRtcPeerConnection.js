@@ -5,7 +5,7 @@ const webRTC = require('wrtc')
 
 const LocalRtcBlobTransfer = require('./LocalRtcBlobTransfer')
 
-module.exports = class LocalRtcPeerConnection {
+class LocalRtcPeerConnection {
   /**
    *
    * @param {wfc.RtcPeerConnection} rtcPeerConnectionProxy
@@ -63,10 +63,20 @@ module.exports = class LocalRtcPeerConnection {
     }
   }
 
+  /**
+   * @return {number}
+   * @private
+   */
   _getNextDataChannelId () {
     return ++this._nextDataChannelId
   }
 
+  /**
+   * @param {boolean}reliable
+   * @param {string}binaryType
+   * @return {{negotiated: boolean, maxRetransmits: null|number, id: number, ordered: boolean, label: string, binaryType: string}}
+   * @private
+   */
   _createDescriptorObject (reliable, binaryType) {
     const dataChannelId = this._getNextDataChannelId()
     // descriptor object somewhat corresponds to rtc data channel config dictionary
@@ -80,6 +90,10 @@ module.exports = class LocalRtcPeerConnection {
     }
   }
 
+  /**
+   * @return {string}
+   * @private
+   */
   _uuidv4 () {
     return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
       (c ^ crypto.randomFillSync(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
@@ -195,3 +209,5 @@ module.exports = class LocalRtcPeerConnection {
     }
   }
 }
+
+module.exports = LocalRtcPeerConnection

@@ -1,6 +1,6 @@
 'use strict'
 
-module.exports = class LocalXdgPopup {
+class LocalXdgPopup {
   /**
    * @return {LocalXdgPopup}
    */
@@ -13,7 +13,7 @@ module.exports = class LocalXdgPopup {
    */
   constructor () {
     /**
-     * @type {LocalXdgPopup}
+     * @type {XdgPopup|null}
      */
     this.resource = null
   }
@@ -54,3 +54,5 @@ module.exports = class LocalXdgPopup {
     this.resource.popupDone()
   }
 }
+
+module.exports = LocalXdgPopup

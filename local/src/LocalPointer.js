@@ -1,6 +1,6 @@
 'use strict'
 
-module.exports = class LocalPointer {
+class LocalPointer {
   /**
    * @return {LocalPointer}
    */
@@ -12,6 +12,9 @@ module.exports = class LocalPointer {
    * @private
    */
   constructor () {
+    /**
+     * @type {WlPointer|null}
+     */
     this.resource = null
   }
 
@@ -295,3 +298,5 @@ module.exports = class LocalPointer {
     this.resource.axisDiscrete(axis, discrete)
   }
 }
+
+module.exports = LocalPointer

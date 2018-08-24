@@ -1,6 +1,7 @@
 'use strict'
 
-module.exports = class LocalDataDeviceManager {
+// Wayland Global
+class LocalDataDeviceManager {
   static create () {
     return new LocalDataDeviceManager()
   }
@@ -11,3 +12,5 @@ module.exports = class LocalDataDeviceManager {
 
   // no events to relay
 }
+
+module.exports = LocalDataDeviceManager

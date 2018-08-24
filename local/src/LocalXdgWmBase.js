@@ -1,6 +1,7 @@
 'use strict'
 
-module.exports = class LocalXdgWmBase {
+// Wayland Global
+class LocalXdgWmBase {
   /**
    * @return {LocalXdgWmBase}
    */
@@ -13,7 +14,7 @@ module.exports = class LocalXdgWmBase {
    */
   constructor () {
     /**
-     * @type {XdgWmBase}
+     * @type {XdgWmBase|null}
      */
     this.resource = null
   }
@@ -22,3 +23,5 @@ module.exports = class LocalXdgWmBase {
     this.resource.ping(serial)
   }
 }
+
+module.exports = LocalXdgWmBase

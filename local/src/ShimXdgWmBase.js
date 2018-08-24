@@ -10,7 +10,8 @@ const ShimXdgPositioner = require('./ShimXdgPositioner')
 const LocalXdgSurface = require('./LocalXdgSurface')
 const ShimXdgSurface = require('./ShimXdgSurface')
 
-module.exports = class ShimXdgWmBase extends XdgWmBaseRequests {
+// Wayland Global
+class ShimXdgWmBase extends XdgWmBaseRequests {
   /**
    * @param {XdgWmBase}xdgWmBaseProxy
    * @return {module.ShimXdgWmBase}
@@ -69,6 +70,10 @@ module.exports = class ShimXdgWmBase extends XdgWmBaseRequests {
 
     const shimXdgPositioner = ShimXdgPositioner.create(xdgPositionerProxy)
     localXdgPositioner.resource = XdgPositioner.create(resource.client, resource.version, id, shimXdgPositioner, null)
+
+    xdgPositionerProxy.onError = (code, message) => {
+      localXdgPositioner.resource.postError(code, message)
+    }
   }
 
   /**
@@ -100,6 +105,10 @@ module.exports = class ShimXdgWmBase extends XdgWmBaseRequests {
 
     const shimXdgSurface = ShimXdgSurface.create(xdgSurfaceProxy)
     localXdgSurface.resource = XdgSurface.create(resource.client, resource.version, id, shimXdgSurface, null)
+
+    xdgSurfaceProxy.onError = (code, message) => {
+      localXdgSurface.resource.postError(code, message)
+    }
   }
 
   /**
@@ -118,3 +127,5 @@ module.exports = class ShimXdgWmBase extends XdgWmBaseRequests {
     this.proxy.pong(serial)
   }
 }
+
+module.exports = ShimXdgWmBase

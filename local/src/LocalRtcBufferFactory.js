@@ -3,7 +3,8 @@
 const {RtcBufferFactory} = require('./protocol/rtc-client-protocol')
 const LocalRtcDcBuffer = require('./LocalRtcDcBuffer')
 
-module.exports = class LocalRtcBufferFactory {
+// Wayland Global
+class LocalRtcBufferFactory {
   /**
    *
    * @param {LocalClient} localClient
@@ -61,3 +62,5 @@ module.exports = class LocalRtcBufferFactory {
     return localRtcDcBuffer
   }
 }
+
+module.exports = LocalRtcBufferFactory

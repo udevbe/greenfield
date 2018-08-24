@@ -1,11 +1,18 @@
 'use strict'
 
-module.exports = class LocalSeat {
+// Wayland Global
+class LocalSeat {
+  /**
+   * @return {LocalSeat}
+   */
   static create () {
     return new LocalSeat()
   }
 
   constructor () {
+    /**
+     * @type {WlSeat|null}
+     */
     this.resource = null
   }
 
@@ -62,3 +69,5 @@ module.exports = class LocalSeat {
     this.resource.name(name)
   }
 }
+
+module.exports = LocalSeat

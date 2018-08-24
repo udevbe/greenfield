@@ -136,11 +136,11 @@ class ShimSurface extends WlSurfaceRequests {
    * @param {WlSurface}resource
    */
   destroy (resource) {
+    this._destroyed = true
     this.proxy.destroy()
     resource.destroy()
     this.localRtcDcBuffer.destroy()
     this.localRtcDcBuffer = null
-    this._destroyed = true
   }
 
   get destroyed () {
@@ -193,6 +193,9 @@ class ShimSurface extends WlSurfaceRequests {
     const localCallback = LocalCallback.create(callbackProxy)
     localCallback.resource = WlCallback.create(resource.client, 4, callback, {}, null)
     callbackProxy.listener = localCallback
+    callbackProxy.onError = (code, error) => {
+      localCallback.resource.postError(code, error)
+    }
   }
 
   /**
@@ -274,7 +277,7 @@ class ShimSurface extends WlSurfaceRequests {
    * @return {Promise<void>}
    */
   async sendFrame (frame) {
-    if (this.localRtcDcBuffer === null) {
+    if (this.destroyed) {
       return
     }
 

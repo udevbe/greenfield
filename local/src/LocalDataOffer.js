@@ -1,6 +1,9 @@
 'use strict'
 
-module.exports = class LocalDataOffer {
+class LocalDataOffer {
+  /**
+   * @return {LocalDataOffer}
+   */
   static create () {
     return new LocalDataOffer()
   }
@@ -9,15 +12,26 @@ module.exports = class LocalDataOffer {
     this.resource = null
   }
 
+  /**
+   * @param {string}mimeType
+   */
   offer (mimeType) {
     this.resource.offer(mimeType)
   }
 
+  /**
+   * @param {number}sourceActions
+   */
   sourceActions (sourceActions) {
     this.resource.sourceActions(sourceActions)
   }
 
+  /**
+   * @param {number}dndAction
+   */
   action (dndAction) {
     this.resource.action(dndAction)
   }
 }
+
+module.exports = LocalDataOffer

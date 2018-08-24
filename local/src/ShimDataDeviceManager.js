@@ -9,11 +9,11 @@ const LocalDataDevice = require('./LocalDataDevice')
 const ShimDataDevice = require('./ShimDataDevice')
 const ShimDataSource = require('./ShimDataSource')
 
-module.exports = class ShimDataDeviceManager extends WlDataDeviceManagerRequests {
+class ShimDataDeviceManager extends WlDataDeviceManagerRequests {
   /**
    *
    * @param {GrDataDeviceManager} grDataDeviceManagerProxy
-   * @return {module.ShimDataDeviceManager}
+   * @return {ShimDataDeviceManager}
    */
   static create (grDataDeviceManagerProxy) {
     return new ShimDataDeviceManager(grDataDeviceManagerProxy)
@@ -21,7 +21,7 @@ module.exports = class ShimDataDeviceManager extends WlDataDeviceManagerRequests
 
   /**
    * @private
-   * @param {GrDataDevice} grDataDeviceManagerProxy
+   * @param {GrDataDeviceManager} grDataDeviceManagerProxy
    */
   constructor (grDataDeviceManagerProxy) {
     super()
@@ -35,6 +35,10 @@ module.exports = class ShimDataDeviceManager extends WlDataDeviceManagerRequests
 
     const shimDataSource = ShimDataSource.create(grDataSourceProxy)
     localDataSource.resource = WlDataSource.create(resource.client, resource.version, id, shimDataSource, null)
+
+    grDataSourceProxy.onError = (code, message) => {
+      localDataSource.resource.postError(code, message)
+    }
   }
 
   getDataDevice (resource, id, seat) {
@@ -44,5 +48,11 @@ module.exports = class ShimDataDeviceManager extends WlDataDeviceManagerRequests
 
     const shimDataDevice = ShimDataDevice.create(grDataDeviceProxy)
     localDataDevice.resource = WlDataDevice.create(resource.client, resource.version, id, shimDataDevice, null)
+
+    grDataDeviceProxy.onError = (code, message) => {
+      localDataDevice.resource.postError(code, message)
+    }
   }
 }
+
+module.exports = ShimDataDeviceManager

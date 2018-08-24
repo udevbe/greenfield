@@ -1,6 +1,6 @@
 'use strict'
 
-module.exports = class LocalXdgPositioner {
+class LocalXdgPositioner {
   /**
    * @return {LocalXdgPositioner}
    */
@@ -13,10 +13,12 @@ module.exports = class LocalXdgPositioner {
    */
   constructor () {
     /**
-     * @type {XdgPositioner}
+     * @type {XdgPositioner|null}
      */
     this.resource = null
   }
 
   // no events to relay
 }
+
+module.exports = LocalXdgPositioner

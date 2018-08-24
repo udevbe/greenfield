@@ -2,10 +2,10 @@
 
 const WlDataDeviceRequests = require('./protocol/wayland/WlDataDeviceRequests')
 
-module.exports = class ShimDataDevice extends WlDataDeviceRequests {
+class ShimDataDevice extends WlDataDeviceRequests {
   /**
    * @param {GrDataDevice}grDataDeviceProxy
-   * @return {module.ShimDataDevice}
+   * @return {ShimDataDevice}
    */
   static create (grDataDeviceProxy) {
     return new ShimDataDevice(grDataDeviceProxy)
@@ -29,3 +29,5 @@ module.exports = class ShimDataDevice extends WlDataDeviceRequests {
     resource.destroy()
   }
 }
+
+module.exports = ShimDataDevice

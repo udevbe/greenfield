@@ -1,14 +1,23 @@
 'use strict'
 
-module.exports = class LocalSurface {
+class LocalSurface {
+  /**
+   * @return {LocalSurface}
+   */
   static create () {
     return new LocalSurface()
   }
 
   constructor () {
+    /**
+     * @type {WlSurface|null}
+     */
     this.resource = null
   }
 
+  /**
+   * @param {GrOutput}output
+   */
   enter (output) {
     const outputResource = output.listener.resource
     this.resource.enter(outputResource)
@@ -21,7 +30,7 @@ module.exports = class LocalSurface {
    *                of an output.
    *
    *
-   * @param {*} output undefined
+   * @param {GrOutput} output undefined
    *
    * @since 1
    *
@@ -35,3 +44,5 @@ module.exports = class LocalSurface {
     this.resource.leave(outputResource)
   }
 }
+
+module.exports = LocalSurface

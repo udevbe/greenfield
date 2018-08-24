@@ -1,6 +1,6 @@
 'use strict'
 
-module.exports = class LocalRtcDcBuffer {
+class LocalRtcDcBuffer {
   /**
    *
    * @param {wfc.GrBuffer} grBufferProxy
@@ -56,3 +56,5 @@ module.exports = class LocalRtcDcBuffer {
     // implemented in ShimSurface
   }
 }
+
+module.exports = LocalRtcDcBuffer
