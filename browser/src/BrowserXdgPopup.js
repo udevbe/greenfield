@@ -386,11 +386,11 @@ export default class BrowserXdgPopup extends BrowserSurfaceRole {
     const browserPointer = browserSeat.browserPointer
 
     // FIXME we can receive an older serial in case a popup is triggered from an older mouse down + mouse move
-    // if (serial !== browserSeat.inputSerial) {
-    //   this._dismiss()
-    //   DEBUG && console.log('Popup grab input serial mismatch. Ignoring.')
-    //   return
-    // }
+    if (serial !== browserSeat.buttonPressSerial) {
+      this._dismiss()
+      DEBUG && console.log('Popup grab input serial mismatch. Ignoring.')
+      return
+    }
 
     if (this.mapped) {
       resource.postError(XdgPopup.Error.invalidGrab, 'tried to grab popup after it being mapped')

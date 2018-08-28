@@ -18,7 +18,7 @@ const {keyboard, pointer, touch} = GrSeat.Capability
  *            maintains a keyboard focus and a pointer focus.
  *
  */
-export default class BrowserSeat extends Global {
+class BrowserSeat extends Global {
   /**
    * @param {BrowserSession} browserSession
    * @returns {BrowserSeat}
@@ -76,10 +76,31 @@ export default class BrowserSeat extends Global {
      * @type {number}
      */
     this.serial = 0
+
     /**
      * @type {number}
      */
-    this.inputSerial = 0
+    this.buttonPressSerial = 0
+    /**
+     * @type {number}
+     */
+    this.buttonReleaseSerial = 0
+    /**
+     * @type {number}
+     */
+    this.keyPressSerial = 0
+    /**
+     * @type {number}
+     */
+    this.keyReleaseSerial = 0
+    /**
+     * @type {number}
+     */
+    this.touchDownSerial = 0
+    /**
+     * @type {number}
+     */
+    this.touchUpSerial = 0
     /**
      * @type {Array<function(GrKeyboard):void>}
      * @private
@@ -133,15 +154,63 @@ export default class BrowserSeat extends Global {
    */
   nextSerial () {
     this.serial++
+    if (this.serial & (1 << 29)) {
+      this.serial = 0
+    }
     return this.serial
   }
 
+  isValidInputSerial (serial) {
+    return serial === this.buttonPressSerial || serial === this.buttonReleaseSerial || serial === this.keyPressSerial ||
+      serial === this.keyReleaseSerial || serial === this.touchDownSerial || serial === this.touchUpSerial
+  }
+
   /**
+   * @param {boolean}down
    * @return {number}
    */
-  nextInputSerial () {
-    this.inputSerial++
-    return this.inputSerial
+  nextButtonSerial (down) {
+    if (down) {
+      const mask = 1 << 29
+      this.buttonPressSerial = this.nextSerial() | mask
+      return this.buttonPressSerial
+    } else {
+      const mask = 2 << 29
+      this.buttonReleaseSerial = this.nextSerial() | mask
+      return this.buttonReleaseSerial
+    }
+  }
+
+  /**
+   * @param {boolean}down
+   * @return {number}
+   */
+  nextKeySerial (down) {
+    if (down) {
+      const mask = 3 << 29
+      this.keyPressSerial = this.nextSerial() | mask
+      return this.keyPressSerial
+    } else {
+      const mask = 4 << 29
+      this.keyReleaseSerial = this.nextSerial() | mask
+      return this.keyReleaseSerial
+    }
+  }
+
+  /**
+   * @param {boolean}down
+   * @return {number}
+   */
+  nextTouchSerial (down) {
+    if (down) {
+      const mask = 5 << 29
+      this.touchDownSerial = this.nextSerial() | mask
+      return this.touchDownSerial
+    } else {
+      const mask = 6 << 29
+      this.touchUpSerial = this.nextSerial() | mask
+      return this.touchUpSerial
+    }
   }
 
   /**
@@ -266,3 +335,5 @@ export default class BrowserSeat extends Global {
     }
   }
 }
+
+export default BrowserSeat

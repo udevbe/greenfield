@@ -265,7 +265,7 @@ export default class BrowserShellSurface extends BrowserSurfaceRole {
   move (resource, seat, serial) {
     const browserSeat = seat.implementation
 
-    if (browserSeat.inputSerial !== serial) {
+    if (!browserSeat.isValidInputSerial(serial)) {
       DEBUG && console.log('move serial mismatch. Ignoring.')
       return
     }
@@ -320,7 +320,7 @@ export default class BrowserShellSurface extends BrowserSurfaceRole {
    */
   resize (resource, seat, serial, edges) {
     const browserSeat = /** @type {BrowserSeat} */seat.implementation
-    if (browserSeat.inputSerial !== serial) {
+    if (!browserSeat.isValidInputSerial(serial)) {
       DEBUG && console.log('resize serial mismatch. Ignoring.')
       return
     }

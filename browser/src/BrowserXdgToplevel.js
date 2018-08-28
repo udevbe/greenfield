@@ -528,7 +528,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
   showWindowMenu (resource, seat, serial, x, y) {
     const browserSeat = seat.implementation
 
-    if (serial !== browserSeat.inputSerial) {
+    if (!browserSeat.isValidInputSerial(serial)) {
       DEBUG && console.log('showWindowMenu serial mismatch. Ignoring.')
       return
     }
@@ -578,7 +578,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
 
     const browserSeat = seat.implementation
 
-    if (serial !== browserSeat.inputSerial) {
+    if (!browserSeat.isValidInputSerial(serial)) {
       DEBUG && console.log('move serial mismatch. Ignoring.')
       return
     }
@@ -671,7 +671,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
     const browserSeat = seat.implementation
     const browserPointer = browserSeat.browserPointer
 
-    if (browserSeat.inputSerial !== serial) {
+    if (!browserSeat.isValidInputSerial(serial)) {
       DEBUG && console.log('resize serial mismatch. Ignoring.')
       return
     }

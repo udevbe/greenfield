@@ -287,10 +287,10 @@ export default class BrowserKeyboard {
 
     if (this.focus) {
       consumed = true
-      const serial = this.browserSeat.nextInputSerial()
       const time = event.timeStamp
       const evdevKeyCode = linuxKeyCode - 8
       const state = down ? pressed : released
+      const serial = this.browserSeat.nextKeySerial(down)
 
       const modsDepressed = this._browserXkb.modsDepressed
       const modsLatched = this._browserXkb.modsLatched
