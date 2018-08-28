@@ -1,6 +1,6 @@
 'use strict'
 
-import { XdgToplevel } from './protocol/xdg-shell-browser-protocol'
+import { XdgToplevel, XdgWmBase } from './protocol/xdg-shell-browser-protocol'
 import Point from './math/Point'
 import Size from './Size'
 import Renderer from './render/Renderer'
@@ -226,7 +226,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
 
   _unmap () {
     this.mapped = false
-    this._configureState = {state: [], width: 0, height: 0, resizeEdge: 0}
+    this._configureState = {serial: 0, state: [], width: 0, height: 0, resizeEdge: 0}
     this._userShellSurface.mapped = false
   }
 
@@ -241,8 +241,8 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
     const {w: newSurfaceWidth, h: newSurfaceHeight} = roleState.windowGeometry.size
 
     if (newSurfaceWidth > roleState.configureState.width || newSurfaceHeight > roleState.configureState.height) {
-      // TODO raise protocol error
-      // throw new Error('TODO protocol error')
+      this.resource.postError(XdgWmBase.Error.invalidSurfaceState, 'Surface size does not match configure event.')
+      return
     }
     const {w: oldSurfaceWidth, h: oldSurfaceHeight} = this.browserXdgSurface.windowGeometry.size
 
@@ -290,8 +290,8 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
     const {w: newSurfaceWidth, h: newSurfaceHeight} = roleState.windowGeometry.size
 
     if (newSurfaceWidth !== roleState.configureState.width || newSurfaceHeight !== roleState.configureState.height) {
-      // TODO raise protocol error
-      // throw new Error('TODO protocol error')
+      this.resource.postError(XdgWmBase.Error.invalidSurfaceState, 'Surface size does not match configure event.')
+      return
     }
 
     if (!this._previousGeometry) {
@@ -320,8 +320,8 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
     const bufferSize = newState.bufferContents.size
     const {x: newSurfaceWidth, y: newSurfaceHeight} = browserSurface.toSurfaceSpace(Point.create(bufferSize.w, bufferSize.h))
     if (newSurfaceWidth > this._configureState.width || newSurfaceHeight > this._configureState.height) {
-      // TODO raise protocol error
-      // return
+      this.resource.postError(XdgWmBase.Error.invalidSurfaceState, 'Surface size does not match configure event.')
+      return
     }
 
     if (!this._unfullscreenConfigureState) {
@@ -528,7 +528,8 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
   showWindowMenu (resource, seat, serial, x, y) {
     const browserSeat = seat.implementation
 
-    if (serial !== browserSeat.serial) {
+    if (serial !== browserSeat.inputSerial) {
+      DEBUG && console.log('showWindowMenu serial mismatch. Ignoring.')
       return
     }
 
@@ -577,10 +578,10 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
 
     const browserSeat = seat.implementation
 
-    // FIXME implement input serials
-    // if (serial !== browserSeat.serial) {
-    //   return
-    // }
+    if (serial !== browserSeat.inputSerial) {
+      DEBUG && console.log('move serial mismatch. Ignoring.')
+      return
+    }
 
     const browserPointer = browserSeat.browserPointer
     const browserSurface = this.browserXdgSurface.grSurfaceResource.implementation
@@ -670,10 +671,10 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
     const browserSeat = seat.implementation
     const browserPointer = browserSeat.browserPointer
 
-    // FIXME implement input serial
-    // if (browserSeat.serial !== serial) {
-    //   return
-    // }
+    if (browserSeat.inputSerial !== serial) {
+      DEBUG && console.log('resize serial mismatch. Ignoring.')
+      return
+    }
     // assigned in switch statement
     let sizeAdjustment = (width, height, deltaX, deltaY) => {}
 
@@ -849,13 +850,15 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
    *
    */
   setMaxSize (resource, width, height) {
+    width = width === 0 ? Number.MAX_SAFE_INTEGER : width
+    height = height === 0 ? Number.MAX_SAFE_INTEGER : height
     if (width < 0 || height < 0 || width < this._minSize.x || height < this._minSize.y) {
-      // TODO raise protocol error
-      // return
+      resource.postError(XdgWmBase.Error.invalidSurfaceState, 'Max size can not be me smaller than min size.')
+      return
     }
     this._pendingMaxSize = Point.create(
-      width === 0 ? Number.MAX_SAFE_INTEGER : width,
-      height === 0 ? Number.MAX_SAFE_INTEGER : height
+      width,
+      height
     )
   }
 
@@ -906,8 +909,8 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
    */
   setMinSize (resource, width, height) {
     if (width < 0 || height < 0 || width > this._maxSize.x || height > this._maxSize.y) {
-      // TODO raise protocol error
-      // return
+      this.resource.postError(XdgWmBase.Error.invalidSurfaceState, 'Min size can not be greater than max size.')
+      return
     }
     this._pendingMinSize = Point.create(width, height)
   }

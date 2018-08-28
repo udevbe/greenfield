@@ -47,7 +47,8 @@ export default class BrowserOutput extends Global {
     // TODO we might want to listen for window/document size changes and emit on update
     this._emitGeomtry(grOutputResource)
     this._emitMode(grOutputResource)
-    // TODO scaling info using window.devicePixelRatio (+allow manual override in settings)
+    // TODO scaling info using window.devicePixelRatio
+    // TODO expose pixel scaling in config menu
     if (grOutputResource.version >= 2) {
       grOutputResource.done()
     }
@@ -83,7 +84,7 @@ export default class BrowserOutput extends Global {
     const orientation = window.screen.orientation.type
     let transform = GrOutput.Transform.normal
 
-    // TODO this will probably require some experimentation to get it right
+    // FIXME this requires some experimentation to get it right
     switch (orientation) {
       case 'portrait-primary': {
         transform = GrOutput.Transform.normal

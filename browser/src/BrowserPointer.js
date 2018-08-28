@@ -530,7 +530,7 @@ export default class BrowserPointer extends BrowserSurfaceRole {
       if (this.grab || nroPopups) {
         const surfaceResource = this.focus.browserSurface.resource
         this._doPointerEventFor(surfaceResource, (pointerResource) => {
-          pointerResource.button(this.browserSeat.nextSerial(), event.timeStamp, linuxInput[event.button], released)
+          pointerResource.button(this.browserSeat.nextInputSerial(), event.timeStamp, linuxInput[event.button], released)
           if (pointerResource.version >= 5) {
             pointerResource.frame()
           }
@@ -579,7 +579,7 @@ export default class BrowserPointer extends BrowserSurfaceRole {
 
       const surfaceResource = this.focus.browserSurface.resource
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
-        pointerResource.button(this.browserSeat.nextSerial(), event.timeStamp, linuxInput[event.button], pressed)
+        pointerResource.button(this.browserSeat.nextInputSerial(), event.timeStamp, linuxInput[event.button], pressed)
         if (pointerResource.version >= 5) {
           pointerResource.frame()
         }

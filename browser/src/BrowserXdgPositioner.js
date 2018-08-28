@@ -2,6 +2,7 @@
 
 import Rect from './math/Rect'
 import Point from './math/Point'
+import { XdgPositioner } from './protocol/xdg-shell-browser-protocol'
 
 /**
  * @type {{'0': (function(Rect): Point), '1': (function(Rect): Point), '2': (function(Rect): Point), '3': (function(Rect): Point), '4': (function(Rect): Point), '5': (function(Rect): Point), '6': (function(Rect): Point), '7': (function(Rect): Point), '8': (function(Rect): Point)}}
@@ -308,7 +309,8 @@ export default class BrowserXdgPositioner {
    */
   setSize (resource, width, height) {
     if (width <= 0 || height <= 0) {
-      // TODO raise protocol error
+      resource.postError(XdgPositioner.Error.invalidInput, 'size width or height of positioner can not be negative.')
+      return
     }
     this.size = Rect.create(0, 0, width, height)
   }
@@ -338,7 +340,8 @@ export default class BrowserXdgPositioner {
    */
   setAnchorRect (resource, x, y, width, height) {
     if (width <= 0 || height <= 0) {
-      // TODO raise protocol error
+      resource.postError(XdgPositioner.Error.invalidInput, 'anchor rect width or height of positioner can not be negative.')
+      return
     }
     this.anchorRect = Rect.create(x, y, x + width, y + height)
   }

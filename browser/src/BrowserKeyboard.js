@@ -23,6 +23,7 @@ export default class BrowserKeyboard {
   static create (browserSession, browserDataDevice) {
     const browserKeyboard = new BrowserKeyboard(browserDataDevice)
     // TODO get the keymap from some config source
+    // TODO make available in config menu
     browserKeyboard.updateKeymap('qwerty.xkb')
 
     document.addEventListener('keyup', (event) => {
@@ -286,7 +287,7 @@ export default class BrowserKeyboard {
 
     if (this.focus) {
       consumed = true
-      const serial = this.browserSeat.nextSerial()
+      const serial = this.browserSeat.nextInputSerial()
       const time = event.timeStamp
       const evdevKeyCode = linuxKeyCode - 8
       const state = down ? pressed : released
@@ -315,6 +316,7 @@ export default class BrowserKeyboard {
   emitKeyRepeatInfo (resource) {
     if (resource.version >= 4) {
       // TODO get this from some config source
+      // TODO make available in config menu
       resource.repeatInfo(40, 400)
     }
   }

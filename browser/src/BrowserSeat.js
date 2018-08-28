@@ -77,6 +77,10 @@ export default class BrowserSeat extends Global {
      */
     this.serial = 0
     /**
+     * @type {number}
+     */
+    this.inputSerial = 0
+    /**
      * @type {Array<function(GrKeyboard):void>}
      * @private
      */
@@ -128,7 +132,16 @@ export default class BrowserSeat extends Global {
    * @return {number}
    */
   nextSerial () {
-    return ++this.serial
+    this.serial++
+    return this.serial
+  }
+
+  /**
+   * @return {number}
+   */
+  nextInputSerial () {
+    this.inputSerial++
+    return this.inputSerial
   }
 
   /**

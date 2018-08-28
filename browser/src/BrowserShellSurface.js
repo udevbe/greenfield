@@ -263,38 +263,42 @@ export default class BrowserShellSurface extends BrowserSurfaceRole {
    *
    */
   move (resource, seat, serial) {
+    const browserSeat = seat.implementation
+
+    if (browserSeat.inputSerial !== serial) {
+      DEBUG && console.log('move serial mismatch. Ignoring.')
+      return
+    }
+
     if (this.state === SurfaceStates.FULLSCREEN || this.state === SurfaceStates.MAXIMIZED) {
       return
     }
-    const browserSeat = seat.implementation
     const browserPointer = browserSeat.browserPointer
     const browserSurface = this.grSurfaceResource.implementation
     const browserSurfaceChildSelf = browserSurface.browserSurfaceChildSelf
     const origPosition = browserSurfaceChildSelf.position
 
-    if (browserSeat.serial === serial) {
-      const pointerX = browserPointer.x
-      const pointerY = browserPointer.y
+    const pointerX = browserPointer.x
+    const pointerY = browserPointer.y
 
-      const moveListener = () => {
-        const deltaX = browserPointer.x - pointerX
-        const deltaY = browserPointer.y - pointerY
+    const moveListener = () => {
+      const deltaX = browserPointer.x - pointerX
+      const deltaY = browserPointer.y - pointerY
 
-        // TODO we could try to be smart, and only apply the latest move, depending on how often the render frame fires.
-        browserSurfaceChildSelf.position = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
+      // TODO we could try to be smart, and only apply the latest move, depending on how often the render frame fires.
+      browserSurfaceChildSelf.position = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
 
-        const renderFrame = Renderer.createRenderFrame()
-        browserSurface.browserSurfaceViews.forEach((view) => {
-          view.applyTransformations(renderFrame)
-        })
-        renderFrame.fire()
-      }
-
-      browserPointer.onButtonRelease().then(() => {
-        browserPointer.removeMouseMoveListener(moveListener)
+      const renderFrame = Renderer.createRenderFrame()
+      browserSurface.browserSurfaceViews.forEach((view) => {
+        view.applyTransformations(renderFrame)
       })
-      browserPointer.addMouseMoveListener(moveListener)
+      renderFrame.fire()
     }
+
+    browserPointer.onButtonRelease().then(() => {
+      browserPointer.removeMouseMoveListener(moveListener)
+    })
+    browserPointer.addMouseMoveListener(moveListener)
   }
 
   /**
@@ -307,7 +311,7 @@ export default class BrowserShellSurface extends BrowserSurfaceRole {
    *
    *
    * @param {GrShellSurface} resource
-   * @param {*} seat seat whose pointer is used
+   * @param {GrSeat} seat seat whose pointer is used
    * @param {Number} serial serial number of the implicit grab on the pointer
    * @param {Number} edges which edge or corner is being dragged
    *
@@ -315,90 +319,93 @@ export default class BrowserShellSurface extends BrowserSurfaceRole {
    *
    */
   resize (resource, seat, serial, edges) {
+    const browserSeat = /** @type {BrowserSeat} */seat.implementation
+    if (browserSeat.inputSerial !== serial) {
+      DEBUG && console.log('resize serial mismatch. Ignoring.')
+      return
+    }
+
     if (this.state === SurfaceStates.FULLSCREEN || this.state === SurfaceStates.MAXIMIZED) {
       return
     }
 
-    const browserSeat = seat.implementation
     const browserPointer = browserSeat.browserPointer
-    if (browserSeat.serial === serial) {
-      // assigned in switch statement
-      let sizeAdjustment = (width, height, deltaX, deltaY) => {}
+    // assigned in switch statement
+    let sizeAdjustment = (width, height, deltaX, deltaY) => {}
 
-      switch (edges) {
-        case bottomRight: {
-          sizeAdjustment = (width, height, deltaX, deltaY) => {
-            return {w: width + deltaX, h: height + deltaY}
-          }
-          break
+    switch (edges) {
+      case bottomRight: {
+        sizeAdjustment = (width, height, deltaX, deltaY) => {
+          return {w: width + deltaX, h: height + deltaY}
         }
-        case top: {
-          sizeAdjustment = (width, height, deltaX, deltaY) => {
-            return {w: width, h: height - deltaY}
-          }
-          break
-        }
-        case bottom: {
-          sizeAdjustment = (width, height, deltaX, deltaY) => {
-            return {w: width, h: height + deltaY}
-          }
-          break
-        }
-        case left: {
-          sizeAdjustment = (width, height, deltaX, deltaY) => {
-            return {w: width - deltaX, h: height}
-          }
-          break
-        }
-        case topLeft: {
-          sizeAdjustment = (width, height, deltaX, deltaY) => {
-            return {w: width - deltaX, h: height - deltaY}
-          }
-          break
-        }
-        case bottomLeft: {
-          sizeAdjustment = (width, height, deltaX, deltaY) => {
-            return {w: width - deltaX, h: height + deltaY}
-          }
-          break
-        }
-        case right: {
-          sizeAdjustment = (width, height, deltaX, deltaY) => {
-            return {w: width + deltaX, h: height}
-          }
-          break
-        }
-        case topRight: {
-          sizeAdjustment = (width, height, deltaX, deltaY) => {
-            return {w: width + deltaX, h: height - deltaY}
-          }
-          break
-        }
-        case none:
-        default: {
-          sizeAdjustment = (width, height, deltaX, deltaY) => {
-            return {w: width, h: height}
-          }
-          break
-        }
+        break
       }
-
-      const pointerX = browserPointer.x
-      const pointerY = browserPointer.y
-      const {w: surfaceWidth, h: surfaceHeight} = this.grSurfaceResource.implementation.size
-
-      const resizeListener = () => {
-        const deltaX = browserPointer.x - pointerX
-        const deltaY = browserPointer.y - pointerY
-
-        const size = sizeAdjustment(surfaceWidth, surfaceHeight, deltaX, deltaY)
-        this.resource.configure(edges, size.w, size.h)
+      case top: {
+        sizeAdjustment = (width, height, deltaX, deltaY) => {
+          return {w: width, h: height - deltaY}
+        }
+        break
       }
-      browserPointer.onButtonRelease().then(() => {
-        browserPointer.removeMouseMoveListener(resizeListener)
-      })
-      browserPointer.addMouseMoveListener(resizeListener)
+      case bottom: {
+        sizeAdjustment = (width, height, deltaX, deltaY) => {
+          return {w: width, h: height + deltaY}
+        }
+        break
+      }
+      case left: {
+        sizeAdjustment = (width, height, deltaX, deltaY) => {
+          return {w: width - deltaX, h: height}
+        }
+        break
+      }
+      case topLeft: {
+        sizeAdjustment = (width, height, deltaX, deltaY) => {
+          return {w: width - deltaX, h: height - deltaY}
+        }
+        break
+      }
+      case bottomLeft: {
+        sizeAdjustment = (width, height, deltaX, deltaY) => {
+          return {w: width - deltaX, h: height + deltaY}
+        }
+        break
+      }
+      case right: {
+        sizeAdjustment = (width, height, deltaX, deltaY) => {
+          return {w: width + deltaX, h: height}
+        }
+        break
+      }
+      case topRight: {
+        sizeAdjustment = (width, height, deltaX, deltaY) => {
+          return {w: width + deltaX, h: height - deltaY}
+        }
+        break
+      }
+      case none:
+      default: {
+        sizeAdjustment = (width, height, deltaX, deltaY) => {
+          return {w: width, h: height}
+        }
+        break
+      }
     }
+
+    const pointerX = browserPointer.x
+    const pointerY = browserPointer.y
+    const {w: surfaceWidth, h: surfaceHeight} = this.grSurfaceResource.implementation.size
+
+    const resizeListener = () => {
+      const deltaX = browserPointer.x - pointerX
+      const deltaY = browserPointer.y - pointerY
+
+      const size = sizeAdjustment(surfaceWidth, surfaceHeight, deltaX, deltaY)
+      this.resource.configure(edges, size.w, size.h)
+    }
+    browserPointer.onButtonRelease().then(() => {
+      browserPointer.removeMouseMoveListener(resizeListener)
+    })
+    browserPointer.addMouseMoveListener(resizeListener)
   }
 
   _createUserShellSurface () {
@@ -565,35 +572,40 @@ export default class BrowserShellSurface extends BrowserSurfaceRole {
    *
    */
   async setPopup (resource, seat, serial, parent, x, y, flags) {
+    const browserSeat = seat.implementation
+    // FIXME we can receive an older serial in case a popup is triggered from an older mouse down + mouse move
+    // if (serial !== browserSeat.inputSerial) {
+    //   this._dismiss()
+    //   DEBUG && console.log('Popup grab input serial mismatch. Ignoring.')
+    //   return
+    // }
+
     if (this.state) { return }
 
-    const browserSeat = seat.implementation
     const browserPointer = browserSeat.browserPointer
-    if (browserSeat.serial === serial) {
-      this.state = SurfaceStates.POPUP
-      const browserSurface = this.grSurfaceResource.implementation
-      const browserSurfaceChild = browserSurface.browserSurfaceChildSelf
-      browserSurfaceChild.position = Point.create(x, y)
-      const onNewView = (view) => {
-        const renderFrame = Renderer.createRenderFrame()
-        view.applyTransformations(renderFrame)
-        renderFrame.fire()
-        view.onDestroy().then(() => {
-          view.detach()
-        })
-      }
-      // having added this shell-surface to a parent will have it create a view for each parent view
-      const views = parent.implementation.addChild(browserSurfaceChild)
-      views.forEach(onNewView)
-      // this handles the case where a view is created later on (ie if a new parent view is created)
-      browserSurface.onViewCreated = onNewView
-
-      this.grSurfaceResource.implementation.hasKeyboardInput = (flags & inactive) === 0
-
-      // handle popup window grab
-      await browserPointer.popupGrab(this.grSurfaceResource)
-      resource.popupDone()
+    this.state = SurfaceStates.POPUP
+    const browserSurface = this.grSurfaceResource.implementation
+    const browserSurfaceChild = browserSurface.browserSurfaceChildSelf
+    browserSurfaceChild.position = Point.create(x, y)
+    const onNewView = (view) => {
+      const renderFrame = Renderer.createRenderFrame()
+      view.applyTransformations(renderFrame)
+      renderFrame.fire()
+      view.onDestroy().then(() => {
+        view.detach()
+      })
     }
+    // having added this shell-surface to a parent will have it create a view for each parent view
+    const views = parent.implementation.addChild(browserSurfaceChild)
+    views.forEach(onNewView)
+    // this handles the case where a view is created later on (ie if a new parent view is created)
+    browserSurface.onViewCreated = onNewView
+
+    this.grSurfaceResource.implementation.hasKeyboardInput = (flags & inactive) === 0
+
+    // handle popup window grab
+    await browserPointer.popupGrab(this.grSurfaceResource)
+    resource.popupDone()
   }
 
   /**

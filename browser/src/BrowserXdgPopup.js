@@ -1,6 +1,6 @@
 'use strict'
 
-import { XdgPositioner } from './protocol/xdg-shell-browser-protocol'
+import { XdgPositioner, XdgWmBase, XdgPopup } from './protocol/xdg-shell-browser-protocol'
 import Point from './math/Point'
 import BrowserSurfaceRole from './BrowserSurfaceRole'
 
@@ -256,6 +256,13 @@ export default class BrowserXdgPopup extends BrowserSurfaceRole {
    */
   _map (browserSurface, newState) {
     // TODO check if parent is mapped
+    for (const browserSurfaceChild of browserSurface.browserSurfaceChildren) {
+      if (browserSurfaceChild !== browserSurface.browserSurfaceChildSelf &&
+        browserSurfaceChild.browserSurface.role instanceof BrowserXdgPopup) {
+        this.resource.postError(XdgWmBase.Error.notTheTopmostPopup, 'Client tried to map a non-topmost popup')
+        return
+      }
+    }
 
     this.mapped = true
     const parentBrowserSurface = this.parent.implementation.grSurfaceResource.implementation
@@ -313,7 +320,7 @@ export default class BrowserXdgPopup extends BrowserSurfaceRole {
     for (const browserSurfaceChild of browserSurface.browserSurfaceChildren) {
       if (browserSurfaceChild !== browserSurface.browserSurfaceChildSelf &&
         browserSurfaceChild.browserSurface.role instanceof BrowserXdgPopup) {
-        // TODO raise protocol error
+        resource.postError(XdgWmBase.Error.notTheTopmostPopup, 'Client tried to destroy a non-topmost popup')
         return
       }
     }
@@ -378,16 +385,25 @@ export default class BrowserXdgPopup extends BrowserSurfaceRole {
     const browserSeat = seat.implementation
     const browserPointer = browserSeat.browserPointer
 
-    // FIXME keep track of pointer button serial, keyboard key serials & touch serials separately and adjust all code accordingly.
-    // if (serial !== browserSeat.serial) {
-    //  this._dismiss()
-    //  return
+    // FIXME we can receive an older serial in case a popup is triggered from an older mouse down + mouse move
+    // if (serial !== browserSeat.inputSerial) {
+    //   this._dismiss()
+    //   DEBUG && console.log('Popup grab input serial mismatch. Ignoring.')
+    //   return
     // }
+
+    if (this.mapped) {
+      resource.postError(XdgPopup.Error.invalidGrab, 'tried to grab popup after it being mapped')
+      return
+    }
 
     const parentGrSurface = this.parent.implementation.grSurfaceResource
     if (parentGrSurface.implementation.role instanceof BrowserXdgPopup) {
-      if (!browserPointer.findPopupGrab(parentGrSurface)) {
-        // TODO throw protocol error
+      if (parentGrSurface.dismissed) {
+        this._dismiss()
+        return
+      } else if (!browserPointer.findPopupGrab(parentGrSurface)) {
+        resource.postError(XdgWmBase.Error.invalidPopupParent, 'Popup parent is a popup that did not take an explicit grab.')
         return
       }
     }

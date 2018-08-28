@@ -1,4 +1,4 @@
-import { XdgToplevel, XdgPopup } from './protocol/xdg-shell-browser-protocol'
+import { XdgToplevel, XdgPopup, XdgWmBase } from './protocol/xdg-shell-browser-protocol'
 import BrowserXdgToplevel from './BrowserXdgToplevel'
 import BrowserXdgPopup from './BrowserXdgPopup'
 import Rect from './math/Rect'
@@ -145,7 +145,7 @@ export default class BrowserXdgSurface {
   getToplevel (resource, id) {
     const browserSurface = this.grSurfaceResource.implementation
     if (browserSurface.role) {
-      // TODO raise protocol error
+      resource.postError(XdgWmBase.Error.role, 'given wl_surface has another role')
       return
     }
     const xdgToplevelResource = new XdgToplevel(resource.client, id, resource.version)
@@ -178,16 +178,19 @@ export default class BrowserXdgSurface {
   getPopup (resource, id, parent, positioner) {
     const browserSurface = this.grSurfaceResource.implementation
     if (browserSurface.role) {
-      // TODO protocol error
+      resource.postError(XdgWmBase.Error.role, 'given wl_surface has another role')
+      return
     }
 
     const browserXdgPositioner = positioner.implementation
     if (browserXdgPositioner.size === null) {
-      // TODO protocol error
+      resource.postError(XdgWmBase.Error.invalidPositioner, 'the client provided an invalid positioner. Size is NULL.')
+      return
     }
 
     if (browserXdgPositioner.anchorRect === null) {
-      // TODO protocol error
+      resource.postError(XdgWmBase.Error.invalidPositioner, 'the client provided an invalid positioner. AnchorRect is NULL.')
+      return
     }
 
     const positionerState = browserXdgPositioner.createStateCopy()
@@ -263,7 +266,8 @@ export default class BrowserXdgSurface {
    */
   setWindowGeometry (resource, x, y, width, height) {
     if (width <= 0 || height <= 0) {
-      // TODO raise protocol error
+      resource.postError(XdgWmBase.Error.invalidSurfaceState, 'Client provided negative window geometry.')
+      return
     }
     this.pendingWindowGeometry = Rect.create(x, y, x + width, y + height)
   }
