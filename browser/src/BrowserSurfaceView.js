@@ -47,6 +47,10 @@ export default class BrowserSurfaceView {
      */
     this.browserSurface = browserSurface
     /**
+     * @type {?Mat4}
+     */
+    this.customTransformation = null
+    /**
      * @type {Mat4}
      */
     this._transformation = transformation
@@ -115,18 +119,16 @@ export default class BrowserSurfaceView {
       return
     }
     this._primary = primary
-    this.browserSurface.browserSurfaceChildren.forEach(browserSurfaceChild => {
-      if (browserSurfaceChild === this.browserSurface.browserSurfaceChildSelf) return
-      browserSurfaceChild.browserSurface.browserSurfaceViews.filter(browserSurfaceView => {
-        return browserSurfaceView.parent === this
-      }).forEach(browserSurfaceView => {
-        browserSurfaceView.primary = primary
-      })
-    })
   }
 
   get primary () {
-    return this._primary
+    if (this._primary) {
+      return true
+    } else if (this.parent) {
+      return this.parent.primary
+    } else {
+      return false
+    }
   }
 
   /**
@@ -208,6 +210,9 @@ export default class BrowserSurfaceView {
    * @private
    */
   _calculateTransformation () {
+    if (this.customTransformation) {
+      return this.customTransformation
+    }
     // TODO we might want to keep some 'transformation dirty' flags to avoid needless matrix multiplications
 
     // inherit parent transformation
@@ -291,8 +296,23 @@ export default class BrowserSurfaceView {
    * @param {Point} browserPoint point in browser coordinates
    * @return {Point} point in view coordinates with respect to view transformations
    */
-  toViewSpace (browserPoint) {
+  toViewSpaceFromBrowser (browserPoint) {
     return this._inverseTransformation.timesPoint(browserPoint)
+  }
+
+  toViewSpaceFromSurface (surfacePoint) {
+    const canvas = this.bufferedCanvas.frontContext.canvas
+    const boundingRect = canvas.getBoundingClientRect()
+    const canvasWidth = Math.round(boundingRect.width)
+    const canvasHeight = Math.round(boundingRect.height)
+    const surfaceSize = this.browserSurface.size
+    const surfaceWidth = surfaceSize.w
+    const surfaceHeight = surfaceSize.h
+    if (surfaceWidth === canvasWidth && surfaceHeight === canvasHeight) {
+      return surfacePoint
+    } else {
+      return Mat4.scalarVector(Vec4.create2D(canvasWidth / surfaceWidth, canvasHeight / surfaceHeight)).timesPoint(surfacePoint)
+    }
   }
 
   /**
@@ -300,7 +320,7 @@ export default class BrowserSurfaceView {
    * @return {Point}
    */
   toSurfaceSpace (browserPoint) {
-    const viewPoint = this.toViewSpace(browserPoint)
+    const viewPoint = this.toViewSpaceFromBrowser(browserPoint)
 
     const canvas = this.bufferedCanvas.frontContext.canvas
     const boundingRect = canvas.getBoundingClientRect()

@@ -5,6 +5,7 @@ import Point from './math/Point'
 import Size from './Size'
 import Renderer from './render/Renderer'
 import BrowserSurfaceRole from './BrowserSurfaceRole'
+import Mat4 from './math/Mat4'
 
 const {none, bottom, bottomLeft, bottomRight, left, right, top, topLeft, topRight} = XdgToplevel.ResizeEdge
 const {fullscreen, activated, maximized, resizing} = XdgToplevel.State
@@ -240,10 +241,6 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
     const roleState = newState.roleState
     const {w: newSurfaceWidth, h: newSurfaceHeight} = roleState.windowGeometry.size
 
-    if (newSurfaceWidth > roleState.configureState.width || newSurfaceHeight > roleState.configureState.height) {
-      this.resource.postError(XdgWmBase.Error.invalidSurfaceState, 'Surface size does not match configure event.')
-      return
-    }
     const {w: oldSurfaceWidth, h: oldSurfaceHeight} = this.browserXdgSurface.windowGeometry.size
 
     let dx = 0
@@ -304,10 +301,11 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
     const {y} = document.getElementById('workspace').getBoundingClientRect()
     const windowGeoPositionOffset = newState.roleState.windowGeometry.position
 
-    browserSurface.browserSurfaceChildSelf.position = Point.create(x - windowGeoPositionOffset.x, y - windowGeoPositionOffset.y)
-    browserSurface.browserSurfaceViews.forEach(value => {
-      value.applyTransformations(renderFrame)
-    })
+    const primaryView = browserSurface.browserSurfaceViews.find(view => { return view.primary })
+    const viewPositionOffset = primaryView.toViewSpaceFromSurface(windowGeoPositionOffset)
+
+    primaryView.customTransformation = Mat4.translation(x - viewPositionOffset.x, y - viewPositionOffset.y)
+    primaryView.applyTransformations(renderFrame)
   }
 
   /**
@@ -352,11 +350,9 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
   _normalCommit (browserSurface, renderFrame, newState) {
     if (this._previousGeometry) {
       // restore position (we came from a fullscreen or maximize and must restore the position)
-      const browserSurface = this.browserXdgSurface.grSurfaceResource.implementation
-      browserSurface.browserSurfaceChildSelf.position = this._previousGeometry.position
-      browserSurface.browserSurfaceViews.forEach(value => {
-        value.applyTransformations(renderFrame)
-      })
+      const primaryView = browserSurface.browserSurfaceViews.find(view => { return view.primary })
+      primaryView.customTransformation = null
+      primaryView.applyTransformations(renderFrame)
       this._previousGeometry = null
     }
     if (this._unfullscreenConfigureState) {
@@ -426,7 +422,6 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
    *
    */
   setParent (resource, parent) {
-
     if (this._parent) {
       const oldParentBrowserXdgSurface = this._parent.implementation.browserXdgSurface
       const oldParentBrowserSurface = oldParentBrowserXdgSurface.grSurfaceResource.implementation
