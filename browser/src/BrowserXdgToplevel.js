@@ -49,11 +49,20 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
     userShellSurface.onActivationRequest = () => {
       if (!browserXdgToplevel._activationRequested) {
         browserXdgToplevel._activationRequested = true
-        browserXdgToplevel._emitConfigure(xdgToplevelResource, browserXdgToplevel._configureState.width, browserXdgToplevel._configureState.height, [activated], none)
+        if (!browserXdgToplevel._configureState.state.includes(activated)) {
+          const newState = browserXdgToplevel._configureState.state.slice()
+          newState.push(activated)
+          browserXdgToplevel._emitConfigure(xdgToplevelResource, browserXdgToplevel._configureState.width, browserXdgToplevel._configureState.height, newState, none)
+        }
       }
     }
     userShellSurface.onInactive = () => {
-      browserXdgToplevel._emitConfigure(xdgToplevelResource, browserXdgToplevel._configureState.width, browserXdgToplevel._configureState.height, [], none)
+      if (browserXdgToplevel._configureState.state.includes(activated)) {
+        const newState = browserXdgToplevel._configureState.state.slice()
+        const idx = newState.indexOf(activated)
+        newState.splice(idx, 1)
+        browserXdgToplevel._emitConfigure(xdgToplevelResource, browserXdgToplevel._configureState.width, browserXdgToplevel._configureState.height, newState, none)
+      }
     }
 
     return browserXdgToplevel
@@ -203,7 +212,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
         this._maximizedCommit(browserSurface, renderFrame, newState)
       } else if (newState.roleState.configureState.state.includes(fullscreen)) {
         this._fullscreenCommit(browserSurface, renderFrame, newState)
-      } else if (newState.roleState.configureState.state.includes(activated)) {
+      } else {
         this._normalCommit(browserSurface, renderFrame, newState)
       }
     } else if (this.mapped) {
@@ -783,7 +792,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
    * @param {XdgToplevel} resource
    * @param {number}width
    * @param {number}height
-   * @param {number[]}states
+   * @param {Array<number>}states
    * @param {number}resizeEdge
    * @private
    */
