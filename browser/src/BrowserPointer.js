@@ -286,10 +286,16 @@ export default class BrowserPointer extends BrowserSurfaceRole {
    *
    */
   setCursor (resource, serial, surface, hotspotX, hotspotY) {
+    const browserSurface = /** @type {BrowserSurface} */surface.implementation
+    if (browserSurface.role && browserSurface.role !== this) {
+      resource.postError(GrPointer.Error.role, 'given gr_surface has another role')
+      return
+    }
+
     if (this._browserDataDevice.dndSourceClient) {
       return
     }
-    if (serial !== this.browserSeat.serial) {
+    if (serial !== this.browserSeat.enterSerial) {
       return
     }
     this.setCursorInternal(surface, hotspotX, hotspotY)
@@ -356,9 +362,9 @@ export default class BrowserPointer extends BrowserSurfaceRole {
   }
 
   /**
-   * @param {GrSurface|null}surface
-   * @param {Number} hotspotX surface-local x coordinate
-   * @param {Number} hotspotY surface-local y coordinate
+   * @param {?GrSurface}surface
+   * @param {number} hotspotX surface-local x coordinate
+   * @param {number} hotspotY surface-local y coordinate
    */
   setCursorInternal (surface, hotspotX, hotspotY) {
     this.hotspotX = hotspotX
@@ -371,12 +377,7 @@ export default class BrowserPointer extends BrowserSurfaceRole {
     this._cursorSurface = surface
 
     if (surface) {
-      const browserSurface = surface.implementation
-      if (browserSurface.role && browserSurface.role !== this) {
-        // TODO raise protocol error
-        return
-      }
-
+      const browserSurface = /** @type {BrowserSurface} */surface.implementation
       if (this._view) {
         this._view.destroy()
       }
@@ -666,7 +667,7 @@ export default class BrowserPointer extends BrowserSurfaceRole {
 
     const surfacePoint = this._calculateSurfacePoint(newFocus)
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
-      pointerResource.enter(this.browserSeat.nextSerial(), surfaceResource, parseFixed(surfacePoint.x), parseFixed(surfacePoint.y))
+      pointerResource.enter(this.browserSeat.nextEnterSerial(), surfaceResource, parseFixed(surfacePoint.x), parseFixed(surfacePoint.y))
     })
   }
 

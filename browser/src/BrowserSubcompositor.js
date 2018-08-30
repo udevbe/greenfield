@@ -71,7 +71,8 @@ export default class BrowserSubcompositor extends Global {
   getSubsurface (resource, id, surface, parent) {
     const browserSurface = surface.implementation
     if (browserSurface.role) {
-      // TODO protocol error
+      resource.postError(GrSubcompositor.Error.badSurface, 'the to-be sub-surface is invalid')
+      return
     }
 
     const grSubsurface = new GrSubsurface(resource.client, id, resource.version)

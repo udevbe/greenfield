@@ -102,6 +102,10 @@ class BrowserSeat extends Global {
      */
     this.touchUpSerial = 0
     /**
+     * @type {number}
+     */
+    this.enterSerial = 0
+    /**
      * @type {Array<function(GrKeyboard):void>}
      * @private
      */
@@ -163,6 +167,11 @@ class BrowserSeat extends Global {
   isValidInputSerial (serial) {
     return serial === this.buttonPressSerial || serial === this.buttonReleaseSerial || serial === this.keyPressSerial ||
       serial === this.keyReleaseSerial || serial === this.touchDownSerial || serial === this.touchUpSerial
+  }
+
+  nextEnterSerial () {
+    this.enterSerial = this.nextSerial()
+    return this.enterSerial
   }
 
   /**
@@ -307,12 +316,11 @@ class BrowserSeat extends Global {
    *
    */
   getTouch (resource, id) {
+    const grTouchResource = new GrTouch(resource.client, id, resource.version)
+    this.browserTouch.resources.push(grTouchResource)
+
     if (this.hasTouch) {
-      const grTouchResource = new GrTouch(resource.client, id, resource.version)
       grTouchResource.implementation = this.browserTouch
-      this.browserTouch.resources.push(grTouchResource)
-    } else {
-      // TODO raise protocol error
     }
   }
 

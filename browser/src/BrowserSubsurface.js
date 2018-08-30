@@ -4,6 +4,7 @@ import Point from './math/Point'
 import Renderer from './render/Renderer'
 import BrowserSurface from './BrowserSurface'
 import BrowserSurfaceRole from './BrowserSurfaceRole'
+import { GrSubsurface } from './protocol/greenfield-browser-protocol'
 
 /**
  *
@@ -256,17 +257,25 @@ export default class BrowserSubsurface extends BrowserSurfaceRole {
    *
    */
   placeAbove (resource, sibling) {
+    const parentBrowserSurface = /** @type {BrowserSurface} */ this.parentGrSurfaceResource.implementation
+    const siblingBrowserSurface = /** @type {BrowserSurface} */ sibling.implementation
+    const siblingBrowserSurfaceChildSelf = siblingBrowserSurface.browserSurfaceChildSelf
+    if (!parentBrowserSurface.browserSubsurfaceChildren.includes(siblingBrowserSurfaceChildSelf) ||
+      siblingBrowserSurface === parentBrowserSurface) {
+      resource.postError(GrSubsurface.Error.badSurface, 'gr_surface is not a sibling or the parent')
+      return
+    }
+
     if (this._inert) {
       return
     }
 
-    const parentBrowserSurface = this.parentGrSurfaceResource.implementation
     const browserSurface = this.grSurfaceResource.implementation
 
     const currentIdx = parentBrowserSurface.pendingBrowserSubsurfaceChildren.indexOf(browserSurface.browserSurfaceChildSelf)
     parentBrowserSurface.pendingBrowserSubsurfaceChildren.splice(currentIdx, 1)
 
-    const siblingIdx = parentBrowserSurface.pendingBrowserSubsurfaceChildren.indexOf(sibling.implementation.browserSurface.browserSurfaceChildSelf)
+    const siblingIdx = parentBrowserSurface.pendingBrowserSubsurfaceChildren.indexOf(siblingBrowserSurfaceChildSelf)
     const newIdx = siblingIdx + 1
     parentBrowserSurface.pendingBrowserSubsurfaceChildren.splice(newIdx, 0, browserSurface.browserSurfaceChildSelf)
   }

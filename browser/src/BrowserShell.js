@@ -65,7 +65,8 @@ export default class BrowserShell extends Global {
    */
   getShellSurface (resource, id, surface) {
     if (surface.implementation.role) {
-      // TODO protocol error
+      resource.postError(GrShell.Error.role, 'given gr_surface has another role')
+      return
     }
 
     const grShellSurfaceResource = new GrShellSurface(resource.client, id, resource.version)

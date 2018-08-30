@@ -1,7 +1,7 @@
 'use strict'
 
 import Point from './math/Point'
-import { GrDataDeviceManager, parseFixed } from './protocol/greenfield-browser-protocol'
+import { GrDataDeviceManager, parseFixed, GrDataDevice, GrDataSource } from './protocol/greenfield-browser-protocol'
 import BrowserDataOffer from './BrowserDataOffer'
 
 const DndAction = GrDataDeviceManager.DndAction
@@ -151,6 +151,12 @@ export default class BrowserDataDevice {
    *
    */
   startDrag (resource, source, origin, icon, serial) {
+    const iconBrowserSurface = /** @type {BrowserSurface} */ icon.implementation
+    if (iconBrowserSurface.role) {
+      resource.postError(GrDataDevice.Error.role, 'given gr_surface has another role')
+      return
+    }
+
     const browserPointer = this.browserSeat.browserPointer
 
     if (this.browserSeat.serial !== serial) {
@@ -361,9 +367,9 @@ export default class BrowserDataDevice {
    *
    */
   setSelection (resource, source, serial) {
-    // FIXME what should the serial correspond to? Looking at weston, the serial is quite useless...
+    // what should the serial correspond to? Looking at weston, the serial is quite useless...
     if (source && source.implementation.dndActions) {
-      // TODO raise protocol error
+      source.postError(GrDataSource.Error.invalidSource, 'can not set selection when source has dnd actions active')
       return
     }
 

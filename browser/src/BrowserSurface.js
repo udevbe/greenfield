@@ -1,6 +1,6 @@
 'use strict'
 
-import { GrCallback, GrOutput } from './protocol/greenfield-browser-protocol'
+import { GrCallback, GrOutput, GrSurface } from './protocol/greenfield-browser-protocol'
 import BrowserSurfaceView from './BrowserSurfaceView'
 import BrowserCallback from './BrowserCallback'
 import Rect from './math/Rect'
@@ -1125,7 +1125,7 @@ export default class BrowserSurface {
     if (Object.values(GrOutput.Transform).includes(transform)) {
       this._pendingBufferTransform = transform
     } else {
-      // TODO send error to client
+      resource.postError(GrSurface.Error.invalidTransform, 'buffer transform value is invalid')
     }
   }
 
@@ -1164,7 +1164,8 @@ export default class BrowserSurface {
    */
   setBufferScale (resource, scale) {
     if (scale < 1) {
-      // TODO raise error
+      resource.postError(GrSurface.Error.invalidScale, 'buffer scale value is invalid')
+      return
     }
     this._pendingBufferScale = scale
   }
