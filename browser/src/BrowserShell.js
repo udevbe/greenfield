@@ -65,7 +65,8 @@ export default class BrowserShell extends Global {
    */
   getShellSurface (resource, id, surface) {
     if (surface.implementation.role) {
-      resource.postError(GrShell.Error.role, 'given gr_surface has another role')
+      resource.postError(GrShell.Error.role, 'Given surface has another role.')
+      DEBUG && console.log('Protocol error. Given surface has another role.')
       return
     }
 

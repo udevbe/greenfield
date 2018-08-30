@@ -288,7 +288,8 @@ export default class BrowserPointer extends BrowserSurfaceRole {
   setCursor (resource, serial, surface, hotspotX, hotspotY) {
     const browserSurface = /** @type {BrowserSurface} */surface.implementation
     if (browserSurface.role && browserSurface.role !== this) {
-      resource.postError(GrPointer.Error.role, 'given gr_surface has another role')
+      resource.postError(GrPointer.Error.role, 'Given surface has another role.')
+      DEBUG && console.log('Protocol error. Given surface has another role')
       return
     }
 

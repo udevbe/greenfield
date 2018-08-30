@@ -71,7 +71,8 @@ export default class BrowserSubcompositor extends Global {
   getSubsurface (resource, id, surface, parent) {
     const browserSurface = surface.implementation
     if (browserSurface.role) {
-      resource.postError(GrSubcompositor.Error.badSurface, 'the to-be sub-surface is invalid')
+      resource.postError(GrSubcompositor.Error.badSurface, 'Given surface has another role.')
+      DEBUG && console.log('Protocol error. Given surface has another role.')
       return
     }
 

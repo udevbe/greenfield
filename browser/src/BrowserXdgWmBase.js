@@ -102,7 +102,8 @@ export default class BrowserXdgWmBase extends Global {
    */
   destroy (resource) {
     if (this._grSurfaceResources.length > 0) {
-      resource.postError(XdgWmBase.Error.defunctSurfaces, 'xdg_wm_base was destroyed before children')
+      resource.postError(XdgWmBase.Error.defunctSurfaces, 'xdg_wm_base was destroyed before children.')
+      DEBUG && console.log('Protocol error. xdg_wm_base was destroyed before children.')
       return
     }
     resource.destroy()
@@ -151,7 +152,8 @@ export default class BrowserXdgWmBase extends Global {
   getXdgSurface (resource, id, surface) {
     const browserSurface = /** @type {BrowserSurface} */surface.implementation
     if (browserSurface.pendingGrBuffer || browserSurface.state.bufferContents) {
-      resource.postError(XdgWmBase.Error.invalidSurfaceState, 'surface had a buffer attached before xdg surface was created.')
+      resource.postError(XdgWmBase.Error.invalidSurfaceState, 'Surface had a buffer attached before xdg surface was created.')
+      DEBUG && console.log('Protocol error. Surface had a buffer attached before xdg surface was created.')
       return
     }
 

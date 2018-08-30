@@ -297,6 +297,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
 
     if (newSurfaceWidth !== roleState.configureState.width || newSurfaceHeight !== roleState.configureState.height) {
       this.resource.postError(XdgWmBase.Error.invalidSurfaceState, 'Surface size does not match configure event.')
+      DEBUG && console.log('Protocol error. Surface size does not match configure event.')
       return
     }
 
@@ -328,6 +329,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
     const {x: newSurfaceWidth, y: newSurfaceHeight} = browserSurface.toSurfaceSpace(Point.create(bufferSize.w, bufferSize.h))
     if (newSurfaceWidth > this._configureState.width || newSurfaceHeight > this._configureState.height) {
       this.resource.postError(XdgWmBase.Error.invalidSurfaceState, 'Surface size does not match configure event.')
+      DEBUG && console.log('Protocol error. Surface size does not match configure event.')
       return
     }
 
@@ -858,6 +860,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
     height = height === 0 ? Number.MAX_SAFE_INTEGER : height
     if (width < 0 || height < 0 || width < this._minSize.x || height < this._minSize.y) {
       resource.postError(XdgWmBase.Error.invalidSurfaceState, 'Max size can not be me smaller than min size.')
+      DEBUG && console.log('Protocol error. Max size can not be me smaller than min size.')
       return
     }
     this._pendingMaxSize = Point.create(
@@ -914,6 +917,7 @@ export default class BrowserXdgToplevel extends BrowserSurfaceRole {
   setMinSize (resource, width, height) {
     if (width < 0 || height < 0 || width > this._maxSize.x || height > this._maxSize.y) {
       this.resource.postError(XdgWmBase.Error.invalidSurfaceState, 'Min size can not be greater than max size.')
+      DEBUG && console.log('Protocol error. Min size can not be greater than max size.')
       return
     }
     this._pendingMinSize = Point.create(width, height)

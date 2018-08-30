@@ -262,7 +262,8 @@ export default class BrowserSubsurface extends BrowserSurfaceRole {
     const siblingBrowserSurfaceChildSelf = siblingBrowserSurface.browserSurfaceChildSelf
     if (!parentBrowserSurface.browserSubsurfaceChildren.includes(siblingBrowserSurfaceChildSelf) ||
       siblingBrowserSurface === parentBrowserSurface) {
-      resource.postError(GrSubsurface.Error.badSurface, 'gr_surface is not a sibling or the parent')
+      resource.postError(GrSubsurface.Error.badSurface, 'Surface is not a sibling or the parent.')
+      DEBUG && console.log('Protocol error. Surface is not a sibling or the parent.')
       return
     }
 

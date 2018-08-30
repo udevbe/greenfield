@@ -309,7 +309,8 @@ export default class BrowserXdgPositioner {
    */
   setSize (resource, width, height) {
     if (width <= 0 || height <= 0) {
-      resource.postError(XdgPositioner.Error.invalidInput, 'size width or height of positioner can not be negative.')
+      resource.postError(XdgPositioner.Error.invalidInput, 'Size width or height of positioner can not be negative.')
+      DEBUG && console.log('Protocol error. Size width or height of positioner can not be negative.')
       return
     }
     this.size = Rect.create(0, 0, width, height)
@@ -340,7 +341,8 @@ export default class BrowserXdgPositioner {
    */
   setAnchorRect (resource, x, y, width, height) {
     if (width <= 0 || height <= 0) {
-      resource.postError(XdgPositioner.Error.invalidInput, 'anchor rect width or height of positioner can not be negative.')
+      resource.postError(XdgPositioner.Error.invalidInput, 'Anchor rect width or height of positioner can not be negative.')
+      DEBUG && console.log('Protocol error. Anchor rect width or height of positioner can not be negative.')
       return
     }
     this.anchorRect = Rect.create(x, y, x + width, y + height)

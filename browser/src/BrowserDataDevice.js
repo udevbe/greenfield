@@ -153,7 +153,8 @@ export default class BrowserDataDevice {
   startDrag (resource, source, origin, icon, serial) {
     const iconBrowserSurface = /** @type {BrowserSurface} */ icon.implementation
     if (iconBrowserSurface.role) {
-      resource.postError(GrDataDevice.Error.role, 'given gr_surface has another role')
+      resource.postError(GrDataDevice.Error.role, 'Given surface has another role.')
+      DEBUG && console.log('Protocol error. Given surface has another role.')
       return
     }
 
@@ -369,7 +370,8 @@ export default class BrowserDataDevice {
   setSelection (resource, source, serial) {
     // what should the serial correspond to? Looking at weston, the serial is quite useless...
     if (source && source.implementation.dndActions) {
-      source.postError(GrDataSource.Error.invalidSource, 'can not set selection when source has dnd actions active')
+      source.postError(GrDataSource.Error.invalidSource, 'Can not set selection when source has dnd actions active.')
+      DEBUG && console.log('Protocol error. Can not set selection when source has dnd actions active.')
       return
     }
 

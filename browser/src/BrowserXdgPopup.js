@@ -260,6 +260,7 @@ export default class BrowserXdgPopup extends BrowserSurfaceRole {
       if (browserSurfaceChild !== browserSurface.browserSurfaceChildSelf &&
         browserSurfaceChild.browserSurface.role instanceof BrowserXdgPopup) {
         this.resource.postError(XdgWmBase.Error.notTheTopmostPopup, 'Client tried to map a non-topmost popup')
+        DEBUG && console.log('Protocol error. Client tried to map a non-topmost popup')
         return
       }
     }
@@ -321,6 +322,7 @@ export default class BrowserXdgPopup extends BrowserSurfaceRole {
       if (browserSurfaceChild !== browserSurface.browserSurfaceChildSelf &&
         browserSurfaceChild.browserSurface.role instanceof BrowserXdgPopup) {
         resource.postError(XdgWmBase.Error.notTheTopmostPopup, 'Client tried to destroy a non-topmost popup')
+        DEBUG && console.log('Protocol error. Client tried to destroy a non-topmost popup')
         return
       }
     }
@@ -393,7 +395,8 @@ export default class BrowserXdgPopup extends BrowserSurfaceRole {
     }
 
     if (this.mapped) {
-      resource.postError(XdgPopup.Error.invalidGrab, 'tried to grab popup after it being mapped')
+      resource.postError(XdgPopup.Error.invalidGrab, 'Client tried to grab popup after it being mapped.')
+      DEBUG && console.log('Protocol error. Client tried to grab popup after it being mapped.')
       return
     }
 
@@ -404,6 +407,7 @@ export default class BrowserXdgPopup extends BrowserSurfaceRole {
         return
       } else if (!browserPointer.findPopupGrab(parentGrSurface)) {
         resource.postError(XdgWmBase.Error.invalidPopupParent, 'Popup parent is a popup that did not take an explicit grab.')
+        DEBUG && console.log('Protocol error. Popup parent is a popup that did not take an explicit grab.')
         return
       }
     }

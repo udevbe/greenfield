@@ -1125,7 +1125,8 @@ export default class BrowserSurface {
     if (Object.values(GrOutput.Transform).includes(transform)) {
       this._pendingBufferTransform = transform
     } else {
-      resource.postError(GrSurface.Error.invalidTransform, 'buffer transform value is invalid')
+      resource.postError(GrSurface.Error.invalidTransform, 'Buffer transform value is invalid.')
+      DEBUG && console.log('Protocol error. Buffer transform value is invalid.')
     }
   }
 
@@ -1164,7 +1165,8 @@ export default class BrowserSurface {
    */
   setBufferScale (resource, scale) {
     if (scale < 1) {
-      resource.postError(GrSurface.Error.invalidScale, 'buffer scale value is invalid')
+      resource.postError(GrSurface.Error.invalidScale, 'Buffer scale value is invalid.')
+      DEBUG && console.log('Protocol error. Buffer scale value is invalid.')
       return
     }
     this._pendingBufferScale = scale
