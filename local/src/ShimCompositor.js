@@ -15,22 +15,29 @@ class ShimCompositor extends WlCompositorRequests {
   /**
    *
    * @param {GrCompositor} grCompositoryProxy
+   * @param {LocalCompositorSession}localCompositorSession
    * @returns {ShimCompositor}
    */
-  static create (grCompositoryProxy) {
-    return new ShimCompositor(grCompositoryProxy)
+  static create (grCompositoryProxy, localCompositorSession) {
+    return new ShimCompositor(grCompositoryProxy, localCompositorSession)
   }
 
   /**
    * @private
    * @param {GrCompositor} grCompositorProxy
+   * @param {LocalCompositorSession}localCompositorSession
    */
-  constructor (grCompositorProxy) {
+  constructor (grCompositorProxy, localCompositorSession) {
     super()
     /**
      * @type {GrCompositor}
      */
     this.proxy = grCompositorProxy
+    /**
+     * @type {LocalCompositorSession}
+     * @private
+     */
+    this._localCompositorSession = localCompositorSession
   }
 
   /**
@@ -51,7 +58,7 @@ class ShimCompositor extends WlCompositorRequests {
     grSurfaceProxy.listener = localSurface
 
     // wire future surface requests to proxy
-    const shimSurface = ShimSurface.create(grSurfaceProxy)
+    const shimSurface = ShimSurface.create(grSurfaceProxy, this._localCompositorSession)
     localSurface.resource = WlSurface.create(resource.client, resource.version, id, shimSurface, null)
     localSurface.resource.onDestroy().then(() => {
       if (shimSurface.localRtcDcBuffer) {

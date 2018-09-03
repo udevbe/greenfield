@@ -30,15 +30,15 @@ export default class BrowserKeyboard {
       if (browserKeyboard._handleKey(event, false)) {
         event.preventDefault()
         event.stopPropagation()
+        browserSession.flush()
       }
-      browserSession.flush()
     })
     document.addEventListener('keydown', (event) => {
       if (browserKeyboard._handleKey(event, true)) {
         event.preventDefault()
         event.stopPropagation()
+        browserSession.flush()
       }
-      browserSession.flush()
     })
 
     return browserKeyboard

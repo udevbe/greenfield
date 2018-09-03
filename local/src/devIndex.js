@@ -9,7 +9,7 @@ const path = require('path')
 const webpack = require('webpack')
 const webpackConfig = require('../../browser/build.config/webpack.config.dev')
 const middleware = require('webpack-dev-middleware')
-const ShimSession = require('./ShimSession')
+const ShimSession = require('./ShimCompositorSession')
 const DesktopShellAppsController = require('./DesktopShellAppsController')
 
 const controllers = {
@@ -65,7 +65,7 @@ function main () {
       } else {
         shimSessionPromise = ShimSession.create(request, socket, head)
         const shimSession = await shimSessionPromise
-        shimSession.localSession.onTerminate = () => {
+        shimSession.localCompositorSession.onTerminate = () => {
           console.log('Development session terminated.')
         }
         shimSession.start()

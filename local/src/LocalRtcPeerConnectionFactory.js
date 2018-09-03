@@ -5,17 +5,17 @@ const LocalRtcPeerConnection = require('./LocalRtcPeerConnection')
 // Wayland Global
 class LocalRtcPeerConnectionFactory {
   /**
-   * @param {LocalClient}localClient
+   * @param {wfc.Connection}connection
    * @return {Promise<LocalRtcPeerConnectionFactory>}
    */
-  static create (localClient) {
+  static create (connection) {
     return new Promise((resolve) => {
-      const registryProxy = localClient.connection.createRegistry()
+      const registryProxy = connection.createRegistry()
 
       registryProxy.listener.global = (name, interface_, version) => {
         if (interface_ === RtcPeerConnectionFactory.name) {
           const rtcPeerConnectionFactoryProxy = registryProxy.bind(name, interface_, version)
-          const localRtcPeerConnectionFactory = new LocalRtcPeerConnectionFactory(localClient, rtcPeerConnectionFactoryProxy)
+          const localRtcPeerConnectionFactory = new LocalRtcPeerConnectionFactory(rtcPeerConnectionFactoryProxy)
           rtcPeerConnectionFactoryProxy.listener = localRtcPeerConnectionFactory
           resolve(localRtcPeerConnectionFactory)
         }
@@ -26,14 +26,9 @@ class LocalRtcPeerConnectionFactory {
   /**
    * Use LocalRtcPeerConnectionFactory.create(...)
    * @private
-   * @param {LocalClient}localClient
    * @param {RtcPeerConnectionFactory}proxy
    */
-  constructor (localClient, proxy) {
-    /**
-     * @type {LocalClient}
-     */
-    this.localClient = localClient
+  constructor (proxy) {
     /**
      * @type {RtcPeerConnectionFactory}
      */

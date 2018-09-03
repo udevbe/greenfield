@@ -1,37 +1,30 @@
 'use strict'
 
-const {Connection} = require('westfield-runtime-client')
+class LocalClientSession {
 
-const LocalClient = require('./LocalClient')
-
-module.exports = class LocalClientSession {
-  static create (localSession, resolve, wlClient, clientSessionProxy) {
-    return new LocalClientSession(localSession, resolve, wlClient, clientSessionProxy)
-  }
-
-  constructor (localSession, resolve, wlClient, clientSessionProxy) {
-    this._localSession = localSession
-    this._resolve = resolve
-    this._wlClient = wlClient
-    this._proxy = clientSessionProxy
+  /**
+   * @param {wfc.GrClientSession}clientSessionProxy
+   * @param {wfc.Connection}connection
+   * @return {LocalClientSession}
+   */
+  static create (clientSessionProxy, connection) {
+    return new LocalClientSession(clientSessionProxy, connection)
   }
 
   /**
-   *
-   * @param {Number} sessionId the new client session
-   *
-   * @since 1
-   *
+   * @param {wfc.GrClientSession}clientSessionProxy
+   * @param {wfc.Connection}connection
    */
-  session (sessionId) {
-    const wfcConnection = new Connection()
-    this._localSession._setupWfcConnection(wfcConnection, sessionId)
-
-    const localClient = LocalClient.create(wfcConnection, this._wlClient)
-    this._wlClient._clientRegistryProxy = localClient.connection.createRegistry()
-    localClient.onDestroy().then(() => {
-      this._proxy.destroy()
-    })
-    this._resolve(localClient)
+  constructor (clientSessionProxy, connection) {
+    /**
+     * @type {wfc.GrClientSession}
+     */
+    this.proxy = clientSessionProxy
+    /**
+     * @type {wfc.Connection}
+     */
+    this.connection = connection
   }
 }
+
+module.exports = LocalClientSession

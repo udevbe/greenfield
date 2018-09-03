@@ -48,29 +48,29 @@ export default class BrowserPointer extends BrowserSurfaceRole {
       if (browserPointer._handleMouseMove(event)) {
         event.preventDefault()
         event.stopPropagation()
+        browserSession.flush()
       }
-      browserSession.flush()
     })
     document.addEventListener('mouseup', (event) => {
       if (browserPointer._handleMouseUp(event)) {
         event.preventDefault()
         event.stopPropagation()
+        browserSession.flush()
       }
-      browserSession.flush()
     })
     document.addEventListener('mousedown', (event) => {
       if (browserPointer._handleMouseDown(event)) {
         event.preventDefault()
         event.stopPropagation()
+        browserSession.flush()
       }
-      browserSession.flush()
     })
     document.addEventListener('wheel', (event) => {
       if (browserPointer._handleWheel(event)) {
         event.preventDefault()
         event.stopPropagation()
+        browserSession.flush()
       }
-      browserSession.flush()
     })
     // other mouse events are set in the browser surface view class
     return browserPointer

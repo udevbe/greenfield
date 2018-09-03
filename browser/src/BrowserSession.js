@@ -9,16 +9,19 @@ import BrowserClientSession from './BrowserClientSession'
  */
 export default class BrowserSession extends Global {
   /**
-   * @param {string} sessionId unique random browser compositor session id
-   * @returns {Promise<BrowserSession>}
+   * @param {string} compositorSessionId unique random browser compositor session id
+   * @returns {BrowserSession}
    */
-  static async create (sessionId) {
+  static create (compositorSessionId) {
     DEBUG && console.log('Starting new browser session.')
     const wfsServer = new Server()
     const websocketProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-    const url = `${websocketProtocol}://${window.location.host}/${sessionId}`
-    const browserSession = new BrowserSession(url, wfsServer, sessionId)
-    await browserSession._createConnection(url)
+    const url = `${websocketProtocol}://${window.location.host}/${compositorSessionId}`
+    const browserSession = new BrowserSession(url, wfsServer, compositorSessionId)
+
+    browserSession._createWebSocket(url)
+    browserSession._setupPrimaryConnection()
+
     wfsServer.registry.register(browserSession)
     return browserSession
   }
@@ -27,10 +30,10 @@ export default class BrowserSession extends Global {
    * Use BrowserSession.create(..) instead
    * @param {string}url
    * @param {Server}wfsServer
-   * @param {string}sessionId
+   * @param {string}compositorSessionId
    * @private
    */
-  constructor (url, wfsServer, sessionId) {
+  constructor (url, wfsServer, compositorSessionId) {
     super(session.GrSession.name, 1)
     /**
      * @type {string}
@@ -43,62 +46,78 @@ export default class BrowserSession extends Global {
     /**
      * @type {string}
      */
-    this.sessionId = sessionId
+    this.compositorSessionId = compositorSessionId
     /**
      * @type {{}}
      * @private
      */
     this._clients = {}
     /**
-     * @type {number}
-     * @private
-     */
-    this._nextClientSessionId = 1
-    /**
      * @type {WebSocket}
      * @private
      */
     this._ws = null
     /**
-     * @type {boolean}
-     * @private
-     */
-    this._flushScheduled = false
-    /**
      * @type {Array}
      */
     this.resources = []
+    /**
+     * @type {Array<ArrayBuffer>}
+     * @private
+     */
+    this._wireMessages = []
   }
 
   /**
    * @param {string} url
-   * @returns {Promise<void>}
    * @private
    */
-  _createConnection (url) {
-    return new Promise((resolve, reject) => {
-      const ws = new window.WebSocket(url)
-      ws.binaryType = 'arraybuffer'
-
-      ws.onerror = (event) => {
-        console.error(`Session web socket is in error.`)
-        if (ws.readyState === window.WebSocket.CONNECTING) {
-          reject(event)
-        }
+  _createWebSocket (url) {
+    const ws = new window.WebSocket(url)
+    ws.binaryType = 'arraybuffer'
+    ws.onerror = (event) => {
+      console.error(`Session web socket is in error.`)
+      if (ws.readyState === window.WebSocket.CONNECTING) {
+        DEBUG && console.log('Fatal error while connecting websocket.')
+        // TODO signal user a fatal error has accurred. Implement some kind of retry mechanism?
       }
+    }
+    ws.onopen = () => {
+      DEBUG && console.log('Session web socket is open.')
+    }
+    ws.onmessage = async (event) => {
+      try {
+        this._wireMessages.push(/** @types {ArrayBuffer} */event.data)
 
-      ws.onopen = () => {
-        try {
-          DEBUG && console.log('Session web socket is open.')
-          this._ws = ws
-          this._setupWebsocket()
-          this._primaryConnection = this._setupPrimaryConnection()
-          resolve()
-        } catch (error) {
-          reject(error)
+        if (this._wireMessages.length === 1) {
+          while (this._wireMessages.length) {
+            this.flush()
+            const wireMessage = this._wireMessages[0]
+            const sessionId = new DataView(wireMessage).getUint32(0, true)
+            const arrayBuffer = wireMessage.slice(4, wireMessage.byteLength)
+
+            const client = this._clients[sessionId]
+
+            await client.message(arrayBuffer)
+            this._wireMessages.shift()
+            this.flush()
+          }
         }
+      } catch (error) {
+        console.error(`Session web socket failed to handle incoming message. \n${error.stack}`)
+        this._ws.close(4007, 'Session web socket received an illegal message')
       }
-    })
+    }
+    ws.onclose = (event) => {
+      DEBUG && console.log(`Web socket closed. ${event.code}:${event.reason}`)
+    }
+    this._ws = ws
+
+    window.onbeforeunload = (e) => {
+      const dialogText = 'dummytext'
+      e.returnValue = dialogText
+      return dialogText
+    }
   }
 
   /**
@@ -112,55 +131,29 @@ export default class BrowserSession extends Global {
     this.resources.push(grSessionResource)
   }
 
-  _setupWebsocket () {
-    this._ws.onmessage = (event) => {
-      try {
-        const buf = event.data
-        const sessionId = new DataView(buf).getUint32(0, true)
-        const arrayBuffer = buf.slice(4, buf.byteLength)
-
-        this._clients[sessionId].message(arrayBuffer)
-        this.flush()
-      } catch (error) {
-        console.error(`Session web socket failed to handle incoming message. \n${error.stack}`)
-        this._ws.close(4007, 'Session web socket received an illegal message')
-      }
-    }
-
-    this._ws.onclose = (event) => {
-      DEBUG && console.log(`Web socket closed. ${event.code}:${event.reason}`)
-    }
-
-    window.onbeforeunload = (e) => {
-      const dialogText = 'dummytext'
-      e.returnValue = dialogText
-      return dialogText
-    }
-  }
-
   _setupPrimaryConnection () {
     return this._setupConnection(0)
   }
 
   /**
-   * @param {!number}clientSessionId
-   * @return {!Client}
+   * @param {!number}connectionId
+   * @return {!wfs.Client}
    * @private
    */
-  _setupConnection (clientSessionId) {
+  _setupConnection (connectionId) {
     const client = this.wfsServer.createClient()
-    this._clients[clientSessionId] = client
-    this._setupClientConnection(client, clientSessionId)
+    this._clients[connectionId] = client
+    this._setupClientConnection(client, connectionId)
     return client
   }
 
   /**
-   * @param {!Client}client
+   * @param {!wfs.Client}client
    * @param {!number}clientSessionId
    * @private
    */
   _setupClientConnection (client, clientSessionId) {
-    client.onSend = (arrayBuffer) => {
+    client.onFlush = (arrayBuffer) => {
       try {
         const b = new Uint8Array(arrayBuffer.byteLength + 4)
         new window.DataView(b.buffer).setUint32(0, clientSessionId, true)
@@ -175,30 +168,22 @@ export default class BrowserSession extends Global {
 
   /**
    *
-   * @param {GrSession} resource
-   * @param {number}id client session resource id
+   * @param {!GrSession} resource
+   * @param {!number}id client session resource id
+   * @param {!number}connectionId
    * @since 1
    *
    */
-  client (resource, id) {
+  client (resource, id, connectionId) {
     DEBUG && console.log('New client connected.')
-    const clientSessionId = this._nextClientSessionId++
-    const clientConnection = this._setupConnection(clientSessionId)
+    const clientConnection = this._setupConnection(connectionId)
     const grClientSessionResource = new session.GrClientSession(resource.client, id, resource.version)
     grClientSessionResource.implementation = BrowserClientSession.create(clientConnection)
-    grClientSessionResource.session(clientSessionId)
   }
 
   flush () {
-    if (this._flushScheduled) {
-      return
-    }
-    this._flushScheduled = true
-    // we don't want to flush more than needed, and we don't want the build-in browser delay to be used when
-    // a timeout of 0 is given. Hence this hack/trick.
-    window.setZeroTimeout(() => {
-      this._flushScheduled = false
-      this.resources.forEach(resource => resource.flush())
+    Object.values(this._clients).forEach((client) => {
+      client.flush()
     })
   }
 }

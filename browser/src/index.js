@@ -47,12 +47,9 @@ function setupGlobals (browserSession) {
   browserSession.wfsServer.registry.register(browserXdgWmBase)
 }
 
-/**
- * @return {Promise<void>}
- */
-async function main () {
-  const sessionId = uuidv4()
-  const browserSession = await BrowserSession.create(sessionId)
+function main () {
+  const compositorSessionId = uuidv4()
+  const browserSession = BrowserSession.create(compositorSessionId)
   setupGlobals(browserSession)
 }
 

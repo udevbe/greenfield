@@ -2,7 +2,7 @@
 
 'use strict'
 
-const ShimSession = require('./ShimSession')
+const ShimCompositorSession = require('./ShimCompositorSession')
 const DesktopShellAppsController = require('./DesktopShellAppsController')
 
 const controllers = {
@@ -17,7 +17,7 @@ function main () {
   // TODO we probably want to differentiate actions based on the path elements, including setting up a new session.
   // FIXME define path for creating a new session instead of using an empty path
   process.once('message', async (request, socket) => {
-    const shimSessionPromise = ShimSession.create(request[0], socket, request[1])
+    const shimSessionPromise = ShimCompositorSession.create(request[0], socket, request[1])
 
     process.on('message', async (request, socket) => {
       const pathElements = request[0].pathElements
@@ -44,7 +44,7 @@ function main () {
     process.on('SIGBREAK', cleanUp)
     process.on('SIGHUP', cleanUp)
 
-    shimSession.localSession.onTerminate = () => {
+    shimSession.localCompositorSession.onTerminate = () => {
       console.log(`Child ${process.pid} will exit.`)
       process.exit(0)
     }

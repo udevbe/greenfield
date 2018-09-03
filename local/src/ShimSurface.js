@@ -11,11 +11,12 @@ const LocalCallback = require('./LocalCallback')
 class ShimSurface extends WlSurfaceRequests {
   /**
    * @param {GrSurface}grSurfaceProxy
+   * @param {LocalCompositorSession}localCompositorSession
    * @return {ShimSurface}
    */
-  static create (grSurfaceProxy) {
-    const rtcBufferFactory = grSurfaceProxy.connection._rtcBufferFactory
-    const localRtcDcBuffer = rtcBufferFactory.createLocalRtcDcBuffer()
+  static create (grSurfaceProxy, localCompositorSession) {
+    const localRtcBufferFactory = localCompositorSession.localRtcBufferFactory
+    const localRtcDcBuffer = localRtcBufferFactory.createLocalRtcDcBuffer()
     return new ShimSurface(grSurfaceProxy, localRtcDcBuffer)
   }
 
@@ -314,6 +315,8 @@ class ShimSurface extends WlSurfaceRequests {
     const buffer = this._pending.buffer
     const surfaceDamage = this._pending.surfaceDamage
     this._resetPendingState()
+    this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
+    this.proxy.commit()
 
     if (buffer) {
       buffer.removeDestroyListener(this._pendingBufferDestroyListener)
@@ -324,16 +327,11 @@ class ShimSurface extends WlSurfaceRequests {
       }
       this._encodingTotal += (Date.now() - start)
       global.DEBUG && console.log('encoding avg', this._encodingTotal / this._count)
-      this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
-      this.proxy.commit()
 
       buffer.release()
 
       await this.sendFrame(frame)
-    } else {
-      this.proxy.commit()
     }
-
     this._total += (Date.now() - start)
     this._count++
     global.DEBUG && console.log('---> commit avg', this._total / this._count)

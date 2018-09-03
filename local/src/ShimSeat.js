@@ -14,14 +14,31 @@ const LocalPointer = require('./LocalPointer')
 const LocalKeyboard = require('./LocalKeyboard')
 const LocalTouch = require('./LocalTouch')
 
-module.exports = class ShimSeat extends WlSeatRequests {
-  static create (grSeatProxy) {
-    return new ShimSeat(grSeatProxy)
+class ShimSeat extends WlSeatRequests {
+  /**
+   * @param {wfc.GrSeat}grSeatProxy
+   * @param {LocalCompositorSession}localCompositorSession
+   * @return {ShimSeat}
+   */
+  static create (grSeatProxy, localCompositorSession) {
+    return new ShimSeat(grSeatProxy, localCompositorSession)
   }
 
-  constructor (grSeatProxy) {
+  /**
+   * @param {wfc.GrSeat}grSeatProxy
+   * @param {LocalCompositorSession}localCompositorSession
+   */
+  constructor (grSeatProxy, localCompositorSession) {
     super()
+    /**
+     * @type {wfc.GrSeat}
+     */
     this.proxy = grSeatProxy
+    /**
+     * @type {LocalCompositorSession}
+     * @private
+     */
+    this._localCompositorSession = localCompositorSession
   }
 
   /**
@@ -36,7 +53,7 @@ module.exports = class ShimSeat extends WlSeatRequests {
    *
    *
    * @param {WlSeat} resource
-   * @param {*} id seat pointer
+   * @param {number} id seat pointer
    *
    * @since 1
    *
@@ -66,14 +83,14 @@ module.exports = class ShimSeat extends WlSeatRequests {
    *
    *
    * @param {WlSeat} resource
-   * @param {*} id seat keyboard
+   * @param {number} id seat keyboard
    *
    * @since 1
    *
    */
   getKeyboard (resource, id) {
     const grKeyboardProxy = this.proxy.getKeyboard()
-    const localKeyboard = LocalKeyboard.create(grKeyboardProxy)
+    const localKeyboard = LocalKeyboard.create(grKeyboardProxy, this._localCompositorSession)
     grKeyboardProxy.listener = localKeyboard
 
     const shimKeyboard = ShimKeyboard.create(grKeyboardProxy)
@@ -130,3 +147,5 @@ module.exports = class ShimSeat extends WlSeatRequests {
     resource.destroy()
   }
 }
+
+module.exports = ShimSeat

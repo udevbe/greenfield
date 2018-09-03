@@ -48,8 +48,8 @@
     "fastcall": "^0.2.6",
     "gstreamer-superficial": "1.0.0",
     "wayland-server-bindings-runtime": "0.0.50",
-    "westfield-runtime-client": "0.0.21",
-    "westfield-runtime-server": "0.0.21",
+    "westfield-runtime-client": "0.0.22",
+    "westfield-runtime-server": "0.0.22",
     "wrtc": "^0.1.5",
     "ws": "^5.2.0",
     "greenfield-native": "file:./local/native"
@@ -68,8 +68,8 @@
     "webpack-dev-middleware": "^3.1.3",
     "webpack-hot-middleware": "^2.22.2",
     "webpack-merge": "^4.1.3",
-    "westfield-scanner-client": "0.0.21",
-    "westfield-scanner-server": "0.0.21"
+    "westfield-scanner-client": "0.0.22",
+    "westfield-scanner-server": "0.0.22"
   },
   "pkg": {
     "scripts": [

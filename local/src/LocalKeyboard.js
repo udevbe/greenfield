@@ -12,16 +12,23 @@ const libc = require('./native').libc
 class LocalKeyboard {
   /**
    * @param {wfc.GrKeyboard}grKeyboardProxy
+   * @param {LocalCompositorSession}localCompositorSession
    * @return {LocalKeyboard}
    */
-  static create (grKeyboardProxy) {
-    return new LocalKeyboard(grKeyboardProxy)
+  static create (grKeyboardProxy, localCompositorSession) {
+    return new LocalKeyboard(grKeyboardProxy, localCompositorSession.localRtcPeerConnection)
   }
 
   /**
    * @param {wfc.GrKeyboard}grKeyboardProxy
+   * @param {LocalRtcPeerConnection}localRtcPeerConnection
    */
-  constructor (grKeyboardProxy) {
+  constructor (grKeyboardProxy, localRtcPeerConnection) {
+    /**
+     * @type {LocalRtcPeerConnection}
+     * @private
+     */
+    this._localRtcPeerConnection = localRtcPeerConnection
     /**
      * @type {WlKeyboard|null}
      */
@@ -61,8 +68,7 @@ class LocalKeyboard {
    *
    */
   async keymap (format, blobDescriptor, size) {
-    const localRtcPeerConnection = this.proxy.connection._localRtcPeerConnection
-    const localRtcBlobTransfer = localRtcPeerConnection.createBlobTransferFromDescriptor(blobDescriptor)
+    const localRtcBlobTransfer = this._localRtcPeerConnection.createBlobTransferFromDescriptor(blobDescriptor)
     const decoder = new StringDecoder('utf8')
     const rtcDataChannel = await localRtcBlobTransfer.open()
 

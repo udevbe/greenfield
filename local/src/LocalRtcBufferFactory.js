@@ -7,19 +7,19 @@ const LocalRtcDcBuffer = require('./LocalRtcDcBuffer')
 class LocalRtcBufferFactory {
   /**
    *
-   * @param {LocalClient} localClient
+   * @param {wfc.Connection} connection
    * @param {LocalRtcPeerConnection} localRtcPeerConnection
    * @return {Promise<LocalRtcBufferFactory>}
    */
-  static create (localClient, localRtcPeerConnection) {
+  static create (connection, localRtcPeerConnection) {
     return new Promise((resolve) => {
-      const registryProxy = localClient.connection.createRegistry()
+      const registryProxy = connection.createRegistry()
 
       // FIXME listen for global removal
       registryProxy.listener.global = (name, interface_, version) => {
         if (interface_ === RtcBufferFactory.name) {
           const rtcBufferFactoryProxy = registryProxy.bind(name, interface_, version)
-          const localRtcBufferFactory = new LocalRtcBufferFactory(localClient, localRtcPeerConnection)
+          const localRtcBufferFactory = new LocalRtcBufferFactory(localRtcPeerConnection)
           rtcBufferFactoryProxy.listener = localRtcBufferFactory
           localRtcBufferFactory.rtcBufferFactoryProxy = rtcBufferFactoryProxy
           resolve(localRtcBufferFactory)
@@ -30,15 +30,10 @@ class LocalRtcBufferFactory {
 
   /**
    * Use LocalRtcBufferFactory.create(..) instead.
-   * @param {LocalClient} localClient
    * @param {LocalRtcPeerConnection} localRtcPeerConnection
    * @private
    */
-  constructor (localClient, localRtcPeerConnection) {
-    /**
-     * @type {LocalClient}
-     */
-    this.localClient = localClient
+  constructor (localRtcPeerConnection) {
     /**
      * @type {LocalRtcPeerConnection}
      */

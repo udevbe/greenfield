@@ -178,7 +178,7 @@ export default class DesktopShellAppMenu {
    * @private
    */
   _setupWebsocketConnection (browserSession) {
-    const sessionId = browserSession.sessionId
+    const sessionId = browserSession.compositorSessionId
     const websocketProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
     const url = `${websocketProtocol}://${window.location.host}/${sessionId}/apps`
 
@@ -210,7 +210,7 @@ export default class DesktopShellAppMenu {
         this[action](message.data)
       } catch (error) {
         console.trace(`Apps web socket failed to handle incoming message: $${JSON.stringify(event)}\n${event.message}\n${error.stack}`)
-        this._ws.close(4007, 'Apps web socket received an illegal message')
+        ws.close(4007, 'Apps web socket received an illegal message')
       }
     }
   }

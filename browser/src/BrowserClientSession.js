@@ -2,7 +2,7 @@
 
 export default class BrowserClientSession {
   /**
-   * @param {!Client}clientConnection
+   * @param {!wfs.Client}clientConnection
    * @return {BrowserClientSession}
    */
   static create (clientConnection) {
@@ -10,11 +10,11 @@ export default class BrowserClientSession {
   }
 
   /**
-   * @param {!Client}clientConnection
+   * @param {!wfs.Client}clientConnection
    */
   constructor (clientConnection) {
     /**
-     * @type {!Client}
+     * @type {!wfs.Client}
      * @const
      * @private
      */
