@@ -8,8 +8,6 @@ const {Epoll} = require('epoll')
 const ShimGlobal = require('./ShimGlobal')
 
 const LocalCompositorSession = require('./LocalCompositorSession')
-const LocalRtcPeerConnectionFactory = require('./LocalRtcPeerConnectionFactory')
-const LocalRtcBufferFactory = require('./LocalRtcBufferFactory')
 
 /**
  * @class ShimCompositorSession
@@ -40,23 +38,8 @@ class ShimCompositorSession {
     shimCompositorSession.localCompositorSession = localCompositorSession
 
     const primaryConnectionSetup = localCompositorSession.setupPrimaryConnection(primaryConnection)
-    const localRtcPeerConnectionFactoryPromise = LocalRtcPeerConnectionFactory.create(primaryConnection)
-
     primaryConnection.flush()
-
     await primaryConnectionSetup
-    const localRtcPeerConnectionFactory = await localRtcPeerConnectionFactoryPromise
-
-    const localRtcPeerConnection = localRtcPeerConnectionFactory.createRtcPeerConnection()
-    const localRtcBufferFactoryPromise = LocalRtcBufferFactory.create(primaryConnection, localRtcPeerConnection)
-
-    primaryConnection.flush()
-
-    const localRtcBufferFactory = await localRtcBufferFactoryPromise
-
-    localCompositorSession.localRtcPeerConnectionFactory = localRtcPeerConnectionFactory
-    localCompositorSession.localRtcPeerConnection = localRtcPeerConnection
-    localCompositorSession.localRtcBufferFactory = localRtcBufferFactory
 
     return shimCompositorSession
   }
@@ -94,9 +77,12 @@ class ShimCompositorSession {
   /**
    * @param {WlClient}wlClient
    */
-  onClientCreated (wlClient) {
+  async onClientCreated (wlClient) {
+    this.stop()
     console.log('Wayland client connected.')
-    this.localCompositorSession.createClientSession(wlClient)
+    await this.localCompositorSession.createClientSession(wlClient)
+    this.start()
+    this._wlDisplay.eventLoop.dispatch(0)
   }
 
   start () {
@@ -105,7 +91,7 @@ class ShimCompositorSession {
         if (err) {
           console.error(err)
         } else {
-          this._wlDisplay.flushClients()
+          // this.flushToNative()
           this._wlDisplay.eventLoop.dispatch(0)
           this.localCompositorSession.flushToBrowser()
         }
@@ -133,7 +119,7 @@ class ShimCompositorSession {
    * @param {number}version
    */
   setupShimGlobal (name, interface_, version) {
-    this._shimGlobals[name] = ShimGlobal.create(this._wlDisplay, name, interface_, version, this.localCompositorSession)
+    this._shimGlobals[name] = ShimGlobal.create(this._wlDisplay, name, interface_, version)
   }
 
   /**

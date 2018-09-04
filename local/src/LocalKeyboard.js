@@ -12,11 +12,11 @@ const libc = require('./native').libc
 class LocalKeyboard {
   /**
    * @param {wfc.GrKeyboard}grKeyboardProxy
-   * @param {LocalCompositorSession}localCompositorSession
+   * @param {LocalClientSession}localClientSession
    * @return {LocalKeyboard}
    */
-  static create (grKeyboardProxy, localCompositorSession) {
-    return new LocalKeyboard(grKeyboardProxy, localCompositorSession.localRtcPeerConnection)
+  static create (grKeyboardProxy, localClientSession) {
+    return new LocalKeyboard(grKeyboardProxy, localClientSession.localRtcPeerConnection)
   }
 
   /**

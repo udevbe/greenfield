@@ -11,11 +11,11 @@ const LocalCallback = require('./LocalCallback')
 class ShimSurface extends WlSurfaceRequests {
   /**
    * @param {GrSurface}grSurfaceProxy
-   * @param {LocalCompositorSession}localCompositorSession
+   * @param {LocalClientSession}localClientSession
    * @return {ShimSurface}
    */
-  static create (grSurfaceProxy, localCompositorSession) {
-    const localRtcBufferFactory = localCompositorSession.localRtcBufferFactory
+  static create (grSurfaceProxy, localClientSession) {
+    const localRtcBufferFactory = localClientSession.localRtcBufferFactory
     const localRtcDcBuffer = localRtcBufferFactory.createLocalRtcDcBuffer()
     return new ShimSurface(grSurfaceProxy, localRtcDcBuffer)
   }

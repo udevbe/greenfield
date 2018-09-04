@@ -17,18 +17,18 @@ const LocalTouch = require('./LocalTouch')
 class ShimSeat extends WlSeatRequests {
   /**
    * @param {wfc.GrSeat}grSeatProxy
-   * @param {LocalCompositorSession}localCompositorSession
+   * @param {LocalClientSession} localClientSession
    * @return {ShimSeat}
    */
-  static create (grSeatProxy, localCompositorSession) {
-    return new ShimSeat(grSeatProxy, localCompositorSession)
+  static create (grSeatProxy, localClientSession) {
+    return new ShimSeat(grSeatProxy, localClientSession)
   }
 
   /**
    * @param {wfc.GrSeat}grSeatProxy
-   * @param {LocalCompositorSession}localCompositorSession
+   * @param {LocalClientSession}localClientSession
    */
-  constructor (grSeatProxy, localCompositorSession) {
+  constructor (grSeatProxy, localClientSession) {
     super()
     /**
      * @type {wfc.GrSeat}
@@ -38,7 +38,7 @@ class ShimSeat extends WlSeatRequests {
      * @type {LocalCompositorSession}
      * @private
      */
-    this._localCompositorSession = localCompositorSession
+    this._localClientSession = localClientSession
   }
 
   /**
@@ -90,7 +90,7 @@ class ShimSeat extends WlSeatRequests {
    */
   getKeyboard (resource, id) {
     const grKeyboardProxy = this.proxy.getKeyboard()
-    const localKeyboard = LocalKeyboard.create(grKeyboardProxy, this._localCompositorSession)
+    const localKeyboard = LocalKeyboard.create(grKeyboardProxy, this._localClientSession)
     grKeyboardProxy.listener = localKeyboard
 
     const shimKeyboard = ShimKeyboard.create(grKeyboardProxy)

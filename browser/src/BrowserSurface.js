@@ -129,6 +129,10 @@ export default class BrowserSurface {
      */
     this.resource = grSurfaceResource
     /**
+     * @type {boolean}
+     */
+    this.destroyed = false
+    /**
      * @type {!Renderer}
      * @const
      */
@@ -588,6 +592,7 @@ export default class BrowserSurface {
    */
   destroy (resource) {
     // this._handleDestruction()
+    this.destroyed = true
     resource.destroy()
     if (this.renderState) {
       this.renderState.destroy()
@@ -893,6 +898,9 @@ export default class BrowserSurface {
 
     const pendingGrBuffer = this.pendingGrBuffer
     const newState = await this._captureState(pendingGrBuffer)
+    if (this.destroyed) {
+      return
+    }
 
     if (this.role && typeof this.role.onCommit === 'function') {
       const animationFrame = Renderer.createRenderFrame()

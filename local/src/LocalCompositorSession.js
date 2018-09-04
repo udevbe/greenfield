@@ -1,6 +1,7 @@
 'use strict'
 
-const crypto = require('crypto')
+const LocalRtcPeerConnectionFactory = require('./LocalRtcPeerConnectionFactory')
+const LocalRtcBufferFactory = require('./LocalRtcBufferFactory')
 
 const {Connection} = require('westfield-runtime-client')
 const session = require('./protocol/session-client-protocol')
@@ -216,19 +217,29 @@ class LocalCompositorSession {
    * @param {WlClient}wlClient
    * @returns {LocalClientSession}
    */
-  createClientSession (wlClient) {
+  async createClientSession (wlClient) {
     const clientSessionId = this._generateClientSessionId()
+    const connection = new Connection()
+    this._setupConnection(connection, clientSessionId)
     const grClientSessionProxy = this.grSessionProxy.client(clientSessionId)
     this.grSessionProxy.connection.flush()
 
-    const connection = new Connection()
-    this._setupConnection(connection, clientSessionId)
-
     const localClientSession = LocalClientSession.create(grClientSessionProxy, connection)
     grClientSessionProxy.listener = localClientSession
-    wlClient._clientRegistryProxy = connection.createRegistry()
-
     this._localClientSessions[clientSessionId] = localClientSession
+    wlClient._localClientSession = localClientSession
+
+    const localRtcPeerConnectionFactoryPromise = LocalRtcPeerConnectionFactory.create(connection)
+    connection.flush()
+    const localRtcPeerConnectionFactory = await localRtcPeerConnectionFactoryPromise
+    const localRtcPeerConnection = localRtcPeerConnectionFactory.createRtcPeerConnection()
+    const localRtcBufferFactoryPromise = LocalRtcBufferFactory.create(connection, localRtcPeerConnection)
+    connection.flush()
+    const localRtcBufferFactory = await localRtcBufferFactoryPromise
+
+    localClientSession.localRtcPeerConnection = localRtcPeerConnection
+    localClientSession.localRtcBufferFactory = localRtcBufferFactory
+
     // TODO manage client session lifecycle & cleanup
 
     return localClientSession
