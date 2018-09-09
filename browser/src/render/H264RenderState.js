@@ -59,12 +59,12 @@ export default class H264RenderState extends RenderState {
   }
 
   /**
-   * @param {BrowserEncodedFrame}browserEncodedFrame
+   * @param {EncodedFrame}encodedFrame
    * @return {Promise<void>}
    * @override
    */
-  async update (browserEncodedFrame) {
-    const {alpha, opaque} = await this._h264BufferContentDecoder.decode(browserEncodedFrame)
+  async update (encodedFrame) {
+    const {alpha, opaque} = await this._h264BufferContentDecoder.decode(encodedFrame)
 
     // the width & height returned are actually paddded, so we have to use the frame size to get the real image dimension
     // when uploading to texture
@@ -79,17 +79,17 @@ export default class H264RenderState extends RenderState {
     const uBuffer = opaqueBuffer.subarray(lumaSize, lumaSize + chromaSize)
     const vBuffer = opaqueBuffer.subarray(lumaSize + chromaSize, lumaSize + (2 * chromaSize))
 
-    const isSubImage = browserEncodedFrame.size.equals(this.size)
+    const isSubImage = encodedFrame.size.equals(this.size)
 
-    const chromaWidth = browserEncodedFrame.size.w >> 1
-    const chromaHeight = browserEncodedFrame.size.h >> 1
+    const chromaWidth = encodedFrame.size.w >> 1
+    const chromaHeight = encodedFrame.size.h >> 1
     const chromaStride = opaqueWidth >> 1
     if (isSubImage) {
-      this.yTexture.subImage2dBuffer(yBuffer, Rect.create(0, 0, browserEncodedFrame.size.w, browserEncodedFrame.size.h), opaqueWidth)
+      this.yTexture.subImage2dBuffer(yBuffer, Rect.create(0, 0, encodedFrame.size.w, encodedFrame.size.h), opaqueWidth)
       this.uTexture.subImage2dBuffer(uBuffer, Rect.create(0, 0, chromaWidth, chromaHeight), chromaStride)
       this.vTexture.subImage2dBuffer(vBuffer, Rect.create(0, 0, chromaWidth, chromaHeight), chromaStride)
     } else {
-      this.yTexture.image2dBuffer(yBuffer, browserEncodedFrame.size.w, browserEncodedFrame.size.h, opaqueWidth)
+      this.yTexture.image2dBuffer(yBuffer, encodedFrame.size.w, encodedFrame.size.h, opaqueWidth)
       this.uTexture.image2dBuffer(uBuffer, chromaWidth, chromaHeight, chromaStride)
       this.vTexture.image2dBuffer(vBuffer, chromaWidth, chromaHeight, chromaStride)
     }
@@ -101,9 +101,9 @@ export default class H264RenderState extends RenderState {
 
       const alphaBuffer = alpha.buffer.subarray(0, alphaLumaSize)
       if (isSubImage) {
-        this.alphaTexture.subImage2dBuffer(alphaBuffer, Rect.create(0, 0, browserEncodedFrame.size.w, browserEncodedFrame.size.h), alphaWidth)
+        this.alphaTexture.subImage2dBuffer(alphaBuffer, Rect.create(0, 0, encodedFrame.size.w, encodedFrame.size.h), alphaWidth)
       } else {
-        this.alphaTexture.image2dBuffer(alphaBuffer, browserEncodedFrame.size.w, browserEncodedFrame.size.h, alphaWidth)
+        this.alphaTexture.image2dBuffer(alphaBuffer, encodedFrame.size.w, encodedFrame.size.h, alphaWidth)
       }
     }
   }

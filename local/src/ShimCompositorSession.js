@@ -91,7 +91,6 @@ class ShimCompositorSession {
         if (err) {
           console.error(err)
         } else {
-          // this.flushToNative()
           this._wlDisplay.eventLoop.dispatch(0)
           this.localCompositorSession.flushToBrowser()
         }
@@ -128,6 +127,12 @@ class ShimCompositorSession {
   tearDownShimGlobal (name) {
     delete this._shimGlobals[name]
     // TODO remove native wayland global?
+  }
+
+  terminate () {
+    this.stop()
+    this._wlDisplay.terminate()
+    this._wlDisplay.destroy()
   }
 }
 

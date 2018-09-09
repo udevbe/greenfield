@@ -2,7 +2,7 @@
 
 export default class DesktopShellAppMenuItem {
   /**
-   * @param {window.WebSocket}ws
+   * @param {WebSocket}ws
    * @param {string}executable
    * @param {string}iconUrl
    * @param {string}name
@@ -25,7 +25,7 @@ export default class DesktopShellAppMenuItem {
    * @private
    */
   static _createDivElementItem (description) {
-    const divElementItem = document.createElement('div')
+    const divElementItem = /** @type {HTMLDivElement} */document.createElement('div')
     divElementItem.setAttribute('title', description)
     divElementItem.classList.add('app-menu-item')
 
@@ -38,14 +38,19 @@ export default class DesktopShellAppMenuItem {
    * @private
    */
   static _createImageElementIcon (iconUrl) {
-    const imageElementIcon = new window.Image()
+    const imageElementIcon = new Image()
     imageElementIcon.src = iconUrl
 
     return imageElementIcon
   }
 
+  /**
+   * @param {string}name
+   * @return {HTMLDivElement}
+   * @private
+   */
   static _createDivElementName (name) {
-    const divElementName = document.createElement('div')
+    const divElementName = /** @type {HTMLDivElement} */document.createElement('div')
     divElementName.classList.add('name')
     divElementName.textContent = name
 
@@ -53,7 +58,7 @@ export default class DesktopShellAppMenuItem {
   }
 
   /**
-   * @param {window.WebSocket}ws
+   * @param {WebSocket}ws
    * @param {HTMLDivElement}itemDiv
    * @param {string}executable
    * @private

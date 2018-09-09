@@ -5,8 +5,8 @@
 export default class UserShell {
   /**
    * Ask the user shell to start managing the given surface.
-   * @param {BrowserSurface}browserSurface
+   * @param {Surface}surface
    * @return {UserShellSurface}
    */
-  manage (browserSurface) {}
+  manage (surface) {}
 }

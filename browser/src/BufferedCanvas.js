@@ -66,8 +66,8 @@ export default class BufferedCanvas {
      */
     this.containerDiv = containerDiv
     /**
-     * Set by the BrowserSurfaceView after constructing this buffered canvas.
-     * @type {BrowserSurfaceView}
+     * Set by the SurfaceView after constructing this buffered canvas.
+     * @type {SurfaceView}
      */
     this.view = null
     /**

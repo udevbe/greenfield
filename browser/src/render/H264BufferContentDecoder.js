@@ -1,5 +1,5 @@
 import H264NALDecoder from './H264NALDecoder'
-import BrowserEncodingOptions from '../BrowserEncodingOptions'
+import EncodingOptions from '../EncodingOptions'
 
 export default class H264BufferContentDecoder {
   /**
@@ -48,7 +48,7 @@ export default class H264BufferContentDecoder {
   }
 
   /**
-   * @param {BrowserEncodedFrame}bufferContents
+   * @param {EncodedFrame}bufferContents
    * @return {Promise<{opaque: {buffer:Uint8Array, width: number, height:number}, alpha:{buffer:Uint8Array, width: number, height:number}}>}
    */
   async decode (bufferContents) {
@@ -102,16 +102,16 @@ export default class H264BufferContentDecoder {
   }
 
   /**
-   * @param {BrowserEncodedFrame}bufferContents
+   * @param {EncodedFrame}bufferContents
    * @return {Promise<void>}
    * @private
    */
   async _decodeH264 (bufferContents) {
-    const fullFrame = BrowserEncodingOptions.fullFrame(bufferContents.encodingOptions)
+    const fullFrame = EncodingOptions.fullFrame(bufferContents.encodingOptions)
     if (!fullFrame) {
       throw new Error('h264 encoded buffers must contain the full frame.')
     }
-    const hasAlpha = BrowserEncodingOptions.splitAlpha(bufferContents.encodingOptions)
+    const hasAlpha = EncodingOptions.splitAlpha(bufferContents.encodingOptions)
     await this._ensureH264Decoders(hasAlpha)
 
     if (hasAlpha) {

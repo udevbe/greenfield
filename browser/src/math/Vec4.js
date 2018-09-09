@@ -2,16 +2,13 @@ import Point from './Point'
 
 export default class Vec4 {
   /**
-   * @param x
-   * @param y
-   * @param z
-   * @param w
+   * @param {number}x
+   * @param {number}y
+   * @param {number}z
+   * @param {number}w
    * @returns {Vec4}
    */
-  static create (x,
-                 y,
-                 z,
-                 w) {
+  static create (x, y, z, w) {
     return new Vec4(x, y, z, w)
   }
 
@@ -20,15 +17,12 @@ export default class Vec4 {
   }
 
   /**
-   * @param {Number }x
-   * @param {Number} y
-   * @param {Number} z
-   * @param {Number} w
+   * @param {number}x
+   * @param {number}y
+   * @param {number}z
+   * @param {number}w
    */
-  constructor (x,
-               y,
-               z,
-               w) {
+  constructor (x, y, z, w) {
     this.x = x
     this.y = y
     this.z = z

@@ -2,7 +2,7 @@
 
 import JpegRenderState from './JpegRenderState'
 import JpegAlphaSurfaceShader from './JpegAlphaSurfaceShader'
-import BrowserEncodingOptions from '../BrowserEncodingOptions'
+import EncodingOptions from '../EncodingOptions'
 import JpegSurfaceShader from './JpegSurfaceShader'
 import H264RenderState from './H264RenderState'
 import YUVASurfaceShader from './YUVASurfaceShader'
@@ -14,8 +14,8 @@ export default class Renderer {
    */
   static create () {
     // create offscreen gl context
-    const canvas = document.createElement('canvas')
-    let gl = canvas.getContext('webgl2', {
+    const canvas = /** @type{HTMLCanvasElement} */document.createElement('canvas')
+    const gl = canvas.getContext('webgl2', {
       antialias: false,
       depth: false,
       alpha: true,
@@ -109,52 +109,52 @@ export default class Renderer {
   }
 
   /**
-   * @param {BrowserSurface}browserSurface
-   * @param {{bufferContents: BrowserEncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<BrowserCallback>, roleState: *}}newState
+   * @param {Surface}surface
+   * @param {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}newState
    */
-  async render (browserSurface, newState) {
-    const views = browserSurface.browserSurfaceViews
+  async render (surface, newState) {
+    const views = surface.views
     const bufferContents = newState.bufferContents
 
     if (bufferContents) {
-      await this._draw(bufferContents, browserSurface, views)
+      await this._draw(bufferContents, surface, views)
     } else {
       views.forEach((view) => { view.draw(this._emptyImage) })
     }
   }
 
   /**
-   * @param {BrowserEncodedFrame}browserEncodedFrame
-   * @param {BrowserSurface}browserSurface
-   * @param {Array<BrowserSurfaceView>}views
+   * @param {EncodedFrame}encodedFrame
+   * @param {Surface}surface
+   * @param {Array<SurfaceView>}views
    * @return {Promise<void>}
    * @private
    */
-  async ['image/jpeg'] (browserEncodedFrame, browserSurface, views) {
-    let renderState = browserSurface.renderState
+  async ['image/jpeg'] (encodedFrame, surface, views) {
+    let renderState = surface.renderState
     if (!(renderState instanceof JpegRenderState)) {
       if (renderState) {
         renderState.destroy()
       }
       renderState = JpegRenderState.create(this._gl)
-      browserSurface.renderState = renderState
+      surface.renderState = renderState
     }
     const jpegRenderState = /** @type JpegRenderState */ renderState
 
     const {
       /** @type {number} */ w: frameWidth, /** @type {number} */ h: frameHeight
-    } = browserEncodedFrame.size
+    } = encodedFrame.size
 
     // We update the texture with the fragments as early as possible, this is to avoid gl state mixup with other
     // calls to _draw() while we're in await. If we were to do this call later, this.canvas will have state specifically
     // for our _draw() call, yet because we are in (a late) await, another call might adjust our canvas, which results
     // in bad draws/flashing/flickering/...
     let start = Date.now()
-    await jpegRenderState.update(browserEncodedFrame)
+    await jpegRenderState.update(encodedFrame)
     this._textureUpdateTotal += Date.now() - start
     DEBUG && console.log('updating textures avg', this._textureUpdateTotal / this._count)
 
-    if (BrowserEncodingOptions.splitAlpha(browserEncodedFrame.encodingOptions)) {
+    if (EncodingOptions.splitAlpha(encodedFrame.encodingOptions)) {
       // Image is in jpeg format with a separate alpha channel, shade & decode alpha & opaque fragments together using webgl.
 
       this._jpegAlphaSurfaceShader.use()
@@ -165,11 +165,11 @@ export default class Renderer {
       if (canvasSizeChanged) {
         this._canvas.width = frameWidth
         this._canvas.height = frameHeight
-        this._jpegAlphaSurfaceShader.updatePerspective(browserEncodedFrame.size)
+        this._jpegAlphaSurfaceShader.updatePerspective(encodedFrame.size)
       }
 
       // TODO we could try to optimize and only shade the fragments of the texture that were updated
-      this._jpegAlphaSurfaceShader.draw(browserEncodedFrame.size, canvasSizeChanged)
+      this._jpegAlphaSurfaceShader.draw(encodedFrame.size, canvasSizeChanged)
       this._jpegAlphaSurfaceShader.release()
       this._shaderInvocationTotal += (Date.now() - start)
       DEBUG && console.log('shader invocation avg', this._shaderInvocationTotal / this._count)
@@ -188,68 +188,68 @@ export default class Renderer {
       if (canvasSizeChanged) {
         this._canvas.width = frameWidth
         this._canvas.height = frameHeight
-        this._jpegSurfaceShader.updatePerspective(browserEncodedFrame.size)
+        this._jpegSurfaceShader.updatePerspective(encodedFrame.size)
       }
 
-      this._jpegSurfaceShader.draw(browserEncodedFrame.size, canvasSizeChanged)
+      this._jpegSurfaceShader.draw(encodedFrame.size, canvasSizeChanged)
       this._jpegSurfaceShader.release()
       views.forEach((view) => { view.draw(this._canvas) })
     }
   }
 
   /**
-   * @param {BrowserEncodedFrame}browserEncodedFrame
-   * @param {BrowserSurface}browserSurface
-   * @param {Array<BrowserSurfaceView>}views
+   * @param {EncodedFrame}encodedFrame
+   * @param {Surface}surface
+   * @param {Array<SurfaceView>}views
    * @return {Promise<void>}
    * @private
    */
-  async ['image/png'] (browserEncodedFrame, browserSurface, views) {
-    const fullFrame = BrowserEncodingOptions.fullFrame(browserEncodedFrame.encodingOptions)
-    const splitAlpha = BrowserEncodingOptions.splitAlpha(browserEncodedFrame.encodingOptions)
+  async ['image/png'] (encodedFrame, surface, views) {
+    const fullFrame = EncodingOptions.fullFrame(encodedFrame.encodingOptions)
+    const splitAlpha = EncodingOptions.splitAlpha(encodedFrame.encodingOptions)
 
     if (fullFrame && !splitAlpha) {
       // Full frame without a separate alpha. Let the browser do all the drawing.
-      const frame = browserEncodedFrame.fragments[0]
-      const opaqueImageBlob = new window.Blob([frame.opaque], {'type': 'image/png'})
-      const opaqueImageBitmap = await window.createImageBitmap(opaqueImageBlob, 0, 0, frame.geo.width, frame.geo.height)
+      const frame = encodedFrame.fragments[0]
+      const opaqueImageBlob = new Blob([frame.opaque], {'type': 'image/png'})
+      const opaqueImageBitmap = await createImageBitmap(opaqueImageBlob, 0, 0, frame.geo.width, frame.geo.height)
       views.forEach((view) => { view.draw(opaqueImageBitmap) })
     } else {
       // we don't support/care about fragmented pngs (and definitely not with a separate alpha channel as png has it internal)
-      throw new Error(`Unsupported buffer. Encoding type: ${browserEncodedFrame.encodingType}, full frame:${fullFrame}, split alpha: ${splitAlpha}`)
+      throw new Error(`Unsupported buffer. Encoding type: ${encodedFrame.encodingType}, full frame:${fullFrame}, split alpha: ${splitAlpha}`)
     }
   }
 
   /**
-   * @param {BrowserEncodedFrame}browserEncodedFrame
-   * @param {BrowserSurface}browserSurface
-   * @param {Array<BrowserSurfaceView>}views
+   * @param {EncodedFrame}encodedFrame
+   * @param {Surface}surface
+   * @param {Array<SurfaceView>}views
    * @return {Promise<void>}
    * @private
    */
-  async ['video/h264'] (browserEncodedFrame, browserSurface, views) {
-    let renderState = browserSurface.renderState
+  async ['video/h264'] (encodedFrame, surface, views) {
+    let renderState = surface.renderState
     if (!(renderState instanceof H264RenderState)) {
       if (renderState) {
         renderState.destroy()
       }
       renderState = H264RenderState.create(this._gl)
-      browserSurface.renderState = renderState
+      surface.renderState = renderState
     }
     const h264RenderState = /** @type H264RenderState */ renderState
 
-    const {/** @type {number} */ w: frameWidth, /** @type {number} */ h: frameHeight} = browserEncodedFrame.size
+    const {/** @type {number} */ w: frameWidth, /** @type {number} */ h: frameHeight} = encodedFrame.size
 
     // We update the texture with the fragments as early as possible, this is to avoid gl state mixup with other
     // calls to _draw() while we're in await. If we were to do this call later, this.canvas will have state specifically
     // for our _draw() call, yet because we are in (a late) await, another call might adjust our canvas, which results
     // in bad draws/flashing/flickering/...
     let start = Date.now()
-    await h264RenderState.update(browserEncodedFrame)
+    await h264RenderState.update(encodedFrame)
     this._textureUpdateTotal += Date.now() - start
     DEBUG && console.log('updating textures avg', this._textureUpdateTotal / this._count)
 
-    if (BrowserEncodingOptions.splitAlpha(browserEncodedFrame.encodingOptions)) {
+    if (EncodingOptions.splitAlpha(encodedFrame.encodingOptions)) {
       // Image is in h264 format with a separate alpha channel, color convert alpha & yuv fragments to rgba using webgl.
       this._yuvaSurfaceShader.use()
       this._yuvaSurfaceShader.setTexture(h264RenderState.yTexture, h264RenderState.uTexture, h264RenderState.vTexture, h264RenderState.alphaTexture)
@@ -259,11 +259,11 @@ export default class Renderer {
       if (canvasSizeChanged) {
         this._canvas.width = frameWidth
         this._canvas.height = frameHeight
-        this._yuvaSurfaceShader.updatePerspective(browserEncodedFrame.size)
+        this._yuvaSurfaceShader.updatePerspective(encodedFrame.size)
       }
 
       // TODO we could try to optimize and only shade the fragments of the texture that were updated
-      this._yuvaSurfaceShader.draw(browserEncodedFrame.size, canvasSizeChanged)
+      this._yuvaSurfaceShader.draw(encodedFrame.size, canvasSizeChanged)
       this._yuvaSurfaceShader.release()
       this._shaderInvocationTotal += (Date.now() - start)
       DEBUG && console.log('shader invocation avg', this._shaderInvocationTotal / this._count)
@@ -282,10 +282,10 @@ export default class Renderer {
       if (canvasSizeChanged) {
         this._canvas.width = frameWidth
         this._canvas.height = frameHeight
-        this._yuvSurfaceShader.updatePerspective(browserEncodedFrame.size)
+        this._yuvSurfaceShader.updatePerspective(encodedFrame.size)
       }
 
-      this._yuvSurfaceShader.draw(browserEncodedFrame.size, canvasSizeChanged)
+      this._yuvSurfaceShader.draw(encodedFrame.size, canvasSizeChanged)
       this._yuvSurfaceShader.release()
 
       views.forEach((view) => { view.draw(this._canvas) })
@@ -293,15 +293,15 @@ export default class Renderer {
   }
 
   /**
-   * @param {BrowserEncodedFrame}bufferContents
-   * @param {BrowserSurface}browserSurface
-   * @param {Array<BrowserSurfaceView>}views
+   * @param {EncodedFrame}bufferContents
+   * @param {Surface}surface
+   * @param {Array<SurfaceView>}views
    * @private
    */
-  async _draw (bufferContents, browserSurface, views) {
+  async _draw (bufferContents, surface, views) {
     this._count++
     // invokes mime type named drawing methods
-    await this[bufferContents.encodingType](bufferContents, browserSurface, views)
+    await this[bufferContents.encodingType](bufferContents, surface, views)
   }
 }
 /**

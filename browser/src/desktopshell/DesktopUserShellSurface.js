@@ -5,15 +5,15 @@ import UserShellSurface from '../UserShellSurface'
 /**
  * @implements UserShellSurface
  */
-export default class DesktopUserShellSurface extends UserShellSurface{
+export default class DesktopUserShellSurface extends UserShellSurface {
   /**
-   * @param {BrowserSurface}browserSurface
-   * @param {BrowserSeat}browserSeat
+   * @param {Surface}surface
+   * @param {Seat}seat
    * @return {DesktopUserShellSurface}
    */
-  static create (browserSurface, browserSeat) {
+  static create (surface, seat) {
     // create a mainView and attach it to the scene
-    const mainView = browserSurface.createView()
+    const mainView = surface.createView()
     this._fadeOutAndDetachViewOnDestroy(mainView)
     mainView.attachTo(document.body)
 
@@ -23,14 +23,14 @@ export default class DesktopUserShellSurface extends UserShellSurface{
     divElement.classList.add('entry')
     this._fadeOutAndDetachEntryOnDestroy(mainView, divElement)
 
-    const desktopUserShellSurface = new DesktopUserShellSurface(mainView, divElement, browserSeat)
+    const desktopUserShellSurface = new DesktopUserShellSurface(mainView, divElement, seat)
     desktopUserShellSurface._activateOnPointerButton()
 
     divElement.addEventListener('mousedown', () => {
       desktopUserShellSurface._activeCallback()
     })
     // destroy the mainView if the shell-surface is destroyed
-    browserSurface.resource.onDestroy().then(() => {
+    surface.resource.onDestroy().then(() => {
       desktopUserShellSurface.destroy()
     })
 
@@ -40,7 +40,7 @@ export default class DesktopUserShellSurface extends UserShellSurface{
   }
 
   /**
-   * @param {BrowserSurfaceView}view
+   * @param {SurfaceView}view
    * @param {HTMLElement}entry
    * @private
    */
@@ -56,7 +56,7 @@ export default class DesktopUserShellSurface extends UserShellSurface{
   }
 
   /**
-   * @param {BrowserSurfaceView}view
+   * @param {SurfaceView}view
    * @private
    */
   static _fadeOutAndDetachViewOnDestroy (view) {
@@ -73,15 +73,15 @@ export default class DesktopUserShellSurface extends UserShellSurface{
 
   /**
    * Use DesktopShellEntry.create(..) instead.
-   * @param {BrowserSurfaceView}mainView
+   * @param {SurfaceView}mainView
    * @param {HTMLDivElement}divElement
-   * @param {BrowserSeat}browserSeat
+   * @param {Seat}seat
    * @private
    */
-  constructor (mainView, divElement, browserSeat) {
+  constructor (mainView, divElement, seat) {
     super()
     /**
-     * @type {BrowserSurfaceView}
+     * @type {SurfaceView}
      */
     this.mainView = mainView
     /**
@@ -109,24 +109,24 @@ export default class DesktopUserShellSurface extends UserShellSurface{
      */
     this.active = false
     /**
-     * @type {BrowserSeat}
+     * @type {Seat}
      * @private
      */
-    this._browserSeat = browserSeat
+    this._seat = seat
   }
 
   /**
    * @private
    */
   _activateOnPointerButton () {
-    this._browserSeat.browserPointer.onButtonPress().then(() => {
+    this._seat.pointer.onButtonPress().then(() => {
       if (this.mainView.destroyed) {
         return
       }
 
       if (!this.active &&
-        this._browserSeat.browserPointer.focus &&
-        this._browserSeat.browserPointer.focus.browserSurface === this.mainView.browserSurface) {
+        this._seat.pointer.focus &&
+        this._seat.pointer.focus.surface === this.mainView.surface) {
         this._activeCallback()
       }
 
@@ -170,7 +170,7 @@ export default class DesktopUserShellSurface extends UserShellSurface{
       return
     }
 
-    if (this.active && this._grKeyboard && this._grKeyboard.implementation.focus !== this.mainView.browserSurface) {
+    if (this.active && this._grKeyboard && this._grKeyboard.implementation.focus !== this.mainView.surface) {
       this._giveKeyboardFocus()
     }
     this._grKeyboard = grKeyboard
@@ -183,8 +183,8 @@ export default class DesktopUserShellSurface extends UserShellSurface{
    * @private
    */
   _giveKeyboardFocus () {
-    const browserKeyboard = this._grKeyboard.implementation
-    browserKeyboard.focusGained(this.mainView.browserSurface)
+    const keyboard = /** @typ{Keyboard} */this._grKeyboard.implementation
+    keyboard.focusGained(this.mainView.surface)
   }
 
   /**
@@ -219,6 +219,7 @@ export default class DesktopUserShellSurface extends UserShellSurface{
   /**
    * Registers a callback that will be fired when the user shell wants to make a surface active (ie give it input)
    * @param {function}activeCallback
+   * @override
    */
   set onActivationRequest (activeCallback) {
     this._activeCallback = activeCallback
@@ -275,6 +276,14 @@ export default class DesktopUserShellSurface extends UserShellSurface{
     if (idx > -1) {
       DesktopUserShellSurface.desktopUserShellSurfaces.splice(idx, 1)
     }
+  }
+
+  /**
+   * Indicates if the application is responding.
+   * @param {boolean}unresponsive
+   */
+  set unresponsive (unresponsive) {
+    // TODO
   }
 }
 

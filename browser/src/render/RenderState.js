@@ -3,9 +3,9 @@
  */
 export default class RenderState {
   /**
-   * @param {BrowserEncodedFrame}browserEncodedFrame
+   * @param {EncodedFrame}encodedFrame
    */
-  update (browserEncodedFrame) {}
+  update (encodedFrame) {}
 
   destroy () {}
 }

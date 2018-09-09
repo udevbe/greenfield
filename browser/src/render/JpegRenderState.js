@@ -3,7 +3,7 @@
 import Texture from './Texture'
 import Size from '../Size'
 import RenderState from './RenderState'
-import BrowserEncodingOptions from '../BrowserEncodingOptions'
+import EncodingOptions from '../EncodingOptions'
 
 /**
  * @implements RenderState
@@ -43,18 +43,18 @@ export default class JpegRenderState extends RenderState {
   }
 
   /**
-   * @param {BrowserEncodedFrame}browserEncodedFrame
+   * @param {EncodedFrame}encodedFrame
    * @return {Promise<void>}
    * @override
    */
-  async update (browserEncodedFrame) {
-    const hasAlpha = BrowserEncodingOptions.splitAlpha(browserEncodedFrame.encodingOptions)
-    const sizeChanged = !this.size.equals(browserEncodedFrame.size)
+  async update (encodedFrame) {
+    const hasAlpha = EncodingOptions.splitAlpha(encodedFrame.encodingOptions)
+    const sizeChanged = !this.size.equals(encodedFrame.size)
     if (sizeChanged) {
-      this.size = browserEncodedFrame.size
+      this.size = encodedFrame.size
     }
 
-    await Promise.all(browserEncodedFrame.fragments.map(async (fragment) => {
+    await Promise.all(encodedFrame.fragments.map(async (fragment) => {
       const opaqueImageBitmapPromise = window.createImageBitmap(new window.Blob([fragment.opaque], {'type': 'image/jpeg'}), 0, 0, fragment.geo.width, fragment.geo.height)
       let alphaImageBitmapPromise = null
       if (hasAlpha) {

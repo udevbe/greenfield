@@ -11,29 +11,29 @@ import DesktopShellAppMenu from './DesktopShellAppMenu'
  */
 export default class DesktopUserShell {
   /**
-   * @param {BrowserSession}browserSession
-   * @param {BrowserSeat}browserSeat
+   * @param {Session}session
+   * @param {Seat}seat
    * @return {DesktopUserShell}
    */
-  static create (browserSession, browserSeat) {
+  static create (session, seat) {
     const body = document.body
     const workspace = document.getElementById('workspace')
-    const panel = document.createElement('div')
+    const panel = /** @type {HTMLDivElement} */document.createElement('div')
     panel.classList.add('hpanel')
     body.insertAdjacentElement('afterbegin', panel)
 
-    const entryContainer = document.createElement('div')
+    const entryContainer = /** @type {HTMLDivElement} */document.createElement('div')
     entryContainer.classList.add('entry-container')
     panel.appendChild(entryContainer)
 
-    const desktopShellAppMenu = DesktopShellAppMenu.create(browserSession)
+    const desktopShellAppMenu = DesktopShellAppMenu.create(session)
     panel.appendChild(desktopShellAppMenu.divElementAppMenuButton)
 
     const desktopShellMenu = DesktopShellMenu.create()
     panel.appendChild(desktopShellMenu.divElementMenuButton)
 
-    const desktopUserShell = new DesktopUserShell(body, workspace, panel, entryContainer, browserSeat)
-    browserSeat.addKeyboardResourceListener((grKeyboard) => {
+    const desktopUserShell = new DesktopUserShell(body, workspace, panel, entryContainer, seat)
+    seat.addKeyboardResourceListener((grKeyboard) => {
       desktopUserShell._keyboardAvailable(grKeyboard)
     })
 
@@ -46,10 +46,10 @@ export default class DesktopUserShell {
    * @param {HTMLElement}workspace
    * @param {HTMLDivElement}panel
    * @param {HTMLDivElement}entryContainer
-   * @param {BrowserSeat}browserSeat
+   * @param {Seat}seat
    * @private
    */
-  constructor (body, workspace, panel, entryContainer, browserSeat) {
+  constructor (body, workspace, panel, entryContainer, seat) {
     /**
      * @type{HTMLElement}
      */
@@ -67,19 +67,19 @@ export default class DesktopUserShell {
      */
     this.entryContainer = entryContainer
     /**
-     * @type {BrowserSeat}
+     * @type {Seat}
      * @private
      */
-    this._browserSeat = browserSeat
+    this._seat = seat
   }
 
   /**
-   * @param {BrowserSurface}browserSurface
+   * @param {Surface}surface
    * @return {UserShellSurface}
    * @override
    */
-  manage (browserSurface) {
-    const desktopShellEntry = DesktopUserShellSurface.create(browserSurface, this._browserSeat)
+  manage (surface) {
+    const desktopShellEntry = DesktopUserShellSurface.create(surface, this._seat)
     this.entryContainer.appendChild(desktopShellEntry.divElement)
     return desktopShellEntry
   }
@@ -90,7 +90,7 @@ export default class DesktopUserShell {
    */
   _keyboardAvailable (grKeyboard) {
     DesktopUserShellSurface.desktopUserShellSurfaces.forEach((desktopUserShellSurface) => {
-      if (desktopUserShellSurface.mainView.browserSurface.resource.client === grKeyboard.client) {
+      if (desktopUserShellSurface.mainView.surface.resource.client === grKeyboard.client) {
         desktopUserShellSurface.grKeyboard = grKeyboard
       }
     })

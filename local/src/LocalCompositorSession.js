@@ -147,8 +147,7 @@ class LocalCompositorSession {
 
     this._ws.onclose = (event) => {
       console.log(`Child ${process.pid} session web socket is closed. ${event.code}: ${event.reason}`)
-      this.wlDisplay.terminate()
-      this.wlDisplay.destroy()
+      this.shimCompositorSession.terminate()
       this.onTerminate()
     }
     this._ws.onerror = () => {

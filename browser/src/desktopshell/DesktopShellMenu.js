@@ -25,7 +25,7 @@ export default class DesktopShellMenu {
    * @private
    */
   static _createDivElementMenuButton () {
-    const divElementMenuButton = document.createElement('div')
+    const divElementMenuButton = /** @type {HTMLDivElement} */document.createElement('div')
     divElementMenuButton.classList.add('menu-button')
     divElementMenuButton.classList.add('config')
     return divElementMenuButton
@@ -36,12 +36,12 @@ export default class DesktopShellMenu {
    * @private
    */
   static _createDivElementMenuContainer () {
-    const divElementMenuContainer = document.createElement('div')
+    const divElementMenuContainer = /** @type {HTMLDivElement} */document.createElement('div')
     divElementMenuContainer.classList.add('menu-container')
     divElementMenuContainer.classList.add('config')
     window.document.body.appendChild(divElementMenuContainer)
 
-    const divElementMenuTriangleUp = document.createElement('div')
+    const divElementMenuTriangleUp = /** @type {HTMLDivElement} */document.createElement('div')
     divElementMenuTriangleUp.classList.add('menu-triangle-up')
     divElementMenuTriangleUp.classList.add('config')
     divElementMenuContainer.appendChild(divElementMenuTriangleUp)
@@ -54,7 +54,7 @@ export default class DesktopShellMenu {
    * @private
    */
   static _createDivElementMenu () {
-    const divElementMenu = document.createElement('div')
+    const divElementMenu = /** @type {HTMLDivElement} */document.createElement('div')
     divElementMenu.classList.add('menu')
     divElementMenu.classList.add('config')
     return divElementMenu
@@ -66,9 +66,9 @@ export default class DesktopShellMenu {
    * @private
    */
   static _createSearchBar (divElementMenuContainer) {
-    const divElementSearchContainer = document.createElement('div')
-    const divElementSearchIcon = document.createElement('div')
-    const inputElementSearchInput = document.createElement('input')
+    const divElementSearchContainer = /** @type {HTMLDivElement} */document.createElement('div')
+    const divElementSearchIcon = /** @type {HTMLDivElement} */document.createElement('div')
+    const inputElementSearchInput = /** @type {HTMLInputElement} */document.createElement('input')
 
     inputElementSearchInput.setAttribute('type', 'text')
     inputElementSearchInput.setAttribute('name', 'search')

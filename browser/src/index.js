@@ -1,56 +1,55 @@
 'use strict'
-
-import BrowserSession from './BrowserSession'
-import BrowserCompositor from './BrowserCompositor'
+import Session from './Session'
+import Compositor from './Compositor'
 import pixman from './lib/libpixman-1'
 import libxkbcommon from './lib/libxkbcommon'
-import BrowserRtcPeerConnectionFactory from './BrowserRtcPeerConnectionFactory'
-import BrowserRtcBufferFactory from './BrowserRtcBufferFactory'
-import BrowserShell from './BrowserShell'
-import BrowserSeat from './BrowserSeat'
-import BrowserDataDeviceManager from './BrowserDataDeviceManager'
-import BrowserOutput from './BrowserOutput'
-import BrowserSubcompositor from './BrowserSubcompositor'
+import RtcPeerConnectionFactory from './RtcPeerConnectionFactory'
+import RtcBufferFactory from './RtcBufferFactory'
+import Shell from './Shell'
+import Seat from './Seat'
+import DataDeviceManager from './DataDeviceManager'
+import Output from './Output'
+import Subcompositor from './Subcompositor'
 
 import './style/greenfield.css'
-import BrowserXdgWmBase from './BrowserXdgWmBase'
+import XdgWmBase from './XdgWmBase'
 import DesktopUserShell from './desktopshell/DesktopUserShell'
 
 /**
- * @param {BrowserSession}browserSession
+ * @param {Session}session
  */
-function setupGlobals (browserSession) {
-  const browserOutput = BrowserOutput.create()
-  const browserSeat = BrowserSeat.create(browserSession)
-  const browserCompositor = BrowserCompositor.create(browserSession, browserSeat)
-  const browserDataDeviceManager = BrowserDataDeviceManager.create()
-  const browserSubcompositor = BrowserSubcompositor.create()
+function setupGlobals (session) {
+  const output = Output.create()
+  const seat = Seat.create(session)
+  const compositor = Compositor.create(session, seat)
+  const dataDeviceManager = DataDeviceManager.create()
+  const subcompositor = Subcompositor.create()
 
-  const browserRtcPeerConnectionFactory = BrowserRtcPeerConnectionFactory.create()
-  const browserRtcBufferFactory = BrowserRtcBufferFactory.create()
+  const rtcPeerConnectionFactory = RtcPeerConnectionFactory.create()
+  const rtcBufferFactory = RtcBufferFactory.create()
 
-  const desktopUserShell = DesktopUserShell.create(browserSession, browserSeat)
+  const desktopUserShell = DesktopUserShell.create(session, seat)
 
-  const browserShell = BrowserShell.create(browserSession, desktopUserShell)
-  const browserXdgWmBase = BrowserXdgWmBase.create(browserSession, desktopUserShell, browserSeat)
+  const shell = Shell.create(session, desktopUserShell)
+  const xdgWmBase = XdgWmBase.create(session, desktopUserShell, seat)
 
-  browserSession.wfsServer.registry.register(browserOutput)
-  browserSession.wfsServer.registry.register(browserCompositor)
-  browserSession.wfsServer.registry.register(browserDataDeviceManager)
-  browserSession.wfsServer.registry.register(browserSeat)
-  browserSession.wfsServer.registry.register(browserShell)
-  browserSession.wfsServer.registry.register(browserSubcompositor)
+  output.registerGlobal(session.display.registry)
+  compositor.registerGlobal(session.display.registry)
+  dataDeviceManager.registerGlobal(session.display.registry)
+  seat.registerGlobal(session.display.registry)
+  shell.registerGlobal(session.display.registry)
+  subcompositor.registerGlobal(session.display.registry)
 
-  browserSession.wfsServer.registry.register(browserRtcPeerConnectionFactory)
-  browserSession.wfsServer.registry.register(browserRtcBufferFactory)
+  rtcPeerConnectionFactory.registerGlobal(session.display.registry)
+  rtcBufferFactory.registerGlobal(session.display.registry)
 
-  browserSession.wfsServer.registry.register(browserXdgWmBase)
+  xdgWmBase.registerGlobal(session.display.registry)
 }
 
 function main () {
   const compositorSessionId = uuidv4()
-  const browserSession = BrowserSession.create(compositorSessionId)
-  setupGlobals(browserSession)
+  const session = Session.create(compositorSessionId)
+  setupGlobals(session)
 }
 
 /**

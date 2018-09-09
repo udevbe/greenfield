@@ -4,10 +4,10 @@ import DesktopShellAppMenuItem from './DesktopShellAppMenuItem'
 
 export default class DesktopShellAppMenu {
   /**
-   * @param {BrowserSession}browserSession
+   * @param {Session}session
    * @return {DesktopShellAppMenu}
    */
-  static create (browserSession) {
+  static create (session) {
     const divElementAppMenuButton = this._createDivElementAppMenuButton()
     const divElementAppMenuContainer = this._createDivElementAppMenuContainer()
     const divElementAppMenu = this._createDivElementAppMenu()
@@ -18,29 +18,37 @@ export default class DesktopShellAppMenu {
     divElementAppMenu.appendChild(searchBar.divElementSearchContainer)
     divElementAppMenu.appendChild(divElementAppMenuAppsContainer)
 
-    const desktopShellAppMenu = new DesktopShellAppMenu(divElementAppMenuButton, divElementAppMenuContainer, divElementAppMenu, searchBar, divElementAppMenuAppsContainer, browserSession)
+    const desktopShellAppMenu = new DesktopShellAppMenu(divElementAppMenuButton, divElementAppMenuContainer, divElementAppMenu, searchBar, divElementAppMenuAppsContainer, session)
 
     // event listeners
     this._addEventListeners(desktopShellAppMenu)
-    desktopShellAppMenu._setupWebsocketConnection(browserSession)
+    desktopShellAppMenu._setupWebsocketConnection(session)
 
     return desktopShellAppMenu
   }
 
+  /**
+   * @return {HTMLDivElement}
+   * @private
+   */
   static _createDivElementAppMenuButton () {
-    const divElementMenuButton = document.createElement('div')
+    const divElementMenuButton = /** @type {HTMLDivElement} */document.createElement('div')
     divElementMenuButton.classList.add('menu-button')
     divElementMenuButton.classList.add('apps')
     return divElementMenuButton
   }
 
+  /**
+   * @return {HTMLDivElement}
+   * @private
+   */
   static _createDivElementAppMenuContainer () {
-    const divElementMenuContainer = document.createElement('div')
+    const divElementMenuContainer = /** @type {HTMLDivElement} */document.createElement('div')
     divElementMenuContainer.classList.add('menu-container')
     divElementMenuContainer.classList.add('apps')
     window.document.body.appendChild(divElementMenuContainer)
 
-    const divElementMenuTriangleUp = document.createElement('div')
+    const divElementMenuTriangleUp = /** @type {HTMLDivElement} */document.createElement('div')
     divElementMenuTriangleUp.classList.add('menu-triangle-up')
     divElementMenuTriangleUp.classList.add('apps')
     divElementMenuContainer.appendChild(divElementMenuTriangleUp)
@@ -48,15 +56,23 @@ export default class DesktopShellAppMenu {
     return divElementMenuContainer
   }
 
+  /**
+   * @return {HTMLDivElement}
+   * @private
+   */
   static _createDivElementAppMenu () {
-    const divElementMenu = document.createElement('div')
+    const divElementMenu = /** @type {HTMLDivElement} */document.createElement('div')
     divElementMenu.classList.add('menu')
     divElementMenu.classList.add('apps')
     return divElementMenu
   }
 
+  /**
+   * @return {HTMLDivElement}
+   * @private
+   */
   static _createDivElementAppMenuAppsContainer () {
-    const divElementAppsContainer = document.createElement('div')
+    const divElementAppsContainer = /** @type {HTMLDivElement} */document.createElement('div')
     divElementAppsContainer.classList.add('app-menu-item-container')
     return divElementAppsContainer
   }
@@ -67,9 +83,9 @@ export default class DesktopShellAppMenu {
    * @private
    */
   static _createSearchBar (divElementAppMenuContainer) {
-    const divElementSearchContainer = document.createElement('div')
-    const divElementSearchIcon = document.createElement('div')
-    const inputElementSearchInput = document.createElement('input')
+    const divElementSearchContainer = /** @type {HTMLDivElement} */document.createElement('div')
+    const divElementSearchIcon = /** @type {HTMLDivElement} */ document.createElement('div')
+    const inputElementSearchInput = /** @type {HTMLDivElement} */document.createElement('input')
 
     inputElementSearchInput.setAttribute('type', 'text')
     inputElementSearchInput.setAttribute('name', 'search')
@@ -133,9 +149,9 @@ export default class DesktopShellAppMenu {
    * @param {HTMLDivElement}divElementAppMenu
    * @param {{divElementSearchContainer: HTMLDivElement, divElementSearchIcon: HTMLDivElement, inputElementSearchInput: HTMLInputElement}}searchBar
    * @param {HTMLDivElement}divElementAppMenuAppsContainer
-   * @param {BrowserSession}browserSession
+   * @param {Session}session
    */
-  constructor (divElementAppMenuButton, divElementAppMenuContainer, divElementAppMenu, searchBar, divElementAppMenuAppsContainer, browserSession) {
+  constructor (divElementAppMenuButton, divElementAppMenuContainer, divElementAppMenu, searchBar, divElementAppMenuAppsContainer, session) {
     /**
      * @type {HTMLDivElement}
      */
@@ -157,12 +173,12 @@ export default class DesktopShellAppMenu {
      */
     this.divElementAppMenuAppsContainer = divElementAppMenuAppsContainer
     /**
-     * @type {BrowserSession}
+     * @type {Session}
      * @private
      */
-    this._browserSession = browserSession
+    this._session = session
     /**
-     * @type {window.WebSocket}
+     * @type {WebSocket}
      * @private
      */
     this._ws = null
@@ -174,15 +190,15 @@ export default class DesktopShellAppMenu {
   }
 
   /**
-   * @param {BrowserSession}browserSession
+   * @param {Session}session
    * @private
    */
-  _setupWebsocketConnection (browserSession) {
-    const sessionId = browserSession.compositorSessionId
+  _setupWebsocketConnection (session) {
+    const sessionId = session.compositorSessionId
     const websocketProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
     const url = `${websocketProtocol}://${window.location.host}/${sessionId}/apps`
 
-    const ws = new window.WebSocket(url)
+    const ws = new WebSocket(url)
     ws.onerror = () => {
       console.error(`Apps web socket is in error.`)
     }

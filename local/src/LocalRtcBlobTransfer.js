@@ -56,6 +56,7 @@ class LocalRtcBlobTransfer {
   _release () {
     if (this._dataChannel) {
       this.proxy.close()
+      this._dataChannel.onopen = () => {}
       this._dataChannel.close()
       this._dataChannel = null
       this._dataChannelPromise = null
