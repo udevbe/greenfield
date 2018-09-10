@@ -149,7 +149,7 @@ export default class XdgPopup extends XdgPopupRequests {
    * @param {XdgPopupResource}xdgPopupResource
    * @param {XdgSurface}xdgSurface
    * @param {XdgSurfaceResource|null}parent
-   * @param {{size: Rect, anchorRect: Rect, anchor: number, gravity: number, constraintAdjustment: number, offset: Point, surfaceSpaceAnchorPoint: (function(XdgSurface): Point), checkScreenConstraints: (function(XdgSurface, SurfaceView): {topViolation: number, rightViolation: number, bottomViolation: number, leftViolation: number})}}positionerState
+   * @param {{size: Rect, anchorRect: Rect, anchor: number, gravity: number, constraintAdjustment: number, offset: Point, surfaceSpaceAnchorPoint: (function(XdgSurface): Point), checkScreenConstraints: (function(XdgSurface, View): {topViolation: number, rightViolation: number, bottomViolation: number, leftViolation: number})}}positionerState
    * @param {Session}session
    * @param {Seat}seat
    * @return {XdgPopup}
@@ -168,7 +168,7 @@ export default class XdgPopup extends XdgPopupRequests {
    * @param {XdgPopupResource}xdgPopupResource
    * @param {XdgSurface}xdgSurface
    * @param {XdgSurfaceResource|null}parent
-   * @param {{size: Rect, anchorRect: Rect, anchor: number, gravity: number, constraintAdjustment: number, offset: Point, surfaceSpaceAnchorPoint: (function(XdgSurface): Point), checkScreenConstraints: (function(XdgSurface, SurfaceView): {topViolation: number, rightViolation: number, bottomViolation: number, leftViolation: number})}}positionerState
+   * @param {{size: Rect, anchorRect: Rect, anchor: number, gravity: number, constraintAdjustment: number, offset: Point, surfaceSpaceAnchorPoint: (function(XdgSurface): Point), checkScreenConstraints: (function(XdgSurface, View): {topViolation: number, rightViolation: number, bottomViolation: number, leftViolation: number})}}positionerState
    * @param {Session}session
    * @param {Seat}seat
    */
@@ -187,7 +187,7 @@ export default class XdgPopup extends XdgPopupRequests {
      */
     this.parent = parent
     /**
-     * @type {{size: Rect, anchorRect: Rect, anchor: number, gravity: number, constraintAdjustment: number, offset: Point, surfaceSpaceAnchorPoint: (function(XdgSurface): Point), checkScreenConstraints: (function(XdgSurface, SurfaceView): {topViolation: number, rightViolation: number, bottomViolation: number, leftViolation: number})}}
+     * @type {{size: Rect, anchorRect: Rect, anchor: number, gravity: number, constraintAdjustment: number, offset: Point, surfaceSpaceAnchorPoint: (function(XdgSurface): Point), checkScreenConstraints: (function(XdgSurface, View): {topViolation: number, rightViolation: number, bottomViolation: number, leftViolation: number})}}
      */
     this.positionerState = positionerState
     /**
@@ -261,7 +261,7 @@ export default class XdgPopup extends XdgPopupRequests {
    */
   _map (surface, newState) {
     // TODO check if parent is mapped
-    for (const surfaceChild of surface.surfaceChildren) {
+    for (const surfaceChild of surface.children) {
       if (surfaceChild !== surface.surfaceChildSelf &&
         surfaceChild.surface.role instanceof XdgPopup) {
         this.resource.postError(XdgWmBaseResource.Error.notTheTopmostPopup, 'Client tried to map a non-topmost popup')
@@ -329,7 +329,7 @@ export default class XdgPopup extends XdgPopupRequests {
    */
   destroy (resource) {
     const surface = /** @type {Surface} */this.xdgSurface.grSurfaceResource.implementation
-    for (const surfaceChild of surface.surfaceChildren) {
+    for (const surfaceChild of surface.children) {
       if (surfaceChild !== surface.surfaceChildSelf &&
         surfaceChild.surface.role instanceof XdgPopup) {
         resource.postError(XdgWmBaseResource.Error.notTheTopmostPopup, 'Client tried to destroy a non-topmost popup')
@@ -441,7 +441,7 @@ export default class XdgPopup extends XdgPopupRequests {
 
   /**
    * @param {XdgSurfaceResource|null}parent
-   * @param {{size: Rect, anchorRect: Rect, anchor: number, gravity: number, constraintAdjustment: number, offset: Point, surfaceSpaceAnchorPoint: (function(XdgSurface): Point), checkScreenConstraints: (function(XdgSurface, SurfaceView): {topViolation: number, rightViolation: number, bottomViolation: number, leftViolation: number})}}positionerState
+   * @param {{size: Rect, anchorRect: Rect, anchor: number, gravity: number, constraintAdjustment: number, offset: Point, surfaceSpaceAnchorPoint: (function(XdgSurface): Point), checkScreenConstraints: (function(XdgSurface, View): {topViolation: number, rightViolation: number, bottomViolation: number, leftViolation: number})}}positionerState
    */
   ensureGeometryConstraints (parent, positionerState) {
     // TODO we can probably rewrite & make this method better using libpixman
@@ -452,9 +452,9 @@ export default class XdgPopup extends XdgPopupRequests {
 
     const parentXdgSurface = /** @type {XdgSurface} */parent.implementation
     const parentSurface = /** @type {Surface} */parentXdgSurface.grSurfaceResource.implementation
-    const primaryParentSurfaceView = parentSurface.views.find(parentSurfaceView => parentSurfaceView.primary)
+    const primaryParentView = parentSurface.views.find(parentView => parentView.primary)
 
-    let violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentSurfaceView)
+    let violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
 
     if (!(violations.topViolation || violations.rightViolation || violations.bottomViolation || violations.leftViolation)) {
       // all fine, no need to reconfigure
@@ -480,7 +480,7 @@ export default class XdgPopup extends XdgPopupRequests {
         positionerState.anchor = inverseX[oldAnchor]
         positionerState.gravity = inverseX[oldGravity]
 
-        violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentSurfaceView)
+        violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
         if (violations.leftViolation || violations.rightViolation) {
           // still violating, revert
           positionerState.anchor = oldAnchor
@@ -489,7 +489,7 @@ export default class XdgPopup extends XdgPopupRequests {
       }
 
       // check for violations in case the flip caused the violations to disappear
-      violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentSurfaceView)
+      violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
       if ((violations.leftViolation || violations.rightViolation) && canSlideX) {
         // try sliding
         const newXDeltaOffset = violations.rightViolation ? -violations.rightViolation : violations.leftViolation
@@ -500,7 +500,7 @@ export default class XdgPopup extends XdgPopupRequests {
     }
 
     // check for violations in case the flip or slide caused the violations to disappear
-    violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentSurfaceView)
+    violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
     if ((violations.leftViolation || violations.rightViolation) && canResizeX) {
       if (violations.leftViolation) {
         const oldOffset = positionerState.offset
@@ -515,7 +515,7 @@ export default class XdgPopup extends XdgPopupRequests {
 
     // Y-Axis:
     // we can't use slide or flip if if the height is greater than the screen height
-    violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentSurfaceView)
+    violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
     if ((violations.topViolation || violations.bottomViolation) &&
       positionerState.size.height < window.document.body.clientHeight) {
       if (canFlipY) {
@@ -525,7 +525,7 @@ export default class XdgPopup extends XdgPopupRequests {
         positionerState.anchor = inverseY[oldAnchor]
         positionerState.gravity = inverseY[oldGravity]
 
-        violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentSurfaceView)
+        violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
         if (violations.topViolation || violations.bottomViolation) {
           // still violating, revert
           positionerState.anchor = oldAnchor
@@ -534,7 +534,7 @@ export default class XdgPopup extends XdgPopupRequests {
       }
 
       // check for violations in case the flip caused the violations to disappear
-      violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentSurfaceView)
+      violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
       if ((violations.topViolation || violations.bottomViolation) && canSlideY) {
         // try sliding
         const newYDeltaOffset = violations.bottomViolation ? -violations.bottomViolation : violations.topViolation
@@ -545,7 +545,7 @@ export default class XdgPopup extends XdgPopupRequests {
     }
 
     // check for violations in case the flip or slide caused the violations to disappear
-    violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentSurfaceView)
+    violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
     if ((violations.topViolation || violations.bottomViolation) && canResizeY) {
       if (violations.topViolation) {
         const oldOffset = positionerState.offset

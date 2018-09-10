@@ -102,12 +102,12 @@ export default class Pointer extends GrPointerRequests {
      */
     this.resources = []
     /**
-     * @type {?SurfaceView}
+     * @type {?View}
      */
     this.focus = null
     /**
      * Currently active surface grab (if any)
-     * @type {?SurfaceView}
+     * @type {?View}
      */
     this.grab = null
     /**
@@ -129,7 +129,7 @@ export default class Pointer extends GrPointerRequests {
      */
     this._cursorSurface = null
     /**
-     * @type {?SurfaceView}
+     * @type {?View}
      * @private
      */
     this._view = null
@@ -604,13 +604,13 @@ export default class Pointer extends GrPointerRequests {
   }
 
   /**
-   * @param {SurfaceView}surfaceView
+   * @param {View}view
    * @return {Point}
    * @private
    */
-  _calculateSurfacePoint (surfaceView) {
+  _calculateSurfacePoint (view) {
     const mousePoint = Point.create(this.x, this.y)
-    return surfaceView.toSurfaceSpace(mousePoint)
+    return view.toSurfaceSpace(mousePoint)
   }
 
   /**
@@ -620,16 +620,16 @@ export default class Pointer extends GrPointerRequests {
    */
   _isPointerWithinInputRegion (canvas) {
     if (canvas.view) {
-      const surfaceView = canvas.view
-      const surfacePoint = this._calculateSurfacePoint(surfaceView)
-      return surfaceView.surface.isWithinInputRegion(surfacePoint)
+      const view = canvas.view
+      const surfacePoint = this._calculateSurfacePoint(view)
+      return view.surface.isWithinInputRegion(surfacePoint)
     } else {
       return false
     }
   }
 
   /**
-   * @return {SurfaceView | null}
+   * @return {View | null}
    */
   calculateFocus () {
     const focusCandidates = window.document.elementsFromPoint(this.x, this.y)
@@ -652,7 +652,7 @@ export default class Pointer extends GrPointerRequests {
   }
 
   /**
-   * @param {SurfaceView}newFocus
+   * @param {View}newFocus
    */
   setFocus (newFocus) {
     this.focus = newFocus

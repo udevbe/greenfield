@@ -446,7 +446,7 @@ export default class XdgPositioner extends XdgPositionerRequests {
   }
 
   /**
-   * @return {{size: Rect, anchorRect: Rect, anchor: number, gravity: number, constraintAdjustment: number, offset: Point, surfaceSpaceAnchorPoint: (function(XdgSurface): Point), checkScreenConstraints: (function(XdgSurface, SurfaceView): {topViolation: number, rightViolation: number, bottomViolation: number, leftViolation: number})}}
+   * @return {{size: Rect, anchorRect: Rect, anchor: number, gravity: number, constraintAdjustment: number, offset: Point, surfaceSpaceAnchorPoint: (function(XdgSurface): Point), checkScreenConstraints: (function(XdgSurface, View): {topViolation: number, rightViolation: number, bottomViolation: number, leftViolation: number})}}
    */
   createStateCopy () {
     const selfSize = this.size
@@ -491,16 +491,16 @@ export default class XdgPositioner extends XdgPositionerRequests {
       },
       /**
        * @param {XdgSurface}parent
-       * @param {SurfaceView}parentSurfaceView
+       * @param {View}parentView
        * @return {{topViolation: number, rightViolation: number, bottomViolation: number, leftViolation: number}}
        */
-      checkScreenConstraints: function (parent, parentSurfaceView) {
+      checkScreenConstraints: function (parent, parentView) {
         const surfaceSpaceAnchorPoint = this.surfaceSpaceAnchorPoint(parent)
         const surfaceSpaceWinGeoMin = surfaceSpaceAnchorPoint.plus(this.size.position)
         const surfaceSpaceWinGeoMax = surfaceSpaceAnchorPoint.plus(Point.create(this.size.x1, this.size.y1))
 
-        const surfaceSpaceMinBound = parentSurfaceView.toSurfaceSpace(Point.create(0, 0))
-        const surfaceSpaceMaxBound = parentSurfaceView.toSurfaceSpace(Point.create(window.document.body.clientWidth, window.document.body.clientHeight))
+        const surfaceSpaceMinBound = parentView.toSurfaceSpace(Point.create(0, 0))
+        const surfaceSpaceMaxBound = parentView.toSurfaceSpace(Point.create(window.document.body.clientWidth, window.document.body.clientHeight))
 
         let topViolation = 0
         let rightViolation = 0

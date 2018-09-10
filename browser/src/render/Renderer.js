@@ -126,7 +126,7 @@ export default class Renderer {
   /**
    * @param {EncodedFrame}encodedFrame
    * @param {Surface}surface
-   * @param {Array<SurfaceView>}views
+   * @param {Array<View>}views
    * @return {Promise<void>}
    * @private
    */
@@ -200,7 +200,7 @@ export default class Renderer {
   /**
    * @param {EncodedFrame}encodedFrame
    * @param {Surface}surface
-   * @param {Array<SurfaceView>}views
+   * @param {Array<View>}views
    * @return {Promise<void>}
    * @private
    */
@@ -223,7 +223,7 @@ export default class Renderer {
   /**
    * @param {EncodedFrame}encodedFrame
    * @param {Surface}surface
-   * @param {Array<SurfaceView>}views
+   * @param {Array<View>}views
    * @return {Promise<void>}
    * @private
    */
@@ -295,7 +295,7 @@ export default class Renderer {
   /**
    * @param {EncodedFrame}bufferContents
    * @param {Surface}surface
-   * @param {Array<SurfaceView>}views
+   * @param {Array<View>}views
    * @private
    */
   async _draw (bufferContents, surface, views) {

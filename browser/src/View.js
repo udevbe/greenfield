@@ -5,20 +5,20 @@ import Vec4 from './math/Vec4'
 import Region from './Region'
 import Renderer from './render/Renderer'
 
-export default class SurfaceView {
+export default class View {
   /**
    *
    * @param {Surface} surface
    * @param {number} width
    * @param {number} height
-   * @returns {SurfaceView}
+   * @returns {View}
    */
   static create (surface, width, height) {
     const bufferedCanvas = BufferedCanvas.create(width, height)
-    const surfaceView = new SurfaceView(bufferedCanvas, surface, Mat4.IDENTITY())
-    bufferedCanvas.view = surfaceView
-    surfaceView.updateInputRegion()
-    return surfaceView
+    const view = new View(bufferedCanvas, surface, Mat4.IDENTITY())
+    bufferedCanvas.view = view
+    view.updateInputRegion()
+    return view
   }
 
   /**
@@ -31,7 +31,7 @@ export default class SurfaceView {
   }
 
   /**
-   * Use SurfaceView.create(..) instead.
+   * Use View.create(..) instead.
    * @private
    * @param {BufferedCanvas}bufferedCanvas
    * @param {Surface}surface
@@ -74,7 +74,7 @@ export default class SurfaceView {
      */
     this.destroyed = false
     /**
-     * @type {SurfaceView}
+     * @type {View}
      * @private
      */
     this._parent = null
@@ -86,7 +86,7 @@ export default class SurfaceView {
   }
 
   /**
-   * @param {SurfaceView}parent
+   * @param {View}parent
    */
   set parent (parent) {
     if (this.destroyed) {
@@ -132,7 +132,7 @@ export default class SurfaceView {
   }
 
   /**
-   * @return {SurfaceView}
+   * @return {View}
    */
   get parent () {
     return this._parent
@@ -180,13 +180,13 @@ export default class SurfaceView {
    */
   _applyTransformationsChild (renderFrame) {
     // find all child views who have this view as it's parent and update their transformation
-    this.surface.surfaceChildren.forEach((surfaceChild) => {
+    this.surface.children.forEach((surfaceChild) => {
       if (surfaceChild.surface === this.surface) {
         return
       }
 
-      surfaceChild.surface.views.filter((surfaceView) => {
-        return surfaceView.parent === this
+      surfaceChild.surface.views.filter((view) => {
+        return view.parent === this
       }).forEach((childView) => {
         childView.applyTransformations(renderFrame)
       })
@@ -233,7 +233,7 @@ export default class SurfaceView {
     if (this.destroyed) {
       return
     }
-    this.zIndex = SurfaceView._nextTopZIndex()
+    this.zIndex = View._nextTopZIndex()
     this.surface.updateChildViewsZIndexes()
   }
 
@@ -244,8 +244,8 @@ export default class SurfaceView {
     if (this.destroyed) {
       return
     }
-    if (index >= SurfaceView._topZIndex) {
-      SurfaceView._topZIndex = index
+    if (index >= View._topZIndex) {
+      View._topZIndex = index
     }
     this.bufferedCanvas.zIndex = index
   }
@@ -373,7 +373,7 @@ export default class SurfaceView {
     this.bufferedCanvas.attachToElement(element)
 
     // attach child views
-    this.surface.surfaceChildren.forEach((surfaceChild) => {
+    this.surface.children.forEach((surfaceChild) => {
       surfaceChild.surface.views.filter((childView) => {
         return childView.parent === this
       }).forEach((childView) => {
@@ -409,4 +409,4 @@ export default class SurfaceView {
  * @type {number}
  * @private
  */
-SurfaceView._topZIndex = 20
+View._topZIndex = 20

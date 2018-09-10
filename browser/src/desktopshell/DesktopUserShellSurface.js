@@ -40,7 +40,7 @@ export default class DesktopUserShellSurface extends UserShellSurface {
   }
 
   /**
-   * @param {SurfaceView}view
+   * @param {View}view
    * @param {HTMLElement}entry
    * @private
    */
@@ -56,7 +56,7 @@ export default class DesktopUserShellSurface extends UserShellSurface {
   }
 
   /**
-   * @param {SurfaceView}view
+   * @param {View}view
    * @private
    */
   static _fadeOutAndDetachViewOnDestroy (view) {
@@ -73,7 +73,7 @@ export default class DesktopUserShellSurface extends UserShellSurface {
 
   /**
    * Use DesktopShellEntry.create(..) instead.
-   * @param {SurfaceView}mainView
+   * @param {View}mainView
    * @param {HTMLDivElement}divElement
    * @param {Seat}seat
    * @private
@@ -81,7 +81,7 @@ export default class DesktopUserShellSurface extends UserShellSurface {
   constructor (mainView, divElement, seat) {
     super()
     /**
-     * @type {SurfaceView}
+     * @type {View}
      */
     this.mainView = mainView
     /**

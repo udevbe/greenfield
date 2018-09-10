@@ -77,15 +77,31 @@ export default class XdgWmBase extends XdgWmBaseRequests {
      * @private
      */
     this._grSurfaceResources = []
+    /**
+     * @type {Global}
+     * @private
+     */
+    this._global = null
   }
 
   /**
    * @param {Registry}registry
    */
   registerGlobal (registry) {
-    registry.createGlobal(this, XdgWmBaseResource.name, 1, (client, id, version) => {
+    if (this._global) {
+      return
+    }
+    this._global = registry.createGlobal(this, XdgWmBaseResource.name, 1, (client, id, version) => {
       this.bindClient(client, id, version)
     })
+  }
+
+  unregisterGlobal () {
+    if (!this._global) {
+      return
+    }
+    this._global.destroy()
+    this._global = null
   }
 
   /**
@@ -243,7 +259,7 @@ export default class XdgWmBase extends XdgWmBaseRequests {
     surface.views.forEach((view) => {
       view.bufferedCanvas.removeCssClass(cssClass)
     })
-    surface.surfaceChildren.forEach((surfaceChild) => {
+    surface.children.forEach((surfaceChild) => {
       if (surfaceChild.surface !== surface) {
         this._removeClassRecursively(surfaceChild.surface, cssClass)
       }
@@ -259,7 +275,7 @@ export default class XdgWmBase extends XdgWmBaseRequests {
     surface.views.forEach((view) => {
       view.bufferedCanvas.addCssClass(cssClass)
     })
-    surface.surfaceChildren.forEach((surfaceChild) => {
+    surface.children.forEach((surfaceChild) => {
       if (surfaceChild.surface !== surface) {
         this._addClassRecursively(surfaceChild.surface, cssClass)
       }

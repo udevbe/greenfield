@@ -4,7 +4,7 @@ import GrCallbackResource from './protocol/GrCallbackResource'
 import GrSurfaceResource from './protocol/GrSurfaceResource'
 import GrOutputResource from './protocol/GrOutputResource'
 
-import SurfaceView from './SurfaceView'
+import View from './View'
 import Callback from './Callback'
 import Rect from './math/Rect'
 import Mat4 from './math/Mat4'
@@ -241,7 +241,7 @@ export default class Surface extends GrSurfaceRequests {
      */
     this._pendingBufferScale = 1
     /**
-     * @type {!Array<SurfaceView>}
+     * @type {!Array<View>}
      */
     this.views = []
     /**
@@ -328,7 +328,7 @@ export default class Surface extends GrSurfaceRequests {
   /**
    * @return {Array<SurfaceChild>}
    */
-  get surfaceChildren () {
+  get children () {
     return this.subsurfaceChildren.concat(this._surfaceChildren)
   }
 
@@ -402,7 +402,7 @@ export default class Surface extends GrSurfaceRequests {
   }
 
   updateChildViewsZIndexes () {
-    let parentPosition = this.surfaceChildren.indexOf(this.surfaceChildSelf)
+    let parentPosition = this.children.indexOf(this.surfaceChildSelf)
     this.views.forEach(view => {
       const parentViewZIndex = view.zIndex
       // Children can be displayed below their parent, therefor we have to subtract the parent position from it's zIndex
@@ -413,7 +413,7 @@ export default class Surface extends GrSurfaceRequests {
   }
 
   /**
-   * @param {SurfaceView}parentView
+   * @param {View}parentView
    * @param {number}zIndexOffset
    * @return {number}
    * @private
@@ -421,7 +421,7 @@ export default class Surface extends GrSurfaceRequests {
   _updateZIndex (parentView, zIndexOffset) {
     let newZIndex = 0
     let newZIndexOffset = zIndexOffset
-    this.surfaceChildren.forEach((surfaceChild, index) => {
+    this.children.forEach((surfaceChild, index) => {
       newZIndex = newZIndexOffset + index
       if (surfaceChild.surface === this) {
         parentView.zIndex = newZIndex
@@ -438,53 +438,53 @@ export default class Surface extends GrSurfaceRequests {
   }
 
   /**
-   * @param {SurfaceView}surfaceView
+   * @param {View}view
    */
-  onViewCreated (surfaceView) {}
+  onViewCreated (view) {}
 
   /**
-   * @return {SurfaceView}
+   * @return {View}
    */
   createView () {
     const bufferSize = this.state.bufferContents ? this.state.bufferContents.size : Size.create(0, 0)
-    const surfaceView = SurfaceView.create(this, bufferSize.w, bufferSize.h)
+    const view = View.create(this, bufferSize.w, bufferSize.h)
     if (this.views.length === 0) {
-      surfaceView.primary = true
+      view.primary = true
     }
-    this.views.push(surfaceView)
+    this.views.push(view)
 
-    surfaceView.onDestroy().then(() => {
-      const idx = this.views.indexOf(surfaceView)
+    view.onDestroy().then(() => {
+      const idx = this.views.indexOf(view)
       if (idx > -1) {
         this.views.splice(idx, 1)
       }
     })
 
-    this.surfaceChildren.forEach(surfaceChild => {
-      this._ensureChildView(surfaceChild, surfaceView)
+    this.children.forEach(surfaceChild => {
+      this._ensureChildView(surfaceChild, view)
     })
 
     this.updateChildViewsZIndexes()
-    this.onViewCreated(surfaceView)
+    this.onViewCreated(view)
 
-    return surfaceView
+    return view
   }
 
   /**
    * @param {SurfaceChild}surfaceChild
-   * @param {SurfaceView}surfaceView
-   * @return {SurfaceView|null}
+   * @param {View}view
+   * @return {View|null}
    * @private
    */
-  _ensureChildView (surfaceChild, surfaceView) {
+  _ensureChildView (surfaceChild, view) {
     if (surfaceChild.surface === this) {
       return null
     }
 
     const childView = surfaceChild.surface.createView()
-    const zIndexOrder = this.surfaceChildren.indexOf(surfaceChild)
-    childView.zIndex = surfaceView.zIndex + zIndexOrder
-    childView.parent = surfaceView
+    const zIndexOrder = this.children.indexOf(surfaceChild)
+    childView.zIndex = view.zIndex + zIndexOrder
+    childView.parent = view
 
     return childView
   }
@@ -492,7 +492,7 @@ export default class Surface extends GrSurfaceRequests {
   /**
    * Returns all newly created child views
    * @param {SurfaceChild}surfaceChild
-   * @return {SurfaceView[]}
+   * @return {Array<View>}
    */
   addSubsurface (surfaceChild) {
     const childViews = this._addChild(surfaceChild, this.subsurfaceChildren)
@@ -516,7 +516,7 @@ export default class Surface extends GrSurfaceRequests {
   /**
    * Returns all newly created child views
    * @param {SurfaceChild}surfaceChild
-   * @return {SurfaceView[]}
+   * @return {Array<View>}
    */
   addChild (surfaceChild) {
     return this._addChild(surfaceChild, this._surfaceChildren)
@@ -531,7 +531,7 @@ export default class Surface extends GrSurfaceRequests {
     const primaryChildView = surfaceChild.surface.views.find((view) => view.primary)
     const primaryView = this.views.find((view) => view.primary)
 
-    const zIndexOrder = this.surfaceChildren.indexOf(surfaceChild)
+    const zIndexOrder = this.children.indexOf(surfaceChild)
     primaryChildView.zIndex = primaryView.zIndex + zIndexOrder
     primaryChildView.parent = primaryView
 
@@ -551,15 +551,15 @@ export default class Surface extends GrSurfaceRequests {
   /**
    * @param {SurfaceChild}surfaceChild
    * @param {SurfaceChild[]}siblings
-   * @return {SurfaceView[]}
+   * @return {Array<View>}
    * @private
    */
   _addChild (surfaceChild, siblings) {
     siblings.push(surfaceChild)
 
     const childViews = []
-    this.views.forEach((surfaceView) => {
-      const childView = this._ensureChildView(surfaceChild, surfaceView)
+    this.views.forEach((view) => {
+      const childView = this._ensureChildView(surfaceChild, view)
       if (childView) {
         childViews.push(childView)
       }
@@ -592,7 +592,7 @@ export default class Surface extends GrSurfaceRequests {
    * @param {GrSurfaceResource} resource
    *
    * @since 1
-   *
+   * @override
    */
   destroy (resource) {
     // this._handleDestruction()
@@ -608,9 +608,9 @@ export default class Surface extends GrSurfaceRequests {
    * @private
    */
   _handleDestruction () {
-    this.views.forEach(surfaceView => {
-      delete surfaceView.surface
-      surfaceView.destroy()
+    this.views.forEach(view => {
+      delete view.surface
+      view.destroy()
     })
   }
 
@@ -665,7 +665,7 @@ export default class Surface extends GrSurfaceRequests {
    * @param {number} y undefined
    *
    * @since 1
-   *
+   * @override
    */
   attach (resource, buffer, x, y) {
     this._pendingDx = x
@@ -718,7 +718,7 @@ export default class Surface extends GrSurfaceRequests {
    * @param {number} height undefined
    *
    * @since 1
-   *
+   * @override
    */
   damage (resource, x, y, width, height) {
     this._pendingDamageRects.push(Rect.create(x, y, x + width, y + height))
@@ -765,7 +765,7 @@ export default class Surface extends GrSurfaceRequests {
    *
    *
    * @since 1
-   *
+   * @override
    */
   frame (resource, callback) {
     this._pendingFrameCallbacks.push(Callback.create(new GrCallbackResource(resource.client, callback, 1)))
@@ -803,7 +803,7 @@ export default class Surface extends GrSurfaceRequests {
    * @param {GrRegionResource|null} regionResource undefined
    *
    * @since 1
-   *
+   * @override
    */
   setOpaqueRegion (resource, regionResource) {
     this._pendingOpaqueRegion = Region.createPixmanRegion()
@@ -846,7 +846,7 @@ export default class Surface extends GrSurfaceRequests {
    * @param {GrRegionResource|null} regionResource undefined
    *
    * @since 1
-   *
+   * @override
    */
   setInputRegion (resource, regionResource) {
     this._pendingInputRegion = Region.createPixmanRegion()
@@ -891,7 +891,7 @@ export default class Surface extends GrSurfaceRequests {
    * @param {GrSurfaceResource} resource
    *
    * @since 1
-   *
+   * @override
    */
   async commit (resource) {
     this._start = Date.now()
@@ -966,13 +966,13 @@ export default class Surface extends GrSurfaceRequests {
     }
 
     if (newState.inputPixmanRegion || oldWidth !== this.size.w || oldHeight !== this.size.h) {
-      this.views.forEach(surfaceView => {
-        surfaceView.updateInputRegion()
+      this.views.forEach(view => {
+        view.updateInputRegion()
       })
     }
 
-    this.views.forEach(surfaceView => {
-      surfaceView.swapBuffers(renderFrame)
+    this.views.forEach(view => {
+      view.swapBuffers(renderFrame)
     })
 
     const now = Date.now()
@@ -1131,7 +1131,7 @@ export default class Surface extends GrSurfaceRequests {
    * @param {number} transform undefined
    *
    * @since 2
-   *
+   * @override
    */
   setBufferTransform (resource, transform) {
     if (Object.values(GrOutputResource.Transform).includes(transform)) {
@@ -1173,7 +1173,7 @@ export default class Surface extends GrSurfaceRequests {
    * @param {number} scale undefined
    *
    * @since 3
-   *
+   * @override
    */
   setBufferScale (resource, scale) {
     if (scale < 1) {
@@ -1226,7 +1226,7 @@ export default class Surface extends GrSurfaceRequests {
    * @param {number} height undefined
    *
    * @since 4
-   *
+   * @override
    */
   damageBuffer (resource, x, y, width, height) {
     this._pendingBufferDamageRects.push(Rect.create(x, y, x + width, y + height))

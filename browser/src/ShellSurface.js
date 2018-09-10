@@ -226,7 +226,7 @@ export default class ShellSurface extends GrShellSurfaceRequests {
     surface.views.forEach((view) => {
       view.bufferedCanvas.removeCssClass(cssClass)
     })
-    surface.surfaceChildren.forEach((surfaceChild) => {
+    surface.children.forEach((surfaceChild) => {
       if (surfaceChild.surface !== surface) {
         this._removeClassRecursively(surfaceChild.surface, cssClass)
       }
@@ -242,7 +242,7 @@ export default class ShellSurface extends GrShellSurfaceRequests {
     surface.views.forEach((view) => {
       view.bufferedCanvas.addCssClass(cssClass)
     })
-    surface.surfaceChildren.forEach((surfaceChild) => {
+    surface.children.forEach((surfaceChild) => {
       if (surfaceChild.surface !== surface) {
         this._addClassRecursively(surfaceChild.surface, cssClass)
       }

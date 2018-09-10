@@ -27,15 +27,49 @@ export default class Output extends GrOutputRequests {
    */
   constructor () {
     super()
+    /**
+     * @type {Global}
+     * @private
+     */
+    this._global = null
+    /**
+     * @type {boolean}
+     * @private
+     */
+    this._unregisterPending = false
+    /**
+     * @type {Array<GrOutputResource>}
+     * @private
+     */
+    this._boundResources = []
   }
 
   /**
    * @param {Registry}registry
    */
   registerGlobal (registry) {
-    registry.createGlobal(this, GrOutputResource.name, 3, (client, id, version) => {
+    if (this._global) {
+      return
+    }
+    this._global = registry.createGlobal(this, GrOutputResource.name, 3, (client, id, version) => {
       this.bindClient(client, id, version)
     })
+  }
+
+  unregisterGlobal () {
+    if (!this._global) {
+      return
+    }
+    this._unregisterPending = true
+    this._checkDestroyGlobal()
+  }
+
+  _checkDestroyGlobal () {
+    if (!this._boundResources.length) {
+      this._global.destroy()
+      this._global = null
+      this._unregisterPending = false
+    }
   }
 
   /**
@@ -45,8 +79,14 @@ export default class Output extends GrOutputRequests {
    */
   bindClient (client, id, version) {
     const grOutputResource = new GrOutputResource(client, id, version)
-    grOutputResource.implementation = this
-    this.emitSpecs(grOutputResource)
+    if (this._unregisterPending) {
+      // create inert implementation
+      grOutputResource.implementation = new GrOutputRequests()
+    } else {
+      grOutputResource.implementation = this
+      this._boundResources.push(grOutputResource)
+      this.emitSpecs(grOutputResource)
+    }
   }
 
   /**
@@ -76,7 +116,7 @@ export default class Output extends GrOutputRequests {
   }
 
   /**
-   * @param {!GrOutput}grOutputResource
+   * @param {!GrOutputResource}grOutputResource
    */
   _emitGeomtry (grOutputResource) {
     const x = 0
@@ -128,6 +168,12 @@ export default class Output extends GrOutputRequests {
    *
    */
   release (resource) {
-    // TODO
+    const idx = this._boundResources.indexOf(resource)
+    if (idx > -1) {
+      this._boundResources.splice(idx, 1)
+    }
+    if (this._unregisterPending) {
+      this._checkDestroyGlobal()
+    }
   }
 }

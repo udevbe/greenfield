@@ -30,17 +30,41 @@ export default class DataDeviceManager extends GrDataDeviceManagerRequests {
 
   constructor () {
     super()
+    /**
+     * @type {Global}
+     * @private
+     */
+    this._global = null
   }
 
   /**
    * @param {Registry}registry
    */
   registerGlobal (registry) {
-    registry.createGlobal(this, GrDataDeviceManagerResource.name, 3, (client, id, version) => {
+    if (this._global) {
+      return
+    }
+    this._global = registry.createGlobal(this, GrDataDeviceManagerResource.name, 3, (client, id, version) => {
       this.bindClient(client, id, version)
     })
   }
 
+  unregisterGlobal () {
+    if (!this._global) {
+      return
+    }
+    this._global.destroy()
+    this._global = null
+  }
+
+  /**
+   *
+   * Invoked when a client binds to this global.
+   *
+   * @param {!Client} client
+   * @param {!number} id
+   * @param {!number} version
+   */
   bindClient (client, id, version) {
     const grDataDeviceManagerResource = new GrDataDeviceManagerResource(client, id, version)
     grDataDeviceManagerResource.implementation = this

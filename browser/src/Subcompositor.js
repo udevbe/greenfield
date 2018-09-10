@@ -40,15 +40,31 @@ export default class Subcompositor extends GrSubcompositorRequests {
 
   constructor () {
     super()
+    /**
+     * @type {Global}
+     * @private
+     */
+    this._global = null
   }
 
   /**
    * @param {Registry}registry
    */
   registerGlobal (registry) {
-    registry.createGlobal(this, GrSubcompositorRequests.name, 1, (client, id, version) => {
+    if (this._global) {
+      return
+    }
+    this._global = registry.createGlobal(this, GrSubcompositorRequests.name, 1, (client, id, version) => {
       this.bindClient(client, id, version)
     })
+  }
+
+  unregisterGlobal () {
+    if (!this._global) {
+      return
+    }
+    this._global.destroy()
+    this._global = null
   }
 
   /**

@@ -51,7 +51,7 @@ export default class DataDevice extends GrDataDeviceRequests {
      */
     this.selectionSource = null
     /**
-     * @type {SurfaceView}
+     * @type {View}
      */
     this.dndFocus = null
     /**
@@ -205,7 +205,7 @@ export default class DataDevice extends GrDataDeviceRequests {
   }
 
   /**
-   * @param {SurfaceView}focus
+   * @param {View}focus
    */
   onMouseMotion (focus) {
     if (this.dndFocus !== focus) {
@@ -242,16 +242,16 @@ export default class DataDevice extends GrDataDeviceRequests {
   }
 
   /**
-   * @param {SurfaceView}surfaceView
+   * @param {View}view
    * @private
    */
-  _onFocusGained (surfaceView) {
-    this.dndFocus = surfaceView
+  _onFocusGained (view) {
+    this.dndFocus = view
     if (!this.dndSourceClient) {
       return
     }
 
-    const surfaceResource = surfaceView.surface.resource
+    const surfaceResource = view.surface.resource
     const client = surfaceResource.client
 
     // if source is null, only transfers within the same client can take place
@@ -261,7 +261,7 @@ export default class DataDevice extends GrDataDeviceRequests {
 
     const pointer = this.seat.pointer
     const mousePoint = Point.create(pointer.x, pointer.y)
-    const surfacePoint = surfaceView.toSurfaceSpace(mousePoint)
+    const surfacePoint = view.toSurfaceSpace(mousePoint)
     const serial = this.seat.nextSerial()
 
     const x = Fixed.parseFixed(surfacePoint.x)

@@ -29,7 +29,7 @@ class Seat extends GrSeatRequests {
   static create (session) {
     const dataDevice = DataDevice.create()
     const keyboard = Keyboard.create(session, dataDevice)
-    const pointer = Pointer.create(session, dataDevice, keyboard)
+    const pointer = Pointer.create(session, dataDevice)
     const touch = Touch.create()
     const hasTouch = 'ontouchstart' in document.documentElement
 
@@ -44,7 +44,7 @@ class Seat extends GrSeatRequests {
   }
 
   /**
-   * @param {DataDevice} dataDevice
+   * @param {!DataDevice} dataDevice
    * @param {Pointer} pointer
    * @param {Keyboard} keyboard
    * @param {Touch} touch
@@ -54,26 +54,49 @@ class Seat extends GrSeatRequests {
   constructor (dataDevice, pointer, keyboard, touch, hasTouch) {
     super()
     /**
-     * @type {DataDevice}
+     * @type {!DataDevice}
+     * @const
      */
     this.dataDevice = dataDevice
     /**
-     * @type {Pointer}
+     * @type {!Pointer}
+     * @const
      */
     this.pointer = pointer
     /**
-     * @type {Keyboard}
+     * @type {!Keyboard}
+     * @const
      */
     this.keyboard = keyboard
     /**
-     * @type {Touch}
+     * @type {!Touch}
+     * @const
      */
     this.touch = touch
     /**
      * @type {boolean}
      */
     this.hasTouch = hasTouch
-    this.resources = []
+    /**
+     * @type {Global}
+     * @private
+     */
+    this._global = null
+    /**
+     * @type {boolean}
+     * @private
+     */
+    this._unregisterPending = false
+    /**
+     * @type {!Array<GrSeatResource>}
+     * @private
+     */
+    this._boundResources = []
+    /**
+     * @type {string}
+     * @private
+     * @const
+     */
     this._seatName = 'browser-seat0'
     /**
      * @type {number}
@@ -119,9 +142,28 @@ class Seat extends GrSeatRequests {
    * @param {Registry}registry
    */
   registerGlobal (registry) {
-    registry.createGlobal(this, GrSeatResource.name, 6, (client, id, version) => {
+    if (this._global) {
+      return
+    }
+    this._global = registry.createGlobal(this, GrSeatResource.name, 6, (client, id, version) => {
       this.bindClient(client, id, version)
     })
+  }
+
+  unregisterGlobal () {
+    if (!this._global) {
+      return
+    }
+    this._unregisterPending = true
+    this._checkDestroyGlobal()
+  }
+
+  _checkDestroyGlobal () {
+    if (!this._boundResources.length) {
+      this._global.destroy()
+      this._global = null
+      this._unregisterPending = false
+    }
   }
 
   /**
@@ -132,11 +174,11 @@ class Seat extends GrSeatRequests {
   bindClient (client, id, version) {
     const grSeatResource = new GrSeatResource(client, id, version)
     grSeatResource.implementation = this
-    this.resources.push(grSeatResource)
+    this._boundResources.push(grSeatResource)
 
     grSeatResource.onDestroy().then((resource) => {
-      const index = this.resources.indexOf(resource)
-      this.resources.splice(index, 1)
+      const index = this._boundResources.indexOf(resource)
+      this._boundResources.splice(index, 1)
     })
 
     this._emitCapabilities(grSeatResource)
@@ -256,7 +298,7 @@ class Seat extends GrSeatRequests {
    * @param {number} id seat pointer
    *
    * @since 1
-   *
+   * @override
    */
   getPointer (resource, id) {
     const grPointerResource = new GrPointerResource(resource.client, id, resource.version)
@@ -285,7 +327,7 @@ class Seat extends GrSeatRequests {
    * @param {number} id seat keyboard
    *
    * @since 1
-   *
+   * @override
    */
   getKeyboard (resource, id) {
     const grKeyboardResource = new GrKeyboardResource(resource.client, id, resource.version)
@@ -335,7 +377,7 @@ class Seat extends GrSeatRequests {
    * @param {number} id seat touch interface
    *
    * @since 1
-   *
+   * @override
    */
   getTouch (resource, id) {
     const grTouchResource = new GrTouchResource(resource.client, id, resource.version)
@@ -355,13 +397,15 @@ class Seat extends GrSeatRequests {
    * @param {GrSeatResource} resource
    *
    * @since 5
-   *
+   * @override
    */
   release (resource) {
-    resource.destroy()
-    const index = this.resources.indexOf(resource)
-    if (index > -1) {
-      this.resources.splice(index, 1)
+    const idx = this._boundResources.indexOf(resource)
+    if (idx > -1) {
+      this._boundResources.splice(idx, 1)
+    }
+    if (this._unregisterPending) {
+      this._checkDestroyGlobal()
     }
   }
 }
