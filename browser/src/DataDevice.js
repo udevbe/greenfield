@@ -1,26 +1,26 @@
 'use strict'
 import { Fixed } from 'westfield-runtime-server'
 
-import GrDataDeviceRequests from './protocol/GrDataDeviceRequests'
-import GrDataDeviceResource from './protocol/GrDataDeviceResource'
-import GrDataDeviceManagerResource from './protocol/GrDataDeviceManagerResource'
-import GrDataSourceResource from './protocol/GrDataSourceResource'
+import WlDataDeviceRequests from './protocol/WlDataDeviceRequests'
+import WlDataDeviceResource from './protocol/WlDataDeviceResource'
+import WlDataDeviceManagerResource from './protocol/WlDataDeviceManagerResource'
+import WlDataSourceResource from './protocol/WlDataSourceResource'
 
 import Point from './math/Point'
 import DataOffer from './DataOffer'
 
-const DndAction = GrDataDeviceManagerResource.DndAction
+const DndAction = WlDataDeviceManagerResource.DndAction
 
 /**
  *
- *            There is one gr_data_device per seat which can be obtained
- *            from the global gr_data_device_manager singleton.
+ *            There is one wl_data_device per seat which can be obtained
+ *            from the global wl_data_device_manager singleton.
  *
- *            A gr_data_device provides access to inter-client data transfer
+ *            A wl_data_device provides access to inter-client data transfer
  *            mechanisms such as copy-and-paste and drag-and-drop.
- * @implements GrDataDeviceRequests
+ * @implements WlDataDeviceRequests
  */
-export default class DataDevice extends GrDataDeviceRequests {
+export default class DataDevice extends WlDataDeviceRequests {
   /**
    * @return {DataDevice}
    */
@@ -35,7 +35,7 @@ export default class DataDevice extends GrDataDeviceRequests {
   constructor () {
     super()
     /**
-     * @type {Array<GrDataDeviceResource>}
+     * @type {Array<WlDataDeviceResource>}
      */
     this.resources = []
     /**
@@ -43,11 +43,11 @@ export default class DataDevice extends GrDataDeviceRequests {
      */
     this.seat = null
     /**
-     * @type {GrDataSourceResource}
+     * @type {WlDataSourceResource}
      */
     this.dndSource = null
     /**
-     * @type {GrDataSourceResource}
+     * @type {WlDataSourceResource}
      */
     this.selectionSource = null
     /**
@@ -82,7 +82,7 @@ export default class DataDevice extends GrDataDeviceRequests {
 
   /**
    * @param {Client}client
-   * @return {GrDataDeviceResource | null}
+   * @return {WlDataDeviceResource | null}
    * @private
    */
   _dataDeviceForClient (client) {
@@ -131,29 +131,29 @@ export default class DataDevice extends GrDataDeviceRequests {
    *                internally.
    *
    *                The origin surface is the surface where the drag originates and
-   *                the client must have an active implicit grab that matches the
+   *                the client must have an active implicit wlab that matches the
    *                serial.
    *
    *                The icon surface is an optional (can be NULL) surface that
    *                provides an icon to be moved around with the cursor.  Initially,
    *                the top-left corner of the icon surface is placed at the cursor
-   *                hotspot, but subsequent gr_surface.attach request can move the
+   *                hotspot, but subsequent wl_surface.attach request can move the
    *                relative position. Attach requests must be confirmed with
-   *                gr_surface.commit as usual. The icon surface is given the role of
+   *                wl_surface.commit as usual. The icon surface is given the role of
    *                a drag-and-drop icon. If the icon surface already has another role,
    *                it raises a protocol error.
    *
-   *                The current and pending input regions of the icon gr_surface are
-   *                cleared, and gr_surface.set_input_region is ignored until the
-   *                gr_surface is no longer used as the icon surface. When the use
+   *                The current and pending input regions of the icon wl_surface are
+   *                cleared, and wl_surface.set_input_region is ignored until the
+   *                wl_surface is no longer used as the icon surface. When the use
    *                as an icon ends, the current and pending input regions become
-   *                undefined, and the gr_surface is unmapped.
+   *                undefined, and the wl_surface is unmapped.
    *
    *
-   * @param {GrDataDeviceResource} resource
-   * @param {GrDataSourceResource|null} source data source for the eventual transfer
-   * @param {GrSurfaceResource} origin surface where the drag originates
-   * @param {GrSurfaceResource|null} icon drag-and-drop icon surface
+   * @param {WlDataDeviceResource} resource
+   * @param {WlDataSourceResource|null} source data source for the eventual transfer
+   * @param {WlSurfaceResource} origin surface where the drag originates
+   * @param {WlSurfaceResource|null} icon drag-and-drop icon surface
    * @param {number} serial serial number of the implicit grab on the origin
    *
    * @since 1
@@ -162,7 +162,7 @@ export default class DataDevice extends GrDataDeviceRequests {
   startDrag (resource, source, origin, icon, serial) {
     const iconSurface = /** @type {Surface} */ icon.implementation
     if (iconSurface.role) {
-      resource.postError(GrDataDeviceResource.Error.role, 'Given surface has another role.')
+      resource.postError(WlDataDeviceResource.Error.role, 'Given surface has another role.')
       DEBUG && console.log('Protocol error. Given surface has another role.')
       return
     }
@@ -187,7 +187,7 @@ export default class DataDevice extends GrDataDeviceRequests {
 
     /*
      * From the specs:
-     * For objects of version 2 or older, gr_data_source.cancelled will only be emitted if the data source was
+     * For objects of version 2 or older, wl_data_source.cancelled will only be emitted if the data source was
      * replaced by another data source.
      */
     if (this.dndSource) {
@@ -273,19 +273,19 @@ export default class DataDevice extends GrDataDeviceRequests {
       return
     }
 
-    let grDataOffer = null
+    let wlDataOffer = null
     if (this.dndSource) {
-      grDataOffer = this._createDataOffer(this.dndSource, dataDeviceResource)
-      grDataOffer.implementation.updateAction()
+      wlDataOffer = this._createDataOffer(this.dndSource, dataDeviceResource)
+      wlDataOffer.implementation.updateAction()
       this.dndSource.accepted = false
     }
-    dataDeviceResource.enter(serial, surfaceResource, x, y, grDataOffer)
+    dataDeviceResource.enter(serial, surfaceResource, x, y, wlDataOffer)
 
-    if (grDataOffer) {
+    if (wlDataOffer) {
       const dataSource = /** @type {DataSource} */ this.dndSource.implementation
       const dndActions = dataSource.dndActions
-      if (grDataOffer.version >= 3) {
-        grDataOffer.sourceActions(dndActions)
+      if (wlDataOffer.version >= 3) {
+        wlDataOffer.sourceActions(dndActions)
       }
     }
   }
@@ -325,7 +325,7 @@ export default class DataDevice extends GrDataDeviceRequests {
             this.dndSource.dndDropPerformed()
           }
 
-          const dataOffer = /** @type{DataOffer} */dataSource.grDataOffer.implementation
+          const dataOffer = /** @type{DataOffer} */dataSource.wlDataOffer.implementation
           dataOffer.inAsk = this.dndSource.currentDndAction === DndAction.ask
         } else if (this.dndSource && this.dndSource.version >= 3) {
           this.dndSource.cancelled()
@@ -348,15 +348,15 @@ export default class DataDevice extends GrDataDeviceRequests {
   // TODO handle touch events
 
   /**
-   * @param {GrDataSourceResource}source
-   * @param {GrDataDeviceResource}dataDeviceResource
-   * @return {GrDataOfferResource}
+   * @param {WlDataSourceResource}source
+   * @param {WlDataDeviceResource}dataDeviceResource
+   * @return {WlDataOfferResource}
    * @private
    */
   _createDataOffer (source, dataDeviceResource) {
     const offerId = /** @type {number} */dataDeviceResource.dataOffer()
     const dataOffer = DataOffer.create(source, offerId, dataDeviceResource)
-    source.implementation.grDataOffer = dataOffer.resource
+    source.implementation.wlDataOffer = dataOffer.resource
     source.implementation.mimeTypes.forEach((mimeType) => {
       dataOffer.resource.offer(mimeType)
     })
@@ -371,8 +371,8 @@ export default class DataDevice extends GrDataDeviceRequests {
    *                To unset the selection, set the source to NULL.
    *
    *
-   * @param {GrDataDeviceResource} resource
-   * @param {GrDataSourceResource|null} source data source for the selection
+   * @param {WlDataDeviceResource} resource
+   * @param {WlDataSourceResource|null} source data source for the selection
    * @param {Number} serial serial number of the event that triggered this request
    *
    * @since 1
@@ -382,7 +382,7 @@ export default class DataDevice extends GrDataDeviceRequests {
     // TODO what should the serial correspond to? Looking at weston, the serial is quite useless...
     const dataSource = /** @type {DataSource} */source.implementation
     if (source && dataSource.dndActions) {
-      source.postError(GrDataSourceResource.Error.invalidSource, 'Can not set selection when source has dnd actions active.')
+      source.postError(WlDataSourceResource.Error.invalidSource, 'Can not set selection when source has dnd actions active.')
       DEBUG && console.log('Protocol error. Can not set selection when source has dnd actions active.')
       return
     }
@@ -391,7 +391,7 @@ export default class DataDevice extends GrDataDeviceRequests {
       this.selectionSource.removeDestroyListener(this._selectionSourceDestroyListener)
       /*
        * From the specs:
-       * For objects of version 2 or older, gr_data_source.cancelled will only be emitted if the data source was
+       * For objects of version 2 or older, wl_data_source.cancelled will only be emitted if the data source was
        * replaced by another data source.
        */
       this.selectionSource.cancelled()
@@ -422,9 +422,9 @@ export default class DataDevice extends GrDataDeviceRequests {
     if (this.selectionSource === null) {
       dataDeviceResource.selection(null)
     } else {
-      const grDataOffer = this._createDataOffer(this.selectionSource, dataDeviceResource)
-      dataDeviceResource.selection(grDataOffer)
-      this.selectionSource.implementation.grDataOffer = grDataOffer
+      const wlDataOffer = this._createDataOffer(this.selectionSource, dataDeviceResource)
+      dataDeviceResource.selection(wlDataOffer)
+      this.selectionSource.implementation.wlDataOffer = wlDataOffer
     }
   }
 
@@ -433,7 +433,7 @@ export default class DataDevice extends GrDataDeviceRequests {
    *                This request destroys the data device.
    *
    *
-   * @param {GrDataDeviceResource} resource
+   * @param {WlDataDeviceResource} resource
    *
    * @since 2
    *

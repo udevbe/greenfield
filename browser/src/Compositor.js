@@ -1,9 +1,9 @@
 'use strict'
 
-import GrCompositorRequests from './protocol/GrCompositorRequests'
-import GrCompositorResource from './protocol/GrCompositorResource'
-import GrSurfaceResource from './protocol/GrSurfaceResource'
-import GrRegionResource from './protocol/GrRegionResource'
+import WlCompositorRequests from './protocol/WlCompositorRequests'
+import WlCompositorResource from './protocol/WlCompositorResource'
+import WlSurfaceResource from './protocol/WlSurfaceResource'
+import WlRegionResource from './protocol/WlRegionResource'
 
 import Surface from './Surface'
 import Region from './Region'
@@ -14,9 +14,9 @@ import GLRenderer from './render/Renderer'
  *            A compositor.  This object is a singleton global.  The
  *            compositor is in charge of combining the contents of multiple
  *            surfaces into one displayable output.
- * @implements GrCompositorRequests
+ * @implements WlCompositorRequests
  */
-export default class Compositor extends GrCompositorRequests {
+export default class Compositor extends WlCompositorRequests {
   /**
    * @param {!Session} session
    * @param {!Seat} seat
@@ -68,7 +68,7 @@ export default class Compositor extends GrCompositorRequests {
     if (this._global) {
       return
     }
-    this._global = registry.createGlobal(this, GrCompositorResource.name, 4, (client, id, version) => {
+    this._global = registry.createGlobal(this, WlCompositorResource.name, 4, (client, id, version) => {
       this.bindClient(client, id, version)
     })
   }
@@ -90,8 +90,8 @@ export default class Compositor extends GrCompositorRequests {
    * @param {!number} version
    */
   bindClient (client, id, version) {
-    const grCompositorResource = new GrCompositorResource(client, id, version)
-    grCompositorResource.implementation = this
+    const wlCompositorResource = new WlCompositorResource(client, id, version)
+    wlCompositorResource.implementation = this
   }
 
   /**
@@ -99,15 +99,15 @@ export default class Compositor extends GrCompositorRequests {
    * Ask the compositor to create a new surface.
    *
    *
-   * @param {!GrCompositorResource} resource
+   * @param {!WlCompositorResource} resource
    * @param {!number} id
    *
    * @since 1
    * @override
    */
   createSurface (resource, id) {
-    const grSurfaceResource = new GrSurfaceResource(resource.client, id, resource.version)
-    Surface.create(grSurfaceResource, this._renderer, this._seat, this._session)
+    const wlSurfaceResource = new WlSurfaceResource(resource.client, id, resource.version)
+    Surface.create(wlSurfaceResource, this._renderer, this._seat, this._session)
   }
 
   /**
@@ -115,14 +115,14 @@ export default class Compositor extends GrCompositorRequests {
    * Ask the compositor to create a new region.
    *
    *
-   * @param {!GrCompositorResource} resource
+   * @param {!WlCompositorResource} resource
    * @param {!number} id
    *
    * @since 1
    *
    */
   createRegion (resource, id) {
-    const grRegionResource = new GrRegionResource(resource.client, id, resource.version)
-    Region.create(grRegionResource)
+    const wlRegionResource = new WlRegionResource(resource.client, id, resource.version)
+    Region.create(wlRegionResource)
   }
 }

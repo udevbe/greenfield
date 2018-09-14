@@ -1,17 +1,17 @@
 'use strict'
 
-import GrSeatRequests from './protocol/GrSeatRequests'
-import GrSeatResource from './protocol/GrSeatResource'
-import GrPointerResource from './protocol/GrPointerResource'
-import GrKeyboardResource from './protocol/GrKeyboardResource'
-import GrTouchResource from './protocol/GrTouchResource'
+import WlSeatRequests from './protocol/WlSeatRequests'
+import WlSeatResource from './protocol/WlSeatResource'
+import WlPointerResource from './protocol/WlPointerResource'
+import WlKeyboardResource from './protocol/WlKeyboardResource'
+import WlTouchResource from './protocol/WlTouchResource'
 
 import Pointer from './Pointer'
 import Keyboard from './Keyboard'
 import Touch from './Touch'
 import DataDevice from './DataDevice'
 
-const {keyboard, pointer, touch} = GrSeatResource.Capability
+const {keyboard, pointer, touch} = WlSeatResource.Capability
 
 /**
  *
@@ -21,7 +21,7 @@ const {keyboard, pointer, touch} = GrSeatResource.Capability
  *            maintains a keyboard focus and a pointer focus.
  *
  */
-class Seat extends GrSeatRequests {
+class Seat extends WlSeatRequests {
   /**
    * @param {Session} session
    * @returns {Seat}
@@ -83,16 +83,6 @@ class Seat extends GrSeatRequests {
      */
     this._global = null
     /**
-     * @type {boolean}
-     * @private
-     */
-    this._unregisterPending = false
-    /**
-     * @type {!Array<GrSeatResource>}
-     * @private
-     */
-    this._boundResources = []
-    /**
      * @type {string}
      * @private
      * @const
@@ -132,7 +122,7 @@ class Seat extends GrSeatRequests {
      */
     this.enterSerial = 0
     /**
-     * @type {Array<function(GrKeyboardResource):void>}
+     * @type {Array<function(WlKeyboardResource):void>}
      * @private
      */
     this._keyboardResourceListeners = []
@@ -145,7 +135,7 @@ class Seat extends GrSeatRequests {
     if (this._global) {
       return
     }
-    this._global = registry.createGlobal(this, GrSeatResource.name, 6, (client, id, version) => {
+    this._global = registry.createGlobal(this, WlSeatResource.name, 6, (client, id, version) => {
       this.bindClient(client, id, version)
     })
   }
@@ -154,16 +144,8 @@ class Seat extends GrSeatRequests {
     if (!this._global) {
       return
     }
-    this._unregisterPending = true
-    this._checkDestroyGlobal()
-  }
-
-  _checkDestroyGlobal () {
-    if (!this._boundResources.length) {
-      this._global.destroy()
-      this._global = null
-      this._unregisterPending = false
-    }
+    this._global.destroy()
+    this._global = null
   }
 
   /**
@@ -172,38 +154,38 @@ class Seat extends GrSeatRequests {
    * @param {number}version
    */
   bindClient (client, id, version) {
-    const grSeatResource = new GrSeatResource(client, id, version)
-    grSeatResource.implementation = this
-    this._boundResources.push(grSeatResource)
+    const wlSeatResource = new WlSeatResource(client, id, version)
+    wlSeatResource.implementation = this
+    this._boundResources.push(wlSeatResource)
 
-    grSeatResource.onDestroy().then((resource) => {
+    wlSeatResource.onDestroy().then((resource) => {
       const index = this._boundResources.indexOf(resource)
       this._boundResources.splice(index, 1)
     })
 
-    this._emitCapabilities(grSeatResource)
-    this._emitName(grSeatResource)
+    this._emitCapabilities(wlSeatResource)
+    this._emitName(wlSeatResource)
   }
 
   /**
-   * @param {GrSeatResource}grSeatResource
+   * @param {WlSeatResource}wlSeatResource
    * @private
    */
-  _emitCapabilities (grSeatResource) {
+  _emitCapabilities (wlSeatResource) {
     let caps = pointer | keyboard
     if (this.hasTouch) {
       caps |= touch
     }
-    grSeatResource.capabilities(caps)
+    wlSeatResource.capabilities(caps)
   }
 
   /**
-   * @param {GrSeatResource}grSeatResource
+   * @param {WlSeatResource}wlSeatResource
    * @private
    */
-  _emitName (grSeatResource) {
-    if (grSeatResource.version >= 2) {
-      grSeatResource.name(this._seatName)
+  _emitName (wlSeatResource) {
+    if (wlSeatResource.version >= 2) {
+      wlSeatResource.name(this._seatName)
     }
   }
 
@@ -285,7 +267,7 @@ class Seat extends GrSeatRequests {
 
   /**
    *
-   *                The ID provided will be initialized to the gr_pointer interface
+   *                The ID provided will be initialized to the wl_pointer interface
    *                for this seat.
    *
    *                This request only takes effect if the seat has the pointer
@@ -294,18 +276,18 @@ class Seat extends GrSeatRequests {
    *                never had the pointer capability.
    *
    *
-   * @param {GrSeatResource} resource
+   * @param {WlSeatResource} resource
    * @param {number} id seat pointer
    *
    * @since 1
    * @override
    */
   getPointer (resource, id) {
-    const grPointerResource = new GrPointerResource(resource.client, id, resource.version)
-    grPointerResource.implementation = this.pointer
-    this.pointer.resources.push(grPointerResource)
-    grPointerResource.onDestroy().then(() => {
-      const idx = this.pointer.resources.indexOf(grPointerResource)
+    const wlPointerResource = new WlPointerResource(resource.client, id, resource.version)
+    wlPointerResource.implementation = this.pointer
+    this.pointer.resources.push(wlPointerResource)
+    wlPointerResource.onDestroy().then(() => {
+      const idx = this.pointer.resources.indexOf(wlPointerResource)
       if (idx > -1) {
         this.pointer.resources.splice(idx, 1)
       }
@@ -314,7 +296,7 @@ class Seat extends GrSeatRequests {
 
   /**
    *
-   *                The ID provided will be initialized to the gr_keyboard interface
+   *                The ID provided will be initialized to the wl_keyboard interface
    *                for this seat.
    *
    *                This request only takes effect if the seat has the keyboard
@@ -323,37 +305,37 @@ class Seat extends GrSeatRequests {
    *                never had the keyboard capability.
    *
    *
-   * @param {GrSeatResource} resource
+   * @param {WlSeatResource} resource
    * @param {number} id seat keyboard
    *
    * @since 1
    * @override
    */
   getKeyboard (resource, id) {
-    const grKeyboardResource = new GrKeyboardResource(resource.client, id, resource.version)
-    grKeyboardResource.implementation = this.keyboard
-    this.keyboard.resources.push(grKeyboardResource)
-    grKeyboardResource.onDestroy().then(() => {
-      const idx = this.keyboard.resources.indexOf(grKeyboardResource)
+    const wlKeyboardResource = new WlKeyboardResource(resource.client, id, resource.version)
+    wlKeyboardResource.implementation = this.keyboard
+    this.keyboard.resources.push(wlKeyboardResource)
+    wlKeyboardResource.onDestroy().then(() => {
+      const idx = this.keyboard.resources.indexOf(wlKeyboardResource)
       if (idx > -1) {
         this.keyboard.resources.splice(idx, 1)
       }
     })
 
-    this.keyboard.emitKeymap(grKeyboardResource)
-    this.keyboard.emitKeyRepeatInfo(grKeyboardResource)
-    this._keyboardResourceListeners.forEach((listener) => listener(grKeyboardResource))
+    this.keyboard.emitKeymap(wlKeyboardResource)
+    this.keyboard.emitKeyRepeatInfo(wlKeyboardResource)
+    this._keyboardResourceListeners.forEach((listener) => listener(wlKeyboardResource))
   }
 
   /**
-   * @param {function(GrKeyboardResource):void}listener
+   * @param {function(WlKeyboardResource):void}listener
    */
   addKeyboardResourceListener (listener) {
     this._keyboardResourceListeners.push(listener)
   }
 
   /**
-   * @param {function(GrKeyboardResource):void}listener
+   * @param {function(WlKeyboardResource):void}listener
    */
   removeKeyboardResourceListener (listener) {
     const idx = this._keyboardResourceListeners.indexOf(listener)
@@ -364,7 +346,7 @@ class Seat extends GrSeatRequests {
 
   /**
    *
-   *                The ID provided will be initialized to the gr_touch interface
+   *                The ID provided will be initialized to the wl_touch interface
    *                for this seat.
    *
    *                This request only takes effect if the seat has the touch
@@ -373,18 +355,18 @@ class Seat extends GrSeatRequests {
    *                never had the touch capability.
    *
    *
-   * @param {GrSeatResource} resource
+   * @param {WlSeatResource} resource
    * @param {number} id seat touch interface
    *
    * @since 1
    * @override
    */
   getTouch (resource, id) {
-    const grTouchResource = new GrTouchResource(resource.client, id, resource.version)
-    this.touch.resources.push(grTouchResource)
+    const wlTouchResource = new WlTouchResource(resource.client, id, resource.version)
+    this.touch.resources.push(wlTouchResource)
 
     if (this.hasTouch) {
-      grTouchResource.implementation = this.touch
+      wlTouchResource.implementation = this.touch
     }
   }
 
@@ -394,19 +376,13 @@ class Seat extends GrSeatRequests {
    *                use the seat object anymore.
    *
    *
-   * @param {GrSeatResource} resource
+   * @param {WlSeatResource} resource
    *
    * @since 5
    * @override
    */
   release (resource) {
-    const idx = this._boundResources.indexOf(resource)
-    if (idx > -1) {
-      this._boundResources.splice(idx, 1)
-    }
-    if (this._unregisterPending) {
-      this._checkDestroyGlobal()
-    }
+    resource.destroy()
   }
 }
 

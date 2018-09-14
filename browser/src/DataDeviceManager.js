@@ -1,26 +1,26 @@
 'use strict'
-import GrDataDeviceManagerRequests from './protocol/GrDataDeviceManagerRequests'
-import GrDataDeviceManagerResource from './protocol/GrDataDeviceManagerResource'
-import GrDataSourceResource from './protocol/GrDataSourceResource'
-import GrDataDeviceResource from './protocol/GrDataDeviceResource'
+import WlDataDeviceManagerRequests from './protocol/WlDataDeviceManagerRequests'
+import WlDataDeviceManagerResource from './protocol/WlDataDeviceManagerResource'
+import WlDataSourceResource from './protocol/WlDataSourceResource'
+import WlDataDeviceResource from './protocol/WlDataDeviceResource'
 
 import DataSource from './DataSource'
 
 /**
  *
- *            The gr_data_device_manager is a singleton global object that
+ *            The wldata_device_manager is a singleton global object that
  *            provides access to inter-client data transfer mechanisms such as
  *            copy-and-paste and drag-and-drop.  These mechanisms are tied to
- *            a gr_seat and this interface lets a client get a gr_data_device
- *            corresponding to a gr_seat.
+ *            a wlseat and this interface lets a client get a wldata_device
+ *            corresponding to a wlseat.
  *
  *            Depending on the version bound, the objects created from the bound
- *            gr_data_device_manager object will have different requirements for
- *            functioning properly. See gr_data_source.set_actions,
- *            gr_data_offer.accept and gr_data_offer.finish for details.
- * @implements GrDataDeviceManagerRequests
+ *            wldata_device_manager object will have different requirements for
+ *            functioning properly. See wldata_source.set_actions,
+ *            wldata_offer.accept and wldata_offer.finish for details.
+ * @implements WlDataDeviceManagerRequests
  */
-export default class DataDeviceManager extends GrDataDeviceManagerRequests {
+export default class DataDeviceManager extends WlDataDeviceManagerRequests {
   /**
    * @return {DataDeviceManager}
    */
@@ -44,7 +44,7 @@ export default class DataDeviceManager extends GrDataDeviceManagerRequests {
     if (this._global) {
       return
     }
-    this._global = registry.createGlobal(this, GrDataDeviceManagerResource.name, 3, (client, id, version) => {
+    this._global = registry.createGlobal(this, WlDataDeviceManagerResource.name, 3, (client, id, version) => {
       this.bindClient(client, id, version)
     })
   }
@@ -66,8 +66,8 @@ export default class DataDeviceManager extends GrDataDeviceManagerRequests {
    * @param {!number} version
    */
   bindClient (client, id, version) {
-    const grDataDeviceManagerResource = new GrDataDeviceManagerResource(client, id, version)
-    grDataDeviceManagerResource.implementation = this
+    const wlDataDeviceManagerResource = new WlDataDeviceManagerResource(client, id, version)
+    wlDataDeviceManagerResource.implementation = this
   }
 
   /**
@@ -75,15 +75,15 @@ export default class DataDeviceManager extends GrDataDeviceManagerRequests {
    *                Create a new data source.
    *
    *
-   * @param {GrDataDeviceManagerResource} resource
+   * @param {WlDataDeviceManagerResource} resource
    * @param {number} id data source to create
    *
    * @since 1
    * @override
    */
   createDataSource (resource, id) {
-    const grDataSourceResource = new GrDataSourceResource(resource.client, id, resource.version)
-    DataSource.create(grDataSourceResource)
+    const wlDataSourceResource = new WlDataSourceResource(resource.client, id, resource.version)
+    DataSource.create(wlDataSourceResource)
   }
 
   /**
@@ -91,17 +91,17 @@ export default class DataDeviceManager extends GrDataDeviceManagerRequests {
    *                Create a new data device for a given seat.
    *
    *
-   * @param {GrDataDeviceManagerResource} resource
+   * @param {WlDataDeviceManagerResource} resource
    * @param {number} id data device to create
-   * @param {GrSeat} seatResource seat associated with the data device
+   * @param {WlSeat} seatResource seat associated with the data device
    *
    * @since 1
    * @override
    */
   getDataDevice (resource, id, seatResource) {
-    const grDataDeviceResource = new GrDataDeviceResource(resource.client, id, resource.version)
+    const wlDataDeviceResource = new WlDataDeviceResource(resource.client, id, resource.version)
     const seat = /** @type {Seat} */seatResource.implementation
-    grDataDeviceResource.implementation = seat.dataDevice
-    seat.dataDevice.resources.push(grDataDeviceResource)
+    wlDataDeviceResource.implementation = seat.dataDevice
+    seat.dataDevice.resources.push(wlDataDeviceResource)
   }
 }

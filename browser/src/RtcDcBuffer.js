@@ -10,16 +10,16 @@ import EncodedFrame from './EncodedFrame'
 export default class RtcDcBuffer extends RtcDcBufferRequests {
   /**
    *
-   * @param {!GrBufferResource} grBufferResource
+   * @param {!WlBufferResource} wlBufferResource
    * @param {!RtcDcBufferResource} rtcDcBufferResource
    * @param {!GrBlobTransferResource} grBlobTransferResource
    * @returns {!RtcDcBuffer}
    */
-  static create (grBufferResource, rtcDcBufferResource, grBlobTransferResource) {
+  static create (wlBufferResource, rtcDcBufferResource, grBlobTransferResource) {
     const rtcDcBuffer = new RtcDcBuffer(rtcDcBufferResource, grBlobTransferResource)
 
     rtcDcBufferResource.implementation = rtcDcBuffer
-    grBufferResource.implementation.rtcDcBuffer = rtcDcBuffer
+    wlBufferResource.implementation.rtcDcBuffer = rtcDcBuffer
 
     const rtcBlobTransfer = /** @type {RtcBlobTransfer} */grBlobTransferResource.implementation
     rtcBlobTransfer.open().then((dataChannel) => {

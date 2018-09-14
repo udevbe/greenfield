@@ -1,7 +1,7 @@
 'use strict'
 
 import RtcBufferFactoryRequests from './protocol/RtcBufferFactoryRequests'
-import GrBufferResource from './protocol/GrBufferResource'
+import WlBufferResource from './protocol/WlBufferResource'
 import RtcDcBufferResource from './protocol/RtcDcBufferResource'
 
 import Buffer from './Buffer'
@@ -13,12 +13,12 @@ import RtcDcBuffer from './RtcDcBuffer'
 export default class RtcBufferFactory extends RtcBufferFactoryRequests {
   /**
    *
-   * @param {!GrBufferResource} grBufferResource
+   * @param {!WlBufferResource} wlBufferResource
    * @returns {!RtcDcBuffer}
    */
-  static get (grBufferResource) {
+  static get (wlBufferResource) {
     // TODO do some kind of type check magic and return null if the implementation is not of the expected type
-    return grBufferResource.implementation.rtcDcBuffer
+    return wlBufferResource.implementation.rtcDcBuffer
   }
 
   /**
@@ -84,26 +84,26 @@ export default class RtcBufferFactory extends RtcBufferFactoryRequests {
    *
    */
   createBuffer (resource, id) {
-    const grBufferResource = new GrBufferResource(resource.client, id, resource.version)
-    Buffer.create(grBufferResource)
+    const wlBufferResource = new WlBufferResource(resource.client, id, resource.version)
+    Buffer.create(wlBufferResource)
   }
 
   /**
    *
    * @param {!RtcBufferFactoryResource} resource
    * @param {!number} id A new datachannel buffer
-   * @param {!GrBlobTransferResource} blobTransferResource
-   * @param {!GrBufferResource} grBufferResource The generic buffer that will implement the new datachannel buffer
+   * @param {!GrBlobTransferResource} grBlobTransferResource
+   * @param {!WlBufferResource} wlBufferResource The generic buffer that will implement the new datachannel buffer
    *
    * @since 1
    *
    */
-  createDcBuffer (resource, id, blobTransferResource, grBufferResource) {
+  createDcBuffer (resource, id, grBlobTransferResource, wlBufferResource) {
     // TODO try/catch & report error to client
-    const rtcBlobTransfer = /** @type {RtcBlobTransfer} */ blobTransferResource.implementation
+    const rtcBlobTransfer = /** @type {RtcBlobTransfer} */ grBlobTransferResource.implementation
     rtcBlobTransfer.rtcPeerConnection.ensureP2S()
 
     const rtcDcBufferResource = new RtcDcBufferResource(resource.client, id, resource.version)
-    RtcDcBuffer.create(grBufferResource, rtcDcBufferResource, blobTransferResource)
+    RtcDcBuffer.create(wlBufferResource, rtcDcBufferResource, grBlobTransferResource)
   }
 }

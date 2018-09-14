@@ -1,13 +1,13 @@
 'use strict'
 
-import GrShellSurfaceRequests from './protocol/GrShellSurfaceRequests'
-import GrShellSurfaceResource from './protocol/GrShellSurfaceResource'
+import WlShellSurfaceRequests from './protocol/WlShellSurfaceRequests'
+import WlShellSurfaceResource from './protocol/WlShellSurfaceResource'
 
 import Point from './math/Point'
 import Renderer from './render/Renderer'
 
-const {bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight} = GrShellSurfaceResource.Resize
-const {inactive} = GrShellSurfaceResource.Transient
+const {bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight} = WlShellSurfaceResource.Resize
+const {inactive} = WlShellSurfaceResource.Transient
 
 const SurfaceStates = {
   MAXIMIZED: 'maximized',
@@ -19,7 +19,7 @@ const SurfaceStates = {
 
 /**
  *
- *            An interface that may be implemented by a gr_surface, for
+ *            An interface that may be implemented by a wl_surface, for
  *            implementations that provide a desktop-style user interface.
  *
  *            It provides requests to treat surfaces like toplevel, fullscreen
@@ -27,35 +27,35 @@ const SurfaceStates = {
  *            metadata like title and class, etc.
  *
  *            On the server side the object is automatically destroyed when
- *            the related gr_surface is destroyed. On the client side,
- *            gr_shell_surface_destroy() must be called before destroying
- *            the gr_surface object.
+ *            the related wl_surface is destroyed. On the client side,
+ *            wl_shell_surface_destroy() must be called before destroying
+ *            the wl_surface object.
  *
  *  @implements {SurfaceRole}
- *  @implements {GrShellSurfaceRequests}
+ *  @implements {WlShellSurfaceRequests}
  *
  */
-export default class ShellSurface extends GrShellSurfaceRequests {
+export default class ShellSurface extends WlShellSurfaceRequests {
   /**
-   * @param {GrShellSurfaceResource}grShellSurfaceResource
-   * @param {GrSurfaceResource}grSurfaceResource
+   * @param {WlShellSurfaceResource}wlShellSurfaceResource
+   * @param {WlSurfaceResource}wlSurfaceResource
    * @param {Session} session
    * @param {UserShell}userShell
    * @return {ShellSurface}
    */
-  static create (grShellSurfaceResource, grSurfaceResource, session, userShell) {
-    const shellSurface = new ShellSurface(grShellSurfaceResource, grSurfaceResource, session, userShell)
-    grShellSurfaceResource.implementation = shellSurface
+  static create (wlShellSurfaceResource, wlSurfaceResource, session, userShell) {
+    const shellSurface = new ShellSurface(wlShellSurfaceResource, wlSurfaceResource, session, userShell)
+    wlShellSurfaceResource.implementation = shellSurface
 
     // destroy the shell-surface if the surface is destroyed.
-    grSurfaceResource.onDestroy().then(() => {
-      grShellSurfaceResource.destroy()
+    wlSurfaceResource.onDestroy().then(() => {
+      wlShellSurfaceResource.destroy()
     })
 
-    grSurfaceResource.implementation.role = shellSurface
-    shellSurface._doPing(grShellSurfaceResource)
+    wlSurfaceResource.implementation.role = shellSurface
+    shellSurface._doPing(wlShellSurfaceResource)
 
-    grShellSurfaceResource.onDestroy().then(() => {
+    wlShellSurfaceResource.onDestroy().then(() => {
       shellSurface._unmap()
       shellSurface._userShellSurface.destroy()
     })
@@ -65,21 +65,21 @@ export default class ShellSurface extends GrShellSurfaceRequests {
 
   /**
    * @private
-   * @param {GrShellSurfaceResource}grShellSurfaceResource
-   * @param {GrSurfaceResource}grSurfaceResource
+   * @param {WlShellSurfaceResource}wlShellSurfaceResource
+   * @param {WlSurfaceResource}wlSurfaceResource
    * @param {Session} session
    * @param {UserShell}userShell
    */
-  constructor (grShellSurfaceResource, grSurfaceResource, session, userShell) {
+  constructor (wlShellSurfaceResource, wlSurfaceResource, session, userShell) {
     super()
     /**
-     * @type {GrShellSurfaceResource}
+     * @type {WlShellSurfaceResource}
      */
-    this.resource = grShellSurfaceResource
+    this.resource = wlShellSurfaceResource
     /**
-     * @type {GrSurfaceResource}
+     * @type {WlSurfaceResource}
      */
-    this.grSurfaceResource = grSurfaceResource
+    this.wlSurfaceResource = wlSurfaceResource
     /**
      * @type {string}
      * @private
@@ -178,7 +178,7 @@ export default class ShellSurface extends GrShellSurfaceRequests {
    *                the client may be deemed unresponsive.
    *
    *
-   * @param {GrShellSurfaceResource} resource
+   * @param {WlShellSurfaceResource} resource
    * @param {Number} serial serial number of the ping event
    *
    * @since 1
@@ -186,20 +186,20 @@ export default class ShellSurface extends GrShellSurfaceRequests {
    */
   pong (resource, serial) {
     if (this._pingTimeoutActive) {
-      this._removeClassRecursively(/** @type {Surface} */this.grSurfaceResource.implementation, 'fadeToUnresponsive')
+      this._removeClassRecursively(/** @type {Surface} */this.wlSurfaceResource.implementation, 'fadeToUnresponsive')
       this._pingTimeoutActive = false
     }
     window.clearTimeout(this._timeoutTimer)
     const doPingTimer = window.setTimeout(() => {
       this._doPing(resource)
     }, 1000)
-    this.grSurfaceResource.onDestroy().then(() => {
+    this.wlSurfaceResource.onDestroy().then(() => {
       window.clearTimeout(doPingTimer)
     })
   }
 
   /**
-   * @param {GrShellSurfaceResource} resource
+   * @param {WlShellSurfaceResource} resource
    * @private
    */
   _doPing (resource) {
@@ -207,10 +207,10 @@ export default class ShellSurface extends GrShellSurfaceRequests {
       if (!this._pingTimeoutActive) {
         // ping timed out, make view gray
         this._pingTimeoutActive = true
-        this._addClassRecursively(this.grSurfaceResource.implementation, 'fadeToUnresponsive')
+        this._addClassRecursively(this.wlSurfaceResource.implementation, 'fadeToUnresponsive')
       }
     }, 3000)
-    this.grSurfaceResource.onDestroy().then(() => {
+    this.wlSurfaceResource.onDestroy().then(() => {
       window.clearTimeout(this._timeoutTimer)
     })
     resource.ping(0)
@@ -258,15 +258,15 @@ export default class ShellSurface extends GrShellSurfaceRequests {
    *                the surface (e.g. fullscreen or maximized).
    *
    *
-   * @param {GrShellSurfaceResource} resource
-   * @param {GrSeatResource} grSeatResource seat whose pointer is used
-   * @param {Number} serial serial number of the implicit grab on the pointer
+   * @param {WlShellSurfaceResource} resource
+   * @param {WlSeatResource} wlSeatResource seat whose pointer is used
+   * @param {number} serial serial number of the implicit grab on the pointer
    *
    * @since 1
    * @override
    */
-  move (resource, grSeatResource, serial) {
-    const seat = /** @type {Seat} */grSeatResource.implementation
+  move (resource, wlSeatResource, serial) {
+    const seat = /** @type {Seat} */wlSeatResource.implementation
 
     if (!seat.isValidInputSerial(serial)) {
       DEBUG && console.log('move serial mismatch. Ignoring.')
@@ -277,7 +277,7 @@ export default class ShellSurface extends GrShellSurfaceRequests {
       return
     }
     const pointer = seat.pointer
-    const surface = this.grSurfaceResource.implementation
+    const surface = this.wlSurfaceResource.implementation
     const surfaceChildSelf = surface.surfaceChildSelf
     const origPosition = surfaceChildSelf.position
 
@@ -313,16 +313,16 @@ export default class ShellSurface extends GrShellSurfaceRequests {
    *                the surface (e.g. fullscreen or maximized).
    *
    *
-   * @param {GrShellSurfaceResource} resource
-   * @param {GrSeatResource} grSeatResource seat whose pointer is used
+   * @param {WlShellSurfaceResource} resource
+   * @param {WlSeatResource} wlSeatResource seat whose pointer is used
    * @param {number} serial serial number of the implicit grab on the pointer
    * @param {number} edges which edge or corner is being dragged
    *
    * @since 1
    * @override
    */
-  resize (resource, grSeatResource, serial, edges) {
-    const seat = /** @type {Seat} */grSeatResource.implementation
+  resize (resource, wlSeatResource, serial, edges) {
+    const seat = /** @type {Seat} */wlSeatResource.implementation
     if (!seat.isValidInputSerial(serial)) {
       DEBUG && console.log('resize serial mismatch. Ignoring.')
       return
@@ -396,7 +396,7 @@ export default class ShellSurface extends GrShellSurfaceRequests {
 
     const pointerX = pointer.x
     const pointerY = pointer.y
-    const {w: surfaceWidth, h: surfaceHeight} = this.grSurfaceResource.implementation.size
+    const {w: surfaceWidth, h: surfaceHeight} = this.wlSurfaceResource.implementation.size
 
     const resizeListener = () => {
       const deltaX = pointer.x - pointerX
@@ -415,7 +415,7 @@ export default class ShellSurface extends GrShellSurfaceRequests {
    * @private
    */
   _createUserShellSurface () {
-    this._userShellSurface = this._userShell.manage(/** @type {Surface} */this.grSurfaceResource.implementation)
+    this._userShellSurface = this._userShell.manage(/** @type {Surface} */this.wlSurfaceResource.implementation)
     this._userShellSurface.onActivationRequest = () => {
       this._userShellSurface.activationAck()
     }
@@ -434,7 +434,7 @@ export default class ShellSurface extends GrShellSurfaceRequests {
    *                A toplevel surface is not fullscreen, maximized or transient.
    *
    *
-   * @param {GrShellSurfaceResource} resource
+   * @param {WlShellSurfaceResource} resource
    *
    * @since 1
    * @override
@@ -461,8 +461,8 @@ export default class ShellSurface extends GrShellSurfaceRequests {
    *                The flags argument controls details of the transient behaviour.
    *
    *
-   * @param {GrShellSurfaceResource} resource
-   * @param {GrSurfaceResource} parent parent surface
+   * @param {WlShellSurfaceResource} resource
+   * @param {WlSurfaceResource} parent parent surface
    * @param {number} x surface-local x coordinate
    * @param {number} y surface-local y coordinate
    * @param {number} flags transient surface behavior
@@ -477,12 +477,12 @@ export default class ShellSurface extends GrShellSurfaceRequests {
 
     const parentPosition = parent.implementation.surfaceChildSelf.position
 
-    const surface = this.grSurfaceResource.implementation
+    const surface = this.wlSurfaceResource.implementation
     const surfaceChild = surface.surfaceChildSelf
     // FIXME we probably want to provide a method to translate from (abstract) surface space to global space
     surfaceChild.position = Point.create(parentPosition.x + x, parentPosition.y + y)
 
-    this.grSurfaceResource.implementation.hasKeyboardInput = (flags & inactive) === 0
+    this.wlSurfaceResource.implementation.hasKeyboardInput = (flags & inactive) === 0
 
     if (!this._userShellSurface) {
       this._createUserShellSurface()
@@ -527,17 +527,17 @@ export default class ShellSurface extends GrShellSurfaceRequests {
    *                be made fullscreen.
    *
    *
-   * @param {GrShellSurfaceResource} resource
+   * @param {WlShellSurfaceResource} resource
    * @param {number} method method for resolving size conflict
    * @param {number} framerate framerate in mHz
-   * @param {GrOutputResource|null} output output on which the surface is to be fullscreen
+   * @param {WlOutputResource|null} output output on which the surface is to be fullscreen
    *
    * @since 1
    * @override
    */
   setFullscreen (resource, method, framerate, output) {
     this.state = SurfaceStates.FULLSCREEN
-    const surface = this.grSurfaceResource.implementation
+    const surface = this.wlSurfaceResource.implementation
     // TODO get proper size in surface coordinates instead of assume surface space === global space
     surface.surfaceChildSelf.position = Point.create(0, 0)
     this.resource.configure(none, window.innerWidth, window.innerHeight)
@@ -566,10 +566,10 @@ export default class ShellSurface extends GrShellSurfaceRequests {
    *                parent surface, in surface-local coordinates.
    *
    *
-   * @param {GrShellSurfaceResource} resource
-   * @param {GrSeatResource} grSeatResource seat whose pointer is used
+   * @param {WlShellSurfaceResource} resource
+   * @param {WlSeatResource} wlSeatResource seat whose pointer is used
    * @param {number} serial serial number of the implicit grab on the pointer
-   * @param {GrSurfaceResource} parent parent surface
+   * @param {WlSurfaceResource} parent parent surface
    * @param {number} x surface-local x coordinate
    * @param {number} y surface-local y coordinate
    * @param {number} flags transient surface behavior
@@ -577,8 +577,8 @@ export default class ShellSurface extends GrShellSurfaceRequests {
    * @since 1
    * @override
    */
-  async setPopup (resource, grSeatResource, serial, parent, x, y, flags) {
-    const seat = /** @type {Seat} */grSeatResource.implementation
+  async setPopup (resource, wlSeatResource, serial, parent, x, y, flags) {
+    const seat = /** @type {Seat} */wlSeatResource.implementation
     // FIXME we can receive an older serial in case a popup is triggered from an older mouse down + mouse move
     // if (serial !== seat.inputSerial) {
     //   this._dismiss()
@@ -590,7 +590,7 @@ export default class ShellSurface extends GrShellSurfaceRequests {
 
     const pointer = seat.pointer
     this.state = SurfaceStates.POPUP
-    const surface = /** @type {Surface} */this.grSurfaceResource.implementation
+    const surface = /** @type {Surface} */this.wlSurfaceResource.implementation
     const surfaceChild = surface.surfaceChildSelf
     surfaceChild.position = Point.create(x, y)
     const onNewView = (view) => {
@@ -610,7 +610,7 @@ export default class ShellSurface extends GrShellSurfaceRequests {
     surface.hasKeyboardInput = (flags & inactive) === 0
 
     // handle popup window grab
-    await pointer.popupGrab(this.grSurfaceResource)
+    await pointer.popupGrab(this.wlSurfaceResource)
     resource.popupDone()
   }
 
@@ -636,7 +636,7 @@ export default class ShellSurface extends GrShellSurfaceRequests {
    *                The details depend on the compositor implementation.
    *
    *
-   * @param {GrShellSurfaceResource} resource
+   * @param {WlShellSurfaceResource} resource
    * @param {?*} output output on which the surface is to be maximized
    *
    * @since 1
@@ -644,7 +644,7 @@ export default class ShellSurface extends GrShellSurfaceRequests {
    */
   setMaximized (resource, output) {
     this.state = SurfaceStates.MAXIMIZED
-    const surface = this.grSurfaceResource.implementation
+    const surface = this.wlSurfaceResource.implementation
 
     // TODO get proper size in surface coordinates instead of assume surface space === global space
     const x = 0
@@ -666,7 +666,7 @@ export default class ShellSurface extends GrShellSurfaceRequests {
    *                The string must be encoded in UTF-8.
    *
    *
-   * @param {GrShellSurfaceResource} resource
+   * @param {WlShellSurfaceResource} resource
    * @param {string} title surface title
    *
    * @since 1
@@ -689,7 +689,7 @@ export default class ShellSurface extends GrShellSurfaceRequests {
    *                the application's .desktop file as the class.
    *
    *
-   * @param {GrShellSurfaceResource} resource
+   * @param {WlShellSurfaceResource} resource
    * @param {string} clazz surface class
    *
    * @since 1

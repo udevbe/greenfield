@@ -1,16 +1,16 @@
 'use strict'
 
-import GrPointerRequests from './protocol/GrPointerRequests'
-import GrPointerResource from './protocol/GrPointerResource'
+import WlPointerRequests from './protocol/WlPointerRequests'
+import WlPointerResource from './protocol/WlPointerResource'
 import Fixed from 'westfield-runtime-server'
 
 import Point from './math/Point'
 import EncodingOptions from './EncodingOptions'
 import Region from './Region'
 
-const {pressed, released} = GrPointerResource.ButtonState
-const {horizontalScroll, verticalScroll} = GrPointerResource.Axis
-const {wheel} = GrPointerResource.AxisSource
+const {pressed, released} = WlPointerResource.ButtonState
+const {horizontalScroll, verticalScroll} = WlPointerResource.Axis
+const {wheel} = WlPointerResource.AxisSource
 
 // translates between browser button codes & kernel code as expected by wayland protocol
 const linuxInput = {
@@ -28,19 +28,19 @@ const linuxInput = {
 
 /**
  *
- *            The gr_pointer interface represents one or more input devices,
+ *            The wl_pointer interface represents one or more input devices,
  *            such as mice, which control the pointer location and pointer_focus
  *            of a seat.
  *
- *            The gr_pointer interface generates motion, enter and leave
+ *            The wl_pointer interface generates motion, enter and leave
  *            events for the surfaces that the pointer is located over,
  *            and button and axis events for button presses, button releases
  *            and scrolling.
  *            @implements {SurfaceRole}
- *            @implements {GrPointerRequests}
+ *            @implements {WlPointerRequests}
  *
  */
-export default class Pointer extends GrPointerRequests {
+export default class Pointer extends WlPointerRequests {
   /**
    * @param {!Session} session
    * @param {!DataDevice} dataDevice
@@ -98,7 +98,7 @@ export default class Pointer extends GrPointerRequests {
      */
     this._dataDevice = dataDevice
     /**
-     * @type {!Array<GrPointerResource>}
+     * @type {!Array<WlPointerResource>}
      */
     this.resources = []
     /**
@@ -111,7 +111,7 @@ export default class Pointer extends GrPointerRequests {
      */
     this.grab = null
     /**
-     * @type {!Array<{popup: GrSurfaceResource, resolve: function():void, promise: Promise<void>}>}
+     * @type {!Array<{popup: WlSurfaceResource, resolve: function():void, promise: Promise<void>}>}
      * @private
      */
     this._popupStack = []
@@ -124,7 +124,7 @@ export default class Pointer extends GrPointerRequests {
      */
     this.y = 0
     /**
-     * @type {?GrSurfaceResource}
+     * @type {?WlSurfaceResource}
      * @private
      */
     this._cursorSurface = null
@@ -271,22 +271,22 @@ export default class Pointer extends GrPointerRequests {
    *                On surface.attach requests to the pointer surface, hotspot_x
    *                and hotspot_y are decremented by the x and y parameters
    *                passed to the request. Attach must be confirmed by
-   *                gr_surface.commit as usual.
+   *                wl_surface.commit as usual.
    *
    *                The hotspot can also be updated by passing the currently set
    *                pointer surface to this request with new values for hotspot_x
    *                and hotspot_y.
    *
-   *                The current and pending input regions of the gr_surface are
-   *                cleared, and gr_surface.set_input_region is ignored until the
-   *                gr_surface is no longer used as the cursor. When the use as a
+   *                The current and pending input regions of the wl_surface are
+   *                cleared, and wl_surface.set_input_region is ignored until the
+   *                wl_surface is no longer used as the cursor. When the use as a
    *                cursor ends, the current and pending input regions become
-   *                undefined, and the gr_surface is unmapped.
+   *                undefined, and the wl_surface is unmapped.
    *
    *
-   * @param {GrPointerResource} resource
+   * @param {WlPointerResource} resource
    * @param {number} serial serial number of the enter event
-   * @param {GrSurfaceResource|null} surfaceResource pointer surface
+   * @param {WlSurfaceResource|null} surfaceResource pointer surface
    * @param {number} hotspotX surface-local x coordinate
    * @param {number} hotspotY surface-local y coordinate
    *
@@ -296,7 +296,7 @@ export default class Pointer extends GrPointerRequests {
   setCursor (resource, serial, surfaceResource, hotspotX, hotspotY) {
     const surface = /** @type {Surface} */surfaceResource.implementation
     if (surface.role && surface.role !== this) {
-      resource.postError(GrPointerResource.Error.role, 'Given surface has another role.')
+      resource.postError(WlPointerResource.Error.role, 'Given surface has another role.')
       DEBUG && console.log('Protocol error. Given surface has another role')
       return
     }
@@ -311,7 +311,7 @@ export default class Pointer extends GrPointerRequests {
   }
 
   /**
-   * @param {GrSurfaceResource}popup
+   * @param {WlSurfaceResource}popup
    * @return {Promise<void>}
    */
   popupGrab (popup) {
@@ -359,8 +359,8 @@ export default class Pointer extends GrPointerRequests {
   }
 
   /**
-   * @param {GrSurfaceResource}popup
-   * @return {{popup: GrSurfaceResource, resolve: Function, promise: Promise} | null}
+   * @param {WlSurfaceResource}popup
+   * @return {{popup: WlSurfaceResource, resolve: Function, promise: Promise} | null}
    */
   findPopupGrab (popup) {
     const popupGrab = this._popupStack.find((popupGrab) => {
@@ -371,7 +371,7 @@ export default class Pointer extends GrPointerRequests {
   }
 
   /**
-   * @param {?GrSurfaceResource}surfaceResource
+   * @param {?WlSurfaceResource}surfaceResource
    * @param {number} hotspotX surface-local x coordinate
    * @param {number} hotspotY surface-local y coordinate
    */
@@ -406,10 +406,10 @@ export default class Pointer extends GrPointerRequests {
    *                use the pointer object anymore.
    *
    *                This request destroys the pointer proxy object, so clients must not call
-   *                gr_pointer_destroy() after using this request.
+   *                wl_pointer_destroy() after using this request.
    *
    *
-   * @param {GrPointerResource} resource
+   * @param {WlPointerResource} resource
    *
    * @since 3
    *
@@ -508,7 +508,7 @@ export default class Pointer extends GrPointerRequests {
   }
 
   /**
-   * @param {GrSurfaceResource} surfaceResource
+   * @param {WlSurfaceResource} surfaceResource
    * @param {Function}action
    * @private
    */

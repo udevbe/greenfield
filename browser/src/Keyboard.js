@@ -1,21 +1,21 @@
 'use strict'
 
-import GrKeyboardRequests from './protocol/GrKeyboardRequests'
-import GrKeyboardResource from './protocol/GrKeyboardResource'
+import WlKeyboardRequests from './protocol/WlKeyboardRequests'
+import WlKeyboardResource from './protocol/WlKeyboardResource'
 
 import Xkb from './Xkb'
 import RtcBlobTransfer from './RtcBlobTransfer'
 
-const {pressed, released} = GrKeyboardResource.KeyState
-const {xkbV1} = GrKeyboardResource.KeymapFormat
+const {pressed, released} = WlKeyboardResource.KeyState
+const {xkbV1} = WlKeyboardResource.KeymapFormat
 
 /**
  *
- *            The gr_keyboard interface represents one or more keyboards
+ *            The wl_keyboard interface represents one or more keyboards
  *            associated with a seat.
- * @implements GrKeyboardRequests
+ * @implements WlKeyboardRequests
  */
-export default class Keyboard extends GrKeyboardRequests {
+export default class Keyboard extends WlKeyboardRequests {
   /**
    * @param {!Session}session
    * @param {!DataDevice} dataDevice
@@ -61,7 +61,7 @@ export default class Keyboard extends GrKeyboardRequests {
      */
     this._dataDevice = dataDevice
     /**
-     * @type {!Array<GrKeyboardResource>}
+     * @type {!Array<WlKeyboardResource>}
      */
     this.resources = []
     /**
@@ -134,7 +134,7 @@ export default class Keyboard extends GrKeyboardRequests {
 
   /**
    *
-   * @param {!GrKeyboard} resource
+   * @param {!WlKeyboard} resource
    *
    * @since 3
    *
@@ -162,7 +162,7 @@ export default class Keyboard extends GrKeyboardRequests {
   }
 
   /**
-   * @param {!GrKeyboardResource}resource
+   * @param {!WlKeyboardResource}resource
    */
   async emitKeymap (resource) {
     const keymapString = this._xkb.asString()
@@ -315,7 +315,7 @@ export default class Keyboard extends GrKeyboardRequests {
   }
 
   /**
-   * @param {!GrKeyboardResource}resource
+   * @param {!WlKeyboardResource}resource
    */
   emitKeyRepeatInfo (resource) {
     if (resource.version >= 4) {

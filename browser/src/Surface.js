@@ -1,8 +1,8 @@
 'use strict'
-import GrSurfaceRequests from './protocol/GrSurfaceRequests'
-import GrCallbackResource from './protocol/GrCallbackResource'
-import GrSurfaceResource from './protocol/GrSurfaceResource'
-import GrOutputResource from './protocol/GrOutputResource'
+import WlSurfaceRequests from './protocol/WlSurfaceRequests'
+import WlCallbackResource from './protocol/WlCallbackResource'
+import WlSurfaceResource from './protocol/WlSurfaceResource'
+import WlOutputResource from './protocol/WlOutputResource'
 
 import View from './View'
 import Callback from './Callback'
@@ -51,46 +51,46 @@ const bufferTransformations = [
  *
  *            A surface without a "role" is fairly useless: a compositor does
  *            not know where, when or how to present it. The role is the
- *            purpose of a gr_surface. Examples of roles are a cursor for a
- *            pointer (as set by gr_pointer.set_cursor), a drag icon
- *            (gr_data_device.start_drag), a sub-surface
- *            (gr_subcompositor.get_subsurface), and a window as defined by a
- *            shell protocol (e.g. gr_shell.get_shell_surface).
+ *            purpose of a wl_surface. Examples of roles are a cursor for a
+ *            pointer (as set by wl_pointer.set_cursor), a drag icon
+ *            (wl_data_device.start_drag), a sub-surface
+ *            (wl_subcompositor.get_subsurface), and a window as defined by a
+ *            shell protocol (e.g. wl_shell.get_shell_surface).
  *
  *            A surface can have only one role at a time. Initially a
- *            gr_surface does not have a role. Once a gr_surface is given a
+ *            wl_surface does not have a role. Once a wl_surface is given a
  *            role, it is set permanently for the whole lifetime of the
- *            gr_surface object. Giving the current role again is allowed,
+ *            wl_surface object. Giving the current role again is allowed,
  *            unless explicitly forbidden by the relevant interface
  *            specification.
  *
  *            Surface roles are given by requests in other interfaces such as
- *            gr_pointer.set_cursor. The request should explicitly mention
- *            that this request gives a role to a gr_surface. Often, this
+ *            wl_pointer.set_cursor. The request should explicitly mention
+ *            that this request gives a role to a wl_surface. Often, this
  *            request also creates a new protocol object that represents the
- *            role and adds additional functionality to gr_surface. When a
- *            client wants to destroy a gr_surface, they must destroy this 'role
- *            object' before the gr_surface.
+ *            role and adds additional functionality to wl_surface. When a
+ *            client wants to destroy a wl_surface, they must destroy this 'role
+ *            object' before the wl_surface.
  *
  *            Destroying the role object does not remove the role from the
- *            gr_surface, but it may stop the gr_surface from "playing the role".
- *            For instance, if a gr_subsurface object is destroyed, the gr_surface
+ *            wl_surface, but it may stop the wl_surface from "playing the role".
+ *            For instance, if a wl_subsurface object is destroyed, the wl_surface
  *            it was created for will be unmapped and forget its position and
- *            z-order. It is allowed to create a gr_subsurface for the same
- *            gr_surface again, but it is not allowed to use the gr_surface as
+ *            z-order. It is allowed to create a wl_subsurface for the same
+ *            wl_surface again, but it is not allowed to use the wl_surface as
  *            a cursor (cursor is a different role than sub-surface, and role
  *            switching is not allowed).
- * @implements GrSurfaceRequests
+ * @implements WlSurfaceRequests
  */
-export default class Surface extends GrSurfaceRequests {
+export default class Surface extends WlSurfaceRequests {
   /**
-   * @param {!GrSurfaceResource} grSurfaceResource
+   * @param {!WlSurfaceResource} wlSurfaceResource
    * @param {!Renderer} renderer
    * @param {!Seat} seat
    * @param {!Session} session
    * @returns {!Surface}
    */
-  static create (grSurfaceResource, renderer, seat, session) {
+  static create (wlSurfaceResource, renderer, seat, session) {
     const bufferDamage = Region.createPixmanRegion()
     const opaquePixmanRegion = Region.createPixmanRegion()
     const inputPixmanRegion = Region.createPixmanRegion()
@@ -100,9 +100,9 @@ export default class Surface extends GrSurfaceRequests {
     Region.initInfinite(opaquePixmanRegion)
     Region.initInfinite(inputPixmanRegion)
 
-    const surface = new Surface(grSurfaceResource, renderer, seat, session, bufferDamage, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion)
-    grSurfaceResource.implementation = surface
-    grSurfaceResource.onDestroy().then(() => {
+    const surface = new Surface(wlSurfaceResource, renderer, seat, session, bufferDamage, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion)
+    wlSurfaceResource.implementation = surface
+    wlSurfaceResource.onDestroy().then(() => {
       Region.destroyPixmanRegion(bufferDamage)
       Region.destroyPixmanRegion(opaquePixmanRegion)
       Region.destroyPixmanRegion(inputPixmanRegion)
@@ -114,9 +114,9 @@ export default class Surface extends GrSurfaceRequests {
   }
 
   /**
-   * Use Surface.create(grSurfaceResource) instead.
+   * Use Surface.create(wlSurfaceResource) instead.
    * @private
-   * @param {!GrSurfaceResource} grSurfaceResource
+   * @param {!WlSurfaceResource} wlSurfaceResource
    * @param {!Renderer} renderer
    * @param {!Seat} seat
    * @param {!Session} session
@@ -125,13 +125,13 @@ export default class Surface extends GrSurfaceRequests {
    * @param {!number} inputPixmanRegion
    * @param {!number} surfacePixmanRegion
    */
-  constructor (grSurfaceResource, renderer, seat, session, bufferDamage, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion) {
+  constructor (wlSurfaceResource, renderer, seat, session, bufferDamage, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion) {
     super()
     /**
-     * @type {!GrSurfaceResource}
+     * @type {!WlSurfaceResource}
      * @const
      */
-    this.resource = grSurfaceResource
+    this.resource = wlSurfaceResource
     /**
      * @type {boolean}
      */
@@ -191,14 +191,14 @@ export default class Surface extends GrSurfaceRequests {
       roleState: {}
     }
     /**
-     * @type {?GrBufferResource}
+     * @type {?WlBufferResource}
      */
-    this.pendingGrBuffer = null
+    this.pendingWlBuffer = null
     /**
      * @type {!function}
      */
     this.pendingBufferDestroyListener = () => {
-      this.pendingGrBuffer = null
+      this.pendingWlBuffer = null
     }
     /**
      * @type {!Array<Rect>}
@@ -589,7 +589,7 @@ export default class Surface extends GrSurfaceRequests {
    * Deletes the surface and invalidates its object ID.
    *
    *
-   * @param {GrSurfaceResource} resource
+   * @param {WlSurfaceResource} resource
    *
    * @since 1
    * @override
@@ -629,38 +629,38 @@ export default class Surface extends GrSurfaceRequests {
    *                x and y, combined with the new surface size define in which
    *                directions the surface's size changes.
    *
-   *                Surface contents are double-buffered state, see GrSurface.commit.
+   *                Surface contents are double-buffered state, see WlSurface.commit.
    *
    *                The initial surface contents are void; there is no content.
-   *                GrSurface.attach assigns the given GrBuffer as the pending
-   *                GrBuffer. GrSurface.commit makes the pending GrBuffer the new
+   *                WlSurface.attach assigns the given WlBuffer as the pending
+   *                WlBuffer. WlSurface.commit makes the pending WlBuffer the new
    *                surface contents, and the size of the surface becomes the size
-   *                calculated from the GrBuffer, as described above. After commit,
+   *                calculated from the WlBuffer, as described above. After commit,
    *                there is no pending buffer until the next attach.
    *
-   *                Committing a pending GrBuffer allows the compositor to read the
-   *                pixels in the GrBuffer. The compositor may access the pixels at
-   *                any time after the GrSurface.commit request. It may take some
+   *                Committing a pending WlBuffer allows the compositor to read the
+   *                pixels in the WlBuffer. The compositor may access the pixels at
+   *                any time after the WlSurface.commit request. It may take some
    *                time for the contents to arrive at the compositor if they have
    *                not been transferred already. The compositor will continue using
    *                old surface content and state until the new content has arrived.
-   *                See also GrBuffer.complete.
+   *                See also WlBuffer.complete.
    *
-   *                If it is possible to re-use a GrBuffer or update its
+   *                If it is possible to re-use a WlBuffer or update its
    *                contents, the respective buffer factory shall define how that
    *                works.
    *
-   *                Destroying the GrBuffer after GrBuffer.complete does not change
+   *                Destroying the WlBuffer after WlBuffer.complete does not change
    *                the surface contents. However, if the client destroys the
-   *                GrBuffer before receiving the GrBuffer.complete event, the surface
+   *                WlBuffer before receiving the WlBuffer.complete event, the surface
    *                contents become undefined immediately.
    *
-   *                If GrSurface.attach is sent with a NULL GrBuffer, the
-   *                following GrSurface.commit will remove the surface content.
+   *                If WlSurface.attach is sent with a NULL WlBuffer, the
+   *                following WlSurface.commit will remove the surface content.
    *
    *
-   * @param {GrSurfaceResource} resource
-   * @param {GrBufferResource|null} buffer undefined
+   * @param {WlSurfaceResource} resource
+   * @param {WlBufferResource|null} buffer undefined
    * @param {number} x undefined
    * @param {number} y undefined
    *
@@ -671,14 +671,14 @@ export default class Surface extends GrSurfaceRequests {
     this._pendingDx = x
     this._pendingDy = y
 
-    if (this.pendingGrBuffer) {
-      this.pendingGrBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
+    if (this.pendingWlBuffer) {
+      this.pendingWlBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
     }
 
-    this.pendingGrBuffer = buffer
+    this.pendingWlBuffer = buffer
     // buffer can be null
-    if (this.pendingGrBuffer) {
-      this.pendingGrBuffer.addDestroyListener(this.pendingBufferDestroyListener)
+    if (this.pendingWlBuffer) {
+      this.pendingWlBuffer.addDestroyListener(this.pendingBufferDestroyListener)
     }
   }
 
@@ -689,29 +689,29 @@ export default class Surface extends GrSurfaceRequests {
    *                the surface therefore needs to be repainted. The compositor
    *                ignores the parts of the damage that fall outside of the surface.
    *
-   *                Damage is double-buffered state, see GrSurface.commit.
+   *                Damage is double-buffered state, see WlSurface.commit.
    *
    *                The damage rectangle is specified in surface local coordinates.
    *
    *                The initial value for pending damage is empty: no damage.
-   *                GrSurface.damage adds pending damage: the new pending damage
+   *                WlSurface.damage adds pending damage: the new pending damage
    *                is the union of old pending damage and the given rectangle.
    *
-   *                GrSurface.commit assigns pending damage as the current damage,
+   *                WlSurface.commit assigns pending damage as the current damage,
    *                and clears pending damage. The server will clear the current
    *                damage as it repaints the surface.
    *
-   *                Alternatively, damage can be posted with GrSurface.damageBuffer
+   *                Alternatively, damage can be posted with WlSurface.damageBuffer
    *                which uses buffer co-ordinates instead of surface co-ordinates,
    *                and is probably the preferred and intuitive way of doing this.
    *
-   *                The factory behind the the GrBuffer might imply full surface
+   *                The factory behind the the WlBuffer might imply full surface
    *                damage, overriding this request. This is common when the factory
    *                uses a video encoder, where regions outside the original changes
    *                may improve in quality.
    *
    *
-   * @param {GrSurfaceResource} resource
+   * @param {WlSurfaceResource} resource
    * @param {number} x undefined
    * @param {number} y undefined
    * @param {number} width undefined
@@ -730,15 +730,15 @@ export default class Surface extends GrSurfaceRequests {
    *                frame, by creating a frame callback. This is useful for throttling
    *                redrawing operations, and driving animations.
    *
-   *                When a client is animating on a GrSurface, it can use the 'frame'
+   *                When a client is animating on a WlSurface, it can use the 'frame'
    *                request to get notified when it is a good time to draw and commit the
    *                next frame of animation. If the client commits an update earlier than
    *                that, it is likely that some updates will not make it to the display,
    *                and the client is wasting resources by drawing too often.
    *
-   *                The frame request will take effect on the next GrSurface.commit.
+   *                The frame request will take effect on the next WlSurface.commit.
    *                The notification will only be posted for one frame unless
-   *                requested again. For a GrSurface, the notifications are posted in
+   *                requested again. For a WlSurface, the notifications are posted in
    *                the order the frame requests were committed.
    *
    *                The server must send the notifications so that a client
@@ -760,7 +760,7 @@ export default class Surface extends GrSurfaceRequests {
    *                milliseconds, with an undefined base.
    *
    *
-   * @param {GrSurfaceResource} resource
+   * @param {WlSurfaceResource} resource
    * @param {number} callback id
    *
    *
@@ -768,7 +768,7 @@ export default class Surface extends GrSurfaceRequests {
    * @override
    */
   frame (resource, callback) {
-    this._pendingFrameCallbacks.push(Callback.create(new GrCallbackResource(resource.client, callback, 1)))
+    this._pendingFrameCallbacks.push(Callback.create(new WlCallbackResource(resource.client, callback, 1)))
   }
 
   /**
@@ -787,20 +787,20 @@ export default class Surface extends GrSurfaceRequests {
    *                The compositor ignores the parts of the opaque region that fall
    *                outside of the surface.
    *
-   *                Opaque region is double-buffered state, see GrSurface.commit.
+   *                Opaque region is double-buffered state, see WlSurface.commit.
    *
-   *                GrSurface.setOpaqueRegion changes the pending opaque region.
-   *                GrSurface.commit copies the pending region to the current region.
+   *                WlSurface.setOpaqueRegion changes the pending opaque region.
+   *                WlSurface.commit copies the pending region to the current region.
    *                Otherwise, the pending and current regions are never changed.
    *
    *                The initial value for opaque region is empty. Setting the pending
-   *                opaque region has copy semantics, and the GrRegion object can be
-   *                destroyed immediately. A NULL GrRegion causes the pending opaque
+   *                opaque region has copy semantics, and the WlRegion object can be
+   *                destroyed immediately. A NULL WlRegion causes the pending opaque
    *                region to be set to empty.
    *
    *
-   * @param {GrSurfaceResource} resource
-   * @param {GrRegionResource|null} regionResource undefined
+   * @param {WlSurfaceResource} resource
+   * @param {WlRegionResource|null} regionResource undefined
    *
    * @since 1
    * @override
@@ -827,23 +827,23 @@ export default class Surface extends GrSurfaceRequests {
    *
    *                The input region is specified in surface local coordinates.
    *
-   *                Input region is double-buffered state, see GrSurface.commit.
+   *                Input region is double-buffered state, see WlSurface.commit.
    *
-   *                GrSurface.setInputRegion changes the pending input region.
-   *                GrSurface.commit copies the pending region to the current region.
+   *                WlSurface.setInputRegion changes the pending input region.
+   *                WlSurface.commit copies the pending region to the current region.
    *                Otherwise the pending and current regions are never changed,
    *                except cursor and icon surfaces are special cases, see
-   *                GrPointer.setCursor and GrDataDevice.startDrag.
+   *                WlPointer.setCursor and WlDataDevice.startDrag.
    *
    *                The initial value for input region is infinite. That means the
    *                whole surface will accept input. Setting the pending input region
-   *                has copy semantics, and the GrRegion object can be destroyed
-   *                immediately. A NULL GrRegion causes the input region to be set
+   *                has copy semantics, and the WlRegion object can be destroyed
+   *                immediately. A NULL WlRegion causes the input region to be set
    *                to infinite.
    *
    *
-   * @param {GrSurfaceResource} resource
-   * @param {GrRegionResource|null} regionResource undefined
+   * @param {WlSurfaceResource} resource
+   * @param {WlRegionResource|null} regionResource undefined
    *
    * @since 1
    * @override
@@ -876,10 +876,10 @@ export default class Surface extends GrSurfaceRequests {
    *                state. After commit, the new pending state is as documented for each
    *                related request.
    *
-   *                On commit, a pending GrBuffer is applied first, all other state
+   *                On commit, a pending WlBuffer is applied first, all other state
    *                second. This means that all coordinates in double-buffered state are
-   *                relative to the new GrBuffer coming into use, except for
-   *                GrSurface.attach itself. If there is no pending GrBuffer, the
+   *                relative to the new WlBuffer coming into use, except for
+   *                WlSurface.attach itself. If there is no pending WlBuffer, the
    *                coordinates are relative to the current surface contents.
    *
    *                All requests that need a commit to become effective are documented
@@ -888,7 +888,7 @@ export default class Surface extends GrSurfaceRequests {
    *                Other interfaces may add further double-buffered surface state.
    *
    *
-   * @param {GrSurfaceResource} resource
+   * @param {WlSurfaceResource} resource
    *
    * @since 1
    * @override
@@ -896,12 +896,12 @@ export default class Surface extends GrSurfaceRequests {
   async commit (resource) {
     this._start = Date.now()
     this._count++
-    if (this.pendingGrBuffer) {
-      this.pendingGrBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
+    if (this.pendingWlBuffer) {
+      this.pendingWlBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
     }
 
-    const pendingGrBuffer = this.pendingGrBuffer
-    const newState = await this._captureState(pendingGrBuffer)
+    const pendingWlBuffer = this.pendingWlBuffer
+    const newState = await this._captureState(pendingWlBuffer)
     if (this.destroyed) {
       return
     }
@@ -1006,7 +1006,7 @@ export default class Surface extends GrSurfaceRequests {
    * @return {Promise<{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}>}
    * @private
    */
-  async _captureState (pendingGrBuffer) {
+  async _captureState (pendingWlBuffer) {
     const self = this
     /**
      * @type {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}
@@ -1067,8 +1067,8 @@ export default class Surface extends GrSurfaceRequests {
     }
 
     const bufferReceiveStart = Date.now()
-    if (pendingGrBuffer) {
-      const rtcDcBuffer = RtcBufferFactory.get(pendingGrBuffer)
+    if (pendingWlBuffer) {
+      const rtcDcBuffer = RtcBufferFactory.get(pendingWlBuffer)
       newState.bufferContents = await rtcDcBuffer.whenComplete()
 
       const bufferCompletion = Date.now() - bufferReceiveStart
@@ -1099,14 +1099,14 @@ export default class Surface extends GrSurfaceRequests {
    *                This request sets an optional transformation on how the compositor
    *                interprets the contents of the buffer attached to the surface. The
    *                accepted values for the transform parameter are the values for
-   *                GrOutput.transform.
+   *                WlOutput.transform.
    *
-   *                Buffer transform is double-buffered state, see GrSurface.commit.
+   *                Buffer transform is double-buffered state, see WlSurface.commit.
    *
    *                A newly created surface has its buffer transformation set to normal.
    *
-   *                GrSurface.setBufferTransform changes the pending buffer
-   *                transformation. GrSurface.commit copies the pending buffer
+   *                WlSurface.setBufferTransform changes the pending buffer
+   *                transformation. WlSurface.commit copies the pending buffer
    *                transformation to the current one. Otherwise, the pending and current
    *                values are never changed.
    *
@@ -1123,21 +1123,21 @@ export default class Surface extends GrSurfaceRequests {
    *                of the buffer will become the surface width.
    *
    *                If transform is not one of the values from the
-   *                GrOutput.transform enum the invalidTransform protocol error
+   *                WlOutput.transform enum the invalidTransform protocol error
    *                is raised.
    *
    *
-   * @param {GrSurfaceResource} resource
+   * @param {WlSurfaceResource} resource
    * @param {number} transform undefined
    *
    * @since 2
    * @override
    */
   setBufferTransform (resource, transform) {
-    if (Object.values(GrOutputResource.Transform).includes(transform)) {
+    if (Object.values(WlOutputResource.Transform).includes(transform)) {
       this._pendingBufferTransform = transform
     } else {
-      resource.postError(GrSurfaceResource.Error.invalidTransform, 'Buffer transform value is invalid.')
+      resource.postError(WlSurfaceResource.Error.invalidTransform, 'Buffer transform value is invalid.')
       DEBUG && console.log('Protocol error. Buffer transform value is invalid.')
     }
   }
@@ -1147,12 +1147,12 @@ export default class Surface extends GrSurfaceRequests {
    *                This request sets an optional scaling factor on how the compositor
    *                interprets the contents of the buffer attached to the window.
    *
-   *                Buffer scale is double-buffered state, see GrSurface.commit.
+   *                Buffer scale is double-buffered state, see WlSurface.commit.
    *
    *                A newly created surface has its buffer scale set to 1.
    *
-   *                GrSurface.setBufferScale changes the pending buffer scale.
-   *                GrSurface.commit copies the pending buffer scale to the current one.
+   *                WlSurface.setBufferScale changes the pending buffer scale.
+   *                WlSurface.commit copies the pending buffer scale to the current one.
    *                Otherwise, the pending and current values are never changed.
    *
    *                The purpose of this request is to allow clients to supply higher
@@ -1169,7 +1169,7 @@ export default class Surface extends GrSurfaceRequests {
    *                raised.
    *
    *
-   * @param {GrSurfaceResource} resource
+   * @param {WlSurfaceResource} resource
    * @param {number} scale undefined
    *
    * @since 3
@@ -1177,7 +1177,7 @@ export default class Surface extends GrSurfaceRequests {
    */
   setBufferScale (resource, scale) {
     if (scale < 1) {
-      resource.postError(GrSurfaceResource.Error.invalidScale, 'Buffer scale value is invalid.')
+      resource.postError(WlSurfaceResource.Error.invalidScale, 'Buffer scale value is invalid.')
       DEBUG && console.log('Protocol error. Buffer scale value is invalid.')
       return
     }
@@ -1191,19 +1191,19 @@ export default class Surface extends GrSurfaceRequests {
    *                the surface therefore needs to be repainted. The compositor
    *                ignores the parts of the damage that fall outside of the surface.
    *
-   *                Damage is double-buffered state, see GrSurface.commit.
+   *                Damage is double-buffered state, see WlSurface.commit.
    *
    *                The damage rectangle is specified in buffer coordinates.
    *
    *                The initial value for pending damage is empty: no damage.
-   *                GrSurface.damageBuffer adds pending damage: the new pending
+   *                WlSurface.damageBuffer adds pending damage: the new pending
    *                damage is the union of old pending damage and the given rectangle.
    *
-   *                GrSurface.commit assigns pending damage as the current damage,
+   *                WlSurface.commit assigns pending damage as the current damage,
    *                and clears pending damage. The server will clear the current
    *                damage as it repaints the surface.
    *
-   *                This request differs from GrSurface.damage in only one way - it
+   *                This request differs from WlSurface.damage in only one way - it
    *                takes damage in buffer co-ordinates instead of surface local
    *                co-ordinates. While this generally is more intuitive than surface
    *                co-ordinates, it is especially desirable when using wpViewport
@@ -1213,13 +1213,13 @@ export default class Surface extends GrSurfaceRequests {
    *                Note: Because buffer transformation changes and damage requests may
    *                be interleaved in the protocol stream, It is impossible to determine
    *                the actual mapping between surface and buffer damage until
-   *                GrSurface.commit time. Therefore, compositors wishing to take both
+   *                WlSurface.commit time. Therefore, compositors wishing to take both
    *                kinds of damage into account will have to accumulate damage from the
    *                two requests separately and only transform from one to the other
-   *                after receiving the GrSurface.commit.
+   *                after receiving the WlSurface.commit.
    *
    *
-   * @param {GrSurfaceResource} resource
+   * @param {WlSurfaceResource} resource
    * @param {number} x undefined
    * @param {number} y undefined
    * @param {number} width undefined

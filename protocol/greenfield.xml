@@ -48,7 +48,7 @@
         </request>
     </interface>
 
-    <interface name="gr_callback" version="1">
+    <interface name="wl_callback" version="1">
         <description summary="callback object">
             Clients can handle the 'done' event to get notified when
             the related request is done.
@@ -62,7 +62,7 @@
         </event>
     </interface>
 
-    <interface name="gr_compositor" version="4">
+    <interface name="wl_compositor" version="4">
         <description summary="the compositor singleton">
             A compositor.  This object is a singleton global.  The
             compositor is in charge of combining the contents of multiple
@@ -73,23 +73,23 @@
             <description summary="create new surface">
                 Ask the compositor to create a new surface.
             </description>
-            <arg name="id" type="new_id" interface="gr_surface" summary="the new surface"/>
+            <arg name="id" type="new_id" interface="wl_surface" summary="the new surface"/>
         </request>
 
         <request name="create_region">
             <description summary="create new region">
                 Ask the compositor to create a new region.
             </description>
-            <arg name="id" type="new_id" interface="gr_region" summary="the new region"/>
+            <arg name="id" type="new_id" interface="wl_region" summary="the new region"/>
         </request>
     </interface>
 
-    <interface name="gr_buffer" version="1">
-        <description summary="content for a gr_surface">
-            A buffer provides the content for a gr_surface. Buffers are
-            created through factory interfaces such as gr_drm, gr_shm or
+    <interface name="wl_buffer" version="1">
+        <description summary="content for a wl_surface">
+            A buffer provides the content for a wl_surface. Buffers are
+            created through factory interfaces such as wl_drm, wl_shm or
             similar. It has a width and a height and can be attached to a
-            gr_surface, but the mechanism by which a client provides and
+            wl_surface, but the mechanism by which a client provides and
             updates the contents is defined by the buffer factory interface.
         </description>
 
@@ -98,31 +98,31 @@
                 Destroy a buffer. If and how you need to release the backing
                 storage is defined by the buffer factory interface.
 
-                For possible side-effects to a surface, see gr_surface.attach.
+                For possible side-effects to a surface, see wl_surface.attach.
             </description>
         </request>
 
         <event name="release">
             <description summary="compositor releases buffer">
-                Sent when this gr_buffer is no longer used by the compositor.
+                Sent when this wl_buffer is no longer used by the compositor.
                 The client is now free to reuse or destroy this buffer and its
                 backing storage.
 
                 If a client receives a release event before the frame callback
-                requested in the same gr_surface.commit that attaches this
-                gr_buffer to a surface, then the client is immediately free to
+                requested in the same wl_surface.commit that attaches this
+                wl_buffer to a surface, then the client is immediately free to
                 reuse the buffer and its backing storage, and does not need a
                 second buffer for the next surface content update. Typically
                 this is possible, when the compositor maintains a copy of the
-                gr_surface contents, e.g. as a GL texture. This is an important
-                optimization for GL(ES) compositors with gr_shm clients.
+                wl_surface contents, e.g. as a GL texture. This is an important
+                optimization for GL(ES) compositors with wl_shm clients.
             </description>
         </event>
     </interface>
 
-    <interface name="gr_data_offer" version="3">
+    <interface name="wl_data_offer" version="3">
         <description summary="offer to transfer data">
-            A gr_data_offer represents a piece of data offered for transfer
+            A wl_data_offer represents a piece of data offered for transfer
             by another client (the source client).  It is used by the
             copy-and-paste and drag-and-drop mechanisms.  The offer
             describes the different mime types that the data can be
@@ -155,8 +155,8 @@
                 final result of the drag-and-drop operation. If the end result
                 is that no mime types were accepted, the drag-and-drop operation
                 will be cancelled and the corresponding drag source will receive
-                gr_data_source.cancelled. Clients may still use this event in
-                conjunction with gr_data_source.action for feedback.
+                wl_data_source.cancelled. Clients may still use this event in
+                conjunction with wl_data_source.action for feedback.
             </description>
             <arg name="serial" type="uint" summary="serial number of the accept request"/>
             <arg name="mime_type" type="string" allow-null="true" summary="mime type accepted by the client"/>
@@ -192,7 +192,7 @@
 
         <event name="offer">
             <description summary="advertise offered mime type">
-                Sent immediately after creating the gr_data_offer object.  One
+                Sent immediately after creating the wl_data_offer object.  One
                 event per offered mime type.
             </description>
             <arg name="mime_type" type="string" summary="offered mime type"/>
@@ -206,13 +206,13 @@
                 finished the drag-and-drop operation.
 
                 Upon receiving this request, the compositor will emit
-                gr_data_source.dnd_finished on the drag source client.
+                wl_data_source.dnd_finished on the drag source client.
 
                 It is a client error to perform other requests than
-                gr_data_offer.destroy after this one. It is also an error to perform
+                wl_data_offer.destroy after this one. It is also an error to perform
                 this request after a NULL mime type has been set in
-                gr_data_offer.accept or no action was received through
-                gr_data_offer.action.
+                wl_data_offer.accept or no action was received through
+                wl_data_offer.action.
             </description>
         </request>
 
@@ -220,32 +220,32 @@
             <description summary="set the available/preferred drag-and-drop actions">
                 Sets the actions that the destination side client supports for
                 this operation. This request may trigger the emission of
-                gr_data_source.action and gr_data_offer.action events if the compositor
+                wl_data_source.action and wl_data_offer.action events if the compositor
                 needs to change the selected action.
 
                 This request can be called multiple times throughout the
-                drag-and-drop operation, typically in response to gr_data_device.enter
-                or gr_data_device.motion events.
+                drag-and-drop operation, typically in response to wl_data_device.enter
+                or wl_data_device.motion events.
 
                 This request determines the final result of the drag-and-drop
                 operation. If the end result is that no action is accepted,
-                the drag source will receive gr_drag_source.cancelled.
+                the drag source will receive wl_drag_source.cancelled.
 
                 The dnd_actions argument must contain only values expressed in the
-                gr_data_device_manager.dnd_actions enum, and the preferred_action
+                wl_data_device_manager.dnd_actions enum, and the preferred_action
                 argument must only contain one of those values set, otherwise it
                 will result in a protocol error.
 
                 While managing an "ask" action, the destination drag-and-drop client
-                may perform further gr_data_offer.receive requests, and is expected
-                to perform one last gr_data_offer.set_actions request with a preferred
-                action other than "ask" (and optionally gr_data_offer.accept) before
-                requesting gr_data_offer.finish, in order to convey the action selected
+                may perform further wl_data_offer.receive requests, and is expected
+                to perform one last wl_data_offer.set_actions request with a preferred
+                action other than "ask" (and optionally wl_data_offer.accept) before
+                requesting wl_data_offer.finish, in order to convey the action selected
                 by the user. If the preferred action is not in the
-                gr_data_offer.source_actions mask, an error will be raised.
+                wl_data_offer.source_actions mask, an error will be raised.
 
                 If the "ask" action is dismissed (e.g. user cancellation), the client
-                is expected to perform gr_data_offer.destroy right away.
+                is expected to perform wl_data_offer.destroy right away.
 
                 This request can only be made on drag-and-drop offers, a protocol error
                 will be raised otherwise.
@@ -257,8 +257,8 @@
         <event name="source_actions" since="3">
             <description summary="notify the source-side available actions">
                 This event indicates the actions offered by the data source. It
-                will be sent right after gr_data_device.enter, or anytime the source
-                side changes its offered actions through gr_data_source.set_actions.
+                will be sent right after wl_data_device.enter, or anytime the source
+                side changes its offered actions through wl_data_source.set_actions.
             </description>
             <arg name="source_actions" type="uint" summary="actions offered by the data source"/>
         </event>
@@ -271,24 +271,24 @@
 
                 This event can be emitted multiple times during the drag-and-drop
                 operation in response to destination side action changes through
-                gr_data_offer.set_actions.
+                wl_data_offer.set_actions.
 
-                This event will no longer be emitted after gr_data_device.drop
+                This event will no longer be emitted after wl_data_device.drop
                 happened on the drag-and-drop destination, the client must
                 honor the last action received, or the last preferred one set
-                through gr_data_offer.set_actions when handling an "ask" action.
+                through wl_data_offer.set_actions when handling an "ask" action.
 
                 Compositors may also change the selected action on the fly, mainly
                 in response to keyboard modifier changes during the drag-and-drop
                 operation.
 
                 The most recent action received is always the valid one. Prior to
-                receiving gr_data_device.drop, the chosen action may change (e.g.
+                receiving wl_data_device.drop, the chosen action may change (e.g.
                 due to keyboard modifiers being pressed). At the time of receiving
-                gr_data_device.drop the drag-and-drop destination must honor the
+                wl_data_device.drop the drag-and-drop destination must honor the
                 last action received.
 
-                Action changes may still happen after gr_data_device.drop,
+                Action changes may still happen after wl_data_device.drop,
                 especially on "ask" actions, where the drag-and-drop destination
                 may choose another action afterwards. Action changes happening
                 at this stage are always the result of inter-client negotiation, the
@@ -296,18 +296,18 @@
 
                 Upon "ask" actions, it is expected that the drag-and-drop destination
                 may potentially choose a different action and/or mime type,
-                based on gr_data_offer.source_actions and finally chosen by the
+                based on wl_data_offer.source_actions and finally chosen by the
                 user (e.g. popping up a menu with the available options). The
-                final gr_data_offer.set_actions and gr_data_offer.accept requests
-                must happen before the call to gr_data_offer.finish.
+                final wl_data_offer.set_actions and wl_data_offer.accept requests
+                must happen before the call to wl_data_offer.finish.
             </description>
             <arg name="dnd_action" type="uint" summary="action selected by the compositor"/>
         </event>
     </interface>
 
-    <interface name="gr_data_source" version="3">
+    <interface name="wl_data_source" version="3">
         <description summary="offer to transfer data">
-            The gr_data_source object is the source side of a gr_data_offer.
+            The wl_data_source object is the source side of a wl_data_offer.
             It is created by the source client in a data transfer and
             provides a way to describe the offered data and a way to respond
             to requests to transfer the data.
@@ -363,10 +363,10 @@
                  - The data source has been replaced by another data source.
                  - The drag-and-drop operation was performed, but the drop destination
                 did not accept any of the mime types offered through
-                gr_data_source.target.
+                wl_data_source.target.
                  - The drag-and-drop operation was performed, but the drop destination
                 did not select any of the actions present in the mask offered through
-                gr_data_source.action.
+                wl_data_source.action.
                  - The drag-and-drop operation was performed but didn't happen over a
                 surface.
                  - The compositor cancelled the drag-and-drop operation (e.g. compositor
@@ -374,7 +374,7 @@
 
                 The client should clean up and destroy this data source.
 
-                For objects of version 2 or older, gr_data_source.cancelled will
+                For objects of version 2 or older, wl_data_source.cancelled will
                 only be emitted if the data source was replaced by another data
                 source.
             </description>
@@ -385,17 +385,17 @@
         <request name="set_actions" since="3">
             <description summary="set the available drag-and-drop actions">
                 Sets the actions that the source side client supports for this
-                operation. This request may trigger gr_data_source.action and
-                gr_data_offer.action events if the compositor needs to change the
+                operation. This request may trigger wl_data_source.action and
+                wl_data_offer.action events if the compositor needs to change the
                 selected action.
 
                 The dnd_actions argument must contain only values expressed in the
-                gr_data_device_manager.dnd_actions enum, otherwise it will result
+                wl_data_device_manager.dnd_actions enum, otherwise it will result
                 in a protocol error.
 
                 This request must be made once only, and can only be made on sources
                 used in drag-and-drop, so it must be performed before
-                gr_data_device.start_drag. Attempting to use the source other than
+                wl_data_device.start_drag. Attempting to use the source other than
                 for drag-and-drop will raise a protocol error.
             </description>
             <arg name="dnd_actions" type="uint" summary="actions supported by the data source"/>
@@ -404,7 +404,7 @@
         <event name="dnd_drop_performed" since="3">
             <description summary="the drag-and-drop operation physically finished">
                 The user performed the drop action. This event does not indicate
-                acceptance, gr_data_source.cancelled may still be emitted afterwards
+                acceptance, wl_data_source.cancelled may still be emitted afterwards
                 if the drop destination does not accept any mime type.
 
                 However, this event might however not be received if the compositor
@@ -434,13 +434,13 @@
 
                 This event can be emitted multiple times during the drag-and-drop
                 operation, mainly in response to destination side changes through
-                gr_data_offer.set_actions, and as the data device enters/leaves
+                wl_data_offer.set_actions, and as the data device enters/leaves
                 surfaces.
 
                 It is only possible to receive this event after
-                gr_data_source.dnd_drop_performed if the drag-and-drop operation
-                ended in an "ask" action, in which case the final gr_data_source.action
-                event will happen immediately before gr_data_source.dnd_finished.
+                wl_data_source.dnd_drop_performed if the drag-and-drop operation
+                ended in an "ask" action, in which case the final wl_data_source.action
+                event will happen immediately before wl_data_source.dnd_finished.
 
                 Compositors may also change the selected action on the fly, mainly
                 in response to keyboard modifier changes during the drag-and-drop
@@ -449,7 +449,7 @@
                 The most recent action received is always the valid one. The chosen
                 action may change alongside negotiation (e.g. an "ask" action can turn
                 into a "move" operation), so the effects of the final action must
-                always be applied in gr_data_offer.dnd_finished.
+                always be applied in wl_data_offer.dnd_finished.
 
                 Clients can trigger cursor surface changes from this point, so
                 they reflect the current action.
@@ -458,17 +458,17 @@
         </event>
     </interface>
 
-    <interface name="gr_data_device" version="3">
+    <interface name="wl_data_device" version="3">
         <description summary="data transfer device">
-            There is one gr_data_device per seat which can be obtained
-            from the global gr_data_device_manager singleton.
+            There is one wl_data_device per seat which can be obtained
+            from the global wl_data_device_manager singleton.
 
-            A gr_data_device provides access to inter-client data transfer
+            A wl_data_device provides access to inter-client data transfer
             mechanisms such as copy-and-paste and drag-and-drop.
         </description>
 
         <enum name="error">
-            <entry name="role" value="0" summary="given gr_surface has another role"/>
+            <entry name="role" value="0" summary="given wl_surface has another role"/>
         </enum>
 
         <request name="start_drag">
@@ -489,21 +489,21 @@
                 The icon surface is an optional (can be NULL) surface that
                 provides an icon to be moved around with the cursor.  Initially,
                 the top-left corner of the icon surface is placed at the cursor
-                hotspot, but subsequent gr_surface.attach request can move the
+                hotspot, but subsequent wl_surface.attach request can move the
                 relative position. Attach requests must be confirmed with
-                gr_surface.commit as usual. The icon surface is given the role of
+                wl_surface.commit as usual. The icon surface is given the role of
                 a drag-and-drop icon. If the icon surface already has another role,
                 it raises a protocol error.
 
-                The current and pending input regions of the icon gr_surface are
-                cleared, and gr_surface.set_input_region is ignored until the
-                gr_surface is no longer used as the icon surface. When the use
+                The current and pending input regions of the icon wl_surface are
+                cleared, and wl_surface.set_input_region is ignored until the
+                wl_surface is no longer used as the icon surface. When the use
                 as an icon ends, the current and pending input regions become
-                undefined, and the gr_surface is unmapped.
+                undefined, and the wl_surface is unmapped.
             </description>
-            <arg name="source" type="object" interface="gr_data_source" allow-null="true" summary="data source for the eventual transfer"/>
-            <arg name="origin" type="object" interface="gr_surface" summary="surface where the drag originates"/>
-            <arg name="icon" type="object" interface="gr_surface" allow-null="true" summary="drag-and-drop icon surface"/>
+            <arg name="source" type="object" interface="wl_data_source" allow-null="true" summary="data source for the eventual transfer"/>
+            <arg name="origin" type="object" interface="wl_surface" summary="surface where the drag originates"/>
+            <arg name="icon" type="object" interface="wl_surface" allow-null="true" summary="drag-and-drop icon surface"/>
             <arg name="serial" type="uint" summary="serial number of the implicit grab on the origin"/>
         </request>
 
@@ -514,13 +514,13 @@
 
                 To unset the selection, set the source to NULL.
             </description>
-            <arg name="source" type="object" interface="gr_data_source" allow-null="true" summary="data source for the selection"/>
+            <arg name="source" type="object" interface="wl_data_source" allow-null="true" summary="data source for the selection"/>
             <arg name="serial" type="uint" summary="serial number of the event that triggered this request"/>
         </request>
 
         <event name="data_offer">
-            <description summary="introduce a new gr_data_offer">
-                The data_offer event introduces a new gr_data_offer object,
+            <description summary="introduce a new wl_data_offer">
+                The data_offer event introduces a new wl_data_offer object,
                 which will subsequently be used in either the
                 data_device.enter event (for drag-and-drop) or the
                 data_device.selection event (for selections).  Immediately
@@ -528,7 +528,7 @@
                 object will send out data_offer.offer events to describe the
                 mime types it offers.
             </description>
-            <arg name="id" type="new_id" interface="gr_data_offer" summary="the new data_offer object"/>
+            <arg name="id" type="new_id" interface="wl_data_offer" summary="the new data_offer object"/>
         </event>
 
         <event name="enter">
@@ -539,10 +539,10 @@
                 coordinates.
             </description>
             <arg name="serial" type="uint" summary="serial number of the enter event"/>
-            <arg name="surface" type="object" interface="gr_surface" summary="client surface entered"/>
+            <arg name="surface" type="object" interface="wl_surface" summary="client surface entered"/>
             <arg name="x" type="fixed" summary="surface-local x coordinate"/>
             <arg name="y" type="fixed" summary="surface-local y coordinate"/>
-            <arg name="id" type="object" interface="gr_data_offer" allow-null="true"
+            <arg name="id" type="object" interface="wl_data_offer" allow-null="true"
                  summary="source data_offer object"/>
         </event>
 
@@ -550,7 +550,7 @@
             <description summary="end drag-and-drop session">
                 This event is sent when the drag-and-drop pointer leaves the
                 surface and the session ends.  The client must destroy the
-                gr_data_offer introduced at enter time at this point.
+                wl_data_offer introduced at enter time at this point.
             </description>
         </event>
 
@@ -572,14 +572,14 @@
                 because the implicit grab is removed.
 
                 The drag-and-drop destination is expected to honor the last action
-                received through gr_data_offer.action, if the resulting action is
+                received through wl_data_offer.action, if the resulting action is
                 "copy" or "move", the destination can still perform
-                gr_data_offer.receive requests, and is expected to end all
-                transfers with a gr_data_offer.finish request.
+                wl_data_offer.receive requests, and is expected to end all
+                transfers with a wl_data_offer.finish request.
 
                 If the resulting action is "ask", the action will not be considered
                 final. The drag-and-drop destination is expected to perform one last
-                gr_data_offer.set_actions request, or gr_data_offer.destroy in order
+                wl_data_offer.set_actions request, or wl_data_offer.destroy in order
                 to cancel the operation.
             </description>
         </event>
@@ -587,7 +587,7 @@
         <event name="selection">
             <description summary="advertise new selection">
                 The selection event is sent out to notify the client of a new
-                gr_data_offer for the selection for this device.  The
+                wl_data_offer for the selection for this device.  The
                 data_device.data_offer and the data_offer.offer events are
                 sent out immediately before this event to introduce the data
                 offer object.  The selection event is sent to a client
@@ -598,7 +598,7 @@
                 destroy the previous selection data_offer, if any, upon receiving
                 this event.
             </description>
-            <arg name="id" type="object" interface="gr_data_offer" allow-null="true"
+            <arg name="id" type="object" interface="wl_data_offer" allow-null="true"
                  summary="selection data_offer object"/>
         </event>
 
@@ -611,33 +611,33 @@
         </request>
     </interface>
 
-    <interface name="gr_data_device_manager" version="3">
+    <interface name="wl_data_device_manager" version="3">
         <description summary="data transfer interface">
-            The gr_data_device_manager is a singleton global object that
+            The wl_data_device_manager is a singleton global object that
             provides access to inter-client data transfer mechanisms such as
             copy-and-paste and drag-and-drop.  These mechanisms are tied to
-            a gr_seat and this interface lets a client get a gr_data_device
-            corresponding to a gr_seat.
+            a wl_seat and this interface lets a client get a wl_data_device
+            corresponding to a wl_seat.
 
             Depending on the version bound, the objects created from the bound
-            gr_data_device_manager object will have different requirements for
-            functioning properly. See gr_data_source.set_actions,
-            gr_data_offer.accept and gr_data_offer.finish for details.
+            wl_data_device_manager object will have different requirements for
+            functioning properly. See wl_data_source.set_actions,
+            wl_data_offer.accept and wl_data_offer.finish for details.
         </description>
 
         <request name="create_data_source">
             <description summary="create a new data source">
                 Create a new data source.
             </description>
-            <arg name="id" type="new_id" interface="gr_data_source" summary="data source to create"/>
+            <arg name="id" type="new_id" interface="wl_data_source" summary="data source to create"/>
         </request>
 
         <request name="get_data_device">
             <description summary="create a new data device">
                 Create a new data device for a given seat.
             </description>
-            <arg name="id" type="new_id" interface="gr_data_device" summary="data device to create"/>
-            <arg name="seat" type="object" interface="gr_seat" summary="seat associated with the data device"/>
+            <arg name="id" type="new_id" interface="wl_data_device" summary="data device to create"/>
+            <arg name="seat" type="object" interface="wl_seat" summary="seat associated with the data device"/>
         </request>
 
         <!-- Version 3 additions -->
@@ -675,35 +675,35 @@
         </enum>
     </interface>
 
-    <interface name="gr_shell" version="1">
+    <interface name="wl_shell" version="1">
         <description summary="create desktop-style surfaces">
             This interface is implemented by servers that provide
             desktop-style user interfaces.
 
-            It allows clients to associate a gr_shell_surface with
+            It allows clients to associate a wl_shell_surface with
             a basic surface.
         </description>
 
         <enum name="error">
-            <entry name="role" value="0" summary="given gr_surface has another role"/>
+            <entry name="role" value="0" summary="given wl_surface has another role"/>
         </enum>
 
         <request name="get_shell_surface">
             <description summary="create a shell surface from a surface">
                 Create a shell surface for an existing surface. This gives
-                the gr_surface the role of a shell surface. If the gr_surface
+                the wl_surface the role of a shell surface. If the wl_surface
                 already has another role, it raises a protocol error.
 
                 Only one shell surface can be associated with a given surface.
             </description>
-            <arg name="id" type="new_id" interface="gr_shell_surface" summary="shell surface to create"/>
-            <arg name="surface" type="object" interface="gr_surface" summary="surface to be given the shell surface role"/>
+            <arg name="id" type="new_id" interface="wl_shell_surface" summary="shell surface to create"/>
+            <arg name="surface" type="object" interface="wl_surface" summary="surface to be given the shell surface role"/>
         </request>
     </interface>
 
-    <interface name="gr_shell_surface" version="1">
+    <interface name="wl_shell_surface" version="1">
         <description summary="desktop-style metadata interface">
-            An interface that may be implemented by a gr_surface, for
+            An interface that may be implemented by a wl_surface, for
             implementations that provide a desktop-style user interface.
 
             It provides requests to treat surfaces like toplevel, fullscreen
@@ -711,9 +711,9 @@
             metadata like title and class, etc.
 
             On the server side the object is automatically destroyed when
-            the related gr_surface is destroyed. On the client side,
-            gr_shell_surface_destroy() must be called before destroying
-            the gr_surface object.
+            the related wl_surface is destroyed. On the client side,
+            wl_shell_surface_destroy() must be called before destroying
+            the wl_surface object.
         </description>
 
         <request name="pong">
@@ -732,7 +732,7 @@
                 The server may ignore move requests depending on the state of
                 the surface (e.g. fullscreen or maximized).
             </description>
-            <arg name="seat" type="object" interface="gr_seat" summary="seat whose pointer is used"/>
+            <arg name="seat" type="object" interface="wl_seat" summary="seat whose pointer is used"/>
             <arg name="serial" type="uint" summary="serial number of the implicit grab on the pointer"/>
         </request>
 
@@ -762,7 +762,7 @@
                 The server may ignore resize requests depending on the state of
                 the surface (e.g. fullscreen or maximized).
             </description>
-            <arg name="seat" type="object" interface="gr_seat" summary="seat whose pointer is used"/>
+            <arg name="seat" type="object" interface="wl_seat" summary="seat whose pointer is used"/>
             <arg name="serial" type="uint" summary="serial number of the implicit grab on the pointer"/>
             <arg name="edges" type="uint" enum="resize" summary="which edge or corner is being dragged"/>
         </request>
@@ -793,7 +793,7 @@
 
                 The flags argument controls details of the transient behaviour.
             </description>
-            <arg name="parent" type="object" interface="gr_surface" summary="parent surface"/>
+            <arg name="parent" type="object" interface="wl_surface" summary="parent surface"/>
             <arg name="x" type="int" summary="surface-local x coordinate"/>
             <arg name="y" type="int" summary="surface-local y coordinate"/>
             <arg name="flags" type="uint" enum="transient" summary="transient surface behavior"/>
@@ -849,7 +849,7 @@
             </description>
             <arg name="method" type="uint" enum="fullscreen_method" summary="method for resolving size conflict"/>
             <arg name="framerate" type="uint" summary="framerate in mHz"/>
-            <arg name="output" type="object" interface="gr_output" allow-null="true"
+            <arg name="output" type="object" interface="wl_output" allow-null="true"
                  summary="output on which the surface is to be fullscreen"/>
         </request>
 
@@ -875,9 +875,9 @@
                 corner of the surface relative to the upper left corner of the
                 parent surface, in surface-local coordinates.
             </description>
-            <arg name="seat" type="object" interface="gr_seat" summary="seat whose pointer is used"/>
+            <arg name="seat" type="object" interface="wl_seat" summary="seat whose pointer is used"/>
             <arg name="serial" type="uint" summary="serial number of the implicit grab on the pointer"/>
-            <arg name="parent" type="object" interface="gr_surface" summary="parent surface"/>
+            <arg name="parent" type="object" interface="wl_surface" summary="parent surface"/>
             <arg name="x" type="int" summary="surface-local x coordinate"/>
             <arg name="y" type="int" summary="surface-local y coordinate"/>
             <arg name="flags" type="uint" enum="transient" summary="transient surface behavior"/>
@@ -904,7 +904,7 @@
 
                 The details depend on the compositor implementation.
             </description>
-            <arg name="output" type="object" interface="gr_output" allow-null="true"
+            <arg name="output" type="object" interface="wl_output" allow-null="true"
                  summary="output on which the surface is to be maximized"/>
         </request>
 
@@ -975,7 +975,7 @@
         </event>
     </interface>
 
-    <interface name="gr_surface" version="4">
+    <interface name="wl_surface" version="4">
         <description summary="an onscreen surface">
             A surface is a rectangular area that is displayed on the screen.
             It has a location, size and pixel contents.
@@ -987,40 +987,40 @@
 
             A surface without a "role" is fairly useless: a compositor does
             not know where, when or how to present it. The role is the
-            purpose of a gr_surface. Examples of roles are a cursor for a
-            pointer (as set by gr_pointer.set_cursor), a drag icon
-            (gr_data_device.start_drag), a sub-surface
-            (gr_subcompositor.get_subsurface), and a window as defined by a
-            shell protocol (e.g. gr_shell.get_shell_surface).
+            purpose of a wl_surface. Examples of roles are a cursor for a
+            pointer (as set by wl_pointer.set_cursor), a drag icon
+            (wl_data_device.start_drag), a sub-surface
+            (wl_subcompositor.get_subsurface), and a window as defined by a
+            shell protocol (e.g. wl_shell.get_shell_surface).
 
             A surface can have only one role at a time. Initially a
-            gr_surface does not have a role. Once a gr_surface is given a
+            wl_surface does not have a role. Once a wl_surface is given a
             role, it is set permanently for the whole lifetime of the
-            gr_surface object. Giving the current role again is allowed,
+            wl_surface object. Giving the current role again is allowed,
             unless explicitly forbidden by the relevant interface
             specification.
 
             Surface roles are given by requests in other interfaces such as
-            gr_pointer.set_cursor. The request should explicitly mention
-            that this request gives a role to a gr_surface. Often, this
+            wl_pointer.set_cursor. The request should explicitly mention
+            that this request gives a role to a wl_surface. Often, this
             request also creates a new protocol object that represents the
-            role and adds additional functionality to gr_surface. When a
-            client wants to destroy a gr_surface, they must destroy this 'role
-            object' before the gr_surface.
+            role and adds additional functionality to wl_surface. When a
+            client wants to destroy a wl_surface, they must destroy this 'role
+            object' before the wl_surface.
 
             Destroying the role object does not remove the role from the
-            gr_surface, but it may stop the gr_surface from "playing the role".
-            For instance, if a gr_subsurface object is destroyed, the gr_surface
+            wl_surface, but it may stop the wl_surface from "playing the role".
+            For instance, if a wl_subsurface object is destroyed, the wl_surface
             it was created for will be unmapped and forget its position and
-            z-order. It is allowed to create a gr_subsurface for the same
-            gr_surface again, but it is not allowed to use the gr_surface as
+            z-order. It is allowed to create a wl_subsurface for the same
+            wl_surface again, but it is not allowed to use the wl_surface as
             a cursor (cursor is a different role than sub-surface, and role
             switching is not allowed).
         </description>
 
         <enum name="error">
-            <description summary="gr_surface error values">
-                These errors can be emitted in response to gr_surface requests.
+            <description summary="wl_surface error values">
+                These errors can be emitted in response to wl_surface requests.
             </description>
             <entry name="invalid_scale" value="0" summary="buffer scale value is invalid"/>
             <entry name="invalid_transform" value="1" summary="buffer transform value is invalid"/>
@@ -1047,34 +1047,34 @@
                 x and y, combined with the new surface size define in which
                 directions the surface's size changes.
 
-                Surface contents are double-buffered state, see gr_surface.commit.
+                Surface contents are double-buffered state, see wl_surface.commit.
 
                 The initial surface contents are void; there is no content.
-                gr_surface.attach assigns the given gr_buffer as the pending
-                gr_buffer. gr_surface.commit makes the pending gr_buffer the new
+                wl_surface.attach assigns the given wl_buffer as the pending
+                wl_buffer. wl_surface.commit makes the pending wl_buffer the new
                 surface contents, and the size of the surface becomes the size
-                calculated from the gr_buffer, as described above. After commit,
+                calculated from the wl_buffer, as described above. After commit,
                 there is no pending buffer until the next attach.
 
-                Committing a pending gr_buffer allows the compositor to read the
-                pixels in the gr_buffer. The compositor may access the pixels at
-                any time after the gr_surface.commit request. When the compositor
+                Committing a pending wl_buffer allows the compositor to read the
+                pixels in the wl_buffer. The compositor may access the pixels at
+                any time after the wl_surface.commit request. When the compositor
                 will not access the pixels anymore, it will send the
-                gr_buffer.release event. Only after receiving gr_buffer.release,
-                the client may reuse the gr_buffer. A gr_buffer that has been
+                wl_buffer.release event. Only after receiving wl_buffer.release,
+                the client may reuse the wl_buffer. A wl_buffer that has been
                 attached and then replaced by another attach instead of committed
                 will not receive a release event, and is not used by the
                 compositor.
 
-                Destroying the gr_buffer after gr_buffer.release does not change
+                Destroying the wl_buffer after wl_buffer.release does not change
                 the surface contents. However, if the client destroys the
-                gr_buffer before receiving the gr_buffer.release event, the surface
+                wl_buffer before receiving the wl_buffer.release event, the surface
                 contents become undefined immediately.
 
-                If gr_surface.attach is sent with a NULL gr_buffer, the
-                following gr_surface.commit will remove the surface content.
+                If wl_surface.attach is sent with a NULL wl_buffer, the
+                following wl_surface.commit will remove the surface content.
             </description>
-            <arg name="buffer" type="object" interface="gr_buffer" allow-null="true"
+            <arg name="buffer" type="object" interface="wl_buffer" allow-null="true"
                  summary="buffer of surface contents"/>
             <arg name="x" type="int" summary="surface-local x coordinate"/>
             <arg name="y" type="int" summary="surface-local y coordinate"/>
@@ -1087,20 +1087,20 @@
                 the surface therefore needs to be repainted. The compositor
                 ignores the parts of the damage that fall outside of the surface.
 
-                Damage is double-buffered state, see gr_surface.commit.
+                Damage is double-buffered state, see wl_surface.commit.
 
                 The damage rectangle is specified in surface-local coordinates,
                 where x and y specify the upper left corner of the damage rectangle.
 
                 The initial value for pending damage is empty: no damage.
-                gr_surface.damage adds pending damage: the new pending damage
+                wl_surface.damage adds pending damage: the new pending damage
                 is the union of old pending damage and the given rectangle.
 
-                gr_surface.commit assigns pending damage as the current damage,
+                wl_surface.commit assigns pending damage as the current damage,
                 and clears pending damage. The server will clear the current
                 damage as it repaints the surface.
 
-                Alternatively, damage can be posted with gr_surface.damage_buffer
+                Alternatively, damage can be posted with wl_surface.damage_buffer
                 which uses buffer coordinates instead of surface coordinates,
                 and is probably the preferred and intuitive way of doing this.
             </description>
@@ -1116,15 +1116,15 @@
                 frame, by creating a frame callback. This is useful for throttling
                 redrawing operations, and driving animations.
 
-                When a client is animating on a gr_surface, it can use the 'frame'
+                When a client is animating on a wl_surface, it can use the 'frame'
                 request to get notified when it is a good time to draw and commit the
                 next frame of animation. If the client commits an update earlier than
                 that, it is likely that some updates will not make it to the display,
                 and the client is wasting resources by drawing too often.
 
-                The frame request will take effect on the next gr_surface.commit.
+                The frame request will take effect on the next wl_surface.commit.
                 The notification will only be posted for one frame unless
-                requested again. For a gr_surface, the notifications are posted in
+                requested again. For a wl_surface, the notifications are posted in
                 the order the frame requests were committed.
 
                 The server must send the notifications so that a client
@@ -1145,7 +1145,7 @@
                 The callback_data passed in the callback is the current time, in
                 milliseconds, with an undefined base.
             </description>
-            <arg name="callback" type="new_id" interface="gr_callback" summary="callback object for the frame request"/>
+            <arg name="callback" type="new_id" interface="wl_callback" summary="callback object for the frame request"/>
         </request>
 
         <request name="set_opaque_region">
@@ -1164,18 +1164,18 @@
                 The compositor ignores the parts of the opaque region that fall
                 outside of the surface.
 
-                Opaque region is double-buffered state, see gr_surface.commit.
+                Opaque region is double-buffered state, see wl_surface.commit.
 
-                gr_surface.set_opaque_region changes the pending opaque region.
-                gr_surface.commit copies the pending region to the current region.
+                wl_surface.set_opaque_region changes the pending opaque region.
+                wl_surface.commit copies the pending region to the current region.
                 Otherwise, the pending and current regions are never changed.
 
                 The initial value for an opaque region is empty. Setting the pending
-                opaque region has copy semantics, and the gr_region object can be
-                destroyed immediately. A NULL gr_region causes the pending opaque
+                opaque region has copy semantics, and the wl_region object can be
+                destroyed immediately. A NULL wl_region causes the pending opaque
                 region to be set to empty.
             </description>
-            <arg name="region" type="object" interface="gr_region" allow-null="true"
+            <arg name="region" type="object" interface="wl_region" allow-null="true"
                  summary="opaque region of the surface"/>
         </request>
 
@@ -1190,21 +1190,21 @@
 
                 The input region is specified in surface-local coordinates.
 
-                Input region is double-buffered state, see gr_surface.commit.
+                Input region is double-buffered state, see wl_surface.commit.
 
-                gr_surface.set_input_region changes the pending input region.
-                gr_surface.commit copies the pending region to the current region.
+                wl_surface.set_input_region changes the pending input region.
+                wl_surface.commit copies the pending region to the current region.
                 Otherwise the pending and current regions are never changed,
                 except cursor and icon surfaces are special cases, see
-                gr_pointer.set_cursor and gr_data_device.start_drag.
+                wl_pointer.set_cursor and wl_data_device.start_drag.
 
                 The initial value for an input region is infinite. That means the
                 whole surface will accept input. Setting the pending input region
-                has copy semantics, and the gr_region object can be destroyed
-                immediately. A NULL gr_region causes the input region to be set
+                has copy semantics, and the wl_region object can be destroyed
+                immediately. A NULL wl_region causes the input region to be set
                 to infinite.
             </description>
-            <arg name="region" type="object" interface="gr_region" allow-null="true"
+            <arg name="region" type="object" interface="wl_region" allow-null="true"
                  summary="input region of the surface"/>
         </request>
 
@@ -1217,10 +1217,10 @@
                 state. After commit, the new pending state is as documented for each
                 related request.
 
-                On commit, a pending gr_buffer is applied first, and all other state
+                On commit, a pending wl_buffer is applied first, and all other state
                 second. This means that all coordinates in double-buffered state are
-                relative to the new gr_buffer coming into use, except for
-                gr_surface.attach itself. If there is no pending gr_buffer, the
+                relative to the new wl_buffer coming into use, except for
+                wl_surface.attach itself. If there is no pending wl_buffer, the
                 coordinates are relative to the current surface contents.
 
                 All requests that need a commit to become effective are documented
@@ -1238,7 +1238,7 @@
 
                 Note that a surface may be overlapping with zero or more outputs.
             </description>
-            <arg name="output" type="object" interface="gr_output" summary="output entered by the surface"/>
+            <arg name="output" type="object" interface="wl_output" summary="output entered by the surface"/>
         </event>
 
         <event name="leave">
@@ -1247,7 +1247,7 @@
                 results in it no longer having any part of it within the scanout region
                 of an output.
             </description>
-            <arg name="output" type="object" interface="gr_output" summary="output left by the surface"/>
+            <arg name="output" type="object" interface="wl_output" summary="output left by the surface"/>
         </event>
 
         <!-- Version 2 additions -->
@@ -1257,14 +1257,14 @@
                 This request sets an optional transformation on how the compositor
                 interprets the contents of the buffer attached to the surface. The
                 accepted values for the transform parameter are the values for
-                gr_output.transform.
+                wl_output.transform.
 
-                Buffer transform is double-buffered state, see gr_surface.commit.
+                Buffer transform is double-buffered state, see wl_surface.commit.
 
                 A newly created surface has its buffer transformation set to normal.
 
-                gr_surface.set_buffer_transform changes the pending buffer
-                transformation. gr_surface.commit copies the pending buffer
+                wl_surface.set_buffer_transform changes the pending buffer
+                transformation. wl_surface.commit copies the pending buffer
                 transformation to the current one. Otherwise, the pending and current
                 values are never changed.
 
@@ -1281,10 +1281,10 @@
                 of the buffer will become the surface width.
 
                 If transform is not one of the values from the
-                gr_output.transform enum the invalid_transform protocol error
+                wl_output.transform enum the invalid_transform protocol error
                 is raised.
             </description>
-            <arg name="transform" type="int" enum="gr_output.transform"
+            <arg name="transform" type="int" enum="wl_output.transform"
                  summary="transform for interpreting buffer contents"/>
         </request>
 
@@ -1295,12 +1295,12 @@
                 This request sets an optional scaling factor on how the compositor
                 interprets the contents of the buffer attached to the window.
 
-                Buffer scale is double-buffered state, see gr_surface.commit.
+                Buffer scale is double-buffered state, see wl_surface.commit.
 
                 A newly created surface has its buffer scale set to 1.
 
-                gr_surface.set_buffer_scale changes the pending buffer scale.
-                gr_surface.commit copies the pending buffer scale to the current one.
+                wl_surface.set_buffer_scale changes the pending buffer scale.
+                wl_surface.commit copies the pending buffer scale to the current one.
                 Otherwise, the pending and current values are never changed.
 
                 The purpose of this request is to allow clients to supply higher
@@ -1328,20 +1328,20 @@
                 the surface therefore needs to be repainted. The compositor
                 ignores the parts of the damage that fall outside of the surface.
 
-                Damage is double-buffered state, see gr_surface.commit.
+                Damage is double-buffered state, see wl_surface.commit.
 
                 The damage rectangle is specified in buffer coordinates,
                 where x and y specify the upper left corner of the damage rectangle.
 
                 The initial value for pending damage is empty: no damage.
-                gr_surface.damage_buffer adds pending damage: the new pending
+                wl_surface.damage_buffer adds pending damage: the new pending
                 damage is the union of old pending damage and the given rectangle.
 
-                gr_surface.commit assigns pending damage as the current damage,
+                wl_surface.commit assigns pending damage as the current damage,
                 and clears pending damage. The server will clear the current
                 damage as it repaints the surface.
 
-                This request differs from gr_surface.damage in only one way - it
+                This request differs from wl_surface.damage in only one way - it
                 takes damage in buffer coordinates instead of surface-local
                 coordinates. While this generally is more intuitive than surface
                 coordinates, it is especially desirable when using wp_viewport
@@ -1351,10 +1351,10 @@
                 Note: Because buffer transformation changes and damage requests may
                 be interleaved in the protocol stream, it is impossible to determine
                 the actual mapping between surface and buffer damage until
-                gr_surface.commit time. Therefore, compositors wishing to take both
+                wl_surface.commit time. Therefore, compositors wishing to take both
                 kinds of damage into account will have to accumulate damage from the
                 two requests separately and only transform from one to the other
-                after receiving the gr_surface.commit.
+                after receiving the wl_surface.commit.
             </description>
             <arg name="x" type="int" summary="buffer-local x coordinate"/>
             <arg name="y" type="int" summary="buffer-local y coordinate"/>
@@ -1363,7 +1363,7 @@
         </request>
     </interface>
 
-    <interface name="gr_seat" version="6">
+    <interface name="wl_seat" version="6">
         <description summary="group of input devices">
             A seat is a group of keyboards, pointer and touch devices. This
             object is published as a global during start up, or when such a
@@ -1388,24 +1388,24 @@
                 enum containing the complete set of capabilities this seat has.
 
                 When the pointer capability is added, a client may create a
-                gr_pointer object using the gr_seat.get_pointer request. This object
+                wl_pointer object using the wl_seat.get_pointer request. This object
                 will receive pointer events until the capability is removed in the
                 future.
 
                 When the pointer capability is removed, a client should destroy the
-                gr_pointer objects associated with the seat where the capability was
-                removed, using the gr_pointer.release request. No further pointer
+                wl_pointer objects associated with the seat where the capability was
+                removed, using the wl_pointer.release request. No further pointer
                 events will be received on these objects.
 
                 In some compositors, if a seat regains the pointer capability and a
-                client has a previously obtained gr_pointer object of version 4 or
+                client has a previously obtained wl_pointer object of version 4 or
                 less, that object may start sending pointer events again. This
                 behavior is considered a misinterpretation of the intended behavior
-                and must not be relied upon by the client. gr_pointer objects of
+                and must not be relied upon by the client. wl_pointer objects of
                 version 5 or later must not send events if created before the most
                 recent event notifying the client of an added pointer capability.
 
-                The above behavior also applies to gr_keyboard and gr_touch with the
+                The above behavior also applies to wl_keyboard and wl_touch with the
                 keyboard and touch capabilities, respectively.
             </description>
             <arg name="capabilities" type="uint" enum="capability" summary="capabilities of the seat"/>
@@ -1413,7 +1413,7 @@
 
         <request name="get_pointer">
             <description summary="return pointer object">
-                The ID provided will be initialized to the gr_pointer interface
+                The ID provided will be initialized to the wl_pointer interface
                 for this seat.
 
                 This request only takes effect if the seat has the pointer
@@ -1421,12 +1421,12 @@
                 It is a protocol violation to issue this request on a seat that has
                 never had the pointer capability.
             </description>
-            <arg name="id" type="new_id" interface="gr_pointer" summary="seat pointer"/>
+            <arg name="id" type="new_id" interface="wl_pointer" summary="seat pointer"/>
         </request>
 
         <request name="get_keyboard">
             <description summary="return keyboard object">
-                The ID provided will be initialized to the gr_keyboard interface
+                The ID provided will be initialized to the wl_keyboard interface
                 for this seat.
 
                 This request only takes effect if the seat has the keyboard
@@ -1434,12 +1434,12 @@
                 It is a protocol violation to issue this request on a seat that has
                 never had the keyboard capability.
             </description>
-            <arg name="id" type="new_id" interface="gr_keyboard" summary="seat keyboard"/>
+            <arg name="id" type="new_id" interface="wl_keyboard" summary="seat keyboard"/>
         </request>
 
         <request name="get_touch">
             <description summary="return touch object">
-                The ID provided will be initialized to the gr_touch interface
+                The ID provided will be initialized to the wl_touch interface
                 for this seat.
 
                 This request only takes effect if the seat has the touch
@@ -1447,7 +1447,7 @@
                 It is a protocol violation to issue this request on a seat that has
                 never had the touch capability.
             </description>
-            <arg name="id" type="new_id" interface="gr_touch" summary="seat touch interface"/>
+            <arg name="id" type="new_id" interface="wl_touch" summary="seat touch interface"/>
         </request>
 
         <!-- Version 2 additions -->
@@ -1472,20 +1472,20 @@
 
     </interface>
 
-    <interface name="gr_pointer" version="6">
+    <interface name="wl_pointer" version="6">
         <description summary="pointer input device">
-            The gr_pointer interface represents one or more input devices,
+            The wl_pointer interface represents one or more input devices,
             such as mice, which control the pointer location and pointer_focus
             of a seat.
 
-            The gr_pointer interface generates motion, enter and leave
+            The wl_pointer interface generates motion, enter and leave
             events for the surfaces that the pointer is located over,
             and button and axis events for button presses, button releases
             and scrolling.
         </description>
 
         <enum name="error">
-            <entry name="role" value="0" summary="given gr_surface has another role"/>
+            <entry name="role" value="0" summary="given wl_surface has another role"/>
         </enum>
 
         <request name="set_cursor">
@@ -1510,20 +1510,20 @@
                 On surface.attach requests to the pointer surface, hotspot_x
                 and hotspot_y are decremented by the x and y parameters
                 passed to the request. Attach must be confirmed by
-                gr_surface.commit as usual.
+                wl_surface.commit as usual.
 
                 The hotspot can also be updated by passing the currently set
                 pointer surface to this request with new values for hotspot_x
                 and hotspot_y.
 
-                The current and pending input regions of the gr_surface are
-                cleared, and gr_surface.set_input_region is ignored until the
-                gr_surface is no longer used as the cursor. When the use as a
+                The current and pending input regions of the wl_surface are
+                cleared, and wl_surface.set_input_region is ignored until the
+                wl_surface is no longer used as the cursor. When the use as a
                 cursor ends, the current and pending input regions become
-                undefined, and the gr_surface is unmapped.
+                undefined, and the wl_surface is unmapped.
             </description>
             <arg name="serial" type="uint" summary="serial number of the enter event"/>
-            <arg name="surface" type="object" interface="gr_surface" allow-null="true"
+            <arg name="surface" type="object" interface="wl_surface" allow-null="true"
                  summary="pointer surface"/>
             <arg name="hotspot_x" type="int" summary="surface-local x coordinate"/>
             <arg name="hotspot_y" type="int" summary="surface-local y coordinate"/>
@@ -1539,7 +1539,7 @@
                 an appropriate pointer image with the set_cursor request.
             </description>
             <arg name="serial" type="uint" summary="serial number of the enter event"/>
-            <arg name="surface" type="object" interface="gr_surface" summary="surface entered by the pointer"/>
+            <arg name="surface" type="object" interface="wl_surface" summary="surface entered by the pointer"/>
             <arg name="surface_x" type="fixed" summary="surface-local x coordinate"/>
             <arg name="surface_y" type="fixed" summary="surface-local y coordinate"/>
         </event>
@@ -1553,7 +1553,7 @@
                 for the new focus.
             </description>
             <arg name="serial" type="uint" summary="serial number of the leave event"/>
-            <arg name="surface" type="object" interface="gr_surface" summary="surface left by the pointer"/>
+            <arg name="surface" type="object" interface="wl_surface" summary="surface left by the pointer"/>
         </event>
 
         <event name="motion">
@@ -1639,7 +1639,7 @@
                 use the pointer object anymore.
 
                 This request destroys the pointer proxy object, so clients must not call
-                gr_pointer_destroy() after using this request.
+                wl_pointer_destroy() after using this request.
             </description>
         </request>
 
@@ -1651,35 +1651,35 @@
                 A client is expected to accumulate the data in all events within the
                 frame before proceeding.
 
-                All gr_pointer events before a gr_pointer.frame event belong
+                All wl_pointer events before a wl_pointer.frame event belong
                 logically together. For example, in a diagonal scroll motion the
-                compositor will send an optional gr_pointer.axis_source event, two
-                gr_pointer.axis events (horizontal and vertical) and finally a
-                gr_pointer.frame event. The client may use this information to
+                compositor will send an optional wl_pointer.axis_source event, two
+                wl_pointer.axis events (horizontal and vertical) and finally a
+                wl_pointer.frame event. The client may use this information to
                 calculate a diagonal vector for scrolling.
 
-                When multiple gr_pointer.axis events occur within the same frame,
+                When multiple wl_pointer.axis events occur within the same frame,
                 the motion vector is the combined motion of all events.
-                When a gr_pointer.axis and a gr_pointer.axis_stop event occur within
+                When a wl_pointer.axis and a wl_pointer.axis_stop event occur within
                 the same frame, this indicates that axis movement in one axis has
                 stopped but continues in the other axis.
-                When multiple gr_pointer.axis_stop events occur within the same
+                When multiple wl_pointer.axis_stop events occur within the same
                 frame, this indicates that these axes stopped in the same instance.
 
-                A gr_pointer.frame event is sent for every logical event group,
-                even if the group only contains a single gr_pointer event.
+                A wl_pointer.frame event is sent for every logical event group,
+                even if the group only contains a single wl_pointer event.
                 Specifically, a client may get a sequence: motion, frame, button,
                 frame, axis, frame, axis_stop, frame.
 
-                The gr_pointer.enter and gr_pointer.leave events are logical events
+                The wl_pointer.enter and wl_pointer.leave events are logical events
                 generated by the compositor and not the hardware. These events are
-                also grouped by a gr_pointer.frame. When a pointer moves from one
+                also grouped by a wl_pointer.frame. When a pointer moves from one
                 surface to another, a compositor should group the
-                gr_pointer.leave event within the same gr_pointer.frame.
-                However, a client must not rely on gr_pointer.leave and
-                gr_pointer.enter being in the same gr_pointer.frame.
-                Compositor-specific policies may require the gr_pointer.leave and
-                gr_pointer.enter event being split across multiple gr_pointer.frame
+                wl_pointer.leave event within the same wl_pointer.frame.
+                However, a client must not rely on wl_pointer.leave and
+                wl_pointer.enter being in the same wl_pointer.frame.
+                Compositor-specific policies may require the wl_pointer.leave and
+                wl_pointer.enter event being split across multiple wl_pointer.frame
                 groups.
             </description>
         </event>
@@ -1714,16 +1714,16 @@
                 Source information for scroll and other axes.
 
                 This event does not occur on its own. It is sent before a
-                gr_pointer.frame event and carries the source information for
+                wl_pointer.frame event and carries the source information for
                 all events within that frame.
 
                 The source specifies how this event was generated. If the source is
-                gr_pointer.axis_source.finger, a gr_pointer.axis_stop event will be
+                wl_pointer.axis_source.finger, a wl_pointer.axis_stop event will be
                 sent when the user lifts the finger off the device.
 
-                If the source is gr_pointer.axis_source.wheel,
-                gr_pointer.axis_source.wheel_tilt or
-                gr_pointer.axis_source.continuous, a gr_pointer.axis_stop event may
+                If the source is wl_pointer.axis_source.wheel,
+                wl_pointer.axis_source.wheel_tilt or
+                wl_pointer.axis_source.continuous, a wl_pointer.axis_stop event may
                 or may not be sent. Whether a compositor sends an axis_stop event
                 for these sources is hardware-specific and implementation-dependent;
                 clients must not rely on receiving an axis_stop event for these
@@ -1732,9 +1732,9 @@
 
                 This event is optional. If the source is unknown for a particular
                 axis event sequence, no event is sent.
-                Only one gr_pointer.axis_source event is permitted per frame.
+                Only one wl_pointer.axis_source event is permitted per frame.
 
-                The order of gr_pointer.axis_discrete and gr_pointer.axis_source is
+                The order of wl_pointer.axis_discrete and wl_pointer.axis_source is
                 not guaranteed.
             </description>
             <arg name="axis_source" type="uint" enum="axis_source" summary="source of the axis event"/>
@@ -1744,18 +1744,18 @@
             <description summary="axis stop event">
                 Stop notification for scroll and other axes.
 
-                For some gr_pointer.axis_source types, a gr_pointer.axis_stop event
+                For some wl_pointer.axis_source types, a wl_pointer.axis_stop event
                 is sent to notify a client that the axis sequence has terminated.
                 This enables the client to implement kinetic scrolling.
-                See the gr_pointer.axis_source documentation for information on when
+                See the wl_pointer.axis_source documentation for information on when
                 this event may be generated.
 
-                Any gr_pointer.axis events with the same axis_source after this
+                Any wl_pointer.axis events with the same axis_source after this
                 event should be considered as the start of a new axis motion.
 
                 The timestamp is to be interpreted identical to the timestamp in the
-                gr_pointer.axis event. The timestamp value may be the same as a
-                preceding gr_pointer.axis event.
+                wl_pointer.axis event. The timestamp value may be the same as a
+                preceding wl_pointer.axis event.
             </description>
             <arg name="time" type="uint" summary="timestamp with millisecond granularity"/>
             <arg name="axis" type="uint" enum="axis" summary="the axis stopped with this event"/>
@@ -1765,14 +1765,14 @@
             <description summary="axis click event">
                 Discrete step information for scroll and other axes.
 
-                This event carries the axis value of the gr_pointer.axis event in
+                This event carries the axis value of the wl_pointer.axis event in
                 discrete steps (e.g. mouse wheel clicks).
 
                 This event does not occur on its own, it is coupled with a
-                gr_pointer.axis event that represents this axis value on a
+                wl_pointer.axis event that represents this axis value on a
                 continuous scale. The protocol guarantees that each axis_discrete
                 event is always followed by exactly one axis event with the same
-                axis number within the same gr_pointer.frame. Note that the protocol
+                axis number within the same wl_pointer.frame. Note that the protocol
                 allows for other events to occur between the axis_discrete and
                 its coupled axis event, including other axis_discrete or axis
                 events.
@@ -1787,7 +1787,7 @@
                 The axis number is identical to the axis number in the associated
                 axis event.
 
-                The order of gr_pointer.axis_discrete and gr_pointer.axis_source is
+                The order of wl_pointer.axis_discrete and wl_pointer.axis_source is
                 not guaranteed.
             </description>
             <arg name="axis" type="uint" enum="axis" summary="axis type"/>
@@ -1795,16 +1795,16 @@
         </event>
     </interface>
 
-    <interface name="gr_keyboard" version="6">
+    <interface name="wl_keyboard" version="6">
         <description summary="keyboard input device">
-            The gr_keyboard interface represents one or more keyboards
+            The wl_keyboard interface represents one or more keyboards
             associated with a seat.
         </description>
 
         <enum name="keymap_format">
             <description summary="keyboard mapping format">
                 This specifies the format of the keymap provided to the
-                client with the gr_keyboard.keymap event.
+                client with the wl_keyboard.keymap event.
             </description>
             <entry name="no_keymap" value="0"
                    summary="no keymap; client must understand how to interpret the raw keycode"/>
@@ -1828,7 +1828,7 @@
                 surface.
             </description>
             <arg name="serial" type="uint" summary="serial number of the enter event"/>
-            <arg name="surface" type="object" interface="gr_surface" summary="surface gaining keyboard focus"/>
+            <arg name="surface" type="object" interface="wl_surface" summary="surface gaining keyboard focus"/>
             <arg name="keys" type="array" summary="the currently pressed keys"/>
         </event>
 
@@ -1841,7 +1841,7 @@
                 for the new focus.
             </description>
             <arg name="serial" type="uint" summary="serial number of the leave event"/>
-            <arg name="surface" type="object" interface="gr_surface" summary="surface that lost keyboard focus"/>
+            <arg name="surface" type="object" interface="wl_surface" summary="surface that lost keyboard focus"/>
         </event>
 
         <enum name="key_state">
@@ -1888,7 +1888,7 @@
             <description summary="repeat rate and delay">
                 Informs the client about the keyboard's repeat rate and delay.
 
-                This event is sent as soon as the gr_keyboard object has been created,
+                This event is sent as soon as the wl_keyboard object has been created,
                 and is guaranteed to be received by the client before any key press
                 event.
 
@@ -1897,7 +1897,7 @@
 
                 This event can be sent later on as well with a new value if necessary,
                 so clients should continue listening for the event past the creation
-                of gr_keyboard.
+                of wl_keyboard.
             </description>
             <arg name="rate" type="int"
                  summary="the rate of repeating keys in characters per second"/>
@@ -1906,9 +1906,9 @@
         </event>
     </interface>
 
-    <interface name="gr_touch" version="6">
+    <interface name="wl_touch" version="6">
         <description summary="touchscreen input device">
-            The gr_touch interface represents a touchscreen
+            The wl_touch interface represents a touchscreen
             associated with a seat.
 
             Touch interactions can consist of one or more contacts.
@@ -1927,7 +1927,7 @@
             </description>
             <arg name="serial" type="uint" summary="serial number of the touch down event"/>
             <arg name="time" type="uint" summary="timestamp with millisecond granularity"/>
-            <arg name="surface" type="object" interface="gr_surface" summary="surface touched"/>
+            <arg name="surface" type="object" interface="wl_surface" summary="surface touched"/>
             <arg name="id" type="int" summary="the unique ID of this touch point"/>
             <arg name="x" type="fixed" summary="surface-local x coordinate"/>
             <arg name="y" type="fixed" summary="surface-local y coordinate"/>
@@ -1960,7 +1960,7 @@
                 A client is expected to accumulate the data in all events within the
                 frame before proceeding.
 
-                A gr_touch.frame terminates at least one event but otherwise no
+                A wl_touch.frame terminates at least one event but otherwise no
                 guarantee is provided about the set of events within a frame. A client
                 must assume that any state not updated in a frame is unchanged from the
                 previously known state.
@@ -1991,24 +1991,24 @@
                 Sent when a touchpoint has changed its shape.
 
                 This event does not occur on its own. It is sent before a
-                gr_touch.frame event and carries the new shape information for
+                wl_touch.frame event and carries the new shape information for
                 any previously reported, or new touch points of that frame.
 
-                Other events describing the touch point such as gr_touch.down,
-                gr_touch.motion or gr_touch.orientation may be sent within the
-                same gr_touch.frame. A client should treat these events as a single
-                logical touch point update. The order of gr_touch.shape,
-                gr_touch.orientation and gr_touch.motion is not guaranteed.
-                A gr_touch.down event is guaranteed to occur before the first
-                gr_touch.shape event for this touch ID but both events may occur within
-                the same gr_touch.frame.
+                Other events describing the touch point such as wl_touch.down,
+                wl_touch.motion or wl_touch.orientation may be sent within the
+                same wl_touch.frame. A client should treat these events as a single
+                logical touch point update. The order of wl_touch.shape,
+                wl_touch.orientation and wl_touch.motion is not guaranteed.
+                A wl_touch.down event is guaranteed to occur before the first
+                wl_touch.shape event for this touch ID but both events may occur within
+                the same wl_touch.frame.
 
                 A touchpoint shape is approximated by an ellipse through the major and
                 minor axis length. The major axis length describes the longer diameter
                 of the ellipse, while the minor axis length describes the shorter
                 diameter. Major and minor are orthogonal and both are specified in
                 surface-local coordinates. The center of the ellipse is always at the
-                touchpoint location as reported by gr_touch.down or gr_touch.move.
+                touchpoint location as reported by wl_touch.down or wl_touch.move.
 
                 This event is only sent by the compositor if the touch device supports
                 shape reports. The client has to make reasonable assumptions about the
@@ -2024,17 +2024,17 @@
                 Sent when a touchpoint has changed its orientation.
 
                 This event does not occur on its own. It is sent before a
-                gr_touch.frame event and carries the new shape information for
+                wl_touch.frame event and carries the new shape information for
                 any previously reported, or new touch points of that frame.
 
-                Other events describing the touch point such as gr_touch.down,
-                gr_touch.motion or gr_touch.shape may be sent within the
-                same gr_touch.frame. A client should treat these events as a single
-                logical touch point update. The order of gr_touch.shape,
-                gr_touch.orientation and gr_touch.motion is not guaranteed.
-                A gr_touch.down event is guaranteed to occur before the first
-                gr_touch.orientation event for this touch ID but both events may occur
-                within the same gr_touch.frame.
+                Other events describing the touch point such as wl_touch.down,
+                wl_touch.motion or wl_touch.shape may be sent within the
+                same wl_touch.frame. A client should treat these events as a single
+                logical touch point update. The order of wl_touch.shape,
+                wl_touch.orientation and wl_touch.motion is not guaranteed.
+                A wl_touch.down event is guaranteed to occur before the first
+                wl_touch.orientation event for this touch ID but both events may occur
+                within the same wl_touch.frame.
 
                 The orientation describes the clockwise angle of a touchpoint's major
                 axis to the positive surface y-axis and is normalized to the -180 to
@@ -2050,7 +2050,7 @@
         </event>
     </interface>
 
-    <interface name="gr_output" version="3">
+    <interface name="wl_output" version="3">
         <description summary="compositor output region">
             An output describes part of the compositor geometry.  The
             compositor works in the 'compositor coordinate system' and an
@@ -2145,8 +2145,8 @@
                 The size of a mode is given in physical hardware units of
                 the output device. This is not necessarily the same as
                 the output size in the global compositor space. For instance,
-                the output may be scaled, as described in gr_output.scale,
-                or transformed, as described in gr_output.transform.
+                the output may be scaled, as described in wl_output.scale,
+                or transformed, as described in wl_output.transform.
             </description>
             <arg name="flags" type="uint" enum="mode" summary="bitfield of mode flags"/>
             <arg name="width" type="int" summary="width of the mode in hardware units"/>
@@ -2182,7 +2182,7 @@
 
                 It is intended that scaling aware clients track the
                 current output of a surface, and if it is on a scaled
-                output it should use gr_surface.set_buffer_scale with
+                output it should use wl_surface.set_buffer_scale with
                 the scale of the output. That way the compositor can
                 avoid scaling the surface, and the client can supply
                 a higher detail image.
@@ -2200,7 +2200,7 @@
         </request>
     </interface>
 
-    <interface name="gr_region" version="1">
+    <interface name="wl_region" version="1">
         <description summary="region interface">
             A region object describes an area.
 
@@ -2235,10 +2235,10 @@
         </request>
     </interface>
 
-    <interface name="gr_subcompositor" version="1">
+    <interface name="wl_subcompositor" version="1">
         <description summary="sub-surface compositing">
             The global interface exposing sub-surface compositing capabilities.
-            A gr_surface, that has sub-surfaces associated, is called the
+            A wl_surface, that has sub-surfaces associated, is called the
             parent surface. Sub-surfaces can be arbitrarily nested and create
             a tree of sub-surfaces.
 
@@ -2247,13 +2247,13 @@
             sub-surfaces must always have a parent.
 
             A main surface with its sub-surfaces forms a (compound) window.
-            For window management purposes, this set of gr_surface objects is
+            For window management purposes, this set of wl_surface objects is
             to be considered as a single window, and it should also behave as
             such.
 
             The aim of sub-surfaces is to offload some of the compositing work
             within a window from clients to the compositor. A prime example is
-            a video player with decorations and video in separate gr_surface
+            a video player with decorations and video in separate wl_surface
             objects. This should allow the compositor to pass YUV video buffer
             processing to dedicated overlay hardware when possible.
         </description>
@@ -2262,7 +2262,7 @@
             <description summary="unbind from the subcompositor interface">
                 Informs the server that the client will not be using this
                 protocol object anymore. This does not affect any other
-                objects, gr_subsurface objects included.
+                objects, wl_subsurface objects included.
             </description>
         </request>
 
@@ -2275,51 +2275,51 @@
             <description summary="give a surface the role sub-surface">
                 Create a sub-surface interface for the given surface, and
                 associate it with the given parent surface. This turns a
-                plain gr_surface into a sub-surface.
+                plain wl_surface into a sub-surface.
 
                 The to-be sub-surface must not already have another role, and it
-                must not have an existing gr_subsurface object. Otherwise a protocol
+                must not have an existing wl_subsurface object. Otherwise a protocol
                 error is raised.
             </description>
-            <arg name="id" type="new_id" interface="gr_subsurface"
+            <arg name="id" type="new_id" interface="wl_subsurface"
                  summary="the new sub-surface object ID"/>
-            <arg name="surface" type="object" interface="gr_surface"
+            <arg name="surface" type="object" interface="wl_surface"
                  summary="the surface to be turned into a sub-surface"/>
-            <arg name="parent" type="object" interface="gr_surface"
+            <arg name="parent" type="object" interface="wl_surface"
                  summary="the parent surface"/>
         </request>
     </interface>
 
-    <interface name="gr_subsurface" version="1">
-        <description summary="sub-surface interface to a gr_surface">
-            An additional interface to a gr_surface object, which has been
+    <interface name="wl_subsurface" version="1">
+        <description summary="sub-surface interface to a wl_surface">
+            An additional interface to a wl_surface object, which has been
             made a sub-surface. A sub-surface has one parent surface. A
             sub-surface's size and position are not limited to that of the parent.
             Particularly, a sub-surface is not automatically clipped to its
             parent's area.
 
-            A sub-surface becomes mapped, when a non-NULL gr_buffer is applied
+            A sub-surface becomes mapped, when a non-NULL wl_buffer is applied
             and the parent surface is mapped. The order of which one happens
             first is irrelevant. A sub-surface is hidden if the parent becomes
-            hidden, or if a NULL gr_buffer is applied. These rules apply
+            hidden, or if a NULL wl_buffer is applied. These rules apply
             recursively through the tree of surfaces.
 
-            The behaviour of a gr_surface.commit request on a sub-surface
+            The behaviour of a wl_surface.commit request on a sub-surface
             depends on the sub-surface's mode. The possible modes are
             synchronized and desynchronized, see methods
-            gr_subsurface.set_sync and gr_subsurface.set_desync. Synchronized
-            mode caches the gr_surface state to be applied when the parent's
+            wl_subsurface.set_sync and wl_subsurface.set_desync. Synchronized
+            mode caches the wl_surface state to be applied when the parent's
             state gets applied, and desynchronized mode applies the pending
-            gr_surface state directly. A sub-surface is initially in the
+            wl_surface state directly. A sub-surface is initially in the
             synchronized mode.
 
             Sub-surfaces have also other kind of state, which is managed by
-            gr_subsurface requests, as opposed to gr_surface requests. This
+            wl_subsurface requests, as opposed to wl_surface requests. This
             state includes the sub-surface position relative to the parent
-            surface (gr_subsurface.set_position), and the stacking order of
-            the parent and its sub-surfaces (gr_subsurface.place_above and
+            surface (wl_subsurface.set_position), and the stacking order of
+            the parent and its sub-surfaces (wl_subsurface.place_above and
             .place_below). This state is applied when the parent surface's
-            gr_surface state is applied, regardless of the sub-surface's mode.
+            wl_surface state is applied, regardless of the sub-surface's mode.
             As the exception, set_sync and set_desync are effective immediately.
 
             The main surface can be thought to be always in desynchronized mode,
@@ -2332,30 +2332,30 @@
             synchronized mode, and then assume that all its child and grand-child
             sub-surfaces are synchronized, too, without explicitly setting them.
 
-            If the gr_surface associated with the gr_subsurface is destroyed, the
-            gr_subsurface object becomes inert. Note, that destroying either object
+            If the wl_surface associated with the wl_subsurface is destroyed, the
+            wl_subsurface object becomes inert. Note, that destroying either object
             takes effect immediately. If you need to synchronize the removal
             of a sub-surface to the parent surface update, unmap the sub-surface
-            first by attaching a NULL gr_buffer, update parent, and then destroy
+            first by attaching a NULL wl_buffer, update parent, and then destroy
             the sub-surface.
 
-            If the parent gr_surface object is destroyed, the sub-surface is
+            If the parent wl_surface object is destroyed, the sub-surface is
             unmapped.
         </description>
 
         <request name="destroy" type="destructor">
             <description summary="remove sub-surface interface">
-                The sub-surface interface is removed from the gr_surface object
+                The sub-surface interface is removed from the wl_surface object
                 that was turned into a sub-surface with a
-                gr_subcompositor.get_subsurface request. The gr_surface's association
-                to the parent is deleted, and the gr_surface loses its role as
-                a sub-surface. The gr_surface is unmapped.
+                wl_subcompositor.get_subsurface request. The wl_surface's association
+                to the parent is deleted, and the wl_surface loses its role as
+                a sub-surface. The wl_surface is unmapped.
             </description>
         </request>
 
         <enum name="error">
             <entry name="bad_surface" value="0"
-                   summary="gr_surface is not a sibling or the parent"/>
+                   summary="wl_surface is not a sibling or the parent"/>
         </enum>
 
         <request name="set_position">
@@ -2369,7 +2369,7 @@
                 The scheduled coordinates will take effect whenever the state of the
                 parent surface is applied. When this happens depends on whether the
                 parent surface is in synchronized mode or not. See
-                gr_subsurface.set_sync and gr_subsurface.set_desync for details.
+                wl_subsurface.set_sync and wl_subsurface.set_desync for details.
 
                 If more than one set_position request is invoked by the client before
                 the commit of the parent surface, the position of a new request always
@@ -2393,22 +2393,22 @@
                 applied immediately to a pending state. The final pending state is
                 copied to the active state the next time the state of the parent
                 surface is applied. When this happens depends on whether the parent
-                surface is in synchronized mode or not. See gr_subsurface.set_sync and
-                gr_subsurface.set_desync for details.
+                surface is in synchronized mode or not. See wl_subsurface.set_sync and
+                wl_subsurface.set_desync for details.
 
                 A new sub-surface is initially added as the top-most in the stack
                 of its siblings and parent.
             </description>
-            <arg name="sibling" type="object" interface="gr_surface"
+            <arg name="sibling" type="object" interface="wl_surface"
                  summary="the reference surface"/>
         </request>
 
         <request name="place_below">
             <description summary="restack the sub-surface">
                 The sub-surface is placed just below the reference surface.
-                See gr_subsurface.place_above.
+                See wl_subsurface.place_above.
             </description>
-            <arg name="sibling" type="object" interface="gr_surface"
+            <arg name="sibling" type="object" interface="wl_surface"
                  summary="the reference surface"/>
         </request>
 
@@ -2417,7 +2417,7 @@
                 Change the commit behaviour of the sub-surface to synchronized
                 mode, also described as the parent dependent mode.
 
-                In synchronized mode, gr_surface.commit on a sub-surface will
+                In synchronized mode, wl_surface.commit on a sub-surface will
                 accumulate the committed state in a cache, but the state will
                 not be applied and hence will not change the compositor output.
                 The cached state is applied to the sub-surface immediately after
@@ -2426,7 +2426,7 @@
                 Applying the cached state will invalidate the cache, so further
                 parent surface commits do not (re-)apply old state.
 
-                See gr_subsurface for the recursive effect of this mode.
+                See wl_subsurface for the recursive effect of this mode.
             </description>
         </request>
 
@@ -2435,19 +2435,19 @@
                 Change the commit behaviour of the sub-surface to desynchronized
                 mode, also described as independent or freely running mode.
 
-                In desynchronized mode, gr_surface.commit on a sub-surface will
+                In desynchronized mode, wl_surface.commit on a sub-surface will
                 apply the pending state directly, without caching, as happens
-                normally with a gr_surface. Calling gr_surface.commit on the
-                parent surface has no effect on the sub-surface's gr_surface
+                normally with a wl_surface. Calling wl_surface.commit on the
+                parent surface has no effect on the sub-surface's wl_surface
                 state. This mode allows a sub-surface to be updated on its own.
 
-                If cached state exists when gr_surface.commit is called in
+                If cached state exists when wl_surface.commit is called in
                 desynchronized mode, the pending state is added to the cached
                 state, and applied as a whole. This invalidates the cache.
 
                 Note: even if a sub-surface is set to desynchronized, a parent
                 sub-surface may override it to behave as synchronized. For details,
-                see gr_subsurface.
+                see wl_subsurface.
 
                 If a surface's parent surface behaves as desynchronized, then
                 the cached state is applied on set_desync.

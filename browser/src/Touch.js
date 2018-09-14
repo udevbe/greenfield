@@ -22,7 +22,7 @@ export default class Touch {
 
   constructor () {
     /**
-     * @type {Array<GrTouchResource>}
+     * @type {Array<WlTouchResource>}
      */
     this.resources = []
     /**
@@ -33,7 +33,7 @@ export default class Touch {
 
   /**
    *
-   * @param {GrTouchResource} resource
+   * @param {WlTouchResource} resource
    *
    * @since 3
    *

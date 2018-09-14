@@ -1,8 +1,8 @@
 'use strict'
 
-import GrShellRequests from './protocol/GrShellRequests'
-import GrShellResource from './protocol/GrShellResource'
-import GrShellSurfaceResource from './protocol/GrShellSurfaceResource'
+import WlShellRequests from './protocol/WlShellRequests'
+import WlShellResource from './protocol/WlShellResource'
+import WlShellSurfaceResource from './protocol/WlShellSurfaceResource'
 
 import ShellSurface from './ShellSurface'
 
@@ -11,11 +11,11 @@ import ShellSurface from './ShellSurface'
  *            This interface is implemented by servers that provide
  *            desktop-style user interfaces.
  *
- *            It allows clients to associate a gr_shell_surface with
+ *            It allows clients to associate a wl_shell_surface with
  *            a basic surface.
- * @implements {GrShellRequests}
+ * @implements {WlShellRequests}
  */
-export default class Shell extends GrShellRequests {
+export default class Shell extends WlShellRequests {
   /**
    * @param {Session} session
    * @param {UserShell}userShell
@@ -57,8 +57,8 @@ export default class Shell extends GrShellRequests {
    * @param {!number} version
    */
   bindClient (client, id, version) {
-    const grShellResource = new GrShellResource(client, id, version)
-    grShellResource.implementation = this
+    const wlShellResource = new WlShellResource(client, id, version)
+    wlShellResource.implementation = this
   }
 
   /**
@@ -68,7 +68,7 @@ export default class Shell extends GrShellRequests {
     if (this._global) {
       return
     }
-    this._global = registry.createGlobal(this, GrShellResource.name, 1, (client, id, version) => {
+    this._global = registry.createGlobal(this, WlShellResource.name, 1, (client, id, version) => {
       this.bindClient(client, id, version)
     })
   }
@@ -84,27 +84,27 @@ export default class Shell extends GrShellRequests {
   /**
    *
    *                Create a shell surface for an existing surface. This gives
-   *                the gr_surface the role of a shell surface. If the gr_surface
+   *                the wl_surface the role of a shell surface. If the wl_surface
    *                already has another role, it raises a protocol error.
    *
    *                Only one shell surface can be associated with a given surface.
    *
    *
-   * @param {GrShellResource} resource
+   * @param {WlShellResource} resource
    * @param {number} id shell surface to create
-   * @param {GrSurfaceResource} surface surface to be given the shell surface role
+   * @param {WlSurfaceResource} surface surface to be given the shell surface role
    *
    * @since 1
    * @override
    */
   getShellSurface (resource, id, surface) {
     if (surface.implementation.role) {
-      resource.postError(GrShellResource.Error.role, 'Given surface has another role.')
+      resource.postError(WlShellResource.Error.role, 'Given surface has another role.')
       DEBUG && console.log('Protocol error. Given surface has another role.')
       return
     }
 
-    const grShellSurfaceResource = new GrShellSurfaceResource(resource.client, id, resource.version)
-    ShellSurface.create(grShellSurfaceResource, surface, this.session, this.userShell)
+    const wlShellSurfaceResource = new WlShellSurfaceResource(resource.client, id, resource.version)
+    ShellSurface.create(wlShellSurfaceResource, surface, this.session, this.userShell)
   }
 }

@@ -123,7 +123,7 @@ export default class RtcBlobTransfer extends GrBlobTransferRequests {
      */
     this._dataChannelReject = null
     /**
-     * @type {?Promise}
+     * @type {Promise<RTCDataChannel>}
      * @private
      */
     this._dataChannelPromise = new Promise((resolve, reject) => {
@@ -131,7 +131,7 @@ export default class RtcBlobTransfer extends GrBlobTransferRequests {
       this._dataChannelReject = reject
     })
     /**
-     * @type {?Promise}
+     * @type {?Promise<RTCPeerConnection>}
      * @private
      */
     this._peerConnectionPromise = null

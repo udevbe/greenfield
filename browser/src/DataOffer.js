@@ -1,35 +1,35 @@
 'use strict'
-import GrDataOfferRequests from './protocol/GrDataOfferRequests'
-import GrDataOfferResource from './protocol/GrDataOfferResource'
+import WlDataOfferRequests from './protocol/WlDataOfferRequests'
+import WlDataOfferResource from './protocol/WlDataOfferResource'
 
-import GrDataDeviceManagerResource from './protocol/GrDataDeviceManagerResource'
+import WlDataDeviceManagerResource from './protocol/WlDataDeviceManagerResource'
 
-const {copy, move, ask, none} = GrDataDeviceManagerResource.DndAction
+const {copy, move, ask, none} = WlDataDeviceManagerResource.DndAction
 const ALL_ACTIONS = (copy | move | ask)
 
 /**
  *
- *            A gr_data_offer represents a piece of data offered for transfer
+ *            A wl_data_offer represents a piece of data offered for transfer
  *            by another client (the source client).  It is used by the
  *            copy-and-paste and drag-and-drop mechanisms.  The offer
  *            describes the different mime types that the data can be
  *            converted to and provides the mechanism for transferring the
  *            data directly from the source client.
- * @implements GrDataOfferRequests
+ * @implements WlDataOfferRequests
  */
-export default class DataOffer extends GrDataOfferRequests {
+export default class DataOffer extends WlDataOfferRequests {
   /**
-   * @param {GrDataSourceResource}source
+   * @param {WlDataSourceResource}source
    * @param {number}offerId
-   * @param {GrDataDeviceResource}dataDeviceResource
+   * @param {WlDataDeviceResource}dataDeviceResource
    * @return {DataOffer}
    */
   static create (source, offerId, dataDeviceResource) {
     const dataOffer = new DataOffer(source)
-    const grDataOfferResource = new GrDataOfferResource(dataDeviceResource.client, offerId, dataDeviceResource.version)
-    grDataOfferResource.implementation = dataOffer
-    dataOffer.resource = grDataOfferResource
-    grDataOfferResource.onDestroy().then(() => {
+    const wlDataOfferResource = new WlDataOfferResource(dataDeviceResource.client, offerId, dataDeviceResource.version)
+    wlDataOfferResource.implementation = dataOffer
+    dataOffer.resource = wlDataOfferResource
+    wlDataOfferResource.onDestroy().then(() => {
       dataOffer._handleDestroy()
     })
 
@@ -39,13 +39,13 @@ export default class DataOffer extends GrDataOfferRequests {
   /**
    * Use DataOffer.create(..) instead.
    * @private
-   * @param {GrDataSourceResource}source
+   * @param {WlDataSourceResource}source
    */
   constructor (source) {
     super()
     // set when offer is created
     /**
-     * @type {GrDataOfferResource}
+     * @type {WlDataOfferResource}
      */
     this.resource = null
     /**
@@ -61,9 +61,9 @@ export default class DataOffer extends GrDataOfferRequests {
      */
     this.dndActions = none
     /**
-     * @type {GrDataSourceResource}
+     * @type {WlDataSourceResource}
      */
-    this.grDataSource = source
+    this.wlDataSource = source
     /**
      * @type {boolean}
      * @private
@@ -73,26 +73,27 @@ export default class DataOffer extends GrDataOfferRequests {
   }
 
   _handleDestroy () {
-    if (!this.grDataSource) { return }
+    if (!this.wlDataSource) { return }
 
     // TODO remove source destroy listener
     // TODO add source destroy listener
     // wl_list_remove(&offer->source_destroy_listener.link);
 
-    if (this.grDataSource.implementation.grDataOffer !== this.resource) { return }
+    const dataSoure = /** @type {DataSource} */this.wlDataSource.implementation
+    if (dataSoure.wlDataOffer !== this.resource) { return }
 
     /* If the drag destination has version < 3, wl_data_offer.finish
      * won't be called, so do this here as a safety net, because
      * we still want the version >=3 drag source to be happy.
      */
     if (this.resource < 3) {
-      this.grDataSource.implementation.notifyFinish()
-    } else if (this.grDataSource.resource &&
-      this.grDataSource.resource.version >= 3) {
-      this.grDataSource.resource.cancelled()
+      dataSoure.notifyFinish()
+    } else if (this.wlDataSource.resource &&
+      this.wlDataSource.resource.version >= 3) {
+      this.wlDataSource.resource.cancelled()
     }
 
-    this.grDataSource.implementation.grDataOffer = null
+    dataSoure.wlDataOffer = null
   }
 
   /**
@@ -109,11 +110,11 @@ export default class DataOffer extends GrDataOfferRequests {
    *                final result of the drag-and-drop operation. If the end result
    *                is that no mime types were accepted, the drag-and-drop operation
    *                will be cancelled and the corresponding drag source will receive
-   *                gr_data_source.cancelled. Clients may still use this event in
-   *                conjunction with gr_data_source.action for feedback.
+   *                wl_data_source.cancelled. Clients may still use this event in
+   *                conjunction with wl_data_source.action for feedback.
    *
    *
-   * @param {GrDataOfferResource} resource
+   * @param {WlDataOfferResource} resource
    * @param {number} serial serial number of the accept request
    * @param {string|null} mimeType mime type accepted by the client
    *
@@ -121,7 +122,7 @@ export default class DataOffer extends GrDataOfferRequests {
    * @override
    */
   accept (resource, serial, mimeType) {
-    if (!this.grDataSource || !this.grDataSource.implementation.grDataOffer) {
+    if (!this.wlDataSource || !this.wlDataSource.implementation.wlDataOffer) {
       return
     }
     if (this._finished) {
@@ -129,8 +130,8 @@ export default class DataOffer extends GrDataOfferRequests {
     }
 
     this.acceptMimeType = mimeType
-    this.grDataSource.target(mimeType)
-    this.grDataSource.implementation.accepted = mimeType !== null
+    this.wlDataSource.target(mimeType)
+    this.wlDataSource.implementation.accepted = mimeType !== null
   }
 
   /**
@@ -152,7 +153,7 @@ export default class DataOffer extends GrDataOfferRequests {
    *                determine acceptance.
    *
    *
-   * @param {GrDataOfferResource} resource
+   * @param {WlDataOfferResource} resource
    * @param {string} mimeType mime type desired by receiver
    * @param {Number} fd file descriptor for data transfer
    *
@@ -163,10 +164,10 @@ export default class DataOffer extends GrDataOfferRequests {
     if (this._finished) {
       // TODO raise protocol error
     }
-    if (this.grDataSource) {
-      this.grDataSource.send(mimeType, fd)
+    if (this.wlDataSource) {
+      this.wlDataSource.send(mimeType, fd)
     } else {
-      this.grDataSource.send('', -1)
+      this.wlDataSource.send('', -1)
     }
   }
 
@@ -175,7 +176,7 @@ export default class DataOffer extends GrDataOfferRequests {
    *                Destroy the data offer.
    *
    *
-   * @param {GrDataOfferResource} resource
+   * @param {WlDataOfferResource} resource
    *
    * @since 1
    * @override
@@ -190,22 +191,22 @@ export default class DataOffer extends GrDataOfferRequests {
    *                finished the drag-and-drop operation.
    *
    *                Upon receiving this request, the compositor will emit
-   *                gr_data_source.dnd_finished on the drag source client.
+   *                wl_data_source.dnd_finished on the drag source client.
    *
    *                It is a client error to perform other requests than
-   *                gr_data_offer.destroy after this one. It is also an error to perform
+   *                wl_data_offer.destroy after this one. It is also an error to perform
    *                this request after a NULL mime type has been set in
-   *                gr_data_offer.accept or no action was received through
-   *                gr_data_offer.action.
+   *                wl_data_offer.accept or no action was received through
+   *                wl_data_offer.action.
    *
    *
-   * @param {GrDataOfferResource} resource
+   * @param {WlDataOfferResource} resource
    *
    * @since 3
    *
    */
   finish (resource) {
-    if (this.grDataSource || !this.preferredAction) {
+    if (this.wlDataSource || !this.preferredAction) {
       return
     }
     if (!this.acceptMimeType || this._finished) {
@@ -215,7 +216,7 @@ export default class DataOffer extends GrDataOfferRequests {
     /* Disallow finish while we have a grab driving drag-and-drop, or
      * if the negotiation is not at the right stage
      */
-    if (!this.grDataSource.implementation.accepted) {
+    if (!this.wlDataSource.implementation.accepted) {
       // TODO raise protocol error
       // wl_resource_post_error(offer->resource,
       //   WL_DATA_OFFER_ERROR_INVALID_FINISH,
@@ -223,7 +224,7 @@ export default class DataOffer extends GrDataOfferRequests {
       return
     }
 
-    switch (this.grDataSource.implementation.currentDndAction) {
+    switch (this.wlDataSource.implementation.currentDndAction) {
       case none:
       case ask:
         // TODO raise protocol error
@@ -235,7 +236,7 @@ export default class DataOffer extends GrDataOfferRequests {
         break
     }
 
-    this.grDataSource.implementation.notifyFinish()
+    this.wlDataSource.implementation.notifyFinish()
   }
 
   _bitCount (u) {
@@ -248,38 +249,38 @@ export default class DataOffer extends GrDataOfferRequests {
    *
    *                Sets the actions that the destination side client supports for
    *                this operation. This request may trigger the emission of
-   *                gr_data_source.action and gr_data_offer.action events if the compositor
+   *                wl_data_source.action and wl_data_offer.action events if the compositor
    *                needs to change the selected action.
    *
    *                This request can be called multiple times throughout the
-   *                drag-and-drop operation, typically in response to gr_data_device.enter
-   *                or gr_data_device.motion events.
+   *                drag-and-drop operation, typically in response to wl_data_device.enter
+   *                or wl_data_device.motion events.
    *
    *                This request determines the final result of the drag-and-drop
    *                operation. If the end result is that no action is accepted,
-   *                the drag source will receive gr_drag_source.cancelled.
+   *                the drag source will receive wl_drag_source.cancelled.
    *
    *                The dnd_actions argument must contain only values expressed in the
-   *                gr_data_device_manager.dnd_actions enum, and the preferred_action
+   *                wl_data_device_manager.dnd_actions enum, and the preferred_action
    *                argument must only contain one of those values set, otherwise it
    *                will result in a protocol error.
    *
    *                While managing an "ask" action, the destination drag-and-drop client
-   *                may perform further gr_data_offer.receive requests, and is expected
-   *                to perform one last gr_data_offer.set_actions request with a preferred
-   *                action other than "ask" (and optionally gr_data_offer.accept) before
-   *                requesting gr_data_offer.finish, in order to convey the action selected
+   *                may perform further wl_data_offer.receive requests, and is expected
+   *                to perform one last wl_data_offer.set_actions request with a preferred
+   *                action other than "ask" (and optionally wl_data_offer.accept) before
+   *                requesting wl_data_offer.finish, in order to convey the action selected
    *                by the user. If the preferred action is not in the
-   *                gr_data_offer.source_actions mask, an error will be raised.
+   *                wl_data_offer.source_actions mask, an error will be raised.
    *
    *                If the "ask" action is dismissed (e.g. user cancellation), the client
-   *                is expected to perform gr_data_offer.destroy right away.
+   *                is expected to perform wl_data_offer.destroy right away.
    *
    *                This request can only be made on drag-and-drop offers, a protocol error
    *                will be raised otherwise.
    *
    *
-   * @param {GrDataOfferResource} resource
+   * @param {WlDataOfferResource} resource
    * @param {Number} dndActions actions supported by the destination client
    * @param {Number} preferredAction action preferred by the destination client
    *
@@ -287,7 +288,7 @@ export default class DataOffer extends GrDataOfferRequests {
    *
    */
   setActions (resource, dndActions, preferredAction) {
-    if (!this.grDataSource) {
+    if (!this.wlDataSource) {
       return
     }
     if (this._finished) {
@@ -318,18 +319,18 @@ export default class DataOffer extends GrDataOfferRequests {
   }
 
   updateAction () {
-    if (!this.grDataSource) { return }
+    if (!this.wlDataSource) { return }
 
     const action = this._chooseAction()
 
-    if (this.grDataSource.implementation.currentDndAction === action) { return }
+    if (this.wlDataSource.implementation.currentDndAction === action) { return }
 
-    this.grDataSource.implementation.currentDndAction = action
+    this.wlDataSource.implementation.currentDndAction = action
 
     if (this.inAsk) { return }
 
-    if (this.grDataSource.version >= 3) {
-      this.grDataSource.action(action)
+    if (this.wlDataSource.version >= 3) {
+      this.wlDataSource.action(action)
     }
 
     if (this.resource.version >= 3) {
@@ -348,8 +349,8 @@ export default class DataOffer extends GrDataOfferRequests {
     }
 
     let sourceActions = none
-    if (this.grDataSource.version >= 3) {
-      sourceActions = this.grDataSource.implementation.dndActions
+    if (this.wlDataSource.version >= 3) {
+      sourceActions = this.wlDataSource.implementation.dndActions
     } else {
       sourceActions = copy
     }

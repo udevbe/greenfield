@@ -32,12 +32,12 @@ export default class RtcPeerConnection extends RtcPeerConnectionRequests {
      */
     this.rtcPeerConnectionResource = rtcPeerConnectionResource
     /**
-     * @type {?{_peerConnection:window.RTCPeerConnection, clientIceCandidates:Function, clientSdpReply:Function, clientSdpOffer: Function}}
+     * @type {?{_peerConnection:window.RTCPeerConnection, clientIceCandidates:function, clientSdpReply:function, clientSdpOffer: function}}
      * @private
      */
     this._delegate = null
     /**
-     * @type {?Function}
+     * @type {?function}
      * @private
      */
     this._peerConnectionResolve = null

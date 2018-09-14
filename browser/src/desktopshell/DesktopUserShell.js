@@ -33,8 +33,8 @@ export default class DesktopUserShell {
     panel.appendChild(desktopShellMenu.divElementMenuButton)
 
     const desktopUserShell = new DesktopUserShell(body, workspace, panel, entryContainer, seat)
-    seat.addKeyboardResourceListener((grKeyboard) => {
-      desktopUserShell._keyboardAvailable(grKeyboard)
+    seat.addKeyboardResourceListener((wlKeyboardResoure) => {
+      desktopUserShell._keyboardAvailable(wlKeyboardResoure)
     })
 
     return desktopUserShell
@@ -85,13 +85,13 @@ export default class DesktopUserShell {
   }
 
   /**
-   * @param {GrKeyboard}grKeyboard
+   * @param {WlKeyboardResource}grKeyboard
    * @private
    */
   _keyboardAvailable (grKeyboard) {
     DesktopUserShellSurface.desktopUserShellSurfaces.forEach((desktopUserShellSurface) => {
       if (desktopUserShellSurface.mainView.surface.resource.client === grKeyboard.client) {
-        desktopUserShellSurface.grKeyboard = grKeyboard
+        desktopUserShellSurface.wlKeyboardResource = grKeyboard
       }
     })
   }

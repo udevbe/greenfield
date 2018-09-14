@@ -1,6 +1,6 @@
 'use strict'
 
-import GrBufferRequests from './protocol/GrBufferRequests'
+import WlBufferRequests from './protocol/WlBufferRequests'
 
 /**
  *
@@ -9,37 +9,37 @@ import GrBufferRequests from './protocol/GrBufferRequests'
  *            similar. It has a width and a height and can be attached to a
  *            gr_surface, but the mechanism by which a client provides and
  *            updates the contents is defined by the buffer factory interface.
- * @implements GrBufferRequests
+ * @implements WlBufferRequests
  */
-export default class Buffer extends GrBufferRequests {
+export default class Buffer extends WlBufferRequests {
   /**
    *
-   * @param {!GrBufferResource} grBufferResource
+   * @param {!WlBufferResource} wlBufferResource
    * @return {!Buffer}
    */
-  static create (grBufferResource) {
-    const buffer = new Buffer(grBufferResource)
-    grBufferResource.implementation = buffer
+  static create (wlBufferResource) {
+    const buffer = new Buffer(wlBufferResource)
+    wlBufferResource.implementation = buffer
     return buffer
   }
 
   /**
    * Instead use Buffer.create(..)
    * @private
-   * @param {!GrBufferResource}grBufferResource
+   * @param {!WlBufferResource}wlBufferResource
    */
-  constructor (grBufferResource) {
+  constructor (wlBufferResource) {
     super()
     /**
-     * @type {!GrBufferResource}
+     * @type {!WlBufferResource}
      * @const
      */
-    this.resource = grBufferResource
+    this.resource = wlBufferResource
   }
 
   /**
    *
-   * @param {!GrBufferResource} resource
+   * @param {!WlBufferResource} resource
    *
    * @since 1
    * @override

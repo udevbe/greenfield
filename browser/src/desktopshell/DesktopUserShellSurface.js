@@ -100,10 +100,10 @@ export default class DesktopUserShellSurface extends UserShellSurface {
     this._inactivateCallback = () => {}
     /**
      *
-     * @type {GrKeyboard|null}
+     * @type {WlKeyboardResource|null}
      * @private
      */
-    this._grKeyboard = null
+    this._wlKeyboardResource = null
     /**
      * @type {boolean}
      */
@@ -150,7 +150,7 @@ export default class DesktopUserShellSurface extends UserShellSurface {
       this.mainView.raise()
       this.divElement.classList.add('entry-focus')
 
-      if (this._grKeyboard) {
+      if (this._wlKeyboardResource) {
         this._giveKeyboardFocus()
       }
 
@@ -163,19 +163,19 @@ export default class DesktopUserShellSurface extends UserShellSurface {
   }
 
   /**
-   * @param {GrKeyboard}grKeyboard
+   * @param {WlKeyboardResource}wlKeyboardResource
    */
-  set grKeyboard (grKeyboard) {
+  set wlKeyboardResource (wlKeyboardResource) {
     if (this.mainView.destroyed) {
       return
     }
 
-    if (this.active && this._grKeyboard && this._grKeyboard.implementation.focus !== this.mainView.surface) {
+    if (this.active && this._wlKeyboardResource && this._wlKeyboardResource.implementation.focus !== this.mainView.surface) {
       this._giveKeyboardFocus()
     }
-    this._grKeyboard = grKeyboard
-    this._grKeyboard.onDestroy().then(() => {
-      this._grKeyboard = null
+    this._wlKeyboardResource = wlKeyboardResource
+    this._wlKeyboardResource.onDestroy().then(() => {
+      this._wlKeyboardResource = null
     })
   }
 
@@ -183,7 +183,7 @@ export default class DesktopUserShellSurface extends UserShellSurface {
    * @private
    */
   _giveKeyboardFocus () {
-    const keyboard = /** @typ{Keyboard} */this._grKeyboard.implementation
+    const keyboard = /** @typ{Keyboard} */this._wlKeyboardResource.implementation
     keyboard.focusGained(this.mainView.surface)
   }
 

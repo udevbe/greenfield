@@ -1,3 +1,5 @@
+'use strict'
+
 import XdgSurfaceRequests from './protocol/XdgSurfaceRequests'
 import XdgToplevelResource from './protocol/XdgToplevelResource'
 import XdgWmBaseResource from './protocol/XdgWmBaseResource'
@@ -54,16 +56,16 @@ import Renderer from './render/Renderer'
 export default class XdgSurface extends XdgSurfaceRequests {
   /**
    * @param {XdgSurfaceResource}xdgSurfaceResource
-   * @param {GrSurfaceResource}grSurfaceResource
+   * @param {WlSurfaceResource}wlSurfaceResource
    * @param {Session} session
    * @param {UserShell}userShell
    * @param {Seat}seat
    * @return {XdgSurface}
    */
-  static create (xdgSurfaceResource, grSurfaceResource, session, userShell, seat) {
-    const xdgSurface = new XdgSurface(xdgSurfaceResource, grSurfaceResource, session, userShell, seat)
+  static create (xdgSurfaceResource, wlSurfaceResource, session, userShell, seat) {
+    const xdgSurface = new XdgSurface(xdgSurfaceResource, wlSurfaceResource, session, userShell, seat)
     xdgSurfaceResource.implementation = xdgSurface
-    const surface = /** @type {Surface} */grSurfaceResource.implementation
+    const surface = /** @type {Surface} */wlSurfaceResource.implementation
     surface.hasKeyboardInput = true
     surface.hasPointerInput = true
     surface.hasTouchInput = true
@@ -72,22 +74,22 @@ export default class XdgSurface extends XdgSurfaceRequests {
 
   /**
    * @param {XdgSurfaceResource}xdgSurfaceResource
-   * @param {GrSurfaceResource}grSurfaceResource
+   * @param {WlSurfaceResource}wlSurfaceResource
    * @param {Session} session
    * @param {UserShell}userShell
    * @param {Seat}seat
    * @private
    */
-  constructor (xdgSurfaceResource, grSurfaceResource, session, userShell, seat) {
+  constructor (xdgSurfaceResource, wlSurfaceResource, session, userShell, seat) {
     super()
     /**
      * @type {XdgSurfaceResource}
      */
     this.xdgSurfaceResource = xdgSurfaceResource
     /**
-     * @type {GrSurfaceResource}
+     * @type {WlSurfaceResource}
      */
-    this.grSurfaceResource = grSurfaceResource
+    this.wlSurfaceResource = wlSurfaceResource
     /**
      * @type {Session}
      * @private
@@ -148,7 +150,7 @@ export default class XdgSurface extends XdgSurfaceRequests {
    * @override
    */
   getToplevel (resource, id) {
-    const surface = this.grSurfaceResource.implementation
+    const surface = this.wlSurfaceResource.implementation
     if (surface.role) {
       resource.postError(XdgWmBaseResource.Error.role, 'Given surface has another role.')
       DEBUG && console.log('Protocol error. Given surface has another role.')
@@ -183,7 +185,7 @@ export default class XdgSurface extends XdgSurfaceRequests {
    * @override
    */
   getPopup (resource, id, parent, positioner) {
-    const surface = /** @type {Surface} */this.grSurfaceResource.implementation
+    const surface = /** @type {Surface} */this.wlSurfaceResource.implementation
     if (surface.role) {
       resource.postError(XdgWmBaseResource.Error.role, 'Given surface has another role.')
       DEBUG && console.log('Protocol error. Given surface has another role.')
@@ -222,7 +224,7 @@ export default class XdgSurface extends XdgSurfaceRequests {
 
     if (parent) {
       const parentXdgSurface = /** @type {XdgSurface} */parent.implementation
-      const parentSurface = /** @type {Surface} */parentXdgSurface.grSurfaceResource.implementation
+      const parentSurface = /** @type {Surface} */parentXdgSurface.wlSurfaceResource.implementation
       const views = parentSurface.addChild(surface.surfaceChildSelf)
       views.forEach(onNewView)
     } else {
@@ -300,7 +302,7 @@ export default class XdgSurface extends XdgSurfaceRequests {
     const xs = [0]
     const ys = [0]
 
-    const surface = /** @type {Surface} */this.grSurfaceResource.implementation
+    const surface = /** @type {Surface} */this.wlSurfaceResource.implementation
     const size = surface.size
     xs.push(size.w)
     ys.push(size.h)

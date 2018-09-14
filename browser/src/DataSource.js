@@ -1,48 +1,64 @@
 'use strict'
 
-import GrDataSourceRequests from './protocol/GrDataSourceRequests'
-import GrDataDeviceManagerResource from './protocol/GrDataDeviceManagerResource'
+import WlDataSourceRequests from './protocol/WlDataSourceRequests'
+import WlDataDeviceManagerResource from './protocol/WlDataDeviceManagerResource'
 
-const {copy, move, ask, none} = GrDataDeviceManagerResource.DndAction
+const {copy, move, ask, none} = WlDataDeviceManagerResource.DndAction
 const ALL_ACTIONS = (copy | move | ask)
 
 /**
  *
- *            The gr_data_source object is the source side of a gr_data_offer.
+ *            The wl_data_source object is the source side of a wl_data_offer.
  *            It is created by the source client in a data transfer and
  *            provides a way to describe the offered data and a way to respond
  *            to requests to transfer the data.
- * @implements GrDataSourceRequests
+ * @implements WlDataSourceRequests
  */
-export default class DataSource extends GrDataSourceRequests {
+export default class DataSource extends WlDataSourceRequests {
   /**
-   * @param {GrDataSourceResource} grDataSourceResource
+   * @param {WlDataSourceResource} wlDataSourceResource
    * @return {DataSource}
    */
-  static create (grDataSourceResource) {
-    const dataSource = new DataSource(grDataSourceResource)
-    grDataSourceResource.implementation = dataSource
+  static create (wlDataSourceResource) {
+    const dataSource = new DataSource(wlDataSourceResource)
+    wlDataSourceResource.implementation = dataSource
     return dataSource
   }
 
   /**
-   * @param {GrDataSourceResource} grDataSourceResource
+   * @param {WlDataSourceResource} wlDataSourceResource
    */
-  constructor (grDataSourceResource) {
+  constructor (wlDataSourceResource) {
     super()
     /**
-     * @type {GrDataSourceResource}
+     * @type {WlDataSourceResource}
      */
-    this.resource = grDataSourceResource
+    this.resource = wlDataSourceResource
+    /**
+     * @type {Array<string>}
+     */
     this.mimeTypes = []
+    /**
+     * @type {number}
+     */
     this.dndActions = 0
+    /**
+     * @type {boolean}
+     * @private
+     */
     this._actionsSet = false
+    /**
+     * @type {number}
+     */
     this.currentDndAction = none
+    /**
+     * @type {boolean}
+     */
     this.accepted = false
     /**
-     * @type {GrDataOffer}
+     * @type {WlDataOfferResource}
      */
-    this.grDataOffer = null
+    this.wlDataOffer = null
   }
 
   /**
@@ -52,7 +68,7 @@ export default class DataSource extends GrDataSourceRequests {
    *                multiple types.
    *
    *
-   * @param {GrDataSourceResource} resource
+   * @param {WlDataSourceResource} resource
    * @param {string} mimeType mime type offered by the data source
    *
    * @since 1
@@ -60,8 +76,8 @@ export default class DataSource extends GrDataSourceRequests {
    */
   offer (resource, mimeType) {
     this.mimeTypes.push(mimeType)
-    if (this.grDataOffer) {
-      this.grDataOffer.offer(mimeType)
+    if (this.wlDataOffer) {
+      this.wlDataOffer.offer(mimeType)
     }
   }
 
@@ -70,7 +86,7 @@ export default class DataSource extends GrDataSourceRequests {
    *                Destroy the data source.
    *
    *
-   * @param {GrDataSourceResource} resource
+   * @param {WlDataSourceResource} resource
    *
    * @since 1
    * @override
@@ -82,21 +98,21 @@ export default class DataSource extends GrDataSourceRequests {
   /**
    *
    *                Sets the actions that the source side client supports for this
-   *                operation. This request may trigger gr_data_source.action and
-   *                gr_data_offer.action events if the compositor needs to change the
+   *                operation. This request may trigger wl_data_source.action and
+   *                wl_data_offer.action events if the compositor needs to change the
    *                selected action.
    *
    *                The dnd_actions argument must contain only values expressed in the
-   *                gr_data_device_manager.dnd_actions enum, otherwise it will result
+   *                wl_data_device_manager.dnd_actions enum, otherwise it will result
    *                in a protocol error.
    *
    *                This request must be made once only, and can only be made on sources
    *                used in drag-and-drop, so it must be performed before
-   *                gr_data_device.start_drag. Attempting to use the source other than
+   *                wl_data_device.start_drag. Attempting to use the source other than
    *                for drag-and-drop will raise a protocol error.
    *
    *
-   * @param {GrDataSourceResource} resource
+   * @param {WlDataSourceResource} resource
    * @param {Number} dndActions actions supported by the data source
    *
    * @since 3
@@ -136,7 +152,7 @@ export default class DataSource extends GrDataSourceRequests {
       return
     }
 
-    if (this.grDataOffer.implementation.inAsk && this.resource.version >= 3) {
+    if (this.wlDataOffer.implementation.inAsk && this.resource.version >= 3) {
       this.resource.action(this.currentDndAction)
     }
 
@@ -144,6 +160,6 @@ export default class DataSource extends GrDataSourceRequests {
       this.resource.dndFinished()
     }
 
-    this.grDataOffer = null
+    this.wlDataOffer = null
   }
 }

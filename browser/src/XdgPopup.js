@@ -157,7 +157,7 @@ export default class XdgPopup extends XdgPopupRequests {
   static create (xdgPopupResource, xdgSurface, parent, positionerState, session, seat) {
     const xdgPopup = new XdgPopup(xdgPopupResource, xdgSurface, parent, positionerState, session, seat)
     xdgPopupResource.implementation = xdgPopup
-    const surface = /** @type {Surface} */xdgSurface.grSurfaceResource.implementation
+    const surface = /** @type {Surface} */xdgSurface.wlSurfaceResource.implementation
     surface.role = xdgPopup
     xdgPopup.ensureGeometryConstraints(parent, positionerState)
     xdgSurface.emitConfigureDone()
@@ -272,7 +272,7 @@ export default class XdgPopup extends XdgPopupRequests {
 
     this.mapped = true
     const parentXdgSurface = /** @type {XdgSurface} */this.parent.implementation
-    const parentSurface = /** @type {Surface} */parentXdgSurface.grSurfaceResource.implementation
+    const parentSurface = /** @type {Surface} */parentXdgSurface.wlSurfaceResource.implementation
 
     // set position based on positioner object
     surface.surfaceChildSelf.position = this.positionerState.surfaceSpaceAnchorPoint(parentXdgSurface).minus(newState.roleState.windowGeometry.position)
@@ -286,15 +286,15 @@ export default class XdgPopup extends XdgPopupRequests {
     if (!this.dismissed) {
       this.dismissed = true
       if (this._seat.pointer) {
-        const popupGrab = this._seat.pointer.findPopupGrab(this.xdgSurface.grSurfaceResource)
+        const popupGrab = this._seat.pointer.findPopupGrab(this.xdgSurface.wlSurfaceResource)
         if (popupGrab) {
           popupGrab.resolve()
         }
       }
       this.resource.popupDone()
       const parentXdgSurface = /** @type {XdgSurface} */this.parent.implementation
-      const parentSurface = /** @type {Surface} */parentXdgSurface.grSurfaceResource.implementation
-      const surface = /** @type {Surface} */this.xdgSurface.grSurfaceResource.implementation
+      const parentSurface = /** @type {Surface} */parentXdgSurface.wlSurfaceResource.implementation
+      const surface = /** @type {Surface} */this.xdgSurface.wlSurfaceResource.implementation
       parentSurface.removeChild(surface.surfaceChildSelf)
       this._seat.keyboard.focusGained(parentSurface)
     }
@@ -304,7 +304,7 @@ export default class XdgPopup extends XdgPopupRequests {
    * @private
    */
   _updatePopupKeyboardFocus () {
-    this._seat.keyboard.focusGained(/** @type {Surface} */this.xdgSurface.grSurfaceResource.implementation)
+    this._seat.keyboard.focusGained(/** @type {Surface} */this.xdgSurface.wlSurfaceResource.implementation)
     // if the keyboard or focus changes to a different client, we have to dismiss the popup
     this._seat.keyboard.onKeyboardFocusChanged().then(() => {
       if (!this._seat.keyboard.focus || this._seat.keyboard.focus.resource.client !== this.resource.client) {
@@ -328,7 +328,7 @@ export default class XdgPopup extends XdgPopupRequests {
    * @override
    */
   destroy (resource) {
-    const surface = /** @type {Surface} */this.xdgSurface.grSurfaceResource.implementation
+    const surface = /** @type {Surface} */this.xdgSurface.wlSurfaceResource.implementation
     for (const surfaceChild of surface.children) {
       if (surfaceChild !== surface.surfaceChildSelf &&
         surfaceChild.surface.role instanceof XdgPopup) {
@@ -388,14 +388,14 @@ export default class XdgPopup extends XdgPopupRequests {
    *
    *
    * @param {XdgPopupResource} resource
-   * @param {GrSeatResource} grSeatResource the wl_seat of the user event
+   * @param {WlSeatResource} wlSeatResource the wl_seat of the user event
    * @param {number} serial the serial of the user event
    *
    * @since 1
    * @override
    */
-  async grab (resource, grSeatResource, serial) {
-    const seat = /** @type {Seat} */ grSeatResource.implementation
+  async grab (resource, wlSeatResource, serial) {
+    const seat = /** @type {Seat} */ wlSeatResource.implementation
     const pointer = seat.pointer
 
     // FIXME we can receive an older serial in case a popup is triggered from an older mouse down + mouse move
@@ -412,15 +412,15 @@ export default class XdgPopup extends XdgPopupRequests {
     }
 
     const parentXdgSurface = /** @type {XdgSurface} */this.parent.implementation
-    const parentGrSurfaceResource = parentXdgSurface.grSurfaceResource
-    const parentSurface = /** type {Surface} */parentGrSurfaceResource.implementation
+    const parentWlSurfaceResource = parentXdgSurface.wlSurfaceResource
+    const parentSurface = /** type {Surface} */parentWlSurfaceResource.implementation
     const parentRole = parentSurface.role
     if (parentRole instanceof XdgPopup) {
       const parentXdgPopupRole = /** @type {XdgPopup} */parentRole
       if (parentXdgPopupRole.dismissed) {
         this._dismiss()
         return
-      } else if (!pointer.findPopupGrab(parentGrSurfaceResource)) {
+      } else if (!pointer.findPopupGrab(parentWlSurfaceResource)) {
         resource.postError(XdgWmBaseResource.Error.invalidPopupParent, 'Popup parent is a popup that did not take an explicit grab.')
         DEBUG && console.log('Protocol error. Popup parent is a popup that did not take an explicit grab.')
         return
@@ -428,7 +428,7 @@ export default class XdgPopup extends XdgPopupRequests {
     }
 
     this._updatePopupKeyboardFocus()
-    await pointer.popupGrab(this.xdgSurface.grSurfaceResource)
+    await pointer.popupGrab(this.xdgSurface.wlSurfaceResource)
     this._dismiss()
   }
 
@@ -451,7 +451,7 @@ export default class XdgPopup extends XdgPopupRequests {
     }
 
     const parentXdgSurface = /** @type {XdgSurface} */parent.implementation
-    const parentSurface = /** @type {Surface} */parentXdgSurface.grSurfaceResource.implementation
+    const parentSurface = /** @type {Surface} */parentXdgSurface.wlSurfaceResource.implementation
     const primaryParentView = parentSurface.views.find(parentView => parentView.primary)
 
     let violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)

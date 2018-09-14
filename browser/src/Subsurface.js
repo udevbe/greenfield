@@ -1,7 +1,7 @@
 'use strict'
 
-import GrSubsurfaceRequests from './protocol/GrSubsurfaceRequests'
-import GrSubsurfaceResource from './protocol/GrSubsurfaceResource'
+import WlSubsurfaceRequests from './protocol/WlSubsurfaceRequests'
+import WlSubsurfaceResource from './protocol/WlSubsurfaceResource'
 
 import Point from './math/Point'
 import Renderer from './render/Renderer'
@@ -9,34 +9,34 @@ import Surface from './Surface'
 
 /**
  *
- *            An additional interface to a gr_surface object, which has been
+ *            An additional interface to a wl_surface object, which has been
  *            made a sub-surface. A sub-surface has one parent surface. A
  *            sub-surface's size and position are not limited to that of the parent.
  *            Particularly, a sub-surface is not automatically clipped to its
  *            parent's area.
  *
- *            A sub-surface becomes mapped, when a non-NULL gr_buffer is applied
+ *            A sub-surface becomes mapped, when a non-NULL wl_buffer is applied
  *            and the parent surface is mapped. The order of which one happens
  *            first is irrelevant. A sub-surface is hidden if the parent becomes
- *            hidden, or if a NULL gr_buffer is applied. These rules apply
+ *            hidden, or if a NULL wl_buffer is applied. These rules apply
  *            recursively through the tree of surfaces.
  *
- *            The behaviour of a gr_surface.commit request on a sub-surface
+ *            The behaviour of a wl_surface.commit request on a sub-surface
  *            depends on the sub-surface's mode. The possible modes are
  *            synchronized and desynchronized, see methods
- *            gr_subsurface.set_sync and gr_subsurface.set_desync. Synchronized
- *            mode caches the gr_surface state to be applied when the parent's
+ *            wl_subsurface.set_sync and wl_subsurface.set_desync. Synchronized
+ *            mode caches the wl_surface state to be applied when the parent's
  *            state gets applied, and desynchronized mode applies the pending
- *            gr_surface state directly. A sub-surface is initially in the
+ *            wl_surface state directly. A sub-surface is initially in the
  *            synchronized mode.
  *
  *            Sub-surfaces have also other kind of state, which is managed by
- *            gr_subsurface requests, as opposed to gr_surface requests. This
+ *            wl_subsurface requests, as opposed to wl_surface requests. This
  *            state includes the sub-surface position relative to the parent
- *            surface (gr_subsurface.set_position), and the stacking order of
- *            the parent and its sub-surfaces (gr_subsurface.place_above and
+ *            surface (wl_subsurface.set_position), and the stacking order of
+ *            the parent and its sub-surfaces (wl_subsurface.place_above and
  *            .place_below). This state is applied when the parent surface's
- *            gr_surface state is applied, regardless of the sub-surface's mode.
+ *            wl_surface state is applied, regardless of the sub-surface's mode.
  *            As the exception, set_sync and set_desync are effective immediately.
  *
  *            The main surface can be thought to be always in desynchronized mode,
@@ -49,66 +49,66 @@ import Surface from './Surface'
  *            synchronized mode, and then assume that all its child and grand-child
  *            sub-surfaces are synchronized, too, without explicitly setting them.
  *
- *            If the gr_surface associated with the gr_subsurface is destroyed, the
- *            gr_subsurface object becomes inert. Note, that destroying either object
+ *            If the wl_surface associated with the wl_subsurface is destroyed, the
+ *            wl_subsurface object becomes inert. Note, that destroying either object
  *            takes effect immediately. If you need to synchronize the removal
  *            of a sub-surface to the parent surface update, unmap the sub-surface
- *            first by attaching a NULL gr_buffer, update parent, and then destroy
+ *            first by attaching a NULL wl_buffer, update parent, and then destroy
  *            the sub-surface.
  *
- *            If the parent gr_surface object is destroyed, the sub-surface is
+ *            If the parent wl_surface object is destroyed, the sub-surface is
  *            unmapped.
  *
  * @implements SurfaceRole
- * @implements GrSubsurfaceRequests
+ * @implements WlSubsurfaceRequests
  */
-export default class Subsurface extends GrSubsurfaceRequests {
+export default class Subsurface extends WlSubsurfaceRequests {
   /**
-   * @param {GrSurfaceResource}parentGrSurfaceResource
-   * @param {GrSurfaceResource}grSurfaceResource
-   * @param {GrSubsurfaceResource}grSubsurfaceResource
+   * @param {WlSurfaceResource}parentWlSurfaceResource
+   * @param {WlSurfaceResource}wlSurfaceResource
+   * @param {WlSubsurfaceResource}wlSubsurfaceResource
    * @return {Subsurface}
    */
-  static create (parentGrSurfaceResource, grSurfaceResource, grSubsurfaceResource) {
-    const subsurface = new Subsurface(parentGrSurfaceResource, grSurfaceResource, grSubsurfaceResource)
-    grSubsurfaceResource.implementation = subsurface
+  static create (parentWlSurfaceResource, wlSurfaceResource, wlSubsurfaceResource) {
+    const subsurface = new Subsurface(parentWlSurfaceResource, wlSurfaceResource, wlSubsurfaceResource)
+    wlSubsurfaceResource.implementation = subsurface
 
-    grSurfaceResource.onDestroy().then(() => {
+    wlSurfaceResource.onDestroy().then(() => {
       subsurface._inert = true
     })
 
-    parentGrSurfaceResource.onDestroy().then(() => {
+    parentWlSurfaceResource.onDestroy().then(() => {
       // TODO unmap
     })
 
     // TODO sync viewable/hidden state with parent
 
-    grSurfaceResource.implementation.role = subsurface
+    wlSurfaceResource.implementation.role = subsurface
 
     return subsurface
   }
 
   /**
    * Use Subsurface.create(..) instead.
-   * @param {GrSurfaceResource}parentGrSurfaceResource
-   * @param {GrSurfaceResource}grSurfaceResource
-   * @param {GrSubsurfaceResource}grSubsurfaceResource
+   * @param {WlSurfaceResource}parentWlSurfaceResource
+   * @param {WlSurfaceResource}wlSurfaceResource
+   * @param {WlSubsurfaceResource}wlSubsurfaceResource
    * @private
    */
-  constructor (parentGrSurfaceResource, grSurfaceResource, grSubsurfaceResource) {
+  constructor (parentWlSurfaceResource, wlSurfaceResource, wlSubsurfaceResource) {
     super()
     /**
-     * @type {GrSurfaceResource}
+     * @type {WlSurfaceResource}
      */
-    this.parentGrSurfaceResource = parentGrSurfaceResource
+    this.parentWlSurfaceResource = parentWlSurfaceResource
     /**
-     * @type {GrSurfaceResource}
+     * @type {WlSurfaceResource}
      */
-    this.grSurfaceResource = grSurfaceResource
+    this.wlSurfaceResource = wlSurfaceResource
     /**
-     * @type {GrSubsurfaceResource}
+     * @type {WlSubsurfaceResource}
      */
-    this.resource = grSubsurfaceResource
+    this.resource = wlSubsurfaceResource
     /**
      * @type {boolean}
      * @private
@@ -121,7 +121,7 @@ export default class Subsurface extends GrSubsurfaceRequests {
     /**
      * @type {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}
      */
-    this._cachedState = grSurfaceResource.implementation.state
+    this._cachedState = wlSurfaceResource.implementation.state
     /**
      * @type {boolean}
      * @private
@@ -138,7 +138,7 @@ export default class Subsurface extends GrSubsurfaceRequests {
       return
     }
 
-    const surface = /** @type {Surface} */this.grSurfaceResource.implementation
+    const surface = /** @type {Surface} */this.wlSurfaceResource.implementation
     // sibling stacking order & position is committed by the parent itself so no need to do it here.
 
     if (this._effectiveSync && this._cachedState) {
@@ -181,14 +181,14 @@ export default class Subsurface extends GrSubsurfaceRequests {
 
   /**
    *
-   *                The sub-surface interface is removed from the gr_surface object
+   *                The sub-surface interface is removed from the wl_surface object
    *                that was turned into a sub-surface with a
-   *                gr_subcompositor.get_subsurface request. The gr_surface's association
-   *                to the parent is deleted, and the gr_surface loses its role as
-   *                a sub-surface. The gr_surface is unmapped.
+   *                wl_subcompositor.get_subsurface request. The wl_surface's association
+   *                to the parent is deleted, and the wl_surface loses its role as
+   *                a sub-surface. The wl_surface is unmapped.
    *
    *
-   * @param {GrSubsurfaceResource} resource
+   * @param {WlSubsurfaceResource} resource
    *
    * @since 1
    * @override
@@ -208,7 +208,7 @@ export default class Subsurface extends GrSubsurfaceRequests {
    *                The scheduled coordinates will take effect whenever the state of the
    *                parent surface is applied. When this happens depends on whether the
    *                parent surface is in synchronized mode or not. See
-   *                gr_subsurface.set_sync and gr_subsurface.set_desync for details.
+   *                wl_subsurface.set_sync and wl_subsurface.set_desync for details.
    *
    *                If more than one set_position request is invoked by the client before
    *                the commit of the parent surface, the position of a new request always
@@ -217,7 +217,7 @@ export default class Subsurface extends GrSubsurfaceRequests {
    *                The initial position is 0, 0.
    *
    *
-   * @param {GrSubsurfaceResource} resource
+   * @param {WlSubsurfaceResource} resource
    * @param {Number} x x coordinate in the parent surface
    * @param {Number} y y coordinate in the parent surface
    *
@@ -244,26 +244,26 @@ export default class Subsurface extends GrSubsurfaceRequests {
    *                applied immediately to a pending state. The final pending state is
    *                copied to the active state the next time the state of the parent
    *                surface is applied. When this happens depends on whether the parent
-   *                surface is in synchronized mode or not. See gr_subsurface.set_sync and
-   *                gr_subsurface.set_desync for details.
+   *                surface is in synchronized mode or not. See wl_subsurface.set_sync and
+   *                wl_subsurface.set_desync for details.
    *
    *                A new sub-surface is initially added as the top-most in the stack
    *                of its siblings and parent.
    *
    *
-   * @param {GrSubsurfaceResource} resource
-   * @param {GrSurfaceResource} sibling the reference surface
+   * @param {WlSubsurfaceResource} resource
+   * @param {WlSurfaceResource} sibling the reference surface
    *
    * @since 1
    * @override
    */
   placeAbove (resource, sibling) {
-    const parentSurface = /** @type {Surface} */ this.parentGrSurfaceResource.implementation
+    const parentSurface = /** @type {Surface} */ this.parentWlSurfaceResource.implementation
     const siblingSurface = /** @type {Surface} */ sibling.implementation
     const siblingSurfaceChildSelf = siblingSurface.surfaceChildSelf
     if (!parentSurface.subsurfaceChildren.includes(siblingSurfaceChildSelf) ||
       siblingSurface === parentSurface) {
-      resource.postError(GrSubsurfaceResource.Error.badSurface, 'Surface is not a sibling or the parent.')
+      resource.postError(WlSubsurfaceResource.Error.badSurface, 'Surface is not a sibling or the parent.')
       DEBUG && console.log('Protocol error. Surface is not a sibling or the parent.')
       return
     }
@@ -272,7 +272,7 @@ export default class Subsurface extends GrSubsurfaceRequests {
       return
     }
 
-    const surface = /** @type {Surface} */this.grSurfaceResource.implementation
+    const surface = /** @type {Surface} */this.wlSurfaceResource.implementation
 
     const currentIdx = parentSurface.pendingSubsurfaceChildren.indexOf(surface.surfaceChildSelf)
     parentSurface.pendingSubsurfaceChildren.splice(currentIdx, 1)
@@ -285,11 +285,11 @@ export default class Subsurface extends GrSubsurfaceRequests {
   /**
    *
    *                The sub-surface is placed just below the reference surface.
-   *                See gr_subsurface.place_above.
+   *                See wl_subsurface.place_above.
    *
    *
-   * @param {GrSubsurfaceResource} resource
-   * @param {GrSurfaceResource} sibling the reference surface
+   * @param {WlSubsurfaceResource} resource
+   * @param {WlSurfaceResource} sibling the reference surface
    *
    * @since 1
    * @override
@@ -299,8 +299,8 @@ export default class Subsurface extends GrSubsurfaceRequests {
       return
     }
 
-    const parentSurface = /** @type {Surface} */this.parentGrSurfaceResource.implementation
-    const surface = /** @type {Surface} */this.grSurfaceResource.implementation
+    const parentSurface = /** @type {Surface} */this.parentWlSurfaceResource.implementation
+    const surface = /** @type {Surface} */this.wlSurfaceResource.implementation
 
     const currentIdx = parentSurface.pendingSubsurfaceChildren.indexOf(surface.surfaceChildSelf)
     parentSurface.pendingSubsurfaceChildren.splice(currentIdx, 1)
@@ -325,7 +325,7 @@ export default class Subsurface extends GrSubsurfaceRequests {
   get _parentEffectiveSync () {
     let parentEffectiveSync = false
 
-    const parentSurface = /** @type {Surface} */this.parentGrSurfaceResource.implementation
+    const parentSurface = /** @type {Surface} */this.parentWlSurfaceResource.implementation
     const parentRole = parentSurface.role
     if (parentRole && parentRole instanceof Subsurface) {
       parentEffectiveSync = parentRole._effectiveSync
@@ -339,7 +339,7 @@ export default class Subsurface extends GrSubsurfaceRequests {
    *                Change the commit behaviour of the sub-surface to synchronized
    *                mode, also described as the parent dependent mode.
    *
-   *                In synchronized mode, gr_surface.commit on a sub-surface will
+   *                In synchronized mode, wl_surface.commit on a sub-surface will
    *                accumulate the committed state in a cache, but the state will
    *                not be applied and hence will not change the compositor output.
    *                The cached state is applied to the sub-surface immediately after
@@ -348,10 +348,10 @@ export default class Subsurface extends GrSubsurfaceRequests {
    *                Applying the cached state will invalidate the cache, so further
    *                parent surface commits do not (re-)apply old state.
    *
-   *                See gr_subsurface for the recursive effect of this mode.
+   *                See wl_subsurface for the recursive effect of this mode.
    *
    *
-   * @param {GrSubsurfaceResource} resource
+   * @param {WlSubsurfaceResource} resource
    *
    * @since 1
    * @override
@@ -369,25 +369,25 @@ export default class Subsurface extends GrSubsurfaceRequests {
    *                Change the commit behaviour of the sub-surface to desynchronized
    *                mode, also described as independent or freely running mode.
    *
-   *                In desynchronized mode, gr_surface.commit on a sub-surface will
+   *                In desynchronized mode, wl_surface.commit on a sub-surface will
    *                apply the pending state directly, without caching, as happens
-   *                normally with a gr_surface. Calling gr_surface.commit on the
-   *                parent surface has no effect on the sub-surface's gr_surface
+   *                normally with a wl_surface. Calling wl_surface.commit on the
+   *                parent surface has no effect on the sub-surface's wl_surface
    *                state. This mode allows a sub-surface to be updated on its own.
    *
-   *                If cached state exists when gr_surface.commit is called in
+   *                If cached state exists when wl_surface.commit is called in
    *                desynchronized mode, the pending state is added to the cached
    *                state, and applied as a whole. This invalidates the cache.
    *
    *                Note: even if a sub-surface is set to desynchronized, a parent
    *                sub-surface may override it to behave as synchronized. For details,
-   *                see gr_subsurface.
+   *                see wl_subsurface.
    *
    *                If a surface's parent surface behaves as desynchronized, then
    *                the cached state is applied on set_desync.
    *
    *
-   * @param {GrSubsurfaceResource} resource
+   * @param {WlSubsurfaceResource} resource
    *
    * @since 1
    * @override
@@ -399,7 +399,7 @@ export default class Subsurface extends GrSubsurfaceRequests {
 
     this._sync = false
     if (!this._effectiveSync && this._cachedState) {
-      const surface = /** @type {Surface} */this.grSurfaceResource.implementation
+      const surface = /** @type {Surface} */this.wlSurfaceResource.implementation
       const renderFrame = Renderer.createRenderFrame()
       surface.render(renderFrame, this._cachedState)
       // TODO if we throw away cached state, we need to free the pixman regions in it

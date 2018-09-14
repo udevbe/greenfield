@@ -39,7 +39,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
    * @param {UserShell}userShell
    */
   static create (xdgToplevelResource, xdgSurface, session, userShell) {
-    const surface = /** @type {Surface} */xdgSurface.grSurfaceResource.implementation
+    const surface = /** @type {Surface} */xdgSurface.wlSurfaceResource.implementation
     const userShellSurface = userShell.manage(surface)
     const xdgToplevel = new XdgToplevel(xdgToplevelResource, xdgSurface, session, userShellSurface)
     xdgToplevelResource.implementation = xdgToplevel
@@ -446,16 +446,16 @@ export default class XdgToplevel extends XdgToplevelRequests {
     if (this._parent) {
       const oldParentXdgToplevel = /** @type {XdgToplevel} */this._parent.implementation
       const oldParentXdgSurface = oldParentXdgToplevel.xdgSurface
-      const oldParentSurface = /** @type {Surface} */oldParentXdgSurface.grSurfaceResource.implementation
-      const surface = /** @type {Surface} */this.xdgSurface.grSurfaceResource.implementation
+      const oldParentSurface = /** @type {Surface} */oldParentXdgSurface.wlSurfaceResource.implementation
+      const surface = /** @type {Surface} */this.xdgSurface.wlSurfaceResource.implementation
       oldParentSurface.removeChild(surface.surfaceChildSelf)
     }
 
     if (parent) {
       const parentXdgToplevel = /** @type {XdgToplevel} */parent.implementation
       const parentXdgSurface = parentXdgToplevel.xdgSurface
-      const parentSurface = /** @type {Surface} */parentXdgSurface.grSurfaceResource.implementation
-      const surface = /** @type {Surface} */this.xdgSurface.grSurfaceResource.implementation
+      const parentSurface = /** @type {Surface} */parentXdgSurface.wlSurfaceResource.implementation
+      const surface = /** @type {Surface} */this.xdgSurface.wlSurfaceResource.implementation
       parentSurface.addToplevelChild(surface.surfaceChildSelf)
     }
 
@@ -535,7 +535,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
    *
    *
    * @param {XdgToplevelResource} resource
-   * @param {GrSeatResource} grSeatResource the wl_seat of the user event
+   * @param {WlSeatResource} wlSeatResource the wl_seat of the user event
    * @param {number} serial the serial of the user event
    * @param {number} x the x position to pop up the window menu at
    * @param {number} y the y position to pop up the window menu at
@@ -543,8 +543,8 @@ export default class XdgToplevel extends XdgToplevelRequests {
    * @since 1
    *
    */
-  showWindowMenu (resource, grSeatResource, serial, x, y) {
-    const seat = /** @type {Seat} */grSeatResource.implementation
+  showWindowMenu (resource, wlSeatResource, serial, x, y) {
+    const seat = /** @type {Seat} */wlSeatResource.implementation
 
     if (!seat.isValidInputSerial(serial)) {
       DEBUG && console.log('showWindowMenu serial mismatch. Ignoring.')
@@ -583,18 +583,18 @@ export default class XdgToplevel extends XdgToplevelRequests {
    *
    *
    * @param {XdgToplevelResource} resource
-   * @param {GrSeatResource} greSeatResource the wl_seat of the user event
+   * @param {WlSeatResource} wlSeatResource the wl_seat of the user event
    * @param {number} serial the serial of the user event
    *
    * @since 1
    * @override
    */
-  move (resource, greSeatResource, serial) {
+  move (resource, wlSeatResource, serial) {
     if (this._configureState.state.includes(fullscreen) || this._configureState.state.includes(maximized)) {
       return
     }
 
-    const seat = /** @type {Seat} */greSeatResource.implementation
+    const seat = /** @type {Seat} */wlSeatResource.implementation
 
     if (!seat.isValidInputSerial(serial)) {
       DEBUG && console.log('move serial mismatch. Ignoring.')
@@ -602,7 +602,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     }
 
     const pointer = seat.pointer
-    const surface = /** @type {Surface} */this.xdgSurface.grSurfaceResource.implementation
+    const surface = /** @type {Surface} */this.xdgSurface.wlSurfaceResource.implementation
     const surfaceChildSelf = surface.surfaceChildSelf
     const origPosition = surfaceChildSelf.position
 
@@ -674,19 +674,19 @@ export default class XdgToplevel extends XdgToplevelRequests {
    *
    *
    * @param {XdgToplevelResource} resource
-   * @param {GrSeatResource} grSeatResource the wl_seat of the user event
+   * @param {WlSeatResource} wlSeatResource the wl_seat of the user event
    * @param {Number} serial the serial of the user event
    * @param {Number} edges which edge or corner is being dragged
    *
    * @since 1
    * @override
    */
-  resize (resource, grSeatResource, serial, edges) {
+  resize (resource, wlSeatResource, serial, edges) {
     if (this._configureState.state.includes(fullscreen) || this._configureState.state.includes(maximized)) {
       return
     }
 
-    const seat = /** @type {Seat} */grSeatResource.implementation
+    const seat = /** @type {Seat} */wlSeatResource.implementation
     const pointer = seat.pointer
 
     if (!seat.isValidInputSerial(serial)) {
@@ -788,7 +788,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
       this._emitConfigure(resource, width, height, [activated, resizing], edges)
     }
 
-    const surface = /** @type {Surface} */this.xdgSurface.grSurfaceResource.implementation
+    const surface = /** @type {Surface} */this.xdgSurface.wlSurfaceResource.implementation
     pointer.onButtonRelease().then(() => {
       surface.hasPointerInput = true
       pointer.removeMouseMoveListener(resizeListener)
@@ -1061,7 +1061,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
    *
    *
    * @param {XdgToplevelResource} resource
-   * @param {?GrOutput} output undefined
+   * @param {?WlOutput} output undefined
    *
    * @since 1
    * @override

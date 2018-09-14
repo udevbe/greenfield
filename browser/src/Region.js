@@ -1,5 +1,5 @@
 'use strict'
-import GrRegionRequests from './protocol/GrRegionRequests'
+import WlRegionRequests from './protocol/WlRegionRequests'
 
 import pixman from './lib/libpixman-1'
 import Rect from './math/Rect'
@@ -10,19 +10,19 @@ import Rect from './math/Rect'
  *
  *            Region objects are used to describe the opaque and input
  *            regions of a surface.
- * @implements GrRegionRequests
+ * @implements WlRegionRequests
  */
-class Region extends GrRegionRequests {
+class Region extends WlRegionRequests {
   /**
    *
-   * @param {!GrRegionResource} grRegionResource
+   * @param {!WlRegionResource} wlRegionResource
    * @returns {!Region}
    */
-  static create (grRegionResource) {
+  static create (wlRegionResource) {
     const pixmanRegion = Region.createPixmanRegion()
-    const region = new Region(grRegionResource, pixmanRegion)
-    grRegionResource.implementation = region
-    grRegionResource.onDestroy().then(() => { Region.destroyPixmanRegion(pixmanRegion) })
+    const region = new Region(wlRegionResource, pixmanRegion)
+    wlRegionResource.implementation = region
+    wlRegionResource.onDestroy().then(() => { Region.destroyPixmanRegion(pixmanRegion) })
     return region
   }
 
@@ -120,16 +120,16 @@ class Region extends GrRegionRequests {
   /**
    * Use Region.create(..) instead.
    * @private
-   * @param {!GrRegionResource}grRegionResource
+   * @param {!WlRegionResource}wlRegionResource
    * @param {!number}pixmanRegion
    */
-  constructor (grRegionResource, pixmanRegion) {
+  constructor (wlRegionResource, pixmanRegion) {
     super()
     /**
-     * @type {!GrRegionResource}
+     * @type {!WlRegionResource}
      * @const
      */
-    this.resource = grRegionResource
+    this.resource = wlRegionResource
     /**
      * @type {!number}
      * @const
@@ -142,7 +142,7 @@ class Region extends GrRegionRequests {
    * Destroy the region. This will invalidate the object ID.
    *
    *
-   * @param {!GrRegionResource} resource
+   * @param {!WlRegionResource} resource
    *
    * @since 1
    * @override
@@ -156,7 +156,7 @@ class Region extends GrRegionRequests {
    *  Add the specified rectangle to the region.
    *
    *
-   * @param {!GrRegionResource} resource
+   * @param {!WlRegionResource} resource
    * @param {!number} x undefined
    * @param {!number} y undefined
    * @param {!number} width undefined
@@ -174,7 +174,7 @@ class Region extends GrRegionRequests {
    * Subtract the specified rectangle from the region.
    *
    *
-   * @param {!GrRegionResource} resource
+   * @param {!WlRegionResource} resource
    * @param {!number} x undefined
    * @param {!number} y undefined
    * @param {!number} width undefined

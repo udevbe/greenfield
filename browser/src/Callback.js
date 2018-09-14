@@ -8,20 +8,20 @@
  */
 export default class Callback {
   /**
-   * @param {!GrCallbackResource}grCallbackResource
+   * @param {!WlCallbackResource}wlCallbackResource
    * @return {!Callback}
    */
-  static create (grCallbackResource) {
-    return new Callback(grCallbackResource)
+  static create (wlCallbackResource) {
+    return new Callback(wlCallbackResource)
   }
 
   /**
-   * @param {!GrCallbackResource}grCallbackResource
+   * @param {!WlCallbackResource}grCallbackResource
    * @private
    */
   constructor (grCallbackResource) {
     /**
-     * @type {?GrCallbackResource}
+     * @type {?WlCallbackResource}
      */
     this.resource = grCallbackResource
   }

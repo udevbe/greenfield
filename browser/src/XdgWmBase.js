@@ -73,10 +73,10 @@ export default class XdgWmBase extends XdgWmBaseRequests {
      */
     this._pingSerial = 0
     /**
-     * @type {Array<GrSurfaceResource>}
+     * @type {Array<WlSurfaceResource>}
      * @private
      */
-    this._grSurfaceResources = []
+    this._wlSurfaceResources = []
     /**
      * @type {Global}
      * @private
@@ -138,7 +138,7 @@ export default class XdgWmBase extends XdgWmBaseRequests {
    * @override
    */
   destroy (resource) {
-    if (this._grSurfaceResources.length > 0) {
+    if (this._wlSurfaceResources.length > 0) {
       resource.postError(XdgWmBaseResource.Error.defunctSurfaces, 'xdg_wm_base was destroyed before children.')
       DEBUG && console.log('Protocol error. xdg_wm_base was destroyed before children.')
       return
@@ -181,26 +181,26 @@ export default class XdgWmBase extends XdgWmBaseRequests {
    *
    * @param {XdgWmBaseResource} resource
    * @param {number} id
-   * @param {GrSurfaceResource} grSurfaceResource
+   * @param {WlSurfaceResource} wlSurfaceResource
    *
    * @since 1
    * @override
    */
-  getXdgSurface (resource, id, grSurfaceResource) {
-    const surface = /** @type {Surface} */grSurfaceResource.implementation
-    if (surface.pendingGrBuffer || surface.state.bufferContents) {
+  getXdgSurface (resource, id, wlSurfaceResource) {
+    const surface = /** @type {Surface} */wlSurfaceResource.implementation
+    if (surface.pendingWlBuffer || surface.state.bufferContents) {
       resource.postError(XdgWmBase.Error.invalidSurfaceState, 'Surface had a buffer attached before xdg surface was created.')
       DEBUG && console.log('Protocol error. Surface had a buffer attached before xdg surface was created.')
       return
     }
 
     const xdgSurfaceResource = new XdgSurfaceResource(resource.client, id, resource.version)
-    XdgSurface.create(xdgSurfaceResource, grSurfaceResource, this._session, this._userShell, this._seat)
-    this._grSurfaceResources.push(grSurfaceResource)
+    XdgSurface.create(xdgSurfaceResource, wlSurfaceResource, this._session, this._userShell, this._seat)
+    this._wlSurfaceResources.push(wlSurfaceResource)
     surface.onDestroy().then(() => {
-      const index = this._grSurfaceResources.indexOf(grSurfaceResource)
+      const index = this._wlSurfaceResources.indexOf(wlSurfaceResource)
       if (index > -1) {
-        this._grSurfaceResources.splice(index, 1)
+        this._wlSurfaceResources.splice(index, 1)
       }
     })
   }
@@ -220,8 +220,8 @@ export default class XdgWmBase extends XdgWmBaseRequests {
   pong (resource, serial) {
     // TODO compare serial with send out pingSerial
     if (this._pingTimeoutActive) {
-      this._grSurfaceResources.forEach((grSurfaceResource) => {
-        this._removeClassRecursively(/** @type {Surface} */grSurfaceResource.implementation, 'fadeToUnresponsive')
+      this._wlSurfaceResources.forEach((wlSurfaceResource) => {
+        this._removeClassRecursively(/** @type {Surface} */wlSurfaceResource.implementation, 'fadeToUnresponsive')
       })
       this._pingTimeoutActive = false
     }
@@ -240,8 +240,8 @@ export default class XdgWmBase extends XdgWmBaseRequests {
       if (!this._pingTimeoutActive) {
         // ping timed out, make view gray
         this._pingTimeoutActive = true
-        this._grSurfaceResources.forEach((grSurfaceResource) => {
-          this._addClassRecursively(/** @type {Surface} */grSurfaceResource.implementation, 'fadeToUnresponsive')
+        this._wlSurfaceResources.forEach((wlSurfaceResource) => {
+          this._addClassRecursively(/** @type {Surface} */wlSurfaceResource.implementation, 'fadeToUnresponsive')
         })
       }
     }, 3000)

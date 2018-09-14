@@ -1,7 +1,7 @@
 'use strict'
 
-import GrOutputRequests from './protocol/GrOutputRequests'
-import GrOutputResource from './protocol/GrOutputResource'
+import WlOutputRequests from './protocol/WlOutputRequests'
+import WlOutputResource from './protocol/WlOutputResource'
 
 /**
  *
@@ -11,9 +11,9 @@ import GrOutputResource from './protocol/GrOutputResource'
  *            actually visible.  This typically corresponds to a monitor that
  *            displays part of the compositor space.  This object is published
  *            as global during start up, or when a monitor is hotplugged.
- * @implements GrOutputRequests
+ * @implements WlOutputRequests
  */
-export default class Output extends GrOutputRequests {
+export default class Output extends WlOutputRequests {
   /**
    * @return {!Output}
    */
@@ -32,16 +32,6 @@ export default class Output extends GrOutputRequests {
      * @private
      */
     this._global = null
-    /**
-     * @type {boolean}
-     * @private
-     */
-    this._unregisterPending = false
-    /**
-     * @type {Array<GrOutputResource>}
-     * @private
-     */
-    this._boundResources = []
   }
 
   /**
@@ -51,7 +41,7 @@ export default class Output extends GrOutputRequests {
     if (this._global) {
       return
     }
-    this._global = registry.createGlobal(this, GrOutputResource.name, 3, (client, id, version) => {
+    this._global = registry.createGlobal(this, WlOutputResource.protocolName, 3, (client, id, version) => {
       this.bindClient(client, id, version)
     })
   }
@@ -60,16 +50,8 @@ export default class Output extends GrOutputRequests {
     if (!this._global) {
       return
     }
-    this._unregisterPending = true
-    this._checkDestroyGlobal()
-  }
-
-  _checkDestroyGlobal () {
-    if (!this._boundResources.length) {
-      this._global.destroy()
-      this._global = null
-      this._unregisterPending = false
-    }
+    this._global.destroy()
+    this._global = null
   }
 
   /**
@@ -78,47 +60,41 @@ export default class Output extends GrOutputRequests {
    * @param {!number}version
    */
   bindClient (client, id, version) {
-    const grOutputResource = new GrOutputResource(client, id, version)
-    if (this._unregisterPending) {
-      // create inert implementation
-      grOutputResource.implementation = new GrOutputRequests()
-    } else {
-      grOutputResource.implementation = this
-      this._boundResources.push(grOutputResource)
-      this.emitSpecs(grOutputResource)
-    }
+    const wlOutputResource = new WlOutputResource(client, id, version)
+    wlOutputResource.implementation = this
+    this.emitSpecs(wlOutputResource)
   }
 
   /**
-   * @param {!GrOutputResource}grOutputResource
+   * @param {!WlOutputResource}wlOutputResource
    */
-  emitSpecs (grOutputResource) {
+  emitSpecs (wlOutputResource) {
     // TODO we might want to listen for window/document size changes and emit on update
-    this._emitGeomtry(grOutputResource)
-    this._emitMode(grOutputResource)
+    this._emitGeomtry(wlOutputResource)
+    this._emitMode(wlOutputResource)
     // TODO scaling info using window.devicePixelRatio
     // TODO expose pixel scaling in config menu
-    if (grOutputResource.version >= 2) {
-      grOutputResource.done()
+    if (wlOutputResource.version >= 2) {
+      wlOutputResource.done()
     }
   }
 
   /**
-   * @param {!GrOutputResource}grOutputResource
+   * @param {!WlOutputResource}wlOutputResource
    */
-  _emitMode (grOutputResource) {
-    const flags = GrOutputResource.Mode.current
+  _emitMode (wlOutputResource) {
+    const flags = WlOutputResource.Mode.current
     const width = Math.ceil(window.innerWidth * window.devicePixelRatio)
     const height = Math.ceil(window.innerHeight * window.devicePixelRatio)
     // the refresh rate is impossible to query without manual measuring, which is error prone.
     const refresh = 60
-    grOutputResource.mode(flags, width, height, refresh)
+    wlOutputResource.mode(flags, width, height, refresh)
   }
 
   /**
-   * @param {!GrOutputResource}grOutputResource
+   * @param {!WlOutputResource}wlOutputResource
    */
-  _emitGeomtry (grOutputResource) {
+  _emitGeomtry (wlOutputResource) {
     const x = 0
     const y = 0
     // this is really just an approximation as browsers don't offer a way to get the physical width :(
@@ -126,34 +102,34 @@ export default class Output extends GrOutputRequests {
     // TODO test this on high dpi devices
     const physicalWidth = Math.ceil(window.innerWidth * 0.2646)
     const physicalHeight = Math.ceil(window.innerHeight * 0.2646)
-    const subpixel = GrOutputResource.Subpixel.unknown
+    const subpixel = WlOutputResource.Subpixel.unknown
     const make = 'Greenfield'
     const model = window.navigator.userAgent
 
     const orientation = window.screen.orientation.type
-    let transform = GrOutputResource.Transform.normal
+    let transform = WlOutputResource.Transform.normal
 
     // FIXME this requires some experimentation to get it right
     switch (orientation) {
       case 'portrait-primary': {
-        transform = GrOutputResource.Transform.normal
+        transform = WlOutputResource.Transform.normal
         break
       }
       case 'portrait-secondary': {
-        transform = GrOutputResource.Transform['180']
+        transform = WlOutputResource.Transform['180']
         break
       }
       case 'landscape-primary': {
-        transform = GrOutputResource.Transform.normal
+        transform = WlOutputResource.Transform.normal
         break
       }
       case 'landscape-secondary': {
-        transform = GrOutputResource.Transform['180']
+        transform = WlOutputResource.Transform['180']
         break
       }
     }
 
-    grOutputResource.geometry(x, y, physicalWidth, physicalHeight, subpixel, make, model, transform)
+    wlOutputResource.geometry(x, y, physicalWidth, physicalHeight, subpixel, make, model, transform)
   }
 
   /**
@@ -162,18 +138,12 @@ export default class Output extends GrOutputRequests {
    *                use the output object anymore.
    *
    *
-   * @param {!GrOutputResource} resource
+   * @param {!WlOutputResource} resource
    *
    * @since 3
    *
    */
   release (resource) {
-    const idx = this._boundResources.indexOf(resource)
-    if (idx > -1) {
-      this._boundResources.splice(idx, 1)
-    }
-    if (this._unregisterPending) {
-      this._checkDestroyGlobal()
-    }
+    resource.destroy()
   }
 }
