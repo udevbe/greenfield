@@ -1,4 +1,4 @@
-#include <node/node_api.h>
+#include <node_api.h>
 #include <assert.h>
 #include <stdio.h>
 
