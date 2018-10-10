@@ -45,7 +45,11 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
 find_package(pixman REQUIRED)
 
-include_directories(${CMAKE_JS_INC} ${PIXMAN_INCLUDE_DIRS})
 add_library(${PROJECT_NAME} SHARED src/greenfield-native.c)
+
+target_include_directories(${PROJECT_NAME}
+    PRIVATE ${CMAKE_JS_INC}
+    PRIVATE ${PIXMAN_INCLUDE_DIRS})
+
 set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".node")
 target_link_libraries(${PROJECT_NAME} ${CMAKE_JS_LIB} ${PIXMAN_LIBRARIES})
