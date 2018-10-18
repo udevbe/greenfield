@@ -75,15 +75,16 @@ class AppEndpointCompositorPair {
   }
 
   _onMessage (event) {
-
+    // TODO handle webrtc peer connection signaling setup
   }
 
   _onClose (event) {
-
+    console.log(`App endpoint session ${this.appEndpointSessionId} web socket is closed. ${event.code}: ${event.reason}`)
+    this.destroy()
   }
 
   _onError (event) {
-
+    console.error(`App endpoint session ${this.appEndpointSessionId} web socket is in error.`)
   }
 }
 

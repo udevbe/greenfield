@@ -1,5 +1,5 @@
 {
-  "name": "greenfield-native",
+  "name": "app-endpoint-native",
   "version": "0.0.1",
   "main": "./build/Release/greenfield-native.node",
   "scripts": {
