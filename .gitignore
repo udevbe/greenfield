@@ -130,3 +130,7 @@ CTestTestfile.cmake
 /local/native/cmake-build-debug/
 /local/native/build/
 /stats/stats.js
+
+/compositor/web/dist/
+/compositor/web/src/protocol/
+/compositor/package-lock.json

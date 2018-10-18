@@ -1,6 +1,6 @@
 'use strict'
 
-const config = require('./src/config')
+const config = require('./config')
 const express = require('express')
 const http = require('http')
 const childProcess = require('child_process')
@@ -8,11 +8,17 @@ const path = require('path')
 
 const WebSocket = require('ws')
 
-const AppEndpoint = require('./src/AppEndpoint')
+const AppEndpoint = require('./AppEndpoint')
 const appEndpointWebSocketServer = new WebSocket.Server({
   noServer: true,
   handshakeTimeout: 2000
 })
+
+const intentionHandlers = {
+  announceCompositor: announceCompositor,
+  announceAppEndpointDaemon: announceAppEndpointDaemon,
+  pairAppEndpoint: pairAppEndpoint
+}
 
 /**
  * @type {Object.<string, ChildProcess>}
@@ -80,7 +86,7 @@ function announceCompositor (request, socket, head, pathElements) {
       compositorSessionId: compositorSessionId
     }, head], socket)
 
-    appEndpoints.forEach(appEndpoint => {
+    Object.values(appEndpoints).forEach(appEndpoint => {
       appEndpoint.announceCompositors(compositorSessionId)
     })
     // TODO listen for compositor destruction & send a denounce to app endpoints
@@ -109,7 +115,6 @@ function announceAppEndpointDaemon (request, socket, head, pathElements) {
 
       appEndpoint.announceCompositors(Object.keys(compositorSessionForks))
     })
-
   } else {
     socket.destroy(`Expected valid UUID in path for 'announceAppEndpoint' intention, instead got: '${appEndpointId}'.`)
   }
@@ -154,25 +159,27 @@ function handleHttpUpgradeRequest (request, socket, head) {
   pathElements.shift() // empty element
   const intention = pathElements.shift()
 
-  const intentationHandler = this[intention]
-  if (intentationHandler) { // 'announceAppEndpointDaemon', 'pairAppEndpoint', 'announceCompositor'
-    intentationHandler(request, socket, head, pathElements)
+  const intentionHandler = intentionHandlers[intention]
+  if (intentionHandler) { // 'announceAppEndpointDaemon', 'pairAppEndpoint', 'announceCompositor'
+    intentionHandler(request, socket, head, pathElements)
   } else {
     socket.destroy(`Unknown intention ${intention}.`)
   }
 }
 
 function main () {
-  console.log('>>> [web-endpoint] Running in PRODUCTION mode <<<\n')
-  express.static.mime.define({'application/wasm': ['wasm']})
+  console.log('>>> Greenfield running in PRODUCTION mode <<<\n')
+  express.static.mime.define({ 'application/wasm': ['wasm'] })
   const app = express()
-  app.use(express.static(path.join(__dirname, '../../compositor/dist')))
+  app.use(express.static(path.join(__dirname, '../../web/dist')))
 
   const server = http.createServer()
   server.on('request', app)
   server.setTimeout(config['http-server']['socket-timeout'])
 
-  server.on('upgrade', handleHttpUpgradeRequest)
+  server.on('upgrade', (request, socket, head) => {
+    handleHttpUpgradeRequest(request, socket, head)
+  })
 
   const cleanUp = () => {
     console.log('Parent exit. Cleaning up child processes.')

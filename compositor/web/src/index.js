@@ -3,8 +3,6 @@ import Session from './Session'
 import Compositor from './Compositor'
 import pixman from './lib/libpixman-1'
 import libxkbcommon from './lib/libxkbcommon'
-import RtcPeerConnectionFactory from './RtcPeerConnectionFactory'
-import RtcBufferFactory from './RtcBufferFactory'
 import Shell from './Shell'
 import Seat from './Seat'
 import DataDeviceManager from './DataDeviceManager'
@@ -25,9 +23,6 @@ function setupGlobals (session) {
   const dataDeviceManager = DataDeviceManager.create()
   const subcompositor = Subcompositor.create()
 
-  const rtcPeerConnectionFactory = RtcPeerConnectionFactory.create()
-  const rtcBufferFactory = RtcBufferFactory.create()
-
   const desktopUserShell = DesktopUserShell.create(session, seat)
 
   const shell = Shell.create(session, desktopUserShell)
@@ -40,15 +35,18 @@ function setupGlobals (session) {
   shell.registerGlobal(session.display.registry)
   subcompositor.registerGlobal(session.display.registry)
 
-  rtcPeerConnectionFactory.registerGlobal(session.display.registry)
-  rtcBufferFactory.registerGlobal(session.display.registry)
-
   xdgWmBase.registerGlobal(session.display.registry)
 }
 
-function main () {
-  const compositorSessionId = uuidv4()
-  const session = Session.create(compositorSessionId)
+async function main () {
+  // show user a warning if they want to close this page
+  window.onbeforeunload = (e) => {
+    const dialogText = 'dummytext'
+    e.returnValue = dialogText
+    return dialogText
+  }
+
+  const session = await Session.create()
   setupGlobals(session)
 }
 
@@ -67,15 +65,6 @@ function loadNativeModule (module) {
   })
 }
 
-/**
- * @return {string}
- */
-function uuidv4 () {
-  return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
-    (c ^ window.crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-  )
-}
-
 window.onload = async () => {
   // make sure all native modules are ready for use before we start our main flow
   await loadNativeModule(pixman)
@@ -85,9 +74,7 @@ window.onload = async () => {
 
 // This adds a zero timeout 'run later' mechanism:
 // https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/setTimeout#Reasons_for_delays_longer_than_specified
-
-// Only add setZeroTimeout to the window object, and hide everything
-// else in a closure.
+// Only add setZeroTimeout to the window object, and hide everything else in a closure.
 (function () {
   const timeouts = []
   const messageName = 'zero-timeout-message'

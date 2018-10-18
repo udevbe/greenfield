@@ -22,7 +22,6 @@ import Size from './Size'
 import Region from './Region'
 import SurfaceChild from './SurfaceChild'
 import Renderer from './render/Renderer'
-import RtcBufferFactory from './RtcBufferFactory'
 import Point from './math/Point'
 
 /**
@@ -1068,8 +1067,8 @@ export default class Surface extends WlSurfaceRequests {
 
     const bufferReceiveStart = Date.now()
     if (pendingWlBuffer) {
-      const rtcDcBuffer = RtcBufferFactory.get(pendingWlBuffer)
-      newState.bufferContents = await rtcDcBuffer.whenComplete()
+      // TODO create new streaming buffer library
+      newState.bufferContents = await null
 
       const bufferCompletion = Date.now() - bufferReceiveStart
       this._bufferCompletionTotal += bufferCompletion

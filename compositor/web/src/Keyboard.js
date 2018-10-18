@@ -4,7 +4,6 @@ import WlKeyboardRequests from './protocol/WlKeyboardRequests'
 import WlKeyboardResource from './protocol/WlKeyboardResource'
 
 import Xkb from './Xkb'
-import RtcBlobTransfer from './RtcBlobTransfer'
 
 const {pressed, released} = WlKeyboardResource.KeyState
 const {xkbV1} = WlKeyboardResource.KeymapFormat
@@ -169,25 +168,11 @@ export default class Keyboard extends WlKeyboardRequests {
     const textEncoder = new TextEncoder('utf-8')
     const keymapBuffer = textEncoder.encode(keymapString)
     const keymapBufferLength = keymapBuffer.buffer.byteLength
-    const blobDescriptor = RtcBlobTransfer.createDescriptor(true, 'arraybuffer')
-    resource.keymap(xkbV1, blobDescriptor, keymapBufferLength)
 
-    // cleanup of the blob transfer is initiated at the other end.
-    const rtcBlobTransfer = await RtcBlobTransfer.get(blobDescriptor)
-    rtcBlobTransfer.rtcPeerConnection.ensureP2S()
-    const rtcDataChannel = await rtcBlobTransfer.open()
-    // chrome doesn't like chunks > 16KB
-    const maxChunkSize = 16 * 1000 // 1000 instead of 1024 to be on the safe side.
-
-    if (keymapBufferLength > maxChunkSize) {
-      const nroChunks = Math.ceil(keymapBufferLength / maxChunkSize)
-      for (let i = 0; i < nroChunks; i++) {
-        const chunk = keymapBuffer.slice(i * maxChunkSize, (i + 1) * maxChunkSize)
-        rtcDataChannel.send(chunk.buffer)
-      }
-    } else {
-      rtcDataChannel.send(keymapBuffer.buffer)
-    }
+    // TODO use new fd interactions lib to create a new file with the keymap contents on the client's host, then use
+    // the fd of that file to communicate with the client
+    const keymapFd = 0
+    resource.keymap(xkbV1, keymapFd, keymapBufferLength)
   }
 
   /**
