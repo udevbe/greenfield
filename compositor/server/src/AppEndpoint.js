@@ -15,14 +15,26 @@ class AppEndpoint {
      * @type {WebSocket}
      * @private
      */
-    this._ws = ws
+    this._webSocket = ws
+    /**
+     * @type {function:void}
+     * @private
+     */
+    this._destroyResolve = null
+    /**
+     * @type {Promise<void>}
+     * @private
+     */
+    this._destroyPromise = new Promise((resolve, reject) => {
+      this._destroyResolve = resolve
+    })
   }
 
   /**
    * @return {Promise<void>}
    */
   onDestroy () {
-
+    return this._destroyPromise
   }
 
   /**
@@ -30,7 +42,7 @@ class AppEndpoint {
    */
   announceCompositors (...compositorSessionIds) {
     compositorSessionIds.forEach(compositorSessionId => {
-      this._ws.send(JSON.stringify({
+      this._webSocket.send(JSON.stringify({
         intent: 'announceCompositor',
         compositorSessionId: compositorSessionId
       }))

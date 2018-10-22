@@ -12,7 +12,7 @@ try {
   } else {
     configPath = path.join(__dirname, '../config/DefaultConfig.json')
   }
-  const configJSON = fs.readFileSync(configPath, {'encoding': 'utf8'})
+  const configJSON = fs.readFileSync(configPath, { 'encoding': 'utf8' })
   const config = JSON.parse(configJSON)
 
   console.log(` --- [app-endpoint] Loaded configuration: ${configPath} ---`)

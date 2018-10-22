@@ -12,11 +12,12 @@ import Subcompositor from './Subcompositor'
 import './style/greenfield.css'
 import XdgWmBase from './XdgWmBase'
 import DesktopUserShell from './desktopshell/DesktopUserShell'
+import RtcSocket from './RtcSocket'
 
 /**
  * @param {Session}session
  */
-function setupGlobals (session) {
+function setup (session) {
   const output = Output.create()
   const seat = Seat.create(session)
   const compositor = Compositor.create(session, seat)
@@ -36,6 +37,8 @@ function setupGlobals (session) {
   subcompositor.registerGlobal(session.display.registry)
 
   xdgWmBase.registerGlobal(session.display.registry)
+
+  session.messageHandlers['rtcSocket'] = RtcSocket.create(session)
 }
 
 async function main () {
@@ -47,7 +50,7 @@ async function main () {
   }
 
   const session = await Session.create()
-  setupGlobals(session)
+  setup(session)
 }
 
 /**

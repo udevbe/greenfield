@@ -22,7 +22,13 @@ export default class DesktopShellAppMenu {
 
     // event listeners
     this._addEventListeners(desktopShellAppMenu)
-    desktopShellAppMenu._setupWebsocketConnection(session)
+
+    session.messageHandlers['desktopShell'] = desktopShellAppMenu
+    session.webSocket.send(JSON.stringify({
+      object: 'desktopShell',
+      method: 'queryLaunchers',
+      args: {}
+    }))
 
     return desktopShellAppMenu
   }
@@ -133,7 +139,7 @@ export default class DesktopShellAppMenu {
           const candidateString = `${desktopShellAppMenuItem.name}`
           if (candidateString.toLowerCase().includes(searchText.toLowerCase())) {
             desktopShellAppMenuItem.divElementItem.classList.add('search-match')
-            desktopShellAppMenuItem.divElementItem.scrollIntoView({block: 'end', behavior: 'smooth'})
+            desktopShellAppMenuItem.divElementItem.scrollIntoView({ block: 'end', behavior: 'smooth' })
             break
           }
         }
@@ -178,65 +184,31 @@ export default class DesktopShellAppMenu {
      */
     this._session = session
     /**
-     * @type {WebSocket}
-     * @private
-     */
-    this._ws = null
-    /**
      * @type {DesktopShellAppMenuItem[]}
      * @private
      */
     this._desktopShellAppMenuItems = []
   }
 
-  /**
-   * @param {Session}session
-   * @private
-   */
-  _setupWebsocketConnection (session) {
-    const sessionId = session.compositorSessionId
-    const websocketProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-    const url = `${websocketProtocol}://${window.location.host}/${sessionId}/apps`
-
-    const ws = new WebSocket(url)
-    ws.onerror = () => {
-      console.error(`Apps web socket is in error.`)
-    }
-
-    ws.onclose = (event) => {
-      DEBUG && console.log(`Apps web socket is closed: ${event.code}: ${event.reason}`)
-    }
-
-    ws.onopen = () => {
-      DEBUG && console.log('Apps web socket is open.')
-      this._setupWebsocket(ws)
-      ws.send(JSON.stringify({
-        action: '_query',
-        data: ''
-      }))
-    }
-    this._ws = ws
-  }
-
-  _setupWebsocket (ws) {
-    ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data)
-        const action = message.action
-        this[action](message.data)
-      } catch (error) {
-        console.trace(`Apps web socket failed to handle incoming message: $${JSON.stringify(event)}\n${event.message}\n${error.stack}`)
-        ws.close(4007, 'Apps web socket received an illegal message')
-      }
+  _onMessage (event) {
+    try {
+      const message = JSON.parse(event.data)
+      const action = message.intent
+      this[action](...message.arguments)
+    } catch (error) {
+      console.trace(`Apps web socket failed to handle incoming message: $${JSON.stringify(event)}\n${event.message}\n${error.stack}`)
     }
   }
 
   /**
-   * Dynamically called by ws.onmessage, as specified by the action property in the received message.
-   * @param {{ executable:string, name: string, description: string, icon: string }[]}appsList
-   * @private
+   * Reply of queryLaunchers.
+   * @param {Object} args
    */
-  _query (appsList) {
+  launchersList (args) {
+    const {
+      /** @type{Array<{ executable:string, name: string, description: string, icon: string }>} */
+      appsList
+    } = args
     this._desktopShellAppMenuItems.forEach((desktopShellAppMenuItem) => {
       if (desktopShellAppMenuItem.divElementItem.parentElement) {
         desktopShellAppMenuItem.divElementItem.parentElement.removeChild(desktopShellAppMenuItem.divElementItem)

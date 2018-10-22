@@ -5,6 +5,7 @@ const crypto = require('crypto')
 const WebSocket = require('ws')
 
 const config = require('./config')
+const RtcClient = require('./RtcClient')
 
 class AppEndpointCompositorPair {
   /**
@@ -54,13 +55,37 @@ class AppEndpointCompositorPair {
    * @param {string}compositorSessionId
    */
   constructor (webSocket, appEndpointSessionId, compositorSessionId) {
+    /**
+     * @type {WebSocket}
+     */
     this.webSocket = webSocket
+    /**
+     * @type {string}
+     */
     this.appEndpointSessionId = appEndpointSessionId
+    /**
+     * @type {string}
+     */
     this.compositorSessionId = compositorSessionId
+    /**
+     * @type {function():void}
+     * @private
+     */
     this._destroyResolve = null
+    /**
+     * @type {Promise<void>}
+     * @private
+     */
     this._destroyPromise = new Promise((resolve) => {
       this._destroyResolve = resolve
     })
+    /**
+     * @type {{rtcClient: RtcClient}}
+     * @private
+     */
+    this._messageHandlers = {
+      rtcClient: RtcClient.create(this)
+    }
   }
 
   /**
@@ -75,7 +100,15 @@ class AppEndpointCompositorPair {
   }
 
   _onMessage (event) {
-    // TODO handle webrtc peer connection signaling setup
+    try {
+      const eventData = event.data
+      const message = JSON.parse(/** @types {string} */eventData)
+      const { object, method, args } = message
+      this._messageHandlers[object][method](args)
+    } catch (error) {
+      console.error(`Compositor session [${this.id}] failed to handle incoming message. \n${error}\n${error.stack}`)
+      this.webSocket.close(4007, `Compositor session [${this.id}] received an illegal message`)
+    }
   }
 
   _onClose (event) {

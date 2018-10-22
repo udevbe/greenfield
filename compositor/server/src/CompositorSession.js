@@ -3,6 +3,8 @@
 const WebSocket = require('ws')
 
 const AppEndpointSession = require('./AppEndpointSession')
+const DesktopShellMessageHandler = require('./DesktopShellMessageHandler')
+const RTCSignalMessageHandler = require('./RTCSignalMessageHandler')
 
 class CompositorSession {
   /**
@@ -27,9 +29,9 @@ class CompositorSession {
         console.log(`Compositor session [${id}] web socket is open.`)
         const compositorSession = new CompositorSession(wss, sessionWebSocket, id)
 
-        sessionWebSocket.onmessage = (event) => {
+        sessionWebSocket.addEventListener('message', (event) => {
           compositorSession._onMessage(event)
-        }
+        })
         sessionWebSocket.onclose = (event) => {
           compositorSession._onClose(event)
         }
@@ -64,9 +66,8 @@ class CompositorSession {
     this.webSocket = webSocket
     /**
      * @type {Object.<string,AppEndpointSession>}
-     * @private
      */
-    this._appEndpointSessions = {}
+    this.appEndpointSessions = {}
     /**
      * @type {function():void}
      * @private
@@ -79,6 +80,15 @@ class CompositorSession {
     this._destroyPromise = new Promise((resolve) => {
       this._destroyResolve = resolve
     })
+
+    /**
+     * @type {{compositor: CompositorSession, desktopShell: DesktopShellMessageHandler}}
+     * @private
+     */
+    this._messageHandlers = {
+      signalingServer: RTCSignalMessageHandler.create(this),
+      desktopShell: DesktopShellMessageHandler.create(this)
+    }
   }
 
   /**
@@ -89,6 +99,7 @@ class CompositorSession {
   }
 
   /**
+   * Handles an incoming web socket connection coming from an application endpoint.
    * @param {string}appEndpointSessionId
    * @param {{}}headers
    * @param {Object}method
@@ -98,19 +109,19 @@ class CompositorSession {
    */
   async pair (appEndpointSessionId, headers, method, head, socket) {
     const appEndpointSession = await AppEndpointSession.create(this._wss, this.webSocket, appEndpointSessionId, headers, method, head, socket)
-    this._appEndpointSessions[appEndpointSessionId] = appEndpointSession
+    this.appEndpointSessions[appEndpointSessionId] = appEndpointSession
     appEndpointSession.onDestroy().then(() => {
-      delete this._appEndpointSessions[appEndpointSessionId]
+      delete this.appEndpointSessions[appEndpointSessionId]
     })
     this.onDestroy().then(() => {
       appEndpointSession.destroy()
     })
 
-    // request to start a webrtc pairing session (peer connection)
+    // Requests the browser to start a new webRTC peer connection.
     this.webSocket.send(JSON.stringify({
-      intention: 'pair',
-      phase: 'request',
-      appEndpointSessionId: appEndpointSessionId
+      object: 'rtcSocket',
+      method: 'connect',
+      args: { appEndpointSessionId }
     }))
   }
 
@@ -126,18 +137,8 @@ class CompositorSession {
     try {
       const eventData = event.data
       const message = JSON.parse(/** @types {string} */eventData)
-
-      const {intention, phase, appEndpointSessionId} = message
-      if (intention === 'pair' && phase === 'signaling') {
-        const appEndpointSession = this._appEndpointSessions[appEndpointSessionId]
-        if (appEndpointSession) {
-          appEndpointSession.webSocket.send(eventData)
-        } else {
-          throw new Error(`Compositor session [${this.id}] failed to parse incoming compositor message. Property 'appEndpointSessionId' with value '${appEndpointSessionId}' did not match a known app endpoint session.`)
-        }
-      } else {
-        throw new Error(`Compositor session [${this.id}] failed to parse incoming compositor message. Expected message with properties 'intention' and 'phase'.`)
-      }
+      const { object, method, args } = message
+      this._messageHandlers[object][method](args)
     } catch (error) {
       console.error(`Compositor session [${this.id}] failed to handle incoming message. \n${error}\n${error.stack}`)
       this.webSocket.close(4007, `Compositor session [${this.id}] received an illegal message`)
