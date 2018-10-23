@@ -3,9 +3,9 @@
 const AppEndpointDaemon = require('./AppEndpointDaemon')
 
 async function main () {
-  console.log('>>> [app-endpoint-daemon] Running in PRODUCTION mode <<<\n')
+  console.log(`[app-endpoint-daemon] >>> Running in ${process.env.DEBUG ? 'DEBUG' : 'PRODUCTION'} mode <<<`)
   const appEndpointDaemon = await AppEndpointDaemon.create()
-  console.log(`>>> [app-endpoint-daemon] connected to ${appEndpointDaemon.webSocket.url}. <<<\n`)
+  process.env.DEBUG && console.log(`[app-endpoint-daemon] Connected to ${appEndpointDaemon.webSocket.url}.`)
 
   const cleanUp = () => {
     console.log('Parent exit. Cleaning up child processes.')

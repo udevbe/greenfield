@@ -18,7 +18,6 @@ function main () {
 
   process.once('message', async (message) => {
     const compositorSessionid = message.compositorSessionId
-
     const appEndpointCompositorPair = await AppEndpointCompositorPair.create(compositorSessionid)
     appEndpointCompositorPair.onDestroy().then(() => {
       cleanUp()

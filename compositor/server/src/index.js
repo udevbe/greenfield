@@ -1,6 +1,6 @@
 'use strict'
 
-const config = require('./config')
+const { service: serviceConfig } = require('./config')
 const express = require('express')
 const http = require('http')
 const childProcess = require('child_process')
@@ -43,19 +43,20 @@ function createCompositorSessionFork (compositorSessionId) {
     console.log('Parent creating new child process.')
     const configPath = process.argv[2]
     child = childProcess.fork(path.join(__dirname, 'compositorSessionIndex.js'), configPath == null ? [] : [`${configPath}`])
+    process.env.DEBUG && console.log(`[compositor-service] Child [${child.pid}] created.`)
 
     const removeChild = () => {
-      console.log(`Compositor session child [${child.pid}] exit.`)
+      process.env.DEBUG && console.log(`[compositor-service] Child [${child.pid}] removed.`)
       delete compositorSessionForks[compositorSessionId]
     }
 
     child.on('exit', removeChild)
     child.on('SIGINT', function () {
-      global.DEBUG && console.log(`Compositor session child [${child.pid}] received SIGINT.`)
+      process.env.DEBUG && console.log(`[compositor-service] Child [${child.pid}] received SIGINT.`)
       child.exit()
     })
     child.on('SIGTERM', function () {
-      global.DEBUG && console.log(`Compositor session child [${child.pid}] received SIGTERM.`)
+      global.DEBUG && console.log(`[compositor-service] Child [${child.pid}] received SIGTERM.`)
       child.exit()
     })
 
@@ -105,7 +106,7 @@ function announceAppEndpointDaemon (request, socket, head, pathElements) {
   const appEndpointId = pathElements.shift() // a UUID
   if (appEndpointId && uuidRegEx.test(appEndpointId)) {
     appEndpointWebSocketServer.handleUpgrade(request, socket, head, (ws) => {
-      console.log(`AppEndpointId ${appEndpointId} web socket is open.`)
+      process.env.DEBUG && console.log(`[compositor-service] Web socket is open for app-endpoint ${appEndpointId}.`)
 
       const appEndpoint = AppEndpoint.create(ws)
       appEndpoints[appEndpointId] = appEndpoint
@@ -113,7 +114,7 @@ function announceAppEndpointDaemon (request, socket, head, pathElements) {
         delete appEndpoints.endpointId
       })
 
-      appEndpoint.announceCompositors(Object.keys(compositorSessionForks))
+      appEndpoint.announceCompositors(...Object.keys(compositorSessionForks))
     })
   } else {
     socket.destroy(`Expected valid UUID in path for 'announceAppEndpoint' intention, instead got: '${appEndpointId}'.`)
@@ -154,7 +155,7 @@ function pairAppEndpoint (request, socket, head, pathElements) {
  * @param {Buffer}head
  */
 function handleHttpUpgradeRequest (request, socket, head) {
-  console.log('Parent received web socket upgrade request. Delegating to child process.')
+  process.env.DEBUG && console.log(`[compositor-service] Received web socket upgrade request. Delegating to compositor session child process.`)
   const pathElements = request.url.split('/')
   pathElements.shift() // empty element
   const intention = pathElements.shift()
@@ -168,23 +169,23 @@ function handleHttpUpgradeRequest (request, socket, head) {
 }
 
 function main () {
-  console.log('>>> Greenfield running in PRODUCTION mode <<<\n')
+  console.log(`[compositor-service] >>> running in ${process.env.DEBUG ? 'DEBUG' : 'PRODUCTION'} mode <<<`)
   express.static.mime.define({ 'application/wasm': ['wasm'] })
   const app = express()
   app.use(express.static(path.join(__dirname, '../../web/dist')))
 
   const server = http.createServer()
   server.on('request', app)
-  server.setTimeout(config['http-server']['socket-timeout'])
+  server.setTimeout(serviceConfig['http-server']['socket-timeout'])
 
   server.on('upgrade', (request, socket, head) => {
     handleHttpUpgradeRequest(request, socket, head)
   })
 
   const cleanUp = () => {
-    console.log('Parent exit. Cleaning up child processes.')
+    process.env.DEBUG && console.log('[compositor-service] Exit. Cleaning up compositor session children.')
     Object.values(compositorSessionForks).forEach((child) => {
-      console.log(`Parent sending child ${child.pid} SIGKILL`)
+      console.log(`[compositor-service] Sending child [${child.pid}] SIGKILL`)
       child.disconnect()
       child.kill('SIGKILL')
     })
@@ -192,15 +193,15 @@ function main () {
 
   process.on('exit', cleanUp)
   process.on('SIGINT', () => {
-    console.log('Parent received SIGINT')
+    console.log('[compositor-service] Received SIGINT')
     process.exit()
   })
   process.on('SIGTERM', () => {
-    console.log('Parent received SIGTERM')
+    console.log('[compositor-service] Received SIGTERM')
     process.exit()
   })
 
-  server.listen(config['http-server']['port'])
+  server.listen(serviceConfig['http-server']['port'])
 }
 
 main()

@@ -21,12 +21,12 @@ class CompositorSession {
         noServer: true,
         handshakeTimeout: 2000
       })
-      console.log(`Compositor session [${id}] received web socket upgrade request. Will establishing web socket connection with browser.`)
+      process.env.DEBUG && console.log(`[compositor-session-${id}] New instance created.`)
       wss.handleUpgrade({
         headers: headers,
         method: method
       }, socket, head, (sessionWebSocket) => {
-        console.log(`Compositor session [${id}] web socket is open.`)
+        process.env.DEBUG && console.log(`[compositor-session-${id}] Browser web socket is open.`)
         const compositorSession = new CompositorSession(wss, sessionWebSocket, id)
 
         sessionWebSocket.addEventListener('message', (event) => {
@@ -108,7 +108,7 @@ class CompositorSession {
    * @returns {Promise<AppEndpointSession>}
    */
   async pair (appEndpointSessionId, headers, method, head, socket) {
-    const appEndpointSession = await AppEndpointSession.create(this._wss, this.webSocket, appEndpointSessionId, headers, method, head, socket)
+    const appEndpointSession = await AppEndpointSession.create(this._wss, this, appEndpointSessionId, headers, method, head, socket)
     this.appEndpointSessions[appEndpointSessionId] = appEndpointSession
     appEndpointSession.onDestroy().then(() => {
       delete this.appEndpointSessions[appEndpointSessionId]
@@ -136,22 +136,23 @@ class CompositorSession {
   _onMessage (event) {
     try {
       const eventData = event.data
+      process.env.DEBUG && console.error(`[compositor session-${this.id}] Received incoming browser message: ${eventData}`)
       const message = JSON.parse(/** @types {string} */eventData)
       const { object, method, args } = message
       this._messageHandlers[object][method](args)
     } catch (error) {
-      console.error(`Compositor session [${this.id}] failed to handle incoming message. \n${error}\n${error.stack}`)
-      this.webSocket.close(4007, `Compositor session [${this.id}] received an illegal message`)
+      console.error(`[compositor session-${this.id}] Failed to handle incoming message. \n${error}\n${error.stack}`)
+      this.webSocket.close(4007, `Received an illegal message`)
     }
   }
 
   _onClose (event) {
-    console.log(`Compositor session [${this.id}] web socket is closed. ${event.code}: ${event.reason}`)
+    console.log(`[compositor session-${this.id}] Browser web socket is closed. ${event.code}: ${event.reason}`)
     this.destroy()
   }
 
   _onError (event) {
-    console.error(`Compositor session [${this.id}] web socket is in error.`)
+    console.error(`[compositor session-${this.id}] Browser web socket is in error.`)
   }
 }
 

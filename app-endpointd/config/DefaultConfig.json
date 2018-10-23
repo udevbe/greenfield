@@ -1,8 +1,0 @@
-{
-  "websocket-connection": {
-    "url": "ws://localhost:8080",
-    "connection-timeout": 5000,
-    "read-timeout": 5000,
-    "write-timeout": 5000
-  }
-}

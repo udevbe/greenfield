@@ -15,7 +15,7 @@ try {
   const configJSON = fs.readFileSync(configPath, {'encoding': 'utf8'})
   const config = JSON.parse(configJSON)
 
-  console.log(` --- Loaded configuration: ${configPath} ---`)
+  process.env.DEBUG && console.log(` --- Loaded configuration: ${configPath} ---`)
   console.log(configJSON)
 
   module.exports = config

@@ -3,23 +3,22 @@
 class AppEndpointSession {
   /**
    * @param {WebSocket.Server} wss
-   * @param {WebSocket} compositorWebSocket
+   * @param {CompositorSession} compositorSession
    * @param {string}id
    * @param {{}}headers
    * @param {Object}method
-   * @param {Socket}socket
    * @param {Buffer}head
+   * @param {Socket}socket
    * @returns {Promise<AppEndpointSession>}
    */
-  static async create (wss, compositorWebSocket, id, headers, method, head, socket) {
+  static async create (wss, compositorSession, id, headers, method, head, socket) {
     return new Promise((resolve) => {
-      console.log(`App endpoint session ${id} received web socket upgrade request. Will establishing web socket connection with app endpoint.`)
+      process.env.DEBUG && console.log(`[compositor-session-${compositorSession.id}] [app-endpoint-${id}] New instance created.`)
       wss.handleUpgrade({
         headers: headers,
         method: method
       }, socket, head, (endpointWebSocket) => {
-        console.log(`App endpoint session [${id}] web socket is open.`)
-        const appEndpointSession = new AppEndpointSession(compositorWebSocket, endpointWebSocket, id)
+        const appEndpointSession = new AppEndpointSession(compositorSession, endpointWebSocket, id)
 
         endpointWebSocket.onmessage = (event) => {
           appEndpointSession._onMessage(event)
@@ -31,22 +30,23 @@ class AppEndpointSession {
           appEndpointSession._onError(event)
         }
 
+        process.env.DEBUG && console.log(`[compositor-session-${compositorSession.id}] [app-endpoint-${id}] Web socket open.`)
         resolve(appEndpointSession)
       })
     })
   }
 
   /**
-   * @param {WebSocket}compositorWebSocket
+   * @param {CompositorSession} compositorSession
    * @param {WebSocket}webSocket
    * @param {string}id
    */
-  constructor (compositorWebSocket, webSocket, id) {
+  constructor (compositorSession, webSocket, id) {
     /**
-     * @type {WebSocket}
+     * @type {CompositorSession}
      * @private
      */
-    this._compositorWebSocket = compositorWebSocket
+    this._compositorSession = compositorSession
     /**
      * @type {WebSocket}
      */
@@ -91,12 +91,10 @@ class AppEndpointSession {
   _onMessage (event) {
     try {
       const eventData = event.data
-      const message = JSON.parse(/** @types {string} */eventData)
-      if (message.intention === 'pair' && message.phase === 'signaling') {
-        this._compositorWebSocket.send(eventData)
-      }
+      process.env.DEBUG && console.log(`[compositor-session-${this._compositorSession.id}] [app-endpoint-${this.id}] Receiving incoming application endpoint message: ${eventData}. Forwarding to browser.`)
+      this._compositorSession.webSocket.send(eventData)
     } catch (error) {
-      console.error(`App endpoint session [${this.id}] failed to handle incoming message. \n${error}\n${error.stack}`)
+      console.error(`[compositor-session-${this._compositorSession.id}] [app-endpoint-${this.id}] Failed to handle incoming message. \n${error}\n${error.stack}`)
       this.webSocket.close(4007, `App endpoint session [${this.id}] received an illegal message.`)
     }
   }
@@ -106,7 +104,7 @@ class AppEndpointSession {
    * @private
    */
   _onClose (event) {
-    console.log(`App endpoint session [${this.id}] web socket is closed. ${event.code}: ${event.reason}`)
+    console.log(`[compositor-session-${this._compositorSession.id}] [app-endpoint-${this.id}] Web socket is closed. ${event.code}: ${event.reason}`)
     this.webSocket = null
     this.destroy()
   }
@@ -116,7 +114,7 @@ class AppEndpointSession {
    * @private
    */
   _onError (event) {
-    console.error(`App endpoint session [${this.id}] web socket is in error.`)
+    console.error(`[compositor-session-${this._compositorSession.id}] [app-endpoint-${this.id}] Web socket is in error.`)
   }
 }
 

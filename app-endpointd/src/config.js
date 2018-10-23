@@ -10,12 +10,12 @@ try {
   if (configFile) {
     configPath = configFile.startsWith('/') ? configFile : `${process.cwd()}/${configFile}`
   } else {
-    configPath = path.join(__dirname, '../config/DefaultConfig.json')
+    configPath = path.join(__dirname, '../config/config.json')
   }
   const configJSON = fs.readFileSync(configPath, { 'encoding': 'utf8' })
   const config = JSON.parse(configJSON)
 
-  console.log(` --- [app-endpoint] Loaded configuration: ${configPath} ---`)
+  process.env.DEBUG && console.log(` --- Loaded configuration: ${configPath} ---`)
   console.log(configJSON)
 
   module.exports = config

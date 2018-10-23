@@ -21,18 +21,13 @@ class RTCSignalMessageHandler {
 
   rtcSignal (args) {
     const { signalMessage, appEndpointSessionId } = args
-
     const appEndpointSession = this._compositorSession.appEndpointSessions[appEndpointSessionId]
     if (appEndpointSession) {
+      process.env.DEBUG && console.log(`[compositor-session-${this._compositorSession.id}] Received compositor RTC signal. Forwarding to [app-endpoint-${appEndpointSessionId}].`)
       appEndpointSession.webSocket.send(signalMessage)
     } else {
-      throw new Error(`Compositor session [${this._compositorSession.id}] failed to parse incoming compositor message. Property 'appEndpointSessionId' with value '${appEndpointSessionId}' did not match a known app endpoint session.`)
+      throw new Error(`[compositor-session-${this._compositorSession.id}] Failed to parse incoming compositor message. Property 'appEndpointSessionId' with value '${appEndpointSessionId}' did not match a known app endpoint session.`)
     }
-  }
-
-  rtcAppEndpointSignal (args) {
-    const { signalMessage } = args
-    this._compositorSession.webSocket.send(signalMessage)
   }
 }
 

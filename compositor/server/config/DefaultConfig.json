@@ -1,6 +1,10 @@
 {
-  "http-server": {
-    "port": 8080,
-    "socket-timeout": 6000
+  "service": {
+    "http-server": {
+      "port": 8080,
+      "socket-timeout": 6000
+    }
+  },
+  "session": {
   }
 }

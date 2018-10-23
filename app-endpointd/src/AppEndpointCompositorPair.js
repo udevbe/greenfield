@@ -1,10 +1,9 @@
 'use strict'
 
 const crypto = require('crypto')
-
 const WebSocket = require('ws')
 
-const config = require('./config')
+const { session: sessionConfig } = require('./config')
 const RtcClient = require('./RtcClient')
 
 class AppEndpointCompositorPair {
@@ -27,11 +26,12 @@ class AppEndpointCompositorPair {
     // as signaling channel.
     const appEndpointSessionId = this._uuidv4()
     return new Promise((resolve, reject) => {
-      const websocketUrl = `${config['websocket-connection']['url']}/pairAppEndpoint/${appEndpointSessionId}/${compositorSessionId}`
+      const websocketUrl = `${sessionConfig['web-socket-connection']['url']}/pairAppEndpoint/${appEndpointSessionId}/${compositorSessionId}`
 
       // TODO listen for connection failure and reject promise
       const webSocket = new WebSocket(websocketUrl)
       const appEndpointCompositorPair = new AppEndpointCompositorPair(webSocket, appEndpointSessionId, compositorSessionId)
+      process.env.DEBUG && console.log(`[app-endpoint-${appEndpointSessionId}] New instance created for compositor session: ${compositorSessionId}.`)
 
       webSocket.onopen = (e) => {
         webSocket.onmessage = (e) => {
@@ -44,6 +44,7 @@ class AppEndpointCompositorPair {
           appEndpointCompositorPair._onError(e)
         }
 
+        console.log(`[app-endpoint-${appEndpointSessionId}] Connected to ${websocketUrl}.`)
         resolve(appEndpointCompositorPair)
       }
     })
@@ -102,22 +103,23 @@ class AppEndpointCompositorPair {
   _onMessage (event) {
     try {
       const eventData = event.data
+      process.env.DEBUG && console.log(`[app-endpoint-${this.appEndpointSessionId}] Message received: ${eventData}.`)
       const message = JSON.parse(/** @types {string} */eventData)
       const { object, method, args } = message
       this._messageHandlers[object][method](args)
     } catch (error) {
-      console.error(`Compositor session [${this.id}] failed to handle incoming message. \n${error}\n${error.stack}`)
-      this.webSocket.close(4007, `Compositor session [${this.id}] received an illegal message`)
+      process.env.DEBUG && console.error(`[app-endpoint-${this.appEndpointSessionId}] Web socket received an illegal message. \n${error}\n${error.stack}`)
+      this.webSocket.close(4007, `Web socket received an illegal message.`)
     }
   }
 
   _onClose (event) {
-    console.log(`App endpoint session ${this.appEndpointSessionId} web socket is closed. ${event.code}: ${event.reason}`)
+    process.env.DEBUG && console.log(`[app-endpoint-${this.appEndpointSessionId}] Web socket is closed. ${event.code}: ${event.reason}`)
     this.destroy()
   }
 
   _onError (event) {
-    console.error(`App endpoint session ${this.appEndpointSessionId} web socket is in error.`)
+    process.env.DEBUG && console.error(`[app-endpoint-${this.appEndpointSessionId}] Web socket is in error.`)
   }
 }
 

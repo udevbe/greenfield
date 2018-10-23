@@ -6,7 +6,7 @@ const crypto = require('crypto')
 
 const WebSocket = require('ws')
 
-const config = require('./config')
+const { daemon: daemonConfig } = require('./config')
 
 const uuidRegEx = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
 
@@ -17,7 +17,7 @@ class AppEndpointDaemon {
   static async create () {
     const appEndpointUUID = this._uuidv4()
     return new Promise((resolve, reject) => {
-      const websocketUrl = `${config['websocket-connection']['url']}/announceAppEndpointDaemon/${appEndpointUUID}`
+      const websocketUrl = `${daemonConfig['web-socket-connection']['url']}/announceAppEndpointDaemon/${appEndpointUUID}`
 
       // TODO listen for connection failure and reject promise
       const webSocket = new WebSocket(websocketUrl)
@@ -82,22 +82,22 @@ class AppEndpointDaemon {
       // uncomment next line for debugging support in the child process
       // process.execArgv.push('--inspect-brk=0')
 
-      console.log('Parent creating new child process.')
+      console.log('[app-endpoint-daemon] Creating new child process.')
       const configPath = process.argv[2]
       child = childProcess.fork(path.join(__dirname, 'appEndpointSessionIndex.js'), configPath == null ? [] : [`${configPath}`])
 
       const removeChild = () => {
-        console.log(`app endpoint session child [${child.pid}] exit.`)
+        console.log(`[app-endpoint-daemon] Child [${child.pid}] exit.`)
         delete this._appEndpointSessionForks[compositorSessionId]
       }
 
       child.on('exit', removeChild)
       child.on('SIGINT', function () {
-        global.DEBUG && console.log(`App endpoint session child [${child.pid}] received SIGINT.`)
+        process.env.DEBUG && console.log(`[app-endpoint-daemon] Child [${child.pid}] received SIGINT.`)
         child.exit()
       })
       child.on('SIGTERM', function () {
-        global.DEBUG && console.log(`App endpoint session child [${child.pid}] received SIGTERM.`)
+        process.env.DEBUG && console.log(`[app-endpoint-daemon] Child [${child.pid}] received SIGTERM.`)
         child.exit()
       })
 
@@ -127,7 +127,7 @@ class AppEndpointDaemon {
    * @private
    */
   _onClose (event) {
-    console.log(`App endpoint daemon web socket is closed. ${event.code}: ${event.reason}`)
+    console.log(`[app-endpoint-daemon] Web socket is closed. ${event.code}: ${event.reason}`)
     this.destroy()
   }
 
@@ -138,7 +138,7 @@ class AppEndpointDaemon {
   _onMessage (event) {
     const eventData = /** @type {string} */event.data
     const message = JSON.parse(eventData)
-    const {intent, compositorSessionId} = message
+    const { intent, compositorSessionId } = message
     if (intent === 'announceCompositor' && uuidRegEx.test(compositorSessionId)) {
       const appEndpointSessionFork = this.createAppEndpointSessionFork(compositorSessionId)
       this.onDestroy().then(() => {
@@ -148,7 +148,8 @@ class AppEndpointDaemon {
       })
       appEndpointSessionFork.send(message)
     } else {
-      this.webSocket.close(4007, `App endpoint daemon received an illegal message. Expected message with properties 'intent=announce' and 'compositorSessionId=uuid'. Instead got:\n${eventData}.`)
+      process.env.DEBUG && console.log(`[app-endpoint-daemon] Received an illegal message. Expected message with properties 'intent=announce' and 'compositorSessionId=uuid'. Instead got:\\n${eventData}.`)
+      this.webSocket.close(4007, `Received an illegal message. Expected message with properties 'intent=announce' and 'compositorSessionId=uuid'. Instead got:\n${eventData}.`)
     }
   }
 
@@ -157,7 +158,7 @@ class AppEndpointDaemon {
    * @private
    */
   _onError (event) {
-    console.error(`App endpoint daemon web socket is in error.`)
+    process.env.DEBUG && console.error(`[app-endpoint-daemon] Web socket is in error.`)
   }
 }
 

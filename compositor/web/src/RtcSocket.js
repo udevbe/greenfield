@@ -51,12 +51,13 @@ export default class RtcSocket {
     }
 
     peerConnection.onicecandidate = evt => {
-      if (evt.candidate !== null) {
-        DEBUG && console.log(`WebRTC connection: ${appEndpointSessionId} sending local ice candidate.`)
+      const candidate = evt.candidate
+      DEBUG && console.log(`WebRTC connection: ${appEndpointSessionId} sending local ice candidate: ${candidate}`)
+      if (candidate !== null) {
         this._sendRTCSignal(appEndpointSessionId, {
           object: 'rtcClient',
           method: 'iceCandidate',
-          args: evt.candidate
+          args: { candidate }
         })
       }
     }
@@ -70,7 +71,7 @@ export default class RtcSocket {
     this._sendRTCSignal(appEndpointSessionId, {
       object: 'rtcClient',
       method: 'sdpOffer',
-      args: offer
+      args: { offer }
     })
   }
 

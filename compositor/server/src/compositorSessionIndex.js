@@ -12,7 +12,7 @@ function main () {
     const compositorSessionId = firstMessage.compositorSessionId
 
     if (firstMessage.intention !== 'announce') {
-      console.log(`Compositor session [${compositorSessionId}] expected message 'announce'. Instead got ${firstMessage.intention}.  Will exit.`)
+      console.log(`[compositor-session-${compositorSessionId}] Expected message 'announce'. Instead got ${firstMessage.intention}.  Will exit.`)
       process.exit(0)
     }
 
@@ -35,7 +35,7 @@ function main () {
         const compositorSession = await compositorSessionPromise
         compositorSession.pair(appEndpointSessionId, headers, method, head, socket)
       } else {
-        console.log(`Compositor session [${compositorSessionId}] expected message 'pair'. Instead got ${message.intention}.  Will exit.`)
+        console.log(`[compositor-session-${compositorSessionId}] Expected message 'pair'. Instead got ${message.intention}.  Will exit.`)
         process.exit(0)
       }
     })
@@ -53,7 +53,7 @@ function main () {
     process.on('SIGHUP', cleanUp)
 
     compositorSession.onDestroy().then(() => {
-      console.log(`Compositor session [${process.pid}] will exit.`)
+      process.env.DEBUG && console.log(`[compositor-session-${compositorSessionId}] Destroyed. will exit.`)
       process.exit(0)
     })
   })
