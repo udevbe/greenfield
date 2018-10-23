@@ -10,7 +10,7 @@ try {
   if (configFile) {
     configPath = configFile.startsWith('/') ? configFile : `${process.cwd()}/${configFile}`
   } else {
-    configPath = path.join(__dirname, '../config/DefaultConfig.json')
+    configPath = path.join(__dirname, '../config/compositor-service-config.json')
   }
   const configJSON = fs.readFileSync(configPath, {'encoding': 'utf8'})
   const config = JSON.parse(configJSON)
