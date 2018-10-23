@@ -40,7 +40,7 @@ function createCompositorSessionFork (compositorSessionId) {
     // uncomment next line for debugging support in the child process
     // process.execArgv.push('--inspect-brk=0')
 
-    console.log('Parent creating new child process.')
+    console.log(`[compositor-service] Creating new child process for [compositor-session-${compositorSessionId}].`)
     const configPath = process.argv[2]
     child = childProcess.fork(path.join(__dirname, 'compositorSessionIndex.js'), configPath == null ? [] : [`${configPath}`])
     process.env.DEBUG && console.log(`[compositor-service] Child [${child.pid}] created.`)
@@ -106,7 +106,7 @@ function announceAppEndpointDaemon (request, socket, head, pathElements) {
   const appEndpointId = pathElements.shift() // a UUID
   if (appEndpointId && uuidRegEx.test(appEndpointId)) {
     appEndpointWebSocketServer.handleUpgrade(request, socket, head, (ws) => {
-      process.env.DEBUG && console.log(`[compositor-service] Web socket is open for app-endpoint ${appEndpointId}.`)
+      process.env.DEBUG && console.log(`[compositor-service] Web socket is open for [app-endpoint-${appEndpointId}].`)
 
       const appEndpoint = AppEndpoint.create(ws)
       appEndpoints[appEndpointId] = appEndpoint
