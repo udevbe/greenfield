@@ -70,17 +70,16 @@ export default class Session {
   }
 
   _onMessage (event) {
+    const eventData = event.data
+    const message = JSON.parse(/** @types {string} */eventData)
+    const { object, method, args } = message
     try {
-      const eventData = event.data
-      const message = JSON.parse(/** @types {string} */eventData)
-      const { object, method, args } = message
       this.messageHandlers[object][method](args)
     } catch (error) {
-      console.error(`Compositor session [${this.id}] failed to handle incoming message. \n${error}\n${error.stack}`)
-      this.webSocket.close(4007, `Compositor session [${this.id}] received an illegal message`)
+      console.error(`Compositor session [${this.compositorSessionId}] failed to handle incoming message. object=${object}:method=${method}:args=${args}\n${error}\n${error.stack}`)
+      this.webSocket.close(4007, `Compositor session [${this.compositorSessionId}] received an illegal message`)
     }
 
-    // TODO handle app-endpoint pair intention
     // TODO handle new client datachannel connection
     // TODO handle app-endpoint disconnected
   }

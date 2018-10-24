@@ -25,6 +25,10 @@ class RtcClient {
         })
       }
     }
+    peerConnection.onnegotiationneeded = async () => {
+      process.env.DEBUG && console.log(`[app-endpoint-${appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection negotiation needed.`)
+      await rtcClient._sendOffer()
+    }
     return rtcClient
   }
 
@@ -61,20 +65,37 @@ class RtcClient {
   }
 
   async sdpOffer (args) {
-    process.env.DEBUG && console.log(`[app-endpoint-${this._appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection received remote sdp offer.`)
-
     const { offer } = args
+    process.env.DEBUG && console.log(`[app-endpoint-${this._appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection received browser sdp offer: ${offer}`)
     await this._peerConnection.setRemoteDescription(offer)
     const answer = await this._peerConnection.createAnswer()
     await this._peerConnection.setLocalDescription(answer)
 
-    process.env.DEBUG && console.log(`[app-endpoint-${this._appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection sending local sdp offer.`)
+    process.env.DEBUG && console.log(`[app-endpoint-${this._appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection sending local sdp answer: ${answer}`)
     this._sendRTCSignal({
       object: 'rtcSocket',
       method: 'sdpReply',
       args: {
         appEndpointSessionId: this._appEndpointCompositorPair.appEndpointSessionId,
         reply: answer
+      }
+    })
+  }
+
+  async sdpReply (args) {
+    const { reply } = args
+    await this._peerConnection.setRemoteDescription(reply)
+  }
+
+  async _sendOffer () {
+    const offer = await this._peerConnection.createOffer()
+    await this._peerConnection.setLocalDescription(offer)
+    this._sendRTCSignal({
+      object: 'rtcSocket',
+      method: 'sdpOffer',
+      args: {
+        appEndpointSessionId: this._appEndpointCompositorPair.appEndpointSessionId,
+        offer
       }
     })
   }

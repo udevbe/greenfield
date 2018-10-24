@@ -8,17 +8,17 @@ async function main () {
   process.env.DEBUG && console.log(`[app-endpoint-daemon] Connected to ${appEndpointDaemon.webSocket.url}.`)
 
   const cleanUp = () => {
-    console.log('Parent exit. Cleaning up child processes.')
+    console.log('[app-endpoint-daemon] Exit.')
     appEndpointDaemon.destroy()
   }
 
   process.on('exit', cleanUp)
   process.on('SIGINT', () => {
-    console.log('Parent received SIGINT')
+    console.log('[app-endpoint-daemon] Received SIGINT')
     process.exit()
   })
   process.on('SIGTERM', () => {
-    console.log('Parent received SIGTERM')
+    console.log('[app-endpoint-daemon] Received SIGTERM')
     process.exit()
   })
 }

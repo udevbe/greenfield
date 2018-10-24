@@ -29,21 +29,22 @@ export default class RtcSocket {
      * @type {Object.<string,RTCPeerConnection>}
      * @private
      */
-    this._peerConnections = {}
+    this._appEndpointConnections = {}
   }
 
   async connect (args) {
-    const {
-      appEndpointSessionId
-    } = args
+    const { appEndpointSessionId } = args
 
-    if (this._peerConnections[appEndpointSessionId]) {
+    if (this._appEndpointConnections[appEndpointSessionId]) {
       throw new Error(`WebRTC connection: ${appEndpointSessionId} already exists.`)
     }
 
     // TODO rtc connection options setup
     const peerConnection = new RTCPeerConnection()
-    this._peerConnections[appEndpointSessionId] = peerConnection
+    this._appEndpointConnections[appEndpointSessionId] = peerConnection
+    peerConnection.ondatachannel = (event) => {
+      this._onDataChannel(event.channel)
+    }
 
     peerConnection.onnegotiationneeded = async () => {
       DEBUG && console.log(`WebRTC connection: ${appEndpointSessionId} negotiation needed.`)
@@ -61,8 +62,31 @@ export default class RtcSocket {
         })
       }
     }
+  }
 
-    await this._sendOffer(appEndpointSessionId, peerConnection)
+  /**
+   * @param {RTCDataChannel}dataChannel
+   * @private
+   */
+  _onDataChannel (dataChannel) {
+    dataChannel.onopen = () => {
+      const client = this._session.display.createClient()
+
+      dataChannel.onclose = () => client.close()
+      dataChannel.onerror = () => client.close()
+      dataChannel.onmessage = async (event) => {
+        const arrayBuffer = /** @type {ArrayBuffer} */event.data
+        // TODO extract file descriptors from received arrayBuffer
+        await client.message({ buffer: arrayBuffer, fds: [] })
+      }
+
+      /**
+       * @param {Array<{buffer: ArrayBuffer, fds: Array<number>}>}wireMessage
+       */
+      client.onFlush = (wireMessage) => {
+        // TODO aggregate into chunks of 16kb array buffers & send over data channel
+      }
+    }
   }
 
   async _sendOffer (appEndpointSessionId, peerConnection) {
@@ -92,12 +116,9 @@ export default class RtcSocket {
   }
 
   async iceCandidate (args) {
-    const {
-      appEndpointSessionId,
-      candidate
-    } = args
+    const { appEndpointSessionId, candidate } = args
 
-    const peerConnection = this._peerConnections[appEndpointSessionId]
+    const peerConnection = this._appEndpointConnections[appEndpointSessionId]
     if (!peerConnection) {
       throw new Error(`WebRTC connection: ${appEndpointSessionId} was not found.`)
     }
@@ -106,16 +127,34 @@ export default class RtcSocket {
   }
 
   async sdpReply (args) {
-    const {
-      appEndpointSessionId,
-      reply
-    } = args
+    const { appEndpointSessionId, reply } = args
 
-    const peerConnection = this._peerConnections[appEndpointSessionId]
+    const peerConnection = this._appEndpointConnections[appEndpointSessionId]
     if (!peerConnection) {
       throw new Error(`WebRTC connection: ${appEndpointSessionId} was not found.`)
     }
 
     await peerConnection.setRemoteDescription(reply)
+  }
+
+  async sdpOffer (args) {
+    const { appEndpointSessionId, offer } = args
+    const peerConnection = this._appEndpointConnections[appEndpointSessionId]
+    if (!peerConnection) {
+      throw new Error(`WebRTC connection: ${appEndpointSessionId} was not found.`)
+    }
+
+    await peerConnection.setRemoteDescription(offer)
+    const answer = await peerConnection.createAnswer()
+    await peerConnection.setLocalDescription(answer)
+
+    process.env.DEBUG && console.log(`WebRTC connection: sending browser sdp answer: ${answer}`)
+    this._sendRTCSignal(appEndpointSessionId, {
+      object: 'rtcClient',
+      method: 'sdpReply',
+      args: {
+        reply: answer
+      }
+    })
   }
 }

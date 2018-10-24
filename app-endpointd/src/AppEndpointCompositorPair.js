@@ -45,6 +45,7 @@ class AppEndpointCompositorPair {
         }
 
         console.log(`[app-endpoint-${appEndpointSessionId}] Connected to ${websocketUrl}.`)
+        appEndpointCompositorPair.messageHandlers.rtcClient = RtcClient.create(appEndpointCompositorPair)
         resolve(appEndpointCompositorPair)
       }
     })
@@ -81,12 +82,9 @@ class AppEndpointCompositorPair {
       this._destroyResolve = resolve
     })
     /**
-     * @type {{rtcClient: RtcClient}}
-     * @private
+     * @type {Object.<string, Object>}
      */
-    this._messageHandlers = {
-      rtcClient: RtcClient.create(this)
-    }
+    this.messageHandlers = {}
   }
 
   /**
@@ -101,14 +99,14 @@ class AppEndpointCompositorPair {
   }
 
   _onMessage (event) {
+    const eventData = event.data
+    process.env.DEBUG && console.log(`[app-endpoint-${this.appEndpointSessionId}] Message received: ${eventData}.`)
+    const message = JSON.parse(/** @types {string} */eventData)
+    const { object, method, args } = message
     try {
-      const eventData = event.data
-      process.env.DEBUG && console.log(`[app-endpoint-${this.appEndpointSessionId}] Message received: ${eventData}.`)
-      const message = JSON.parse(/** @types {string} */eventData)
-      const { object, method, args } = message
-      this._messageHandlers[object][method](args)
+      this.messageHandlers[object][method](args)
     } catch (error) {
-      process.env.DEBUG && console.error(`[app-endpoint-${this.appEndpointSessionId}] Web socket received an illegal message. \n${error}\n${error.stack}`)
+      process.env.DEBUG && console.error(`[app-endpoint-${this.appEndpointSessionId}] failed to handle incoming message. object=${object}:method=${method}:args=${args}\n${error}\n${error.stack}`)
       this.webSocket.close(4007, `Web socket received an illegal message.`)
     }
   }

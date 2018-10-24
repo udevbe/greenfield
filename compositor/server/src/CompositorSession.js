@@ -134,14 +134,14 @@ class CompositorSession {
   }
 
   _onMessage (event) {
+    const eventData = event.data
+    process.env.DEBUG && console.log(`[compositor session-${this.id}] Received incoming browser message: ${eventData}`)
+    const message = JSON.parse(/** @types {string} */eventData)
+    const { object, method, args } = message
     try {
-      const eventData = event.data
-      process.env.DEBUG && console.error(`[compositor session-${this.id}] Received incoming browser message: ${eventData}`)
-      const message = JSON.parse(/** @types {string} */eventData)
-      const { object, method, args } = message
       this._messageHandlers[object][method](args)
     } catch (error) {
-      console.error(`[compositor session-${this.id}] Failed to handle incoming message. \n${error}\n${error.stack}`)
+      console.error(`[compositor session-${this.id}] failed to handle incoming message. object=${object}:method=${method}:args=${args}\n${error}\n${error.stack}`)
       this.webSocket.close(4007, `Received an illegal message`)
     }
   }

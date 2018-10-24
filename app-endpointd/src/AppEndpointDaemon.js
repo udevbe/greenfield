@@ -142,8 +142,7 @@ class AppEndpointDaemon {
     if (intent === 'announceCompositor' && uuidRegEx.test(compositorSessionId)) {
       const appEndpointSessionFork = this.createAppEndpointSessionFork(compositorSessionId)
       this.onDestroy().then(() => {
-        console.log(`Parent sending child ${appEndpointSessionFork.pid} SIGKILL`)
-        appEndpointSessionFork.disconnect()
+        console.log(`[app-endpoint-daemon] Sending child ${appEndpointSessionFork.pid} SIGKILL`)
         appEndpointSessionFork.kill('SIGKILL')
       })
       appEndpointSessionFork.send(message)
