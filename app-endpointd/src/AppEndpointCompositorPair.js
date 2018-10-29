@@ -21,11 +21,11 @@ class AppEndpointCompositorPair {
    * @param {string}compositorSessionId
    * @returns {Promise<AppEndpointCompositorPair>}
    */
-  static create (compositorSessionId) {
+  static async create (compositorSessionId) {
     // TODO setup a pairing websocket connection and create a rtc peer connection, using the websocket connection
     // as signaling channel.
     const appEndpointSessionId = this._uuidv4()
-    return new Promise((resolve, reject) => {
+    const appEndpointCompositorPair = await new Promise((resolve, reject) => {
       const websocketUrl = `${sessionConfig['web-socket-connection']['url']}/pairAppEndpoint/${appEndpointSessionId}/${compositorSessionId}`
 
       // TODO listen for connection failure and reject promise
@@ -33,22 +33,24 @@ class AppEndpointCompositorPair {
       const appEndpointCompositorPair = new AppEndpointCompositorPair(webSocket, appEndpointSessionId, compositorSessionId)
       process.env.DEBUG && console.log(`[app-endpoint-${appEndpointSessionId}] New instance created for compositor session: ${compositorSessionId}.`)
 
-      webSocket.onopen = (e) => {
-        webSocket.onmessage = (e) => {
-          appEndpointCompositorPair._onMessage(e)
-        }
-        webSocket.onclose = (e) => {
-          appEndpointCompositorPair._onClose(e)
-        }
-        webSocket.onerror = (e) => {
-          appEndpointCompositorPair._onError(e)
-        }
+      webSocket.onclose = e => appEndpointCompositorPair._onClose(e)
+      webSocket.onerror = e => reject(e.error)
+      webSocket.onmessage = e => appEndpointCompositorPair._onMessage(e)
 
-        console.log(`[app-endpoint-${appEndpointSessionId}] Connected to ${websocketUrl}.`)
-        appEndpointCompositorPair.messageHandlers.rtcClient = RtcClient.create(appEndpointCompositorPair)
+      webSocket.onopen = () => {
+        webSocket.onerror = (e) => appEndpointCompositorPair._onError(e)
+        console.log(`[app-endpoint-${appEndpointSessionId}] Web socket connected to ${websocketUrl}.`)
         resolve(appEndpointCompositorPair)
       }
     })
+
+    const rtcClient = await RtcClient.create(appEndpointCompositorPair)
+    appEndpointCompositorPair.messageHandlers.rtcClient = rtcClient
+    rtcClient.onDestroy().then(() => {
+      appEndpointCompositorPair.destroy()
+    })
+
+    return appEndpointCompositorPair
   }
 
   /**
@@ -85,6 +87,10 @@ class AppEndpointCompositorPair {
      * @type {Object.<string, Object>}
      */
     this.messageHandlers = {}
+    /**
+     * @type {NativeCompositorSession}
+     */
+    this.nativeCompositorSession = null
   }
 
   /**
@@ -98,6 +104,10 @@ class AppEndpointCompositorPair {
     this._destroyResolve()
   }
 
+  /**
+   * @param {MessageEvent}event
+   * @private
+   */
   _onMessage (event) {
     const eventData = event.data
     process.env.DEBUG && console.log(`[app-endpoint-${this.appEndpointSessionId}] Message received: ${eventData}.`)
@@ -111,13 +121,21 @@ class AppEndpointCompositorPair {
     }
   }
 
+  /**
+   * @param {CloseEvent}event
+   * @private
+   */
   _onClose (event) {
     process.env.DEBUG && console.log(`[app-endpoint-${this.appEndpointSessionId}] Web socket is closed. ${event.code}: ${event.reason}`)
     this.destroy()
   }
 
+  /**
+   * @param {Event}event
+   * @private
+   */
   _onError (event) {
-    process.env.DEBUG && console.error(`[app-endpoint-${this.appEndpointSessionId}] Web socket is in error.`)
+    process.env.DEBUG && console.error(`[app-endpoint-${this.appEndpointSessionId}] Web socket is in error. ${event}`)
   }
 }
 

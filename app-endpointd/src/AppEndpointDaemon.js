@@ -23,17 +23,12 @@ class AppEndpointDaemon {
       const webSocket = new WebSocket(websocketUrl)
       const appEndpointDaemon = new AppEndpointDaemon(webSocket)
 
-      webSocket.onopen = (e) => {
-        webSocket.onmessage = (e) => {
-          appEndpointDaemon._onMessage(e)
-        }
-        webSocket.onclose = (e) => {
-          appEndpointDaemon._onClose(e)
-        }
-        webSocket.onerror = (e) => {
-          appEndpointDaemon._onError(e)
-        }
+      webSocket.onclose = e => appEndpointDaemon._onClose(e)
+      webSocket.onerror = e => reject(e.error)
+      webSocket.onmessage = e => appEndpointDaemon._onMessage(e)
 
+      webSocket.onopen = () => {
+        webSocket.onerror = e => appEndpointDaemon._onError(e)
         resolve(appEndpointDaemon)
       }
     })

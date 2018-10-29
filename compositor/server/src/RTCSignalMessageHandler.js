@@ -19,8 +19,7 @@ class RTCSignalMessageHandler {
     this._compositorSession = compositorSession
   }
 
-  rtcSignal (args) {
-    const { signalMessage, appEndpointSessionId } = args
+  rtcSignal ({ signalMessage, appEndpointSessionId }) {
     const appEndpointSession = this._compositorSession.appEndpointSessions[appEndpointSessionId]
     if (appEndpointSession) {
       process.env.DEBUG && console.log(`[compositor-session-${this._compositorSession.id}] Received compositor RTC signal. Forwarding to [app-endpoint-${appEndpointSessionId}].`)

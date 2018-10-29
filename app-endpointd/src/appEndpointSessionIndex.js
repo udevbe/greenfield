@@ -18,10 +18,15 @@ function main () {
 
   process.once('message', async (message) => {
     const compositorSessionid = message.compositorSessionId
-    const appEndpointCompositorPair = await AppEndpointCompositorPair.create(compositorSessionid)
-    appEndpointCompositorPair.onDestroy().then(() => {
-      cleanUp()
-    })
+    try {
+      const appEndpointCompositorPair = await AppEndpointCompositorPair.create(compositorSessionid)
+      appEndpointCompositorPair.onDestroy().then(() => {
+        cleanUp()
+      })
+    } catch (e) {
+      console.error(`Failed to create app-endpoint for [compositor-session-${compositorSessionid}.`, e.message, e.stack)
+      process.exit(-1)
+    }
   })
 }
 

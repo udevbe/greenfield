@@ -38,6 +38,7 @@ function setup (session) {
 
   xdgWmBase.registerGlobal(session.display.registry)
 
+  // RtcSocket enables appl-endpoints with remote application to connect
   session.messageHandlers['rtcSocket'] = RtcSocket.create(session)
 }
 
@@ -49,8 +50,13 @@ async function main () {
     return dialogText
   }
 
-  const session = await Session.create()
-  setup(session)
+  try {
+    const session = await Session.create()
+    setup(session)
+  } catch (e) {
+    // TODO notify user & retry
+    console.error(`Failed to setup compositor session.`, e)
+  }
 }
 
 /**
@@ -66,13 +72,6 @@ function loadNativeModule (module) {
       }
     }
   })
-}
-
-window.onload = async () => {
-  // make sure all native modules are ready for use before we start our main flow
-  await loadNativeModule(pixman)
-  await loadNativeModule(libxkbcommon)
-  await main()
 }
 
 // This adds a zero timeout 'run later' mechanism:
@@ -105,3 +104,10 @@ window.onload = async () => {
   // Add the one thing we want added to the window object.
   window.setZeroTimeout = setZeroTimeout
 })()
+
+window.onload = async () => {
+  // make sure all native modules are ready for use before we start our main flow
+  await loadNativeModule(pixman)
+  await loadNativeModule(libxkbcommon)
+  await main()
+}

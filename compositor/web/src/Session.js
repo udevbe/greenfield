@@ -21,10 +21,12 @@ export default class Session {
       const session = new Session(display, webSocket, compositorSessionId)
 
       webSocket.onmessage = event => session._onMessage(event)
-      webSocket.onopen = event => resolve(session)
+      webSocket.onerror = event => reject(event.error)
+      webSocket.onopen = event => {
+        webSocket.onerror = event => session._onError(event)
+        resolve(session)
+      }
       webSocket.onclose = event => session._onClose(event)
-      // TODO reject promise if connection failed
-      webSocket.onerror = event => session._onError(event)
     })
   }
 
@@ -55,11 +57,6 @@ export default class Session {
      */
     this.compositorSessionId = compositorSessionId
     /**
-     * @type {{}}
-     * @private
-     */
-    this._clients = {}
-    /**
      * @type {WebSocket}
      */
     this.webSocket = webSocket
@@ -80,11 +77,11 @@ export default class Session {
       this.webSocket.close(4007, `Compositor session [${this.compositorSessionId}] received an illegal message`)
     }
 
-    // TODO handle new client datachannel connection
     // TODO handle app-endpoint disconnected
   }
 
   _onClose (event) {
+    // TODO notify user
     // TODO retry connection?
   }
 
