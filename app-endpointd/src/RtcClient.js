@@ -54,14 +54,10 @@ class RtcClient {
       }
       process.env.DEBUG && console.log(`[app-endpoint-${appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: state is ${peerConnection.connectionState}.`)
 
-      // creating a data channel will properly setup the peer connection, which we need to validate if a working data channel
-      // can be established.
-      const dataChannel = peerConnection.createDataChannel()
-      dataChannel.onopen = () => {
-        dataChannel.close()
-        const nativeCompositorSession = NativeCompositorSession.create(rtcClient)
-        rtcClient.onDestroy().then(() => nativeCompositorSession.destroy())
-      }
+      // TODO eagerly pre-create a data channel for faster client-browser communication.
+
+      const nativeCompositorSession = NativeCompositorSession.create(rtcClient)
+      rtcClient.onDestroy().then(() => nativeCompositorSession.destroy())
 
       resolve(rtcClient)
     })
@@ -74,9 +70,8 @@ class RtcClient {
   constructor (appEndpointCompositorPair, peerConnection) {
     /**
      * @type {AppEndpointCompositorPair}
-     * @private
      */
-    this._appEndpointCompositorPair = appEndpointCompositorPair
+    this.appEndpointCompositorPair = appEndpointCompositorPair
     /**
      * @type {RTCPeerConnection}
      */
@@ -111,45 +106,45 @@ class RtcClient {
    * @private
    */
   _sendRTCSignal (signal) {
-    this._appEndpointCompositorPair.webSocket.send(JSON.stringify(signal))
+    this.appEndpointCompositorPair.webSocket.send(JSON.stringify(signal))
   }
 
   async iceCandidate ({ candidate }) {
-    process.env.DEBUG && console.log(`[app-endpoint-${this._appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: received remote ice candidate: ${JSON.stringify(candidate)}.`)
+    process.env.DEBUG && console.log(`[app-endpoint-${this.appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: received remote ice candidate: ${JSON.stringify(candidate)}.`)
     await this.peerConnection.addIceCandidate(candidate)
   }
 
   async sdpOffer ({ offer }) {
-    process.env.DEBUG && console.log(`[app-endpoint-${this._appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: received browser sdp offer: ${JSON.stringify(offer)}`)
+    process.env.DEBUG && console.log(`[app-endpoint-${this.appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: received browser sdp offer: ${JSON.stringify(offer)}`)
     await this.peerConnection.setRemoteDescription(offer)
     const answer = await this.peerConnection.createAnswer()
     await this.peerConnection.setLocalDescription(answer)
 
-    process.env.DEBUG && console.log(`[app-endpoint-${this._appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: sending local sdp answer: ${JSON.stringify(answer)}`)
+    process.env.DEBUG && console.log(`[app-endpoint-${this.appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: sending local sdp answer: ${JSON.stringify(answer)}`)
     this._sendRTCSignal({
       object: 'rtcSocket',
       method: 'sdpReply',
       args: {
-        appEndpointSessionId: this._appEndpointCompositorPair.appEndpointSessionId,
+        appEndpointSessionId: this.appEndpointCompositorPair.appEndpointSessionId,
         reply: answer
       }
     })
   }
 
   async sdpReply ({ reply }) {
-    process.env.DEBUG && console.log(`[app-endpoint-${this._appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: received browser sdp answer: ${JSON.stringify(reply)}`)
+    process.env.DEBUG && console.log(`[app-endpoint-${this.appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: received browser sdp answer: ${JSON.stringify(reply)}`)
     await this.peerConnection.setRemoteDescription(reply)
   }
 
   async _sendOffer () {
     const offer = await this.peerConnection.createOffer()
     await this.peerConnection.setLocalDescription(offer)
-    process.env.DEBUG && console.log(`[app-endpoint-${this._appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: sending local sdp offer: ${JSON.stringify(offer)}.`)
+    process.env.DEBUG && console.log(`[app-endpoint-${this.appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: sending local sdp offer: ${JSON.stringify(offer)}.`)
     this._sendRTCSignal({
       object: 'rtcSocket',
       method: 'sdpOffer',
       args: {
-        appEndpointSessionId: this._appEndpointCompositorPair.appEndpointSessionId,
+        appEndpointSessionId: this.appEndpointCompositorPair.appEndpointSessionId,
         offer
       }
     })
