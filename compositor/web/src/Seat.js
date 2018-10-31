@@ -135,7 +135,7 @@ class Seat extends WlSeatRequests {
     if (this._global) {
       return
     }
-    this._global = registry.createGlobal(this, WlSeatResource.name, 6, (client, id, version) => {
+    this._global = registry.createGlobal(this, WlSeatResource.protocolName, 6, (client, id, version) => {
       this.bindClient(client, id, version)
     })
   }

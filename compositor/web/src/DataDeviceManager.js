@@ -44,7 +44,7 @@ export default class DataDeviceManager extends WlDataDeviceManagerRequests {
     if (this._global) {
       return
     }
-    this._global = registry.createGlobal(this, WlDataDeviceManagerResource.name, 3, (client, id, version) => {
+    this._global = registry.createGlobal(this, WlDataDeviceManagerResource.protocolName, 3, (client, id, version) => {
       this.bindClient(client, id, version)
     })
   }

@@ -68,7 +68,7 @@ export default class Shell extends WlShellRequests {
     if (this._global) {
       return
     }
-    this._global = registry.createGlobal(this, WlShellResource.name, 1, (client, id, version) => {
+    this._global = registry.createGlobal(this, WlShellResource.protocolName, 1, (client, id, version) => {
       this.bindClient(client, id, version)
     })
   }

@@ -91,7 +91,7 @@ export default class XdgWmBase extends XdgWmBaseRequests {
     if (this._global) {
       return
     }
-    this._global = registry.createGlobal(this, XdgWmBaseResource.name, 1, (client, id, version) => {
+    this._global = registry.createGlobal(this, XdgWmBaseResource.protocolName, 1, (client, id, version) => {
       this.bindClient(client, id, version)
     })
   }

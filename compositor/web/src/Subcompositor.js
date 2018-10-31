@@ -54,7 +54,7 @@ export default class Subcompositor extends WlSubcompositorRequests {
     if (this._global) {
       return
     }
-    this._global = registry.createGlobal(this, WlSubcompositorRequests.name, 1, (client, id, version) => {
+    this._global = registry.createGlobal(this, WlSubcompositorResource.protocolName, 1, (client, id, version) => {
       this.bindClient(client, id, version)
     })
   }
