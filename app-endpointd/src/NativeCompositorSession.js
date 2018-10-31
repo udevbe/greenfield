@@ -22,7 +22,6 @@ class NativeCompositorSession {
 
     const fdWatcher = new Epoll((err) => {
       Endpoint.dispatchRequests(compositorSession.wlDisplay)
-      compositorSession.flushClients()
     })
     fdWatcher.add(compositorSession.wlDisplayFd, Epoll.EPOLLPRI | Epoll.EPOLLIN | Epoll.EPOLLERR)
 
@@ -69,6 +68,8 @@ class NativeCompositorSession {
    * @private
    */
   _onClientCreated (wlClient) {
+    process.env.DEBUG && console.log(`[app-endpoint-${this.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native compositor session: new wayland client connected.`)
+
     // TODO keep track of clients
     const clientSession = NativeClientSession.create(wlClient, this)
     this.clients.push(clientSession)
@@ -78,10 +79,6 @@ class NativeCompositorSession {
         this.clients.splice(idx, 1)
       }
     })
-  }
-
-  flushClients () {
-    this.clients.forEach(client => client._flush())
   }
 
   /**
