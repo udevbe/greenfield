@@ -1,6 +1,7 @@
 const { Endpoint } = require('westfield-endpoint')
 
 const WireMessageUtil = require('./WireMessageUtil')
+const CompositorInterceptor = require('./wire/CompositorInterceptor')
 
 class NativeClientSession {
   /**
@@ -18,6 +19,7 @@ class NativeClientSession {
     })
 
     Endpoint.setClientDestroyedCallback(wlClient, () => nativeClientSession.destroy())
+    Endpoint.setRegistryCreatedCallback(wlClient, (wlRegistry, registryId) => nativeClientSession._onRegistryCreated(wlRegistry, registryId))
     Endpoint.setWireMessageCallback(wlClient, (wlClient, message, objectId, opcode, hasNativeResource) => nativeClientSession._onWireMessageRequest(wlClient, message, objectId, opcode, hasNativeResource))
     Endpoint.setWireMessageEndCallback(wlClient, (wlClient, fdsIn) => nativeClientSession._onWireMessageEnd(wlClient, fdsIn))
 
@@ -33,6 +35,30 @@ class NativeClientSession {
     }
 
     return nativeClientSession
+  }
+
+  /**
+   * @param {number}objectId
+   * @param {number}opcode
+   * @returns {boolean}
+   * @private
+   */
+  static _isGetRegistry (objectId, opcode) {
+    const displayId = 1
+    const getRegistryOpcode = 1
+    return objectId === displayId && opcode === getRegistryOpcode
+  }
+
+  /**
+   * @param {number}objectId
+   * @param {number}opcode
+   * @returns {boolean}
+   * @private
+   */
+  static _isSync (objectId, opcode) {
+    const displayId = 1
+    const syncOpcode = 0
+    return objectId === displayId && opcode === syncOpcode
   }
 
   /**
@@ -75,6 +101,11 @@ class NativeClientSession {
      * @private
      */
     this._outboundMessages = []
+    /**
+     * @type {Object.<number,WireMessageInterceptor>}
+     * @private
+     */
+    this._interceptors = {}
     /**
      * @type {Object.<number, Object>}
      * @private
@@ -160,8 +191,9 @@ class NativeClientSession {
     if (wlRegistry) {
       const bindOpcode = 0
       if (opcode === bindOpcode) {
-        const args = this.parse(id, bindOpcode, 'usun', message)
+        const args = this.parse('usun', message)
         const globalName = args[0]
+        this._trackCompositorGlobal(...args)
         isRemoteGlobal = !this._compositorSession.localGlobalNames.includes(globalName)
       }
     }
@@ -178,21 +210,22 @@ class NativeClientSession {
    * @private
    */
   _onWireMessageRequest (wlClient, message, objectId, opcode, hasNativeResource) {
-    // If the resource exist locally, we don't want to delegate it to the browser. Except:
-    //  - If the resource is 'display' and the request is 'get_registry', then the request should be happen
-    // both locally & in the browser.
-    //  - If the resource is 'display' and the request is 'sync', then the request should be happen both locally & in the browser.
-    //  - If a bind request happens on a registry resource for a locally created global, then don't delegate to the browser.
-    // If none of the above applies, delegate to browser.
+    // - If the resource does not exist locally, then the request should only happen remotely.
+    // - If the resource exist locally, then the request should only happen locally.
+    //  Except:
+    //  - If the resource is 'display' and the request is 'get_registry', then the request should be happen both locally & remotely.
+    //  - If the resource is 'display' and the request is 'sync', then the request should be happen only remotely.
+    //  - If the resource is 'registry' and the request is 'bind' for a locally created global, then the request should only happen locally.
+    //  - If the resource is 'registry' and the request is 'bind' for a remotely created global, then the request should only happen remotely.
 
     // by default, always consume the message & delegate to browser
     let consumed = 1
 
     // if there is a native resource and the request is not a bind to a remote global or a sync, then there are some special cases that apply.
     if (hasNativeResource &&
-      !this._isSync(objectId, opcode) &&
+      !NativeClientSession._isSync(objectId, opcode) &&
       !this._isRemoteGlobalBind(objectId, opcode, message)) {
-      if (this._isGetRegistry(objectId, opcode)) {
+      if (NativeClientSession._isGetRegistry(objectId, opcode)) {
         // if the resource is 'display' and the request is 'get_registry', then the request should be happen
         // both locally & in the browser.
         consumed = 0
@@ -202,7 +235,12 @@ class NativeClientSession {
       }
     }
 
-    // TODO analyse wire message to check for compositor requests & track the surface id.
+    if (consumed) {
+      const interceptor = this._interceptors[objectId]
+      if (interceptor) {
+        interceptor.intercept(message, opcode)
+      }
+    }
 
     this._pendingMessageBufferSize += message.byteLength
     this._pendingWireMessages.push(message)
@@ -232,7 +270,7 @@ class NativeClientSession {
       sendBuffer.set(wireMessage, offset)
       offset += wireMessage.length
     })
-    // send sendBuffer.buffer over data channel
+
     if (this._dataChannel.readyState === 'open') {
       this._dataChannel.send(sendBuffer.buffer)
     } else {
@@ -242,34 +280,19 @@ class NativeClientSession {
   }
 
   /**
-   * Returns the arguments parsed from the wire messages, or null if no matches are found. Does not support signature
-   * with file descriptors.
    *
-   * @param {number}objectId
-   * @param {number}opcode
    * @param {string}signature
    * @param {ArrayBuffer}wireMessageBuffer
    * @returns {null|Array<*>}
    */
-  parse (objectId, opcode, signature, wireMessageBuffer) {
-    const id = new Uint32Array(wireMessageBuffer)[0]
-    const bufu16 = new Uint16Array(wireMessageBuffer, 4)
-    const size = bufu16[1]
-    if (size > wireMessageBuffer.byteLength) {
-      throw new Error('wireMessageBuffer too small')
-    }
-    const messageOpcode = bufu16[0]
-    if (objectId === id && opcode === messageOpcode) {
-      return WireMessageUtil.unmarshallArgs({
-        buffer: wireMessageBuffer,
-        bufferOffset: 0,
-        consumed: 8,
-        fds: [],
-        size: size
-      }, signature)
-    } else {
-      return null
-    }
+  parse (signature, wireMessageBuffer) {
+    return WireMessageUtil.unmarshallArgs({
+      buffer: wireMessageBuffer,
+      bufferOffset: 0,
+      consumed: 8,
+      fds: [],
+      size: new Uint32Array(wireMessageBuffer)[1] >>> 16
+    }, signature)
   }
 
   /**
@@ -298,7 +321,6 @@ class NativeClientSession {
    */
   _onError (event) {
     // TODO log error
-
   }
 
   /**
@@ -316,31 +338,20 @@ class NativeClientSession {
    */
   _onRegistryCreated (wlRegistry, registryId) {
     this._wlRegistries[registryId] = wlRegistry
-    Endpoint.emitGlobals(wlRegistry)
   }
 
   /**
+   * @param {number}uniqueName
+   * @param {string}interfaceName
+   * @param {number}version
    * @param {number}objectId
-   * @param {number}opcode
-   * @returns {boolean}
    * @private
    */
-  _isGetRegistry (objectId, opcode) {
-    const displayId = 1
-    const getRegistryOpcode = 1
-    return objectId === displayId && opcode === getRegistryOpcode
-  }
-
-  /**
-   * @param {number}objectId
-   * @param {number}opcode
-   * @returns {boolean}
-   * @private
-   */
-  _isSync (objectId, opcode) {
-    const displayId = 1
-    const syncOpcode = 0
-    return objectId === displayId && opcode === syncOpcode
+  _trackCompositorGlobal (uniqueName, interfaceName, version, objectId) {
+    // TODO track compositor resource destruction
+    if (interfaceName === 'wl_compositor') {
+      this._interceptors[objectId] = CompositorInterceptor.create(this._interceptors)
+    }
   }
 }
 
