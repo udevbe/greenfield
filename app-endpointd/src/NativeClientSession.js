@@ -31,6 +31,7 @@ class NativeClientSession {
     dataChannel.onopen = () => {
       dataChannel.onerror = event => nativeClientSession._onError(event)
       // flush out any requests that came in while we were waiting for the data channel to open.
+      process.env.DEBUG && console.log(`[app-endpoint-${nativeClientSession._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: RTC data channel to browser is open.`)
       nativeClientSession._flushOutboundMessage()
     }
 
@@ -63,10 +64,10 @@ class NativeClientSession {
 
   /**
    * @param {Object}wlClient
-   * @param {NativeCompositorSession}compositorSession
+   * @param {NativeCompositorSession}nativeCompositorSession
    * @param {RTCDataChannel}dataChannel
    */
-  constructor (wlClient, compositorSession, dataChannel) {
+  constructor (wlClient, nativeCompositorSession, dataChannel) {
     /**
      * @type {Object}
      */
@@ -75,7 +76,7 @@ class NativeClientSession {
      * @type {NativeCompositorSession}
      * @private
      */
-    this._compositorSession = compositorSession
+    this._nativeCompositorSession = nativeCompositorSession
     /**
      * @type {function():void}
      * @private
@@ -124,6 +125,8 @@ class NativeClientSession {
    */
   _onWireMessageEvents (buffer) {
     // receive from data channel
+    process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: received wire messages from browser.`)
+
     const receiveBuffer = new Uint32Array(buffer)
     let readOffset = 0
     let localGlobalsEmitted = false
@@ -153,6 +156,7 @@ class NativeClientSession {
   }
 
   _flushOutboundMessage () {
+    process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: sending ${this._outboundMessages.length} queued outbound messages.`)
     while (this._outboundMessages.length) {
       this._dataChannel.send(this._outboundMessages.shift())
     }
@@ -171,6 +175,7 @@ class NativeClientSession {
       const messageOpcode = sizeOpcode & 0x0000FFFF
       const globalOpcode = 0
       if (messageOpcode === globalOpcode) {
+        process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: received globals emit wire message from browser. Will emit local globals as well.`)
         Endpoint.emitGlobals(wlRegistry)
         return true
       }
@@ -194,7 +199,7 @@ class NativeClientSession {
         const args = this.parse('usun', message)
         const globalName = args[0]
         this._trackCompositorGlobal(...args)
-        isRemoteGlobal = !this._compositorSession.localGlobalNames.includes(globalName)
+        isRemoteGlobal = !this._nativeCompositorSession.localGlobalNames.includes(globalName)
       }
     }
     return isRemoteGlobal
@@ -272,9 +277,11 @@ class NativeClientSession {
     })
 
     if (this._dataChannel.readyState === 'open') {
+      process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: forwarding wire messages to browser.`)
       this._dataChannel.send(sendBuffer.buffer)
     } else {
       // queue up data until the channel is open
+      process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: not forwarding wire messages to browser. Channel not open. Queueing.`)
       this._outboundMessages.push(sendBuffer.buffer)
     }
   }
@@ -321,6 +328,7 @@ class NativeClientSession {
    */
   _onError (event) {
     // TODO log error
+    process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: RTC data channel is in error ${JSON.stringify(event.error)}.`)
   }
 
   /**
@@ -328,6 +336,7 @@ class NativeClientSession {
    * @private
    */
   _onClose (event) {
+    process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: RTC data channel is closed.`)
     this.destroy()
   }
 
