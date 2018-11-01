@@ -295,7 +295,7 @@ class NativeClientSession {
   parse (signature, wireMessageBuffer) {
     return WireMessageUtil.unmarshallArgs({
       buffer: wireMessageBuffer,
-      bufferOffset: 0,
+      bufferOffset: 8,
       consumed: 8,
       fds: [],
       size: new Uint32Array(wireMessageBuffer)[1] >>> 16
