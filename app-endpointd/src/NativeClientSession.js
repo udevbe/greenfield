@@ -284,6 +284,9 @@ class NativeClientSession {
       process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: not forwarding wire messages to browser. Channel not open. Queueing.`)
       this._outboundMessages.push(sendBuffer.buffer)
     }
+
+    this._pendingMessageBufferSize = 0
+    this._pendingWireMessages = []
   }
 
   /**
