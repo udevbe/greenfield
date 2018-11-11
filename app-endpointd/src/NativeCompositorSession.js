@@ -1,4 +1,4 @@
-const { Endpoint } = require('westfield-endpoint')
+const { Endpoint, nativeGlobalNames } = require('westfield-endpoint')
 const { Epoll } = require('epoll')
 
 const NativeClientSession = require('./NativeClientSession')
@@ -11,6 +11,7 @@ class NativeCompositorSession {
   static create (rtcClient) {
     const compositorSession = new NativeCompositorSession(rtcClient)
 
+    // TODO move global create/destroy callback implementations into Endpoint.js
     compositorSession.wlDisplay = Endpoint.createDisplay(
       wlClient => compositorSession._onClientCreated(wlClient),
       globalName => compositorSession._onGlobalCreated(globalName),
@@ -20,9 +21,8 @@ class NativeCompositorSession {
     compositorSession.wlDisplayName = Endpoint.addSocketAuto(compositorSession.wlDisplay)
     compositorSession.wlDisplayFd = Endpoint.getFd(compositorSession.wlDisplay)
 
-    const fdWatcher = new Epoll((err) => {
-      Endpoint.dispatchRequests(compositorSession.wlDisplay)
-    })
+    // TODO handle err
+    const fdWatcher = new Epoll(err => Endpoint.dispatchRequests(compositorSession.wlDisplay))
     fdWatcher.add(compositorSession.wlDisplayFd, Epoll.EPOLLPRI | Epoll.EPOLLIN | Epoll.EPOLLERR)
 
     return compositorSession
@@ -52,11 +52,6 @@ class NativeCompositorSession {
      * @type {Array<NativeClientSession>}
      */
     this.clients = []
-    /**
-     * List of globals created on the native machine by 3rd party protocol implementations.
-     * @type {Array<number>}
-     */
-    this.localGlobalNames = []
   }
 
   destroy () {
@@ -86,7 +81,7 @@ class NativeCompositorSession {
    * @private
    */
   _onGlobalCreated (globalName) {
-    this.localGlobalNames.push(globalName)
+    nativeGlobalNames.push(globalName)
   }
 
   /**
@@ -94,9 +89,9 @@ class NativeCompositorSession {
    * @private
    */
   _onGlobalDestroyed (globalName) {
-    const idx = this.localGlobalNames.indexOf(globalName)
+    const idx = nativeGlobalNames.indexOf(globalName)
     if (idx > -1) {
-      this.localGlobalNames.splice(idx, 1)
+      nativeGlobalNames.splice(idx, 1)
     }
   }
 }

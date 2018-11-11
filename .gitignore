@@ -134,3 +134,4 @@ CTestTestfile.cmake
 /compositor/web/dist/
 /compositor/web/src/protocol/
 /compositor/package-lock.json
+/app-endpointd/src/protocol

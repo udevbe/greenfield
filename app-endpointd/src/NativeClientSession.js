@@ -1,7 +1,5 @@
-const { Endpoint } = require('westfield-endpoint')
-
-const WireMessageUtil = require('./WireMessageUtil')
-const CompositorInterceptor = require('./wire/CompositorInterceptor')
+const { Endpoint, MessageInterceptor } = require('westfield-endpoint')
+const wl_display_interceptor = require('./protocol/wl_display_interceptor')
 
 class NativeClientSession {
   /**
@@ -11,7 +9,8 @@ class NativeClientSession {
    */
   static create (wlClient, compositorSession) {
     const dataChannel = compositorSession.rtcClient.peerConnection.createDataChannel()
-    const nativeClientSession = new NativeClientSession(wlClient, compositorSession, dataChannel)
+    const messageInterceptor = MessageInterceptor.create(wlClient, compositorSession.wlDisplay, wl_display_interceptor.constructor)
+    const nativeClientSession = new NativeClientSession(wlClient, compositorSession, dataChannel, messageInterceptor)
     nativeClientSession.onDestroy().then(() => {
       if (dataChannel.readyState === 'open' || dataChannel.readyState === 'connecting') {
         dataChannel.close()
@@ -39,35 +38,12 @@ class NativeClientSession {
   }
 
   /**
-   * @param {number}objectId
-   * @param {number}opcode
-   * @returns {boolean}
-   * @private
-   */
-  static _isGetRegistry (objectId, opcode) {
-    const displayId = 1
-    const getRegistryOpcode = 1
-    return objectId === displayId && opcode === getRegistryOpcode
-  }
-
-  /**
-   * @param {number}objectId
-   * @param {number}opcode
-   * @returns {boolean}
-   * @private
-   */
-  static _isSync (objectId, opcode) {
-    const displayId = 1
-    const syncOpcode = 0
-    return objectId === displayId && opcode === syncOpcode
-  }
-
-  /**
    * @param {Object}wlClient
    * @param {NativeCompositorSession}nativeCompositorSession
    * @param {RTCDataChannel}dataChannel
+   * @param {MessageInterceptor}messageInterceptor
    */
-  constructor (wlClient, nativeCompositorSession, dataChannel) {
+  constructor (wlClient, nativeCompositorSession, dataChannel, messageInterceptor) {
     /**
      * @type {Object}
      */
@@ -103,10 +79,10 @@ class NativeClientSession {
      */
     this._outboundMessages = []
     /**
-     * @type {Object.<number,WireMessageInterceptor>}
+     * @type {MessageInterceptor}
      * @private
      */
-    this._interceptors = {}
+    this._messageInterceptor = messageInterceptor
     /**
      * @type {Object.<number, Object>}
      * @private
@@ -124,8 +100,7 @@ class NativeClientSession {
    * @private
    */
   _onWireMessageEvents (buffer) {
-    // receive from data channel
-    process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: received wire messages from browser.`)
+    process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: received event batch from browser.`)
 
     const receiveBuffer = new Uint32Array(buffer)
     let readOffset = 0
@@ -136,6 +111,11 @@ class NativeClientSession {
       readOffset += fdsCount
       const sizeOpcode = receiveBuffer[readOffset + 1]
       const size = sizeOpcode >>> 16
+
+      const id = receiveBuffer[readOffset]
+      const opcode = sizeOpcode & 0x0000FFFF
+      process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: event with id=${id}, opcode=${opcode}, length=${size}.`)
+
       const length = size / Uint32Array.BYTES_PER_ELEMENT
       const messageBuffer = receiveBuffer.subarray(readOffset, readOffset + length)
       readOffset += length
@@ -145,6 +125,8 @@ class NativeClientSession {
         localGlobalsEmitted = this._emitLocalGlobals(messageBuffer)
       }
 
+      this._messageInterceptor.handleEvent(id, opcode, messageBuffer)
+
       Endpoint.sendEvents(
         this.wlClient,
         messageBuffer.buffer.slice(messageBuffer.byteOffset, messageBuffer.byteOffset + messageBuffer.byteLength),
@@ -152,11 +134,12 @@ class NativeClientSession {
       )
     }
 
+    process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: sending event batch to native client.`)
     Endpoint.flush(this.wlClient)
   }
 
   _flushOutboundMessage () {
-    process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: sending ${this._outboundMessages.length} queued outbound messages.`)
+    process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: sending ${this._outboundMessages.length} queued requests.`)
     while (this._outboundMessages.length) {
       this._dataChannel.send(this._outboundMessages.shift())
     }
@@ -175,7 +158,7 @@ class NativeClientSession {
       const messageOpcode = sizeOpcode & 0x0000FFFF
       const globalOpcode = 0
       if (messageOpcode === globalOpcode) {
-        process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: received globals emit wire message from browser. Will emit local globals as well.`)
+        process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: received globals emit event from browser. Will send local global events as well.`)
         Endpoint.emitGlobals(wlRegistry)
         return true
       }
@@ -184,73 +167,30 @@ class NativeClientSession {
   }
 
   /**
-   *
-   * @param {number}id
-   * @param {number}opcode
-   * @param {ArrayBuffer}message
-   * @private
-   */
-  _isRemoteGlobalBind (id, opcode, message) {
-    const wlRegistry = this._wlRegistries[id]
-    let isRemoteGlobal = false
-    if (wlRegistry) {
-      const bindOpcode = 0
-      if (opcode === bindOpcode) {
-        const args = this.parse('usun', message)
-        const globalName = args[0]
-        this._trackCompositorGlobal(...args)
-        isRemoteGlobal = !this._nativeCompositorSession.localGlobalNames.includes(globalName)
-      }
-    }
-    return isRemoteGlobal
-  }
-
-  /**
    * @param {Object}wlClient
    * @param {ArrayBuffer}message
    * @param {number}objectId
    * @param {number}opcode
-   * @param {boolean}hasNativeResource
    * @returns {number}
    * @private
    */
-  _onWireMessageRequest (wlClient, message, objectId, opcode, hasNativeResource) {
-    // - If the resource does not exist locally, then the request should only happen remotely.
-    // - If the resource exist locally, then the request should only happen locally.
-    //  Except:
-    //  - If the resource is 'display' and the request is 'get_registry', then the request should be happen both locally & remotely.
-    //  - If the resource is 'display' and the request is 'sync', then the request should be happen only remotely.
-    //  - If the resource is 'registry' and the request is 'bind' for a locally created global, then the request should only happen locally.
-    //  - If the resource is 'registry' and the request is 'bind' for a remotely created global, then the request should only happen remotely.
+  _onWireMessageRequest (wlClient, message, objectId, opcode) {
+    const receiveBuffer = new Uint32Array(message)
+    const sizeOpcode = receiveBuffer[1]
+    const size = sizeOpcode >>> 16
+    process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: received request with id=${objectId}, opcode=${opcode}, length=${size} from native client.`)
 
-    // by default, always consume the message & delegate to browser
-    let consumed = 1
-
-    // if there is a native resource and the request is not a bind to a remote global or a sync, then there are some special cases that apply.
-    if (hasNativeResource &&
-      !NativeClientSession._isSync(objectId, opcode) &&
-      !this._isRemoteGlobalBind(objectId, opcode, message)) {
-      if (NativeClientSession._isGetRegistry(objectId, opcode)) {
-        // if the resource is 'display' and the request is 'get_registry', then the request should be happen
-        // both locally & in the browser.
-        consumed = 0
-      } else {
-        // if none of the above conditions apply, then let the local resource implementation handle the request
-        return 0
-      }
+    let destination = this._messageInterceptor.interceptRequest(objectId, opcode, message)
+    if (destination) {
+      this._pendingMessageBufferSize += message.byteLength
+      this._pendingWireMessages.push(message)
+    } else {
+      process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: delegating request to native implementation only.`)
     }
 
-    if (consumed) {
-      const interceptor = this._interceptors[objectId]
-      if (interceptor) {
-        interceptor.intercept(message, opcode)
-      }
-    }
-
-    this._pendingMessageBufferSize += message.byteLength
-    this._pendingWireMessages.push(message)
-
-    return consumed
+    // TODO we could be a bit smarter with our destination codes...
+    // returning a non-zero value means message should not be seen by native code. destination = 0 => native only, 1 => browser only, 2 => both
+    return destination === 2 ? 0 : 1
   }
 
   /**
@@ -277,11 +217,11 @@ class NativeClientSession {
     })
 
     if (this._dataChannel.readyState === 'open') {
-      process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: forwarding wire messages to browser.`)
+      process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: sending request batch to browser.`)
       this._dataChannel.send(sendBuffer.buffer)
     } else {
       // queue up data until the channel is open
-      process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: not forwarding wire messages to browser. Channel not open. Queueing.`)
+      process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: not sending request batch to browser. RTC data channel not open. Queueing.`)
       this._outboundMessages.push(sendBuffer.buffer)
     }
 
@@ -350,20 +290,6 @@ class NativeClientSession {
    */
   _onRegistryCreated (wlRegistry, registryId) {
     this._wlRegistries[registryId] = wlRegistry
-  }
-
-  /**
-   * @param {number}uniqueName
-   * @param {string}interfaceName
-   * @param {number}version
-   * @param {number}objectId
-   * @private
-   */
-  _trackCompositorGlobal (uniqueName, interfaceName, version, objectId) {
-    // TODO track compositor resource destruction
-    if (interfaceName === 'wl_compositor') {
-      this._interceptors[objectId] = CompositorInterceptor.create(this._interceptors)
-    }
   }
 }
 

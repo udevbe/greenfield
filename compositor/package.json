@@ -6,8 +6,8 @@
     "greenfield": "./local/src/index.js"
   },
   "scripts": {
-    "prepare:web:generate:xdgshell": "westfield-scanner-server web/protocol/xdg-shell.xml -o web/src/protocol",
-    "prepare:web:generate:wayland": "westfield-scanner-server web/protocol/wayland.xml -o web/src/protocol",
+    "prepare:web:generate:xdgshell": "westfield-scanner-server ../protocol/xdg-shell.xml -o web/src/protocol",
+    "prepare:web:generate:wayland": "westfield-scanner-server ../protocol/wayland.xml -o web/src/protocol",
     "prepare:web:generate": "mkdir -p web/src/protocol/ && npm run prepare:web:generate:wayland && npm run prepare:web:generate:xdgshell",
     "prepare:web:webpack:prod": "webpack --config web/build.config/webpack.config.prod.js",
     "prepare": "npm run prepare:web:generate && npm run prepare:web:webpack:prod",
