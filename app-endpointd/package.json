@@ -4,7 +4,7 @@
   "scripts": {
     "prepare:generate:xdgshell": "westfield-endpoint-generator ../protocol/xdg-shell.xml -o src/protocol",
     "prepare:generate:wayland": "westfield-endpoint-generator ../protocol/wayland.xml -o src/protocol",
-    "prepare" : "mkdir -p src/protocol/ && npm run prepare:generate:wayland && npm run prepare:generate:xdgshell"
+    "prepare": "mkdir -p src/protocol/ && npm run prepare:generate:wayland && npm run prepare:generate:xdgshell"
   },
   "dependencies": {
     "app-endpoint-native": "file:./native",

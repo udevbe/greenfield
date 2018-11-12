@@ -1,4 +1,5 @@
 const { Endpoint, MessageInterceptor } = require('westfield-endpoint')
+// eslint-disable-next-line camelcase
 const wl_display_interceptor = require('./protocol/wl_display_interceptor')
 
 class NativeClientSession {
@@ -9,7 +10,7 @@ class NativeClientSession {
    */
   static create (wlClient, compositorSession) {
     const dataChannel = compositorSession.rtcClient.peerConnection.createDataChannel()
-    const messageInterceptor = MessageInterceptor.create(wlClient, compositorSession.wlDisplay, wl_display_interceptor.constructor)
+    const messageInterceptor = MessageInterceptor.create(wlClient, compositorSession.wlDisplay, wl_display_interceptor)
     const nativeClientSession = new NativeClientSession(wlClient, compositorSession, dataChannel, messageInterceptor)
     nativeClientSession.onDestroy().then(() => {
       if (dataChannel.readyState === 'open' || dataChannel.readyState === 'connecting') {
@@ -19,7 +20,7 @@ class NativeClientSession {
 
     Endpoint.setClientDestroyedCallback(wlClient, () => nativeClientSession.destroy())
     Endpoint.setRegistryCreatedCallback(wlClient, (wlRegistry, registryId) => nativeClientSession._onRegistryCreated(wlRegistry, registryId))
-    Endpoint.setWireMessageCallback(wlClient, (wlClient, message, objectId, opcode, hasNativeResource) => nativeClientSession._onWireMessageRequest(wlClient, message, objectId, opcode, hasNativeResource))
+    Endpoint.setWireMessageCallback(wlClient, (wlClient, message, objectId, opcode) => nativeClientSession._onWireMessageRequest(wlClient, message, objectId, opcode))
     Endpoint.setWireMessageEndCallback(wlClient, (wlClient, fdsIn) => nativeClientSession._onWireMessageEnd(wlClient, fdsIn))
 
     dataChannel.onerror = () => nativeClientSession.destroy()
@@ -180,17 +181,16 @@ class NativeClientSession {
     const size = sizeOpcode >>> 16
     process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: received request with id=${objectId}, opcode=${opcode}, length=${size} from native client.`)
 
-    let destination = this._messageInterceptor.interceptRequest(objectId, opcode, message)
-    if (destination) {
+    const destination = this._messageInterceptor.interceptRequest(objectId, opcode, message)
+    if (destination === 1) {
+      process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: delegating request to native implementation only.`)
+    } else {
       this._pendingMessageBufferSize += message.byteLength
       this._pendingWireMessages.push(message)
-    } else {
-      process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: delegating request to native implementation only.`)
     }
 
-    // TODO we could be a bit smarter with our destination codes...
-    // returning a non-zero value means message should not be seen by native code. destination = 0 => native only, 1 => browser only, 2 => both
-    return destination === 2 ? 0 : 1
+    // returning a zero value means message should not be seen by native code. destination = 0 => browser only, 1 => native only, 2 => both
+    return destination
   }
 
   /**
@@ -227,22 +227,6 @@ class NativeClientSession {
 
     this._pendingMessageBufferSize = 0
     this._pendingWireMessages = []
-  }
-
-  /**
-   *
-   * @param {string}signature
-   * @param {ArrayBuffer}wireMessageBuffer
-   * @returns {null|Array<*>}
-   */
-  parse (signature, wireMessageBuffer) {
-    return WireMessageUtil.unmarshallArgs({
-      buffer: wireMessageBuffer,
-      bufferOffset: 8,
-      consumed: 8,
-      fds: [],
-      size: new Uint32Array(wireMessageBuffer)[1] >>> 16
-    }, signature)
   }
 
   /**
