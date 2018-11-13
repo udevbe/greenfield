@@ -176,21 +176,32 @@ class NativeClientSession {
    * @private
    */
   _onWireMessageRequest (wlClient, message, objectId, opcode) {
-    const receiveBuffer = new Uint32Array(message)
-    const sizeOpcode = receiveBuffer[1]
-    const size = sizeOpcode >>> 16
-    process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: received request with id=${objectId}, opcode=${opcode}, length=${size} from native client.`)
+    try {
+      const receiveBuffer = new Uint32Array(message)
+      const sizeOpcode = receiveBuffer[1]
+      const size = sizeOpcode >>> 16
+      process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: received request with id=${objectId}, opcode=${opcode}, length=${size} from native client.`)
 
-    const destination = this._messageInterceptor.interceptRequest(objectId, opcode, message)
-    if (destination === 1) {
-      process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: delegating request to native implementation only.`)
-    } else {
-      this._pendingMessageBufferSize += message.byteLength
-      this._pendingWireMessages.push(message)
+      const destination = this._messageInterceptor.interceptRequest(objectId, opcode, {
+        buffer: message,
+        fds: [],
+        bufferOffset: 8,
+        consumed: 0,
+        size: size
+      })
+      if (destination === 1) {
+        process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: delegating request to native implementation only.`)
+      } else {
+        this._pendingMessageBufferSize += message.byteLength
+        this._pendingWireMessages.push(message)
+      }
+
+      // returning a zero value means message should not be seen by native code. destination = 0 => browser only, 1 => native only, 2 => both
+      return destination
+    } catch (e) {
+      console.log(e.stack)
+      process.exit(-1)
     }
-
-    // returning a zero value means message should not be seen by native code. destination = 0 => browser only, 1 => native only, 2 => both
-    return destination
   }
 
   /**
