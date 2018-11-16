@@ -10,7 +10,7 @@ class NativeClientSession {
    */
   static create (wlClient, compositorSession) {
     const dataChannel = compositorSession.rtcClient.peerConnection.createDataChannel()
-    const messageInterceptor = MessageInterceptor.create(wlClient, compositorSession.wlDisplay, wl_display_interceptor)
+    const messageInterceptor = MessageInterceptor.create(wlClient, compositorSession.wlDisplay, wl_display_interceptor, { dataChannel })
     const nativeClientSession = new NativeClientSession(wlClient, compositorSession, dataChannel, messageInterceptor)
     nativeClientSession.onDestroy().then(() => {
       if (dataChannel.readyState === 'open' || dataChannel.readyState === 'connecting') {
@@ -182,18 +182,13 @@ class NativeClientSession {
       const size = sizeOpcode >>> 16
       process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: received request with id=${objectId}, opcode=${opcode}, length=${size} from native client.`)
 
-      const destination = this._messageInterceptor.interceptRequest(objectId, opcode, {
-        buffer: message,
-        fds: [],
-        bufferOffset: 8,
-        consumed: 0,
-        size: size
-      })
+      const interceptedMessage = { buffer: message, fds: [], bufferOffset: 8, consumed: 0, size: size }
+      const destination = this._messageInterceptor.interceptRequest(objectId, opcode, interceptedMessage)
       if (destination === 1) {
         process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: delegating request to native implementation only.`)
       } else {
-        this._pendingMessageBufferSize += message.byteLength
-        this._pendingWireMessages.push(message)
+        this._pendingMessageBufferSize += interceptedMessage.buffer.byteLength
+        this._pendingWireMessages.push(interceptedMessage.buffer)
       }
 
       // returning a zero value means message should not be seen by native code. destination = 0 => browser only, 1 => native only, 2 => both

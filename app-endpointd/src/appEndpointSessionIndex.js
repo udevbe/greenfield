@@ -1,11 +1,14 @@
 'use strict'
 
 const AppEndpointCompositorPair = require('./AppEndpointCompositorPair')
+const SurfaceBufferEncoding = require('./SurfaceBufferEncoding')
 
 function main () {
   process.on('uncaughtException', (error) => {
     console.error(error, error.stack)
   })
+
+  SurfaceBufferEncoding.init()
 
   const cleanUp = () => {
     process.exit(0)

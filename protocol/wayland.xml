@@ -1516,6 +1516,7 @@
 
 	Other interfaces may add further double-buffered surface state.
       </description>
+      <arg name="serial" type="uint" summary="serial number of the commit"/>
     </request>
 
     <event name="enter">

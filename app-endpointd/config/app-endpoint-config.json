@@ -14,5 +14,8 @@
       "read-timeout": 5000,
       "write-timeout": 5000
     }
+  },
+  "encoder": {
+    "max-png-buffer-size": 131072
   }
 }

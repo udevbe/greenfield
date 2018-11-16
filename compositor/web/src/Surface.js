@@ -889,10 +889,11 @@ export default class Surface extends WlSurfaceRequests {
    *
    * @param {WlSurfaceResource} resource
    *
+   * @param {number} serial serial number of the commit
    * @since 1
    * @override
    */
-  async commit (resource) {
+  async commit (resource, serial) {
     this._start = Date.now()
     this._count++
     if (this.pendingWlBuffer) {
