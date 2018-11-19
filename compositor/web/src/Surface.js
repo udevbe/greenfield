@@ -23,19 +23,20 @@ import Region from './Region'
 import SurfaceChild from './SurfaceChild'
 import Renderer from './render/Renderer'
 import Point from './math/Point'
+import BufferStream from './BufferStream'
 
 /**
  * @type {{transformation: Mat4, inverseTransformation:Mat4}[]}
  */
 const bufferTransformations = [
-  {transformation: NORMAL, inverseTransformation: NORMAL.invert()}, // 0
-  {transformation: _90, inverseTransformation: _90.invert()}, // 1
-  {transformation: _180, inverseTransformation: _180.invert()}, // 2
-  {transformation: _270, inverseTransformation: _270.invert()}, // 3
-  {transformation: FLIPPED, inverseTransformation: FLIPPED.invert()}, // 4
-  {transformation: FLIPPED_90, inverseTransformation: FLIPPED_90.invert()}, // 5
-  {transformation: FLIPPED_180, inverseTransformation: FLIPPED_180.invert()}, // 6
-  {transformation: FLIPPED_270, inverseTransformation: FLIPPED_270.invert()} // 7
+  { transformation: NORMAL, inverseTransformation: NORMAL.invert() }, // 0
+  { transformation: _90, inverseTransformation: _90.invert() }, // 1
+  { transformation: _180, inverseTransformation: _180.invert() }, // 2
+  { transformation: _270, inverseTransformation: _270.invert() }, // 3
+  { transformation: FLIPPED, inverseTransformation: FLIPPED.invert() }, // 4
+  { transformation: FLIPPED_90, inverseTransformation: FLIPPED_90.invert() }, // 5
+  { transformation: FLIPPED_180, inverseTransformation: FLIPPED_180.invert() }, // 6
+  { transformation: FLIPPED_270, inverseTransformation: FLIPPED_270.invert() } // 7
 ]
 
 /**
@@ -99,7 +100,13 @@ export default class Surface extends WlSurfaceRequests {
     Region.initInfinite(opaquePixmanRegion)
     Region.initInfinite(inputPixmanRegion)
 
-    const surface = new Surface(wlSurfaceResource, renderer, seat, session, bufferDamage, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion)
+    const bufferStream = new BufferStream()
+    wlSurfaceResource.client.setOutOfBandListener(wlSurfaceResource.id, 0, (outOfBandMessage) => {
+      // TODO try to improve buffer chunk handling and not slice (=copy) anywhere
+      bufferStream.onChunk(outOfBandMessage.slice(2 * Uint32Array.BYTES_PER_ELEMENT))
+    })
+
+    const surface = new Surface(wlSurfaceResource, renderer, seat, session, bufferDamage, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion, bufferStream)
     wlSurfaceResource.implementation = surface
     wlSurfaceResource.onDestroy().then(() => {
       Region.destroyPixmanRegion(bufferDamage)
@@ -123,8 +130,9 @@ export default class Surface extends WlSurfaceRequests {
    * @param {!number} opaquePixmanRegion
    * @param {!number} inputPixmanRegion
    * @param {!number} surfacePixmanRegion
+   * @param {BufferStream}bufferStream
    */
-  constructor (wlSurfaceResource, renderer, seat, session, bufferDamage, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion) {
+  constructor (wlSurfaceResource, renderer, seat, session, bufferDamage, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion, bufferStream) {
     super()
     /**
      * @type {!WlSurfaceResource}
@@ -322,6 +330,12 @@ export default class Surface extends WlSurfaceRequests {
     this._bufferCompletionTotal = 0
     this._postRenderTotal = 0
     this._bufferSizeTotal = 0
+
+    /**
+     * @type {BufferStream}
+     * @private
+     */
+    this._bufferStream = bufferStream
   }
 
   /**
@@ -601,6 +615,7 @@ export default class Surface extends WlSurfaceRequests {
       this.renderState.destroy()
       this.renderState = null
     }
+    resource.client.removeAllOutOfBandListeners(resource.id)
   }
 
   /**
@@ -901,7 +916,9 @@ export default class Surface extends WlSurfaceRequests {
     }
 
     const pendingWlBuffer = this.pendingWlBuffer
+    this._bufferStream.syncToCommit(serial)
     const newState = await this._captureState(pendingWlBuffer)
+    pendingWlBuffer.release()
     if (this.destroyed) {
       return
     }
@@ -958,7 +975,7 @@ export default class Surface extends WlSurfaceRequests {
     }
     const postRenderStart = Date.now()
 
-    const {w: oldWidth, h: oldHeight} = this.size
+    const { w: oldWidth, h: oldHeight } = this.size
     this._updateDerivedState(newState)
     Surface.mergeState(this.state, newState)
     if (this.role && this.role.setRoleState) {
@@ -1068,8 +1085,7 @@ export default class Surface extends WlSurfaceRequests {
 
     const bufferReceiveStart = Date.now()
     if (pendingWlBuffer) {
-      // TODO create new streaming buffer library
-      newState.bufferContents = await null
+      newState.bufferContents = await this._bufferStream.onFrameAvailable()
 
       const bufferCompletion = Date.now() - bufferReceiveStart
       this._bufferCompletionTotal += bufferCompletion

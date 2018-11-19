@@ -120,7 +120,7 @@ wfs.RtcDcBuffer = class RtcDcBuffer extends wfs.Resource {
 
 	[2] (message) {
 		const args = this.client._unmarshallArgs(message,"u")
-		this.implementation.syn.call(this.implementation, this, args[0])
+		this.implementation.syncToCommit.call(this.implementation, this, args[0])
 	}
 
 }

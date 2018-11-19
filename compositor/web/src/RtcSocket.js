@@ -1,5 +1,7 @@
 'use strict'
 
+import WlBufferResource from './protocol/WlBufferResource'
+
 /**
  * Conceptual webRTC server socket as webRTC doesn't have the notion of server/client model.
  * Clients (application endpoints) announce their desire to create a new RTC peer connection here.
@@ -44,9 +46,7 @@ export default class RtcSocket {
     // TODO rtc connection options setup
     const peerConnection = new RTCPeerConnection()
     this._appEndpointConnections[appEndpointSessionId] = peerConnection
-    peerConnection.ondatachannel = (event) => {
-      this._onDataChannel(event.channel)
-    }
+    peerConnection.ondatachannel = (event) => this._onDataChannel(event.channel)
 
     peerConnection.onnegotiationneeded = async () => {
       DEBUG && console.log(`WebRTC connection: ${appEndpointSessionId} negotiation needed.`)
@@ -91,17 +91,25 @@ export default class RtcSocket {
    * @private
    */
   _onDataChannel (dataChannel) {
+    dataChannel.binaryType = 'arraybuffer'
     dataChannel.onopen = () => {
       const client = this._session.display.createClient()
 
       dataChannel.onclose = () => client.close()
       dataChannel.onerror = () => client.close()
       dataChannel.onmessage = (event) => {
-        const receiveBuffer = new Uint32Array(/** @type {ArrayBuffer} */event.data)
-        const fdsInCount = receiveBuffer[0]
-        const fds = receiveBuffer.subarray(1, 1 + fdsInCount)
-        const buffer = receiveBuffer.subarray(1 + fdsInCount)
-        client.message({ buffer, fds })
+        const arrayBuffer = /** @type {ArrayBuffer} */event.data
+        const dataView = new DataView(arrayBuffer)
+        const outOfBand = dataView.getUint32(0, true)
+        if (!outOfBand) {
+          const receiveBuffer = new Uint32Array(arrayBuffer, Uint32Array.BYTES_PER_ELEMENT)
+          const fdsInCount = receiveBuffer[0]
+          const fds = receiveBuffer.subarray(1, 1 + fdsInCount)
+          const buffer = receiveBuffer.subarray(1 + fdsInCount)
+          client.message({ buffer, fds })
+        } else {
+          client.outOfBandMessage(arrayBuffer)
+        }
       }
 
       /**
@@ -114,9 +122,9 @@ export default class RtcSocket {
           return previousValue
         }, 0)
 
-        const sendBuffer = new Uint32Array(new ArrayBuffer(messagesSize))
-
-        let offset = 0
+        const sendBuffer = new Uint32Array(new ArrayBuffer(messagesSize + Uint32Array.BYTES_PER_ELEMENT))
+        sendBuffer[0] = 0 // out-of-band opcode
+        let offset = 1
         wireMessages.forEach(value => {
           const fds = Uint32Array.from(value.fds)
           const message = new Uint32Array(value.buffer)
@@ -126,9 +134,11 @@ export default class RtcSocket {
           sendBuffer.set(message, offset)
           offset += message.length
         })
-        // FIXME if the size exceeds 16kb, we need to split it
         dataChannel.send(sendBuffer.buffer)
       }
+
+      // eslint-disable-next-line no-new
+      client.setOutOfBandListener(1, 0, (message) => { new WlBufferResource(client, new Uint32Array(message)[2], 1) })
     }
   }
 

@@ -156,12 +156,6 @@ class Seat extends WlSeatRequests {
   bindClient (client, id, version) {
     const wlSeatResource = new WlSeatResource(client, id, version)
     wlSeatResource.implementation = this
-    this._boundResources.push(wlSeatResource)
-
-    wlSeatResource.onDestroy().then((resource) => {
-      const index = this._boundResources.indexOf(resource)
-      this._boundResources.splice(index, 1)
-    })
 
     this._emitCapabilities(wlSeatResource)
     this._emitName(wlSeatResource)

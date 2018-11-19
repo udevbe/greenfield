@@ -10,6 +10,8 @@ class NativeClientSession {
    */
   static create (wlClient, compositorSession) {
     const dataChannel = compositorSession.rtcClient.peerConnection.createDataChannel()
+    dataChannel.binaryType = 'arraybuffer'
+
     const messageInterceptor = MessageInterceptor.create(wlClient, compositorSession.wlDisplay, wl_display_interceptor, { dataChannel })
     const nativeClientSession = new NativeClientSession(wlClient, compositorSession, dataChannel, messageInterceptor)
     nativeClientSession.onDestroy().then(() => {
@@ -22,6 +24,7 @@ class NativeClientSession {
     Endpoint.setRegistryCreatedCallback(wlClient, (wlRegistry, registryId) => nativeClientSession._onRegistryCreated(wlRegistry, registryId))
     Endpoint.setWireMessageCallback(wlClient, (wlClient, message, objectId, opcode) => nativeClientSession._onWireMessageRequest(wlClient, message, objectId, opcode))
     Endpoint.setWireMessageEndCallback(wlClient, (wlClient, fdsIn) => nativeClientSession._onWireMessageEnd(wlClient, fdsIn))
+    Endpoint.setBufferCreatedCallback(wlClient, (bufferId) => dataChannel.send(new Uint32Array([1, 0, bufferId]).buffer))
 
     dataChannel.onerror = () => nativeClientSession.destroy()
     dataChannel.onclose = event => nativeClientSession._onClose(event)
@@ -97,13 +100,12 @@ class NativeClientSession {
   }
 
   /**
-   * @param {ArrayBuffer}buffer
+   * @param {Uint32Array}receiveBuffer
    * @private
    */
-  _onWireMessageEvents (buffer) {
+  _onWireMessageEvents (receiveBuffer) {
     process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: received event batch from browser.`)
 
-    const receiveBuffer = new Uint32Array(buffer)
     let readOffset = 0
     let localGlobalsEmitted = false
     while (readOffset < receiveBuffer.length) {
@@ -205,9 +207,10 @@ class NativeClientSession {
    */
   _onWireMessageEnd (wlClient, fdsIn) {
     const fdsBufferSize = Uint32Array.BYTES_PER_ELEMENT + (fdsIn ? fdsIn.byteLength : 0)
-    const sendBuffer = new Uint32Array(new ArrayBuffer(fdsBufferSize + this._pendingMessageBufferSize))
-    let offset = 0
-    sendBuffer[0] = fdsIn ? fdsIn.byteLength / Uint32Array.BYTES_PER_ELEMENT : 0
+    const sendBuffer = new Uint32Array(new ArrayBuffer(Uint32Array.BYTES_PER_ELEMENT + fdsBufferSize + this._pendingMessageBufferSize))
+    sendBuffer[0] = 0 // out-of-band opcode === 0
+    let offset = 1
+    sendBuffer[offset] = fdsIn ? fdsIn.byteLength / Uint32Array.BYTES_PER_ELEMENT : 0
     offset += 1
 
     if (fdsIn) {
@@ -252,7 +255,13 @@ class NativeClientSession {
    */
   _onMessage (event) {
     const receiveBuffer = /** @type {ArrayBuffer} */event.data
-    this._onWireMessageEvents(receiveBuffer)
+    const buffer = Buffer.from(receiveBuffer)
+    const outOfBand = buffer.readUInt32LE(0, true)
+    if (!outOfBand) {
+      this._onWireMessageEvents(new Uint32Array(receiveBuffer, Uint32Array.BYTES_PER_ELEMENT))
+    } else {
+      // TODO handle out-of-band message
+    }
   }
 
   /**

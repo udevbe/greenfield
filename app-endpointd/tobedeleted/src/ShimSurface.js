@@ -315,7 +315,7 @@ class ShimSurface extends WlSurfaceRequests {
     const buffer = this._pending.buffer
     const surfaceDamage = this._pending.surfaceDamage
     this._resetPendingState()
-    this.localRtcDcBuffer.rtcDcBufferProxy.syn(synSerial)
+    this.localRtcDcBuffer.rtcDcBufferProxy.syncToCommit(synSerial)
     this.proxy.commit()
 
     if (buffer) {
