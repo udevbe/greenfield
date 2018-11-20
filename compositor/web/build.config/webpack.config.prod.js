@@ -10,7 +10,7 @@ const buildDir = 'dist'
 
 const base = baseConfig(appBundle, buildDir, false)
 const prod = {
-  mode: 'none',
+  mode: 'production',
   plugins: [
     new CleanWebpackPlugin([buildDir], {
       root: path.resolve(__dirname, '..')

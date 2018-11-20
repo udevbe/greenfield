@@ -1,6 +1,7 @@
 const { Endpoint, MessageInterceptor } = require('westfield-endpoint')
 // eslint-disable-next-line camelcase
 const wl_display_interceptor = require('./protocol/wl_display_interceptor')
+const config = require('./config')
 
 class NativeClientSession {
   /**
@@ -24,6 +25,7 @@ class NativeClientSession {
     Endpoint.setRegistryCreatedCallback(wlClient, (wlRegistry, registryId) => nativeClientSession._onRegistryCreated(wlRegistry, registryId))
     Endpoint.setWireMessageCallback(wlClient, (wlClient, message, objectId, opcode) => nativeClientSession._onWireMessageRequest(wlClient, message, objectId, opcode))
     Endpoint.setWireMessageEndCallback(wlClient, (wlClient, fdsIn) => nativeClientSession._onWireMessageEnd(wlClient, fdsIn))
+    // send an out-of-band buffer creation message with object-id (1) and opcode (0) when a new buffer resource is created locally.
     Endpoint.setBufferCreatedCallback(wlClient, (bufferId) => dataChannel.send(new Uint32Array([1, 0, bufferId]).buffer))
 
     dataChannel.onerror = () => nativeClientSession.destroy()

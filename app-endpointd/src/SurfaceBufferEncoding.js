@@ -43,6 +43,7 @@ class SurfaceBufferEncoding {
       this.userData.encoder.encodeBuffer(Buffer.from(buffer), format, width, height, this.userData.bufferSerial++, []).then((/** @type {EncodedFrame} */encodedFrame) => {
         const bufferChunks = SurfaceBufferEncoding._toBufferChunks(encodedFrame.toBuffer(), this.userData.bufferSerial)
         bufferChunks.forEach((chunk) => {
+          // add an out-of-band object-id (surfaceId) + opcode (0)
           const sendBuffer = Buffer.concat([Buffer.from(new Uint32Array([objectId, 0]).buffer), chunk], chunk.length + (Uint32Array.BYTES_PER_ELEMENT * 2))
           this.userData.dataChannel.send(sendBuffer.buffer.slice(sendBuffer.byteOffset, sendBuffer.byteOffset + sendBuffer.byteLength))
         })

@@ -9,12 +9,10 @@
     "prepare:web:generate:xdgshell": "westfield-scanner-server ../protocol/xdg-shell.xml -o web/src/protocol",
     "prepare:web:generate:wayland": "westfield-scanner-server ../protocol/wayland.xml -o web/src/protocol",
     "prepare:web:generate": "mkdir -p web/src/protocol/ && npm run prepare:web:generate:wayland && npm run prepare:web:generate:xdgshell",
-    "prepare:web:webpack:prod": "webpack --config web/build.config/webpack.config.prod.js",
-    "prepare": "npm run prepare:web:generate && npm run prepare:web:webpack:prod",
-    "prepare:web:webpack:dev": "webpack --config web/build.config/webpack.config.dev.js",
-    "prepare:dev": "npm run prepare:web:generate && npm run prepare:web:webpack:dev",
+    "prepare": "npm run prepare:web:generate && webpack --config web/build.config/webpack.config.prod.js",
+    "prepare:dev": "npm run prepare:web:generate && webpack --config web/build.config/webpack.config.dev.js",
     "start": "node ./server/src/index.js",
-    "start:dev": "node ./server/src/devIndex.js"
+    "start:dev": "export DEV=1 && node ./server/src/index.js"
   },
   "repository": {
     "type": "git",

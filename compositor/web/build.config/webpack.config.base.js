@@ -2,7 +2,6 @@
 
 const path = require('path')
 
-
 const CopyWebpackPlugin = require('copy-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 
@@ -11,7 +10,6 @@ const htmlIndex = 'index.html'
 
 const entryFile = path.resolve(__dirname, '../src/index.js')
 const assetsDir = path.resolve(__dirname, '../public/assets')
-// const styleDir = path.resolve(__dirname, '../public/style')
 const keymapsDir = path.resolve(__dirname, '../public/keymaps')
 const rootFiles = path.resolve(__dirname, '../public/*.*')
 const htmlTemplateFile = path.resolve(__dirname, `../public/${htmlTemplate}`)
@@ -32,9 +30,9 @@ const commonConfig = (appBundle, buildDir, debug) => {
     },
     plugins: [
       new CopyWebpackPlugin([
-        {from: assetsDir, to: 'assets'},
-        {from: keymapsDir, to: 'keymaps'},
-        {from: rootFiles, to: '.', flatten: true, ignore: [htmlTemplate]}
+        { from: assetsDir, to: 'assets' },
+        { from: keymapsDir, to: 'keymaps' },
+        { from: rootFiles, to: '.', flatten: true, ignore: [htmlTemplate] }
       ]),
       new HtmlWebpackPlugin({
         template: htmlTemplateFile,

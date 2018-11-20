@@ -19,6 +19,11 @@ class NativeCompositorSession {
     )
     Endpoint.initShm(compositorSession.wlDisplay)
     compositorSession.wlDisplayName = Endpoint.addSocketAuto(compositorSession.wlDisplay)
+
+    // set the wayland display to something non existing, else gstreamer will connect to us with a fallback value and
+    // block, while in turn we wait for gstreamer, resulting in a deadlock!
+    process.env.WAYLAND_DISPLAY = 'doesntExist'
+
     compositorSession.wlDisplayFd = Endpoint.getFd(compositorSession.wlDisplay)
 
     // TODO handle err

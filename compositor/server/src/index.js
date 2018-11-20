@@ -172,7 +172,7 @@ function main () {
   console.log(`[compositor-service] >>> running in ${process.env.DEBUG ? 'DEBUG' : 'PRODUCTION'} mode <<<`)
   express.static.mime.define({ 'application/wasm': ['wasm'] })
   const app = express()
-  app.use(express.static(path.join(__dirname, '../../web/dist')))
+  app.use(express.static(path.join(__dirname, process.env.DEV ? '../../web/dev' : '../../web/dist')))
 
   const server = http.createServer()
   server.on('request', app)

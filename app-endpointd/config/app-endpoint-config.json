@@ -16,6 +16,6 @@
     }
   },
   "encoder": {
-    "max-png-buffer-size": 131072
+    "max-png-buffer-size": 16384
   }
 }
