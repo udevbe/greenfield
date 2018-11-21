@@ -2,15 +2,15 @@
 
 import WlPointerRequests from './protocol/WlPointerRequests'
 import WlPointerResource from './protocol/WlPointerResource'
-import Fixed from 'westfield-runtime-server'
+import { Fixed } from 'westfield-runtime-server'
 
 import Point from './math/Point'
 import EncodingOptions from './EncodingOptions'
 import Region from './Region'
 
-const {pressed, released} = WlPointerResource.ButtonState
-const {horizontalScroll, verticalScroll} = WlPointerResource.Axis
-const {wheel} = WlPointerResource.AxisSource
+const { pressed, released } = WlPointerResource.ButtonState
+const { horizontalScroll, verticalScroll } = WlPointerResource.Axis
+const { wheel } = WlPointerResource.AxisSource
 
 // translates between browser button codes & kernel code as expected by wayland protocol
 const linuxInput = {
@@ -229,7 +229,7 @@ export default class Pointer extends WlPointerRequests {
         const splitAlpha = EncodingOptions.splitAlpha(newState.bufferContents.encodingOptions)
         if (fullFrame && !splitAlpha) {
           await surface.render(renderFrame, newState, true)
-          const imageBlob = new Blob([newState.bufferContents.fragments[0].opaque], {'type': newState.bufferContents.encodingType})
+          const imageBlob = new Blob([newState.bufferContents.fragments[0].opaque], { 'type': newState.bufferContents.encodingType })
           window.document.body.style.cursor = `url("${URL.createObjectURL(imageBlob)}") ${hotspotX} ${hotspotY}, pointer`
 
           renderFrame.fire()
@@ -497,7 +497,7 @@ export default class Pointer extends WlPointerRequests {
       const surfacePoint = this._calculateSurfacePoint(this.focus)
       const surfaceResource = this.focus.surface.resource
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
-        pointerResource.motion(event.timeStamp, Fixed.parseFixed(surfacePoint.x), Fixed.parseFixed(surfacePoint.y))
+        pointerResource.motion(event.timeStamp, Fixed.parse(surfacePoint.x), Fixed.parse(surfacePoint.y))
         if (pointerResource.version >= 5) {
           pointerResource.frame()
         }
@@ -635,7 +635,7 @@ export default class Pointer extends WlPointerRequests {
     const focusCandidates = window.document.elementsFromPoint(this.x, this.y)
 
     let zOrder = -1
-    let focus = {view: null}
+    let focus = { view: null }
     focusCandidates.forEach(focusCandidate => {
       if (focusCandidate.view &&
         !focusCandidate.view.destroyed &&
@@ -676,7 +676,7 @@ export default class Pointer extends WlPointerRequests {
 
     const surfacePoint = this._calculateSurfacePoint(newFocus)
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
-      pointerResource.enter(this.seat.nextEnterSerial(), surfaceResource, Fixed.parseFixed(surfacePoint.x), Fixed.parseFixed(surfacePoint.y))
+      pointerResource.enter(this.seat.nextEnterSerial(), surfaceResource, Fixed.parse(surfacePoint.x), Fixed.parse(surfacePoint.y))
     })
   }
 
@@ -762,7 +762,7 @@ export default class Pointer extends WlPointerRequests {
             pointerResource.axisDiscrete(xAxis, deltaX)
           }
           const scrollAmount = deltaTransform(deltaX, xAxis)
-          pointerResource.axis(event.timeStamp, xAxis, parseFixed(scrollAmount))
+          pointerResource.axis(event.timeStamp, xAxis, Fixed.parse(scrollAmount))
         }
         const deltaY = event.deltaY
         if (deltaY) {
@@ -771,7 +771,7 @@ export default class Pointer extends WlPointerRequests {
             pointerResource.axisDiscrete(yAxis, deltaY)
           }
           const scrollAmount = deltaTransform(deltaY, yAxis)
-          pointerResource.axis(event.timeStamp, yAxis, parseFixed(scrollAmount))
+          pointerResource.axis(event.timeStamp, yAxis, Fixed.parse(scrollAmount))
         }
         if (pointerResource.version >= 5) {
           pointerResource.axisSource(wheel)

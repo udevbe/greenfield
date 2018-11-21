@@ -237,7 +237,7 @@ export default class DataDevice extends WlDataDeviceRequests {
     this.resources.filter((dataDeviceResource) => {
       return dataDeviceResource.client === client
     }).forEach((dataDeviceResource) => {
-      dataDeviceResource.motion(Date.now(), Fixed.parseFixed(surfacePoint.x), Fixed.parseFixed(surfacePoint.y))
+      dataDeviceResource.motion(Date.now(), Fixed.parse(surfacePoint.x), Fixed.parse(surfacePoint.y))
     })
   }
 
@@ -264,8 +264,8 @@ export default class DataDevice extends WlDataDeviceRequests {
     const surfacePoint = view.toSurfaceSpace(mousePoint)
     const serial = this.seat.nextSerial()
 
-    const x = Fixed.parseFixed(surfacePoint.x)
-    const y = Fixed.parseFixed(surfacePoint.y)
+    const x = Fixed.parse(surfacePoint.x)
+    const y = Fixed.parse(surfacePoint.y)
 
     const dataDeviceResource = this._dataDeviceForClient(client)
     if (dataDeviceResource === null) {
