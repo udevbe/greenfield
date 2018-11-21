@@ -86,6 +86,7 @@ class NativeCompositorSession {
    * @private
    */
   _onGlobalCreated (globalName) {
+    process.env.DEBUG && console.log(`[app-endpoint-${this.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native compositor session: native global registered with name: ${globalName}.`)
     nativeGlobalNames.push(globalName)
   }
 
