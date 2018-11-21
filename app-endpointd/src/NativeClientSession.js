@@ -1,7 +1,7 @@
 const { Endpoint, MessageInterceptor } = require('westfield-endpoint')
 // eslint-disable-next-line camelcase
 const wl_display_interceptor = require('./protocol/wl_display_interceptor')
-const config = require('./config')
+const wl_buffer_interceptor = require('./protocol/wl_buffer_interceptor')
 
 class NativeClientSession {
   /**
@@ -26,7 +26,10 @@ class NativeClientSession {
     Endpoint.setWireMessageCallback(wlClient, (wlClient, message, objectId, opcode) => nativeClientSession._onWireMessageRequest(wlClient, message, objectId, opcode))
     Endpoint.setWireMessageEndCallback(wlClient, (wlClient, fdsIn) => nativeClientSession._onWireMessageEnd(wlClient, fdsIn))
     // send an out-of-band buffer creation message with object-id (1) and opcode (0) when a new buffer resource is created locally.
-    Endpoint.setBufferCreatedCallback(wlClient, (bufferId) => dataChannel.send(new Uint32Array([1, 0, bufferId]).buffer))
+    Endpoint.setBufferCreatedCallback(wlClient, (bufferId) => {
+      messageInterceptor.interceptors[bufferId] = new wl_buffer_interceptor(wlClient, messageInterceptor.interceptors, 1, null, null)
+      dataChannel.send(new Uint32Array([1, 0, bufferId]).buffer)
+    })
 
     dataChannel.onerror = () => nativeClientSession.destroy()
     dataChannel.onclose = event => nativeClientSession._onClose(event)
@@ -129,8 +132,6 @@ class NativeClientSession {
         // check if browser compositor is emitting globals, if so, emit the local globals as well.
         localGlobalsEmitted = this._emitLocalGlobals(messageBuffer)
       }
-
-      this._messageInterceptor.handleEvent(id, opcode, messageBuffer)
 
       Endpoint.sendEvents(
         this.wlClient,
@@ -262,7 +263,13 @@ class NativeClientSession {
     if (!outOfBand) {
       this._onWireMessageEvents(new Uint32Array(receiveBuffer, Uint32Array.BYTES_PER_ELEMENT))
     } else {
-      // TODO handle out-of-band message
+      // TODO handle out-of-band messages more generically
+      if (outOfBand === 1 && buffer.readUInt32LE(4, true) === 2) {
+        const deleteObjectId = buffer.readUInt32LE(8, true)
+        const interceptor = this._messageInterceptor.interceptors[deleteObjectId]
+        Endpoint.destroyWlResourceSilently(interceptor.wlResource)
+        delete this._messageInterceptor.interceptors[deleteObjectId]
+      }
     }
   }
 

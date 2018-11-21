@@ -1,6 +1,7 @@
 'use strict'
 
 import WlBufferResource from './protocol/WlBufferResource'
+import Buffer from './Buffer'
 
 /**
  * Conceptual webRTC server socket as webRTC doesn't have the notion of server/client model.
@@ -94,6 +95,8 @@ export default class RtcSocket {
     dataChannel.binaryType = 'arraybuffer'
     dataChannel.onopen = () => {
       const client = this._session.display.createClient()
+      // send out-of-band resource destroy
+      client.addResourceDestroyListener((resource) => dataChannel.send(new Uint32Array([1, 2, resource.id]).buffer))
 
       dataChannel.onclose = () => client.close()
       dataChannel.onerror = () => client.close()
@@ -137,8 +140,10 @@ export default class RtcSocket {
         dataChannel.send(sendBuffer.buffer)
       }
 
-      // eslint-disable-next-line no-new
-      client.setOutOfBandListener(1, 0, (message) => { new WlBufferResource(client, new Uint32Array(message)[2], 1) })
+      client.setOutOfBandListener(1, 0, (message) => {
+        const wlBufferResource = new WlBufferResource(client, new Uint32Array(message)[2], 1)
+        wlBufferResource.implementation = Buffer.create(wlBufferResource)
+      })
     }
   }
 
