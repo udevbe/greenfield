@@ -9,8 +9,8 @@ import Size from './Size'
 import Renderer from './render/Renderer'
 import Mat4 from './math/Mat4'
 
-const {none, bottom, bottomLeft, bottomRight, left, right, top, topLeft, topRight} = XdgToplevelResource.ResizeEdge
-const {fullscreen, activated, maximized, resizing} = XdgToplevelResource.State
+const { none, bottom, bottomLeft, bottomRight, left, right, top, topLeft, topRight } = XdgToplevelResource.ResizeEdge
+const { fullscreen, activated, maximized, resizing } = XdgToplevelResource.State
 
 /**
  *
@@ -147,12 +147,12 @@ export default class XdgToplevel extends XdgToplevelRequests {
      * @type {{serial: number, state: number[], width: number, height: number}}
      * @private
      */
-    this._ackedConfigureState = {serial: 0, state: [], width: 0, height: 0, resizeEdge: 0}
+    this._ackedConfigureState = { serial: 0, state: [], width: 0, height: 0, resizeEdge: 0 }
     /**
      * @type {{serial: number, state: number[], width: number, height: number}}
      * @private
      */
-    this._configureState = {serial: 0, state: [], width: 0, height: 0, resizeEdge: 0}
+    this._configureState = { serial: 0, state: [], width: 0, height: 0, resizeEdge: 0 }
     /**
      * @type {Rect|Null}
      * @private
@@ -243,7 +243,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
    */
   _unmap () {
     this.mapped = false
-    this._configureState = {serial: 0, state: [], width: 0, height: 0, resizeEdge: 0}
+    this._configureState = { serial: 0, state: [], width: 0, height: 0, resizeEdge: 0 }
     this._userShellSurface.mapped = false
   }
 
@@ -255,9 +255,9 @@ export default class XdgToplevel extends XdgToplevelRequests {
    */
   _resizingCommit (surface, renderFrame, newState) {
     const roleState = newState.roleState
-    const {w: newSurfaceWidth, h: newSurfaceHeight} = roleState.windowGeometry.size
+    const { w: newSurfaceWidth, h: newSurfaceHeight } = roleState.windowGeometry.size
 
-    const {w: oldSurfaceWidth, h: oldSurfaceHeight} = this.xdgSurface.windowGeometry.size
+    const { w: oldSurfaceWidth, h: oldSurfaceHeight } = this.xdgSurface.windowGeometry.size
 
     let dx = 0
     let dy = 0
@@ -284,7 +284,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     }
 
     if (dx || dy) {
-      const {x, y} = surface.surfaceChildSelf.position
+      const { x, y } = surface.surfaceChildSelf.position
       surface.surfaceChildSelf.position = Point.create(x + dx, y + dy)
       surface.views.forEach(value => {
         value.applyTransformations(renderFrame)
@@ -300,7 +300,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
    */
   _maximizedCommit (surface, renderFrame, newState) {
     const roleState = newState.roleState
-    const {w: newSurfaceWidth, h: newSurfaceHeight} = roleState.windowGeometry.size
+    const { w: newSurfaceWidth, h: newSurfaceHeight } = roleState.windowGeometry.size
 
     if (newSurfaceWidth !== roleState.configureState.width || newSurfaceHeight !== roleState.configureState.height) {
       this.resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Surface size does not match configure event.')
@@ -315,7 +315,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
       this._unfullscreenConfigureState = null
     }
     const x = 0
-    const {y} = document.getElementById('workspace').getBoundingClientRect()
+    const { y } = document.getElementById('workspace').getBoundingClientRect()
     const windowGeoPositionOffset = newState.roleState.windowGeometry.position
 
     const primaryView = surface.views.find(view => { return view.primary })
@@ -333,7 +333,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
    */
   _fullscreenCommit (surface, renderFrame, newState) {
     const bufferSize = newState.bufferContents.size
-    const {x: newSurfaceWidth, y: newSurfaceHeight} = surface.toSurfaceSpace(Point.create(bufferSize.w, bufferSize.h))
+    const { x: newSurfaceWidth, y: newSurfaceHeight } = surface.toSurfaceSpace(Point.create(bufferSize.w, bufferSize.h))
     if (newSurfaceWidth > this._configureState.width || newSurfaceHeight > this._configureState.height) {
       this.resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Surface size does not match configure event.')
       DEBUG && console.log('Protocol error. Surface size does not match configure event.')
@@ -700,56 +700,56 @@ export default class XdgToplevel extends XdgToplevelRequests {
       case bottomRight: {
         window.document.body.style.cursor = 'nwse-resize'
         sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return {w: width + deltaX, h: height + deltaY}
+          return { w: width + deltaX, h: height + deltaY }
         }
         break
       }
       case top: {
         window.document.body.style.cursor = 'ns-resize'
         sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return {w: width, h: height - deltaY}
+          return { w: width, h: height - deltaY }
         }
         break
       }
       case bottom: {
         window.document.body.style.cursor = 'ns-resize'
         sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return {w: width, h: height + deltaY}
+          return { w: width, h: height + deltaY }
         }
         break
       }
       case left: {
         window.document.body.style.cursor = 'ew-resize'
         sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return {w: width - deltaX, h: height}
+          return { w: width - deltaX, h: height }
         }
         break
       }
       case topLeft: {
         window.document.body.style.cursor = 'nwse-resize'
         sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return {w: width - deltaX, h: height - deltaY}
+          return { w: width - deltaX, h: height - deltaY }
         }
         break
       }
       case bottomLeft: {
         window.document.body.style.cursor = 'nesw-resize'
         sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return {w: width - deltaX, h: height + deltaY}
+          return { w: width - deltaX, h: height + deltaY }
         }
         break
       }
       case right: {
         window.document.body.style.cursor = 'ew-resize'
         sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return {w: width + deltaX, h: height}
+          return { w: width + deltaX, h: height }
         }
         break
       }
       case topRight: {
         window.document.body.style.cursor = 'nesw-resize'
         sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return {w: width + deltaX, h: height - deltaY}
+          return { w: width + deltaX, h: height - deltaY }
         }
         break
       }
@@ -757,7 +757,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
       default: {
         pointer.setDefaultCursor()
         sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return {w: width, h: height}
+          return { w: width, h: height }
         }
         break
       }
@@ -765,7 +765,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
     const pointerX = pointer.x
     const pointerY = pointer.y
-    const {width: windowGeometryWidth, height: windowGeometryHeight} = this.xdgSurface.windowGeometry
+    const { width: windowGeometryWidth, height: windowGeometryHeight } = this.xdgSurface.windowGeometry
 
     const sizeCalculation = () => {
       const deltaX = pointer.x - pointerX
@@ -784,7 +784,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
         return
       }
 
-      const {w: width, h: height} = sizeCalculation()
+      const { w: width, h: height } = sizeCalculation()
       this._emitConfigure(resource, width, height, [activated, resizing], edges)
     }
 
@@ -794,7 +794,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
       pointer.removeMouseMoveListener(resizeListener)
       pointer.setDefaultCursor()
 
-      const {w: width, h: height} = sizeCalculation()
+      const { w: width, h: height } = sizeCalculation()
       this._emitConfigure(resource, width, height, [activated], none)
     })
 
@@ -970,7 +970,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
       return
     }
 
-    const {width: workspaceWidth, height: workspaceHeight} = document.getElementById('workspace').getBoundingClientRect()
+    const { width: workspaceWidth, height: workspaceHeight } = document.getElementById('workspace').getBoundingClientRect()
     const maxWidth = Math.round(workspaceWidth)
     const maxHeight = Math.round(workspaceHeight)
 
