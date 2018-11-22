@@ -109,7 +109,7 @@ class NativeClientSession {
    * @private
    */
   _onWireMessageEvents (receiveBuffer) {
-    process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: received event batch from browser.`)
+    // process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: received event batch from browser.`)
 
     let readOffset = 0
     let localGlobalsEmitted = false
@@ -122,7 +122,7 @@ class NativeClientSession {
 
       const id = receiveBuffer[readOffset]
       const opcode = sizeOpcode & 0x0000FFFF
-      process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: event with id=${id}, opcode=${opcode}, length=${size}.`)
+      // process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: event with id=${id}, opcode=${opcode}, length=${size}.`)
 
       const length = size / Uint32Array.BYTES_PER_ELEMENT
       const messageBuffer = receiveBuffer.subarray(readOffset, readOffset + length)
@@ -140,12 +140,12 @@ class NativeClientSession {
       )
     }
 
-    process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: sending event batch to native client.`)
+    // process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: sending event batch to native client.`)
     Endpoint.flush(this.wlClient)
   }
 
   _flushOutboundMessage () {
-    process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: sending ${this._outboundMessages.length} queued requests.`)
+    // process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: sending ${this._outboundMessages.length} queued requests.`)
     while (this._outboundMessages.length) {
       this._dataChannel.send(this._outboundMessages.shift())
     }
@@ -164,7 +164,7 @@ class NativeClientSession {
       const messageOpcode = sizeOpcode & 0x0000FFFF
       const globalOpcode = 0
       if (messageOpcode === globalOpcode) {
-        process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: received globals emit event from browser. Will send local global events as well.`)
+        // process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: received globals emit event from browser. Will send local global events as well.`)
         Endpoint.emitGlobals(wlRegistry)
         return true
       }
@@ -185,12 +185,12 @@ class NativeClientSession {
       const receiveBuffer = new Uint32Array(message)
       const sizeOpcode = receiveBuffer[1]
       const size = sizeOpcode >>> 16
-      process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: received request with id=${objectId}, opcode=${opcode}, length=${size} from native client.`)
+      // process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: received request with id=${objectId}, opcode=${opcode}, length=${size} from native client.`)
 
       const interceptedMessage = { buffer: message, fds: [], bufferOffset: 8, consumed: 0, size: size }
       const destination = this._messageInterceptor.interceptRequest(objectId, opcode, interceptedMessage)
       if (destination === 1) {
-        process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: delegating request to native implementation only.`)
+        // process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: delegating request to native implementation only.`)
       } else {
         this._pendingMessageBufferSize += interceptedMessage.buffer.byteLength
         this._pendingWireMessages.push(interceptedMessage.buffer)
@@ -229,11 +229,11 @@ class NativeClientSession {
     })
 
     if (this._dataChannel.readyState === 'open') {
-      process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: sending request batch to browser.`)
+      // process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: sending request batch to browser.`)
       this._dataChannel.send(sendBuffer.buffer)
     } else {
       // queue up data until the channel is open
-      process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: not sending request batch to browser. RTC data channel not open. Queueing.`)
+      // process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: not sending request batch to browser. RTC data channel not open. Queueing.`)
       this._outboundMessages.push(sendBuffer.buffer)
     }
 
@@ -265,10 +265,9 @@ class NativeClientSession {
     } else {
       // TODO handle out-of-band messages more generically
       if (outOfBand === 1 && buffer.readUInt32LE(4, true) === 2) {
-        const deleteObjectId = buffer.readUInt32LE(8, true)
-        const interceptor = this._messageInterceptor.interceptors[deleteObjectId]
-        Endpoint.destroyWlResourceSilently(interceptor.wlResource)
-        delete this._messageInterceptor.interceptors[deleteObjectId]
+        const objectId = buffer.readUInt32LE(8, true)
+        Endpoint.destroyWlResourceSilently(this.wlClient, objectId)
+        delete this._messageInterceptor.interceptors[objectId]
       }
     }
   }
