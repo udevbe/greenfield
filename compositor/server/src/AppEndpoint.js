@@ -1,16 +1,24 @@
 class AppEndpoint {
   /**
    * @param {WebSocket}ws
+   * @param {string}appEndpointId
    * @returns {AppEndpoint}
    */
-  static create (ws) {
-    return new AppEndpoint(ws)
+  static create (ws, appEndpointId) {
+    process.env.DEBUG && console.log(`[compositor-service] Web socket is open for [app-endpoint-daemon ${appEndpointId}].`)
+
+    const appEndpoint = new AppEndpoint(ws, appEndpointId)
+    ws.onclose = (event) => appEndpoint._onClose(event)
+    ws.onerror = (event) => appEndpoint._onError(event)
+    return appEndpoint
   }
 
   /**
    * @param {WebSocket}ws
+   * @param {string}appEndpointId
    */
-  constructor (ws) {
+  constructor (ws, appEndpointId) {
+    this.appEndpointId = appEndpointId
     /**
      * @type {WebSocket}
      * @private
@@ -30,11 +38,24 @@ class AppEndpoint {
     })
   }
 
+  destroy () {
+    this._destroyResolve()
+  }
+
   /**
    * @return {Promise<void>}
    */
   onDestroy () {
     return this._destroyPromise
+  }
+
+  _onClose (event) {
+    console.log(`[app-endpoint-daemon ${this.appEndpointId}] Web socket is closed. ${event.code}: ${event.reason}`)
+    this.destroy()
+  }
+
+  _onError (event) {
+    console.error(`[app-endpoint-daemon ${this.appEndpointId}] Web socket is in error.`)
   }
 
   /**

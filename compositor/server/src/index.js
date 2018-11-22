@@ -106,12 +106,10 @@ function announceAppEndpointDaemon (request, socket, head, pathElements) {
   const appEndpointId = pathElements.shift() // a UUID
   if (appEndpointId && uuidRegEx.test(appEndpointId)) {
     appEndpointWebSocketServer.handleUpgrade(request, socket, head, (ws) => {
-      process.env.DEBUG && console.log(`[compositor-service] Web socket is open for [app-endpoint-${appEndpointId}].`)
-
-      const appEndpoint = AppEndpoint.create(ws)
+      const appEndpoint = AppEndpoint.create(ws, appEndpointId)
       appEndpoints[appEndpointId] = appEndpoint
       appEndpoint.onDestroy().then(() => {
-        delete appEndpoints.endpointId
+        delete appEndpoints[appEndpointId]
       })
 
       appEndpoint.announceCompositors(...Object.keys(compositorSessionForks))
