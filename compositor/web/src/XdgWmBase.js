@@ -197,7 +197,7 @@ export default class XdgWmBase extends XdgWmBaseRequests {
     const xdgSurfaceResource = new XdgSurfaceResource(resource.client, id, resource.version)
     XdgSurface.create(xdgSurfaceResource, wlSurfaceResource, this._session, this._userShell, this._seat)
     this._wlSurfaceResources.push(wlSurfaceResource)
-    surface.onDestroy().then(() => {
+    wlSurfaceResource.onDestroy().then(() => {
       const index = this._wlSurfaceResources.indexOf(wlSurfaceResource)
       if (index > -1) {
         this._wlSurfaceResources.splice(index, 1)
