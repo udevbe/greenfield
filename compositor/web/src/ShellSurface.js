@@ -6,8 +6,8 @@ import WlShellSurfaceResource from './protocol/WlShellSurfaceResource'
 import Point from './math/Point'
 import Renderer from './render/Renderer'
 
-const {bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight} = WlShellSurfaceResource.Resize
-const {inactive} = WlShellSurfaceResource.Transient
+const { bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight } = WlShellSurfaceResource.Resize
+const { inactive } = WlShellSurfaceResource.Transient
 
 const SurfaceStates = {
   MAXIMIZED: 'maximized',
@@ -57,7 +57,9 @@ export default class ShellSurface extends WlShellSurfaceRequests {
 
     wlShellSurfaceResource.onDestroy().then(() => {
       shellSurface._unmap()
-      shellSurface._userShellSurface.destroy()
+      if (shellSurface._userShellSurface) {
+        shellSurface._userShellSurface.destroy()
+      }
     })
 
     return shellSurface
@@ -185,17 +187,18 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    * @override
    */
   pong (resource, serial) {
-    if (this._pingTimeoutActive) {
-      this._removeClassRecursively(/** @type {Surface} */this.wlSurfaceResource.implementation, 'fadeToUnresponsive')
-      this._pingTimeoutActive = false
-    }
-    window.clearTimeout(this._timeoutTimer)
-    const doPingTimer = window.setTimeout(() => {
-      this._doPing(resource)
-    }, 1000)
-    this.wlSurfaceResource.onDestroy().then(() => {
-      window.clearTimeout(doPingTimer)
-    })
+    // TODO fix ping/pong
+    // if (this._pingTimeoutActive) {
+    //   this._removeClassRecursively(/** @type {Surface} */this.wlSurfaceResource.implementation, 'fadeToUnresponsive')
+    //   this._pingTimeoutActive = false
+    // }
+    // window.clearTimeout(this._timeoutTimer)
+    // const doPingTimer = window.setTimeout(() => {
+    //   this._doPing(resource)
+    // }, 5000)
+    // this.wlSurfaceResource.onDestroy().then(() => {
+    //   window.clearTimeout(doPingTimer)
+    // })
   }
 
   /**
@@ -203,18 +206,18 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    * @private
    */
   _doPing (resource) {
-    this._timeoutTimer = window.setTimeout(() => {
-      if (!this._pingTimeoutActive) {
-        // ping timed out, make view gray
-        this._pingTimeoutActive = true
-        this._addClassRecursively(this.wlSurfaceResource.implementation, 'fadeToUnresponsive')
-      }
-    }, 3000)
-    this.wlSurfaceResource.onDestroy().then(() => {
-      window.clearTimeout(this._timeoutTimer)
-    })
-    resource.ping(0)
-    this.session.flush()
+    // this._timeoutTimer = window.setTimeout(() => {
+    //   if (!this._pingTimeoutActive) {
+    //     // ping timed out, make view gray
+    //     this._pingTimeoutActive = true
+    //     this._addClassRecursively(/** @type {Surface} */this.wlSurfaceResource.implementation, 'fadeToUnresponsive')
+    //   }
+    // }, 5000)
+    // this.wlSurfaceResource.onDestroy().then(() => {
+    //   window.clearTimeout(this._timeoutTimer)
+    // })
+    // resource.ping(0)
+    // this.session.flush()
   }
 
   /**
@@ -339,56 +342,56 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     switch (edges) {
       case bottomRight: {
         sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return {w: width + deltaX, h: height + deltaY}
+          return { w: width + deltaX, h: height + deltaY }
         }
         break
       }
       case top: {
         sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return {w: width, h: height - deltaY}
+          return { w: width, h: height - deltaY }
         }
         break
       }
       case bottom: {
         sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return {w: width, h: height + deltaY}
+          return { w: width, h: height + deltaY }
         }
         break
       }
       case left: {
         sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return {w: width - deltaX, h: height}
+          return { w: width - deltaX, h: height }
         }
         break
       }
       case topLeft: {
         sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return {w: width - deltaX, h: height - deltaY}
+          return { w: width - deltaX, h: height - deltaY }
         }
         break
       }
       case bottomLeft: {
         sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return {w: width - deltaX, h: height + deltaY}
+          return { w: width - deltaX, h: height + deltaY }
         }
         break
       }
       case right: {
         sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return {w: width + deltaX, h: height}
+          return { w: width + deltaX, h: height }
         }
         break
       }
       case topRight: {
         sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return {w: width + deltaX, h: height - deltaY}
+          return { w: width + deltaX, h: height - deltaY }
         }
         break
       }
       case none:
       default: {
         sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return {w: width, h: height}
+          return { w: width, h: height }
         }
         break
       }
@@ -396,7 +399,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
 
     const pointerX = pointer.x
     const pointerY = pointer.y
-    const {w: surfaceWidth, h: surfaceHeight} = this.wlSurfaceResource.implementation.size
+    const { w: surfaceWidth, h: surfaceHeight } = this.wlSurfaceResource.implementation.size
 
     const resizeListener = () => {
       const deltaX = pointer.x - pointerX
@@ -610,8 +613,9 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     surface.hasKeyboardInput = (flags & inactive) === 0
 
     // handle popup window grab
-    await pointer.popupGrab(this.wlSurfaceResource)
-    resource.popupDone()
+    pointer.popupGrab(this.wlSurfaceResource).then(() => {
+      resource.popupDone()
+    })
   }
 
   /**
@@ -648,8 +652,8 @@ export default class ShellSurface extends WlShellSurfaceRequests {
 
     // TODO get proper size in surface coordinates instead of assume surface space === global space
     const x = 0
-    const {height: y} = this._userShell.panel.getBoundingClientRect()
-    const {width, height} = this._userShell.workspace.getBoundingClientRect()
+    const { height: y } = this._userShell.panel.getBoundingClientRect()
+    const { width, height } = this._userShell.workspace.getBoundingClientRect()
 
     surface.surfaceChildSelf.position = Point.create(x, y)
     this.resource.configure(none, width, height)
