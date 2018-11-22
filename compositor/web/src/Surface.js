@@ -101,7 +101,7 @@ export default class Surface extends WlSurfaceRequests {
     Region.initInfinite(inputPixmanRegion)
 
     const bufferStream = new BufferStream()
-    wlSurfaceResource.client.setOutOfBandListener(wlSurfaceResource.id, 0, (outOfBandMessage) => {
+    wlSurfaceResource.client.setOutOfBandListener(wlSurfaceResource.id, 6, (outOfBandMessage) => {
       // TODO try to improve buffer chunk handling and not slice (=copy) anywhere
       bufferStream.onChunk(outOfBandMessage.slice(2 * Uint32Array.BYTES_PER_ELEMENT))
     })
@@ -327,9 +327,7 @@ export default class Surface extends WlSurfaceRequests {
     this._count = 0
     this._total = 0
     this._start = 0
-    this._bufferCompletionTotal = 0
     this._postRenderTotal = 0
-    this._bufferSizeTotal = 0
 
     /**
      * @type {BufferStream}
@@ -918,9 +916,11 @@ export default class Surface extends WlSurfaceRequests {
     const pendingWlBuffer = this.pendingWlBuffer
     this._bufferStream.syncToCommit(serial)
     const newState = await this._captureState(pendingWlBuffer)
-    pendingWlBuffer.release()
     if (this.destroyed) {
       return
+    }
+    if (pendingWlBuffer) {
+      pendingWlBuffer.release()
     }
 
     if (this.role && typeof this.role.onCommit === 'function') {
@@ -1083,26 +1083,8 @@ export default class Surface extends WlSurfaceRequests {
       newState.roleState = this.role.captureRoleState()
     }
 
-    const bufferReceiveStart = Date.now()
     if (pendingWlBuffer) {
       newState.bufferContents = await this._bufferStream.onFrameAvailable()
-
-      const bufferCompletion = Date.now() - bufferReceiveStart
-      this._bufferCompletionTotal += bufferCompletion
-      DEBUG && console.log(
-        'buffer completion avg', this._bufferCompletionTotal / this._count,
-        'current', bufferCompletion
-      )
-      let bufferSize = 0
-      newState.bufferContents.fragments.forEach(fragment => {
-        bufferSize += fragment.opaque.byteLength
-        bufferSize += fragment.alpha.byteLength
-      })
-      this._bufferSizeTotal += bufferSize
-      DEBUG && console.log(
-        'buffer transfer avg (kb/s)', (this._bufferSizeTotal / 1024) / (this._bufferCompletionTotal / 1000),
-        'current', (bufferSize / 1024) / (bufferCompletion / 1000)
-      )
     } else {
       newState.bufferContents = null
     }

@@ -13,12 +13,13 @@ class SurfaceBufferEncoding {
      * @return {number}
      */
     wlSurfaceInterceptor.prototype[1] = function (message) {
-      if (!this.userData.encoder) {
-        this.userData.encoder = Encoder.create()
-        this.userData.bufferSerial = 0
-      }
       const [bufferResourceId, x, y] = WireMessageUtil.unmarshallArgs(message, 'oii')
-      this.userData.bufferResourceId = bufferResourceId
+
+      if (!this.encoder) {
+        this.encoder = Encoder.create()
+        this.bufferSerial = 0
+      }
+      this.bufferResourceId = bufferResourceId
       return 0
     }
 
@@ -36,18 +37,21 @@ class SurfaceBufferEncoding {
       const uint32Array = new Uint32Array(message.buffer)
       const objectId = uint32Array[0]
       uint32Array[1] = ((message.size) << 16) | 6 // size + opcode
-      uint32Array[2] = this.userData.bufferSerial
+      uint32Array[2] = this.bufferSerial
 
-      const { buffer, format, width, height, stride } = Endpoint.getShmBuffer(this.wlClient, this.userData.bufferResourceId)
+      if (this.bufferResourceId) {
+        const { buffer, format, width, height, stride } = Endpoint.getShmBuffer(this.wlClient, this.bufferResourceId)
 
-      this.userData.encoder.encodeBuffer(Buffer.from(buffer), format, width, height, this.userData.bufferSerial++, []).then((/** @type {EncodedFrame} */encodedFrame) => {
-        const bufferChunks = SurfaceBufferEncoding._toBufferChunks(encodedFrame.toBuffer(), this.userData.bufferSerial)
-        bufferChunks.forEach((chunk) => {
-          // add an out-of-band object-id (surfaceId) + opcode (0)
-          const sendBuffer = Buffer.concat([Buffer.from(new Uint32Array([objectId, 0]).buffer), chunk], chunk.length + (Uint32Array.BYTES_PER_ELEMENT * 2))
-          this.userData.dataChannel.send(sendBuffer.buffer.slice(sendBuffer.byteOffset, sendBuffer.byteOffset + sendBuffer.byteLength))
+        this.encoder.encodeBuffer(Buffer.from(buffer), format, width, height, this.bufferSerial++, []).then((/** @type {EncodedFrame} */encodedFrame) => {
+          const bufferChunks = SurfaceBufferEncoding._toBufferChunks(encodedFrame.toBuffer(), this.bufferSerial)
+          bufferChunks.forEach((chunk) => {
+            // add an out-of-band object-id (surfaceId) + opcode (0)
+            const sendBuffer = Buffer.concat([Buffer.from(new Uint32Array([objectId, 6]).buffer), chunk])
+            this.userData.dataChannel.send(sendBuffer.buffer.slice(sendBuffer.byteOffset, sendBuffer.byteOffset + sendBuffer.byteLength))
+          })
         })
-      })
+      }
+
       return 0
     }
   }
