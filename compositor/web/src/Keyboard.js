@@ -5,8 +5,8 @@ import WlKeyboardResource from './protocol/WlKeyboardResource'
 
 import Xkb from './Xkb'
 
-const {pressed, released} = WlKeyboardResource.KeyState
-const {xkbV1} = WlKeyboardResource.KeymapFormat
+const { pressed, released } = WlKeyboardResource.KeyState
+const { xkbV1 } = WlKeyboardResource.KeymapFormat
 
 /**
  *
@@ -133,7 +133,7 @@ export default class Keyboard extends WlKeyboardRequests {
 
   /**
    *
-   * @param {!WlKeyboard} resource
+   * @param {!WlKeyboardResource} resource
    *
    * @since 3
    *
@@ -149,14 +149,15 @@ export default class Keyboard extends WlKeyboardRequests {
   /**
    * @param {!string}keymapFileName
    */
-  async updateKeymap (keymapFileName) {
-    const xkb = await Xkb.createFromResource(keymapFileName)
-    if (this._xkb) {
-      // TODO cleanup previous keymap state
-    }
-    this._xkb = xkb
-    this.resources.forEach(async (resource) => {
-      await this.emitKeymap(resource)
+  updateKeymap (keymapFileName) {
+    Xkb.createFromResource(keymapFileName).then((xkb) => {
+      if (this._xkb) {
+        // TODO cleanup previous keymap state
+      }
+      this._xkb = xkb
+      this.resources.forEach((resource) => {
+        this.emitKeymap(resource)
+      })
     })
   }
 
@@ -172,7 +173,7 @@ export default class Keyboard extends WlKeyboardRequests {
     // TODO use new fd interactions lib to create a new file with the keymap contents on the client's host, then use
     // the fd of that file to communicate with the client
     const keymapFd = 0
-    resource.keymap(xkbV1, keymapFd, keymapBufferLength)
+    // resource.keymap(xkbV1, keymapFd, keymapBufferLength)
   }
 
   /**
