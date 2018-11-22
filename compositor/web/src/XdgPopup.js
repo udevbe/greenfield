@@ -7,7 +7,7 @@ import XdgWmBaseResource from './protocol/XdgWmBaseResource'
 
 import Point from './math/Point'
 
-const {none, slideX, slideY, flipX, flipY, resizeX, resizeY} = XdgPositionerResource.ConstraintAdjustment
+const { none, slideX, slideY, flipX, flipY, resizeX, resizeY } = XdgPositionerResource.ConstraintAdjustment
 
 const inverseY = {
   /**
@@ -428,8 +428,7 @@ export default class XdgPopup extends XdgPopupRequests {
     }
 
     this._updatePopupKeyboardFocus()
-    await pointer.popupGrab(this.xdgSurface.wlSurfaceResource)
-    this._dismiss()
+    pointer.popupGrab(this.xdgSurface.wlSurfaceResource).then(() => this._dismiss())
   }
 
   /**
@@ -558,7 +557,7 @@ export default class XdgPopup extends XdgPopupRequests {
       }
     }
 
-    const {x0: x, y0: y, width, height} = positionerState.size
+    const { x0: x, y0: y, width, height } = positionerState.size
     this.resource.configure(x, y, width, height)
   }
 }
