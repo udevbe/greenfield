@@ -37,7 +37,7 @@ export default class RtcSocket {
 
   async connect ({ appEndpointSessionId }) {
     if (this._appEndpointConnections[appEndpointSessionId]) {
-      console.error(`WebRTC connection: ${appEndpointSessionId} already exists. Ignoring.`)
+      console.error(`[webrtc-peer-connection: ${appEndpointSessionId}] - session already exists. Ignoring.`)
       return
     }
 
@@ -47,16 +47,16 @@ export default class RtcSocket {
     // TODO rtc connection options setup
     const peerConnection = new RTCPeerConnection()
     this._appEndpointConnections[appEndpointSessionId] = peerConnection
-    peerConnection.ondatachannel = (event) => this._onDataChannel(event.channel)
+    peerConnection.ondatachannel = (event) => this._onDataChannel(event.channel, appEndpointSessionId)
 
     peerConnection.onnegotiationneeded = async () => {
-      DEBUG && console.log(`WebRTC connection: ${appEndpointSessionId} negotiation needed.`)
+      DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - negotiation needed. Sending sdp offer.`)
       await this._sendOffer(appEndpointSessionId, peerConnection)
     }
 
     peerConnection.onicecandidate = evt => {
       const candidate = evt.candidate
-      DEBUG && console.log(`WebRTC connection: ${appEndpointSessionId} sending local ice candidate: ${candidate}`)
+      DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - sending local ice candidate: ${candidate}`)
       if (candidate !== null) {
         this._sendRTCSignal(appEndpointSessionId, {
           object: 'rtcClient',
@@ -70,17 +70,17 @@ export default class RtcSocket {
     peerConnection.onconnectionstatechange = (event) => {
       switch (peerConnection.connectionState) {
         case 'connected':
-          DEBUG && console.log(`WebRTC connection: ${appEndpointSessionId} is open.`)
+          DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - open.`)
           break
         case 'disconnected':
-          DEBUG && console.log(`WebRTC connection: ${appEndpointSessionId} is disconnected.`)
+          DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - disconnected.`)
           break
         case 'failed':
-          DEBUG && console.log(`WebRTC connection: ${appEndpointSessionId} failed.`)
+          DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - failed.`)
           delete this._appEndpointConnections[appEndpointSessionId]
           break
         case 'closed':
-          DEBUG && console.log(`WebRTC connection: ${appEndpointSessionId} closed.`)
+          DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - closed.`)
           delete this._appEndpointConnections[appEndpointSessionId]
           break
       }
@@ -89,17 +89,30 @@ export default class RtcSocket {
 
   /**
    * @param {RTCDataChannel}dataChannel
+   * @param {string}appEndpointSessionId
    * @private
    */
-  _onDataChannel (dataChannel) {
+  _onDataChannel (dataChannel, appEndpointSessionId) {
+    DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - data channel created.`)
+
     dataChannel.binaryType = 'arraybuffer'
     dataChannel.onopen = () => {
+      DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - data channel open.`)
       const client = this._session.display.createClient()
       // send out-of-band resource destroy
-      client.addResourceDestroyListener((resource) => dataChannel.send(new Uint32Array([1, 2, resource.id]).buffer))
+      client.addResourceDestroyListener((resource) => {
+        if (dataChannel.readyState === 'open') {
+          dataChannel.send(new Uint32Array([1, 2, resource.id]).buffer)
+        }
+      })
 
-      dataChannel.onclose = () => client.close()
-      dataChannel.onerror = () => client.close()
+      dataChannel.onclose = (event) => {
+        DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - data channel closed.`)
+        client.close()
+      }
+      dataChannel.onerror = (event) => {
+        DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - data channel error: ${event.message}.`)
+      }
       dataChannel.onmessage = (event) => {
         const arrayBuffer = /** @type {ArrayBuffer} */event.data
         const dataView = new DataView(arrayBuffer)
@@ -176,7 +189,7 @@ export default class RtcSocket {
   async iceCandidate ({ appEndpointSessionId, candidate }) {
     const peerConnection = this._appEndpointConnections[appEndpointSessionId]
     if (!peerConnection) {
-      throw new Error(`WebRTC connection: ${appEndpointSessionId} was not found.`)
+      throw new Error(`[webrtc-peer-connection: ${appEndpointSessionId}] - session not found.`)
     }
 
     await peerConnection.addIceCandidate(candidate)
@@ -185,7 +198,7 @@ export default class RtcSocket {
   async sdpReply ({ appEndpointSessionId, reply }) {
     const peerConnection = this._appEndpointConnections[appEndpointSessionId]
     if (!peerConnection) {
-      throw new Error(`WebRTC connection: ${appEndpointSessionId} was not found.`)
+      throw new Error(`[webrtc-peer-connection: ${appEndpointSessionId}] - session not found.`)
     }
 
     await peerConnection.setRemoteDescription(reply)
@@ -194,14 +207,14 @@ export default class RtcSocket {
   async sdpOffer ({ appEndpointSessionId, offer }) {
     const peerConnection = this._appEndpointConnections[appEndpointSessionId]
     if (!peerConnection) {
-      throw new Error(`WebRTC connection: ${appEndpointSessionId} was not found.`)
+      throw new Error(`[webrtc-peer-connection: ${appEndpointSessionId}] - session not found.`)
     }
 
     await peerConnection.setRemoteDescription(offer)
     const answer = await peerConnection.createAnswer()
     await peerConnection.setLocalDescription(answer)
 
-    process.env.DEBUG && console.log(`WebRTC connection: sending browser sdp answer: ${answer}`)
+    process.env.DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - sending browser sdp answer: ${answer}`)
     this._sendRTCSignal(appEndpointSessionId, {
       object: 'rtcClient',
       method: 'sdpReply',
