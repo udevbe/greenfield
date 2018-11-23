@@ -223,7 +223,7 @@ export default class View {
 
     // position transformation
     const surfaceChild = this.surface.surfaceChildSelf
-    const {x, y} = surfaceChild.position
+    const { x, y } = surfaceChild.position
     const positionTransformation = Mat4.translation(x, y)
 
     return parentTransformation.timesMat4(positionTransformation)
