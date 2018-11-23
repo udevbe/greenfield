@@ -14,11 +14,6 @@ class SurfaceBufferEncoding {
      */
     wlSurfaceInterceptor.prototype[1] = function (message) {
       const [bufferResourceId, x, y] = WireMessageUtil.unmarshallArgs(message, 'oii')
-
-      if (!this.encoder) {
-        this.encoder = Encoder.create()
-        this.bufferSerial = 0
-      }
       this.bufferResourceId = bufferResourceId
       return 0
     }
@@ -29,6 +24,13 @@ class SurfaceBufferEncoding {
      * @return {number}
      */
     wlSurfaceInterceptor.prototype[6] = function (message) {
+      if (!this.encoder) {
+        this.encoder = Encoder.create()
+        this.bufferSerial = -1
+      }
+
+      const syncSerial = ++this.bufferSerial
+
       // inject the frame serial in the commit message
       const origMessageBuffer = message.buffer
       message.size += Uint32Array.BYTES_PER_ELEMENT
@@ -37,13 +39,12 @@ class SurfaceBufferEncoding {
       const uint32Array = new Uint32Array(message.buffer)
       const objectId = uint32Array[0]
       uint32Array[1] = ((message.size) << 16) | 6 // size + opcode
-      uint32Array[2] = this.bufferSerial
+      uint32Array[2] = syncSerial
 
       if (this.bufferResourceId) {
         const { buffer, format, width, height, stride } = Endpoint.getShmBuffer(this.wlClient, this.bufferResourceId)
-
-        this.encoder.encodeBuffer(Buffer.from(buffer), format, width, height, this.bufferSerial++, []).then((/** @type {EncodedFrame} */encodedFrame) => {
-          const bufferChunks = SurfaceBufferEncoding._toBufferChunks(encodedFrame.toBuffer(), this.bufferSerial)
+        this.encoder.encodeBuffer(Buffer.from(buffer), format, width, height, syncSerial, []).then((/** @type {EncodedFrame} */encodedFrame) => {
+          const bufferChunks = SurfaceBufferEncoding._toBufferChunks(encodedFrame.toBuffer(), encodedFrame.serial)
           bufferChunks.forEach((chunk) => {
             // add an out-of-band object-id (surfaceId) + opcode (0)
             const sendBuffer = Buffer.concat([Buffer.from(new Uint32Array([objectId, 6]).buffer), chunk])
@@ -51,6 +52,8 @@ class SurfaceBufferEncoding {
           })
         })
       }
+
+      this.bufferReosourceId = 0
 
       return 0
     }

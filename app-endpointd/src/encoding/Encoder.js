@@ -37,6 +37,33 @@ class Encoder {
      * @private
      */
     this._pngFrameEncoder = null
+    /**
+     * @type {Array<{pixelBuffer:Buffer, bufferFormat:number, bufferWidth:number, bufferHeight:number, serial:number, bufferDamage:Array<{x:number, y:number, width:number, height:number}>, resolve: function(EncodedFrame):void}>}
+     * @private
+     */
+    this._queue = []
+  }
+
+  _doEncodeBuffer () {
+    const { pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, bufferDamage, resolve } = this._queue[0]
+
+    let encodingPromise = null
+
+    const bufferArea = bufferWidth * bufferHeight
+    if (bufferArea <= config['encoder']['max-png-buffer-size']) {
+      // We don't bother with damage when encoding to a small png image.
+      encodingPromise = this._encodePNGFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial)
+    } else {
+      encodingPromise = this._encodeFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, bufferDamage)
+    }
+
+    encodingPromise.then((encodedFrame) => {
+      this._queue.shift()
+      if (this._queue.length) {
+        this._doEncodeBuffer()
+      }
+      resolve(encodedFrame)
+    })
   }
 
   /**
@@ -55,13 +82,12 @@ class Encoder {
       this._frameEncoder = null
     }
 
-    const bufferArea = bufferWidth * bufferHeight
-    if (bufferArea <= config['encoder']['max-png-buffer-size']) {
-      // We don't bother with damage when encoding to a small png image.
-      return this._encodePNGFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial)
-    } else {
-      return this._encodeFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, bufferDamage)
-    }
+    return new Promise((resolve) => {
+      this._queue.push({ pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, bufferDamage, resolve })
+      if (this._queue.length === 1) {
+        this._doEncodeBuffer()
+      }
+    })
   }
 
   /**

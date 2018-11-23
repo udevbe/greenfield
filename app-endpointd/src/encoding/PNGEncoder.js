@@ -7,7 +7,7 @@ const WlShmFormat = require('./WlShmFormat')
 const EncodedFrame = require('./EncodedFrame')
 const EncodedFrameFragment = require('./EncodedFrameFragment')
 const EncodingOptions = require('./EncodingOptions')
-const {png} = require('./EncodingTypes')
+const { png } = require('./EncodingTypes')
 
 const gstFormats = {
   [WlShmFormat.argb8888]: 'BGRA',
@@ -28,28 +28,26 @@ class PNGEncoder {
     const gstBufferFormat = gstFormats[wlShmFormat]
     const pipeline = new gstreamer.Pipeline(
       `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! 
-      videoconvert ! videoscale  ! capsfilter name=scale caps=video/x-raw,format=RGBA,width=${width},height=${height},framerate=60/1 ! 
+      videoconvert ! videoscale  ! 
       pngenc ! 
-      appsink name=sink`
+      appsink max-buffers=1 name=sink`
     )
     const sink = pipeline.findChild('sink')
     const src = pipeline.findChild('source')
-    const scale = pipeline.findChild('scale')
     pipeline.play()
 
-    return new PNGEncoder(pipeline, sink, src, scale, width, height, wlShmFormat)
+    return new PNGEncoder(pipeline, sink, src, width, height, wlShmFormat)
   }
 
   /**
    * @param {Object}pipeline
    * @param {Object}sink
    * @param {Object}src
-   * @param {Object}scale
    * @param {number}width
    * @param {number}height
    * @param {number}wlShmFormat
    */
-  constructor (pipeline, sink, src, scale, width, height, wlShmFormat) {
+  constructor (pipeline, sink, src, width, height, wlShmFormat) {
     /**
      * @type {Object}
      * @private
@@ -65,11 +63,6 @@ class PNGEncoder {
      * @private
      */
     this._src = src
-    /**
-     * @type {Object}
-     * @private
-     */
-    this._scale = scale
     /**
      * @type {number}
      * @private
@@ -95,7 +88,6 @@ class PNGEncoder {
    */
   _configure (width, height, gstBufferFormat) {
     this._src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1`
-    this._scale.caps = `video/x-raw,width=${width},height=${height},framerate=60/1`
   }
 
   /**

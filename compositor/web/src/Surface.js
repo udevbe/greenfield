@@ -324,11 +324,6 @@ export default class Surface extends WlSurfaceRequests {
     this.size = Size.create(0, 0)
     // <- derived states above
 
-    this._count = 0
-    this._total = 0
-    this._start = 0
-    this._postRenderTotal = 0
-
     /**
      * @type {BufferStream}
      * @private
@@ -907,21 +902,20 @@ export default class Surface extends WlSurfaceRequests {
    * @override
    */
   async commit (resource, serial) {
-    this._start = Date.now()
-    this._count++
+    let bufferContents = null
+
     if (this.pendingWlBuffer) {
       this.pendingWlBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
+      console.log(`surface ${resource.id} waiting for buffer contents using serial ${serial}`)
+      bufferContents = await this._bufferStream.onFrameAvailable(serial)
+      this.pendingWlBuffer.release()
+      this.pendingWlBuffer = null
     }
-
-    const pendingWlBuffer = this.pendingWlBuffer
-    this._bufferStream.syncToCommit(serial)
-    const newState = await this._captureState(pendingWlBuffer)
     if (this.destroyed) {
       return
     }
-    if (pendingWlBuffer) {
-      pendingWlBuffer.release()
-    }
+
+    const newState = this._captureState(bufferContents)
 
     if (this.role && typeof this.role.onCommit === 'function') {
       const animationFrame = Renderer.createRenderFrame()
@@ -973,8 +967,6 @@ export default class Surface extends WlSurfaceRequests {
     if (!skipDraw) {
       await this.renderer.render(this, newState)
     }
-    const postRenderStart = Date.now()
-
     const { w: oldWidth, h: oldHeight } = this.size
     this._updateDerivedState(newState)
     Surface.mergeState(this.state, newState)
@@ -991,12 +983,6 @@ export default class Surface extends WlSurfaceRequests {
     this.views.forEach(view => {
       view.swapBuffers(renderFrame)
     })
-
-    const now = Date.now()
-    this._postRenderTotal += (now - postRenderStart)
-    this._total += (now - this._start)
-    DEBUG && console.log('post-render avg', this._postRenderTotal / this._count)
-    DEBUG && console.log('---> commit avg', this._total / this._count)
   }
 
   /**
@@ -1020,10 +1006,10 @@ export default class Surface extends WlSurfaceRequests {
   }
 
   /**
-   * @return {Promise<{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}>}
+   * @return {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}
    * @private
    */
-  async _captureState (pendingWlBuffer) {
+  _captureState (bufferContents) {
     const self = this
     /**
      * @type {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}
@@ -1083,11 +1069,7 @@ export default class Surface extends WlSurfaceRequests {
       newState.roleState = this.role.captureRoleState()
     }
 
-    if (pendingWlBuffer) {
-      newState.bufferContents = await this._bufferStream.onFrameAvailable()
-    } else {
-      newState.bufferContents = null
-    }
+    newState.bufferContents = bufferContents
 
     return newState
   }

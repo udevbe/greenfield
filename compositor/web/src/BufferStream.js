@@ -17,16 +17,6 @@ export default class BufferStream {
    */
   constructor () {
     /**
-     * @type {!number}
-     * @private
-     */
-    this._syncSerial = 0
-    /**
-     * @type {!number}
-     * @private
-     */
-    this._lastCompleteSerial = 0
-    /**
      * @type {!Object.<number, {completionPromise: Promise<EncodedFrame>, completionResolve: function(EncodedFrame):void, completionReject: function(Error):void, state: string, encodedFrame: EncodedFrame}>}
      * @private
      */
@@ -44,23 +34,11 @@ export default class BufferStream {
    * @private
    */
   _onComplete (serial, encodedFrame) {
-    if (serial < this._lastCompleteSerial) {
-      return
-    }
     const bufferState = this._bufferStates[serial]
     bufferState.state = 'complete'
-    this._lastCompleteSerial = serial
-
-    // remove old states
-    for (const oldSerial in this._bufferStates) {
-      if (oldSerial < serial) {
-        if (this._bufferStates[serial].state !== 'complete') {
-          this._bufferStates[oldSerial].completionReject(new Error('Buffer contents expired ' + oldSerial))
-        }
-        delete this._bufferStates[oldSerial]
-      }
-    }
-
+    bufferState.completionPromise.then(() => {
+      delete this._bufferStates[serial]
+    })
     bufferState.completionResolve(encodedFrame)
   }
 
@@ -90,24 +68,10 @@ export default class BufferStream {
 
   /**
    * Returns a promise that will resolve as soon as the buffer is in the 'complete' state.
+   * @param {!number} serial Serial of the send buffer contents
    * @returns {!Promise<EncodedFrame>}
    */
-  onFrameAvailable () {
-    return this._bufferStates[this._syncSerial].completionPromise
-  }
-
-  /**
-   * @param {!number} serial Serial of the send buffer contents
-   * @since 1
-   *
-   */
-  syncToCommit (serial) {
-    if (serial < this._syncSerial) {
-      // TODO return an error to the client
-      throw new Error('Buffer sync serial was not sequential.')
-    }
-    this._syncSerial = serial
-
+  onFrameAvailable (serial) {
     if (this._bufferStates[serial] && this._bufferStates[serial].encodedFrame) {
       // state already exists, this means the contents arrived before this call, which means we can now decode it
       this._onComplete(serial, this._bufferStates[serial].encodedFrame)
@@ -115,6 +79,8 @@ export default class BufferStream {
       // state does not exist yet, create a new state and wait for contents to arrive
       this._newBufferState(serial)
     }
+
+    return this._bufferStates[serial].completionPromise
   }
 
   /**
@@ -126,7 +92,7 @@ export default class BufferStream {
       // state already exists, this means the syn call arrived before this call, which means we can now decode it
       this._bufferStates[encodedFrame.serial].encodedFrame = encodedFrame
       this._onComplete(encodedFrame.serial, encodedFrame)
-    } else if (encodedFrame.serial >= this._lastCompleteSerial) {
+    } else {
       // state does not exist yet, create a new state and wait for contents to arrive
       this._newBufferState(encodedFrame.serial).encodedFrame = encodedFrame
     }
@@ -147,7 +113,6 @@ export default class BufferStream {
     const synSerial = chunkHeader.getUint32(0, false)
     const nroChunks = chunkHeader.getUint32(4, false)
     const chunkIdx = chunkHeader.getUint32(8, false)
-
     // assign chunk to an aggregating data structure
     let bufferChunk = this._bufferChunks[synSerial]
     if (!bufferChunk) {
