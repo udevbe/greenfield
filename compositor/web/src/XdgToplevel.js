@@ -711,7 +711,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
       return
     }
     // assigned in switch statement
-    let sizeAdjustment = (width, height, deltaX, deltaY) => {}
+    let sizeAdjustment = /** @type {function(width, height, deltaX, deltaY):void} */ null
 
     switch (edges) {
       case bottomRight: {
@@ -789,8 +789,9 @@ export default class XdgToplevel extends XdgToplevelRequests {
       const deltaY = pointer.y - pointerY
 
       const size = sizeAdjustment(windowGeometryWidth, windowGeometryHeight, deltaX, deltaY)
-      const width = Math.max(this._minSize.x, Math.min(size.w, this._maxSize.x))
-      const height = Math.max(this._minSize.y, Math.min(size.h, this._maxSize.y))
+      // TODO min/max constraints
+      const width = size.w // Math.max(this._minSize.x, Math.min(size.w, this._maxSize.x))
+      const height = size.h // Math.max(this._minSize.y, Math.min(size.h, this._maxSize.y))
 
       return Size.create(width, height)
     }
@@ -803,6 +804,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
       const { w: width, h: height } = sizeCalculation()
       this._emitConfigure(resource, width, height, [activated, resizing], edges)
+      this._session.flush()
     }
 
     const surface = /** @type {Surface} */this.xdgSurface.wlSurfaceResource.implementation
@@ -813,6 +815,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
       const { w: width, h: height } = sizeCalculation()
       this._emitConfigure(resource, width, height, [activated], none)
+      this._session.flush()
     })
 
     surface.hasPointerInput = false
