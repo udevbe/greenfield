@@ -102,7 +102,12 @@ export default class RtcSocket {
       // send out-of-band resource destroy
       client.addResourceDestroyListener((resource) => {
         if (dataChannel.readyState === 'open') {
-          dataChannel.send(new Uint32Array([1, 2, resource.id]).buffer)
+          // data channel might already be closed, even though it's state is still 'open'...
+          try {
+            dataChannel.send(new Uint32Array([1, 2, resource.id]).buffer)
+          } catch (e) {
+            console.log(e.message)
+          }
         }
       })
 
@@ -150,7 +155,15 @@ export default class RtcSocket {
           sendBuffer.set(message, offset)
           offset += message.length
         })
-        dataChannel.send(sendBuffer.buffer)
+
+        if (dataChannel.readyState === 'open') {
+          // data channel might already be closed, even though it's state is still 'open'...
+          try {
+            dataChannel.send(sendBuffer.buffer)
+          } catch (e) {
+            console.log(e.message)
+          }
+        }
       }
 
       client.setOutOfBandListener(1, 0, (message) => {
