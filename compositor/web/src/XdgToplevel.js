@@ -187,8 +187,25 @@ export default class XdgToplevel extends XdgToplevelRequests {
    * @override
    */
   setRoleState (roleState) {
-    this._maxSize = roleState.maxSize
     this._minSize = roleState.minSize
+    this._maxSize = roleState.maxSize
+
+    const { x: minWidth, y: minHeight } = this._minSize
+    let { x: maxWidth, y: maxHeight } = this._maxSize
+    maxWidth = maxWidth === 0 ? Number.MAX_SAFE_INTEGER : maxWidth
+    maxHeight = maxHeight === 0 ? Number.MAX_SAFE_INTEGER : maxHeight
+
+    if (minWidth < 0 || minHeight < 0 || minWidth > maxWidth || minHeight > maxHeight) {
+      this.resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Min size can not be greater than max size.')
+      DEBUG && console.log('Protocol error. Min size can not be greater than max size.')
+      return
+    }
+    if (maxWidth < 0 || maxHeight < 0 || maxWidth < this._minSize.x || maxHeight < this._minSize.y) {
+      this.resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Max size can not be me smaller than min size.')
+      DEBUG && console.log('Protocol error. Max size can not be me smaller than min size.')
+      return
+    }
+
     this._configureState = roleState.configureState
     this.xdgSurface.updateWindowGeometry(roleState.windowGeometry)
 
@@ -869,13 +886,6 @@ export default class XdgToplevel extends XdgToplevelRequests {
    * @override
    */
   setMaxSize (resource, width, height) {
-    width = width === 0 ? Number.MAX_SAFE_INTEGER : width
-    height = height === 0 ? Number.MAX_SAFE_INTEGER : height
-    if (width < 0 || height < 0 || width < this._minSize.x || height < this._minSize.y) {
-      resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Max size can not be me smaller than min size.')
-      DEBUG && console.log('Protocol error. Max size can not be me smaller than min size.')
-      return
-    }
     this._pendingMaxSize = Point.create(
       width,
       height
@@ -928,11 +938,6 @@ export default class XdgToplevel extends XdgToplevelRequests {
    * @override
    */
   setMinSize (resource, width, height) {
-    if (width < 0 || height < 0 || width > this._maxSize.x || height > this._maxSize.y) {
-      this.resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Min size can not be greater than max size.')
-      DEBUG && console.log('Protocol error. Min size can not be greater than max size.')
-      return
-    }
     this._pendingMinSize = Point.create(width, height)
   }
 
