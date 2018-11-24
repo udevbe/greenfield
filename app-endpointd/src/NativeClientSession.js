@@ -21,7 +21,12 @@ class NativeClientSession {
       }
     })
 
-    Endpoint.setClientDestroyedCallback(wlClient, () => nativeClientSession.destroy())
+    Endpoint.setClientDestroyedCallback(wlClient, () => {
+      if (nativeClientSession._destroyResolve) {
+        nativeClientSession._destroyResolve()
+        nativeClientSession._destroyResolve = null
+      }
+    })
     Endpoint.setRegistryCreatedCallback(wlClient, (wlRegistry, registryId) => nativeClientSession._onRegistryCreated(wlRegistry, registryId))
     Endpoint.setWireMessageCallback(wlClient, (wlClient, message, objectId, opcode) => nativeClientSession._onWireMessageRequest(wlClient, message, objectId, opcode))
     Endpoint.setWireMessageEndCallback(wlClient, (wlClient, fdsIn) => nativeClientSession._onWireMessageEnd(wlClient, fdsIn))
@@ -102,6 +107,11 @@ class NativeClientSession {
      * @private
      */
     this._dataChannel = dataChannel
+    /**
+     * @type {boolean}
+     * @private
+     */
+    this._disconnecting = false
   }
 
   /**
@@ -109,8 +119,6 @@ class NativeClientSession {
    * @private
    */
   _onWireMessageEvents (receiveBuffer) {
-    // process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: received event batch from browser.`)
-
     let readOffset = 0
     let localGlobalsEmitted = false
     while (readOffset < receiveBuffer.length) {
@@ -119,10 +127,6 @@ class NativeClientSession {
       readOffset += fdsCount
       const sizeOpcode = receiveBuffer[readOffset + 1]
       const size = sizeOpcode >>> 16
-
-      const id = receiveBuffer[readOffset]
-      const opcode = sizeOpcode & 0x0000FFFF
-      // process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: event with id=${id}, opcode=${opcode}, length=${size}.`)
 
       const length = size / Uint32Array.BYTES_PER_ELEMENT
       const messageBuffer = receiveBuffer.subarray(readOffset, readOffset + length)
@@ -140,12 +144,10 @@ class NativeClientSession {
       )
     }
 
-    // process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: sending event batch to native client.`)
     Endpoint.flush(this.wlClient)
   }
 
   _flushOutboundMessage () {
-    // process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: sending ${this._outboundMessages.length} queued requests.`)
     while (this._outboundMessages.length) {
       this._dataChannel.send(this._outboundMessages.shift())
     }
@@ -181,6 +183,9 @@ class NativeClientSession {
    * @private
    */
   _onWireMessageRequest (wlClient, message, objectId, opcode) {
+    if (this._disconnecting) {
+      return 0
+    }
     try {
       const receiveBuffer = new Uint32Array(message)
       const sizeOpcode = receiveBuffer[1]
@@ -249,7 +254,11 @@ class NativeClientSession {
   }
 
   destroy () {
-    this._destroyResolve()
+    if (this._destroyResolve) {
+      this._destroyResolve()
+      this._destroyResolve = null
+      Endpoint.destroyClient(this.wlClient)
+    }
   }
 
   /**
@@ -268,6 +277,11 @@ class NativeClientSession {
         const objectId = buffer.readUInt32LE(8, true)
         Endpoint.destroyWlResourceSilently(this.wlClient, objectId)
         delete this._messageInterceptor.interceptors[objectId]
+
+        if (objectId === 1) {
+          // 1 is the display id, which means client is being disconnected
+          this._disconnecting = true
+        }
       }
     }
   }
