@@ -906,7 +906,6 @@ export default class Surface extends WlSurfaceRequests {
 
     if (this.pendingWlBuffer) {
       this.pendingWlBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
-      console.log(`surface ${resource.id} waiting for buffer contents using serial ${serial}`)
       bufferContents = await this._bufferStream.onFrameAvailable(serial)
       this.pendingWlBuffer.release()
       this.pendingWlBuffer = null

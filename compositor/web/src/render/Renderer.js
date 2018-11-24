@@ -101,11 +101,6 @@ export default class Renderer {
 
     this._emptyImage = new window.Image(0, 0)
     this._emptyImage.src = '//:0'
-
-    this._viewDrawTotal = 0
-    this._textureUpdateTotal = 0
-    this._shaderInvocationTotal = 0
-    this._count = 0
   }
 
   /**
@@ -149,10 +144,7 @@ export default class Renderer {
     // calls to _draw() while we're in await. If we were to do this call later, this.canvas will have state specifically
     // for our _draw() call, yet because we are in (a late) await, another call might adjust our canvas, which results
     // in bad draws/flashing/flickering/...
-    let start = Date.now()
     await jpegRenderState.update(encodedFrame)
-    this._textureUpdateTotal += Date.now() - start
-    DEBUG && console.log('updating textures avg', this._textureUpdateTotal / this._count)
 
     if (EncodingOptions.splitAlpha(encodedFrame.encodingOptions)) {
       // Image is in jpeg format with a separate alpha channel, shade & decode alpha & opaque fragments together using webgl.
@@ -160,7 +152,6 @@ export default class Renderer {
       this._jpegAlphaSurfaceShader.use()
       this._jpegAlphaSurfaceShader.setTexture(jpegRenderState.opaqueTexture, jpegRenderState.alphaTexture)
 
-      start = Date.now()
       const canvasSizeChanged = (this._canvas.width !== frameWidth) || (this._canvas.height !== frameHeight)
       if (canvasSizeChanged) {
         this._canvas.width = frameWidth
@@ -171,14 +162,9 @@ export default class Renderer {
       // TODO we could try to optimize and only shade the fragments of the texture that were updated
       this._jpegAlphaSurfaceShader.draw(encodedFrame.size, canvasSizeChanged)
       this._jpegAlphaSurfaceShader.release()
-      this._shaderInvocationTotal += (Date.now() - start)
-      DEBUG && console.log('shader invocation avg', this._shaderInvocationTotal / this._count)
 
-      start = Date.now()
       const image = await window.createImageBitmap(this._canvas)
       views.forEach((view) => { view.draw(image) })
-      this._viewDrawTotal += Date.now() - start
-      DEBUG && console.log('drawing views avg', this._viewDrawTotal / this._count)
     } else {
       // Image is in jpeg format with no separate alpha channel, shade & decode opaque fragments using webgl.
       this._jpegSurfaceShader.use()
@@ -211,7 +197,7 @@ export default class Renderer {
     if (fullFrame && !splitAlpha) {
       // Full frame without a separate alpha. Let the browser do all the drawing.
       const frame = encodedFrame.fragments[0]
-      const opaqueImageBlob = new Blob([frame.opaque], {'type': 'image/png'})
+      const opaqueImageBlob = new Blob([frame.opaque], { 'type': 'image/png' })
       const opaqueImageBitmap = await createImageBitmap(opaqueImageBlob, 0, 0, frame.geo.width, frame.geo.height)
       views.forEach((view) => { view.draw(opaqueImageBitmap) })
     } else {
@@ -238,23 +224,19 @@ export default class Renderer {
     }
     const h264RenderState = /** @type H264RenderState */ renderState
 
-    const {/** @type {number} */ w: frameWidth, /** @type {number} */ h: frameHeight} = encodedFrame.size
+    const { /** @type {number} */ w: frameWidth, /** @type {number} */ h: frameHeight } = encodedFrame.size
 
     // We update the texture with the fragments as early as possible, this is to avoid gl state mixup with other
     // calls to _draw() while we're in await. If we were to do this call later, this.canvas will have state specifically
     // for our _draw() call, yet because we are in (a late) await, another call might adjust our canvas, which results
     // in bad draws/flashing/flickering/...
-    let start = Date.now()
     await h264RenderState.update(encodedFrame)
-    this._textureUpdateTotal += Date.now() - start
-    DEBUG && console.log('updating textures avg', this._textureUpdateTotal / this._count)
 
     if (EncodingOptions.splitAlpha(encodedFrame.encodingOptions)) {
       // Image is in h264 format with a separate alpha channel, color convert alpha & yuv fragments to rgba using webgl.
       this._yuvaSurfaceShader.use()
       this._yuvaSurfaceShader.setTexture(h264RenderState.yTexture, h264RenderState.uTexture, h264RenderState.vTexture, h264RenderState.alphaTexture)
 
-      start = Date.now()
       const canvasSizeChanged = (this._canvas.width !== frameWidth) || (this._canvas.height !== frameHeight)
       if (canvasSizeChanged) {
         this._canvas.width = frameWidth
@@ -265,14 +247,9 @@ export default class Renderer {
       // TODO we could try to optimize and only shade the fragments of the texture that were updated
       this._yuvaSurfaceShader.draw(encodedFrame.size, canvasSizeChanged)
       this._yuvaSurfaceShader.release()
-      this._shaderInvocationTotal += (Date.now() - start)
-      DEBUG && console.log('shader invocation avg', this._shaderInvocationTotal / this._count)
 
-      start = Date.now()
       const image = await window.createImageBitmap(this._canvas)
       views.forEach((view) => { view.draw(image) })
-      this._viewDrawTotal += Date.now() - start
-      DEBUG && console.log('drawing views avg', this._viewDrawTotal / this._count)
     } else {
       // Image is in h264 format with no separate alpha channel, color convert yuv fragments to rgb using webgl.
       this._yuvSurfaceShader.use()
@@ -299,7 +276,6 @@ export default class Renderer {
    * @private
    */
   async _draw (bufferContents, surface, views) {
-    this._count++
     // invokes mime type named drawing methods
     await this[bufferContents.encodingType](bufferContents, surface, views)
   }
