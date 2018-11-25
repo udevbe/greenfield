@@ -190,21 +190,24 @@ export default class XdgToplevel extends XdgToplevelRequests {
     this._minSize = roleState.minSize
     this._maxSize = roleState.maxSize
 
-    const { x: minWidth, y: minHeight } = this._minSize
-    let { x: maxWidth, y: maxHeight } = this._maxSize
+    const { x: minWidth, y: minHeight } = roleState.minSize
+    let { x: maxWidth, y: maxHeight } = roleState.maxSize
     maxWidth = maxWidth === 0 ? Number.MAX_SAFE_INTEGER : maxWidth
     maxHeight = maxHeight === 0 ? Number.MAX_SAFE_INTEGER : maxHeight
 
     if (minWidth < 0 || minHeight < 0 || minWidth > maxWidth || minHeight > maxHeight) {
       this.resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Min size can not be greater than max size.')
-      DEBUG && console.log('Protocol error. Min size can not be greater than max size.')
+      DEBUG && console.log('[client protocol error] Min size can not be greater than max size.')
       return
     }
-    if (maxWidth < 0 || maxHeight < 0 || maxWidth < this._minSize.x || maxHeight < this._minSize.y) {
+    if (maxWidth < 0 || maxHeight < 0 || maxWidth < minWidth || maxHeight < minHeight) {
       this.resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Max size can not be me smaller than min size.')
-      DEBUG && console.log('Protocol error. Max size can not be me smaller than min size.')
+      DEBUG && console.log('[client protocol error] Max size can not be less than min size.')
       return
     }
+
+    this._minSize = Point.create(minWidth, minHeight)
+    this._maxSize = Point.create(maxWidth, maxHeight)
 
     this._configureState = roleState.configureState
     this.xdgSurface.updateWindowGeometry(roleState.windowGeometry)
@@ -321,7 +324,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
     if (newSurfaceWidth !== roleState.configureState.width || newSurfaceHeight !== roleState.configureState.height) {
       this.resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Surface size does not match configure event.')
-      DEBUG && console.log('Protocol error. Surface size does not match configure event.')
+      DEBUG && console.log('[client protocol error] Surface size does not match configure event.')
       return
     }
 
@@ -353,7 +356,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const { x: newSurfaceWidth, y: newSurfaceHeight } = surface.toSurfaceSpace(Point.create(bufferSize.w, bufferSize.h))
     if (newSurfaceWidth > this._configureState.width || newSurfaceHeight > this._configureState.height) {
       this.resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Surface size does not match configure event.')
-      DEBUG && console.log('Protocol error. Surface size does not match configure event.')
+      DEBUG && console.log('[client protocol error] Surface size does not match configure event.')
       return
     }
 
@@ -614,7 +617,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const seat = /** @type {Seat} */wlSeatResource.implementation
 
     if (!seat.isValidInputSerial(serial)) {
-      DEBUG && console.log('move serial mismatch. Ignoring.')
+      DEBUG && console.log('Move serial mismatch. Ignoring.')
       return
     }
 
@@ -790,8 +793,8 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
       const size = sizeAdjustment(windowGeometryWidth, windowGeometryHeight, deltaX, deltaY)
       // TODO min/max constraints
-      const width = size.w // Math.max(this._minSize.x, Math.min(size.w, this._maxSize.x))
-      const height = size.h // Math.max(this._minSize.y, Math.min(size.h, this._maxSize.y))
+      const width = Math.max(this._minSize.x, Math.min(size.w, this._maxSize.x))
+      const height = Math.max(this._minSize.y, Math.min(size.h, this._maxSize.y))
 
       return Size.create(width, height)
     }
@@ -889,10 +892,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
    * @override
    */
   setMaxSize (resource, width, height) {
-    this._pendingMaxSize = Point.create(
-      width,
-      height
-    )
+    this._pendingMaxSize = Point.create(width, height)
   }
 
   /**
