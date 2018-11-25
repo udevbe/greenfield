@@ -73,7 +73,7 @@ export default class Session {
     try {
       this.messageHandlers[object][method](args)
     } catch (error) {
-      console.error(`Compositor session [${this.compositorSessionId}] failed to handle incoming message. object=${object}:method=${method}:args=${args}\n${error}\n${error.stack}`)
+      console.error(`[compositor-session-${this.compositorSessionId}] Failed to handle incoming message. object=${object}:method=${method}:args=${args}\n${error}\n${error.stack}`)
       this.webSocket.close(4007, `Compositor session [${this.compositorSessionId}] received an illegal message`)
     }
 
@@ -81,12 +81,16 @@ export default class Session {
   }
 
   _onClose (event) {
-    // TODO notify user
+    console.log(`[compositor-session-${this.compositorSessionId}] Web socket connection closed. ${event.code}: ${event.reason}`)
+    // TODO notify user?
     // TODO retry connection?
+
+    // for now we just terminate all clients
+    this.display.clients.forEach(client => client.close())
   }
 
   _onError (event) {
-    // TODO log error?
+    console.error(`[compositor-session-${this.compositorSessionId}] Web socket is in error: ${event}`)
   }
 
   flush () {
