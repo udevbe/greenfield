@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "HTML5 Wayland compositor",
   "bin": {
-    "greenfield": "./local/src/index.js"
+    "greenfield": "./server/src/index.js"
   },
   "scripts": {
     "prepare:web:generate:xdgshell": "westfield-scanner-server ../protocol/xdg-shell.xml -o web/src/protocol",

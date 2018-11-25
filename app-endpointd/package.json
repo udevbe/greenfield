@@ -1,10 +1,14 @@
 {
   "name": "app-endpointd",
   "version": "1.0.0",
+  "bin": {
+    "appendpointd": "./src/index.js"
+  },
   "scripts": {
     "prepare:generate:xdgshell": "westfield-endpoint-generator ../protocol/xdg-shell.xml -o src/protocol",
     "prepare:generate:wayland": "westfield-endpoint-generator ../protocol/wayland.xml -o src/protocol",
-    "prepare": "mkdir -p src/protocol/ && npm run prepare:generate:wayland && npm run prepare:generate:xdgshell"
+    "prepare": "mkdir -p src/protocol/ && npm run prepare:generate:wayland && npm run prepare:generate:xdgshell",
+    "start": "node ./src/index.js"
   },
   "dependencies": {
     "app-endpoint-native": "file:./native",
