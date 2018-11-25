@@ -1,6 +1,7 @@
 const { Endpoint, MessageInterceptor } = require('westfield-endpoint')
 // eslint-disable-next-line camelcase
 const wl_display_interceptor = require('./protocol/wl_display_interceptor')
+// eslint-disable-next-line camelcase
 const wl_buffer_interceptor = require('./protocol/wl_buffer_interceptor')
 
 class NativeClientSession {
@@ -17,6 +18,9 @@ class NativeClientSession {
     const nativeClientSession = new NativeClientSession(wlClient, compositorSession, dataChannel, messageInterceptor)
     nativeClientSession.onDestroy().then(() => {
       if (dataChannel.readyState === 'open' || dataChannel.readyState === 'connecting') {
+        dataChannel.onerror = null
+        dataChannel.onclose = null
+        dataChannel.onmessage = null
         dataChannel.close()
       }
     })
@@ -25,6 +29,7 @@ class NativeClientSession {
       if (nativeClientSession._destroyResolve) {
         nativeClientSession._destroyResolve()
         nativeClientSession._destroyResolve = null
+        nativeClientSession.wlClient = null
       }
     })
     Endpoint.setRegistryCreatedCallback(wlClient, (wlRegistry, registryId) => nativeClientSession._onRegistryCreated(wlRegistry, registryId))
@@ -32,6 +37,7 @@ class NativeClientSession {
     Endpoint.setWireMessageEndCallback(wlClient, (wlClient, fdsIn) => nativeClientSession._onWireMessageEnd(wlClient, fdsIn))
     // send an out-of-band buffer creation message with object-id (1) and opcode (0) when a new buffer resource is created locally.
     Endpoint.setBufferCreatedCallback(wlClient, (bufferId) => {
+      // eslint-disable-next-line new-cap
       messageInterceptor.interceptors[bufferId] = new wl_buffer_interceptor(wlClient, messageInterceptor.interceptors, 1, null, null)
       dataChannel.send(new Uint32Array([1, 0, bufferId]).buffer)
     })
@@ -258,6 +264,7 @@ class NativeClientSession {
       this._destroyResolve()
       this._destroyResolve = null
       Endpoint.destroyClient(this.wlClient)
+      this.wlClient = null
     }
   }
 
@@ -266,6 +273,10 @@ class NativeClientSession {
    * @private
    */
   _onMessage (event) {
+    if (!this.wlClient) {
+      return
+    }
+
     const receiveBuffer = /** @type {ArrayBuffer} */event.data
     const buffer = Buffer.from(receiveBuffer)
     const outOfBand = buffer.readUInt32LE(0, true)
