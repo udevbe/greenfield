@@ -294,11 +294,13 @@ export default class Pointer extends WlPointerRequests {
    *
    */
   setCursor (resource, serial, surfaceResource, hotspotX, hotspotY) {
-    const surface = /** @type {Surface} */surfaceResource.implementation
-    if (surface.role && surface.role !== this) {
-      resource.postError(WlPointerResource.Error.role, 'Given surface has another role.')
-      DEBUG && console.log('Protocol error. Given surface has another role')
-      return
+    if (surfaceResource) {
+      const surface = /** @type {Surface} */surfaceResource.implementation
+      if (surface.role && surface.role !== this) {
+        resource.postError(WlPointerResource.Error.role, 'Given surface has another role.')
+        DEBUG && console.log('Protocol error. Given surface has another role')
+        return
+      }
     }
 
     if (this._dataDevice.dndSourceClient) {
