@@ -26,28 +26,20 @@ class DesktopUserShellSurface extends UserShellSurface {
     const desktopUserShellSurface = new DesktopUserShellSurface(mainView, divElement, seat)
     desktopUserShellSurface._activateOnPointerButton()
 
-    divElement.addEventListener('mousedown', () => {
-      desktopUserShellSurface._activeCallback()
-    })
+    divElement.addEventListener('mousedown', () => desktopUserShellSurface._activeCallback())
     // destroy the mainView if the shell-surface is destroyed
-    surface.resource.onDestroy().then(() => {
-      desktopUserShellSurface.destroy()
-    })
+    surface.resource.onDestroy().then(() => desktopUserShellSurface.destroy())
 
     DesktopUserShellSurface.desktopUserShellSurfaces.push(desktopUserShellSurface)
 
-    seat.addKeyboardResourceListener((wlKeyboardResource) => {
-      if (!desktopUserShellSurface.mainView.destroyed &&
-        desktopUserShellSurface.mainView.surface.resource.client === wlKeyboardResource.client) {
+    const keyboardResourceListener = (wlKeyboardResource) => {
+      if (desktopUserShellSurface.mainView.surface.resource.client === wlKeyboardResource.client) {
         desktopUserShellSurface.wlKeyboardResource = wlKeyboardResource
       }
-    })
-    seat.keyboard.resources.forEach((wlKeyboardResource) => {
-      if (!desktopUserShellSurface.mainView.destroyed &&
-        desktopUserShellSurface.mainView.surface.resource.client === wlKeyboardResource.client) {
-        desktopUserShellSurface.wlKeyboardResource = wlKeyboardResource
-      }
-    })
+    }
+    seat.addKeyboardResourceListener(keyboardResourceListener)
+    desktopUserShellSurface.mainView.onDestroy().then(() => seat.removeKeyboardResourceListener(keyboardResourceListener))
+    seat.keyboard.resources.forEach(keyboardResourceListener)
 
     return desktopUserShellSurface
   }
@@ -183,13 +175,12 @@ class DesktopUserShellSurface extends UserShellSurface {
       return
     }
 
+    this._wlKeyboardResource = wlKeyboardResource
+    this._wlKeyboardResource.onDestroy().then(() => (this._wlKeyboardResource = null))
+
     if (this.active && this._wlKeyboardResource && this._wlKeyboardResource.implementation.focus !== this.mainView.surface) {
       this._giveKeyboardFocus()
     }
-    this._wlKeyboardResource = wlKeyboardResource
-    this._wlKeyboardResource.onDestroy().then(() => {
-      this._wlKeyboardResource = null
-    })
   }
 
   /**
