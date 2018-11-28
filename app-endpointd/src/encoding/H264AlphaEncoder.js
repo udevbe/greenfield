@@ -6,7 +6,7 @@ const EncodedFrame = require('./EncodedFrame')
 const EncodedFrameFragment = require('./EncodedFrameFragment')
 const EncodingOptions = require('./EncodingOptions')
 
-const {h264} = require('./EncodingTypes')
+const { h264 } = require('./EncodingTypes')
 
 const gstFormats = {
   [WlShmFormat.argb8888]: 'BGRA',
@@ -132,10 +132,8 @@ class H264AlphaEncoder {
    * @private
    */
   _configure (width, height, gstBufferFormat) {
-    this._pipeline.pause()
     this._src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1`
     this._scale.caps = `video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)}`
-    this._pipeline.play()
   }
 
   /**
@@ -165,20 +163,20 @@ class H264AlphaEncoder {
       this._sink.pull((opaqueH264) => {
         opaque = opaqueH264
         if (opaque && alpha) {
-          resolve({opaque: opaque, alpha: alpha})
+          resolve({ opaque: opaque, alpha: alpha })
         }
       })
 
       this._alphaSink.pull((alphaH264) => {
         alpha = alphaH264
         if (opaque && alpha) {
-          resolve({opaque: opaque, alpha: alpha})
+          resolve({ opaque: opaque, alpha: alpha })
         }
       })
     })
 
     this._src.push(pixelBuffer)
-    const {opaque, alpha} = await encodingPromise
+    const { opaque, alpha } = await encodingPromise
 
     return EncodedFrameFragment.create(x, y, width, height, opaque, alpha)
   }

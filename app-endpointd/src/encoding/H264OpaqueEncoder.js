@@ -7,7 +7,7 @@ const EncodedFrame = require('./EncodedFrame')
 const EncodedFrameFragment = require('./EncodedFrameFragment')
 const EncodingOptions = require('./EncodingOptions')
 
-const {h264} = require('./EncodingTypes')
+const { h264 } = require('./EncodingTypes')
 
 const gstFormats = {
   [WlShmFormat.argb8888]: 'BGRA',
@@ -100,10 +100,8 @@ class H264OpaqueEncoder {
    * @private
    */
   _configure (width, height, gstBufferFormat) {
-    this._pipeline.pause()
     this._src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1`
     this._scale.caps = `video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)}`
-    this._pipeline.play()
   }
 
   /**
