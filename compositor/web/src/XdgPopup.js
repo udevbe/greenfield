@@ -398,8 +398,7 @@ export default class XdgPopup extends XdgPopupRequests {
     const seat = /** @type {Seat} */ wlSeatResource.implementation
     const pointer = seat.pointer
 
-    // FIXME we can receive an older serial in case a popup is triggered from an older mouse down + mouse move
-    if (serial !== seat.buttonPressSerial) {
+    if (!seat.isValidInputSerial(seat.buttonPressSerial)) {
       this._dismiss()
       DEBUG && console.log('Popup grab input serial mismatch. Ignoring.')
       return
@@ -416,8 +415,7 @@ export default class XdgPopup extends XdgPopupRequests {
     const parentSurface = /** type {Surface} */parentWlSurfaceResource.implementation
     const parentRole = parentSurface.role
     if (parentRole instanceof XdgPopup) {
-      const parentXdgPopupRole = /** @type {XdgPopup} */parentRole
-      if (parentXdgPopupRole.dismissed) {
+      if (parentRole.dismissed) {
         this._dismiss()
         return
       } else if (!pointer.findPopupGrab(parentWlSurfaceResource)) {
