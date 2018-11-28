@@ -101,6 +101,7 @@ export default class Surface extends WlSurfaceRequests {
     Region.initInfinite(inputPixmanRegion)
 
     const bufferStream = new BufferStream()
+    wlSurfaceResource.onDestroy().then(() => bufferStream.destroy())
     wlSurfaceResource.client.setOutOfBandListener(wlSurfaceResource.id, 6, (outOfBandMessage) => {
       // TODO try to improve buffer chunk handling and not slice (=copy) anywhere
       bufferStream.onChunk(outOfBandMessage.slice(2 * Uint32Array.BYTES_PER_ELEMENT))
