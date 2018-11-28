@@ -19,6 +19,7 @@ class NativeCompositorSession {
     )
     Endpoint.initShm(compositorSession.wlDisplay)
     compositorSession.wlDisplayName = Endpoint.addSocketAuto(compositorSession.wlDisplay)
+    console.log(`[app-endpoint-${rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native compositor session: new wayland end-point created: ${compositorSession.wlDisplayName}.`)
 
     // set the wayland display to something non existing, else gstreamer will connect to us with a fallback value and
     // block, while in turn we wait for gstreamer, resulting in a deadlock!
