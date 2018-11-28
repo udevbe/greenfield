@@ -188,7 +188,7 @@ class Seat extends WlSeatRequests {
    */
   nextSerial () {
     this.serial++
-    if (this.serial & (1 << 29)) {
+    if (this.serial & (1 << 24)) {
       this.serial = 0
     }
     return this.serial
@@ -217,11 +217,11 @@ class Seat extends WlSeatRequests {
    */
   nextButtonSerial (down) {
     if (down) {
-      const mask = 1 << 29
+      const mask = 1 << 24
       this.buttonPressSerial = this.nextSerial() | mask
       return this.buttonPressSerial
     } else {
-      const mask = 2 << 29
+      const mask = 2 << 24
       this.buttonReleaseSerial = this.nextSerial() | mask
       return this.buttonReleaseSerial
     }
@@ -233,11 +233,11 @@ class Seat extends WlSeatRequests {
    */
   nextKeySerial (down) {
     if (down) {
-      const mask = 3 << 29
+      const mask = 3 << 24
       this.keyPressSerial = this.nextSerial() | mask
       return this.keyPressSerial
     } else {
-      const mask = 4 << 29
+      const mask = 4 << 24
       this.keyReleaseSerial = this.nextSerial() | mask
       return this.keyReleaseSerial
     }
@@ -249,11 +249,11 @@ class Seat extends WlSeatRequests {
    */
   nextTouchSerial (down) {
     if (down) {
-      const mask = 5 << 29
+      const mask = 5 << 24
       this.touchDownSerial = this.nextSerial() | mask
       return this.touchDownSerial
     } else {
-      const mask = 6 << 29
+      const mask = 6 << 24
       this.touchUpSerial = this.nextSerial() | mask
       return this.touchUpSerial
     }
