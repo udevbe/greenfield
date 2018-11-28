@@ -105,8 +105,6 @@ export default class BufferStream {
    * @private
    */
   _checkChunk (chunk) {
-    // TODO in case of jpeg we could send individual chunks that we can decode immediately as jpeg operates on 8x8 blocks.
-
     // parse chunk header
     const headerSize = 12
     const chunkHeader = new DataView(chunk, 0, headerSize)
@@ -161,5 +159,9 @@ export default class BufferStream {
       // TODO better error handling
       console.error(e)
     }
+  }
+
+  destroy () {
+    Object.values(this._bufferStates).forEach(bufferState => bufferState.completionResolve(null))
   }
 }
