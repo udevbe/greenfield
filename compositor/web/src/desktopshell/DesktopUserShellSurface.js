@@ -37,12 +37,14 @@ class DesktopUserShellSurface extends UserShellSurface {
     DesktopUserShellSurface.desktopUserShellSurfaces.push(desktopUserShellSurface)
 
     seat.addKeyboardResourceListener((wlKeyboardResource) => {
-      if (desktopUserShellSurface.mainView.surface.resource.client === wlKeyboardResource.client) {
+      if (!desktopUserShellSurface.mainView.destroyed &&
+        desktopUserShellSurface.mainView.surface.resource.client === wlKeyboardResource.client) {
         desktopUserShellSurface.wlKeyboardResource = wlKeyboardResource
       }
     })
     seat.keyboard.resources.forEach((wlKeyboardResource) => {
-      if (desktopUserShellSurface.mainView.surface.resource.client === wlKeyboardResource.client) {
+      if (!desktopUserShellSurface.mainView.destroyed &&
+        desktopUserShellSurface.mainView.surface.resource.client === wlKeyboardResource.client) {
         desktopUserShellSurface.wlKeyboardResource = wlKeyboardResource
       }
     })
