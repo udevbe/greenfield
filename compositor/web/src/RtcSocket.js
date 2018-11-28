@@ -47,7 +47,7 @@ export default class RtcSocket {
     // TODO rtc connection options setup
     const peerConnection = new RTCPeerConnection()
     this._appEndpointConnections[appEndpointSessionId] = peerConnection
-    peerConnection.ondatachannel = (event) => this._onDataChannel(event.channel, appEndpointSessionId)
+    peerConnection.ondatachannel = (event) => this._onDataChannel(event.channel, appEndpointSessionId, peerConnection)
 
     peerConnection.onnegotiationneeded = async () => {
       DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - negotiation needed. Sending sdp offer.`)
@@ -90,26 +90,38 @@ export default class RtcSocket {
   /**
    * @param {RTCDataChannel}dataChannel
    * @param {string}appEndpointSessionId
+   * @param peerConnection
    * @private
    */
-  _onDataChannel (dataChannel, appEndpointSessionId) {
+  _onDataChannel (dataChannel, appEndpointSessionId, peerConnection) {
     DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - data channel created.`)
 
     dataChannel.binaryType = 'arraybuffer'
     dataChannel.onopen = () => {
       DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - data channel open.`)
-      const client = this._session.display.createClient()
-      // send out-of-band resource destroy
-      client.addResourceDestroyListener((resource) => {
+
+      const client = this._session.display.createClient((sendBuffer) => {
         if (dataChannel.readyState === 'open') {
-          // data channel might already be closed, even though it's state is still 'open'...
           try {
-            dataChannel.send(new Uint32Array([1, 2, resource.id]).buffer)
+            dataChannel.send(sendBuffer)
           } catch (e) {
             console.log(e.message)
+            client.close()
           }
         }
       })
+
+      client.onClose().then(() => DEBUG && console.log(`[client] - closed.`))
+
+      peerConnection.oniceconnectionstatechange = () => {
+        if (peerConnection.iceConnectionState === 'disconnected') {
+          DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - ice connection state: disconnected.`)
+          client.close()
+        }
+      }
+
+      // send out-of-band resource destroy
+      client.addResourceDestroyListener((resource) => client.sendOutOfBand(1, 2, new Uint32Array([resource.id]).buffer))
 
       dataChannel.onclose = (event) => {
         DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - data channel closed.`)
@@ -157,11 +169,11 @@ export default class RtcSocket {
         })
 
         if (dataChannel.readyState === 'open') {
-          // data channel might already be closed, even though it's state is still 'open'...
           try {
             dataChannel.send(sendBuffer.buffer)
           } catch (e) {
             console.log(e.message)
+            client.close()
           }
         }
       }
