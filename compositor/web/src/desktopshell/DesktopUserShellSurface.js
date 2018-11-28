@@ -5,7 +5,7 @@ import UserShellSurface from '../UserShellSurface'
 /**
  * @implements UserShellSurface
  */
-export default class DesktopUserShellSurface extends UserShellSurface {
+class DesktopUserShellSurface extends UserShellSurface {
   /**
    * @param {Surface}surface
    * @param {Seat}seat
@@ -35,6 +35,17 @@ export default class DesktopUserShellSurface extends UserShellSurface {
     })
 
     DesktopUserShellSurface.desktopUserShellSurfaces.push(desktopUserShellSurface)
+
+    seat.addKeyboardResourceListener((wlKeyboardResource) => {
+      if (desktopUserShellSurface.mainView.surface.resource.client === wlKeyboardResource.client) {
+        desktopUserShellSurface.wlKeyboardResource = wlKeyboardResource
+      }
+    })
+    seat.keyboard.resources.forEach((wlKeyboardResource) => {
+      if (desktopUserShellSurface.mainView.surface.resource.client === wlKeyboardResource.client) {
+        desktopUserShellSurface.wlKeyboardResource = wlKeyboardResource
+      }
+    })
 
     return desktopUserShellSurface
   }
@@ -291,3 +302,5 @@ export default class DesktopUserShellSurface extends UserShellSurface {
  * @type {Array<DesktopUserShellSurface>}
  */
 DesktopUserShellSurface.desktopUserShellSurfaces = []
+
+export default DesktopUserShellSurface
