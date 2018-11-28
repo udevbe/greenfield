@@ -331,8 +331,12 @@ class NativeClientSession {
     const webFd = payload.readUInt32LE(0, true)
     const nativeFd = payload.readUInt32LE(4, true)
     // TODO use callback & listen for errors
-    fs.close(nativeFd)
-    this._dataChannel.send(new Uint32Array([webFd, 128, 0]).buffer)
+    fs.close(nativeFd, (err) => {
+      if (err) {
+        console.error(`Error trying to close fd. ${err.message}`)
+      }
+      this._dataChannel.send(new Uint32Array([webFd, 128, err ? -1 : 0]).buffer)
+    })
   }
 
   /**
