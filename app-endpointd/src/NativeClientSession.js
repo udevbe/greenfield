@@ -1,3 +1,4 @@
+const fs = require('fs')
 const { Endpoint, MessageInterceptor } = require('westfield-endpoint')
 // eslint-disable-next-line camelcase
 const wl_display_interceptor = require('./protocol/wl_display_interceptor')
@@ -118,6 +119,14 @@ class NativeClientSession {
      * @private
      */
     this._disconnecting = false
+
+    this._outOfBandHandlers = {
+      1: {
+        2: (objectId, opcode, payload) => this._destroyResourceSilently(objectId, opcode, payload),
+        127: (objectId, opcode, payload) => this._openAndWriteShm(objectId, opcode, payload),
+        128: (objectId, opcode, payload) => this._closeFd(objectId, opcode, payload)
+      }
+    }
   }
 
   /**
@@ -143,13 +152,8 @@ class NativeClientSession {
         localGlobalsEmitted = this._emitLocalGlobals(messageBuffer)
       }
 
-      Endpoint.sendEvents(
-        this.wlClient,
-        messageBuffer.buffer.slice(messageBuffer.byteOffset, messageBuffer.byteOffset + messageBuffer.byteLength),
-        fdsBuffer.buffer.slice(fdsBuffer.byteOffset, fdsBuffer.byteOffset + fdsBuffer.byteLength)
-      )
+      Endpoint.sendEvents(this.wlClient, messageBuffer, fdsBuffer)
     }
-
     Endpoint.flush(this.wlClient)
   }
 
@@ -283,18 +287,52 @@ class NativeClientSession {
     if (!outOfBand) {
       this._onWireMessageEvents(new Uint32Array(receiveBuffer, Uint32Array.BYTES_PER_ELEMENT))
     } else {
-      // TODO handle out-of-band messages more generically
-      if (outOfBand === 1 && buffer.readUInt32LE(4, true) === 2) {
-        const objectId = buffer.readUInt32LE(8, true)
-        Endpoint.destroyWlResourceSilently(this.wlClient, objectId)
-        delete this._messageInterceptor.interceptors[objectId]
-
-        if (objectId === 1) {
-          // 1 is the display id, which means client is being disconnected
-          this._disconnecting = true
-        }
-      }
+      const opcode = buffer.readUInt32LE(4, true)
+      this._outOfBandHandlers[outOfBand][opcode](outOfBand, opcode, buffer.slice(8))
     }
+  }
+
+  /**
+   * @param {number}objectId
+   * @param {number}opcode
+   * @param {Buffer}payload
+   * @private
+   */
+  _destroyResourceSilently (objectId, opcode, payload) {
+    const deleteObjectId = payload.readUInt32LE(0, true)
+    Endpoint.destroyWlResourceSilently(this.wlClient, deleteObjectId)
+    delete this._messageInterceptor.interceptors[deleteObjectId]
+    if (deleteObjectId === 1) {
+      // 1 is the display id, which means client is being disconnected
+      this._disconnecting = true
+    }
+  }
+
+  /**
+   * @param {number}objectId
+   * @param {number}opcode
+   * @param {Buffer}payload
+   * @private
+   */
+  _openAndWriteShm (objectId, opcode, payload) {
+    const webFd = payload.readUInt32LE(0, true)
+    const contents = payload.slice(4)
+    const nativeFd = Endpoint.createMemoryMappedFile(contents)
+    this._dataChannel.send(new Uint32Array([webFd, 127, nativeFd]).buffer)
+  }
+
+  /**
+   * @param {number}objectId
+   * @param {number}opcode
+   * @param {Buffer}payload
+   * @private
+   */
+  _closeFd (objectId, opcode, payload) {
+    const webFd = payload.readUInt32LE(0, true)
+    const nativeFd = payload.readUInt32LE(4, true)
+    // TODO use callback & listen for errors
+    fs.close(nativeFd)
+    this._dataChannel.send(new Uint32Array([webFd, 128, 0]).buffer)
   }
 
   /**

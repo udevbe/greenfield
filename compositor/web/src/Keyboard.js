@@ -4,6 +4,7 @@ import WlKeyboardRequests from './protocol/WlKeyboardRequests'
 import WlKeyboardResource from './protocol/WlKeyboardResource'
 
 import Xkb from './Xkb'
+import WebFD from './WebFD'
 
 const { pressed, released } = WlKeyboardResource.KeyState
 const { xkbV1 } = WlKeyboardResource.KeymapFormat
@@ -164,16 +165,18 @@ export default class Keyboard extends WlKeyboardRequests {
   /**
    * @param {!WlKeyboardResource}resource
    */
-  async emitKeymap (resource) {
+  emitKeymap (resource) {
     const keymapString = this._xkb.asString()
     const textEncoder = new TextEncoder('utf-8')
-    const keymapBuffer = textEncoder.encode(keymapString)
-    const keymapBufferLength = keymapBuffer.buffer.byteLength
-
-    // TODO use new fd interactions lib to create a new file with the keymap contents on the client's host, then use
-    // the fd of that file to communicate with the client
-    const keymapFd = 0
-    // resource.keymap(xkbV1, keymapFd, keymapBufferLength)
+    const keymapBuffer = textEncoder.encode(keymapString).buffer
+    // TODO We only need to create a new WebFD for each new native client host. Currently there's not really a way
+    // to check this. This way we don't need to re-upload the same data to the same remote host each time.
+    const webFD = WebFD.create(resource.client)
+    webFD.openAndWriteShm(keymapBuffer).then((nativeFd) => {
+      resource.keymap(xkbV1, nativeFd, keymapBuffer.byteLength)
+      resource.client.flush()
+      webFD.close()
+    })
   }
 
   /**
