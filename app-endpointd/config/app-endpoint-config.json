@@ -16,6 +16,7 @@
     }
   },
   "encoder": {
+    "h264-encoder": "x264",
     "max-png-buffer-size": 65536
   }
 }
