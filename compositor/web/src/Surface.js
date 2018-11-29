@@ -681,6 +681,7 @@ export default class Surface extends WlSurfaceRequests {
 
     if (this.pendingWlBuffer) {
       this.pendingWlBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
+      this.pendingWlBuffer.release()
     }
 
     this.pendingWlBuffer = buffer
@@ -908,8 +909,6 @@ export default class Surface extends WlSurfaceRequests {
     if (this.pendingWlBuffer) {
       this.pendingWlBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
       bufferContents = await this._bufferStream.onFrameAvailable(serial)
-      this.pendingWlBuffer.release()
-      this.pendingWlBuffer = null
     }
     if (this.destroyed) {
       return
