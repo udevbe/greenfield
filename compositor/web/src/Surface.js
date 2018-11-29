@@ -822,7 +822,6 @@ export default class Surface extends WlSurfaceRequests {
     } else {
       Region.initInfinite(this._pendingOpaqueRegion)
     }
-    // this._opaqueRegionChanged = true
   }
 
   /**
@@ -914,9 +913,9 @@ export default class Surface extends WlSurfaceRequests {
       return
     }
 
-    const newState = this._captureState(bufferContents)
+    const newState = this._captureState(resource, bufferContents)
 
-    if (this.role && typeof this.role.onCommit === 'function') {
+    if (newState && this.role && typeof this.role.onCommit === 'function') {
       const animationFrame = Renderer.createRenderFrame()
       await this.role.onCommit(this, animationFrame, newState)
       if (newState.inputPixmanRegion) {
@@ -979,9 +978,7 @@ export default class Surface extends WlSurfaceRequests {
       })
     }
 
-    this.views.forEach(view => {
-      view.swapBuffers(renderFrame)
-    })
+    this.views.forEach(view => view.swapBuffers(renderFrame))
   }
 
   /**
@@ -1005,10 +1002,22 @@ export default class Surface extends WlSurfaceRequests {
   }
 
   /**
-   * @return {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}
+   * @return {?{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}
    * @private
    */
-  _captureState (bufferContents) {
+  _captureState (resource, bufferContents) {
+    if (this._pendingBufferScale < 1) {
+      resource.postError(WlSurfaceResource.Error.invalidScale, 'Buffer scale value is invalid.')
+      DEBUG && console.log('Client protocol error. Buffer scale value is invalid.')
+      return null
+    }
+
+    if (!Object.values(WlOutputResource.Transform).includes(this._pendingBufferTransform)) {
+      resource.postError(WlSurfaceResource.Error.invalidTransform, 'Buffer transform value is invalid.')
+      DEBUG && console.log('Client protocol error. Buffer transform value is invalid.')
+      return null
+    }
+
     const self = this
     /**
      * @type {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}
@@ -1113,12 +1122,7 @@ export default class Surface extends WlSurfaceRequests {
    * @override
    */
   setBufferTransform (resource, transform) {
-    if (Object.values(WlOutputResource.Transform).includes(transform)) {
-      this._pendingBufferTransform = transform
-    } else {
-      resource.postError(WlSurfaceResource.Error.invalidTransform, 'Buffer transform value is invalid.')
-      DEBUG && console.log('Protocol error. Buffer transform value is invalid.')
-    }
+    this._pendingBufferTransform = transform
   }
 
   /**
@@ -1155,11 +1159,6 @@ export default class Surface extends WlSurfaceRequests {
    * @override
    */
   setBufferScale (resource, scale) {
-    if (scale < 1) {
-      resource.postError(WlSurfaceResource.Error.invalidScale, 'Buffer scale value is invalid.')
-      DEBUG && console.log('Protocol error. Buffer scale value is invalid.')
-      return
-    }
     this._pendingBufferScale = scale
   }
 
