@@ -24,6 +24,7 @@ import SurfaceChild from './SurfaceChild'
 import Renderer from './render/Renderer'
 import Point from './math/Point'
 import BufferStream from './BufferStream'
+import SurfaceState from './SurfaceState'
 
 /**
  * @type {{transformation: Mat4, inverseTransformation:Mat4}[]}
@@ -154,50 +155,21 @@ export default class Surface extends WlSurfaceRequests {
      */
     this.renderState = null
     /**
-     * @type {!{bufferContents: {type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Callback[], roleState: *}}
+     * @type {SurfaceState}
      */
-    this.state = {
-      /**
-       * @type {{type: string, syncSerial: number, geo: Size, yuvContent: Uint8Array, yuvWidth: number, yuvHeight: number, alphaYuvContent: Uint8Array, alphaYuvWidth: number, alphaYuvHeight: number, pngImage: HTMLImageElement}|null}
-       */
-      bufferContents: null,
-      /**
-       * @type {Array<Rect>}
-       */
-      bufferDamageRects: [],
-      /**
-       * @type{number}
-       */
-      opaquePixmanRegion: opaquePixmanRegion,
-      /**
-       * @type{number}
-       */
-      inputPixmanRegion: inputPixmanRegion,
-      /**
-       * @type{number}
-       */
-      dx: 0,
-      /**
-       * @type{number}
-       */
-      dy: 0,
-      /**
-       * @type{number}
-       */
-      bufferTransform: 0,
-      /**
-       * @type{number}
-       */
-      bufferScale: 1,
-      /**
-       * @type {Callback[]}
-       */
-      frameCallbacks: [],
-      /**
-       * @type {*}
-       */
-      roleState: {}
-    }
+    this.state = SurfaceState.create(
+      null,
+      null,
+      [],
+      opaquePixmanRegion,
+      inputPixmanRegion,
+      0,
+      0,
+      0,
+      1,
+      [],
+      {}
+    )
     /**
      * @type {?WlBufferResource}
      */
@@ -384,7 +356,7 @@ export default class Surface extends WlSurfaceRequests {
   }
 
   /**
-   * @param {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}newState
+   * @param {SurfaceState}newState
    * @private
    */
   _updateDerivedState (newState) {
@@ -480,7 +452,7 @@ export default class Surface extends WlSurfaceRequests {
   /**
    * @param {SurfaceChild}surfaceChild
    * @param {View}view
-   * @return {View|null}
+   * @return {?View}
    * @private
    */
   _ensureChildView (surfaceChild, view) {
@@ -580,7 +552,7 @@ export default class Surface extends WlSurfaceRequests {
 
   /**
    * @param {SurfaceChild}surfaceChild
-   * @param {SurfaceChild[]}siblings
+   * @param {Array<SurfaceChild>}siblings
    * @private
    */
   _removeChild (surfaceChild, siblings) {
@@ -668,7 +640,7 @@ export default class Surface extends WlSurfaceRequests {
    *
    *
    * @param {WlSurfaceResource} resource
-   * @param {WlBufferResource|null} buffer undefined
+   * @param {?WlBufferResource} buffer undefined
    * @param {number} x undefined
    * @param {number} y undefined
    *
@@ -681,7 +653,6 @@ export default class Surface extends WlSurfaceRequests {
 
     if (this.pendingWlBuffer) {
       this.pendingWlBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
-      this.pendingWlBuffer.release()
     }
 
     this.pendingWlBuffer = buffer
@@ -809,7 +780,7 @@ export default class Surface extends WlSurfaceRequests {
    *
    *
    * @param {WlSurfaceResource} resource
-   * @param {WlRegionResource|null} regionResource undefined
+   * @param {?WlRegionResource} regionResource undefined
    *
    * @since 1
    * @override
@@ -851,7 +822,7 @@ export default class Surface extends WlSurfaceRequests {
    *
    *
    * @param {WlSurfaceResource} resource
-   * @param {WlRegionResource|null} regionResource undefined
+   * @param {?WlRegionResource} regionResource undefined
    *
    * @since 1
    * @override
@@ -903,6 +874,9 @@ export default class Surface extends WlSurfaceRequests {
    * @override
    */
   async commit (resource, serial) {
+    if (this.state.wlBuffer) {
+      this.state.wlBuffer.release()
+    }
     let bufferContents = null
 
     if (this.pendingWlBuffer) {
@@ -929,7 +903,7 @@ export default class Surface extends WlSurfaceRequests {
 
   /**
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}newState
+   * @param {SurfaceState}newState
    * @param {boolean=}skipDraw
    */
   async render (renderFrame, newState, skipDraw) {
@@ -983,10 +957,11 @@ export default class Surface extends WlSurfaceRequests {
 
   /**
    * This will invalidate the source state.
-   * @param {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}targetState
-   * @param {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}sourceState
+   * @param {SurfaceState}targetState
+   * @param {SurfaceState}sourceState
    */
   static mergeState (targetState, sourceState) {
+    targetState.wlBuffer = sourceState.wlBuffer
     targetState.dx = sourceState.dx
     targetState.dy = sourceState.dy
 
@@ -1002,7 +977,7 @@ export default class Surface extends WlSurfaceRequests {
   }
 
   /**
-   * @return {?{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}
+   * @return {SurfaceState}
    * @private
    */
   _captureState (resource, bufferContents) {
@@ -1018,66 +993,28 @@ export default class Surface extends WlSurfaceRequests {
       return null
     }
 
-    const self = this
-    /**
-     * @type {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}
-     */
-    const newState = {
-      /**
-       * @type {EncodedFrame|null}
-       */
-      bufferContents: null,
-      /**
-       * @type {Array<Rect>}
-       */
-      bufferDamageRects: [],
-      /**
-       * @type{number}
-       */
-      opaquePixmanRegion: self._pendingOpaqueRegion,
-      /**
-       * @type{number}
-       */
-      inputPixmanRegion: self._pendingInputRegion,
-      /**
-       * @type{number}
-       */
-      dx: self._pendingDx,
-      /**
-       * @type{number}
-       */
-      dy: self._pendingDy,
-      /**
-       * @type{number}
-       */
-      bufferTransform: self._pendingBufferTransform,
-      /**
-       * @type{number}
-       */
-      bufferScale: self._pendingBufferScale,
-      /**
-       * @type {Callback[]}
-       */
-      frameCallbacks: self._pendingFrameCallbacks,
-      /**
-       * @type {*}
-       */
-      roleState: {}
-    }
+    const newState = SurfaceState.create(
+      this.pendingWlBuffer,
+      bufferContents,
+      this._pendingDamageRects.map(rect => this.bufferTransformation.timesRect(rect)).concat(this._pendingBufferDamageRects),
+      this._pendingOpaqueRegion,
+      this._pendingInputRegion,
+      this._pendingDx,
+      this._pendingDy,
+      this._pendingBufferTransform,
+      this._pendingBufferScale,
+      this._pendingFrameCallbacks,
+      {}
+    )
     this._pendingFrameCallbacks = []
-
     this._pendingInputRegion = 0
     this._pendingOpaqueRegion = 0
-
-    newState.bufferDamageRects = this._pendingDamageRects.map(rect => this.bufferTransformation.timesRect(rect)).concat(this._pendingBufferDamageRects)
     this._pendingDamageRects = []
     this._pendingBufferDamageRects = []
 
     if (this.role && this.role.captureRoleState) {
       newState.roleState = this.role.captureRoleState()
     }
-
-    newState.bufferContents = bufferContents
 
     return newState
   }

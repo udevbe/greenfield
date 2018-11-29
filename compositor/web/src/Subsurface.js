@@ -4,7 +4,6 @@ import WlSubsurfaceRequests from './protocol/WlSubsurfaceRequests'
 import WlSubsurfaceResource from './protocol/WlSubsurfaceResource'
 
 import Point from './math/Point'
-import Renderer from './render/Renderer'
 import Surface from './Surface'
 
 /**
@@ -119,7 +118,7 @@ export default class Subsurface extends WlSubsurfaceRequests {
      */
     this.pendingPosition = Point.create(0, 0)
     /**
-     * @type {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}
+     * @type {SurfaceState}
      */
     this._cachedState = wlSurfaceResource.implementation.state
     /**
@@ -151,7 +150,7 @@ export default class Subsurface extends WlSubsurfaceRequests {
   /**
    * @param {Surface}surface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}newState
+   * @param {SurfaceState}newState
    * @return {Promise<void>}
    * @override
    */
@@ -166,13 +165,14 @@ export default class Subsurface extends WlSubsurfaceRequests {
       }
       Surface.mergeState(this._cachedState, newState)
     } else {
+      let renderState = newState
       if (this._cachedState) {
-        // FIXME this will probably overwrite newer state with old cached state? :-/ How to fix this?
-        Surface.mergeState(newState, this._cachedState)
+        Surface.mergeState(this._cachedState, newState)
+        renderState = this._cachedState
         // TODO if we throw away cached state, we need to free the pixman regions in it
         this._cachedState = null
       }
-      await surface.render(renderFrame, newState)
+      await surface.render(renderFrame, renderState)
       renderFrame.fire()
       await renderFrame
       surface.session.flush()
@@ -398,16 +398,6 @@ export default class Subsurface extends WlSubsurfaceRequests {
     }
 
     this._sync = false
-    if (!this._effectiveSync && this._cachedState) {
-      const surface = /** @type {Surface} */this.wlSurfaceResource.implementation
-      const renderFrame = Renderer.createRenderFrame()
-      surface.render(renderFrame, this._cachedState)
-      // TODO if we throw away cached state, we need to free the pixman regions in it
-      this._cachedState = null
-      renderFrame.fire()
-      await renderFrame
-      surface.session.flush()
-    }
   }
 
   /**

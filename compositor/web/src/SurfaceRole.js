@@ -7,7 +7,7 @@ export default class SurfaceRole {
    *
    * @param {Surface}surface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}newState
+   * @param {SurfaceState}newState
    * @return {Promise<void>}
    */
   onCommit (surface, renderFrame, newState) {}

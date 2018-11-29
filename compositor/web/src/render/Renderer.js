@@ -105,7 +105,7 @@ export default class Renderer {
 
   /**
    * @param {Surface}surface
-   * @param {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}newState
+   * @param {SurfaceState}newState
    */
   async render (surface, newState) {
     const views = surface.views

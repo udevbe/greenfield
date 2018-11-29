@@ -197,12 +197,12 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
     if (minWidth < 0 || minHeight < 0 || minWidth > maxWidth || minHeight > maxHeight) {
       this.resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Min size can not be greater than max size.')
-      DEBUG && console.log('[client protocol error] Min size can not be greater than max size.')
+      DEBUG && console.log('[client-protocol-error] Min size can not be greater than max size.')
       return
     }
     if (maxWidth < 0 || maxHeight < 0 || maxWidth < minWidth || maxHeight < minHeight) {
       this.resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Max size can not be me smaller than min size.')
-      DEBUG && console.log('[client protocol error] Max size can not be less than min size.')
+      DEBUG && console.log('[client-protocol-error] Max size can not be less than min size.')
       return
     }
 
@@ -221,7 +221,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
   /**
    * @param {Surface}surface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}newState
+   * @param {SurfaceState}newState
    * @return {Promise<void>}
    * @override
    */
@@ -270,7 +270,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
   /**
    * @param {Surface}surface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}newState
+   * @param {SurfaceState}newState
    * @private
    */
   _resizingCommit (surface, renderFrame, newState) {
@@ -315,7 +315,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
   /**
    * @param {Surface}surface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}newState
+   * @param {SurfaceState}newState
    * @private
    */
   _maximizedCommit (surface, renderFrame, newState) {
@@ -324,7 +324,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
     if (newSurfaceWidth !== roleState.configureState.width || newSurfaceHeight !== roleState.configureState.height) {
       this.resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Surface size does not match configure event.')
-      DEBUG && console.log('[client protocol error] Surface size does not match configure event.')
+      DEBUG && console.log('[client-protocol-error] Surface size does not match configure event.')
       return
     }
 
@@ -348,7 +348,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
   /**
    * @param {Surface}surface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}newState
+   * @param {SurfaceState}newState
    * @private
    */
   _fullscreenCommit (surface, renderFrame, newState) {
@@ -382,7 +382,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
   /**
    * @param {Surface}surface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}newState
+   * @param {SurfaceState}newState
    * @private
    */
   _normalCommit (surface, renderFrame, newState) {
@@ -567,7 +567,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const seat = /** @type {Seat} */wlSeatResource.implementation
 
     if (!seat.isValidInputSerial(serial)) {
-      DEBUG && console.log('showWindowMenu serial mismatch. Ignoring.')
+      DEBUG && console.log('[warning] showWindowMenu serial mismatch. Ignoring.')
       return
     }
 
@@ -617,7 +617,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const seat = /** @type {Seat} */wlSeatResource.implementation
 
     if (!seat.isValidInputSerial(serial)) {
-      DEBUG && console.log('Move serial mismatch. Ignoring.')
+      DEBUG && console.log('[warning] Move serial mismatch. Ignoring.')
       return
     }
 
@@ -710,7 +710,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const pointer = seat.pointer
 
     if (!seat.isValidInputSerial(serial)) {
-      DEBUG && console.log('resize serial mismatch. Ignoring.')
+      DEBUG && console.log('[warning] Resize serial mismatch. Ignoring.')
       return
     }
     // assigned in switch statement

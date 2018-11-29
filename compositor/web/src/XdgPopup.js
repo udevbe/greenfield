@@ -231,7 +231,7 @@ export default class XdgPopup extends XdgPopupRequests {
   /**
    * @param {Surface}surface
    * @param {RenderFrame}renderFrame
-   * @param {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}newState
+   * @param {SurfaceState}newState
    * @return {Promise<void>}
    * @override
    */
@@ -256,7 +256,7 @@ export default class XdgPopup extends XdgPopupRequests {
 
   /**
    * @param {Surface}surface
-   * @param {{bufferContents: EncodedFrame|null, bufferDamageRects: Array<Rect>, opaquePixmanRegion: number, inputPixmanRegion: number, dx: number, dy: number, bufferTransform: number, bufferScale: number, frameCallbacks: Array<Callback>, roleState: *}}newState
+   * @param {SurfaceState}newState
    * @private
    */
   _map (surface, newState) {
@@ -400,13 +400,13 @@ export default class XdgPopup extends XdgPopupRequests {
 
     if (!seat.isValidInputSerial(seat.buttonPressSerial)) {
       this._dismiss()
-      DEBUG && console.log('Popup grab input serial mismatch. Ignoring.')
+      DEBUG && console.log('[warning] Popup grab input serial mismatch. Ignoring.')
       return
     }
 
     if (this.mapped) {
       resource.postError(XdgPopupResource.Error.invalidGrab, 'Client tried to grab popup after it being mapped.')
-      DEBUG && console.log('Protocol error. Client tried to grab popup after it being mapped.')
+      DEBUG && console.error('[client-protocol-error] Client tried to grab popup after it being mapped.')
       return
     }
 
@@ -420,7 +420,7 @@ export default class XdgPopup extends XdgPopupRequests {
         return
       } else if (!pointer.findPopupGrab(parentWlSurfaceResource)) {
         resource.postError(XdgWmBaseResource.Error.invalidPopupParent, 'Popup parent is a popup that did not take an explicit grab.')
-        DEBUG && console.log('Protocol error. Popup parent is a popup that did not take an explicit grab.')
+        DEBUG && console.error('[client-protocol-error]  Popup parent is a popup that did not take an explicit grab.')
         return
       }
     }
@@ -441,7 +441,7 @@ export default class XdgPopup extends XdgPopupRequests {
    * @param {{size: Rect, anchorRect: Rect, anchor: number, gravity: number, constraintAdjustment: number, offset: Point, surfaceSpaceAnchorPoint: (function(XdgSurface): Point), checkScreenConstraints: (function(XdgSurface, View): {topViolation: number, rightViolation: number, bottomViolation: number, leftViolation: number})}}positionerState
    */
   ensureGeometryConstraints (parent, positionerState) {
-    // TODO we can probably rewrite & make this method better using libpixman
+    // TODO we can probably rewrite & make this method better using libpixman(?)
     if (positionerState.constraintAdjustment === none) {
       // we can't even
       return
