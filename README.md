@@ -1,7 +1,7 @@
 # Greenfield :seedling:
 in-browser wayland compositor
 
-Experiment in using [Westfield](https://github.com/udevbe/westfield) together with [webrtc](https://webrtc.org/faq/#what-is-webrtc)/[object-rtc](https://ortc.org/) to create an in-browser wayland compositor.
+Uses [Westfield](https://github.com/udevbe/westfield) together with [webrtc](https://webrtc.org/faq/#what-is-webrtc)/[object-rtc](https://ortc.org/) to create an in-browser wayland compositor.
 
 [![Alt text](https://img.youtube.com/vi/2lyihdFK7EE/0.jpg)](https://www.youtube.com/watch?v=2lyihdFK7EE)
 
@@ -20,11 +20,29 @@ Supported toolkits are:
  - GTK+ 3.22.30 (tested)
  - Qt 5.11 (untested)
 
-## Future :unicorn: :rainbow:
-
+## Present & Future 
 Greenfield is in essence an entire Wayland compositor running in the browser. As such it does not care where and how
-client applications run. This has some interesting implications as it allows for client applications to run directly in the browser inside a web 
-worker. All that is required is a Javascript widget toolkit that can:
+client applications run. This has some interesting implications:
+
+- ####Distributed back-end
+
+
+Native wayland applications can connect to an in-browser compositor by talking to a local application endpoint daemon.
+This application endpoint daemon presents itself as a locally running wayland compositor while in reality it forwards
+(nearly) all messages between the the actual browser compositor & the native application. The in-browser compositor is 
+not limited to handling a single application endpoint. Any number of endpoints can establish a connection. This implies 
+that *different wayland application can run on different (physical) hosts*.
+
+The process serving the compositor javascript & html files also functions as the discovery point between application endpoints
+and connected browser compositors. It allows for application endpoints and connected browsers to setup a direct WebRTC 
+data channel, resulting in no intermediate relaying between a native application & the remote browser.
+
+
+- ####Web worker :unicorn: :rainbow:
+
+
+A different (future) variation on distributed applications is to run them using a web worker inside the user's browser. 
+All that is required is a javascript/browser widget toolkit that can:
  - render it's content to an ArrayBuffer (as web workers do not have their own DOM), or can render to an off-screen WebGL accelerated canvas.
  - communicating with the compositor using the Wayland protocol.
  
@@ -53,105 +71,5 @@ At runtime you will also need gstreamer-1.x with the following plugins:
 Running :running_man:
 =======
 
-Open a browser, preferably Firefox or Chrome.
-
-### Development mode :hammer_and_wrench:
-- Hot module redeploy support
-- Single server process
-- Max 1 connection
-- Port `8080`
-- Ideal for testing and demoing
-
-`npm run start:dev`
-
-### Production mode :racing_car:
- - Optimized and minimized build
- - One parent http server process for incoming connections
- - Separate child process for each accepted connection. (one server side child process per spawned compositor instance)
- - Configurable
 
 `npm start` 
-
-To create a distributable build, run `./build-dist.sh`. This will create a `dist` folder with a `greenfield` executable.
-This executable is a self contained node instance with all bundled javascript sources. The native *.node dependencies 
-inside the dist folder must be located next to the `greenfield` executable. Gstreamer dependencies are expected to be
-present on the system.
-
-
-### Configuration :scroll:
-A production or development build accepts a config file in json format. The config file can be specified as the first argument to the greenfield
-executable.
-
-
-example_config.json
-```json
-{
-  "http-server": {
-    "port": 8080,
-    "socket-timeout": 6000,
-    "static-dirs": [
-      {
-        "http-path": "/apps/icons",
-        "fs-path": "./app-entries/"
-      }
-    ]
-  },
-  "png-encoder": {
-    "max-target-buffer-size": 4096
-  },
-  "desktop-shell": {
-    "apps-controller": {
-      "app-entries-urls": [
-        "file:./app-entries/"
-      ]
-    }
-  }
-}
-```
-
-key |value
-:----|:----
-http-server.port|port number (default `8080`)
-http-server.socket-timeout| socket connection timeout (default `6000`)
-http-server.static-dirs|Array of object with keys `http-path` and `fs-path`, denoting the mapping between the http url and the directory on disk. The primary use case of this property is to expose directories containing application icons.
-png-encoder.max-target-buffer-size| Maximum number of pixels before the encoding process will switch from png encoding to h264.
-desktop-shell.apps-controller.app-entries-urls| Array of url strings describing where app entry definitions can be found. Accepted `app-entries-url` location protocols are `file`, `http` or `https`.
-
-`./greenfield example_config.json` 
-
-or
-
-`npm start -- example_config.json`
-
-### Application Entries :rocket:
-Greenfield uses so called application entries to dynamically expose available applications to a connected user. Application entry sources are defined using
-the config proprety: `desktop-shell.apps-controller.app-entries-urls`.
-
-Application entries can be queried from an `http`, `https` GET or a single `file` on disk.
-
-`all-entries.json`
-```json
-[
-  {
-    "executable": "/path/to/weston-simple-egl",
-    "name": "Weston Simple EGL",
-    "description": "A spinning rgb triangle",
-    "icon": "apps/icons/weston-simple-egl.svg"
-  },
-  {
-    "executable": "/path/to/weston-terminal",
-    "name": "Weston Terminal",
-    "description": "A minimal terminal emulator",
-    "icon": "apps/icons/weston-terminal.svg"
-  }
-]
-```
-
-Alternatively, in case the `file` url points to a directory, individual entries can be specified in a separates files.
-
-key |value
-:----|:----
-executable|The binary that will be executed once the user clicks this application's icon.
-name|The name of the application that will be shown to the user under the application icon
-description|The description of the application that will be shown to the user on mouse over.
-icon|the relative http path where the application icon can be found
