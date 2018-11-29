@@ -24,8 +24,7 @@ Supported toolkits are:
 Greenfield is in essence an entire Wayland compositor running in the browser. As such it does not care where and how
 client applications run. This has some interesting implications:
 
-- ####Distributed back-end
-
+- #### Distributed back-end
 
 Native wayland applications can connect to an in-browser compositor by talking to a local application endpoint daemon.
 This application endpoint daemon presents itself as a locally running wayland compositor while in reality it forwards
@@ -38,8 +37,7 @@ and connected browser compositors. It allows for application endpoints and conne
 data channel, resulting in no intermediate relaying between a native application & the remote browser.
 
 
-- ####Web worker :unicorn: :rainbow:
-
+- #### Web worker :unicorn: :rainbow:
 
 A different (future) variation on distributed applications is to run them using a web worker inside the user's browser. 
 All that is required is a javascript/browser widget toolkit that can:
@@ -49,14 +47,22 @@ All that is required is a javascript/browser widget toolkit that can:
 This approach allows for a pure client side application to run inside the browser without the drawbacks of network latency or server load,
 while still being able to interact (copy/paste & drag'n drop) with native server-side applications.
 
-Installation :computer:
+Installation :computer: and running :running_man:
 ============
 
-Clone this repo and inside the cloned directory run:
+Clone this repo.
 
-`npm install`
+- compositor:
+  
+  Inside the `compositor` directory run `npm install`. To start the compositor run `npm start:dev`. Open a browser
+  (firefox or chrome) and go to `localhost:8080`.
+  
+- application end-point
 
-At runtime you will also need gstreamer-1.x with the following plugins:
+  Inside the `app-endpointd` directory run `npm install`. To start the end-point daemon, first make sure the compositor
+   is running, then start the endpoint with `npm start`.
+
+At runtime, the endpoint will need gstreamer-1.x with the following plugins:
 - appsrc
 - glupload
 - glcolorconvert
@@ -67,9 +73,3 @@ At runtime you will also need gstreamer-1.x with the following plugins:
 - x264enc
 - pngenc
 - appsink
-
-Running :running_man:
-=======
-
-
-`npm start` 
