@@ -19,15 +19,19 @@ class NativeCompositorSession {
     )
     Endpoint.initShm(compositorSession.wlDisplay)
     compositorSession.wlDisplayName = Endpoint.addSocketAuto(compositorSession.wlDisplay)
-    console.log(`[app-endpoint-${rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native compositor session: new wayland end-point created: ${compositorSession.wlDisplayName}.`)
+    console.log(`[app-endpoint-${rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native compositor session: created new app-endpoint.`)
+    console.log(`[app-endpoint-${rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native compositor session: compositor listening on: WAYLAND_DISPLAY="${compositorSession.wlDisplayName}".`)
 
     // set the wayland display to something non existing, else gstreamer will connect to us with a fallback value and
     // block, while in turn we wait for gstreamer, resulting in a deadlock!
+    // FIXME this can be removed once we move all the buffer encoding to native code with a programmatically constructed
+    // gstreamer pipeline using a headless option
     process.env.WAYLAND_DISPLAY = 'doesntExist'
 
     compositorSession.wlDisplayFd = Endpoint.getFd(compositorSession.wlDisplay)
 
     // TODO handle err
+    // FIXME write our own native epoll
     const fdWatcher = new Epoll(err => Endpoint.dispatchRequests(compositorSession.wlDisplay))
     fdWatcher.add(compositorSession.wlDisplayFd, Epoll.EPOLLPRI | Epoll.EPOLLIN | Epoll.EPOLLERR)
 
@@ -87,7 +91,6 @@ class NativeCompositorSession {
    * @private
    */
   _onGlobalCreated (globalName) {
-    process.env.DEBUG && console.log(`[app-endpoint-${this.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native compositor session: native global registered with name: ${globalName}.`)
     nativeGlobalNames.push(globalName)
   }
 
