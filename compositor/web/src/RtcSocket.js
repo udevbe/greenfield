@@ -48,7 +48,12 @@ export default class RtcSocket {
     const pcConfig = {
       'iceServers': [
         { 'urls': ['stun:stun.l.google.com:19302'] },
-        { 'urls': ['turn:gftest.udev.be'] }
+        {
+          'urls': ['turn:gftest.udev.be'],
+          'credentialType': 'password',
+          'username': 'greenfield',
+          'credential': 'bluesky'
+        }
       ]
     }
     const peerConnection = new RTCPeerConnection(pcConfig)
