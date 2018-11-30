@@ -47,7 +47,6 @@ export default class RtcSocket {
     // TODO rtc connection options setup
     const pcConfig = {
       'iceServers': [
-        { 'urls': ['stun:stun.l.google.com:19302'] },
         {
           'urls': ['turn:gftest.udev.be'],
           'credentialType': 'password',
