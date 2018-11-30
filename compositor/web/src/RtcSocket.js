@@ -45,7 +45,13 @@ export default class RtcSocket {
     // TODO show to user status of app-endpoints (peer connection state)
 
     // TODO rtc connection options setup
-    const peerConnection = new RTCPeerConnection()
+    const pcConfig = {
+      'iceServers': [
+        { 'urls': ['stun:stun.l.google.com:19302'] },
+        { 'urls': ['turn:gftest.udev.be'] }
+      ]
+    }
+    const peerConnection = new RTCPeerConnection(pcConfig)
     this._appEndpointConnections[appEndpointSessionId] = peerConnection
     peerConnection.ondatachannel = (event) => this._onDataChannel(event.channel, appEndpointSessionId, peerConnection)
 

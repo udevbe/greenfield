@@ -13,7 +13,13 @@ class RtcClient {
     // TODO reject on error
     return new Promise((resolve) => {
       // TODO rtc peer connection options from config
-      const peerConnection = new webRTC.RTCPeerConnection()
+      const pcConfig = {
+        'iceServers': [
+          { 'urls': ['stun:stun.l.google.com:19302'] },
+          { 'urls': ['turn:gftest.udev.be'] }
+        ]
+      }
+      const peerConnection = new webRTC.RTCPeerConnection(pcConfig)
       const rtcClient = new RtcClient(appEndpointCompositorPair, peerConnection)
       peerConnection.onicecandidate = evt => {
         const candidate = evt.candidate
