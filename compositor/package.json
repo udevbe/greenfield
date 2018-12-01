@@ -34,7 +34,7 @@
   "homepage": "https://github.com/udevbe/greenfield#readme",
   "dependencies": {
     "express": "^4.16.3",
-    "westfield-runtime-server": "0.1.0",
+    "westfield-runtime-server": "0.1.1",
     "ws": "^6.1.0"
   },
   "devDependencies": {
@@ -46,11 +46,8 @@
     "style-loader": "^0.23.1",
     "webpack": "^4.20.2",
     "webpack-cli": "^3.1.2",
-    "webpack-closure-compiler": "^2.1.6",
-    "webpack-dev-middleware": "^3.4.0",
-    "webpack-hot-middleware": "^2.24.3",
     "webpack-merge": "^4.1.4",
-    "westfield-scanner-server": "0.1.0"
+    "westfield-scanner-server": "0.1.1"
   },
   "pkg": {
     "scripts": [
@@ -60,8 +57,5 @@
     "assets": [
       "./web/dist/**/*"
     ]
-  },
-  "optionalDependencies": {
-    "bufferutil": "^3.0.5"
   }
 }
