@@ -12,7 +12,7 @@ class NativeClientSession {
    * @returns {NativeClientSession}
    */
   static create (wlClient, compositorSession) {
-    const dataChannel = compositorSession.rtcClient.peerConnection.createDataChannel()
+    const dataChannel = compositorSession.rtcClient.peerConnection.createDataChannel('', { ordered: true })
     dataChannel.binaryType = 'arraybuffer'
 
     const messageInterceptor = MessageInterceptor.create(wlClient, compositorSession.wlDisplay, wl_display_interceptor, { dataChannel })
