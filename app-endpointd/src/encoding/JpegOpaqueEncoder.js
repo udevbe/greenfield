@@ -7,7 +7,7 @@ const EncodedFrame = require('./EncodedFrame')
 const EncodedFrameFragment = require('./EncodedFrameFragment')
 const EncodingOptions = require('./EncodingOptions')
 
-const {jpeg} = require('./EncodingTypes')
+const { jpeg } = require('./EncodingTypes')
 
 const gstFormats = {
   [WlShmFormat.argb8888]: 'BGRA',
@@ -138,22 +138,14 @@ class JpegOpaqueEncoder {
    * @param {number}bufferWidth
    * @param {number}bufferHeight
    * @param {number}serial
-   * @param {Array<{x:number, y:number, width:number, height:number}>}damage
    * @return {Promise<EncodedFrame>}
    * @override
    */
-  async encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial, damage) {
+  async encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial) {
     let encodingOptions = 0
-    if (damage.length) {
-      const encodedFrameFragments = await Promise.all(damage.map(damageRect => {
-        return this._encodeFragment(pixelBuffer, wlShmFormat, damageRect.x, damageRect.y, damageRect.width, damageRect.height)
-      }))
-      return EncodedFrame.create(serial, jpeg, encodingOptions, bufferWidth, bufferHeight, encodedFrameFragments)
-    } else {
-      encodingOptions = EncodingOptions.enableFullFrame(encodingOptions)
-      const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)
-      return EncodedFrame.create(serial, jpeg, encodingOptions, bufferWidth, bufferHeight, [encodedFrameFragment])
-    }
+    encodingOptions = EncodingOptions.enableFullFrame(encodingOptions)
+    const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)
+    return EncodedFrame.create(serial, jpeg, encodingOptions, bufferWidth, bufferHeight, [encodedFrameFragment])
   }
 }
 

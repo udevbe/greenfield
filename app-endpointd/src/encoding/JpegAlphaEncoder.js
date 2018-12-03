@@ -1,13 +1,12 @@
 const gstreamer = require('gstreamer-superficial')
-const greenfieldNative = require('greenfield-native')
 
-const WlShmFormat = require('./protocol/wayland/WlShmFormat')
+const WlShmFormat = require('./WlShmFormat')
 
 const EncodedFrame = require('./EncodedFrame')
 const EncodedFrameFragment = require('./EncodedFrameFragment')
 const EncodingOptions = require('./EncodingOptions')
 
-const {jpeg} = require('./EncodingTypes')
+const { jpeg } = require('./EncodingTypes')
 
 const gstFormats = {
   [WlShmFormat.argb8888]: 'BGRA',
@@ -155,20 +154,20 @@ class JpegAlphaEncoder {
       this._sink.pull((opaqueJpeg) => {
         opaque = opaqueJpeg
         if (opaque && alpha) {
-          resolve({opaque: opaque, alpha: alpha})
+          resolve({ opaque: opaque, alpha: alpha })
         }
       })
 
       this._alphaSink.pull((alphaJpeg) => {
         alpha = alphaJpeg
         if (opaque && alpha) {
-          resolve({opaque: opaque, alpha: alpha})
+          resolve({ opaque: opaque, alpha: alpha })
         }
       })
     })
 
     this._src.push(pixelBuffer)
-    const {opaque, alpha} = await encodingPromise
+    const { opaque, alpha } = await encodingPromise
 
     return EncodedFrameFragment.create(x, y, width, height, opaque, alpha)
   }
@@ -179,34 +178,15 @@ class JpegAlphaEncoder {
    * @param {number}bufferWidth
    * @param {number}bufferHeight
    * @param {number}serial
-   * @param {Array<{x:number, y:number, width:number, height:number}>}damage
    * @return {Promise<EncodedFrame>}
    * @override
    */
-  async encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial, damage) {
+  async encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial) {
     let encodingOptions = 0
     encodingOptions = EncodingOptions.enableSplitAlpha(encodingOptions)
-
-    if (damage.length) {
-      const encodedFrameFragments = []
-      for (let i = 0; i < damage.length; i++) {
-        const damageRect = damage[i]
-        // ensure at least 16 width & 16 height, else jpeg encoding fails
-        damageRect.width = damageRect.width < 16 ? 16 : damageRect.width
-        damageRect.height = damageRect.height < 16 ? 16 : damageRect.height
-        // compensate x & y clipping offset in case we go out of bounds
-        damageRect.x = damageRect.x + damageRect.width > bufferWidth ? damageRect.x - (damageRect.x + damageRect.width - bufferWidth) : damageRect.x
-        damageRect.y = damageRect.y + damageRect.height > bufferHeight ? damageRect.y - (damageRect.y + damageRect.height - bufferHeight) : damageRect.y
-
-        const clippedBuffer = greenfieldNative.clip(pixelBuffer, bufferWidth, bufferHeight, damageRect.x, damageRect.y, damageRect.width, damageRect.height)
-        encodedFrameFragments.push(await this._encodeFragment(clippedBuffer, wlShmFormat, damageRect.x, damageRect.y, damageRect.width, damageRect.height))
-      }
-      return EncodedFrame.create(serial, jpeg, encodingOptions, bufferWidth, bufferHeight, encodedFrameFragments)
-    } else {
-      encodingOptions = EncodingOptions.enableFullFrame(encodingOptions)
-      const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)
-      return EncodedFrame.create(serial, jpeg, encodingOptions, bufferWidth, bufferHeight, [encodedFrameFragment])
-    }
+    encodingOptions = EncodingOptions.enableFullFrame(encodingOptions)
+    const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)
+    return EncodedFrame.create(serial, jpeg, encodingOptions, bufferWidth, bufferHeight, [encodedFrameFragment])
   }
 }
 

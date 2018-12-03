@@ -187,11 +187,10 @@ class H264AlphaEncoder {
    * @param {number}bufferWidth
    * @param {number}bufferHeight
    * @param {number}serial
-   * @param {Array<{x:number, y:number, width:number, height:number}>}damage
    * @return {Promise<EncodedFrame>}
    * @override
    */
-  async encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial, damage) {
+  async encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial) {
     let encodingOptions = 0
     encodingOptions = EncodingOptions.enableSplitAlpha(encodingOptions)
     encodingOptions = EncodingOptions.enableFullFrame(encodingOptions)

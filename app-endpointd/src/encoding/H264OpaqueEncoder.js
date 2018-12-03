@@ -146,22 +146,14 @@ class H264OpaqueEncoder {
    * @param {number}bufferWidth
    * @param {number}bufferHeight
    * @param {number}serial
-   * @param {Array<{x:number, y:number, width:number, height:number}>}damage
    * @return {Promise<EncodedFrame>}
    * @override
    */
-  async encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial, damage) {
+  async encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial) {
     let encodingOptions = 0
-    if (damage.length) {
-      const encodedFrameFragments = await Promise.all(damage.map(damageRect => {
-        return this._encodeFragment(pixelBuffer, wlShmFormat, damageRect.x, damageRect.y, damageRect.width, damageRect.height)
-      }))
-      return EncodedFrame.create(serial, h264, encodingOptions, bufferWidth, bufferHeight, encodedFrameFragments)
-    } else {
-      encodingOptions = EncodingOptions.enableFullFrame(encodingOptions)
-      const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)
-      return EncodedFrame.create(serial, h264, encodingOptions, bufferWidth, bufferHeight, [encodedFrameFragment])
-    }
+    encodingOptions = EncodingOptions.enableFullFrame(encodingOptions)
+    const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)
+    return EncodedFrame.create(serial, h264, encodingOptions, bufferWidth, bufferHeight, [encodedFrameFragment])
   }
 }
 
