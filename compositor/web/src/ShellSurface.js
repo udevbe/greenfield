@@ -272,7 +272,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     const seat = /** @type {Seat} */wlSeatResource.implementation
 
     if (!seat.isValidInputSerial(serial)) {
-      DEBUG && console.log('move serial mismatch. Ignoring.')
+      DEBUG && console.log('[client-protocol-warning] - Move serial mismatch. Ignoring.')
       return
     }
 
@@ -327,7 +327,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
   resize (resource, wlSeatResource, serial, edges) {
     const seat = /** @type {Seat} */wlSeatResource.implementation
     if (!seat.isValidInputSerial(serial)) {
-      DEBUG && console.log('resize serial mismatch. Ignoring.')
+      DEBUG && console.log('[client-protocol-warning] - Resize serial mismatch. Ignoring.')
       return
     }
 
@@ -582,12 +582,11 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    */
   async setPopup (resource, wlSeatResource, serial, parent, x, y, flags) {
     const seat = /** @type {Seat} */wlSeatResource.implementation
-    // FIXME we can receive an older serial in case a popup is triggered from an older mouse down + mouse move
-    // if (serial !== seat.inputSerial) {
-    //   this._dismiss()
-    //   DEBUG && console.log('Popup grab input serial mismatch. Ignoring.')
-    //   return
-    // }
+    if (!seat.isValidInputSerial(seat.buttonPressSerial)) {
+      this._dismiss()
+      DEBUG && console.log('[client-protocol-warning] - Popup grab input serial mismatch. Ignoring.')
+      return
+    }
 
     if (this.state) { return }
 

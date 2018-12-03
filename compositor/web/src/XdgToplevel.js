@@ -567,7 +567,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const seat = /** @type {Seat} */wlSeatResource.implementation
 
     if (!seat.isValidInputSerial(serial)) {
-      DEBUG && console.log('[warning] showWindowMenu serial mismatch. Ignoring.')
+      DEBUG && console.log('[client-protocol-warning] - showWindowMenu serial mismatch. Ignoring.')
       return
     }
 
@@ -617,7 +617,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const seat = /** @type {Seat} */wlSeatResource.implementation
 
     if (!seat.isValidInputSerial(serial)) {
-      DEBUG && console.log('[warning] Move serial mismatch. Ignoring.')
+      DEBUG && console.log('[client-protocol-warning] - Move serial mismatch. Ignoring.')
       return
     }
 
@@ -710,7 +710,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const pointer = seat.pointer
 
     if (!seat.isValidInputSerial(serial)) {
-      DEBUG && console.log('[warning] Resize serial mismatch. Ignoring.')
+      DEBUG && console.log('[client-protocol-warning] - Resize serial mismatch. Ignoring.')
       return
     }
     // assigned in switch statement

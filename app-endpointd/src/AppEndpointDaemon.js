@@ -77,12 +77,12 @@ class AppEndpointDaemon {
       // uncomment next line for debugging support in the child process
       // process.execArgv.push('--inspect-brk=0')
 
-      console.log('[app-endpoint-daemon] Creating new child process.')
+      console.log('[app-endpoint-daemon] - Creating new child process.')
       const configPath = process.argv[2]
       child = childProcess.fork(path.join(__dirname, 'appEndpointSessionIndex.js'), configPath == null ? [] : [`${configPath}`])
 
       const removeChild = () => {
-        console.log(`[app-endpoint-daemon] Child [${child.pid}] exit.`)
+        console.log(`[app-endpoint-daemon] - Child [${child.pid}] exit.`)
         delete this._appEndpointSessionForks[compositorSessionId]
       }
 
@@ -122,7 +122,7 @@ class AppEndpointDaemon {
    * @private
    */
   _onClose (event) {
-    console.log(`[app-endpoint-daemon] Web socket is closed. ${event.code}: ${event.reason}`)
+    console.log(`[app-endpoint-daemon] - Web socket is closed. ${event.code}: ${event.reason}.`)
     this.destroy()
   }
 
@@ -137,12 +137,12 @@ class AppEndpointDaemon {
     if (intent === 'announceCompositor' && uuidRegEx.test(compositorSessionId)) {
       const appEndpointSessionFork = this.createAppEndpointSessionFork(compositorSessionId)
       this.onDestroy().then(() => {
-        console.log(`[app-endpoint-daemon] Sending child ${appEndpointSessionFork.pid} SIGKILL`)
+        console.log(`[app-endpoint-daemon] - Sending child ${appEndpointSessionFork.pid} SIGKILL.`)
         appEndpointSessionFork.kill('SIGKILL')
       })
       appEndpointSessionFork.send(message)
     } else {
-      process.env.DEBUG && console.log(`[app-endpoint-daemon] Received an illegal message. Expected message with properties 'intent=announce' and 'compositorSessionId=uuid'. Instead got:\\n${eventData}.`)
+      process.env.DEBUG && console.log(`[app-endpoint-daemon] - Received an illegal message. Expected message with properties 'intent=announce' and 'compositorSessionId=uuid'. Instead got:\\n${eventData}.`)
       this.webSocket.close(4007, `Received an illegal message. Expected message with properties 'intent=announce' and 'compositorSessionId=uuid'. Instead got:\n${eventData}.`)
     }
   }

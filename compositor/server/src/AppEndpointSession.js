@@ -13,7 +13,7 @@ class AppEndpointSession {
    */
   static async create (wss, compositorSession, id, headers, method, head, socket) {
     return new Promise((resolve) => {
-      process.env.DEBUG && console.log(`[compositor-session-${compositorSession.id}] [app-endpoint-${id}] New instance created.`)
+      process.env.DEBUG && console.log(`[compositor-session: ${compositorSession.id}] [app-endpoint: ${id}] - New instance created.`)
       wss.handleUpgrade({
         headers: headers,
         method: method
@@ -30,7 +30,7 @@ class AppEndpointSession {
           appEndpointSession._onError(event)
         }
 
-        process.env.DEBUG && console.log(`[compositor-session-${compositorSession.id}] [app-endpoint-${id}] Web socket open.`)
+        process.env.DEBUG && console.log(`[compositor-session: ${compositorSession.id}] [app-endpoint: ${id}] - Web socket open.`)
         resolve(appEndpointSession)
       })
     })
@@ -91,10 +91,10 @@ class AppEndpointSession {
   _onMessage (event) {
     try {
       const eventData = event.data
-      process.env.DEBUG && console.log(`[compositor-session-${this._compositorSession.id}] [app-endpoint-${this.id}] Receiving incoming application endpoint message: ${eventData}. Forwarding to browser.`)
+      process.env.DEBUG && console.log(`[compositor-session: ${this._compositorSession.id}] [app-endpoint: ${this.id}] - Receiving incoming application endpoint message: ${eventData}. Forwarding to browser.`)
       this._compositorSession.webSocket.send(eventData)
     } catch (error) {
-      console.error(`[compositor-session-${this._compositorSession.id}] [app-endpoint-${this.id}] Failed to handle incoming message. \n${error}\n${error.stack}`)
+      console.error(`[compositor-session: ${this._compositorSession.id}] [app-endpoint: ${this.id}] - Failed to handle incoming message. \n${error}\n${error.stack}`)
       this.webSocket.close(4007, `App endpoint session [${this.id}] received an illegal message.`)
     }
   }
@@ -104,7 +104,7 @@ class AppEndpointSession {
    * @private
    */
   _onClose (event) {
-    console.log(`[compositor-session-${this._compositorSession.id}] [app-endpoint-${this.id}] Web socket is closed. ${event.code}: ${event.reason}`)
+    console.log(`[compositor-session: ${this._compositorSession.id}] [app-endpoint: ${this.id}] Web socket is closed. ${event.code}: ${event.reason}`)
     this.webSocket = null
     this.destroy()
   }
@@ -114,7 +114,7 @@ class AppEndpointSession {
    * @private
    */
   _onError (event) {
-    console.error(`[compositor-session-${this._compositorSession.id}] [app-endpoint-${this.id}] Web socket is in error.`)
+    console.error(`[compositor-session: ${this._compositorSession.id}] [app-endpoint: ${this.id}] Web socket is in error.`)
   }
 }
 

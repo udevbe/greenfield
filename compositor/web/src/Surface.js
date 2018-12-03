@@ -983,13 +983,13 @@ export default class Surface extends WlSurfaceRequests {
   _captureState (resource, bufferContents) {
     if (this._pendingBufferScale < 1) {
       resource.postError(WlSurfaceResource.Error.invalidScale, 'Buffer scale value is invalid.')
-      DEBUG && console.log('Client protocol error. Buffer scale value is invalid.')
+      DEBUG && console.log('[client-protocol-error] - Buffer scale value is invalid.')
       return null
     }
 
     if (!Object.values(WlOutputResource.Transform).includes(this._pendingBufferTransform)) {
       resource.postError(WlSurfaceResource.Error.invalidTransform, 'Buffer transform value is invalid.')
-      DEBUG && console.log('Client protocol error. Buffer transform value is invalid.')
+      DEBUG && console.log('[client-protocol-error] - Buffer transform value is invalid.')
       return null
     }
 

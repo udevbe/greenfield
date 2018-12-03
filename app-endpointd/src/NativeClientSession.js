@@ -345,7 +345,7 @@ class NativeClientSession {
    */
   _onError (event) {
     // TODO log error
-    process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: RTC data channel is in error ${JSON.stringify(event.error)}.`)
+    process.env.DEBUG && console.log(`[app-endpoint: ${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] - Native client session: RTC data channel is in error ${JSON.stringify(event.error)}.`)
   }
 
   /**
@@ -353,7 +353,7 @@ class NativeClientSession {
    * @private
    */
   _onClose (event) {
-    process.env.DEBUG && console.log(`[app-endpoint-${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: RTC data channel is closed.`)
+    process.env.DEBUG && console.log(`[app-endpoint: ${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] - Native client session: RTC data channel is closed.`)
     this.destroy()
   }
 

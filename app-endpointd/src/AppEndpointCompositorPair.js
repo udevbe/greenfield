@@ -31,7 +31,7 @@ class AppEndpointCompositorPair {
       // TODO listen for connection failure and reject promise
       const webSocket = new WebSocket(websocketUrl)
       const appEndpointCompositorPair = new AppEndpointCompositorPair(webSocket, appEndpointSessionId, compositorSessionId)
-      process.env.DEBUG && console.log(`[app-endpoint-${appEndpointSessionId}] New instance created for compositor session: ${compositorSessionId}.`)
+      process.env.DEBUG && console.log(`[app-endpoint: ${appEndpointSessionId}] - New instance created for compositor session: ${compositorSessionId}.`)
 
       webSocket.onclose = e => appEndpointCompositorPair._onClose(e)
       webSocket.onerror = e => reject(e.error)
@@ -39,7 +39,7 @@ class AppEndpointCompositorPair {
 
       webSocket.onopen = () => {
         webSocket.onerror = (e) => appEndpointCompositorPair._onError(e)
-        console.log(`[app-endpoint-${appEndpointSessionId}] Web socket connected to ${websocketUrl}.`)
+        console.log(`[app-endpoint: ${appEndpointSessionId}] - Web socket connected to ${websocketUrl}.`)
         resolve(appEndpointCompositorPair)
       }
     })
@@ -110,13 +110,13 @@ class AppEndpointCompositorPair {
    */
   _onMessage (event) {
     const eventData = event.data
-    process.env.DEBUG && console.log(`[app-endpoint-${this.appEndpointSessionId}] Message received: ${eventData}.`)
+    process.env.DEBUG && console.log(`[app-endpoint: ${this.appEndpointSessionId}] - Message received: ${eventData}.`)
     const message = JSON.parse(/** @types {string} */eventData)
     const { object, method, args } = message
     try {
       this.messageHandlers[object][method](args)
     } catch (error) {
-      process.env.DEBUG && console.error(`[app-endpoint-${this.appEndpointSessionId}] failed to handle incoming message. object=${object}:method=${method}:args=${args}\n${error}\n${error.stack}`)
+      process.env.DEBUG && console.error(`[app-endpoint: ${this.appEndpointSessionId}] - failed to handle incoming message. object=${object}:method=${method}:args=${args}\n${error}\n${error.stack}`)
       this.webSocket.close(4007, `Web socket received an illegal message.`)
     }
   }
@@ -126,7 +126,7 @@ class AppEndpointCompositorPair {
    * @private
    */
   _onClose (event) {
-    process.env.DEBUG && console.log(`[app-endpoint-${this.appEndpointSessionId}] Web socket is closed. ${event.code}: ${event.reason}`)
+    process.env.DEBUG && console.log(`[app-endpoint: ${this.appEndpointSessionId}] - Web socket is closed. ${event.code}: ${event.reason}.`)
     this.destroy()
   }
 
@@ -135,7 +135,7 @@ class AppEndpointCompositorPair {
    * @private
    */
   _onError (event) {
-    process.env.DEBUG && console.error(`[app-endpoint-${this.appEndpointSessionId}] Web socket is in error. ${event}`)
+    process.env.DEBUG && console.error(`[app-endpoint: ${this.appEndpointSessionId}] - Web socket is in error. ${event}.`)
   }
 }
 

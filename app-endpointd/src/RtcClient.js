@@ -28,7 +28,7 @@ class RtcClient {
       peerConnection.onicecandidate = evt => {
         const candidate = evt.candidate
         if (candidate !== null) {
-          process.env.DEBUG && console.log(`[app-endpoint-${appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: sending local ice candidate: ${JSON.stringify(candidate)}.`)
+          process.env.DEBUG && console.log(`[app-endpoint: ${appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: sending local ice candidate: ${JSON.stringify(candidate)}.`)
           const appEndpointSessionId = appEndpointCompositorPair.appEndpointSessionId
           rtcClient._sendRTCSignal({
             object: 'rtcSocket',
@@ -41,7 +41,7 @@ class RtcClient {
         }
       }
       peerConnection.onnegotiationneeded = () => {
-        process.env.DEBUG && console.log(`[app-endpoint-${appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: negotiation needed.`)
+        process.env.DEBUG && console.log(`[app-endpoint: ${appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: negotiation needed.`)
         rtcClient._sendOffer()
       }
 
@@ -49,20 +49,20 @@ class RtcClient {
       peerConnection.onconnectionstatechange = () => {
         switch (peerConnection.connectionState) {
           case 'disconnected':
-            process.env.DEBUG && console.log(`[app-endpoint-${appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: state is disconnected.`)
+            process.env.DEBUG && console.log(`[app-endpoint: ${appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: state is disconnected.`)
             rtcClient.destroy()
             break
           case 'failed':
-            process.env.DEBUG && console.log(`[app-endpoint-${appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: state is failed.`)
+            process.env.DEBUG && console.log(`[app-endpoint: ${appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: state is failed.`)
             rtcClient.destroy()
             break
           case 'closed':
-            process.env.DEBUG && console.log(`[app-endpoint-${appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: state is closed.`)
+            process.env.DEBUG && console.log(`[app-endpoint: ${appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: state is closed.`)
             rtcClient.destroy()
             break
         }
       }
-      process.env.DEBUG && console.log(`[app-endpoint-${appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: state is ${peerConnection.connectionState}.`)
+      process.env.DEBUG && console.log(`[app-endpoint: ${appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: state is ${peerConnection.connectionState}.`)
 
       // TODO eagerly pre-create a data channel for faster client-browser communication.
 
@@ -120,17 +120,17 @@ class RtcClient {
   }
 
   async iceCandidate ({ candidate }) {
-    process.env.DEBUG && console.log(`[app-endpoint-${this.appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: received remote ice candidate: ${JSON.stringify(candidate)}.`)
+    process.env.DEBUG && console.log(`[app-endpoint: ${this.appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: received remote ice candidate: ${JSON.stringify(candidate)}.`)
     await this.peerConnection.addIceCandidate(candidate)
   }
 
   async sdpOffer ({ offer }) {
-    process.env.DEBUG && console.log(`[app-endpoint-${this.appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: received browser sdp offer: ${JSON.stringify(offer)}`)
+    process.env.DEBUG && console.log(`[app-endpoint: ${this.appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: received browser sdp offer: ${JSON.stringify(offer)}.`)
     await this.peerConnection.setRemoteDescription(offer)
     const answer = await this.peerConnection.createAnswer()
     await this.peerConnection.setLocalDescription(answer)
 
-    process.env.DEBUG && console.log(`[app-endpoint-${this.appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: sending local sdp answer: ${JSON.stringify(answer)}`)
+    process.env.DEBUG && console.log(`[app-endpoint: ${this.appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: sending local sdp answer: ${JSON.stringify(answer)}.`)
     this._sendRTCSignal({
       object: 'rtcSocket',
       method: 'sdpReply',
@@ -142,14 +142,14 @@ class RtcClient {
   }
 
   async sdpReply ({ reply }) {
-    process.env.DEBUG && console.log(`[app-endpoint-${this.appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: received browser sdp answer: ${JSON.stringify(reply)}`)
+    process.env.DEBUG && console.log(`[app-endpoint: ${this.appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: received browser sdp answer: ${JSON.stringify(reply)}.`)
     await this.peerConnection.setRemoteDescription(reply)
   }
 
   async _sendOffer () {
     const offer = await this.peerConnection.createOffer()
     await this.peerConnection.setLocalDescription(offer)
-    process.env.DEBUG && console.log(`[app-endpoint-${this.appEndpointCompositorPair.appEndpointSessionId}] WebRTC connection: sending local sdp offer: ${JSON.stringify(offer)}.`)
+    process.env.DEBUG && console.log(`[app-endpoint: ${this.appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: sending local sdp offer: ${JSON.stringify(offer)}.`)
     this._sendRTCSignal({
       object: 'rtcSocket',
       method: 'sdpOffer',

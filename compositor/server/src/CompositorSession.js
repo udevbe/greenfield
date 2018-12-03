@@ -21,12 +21,12 @@ class CompositorSession {
         noServer: true,
         handshakeTimeout: 2000
       })
-      process.env.DEBUG && console.log(`[compositor-session-${id}] New instance created.`)
+      process.env.DEBUG && console.log(`[compositor-session: ${id}] - New instance created.`)
       wss.handleUpgrade({
         headers: headers,
         method: method
       }, socket, head, (sessionWebSocket) => {
-        process.env.DEBUG && console.log(`[compositor-session-${id}] Browser web socket is open.`)
+        process.env.DEBUG && console.log(`[compositor-session: ${id}] - Browser web socket is open.`)
         const compositorSession = new CompositorSession(wss, sessionWebSocket, id)
 
         sessionWebSocket.addEventListener('message', (event) => {
@@ -135,24 +135,24 @@ class CompositorSession {
 
   _onMessage (event) {
     const eventData = event.data
-    process.env.DEBUG && console.log(`[compositor session-${this.id}] Received incoming browser message: ${eventData}`)
+    process.env.DEBUG && console.log(`[compositor-session: ${this.id}] - Received incoming browser message: ${eventData}`)
     const message = JSON.parse(/** @types {string} */eventData)
     const { object, method, args } = message
     try {
       this._messageHandlers[object][method](args)
     } catch (error) {
-      console.error(`[compositor session-${this.id}] failed to handle incoming message. object=${object}:method=${method}:args=${args}\n${error}\n${error.stack}`)
+      console.error(`[compositor-session: ${this.id}] - Failed to handle incoming message. object=${object}:method=${method}:args=${args}\n${error}\n${error.stack}`)
       this.webSocket.close(4007, `Received an illegal message`)
     }
   }
 
   _onClose (event) {
-    console.log(`[compositor session-${this.id}] Browser web socket is closed. ${event.code}: ${event.reason}`)
+    console.log(`[compositor-session: ${this.id}] - Browser web socket is closed. ${event.code}: ${event.reason}`)
     this.destroy()
   }
 
   _onError (event) {
-    console.error(`[compositor session-${this.id}] Browser web socket is in error.`)
+    console.error(`[compositor-session: ${this.id}] - Browser web socket is in error.`)
   }
 }
 

@@ -28,7 +28,6 @@ export default class H264NALDecoder {
    */
   decode (h264Nal) {
     if (this._busy) {
-      DEBUG && console.log('Decoder busy. Queueing h264 NAL')
       this._decodeQueue.push(h264Nal)
       return
     }

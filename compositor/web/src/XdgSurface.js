@@ -153,7 +153,7 @@ export default class XdgSurface extends XdgSurfaceRequests {
     const surface = this.wlSurfaceResource.implementation
     if (surface.role) {
       resource.postError(XdgWmBaseResource.Error.role, 'Given surface has another role.')
-      DEBUG && console.log('Protocol error. Given surface has another role.')
+      DEBUG && console.log('[client-protocol-error] - Given surface has another role.')
       return
     }
     const xdgToplevelResource = new XdgToplevelResource(resource.client, id, resource.version)
@@ -188,20 +188,20 @@ export default class XdgSurface extends XdgSurfaceRequests {
     const surface = /** @type {Surface} */this.wlSurfaceResource.implementation
     if (surface.role) {
       resource.postError(XdgWmBaseResource.Error.role, 'Given surface has another role.')
-      DEBUG && console.log('Protocol error. Given surface has another role.')
+      DEBUG && console.log('[client-protocol-error] - Given surface has another role.')
       return
     }
 
     const xdgPositioner = positioner.implementation
     if (xdgPositioner.size === null) {
       resource.postError(XdgWmBaseResource.Error.invalidPositioner, 'Client provided an invalid positioner. Size is NULL.')
-      DEBUG && console.log('Protocol error. Client provided an invalid positioner. Size is NULL.')
+      DEBUG && console.log('[client-protocol-error] - Client provided an invalid positioner. Size is NULL.')
       return
     }
 
     if (xdgPositioner.anchorRect === null) {
       resource.postError(XdgWmBaseResource.Error.invalidPositioner, 'Client provided an invalid positioner. AnchorRect is NULL.')
-      DEBUG && console.log('Protocol error. Client provided an invalid positioner. AnchorRect is NULL.')
+      DEBUG && console.log('[client-protocol-error] - Client provided an invalid positioner. AnchorRect is NULL.')
       return
     }
 
@@ -281,7 +281,7 @@ export default class XdgSurface extends XdgSurfaceRequests {
   setWindowGeometry (resource, x, y, width, height) {
     if (width <= 0 || height <= 0) {
       resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Client provided negative window geometry.')
-      DEBUG && console.log('Protocol error. Client provided negative window geometry.')
+      DEBUG && console.log('[client-protocol-error] - Client provided negative window geometry.')
       return
     }
     this.pendingWindowGeometry = Rect.create(x, y, x + width, y + height)

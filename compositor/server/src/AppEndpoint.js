@@ -5,7 +5,7 @@ class AppEndpoint {
    * @returns {AppEndpoint}
    */
   static create (ws, appEndpointId) {
-    process.env.DEBUG && console.log(`[compositor-service] Web socket is open for [app-endpoint-daemon ${appEndpointId}].`)
+    process.env.DEBUG && console.log(`[compositor-service] - Web socket is open for [app-endpoint-daemon: ${appEndpointId}].`)
 
     const appEndpoint = new AppEndpoint(ws, appEndpointId)
     ws.onclose = (event) => appEndpoint._onClose(event)

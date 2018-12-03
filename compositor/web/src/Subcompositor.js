@@ -100,7 +100,7 @@ export default class Subcompositor extends WlSubcompositorRequests {
     const surface = /** @type {Surface} */wlSurfaceResource.implementation
     if (surface.role) {
       resource.postError(WlSubcompositorResource.Error.badSurface, 'Given surface has another role.')
-      DEBUG && console.log('Protocol error. Given surface has another role.')
+      DEBUG && console.log('[client-protocol-error] - Given surface has another role.')
       return
     }
 

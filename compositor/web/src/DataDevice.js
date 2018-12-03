@@ -163,7 +163,7 @@ export default class DataDevice extends WlDataDeviceRequests {
     const iconSurface = /** @type {Surface} */ icon.implementation
     if (iconSurface.role) {
       resource.postError(WlDataDeviceResource.Error.role, 'Given surface has another role.')
-      DEBUG && console.log('Protocol error. Given surface has another role.')
+      DEBUG && console.log('[client-protocol-error] - Given surface has another role.')
       return
     }
 
@@ -383,7 +383,7 @@ export default class DataDevice extends WlDataDeviceRequests {
     const dataSource = /** @type {DataSource} */source.implementation
     if (source && dataSource.dndActions) {
       source.postError(WlDataSourceResource.Error.invalidSource, 'Can not set selection when source has dnd actions active.')
-      DEBUG && console.log('Protocol error. Can not set selection when source has dnd actions active.')
+      DEBUG && console.log('[client-protocol-error] - Can not set selection when source has dnd actions active.')
       return
     }
 

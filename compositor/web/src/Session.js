@@ -11,10 +11,10 @@ export default class Session {
    */
   static create () {
     return new Promise((resolve, reject) => {
-      DEBUG && console.log('Starting new compositor session.')
       const display = new Display()
       const websocketProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
       const compositorSessionId = this._uuidv4()
+      DEBUG && console.log(`[compositor-session: ${compositorSessionId}] - Starting new compositor session.`)
       const url = `${websocketProtocol}://${window.location.host}/announceCompositor/${compositorSessionId}`
 
       const webSocket = new WebSocket(url)
@@ -73,7 +73,7 @@ export default class Session {
     try {
       this.messageHandlers[object][method](args)
     } catch (error) {
-      console.error(`[compositor-session-${this.compositorSessionId}] Failed to handle incoming message. object=${object}:method=${method}:args=${args}\n${error}\n${error.stack}`)
+      console.error(`[compositor-session: ${this.compositorSessionId}] - Failed to handle incoming message. object=${object}:method=${method}:args=${args}\n${error}\n${error.stack}`)
       this.webSocket.close(4007, `Compositor session [${this.compositorSessionId}] received an illegal message`)
     }
 
@@ -81,7 +81,7 @@ export default class Session {
   }
 
   _onClose (event) {
-    console.log(`[compositor-session-${this.compositorSessionId}] Web socket connection closed. ${event.code}: ${event.reason}`)
+    console.log(`[compositor-session: ${this.compositorSessionId}] - Web socket connection closed. ${event.code}: ${event.reason}.`)
     // TODO notify user?
     // TODO retry connection?
 
@@ -90,7 +90,7 @@ export default class Session {
   }
 
   _onError (event) {
-    console.error(`[compositor-session-${this.compositorSessionId}] Web socket is in error: ${event}`)
+    console.error(`[compositor-session: ${this.compositorSessionId}] - Web socket is in error: ${event}.`)
   }
 
   flush () {

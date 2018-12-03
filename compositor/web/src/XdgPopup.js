@@ -265,7 +265,7 @@ export default class XdgPopup extends XdgPopupRequests {
       if (surfaceChild !== surface.surfaceChildSelf &&
         surfaceChild.surface.role instanceof XdgPopup) {
         this.resource.postError(XdgWmBaseResource.Error.notTheTopmostPopup, 'Client tried to map a non-topmost popup')
-        DEBUG && console.log('Protocol error. Client tried to map a non-topmost popup')
+        DEBUG && console.log('[client-protocol-error] - Client tried to map a non-topmost popup.')
         return
       }
     }
@@ -333,7 +333,7 @@ export default class XdgPopup extends XdgPopupRequests {
       if (surfaceChild !== surface.surfaceChildSelf &&
         surfaceChild.surface.role instanceof XdgPopup) {
         resource.postError(XdgWmBaseResource.Error.notTheTopmostPopup, 'Client tried to destroy a non-topmost popup')
-        DEBUG && console.log('Protocol error. Client tried to destroy a non-topmost popup')
+        DEBUG && console.log('[client-protocol-error] - Client tried to destroy a non-topmost popup.')
         return
       }
     }
@@ -400,7 +400,7 @@ export default class XdgPopup extends XdgPopupRequests {
 
     if (!seat.isValidInputSerial(seat.buttonPressSerial)) {
       this._dismiss()
-      DEBUG && console.log('[warning] Popup grab input serial mismatch. Ignoring.')
+      DEBUG && console.log('[client-protocol-warning] - Popup grab input serial mismatch. Ignoring.')
       return
     }
 

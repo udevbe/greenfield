@@ -40,23 +40,23 @@ function createCompositorSessionFork (compositorSessionId) {
     // uncomment next line for debugging support in the child process
     // process.execArgv.push('--inspect-brk=0')
 
-    console.log(`[compositor-service] Creating new child process for [compositor-session-${compositorSessionId}].`)
+    console.log(`[compositor-service] - Creating new child process for [compositor-session: ${compositorSessionId}].`)
     const configPath = process.argv[2]
     child = childProcess.fork(path.join(__dirname, 'compositorSessionIndex.js'), configPath == null ? [] : [`${configPath}`])
-    process.env.DEBUG && console.log(`[compositor-service] Child [${child.pid}] created.`)
+    process.env.DEBUG && console.log(`[compositor-service] - Child [${child.pid}] created.`)
 
     const removeChild = () => {
-      process.env.DEBUG && console.log(`[compositor-service] Child [${child.pid}] removed.`)
+      process.env.DEBUG && console.log(`[compositor-service] - Child [${child.pid}] removed.`)
       delete compositorSessionForks[compositorSessionId]
     }
 
     child.on('exit', removeChild)
     child.on('SIGINT', function () {
-      process.env.DEBUG && console.log(`[compositor-service] Child [${child.pid}] received SIGINT.`)
+      process.env.DEBUG && console.log(`[compositor-service] - Child [${child.pid}] received SIGINT.`)
       child.exit()
     })
     child.on('SIGTERM', function () {
-      global.DEBUG && console.log(`[compositor-service] Child [${child.pid}] received SIGTERM.`)
+      global.DEBUG && console.log(`[compositor-service] - Child [${child.pid}] received SIGTERM.`)
       child.exit()
     })
 
@@ -153,7 +153,7 @@ function pairAppEndpoint (request, socket, head, pathElements) {
  * @param {Buffer}head
  */
 function handleHttpUpgradeRequest (request, socket, head) {
-  process.env.DEBUG && console.log(`[compositor-service] Received web socket upgrade request. Delegating to compositor session child process.`)
+  process.env.DEBUG && console.log(`[compositor-service] - Received web socket upgrade request. Delegating to compositor session child process.`)
   const pathElements = request.url.split('/')
   pathElements.shift() // empty element
   const intention = pathElements.shift()
@@ -181,9 +181,9 @@ function main () {
   })
 
   const cleanUp = () => {
-    process.env.DEBUG && console.log('[compositor-service] Exit. Cleaning up compositor session children.')
+    process.env.DEBUG && console.log('[compositor-service] - Exit. Cleaning up compositor session children.')
     Object.values(compositorSessionForks).forEach((child) => {
-      console.log(`[compositor-service] Sending child [${child.pid}] SIGKILL`)
+      console.log(`[compositor-service] - Sending child [${child.pid}] SIGKILL`)
       child.disconnect()
       child.kill('SIGKILL')
     })
@@ -191,11 +191,11 @@ function main () {
 
   process.on('exit', cleanUp)
   process.on('SIGINT', () => {
-    console.log('[compositor-service] Received SIGINT')
+    console.log('[compositor-service] - Received SIGINT')
     process.exit()
   })
   process.on('SIGTERM', () => {
-    console.log('[compositor-service] Received SIGTERM')
+    console.log('[compositor-service] - Received SIGTERM')
     process.exit()
   })
 

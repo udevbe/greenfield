@@ -66,8 +66,8 @@ export default class RtcSocket {
 
     peerConnection.onicecandidate = evt => {
       const candidate = evt.candidate
-      DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - sending local ice candidate: ${candidate}`)
       if (candidate !== null) {
+        DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - sending local ice candidate: ${candidate}.`)
         this._sendRTCSignal(appEndpointSessionId, {
           object: 'rtcClient',
           method: 'iceCandidate',
@@ -249,7 +249,7 @@ export default class RtcSocket {
     const answer = await peerConnection.createAnswer()
     await peerConnection.setLocalDescription(answer)
 
-    process.env.DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - sending browser sdp answer: ${answer}`)
+    process.env.DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - sending browser sdp answer: ${answer}.`)
     this._sendRTCSignal(appEndpointSessionId, {
       object: 'rtcClient',
       method: 'sdpReply',
