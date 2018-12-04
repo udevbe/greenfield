@@ -1,7 +1,6 @@
 # Greenfield :seedling:
-in-browser wayland compositor
+An in-browser wayland compositor
 
-Uses [Westfield](https://github.com/udevbe/westfield) together with [webrtc](https://webrtc.org/faq/#what-is-webrtc)/[object-rtc](https://ortc.org/) to create an in-browser wayland compositor.
 
 [![Alt text](https://img.youtube.com/vi/2lyihdFK7EE/0.jpg)](https://www.youtube.com/watch?v=2lyihdFK7EE)
 
@@ -24,7 +23,7 @@ Supported toolkits are:
 Greenfield is in essence an entire Wayland compositor running in the browser. As such it does not care where and how
 client applications run. This has some interesting implications:
 
-- #### Distributed back-end
+### Distributed back-end
 
 Native wayland applications can connect to an in-browser compositor by talking to a local application endpoint daemon.
 This application endpoint daemon presents itself as a locally running wayland compositor while in reality it forwards
@@ -37,7 +36,7 @@ and connected browser compositors. It allows for application endpoints and conne
 data channel, resulting in no intermediate relaying between a native application & the remote browser.
 
 
-- #### Web worker :unicorn: :rainbow:
+### Web worker :unicorn: :rainbow:
 
 A different (future) variation on distributed applications is to run them using a web worker inside the user's browser. 
 All that is required is a javascript/browser widget toolkit that can:
@@ -50,17 +49,29 @@ while still being able to interact (copy/paste & drag'n drop) with native server
 Installation :computer: and running :running_man:
 ============
 
-Clone this repo.
+Clone this repo: `git clone https://github.com/udevbe/greenfield.git`
 
-- compositor:
+### Compositor
+
+  *Prerequisite: The Greenfield compositor depends on the server module of [Westfield](https://github.com/udevbe/westfield). Make sure you have the required 
+  native Westfield server dependencies installed first.*
   
   Inside the `compositor` directory run `npm install`. To start the compositor run `npm start:dev`. Open a browser
   (firefox or chrome) and go to `localhost:8080`.
   
-- application end-point
-
-  Inside the `app-endpointd` directory run `npm install`. To start the end-point daemon, first make sure the compositor
-   is running, then start the endpoint with `npm start`.
+### Application end-point
+  
+  *Prerequisite: The Greenfield application end-point depends on the endpoint module of [Westfield](https://github.com/udevbe/westfield). Make sure you have 
+  the required native Westfield endpoint dependencies installed first.*
+    
+  Inside the `app-endpointd` directory run `npm install`. To start the end-point daemon, first make sure the compositor 
+  is running, then start the endpoint with `npm start`. For additional debug output, set the environment variable
+   `export DEBUG=1`. 
+   
+   The endpoint daemon will create new child process for each connected browser tab and will report on 
+   wich `WAYLAND_DISPLAY` environment variable a child process is listening. To show something in your browser, first
+   make sure the `WAYLAND_DISPLAY` environment variable is set: `export WAYLAND_DISPLAY="wayland-0"`. Next, you can fire
+    up a wayland client ie. `gtk3-demo`.
 
 At runtime, the endpoint will need gstreamer-1.x with the following plugins:
 - appsrc
