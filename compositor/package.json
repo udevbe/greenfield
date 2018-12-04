@@ -12,7 +12,7 @@
     "prepare": "npm run prepare:web:generate && webpack --config web/build.config/webpack.config.prod.js",
     "prepare:dev": "npm run prepare:web:generate && webpack --config web/build.config/webpack.config.dev.js",
     "start": "node ./server/src/index.js",
-    "start:dev": "export DEV=1 && node ./server/src/index.js"
+    "start:dev": "export DEV=1 && export DEBUG=1 && node ./server/src/index.js"
   },
   "repository": {
     "type": "git",
