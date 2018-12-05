@@ -1,10 +1,8 @@
 'use strict'
 
 import DesktopUserShellSurface from './DesktopUserShellSurface'
-import DesktopShellMenu from './DesktopShellMenu'
 
 import './desktopshell.css'
-import DesktopShellAppMenu from './DesktopShellAppMenu'
 
 /**
  * @implements UserShell
@@ -25,13 +23,6 @@ export default class DesktopUserShell {
     const entryContainer = /** @type {HTMLDivElement} */document.createElement('div')
     entryContainer.classList.add('entry-container')
     panel.appendChild(entryContainer)
-
-    const desktopShellAppMenu = DesktopShellAppMenu.create(session)
-    panel.appendChild(desktopShellAppMenu.divElementAppMenuButton)
-
-    const desktopShellMenu = DesktopShellMenu.create()
-    panel.appendChild(desktopShellMenu.divElementMenuButton)
-
     return new DesktopUserShell(body, workspace, panel, entryContainer, seat)
   }
 
