@@ -45,6 +45,38 @@ class DesktopUserShellSurface extends UserShellSurface {
   }
 
   /**
+   * @param {Surface}surface
+   * @param {string}cssClass
+   * @private
+   */
+  static _removeClassRecursively (surface, cssClass) {
+    surface.views.forEach((view) => {
+      view.bufferedCanvas.removeCssClass(cssClass)
+    })
+    surface.children.forEach((surfaceChild) => {
+      if (surfaceChild.surface !== surface) {
+        this._removeClassRecursively(surfaceChild.surface, cssClass)
+      }
+    })
+  }
+
+  /**
+   * @param {Surface}surface
+   * @param {string}cssClass
+   * @private
+   */
+  static _addClassRecursively (surface, cssClass) {
+    surface.views.forEach((view) => {
+      view.bufferedCanvas.addCssClass(cssClass)
+    })
+    surface.children.forEach((surfaceChild) => {
+      if (surfaceChild.surface !== surface) {
+        this._addClassRecursively(surfaceChild.surface, cssClass)
+      }
+    })
+  }
+
+  /**
    * @param {View}view
    * @param {HTMLElement}entry
    * @private
@@ -68,11 +100,10 @@ class DesktopUserShellSurface extends UserShellSurface {
     // play a nice fade out animation if the view is destroyed
     view.onDestroy().then(() => {
       // after the animation has ended, detach the view from the scene
-      view.bufferedCanvas.containerDiv.addEventListener('transitionend', () => {
+      view.bufferedCanvas.frontContext.canvas.addEventListener('transitionend', () => {
         view.detach()
       })
-      // play the animation
-      view.fadeOut()
+      view.bufferedCanvas.addCssClass('fadeToHidden')
     })
   }
 
@@ -268,7 +299,8 @@ class DesktopUserShellSurface extends UserShellSurface {
     if (this.mainView.destroyed) {
       return
     }
-    this.mainView.fadeOut()
+
+    this.mainView.hide()
   }
 
   /**
@@ -287,7 +319,11 @@ class DesktopUserShellSurface extends UserShellSurface {
    * @param {boolean}unresponsive
    */
   set unresponsive (unresponsive) {
-    // TODO
+    if (unresponsive) {
+      DesktopUserShellSurface._addClassRecursively(this.mainView.surface, 'fadeToUnresponsive')
+    } else {
+      DesktopUserShellSurface._removeClassRecursively(this.mainView.surface, 'fadeToUnresponsive')
+    }
   }
 }
 

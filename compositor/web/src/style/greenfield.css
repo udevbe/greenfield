@@ -14,20 +14,6 @@ canvas {
     transform-origin: top left;
     pointer-events: none;
     position: absolute;
-    transition: inherit;
-    visibility: inherit;
-    opacity: inherit;
-}
-
-.fadeToHidden {
-    visibility: hidden;
-    opacity: 0;
-    transition: visibility 200ms, opacity 200ms ease-in-out;
-}
-
-.fadeToUnresponsive {
-    filter: grayscale(0.9) brightness(0.6) contrast(1.3) blur(1px);
-    transition: filter 1000ms ease-in-out;
 }
 
 .inputRegion {

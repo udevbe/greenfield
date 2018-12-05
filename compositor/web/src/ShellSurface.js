@@ -188,17 +188,17 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    */
   pong (resource, serial) {
     // TODO fix ping/pong
-    // if (this._pingTimeoutActive) {
-    //   this._removeClassRecursively(/** @type {Surface} */this.wlSurfaceResource.implementation, 'fadeToUnresponsive')
-    //   this._pingTimeoutActive = false
-    // }
-    // window.clearTimeout(this._timeoutTimer)
-    // const doPingTimer = window.setTimeout(() => {
-    //   this._doPing(resource)
-    // }, 5000)
-    // this.wlSurfaceResource.onDestroy().then(() => {
-    //   window.clearTimeout(doPingTimer)
-    // })
+    if (this._pingTimeoutActive) {
+      this._userShellSurface.unresponsive = false
+      this._pingTimeoutActive = false
+    }
+    window.clearTimeout(this._timeoutTimer)
+    const doPingTimer = window.setTimeout(() => {
+      this._doPing(resource)
+    }, 5000)
+    this.wlSurfaceResource.onDestroy().then(() => {
+      window.clearTimeout(doPingTimer)
+    })
   }
 
   /**
@@ -206,50 +206,19 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    * @private
    */
   _doPing (resource) {
-    // this._timeoutTimer = window.setTimeout(() => {
-    //   if (!this._pingTimeoutActive) {
-    //     // ping timed out, make view gray
-    //     this._pingTimeoutActive = true
-    //     this._addClassRecursively(/** @type {Surface} */this.wlSurfaceResource.implementation, 'fadeToUnresponsive')
-    //   }
-    // }, 5000)
-    // this.wlSurfaceResource.onDestroy().then(() => {
-    //   window.clearTimeout(this._timeoutTimer)
-    // })
-    // resource.ping(0)
-    // this.session.flush()
-  }
-
-  /**
-   * @param {Surface}surface
-   * @param {string}cssClass
-   * @private
-   */
-  _removeClassRecursively (surface, cssClass) {
-    surface.views.forEach((view) => {
-      view.bufferedCanvas.removeCssClass(cssClass)
-    })
-    surface.children.forEach((surfaceChild) => {
-      if (surfaceChild.surface !== surface) {
-        this._removeClassRecursively(surfaceChild.surface, cssClass)
+    this._timeoutTimer = window.setTimeout(() => {
+      if (!this._pingTimeoutActive) {
+        // ping timed out, make view gray
+        this._pingTimeoutActive = true
+        this._userShellSurface.unresponsive = true
+        this._addClassRecursively(/** @type {Surface} */this.wlSurfaceResource.implementation, 'fadeToUnresponsive')
       }
+    }, 5000)
+    this.wlSurfaceResource.onDestroy().then(() => {
+      window.clearTimeout(this._timeoutTimer)
     })
-  }
-
-  /**
-   * @param {Surface}surface
-   * @param {string}cssClass
-   * @private
-   */
-  _addClassRecursively (surface, cssClass) {
-    surface.views.forEach((view) => {
-      view.bufferedCanvas.addCssClass(cssClass)
-    })
-    surface.children.forEach((surfaceChild) => {
-      if (surfaceChild.surface !== surface) {
-        this._addClassRecursively(surfaceChild.surface, cssClass)
-      }
-    })
+    resource.ping(0)
+    this.session.flush()
   }
 
   /**

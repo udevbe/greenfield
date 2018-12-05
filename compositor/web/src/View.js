@@ -336,15 +336,18 @@ export default class View {
     }
   }
 
-  fadeOut () {
-    this.bufferedCanvas.addCssClass('fadeToHidden')
-  }
-
   show () {
     if (this.destroyed) {
       return
     }
-    this.bufferedCanvas.removeCssClass('fadeToHidden')
+    this.bufferedCanvas.containerDiv.style.display = 'contents'
+  }
+
+  hide () {
+    if (this.destroyed) {
+      return
+    }
+    this.bufferedCanvas.containerDiv.style.display = 'none'
   }
 
   destroy () {
