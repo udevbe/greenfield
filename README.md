@@ -28,9 +28,12 @@ client applications run. This has some interesting implications:
 Native wayland applications can connect to an in-browser compositor by talking to a local application endpoint daemon.
 This application endpoint daemon presents itself as a locally running wayland compositor while in reality it forwards
 (nearly) all messages between the the actual browser compositor & the native application. The in-browser compositor is 
-not limited to handling a single application endpoint. Any number of endpoints can establish a connection. As a consequence **different wayland application can run on different physical hosts while still being connected to the same compositor.**
+not limited to handling a single application endpoint. Any number of endpoints can establish a connection. As a 
+consequence **different wayland application can run on different physical hosts while still being connected to the same compositor.**
 
-The process serving the compositor JavaScript & HTML files also functions as the discovery point between application endpoints and connected browser compositors. It allows for application endpoints and connected browsers to setup a direct connection, resulting in no intermediate relaying between a native application & the remote browser.
+The process serving the compositor JavaScript & HTML files also functions as the discovery point between application 
+endpoints and connected browser compositors. It allows for application endpoints and connected browsers to setup a 
+direct connection, resulting in no intermediate relaying between a native application & the remote browser.
 
 
 ### Future: Local Web worker
@@ -40,7 +43,8 @@ All that is required is a Javascript/browser widget toolkit that can:
  - render it's content to an ArrayBuffer (as web workers do not have their own DOM), or can render to an off-screen WebGL accelerated canvas.
  - communicating with the compositor using the Wayland protocol.
  
-This approach allows for a pure client side applications to run directly inside the browser without the drawbacks of network latency or server load, while still being able to interop (copy/paste & drag'n drop) with native server-side applications.
+This approach allows for a pure client side applications to run directly inside the browser without the drawbacks of 
+network latency or server load, while still being able to interop (copy/paste & drag'n drop) with native server-side applications.
 
 The [Skia-Wasm-Port](https://github.com/Zubnix/skia-wasm-port) port is a first effort to explore this direction.
 
@@ -50,17 +54,14 @@ Installation and running
 Clone this repo: `git clone https://github.com/udevbe/greenfield.git`
 
 ### Compositor
-
-  *Prerequisite: The Greenfield compositor depends on the server module of [Westfield](https://github.com/udevbe/westfield). Make sure you have the required 
-  native Westfield server dependencies installed first.*
   
   Inside the `compositor` directory run `npm install`. To start the compositor run `npm start:dev`. Open a browser
-  (firefox or chrome) and go to `localhost:8080`.
+  (Firefox or Chrome) and go to `localhost:8080`.
   
 ### Application end-point
   
-  *Prerequisite: The Greenfield application end-point depends on the endpoint module of [Westfield](https://github.com/udevbe/westfield). Make sure you have 
-  the required native Westfield endpoint dependencies installed first.*
+  *Prerequisite: The Greenfield application end-point depends on the native-endpoint module of [Westfield](https://github.com/udevbe/westfield). Make sure you have 
+  the required Westfield native-endpoint dependencies installed first.*
     
   Inside the `app-endpointd` directory run `npm install`. To start the end-point daemon, first make sure the compositor 
   is running, then start the endpoint with `npm start`. For additional debug output, set the environment variable
