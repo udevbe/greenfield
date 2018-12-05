@@ -35,7 +35,7 @@ export default class RtcSocket {
     this._appEndpointConnections = {}
   }
 
-  async connect ({ appEndpointSessionId }) {
+  async ['connect'] ({ appEndpointSessionId }) {
     if (this._appEndpointConnections[appEndpointSessionId]) {
       console.error(`[webrtc-peer-connection: ${appEndpointSessionId}] - session already exists. Ignoring.`)
       return
@@ -45,17 +45,7 @@ export default class RtcSocket {
     // TODO show to user status of app-endpoints (peer connection state)
 
     // TODO rtc connection options setup
-    const pcConfig = {
-      'iceServers': [
-        {
-          'urls': ['turn:gftest.udev.be'],
-          'credentialType': 'password',
-          'username': 'greenfield',
-          'credential': 'bluesky'
-        }
-      ]
-    }
-    const peerConnection = new RTCPeerConnection(pcConfig)
+    const peerConnection = new RTCPeerConnection()
     this._appEndpointConnections[appEndpointSessionId] = peerConnection
     peerConnection.ondatachannel = (event) => this._onDataChannel(event.channel, appEndpointSessionId, peerConnection)
 
@@ -221,7 +211,7 @@ export default class RtcSocket {
     }))
   }
 
-  async iceCandidate ({ appEndpointSessionId, candidate }) {
+  async ['iceCandidate'] ({ appEndpointSessionId, candidate }) {
     const peerConnection = this._appEndpointConnections[appEndpointSessionId]
     if (!peerConnection) {
       throw new Error(`[webrtc-peer-connection: ${appEndpointSessionId}] - session not found.`)
@@ -230,7 +220,7 @@ export default class RtcSocket {
     await peerConnection.addIceCandidate(candidate)
   }
 
-  async sdpReply ({ appEndpointSessionId, reply }) {
+  async ['sdpReply'] ({ appEndpointSessionId, reply }) {
     const peerConnection = this._appEndpointConnections[appEndpointSessionId]
     if (!peerConnection) {
       throw new Error(`[webrtc-peer-connection: ${appEndpointSessionId}] - session not found.`)
@@ -239,7 +229,7 @@ export default class RtcSocket {
     await peerConnection.setRemoteDescription(reply)
   }
 
-  async sdpOffer ({ appEndpointSessionId, offer }) {
+  async ['sdpOffer'] ({ appEndpointSessionId, offer }) {
     const peerConnection = this._appEndpointConnections[appEndpointSessionId]
     if (!peerConnection) {
       throw new Error(`[webrtc-peer-connection: ${appEndpointSessionId}] - session not found.`)

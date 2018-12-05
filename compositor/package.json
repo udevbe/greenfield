@@ -57,5 +57,8 @@
     "assets": [
       "./web/dist/**/*"
     ]
-  }
+  },
+  "sideEffects": [
+    "*.css"
+  ]
 }
