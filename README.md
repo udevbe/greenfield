@@ -29,7 +29,7 @@ Native wayland applications can connect to an in-browser compositor by talking t
 This application endpoint daemon presents itself as a locally running wayland compositor while in reality it forwards
 (nearly) all messages between the the actual browser compositor & the native application. The in-browser compositor is 
 not limited to handling a single application endpoint. Any number of endpoints can establish a connection. As a 
-consequence **different wayland application can run on different physical hosts while still being connected to the same compositor.**
+consequence **different wayland applications can run on different physical hosts while being connected to the same compositor.**
 
 The process serving the compositor JavaScript & HTML files also functions as the discovery point between application 
 endpoints and connected browser compositors. It allows for application endpoints and connected browsers to setup a 
@@ -51,21 +51,36 @@ The [Skia-Wasm-Port](https://github.com/Zubnix/skia-wasm-port) port is a first e
 Installation and running
 ============
 
-Clone this repo: `git clone https://github.com/udevbe/greenfield.git`
+Clone this repo: 
+
+`git clone https://github.com/udevbe/greenfield.git`
 
 ### Compositor
   
-  Inside the `compositor` directory run `npm install`. To start the compositor run `npm start:dev`. Open a browser
-  (Firefox or Chrome) and go to `localhost:8080`.
+  Inside the `compositor` directory run 
+  
+  `npm install`. 
+  
+  To start the compositor run 
+  
+  `npm start:dev`. 
+  
+  Open a browser (Firefox or Chrome) and go to `localhost:8080`.
   
 ### Application end-point
   
   *Prerequisite: The Greenfield application end-point depends on the native-endpoint module of [Westfield](https://github.com/udevbe/westfield). Make sure you have 
   the required Westfield native-endpoint dependencies installed first.*
     
-  Inside the `app-endpointd` directory run `npm install`. To start the end-point daemon, first make sure the compositor 
-  is running, then start the endpoint with `npm start`. For additional debug output, set the environment variable
-   `export DEBUG=1`. 
+  Inside the `app-endpointd` directory run 
+  
+  `npm install`. 
+  
+  To start the end-point daemon, first make sure the compositor  is running, then start the endpoint with 
+  
+  `npm start`. 
+  
+  For additional debug output, set the environment variable `export DEBUG=1`. 
    
    The endpoint daemon will create new child process for each connected browser tab and will report on 
    wich `WAYLAND_DISPLAY` environment variable a child process is listening. To show something in your browser, first
