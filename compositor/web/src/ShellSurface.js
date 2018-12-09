@@ -60,6 +60,8 @@ export default class ShellSurface extends WlShellSurfaceRequests {
       if (shellSurface._userShellSurface) {
         shellSurface._userShellSurface.destroy()
       }
+      window.clearTimeout(shellSurface._timeoutTimer)
+      window.clearTimeout(shellSurface._pingTimer)
     })
 
     return shellSurface
@@ -120,6 +122,11 @@ export default class ShellSurface extends WlShellSurfaceRequests {
      * @private
      */
     this._timeoutTimer = 0
+    /**
+     * @type {number}
+     * @private
+     */
+    this._pingTimer = 0
     /**
      * @type {boolean}
      * @private
@@ -187,18 +194,14 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    * @override
    */
   pong (resource, serial) {
-    // TODO fix ping/pong
     if (this._pingTimeoutActive) {
       this._userShellSurface.unresponsive = false
       this._pingTimeoutActive = false
     }
     window.clearTimeout(this._timeoutTimer)
-    const doPingTimer = window.setTimeout(() => {
+    this._pingTimer = window.setTimeout(() => {
       this._doPing(resource)
     }, 5000)
-    this.wlSurfaceResource.onDestroy().then(() => {
-      window.clearTimeout(doPingTimer)
-    })
   }
 
   /**
@@ -211,12 +214,9 @@ export default class ShellSurface extends WlShellSurfaceRequests {
         // ping timed out, make view gray
         this._pingTimeoutActive = true
         this._userShellSurface.unresponsive = true
-        this._addClassRecursively(/** @type {Surface} */this.wlSurfaceResource.implementation, 'fadeToUnresponsive')
       }
     }, 5000)
-    this.wlSurfaceResource.onDestroy().then(() => {
-      window.clearTimeout(this._timeoutTimer)
-    })
+    // FIXME use a proper serial
     resource.ping(0)
     this.session.flush()
   }

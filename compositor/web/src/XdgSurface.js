@@ -159,9 +159,7 @@ export default class XdgSurface extends XdgSurfaceRequests {
     const xdgToplevelResource = new XdgToplevelResource(resource.client, id, resource.version)
     const xdgToplevel = XdgToplevel.create(xdgToplevelResource, this, this._session, this._userShell)
     xdgToplevelResource.implementation = xdgToplevel
-    this.ackConfigure = (resource, serial) => {
-      xdgToplevel.ackConfigure(serial)
-    }
+    this.ackConfigure = (resource, serial) => xdgToplevel.ackConfigure(serial)
   }
 
   /**

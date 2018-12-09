@@ -35,7 +35,7 @@ export default class BufferedCanvas {
       backContext.canvas = backCanvas
     }
 
-    const containerDiv = document.createElement('div')
+    const containerDiv = /** @type {HTMLDivElement} */document.createElement('div')
     containerDiv.style.display = 'contents'
     containerDiv.appendChild(frontCanvas)
     containerDiv.appendChild(backCanvas)
@@ -70,11 +70,6 @@ export default class BufferedCanvas {
      * @type {View}
      */
     this.view = null
-    /**
-     * @type {?Promise<void>}
-     * @private
-     */
-    this._backBufferSync = null
   }
 
   /**

@@ -45,8 +45,8 @@ export default class XdgToplevel extends XdgToplevelRequests {
     xdgToplevelResource.implementation = xdgToplevel
     surface.role = xdgToplevel
     xdgToplevelResource.onDestroy().then(() => {
-      if (xdgToplevel._userShellSurface) {
-        xdgToplevel._userShellSurface.destroy()
+      if (xdgToplevel.userShellSurface) {
+        xdgToplevel.userShellSurface.destroy()
       }
     })
 
@@ -97,9 +97,8 @@ export default class XdgToplevel extends XdgToplevelRequests {
     this._session = session
     /**
      * @type {UserShellSurface}
-     * @private
      */
-    this._userShellSurface = userShellSurface
+    this.userShellSurface = userShellSurface
     /**
      * @type {XdgToplevelResource|null}
      * @private
@@ -214,7 +213,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
     if (this._activationRequested && this._configureState.state.includes(activated)) {
       this._activationRequested = false
-      this._userShellSurface.activationAck()
+      this.userShellSurface.activationAck()
     }
   }
 
@@ -255,7 +254,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
    */
   _map (surface) {
     this.mapped = true
-    this._userShellSurface.mapped = true
+    this.userShellSurface.mapped = true
   }
 
   /**
@@ -264,7 +263,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
   _unmap () {
     this.mapped = false
     this._configureState = { serial: 0, state: [], width: 0, height: 0, resizeEdge: 0 }
-    this._userShellSurface.mapped = false
+    this.userShellSurface.mapped = false
   }
 
   /**
@@ -501,7 +500,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
    */
   setTitle (resource, title) {
     this._title = title
-    this._userShellSurface.title = title
+    this.userShellSurface.title = title
   }
 
   /**
@@ -536,7 +535,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
    */
   setAppId (resource, appId) {
     this._appId = appId
-    this._userShellSurface.appId = appId
+    this.userShellSurface.appId = appId
   }
 
   /**
@@ -1133,6 +1132,6 @@ export default class XdgToplevel extends XdgToplevelRequests {
    * @override
    */
   setMinimized (resource) {
-    this._userShellSurface.minimize()
+    this.userShellSurface.minimize()
   }
 }

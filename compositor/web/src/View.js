@@ -51,6 +51,10 @@ export default class View {
      */
     this.customTransformation = null
     /**
+     * @type {Map<string, Mat4>}
+     */
+    this.userTransformations = new Map()
+    /**
      * @type {Mat4}
      */
     this._transformation = transformation
@@ -89,9 +93,8 @@ export default class View {
    * @param {View}parent
    */
   set parent (parent) {
-    if (this.destroyed) {
-      return
-    }
+    if (this.destroyed) { return }
+
     this._parent = parent
 
     if (this._parent) {
@@ -115,9 +118,8 @@ export default class View {
   }
 
   set primary (primary) {
-    if (this.destroyed) {
-      return
-    }
+    if (this.destroyed) { return }
+
     this._primary = primary
   }
 
@@ -142,9 +144,8 @@ export default class View {
    * @param {Mat4}transformation
    */
   set transformation (transformation) {
-    if (this.destroyed) {
-      return
-    }
+    if (this.destroyed) { return }
+
     this._transformation = transformation
     this._inverseTransformation = transformation.invert()
   }
@@ -160,9 +161,8 @@ export default class View {
    * @param {RenderFrame}renderFrame
    */
   applyTransformations (renderFrame) {
-    if (this.destroyed) {
-      return
-    }
+    if (this.destroyed) { return }
+
     const transformation = this._calculateTransformation()
     this.transformation = transformation
     const bufferToViewTransformation = transformation.timesMat4(this.surface.inverseBufferTransformation)
@@ -229,10 +229,15 @@ export default class View {
     return parentTransformation.timesMat4(positionTransformation)
   }
 
+  withUserTransformations (transformation) {
+    let finalTransformation = transformation
+    this.userTransformations.forEach(value => finalTransformation = transformation.timesMat4(value))
+    return finalTransformation
+  }
+
   raise () {
-    if (this.destroyed) {
-      return
-    }
+    if (this.destroyed) { return }
+
     this.zIndex = View._nextTopZIndex()
     this.surface.updateChildViewsZIndexes()
   }
@@ -241,9 +246,8 @@ export default class View {
    * @param {number}index
    */
   set zIndex (index) {
-    if (this.destroyed) {
-      return
-    }
+    if (this.destroyed) { return }
+
     if (index >= View._topZIndex) {
       View._topZIndex = index
     }
@@ -261,9 +265,8 @@ export default class View {
    * @param {HTMLImageElement|HTMLCanvasElement|HTMLVideoElement|ImageBitmap}image
    */
   draw (image) {
-    if (this.destroyed) {
-      return
-    }
+    if (this.destroyed) { return }
+
     // FIXME adjust final transformation with additional transformations defined in the surface
     this._applyTransformationsBackBuffer()
     this.bufferedCanvas.drawBackBuffer(image)
@@ -273,11 +276,12 @@ export default class View {
    * @param {RenderFrame}renderFrame
    */
   swapBuffers (renderFrame) {
-    if (this.destroyed) {
-      return
-    }
+    if (this.destroyed) { return }
+
     this.transformation = this._backBufferTransformation
     renderFrame.then(() => {
+      if (this.destroyed) { return }
+
       this.bufferedCanvas.swapBuffers()
     })
     // update child transformations as new parent buffer is visible
@@ -337,16 +341,14 @@ export default class View {
   }
 
   show () {
-    if (this.destroyed) {
-      return
-    }
+    if (this.destroyed) { return }
+
     this.bufferedCanvas.containerDiv.style.display = 'contents'
   }
 
   hide () {
-    if (this.destroyed) {
-      return
-    }
+    if (this.destroyed) { return }
+
     this.bufferedCanvas.containerDiv.style.display = 'none'
   }
 
@@ -370,9 +372,8 @@ export default class View {
    * @param {HTMLElement}element
    */
   attachTo (element) {
-    if (this.destroyed) {
-      return
-    }
+    if (this.destroyed) { return }
+
     this.bufferedCanvas.attachToElement(element)
 
     // attach child views
@@ -397,9 +398,8 @@ export default class View {
   }
 
   updateInputRegion () {
-    if (this.destroyed) {
-      return
-    }
+    if (this.destroyed) { return }
+
     const inputPixmanRegion = this.surface.state.inputPixmanRegion
     const surfacePixmanRegion = this.surface.pixmanRegion
     Region.intersect(inputPixmanRegion, inputPixmanRegion, surfacePixmanRegion)

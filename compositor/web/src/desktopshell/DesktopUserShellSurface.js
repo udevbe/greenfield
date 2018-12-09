@@ -100,9 +100,8 @@ class DesktopUserShellSurface extends UserShellSurface {
     // play a nice fade out animation if the view is destroyed
     view.onDestroy().then(() => {
       // after the animation has ended, detach the view from the scene
-      view.bufferedCanvas.frontContext.canvas.addEventListener('transitionend', () => {
-        view.detach()
-      })
+      view.bufferedCanvas.frontContext.canvas.addEventListener('transitionend', () => view.detach())
+      view.bufferedCanvas.backContext.canvas.addEventListener('transitionend', () => view.detach())
       view.bufferedCanvas.addCssClass('fadeToHidden')
     })
   }

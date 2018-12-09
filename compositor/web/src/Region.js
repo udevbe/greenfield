@@ -103,13 +103,13 @@ class Region extends WlRegionRequests {
     const nroRectsPtr = pixman._malloc(4) // uint32
     const pixmanBoxPtr = pixman._pixman_region32_rectangles(pixmanRegion, nroRectsPtr)
     const rectangles = []
-    const nroRects = new DataView(pixman.HEAPU8.buffer, nroRectsPtr, 4).getUint32(0, true)
-    const rectangleStructs = new DataView(pixman.HEAPU8.buffer, pixmanBoxPtr, (4 * 4 * nroRects))
+    const nroRects = new Uint32Array(pixman.HEAPU8.buffer, nroRectsPtr, 1)[0]
+    const rectangleStructs = new Uint32Array(pixman.HEAPU8.buffer, pixmanBoxPtr, (4 * nroRects))
     for (let i = 0; i < nroRects; i++) {
-      const x0 = rectangleStructs.getUint32(i * 16, true)
-      const y0 = rectangleStructs.getUint32((i * 16) + 4, true)
-      const x1 = rectangleStructs.getUint32((i * 16) + 8, true)
-      const y1 = rectangleStructs.getUint32((i * 16) + 12, true)
+      const x0 = rectangleStructs[i * 4]
+      const y0 = rectangleStructs[(i * 4) + 1]
+      const x1 = rectangleStructs[(i * 4) + 2]
+      const y1 = rectangleStructs[(i * 4) + 3]
       rectangles.push(Rect.create(x0, y0, x1, y1))
     }
     pixman._free(nroRectsPtr)

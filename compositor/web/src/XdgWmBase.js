@@ -7,6 +7,7 @@ import XdgSurfaceResource from './protocol/XdgSurfaceResource'
 
 import XdgSurface from './XdgSurface'
 import XdgPositioner from './XdgPositioner'
+import XdgToplevel from './XdgToplevel'
 
 /**
  *
@@ -53,26 +54,6 @@ export default class XdgWmBase extends XdgWmBaseRequests {
      */
     this._seat = seat
     /**
-     * @type {number}
-     * @private
-     */
-    this._timeoutTimer = 0
-    /**
-     * @type {boolean}
-     * @private
-     */
-    this._pingTimeoutActive = false
-    /**
-     * @type {number}
-     * @private
-     */
-    this._doPingTimer = 0
-    /**
-     * @type {number}
-     * @private
-     */
-    this._pingSerial = 0
-    /**
      * @type {Array<WlSurfaceResource>}
      * @private
      */
@@ -82,6 +63,12 @@ export default class XdgWmBase extends XdgWmBaseRequests {
      * @private
      */
     this._global = null
+
+    /**
+     * @type {Map<Client, {timeoutTimer:number, pingTimer:number, pingTimeoutActive:boolean}>}
+     * @private
+     */
+    this._clientPingStates = new Map()
   }
 
   /**
@@ -115,12 +102,18 @@ export default class XdgWmBase extends XdgWmBaseRequests {
   bindClient (client, id, version) {
     const xdgWmBaseResource = new XdgWmBaseResource(client, id, version)
     xdgWmBaseResource.implementation = this
-    xdgWmBaseResource.onDestroy().then(() => {
-      window.clearTimeout(this._timeoutTimer)
-    })
-    xdgWmBaseResource.onDestroy().then(() => {
-      window.clearTimeout(this._doPingTimer)
-    })
+
+    if (!this._clientPingStates.has(client)) {
+      client.onClose().then(() => {
+        const pingState = this._clientPingStates.get(client)
+        window.clearTimeout(pingState.timeoutTimer)
+        window.clearTimeout(pingState.pingTimer)
+        this._clientPingStates.delete(client)
+      })
+      const pingState = { timeoutTimer: 0, pingTimer: 0, pingTimeoutActive: false }
+      this._clientPingStates.set(client, pingState)
+      this._doPing(xdgWmBaseResource, pingState)
+    }
   }
 
   /**
@@ -218,67 +211,47 @@ export default class XdgWmBase extends XdgWmBaseRequests {
    * @override
    */
   pong (resource, serial) {
-    // TODO compare serial with send out pingSerial
-    if (this._pingTimeoutActive) {
-      this._wlSurfaceResources.forEach((wlSurfaceResource) => {
-        this._removeClassRecursively(/** @type {Surface} */wlSurfaceResource.implementation, 'fadeToUnresponsive')
-      })
-      this._pingTimeoutActive = false
+    const pingState = this._clientPingStates.get(resource.client)
+    if (pingState.pingTimeoutActive) {
+      this._setUnresponsive(resource.client, false)
+      pingState.pingTimeoutActive = false
     }
-    window.clearTimeout(this._timeoutTimer)
-    this._doPingTimer = window.setTimeout(() => {
-      this._doPing(resource)
-    }, 1000)
+    window.clearTimeout(pingState.timeoutTimer)
+    pingState.pingTimer = window.setTimeout(() => {
+      this._doPing(resource, pingState)
+    }, 5000)
   }
 
   /**
    * @param {XdgWmBaseResource} resource
+   * @param {{timeoutTimer:number, pingTimer:number, pingTimeoutActive:boolean}}pingState
    * @private
    */
-  _doPing (resource) {
-    this._timeoutTimer = window.setTimeout(() => {
-      if (!this._pingTimeoutActive) {
+  _doPing (resource, pingState) {
+    pingState.timeoutTimer = window.setTimeout(() => {
+      if (!pingState.pingTimeoutActive) {
         // ping timed out, make view gray
-        this._pingTimeoutActive = true
-        this._wlSurfaceResources.forEach((wlSurfaceResource) => {
-          this._addClassRecursively(/** @type {Surface} */wlSurfaceResource.implementation, 'fadeToUnresponsive')
-        })
+        pingState.pingTimeoutActive = true
+        this._setUnresponsive(resource.client, true)
       }
-    }, 3000)
-    this._pingSerial++
-    resource.ping(this._pingSerial)
-    this.session.flush()
+    }, 5000)
+    // FIXME use a proper serial
+    resource.ping(0)
+    this._session.flush()
   }
 
   /**
-   * @param {Surface}surface
-   * @param {string}cssClass
+   * @param {Client}client
+   * @param {boolean}value
    * @private
    */
-  _removeClassRecursively (surface, cssClass) {
-    surface.views.forEach((view) => {
-      view.bufferedCanvas.removeCssClass(cssClass)
-    })
-    surface.children.forEach((surfaceChild) => {
-      if (surfaceChild.surface !== surface) {
-        this._removeClassRecursively(surfaceChild.surface, cssClass)
-      }
-    })
-  }
-
-  /**
-   * @param {Surface}surface
-   * @param {string}cssClass
-   * @private
-   */
-  _addClassRecursively (surface, cssClass) {
-    surface.views.forEach((view) => {
-      view.bufferedCanvas.addCssClass(cssClass)
-    })
-    surface.children.forEach((surfaceChild) => {
-      if (surfaceChild.surface !== surface) {
-        this._addClassRecursively(surfaceChild.surface, cssClass)
-      }
-    })
+  _setUnresponsive (client, value) {
+    this._wlSurfaceResources.filter(wlSurfaceResource => wlSurfaceResource.client === client)
+      .forEach((wlSurfaceResource) => {
+        const xdgSurfaceRole = (/** @type {Surface} */wlSurfaceResource.implementation).role
+        if (xdgSurfaceRole instanceof XdgToplevel) {
+          (/** @type {XdgToplevel} */ xdgSurfaceRole).userShellSurface.unresponsive = value
+        }
+      })
   }
 }
