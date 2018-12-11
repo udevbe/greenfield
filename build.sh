@@ -1,23 +1,20 @@
 #!/usr/bin/env bash
 
-set -ev
+set -e
 
-build_compositor() {
-    printf "\n======[ Build compositor. ]======\n\n"
-    pushd compositor
+build () {
+    local component
+    local "${@}"
+
+    printf "\n======[ BUILD $component. ]======\n\n"
+    pushd ${component}
     npm ci
     popd
-}
-
-build_app_endpointd() {
-    printf "\n======[ Build app-endpointd. ]======\n\n"
-    pushd compositor
-    npm ci
-    popd
+    printf "\n======[ BUILD $component DONE. ]======\n"
 }
 
 printf "\n======[ START BUILD ]=====\n"
-build_compositor
-build_app_endpointd
+build component=compositor
+build component=app-endpointd
 printf "\n======[ BUILD DONE ]======\n"
 
