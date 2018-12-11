@@ -1,5 +1,5 @@
 # Greenfield :seedling:
-###The in-browser wayland compositor
+### The in-browser wayland compositor
 
 [![Build Status](https://travis-ci.org/udevbe/greenfield.svg)](https://travis-ci.org/udevbe/greenfield)
 
