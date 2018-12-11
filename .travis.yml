@@ -6,7 +6,7 @@ branches:
   only:
     - master
 before_install:
-  - sudo apt-get install -y libffi-dev
+  - sudo apt-get install -y libffi-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
 install:
   - ./build_ci.sh
 script: true
