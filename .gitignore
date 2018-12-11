@@ -106,8 +106,6 @@ fabric.properties
 .idea
 idea/vcs.xml
 /browser/src/protocol/
-/package-lock.json
-/local/native/package-lock.json
 /browser/public/browser.bundle.js
 /node_modules/
 /local/src/protocol/
@@ -134,5 +132,4 @@ CTestTestfile.cmake
 /compositor/web/dev/
 /compositor/web/dist/
 /compositor/web/src/protocol/
-/compositor/package-lock.json
 /app-endpointd/src/protocol
