@@ -1,5 +1,7 @@
 dist: xenial
-language: node_js
+language:
+node_js:
+  - lts/*
 branches:
   only:
     - travis_setup
