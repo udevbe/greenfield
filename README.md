@@ -71,8 +71,10 @@ Clone this repo:
   
 ### Application end-point
   
-  *Prerequisite: The Greenfield application end-point depends on the native-endpoint module of [Westfield](https://github.com/udevbe/westfield). Make sure you have 
-  the required Westfield native-endpoint dependencies installed first.*
+  Prerequisites: 
+   - The Greenfield application end-point depends on the native-endpoint module of [Westfield](https://github.com/udevbe/westfield). Make sure you have the required Westfield native-endpoint dependencies installed.
+   - `sudo apt-get install -y libffi-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev`
+   - `npm install -g cmake-js`
     
   Inside the `app-endpointd` directory run 
   
