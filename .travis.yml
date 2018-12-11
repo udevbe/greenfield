@@ -1,2 +1,10 @@
+language: node_js
+branches:
+  only:
+    - travis_setup
 before_install:
   - sudo apt-get install -y libffi-dev
+install:
+  - ./build.sh
+script: true
+cache: npm
