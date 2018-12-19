@@ -3,7 +3,7 @@
 export default class SurfaceState {
   /**
    * @param {?WlBufferResource}wlBuffer
-   * @param {?EncodedFrame}bufferContents
+   * @param {?EncodedFrame|?ImageBitmap|?ImageData}bufferContents
    * @param {Array<Rect>}bufferDamageRects
    * @param {number}opaquePixmanRegion
    * @param {number}inputPixmanRegion

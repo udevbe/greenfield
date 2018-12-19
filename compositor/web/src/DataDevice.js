@@ -1,5 +1,5 @@
 'use strict'
-import { Fixed } from 'westfield-runtime-server'
+import { Fixed } from 'westfield-runtime-common'
 
 import WlDataDeviceRequests from './protocol/WlDataDeviceRequests'
 import WlDataDeviceResource from './protocol/WlDataDeviceResource'

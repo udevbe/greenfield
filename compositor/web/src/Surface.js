@@ -23,7 +23,6 @@ import Region from './Region'
 import SurfaceChild from './SurfaceChild'
 import Renderer from './render/Renderer'
 import Point from './math/Point'
-import BufferStream from './BufferStream'
 import SurfaceState from './SurfaceState'
 
 /**
@@ -101,14 +100,7 @@ export default class Surface extends WlSurfaceRequests {
     Region.initInfinite(opaquePixmanRegion)
     Region.initInfinite(inputPixmanRegion)
 
-    const bufferStream = new BufferStream()
-    wlSurfaceResource.onDestroy().then(() => bufferStream.destroy())
-    wlSurfaceResource.client.setOutOfBandListener(wlSurfaceResource.id, 6, (outOfBandMessage) => {
-      // TODO try to improve buffer chunk handling and not slice (=copy) anywhere
-      bufferStream.onChunk(outOfBandMessage.slice(2 * Uint32Array.BYTES_PER_ELEMENT))
-    })
-
-    const surface = new Surface(wlSurfaceResource, renderer, seat, session, bufferDamage, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion, bufferStream)
+    const surface = new Surface(wlSurfaceResource, renderer, seat, session, bufferDamage, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion)
     wlSurfaceResource.implementation = surface
     wlSurfaceResource.onDestroy().then(() => {
       Region.destroyPixmanRegion(bufferDamage)
@@ -132,9 +124,8 @@ export default class Surface extends WlSurfaceRequests {
    * @param {!number} opaquePixmanRegion
    * @param {!number} inputPixmanRegion
    * @param {!number} surfacePixmanRegion
-   * @param {BufferStream}bufferStream
    */
-  constructor (wlSurfaceResource, renderer, seat, session, bufferDamage, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion, bufferStream) {
+  constructor (wlSurfaceResource, renderer, seat, session, bufferDamage, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion) {
     super()
     /**
      * @type {!WlSurfaceResource}
@@ -296,12 +287,6 @@ export default class Surface extends WlSurfaceRequests {
      */
     this.size = Size.create(0, 0)
     // <- derived states above
-
-    /**
-     * @type {BufferStream}
-     * @private
-     */
-    this._bufferStream = bufferStream
   }
 
   /**
@@ -899,6 +884,10 @@ export default class Surface extends WlSurfaceRequests {
         Region.destroyPixmanRegion(newState.opaquePixmanRegion)
       }
     }
+  }
+
+  async _getBufferContents (buffer, commitSerial) {
+
   }
 
   /**

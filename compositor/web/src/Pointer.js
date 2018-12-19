@@ -2,7 +2,7 @@
 
 import WlPointerRequests from './protocol/WlPointerRequests'
 import WlPointerResource from './protocol/WlPointerResource'
-import { Fixed } from 'westfield-runtime-server'
+import { Fixed } from 'westfield-runtime-common'
 
 import Point from './math/Point'
 import EncodingOptions from './EncodingOptions'

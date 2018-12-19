@@ -1,7 +1,7 @@
 'use strict'
 
 import WlBufferResource from './protocol/WlBufferResource'
-import Buffer from './Buffer'
+import StreamingBuffer from './StreamingBuffer'
 
 /**
  * Conceptual webRTC server socket as webRTC doesn't have the notion of server/client model.
@@ -136,10 +136,11 @@ export default class RtcSocket {
         const outOfBand = dataView.getUint32(0, true)
         if (!outOfBand) {
           const receiveBuffer = new Uint32Array(arrayBuffer, Uint32Array.BYTES_PER_ELEMENT)
+          // TODO abstract fds number to WebFD type so we can have different implementations depending on WebWorker & Native clients
           const fdsInCount = receiveBuffer[0]
           const fds = receiveBuffer.subarray(1, 1 + fdsInCount)
           const buffer = receiveBuffer.subarray(1 + fdsInCount)
-          client.message({ buffer, fds })
+          client.connection.message({ buffer, fds })
         } else {
           client.outOfBandMessage(arrayBuffer)
         }
@@ -148,7 +149,7 @@ export default class RtcSocket {
       /**
        * @param {Array<{buffer: ArrayBuffer, fds: Array<number>}>}wireMessages
        */
-      client.onFlush = (wireMessages) => {
+      client.connection.onFlush = (wireMessages) => {
         // convert to arraybuffer so it can be send over a data channel.
         const messagesSize = wireMessages.reduce((previousValue, currentValue) => {
           previousValue += Uint32Array.BYTES_PER_ELEMENT + (currentValue.fds * Uint32Array.BYTES_PER_ELEMENT) + currentValue.buffer.byteLength
@@ -159,6 +160,7 @@ export default class RtcSocket {
         sendBuffer[0] = 0 // out-of-band opcode
         let offset = 1
         wireMessages.forEach(value => {
+          // TODO abstract fds number to WebFD type so we can have different implementations depending on WebWorker & Native clients
           const fds = Uint32Array.from(value.fds)
           const message = new Uint32Array(value.buffer)
           sendBuffer[offset++] = fds.length
@@ -180,7 +182,7 @@ export default class RtcSocket {
 
       client.setOutOfBandListener(1, 0, (message) => {
         const wlBufferResource = new WlBufferResource(client, new Uint32Array(message)[2], 1)
-        wlBufferResource.implementation = Buffer.create(wlBufferResource)
+        wlBufferResource.implementation = StreamingBuffer.create(wlBufferResource)
       })
     }
   }
