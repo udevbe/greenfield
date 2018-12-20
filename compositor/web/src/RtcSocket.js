@@ -2,12 +2,14 @@
 
 import WlBufferResource from './protocol/WlBufferResource'
 import StreamingBuffer from './StreamingBuffer'
+import UUIDUtil from './UUIDUtil'
+import { WebFD } from 'westfield-runtime-common'
 
 /**
  * Conceptual webRTC server socket as webRTC doesn't have the notion of server/client model.
  * Clients (application endpoints) announce their desire to create a new RTC peer connection here.
  */
-export default class RtcSocket {
+class RtcSocket {
   /**
    *
    * @param {Session}session
@@ -88,6 +90,56 @@ export default class RtcSocket {
   }
 
   /**
+   * @param {WebFD}webFD
+   * @return {Promise<ArrayBuffer>}
+   * @private
+   */
+  async _getShmTransferable (webFD) {
+    // TODO get all contents at once from remote endpoint and put it in an array buffer
+    // TODO do this on each invocation
+    // return new ArrayBuffer(0)
+
+    throw new Error('shm transferable from endpoint not yet implemented.')
+  }
+
+  /**
+   * @param {WebFD}webFD
+   * @return {Promise<void>}
+   * @private
+   */
+  async _closeShmTransferable (webFD) {
+    // TODO signal the remote end (if any) that it should close the fd
+    throw new Error('close shm transferable from endpoint not yet implemented.')
+  }
+
+  /**
+   * @param {WebFD}webFD
+   * @return {Promise<MessagePort>}
+   * @private
+   */
+  async _getPipeTransferable (webFD) {
+    // TODO setup an open connection with the remote endpoint and transfer data on demand
+    // const messageChannel = new MessageChannel()
+    // TODO use port1 to interface with the remote endpoint
+    // TODO only do this once until the messageChannel is closed
+    // return messageChannel.port2
+
+    throw new Error('pipe transferable from endpoint not yet implemented.')
+  }
+
+  /**
+   * @param {WebFD}webFD
+   * @return {Promise<void>}
+   * @private
+   */
+  async _closePipeTransferable (webFD) {
+    // TODO signal the remote end (if any) that it should close the fd
+    // TODO close the messageChannel object
+
+    throw new Error('close pipe transferable from endpoint not yet implemented.')
+  }
+
+  /**
    * @param {RTCDataChannel}dataChannel
    * @param {string}appEndpointSessionId
    * @param peerConnection
@@ -123,62 +175,17 @@ export default class RtcSocket {
       // send out-of-band resource destroy
       client.addResourceDestroyListener((resource) => client.sendOutOfBand(1, 2, new Uint32Array([resource.id]).buffer))
 
-      dataChannel.onclose = (event) => {
+      dataChannel.onclose = () => {
         DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - data channel closed.`)
         client.close()
       }
-      dataChannel.onerror = (event) => {
-        DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - data channel error: ${event.message}.`)
-      }
-      dataChannel.onmessage = (event) => {
-        const arrayBuffer = /** @type {ArrayBuffer} */event.data
-        const dataView = new DataView(arrayBuffer)
-        const outOfBand = dataView.getUint32(0, true)
-        if (!outOfBand) {
-          const receiveBuffer = new Uint32Array(arrayBuffer, Uint32Array.BYTES_PER_ELEMENT)
-          // TODO abstract fds number to WebFD type so we can have different implementations depending on WebWorker & Native clients
-          const fdsInCount = receiveBuffer[0]
-          const fds = receiveBuffer.subarray(1, 1 + fdsInCount)
-          const buffer = receiveBuffer.subarray(1 + fdsInCount)
-          client.connection.message({ buffer, fds })
-        } else {
-          client.outOfBandMessage(arrayBuffer)
-        }
-      }
+      dataChannel.onerror = (event) => DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - data channel error: ${event.message}.`)
+      dataChannel.onmessage = (event) => this._handleDataChannelEvent(client, event)
 
       /**
        * @param {Array<{buffer: ArrayBuffer, fds: Array<number>}>}wireMessages
        */
-      client.connection.onFlush = (wireMessages) => {
-        // convert to arraybuffer so it can be send over a data channel.
-        const messagesSize = wireMessages.reduce((previousValue, currentValue) => {
-          previousValue += Uint32Array.BYTES_PER_ELEMENT + (currentValue.fds * Uint32Array.BYTES_PER_ELEMENT) + currentValue.buffer.byteLength
-          return previousValue
-        }, 0)
-
-        const sendBuffer = new Uint32Array(new ArrayBuffer(messagesSize + Uint32Array.BYTES_PER_ELEMENT))
-        sendBuffer[0] = 0 // out-of-band opcode
-        let offset = 1
-        wireMessages.forEach(value => {
-          // TODO abstract fds number to WebFD type so we can have different implementations depending on WebWorker & Native clients
-          const fds = Uint32Array.from(value.fds)
-          const message = new Uint32Array(value.buffer)
-          sendBuffer[offset++] = fds.length
-          sendBuffer.set(fds, offset)
-          offset += fds.length
-          sendBuffer.set(message, offset)
-          offset += message.length
-        })
-
-        if (dataChannel.readyState === 'open') {
-          try {
-            dataChannel.send(sendBuffer.buffer)
-          } catch (e) {
-            console.log(e.message)
-            client.close()
-          }
-        }
-      }
+      client.connection.onFlush = (wireMessages) => this._flushWireMessages(client, dataChannel, wireMessages)
 
       client.setOutOfBandListener(1, 0, (message) => {
         const wlBufferResource = new WlBufferResource(client, new Uint32Array(message)[2], 1)
@@ -187,6 +194,78 @@ export default class RtcSocket {
     }
   }
 
+  /**
+   * @param {Client}client
+   * @param {MessageEvent}event
+   * @private
+   */
+  _handleDataChannelEvent (client, event) {
+    const arrayBuffer = /** @type {ArrayBuffer} */event.data
+    const webFDIntSize = 6
+    const dataView = new DataView(arrayBuffer)
+    const outOfBand = dataView.getUint32(0, true)
+    if (outOfBand) {
+      client.outOfBandMessage(arrayBuffer)
+    } else {
+      const receiveBuffer = new Uint32Array(arrayBuffer, Uint32Array.BYTES_PER_ELEMENT)
+      const fdsInCount = receiveBuffer[0]
+      const fds = receiveBuffer.subarray(1, 1 + (fdsInCount * webFDIntSize))
+      const webFDs = []
+      for (let i = 0; i < fds.length; i += webFDIntSize) {
+        webFDs.push(this._deserializeWebFD(fds.subarray(i, i + webFDIntSize)))
+      }
+      const buffer = receiveBuffer.subarray(1 + (fdsInCount * webFDIntSize))
+      client.connection.message({ buffer, fds: webFDs })
+    }
+  }
+
+  /**
+   * @param {Client}client
+   * @param {RTCDataChannel}dataChannel
+   * @param {Array<{buffer: ArrayBuffer, fds: Array<number>}>}wireMessages
+   * @private
+   */
+  _flushWireMessages (client, dataChannel, wireMessages) {
+    // convert to arraybuffer so it can be send over a data channel.
+    const webFDIntSize = 6
+    const messagesSize = wireMessages.reduce((previousValue, currentValue) => {
+      return previousValue + // previous wire message length
+        1 + // fds length
+        (currentValue.fds * webFDIntSize) + // fds
+        (currentValue.buffer.byteLength / Uint32Array.BYTES_PER_ELEMENT) // protocol arguments of wire message
+    }, 0)
+
+    const sendBuffer = new Uint32Array(messagesSize + 1) // +1 for indicator of it's an out of band message
+    sendBuffer[0] = 0 // out-of-band opcode
+    let offset = 1
+    wireMessages.forEach(wireMessage => {
+      sendBuffer[offset++] = wireMessage.fds.length
+      wireMessage.fds.forEach((fd) => {
+        // TODO keep track of this webfd in case another host wants to get it's content or issues an fd close
+        this._serializeWebFD(fd, sendBuffer.subarray(offset, offset + webFDIntSize))
+        offset += webFDIntSize
+      })
+      const message = new Uint32Array(wireMessage.buffer)
+      sendBuffer.set(message, offset)
+      offset += message.length
+    })
+
+    if (dataChannel.readyState === 'open') {
+      try {
+        dataChannel.send(sendBuffer.buffer)
+      } catch (e) {
+        console.log(e.message)
+        client.close()
+      }
+    }
+  }
+
+  /**
+   * @param {string}appEndpointSessionId
+   * @param {RTCPeerConnection}peerConnection
+   * @return {Promise<void>}
+   * @private
+   */
   async _sendOffer (appEndpointSessionId, peerConnection) {
     const offer = await peerConnection.createOffer()
     await peerConnection.setLocalDescription(offer)
@@ -195,6 +274,56 @@ export default class RtcSocket {
       method: 'sdpOffer',
       args: { offer }
     })
+  }
+
+  /**
+   * @param {WebFD}webFD
+   * @param {Uint32Array}targetBuf
+   * @private
+   */
+  _serializeWebFD (webFD, targetBuf) {
+    targetBuf[0] = webFD.fd
+    switch (webFD.fdType) {
+      case 'shm':
+        targetBuf[1] = 1
+        break
+      case 'pipe':
+        targetBuf[1] = 2
+        break
+      default: // 'unsupported'
+        targetBuf[1] = 0
+    }
+    new Uint8Array(targetBuf.buffer, targetBuf.byteOffset + 8, 16).set(UUIDUtil.parse(webFD.fdDomainUUID))
+  }
+
+  /**
+   * @param {Uint32Array}sourceBuf
+   * @return {WebFD}
+   * @private
+   */
+  _deserializeWebFD (sourceBuf) {
+    const fd = sourceBuf[0]
+    let fdType
+    let onGetTransferable
+    let onClose
+    switch (sourceBuf[1]) {
+      case 1:
+        fdType = 'shm'
+        onGetTransferable = (webFD) => this._getShmTransferable(webFD)
+        onClose = (webFD) => this._closeShmTransferable(webFD)
+        break
+      case 2:
+        fdType = 'pipe'
+        onGetTransferable = (webFD) => this._getPipeTransferable(webFD)
+        onClose = (webFD) => this._closePipeTransferable(webFD)
+        break
+      default:
+        fdType = 'unsupported'
+        onGetTransferable = () => { throw new Error('unsupported fd type') }
+        onClose = () => { throw new Error('unsupported fd type') }
+    }
+    const fdDomainUUID = UUIDUtil.unparse(new Uint8Array(sourceBuf.buffer, sourceBuf.byteOffset + 8, 16))
+    return new WebFD(fd, fdType, fdDomainUUID, onGetTransferable, onClose)
   }
 
   /**
@@ -251,3 +380,5 @@ export default class RtcSocket {
     })
   }
 }
+
+export default RtcSocket

@@ -1,3 +1,5 @@
+import UUIDUtil from './UUIDUtil'
+
 const fs = require('fs')
 const { Endpoint, MessageInterceptor } = require('westfield-endpoint')
 // eslint-disable-next-line camelcase
@@ -100,6 +102,11 @@ class NativeClientSession {
      */
     this._outboundMessages = []
     /**
+     * @type {Array<Uint32Array>}
+     * @private
+     */
+    this._inboundMessages = []
+    /**
      * @type {MessageInterceptor}
      * @private
      */
@@ -130,37 +137,95 @@ class NativeClientSession {
   }
 
   /**
+   * @param {Uint32Array}sourceBuf
+   * @return {{fdDomainUUID: string, fd: number, fdType: string}}
+   * @private
+   */
+  _deserializeWebFD (sourceBuf) {
+    const fd = sourceBuf[0]
+    let fdType
+    switch (sourceBuf[1]) {
+      case 1:
+        fdType = 'shm'
+        break
+      case 2:
+        fdType = 'pipe'
+        break
+      default:
+        fdType = 'unsupported'
+    }
+    const fdDomainUUID = UUIDUtil.unparse(new Uint8Array(sourceBuf.buffer, sourceBuf.byteOffset + 8, 16))
+    return { fd, fdType, fdDomainUUID }
+  }
+
+  /**
    * @param {Uint32Array}receiveBuffer
    * @private
    */
-  _onWireMessageEvents (receiveBuffer) {
-    let readOffset = 0
-    let localGlobalsEmitted = false
-    while (readOffset < receiveBuffer.length) {
-      const fdsCount = receiveBuffer[readOffset++]
-      const fdsBuffer = receiveBuffer.subarray(readOffset, readOffset + fdsCount)
-      readOffset += fdsCount
-      const sizeOpcode = receiveBuffer[readOffset + 1]
-      const size = sizeOpcode >>> 16
+  async _onWireMessageEvents (receiveBuffer) {
+    if (this._inboundMessages.push(receiveBuffer) > 1) { return }
 
-      const length = size / Uint32Array.BYTES_PER_ELEMENT
-      const messageBuffer = receiveBuffer.subarray(readOffset, readOffset + length)
-      readOffset += length
+    while (this._inboundMessages.length) {
+      const inboundMessage = this._inboundMessages[0]
 
-      if (!localGlobalsEmitted) {
-        // check if browser compositor is emitting globals, if so, emit the local globals as well.
-        localGlobalsEmitted = this._emitLocalGlobals(messageBuffer)
+      let readOffset = 0
+      let localGlobalsEmitted = false
+      while (readOffset < inboundMessage.length) {
+        const fdsCount = inboundMessage[readOffset++]
+        const webFds = []
+        for (let i = 0; i < fdsCount; i++) {
+          const webFD = this._deserializeWebFD(inboundMessage.subarray(readOffset, readOffset + 6))
+          webFds.push(webFD)
+          readOffset += 6
+        }
+
+        const sizeOpcode = inboundMessage[readOffset + 1]
+        const size = sizeOpcode >>> 16
+
+        const length = size / Uint32Array.BYTES_PER_ELEMENT
+        const messageBuffer = inboundMessage.subarray(readOffset, readOffset + length)
+        readOffset += length
+
+        if (!localGlobalsEmitted) {
+          // check if browser compositor is emitting globals, if so, emit the local globals as well.
+          localGlobalsEmitted = this._emitLocalGlobals(messageBuffer)
+        }
+
+        const fdsBuffer = new Uint32Array(fdsCount)
+        for (let i = 0; i < webFds.length; i++) {
+          const webFD = webFds[i]
+          if (webFD.fdDomainUUID === this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId) {
+            fdsBuffer[i] = webFD.fd
+          } else { // foreign fd
+            fdsBuffer[i] = await this._handleForeignWebFD(webFD)
+          }
+        }
+        Endpoint.sendEvents(this.wlClient, messageBuffer, fdsBuffer)
       }
+      Endpoint.flush(this.wlClient)
 
-      Endpoint.sendEvents(this.wlClient, messageBuffer, fdsBuffer)
+      this._inboundMessages.shift()
     }
-    Endpoint.flush(this.wlClient)
+  }
+
+  /**
+   * Creates a local fd that has the content & behavior of the foreign webfd
+   * @param fd
+   * @param fdType
+   * @param fdDomainUUID
+   * @return {Promise<number>}
+   * @private
+   */
+  async _handleForeignWebFD ({ fd, fdType, fdDomainUUID }) {
+    // TODO check type of fd (unsupported, shm or pipe) and create a local fd of the same tye
+    // TODO create a network bridge between local & foreign host
+    // TODO in case of shm, transfer entire contents of file
+    // TODO In case of pipe, set up a 'streaming'/'on-demand' transfer
+    return 0
   }
 
   _flushOutboundMessage () {
-    while (this._outboundMessages.length) {
-      this._dataChannel.send(this._outboundMessages.shift())
-    }
+    while (this._outboundMessages.length) { this._dataChannel.send(this._outboundMessages.shift()) }
   }
 
   /**
@@ -221,19 +286,29 @@ class NativeClientSession {
 
   /**
    * @param {Object}wlClient
-   * @param {ArrayBuffer}fdsIn
+   * @param {ArrayBuffer}fdsInWithType
    */
-  _onWireMessageEnd (wlClient, fdsIn) {
-    const fdsBufferSize = Uint32Array.BYTES_PER_ELEMENT + (fdsIn ? fdsIn.byteLength : 0)
-    const sendBuffer = new Uint32Array(new ArrayBuffer(Uint32Array.BYTES_PER_ELEMENT + fdsBufferSize + this._pendingMessageBufferSize))
-    sendBuffer[0] = 0 // out-of-band opcode === 0
-    let offset = 1
-    sendBuffer[offset] = fdsIn ? fdsIn.byteLength / Uint32Array.BYTES_PER_ELEMENT : 0
-    offset += 1
+  _onWireMessageEnd (wlClient, fdsInWithType) {
+    const webFDSize = 6
+    let nroFds = 0
+    let fdsBufferSize = 1
+    if (fdsInWithType) {
+      nroFds = fdsInWithType.byteLength / (Uint32Array.BYTES_PER_ELEMENT * 2) // 1 fd int + 1 type int
+      fdsBufferSize += (nroFds * webFDSize)
+    }
 
-    if (fdsIn) {
-      const fdsArray = new Uint32Array(fdsIn)
-      sendBuffer.set(fdsArray)
+    const sendBuffer = new Uint32Array(1 + fdsBufferSize + (this._pendingMessageBufferSize / Uint32Array.BYTES_PER_ELEMENT))
+    let offset = 0
+    sendBuffer[offset++] = 0 // out-of-band opcode === 0
+    sendBuffer[offset++] = nroFds
+
+    if (fdsInWithType) {
+      const fdsArray = new Uint32Array(fdsInWithType)
+      for (let i = 0; i < nroFds; i++) {
+        // TODO keep track of fd in case another host wants to get it's content or issues an fd close
+        this._serializeWebFD(fdsInWithType[i * 2], fdsInWithType[(i * 2) + 1], sendBuffer.subarray(offset, offset + 6))
+        offset += 6
+      }
       offset += fdsArray.length
     }
 
@@ -257,6 +332,19 @@ class NativeClientSession {
   }
 
   /**
+   * @param {number}fd
+   * @param {number}fdType
+   * @param {Uint32Array}targetBuf
+   * @private
+   */
+  _serializeWebFD (fd, fdType, targetBuf) {
+    targetBuf[0] = fd
+    targetBuf[1] = fdType
+    const fdDomainUUID = this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId
+    new Uint8Array(targetBuf.buffer, targetBuf.byteOffset + 8, 16).set(UUIDUtil.parse(fdDomainUUID))
+  }
+
+  /**
    * @returns {Promise<void>}
    */
   onDestroy () {
@@ -277,18 +365,16 @@ class NativeClientSession {
    * @private
    */
   _onMessage (event) {
-    if (!this.wlClient) {
-      return
-    }
+    if (!this.wlClient) { return }
 
     const receiveBuffer = /** @type {ArrayBuffer} */event.data
     const buffer = Buffer.from(receiveBuffer)
     const outOfBand = buffer.readUInt32LE(0, true)
     if (!outOfBand) {
-      this._onWireMessageEvents(new Uint32Array(receiveBuffer, Uint32Array.BYTES_PER_ELEMENT))
-    } else {
       const opcode = buffer.readUInt32LE(4, true)
       this._outOfBandHandlers[outOfBand][opcode](outOfBand, opcode, buffer.slice(8))
+    } else {
+      this._onWireMessageEvents(new Uint32Array(receiveBuffer, Uint32Array.BYTES_PER_ELEMENT))
     }
   }
 
