@@ -4,15 +4,11 @@ const AppEndpointCompositorPair = require('./AppEndpointCompositorPair')
 const SurfaceBufferEncoding = require('./SurfaceBufferEncoding')
 
 function main () {
-  process.on('uncaughtException', (error) => {
-    console.error(error, error.stack)
-  })
+  process.on('uncaughtException', (error) => console.error(error, error.stack))
 
   SurfaceBufferEncoding.init()
 
-  const cleanUp = () => {
-    process.exit(0)
-  }
+  const cleanUp = () => process.exit(0)
 
   process.on('SIGINT', cleanUp)
   process.on('SIGTERM', cleanUp)
@@ -23,9 +19,7 @@ function main () {
     const compositorSessionid = message.compositorSessionId
     try {
       const appEndpointCompositorPair = await AppEndpointCompositorPair.create(compositorSessionid)
-      appEndpointCompositorPair.onDestroy().then(() => {
-        cleanUp()
-      })
+      appEndpointCompositorPair.onDestroy().then(() => cleanUp())
     } catch (e) {
       console.error(`Failed to create app-endpoint for [compositor-session-${compositorSessionid}.`, e.message, e.stack)
       process.exit(-1)

@@ -6,6 +6,7 @@ const { Endpoint, MessageInterceptor } = require('westfield-endpoint')
 const wl_display_interceptor = require('./protocol/wl_display_interceptor')
 // eslint-disable-next-line camelcase
 const wl_buffer_interceptor = require('./protocol/wl_buffer_interceptor')
+const ConnectionRTCPool = require('./ConnectionRTCPool')
 
 class NativeClientSession {
   /**
@@ -14,7 +15,7 @@ class NativeClientSession {
    * @returns {NativeClientSession}
    */
   static create (wlClient, compositorSession) {
-    const dataChannel = compositorSession.rtcClient.peerConnection.createDataChannel('', { ordered: true })
+    const dataChannel = compositorSession.clientRTC.peerConnection.createDataChannel('', { ordered: true })
     dataChannel.binaryType = 'arraybuffer'
 
     const messageInterceptor = MessageInterceptor.create(wlClient, compositorSession.wlDisplay, wl_display_interceptor, { dataChannel })
@@ -53,7 +54,7 @@ class NativeClientSession {
     dataChannel.onopen = () => {
       dataChannel.onerror = event => nativeClientSession._onError(event)
       // flush out any requests that came in while we were waiting for the data channel to open.
-      process.env.DEBUG && console.log(`[app-endpoint-${nativeClientSession._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] Native client session: RTC data channel to browser is open.`)
+      process.env.DEBUG && console.log(`[app-endpoint-${nativeClientSession._nativeCompositorSession.clientRTC.appEndpointCompositorPair.appEndpointSessionId}] Native client session: RTC data channel to browser is open.`)
       nativeClientSession._flushOutboundMessage()
     }
 
@@ -194,7 +195,7 @@ class NativeClientSession {
         const fdsBuffer = new Uint32Array(fdsCount)
         for (let i = 0; i < webFds.length; i++) {
           const webFD = webFds[i]
-          if (webFD.fdDomainUUID === this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId) {
+          if (webFD.fdDomainUUID === this._nativeCompositorSession.clientRTC.appEndpointCompositorPair.appEndpointSessionId) {
             fdsBuffer[i] = webFD.fd
           } else { // foreign fd
             fdsBuffer[i] = await this._handleForeignWebFD(webFD)
@@ -210,13 +211,19 @@ class NativeClientSession {
 
   /**
    * Creates a local fd that has the content & behavior of the foreign webfd
-   * @param fd
-   * @param fdType
-   * @param fdDomainUUID
+   * @param {number}fd
+   * @param {string}fdType
+   * @param {string}fdDomainUUID
    * @return {Promise<number>}
    * @private
    */
   async _handleForeignWebFD ({ fd, fdType, fdDomainUUID }) {
+    const connectionRTC = await ConnectionRTCPool.get(this._nativeCompositorSession.clientRTC.appEndpointCompositorPair, fdDomainUUID)
+    const fdDataChannel = connectionRTC.peerConnection.createDataChannel(`WebFD:${fdDomainUUID}:${fd}`)
+    if (fdType === 'shm') {
+
+    }
+
     // TODO check type of fd (unsupported, shm or pipe) and create a local fd of the same tye
     // TODO create a network bridge between local & foreign host
     // TODO in case of shm, transfer entire contents of file
@@ -340,7 +347,7 @@ class NativeClientSession {
   _serializeWebFD (fd, fdType, targetBuf) {
     targetBuf[0] = fd
     targetBuf[1] = fdType
-    const fdDomainUUID = this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId
+    const fdDomainUUID = this._nativeCompositorSession.clientRTC.appEndpointCompositorPair.appEndpointSessionId
     new Uint8Array(targetBuf.buffer, targetBuf.byteOffset + 8, 16).set(UUIDUtil.parse(fdDomainUUID))
   }
 
@@ -431,7 +438,7 @@ class NativeClientSession {
    */
   _onError (event) {
     // TODO log error
-    process.env.DEBUG && console.log(`[app-endpoint: ${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] - Native client session: RTC data channel is in error ${JSON.stringify(event.error)}.`)
+    process.env.DEBUG && console.log(`[app-endpoint: ${this._nativeCompositorSession.clientRTC.appEndpointCompositorPair.appEndpointSessionId}] - Native client session: RTC data channel is in error ${JSON.stringify(event.error)}.`)
   }
 
   /**
@@ -439,7 +446,7 @@ class NativeClientSession {
    * @private
    */
   _onClose (event) {
-    process.env.DEBUG && console.log(`[app-endpoint: ${this._nativeCompositorSession.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] - Native client session: RTC data channel is closed.`)
+    process.env.DEBUG && console.log(`[app-endpoint: ${this._nativeCompositorSession.clientRTC.appEndpointCompositorPair.appEndpointSessionId}] - Native client session: RTC data channel is closed.`)
     this.destroy()
   }
 

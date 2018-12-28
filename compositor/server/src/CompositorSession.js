@@ -29,15 +29,9 @@ class CompositorSession {
         process.env.DEBUG && console.log(`[compositor-session: ${id}] - Browser web socket is open.`)
         const compositorSession = new CompositorSession(wss, sessionWebSocket, id)
 
-        sessionWebSocket.addEventListener('message', (event) => {
-          compositorSession._onMessage(event)
-        })
-        sessionWebSocket.onclose = (event) => {
-          compositorSession._onClose(event)
-        }
-        sessionWebSocket.onerror = (event) => {
-          compositorSession._onError(event)
-        }
+        sessionWebSocket.addEventListener('message', (event) => compositorSession._onMessage(event))
+        sessionWebSocket.onclose = (event) => compositorSession._onClose(event)
+        sessionWebSocket.onerror = (event) => compositorSession._onError(event)
 
         resolve(compositorSession)
       })
@@ -77,15 +71,13 @@ class CompositorSession {
      * @type {Promise<void>}
      * @private
      */
-    this._destroyPromise = new Promise((resolve) => {
-      this._destroyResolve = resolve
-    })
+    this._destroyPromise = new Promise((resolve) => { this._destroyResolve = resolve })
 
     /**
-     * @type {{compositor: CompositorSession, desktopShell: DesktopShellMessageHandler}}
+     * @type {{signalingServer: RTCSignalMessageHandler, desktopShell: DesktopShellMessageHandler}}
      * @private
      */
-    this._messageHandlers = {
+    this._compositorMessageHandlers = {
       signalingServer: RTCSignalMessageHandler.create(this),
       desktopShell: DesktopShellMessageHandler.create(this)
     }
@@ -110,12 +102,8 @@ class CompositorSession {
   async pair (appEndpointSessionId, headers, method, head, socket) {
     const appEndpointSession = await AppEndpointSession.create(this._wss, this, appEndpointSessionId, headers, method, head, socket)
     this.appEndpointSessions[appEndpointSessionId] = appEndpointSession
-    appEndpointSession.onDestroy().then(() => {
-      delete this.appEndpointSessions[appEndpointSessionId]
-    })
-    this.onDestroy().then(() => {
-      appEndpointSession.destroy()
-    })
+    appEndpointSession.onDestroy().then(() => delete this.appEndpointSessions[appEndpointSessionId])
+    this.onDestroy().then(() => appEndpointSession.destroy())
 
     // Requests the browser to start a new webRTC peer connection.
     this.webSocket.send(JSON.stringify({
@@ -133,25 +121,33 @@ class CompositorSession {
     }
   }
 
+  /**
+   * @param {MessageEvent}event
+   * @private
+   */
   _onMessage (event) {
     const eventData = event.data
-    process.env.DEBUG && console.log(`[compositor-session: ${this.id}] - Received incoming browser message: ${eventData}`)
-    const message = JSON.parse(/** @types {string} */eventData)
-    const { object, method, args } = message
+    process.env.DEBUG && console.log(`[compositor-session: ${this.id}] - Received incoming browser message: ${eventData}`)``
     try {
-      this._messageHandlers[object][method](args)
+      const message = JSON.parse(/** @types {string} */eventData)
+      const { object, method, args } = message
+      this._compositorMessageHandlers[object][method](args)
     } catch (error) {
       console.error(`[compositor-session: ${this.id}] - Failed to handle incoming message. object=${object}:method=${method}:args=${args}\n${error}\n${error.stack}`)
       this.webSocket.close(4007, `Received an illegal message`)
     }
   }
 
+  /**
+   * @param {CloseEvent}event
+   * @private
+   */
   _onClose (event) {
     console.log(`[compositor-session: ${this.id}] - Browser web socket is closed. ${event.code}: ${event.reason}`)
     this.destroy()
   }
 
-  _onError (event) {
+  _onError () {
     console.error(`[compositor-session: ${this.id}] - Browser web socket is in error.`)
   }
 }

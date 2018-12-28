@@ -2,36 +2,27 @@
 
 const webRTC = require('wrtc')
 
-const NativeCompositorSession = require('./NativeCompositorSession')
-
-class RtcClient {
+// TODO datachannel creation listeners
+class ConnectionRTC {
   /**
    * @param {AppEndpointCompositorPair}appEndpointCompositorPair
-   * @returns {Promise<RtcClient>}
+   * @param {Object}peerConnectionConfig
+   * @param {string}remotePeerId
+   * @return {Promise<ConnectionRTC>}
    */
-  static create (appEndpointCompositorPair) {
-    // TODO reject on error
-    return new Promise((resolve) => {
-      // TODO rtc peer connection options from config
-      const pcConfig = {
-        'iceServers': [
-          {
-            'urls': ['turn:gftest.udev.be'],
-            'credentialType': 'password',
-            'username': 'greenfield',
-            'credential': 'bluesky'
-          }
-        ]
-      }
-      const peerConnection = new webRTC.RTCPeerConnection(pcConfig)
-      const rtcClient = new RtcClient(appEndpointCompositorPair, peerConnection)
+  static async create (appEndpointCompositorPair, peerConnectionConfig, remotePeerId) {
+    // TODO reject when no suitable ice candidates are found
+    return new Promise((resolve, reject) => {
+      const peerConnection = new webRTC.RTCPeerConnection(peerConnectionConfig)
+      const connectionRTC = new ConnectionRTC(appEndpointCompositorPair, peerConnection, remotePeerId)
+
       peerConnection.onicecandidate = evt => {
         const candidate = evt.candidate
         if (candidate !== null) {
           process.env.DEBUG && console.log(`[app-endpoint: ${appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: sending local ice candidate: ${JSON.stringify(candidate)}.`)
           const appEndpointSessionId = appEndpointCompositorPair.appEndpointSessionId
-          rtcClient._sendRTCSignal({
-            object: 'rtcSocket',
+          connectionRTC._sendRTCSignal({
+            object: 'connectionRTC',
             method: 'iceCandidate',
             args: {
               appEndpointSessionId,
@@ -42,7 +33,7 @@ class RtcClient {
       }
       peerConnection.onnegotiationneeded = () => {
         process.env.DEBUG && console.log(`[app-endpoint: ${appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: negotiation needed.`)
-        rtcClient._sendOffer()
+        connectionRTC._sendOffer()
       }
 
       // TODO properly figure out rtc peer connection lifecycle
@@ -50,34 +41,28 @@ class RtcClient {
         switch (peerConnection.connectionState) {
           case 'disconnected':
             process.env.DEBUG && console.log(`[app-endpoint: ${appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: state is disconnected.`)
-            rtcClient.destroy()
+            connectionRTC.destroy()
             break
           case 'failed':
             process.env.DEBUG && console.log(`[app-endpoint: ${appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: state is failed.`)
-            rtcClient.destroy()
+            connectionRTC.destroy()
             break
           case 'closed':
             process.env.DEBUG && console.log(`[app-endpoint: ${appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: state is closed.`)
-            rtcClient.destroy()
+            connectionRTC.destroy()
             break
         }
       }
-      process.env.DEBUG && console.log(`[app-endpoint: ${appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: state is ${peerConnection.connectionState}.`)
-
-      // TODO eagerly pre-create a data channel for faster client-browser communication.
-
-      const nativeCompositorSession = NativeCompositorSession.create(rtcClient)
-      rtcClient.onDestroy().then(() => nativeCompositorSession.destroy())
-
-      resolve(rtcClient)
+      resolve(connectionRTC)
     })
   }
 
   /**
    * @param {AppEndpointCompositorPair}appEndpointCompositorPair
    * @param {RTCPeerConnection}peerConnection
+   * @param {string}remotePeerUUID
    */
-  constructor (appEndpointCompositorPair, peerConnection) {
+  constructor (appEndpointCompositorPair, peerConnection, remotePeerUUID) {
     /**
      * @type {AppEndpointCompositorPair}
      */
@@ -87,28 +72,9 @@ class RtcClient {
      */
     this.peerConnection = peerConnection
     /**
-     * @type {function():void}
-     * @private
+     * @type {string}
      */
-    this._destroyResolve = null
-    /**
-     * @type {Promise<void>}
-     * @private
-     */
-    this._destroyPromise = new Promise((resolve) => {
-      this._destroyResolve = resolve
-    })
-  }
-
-  /**
-   * @return {Promise<void>}
-   */
-  onDestroy () {
-    return this._destroyPromise
-  }
-
-  destroy () {
-    this._destroyResolve()
+    this.remotePeerUUID = remotePeerUUID
   }
 
   /**
@@ -116,7 +82,10 @@ class RtcClient {
    * @private
    */
   _sendRTCSignal (signal) {
-    this.appEndpointCompositorPair.webSocket.send(JSON.stringify(signal))
+    this.appEndpointCompositorPair.webSocket.send(JSON.stringify({
+      target: `${this.remotePeerUUID}`,
+      payload: signal
+    }))
   }
 
   async iceCandidate ({ candidate }) {
@@ -132,7 +101,7 @@ class RtcClient {
 
     process.env.DEBUG && console.log(`[app-endpoint: ${this.appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: sending local sdp answer: ${JSON.stringify(answer)}.`)
     this._sendRTCSignal({
-      object: 'rtcSocket',
+      object: 'connectionRTC',
       method: 'sdpReply',
       args: {
         appEndpointSessionId: this.appEndpointCompositorPair.appEndpointSessionId,
@@ -151,7 +120,7 @@ class RtcClient {
     await this.peerConnection.setLocalDescription(offer)
     process.env.DEBUG && console.log(`[app-endpoint: ${this.appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: sending local sdp offer: ${JSON.stringify(offer)}.`)
     this._sendRTCSignal({
-      object: 'rtcSocket',
+      object: 'connectionRTC',
       method: 'sdpOffer',
       args: {
         appEndpointSessionId: this.appEndpointCompositorPair.appEndpointSessionId,
@@ -161,4 +130,4 @@ class RtcClient {
   }
 }
 
-module.exports = RtcClient
+module.exports = ConnectionRTC

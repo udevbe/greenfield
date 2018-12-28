@@ -17,7 +17,7 @@ class RtcSocket {
    */
   static create (session) {
     const rtcSocket = new RtcSocket(session)
-    session.messageHandlers['rtcSocket'] = rtcSocket
+    session.messageHandlers['connectionRTC'] = rtcSocket
     return rtcSocket
   }
 
@@ -43,8 +43,8 @@ class RtcSocket {
       return
     }
 
-    // TODO show to user available app-endpoints
-    // TODO show to user status of app-endpoints (peer connection state)
+    // TODO show to user available app-endpoints(?)
+    // TODO show to user status of app-endpoints (peer connection state)(?)
 
     // TODO rtc connection options setup
     const peerConnection = new RTCPeerConnection()

@@ -4,7 +4,7 @@ const crypto = require('crypto')
 const WebSocket = require('ws')
 
 const { session: sessionConfig } = require('./config')
-const RtcClient = require('./RtcClient')
+const RtcClient = require('./ClientRTC')
 
 class AppEndpointCompositorPair {
   /**
@@ -44,11 +44,9 @@ class AppEndpointCompositorPair {
       }
     })
 
-    const rtcClient = await RtcClient.create(appEndpointCompositorPair)
-    appEndpointCompositorPair.messageHandlers.rtcClient = rtcClient
-    rtcClient.onDestroy().then(() => {
-      appEndpointCompositorPair.destroy()
-    })
+    const clientRTC = await RtcClient.create(appEndpointCompositorPair)
+    appEndpointCompositorPair.messageHandlers.clientRTC = clientRTC
+    clientRTC.onDestroy().then(() => appEndpointCompositorPair.destroy())
 
     return appEndpointCompositorPair
   }

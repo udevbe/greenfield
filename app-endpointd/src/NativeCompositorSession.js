@@ -5,11 +5,11 @@ const NativeClientSession = require('./NativeClientSession')
 
 class NativeCompositorSession {
   /**
-   * @param {RtcClient}rtcClient
+   * @param {ClientRTC}clientRTC
    * @returns {NativeCompositorSession}
    */
-  static create (rtcClient) {
-    const compositorSession = new NativeCompositorSession(rtcClient)
+  static create (clientRTC) {
+    const compositorSession = new NativeCompositorSession(clientRTC)
 
     // TODO move global create/destroy callback implementations into Endpoint.js
     compositorSession.wlDisplay = Endpoint.createDisplay(
@@ -19,8 +19,8 @@ class NativeCompositorSession {
     )
     Endpoint.initShm(compositorSession.wlDisplay)
     compositorSession.wlDisplayName = Endpoint.addSocketAuto(compositorSession.wlDisplay)
-    console.log(`[app-endpoint: ${rtcClient.appEndpointCompositorPair.appEndpointSessionId}] - Native compositor session: created new app-endpoint.`)
-    console.log(`[app-endpoint: ${rtcClient.appEndpointCompositorPair.appEndpointSessionId}] - Native compositor session: compositor listening on: WAYLAND_DISPLAY="${compositorSession.wlDisplayName}".`)
+    console.log(`[app-endpoint: ${clientRTC.appEndpointCompositorPair.appEndpointSessionId}] - Native compositor session: created new app-endpoint.`)
+    console.log(`[app-endpoint: ${clientRTC.appEndpointCompositorPair.appEndpointSessionId}] - Native compositor session: compositor listening on: WAYLAND_DISPLAY="${compositorSession.wlDisplayName}".`)
 
     // set the wayland display to something non existing, else gstreamer will connect to us with a fallback value and
     // block, while in turn we wait for gstreamer, resulting in a deadlock!
@@ -39,13 +39,13 @@ class NativeCompositorSession {
   }
 
   /**
-   * @param {RtcClient}rtcClient
+   * @param {ClientRTC}clientRTC
    */
-  constructor (rtcClient) {
+  constructor (clientRTC) {
     /**
-     * @type {RtcClient}
+     * @type {ClientRTC}
      */
-    this.rtcClient = rtcClient
+    this.clientRTC = clientRTC
     /**
      * @type {Object}
      */
@@ -73,7 +73,7 @@ class NativeCompositorSession {
    * @private
    */
   _onClientCreated (wlClient) {
-    process.env.DEBUG && console.log(`[app-endpoint: ${this.rtcClient.appEndpointCompositorPair.appEndpointSessionId}] - Native compositor session: new wayland client connected.`)
+    process.env.DEBUG && console.log(`[app-endpoint: ${this.clientRTC.appEndpointCompositorPair.appEndpointSessionId}] - Native compositor session: new wayland client connected.`)
 
     // TODO keep track of clients
     const clientSession = NativeClientSession.create(wlClient, this)

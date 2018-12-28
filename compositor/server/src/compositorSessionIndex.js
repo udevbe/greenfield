@@ -3,9 +3,7 @@
 const CompositorSession = require('./CompositorSession')
 
 function main () {
-  process.on('uncaughtException', (error) => {
-    console.error(error, error.stack)
-  })
+  process.on('uncaughtException', (error) => console.error(error, error.stack))
 
   process.once('message', async (request, socket) => {
     const firstMessage = request[0]
@@ -33,7 +31,7 @@ function main () {
         const head = request[1]
 
         const compositorSession = await compositorSessionPromise
-        compositorSession.pair(appEndpointSessionId, headers, method, head, socket)
+        await compositorSession.pair(appEndpointSessionId, headers, method, head, socket)
       } else {
         console.log(`[compositor-session-${compositorSessionId}] Expected message 'pair'. Instead got ${message.intention}.  Will exit.`)
         process.exit(0)
