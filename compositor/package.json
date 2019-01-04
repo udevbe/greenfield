@@ -44,9 +44,9 @@
     "html-webpack-plugin": "^3.2.0",
     "standard": "^12.0.1",
     "style-loader": "^0.23.1",
-    "webpack": "^4.20.2",
+    "webpack": "^4.28.2",
     "webpack-cli": "^3.1.2",
-    "webpack-merge": "^4.1.4",
+    "webpack-merge": "^4.1.5",
     "westfield-scanner-server": "0.1.4"
   },
   "pkg": {
