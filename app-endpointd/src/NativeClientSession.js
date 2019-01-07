@@ -160,6 +160,8 @@ class NativeClientSession {
   }
 
   /**
+   * Delegates messages from the browser compositor to it's native counterpart.
+   * This method is async as transferring the contents of file descriptors might take some time
    * @param {Uint32Array}receiveBuffer
    * @private
    */
@@ -196,8 +198,11 @@ class NativeClientSession {
         for (let i = 0; i < webFds.length; i++) {
           const webFD = webFds[i]
           if (webFD.fdDomainUUID === this._nativeCompositorSession.clientRTC.appEndpointCompositorPair.appEndpointSessionId) {
+            // the fd originally came from this machine, which means we can just use it as is.
             fdsBuffer[i] = webFD.fd
-          } else { // foreign fd
+          } else { // foreign fd. the fd comes from a different host. In case of shm, we need to create local shm and
+            // transfer the contents of the remote fd. In case of pipe, we need to create a local pipe and transfer
+            // the contents on-demand.
             fdsBuffer[i] = await this._handleForeignWebFD(webFD)
           }
         }
@@ -210,7 +215,7 @@ class NativeClientSession {
   }
 
   /**
-   * Creates a local fd that has the content & behavior of the foreign webfd
+   * Creates a local fd that matches the content & behavior of the foreign webfd
    * @param {number}fd
    * @param {string}fdType
    * @param {string}fdDomainUUID
@@ -219,7 +224,8 @@ class NativeClientSession {
    */
   async _handleForeignWebFD ({ fd, fdType, fdDomainUUID }) {
     const connectionRTC = await ConnectionRTCPool.get(this._nativeCompositorSession.clientRTC.appEndpointCompositorPair, fdDomainUUID)
-    const fdDataChannel = connectionRTC.peerConnection.createDataChannel(`WebFD:${fdDomainUUID}:${fd}`)
+
+    const fdDataChannel = connectionRTC.peerConnection.createDataChannel(`urn:webfd:${fdDomainUUID}:${fd}`)
     if (fdType === 'shm') {
 
     }
@@ -296,24 +302,28 @@ class NativeClientSession {
    * @param {ArrayBuffer}fdsInWithType
    */
   _onWireMessageEnd (wlClient, fdsInWithType) {
-    const webFDSize = 6
+    const webFDIntSize = 6 // fd (1) + type (1) + uuid (4)
     let nroFds = 0
-    let fdsBufferSize = 1
+    let fdsIntBufferSize = 1
     if (fdsInWithType) {
-      nroFds = fdsInWithType.byteLength / (Uint32Array.BYTES_PER_ELEMENT * 2) // 1 fd int + 1 type int
-      fdsBufferSize += (nroFds * webFDSize)
+      nroFds = fdsInWithType.byteLength / (Uint32Array.BYTES_PER_ELEMENT * 2) // fd + type (shm or pipe) = 2
+      fdsIntBufferSize += (nroFds * webFDIntSize)
     }
 
-    const sendBuffer = new Uint32Array(1 + fdsBufferSize + (this._pendingMessageBufferSize / Uint32Array.BYTES_PER_ELEMENT))
+    // +1 because we prefix the length
+    const sendBuffer = new Uint32Array(1 + fdsIntBufferSize + (this._pendingMessageBufferSize / Uint32Array.BYTES_PER_ELEMENT))
     let offset = 0
-    sendBuffer[offset++] = 0 // out-of-band opcode === 0
+    sendBuffer[offset++] = 0 // disable out-of-band
     sendBuffer[offset++] = nroFds
 
     if (fdsInWithType) {
       const fdsArray = new Uint32Array(fdsInWithType)
       for (let i = 0; i < nroFds; i++) {
-        // TODO keep track of fd in case another host wants to get it's content or issues an fd close
-        this._serializeWebFD(fdsInWithType[i * 2], fdsInWithType[(i * 2) + 1], sendBuffer.subarray(offset, offset + 6))
+        // TODO keep track of (web)fd in case another host wants to get it's content or issues an fd close
+        const fd = fdsInWithType[i * 2]
+        const fdType = fdsInWithType[(i * 2) + 1]
+        const outBuf = sendBuffer.subarray(offset, offset + 6)
+        this._serializeWebFD(fd, fdType, outBuf)
         offset += 6
       }
       offset += fdsArray.length

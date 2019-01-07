@@ -17,7 +17,7 @@ class RtcSocket {
    */
   static create (session) {
     const rtcSocket = new RtcSocket(session)
-    session.messageHandlers['connectionRTC'] = rtcSocket
+    session.messageHandlers['signalingRTC'] = rtcSocket
     return rtcSocket
   }
 
@@ -39,7 +39,6 @@ class RtcSocket {
 
   async ['connect'] ({ appEndpointSessionId }) {
     if (this._appEndpointConnections[appEndpointSessionId]) {
-      console.error(`[webrtc-peer-connection: ${appEndpointSessionId}] - session already exists. Ignoring.`)
       return
     }
 
@@ -61,9 +60,12 @@ class RtcSocket {
       if (candidate !== null) {
         DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - sending local ice candidate: ${candidate}.`)
         this._sendRTCSignal(appEndpointSessionId, {
-          object: 'rtcClient',
+          object: 'signalingRTC',
           method: 'iceCandidate',
-          args: { candidate }
+          args: {
+            remotePeerId: this._session.compositorSessionId,
+            candidate
+          }
         })
       }
     }
@@ -270,9 +272,12 @@ class RtcSocket {
     const offer = await peerConnection.createOffer()
     await peerConnection.setLocalDescription(offer)
     this._sendRTCSignal(appEndpointSessionId, {
-      object: 'rtcClient',
+      object: 'signalingRTC',
       method: 'sdpOffer',
-      args: { offer }
+      args: {
+        remotePeerId: this._session.compositorSessionId,
+        offer
+      }
     })
   }
 
@@ -342,39 +347,55 @@ class RtcSocket {
     }))
   }
 
-  async ['iceCandidate'] ({ appEndpointSessionId, candidate }) {
-    const peerConnection = this._appEndpointConnections[appEndpointSessionId]
+  /**
+   * @param {string}remotePeerId
+   * @param {RTCIceCandidateInit | RTCIceCandidate}candidate
+   * @return {Promise<void>}
+   */
+  async ['iceCandidate'] ({ remotePeerId, candidate }) {
+    const peerConnection = this._appEndpointConnections[remotePeerId]
     if (!peerConnection) {
-      throw new Error(`[webrtc-peer-connection: ${appEndpointSessionId}] - session not found.`)
+      throw new Error(`[webrtc-peer-connection: ${remotePeerId}] - session not found.`)
     }
 
     await peerConnection.addIceCandidate(candidate)
   }
 
-  async ['sdpReply'] ({ appEndpointSessionId, reply }) {
-    const peerConnection = this._appEndpointConnections[appEndpointSessionId]
+  /**
+   * @param {string}remotePeerId
+   * @param {RTCSessionDescriptionInit}reply
+   * @return {Promise<void>}
+   */
+  async ['sdpReply'] ({ remotePeerId, reply }) {
+    const peerConnection = this._appEndpointConnections[remotePeerId]
     if (!peerConnection) {
-      throw new Error(`[webrtc-peer-connection: ${appEndpointSessionId}] - session not found.`)
+      throw new Error(`[webrtc-peer-connection: ${remotePeerId}] - session not found.`)
     }
 
     await peerConnection.setRemoteDescription(reply)
   }
 
-  async ['sdpOffer'] ({ appEndpointSessionId, offer }) {
-    const peerConnection = this._appEndpointConnections[appEndpointSessionId]
+  /**
+   * @param {string}remotePeerId
+   * @param {RTCSessionDescriptionInit}offer
+   * @return {Promise<void>}
+   */
+  async ['sdpOffer'] ({ remotePeerId, offer }) {
+    const peerConnection = this._appEndpointConnections[remotePeerId]
     if (!peerConnection) {
-      throw new Error(`[webrtc-peer-connection: ${appEndpointSessionId}] - session not found.`)
+      throw new Error(`[webrtc-peer-connection: ${remotePeerId}] - session not found.`)
     }
 
     await peerConnection.setRemoteDescription(offer)
     const answer = await peerConnection.createAnswer()
     await peerConnection.setLocalDescription(answer)
 
-    process.env.DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - sending browser sdp answer: ${answer}.`)
-    this._sendRTCSignal(appEndpointSessionId, {
-      object: 'rtcClient',
+    process.env.DEBUG && console.log(`[webrtc-peer-connection: ${remotePeerId}] - sending browser sdp answer: ${answer}.`)
+    this._sendRTCSignal(remotePeerId, {
+      object: 'signalingRTC',
       method: 'sdpReply',
       args: {
+        remotePeerId: this._session.compositorSessionId,
         reply: answer
       }
     })

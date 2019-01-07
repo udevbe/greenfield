@@ -4,7 +4,7 @@ const crypto = require('crypto')
 const WebSocket = require('ws')
 
 const { session: sessionConfig } = require('./config')
-const RtcClient = require('./ClientRTC')
+const ClientRTC = require('./ClientRTC')
 
 class AppEndpointCompositorPair {
   /**
@@ -22,8 +22,6 @@ class AppEndpointCompositorPair {
    * @returns {Promise<AppEndpointCompositorPair>}
    */
   static async create (compositorSessionId) {
-    // TODO setup a pairing websocket connection and create a rtc peer connection, using the websocket connection
-    // as signaling channel.
     const appEndpointSessionId = this._uuidv4()
     const appEndpointCompositorPair = await new Promise((resolve, reject) => {
       const websocketUrl = `${sessionConfig['web-socket-connection']['url']}/pairAppEndpoint/${appEndpointSessionId}/${compositorSessionId}`
@@ -44,8 +42,9 @@ class AppEndpointCompositorPair {
       }
     })
 
-    const clientRTC = await RtcClient.create(appEndpointCompositorPair)
-    appEndpointCompositorPair.messageHandlers.clientRTC = clientRTC
+    const clientRTC = await ClientRTC.create(appEndpointCompositorPair)
+
+    appEndpointCompositorPair.messageHandlers['signalingRTC '] = clientRTC
     clientRTC.onDestroy().then(() => appEndpointCompositorPair.destroy())
 
     return appEndpointCompositorPair
@@ -78,17 +77,11 @@ class AppEndpointCompositorPair {
      * @type {Promise<void>}
      * @private
      */
-    this._destroyPromise = new Promise((resolve) => {
-      this._destroyResolve = resolve
-    })
+    this._destroyPromise = new Promise((resolve) => { this._destroyResolve = resolve })
     /**
      * @type {Object.<string, Object>}
      */
     this.messageHandlers = {}
-    /**
-     * @type {NativeCompositorSession}
-     */
-    this.nativeCompositorSession = null
   }
 
   /**

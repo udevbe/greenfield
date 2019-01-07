@@ -86,13 +86,18 @@ class AppEndpointSession {
       if (eventData.length > 10240) {
         throw new Error('Message length exceeded bounds.')
       }
-      process.env.DEBUG && console.log(`[compositor-session: ${this._compositorSession.id}] [app-endpoint: ${this.id}] - Receiving incoming application endpoint message: ${eventData}. Forwarding to browser.`)
       const endpointMessage = JSON.parse(eventData)
       if (endpointMessage.target === this._compositorSession.id) {
+        process.env.DEBUG && console.log(`[target-compositor-session: ${this._compositorSession.id}] [source-app-endpoint: ${this.id}] - Receiving incoming application endpoint message: ${eventData}. Forwarding to browser.`)
         this._compositorSession.webSocket.send(JSON.stringify(endpointMessage.payload))
       } else {
+        process.env.DEBUG && console.log(`[target-app-endpoint: ${this._compositorSession.id}] [source-app-endpoint: ${this.id}] - Receiving incoming application endpoint message: ${eventData}. Forwarding to target application endpoint.`)
         const appEndpointSession = this._compositorSession.appEndpointSessions[endpointMessage.target]
-        appEndpointSession.webSocket.send(JSON.stringify(endpointMessage.payload))
+        if (appEndpointSession) {
+          appEndpointSession.webSocket.send(JSON.stringify(endpointMessage.payload))
+        } else {
+          throw new Error(`Message target ${endpointMessage.target} did not match any known endpoint or compositor id.`)
+        }
       }
     } catch (error) {
       console.error(`[compositor-session: ${this._compositorSession.id}] [app-endpoint: ${this.id}] - Failed to handle incoming message. \n${error}\n${error.stack}`)

@@ -6,9 +6,9 @@ class ConnectionRTCPool {
   /**
    * @param {AppEndpointCompositorPair}appEndpointCompositorPair
    * @param {string}remotePeerId
-   * @return {Promise<ConnectionRTC>}
+   * @return {ConnectionRTC}
    */
-  static async get (appEndpointCompositorPair, remotePeerId) {
+  static get (appEndpointCompositorPair, remotePeerId) {
     let connectionRTC = ConnectionRTCPool._pool[remotePeerId]
     if (!connectionRTC) {
       // TODO rtc peer connection options from config
@@ -23,7 +23,7 @@ class ConnectionRTCPool {
           }
         ]
       }
-      connectionRTC = await ConnectionRTC.create(appEndpointCompositorPair, pcConfig, remotePeerId)
+      connectionRTC = ConnectionRTC.create(appEndpointCompositorPair, pcConfig, remotePeerId)
       ConnectionRTCPool._pool[remotePeerId] = connectionRTC
     }
     return connectionRTC

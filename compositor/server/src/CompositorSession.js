@@ -105,12 +105,12 @@ class CompositorSession {
     appEndpointSession.onDestroy().then(() => delete this.appEndpointSessions[appEndpointSessionId])
     this.onDestroy().then(() => appEndpointSession.destroy())
 
-    // Requests the browser to start a new webRTC peer connection.
-    this.webSocket.send(JSON.stringify({
-      object: 'rtcSocket',
-      method: 'connect',
-      args: { appEndpointSessionId }
-    }))
+    // // Requests the browser to start a new webRTC peer connection.
+    // this.webSocket.send(JSON.stringify({
+    //   object: 'signalingRTC',
+    //   method: 'connect',
+    //   args: { appEndpointSessionId }
+    // }))
   }
 
   destroy () {
