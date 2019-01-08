@@ -1,17 +1,22 @@
 'use strict'
 
 const webRTC = require('wrtc')
+const CommunicationChannelFactory = require('../CommunicationChannelFactory')
+const RTCCommunicationChannel = require('./RTCCommunicationChannel')
 
-class ConnectionRTC {
+/**
+ * @implements CommunicationChannelFactory
+ */
+class RTCConnection extends CommunicationChannelFactory {
   /**
    * @param {AppEndpointCompositorPair}appEndpointCompositorPair
    * @param {Object}peerConnectionConfig
    * @param {string}remotePeerId
-   * @return {ConnectionRTC}
+   * @return {RTCConnection}
    */
   static create (appEndpointCompositorPair, peerConnectionConfig, remotePeerId) {
     const peerConnection = new webRTC.RTCPeerConnection(peerConnectionConfig)
-    const connectionRTC = new ConnectionRTC(appEndpointCompositorPair, peerConnection, remotePeerId)
+    const connectionRTC = new RTCConnection(appEndpointCompositorPair, peerConnection, remotePeerId)
 
     peerConnection.onicecandidate = evt => {
       const candidate = evt.candidate
@@ -19,7 +24,7 @@ class ConnectionRTC {
         process.env.DEBUG && console.log(`[app-endpoint: ${appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: sending local ice candidate: ${JSON.stringify(candidate)}.`)
         const appEndpointSessionId = appEndpointCompositorPair.appEndpointSessionId
         connectionRTC._sendRTCSignal({
-          object: 'signalingRTC',
+          object: 'RTCSignaling',
           method: 'iceCandidate',
           args: {
             remotePeerId: appEndpointSessionId,
@@ -59,6 +64,7 @@ class ConnectionRTC {
    * @param {string}remotePeerUUID
    */
   constructor (appEndpointCompositorPair, peerConnection, remotePeerUUID) {
+    super()
     /**
      * @type {AppEndpointCompositorPair}
      */
@@ -78,10 +84,7 @@ class ConnectionRTC {
    * @private
    */
   _sendRTCSignal (signal) {
-    this.appEndpointCompositorPair.webSocket.send(JSON.stringify({
-      target: this.remotePeerUUID,
-      payload: signal
-    }))
+    this.appEndpointCompositorPair.sendSignal(this.remotePeerUUID, signal)
   }
 
   /**
@@ -105,7 +108,7 @@ class ConnectionRTC {
 
     process.env.DEBUG && console.log(`[app-endpoint: ${this.appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: sending local sdp answer: ${JSON.stringify(answer)}.`)
     this._sendRTCSignal({
-      object: 'signalingRTC',
+      object: 'RTCSignaling',
       method: 'sdpReply',
       args: {
         remotePeerId: this.appEndpointCompositorPair.appEndpointSessionId,
@@ -132,7 +135,7 @@ class ConnectionRTC {
     await this.peerConnection.setLocalDescription(offer)
     process.env.DEBUG && console.log(`[app-endpoint: ${this.appEndpointCompositorPair.appEndpointSessionId}] - WebRTC connection: sending local sdp offer: ${JSON.stringify(offer)}.`)
     this._sendRTCSignal({
-      object: 'signalingRTC',
+      object: 'RTCSignaling',
       method: 'sdpOffer',
       args: {
         remotePeerId: this.appEndpointCompositorPair.appEndpointSessionId,
@@ -143,13 +146,21 @@ class ConnectionRTC {
 
   connect () {
     this._sendRTCSignal({
-      object: 'signalingRTC',
+      object: 'RTCSignaling',
       method: 'connect',
       args: {
         remotePeerId: this.appEndpointCompositorPair.appEndpointSessionId
       }
     })
   }
+
+  /**
+   * @param {string}label
+   * @return {RTCCommunicationChannel}
+   */
+  createMessagesChannel (label) {
+    return RTCCommunicationChannel.create(this.peerConnection, label)
+  }
 }
 
-module.exports = ConnectionRTC
+module.exports = RTCConnection

@@ -4,7 +4,9 @@ const crypto = require('crypto')
 const WebSocket = require('ws')
 
 const { session: sessionConfig } = require('./config')
-const ClientRTC = require('./ClientRTC')
+const RTCConnectionPool = require('./rtc/RTCConnectionPool')
+const RTCSignaling = require('./rtc/RTCSignaling')
+const NativeCompositorSession = require('./NativeCompositorSession')
 
 class AppEndpointCompositorPair {
   /**
@@ -42,12 +44,21 @@ class AppEndpointCompositorPair {
       }
     })
 
-    const clientRTC = await ClientRTC.create(appEndpointCompositorPair)
-
-    appEndpointCompositorPair.messageHandlers['signalingRTC '] = clientRTC
-    clientRTC.onDestroy().then(() => appEndpointCompositorPair.destroy())
+    const communicationChannelFactory = this._communicationChannelFactory(appEndpointCompositorPair)
+    NativeCompositorSession.create(appEndpointCompositorPair, communicationChannelFactory)
 
     return appEndpointCompositorPair
+  }
+
+  /**
+   * @param appEndpointCompositorPair
+   * @return {CommunicationChannelFactory}
+   * @private
+   */
+  static _communicationChannelFactory (appEndpointCompositorPair) {
+    // TODO get factory type from config
+    appEndpointCompositorPair.messageHandlers['RTCSignaling'] = RTCSignaling.create(this)
+    return RTCConnectionPool.get(appEndpointCompositorPair, appEndpointCompositorPair.compositorSessionId)
   }
 
   /**
@@ -127,6 +138,17 @@ class AppEndpointCompositorPair {
    */
   _onError (event) {
     process.env.DEBUG && console.error(`[app-endpoint: ${this.appEndpointSessionId}] - Web socket is in error. ${event}.`)
+  }
+
+  /**
+   * @param {string}remotePeerUUID
+   * @param {*}signal
+   */
+  sendSignal (remotePeerUUID, signal) {
+    this.webSocket.send(JSON.stringify({
+      target: remotePeerUUID,
+      payload: signal
+    }))
   }
 }
 

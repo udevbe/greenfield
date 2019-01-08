@@ -1,16 +1,17 @@
 'use strict'
 
-const ConnectionRTC = require('./ConnectionRTC')
+const RTCConnection = require('./RTCConnection')
 
-class ConnectionRTCPool {
+class RTCConnectionPool {
   /**
    * @param {AppEndpointCompositorPair}appEndpointCompositorPair
    * @param {string}remotePeerId
-   * @return {ConnectionRTC}
+   * @return {RTCConnection}
    */
   static get (appEndpointCompositorPair, remotePeerId) {
-    let connectionRTC = ConnectionRTCPool._pool[remotePeerId]
-    if (!connectionRTC) {
+    // TODO track rtc connection lifecycle & update pool
+    let rtcConnection = RTCConnectionPool._pool[remotePeerId]
+    if (!rtcConnection) {
       // TODO rtc peer connection options from config
       const pcConfig = {
         'iceServers': [
@@ -23,17 +24,18 @@ class ConnectionRTCPool {
           }
         ]
       }
-      connectionRTC = ConnectionRTC.create(appEndpointCompositorPair, pcConfig, remotePeerId)
-      ConnectionRTCPool._pool[remotePeerId] = connectionRTC
+      rtcConnection = RTCConnection.create(appEndpointCompositorPair, pcConfig, remotePeerId)
+      RTCConnectionPool._pool[remotePeerId] = rtcConnection
+      rtcConnection.connect()
     }
-    return connectionRTC
+    return rtcConnection
   }
 }
 
 /**
- * @type {Object.<string,ConnectionRTC>}
+ * @type {Object.<string,RTCConnection>}
  * @private
  */
-ConnectionRTCPool._pool = {}
+RTCConnectionPool._pool = {}
 
-module.exports = ConnectionRTCPool
+module.exports = RTCConnectionPool
