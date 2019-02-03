@@ -3,6 +3,11 @@
 
 [![Build Status](https://travis-ci.org/udevbe/greenfield.svg)](https://travis-ci.org/udevbe/greenfield)
 
+Fosdem presentation (02 Feb 2019)
+
+https://mirror.as35701.net/video.fosdem.org/2019/K.4.401/greenfield.mp4
+
+Early tech preview video (23 Nov 2017)
 
 [![Alt text](https://img.youtube.com/vi/2lyihdFK7EE/0.jpg)](https://www.youtube.com/watch?v=2lyihdFK7EE)
 
