@@ -3,13 +3,9 @@
 
 [![Build Status](https://travis-ci.org/udevbe/greenfield.svg)](https://travis-ci.org/udevbe/greenfield)
 
-Fosdem presentation (02 Feb 2019)
+Fosdem presentation + demo (02 Feb 2019): https://mirror.as35701.net/video.fosdem.org/2019/K.4.401/greenfield.mp4
 
-https://mirror.as35701.net/video.fosdem.org/2019/K.4.401/greenfield.mp4
-
-Early tech preview video (23 Nov 2017)
-
-[![Alt text](https://img.youtube.com/vi/2lyihdFK7EE/0.jpg)](https://www.youtube.com/watch?v=2lyihdFK7EE)
+Early tech preview demo (23 Nov 2017): https://www.youtube.com/watch?v=2lyihdFK7EE
 
 Greenfield is different from existing solutions like VNC or RDP in that it does not stream a final server side generated image to a remote.
 Instead Greenfield live encodes each individual application to a h264 frame, after which it's send to the browser using a dedicated webrtc datachannel. 
