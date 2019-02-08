@@ -42,7 +42,7 @@ function unparse (buf) {
     bth[buf[i++]] + bth[buf[i++]]
 }
 
-export default {
+module.exports = {
   parse,
   unparse
 }

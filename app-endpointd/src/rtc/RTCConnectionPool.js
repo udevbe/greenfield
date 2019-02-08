@@ -6,7 +6,7 @@ class RTCConnectionPool {
   /**
    * @param {AppEndpointCompositorPair}appEndpointCompositorPair
    * @param {string}remotePeerId
-   * @return {RTCConnection}
+   * @return {CommunicationChannelFactory}
    */
   static get (appEndpointCompositorPair, remotePeerId) {
     // TODO track rtc connection lifecycle & update pool

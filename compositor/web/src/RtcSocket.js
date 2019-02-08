@@ -17,7 +17,7 @@ class RtcSocket {
    */
   static create (session) {
     const rtcSocket = new RtcSocket(session)
-    session.messageHandlers['signalingRTC'] = rtcSocket
+    session.messageHandlers['RTCSignaling'] = rtcSocket
     return rtcSocket
   }
 
@@ -37,8 +37,8 @@ class RtcSocket {
     this._appEndpointConnections = {}
   }
 
-  async ['connect'] ({ appEndpointSessionId }) {
-    if (this._appEndpointConnections[appEndpointSessionId]) {
+  async ['connect'] ({ remotePeerId }) {
+    if (this._appEndpointConnections[remotePeerId]) {
       return
     }
 
@@ -47,20 +47,20 @@ class RtcSocket {
 
     // TODO rtc connection options setup
     const peerConnection = new RTCPeerConnection()
-    this._appEndpointConnections[appEndpointSessionId] = peerConnection
-    peerConnection.ondatachannel = (event) => this._onDataChannel(event.channel, appEndpointSessionId, peerConnection)
+    this._appEndpointConnections[remotePeerId] = peerConnection
+    peerConnection.ondatachannel = (event) => this._onDataChannel(event.channel, remotePeerId, peerConnection)
 
     peerConnection.onnegotiationneeded = async () => {
-      DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - negotiation needed. Sending sdp offer.`)
-      await this._sendOffer(appEndpointSessionId, peerConnection)
+      DEBUG && console.log(`[webrtc-peer-connection: ${remotePeerId}] - negotiation needed. Sending sdp offer.`)
+      await this._sendOffer(remotePeerId, peerConnection)
     }
 
     peerConnection.onicecandidate = evt => {
       const candidate = evt.candidate
       if (candidate !== null) {
-        DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - sending local ice candidate: ${candidate}.`)
-        this._sendRTCSignal(appEndpointSessionId, {
-          object: 'signalingRTC',
+        DEBUG && console.log(`[webrtc-peer-connection: ${remotePeerId}] - sending local ice candidate: ${candidate}.`)
+        this._sendRTCSignal(remotePeerId, {
+          object: 'RTCSignaling',
           method: 'iceCandidate',
           args: {
             remotePeerId: this._session.compositorSessionId,
@@ -74,18 +74,18 @@ class RtcSocket {
     peerConnection.onconnectionstatechange = (event) => {
       switch (peerConnection.connectionState) {
         case 'connected':
-          DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - open.`)
+          DEBUG && console.log(`[webrtc-peer-connection: ${remotePeerId}] - open.`)
           break
         case 'disconnected':
-          DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - disconnected.`)
+          DEBUG && console.log(`[webrtc-peer-connection: ${remotePeerId}] - disconnected.`)
           break
         case 'failed':
-          DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - failed.`)
-          delete this._appEndpointConnections[appEndpointSessionId]
+          DEBUG && console.log(`[webrtc-peer-connection: ${remotePeerId}] - failed.`)
+          delete this._appEndpointConnections[remotePeerId]
           break
         case 'closed':
-          DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - closed.`)
-          delete this._appEndpointConnections[appEndpointSessionId]
+          DEBUG && console.log(`[webrtc-peer-connection: ${remotePeerId}] - closed.`)
+          delete this._appEndpointConnections[remotePeerId]
           break
       }
     }
@@ -272,7 +272,7 @@ class RtcSocket {
     const offer = await peerConnection.createOffer()
     await peerConnection.setLocalDescription(offer)
     this._sendRTCSignal(appEndpointSessionId, {
-      object: 'signalingRTC',
+      object: 'RTCSignaling',
       method: 'sdpOffer',
       args: {
         remotePeerId: this._session.compositorSessionId,
@@ -392,7 +392,7 @@ class RtcSocket {
 
     process.env.DEBUG && console.log(`[webrtc-peer-connection: ${remotePeerId}] - sending browser sdp answer: ${answer}.`)
     this._sendRTCSignal(remotePeerId, {
-      object: 'signalingRTC',
+      object: 'RTCSignaling',
       method: 'sdpReply',
       args: {
         remotePeerId: this._session.compositorSessionId,

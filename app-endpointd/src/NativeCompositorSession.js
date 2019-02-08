@@ -80,9 +80,9 @@ class NativeCompositorSession {
    * @private
    */
   _onClientCreated (wlClient) {
-    process.env.DEBUG && console.log(`[app-endpoint: ${this.clientRTC.appEndpointCompositorPair.appEndpointSessionId}] - Native compositor session: new wayland client connected.`)
+    process.env.DEBUG && console.log(`[app-endpoint: ${this.appEndpointCompositorPair.appEndpointSessionId}] - Native compositor session: new wayland client connected.`)
 
-    const communicationChannel = this._communicationChannelFactory.createMessagesChannel('')
+    const communicationChannel = this._communicationChannelFactory.createMessagesChannel()
     const clientSession = NativeClientSession.create(wlClient, this, communicationChannel)
     this.clients.push(clientSession)
     clientSession.onDestroy().then(() => {

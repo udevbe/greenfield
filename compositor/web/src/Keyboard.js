@@ -4,7 +4,7 @@ import WlKeyboardRequests from './protocol/WlKeyboardRequests'
 import WlKeyboardResource from './protocol/WlKeyboardResource'
 
 import Xkb from './Xkb'
-import WebFD from './WebFD'
+import { WebFD } from 'westfield-runtime-common'
 
 const { pressed, released } = WlKeyboardResource.KeyState
 const { xkbV1 } = WlKeyboardResource.KeymapFormat

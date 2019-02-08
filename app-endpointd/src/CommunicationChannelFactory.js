@@ -5,10 +5,9 @@
  */
 class CommunicationChannelFactory {
   /**
-   * @param {string}label
    * @return {CommunicationChannel}
    */
-  createMessagesChannel (label) {}
+  createMessagesChannel () {}
 }
 
 module.exports = CommunicationChannelFactory

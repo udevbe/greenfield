@@ -39,7 +39,7 @@ function setup (session) {
   xdgWmBase.registerGlobal(session.display.registry)
 
   // RtcSocket enables appl-endpoints with remote application to connect
-  session.messageHandlers['rtcSocket'] = RtcSocket.create(session)
+  RtcSocket.create(session)
 }
 
 async function main () {

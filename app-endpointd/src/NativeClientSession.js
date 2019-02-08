@@ -1,4 +1,4 @@
-import UUIDUtil from './UUIDUtil'
+const { parse, unparse } = require('./UUIDUtil')
 
 const { Endpoint, MessageInterceptor } = require('westfield-endpoint')
 // eslint-disable-next-line camelcase
@@ -127,9 +127,7 @@ class NativeClientSession {
 
     this._outOfBandHandlers = {
       1: {
-        2: (objectId, opcode, payload) => this._destroyResourceSilently(objectId, opcode, payload),
-        127: (objectId, opcode, payload) => this._openAndWriteShm(objectId, opcode, payload),
-        128: (objectId, opcode, payload) => this._closeFd(objectId, opcode, payload)
+        2: (objectId, opcode, payload) => this._destroyResourceSilently(objectId, opcode, payload)
       }
     }
   }
@@ -152,7 +150,7 @@ class NativeClientSession {
       default:
         fdType = 'unsupported'
     }
-    const fdDomainUUID = UUIDUtil.unparse(new Uint8Array(sourceBuf.buffer, sourceBuf.byteOffset + 8, 16))
+    const fdDomainUUID = unparse(new Uint8Array(sourceBuf.buffer, sourceBuf.byteOffset + 4 + 4, 16))
     return { fd, fdType, fdDomainUUID }
   }
 
@@ -220,31 +218,43 @@ class NativeClientSession {
    * @private
    */
   async _handleForeignWebFD ({ fd, fdType, fdDomainUUID }) {
-    const fdCommunicationChannel = this._createFdCommunicationChannel(fdDomainUUID, fd)
-
-    if (fdType === 'shm') {
-
+    let fdCommunicationChannel = null
+    if (this._nativeCompositorSession.appEndpointCompositorPair.compositorSessionId === fdDomainUUID) {
+      // If the fd originated from the compositor, we can reuse the existing communication channel to transfer the
+      // fd contents
+      fdCommunicationChannel = this._communicationChannel
+    } else {
+      // fd came from another endpoint, establish a new communication channel
+      fdCommunicationChannel = this._createFdCommunicationChannel(fdDomainUUID)
     }
 
-    // TODO create a network bridge between local & foreign host
-    // TODO check type of fd (unsupported, shm or pipe) and create a local fd of the same tye
-    // TODO in case of shm, signal remote end to start sending
-    // TODO in case of shm, listen for transfer and write contents to locally created shm file
-    // TODO in case of pipe, set up a 'streaming'/'on-demand' transfer
-    // TODO in case of pipe, listen for incoming data on pipe & forward, listen for incomding data on com channel and forward to pipe
-    return 0
+    if (fdType === 'shm') {
+      // TODO send message over com channel with fd as argument to receive all content
+      // TODO listen for incoming content on com chanel
+      // TODO create shm file and write once all contents are received
+      // TODO return shm fd
+    }
+
+    if (fdType === 'pipe') { // because we can't distinguish between read or write end of a pipe, we always always assume read-end of pipe here (c/p use case in wayland protocol)
+      // TODO send message over com channel with fd as argument to send all data received on read end of remote pipe fd
+      // TODO create new local pipe
+      // TODO listen for incoming content on com channel
+      // TODO write to write end of local pipe
+      // TODO return read end of local pipe
+    }
+
+    return -1
   }
 
   /**
    * @param fdDomainUUID
-   * @param fd
    * @return {CommunicationChannel}
    * @private
    */
-  _createFdCommunicationChannel (fdDomainUUID, fd) {
+  _createFdCommunicationChannel (fdDomainUUID) {
     // TODO decide to use RTC based on config
-    const rtcConnection = RTCConnectionPool.get(this._nativeCompositorSession.appEndpointCompositorPair, fdDomainUUID)
-    return rtcConnection.createMessagesChannel(`urn:webfd:${fdDomainUUID}:${fd}`)
+    const communicationChannelFactory = RTCConnectionPool.get(this._nativeCompositorSession.appEndpointCompositorPair, fdDomainUUID)
+    return communicationChannelFactory.createMessagesChannel()
   }
 
   _flushOutboundMessage () {
@@ -349,8 +359,6 @@ class NativeClientSession {
       this._outboundMessages.push(sendBuffer.buffer)
     }
 
-    this._communicationChannel.send(sendBuffer.buffer)
-
     this._pendingMessageBufferSize = 0
     this._pendingWireMessages = []
   }
@@ -365,7 +373,7 @@ class NativeClientSession {
     targetBuf[0] = fd
     targetBuf[1] = fdType
     const fdDomainUUID = this._nativeCompositorSession.appEndpointCompositorPair.appEndpointSessionId
-    new Uint8Array(targetBuf.buffer, targetBuf.byteOffset + 8, 16).set(UUIDUtil.parse(fdDomainUUID))
+    new Uint8Array(targetBuf.buffer, targetBuf.byteOffset + 8, 16).set(parse(fdDomainUUID))
   }
 
   /**

@@ -127,7 +127,7 @@ class CompositorSession {
    */
   _onMessage (event) {
     const eventData = event.data
-    process.env.DEBUG && console.log(`[compositor-session: ${this.id}] - Received incoming browser message: ${eventData}`)``
+    process.env.DEBUG && console.log(`[compositor-session: ${this.id}] - Received incoming browser message: ${eventData}`)
     try {
       const message = JSON.parse(/** @types {string} */eventData)
       const { object, method, args } = message

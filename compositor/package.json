@@ -1,5 +1,5 @@
 {
-  "name": "greenfield-client",
+  "name": "greenfield-compositor",
   "version": "1.0.0",
   "description": "HTML5 Wayland compositor",
   "bin": {
