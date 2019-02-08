@@ -22,7 +22,7 @@ export default class Keyboard extends WlKeyboardRequests {
    * @return {!Keyboard}
    */
   static create (session, dataDevice) {
-    const keyboard = new Keyboard(dataDevice)
+    const keyboard = new Keyboard(dataDevice, session)
     // TODO get the keymap from some config source
     // TODO make available in config menu
     keyboard.updateKeymap('qwerty.xkb')
@@ -51,8 +51,9 @@ export default class Keyboard extends WlKeyboardRequests {
    * Use Keyboard.create(..) instead.
    * @private
    * @param {!DataDevice} dataDevice
+   * @param {!Session}session
    */
-  constructor (dataDevice) {
+  constructor (dataDevice, session) {
     super()
     /**
      * @type {!DataDevice}
@@ -60,6 +61,11 @@ export default class Keyboard extends WlKeyboardRequests {
      * @private
      */
     this._dataDevice = dataDevice
+    /**
+     * @type {!Session}
+     * @private
+     */
+    this._session = session
     /**
      * @type {!Array<WlKeyboardResource>}
      */
@@ -169,14 +175,10 @@ export default class Keyboard extends WlKeyboardRequests {
     const keymapString = this._xkb.asString()
     const textEncoder = new TextEncoder('utf-8')
     const keymapBuffer = textEncoder.encode(keymapString).buffer
-    // TODO We only need to create a new WebFD for each new native client host. Currently there's not really a way
-    // to check this. This way we don't need to re-upload the same data to the same remote host each time.
-    const webFD = WebFD.create(resource.client)
-    webFD.openAndWriteShm(keymapBuffer).then((nativeFd) => {
-      resource.keymap(xkbV1, nativeFd, keymapBuffer.byteLength)
-      resource.client.flush()
-      webFD.close()
-    })
+
+    const keymapWebFD = this._session.webFS.create(keymapBuffer)
+    resource.keymap(xkbV1, keymapWebFD, keymapBuffer.byteLength)
+    resource.client.connection.flush()
   }
 
   /**

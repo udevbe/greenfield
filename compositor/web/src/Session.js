@@ -1,6 +1,7 @@
 'use strict'
 
 import { Display } from 'westfield-runtime-server'
+import WebFS from './WebFS'
 
 /**
  * Listens for client announcements from the server.
@@ -64,6 +65,10 @@ export default class Session {
      * @type {Object.<string,Object>}
      */
     this.messageHandlers = {}
+    /**
+     * @type {WebFS}
+     */
+    this.webFS = WebFS.create(this)
   }
 
   _onMessage (event) {

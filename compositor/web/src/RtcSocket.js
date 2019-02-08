@@ -233,7 +233,7 @@ class RtcSocket {
     const messagesSize = wireMessages.reduce((previousValue, currentValue) => {
       return previousValue + // previous wire message length
         1 + // fds length
-        (currentValue.fds * webFDIntSize) + // fds
+        (currentValue.fds.length * webFDIntSize) + // fds
         (currentValue.buffer.byteLength / Uint32Array.BYTES_PER_ELEMENT) // protocol arguments of wire message
     }, 0)
 
@@ -307,6 +307,10 @@ class RtcSocket {
    * @private
    */
   _deserializeWebFD (sourceBuf) {
+    // FIXME we only need to handle fetching remote contents if the fdDomainUUID does not match this compositor
+    // If it does match, we simply need to lookup the WebFD from our own WebFS cache, and return that one instead.
+    const fdDomainUUID = UUIDUtil.unparse(new Uint8Array(sourceBuf.buffer, sourceBuf.byteOffset + 8, 16))
+
     const fd = sourceBuf[0]
     let fdType
     let onGetTransferable
@@ -318,7 +322,7 @@ class RtcSocket {
         onClose = (webFD) => this._closeShmTransferable(webFD)
         break
       case 2:
-        fdType = 'pipe'
+        fdType = 'pipe' // read end of pipe
         onGetTransferable = (webFD) => this._getPipeTransferable(webFD)
         onClose = (webFD) => this._closePipeTransferable(webFD)
         break
@@ -327,7 +331,6 @@ class RtcSocket {
         onGetTransferable = () => { throw new Error('unsupported fd type') }
         onClose = () => { throw new Error('unsupported fd type') }
     }
-    const fdDomainUUID = UUIDUtil.unparse(new Uint8Array(sourceBuf.buffer, sourceBuf.byteOffset + 8, 16))
     return new WebFD(fd, fdType, fdDomainUUID, onGetTransferable, onClose)
   }
 

@@ -402,7 +402,7 @@ class NativeClientSession {
     const receiveBuffer = /** @type {ArrayBuffer} */event.data
     const buffer = Buffer.from(receiveBuffer)
     const outOfBand = buffer.readUInt32LE(0, true)
-    if (!outOfBand) {
+    if (outOfBand) {
       const opcode = buffer.readUInt32LE(4, true)
       this._outOfBandHandlers[outOfBand][opcode](outOfBand, opcode, buffer.slice(8))
     } else {
