@@ -50,7 +50,7 @@ class SurfaceBufferEncoding {
           bufferChunks.forEach((chunk) => {
             // add an out-of-band object-id (buffer id) + opcode (0)
             const sendBuffer = Buffer.concat([Buffer.from(new Uint32Array([outOfBandObjectId, 128]).buffer), chunk])
-            this.userData.dataChannel.send(sendBuffer.buffer.slice(sendBuffer.byteOffset, sendBuffer.byteOffset + sendBuffer.byteLength))
+            this.userData.communicationChannel.send(sendBuffer.buffer.slice(sendBuffer.byteOffset, sendBuffer.byteOffset + sendBuffer.byteLength))
           })
         })
       }

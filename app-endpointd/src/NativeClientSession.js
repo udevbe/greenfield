@@ -426,37 +426,6 @@ class NativeClientSession {
     }
   }
 
-  // /**
-  //  * @param {number}objectId
-  //  * @param {number}opcode
-  //  * @param {Buffer}payload
-  //  * @private
-  //  */
-  // _openAndWriteShm (objectId, opcode, payload) {
-  //   const webFd = payload.readUInt32LE(0, true)
-  //   const contents = payload.slice(4)
-  //   const nativeFd = Endpoint.createMemoryMappedFile(contents)
-  //   this._dataChannel.send(new Uint32Array([webFd, 127, nativeFd]).buffer)
-  // }
-
-  // /**
-  //  * @param {number}objectId
-  //  * @param {number}opcode
-  //  * @param {Buffer}payload
-  //  * @private
-  //  */
-  // _closeFd (objectId, opcode, payload) {
-  //   const webFd = payload.readUInt32LE(0, true)
-  //   const nativeFd = payload.readUInt32LE(4, true)
-  //   // TODO use callback & listen for errors
-  //   fs.close(nativeFd, (err) => {
-  //     if (err) {
-  //       console.error(`Error trying to close fd. ${err.message}`)
-  //     }
-  //     this._dataChannel.send(new Uint32Array([webFd, 128, err ? -1 : 0]).buffer)
-  //   })
-  // }
-
   /**
    * @param {ErrorEvent}event
    * @private
