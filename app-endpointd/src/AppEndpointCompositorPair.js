@@ -4,8 +4,6 @@ const crypto = require('crypto')
 const WebSocket = require('ws')
 
 const { session: sessionConfig } = require('./config')
-const RTCConnectionPool = require('./rtc/RTCConnectionPool')
-const RTCSignaling = require('./rtc/RTCSignaling')
 const NativeCompositorSession = require('./NativeCompositorSession')
 
 class AppEndpointCompositorPair {
@@ -44,21 +42,9 @@ class AppEndpointCompositorPair {
       }
     })
 
-    const communicationChannelFactory = this._communicationChannelFactory(appEndpointCompositorPair)
-    NativeCompositorSession.create(appEndpointCompositorPair, communicationChannelFactory)
+    NativeCompositorSession.create(appEndpointCompositorPair)
 
     return appEndpointCompositorPair
-  }
-
-  /**
-   * @param appEndpointCompositorPair
-   * @return {CommunicationChannelFactory}
-   * @private
-   */
-  static _communicationChannelFactory (appEndpointCompositorPair) {
-    // TODO get factory type from config
-    appEndpointCompositorPair.messageHandlers['RTCSignaling'] = RTCSignaling.create(this)
-    return RTCConnectionPool.get(appEndpointCompositorPair, appEndpointCompositorPair.compositorSessionId)
   }
 
   /**

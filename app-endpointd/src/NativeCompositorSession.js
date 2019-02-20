@@ -1,16 +1,23 @@
 const { Endpoint, nativeGlobalNames } = require('westfield-endpoint')
 const { Epoll } = require('epoll')
 
+const RTCConnectionPool = require('./rtc/RTCConnectionPool')
+const RTCSignaling = require('./rtc/RTCSignaling')
 const NativeClientSession = require('./NativeClientSession')
 
 class NativeCompositorSession {
   /**
    * @param {AppEndpointCompositorPair}appEndpointCompositorPair
-   * @param {CommunicationChannelFactory}communicationChannelFactory
    * @returns {NativeCompositorSession}
    */
-  static create (appEndpointCompositorPair, communicationChannelFactory) {
-    const compositorSession = new NativeCompositorSession(appEndpointCompositorPair, communicationChannelFactory)
+  static create (appEndpointCompositorPair) {
+    // TODO get channel factory type from config
+    const channelFactoryPool = RTCConnectionPool.create(appEndpointCompositorPair)
+    appEndpointCompositorPair.messageHandlers['RTCSignaling'] = RTCSignaling.create(channelFactoryPool)
+
+    const browserChannelFactory = channelFactoryPool.get(appEndpointCompositorPair.compositorSessionId)
+    const compositorSession = new NativeCompositorSession(appEndpointCompositorPair, browserChannelFactory, channelFactoryPool)
+    channelFactoryPool.channelNotifier.addListener(channel => compositorSession._handleIncomingChannel(channel))
 
     // TODO move global create/destroy callback implementations into Endpoint.js
     compositorSession.wlDisplay = Endpoint.createDisplay(
@@ -41,18 +48,23 @@ class NativeCompositorSession {
 
   /**
    * @param {AppEndpointCompositorPair}appEndpointCompositorPair
-   * @param {CommunicationChannelFactory}communicationChannelFactory
+   * @param {ChannelFactory}browserChannelFactory
+   * @param {ChannelFactoryPool}channelFactoryPool
    */
-  constructor (appEndpointCompositorPair, communicationChannelFactory) {
+  constructor (appEndpointCompositorPair, browserChannelFactory, channelFactoryPool) {
     /**
      * @type {AppEndpointCompositorPair}
      */
     this.appEndpointCompositorPair = appEndpointCompositorPair
     /**
-     * @type {CommunicationChannelFactory}
+     * @type {ChannelFactory}
      * @private
      */
-    this._communicationChannelFactory = communicationChannelFactory
+    this._browserChannelFactory = browserChannelFactory
+    /**
+     * @type {ChannelFactoryPool}
+     */
+    this.channelFactoryPool = channelFactoryPool
     /**
      * @type {Object}
      */
@@ -82,8 +94,8 @@ class NativeCompositorSession {
   _onClientCreated (wlClient) {
     process.env.DEBUG && console.log(`[app-endpoint: ${this.appEndpointCompositorPair.appEndpointSessionId}] - Native compositor session: new wayland client connected.`)
 
-    const communicationChannel = this._communicationChannelFactory.createMessagesChannel()
-    const clientSession = NativeClientSession.create(wlClient, this, communicationChannel)
+    const browserChannel = this._browserChannelFactory.createChannel()
+    const clientSession = NativeClientSession.create(wlClient, this, browserChannel)
     this.clients.push(clientSession)
     clientSession.onDestroy().then(() => {
       const idx = this.clients.indexOf(clientSession)
@@ -110,6 +122,16 @@ class NativeCompositorSession {
     if (idx > -1) {
       nativeGlobalNames.splice(idx, 1)
     }
+  }
+
+  /**
+   * @param {Channel}channel
+   * @private
+   */
+  _handleIncomingChannel (channel) {
+    // TODO listen for messages
+    // TODO handle out of band message types
+    // TODO handle disconnects
   }
 }
 

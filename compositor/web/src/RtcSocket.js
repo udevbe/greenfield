@@ -4,6 +4,7 @@ import WlBufferResource from './protocol/WlBufferResource'
 import StreamingBuffer from './StreamingBuffer'
 import UUIDUtil from './UUIDUtil'
 import { WebFD } from 'westfield-runtime-common'
+import RtcOutOfBandChannel from './RtcOutOfBandChannel'
 
 /**
  * Conceptual webRTC server socket as webRTC doesn't have the notion of server/client model.
@@ -154,17 +155,7 @@ class RtcSocket {
     dataChannel.onopen = () => {
       DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - data channel open.`)
 
-      const client = this._session.display.createClient((sendBuffer) => {
-        if (dataChannel.readyState === 'open') {
-          try {
-            dataChannel.send(sendBuffer)
-          } catch (e) {
-            console.log(e.message)
-            client.close()
-          }
-        }
-      })
-
+      const client = this._session.display.createClient()
       client.onClose().then(() => DEBUG && console.log(`[client] - closed.`))
 
       peerConnection.oniceconnectionstatechange = () => {
@@ -174,40 +165,107 @@ class RtcSocket {
         }
       }
 
-      // send out-of-band resource destroy
-      client.addResourceDestroyListener((resource) => client.sendOutOfBand(1, 2, new Uint32Array([resource.id]).buffer))
-
       dataChannel.onclose = () => {
         DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - data channel closed.`)
         client.close()
       }
       dataChannel.onerror = (event) => DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - data channel error: ${event.message}.`)
-      dataChannel.onmessage = (event) => this._handleDataChannelEvent(client, event)
 
       /**
        * @param {Array<{buffer: ArrayBuffer, fds: Array<number>}>}wireMessages
        */
       client.connection.onFlush = (wireMessages) => this._flushWireMessages(client, dataChannel, wireMessages)
 
-      client.setOutOfBandListener(1, 0, (message) => {
-        const wlBufferResource = new WlBufferResource(client, new Uint32Array(message)[2], 1)
-        wlBufferResource.implementation = StreamingBuffer.create(wlBufferResource)
+      const rtcOutOfBandChannel = RtcOutOfBandChannel.create((sendBuffer) => {
+        if (dataChannel.readyState === 'open') {
+          try {
+            dataChannel.send(sendBuffer)
+          } catch (e) {
+            console.log(e.message)
+            client.close()
+          }
+        }
       })
+      this._setupClientOutOfBandHandlers(client, rtcOutOfBandChannel)
+
+      dataChannel.onmessage = (event) => this._handleDataChannelEvent(client, event, rtcOutOfBandChannel)
     }
   }
 
   /**
    * @param {Client}client
-   * @param {MessageEvent}event
+   * @param {RtcOutOfBandChannel}rtcOutOfBandChannel
    * @private
    */
-  _handleDataChannelEvent (client, event) {
+  _setupClientOutOfBandHandlers (client, rtcOutOfBandChannel) {
+    // send out-of-band resource destroy. opcode: 1
+    client.addResourceDestroyListener((resource) => rtcOutOfBandChannel.send(1, new Uint32Array([resource.id]).buffer))
+
+    // listen for buffer creation. opcode: 2
+    rtcOutOfBandChannel.setListener(2, (message) => {
+      const wlBufferResource = new WlBufferResource(client, new Uint32Array(message)[0], 1)
+      wlBufferResource.implementation = StreamingBuffer.create(wlBufferResource)
+    })
+
+    // listen for buffer contents arriving. opcode: 3
+    rtcOutOfBandChannel.setListener(3, (outOfBandMessage) => {
+      const bufferId = new DataView(outOfBandMessage).getUint32(0, true)
+      const wlBufferResource = client.connection.wlObjects[bufferId]
+      const streamingBuffer = wlBufferResource.implementation
+      // TODO try to improve buffer chunk handling and not slice (=copy) anywhere
+      streamingBuffer.bufferStream.onChunk(outOfBandMessage.slice(Uint32Array.BYTES_PER_ELEMENT))
+    })
+
+    // listen for file contents request. opcode: 4
+    rtcOutOfBandChannel.setListener(4, (arrayBuffer) => {
+      const uint32Array = new Uint32Array(arrayBuffer)
+      const fd = uint32Array[0]
+      const webFD = this._session.webFS.getWebFD(fd)
+      webFD.getTransferable().then(transferable => {
+        if (transferable instanceof ArrayBuffer) {
+          // data channel only supports messages of max 16kb, so we need to chunk the file transfer.
+          const headerSize = 4 + 16 + 4 // fd + fdDomainUUID + fileSize
+          const fileSize = transferable.byteLength
+          const maxPayloadLength = (16 * 1024) - (headerSize + 4) // +4 bytes for the opcode
+          let fileContentsRemaining = fileSize
+
+          while (fileContentsRemaining > 0) {
+            const payloadLength = fileContentsRemaining > maxPayloadLength ? maxPayloadLength : fileContentsRemaining
+            const message = new Uint8Array(headerSize + payloadLength) // fd + fdDomainUUID + fileSize + fileContents
+            const messageDataView = new DataView(message.buffer)
+
+            messageDataView.setUint32(0, fd, true)
+
+            const fdDomainUUIDBuffer = UUIDUtil.parse(webFD.fdDomainUUID)
+            message.set(fdDomainUUIDBuffer, 4)
+
+            messageDataView.setUint32(20, fileSize)
+
+            message.set(new Uint8Array(transferable.slice(fileSize - fileContentsRemaining, (fileSize - fileContentsRemaining) + payloadLength)), 24)
+
+            // message back file contents. opcode: 4
+            rtcOutOfBandChannel.send(4, message.buffer)
+
+            fileContentsRemaining -= payloadLength
+          }
+        } // TODO else error out?
+      })
+    })
+  }
+
+  /**
+   * @param {Client}client
+   * @param {MessageEvent}event
+   * @param {RtcOutOfBandChannel}rtcOutOfBandChannel
+   * @private
+   */
+  _handleDataChannelEvent (client, event, rtcOutOfBandChannel) {
     const arrayBuffer = /** @type {ArrayBuffer} */event.data
     const webFDIntSize = 6
     const dataView = new DataView(arrayBuffer)
     const outOfBand = dataView.getUint32(0, true)
     if (outOfBand) {
-      client.outOfBandMessage(arrayBuffer)
+      rtcOutOfBandChannel.message(arrayBuffer)
     } else {
       const receiveBuffer = new Uint32Array(arrayBuffer, Uint32Array.BYTES_PER_ELEMENT)
       const fdsInCount = receiveBuffer[0]

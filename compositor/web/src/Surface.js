@@ -567,7 +567,6 @@ export default class Surface extends WlSurfaceRequests {
       this.renderState.destroy()
       this.renderState = null
     }
-    resource.client.removeAllOutOfBandListeners(resource.id)
   }
 
   /**

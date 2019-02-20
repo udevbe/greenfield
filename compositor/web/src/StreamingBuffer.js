@@ -22,12 +22,6 @@ export default class StreamingBuffer extends WlBufferRequests {
   static create (wlBufferResource) {
     const bufferStream = BufferStream.create()
     const buffer = new StreamingBuffer(wlBufferResource, bufferStream)
-    // TODO try to improve buffer chunk handling and not slice (=copy) anywhere
-    wlBufferResource.client.setOutOfBandListener(
-      wlBufferResource.id,
-      128,
-      (outOfBandMessage) => bufferStream.onChunk(outOfBandMessage.slice(2 * Uint32Array.BYTES_PER_ELEMENT))
-    )
     wlBufferResource.implementation = buffer
     return buffer
   }

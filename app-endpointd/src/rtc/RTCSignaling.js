@@ -1,25 +1,25 @@
 'use strict'
 
-const RTCConnectionPool = require('./RTCConnectionPool')
+const RTCChannel = require('./RTCChannel')
 
 class RTCSignaling {
   /**
-   * @param {AppEndpointCompositorPair}appEndpointCompositorPair
+   * @param {RTCConnectionPool}rtcConnectionPool
    * @return {RTCSignaling}
    */
-  static create (appEndpointCompositorPair) {
-    return new RTCSignaling(appEndpointCompositorPair)
+  static create (rtcConnectionPool) {
+    return new RTCSignaling(rtcConnectionPool)
   }
 
   /**
-   * @param {AppEndpointCompositorPair}appEndpointCompositorPair
+   * @param {RTCConnectionPool}rtcConnectionPool
    */
-  constructor (appEndpointCompositorPair) {
+  constructor (rtcConnectionPool) {
     /**
-     * @type {AppEndpointCompositorPair}
+     * @type {RTCConnectionPool}
      * @private
      */
-    this._appEndpointCompositorPair = appEndpointCompositorPair
+    this._rtcConnectionPool = rtcConnectionPool
   }
 
   /**
@@ -28,7 +28,7 @@ class RTCSignaling {
    * @return {Promise<void>}
    */
   async ['iceCandidate'] ({ remotePeerId, candidate }) {
-    const connectionRTC = await RTCConnectionPool.get(this._appEndpointCompositorPair, remotePeerId)
+    const connectionRTC = this._rtcConnectionPool.get(remotePeerId)
     await connectionRTC.iceCandidate(candidate)
   }
 
@@ -38,7 +38,7 @@ class RTCSignaling {
    * @return {Promise<void>}
    */
   async ['sdpReply'] ({ remotePeerId, reply }) {
-    const connectionRTC = await RTCConnectionPool.get(this._appEndpointCompositorPair, remotePeerId)
+    const connectionRTC = this._rtcConnectionPool.get(remotePeerId)
     await connectionRTC.sdpReply(reply)
   }
 
@@ -48,8 +48,18 @@ class RTCSignaling {
    * @return {Promise<void>}
    */
   async ['sdpOffer'] ({ remotePeerId, offer }) {
-    const connectionRTC = await RTCConnectionPool.get(this._appEndpointCompositorPair, remotePeerId)
+    const connectionRTC = this._rtcConnectionPool.get(remotePeerId)
     await connectionRTC.sdpOffer(offer)
+  }
+
+  async ['connect'] ({ remotePeerId }) {
+    // Initiate the creation of a new peer connection because of an external event
+    const rtcConnection = this._rtcConnectionPool.get(remotePeerId)
+    // Notifier listeners that a new data channel is created
+    rtcConnection.peerConnection.ondatachannel = (dataChannelEvent) => {
+      const rtcChannel = RTCChannel.wrap(dataChannelEvent.channel)
+      this._rtcConnectionPool.channelNotifier.notify(rtcChannel)
+    }
   }
 }
 

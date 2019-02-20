@@ -1,13 +1,13 @@
 'use strict'
 
 const webRTC = require('wrtc')
-const CommunicationChannelFactory = require('../CommunicationChannelFactory')
-const RTCCommunicationChannel = require('./RTCCommunicationChannel')
+const ChannelFactory = require('../ChannelFactory')
+const RTCChannel = require('./RTCChannel')
 
 /**
- * @implements CommunicationChannelFactory
+ * @implements ChannelFactory
  */
-class RTCConnection extends CommunicationChannelFactory {
+class RTCConnection extends ChannelFactory {
   /**
    * @param {AppEndpointCompositorPair}appEndpointCompositorPair
    * @param {Object}peerConnectionConfig
@@ -155,11 +155,10 @@ class RTCConnection extends CommunicationChannelFactory {
   }
 
   /**
-   * @param {string}label
-   * @return {RTCCommunicationChannel}
+   * @return {RTCChannel}
    */
-  createMessagesChannel (label) {
-    return RTCCommunicationChannel.create(this.peerConnection, label)
+  createChannel () {
+    return RTCChannel.create(this.peerConnection)
   }
 }
 

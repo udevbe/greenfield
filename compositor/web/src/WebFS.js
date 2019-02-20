@@ -36,11 +36,9 @@ export default class WebFS {
    */
   create (arrayBuffer) {
     const fd = this._nextFD++
-    const webFD = new WebFD(fd, 'shm', this._session.compositorSessionId, () => Promise.resolve(arrayBuffer), () => {
-      // FIXME we want to use reference counting here instead of simply deleting. Sending the WebFD to an endpoint
-      // will increase the ref, and we should wait until the endpoint has closed the fd as well.
-      delete this._webFDs[fd]
-    })
+    // FIXME we want to use reference counting here instead of simply deleting.
+    // Sending the WebFD to an endpoint will increase the ref, and we should wait until the endpoint has closed the fd as well.
+    const webFD = new WebFD(fd, 'shm', this._session.compositorSessionId, () => Promise.resolve(arrayBuffer), () => { delete this._webFDs[fd] })
     this._webFDs[fd] = webFD
     return webFD
   }
@@ -49,7 +47,7 @@ export default class WebFS {
    * @param {number}fd
    * @return {WebFD}
    */
-  get (fd) {
+  getWebFD (fd) {
     return this._webFDs[fd]
   }
 }

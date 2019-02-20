@@ -1,20 +1,27 @@
 'use strict'
 
-const CommunicationChannel = require('../CommunicationChannel')
+const Channel = require('../Channel')
 
 /**
- * @implements CommunicationChannel
+ * @implements Channel
  */
-class RTCCommunicationChannel extends CommunicationChannel {
+class RTCChannel extends Channel {
   /**
    * @param {RTCPeerConnection}peerConnection
-   * @param {string}label
-   * @return {RTCCommunicationChannel}
+   * @return {RTCChannel}
    */
-  static create (peerConnection, label) {
-    const dataChannel = peerConnection.createDataChannel(label, { ordered: true })
+  static create (peerConnection) {
+    const dataChannel = peerConnection.createDataChannel(null, { ordered: true })
     dataChannel.binaryType = 'arraybuffer'
-    return new RTCCommunicationChannel(dataChannel)
+    return new RTCChannel(dataChannel)
+  }
+
+  /**
+   * @param {RTCDataChannel}dataChannel
+   * @return {RTCChannel}
+   */
+  static wrap (dataChannel) {
+    return new RTCChannel(dataChannel)
   }
 
   /**
@@ -57,4 +64,4 @@ class RTCCommunicationChannel extends CommunicationChannel {
   }
 }
 
-module.exports = RTCCommunicationChannel
+module.exports = RTCChannel

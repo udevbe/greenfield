@@ -1,16 +1,41 @@
 'use strict'
 
 const RTCConnection = require('./RTCConnection')
+const ChannelFactoryPool = require('../ChannelFactoryPool')
 
-class RTCConnectionPool {
+class RTCConnectionPool extends ChannelFactoryPool {
   /**
    * @param {AppEndpointCompositorPair}appEndpointCompositorPair
-   * @param {string}remotePeerId
-   * @return {CommunicationChannelFactory}
+   * @return {RTCConnectionPool}
    */
-  static get (appEndpointCompositorPair, remotePeerId) {
+  static create (appEndpointCompositorPair) {
+    return new RTCConnectionPool(appEndpointCompositorPair)
+  }
+
+  /**
+   * @param {AppEndpointCompositorPair}appEndpointCompositorPair
+   */
+  constructor (appEndpointCompositorPair) {
+    super()
+    /**
+     * @type {Object.<string,RTCConnection>}
+     * @private
+     */
+    this._pool = {}
+    /**
+     * @type {AppEndpointCompositorPair}
+     * @private
+     */
+    this._appEndpointCompositorPair = appEndpointCompositorPair
+  }
+
+  /**
+   * @param {string}remotePeerId
+   * @return {RTCConnection}
+   */
+  get (remotePeerId) {
     // TODO track rtc connection lifecycle & update pool
-    let rtcConnection = RTCConnectionPool._pool[remotePeerId]
+    let rtcConnection = this._pool[remotePeerId]
     if (!rtcConnection) {
       // TODO rtc peer connection options from config
       const pcConfig = {
@@ -24,18 +49,12 @@ class RTCConnectionPool {
           }
         ]
       }
-      rtcConnection = RTCConnection.create(appEndpointCompositorPair, pcConfig, remotePeerId)
-      RTCConnectionPool._pool[remotePeerId] = rtcConnection
+      rtcConnection = RTCConnection.create(this._appEndpointCompositorPair, pcConfig, remotePeerId)
+      this._pool[remotePeerId] = rtcConnection
       rtcConnection.connect()
     }
     return rtcConnection
   }
 }
-
-/**
- * @type {Object.<string,RTCConnection>}
- * @private
- */
-RTCConnectionPool._pool = {}
 
 module.exports = RTCConnectionPool

@@ -3,7 +3,7 @@
 /**
  * @interface
  */
-class CommunicationChannel {
+class Channel {
   close () {}
 
   /**
@@ -25,4 +25,4 @@ class CommunicationChannel {
   get readyState () {}
 }
 
-module.exports = CommunicationChannel
+module.exports = Channel

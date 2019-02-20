@@ -41,15 +41,15 @@ class SurfaceBufferEncoding {
       uint32Array[2] = syncSerial
 
       if (this.bufferResourceId) {
-        const outOfBandObjectId = this.bufferResourceId
+        const bufferId = this.bufferResourceId
         this.bufferResourceId = 0
 
-        const { buffer, format, width, height, stride } = Endpoint.getShmBuffer(this.wlClient, outOfBandObjectId)
+        const { buffer, format, width, height, stride } = Endpoint.getShmBuffer(this.wlClient, bufferId)
         this.encoder.encodeBuffer(Buffer.from(buffer), format, width, height, syncSerial, []).then((/** @type {EncodedFrame} */encodedFrame) => {
           const bufferChunks = SurfaceBufferEncoding._toBufferChunks(encodedFrame.toBuffer(), encodedFrame.serial)
           bufferChunks.forEach((chunk) => {
-            // add an out-of-band object-id (buffer id) + opcode (0)
-            const sendBuffer = Buffer.concat([Buffer.from(new Uint32Array([outOfBandObjectId, 128]).buffer), chunk])
+            // send buffer contents. opcode: 3. bufferId + chunk
+            const sendBuffer = Buffer.concat([Buffer.from(new Uint32Array([3, bufferId]).buffer), chunk])
             this.userData.communicationChannel.send(sendBuffer.buffer.slice(sendBuffer.byteOffset, sendBuffer.byteOffset + sendBuffer.byteLength))
           })
         })
