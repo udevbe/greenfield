@@ -176,7 +176,7 @@ export default class Keyboard extends WlKeyboardRequests {
     const textEncoder = new TextEncoder('utf-8')
     const keymapBuffer = textEncoder.encode(keymapString).buffer
 
-    const keymapWebFD = this._session.webFS.create(keymapBuffer)
+    const keymapWebFD = this._session.webFS.fromArrayBuffer(keymapBuffer)
     resource.keymap(xkbV1, keymapWebFD, keymapBuffer.byteLength)
     resource.client.connection.flush()
   }

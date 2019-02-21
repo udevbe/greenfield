@@ -34,14 +34,27 @@ export default class WebFS {
    * @param {ArrayBuffer} arrayBuffer
    * @return {WebFD}
    */
-  create (arrayBuffer) {
+  fromArrayBuffer (arrayBuffer) {
     const fd = this._nextFD++
     // FIXME we want to use reference counting here instead of simply deleting.
     // Sending the WebFD to an endpoint will increase the ref, and we should wait until the endpoint has closed the fd as well.
-    const webFD = new WebFD(fd, 'shm', this._session.compositorSessionId, () => Promise.resolve(arrayBuffer), () => { delete this._webFDs[fd] })
+    const webFD = new WebFD(fd, 'ArrayBuffer', this._session.compositorSessionId, () => Promise.resolve(arrayBuffer), () => { delete this._webFDs[fd] })
     this._webFDs[fd] = webFD
     return webFD
   }
+
+  /**
+   * @param {ImageBitmap}imageBitmap
+   * @return {WebFD}
+   */
+  fromImageBitmap (imageBitmap) {
+    const fd = this._nextFD++
+    const webFD = new WebFD(fd, 'ImageBitmap', this._session.compositorSessionId, () => Promise.resolve(imageBitmap), () => { delete this._webFDs[fd] })
+    this._webFDs[fd] = webFD
+    return webFD
+  }
+
+  // TODO fromMessagePort
 
   /**
    * @param {number}fd

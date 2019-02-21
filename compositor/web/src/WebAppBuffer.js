@@ -6,15 +6,15 @@ import WlBufferRequests from './protocol/WlBufferRequests'
 /**
  *
  */
-export default class WebWorkerBuffer extends WlBufferRequests {
+export default class WebAppBuffer extends WlBufferRequests {
   /**
    *
    * @param {!WlBufferResource} wlBufferResource
    * @param {ImageBitmap}imageBitmap
-   * @return {!WebWorkerBuffer}
+   * @return {!WebAppBuffer}
    */
   static create (wlBufferResource, imageBitmap) {
-    return new WebWorkerBuffer(wlBufferResource, imageBitmap)
+    return new WebAppBuffer(wlBufferResource, imageBitmap)
   }
 
   /**

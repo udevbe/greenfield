@@ -172,7 +172,7 @@ class RtcSocket {
       dataChannel.onerror = (event) => DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - data channel error: ${event.message}.`)
 
       /**
-       * @param {Array<{buffer: ArrayBuffer, fds: Array<number>}>}wireMessages
+       * @param {Array<{buffer: ArrayBuffer, fds: Array<WebFD>}>}wireMessages
        */
       client.connection.onFlush = (wireMessages) => this._flushWireMessages(client, dataChannel, wireMessages)
 
@@ -282,7 +282,7 @@ class RtcSocket {
   /**
    * @param {Client}client
    * @param {RTCDataChannel}dataChannel
-   * @param {Array<{buffer: ArrayBuffer, fds: Array<number>}>}wireMessages
+   * @param {Array<{buffer: ArrayBuffer, fds: Array<WebFD>}>}wireMessages
    * @private
    */
   _flushWireMessages (client, dataChannel, wireMessages) {
@@ -347,13 +347,17 @@ class RtcSocket {
   _serializeWebFD (webFD, targetBuf) {
     targetBuf[0] = webFD.fd
     switch (webFD.fdType) {
-      case 'shm':
+      case 'ArrayBuffer':
         targetBuf[1] = 1
         break
-      case 'pipe':
+      case 'MessagePort':
         targetBuf[1] = 2
         break
-      default: // 'unsupported'
+      // image bitmap can not be transfer to a remote
+      // case 'ImageBitmap':
+      //   targetBuf[1] = 3
+      //   break
+      default: // unsupported
         targetBuf[1] = 0
     }
     new Uint8Array(targetBuf.buffer, targetBuf.byteOffset + 8, 16).set(UUIDUtil.parse(webFD.fdDomainUUID))
@@ -375,15 +379,16 @@ class RtcSocket {
     let onClose
     switch (sourceBuf[1]) {
       case 1:
-        fdType = 'shm'
+        fdType = 'ArrayBuffer'
         onGetTransferable = (webFD) => this._getShmTransferable(webFD)
         onClose = (webFD) => this._closeShmTransferable(webFD)
         break
       case 2:
-        fdType = 'pipe' // read end of pipe
+        fdType = 'MessagePort' // read end of pipe
         onGetTransferable = (webFD) => this._getPipeTransferable(webFD)
         onClose = (webFD) => this._closePipeTransferable(webFD)
         break
+      // case 3: 'ImageBitmap' can not be transferred to a remote
       default:
         fdType = 'unsupported'
         onGetTransferable = () => { throw new Error('unsupported fd type') }
