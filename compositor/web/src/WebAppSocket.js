@@ -27,7 +27,10 @@ export default class WebAppSocket {
   /**
    * @param {Worker}webWorker
    */
-  onWebWorker (webWorker) {
+  onWebAppWorker (webWorker) {
+    // TODO How listen for webWorker terminate/close/destroy?
+    // TODO close client connection when worker is terminated
+
     const client = this._session.display.createClient((sendBuffer) => webWorker.postMessage(sendBuffer, [sendBuffer]))
 
     webWorker.onmessage = (event) => {
@@ -69,9 +72,8 @@ export default class WebAppSocket {
           return previousValue
         }, 0)
 
-        const sendBuffer = new Uint32Array(new ArrayBuffer(messagesSize + Uint32Array.BYTES_PER_ELEMENT))
-        sendBuffer[0] = 0 // out-of-band opcode
-        let offset = 1
+        const sendBuffer = new Uint32Array(new ArrayBuffer(messagesSize))
+        let offset = 0
         const meta = []
         for (const wireMessage of sendWireMessages) {
           for (const webFd of wireMessage.fds) {

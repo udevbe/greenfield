@@ -3,7 +3,7 @@
 /**
  * @interface
  */
-export default class Buffer {
+export default class GreenfieldBuffer {
   /**
    * @param commitSerial
    * @return {!Promise<*>}

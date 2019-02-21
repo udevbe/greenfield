@@ -5,13 +5,13 @@ import BufferStream from './BufferStream'
 
 /**
  *
- *            A buffer provides the content for a gr_surface. Buffers are
+ *            A buffer provides the content for a wl_surface. Buffers are
  *            created through factory interfaces such as gr_drm, gr_shm or
  *            similar. It has a width and a height and can be attached to a
  *            gr_surface, but the mechanism by which a client provides and
  *            updates the contents is defined by the buffer factory interface.
  * @implements WlBufferRequests
- * @implements Buffer
+ * @implements GreenfieldBuffer
  */
 export default class StreamingBuffer extends WlBufferRequests {
   /**
