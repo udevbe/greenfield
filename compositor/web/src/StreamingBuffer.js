@@ -11,7 +11,6 @@ import BufferStream from './BufferStream'
  *            gr_surface, but the mechanism by which a client provides and
  *            updates the contents is defined by the buffer factory interface.
  * @implements WlBufferRequests
- * @implements GreenfieldBuffer
  */
 export default class StreamingBuffer extends WlBufferRequests {
   /**

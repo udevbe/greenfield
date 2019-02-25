@@ -13,6 +13,7 @@ import './style/greenfield.css'
 import XdgWmBase from './XdgWmBase'
 import DesktopUserShell from './desktopshell/DesktopUserShell'
 import RtcSocket from './RtcSocket'
+import WebShm from './webshm/WebShm'
 
 /**
  * @param {Session}session
@@ -29,6 +30,8 @@ function setup (session) {
   const shell = Shell.create(session, desktopUserShell)
   const xdgWmBase = XdgWmBase.create(session, desktopUserShell, seat)
 
+  const webShm = WebShm.create(session)
+
   output.registerGlobal(session.display.registry)
   compositor.registerGlobal(session.display.registry)
   dataDeviceManager.registerGlobal(session.display.registry)
@@ -38,6 +41,8 @@ function setup (session) {
 
   xdgWmBase.registerGlobal(session.display.registry)
 
+  webShm.registerGlobal(session.display.registry)
+
   // RtcSocket enables appl-endpoints with remote application to connect
   RtcSocket.create(session)
 }
@@ -45,7 +50,7 @@ function setup (session) {
 async function main () {
   // show user a warning if they want to close this page
   window.onbeforeunload = (e) => {
-    const dialogText = 'dummytext'
+    const dialogText = ''
     e.returnValue = dialogText
     return dialogText
   }

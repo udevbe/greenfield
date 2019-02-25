@@ -70,16 +70,6 @@
                 are gone.
             </description>
         </request>
-
-        <request name="resize">
-            <description summary="change the size of the pool mapping">
-                This request will cause the server to remap the backing memory
-                for the pool from the file descriptor passed when the pool was
-                created, but using the new size. This request can only be
-                used to make the pool bigger.
-            </description>
-            <arg name="size" type="int" summary="new size of the pool, in bytes"/>
-        </request>
     </interface>
 
     <interface name="web_shm" version="1">
@@ -101,7 +91,6 @@
             </description>
             <entry name="invalid_format" value="0" summary="buffer format is not known"/>
             <entry name="invalid_stride" value="1" summary="invalid size or stride during pool or buffer creation"/>
-            <entry name="invalid_fd" value="2" summary="mmapping the file descriptor failed"/>
         </enum>
 
         <enum name="format">
