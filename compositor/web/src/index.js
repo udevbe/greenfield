@@ -79,37 +79,6 @@ function loadNativeModule (module) {
   })
 }
 
-// This adds a zero timeout 'run later' mechanism:
-// https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/setTimeout#Reasons_for_delays_longer_than_specified
-// Only add setZeroTimeout to the window object, and hide everything else in a closure.
-(function () {
-  const timeouts = []
-  const messageName = 'zero-timeout-message'
-
-  // Like setTimeout, but only takes a function argument.  There's
-  // no time argument (always zero) and no arguments (you have to
-  // use a closure).
-  function setZeroTimeout (fn) {
-    timeouts.push(fn)
-    window.postMessage(messageName, '*')
-  }
-
-  function handleMessage (event) {
-    if (event.source === window && event.data === messageName) {
-      event.stopPropagation()
-      if (timeouts.length > 0) {
-        const fn = timeouts.shift()
-        fn()
-      }
-    }
-  }
-
-  window.addEventListener('message', handleMessage, true)
-
-  // Add the one thing we want added to the window object.
-  window.setZeroTimeout = setZeroTimeout
-})()
-
 window.onload = async () => {
   // make sure all native modules are ready for use before we start our main flow
   await loadNativeModule(pixman)
