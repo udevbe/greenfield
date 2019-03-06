@@ -6,14 +6,13 @@ const entryFile = path.resolve(__dirname, '../src/index.js')
 
 /**
  * @param {string}appBundle
- * @param {string}buildDir
- * @return {{entry: string, output: {path: string, filename: string}, plugins: *[]}}
+ * @return {{output: {path: string, filename: string, publicPath: string}, entry: string[]}}
  */
-const commonConfig = (appBundle, buildDir) => {
+const commonConfig = (appBundle) => {
   return {
     entry: [entryFile],
     output: {
-      path: path.resolve(__dirname, `../${buildDir}`),
+      path: path.resolve(__dirname, `../../compositor/web/public/clients/`),
       publicPath: '/',
       filename: appBundle
     }

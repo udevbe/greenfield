@@ -33,6 +33,9 @@ export default class WebAppSocket {
 
     const client = this._session.display.createClient((sendBuffer) => webWorker.postMessage(sendBuffer, [sendBuffer]))
 
+    /**
+     * @param {MessageEvent}event
+     */
     webWorker.onmessage = (event) => {
       const webWorkerMessage = /** @type {{protocolMessage:ArrayBuffer, meta:Array<Transferable>}} */event.data
       if (webWorkerMessage.protocolMessage instanceof ArrayBuffer) {
@@ -67,10 +70,7 @@ export default class WebAppSocket {
         const sendWireMessages = this._flushQueue[0]
 
         // convert to as single arrayBuffer so it can be send over a data channel using zero copy semantics.
-        const messagesSize = sendWireMessages.reduce((previousValue, currentValue) => {
-          previousValue += Uint32Array.BYTES_PER_ELEMENT + (currentValue.fds * Uint32Array.BYTES_PER_ELEMENT) + currentValue.buffer.byteLength
-          return previousValue
-        }, 0)
+        const messagesSize = sendWireMessages.reduce((previousValue, currentValue) => previousValue + currentValue.buffer.byteLength, 0)
 
         const sendBuffer = new Uint32Array(new ArrayBuffer(messagesSize))
         let offset = 0

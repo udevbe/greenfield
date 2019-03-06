@@ -19,6 +19,10 @@
     "url": "https://github.com/udevbe/greenfield/issues"
   },
   "homepage": "https://github.com/udevbe/greenfield#readme",
+  "scripts": {
+    "prepare:prod": "webpack --config build.config/webpack.config.prod.js",
+    "prepare": "webpack --config build.config/webpack.config.dev.js"
+  },
   "dependencies": {
     "westfield-runtime-client": "0.1.5"
   },

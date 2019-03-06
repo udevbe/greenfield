@@ -1,50 +1,24 @@
-import { Display, WlCompositorProxy, WebShmProxy } from 'westfield-runtime-client'
-import WebFS from '../../compositor/web/src/WebFS'
+import { display, webFS, WlCompositorProxy, WebShmProxy } from 'westfield-runtime-client'
 
 /**
  * @implements WlRegistryEvents
  * @implements WebShmEvents
  */
-export default class SimpleWebShm {
+export default class Window {
   /**
-   * @param {Display}display
-   * @return {SimpleWebShm}
+   * @return {Window}
    */
-  static create (display) {
-    // TODO receive client uuid from server?
-    const webFS = WebFS.create(this._uuidv4())
+  static create () {
     const registry = display.getRegistry()
-    const window = new SimpleWebShm(webFS, display, registry)
+    const window = new Window(registry)
     registry.listener = window
     return window
   }
 
   /**
-   * @returns {string}
-   * @private
-   */
-  static _uuidv4 () {
-    return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
-      (c ^ window.crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-    )
-  }
-
-  /**
-   * @param {WebFS}webFS
-   * @param {Display}display
    * @param {WlRegistryProxy}registry
    */
-  constructor (webFS, display, registry) {
-    /**
-     * @type {WebFS}
-     * @protected
-     */
-    this._webFS = webFS
-    /**
-     * @type {Display}
-     * @protected
-     */
-    this._display = display
+  constructor (registry) {
     /**
      * @type {WlRegistryProxy}
      * @protected
@@ -89,43 +63,20 @@ export default class SimpleWebShm {
    *
    */
   global (name, interface_, version) {
-    if (interface_ === 'wl_compositor') {
-      this._compositor = this._registry.bind(name, interface_, WlCompositorProxy.constructor, version)
+    if (interface_ === WlCompositorProxy.protocolName) {
+      this._compositor = this._registry.bind(name, interface_, WlCompositorProxy, version)
     }
 
-    if (interface_ === 'web_shm') {
-      this._webShm = this._registry.bind(name, interface_, WebShmProxy.constructor, version)
+    if (interface_ === WebShmProxy.protocolName) {
+      this._webShm = this._registry.bind(name, interface_, WebShmProxy, version)
+      this._webShm.listener = this
     }
-
-    // Wait for all incoming events to be processed before we attempt to draw something
-    if (!this._syncPromise) {
-      this._syncPromise = this._sync().then(() => {
-        if (!this._shmBuffers.length) {
-          throw new Error('No xrgb8888 shm format.')
-        }
-
-        if (!this._compositor) {
-          throw new Error('No compositor global.')
-        }
-
-        this._draw(0)
-      })
-    }
-  }
-
-  /**
-   * @return {Promise<number>}
-   * @private
-   */
-  _sync () {
-    return new Promise(resolve => { this._display.sync().listener.done = resolve })
   }
 
   /**
    * @param {number}timestamp
-   * @private
    */
-  _draw (timestamp) {
+  draw (timestamp) {
 
     // TODO draw
   }
@@ -157,8 +108,8 @@ export default class SimpleWebShm {
       const size = bufStride * bufHeight
       const format = WebShmProxy.Format.xrgb8888
 
-      const shmBufferWebFD0 = this._webFS.fromArrayBuffer(new ArrayBuffer(size))
-      const shmBufferWebFD1 = this._webFS.fromArrayBuffer(new ArrayBuffer(size))
+      const shmBufferWebFD0 = webFS.fromArrayBuffer(new ArrayBuffer(size))
+      const shmBufferWebFD1 = webFS.fromArrayBuffer(new ArrayBuffer(size))
 
       this._shmBuffers[0] = this._webShm.createWebArrayBuffer(shmBufferWebFD0, bufWidth, bufHeight, bufStride, format)
       this._shmBuffers[1] = this._webShm.createWebArrayBuffer(shmBufferWebFD1, bufWidth, bufHeight, bufStride, format)
@@ -167,7 +118,24 @@ export default class SimpleWebShm {
 }
 
 function main () {
-  SimpleWebShm.create(new Display())
+  // create a new window with some buffers
+  const window = Window.create()
+
+  // Wait for all outgoing window creation requests to be processed before we attempt to draw something
+  new Promise(resolve => { display.sync().listener = { done: resolve } }).then(() => {
+    if (!window._shmBuffers.length) {
+      throw new Error('No xrgb8888 shm format.')
+    }
+
+    if (!window._compositor) {
+      throw new Error('No compositor global.')
+    }
+
+    window.draw(0)
+  })
+
+  // flush piled up window creation requests to the display
+  display.connection.flush()
 }
 
 main()
