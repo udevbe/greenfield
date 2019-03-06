@@ -38,7 +38,7 @@ export default class WebAppSocket {
       if (webWorkerMessage.protocolMessage instanceof ArrayBuffer) {
         const buffer = new Uint32Array(/** @type {ArrayBuffer} */webWorkerMessage.protocolMessage)
         const fds = webWorkerMessage.meta.map(transferable => {
-          if ((transferable instanceof ArrayBuffer) || transferable instanceof SharedArrayBuffer) {
+          if (transferable instanceof ArrayBuffer) {
             return this._session.webFS.fromArrayBuffer(transferable)
           } else if (transferable instanceof ImageBitmap) {
             return this._session.webFS.fromImageBitmap(transferable)

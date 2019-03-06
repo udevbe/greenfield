@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <protocol name="web_shm">
-
     <copyright>
-        Copyright © 2008-2011 Kristian Høgsberg
-        Copyright © 2010-2011 Intel Corporation
-        Copyright © 2012-2013 Collabora, Ltd.
+        Copyright © 2019 Erik De Rijcke
 
         Permission is hereby granted, free of charge, to any person
         obtaining a copy of this software and associated documentation files
@@ -27,49 +24,24 @@
         CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
         SOFTWARE.
     </copyright>
-    <interface name="web_shm_pool" version="1">
-        <description summary="a shared memory pool">
-            The web_shm_pool object encapsulates a piece of memory shared
-            between the compositor and client. Through the web_shm_pool
-            object, the client can allocate shared memory wl_buffer objects.
-            All objects created through the same pool share the same
-            underlying mapped memory. Reusing the mapped memory avoids the
-            setup/teardown overhead and is useful when interactively resizing
-            a surface or for many small buffers.
-        </description>
 
-        <request name="create_buffer">
-            <description summary="create a buffer from the pool">
-                Create a wl_buffer object from the pool.
-
-                The buffer is created offset bytes into the pool and has
-                width and height as specified. The stride argument specifies
-                the number of bytes from the beginning of one row to the beginning
-                of the next. The format is the pixel format of the buffer and
-                must be one of those advertised through the web_shm.format event.
-
-                A buffer will keep a reference to the pool it was created from
-                so it is valid to destroy the pool immediately after creating
-                a buffer from it.
+    <interface name="web_array_buffer" version="1">
+        <request name="attach">
+            <description summary="attach">
+                Attaches the associated HTML5 array buffer to the compositor. The array buffer should be the same
+                object as the one used to create this buffer. No action is expected for this request. It merely
+                functions as a HTML5 array buffer ownership transfer from web-worker to main thread.
             </description>
-            <arg name="id" type="new_id" interface="wl_buffer" summary="buffer to create"/>
-            <arg name="offset" type="int" summary="buffer byte offset within the pool"/>
-            <arg name="width" type="int" summary="buffer width, in pixels"/>
-            <arg name="height" type="int" summary="buffer height, in pixels"/>
-            <arg name="stride" type="int"
-                 summary="number of bytes from the beginning of one row to the beginning of the next row"/>
-            <arg name="format" type="uint" enum="web_shm.format" summary="buffer pixel format"/>
+            <arg name="array_buffer" type="fd" summary="HTML5 array buffer to attach to the compositor."/>
         </request>
-
-        <request name="destroy" type="destructor">
-            <description summary="destroy the pool">
-                Destroy the shared memory pool.
-
-                The mmapped memory will be released when all
-                buffers that have been created from this pool
-                are gone.
+        <event name="detach">
+            <description summary="detach">
+                Detaches the associated HTML5 array buffer from the compositor and returns it to the client.
+                No action is expected for this event. It merely functions as a HTML5 array buffer ownership
+                transfer from main thread to web-worker.
             </description>
-        </request>
+            <arg name="array_buffer" type="fd" summary="HTML5 array buffer to detach from the compositor"/>
+        </event>
     </interface>
 
     <interface name="web_shm" version="1">
@@ -77,7 +49,7 @@
             A singleton global object that provides support for shared
             memory.
 
-            Clients can create web_shm_pool objects using the create_pool
+            Clients can create wl_buffer objects using the create_buffer
             request.
 
             At connection setup time, the web_shm object emits one or more
@@ -210,17 +182,41 @@
                    summary="3 plane YCbCr format, non-subsampled Cr (1) and Cb (2) planes"/>
         </enum>
 
-        <request name="create_pool">
-            <description summary="create a shm pool">
-                Create a new web_shm_pool object.
+        <request name="create_web_array_buffer">
+            <description summary="create an HTML5 array buffer">
+                Create a web_array_buffer object.
 
-                The pool can be used to create shared memory based buffer
-                objects. The server will mmap size bytes of the passed file
-                descriptor, to use as backing memory for the pool.
+                The buffer is created using an HTML5 array buffer as the fd argument
+                and width and height as specified. The stride argument specifies
+                the number of bytes from the beginning of one row to the beginning
+                of the next. The format is the pixel format of the buffer and
+                must be one of those advertised through the web_shm.format event.
+
+                Creating a buffer with an HTML5 array buffer as the fd argument
+                will attach the array buffer to the compositor and as such it can not be used
+                by the client until the compositor detaches it. As such clients should
+                wait for the compositor to emit the web_array_buffer detach event
+                before using the array buffer again.
+
+                A compositor will emit the detach event in conjunction with a wl_buffer release event.
+                Clients should therefore only create a web_array_buffer after all data is written to
+                the HTML5 array buffer, after which it should be immediately attach+commit to a surface.
             </description>
-            <arg name="id" type="new_id" interface="web_shm_pool" summary="pool to create"/>
-            <arg name="fd" type="fd" summary="file descriptor for the pool"/>
-            <arg name="size" type="int" summary="pool size, in bytes"/>
+            <arg name="id" type="new_id" interface="web_array_buffer" summary="array buffer to create"/>
+            <arg name="array_buffer" type="fd" summary="file descriptor for shared memory of the buffer"/>
+            <arg name="width" type="int" summary="buffer width, in pixels"/>
+            <arg name="height" type="int" summary="buffer height, in pixels"/>
+            <arg name="stride" type="int"
+                 summary="number of bytes from the beginning of one row to the beginning of the next row"/>
+            <arg name="format" type="uint" enum="web_shm.format" summary="buffer pixel format"/>
+        </request>
+
+        <request name="create_buffer">
+            <description summary="create a buffer">
+                Create a wl_buffer object from a web_array_buffer so it can be used with a surface.
+            </description>
+            <arg name="id" type="new_id" interface="wl_buffer" summary="buffer to create"/>
+            <arg name="web_array_buffer" type="object" interface="web_array_buffer" summary="web_array_buffer to wrap"/>
         </request>
 
         <event name="format">

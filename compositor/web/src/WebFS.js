@@ -2,22 +2,22 @@ import { WebFD } from 'westfield-runtime-common'
 
 export default class WebFS {
   /**
-   * @param {Session}session
+   * @param {string}fdDomainUUID
    * @return {WebFS}
    */
-  static create (session) {
-    return new WebFS(session)
+  static create (fdDomainUUID) {
+    return new WebFS(fdDomainUUID)
   }
 
   /**
-   * @param {Session}session
+   * @param {string}fdDomainUUID
    */
-  constructor (session) {
+  constructor (fdDomainUUID) {
     /**
-     * @type {Session}
+     * @type {string}
      * @private
      */
-    this._session = session
+    this._fdDomainUUID = fdDomainUUID
     /**
      * @type {Object.<number,WebFD>}
      * @private
@@ -38,7 +38,7 @@ export default class WebFS {
     const fd = this._nextFD++
     // FIXME we want to use reference counting here instead of simply deleting.
     // Sending the WebFD to an endpoint will increase the ref, and we should wait until the endpoint has closed the fd as well.
-    const webFD = new WebFD(fd, 'ArrayBuffer', this._session.compositorSessionId, () => Promise.resolve(arrayBuffer), () => { delete this._webFDs[fd] })
+    const webFD = new WebFD(fd, 'ArrayBuffer', this._fdDomainUUID, () => Promise.resolve(arrayBuffer), () => { delete this._webFDs[fd] })
     this._webFDs[fd] = webFD
     return webFD
   }
@@ -49,7 +49,7 @@ export default class WebFS {
    */
   fromImageBitmap (imageBitmap) {
     const fd = this._nextFD++
-    const webFD = new WebFD(fd, 'ImageBitmap', this._session.compositorSessionId, () => Promise.resolve(imageBitmap), () => { delete this._webFDs[fd] })
+    const webFD = new WebFD(fd, 'ImageBitmap', this._fdDomainUUID, () => Promise.resolve(imageBitmap), () => { delete this._webFDs[fd] })
     this._webFDs[fd] = webFD
     return webFD
   }

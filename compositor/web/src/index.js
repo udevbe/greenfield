@@ -14,6 +14,8 @@ import XdgWmBase from './XdgWmBase'
 import DesktopUserShell from './desktopshell/DesktopUserShell'
 import RtcSocket from './RtcSocket'
 import WebShm from './webshm/WebShm'
+import WebAppSocket from './WebAppSocket'
+import WebAppLauncher from './WebAppLauncher'
 
 /**
  * @param {Session}session
@@ -43,8 +45,15 @@ function setup (session) {
 
   webShm.registerGlobal(session.display.registry)
 
-  // RtcSocket enables appl-endpoints with remote application to connect
+  // RtcSocket enables native appl-endpoints with remote application to connect
   RtcSocket.create(session)
+
+  // WebAppSocket enables browser local applications running in a web worker to connect
+  const webAppSocket = WebAppSocket.create(session)
+  const webAppLauncher = WebAppLauncher.create(webAppSocket)
+
+  // [TESTING] immediately launch our web shm demo client
+  // webAppLauncher.launch()
 }
 
 async function main () {

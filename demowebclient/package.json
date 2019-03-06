@@ -1,0 +1,31 @@
+{
+  "name": "greenfield-demo-web-client",
+  "version": "1.0.0",
+  "description": "HTML5 Wayland Demo Web Client",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/udevbe/greenfield.git"
+  },
+  "keywords": [
+    "wayland",
+    "html5",
+    "client",
+    "demo",
+    "web"
+  ],
+  "author": "Erik De Rijcke <derijcke.erik@gmail.com> (http://www.udev.be)",
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/udevbe/greenfield/issues"
+  },
+  "homepage": "https://github.com/udevbe/greenfield#readme",
+  "dependencies": {
+    "westfield-runtime-client": "0.1.5"
+  },
+  "devDependencies": {
+    "webpack": "^4.28.2",
+    "webpack-cli": "^3.1.2",
+    "webpack-merge": "^4.1.5",
+    "standard": "^12.0.1"
+  }
+}

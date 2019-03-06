@@ -68,7 +68,7 @@ export default class Session {
     /**
      * @type {WebFS}
      */
-    this.webFS = WebFS.create(this)
+    this.webFS = WebFS.create(this.compositorSessionId)
   }
 
   _onMessage (event) {

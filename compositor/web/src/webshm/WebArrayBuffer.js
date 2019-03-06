@@ -1,24 +1,25 @@
-import WlBufferRequests from '../protocol/WlBufferRequests'
+import WebArrayBufferRequests from '../protocol/WebArrayBufferRequests'
 
 /**
  * @implements WlBufferRequests
+ * @implements WebArrayBufferRequests
  */
-export default class WebShmBuffer extends WlBufferRequests {
+export default class WebArrayBuffer extends WebArrayBufferRequests {
   /**
-   * @param {WlBufferResource}bufferResource
-   * @param {Uint8Array}data
+   * @param {WebArrayBufferResource}resource
+   * @param {ArrayBuffer}data
    * @param {number}stride
    * @param {number}format
    * @param {number}width
    * @param {number}height
    */
-  static create (bufferResource, data, stride, format, width, height) {
-    return new WebShmBuffer(bufferResource, data, stride, format, width, height)
+  static create (resource, data, stride, format, width, height) {
+    return new WebArrayBuffer(resource, data, stride, format, width, height)
   }
 
   /**
-   * @param {WlBufferResource}resource
-   * @param {Uint8Array}data
+   * @param {WebArrayBufferResource}resource
+   * @param {ArrayBuffer}data
    * @param {number}stride
    * @param {number}format
    * @param {number}width
@@ -27,12 +28,11 @@ export default class WebShmBuffer extends WlBufferRequests {
   constructor (resource, data, stride, format, width, height) {
     super()
     /**
-     * @type {WlBufferResource}
+     * @type {WebArrayBufferResource}
      */
     this.resource = resource
     /**
-     * @type {Uint8Array}
-     * @const
+     * @type {ArrayBuffer}
      * @private
      */
     this._data = data
@@ -63,7 +63,7 @@ export default class WebShmBuffer extends WlBufferRequests {
   }
 
   /**
-   * @return {Uint8Array}
+   * @return {ArrayBuffer}
    */
   get data () {
     return this._data
@@ -114,5 +114,22 @@ export default class WebShmBuffer extends WlBufferRequests {
   destroy (resource) {
     // TODO what to do here?
     resource.destroy()
+  }
+
+  /**
+   *
+   *                Attaches the associated HTML5 array buffer to the compositor. The array buffer should be the same
+   *                object as the one used to create this buffer. No action is expected for this request. It merely
+   *                functions as a HTML5 array buffer ownership transfer from web-worker to main thread.
+   *
+   *
+   * @param {WebArrayBufferResource} resource
+   * @param {WebFD} arrayBuffer HTML5 array buffer to attach to the compositor.
+   *
+   * @since 1
+   *
+   */
+  async attach (resource, arrayBuffer) {
+    this._data = /** @type {ArrayBuffer} */ await arrayBuffer.getTransferable()
   }
 }

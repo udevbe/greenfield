@@ -28,11 +28,11 @@ export default class WebAppLauncher {
   }
 
   /**
-   * @param {string}webAppSrc
+   * @param {string}webAppURL
    * @return {number}
    */
-  launch (webAppSrc) {
-    const webAppWorker = new Worker(webAppSrc)
+  launch (webAppURL) {
+    const webAppWorker = new Worker(webAppURL)
     const webAppId = this._nextWebAppId++
     this.webAppWorkers[webAppId] = webAppWorker
     this._webAppSocket.onWebAppWorker(webAppWorker)
