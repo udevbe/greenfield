@@ -900,9 +900,7 @@ export default class Surface extends WlSurfaceRequests {
     }
 
     renderFrame.then((timestamp) => {
-      this.state.frameCallbacks.forEach((frameCallback) => {
-        frameCallback.done(timestamp & 0x7fffffff)
-      })
+      this.state.frameCallbacks.forEach(frameCallback => frameCallback.done(timestamp & 0x7fffffff))
       this.state.frameCallbacks = []
     })
 
