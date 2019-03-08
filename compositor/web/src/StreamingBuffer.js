@@ -11,6 +11,7 @@ import BufferStream from './BufferStream'
  *            gr_surface, but the mechanism by which a client provides and
  *            updates the contents is defined by the buffer factory interface.
  * @implements WlBufferRequests
+ * @implements BufferImplementation
  */
 export default class StreamingBuffer extends WlBufferRequests {
   /**
@@ -59,6 +60,7 @@ export default class StreamingBuffer extends WlBufferRequests {
   /**
    * @param commitSerial
    * @return {!Promise<EncodedFrame>}
+   * @override
    */
   async getContents (commitSerial) {
     return this.bufferStream.onFrameAvailable(commitSerial)

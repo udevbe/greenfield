@@ -54,7 +54,7 @@ export default class JpegRenderState extends RenderState {
       this.size = encodedFrame.size
     }
 
-    await Promise.all(encodedFrame.fragments.map(async (fragment) => {
+    await Promise.all(encodedFrame.contents.map(async (fragment) => {
       const opaqueImageBitmapPromise = window.createImageBitmap(new window.Blob([fragment.opaque], {'type': 'image/jpeg'}), 0, 0, fragment.geo.width, fragment.geo.height)
       let alphaImageBitmapPromise = null
       if (hasAlpha) {

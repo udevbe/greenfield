@@ -24,7 +24,9 @@ import SurfaceChild from './SurfaceChild'
 import Renderer from './render/Renderer'
 import Point from './math/Point'
 import SurfaceState from './SurfaceState'
-import EncodedFrame from './EncodedFrame'
+import StreamingBuffer from './StreamingBuffer'
+import WebArrayBuffer from './webshm/WebArrayBuffer'
+import ShmFrame from './ShmFrame'
 
 /**
  * @type {{transformation: Mat4, inverseTransformation:Mat4}[]}
@@ -866,12 +868,8 @@ export default class Surface extends WlSurfaceRequests {
 
     if (this.pendingWlBuffer) {
       this.pendingWlBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
-      const buffer = /** @type{Buffer} */this.pendingWlBuffer.implementation
+      const buffer = /** @type{BufferImplementation} */this.pendingWlBuffer.implementation
       bufferContents = await buffer.getContents(serial)
-      // TODO support webworker buffers
-      if (!(bufferContents instanceof EncodedFrame)) {
-        throw new Error(`Unsupported buffer type: ${bufferContents}`)
-      }
     }
     if (this.destroyed) {
       return
@@ -967,6 +965,8 @@ export default class Surface extends WlSurfaceRequests {
   }
 
   /**
+   * @param {WlSurfaceResource} resource
+   * @param {?BufferContents}bufferContents
    * @return {SurfaceState}
    * @private
    */

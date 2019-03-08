@@ -262,7 +262,7 @@ export default class View {
   }
 
   /**
-   * @param {HTMLImageElement|HTMLCanvasElement|HTMLVideoElement|ImageBitmap}image
+   * @param {HTMLImageElement|HTMLCanvasElement|HTMLVideoElement|ImageBitmap|ImageData}image
    */
   draw (image) {
     if (this.destroyed) { return }
