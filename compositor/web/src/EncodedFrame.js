@@ -1,8 +1,12 @@
 import EncodedFrameFragment from './EncodedFrameFragment'
-import EncodingTypes from './EncodingTypes'
+import EncodingTypes from './EncodingMimeTypes'
 import Size from './Size'
+import BufferContents from './BufferContents'
 
-export default class EncodedFrame {
+/**
+ * @implements BufferContents
+ */
+export default class EncodedFrame extends BufferContents {
   /**
    * @param {!ArrayBuffer}buffer
    * @return {!EncodedFrame}
@@ -56,22 +60,25 @@ export default class EncodedFrame {
   /**
    * @private
    * @param {!number}serial
-   * @param {!string}encodingType
+   * @param {!string}mimeType
    * @param {!number}encodingOptions
    * @param {!Size}size
    * @param {!Array<EncodedFrameFragment>}fragments
    */
-  constructor (serial, encodingType, encodingOptions, size, fragments) {
+  constructor (serial, mimeType, encodingOptions, size, fragments) {
+    super()
     /**
      * @type {number}
+     * @private
      * @const
      */
-    this.serial = serial
+    this._serial = serial
     /**
      * @type {string}
+     * @private
      * @const
      */
-    this.encodingType = encodingType
+    this._mimeType = mimeType
     /**
      * @type {number}
      * @const
@@ -81,11 +88,35 @@ export default class EncodedFrame {
      * @type {Size}
      * @const
      */
-    this.size = size
+    this._size = size
     /**
      * @type {Array<EncodedFrameFragment>}
+     * @private
      * @const
      */
-    this.fragments = fragments
+    this._contents = fragments
   }
+
+  /**
+   * @return {Array<EncodedFrameFragment>}
+   */
+  get contents () { return this._contents }
+
+  /**
+   * @return {string}
+   * @override
+   */
+  get mimeType () { return this._mimeType }
+
+  /**
+   * @return {number}
+   * @override
+   */
+  get serial () { return this._serial }
+
+  /**
+   * @return {Size}
+   * @override
+   */
+  get size () { return this._size }
 }

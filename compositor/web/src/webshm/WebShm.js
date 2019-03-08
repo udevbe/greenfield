@@ -4,29 +4,16 @@ import WebArrayBufferResource from '../protocol/WebArrayBufferResource'
 import WebArrayBuffer from './WebArrayBuffer'
 import WlBufferResource from '../protocol/WlBufferResource'
 
-const { argb8888, xrgb8888 } = WebShmResource.Format
-
 /**
  * @implements WebShmRequests
  */
 export default class WebShm extends WebShmRequests {
-  /**
-   * @param {!Session} session
-   */
-  static create (session) {
-    return new WebShm(session)
+  static create () {
+    return new WebShm()
   }
 
-  /**
-   * @param {!Session} session
-   */
-  constructor (session) {
+  constructor () {
     super()
-    /**
-     * @type {!Session}
-     * @private
-     */
-    this._session = session
     /**
      * @type {Global}
      * @private
@@ -62,8 +49,6 @@ export default class WebShm extends WebShmRequests {
   bindClient (client, id, version) {
     const webShmResource = new WebShmResource(client, id, version)
     webShmResource.implementation = this
-    webShmResource.format(argb8888)
-    webShmResource.format(xrgb8888)
     this._resources.push(webShmResource)
   }
 
@@ -107,27 +92,16 @@ export default class WebShm extends WebShmRequests {
    *
    * @param {WebShmResource} resource
    * @param {number} id array buffer to create
-   * @param {WebFD} arrayBuffer file descriptor for shared memory of the buffer
+   * @param {WebFD} webFD file descriptor for shared memory of the buffer
    * @param {number} width buffer width, in pixels
    * @param {number} height buffer height, in pixels
-   * @param {number} stride number of bytes from the beginning of one row to the beginning of the next row
-   * @param {number} format buffer pixel format
    *
    * @since 1
    *
    */
-  async createWebArrayBuffer (resource, id, arrayBuffer, width, height, stride, format) {
-    if (!Object.values(WebShmResource.Format).includes(format)) {
-      resource.postError(WebShmResource.Error.invalidFormat, `Invalid format for shm buffer: ${format}`)
-      return
-    }
-    if (stride < width) {
-      resource.postError(WebShmResource.Error.invalidStride, `Stride: ${stride} must be greater than or equal to buffer width: ${width}.`)
-      return
-    }
-
-    const data = /** @type {ArrayBuffer} */await arrayBuffer.getTransferable()
+  async createWebArrayBuffer (resource, id, webFD, width, height) {
+    const arrayBuffer = /** @type {ArrayBuffer} */await webFD.getTransferable()
     const webArrayBufferResource = new WebArrayBufferResource(resource.client, id, resource.version)
-    WebArrayBuffer.create(webArrayBufferResource, data, stride, format, width, height)
+    WebArrayBuffer.create(webArrayBufferResource, arrayBuffer, width, height)
   }
 }

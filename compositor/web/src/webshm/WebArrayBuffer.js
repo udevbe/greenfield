@@ -1,100 +1,39 @@
 import WebArrayBufferRequests from '../protocol/WebArrayBufferRequests'
+import ShmFrame from '../ShmFrame'
 
 /**
  * @implements WlBufferRequests
  * @implements WebArrayBufferRequests
+ * @implements BufferImplementation
  */
 export default class WebArrayBuffer extends WebArrayBufferRequests {
   /**
    * @param {WebArrayBufferResource}resource
-   * @param {ArrayBuffer}data
-   * @param {number}stride
-   * @param {number}format
+   * @param {ArrayBuffer}arrayBuffer
    * @param {number}width
    * @param {number}height
    */
-  static create (resource, data, stride, format, width, height) {
-    return new WebArrayBuffer(resource, data, stride, format, width, height)
+  static create (resource, arrayBuffer, width, height) {
+    const shmFrame = ShmFrame.create(arrayBuffer, width, height)
+    const webArrayBuffer = new WebArrayBuffer(resource, shmFrame)
+    resource.implementation = webArrayBuffer
+    return webArrayBuffer
   }
 
   /**
    * @param {WebArrayBufferResource}resource
-   * @param {ArrayBuffer}data
-   * @param {number}stride
-   * @param {number}format
-   * @param {number}width
-   * @param {number}height
+   * @param {ShmFrame}shmFrame
    */
-  constructor (resource, data, stride, format, width, height) {
+  constructor (resource, shmFrame) {
     super()
     /**
      * @type {WebArrayBufferResource}
      */
     this.resource = resource
     /**
-     * @type {ArrayBuffer}
-     * @private
+     * @type {ShmFrame}
      */
-    this._data = data
-    /**
-     * @type {number}
-     * @const
-     * @private
-     */
-    this._stride = stride
-    /**
-     * @type {number}
-     * @const
-     * @private
-     */
-    this._format = format
-    /**
-     * @type {number}
-     * @const
-     * @private
-     */
-    this._width = width
-    /**
-     * @type {number}
-     * @const
-     * @private
-     */
-    this._height = height
-  }
-
-  /**
-   * @return {ArrayBuffer}
-   */
-  get data () {
-    return this._data
-  }
-
-  /**
-   * @return {number}
-   */
-  get stride () {
-    return this._stride
-  }
-
-  /**
-   * @return {number}
-   */
-  get format () {
-    return this._format
-  }
-
-  /**
-   * @return {number}
-   */
-  get width () {
-    return this._width
-  }
-
-  /**
-   * @return {number}
-   */
-  get height () {
-    return this._height
+    this._shmFrame = shmFrame
   }
 
   /**
@@ -129,7 +68,13 @@ export default class WebArrayBuffer extends WebArrayBufferRequests {
    * @since 1
    *
    */
-  async attach (resource, arrayBuffer) {
-    this._data = /** @type {ArrayBuffer} */ await arrayBuffer.getTransferable()
+  attach (resource, arrayBuffer) {}
+
+  /**
+   * @param {number}serial
+   * @return {Promise<ShmFrame>}
+   */
+  async getContents (serial) {
+    return Promise.resolve(this._shmFrame)
   }
 }

@@ -32,7 +32,7 @@ function setup (session) {
   const shell = Shell.create(session, desktopUserShell)
   const xdgWmBase = XdgWmBase.create(session, desktopUserShell, seat)
 
-  const webShm = WebShm.create(session)
+  const webShm = WebShm.create()
 
   output.registerGlobal(session.display.registry)
   compositor.registerGlobal(session.display.registry)

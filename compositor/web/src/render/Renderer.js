@@ -7,6 +7,7 @@ import JpegSurfaceShader from './JpegSurfaceShader'
 import H264RenderState from './H264RenderState'
 import YUVASurfaceShader from './YUVASurfaceShader'
 import YUVSurfaceShader from './YUVSurfaceShader'
+import EncodedFrame from '../EncodedFrame'
 
 export default class Renderer {
   /**
@@ -196,13 +197,13 @@ export default class Renderer {
 
     if (fullFrame && !splitAlpha) {
       // Full frame without a separate alpha. Let the browser do all the drawing.
-      const frame = encodedFrame.fragments[0]
+      const frame = encodedFrame.contents[0]
       const opaqueImageBlob = new Blob([frame.opaque], { 'type': 'image/png' })
       const opaqueImageBitmap = await createImageBitmap(opaqueImageBlob, 0, 0, frame.geo.width, frame.geo.height)
-      views.forEach((view) => { view.draw(opaqueImageBitmap) })
+      views.forEach(view => view.draw(opaqueImageBitmap))
     } else {
       // we don't support/care about fragmented pngs (and definitely not with a separate alpha channel as png has it internal)
-      throw new Error(`Unsupported buffer. Encoding type: ${encodedFrame.encodingType}, full frame:${fullFrame}, split alpha: ${splitAlpha}`)
+      throw new Error(`Unsupported buffer. Encoding type: ${encodedFrame.mimeType}, full frame:${fullFrame}, split alpha: ${splitAlpha}`)
     }
   }
 
@@ -269,15 +270,20 @@ export default class Renderer {
     }
   }
 
+  async ['image/rgba'] (shmFrame, surface, views) {
+    views.forEach(view => view.draw(shmFrame.contents))
+  }
+
   /**
-   * @param {EncodedFrame}bufferContents
+   * @param {!BufferContents}bufferContents
    * @param {Surface}surface
    * @param {Array<View>}views
    * @private
    */
+
   async _draw (bufferContents, surface, views) {
     // invokes mime type named drawing methods
-    await this[bufferContents.encodingType](bufferContents, surface, views)
+    await this[bufferContents.mimeType](bufferContents, surface, views)
   }
 }
 /**
