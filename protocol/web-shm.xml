@@ -28,19 +28,17 @@
     <interface name="web_array_buffer" version="1">
         <request name="attach">
             <description summary="attach">
-                Attaches the associated HTML5 array buffer to the compositor. The array buffer should be the same
-                object as the one used to create this buffer. No action is expected for this request. It merely
-                functions as a HTML5 array buffer ownership transfer from web-worker to main thread.
+                Attaches the associated HTML5 array buffer to the compositor. The array buffer size should be the same
+                the one used to create this buffer. After attaching, the buffer can not be used for writing anymore.
             </description>
-            <arg name="array_buffer" type="fd" summary="HTML5 array buffer to attach to the compositor."/>
+            <arg name="contents" type="fd" summary="HTML5 array buffer to attach to the compositor."/>
         </request>
         <event name="detach">
-            <description summary="detach">
-                Detaches the associated HTML5 array buffer from the compositor and returns it to the client.
-                No action is expected for this event. It merely functions as a HTML5 array buffer ownership
-                transfer from main thread to web-worker.
+            <description summary="release">
+                Detaches the associated HTML5 array buffer from the compositor and returns it to the client so it can
+                be reused again for writing.
             </description>
-            <arg name="array_buffer" type="fd" summary="HTML5 array buffer to detach from the compositor"/>
+            <arg name="contents" type="fd" summary="HTML5 array buffer detached from the compositor"/>
         </event>
     </interface>
 
@@ -51,36 +49,18 @@
 
             Clients can create wl_buffer objects using the create_buffer
             request.
-
-            At connection setup time, the web_shm object emits one or more
-            format events to inform clients about the valid pixel formats
-            that can be used for buffers.
         </description>
 
         <request name="create_web_array_buffer">
             <description summary="create an HTML5 array buffer">
                 Create a web_array_buffer object.
 
-                The buffer is created using an HTML5 array buffer as the fd argument
-                and width and height as specified. The stride argument specifies
-                the number of bytes from the beginning of one row to the beginning
-                of the next. The format is the pixel format of the buffer and
-                must be one of those advertised through the web_shm.format event.
-
-                Creating a buffer with an HTML5 array buffer as the fd argument
-                will attach the array buffer to the compositor and as such it can not be used
-                by the client until the compositor detaches it. As such clients should
-                wait for the compositor to emit the web_array_buffer detach event
-                before using the array buffer again.
+                The buffer is created using width and height as specified.
+                The format of the attached buffer is always rgba8888.
 
                 A compositor will emit the detach event in conjunction with a wl_buffer release event.
-                Clients should therefore only create a web_array_buffer after all data is written to
-                the HTML5 array buffer, after which it should be immediately attach+commit to a surface.
             </description>
             <arg name="id" type="new_id" interface="web_array_buffer" summary="array buffer to create"/>
-            <arg name="array_buffer" type="fd" summary="file descriptor for shared memory of the buffer"/>
-            <arg name="width" type="int" summary="buffer width, in pixels"/>
-            <arg name="height" type="int" summary="buffer height, in pixels"/>
         </request>
 
         <request name="create_buffer">
@@ -89,6 +69,8 @@
             </description>
             <arg name="id" type="new_id" interface="wl_buffer" summary="buffer to create"/>
             <arg name="web_array_buffer" type="object" interface="web_array_buffer" summary="web_array_buffer to wrap"/>
+            <arg name="width" type="int" summary="buffer width, in pixels"/>
+            <arg name="height" type="int" summary="buffer height, in pixels"/>
         </request>
     </interface>
 </protocol>

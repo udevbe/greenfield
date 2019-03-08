@@ -6,6 +6,47 @@ import {
   WlShellProxy
 } from 'westfield-runtime-client'
 
+class WebArrayBufferPool {
+  static create (webShm, poolSize, width, height) {
+    const available = new Array(poolSize)
+    const webArrayBufferPool = new WebArrayBufferPool(available)
+    for (let i = 0; i < poolSize; i++) {
+      available[i] = WebArrayBuffer.create(webShm, width, height, webArrayBufferPool)
+    }
+    return webArrayBufferPool
+  }
+
+  constructor (available) {
+    /**
+     * @type {Array<WebArrayBuffer>}
+     * @protected
+     */
+    this._available = available
+    /**
+     * @type {Array<WebArrayBuffer>}
+     * @protected
+     */
+    this._busy = []
+  }
+
+  give (webArrayBuffer) {
+    const idx = this._busy.indexOf(webArrayBuffer)
+    if (idx > -1) {
+      this._busy.splice(idx, 1)
+    }
+    this._available.push(webArrayBuffer)
+  }
+
+  take () {
+    const webArrayBuffer = this._available.shift()
+    if (webArrayBuffer != null) {
+      this._busy.push(webArrayBuffer)
+      return webArrayBuffer
+    }
+    return null
+  }
+}
+
 /**
  * @implements WebArrayBufferEvents
  * @implements WlBufferEvents
@@ -15,41 +56,47 @@ class WebArrayBuffer {
    * @param {WebShmProxy}webShm
    * @param {number}width
    * @param {number}height
+   * @param {WebArrayBufferPool}webArrayBufferPool
    * @return {WebArrayBuffer}
    */
-  static create (webShm, width, height) {
+  static create (webShm, width, height, webArrayBufferPool) {
     const arrayBuffer = new ArrayBuffer(height * width * Uint32Array.BYTES_PER_ELEMENT)
-    const shmBufferWebFD = webFS.fromArrayBuffer(arrayBuffer)
+    const pixelContent = webFS.fromArrayBuffer(arrayBuffer)
 
-    return new WebArrayBuffer(webShm, shmBufferWebFD, arrayBuffer, width, height)
+    const proxy = webShm.createWebArrayBuffer()
+    const bufferProxy = webShm.createBuffer(proxy, width, height)
+
+    const webArrayBuffer = new WebArrayBuffer(proxy, bufferProxy, pixelContent, arrayBuffer, width, height, webArrayBufferPool)
+
+    proxy.listener = webArrayBuffer
+    bufferProxy.listener = webArrayBuffer
+
+    return webArrayBuffer
   }
 
   /**
-   * @param {WebShmProxy}webShm
-   * @param {WebFD}shmBufferWebFD
+   * @param {WebArrayBuffer}proxy
+   * @param {WlBufferProxy}bufferProxy
+   * @param {WebFD}pixelContent
    * @param {ArrayBuffer}arrayBuffer
    * @param {number}width
    * @param {number}height
+   * @param {WebArrayBufferPool}webArrayBufferPool
    */
-  constructor (webShm, shmBufferWebFD, arrayBuffer, width, height) {
+  constructor (proxy, bufferProxy, pixelContent, arrayBuffer, width, height, webArrayBufferPool) {
     /**
-     * @type {WebShmProxy}
-     * @private
+     * @type {WebArrayBufferProxy}
      */
-    this._webShm = webShm
+    this.proxy = proxy
     /**
-     * @type {WebArrayBufferProxy|null}
+     * @type {WlBufferProxy}
      */
-    this.proxy = null
-    /**
-     * @type {WlBufferProxy|null}
-     */
-    this.bufferProxy = null
+    this.bufferProxy = bufferProxy
     /**
      * @type {WebFD}
      * @private
      */
-    this._shmBufferWebFD = shmBufferWebFD
+    this._pixelContent = pixelContent
     /**
      * @type {ArrayBuffer}
      */
@@ -62,40 +109,49 @@ class WebArrayBuffer {
      * @type {number}
      */
     this.height = height
+    /**
+     * @type {WebArrayBufferPool}
+     * @private
+     */
+    this._webArrayBufferPool = webArrayBufferPool
   }
 
-  seal () {
-    if (this.proxy) {
-      this.proxy.attach(this._shmBufferWebFD)
-    } else {
-      this.proxy = this._webShm.createWebArrayBuffer(this._shmBufferWebFD, this.width, this.height)
-      this.bufferProxy = this._webShm.createBuffer(this.proxy)
+  attach () {
+    this.proxy.attach(this._pixelContent)
+  }
 
-      this.proxy.listener = this
-      this.bufferProxy.listener = this
-    }
+  async detach (pixelContent) {
+    this._pixelContent = pixelContent
+    this.arrayBuffer = /** @type {ArrayBuffer} */ await pixelContent.getTransferable()
   }
 
   /**
    *
-   *                Detaches the associated HTML5 array buffer from the compositor and returns it to the client.
-   *                No action is expected for this event. It merely functions as a HTML5 array buffer ownership
-   *                transfer from main thread to web-worker.
+   *  Sent when this wl_buffer is no longer used by the compositor.
+   *  The client is now free to reuse or destroy this buffer and its
+   *  backing storage.
+   *
+   *  If a client receives a release event before the frame callback
+   *  requested in the same wl_surface.commit that attaches this
+   *  wl_buffer to a surface, then the client is immediately free to
+   *  reuse the buffer and its backing storage, and does not need a
+   *  second buffer for the next surface content update. Typically
+   *  this is possible, when the compositor maintains a copy of the
+   *  wl_surface contents, e.g. as a GL texture. This is an important
+   *  optimization for GL(ES) compositors with wl_shm clients.
    *
    *
-   * @param {WebFD} arrayBuffer HTML5 array buffer to detach from the compositor
    *
    * @since 1
    *
    */
-  detach (arrayBuffer) {}
-
-  release () {}
+  release () {
+    this._webArrayBufferPool.give(this)
+  }
 }
 
 /**
  * @implements WlRegistryEvents
- * @implements WebShmEvents
  * @implements WlShellSurfaceEvents
  */
 class Window {
@@ -131,6 +187,11 @@ class Window {
      */
     this.height = height
     /**
+     * @type {WebArrayBufferPool|null}
+     * @private
+     */
+    this._webArrayBufferPool = null
+    /**
      * @type {WlCompositorProxy|null}
      * @private
      */
@@ -150,11 +211,6 @@ class Window {
      * @private
      */
     this._surface = null
-    /**
-     * @type {Array<WebArrayBuffer>}
-     * @protected
-     */
-    this._buffers = []
     /**
      * @type {number}
      * @protected
@@ -193,8 +249,7 @@ class Window {
       this._webShm = this._registry.bind(name, interface_, WebShmProxy, version)
       this._webShm.listener = this
 
-      this._buffers[0] = WebArrayBuffer.create(this._webShm, this.width, this.height)
-      this._buffers[1] = WebArrayBuffer.create(this._webShm, this.width, this.height)
+      this._webArrayBufferPool = WebArrayBufferPool.create(this._webShm, 2, this.width, this.height)
     }
 
     if (interface_ === WlShellProxy.protocolName) {
@@ -258,19 +313,22 @@ class Window {
    * @param {number}timestamp
    */
   draw (timestamp) {
-    const webArrayBuffer = this._buffers[this._nextBufferIdx++ % 2]
+    const webArrayBuffer = this._webArrayBufferPool.take()
+    if (webArrayBuffer) {
+      this._paintPixels(webArrayBuffer, timestamp)
+      webArrayBuffer.attach()
 
-    this._paintPixels(webArrayBuffer, timestamp)
-    webArrayBuffer.seal()
+      this._surface.attach(webArrayBuffer.bufferProxy, 0, 0)
+      this._surface.damage(0, 0, webArrayBuffer.width, webArrayBuffer.height)
 
-    this._surface.attach(webArrayBuffer.bufferProxy, 0, 0)
-    this._surface.damage(0, 0, webArrayBuffer.width, webArrayBuffer.height)
+      // wait for the compositor to signal that we can draw the next frame
+      new Promise(resolve => { this._surface.frame().listener = { done: resolve } }).then(timestamp => this.draw(timestamp))
 
-    // wait for the compositor to signal that we can draw the next frame
-    new Promise(resolve => { this._surface.frame().listener = { done: resolve } }).then(timestamp => this.draw(timestamp))
-
-    // serial is only required if our buffer contents would take a long time to send to the compositor ie. in a network remote case
-    this._surface.commit(0)
+      // serial is only required if our buffer contents would take a long time to send to the compositor ie. in a network remote case
+      this._surface.commit(0)
+    } else {
+      throw new Error('All buffers occupied :s')
+    }
   }
 
   /**

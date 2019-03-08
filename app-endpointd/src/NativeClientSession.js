@@ -297,7 +297,7 @@ class NativeClientSession {
     if (webFDTransfer.shm.contents === null) {
       // init pendingBytes as totalSize
       webFDTransfer.shm.pendingBytes = payloadBuffer.readUInt32BE(20, true)
-      webFDTransfer.shm.contents = new Uint8Array(webFDTransfer.shm.pendingBytes)
+      webFDTransfer.shm.pixelContent = new Uint8Array(webFDTransfer.shm.pendingBytes)
     }
 
     const contents = new Uint8Array(payload.slice(24))

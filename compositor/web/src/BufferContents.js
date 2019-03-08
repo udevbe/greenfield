@@ -15,7 +15,7 @@ export default class BufferContents {
   /**
    * @return {*}
    */
-  get contents () {}
+  get pixelContent () {}
 
   /**
    * @return {number}

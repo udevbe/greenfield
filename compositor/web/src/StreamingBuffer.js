@@ -65,4 +65,8 @@ export default class StreamingBuffer extends WlBufferRequests {
   async getContents (commitSerial) {
     return this.bufferStream.onFrameAvailable(commitSerial)
   }
+
+  release () {
+    this.resource.release()
+  }
 }

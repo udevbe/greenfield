@@ -862,7 +862,7 @@ export default class Surface extends WlSurfaceRequests {
    */
   async commit (resource, serial) {
     if (this.state.wlBuffer) {
-      this.state.wlBuffer.release()
+      (/** @type{BufferImplementation} */this.state.wlBuffer.implementation).release()
     }
     let bufferContents = null
 

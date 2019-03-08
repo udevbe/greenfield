@@ -7,4 +7,6 @@ export default class BufferImplementation {
    * @return {BufferContents}
    */
   async getContents (serial) {}
+
+  release () {}
 }

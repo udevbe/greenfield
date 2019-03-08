@@ -6,21 +6,19 @@ import BufferContents from './BufferContents'
  */
 export default class ShmFrame extends BufferContents {
   /**
-   * @param {ArrayBuffer}arrayBuffer
    * @param {number}width
    * @param {number}height
    * @return {ShmFrame}
    */
-  static create (arrayBuffer, width, height) {
-    return new ShmFrame(new ImageData(new Uint8ClampedArray(arrayBuffer), width, height), width, height)
+  static create (width, height) {
+    return new ShmFrame(width, height)
   }
 
   /**
-   * @param {ImageData}contents
    * @param {number}width
    * @param {number}height
    */
-  constructor (contents, width, height) {
+  constructor (width, height) {
     super()
     /**
      * @type {Size}
@@ -31,38 +29,38 @@ export default class ShmFrame extends BufferContents {
     /**
      * @type {ImageData}
      */
-    this._content = contents
+    this._pixelContent = new ImageData(new Uint8ClampedArray(new ArrayBuffer(width * height * 4)), width, height)
   }
 
   /**
    * @return {Size}
    * @override
    */
-  get size () {
-    return this._size
-  }
+  get size () { return this._size }
 
   /**
    * @return {ImageData}
    * @override
    */
-  get contents () {
-    return this._content
-  }
+  get pixelContent () { return this._pixelContent }
 
   /**
    * @return {string}
    * @override
    */
-  get mimeType () {
-    return 'image/rgba'
-  }
+  get mimeType () { return 'image/rgba' }
 
   /**
    * @return {number}
    * @override
    */
-  get serial () {
-    return 0
+  get serial () { return 0 }
+
+  /**
+   * @param {WebFD}pixelContent
+   */
+  async attach (pixelContent) {
+    const arrayBuffer = /** @type {ArrayBuffer} */ await pixelContent.getTransferable()
+    this._pixelContent = new ImageData(new Uint8ClampedArray(arrayBuffer), this._size.w, this._size.h)
   }
 }

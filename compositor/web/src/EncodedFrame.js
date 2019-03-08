@@ -100,7 +100,7 @@ export default class EncodedFrame extends BufferContents {
   /**
    * @return {Array<EncodedFrameFragment>}
    */
-  get contents () { return this._contents }
+  get pixelContent () { return this._contents }
 
   /**
    * @return {string}

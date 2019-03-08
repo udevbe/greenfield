@@ -197,7 +197,7 @@ export default class Renderer {
 
     if (fullFrame && !splitAlpha) {
       // Full frame without a separate alpha. Let the browser do all the drawing.
-      const frame = encodedFrame.contents[0]
+      const frame = encodedFrame.pixelContent[0]
       const opaqueImageBlob = new Blob([frame.opaque], { 'type': 'image/png' })
       const opaqueImageBitmap = await createImageBitmap(opaqueImageBlob, 0, 0, frame.geo.width, frame.geo.height)
       views.forEach(view => view.draw(opaqueImageBitmap))
@@ -270,8 +270,14 @@ export default class Renderer {
     }
   }
 
+  /**
+   * @param {ShmFrame}shmFrame
+   * @param surface
+   * @param views
+   * @return {Promise<void>}
+   */
   async ['image/rgba'] (shmFrame, surface, views) {
-    views.forEach(view => view.draw(shmFrame.contents))
+    views.forEach(view => view.draw(shmFrame.pixelContent))
   }
 
   /**

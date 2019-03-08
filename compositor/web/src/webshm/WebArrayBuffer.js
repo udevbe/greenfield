@@ -9,27 +9,37 @@ import ShmFrame from '../ShmFrame'
 export default class WebArrayBuffer extends WebArrayBufferRequests {
   /**
    * @param {WebArrayBufferResource}resource
-   * @param {ArrayBuffer}arrayBuffer
+   * @param {WlBufferResource}bufferResource
    * @param {number}width
    * @param {number}height
    */
-  static create (resource, arrayBuffer, width, height) {
-    const shmFrame = ShmFrame.create(arrayBuffer, width, height)
-    const webArrayBuffer = new WebArrayBuffer(resource, shmFrame)
+  static async create (resource, bufferResource, width, height) {
+    const shmFrame = ShmFrame.create(width, height)
+    const webArrayBuffer = new WebArrayBuffer(resource, bufferResource, shmFrame)
     resource.implementation = webArrayBuffer
     return webArrayBuffer
   }
 
   /**
    * @param {WebArrayBufferResource}resource
+   * @param {WlBufferResource}bufferResource
    * @param {ShmFrame}shmFrame
    */
-  constructor (resource, shmFrame) {
+  constructor (resource, bufferResource, shmFrame) {
     super()
     /**
      * @type {WebArrayBufferResource}
      */
     this.resource = resource
+    /**
+     * @type {WlBufferResource}
+     */
+    this.bufferResource = bufferResource
+    /**
+     * @type {WebFD|null}
+     * @private
+     */
+    this._pixelContent = null
     /**
      * @type {ShmFrame}
      */
@@ -57,18 +67,18 @@ export default class WebArrayBuffer extends WebArrayBufferRequests {
 
   /**
    *
-   *                Attaches the associated HTML5 array buffer to the compositor. The array buffer should be the same
-   *                object as the one used to create this buffer. No action is expected for this request. It merely
-   *                functions as a HTML5 array buffer ownership transfer from web-worker to main thread.
    *
    *
    * @param {WebArrayBufferResource} resource
-   * @param {WebFD} arrayBuffer HTML5 array buffer to attach to the compositor.
+   * @param {WebFD} pixelContent HTML5 array buffer to attach to the compositor.
    *
    * @since 1
    *
    */
-  attach (resource, arrayBuffer) {}
+  async attach (resource, pixelContent) {
+    this._pixelContent = pixelContent
+    await this._shmFrame.attach(pixelContent)
+  }
 
   /**
    * @param {number}serial
@@ -76,5 +86,10 @@ export default class WebArrayBuffer extends WebArrayBufferRequests {
    */
   async getContents (serial) {
     return Promise.resolve(this._shmFrame)
+  }
+
+  release () {
+    this.resource.detach(this._pixelContent)
+    this.bufferResource.release()
   }
 }
