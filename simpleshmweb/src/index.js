@@ -270,8 +270,8 @@ class Window {
    * @private
    */
   _paintPixels (buffer, timestamp) {
-    const halfh = buffer.width / 2
-    const halfw = buffer.height / 2
+    const halfh = buffer.width >> 1
+    const halfw = buffer.height >> 1
     let ir
     let or
     const image = new Uint32Array(buffer.arrayBuffer)
@@ -288,23 +288,24 @@ class Window {
 
       for (let x = 0; x < buffer.width; x++) {
         let v
+        let w = 0xff000000
 
+        /* squared distance from center */
         const r2 = (x - halfw) * (x - halfw) + y2
 
         if (r2 < ir) {
-          v = (r2 / 32 + timestamp / 64) * 0x8040100
+          v = ((r2 >> 5) + (timestamp >> 6)) * 0x0080401
         } else if (r2 < or) {
-          v = (y + timestamp / 32) * 0x8040100
+          v = (y + (timestamp >> 5)) * 0x0080401
         } else {
-          v = (x + timestamp / 16) * 0x8040100
+          v = (x + (timestamp >> 4)) * 0x0080401
         }
-        v &= 0x0ffffff00
+        // ARGB => ABGR (RGBA LE)
+        w |= ((v & 0x00ff0000) >> 16) // R
+        w |= ((v & 0x0000ff00)) // G
+        w |= ((v & 0x000000ff) << 16) // B
 
-        if (Math.abs(x - y) > 6 && Math.abs(x + y - buffer.height) > 6) {
-          v |= 0x000000ff
-        }
-
-        image[offset++] = v
+        image[offset++] = w
       }
     }
   }
@@ -322,7 +323,9 @@ class Window {
       this._surface.damage(0, 0, webArrayBuffer.width, webArrayBuffer.height)
 
       // wait for the compositor to signal that we can draw the next frame
-      new Promise(resolve => { this._surface.frame().listener = { done: resolve } }).then(timestamp => this.draw(timestamp))
+      new Promise(resolve => { this._surface.frame().listener = { done: resolve } }).then(timestamp => {
+        return this.draw(timestamp)
+      })
 
       // serial is only required if our buffer contents would take a long time to send to the compositor ie. in a network remote case
       this._surface.commit(0)
