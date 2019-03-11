@@ -24,9 +24,6 @@ import SurfaceChild from './SurfaceChild'
 import Renderer from './render/Renderer'
 import Point from './math/Point'
 import SurfaceState from './SurfaceState'
-import StreamingBuffer from './StreamingBuffer'
-import WebArrayBuffer from './webshm/WebArrayBuffer'
-import ShmFrame from './ShmFrame'
 
 /**
  * @type {{transformation: Mat4, inverseTransformation:Mat4}[]}

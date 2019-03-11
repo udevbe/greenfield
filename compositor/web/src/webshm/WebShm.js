@@ -1,13 +1,16 @@
-import WebShmRequests from '../protocol/WebShmRequests'
-import WebShmResource from '../protocol/WebShmResource'
-import WebArrayBufferResource from '../protocol/WebArrayBufferResource'
-import WebArrayBuffer from './WebArrayBuffer'
+import GrWebShmRequests from '../protocol/GrWebShmRequests'
+import GrWebShmResource from '../protocol/GrWebShmResource'
+import GrWebShmBufferResource from '../protocol/GrWebShmBufferResource'
+import WebShmBuffer from './WebShmBuffer'
 import WlBufferResource from '../protocol/WlBufferResource'
 
 /**
- * @implements WebShmRequests
+ * @implements GrWebShmRequests
  */
-export default class WebShm extends WebShmRequests {
+export default class WebShm extends GrWebShmRequests {
+  /**
+   * @return {WebShm}
+   */
   static create () {
     return new WebShm()
   }
@@ -20,7 +23,7 @@ export default class WebShm extends WebShmRequests {
      */
     this._global = null
     /**
-     * @type {Array<WebShmResource>}
+     * @type {Array<GrWebShmResource>}
      * @private
      */
     this._resources = []
@@ -33,7 +36,7 @@ export default class WebShm extends WebShmRequests {
     if (this._global) {
       return
     }
-    this._global = registry.createGlobal(this, WebShmResource.protocolName, 1, (client, id, version) => {
+    this._global = registry.createGlobal(this, GrWebShmResource.protocolName, 1, (client, id, version) => {
       this.bindClient(client, id, version)
     })
   }
@@ -47,7 +50,7 @@ export default class WebShm extends WebShmRequests {
    * @param {!number} version
    */
   bindClient (client, id, version) {
-    const webShmResource = new WebShmResource(client, id, version)
+    const webShmResource = new GrWebShmResource(client, id, version)
     webShmResource.implementation = this
     this._resources.push(webShmResource)
   }
@@ -57,7 +60,7 @@ export default class WebShm extends WebShmRequests {
    *                Create a wl_buffer object from a web_array_buffer so it can be used with a surface.
    *
    *
-   * @param {WebShmResource} resource
+   * @param {GrWebShmResource} resource
    * @param {number} id buffer to create
    * @param {*} webArrayBufferResource web_array_buffer to wrap
    * @param {number} width buffer width, in pixels
@@ -68,7 +71,7 @@ export default class WebShm extends WebShmRequests {
    */
   async createBuffer (resource, id, webArrayBufferResource, width, height) {
     const wlBufferResource = new WlBufferResource(resource.client, id, resource.version)
-    const webArrayBuffer = await WebArrayBuffer.create(webArrayBufferResource, wlBufferResource, width, height)
+    const webArrayBuffer = await WebShmBuffer.create(webArrayBufferResource, wlBufferResource, width, height)
 
     wlBufferResource.implementation = webArrayBuffer
     webArrayBufferResource.implementation = webArrayBuffer
@@ -84,13 +87,13 @@ export default class WebShm extends WebShmRequests {
    *                A compositor will emit the detach event in conjunction with a wl_buffer release event.
    *
    *
-   * @param {WebShmResource} resource
+   * @param {GrWebShmResource} resource
    * @param {number} id array buffer to create
    *
    * @since 1
    *
    */
   createWebArrayBuffer (resource, id) {
-    new WebArrayBufferResource(resource.client, id, resource.version)
+    new GrWebShmBufferResource(resource.client, id, resource.version)
   }
 }

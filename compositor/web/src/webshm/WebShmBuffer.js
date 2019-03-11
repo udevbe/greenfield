@@ -1,34 +1,34 @@
-import WebArrayBufferRequests from '../protocol/WebArrayBufferRequests'
+import GrWebShmBufferRequests from '../protocol/GrWebShmBufferRequests'
 import ShmFrame from '../ShmFrame'
 
 /**
  * @implements WlBufferRequests
- * @implements WebArrayBufferRequests
+ * @implements GrWebShmBufferRequests
  * @implements BufferImplementation
  */
-export default class WebArrayBuffer extends WebArrayBufferRequests {
+export default class WebShmBuffer extends GrWebShmBufferRequests {
   /**
-   * @param {WebArrayBufferResource}resource
+   * @param {GrWebShmBufferResource}resource
    * @param {WlBufferResource}bufferResource
    * @param {number}width
    * @param {number}height
    */
   static async create (resource, bufferResource, width, height) {
     const shmFrame = ShmFrame.create(width, height)
-    const webArrayBuffer = new WebArrayBuffer(resource, bufferResource, shmFrame)
+    const webArrayBuffer = new WebShmBuffer(resource, bufferResource, shmFrame)
     resource.implementation = webArrayBuffer
     return webArrayBuffer
   }
 
   /**
-   * @param {WebArrayBufferResource}resource
+   * @param {GrWebShmBufferResource}resource
    * @param {WlBufferResource}bufferResource
    * @param {ShmFrame}shmFrame
    */
   constructor (resource, bufferResource, shmFrame) {
     super()
     /**
-     * @type {WebArrayBufferResource}
+     * @type {GrWebShmBufferResource}
      */
     this.resource = resource
     /**
@@ -69,7 +69,7 @@ export default class WebArrayBuffer extends WebArrayBufferRequests {
    *
    *
    *
-   * @param {WebArrayBufferResource} resource
+   * @param {GrWebShmBufferResource} resource
    * @param {WebFD} pixelContent HTML5 array buffer to attach to the compositor.
    *
    * @since 1

@@ -6,10 +6,11 @@
     "greenfield": "./server/src/index.js"
   },
   "scripts": {
-    "prepare:web:generate:webshm": "westfield-scanner-server ../protocol/web-shm.xml -o web/src/protocol",
+    "prepare:web:generate:webgl": "westfield-scanner-server ../protocol/gr-web-gl.xml -o web/src/protocol",
+    "prepare:web:generate:webshm": "westfield-scanner-server ../protocol/gr-web-shm.xml -o web/src/protocol",
     "prepare:web:generate:xdgshell": "westfield-scanner-server ../protocol/xdg-shell.xml -o web/src/protocol",
     "prepare:web:generate:wayland": "westfield-scanner-server ../protocol/wayland.xml -o web/src/protocol",
-    "prepare:web:generate": "mkdir -p web/src/protocol/ && npm run prepare:web:generate:wayland && npm run prepare:web:generate:xdgshell && npm run prepare:web:generate:webshm",
+    "prepare:web:generate": "mkdir -p web/src/protocol/ && npm run prepare:web:generate:wayland && npm run prepare:web:generate:xdgshell && npm run prepare:web:generate:webshm && npm run prepare:web:generate:webgl",
     "prepare": "npm run prepare:web:generate && webpack --config web/build.config/webpack.config.prod.js",
     "prepare:dev": "npm run prepare:web:generate && webpack --config web/build.config/webpack.config.dev.js",
     "start": "node ./server/src/index.js",

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<protocol name="web_shm">
+<protocol name="gr_web_shm">
     <copyright>
         Copyright © 2019 Erik De Rijcke
 
@@ -25,42 +25,40 @@
         SOFTWARE.
     </copyright>
 
-    <interface name="web_array_buffer" version="1">
+    <interface name="gr_web_shm_buffer" version="1">
         <request name="attach">
-            <description summary="attach">
-                Attaches the associated HTML5 array buffer to the compositor. The array buffer size should be the same
-                the one used to create this buffer. After attaching, the buffer can not be used for writing anymore.
+            <description summary="Transfer array buffer ownership to the compositor.">
+                Attaches an HTML5 array buffer to the compositor. After attaching, the array buffer ownership is passed
+                to the compositor main thread. The array buffer can not be used for writing anymore by the client as
+                per HTML5 Transferable objects spec.
+
+                The pixel format of the attached array buffer must always be RGBA8888 as per HTML5 ImageData spec.
+                Stride must always equal width.
             </description>
-            <arg name="contents" type="fd" summary="HTML5 array buffer to attach to the compositor."/>
+            <arg name="contents" type="fd" summary="An HTML5 array buffer to attach to the compositor."/>
         </request>
         <event name="detach">
-            <description summary="release">
-                Detaches the associated HTML5 array buffer from the compositor and returns it to the client so it can
-                be reused again for writing.
+            <description summary="Transfer array buffer ownership to the client.">
+                Detaches a previously attached HTML5 array buffer from the compositor and returns it to the client so
+                it can be reused again for writing. After detaching, the array buffer ownership is passed from
+                the compositor main thread back to the client.
             </description>
-            <arg name="contents" type="fd" summary="HTML5 array buffer detached from the compositor"/>
+            <arg name="contents" type="fd" summary="An HTML5 array buffer, detached from the compositor"/>
         </event>
     </interface>
 
-    <interface name="web_shm" version="1">
+    <interface name="gr_web_shm" version="1">
         <description summary="shared memory support">
-            A singleton global object that provides support for shared
-            memory.
+            A singleton global object that provides support for shared memory through HTML5 array buffers.
 
-            Clients can create wl_buffer objects using the create_buffer
-            request.
+            Clients can create wl_buffer objects using the create_buffer request.
         </description>
 
         <request name="create_web_array_buffer">
             <description summary="create an HTML5 array buffer">
-                Create a web_array_buffer object.
-
-                The buffer is created using width and height as specified.
-                The format of the attached buffer is always rgba8888.
-
-                A compositor will emit the detach event in conjunction with a wl_buffer release event.
+                Create a gr_web_shm_buffer object.
             </description>
-            <arg name="id" type="new_id" interface="web_array_buffer" summary="array buffer to create"/>
+            <arg name="id" type="new_id" interface="gr_web_shm_buffer" summary="web shm buffer to create"/>
         </request>
 
         <request name="create_buffer">
@@ -68,9 +66,10 @@
                 Create a wl_buffer object from a web_array_buffer so it can be used with a surface.
             </description>
             <arg name="id" type="new_id" interface="wl_buffer" summary="buffer to create"/>
-            <arg name="web_array_buffer" type="object" interface="web_array_buffer" summary="web_array_buffer to wrap"/>
-            <arg name="width" type="int" summary="buffer width, in pixels"/>
-            <arg name="height" type="int" summary="buffer height, in pixels"/>
+            <arg name="web_array_buffer" type="object" interface="gr_web_shm_buffer"
+                 summary="The gr_web_array_buffer to wrap"/>
+            <arg name="width" type="int" summary="Buffer width, in pixels."/>
+            <arg name="height" type="int" summary="Buffer height, in pixels."/>
         </request>
     </interface>
 </protocol>
