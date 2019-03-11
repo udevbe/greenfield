@@ -16,6 +16,7 @@ import RtcSocket from './RtcSocket'
 import WebShm from './webshm/WebShm'
 import WebAppSocket from './WebAppSocket'
 import WebAppLauncher from './WebAppLauncher'
+import WebGL from './webgl/WebGL'
 
 /**
  * @param {Session}session
@@ -33,6 +34,7 @@ function setup (session) {
   const xdgWmBase = XdgWmBase.create(session, desktopUserShell, seat)
 
   const webShm = WebShm.create()
+  const webGL = WebGL.create()
 
   output.registerGlobal(session.display.registry)
   compositor.registerGlobal(session.display.registry)
@@ -44,6 +46,7 @@ function setup (session) {
   xdgWmBase.registerGlobal(session.display.registry)
 
   webShm.registerGlobal(session.display.registry)
+  webGL.registerGlobal(session.display.registry)
 
   // RtcSocket enables native appl-endpoints with remote application to connect
   RtcSocket.create(session)

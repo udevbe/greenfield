@@ -94,6 +94,8 @@ export default class WebShm extends GrWebShmRequests {
    *
    */
   createWebArrayBuffer (resource, id) {
-    new GrWebShmBufferResource(resource.client, id, resource.version)
+    const grWebShmBufferResource = new GrWebShmBufferResource(resource.client, id, resource.version)
+    // FIXME use protocol error instead of exception
+    grWebShmBufferResource.implementation = { attach: () => { throw new Error('web shm buffer not wrapped.') } }
   }
 }

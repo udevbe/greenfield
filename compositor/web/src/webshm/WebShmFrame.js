@@ -1,17 +1,17 @@
-import Size from './Size'
-import BufferContents from './BufferContents'
+import Size from '../Size'
+import BufferContents from '../BufferContents'
 
 /**
  * @implements BufferContents
  */
-export default class ShmFrame extends BufferContents {
+export default class WebShmFrame extends BufferContents {
   /**
    * @param {number}width
    * @param {number}height
-   * @return {ShmFrame}
+   * @return {WebShmFrame}
    */
   static create (width, height) {
-    return new ShmFrame(width, height)
+    return new WebShmFrame(width, height)
   }
 
   /**

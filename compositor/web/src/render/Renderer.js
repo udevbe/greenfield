@@ -271,13 +271,23 @@ export default class Renderer {
   }
 
   /**
-   * @param {ShmFrame}shmFrame
+   * @param {WebShmFrame}shmFrame
    * @param surface
    * @param views
    * @return {Promise<void>}
    */
   async ['image/rgba'] (shmFrame, surface, views) {
     views.forEach(view => view.draw(shmFrame.pixelContent))
+  }
+
+  /**
+   * @param {WebGLFrame}webGLFrame
+   * @param surface
+   * @param views
+   * @return {Promise<void>}
+   */
+  async ['image/bitmap'] (webGLFrame, surface, views) {
+    views.forEach(view => view.draw(webGLFrame.pixelContent))
   }
 
   /**

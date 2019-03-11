@@ -1,5 +1,5 @@
 import GrWebShmBufferRequests from '../protocol/GrWebShmBufferRequests'
-import ShmFrame from '../ShmFrame'
+import WebShmFrame from './WebShmFrame'
 
 /**
  * @implements WlBufferRequests
@@ -14,8 +14,8 @@ export default class WebShmBuffer extends GrWebShmBufferRequests {
    * @param {number}height
    */
   static async create (resource, bufferResource, width, height) {
-    const shmFrame = ShmFrame.create(width, height)
-    const webArrayBuffer = new WebShmBuffer(resource, bufferResource, shmFrame)
+    const webShmFrame = WebShmFrame.create(width, height)
+    const webArrayBuffer = new WebShmBuffer(resource, bufferResource, webShmFrame)
     resource.implementation = webArrayBuffer
     return webArrayBuffer
   }
@@ -23,9 +23,9 @@ export default class WebShmBuffer extends GrWebShmBufferRequests {
   /**
    * @param {GrWebShmBufferResource}resource
    * @param {WlBufferResource}bufferResource
-   * @param {ShmFrame}shmFrame
+   * @param {WebShmFrame}webShmFrame
    */
-  constructor (resource, bufferResource, shmFrame) {
+  constructor (resource, bufferResource, webShmFrame) {
     super()
     /**
      * @type {GrWebShmBufferResource}
@@ -41,9 +41,9 @@ export default class WebShmBuffer extends GrWebShmBufferRequests {
      */
     this._pixelContent = null
     /**
-     * @type {ShmFrame}
+     * @type {WebShmFrame}
      */
-    this._shmFrame = shmFrame
+    this._webShmFrame = webShmFrame
   }
 
   /**
@@ -77,15 +77,15 @@ export default class WebShmBuffer extends GrWebShmBufferRequests {
    */
   async attach (resource, pixelContent) {
     this._pixelContent = pixelContent
-    await this._shmFrame.attach(pixelContent)
+    await this._webShmFrame.attach(pixelContent)
   }
 
   /**
    * @param {number}serial
-   * @return {Promise<ShmFrame>}
+   * @return {Promise<WebShmFrame>}
    */
   async getContents (serial) {
-    return Promise.resolve(this._shmFrame)
+    return Promise.resolve(this._webShmFrame)
   }
 
   release () {
