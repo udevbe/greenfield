@@ -50,7 +50,9 @@ class SurfaceBufferEncoding {
           bufferChunks.forEach((chunk) => {
             // send buffer contents. opcode: 3. bufferId + chunk
             const sendBuffer = Buffer.concat([Buffer.from(new Uint32Array([3, bufferId]).buffer), chunk])
-            this.userData.communicationChannel.send(sendBuffer.buffer.slice(sendBuffer.byteOffset, sendBuffer.byteOffset + sendBuffer.byteLength))
+            if (this.userData.communicationChannel.readyState === 'open') {
+              this.userData.communicationChannel.send(sendBuffer.buffer.slice(sendBuffer.byteOffset, sendBuffer.byteOffset + sendBuffer.byteLength))
+            } // else connection was probably closed, don't attempt to send a buffer chunk
           })
         })
       }
