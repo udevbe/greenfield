@@ -11,7 +11,7 @@ class RTCChannel extends Channel {
    * @return {RTCChannel}
    */
   static create (peerConnection) {
-    const dataChannel = peerConnection.createDataChannel(null, { ordered: true })
+    const dataChannel = peerConnection.createDataChannel('client-connection', { ordered: true })
     dataChannel.binaryType = 'arraybuffer'
     return new RTCChannel(dataChannel)
   }
