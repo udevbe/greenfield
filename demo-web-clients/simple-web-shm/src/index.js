@@ -1,60 +1,61 @@
 import {
   display,
   webFS,
+  frame,
   WlCompositorProxy,
   GrWebShmProxy,
   WlShellProxy
 } from 'westfield-runtime-client'
 
-class WebShmBufferPool {
+class ShmBufferPool {
   /**
    * @param {GrWebShmProxy}webShm
    * @param {number}poolSize
    * @param {number}width
    * @param {number}height
-   * @return {WebShmBufferPool}
+   * @return {ShmBufferPool}
    */
   static create (webShm, poolSize, width, height) {
     const available = new Array(poolSize)
-    const webArrayBufferPool = new WebShmBufferPool(available)
+    const shmBufferPool = new ShmBufferPool(available)
     for (let i = 0; i < poolSize; i++) {
-      available[i] = WebShmBuffer.create(webShm, width, height, webArrayBufferPool)
+      available[i] = ShmBuffer.create(webShm, width, height, shmBufferPool)
     }
-    return webArrayBufferPool
+    return shmBufferPool
   }
 
   constructor (available) {
     /**
-     * @type {Array<WebShmBuffer>}
+     * @type {Array<ShmBuffer>}
      * @protected
      */
     this._available = available
     /**
-     * @type {Array<WebShmBuffer>}
+     * @type {Array<ShmBuffer>}
      * @protected
      */
     this._busy = []
   }
 
   /**
-   * @param {WebShmBuffer}webArrayBuffer
+   * @param {ShmBuffer}shmBuffer
    */
-  give (webArrayBuffer) {
-    const idx = this._busy.indexOf(webArrayBuffer)
+  give (shmBuffer) {
+    const idx = this._busy.indexOf(shmBuffer)
     if (idx > -1) {
       this._busy.splice(idx, 1)
     }
-    this._available.push(webArrayBuffer)
+    this._available.push(shmBuffer)
   }
 
   /**
-   * @return {WebShmBuffer|null}
+   * @return {ShmBuffer|null}
    */
   take () {
-    const webArrayBuffer = this._available.shift()
-    if (webArrayBuffer != null) {
-      this._busy.push(webArrayBuffer)
-      return webArrayBuffer
+    const shmBuffer = this._available.shift()
+    if (shmBuffer != null) {
+      this._busy.push(shmBuffer)
+      return shmBuffer
     }
     return null
   }
@@ -64,13 +65,13 @@ class WebShmBufferPool {
  * @implements GrWebShmBufferEvents
  * @implements WlBufferEvents
  */
-class WebShmBuffer {
+class ShmBuffer {
   /**
    * @param {GrWebShmProxy}webShm
    * @param {number}width
    * @param {number}height
-   * @param {WebShmBufferPool}webArrayBufferPool
-   * @return {WebShmBuffer}
+   * @param {ShmBufferPool}webArrayBufferPool
+   * @return {ShmBuffer}
    */
   static create (webShm, width, height, webArrayBufferPool) {
     const arrayBuffer = new ArrayBuffer(height * width * Uint32Array.BYTES_PER_ELEMENT)
@@ -79,12 +80,12 @@ class WebShmBuffer {
     const proxy = webShm.createWebArrayBuffer()
     const bufferProxy = webShm.createBuffer(proxy, width, height)
 
-    const webArrayBuffer = new WebShmBuffer(proxy, bufferProxy, pixelContent, arrayBuffer, width, height, webArrayBufferPool)
+    const shmBuffer = new ShmBuffer(proxy, bufferProxy, pixelContent, arrayBuffer, width, height, webArrayBufferPool)
 
-    proxy.listener = webArrayBuffer
-    bufferProxy.listener = webArrayBuffer
+    proxy.listener = shmBuffer
+    bufferProxy.listener = shmBuffer
 
-    return webArrayBuffer
+    return shmBuffer
   }
 
   /**
@@ -94,9 +95,9 @@ class WebShmBuffer {
    * @param {ArrayBuffer}arrayBuffer
    * @param {number}width
    * @param {number}height
-   * @param {WebShmBufferPool}webArrayBufferPool
+   * @param {ShmBufferPool}shmBufferPool
    */
-  constructor (proxy, bufferProxy, pixelContent, arrayBuffer, width, height, webArrayBufferPool) {
+  constructor (proxy, bufferProxy, pixelContent, arrayBuffer, width, height, shmBufferPool) {
     /**
      * @type {GrWebShmBufferProxy}
      */
@@ -123,10 +124,10 @@ class WebShmBuffer {
      */
     this.height = height
     /**
-     * @type {WebShmBufferPool}
+     * @type {ShmBufferPool}
      * @private
      */
-    this._webArrayBufferPool = webArrayBufferPool
+    this._shmBufferPool = shmBufferPool
   }
 
   attach () {
@@ -171,7 +172,7 @@ class WebShmBuffer {
    *
    */
   release () {
-    this._webArrayBufferPool.give(this)
+    this._shmBufferPool.give(this)
   }
 }
 
@@ -212,10 +213,10 @@ class Window {
      */
     this.height = height
     /**
-     * @type {WebShmBufferPool|null}
+     * @type {ShmBufferPool|null}
      * @private
      */
-    this._webArrayBufferPool = null
+    this._shmBufferPool = null
     /**
      * @type {WlCompositorProxy|null}
      * @private
@@ -236,16 +237,6 @@ class Window {
      * @private
      */
     this._surface = null
-    /**
-     * @type {number}
-     * @protected
-     */
-    this._nextBufferIdx = 0
-    /**
-     * @type {Promise<number>}
-     * @private
-     */
-    this._syncPromise = null
   }
 
   /**
@@ -268,13 +259,14 @@ class Window {
     if (interface_ === WlCompositorProxy.protocolName) {
       this._compositor = this._registry.bind(name, interface_, WlCompositorProxy, version)
       this._surface = this._compositor.createSurface()
+      this._onFrame = frame(this._surface)
     }
 
     if (interface_ === GrWebShmProxy.protocolName) {
       this._webShm = this._registry.bind(name, interface_, GrWebShmProxy, version)
       this._webShm.listener = this
 
-      this._webArrayBufferPool = WebShmBufferPool.create(this._webShm, 2, this.width, this.height)
+      this._shmBufferPool = ShmBufferPool.create(this._webShm, 2, this.width, this.height)
     }
 
     if (interface_ === WlShellProxy.protocolName) {
@@ -290,16 +282,16 @@ class Window {
   }
 
   /**
-   * @param {WebShmBuffer}buffer
+   * @param {ShmBuffer}shmBuffer
    * @param {number}timestamp
    * @private
    */
-  _paintPixels (buffer, timestamp) {
-    const halfh = buffer.width >> 1
-    const halfw = buffer.height >> 1
+  _paintPixels (shmBuffer, timestamp) {
+    const halfh = shmBuffer.width >> 1
+    const halfw = shmBuffer.height >> 1
     let ir
     let or
-    const image = new Uint32Array(buffer.arrayBuffer)
+    const image = new Uint32Array(shmBuffer.arrayBuffer)
 
     /* squared radii thresholds */
     or = (halfw < halfh ? halfw : halfh) - 8
@@ -308,10 +300,10 @@ class Window {
     ir = ir * ir
 
     let offset = 0
-    for (let y = 0; y < buffer.height; y++) {
+    for (let y = 0; y < shmBuffer.height; y++) {
       const y2 = (y - halfh) * (y - halfh)
 
-      for (let x = 0; x < buffer.width; x++) {
+      for (let x = 0; x < shmBuffer.width; x++) {
         let v
         let w = 0xff000000
 
@@ -339,23 +331,24 @@ class Window {
    * @param {number}timestamp
    */
   draw (timestamp) {
-    const webArrayBuffer = this._webArrayBufferPool.take()
-    if (webArrayBuffer) {
-      this._paintPixels(webArrayBuffer, timestamp)
-      webArrayBuffer.attach()
+    const shmBuffer = this._shmBufferPool.take()
+    if (shmBuffer) {
+      this._paintPixels(shmBuffer, timestamp)
+      shmBuffer.attach()
 
-      this._surface.attach(webArrayBuffer.bufferProxy, 0, 0)
-      this._surface.damage(0, 0, webArrayBuffer.width, webArrayBuffer.height)
+      this._surface.attach(shmBuffer.bufferProxy, 0, 0)
+      this._surface.damage(0, 0, shmBuffer.width, shmBuffer.height)
 
-      // wait for the compositor to signal that we can draw the next frame
-      new Promise(resolve => { this._surface.frame().listener = { done: resolve } }).then(timestamp => {
-        return this.draw(timestamp)
-      })
+      // Wait for the compositor to signal that we can draw the next frame.
+      // Note that using 'await' here would result in a deadlock as the event loop would be blocked, and the event
+      // that resolves the await state would never be picked up by the blocked event loop.
+      this._onFrame().then(timestamp => this.draw(timestamp))
 
       // serial is only required if our buffer contents would take a long time to send to the compositor ie. in a network remote case
       this._surface.commit(0)
     } else {
-      throw new Error('All buffers occupied :s')
+      console.error('All buffers occupied by compositor!')
+      display.close()
     }
   }
 
@@ -394,9 +387,7 @@ class Window {
    * @since 1
    *
    */
-  configure (edges, width, height) {
-    // NOOP
-  }
+  configure (edges, width, height) { /* NOOP */ }
 
   /**
    *
@@ -410,7 +401,7 @@ class Window {
    *
    */
   ping (serial) {
-    this._shellSurface.pong()
+    this._shellSurface.pong(serial)
   }
 
   /**
@@ -424,21 +415,34 @@ class Window {
    * @since 1
    *
    */
-  popupDone () {
-    // NOOP
-  }
+  popupDone () { /* NOOP */ }
 }
 
-function main () {
+async function main () {
   // create a new window with some buffers
   const window = Window.create(250, 250)
-  // Wait for all outgoing window creation requests to be processed before we attempt to draw something
-  new Promise(resolve => { display.sync().listener = { done: resolve } }).then(() => {
-    window.init()
-    window.draw(0)
-  })
-  // flush piled up window creation requests to the display
-  display.connection.flush()
+
+  // create a sync promise
+  const syncPromise = display.sync()
+
+  // flush out window creation & sync requests to the compositor
+  display.flush()
+
+  // wait for compositor to have processed all our outgoing requests
+  await syncPromise
+
+  // Now begin drawing after the compositor is done processing all our requests
+  window.init()
+  window.draw(0)
+
+  // wait for the display connection to close
+  try {
+    await display.onClose()
+    console.log('Application exit.')
+  } catch (e) {
+    console.error('Application terminated with error.')
+    console.error(e.stackTrace)
+  }
 }
 
 main()

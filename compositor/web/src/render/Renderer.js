@@ -153,10 +153,10 @@ export default class Renderer {
       this._jpegAlphaSurfaceShader.use()
       this._jpegAlphaSurfaceShader.setTexture(jpegRenderState.opaqueTexture, jpegRenderState.alphaTexture)
 
-      const canvasSizeChanged = (this._canvas.width !== frameWidth) || (this._canvas.height !== frameHeight)
+      const canvasSizeChanged = (this._offscreenCanvas.width !== frameWidth) || (this._offscreenCanvas.height !== frameHeight)
       if (canvasSizeChanged) {
-        this._canvas.width = frameWidth
-        this._canvas.height = frameHeight
+        this._offscreenCanvas.width = frameWidth
+        this._offscreenCanvas.height = frameHeight
         this._jpegAlphaSurfaceShader.updatePerspective(encodedFrame.size)
       }
 
@@ -164,23 +164,23 @@ export default class Renderer {
       this._jpegAlphaSurfaceShader.draw(encodedFrame.size, canvasSizeChanged)
       this._jpegAlphaSurfaceShader.release()
 
-      const image = await window.createImageBitmap(this._canvas)
+      const image = await window.createImageBitmap(this._offscreenCanvas)
       views.forEach((view) => { view.draw(image) })
     } else {
       // Image is in jpeg format with no separate alpha channel, shade & decode opaque fragments using webgl.
       this._jpegSurfaceShader.use()
       this._jpegSurfaceShader.setTexture(jpegRenderState.opaqueTexture)
 
-      const canvasSizeChanged = (this._canvas.width !== frameWidth) || (this._canvas.height !== frameHeight)
+      const canvasSizeChanged = (this._offscreenCanvas.width !== frameWidth) || (this._offscreenCanvas.height !== frameHeight)
       if (canvasSizeChanged) {
-        this._canvas.width = frameWidth
-        this._canvas.height = frameHeight
+        this._offscreenCanvas.width = frameWidth
+        this._offscreenCanvas.height = frameHeight
         this._jpegSurfaceShader.updatePerspective(encodedFrame.size)
       }
 
       this._jpegSurfaceShader.draw(encodedFrame.size, canvasSizeChanged)
       this._jpegSurfaceShader.release()
-      views.forEach((view) => { view.draw(this._canvas) })
+      views.forEach((view) => { view.draw(this._offscreenCanvas) })
     }
   }
 
@@ -238,10 +238,10 @@ export default class Renderer {
       this._yuvaSurfaceShader.use()
       this._yuvaSurfaceShader.setTexture(h264RenderState.yTexture, h264RenderState.uTexture, h264RenderState.vTexture, h264RenderState.alphaTexture)
 
-      const canvasSizeChanged = (this._canvas.width !== frameWidth) || (this._canvas.height !== frameHeight)
+      const canvasSizeChanged = (this._offscreenCanvas.width !== frameWidth) || (this._offscreenCanvas.height !== frameHeight)
       if (canvasSizeChanged) {
-        this._canvas.width = frameWidth
-        this._canvas.height = frameHeight
+        this._offscreenCanvas.width = frameWidth
+        this._offscreenCanvas.height = frameHeight
         this._yuvaSurfaceShader.updatePerspective(encodedFrame.size)
       }
 
@@ -249,24 +249,24 @@ export default class Renderer {
       this._yuvaSurfaceShader.draw(encodedFrame.size, canvasSizeChanged)
       this._yuvaSurfaceShader.release()
 
-      const image = await window.createImageBitmap(this._canvas)
+      const image = await window.createImageBitmap(this._offscreenCanvas)
       views.forEach((view) => { view.draw(image) })
     } else {
       // Image is in h264 format with no separate alpha channel, color convert yuv fragments to rgb using webgl.
       this._yuvSurfaceShader.use()
       this._yuvSurfaceShader.setTexture(h264RenderState.yTexture, h264RenderState.uTexture, h264RenderState.vTexture)
 
-      const canvasSizeChanged = (this._canvas.width !== frameWidth) || (this._canvas.height !== frameHeight)
+      const canvasSizeChanged = (this._offscreenCanvas.width !== frameWidth) || (this._offscreenCanvas.height !== frameHeight)
       if (canvasSizeChanged) {
-        this._canvas.width = frameWidth
-        this._canvas.height = frameHeight
+        this._offscreenCanvas.width = frameWidth
+        this._offscreenCanvas.height = frameHeight
         this._yuvSurfaceShader.updatePerspective(encodedFrame.size)
       }
 
       this._yuvSurfaceShader.draw(encodedFrame.size, canvasSizeChanged)
       this._yuvSurfaceShader.release()
 
-      views.forEach((view) => { view.draw(this._canvas) })
+      views.forEach((view) => { view.draw(this._offscreenCanvas) })
     }
   }
 
