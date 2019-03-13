@@ -248,8 +248,8 @@ export default class Renderer {
       this._yuvaSurfaceShader.draw(encodedFrame.size, canvasSizeChanged)
       this._yuvaSurfaceShader.release()
 
-      const image = await window.createImageBitmap(this._canvas)
-      views.forEach((view) => { view.draw(image) })
+      const image = await createImageBitmap(this._canvas)
+      views.forEach(view => view.draw(image))
     } else {
       // Image is in h264 format with no separate alpha channel, color convert yuv fragments to rgb using webgl.
       this._yuvSurfaceShader.use()
@@ -265,7 +265,7 @@ export default class Renderer {
       this._yuvSurfaceShader.draw(encodedFrame.size, canvasSizeChanged)
       this._yuvSurfaceShader.release()
 
-      views.forEach((view) => { view.draw(this._canvas) })
+      views.forEach(view => view.draw(this._canvas))
     }
   }
 
@@ -275,7 +275,7 @@ export default class Renderer {
    * @param views
    * @return {Promise<void>}
    */
-  async ['image/rgba'] (shmFrame, surface, views) {
+  ['image/rgba'] (shmFrame, surface, views) {
     views.forEach(view => view.draw(shmFrame.pixelContent))
   }
 
@@ -285,8 +285,10 @@ export default class Renderer {
    * @param views
    * @return {Promise<void>}
    */
-  async ['image/bitmap'] (webGLFrame, surface, views) {
-    views.forEach(view => view.draw(webGLFrame.pixelContent))
+  ['image/bitmap'] (webGLFrame, surface, views) {
+    const imageBitmap = webGLFrame.pixelContent
+    views.forEach(view => view.draw(imageBitmap))
+    imageBitmap.close()
   }
 
   /**

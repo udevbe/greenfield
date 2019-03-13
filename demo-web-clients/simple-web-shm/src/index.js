@@ -278,7 +278,7 @@ class Window {
     this._shellSurface = this._shell.getShellSurface(this._surface)
     this._shellSurface.listener = this
     this._shellSurface.setToplevel()
-    this._shellSurface.setTitle('Simple Shm Web')
+    this._shellSurface.setTitle('Simple Web Shm')
   }
 
   /**

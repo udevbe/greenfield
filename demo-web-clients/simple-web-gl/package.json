@@ -24,7 +24,8 @@
     "prepare": "webpack --config build.config/webpack.config.dev.js"
   },
   "dependencies": {
-    "westfield-runtime-client": "0.1.5"
+    "westfield-runtime-client": "0.1.5",
+    "gl-matrix": "^3.0.0"
   },
   "devDependencies": {
     "webpack": "^4.28.2",

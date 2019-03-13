@@ -3,61 +3,13 @@ import {
   webFS,
   frame,
   WlCompositorProxy,
-  GrWebGLProxy,
-  WlShellProxy
+  GrWebGlProxy,
+  WlShellProxy,
+  WlSeatProxy,
+  WlPointerProxy
 } from 'westfield-runtime-client'
 
-class GLBufferPool {
-  /**
-   * @param {GrWebGLProxy}webGL
-   * @param {number}poolSize
-   * @return {GLBufferPool}
-   */
-  static create (webGL, poolSize) {
-    const available = new Array(poolSize)
-    const glBufferPool = new GLBufferPool(available)
-    for (let i = 0; i < poolSize; i++) {
-      available[i] = GLBuffer.create(webGL, glBufferPool)
-    }
-    return glBufferPool
-  }
-
-  constructor (available) {
-    /**
-     * @type {Array<GLBuffer>}
-     * @protected
-     */
-    this._available = available
-    /**
-     * @type {Array<GLBuffer>}
-     * @protected
-     */
-    this._busy = []
-  }
-
-  /**
-   * @param {GLBuffer}glBuffer
-   */
-  give (glBuffer) {
-    const idx = this._busy.indexOf(glBuffer)
-    if (idx > -1) {
-      this._busy.splice(idx, 1)
-    }
-    this._available.push(glBuffer)
-  }
-
-  /**
-   * @return {GLBuffer|null}
-   */
-  take () {
-    const glBuffer = this._available.shift()
-    if (glBuffer != null) {
-      this._busy.push(glBuffer)
-      return glBuffer
-    }
-    return null
-  }
-}
+import { initDraw, drawScene } from './webgl-demo'
 
 /**
  * @implements GrWebGLBufferEvents
@@ -65,17 +17,16 @@ class GLBufferPool {
  */
 class GLBuffer {
   /**
-   * @param {GrWebGLProxy}webGL
-   * @param {number}width
-   * @param {number}height
+   * @param {GrWebGlProxy}webGL
+   * @param {OffscreenCanvas}offscreenCanvas
    * @param {GLBufferPool}glBufferPool
    * @return {GLBuffer}
    */
-  static create (webGL, offscreenCanvas, glBufferPool) {
-    const proxy = webGL.createWebGLBuffer()
+  static create (webGL, offscreenCanvas) {
+    const proxy = webGL.createWebGlBuffer()
     const bufferProxy = webGL.createBuffer(proxy)
 
-    const glBuffer = new GLBuffer(proxy, bufferProxy, offscreenCanvas, glBufferPool)
+    const glBuffer = new GLBuffer(proxy, bufferProxy, offscreenCanvas)
 
     proxy.listener = glBuffer
     bufferProxy.listener = glBuffer
@@ -87,9 +38,8 @@ class GLBuffer {
    * @param {GrWebGLBufferProxy}proxy
    * @param {WlBufferProxy}bufferProxy
    * @param {OffscreenCanvas}offscreenCanvas
-   * @param {GLBufferPool}glBufferPool
    */
-  constructor (proxy, bufferProxy, offscreenCanvas, glBufferPool) {
+  constructor (proxy, bufferProxy, offscreenCanvas) {
     /**
      * @type {GrWebGLBufferProxy}
      */
@@ -103,15 +53,10 @@ class GLBuffer {
      * @private
      */
     this._offscreenCanvas = offscreenCanvas
-    /**
-     * @type {GLBufferPool}
-     * @private
-     */
-    this._glBufferPool = glBufferPool
   }
 
   transfer () {
-    this.proxy.transfer(this._offscreenCanvas.transferToImageBitmap())
+    this.proxy.transfer(webFS.fromImageBitmap(this._offscreenCanvas.transferToImageBitmap()))
   }
 
   /**
@@ -134,14 +79,14 @@ class GLBuffer {
    * @since 1
    *
    */
-  release () {
-    this._glBufferPool.give(this)
-  }
+  release () { /* NOOP */ }
 }
 
 /**
  * @implements WlRegistryEvents
  * @implements WlShellSurfaceEvents
+ * @implements WlSeatEvents
+ * @implements WlPointerEvents
  */
 class Window {
   /**
@@ -152,7 +97,7 @@ class Window {
   static create (width, height) {
     const registry = display.getRegistry()
     const offscreenCanvas = new OffscreenCanvas(width, height)
-    const gl = /** @type {WebGLRenderingContext} */offscreenCanvas.getContext('webgl2')
+    const gl = /** @type {WebGLRenderingContext} */offscreenCanvas.getContext('webgl')
     const window = new Window(registry, offscreenCanvas, gl)
     registry.listener = window
     return window
@@ -175,11 +120,11 @@ class Window {
     this._offscreenCanvas = offscreenCanvas
     /**
      * @type {WebGLRenderingContext}
-     * @private
+     * @protected
      */
     this._gl = gl
     /**
-     * @type {GrWebGLProxy|null}
+     * @type {GrWebGlProxy|null}
      * @private
      */
     this._webGL = null
@@ -194,10 +139,25 @@ class Window {
      */
     this._shell = null
     /**
+     * @type {WlSeatProxy}
+     * @private
+     */
+    this._seat = null
+    /**
      * @type {WlSurfaceProxy|null}
      * @private
      */
     this._surface = null
+    /**
+     * @type {WlShellSurfaceProxy|null}
+     * @private
+     */
+    this._shellSurface = null
+    /**
+     * @type {GLBuffer}
+     * @private
+     */
+    this._glBuffer = null
   }
 
   /**
@@ -217,19 +177,29 @@ class Window {
    *
    */
   global (name, interface_, version) {
-    if (interface_ === WlCompositorProxy.protocolName) {
-      this._compositor = this._registry.bind(name, interface_, WlCompositorProxy, version)
-      this._surface = this._compositor.createSurface()
-      this._onFrame = frame(this._surface)
-    }
+    switch (interface_) {
+      case WlCompositorProxy.protocolName: {
+        this._compositor = this._registry.bind(name, WlCompositorProxy.protocolName, WlCompositorProxy, version)
+        this._surface = this._compositor.createSurface()
+        this._onFrame = frame(this._surface)
+        break
+      }
 
-    if (interface_ === GrWebGLProxy.protocolName) {
-      this._webGL = this._registry.bind(name, interface_, GrWebGLProxy, version)
-      this._glBufferPool = GLBufferPool.create(this._webGL, 2)
-    }
+      case GrWebGlProxy.protocolName: {
+        this._webGL = this._registry.bind(name, GrWebGlProxy.protocolName, GrWebGlProxy, version)
+        this._glBuffer = GLBuffer.create(this._webGL, this._offscreenCanvas)
+        break
+      }
 
-    if (interface_ === WlShellProxy.protocolName) {
-      this._shell = this._registry.bind(name, interface_, WlShellProxy, version)
+      case WlShellProxy.protocolName: {
+        this._shell = this._registry.bind(name, WlShellProxy.protocolName, WlShellProxy, version)
+        break
+      }
+
+      case WlSeatProxy.protocolName: {
+        this._seat = this._registry.bind(name, WlSeatProxy.protocolName, WlSeatProxy, version)
+        this._seat.listener = this
+      }
     }
   }
 
@@ -237,31 +207,29 @@ class Window {
     this._shellSurface = this._shell.getShellSurface(this._surface)
     this._shellSurface.listener = this
     this._shellSurface.setToplevel()
-    this._shellSurface.setTitle('Simple Shm Web')
-  }
-
-  _paintPixels (timestamp) {
-    // TODO gl stuff here
+    this._shellSurface.setTitle('Simple WebGL')
+    this._drawState = initDraw(this._gl)
   }
 
   /**
-   * @param {number}timestamp
+   * @param {number}time
    */
-  draw (timestamp) {
-    const glBuffer = this._glBufferPool.take()
-    this._paintPixels(timestamp)
-    glBuffer.transfer()
+  async draw (time) {
+    requestAnimationFrame(() => {
+      drawScene(this._gl, this._drawState, time)
+      this._glBuffer.transfer()
+      this._surface.attach(this._glBuffer.bufferProxy, 0, 0)
+      this._surface.damage(0, 0, this._offscreenCanvas.width, this._offscreenCanvas.height)
 
-    this._surface.attach(glBuffer.bufferProxy, 0, 0)
-    this._surface.damage(0, 0, this._offscreenCanvas.width, this._offscreenCanvas.height)
+      // Wait for the compositor to signal that we can draw the next frame.
+      // Note that using 'await' here would result in a deadlock as the event loop would be blocked, and the event
+      // that resolves the await state would never be picked up by the blocked event loop.
+      this._onFrame().then(time => this.draw(time))
 
-    // Wait for the compositor to signal that we can draw the next frame.
-    // Note that using 'await' here would result in a deadlock as the event loop would be blocked, and the event
-    // that resolves the await state would never be picked up by the blocked event loop.
-    this._onFrame().then(timestamp => this.draw(timestamp))
-
-    // serial is only required if our buffer contents would take a long time to send to the compositor ie. in a network remote case
-    this._surface.commit(0)
+      // serial is only required if our buffer contents would take a long time to send to the compositor ie. in a network remote case
+      this._surface.commit(0)
+      display.flush()
+    })
   }
 
   /**
@@ -328,6 +296,85 @@ class Window {
    *
    */
   popupDone () { /* NOOP */ }
+
+  /**
+   *
+   *  This is emitted whenever a seat gains or loses the pointer,
+   *  keyboard or touch capabilities.  The argument is a capability
+   *  enum containing the complete set of capabilities this seat has.
+   *
+   *  When the pointer capability is added, a client may create a
+   *  wl_pointer object using the wl_seat.get_pointer request. This object
+   *  will receive pointer events until the capability is removed in the
+   *  future.
+   *
+   *  When the pointer capability is removed, a client should destroy the
+   *  wl_pointer objects associated with the seat where the capability was
+   *  removed, using the wl_pointer.release request. No further pointer
+   *  events will be received on these objects.
+   *
+   *  In some compositors, if a seat regains the pointer capability and a
+   *  client has a previously obtained wl_pointer object of version 4 or
+   *  less, that object may start sending pointer events again. This
+   *  behavior is considered a misinterpretation of the intended behavior
+   *  and must not be relied upon by the client. wl_pointer objects of
+   *  version 5 or later must not send events if created before the most
+   *  recent event notifying the client of an added pointer capability.
+   *
+   *  The above behavior also applies to wl_keyboard and wl_touch with the
+   *  keyboard and touch capabilities, respectively.
+   *
+   *
+   * @param {number} capabilities capabilities of the seat
+   *
+   * @since 1
+   *
+   */
+  capabilities (capabilities) {
+    if (capabilities & WlSeatProxy.Capability.pointer) {
+      this._pointer = this._seat.getPointer()
+      this._pointer.listener = this
+    } else if (this._pointer) {
+      this._pointer.release()
+      this._pointer = null
+    }
+  }
+
+  /**
+   *
+   *  In a multiseat configuration this can be used by the client to help
+   *  identify which physical devices the seat represents. Based on
+   *  the seat configuration used by the compositor.
+   *
+   *
+   * @param {string} name seat identifier
+   *
+   * @since 2
+   *
+   */
+  name (name) { /* NOOP */ }
+
+  axis (time, axis, value) { /* NOOP */ }
+
+  axisDiscrete (axis, discrete) { /* NOOP */ }
+
+  axisSource (axisSource) { /* NOOP */ }
+
+  axisStop (time, axis) { /* NOOP */ }
+
+  button (serial, time, button, state) {
+    if (state & WlPointerProxy.ButtonState.pressed) {
+      this._shellSurface.move(this._seat, serial)
+    }
+  }
+
+  enter (serial, surface, surfaceX, surfaceY) { /* NOOP */ }
+
+  frame () { /* NOOP */ }
+
+  leave (serial, surface) { /* NOOP */ }
+
+  motion (time, surfaceX, surfaceY) { /* NOOP */ }
 }
 
 async function main () {
@@ -346,6 +393,7 @@ async function main () {
   // Now begin drawing after the compositor is done processing all our requests
   window.init()
   window.draw(0)
+  display.flush()
 
   // wait for the display connection to close
   try {

@@ -55,7 +55,7 @@ export default class WebGL extends GrWebGlRequests {
   createBuffer (resource, id, grWebGlBuffer) {
     const wlBufferResource = new WlBufferResource(resource.client, id, resource.version)
 
-    const webGLBuffer = WebGLBuffer.create()
+    const webGLBuffer = WebGLBuffer.create(grWebGlBuffer, wlBufferResource)
 
     grWebGlBuffer.implementation = webGLBuffer
     wlBufferResource.implementation = webGLBuffer

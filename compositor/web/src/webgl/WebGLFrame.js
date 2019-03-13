@@ -9,39 +9,29 @@ export default class WebGLFrame extends BufferContents {
    * @return {WebGLFrame}
    */
   static create () {
-    const canvas = /** @type {HTMLCanvasElement} */ document.createElement('canvas')
-    const context = /** @type {ImageBitmapRenderingContext} */ canvas.getContext('bitmaprenderer')
-    return new WebGLFrame(canvas, context)
+    return new WebGLFrame()
   }
 
-  /**
-   * @param {HTMLCanvasElement}canvas
-   * @param {ImageBitmapRenderingContext}context
-   */
-  constructor (canvas, context) {
+  constructor () {
     super()
-    /**
-     * @type {HTMLCanvasElement}
-     */
-    this.canvas = canvas
-    /**
-     * @type {ImageBitmapRenderingContext}
-     * @private
-     */
-    this._context = context
     /**
      * @type {Size}
      * @private
      */
     this._size = Size.create(0, 0)
+    /**
+     * @type {ImageBitmap}
+     * @private
+     */
+    this._imageBitmap = null
   }
 
   /**
    * @param {ImageBitmap}imageBitmap
    */
   update (imageBitmap) {
+    this._imageBitmap = imageBitmap
     this._size = Size.create(imageBitmap.width, imageBitmap.height)
-    this._context.transferFromImageBitmap(imageBitmap)
   }
 
   /**
@@ -50,9 +40,11 @@ export default class WebGLFrame extends BufferContents {
   get mimeType () { return 'image/bitmap' }
 
   /**
-   * @return {HTMLCanvasElement}
+   * @return {ImageBitmap}
    */
-  get pixelContent () { return this.canvas }
+  get pixelContent () {
+    return this._imageBitmap
+  }
 
   /**
    * @return {number}
