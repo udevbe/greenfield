@@ -17,11 +17,6 @@ export default class WebAppSocket {
      * @type {Session}
      */
     this._session = session
-    /**
-     * @type {Array<Array<{buffer: ArrayBuffer, fds: Array<WebFD>}>>}
-     * @private
-     */
-    this._flushQueue = []
   }
 
   /**
@@ -51,23 +46,29 @@ export default class WebAppSocket {
         })
         client.connection.message({ buffer, fds })
       } else {
-        console.error(`[web-worker-connection] client send an illegal message.`)
+        console.error(`[web-worker-connection] client send an illegal message object. Expected ArrayBuffer.`)
         client.close()
       }
     }
 
     /**
+     * @type {Array<Array<{buffer: ArrayBuffer, fds: Array<WebFD>}>>}
+     * @private
+     */
+    const flushQueue = []
+
+    /**
      * @param {Array<{buffer: ArrayBuffer, fds: Array<WebFD>}>}wireMessages
      */
     client.connection.onFlush = async (wireMessages) => {
-      this._flushQueue.push(wireMessages)
+      flushQueue.push(wireMessages)
 
-      if (this._flushQueue.length > 1) {
+      if (flushQueue.length > 1) {
         return
       }
 
-      while (this._flushQueue.length) {
-        const sendWireMessages = this._flushQueue[0]
+      while (flushQueue.length) {
+        const sendWireMessages = flushQueue[0]
 
         // convert to as single arrayBuffer so it can be send over a data channel using zero copy semantics.
         const messagesSize = sendWireMessages.reduce((previousValue, currentValue) => previousValue + currentValue.buffer.byteLength, 0)
@@ -86,7 +87,7 @@ export default class WebAppSocket {
         }
 
         webWorker.postMessage({ protocolMessage: sendBuffer.buffer, meta }, [sendBuffer.buffer].concat(meta))
-        this._flushQueue.shift()
+        flushQueue.shift()
       }
     }
   }
