@@ -8,27 +8,13 @@ import WebFS from './WebFS'
  */
 export default class Session {
   /**
-   * @returns {Promise<Session>}
+   * @returns {Session}
    */
   static create () {
-    return new Promise((resolve, reject) => {
-      const display = new Display()
-      const websocketProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-      const compositorSessionId = this._uuidv4()
-      DEBUG && console.log(`[compositor-session: ${compositorSessionId}] - Starting new compositor session.`)
-      const url = `${websocketProtocol}://${window.location.host}/announceCompositor/${compositorSessionId}`
-
-      const webSocket = new WebSocket(url)
-      const session = new Session(display, webSocket, compositorSessionId)
-
-      webSocket.onmessage = event => session._onMessage(event)
-      webSocket.onerror = event => reject(event.error)
-      webSocket.onopen = event => {
-        webSocket.onerror = event => session._onError(event)
-        resolve(session)
-      }
-      webSocket.onclose = event => session._onClose(event)
-    })
+    const display = new Display()
+    const compositorSessionId = this._uuidv4()
+    DEBUG && console.log(`[compositor-session: ${compositorSessionId}] - Starting new compositor session.`)
+    return new Session(display, compositorSessionId)
   }
 
   /**
@@ -44,11 +30,10 @@ export default class Session {
   /**
    * Use Session.create(..) instead
    * @param {Display}display
-   * @param {WebSocket}webSocket
    * @param {string}compositorSessionId
    * @private
    */
-  constructor (display, webSocket, compositorSessionId) {
+  constructor (display, compositorSessionId) {
     /**
      * @type {Display}
      */
@@ -58,9 +43,9 @@ export default class Session {
      */
     this.compositorSessionId = compositorSessionId
     /**
-     * @type {WebSocket}
+     * @type {WebSocket|null}
      */
-    this.webSocket = webSocket
+    this.webSocket = null
     /**
      * @type {Object.<string,Object>}
      */
@@ -71,7 +56,34 @@ export default class Session {
     this.webFS = WebFS.create(this.compositorSessionId)
   }
 
-  _onMessage (event) {
+  /**
+   * @param {function(event:CloseEvent):void}onClose
+   * @return {Promise<void>}
+   */
+  withRemote (onClose) {
+    return new Promise((resolve, reject) => {
+      const websocketProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
+      const url = `${websocketProtocol}://${window.location.host}/announceCompositor/${this.compositorSessionId}`
+      this.webSocket = new WebSocket(url)
+
+      this.webSocket.onmessage = event => this._onRemoteMessage(event)
+      this.webSocket.onerror = event => reject(event.error)
+      this.webSocket.onopen = event => {
+        this.webSocket.onerror = event => this._onRemoteError(event)
+        resolve()
+      }
+      this.webSocket.onclose = event => {
+        this._onRemoteClose(event)
+        onClose(event)
+      }
+    })
+  }
+
+  /**
+   * @param {MessageEvent}event
+   * @private
+   */
+  _onRemoteMessage (event) {
     const eventData = event.data
     const message = JSON.parse(/** @types {string} */eventData)
     const { object, method, args } = message
@@ -85,16 +97,24 @@ export default class Session {
     // TODO handle app-endpoint disconnected
   }
 
-  _onClose (event) {
+  /**
+   * @param {CloseEvent}event
+   * @private
+   */
+  _onRemoteClose (event) {
     console.log(`[compositor-session: ${this.compositorSessionId}] - Web socket connection closed. ${event.code}: ${event.reason}.`)
     // TODO notify user?
     // TODO retry connection?
 
-    // for now we just terminate all clients
+    // FIXME for now we just terminate all clients
     this.display.clients.forEach(client => client.close())
   }
 
-  _onError (event) {
+  /**
+   * @param {Event}event
+   * @private
+   */
+  _onRemoteError (event) {
     console.error(`[compositor-session: ${this.compositorSessionId}] - Web socket is in error: ${event}.`)
   }
 

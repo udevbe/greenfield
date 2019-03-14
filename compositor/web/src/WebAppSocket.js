@@ -63,9 +63,7 @@ export default class WebAppSocket {
     client.connection.onFlush = async (wireMessages) => {
       flushQueue.push(wireMessages)
 
-      if (flushQueue.length > 1) {
-        return
-      }
+      if (flushQueue.length > 1) { return }
 
       while (flushQueue.length) {
         const sendWireMessages = flushQueue[0]

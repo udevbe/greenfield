@@ -21,7 +21,12 @@ import WebGL from './webgl/WebGL'
 /**
  * @param {Session}session
  */
-function setup (session) {
+async function setup (session) {
+  // TODO enable through config
+  // await session.withRemote(() => {
+  //   // TODO retry here?
+  // })
+
   const output = Output.create()
   const seat = Seat.create(session)
   const compositor = Compositor.create(session, seat)
@@ -63,7 +68,7 @@ function setup (session) {
   webAppLauncher.launch(`/clients/${glClient}`)
 }
 
-async function main () {
+function main () {
   // show user a warning if they want to close this page
   window.onbeforeunload = (e) => {
     const dialogText = ''
@@ -72,8 +77,7 @@ async function main () {
   }
 
   try {
-    const session = await Session.create()
-    setup(session)
+    setup(Session.create())
   } catch (e) {
     // TODO notify user & retry
     console.error(`Failed to setup compositor session.`, e)
