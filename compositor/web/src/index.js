@@ -62,10 +62,10 @@ async function setup (session) {
 
   // [TESTING] immediately launch our web shm demo client
   const shmClient = 'simple.web.shm.js'
-  webAppLauncher.launch(`/clients/${shmClient}`)
+  webAppLauncher.launch(`clients/${shmClient}`)
 
   const glClient = 'simple.web.gl.js'
-  webAppLauncher.launch(`/clients/${glClient}`)
+  webAppLauncher.launch(`clients/${glClient}`)
 }
 
 function main () {
