@@ -234,9 +234,7 @@ class DesktopUserShellSurface extends UserShellSurface {
       this.divElement.style.display = 'inline'
       this.divElement.classList.remove('entry-removed')
     } else {
-      this.divElement.addEventListener('transitionend', () => {
-        this.divElement.style.display = 'none'
-      })
+      this.divElement.style.display = 'none'
       this.divElement.classList.add('entry-removed')
     }
   }
