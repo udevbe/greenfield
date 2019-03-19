@@ -25,7 +25,7 @@ Supported toolkits are:
  - GTK+ 3.22.30 (tested)
  - Qt 5.11 (untested)
 
-##Applications
+## Applications
 
 Greenfield is in essence an entire Wayland compositor running in the browser. As such it does not care where and how
 client applications run. This has some interesting implications:
