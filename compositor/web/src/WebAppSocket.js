@@ -35,7 +35,7 @@ export default class WebAppSocket {
       const webWorkerMessage = /** @type {{protocolMessage:ArrayBuffer, meta:Array<Transferable>}} */event.data
       if (webWorkerMessage.protocolMessage instanceof ArrayBuffer) {
         const buffer = new Uint32Array(/** @type {ArrayBuffer} */webWorkerMessage.protocolMessage)
-        const fds = webWorkerMessage.meta.map(transferable => {
+        const fds = /** @type {Array<WebFD>} */webWorkerMessage.meta.map(transferable => {
           if (transferable instanceof ArrayBuffer) {
             return this._session.webFS.fromArrayBuffer(transferable)
           } else if (transferable instanceof ImageBitmap) {
@@ -45,6 +45,7 @@ export default class WebAppSocket {
           throw new Error(`Unsupported transferable: ${transferable}`)
         })
         client.connection.message({ buffer, fds })
+        fds.forEach(fd => fd.close())
       } else {
         console.error(`[web-worker-connection] client send an illegal message object. Expected ArrayBuffer.`)
         client.close()
@@ -78,6 +79,7 @@ export default class WebAppSocket {
           for (const webFd of wireMessage.fds) {
             const transferable = await webFd.getTransferable()
             meta.push(transferable)
+            webFd.close()
           }
           const message = new Uint32Array(wireMessage.buffer)
           sendBuffer.set(message, offset)

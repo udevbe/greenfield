@@ -222,6 +222,7 @@ class RtcSocket {
       const fd = uint32Array[0]
       const webFD = this._session.webFS.getWebFD(fd)
       webFD.getTransferable().then(transferable => {
+        // FIXME after contents have been transmitted, endpoint should send a webfd close
         if (transferable instanceof ArrayBuffer) {
           // data channel only supports messages of max 16kb, so we need to chunk the file transfer.
           const headerSize = 4 + 16 + 4 // fd + fdDomainUUID + fileSize
