@@ -262,7 +262,7 @@ export default class View {
   }
 
   /**
-   * @param {HTMLImageElement|HTMLCanvasElement|HTMLVideoElement|ImageBitmap}image
+   * @param {HTMLImageElement|HTMLCanvasElement|HTMLVideoElement|ImageBitmap|ImageData}image
    */
   draw (image) {
     if (this.destroyed) { return }
@@ -402,9 +402,11 @@ export default class View {
 
     const inputPixmanRegion = this.surface.state.inputPixmanRegion
     const surfacePixmanRegion = this.surface.pixmanRegion
-    Region.intersect(inputPixmanRegion, inputPixmanRegion, surfacePixmanRegion)
-    const inputRectangles = Region.rectangles(inputPixmanRegion)
+    const intersectionResult = Region.createPixmanRegion()
+    Region.intersect(intersectionResult, inputPixmanRegion, surfacePixmanRegion)
+    const inputRectangles = Region.rectangles(intersectionResult)
     this.bufferedCanvas.updateInputRegionElements(inputRectangles)
+    Region.destroyPixmanRegion(intersectionResult)
   }
 }
 

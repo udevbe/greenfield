@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="gr_web_shm">
+    <copyright>
+        Copyright © 2019 Erik De Rijcke
+
+        Permission is hereby granted, free of charge, to any person
+        obtaining a copy of this software and associated documentation files
+        (the "Software"), to deal in the Software without restriction,
+        including without limitation the rights to use, copy, modify, merge,
+        publish, distribute, sublicense, and/or sell copies of the Software,
+        and to permit persons to whom the Software is furnished to do so,
+        subject to the following conditions:
+
+        The above copyright notice and this permission notice (including the
+        next paragraph) shall be included in all copies or substantial
+        portions of the Software.
+
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+        EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+        MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+        NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+        BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+        ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+        CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+    </copyright>
+
+    <interface name="gr_web_shm_buffer" version="1">
+        <request name="attach">
+            <description summary="Transfer array buffer ownership to the compositor.">
+                Attaches an HTML5 array buffer to the compositor. After attaching, the array buffer ownership is passed
+                to the compositor main thread. The array buffer can not be used for writing anymore by the client as
+                per HTML5 Transferable objects spec.
+
+                The pixel format of the attached array buffer must always be RGBA8888 as per HTML5 ImageData spec.
+                Stride must always equal width.
+            </description>
+            <arg name="contents" type="fd" summary="An HTML5 array buffer to attach to the compositor."/>
+        </request>
+        <event name="detach">
+            <description summary="Transfer array buffer ownership to the client.">
+                Detaches a previously attached HTML5 array buffer from the compositor and returns it to the client so
+                it can be reused again for writing. After detaching, the array buffer ownership is passed from
+                the compositor main thread back to the client.
+            </description>
+            <arg name="contents" type="fd" summary="An HTML5 array buffer, detached from the compositor"/>
+        </event>
+    </interface>
+
+    <interface name="gr_web_shm" version="1">
+        <description summary="shared memory support">
+            A singleton global object that provides support for shared memory through HTML5 array buffers.
+
+            Clients can create wl_buffer objects using the create_buffer request.
+        </description>
+
+        <request name="create_web_array_buffer">
+            <description summary="create an HTML5 array buffer">
+                Create a gr_web_shm_buffer object.
+            </description>
+            <arg name="id" type="new_id" interface="gr_web_shm_buffer" summary="web shm buffer to create"/>
+        </request>
+
+        <request name="create_buffer">
+            <description summary="create a buffer">
+                Create a wl_buffer object from a web_array_buffer so it can be used with a surface.
+            </description>
+            <arg name="id" type="new_id" interface="wl_buffer" summary="buffer to create"/>
+            <arg name="web_array_buffer" type="object" interface="gr_web_shm_buffer"
+                 summary="The gr_web_array_buffer to wrap"/>
+            <arg name="width" type="int" summary="Buffer width, in pixels."/>
+            <arg name="height" type="int" summary="Buffer height, in pixels."/>
+        </request>
+    </interface>
+</protocol>

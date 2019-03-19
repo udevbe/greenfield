@@ -3,7 +3,7 @@
 export default class SurfaceState {
   /**
    * @param {?WlBufferResource}wlBuffer
-   * @param {?EncodedFrame}bufferContents
+   * @param {?BufferContents}bufferContents
    * @param {Array<Rect>}bufferDamageRects
    * @param {number}opaquePixmanRegion
    * @param {number}inputPixmanRegion
@@ -44,7 +44,7 @@ export default class SurfaceState {
 
   /**
    * @param {?WlBufferResource}wlBuffer
-   * @param {?EncodedFrame}bufferContents
+   * @param {?BufferContents}bufferContents
    * @param {Array<Rect>}bufferDamageRects
    * @param {number}opaquePixmanRegion
    * @param {number}inputPixmanRegion
@@ -73,7 +73,7 @@ export default class SurfaceState {
      */
     this.wlBuffer = wlBuffer
     /**
-     * @type {?EncodedFrame}
+     * @type {?BufferContents}
      */
     this.bufferContents = bufferContents
     /**

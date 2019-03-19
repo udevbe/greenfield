@@ -23,7 +23,6 @@ import Region from './Region'
 import SurfaceChild from './SurfaceChild'
 import Renderer from './render/Renderer'
 import Point from './math/Point'
-import BufferStream from './BufferStream'
 import SurfaceState from './SurfaceState'
 
 /**
@@ -92,29 +91,25 @@ export default class Surface extends WlSurfaceRequests {
    * @returns {!Surface}
    */
   static create (wlSurfaceResource, renderer, seat, session) {
-    const bufferDamage = Region.createPixmanRegion()
     const opaquePixmanRegion = Region.createPixmanRegion()
     const inputPixmanRegion = Region.createPixmanRegion()
     const surfacePixmanRegion = Region.createPixmanRegion()
 
-    Region.initInfinite(bufferDamage)
     Region.initInfinite(opaquePixmanRegion)
     Region.initInfinite(inputPixmanRegion)
+    Region.initRect(surfacePixmanRegion, Rect.create(0, 0, 0, 0))
 
-    const bufferStream = new BufferStream()
-    wlSurfaceResource.onDestroy().then(() => bufferStream.destroy())
-    wlSurfaceResource.client.setOutOfBandListener(wlSurfaceResource.id, 6, (outOfBandMessage) => {
-      // TODO try to improve buffer chunk handling and not slice (=copy) anywhere
-      bufferStream.onChunk(outOfBandMessage.slice(2 * Uint32Array.BYTES_PER_ELEMENT))
-    })
-
-    const surface = new Surface(wlSurfaceResource, renderer, seat, session, bufferDamage, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion, bufferStream)
+    const surface = new Surface(wlSurfaceResource, renderer, seat, session, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion)
     wlSurfaceResource.implementation = surface
+
     wlSurfaceResource.onDestroy().then(() => {
-      Region.destroyPixmanRegion(bufferDamage)
       Region.destroyPixmanRegion(opaquePixmanRegion)
       Region.destroyPixmanRegion(inputPixmanRegion)
       Region.destroyPixmanRegion(surfacePixmanRegion)
+
+      surface.pixmanRegion = 0
+      surface.state.opaquePixmanRegion = 0
+      surface.state.inputPixmanRegion = 0
       surface._handleDestruction()
     })
 
@@ -128,13 +123,11 @@ export default class Surface extends WlSurfaceRequests {
    * @param {!Renderer} renderer
    * @param {!Seat} seat
    * @param {!Session} session
-   * @param {!number} bufferDamage
    * @param {!number} opaquePixmanRegion
    * @param {!number} inputPixmanRegion
    * @param {!number} surfacePixmanRegion
-   * @param {BufferStream}bufferStream
    */
-  constructor (wlSurfaceResource, renderer, seat, session, bufferDamage, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion, bufferStream) {
+  constructor (wlSurfaceResource, renderer, seat, session, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion) {
     super()
     /**
      * @type {!WlSurfaceResource}
@@ -177,9 +170,7 @@ export default class Surface extends WlSurfaceRequests {
     /**
      * @type {!function}
      */
-    this.pendingBufferDestroyListener = () => {
-      this.pendingWlBuffer = null
-    }
+    this.pendingBufferDestroyListener = () => { this.pendingWlBuffer = null }
     /**
      * @type {!Array<Rect>}
      * @private
@@ -194,12 +185,12 @@ export default class Surface extends WlSurfaceRequests {
      * @type {!number}
      * @private
      */
-    this._pendingOpaqueRegion = 0
+    this._pendingOpaqueRegion = opaquePixmanRegion
     /**
      * @type {!number}
      * @private
      */
-    this._pendingInputRegion = 0
+    this._pendingInputRegion = inputPixmanRegion
     /**
      * @type {!number}
      * @private
@@ -296,12 +287,6 @@ export default class Surface extends WlSurfaceRequests {
      */
     this.size = Size.create(0, 0)
     // <- derived states above
-
-    /**
-     * @type {BufferStream}
-     * @private
-     */
-    this._bufferStream = bufferStream
   }
 
   /**
@@ -581,7 +566,6 @@ export default class Surface extends WlSurfaceRequests {
       this.renderState.destroy()
       this.renderState = null
     }
-    resource.client.removeAllOutOfBandListeners(resource.id)
   }
 
   /**
@@ -875,13 +859,14 @@ export default class Surface extends WlSurfaceRequests {
    */
   async commit (resource, serial) {
     if (this.state.wlBuffer) {
-      this.state.wlBuffer.release()
+      (/** @type{BufferImplementation} */this.state.wlBuffer.implementation).release()
     }
     let bufferContents = null
 
     if (this.pendingWlBuffer) {
       this.pendingWlBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
-      bufferContents = await this._bufferStream.onFrameAvailable(serial)
+      const buffer = /** @type{BufferImplementation} */this.pendingWlBuffer.implementation
+      bufferContents = await buffer.getContents(serial)
     }
     if (this.destroyed) {
       return
@@ -912,9 +897,7 @@ export default class Surface extends WlSurfaceRequests {
     }
 
     renderFrame.then((timestamp) => {
-      this.state.frameCallbacks.forEach((frameCallback) => {
-        frameCallback.done(timestamp & 0x7fffffff)
-      })
+      this.state.frameCallbacks.forEach(frameCallback => frameCallback.done(timestamp & 0x7fffffff))
       this.state.frameCallbacks = []
     })
 
@@ -942,14 +925,13 @@ export default class Surface extends WlSurfaceRequests {
     const { w: oldWidth, h: oldHeight } = this.size
     this._updateDerivedState(newState)
     Surface.mergeState(this.state, newState)
+
     if (this.role && this.role.setRoleState) {
       this.role.setRoleState(newState.roleState)
     }
 
-    if (newState.inputPixmanRegion || oldWidth !== this.size.w || oldHeight !== this.size.h) {
-      this.views.forEach(view => {
-        view.updateInputRegion()
-      })
+    if (oldWidth !== this.size.w || oldHeight !== this.size.h) {
+      this.views.forEach(view => view.updateInputRegion())
     }
 
     this.views.forEach(view => view.swapBuffers(renderFrame))
@@ -965,8 +947,12 @@ export default class Surface extends WlSurfaceRequests {
     targetState.dx = sourceState.dx
     targetState.dy = sourceState.dy
 
-    Region.copyTo(targetState.inputPixmanRegion, sourceState.inputPixmanRegion)
-    Region.copyTo(targetState.opaquePixmanRegion, sourceState.opaquePixmanRegion)
+    if (sourceState.inputPixmanRegion) {
+      Region.copyTo(targetState.inputPixmanRegion, sourceState.inputPixmanRegion)
+    }
+    if (sourceState.opaquePixmanRegion) {
+      Region.copyTo(targetState.opaquePixmanRegion, sourceState.opaquePixmanRegion)
+    }
     targetState.bufferDamageRects = sourceState.bufferDamageRects.slice()
 
     targetState.bufferTransform = sourceState.bufferTransform
@@ -977,6 +963,8 @@ export default class Surface extends WlSurfaceRequests {
   }
 
   /**
+   * @param {WlSurfaceResource} resource
+   * @param {?BufferContents}bufferContents
    * @return {SurfaceState}
    * @private
    */

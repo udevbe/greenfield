@@ -20,15 +20,9 @@ class AppEndpointSession {
       }, socket, head, (endpointWebSocket) => {
         const appEndpointSession = new AppEndpointSession(compositorSession, endpointWebSocket, id)
 
-        endpointWebSocket.onmessage = (event) => {
-          appEndpointSession._onMessage(event)
-        }
-        endpointWebSocket.onclose = (event) => {
-          appEndpointSession._onClose(event)
-        }
-        endpointWebSocket.onerror = (event) => {
-          appEndpointSession._onError(event)
-        }
+        endpointWebSocket.onmessage = (event) => appEndpointSession._onMessage(event)
+        endpointWebSocket.onclose = (event) => appEndpointSession._onClose(event)
+        endpointWebSocket.onerror = (event) => appEndpointSession._onError(event)
 
         process.env.DEBUG && console.log(`[compositor-session: ${compositorSession.id}] [app-endpoint: ${id}] - Web socket open.`)
         resolve(appEndpointSession)
@@ -65,9 +59,7 @@ class AppEndpointSession {
      * @type {Promise<void>}
      * @private
      */
-    this._destroyPromise = new Promise((resolve) => {
-      this._destroyResolve = resolve
-    })
+    this._destroyPromise = new Promise((resolve) => { this._destroyResolve = resolve })
   }
 
   /**
@@ -91,8 +83,22 @@ class AppEndpointSession {
   _onMessage (event) {
     try {
       const eventData = event.data
-      process.env.DEBUG && console.log(`[compositor-session: ${this._compositorSession.id}] [app-endpoint: ${this.id}] - Receiving incoming application endpoint message: ${eventData}. Forwarding to browser.`)
-      this._compositorSession.webSocket.send(eventData)
+      if (eventData.length > 10240) {
+        throw new Error('Message length exceeded bounds.')
+      }
+      const endpointMessage = JSON.parse(eventData)
+      if (endpointMessage.target === this._compositorSession.id) {
+        process.env.DEBUG && console.log(`[target-compositor-session: ${this._compositorSession.id}] [source-app-endpoint: ${this.id}] - Receiving incoming application endpoint message: ${eventData}. Forwarding to browser.`)
+        this._compositorSession.webSocket.send(JSON.stringify(endpointMessage.payload))
+      } else {
+        process.env.DEBUG && console.log(`[target-app-endpoint: ${this._compositorSession.id}] [source-app-endpoint: ${this.id}] - Receiving incoming application endpoint message: ${eventData}. Forwarding to target application endpoint.`)
+        const appEndpointSession = this._compositorSession.appEndpointSessions[endpointMessage.target]
+        if (appEndpointSession) {
+          appEndpointSession.webSocket.send(JSON.stringify(endpointMessage.payload))
+        } else {
+          throw new Error(`Message target ${endpointMessage.target} did not match any known endpoint or compositor id.`)
+        }
+      }
     } catch (error) {
       console.error(`[compositor-session: ${this._compositorSession.id}] [app-endpoint: ${this.id}] - Failed to handle incoming message. \n${error}\n${error.stack}`)
       this.webSocket.close(4007, `App endpoint session [${this.id}] received an illegal message.`)

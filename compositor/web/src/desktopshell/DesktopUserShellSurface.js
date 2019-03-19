@@ -14,14 +14,14 @@ class DesktopUserShellSurface extends UserShellSurface {
   static create (surface, seat) {
     // create a mainView and attach it to the scene
     const mainView = surface.createView()
-    this._fadeOutAndDetachViewOnDestroy(mainView)
+    this._detachViewOnDestroy(mainView)
     mainView.attachTo(document.body)
 
     const divElement = document.createElement('div')
     // divElement will become visible once surface is mapped
     divElement.style.display = 'none'
     divElement.classList.add('entry')
-    this._fadeOutAndDetachEntryOnDestroy(mainView, divElement)
+    this._detachEntryOnDestroy(mainView, divElement)
 
     const desktopUserShellSurface = new DesktopUserShellSurface(mainView, divElement, seat)
     desktopUserShellSurface._activateOnPointerButton()
@@ -81,14 +81,11 @@ class DesktopUserShellSurface extends UserShellSurface {
    * @param {HTMLElement}entry
    * @private
    */
-  static _fadeOutAndDetachEntryOnDestroy (view, entry) {
+  static _detachEntryOnDestroy (view, entry) {
     view.onDestroy().then(() => {
-      entry.addEventListener('transitionend', () => {
-        if (entry.parentElement) {
-          entry.parentElement.removeChild(entry)
-        }
-      })
-      entry.classList.add('entry-removed')
+      if (entry.parentElement) {
+        entry.parentElement.removeChild(entry)
+      }
     })
   }
 
@@ -96,14 +93,8 @@ class DesktopUserShellSurface extends UserShellSurface {
    * @param {View}view
    * @private
    */
-  static _fadeOutAndDetachViewOnDestroy (view) {
-    // play a nice fade out animation if the view is destroyed
-    view.onDestroy().then(() => {
-      // after the animation has ended, detach the view from the scene
-      view.bufferedCanvas.frontContext.canvas.addEventListener('transitionend', () => view.detach())
-      view.bufferedCanvas.backContext.canvas.addEventListener('transitionend', () => view.detach())
-      view.bufferedCanvas.addCssClass('fadeToHidden')
-    })
+  static _detachViewOnDestroy (view) {
+    view.onDestroy().then(() => view.detach())
   }
 
   /**
@@ -243,9 +234,7 @@ class DesktopUserShellSurface extends UserShellSurface {
       this.divElement.style.display = 'inline'
       this.divElement.classList.remove('entry-removed')
     } else {
-      this.divElement.addEventListener('transitionend', () => {
-        this.divElement.style.display = 'none'
-      })
+      this.divElement.style.display = 'none'
       this.divElement.classList.add('entry-removed')
     }
   }

@@ -11,6 +11,7 @@ const htmlIndex = 'index.html'
 const entryFile = path.resolve(__dirname, '../src/index.js')
 const assetsDir = path.resolve(__dirname, '../public/assets')
 const keymapsDir = path.resolve(__dirname, '../public/keymaps')
+const clientsDir = path.resolve(__dirname, '../public/clients')
 const rootFiles = path.resolve(__dirname, '../public/*.*')
 const htmlTemplateFile = path.resolve(__dirname, `../public/${htmlTemplate}`)
 
@@ -32,6 +33,7 @@ const commonConfig = (appBundle, buildDir, debug) => {
       new CopyWebpackPlugin([
         { from: assetsDir, to: 'assets' },
         { from: keymapsDir, to: 'keymaps' },
+        { from: clientsDir, to: 'clients' },
         { from: rootFiles, to: '.', flatten: true, ignore: [htmlTemplate] }
       ]),
       new HtmlWebpackPlugin({

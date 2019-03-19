@@ -4,7 +4,7 @@ const crypto = require('crypto')
 const WebSocket = require('ws')
 
 const { session: sessionConfig } = require('./config')
-const RtcClient = require('./RtcClient')
+const NativeCompositorSession = require('./NativeCompositorSession')
 
 class AppEndpointCompositorPair {
   /**
@@ -22,8 +22,6 @@ class AppEndpointCompositorPair {
    * @returns {Promise<AppEndpointCompositorPair>}
    */
   static async create (compositorSessionId) {
-    // TODO setup a pairing websocket connection and create a rtc peer connection, using the websocket connection
-    // as signaling channel.
     const appEndpointSessionId = this._uuidv4()
     const appEndpointCompositorPair = await new Promise((resolve, reject) => {
       const websocketUrl = `${sessionConfig['web-socket-connection']['url']}/pairAppEndpoint/${appEndpointSessionId}/${compositorSessionId}`
@@ -44,11 +42,7 @@ class AppEndpointCompositorPair {
       }
     })
 
-    const rtcClient = await RtcClient.create(appEndpointCompositorPair)
-    appEndpointCompositorPair.messageHandlers.rtcClient = rtcClient
-    rtcClient.onDestroy().then(() => {
-      appEndpointCompositorPair.destroy()
-    })
+    NativeCompositorSession.create(appEndpointCompositorPair)
 
     return appEndpointCompositorPair
   }
@@ -80,17 +74,11 @@ class AppEndpointCompositorPair {
      * @type {Promise<void>}
      * @private
      */
-    this._destroyPromise = new Promise((resolve) => {
-      this._destroyResolve = resolve
-    })
+    this._destroyPromise = new Promise((resolve) => { this._destroyResolve = resolve })
     /**
      * @type {Object.<string, Object>}
      */
     this.messageHandlers = {}
-    /**
-     * @type {NativeCompositorSession}
-     */
-    this.nativeCompositorSession = null
   }
 
   /**
@@ -136,6 +124,17 @@ class AppEndpointCompositorPair {
    */
   _onError (event) {
     process.env.DEBUG && console.error(`[app-endpoint: ${this.appEndpointSessionId}] - Web socket is in error. ${event}.`)
+  }
+
+  /**
+   * @param {string}remotePeerUUID
+   * @param {*}signal
+   */
+  sendSignal (remotePeerUUID, signal) {
+    this.webSocket.send(JSON.stringify({
+      target: remotePeerUUID,
+      payload: signal
+    }))
   }
 }
 

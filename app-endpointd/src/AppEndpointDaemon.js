@@ -87,11 +87,11 @@ class AppEndpointDaemon {
       }
 
       child.on('exit', removeChild)
-      child.on('SIGINT', function () {
+      child.on('SIGINT', () => {
         process.env.DEBUG && console.log(`[app-endpoint-daemon] Child [${child.pid}] received SIGINT.`)
         child.exit()
       })
-      child.on('SIGTERM', function () {
+      child.on('SIGTERM', () => {
         process.env.DEBUG && console.log(`[app-endpoint-daemon] Child [${child.pid}] received SIGTERM.`)
         child.exit()
       })

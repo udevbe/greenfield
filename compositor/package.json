@@ -1,14 +1,16 @@
 {
-  "name": "greenfield-client",
+  "name": "greenfield-compositor",
   "version": "1.0.0",
   "description": "HTML5 Wayland compositor",
   "bin": {
     "greenfield": "./server/src/index.js"
   },
   "scripts": {
+    "prepare:web:generate:webgl": "westfield-scanner-server ../protocol/gr-web-gl.xml -o web/src/protocol",
+    "prepare:web:generate:webshm": "westfield-scanner-server ../protocol/gr-web-shm.xml -o web/src/protocol",
     "prepare:web:generate:xdgshell": "westfield-scanner-server ../protocol/xdg-shell.xml -o web/src/protocol",
     "prepare:web:generate:wayland": "westfield-scanner-server ../protocol/wayland.xml -o web/src/protocol",
-    "prepare:web:generate": "mkdir -p web/src/protocol/ && npm run prepare:web:generate:wayland && npm run prepare:web:generate:xdgshell",
+    "prepare:web:generate": "mkdir -p web/src/protocol/ && npm run prepare:web:generate:wayland && npm run prepare:web:generate:xdgshell && npm run prepare:web:generate:webshm && npm run prepare:web:generate:webgl",
     "prepare": "npm run prepare:web:generate && webpack --config web/build.config/webpack.config.prod.js",
     "prepare:dev": "npm run prepare:web:generate && webpack --config web/build.config/webpack.config.dev.js",
     "start": "node ./server/src/index.js",
@@ -34,20 +36,21 @@
   "homepage": "https://github.com/udevbe/greenfield#readme",
   "dependencies": {
     "express": "^4.16.3",
-    "westfield-runtime-server": "0.1.4",
+    "westfield-runtime-server": "0.2.0",
+    "westfield-runtime-common": "0.2.0",
     "ws": "^6.1.0"
   },
   "devDependencies": {
     "clean-webpack-plugin": "^0.1.19",
+    "webpack": "^4.28.2",
+    "webpack-cli": "^3.1.2",
+    "webpack-merge": "^4.1.5",
     "copy-webpack-plugin": "^4.5.3",
     "css-loader": "^1.0.0",
     "html-webpack-plugin": "^3.2.0",
     "standard": "^12.0.1",
     "style-loader": "^0.23.1",
-    "webpack": "^4.28.2",
-    "webpack-cli": "^3.1.2",
-    "webpack-merge": "^4.1.5",
-    "westfield-scanner-server": "0.1.4"
+    "westfield-scanner-server": "0.2.0"
   },
   "pkg": {
     "scripts": [

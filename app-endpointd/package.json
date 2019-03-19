@@ -25,6 +25,6 @@
   },
   "devDependencies": {
     "standard": "^12.0.1",
-    "westfield-endpoint-generator": "0.1.4"
+    "westfield-endpoint-generator": "0.2.0"
   }
 }

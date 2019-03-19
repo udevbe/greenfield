@@ -196,13 +196,13 @@ export default class Renderer {
 
     if (fullFrame && !splitAlpha) {
       // Full frame without a separate alpha. Let the browser do all the drawing.
-      const frame = encodedFrame.fragments[0]
+      const frame = encodedFrame.pixelContent[0]
       const opaqueImageBlob = new Blob([frame.opaque], { 'type': 'image/png' })
       const opaqueImageBitmap = await createImageBitmap(opaqueImageBlob, 0, 0, frame.geo.width, frame.geo.height)
-      views.forEach((view) => { view.draw(opaqueImageBitmap) })
+      views.forEach(view => view.draw(opaqueImageBitmap))
     } else {
       // we don't support/care about fragmented pngs (and definitely not with a separate alpha channel as png has it internal)
-      throw new Error(`Unsupported buffer. Encoding type: ${encodedFrame.encodingType}, full frame:${fullFrame}, split alpha: ${splitAlpha}`)
+      throw new Error(`Unsupported buffer. Encoding type: ${encodedFrame.mimeType}, full frame:${fullFrame}, split alpha: ${splitAlpha}`)
     }
   }
 
@@ -248,8 +248,8 @@ export default class Renderer {
       this._yuvaSurfaceShader.draw(encodedFrame.size, canvasSizeChanged)
       this._yuvaSurfaceShader.release()
 
-      const image = await window.createImageBitmap(this._canvas)
-      views.forEach((view) => { view.draw(image) })
+      const image = await createImageBitmap(this._canvas)
+      views.forEach(view => view.draw(image))
     } else {
       // Image is in h264 format with no separate alpha channel, color convert yuv fragments to rgb using webgl.
       this._yuvSurfaceShader.use()
@@ -265,19 +265,42 @@ export default class Renderer {
       this._yuvSurfaceShader.draw(encodedFrame.size, canvasSizeChanged)
       this._yuvSurfaceShader.release()
 
-      views.forEach((view) => { view.draw(this._canvas) })
+      views.forEach(view => view.draw(this._canvas))
     }
   }
 
   /**
-   * @param {EncodedFrame}bufferContents
+   * @param {WebShmFrame}shmFrame
+   * @param surface
+   * @param views
+   * @return {Promise<void>}
+   */
+  ['image/rgba'] (shmFrame, surface, views) {
+    views.forEach(view => view.draw(shmFrame.pixelContent))
+  }
+
+  /**
+   * @param {WebGLFrame}webGLFrame
+   * @param surface
+   * @param views
+   * @return {Promise<void>}
+   */
+  ['image/bitmap'] (webGLFrame, surface, views) {
+    const imageBitmap = webGLFrame.pixelContent
+    views.forEach(view => view.draw(imageBitmap))
+    imageBitmap.close()
+  }
+
+  /**
+   * @param {!BufferContents}bufferContents
    * @param {Surface}surface
    * @param {Array<View>}views
    * @private
    */
+
   async _draw (bufferContents, surface, views) {
     // invokes mime type named drawing methods
-    await this[bufferContents.encodingType](bufferContents, surface, views)
+    await this[bufferContents.mimeType](bufferContents, surface, views)
   }
 }
 /**

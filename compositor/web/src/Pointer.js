@@ -2,7 +2,7 @@
 
 import WlPointerRequests from './protocol/WlPointerRequests'
 import WlPointerResource from './protocol/WlPointerResource'
-import { Fixed } from 'westfield-runtime-server'
+import { Fixed } from 'westfield-runtime-common'
 
 import Point from './math/Point'
 import EncodingOptions from './EncodingOptions'
@@ -229,7 +229,7 @@ export default class Pointer extends WlPointerRequests {
         const splitAlpha = EncodingOptions.splitAlpha(newState.bufferContents.encodingOptions)
         if (fullFrame && !splitAlpha) {
           await surface.render(renderFrame, newState, true)
-          const imageBlob = new Blob([newState.bufferContents.fragments[0].opaque], { 'type': newState.bufferContents.encodingType })
+          const imageBlob = new Blob([newState.bufferContents.pixelContent[0].opaque], { 'type': newState.bufferContents.mimeType })
           window.document.body.style.cursor = `url("${URL.createObjectURL(imageBlob)}") ${hotspotX} ${hotspotY}, pointer`
 
           renderFrame.fire()

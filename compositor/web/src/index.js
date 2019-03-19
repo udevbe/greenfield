@@ -13,11 +13,20 @@ import './style/greenfield.css'
 import XdgWmBase from './XdgWmBase'
 import DesktopUserShell from './desktopshell/DesktopUserShell'
 import RtcSocket from './RtcSocket'
+import WebShm from './webshm/WebShm'
+import WebAppSocket from './WebAppSocket'
+import WebAppLauncher from './WebAppLauncher'
+import WebGL from './webgl/WebGL'
 
 /**
  * @param {Session}session
  */
-function setup (session) {
+async function setup (session) {
+  // TODO enable through config
+  await session.withRemote(() => {
+    // TODO retry here?
+  })
+
   const output = Output.create()
   const seat = Seat.create(session)
   const compositor = Compositor.create(session, seat)
@@ -29,6 +38,9 @@ function setup (session) {
   const shell = Shell.create(session, desktopUserShell)
   const xdgWmBase = XdgWmBase.create(session, desktopUserShell, seat)
 
+  const webShm = WebShm.create()
+  const webGL = WebGL.create()
+
   output.registerGlobal(session.display.registry)
   compositor.registerGlobal(session.display.registry)
   dataDeviceManager.registerGlobal(session.display.registry)
@@ -38,21 +50,34 @@ function setup (session) {
 
   xdgWmBase.registerGlobal(session.display.registry)
 
-  // RtcSocket enables appl-endpoints with remote application to connect
-  session.messageHandlers['rtcSocket'] = RtcSocket.create(session)
+  webShm.registerGlobal(session.display.registry)
+  webGL.registerGlobal(session.display.registry)
+
+  // RtcSocket enables native appl-endpoints with remote application to connect
+  RtcSocket.create(session)
+
+  // WebAppSocket enables browser local applications running in a web worker to connect
+  const webAppSocket = WebAppSocket.create(session)
+  const webAppLauncher = WebAppLauncher.create(webAppSocket)
+
+  // [TESTING] immediately launch our web shm demo client
+  const shmClient = 'simple.web.shm.js'
+  webAppLauncher.launch(`clients/${shmClient}`)
+
+  const glClient = 'simple.web.gl.js'
+  webAppLauncher.launch(`clients/${glClient}`)
 }
 
-async function main () {
+function main () {
   // show user a warning if they want to close this page
   window.onbeforeunload = (e) => {
-    const dialogText = 'dummytext'
+    const dialogText = ''
     e.returnValue = dialogText
     return dialogText
   }
 
   try {
-    const session = await Session.create()
-    setup(session)
+    setup(Session.create())
   } catch (e) {
     // TODO notify user & retry
     console.error(`Failed to setup compositor session.`, e)
@@ -73,37 +98,6 @@ function loadNativeModule (module) {
     }
   })
 }
-
-// This adds a zero timeout 'run later' mechanism:
-// https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/setTimeout#Reasons_for_delays_longer_than_specified
-// Only add setZeroTimeout to the window object, and hide everything else in a closure.
-(function () {
-  const timeouts = []
-  const messageName = 'zero-timeout-message'
-
-  // Like setTimeout, but only takes a function argument.  There's
-  // no time argument (always zero) and no arguments (you have to
-  // use a closure).
-  function setZeroTimeout (fn) {
-    timeouts.push(fn)
-    window.postMessage(messageName, '*')
-  }
-
-  function handleMessage (event) {
-    if (event.source === window && event.data === messageName) {
-      event.stopPropagation()
-      if (timeouts.length > 0) {
-        const fn = timeouts.shift()
-        fn()
-      }
-    }
-  }
-
-  window.addEventListener('message', handleMessage, true)
-
-  // Add the one thing we want added to the window object.
-  window.setZeroTimeout = setZeroTimeout
-})()
 
 window.onload = async () => {
   // make sure all native modules are ready for use before we start our main flow
