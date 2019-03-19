@@ -30,7 +30,7 @@ Supported toolkits are:
 Greenfield is in essence an entire Wayland compositor running in the browser. As such it does not care where and how
 client applications run. This has some interesting implications:
 
-### Remote Distributed Back-end
+### Remote Applications
 
 Native wayland applications can connect to an in-browser compositor by talking to a local application endpoint daemon.
 This application endpoint daemon presents itself as a locally running wayland compositor while in reality it forwards
@@ -43,7 +43,9 @@ endpoints and connected browser compositors. It allows for application endpoints
 direct connection, resulting in no intermediate relaying between a native application & the remote browser.
 
 
-### Local Web worker
+### Web Applictions
+
+tl;dr Run JavaScript Wayland applications directly in your browser: https://preview.greenfield.app
 
 A different variation on distributed applications is to run them directly inside the user's browser.
 This can be done using a Web worker. A Web Worker is essentially a stand-alone thread/process, completely separate from
@@ -66,9 +68,6 @@ the compositor and the client. Supported on Firefox and Chrome.
 - simple-web-gl. Draws a rotating square. Uses offscreen WebGL and streams it's updates to the compositor using HTML5 
 ImageBitmaps. Only supported on Chrome.
 
-You can check the source code in the repository or try them directly in your browser: 
-
-https://preview.greenfield.app
 
 Installation and running
 ============
