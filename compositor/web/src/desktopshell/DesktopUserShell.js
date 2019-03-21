@@ -15,7 +15,10 @@ export default class DesktopUserShell {
    */
   static create (session, seat) {
     const body = document.body
-    const workspace = document.getElementById('workspace')
+    const workspace = /** @type {HTMLDivElement} */document.createElement('div')
+    workspace.setAttribute('id', 'workspace')
+    document.body.appendChild(workspace)
+
     const panel = /** @type {HTMLDivElement} */document.createElement('div')
     panel.classList.add('hpanel')
     body.insertAdjacentElement('afterbegin', panel)

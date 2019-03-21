@@ -61,11 +61,8 @@ async function setup (session) {
   const webAppLauncher = WebAppLauncher.create(webAppSocket)
 
   // [TESTING] immediately launch our web shm demo client
-  const shmClient = 'simple.web.shm.js'
-  webAppLauncher.launch(`clients/${shmClient}`)
-
-  const glClient = 'simple.web.gl.js'
-  webAppLauncher.launch(`clients/${glClient}`)
+  webAppLauncher.launch('simple.web.shm.js')
+  webAppLauncher.launch('simple.web.gl.js')
 }
 
 function main () {

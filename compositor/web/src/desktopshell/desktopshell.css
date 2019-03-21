@@ -6,12 +6,15 @@ body {
 #workspace {
     flex-grow: 1;
     display: inline;
-    background-image: url(/assets/pattern_light.png);
+    background-image: url(/pattern_light.png);
     background-size: auto;
+    background-repeat: repeat;
+    z-index: 0;
+    position: relative;
 }
 
 .hpanel {
-    z-index: 0;
+    z-index: 1;
     background-color: rgb(200, 200, 200);
 
     display: flex;

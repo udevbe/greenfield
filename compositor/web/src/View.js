@@ -377,12 +377,10 @@ export default class View {
     this.bufferedCanvas.attachToElement(element)
 
     // attach child views
-    this.surface.children.forEach((surfaceChild) => {
-      surfaceChild.surface.views.filter((childView) => {
-        return childView.parent === this
-      }).forEach((childView) => {
-        childView.attachTo(element)
-      })
+    this.surface.children.forEach(surfaceChild => {
+      surfaceChild.surface.views
+        .filter(childView => childView.parent === this)
+        .forEach(childView => childView.attachTo(element))
     })
   }
 

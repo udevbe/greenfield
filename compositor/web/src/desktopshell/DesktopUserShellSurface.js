@@ -15,7 +15,8 @@ class DesktopUserShellSurface extends UserShellSurface {
     // create a mainView and attach it to the scene
     const mainView = surface.createView()
     this._detachViewOnDestroy(mainView)
-    mainView.attachTo(document.body)
+    const workspace = document.getElementById('workspace')
+    mainView.attachTo(workspace)
 
     const divElement = document.createElement('div')
     // divElement will become visible once surface is mapped
