@@ -70,9 +70,7 @@ export default class View {
      * @type {Promise}
      * @private
      */
-    this._destroyPromise = new Promise((resolve) => {
-      this._destroyResolve = resolve
-    })
+    this._destroyPromise = new Promise(resolve => { this._destroyResolve = resolve })
     /**
      * @type {boolean}
      */
@@ -168,9 +166,7 @@ export default class View {
     const bufferToViewTransformation = transformation.timesMat4(this.surface.inverseBufferTransformation)
     // update canvas
     const newCssTransform = bufferToViewTransformation.toCssMatrix()
-    renderFrame.then(() => {
-      this.bufferedCanvas.setElementTransformation(newCssTransform)
-    })
+    renderFrame.then(() => this.bufferedCanvas.setElementTransformation(newCssTransform))
     this._applyTransformationsChild(renderFrame)
   }
 
@@ -180,16 +176,14 @@ export default class View {
    */
   _applyTransformationsChild (renderFrame) {
     // find all child views who have this view as it's parent and update their transformation
-    this.surface.children.forEach((surfaceChild) => {
+    this.surface.children.forEach(surfaceChild => {
       if (surfaceChild.surface === this.surface) {
         return
       }
 
-      surfaceChild.surface.views.filter((view) => {
-        return view.parent === this
-      }).forEach((childView) => {
-        childView.applyTransformations(renderFrame)
-      })
+      surfaceChild.surface.views
+        .filter(view => view.parent === this)
+        .forEach(childView => childView.applyTransformations(renderFrame))
     })
   }
 
@@ -231,7 +225,7 @@ export default class View {
 
   withUserTransformations (transformation) {
     let finalTransformation = transformation
-    this.userTransformations.forEach(value => finalTransformation = transformation.timesMat4(value))
+    this.userTransformations.forEach(value => { finalTransformation = transformation.timesMat4(value) })
     return finalTransformation
   }
 
