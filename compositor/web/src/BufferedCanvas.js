@@ -36,6 +36,7 @@ export default class BufferedCanvas {
     }
 
     const containerDiv = /** @type {HTMLDivElement} */document.createElement('div')
+    containerDiv.classList.add('surface-view')
     containerDiv.style.display = 'contents'
     containerDiv.appendChild(frontCanvas)
     containerDiv.appendChild(backCanvas)
