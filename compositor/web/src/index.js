@@ -23,9 +23,7 @@ import WebGL from './webgl/WebGL'
  */
 async function setup (session) {
   // TODO enable through config
-  await session.withRemote(() => {
-    // TODO retry here?
-  })
+  await session.withRemote(() => { /* TODO retry here */ })
 
   const output = Output.create()
   const seat = Seat.create(session)
@@ -61,8 +59,8 @@ async function setup (session) {
   const webAppLauncher = WebAppLauncher.create(webAppSocket)
 
   // [TESTING] immediately launch our web shm demo client
-  webAppLauncher.launch('simple.web.shm.js')
-  webAppLauncher.launch('simple.web.gl.js')
+  // webAppLauncher.launch('simple.web.shm.js')
+  // webAppLauncher.launch('simple.web.gl.js')
 }
 
 function main () {

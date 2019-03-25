@@ -9,7 +9,7 @@ const htmlIndex = 'index.html'
 
 const entryFile = path.resolve(__dirname, '../src/index.js')
 const keymapsDir = path.resolve(__dirname, '../public/keymaps')
-const clientsDir = path.resolve(__dirname, '../public/clients')
+// const clientsDir = path.resolve(__dirname, '../public/clients')
 const rootFiles = path.resolve(__dirname, '../public/*.*')
 
 /**
@@ -29,12 +29,13 @@ const commonConfig = (appBundle, buildDir, debug) => {
     plugins: [
       new CopyWebpackPlugin([
         { from: keymapsDir, to: 'keymaps' },
-        { from: clientsDir, to: 'clients' },
+        // { from: clientsDir, to: 'clients' },
         { from: rootFiles, to: '.', flatten: true }
       ]),
       new HtmlWebpackPlugin({
         file: htmlIndex,
         title: 'Greenfield',
+        meta: { viewport: 'width=device-width, initial-scale=1, shrink-to-fit=no' },
         favicon: path.resolve(__dirname, `../public/favicon.ico`),
         minify: debug ? false : {
           removeAttributeQuotes: true,
