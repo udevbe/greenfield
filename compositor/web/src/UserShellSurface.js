@@ -61,7 +61,7 @@ export default class UserShellSurface {
   /**
    * Confirms that the user shell can give the surface input.
    */
-  activationAck () {}
+  activation () {}
 
   /**
    * Notifies the user shell that it should destroy all resources associated with the surface

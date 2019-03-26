@@ -68,13 +68,12 @@ export default class XdgToplevel extends XdgToplevelRequests {
     })
 
     userShellSurface.onActivationRequest = () => {
-      if (!xdgToplevel._activationRequested) {
-        xdgToplevel._activationRequested = true
-        if (!xdgToplevel._configureState.state.includes(activated)) {
-          const newState = xdgToplevel._configureState.state.slice()
-          newState.push(activated)
-          xdgToplevel._emitConfigure(xdgToplevelResource, xdgToplevel._configureState.width, xdgToplevel._configureState.height, newState, none)
-        }
+      if (xdgToplevel._configureState.state.includes(activated)) {
+        userShellSurface.activation()
+      } else {
+        const newState = xdgToplevel._configureState.state.slice()
+        newState.push(activated)
+        xdgToplevel._emitConfigure(xdgToplevelResource, xdgToplevel._configureState.width, xdgToplevel._configureState.height, newState, none)
       }
     }
     userShellSurface.onInactive = () => {
@@ -100,7 +99,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
   constructor (xdgToplevelResource, xdgSurface, session, userShellSurface) {
     super()
     /**
-     * @type {XdgToplevel}
+     * @type {XdgToplevelResource}
      */
     this.resource = xdgToplevelResource
     /**
@@ -178,11 +177,6 @@ export default class XdgToplevel extends XdgToplevelRequests {
      * @type {boolean}
      */
     this.mapped = false
-    /**
-     * @type {boolean}
-     * @private
-     */
-    this._activationRequested = false
   }
 
   /**
@@ -225,13 +219,13 @@ export default class XdgToplevel extends XdgToplevelRequests {
     this._minSize = Point.create(minWidth, minHeight)
     this._maxSize = Point.create(maxWidth, maxHeight)
 
+    if (roleState.configureState.state.includes(activated) &&
+      !this._configureState.state.includes(activated)) {
+      this.userShellSurface.activation()
+    }
+
     this._configureState = roleState.configureState
     this.xdgSurface.updateWindowGeometry(roleState.windowGeometry)
-
-    if (this._activationRequested && this._configureState.state.includes(activated)) {
-      this._activationRequested = false
-      this.userShellSurface.activationAck()
-    }
   }
 
   /**

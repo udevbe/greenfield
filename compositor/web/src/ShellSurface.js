@@ -406,7 +406,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
   _createUserShellSurface () {
     this._userShellSurface = this._userShell.manage(/** @type {Surface} */this.wlSurfaceResource.implementation)
     this._userShellSurface.onActivationRequest = () => {
-      this._userShellSurface.activationAck()
+      this._userShellSurface.activation()
     }
     this._userShellSurface.onInactive = () => {
       // I don't think we need to do something here?

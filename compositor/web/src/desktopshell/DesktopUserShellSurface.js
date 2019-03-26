@@ -44,7 +44,10 @@ class DesktopUserShellSurface extends UserShellSurface {
     const desktopUserShellSurface = new DesktopUserShellSurface(mainView, divElement, seat)
     desktopUserShellSurface._activateOnPointerButton()
 
-    divElement.addEventListener('mousedown', () => desktopUserShellSurface._activeCallback())
+    divElement.addEventListener('mousedown', () => {
+      desktopUserShellSurface._activeCallback()
+      seat.pointer.session.flush()
+    })
     // destroy the mainView if the shell-surface is destroyed
     surface.resource.onDestroy().then(() => desktopUserShellSurface.destroy())
 
@@ -158,20 +161,17 @@ class DesktopUserShellSurface extends UserShellSurface {
   }
 
   /**
+   * Makes a surface active if a user clicks on it.
    * @private
    */
   _activateOnPointerButton () {
     this._seat.pointer.onButtonPress().then(() => {
-      if (this.mainView.destroyed) {
-        return
-      }
-
-      if (!this.active &&
+      if (!this.mainView.destroyed &&
+        !this.active &&
         this._seat.pointer.focus &&
         this._seat.pointer.focus.surface === this.mainView.surface) {
         this._activeCallback()
       }
-
       this._activateOnPointerButton()
     })
   }
@@ -180,7 +180,7 @@ class DesktopUserShellSurface extends UserShellSurface {
    * Confirms that the user shell can give the surface input.
    * @override
    */
-  activationAck () {
+  activation () {
     if (this.mainView.destroyed) { return }
 
     if (!this.active) {
@@ -195,7 +195,8 @@ class DesktopUserShellSurface extends UserShellSurface {
       }
 
       DesktopUserShellSurface.desktopUserShellSurfaces.forEach((desktopUserShellSurface) => {
-        if (desktopUserShellSurface !== this) {
+        if (desktopUserShellSurface !== this &&
+          desktopUserShellSurface.active) {
           desktopUserShellSurface._deactivate()
         }
       })

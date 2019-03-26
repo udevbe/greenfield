@@ -64,7 +64,7 @@ export default class Pointer extends WlPointerRequests {
    * @returns {!Pointer}
    */
   static create (session, dataDevice) {
-    const pointer = new Pointer(dataDevice)
+    const pointer = new Pointer(session, dataDevice)
     document.addEventListener('mousemove', (event) => {
       const mouseEvent = /** @type {MouseEvent} */ event
       if (pointer._handleMouseMove(mouseEvent)) {
@@ -104,10 +104,15 @@ export default class Pointer extends WlPointerRequests {
   /**
    * Use Pointer.create(..) instead.
    * @private
+   * @param {Session}session
    * @param {!DataDevice} dataDevice
    */
-  constructor (dataDevice) {
+  constructor (session, dataDevice) {
     super()
+    /**
+     * @type {Session}
+     */
+    this.session = session
     /**
      * @type {!DataDevice}
      * @const
