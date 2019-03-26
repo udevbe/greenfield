@@ -57,7 +57,7 @@ class Region extends WlRegionRequests {
    * @param {!number} pixmanRegion
    */
   static fini (pixmanRegion) {
-    pixman._pixman_region32_fini(pixmanRegion)
+    // pixman._pixman_region32_fini(pixmanRegion)
   }
 
   /**
@@ -109,8 +109,8 @@ class Region extends WlRegionRequests {
    * @param {!number}pixmanRegion
    */
   static destroyPixmanRegion (pixmanRegion) {
-    pixman._pixman_region32_fini(pixmanRegion)
-    pixman._free(pixmanRegion)
+    // pixman._pixman_region32_fini(pixmanRegion)
+    // pixman._free(pixmanRegion)
   }
 
   /**
