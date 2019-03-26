@@ -84,9 +84,7 @@ class DesktopUserShellSurface extends UserShellSurface {
    * @private
    */
   static _addClassRecursively (surface, cssClass) {
-    surface.views.forEach((view) => {
-      view.bufferedCanvas.addCssClass(cssClass)
-    })
+    surface.views.forEach(view => view.bufferedCanvas.addCssClass(cssClass))
     surface.children.forEach((surfaceChild) => {
       if (surfaceChild.surface !== surface) {
         this._addClassRecursively(surfaceChild.surface, cssClass)
@@ -183,9 +181,7 @@ class DesktopUserShellSurface extends UserShellSurface {
    * @override
    */
   activationAck () {
-    if (this.mainView.destroyed) {
-      return
-    }
+    if (this.mainView.destroyed) { return }
 
     if (!this.active) {
       this.active = true
@@ -215,7 +211,7 @@ class DesktopUserShellSurface extends UserShellSurface {
     }
 
     this._wlKeyboardResource = wlKeyboardResource
-    this._wlKeyboardResource.onDestroy().then(() => (this._wlKeyboardResource = null))
+    this._wlKeyboardResource.onDestroy().then(() => { this._wlKeyboardResource = null })
 
     if (this.active && this._wlKeyboardResource && this._wlKeyboardResource.implementation.focus !== this.mainView.surface) {
       this._giveKeyboardFocus()
