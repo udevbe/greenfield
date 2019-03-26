@@ -22,6 +22,7 @@ import BufferedCanvas from './BufferedCanvas'
 import Vec4 from './math/Vec4'
 import Region from './Region'
 import Renderer from './render/Renderer'
+import Point from './math/Point'
 
 export default class View {
   /**
@@ -103,6 +104,13 @@ export default class View {
      * @private
      */
     this._primary = false
+
+    const { left, top } = document.getElementById('workspace').getBoundingClientRect()
+    /**
+     * @type {Point}
+     * @private
+     */
+    this._workspacePositionOffset = Point.create(left, top)
   }
 
   /**
@@ -305,7 +313,7 @@ export default class View {
    * @return {Point} point in browser coordinates
    */
   toBrowserSpace (viewPoint) {
-    return this.transformation.timesPoint(viewPoint)
+    return this.transformation.timesPoint(viewPoint).plus(this._workspacePositionOffset)
   }
 
   /**
@@ -313,7 +321,8 @@ export default class View {
    * @return {Point} point in view coordinates with respect to view transformations
    */
   toViewSpaceFromBrowser (browserPoint) {
-    return this._inverseTransformation.timesPoint(browserPoint)
+    // normalize first by subtracting view offset
+    return this._inverseTransformation.timesPoint(browserPoint.minus(this._workspacePositionOffset))
   }
 
   toViewSpaceFromSurface (surfacePoint) {
@@ -385,7 +394,6 @@ export default class View {
    */
   attachTo (element) {
     if (this.destroyed) { return }
-
     this.bufferedCanvas.attachToElement(element)
 
     // attach child views
