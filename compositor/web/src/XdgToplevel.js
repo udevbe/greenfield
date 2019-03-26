@@ -344,14 +344,12 @@ export default class XdgToplevel extends XdgToplevelRequests {
     if (this._unfullscreenConfigureState) {
       this._unfullscreenConfigureState = null
     }
-    const x = 0
-    const { y } = document.getElementById('workspace').getBoundingClientRect()
     const windowGeoPositionOffset = newState.roleState.windowGeometry.position
 
     const primaryView = surface.views.find(view => { return view.primary })
     const viewPositionOffset = primaryView.toViewSpaceFromSurface(windowGeoPositionOffset)
 
-    primaryView.customTransformation = Mat4.translation(x - viewPositionOffset.x, y - viewPositionOffset.y)
+    primaryView.customTransformation = Mat4.translation(0 - viewPositionOffset.x, 0 - viewPositionOffset.y)
     primaryView.applyTransformations(renderFrame)
   }
 

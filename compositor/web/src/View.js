@@ -104,13 +104,6 @@ export default class View {
      * @private
      */
     this._primary = false
-
-    const { left, top } = document.getElementById('workspace').getBoundingClientRect()
-    /**
-     * @type {Point}
-     * @private
-     */
-    this._workspacePositionOffset = Point.create(left, top)
   }
 
   /**
@@ -309,11 +302,20 @@ export default class View {
   }
 
   /**
+   * @return {Point}
+   * @private
+   */
+  _calculateWorkspaceOffset () {
+    const { left, top } = document.getElementById('workspace').getBoundingClientRect()
+    return Point.create(left, top)
+  }
+
+  /**
    * @param {Point} viewPoint point in view coordinates with respect to view transformations
    * @return {Point} point in browser coordinates
    */
   toBrowserSpace (viewPoint) {
-    return this.transformation.timesPoint(viewPoint).plus(this._workspacePositionOffset)
+    return this.transformation.timesPoint(viewPoint).plus(this._calculateWorkspaceOffset())
   }
 
   /**
@@ -322,7 +324,7 @@ export default class View {
    */
   toViewSpaceFromBrowser (browserPoint) {
     // normalize first by subtracting view offset
-    return this._inverseTransformation.timesPoint(browserPoint.minus(this._workspacePositionOffset))
+    return this._inverseTransformation.timesPoint(browserPoint.minus(this._calculateWorkspaceOffset()))
   }
 
   toViewSpaceFromSurface (surfacePoint) {
