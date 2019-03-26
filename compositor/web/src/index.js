@@ -1,4 +1,22 @@
+// Copyright 2019 Erik De Rijcke
+//
+// This file is part of Greenfield.
+//
+// Greenfield is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Greenfield is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
+
 'use strict'
+
 import Session from './Session'
 import Compositor from './Compositor'
 import pixman from './lib/libpixman-1'
@@ -63,7 +81,7 @@ async function setup (session) {
   // webAppLauncher.launch('simple.web.gl.js')
 }
 
-function main () {
+async function main () {
   // show user a warning if they want to close this page
   window.onbeforeunload = (e) => {
     const dialogText = ''
@@ -72,9 +90,10 @@ function main () {
   }
 
   try {
-    setup(Session.create())
+    await setup(Session.create())
+    DEBUG && console.log(`Greenfield compositor started.`)
   } catch (e) {
-    // TODO notify user & retry
+    // TODO notify user(?) & retry setup
     console.error(`Failed to setup compositor session.`, e)
   }
 }

@@ -1,3 +1,20 @@
+// Copyright 2019 Erik De Rijcke
+//
+// This file is part of Greenfield.
+//
+// Greenfield is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Greenfield is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
+
 'use strict'
 
 import Vec4 from './Vec4'
@@ -24,10 +41,12 @@ export default class Mat4 {
    * @param m33 Column 3, Row 3
    * @returns {Mat4}
    */
-  static create (m00, m10, m20, m30,
-                 m01, m11, m21, m31,
-                 m02, m12, m22, m32,
-                 m03, m13, m23, m33) {
+  static create (
+    m00, m10, m20, m30,
+    m01, m11, m21, m31,
+    m02, m12, m22, m32,
+    m03, m13, m23, m33
+  ) {
     return new Mat4(
       m00, m10, m20, m30,
       m01, m11, m21, m31,
@@ -87,10 +106,12 @@ export default class Mat4 {
     )
   }
 
-  constructor (m00, m10, m20, m30,
-               m01, m11, m21, m31,
-               m02, m12, m22, m32,
-               m03, m13, m23, m33) {
+  constructor (
+    m00, m10, m20, m30,
+    m01, m11, m21, m31,
+    m02, m12, m22, m32,
+    m03, m13, m23, m33
+  ) {
     this.m00 = m00
     this.m10 = m10
     this.m20 = m20
@@ -195,7 +216,7 @@ export default class Mat4 {
 
   /**
    *
-   * @returns {Mat4}
+   * @returns {Mat4|null}
    */
   invert () {
     const M = [
@@ -239,7 +260,7 @@ export default class Mat4 {
           }
         }
         e = C[i][i]
-        if (e === 0) { return }
+        if (e === 0) { return null }
       }
 
       for (j = 0; j < dim; j++) {

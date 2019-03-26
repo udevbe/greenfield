@@ -1,3 +1,20 @@
+// Copyright 2019 Erik De Rijcke
+//
+// This file is part of Greenfield.
+//
+// Greenfield is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Greenfield is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
+
 'use strict'
 
 import Texture from './Texture'
@@ -64,7 +81,7 @@ export default class H264RenderState extends RenderState {
    * @override
    */
   async update (encodedFrame) {
-    const {alpha, opaque} = await this._h264BufferContentDecoder.decode(encodedFrame)
+    const { alpha, opaque } = await this._h264BufferContentDecoder.decode(encodedFrame)
 
     // the width & height returned are actually paddded, so we have to use the frame size to get the real image dimension
     // when uploading to texture

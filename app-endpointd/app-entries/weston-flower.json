@@ -1,6 +1,0 @@
-{
-  "executable": "/path/to/weston-flower",
-  "name": "Weston Flower",
-  "description": "A drag-and-drow flower",
-  "icon": "apps/icons/weston-flower.svg"
-}

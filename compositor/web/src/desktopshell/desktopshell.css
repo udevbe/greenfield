@@ -1,3 +1,23 @@
+/*
+Copyright 2019 Erik De Rijcke
+
+This file is part of Greenfield.
+
+Greenfield is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Greenfield is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
+ */
+@import url("https://fonts.googleapis.com/css?family=Roboto:300");
+
 body {
     display: flex;
     flex-direction: column;
@@ -35,25 +55,19 @@ body {
 
 .entry {
     flex-grow: 1;
-    min-width: 100px;
+    min-width: 75px;
     max-width: 20vw;
-    height: 3.6vh;
-
+    height: 4vh;
     background: rgb(150, 150, 150);
-
-    font-family: sans-serif;
-    font-size: medium;
-    text-align: left;
-    padding-left: 1vh;
+    font-family: Roboto, sans-serif;
+    font-size: large;
+    text-align: center;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     vertical-align: middle;
     line-height: 4vh;
-    color: black;
-
-    box-shadow: inset 0 0.6vh 0.1vh -0.3vh rgba(252, 104, 42, 0.20);
-
+    color: rgb(62, 62, 62);
     transition: all 300ms ease-in-out;
 }
 
@@ -62,12 +76,11 @@ body {
 }
 
 .entry-focus {
-    box-shadow: inset 0 0.6vh 0.1vh -0.3vh rgba(42, 190, 252, 1);
+    box-shadow: inset 0 -0.6vh 0.1vh -0.3vh rgba(42, 190, 252, 1);
     background: rgb(230, 230, 230);
 }
 
 .entry:hover:not(.entry-focus) {
-    box-shadow: inset 0 0.6vh 0.1vh -0.3vh rgba(252, 104, 42, 0.60);
     background: rgb(210, 210, 210);
     transition: all 150ms linear;
 }

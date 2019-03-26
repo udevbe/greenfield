@@ -4,7 +4,5 @@
       "port": 8080,
       "socket-timeout": 6000
     }
-  },
-  "session": {
   }
 }

@@ -1,6 +1,0 @@
-{
-  "executable": "/path/to/weston-terminal",
-  "name": "Weston Terminal",
-  "description": "A minimal terminal emulator",
-  "icon": "apps/icons/weston-terminal.svg"
-}
