@@ -172,7 +172,7 @@ class DesktopUserShellSurface extends UserShellSurface {
         this._seat.pointer.focus.surface === this.mainView.surface) {
         this._activeCallback()
       }
-      this._activateOnPointerButton()
+      setTimeout(() => this._activateOnPointerButton())
     })
   }
 
