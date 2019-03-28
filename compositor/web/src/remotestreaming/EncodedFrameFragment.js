@@ -17,7 +17,7 @@
 
 'use strict'
 
-import Rect from './math/Rect'
+import Rect from '../math/Rect'
 
 export default class EncodedFrameFragment {
   /**

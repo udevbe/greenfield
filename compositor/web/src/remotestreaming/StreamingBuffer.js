@@ -17,7 +17,7 @@
 
 'use strict'
 
-import WlBufferRequests from './protocol/WlBufferRequests'
+import WlBufferRequests from '../protocol/WlBufferRequests'
 import BufferStream from './BufferStream'
 
 /**

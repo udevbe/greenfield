@@ -19,8 +19,8 @@
 
 import EncodedFrameFragment from './EncodedFrameFragment'
 import EncodingTypes from './EncodingMimeTypes'
-import Size from './Size'
-import BufferContents from './BufferContents'
+import Size from '../Size'
+import BufferContents from '../BufferContents'
 
 /**
  * @implements BufferContents

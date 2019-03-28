@@ -18,7 +18,7 @@
 'use strict'
 
 import H264NALDecoder from './H264NALDecoder'
-import EncodingOptions from '../EncodingOptions'
+import EncodingOptions from '../remotestreaming/EncodingOptions'
 
 export default class H264BufferContentDecoder {
   /**

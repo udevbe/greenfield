@@ -20,7 +20,7 @@
 import Texture from './Texture'
 import Size from '../Size'
 import RenderState from './RenderState'
-import EncodingOptions from '../EncodingOptions'
+import EncodingOptions from '../remotestreaming/EncodingOptions'
 
 /**
  * @implements RenderState

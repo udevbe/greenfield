@@ -18,7 +18,7 @@
 'use strict'
 
 import WlBufferResource from './protocol/WlBufferResource'
-import StreamingBuffer from './StreamingBuffer'
+import StreamingBuffer from './remotestreaming/StreamingBuffer'
 import UUIDUtil from './UUIDUtil'
 import { WebFD } from 'westfield-runtime-common'
 import RtcOutOfBandChannel from './RtcOutOfBandChannel'
@@ -64,7 +64,7 @@ class RtcSocket {
     // TODO show to user status of app-endpoints (peer connection state)(?)
 
     // TODO rtc connection options setup
-    const peerConnection = new RTCPeerConnection()
+    const peerConnection = new window.RTCPeerConnection()
     this._appEndpointConnections[remotePeerId] = peerConnection
     peerConnection.ondatachannel = (event) => this._onDataChannel(event.channel, remotePeerId, peerConnection)
 

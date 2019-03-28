@@ -22,7 +22,7 @@ import WlPointerResource from './protocol/WlPointerResource'
 import { Fixed } from 'westfield-runtime-common'
 
 import Point from './math/Point'
-import EncodingOptions from './EncodingOptions'
+import EncodingOptions from './remotestreaming/EncodingOptions'
 import Region from './Region'
 
 const { pressed, released } = WlPointerResource.ButtonState
