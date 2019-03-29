@@ -16,6 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 'use strict'
+import auth from './user/Auth'
 
 import Session from './Session'
 import Compositor from './Compositor'
@@ -90,6 +91,7 @@ async function main () {
   }
 
   try {
+    await auth.login()
     await setup(Session.create())
     DEBUG && console.log(`Greenfield compositor started.`)
   } catch (e) {
