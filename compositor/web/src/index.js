@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 'use strict'
-import auth from './user/Auth'
+import auth from './desktopshell/user/Auth'
 
 import Session from './Session'
 import Compositor from './Compositor'
@@ -41,6 +41,13 @@ import WebGL from './webgl/WebGL'
  * @param {Session}session
  */
 async function setup (session) {
+  // show user a warning if they want to close this page
+  window.onbeforeunload = (e) => {
+    const dialogText = ''
+    e.returnValue = dialogText
+    return dialogText
+  }
+
   // TODO enable through config
   await session.withRemote(() => { /* TODO retry here */ })
 
@@ -83,15 +90,9 @@ async function setup (session) {
 }
 
 async function main () {
-  // show user a warning if they want to close this page
-  window.onbeforeunload = (e) => {
-    const dialogText = ''
-    e.returnValue = dialogText
-    return dialogText
-  }
-
   try {
-    await auth.login()
+    const userAuth = await auth
+    await userAuth.login()
     await setup(Session.create())
     DEBUG && console.log(`Greenfield compositor started.`)
   } catch (e) {
