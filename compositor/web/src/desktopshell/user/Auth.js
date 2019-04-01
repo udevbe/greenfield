@@ -42,6 +42,15 @@ class Auth {
     overlay.setAttribute('id', 'overlay')
     document.body.appendChild(overlay)
 
+    const logoParagraph = /** @type {HTMLParagraphElement} */document.createElement('p')
+    logoParagraph.setAttribute('id', 'logo')
+    logoParagraph.textContent = 'Greenfield'
+    overlay.appendChild(logoParagraph)
+
+    const authContainer = /** @type {HTMLDivElement} */document.createElement('div')
+    authContainer.setAttribute('id', 'auth-container')
+    overlay.appendChild(authContainer)
+
     // create user auth state container
     const auth = new Auth(app, ui)
 
@@ -73,23 +82,21 @@ class Auth {
         // logged in, happens each time the user opens the web page and successfully authenticates
         // user logged in thus hide further ui screens
         auth._onLogin(user)
-        overlay.ontransitionend = () => {
-          ui.delete()
-        }
+        overlay.ontransitionend = () => ui.delete()
         overlay.classList.add('off')
       } else {
         // logged out, happens when formerly known auto sign-in user auth failed, or when user explicitly logs out.
         auth._onLogout()
         if (!started) {
           // show ui on logout if user auth failed on start
-          ui.start('#overlay', uiConfig)
+          ui.start('#auth-container', uiConfig)
         }
       }
     })
 
     if (!unsubscribe || ui.isPendingRedirect()) {
       // show ui during init if user is not known before, or when we're ie validating an email address.
-      ui.start('#overlay', uiConfig)
+      ui.start('#auth-container', uiConfig)
       started = true
     }
 
