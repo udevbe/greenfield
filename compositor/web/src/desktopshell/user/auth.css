@@ -19,9 +19,17 @@ along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 @import url(https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.css);
 @import url(https://fonts.googleapis.com/css?family=Montserrat:100);
 
+.mdl-shadow--2dp {
+    box-shadow: none
+}
+
+.firebaseui-id-page-callback {
+    background: none !important;
+}
+
 #logo {
     font-family: 'Montserrat', sans-serif;
-    font-size: 2.5em;
+    font-size: 4em;
     text-align: center;
     color: #565656;
 }
@@ -45,6 +53,6 @@ along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 #overlay.off {
     opacity: 0;
-    transition: opacity 750ms ease-out;
+    transition: opacity 1000ms ease-in-out;
     pointer-events: none;
 }
