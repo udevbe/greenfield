@@ -17,7 +17,7 @@ You should have received a copy of the GNU Affero General Public License
 along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
  */
 @import url(https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.css);
-@import url(https://fonts.googleapis.com/css?family=Montserrat:100);
+@import url(https://fonts.googleapis.com/css?family=Montserrat:200);
 
 .mdl-shadow--2dp {
     box-shadow: none
