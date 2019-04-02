@@ -38,9 +38,12 @@ class Auth {
     const ui = new firebaseui.auth.AuthUI(firebase.auth())
 
     // create the auth container div
+    const container = /** @type {HTMLDivElement} */document.createElement('div')
+    document.body.appendChild(container)
+
     const overlay = /** @type {HTMLDivElement} */document.createElement('div')
     overlay.setAttribute('id', 'overlay')
-    document.body.appendChild(overlay)
+    container.appendChild(overlay)
 
     const logoParagraph = /** @type {HTMLParagraphElement} */document.createElement('p')
     logoParagraph.setAttribute('id', 'logo')
@@ -82,7 +85,6 @@ class Auth {
         // logged in, happens each time the user opens the web page and successfully authenticates
         // user logged in thus hide further ui screens
         auth._onLogin(user)
-        overlay.ontransitionend = () => ui.delete()
         overlay.classList.add('off')
       } else {
         // logged out, happens when formerly known auto sign-in user auth failed, or when user explicitly logs out.

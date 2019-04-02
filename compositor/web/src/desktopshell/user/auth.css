@@ -17,26 +17,27 @@ You should have received a copy of the GNU Affero General Public License
 along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
  */
 @import url(https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.css);
-@import url(https://fonts.googleapis.com/css?family=Libre+Barcode+39+Text);
+@import url(https://fonts.googleapis.com/css?family=Montserrat:100);
 
 #logo {
-    color: rgb(50, 50, 50);
-    font-family: 'Libre Barcode 39 Text', cursive;
+    font-family: 'Montserrat', sans-serif;
     font-size: 2.5em;
     text-align: center;
-    margin: 1em;
+    color: #565656;
 }
 
 #overlay {
     position: fixed;
-    display: block;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     width: 100%;
     height: 100%;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgb(220, 220, 220);
+    background-color: #fffafa;
     z-index: 99999;
     pointer-events: auto;
     opacity: 1;
@@ -44,6 +45,6 @@ along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 #overlay.off {
     opacity: 0;
-    transition: opacity 1s linear;
+    transition: opacity 750ms ease-out;
     pointer-events: none;
 }
