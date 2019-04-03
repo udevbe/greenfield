@@ -34,6 +34,10 @@ along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
     color: #565656;
 }
 
+#logo span.i {
+    color: #33cc33;
+}
+
 #overlay {
     position: fixed;
     display: flex;
@@ -45,7 +49,7 @@ along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: #fffafa;
+    background-color: #f2f2f2;
     z-index: 99999;
     pointer-events: auto;
     opacity: 1;
@@ -53,6 +57,6 @@ along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 #overlay.off {
     opacity: 0;
-    transition: opacity 1000ms ease-in-out;
+    transition: opacity 300ms ease-in;
     pointer-events: none;
 }

@@ -177,6 +177,10 @@ class RTCConnection extends ChannelFactory {
   createChannel () {
     return RTCChannel.create(this.peerConnection)
   }
+
+  destroy () {
+    // TODO do cleanup here?
+  }
 }
 
 module.exports = RTCConnection

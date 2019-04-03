@@ -47,7 +47,7 @@ class Auth {
 
     const logoParagraph = /** @type {HTMLParagraphElement} */document.createElement('p')
     logoParagraph.setAttribute('id', 'logo')
-    logoParagraph.textContent = 'Greenfield'
+    logoParagraph.innerHTML = 'Greenf<span class="i">i</span>eld'
     overlay.appendChild(logoParagraph)
 
     const authContainer = /** @type {HTMLDivElement} */document.createElement('div')
