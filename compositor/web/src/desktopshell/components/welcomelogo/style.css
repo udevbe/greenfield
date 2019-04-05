@@ -1,0 +1,12 @@
+@import url(https://fonts.googleapis.com/css?family=Montserrat:200);
+
+.welcome-logo {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 4em;
+    text-align: center;
+    color: #565656;
+}
+
+.welcome-logo.i {
+    color: #33cc33;
+}

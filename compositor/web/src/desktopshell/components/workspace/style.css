@@ -1,0 +1,10 @@
+.workspace {
+    flex-grow: 1;
+    display: inline;
+    background-color: #fffafa;
+    background-image: url(/pattern_light.png);
+    background-size: auto;
+    background-repeat: repeat;
+    z-index: 0;
+    position: relative;
+}

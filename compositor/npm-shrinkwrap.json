@@ -6891,6 +6891,14 @@
         "unpipe": "1.0.0"
       }
     },
+    "react-firebaseui": {
+      "version": "3.1.2",
+      "resolved": "https://registry.npmjs.org/react-firebaseui/-/react-firebaseui-3.1.2.tgz",
+      "integrity": "sha512-lpNvIPjy9rijSbaARElIooXUtFlyFZ2VUzAXi3AMximOUfLo1De0lBfoFjEiSJjC0ItNyTn4KoKIawACcElLjw==",
+      "requires": {
+        "firebaseui": "^3.2.0"
+      }
+    },
     "react-is": {
       "version": "16.8.4",
       "resolved": "https://registry.npmjs.org/react-is/-/react-is-16.8.4.tgz",

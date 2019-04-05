@@ -34,7 +34,7 @@ export default class DesktopUserShell {
     const body = document.body
     const workspace = /** @type {HTMLDivElement} */document.createElement('div')
     workspace.setAttribute('id', 'workspace')
-    document.body.appendChild(workspace)
+    body.appendChild(workspace)
 
     const panel = /** @type {HTMLDivElement} */document.createElement('div')
     panel.classList.add('hpanel')

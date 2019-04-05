@@ -105,7 +105,7 @@ export default class BufferedCanvas {
   _draw (renderingContext, image) {
     const canvas = renderingContext.canvas
 
-    if (image instanceof ImageData) {
+    if (image instanceof window.ImageData) {
       if (canvas.width !== image.width || canvas.height !== image.height) {
         // resizing clears the canvas
         canvas.width = image.width

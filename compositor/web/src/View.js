@@ -134,12 +134,18 @@ export default class View {
     }
   }
 
+  /**
+   * @param {boolean}primary
+   */
   set primary (primary) {
     if (this.destroyed) { return }
 
     this._primary = primary
   }
 
+  /**
+   * @return {boolean}
+   */
   get primary () {
     if (this._primary) {
       return true
