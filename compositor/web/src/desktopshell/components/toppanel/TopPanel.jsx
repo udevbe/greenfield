@@ -20,7 +20,7 @@ class TopPanel extends Component {
    * @return {*}
    */
   render (props, state, context) {
-    const { /** @type{Array<DesktopUserShellSurface>} */ desktopUserShellSurfaces } = this.state
+    const { /** @type{Array<ManagedSurface>} */ desktopUserShellSurfaces } = this.state
     return (
       <div className={'top-panel'}>
         <EntriesContainer>

@@ -35,16 +35,16 @@ class DesktopUserShellSurface extends UserShellSurface {
     const workspace = document.getElementById('workspace')
     mainView.attachTo(workspace)
 
-    const divElement = document.createElement('div')
+    const divEntryElement = document.createElement('div')
     // divElement will become visible once surface is mapped
-    divElement.style.display = 'none'
-    divElement.classList.add('entry')
-    this._detachEntryOnDestroy(mainView, divElement)
+    divEntryElement.style.display = 'none'
+    divEntryElement.classList.add('entry')
+    this._detachEntryOnDestroy(mainView, divEntryElement)
 
-    const desktopUserShellSurface = new DesktopUserShellSurface(mainView, divElement, seat)
+    const desktopUserShellSurface = new DesktopUserShellSurface(mainView, divEntryElement, seat)
     desktopUserShellSurface._activateOnPointerButton()
 
-    divElement.addEventListener('mousedown', () => {
+    divEntryElement.addEventListener('mousedown', () => {
       desktopUserShellSurface._activeCallback()
       seat.pointer.session.flush()
     })

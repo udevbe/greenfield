@@ -6,19 +6,18 @@ class Workspace extends Component {
     super(props)
   }
 
-  shouldComponentUpdate (nextProps, nextState, nextContext) {
-    return false
-  }
-
   /**
-   * @param {string}id
+   * @param {Array}children
    * @param state
    * @param context
    * @return {*}
    */
-  render ({ id }, state, context) {
+  render ({ children }, state, context) {
     return (
-      <div id={id} className={'workspace'} />
+      <div className={'workspace'}> {
+        children
+      }
+      </div>
     )
   }
 }

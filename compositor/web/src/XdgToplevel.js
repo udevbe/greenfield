@@ -61,11 +61,6 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const xdgToplevel = new XdgToplevel(xdgToplevelResource, xdgSurface, session, userShellSurface)
     xdgToplevelResource.implementation = xdgToplevel
     surface.role = xdgToplevel
-    xdgToplevelResource.onDestroy().then(() => {
-      if (xdgToplevel.userShellSurface) {
-        xdgToplevel.userShellSurface.destroy()
-      }
-    })
 
     userShellSurface.onActivationRequest = () => {
       if (xdgToplevel._configureState.state.includes(activated)) {
