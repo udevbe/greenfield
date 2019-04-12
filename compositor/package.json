@@ -61,6 +61,16 @@
     "webpack-merge": "^4.1.5",
     "westfield-scanner-server": "0.2.0"
   },
+  "babel": {
+    "plugins": [
+      [
+        "@babel/plugin-transform-react-jsx",
+        {
+          "pragma": "h"
+        }
+      ]
+    ]
+  },
   "pkg": {
     "scripts": [
       "./server/src/*.js",

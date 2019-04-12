@@ -17,6 +17,9 @@ class ManagedSurfaceView extends Component {
   componentDidMount () {
     const { managedSurface } = /** @type {{ managedSurface: ManagedSurface }} */ this.props
     managedSurface.view.attachTo(this.base)
+    // FIXME this is racy. requestActivation callback must be provided when managed surface is created and not
+    // set somewhere arbitrarily in the future
+    managedSurface.requestActivation()
   }
 
   /**

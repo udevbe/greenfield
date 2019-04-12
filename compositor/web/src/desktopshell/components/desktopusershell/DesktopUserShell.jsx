@@ -1,19 +1,33 @@
 import './style.css'
-import { h, Component } from 'preact'
-import TopPanel from '../toppanel/TopPanel'
-import Workspace from '../workspace/Workspace'
-import EntriesContainer from '../entriescontainer/EntriesContainer'
-import ManagedSurfaceEntry from '../managedsurfaceentry/ManagedSurfaceEntry'
-import ManagedSurfaceView from '../managedsurfaceview/ManagedSurfaceView'
+import { h, Component, render } from 'preact'
+import TopPanel from '../toppanel/TopPanel.jsx'
+import Workspace from '../workspace/Workspace.jsx'
+import EntriesContainer from '../entriescontainer/EntriesContainer.jsx'
+import ManagedSurfaceEntry from '../managedsurfaceentry/ManagedSurfaceEntry.jsx'
+import ManagedSurfaceView from '../managedsurfaceview/ManagedSurfaceView.jsx'
 import ManagedSurface from './ManagedSurface'
+import UserShell from '../../../UserShell'
 
 // TODO we probably want a more mvvm like structure here
 class DesktopUserShell extends Component {
   /**
    * @param {Seat}seat
+   * @return {UserShell}
    */
-  constructor ({ seat }) {
-    super({ seat })
+  static create (seat) {
+    const userShell = new class UserShellImpl extends UserShell {}() // UserShell is an interface so strictly speaking we cannot instantiate it directly... ¯\_(ツ)_/¯
+    const desktopUserShell = <DesktopUserShell seat={seat} userShell={userShell} />
+    render(desktopUserShell, document.body)
+
+    return userShell
+  }
+
+  /**
+   * @param {Seat}seat
+   * @param {UserShell}userShell
+   */
+  constructor ({ seat, userShell }) {
+    super({ seat, userShell })
     /**
      * @type {{managedSurface: Array<ManagedSurface>, activeManagedSurface: ManagedSurface|null}}
      */
@@ -21,7 +35,7 @@ class DesktopUserShell extends Component {
       managedSurfaces: [],
       activeManagedSurface: null
     }
-
+    userShell.manage = (surface) => { return this.manage(surface) }
     this._activateManagedSurfaceOnPointerButton()
   }
 
@@ -54,18 +68,18 @@ class DesktopUserShell extends Component {
     seat.keyboard.resources.forEach(keyboardResourceListener)
 
     // add the managed surface to state
-    this.addManagedSurface(managedSurface)
+    this._addManagedSurface(managedSurface)
 
     // remove managed surface from state if the underlying surface is destroyed
     surface.resource.onDestroy().then(() => {
-      this.removeManagedSurface(managedSurface)
+      this._removeManagedSurface(managedSurface)
       seat.removeKeyboardResourceListener(keyboardResourceListener)
     })
 
     // register an activation listener and set active managed surface state if it received an activation event
     managedSurface.onActivation.push(() => this.setState(({ activeManagedSurface: previousActiveManagedSurface }) => {
       if (previousActiveManagedSurface !== managedSurface) {
-        if (previousActiveManagedSurface.deactivate) {
+        if (previousActiveManagedSurface && previousActiveManagedSurface.deactivate) {
           previousActiveManagedSurface.deactivate()
         }
         managedSurface.giveKeyboardFocus()
@@ -100,8 +114,9 @@ class DesktopUserShell extends Component {
 
   /**
    * @param {ManagedSurface}managedSurface
+   * @private
    */
-  addManagedSurface (managedSurface) {
+  _addManagedSurface (managedSurface) {
     this.setState(
       /**
        * @param {Array<ManagedSurface>}managedSurfaces
@@ -116,8 +131,9 @@ class DesktopUserShell extends Component {
 
   /**
    * @param {ManagedSurface}managedSurface
+   * @private
    */
-  removeManagedSurface (managedSurface) {
+  _removeManagedSurface (managedSurface) {
     this.setState(
       /**
        * @param {Array<ManagedSurface>}managedSurfaces

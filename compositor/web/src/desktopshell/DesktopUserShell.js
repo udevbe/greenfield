@@ -26,11 +26,10 @@ import './desktopshell.css'
  */
 export default class DesktopUserShell {
   /**
-   * @param {Session}session
    * @param {Seat}seat
    * @return {DesktopUserShell}
    */
-  static create (session, seat) {
+  static create (seat) {
     const body = document.body
     const workspace = /** @type {HTMLDivElement} */document.createElement('div')
     workspace.setAttribute('id', 'workspace')

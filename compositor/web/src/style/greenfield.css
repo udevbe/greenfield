@@ -16,13 +16,6 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
  */
-body {
-    margin: 0;
-    padding: 0;
-    height: 100vh;
-    min-height: 100vh;
-    overflow: hidden;
-}
 
 div .surface-view {
     will-change: transform;

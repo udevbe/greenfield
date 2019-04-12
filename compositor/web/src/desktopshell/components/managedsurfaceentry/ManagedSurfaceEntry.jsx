@@ -9,23 +9,28 @@ class ManagedSurfaceEntry extends Component {
    */
   constructor ({ seat, managedSurface, active }) {
     super({ seat, managedSurface, active })
+    this.state = {
+      title: ''
+    }
+
+    managedSurface.onTitle.push((newTitle) => this.setState(() => ({ title: newTitle })))
   }
 
   /**
    * @param {Seat}seat
    * @param {ManagedSurface}managedSurface
    * @param {boolean}active
-   * @param state
+   * @param {string}title
    * @param context
    * @return {*}
    */
-  render ({ seat, managedSurface, active }, state, context) {
+  render ({ seat, managedSurface, active }, { title }, context) {
     let classNames = 'entry'
     if (active) {
       classNames += ' entry-focus'
     }
     return (
-      <div className={classNames} />
+      <div className={classNames}>{title}</div>
     )
   }
 }

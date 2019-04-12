@@ -5,9 +5,21 @@ html, body {
     -moz-font-smoothing: antialiased;
     -o-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    min-height: 100vh;
+    overflow: hidden;
 }
 
 .desktop-user-shell {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    min-height: 100vh;
+    overflow: hidden;
+
     display: flex;
     flex-direction: column;
 }

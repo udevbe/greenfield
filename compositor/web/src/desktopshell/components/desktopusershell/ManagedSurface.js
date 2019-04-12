@@ -17,6 +17,9 @@
 
 'use strict'
 
+/**
+ * @implements UserShellSurface
+ */
 class ManagedSurface {
   /**
    * @param {Surface}surface

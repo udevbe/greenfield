@@ -1,5 +1,5 @@
 import './style.css'
-import { Component } from 'preact'
+import { h, Component } from 'preact'
 
 import StyledFirebaseAuth from 'react-firebaseui/StyledFirebaseAuth'
 import firebase from 'firebase'

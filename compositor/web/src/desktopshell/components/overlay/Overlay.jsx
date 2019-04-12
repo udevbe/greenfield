@@ -1,5 +1,5 @@
 import './style.css'
-import { Component } from 'preact'
+import { h, Component } from 'preact'
 import Login from '../login/Login'
 
 class Overlay extends Component {

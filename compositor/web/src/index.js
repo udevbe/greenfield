@@ -30,7 +30,7 @@ import Subcompositor from './Subcompositor'
 
 import './style/greenfield.css'
 import XdgWmBase from './XdgWmBase'
-import DesktopUserShell from './desktopshell/DesktopUserShell'
+import DesktopUserShell from './desktopshell/components/desktopusershell/DesktopUserShell.jsx'
 import RtcSocket from './RtcSocket'
 import WebShm from './webshm/WebShm'
 import WebAppSocket from './WebAppSocket'
@@ -57,7 +57,7 @@ async function setup (session) {
   const dataDeviceManager = DataDeviceManager.create()
   const subcompositor = Subcompositor.create()
 
-  const desktopUserShell = DesktopUserShell.create(session, seat)
+  const desktopUserShell = DesktopUserShell.create(seat)
 
   const shell = Shell.create(session, desktopUserShell)
   const xdgWmBase = XdgWmBase.create(session, desktopUserShell, seat)

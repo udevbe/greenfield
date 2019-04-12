@@ -64,11 +64,6 @@ export default class UserShellSurface {
   activation () {}
 
   /**
-   * Notifies the user shell that it should destroy all resources associated with the surface
-   */
-  destroy () {}
-
-  /**
    * Notifies the user shell that the surface should no longer be displayed. If the surface is still mapped then the
    * surface contents can still be displayed ie in a live updating tile.
    */
