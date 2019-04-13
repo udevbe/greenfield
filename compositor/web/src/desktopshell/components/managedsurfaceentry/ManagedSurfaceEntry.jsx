@@ -17,6 +17,17 @@ class ManagedSurfaceEntry extends Component {
   }
 
   /**
+   * @private
+   */
+  _requestActivation (e) {
+    e.preventDefault()
+    const { seat, managedSurface } = /** @type{{seat:Seat, managedSurface: ManagedSurface}} */this.props
+    // FIXME call is racy. Function is set at some arbitrary future point.
+    managedSurface.requestActivation()
+    seat.pointer.session.flush()
+  }
+
+  /**
    * @param {Seat}seat
    * @param {ManagedSurface}managedSurface
    * @param {boolean}active
@@ -30,7 +41,7 @@ class ManagedSurfaceEntry extends Component {
       classNames += ' entry-focus'
     }
     return (
-      <div className={classNames}>{title}</div>
+      <div className={classNames} onClick={(e) => this._requestActivation(e)}>{title}</div>
     )
   }
 }

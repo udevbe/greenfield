@@ -104,7 +104,7 @@ class DesktopUserShell extends Component {
         const targetManagedSurface = managedSurfaces.find(managedSurface => {
           return !managedSurface.view.destroyed &&
             seat.pointer.focus.surface === managedSurface.surface &&
-            !(managedSurface !== activeManagedSurface) &&
+            managedSurface !== activeManagedSurface &&
             managedSurface.requestActivation
         })
 

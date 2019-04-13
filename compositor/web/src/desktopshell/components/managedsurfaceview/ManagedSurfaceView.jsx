@@ -10,10 +10,6 @@ class ManagedSurfaceView extends Component {
     super({ seat, managedSurface, active })
   }
 
-  shouldComponentUpdate (nextProps, nextState, nextContext) {
-    return false
-  }
-
   componentDidMount () {
     const { managedSurface } = /** @type {{ managedSurface: ManagedSurface }} */ this.props
     managedSurface.view.attachTo(this.base)
