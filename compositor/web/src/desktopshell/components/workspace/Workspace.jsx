@@ -14,10 +14,7 @@ class Workspace extends Component {
    */
   render ({ children }, state, context) {
     return (
-      <div className={'workspace'}> {
-        children
-      }
-      </div>
+      <div id={'workspace'}> {children} </div>
     )
   }
 }

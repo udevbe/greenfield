@@ -95,19 +95,23 @@ class DesktopUserShell extends Component {
    * @private
    */
   _activateManagedSurfaceOnPointerButton () {
-    const { seat, managedSurfaces, activeManagedSurface } =
-      /** @type {{managedSurface: Array<ManagedSurface>, activeManagedSurface: ManagedSurface|null}} */this.props
+    const { seat } = /** @type {{seat: Seat}} */this.props
 
     seat.pointer.onButtonPress().then(() => {
       if (seat.pointer.focus) {
-        managedSurfaces.find(managedSurface => {
+        const { managedSurfaces, activeManagedSurface } =
+          /** @type {{managedSurface: Array<ManagedSurface>, activeManagedSurface: ManagedSurface|null}} */this.state
+        const targetManagedSurface = managedSurfaces.find(managedSurface => {
           return !managedSurface.view.destroyed &&
             seat.pointer.focus.surface === managedSurface.surface &&
             !(managedSurface !== activeManagedSurface) &&
             managedSurface.requestActivation
-        }).requestActivation()
-      }
+        })
 
+        if (targetManagedSurface) {
+          targetManagedSurface.requestActivation()
+        }
+      }
       setTimeout(() => this._activateManagedSurfaceOnPointerButton())
     })
   }
