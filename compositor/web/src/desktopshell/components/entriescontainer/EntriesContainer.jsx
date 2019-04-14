@@ -1,5 +1,5 @@
 import './style.css'
-import { Component } from 'preact'
+import { h, Component } from 'preact'
 
 class EntriesContainer extends Component {
   constructor (props) {

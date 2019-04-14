@@ -44,8 +44,11 @@ class ManagedSurfaceView extends Component {
    * @return {HTMLDivElement}
    */
   render ({ managedSurface, active }, state, context) {
-    // TODO replace with empty fragment
-    return <div />
+    if (active) {
+      managedSurface.view.show()
+      managedSurface.view.raise()
+    }
+    return null
   }
 }
 
