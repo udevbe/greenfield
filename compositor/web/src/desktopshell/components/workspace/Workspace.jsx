@@ -1,5 +1,5 @@
 import './style.css'
-import { h, Component } from 'preact'
+import { h, Component, cloneElement } from 'preact'
 
 class Workspace extends Component {
   constructor (props) {
@@ -14,7 +14,12 @@ class Workspace extends Component {
    */
   render ({ children }, state, context) {
     return (
-      <div id={'workspace'}> {children} </div>
+      <div id={'workspace'}>{
+        children.map(child => {
+          const element = cloneElement(child, { workspace: this })
+          return element
+        })
+      }</div>
     )
   }
 }

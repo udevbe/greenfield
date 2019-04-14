@@ -161,27 +161,25 @@ class DesktopUserShell extends Component {
     return (
       <div className={'desktop-user-shell'}>
         <TopPanel>
-          <EntriesContainer> {
+          <EntriesContainer>{
             managedSurfaces.map(managedSurface =>
               <ManagedSurfaceEntry
                 key={managedSurface.surface.resource.id}
                 seat={seat}
                 managedSurface={managedSurface}
                 active={activeManagedSurface === managedSurface}
-              />
-            )}
-          </EntriesContainer>
+              />)
+          }</EntriesContainer>
         </TopPanel>
-        <Workspace> {
+        <Workspace>{
           managedSurfaces.map(managedSurface =>
             <ManagedSurfaceView
               key={managedSurface.surface.resource.id}
               seat={seat}
               managedSurface={managedSurface}
               active={activeManagedSurface === managedSurface}
-            />
-          )}
-        </Workspace>
+            />)
+        }</Workspace>
       </div>
     )
   }

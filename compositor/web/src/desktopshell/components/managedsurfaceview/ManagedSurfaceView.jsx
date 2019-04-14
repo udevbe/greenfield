@@ -5,17 +5,35 @@ class ManagedSurfaceView extends Component {
    * @param {Seat}seat
    * @param {ManagedSurface}managedSurface
    * @param {boolean}active
+   * @param {Workspace}workspace
    */
-  constructor ({ seat, managedSurface, active }) {
+  constructor ({ seat, managedSurface, active, workspace }) {
     super({ seat, managedSurface, active })
   }
 
+  shouldComponentUpdate (nextProps, nextState, nextContext) {
+    return false
+  }
+
+  componentWillReceiveProps ({ managedSurface, active }, nextContext) {
+    if (active) {
+      managedSurface.view.show()
+      managedSurface.view.raise()
+    }
+  }
+
   componentDidMount () {
-    const { managedSurface } = /** @type {{ managedSurface: ManagedSurface }} */ this.props
-    managedSurface.view.attachTo(this.base)
+    const { seat, managedSurface, workspace } = /** @type {{ seat: Seat, managedSurface: ManagedSurface, workspace: Workspace }} */ this.props
+    managedSurface.view.attachTo(workspace.base)
     // FIXME this is racy. requestActivation callback must be provided when managed surface is created and not
     // set somewhere arbitrarily in the future
     managedSurface.requestActivation()
+    seat.pointer.session.flush()
+  }
+
+  componentWillUnmount () {
+    const { managedSurface } = /** @type {{ managedSurface: ManagedSurface }} */ this.props
+    managedSurface.view.detach()
   }
 
   /**
@@ -26,11 +44,8 @@ class ManagedSurfaceView extends Component {
    * @return {HTMLDivElement}
    */
   render ({ managedSurface, active }, state, context) {
-    if (active) {
-      managedSurface.view.show()
-      managedSurface.view.raise()
-    }
-    return <div style={{ zIndex: managedSurface.view.zIndex }} />
+    // TODO replace with empty fragment
+    return <div />
   }
 }
 

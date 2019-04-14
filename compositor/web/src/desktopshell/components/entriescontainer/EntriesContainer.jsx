@@ -1,5 +1,5 @@
 import './style.css'
-import { h, Component } from 'preact'
+import { Component } from 'preact'
 
 class EntriesContainer extends Component {
   constructor (props) {
@@ -7,15 +7,13 @@ class EntriesContainer extends Component {
   }
 
   /**
-   * @param props
+   * @param children
    * @param state
    * @param context
    */
-  render (props, state, context) {
+  render ({ children }, state, context) {
     return (
-      <div className={'entries-container'}>
-        {props.children}
-      </div>
+      <div className={'entries-container'}>{children}</div>
     )
   }
 }
