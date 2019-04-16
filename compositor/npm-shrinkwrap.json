@@ -5432,12 +5432,13 @@
     "js-tokens": {
       "version": "3.0.2",
       "resolved": "https://registry.npmjs.org/js-tokens/-/js-tokens-3.0.2.tgz",
-      "integrity": "sha1-mGbfOVECEw449/mWvOtlRDIJwls="
+      "integrity": "sha1-mGbfOVECEw449/mWvOtlRDIJwls=",
+      "dev": true
     },
     "js-yaml": {
-      "version": "3.13.0",
-      "resolved": "https://registry.npmjs.org/js-yaml/-/js-yaml-3.13.0.tgz",
-      "integrity": "sha512-pZZoSxcCYco+DIKBTimr67J6Hy+EYGZDY/HCWC+iAEA9h1ByhMXAIVUXMcMFpOCxQ/xjXmPI2MkDL5HRm5eFrQ==",
+      "version": "3.13.1",
+      "resolved": "https://registry.npmjs.org/js-yaml/-/js-yaml-3.13.1.tgz",
+      "integrity": "sha512-YfbcO7jXDdyj0DGxYVSlSeQNHbD7XPWvrVWeVUujrQEoZzWJIRrCPoyk6kL6IAjAG2IolMK4T0hNUe0HOUs5Jw==",
       "dev": true,
       "requires": {
         "argparse": "^1.0.7",
@@ -5519,11 +5520,6 @@
         "type-check": "~0.3.2"
       }
     },
-    "linkstate": {
-      "version": "1.1.1",
-      "resolved": "https://registry.npmjs.org/linkstate/-/linkstate-1.1.1.tgz",
-      "integrity": "sha512-5SICdxQG9FpWk44wSEoM2WOCUNuYfClp10t51XAIV5E7vUILF/dTYxf0vJw6bW2dUd2wcQon+LkNtRijpNLrig=="
-    },
     "load-json-file": {
       "version": "2.0.0",
       "resolved": "https://registry.npmjs.org/load-json-file/-/load-json-file-2.0.0.tgz",
@@ -5596,6 +5592,7 @@
       "version": "1.4.0",
       "resolved": "https://registry.npmjs.org/loose-envify/-/loose-envify-1.4.0.tgz",
       "integrity": "sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==",
+      "dev": true,
       "requires": {
         "js-tokens": "^3.0.0 || ^4.0.0"
       }
@@ -6142,7 +6139,8 @@
     "object-assign": {
       "version": "4.1.1",
       "resolved": "https://registry.npmjs.org/object-assign/-/object-assign-4.1.1.tgz",
-      "integrity": "sha1-IQmtx5ZYh8/AXLvUQsrIv7s2CGM="
+      "integrity": "sha1-IQmtx5ZYh8/AXLvUQsrIv7s2CGM=",
+      "dev": true
     },
     "object-copy": {
       "version": "0.1.0",
@@ -6627,12 +6625,9 @@
       "dev": true
     },
     "preact": {
-      "version": "10.0.0-alpha.3",
-      "resolved": "https://registry.npmjs.org/preact/-/preact-10.0.0-alpha.3.tgz",
-      "integrity": "sha512-0ZDexQ/FvZmMbyY7pn1J2hZkWWozftD+980R7LuOo3fEOM1YaYlq2jjOnHz4E4Qf/draHWX/WpcC7QnuEtOBvg==",
-      "requires": {
-        "prop-types": "^15.6.2"
-      }
+      "version": "8.4.2",
+      "resolved": "https://registry.npmjs.org/preact/-/preact-8.4.2.tgz",
+      "integrity": "sha512-TsINETWiisfB6RTk0wh3/mvxbGRvx+ljeBccZ4Z6MPFKgu/KFGyf2Bmw3Z/jlXhL5JlNKY6QAbA9PVyzIy9//A=="
     },
     "prelude-ls": {
       "version": "1.1.2",
@@ -6689,6 +6684,7 @@
       "version": "15.7.2",
       "resolved": "https://registry.npmjs.org/prop-types/-/prop-types-15.7.2.tgz",
       "integrity": "sha512-8QQikdH7//R2vurIJSutZ1smHYTcLpRWEOlHnzcWHmBYrOGUysKwSsrC89BCiFj3CbrfJ/nXFdJepOVrY1GCHQ==",
+      "dev": true,
       "requires": {
         "loose-envify": "^1.4.0",
         "object-assign": "^4.1.1",
@@ -6895,18 +6891,11 @@
         "unpipe": "1.0.0"
       }
     },
-    "react-firebaseui": {
-      "version": "3.1.2",
-      "resolved": "https://registry.npmjs.org/react-firebaseui/-/react-firebaseui-3.1.2.tgz",
-      "integrity": "sha512-lpNvIPjy9rijSbaARElIooXUtFlyFZ2VUzAXi3AMximOUfLo1De0lBfoFjEiSJjC0ItNyTn4KoKIawACcElLjw==",
-      "requires": {
-        "firebaseui": "^3.2.0"
-      }
-    },
     "react-is": {
       "version": "16.8.4",
       "resolved": "https://registry.npmjs.org/react-is/-/react-is-16.8.4.tgz",
-      "integrity": "sha512-PVadd+WaUDOAciICm/J1waJaSvgq+4rHE/K70j0PFqKhkTBsPv/82UGQJNXAngz1fOQLLxI6z1sEDmJDQhCTAA=="
+      "integrity": "sha512-PVadd+WaUDOAciICm/J1waJaSvgq+4rHE/K70j0PFqKhkTBsPv/82UGQJNXAngz1fOQLLxI6z1sEDmJDQhCTAA==",
+      "dev": true
     },
     "read-pkg": {
       "version": "2.0.0",

@@ -24,7 +24,8 @@ const commonConfig = (appBundle, buildDir, debug) => {
     output: {
       path: path.resolve(__dirname, `../${buildDir}`),
       publicPath: '/',
-      filename: appBundle
+      filename: appBundle,
+      chunkFilename: '[name].js'
     },
     plugins: [
       new CopyWebpackPlugin([
@@ -61,6 +62,17 @@ const commonConfig = (appBundle, buildDir, debug) => {
           }
         }
       ]
+    },
+    optimization: {
+      splitChunks: {
+        cacheGroups: {
+          libraries: {
+            name: 'libraries',
+            chunks: 'all',
+            test: /node_modules/
+          }
+        }
+      }
     }
   }
 }

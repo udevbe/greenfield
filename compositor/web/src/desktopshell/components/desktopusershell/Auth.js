@@ -15,15 +15,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import './auth.css'
-
 import firebase from 'firebase/app'
 import 'firebase/auth'
 
 import firebaseui from 'firebaseui'
 
 class Auth {
-  static async create () {
+  /**
+   * @return {Auth}
+   */
+  static create () {
     // Initialize Firebase
     const config = {
       apiKey: 'AIzaSyBrPVY5tkBYcVUrxZywVDD4gAlHPTdhklw',
@@ -37,26 +38,6 @@ class Auth {
     // Initialize the FirebaseUI Widget using Firebase.
     const ui = new firebaseui.auth.AuthUI(firebase.auth())
 
-    // create the auth container div
-    const container = /** @type {HTMLDivElement} */document.createElement('div')
-    document.body.appendChild(container)
-
-    const overlay = /** @type {HTMLDivElement} */document.createElement('div')
-    overlay.setAttribute('id', 'overlay')
-    container.appendChild(overlay)
-
-    const logoParagraph = /** @type {HTMLParagraphElement} */document.createElement('p')
-    logoParagraph.setAttribute('id', 'logo')
-    logoParagraph.innerHTML = 'Greenf<span class="i">i</span>eld'
-    overlay.appendChild(logoParagraph)
-
-    const authContainer = /** @type {HTMLDivElement} */document.createElement('div')
-    authContainer.setAttribute('id', 'auth-container')
-    overlay.appendChild(authContainer)
-
-    // create user auth state container
-    const auth = new Auth(app, ui)
-
     // FirebaseUI config.
     const uiConfig = {
       signInOptions: [
@@ -65,7 +46,7 @@ class Auth {
           provider: firebase.auth.EmailAuthProvider.PROVIDER_ID,
           signInMethod: firebase.auth.EmailAuthProvider.EMAIL_LINK_SIGN_IN_METHOD
         },
-        firebaseui.auth.AnonymousAuthProvider.PROVIDER_ID,
+        firebaseui.auth.AnonymousAuthProvider.PROVIDER_ID
       ],
       tosUrl: '/license.txt',
       privacyPolicyUrl: () => window.location.assign('/privacypolicy.txt'),
@@ -77,39 +58,16 @@ class Auth {
       }
     }
 
-    let started = false
-
-    // wire up login/logout events
-    const unsubscribe = firebase.auth().onAuthStateChanged(async user => {
-      if (user) {
-        // logged in, happens each time the user opens the web page and successfully authenticates
-        // user logged in thus hide further ui screens
-        auth._onLogin(user)
-        overlay.classList.add('off')
-      } else {
-        // logged out, happens when formerly known auto sign-in user auth failed, or when user explicitly logs out.
-        auth._onLogout()
-        if (!started) {
-          // show ui on logout if user auth failed on start
-          ui.start('#auth-container', uiConfig)
-        }
-      }
-    })
-
-    if (!unsubscribe || ui.isPendingRedirect()) {
-      // show ui during init if user is not known before, or when we're ie validating an email address.
-      ui.start('#auth-container', uiConfig)
-      started = true
-    }
-
-    return auth
+    // create user auth state container
+    return new Auth(app, ui, uiConfig)
   }
 
   /**
    * @param {firebase.app.App}app
    * @param {firebaseui.auth.AuthUI}ui
+   * @param uiConfig
    */
-  constructor (app, ui) {
+  constructor (app, ui, uiConfig) {
     /**
      * @type {firebase.app.App}
      */
@@ -118,6 +76,7 @@ class Auth {
      * @type {firebaseui.auth.AuthUI}
      */
     this.ui = ui
+    this._uiConfig = uiConfig
     /**
      * @type {firebase.User|null}
      */
@@ -137,6 +96,39 @@ class Auth {
      * @private
      */
     this._loginPromise = new Promise(resolve => { this._loginResolve = resolve })
+    /**
+     * @type {boolean}
+     * @private
+     */
+    this._started = false
+  }
+
+  /**
+   * @param {HTMLElement}container
+   * @param {string}containerId
+   */
+  start (container, containerId) {
+    // wire up login/logout events
+    const unsubscribe = firebase.auth().onAuthStateChanged(async user => {
+      if (user) {
+        // logged in, happens each time the user opens the web page and successfully authenticates
+        // user logged in thus hide further ui screens
+        this._onLogin(user)
+      } else {
+        // logged out, happens when formerly known auto sign-in user auth failed, or when user explicitly logs out.
+        this._onLogout()
+        if (!this._started) {
+          // show ui on logout if user auth failed on start
+          this.ui.start('#auth-container', this._uiConfig)
+        }
+      }
+    })
+
+    if (!unsubscribe || this.ui.isPendingRedirect()) {
+      // show ui during init if user is not known before, or when we're ie validating an email address.
+      this.ui.start('#auth-container', this._uiConfig)
+      this._started = true
+    }
   }
 
   /**
@@ -146,10 +138,6 @@ class Auth {
     return this._loginPromise
   }
 
-  // async signInAnonymously () {
-  //   this.userCredential = await firebase.auth().signInAnonymously()
-  // }
-  //
   /**
    * @param {firebase.User}user
    * @private
@@ -165,6 +153,14 @@ class Auth {
     // const phoneNumber = user.phoneNumber
     // const providerData = user.providerData
     this.user = user
+    if (user) {
+      // show user a warning if they want to close this page
+      window.onbeforeunload = (e) => {
+        const dialogText = ''
+        e.returnValue = dialogText
+        return dialogText
+      }
+    }
     // user.getIdToken().then(accessToken => {
     //   // TODO user signed it. hide login window & render rest of ui
     //   // TODO do something with token

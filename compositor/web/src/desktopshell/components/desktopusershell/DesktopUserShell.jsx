@@ -7,6 +7,10 @@ import ManagedSurfaceEntry from '../managedsurfaceentry/ManagedSurfaceEntry.jsx'
 import ManagedSurfaceView from '../managedsurfaceview/ManagedSurfaceView.jsx'
 import ManagedSurface from './ManagedSurface'
 import UserShell from '../../../UserShell'
+import Overlay from '../overlay/Overlay.jsx'
+import Logo from '../logo/Logo.jsx'
+import Login from '../login/Login.jsx'
+import auth from './Auth'
 
 // TODO we probably want a more mvvm like structure here
 class DesktopUserShell extends Component {
@@ -29,14 +33,25 @@ class DesktopUserShell extends Component {
   constructor ({ seat, userShell }) {
     super({ seat, userShell })
     /**
-     * @type {{managedSurface: Array<ManagedSurface>, activeManagedSurface: ManagedSurface|null}}
+     * @type {{managedSurface: Array<ManagedSurface>, activeManagedSurface: ManagedSurface|null, user: firebase.User|null}}
      */
     this.state = {
       managedSurfaces: [],
-      activeManagedSurface: null
+      activeManagedSurface: null,
+      user: auth.user
     }
+    auth.login().then(() => this.setState(() => ({ user: auth.user })))
     userShell.manage = (surface) => { return this.manage(surface) }
     this._activateManagedSurfaceOnPointerButton()
+  }
+
+  /**
+   * @return {{user: firebase.User}}
+   */
+  getChildContext () {
+    return {
+      user: auth.user
+    }
   }
 
   /**
@@ -154,12 +169,17 @@ class DesktopUserShell extends Component {
    * @param {Seat}seat
    * @param {Array<ManagedSurface>}managedSurfaces
    * @param {ManagedSurface}activeManagedSurface
+   * @param {firebase.User|null}user
    * @param context
    * @return {*}
    */
-  render ({ seat }, { managedSurfaces, activeManagedSurface }, context) {
+  render ({ seat }, { managedSurfaces, activeManagedSurface, user }, context) {
     return (
       <div className={'desktop-user-shell'}>
+        <Overlay off={!!user}>
+          <Logo />
+          <Login auth={auth} id={'auth-container'} />
+        </Overlay>
         <TopPanel>
           <EntriesContainer>{
             managedSurfaces.map(managedSurface =>

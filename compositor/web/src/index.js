@@ -16,7 +16,6 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 'use strict'
-import auth from './desktopshell/user/Auth'
 
 import Session from './Session'
 import Compositor from './Compositor'
@@ -40,24 +39,16 @@ import WebGL from './webgl/WebGL'
 /**
  * @param {Session}session
  */
-async function setup (session) {
-  // show user a warning if they want to close this page
-  window.onbeforeunload = (e) => {
-    const dialogText = ''
-    e.returnValue = dialogText
-    return dialogText
-  }
-
+async function init (session) {
   // TODO enable through config
   await session.withRemote(() => { /* TODO retry here */ })
+  const seat = Seat.create(session)
+  const desktopUserShell = DesktopUserShell.create(seat)
 
   const output = Output.create()
-  const seat = Seat.create(session)
   const compositor = Compositor.create(session, seat)
   const dataDeviceManager = DataDeviceManager.create()
   const subcompositor = Subcompositor.create()
-
-  const desktopUserShell = DesktopUserShell.create(seat)
 
   const shell = Shell.create(session, desktopUserShell)
   const xdgWmBase = XdgWmBase.create(session, desktopUserShell, seat)
@@ -91,9 +82,8 @@ async function setup (session) {
 
 async function main () {
   try {
-    const userAuth = await auth
-    await userAuth.login()
-    await setup(Session.create())
+    const session = Session.create()
+    await init(session)
     DEBUG && console.log(`Greenfield compositor started.`)
   } catch (e) {
     // TODO notify user(?) & retry setup
