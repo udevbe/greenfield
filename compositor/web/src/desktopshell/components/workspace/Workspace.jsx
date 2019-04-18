@@ -1,23 +1,17 @@
 import './style.css'
-import { h, Component, cloneElement } from 'preact'
+import React from 'react'
 
-class Workspace extends Component {
+class Workspace extends React.PureComponent {
   constructor (props) {
     super(props)
+    this.ref = React.createRef()
   }
 
-  /**
-   * @param {Array}children
-   * @param state
-   * @param context
-   * @return {*}
-   */
-  render ({ children }, state, context) {
+  render () {
     return (
-      <div id={'workspace'}>{
-        children.map(child => {
-          const element = cloneElement(child, { workspace: this })
-          return element
+      <div id={'workspace'} ref={this.ref}>{
+        this.props.children.map(child => {
+          return React.cloneElement(child, { workspace: this })
         })
       }</div>
     )

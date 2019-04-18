@@ -1,16 +1,6 @@
-import { h, Component } from 'preact'
+import React from 'react'
 
-class ManagedSurfaceView extends Component {
-  /**
-   * @param {Seat}seat
-   * @param {ManagedSurface}managedSurface
-   * @param {boolean}active
-   * @param {Workspace}workspace
-   */
-  constructor ({ seat, managedSurface, active, workspace }) {
-    super({ seat, managedSurface, active })
-  }
-
+class ManagedSurfaceView extends React.Component {
   shouldComponentUpdate (nextProps, nextState, nextContext) {
     return false
   }
@@ -24,7 +14,7 @@ class ManagedSurfaceView extends Component {
 
   componentDidMount () {
     const { seat, managedSurface, workspace } = /** @type {{ seat: Seat, managedSurface: ManagedSurface, workspace: Workspace }} */ this.props
-    managedSurface.view.attachTo(workspace.base)
+    managedSurface.view.attachTo(workspace.ref.current)
     // FIXME this is racy. requestActivation callback must be provided when managed surface is created and not
     // set somewhere arbitrarily in the future
     managedSurface.requestActivation()
@@ -36,14 +26,8 @@ class ManagedSurfaceView extends Component {
     managedSurface.view.detach()
   }
 
-  /**
-   * @param {ManagedSurface}managedSurface
-   * @param {boolean}active
-   * @param state
-   * @param context
-   * @return {HTMLDivElement}
-   */
-  render ({ managedSurface, active }, state, context) {
+  render () {
+    const { managedSurface, active } = this.props
     if (active) {
       managedSurface.view.show()
       managedSurface.view.raise()

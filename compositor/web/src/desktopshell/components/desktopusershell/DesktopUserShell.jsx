@@ -1,37 +1,40 @@
 import './style.css'
-import { h, Component, render } from 'preact'
+import ReactDOM from 'react-dom'
+import React from 'react'
+
 import TopPanel from '../toppanel/TopPanel.jsx'
 import Workspace from '../workspace/Workspace.jsx'
 import EntriesContainer from '../entriescontainer/EntriesContainer.jsx'
 import ManagedSurfaceEntry from '../managedsurfaceentry/ManagedSurfaceEntry.jsx'
 import ManagedSurfaceView from '../managedsurfaceview/ManagedSurfaceView.jsx'
 import ManagedSurface from './ManagedSurface'
-import UserShell from '../../../UserShell'
 import Overlay from '../overlay/Overlay.jsx'
 import Logo from '../logo/Logo.jsx'
 import Login from '../login/Login.jsx'
 import auth from './Auth'
 
 // TODO we probably want a more mvvm like structure here
-class DesktopUserShell extends Component {
+class DesktopUserShell extends React.Component {
   /**
    * @param {Seat}seat
    * @return {UserShell}
    */
   static create (seat) {
-    const userShell = new class UserShellImpl extends UserShell {}() // UserShell is an interface so strictly speaking we cannot instantiate it directly... ¯\_(ツ)_/¯
+    const userShell = {}
+    const shellContainer = document.createElement('div')
+    shellContainer.setAttribute('id', 'shell-container')
+    document.body.appendChild(shellContainer)
     const desktopUserShell = <DesktopUserShell seat={seat} userShell={userShell} />
-    render(desktopUserShell, document.body)
+    ReactDOM.render(desktopUserShell, shellContainer)
 
     return userShell
   }
 
   /**
-   * @param {Seat}seat
-   * @param {UserShell}userShell
+   * @param {{seat:Seat, userShell: UserShell}}props
    */
-  constructor ({ seat, userShell }) {
-    super({ seat, userShell })
+  constructor (props) {
+    super(props)
     /**
      * @type {{managedSurface: Array<ManagedSurface>, activeManagedSurface: ManagedSurface|null, user: firebase.User|null}}
      */
@@ -41,30 +44,25 @@ class DesktopUserShell extends Component {
       user: auth.user
     }
     auth.login().then(() => this.setState(() => ({ user: auth.user })))
-    userShell.manage = (surface) => { return this.manage(surface) }
+    props.userShell.manage = (surface, activeCallback, inactivateCallback) => this.manage(surface, activeCallback, inactivateCallback)
     this._activateManagedSurfaceOnPointerButton()
-  }
-
-  /**
-   * @return {{user: firebase.User}}
-   */
-  getChildContext () {
-    return {
-      user: auth.user
-    }
   }
 
   /**
    * Ask the user shell to start managing the given surface.
    * @param {Surface}surface
-   * @return {ManagedSurface}
+   * @param {function}activeCallback  Registers a callback that will be fired when the user shell wants to make a surface active (ie give it input)
+   * @param {function}inactivateCallback Registers callback that notifies if a surface is no longer active (ie no longer receives input)
+   * @return {UserShellSurface}
    * @override
    */
-  manage (surface) {
+  manage (surface, activeCallback, inactivateCallback) {
     const { seat } = /** @type{{seat:Seat}} */this.props
 
     // create new managed surface
     const managedSurface = new ManagedSurface(surface)
+    managedSurface.onActivationRequest = activeCallback
+    managedSurface.onInactive = inactivateCallback
 
     // listen for client keyboard resource creation and store it in the managed surface
     const keyboardResourceListener = (wlKeyboardResource) => {
@@ -160,22 +158,17 @@ class DesktopUserShell extends Component {
        */
       ({ managedSurfaces }) => {
         return {
-          managedSurfaces: managedSurfaces.filter(element => element !== managedSurface)
+          managedSurfaces: managedSurfaces.filter(element => element.surface !== managedSurface.surface)
         }
       })
   }
 
-  /**
-   * @param {Seat}seat
-   * @param {Array<ManagedSurface>}managedSurfaces
-   * @param {ManagedSurface}activeManagedSurface
-   * @param {firebase.User|null}user
-   * @param context
-   * @return {*}
-   */
-  render ({ seat }, { managedSurfaces, activeManagedSurface, user }, context) {
+  render () {
+    const { seat } = /** @type{{seat:Seat}} */this.props
+    const { managedSurfaces, activeManagedSurface, user } =
+      /** @type {{managedSurface: Array<ManagedSurface>, activeManagedSurface: ManagedSurface|null, user:firebase.User}} */this.state
     return (
-      <div className={'desktop-user-shell'}>
+      <>
         <Overlay off={!!user}>
           <Logo />
           <Login auth={auth} id={'auth-container'} />
@@ -184,7 +177,8 @@ class DesktopUserShell extends Component {
           <EntriesContainer>{
             managedSurfaces.map(managedSurface =>
               <ManagedSurfaceEntry
-                key={managedSurface.surface.resource.id}
+                // TODO base key on surface id + client id
+                // key={managedSurface.surface.resource.client.id}
                 seat={seat}
                 managedSurface={managedSurface}
                 active={activeManagedSurface === managedSurface}
@@ -194,13 +188,14 @@ class DesktopUserShell extends Component {
         <Workspace>{
           managedSurfaces.map(managedSurface =>
             <ManagedSurfaceView
-              key={managedSurface.surface.resource.id}
+              // TODO base key on surface id + client id
+              // key={managedSurface.surface.resource.id}
               seat={seat}
               managedSurface={managedSurface}
               active={activeManagedSurface === managedSurface}
             />)
         }</Workspace>
-      </div>
+      </>
     )
   }
 }

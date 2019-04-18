@@ -1,11 +1,7 @@
 import './style.css'
-import { h, Component } from 'preact'
+import React from 'react'
 
-class Login extends Component {
-  constructor ({ auth }) {
-    super({ auth })
-  }
-
+class Login extends React.Component {
   componentDidMount () {
     const { auth, id } = this.props
     auth.start(this.base, id)
@@ -15,15 +11,9 @@ class Login extends Component {
     return false
   }
 
-  /**
-   * @param {string}id
-   * @param state
-   * @param context
-   * @return {*}
-   */
-  render ({ id }, state, context) {
+  render () {
     return (
-      <div id={id} />
+      <div id={this.props.id} />
     )
   }
 }

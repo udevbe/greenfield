@@ -1,21 +1,5 @@
 import './style.css'
-import { h, Component } from 'preact'
+import React from 'react'
 
-class EntriesContainer extends Component {
-  constructor (props) {
-    super(props)
-  }
-
-  /**
-   * @param children
-   * @param state
-   * @param context
-   */
-  render ({ children }, state, context) {
-    return (
-      <div className={'entries-container'}>{children}</div>
-    )
-  }
-}
-
-export default EntriesContainer
+export default (props) =>
+  <div className={'entries-container'}>{props.children}</div>

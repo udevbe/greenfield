@@ -1,14 +1,7 @@
 import './style.css'
-import { h, Component } from 'preact'
+import React from 'react'
 
-class Logo extends Component {
-  render (props, state, context) {
-    return (
-      <p className={'logo'}>
+export default () =>
+  <p className={'logo'}>
         Greenf<span className={'logo i'}>i</span>eld
-      </p>
-    )
-  }
-}
-
-export default Logo
+  </p>

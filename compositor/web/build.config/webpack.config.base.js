@@ -36,7 +36,7 @@ const commonConfig = (appBundle, buildDir, debug) => {
       new HtmlWebpackPlugin({
         file: htmlIndex,
         title: 'Greenfield',
-        meta: { viewport: 'width=device-width, initial-scale=1, shrink-to-fit=no' },
+        meta: { viewport: 'minimum-scale=1, initial-scale=1, width=device-width, shrink-to-fit=no' },
         favicon: path.resolve(__dirname, `../public/favicon.ico`),
         minify: debug ? false : {
           removeAttributeQuotes: true,

@@ -1,19 +1,17 @@
 import './style.css'
-import { h, Component } from 'preact'
+import React from 'react'
 
-class ManagedSurfaceEntry extends Component {
+class ManagedSurfaceEntry extends React.PureComponent {
   /**
-   * @param {Seat}seat
-   * @param {ManagedSurface}managedSurface
-   * @param {boolean}active
+   * @param {{seat:Seat, managedSurface:ManagedSurface, active:boolean}}props
    */
-  constructor ({ seat, managedSurface, active }) {
-    super({ seat, managedSurface, active })
+  constructor (props) {
+    super(props)
     this.state = {
       title: ''
     }
 
-    managedSurface.onTitle.push((newTitle) => this.setState(() => ({ title: newTitle })))
+    props.managedSurface.onTitle.push((newTitle) => this.setState(() => ({ title: newTitle })))
   }
 
   /**
@@ -27,15 +25,10 @@ class ManagedSurfaceEntry extends Component {
     seat.pointer.session.flush()
   }
 
-  /**
-   * @param {Seat}seat
-   * @param {ManagedSurface}managedSurface
-   * @param {boolean}active
-   * @param {string}title
-   * @param context
-   * @return {*}
-   */
-  render ({ seat, managedSurface, active }, { title }, context) {
+  render () {
+    const { active } = this.props
+    const { title } = this.state
+
     let classNames = 'entry'
     if (active) {
       classNames += ' entry-focus'

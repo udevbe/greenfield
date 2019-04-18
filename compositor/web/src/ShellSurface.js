@@ -404,13 +404,11 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    * @private
    */
   _createUserShellSurface () {
-    this._userShellSurface = this._userShell.manage(/** @type {Surface} */this.wlSurfaceResource.implementation)
-    this._userShellSurface.onActivationRequest = () => {
-      this._userShellSurface.activation()
-    }
-    this._userShellSurface.onInactive = () => {
-      // I don't think we need to do something here?
-    }
+    this._userShellSurface = this._userShell.manage(
+      /** @type {Surface} */this.wlSurfaceResource.implementation,
+      () => this._userShellSurface.activation(),
+      () => { /* NOOP */ }
+    )
     this._userShellSurface.title = this._title
     this._userShellSurface.appId = this._clazz
     this._userShellSurface.mapped = this._mapped

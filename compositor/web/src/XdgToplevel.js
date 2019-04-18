@@ -57,28 +57,31 @@ export default class XdgToplevel extends XdgToplevelRequests {
    */
   static create (xdgToplevelResource, xdgSurface, session, userShell) {
     const surface = /** @type {Surface} */xdgSurface.wlSurfaceResource.implementation
-    const userShellSurface = userShell.manage(surface)
-    const xdgToplevel = new XdgToplevel(xdgToplevelResource, xdgSurface, session, userShellSurface)
+    const xdgToplevel = new XdgToplevel(xdgToplevelResource, xdgSurface, session)
     xdgToplevelResource.implementation = xdgToplevel
     surface.role = xdgToplevel
 
-    userShellSurface.onActivationRequest = () => {
-      if (xdgToplevel._configureState.state.includes(activated)) {
-        userShellSurface.activation()
-      } else {
-        const newState = xdgToplevel._configureState.state.slice()
-        newState.push(activated)
-        xdgToplevel._emitConfigure(xdgToplevelResource, xdgToplevel._configureState.width, xdgToplevel._configureState.height, newState, none)
+    const userShellSurface = userShell.manage(
+      surface,
+      () => {
+        if (xdgToplevel._configureState.state.includes(activated)) {
+          userShellSurface.activation()
+        } else {
+          const newState = xdgToplevel._configureState.state.slice()
+          newState.push(activated)
+          xdgToplevel._emitConfigure(xdgToplevelResource, xdgToplevel._configureState.width, xdgToplevel._configureState.height, newState, none)
+        }
+      },
+      () => {
+        if (xdgToplevel._configureState.state.includes(activated)) {
+          const newState = xdgToplevel._configureState.state.slice()
+          const idx = newState.indexOf(activated)
+          newState.splice(idx, 1)
+          xdgToplevel._emitConfigure(xdgToplevelResource, xdgToplevel._configureState.width, xdgToplevel._configureState.height, newState, none)
+        }
       }
-    }
-    userShellSurface.onInactive = () => {
-      if (xdgToplevel._configureState.state.includes(activated)) {
-        const newState = xdgToplevel._configureState.state.slice()
-        const idx = newState.indexOf(activated)
-        newState.splice(idx, 1)
-        xdgToplevel._emitConfigure(xdgToplevelResource, xdgToplevel._configureState.width, xdgToplevel._configureState.height, newState, none)
-      }
-    }
+    )
+    xdgToplevel.userShellSurface = userShellSurface
 
     return xdgToplevel
   }
@@ -88,10 +91,9 @@ export default class XdgToplevel extends XdgToplevelRequests {
    * @param {XdgToplevelResource}xdgToplevelResource
    * @param {XdgSurface}xdgSurface
    * @param {Session} session
-   * @param {UserShellSurface} userShellSurface
    * @private
    */
-  constructor (xdgToplevelResource, xdgSurface, session, userShellSurface) {
+  constructor (xdgToplevelResource, xdgSurface, session) {
     super()
     /**
      * @type {XdgToplevelResource}
@@ -109,7 +111,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     /**
      * @type {UserShellSurface}
      */
-    this.userShellSurface = userShellSurface
+    this.userShellSurface = null
     /**
      * @type {XdgToplevelResource|null}
      * @private
