@@ -1,5 +1,8 @@
-import './style.css'
 import React from 'react'
+import PropTypes from 'prop-types'
+import Seat from '../../../Seat'
+import Tab from '@material-ui/core/es/Tab/Tab'
+import ManagedSurface from '../desktopusershell/ManagedSurface'
 
 class ManagedSurfaceEntry extends React.PureComponent {
   /**
@@ -20,7 +23,6 @@ class ManagedSurfaceEntry extends React.PureComponent {
   _requestActivation (e) {
     e.preventDefault()
     const { seat, managedSurface } = /** @type{{seat:Seat, managedSurface: ManagedSurface}} */this.props
-    // FIXME call is racy. Function is set at some arbitrary future point.
     managedSurface.requestActivation()
     seat.pointer.session.flush()
   }
@@ -29,14 +31,16 @@ class ManagedSurfaceEntry extends React.PureComponent {
     const { active } = this.props
     const { title } = this.state
 
-    let classNames = 'entry'
-    if (active) {
-      classNames += ' entry-focus'
-    }
     return (
-      <div className={classNames} onClick={(e) => this._requestActivation(e)}>{title}</div>
+      <Tab label={title} selected={active} onClick={(e) => this._requestActivation(e)} />
     )
   }
+}
+
+ManagedSurfaceEntry.propTypes = {
+  seat: PropTypes.instanceOf(Seat).isRequired,
+  managedSurface: PropTypes.instanceOf(ManagedSurface).isRequired,
+  active: PropTypes.bool.isRequired
 }
 
 export default ManagedSurfaceEntry

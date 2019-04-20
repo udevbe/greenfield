@@ -1,26 +1,29 @@
 import './style.css'
 import ReactDOM from 'react-dom'
 import React from 'react'
+import PropTypes from 'prop-types'
+
+import CssBaseline from '@material-ui/core/CssBaseline'
 
 import TopPanel from '../toppanel/TopPanel.jsx'
 import Workspace from '../workspace/Workspace.jsx'
 import EntriesContainer from '../entriescontainer/EntriesContainer.jsx'
-import ManagedSurfaceEntry from '../managedsurfaceentry/ManagedSurfaceEntry.jsx'
-import ManagedSurfaceView from '../managedsurfaceview/ManagedSurfaceView.jsx'
 import ManagedSurface from './ManagedSurface'
 import Overlay from '../overlay/Overlay.jsx'
 import Logo from '../logo/Logo.jsx'
 import Login from '../login/Login.jsx'
 import auth from './Auth'
+import Seat from '../../../Seat'
+import UserShell from '../../../UserShell'
 
 // TODO we probably want a more mvvm like structure here
-class DesktopUserShell extends React.Component {
+class DesktopUserShell extends React.PureComponent {
   /**
    * @param {Seat}seat
    * @return {UserShell}
    */
   static create (seat) {
-    const userShell = {}
+    const userShell = new UserShell()
     const shellContainer = document.createElement('div')
     shellContainer.setAttribute('id', 'shell-container')
     document.body.appendChild(shellContainer)
@@ -154,10 +157,12 @@ class DesktopUserShell extends React.Component {
     this.setState(
       /**
        * @param {Array<ManagedSurface>}managedSurfaces
+       * @param {ManagedSurface}activeManagedSurface
        * @return {{managedSurfaces: Array<ManagedSurface>}}
        */
-      ({ managedSurfaces }) => {
+      ({ managedSurfaces, activeManagedSurface }) => {
         return {
+          activeManagedSurface: activeManagedSurface === managedSurface ? null : activeManagedSurface,
           managedSurfaces: managedSurfaces.filter(element => element.surface !== managedSurface.surface)
         }
       })
@@ -169,35 +174,31 @@ class DesktopUserShell extends React.Component {
       /** @type {{managedSurface: Array<ManagedSurface>, activeManagedSurface: ManagedSurface|null, user:firebase.User}} */this.state
     return (
       <>
+        <CssBaseline />
         <Overlay off={!!user}>
           <Logo />
           <Login auth={auth} id={'auth-container'} />
         </Overlay>
         <TopPanel>
-          <EntriesContainer>{
-            managedSurfaces.map(managedSurface =>
-              <ManagedSurfaceEntry
-                // TODO base key on surface id + client id
-                // key={managedSurface.surface.resource.client.id}
-                seat={seat}
-                managedSurface={managedSurface}
-                active={activeManagedSurface === managedSurface}
-              />)
-          }</EntriesContainer>
+          <EntriesContainer
+            managedSurfaces={managedSurfaces}
+            activeManagedSurface={activeManagedSurface}
+            seat={seat}
+          />
         </TopPanel>
-        <Workspace>{
-          managedSurfaces.map(managedSurface =>
-            <ManagedSurfaceView
-              // TODO base key on surface id + client id
-              // key={managedSurface.surface.resource.id}
-              seat={seat}
-              managedSurface={managedSurface}
-              active={activeManagedSurface === managedSurface}
-            />)
-        }</Workspace>
+        <Workspace
+          managedSurfaces={managedSurfaces}
+          activeManagedSurface={activeManagedSurface}
+          seat={seat}
+        />
       </>
     )
   }
+}
+
+DesktopUserShell.propTypes = {
+  seat: PropTypes.instanceOf(Seat).isRequired,
+  userShell: PropTypes.instanceOf(UserShell).isRequired
 }
 
 export default DesktopUserShell

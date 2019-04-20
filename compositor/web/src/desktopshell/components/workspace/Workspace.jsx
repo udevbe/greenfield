@@ -1,5 +1,6 @@
 import './style.css'
 import React from 'react'
+import ManagedSurfaceView from '../managedsurfaceview/ManagedSurfaceView.jsx'
 
 class Workspace extends React.PureComponent {
   constructor (props) {
@@ -8,10 +9,22 @@ class Workspace extends React.PureComponent {
   }
 
   render () {
+    const { managedSurfaces, seat, activeManagedSurface } = this.props
+
     return (
       <div id={'workspace'} ref={this.ref}>{
-        this.props.children.map(child => {
-          return React.cloneElement(child, { workspace: this })
+        managedSurfaces.map(managedSurface => {
+          const { client, id } = managedSurface.surface.resource
+
+          return (
+            <ManagedSurfaceView
+              key={`${client.id}-${id}`}
+              seat={seat}
+              managedSurface={managedSurface}
+              active={activeManagedSurface === managedSurface}
+              workspace={this}
+            />
+          )
         })
       }</div>
     )

@@ -15,8 +15,6 @@ class ManagedSurfaceView extends React.Component {
   componentDidMount () {
     const { seat, managedSurface, workspace } = /** @type {{ seat: Seat, managedSurface: ManagedSurface, workspace: Workspace }} */ this.props
     managedSurface.view.attachTo(workspace.ref.current)
-    // FIXME this is racy. requestActivation callback must be provided when managed surface is created and not
-    // set somewhere arbitrarily in the future
     managedSurface.requestActivation()
     seat.pointer.session.flush()
   }

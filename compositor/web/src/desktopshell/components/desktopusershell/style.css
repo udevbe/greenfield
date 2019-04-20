@@ -1,17 +1,9 @@
-@import url("https://fonts.googleapis.com/css?family=Roboto:500");
+@import url("https://fonts.googleapis.com/css?family=Roboto:300,400,500");
 
 html, body {
-    -webkit-font-smoothing: antialiased;
-    -moz-font-smoothing: antialiased;
-    -o-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-
-    margin: 0;
-    padding: 0;
     height: 100vh;
     min-height: 100vh;
     overflow: hidden;
-
     display: flex;
     flex-direction: column;
 }
@@ -23,11 +15,6 @@ html, body {
 
     display: flex;
     flex-direction: column;
-}
-
-input::placeholder {
-    color: white;
-    opacity: 1;
 }
 
 .fadeToUnresponsive {
