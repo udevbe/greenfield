@@ -25,7 +25,6 @@ class EntriesContainer extends React.Component {
       <Tabs value={value}>{
         managedSurfaces.map(managedSurface => {
           const { client, id } = managedSurface.surface.resource
-
           return (
             <ManagedSurfaceEntry
               key={`${client.id}-${id}`}

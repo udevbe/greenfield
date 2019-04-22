@@ -1,9 +1,11 @@
 import './style.css'
 import React from 'react'
 
+import auth from '../desktopusershell/Auth'
+
 class Login extends React.Component {
   componentDidMount () {
-    const { auth, id } = this.props
+    const { id } = this.props
     auth.start(this.base, id)
   }
 

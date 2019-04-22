@@ -3,11 +3,10 @@ import ReactDOM from 'react-dom'
 import React from 'react'
 import PropTypes from 'prop-types'
 
-import CssBaseline from '@material-ui/core/CssBaseline'
+import CssBaseline from '@material-ui/core/es/CssBaseline'
 
 import TopPanel from '../toppanel/TopPanel.jsx'
 import Workspace from '../workspace/Workspace.jsx'
-import EntriesContainer from '../entriescontainer/EntriesContainer.jsx'
 import ManagedSurface from './ManagedSurface'
 import Overlay from '../overlay/Overlay.jsx'
 import Logo from '../logo/Logo.jsx'
@@ -46,9 +45,29 @@ class DesktopUserShell extends React.PureComponent {
       activeManagedSurface: null,
       user: auth.user
     }
-    auth.login().then(() => this.setState(() => ({ user: auth.user })))
+
+    if (auth.user) {
+      this._waitForLogout()
+    } else {
+      this._waitForLogin()
+    }
+
     props.userShell.manage = (surface, activeCallback, inactivateCallback) => this.manage(surface, activeCallback, inactivateCallback)
     this._activateManagedSurfaceOnPointerButton()
+  }
+
+  _waitForLogin () {
+    auth.whenLogin().then((user) => {
+      this.setState(() => ({ user }))
+      this._waitForLogout()
+    })
+  }
+
+  _waitForLogout () {
+    auth.whenLogout().then(() => {
+      this.setState(() => ({ user: null }))
+      this._waitForLogin()
+    })
   }
 
   /**
@@ -177,15 +196,14 @@ class DesktopUserShell extends React.PureComponent {
         <CssBaseline />
         <Overlay off={!!user}>
           <Logo />
-          <Login auth={auth} id={'auth-container'} />
+          <Login id={'auth-container'} />
         </Overlay>
-        <TopPanel>
-          <EntriesContainer
-            managedSurfaces={managedSurfaces}
-            activeManagedSurface={activeManagedSurface}
-            seat={seat}
-          />
-        </TopPanel>
+        <TopPanel
+          user={user}
+          managedSurfaces={managedSurfaces}
+          activeManagedSurface={activeManagedSurface}
+          seat={seat}
+        />
         <Workspace
           managedSurfaces={managedSurfaces}
           activeManagedSurface={activeManagedSurface}

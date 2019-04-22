@@ -87,15 +87,26 @@ class Auth {
     this.userCredential = null
 
     /**
-     * @type {function():void}
+     * @type {function(firebase.User):void}
      * @private
      */
     this._loginResolve = null
     /**
-     * @type {Promise<void>}
+     * @type {Promise<firebase.User>}
      * @private
      */
     this._loginPromise = new Promise(resolve => { this._loginResolve = resolve })
+
+    /**
+     * @type {function():void}
+     * @private
+     */
+    this._logoutResolve = null
+    /**
+     * @type {Promise<void>}
+     * @private
+     */
+    this._logoutPromise = new Promise(resolve => { this._logoutResolve = resolve })
     /**
      * @type {boolean}
      * @private
@@ -113,11 +124,25 @@ class Auth {
       if (user) {
         // logged in, happens each time the user opens the web page and successfully authenticates
         // user logged in thus hide further ui screens
+        this.user = user
+        if (user) {
+          // show user a warning if they want to close this page
+          window.onbeforeunload = (e) => {
+            const dialogText = ''
+            e.returnValue = dialogText
+            return dialogText
+          }
+        }
+
         this._onLogin(user)
       } else {
         // logged out, happens when formerly known auto sign-in user auth failed, or when user explicitly logs out.
         this._onLogout()
-        if (!this._started) {
+
+        const shouldStart = this.user || !this._started
+        this.user = null
+        window.onbeforeunload = null
+        if (shouldStart) {
           // show ui on logout if user auth failed on start
           this.ui.start('#auth-container', this._uiConfig)
         }
@@ -131,11 +156,19 @@ class Auth {
     }
   }
 
+  signOut () {
+    return firebase.auth().signOut()
+  }
+
   /**
-   * @return {Promise<void>}
+   * @return {Promise<firebase.User>}
    */
-  login () {
+  whenLogin () {
     return this._loginPromise
+  }
+
+  whenLogout () {
+    return this._logoutPromise
   }
 
   /**
@@ -152,27 +185,24 @@ class Auth {
     // const uid = user.uid
     // const phoneNumber = user.phoneNumber
     // const providerData = user.providerData
-    this.user = user
-    if (user) {
-      // show user a warning if they want to close this page
-      window.onbeforeunload = (e) => {
-        const dialogText = ''
-        e.returnValue = dialogText
-        return dialogText
-      }
-    }
+
     // user.getIdToken().then(accessToken => {
     //   // TODO user signed it. hide login window & render rest of ui
     //   // TODO do something with token
     //
     // })
 
-    this._loginResolve()
+    let newLoginResolve = null
+    this._loginPromise = new Promise(resolve => { newLoginResolve = resolve })
+    this._loginResolve(user)
+    this._loginResolve = newLoginResolve
   }
 
   _onLogout () {
-    // TODO User signed out. Shut down clients & show login screen
-    this.user = null
+    let newLogoutResolve = null
+    this._logoutPromise = new Promise(resolve => { newLogoutResolve = resolve })
+    this._logoutResolve()
+    this._logoutResolve = newLogoutResolve
   }
 }
 
