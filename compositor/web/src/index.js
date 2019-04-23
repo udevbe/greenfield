@@ -41,7 +41,7 @@ import WebGL from './webgl/WebGL'
  */
 async function setup (session) {
   // TODO enable through config
-  // await session.withRemote(() => { /* TODO retry here */ })
+  await session.withRemote(() => { /* TODO retry here */ })
 
   const output = Output.create()
   const seat = Seat.create(session)
