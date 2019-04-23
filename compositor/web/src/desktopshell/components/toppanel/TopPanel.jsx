@@ -64,13 +64,17 @@ class TopPanel extends React.Component {
    * @param {Event}event
    * @private
    */
-  _handleUserMenu (event) {
+  _userMenuOpen (event) {
     const anchorEl = event.currentTarget
     this.setState(() => ({ anchorEl }))
   }
 
   _handleLogout () {
     auth.signOut()
+    this._userMenuClose()
+  }
+
+  _userMenuClose () {
     this.setState(() => ({ anchorEl: null }))
   }
 
@@ -117,7 +121,7 @@ class TopPanel extends React.Component {
           <IconButton
             aria-owns={anchorEl ? 'user-menu' : undefined}
             aria-haspopup='true'
-            onClick={(event) => this._handleUserMenu(event)}
+            onClick={(event) => this._userMenuOpen(event)}
             color='inherit'
           >
             <AccountCircle />
@@ -126,10 +130,11 @@ class TopPanel extends React.Component {
             id='user-menu'
             anchorEl={anchorEl}
             open={Boolean(anchorEl)}
-            onClose={this.handleClose}
+            onClose={() => this._userMenuClose()}
+            modal
           >
-            {/*<MenuItem onClick={this.handleClose}>Profile</MenuItem>*/}
-            {/*<MenuItem onClick={this.handleClose}>My account</MenuItem>*/}
+            {/* <MenuItem onClick={this.handleClose}>Profile</MenuItem> */}
+            {/* <MenuItem onClick={this.handleClose}>My account</MenuItem> */}
             <MenuItem onClick={() => this._handleLogout()}>
               <SvgIcon>
                 <path
