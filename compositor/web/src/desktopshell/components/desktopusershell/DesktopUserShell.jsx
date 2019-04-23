@@ -11,7 +11,7 @@ import ManagedSurface from './ManagedSurface'
 import Overlay from '../overlay/Overlay.jsx'
 import Logo from '../logo/Logo.jsx'
 import Login from '../login/Login.jsx'
-import auth from './Auth'
+import auth from '../../Auth'
 import Seat from '../../../Seat'
 import UserShell from '../../../UserShell'
 
@@ -144,7 +144,7 @@ class DesktopUserShell extends React.PureComponent {
         })
 
         if (targetManagedSurface) {
-          targetManagedSurface.requestActivation()
+          targetManagedSurface.requestActivation(targetManagedSurface)
         }
       }
       setTimeout(() => this._activateManagedSurfaceOnPointerButton())

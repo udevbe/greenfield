@@ -22,7 +22,7 @@ import EntriesContainer from '../entriescontainer/EntriesContainer.jsx'
 import Seat from '../../../Seat'
 import ManagedSurface from '../desktopusershell/ManagedSurface'
 
-import auth from '../desktopusershell/Auth'
+import auth from '../../Auth'
 
 const styles = {
   root: {

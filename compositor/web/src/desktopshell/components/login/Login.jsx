@@ -1,7 +1,7 @@
 import './style.css'
 import React from 'react'
 
-import auth from '../desktopusershell/Auth'
+import auth from '../../Auth'
 
 class Login extends React.Component {
   componentDidMount () {

@@ -30,6 +30,7 @@ import Subcompositor from './Subcompositor'
 import './style/greenfield.css'
 import XdgWmBase from './XdgWmBase'
 import DesktopUserShell from './desktopshell/components/desktopusershell/DesktopUserShell.jsx'
+import auth from './desktopshell/Auth'
 import RtcSocket from './RtcSocket'
 import WebShm from './webshm/WebShm'
 import WebAppSocket from './WebAppSocket'
@@ -43,7 +44,10 @@ async function init (session) {
   // TODO enable through config
   await session.withRemote(() => { /* TODO retry here */ })
   const seat = Seat.create(session)
+
   const desktopUserShell = DesktopUserShell.create(seat)
+  await auth.whenLogin()
+  // TODO wait for logout and cleanup all the things & re-init
 
   const output = Output.create()
   const compositor = Compositor.create(session, seat)

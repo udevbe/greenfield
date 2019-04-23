@@ -61,9 +61,9 @@ export default class XdgToplevel extends XdgToplevelRequests {
     xdgToplevelResource.implementation = xdgToplevel
     surface.role = xdgToplevel
 
-    const userShellSurface = userShell.manage(
+    xdgToplevel.userShellSurface = userShell.manage(
       surface,
-      () => {
+      (userShellSurface) => {
         if (xdgToplevel._configureState.state.includes(activated)) {
           userShellSurface.activation()
         } else {
@@ -72,7 +72,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
           xdgToplevel._emitConfigure(xdgToplevelResource, xdgToplevel._configureState.width, xdgToplevel._configureState.height, newState, none)
         }
       },
-      () => {
+      (userShellSurface) => {
         if (xdgToplevel._configureState.state.includes(activated)) {
           const newState = xdgToplevel._configureState.state.slice()
           const idx = newState.indexOf(activated)
@@ -81,7 +81,6 @@ export default class XdgToplevel extends XdgToplevelRequests {
         }
       }
     )
-    xdgToplevel.userShellSurface = userShellSurface
 
     return xdgToplevel
   }

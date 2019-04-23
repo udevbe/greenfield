@@ -23,7 +23,7 @@ class ManagedSurfaceEntry extends React.PureComponent {
   _requestActivation (e) {
     e.preventDefault()
     const { seat, managedSurface } = /** @type{{seat:Seat, managedSurface: ManagedSurface}} */this.props
-    managedSurface.requestActivation()
+    managedSurface.requestActivation(managedSurface)
     seat.pointer.session.flush()
   }
 

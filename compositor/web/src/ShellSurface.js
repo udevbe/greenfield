@@ -65,18 +65,13 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     wlShellSurfaceResource.implementation = shellSurface
 
     // destroy the shell-surface if the surface is destroyed.
-    wlSurfaceResource.onDestroy().then(() => {
-      wlShellSurfaceResource.destroy()
-    })
+    wlSurfaceResource.onDestroy().then(() => wlShellSurfaceResource.destroy())
 
     wlSurfaceResource.implementation.role = shellSurface
     shellSurface._doPing(wlShellSurfaceResource)
 
     wlShellSurfaceResource.onDestroy().then(() => {
       shellSurface._unmap()
-      if (shellSurface._userShellSurface) {
-        shellSurface._userShellSurface.destroy()
-      }
       window.clearTimeout(shellSurface._timeoutTimer)
       window.clearTimeout(shellSurface._pingTimer)
     })
@@ -216,9 +211,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
       this._pingTimeoutActive = false
     }
     window.clearTimeout(this._timeoutTimer)
-    this._pingTimer = window.setTimeout(() => {
-      this._doPing(resource)
-    }, 5000)
+    this._pingTimer = window.setTimeout(() => this._doPing(resource), 5000)
   }
 
   /**
@@ -281,9 +274,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
       surfaceChildSelf.position = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
 
       const renderFrame = Renderer.createRenderFrame()
-      surface.views.forEach((view) => {
-        view.applyTransformations(renderFrame)
-      })
+      surface.views.forEach((view) => view.applyTransformations(renderFrame))
       renderFrame.fire()
     }
 
@@ -327,58 +318,40 @@ export default class ShellSurface extends WlShellSurfaceRequests {
 
     switch (edges) {
       case bottomRight: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return { w: width + deltaX, h: height + deltaY }
-        }
+        sizeAdjustment = (width, height, deltaX, deltaY) => ({ w: width + deltaX, h: height + deltaY })
         break
       }
       case top: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return { w: width, h: height - deltaY }
-        }
+        sizeAdjustment = (width, height, deltaX, deltaY) => ({ w: width, h: height - deltaY })
         break
       }
       case bottom: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return { w: width, h: height + deltaY }
-        }
+        sizeAdjustment = (width, height, deltaX, deltaY) => ({ w: width, h: height + deltaY })
         break
       }
       case left: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return { w: width - deltaX, h: height }
-        }
+        sizeAdjustment = (width, height, deltaX, deltaY) => ({ w: width - deltaX, h: height })
         break
       }
       case topLeft: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return { w: width - deltaX, h: height - deltaY }
-        }
+        sizeAdjustment = (width, height, deltaX, deltaY) => ({ w: width - deltaX, h: height - deltaY })
         break
       }
       case bottomLeft: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return { w: width - deltaX, h: height + deltaY }
-        }
+        sizeAdjustment = (width, height, deltaX, deltaY) => ({ w: width - deltaX, h: height + deltaY })
         break
       }
       case right: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return { w: width + deltaX, h: height }
-        }
+        sizeAdjustment = (width, height, deltaX, deltaY) => ({ w: width + deltaX, h: height })
         break
       }
       case topRight: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return { w: width + deltaX, h: height - deltaY }
-        }
+        sizeAdjustment = (width, height, deltaX, deltaY) => ({ w: width + deltaX, h: height - deltaY })
         break
       }
       case none:
       default: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return { w: width, h: height }
-        }
+        sizeAdjustment = (width, height, deltaX, deltaY) => ({ w: width, h: height })
         break
       }
     }
@@ -394,9 +367,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
       const size = sizeAdjustment(surfaceWidth, surfaceHeight, deltaX, deltaY)
       this.resource.configure(edges, size.w, size.h)
     }
-    pointer.onButtonRelease().then(() => {
-      pointer.removeMouseMoveListener(resizeListener)
-    })
+    pointer.onButtonRelease().then(() => pointer.removeMouseMoveListener(resizeListener))
     pointer.addMouseMoveListener(resizeListener)
   }
 
@@ -406,8 +377,8 @@ export default class ShellSurface extends WlShellSurfaceRequests {
   _createUserShellSurface () {
     this._userShellSurface = this._userShell.manage(
       /** @type {Surface} */this.wlSurfaceResource.implementation,
-      () => this._userShellSurface.activation(),
-      () => { /* NOOP */ }
+      (userShellSurface) => userShellSurface.activation(),
+      (userShellSurface) => { /* NOOP */ }
     )
     this._userShellSurface.title = this._title
     this._userShellSurface.appId = this._clazz
@@ -583,9 +554,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
       const renderFrame = Renderer.createRenderFrame()
       view.applyTransformations(renderFrame)
       renderFrame.fire()
-      view.onDestroy().then(() => {
-        view.detach()
-      })
+      view.onDestroy().then(() => view.detach())
     }
     // having added this shell-surface to a parent will have it create a view for each parent view
     const views = parent.implementation.addChild(surfaceChild)
@@ -596,9 +565,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     surface.hasKeyboardInput = (flags & inactive) === 0
 
     // handle popup window grab
-    pointer.popupGrab(this.wlSurfaceResource).then(() => {
-      resource.popupDone()
-    })
+    pointer.popupGrab(this.wlSurfaceResource).then(() => resource.popupDone())
   }
 
   /**
