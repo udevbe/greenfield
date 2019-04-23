@@ -1,6 +1,7 @@
 const path = require('path')
 const webpack = require('webpack')
 const CleanWebpackPlugin = require('clean-webpack-plugin')
+const CompressionPlugin = require('compression-webpack-plugin')
 const merge = require('webpack-merge')
 
 const baseConfig = require('./webpack.config.base')
@@ -17,7 +18,8 @@ const prod = {
     }),
     new webpack.DefinePlugin({
       DEBUG: JSON.stringify(false)
-    })
+    }),
+    new CompressionPlugin()
   ]
 }
 

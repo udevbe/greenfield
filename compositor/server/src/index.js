@@ -2,6 +2,7 @@
 
 const { service: serviceConfig } = require('./config')
 const express = require('express')
+const compression = require('compression')
 const http = require('http')
 const childProcess = require('child_process')
 const path = require('path')
@@ -170,6 +171,9 @@ function main () {
   console.log(`[compositor-service] >>> running in ${process.env.DEBUG ? 'DEBUG' : 'PRODUCTION'} mode <<<`)
   express.static.mime.define({ 'application/wasm': ['wasm'] })
   const app = express()
+  if (!process.env.DEBUG) {
+    app.use(compression())
+  }
   app.use(express.static(path.join(__dirname, process.env.DEV ? '../../web/dev' : '../../web/dist')))
 
   const server = http.createServer()
