@@ -42,7 +42,6 @@ import WebGL from './webgl/WebGL'
  */
 async function init (session) {
   // TODO enable through config
-  await session.withRemote(() => { /* TODO retry here */ })
   const seat = Seat.create(session)
 
   const desktopUserShell = DesktopUserShell.create(seat)
@@ -73,6 +72,7 @@ async function init (session) {
   webGL.registerGlobal(session.display.registry)
 
   // RtcSocket enables native appl-endpoints with remote application to connect
+  await session.withRemote(() => { /* TODO retry here */ })
   RtcSocket.create(session)
 
   // WebAppSocket enables browser local applications running in a web worker to connect
