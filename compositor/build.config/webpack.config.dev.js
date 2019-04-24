@@ -19,7 +19,8 @@ const dev = {
   ],
   devServer: {
     contentBase: path.join(__dirname, '../dev'),
-    hot: true
+    hot: true,
+    open: true
   }
 }
 
