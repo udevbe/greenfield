@@ -18,7 +18,7 @@ import SvgIcon from '@material-ui/core/es/SvgIcon'
 import MenuIcon from '@material-ui/icons/Menu'
 import AccountCircle from '@material-ui/icons/AccountCircle'
 
-import EntriesContainer from '../entriescontainer/EntriesContainer.jsx'
+import EntriesContainer from '../entriescontainer/EntriesContainer'
 import Seat from '../../../Seat'
 import ManagedSurface from '../desktopusershell/ManagedSurface'
 

@@ -4,7 +4,7 @@ import PropTypes from 'prop-types'
 import { withStyles } from '@material-ui/core/styles'
 import Tabs from '@material-ui/core/es/Tabs'
 
-import ManagedSurfaceEntry from '../managedsurfaceentry/ManagedSurfaceEntry.jsx'
+import ManagedSurfaceEntry from '../managedsurfaceentry/ManagedSurfaceEntry'
 import Seat from '../../../Seat'
 import ManagedSurface from '../desktopusershell/ManagedSurface'
 

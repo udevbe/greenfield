@@ -16,7 +16,7 @@ const rootFiles = path.resolve(__dirname, '../public/*.*')
  * @param {string}appBundle
  * @param {string}buildDir
  * @param {boolean}debug
- * @return {{entry: string, output: {path: string, filename: string}, plugins: *[]}}
+ * @return *
  */
 const commonConfig = (appBundle, buildDir, debug) => {
   return {
@@ -48,6 +48,9 @@ const commonConfig = (appBundle, buildDir, debug) => {
         }
       })
     ],
+    resolve: {
+      extensions: ['.js', '.jsx']
+    },
     module: {
       rules: [
         {
@@ -56,6 +59,7 @@ const commonConfig = (appBundle, buildDir, debug) => {
         },
         {
           test: /\.(jsx)$/,
+          resolve: { extensions: ['.js', '.jsx'] },
           exclude: /node_modules/,
           use: {
             loader: 'babel-loader'
