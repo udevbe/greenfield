@@ -133,3 +133,4 @@ CTestTestfile.cmake
 /compositor/dist/
 /compositor/src/protocol/
 /app-endpointd/src/protocol
+/compositor/public/clients/
