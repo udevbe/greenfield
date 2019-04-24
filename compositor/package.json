@@ -6,15 +6,14 @@
     "greenfield": "./server/src/index.js"
   },
   "scripts": {
-    "prepare:web:generate:webgl": "westfield-scanner-server ../protocol/gr-web-gl.xml -o web/src/protocol",
-    "prepare:web:generate:webshm": "westfield-scanner-server ../protocol/gr-web-shm.xml -o web/src/protocol",
-    "prepare:web:generate:xdgshell": "westfield-scanner-server ../protocol/xdg-shell.xml -o web/src/protocol",
-    "prepare:web:generate:wayland": "westfield-scanner-server ../protocol/wayland.xml -o web/src/protocol",
-    "prepare:web:generate": "mkdir -p web/src/protocol/ && npm run prepare:web:generate:wayland && npm run prepare:web:generate:xdgshell && npm run prepare:web:generate:webshm && npm run prepare:web:generate:webgl",
-    "prepare": "npm run prepare:web:generate && webpack --config web/build.config/webpack.config.prod.js",
-    "prepare:dev": "npm run prepare:web:generate && webpack --config web/build.config/webpack.config.dev.js",
-    "start": "node ./server/src/index.js",
-    "start:dev": "export DEV=1 && export DEBUG=1 && node ./server/src/index.js"
+    "prepare:web:generate:webgl": "westfield-scanner-server ../protocol/gr-web-gl.xml -o src/protocol",
+    "prepare:web:generate:webshm": "westfield-scanner-server ../protocol/gr-web-shm.xml -o src/protocol",
+    "prepare:web:generate:xdgshell": "westfield-scanner-server ../protocol/xdg-shell.xml -o src/protocol",
+    "prepare:web:generate:wayland": "westfield-scanner-server ../protocol/wayland.xml -o src/protocol",
+    "prepare:web:generate": "mkdir -p src/protocol/ && npm run prepare:web:generate:wayland && npm run prepare:web:generate:xdgshell && npm run prepare:web:generate:webshm && npm run prepare:web:generate:webgl",
+    "prepare": "npm run prepare:web:generate && webpack --config build.config/webpack.config.prod.js",
+    "prepare:dev": "npm run prepare:web:generate && webpack --config build.config/webpack.config.dev.js",
+    "start": "webpack-dev-server -d --config build.config/webpack.config.dev.js"
   },
   "repository": {
     "type": "git",
@@ -45,7 +44,7 @@
     "react": "^16.8.6",
     "react-dom": "^16.8.6",
     "westfield-runtime-common": "0.2.0",
-    "westfield-runtime-server": "0.2.1",
+    "westfield-runtime-server": "0.2.0",
     "ws": "^6.2.1"
   },
   "devDependencies": {
@@ -58,10 +57,12 @@
     "copy-webpack-plugin": "^4.5.3",
     "css-loader": "^1.0.0",
     "html-webpack-plugin": "^3.2.0",
+    "react-hot-loader": "^4.8.4",
     "standard": "^12.0.1",
     "style-loader": "^0.23.1",
     "webpack": "^4.30.0",
     "webpack-cli": "^3.1.2",
+    "webpack-dev-server": "^3.3.1",
     "webpack-merge": "^4.1.5",
     "westfield-scanner-server": "0.2.0"
   },
@@ -84,7 +85,7 @@
       "server/src/protocol/wayland/*.js"
     ],
     "assets": [
-      "./web/dist/**/*"
+      "./dist/**/*"
     ]
   },
   "sideEffects": [

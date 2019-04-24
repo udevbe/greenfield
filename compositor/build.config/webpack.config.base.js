@@ -62,17 +62,6 @@ const commonConfig = (appBundle, buildDir, debug) => {
           }
         }
       ]
-    },
-    optimization: {
-      splitChunks: {
-        cacheGroups: {
-          libraries: {
-            name: 'libraries',
-            chunks: 'all',
-            test: /node_modules/
-          }
-        }
-      }
     }
   }
 }

@@ -127,11 +127,11 @@ class Auth {
         this.user = user
         if (user) {
           // show user a warning if they want to close this page
-          window.onbeforeunload = (e) => {
+          !DEBUG && (window.onbeforeunload = (e) => {
             const dialogText = ''
             e.returnValue = dialogText
             return dialogText
-          }
+          })
         }
 
         this._onLogin(user)
@@ -141,7 +141,7 @@ class Auth {
 
         const shouldStart = this.user || !this._started
         this.user = null
-        window.onbeforeunload = null
+        !DEBUG && (window.onbeforeunload = null)
         if (shouldStart) {
           // show ui on logout if user auth failed on start
           this.ui.start('#auth-container', this._uiConfig)

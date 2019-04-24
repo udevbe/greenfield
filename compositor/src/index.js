@@ -31,11 +31,12 @@ import './style/greenfield.css'
 import XdgWmBase from './XdgWmBase'
 import DesktopUserShell from './desktopshell/components/desktopusershell/DesktopUserShell.jsx'
 import auth from './desktopshell/Auth'
-import RtcSocket from './RtcSocket'
 import WebShm from './webshm/WebShm'
 import WebAppSocket from './WebAppSocket'
 import WebAppLauncher from './WebAppLauncher'
 import WebGL from './webgl/WebGL'
+import WSSocket from './WSSocket'
+import WSAppLauncher from './WSAppLauncher'
 
 /**
  * @param {Session}session
@@ -72,8 +73,8 @@ async function init (session) {
   webGL.registerGlobal(session.display.registry)
 
   // RtcSocket enables native appl-endpoints with remote application to connect
-  await session.withRemote(() => { /* TODO retry here */ })
-  RtcSocket.create(session)
+  const wsSocket = WSSocket.create(session)
+  const wsAppLauncher = WSAppLauncher.create(session, wsSocket)
 
   // WebAppSocket enables browser local applications running in a web worker to connect
   const webAppSocket = WebAppSocket.create(session)

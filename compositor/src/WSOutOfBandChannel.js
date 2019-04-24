@@ -17,13 +17,13 @@
 
 'use strict'
 
-export default class RtcOutOfBandChannel {
+export default class WSOutOfBandChannel {
   /**
    * @param {function(ArrayBuffer):void}onOutOfBandSend
-   * @return {RtcOutOfBandChannel}
+   * @return {WSOutOfBandChannel}
    */
   static create (onOutOfBandSend) {
-    return new RtcOutOfBandChannel(onOutOfBandSend)
+    return new WSOutOfBandChannel(onOutOfBandSend)
   }
 
   /**

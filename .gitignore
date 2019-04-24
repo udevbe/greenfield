@@ -129,7 +129,7 @@ CTestTestfile.cmake
 /local/native/build/
 /stats/stats.js
 
-/compositor/web/dev/
-/compositor/web/dist/
-/compositor/web/src/protocol/
+/compositor/dev/
+/compositor/dist/
+/compositor/src/protocol/
 /app-endpointd/src/protocol

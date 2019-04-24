@@ -20,7 +20,18 @@ const prod = {
       DEBUG: JSON.stringify(false)
     }),
     new CompressionPlugin()
-  ]
+  ],
+  optimization: {
+    splitChunks: {
+      cacheGroups: {
+        libraries: {
+          name: 'libraries',
+          chunks: 'all',
+          test: /node_modules/
+        }
+      }
+    }
+  }
 }
 
 module.exports = merge(base, prod)

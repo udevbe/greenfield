@@ -17,96 +17,27 @@
 
 'use strict'
 
-import WlBufferResource from './protocol/WlBufferResource'
+import WSOutOfBandChannel from './WSOutOfBandChannel'
 import StreamingBuffer from './remotestreaming/StreamingBuffer'
 import UUIDUtil from './UUIDUtil'
 import { WebFD } from 'westfield-runtime-common'
-import RtcOutOfBandChannel from './RtcOutOfBandChannel'
 
-/**
- * Conceptual webRTC server socket as webRTC doesn't have the notion of server/client model.
- * Clients (application endpoints) announce their desire to create a new RTC peer connection here.
- */
-class RtcSocket {
+class WSSocket {
   /**
    *
    * @param {Session}session
-   * @returns {RtcSocket}
+   * @returns {WSSocket}
    */
   static create (session) {
-    const rtcSocket = new RtcSocket(session)
-    session.messageHandlers['RTCSignaling'] = rtcSocket
-    return rtcSocket
+    return new WSSocket(session)
   }
 
-  /**
-   * @param {Session}session
-   */
   constructor (session) {
     /**
      * @type {Session}
      * @private
      */
     this._session = session
-    /**
-     * @type {Object.<string,RTCPeerConnection>}
-     * @private
-     */
-    this._appEndpointConnections = {}
-  }
-
-  async ['connect'] ({ remotePeerId }) {
-    if (this._appEndpointConnections[remotePeerId]) {
-      return
-    }
-
-    // TODO show to user available app-endpoints(?)
-    // TODO show to user status of app-endpoints (peer connection state)(?)
-
-    // TODO rtc connection options setup
-    const peerConnection = new window.RTCPeerConnection()
-    this._appEndpointConnections[remotePeerId] = peerConnection
-    peerConnection.ondatachannel = (event) => this._onDataChannel(event.channel, remotePeerId, peerConnection)
-
-    peerConnection.onnegotiationneeded = async () => {
-      DEBUG && console.log(`[webrtc-peer-connection: ${remotePeerId}] - negotiation needed. Sending sdp offer.`)
-      await this._sendOffer(remotePeerId, peerConnection)
-    }
-
-    peerConnection.onicecandidate = evt => {
-      const candidate = evt.candidate
-      if (candidate !== null) {
-        DEBUG && console.log(`[webrtc-peer-connection: ${remotePeerId}] - sending local ice candidate: ${candidate}.`)
-        this._sendRTCSignal(remotePeerId, {
-          object: 'RTCSignaling',
-          method: 'iceCandidate',
-          args: {
-            remotePeerId: this._session.compositorSessionId,
-            candidate
-          }
-        })
-      }
-    }
-
-    // TODO figure out what the lifecycle of a peer connection is in regards to it's connection state.
-    peerConnection.onconnectionstatechange = (event) => {
-      switch (peerConnection.connectionState) {
-        case 'connected':
-          DEBUG && console.log(`[webrtc-peer-connection: ${remotePeerId}] - open.`)
-          break
-        case 'disconnected':
-          DEBUG && console.log(`[webrtc-peer-connection: ${remotePeerId}] - disconnected.`)
-          break
-        case 'failed':
-          DEBUG && console.log(`[webrtc-peer-connection: ${remotePeerId}] - failed.`)
-          delete this._appEndpointConnections[remotePeerId]
-          break
-        case 'closed':
-          DEBUG && console.log(`[webrtc-peer-connection: ${remotePeerId}] - closed.`)
-          delete this._appEndpointConnections[remotePeerId]
-          break
-      }
-    }
   }
 
   /**
@@ -160,72 +91,62 @@ class RtcSocket {
   }
 
   /**
-   * @param {RTCDataChannel}dataChannel
-   * @param {string}appEndpointSessionId
-   * @param peerConnection
-   * @private
+   * @param {WebSocket}webSocket
    */
-  _onDataChannel (dataChannel, appEndpointSessionId, peerConnection) {
-    DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - data channel created.`)
+  onWebSocket (webSocket) {
+    DEBUG && console.log(`[WebSocket] - created.`)
 
-    dataChannel.binaryType = 'arraybuffer'
-    dataChannel.onopen = () => {
-      DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - data channel open.`)
+    webSocket.binaryType = 'arraybuffer'
+    webSocket.onopen = () => {
+      DEBUG && console.log(`[WebSocket] - open.`)
 
       const client = this._session.display.createClient()
       client.onClose().then(() => DEBUG && console.log(`[client] - closed.`))
 
-      peerConnection.oniceconnectionstatechange = () => {
-        if (peerConnection.iceConnectionState === 'disconnected') {
-          DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - ice connection state: disconnected.`)
-          client.close()
-        }
-      }
-
-      dataChannel.onclose = () => {
-        DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - data channel closed.`)
+      webSocket.onclose = () => {
+        DEBUG && console.log(`[WebSocket] - closed.`)
         client.close()
       }
-      dataChannel.onerror = (event) => DEBUG && console.log(`[webrtc-peer-connection: ${appEndpointSessionId}] - data channel error: ${event.message}.`)
+      webSocket.onerror = (event) => DEBUG && console.log(`[WebSocket] - error: ${event.message}.`)
 
       /**
        * @param {Array<{buffer: ArrayBuffer, fds: Array<WebFD>}>}wireMessages
        */
-      client.connection.onFlush = (wireMessages) => this._flushWireMessages(client, dataChannel, wireMessages)
+      client.connection.onFlush = (wireMessages) => this._flushWireMessages(client, webSocket, wireMessages)
 
-      const rtcOutOfBandChannel = RtcOutOfBandChannel.create((sendBuffer) => {
-        if (dataChannel.readyState === 'open') {
+      const wsOutOfBandChannel = WSOutOfBandChannel.create((sendBuffer) => {
+        if (webSocket.readyState === 'open') {
           try {
-            dataChannel.send(sendBuffer)
+            webSocket.send(sendBuffer)
           } catch (e) {
             console.log(e.message)
             client.close()
           }
         }
       })
-      this._setupClientOutOfBandHandlers(client, rtcOutOfBandChannel)
+      this._setupClientOutOfBandHandlers(client, wsOutOfBandChannel)
 
-      dataChannel.onmessage = (event) => this._handleDataChannelEvent(client, event, rtcOutOfBandChannel)
+      webSocket.onmessage = (event) => this._handleMessageEvent(client, event, wsOutOfBandChannel)
     }
   }
 
   /**
    * @param {Client}client
-   * @param {RtcOutOfBandChannel}rtcOutOfBandChannel
+   * @param {WSOutOfBandChannel}wsOutOfBandChannel
    * @private
    */
-  _setupClientOutOfBandHandlers (client, rtcOutOfBandChannel) {
+  _setupClientOutOfBandHandlers (client, wsOutOfBandChannel) {
     // send out-of-band resource destroy. opcode: 1
-    client.addResourceDestroyListener((resource) => rtcOutOfBandChannel.send(1, new Uint32Array([resource.id]).buffer))
+    client.addResourceDestroyListener((resource) => wsOutOfBandChannel.send(1, new Uint32Array([resource.id]).buffer))
 
     // listen for buffer creation. opcode: 2
-    rtcOutOfBandChannel.setListener(2, (message) => {
+    wsOutOfBandChannel.setListener(2, (message) => {
       const wlBufferResource = new WlBufferResource(client, new Uint32Array(message)[0], 1)
       wlBufferResource.implementation = StreamingBuffer.create(wlBufferResource)
     })
 
     // listen for buffer contents arriving. opcode: 3
-    rtcOutOfBandChannel.setListener(3, (outOfBandMessage) => {
+    wsOutOfBandChannel.setListener(3, (outOfBandMessage) => {
       const bufferId = new DataView(outOfBandMessage).getUint32(0, true)
       const wlBufferResource = client.connection.wlObjects[bufferId]
       const streamingBuffer = wlBufferResource.implementation
@@ -234,7 +155,7 @@ class RtcSocket {
     })
 
     // listen for file contents request. opcode: 4
-    rtcOutOfBandChannel.setListener(4, (arrayBuffer) => {
+    wsOutOfBandChannel.setListener(4, (arrayBuffer) => {
       const uint32Array = new Uint32Array(arrayBuffer)
       const fd = uint32Array[0]
       const webFD = this._session.webFS.getWebFD(fd)
@@ -262,7 +183,7 @@ class RtcSocket {
             message.set(new Uint8Array(transferable.slice(fileSize - fileContentsRemaining, (fileSize - fileContentsRemaining) + payloadLength)), 24)
 
             // message back file contents. opcode: 4
-            rtcOutOfBandChannel.send(4, message.buffer)
+            wsOutOfBandChannel.send(4, message.buffer)
 
             fileContentsRemaining -= payloadLength
           }
@@ -274,16 +195,16 @@ class RtcSocket {
   /**
    * @param {Client}client
    * @param {MessageEvent}event
-   * @param {RtcOutOfBandChannel}rtcOutOfBandChannel
+   * @param {WSOutOfBandChannel}wsOutOfBandChannel
    * @private
    */
-  _handleDataChannelEvent (client, event, rtcOutOfBandChannel) {
+  _handleMessageEvent (client, event, wsOutOfBandChannel) {
     const arrayBuffer = /** @type {ArrayBuffer} */event.data
     const webFDIntSize = 6
     const dataView = new DataView(arrayBuffer)
     const outOfBand = dataView.getUint32(0, true)
     if (outOfBand) {
-      rtcOutOfBandChannel.message(arrayBuffer)
+      wsOutOfBandChannel.message(arrayBuffer)
     } else {
       const receiveBuffer = new Uint32Array(arrayBuffer, Uint32Array.BYTES_PER_ELEMENT)
       const fdsInCount = receiveBuffer[0]
@@ -299,11 +220,11 @@ class RtcSocket {
 
   /**
    * @param {Client}client
-   * @param {RTCDataChannel}dataChannel
+   * @param {WebSocket}webSocket
    * @param {Array<{buffer: ArrayBuffer, fds: Array<WebFD>}>}wireMessages
    * @private
    */
-  _flushWireMessages (client, dataChannel, wireMessages) {
+  _flushWireMessages (client, webSocket, wireMessages) {
     // convert to arraybuffer so it can be send over a data channel.
     const webFDIntSize = 6
     const messagesSize = wireMessages.reduce((previousValue, currentValue) => {
@@ -328,33 +249,14 @@ class RtcSocket {
       offset += message.length
     })
 
-    if (dataChannel.readyState === 'open') {
+    if (webSocket.readyState === 'open') {
       try {
-        dataChannel.send(sendBuffer.buffer)
+        webSocket.send(sendBuffer.buffer)
       } catch (e) {
         console.log(e.message)
         client.close()
       }
     }
-  }
-
-  /**
-   * @param {string}appEndpointSessionId
-   * @param {RTCPeerConnection}peerConnection
-   * @return {Promise<void>}
-   * @private
-   */
-  async _sendOffer (appEndpointSessionId, peerConnection) {
-    const offer = await peerConnection.createOffer()
-    await peerConnection.setLocalDescription(offer)
-    this._sendRTCSignal(appEndpointSessionId, {
-      object: 'RTCSignaling',
-      method: 'sdpOffer',
-      args: {
-        remotePeerId: this._session.compositorSessionId,
-        offer
-      }
-    })
   }
 
   /**
@@ -414,76 +316,6 @@ class RtcSocket {
     }
     return new WebFD(fd, fdType, fdDomainUUID, onGetTransferable, onClose)
   }
-
-  /**
-   * @param {string}appEndpointSessionId
-   * @param {*}signal
-   * @private
-   */
-  _sendRTCSignal (appEndpointSessionId, signal) {
-    this._session.webSocket.send(JSON.stringify({
-      object: 'signalingServer',
-      method: 'rtcSignal',
-      args: {
-        appEndpointSessionId,
-        signalMessage: JSON.stringify(signal)
-      }
-    }))
-  }
-
-  /**
-   * @param {string}remotePeerId
-   * @param {RTCIceCandidateInit | RTCIceCandidate}candidate
-   * @return {Promise<void>}
-   */
-  async ['iceCandidate'] ({ remotePeerId, candidate }) {
-    const peerConnection = this._appEndpointConnections[remotePeerId]
-    if (!peerConnection) {
-      throw new Error(`[webrtc-peer-connection: ${remotePeerId}] - session not found.`)
-    }
-
-    await peerConnection.addIceCandidate(candidate)
-  }
-
-  /**
-   * @param {string}remotePeerId
-   * @param {RTCSessionDescriptionInit}reply
-   * @return {Promise<void>}
-   */
-  async ['sdpReply'] ({ remotePeerId, reply }) {
-    const peerConnection = this._appEndpointConnections[remotePeerId]
-    if (!peerConnection) {
-      throw new Error(`[webrtc-peer-connection: ${remotePeerId}] - session not found.`)
-    }
-
-    await peerConnection.setRemoteDescription(reply)
-  }
-
-  /**
-   * @param {string}remotePeerId
-   * @param {RTCSessionDescriptionInit}offer
-   * @return {Promise<void>}
-   */
-  async ['sdpOffer'] ({ remotePeerId, offer }) {
-    const peerConnection = this._appEndpointConnections[remotePeerId]
-    if (!peerConnection) {
-      throw new Error(`[webrtc-peer-connection: ${remotePeerId}] - session not found.`)
-    }
-
-    await peerConnection.setRemoteDescription(offer)
-    const answer = await peerConnection.createAnswer()
-    await peerConnection.setLocalDescription(answer)
-
-    process.env.DEBUG && console.log(`[webrtc-peer-connection: ${remotePeerId}] - sending browser sdp answer: ${answer}.`)
-    this._sendRTCSignal(remotePeerId, {
-      object: 'RTCSignaling',
-      method: 'sdpReply',
-      args: {
-        remotePeerId: this._session.compositorSessionId,
-        reply: answer
-      }
-    })
-  }
 }
 
-export default RtcSocket
+export default WSSocket
