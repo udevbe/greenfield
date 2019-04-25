@@ -50,19 +50,6 @@ html, body {
     background: none !important;
 }
 
-
-.logo {
-    font-family: 'Montserrat', sans-serif;
-    font-size: 4em;
-    text-align: center;
-    color: #565656;
-}
-
-.logo.i {
-    font-size: 1em;
-    color: #33cc33;
-}
-
 .overlay {
     position: fixed;
     display: flex;

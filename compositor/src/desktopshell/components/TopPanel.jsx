@@ -101,12 +101,12 @@ class TopPanel extends React.Component {
             id='user-menu'
             anchorEl={anchorEl}
             onClose={() => this._userMenuClose()}
+            user={user}
           />
         </Toolbar>
         <SettingsDrawer
           open={drawer}
           onClose={() => this._toggleDrawer(false)}
-          user={user}
         />
       </AppBar>
     )
