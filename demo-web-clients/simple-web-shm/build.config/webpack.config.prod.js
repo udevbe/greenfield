@@ -13,7 +13,9 @@ const prod = {
     new webpack.DefinePlugin({
       DEBUG: JSON.stringify(false)
     }),
-    new CompressionPlugin()
+    new CompressionPlugin({
+      deleteOriginalAssets: true
+    })
   ]
 }
 
