@@ -17,7 +17,7 @@ import ManagedSurface from '../ManagedSurface'
 
 import UserMenu from './UserMenu'
 import SettingsDrawer from './SettingsDrawer'
-import LauncherDialog from './LauncherDialog'
+import LauncherMenu from './LauncherMenu'
 
 const styles = {
   root: {
@@ -39,8 +39,8 @@ class TopPanel extends React.Component {
     super(props)
     this.state = {
       drawer: false,
-      launcherDialog: false,
-      userMenuAnchorEl: null
+      userMenuAnchorEl: null,
+      launcherMenuAnchorEl: null
     }
   }
 
@@ -65,15 +65,24 @@ class TopPanel extends React.Component {
     this.setState(() => ({ userMenuAnchorEl: null }))
   }
 
-  _toggleLauncherDialog (open) {
-    this.setState(() => ({ launcherDialog: open }))
+  /**
+   * @param {Event}event
+   * @private
+   */
+  _launcherMenuOpen (event) {
+    const launcherMenuAnchorEl = event.currentTarget
+    this.setState(() => ({ launcherMenuAnchorEl }))
+  }
+
+  _launcherMenuClose () {
+    this.setState(() => ({ launcherMenuAnchorEl: null }))
   }
 
   render () {
     const { classes, managedSurfaces, activeManagedSurface, seat, user } = this.props
     if (user === null) return null
 
-    const { drawer, userMenuAnchorEl, launcherDialog } = this.state
+    const { drawer, userMenuAnchorEl, launcherMenuAnchorEl } = this.state
 
     return (
       <AppBar className={classes.root} position='static' color='default'>
@@ -92,7 +101,7 @@ class TopPanel extends React.Component {
               seat={seat}
             />
           </div>
-          <IconButton onClick={() => this._toggleLauncherDialog(true)}>
+          <IconButton onClick={(event) => this._launcherMenuOpen(event)}>
             <AppsIcon />
           </IconButton>
           <IconButton
@@ -114,9 +123,10 @@ class TopPanel extends React.Component {
           open={drawer}
           onClose={() => this._toggleDrawer(false)}
         />
-        <LauncherDialog
-          open={launcherDialog}
-          onClose={() => this._toggleLauncherDialog(false)}
+        <LauncherMenu
+          id='launcher-menu'
+          anchorEl={launcherMenuAnchorEl}
+          onClose={() => this._launcherMenuClose()}
         />
       </AppBar>
     )
