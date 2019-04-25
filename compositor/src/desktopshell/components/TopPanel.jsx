@@ -17,6 +17,7 @@ import ManagedSurface from '../ManagedSurface'
 
 import UserMenu from './UserMenu'
 import SettingsDrawer from './SettingsDrawer'
+import LauncherDialog from './LauncherDialog'
 
 const styles = {
   root: {
@@ -38,7 +39,8 @@ class TopPanel extends React.Component {
     super(props)
     this.state = {
       drawer: false,
-      anchorEl: null
+      launcherDialog: false,
+      userMenuAnchorEl: null
     }
   }
 
@@ -55,19 +57,23 @@ class TopPanel extends React.Component {
    * @private
    */
   _userMenuOpen (event) {
-    const anchorEl = event.currentTarget
-    this.setState(() => ({ anchorEl }))
+    const userMenuAnchorEl = event.currentTarget
+    this.setState(() => ({ userMenuAnchorEl }))
   }
 
   _userMenuClose () {
-    this.setState(() => ({ anchorEl: null }))
+    this.setState(() => ({ userMenuAnchorEl: null }))
+  }
+
+  _toggleLauncherDialog (open) {
+    this.setState(() => ({ launcherDialog: open }))
   }
 
   render () {
     const { classes, managedSurfaces, activeManagedSurface, seat, user } = this.props
     if (user === null) return null
 
-    const { drawer, anchorEl } = this.state
+    const { drawer, userMenuAnchorEl, launcherDialog } = this.state
 
     return (
       <AppBar className={classes.root} position='static' color='default'>
@@ -86,27 +92,31 @@ class TopPanel extends React.Component {
               seat={seat}
             />
           </div>
-          <IconButton>
+          <IconButton onClick={() => this._toggleLauncherDialog(true)}>
             <AppsIcon />
           </IconButton>
           <IconButton
-            aria-owns={anchorEl ? 'user-menu' : undefined}
+            aria-owns={userMenuAnchorEl ? 'user-menu' : undefined}
             aria-haspopup='true'
             onClick={(event) => this._userMenuOpen(event)}
             color='inherit'
           >
             <AccountCircle />
           </IconButton>
-          <UserMenu
-            id='user-menu'
-            anchorEl={anchorEl}
-            onClose={() => this._userMenuClose()}
-            user={user}
-          />
         </Toolbar>
+        <UserMenu
+          id='user-menu'
+          anchorEl={userMenuAnchorEl}
+          onClose={() => this._userMenuClose()}
+          user={user}
+        />
         <SettingsDrawer
           open={drawer}
           onClose={() => this._toggleDrawer(false)}
+        />
+        <LauncherDialog
+          open={launcherDialog}
+          onClose={() => this._toggleLauncherDialog(false)}
         />
       </AppBar>
     )

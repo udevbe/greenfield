@@ -6,7 +6,6 @@ import { withStyles } from '@material-ui/core/styles/index'
 
 import Drawer from '@material-ui/core/es/Drawer'
 import MenuList from '@material-ui/core/es/MenuList'
-import MenuItem from '@material-ui/core/es/MenuItem'
 import Divider from '@material-ui/core/es/Divider'
 import PropTypes from 'prop-types'
 import Logo from './Logo'
@@ -21,13 +20,6 @@ const styles = {
 }
 
 class SettingsDrawer extends React.Component {
-  constructor (props) {
-    super(props)
-    this.state = {
-      drawer: false
-    }
-  }
-
   render () {
     const { open, onClose, classes } = this.props
     return (

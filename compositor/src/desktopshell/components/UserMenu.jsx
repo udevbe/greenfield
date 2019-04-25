@@ -62,7 +62,6 @@ class UserMenu extends React.Component {
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={onClose}
-        modal={'true'}
         disableAutoFocusItem
       >
         <ListItem className={classes.noFocus}>
@@ -99,7 +98,7 @@ UserMenu.propTypes = {
   classes: PropTypes.object.isRequired,
 
   id: PropTypes.string.isRequired,
-  anchorEl: PropTypes.object,
+  userMenuAnchorEl: PropTypes.object,
   onClose: PropTypes.func.isRequired,
   user: PropTypes.object
 }
