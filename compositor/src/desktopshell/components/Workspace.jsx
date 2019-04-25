@@ -1,6 +1,6 @@
 import './style.css'
 import React from 'react'
-import ManagedSurfaceView from '../managedsurfaceview/ManagedSurfaceView'
+import ManagedSurfaceView from './ManagedSurfaceView'
 
 class Workspace extends React.PureComponent {
   constructor (props) {

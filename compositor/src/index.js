@@ -29,7 +29,7 @@ import Subcompositor from './Subcompositor'
 
 import './style/greenfield.css'
 import XdgWmBase from './XdgWmBase'
-import DesktopUserShell from './desktopshell/components/desktopusershell/DesktopUserShell.jsx'
+import DesktopUserShell from './desktopshell/components/DesktopUserShell.jsx'
 import auth from './desktopshell/Auth'
 import WebShm from './webshm/WebShm'
 import WebAppSocket from './WebAppSocket'
@@ -82,7 +82,7 @@ async function init (session) {
 
   // [TESTING] immediately launch our web shm demo client
   webAppLauncher.launch('simple.web.shm.js')
-  webAppLauncher.launch('simple.web.gl.js')
+  // webAppLauncher.launch('simple.web.gl.js')
 }
 
 async function main () {

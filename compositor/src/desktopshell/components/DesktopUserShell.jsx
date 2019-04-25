@@ -5,15 +5,15 @@ import PropTypes from 'prop-types'
 
 import CssBaseline from '@material-ui/core/es/CssBaseline'
 
-import TopPanel from '../toppanel/TopPanel'
-import Workspace from '../workspace/Workspace'
-import ManagedSurface from './ManagedSurface'
-import Overlay from '../overlay/Overlay'
-import Logo from '../logo/Logo'
-import Login from '../login/Login'
-import auth from '../../Auth'
-import Seat from '../../../Seat'
-import UserShell from '../../../UserShell'
+import TopPanel from './TopPanel'
+import Workspace from './Workspace'
+import ManagedSurface from '../ManagedSurface'
+import Overlay from './Overlay'
+import Logo from './Logo'
+import Login from './Login'
+import auth from '../Auth'
+import Seat from '../../Seat'
+import UserShell from '../../UserShell'
 
 // TODO we probably want a more mvvm like structure here
 class DesktopUserShell extends React.PureComponent {

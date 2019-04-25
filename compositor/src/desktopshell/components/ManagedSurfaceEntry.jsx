@@ -1,8 +1,8 @@
 import React from 'react'
 import PropTypes from 'prop-types'
-import Seat from '../../../Seat'
+import Seat from '../../Seat'
 import Tab from '@material-ui/core/es/Tab/Tab'
-import ManagedSurface from '../desktopusershell/ManagedSurface'
+import ManagedSurface from '../ManagedSurface'
 
 class ManagedSurfaceEntry extends React.PureComponent {
   /**
