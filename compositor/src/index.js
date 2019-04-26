@@ -38,21 +38,21 @@ import WebGL from './webgl/WebGL'
 import WSSocket from './WSSocket'
 import WSAppLauncher from './WSAppLauncher'
 
-/**
- * @param {Session}session
- */
-async function init (session) {
-  // TODO enable through config
-  const seat = Seat.create(session)
+async function init () {
+  const session = Session.create()
 
   // WebAppSocket enables browser local applications running in a web worker to connect
   const webAppSocket = WebAppSocket.create(session)
   const webAppLauncher = WebAppLauncher.create(webAppSocket)
 
-  const desktopUserShell = DesktopUserShell.create(seat, webAppLauncher)
-  await auth.whenLogin()
-  // TODO wait for logout and cleanup all the things & re-init
+  // WSSocket enables native appl-endpoints with remote application to connect
+  const wsSocket = WSSocket.create(session)
+  const wsAppLauncher = WSAppLauncher.create(session, wsSocket)
 
+  const seat = Seat.create(session)
+  const desktopUserShell = DesktopUserShell.create(seat, webAppLauncher)
+
+  await auth.whenLogin()
   const output = Output.create()
   const compositor = Compositor.create(session, seat)
   const dataDeviceManager = DataDeviceManager.create()
@@ -76,15 +76,28 @@ async function init (session) {
   webShm.registerGlobal(session.display.registry)
   webGL.registerGlobal(session.display.registry)
 
-  // RtcSocket enables native appl-endpoints with remote application to connect
-  const wsSocket = WSSocket.create(session)
-  const wsAppLauncher = WSAppLauncher.create(session, wsSocket)
+  await auth.whenLogout()
+  output.unregisterGlobal()
+  compositor.unregisterGlobal()
+  dataDeviceManager.unregisterGlobal()
+  seat.unregisterGlobal()
+  shell.unregisterGlobal()
+  subcompositor.unregisterGlobal()
+
+  xdgWmBase.unregisterGlobal()
+
+  webShm.unregisterGlobal()
+  webGL.unregisterGlobal()
+
+  session.terminate()
+
+  // fire a reload to ensure everything is cleaned up
+  window.location.reload()
 }
 
 async function main () {
   try {
-    const session = Session.create()
-    await init(session)
+    await init()
     DEBUG && console.log(`Greenfield compositor started.`)
   } catch (e) {
     // TODO notify user(?) & retry setup

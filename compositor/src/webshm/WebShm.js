@@ -60,6 +60,14 @@ export default class WebShm extends GrWebShmRequests {
     })
   }
 
+  unregisterGlobal () {
+    if (!this._global) {
+      return
+    }
+    this._global.destroy()
+    this._global = null
+  }
+
   /**
    *
    * Invoked when a client binds to this global.

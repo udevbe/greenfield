@@ -38,6 +38,7 @@ export default class WebAppSocket {
 
   /**
    * @param {Worker}webWorker
+   * @return {Client}
    */
   onWebAppWorker (webWorker) {
     // TODO How listen for webWorker terminate/close/destroy?
@@ -107,5 +108,7 @@ export default class WebAppSocket {
         flushQueue.shift()
       }
     }
+
+    return client
   }
 }

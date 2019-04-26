@@ -33,12 +33,12 @@ const demoAppLauncherEntries = [
   {
     title: 'Simple Web SHM',
     imageURL: '',
-    appURL: `${window.location.href}/clients/simple.web.shm.js`
+    appURL: `${window.location.href}clients/simple.web.shm.js`
   },
   {
     title: 'Simple Web GL',
     imageURL: '',
-    appURL: `${window.location.href}/clients/simple.web.gl.js`
+    appURL: `${window.location.href}clients/simple.web.gl.js`
   }
 ]
 

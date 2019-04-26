@@ -35,20 +35,11 @@ export default class WebAppLauncher {
      * @private
      */
     this._webAppSocket = webAppSocket
-    /**
-     * @type {Object.<number, Worker>}
-     */
-    this.webAppWorkers = {}
-    /**
-     * @type {number}
-     * @private
-     */
-    this._nextWebAppId = 1
   }
 
   /**
    * @param {string}webAppURL
-   * @return {Promise<number>}
+   * @return {Promise<Client>}
    */
   launch (webAppURL) {
     // TODO store web apps locally so they can be used offline and/or faster
@@ -61,11 +52,12 @@ export default class WebAppLauncher {
           try {
             const workerSrc = xhr.responseText
             const blob = new window.Blob([workerSrc], { type: 'application/javascript' })
-            const webAppWorker = new window.Worker(URL.createObjectURL(blob))
-            const webAppId = this._nextWebAppId++
-            this.webAppWorkers[webAppId] = webAppWorker
-            this._webAppSocket.onWebAppWorker(webAppWorker)
-            resolve(webAppId)
+
+            const worker = new window.Worker(URL.createObjectURL(blob))
+            const client = this._webAppSocket.onWebAppWorker(worker)
+            client.onClose().then(() => worker.terminate())
+
+            resolve(client)
           } catch (error) {
             reject(error)
           }
@@ -75,13 +67,5 @@ export default class WebAppLauncher {
       xhr.open('GET', new URL(webAppURL).href)
       xhr.send()
     })
-  }
-
-  /**
-   * @param {number}webAppId
-   */
-  terminate (webAppId) {
-    this.webAppWorkers[webAppId].terminate()
-    delete this.webAppWorkers[webAppId]
   }
 }

@@ -57,6 +57,14 @@ export default class WebGL extends GrWebGlRequests {
     })
   }
 
+  unregisterGlobal () {
+    if (!this._global) {
+      return
+    }
+    this._global.destroy()
+    this._global = null
+  }
+
   /**
    *
    * Invoked when a client binds to this global.
