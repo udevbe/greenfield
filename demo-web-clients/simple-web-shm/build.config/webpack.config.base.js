@@ -13,7 +13,7 @@ const commonConfig = (appBundle) => {
     entry: [entryFile],
     output: {
       // put build output somewhere where the compositor can find it.
-      path: path.resolve(__dirname, `../../../compositor/web/public/clients/`),
+      path: path.resolve(__dirname, `../../../compositor/public/clients/`),
       publicPath: '/',
       filename: appBundle
     }
