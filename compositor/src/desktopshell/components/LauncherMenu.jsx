@@ -1,3 +1,20 @@
+// Copyright 2019 Erik De Rijcke
+//
+// This file is part of Greenfield.
+//
+// Greenfield is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Greenfield is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
+
 'use strict'
 
 import React from 'react'
@@ -9,23 +26,25 @@ import GridList from '@material-ui/core/es/GridList'
 import GridListTile from '@material-ui/core/es/GridListTile'
 import Typography from '@material-ui/core/es/Typography'
 import ButtonBase from '@material-ui/core/es/ButtonBase'
+import WebAppLauncher from '../../WebAppLauncher'
 
-const appLaunchers = [
+// TODO remove dummy app launchers once apps are stored in user profile
+const demoAppLauncherEntries = [
   {
     title: 'Simple Web SHM',
-    imageURL: ''
+    imageURL: '',
+    appURL: `${window.location.href}/clients/simple.web.shm.js`
   },
   {
     title: 'Simple Web GL',
-    imageURL: ''
+    imageURL: '',
+    appURL: `${window.location.href}/clients/simple.web.gl.js`
   }
 ]
 
 const styles = theme => ({
   gridListTile: {
-    minHeight: 200,
     minWidth: 200,
-    maxHeight: 200,
     maxWidth: 200
   },
   // Below style shamelessly copied from https://material-ui.com/demos/buttons/
@@ -93,6 +112,13 @@ const styles = theme => ({
 })
 
 class LauncherMenu extends React.Component {
+  _onAppLauncherClick (appLauncherEntry) {
+    const { onClose, webAppLauncher } = this.props
+    // TODO show waiting icon on launcher tile until app is dld & launched
+    webAppLauncher.launch(appLauncherEntry.appURL)
+    onClose()
+  }
+
   render () {
     const { classes, onClose, anchorEl, id } = this.props
 
@@ -105,23 +131,21 @@ class LauncherMenu extends React.Component {
         disableAutoFocusItem
       >
         {/* TODO dynamically add application launcher entries based on logged in user */}
-        <GridList cellHeight='auto' cols={6} spacing={16}>
-          {appLaunchers.map(appLauncher => (
+        <GridList cellHeight='auto' cols={12} spacing={2}>
+          {demoAppLauncherEntries.map(appLauncherEntry => (
             <GridListTile className={classes.gridListTile}>
               <ButtonBase
-                onClick={onClose}
+                onClick={() => this._onAppLauncherClick(appLauncherEntry)}
                 focusRipple
-                key={appLauncher.title}
+                key={appLauncherEntry.title}
                 className={classes.image}
                 focusVisibleClassName={classes.focusVisible}
-                style={{
-                  width: '100%'
-                }}
+                style={{ width: '100%' }}
               >
                 <span
                   className={classes.imageSrc}
                   style={{
-                    backgroundImage: `url(${appLauncher.imageURL})`
+                    backgroundImage: `url(${appLauncherEntry.imageURL})`
                   }}
                 />
                 <span className={classes.imageBackdrop} />
@@ -132,7 +156,7 @@ class LauncherMenu extends React.Component {
                     color='inherit'
                     className={classes.imageTitle}
                   >
-                    {appLauncher.title}
+                    {appLauncherEntry.title}
                     <span className={classes.imageMarked} />
                   </Typography>
                 </span>
@@ -147,7 +171,8 @@ class LauncherMenu extends React.Component {
 
 LauncherMenu.propTypes = {
   open: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired
+  onClose: PropTypes.func.isRequired,
+  webAppLauncher: PropTypes.instanceOf(WebAppLauncher).isRequired
 }
 
 export default withStyles(styles)(LauncherMenu)

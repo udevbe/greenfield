@@ -47,21 +47,21 @@ export default class WebAppLauncher {
   }
 
   /**
-   * @param {string}webApp
+   * @param {string}webAppURL
    * @return {Promise<number>}
    */
-  launch (webApp) {
+  launch (webAppURL) {
     // TODO store web apps locally so they can be used offline and/or faster
     // TODO alternatively web apps could be served through web-sockets and avoid the same origin policy.
     return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest()
+      const xhr = new window.XMLHttpRequest()
 
       xhr.onreadystatechange = () => {
         if (xhr.readyState === window.XMLHttpRequest.DONE && xhr.status === 200) {
           try {
             const workerSrc = xhr.responseText
-            const blob = new Blob([workerSrc], { type: 'application/javascript' })
-            const webAppWorker = new Worker(URL.createObjectURL(blob))
+            const blob = new window.Blob([workerSrc], { type: 'application/javascript' })
+            const webAppWorker = new window.Worker(URL.createObjectURL(blob))
             const webAppId = this._nextWebAppId++
             this.webAppWorkers[webAppId] = webAppWorker
             this._webAppSocket.onWebAppWorker(webAppWorker)
@@ -72,7 +72,7 @@ export default class WebAppLauncher {
         } // TODO reject if we have something else than 2xx
       }
 
-      xhr.open('GET', `clients/${webApp}`)
+      xhr.open('GET', new URL(webAppURL).href)
       xhr.send()
     })
   }

@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+'use strict'
+
 import firebase from 'firebase/app'
 import 'firebase/auth'
 

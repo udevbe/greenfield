@@ -1,3 +1,22 @@
+// Copyright 2019 Erik De Rijcke
+//
+// This file is part of Greenfield.
+//
+// Greenfield is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Greenfield is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
+
+'use strict'
+
 import React from 'react'
 import PropTypes from 'prop-types'
 
@@ -18,6 +37,7 @@ import ManagedSurface from '../ManagedSurface'
 import UserMenu from './UserMenu'
 import SettingsDrawer from './SettingsDrawer'
 import LauncherMenu from './LauncherMenu'
+import WebAppLauncher from '../../WebAppLauncher'
 
 const styles = {
   root: {
@@ -79,7 +99,7 @@ class TopPanel extends React.Component {
   }
 
   render () {
-    const { classes, managedSurfaces, activeManagedSurface, seat, user } = this.props
+    const { classes, managedSurfaces, activeManagedSurface, seat, user, webAppLauncher } = this.props
     if (user === null) return null
 
     const { drawer, userMenuAnchorEl, launcherMenuAnchorEl } = this.state
@@ -127,6 +147,7 @@ class TopPanel extends React.Component {
           id='launcher-menu'
           anchorEl={launcherMenuAnchorEl}
           onClose={() => this._launcherMenuClose()}
+          webAppLauncher={webAppLauncher}
         />
       </AppBar>
     )
@@ -139,7 +160,8 @@ TopPanel.propTypes = {
   seat: PropTypes.instanceOf(Seat).isRequired,
   activeManagedSurface: PropTypes.instanceOf(ManagedSurface),
   managedSurfaces: PropTypes.arrayOf(ManagedSurface).isRequired,
-  user: PropTypes.object
+  user: PropTypes.object,
+  webAppLauncher: PropTypes.instanceOf(WebAppLauncher).isRequired
 }
 
 export default withStyles(styles)(TopPanel)

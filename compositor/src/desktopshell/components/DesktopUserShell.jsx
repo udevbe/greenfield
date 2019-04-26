@@ -1,3 +1,22 @@
+// Copyright 2019 Erik De Rijcke
+//
+// This file is part of Greenfield.
+//
+// Greenfield is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Greenfield is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
+
+'use strict'
+
 import './style.css'
 import ReactDOM from 'react-dom'
 import React from 'react'
@@ -14,20 +33,27 @@ import Login from './Login'
 import auth from '../Auth'
 import Seat from '../../Seat'
 import UserShell from '../../UserShell'
+import WebAppLauncher from '../../WebAppLauncher'
 
 // TODO we probably want a more mvvm like structure here
 class DesktopUserShell extends React.PureComponent {
   /**
    * @param {Seat}seat
+   * @param {WebAppLauncher}webAppLauncher
    * @return {UserShell}
    */
-  static create (seat) {
+  static create (seat, webAppLauncher) {
     const userShell = new UserShell()
     const shellContainer = document.createElement('div')
     shellContainer.setAttribute('id', 'shell-container')
     document.body.appendChild(shellContainer)
-    const desktopUserShell = <DesktopUserShell seat={seat} userShell={userShell} />
-    ReactDOM.render(desktopUserShell, shellContainer)
+    ReactDOM.render(
+      <DesktopUserShell
+        seat={seat}
+        userShell={userShell}
+        webAppLauncher={webAppLauncher}
+      />,
+      shellContainer)
 
     return userShell
   }
@@ -188,9 +214,10 @@ class DesktopUserShell extends React.PureComponent {
   }
 
   render () {
-    const { seat } = /** @type{{seat:Seat}} */this.props
+    const { seat, webAppLauncher } = /** @type{{seat:Seat, webAppLauncher:WebAppLauncher}} */this.props
     const { managedSurfaces, activeManagedSurface, user } =
-      /** @type {{managedSurface: Array<ManagedSurface>, activeManagedSurface: ManagedSurface|null, user:firebase.User}} */this.state
+      /** @type {{managedSurface: Array<ManagedSurface>, activeManagedSurface: ManagedSurface|null, user:firebase.User}} */
+      this.state
     return (
       <>
         <CssBaseline />
@@ -203,6 +230,7 @@ class DesktopUserShell extends React.PureComponent {
           managedSurfaces={managedSurfaces}
           activeManagedSurface={activeManagedSurface}
           seat={seat}
+          webAppLauncher={webAppLauncher}
         />
         <Workspace
           managedSurfaces={managedSurfaces}
@@ -216,7 +244,8 @@ class DesktopUserShell extends React.PureComponent {
 
 DesktopUserShell.propTypes = {
   seat: PropTypes.instanceOf(Seat).isRequired,
-  userShell: PropTypes.instanceOf(UserShell).isRequired
+  userShell: PropTypes.instanceOf(UserShell).isRequired,
+  webAppLauncher: PropTypes.instanceOf(WebAppLauncher).isRequired
 }
 
 export default DesktopUserShell

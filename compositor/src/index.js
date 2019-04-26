@@ -45,7 +45,11 @@ async function init (session) {
   // TODO enable through config
   const seat = Seat.create(session)
 
-  const desktopUserShell = DesktopUserShell.create(seat)
+  // WebAppSocket enables browser local applications running in a web worker to connect
+  const webAppSocket = WebAppSocket.create(session)
+  const webAppLauncher = WebAppLauncher.create(webAppSocket)
+
+  const desktopUserShell = DesktopUserShell.create(seat, webAppLauncher)
   await auth.whenLogin()
   // TODO wait for logout and cleanup all the things & re-init
 
@@ -75,14 +79,6 @@ async function init (session) {
   // RtcSocket enables native appl-endpoints with remote application to connect
   const wsSocket = WSSocket.create(session)
   const wsAppLauncher = WSAppLauncher.create(session, wsSocket)
-
-  // WebAppSocket enables browser local applications running in a web worker to connect
-  const webAppSocket = WebAppSocket.create(session)
-  const webAppLauncher = WebAppLauncher.create(webAppSocket)
-
-  // [TESTING] immediately launch our web shm demo client
-  webAppLauncher.launch('simple.web.shm.js')
-  // webAppLauncher.launch('simple.web.gl.js')
 }
 
 async function main () {
