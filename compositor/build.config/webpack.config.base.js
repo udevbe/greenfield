@@ -36,7 +36,10 @@ const commonConfig = (appBundle, buildDir, debug) => {
       new HtmlWebpackPlugin({
         file: htmlIndex,
         title: 'Greenfield',
-        meta: { viewport: 'minimum-scale=1, initial-scale=1, width=device-width, shrink-to-fit=no' },
+        meta: {
+          viewport: 'minimum-scale=1, initial-scale=1, width=device-width, shrink-to-fit=no',
+          Description: 'A cloud desktop environment. Run Linux applications remotely from physical different hosts or run web applications directly inside your browser.'
+        },
         favicon: path.resolve(__dirname, `../public/favicon.ico`),
         minify: debug ? false : {
           removeAttributeQuotes: true,
