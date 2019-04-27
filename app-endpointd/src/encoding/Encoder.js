@@ -19,8 +19,6 @@
 
 const config = require('../config')
 
-// const JpegOpaqueEncoder = require('./JpegOpaqueEncoder')
-// const JpegAlphaEncoder = require('./JpegAlphaEncoder')
 const H264OpaqueEncoder = require('./H264OpaqueEncoder')
 const H264AlphaEncoder = require('./H264AlphaEncoder')
 const PNGEncoder = require('./PNGEncoder')
@@ -45,7 +43,7 @@ class Encoder {
      */
     this._bufferFormat = 0
     /**
-     * @type {JpegAlphaEncoder | JpegOpaqueEncoder | H264AlphaEncoder | H264OpaqueEncoder}
+     * @type {H264AlphaEncoder | H264OpaqueEncoder}
      * @private
      */
     this._frameEncoder = null

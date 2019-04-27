@@ -43,11 +43,11 @@ class Auth {
     // FirebaseUI config.
     const uiConfig = {
       signInOptions: [
-        firebase.auth.GoogleAuthProvider.PROVIDER_ID,
-        {
-          provider: firebase.auth.EmailAuthProvider.PROVIDER_ID,
-          signInMethod: firebase.auth.EmailAuthProvider.EMAIL_LINK_SIGN_IN_METHOD
-        },
+        // firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+        // {
+        //   provider: firebase.auth.EmailAuthProvider.PROVIDER_ID,
+        //   signInMethod: firebase.auth.EmailAuthProvider.EMAIL_LINK_SIGN_IN_METHOD
+        // },
         firebaseui.auth.AnonymousAuthProvider.PROVIDER_ID
       ],
       tosUrl: '/license.txt',
