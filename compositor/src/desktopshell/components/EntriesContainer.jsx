@@ -41,19 +41,25 @@ class EntriesContainer extends React.Component {
     const value = activeManagedSurface === null ? false : managedSurfaces.indexOf(activeManagedSurface)
 
     return (
-      <Tabs value={value}>{
-        managedSurfaces.map(managedSurface => {
-          const { client, id } = managedSurface.surface.resource
-          return (
-            <ManagedSurfaceEntry
-              key={`${client.id}-${id}`}
-              seat={seat}
-              managedSurface={managedSurface}
-              active={activeManagedSurface === managedSurface}
-            />
-          )
-        })
-      }</Tabs>
+      <Tabs
+        value={value}
+        textColor='primary'
+        variant='scrollable'
+        scrollButtons='auto'
+      >
+        {
+          managedSurfaces.map(managedSurface => {
+            const { client, id } = managedSurface.surface.resource
+            return (
+              <ManagedSurfaceEntry
+                key={`${client.id}-${id}`}
+                seat={seat}
+                managedSurface={managedSurface}
+                active={activeManagedSurface === managedSurface}
+              />
+            )
+          })
+        }</Tabs>
     )
   }
 }
