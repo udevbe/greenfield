@@ -27,11 +27,7 @@ import ManagedSurfaceEntry from './ManagedSurfaceEntry'
 import Seat from '../../Seat'
 import ManagedSurface from '../ManagedSurface'
 
-const styles = {
-  root: {
-    flexGrow: 1
-  }
-}
+const styles = {}
 
 class EntriesContainer extends React.Component {
   render () {
