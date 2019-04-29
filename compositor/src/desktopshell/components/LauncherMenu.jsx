@@ -18,43 +18,112 @@
 'use strict'
 
 import React from 'react'
-
 import PropTypes from 'prop-types'
+
 import Menu from '@material-ui/core/es/Menu'
 import { withStyles } from '@material-ui/core/es/styles'
-import GridList from '@material-ui/core/es/GridList'
-import GridListTile from '@material-ui/core/es/GridListTile'
 import Typography from '@material-ui/core/es/Typography'
 import ButtonBase from '@material-ui/core/es/ButtonBase'
+import Fab from '@material-ui/core/es/Fab'
+import AddIcon from '@material-ui/icons/Add'
+
 import WebAppLauncher from '../../WebAppLauncher'
+import auth from '../Auth'
+import Grid from '@material-ui/core/es/Grid'
 
 // TODO remove dummy app launchers once apps are stored in user profile
 const demoAppLauncherEntries = [
   {
     title: 'Simple Web SHM',
-    imageURL: '',
+    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
     appURL: `${window.location.href}clients/simple.web.shm.js`
   },
   {
     title: 'Simple Web GL',
-    imageURL: '',
+    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
+    appURL: `${window.location.href}clients/simple.web.gl.js`
+  },
+  {
+    title: 'Simple Web SHM',
+    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
+    appURL: `${window.location.href}clients/simple.web.shm.js`
+  },
+  {
+    title: 'Simple Web GL',
+    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
+    appURL: `${window.location.href}clients/simple.web.gl.js`
+  },
+
+  {
+    title: 'Simple Web GL',
+    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
+    appURL: `${window.location.href}clients/simple.web.gl.js`
+  },
+  {
+    title: 'Simple Web SHM',
+    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
+    appURL: `${window.location.href}clients/simple.web.shm.js`
+  },
+  {
+    title: 'Simple Web GL',
+    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
+    appURL: `${window.location.href}clients/simple.web.gl.js`
+  },
+
+  {
+    title: 'Simple Web GL',
+    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
+    appURL: `${window.location.href}clients/simple.web.gl.js`
+  },
+  {
+    title: 'Simple Web SHM',
+    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
+    appURL: `${window.location.href}clients/simple.web.shm.js`
+  },
+  {
+    title: 'Simple Web GL',
+    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
+    appURL: `${window.location.href}clients/simple.web.gl.js`
+  },
+
+  {
+    title: 'Simple Web GL',
+    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
+    appURL: `${window.location.href}clients/simple.web.gl.js`
+  },
+  {
+    title: 'Simple Web SHM',
+    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
+    appURL: `${window.location.href}clients/simple.web.shm.js`
+  },
+  {
+    title: 'Simple Web GL',
+    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
     appURL: `${window.location.href}clients/simple.web.gl.js`
   }
 ]
 
 const styles = theme => ({
-  gridListTile: {
-    minWidth: 200,
-    maxWidth: 200
+  gridContainer: {
+    overflow: 'visible'
+  },
+  gridItem: {
+    margin: 10,
+    width: 100,
+    height: 100
+  },
+  fabAdd: {
+    bottom: 10,
+    right: 10,
+    margin: 10,
+    position: 'sticky',
+    display: 'block',
+    float: 'right'
   },
   // Below style shamelessly copied from https://material-ui.com/demos/buttons/
   image: {
+    height: '100%',
     position: 'relative',
-    height: 200,
-    [theme.breakpoints.down('xs')]: {
-      width: '100% !important', // Overrides inline-style
-      height: 100
-    },
     '&:hover, &$focusVisible': {
       zIndex: 1,
       '& $imageBackdrop': {
@@ -112,6 +181,20 @@ const styles = theme => ({
 })
 
 class LauncherMenu extends React.Component {
+  constructor (props) {
+    super(props)
+    const { user } = props
+    this.state = { applicationLauncherEntries: [] }
+    if (user) {
+      auth.app.firestore().collection('applicationLauncherEntries').doc(user.uid).get().then((doc) => {
+        if (doc.exists) {
+          const applicationLauncherEntries = /** @type {Array<{title: string, imageURL: string, appURL: string}>} */ doc.data()
+          this.setState(() => ({ applicationLauncherEntries }))
+        }
+      })
+    }
+  }
+
   _onAppLauncherClick (appLauncherEntry) {
     const { onClose, webAppLauncher } = this.props
     // TODO show waiting icon on launcher tile until app is dld & launched
@@ -121,6 +204,9 @@ class LauncherMenu extends React.Component {
 
   render () {
     const { classes, onClose, anchorEl, id } = this.props
+    const { applicationLauncherEntries } =
+      /** @type {{applicationLauncherEntries: Array<{title: string, imageURL: string, appURL: string}>}} */
+      this.state
 
     return (
       <Menu
@@ -129,11 +215,13 @@ class LauncherMenu extends React.Component {
         open={Boolean(anchorEl)}
         onClose={onClose}
         disableAutoFocusItem
+        className={classes.menu}
+        MenuListProps={{ disablePadding: true }}
       >
         {/* TODO dynamically add application launcher entries based on logged in user */}
-        <GridList cellHeight='auto' cols={12} spacing={2}>
+        <Grid container className={classes.gridContainer} spacing='0'>
           {demoAppLauncherEntries.map(appLauncherEntry => (
-            <GridListTile className={classes.gridListTile}>
+            <Grid item className={classes.gridItem}>
               <ButtonBase
                 onClick={() => this._onAppLauncherClick(appLauncherEntry)}
                 focusRipple
@@ -161,18 +249,21 @@ class LauncherMenu extends React.Component {
                   </Typography>
                 </span>
               </ButtonBase>
-            </GridListTile>
+            </Grid>
           ))}
-        </GridList>
+        </Grid>
+        <Fab color='primary' aria-label='Add' className={classes.fabAdd}>
+          <AddIcon />
+        </Fab>
       </Menu>
     )
   }
 }
 
 LauncherMenu.propTypes = {
-  open: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-  webAppLauncher: PropTypes.instanceOf(WebAppLauncher).isRequired
+  webAppLauncher: PropTypes.instanceOf(WebAppLauncher).isRequired,
+  user: PropTypes.object
 }
 
 export default withStyles(styles)(LauncherMenu)

@@ -1053,9 +1053,9 @@
       "integrity": "sha512-XI+jfMTghpXnK13oCPPMF69AV1dn1HsmjPZvobtyy2K4gzPWIRpavLNA9+yzThHBJQCbTJa2Igqe1H0tZ5+bTA=="
     },
     "@firebase/auth": {
-      "version": "0.10.0",
-      "resolved": "https://registry.npmjs.org/@firebase/auth/-/auth-0.10.0.tgz",
-      "integrity": "sha512-zj2SpjKcDju9l6jbbIULYmhHzW0ZDuWi4CHhoEASlIpwwubhUoQJwNz0rUhis34l+vJs6uar9wzuBwUvOAWihA==",
+      "version": "0.10.1",
+      "resolved": "https://registry.npmjs.org/@firebase/auth/-/auth-0.10.1.tgz",
+      "integrity": "sha512-oAJ7OasVT7pShvboKV6aQFM8ESsNw3OH5BoNi66NAQVXpTv8+dvcJz2iRf0MHsJJBHS3N1weli7YrtsT1mne5A==",
       "requires": {
         "@firebase/auth-types": "0.6.0"
       }
@@ -1083,9 +1083,9 @@
       "integrity": "sha512-yREigbf0wOaIIbipX2yK7O5YU0IlbsPFSET8MZHvesAB9b4/AZcDZ2zeJiXZTWmxb5EDbngFsUvmGBuxRNPsfw=="
     },
     "@firebase/firestore": {
-      "version": "1.2.0",
-      "resolved": "https://registry.npmjs.org/@firebase/firestore/-/firestore-1.2.0.tgz",
-      "integrity": "sha512-b3P9soaKCVtX1LEAsJKB0qrK+xlrghq7w4SOfEuWOT/99DgSNgunLbKE9miNLqz5IPaRi8jJvtk5UF/DDdM+uw==",
+      "version": "1.2.1",
+      "resolved": "https://registry.npmjs.org/@firebase/firestore/-/firestore-1.2.1.tgz",
+      "integrity": "sha512-YQVDXg7I9wIOT0oYTLH29Y0quspgHtaKz4FSu3O4Wm+27XKGxZzhpWTHL3PaA8uCLm5VlrFJRH7dwOiaW0k12A==",
       "requires": {
         "@firebase/firestore-types": "1.2.0",
         "@firebase/logger": "0.1.12",
@@ -4103,14 +4103,14 @@
       }
     },
     "firebase": {
-      "version": "5.10.0",
-      "resolved": "https://registry.npmjs.org/firebase/-/firebase-5.10.0.tgz",
-      "integrity": "sha512-yizEzL8MFvTPyWJTDnQIku0vkhB/lgwdq3/5gxv9yhtuW5kuZ1w6Ew3JNWbqN9bTE4K35L4ZEKa1MMC9aMcotw==",
+      "version": "5.10.1",
+      "resolved": "https://registry.npmjs.org/firebase/-/firebase-5.10.1.tgz",
+      "integrity": "sha512-QA8xCRxQOdBcWyExVLd4V7MpGTCR3QCj6X7eVUnQgX5RDjoiZSATStEOIgAQ3CNGkDyfUqQw1/fJwgkMqV9RmQ==",
       "requires": {
         "@firebase/app": "0.3.16",
-        "@firebase/auth": "0.10.0",
+        "@firebase/auth": "0.10.1",
         "@firebase/database": "0.3.19",
-        "@firebase/firestore": "1.2.0",
+        "@firebase/firestore": "1.2.1",
         "@firebase/functions": "0.4.5",
         "@firebase/messaging": "0.3.18",
         "@firebase/polyfill": "0.3.12",

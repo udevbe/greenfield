@@ -27,11 +27,11 @@ import SvgIcon from '@material-ui/core/es/SvgIcon'
 import ListItemText from '@material-ui/core/es/ListItemText'
 import Avatar from '@material-ui/core/es/Avatar'
 import ListItemAvatar from '@material-ui/core/es/ListItemAvatar'
-
-import auth from '../Auth'
 import Typography from '@material-ui/core/es/Typography'
 import ListItem from '@material-ui/core/es/ListItem'
 import Divider from '@material-ui/core/es/Divider/'
+
+import auth from '../Auth'
 
 const styles = {
   avatar: {

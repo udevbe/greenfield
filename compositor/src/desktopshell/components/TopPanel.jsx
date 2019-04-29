@@ -148,6 +148,7 @@ class TopPanel extends React.Component {
           anchorEl={launcherMenuAnchorEl}
           onClose={() => this._launcherMenuClose()}
           webAppLauncher={webAppLauncher}
+          user={user}
         />
       </AppBar>
     )
