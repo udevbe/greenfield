@@ -30,6 +30,7 @@ import AddIcon from '@material-ui/icons/Add'
 import WebAppLauncher from '../../WebAppLauncher'
 import auth from '../Auth'
 import Grid from '@material-ui/core/es/Grid'
+import AddApplicationDialog from './AddApplicationDialog'
 
 // TODO remove dummy app launchers once apps are stored in user profile
 const demoAppLauncherEntries = [
@@ -42,83 +43,31 @@ const demoAppLauncherEntries = [
     title: 'Simple Web GL',
     imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
     appURL: `${window.location.href}clients/simple.web.gl.js`
-  },
-  {
-    title: 'Simple Web SHM',
-    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
-    appURL: `${window.location.href}clients/simple.web.shm.js`
-  },
-  {
-    title: 'Simple Web GL',
-    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
-    appURL: `${window.location.href}clients/simple.web.gl.js`
-  },
-
-  {
-    title: 'Simple Web GL',
-    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
-    appURL: `${window.location.href}clients/simple.web.gl.js`
-  },
-  {
-    title: 'Simple Web SHM',
-    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
-    appURL: `${window.location.href}clients/simple.web.shm.js`
-  },
-  {
-    title: 'Simple Web GL',
-    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
-    appURL: `${window.location.href}clients/simple.web.gl.js`
-  },
-
-  {
-    title: 'Simple Web GL',
-    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
-    appURL: `${window.location.href}clients/simple.web.gl.js`
-  },
-  {
-    title: 'Simple Web SHM',
-    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
-    appURL: `${window.location.href}clients/simple.web.shm.js`
-  },
-  {
-    title: 'Simple Web GL',
-    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
-    appURL: `${window.location.href}clients/simple.web.gl.js`
-  },
-
-  {
-    title: 'Simple Web GL',
-    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
-    appURL: `${window.location.href}clients/simple.web.gl.js`
-  },
-  {
-    title: 'Simple Web SHM',
-    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
-    appURL: `${window.location.href}clients/simple.web.shm.js`
-  },
-  {
-    title: 'Simple Web GL',
-    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
-    appURL: `${window.location.href}clients/simple.web.gl.js`
   }
 ]
+
+const MAX_GRID_ITEMS_H = 3
+const GRID_ITEM_SIZE = 100
+const GRID_ITEM_MARGIN = 2
 
 const styles = theme => ({
   gridContainer: {
     overflow: 'visible'
   },
   gridItem: {
-    margin: 10,
-    width: 100,
-    height: 100
+    margin: GRID_ITEM_MARGIN,
+    width: GRID_ITEM_SIZE,
+    height: GRID_ITEM_SIZE
   },
   fabAdd: {
-    bottom: 10,
-    right: 10,
-    margin: 10,
+    bottom: GRID_ITEM_MARGIN,
+    right: GRID_ITEM_MARGIN,
+    margin: GRID_ITEM_MARGIN,
+    marginTop: -50,
     position: 'sticky',
     display: 'block',
-    float: 'right'
+    float: 'right',
+    zIndex: 2
   },
   // Below style shamelessly copied from https://material-ui.com/demos/buttons/
   image: {
@@ -184,7 +133,7 @@ class LauncherMenu extends React.Component {
   constructor (props) {
     super(props)
     const { user } = props
-    this.state = { applicationLauncherEntries: [] }
+    this.state = { applicationLauncherEntries: [], appAdd: false }
     if (user) {
       auth.app.firestore().collection('applicationLauncherEntries').doc(user.uid).get().then((doc) => {
         if (doc.exists) {
@@ -193,6 +142,14 @@ class LauncherMenu extends React.Component {
         }
       })
     }
+  }
+
+  _appAddOpen () {
+    this.setState(() => ({ appAdd: true }))
+  }
+
+  _appAddClose () {
+    this.setState(() => ({ appAdd: false }))
   }
 
   _onAppLauncherClick (appLauncherEntry) {
@@ -204,8 +161,8 @@ class LauncherMenu extends React.Component {
 
   render () {
     const { classes, onClose, anchorEl, id } = this.props
-    const { applicationLauncherEntries } =
-      /** @type {{applicationLauncherEntries: Array<{title: string, imageURL: string, appURL: string}>}} */
+    const { applicationLauncherEntries, appAdd } =
+      /** @type {{applicationLauncherEntries: Array<{title: string, imageURL: string, appURL: string}>, appAdd: boolean}} */
       this.state
 
     return (
@@ -217,9 +174,16 @@ class LauncherMenu extends React.Component {
         disableAutoFocusItem
         className={classes.menu}
         MenuListProps={{ disablePadding: true }}
+        PaperProps={{
+          style: {
+            maxHeight: '85%',// (GRID_ITEM_SIZE + 2 * GRID_ITEM_MARGIN) * (MAX_GRID_ITEMS_V),
+            maxWidth: ((GRID_ITEM_SIZE + 2 * GRID_ITEM_MARGIN) * MAX_GRID_ITEMS_H) + 30,
+            paddingRight: 15
+          }
+        }}
       >
         {/* TODO dynamically add application launcher entries based on logged in user */}
-        <Grid container className={classes.gridContainer} spacing='0'>
+        <Grid container className={classes.gridContainer} spacing={0}>
           {demoAppLauncherEntries.map(appLauncherEntry => (
             <Grid item className={classes.gridItem}>
               <ButtonBase
@@ -252,9 +216,16 @@ class LauncherMenu extends React.Component {
             </Grid>
           ))}
         </Grid>
-        <Fab color='primary' aria-label='Add' className={classes.fabAdd}>
+        <Fab
+          color='primary'
+          size='large'
+          aria-label='Add'
+          className={classes.fabAdd}
+          onClick={() => this._appAddOpen()}
+        >
           <AddIcon />
         </Fab>
+        <AddApplicationDialog open={appAdd} appAddClose={() => this._appAddClose()} />
       </Menu>
     )
   }
