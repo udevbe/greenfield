@@ -61,7 +61,7 @@ const styles = theme => ({
     position: 'sticky',
     display: 'block',
     float: 'right',
-    zIndex: 2
+    zIndex: 5
   },
   image: {
     width: '100%',
@@ -107,7 +107,7 @@ const styles = theme => ({
     height: 40,
     top: -(GRID_ITEM_SIZE + GRID_ITEM_MARGIN),
     left: -20,
-    zIndex: 3
+    zIndex: 4
   },
   editDoneButton: {
     margin: 12,
@@ -119,7 +119,7 @@ const styles = theme => ({
     position: 'sticky',
     display: 'block',
     float: 'left',
-    zIndex: 2
+    zIndex: 5
   }
 })
 
@@ -261,10 +261,11 @@ class LauncherMenu extends React.Component {
         align='center'
         style={{
           minHeight: GRID_ITEM_SIZE + (2 * GRID_ITEM_MARGIN),
-          minWidth: ((GRID_ITEM_SIZE + 2 * GRID_ITEM_MARGIN) * MAX_GRID_ITEMS_H)
+          minWidth: ((GRID_ITEM_SIZE + 2 * GRID_ITEM_MARGIN) * MAX_GRID_ITEMS_H),
+          padding: 16
         }}
       >
-          No applications installed. Press the '+' button to add an application.
+          No applications linked. Press the '+' button to link an application.
       </Typography>
     }
 

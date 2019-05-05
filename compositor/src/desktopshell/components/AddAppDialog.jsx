@@ -70,17 +70,17 @@ class AddAppDialog extends React.Component {
         onEscapeKeyDown={() => appAddClose()}
         TransitionComponent={SlideUp}
         {...rest} >
-        <DialogTitle id='add-application-title'>Add Application</DialogTitle>
+        <DialogTitle id='add-application-title'>Link Application</DialogTitle>
         <DialogContent>
           <DialogContentText
             paragraph
           >
-            Upload an application file to add it to your account.
+            Upload an application file to link it to your account.
           </DialogContentText>
           <DialogContentText
             paragraph
           >
-            Applications can be removed at any time in the application menu.
+            Applications can be unlinked at any time in the application menu.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
