@@ -174,11 +174,11 @@ class LauncherMenu extends React.Component {
 
   _setAppLauncherEntriesFromDocs (docs) {
     const appLauncherEntries = /** @type {Array<{id: string, title: string, icon: string, url: string, type: 'web'|'remote'}>} */ docs.map(doc => doc.data())
-    this.setState(() => ({ appLauncherEntries }))
+    this.setState((oldState) => ({ appLauncherEntries, mode: appLauncherEntries.length ? oldState.mode : 'launch' }))
   }
 
-  _appRemoveOpen (appId) {
-    this.setState(() => ({ appToRemove: appId }))
+  _appRemoveOpen (appLauncherEntry) {
+    this.setState(() => ({ appToRemove: appLauncherEntry }))
   }
 
   _appRemoveClose () {
@@ -218,11 +218,62 @@ class LauncherMenu extends React.Component {
       /** @type {{mode: 'launch'|'edit', appLauncherEntries: Array<{id: string, title: string, icon: string, url: string, type: 'web'|'remote'}>, appAdd: boolean, appToRemove: string|null}} */
       this.state
 
+    let gridContent = null
+    if (appLauncherEntries.length) {
+      gridContent = appLauncherEntries.map(appLauncherEntry => (
+        <Grid item className={classes.gridItem} key={appLauncherEntry.url}>
+          <ButtonBase
+            onClick={() => this._onAppLauncherClick(appLauncherEntry)}
+            focusRipple
+            key={appLauncherEntry.title}
+            className={classes.image}
+          >
+            <span
+              className={classes.imageSrc}
+              style={{
+                backgroundImage: `url(${appLauncherEntry.icon})`
+              }}
+            />
+            <span className={classes.imageButton}>
+              <Typography
+                component='span'
+                variant='subtitle1'
+                color='inherit'
+                className={classes.imageTitle}
+              >
+                {appLauncherEntry.title}
+              </Typography>
+            </span>
+          </ButtonBase>
+          <Fade in={mode === 'edit'} mountOnEnter unmountOnExit>
+            <Fab
+              className={classes.imageDeleteIcon}
+              color='primary'
+              onClick={() => this._appRemoveOpen(appLauncherEntry)}
+            >
+              <DeleteIcon />
+            </Fab>
+          </Fade>
+        </Grid>
+      ))
+    } else {
+      gridContent = <Typography
+        align='center'
+        style={{
+          minHeight: GRID_ITEM_SIZE + (2 * GRID_ITEM_MARGIN),
+          minWidth: ((GRID_ITEM_SIZE + 2 * GRID_ITEM_MARGIN) * MAX_GRID_ITEMS_H)
+        }}
+      >
+          No applications installed. Press the '+' button to add an application.
+      </Typography>
+    }
+
     return (
       <Menu
         id={id}
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
+        onEscapeKeyDown={() => this._launcherMenuClose()}
         onClose={() => this._launcherMenuClose()}
         disableAutoFocusItem
         className={classes.menu}
@@ -230,6 +281,7 @@ class LauncherMenu extends React.Component {
         PaperProps={{
           style: {
             maxHeight: '85%', // (GRID_ITEM_SIZE + 2 * GRID_ITEM_MARGIN) * (MAX_GRID_ITEMS_V),
+            minWidth: ((GRID_ITEM_SIZE + 2 * GRID_ITEM_MARGIN) * MAX_GRID_ITEMS_H) + 30,
             maxWidth: ((GRID_ITEM_SIZE + 2 * GRID_ITEM_MARGIN) * MAX_GRID_ITEMS_H) + 30,
             paddingRight: 15
           }
@@ -237,42 +289,7 @@ class LauncherMenu extends React.Component {
       >
         {/* TODO dynamically add application launcher entries based on logged in user */}
         <Grid container className={classes.gridContainer} spacing={0}>
-          {appLauncherEntries.map(appLauncherEntry => (
-            <Grid item className={classes.gridItem} key={appLauncherEntry.url}>
-              <ButtonBase
-                onClick={() => this._onAppLauncherClick(appLauncherEntry)}
-                focusRipple
-                key={appLauncherEntry.title}
-                className={classes.image}
-              >
-                <span
-                  className={classes.imageSrc}
-                  style={{
-                    backgroundImage: `url(${appLauncherEntry.icon})`
-                  }}
-                />
-                <span className={classes.imageButton}>
-                  <Typography
-                    component='span'
-                    variant='subtitle1'
-                    color='inherit'
-                    className={classes.imageTitle}
-                  >
-                    {appLauncherEntry.title}
-                  </Typography>
-                </span>
-              </ButtonBase>
-              <Fade in={mode === 'edit'} mountOnEnter unmountOnExit>
-                <Fab
-                  className={classes.imageDeleteIcon}
-                  color='primary'
-                  onClick={() => this._appRemoveOpen(appLauncherEntry.id)}
-                >
-                  <DeleteIcon />
-                </Fab>
-              </Fade>
-            </Grid>
-          ))}
+          {gridContent}
         </Grid>
         <Fade in={mode === 'launch'} mountOnEnter unmountOnExit>
           <Fab
@@ -310,11 +327,13 @@ class LauncherMenu extends React.Component {
           appAddClose={() => this._appAddClose()}
           user={user}
         />
+        {appToRemove &&
         <RemoveAppDialog
-          open={appToRemove != null}
+          open
+          appToRemove={appToRemove}
           appRemoveClose={() => this._appRemoveClose()}
           user={user}
-        />
+        />}
       </Menu>
     )
   }
