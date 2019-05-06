@@ -37,9 +37,10 @@ import AddAppDialog from './AddAppDialog'
 import Button from '@material-ui/core/es/Button'
 import Fade from '@material-ui/core/es/Fade'
 import RemoveAppDialog from './RemoveAppDialog'
+import Tooltip from '@material-ui/core/es/Tooltip/Tooltip'
 
 const MAX_GRID_ITEMS_H = 3
-const GRID_ITEM_SIZE = 70
+const GRID_ITEM_SIZE = 48
 const GRID_ITEM_MARGIN = 25
 
 const styles = theme => ({
@@ -76,8 +77,9 @@ const styles = theme => ({
   imageButton: {
     position: 'absolute',
     left: -GRID_ITEM_MARGIN,
-    right: -GRID_ITEM_MARGIN, [theme.breakpoints.down('sm')]: {
-      backgroundColor: theme.palette.secondary.main,
+    right: -GRID_ITEM_MARGIN,
+    [theme.breakpoints.down('sm')]: {
+      backgroundColor: theme.palette.secondary.main
     },
     bottom: -GRID_ITEM_MARGIN,
     color: theme.palette.common.white
@@ -96,10 +98,10 @@ const styles = theme => ({
     opacity: 0,
     transition: theme.transitions.create('opacity'),
     backgroundColor: theme.palette.common.white,
+    color: theme.palette.common.black,
     [theme.breakpoints.down('sm')]: {
       opacity: 1
     },
-    textShadow: '-1px 0 black, 0 1px black, 1px 0 black, 0 -1px black',
     zIndex: 3
   },
   imageDeleteIcon: {
@@ -238,7 +240,7 @@ class LauncherMenu extends React.Component {
             <span className={classes.imageButton}>
               <Typography
                 component='span'
-                variant='subtitle2'
+                variant='caption'
                 color='inherit'
                 noWrap
                 className={classes.imageTitle}
@@ -248,13 +250,15 @@ class LauncherMenu extends React.Component {
             </span>
           </ButtonBase>
           <Fade in={mode === 'edit'} mountOnEnter unmountOnExit>
-            <Fab
-              className={classes.imageDeleteIcon}
-              color='primary'
-              onClick={() => this._appRemoveOpen(appLauncherEntry)}
-            >
-              <DeleteIcon />
-            </Fab>
+            <Tooltip title='Delete' enterDelay={500}>
+              <Fab
+                className={classes.imageDeleteIcon}
+                color='primary'
+                onClick={() => this._appRemoveOpen(appLauncherEntry)}
+              >
+                <DeleteIcon />
+              </Fab>
+            </Tooltip>
           </Fade>
         </Grid>
       ))
@@ -294,26 +298,31 @@ class LauncherMenu extends React.Component {
         <Grid container className={classes.gridContainer} spacing={0}>
           {gridContent}
         </Grid>
+
         <Fade in={mode === 'launch'} mountOnEnter unmountOnExit>
-          <Fab
-            color='primary'
-            size='medium'
-            aria-label='Add'
-            className={classes.fab}
-            onClick={() => this._appAddOpen()}
-          >
-            <AddIcon />
-          </Fab>
+          <Tooltip title='Add' enterDelay={500}>
+            <Fab
+              color='primary'
+              size='medium'
+              aria-label='Add'
+              className={classes.fab}
+              onClick={() => this._appAddOpen()}
+            >
+              <AddIcon />
+            </Fab>
+          </Tooltip>
         </Fade>
         <Fade in={mode === 'launch'} mountOnEnter unmountOnExit>
-          <Fab
-            size='medium'
-            aria-label='Edit'
-            className={classes.fab}
-            onClick={() => this._launcherEditBegin()}
-          >
-            <EditIcon />
-          </Fab>
+          <Tooltip title='Edit' enterDelay={500}>
+            <Fab
+              size='medium'
+              aria-label='Edit'
+              className={classes.fab}
+              onClick={() => this._launcherEditBegin()}
+            >
+              <EditIcon />
+            </Fab>
+          </Tooltip>
         </Fade>
         <Fade in={mode === 'edit'} mountOnEnter unmountOnExit>
           <Button
