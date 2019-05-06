@@ -1,0 +1,7 @@
+{
+  "id": "remote-gtk3-demo",
+  "title": "Remote GTK3 Demo",
+  "icon": "http://localhost:8080/store/remote-gtk3-demo/icon.svg",
+  "type": "remote",
+  "url": "wss://localhost:8081/gtk3-demo"
+}

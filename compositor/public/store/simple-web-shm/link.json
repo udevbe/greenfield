@@ -1,7 +1,7 @@
 {
   "id": "simple-web-shm",
   "title": "Simple Web SHM",
-  "icon": "http://localhost:8080/store/simple-web-shm/icon.png",
+  "icon": "http://localhost:8080/store/simple-web-shm/icon.svg",
   "type": "web",
   "url": "http://localhost:8080/store/simple-web-shm/app.js"
 }
