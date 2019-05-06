@@ -40,7 +40,7 @@ import RemoveAppDialog from './RemoveAppDialog'
 
 const MAX_GRID_ITEMS_H = 3
 const GRID_ITEM_SIZE = 70
-const GRID_ITEM_MARGIN = 20
+const GRID_ITEM_MARGIN = 25
 
 const styles = theme => ({
   gridContainer: {
@@ -54,7 +54,7 @@ const styles = theme => ({
     height: GRID_ITEM_SIZE
   },
   fab: {
-    margin: 10,
+    margin: 20,
     bottom: GRID_ITEM_MARGIN,
     right: GRID_ITEM_MARGIN,
     marginRight: GRID_ITEM_MARGIN,
@@ -75,13 +75,11 @@ const styles = theme => ({
   },
   imageButton: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    left: -GRID_ITEM_MARGIN,
+    right: -GRID_ITEM_MARGIN, [theme.breakpoints.down('sm')]: {
+      backgroundColor: theme.palette.secondary.main,
+    },
+    bottom: -GRID_ITEM_MARGIN,
     color: theme.palette.common.white
   },
   imageSrc: {
@@ -95,9 +93,12 @@ const styles = theme => ({
   },
   imageTitle: {
     position: 'relative',
-    padding: `${theme.spacing.unit * 2}px ${theme.spacing.unit * 4}px ${theme.spacing.unit + 6}px`,
     opacity: 0,
     transition: theme.transitions.create('opacity'),
+    backgroundColor: theme.palette.common.white,
+    [theme.breakpoints.down('sm')]: {
+      opacity: 1
+    },
     textShadow: '-1px 0 black, 0 1px black, 1px 0 black, 0 -1px black',
     zIndex: 3
   },
@@ -110,7 +111,7 @@ const styles = theme => ({
     zIndex: 4
   },
   editDoneButton: {
-    margin: 12,
+    margin: 26,
     padding: '6px 6px',
     bottom: GRID_ITEM_MARGIN,
     left: GRID_ITEM_MARGIN,
@@ -237,8 +238,9 @@ class LauncherMenu extends React.Component {
             <span className={classes.imageButton}>
               <Typography
                 component='span'
-                variant='subtitle1'
+                variant='subtitle2'
                 color='inherit'
+                noWrap
                 className={classes.imageTitle}
               >
                 {appLauncherEntry.title}
@@ -295,7 +297,7 @@ class LauncherMenu extends React.Component {
         <Fade in={mode === 'launch'} mountOnEnter unmountOnExit>
           <Fab
             color='primary'
-            size='small'
+            size='medium'
             aria-label='Add'
             className={classes.fab}
             onClick={() => this._appAddOpen()}
@@ -305,7 +307,7 @@ class LauncherMenu extends React.Component {
         </Fade>
         <Fade in={mode === 'launch'} mountOnEnter unmountOnExit>
           <Fab
-            size='small'
+            size='medium'
             aria-label='Edit'
             className={classes.fab}
             onClick={() => this._launcherEditBegin()}

@@ -75,12 +75,12 @@ class AddAppDialog extends React.Component {
           <DialogContentText
             paragraph
           >
-            Upload an application file to link it to your account.
+            Upload an application link to couple it to your account.
           </DialogContentText>
           <DialogContentText
             paragraph
           >
-            Applications can be unlinked at any time in the application menu.
+            Linked application can be removed at any time in the application menu.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
