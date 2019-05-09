@@ -17,13 +17,13 @@
 
 'use strict'
 
-export default class WSOutOfBandChannel {
+export default class RemoteOutOfBandChannel {
   /**
    * @param {function(ArrayBuffer):void}onOutOfBandSend
-   * @return {WSOutOfBandChannel}
+   * @return {RemoteOutOfBandChannel}
    */
   static create (onOutOfBandSend) {
-    return new WSOutOfBandChannel(onOutOfBandSend)
+    return new RemoteOutOfBandChannel(onOutOfBandSend)
   }
 
   /**
@@ -79,6 +79,9 @@ export default class WSOutOfBandChannel {
    */
   send (opcode, payload) {
     // FIXME there's the danger of sending > 16kb, which might fail in chrome. => Chunk the message
+    // if (payload.byteLength > (15 * 1024)) {
+    //   throw new Error('Exceeded maximum size for out an of band message. Maximum is 15kb.')
+    // }
     const sendBuffer = new ArrayBuffer(4 + payload.byteLength)
     const dataView = new DataView(sendBuffer)
     dataView.setUint32(0, opcode, true)

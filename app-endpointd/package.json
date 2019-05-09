@@ -8,20 +8,20 @@
   "license": "AGPL-3.0",
   "description": "Wayland application endpoint.",
   "bin": {
-    "appendpointd": "./src/index.js"
+    "appendpointd": "index.js"
   },
   "scripts": {
     "prepare:generate:xdgshell": "westfield-endpoint-generator ../protocol/xdg-shell.xml -o src/protocol",
     "prepare:generate:wayland": "westfield-endpoint-generator ../protocol/wayland.xml -o src/protocol",
     "prepare": "mkdir -p src/protocol/ && npm run prepare:generate:wayland && npm run prepare:generate:xdgshell",
-    "start": "node ./src/index.js"
+    "start": "node index.js"
   },
   "dependencies": {
-    "epoll": "^2.0.7",
-    "gstreamer-superficial": "^1.0.0",
-    "westfield-endpoint": "0.2.0",
-    "wrtc": "^0.3.3",
-    "ws": "^6.1.0"
+    "epoll": "^2.0.9",
+    "gstreamer-superficial": "^1.2.0",
+    "westfield-endpoint": "^0.2.0",
+    "json5": "^2.1.0",
+    "ws": "^7.0.0"
   },
   "devDependencies": {
     "standard": "^12.0.1",

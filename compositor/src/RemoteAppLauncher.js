@@ -17,41 +17,45 @@
 
 'use strict'
 
-class WSAppLauncher {
+class RemoteAppLauncher {
   /**
    * @param {Session}session
-   * @param {WSSocket}wsSocket
-   * @return {WSAppLauncher}
+   * @param {RemoteSocket}wsSocket
+   * @return {RemoteAppLauncher}
    */
   static create (session, wsSocket) {
-    return new WSAppLauncher(session, wsSocket)
+    return new RemoteAppLauncher(session, wsSocket)
   }
 
   /**
    * @param {Session}session
-   * @param {WSSocket}wsSocket
+   * @param {RemoteSocket}remoteSocket
    */
-  constructor (session, wsSocket) {
+  constructor (session, remoteSocket) {
     /**
      * @type {Session}
      * @private
      */
     this._session = session
     /**
-     * @type {WSSocket}
+     * @type {RemoteSocket}
      * @private
      */
-    this._wsSocket = wsSocket
+    this._remoteSocket = remoteSocket
   }
 
   /**
-   * @param {string}remoteAppURL
+   * @param {string}appEndpointURL
+   * @param {string}remoteAppId
    */
-  launch (remoteAppURL) {
-    // TODO add real user token parameter
-    const webSocket = new window.WebSocket(`${remoteAppURL}?session=${this._session.compositorSessionId}?userToken=12345`)
-    this._wsSocket.onWebSocket(webSocket)
+  launch (appEndpointURL, remoteAppId) {
+    const applicationEndpointURL = new URL(appEndpointURL)
+    applicationEndpointURL.searchParams.append('compositorSessionId', this._session.compositorSessionId)
+
+    // TODO add user jwt token as subprotocol see: https://stackoverflow.com/a/35108078/720436
+    const webSocket = new window.WebSocket(applicationEndpointURL)
+    this._remoteSocket.onWebSocket(webSocket)
   }
 }
 
-export default WSAppLauncher
+export default RemoteAppLauncher

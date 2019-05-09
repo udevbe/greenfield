@@ -19,6 +19,7 @@
 
 const path = require('path')
 const fs = require('fs')
+const JSON5 = require('json5')
 
 let configFile = process.argv[2]
 
@@ -30,7 +31,7 @@ try {
     configPath = path.join(__dirname, '../config/app-endpoint-config.json')
   }
   const configJSON = fs.readFileSync(configPath, { 'encoding': 'utf8' })
-  const config = JSON.parse(configJSON)
+  const config = JSON5.parse(configJSON)
 
   process.env.DEBUG && console.log(` --- Loaded configuration: ${configPath} ---`)
   console.log(configJSON)

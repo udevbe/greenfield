@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 // Copyright 2019 Erik De Rijcke
 //
 // This file is part of Greenfield.
@@ -17,12 +19,13 @@
 
 'use strict'
 
-const AppEndpointDaemon = require('./AppEndpointDaemon')
+require('json5/lib/register')
+const AppEndpointServer = require('./src/AppEndpointServer')
 
 async function main () {
   try {
     console.log(`[app-endpoint-daemon] >>> Running in ${process.env.DEBUG ? 'DEBUG' : 'PRODUCTION'} mode <<<`)
-    const appEndpointDaemon = await AppEndpointDaemon.create()
+    const appEndpointDaemon = AppEndpointServer.create()
     process.env.DEBUG && console.log(`[app-endpoint-daemon] - Web socket connected to ${appEndpointDaemon.webSocket.url}.`)
 
     const cleanUp = () => {

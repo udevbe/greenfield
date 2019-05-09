@@ -17,19 +17,20 @@
 
 'use strict'
 
-import WSOutOfBandChannel from './WSOutOfBandChannel'
+import RemoteOutOfBandChannel from './RemoteOutOfBandChannel'
 import StreamingBuffer from './remotestreaming/StreamingBuffer'
+import WlBufferResource from './protocol/WlBufferResource'
 import UUIDUtil from './UUIDUtil'
 import { WebFD } from 'westfield-runtime-common'
 
-class WSSocket {
+class RemoteSocket {
   /**
    *
    * @param {Session}session
-   * @returns {WSSocket}
+   * @returns {RemoteSocket}
    */
   static create (session) {
-    return new WSSocket(session)
+    return new RemoteSocket(session)
   }
 
   constructor (session) {
@@ -107,14 +108,14 @@ class WSSocket {
         DEBUG && console.log(`[WebSocket] - closed.`)
         client.close()
       }
-      webSocket.onerror = (event) => DEBUG && console.log(`[WebSocket] - error: ${event.message}.`)
+      webSocket.onerror = event => DEBUG && console.log(`[WebSocket] - error: ${event.message}.`)
 
       /**
        * @param {Array<{buffer: ArrayBuffer, fds: Array<WebFD>}>}wireMessages
        */
       client.connection.onFlush = (wireMessages) => this._flushWireMessages(client, webSocket, wireMessages)
 
-      const wsOutOfBandChannel = WSOutOfBandChannel.create((sendBuffer) => {
+      const wsOutOfBandChannel = RemoteOutOfBandChannel.create((sendBuffer) => {
         if (webSocket.readyState === 'open') {
           try {
             webSocket.send(sendBuffer)
@@ -124,29 +125,30 @@ class WSSocket {
           }
         }
       })
-      this._setupClientOutOfBandHandlers(client, wsOutOfBandChannel)
+      this._setupClientOutOfBandHandlers(webSocket, client, wsOutOfBandChannel)
 
-      webSocket.onmessage = (event) => this._handleMessageEvent(client, event, wsOutOfBandChannel)
+      webSocket.onmessage = event => this._handleMessageEvent(client, event, wsOutOfBandChannel)
     }
   }
 
   /**
+   * @param {WebSocket}webSocket
    * @param {Client}client
-   * @param {WSOutOfBandChannel}wsOutOfBandChannel
+   * @param {RemoteOutOfBandChannel}wsOutOfBandChannel
    * @private
    */
-  _setupClientOutOfBandHandlers (client, wsOutOfBandChannel) {
+  _setupClientOutOfBandHandlers (webSocket, client, wsOutOfBandChannel) {
     // send out-of-band resource destroy. opcode: 1
-    client.addResourceDestroyListener((resource) => wsOutOfBandChannel.send(1, new Uint32Array([resource.id]).buffer))
+    client.addResourceDestroyListener(resource => wsOutOfBandChannel.send(1, new Uint32Array([resource.id]).buffer))
 
     // listen for buffer creation. opcode: 2
-    wsOutOfBandChannel.setListener(2, (message) => {
+    wsOutOfBandChannel.setListener(2, message => {
       const wlBufferResource = new WlBufferResource(client, new Uint32Array(message)[0], 1)
       wlBufferResource.implementation = StreamingBuffer.create(wlBufferResource)
     })
 
     // listen for buffer contents arriving. opcode: 3
-    wsOutOfBandChannel.setListener(3, (outOfBandMessage) => {
+    wsOutOfBandChannel.setListener(3, outOfBandMessage => {
       const bufferId = new DataView(outOfBandMessage).getUint32(0, true)
       const wlBufferResource = client.connection.wlObjects[bufferId]
       const streamingBuffer = wlBufferResource.implementation
@@ -155,7 +157,7 @@ class WSSocket {
     })
 
     // listen for file contents request. opcode: 4
-    wsOutOfBandChannel.setListener(4, (arrayBuffer) => {
+    wsOutOfBandChannel.setListener(4, arrayBuffer => {
       const uint32Array = new Uint32Array(arrayBuffer)
       const fd = uint32Array[0]
       const webFD = this._session.webFS.getWebFD(fd)
@@ -190,12 +192,24 @@ class WSSocket {
         } // TODO else error out?
       })
     })
+
+    // listen for web socket creation request. opcode: 5
+    wsOutOfBandChannel.setListener(5, arrayBuffer => {
+      const uint32Array = new Uint32Array(arrayBuffer)
+      const clientId = uint32Array[0]
+
+      const webSocketURL = new URL(webSocket.url)
+      webSocketURL.searchParams.append('clientId', `${clientId}`)
+
+      const newWebSocket = new window.WebSocket(webSocketURL)
+      this.onWebSocket(newWebSocket)
+    })
   }
 
   /**
    * @param {Client}client
    * @param {MessageEvent}event
-   * @param {WSOutOfBandChannel}wsOutOfBandChannel
+   * @param {RemoteOutOfBandChannel}wsOutOfBandChannel
    * @private
    */
   _handleMessageEvent (client, event, wsOutOfBandChannel) {
@@ -318,4 +332,4 @@ class WSSocket {
   }
 }
 
-export default WSSocket
+export default RemoteSocket

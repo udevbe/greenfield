@@ -38,6 +38,7 @@ import Button from '@material-ui/core/es/Button'
 import Fade from '@material-ui/core/es/Fade'
 import RemoveAppDialog from './RemoveAppDialog'
 import Tooltip from '@material-ui/core/es/Tooltip/Tooltip'
+import RemoteAppLauncher from '../../RemoteAppLauncher'
 
 const MAX_GRID_ITEMS_H = 3
 const GRID_ITEM_SIZE = 48
@@ -197,15 +198,20 @@ class LauncherMenu extends React.Component {
   }
 
   /**
-   * @param {{url: string, type: 'web'|'remote'}} appLauncherEntry
+   * @param {{id: string, url: string, type: 'web'|'remote'}} appLauncherEntry
    * @private
    */
   _onAppLauncherClick (appLauncherEntry) {
     const { mode } = this.state
-    if (mode === 'launch') {
+    if (mode === 'launch' && appLauncherEntry.type === 'web') {
       const { onClose, webAppLauncher } = this.props
       // TODO show waiting icon on launcher tile until app is dld & launched
       webAppLauncher.launch(appLauncherEntry.url)
+      onClose()
+    } else if (mode === 'launch' && appLauncherEntry.type === 'remote') {
+      const { onClose, remoteAppLauncher } = this.props
+      // TODO show waiting icon on launcher tile until app connected
+      remoteAppLauncher.launch(appLauncherEntry.url, appLauncherEntry.id)
       onClose()
     }
     // TODO ask user for conformation
@@ -354,6 +360,7 @@ class LauncherMenu extends React.Component {
 LauncherMenu.propTypes = {
   onClose: PropTypes.func.isRequired,
   webAppLauncher: PropTypes.instanceOf(WebAppLauncher).isRequired,
+  remoteAppLauncher: PropTypes.instanceOf(RemoteAppLauncher).isRequired,
   user: PropTypes.object
 }
 

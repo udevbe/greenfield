@@ -65,7 +65,7 @@ class Encoder {
     let encodingPromise = null
 
     const bufferArea = bufferWidth * bufferHeight
-    if (bufferArea <= config['encoder']['max-png-buffer-size']) {
+    if (bufferArea <= config.session.encoder.maxPngBufferSize) {
       encodingPromise = this._encodePNGFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial)
     } else {
       encodingPromise = this._encodeFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial)

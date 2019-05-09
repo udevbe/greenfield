@@ -35,73 +35,74 @@ import WebShm from './webshm/WebShm'
 import WebAppSocket from './WebAppSocket'
 import WebAppLauncher from './WebAppLauncher'
 import WebGL from './webgl/WebGL'
-import WSSocket from './WSSocket'
-import WSAppLauncher from './WSAppLauncher'
-
-async function init () {
-  const session = Session.create()
-
-  // WebAppSocket enables browser local applications running in a web worker to connect
-  const webAppSocket = WebAppSocket.create(session)
-  const webAppLauncher = WebAppLauncher.create(webAppSocket)
-
-  // WSSocket enables native appl-endpoints with remote application to connect
-  const wsSocket = WSSocket.create(session)
-  const wsAppLauncher = WSAppLauncher.create(session, wsSocket)
-
-  const seat = Seat.create(session)
-  const desktopUserShell = DesktopUserShell.create(seat, webAppLauncher)
-
-  await auth.whenLogin()
-  const output = Output.create()
-  const compositor = Compositor.create(session, seat)
-  const dataDeviceManager = DataDeviceManager.create()
-  const subcompositor = Subcompositor.create()
-
-  const shell = Shell.create(session, desktopUserShell)
-  const xdgWmBase = XdgWmBase.create(session, desktopUserShell, seat)
-
-  const webShm = WebShm.create()
-  const webGL = WebGL.create()
-
-  output.registerGlobal(session.display.registry)
-  compositor.registerGlobal(session.display.registry)
-  dataDeviceManager.registerGlobal(session.display.registry)
-  seat.registerGlobal(session.display.registry)
-  shell.registerGlobal(session.display.registry)
-  subcompositor.registerGlobal(session.display.registry)
-
-  xdgWmBase.registerGlobal(session.display.registry)
-
-  webShm.registerGlobal(session.display.registry)
-  webGL.registerGlobal(session.display.registry)
-
-  await auth.whenLogout()
-  output.unregisterGlobal()
-  compositor.unregisterGlobal()
-  dataDeviceManager.unregisterGlobal()
-  seat.unregisterGlobal()
-  shell.unregisterGlobal()
-  subcompositor.unregisterGlobal()
-
-  xdgWmBase.unregisterGlobal()
-
-  webShm.unregisterGlobal()
-  webGL.unregisterGlobal()
-
-  session.terminate()
-
-  // fire a reload to ensure everything is cleaned up
-  window.location.reload()
-}
+import RemoteSocket from './RemoteSocket'
+import RemoteAppLauncher from './RemoteAppLauncher'
 
 async function main () {
   try {
-    await init()
+    const session = Session.create()
+
+    // WebAppSocket enables browser local applications running in a web worker to connect
+    const webAppSocket = WebAppSocket.create(session)
+    const webAppLauncher = WebAppLauncher.create(webAppSocket)
+
+    // RemoteSocket enables native application-endpoints with remote application to connect
+    const remoteSocket = RemoteSocket.create(session)
+    const remoteAppLauncher = RemoteAppLauncher.create(session, remoteSocket)
+
+    const seat = Seat.create(session)
+    const desktopUserShell = DesktopUserShell.create(seat, webAppLauncher, remoteAppLauncher)
+
+    DEBUG && console.log(`Greenfield compositor awaiting login.`)
+
+    await auth.whenLogin()
+    const output = Output.create()
+    const compositor = Compositor.create(session, seat)
+    const dataDeviceManager = DataDeviceManager.create()
+    const subcompositor = Subcompositor.create()
+
+    const shell = Shell.create(session, desktopUserShell)
+    const xdgWmBase = XdgWmBase.create(session, desktopUserShell, seat)
+
+    const webShm = WebShm.create()
+    const webGL = WebGL.create()
+
+    output.registerGlobal(session.display.registry)
+    compositor.registerGlobal(session.display.registry)
+    dataDeviceManager.registerGlobal(session.display.registry)
+    seat.registerGlobal(session.display.registry)
+    shell.registerGlobal(session.display.registry)
+    subcompositor.registerGlobal(session.display.registry)
+
+    xdgWmBase.registerGlobal(session.display.registry)
+
+    webShm.registerGlobal(session.display.registry)
+    webGL.registerGlobal(session.display.registry)
+
     DEBUG && console.log(`Greenfield compositor started.`)
+
+    await auth.whenLogout()
+    output.unregisterGlobal()
+    compositor.unregisterGlobal()
+    dataDeviceManager.unregisterGlobal()
+    seat.unregisterGlobal()
+    shell.unregisterGlobal()
+    subcompositor.unregisterGlobal()
+
+    xdgWmBase.unregisterGlobal()
+
+    webShm.unregisterGlobal()
+    webGL.unregisterGlobal()
+
+    session.terminate()
+
+    DEBUG && console.log(`Greenfield compositor terminated.`)
+
+    // fire a reload to ensure everything is cleaned up
+    window.location.reload()
   } catch (e) {
     // TODO notify user(?) & retry setup
-    console.error(`Failed to setup compositor session.`, e)
+    console.error(`Bug? Failed to setup compositor session.`, e)
   }
 }
 

@@ -28,19 +28,19 @@ const wl_buffer_interceptor = require('./protocol/wl_buffer_interceptor')
 class NativeClientSession {
   /**
    * @param {Object}wlClient
-   * @param {NativeCompositorSession}compositorSession
-   * @param {Channel}browserChannel
+   * @param {NativeCompositorSession}nativeCompositorSession
+   * @param {WebSocketChannel}webSocketChannel
    * @returns {NativeClientSession}
    */
-  static create (wlClient, compositorSession, browserChannel) {
-    const messageInterceptor = MessageInterceptor.create(wlClient, compositorSession.wlDisplay, wl_display_interceptor, { communicationChannel: browserChannel })
-    const nativeClientSession = new NativeClientSession(wlClient, compositorSession, browserChannel, messageInterceptor)
+  static create (wlClient, nativeCompositorSession, webSocketChannel) {
+    const messageInterceptor = MessageInterceptor.create(wlClient, nativeCompositorSession.wlDisplay, wl_display_interceptor, { communicationChannel: webSocketChannel })
+    const nativeClientSession = new NativeClientSession(wlClient, nativeCompositorSession, webSocketChannel, messageInterceptor)
     nativeClientSession.onDestroy().then(() => {
-      if (browserChannel.readyState === 'open' || browserChannel.readyState === 'connecting') {
-        browserChannel.onerror = null
-        browserChannel.onclose = null
-        browserChannel.onmessage = null
-        browserChannel.close()
+      if (webSocketChannel.readyState === 'open' || webSocketChannel.readyState === 'connecting') {
+        webSocketChannel.onerror = null
+        webSocketChannel.onclose = null
+        webSocketChannel.onmessage = null
+        webSocketChannel.close()
       }
     })
 
@@ -59,17 +59,17 @@ class NativeClientSession {
       // eslint-disable-next-line new-cap
       messageInterceptor.interceptors[bufferId] = new wl_buffer_interceptor(wlClient, messageInterceptor.interceptors, 1, null, null)
       // send buffer creation notification. opcode: 2
-      browserChannel.send(new Uint32Array([2, bufferId]).buffer)
+      webSocketChannel.send(new Uint32Array([2, bufferId]).buffer)
     })
 
-    browserChannel.onerror = () => nativeClientSession.destroy()
-    browserChannel.onclose = event => nativeClientSession._onClose(event)
-    browserChannel.onmessage = event => nativeClientSession._onMessage(event)
+    webSocketChannel.onerror = () => nativeClientSession.destroy()
+    webSocketChannel.onclose = event => nativeClientSession._onClose(event)
+    webSocketChannel.onmessage = event => nativeClientSession._onMessage(event)
 
-    browserChannel.onopen = () => {
-      browserChannel.onerror = event => nativeClientSession._onError(event)
+    webSocketChannel.onopen = () => {
+      webSocketChannel.onerror = event => nativeClientSession._onError(event)
       // flush out any requests that came in while we were waiting for the data channel to open.
-      process.env.DEBUG && console.log(`[app-endpoint-${nativeClientSession._nativeCompositorSession.appEndpointCompositorPair.appEndpointSessionId}] Native client session: communication channel to browser is open.`)
+      process.env.DEBUG && console.log(`[app-endpoint-${nativeCompositorSession.compositorSessionId}] Native client session: communication channel to browser is open.`)
       nativeClientSession._flushOutboundMessage()
     }
 
@@ -79,10 +79,10 @@ class NativeClientSession {
   /**
    * @param {Object}wlClient
    * @param {NativeCompositorSession}nativeCompositorSession
-   * @param {Channel}browserChannel
+   * @param {WebSocketChannel}webSocketChannel
    * @param {MessageInterceptor}messageInterceptor
    */
-  constructor (wlClient, nativeCompositorSession, browserChannel, messageInterceptor) {
+  constructor (wlClient, nativeCompositorSession, webSocketChannel, messageInterceptor) {
     /**
      * @type {Object}
      */
@@ -133,10 +133,10 @@ class NativeClientSession {
      */
     this._wlRegistries = {}
     /**
-     * @type {Channel}
+     * @type {WebSocketChannel}
      * @private
      */
-    this._browserChannel = browserChannel
+    this._webSocketChannel = webSocketChannel
     /**
      * @type {boolean}
      * @private
@@ -216,7 +216,8 @@ class NativeClientSession {
         const fdsBuffer = new Uint32Array(fdsCount)
         for (let i = 0; i < webFds.length; i++) {
           const webFD = webFds[i]
-          if (webFD.fdDomainUUID === this._nativeCompositorSession.appEndpointCompositorPair.appEndpointSessionId) {
+          // FIXME use endpoint URL form when comparing ie fdDomainUUID <=> schema://hostname:port/compositorSessionId
+          if (webFD.fdDomainUUID === this._nativeCompositorSession.compositorSessionId) {
             // the fd originally came from this machine, which means we can just use it as is.
             fdsBuffer[i] = webFD.fd
           } else {
@@ -245,10 +246,11 @@ class NativeClientSession {
    */
   async _handleForeignWebFD ({ fd, fdType, fdDomainUUID }) {
     let fdCommunicationChannel = null
-    if (this._nativeCompositorSession.appEndpointCompositorPair.compositorSessionId === fdDomainUUID) {
-      // If the fd originated from the compositor, we can reuse the existing communication channel to transfer the
+    // FIXME use endpoint URL form when comparing ie fdDomainUUID <=> schema://hostname:port/compositorSessionId
+    if (this._nativeCompositorSession.compositorSessionId === fdDomainUUID) {
+      // If the fd originated from the compositor, we can reuse the existing websocket connection to transfer the
       // fd contents
-      fdCommunicationChannel = this._browserChannel
+      fdCommunicationChannel = this._webSocketChannel
     } else {
       // TODO currently unsupported => need this once we properly implement c/p & dnd functionality
       // TODO need a way to detect when new data channel is created on an app endpoint.
@@ -330,7 +332,7 @@ class NativeClientSession {
 
   /**
    * @param fdDomainUUID
-   * @return {Channel}
+   * @return {WebSocketChannel}
    * @private
    */
   _createFdCommunicationChannel (fdDomainUUID) {
@@ -338,7 +340,7 @@ class NativeClientSession {
   }
 
   _flushOutboundMessage () {
-    while (this._outboundMessages.length) { this._browserChannel.send(this._outboundMessages.shift()) }
+    while (this._outboundMessages.length) { this._webSocketChannel.send(this._outboundMessages.shift()) }
   }
 
   /**
@@ -432,8 +434,8 @@ class NativeClientSession {
       offset += wireMessage.length
     })
 
-    if (this._browserChannel.readyState === 'open') {
-      this._browserChannel.send(sendBuffer.buffer)
+    if (this._webSocketChannel.readyState === 'open') {
+      this._webSocketChannel.send(sendBuffer.buffer)
     } else {
       // queue up data until the channel is open
       this._outboundMessages.push(sendBuffer.buffer)
@@ -452,6 +454,7 @@ class NativeClientSession {
   _serializeWebFD (fd, fdType, targetBuf) {
     targetBuf[0] = fd
     targetBuf[1] = fdType
+    // FIXME serialize (endpoint url + compositor session id) into a single byte array
     const fdDomainUUID = this._nativeCompositorSession.appEndpointCompositorPair.appEndpointSessionId
     new Uint8Array(targetBuf.buffer, targetBuf.byteOffset + 8, 16).set(parse(fdDomainUUID))
   }
@@ -470,6 +473,10 @@ class NativeClientSession {
       Endpoint.destroyClient(this.wlClient)
       this.wlClient = null
     }
+  }
+
+  requestWebSocket (clientId) {
+    this._sendOutOfBand()
   }
 
   /**
@@ -504,12 +511,29 @@ class NativeClientSession {
   }
 
   /**
+   * @param {number}opcode
+   * @param {ArrayBuffer}payload
+   */
+  _sendOutOfBand (opcode, payload) {
+    // FIXME there's the danger of sending > 16kb, which might fail in chrome. => Chunk the message
+    // if (payload.byteLength > (15 * 1024)) {
+    //   throw new Error('Exceeded maximum size for out an of band message. Maximum is 15kb.')
+    // }
+    const sendBuffer = new ArrayBuffer(4 + payload.byteLength)
+    const dataView = new DataView(sendBuffer)
+    dataView.setUint32(0, opcode, true)
+    new Uint8Array(sendBuffer, 4).set(new Uint8Array(payload))
+
+    this._webSocketChannel.webSocket.send(sendBuffer.buffer.slice(sendBuffer.byteOffset, sendBuffer.byteOffset + sendBuffer.byteLength))
+  }
+
+  /**
    * @param {ErrorEvent}event
    * @private
    */
   _onError (event) {
     // TODO log error
-    process.env.DEBUG && console.log(`[app-endpoint: ${this._nativeCompositorSession.appEndpointCompositorPair.appEndpointSessionId}] - Native client session: communication channel is in error ${JSON.stringify(event.error)}.`)
+    process.env.DEBUG && console.log(`[app-endpoint-session: ${this._nativeCompositorSession.compositorSessionId}] - Native client session: communication channel is in error ${JSON.stringify(event.error)}.`)
   }
 
   /**
@@ -517,7 +541,7 @@ class NativeClientSession {
    * @private
    */
   _onClose (event) {
-    process.env.DEBUG && console.log(`[app-endpoint: ${this._nativeCompositorSession.appEndpointCompositorPair.appEndpointSessionId}] - Native client session: communication channel is closed.`)
+    process.env.DEBUG && console.log(`[app-endpoint-session: ${this._nativeCompositorSession.compositorSessionId}] - Native client session: communication channel is closed.`)
     this.destroy()
   }
 

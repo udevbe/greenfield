@@ -20,23 +20,16 @@
 const { Endpoint, nativeGlobalNames } = require('westfield-endpoint')
 const { Epoll } = require('epoll')
 
-const RTCConnectionPool = require('./rtc/RTCConnectionPool')
-const RTCSignaling = require('./rtc/RTCSignaling')
 const NativeClientSession = require('./NativeClientSession')
+const WebSocketChannel = require('./WebSocketChannel')
 
 class NativeCompositorSession {
   /**
-   * @param {AppEndpointCompositorPair}appEndpointCompositorPair
+   * @param {string}compositorSessionId
    * @returns {NativeCompositorSession}
    */
-  static create (appEndpointCompositorPair) {
-    // TODO get channel factory type from config
-    const channelFactoryPool = RTCConnectionPool.create(appEndpointCompositorPair)
-    appEndpointCompositorPair.messageHandlers['RTCSignaling'] = RTCSignaling.create(channelFactoryPool)
-
-    const browserChannelFactory = channelFactoryPool.get(appEndpointCompositorPair.compositorSessionId)
-    const compositorSession = new NativeCompositorSession(appEndpointCompositorPair, browserChannelFactory, channelFactoryPool)
-    channelFactoryPool.channelNotifier.addListener(channel => compositorSession._handleIncomingChannel(channel))
+  static create (compositorSessionId) {
+    const compositorSession = new NativeCompositorSession(compositorSessionId)
 
     // TODO move global create/destroy callback implementations into Endpoint.js
     compositorSession.wlDisplay = Endpoint.createDisplay(
@@ -45,9 +38,9 @@ class NativeCompositorSession {
       globalName => compositorSession._onGlobalDestroyed(globalName)
     )
     Endpoint.initShm(compositorSession.wlDisplay)
-    compositorSession.wlDisplayName = Endpoint.addSocketAuto(compositorSession.wlDisplay)
-    console.log(`[app-endpoint: ${appEndpointCompositorPair.appEndpointSessionId}] - Native compositor session: created new app-endpoint.`)
-    console.log(`[app-endpoint: ${appEndpointCompositorPair.appEndpointSessionId}] - Native compositor session: compositor listening on: WAYLAND_DISPLAY="${compositorSession.wlDisplayName}".`)
+    const wlDisplayName = Endpoint.addSocketAuto(compositorSession.wlDisplay)
+    console.log(`[app-endpoint-session: ${compositorSessionId}] - Native compositor session: created new app-endpoint.`)
+    console.log(`[app-endpoint-session: ${compositorSessionId}] - Native compositor session: compositor listening on: WAYLAND_DISPLAY="${wlDisplayName}".`)
 
     // set the wayland display to something non existing, else gstreamer will connect to us with a fallback value and
     // block, while in turn we wait for gstreamer, resulting in a deadlock!
@@ -55,51 +48,38 @@ class NativeCompositorSession {
     // gstreamer pipeline using a headless option
     process.env.WAYLAND_DISPLAY = 'doesntExist'
 
-    compositorSession.wlDisplayFd = Endpoint.getFd(compositorSession.wlDisplay)
+    const wlDisplayFd = Endpoint.getFd(compositorSession.wlDisplay)
 
     // TODO handle err
     // FIXME write our own native epoll
     const fdWatcher = new Epoll(err => Endpoint.dispatchRequests(compositorSession.wlDisplay))
-    fdWatcher.add(compositorSession.wlDisplayFd, Epoll.EPOLLPRI | Epoll.EPOLLIN | Epoll.EPOLLERR)
+    fdWatcher.add(wlDisplayFd, Epoll.EPOLLPRI | Epoll.EPOLLIN | Epoll.EPOLLERR)
 
     return compositorSession
   }
 
   /**
-   * @param {AppEndpointCompositorPair}appEndpointCompositorPair
-   * @param {ChannelFactory}browserChannelFactory
-   * @param {ChannelFactoryPool}channelFactoryPool
+   * @param {string}compositorSessionId
    */
-  constructor (appEndpointCompositorPair, browserChannelFactory, channelFactoryPool) {
+  constructor (compositorSessionId) {
     /**
-     * @type {AppEndpointCompositorPair}
+     * @type {string}
      */
-    this.appEndpointCompositorPair = appEndpointCompositorPair
-    /**
-     * @type {ChannelFactory}
-     * @private
-     */
-    this._browserChannelFactory = browserChannelFactory
-    /**
-     * @type {ChannelFactoryPool}
-     */
-    this.channelFactoryPool = channelFactoryPool
+    this.compositorSessionId = compositorSessionId
     /**
      * @type {Object}
      */
     this.wlDisplay = null
     /**
-     * @type {string|null}
+     * @type {Array<{webSocketChannel: WebSocketChannel, nativeClientSession: NativeClientSession|null, id: number}>}
+     * @private
      */
-    this.wlDisplayName = null
+    this._clients = []
     /**
      * @type {number}
+     * @private
      */
-    this.wlDisplayFd = -1
-    /**
-     * @type {Array<NativeClientSession>}
-     */
-    this.clients = []
+    this._nextClientId = 0
   }
 
   destroy () {
@@ -107,21 +87,67 @@ class NativeCompositorSession {
   }
 
   /**
+   * @param {number}clienId
+   * @param {Object}wlClient
+   * @private
+   */
+  _requestWebSocket (clienId, wlClient) {
+    // We hijack the very first web socket connection we find to send an out of band message asking for a new web socket.
+    const client = this._clients.find(client => client.webSocketChannel.webSocket !== null)
+    if (client) {
+      client.nativeClientSession.requestWebSocket(clienId)
+    } else {
+      // Not a single web socket available. This means the client was definitely started locally and was not the result of a browser initiated parent process.
+      process.env.DEBUG && console.log(
+        `[app-endpoint-session: ${this.compositorSessionId}] - Native compositor session: No web sockets available for externally created wayland client.
+        Only clients created as a side effect of a browser initiated [parent] client are allowed.`
+      )
+      Endpoint.destroyClient(wlClient)
+    }
+  }
+
+  /**
    * @param {Object}wlClient
    * @private
    */
   _onClientCreated (wlClient) {
-    process.env.DEBUG && console.log(`[app-endpoint: ${this.appEndpointCompositorPair.appEndpointSessionId}] - Native compositor session: new wayland client connected.`)
+    process.env.DEBUG && console.log(`[app-endpoint-session: ${this.compositorSessionId}] - Native compositor session: new wayland client connected.`)
 
-    const browserChannel = this._browserChannelFactory.createChannel()
-    const clientSession = NativeClientSession.create(wlClient, this, browserChannel)
-    this.clients.push(clientSession)
-    clientSession.onDestroy().then(() => {
-      const idx = this.clients.indexOf(clientSession)
+    let client = this._clients.find((client) => client.nativeClientSession === null)
+
+    if (client) {
+      client.nativeClientSession = NativeClientSession.create(wlClient, this, client.webSocketChannel)
+    } else {
+      const webSocketChannel = WebSocketChannel.createNoWebSocket()
+      const id = this._nextClientId++
+      this._clients.push({
+        nativeClientSession: NativeClientSession.create(wlClient, this, webSocketChannel),
+        webSocketChannel,
+        id
+      })
+      // no browser initiated web sockets available, so ask compositor to create a new one linked to clientId
+      this._requestWebSocket(id, wlClient)
+    }
+
+    client.nativeClientSession.onDestroy().then(() => {
+      const idx = this._clients.indexOf(client)
       if (idx > -1) {
-        this.clients.splice(idx, 1)
+        this._clients.splice(idx, 1)
       }
     })
+  }
+
+  childSpawned (webSocket) {
+    this._clients.push({
+      webSocketChannel: WebSocketChannel.create(webSocket),
+      nativeClientSession: null,
+      id: this._nextClientId++
+    })
+  }
+
+  socketForClient (webSocket, clientId) {
+    // As a side effect, this will notify the NativeClientSession that a web socket is now available
+    this._clients.find(client => client.id === clientId).webSocketChannel.webSocket = webSocket
   }
 
   /**
@@ -141,16 +167,6 @@ class NativeCompositorSession {
     if (idx > -1) {
       nativeGlobalNames.splice(idx, 1)
     }
-  }
-
-  /**
-   * @param {Channel}channel
-   * @private
-   */
-  _handleIncomingChannel (channel) {
-    // TODO listen for messages
-    // TODO handle out of band message types
-    // TODO handle disconnects
   }
 }
 
