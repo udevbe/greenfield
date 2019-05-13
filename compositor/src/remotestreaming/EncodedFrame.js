@@ -27,11 +27,11 @@ import BufferContents from '../BufferContents'
  */
 export default class EncodedFrame extends BufferContents {
   /**
-   * @param {!ArrayBuffer}buffer
+   * @param {!Uint8Array}u8Buffer
    * @return {!EncodedFrame}
    */
-  static create (buffer) {
-    const dataView = new DataView(buffer)
+  static create (u8Buffer) {
+    const dataView = new DataView(u8Buffer.buffer, u8Buffer.byteOffset)
     let offset = 0
 
     const serial = dataView.getUint32(offset, true)
@@ -64,11 +64,11 @@ export default class EncodedFrame extends BufferContents {
       offset += 2
       const opaqueLength = dataView.getUint32(offset, true)
       offset += 4
-      const opaque = new Uint8Array(buffer, offset, opaqueLength)
+      const opaque = u8Buffer.subarray(u8Buffer.byteOffset + offset, opaqueLength)
       offset += opaqueLength
       const alphaLength = dataView.getUint32(offset, true)
       offset += 4
-      const alpha = new Uint8Array(buffer, offset, alphaLength)
+      const alpha = u8Buffer.subarray(u8Buffer.byteOffset + offset, alphaLength)
       offset += alphaLength
 
       encodedFragments.push(EncodedFrameFragment.create(encodingType, fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha))

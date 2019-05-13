@@ -62,10 +62,6 @@ TinyH264Decoder.prototype.release = function () {
 }
 
 TinyH264Decoder.prototype.decode = function (nal) {
-  if (nal instanceof ArrayBuffer) {
-    nal = new Uint8Array(nal)
-  }
-
   this.module.HEAPU8.set(nal, this._decBuffer)
 
   const retCode = this.module._h264bsdDecode(this.pStorage, this._decBuffer, nal.byteLength, this.pPicture, this.pWidth, this.pHeight)

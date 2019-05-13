@@ -46,14 +46,15 @@ export default class H264NALDecoder {
   decode (h264Nal) {
     if (this._busy) {
       this._decodeQueue.push(h264Nal)
-      return
+    } else {
+      this._tinyH264Worker.postMessage({
+        type: 'decode',
+        data: h264Nal.buffer,
+        offset: h264Nal.byteOffset,
+        renderStateId: this._renderStateId
+      }, [h264Nal.buffer])
+      this._busy = true
     }
-    this._tinyH264Worker.postMessage({
-      type: 'decode',
-      data: h264Nal.buffer,
-      renderStateId: this._renderStateId
-    }, [h264Nal.buffer])
-    this._busy = true
   }
 
   /**
@@ -67,6 +68,7 @@ export default class H264NALDecoder {
       this._tinyH264Worker.postMessage({
         type: 'decode',
         data: h264Nal.buffer,
+        offset: h264Nal.byteOffset,
         renderStateId: this._renderStateId
       }, [h264Nal.buffer])
     } else {

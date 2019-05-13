@@ -63,49 +63,16 @@ class SurfaceBufferEncoding {
 
         const { buffer, format, width, height } = Endpoint.getShmBuffer(this.wlClient, bufferId)
         this.encoder.encodeBuffer(Buffer.from(buffer), format, width, height, syncSerial, []).then((/** @type {EncodedFrame} */encodedFrame) => {
-          const bufferChunks = SurfaceBufferEncoding._toBufferChunks(encodedFrame.toBuffer(), encodedFrame.serial)
-          bufferChunks.forEach((chunk) => {
-            // send buffer contents. opcode: 3. bufferId + chunk
-            const sendBuffer = Buffer.concat([Buffer.from(new Uint32Array([3, bufferId]).buffer), chunk])
-            if (this.userData.communicationChannel.readyState === 'open') {
-              this.userData.communicationChannel.send(sendBuffer.buffer.slice(sendBuffer.byteOffset, sendBuffer.byteOffset + sendBuffer.byteLength))
-            } // else connection was probably closed, don't attempt to send a buffer chunk
-          })
+          // send buffer contents. opcode: 3. bufferId + chunk
+          const sendBuffer = Buffer.concat([Buffer.from(new Uint32Array([3, bufferId, encodedFrame.serial]).buffer), encodedFrame.toBuffer()])
+          if (this.userData.communicationChannel.readyState === 'open') {
+            this.userData.communicationChannel.send(sendBuffer.buffer.slice(sendBuffer.byteOffset, sendBuffer.byteOffset + sendBuffer.byteLength))
+          } // else connection was probably closed, don't attempt to send a buffer chunk
         })
       }
 
       return 0
     }
-  }
-
-  /**
-   * @param {Buffer}buffer
-   * @param {number}serial
-   * @return {Buffer[]}
-   * @private
-   */
-  static _toBufferChunks (buffer, serial) {
-    // certain webrtc implementations don't like it when data is > 16kb, so have have to split our buffer in chunks
-    const chunkSize = 16 * (1024 - 12) // 1012 because we reserve another 12 for the chunk header 1012+12=1024
-    let nroChunks = 1
-    if (buffer.length > chunkSize) {
-      nroChunks = Math.ceil(buffer.length / chunkSize)
-    }
-
-    const chunks = []
-    let chunkIdx = nroChunks
-    while (chunkIdx > 0) {
-      chunkIdx--
-      const chunkHeader = Buffer.allocUnsafe(12)
-      chunkHeader.writeUInt32BE(serial, 0, true)
-      chunkHeader.writeUInt32BE(nroChunks, 4, true)
-      chunkHeader.writeUInt32BE(chunkIdx, 8, true)
-      const chunkStart = chunkIdx * chunkSize
-      const chunkEnd = chunkStart + chunkSize
-      const bufferChunk = Buffer.concat([chunkHeader, buffer.slice(chunkStart, chunkEnd)])
-      chunks.push(bufferChunk)
-    }
-    return chunks
   }
 }
 

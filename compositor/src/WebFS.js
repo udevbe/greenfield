@@ -21,22 +21,22 @@ import { WebFD } from 'westfield-runtime-common'
 
 export default class WebFS {
   /**
-   * @param {string}fdDomainUUID
+   * @param {string}compositorSessionId
    * @return {WebFS}
    */
-  static create (fdDomainUUID) {
-    return new WebFS(fdDomainUUID)
+  static create (compositorSessionId) {
+    return new WebFS(compositorSessionId)
   }
 
   /**
-   * @param {string}fdDomainUUID
+   * @param {string}compositorSessionId
    */
-  constructor (fdDomainUUID) {
+  constructor (compositorSessionId) {
     /**
      * @type {string}
      * @private
      */
-    this._fdDomainUUID = fdDomainUUID
+    this._compositorSessionId = compositorSessionId
     /**
      * @type {Object.<number,WebFD>}
      * @private
@@ -55,9 +55,15 @@ export default class WebFS {
    */
   fromArrayBuffer (arrayBuffer) {
     const fd = this._nextFD++
+    const type = 'ArrayBuffer'
     // FIXME we want to use reference counting here instead of simply deleting.
     // Sending the WebFD to an endpoint will increase the ref, and we should wait until the endpoint has closed the fd as well.
-    const webFD = new WebFD(fd, 'ArrayBuffer', this._fdDomainUUID, () => Promise.resolve(arrayBuffer), () => { delete this._webFDs[fd] })
+    const webFdURL = new URL(`compositor://`)
+    webFdURL.searchParams.append('fd', `${fd}`)
+    webFdURL.searchParams.append('type', type)
+    webFdURL.searchParams.append('compositorSessionId', this._compositorSessionId)
+
+    const webFD = new WebFD(fd, type, webFdURL, () => Promise.resolve(arrayBuffer), () => { delete this._webFDs[fd] })
     this._webFDs[fd] = webFD
     return webFD
   }
@@ -68,7 +74,14 @@ export default class WebFS {
    */
   fromImageBitmap (imageBitmap) {
     const fd = this._nextFD++
-    const webFD = new WebFD(fd, 'ImageBitmap', this._fdDomainUUID, () => Promise.resolve(imageBitmap), () => { delete this._webFDs[fd] })
+    const type = 'ImageBitmap'
+
+    const webFdURL = new URL(`compositor://`)
+    webFdURL.searchParams.append('fd', `${fd}`)
+    webFdURL.searchParams.append('type', type)
+    webFdURL.searchParams.append('compositorSessionId', this._compositorSessionId)
+
+    const webFD = new WebFD(fd, 'ImageBitmap', webFdURL, () => Promise.resolve(imageBitmap), () => { delete this._webFDs[fd] })
     this._webFDs[fd] = webFD
     return webFD
   }
