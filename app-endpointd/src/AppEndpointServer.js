@@ -31,7 +31,7 @@ class AppEndpointServer {
   /**
    * @returns {AppEndpointServer}
    */
-  static async create () {
+  static create () {
     const server = http.createServer()
     const { timeout, hostname, port } = serverConfig.httpServer
     server.setTimeout(timeout)

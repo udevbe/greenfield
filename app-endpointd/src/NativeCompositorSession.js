@@ -38,9 +38,10 @@ class NativeCompositorSession {
       globalName => compositorSession._onGlobalDestroyed(globalName)
     )
     Endpoint.initShm(compositorSession.wlDisplay)
-    const wlDisplayName = Endpoint.addSocketAuto(compositorSession.wlDisplay)
+    const waylandDisplay = Endpoint.addSocketAuto(compositorSession.wlDisplay)
+    compositorSession.waylandDisplay = waylandDisplay
     console.log(`[app-endpoint-session: ${compositorSessionId}] - Native compositor session: created new app-endpoint.`)
-    console.log(`[app-endpoint-session: ${compositorSessionId}] - Native compositor session: compositor listening on: WAYLAND_DISPLAY="${wlDisplayName}".`)
+    console.log(`[app-endpoint-session: ${compositorSessionId}] - Native compositor session: compositor listening on: WAYLAND_DISPLAY="${waylandDisplay}".`)
 
     // set the wayland display to something non existing, else gstreamer will connect to us with a fallback value and
     // block, while in turn we wait for gstreamer, resulting in a deadlock!
@@ -62,6 +63,10 @@ class NativeCompositorSession {
    * @param {string}compositorSessionId
    */
   constructor (compositorSessionId) {
+    /**
+     * @type {string}
+     */
+    this.waylandDisplay = null
     /**
      * @type {string}
      */

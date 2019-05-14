@@ -26,30 +26,36 @@ class WebSocketChannel {
    * @return {WebSocketChannel}
    */
   static create (webSocket) {
-    return new WebSocketChannel(webSocket)
+    const webSocketChannel = new WebSocketChannel()
+    webSocketChannel.webSocket = webSocket
+    return webSocketChannel
   }
 
   /**
    * @return {WebSocketChannel}
    */
   static createNoWebSocket () {
-    return new WebSocketChannel(null)
+    return new WebSocketChannel()
   }
 
-  /**
-   * @param {WebSocket|null}webSocket
-   */
-  constructor (webSocket) {
+  constructor () {
     /**
      * @type {WebSocket|null}
      * @private
      */
-    this._webSocket = webSocket
+    this._webSocket = null
     /**
      * @type {function():void}
      * @private
      */
     this._onOpenEventHandler = null
+    /**
+     * @type {function(Object):void}
+     * @private
+     */
+    this._onErrorEventHandler = null
+    this._onCloseEventHandler = null
+    this._onMessageEventHandler = null
   }
 
   close () { this._webSocket.close() }
@@ -59,11 +65,11 @@ class WebSocketChannel {
    */
   send (arrayBuffer) { this._webSocket.send(arrayBuffer) }
 
-  set onerror (onErrorEventHandler) { this._webSocket.onerror = onErrorEventHandler }
+  set onerror (onErrorEventHandler) { this._onErrorEventHandler = onErrorEventHandler }
 
-  set onclose (onCloseEventHandler) { this._webSocket.onclose = onCloseEventHandler }
+  set onclose (onCloseEventHandler) { this._onCloseEventHandler = onCloseEventHandler }
 
-  set onmessage (onMessageEventHandler) { this._webSocket.onmessage = onMessageEventHandler }
+  set onmessage (onMessageEventHandler) { this._onMessageEventHandler = onMessageEventHandler }
 
   /**
    * @param {function():void}onOpenEventHandler
@@ -83,6 +89,25 @@ class WebSocketChannel {
         this._onOpenEventHandler()
       }
     }
+
+    this._webSocket.onerror = (e) => {
+      if (this._onErrorEventHandler) {
+        this._onErrorEventHandler(e)
+      }
+    }
+
+    // FIXME Do we manually need to fire a closed event in case the websocket is already closed?
+    this._webSocket.onclose = (e) => {
+      if (this._onCloseEventHandler) {
+        this._onCloseEventHandler(e)
+      }
+    }
+
+    this._onMessageEventHandler = (e) => {
+      if (this._onMessageEventHandler) {
+        this._onMessageEventHandler(e)
+      }
+    }
   }
 
   /**
@@ -93,9 +118,9 @@ class WebSocketChannel {
   }
 
   /**
-   * @return {string}
+   * @return {number}
    */
-  get readyState () { return this._webSocket ? this._webSocket.readyState : 'connecting' }
+  get readyState () { return this._webSocket ? this._webSocket.readyState : 0 } // 0 === 'connecting'
 }
 
 module.exports = WebSocketChannel

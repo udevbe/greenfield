@@ -26,7 +26,6 @@ async function main () {
   try {
     console.log(`[app-endpoint-daemon] >>> Running in ${process.env.DEBUG ? 'DEBUG' : 'PRODUCTION'} mode <<<`)
     const appEndpointDaemon = AppEndpointServer.create()
-    process.env.DEBUG && console.log(`[app-endpoint-daemon] - Web socket connected to ${appEndpointDaemon.webSocket.url}.`)
 
     const cleanUp = () => {
       console.log('[app-endpoint-daemon] - Exit.')

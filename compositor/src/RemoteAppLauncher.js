@@ -51,6 +51,7 @@ class RemoteAppLauncher {
   launch (appEndpointURL, remoteAppId) {
     const applicationEndpointURL = new URL(appEndpointURL)
     applicationEndpointURL.searchParams.append('compositorSessionId', this._session.compositorSessionId)
+    applicationEndpointURL.searchParams.append('launch', remoteAppId)
 
     // TODO add user jwt token as subprotocol see: https://stackoverflow.com/a/35108078/720436
     const webSocket = new window.WebSocket(applicationEndpointURL)

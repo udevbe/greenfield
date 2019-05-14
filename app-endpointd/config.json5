@@ -32,7 +32,7 @@
     // List of apps that can be started from the browser, based on the 'appId' send from the browser.
     // The 'appId' is matched with a key value in 'apps'.
     apps: {
-      'gtk3Demo': {
+      'remote-gtk3-demo': {
         // The full path of the executable binary. Can also be a symlink.
         bin: "/usr/bin/gtk3-demo",
         // Arguments passed to the binary

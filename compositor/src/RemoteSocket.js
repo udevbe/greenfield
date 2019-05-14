@@ -20,7 +20,6 @@
 import RemoteOutOfBandChannel from './RemoteOutOfBandChannel'
 import StreamingBuffer from './remotestreaming/StreamingBuffer'
 import WlBufferResource from './protocol/WlBufferResource'
-import UUIDUtil from './UUIDUtil'
 import { WebFD } from 'westfield-runtime-common'
 
 class RemoteSocket {

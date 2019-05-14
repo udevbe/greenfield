@@ -46,7 +46,7 @@ class NativeClientSession {
 
     const nativeClientSession = new NativeClientSession(wlClient, nativeCompositorSession, webSocketChannel, messageInterceptor, localWebFDBaseURL)
     nativeClientSession.onDestroy().then(() => {
-      if (webSocketChannel.readyState === 'open' || webSocketChannel.readyState === 'connecting') {
+      if (webSocketChannel.readyState === 1 || webSocketChannel.readyState === 0) {
         webSocketChannel.onerror = null
         webSocketChannel.onclose = null
         webSocketChannel.onmessage = null
@@ -452,7 +452,7 @@ class NativeClientSession {
       offset += pendingWireMessage.length
     })
 
-    if (this._webSocketChannel.readyState === 'open') {
+    if (this._webSocketChannel.readyState === 1) { // 1 === 'open'
       this._webSocketChannel.send(sendBuffer.buffer)
     } else {
       // queue up data until the channel is open

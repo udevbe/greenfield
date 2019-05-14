@@ -17,7 +17,7 @@
 
 'use strict'
 
-const config = require('../config')
+const config = require('../../config.json5')
 
 const H264OpaqueEncoder = require('./H264OpaqueEncoder')
 const H264AlphaEncoder = require('./H264AlphaEncoder')
