@@ -176,15 +176,15 @@ class RemoteSocket {
         const serializedWebFdURL = this._textEncoder.encode(webFD.url.href)
         const webFDByteLength = serializedWebFdURL.byteLength
         const message = new Uint8Array(Uint32Array.BYTES_PER_ELEMENT + webFDByteLength + transferable.byteLength) // webFdURL + fileContents
-        let offset = 0
+        let byteOffset = 0
         // web fd url length
-        new DataView(message).setUint32(offset, webFDByteLength, true)
-        offset += Uint32Array.BYTES_PER_ELEMENT
+        new DataView(message.buffer).setUint32(byteOffset, webFDByteLength, true)
+        byteOffset += Uint32Array.BYTES_PER_ELEMENT
         // web fd url
-        message.set(serializedWebFdURL, offset)
-        offset += (webFDByteLength + 3) & ~3
+        message.set(serializedWebFdURL, byteOffset)
+        byteOffset += (webFDByteLength + 3) & ~3
         // fd contents
-        message.set(new Uint8Array(transferable), offset)
+        message.set(new Uint8Array(transferable), byteOffset)
 
         // send back file contents. opcode: 4
         wsOutOfBandChannel.send(4, message.buffer)
@@ -242,15 +242,15 @@ class RemoteSocket {
     /**
      * @type {Array<{buffer: ArrayBuffer, serializedWebFds: Array<Uint8Array>}>}
      */
-    const serializedWireMessages = wireMessages.map(wireMessage => {
+    const serializedWireMessages = wireMessages.map(/** @type {{buffer: ArrayBuffer, fds: Array<WebFD>}} */ wireMessage => {
       let size = 1 // +1 for fd length
       const serializedWebFds = wireMessage.fds.map(webFd => {
         const serializedWebFD = this._textEncoder.encode(webFd.url.href)
-        size += (1 + ((serializedWebFD.byteLength + 3) & ~3) / 4) // +1 for fd url length
+        size += 1 + (((serializedWebFD.byteLength + 3) & ~3) / 4) // +1 for fd url length
         return serializedWebFD
       })
 
-      messageSize += size
+      messageSize += (size + (wireMessage.buffer.byteLength / 4))
 
       return {
         buffer: wireMessage.buffer,
@@ -266,7 +266,7 @@ class RemoteSocket {
       sendBuffer[offset++] = serializedWireMessage.serializedWebFds.length
       serializedWireMessage.serializedWebFds.forEach(serializedWebFd => {
         sendBuffer[offset++] = serializedWebFd.byteLength
-        sendBuffer.set(serializedWebFd, offset)
+        new Uint8Array(sendBuffer.buffer, sendBuffer.byteOffset + (offset * Uint32Array.BYTES_PER_ELEMENT)).set(serializedWebFd)
         offset += ((serializedWebFd.byteLength + 3) & ~3) / 4
       })
 
@@ -275,7 +275,7 @@ class RemoteSocket {
       offset += message.length
     })
 
-    if (webSocket.readyState === 'open') {
+    if (webSocket.readyState === 1) { // 1 === 'open'
       try {
         webSocket.send(sendBuffer.buffer)
       } catch (e) {

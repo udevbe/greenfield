@@ -78,14 +78,10 @@ export default class RemoteOutOfBandChannel {
    * @param {ArrayBuffer}payload
    */
   send (opcode, payload) {
-    // FIXME there's the danger of sending > 16kb, which might fail in chrome. => Chunk the message
-    // if (payload.byteLength > (15 * 1024)) {
-    //   throw new Error('Exceeded maximum size for out an of band message. Maximum is 15kb.')
-    // }
-    const sendBuffer = new ArrayBuffer(4 + payload.byteLength)
+    const sendBuffer = new ArrayBuffer(Uint32Array.BYTES_PER_ELEMENT + payload.byteLength)
     const dataView = new DataView(sendBuffer)
     dataView.setUint32(0, opcode, true)
-    new Uint8Array(sendBuffer, 4).set(new Uint8Array(payload))
+    new Uint8Array(sendBuffer, Uint32Array.BYTES_PER_ELEMENT).set(new Uint8Array(payload))
 
     this._onOutOfBandSend(sendBuffer)
   }

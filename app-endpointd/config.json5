@@ -30,7 +30,7 @@
       maxPngBufferSize: 0xFFFF,
     },
     // List of apps that can be started from the browser, based on the 'appId' send from the browser.
-    // The 'appId' is matched with a key value in 'apps'.
+    // The 'appId' is then matched with a key value in 'apps'.
     apps: {
       'remote-gtk3-demo': {
         // The full path of the executable binary. Can also be a symlink.

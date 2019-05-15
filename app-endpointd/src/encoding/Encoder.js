@@ -17,7 +17,7 @@
 
 'use strict'
 
-const config = require('../../config.json5')
+const { sessionConfig } = require('../../config.json5')
 
 const H264OpaqueEncoder = require('./H264OpaqueEncoder')
 const H264AlphaEncoder = require('./H264AlphaEncoder')
@@ -65,7 +65,7 @@ class Encoder {
     let encodingPromise = null
 
     const bufferArea = bufferWidth * bufferHeight
-    if (bufferArea <= config.session.encoder.maxPngBufferSize) {
+    if (bufferArea <= sessionConfig.encoder.maxPngBufferSize) {
       encodingPromise = this._encodePNGFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial)
     } else {
       encodingPromise = this._encodeFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial)

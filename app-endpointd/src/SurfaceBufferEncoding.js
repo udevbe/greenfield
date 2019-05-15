@@ -64,8 +64,8 @@ class SurfaceBufferEncoding {
         const { buffer, format, width, height } = Endpoint.getShmBuffer(this.wlClient, bufferId)
         this.encoder.encodeBuffer(Buffer.from(buffer), format, width, height, syncSerial, []).then((/** @type {EncodedFrame} */encodedFrame) => {
           // send buffer contents. opcode: 3. bufferId + chunk
-          const sendBuffer = Buffer.concat([Buffer.from(new Uint32Array([3, bufferId, encodedFrame.serial]).buffer), encodedFrame.toBuffer()])
-          if (this.userData.communicationChannel.readyState === 'open') {
+          const sendBuffer = Buffer.concat([Buffer.from(new Uint32Array([3, bufferId]).buffer), encodedFrame.toBuffer()])
+          if (this.userData.communicationChannel.readyState === 1) { // 1 === 'open'
             this.userData.communicationChannel.send(sendBuffer.buffer.slice(sendBuffer.byteOffset, sendBuffer.byteOffset + sendBuffer.byteLength))
           } // else connection was probably closed, don't attempt to send a buffer chunk
         })

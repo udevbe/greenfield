@@ -174,19 +174,19 @@ class NativeClientSession {
 
   /**
    * @param {Uint32Array}sourceBuf
-   * @return {{fdURL:URL, bytesRead: number}}webFdURL
+   * @return {{webFdURL:URL, bytesRead: number}}webFdURL
    * @private
    */
   _deserializeWebFdURL (sourceBuf) {
     const webFDByteLength = sourceBuf[0]
     const fdURLUint8Array = new Uint8Array(sourceBuf.buffer, sourceBuf.byteOffset + Uint32Array.BYTES_PER_ELEMENT, webFDByteLength)
     const fdURLString = textDecoder.decode(fdURLUint8Array)
-    const fdURL = new URL(fdURLString)
+    const webFdURL = new URL(fdURLString)
     // sort so we can do string comparison of urls
-    fdURL.searchParams.sort()
+    webFdURL.searchParams.sort()
 
     const alignedWebFDBytesLength = (webFDByteLength + 3) & ~3
-    return { fdURL, bytesRead: alignedWebFDBytesLength + Uint32Array.BYTES_PER_ELEMENT }
+    return { webFdURL, bytesRead: alignedWebFDBytesLength + Uint32Array.BYTES_PER_ELEMENT }
   }
 
   /**
@@ -272,7 +272,7 @@ class NativeClientSession {
   async _handleForeignWebFdURL (webFdURL) {
     /** @type {WebSocket} */
     let fdTransferWebSocket
-    if (webFdURL.protocol === 'compositor' &&
+    if (webFdURL.protocol === 'compositor:' &&
       this._nativeCompositorSession.compositorSessionId === webFdURL.searchParams.get('compositorSessionId')) {
       // If the fd originated from the compositor, we can reuse the existing websocket connection to transfer the fd contents
       fdTransferWebSocket = this._webSocketChannel.webSocket
@@ -398,12 +398,16 @@ class NativeClientSession {
       const sizeOpcode = receiveBuffer[1]
       const size = sizeOpcode >>> 16
 
+      /**
+       * @type {{consumed: number, fds: Array, bufferOffset: number, size: number, buffer: ArrayBuffer}}
+       */
       const interceptedMessage = { buffer: message, fds: [], bufferOffset: 8, consumed: 0, size: size }
       const destination = this._messageInterceptor.interceptRequest(objectId, opcode, interceptedMessage)
       if (destination === 1) {
       } else {
-        this._pendingMessageBufferSize += receiveBuffer.length
-        this._pendingWireMessages.push(receiveBuffer)
+        const interceptedBuffer = new Uint32Array(interceptedMessage.buffer)
+        this._pendingMessageBufferSize += interceptedBuffer.length
+        this._pendingWireMessages.push(interceptedBuffer)
       }
 
       // destination: 0 => browser only,  1 => native only, 2 => both

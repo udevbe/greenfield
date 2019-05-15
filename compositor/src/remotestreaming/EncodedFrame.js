@@ -64,11 +64,11 @@ export default class EncodedFrame extends BufferContents {
       offset += 2
       const opaqueLength = dataView.getUint32(offset, true)
       offset += 4
-      const opaque = u8Buffer.subarray(u8Buffer.byteOffset + offset, opaqueLength)
+      const opaque = u8Buffer.subarray(u8Buffer.byteOffset + offset, u8Buffer.byteOffset + offset + opaqueLength)
       offset += opaqueLength
       const alphaLength = dataView.getUint32(offset, true)
       offset += 4
-      const alpha = u8Buffer.subarray(u8Buffer.byteOffset + offset, alphaLength)
+      const alpha = u8Buffer.subarray(u8Buffer.byteOffset + offset, u8Buffer.byteOffset + offset + alphaLength)
       offset += alphaLength
 
       encodedFragments.push(EncodedFrameFragment.create(encodingType, fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha))

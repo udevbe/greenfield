@@ -19,7 +19,7 @@
   "dependencies": {
     "epoll": "^2.0.9",
     "gstreamer-superficial": "^1.2.0",
-    "westfield-endpoint": "^0.2.1",
+    "westfield-endpoint": "^0.2.2",
     "json5": "^2.1.0",
     "ws": "^7.0.0"
   },

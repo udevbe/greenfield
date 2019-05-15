@@ -143,6 +143,7 @@ class NativeCompositorSession {
   }
 
   childSpawned (webSocket) {
+    webSocket.binaryType = 'arraybuffer'
     this._clients.push({
       webSocketChannel: WebSocketChannel.create(webSocket),
       nativeClientSession: null,
@@ -152,6 +153,7 @@ class NativeCompositorSession {
 
   socketForClient (webSocket, clientId) {
     // As a side effect, this will notify the NativeClientSession that a web socket is now available
+    webSocket.binaryType = 'arraybuffer'
     this._clients.find(client => client.id === clientId).webSocketChannel.webSocket = webSocket
   }
 

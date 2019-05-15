@@ -54,7 +54,15 @@ class WebSocketChannel {
      * @private
      */
     this._onErrorEventHandler = null
+    /**
+     * @type {function():void}
+     * @private
+     */
     this._onCloseEventHandler = null
+    /**
+     * @type {function(Object):void}
+     * @private
+     */
     this._onMessageEventHandler = null
   }
 
@@ -83,29 +91,40 @@ class WebSocketChannel {
    */
   set webSocket (webSocket) {
     this._webSocket = webSocket
-    if (this._onOpenEventHandler) {
-      this._webSocket.onopen = this._onOpenEventHandler
-      if (this._webSocket.readyState === 'open') {
+
+    this._webSocket.onopen = () => {
+      if (this._onOpenEventHandler) {
         this._onOpenEventHandler()
       }
     }
 
-    this._webSocket.onerror = (e) => {
+    this._webSocket.onerror = e => {
       if (this._onErrorEventHandler) {
         this._onErrorEventHandler(e)
       }
     }
 
     // FIXME Do we manually need to fire a closed event in case the websocket is already closed?
-    this._webSocket.onclose = (e) => {
+    this._webSocket.onclose = () => {
       if (this._onCloseEventHandler) {
-        this._onCloseEventHandler(e)
+        this._onCloseEventHandler()
       }
     }
 
-    this._onMessageEventHandler = (e) => {
+    this._webSocket.onmessage = e => {
       if (this._onMessageEventHandler) {
         this._onMessageEventHandler(e)
+      }
+    }
+
+    if (this._webSocket.readyState === 1) {
+      if (this._onOpenEventHandler) {
+        this._onOpenEventHandler()
+      }
+    }
+    if (this._webSocket.readyState === 3) {
+      if (this._onCloseEventHandler) {
+        this._onCloseEventHandler()
       }
     }
   }
