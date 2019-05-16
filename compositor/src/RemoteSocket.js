@@ -141,33 +141,33 @@ class RemoteSocket {
   /**
    * @param {WebSocket}webSocket
    * @param {Client}client
-   * @param {RemoteOutOfBandChannel}wsOutOfBandChannel
+   * @param {RemoteOutOfBandChannel}outOfBandChannel
    * @private
    */
-  _setupClientOutOfBandHandlers (webSocket, client, wsOutOfBandChannel) {
+  _setupClientOutOfBandHandlers (webSocket, client, outOfBandChannel) {
     // send out-of-band resource destroy. opcode: 1
-    client.addResourceDestroyListener(resource => wsOutOfBandChannel.send(1, new Uint32Array([resource.id]).buffer))
+    client.addResourceDestroyListener(resource => outOfBandChannel.send(1, new Uint32Array([resource.id]).buffer))
 
     // listen for buffer creation. opcode: 2
-    wsOutOfBandChannel.setListener(2, message => {
-      const wlBufferResource = new WlBufferResource(client, new Uint32Array(message)[0], 1)
+    outOfBandChannel.setListener(2, message => {
+      const wlBufferResource = new WlBufferResource(client, new Uint32Array(message.buffer, message.byteOffset)[0], 1)
       wlBufferResource.implementation = StreamingBuffer.create(wlBufferResource)
     })
 
     // listen for buffer contents arriving. opcode: 3
-    wsOutOfBandChannel.setListener(3, outOfBandMessage => {
-      const bufferContentsDataView = new DataView(outOfBandMessage)
+    outOfBandChannel.setListener(3, outOfBandMessage => {
+      const bufferContentsDataView = new DataView(outOfBandMessage.buffer, outOfBandMessage.byteOffset)
       const bufferId = bufferContentsDataView.getUint32(0, true)
       const wlBufferResource = client.connection.wlObjects[bufferId]
       const streamingBuffer = wlBufferResource.implementation
 
-      const bufferContents = new Uint8Array(outOfBandMessage, 4)
+      const bufferContents = new Uint8Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset + Uint32Array.BYTES_PER_ELEMENT)
       streamingBuffer.bufferStream.onBufferContents(bufferContents)
     })
 
     // listen for file contents request. opcode: 4
-    wsOutOfBandChannel.setListener(4, async arrayBuffer => {
-      const uint32Array = new Uint32Array(arrayBuffer)
+    outOfBandChannel.setListener(4, async outOfBandMessage => {
+      const uint32Array = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)
       const fd = uint32Array[0]
       const webFD = this._session.webFS.getWebFD(fd)
       const transferable = await webFD.getTransferable()
@@ -187,12 +187,12 @@ class RemoteSocket {
         message.set(new Uint8Array(transferable), byteOffset)
 
         // send back file contents. opcode: 4
-        wsOutOfBandChannel.send(4, message.buffer)
+        outOfBandChannel.send(4, message.buffer)
       } // TODO else error out?
     })
 
     // listen for web socket creation request. opcode: 5
-    wsOutOfBandChannel.setListener(5, arrayBuffer => {
+    outOfBandChannel.setListener(5, arrayBuffer => {
       const uint32Array = new Uint32Array(arrayBuffer)
       const clientId = uint32Array[0]
 
@@ -221,7 +221,7 @@ class RemoteSocket {
       const receiveBuffer = new Uint32Array(arrayBuffer, Uint32Array.BYTES_PER_ELEMENT)
       const fdsInCount = receiveBuffer[offset++]
       const webFDs = new Array(fdsInCount)
-      for (let i = 0; i < fdsInCount.length; i++) {
+      for (let i = 0; i < fdsInCount; i++) {
         const { read, webFd } = this._deserializeWebFD(receiveBuffer.subarray(offset))
         offset += read
         webFDs[i] = webFd

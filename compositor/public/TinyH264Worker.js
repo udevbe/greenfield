@@ -45,7 +45,7 @@ addEventListener('message', (e) => {
         }
         h264Decoders[renderStateId] = decoder
       }
-      decoder.decode(new Uint8Array(message.data, message.offset))
+      decoder.decode(new Uint8Array(message.data, message.offset, message.length))
       break
     }
     case 'release': {

@@ -137,7 +137,7 @@ export default class H264BufferContentDecoder {
       this._decodingAlphaSerialsQueue.push(bufferContents.serial)
       // create a copy of the arraybuffer so we can zero-copy the opaque part (after zero-copying, we can no longer use the underlying array in any way)
       const alphaPixelContent = bufferContents.pixelContent[0].alpha
-      const alphaH264Nal = alphaPixelContent.slice(alphaPixelContent.byteOffset)
+      const alphaH264Nal = alphaPixelContent.slice()
       this._alphaDecoder.decode(alphaH264Nal)
     } else {
       this._frameStates[bufferContents.serial].state = 'pending_opaque'

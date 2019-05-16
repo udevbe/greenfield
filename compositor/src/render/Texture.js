@@ -62,26 +62,32 @@ export default class Texture {
   /**
    * @param {!Uint8Array}buffer
    * @param {!Rect}geo
+   * @param {number}stride
    */
-  subImage2dBuffer (buffer, geo) {
+  subImage2dBuffer (buffer, geo, stride) {
     const gl = this.gl
 
+    gl.pixelStorei(gl.UNPACK_ROW_LENGTH, stride)
     gl.bindTexture(gl.TEXTURE_2D, this.texture)
     gl.texSubImage2D(gl.TEXTURE_2D, 0, geo.x0, geo.y0, geo.width, geo.height, this.format, gl.UNSIGNED_BYTE, buffer)
     gl.bindTexture(gl.TEXTURE_2D, null)
+    gl.pixelStorei(gl.UNPACK_ROW_LENGTH, 0)
   }
 
   /**
    * @param {!Uint8Array}buffer
    * @param {number}width
    * @param {number}height
+   * @param {number}stride
    */
-  image2dBuffer (buffer, width, height) {
+  image2dBuffer (buffer, width, height, stride) {
     const gl = this.gl
 
+    gl.pixelStorei(gl.UNPACK_ROW_LENGTH, stride)
     gl.bindTexture(gl.TEXTURE_2D, this.texture)
     gl.texImage2D(gl.TEXTURE_2D, 0, this.format, width, height, 0, this.format, gl.UNSIGNED_BYTE, buffer)
     gl.bindTexture(gl.TEXTURE_2D, null)
+    gl.pixelStorei(gl.UNPACK_ROW_LENGTH, 0)
   }
 
   /**

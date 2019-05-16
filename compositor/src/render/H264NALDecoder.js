@@ -51,6 +51,7 @@ export default class H264NALDecoder {
         type: 'decode',
         data: h264Nal.buffer,
         offset: h264Nal.byteOffset,
+        length: h264Nal.byteLength,
         renderStateId: this._renderStateId
       }, [h264Nal.buffer])
       this._busy = true

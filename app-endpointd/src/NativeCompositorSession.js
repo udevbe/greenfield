@@ -125,11 +125,12 @@ class NativeCompositorSession {
     } else {
       const webSocketChannel = WebSocketChannel.createNoWebSocket()
       const id = this._nextClientId++
-      this._clients.push({
+      client = {
         nativeClientSession: NativeClientSession.create(wlClient, this, webSocketChannel),
         webSocketChannel,
         id
-      })
+      }
+      this._clients.push(client)
       // no browser initiated web sockets available, so ask compositor to create a new one linked to clientId
       this._requestWebSocket(id, wlClient)
     }

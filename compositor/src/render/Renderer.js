@@ -29,14 +29,14 @@ export default class Renderer {
   static create () {
     // create offscreen gl context
     const canvas = /** @type{HTMLCanvasElement} */document.createElement('canvas')
-    const gl = canvas.getContext('webgl', {
+    const gl = canvas.getContext('webgl2', {
       antialias: false,
       depth: false,
       alpha: true,
       preserveDrawingBuffer: false
     })
     if (!gl) {
-      throw new Error('This browser doesn\'t support WebGL!')
+      throw new Error('This browser doesn\'t support WebGL2!')
     }
 
     gl.clearColor(0, 0, 0, 0)
@@ -59,7 +59,7 @@ export default class Renderer {
     let animationResolve = null
     const animationPromise = new Promise((resolve) => { animationResolve = resolve })
     animationPromise._animationResolve = animationResolve
-    animationPromise.fire = () => window.requestAnimationFrame((time) => animationPromise._animationResolve(time))
+    animationPromise.fire = () => window.requestAnimationFrame(time => animationPromise._animationResolve(time))
     return animationPromise
   }
 

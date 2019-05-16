@@ -32,7 +32,7 @@ export default class RemoteOutOfBandChannel {
   constructor (onOutOfBandSend) {
     /**
      * Out of band listeners. Allows for messages & listeners not part of the ordinary wayland protocol.
-     * @type {Object.<number, function(ArrayBuffer):void>}
+     * @type {Object.<number, function(Uint8Array):void>}
      * @private
      */
     this._outOfBandListeners = {}
@@ -52,7 +52,7 @@ export default class RemoteOutOfBandChannel {
 
     const outOfBandHandler = this._outOfBandListeners[opcode]
     if (outOfBandHandler) {
-      outOfBandHandler(incomingMessage.slice(4))
+      outOfBandHandler(new Uint8Array(incomingMessage, 4))
     } else {
       console.log(`[BUG?] Out of band using opcode: ${opcode} not found. Ignoring.`)
     }
@@ -60,7 +60,7 @@ export default class RemoteOutOfBandChannel {
 
   /**
    * @param {number}opcode
-   * @param {function(ArrayBuffer):void}listener
+   * @param {function(Uint8Array):void}listener
    */
   setListener (opcode, listener) {
     this._outOfBandListeners[opcode] = listener
