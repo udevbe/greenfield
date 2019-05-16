@@ -506,8 +506,11 @@ class NativeClientSession {
     }
   }
 
+  /**
+   * @param {number}clientId
+   */
   requestWebSocket (clientId) {
-    this._webSocketChannel.webSocket.send(Uint32Array.of([5, clientId]))
+    this._webSocketChannel.send(Uint32Array.from([5, clientId]).buffer)
   }
 
   /**

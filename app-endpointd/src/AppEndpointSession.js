@@ -82,7 +82,9 @@ class AppEndpointSession {
    */
   handleConnection (webSocket, query) {
     process.env.DEBUG && console.log(`[app-endpoint-session: ${this.compositorSessionId}] - New web socket open.`)
-    if (query.launch) {
+    if (query.clientId) {
+      this._nativeCompositorSession.socketForClient(webSocket, Number.parseInt(query.clientId))
+    } else if (query.launch) {
       const appConfig = /** @type{{bin: string, args: Array<string>}} */sessionConfig.apps[query.launch]
       if (appConfig) {
         try {
@@ -109,8 +111,6 @@ class AppEndpointSession {
         // TODO report to browser that app was not found
         console.error(`Application: ${query.launch} was not found.`)
       }
-    } else if (query.clientId) {
-      this._nativeCompositorSession.socketForClient(webSocket, query.clientId)
     } else if (query.shm) {
       // TODO setup web socket and transfer shm contents
     } else if (query.pipe) {

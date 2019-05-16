@@ -192,8 +192,8 @@ class RemoteSocket {
     })
 
     // listen for web socket creation request. opcode: 5
-    outOfBandChannel.setListener(5, arrayBuffer => {
-      const uint32Array = new Uint32Array(arrayBuffer)
+    outOfBandChannel.setListener(5, outOfBandMessage => {
+      const uint32Array = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)
       const clientId = uint32Array[0]
 
       const webSocketURL = new URL(webSocket.url)

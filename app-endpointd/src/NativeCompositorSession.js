@@ -152,6 +152,10 @@ class NativeCompositorSession {
     })
   }
 
+  /**
+   * @param {WebSocket}webSocket
+   * @param {number}clientId
+   */
   socketForClient (webSocket, clientId) {
     // As a side effect, this will notify the NativeClientSession that a web socket is now available
     webSocket.binaryType = 'arraybuffer'
