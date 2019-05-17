@@ -4,9 +4,7 @@ const merge = require('webpack-merge')
 const baseConfig = require('./webpack.config.base')
 const CompressionPlugin = require('compression-webpack-plugin')
 
-const appBundle = 'simple.web.shm.js'
-
-const base = baseConfig(appBundle)
+const base = baseConfig()
 const prod = {
   mode: 'production',
   plugins: [
