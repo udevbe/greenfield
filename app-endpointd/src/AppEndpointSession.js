@@ -35,6 +35,7 @@ class AppEndpointSession {
   static create ({ compositorSessionId }) {
     const nativeCompositorSession = NativeCompositorSession.create(compositorSessionId)
     const appEndpointSession = new AppEndpointSession(nativeCompositorSession, compositorSessionId)
+    nativeCompositorSession.onDestroy().then(() => appEndpointSession.destroy())
     process.env.DEBUG && console.log(`[app-endpoint-session: ${compositorSessionId}] - Session started.`)
     return appEndpointSession
   }
@@ -78,7 +79,7 @@ class AppEndpointSession {
 
   /**
    * @param {WebSocket}webSocket
-   * @param query
+   * @param {ParsedUrlQuery}query
    */
   handleConnection (webSocket, query) {
     process.env.DEBUG && console.log(`[app-endpoint-session: ${this.compositorSessionId}] - New web socket open.`)
@@ -95,8 +96,9 @@ class AppEndpointSession {
             }
           })
 
-          childProcess.stdout.on('data', data => console.log(`stdout: ${data}`))
-          childProcess.stderr.on('data', data => console.log(`stderr: ${data}`))
+          // TODO redirect child process output to a separate logfile
+          // childProcess.stdout.on('data', data => console.log(`stdout: ${data}`))
+          // childProcess.stderr.on('data', data => console.log(`stderr: ${data}`))
           childProcess.on('close', code => console.log(`child process exited with code ${code}`))
 
           this._nativeCompositorSession.childSpawned(webSocket)
@@ -117,29 +119,19 @@ class AppEndpointSession {
       // TODO setup web socket and wait for pipe read/write
     }
   }
-
-  /**
-   * @param {CloseEvent}event
-   * @private
-   */
-  _onClose (event) {
-    process.env.DEBUG && console.log(`[app-endpoint-session: ${this.compositorSessionId}] - Web socket is closed. ${event.code}: ${event.reason}.`)
-    this.destroy()
-  }
-
-  /**
-   * @param {Event}event
-   * @private
-   */
-  _onError (event) {
-    process.env.DEBUG && console.error(`[app-endpoint-session: ${this.compositorSessionId}] - Web socket is in error. ${event}.`)
-  }
 }
 
+/**
+ * @param {WebSocketServer}webSocketServer
+ * @param {WebSocket}webSocket
+ * @param {ParsedUrlQuery}query
+ * @private
+ */
 function _handleFirstUpgrade (webSocketServer, webSocket, query) {
   // create new session on first connection
   // TODO set a timer to destroy app endpoint session process when no connections are active anymore
   const appEndpointSession = AppEndpointSession.create(query)
+  appEndpointSession.onDestroy().then(() => process.exit(0))
   appEndpointSession.handleConnection(webSocket, query)
 
   process.on('message', (request, socket) => {
@@ -167,6 +159,7 @@ function main () {
     const { query, ...req } = request[0]
     const head = request[1]
 
+    // handle first websocket connection
     webSocketServer.handleUpgrade(req, socket, head, (webSocket) => _handleFirstUpgrade(webSocketServer, webSocket, query))
   })
 }

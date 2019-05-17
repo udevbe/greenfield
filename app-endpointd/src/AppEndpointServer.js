@@ -68,7 +68,7 @@ class AppEndpointServer {
   handleHttpUpgradeRequest (request, socket, head) {
     // TODO handle jwt authentication & spawn fork if successful
 
-    process.env.DEBUG && console.log(`[compositor-service] - Received web socket upgrade request. Delegating to compositor session child process.`)
+    process.env.DEBUG && console.log(`[app-endpoint-server] - Received web socket upgrade request. Delegating to a session child process.`)
     const wsURL = url.parse(request.url, true)
     const compositorSessionId = wsURL.query.compositorSessionId
     if (compositorSessionId && uuidRegEx.test(compositorSessionId)) {
@@ -100,22 +100,22 @@ class AppEndpointServer {
     // uncomment next line for debugging support in the child process
     // process.execArgv.push('--inspect-brk=0')
 
-    console.log('[app-endpoint-daemon] - Creating new child process.')
+    console.log('[app-endpoint-server] - Creating new session child process.')
     const configPath = process.argv[2]
     const child = childProcess.fork(path.join(__dirname, 'AppEndpointSession.js'), configPath == null ? [] : [`${configPath}`])
 
     const removeChild = () => {
-      console.log(`[app-endpoint-daemon: ${compositorSessionId}] - Child [${child.pid}] exit.`)
+      console.log(`[app-endpoint-server: ${compositorSessionId}] - Session child [${child.pid}] exit.`)
       delete this._appEndpointSessionForks[compositorSessionId]
     }
 
     child.on('exit', removeChild)
     child.on('SIGINT', () => {
-      process.env.DEBUG && console.log(`[app-endpoint-daemon: ${compositorSessionId}] Child [${child.pid}] received SIGINT.`)
+      console.log(`[app-endpoint-server: ${compositorSessionId}] Child [${child.pid}] received SIGINT.`)
       child.exit()
     })
     child.on('SIGTERM', () => {
-      process.env.DEBUG && console.log(`[app-endpoint-daemon: ${compositorSessionId}] Child [${child.pid}] received SIGTERM.`)
+      console.log(`[app-endpoint-server: ${compositorSessionId}] Child [${child.pid}] received SIGTERM.`)
       child.exit()
     })
 

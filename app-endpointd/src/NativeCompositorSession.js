@@ -22,6 +22,7 @@ const { Epoll } = require('epoll')
 
 const NativeClientSession = require('./NativeClientSession')
 const WebSocketChannel = require('./WebSocketChannel')
+const { sessionConfig } = require('../config.json5')
 
 class NativeCompositorSession {
   /**
@@ -52,7 +53,7 @@ class NativeCompositorSession {
     const wlDisplayFd = Endpoint.getFd(compositorSession.wlDisplay)
 
     // TODO handle err
-    // FIXME write our own native epoll
+    // TODO write our own native epoll
     const fdWatcher = new Epoll(err => Endpoint.dispatchRequests(compositorSession.wlDisplay))
     fdWatcher.add(wlDisplayFd, Epoll.EPOLLPRI | Epoll.EPOLLIN | Epoll.EPOLLERR)
 
@@ -64,7 +65,7 @@ class NativeCompositorSession {
    */
   constructor (compositorSessionId) {
     /**
-     * @type {string}
+     * @type {?string}
      */
     this.waylandDisplay = null
     /**
@@ -76,7 +77,7 @@ class NativeCompositorSession {
      */
     this.wlDisplay = null
     /**
-     * @type {Array<{webSocketChannel: WebSocketChannel, nativeClientSession: NativeClientSession|null, id: number}>}
+     * @type {Array<{webSocketChannel: WebSocketChannel, nativeClientSession: ?NativeClientSession, id: number}>}
      * @private
      */
     this._clients = []
@@ -85,27 +86,61 @@ class NativeCompositorSession {
      * @private
      */
     this._nextClientId = 0
-  }
-
-  destroy () {
-    // TODO
+    /**
+     * @type {?number}
+     * @private
+     */
+    this._destroyTimeoutTimer = null
+    /**
+     * @type {?function():void}
+     * @private
+     */
+    this._destroyResolve = null
+    /**
+     * @type {Promise<void>}
+     * @private
+     */
+    this._destroyPromise = new Promise(resolve => { this._destroyResolve = resolve })
   }
 
   /**
-   * @param {number}clienId
+   * @return {Promise<void>}
+   */
+  onDestroy () {
+    return this._destroyPromise
+  }
+
+  destroy () {
+    if (this._destroyResolve === null) {
+      return
+    }
+
+    if (this._destroyTimeoutTimer) {
+      this._destroyTimeoutTimer = null
+    }
+
+    this._clients.forEach(client => client.nativeClientSession.destroy())
+    Endpoint.destroyDisplay(this.wlDisplay)
+
+    this._destroyResolve()
+    this._destroyResolve = null
+  }
+
+  /**
+   * @param {number}clientId
    * @param {Object}wlClient
    * @private
    */
-  _requestWebSocket (clienId, wlClient) {
+  _requestWebSocket (clientId, wlClient) {
     // We hijack the very first web socket connection we find to send an out of band message asking for a new web socket.
     const client = this._clients.find(client => client.webSocketChannel.webSocket !== null)
     if (client) {
-      client.nativeClientSession.requestWebSocket(clienId)
+      client.nativeClientSession.requestWebSocket(clientId)
     } else {
       // Not a single web socket available. This means the client was definitely started locally and was not the result of a browser initiated parent process.
-      process.env.DEBUG && console.log(
+      console.warn(
         `[app-endpoint-session: ${this.compositorSessionId}] - Native compositor session: No web sockets available for externally created wayland client.
-        Only clients created as a side effect of a browser initiated [parent] client are allowed.`
+        Only child clients created as a side effect of a browser initiated client processes are allowed.`
       )
       Endpoint.destroyClient(wlClient)
     }
@@ -117,6 +152,7 @@ class NativeCompositorSession {
    */
   _onClientCreated (wlClient) {
     process.env.DEBUG && console.log(`[app-endpoint-session: ${this.compositorSessionId}] - Native compositor session: new wayland client connected.`)
+    this._stopDestroyTimeout()
 
     let client = this._clients.find((client) => client.nativeClientSession === null)
 
@@ -139,8 +175,22 @@ class NativeCompositorSession {
       const idx = this._clients.indexOf(client)
       if (idx > -1) {
         this._clients.splice(idx, 1)
+
+        if (this._clients.length === 0) {
+          this._startDestroyTimeout()
+        }
       }
     })
+  }
+
+  _stopDestroyTimeout () {
+    if (this._destroyTimeoutTimer) {
+      clearTimeout(this._destroyTimeoutTimer)
+    }
+  }
+
+  _startDestroyTimeout () {
+    this._destroyTimeoutTimer = setTimeout(() => this.destroy(), sessionConfig.destroyTimeout)
   }
 
   childSpawned (webSocket) {
