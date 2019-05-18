@@ -11,7 +11,7 @@ Early tech preview demo (23 Nov 2017):
 [![Early tech preview demo](https://img.youtube.com/vi/2lyihdFK7EE/0.jpg)](https://www.youtube.com/watch?v=2lyihdFK7EE)
 
 Greenfield is different from existing solutions like VNC or RDP in that it does not stream a final server side generated image to a remote.
-Instead Greenfield live encodes each individual application to a h264 frame, after which it's send to the browser using a dedicated webrtc datachannel. 
+Instead Greenfield live encodes each individual application to a h264 frame, after which it's send to the browser using a dedicated websocket connection. 
 On reception, the h264 frame is decoded using a WASM h264 decoder + WebGL shader. After which the application content
 is drawn in it's own HTML5 canvas. As a result, the entire image you see in the browser is actually composed of nothing more than ordinary DOM elements. 
 
@@ -84,9 +84,9 @@ Clone this repo:
   
   To start the compositor run 
   
-  `npm start:dev`. 
+  `npm run start`. 
   
-  Open a browser (Firefox or Chrome) and go to `localhost:8080`.
+  And wait for the a browser to automatically open a tab to `localhost:8080`.
   
 ### Application end-point
   
@@ -95,29 +95,47 @@ Clone this repo:
    - `sudo apt-get install -y libffi-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev`
    - `npm install -g cmake-js`
     
+  At runtime, the endpoint will need gstreamer-1.x with the following plugins:
+  - appsrc
+  - glupload
+  - glcolorconvert
+  - glcolorscale
+  - tee
+  - glshader
+  - gldownload
+  - x264enc
+  - pngenc
+  - appsink  
+    
   Inside the `app-endpointd` directory run 
   
   `npm install`. 
   
-  To start the end-point daemon, first make sure the compositor  is running, then start the endpoint with 
+  To start the end-point server
   
   `npm start`. 
   
   For additional debug output, set the environment variable `export DEBUG=1`. 
    
-   The endpoint daemon will create new child process for each connected browser tab and will report on 
-   wich `WAYLAND_DISPLAY` environment variable a child process is listening. To show something in your browser, first
-   make sure the `WAYLAND_DISPLAY` environment variable is set: `export WAYLAND_DISPLAY="wayland-0"`. Next, you can fire
-    up a wayland client ie. `gtk3-demo`.
+  The endpoint server will lazily create a new child process for each new connected browser compositor instance.
+  
+### Launching applications
 
-At runtime, the endpoint will need gstreamer-1.x with the following plugins:
-- appsrc
-- glupload
-- glcolorconvert
-- glcolorscale
-- tee
-- glshader
-- gldownload
-- x264enc
-- pngenc
-- appsink
+ Applications are linked to the logged in user. There are currently 3 demo applications available.
+  
+  - Remote Gtk3 demo: A native remote application, requires the `gtk3-demo` application to be natively available.
+  - Simple Web GL: A web application, demonstrating the use of offscreen webgl. Source code available in `demo-web-clients\simple-web-gl`
+  - Simple Web SHM: A very simple web application, demonstrates the use of simple cpu based rendering. Source code available in `demo-web-clients\simple-web-shm`
+  
+  All these applications can be found inside `compositor/public/store`. 
+  
+  To add an application to your account:
+  
+  - Click the raster icon in the top right.
+  - Click the '+' icon.
+  - Click the upload icon (arrow up cloud).
+  - Select one of the `link.json` files in `compositor/public/store/*`
+  
+  You can also create your own application by defining a `link.json` and icon, and a `app.js` in case of web application.
+
+
