@@ -10,10 +10,14 @@ Early tech preview demo (23 Nov 2017):
 
 [![Early tech preview demo](https://img.youtube.com/vi/2lyihdFK7EE/0.jpg)](https://www.youtube.com/watch?v=2lyihdFK7EE)
 
-Greenfield is different from existing solutions like VNC or RDP in that it does not stream a final server side generated image to a remote.
-Instead Greenfield live encodes each individual application to a h264 frame, after which it's send to the browser using a dedicated websocket connection. 
-On reception, the h264 frame is decoded using a WASM h264 decoder + WebGL shader. After which the application content
-is drawn in it's own HTML5 canvas. As a result, the entire image you see in the browser is actually composed of nothing more than ordinary DOM elements. 
+Greenfield is an entire Wayland compositor running directly in your browser. It can run native Wayland applications remotely
+or it can run JavaScript or WebAssembly applications directly in your browser using Web Workers.
+
+The remote solutions is different from existing solution like VNC or RDP in that it does not stream a final server side generated image to a remote.
+Instead Greenfield live encodes each individual application to a h264 frame, after which it's send to the browser using 
+a dedicated websocket connection. On reception, the h264 frame is decoded using a WASM h264 decoder + WebGL shader. 
+When finished, the application content is drawn directly in it's own HTML5 canvas. As a result, the entire image you see in the 
+browser is actually composed of nothing more than ordinary browser DOM elements. 
 
 The advantage of this approach is that it retains the entire desktop context which allows for powerful features like 
 context aware application positioning & naming, custom task-bars, custom REST api integrations, notifications, css styling, WebRTC VOIP integration and 
@@ -22,25 +26,25 @@ much more. All of which can be directly and seamlessly integrated inside the bro
 ### Compatible Clients & Toolkits
 The core wayland protocol is implemented as well as the *stable* xdg shell protocol. As such it is possible to run applications with a compatible widget toolkit.
 Supported toolkits are:
- - GTK+ 3.22.30 (tested)
- - Qt 5.11 (untested)
+ - GTK+ 3.22.30 or later (tested)
+ - Qt 5.11 or later (untested)
 
 ## Applications
 
-Greenfield is in essence an entire Wayland compositor running in the browser. As such it does not care where and how
+Because Greenfield is in essence an entire Wayland compositor running in the browser, it does not care where and how
 client applications run. This has some interesting implications:
 
 ### Remote Applications
 
-Native wayland applications can connect to an in-browser compositor by talking to a local application endpoint daemon.
-This application endpoint daemon presents itself as a locally running wayland compositor while in reality it forwards
-(nearly) all messages between the the actual browser compositor & the native application. The in-browser compositor is 
+Native wayland applications can connect to the in-browser compositor by talking to a local application endpoint server.
+This application endpoint server presents itself as a locally running native wayland compositor while in reality it forwards
+(nearly) all messages between the actual browser compositor & the native application. The in-browser compositor is 
 not limited to handling a single application endpoint. Any number of endpoints can establish a connection. As a 
 consequence **different wayland applications can run on different physical hosts while being connected to the same compositor.**
 
-The process serving the compositor JavaScript & HTML files also functions as the discovery point between application 
-endpoints and connected browser compositors. It allows for application endpoints and connected browsers to setup a 
-direct connection, resulting in no intermediate relaying between a native application & the remote browser.
+The in-browser compositor and the local application endpoint server use a direct websocket connection. As such there is
+no delaying and/or relaying intermediate party involved. This made possible by the fact that websocket connections are not
+bound to the same origin policy, unlike ordinary http connections.
 
 
 ### Web Applictions
@@ -63,7 +67,7 @@ A Web application can run directly inside the browser without the drawbacks of n
 still being able to interop (copy/paste & drag'n drop) with native server-side applications running directly next to it.
 
 There are currently 2 small demo web clients available in the repository that you can check out:
-- simple-web-shm. Based on weston-simple-shm. Draws psychedelic cirkels. Uses array buffers as shared memory between 
+- simple-web-shm. Based on weston-simple-shm. Draws psychedelic circles. Uses array buffers as shared memory between 
 the compositor and the client. Supported on Firefox and Chrome.
 - simple-web-gl. Draws a rotating square. Uses offscreen WebGL and streams it's updates to the compositor using HTML5 
 ImageBitmaps. Only supported on Chrome.
@@ -88,7 +92,7 @@ Clone this repo:
   
   And wait for the a browser to automatically open a tab to `localhost:8080`.
   
-## Application end-point
+## Application end-point server
   
   Prerequisites: 
    - The Greenfield application end-point depends on the native-endpoint module of [Westfield](https://github.com/udevbe/westfield). Make sure you have the required Westfield native-endpoint dependencies installed.
@@ -107,7 +111,7 @@ Clone this repo:
   - pngenc
   - appsink  
     
-  Inside the `app-endpointd` directory run 
+  Inside the `app-endpoint-server` directory run 
   
   `npm install`. 
   
@@ -121,7 +125,7 @@ Clone this repo:
   
 #### Configuration
  
- Configuration can be in `app-endpointd/config.json5`
+ Configuration can be found in `app-endpoint-server/config.json5`
  
  ```json5
 {
@@ -173,7 +177,7 @@ Clone this repo:
   
 ## Launching applications
 
- Applications are linked to the logged in user. There are currently 3 demo applications available.
+ Applications are linked to the Greenfield account of a user. There are currently 3 demo applications available.
   
   - Remote Gtk3 demo: A native remote application, requires the `gtk3-demo` application to be natively available.
   - Simple Web GL: A web application, demonstrating the use of offscreen webgl. Source code available in `demo-web-clients/simple-web-gl`
@@ -188,7 +192,13 @@ Clone this repo:
   - Click the upload icon (arrow up cloud).
   - Select one of the `link.json` files in `compositor/public/store/*`
   
-  You can also create your own application by defining a `link.json` and icon, and additionally an `app.js` in case of web application.
+  TO remove an application from your account:
+  
+  - Click the edit icon (pen).
+  - Press the 'X' on the application launcher.
+  
+  You can also create your own custom application by defining a `link.json` and icon, and additionally an `app.js` in 
+  case of web application.
   
   An application link file structure looks like this:
   ```json
