@@ -189,12 +189,6 @@ class Auth {
     // const phoneNumber = user.phoneNumber
     // const providerData = user.providerData
 
-    // user.getIdToken().then(accessToken => {
-    //   // TODO user signed it. hide login window & render rest of ui
-    //   // TODO do something with token
-    //
-    // })
-
     let newLoginResolve = null
     this._loginPromise = new Promise(resolve => { newLoginResolve = resolve })
     this._loginResolve(user)

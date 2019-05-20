@@ -15,6 +15,6 @@ build () {
 
 printf "======[ STARTING BUILDS ]=====\n"
 build component=compositor
-build component=app-endpointd
+build component=app-endpoint-server
 printf "======[ ALL BUILDS DONE ]======\n"
 

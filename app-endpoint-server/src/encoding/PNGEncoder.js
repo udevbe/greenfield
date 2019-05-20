@@ -127,7 +127,6 @@ class PNGEncoder {
       this._configure(width, height, gstBufferFormat)
     }
 
-    // TODO we probably want to put this in it's own process so we can easily run this long running task in parallel
     const opaquePromise = new Promise((resolve, reject) => {
       this._sink.pull((pngImage) => {
         if (pngImage) {

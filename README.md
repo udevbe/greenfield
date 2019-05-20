@@ -13,14 +13,15 @@ Early tech preview demo (23 Nov 2017):
 Greenfield is an entire Wayland compositor running directly in your browser. It can run native Wayland applications remotely
 or it can run JavaScript or WebAssembly applications directly in your browser using Web Workers.
 
-The remote solution is different from existing solutions like VNC or RDP because Greenfield does not stream the entire screen to your browser.
-Instead Greenfield live encodes each individual application to an h264 stream which is send to the browser using 
-a dedicated websocket connection. On reception, the h264 stream is decoded and drawn directly into it's own HTML5 canvas. 
-As a result, the screen you see in the browser is actually composed of nothing more than ordinary browser DOM elements. 
+Greenfield remote applications are different from existing solutions like VNC or RDP as Greenfield does not stream the
+entire desktop screen to your browser. Instead Greenfield live encodes each individual application to an h264 stream which is 
+send to the browser using a dedicated websocket connection. On reception, the h264 stream is decoded and drawn directly 
+into it's own HTML5 canvas. As a result, the screen you see in the browser is actually composed of nothing more than 
+ordinary browser DOM elements. 
 
 The advantage of this approach is that it retains the entire desktop context which allows for powerful features like 
-context aware application positioning & naming, custom task-bars, custom REST api integrations, notifications, css styling, WebRTC VOIP integration and 
-much more. All of which can be directly and seamlessly integrated inside the browser.
+context aware application positioning & naming, custom task-bars, custom REST api integrations, notifications, css 
+styling, WebRTC VOIP integration and much more. All of which can be directly and seamlessly integrated inside the browser.
 
 ### Compatible Clients & Toolkits
 The core Wayland protocol is implemented as well as the *stable* XDG shell protocol. As such it is possible to run 
