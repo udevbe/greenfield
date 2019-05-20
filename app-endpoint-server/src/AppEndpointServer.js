@@ -76,7 +76,7 @@ class AppEndpointServer {
       if (!appEndpointSessionFork) {
         appEndpointSessionFork = this.createAppEndpointSessionFork(compositorSessionId)
         this.onDestroy().then(() => {
-          console.log(`[app-endpoint-daemon: ${compositorSessionId}] - Sending child ${appEndpointSessionFork.pid} SIGKILL.`)
+          console.log(`[app-endpoint-server: ${compositorSessionId}] - Sending child ${appEndpointSessionFork.pid} SIGKILL.`)
           appEndpointSessionFork.kill('SIGKILL')
         })
       }

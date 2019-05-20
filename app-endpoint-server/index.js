@@ -24,25 +24,25 @@ const AppEndpointServer = require('./src/AppEndpointServer')
 
 async function main () {
   try {
-    console.log(`[app-endpoint-daemon] >>> Running in ${process.env.DEBUG ? 'DEBUG' : 'PRODUCTION'} mode <<<`)
+    console.log(`[app-endpoint-server] >>> Running in ${process.env.DEBUG ? 'DEBUG' : 'PRODUCTION'} mode <<<`)
     const appEndpointDaemon = AppEndpointServer.create()
 
     const cleanUp = () => {
-      console.log('[app-endpoint-daemon] - Exit.')
+      console.log('[app-endpoint-server] - Exit.')
       appEndpointDaemon.destroy()
     }
 
     process.on('exit', cleanUp)
     process.on('SIGINT', () => {
-      console.log('[app-endpoint-daemon] - Received SIGINT')
+      console.log('[app-endpoint-server] - Received SIGINT')
       process.exit()
     })
     process.on('SIGTERM', () => {
-      console.log('[app-endpoint-daemon] - Received SIGTERM')
+      console.log('[app-endpoint-server] - Received SIGTERM')
       process.exit()
     })
   } catch (e) {
-    console.error('[app-endpoint-daemon] - Failed to start.', e)
+    console.error('[app-endpoint-server] - Failed to start.', e)
     process.exit(1)
   }
 }
