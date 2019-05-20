@@ -103,15 +103,16 @@ class AppEndpointSession {
 
           this._nativeCompositorSession.childSpawned(webSocket)
         } catch (e) {
+          console.error(`[app-endpoint-session: ${this.compositorSessionId}] - Application: ${query.launch} failed to start.`)
           console.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
           console.error('error object stack: ')
           console.error(e.stack)
 
-          // TODO report back to the browser when the app failed to start
+          webSocket.close(4503, `[app-endpoint-session: ${this.compositorSessionId}] - Application: ${query.launch} failed to start.`)
         }
       } else {
-        // TODO report to browser that app was not found
-        console.error(`Application: ${query.launch} was not found.`)
+        console.error(`[app-endpoint-session: ${this.compositorSessionId}] - Application: ${query.launch} not found.`)
+        webSocket.close(4404, `[app-endpoint-session: ${this.compositorSessionId}] - Application: ${query.launch} not found.`)
       }
     } else if (query.shm) {
       // TODO setup web socket and transfer shm contents
@@ -129,7 +130,6 @@ class AppEndpointSession {
  */
 function _handleFirstUpgrade (webSocketServer, webSocket, query) {
   // create new session on first connection
-  // TODO set a timer to destroy app endpoint session process when no connections are active anymore
   const appEndpointSession = AppEndpointSession.create(query)
   appEndpointSession.onDestroy().then(() => process.exit(0))
   appEndpointSession.handleConnection(webSocket, query)

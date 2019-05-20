@@ -175,7 +175,6 @@ class H264AlphaEncoder {
       this._configure(width, height, gstBufferFormat)
     }
 
-    // TODO we probably want to put this in it's own process so we can easily run this long running task in parallel
     const encodingPromise = new Promise((resolve) => {
       let opaque = null
       let alpha = null

@@ -66,11 +66,11 @@ class AppEndpointServer {
    * @param {Buffer}head
    */
   handleHttpUpgradeRequest (request, socket, head) {
-    // TODO handle jwt authentication & spawn fork if successful
-
-    process.env.DEBUG && console.log(`[app-endpoint-server] - Received web socket upgrade request. Delegating to a session child process.`)
+    // TODO handle jwt authentication
     const wsURL = url.parse(request.url, true)
     const compositorSessionId = wsURL.query.compositorSessionId
+
+    console.log(`[app-endpoint-server] - Received web socket upgrade request with compositor session id: ${compositorSessionId}. Delegating to a session child process.`)
     if (compositorSessionId && uuidRegEx.test(compositorSessionId)) {
       let appEndpointSessionFork = this._appEndpointSessionForks[compositorSessionId]
       if (!appEndpointSessionFork) {
@@ -87,7 +87,7 @@ class AppEndpointServer {
         query: wsURL.query
       }, head], socket)
     } else {
-      // 400 TODO terminate connection
+      console.error(`[app-endpoint-server] - Received web socket upgrade request with compositor session id: ${compositorSessionId}. Id not a valid uuid.`)
       socket.destroy()
     }
   }

@@ -278,12 +278,12 @@ class NativeClientSession {
       fdTransferWebSocket = this._webSocketChannel.webSocket
     } else if (webFdURL.protocol.startsWith('ws')) {
       // TODO currently unsupported => need this once we properly implement c/p & dnd functionality
-      // TODO need a way to detect when new data channel is created on an app endpoint.
       // fd came from another endpoint, establish a new communication channel
       fdTransferWebSocket = this._createFdTransferWebSocket(webFdURL)
       fdTransferWebSocket.onmessage = event => this._onMessage(event)
     } else {
       // TODO unsupported websocket url
+      console.error(`[app-endpoint-session: ${this._nativeCompositorSession.compositorSessionId}] - Unsupported websocket URL ${webFdURL.href}.`)
     }
 
     let localFD = -1
