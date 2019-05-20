@@ -53,9 +53,7 @@ export default class BufferStream {
   _onComplete (serial, encodedFrame) {
     const bufferState = this._bufferStates[serial]
     bufferState.state = 'complete'
-    bufferState.completionPromise.then(() => {
-      delete this._bufferStates[serial]
-    })
+    bufferState.completionPromise.then(() => delete this._bufferStates[serial])
     bufferState.completionResolve(encodedFrame)
   }
 
@@ -101,77 +99,19 @@ export default class BufferStream {
   }
 
   /**
-   * @param {!EncodedFrame}encodedFrame
-   * @private
+   * @param {Uint8Array}bufferContents
    */
-  _checkBufferState (encodedFrame) {
-    if (this._bufferStates[encodedFrame.serial]) {
-      // state already exists, this means the syn call arrived before this call, which means we can now decode it
-      this._bufferStates[encodedFrame.serial].encodedFrame = encodedFrame
-      this._onComplete(encodedFrame.serial, encodedFrame)
-    } else {
-      // state does not exist yet, create a new state and wait for contents to arrive
-      this._newBufferState(encodedFrame.serial).encodedFrame = encodedFrame
-    }
-  }
-
-  /**
-   *
-   * @param {!ArrayBuffer}chunk
-   * @returns {?ArrayBuffer}
-   * @private
-   */
-  _checkChunk (chunk) {
-    // parse chunk header
-    const headerSize = 12
-    const chunkHeader = new DataView(chunk, 0, headerSize)
-    const synSerial = chunkHeader.getUint32(0, false)
-    const nroChunks = chunkHeader.getUint32(4, false)
-    const chunkIdx = chunkHeader.getUint32(8, false)
-    // assign chunk to an aggregating data structure
-    let bufferChunk = this._bufferChunks[synSerial]
-    if (!bufferChunk) {
-      bufferChunk = {
-        chunks: new Array(nroChunks),
-        received: 0,
-        totalSize: 0
-      }
-      this._bufferChunks[synSerial] = bufferChunk
-    }
-    const headerlessChunk = chunk.slice(headerSize)
-
-    if (bufferChunk.chunks[chunkIdx]) {
-      return null
-    }
-    bufferChunk.chunks[chunkIdx] = headerlessChunk
-    bufferChunk.received++
-    bufferChunk.totalSize += headerlessChunk.byteLength
-
-    // check if we have all required chunks & reconstruct frame buffer if so.
-    const chunkSize = 16 * (1024 - 12)
-    if (bufferChunk.received === nroChunks) {
-      const bufferContents = new Uint8Array(bufferChunk.totalSize)
-      bufferChunk.chunks.forEach((chunk, idx) => {
-        bufferContents.set(new Uint8Array(chunk), idx * chunkSize)
-      })
-      delete this._bufferChunks[synSerial]
-      return bufferContents.buffer
-    } else {
-      return null
-    }
-  }
-
-  /**
-   * @param {!ArrayBuffer}chunk
-   */
-  onChunk (chunk) {
+  onBufferContents (bufferContents) {
     try {
-      const encodedFrameBuffer = this._checkChunk(chunk)
-      if (encodedFrameBuffer) {
-        const encodedFrame = EncodedFrame.create(encodedFrameBuffer)
-        // TODO send ack event here
-        this._checkBufferState(encodedFrame)
-      } // else we haven't received the full frame yet.
+      const encodedFrame = EncodedFrame.create(bufferContents)
+      if (this._bufferStates[encodedFrame.serial]) {
+        // state already exists, this means the syn call arrived before this call, which means we can now decode it
+        this._bufferStates[encodedFrame.serial].encodedFrame = encodedFrame
+        this._onComplete(encodedFrame.serial, encodedFrame)
+      } else {
+        // state does not exist yet, create a new state and wait for contents to arrive
+        this._newBufferState(encodedFrame.serial).encodedFrame = encodedFrame
+      }
     } catch (e) {
       // TODO better error handling
       console.error(e)

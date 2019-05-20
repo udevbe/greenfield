@@ -17,30 +17,40 @@
 
 'use strict'
 
-const { parse, unparse } = require('./UUIDUtil')
+const { TextEncoder, TextDecoder } = require('util')
+const textEncoder = new TextEncoder()
+const textDecoder = new TextDecoder()
 
 const { Endpoint, MessageInterceptor } = require('westfield-endpoint')
 // eslint-disable-next-line camelcase
 const wl_display_interceptor = require('./protocol/wl_display_interceptor')
 // eslint-disable-next-line camelcase
 const wl_buffer_interceptor = require('./protocol/wl_buffer_interceptor')
+const WebSocket = require('ws')
+
+const config = require('../config.json5')
 
 class NativeClientSession {
   /**
    * @param {Object}wlClient
-   * @param {NativeCompositorSession}compositorSession
-   * @param {Channel}browserChannel
+   * @param {NativeCompositorSession}nativeCompositorSession
+   * @param {WebSocketChannel}webSocketChannel
    * @returns {NativeClientSession}
    */
-  static create (wlClient, compositorSession, browserChannel) {
-    const messageInterceptor = MessageInterceptor.create(wlClient, compositorSession.wlDisplay, wl_display_interceptor, { communicationChannel: browserChannel })
-    const nativeClientSession = new NativeClientSession(wlClient, compositorSession, browserChannel, messageInterceptor)
+  static create (wlClient, nativeCompositorSession, webSocketChannel) {
+    const messageInterceptor = MessageInterceptor.create(wlClient, nativeCompositorSession.wlDisplay, wl_display_interceptor, { communicationChannel: webSocketChannel })
+
+    const { protocol, hostname, port } = config.serverConfig.httpServer
+    const localWebFDBaseURL = new URL(`${protocol}//${hostname}:${port}`)
+    localWebFDBaseURL.searchParams.append('compositorSessionId', nativeCompositorSession.compositorSessionId)
+
+    const nativeClientSession = new NativeClientSession(wlClient, nativeCompositorSession, webSocketChannel, messageInterceptor, localWebFDBaseURL)
     nativeClientSession.onDestroy().then(() => {
-      if (browserChannel.readyState === 'open' || browserChannel.readyState === 'connecting') {
-        browserChannel.onerror = null
-        browserChannel.onclose = null
-        browserChannel.onmessage = null
-        browserChannel.close()
+      if (webSocketChannel.readyState === 1 || webSocketChannel.readyState === 0) {
+        webSocketChannel.onerror = null
+        webSocketChannel.onclose = null
+        webSocketChannel.onmessage = null
+        webSocketChannel.close()
       }
     })
 
@@ -59,17 +69,17 @@ class NativeClientSession {
       // eslint-disable-next-line new-cap
       messageInterceptor.interceptors[bufferId] = new wl_buffer_interceptor(wlClient, messageInterceptor.interceptors, 1, null, null)
       // send buffer creation notification. opcode: 2
-      browserChannel.send(new Uint32Array([2, bufferId]).buffer)
+      webSocketChannel.send(new Uint32Array([2, bufferId]).buffer)
     })
 
-    browserChannel.onerror = () => nativeClientSession.destroy()
-    browserChannel.onclose = event => nativeClientSession._onClose(event)
-    browserChannel.onmessage = event => nativeClientSession._onMessage(event)
+    webSocketChannel.onerror = () => nativeClientSession.destroy()
+    webSocketChannel.onclose = event => nativeClientSession._onClose(event)
+    webSocketChannel.onmessage = event => nativeClientSession._onMessage(event)
 
-    browserChannel.onopen = () => {
-      browserChannel.onerror = event => nativeClientSession._onError(event)
+    webSocketChannel.onopen = () => {
+      webSocketChannel.onerror = event => nativeClientSession._onError(event)
       // flush out any requests that came in while we were waiting for the data channel to open.
-      process.env.DEBUG && console.log(`[app-endpoint-${nativeClientSession._nativeCompositorSession.appEndpointCompositorPair.appEndpointSessionId}] Native client session: communication channel to browser is open.`)
+      process.env.DEBUG && console.log(`[app-endpoint-${nativeCompositorSession.compositorSessionId}] Native client session: communication channel to browser is open.`)
       nativeClientSession._flushOutboundMessage()
     }
 
@@ -79,10 +89,11 @@ class NativeClientSession {
   /**
    * @param {Object}wlClient
    * @param {NativeCompositorSession}nativeCompositorSession
-   * @param {Channel}browserChannel
+   * @param {WebSocketChannel}webSocketChannel
    * @param {MessageInterceptor}messageInterceptor
+   * @param {URL}localWebFDBaseURL
    */
-  constructor (wlClient, nativeCompositorSession, browserChannel, messageInterceptor) {
+  constructor (wlClient, nativeCompositorSession, webSocketChannel, messageInterceptor, localWebFDBaseURL) {
     /**
      * @type {Object}
      */
@@ -103,7 +114,7 @@ class NativeClientSession {
      */
     this._destroyPromise = new Promise(resolve => { this._destroyResolve = resolve })
     /**
-     * @type {Array<ArrayBuffer>}
+     * @type {Array<Uint32Array>}
      * @private
      */
     this._pendingWireMessages = []
@@ -128,15 +139,20 @@ class NativeClientSession {
      */
     this._messageInterceptor = messageInterceptor
     /**
+     * @type {URL}
+     * @private
+     */
+    this._localWebFDBaseURL = localWebFDBaseURL
+    /**
      * @type {Object.<number, Object>}
      * @private
      */
     this._wlRegistries = {}
     /**
-     * @type {Channel}
+     * @type {WebSocketChannel}
      * @private
      */
-    this._browserChannel = browserChannel
+    this._webSocketChannel = webSocketChannel
     /**
      * @type {boolean}
      * @private
@@ -145,12 +161,12 @@ class NativeClientSession {
 
     this._browserChannelOutOfBandHandlers = {
       // listen for out-of-band resource destroy. opcode: 1
-      1: (payload) => this._destroyResourceSilently(payload),
+      1: payload => this._destroyResourceSilently(payload),
       // listen for file contents request. opcode: 4
-      4: (payload) => this._handleWebFDContentTransferReply(payload)
+      4: payload => this._handleWebFDContentTransferReply(payload)
     }
     /**
-     * @type {Object.<string, {shm: { contents: Uint8Array, pendingBytes: number }, resolve: function(data:ArrayBuffer|null):void}>}
+     * @type {Object.<string, {resolve: function(data:Uint8Array):void}>}
      * @private
      */
     this._webFDTransferRequests = {}
@@ -158,24 +174,19 @@ class NativeClientSession {
 
   /**
    * @param {Uint32Array}sourceBuf
-   * @return {{fdDomainUUID: string, fd: number, fdType: string}}
+   * @return {{webFdURL:URL, bytesRead: number}}webFdURL
    * @private
    */
-  _deserializeWebFD (sourceBuf) {
-    const fd = sourceBuf[0]
-    let fdType
-    switch (sourceBuf[1]) {
-      case 1:
-        fdType = 'shm'
-        break
-      case 2:
-        fdType = 'pipe'
-        break
-      default:
-        fdType = 'unsupported'
-    }
-    const fdDomainUUID = unparse(new Uint8Array(sourceBuf.buffer, sourceBuf.byteOffset + 4 + 4, 16))
-    return { fd, fdType, fdDomainUUID }
+  _deserializeWebFdURL (sourceBuf) {
+    const webFDByteLength = sourceBuf[0]
+    const fdURLUint8Array = new Uint8Array(sourceBuf.buffer, sourceBuf.byteOffset + Uint32Array.BYTES_PER_ELEMENT, webFDByteLength)
+    const fdURLString = textDecoder.decode(fdURLUint8Array)
+    const webFdURL = new URL(fdURLString)
+    // sort so we can do string comparison of urls
+    webFdURL.searchParams.sort()
+
+    const alignedWebFDBytesLength = (webFDByteLength + 3) & ~3
+    return { webFdURL, bytesRead: alignedWebFDBytesLength + Uint32Array.BYTES_PER_ELEMENT }
   }
 
   /**
@@ -194,11 +205,12 @@ class NativeClientSession {
       let localGlobalsEmitted = false
       while (readOffset < inboundMessage.length) {
         const fdsCount = inboundMessage[readOffset++]
-        const webFds = []
+        /** @type {Array<URL>} */
+        const webFdURLs = []
         for (let i = 0; i < fdsCount; i++) {
-          const webFD = this._deserializeWebFD(inboundMessage.subarray(readOffset, readOffset + 6))
-          webFds.push(webFD)
-          readOffset += 6
+          const { webFdURL, bytesRead } = this._deserializeWebFdURL(inboundMessage.subarray(readOffset))
+          webFdURLs.push(webFdURL)
+          readOffset += (bytesRead / Uint32Array.BYTES_PER_ELEMENT)
         }
 
         const sizeOpcode = inboundMessage[readOffset + 1]
@@ -214,17 +226,19 @@ class NativeClientSession {
         }
 
         const fdsBuffer = new Uint32Array(fdsCount)
-        for (let i = 0; i < webFds.length; i++) {
-          const webFD = webFds[i]
-          if (webFD.fdDomainUUID === this._nativeCompositorSession.appEndpointCompositorPair.appEndpointSessionId) {
-            // the fd originally came from this machine, which means we can just use it as is.
-            fdsBuffer[i] = webFD.fd
+        for (let i = 0; i < webFdURLs.length; i++) {
+          const webFdURL = webFdURLs[i]
+
+          if (webFdURL.host === this._localWebFDBaseURL.host &&
+            webFdURL.searchParams.get('compositorSessionId') === this._nativeCompositorSession.compositorSessionId) {
+            // the fd originally came from this process, which means we can just use it as is.
+            fdsBuffer[i] = Number.parseInt(webFdURL.searchParams.get('fd'))
           } else {
             // foreign fd.
             // the fd comes from a different host. In case of shm, we need to create local shm and
             // transfer the contents of the remote fd. In case of pipe, we need to create a local pipe and transfer
             // the contents on-demand.
-            fdsBuffer[i] = await this._handleForeignWebFD(webFD)
+            fdsBuffer[i] = await this._handleForeignWebFdURL(webFdURL)
           }
         }
         Endpoint.sendEvents(this.wlClient, messageBuffer, fdsBuffer)
@@ -236,59 +250,81 @@ class NativeClientSession {
   }
 
   /**
-   * Creates a local fd that matches the content & behavior of the foreign webfd
    * @param {number}fd
-   * @param {string}fdType
-   * @param {string}fdDomainUUID
+   * @param {string}type
+   * @return {URL}
+   * @private
+   */
+  _createLocalWebFDURL (fd, type) {
+    const localWebFDURL = new URL(this._localWebFDBaseURL.href)
+    localWebFDURL.searchParams.append('fd', `${fd}`)
+    localWebFDURL.searchParams.append('type', type)
+    localWebFDURL.searchParams.sort()
+    return localWebFDURL
+  }
+
+  /**
+   * Creates a local fd that matches the content & behavior of the foreign webfd
+   * @param {URL}webFdURL
    * @return {Promise<number>}
    * @private
    */
-  async _handleForeignWebFD ({ fd, fdType, fdDomainUUID }) {
-    let fdCommunicationChannel = null
-    if (this._nativeCompositorSession.appEndpointCompositorPair.compositorSessionId === fdDomainUUID) {
-      // If the fd originated from the compositor, we can reuse the existing communication channel to transfer the
-      // fd contents
-      fdCommunicationChannel = this._browserChannel
-    } else {
+  async _handleForeignWebFdURL (webFdURL) {
+    /** @type {WebSocket} */
+    let fdTransferWebSocket
+    if (webFdURL.protocol === 'compositor:' &&
+      this._nativeCompositorSession.compositorSessionId === webFdURL.searchParams.get('compositorSessionId')) {
+      // If the fd originated from the compositor, we can reuse the existing websocket connection to transfer the fd contents
+      fdTransferWebSocket = this._webSocketChannel.webSocket
+    } else if (webFdURL.protocol.startsWith('ws')) {
       // TODO currently unsupported => need this once we properly implement c/p & dnd functionality
       // TODO need a way to detect when new data channel is created on an app endpoint.
       // fd came from another endpoint, establish a new communication channel
-      fdCommunicationChannel = this._createFdCommunicationChannel(fdDomainUUID)
-      fdCommunicationChannel.onmessage = event => this._onMessage(event)
+      fdTransferWebSocket = this._createFdTransferWebSocket(webFdURL)
+      fdTransferWebSocket.onmessage = event => this._onMessage(event)
+    } else {
+      // TODO unsupported websocket url
     }
 
     let localFD = -1
-    if (fdType === 'shm') {
-      localFD = await this._handleForeignWebFDShm(fdCommunicationChannel, fd, fdDomainUUID)
-    } else if (fdType === 'pipe') { // because we can't distinguish between read or write end of a pipe, we always assume read-end of pipe here (as per c/p use-case in wayland protocol)
+    const webFdType = webFdURL.searchParams.get('type')
+    if (webFdType === 'ArrayBuffer') {
+      localFD = await this._handleForeignWebFDShm(fdTransferWebSocket, webFdURL)
+    } else if (webFdType === 'MessagePort') {
+      // because we can't distinguish between read or write end of a pipe, we always assume read-end of pipe here (as per c/p & DnD use-case in wayland protocol)
       // TODO currently unsupported => need this once we properly implement c/p & dnd functionality
-      localFD = await this._handleForeignWebFDPipe(fdCommunicationChannel, fd, fdDomainUUID)
+      localFD = await this._handleForeignWebFDPipe(fdTransferWebSocket, webFdURL)
     }
 
     return localFD
   }
 
-  async _handleForeignWebFDShm (fdCommunicationChannel, fd, fdDomainUUID) {
+  /**
+   * @param {WebSocket}fdTransferWebSocket
+   * @param {URL}webFdURL
+   * @return {Promise<number>}
+   * @private
+   */
+  async _handleForeignWebFDShm (fdTransferWebSocket, webFdURL) {
     return new Promise((resolve, reject) => {
       // register listener for incoming content on com chanel
-      this._webFDTransferRequests[`${fdDomainUUID}|${fd}`] = {
-        shm: { contents: null, pendingBytes: -1 },
-        resolve
-      }
+      this._webFDTransferRequests[webFdURL.href] = { resolve }
       // request file contents. opcode: 4
-      fdCommunicationChannel.send(new Uint32Array([4, fd]).buffer)
-    }).then((data) => {
-      return Endpoint.createMemoryMappedFile(Buffer.from(data))
-    })
+      const fd = Number.parseInt(webFdURL.searchParams.get('fd'))
+      fdTransferWebSocket.send(new Uint32Array([4, fd]).buffer)
+    }).then(/** @type{Uint8Array} */ uint8Array =>
+      Endpoint.createMemoryMappedFile(Buffer.from(uint8Array.buffer, uint8Array.byteOffset))
+    )
   }
 
-  async _handleForeignWebFDPipe (fdCommunicationChannel, fd, fdDomainUUID) {
+  async _handleForeignWebFDPipe (fdCommunicationChannel, webFdURL) {
     return new Promise((resolve, reject) => {
       // register listener for incoming content on com chanel
-      this._webFDTransferRequests[`${fdDomainUUID}|${fd}`] = resolve
+      this._webFDTransferRequests[webFdURL.href] = resolve
       // TODO send message over com channel with fd as argument to receive all content
+      const fd = Number.parseInt(webFdURL.searchParams.get('fd'))
       fdCommunicationChannel.send(new Uint32Array([4, fd]).buffer)
-    }).then((/** @type{ArrayBuffer} */contents) => {
+    }).then((/** @type{Uint8Array} */contents) => {
       // TODO send message over com channel with fd as argument to send all data received on read end of remote pipe fd
       // TODO create new local pipe
       // TODO listen for incoming content on com channel
@@ -298,47 +334,31 @@ class NativeClientSession {
   }
 
   /**
-   * @param {ArrayBuffer}payload
+   * @param {Uint8Array}payload
    * @private
    */
   _handleWebFDContentTransferReply (payload) {
-    const payloadBuffer = Buffer.from(payload)
-
-    // payload = fd (uint32) + fdDomainUUID (16 bytes) + totalSize (uint32) + chunk contents (max 16kb - 24 bytes)
-
-    const fd = payloadBuffer.readUInt32LE(0, true)
-
-    const fdDomainUUIDBuffer = payloadBuffer.slice(4, 20)
-    const fdDomainUUID = unparse(new Uint8Array(fdDomainUUIDBuffer))
-
-    const webFDTransfer = this._webFDTransferRequests[`${fdDomainUUID}|${fd}`]
-
-    if (webFDTransfer.shm.contents === null) {
-      // init pendingBytes as totalSize
-      webFDTransfer.shm.pendingBytes = payloadBuffer.readUInt32BE(20, true)
-      webFDTransfer.shm.contents = new Uint8Array(webFDTransfer.shm.pendingBytes)
-    }
-
-    const contents = new Uint8Array(payload.slice(24))
-    webFDTransfer.shm.contents.set(contents, webFDTransfer.shm.contents.length - webFDTransfer.shm.pendingBytes)
-    webFDTransfer.shm.pendingBytes -= contents.length
-
-    if (webFDTransfer.shm.pendingBytes === 0) {
-      webFDTransfer.resolve(webFDTransfer.shm.contents.buffer)
-    }
+    // payload = fdURLByteSize (4 bytes) + fdURL (aligned to 4 bytes) + contents
+    const { webFdURL, bytesRead } = this._deserializeWebFdURL(payload)
+    const webFDTransfer = this._webFDTransferRequests[webFdURL]
+    delete this._webFDTransferRequests[webFdURL]
+    webFDTransfer.resolve(payload.subarray(bytesRead))
   }
 
   /**
-   * @param fdDomainUUID
-   * @return {Channel}
+   * @param {URL}webFdURL
+   * @return {WebSocket}
    * @private
    */
-  _createFdCommunicationChannel (fdDomainUUID) {
-    return this._nativeCompositorSession.channelFactoryPool.get(fdDomainUUID).createChannel()
+  _createFdTransferWebSocket (webFdURL) {
+    // TODO enable compression
+    return new WebSocket(webFdURL)
   }
 
   _flushOutboundMessage () {
-    while (this._outboundMessages.length) { this._browserChannel.send(this._outboundMessages.shift()) }
+    while (this._outboundMessages.length) {
+      this._webSocketChannel.send(this._outboundMessages.shift())
+    }
   }
 
   /**
@@ -378,12 +398,16 @@ class NativeClientSession {
       const sizeOpcode = receiveBuffer[1]
       const size = sizeOpcode >>> 16
 
+      /**
+       * @type {{consumed: number, fds: Array, bufferOffset: number, size: number, buffer: ArrayBuffer}}
+       */
       const interceptedMessage = { buffer: message, fds: [], bufferOffset: 8, consumed: 0, size: size }
       const destination = this._messageInterceptor.interceptRequest(objectId, opcode, interceptedMessage)
       if (destination === 1) {
       } else {
-        this._pendingMessageBufferSize += interceptedMessage.buffer.byteLength
-        this._pendingWireMessages.push(interceptedMessage.buffer)
+        const interceptedBuffer = new Uint32Array(interceptedMessage.buffer)
+        this._pendingMessageBufferSize += interceptedBuffer.length
+        this._pendingWireMessages.push(interceptedBuffer)
       }
 
       // destination: 0 => browser only,  1 => native only, 2 => both
@@ -399,41 +423,41 @@ class NativeClientSession {
    * @param {ArrayBuffer}fdsInWithType
    */
   _onWireMessageEnd (wlClient, fdsInWithType) {
-    const webFDIntSize = 6 // fd (1) + type (1) + uuid (4)
     let nroFds = 0
-    let fdsIntBufferSize = 1
+    let fdsIntBufferSize = 1 // start with one because we start with the number of webfds specified
+    /** @type {Array<Uint8Array>} */const serializedWebFDs = new Array(nroFds)
     if (fdsInWithType) {
       nroFds = fdsInWithType.byteLength / (Uint32Array.BYTES_PER_ELEMENT * 2) // fd + type (shm or pipe) = 2
-      fdsIntBufferSize += (nroFds * webFDIntSize)
-    }
-
-    // +1 because we prefix the length
-    const sendBuffer = new Uint32Array(1 + fdsIntBufferSize + (this._pendingMessageBufferSize / Uint32Array.BYTES_PER_ELEMENT))
-    let offset = 0
-    sendBuffer[offset++] = 0 // disable out-of-band
-    sendBuffer[offset++] = nroFds
-
-    if (fdsInWithType) {
-      const fdsArray = new Uint32Array(fdsInWithType)
       for (let i = 0; i < nroFds; i++) {
         // TODO keep track of (web)fd in case another host wants to get it's content or issues an fd close
         const fd = fdsInWithType[i * 2]
         const fdType = fdsInWithType[(i * 2) + 1]
-        const outBuf = sendBuffer.subarray(offset, offset + 6)
-        this._serializeWebFD(fd, fdType, outBuf)
-        offset += 6
+
+        const serializedWebFD = this._serializeWebFD(fd, fdType)
+        serializedWebFDs[i] = serializedWebFD
+        // align webfdurl size to 32bits
+        fdsIntBufferSize += (1 + ((serializedWebFD.byteLength + 3) & ~3) / 4)
       }
-      offset += fdsArray.length
     }
 
-    this._pendingWireMessages.forEach(value => {
-      const wireMessage = new Uint32Array(value)
-      sendBuffer.set(wireMessage, offset)
-      offset += wireMessage.length
+    const sendBuffer = new Uint32Array(1 + fdsIntBufferSize + this._pendingMessageBufferSize)
+    let offset = 0
+    sendBuffer[offset++] = 0 // disable out-of-band
+    sendBuffer[offset++] = nroFds
+    serializedWebFDs.forEach(serializedWebFD => {
+      sendBuffer[offset++] = serializedWebFD.byteLength
+      sendBuffer.set(serializedWebFD, offset)
+      // align offset to 32bits
+      offset += ((serializedWebFD.byteLength + 3) & ~3) / 4
     })
 
-    if (this._browserChannel.readyState === 'open') {
-      this._browserChannel.send(sendBuffer.buffer)
+    this._pendingWireMessages.forEach(pendingWireMessage => {
+      sendBuffer.set(pendingWireMessage, offset)
+      offset += pendingWireMessage.length
+    })
+
+    if (this._webSocketChannel.readyState === 1) { // 1 === 'open'
+      this._webSocketChannel.send(sendBuffer.buffer)
     } else {
       // queue up data until the channel is open
       this._outboundMessages.push(sendBuffer.buffer)
@@ -446,14 +470,24 @@ class NativeClientSession {
   /**
    * @param {number}fd
    * @param {number}fdType
-   * @param {Uint32Array}targetBuf
+   * @return {Uint8Array}
    * @private
    */
-  _serializeWebFD (fd, fdType, targetBuf) {
-    targetBuf[0] = fd
-    targetBuf[1] = fdType
-    const fdDomainUUID = this._nativeCompositorSession.appEndpointCompositorPair.appEndpointSessionId
-    new Uint8Array(targetBuf.buffer, targetBuf.byteOffset + 8, 16).set(parse(fdDomainUUID))
+  _serializeWebFD (fd, fdType) {
+    let type
+    switch (fdType) {
+      case 1:
+        type = 'ArrayBuffer'
+        break
+      case 2:
+        type = 'MessageChannel'
+        break
+      default:
+        type = 'unsupported'
+    }
+
+    const webFdURL = this._createLocalWebFDURL(fd, type)
+    return textEncoder.encode(webFdURL.href)
   }
 
   /**
@@ -473,6 +507,13 @@ class NativeClientSession {
   }
 
   /**
+   * @param {number}clientId
+   */
+  requestWebSocket (clientId) {
+    this._webSocketChannel.send(Uint32Array.from([5, clientId]).buffer)
+  }
+
+  /**
    * @param {MessageEvent}event
    * @private
    */
@@ -480,21 +521,20 @@ class NativeClientSession {
     if (!this.wlClient) { return }
 
     const receiveBuffer = /** @type {ArrayBuffer} */event.data
-    const buffer = Buffer.from(receiveBuffer)
-    const outOfBandOpcode = buffer.readUInt32LE(0, true)
+    const outOfBandOpcode = new Uint32Array(receiveBuffer, 0, 1)[0]
     if (outOfBandOpcode) {
-      this._browserChannelOutOfBandHandlers[outOfBandOpcode](receiveBuffer.slice(4))
+      this._browserChannelOutOfBandHandlers[outOfBandOpcode](new Uint8Array(receiveBuffer, Uint32Array.BYTES_PER_ELEMENT))
     } else {
       this._onWireMessageEvents(new Uint32Array(receiveBuffer, Uint32Array.BYTES_PER_ELEMENT))
     }
   }
 
   /**
-   * @param {ArrayBuffer}payload
+   * @param {Uint8Array}payload
    * @private
    */
   _destroyResourceSilently (payload) {
-    const deleteObjectId = Buffer.from(payload).readUInt32LE(0, true)
+    const deleteObjectId = new Uint32Array(payload.buffer, payload.byteOffset, 1)[0]
     Endpoint.destroyWlResourceSilently(this.wlClient, deleteObjectId)
     delete this._messageInterceptor.interceptors[deleteObjectId]
     if (deleteObjectId === 1) {
@@ -509,7 +549,7 @@ class NativeClientSession {
    */
   _onError (event) {
     // TODO log error
-    process.env.DEBUG && console.log(`[app-endpoint: ${this._nativeCompositorSession.appEndpointCompositorPair.appEndpointSessionId}] - Native client session: communication channel is in error ${JSON.stringify(event.error)}.`)
+    process.env.DEBUG && console.log(`[app-endpoint-session: ${this._nativeCompositorSession.compositorSessionId}] - Native client session: communication channel is in error ${JSON.stringify(event.error)}.`)
   }
 
   /**
@@ -517,7 +557,7 @@ class NativeClientSession {
    * @private
    */
   _onClose (event) {
-    process.env.DEBUG && console.log(`[app-endpoint: ${this._nativeCompositorSession.appEndpointCompositorPair.appEndpointSessionId}] - Native client session: communication channel is closed.`)
+    process.env.DEBUG && console.log(`[app-endpoint-session: ${this._nativeCompositorSession.compositorSessionId}] - Native client session: communication channel is closed.`)
     this.destroy()
   }
 

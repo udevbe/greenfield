@@ -38,6 +38,7 @@ import UserMenu from './UserMenu'
 import SettingsDrawer from './SettingsDrawer'
 import LauncherMenu from './LauncherMenu'
 import WebAppLauncher from '../../WebAppLauncher'
+import RemoteAppLauncher from '../../RemoteAppLauncher'
 
 const styles = {
   root: {
@@ -99,7 +100,7 @@ class TopPanel extends React.Component {
   }
 
   render () {
-    const { classes, managedSurfaces, activeManagedSurface, seat, user, webAppLauncher } = this.props
+    const { classes, managedSurfaces, activeManagedSurface, seat, user, webAppLauncher, remoteAppLauncher } = this.props
     if (user === null) return null
 
     const { drawer, userMenuAnchorEl, launcherMenuAnchorEl } = this.state
@@ -148,6 +149,7 @@ class TopPanel extends React.Component {
           anchorEl={launcherMenuAnchorEl}
           onClose={() => this._launcherMenuClose()}
           webAppLauncher={webAppLauncher}
+          remoteAppLauncher={remoteAppLauncher}
           user={user}
         />
       </AppBar>
@@ -162,7 +164,8 @@ TopPanel.propTypes = {
   activeManagedSurface: PropTypes.instanceOf(ManagedSurface),
   managedSurfaces: PropTypes.arrayOf(ManagedSurface).isRequired,
   user: PropTypes.object,
-  webAppLauncher: PropTypes.instanceOf(WebAppLauncher).isRequired
+  webAppLauncher: PropTypes.instanceOf(WebAppLauncher).isRequired,
+  remoteAppLauncher: PropTypes.instanceOf(RemoteAppLauncher).isRequired
 }
 
 export default withStyles(styles)(TopPanel)

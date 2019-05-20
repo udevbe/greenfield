@@ -13,9 +13,7 @@ const base = baseConfig(appBundle, buildDir, false)
 const prod = {
   mode: 'production',
   plugins: [
-    new CleanWebpackPlugin([buildDir], {
-      root: path.resolve(__dirname, '..')
-    }),
+    new CleanWebpackPlugin(),
     new webpack.DefinePlugin({
       DEBUG: JSON.stringify(false)
     }),

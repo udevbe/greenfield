@@ -17,13 +17,13 @@
 
 'use strict'
 
-export default class WSOutOfBandChannel {
+export default class RemoteOutOfBandChannel {
   /**
    * @param {function(ArrayBuffer):void}onOutOfBandSend
-   * @return {WSOutOfBandChannel}
+   * @return {RemoteOutOfBandChannel}
    */
   static create (onOutOfBandSend) {
-    return new WSOutOfBandChannel(onOutOfBandSend)
+    return new RemoteOutOfBandChannel(onOutOfBandSend)
   }
 
   /**
@@ -32,7 +32,7 @@ export default class WSOutOfBandChannel {
   constructor (onOutOfBandSend) {
     /**
      * Out of band listeners. Allows for messages & listeners not part of the ordinary wayland protocol.
-     * @type {Object.<number, function(ArrayBuffer):void>}
+     * @type {Object.<number, function(Uint8Array):void>}
      * @private
      */
     this._outOfBandListeners = {}
@@ -52,7 +52,7 @@ export default class WSOutOfBandChannel {
 
     const outOfBandHandler = this._outOfBandListeners[opcode]
     if (outOfBandHandler) {
-      outOfBandHandler(incomingMessage.slice(4))
+      outOfBandHandler(new Uint8Array(incomingMessage, 4))
     } else {
       console.log(`[BUG?] Out of band using opcode: ${opcode} not found. Ignoring.`)
     }
@@ -60,7 +60,7 @@ export default class WSOutOfBandChannel {
 
   /**
    * @param {number}opcode
-   * @param {function(ArrayBuffer):void}listener
+   * @param {function(Uint8Array):void}listener
    */
   setListener (opcode, listener) {
     this._outOfBandListeners[opcode] = listener
@@ -78,11 +78,10 @@ export default class WSOutOfBandChannel {
    * @param {ArrayBuffer}payload
    */
   send (opcode, payload) {
-    // FIXME there's the danger of sending > 16kb, which might fail in chrome. => Chunk the message
-    const sendBuffer = new ArrayBuffer(4 + payload.byteLength)
+    const sendBuffer = new ArrayBuffer(Uint32Array.BYTES_PER_ELEMENT + payload.byteLength)
     const dataView = new DataView(sendBuffer)
     dataView.setUint32(0, opcode, true)
-    new Uint8Array(sendBuffer, 4).set(new Uint8Array(payload))
+    new Uint8Array(sendBuffer, Uint32Array.BYTES_PER_ELEMENT).set(new Uint8Array(payload))
 
     this._onOutOfBandSend(sendBuffer)
   }

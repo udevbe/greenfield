@@ -25,74 +25,64 @@ import { withStyles } from '@material-ui/core/es/styles'
 import Typography from '@material-ui/core/es/Typography'
 import ButtonBase from '@material-ui/core/es/ButtonBase'
 import Fab from '@material-ui/core/es/Fab'
+
 import AddIcon from '@material-ui/icons/Add'
+import EditIcon from '@material-ui/icons/Edit'
+import DeleteIcon from '@material-ui/icons/Close'
 
 import WebAppLauncher from '../../WebAppLauncher'
 import auth from '../Auth'
 import Grid from '@material-ui/core/es/Grid'
-import AddApplicationDialog from './AddApplicationDialog'
-
-// TODO remove dummy app launchers once apps are stored in user profile
-const demoAppLauncherEntries = [
-  {
-    title: 'Simple Web SHM',
-    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
-    appURL: `${window.location.href}clients/simple.web.shm.js`
-  },
-  {
-    title: 'Simple Web GL',
-    imageURL: `https://picsum.photos/100?dummy=${Math.random()}`,
-    appURL: `${window.location.href}clients/simple.web.gl.js`
-  }
-]
+import AddAppDialog from './AddAppDialog'
+import Button from '@material-ui/core/es/Button'
+import Fade from '@material-ui/core/es/Fade'
+import RemoveAppDialog from './RemoveAppDialog'
+import Tooltip from '@material-ui/core/es/Tooltip/Tooltip'
+import RemoteAppLauncher from '../../RemoteAppLauncher'
 
 const MAX_GRID_ITEMS_H = 3
-const GRID_ITEM_SIZE = 100
-const GRID_ITEM_MARGIN = 2
+const GRID_ITEM_SIZE = 48
+const GRID_ITEM_MARGIN = 25
 
 const styles = theme => ({
   gridContainer: {
-    overflow: 'visible'
+    overflow: 'visible',
+    marginLeft: 15,
+    marginTop: 15
   },
   gridItem: {
     margin: GRID_ITEM_MARGIN,
     width: GRID_ITEM_SIZE,
     height: GRID_ITEM_SIZE
   },
-  fabAdd: {
+  fab: {
+    margin: 20,
     bottom: GRID_ITEM_MARGIN,
     right: GRID_ITEM_MARGIN,
-    margin: GRID_ITEM_MARGIN,
-    marginTop: -50,
+    marginRight: GRID_ITEM_MARGIN,
     position: 'sticky',
     display: 'block',
     float: 'right',
-    zIndex: 2
+    zIndex: 5
   },
-  // Below style shamelessly copied from https://material-ui.com/demos/buttons/
   image: {
+    width: '100%',
     height: '100%',
     position: 'relative',
-    '&:hover, &$focusVisible': {
-      zIndex: 1,
-      '& $imageBackdrop': {
-        opacity: 0.15
-      },
-      '& $imageMarked': {
-        opacity: 0
+    '&:hover': {
+      '& $imageTitle': {
+        opacity: 1
       }
     }
   },
-  focusVisible: {},
   imageButton: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    left: -GRID_ITEM_MARGIN,
+    right: -GRID_ITEM_MARGIN,
+    [theme.breakpoints.down('sm')]: {
+      backgroundColor: theme.palette.secondary.main
+    },
+    bottom: -GRID_ITEM_MARGIN,
     color: theme.palette.common.white
   },
   imageSrc: {
@@ -104,44 +94,99 @@ const styles = theme => ({
     backgroundSize: 'cover',
     backgroundPosition: 'center 40%'
   },
-  imageBackdrop: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: theme.palette.common.black,
-    opacity: 0.4,
-    transition: theme.transitions.create('opacity')
-  },
   imageTitle: {
     position: 'relative',
-    padding: `${theme.spacing.unit * 2}px ${theme.spacing.unit * 4}px ${theme.spacing.unit + 6}px`
-  },
-  imageMarked: {
-    height: 3,
-    width: 18,
+    opacity: 0,
+    transition: theme.transitions.create('opacity'),
     backgroundColor: theme.palette.common.white,
-    position: 'absolute',
-    bottom: -2,
-    left: 'calc(50% - 9px)',
-    transition: theme.transitions.create('opacity')
+    color: theme.palette.common.black,
+    [theme.breakpoints.down('sm')]: {
+      opacity: 1
+    },
+    zIndex: 3
+  },
+  imageDeleteIcon: {
+    position: 'relative',
+    width: 40,
+    height: 40,
+    top: -(GRID_ITEM_SIZE + GRID_ITEM_MARGIN),
+    left: -20,
+    zIndex: 4
+  },
+  editDoneButton: {
+    margin: 26,
+    padding: '6px 6px',
+    bottom: GRID_ITEM_MARGIN,
+    left: GRID_ITEM_MARGIN,
+    marginLeft: GRID_ITEM_MARGIN,
+    marginRight: 10,
+    position: 'sticky',
+    display: 'block',
+    float: 'left',
+    zIndex: 5
   }
 })
 
 class LauncherMenu extends React.Component {
   constructor (props) {
     super(props)
-    const { user } = props
-    this.state = { applicationLauncherEntries: [], appAdd: false }
-    if (user) {
-      auth.app.firestore().collection('applicationLauncherEntries').doc(user.uid).get().then((doc) => {
-        if (doc.exists) {
-          const applicationLauncherEntries = /** @type {Array<{title: string, imageURL: string, appURL: string}>} */ doc.data()
-          this.setState(() => ({ applicationLauncherEntries }))
-        }
-      })
+    /**
+     * @type {{mode: 'launch'|'edit', appLauncherEntries: Array<{id: string, title: string, icon: string, url: string}>, appAdd: boolean}}
+     */
+    this.state = {
+      // TODO show loading state until appLaunchers have been fetched from the remote db
+      appLauncherEntries: [],
+      appAdd: false,
+      appToRemove: null,
+      mode: 'launch'
     }
+
+    this._snapshotUnsubscribe = null
+  }
+
+  async componentDidMount () {
+    const { user } = this.props
+    if (user) {
+      const appLauncherEntriesCollectionRef = auth.app.firestore().collection('users').doc(user.uid).collection('appLauncherEntries')
+      this._snapshotUnsubscribe = appLauncherEntriesCollectionRef.onSnapshot(snapshot => this._setAppLauncherEntriesFromDocs(snapshot.docs))
+
+      const appLauncherEntriesCollection = await appLauncherEntriesCollectionRef.get()
+      // TODO initial data has been fetched, don't show loading state
+      this._setAppLauncherEntriesFromDocs(appLauncherEntriesCollection.docs)
+    }
+  }
+
+  componentWillUnmount () {
+    if (this._snapshotUnsubscribe) {
+      this._snapshotUnsubscribe()
+    }
+  }
+
+  _launcherEditBegin () {
+    this.setState(() => ({ mode: 'edit' }))
+  }
+
+  _launcherEditEnd () {
+    this.setState(() => ({ mode: 'launch' }))
+  }
+
+  _launcherMenuClose () {
+    const { onClose } = this.props
+    this._launcherEditEnd()
+    onClose()
+  }
+
+  _setAppLauncherEntriesFromDocs (docs) {
+    const appLauncherEntries = /** @type {Array<{id: string, title: string, icon: string, url: string, type: 'web'|'remote'}>} */ docs.map(doc => doc.data())
+    this.setState((oldState) => ({ appLauncherEntries, mode: appLauncherEntries.length ? oldState.mode : 'launch' }))
+  }
+
+  _appRemoveOpen (appLauncherEntry) {
+    this.setState(() => ({ appToRemove: appLauncherEntry }))
+  }
+
+  _appRemoveClose () {
+    this.setState(() => ({ appToRemove: null }))
   }
 
   _appAddOpen () {
@@ -152,31 +197,104 @@ class LauncherMenu extends React.Component {
     this.setState(() => ({ appAdd: false }))
   }
 
+  /**
+   * @param {{id: string, url: string, type: 'web'|'remote'}} appLauncherEntry
+   * @private
+   */
   _onAppLauncherClick (appLauncherEntry) {
-    const { onClose, webAppLauncher } = this.props
-    // TODO show waiting icon on launcher tile until app is dld & launched
-    webAppLauncher.launch(appLauncherEntry.appURL)
-    onClose()
+    const { mode } = this.state
+    if (mode === 'launch' && appLauncherEntry.type === 'web') {
+      const { onClose, webAppLauncher } = this.props
+      // TODO show waiting icon on launcher tile until app is dld & launched
+      webAppLauncher.launch(appLauncherEntry.url)
+      onClose()
+    } else if (mode === 'launch' && appLauncherEntry.type === 'remote') {
+      const { onClose, remoteAppLauncher } = this.props
+      // TODO show waiting icon on launcher tile until app connected
+      remoteAppLauncher.launch(appLauncherEntry.url, appLauncherEntry.id)
+      onClose()
+    }
+    // TODO ask user for conformation
+    // TODO stop app if it's running
+    // TODO delete entry from db
+    // TODO clear app cache
   }
 
   render () {
-    const { classes, onClose, anchorEl, id } = this.props
-    const { applicationLauncherEntries, appAdd } =
-      /** @type {{applicationLauncherEntries: Array<{title: string, imageURL: string, appURL: string}>, appAdd: boolean}} */
+    const { classes, anchorEl, id, user } = this.props
+    // TODO interpret mode and show additional icons w/action per entry
+    const { mode, appLauncherEntries, appAdd, appToRemove } =
+      /** @type {{mode: 'launch'|'edit', appLauncherEntries: Array<{id: string, title: string, icon: string, url: string, type: 'web'|'remote'}>, appAdd: boolean, appToRemove: string|null}} */
       this.state
+
+    let gridContent = null
+    if (appLauncherEntries.length) {
+      gridContent = appLauncherEntries.map(appLauncherEntry => (
+        <Grid item className={classes.gridItem} key={appLauncherEntry.url}>
+          <ButtonBase
+            onClick={() => this._onAppLauncherClick(appLauncherEntry)}
+            focusRipple
+            key={appLauncherEntry.title}
+            className={classes.image}
+          >
+            <span
+              className={classes.imageSrc}
+              style={{
+                backgroundImage: `url(${appLauncherEntry.icon})`
+              }}
+            />
+            <span className={classes.imageButton}>
+              <Typography
+                component='span'
+                variant='caption'
+                color='inherit'
+                noWrap
+                className={classes.imageTitle}
+              >
+                {appLauncherEntry.title}
+              </Typography>
+            </span>
+          </ButtonBase>
+          <Fade in={mode === 'edit'} mountOnEnter unmountOnExit>
+            <Tooltip title='Delete' enterDelay={500}>
+              <Fab
+                className={classes.imageDeleteIcon}
+                color='primary'
+                onClick={() => this._appRemoveOpen(appLauncherEntry)}
+              >
+                <DeleteIcon />
+              </Fab>
+            </Tooltip>
+          </Fade>
+        </Grid>
+      ))
+    } else {
+      gridContent = <Typography
+        align='center'
+        style={{
+          minHeight: GRID_ITEM_SIZE + (2 * GRID_ITEM_MARGIN),
+          minWidth: ((GRID_ITEM_SIZE + 2 * GRID_ITEM_MARGIN) * MAX_GRID_ITEMS_H),
+          padding: 16
+        }}
+      >
+          No applications linked. Press the '+' button to link an application.
+      </Typography>
+    }
 
     return (
       <Menu
         id={id}
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
-        onClose={onClose}
+        onEscapeKeyDown={() => this._launcherMenuClose()}
+        onClose={() => this._launcherMenuClose()}
         disableAutoFocusItem
         className={classes.menu}
         MenuListProps={{ disablePadding: true }}
         PaperProps={{
           style: {
-            maxHeight: '85%',// (GRID_ITEM_SIZE + 2 * GRID_ITEM_MARGIN) * (MAX_GRID_ITEMS_V),
+            maxHeight: '85%', // (GRID_ITEM_SIZE + 2 * GRID_ITEM_MARGIN) * (MAX_GRID_ITEMS_V),
+            minWidth: ((GRID_ITEM_SIZE + 2 * GRID_ITEM_MARGIN) * MAX_GRID_ITEMS_H) + 30,
             maxWidth: ((GRID_ITEM_SIZE + 2 * GRID_ITEM_MARGIN) * MAX_GRID_ITEMS_H) + 30,
             paddingRight: 15
           }
@@ -184,48 +302,56 @@ class LauncherMenu extends React.Component {
       >
         {/* TODO dynamically add application launcher entries based on logged in user */}
         <Grid container className={classes.gridContainer} spacing={0}>
-          {demoAppLauncherEntries.map(appLauncherEntry => (
-            <Grid item className={classes.gridItem}>
-              <ButtonBase
-                onClick={() => this._onAppLauncherClick(appLauncherEntry)}
-                focusRipple
-                key={appLauncherEntry.title}
-                className={classes.image}
-                focusVisibleClassName={classes.focusVisible}
-                style={{ width: '100%' }}
-              >
-                <span
-                  className={classes.imageSrc}
-                  style={{
-                    backgroundImage: `url(${appLauncherEntry.imageURL})`
-                  }}
-                />
-                <span className={classes.imageBackdrop} />
-                <span className={classes.imageButton}>
-                  <Typography
-                    component='span'
-                    variant='subtitle1'
-                    color='inherit'
-                    className={classes.imageTitle}
-                  >
-                    {appLauncherEntry.title}
-                    <span className={classes.imageMarked} />
-                  </Typography>
-                </span>
-              </ButtonBase>
-            </Grid>
-          ))}
+          {gridContent}
         </Grid>
-        <Fab
-          color='primary'
-          size='large'
-          aria-label='Add'
-          className={classes.fabAdd}
-          onClick={() => this._appAddOpen()}
-        >
-          <AddIcon />
-        </Fab>
-        <AddApplicationDialog open={appAdd} appAddClose={() => this._appAddClose()} />
+
+        <Fade in={mode === 'launch'} mountOnEnter unmountOnExit>
+          <Tooltip title='Add' enterDelay={500}>
+            <Fab
+              color='primary'
+              size='medium'
+              aria-label='Add'
+              className={classes.fab}
+              onClick={() => this._appAddOpen()}
+            >
+              <AddIcon />
+            </Fab>
+          </Tooltip>
+        </Fade>
+        <Fade in={mode === 'launch'} mountOnEnter unmountOnExit>
+          <Tooltip title='Edit' enterDelay={500}>
+            <Fab
+              size='medium'
+              aria-label='Edit'
+              className={classes.fab}
+              onClick={() => this._launcherEditBegin()}
+            >
+              <EditIcon />
+            </Fab>
+          </Tooltip>
+        </Fade>
+        <Fade in={mode === 'edit'} mountOnEnter unmountOnExit>
+          <Button
+            mini
+            className={classes.editDoneButton}
+            variant='contained'
+            onClick={() => this._launcherEditEnd()}
+          >
+          Done
+          </Button>
+        </Fade>
+        <AddAppDialog
+          open={appAdd}
+          appAddClose={() => this._appAddClose()}
+          user={user}
+        />
+        {appToRemove &&
+        <RemoveAppDialog
+          open
+          appToRemove={appToRemove}
+          appRemoveClose={() => this._appRemoveClose()}
+          user={user}
+        />}
       </Menu>
     )
   }
@@ -234,6 +360,7 @@ class LauncherMenu extends React.Component {
 LauncherMenu.propTypes = {
   onClose: PropTypes.func.isRequired,
   webAppLauncher: PropTypes.instanceOf(WebAppLauncher).isRequired,
+  remoteAppLauncher: PropTypes.instanceOf(RemoteAppLauncher).isRequired,
   user: PropTypes.object
 }
 

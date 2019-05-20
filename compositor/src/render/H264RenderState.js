@@ -100,15 +100,15 @@ export default class H264RenderState extends RenderState {
 
     const chromaWidth = encodedFrame.size.w >> 1
     const chromaHeight = encodedFrame.size.h >> 1
-
+    const chromaStride = opaqueWidth >> 1
     if (isSubImage) {
-      this.yTexture.subImage2dBuffer(yBuffer, Rect.create(0, 0, encodedFrame.size.w, encodedFrame.size.h))
-      this.uTexture.subImage2dBuffer(uBuffer, Rect.create(0, 0, chromaWidth, chromaHeight))
-      this.vTexture.subImage2dBuffer(vBuffer, Rect.create(0, 0, chromaWidth, chromaHeight))
+      this.yTexture.subImage2dBuffer(yBuffer, Rect.create(0, 0, encodedFrame.size.w, encodedFrame.size.h), opaqueWidth)
+      this.uTexture.subImage2dBuffer(uBuffer, Rect.create(0, 0, chromaWidth, chromaHeight), chromaStride)
+      this.vTexture.subImage2dBuffer(vBuffer, Rect.create(0, 0, chromaWidth, chromaHeight), chromaStride)
     } else {
-      this.yTexture.image2dBuffer(yBuffer, encodedFrame.size.w, encodedFrame.size.h)
-      this.uTexture.image2dBuffer(uBuffer, chromaWidth, chromaHeight)
-      this.vTexture.image2dBuffer(vBuffer, chromaWidth, chromaHeight)
+      this.yTexture.image2dBuffer(yBuffer, encodedFrame.size.w, encodedFrame.size.h, opaqueWidth)
+      this.uTexture.image2dBuffer(uBuffer, chromaWidth, chromaHeight, chromaStride)
+      this.vTexture.image2dBuffer(vBuffer, chromaWidth, chromaHeight, chromaStride)
     }
 
     if (alpha) {
@@ -118,9 +118,9 @@ export default class H264RenderState extends RenderState {
 
       const alphaBuffer = alpha.buffer.subarray(0, alphaLumaSize)
       if (isSubImage) {
-        this.alphaTexture.subImage2dBuffer(alphaBuffer, Rect.create(0, 0, encodedFrame.size.w, encodedFrame.size.h))
+        this.alphaTexture.subImage2dBuffer(alphaBuffer, Rect.create(0, 0, encodedFrame.size.w, encodedFrame.size.h), alphaWidth)
       } else {
-        this.alphaTexture.image2dBuffer(alphaBuffer, encodedFrame.size.w, encodedFrame.size.h)
+        this.alphaTexture.image2dBuffer(alphaBuffer, encodedFrame.size.w, encodedFrame.size.h, alphaWidth)
       }
     }
   }

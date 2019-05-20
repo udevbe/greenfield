@@ -9,7 +9,7 @@ const htmlIndex = 'index.html'
 
 const entryFile = path.resolve(__dirname, '../src/index.js')
 const keymapsDir = path.resolve(__dirname, '../public/keymaps')
-// const clientsDir = path.resolve(__dirname, '../public/clients')
+const storeDir = path.resolve(__dirname, '../public/store')
 const rootFiles = path.resolve(__dirname, '../public/*.*')
 
 /**
@@ -30,7 +30,7 @@ const commonConfig = (appBundle, buildDir, debug) => {
     plugins: [
       new CopyWebpackPlugin([
         { from: keymapsDir, to: 'keymaps' },
-        // { from: clientsDir, to: 'clients' },
+        { from: storeDir, to: 'store' },
         { from: rootFiles, to: '.', flatten: true }
       ]),
       new HtmlWebpackPlugin({

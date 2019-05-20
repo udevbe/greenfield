@@ -87,9 +87,7 @@ class EncodedFrame {
   toBuffer () {
     let fragmentsSize = 0
 
-    this._fragments.forEach((fragment) => {
-      fragmentsSize += fragment.size
-    })
+    this._fragments.forEach(fragment => { fragmentsSize += fragment.size })
 
     const totalFrameSize =
       4 + // serial: uin32LE
@@ -121,9 +119,7 @@ class EncodedFrame {
     frameBuffer.writeUInt32LE(this._fragments.length, offset, true)
     offset += 4
 
-    this._fragments.forEach((fragment) => {
-      offset = fragment.writeToBuffer(frameBuffer, offset)
-    })
+    this._fragments.forEach(fragment => { offset = fragment.writeToBuffer(frameBuffer, offset) })
 
     return frameBuffer
   }

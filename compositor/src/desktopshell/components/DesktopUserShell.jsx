@@ -34,15 +34,17 @@ import auth from '../Auth'
 import Seat from '../../Seat'
 import UserShell from '../../UserShell'
 import WebAppLauncher from '../../WebAppLauncher'
+import RemoteAppLauncher from '../../RemoteAppLauncher'
 
 // TODO we probably want a more mvvm like structure here
 class DesktopUserShell extends React.PureComponent {
   /**
    * @param {Seat}seat
    * @param {WebAppLauncher}webAppLauncher
+   * @param {RemoteAppLauncher}remoteAppLauncher
    * @return {UserShell}
    */
-  static create (seat, webAppLauncher) {
+  static create (seat, webAppLauncher, remoteAppLauncher) {
     const userShell = new UserShell()
     const shellContainer = document.createElement('div')
     shellContainer.setAttribute('id', 'shell-container')
@@ -52,6 +54,7 @@ class DesktopUserShell extends React.PureComponent {
         seat={seat}
         userShell={userShell}
         webAppLauncher={webAppLauncher}
+        remoteAppLauncher={remoteAppLauncher}
       />,
       shellContainer)
 
@@ -214,7 +217,9 @@ class DesktopUserShell extends React.PureComponent {
   }
 
   render () {
-    const { seat, webAppLauncher } = /** @type{{seat:Seat, webAppLauncher:WebAppLauncher}} */this.props
+    const { seat, webAppLauncher, remoteAppLauncher } =
+      /** @type{{seat:Seat, webAppLauncher:WebAppLauncher, remoteAppLauncher:RemoteAppLauncher}} */
+      this.props
     const { managedSurfaces, activeManagedSurface, user } =
       /** @type {{managedSurface: Array<ManagedSurface>, activeManagedSurface: ManagedSurface|null, user:firebase.User}} */
       this.state
@@ -231,6 +236,7 @@ class DesktopUserShell extends React.PureComponent {
           activeManagedSurface={activeManagedSurface}
           seat={seat}
           webAppLauncher={webAppLauncher}
+          remoteAppLauncher={remoteAppLauncher}
         />
         <Workspace
           managedSurfaces={managedSurfaces}
@@ -245,7 +251,8 @@ class DesktopUserShell extends React.PureComponent {
 DesktopUserShell.propTypes = {
   seat: PropTypes.instanceOf(Seat).isRequired,
   userShell: PropTypes.instanceOf(UserShell).isRequired,
-  webAppLauncher: PropTypes.instanceOf(WebAppLauncher).isRequired
+  webAppLauncher: PropTypes.instanceOf(WebAppLauncher).isRequired,
+  remoteAppLauncher: PropTypes.instanceOf(RemoteAppLauncher).isRequired
 }
 
 export default DesktopUserShell

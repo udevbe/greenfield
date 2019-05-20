@@ -13,7 +13,7 @@
     "prepare:web:generate": "mkdir -p src/protocol/ && npm run prepare:web:generate:wayland && npm run prepare:web:generate:xdgshell && npm run prepare:web:generate:webshm && npm run prepare:web:generate:webgl",
     "prepare": "npm run prepare:web:generate && webpack --config build.config/webpack.config.prod.js",
     "prepare:dev": "npm run prepare:web:generate && webpack --config build.config/webpack.config.dev.js",
-    "start": "webpack-dev-server --host 0.0.0.0 -d --config build.config/webpack.config.dev.js"
+    "start": "webpack-dev-server --host localhost -d --config build.config/webpack.config.dev.js"
   },
   "repository": {
     "type": "git",
@@ -37,34 +37,34 @@
     "@material-ui/core": "^3.9.3",
     "@material-ui/icons": "^3.0.2",
     "compression": "^1.7.4",
-    "express": "^4.16.3",
-    "firebase": "^5.10.1",
-    "firebaseui": "^3.5.2",
+    "express": "^4.16.4",
+    "firebase": "^6.0.2",
+    "firebaseui": "^3.6.1",
     "prop-types": "^15.7.2",
     "react": "^16.8.6",
     "react-dom": "^16.8.6",
-    "westfield-runtime-common": "0.2.0",
-    "westfield-runtime-server": "0.2.0",
-    "ws": "^6.2.1"
+    "westfield-runtime-common": "^0.2.1",
+    "westfield-runtime-server": "^0.2.1",
+    "ws": "^7.0.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.4.3",
-    "@babel/preset-env": "^7.4.3",
+    "@babel/core": "^7.4.4",
+    "@babel/preset-env": "^7.4.4",
     "@babel/preset-react": "^7.0.0",
     "babel-loader": "^8.0.5",
-    "clean-webpack-plugin": "^0.1.19",
+    "clean-webpack-plugin": "^2.0.2",
     "compression-webpack-plugin": "^2.0.0",
-    "copy-webpack-plugin": "^4.5.3",
-    "css-loader": "^1.0.0",
+    "copy-webpack-plugin": "^5.0.3",
+    "css-loader": "^2.1.1",
     "html-webpack-plugin": "^3.2.0",
     "react-hot-loader": "^4.8.4",
     "standard": "^12.0.1",
     "style-loader": "^0.23.1",
-    "webpack": "^4.30.0",
-    "webpack-cli": "^3.1.2",
+    "webpack": "^4.31.0",
+    "webpack-cli": "^3.3.2",
     "webpack-dev-server": "^3.3.1",
-    "webpack-merge": "^4.1.5",
-    "westfield-scanner-server": "0.2.0"
+    "webpack-merge": "^4.2.1",
+    "westfield-scanner-server": "^0.2.1"
   },
   "babel": {
     "presets": [

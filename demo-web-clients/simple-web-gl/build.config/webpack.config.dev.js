@@ -4,9 +4,7 @@ const webpack = require('webpack')
 const merge = require('webpack-merge')
 const baseConfig = require('./webpack.config.base')
 
-const appBundle = 'simple.web.gl.js'
-
-const base = baseConfig(appBundle)
+const base = baseConfig()
 const dev = {
   mode: 'development',
   plugins: [
