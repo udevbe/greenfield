@@ -13,21 +13,23 @@ Early tech preview demo (23 Nov 2017):
 Greenfield is an entire Wayland compositor running directly in your browser. It can run native Wayland applications remotely
 or it can run JavaScript or WebAssembly applications directly in your browser using Web Workers.
 
-The remote solutions is different from existing solution like VNC or RDP in that it does not stream a final server side generated image to a remote.
-Instead Greenfield live encodes each individual application to a h264 frame, after which it's send to the browser using 
-a dedicated websocket connection. On reception, the h264 frame is decoded using a WASM h264 decoder + WebGL shader. 
-When finished, the application content is drawn directly in it's own HTML5 canvas. As a result, the entire image you see in the 
-browser is actually composed of nothing more than ordinary browser DOM elements. 
+The remote solution is different from existing solutions like VNC or RDP because Greenfield does not stream the entire screen to your browser.
+Instead Greenfield live encodes each individual application to an h264 stream which is send to the browser using 
+a dedicated websocket connection. On reception, the h264 stream is decoded and drawn directly into it's own HTML5 canvas. 
+As a result, the screen you see in the browser is actually composed of nothing more than ordinary browser DOM elements. 
 
 The advantage of this approach is that it retains the entire desktop context which allows for powerful features like 
 context aware application positioning & naming, custom task-bars, custom REST api integrations, notifications, css styling, WebRTC VOIP integration and 
 much more. All of which can be directly and seamlessly integrated inside the browser.
 
 ### Compatible Clients & Toolkits
-The core wayland protocol is implemented as well as the *stable* xdg shell protocol. As such it is possible to run applications with a compatible widget toolkit.
+The core Wayland protocol is implemented as well as the *stable* XDG shell protocol. As such it is possible to run 
+Wayland applications with a compatible widget toolkit.
+
 Supported toolkits are:
  - GTK+ 3.22.30 or later (tested)
  - Qt 5.11 or later (untested)
+ - Any toolkit that supports Wayland using XDG shell protocol.
 
 ## Applications
 
@@ -37,14 +39,14 @@ client applications run. This has some interesting implications:
 ### Remote Applications
 
 Native wayland applications can connect to the in-browser compositor by talking to a local application endpoint server.
-This application endpoint server presents itself as a locally running native wayland compositor while in reality it forwards
-(nearly) all messages between the actual browser compositor & the native application. The in-browser compositor is 
+This application endpoint server presents itself as a locally running native wayland compositor while in reality it relays
+(nearly) all messages between the browser compositor & the native application. The in-browser compositor is 
 not limited to handling a single application endpoint. Any number of endpoints can establish a connection. As a 
 consequence **different wayland applications can run on different physical hosts while being connected to the same compositor.**
 
-The in-browser compositor and the local application endpoint server use a direct websocket connection. As such there is
-no delaying and/or relaying intermediate party involved. This made possible by the fact that websocket connections are not
-bound to the same origin policy, unlike ordinary http connections.
+The in-browser compositor and the local application endpoint server use a direct websocket connection per native application. 
+As such there is no delaying or interfering intermediate party involved. This is made possible by the fact that websocket 
+connections are not bound to the same origin policy, unlike ordinary http connections.
 
 
 ### Web Applictions
@@ -95,7 +97,9 @@ Clone this repo:
 ## Application end-point server
   
   Prerequisites: 
-   - The Greenfield application end-point depends on the native-endpoint module of [Westfield](https://github.com/udevbe/westfield). Make sure you have the required Westfield native-endpoint dependencies installed.
+   - The Greenfield application end-point depends on the native-endpoint module of [Westfield](https://github.com/udevbe/westfield) 
+   so make sure you have the required Westfield native-endpoint dependencies installed.
+   
    - `sudo apt-get install -y libffi-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev`
    - `npm install -g cmake-js`
     
@@ -121,7 +125,9 @@ Clone this repo:
   
   For additional debug output, set the environment variable `export DEBUG=1`. 
    
-  The endpoint server will lazily create a new child process for each new connected browser compositor instance.
+  The endpoint server will lazily create a new child process for each new connected browser compositor instance. The
+  Greenfield compositor will initiate a new websocket connection for each individual remote application it wants to
+  launch.
   
 #### Configuration
  
@@ -132,7 +138,7 @@ Clone this repo:
   serverConfig: {
     httpServer: {
       // The schema to use when connecting to this endpoint. This is required to inform other endpoints when doing direct
-      // endpoint to endpoint transfers. Valid values are 'ws:' or 'wss:'.
+      // endpoint to endpoint copy-paste transfers. Valid values are 'ws:' or 'wss:'.
       protocol: 'ws:',
       // Hostname argument, see https://nodejs.org/api/net.html#net_server_listen_port_host_backlog_callback for details
       hostname: 'localhost',
@@ -189,13 +195,13 @@ Clone this repo:
   
   - Click the raster icon in the top right.
   - Click the '+' icon.
-  - Click the upload icon (arrow up cloud).
+  - Click the upload icon (arrow-up cloud).
   - Select one of the `link.json` files in `compositor/public/store/*`
   
-  TO remove an application from your account:
+  To remove an application from your account:
   
   - Click the edit icon (pen).
-  - Press the 'X' on the application launcher.
+  - Press the 'x' on the application launcher.
   
   You can also create your own custom application by defining a `link.json` and icon, and additionally an `app.js` in 
   case of web application.
@@ -203,18 +209,18 @@ Clone this repo:
   An application link file structure looks like this:
   ```json
   {
-    "id": "simple-web-gl",
-    "title": "Simple Web GL",
-    "icon": "http://localhost:8080/store/simple-web-gl/icon.svg",
+    "id": "my-unique-app-id",
+    "title": "My application title",
+    "icon": "https://somedomain/my-app-icon.svg",
     "type": "web",
-    "url": "http://localhost:8080/store/simple-web-gl/app.js"
+    "url": "http://localhost:8080/store/my-web-app/my-app.js"
   }
   ```
   
-  - `id`: Unique application id. In case of remote application, has to match the application id as specified in `app-endpointd/config.json5`
+  - `id`: Unique application id. In case of remote application, has to match the application id as specified in `app-endpoint-server/config.json5`
   - `title`: A meaningful and short description. Is shown to the user on mouse-over.
   - `icon`: An application icon url for the application launcher. Can be a image data url if the icon is not remotely available.
   - `type`: Must be `web` or `remote`.
-  - `url`: Where the application can be found. Must be a websocket url pointing to an app-endpointd server in case of `type: "remote"`, 
+  - `url`: Where the application can be found. Must be a websocket url pointing to an app-endpoint server in case of `type: "remote"`, 
   or a web url in case of `type: "web"`.
 
