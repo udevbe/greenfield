@@ -17,6 +17,8 @@
 
 'use strict'
 
+const Logger = require('pino')
+
 const { TextEncoder, TextDecoder } = require('util')
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
@@ -38,13 +40,18 @@ class NativeClientSession {
    * @returns {NativeClientSession}
    */
   static create (wlClient, nativeCompositorSession, webSocketChannel) {
+    const logger = Logger({
+      name: `app-endpoint-session::${nativeCompositorSession.compositorSessionId}::native-client-session`,
+      prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
+    })
+
     const messageInterceptor = MessageInterceptor.create(wlClient, nativeCompositorSession.wlDisplay, wl_display_interceptor, { communicationChannel: webSocketChannel })
 
     const { protocol, hostname, port } = config.serverConfig.httpServer
     const localWebFDBaseURL = new URL(`${protocol}//${hostname}:${port}`)
     localWebFDBaseURL.searchParams.append('compositorSessionId', nativeCompositorSession.compositorSessionId)
 
-    const nativeClientSession = new NativeClientSession(wlClient, nativeCompositorSession, webSocketChannel, messageInterceptor, localWebFDBaseURL)
+    const nativeClientSession = new NativeClientSession(logger, wlClient, nativeCompositorSession, webSocketChannel, messageInterceptor, localWebFDBaseURL)
     nativeClientSession.onDestroy().then(() => {
       if (webSocketChannel.readyState === 1 || webSocketChannel.readyState === 0) {
         webSocketChannel.onerror = null
@@ -79,7 +86,7 @@ class NativeClientSession {
     webSocketChannel.onopen = () => {
       webSocketChannel.onerror = event => nativeClientSession._onError(event)
       // flush out any requests that came in while we were waiting for the data channel to open.
-      process.env.DEBUG && console.log(`[app-endpoint-${nativeCompositorSession.compositorSessionId}] Native client session: communication channel to browser is open.`)
+      logger.info(`Web socket to browser is open.`)
       nativeClientSession._flushOutboundMessage()
     }
 
@@ -87,13 +94,18 @@ class NativeClientSession {
   }
 
   /**
+   * @param logger
    * @param {Object}wlClient
    * @param {NativeCompositorSession}nativeCompositorSession
    * @param {WebSocketChannel}webSocketChannel
    * @param {MessageInterceptor}messageInterceptor
    * @param {URL}localWebFDBaseURL
    */
-  constructor (wlClient, nativeCompositorSession, webSocketChannel, messageInterceptor, localWebFDBaseURL) {
+  constructor (logger, wlClient, nativeCompositorSession, webSocketChannel, messageInterceptor, localWebFDBaseURL) {
+    /**
+     * @private
+     */
+    this._logger = logger
     /**
      * @type {Object}
      */
@@ -283,7 +295,7 @@ class NativeClientSession {
       fdTransferWebSocket.onmessage = event => this._onMessage(event)
     } else {
       // TODO unsupported websocket url
-      console.error(`[app-endpoint-session: ${this._nativeCompositorSession.compositorSessionId}] - Unsupported websocket URL ${webFdURL.href}.`)
+      this._logger.error(`Unsupported websocket URL ${webFdURL.href}.`)
     }
 
     let localFD = -1
@@ -413,7 +425,9 @@ class NativeClientSession {
       // destination: 0 => browser only,  1 => native only, 2 => both
       return destination
     } catch (e) {
-      console.log(e.stack)
+      this._logger.fatal('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+      this._logger.fatal('error object stack: ')
+      this._logger.fatal(e.stack)
       process.exit(-1)
     }
   }
@@ -549,7 +563,7 @@ class NativeClientSession {
    */
   _onError (event) {
     // TODO log error
-    process.env.DEBUG && console.log(`[app-endpoint-session: ${this._nativeCompositorSession.compositorSessionId}] - Native client session: communication channel is in error ${JSON.stringify(event.error)}.`)
+    this._logger.error(`Web socket is in error ${JSON.stringify(event.error)}.`)
   }
 
   /**
@@ -557,7 +571,7 @@ class NativeClientSession {
    * @private
    */
   _onClose (event) {
-    process.env.DEBUG && console.log(`[app-endpoint-session: ${this._nativeCompositorSession.compositorSessionId}] - Native client session: communication channel is closed.`)
+    this._logger.info(`Web socket is closed.`)
     this.destroy()
   }
 

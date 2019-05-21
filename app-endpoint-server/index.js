@@ -19,31 +19,38 @@
 
 'use strict'
 
+const Logger = require('pino')
+
 require('json5/lib/register')
 const AppEndpointServer = require('./src/AppEndpointServer')
 
 async function main () {
+  const logger = Logger({ name: `app-endpoint-server`, prettyPrint: (process.env.DEBUG && process.env.DEBUG == true) })
   try {
-    console.log(`[app-endpoint-server] >>> Running in ${process.env.DEBUG ? 'DEBUG' : 'PRODUCTION'} mode <<<`)
+    logger.info(`>>> Running in ${process.env.DEBUG ? 'DEBUG' : 'PRODUCTION'} mode <<<`)
+
     const appEndpointDaemon = AppEndpointServer.create()
 
     const cleanUp = () => {
-      console.log('[app-endpoint-server] - Exit.')
+      logger.info('Exit.')
       appEndpointDaemon.destroy()
     }
 
     process.on('exit', cleanUp)
     process.on('SIGINT', () => {
-      console.log('[app-endpoint-server] - Received SIGINT')
+      logger.info('Received SIGINT.')
       process.exit()
     })
     process.on('SIGTERM', () => {
-      console.log('[app-endpoint-server] - Received SIGTERM')
+      logger.info('Received SIGTERM.')
       process.exit()
     })
   } catch (e) {
-    console.error('[app-endpoint-server] - Failed to start.', e)
-    process.exit(1)
+    logger.fatal('Failed to start.')
+    logger.fatal('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+    logger.fatal('error object stack: ')
+    logger.fatal(e.stack)
+    process.exit(-1)
   }
 }
 

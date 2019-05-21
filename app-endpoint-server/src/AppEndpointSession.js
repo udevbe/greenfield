@@ -17,6 +17,8 @@
 
 'use strict'
 
+const Logger = require('pino')
+
 require('json5/lib/register')
 // eslint-disable-next-line camelcase
 const child_process = require('child_process')
@@ -33,18 +35,27 @@ class AppEndpointSession {
    * @return {AppEndpointSession}
    */
   static create ({ compositorSessionId }) {
+    const logger = Logger({
+      name: `app-endpoint-session::${compositorSessionId}`,
+      prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
+    })
     const nativeCompositorSession = NativeCompositorSession.create(compositorSessionId)
-    const appEndpointSession = new AppEndpointSession(nativeCompositorSession, compositorSessionId)
+    const appEndpointSession = new AppEndpointSession(logger, nativeCompositorSession, compositorSessionId)
     nativeCompositorSession.onDestroy().then(() => appEndpointSession.destroy())
-    process.env.DEBUG && console.log(`[app-endpoint-session: ${compositorSessionId}] - Session started.`)
+    logger.info(`Session started.`)
     return appEndpointSession
   }
 
   /**
+   * @param logger
    * @param {NativeCompositorSession}nativeCompositorSession
    * @param {string}compositorSessionId
    */
-  constructor (nativeCompositorSession, compositorSessionId) {
+  constructor (logger, nativeCompositorSession, compositorSessionId) {
+    /**
+     * @private
+     */
+    this._logger = logger
     /**
      * @type {NativeCompositorSession}
      * @private
@@ -74,6 +85,7 @@ class AppEndpointSession {
   }
 
   destroy () {
+    this._logger.info(`Session destroyed.`)
     this._destroyResolve()
   }
 
@@ -82,7 +94,7 @@ class AppEndpointSession {
    * @param {ParsedUrlQuery}query
    */
   handleConnection (webSocket, query) {
-    process.env.DEBUG && console.log(`[app-endpoint-session: ${this.compositorSessionId}] - New web socket open.`)
+    this._logger.debug(`New web socket open.`)
     if (query.clientId) {
       this._nativeCompositorSession.socketForClient(webSocket, Number.parseInt(query.clientId))
     } else if (query.launch) {
@@ -96,22 +108,25 @@ class AppEndpointSession {
             }
           })
 
-          // TODO redirect child process output to a separate logfile
-          // childProcess.stdout.on('data', data => console.log(`stdout: ${data}`))
-          // childProcess.stderr.on('data', data => console.log(`stderr: ${data}`))
-          childProcess.on('close', code => console.log(`child process exited with code ${code}`))
+          const childLogger = Logger({
+            name: `${appConfig.bin} ${appConfig.args}`,
+            prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
+          })
+          childProcess.stdout.on('data', data => childLogger.info(`stdout: ${data}`))
+          childProcess.stderr.on('data', data => childLogger.error(`stderr: ${data}`))
+          childProcess.on('close', code => this._logger.error(`child process: ${appConfig.bin} ${appConfig.args} exited with code: ${code}`))
 
           this._nativeCompositorSession.childSpawned(webSocket)
         } catch (e) {
-          console.error(`[app-endpoint-session: ${this.compositorSessionId}] - Application: ${query.launch} failed to start.`)
-          console.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
-          console.error('error object stack: ')
-          console.error(e.stack)
+          this._logger.error(`Application: ${query.launch} failed to start.`)
+          this._logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+          this._logger.error('error object stack: ')
+          this._logger.error(e.stack)
 
           webSocket.close(4503, `[app-endpoint-session: ${this.compositorSessionId}] - Application: ${query.launch} failed to start.`)
         }
       } else {
-        console.error(`[app-endpoint-session: ${this.compositorSessionId}] - Application: ${query.launch} not found.`)
+        this._logger.error(`[app-endpoint-session: ${this.compositorSessionId}] - Application: ${query.launch} not found.`)
         webSocket.close(4404, `[app-endpoint-session: ${this.compositorSessionId}] - Application: ${query.launch} not found.`)
       }
     } else if (query.shm) {
@@ -143,13 +158,21 @@ function _handleFirstUpgrade (webSocketServer, webSocket, query) {
       req,
       socket,
       head,
-      (webSocket) => appEndpointSession.handleConnection(webSocket, query)
+      webSocket => appEndpointSession.handleConnection(webSocket, query)
     )
   })
 }
 
 function main () {
-  process.on('uncaughtException', (error) => console.error(error, error.stack))
+  const logger = Logger({
+    name: `app-endpoint-session-process`,
+    prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
+  })
+  process.on('uncaughtException', e => {
+    logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+    logger.error('error object stack: ')
+    logger.error(e.stack)
+  })
 
   SurfaceBufferEncoding.init()
 
@@ -160,7 +183,7 @@ function main () {
     const head = request[1]
 
     // handle first websocket connection
-    webSocketServer.handleUpgrade(req, socket, head, (webSocket) => _handleFirstUpgrade(webSocketServer, webSocket, query))
+    webSocketServer.handleUpgrade(req, socket, head, webSocket => _handleFirstUpgrade(webSocketServer, webSocket, query))
   })
 }
 

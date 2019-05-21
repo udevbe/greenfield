@@ -17,6 +17,8 @@
 
 'use strict'
 
+const Logger = require('pino')
+
 const { Endpoint, nativeGlobalNames } = require('westfield-endpoint')
 const { Epoll } = require('epoll')
 
@@ -30,7 +32,12 @@ class NativeCompositorSession {
    * @returns {NativeCompositorSession}
    */
   static create (compositorSessionId) {
-    const compositorSession = new NativeCompositorSession(compositorSessionId)
+    const logger = Logger({
+      name: `app-endpoint-session::${compositorSessionId}::native-compositor-session`,
+      prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
+    })
+
+    const compositorSession = new NativeCompositorSession(logger, compositorSessionId)
 
     // TODO move global create/destroy callback implementations into Endpoint.js
     compositorSession.wlDisplay = Endpoint.createDisplay(
@@ -41,8 +48,7 @@ class NativeCompositorSession {
     Endpoint.initShm(compositorSession.wlDisplay)
     const waylandDisplay = Endpoint.addSocketAuto(compositorSession.wlDisplay)
     compositorSession.waylandDisplay = waylandDisplay
-    console.log(`[app-endpoint-session: ${compositorSessionId}] - Native compositor session: created new app-endpoint.`)
-    console.log(`[app-endpoint-session: ${compositorSessionId}] - Native compositor session: compositor listening on: WAYLAND_DISPLAY="${waylandDisplay}".`)
+    logger.info(`Listening on: WAYLAND_DISPLAY="${waylandDisplay}".`)
 
     // set the wayland display to something non existing, else gstreamer will connect to us with a fallback value and
     // block, while in turn we wait for gstreamer, resulting in a deadlock!
@@ -61,9 +67,14 @@ class NativeCompositorSession {
   }
 
   /**
+   * @param logger
    * @param {string}compositorSessionId
    */
-  constructor (compositorSessionId) {
+  constructor (logger, compositorSessionId) {
+    /**
+     * @private
+     */
+    this._logger = logger
     /**
      * @type {?string}
      */
@@ -138,10 +149,7 @@ class NativeCompositorSession {
       client.nativeClientSession.requestWebSocket(clientId)
     } else {
       // Not a single web socket available. This means the client was definitely started locally and was not the result of a browser initiated parent process.
-      console.warn(
-        `[app-endpoint-session: ${this.compositorSessionId}] - Native compositor session: No web sockets available for externally created wayland client.
-        Only child clients created as a side effect of a browser initiated client processes are allowed.`
-      )
+      this._logger.error(`No web sockets available for externally created wayland client. Only child clients created as a side effect of a browser initiated client processes are allowed.`)
       Endpoint.destroyClient(wlClient)
     }
   }
@@ -151,7 +159,7 @@ class NativeCompositorSession {
    * @private
    */
   _onClientCreated (wlClient) {
-    process.env.DEBUG && console.log(`[app-endpoint-session: ${this.compositorSessionId}] - Native compositor session: new wayland client connected.`)
+    this._logger.info(`New Wayland client connected.`)
     this._stopDestroyTimeout()
 
     let client = this._clients.find((client) => client.nativeClientSession === null)

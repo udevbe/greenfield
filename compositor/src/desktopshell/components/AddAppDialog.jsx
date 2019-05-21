@@ -71,9 +71,8 @@ class AddAppDialog extends React.Component {
       })
     }
     if (appLauncherEntry.type === 'web') {
-      // TODO download web app
-      // TODO show download progress
-      // TODO cache web app
+      // TODO implement service worker & let service worker download  & cache web app
+      // TODO show download progress & notify user is app is downloaded
     }
 
     appAddClose()

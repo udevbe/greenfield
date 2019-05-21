@@ -19,8 +19,10 @@
   "dependencies": {
     "epoll": "^2.0.9",
     "gstreamer-superficial": "^1.2.0",
-    "westfield-endpoint": "^0.2.1",
     "json5": "^2.1.0",
+    "pino": "^5.12.5",
+    "pino-pretty": "^3.0.0",
+    "westfield-endpoint": "^0.2.1",
     "ws": "^7.0.0"
   },
   "devDependencies": {
