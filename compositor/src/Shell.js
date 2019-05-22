@@ -35,29 +35,23 @@ import ShellSurface from './ShellSurface'
 export default class Shell extends WlShellRequests {
   /**
    * @param {Session} session
-   * @param {UserShell}userShell
    * @return {Shell}
    */
-  static create (session, userShell) {
-    return new Shell(session, userShell)
+  static create (session) {
+    return new Shell(session)
   }
 
   /**
    * Use Shell.create(..)
    * @param {Session} session
-   * @param {UserShell}userShell
    * @private
    */
-  constructor (session, userShell) {
+  constructor (session) {
     super()
     /**
      * @type {Session}
      */
     this.session = session
-    /**
-     * @type {UserShell}
-     */
-    this.userShell = userShell
     /**
      * @type {Global}
      * @private
@@ -122,6 +116,6 @@ export default class Shell extends WlShellRequests {
     }
 
     const wlShellSurfaceResource = new WlShellSurfaceResource(resource.client, id, resource.version)
-    ShellSurface.create(wlShellSurfaceResource, surface, this.session, this.userShell)
+    ShellSurface.create(wlShellSurfaceResource, surface, this.session)
   }
 }

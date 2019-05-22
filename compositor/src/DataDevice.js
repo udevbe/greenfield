@@ -397,7 +397,7 @@ export default class DataDevice extends WlDataDeviceRequests {
    *
    */
   setSelection (resource, source, serial) {
-    // TODO what should the serial correspond to? Looking at weston, the serial is quite useless...
+    // Looking at weston, the serial is quite useless. So we will conveniently ignore it here too.
     const dataSource = /** @type {DataSource} */source.implementation
     if (source && dataSource.dndActions) {
       source.postError(WlDataSourceResource.Error.invalidSource, 'Can not set selection when source has dnd actions active.')

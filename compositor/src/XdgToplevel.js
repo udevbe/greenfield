@@ -21,6 +21,8 @@ import XdgToplevelResource from './protocol/XdgToplevelResource'
 import XdgToplevelRequests from './protocol/XdgToplevelRequests'
 import XdgWmBaseResource from './protocol/XdgWmBaseResource'
 
+import userShell from './UserShell'
+
 import Point from './math/Point'
 import Size from './Size'
 import Renderer from './render/Renderer'
@@ -53,9 +55,8 @@ export default class XdgToplevel extends XdgToplevelRequests {
    * @param {XdgToplevelResource}xdgToplevelResource
    * @param {XdgSurface}xdgSurface
    * @param {Session} session
-   * @param {UserShell}userShell
    */
-  static create (xdgToplevelResource, xdgSurface, session, userShell) {
+  static create (xdgToplevelResource, xdgSurface, session) {
     const surface = /** @type {Surface} */xdgSurface.wlSurfaceResource.implementation
     const xdgToplevel = new XdgToplevel(xdgToplevelResource, xdgSurface, session)
     xdgToplevelResource.implementation = xdgToplevel

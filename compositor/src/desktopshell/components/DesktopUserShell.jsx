@@ -32,47 +32,52 @@ import Logo from './Logo'
 import Login from './Login'
 import auth from '../Auth'
 import Seat from '../../Seat'
-import UserShell from '../../UserShell'
+import userShell from '../../UserShell'
 import WebAppLauncher from '../../WebAppLauncher'
 import RemoteAppLauncher from '../../RemoteAppLauncher'
+import Snackbar from '@material-ui/core/es/Snackbar'
+import NotificationContent from './NotificationContent'
+import WebAppSocket from '../../WebAppSocket'
+import RemoteSocket from '../../RemoteSocket'
 
 // TODO we probably want a more mvvm like structure here
-class DesktopUserShell extends React.PureComponent {
+class DesktopUserShell extends React.Component {
   /**
    * @param {Seat}seat
-   * @param {WebAppLauncher}webAppLauncher
-   * @param {RemoteAppLauncher}remoteAppLauncher
-   * @return {UserShell}
+   * @param {Session}session
+   * @param {HTMLElement}shellContainer
    */
-  static create (seat, webAppLauncher, remoteAppLauncher) {
-    const userShell = new UserShell()
-    const shellContainer = document.createElement('div')
-    shellContainer.setAttribute('id', 'shell-container')
-    document.body.appendChild(shellContainer)
+  static create (seat, session, shellContainer) {
+    // WebAppSocket enables browser local applications running in a web worker to connect
+    const webAppSocket = WebAppSocket.create(session)
+    const webAppLauncher = WebAppLauncher.create(webAppSocket)
+
+    // RemoteSocket enables native application-endpoints with remote application to connect
+    const remoteSocket = RemoteSocket.create(session)
+    const remoteAppLauncher = RemoteAppLauncher.create(session, remoteSocket)
+
     ReactDOM.render(
       <DesktopUserShell
         seat={seat}
-        userShell={userShell}
         webAppLauncher={webAppLauncher}
         remoteAppLauncher={remoteAppLauncher}
       />,
       shellContainer)
-
-    return userShell
   }
 
   /**
-   * @param {{seat:Seat, userShell: UserShell}}props
+   * @param {{seat:Seat}}props
    */
   constructor (props) {
     super(props)
     /**
-     * @type {{managedSurface: Array<ManagedSurface>, activeManagedSurface: ManagedSurface|null, user: firebase.User|null}}
+     * @type {{managedSurface: Array<ManagedSurface>, activeManagedSurface: ?ManagedSurface, user: ?firebase.User, notifications: Array<{variant: 'success'|'warning'|'error'|'info', message: string}>}}
      */
     this.state = {
       managedSurfaces: [],
       activeManagedSurface: null,
-      user: auth.user
+      user: auth.user,
+      notifications: []
     }
 
     if (auth.user) {
@@ -81,12 +86,23 @@ class DesktopUserShell extends React.PureComponent {
       this._waitForLogin()
     }
 
-    props.userShell.manage = (surface, activeCallback, inactivateCallback) => this.manage(surface, activeCallback, inactivateCallback)
+    userShell.manage = (surface, activeCallback, inactivateCallback) => this._manage(surface, activeCallback, inactivateCallback)
+    userShell.notify = (variant, message) => this._notify(variant, message)
+
+    window.onerror = (msg, url, line, col, error) => {
+      let extra = !col ? '' : '\ncolumn: ' + col
+      extra += !error ? '' : '\nerror: ' + error
+      console.error(msg + '\nurl: ' + url + '\nline: ' + line + extra)
+      userShell.notify('error', error.message)
+      // TODO: Report this error in a backend error log
+      return true
+    }
+
     this._activateManagedSurfaceOnPointerButton()
   }
 
   _waitForLogin () {
-    auth.whenLogin().then((user) => {
+    auth.whenLogin().then(user => {
       this.setState(() => ({ user }))
       this._waitForLogout()
     })
@@ -100,14 +116,53 @@ class DesktopUserShell extends React.PureComponent {
   }
 
   /**
+   * Notify the user of an important event.
+   *
+   * @param {'success'|'warning'|'error'|'info'}variant
+   * @param {string}message
+   * @private
+   */
+  _notify (variant, message) {
+    this.setState(prevState => {
+      const absent = prevState.notifications.find(notification => notification.variant === variant && notification.message === message) == null
+      if (absent) {
+        return { notifications: [...prevState.notifications, { variant, message }] }
+      } else {
+        return prevState
+      }
+    })
+  }
+
+  /**
+   * @param {string}reason
+   * @param {{variant: 'success'|'warning'|'error'|'info', message: string}}closedNotification
+   * @private
+   */
+  _closeNotification (reason, closedNotification) {
+    if (reason === 'clickaway') {
+      return
+    }
+
+    this.setState(prevState => ({
+      notifications: prevState.notifications.filter(notification =>
+        notification.variant !== closedNotification.variant &&
+        notification.message !== closedNotification.message)
+    }))
+  }
+
+  componentDidCatch (error, info) {
+    userShell.notify('error', 'Error: ' + error)
+  }
+
+  /**
    * Ask the user shell to start managing the given surface.
    * @param {Surface}surface
    * @param {function}activeCallback  Registers a callback that will be fired when the user shell wants to make a surface active (ie give it input)
    * @param {function}inactivateCallback Registers callback that notifies if a surface is no longer active (ie no longer receives input)
    * @return {UserShellSurface}
-   * @override
+   * @private
    */
-  manage (surface, activeCallback, inactivateCallback) {
+  _manage (surface, activeCallback, inactivateCallback) {
     const { seat } = /** @type{{seat:Seat}} */this.props
 
     // create new managed surface
@@ -218,10 +273,14 @@ class DesktopUserShell extends React.PureComponent {
 
   render () {
     const { seat, webAppLauncher, remoteAppLauncher } =
-      /** @type{{seat:Seat, webAppLauncher:WebAppLauncher, remoteAppLauncher:RemoteAppLauncher}} */
+      /** @
+       * type{{seat:Seat, webAppLauncher:WebAppLauncher, remoteAppLauncher:RemoteAppLauncher}}
+       * */
       this.props
-    const { managedSurfaces, activeManagedSurface, user } =
-      /** @type {{managedSurface: Array<ManagedSurface>, activeManagedSurface: ManagedSurface|null, user:firebase.User}} */
+    const { managedSurfaces, activeManagedSurface, user, notifications } =
+      /**
+       * @type {{managedSurface: Array<ManagedSurface>, activeManagedSurface: ?ManagedSurface, user: ?firebase.User, notifications: Array<{variant: 'success'|'warning'|'error'|'info', message: string}>}}
+       * */
       this.state
     return (
       <>
@@ -238,6 +297,26 @@ class DesktopUserShell extends React.PureComponent {
           webAppLauncher={webAppLauncher}
           remoteAppLauncher={remoteAppLauncher}
         />
+        {
+          notifications.map(notification =>
+            <Snackbar
+              key={notification.variant + notification.message}
+              open
+              anchorOrigin={{
+                vertical: 'bottom',
+                horizontal: 'left'
+              }}
+              autoHideDuration={6000}
+              onClose={(event, reason) => this._closeNotification(reason, notification)}
+            >
+              <NotificationContent
+                onClose={(event, reason) => this._closeNotification(reason, notification)}
+                variant={notification.variant}
+                message={notification.message}
+              />
+            </Snackbar>
+          )
+        }
         <Workspace
           managedSurfaces={managedSurfaces}
           activeManagedSurface={activeManagedSurface}
@@ -250,7 +329,6 @@ class DesktopUserShell extends React.PureComponent {
 
 DesktopUserShell.propTypes = {
   seat: PropTypes.instanceOf(Seat).isRequired,
-  userShell: PropTypes.instanceOf(UserShell).isRequired,
   webAppLauncher: PropTypes.instanceOf(WebAppLauncher).isRequired,
   remoteAppLauncher: PropTypes.instanceOf(RemoteAppLauncher).isRequired
 }

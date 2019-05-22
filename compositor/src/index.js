@@ -32,26 +32,17 @@ import XdgWmBase from './XdgWmBase'
 import DesktopUserShell from './desktopshell/components/DesktopUserShell.jsx'
 import auth from './desktopshell/Auth'
 import WebShm from './webshm/WebShm'
-import WebAppSocket from './WebAppSocket'
-import WebAppLauncher from './WebAppLauncher'
 import WebGL from './webgl/WebGL'
-import RemoteSocket from './RemoteSocket'
-import RemoteAppLauncher from './RemoteAppLauncher'
 
 async function main () {
   try {
     const session = Session.create()
-
-    // WebAppSocket enables browser local applications running in a web worker to connect
-    const webAppSocket = WebAppSocket.create(session)
-    const webAppLauncher = WebAppLauncher.create(webAppSocket)
-
-    // RemoteSocket enables native application-endpoints with remote application to connect
-    const remoteSocket = RemoteSocket.create(session)
-    const remoteAppLauncher = RemoteAppLauncher.create(session, remoteSocket)
-
     const seat = Seat.create(session)
-    const desktopUserShell = DesktopUserShell.create(seat, webAppLauncher, remoteAppLauncher)
+
+    const shellContainer = document.createElement('div')
+    shellContainer.setAttribute('id', 'shell-container')
+    document.body.appendChild(shellContainer)
+    DesktopUserShell.create(seat, session, shellContainer)
 
     DEBUG && console.log(`Greenfield compositor awaiting login.`)
 
@@ -61,8 +52,8 @@ async function main () {
     const dataDeviceManager = DataDeviceManager.create()
     const subcompositor = Subcompositor.create()
 
-    const shell = Shell.create(session, desktopUserShell)
-    const xdgWmBase = XdgWmBase.create(session, desktopUserShell, seat)
+    const shell = Shell.create(session)
+    const xdgWmBase = XdgWmBase.create(session, seat)
 
     const webShm = WebShm.create()
     const webGL = WebGL.create()
@@ -101,8 +92,9 @@ async function main () {
     // fire a reload to ensure everything is cleaned up
     window.location.reload()
   } catch (e) {
-    // TODO notify user(?) & retry setup
-    console.error(`Bug? Failed to setup compositor session.`, e)
+    console.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+    console.error('error object stack: ')
+    console.error(e.stack)
   }
 }
 

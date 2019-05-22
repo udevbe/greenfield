@@ -44,26 +44,33 @@ export default class WebAppLauncher {
   launch (webAppURL) {
     // TODO store web apps locally so they can be used offline and/or faster
     // TODO alternatively web apps could be served through web-sockets and avoid the same origin policy.
-    return new Promise((resolve, reject) => {
+    return new Promise(resolve => {
       const xhr = new window.XMLHttpRequest()
 
       xhr.onreadystatechange = () => {
-        if (xhr.readyState === window.XMLHttpRequest.DONE && xhr.status === 200) {
-          try {
-            const workerSrc = xhr.responseText
-            const blob = new window.Blob([workerSrc], { type: 'application/javascript' })
+        if (xhr.readyState === window.XMLHttpRequest.DONE) {
+          if (xhr.status === 200) {
+            try {
+              const workerSrc = xhr.responseText
+              const blob = new window.Blob([workerSrc], { type: 'application/javascript' })
 
-            const worker = new window.Worker(URL.createObjectURL(blob))
-            const client = this._webAppSocket.onWebAppWorker(worker)
-            client.onClose().then(() => worker.terminate())
+              const worker = new window.Worker(URL.createObjectURL(blob))
+              const client = this._webAppSocket.onWebAppWorker(worker)
+              client.onClose().then(() => worker.terminate())
 
-            resolve(client)
-          } catch (error) {
-            reject(error)
+              resolve(client)
+            } catch (e) {
+              console.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+              console.error('error object stack: ')
+              console.error(e.stack)
+              throw new Error(`Could not launch web application.`)
+            }
+          } else {
+            console.error(`Could not download web application. ${xhr.status}: ${xhr.statusText}`)
+            throw new Error(`Could not download web application.`)
           }
-        } // TODO reject if we have something else than 2xx
+        }
       }
-
       xhr.open('GET', new URL(webAppURL).href)
       xhr.send()
     })

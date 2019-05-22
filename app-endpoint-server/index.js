@@ -25,15 +25,16 @@ require('json5/lib/register')
 const AppEndpointServer = require('./src/AppEndpointServer')
 
 async function main () {
-  const logger = Logger({ name: `app-endpoint-server`, prettyPrint: (process.env.DEBUG && process.env.DEBUG == true) })
+  const logger = Logger({
+    name: `app-endpoint-server`,
+    prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
+  })
   try {
-    logger.info(`>>> Running in ${process.env.DEBUG ? 'DEBUG' : 'PRODUCTION'} mode <<<`)
-
     const appEndpointDaemon = AppEndpointServer.create()
 
     const cleanUp = () => {
-      logger.info('Exit.')
       appEndpointDaemon.destroy()
+      logger.info('Process exit.')
     }
 
     process.on('exit', cleanUp)

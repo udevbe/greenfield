@@ -17,11 +17,13 @@
 
 'use strict'
 
+import UserShellSurface from './UserShellSurface'
+
 /**
- * Implementations are expected to extend this class.
- * @interface
+ * Singleton.
+ * Custom user shell implementations are expected to implement this singleton's methods.
  */
-export default class UserShell {
+class UserShell {
   /**
    * Ask the user shell to start managing the given surface.
    * @param {Surface}surface
@@ -29,5 +31,15 @@ export default class UserShell {
    * @param {function}inactivateCallback Registers callback that notifies if a surface is no longer active (ie no longer receives input)
    * @return {UserShellSurface}
    */
-  manage (surface, activeCallback, inactivateCallback) {}
+  manage (surface, activeCallback, inactivateCallback) { return UserShellSurface() }
+
+  /**
+   * Notify the user of an important event.
+   *
+   * @param {'success'|'warning'|'error'|'info'}variant
+   * @param {string}message
+   */
+  notify (variant, message) {}
 }
+
+export default new UserShell()

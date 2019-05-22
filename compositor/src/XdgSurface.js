@@ -75,12 +75,11 @@ export default class XdgSurface extends XdgSurfaceRequests {
    * @param {XdgSurfaceResource}xdgSurfaceResource
    * @param {WlSurfaceResource}wlSurfaceResource
    * @param {Session} session
-   * @param {UserShell}userShell
    * @param {Seat}seat
    * @return {XdgSurface}
    */
-  static create (xdgSurfaceResource, wlSurfaceResource, session, userShell, seat) {
-    const xdgSurface = new XdgSurface(xdgSurfaceResource, wlSurfaceResource, session, userShell, seat)
+  static create (xdgSurfaceResource, wlSurfaceResource, session, seat) {
+    const xdgSurface = new XdgSurface(xdgSurfaceResource, wlSurfaceResource, session, seat)
     xdgSurfaceResource.implementation = xdgSurface
     const surface = /** @type {Surface} */wlSurfaceResource.implementation
     surface.hasKeyboardInput = true
@@ -93,11 +92,10 @@ export default class XdgSurface extends XdgSurfaceRequests {
    * @param {XdgSurfaceResource}xdgSurfaceResource
    * @param {WlSurfaceResource}wlSurfaceResource
    * @param {Session} session
-   * @param {UserShell}userShell
    * @param {Seat}seat
    * @private
    */
-  constructor (xdgSurfaceResource, wlSurfaceResource, session, userShell, seat) {
+  constructor (xdgSurfaceResource, wlSurfaceResource, session, seat) {
     super()
     /**
      * @type {XdgSurfaceResource}
@@ -112,11 +110,6 @@ export default class XdgSurface extends XdgSurfaceRequests {
      * @private
      */
     this._session = session
-    /**
-     * @type {UserShell}
-     * @private
-     */
-    this._userShell = userShell
     /**
      * @type {Seat}
      * @private
@@ -174,7 +167,7 @@ export default class XdgSurface extends XdgSurfaceRequests {
       return
     }
     const xdgToplevelResource = new XdgToplevelResource(resource.client, id, resource.version)
-    const xdgToplevel = XdgToplevel.create(xdgToplevelResource, this, this._session, this._userShell)
+    const xdgToplevel = XdgToplevel.create(xdgToplevelResource, this, this._session)
     xdgToplevelResource.implementation = xdgToplevel
     this.ackConfigure = (resource, serial) => xdgToplevel.ackConfigure(serial)
   }

@@ -39,32 +39,25 @@ import XdgToplevel from './XdgToplevel'
 export default class XdgWmBase extends XdgWmBaseRequests {
   /**
    * @param {Session} session
-   * @param {UserShell}userShell
    * @param {Seat}seat
    * @return {XdgWmBase}
    */
-  static create (session, userShell, seat) {
-    return new XdgWmBase(session, userShell, seat)
+  static create (session, seat) {
+    return new XdgWmBase(session, seat)
   }
 
   /**
    * @param {Session} session
-   * @param {UserShell}userShell
    * @param {Seat}seat
    * @private
    */
-  constructor (session, userShell, seat) {
+  constructor (session, seat) {
     super()
     /**
      * @type {Session}
      * @private
      */
     this._session = session
-    /**
-     * @type {UserShell}
-     * @private
-     */
-    this._userShell = userShell
     /**
      * @type {Seat}
      * @private
@@ -205,7 +198,7 @@ export default class XdgWmBase extends XdgWmBaseRequests {
     }
 
     const xdgSurfaceResource = new XdgSurfaceResource(resource.client, id, resource.version)
-    XdgSurface.create(xdgSurfaceResource, wlSurfaceResource, this._session, this._userShell, this._seat)
+    XdgSurface.create(xdgSurfaceResource, wlSurfaceResource, this._session, this._seat)
     this._wlSurfaceResources.push(wlSurfaceResource)
     wlSurfaceResource.onDestroy().then(() => {
       const index = this._wlSurfaceResources.indexOf(wlSurfaceResource)

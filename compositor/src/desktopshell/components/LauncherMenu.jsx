@@ -201,12 +201,12 @@ class LauncherMenu extends React.Component {
    * @param {{id: string, url: string, type: 'web'|'remote'}} appLauncherEntry
    * @private
    */
-  _onAppLauncherClick (appLauncherEntry) {
+  async _onAppLauncherClick (appLauncherEntry) {
     const { mode } = this.state
     if (mode === 'launch' && appLauncherEntry.type === 'web') {
       const { onClose, webAppLauncher } = this.props
       // TODO show waiting icon on launcher tile until app is dld & launched
-      webAppLauncher.launch(appLauncherEntry.url)
+      webAppLauncher.launch(appLauncherEntry.url).catch(error => { throw error })
       onClose()
     } else if (mode === 'launch' && appLauncherEntry.type === 'remote') {
       const { onClose, remoteAppLauncher } = this.props

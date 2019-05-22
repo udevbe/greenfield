@@ -107,6 +107,7 @@ class RemoteSocket {
     DEBUG && console.log(`[WebSocket] - created.`)
 
     webSocket.binaryType = 'arraybuffer'
+    webSocket.onclose = () => { throw new Error('Remote connection failed.') }
     webSocket.onopen = () => {
       DEBUG && console.log(`[WebSocket] - open.`)
 

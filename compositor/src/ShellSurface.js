@@ -23,6 +23,8 @@ import WlShellSurfaceResource from './protocol/WlShellSurfaceResource'
 import Point from './math/Point'
 import Renderer from './render/Renderer'
 
+import userShell from './UserShell'
+
 const { bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight } = WlShellSurfaceResource.Resize
 const { inactive } = WlShellSurfaceResource.Transient
 
@@ -57,11 +59,10 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    * @param {WlShellSurfaceResource}wlShellSurfaceResource
    * @param {WlSurfaceResource}wlSurfaceResource
    * @param {Session} session
-   * @param {UserShell}userShell
    * @return {ShellSurface}
    */
-  static create (wlShellSurfaceResource, wlSurfaceResource, session, userShell) {
-    const shellSurface = new ShellSurface(wlShellSurfaceResource, wlSurfaceResource, session, userShell)
+  static create (wlShellSurfaceResource, wlSurfaceResource, session) {
+    const shellSurface = new ShellSurface(wlShellSurfaceResource, wlSurfaceResource, session)
     wlShellSurfaceResource.implementation = shellSurface
 
     // destroy the shell-surface if the surface is destroyed.
@@ -84,9 +85,8 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    * @param {WlShellSurfaceResource}wlShellSurfaceResource
    * @param {WlSurfaceResource}wlSurfaceResource
    * @param {Session} session
-   * @param {UserShell}userShell
    */
-  constructor (wlShellSurfaceResource, wlSurfaceResource, session, userShell) {
+  constructor (wlShellSurfaceResource, wlSurfaceResource, session) {
     super()
     /**
      * @type {WlShellSurfaceResource}
@@ -114,11 +114,6 @@ export default class ShellSurface extends WlShellSurfaceRequests {
      * @type {Session}
      */
     this.session = session
-    /**
-     * @type {UserShell}
-     * @private
-     */
-    this._userShell = userShell
     /**
      * @type {boolean}
      * @private
@@ -375,7 +370,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    * @private
    */
   _createUserShellSurface () {
-    this._userShellSurface = this._userShell.manage(
+    this._userShellSurface = userShell.manage(
       /** @type {Surface} */this.wlSurfaceResource.implementation,
       (userShellSurface) => userShellSurface.activation(),
       (userShellSurface) => { /* NOOP */ }
@@ -602,8 +597,9 @@ export default class ShellSurface extends WlShellSurfaceRequests {
 
     // TODO get proper size in surface coordinates instead of assume surface space === global space
     const x = 0
-    const { height: y } = this._userShell.panel.getBoundingClientRect()
-    const { width, height } = this._userShell.workspace.getBoundingClientRect()
+    // FIXME
+    const { height: y } = userShell.panel.getBoundingClientRect()
+    const { width, height } = userShell.workspace.getBoundingClientRect()
 
     surface.surfaceChildSelf.position = Point.create(x, y)
     this.resource.configure(none, width, height)
