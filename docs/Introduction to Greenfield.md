@@ -1,22 +1,22 @@
-# Greenfield
-### The in-browser wayland compositor
+# Introduction to Greenfield
+
+Greenfield is a [Wayland compositor](https://en.wikipedia.org/wiki/Wayland_(display_server_protocol) written entirely
+in JavaScript while utilizing WebAssembly for the performance critical parts. It can run native Wayland 
+applications remotely or it can run Wayland [web applications](https://preview.greenfield.app) directly in your browser.
+No plugins required.
+
+## Applications
+
+Because Greenfield is 100% compatible Wayland compositor running in the browser, it does not care where and how
+Wayland client applications run. This has some interesting implications.
+
+### Remote Applications
 
 Greenfield remote applications are different from existing solutions like VNC or RDP as Greenfield does not stream the
 entire desktop screen to your browser. Instead Greenfield live encodes each individual application to an h264 stream which is 
 send to the browser using a dedicated websocket connection. On reception, the h264 stream is decoded and drawn directly 
 into it's own HTML5 canvas. As a result, the screen you see in the browser is actually composed of nothing more than 
-ordinary browser DOM elements. 
-
-The advantage of this approach is that it retains the entire desktop context which allows for powerful features like 
-context aware application positioning & naming, custom task-bars, custom REST api integrations, notifications, css 
-styling, WebRTC VOIP integration and much more. All of which can be directly and seamlessly integrated inside the browser.
-
-## Applications
-
-Because Greenfield is in essence an entire Wayland compositor running in the browser, it does not care where and how
-client applications run. This has some interesting implications:
-
-### Remote Applications
+ordinary browser DOM elements.
 
 Native wayland applications can connect to the in-browser compositor by talking to a local application endpoint server.
 This application endpoint server presents itself as a locally running native wayland compositor while in reality it relays
