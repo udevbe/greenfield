@@ -1,5 +1,5 @@
 # Greenfield
-### The in-browser wayland compositor [![Build Status](https://travis-ci.org/udevbe/greenfield.svg)](https://travis-ci.org/udevbe/greenfield)
+### The in-browser wayland compositor
 
 Greenfield remote applications are different from existing solutions like VNC or RDP as Greenfield does not stream the
 entire desktop screen to your browser. Instead Greenfield live encodes each individual application to an h264 stream which is 

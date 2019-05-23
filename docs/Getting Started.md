@@ -1,13 +1,10 @@
-Installation and Configuration
-============
-
 Clone the repository: 
 
 ```bash
 git clone https://github.com/udevbe/greenfield.git
 ```
 
-## Compositor
+### The Greenfield Compositor
   
   Inside the `compositor` directory run 
   
@@ -23,7 +20,7 @@ git clone https://github.com/udevbe/greenfield.git
   
   And wait for the a browser to automatically open a tab to `localhost:8080`.
   
-## Application end-point server
+### Application end-point server
   
   Prerequisites: 
    - The Greenfield application end-point depends on the native-endpoint module of [Westfield](https://github.com/udevbe/westfield) 
@@ -60,7 +57,7 @@ git clone https://github.com/udevbe/greenfield.git
   npm start
   ``` 
   
-  For nicer output, set the environment variable 
+  For nicer logging output, set the environment variable 
   ```bash
   export DEBUG=1
   ``` 
