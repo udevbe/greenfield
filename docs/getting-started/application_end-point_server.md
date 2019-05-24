@@ -1,60 +1,61 @@
-# Application end-point server
-  
-  Prerequisites: 
-   - The Greenfield application end-point depends on the native-endpoint module of [Westfield](https://github.com/udevbe/westfield) 
-   so make sure you have the required Westfield native-endpoint dependencies installed.
-   
-   ```bash
-   sudo apt-get install -y libffi-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-   ```
-   ```bash
-   npm install -g cmake-js
-   ```
-    
-  At runtime, the endpoint will need gstreamer-1.x with the following plugins:
-  - appsrc
-  - glupload
-  - glcolorconvert
-  - glcolorscale
-  - tee
-  - glshader
-  - gldownload
-  - x264enc
-  - pngenc
-  - appsink
-  
-Get the sources: 
-  
+# Application End-Point Server
+
+Prerequisites:
+
+* The Greenfield application end-point depends on the native-endpoint module of [Westfield](https://github.com/udevbe/westfield) so make sure you have the required Westfield native-endpoint dependencies installed.
+
   ```bash
-  git clone https://github.com/udevbe/greenfield.git
+  sudo apt-get install -y libffi-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
   ```
-    
-  Inside the `app-endpoint-server` directory run 
-  
+
   ```bash
+  npm install -g cmake-js
+  ```
+
+  At runtime, the endpoint will need gstreamer-1.x with the following plugins:
+
+  * appsrc
+  * glupload
+  * glcolorconvert
+  * glcolorscale
+  * tee
+  * glshader
+  * gldownload
+  * x264enc
+  * pngenc
+  * appsink
+
+Get the sources:
+
+```bash
+  git clone https://github.com/udevbe/greenfield.git
+```
+
+Inside the `app-endpoint-server` directory run
+
+```bash
   npm install
-  ``` 
-  
-  To start the end-point server
-  
-  ```bash
+```
+
+To start the end-point server
+
+```bash
   npm start
-  ``` 
-  
-  For nicer logging output, set the environment variable 
-  ```bash
+```
+
+For nicer logging output, set the environment variable
+
+```bash
   export DEBUG=1
-  ``` 
-   
-  The endpoint server will lazily create a new child process for each new connected browser compositor instance. The
-  Greenfield compositor will initiate a new websocket connection for each individual remote application it wants to
-  launch.
-  
-#### Configuration
- 
- Configuration can be found in `app-endpoint-server/config.json5`
- 
- ```json5
+```
+
+The endpoint server will lazily create a new child process for each new connected browser compositor instance. The Greenfield compositor will initiate a new websocket connection for each individual remote application it wants to launch.
+
+## Configuration
+
+Configuration can be found in `app-endpoint-server/config.json5`
+
+```text
 {
   serverConfig: {
     httpServer: {
@@ -101,3 +102,4 @@ Get the sources:
   }
 }
 ```
+
