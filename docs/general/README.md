@@ -1,6 +1,7 @@
-#Summary
+# General
 
-## General
+Setup and Configuration
+
 * [Introduction](introduction/README.md)
     * [Remote Applications](introduction/remote_applications.md)
     * [Web Applications](introduction/web_applications.md)

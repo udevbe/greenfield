@@ -1,6 +1,4 @@
-#Summary
-
-##Introduction
+#Introduction
 
 Greenfield is a [Wayland compositor](https://en.wikipedia.org/wiki/Wayland_%28display_server_protocol%29) written entirely
 in JavaScript while utilizing WebAssembly for the performance critical parts. It can run native Wayland 
