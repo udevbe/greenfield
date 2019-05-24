@@ -1,6 +1,6 @@
 # Web Applications
 
-A different variation on distributed applications is to run them directly inside the user's browser. This can be done using a Web worker. A Web Worker is essentially a stand-alone thread/process, completely separate from the main thread. Running applications in a Web Worker isolates client code without impacting the performance of the compositor and provides isolation from malicious clients.
+A different variation on distributed applications is to run them directly inside the user's [browser](https://preview.greenfield.app). This can be done using a Web worker. A Web Worker is essentially a stand-alone thread/process, completely separate from the main thread. Running applications in a Web Worker isolates client code without impacting the performance of the compositor and provides isolation from malicious clients.
 
 Greenfield supports web applications. There are however some prerequisites.
 

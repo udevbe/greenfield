@@ -1,10 +1,14 @@
 # Table of contents
 
 * [Introduction](README.md)
-  * [Remote Applications](remote_applications.md)
-  * [Web Applications](web_applications.md)
-* [Getting Started](getting-started/README.md)
-  * [Compositor](getting-started/compositor.md)
-  * [Application End-Point Server](getting-started/application_end-point_server.md)
-    * [Configuration](getting-started/application_end-point_server.md#configuration)
+
+## Applications
+
+* [Web Applications](applications-1/web_applications.md)
+* [Remote Applications](applications-1/remote_applications.md)
+
+## Getting Started
+
+* [Compositor](getting-started-1/compositor.md)
+* [Application End-Point Server](getting-started-1/application_end-point_server.md)
 
