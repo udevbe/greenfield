@@ -6,5 +6,5 @@
 * [Getting Started](getting-started/README.md)
   * [Compositor](getting-started/compositor.md)
   * [Application End-Point Server](getting-started/application_end-point_server.md)
-    * [Configuration](getting-started/application_end-point_server.md#Configuration)
+    * [Configuration](getting-started/application_end-point_server.md#configuration)
 
