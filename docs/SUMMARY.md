@@ -4,8 +4,8 @@
 
 ## Applications
 
-* [Web Applications](applications/web-applications.md)
 * [Remote Applications](applications/remote-applications.md)
+* [Web Applications](applications/web-applications.md)
 
 ## Getting Started
 
