@@ -9,7 +9,7 @@ Prerequisites:
   ```
 
   ```bash
-  npm install -g cmake-js
+  sudo npm install -g cmake-js
   ```
 
   At runtime, the endpoint will need gstreamer-1.x with the following plugins:
