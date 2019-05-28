@@ -178,8 +178,7 @@ export default class DataDevice extends WlDataDeviceRequests {
    * @override
    */
   startDrag (resource, source, origin, icon, serial) {
-    const iconSurface = /** @type {Surface} */ icon.implementation
-    if (iconSurface.role) {
+    if (icon && (/** @type {Surface} */ icon.implementation).role) {
       resource.postError(WlDataDeviceResource.Error.role, 'Given surface has another role.')
       DEBUG && console.log('[client-protocol-error] - Given surface has another role.')
       return
@@ -375,9 +374,7 @@ export default class DataDevice extends WlDataDeviceRequests {
     const offerId = /** @type {number} */dataDeviceResource.dataOffer()
     const dataOffer = DataOffer.create(source, offerId, dataDeviceResource)
     source.implementation.wlDataOffer = dataOffer.resource
-    source.implementation.mimeTypes.forEach((mimeType) => {
-      dataOffer.resource.offer(mimeType)
-    })
+    source.implementation.mimeTypes.forEach(mimeType => dataOffer.resource.offer(mimeType))
     return dataOffer.resource
   }
 
@@ -398,8 +395,7 @@ export default class DataDevice extends WlDataDeviceRequests {
    */
   setSelection (resource, source, serial) {
     // Looking at weston, the serial is quite useless. So we will conveniently ignore it here too.
-    const dataSource = /** @type {DataSource} */source.implementation
-    if (source && dataSource.dndActions) {
+    if (source && (/** @type {DataSource} */source.implementation).dndActions) {
       source.postError(WlDataSourceResource.Error.invalidSource, 'Can not set selection when source has dnd actions active.')
       DEBUG && console.log('[client-protocol-error] - Can not set selection when source has dnd actions active.')
       return
@@ -417,7 +413,7 @@ export default class DataDevice extends WlDataDeviceRequests {
 
     this.selectionSource = source
     // send out selection if there is a keyboard focus
-    if (this._selectionFocus) {
+    if (this._selectionFocus && this.selectionSource) {
       this.selectionSource.addDestroyListener(this._selectionSourceDestroyListener)
       this.onKeyboardFocusGained(this._selectionFocus)
     }

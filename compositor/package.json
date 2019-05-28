@@ -44,7 +44,7 @@
     "react": "^16.8.6",
     "react-dom": "^16.8.6",
     "westfield-runtime-common": "^0.2.1",
-    "westfield-runtime-server": "^0.2.1",
+    "westfield-runtime-server": "^0.2.2",
     "ws": "^7.0.0"
   },
   "devDependencies": {

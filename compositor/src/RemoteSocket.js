@@ -123,7 +123,7 @@ class RemoteSocket {
       /**
        * @param {Array<{buffer: ArrayBuffer, fds: Array<WebFD>}>}wireMessages
        */
-      client.connection.onFlush = (wireMessages) => this._flushWireMessages(client, webSocket, wireMessages)
+      client.connection.onFlush = wireMessages => this._flushWireMessages(client, webSocket, wireMessages)
 
       const wsOutOfBandChannel = RemoteOutOfBandChannel.create(sendBuffer => {
         try {

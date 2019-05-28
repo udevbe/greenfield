@@ -47,9 +47,7 @@ export default class DataOffer extends WlDataOfferRequests {
     const wlDataOfferResource = new WlDataOfferResource(dataDeviceResource.client, offerId, dataDeviceResource.version)
     wlDataOfferResource.implementation = dataOffer
     dataOffer.resource = wlDataOfferResource
-    wlDataOfferResource.onDestroy().then(() => {
-      dataOffer._handleDestroy()
-    })
+    wlDataOfferResource.onDestroy().then(() => dataOffer._handleDestroy())
 
     return dataOffer
   }
