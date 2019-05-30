@@ -176,7 +176,7 @@ class RemoteSocket {
       if (transferable instanceof ArrayBuffer) {
         const serializedWebFdURL = this._textEncoder.encode(webFD.url.href)
         const webFDByteLength = serializedWebFdURL.byteLength
-        const message = new Uint8Array(Uint32Array.BYTES_PER_ELEMENT + webFDByteLength + transferable.byteLength) // webFdURL + fileContents
+        const message = new Uint8Array(Uint32Array.BYTES_PER_ELEMENT + ((webFDByteLength + 3) & ~3) + transferable.byteLength) // webFdURL + fileContents
         let byteOffset = 0
         // web fd url length
         new DataView(message.buffer).setUint32(byteOffset, webFDByteLength, true)

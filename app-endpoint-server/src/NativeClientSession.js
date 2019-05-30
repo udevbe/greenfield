@@ -185,12 +185,12 @@ class NativeClientSession {
   }
 
   /**
-   * @param {Uint32Array}sourceBuf
+   * @param {Uint8Array}sourceBuf
    * @return {{webFdURL:URL, bytesRead: number}}webFdURL
    * @private
    */
   _deserializeWebFdURL (sourceBuf) {
-    const webFDByteLength = sourceBuf[0]
+    const webFDByteLength = new Uint32Array(sourceBuf.buffer, sourceBuf.byteOffset, 1)[0]
     const fdURLUint8Array = new Uint8Array(sourceBuf.buffer, sourceBuf.byteOffset + Uint32Array.BYTES_PER_ELEMENT, webFDByteLength)
     const fdURLString = textDecoder.decode(fdURLUint8Array)
     const webFdURL = new URL(fdURLString)
