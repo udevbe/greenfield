@@ -29,7 +29,7 @@ class SurfaceBufferEncoding {
      * @param {{buffer: ArrayBuffer, fds: Array<number>, bufferOffset: number, consumed: number, size: number}} message
      * @return {number}
      */
-    wlSurfaceInterceptor.prototype[1] = function (message) {
+    wlSurfaceInterceptor.prototype.R1 = function (message) {
       const [bufferResourceId, x, y] = WireMessageUtil.unmarshallArgs(message, 'oii')
       this.bufferResourceId = bufferResourceId
       return 0
@@ -40,7 +40,7 @@ class SurfaceBufferEncoding {
      * @param {{buffer: ArrayBuffer, fds: Array<number>, bufferOffset: number, consumed: number, size: number}} message
      * @return {number}
      */
-    wlSurfaceInterceptor.prototype[6] = function (message) {
+    wlSurfaceInterceptor.prototype.R6 = function (message) {
       if (!this.encoder) {
         this.encoder = Encoder.create()
         this.bufferSerial = -1

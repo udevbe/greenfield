@@ -225,8 +225,10 @@ class NativeClientSession {
           readOffset += (bytesRead / Uint32Array.BYTES_PER_ELEMENT)
         }
 
+        const objectId = inboundMessage[readOffset]
         const sizeOpcode = inboundMessage[readOffset + 1]
         const size = sizeOpcode >>> 16
+        const opcode = sizeOpcode & 0x0000FFFF
 
         const length = size / Uint32Array.BYTES_PER_ELEMENT
         const messageBuffer = inboundMessage.subarray(readOffset, readOffset + length)
@@ -253,6 +255,14 @@ class NativeClientSession {
             fdsBuffer[i] = await this._handleForeignWebFdURL(webFdURL)
           }
         }
+
+        this._messageInterceptor.interceptEvent(objectId, opcode, {
+          buffer: messageBuffer.buffer,
+          fds: Array.from(fdsBuffer),
+          bufferOffset: messageBuffer.byteOffset + (2 * Uint32Array.BYTES_PER_ELEMENT),
+          consumed: 0,
+          size: messageBuffer.length * 4 * Uint32Array.BYTES_PER_ELEMENT
+        })
         Endpoint.sendEvents(this.wlClient, messageBuffer, fdsBuffer)
       }
       Endpoint.flush(this.wlClient)
@@ -434,14 +444,15 @@ class NativeClientSession {
 
   /**
    * @param {Object}wlClient
-   * @param {ArrayBuffer}fdsInWithType
+   * @param {ArrayBuffer}fdsInBuffer
    */
-  _onWireMessageEnd (wlClient, fdsInWithType) {
+  _onWireMessageEnd (wlClient, fdsInBuffer) {
     let nroFds = 0
     let fdsIntBufferSize = 1 // start with one because we start with the number of webfds specified
     /** @type {Array<Uint8Array>} */const serializedWebFDs = new Array(nroFds)
-    if (fdsInWithType) {
-      nroFds = fdsInWithType.byteLength / (Uint32Array.BYTES_PER_ELEMENT * 2) // fd + type (shm or pipe) = 2
+    if (fdsInBuffer) {
+      const fdsInWithType = new Uint32Array(fdsInBuffer)
+      nroFds = fdsInWithType.length / 2 // fd + type (shm or pipe) = 2
       for (let i = 0; i < nroFds; i++) {
         // TODO keep track of (web)fd in case another host wants to get it's content or issues an fd close
         const fd = fdsInWithType[i * 2]
@@ -450,7 +461,7 @@ class NativeClientSession {
         const serializedWebFD = this._serializeWebFD(fd, fdType)
         serializedWebFDs[i] = serializedWebFD
         // align webfdurl size to 32bits
-        fdsIntBufferSize += (1 + ((serializedWebFD.byteLength + 3) & ~3) / 4)
+        fdsIntBufferSize += 1 + (((serializedWebFD.byteLength + 3) & ~3) / 4) // size (1) + data (n)
       }
     }
 
@@ -460,7 +471,7 @@ class NativeClientSession {
     sendBuffer[offset++] = nroFds
     serializedWebFDs.forEach(serializedWebFD => {
       sendBuffer[offset++] = serializedWebFD.byteLength
-      sendBuffer.set(serializedWebFD, offset)
+      new Uint8Array(sendBuffer.buffer, offset * Uint32Array.BYTES_PER_ELEMENT, serializedWebFD.length).set(serializedWebFD)
       // align offset to 32bits
       offset += ((serializedWebFD.byteLength + 3) & ~3) / 4
     })
@@ -494,7 +505,7 @@ class NativeClientSession {
         type = 'ArrayBuffer'
         break
       case 2:
-        type = 'MessageChannel'
+        type = 'MessagePort'
         break
       default:
         type = 'unsupported'

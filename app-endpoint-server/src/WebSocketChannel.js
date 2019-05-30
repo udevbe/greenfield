@@ -66,7 +66,7 @@ class WebSocketChannel {
     this._onMessageEventHandler = null
   }
 
-  close () { this._webSocket.close() }
+  close () { if (this._webSocket) { this._webSocket.close() }}
 
   /**
    * @param {ArrayBuffer}arrayBuffer

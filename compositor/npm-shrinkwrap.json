@@ -10090,22 +10090,22 @@
       "integrity": "sha512-nqHUnMXmBzT0w570r2JpJxfiSD1IzoI+HGVdd3aZ0yNi3ngvQ4jv1dtHt5VGxfI2yj5yqImPhOK4vmIh2xMbGg=="
     },
     "westfield-runtime-common": {
-      "version": "0.2.1",
-      "resolved": "https://registry.npmjs.org/westfield-runtime-common/-/westfield-runtime-common-0.2.1.tgz",
-      "integrity": "sha512-zRsR4b8xqYEpDYVDQRAlGRHrlCRu+bhPfr9bim46kCEWgYdH7v7jbM+umWiAGrbgfPCecs2OZY+OTGtCM0vjxw=="
+      "version": "0.2.4",
+      "resolved": "https://registry.npmjs.org/westfield-runtime-common/-/westfield-runtime-common-0.2.4.tgz",
+      "integrity": "sha512-pFCivahM1djuunwkyqnnVG/sF35D5iLcAjfSTvFv0op6BE4J7f4IKJZCPxg5QNMv/GsMOlwsVV2NOjz+dcXaXQ=="
     },
     "westfield-runtime-server": {
-      "version": "0.2.1",
-      "resolved": "https://registry.npmjs.org/westfield-runtime-server/-/westfield-runtime-server-0.2.1.tgz",
-      "integrity": "sha512-32t++mHQCIUwRQTW+4V9YvrnrhBfC4cUKOwEsyF+Sbj56iIiNKWbdzYCIG/Il2SQGP7Lwjej91yS7uSK9321NQ==",
+      "version": "0.2.5",
+      "resolved": "https://registry.npmjs.org/westfield-runtime-server/-/westfield-runtime-server-0.2.5.tgz",
+      "integrity": "sha512-M/V+JCu3GW22Sa+H3SHAtUpZF7vtKZSi/21gHwX5eIslxnjPsVqTAG/OrFDdQW4WQiK/+BpvPJnAPQ50Ivq8mg==",
       "requires": {
-        "westfield-runtime-common": "0.2.1"
+        "westfield-runtime-common": "^0.2.4"
       }
     },
     "westfield-scanner-server": {
-      "version": "0.2.1",
-      "resolved": "https://registry.npmjs.org/westfield-scanner-server/-/westfield-scanner-server-0.2.1.tgz",
-      "integrity": "sha512-phIG8UGDVrpa+NS8ryLh6l3+vbQcfke0Vbn2hkP14gxxSVAv0qGyL/m5n/KEAbZPTHfE5QYm5Is7S9Qt5yB3FQ==",
+      "version": "0.2.4",
+      "resolved": "https://registry.npmjs.org/westfield-scanner-server/-/westfield-scanner-server-0.2.4.tgz",
+      "integrity": "sha512-oTHGnSB4qoHyX9tYZqsR1IiIUGpSSbH0jemeqG9IxWSw5xfF0NOq5c0KF9HlxASHcsCnCYQfSC6pqIdWc1XPfw==",
       "dev": true,
       "requires": {
         "camelcase": "^5.3.1",

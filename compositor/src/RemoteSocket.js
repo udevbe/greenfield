@@ -295,13 +295,12 @@ class RemoteSocket {
     // FIXME we only need to handle fetching remote contents if the webfd does not match this compositor
     // If it does match, we simply need to lookup the WebFD from our own WebFS cache, and return that one instead.
     const webFdbyteLength = sourceBuf[0]
-    const webFdBytes = new Uint8Array(sourceBuf.buffer, sourceBuf.byteOffset, webFdbyteLength)
+    const webFdBytes = new Uint8Array(sourceBuf.buffer, sourceBuf.byteOffset + Uint32Array.BYTES_PER_ELEMENT, webFdbyteLength)
 
     const webFdURL = new URL(this._textDecoder.decode(webFdBytes))
     const fd = Number.parseInt(webFdURL.searchParams.get('fd'))
     const type = webFdURL.searchParams.get('type')
 
-    let fdType
     let onGetTransferable
     let onClose
     switch (type) {
@@ -315,13 +314,12 @@ class RemoteSocket {
         break
       // case 3: 'ImageBitmap' can not be transferred to a remote
       default:
-        fdType = 'unsupported'
         onGetTransferable = () => { throw new Error('unsupported fd type') }
         onClose = () => { throw new Error('unsupported fd type') }
     }
     return {
-      read: ((webFdbyteLength.byteLength + 3) & ~3) / 4,
-      webFd: new WebFD(fd, fdType, webFdURL, onGetTransferable, onClose)
+      read: 1 + (((webFdbyteLength + 3) & ~3) / 4),
+      webFd: new WebFD(fd, type, webFdURL, onGetTransferable, onClose)
     }
   }
 }
