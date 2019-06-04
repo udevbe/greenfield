@@ -87,8 +87,10 @@ class NativeClientSession {
       webSocketChannel.onerror = event => nativeClientSession._onError(event)
       // flush out any requests that came in while we were waiting for the data channel to open.
       logger.info(`Web socket to browser is open.`)
-      nativeClientSession._flushOutboundMessage()
+      nativeClientSession._flushOutboundMessageOnOpen()
     }
+
+    nativeClientSession._allocateBrowserServerObjectIdsBatch()
 
     return nativeClientSession
   }
@@ -356,6 +358,22 @@ class NativeClientSession {
   }
 
   /**
+   * @private
+   */
+  _allocateBrowserServerObjectIdsBatch () {
+    const idsReply = new Uint32Array(1001)
+    Endpoint.getServerObjectIdsBatch(this.wlClient, idsReply.subarray(1))
+    // reply opcode 6
+    idsReply[0] = 6
+    if (this._webSocketChannel.readyState === 1) {
+      this._webSocketChannel.send(idsReply.buffer)
+    } else {
+      // web socket not open, queue up reply
+      this._outboundMessages.push(idsReply.buffer)
+    }
+  }
+
+  /**
    * @param {Uint8Array}payload
    * @private
    */
@@ -377,7 +395,11 @@ class NativeClientSession {
     return new WebSocket(webFdURL)
   }
 
-  _flushOutboundMessage () {
+  /**
+   * @private
+   */
+  _flushOutboundMessageOnOpen () {
+    this._allocateBrowserServerObjectIdsBatch()
     while (this._outboundMessages.length) {
       this._webSocketChannel.send(this._outboundMessages.shift())
     }

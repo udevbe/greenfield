@@ -113,6 +113,12 @@ class RemoteSocket {
 
       const client = this._session.display.createClient()
       client.onClose().then(() => DEBUG && console.log(`[client] - closed.`))
+      client.addResourceCreatedListener(resource => {
+        if (resource.id >= 0xff000000 && client.recycledIds.length === 0) {
+          console.error(`[client] - Ran out of reserved browser resource ids.`)
+          client.close()
+        }
+      })
 
       webSocket.onclose = () => {
         DEBUG && console.log(`[WebSocket] - closed.`)
@@ -147,7 +153,7 @@ class RemoteSocket {
    */
   _setupClientOutOfBandHandlers (webSocket, client, outOfBandChannel) {
     // send out-of-band resource destroy. opcode: 1
-    client.addResourceDestroyListener(resource => outOfBandChannel.send(1, new Uint32Array([resource.id]).buffer))
+    client.addResourceDestroyListener(resource => { outOfBandChannel.send(1, new Uint32Array([resource.id]).buffer) })
 
     // listen for buffer creation. opcode: 2
     outOfBandChannel.setListener(2, message => {
@@ -202,6 +208,11 @@ class RemoteSocket {
 
       const newWebSocket = new window.WebSocket(webSocketURL)
       this.onWebSocket(newWebSocket)
+    })
+
+    outOfBandChannel.setListener(6, outOfBandMessage => {
+      const ids = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)
+      client.recycledIds = Array.from(ids)
     })
   }
 
