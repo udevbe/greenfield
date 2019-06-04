@@ -403,12 +403,14 @@ export default class DataDevice extends WlDataDeviceRequests {
 
     if (this.selectionSource) {
       this.selectionSource.removeDestroyListener(this._selectionSourceDestroyListener)
-      /*
-       * From the specs:
-       * For objects of version 2 or older, wl_data_source.cancelled will only be emitted if the data source was
-       * replaced by another data source.
-       */
-      this.selectionSource.cancelled()
+      // /*
+      //  * From the specs:
+      //  * For objects of version 2 or older, wl_data_source.cancelled will only be emitted if the data source was
+      //  * replaced by another data source.
+      //  */
+      if (this.selectionSource.version <= 2) {
+        this.selectionSource.cancelled()
+      }
     }
 
     this.selectionSource = source
@@ -437,6 +439,10 @@ export default class DataDevice extends WlDataDeviceRequests {
       dataDeviceResource.selection(null)
     } else {
       const wlDataOffer = this._createDataOffer(this.selectionSource, dataDeviceResource)
+
+      this.selectionSource.action(0)
+      wlDataOffer.action(0)
+
       dataDeviceResource.selection(wlDataOffer)
       this.selectionSource.implementation.wlDataOffer = wlDataOffer
     }
