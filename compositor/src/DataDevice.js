@@ -65,7 +65,7 @@ export default class DataDevice extends WlDataDeviceRequests {
      */
     this.dndSource = null
     /**
-     * @type {WlDataSourceResource}
+     * @type {?WlDataSourceResource}
      */
     this.selectionSource = null
     /**
@@ -85,16 +85,12 @@ export default class DataDevice extends WlDataDeviceRequests {
      * @type {function():void}
      * @private
      */
-    this._dndSourceDestroyListener = () => {
-      this._handleDndSourceDestroy()
-    }
+    this._dndSourceDestroyListener = () => { this._handleDndSourceDestroy() }
     /**
      * @type {function():void}
      * @private
      */
-    this._selectionSourceDestroyListener = () => {
-      this._handleSelectionSourceDestroy()
-    }
+    this._selectionSourceDestroyListener = () => { this._handleSelectionSourceDestroy() }
   }
 
   /**
@@ -391,29 +387,35 @@ export default class DataDevice extends WlDataDeviceRequests {
    *
    */
   setSelection (resource, source, serial) {
-    // Looking at weston, the serial is quite useless. So we will conveniently ignore it here too.
+    if (!this.seat.isValidInputSerial(serial)) {
+      DEBUG && console.log('Invalid selection serial. Ignoring request.')
+      return
+    }
+
     if (source && (/** @type {DataSource} */source.implementation).dndActions) {
       source.postError(WlDataSourceResource.Error.invalidSource, 'Can not set selection when source has dnd actions active.')
       DEBUG && console.log('[client-protocol-error] - Can not set selection when source has dnd actions active.')
       return
     }
 
+    if (this.selectionSource === source) {
+      return
+    }
+
     if (this.selectionSource) {
       this.selectionSource.removeDestroyListener(this._selectionSourceDestroyListener)
-      // /*
-      //  * From the specs:
-      //  * For objects of version 2 or older, wl_data_source.cancelled will only be emitted if the data source was
-      //  * replaced by another data source.
-      //  */
-      if (this.selectionSource.version <= 2) {
+      if (this.selectionSource.client !== resource.client) {
         this.selectionSource.cancelled()
       }
     }
 
     this.selectionSource = source
-    // send out selection if there is a keyboard focus
-    if (this._selectionFocus && this.selectionSource) {
+    if (this.selectionSource) {
       this.selectionSource.addDestroyListener(this._selectionSourceDestroyListener)
+    }
+
+    // send out selection if there is a keyboard focus
+    if (this._selectionFocus) {
       this.onKeyboardFocusGained(this._selectionFocus)
     }
   }

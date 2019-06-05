@@ -22,7 +22,7 @@ import WlDataOfferResource from './protocol/WlDataOfferResource'
 
 import WlDataDeviceManagerResource from './protocol/WlDataDeviceManagerResource'
 
-const {copy, move, ask, none} = WlDataDeviceManagerResource.DndAction
+const { copy, move, ask, none } = WlDataDeviceManagerResource.DndAction
 const ALL_ACTIONS = (copy | move | ask)
 
 /**
@@ -65,7 +65,7 @@ export default class DataOffer extends WlDataOfferRequests {
      */
     this.resource = null
     /**
-     * @type {string|null}
+     * @type {?string}
      */
     this.acceptMimeType = null
     /**
@@ -171,7 +171,7 @@ export default class DataOffer extends WlDataOfferRequests {
    *
    * @param {WlDataOfferResource} resource
    * @param {string} mimeType mime type desired by receiver
-   * @param {Number} fd file descriptor for data transfer
+   * @param {WebFD} fd file descriptor for data transfer
    *
    * @since 1
    * @override
@@ -182,8 +182,6 @@ export default class DataOffer extends WlDataOfferRequests {
     }
     if (this.wlDataSource) {
       this.wlDataSource.send(mimeType, fd)
-    } else {
-      this.wlDataSource.send('', -1)
     }
   }
 
@@ -233,20 +231,14 @@ export default class DataOffer extends WlDataOfferRequests {
      * if the negotiation is not at the right stage
      */
     if (!this.wlDataSource.implementation.accepted) {
-      // TODO raise protocol error
-      // wl_resource_post_error(offer->resource,
-      //   WL_DATA_OFFER_ERROR_INVALID_FINISH,
-      //   "premature finish request");
+      resource.postError(WlDataOfferResource.Error.invalidFinish, 'premature finish request')
       return
     }
 
     switch (this.wlDataSource.implementation.currentDndAction) {
       case none:
       case ask:
-        // TODO raise protocol error
-        // wl_resource_post_error(offer->resource,
-        //   WL_DATA_OFFER_ERROR_INVALID_OFFER,
-        //   'offer finished with an invalid action')
+        resource.postError(WlDataOfferResource.Error.invalidOffer, 'offer finished with an invalid action')
         return
       default:
         break
@@ -255,6 +247,11 @@ export default class DataOffer extends WlDataOfferRequests {
     this.wlDataSource.implementation.notifyFinish()
   }
 
+  /**
+   * @param {number}u
+   * @return {number}
+   * @private
+   */
   _bitCount (u) {
     // https://blogs.msdn.microsoft.com/jeuge/2005/06/08/bit-fiddling-3/
     const uCount = u - ((u >> 1) & 0o33333333333) - ((u >> 2) & 0o11111111111)
@@ -312,20 +309,14 @@ export default class DataOffer extends WlDataOfferRequests {
     }
 
     if (dndActions & ~ALL_ACTIONS) {
-      // TODO protocol error
-      // wl_resource_post_error(offer->resource,
-      //   WL_DATA_OFFER_ERROR_INVALID_ACTION_MASK,
-      //   'invalid action mask %x', dnd_actions)
+      resource.postError(WlDataOfferResource.Error.invalidActionMask, `invalid action mask ${dndActions}`)
       return
     }
 
     if (preferredAction &&
       (!(preferredAction & dndActions) ||
         this._bitCount(preferredAction) > 1)) {
-      // TODO protocol error
-      // wl_resource_post_error(offer->resource,
-      //   WL_DATA_OFFER_ERROR_INVALID_ACTION,
-      //   'invalid action %x', preferred_action)
+      resource.postError(WlDataOfferResource.Error.invalidAction, `invalid action ${preferredAction}`)
       return
     }
 

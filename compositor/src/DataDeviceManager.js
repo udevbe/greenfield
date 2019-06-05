@@ -111,7 +111,7 @@ export default class DataDeviceManager extends WlDataDeviceManagerRequests {
    *
    * @param {WlDataDeviceManagerResource} resource
    * @param {number} id data device to create
-   * @param {WlSeat} seatResource seat associated with the data device
+   * @param {WlSeatResource} seatResource seat associated with the data device
    *
    * @since 1
    * @override

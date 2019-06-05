@@ -19,8 +19,9 @@
 
 import WlDataSourceRequests from './protocol/WlDataSourceRequests'
 import WlDataDeviceManagerResource from './protocol/WlDataDeviceManagerResource'
+import WlDataSourceResource from './protocol/WlDataSourceResource'
 
-const {copy, move, ask, none} = WlDataDeviceManagerResource.DndAction
+const { copy, move, ask, none } = WlDataDeviceManagerResource.DndAction
 const ALL_ACTIONS = (copy | move | ask)
 
 /**
@@ -73,7 +74,7 @@ export default class DataSource extends WlDataSourceRequests {
      */
     this.accepted = false
     /**
-     * @type {WlDataOfferResource}
+     * @type {?WlDataOfferResource}
      */
     this.wlDataOffer = null
   }
@@ -137,21 +138,16 @@ export default class DataSource extends WlDataSourceRequests {
    */
   setActions (resource, dndActions) {
     if (this._actionsSet) {
-      // TODO protocol error
-      // wl_resource_post_error(source->resource,
-      //   WL_DATA_SOURCE_ERROR_INVALID_ACTION_MASK,
-      //   "cannot set actions more than once");
+      resource.postError(WlDataSourceResource.Error.invalidActionMask, 'cannot set actions more than once')
       return
     }
 
     if (this.dndActions & ~ALL_ACTIONS) {
-      // TODO protocol error
-      // wl_resource_post_error(source->resource,
-      //   WL_DATA_SOURCE_ERROR_INVALID_ACTION_MASK,
-      //   "invalid action mask %x", dnd_actions);
+      resource.postError(WlDataSourceResource.Error.invalidActionMask, `invalid action mask ${dndActions}`)
       return
     }
 
+    // TODO
     // if (source->seat) {
     //   wl_resource_post_error(source->resource,
     //     WL_DATA_SOURCE_ERROR_INVALID_ACTION_MASK,
