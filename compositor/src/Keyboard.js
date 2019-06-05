@@ -301,21 +301,21 @@ export default class Keyboard extends WlKeyboardRequests {
       const time = event.timeStamp
       const evdevKeyCode = linuxKeyCode - 8
       const state = down ? pressed : released
-      const serial = this.seat.nextKeySerial(down)
+      const serial = this.seat.nextSerial()
 
       const modsDepressed = this._xkb.modsDepressed
       const modsLatched = this._xkb.modsLatched
       const modsLocked = this._xkb.modsLocked
       const group = this._xkb.group
 
-      this.resources.filter((resource) => {
-        return resource.client === this.focus.resource.client
-      }).forEach((resource) => {
-        resource.key(serial, time, evdevKeyCode, state)
-        if (modsUpdate) {
-          resource.modifiers(serial, modsDepressed, modsLatched, modsLocked, group)
-        }
-      })
+      this.resources
+        .filter(resource => resource.client === this.focus.resource.client)
+        .forEach(resource => {
+          resource.key(serial, time, evdevKeyCode, state)
+          if (modsUpdate) {
+            resource.modifiers(serial, modsDepressed, modsLatched, modsLocked, group)
+          }
+        })
     }
 
     return consumed

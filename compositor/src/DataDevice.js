@@ -74,7 +74,6 @@ export default class DataDevice extends WlDataDeviceRequests {
     this.dndFocus = null
     /**
      * @type {Client}
-     * @private
      */
     this.dndSourceClient = null
     /**
@@ -104,9 +103,7 @@ export default class DataDevice extends WlDataDeviceRequests {
    * @private
    */
   _dataDeviceForClient (client) {
-    const dataDeviceResource = this.resources.find((dataDeviceResource) => {
-      return dataDeviceResource.client === client
-    })
+    const dataDeviceResource = this.resources.find(dataDeviceResource => dataDeviceResource.client === client)
     // safeguard against undefined
     return dataDeviceResource == null ? null : dataDeviceResource
   }

@@ -28,7 +28,7 @@ import Keyboard from './Keyboard'
 import Touch from './Touch'
 import DataDevice from './DataDevice'
 
-const {keyboard, pointer, touch} = WlSeatResource.Capability
+const { keyboard, pointer, touch } = WlSeatResource.Capability
 
 /**
  *
@@ -105,39 +105,12 @@ class Seat extends WlSeatRequests {
      * @const
      */
     this._seatName = 'browser-seat0'
+
     /**
      * @type {number}
      */
     this.serial = 0
 
-    /**
-     * @type {number}
-     */
-    this.buttonPressSerial = 0
-    /**
-     * @type {number}
-     */
-    this.buttonReleaseSerial = 0
-    /**
-     * @type {number}
-     */
-    this.keyPressSerial = 0
-    /**
-     * @type {number}
-     */
-    this.keyReleaseSerial = 0
-    /**
-     * @type {number}
-     */
-    this.touchDownSerial = 0
-    /**
-     * @type {number}
-     */
-    this.touchUpSerial = 0
-    /**
-     * @type {number}
-     */
-    this.enterSerial = 0
     /**
      * @type {Array<function(WlKeyboardResource):void>}
      * @private
@@ -204,11 +177,7 @@ class Seat extends WlSeatRequests {
    * @return {number}
    */
   nextSerial () {
-    this.serial++
-    if (this.serial & (1 << 24)) {
-      this.serial = 0
-    }
-    return this.serial
+    return ++this.serial
   }
 
   /**
@@ -216,64 +185,7 @@ class Seat extends WlSeatRequests {
    * @return {boolean}
    */
   isValidInputSerial (serial) {
-    return serial === this.buttonPressSerial || serial === this.buttonReleaseSerial || serial === this.keyPressSerial ||
-      serial === this.keyReleaseSerial || serial === this.touchDownSerial || serial === this.touchUpSerial
-  }
-
-  /**
-   * @return {number}
-   */
-  nextEnterSerial () {
-    this.enterSerial = this.nextSerial()
-    return this.enterSerial
-  }
-
-  /**
-   * @param {boolean}down
-   * @return {number}
-   */
-  nextButtonSerial (down) {
-    if (down) {
-      const mask = 1 << 24
-      this.buttonPressSerial = this.nextSerial() | mask
-      return this.buttonPressSerial
-    } else {
-      const mask = 2 << 24
-      this.buttonReleaseSerial = this.nextSerial() | mask
-      return this.buttonReleaseSerial
-    }
-  }
-
-  /**
-   * @param {boolean}down
-   * @return {number}
-   */
-  nextKeySerial (down) {
-    if (down) {
-      const mask = 3 << 24
-      this.keyPressSerial = this.nextSerial() | mask
-      return this.keyPressSerial
-    } else {
-      const mask = 4 << 24
-      this.keyReleaseSerial = this.nextSerial() | mask
-      return this.keyReleaseSerial
-    }
-  }
-
-  /**
-   * @param {boolean}down
-   * @return {number}
-   */
-  nextTouchSerial (down) {
-    if (down) {
-      const mask = 5 << 24
-      this.touchDownSerial = this.nextSerial() | mask
-      return this.touchDownSerial
-    } else {
-      const mask = 6 << 24
-      this.touchUpSerial = this.nextSerial() | mask
-      return this.touchUpSerial
-    }
+    return serial === this.serial
   }
 
   /**

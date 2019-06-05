@@ -157,12 +157,16 @@ class RemoteSocket {
 
     // listen for buffer creation. opcode: 2
     outOfBandChannel.setListener(2, message => {
+      if (client.connection.closed) { return }
+
       const wlBufferResource = new WlBufferResource(client, new Uint32Array(message.buffer, message.byteOffset)[0], 1)
       wlBufferResource.implementation = StreamingBuffer.create(wlBufferResource)
     })
 
     // listen for buffer contents arriving. opcode: 3
     outOfBandChannel.setListener(3, outOfBandMessage => {
+      if (client.connection.closed) { return }
+
       const bufferContentsDataView = new DataView(outOfBandMessage.buffer, outOfBandMessage.byteOffset)
       const bufferId = bufferContentsDataView.getUint32(0, true)
       const wlBufferResource = client.connection.wlObjects[bufferId]
@@ -174,6 +178,8 @@ class RemoteSocket {
 
     // listen for file contents request. opcode: 4
     outOfBandChannel.setListener(4, async outOfBandMessage => {
+      if (client.connection.closed) { return }
+
       const uint32Array = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)
       const fd = uint32Array[0]
       const webFD = this._session.webFS.getWebFD(fd)
@@ -200,6 +206,8 @@ class RemoteSocket {
 
     // listen for web socket creation request. opcode: 5
     outOfBandChannel.setListener(5, outOfBandMessage => {
+      if (client.connection.closed) { return }
+
       const uint32Array = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)
       const clientId = uint32Array[0]
 
@@ -211,6 +219,8 @@ class RemoteSocket {
     })
 
     outOfBandChannel.setListener(6, outOfBandMessage => {
+      if (client.connection.closed) { return }
+
       const ids = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)
       client.recycledIds = Array.from(ids)
     })

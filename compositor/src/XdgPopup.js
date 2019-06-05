@@ -415,11 +415,12 @@ export default class XdgPopup extends XdgPopupRequests {
     const seat = /** @type {Seat} */ wlSeatResource.implementation
     const pointer = seat.pointer
 
-    if (!seat.isValidInputSerial(seat.buttonPressSerial)) {
-      this._dismiss()
-      DEBUG && console.log('[client-protocol-warning] - Popup grab input serial mismatch. Ignoring.')
-      return
-    }
+    // Gtk3 doesn't give us the latest input serial, but the latest button press. Other compositors seem to ignore the serial.
+    // if (!seat.isValidInputSerial(serial)) {
+    //   this._dismiss()
+    //   DEBUG && console.log('[client-protocol-warning] - Popup grab input serial mismatch. Ignoring.')
+    //   return
+    // }
 
     if (this.mapped) {
       resource.postError(XdgPopupResource.Error.invalidGrab, 'Client tried to grab popup after it being mapped.')

@@ -564,7 +564,7 @@ export default class Pointer extends WlPointerRequests {
       if (this.grab || nroPopups) {
         const surfaceResource = this.focus.surface.resource
         this._doPointerEventFor(surfaceResource, (pointerResource) => {
-          pointerResource.button(this.seat.nextButtonSerial(false), event.timeStamp, linuxInput[event.button], released)
+          pointerResource.button(this.seat.nextSerial(), event.timeStamp, linuxInput[event.button], released)
           if (pointerResource.version >= 5) {
             pointerResource.frame()
           }
@@ -613,7 +613,7 @@ export default class Pointer extends WlPointerRequests {
 
       const surfaceResource = this.focus.surface.resource
       this._doPointerEventFor(surfaceResource, (pointerResource) => {
-        pointerResource.button(this.seat.nextButtonSerial(true), event.timeStamp, linuxInput[event.button], pressed)
+        pointerResource.button(this.seat.nextSerial(), event.timeStamp, linuxInput[event.button], pressed)
         if (pointerResource.version >= 5) {
           pointerResource.frame()
         }
@@ -699,15 +699,15 @@ export default class Pointer extends WlPointerRequests {
     })
 
     const surfacePoint = this._calculateSurfacePoint(newFocus)
-    this._doPointerEventFor(surfaceResource, (pointerResource) => {
-      pointerResource.enter(this.seat.nextEnterSerial(), surfaceResource, Fixed.parse(surfacePoint.x), Fixed.parse(surfacePoint.y))
+    this._doPointerEventFor(surfaceResource, pointerResource => {
+      pointerResource.enter(this.seat.nextSerial(), surfaceResource, Fixed.parse(surfacePoint.x), Fixed.parse(surfacePoint.y))
     })
   }
 
   unsetFocus () {
     if (this.focus && !this.focus.destroyed && this.focus.surface) {
       const surfaceResource = this.focus.surface.resource
-      this._doPointerEventFor(surfaceResource, (pointerResource) => {
+      this._doPointerEventFor(surfaceResource, pointerResource => {
         pointerResource.leave(this.seat.nextSerial(), surfaceResource)
         if (pointerResource.version >= 5) {
           pointerResource.frame()
@@ -748,7 +748,7 @@ export default class Pointer extends WlPointerRequests {
            * @param {number}delta
            * @return {number}
            */
-          deltaTransform = (delta) => { return delta * 18 } // FIXME We hard code line height.
+          deltaTransform = delta => delta * 12 // FIXME We hard code line height.
           break
         }
         case event.DOM_DELTA_PAGE: {
@@ -772,7 +772,7 @@ export default class Pointer extends WlPointerRequests {
            * @param {number}delta
            * @return {number}
            */
-          deltaTransform = (delta) => { return delta }
+          deltaTransform = delta => delta
           break
         }
       }
