@@ -43,7 +43,7 @@ export default class Keyboard extends WlKeyboardRequests {
     // TODO make available in config menu
     keyboard.updateKeymap('qwerty.xkb')
 
-    document.addEventListener('keyup', (event) => {
+    document.addEventListener('keyup', event => {
       const keyboardEvent = /** @type {KeyboardEvent} */ event
       if (keyboard._handleKey(keyboardEvent, false)) {
         keyboardEvent.preventDefault()
@@ -51,7 +51,7 @@ export default class Keyboard extends WlKeyboardRequests {
         session.flush()
       }
     })
-    document.addEventListener('keydown', (event) => {
+    document.addEventListener('keydown', event => {
       const keyboardEvent = /** @type {KeyboardEvent} */ event
       if (keyboard._handleKey(keyboardEvent, true)) {
         keyboardEvent.preventDefault()
@@ -143,7 +143,7 @@ export default class Keyboard extends WlKeyboardRequests {
    */
   onKeyboardFocusChanged () {
     if (!this._keyboardFocusPromise) {
-      this._keyboardFocusPromise = new Promise((resolve) => {
+      this._keyboardFocusPromise = new Promise(resolve => {
         this._keyboardFocusResolve = resolve
       }).then(() => {
         this._keyboardFocusPromise = null
@@ -173,14 +173,12 @@ export default class Keyboard extends WlKeyboardRequests {
    * @param {!string}keymapFileName
    */
   updateKeymap (keymapFileName) {
-    Xkb.createFromResource(keymapFileName).then((xkb) => {
+    Xkb.createFromResource(keymapFileName).then(xkb => {
       if (this._xkb) {
         // TODO cleanup previous keymap state
       }
       this._xkb = xkb
-      this.resources.forEach((resource) => {
-        this.emitKeymap(resource)
-      })
+      this.resources.forEach(resource => this.emitKeymap(resource))
     })
   }
 
@@ -222,7 +220,7 @@ export default class Keyboard extends WlKeyboardRequests {
       const surface = this.focus.resource
       const keys = new Uint8Array(this._keys).buffer
 
-      this.resources.filter((resource) => {
+      this.resources.filter(resource => {
         return resource.client === this.focus.resource.client
       }).forEach((resource) => {
         resource.enter(serial, surface, keys)
@@ -230,9 +228,7 @@ export default class Keyboard extends WlKeyboardRequests {
       if (this._keyboardFocusResolve) {
         this._keyboardFocusResolve()
       }
-      this._keyboardFocusListeners.forEach((listener) => {
-        listener()
-      })
+      this._keyboardFocusListeners.forEach(listener => listener())
     }
   }
 
@@ -241,11 +237,9 @@ export default class Keyboard extends WlKeyboardRequests {
       const serial = this.seat.nextSerial()
       const surface = this.focus.resource
 
-      this.resources.filter((resource) => {
-        return resource.client === this.focus.resource.client
-      }).forEach((resource) => {
-        resource.leave(serial, surface)
-      })
+      this.resources
+        .filter(resource => resource.client === this.focus.resource.client)
+        .forEach(resource => resource.leave(serial, surface))
 
       this.focus = null
     }
@@ -259,9 +253,7 @@ export default class Keyboard extends WlKeyboardRequests {
     if (this._keyboardFocusResolve) {
       this._keyboardFocusResolve()
     }
-    this._keyboardFocusListeners.forEach((listener) => {
-      listener()
-    })
+    this._keyboardFocusListeners.forEach(listener => listener())
   }
 
   /**

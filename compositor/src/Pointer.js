@@ -65,35 +65,23 @@ export default class Pointer extends WlPointerRequests {
    */
   static create (session, dataDevice) {
     const pointer = new Pointer(session, dataDevice)
-    document.addEventListener('mousemove', (event) => {
-      const mouseEvent = /** @type {MouseEvent} */ event
-      if (pointer._handleMouseMove(mouseEvent)) {
-        mouseEvent.preventDefault()
-        mouseEvent.stopPropagation()
+    document.addEventListener('mousemove', event => {
+      if (pointer._handleMouseMove(event)) {
         session.flush()
       }
     })
-    document.addEventListener('mouseup', (event) => {
-      const mouseEvent = /** @type {MouseEvent} */ event
-      if (pointer._handleMouseUp(mouseEvent)) {
-        mouseEvent.preventDefault()
-        mouseEvent.stopPropagation()
+    document.addEventListener('mouseup', event => {
+      if (pointer._handleMouseUp(event)) {
         session.flush()
       }
     })
-    document.addEventListener('mousedown', (event) => {
-      const mouseEvent = /** @type {MouseEvent} */ event
-      if (pointer._handleMouseDown(mouseEvent)) {
-        mouseEvent.preventDefault()
-        mouseEvent.stopPropagation()
+    document.addEventListener('mousedown', event => {
+      if (pointer._handleMouseDown(event)) {
         session.flush()
       }
     })
-    document.addEventListener('wheel', (event) => {
-      const wheelEvent = /** @type {WheelEvent} */ event
-      if (pointer._handleWheel(wheelEvent)) {
-        wheelEvent.preventDefault()
-        wheelEvent.stopPropagation()
+    document.addEventListener('wheel', event => {
+      if (pointer._handleWheel(event)) {
         session.flush()
       }
     })
@@ -209,7 +197,7 @@ export default class Pointer extends WlPointerRequests {
 
   onButtonPress () {
     if (!this._buttonPressPromise) {
-      this._buttonPressPromise = new Promise((resolve) => {
+      this._buttonPressPromise = new Promise(resolve => {
         this._buttonPressResolve = resolve
       }).then(() => {
         this._buttonPressPromise = null
@@ -221,7 +209,7 @@ export default class Pointer extends WlPointerRequests {
 
   onButtonRelease () {
     if (!this._buttonReleasePromise) {
-      this._buttonReleasePromise = new Promise((resolve) => {
+      this._buttonReleasePromise = new Promise(resolve => {
         this._buttonReleaseResolve = resolve
       }).then(() => {
         this._buttonReleasePromise = null
@@ -251,7 +239,7 @@ export default class Pointer extends WlPointerRequests {
         const splitAlpha = EncodingOptions.splitAlpha(newState.bufferContents.encodingOptions)
         if (fullFrame && !splitAlpha) {
           await surface.render(renderFrame, newState, true)
-          const imageBlob = new Blob([newState.bufferContents.pixelContent[0].opaque], { 'type': newState.bufferContents.mimeType })
+          const imageBlob = new window.Blob([newState.bufferContents.pixelContent[0].opaque], { 'type': newState.bufferContents.mimeType })
           window.document.body.style.cursor = `url("${URL.createObjectURL(imageBlob)}") ${hotspotX} ${hotspotY}, pointer`
 
           renderFrame.fire()
@@ -328,7 +316,7 @@ export default class Pointer extends WlPointerRequests {
     if (this._dataDevice.dndSourceClient) {
       return
     }
-    if (serial !== this.seat.enterSerial) {
+    if (serial !== this.seat.serial) {
       return
     }
     this.setCursorInternal(surfaceResource, hotspotX, hotspotY)
@@ -347,10 +335,8 @@ export default class Pointer extends WlPointerRequests {
     }
 
     let popupGrabEndResolve = null
-    let popupGrabEndPromise = new Promise((resolve) => {
-      popup.onDestroy().then(() => {
-        resolve()
-      })
+    let popupGrabEndPromise = new Promise(resolve => {
+      popup.onDestroy().then(() => resolve())
       popupGrabEndResolve = resolve
     })
 
@@ -369,9 +355,7 @@ export default class Pointer extends WlPointerRequests {
         this._popupStack.splice(popupGrabIdx)
         // nested array includes the already closed popup, shift will remove it from the array
         nestedPopupGrabs.shift()
-        nestedPopupGrabs.reverse().forEach((nestedPopupGrab) => {
-          nestedPopupGrab.resolve()
-        })
+        nestedPopupGrabs.reverse().forEach(nestedPopupGrab => nestedPopupGrab.resolve())
       }
     })
 
@@ -387,7 +371,7 @@ export default class Pointer extends WlPointerRequests {
    * @return {{popup: WlSurfaceResource, resolve: Function, promise: Promise} | null}
    */
   findPopupGrab (popup) {
-    const popupGrab = this._popupStack.find((popupGrab) => {
+    const popupGrab = this._popupStack.find(popupGrab => {
       return popupGrab.popup === popup
     })
     // do the OR, else we're returning 'undefined'
@@ -612,7 +596,7 @@ export default class Pointer extends WlPointerRequests {
       }
 
       const surfaceResource = this.focus.surface.resource
-      this._doPointerEventFor(surfaceResource, (pointerResource) => {
+      this._doPointerEventFor(surfaceResource, pointerResource => {
         pointerResource.button(this.seat.nextSerial(), event.timeStamp, linuxInput[event.button], pressed)
         if (pointerResource.version >= 5) {
           pointerResource.frame()
@@ -778,7 +762,7 @@ export default class Pointer extends WlPointerRequests {
       }
 
       const surfaceResource = this.focus.surface.resource
-      this._doPointerEventFor(surfaceResource, (pointerResource) => {
+      this._doPointerEventFor(surfaceResource, pointerResource => {
         const deltaX = event.deltaX
         if (deltaX) {
           const xAxis = horizontalScroll
@@ -809,15 +793,11 @@ export default class Pointer extends WlPointerRequests {
   /**
    * @override
    */
-  captureRoleState () {
-    // NO-OP
-  }
+  captureRoleState () { /* NO-OP */ }
 
   /**
    * @param roleState
    * @override
    */
-  setRoleState (roleState) {
-    // NO-OP
-  }
+  setRoleState (roleState) { /* NO-OP */ }
 }

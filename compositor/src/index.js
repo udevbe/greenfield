@@ -39,6 +39,7 @@ async function main () {
     const session = Session.create()
     const seat = Seat.create(session)
 
+    document.oncontextmenu = () => false
     const shellContainer = document.createElement('div')
     shellContainer.setAttribute('id', 'shell-container')
     document.body.appendChild(shellContainer)
