@@ -26,6 +26,8 @@ const NativeClientSession = require('./NativeClientSession')
 const WebSocketChannel = require('./WebSocketChannel')
 const { sessionConfig } = require('../config.json5')
 
+const AppEndpointWebFS = require('./AppEndpointWebFS')
+
 class NativeCompositorSession {
   /**
    * @param {string}compositorSessionId
@@ -37,7 +39,7 @@ class NativeCompositorSession {
       prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
     })
 
-    const compositorSession = new NativeCompositorSession(logger, compositorSessionId)
+    const compositorSession = new NativeCompositorSession(logger, compositorSessionId, AppEndpointWebFS.create(compositorSessionId))
 
     // TODO move global create/destroy callback implementations into Endpoint.js
     compositorSession.wlDisplay = Endpoint.createDisplay(
@@ -69,8 +71,9 @@ class NativeCompositorSession {
   /**
    * @param logger
    * @param {string}compositorSessionId
+   * @param {AppEndpointWebFS}appEndpointWebFS
    */
-  constructor (logger, compositorSessionId) {
+  constructor (logger, compositorSessionId, appEndpointWebFS) {
     /**
      * @private
      */
@@ -83,6 +86,10 @@ class NativeCompositorSession {
      * @type {string}
      */
     this.compositorSessionId = compositorSessionId
+    /**
+     * @type {AppEndpointWebFS}
+     */
+    this.appEndpointWebFS = appEndpointWebFS
     /**
      * @type {Object}
      */

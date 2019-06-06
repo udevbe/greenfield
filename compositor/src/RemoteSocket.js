@@ -32,6 +32,9 @@ class RemoteSocket {
     return new RemoteSocket(session)
   }
 
+  /**
+   * @param {Session}session
+   */
   constructor (session) {
     /**
      * @type {Session}
@@ -184,7 +187,8 @@ class RemoteSocket {
       const fd = uint32Array[0]
       const webFD = this._session.webFS.getWebFD(fd)
       const transferable = await webFD.getTransferable()
-      // FIXME after contents have been transmitted, endpoint should send a webfd close(?)
+
+      // Note that after contents have been transmitted, webfd is auto closed.
       if (transferable instanceof ArrayBuffer) {
         const serializedWebFdURL = this._textEncoder.encode(webFD.url.href)
         const webFDByteLength = serializedWebFdURL.byteLength
@@ -201,7 +205,8 @@ class RemoteSocket {
 
         // send back file contents. opcode: 4
         outOfBandChannel.send(4, message.buffer)
-      } // TODO else error out?
+        webFD.close()
+      }
     })
 
     // listen for web socket creation request. opcode: 5
