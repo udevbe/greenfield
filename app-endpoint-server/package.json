@@ -20,8 +20,8 @@
     "epoll": "^2.0.9",
     "gstreamer-superficial": "^1.2.0",
     "json5": "^2.1.0",
-    "pino": "^5.12.5",
-    "pino-pretty": "^3.0.0",
+    "pino": "^5.12.6",
+    "pino-pretty": "^3.1.0",
     "westfield-endpoint": "0.2.5",
     "ws": "^7.0.0"
   },
