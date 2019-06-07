@@ -3,10 +3,12 @@ const { Endpoint } = require('westfield-endpoint')
 const Logger = require('pino')
 const config = require('../config.json5')
 
+const fs = require('fs')
 const { TextEncoder, TextDecoder } = require('util')
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
 const WebSocket = require('ws')
+const WebsocketStream = require('websocket-stream')
 
 class AppEndpointWebFS {
   /**
@@ -122,7 +124,6 @@ class AppEndpointWebFS {
       // TODO currently unsupported => need this once we properly implement c/p & dnd functionality
       // fd came from another endpoint, establish a new communication channel
       fdTransferWebSocket = this._createFdTransferWebSocket(webFdURL)
-      // fdTransferWebSocket.onmessage = event => this._onMessage(event)
     } else {
       // TODO unsupported websocket url
       this._logger.error(`Unsupported websocket URL ${webFdURL.href}.`)
@@ -133,9 +134,8 @@ class AppEndpointWebFS {
     if (webFdType === 'ArrayBuffer') {
       localFD = await this._handleForeignWebFDShm(fdTransferWebSocket, webFdURL)
     } else if (webFdType === 'MessagePort') {
-      // because we can't distinguish between read or write end of a pipe, we always assume read-end of pipe here (as per c/p & DnD use-case in wayland protocol)
-      // TODO currently unsupported => need this once we properly implement c/p & dnd functionality
-      localFD = await this._handleForeignWebFDPipe(fdTransferWebSocket, webFdURL)
+      // because we can't distinguish between read or write end of a pipe, we always assume write-end of pipe here (as per c/p & DnD use-case in wayland protocol)
+      localFD = this._handleForeignWebFDWritePipe(fdTransferWebSocket, webFdURL)
     }
 
     return localFD
@@ -159,20 +159,22 @@ class AppEndpointWebFS {
     )
   }
 
-  async _handleForeignWebFDPipe (fdCommunicationChannel, webFdURL) {
-    return new Promise((resolve, reject) => {
-      // register listener for incoming content on com chanel
-      this._webFDTransferRequests[webFdURL.href] = resolve
-      // TODO send message over com channel with fd as argument to receive all content
-      const fd = Number.parseInt(webFdURL.searchParams.get('fd'))
-      fdCommunicationChannel.send(new Uint32Array([4, fd]).buffer)
-    }).then((/** @type{Uint8Array} */contents) => {
-      // TODO send message over com channel with fd as argument to send all data received on read end of remote pipe fd
-      // TODO create new local pipe
-      // TODO listen for incoming content on com channel
-      // TODO write to write end of local pipe
-      // TODO return read end of local pipe
-    })
+  /**
+   *
+   * @param {WebSocket}fdCommunicationChannel
+   * @param {URL}webFdURL
+   * @return {number}
+   * @private
+   */
+  _handleForeignWebFDWritePipe (fdCommunicationChannel, webFdURL) {
+    const resultBuffer = new Uint32Array(2)
+    Endpoint.makePipe(resultBuffer)
+    const fd = resultBuffer[0]
+
+    const readStream = fs.createReadStream(null, { fd })
+    readStream.pipe(new WebsocketStream(fdCommunicationChannel))
+
+    return resultBuffer[1]
   }
 
   /**
@@ -192,7 +194,6 @@ class AppEndpointWebFS {
    * @private
    */
   _createFdTransferWebSocket (webFdURL) {
-    // TODO enable compression
     return new WebSocket(webFdURL)
   }
 
@@ -216,6 +217,25 @@ class AppEndpointWebFS {
 
     const webFdURL = this._createLocalWebFDURL(fd, type)
     return textEncoder.encode(webFdURL.href)
+  }
+
+  /**
+   *
+   * @param {WebSocket}webSocket
+   * @param {ParsedUrlQuery}query
+   */
+  incomingDataTransfer (webSocket, query) {
+    const compositorSessionId = query.compositorSessionId
+    if (compositorSessionId !== this._compositorSessionId) {
+      // fd did not originate from here
+      webSocket.close()
+      return
+    }
+    const fd = query.fd
+    const type = query.type
+
+    const target = fs.createWriteStream(null, { fd: Number.parseInt(fd) })
+    new WebsocketStream(webSocket).pipe(target)
   }
 }
 

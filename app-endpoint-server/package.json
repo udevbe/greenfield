@@ -22,8 +22,9 @@
     "json5": "^2.1.0",
     "pino": "^5.12.6",
     "pino-pretty": "^3.1.0",
-    "westfield-endpoint": "0.2.5",
-    "ws": "^7.0.0"
+    "westfield-endpoint": "0.2.6",
+    "ws": "^7.0.0",
+    "websocket-stream": "^5.5.0"
   },
   "devDependencies": {
     "standard": "^12.0.1",

@@ -129,10 +129,8 @@ class AppEndpointSession {
         this._logger.error(`[app-endpoint-session: ${this.compositorSessionId}] - Application: ${query.launch} not found.`)
         webSocket.close(4404, `[app-endpoint-session: ${this.compositorSessionId}] - Application: ${query.launch} not found.`)
       }
-    } else if (query.shm) {
-      // TODO setup web socket and transfer shm contents
-    } else if (query.pipe) {
-      // TODO setup web socket and wait for pipe read/write
+    } else if (query.fd) {
+      this._nativeCompositorSession.appEndpointWebFS.incomingDataTransfer(webSocket, query)
     }
   }
 }
