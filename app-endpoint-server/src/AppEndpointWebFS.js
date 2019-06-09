@@ -228,11 +228,13 @@ class AppEndpointWebFS {
     const compositorSessionId = query.compositorSessionId
     if (compositorSessionId !== this._compositorSessionId) {
       // fd did not originate from here
+      // TODO close with error code & message (+log?)
       webSocket.close()
       return
     }
     const fd = query.fd
-    const type = query.type
+    // TODO do we want to do something differently based on the type?
+    // const type = query.type
 
     const target = fs.createWriteStream(null, { fd: Number.parseInt(fd) })
     new WebsocketStream(webSocket).pipe(target)

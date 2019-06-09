@@ -17,6 +17,8 @@
 
 'use strict'
 
+import auth from './desktopshell/Auth'
+
 class RemoteAppLauncher {
   /**
    * @param {Session}session
@@ -53,8 +55,7 @@ class RemoteAppLauncher {
     applicationEndpointURL.searchParams.append('compositorSessionId', this._session.compositorSessionId)
     applicationEndpointURL.searchParams.append('launch', remoteAppId)
 
-    // TODO add user jwt token as subprotocol see: https://stackoverflow.com/a/35108078/720436
-    const webSocket = new window.WebSocket(applicationEndpointURL)
+    const webSocket = new window.WebSocket(applicationEndpointURL, auth.userToken)
     this._remoteSocket.onWebSocket(webSocket)
   }
 }

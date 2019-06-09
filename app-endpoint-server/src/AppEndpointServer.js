@@ -21,11 +21,22 @@ const Logger = require('pino')
 
 const childProcess = require('child_process')
 const path = require('path')
-
 const http = require('http')
 const url = require('url')
 
+const firebase = require('firebase/app')
+require('firebase/functions')
+const config = {
+  apiKey: 'AIzaSyBrPVY5tkBYcVUrxZywVDD4gAlHPTdhklw',
+  authDomain: 'greenfield-app-0.firebaseapp.com',
+  databaseURL: 'https://greenfield-app-0.firebaseio.com',
+  projectId: 'greenfield-app-0',
+  storageBucket: 'greenfield-app-0.appspot.com',
+  messagingSenderId: '645736998883'
+}
+
 const { serverConfig } = require('../config.json5')
+const { verifyRemoteAppLaunchClaim } = require('./CloudFunctions')
 
 const uuidRegEx = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
 
@@ -39,10 +50,13 @@ class AppEndpointServer {
       prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
     })
 
+    const app = firebase.initializeApp(config)
+
     const server = http.createServer()
     const { timeout, hostname, port } = serverConfig.httpServer
     server.setTimeout(timeout)
-    const appEndpointDaemon = new AppEndpointServer(logger)
+    const appEndpointDaemon = new AppEndpointServer(logger, app)
+    // TODO configure server to only accept websocket connections
     server.on('upgrade', (request, socket, head) => appEndpointDaemon.handleHttpUpgradeRequest(request, socket, head))
     server.listen(port, hostname)
     logger.info(`Listening on ${hostname}:${port}.`)
@@ -50,7 +64,12 @@ class AppEndpointServer {
     return appEndpointDaemon
   }
 
-  constructor (logger) {
+  /**
+   * @param {Object}logger
+   * @param {firebase.app.App}app
+   */
+  constructor (logger, app) {
+    this._app = app
     /**
      * @private
      */
@@ -77,30 +96,39 @@ class AppEndpointServer {
    * @param {Socket}socket
    * @param {Buffer}head
    */
-  handleHttpUpgradeRequest (request, socket, head) {
-    // TODO handle jwt authentication
-    const wsURL = url.parse(request.url, true)
-    const compositorSessionId = wsURL.query.compositorSessionId
+  async handleHttpUpgradeRequest (request, socket, head) {
+    try {
+      const userToken = request.headers['sec-websocket-protocol']
+      await verifyRemoteAppLaunchClaim(userToken)
 
-    this._logger.info(`Received web socket upgrade request with compositor session id: ${compositorSessionId}. Delegating to a session child process.`)
-    if (compositorSessionId && uuidRegEx.test(compositorSessionId)) {
-      let appEndpointSessionFork = this._appEndpointSessionForks[compositorSessionId]
-      if (!appEndpointSessionFork) {
-        appEndpointSessionFork = this.createAppEndpointSessionFork(compositorSessionId)
-        this.onDestroy().then(() => {
-          this._logger.info(`Killing  app-endpoint-session::${compositorSessionId}]. Sending child ${appEndpointSessionFork.pid} SIGKILL.`)
-          appEndpointSessionFork.kill('SIGKILL')
-        })
+      const wsURL = url.parse(request.url, true)
+      const compositorSessionId = wsURL.query.compositorSessionId
+
+      this._logger.info(`Received web socket upgrade request with compositor session id: ${compositorSessionId}. Delegating to a session child process.`)
+      if (compositorSessionId && uuidRegEx.test(compositorSessionId)) {
+        let appEndpointSessionFork = this._appEndpointSessionForks[compositorSessionId]
+        if (!appEndpointSessionFork) {
+          appEndpointSessionFork = this.createAppEndpointSessionFork(compositorSessionId)
+          this.onDestroy().then(() => {
+            this._logger.info(`Killing  app-endpoint-session::${compositorSessionId}]. Sending child ${appEndpointSessionFork.pid} SIGKILL.`)
+            appEndpointSessionFork.kill('SIGKILL')
+          })
+        }
+
+        appEndpointSessionFork.send([{
+          headers: request.headers,
+          method: request.method,
+          query: wsURL.query
+        }, head], socket)
+      } else {
+        this._logger.error(`Received web socket upgrade request with compositor session id: ${compositorSessionId}. Id is not a valid uuid.`)
+        socket.destroy()
       }
-
-      appEndpointSessionFork.send([{
-        headers: request.headers,
-        method: request.method,
-        query: wsURL.query
-      }, head], socket)
-    } else {
-      this._logger.error(`Received web socket upgrade request with compositor session id: ${compositorSessionId}. Id is not a valid uuid.`)
+    } catch (e) {
       socket.destroy()
+      this._logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+      this._logger.error('error object stack: ')
+      this._logger.error(e.stack)
     }
   }
 
