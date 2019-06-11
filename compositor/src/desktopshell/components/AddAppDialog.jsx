@@ -30,15 +30,13 @@ import auth from '../Auth'
 import CloudUploadIcon from '@material-ui/icons/CloudUpload'
 import Slide from '@material-ui/core/es/Slide'
 
-function SlideUp (props) {
-  return <Slide direction='up' {...props} />
+class SlideUp extends React.Component {
+  render () {
+    return <Slide direction='up' {...this.props} />
+  }
 }
 
 class AddAppDialog extends React.Component {
-  constructor (props) {
-    super(props)
-  }
-
   async _addAppLauncherFile (event) {
     // TODO sanitize file input (size, format, ...)
     // TODO show read progress

@@ -177,7 +177,9 @@ class LauncherMenu extends React.Component {
   }
 
   _setAppLauncherEntriesFromDocs (docs) {
-    const appLauncherEntries = /** @type {Array<{id: string, title: string, icon: string, url: string, type: 'web'|'remote'}>} */ docs.map(doc => doc.data())
+    const appLauncherEntries =
+      /** @type {Array<{id: string, title: string, icon: string, url: string, type: 'web'|'remote'}>} */
+      docs.map(doc => doc.data())
     this.setState((oldState) => ({ appLauncherEntries, mode: appLauncherEntries.length ? oldState.mode : 'launch' }))
   }
 
@@ -332,7 +334,6 @@ class LauncherMenu extends React.Component {
         </Fade>
         <Fade in={mode === 'edit'} mountOnEnter unmountOnExit>
           <Button
-            mini
             className={classes.editDoneButton}
             variant='contained'
             onClick={() => this._launcherEditEnd()}
