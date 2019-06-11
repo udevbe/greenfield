@@ -28,7 +28,7 @@ async function verifyRemoteAppLaunchClaim (userToken) {
   return new Promise((resolve, reject) => {
     if (userToken.length) {
       https.get(
-        'https://us-central1-greenfield-app-0.cloudfunctions.net/verifyRemoteAppLaunchClaim',
+        'https://europe-west1-greenfield-app-0.cloudfunctions.net/verifyRemoteAppLaunchClaim',
         {
           headers: {
             Authorization: `Bearer ${userToken}`
