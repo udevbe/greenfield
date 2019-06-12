@@ -135,11 +135,13 @@ class RemoteSocket {
       client.connection.onFlush = wireMessages => this._flushWireMessages(client, webSocket, wireMessages)
 
       const wsOutOfBandChannel = RemoteOutOfBandChannel.create(sendBuffer => {
-        try {
-          webSocket.send(sendBuffer)
-        } catch (e) {
-          console.log(e.message)
-          client.close()
+        if (webSocket.readyState === 1) {
+          try {
+            webSocket.send(sendBuffer)
+          } catch (e) {
+            console.log(e.message)
+            client.close()
+          }
         }
       })
       this._setupClientOutOfBandHandlers(webSocket, client, wsOutOfBandChannel)

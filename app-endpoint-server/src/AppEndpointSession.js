@@ -28,6 +28,7 @@ const { /** @type {WebSocketServer} */Server } = require('ws')
 const { sessionConfig } = require('../config.json5')
 const SurfaceBufferEncoding = require('./SurfaceBufferEncoding')
 const NativeCompositorSession = require('./NativeCompositorSession')
+const { authorizeApplicationLaunch } = require('./CloudFunctions')
 
 class AppEndpointSession {
   /**
@@ -91,46 +92,70 @@ class AppEndpointSession {
 
   /**
    * @param {WebSocket}webSocket
+   * @param {IncomingHttpHeaders}headers
    * @param {ParsedUrlQuery}query
    */
-  handleConnection (webSocket, query) {
-    this._logger.debug(`New web socket open.`)
-    if (query.clientId) {
-      this._nativeCompositorSession.socketForClient(webSocket, Number.parseInt(query.clientId))
-    } else if (query.launch) {
-      const appConfig = /** @type{{bin: string, args: Array<string>}} */sessionConfig.apps[query.launch]
-      if (appConfig) {
+  async handleConnection (webSocket, headers, query) {
+    try {
+      this._logger.debug(`New web socket open.`)
+      if (query['clientId']) {
+        this._nativeCompositorSession.socketForClient(webSocket, Number.parseInt(query.clientId))
+      } else if (query['launch']) {
+        const applicationId = query['launch']
         try {
-          const childProcess = child_process.spawn(appConfig.bin, appConfig.args, {
-            env: {
-              ...process.env,
-              'WAYLAND_DISPLAY': `${this._nativeCompositorSession.waylandDisplay}`
-            }
-          })
-
-          const childLogger = Logger({
-            name: `${appConfig.bin} ${appConfig.args}`,
-            prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
-          })
-          childProcess.stdout.on('data', data => childLogger.info(`stdout: ${data}`))
-          childProcess.stderr.on('data', data => childLogger.error(`stderr: ${data}`))
-          childProcess.on('close', code => this._logger.error(`child process: ${appConfig.bin} ${appConfig.args} exited with code: ${code}`))
-
-          this._nativeCompositorSession.childSpawned(webSocket)
+          await authorizeApplicationLaunch(headers['sec-websocket-protocol'], applicationId)
         } catch (e) {
-          this._logger.error(`Application: ${query.launch} failed to start.`)
+          this._logger.error(`Application: ${applicationId} failed to start.`)
           this._logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
           this._logger.error('error object stack: ')
           this._logger.error(e.stack)
-
-          webSocket.close(4503, `[app-endpoint-session: ${this.compositorSessionId}] - Application: ${query.launch} failed to start.`)
+          webSocket.close(4403, `[app-endpoint-session: ${this.compositorSessionId}] - Application: ${applicationId} access denied.`)
+          return
         }
-      } else {
-        this._logger.error(`[app-endpoint-session: ${this.compositorSessionId}] - Application: ${query.launch} not found.`)
-        webSocket.close(4404, `[app-endpoint-session: ${this.compositorSessionId}] - Application: ${query.launch} not found.`)
+
+        const appConfig = /** @type{{bin: string, args: Array<string>}} */sessionConfig.apps[applicationId]
+        if (appConfig) {
+          try {
+            const childProcess = child_process.spawn(appConfig.bin, appConfig.args, {
+              env: {
+                ...process.env,
+                'WAYLAND_DISPLAY': `${this._nativeCompositorSession.waylandDisplay}`
+              }
+            })
+
+            const childLogger = Logger({
+              name: `${appConfig.bin} ${appConfig.args}`,
+              prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
+            })
+            childProcess.stdout.on('data', data => childLogger.info(`stdout: ${data}`))
+            childProcess.stderr.on('data', data => childLogger.error(`stderr: ${data}`))
+            childProcess.on('close', code => {
+              const msg = `child process: ${appConfig.bin} ${appConfig.args} exited with code: ${code}`
+              if (code) {
+                this._logger.error(msg)
+              } else {
+                this._logger.info(msg)
+              }
+            })
+
+            this._nativeCompositorSession.childSpawned(webSocket)
+          } catch (e) {
+            this._logger.error(`Application: ${applicationId} failed to start.`)
+            this._logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+            this._logger.error('error object stack: ')
+            this._logger.error(e.stack)
+
+            webSocket.close(4503, `[app-endpoint-session: ${this.compositorSessionId}] - Application: ${applicationId} failed to start.`)
+          }
+        } else {
+          this._logger.error(`[app-endpoint-session: ${this.compositorSessionId}] - Application: ${applicationId} not found.`)
+          webSocket.close(4404, `[app-endpoint-session: ${this.compositorSessionId}] - Application: ${applicationId} not found.`)
+        }
+      } else if (query.fd) {
+        this._nativeCompositorSession.appEndpointWebFS.incomingDataTransfer(webSocket, query)
       }
-    } else if (query.fd) {
-      this._nativeCompositorSession.appEndpointWebFS.incomingDataTransfer(webSocket, query)
+    } catch (e) {
+      webSocket.close(4503, `[app-endpoint-session: ${this.compositorSessionId}] - Server encountered an exception.`)
     }
   }
 }
@@ -138,14 +163,15 @@ class AppEndpointSession {
 /**
  * @param {WebSocketServer}webSocketServer
  * @param {WebSocket}webSocket
+ * @param {IncomingHttpHeaders}headers
  * @param {ParsedUrlQuery}query
  * @private
  */
-function _handleFirstUpgrade (webSocketServer, webSocket, query) {
+async function _handleFirstUpgrade (webSocketServer, webSocket, headers, query) {
   // create new session on first connection
   const appEndpointSession = AppEndpointSession.create(query)
   appEndpointSession.onDestroy().then(() => process.exit(0))
-  appEndpointSession.handleConnection(webSocket, query)
+  await appEndpointSession.handleConnection(webSocket, headers, query)
 
   process.on('message', (request, socket) => {
     const { query, ...req } = request[0]
@@ -156,7 +182,7 @@ function _handleFirstUpgrade (webSocketServer, webSocket, query) {
       req,
       socket,
       head,
-      webSocket => appEndpointSession.handleConnection(webSocket, query)
+      webSocket => appEndpointSession.handleConnection(webSocket, req.headers, query)
     )
   })
 }
@@ -181,7 +207,7 @@ function main () {
     const head = request[1]
 
     // handle first websocket connection
-    webSocketServer.handleUpgrade(req, socket, head, webSocket => _handleFirstUpgrade(webSocketServer, webSocket, query))
+    webSocketServer.handleUpgrade(req, socket, head, webSocket => _handleFirstUpgrade(webSocketServer, webSocket, req.headers, query))
   })
 }
 

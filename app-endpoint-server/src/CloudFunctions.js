@@ -20,25 +20,49 @@
 const https = require('https')
 
 /**
+ * @param {string}functionName
  * @param {string}userToken
- * @return {Promise<void>}
+ * @param {?Object}query
+ * @return {Promise<*>}
  * @private
  */
-async function verifyRemoteAppLaunchClaim (userToken) {
+async function _call (functionName, userToken, query) {
   return new Promise((resolve, reject) => {
+    const url = new URL(`https://europe-west1-greenfield-app-0.cloudfunctions.net/${functionName}`)
+    if (query) {
+      Object.entries(query).forEach(([key, value]) => url.searchParams.append(key, value))
+    }
+
     if (userToken.length) {
       https.get(
-        'https://europe-west1-greenfield-app-0.cloudfunctions.net/verifyRemoteAppLaunchClaim',
-        {
-          headers: {
-            Authorization: `Bearer ${userToken}`
-          }
-        },
-        res => res.statusCode === 200 ? resolve() : reject(new Error('Auth failed.')))
+        url,
+        { headers: { Authorization: `Bearer ${userToken}` } },
+        res => resolve(res))
     } else {
       reject(new Error('Auth failed.'))
     }
   })
 }
 
+/**
+ * @param {string}userToken
+ * @return {Promise<void>}
+ * @private
+ */
+async function verifyRemoteAppLaunchClaim (userToken) {
+  const res = await _call('verifyRemoteAppLaunchClaim', userToken)
+  if (res.statusCode !== 200) throw new Error('Auth failed.')
+}
+
+/**
+ * @param {string}userToken
+ * @param {string}applicationId
+ * @return {Promise<void>}
+ */
+async function authorizeApplicationLaunch (userToken, applicationId) {
+  const res = await _call('authorizeApplicationLaunch', userToken, { applicationId })
+  if (res.statusCode !== 200) throw new Error('Auth failed.')
+}
+
 module.exports.verifyRemoteAppLaunchClaim = verifyRemoteAppLaunchClaim
+module.exports.authorizeApplicationLaunch = authorizeApplicationLaunch
