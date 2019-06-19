@@ -116,4 +116,6 @@ CTestTestfile.cmake
 /compositor/dist/
 /compositor/src/protocol/
 /app-endpoint-server/src/protocol
-/compositor/public/clients/
+/compositor/public/clients/f
+/wasmlibs/libxkbcommon/
+/wasmlibs/emsdk/
