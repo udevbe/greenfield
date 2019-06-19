@@ -39,6 +39,7 @@ import SettingsDrawer from './SettingsDrawer'
 import LauncherMenu from './LauncherMenu'
 import WebAppLauncher from '../../WebAppLauncher'
 import RemoteAppLauncher from '../../RemoteAppLauncher'
+import Logo from './Logo'
 
 const styles = {
   root: {
@@ -115,6 +116,10 @@ class TopPanel extends React.Component {
             onClick={() => this._toggleDrawer(true)}>
             <MenuIcon />
           </IconButton>
+          <Logo
+            fontSize='1.5rem'
+            fontWeight='400'
+          />
           <div className={classes.grow}>
             <EntriesContainer
               managedSurfaces={managedSurfaces}
@@ -143,6 +148,7 @@ class TopPanel extends React.Component {
         <SettingsDrawer
           open={drawer}
           onClose={() => this._toggleDrawer(false)}
+          seat={seat}
         />
         <LauncherMenu
           id='launcher-menu'

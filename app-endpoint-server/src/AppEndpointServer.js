@@ -102,7 +102,7 @@ class AppEndpointServer {
       try {
         await verifyRemoteAppLaunchClaim(userToken)
       } catch (e) {
-        this._denyWebSocket(socket, 403)
+        this._denyWebSocket(socket, 403, e)
         return
       }
 
@@ -126,24 +126,30 @@ class AppEndpointServer {
           query: wsURL.query
         }, head], socket)
       } else {
-        this._logger.error(`Received web socket upgrade request with compositor session id: ${compositorSessionId}. Id is not a valid uuid.`)
-        this._denyWebSocket(socket, 401)
+        const msg = `Received web socket upgrade request with compositor session id: ${compositorSessionId}. Id is not a valid uuid.`
+        this._logger.error(msg)
+        this._denyWebSocket(socket, 401, new Error(msg))
       }
     } catch (e) {
-      this._denyWebSocket(socket, 503)
       this._logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
       this._logger.error('error object stack: ')
       this._logger.error(e.stack)
+      this._denyWebSocket(socket, 503, e)
     }
   }
 
-  _denyWebSocket (socket, errorCode) {
+  /**
+   * @param {Socket}socket
+   * @param {number}errorCode
+   * @param {Error}error
+   * @private
+   */
+  _denyWebSocket (socket, errorCode, error) {
     socket.write(`HTTP/1.1 ${errorCode} Web Socket Protocol Handshake\r\n` +
       'Upgrade: WebSocket\r\n' +
       'Connection: Upgrade\r\n' +
       '\r\n')
-    socket.close()
-    socket.destroy()
+    socket.destroy(error)
   }
 
   /**

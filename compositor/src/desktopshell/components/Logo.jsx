@@ -34,10 +34,11 @@ const styles = {
 
 export default withStyles(styles)(React.memo(
   (props) => {
-    const fontSize = props.fontSize ? props.fontSize : '4rem'
+    const fontSize = props.fontSize ? props.fontSize : '5rem'
+    const fontWeight = props.fontWeight ? props.fontWeight : '200'
 
     return (
-      <span className={props.classes.logo} style={{ fontSize }}>
+      <span className={props.classes.logo} style={{ fontSize, fontWeight }}>
         Greenf<span className={props.classes.i}>i</span>eld
       </span>
     )

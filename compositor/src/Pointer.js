@@ -102,6 +102,16 @@ export default class Pointer extends WlPointerRequests {
      */
     this.session = session
     /**
+     * @type {number}
+     * @private
+     */
+    this._lineScrollAmount = 12
+    /**
+     * @type {number}
+     * @private
+     */
+    this.scrollFactor = 1
+    /**
      * @type {!DataDevice}
      * @const
      * @private
@@ -732,7 +742,7 @@ export default class Pointer extends WlPointerRequests {
            * @param {number}delta
            * @return {number}
            */
-          deltaTransform = delta => delta * 12 // FIXME We hard code line height.
+          deltaTransform = delta => delta * this._lineScrollAmount
           break
         }
         case event.DOM_DELTA_PAGE: {
@@ -763,18 +773,23 @@ export default class Pointer extends WlPointerRequests {
 
       const surfaceResource = this.focus.surface.resource
       this._doPointerEventFor(surfaceResource, pointerResource => {
-        const deltaX = event.deltaX
+        let deltaX = event.deltaX
         if (deltaX) {
-          const xAxis = horizontalScroll
+          const xAxis = this._adjustWithScrollFactor(horizontalScroll)
+          deltaX = this._adjustWithScrollFactor(deltaX)
+
           if (pointerResource.version >= 5) {
             pointerResource.axisDiscrete(xAxis, deltaX)
           }
           const scrollAmount = deltaTransform(deltaX, xAxis)
           pointerResource.axis(event.timeStamp, xAxis, Fixed.parse(scrollAmount))
         }
-        const deltaY = event.deltaY
+
+        let deltaY = event.deltaY
         if (deltaY) {
-          const yAxis = verticalScroll
+          const yAxis = this._adjustWithScrollFactor(verticalScroll)
+          deltaY = this._adjustWithScrollFactor(deltaY)
+
           if (pointerResource.version >= 5) {
             pointerResource.axisDiscrete(yAxis, deltaY)
           }
@@ -788,6 +803,10 @@ export default class Pointer extends WlPointerRequests {
       })
     }
     return consumed
+  }
+
+  _adjustWithScrollFactor (scroll) {
+    return scroll * this.scrollFactor
   }
 
   /**

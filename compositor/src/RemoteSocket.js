@@ -21,6 +21,7 @@ import RemoteOutOfBandChannel from './RemoteOutOfBandChannel'
 import StreamingBuffer from './remotestreaming/StreamingBuffer'
 import WlBufferResource from './protocol/WlBufferResource'
 import { WebFD } from 'westfield-runtime-common'
+import auth from './desktopshell/Auth'
 
 class RemoteSocket {
   /**
@@ -221,7 +222,7 @@ class RemoteSocket {
       const webSocketURL = new URL(webSocket.url)
       webSocketURL.searchParams.append('clientId', `${clientId}`)
 
-      const newWebSocket = new window.WebSocket(webSocketURL)
+      const newWebSocket = new window.WebSocket(webSocketURL, auth.userToken)
       this.onWebSocket(newWebSocket)
     })
 
