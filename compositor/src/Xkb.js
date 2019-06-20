@@ -43,7 +43,7 @@ export default class Xkb {
         if (xhr.readyState === window.XMLHttpRequest.DONE && xhr.status === 200) {
           const mappingFile = xhr.responseText
           try {
-            const xkb = Xkb.create(mappingFile)
+            const xkb = Xkb.createFromString(mappingFile)
             resolve(xkb)
           } catch (error) {
             reject(error)
@@ -60,7 +60,7 @@ export default class Xkb {
    * @param {string}keymapLayout an xkb keymap as a single string.
    * @return {Xkb}
    */
-  static create (keymapLayout) {
+  static createFromString (keymapLayout) {
     const keymapLayoutPtr = xkb._malloc(xkb.lengthBytesUTF8(keymapLayout) + 1)
     xkb.stringToUTF8(keymapLayout, keymapLayoutPtr, xkb.lengthBytesUTF8(keymapLayout) + 1)
 
@@ -71,6 +71,49 @@ export default class Xkb {
     xkb._free(keymapLayoutPtr)
 
     return new Xkb(xkbContext, keymap, state)
+  }
+
+  /**
+   * @param {?string}rules
+   * @param {?string}model
+   * @param {?string}layout
+   * @param {?string}variant
+   * @param {?string}options
+   */
+  static createFromNames ({ rules, model, layout, variant, options }) {
+    const xkbRuleNamesPtr = xkb._malloc(5 * 4)
+    const xkbRuleNamesBuffer = new Uint32Array(xkb.HEAP8.buffer, xkbRuleNamesPtr, 5)
+
+    xkbRuleNamesBuffer[0] = this._stringToPointer(rules)
+    xkbRuleNamesBuffer[1] = this._stringToPointer(model)
+    xkbRuleNamesBuffer[2] = this._stringToPointer(layout)
+    xkbRuleNamesBuffer[3] = this._stringToPointer(variant)
+    xkbRuleNamesBuffer[4] = this._stringToPointer(options)
+
+    const xkbContext = xkb._xkb_context_new(0)
+    const keymap = xkb._xkb_keymap_new_from_names(xkbContext, xkbRuleNamesPtr, XKB_KEYMAP_COMPILE_NO_FLAGS)
+
+    const state = xkb._xkb_state_new(keymap)
+
+    xkbRuleNamesBuffer.forEach(pointer => xkb._free(pointer))
+    xkb._free(xkbRuleNamesPtr)
+
+    return new Xkb(xkbContext, keymap, state)
+  }
+
+  /**
+   * @param {string}value
+   * @return {number}
+   * @private
+   */
+  static _stringToPointer (value) {
+    if (value) {
+      const stringPtr = xkb._malloc(xkb.lengthBytesUTF8(value) + 1)
+      xkb.stringToUTF8(value, stringPtr, xkb.lengthBytesUTF8(value) + 1)
+      return stringPtr
+    } else {
+      return 0
+    }
   }
 
   /**
@@ -89,7 +132,7 @@ export default class Xkb {
 
   asString () {
     const keymapStringPtr = xkb._xkb_keymap_get_as_string(this.keymap, XKB_KEYMAP_FORMAT_TEXT_V1)
-    return xkb.Pointer_stringify(keymapStringPtr)
+    return xkb.UTF8ToString(keymapStringPtr)
   }
 
   /**

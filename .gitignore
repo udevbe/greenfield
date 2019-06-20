@@ -119,3 +119,7 @@ CTestTestfile.cmake
 /compositor/public/clients/f
 /wasmlibs/libxkbcommon/
 /wasmlibs/emsdk/
+/wasmlibs/xkeyboard-config/
+/wasmlibs/libxkbcommon.js
+/wasmlibs/libxkbcommon.data
+/wasmlibs/libxkbcommon.wasm

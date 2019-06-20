@@ -170,16 +170,31 @@ export default class Keyboard extends WlKeyboardRequests {
   }
 
   /**
+   * @param {{ rules: String, model: String, layout: String, variant: String, options: String }}names
+   */
+  updateKeymapFromNames (names) {
+    if (this._xkb) {
+      // TODO cleanup previous keymap state
+    }
+    this._xkb = Xkb.createFromNames(names)
+    this.resources.forEach(resource => this.emitKeymap(resource))
+  }
+
+  /**
    * @param {!string}keymapFileName
    */
   updateKeymap (keymapFileName) {
-    Xkb.createFromResource(keymapFileName).then(xkb => {
-      if (this._xkb) {
-        // TODO cleanup previous keymap state
-      }
-      this._xkb = xkb
-      this.resources.forEach(resource => this.emitKeymap(resource))
-    })
+    Xkb.createFromResource(keymapFileName).then(
+      /**
+       * @param {Xkb}xkb
+       */
+      xkb => {
+        if (this._xkb) {
+          // TODO cleanup previous keymap state
+        }
+        this._xkb = xkb
+        this.resources.forEach(resource => this.emitKeymap(resource))
+      })
   }
 
   /**
@@ -220,11 +235,9 @@ export default class Keyboard extends WlKeyboardRequests {
       const surface = this.focus.resource
       const keys = new Uint8Array(this._keys).buffer
 
-      this.resources.filter(resource => {
-        return resource.client === this.focus.resource.client
-      }).forEach((resource) => {
-        resource.enter(serial, surface, keys)
-      })
+      this.resources
+        .filter(resource => resource.client === this.focus.resource.client)
+        .forEach(resource => resource.enter(serial, surface, keys))
       if (this._keyboardFocusResolve) {
         this._keyboardFocusResolve()
       }
