@@ -38,10 +38,15 @@ export default class Keyboard extends WlKeyboardRequests {
    * @return {!Keyboard}
    */
   static create (session, dataDevice) {
-    const keyboard = new Keyboard(dataDevice, session)
-    // TODO get the keymap from some config source
-    // TODO make available in config menu
-    keyboard.updateKeymap('qwerty.xkb')
+    const nrmlvoEntries = Xkb.buildNrmlvoEntries()
+
+    const langTokens = navigator.language.split('-')
+    let lang = langTokens.length === 1 ? langTokens[0].toLowerCase() : langTokens[1].toLowerCase()
+    // TODO load rmlvo (names) from profile(?) and if not defined in profile, deduce from browser language settings
+    const nrmlvoEntry = nrmlvoEntries.find(nrmlvo => nrmlvo.layout === lang && nrmlvo.variant == null) || nrmlvoEntries.find(nrmlvo => nrmlvo.layout === 'us')
+
+    const keyboard = new Keyboard(dataDevice, session, nrmlvoEntries, nrmlvoEntry)
+    keyboard.updateKeymapFromNames(keyboard.nrmlvo)
 
     document.addEventListener('keyup', event => {
       const keyboardEvent = /** @type {KeyboardEvent} */ event
@@ -68,8 +73,10 @@ export default class Keyboard extends WlKeyboardRequests {
    * @private
    * @param {!DataDevice} dataDevice
    * @param {!Session}session
+   * @param {Array<{name: string, rules: string, model: string, layout: string, variant: string, options: string}>}nrmlvoEntries
+   * @param {{name: string, rules: string, model: string, layout: string, variant: string, options: string}}nrmlvoEntry
    */
-  constructor (dataDevice, session) {
+  constructor (dataDevice, session, nrmlvoEntries, nrmlvoEntry) {
     super()
     /**
      * @type {!DataDevice}
@@ -83,14 +90,22 @@ export default class Keyboard extends WlKeyboardRequests {
      */
     this._session = session
     /**
+     * @type {Array<{name: string, rules: string, model: string, layout: string, variant: string, options: string}>}
+     * @private
+     */
+    this.nrmlvoEntries = nrmlvoEntries
+    /**
      * @type {!Array<WlKeyboardResource>}
      */
     this.resources = []
     /**
      * @type {?Xkb}
-     * @private
      */
-    this._xkb = null
+    this.xkb = null
+    /**
+     * @type {{name: string, rules: string, model: string, layout: string, variant: string, options: string}}
+     */
+    this.nrmlvo = nrmlvoEntry
     /**
      * @type {?Surface}
      */
@@ -170,13 +185,14 @@ export default class Keyboard extends WlKeyboardRequests {
   }
 
   /**
-   * @param {{ rules: String, model: String, layout: String, variant: String, options: String }}names
+   * @param {{ name: string, rules: String, model: String, layout: String, variant: String, options: String }}nrmlvo
    */
-  updateKeymapFromNames (names) {
-    if (this._xkb) {
+  updateKeymapFromNames (nrmlvo) {
+    if (this.xkb) {
       // TODO cleanup previous keymap state
     }
-    this._xkb = Xkb.createFromNames(names)
+    this.nrmlvo = nrmlvo
+    this.xkb = Xkb.createFromNames(nrmlvo)
     this.resources.forEach(resource => this.emitKeymap(resource))
   }
 
@@ -189,10 +205,10 @@ export default class Keyboard extends WlKeyboardRequests {
        * @param {Xkb}xkb
        */
       xkb => {
-        if (this._xkb) {
+        if (this.xkb) {
           // TODO cleanup previous keymap state
         }
-        this._xkb = xkb
+        this.xkb = xkb
         this.resources.forEach(resource => this.emitKeymap(resource))
       })
   }
@@ -201,7 +217,7 @@ export default class Keyboard extends WlKeyboardRequests {
    * @param {!WlKeyboardResource}resource
    */
   emitKeymap (resource) {
-    const keymapString = this._xkb.asString()
+    const keymapString = this.xkb.asString()
     const textEncoder = new TextEncoder('utf-8')
     const keymapBuffer = textEncoder.encode(keymapString).buffer
 
@@ -291,7 +307,7 @@ export default class Keyboard extends WlKeyboardRequests {
       return false
     }
 
-    const modsUpdate = down ? this._xkb.keyDown(linuxKeyCode) : this._xkb.keyUp(linuxKeyCode)
+    const modsUpdate = down ? this.xkb.keyDown(linuxKeyCode) : this.xkb.keyUp(linuxKeyCode)
     if (down) {
       this._keys.push(linuxKeyCode)
     } else {
@@ -308,10 +324,10 @@ export default class Keyboard extends WlKeyboardRequests {
       const state = down ? pressed : released
       const serial = this.seat.nextSerial()
 
-      const modsDepressed = this._xkb.modsDepressed
-      const modsLatched = this._xkb.modsLatched
-      const modsLocked = this._xkb.modsLocked
-      const group = this._xkb.group
+      const modsDepressed = this.xkb.modsDepressed
+      const modsLatched = this.xkb.modsLatched
+      const modsLocked = this.xkb.modsLocked
+      const group = this.xkb.group
 
       this.resources
         .filter(resource => resource.client === this.focus.resource.client)

@@ -31,14 +31,9 @@ import { ListItemText } from '@material-ui/core'
 import ListItemIcon from '@material-ui/core/es/ListItemIcon'
 import Divider from '@material-ui/core/es/Divider'
 import Slider from '@material-ui/lab/es/Slider'
-import Select from '@material-ui/core/es/Select'
-import MenuItem from '@material-ui/core/es/MenuItem'
-import FormControl from '@material-ui/core/es/FormControl'
-import InputLabel from '@material-ui/core/es/InputLabel'
-import Input from '@material-ui/core/es/Input'
-import Grid from '@material-ui/core/es/Grid'
 import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction'
 import Seat from '../../Seat'
+import KeymapSettings from './KeymapSettings'
 
 const styles = theme => ({
   settingsList: {
@@ -64,7 +59,6 @@ class SettingsDrawer extends React.Component {
     super(props)
     this.state = {
       scrollSpeed: (props.seat.pointer.scrollFactor * 100),
-      keymapLayout: 'en-US.xkb'
     }
   }
 
@@ -102,8 +96,8 @@ class SettingsDrawer extends React.Component {
   }
 
   render () {
-    const { open, onClose, classes } = this.props
-    const { scrollSpeed, keymapLayout } = this.state
+    const { open, onClose, classes, seat } = this.props
+    const { scrollSpeed } = this.state
     return (
       <Drawer
         open={open}
@@ -120,25 +114,10 @@ class SettingsDrawer extends React.Component {
           <ListItem>
             <ListItemText>Keymap</ListItemText>
             <ListItemSecondaryAction className={classes.listItemAction}>
-              <FormControl className={classes.listItemActionControl}>
-                <InputLabel htmlFor='keymap-layout'>Layout</InputLabel>
-                <Select
-                  inputProps={{
-                    name: 'keymap-layout',
-                    id: 'keymap-layout'
-                  }}
-                  value={keymapLayout}
-                  onChange={event => this._handleKeymapLayoutUpdate(event)}
-                >
-                  <MenuItem className={classes.keymapMenuItem} value='en-US.xkb'>en-US</MenuItem>
-                  <MenuItem className={classes.keymapMenuItem} value='nl-BE.xkb'>nl-BE</MenuItem>
-                </Select>
-              </FormControl>
+              <KeymapSettings className={classes.listItemActionControl} keyboard={seat.keyboard} />
             </ListItemSecondaryAction>
           </ListItem>
-
           <div className={classes.spacer} />
-
           <ListItem>
             <ListItemIcon>
               <MouseIcon />
