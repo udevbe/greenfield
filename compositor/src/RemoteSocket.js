@@ -106,49 +106,53 @@ class RemoteSocket {
 
   /**
    * @param {WebSocket}webSocket
+   * @return {Promise<Client>}
    */
   onWebSocket (webSocket) {
-    DEBUG && console.log(`[WebSocket] - created.`)
+    return new Promise(resolve => {
+      DEBUG && console.log(`[WebSocket] - created.`)
 
-    webSocket.binaryType = 'arraybuffer'
-    webSocket.onclose = () => { throw new Error('Remote connection failed.') }
-    webSocket.onopen = () => {
-      DEBUG && console.log(`[WebSocket] - open.`)
+      webSocket.binaryType = 'arraybuffer'
+      webSocket.onclose = () => { throw new Error('Remote connection failed.') }
+      webSocket.onopen = () => {
+        DEBUG && console.log(`[WebSocket] - open.`)
 
-      const client = this._session.display.createClient()
-      client.onClose().then(() => DEBUG && console.log(`[client] - closed.`))
-      client.addResourceCreatedListener(resource => {
-        if (resource.id >= 0xff000000 && client.recycledIds.length === 0) {
-          console.error(`[client] - Ran out of reserved browser resource ids.`)
-          client.close()
-        }
-      })
-
-      webSocket.onclose = () => {
-        DEBUG && console.log(`[WebSocket] - closed.`)
-        client.close()
-      }
-      webSocket.onerror = event => DEBUG && console.log(`[WebSocket] - error: ${event.message}.`)
-
-      /**
-       * @param {Array<{buffer: ArrayBuffer, fds: Array<WebFD>}>}wireMessages
-       */
-      client.connection.onFlush = wireMessages => this._flushWireMessages(client, webSocket, wireMessages)
-
-      const wsOutOfBandChannel = RemoteOutOfBandChannel.create(sendBuffer => {
-        if (webSocket.readyState === 1) {
-          try {
-            webSocket.send(sendBuffer)
-          } catch (e) {
-            console.log(e.message)
+        const client = this._session.display.createClient()
+        client.onClose().then(() => DEBUG && console.log(`[client] - closed.`))
+        client.addResourceCreatedListener(resource => {
+          if (resource.id >= 0xff000000 && client.recycledIds.length === 0) {
+            console.error(`[client] - Ran out of reserved browser resource ids.`)
             client.close()
           }
-        }
-      })
-      this._setupClientOutOfBandHandlers(webSocket, client, wsOutOfBandChannel)
+        })
 
-      webSocket.onmessage = event => this._handleMessageEvent(client, event, wsOutOfBandChannel)
-    }
+        webSocket.onclose = () => {
+          DEBUG && console.log(`[WebSocket] - closed.`)
+          client.close()
+        }
+        webSocket.onerror = event => DEBUG && console.log(`[WebSocket] - error: ${event.message}.`)
+
+        /**
+         * @param {Array<{buffer: ArrayBuffer, fds: Array<WebFD>}>}wireMessages
+         */
+        client.connection.onFlush = wireMessages => this._flushWireMessages(client, webSocket, wireMessages)
+
+        const wsOutOfBandChannel = RemoteOutOfBandChannel.create(sendBuffer => {
+          if (webSocket.readyState === 1) {
+            try {
+              webSocket.send(sendBuffer)
+            } catch (e) {
+              console.log(e.message)
+              client.close()
+            }
+          }
+        })
+        this._setupClientOutOfBandHandlers(webSocket, client, wsOutOfBandChannel)
+
+        webSocket.onmessage = event => this._handleMessageEvent(client, event, wsOutOfBandChannel)
+        resolve(client)
+      }
+    })
   }
 
   /**

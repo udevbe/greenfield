@@ -38,7 +38,7 @@ export default class WebAppLauncher {
   }
 
   /**
-   * @param {string}webAppURL
+   * @param {URL}webAppURL
    * @return {Promise<Client>}
    */
   launch (webAppURL) {
@@ -71,7 +71,7 @@ export default class WebAppLauncher {
           }
         }
       }
-      xhr.open('GET', new URL(webAppURL).href)
+      xhr.open('GET', webAppURL.href)
       xhr.send()
     })
   }

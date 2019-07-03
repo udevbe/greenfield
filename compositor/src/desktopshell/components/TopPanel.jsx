@@ -30,7 +30,6 @@ import MenuIcon from '@material-ui/icons/Menu'
 import AppsIcon from '@material-ui/icons/Apps'
 import AccountCircle from '@material-ui/icons/AccountCircle'
 
-import EntriesContainer from './EntriesContainer'
 import Seat from '../../Seat'
 import ManagedSurface from '../ManagedSurface'
 
@@ -40,6 +39,9 @@ import LauncherMenu from './LauncherMenu'
 import WebAppLauncher from '../../WebAppLauncher'
 import RemoteAppLauncher from '../../RemoteAppLauncher'
 import Logo from './Logo'
+import RunningAppsContainer from './RunningAppsContainer'
+import auth from '../Auth'
+import AppLauncherEntry from '../AppLauncherEntry'
 
 const styles = {
   root: {
@@ -60,9 +62,58 @@ class TopPanel extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
+      appLauncherEntries: [],
+      runningAppLauncherEntries: [],
+      appLauncherEntriesLoading: false,
       drawer: false,
       userMenuAnchorEl: null,
       launcherMenuAnchorEl: null
+    }
+
+    this._snapshotUnsubscribe = null
+  }
+
+  async componentDidUpdate (prevProps, prevState, snapshot) {
+    if (this.props.user === prevProps.user) {
+      return
+    }
+
+    const { user } = this.props
+    if (user) {
+      this.setState(() => ({ appLauncherEntriesLoading: true }))
+      const appLauncherEntriesCollectionRef = auth.app.firestore().collection('users').doc(user.uid).collection('appLauncherEntries')
+      this._snapshotUnsubscribe = appLauncherEntriesCollectionRef.onSnapshot(snapshot => this._setAppLauncherEntriesFromFirebaseDocs(snapshot.docs))
+
+      const appLauncherEntriesCollection = await appLauncherEntriesCollectionRef.get()
+      // TODO initial data has been fetched, don't show loading state
+      this._setAppLauncherEntriesFromFirebaseDocs(appLauncherEntriesCollection.docs)
+    }
+  }
+
+  /**
+   * @param {QueryDocumentSnapshot[]}docs
+   * @private
+   */
+  _setAppLauncherEntriesFromFirebaseDocs (docs) {
+    const appLauncherEntries =
+      docs.map(doc => {
+        const { id, title, icon, url, type } = doc.data()
+        return new AppLauncherEntry(id, title, new URL(icon), new URL(url), type)
+      })
+    appLauncherEntries.forEach(appLauncherEntry => appLauncherEntry.clientListeners.push(() => {
+      if (appLauncherEntry.client) {
+        this.setState(oldState => ({ runningAppLauncherEntries: [appLauncherEntry, ...oldState.runningAppLauncherEntries] }))
+      } else {
+        this.setState(oldState => ({ runningAppLauncherEntries: oldState.runningAppLauncherEntries.filter(runningAppLauncherEntry => runningAppLauncherEntry !== appLauncherEntry) }))
+      }
+    }))
+
+    this.setState(() => ({ appLauncherEntries, appLauncherEntriesLoading: false }))
+  }
+
+  componentWillUnmount () {
+    if (this._snapshotUnsubscribe) {
+      this._snapshotUnsubscribe()
     }
   }
 
@@ -101,14 +152,17 @@ class TopPanel extends React.Component {
   }
 
   render () {
-    const { classes, managedSurfaces, activeManagedSurface, seat, user, webAppLauncher, remoteAppLauncher } = this.props
+    const {
+      classes, managedSurfaces, activeManagedSurface, seat, user,
+      webAppLauncher, remoteAppLauncher
+    } = this.props
     if (user === null) return null
 
-    const { drawer, userMenuAnchorEl, launcherMenuAnchorEl } = this.state
+    const { drawer, userMenuAnchorEl, launcherMenuAnchorEl, appLauncherEntries, runningAppLauncherEntries } = this.state
 
     return (
       <AppBar className={classes.root} position='static' color='default'>
-        <Toolbar variant={'dense'}>
+        <Toolbar>
           <IconButton
             className={classes.menuButton}
             color='inherit'
@@ -121,7 +175,8 @@ class TopPanel extends React.Component {
             fontWeight='400'
           />
           <div className={classes.grow}>
-            <EntriesContainer
+            <RunningAppsContainer
+              appLauncherEntries={runningAppLauncherEntries}
               managedSurfaces={managedSurfaces}
               activeManagedSurface={activeManagedSurface}
               seat={seat}
@@ -152,11 +207,14 @@ class TopPanel extends React.Component {
         />
         <LauncherMenu
           id='launcher-menu'
+          appLauncherEntries={appLauncherEntries}
           anchorEl={launcherMenuAnchorEl}
           onClose={() => this._launcherMenuClose()}
           webAppLauncher={webAppLauncher}
           remoteAppLauncher={remoteAppLauncher}
           user={user}
+          managedSurfaces={managedSurfaces}
+          seat={seat}
         />
       </AppBar>
     )

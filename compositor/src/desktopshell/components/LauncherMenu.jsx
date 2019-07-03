@@ -31,7 +31,6 @@ import EditIcon from '@material-ui/icons/Edit'
 import DeleteIcon from '@material-ui/icons/Close'
 
 import WebAppLauncher from '../../WebAppLauncher'
-import auth from '../Auth'
 import Grid from '@material-ui/core/es/Grid'
 import AddAppDialog from './AddAppDialog'
 import Button from '@material-ui/core/es/Button'
@@ -39,6 +38,9 @@ import Fade from '@material-ui/core/es/Fade'
 import RemoveAppDialog from './RemoveAppDialog'
 import Tooltip from '@material-ui/core/es/Tooltip/Tooltip'
 import RemoteAppLauncher from '../../RemoteAppLauncher'
+import AppLauncherEntry from '../AppLauncherEntry'
+import ManagedSurface from '../ManagedSurface'
+import Seat from '../../Seat'
 
 const MAX_GRID_ITEMS_H = 3
 const GRID_ITEM_SIZE = 48
@@ -131,34 +133,12 @@ class LauncherMenu extends React.Component {
   constructor (props) {
     super(props)
     /**
-     * @type {{mode: 'launch'|'edit', appLauncherEntries: Array<{id: string, title: string, icon: string, url: string}>, appAdd: boolean}}
+     * @type {{mode: 'launch'|'edit'|'loading', appAdd: boolean}}
      */
     this.state = {
-      // TODO show loading state until appLaunchers have been fetched from the remote db
-      appLauncherEntries: [],
       appAdd: false,
       appToRemove: null,
       mode: 'launch'
-    }
-
-    this._snapshotUnsubscribe = null
-  }
-
-  async componentDidMount () {
-    const { user } = this.props
-    if (user) {
-      const appLauncherEntriesCollectionRef = auth.app.firestore().collection('users').doc(user.uid).collection('appLauncherEntries')
-      this._snapshotUnsubscribe = appLauncherEntriesCollectionRef.onSnapshot(snapshot => this._setAppLauncherEntriesFromDocs(snapshot.docs))
-
-      const appLauncherEntriesCollection = await appLauncherEntriesCollectionRef.get()
-      // TODO initial data has been fetched, don't show loading state
-      this._setAppLauncherEntriesFromDocs(appLauncherEntriesCollection.docs)
-    }
-  }
-
-  componentWillUnmount () {
-    if (this._snapshotUnsubscribe) {
-      this._snapshotUnsubscribe()
     }
   }
 
@@ -176,13 +156,10 @@ class LauncherMenu extends React.Component {
     onClose()
   }
 
-  _setAppLauncherEntriesFromDocs (docs) {
-    const appLauncherEntries =
-      /** @type {Array<{id: string, title: string, icon: string, url: string, type: 'web'|'remote'}>} */
-      docs.map(doc => doc.data())
-    this.setState((oldState) => ({ appLauncherEntries, mode: appLauncherEntries.length ? oldState.mode : 'launch' }))
-  }
-
+  /**
+   * @param {AppLauncherEntry}appLauncherEntry
+   * @private
+   */
   _appRemoveOpen (appLauncherEntry) {
     this.setState(() => ({ appToRemove: appLauncherEntry }))
   }
@@ -199,40 +176,74 @@ class LauncherMenu extends React.Component {
     this.setState(() => ({ appAdd: false }))
   }
 
+  async _launchWebApp (appLauncherEntry) {
+    const { onClose, webAppLauncher, managedSurfaces, seat } = this.props
+    if (appLauncherEntry.client) {
+      const clientManagedSurface = managedSurfaces.find(managedSurface => managedSurface.surface.resource.client === appLauncherEntry.client)
+      if (clientManagedSurface) {
+        clientManagedSurface.requestActivation()
+        seat.pointer.session.flush()
+      }
+    } else {
+      // TODO show waiting icon on launcher tile until app is dld & launched
+      // TODO show download progress bar if webapp needs to be downloaded first
+      const client = await webAppLauncher.launch(appLauncherEntry.app)
+      if (client) {
+        // TODO give subtle indication in launcher menu that app is running
+        appLauncherEntry.client = client
+        // TODO remove subtle indication in launcher menu that app is running
+        client.onClose().then(() => { appLauncherEntry.client = null })
+      }
+    }
+    onClose()
+  }
+
+  async _launchRemoteApp (appLauncherEntry) {
+    const { onClose, remoteAppLauncher, managedSurfaces, seat } = this.props
+    if (appLauncherEntry.client) {
+      const clientManagedSurface = managedSurfaces.find(managedSurface => managedSurface.surface.resource.client === appLauncherEntry.client)
+      if (clientManagedSurface) {
+        clientManagedSurface.requestActivation()
+        seat.pointer.session.flush()
+      }
+    } else {
+      // TODO show waiting icon on launcher tile until app connected
+      const client = await remoteAppLauncher.launch(appLauncherEntry.app, appLauncherEntry.id)
+      if (client) {
+        // TODO give subtle indication in launcher menu that app is running
+        appLauncherEntry.client = client
+        // TODO remove subtle indication in launcher menu that app is running
+        client.onClose().then(() => { appLauncherEntry.client = null })
+      }
+    }
+    onClose()
+  }
+
   /**
-   * @param {{id: string, url: string, type: 'web'|'remote'}} appLauncherEntry
+   * @param {AppLauncherEntry} appLauncherEntry
    * @private
    */
   async _onAppLauncherClick (appLauncherEntry) {
     const { mode } = this.state
+
     if (mode === 'launch' && appLauncherEntry.type === 'web') {
-      const { onClose, webAppLauncher } = this.props
-      // TODO show waiting icon on launcher tile until app is dld & launched
-      webAppLauncher.launch(appLauncherEntry.url).catch(error => { throw error })
-      onClose()
+      await this._launchWebApp(appLauncherEntry)
     } else if (mode === 'launch' && appLauncherEntry.type === 'remote') {
-      const { onClose, remoteAppLauncher } = this.props
-      // TODO show waiting icon on launcher tile until app connected
-      remoteAppLauncher.launch(appLauncherEntry.url, appLauncherEntry.id)
-      onClose()
+      await this._launchRemoteApp(appLauncherEntry)
     }
-    // TODO ask user for conformation
-    // TODO stop app if it's running
-    // TODO delete entry from db
-    // TODO clear app cache
   }
 
   render () {
-    const { classes, anchorEl, id, user } = this.props
+    const { classes, anchorEl, id, user, appLauncherEntries } = this.props
     // TODO interpret mode and show additional icons w/action per entry
-    const { mode, appLauncherEntries, appAdd, appToRemove } =
-      /** @type {{mode: 'launch'|'edit', appLauncherEntries: Array<{id: string, title: string, icon: string, url: string, type: 'web'|'remote'}>, appAdd: boolean, appToRemove: string|null}} */
+    const { mode, appAdd, appToRemove } =
+      /** @type {{mode: 'launch'|'edit', appAdd: boolean, appToRemove: string|null}} */
       this.state
 
     let gridContent = null
     if (appLauncherEntries.length) {
       gridContent = appLauncherEntries.map(appLauncherEntry => (
-        <Grid item className={classes.gridItem} key={appLauncherEntry.url}>
+        <Grid item className={classes.gridItem} key={appLauncherEntry.app.href}>
           <ButtonBase
             onClick={() => this._onAppLauncherClick(appLauncherEntry)}
             focusRipple
@@ -362,7 +373,9 @@ LauncherMenu.propTypes = {
   onClose: PropTypes.func.isRequired,
   webAppLauncher: PropTypes.instanceOf(WebAppLauncher).isRequired,
   remoteAppLauncher: PropTypes.instanceOf(RemoteAppLauncher).isRequired,
-  user: PropTypes.object
+  user: PropTypes.object,
+  managedSurfaces: PropTypes.arrayOf(ManagedSurface).isRequired,
+  seat: PropTypes.instanceOf(Seat).isRequired
 }
 
 export default withStyles(styles)(LauncherMenu)

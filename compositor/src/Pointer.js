@@ -126,6 +126,11 @@ export default class Pointer extends WlPointerRequests {
      */
     this.focus = null
     /**
+     * @type {number}
+     * @private
+     */
+    this._buttonsPressed = 0
+    /**
      * Currently active surface grab (if any)
      * @type {?View}
      */
@@ -161,11 +166,6 @@ export default class Pointer extends WlPointerRequests {
       this._cursorSurface = null
       this.setDefaultCursor()
     }
-    /**
-     * @type {!number}
-     * @private
-     */
-    this._btnDwnCount = 0
     /**
      * @type {!Array<function>}
      * @private
@@ -371,7 +371,6 @@ export default class Pointer extends WlPointerRequests {
 
     // clear any pointer button press grab
     this.grab = null
-    this._btnDwnCount = 0
 
     return popupGrabEndPromise
   }
@@ -514,7 +513,7 @@ export default class Pointer extends WlPointerRequests {
       consumed = true
       const surfacePoint = this._calculateSurfacePoint(this.focus)
       const surfaceResource = this.focus.surface.resource
-      this._doPointerEventFor(surfaceResource, (pointerResource) => {
+      this._doPointerEventFor(surfaceResource, pointerResource => {
         pointerResource.motion(event.timeStamp, Fixed.parse(surfacePoint.x), Fixed.parse(surfacePoint.y))
         if (pointerResource.version >= 5) {
           pointerResource.frame()
@@ -557,7 +556,7 @@ export default class Pointer extends WlPointerRequests {
 
       if (this.grab || nroPopups) {
         const surfaceResource = this.focus.surface.resource
-        this._doPointerEventFor(surfaceResource, (pointerResource) => {
+        this._doPointerEventFor(surfaceResource, pointerResource => {
           pointerResource.button(this.seat.nextSerial(), event.timeStamp, linuxInput[event.button], released)
           if (pointerResource.version >= 5) {
             pointerResource.frame()
@@ -565,11 +564,8 @@ export default class Pointer extends WlPointerRequests {
         })
       }
 
-      if (this.grab) {
-        this._btnDwnCount--
-        if (this._btnDwnCount === 0) {
-          this.grab = null
-        }
+      if (this.grab && event.buttons === 0) {
+        this.grab = null
       }
     } else if (nroPopups) {
       const focus = this._focusFromEvent(event)
@@ -599,10 +595,6 @@ export default class Pointer extends WlPointerRequests {
       consumed = true
       if (this.grab === null && this._popupStack.length === 0) {
         this.grab = this.focus
-      }
-
-      if (!this._popupStack.length) {
-        this._btnDwnCount++
       }
 
       const surfaceResource = this.focus.surface.resource
@@ -712,7 +704,6 @@ export default class Pointer extends WlPointerRequests {
     this.focus = null
     this.grab = null
     this.view = null
-    this._btnDwnCount = 0
     if (this._cursorSurface) {
       this._cursorSurface.implementation.role = null
       this._cursorSurface = null

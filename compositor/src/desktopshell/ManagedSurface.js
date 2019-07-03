@@ -157,18 +157,18 @@ class ManagedSurface {
 
   /**
    * Registers a callback that will be fired when the user shell wants to make a surface active (ie give it input)
-   * @param {function():void}activeCallback
+   * @param {function(UserShellSurface):void}activeCallback
    */
   set onActivationRequest (activeCallback) {
-    this.requestActivation = activeCallback
+    this.requestActivation = () => activeCallback(this)
   }
 
   /**
    * Registers callback that notifies if a surface is no longer active (ie no longer receives input)
-   * @param {function():void}inactiveCallback
+   * @param {function(UserShellSurface):void}inactiveCallback
    */
   set onInactive (inactiveCallback) {
-    this.deactivate = inactiveCallback
+    this.deactivate = () => inactiveCallback(this)
   }
 
   /**
