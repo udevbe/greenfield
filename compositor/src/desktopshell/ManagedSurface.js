@@ -26,8 +26,14 @@ class ManagedSurface {
    */
   constructor (surface) {
     this.surface = surface
+    /**
+     * @type {View}
+     */
     this.view = surface.createView()
-
+    /**
+     * @type {?View}
+     */
+    this.tileView = surface.createView()
     /**
      * @type {Array<function(string):void>}
      */

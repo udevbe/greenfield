@@ -510,16 +510,14 @@ export default class Surface extends WlSurfaceRequests {
   addToplevelChild (surfaceChild) {
     this._surfaceChildren.push(surfaceChild)
 
-    const primaryChildView = surfaceChild.surface.views.find((view) => view.primary)
-    const primaryView = this.views.find((view) => view.primary)
+    const primaryChildView = surfaceChild.surface.views.find(view => view.primary)
+    const primaryView = this.views.find(view => view.primary)
 
     const zIndexOrder = this.children.indexOf(surfaceChild)
     primaryChildView.zIndex = primaryView.zIndex + zIndexOrder
     primaryChildView.parent = primaryView
 
-    surfaceChild.surface.resource.onDestroy().then(() => {
-      this.removeChild(surfaceChild)
-    })
+    surfaceChild.surface.resource.onDestroy().then(() => this.removeChild(surfaceChild))
     this.updateChildViewsZIndexes()
   }
 
@@ -540,15 +538,13 @@ export default class Surface extends WlSurfaceRequests {
     siblings.push(surfaceChild)
 
     const childViews = []
-    this.views.forEach((view) => {
+    this.views.forEach(view => {
       const childView = this._ensureChildView(surfaceChild, view)
       if (childView) {
         childViews.push(childView)
       }
     })
-    surfaceChild.surface.resource.onDestroy().then(() => {
-      this.removeChild(surfaceChild)
-    })
+    surfaceChild.surface.resource.onDestroy().then(() => this.removeChild(surfaceChild))
     this.updateChildViewsZIndexes()
     return childViews
   }

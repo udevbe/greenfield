@@ -621,10 +621,10 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
     const seat = /** @type {Seat} */wlSeatResource.implementation
 
-    if (!seat.isValidInputSerial(serial)) {
-      DEBUG && console.log('[client-protocol-warning] - Move serial mismatch. Ignoring.')
-      return
-    }
+    // if (!seat.isValidInputSerial(serial)) {
+    //   DEBUG && console.log('[client-protocol-warning] - Move serial mismatch. Ignoring.')
+    //   return
+    // }
 
     const pointer = seat.pointer
     const surface = /** @type {Surface} */this.xdgSurface.wlSurfaceResource.implementation

@@ -76,16 +76,23 @@ export default class Xkb {
           const [variant, variantName] = variantLine.split(/\s(.+)/)
 
           if (variantName.trim().startsWith(layout)) {
-            rmlvoItems.push({
-              name: variantName.trim().substring(layout.length + 2).trim(),
+            const newEntry = {
+              name: `${layoutName.trim()} - ${variantName.trim().substring(layout.length + 2).trim()}`,
               rules: 'evdev',
               model: 'pc105',
               layout,
               variant,
               option: null
-            })
+            }
+            // due to a bug in xkb config, we need to check duplicate entries
+            const duplicate = rmlvoItems.find(rmlvoItem => rmlvoItem.name === newEntry.name)
+            if (!duplicate) {
+              rmlvoItems.push(newEntry)
+            }
           }
         })
+
+      // due to a bug in xkb config, we need to check duplicate entries
 
       return rmlvoItems
     }).sort(({ name: name0 }, { name: name1 }) => name0.localeCompare(name1))

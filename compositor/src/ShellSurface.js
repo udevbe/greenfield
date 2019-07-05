@@ -245,10 +245,10 @@ export default class ShellSurface extends WlShellSurfaceRequests {
   move (resource, wlSeatResource, serial) {
     const seat = /** @type {Seat} */wlSeatResource.implementation
 
-    if (!seat.isValidInputSerial(serial)) {
-      DEBUG && console.log('[client-protocol-warning] - Move serial mismatch. Ignoring.')
-      return
-    }
+    // if (!seat.isValidInputSerial(serial)) {
+    //   DEBUG && console.log('[client-protocol-warning] - Move serial mismatch. Ignoring.')
+    //   return
+    // }
 
     if (this.state === SurfaceStates.FULLSCREEN || this.state === SurfaceStates.MAXIMIZED) {
       return

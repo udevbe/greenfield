@@ -29,6 +29,7 @@ import DialogContentText from '@material-ui/core/es/DialogContentText'
 import auth from '../Auth'
 import CloudUploadIcon from '@material-ui/icons/CloudUpload'
 import Slide from '@material-ui/core/es/Slide'
+import PropTypes from 'prop-types'
 
 class SlideUp extends React.Component {
   render () {
@@ -98,7 +99,11 @@ class AddAppDialog extends React.Component {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => appAddClose()} color='primary' autoFocus>
+          <Button
+            onClick={() => appAddClose()}
+            color='primary'
+            autoFocus
+          >
               Cancel
           </Button>
           <input
@@ -118,6 +123,11 @@ class AddAppDialog extends React.Component {
       </Dialog>
     )
   }
+}
+
+AddAppDialog.propTypes = {
+  user: PropTypes.object,
+  appAddClose: PropTypes.func.isRequired
 }
 
 export default withMobileDialog()(AddAppDialog)

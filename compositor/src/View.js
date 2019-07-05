@@ -23,6 +23,7 @@ import Vec4 from './math/Vec4'
 import Region from './Region'
 import Renderer from './render/Renderer'
 import Point from './math/Point'
+import Rect from './math/Rect'
 
 export default class View {
   /**
@@ -73,6 +74,10 @@ export default class View {
      * @type {Map<string, Mat4>}
      */
     this.userTransformations = new Map()
+    /**
+     * @type {boolean}
+     */
+    this.disableInputRegion = false
     /**
      * @type {Mat4}
      */
@@ -426,13 +431,17 @@ export default class View {
   updateInputRegion () {
     if (this.destroyed) { return }
 
-    const inputPixmanRegion = this.surface.state.inputPixmanRegion
-    const surfacePixmanRegion = this.surface.pixmanRegion
-    const intersectionResult = Region.createPixmanRegion()
-    Region.intersect(intersectionResult, inputPixmanRegion, surfacePixmanRegion)
-    const inputRectangles = Region.rectangles(intersectionResult)
+    let inputRectangles = [Rect.create(0, 0, 0, 0)]
+    if (!this.disableInputRegion) {
+      const inputPixmanRegion = this.surface.state.inputPixmanRegion
+      const surfacePixmanRegion = this.surface.pixmanRegion
+      const intersectionResult = Region.createPixmanRegion()
+      Region.intersect(intersectionResult, inputPixmanRegion, surfacePixmanRegion)
+      inputRectangles = Region.rectangles(intersectionResult)
+      Region.destroyPixmanRegion(intersectionResult)
+    }
+
     this.bufferedCanvas.updateInputRegionElements(inputRectangles)
-    Region.destroyPixmanRegion(intersectionResult)
   }
 }
 
