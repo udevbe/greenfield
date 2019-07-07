@@ -27,6 +27,8 @@ import PropTypes from 'prop-types'
 import ListItem from '@material-ui/core/es/ListItem'
 import KeyboardIcon from '@material-ui/icons/Keyboard'
 import MouseIcon from '@material-ui/icons/Mouse'
+import CloseIcon from '@material-ui/icons/Close'
+import AppsIcon from '@material-ui/icons/Apps'
 import { ListItemText } from '@material-ui/core'
 import ListItemIcon from '@material-ui/core/es/ListItemIcon'
 import Divider from '@material-ui/core/es/Divider'
@@ -34,6 +36,9 @@ import Slider from '@material-ui/lab/es/Slider'
 import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction'
 import Seat from '../../Seat'
 import KeymapSettings from './KeymapSettings'
+import AppLauncherEntry from '../AppLauncherEntry'
+import Icon from '@material-ui/core/es/Icon'
+import IconButton from '@material-ui/core/es/IconButton'
 
 const styles = theme => ({
   settingsList: {
@@ -51,6 +56,12 @@ const styles = theme => ({
   },
   keymapMenuItem: {
     display: 'flex'
+  },
+  imageIcon: {
+    height: '100%'
+  },
+  iconRoot: {
+    textAlign: 'center'
   }
 })
 
@@ -58,7 +69,7 @@ class SettingsDrawer extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
-      scrollSpeed: (props.seat.pointer.scrollFactor * 100),
+      scrollSpeed: (props.seat.pointer.scrollFactor * 100)
     }
   }
 
@@ -95,8 +106,14 @@ class SettingsDrawer extends React.Component {
     return `${value}%`
   }
 
+  _closeApplication (appLauncherEntry) {
+    if (appLauncherEntry.client) {
+      appLauncherEntry.client.close()
+    }
+  }
+
   render () {
-    const { open, onClose, classes, seat } = this.props
+    const { open, onClose, classes, seat, appLauncherEntries } = this.props
     const { scrollSpeed } = this.state
     return (
       <Drawer
@@ -141,6 +158,28 @@ class SettingsDrawer extends React.Component {
               />
             </ListItemSecondaryAction>
           </ListItem>
+          <div className={classes.spacer} />
+          <ListItem>
+            <ListItemIcon>
+              <AppsIcon />
+            </ListItemIcon>
+            <ListItemText>Task Manager</ListItemText>
+          </ListItem>
+          <Divider variant='middle' component='li' light />
+          {
+            appLauncherEntries
+              .map(appLauncherEntry => (
+                <ListItem key={`${appLauncherEntry.id}`}>
+                  <ListItemIcon classes={{ root: classes.iconRoot }}>
+                    <img className={classes.imageIcon} src={appLauncherEntry.icon.href} />
+                  </ListItemIcon>
+                  <ListItemText>{appLauncherEntry.title}</ListItemText>
+                  <IconButton onClick={() => this._closeApplication(appLauncherEntry)}>
+                    <CloseIcon />
+                  </IconButton>
+                </ListItem>
+              ))
+          }
         </List>
       </Drawer>
     )
@@ -152,7 +191,8 @@ SettingsDrawer.propTypes = {
 
   open: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-  seat: PropTypes.instanceOf(Seat)
+  seat: PropTypes.instanceOf(Seat),
+  appLauncherEntries: PropTypes.arrayOf(AppLauncherEntry).isRequired
 }
 
 export default withStyles(styles)(SettingsDrawer)

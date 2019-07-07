@@ -26,6 +26,7 @@ import Tabs from '@material-ui/core/es/Tabs'
 import Seat from '../../Seat'
 import ManagedSurface from '../ManagedSurface'
 import RunningAppEntry from './RunningAppEntry'
+import AppLauncherEntry from '../AppLauncherEntry'
 
 const styles = {}
 
@@ -44,6 +45,7 @@ class RunningAppsContainer extends React.Component {
     return (
       <Tabs
         value={value}
+        indicatorColor='primary'
         textColor='primary'
         variant='scrollable'
         scrollButtons='auto'
@@ -74,7 +76,8 @@ RunningAppsContainer.propTypes = {
 
   seat: PropTypes.instanceOf(Seat).isRequired,
   activeManagedSurface: PropTypes.instanceOf(ManagedSurface),
-  managedSurfaces: PropTypes.arrayOf(ManagedSurface).isRequired
+  managedSurfaces: PropTypes.arrayOf(ManagedSurface).isRequired,
+  appLauncherEntries: PropTypes.arrayOf(AppLauncherEntry).isRequired
 }
 
 export default withStyles(styles)(RunningAppsContainer)

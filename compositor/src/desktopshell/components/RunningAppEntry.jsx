@@ -43,13 +43,13 @@ class RunningAppEntry extends React.PureComponent {
     const { seat, appLauncherEntry, managedSurfaces } = this.props
     const clientSurfaces = managedSurfaces.filter(managedSurface => managedSurface.surface.resource.client === appLauncherEntry.client)
 
-    if (clientSurfaces.length === 1) {
-      clientSurfaces[0].requestActivation()
-      seat.pointer.session.flush()
-    } else if (clientSurfaces.length > 1) {
-      const currentTarget = e.currentTarget
-      this.setState(() => ({ surfaceListAnchor: currentTarget }))
-    }
+    // if (clientSurfaces.length === 1) {
+    //   clientSurfaces[0].requestActivation()
+    //   seat.pointer.session.flush()
+    // } else if (clientSurfaces.length > 1) {
+    const currentTarget = e.currentTarget
+    this.setState(() => ({ surfaceListAnchor: currentTarget }))
+    // }
   }
 
   /**
@@ -118,7 +118,7 @@ class RunningAppEntry extends React.PureComponent {
                     key={`${managedSurface.surface.resource.client.id}-${managedSurface.surface.resource.id}`}
                     onClick={() => this._handleSurfaceSelection(managedSurface)}
                   >
-                    <ManagedSurfaceTile width='300px' height='180px' view={managedSurface.tileView} />
+                    <ManagedSurfaceTile width='200px' height='120px' view={managedSurface.tileView} />
                   </MenuItem>
                 ))
             }

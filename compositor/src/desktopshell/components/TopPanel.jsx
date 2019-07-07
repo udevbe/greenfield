@@ -204,6 +204,7 @@ class TopPanel extends React.Component {
           open={drawer}
           onClose={() => this._toggleDrawer(false)}
           seat={seat}
+          appLauncherEntries={runningAppLauncherEntries}
         />
         <LauncherMenu
           id='launcher-menu'
