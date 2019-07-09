@@ -49,7 +49,7 @@ export default class WebAppSocket {
     /**
      * @param {MessageEvent}event
      */
-    webWorker.onmessage = (event) => {
+    webWorker.onmessage = event => {
       const webWorkerMessage = /** @type {{protocolMessage:ArrayBuffer, meta:Array<Transferable>}} */event.data
       if (webWorkerMessage.protocolMessage instanceof ArrayBuffer) {
         const buffer = new Uint32Array(/** @type {ArrayBuffer} */webWorkerMessage.protocolMessage)
@@ -58,6 +58,8 @@ export default class WebAppSocket {
             return this._session.webFS.fromArrayBuffer(transferable)
           } else if (transferable instanceof window.ImageBitmap) {
             return this._session.webFS.fromImageBitmap(transferable)
+          } else if (transferable instanceof window.OffscreenCanvas) {
+            return this._session.webFS.fromOffscreenCanvas(transferable)
           }// else if (transferable instanceof MessagePort) {
           // }
           throw new Error(`Unsupported transferable: ${transferable}`)

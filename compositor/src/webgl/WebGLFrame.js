@@ -25,44 +25,35 @@ import Size from '../Size'
  */
 export default class WebGLFrame extends BufferContents {
   /**
+   * @param {HTMLCanvasElement} canvas
    * @return {WebGLFrame}
    */
-  static create () {
-    return new WebGLFrame()
-  }
-
-  constructor () {
-    super()
-    /**
-     * @type {Size}
-     * @private
-     */
-    this._size = Size.create(0, 0)
-    /**
-     * @type {ImageBitmap}
-     * @private
-     */
-    this._imageBitmap = null
+  static create (canvas) {
+    return new WebGLFrame(canvas)
   }
 
   /**
-   * @param {ImageBitmap}imageBitmap
+   * @param {HTMLCanvasElement} canvas
    */
-  update (imageBitmap) {
-    this._imageBitmap = imageBitmap
-    this._size = Size.create(imageBitmap.width, imageBitmap.height)
+  constructor (canvas) {
+    super()
+    /**
+     * @type {HTMLCanvasElement}
+     * @private
+     */
+    this._canvas = canvas
   }
 
   /**
    * @return {string}
    */
-  get mimeType () { return 'image/bitmap' }
+  get mimeType () { return 'image/canvas' }
 
   /**
-   * @return {ImageBitmap}
+   * @return {HTMLCanvasElement}
    */
   get pixelContent () {
-    return this._imageBitmap
+    return this._canvas
   }
 
   /**
@@ -73,5 +64,5 @@ export default class WebGLFrame extends BufferContents {
   /**
    * @return {Size}
    */
-  get size () { return this._size }
+  get size () { return Size.create(this._canvas.width, this._canvas.height) }
 }

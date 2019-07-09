@@ -29,10 +29,14 @@ export default class WebGLBuffer extends GrWebGlBufferRequests {
   /**
    * @param {GrWebGlBufferResource}resource
    * @param {WlBufferResource}bufferResource
+   * @param {WebFS}webFS
    * @return {WebGLBuffer}
    */
-  static create (resource, bufferResource) {
-    const webGLFrame = WebGLFrame.create()
+  static create (resource, bufferResource, webFS) {
+    const canvas = window.document.createElement('canvas')
+    const offscreenCanvas = canvas.transferControlToOffscreen()
+    resource.offscreenCanvas(webFS.fromOffscreenCanvas(offscreenCanvas))
+    const webGLFrame = WebGLFrame.create(canvas)
     return new WebGLBuffer(resource, bufferResource, webGLFrame)
   }
 

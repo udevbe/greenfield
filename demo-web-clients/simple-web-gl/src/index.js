@@ -35,15 +35,14 @@ import { initDraw, drawScene } from './webgl-demo'
 class GLBuffer {
   /**
    * @param {GrWebGlProxy}webGL
-   * @param {OffscreenCanvas}offscreenCanvas
    * @param {GLBufferPool}glBufferPool
    * @return {GLBuffer}
    */
-  static create (webGL, offscreenCanvas) {
+  static create (webGL) {
     const proxy = webGL.createWebGlBuffer()
     const bufferProxy = webGL.createBuffer(proxy)
 
-    const glBuffer = new GLBuffer(proxy, bufferProxy, offscreenCanvas)
+    const glBuffer = new GLBuffer(proxy, bufferProxy)
 
     proxy.listener = glBuffer
     bufferProxy.listener = glBuffer
@@ -54,9 +53,8 @@ class GLBuffer {
   /**
    * @param {GrWebGLBufferProxy}proxy
    * @param {WlBufferProxy}bufferProxy
-   * @param {OffscreenCanvas}offscreenCanvas
    */
-  constructor (proxy, bufferProxy, offscreenCanvas) {
+  constructor (proxy, bufferProxy) {
     /**
      * @type {GrWebGLBufferProxy}
      */
@@ -69,11 +67,14 @@ class GLBuffer {
      * @type {OffscreenCanvas}
      * @private
      */
-    this._offscreenCanvas = offscreenCanvas
+    this.canvas = null
   }
 
-  transfer () {
-    this.proxy.transfer(webFS.fromImageBitmap(this._offscreenCanvas.transferToImageBitmap()))
+  /**
+   * @param {WebFD}canvas
+   */
+  async offscreenCanvas (canvas) {
+    this.canvas = await canvas.getTransferable()
   }
 
   /**
@@ -107,39 +108,29 @@ class GLBuffer {
  */
 class Window {
   /**
-   * @param {number}width
-   * @param {number}height
    * @return {Window}
    */
-  static create (width, height) {
+  static create () {
     const registry = display.getRegistry()
-    const offscreenCanvas = new OffscreenCanvas(width, height)
-    const gl = /** @type {WebGLRenderingContext} */offscreenCanvas.getContext('webgl')
-    const window = new Window(registry, offscreenCanvas, gl)
+    const window = new Window(registry)
     registry.listener = window
     return window
   }
 
   /**
    * @param {WlRegistryProxy}registry
-   * @param {OffscreenCanvas} offscreenCanvas
-   * @param {WebGLRenderingContext}gl
    */
-  constructor (registry, offscreenCanvas, gl) {
+  constructor (registry) {
     /**
      * @type {WlRegistryProxy}
      * @protected
      */
     this._registry = registry
     /**
-     * @type {OffscreenCanvas}
-     */
-    this._offscreenCanvas = offscreenCanvas
-    /**
      * @type {WebGLRenderingContext}
      * @protected
      */
-    this._gl = gl
+    this._gl = null
     /**
      * @type {GrWebGlProxy|null}
      * @private
@@ -204,7 +195,7 @@ class Window {
 
       case GrWebGlProxy.protocolName: {
         this._webGL = this._registry.bind(name, GrWebGlProxy.protocolName, GrWebGlProxy, version)
-        this._glBuffer = GLBuffer.create(this._webGL, this._offscreenCanvas)
+        this._glBuffer = GLBuffer.create(this._webGL)
         break
       }
 
@@ -220,11 +211,24 @@ class Window {
     }
   }
 
-  init () {
+  /**
+   * @param {number}width
+   * @param {number}height
+   */
+  async init (width, height) {
     this._shellSurface = this._shell.getShellSurface(this._surface)
     this._shellSurface.listener = this
     this._shellSurface.setToplevel()
     this._shellSurface.setTitle('Simple WebGL')
+
+    const syncPromise = display.sync()
+    display.flush()
+    await syncPromise
+
+    this._glBuffer.canvas.width = width
+    this._glBuffer.canvas.height = height
+    this._gl = /** @type {WebGLRenderingContext} */this._glBuffer.canvas.getContext('webgl')
+
     this._drawState = initDraw(this._gl)
   }
 
@@ -232,21 +236,22 @@ class Window {
    * @param {number}time
    */
   async draw (time) {
-    requestAnimationFrame(() => {
-      drawScene(this._gl, this._drawState, time)
-      this._glBuffer.transfer()
-      this._surface.attach(this._glBuffer.bufferProxy, 0, 0)
-      this._surface.damage(0, 0, this._offscreenCanvas.width, this._offscreenCanvas.height)
+    drawScene(this._gl, this._drawState, time)
+    if (this._gl.commit) {
+      this._gl.commit()
+    }
 
-      // Wait for the compositor to signal that we can draw the next frame.
-      // Note that using 'await' here would result in a deadlock as the event loop would be blocked, and the event
-      // that resolves the await state would never be picked up by the blocked event loop.
-      this._onFrame().then(time => this.draw(time))
+    this._surface.attach(this._glBuffer.bufferProxy, 0, 0)
+    this._surface.damage(0, 0, this._glBuffer.canvas.width, this._glBuffer.canvas.height)
 
-      // serial is only required if our buffer contents would take a long time to send to the compositor ie. in a network remote case
-      this._surface.commit(0)
-      display.flush()
-    })
+    // Wait for the compositor to signal that we can draw the next frame.
+    // Note that using 'await' here would result in a deadlock as the event loop would be blocked, and the event
+    // that resolves the await state would never be picked up by the blocked event loop.
+    this._onFrame().then(time => this.draw(time))
+
+    // serial is only required if our buffer contents would take a long time to send to the compositor ie. in a network remote case
+    this._surface.commit(0)
+    display.flush()
   }
 
   /**
@@ -408,7 +413,7 @@ async function main () {
   await syncPromise
 
   // Now begin drawing after the compositor is done processing all our requests
-  window.init()
+  await window.init(800, 600)
   window.draw(0)
   display.flush()
 

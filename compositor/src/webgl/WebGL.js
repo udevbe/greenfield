@@ -27,17 +27,29 @@ import WebGLBuffer from './WebGLBuffer'
  * @implements GrWebGlRequests
  */
 export default class WebGL extends GrWebGlRequests {
-  static create () {
-    return new WebGL()
+  /**
+   * @param {Session}session
+   * @return {WebGL}
+   */
+  static create (session) {
+    return new WebGL(session.webFS)
   }
 
-  constructor () {
+  /**
+   * @param {WebFS}webFS
+   */
+  constructor (webFS) {
     super()
     /**
      * @type {Global}
      * @private
      */
     this._global = null
+    /**
+     * @type {WebFS}
+     * @private
+     */
+    this._webFS = webFS
     /**
      * @type {Array<GrWebGlResource>}
      * @private
@@ -82,7 +94,7 @@ export default class WebGL extends GrWebGlRequests {
   createBuffer (resource, id, grWebGlBuffer) {
     const wlBufferResource = new WlBufferResource(resource.client, id, resource.version)
 
-    const webGLBuffer = WebGLBuffer.create(grWebGlBuffer, wlBufferResource)
+    const webGLBuffer = WebGLBuffer.create(grWebGlBuffer, wlBufferResource, this._webFS)
 
     grWebGlBuffer.implementation = webGLBuffer
     wlBufferResource.implementation = webGLBuffer

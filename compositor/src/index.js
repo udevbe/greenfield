@@ -57,7 +57,7 @@ async function main () {
     const xdgWmBase = XdgWmBase.create(session, seat)
 
     const webShm = WebShm.create()
-    const webGL = WebGL.create()
+    const webGL = WebGL.create(session)
 
     output.registerGlobal(session.display.registry)
     compositor.registerGlobal(session.display.registry)

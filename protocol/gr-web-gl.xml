@@ -26,12 +26,9 @@
     </copyright>
 
     <interface name="gr_web_gl_buffer" version="1">
-        <request name="transfer">
-            <description summary="transfer contents to compositor">
-                Transfer the associated HTML5 web gl buffer contents to the compositor.
-            </description>
-            <arg name="contents" type="fd" summary="HTML5 web gl image bitmap to transfer to the compositor."/>
-        </request>
+        <event name="offscreen_canvas">
+            <arg name="canvas" type="fd"/>
+        </event>
     </interface>
 
     <interface name="gr_web_gl" version="1">

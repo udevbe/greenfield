@@ -213,10 +213,9 @@ export default class Renderer {
    * @param views
    * @return {Promise<void>}
    */
-  ['image/bitmap'] (webGLFrame, surface, views) {
-    const imageBitmap = webGLFrame.pixelContent
-    views.forEach(view => view.draw(imageBitmap))
-    imageBitmap.close()
+  ['image/canvas'] (webGLFrame, surface, views) {
+    const canvas = webGLFrame.pixelContent
+    views.forEach(view => view.draw(canvas))
   }
 
   /**
