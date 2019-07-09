@@ -29,19 +29,25 @@ export default class WebGLFrame extends BufferContents {
    * @return {WebGLFrame}
    */
   static create (canvas) {
-    return new WebGLFrame(canvas)
+    return new WebGLFrame(canvas, Size.create(canvas.width, canvas.height))
   }
 
   /**
    * @param {HTMLCanvasElement} canvas
+   * @param {Size}size
    */
-  constructor (canvas) {
+  constructor (canvas, size) {
     super()
     /**
      * @type {HTMLCanvasElement}
      * @private
      */
     this._canvas = canvas
+    /**
+     * @type {Size}
+     * @private
+     */
+    this._size = size
   }
 
   /**
@@ -64,5 +70,5 @@ export default class WebGLFrame extends BufferContents {
   /**
    * @return {Size}
    */
-  get size () { return Size.create(this._canvas.width, this._canvas.height) }
+  get size () { return this._size }
 }

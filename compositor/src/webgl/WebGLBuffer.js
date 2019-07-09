@@ -36,16 +36,15 @@ export default class WebGLBuffer extends GrWebGlBufferRequests {
     const canvas = window.document.createElement('canvas')
     const offscreenCanvas = canvas.transferControlToOffscreen()
     resource.offscreenCanvas(webFS.fromOffscreenCanvas(offscreenCanvas))
-    const webGLFrame = WebGLFrame.create(canvas)
-    return new WebGLBuffer(resource, bufferResource, webGLFrame)
+    return new WebGLBuffer(resource, bufferResource, canvas)
   }
 
   /**
    * @param {GrWebGlBufferResource}resource
    * @param {WlBufferResource}bufferResource
-   * @param {WebGLFrame}webGLFrame
+   * @param {HTMLCanvasElement}canvas
    */
-  constructor (resource, bufferResource, webGLFrame) {
+  constructor (resource, bufferResource, canvas) {
     super()
     /**
      * @type {GrWebGlBufferResource}
@@ -56,26 +55,10 @@ export default class WebGLBuffer extends GrWebGlBufferRequests {
      */
     this.bufferResource = bufferResource
     /**
-     * @type {WebGLFrame}
+     * @type {HTMLCanvasElement}
      * @private
      */
-    this._webGLFrame = webGLFrame
-  }
-
-  /**
-   *
-   *                Transfer the associated HTML5 web gl buffer contents to the compositor.
-   *
-   *
-   * @param {GrWebGlBufferResource} resource
-   * @param {WebFD} contents HTML5 web gl image bitmap to transfer to the compositor.
-   *
-   * @since 1
-   *
-   */
-  async transfer (resource, contents) {
-    const imageBitmap = /** @type {ImageBitmap} */ await contents.getTransferable()
-    this._webGLFrame.update(imageBitmap)
+    this._canvas = canvas
   }
 
   /**
@@ -102,7 +85,7 @@ export default class WebGLBuffer extends GrWebGlBufferRequests {
    * @return {Promise<WebGLFrame>}
    */
   async getContents (serial) {
-    return this._webGLFrame
+    return WebGLFrame.create(this._canvas)
   }
 
   release () {

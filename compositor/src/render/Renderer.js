@@ -214,6 +214,9 @@ export default class Renderer {
    * @return {Promise<void>}
    */
   ['image/canvas'] (webGLFrame, surface, views) {
+    // TODO if the source canvas is updated using an offscreen canvas, we can directly use the source canvas as the
+    // front buffer and avoid doing a copy here. This is possible as the offscreen canvas will use double buffering to
+    // update the source canvas and as such we don't have to use our own double buffering solution.
     const canvas = webGLFrame.pixelContent
     views.forEach(view => view.draw(canvas))
   }
