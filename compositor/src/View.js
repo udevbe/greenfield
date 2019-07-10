@@ -293,7 +293,7 @@ export default class View {
 
     // FIXME adjust final transformation with additional transformations defined in the surface
     this._applyTransformationsBackBuffer()
-    this.bufferedCanvas.drawBackBuffer(image)
+    this.bufferedCanvas.draw(image)
   }
 
   /**

@@ -32,12 +32,11 @@ import AppsIcon from '@material-ui/icons/Apps'
 import { ListItemText } from '@material-ui/core'
 import ListItemIcon from '@material-ui/core/es/ListItemIcon'
 import Divider from '@material-ui/core/es/Divider'
-import Slider from '@material-ui/lab/es/Slider'
+import Slider from '@material-ui/core/es/Slider'
 import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction'
 import Seat from '../../Seat'
 import KeymapSettings from './KeymapSettings'
 import AppLauncherEntry from '../AppLauncherEntry'
-import Icon from '@material-ui/core/es/Icon'
 import IconButton from '@material-ui/core/es/IconButton'
 
 const styles = theme => ({
@@ -117,6 +116,9 @@ class SettingsDrawer extends React.Component {
     const { scrollSpeed } = this.state
     return (
       <Drawer
+        ModalProps={{
+          keepMounted: true
+        }}
         open={open}
         onClose={onClose}
       >

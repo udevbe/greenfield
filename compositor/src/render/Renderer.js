@@ -204,7 +204,8 @@ export default class Renderer {
    * @return {Promise<void>}
    */
   ['image/rgba'] (shmFrame, surface, views) {
-    views.forEach(view => view.draw(shmFrame.pixelContent))
+    const imageData = shmFrame.pixelContent
+    views.forEach(view => view.draw(imageData))
   }
 
   /**

@@ -93,17 +93,8 @@ export default class BufferedCanvas {
   /**
    * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap | ImageData}image
    */
-  drawBackBuffer (image) {
-    this._draw(this.backContext, image)
-  }
-
-  /**
-   * @param {CanvasRenderingContext2D} renderingContext
-   * @param {HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap | ImageData}image
-   * @private
-   */
-  _draw (renderingContext, image) {
-    const canvas = renderingContext.canvas
+  draw (image) {
+    const canvas = this.backContext.canvas
 
     if (image instanceof window.ImageData) {
       if (canvas.width !== image.width || canvas.height !== image.height) {
@@ -112,7 +103,7 @@ export default class BufferedCanvas {
         canvas.height = image.height
       }
       // TODO we could optimize by taking damage into account
-      renderingContext.putImageData(image, 0, 0)
+      this.backContext.putImageData(image, 0, 0)
     } else {
       if (canvas.width !== image.width || canvas.height !== image.height) {
         // resizing clears the canvas
@@ -120,10 +111,10 @@ export default class BufferedCanvas {
         canvas.height = image.height
       } else {
         // clear canvas
-        renderingContext.clearRect(0, 0, canvas.width, canvas.height)
+        this.backContext.clearRect(0, 0, canvas.width, canvas.height)
       }
 
-      renderingContext.drawImage(image, 0, 0)
+      this.backContext.drawImage(image, 0, 0)
     }
   }
 
