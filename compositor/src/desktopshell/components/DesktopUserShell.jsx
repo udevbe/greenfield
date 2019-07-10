@@ -39,6 +39,12 @@ import Snackbar from '@material-ui/core/es/Snackbar'
 import NotificationContent from './NotificationContent'
 import WebAppSocket from '../../WebAppSocket'
 import RemoteSocket from '../../RemoteSocket'
+import { createMuiTheme } from '@material-ui/core'
+import { ThemeProvider } from '@material-ui/styles'
+
+const theme = createMuiTheme({
+  props: {}
+})
 
 // TODO we probably want a more mvvm like structure here
 class DesktopUserShell extends React.Component {
@@ -285,43 +291,45 @@ class DesktopUserShell extends React.Component {
     return (
       <>
         <CssBaseline />
-        <Overlay off={!!user}>
-          <Logo />
-          <Login id={'auth-container'} />
-        </Overlay>
-        <TopPanel
-          user={user}
-          managedSurfaces={managedSurfaces}
-          activeManagedSurface={activeManagedSurface}
-          seat={seat}
-          webAppLauncher={webAppLauncher}
-          remoteAppLauncher={remoteAppLauncher}
-        />
-        {
-          notifications.map(notification =>
-            <Snackbar
-              key={notification.variant + notification.message}
-              open
-              anchorOrigin={{
-                vertical: 'bottom',
-                horizontal: 'left'
-              }}
-              autoHideDuration={6000}
-              onClose={(event, reason) => this._closeNotification(reason, notification)}
-            >
-              <NotificationContent
+        <ThemeProvider theme={theme}>
+          <Overlay off={!!user}>
+            <Logo />
+            <Login id={'auth-container'} />
+          </Overlay>
+          <TopPanel
+            user={user}
+            managedSurfaces={managedSurfaces}
+            activeManagedSurface={activeManagedSurface}
+            seat={seat}
+            webAppLauncher={webAppLauncher}
+            remoteAppLauncher={remoteAppLauncher}
+          />
+          {
+            notifications.map(notification =>
+              <Snackbar
+                key={notification.variant + notification.message}
+                open
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'left'
+                }}
+                autoHideDuration={6000}
                 onClose={(event, reason) => this._closeNotification(reason, notification)}
-                variant={notification.variant}
-                message={notification.message}
-              />
-            </Snackbar>
-          )
-        }
-        <Workspace
-          managedSurfaces={managedSurfaces}
-          activeManagedSurface={activeManagedSurface}
-          seat={seat}
-        />
+              >
+                <NotificationContent
+                  onClose={(event, reason) => this._closeNotification(reason, notification)}
+                  variant={notification.variant}
+                  message={notification.message}
+                />
+              </Snackbar>
+            )
+          }
+          <Workspace
+            managedSurfaces={managedSurfaces}
+            activeManagedSurface={activeManagedSurface}
+            seat={seat}
+          />
+        </ThemeProvider>
       </>
     )
   }

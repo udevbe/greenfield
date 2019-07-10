@@ -19,56 +19,51 @@
 
 import React from 'react'
 import PropTypes from 'prop-types'
-
-import { withStyles } from '@material-ui/core/styles'
 import Tabs from '@material-ui/core/es/Tabs'
 
 import Seat from '../../Seat'
 import ManagedSurface from '../ManagedSurface'
-import RunningAppEntry from './RunningAppEntry'
 import AppLauncherEntry from '../AppLauncherEntry'
 
-const styles = {}
+import RunningAppEntry from './RunningAppEntry'
 
-class RunningAppsContainer extends React.Component {
-  render () {
-    const { seat, activeManagedSurface, managedSurfaces, appLauncherEntries } =
-      /** @type {{appLauncherEntries: Array<AppLauncherEntry>, seat: Seat, activeManagedSurface:ManagedSurface}} */this.props
-    if (appLauncherEntries.length === 0) return null
+function RunningAppsContainer (props) {
+  const { seat, activeManagedSurface, managedSurfaces, appLauncherEntries } =
+    /** @type {{appLauncherEntries: Array<AppLauncherEntry>, seat: Seat, activeManagedSurface:ManagedSurface}} */props
+  if (appLauncherEntries.length === 0) return null
 
-    let value = false
-    if (activeManagedSurface) {
-      const activeAppLauncherEntry = appLauncherEntries.find(appLauncherEntry => appLauncherEntry.client === activeManagedSurface.surface.resource.client)
-      value = activeAppLauncherEntry === null ? false : appLauncherEntries.indexOf(activeAppLauncherEntry)
-    }
-
-    return (
-      <Tabs
-        value={value}
-        indicatorColor='primary'
-        textColor='primary'
-        variant='scrollable'
-        scrollButtons='auto'
-      >
-        {
-          appLauncherEntries
-            .map(appLauncherEntry => {
-              const { client, id } = appLauncherEntry
-              return (
-                <RunningAppEntry
-                  key={`${id}`}
-                  seat={seat}
-                  client={client}
-                  appLauncherEntry={appLauncherEntry}
-                  activeManagedSurface={activeManagedSurface}
-                  managedSurfaces={managedSurfaces}
-                />
-              )
-            })
-        }
-      </Tabs>
-    )
+  let value = false
+  if (activeManagedSurface) {
+    const activeAppLauncherEntry = appLauncherEntries.find(appLauncherEntry => appLauncherEntry.client === activeManagedSurface.surface.resource.client)
+    value = activeAppLauncherEntry === null ? false : appLauncherEntries.indexOf(activeAppLauncherEntry)
   }
+
+  return (
+    <Tabs
+      value={value}
+      indicatorColor='primary'
+      textColor='primary'
+      variant='scrollable'
+      scrollButtons='auto'
+    >
+      {
+        appLauncherEntries
+          .map(appLauncherEntry => {
+            const { client, id } = appLauncherEntry
+            return (
+              <RunningAppEntry
+                key={`${id}`}
+                seat={seat}
+                client={client}
+                appLauncherEntry={appLauncherEntry}
+                activeManagedSurface={activeManagedSurface}
+                managedSurfaces={managedSurfaces}
+              />
+            )
+          })
+      }
+    </Tabs>
+  )
 }
 
 RunningAppsContainer.propTypes = {
@@ -80,4 +75,4 @@ RunningAppsContainer.propTypes = {
   appLauncherEntries: PropTypes.arrayOf(AppLauncherEntry).isRequired
 }
 
-export default withStyles(styles)(RunningAppsContainer)
+export default RunningAppsContainer

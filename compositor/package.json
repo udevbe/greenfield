@@ -34,9 +34,10 @@
   },
   "homepage": "https://github.com/udevbe/greenfield#readme",
   "dependencies": {
-    "@material-ui/lab": "^4.0.0-alpha.19",
     "@material-ui/core": "^4.2.0",
     "@material-ui/icons": "^4.2.1",
+    "@material-ui/lab": "^4.0.0-alpha.19",
+    "@material-ui/styles": "^4.2.0",
     "compression": "^1.7.4",
     "express": "^4.17.1",
     "firebase": "^6.2.4",

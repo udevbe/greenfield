@@ -129,7 +129,7 @@ const styles = theme => ({
   }
 })
 
-class LauncherMenu extends React.Component {
+class LauncherMenu extends React.PureComponent {
   constructor (props) {
     super(props)
     /**

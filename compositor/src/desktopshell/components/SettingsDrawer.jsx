@@ -64,21 +64,12 @@ const styles = theme => ({
   }
 })
 
-class SettingsDrawer extends React.Component {
+class SettingsDrawer extends React.PureComponent {
   constructor (props) {
     super(props)
     this.state = {
       scrollSpeed: (props.seat.pointer.scrollFactor * 100)
     }
-  }
-
-  /**
-   * @param event
-   * @private
-   */
-  _handleKeymapLayoutUpdate (event) {
-    const keymapLayout = event.target.value
-    this.setState(() => ({ keymapLayout }))
   }
 
   /**

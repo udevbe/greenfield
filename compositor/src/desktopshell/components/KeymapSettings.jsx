@@ -14,7 +14,7 @@ const styles = theme => ({
 })
 
 // TODO make a component that takes up the whole settings drawer space & includes all keyboard related settings.
-class KeymapSettings extends React.Component {
+class KeymapSettings extends React.PureComponent {
   // TODO We need to extend the component keymap settings to make the model selection flexible
   // TODO We need to extend the component keymap settings to make the option selection flexible
 

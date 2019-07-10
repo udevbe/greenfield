@@ -44,7 +44,7 @@ const styles = {
   }
 }
 
-class UserMenu extends React.Component {
+class UserMenu extends React.PureComponent {
   _handleLogout () {
     const { onClose } = this.props
 

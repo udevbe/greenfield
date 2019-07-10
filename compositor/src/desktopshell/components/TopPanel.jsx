@@ -58,7 +58,7 @@ const styles = {
   }
 }
 
-class TopPanel extends React.Component {
+class TopPanel extends React.PureComponent {
   constructor (props) {
     super(props)
     this.state = {

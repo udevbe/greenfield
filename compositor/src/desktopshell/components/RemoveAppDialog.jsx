@@ -30,7 +30,7 @@ function SlideUp (props) {
   return <Slide direction='up' {...props} />
 }
 
-class RemoveAppDialog extends React.Component {
+class RemoveAppDialog extends React.PureComponent {
   async _removeApp () {
     const { appToRemove: appLauncherEntry, appRemoveClose, user } = this.props
     if (user) {
