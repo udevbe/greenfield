@@ -17,15 +17,13 @@
 
 'use strict'
 
-import GrWebGlBufferRequests from '../protocol/GrWebGlBufferRequests'
 import WebGLFrame from './WebGLFrame'
 
 /**
- * @implements {GrWebGlBufferRequests}
  * @implements {WlBufferRequests}
  * @implements BufferImplementation
  */
-export default class WebGLBuffer extends GrWebGlBufferRequests {
+export default class WebGLBuffer {
   /**
    * @param {GrWebGlBufferResource}resource
    * @param {WlBufferResource}bufferResource
@@ -45,7 +43,6 @@ export default class WebGLBuffer extends GrWebGlBufferRequests {
    * @param {HTMLCanvasElement}canvas
    */
   constructor (resource, bufferResource, canvas) {
-    super()
     /**
      * @type {GrWebGlBufferResource}
      */
