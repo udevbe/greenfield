@@ -39,12 +39,10 @@ import Snackbar from '@material-ui/core/es/Snackbar'
 import NotificationContent from './NotificationContent'
 import WebAppSocket from '../../WebAppSocket'
 import RemoteSocket from '../../RemoteSocket'
-import { createMuiTheme } from '@material-ui/core'
-import { ThemeProvider } from '@material-ui/styles'
+import { createMuiTheme, MuiThemeProvider } from '@material-ui/core/es/styles'
+import themeConfig from './theme.json'
 
-const theme = createMuiTheme({
-  props: {}
-})
+const theme = createMuiTheme(themeConfig)
 
 // TODO we probably want a more mvvm like structure here
 class DesktopUserShell extends React.Component {
@@ -291,7 +289,7 @@ class DesktopUserShell extends React.Component {
     return (
       <>
         <CssBaseline />
-        <ThemeProvider theme={theme}>
+        <MuiThemeProvider theme={theme}>
           <Overlay off={!!user}>
             <Logo />
             <Login id={'auth-container'} />
@@ -329,7 +327,7 @@ class DesktopUserShell extends React.Component {
             activeManagedSurface={activeManagedSurface}
             seat={seat}
           />
-        </ThemeProvider>
+        </MuiThemeProvider>
       </>
     )
   }
