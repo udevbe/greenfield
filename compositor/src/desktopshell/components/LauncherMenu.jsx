@@ -38,7 +38,6 @@ import Fade from '@material-ui/core/es/Fade'
 import RemoveAppDialog from './RemoveAppDialog'
 import Tooltip from '@material-ui/core/es/Tooltip/Tooltip'
 import RemoteAppLauncher from '../../RemoteAppLauncher'
-import AppLauncherEntry from '../AppLauncherEntry'
 import ManagedSurface from '../ManagedSurface'
 import Seat from '../../Seat'
 
@@ -82,7 +81,7 @@ const styles = theme => ({
     left: -GRID_ITEM_MARGIN,
     right: -GRID_ITEM_MARGIN,
     [theme.breakpoints.down('sm')]: {
-      backgroundColor: theme.palette.secondary.main
+      backgroundColor: theme.palette.background.default
     },
     bottom: -GRID_ITEM_MARGIN,
     color: theme.palette.common.white
@@ -272,7 +271,7 @@ class LauncherMenu extends React.PureComponent {
             <Tooltip title='Delete' enterDelay={500}>
               <Fab
                 className={classes.imageDeleteIcon}
-                color='primary'
+                color='secondary'
                 onClick={() => this._appRemoveOpen(appLauncherEntry)}
               >
                 <DeleteIcon />

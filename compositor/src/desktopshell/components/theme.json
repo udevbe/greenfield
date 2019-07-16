@@ -2,7 +2,7 @@
   "palette": {
     "common": {
       "black": "#000",
-      "white": "#fff"
+      "white": "rgba(240, 240, 240, 1)"
     },
     "background": {
       "paper": "rgba(240, 240, 240, 1)",

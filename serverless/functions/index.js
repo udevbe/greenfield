@@ -1,6 +1,6 @@
 const functions = require('firebase-functions')
 const admin = require('firebase-admin')
-const app = admin.initializeApp()
+const fireBaseApp = admin.initializeApp()
 
 /**
  * @param {express.Request}req
@@ -10,7 +10,7 @@ const app = admin.initializeApp()
 async function _getUserToken (req) {
   if (req.headers.authorization && req.headers.authorization.split(' ')[0] === 'Bearer') {
     const userToken = req.headers.authorization.split(' ')[1]
-    return app.auth().verifyIdToken(userToken, true)
+    return fireBaseApp.auth().verifyIdToken(userToken, true)
   } else {
     throw new Error('Auth missing.')
   }
@@ -53,7 +53,7 @@ async function authorizeApplicationLaunch (req, res) {
     // This is a pretty dumb security check but it'll have to do for now.
     // FIXME Instead of checking a user has the application in it's launcher menu, we want to give app launcher entries a generated signature based on the user unique id + app id. That way other users can't fake an app launcher entry.
     // TODO write a function that can generate such a signature, given a JWT token with a new custom claim, a target uid and a target app id.
-    const applicationLauncherEntry = await app.firestore().collection('users').doc(decodedToken.uid).collection('appLauncherEntries').doc(applicationId).get()
+    const applicationLauncherEntry = await fireBaseApp.firestore().collection('users').doc(decodedToken.uid).collection('appLauncherEntries').doc(applicationId).get()
     if (applicationLauncherEntry.exists) {
       res.sendStatus(200)
     } else {

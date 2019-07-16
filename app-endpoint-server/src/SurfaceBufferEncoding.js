@@ -17,6 +17,12 @@
 
 'use strict'
 
+const Logger = require('pino')
+const logger = Logger({
+  name: `buffer-encoding`,
+  prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
+})
+
 const { WireMessageUtil, Endpoint } = require('westfield-endpoint')
 
 const wlSurfaceInterceptor = require('./protocol/wl_surface_interceptor')
@@ -24,6 +30,7 @@ const Encoder = require('./encoding/Encoder')
 
 class SurfaceBufferEncoding {
   static init () {
+
     /**
      * attach
      * @param {{buffer: ArrayBuffer, fds: Array<number>, bufferOffset: number, consumed: number, size: number}} message
@@ -68,6 +75,10 @@ class SurfaceBufferEncoding {
           if (this.userData.communicationChannel.readyState === 1) { // 1 === 'open'
             this.userData.communicationChannel.send(sendBuffer.buffer.slice(sendBuffer.byteOffset, sendBuffer.byteOffset + sendBuffer.byteLength))
           } // else connection was probably closed, don't attempt to send a buffer chunk
+        }).catch(e => {
+          logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+          logger.error('error object stack: ')
+          logger.error(e.stack)
         })
       }
 

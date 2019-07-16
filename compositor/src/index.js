@@ -30,9 +30,13 @@ import Subcompositor from './Subcompositor'
 import './style/greenfield.css'
 import XdgWmBase from './XdgWmBase'
 import DesktopUserShell from './desktopshell/components/DesktopUserShell.jsx'
+
+import userShell from './UserShell'
+
 import auth from './desktopshell/Auth'
 import WebShm from './webshm/WebShm'
 import WebGL from './webgl/WebGL'
+import Renderer from './render/Renderer'
 
 async function main () {
   try {
@@ -49,7 +53,8 @@ async function main () {
 
     await auth.whenLogin()
     const output = Output.create()
-    const compositor = Compositor.create(session, seat)
+    const renderer = Renderer.create()
+    const compositor = Compositor.create(session, renderer, seat)
     const dataDeviceManager = DataDeviceManager.create()
     const subcompositor = Subcompositor.create()
 
@@ -96,6 +101,7 @@ async function main () {
     console.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
     console.error('error object stack: ')
     console.error(e.stack)
+    userShell.notify('error', e.message)
   }
 }
 
@@ -114,9 +120,26 @@ function loadNativeModule (module) {
   })
 }
 
+function isWasmSupported () {
+  try {
+    if (typeof window.WebAssembly === 'object' &&
+      typeof window.WebAssembly.instantiate === 'function') {
+      const module = new window.WebAssembly.Module(Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00))
+      if (module instanceof window.WebAssembly.Module) { return new window.WebAssembly.Instance(module) instanceof window.WebAssembly.Instance }
+    }
+  } catch (e) {
+  }
+  return false
+}
+
 window.onload = async () => {
-  // make sure all native modules are ready for use before we start our main flow
-  await loadNativeModule(pixman)
-  await loadNativeModule(libxkbcommon)
-  await main()
+  if (isWasmSupported()) {
+    // make sure all native modules are ready for use before we start our main flow
+    await loadNativeModule(pixman)
+    await loadNativeModule(libxkbcommon)
+    await main()
+  } else {
+    // No point in continuing. Error out.
+    window.alert('WebAssembly is not supported on your browser. Nothing more we can do.')
+  }
 }

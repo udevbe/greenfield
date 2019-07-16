@@ -28,7 +28,7 @@ const styles = {
     color: '#565656'
   },
   i: {
-    color: '#33cc33;'
+    color: 'rgba(111, 174, 42, 1);'
   }
 }
 

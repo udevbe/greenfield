@@ -39,7 +39,7 @@ class UserShell {
    * @param {'success'|'warning'|'error'|'info'}variant
    * @param {string}message
    */
-  notify (variant, message) {}
+  notify (variant, message) { window.alert(`${variant}: ${message}`) }
 }
 
 export default new UserShell()

@@ -59,25 +59,32 @@ class Encoder {
     this._queue = []
   }
 
+  /**
+   * @private
+   */
   _doEncodeBuffer () {
-    const { pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, resolve } = this._queue[0]
+    const { pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, resolve, reject } = this._queue[0]
 
-    let encodingPromise = null
+    try {
+      let encodingPromise = null
 
-    const bufferArea = bufferWidth * bufferHeight
-    if (bufferArea <= sessionConfig.encoder.maxPngBufferSize) {
-      encodingPromise = this._encodePNGFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial)
-    } else {
-      encodingPromise = this._encodeFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial)
-    }
-
-    encodingPromise.then((encodedFrame) => {
-      this._queue.shift()
-      if (this._queue.length) {
-        this._doEncodeBuffer()
+      const bufferArea = bufferWidth * bufferHeight
+      if (bufferArea <= sessionConfig.encoder.maxPngBufferSize) {
+        encodingPromise = this._encodePNGFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial)
+      } else {
+        encodingPromise = this._encodeFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial)
       }
-      resolve(encodedFrame)
-    })
+
+      encodingPromise.then(encodedFrame => {
+        this._queue.shift()
+        if (this._queue.length) {
+          this._doEncodeBuffer()
+        }
+        resolve(encodedFrame)
+      }).catch(error => reject(error))
+    } catch (e) {
+      reject(e)
+    }
   }
 
   /**
@@ -95,8 +102,8 @@ class Encoder {
       this._frameEncoder = null
     }
 
-    return new Promise((resolve) => {
-      this._queue.push({ pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, resolve })
+    return new Promise((resolve, reject) => {
+      this._queue.push({ pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, resolve, reject })
       if (this._queue.length === 1) {
         this._doEncodeBuffer()
       }

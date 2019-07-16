@@ -102,7 +102,7 @@ class TopPanel extends React.PureComponent {
       })
     appLauncherEntries.forEach(appLauncherEntry => appLauncherEntry.clientListeners.push(() => {
       if (appLauncherEntry.client) {
-        this.setState(oldState => ({ runningAppLauncherEntries: [appLauncherEntry, ...oldState.runningAppLauncherEntries] }))
+        this.setState(oldState => ({ runningAppLauncherEntries: [...oldState.runningAppLauncherEntries, appLauncherEntry] }))
       } else {
         this.setState(oldState => ({ runningAppLauncherEntries: oldState.runningAppLauncherEntries.filter(runningAppLauncherEntry => runningAppLauncherEntry !== appLauncherEntry) }))
       }

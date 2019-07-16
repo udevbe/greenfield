@@ -24,7 +24,6 @@ import WlRegionResource from './protocol/WlRegionResource'
 
 import Surface from './Surface'
 import Region from './Region'
-import GLRenderer from './render/Renderer'
 
 /**
  *
@@ -36,12 +35,12 @@ import GLRenderer from './render/Renderer'
 export default class Compositor extends WlCompositorRequests {
   /**
    * @param {!Session} session
+   * @param {Renderer}renderer
    * @param {!Seat} seat
    * @returns {!Compositor}
    */
-  static create (session, seat) {
-    const glCanvasRenderer = GLRenderer.create()
-    return new Compositor(session, glCanvasRenderer, seat)
+  static create (session, renderer, seat) {
+    return new Compositor(session, renderer, seat)
   }
 
   /**
