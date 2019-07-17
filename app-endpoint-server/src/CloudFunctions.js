@@ -28,18 +28,22 @@ const https = require('https')
  */
 async function _call (functionName, userToken, query) {
   return new Promise((resolve, reject) => {
-    const url = new URL(`https://europe-west1-greenfield-app-0.cloudfunctions.net/${functionName}`)
-    if (query) {
-      Object.entries(query).forEach(([key, value]) => url.searchParams.append(key, value))
-    }
+    try {
+      const url = new URL(`https://europe-west1-greenfield-app-0.cloudfunctions.net/${functionName}`)
+      if (query) {
+        Object.entries(query).forEach(([key, value]) => url.searchParams.append(key, value))
+      }
 
-    if (userToken.length) {
-      https.get(
-        url,
-        { headers: { Authorization: `Bearer ${userToken}` } },
-        res => resolve(res))
-    } else {
-      reject(new Error('Auth failed.'))
+      if (userToken.length) {
+        https.get(
+          url,
+          { headers: { Authorization: `Bearer ${userToken}` } },
+          res => resolve(res))
+      } else {
+        reject(new Error('Auth failed.'))
+      }
+    } catch (e) {
+      reject(e)
     }
   })
 }
