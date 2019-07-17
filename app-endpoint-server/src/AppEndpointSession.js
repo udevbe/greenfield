@@ -18,6 +18,10 @@
 'use strict'
 
 const Logger = require('pino')
+const logger = Logger({
+  name: `app-endpoint-session-process`,
+  prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
+})
 
 require('json5/lib/register')
 // eslint-disable-next-line camelcase
@@ -177,21 +181,21 @@ async function _handleFirstUpgrade (webSocketServer, webSocket, headers, query) 
     const { query, ...req } = request[0]
     const head = request[1]
 
-    // handle subsequent upgrades
-    webSocketServer.handleUpgrade(
-      req,
-      socket,
-      head,
-      webSocket => appEndpointSession.handleConnection(webSocket, req.headers, query)
-    )
+    if (socket) {
+      // handle subsequent upgrades
+      webSocketServer.handleUpgrade(
+        req,
+        socket,
+        head,
+        webSocket => appEndpointSession.handleConnection(webSocket, req.headers, query)
+      )
+    } else {
+      logger.warn('Received a non-existent websocket. Ignoring')
+    }
   })
 }
 
 function main () {
-  const logger = Logger({
-    name: `app-endpoint-session-process`,
-    prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
-  })
   process.on('uncaughtException', e => {
     logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
     logger.error('error object stack: ')
@@ -205,9 +209,12 @@ function main () {
   process.once('message', (request, socket) => {
     const { query, ...req } = request[0]
     const head = request[1]
-
-    // handle first websocket connection
-    webSocketServer.handleUpgrade(req, socket, head, webSocket => _handleFirstUpgrade(webSocketServer, webSocket, req.headers, query))
+    if (socket) {
+      // handle first websocket connection
+      webSocketServer.handleUpgrade(req, socket, head, webSocket => _handleFirstUpgrade(webSocketServer, webSocket, req.headers, query))
+    } else {
+      logger.warn('Received a non-existent websocket. Ignoring')
+    }
   })
 }
 
