@@ -84,12 +84,7 @@ class AppEndpointServer {
   async handleHttpUpgradeRequest (request, socket, head) {
     try {
       const userToken = request.headers['sec-websocket-protocol']
-      try {
-        await verifyRemoteAppLaunchClaim(userToken)
-      } catch (e) {
-        this._denyWebSocket(socket, 403, e)
-        return
-      }
+      const remoteAppLaunchClaimPromise = verifyRemoteAppLaunchClaim(userToken)
 
       const wsURL = url.parse(request.url, true)
       const compositorSessionId = wsURL.query.compositorSessionId
@@ -105,7 +100,13 @@ class AppEndpointServer {
           })
         }
 
-        console.log(`socket: ${socket}`)
+        try {
+          await remoteAppLaunchClaimPromise
+        } catch (e) {
+          this._denyWebSocket(socket, 403, e)
+          return
+        }
+
         appEndpointSessionFork.send(
           [{
             headers: request.headers,
