@@ -24,17 +24,6 @@ const path = require('path')
 const http = require('http')
 const url = require('url')
 
-const firebase = require('firebase/app')
-require('firebase/functions')
-const config = {
-  apiKey: 'AIzaSyBrPVY5tkBYcVUrxZywVDD4gAlHPTdhklw',
-  authDomain: 'greenfield-app-0.firebaseapp.com',
-  databaseURL: 'https://greenfield-app-0.firebaseio.com',
-  projectId: 'greenfield-app-0',
-  storageBucket: 'greenfield-app-0.appspot.com',
-  messagingSenderId: '645736998883'
-}
-
 const { serverConfig } = require('../config.json5')
 const { verifyRemoteAppLaunchClaim } = require('./CloudFunctions')
 
@@ -50,12 +39,10 @@ class AppEndpointServer {
       prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
     })
 
-    const app = firebase.initializeApp(config)
-
     const server = http.createServer()
     const { timeout, hostname, port } = serverConfig.httpServer
     server.setTimeout(timeout)
-    const appEndpointDaemon = new AppEndpointServer(logger, app)
+    const appEndpointDaemon = new AppEndpointServer(logger)
     // TODO configure server to only accept websocket connections
     server.on('upgrade', (request, socket, head) => appEndpointDaemon.handleHttpUpgradeRequest(request, socket, head))
     server.listen(port, hostname)
@@ -66,10 +53,8 @@ class AppEndpointServer {
 
   /**
    * @param {Object}logger
-   * @param {firebase.app.App}app
    */
-  constructor (logger, app) {
-    this._app = app
+  constructor (logger) {
     /**
      * @private
      */
@@ -120,11 +105,13 @@ class AppEndpointServer {
           })
         }
 
-        appEndpointSessionFork.send([{
-          headers: request.headers,
-          method: request.method,
-          query: wsURL.query
-        }, head], socket)
+        console.log(`socket: ${socket}`)
+        appEndpointSessionFork.send(
+          [{
+            headers: request.headers,
+            method: request.method,
+            query: wsURL.query
+          }, head], socket)
       } else {
         const msg = `Received web socket upgrade request with compositor session id: ${compositorSessionId}. Id is not a valid uuid.`
         this._logger.error(msg)
