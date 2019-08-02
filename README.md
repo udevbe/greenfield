@@ -7,7 +7,7 @@ applications remotely or it can run Wayland [web applications](https://preview.g
 
 No plugins required.
 
-For more information, visit the [documentation](https://www.greenfield.app/docs/).
+For more information, visit the [documentation](https://greenfield.app/docs/).
 
 
 ### Media
