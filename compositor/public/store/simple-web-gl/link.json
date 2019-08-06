@@ -1,7 +1,7 @@
 {
   "id": "simple-web-gl",
   "title": "Simple Web GL",
-  "icon": "http://localhost:8080/store/simple-web-gl/icon.svg",
+  "icon": "https://preview.greenfield.app/store/simple-web-gl/icon.svg",
   "type": "web",
-  "url": "http://localhost:8080/store/simple-web-gl/app.js"
+  "url": "https://preview.greenfield.app/store/simple-web-gl/app.js"
 }

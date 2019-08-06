@@ -17,7 +17,6 @@
 
 import {
   display,
-  webFS,
   frame,
   WlCompositorProxy,
   GrWebGlProxy,
@@ -237,9 +236,6 @@ class Window {
    */
   async draw (time) {
     drawScene(this._gl, this._drawState, time)
-    if (this._gl.commit) {
-      this._gl.commit()
-    }
 
     this._surface.attach(this._glBuffer.bufferProxy, 0, 0)
     this._surface.damage(0, 0, this._glBuffer.canvas.width, this._glBuffer.canvas.height)

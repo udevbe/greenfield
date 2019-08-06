@@ -53,7 +53,7 @@ class H264AlphaEncoder {
       glupload ! 
       glcolorconvert ! 
       glshader fragment="
-        #version 100
+        #version 120
         #ifdef GL_ES
         precision mediump float;
         #endif
