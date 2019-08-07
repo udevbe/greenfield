@@ -69,7 +69,7 @@ class SurfaceBufferEncoding {
         this.bufferResourceId = 0
 
         const { buffer, format, width, height } = Endpoint.getShmBuffer(this.wlClient, bufferId)
-        this.encoder.encodeBuffer(Buffer.from(buffer), format, width, height, syncSerial, []).then((/** @type {EncodedFrame} */encodedFrame) => {
+        this.encoder.encodeBuffer(Buffer.from(buffer), format, width, height, syncSerial).then((/** @type {EncodedFrame} */encodedFrame) => {
           // send buffer contents. opcode: 3. bufferId + chunk
           const sendBuffer = Buffer.concat([Buffer.from(new Uint32Array([3, bufferId]).buffer), encodedFrame.toBuffer()])
           if (this.userData.communicationChannel.readyState === 1) { // 1 === 'open'
