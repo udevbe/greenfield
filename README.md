@@ -9,6 +9,19 @@ No plugins required.
 
 For more information, visit the [documentation](https://greenfield.app/docs/).
 
+### Quick Demo
+- `git clone https://github.com/udevbe/greenfield.git`
+- `cd greenfield`
+- `docker-compose up`
+- Go to https://preview.greenfield.app. Click the top right raster icon. Click the + icon. Click the cloud icon.
+Select the [remote-gtk3-demo](https://github.com/udevbe/greenfield/blob/master/compositor/public/store/remote-gtk3-demo/link.json)
+link file.
+
+If you are using Firefox, you might need to go to`about:config` and toggle `network.websocket.allowInsecureFromHTTPS`
+
+There is also [simple-webgl](https://github.com/udevbe/greenfield/blob/master/compositor/public/store/simple-web-gl/link.json) 
+and [simple-shm](https://github.com/udevbe/greenfield/blob/master/compositor/public/store/simple-web-shm/link.json) 
+which demo how apps can run directly in the browser and as such do not require the use of docker.
 
 ### Media
 Fosdem presentation + demo (2 Feb 2019):
