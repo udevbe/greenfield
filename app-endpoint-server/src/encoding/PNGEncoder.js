@@ -43,9 +43,14 @@ class PNGEncoder {
    */
   static create (width, height, wlShmFormat) {
     const gstBufferFormat = gstFormats[wlShmFormat]
+    // This adds transparent padding to make the image at least 16x16, else the png encoder will resize the image
+    const rightPadding = width < 16 ? width - 16 : 0
+    const bottomPadding = height < 16 ? height - 16 : 0
+
     const pipeline = new gstreamer.Pipeline(
-      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! 
-      videoconvert ! videoscale  ! 
+      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 !
+      videobox border-alpha=0.0 bottom=${bottomPadding} right=${rightPadding} !
+      videoconvert ! videoscale !  
       pngenc ! 
       appsink max-buffers=1 name=sink`
     )
