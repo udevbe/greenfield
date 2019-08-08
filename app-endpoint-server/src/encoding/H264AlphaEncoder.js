@@ -67,6 +67,20 @@ class H264AlphaEncoder {
           vec4 pix = texture2D(tex, v_texcoord);
           gl_FragColor = vec4(pix.a,pix.a,pix.a,0);
         }
+      " 
+      vertex = "
+        #version 120
+        #ifdef GL_ES
+        precision mediump float;
+        #endif
+        attribute vec4 a_position;
+        attribute vec2 a_texcoord;
+        varying vec2 v_texcoord;
+        
+        void main() {
+          gl_Position = a_position;
+          v_texcoord = a_texcoord;
+      }
       " ! 
       glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! 
       gldownload ! 
