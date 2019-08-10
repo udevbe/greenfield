@@ -37,7 +37,7 @@ export default class StreamingBuffer extends WlBufferRequests {
    * @return {!StreamingBuffer}
    */
   static create (wlBufferResource) {
-    const bufferStream = BufferStream.create()
+    const bufferStream = BufferStream.create(wlBufferResource)
     const buffer = new StreamingBuffer(wlBufferResource, bufferStream)
     wlBufferResource.implementation = buffer
     return buffer

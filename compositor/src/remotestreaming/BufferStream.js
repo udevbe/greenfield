@@ -21,10 +21,13 @@ import EncodedFrame from './EncodedFrame'
 
 export default class BufferStream {
   /**
+   * @param {WlBufferResource}wlBufferResource
    * @returns {!BufferStream}
    */
-  static create () {
-    return new BufferStream()
+  static create (wlBufferResource) {
+    const bufferStream = new BufferStream()
+    wlBufferResource.onDestroy().then(() => Object.values(bufferStream._bufferStates).forEach(({ completionReject }) => completionReject(new Error('Buffer resource destroyed before contents arrived.'))))
+    return bufferStream
   }
 
   /**

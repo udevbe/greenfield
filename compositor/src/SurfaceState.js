@@ -32,7 +32,6 @@ export default class SurfaceState {
    * @param {*}roleState
    */
   static create (
-    wlBuffer,
     bufferContents,
     bufferDamageRects,
     opaquePixmanRegion,
@@ -45,7 +44,6 @@ export default class SurfaceState {
     roleState
   ) {
     return new SurfaceState(
-      wlBuffer,
       bufferContents,
       bufferDamageRects,
       opaquePixmanRegion,
@@ -60,7 +58,6 @@ export default class SurfaceState {
   }
 
   /**
-   * @param {?WlBufferResource}wlBuffer
    * @param {?BufferContents}bufferContents
    * @param {Array<Rect>}bufferDamageRects
    * @param {number}opaquePixmanRegion
@@ -73,7 +70,6 @@ export default class SurfaceState {
    * @param {*}roleState
    */
   constructor (
-    wlBuffer,
     bufferContents,
     bufferDamageRects,
     opaquePixmanRegion,
@@ -85,10 +81,6 @@ export default class SurfaceState {
     frameCallbacks,
     roleState
   ) {
-    /**
-     * @type {?WlBufferResource}
-     */
-    this.wlBuffer = wlBuffer
     /**
      * @type {?BufferContents}
      */

@@ -170,7 +170,6 @@ export default class Surface extends WlSurfaceRequests {
      */
     this.state = SurfaceState.create(
       null,
-      null,
       [],
       opaquePixmanRegion,
       inputPixmanRegion,
@@ -872,16 +871,21 @@ export default class Surface extends WlSurfaceRequests {
    * @override
    */
   async commit (resource, serial) {
-    if (this.state.wlBuffer) {
-      (/** @type{BufferImplementation} */this.state.wlBuffer.implementation).release()
-    }
-    let bufferContents = null
+    let bufferContents = this.state.bufferContents
 
     if (this.pendingWlBuffer) {
       this.pendingWlBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
+
       const buffer = /** @type{BufferImplementation} */this.pendingWlBuffer.implementation
-      bufferContents = await buffer.getContents(serial)
+      try {
+        bufferContents = await buffer.getContents(serial)
+      } catch (e) {
+        console.error(`[surface: ${resource.id}] - Failed to receive buffer contents.`, e.toString())
+      }
+      this.pendingWlBuffer.release()
+      this.pendingWlBuffer = null
     }
+
     if (this.destroyed) {
       return
     }
@@ -933,7 +937,7 @@ export default class Surface extends WlSurfaceRequests {
       })
     }
 
-    if (!skipDraw) {
+    if (!skipDraw && newState.bufferContents !== this.state.bufferContents) {
       await this.renderer.render(this, newState)
     }
     const { w: oldWidth, h: oldHeight } = this.size
@@ -957,7 +961,6 @@ export default class Surface extends WlSurfaceRequests {
    * @param {SurfaceState}sourceState
    */
   static mergeState (targetState, sourceState) {
-    targetState.wlBuffer = sourceState.wlBuffer
     targetState.dx = sourceState.dx
     targetState.dy = sourceState.dy
 
@@ -996,7 +999,6 @@ export default class Surface extends WlSurfaceRequests {
     }
 
     const newState = SurfaceState.create(
-      this.pendingWlBuffer,
       bufferContents,
       this._pendingDamageRects.map(rect => this.bufferTransformation.timesRect(rect)).concat(this._pendingBufferDamageRects),
       this._pendingOpaqueRegion,

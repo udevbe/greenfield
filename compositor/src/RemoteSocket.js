@@ -180,10 +180,14 @@ class RemoteSocket {
       const bufferContentsDataView = new DataView(outOfBandMessage.buffer, outOfBandMessage.byteOffset)
       const bufferId = bufferContentsDataView.getUint32(0, true)
       const wlBufferResource = client.connection.wlObjects[bufferId]
-      const streamingBuffer = wlBufferResource.implementation
 
-      const bufferContents = new Uint8Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset + Uint32Array.BYTES_PER_ELEMENT)
-      streamingBuffer.bufferStream.onBufferContents(bufferContents)
+      // Buffer might be destroyed while waiting for it's content to arrive.
+      if (wlBufferResource) {
+        const streamingBuffer = wlBufferResource.implementation
+
+        const bufferContents = new Uint8Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset + Uint32Array.BYTES_PER_ELEMENT)
+        streamingBuffer.bufferStream.onBufferContents(bufferContents)
+      }
     })
 
     // listen for file contents request. opcode: 4
