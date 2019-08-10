@@ -35,7 +35,8 @@ class NativeClientSession {
   static create (wlClient, nativeCompositorSession, webSocketChannel) {
     const logger = Logger({
       name: `app-endpoint-session::${nativeCompositorSession.compositorSessionId}::native-client-session`,
-      prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
+      prettyPrint: (process.env.DEBUG && process.env.DEBUG == true),
+      level: (process.env.DEBUG && process.env.DEBUG == true) ? 20 : 30
     })
 
     const messageInterceptor = MessageInterceptor.create(wlClient, nativeCompositorSession.wlDisplay, wl_display_interceptor, { communicationChannel: webSocketChannel })

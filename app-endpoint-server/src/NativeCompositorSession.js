@@ -36,7 +36,8 @@ class NativeCompositorSession {
   static create (compositorSessionId) {
     const logger = Logger({
       name: `app-endpoint-session::${compositorSessionId}::native-compositor-session`,
-      prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
+      prettyPrint: (process.env.DEBUG && process.env.DEBUG == true),
+      level: (process.env.DEBUG && process.env.DEBUG == true) ? 20 : 30
     })
 
     const compositorSession = new NativeCompositorSession(logger, compositorSessionId, AppEndpointWebFS.create(compositorSessionId))

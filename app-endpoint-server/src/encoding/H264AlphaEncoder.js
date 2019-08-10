@@ -18,6 +18,7 @@
 'use strict'
 
 const gstreamer = require('gstreamer-superficial')
+const Logger = require('pino')
 
 const WlShmFormat = require('./WlShmFormat')
 
@@ -31,6 +32,12 @@ const gstFormats = {
   [WlShmFormat.argb8888]: 'BGRA',
   [WlShmFormat.xrgb8888]: 'BGRx'
 }
+
+const logger = Logger({
+  name: `h264-alpha-encoder`,
+  prettyPrint: (process.env.DEBUG && process.env.DEBUG == true),
+  level: (process.env.DEBUG && process.env.DEBUG == true) ? 20 : 30
+})
 
 /**
  * @implements FrameEncoder
@@ -208,7 +215,10 @@ class H264AlphaEncoder {
     })
 
     this._src.push(pixelBuffer)
+
+    logger.debug(`Waiting for H264 Alpha encoder to finish...`)
     const { opaque, alpha } = await encodingPromise
+    logger.debug(`...H264 Alpha encoder finished.`)
 
     return EncodedFrameFragment.create(x, y, width, height, opaque, alpha)
   }

@@ -18,6 +18,7 @@
 'use strict'
 
 const gstreamer = require('gstreamer-superficial')
+const Logger = require('pino')
 
 const WlShmFormat = require('./WlShmFormat')
 
@@ -30,6 +31,12 @@ const gstFormats = {
   [WlShmFormat.argb8888]: 'BGRA',
   [WlShmFormat.xrgb8888]: 'BGRx'
 }
+
+const logger = Logger({
+  name: `png-encoder`,
+  prettyPrint: (process.env.DEBUG && process.env.DEBUG == true),
+  level: (process.env.DEBUG && process.env.DEBUG == true) ? 20 : 30
+})
 
 /**
  * @implements FrameEncoder
@@ -48,11 +55,11 @@ class PNGEncoder {
     const bottomPadding = height < 16 ? height - 16 : 0
 
     const pipeline = new gstreamer.Pipeline(
-      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 !
+      `appsrc do-timestamp=true name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 !
       videobox border-alpha=0.0 bottom=${bottomPadding} right=${rightPadding} !
-      videoconvert ! videoscale !  
+      videoconvert ! videoscale ! 
       pngenc ! 
-      appsink max-buffers=1 name=sink`
+      appsink name=sink`
     )
     const sink = pipeline.findChild('sink')
     const src = pipeline.findChild('source')
@@ -144,7 +151,10 @@ class PNGEncoder {
 
     this._src.push(pixelBuffer)
 
+    logger.debug(`Waiting for PNG encoder to finish...`)
     const opaque = await opaquePromise
+    logger.debug(`...PNG encoder finished.`)
+
     return EncodedFrameFragment.create(x, y, width, height, opaque, Buffer.allocUnsafe(0))
   }
 

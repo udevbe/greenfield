@@ -36,7 +36,8 @@ class AppEndpointServer {
   static create () {
     const logger = Logger({
       name: `app-endpoint-server`,
-      prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
+      prettyPrint: (process.env.DEBUG && process.env.DEBUG == true),
+      level: (process.env.DEBUG && process.env.DEBUG == true) ? 20 : 30
     })
 
     const server = http.createServer()

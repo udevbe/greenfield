@@ -20,7 +20,8 @@
 const Logger = require('pino')
 const logger = Logger({
   name: `app-endpoint-session-process`,
-  prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
+  prettyPrint: (process.env.DEBUG && process.env.DEBUG == true),
+  level: (process.env.DEBUG && process.env.DEBUG == true) ? 20 : 30
 })
 
 require('json5/lib/register')
@@ -42,7 +43,8 @@ class AppEndpointSession {
   static create ({ compositorSessionId }) {
     const logger = Logger({
       name: `app-endpoint-session::${compositorSessionId}`,
-      prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
+      prettyPrint: (process.env.DEBUG && process.env.DEBUG == true),
+      level: (process.env.DEBUG && process.env.DEBUG == true) ? 20 : 30
     })
     const nativeCompositorSession = NativeCompositorSession.create(compositorSessionId)
     const appEndpointSession = new AppEndpointSession(logger, nativeCompositorSession, compositorSessionId)
@@ -129,7 +131,8 @@ class AppEndpointSession {
 
             const childLogger = Logger({
               name: `${appConfig.bin} ${appConfig.args}`,
-              prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
+              prettyPrint: (process.env.DEBUG && process.env.DEBUG == true),
+              level: (process.env.DEBUG && process.env.DEBUG == true) ? 20 : 30
             })
             childProcess.stdout.on('data', data => childLogger.info(`stdout: ${data}`))
             childProcess.stderr.on('data', data => childLogger.error(`stderr: ${data}`))

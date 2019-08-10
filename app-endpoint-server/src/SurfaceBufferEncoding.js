@@ -20,7 +20,8 @@
 const Logger = require('pino')
 const logger = Logger({
   name: `buffer-encoding`,
-  prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
+  prettyPrint: (process.env.DEBUG && process.env.DEBUG == true),
+  level: (process.env.DEBUG && process.env.DEBUG == true) ? 20 : 30
 })
 
 const { WireMessageUtil, Endpoint } = require('westfield-endpoint')
@@ -39,6 +40,8 @@ class SurfaceBufferEncoding {
     wlSurfaceInterceptor.prototype.R1 = function (message) {
       const [bufferResourceId, x, y] = WireMessageUtil.unmarshallArgs(message, 'oii')
       this.bufferResourceId = bufferResourceId
+      logger.debug(`Buffer attached with id: serial=${this.bufferSerial}, id=${this.bufferResourceId}`)
+
       return 0
     }
 
@@ -64,15 +67,20 @@ class SurfaceBufferEncoding {
       uint32Array[1] = ((message.size) << 16) | 6 // size + opcode
       uint32Array[2] = syncSerial
 
+      logger.debug(`Butter committing buffer: serial=${syncSerial}, id=${this.bufferResourceId}`)
       if (this.bufferResourceId) {
         const bufferId = this.bufferResourceId
         this.bufferResourceId = 0
 
         const { buffer, format, width, height } = Endpoint.getShmBuffer(this.wlClient, bufferId)
+        logger.debug(`Request buffer encoding: serial=${syncSerial}, id=${bufferId}`)
         this.encoder.encodeBuffer(Buffer.from(buffer), format, width, height, syncSerial).then((/** @type {EncodedFrame} */encodedFrame) => {
+          logger.debug(`Buffer encoding finished: serial=${syncSerial}, id=${bufferId}`)
+
           // send buffer contents. opcode: 3. bufferId + chunk
           const sendBuffer = Buffer.concat([Buffer.from(new Uint32Array([3, bufferId]).buffer), encodedFrame.toBuffer()])
           if (this.userData.communicationChannel.readyState === 1) { // 1 === 'open'
+            logger.debug(`Sending buffer contents: serial=${syncSerial}, id=${bufferId}`)
             this.userData.communicationChannel.send(sendBuffer.buffer.slice(sendBuffer.byteOffset, sendBuffer.byteOffset + sendBuffer.byteLength))
           } // else connection was probably closed, don't attempt to send a buffer chunk
         }).catch(e => {
