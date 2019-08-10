@@ -421,7 +421,7 @@ export default class View {
    * @return {HTMLElement}
    */
   parentElement () {
-    return this.bufferedCanvas.frontContext.canvas.parentElement
+    return this.bufferedCanvas.containerDiv.parentElement
   }
 
   detach () {
