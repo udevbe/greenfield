@@ -9,7 +9,6 @@ RUN apt-get update -qq && \
 
 # Install sample applications
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -qq \
-  gnome-terminal \
   gtk-3-examples
 
 # Install build dependencies

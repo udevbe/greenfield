@@ -1,0 +1,38 @@
+version: "3.3"
+services:
+  app-endpoint-server:
+    build:
+      context: ../../
+      dockerfile: app-endpoint-server/Dockerfile
+    volumes:
+      - x11temp:/tmp/.X11-unix
+      - nvidia_driver: /usr/local/nvidia:ro
+    ports:
+      - '80:80'
+    environment:
+      DISPLAY: ':0'
+      XDG_RUNTIME_DIR: '/tmp'
+    devices:
+      - /dev/nvidia0
+      - /dev/nvidiactl
+      - /dev/nvidia-uvm
+      - /dev/nvidia-uvm-tools
+
+  xdummy:
+    build:
+      context: ../../docker/compose-gce-gpu
+      dockerfile: xnvidia.dockerfile
+    volumes:
+      - x11temp:/tmp/.X11-unix
+      - nvidia_driver: /usr/local/nvidia:ro
+    devices:
+      - /dev/nvidia0
+      - /dev/nvidiactl
+      - /dev/nvidia-uvm
+      - /dev/nvidia-uvm-tools
+
+volumes:
+  x11temp:
+  nvidia_driver:
+    external: true
+    device: "/var/lib/nvidia"

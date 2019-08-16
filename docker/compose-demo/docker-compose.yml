@@ -2,8 +2,8 @@ version: "3.3"
 services:
   app-endpoint-server:
     build:
-      context: .
-      dockerfile: app-endpoint-server.dockerfile
+      context: ../../
+      dockerfile: app-endpoint-server/Dockerfile
     volumes:
       - x11temp:/tmp/.X11-unix
     ports:
@@ -14,7 +14,7 @@ services:
 #      GST_DEBUG: '3'
   xdummy:
     build:
-      context: .
+      context: ../../docker/compose-demo
       dockerfile: xdummy.dockerfile
     volumes:
       - x11temp:/tmp/.X11-unix
