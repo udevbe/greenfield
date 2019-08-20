@@ -19,12 +19,13 @@ services:
       - /dev/nvidia-uvm-tools
 
   xnvidia:
+    privileged: true
     build:
       context: ../../docker/compose-gce-gpu
       dockerfile: xnvidia.dockerfile
     volumes:
       - x11temp:/tmp/.X11-unix
-      - nvidia_driver:/usr/local/nvidia:ro
+      - nvidia_driver:/usr/local/nvidia/lib64:ro
     devices:
       - /dev/nvidia0
       - /dev/nvidiactl

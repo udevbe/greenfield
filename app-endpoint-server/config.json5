@@ -12,7 +12,7 @@
       // See https://nodejs.org/api/net.html#net_server_listen_port_host_backlog_callback for details
       port: 8081,
       // Timeout argument, see https://nodejs.org/api/http.html#http_server_timeout for details
-      timeout: 2000,
+      timeout: 12000,
     }
   },
   sessionConfig: {

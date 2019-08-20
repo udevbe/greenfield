@@ -14,4 +14,4 @@ VOLUME /tmp/.X11-unix
 # nvidia-xconfig -a --allow-empty-initial-configuration --use-display-device=None --virtual=1920x1200 --busid "${BUS_ID}"
 COPY xorg.conf /etc/X11/xorg.conf
 
-CMD ["/usr/bin/Xorg", "-ac", "-noreset", "-config", "/etc/X11/xorg.conf", ":0"]
+CMD ["/usr/bin/Xorg", "-seat", "1", -ac", "-noreset", "-config", "/etc/X11/xorg.conf", ":0"]
