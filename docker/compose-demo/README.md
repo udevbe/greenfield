@@ -1,0 +1,1 @@
+Demo docker compose configuration. For use on your local machine.
