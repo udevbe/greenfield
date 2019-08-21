@@ -7,11 +7,11 @@ applications remotely or it can run Wayland [web applications](https://preview.g
 
 No plugins required.
 
-For more information, visit the [documentation](https://greenfield.app/docs/).
+For more information, visit the [documentation](https://greenfield.app/docs/) or have a look on the [website](https://greenfield.app).
 
 ### Quick Demo
 - `git clone https://github.com/udevbe/greenfield.git`
-- `cd greenfield`
+- `cd greenfield/docker/compose-demo`
 - `docker-compose up`
 - Go to https://preview.greenfield.app. Click the top right raster icon. Click the + icon. Click the cloud icon.
 Select the [remote-gtk3-demo](https://github.com/udevbe/greenfield/blob/master/compositor/public/store/remote-gtk3-demo/link.json)
