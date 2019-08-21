@@ -21,7 +21,7 @@ services:
   xnvidia:
     privileged: true
     build:
-      context: ../../docker/compose-gce-gpu
+      context: .
       dockerfile: xnvidia.dockerfile
     volumes:
       - x11temp:/tmp/.X11-unix
