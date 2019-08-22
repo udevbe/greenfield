@@ -1,7 +1,8 @@
 ## About
 
 For use with Google cloud compute engine (GCE) using the Container optimized OS (COS) as the host OS image. The COS
-image is expected to have GPU drivers installed using: https://github.com/udevbe/cos-gpu-installer
+image is expected to have GPU drivers installed using: https://github.com/udevbe/cos-gpu-installer. For decent performance
+we recommend at least 8 vCPUs for a smooth 1080p experience as the content encoding is currently still done in software.
 
 ## Usage
 Ssh into your compute engine instance running a COS image that was created using: https://github.com/udevbe/cos-gpu-installer
