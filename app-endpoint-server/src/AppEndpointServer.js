@@ -25,7 +25,9 @@ const http = require('http')
 const url = require('url')
 
 const { serverConfig } = require('../config.json5')
-const { verifyRemoteAppLaunchClaim } = require('./CloudFunctions')
+
+// TODO Disabled for now until we have something more rigid.
+// const { verifyRemoteAppLaunchClaim } = require('./CloudFunctions')
 
 const uuidRegEx = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
 
@@ -84,9 +86,9 @@ class AppEndpointServer {
    */
   async handleHttpUpgradeRequest (request, socket, head) {
     try {
-      const userToken = request.headers['sec-websocket-protocol']
-      const remoteAppLaunchClaimPromise = verifyRemoteAppLaunchClaim(userToken)
-
+      // TODO Disabled for now until we have something more rigid.
+      // const userToken = request.headers['sec-websocket-protocol']
+      // const remoteAppLaunchClaimPromise = verifyRemoteAppLaunchClaim(userToken)
       const wsURL = url.parse(request.url, true)
       const compositorSessionId = wsURL.query.compositorSessionId
 
@@ -101,12 +103,13 @@ class AppEndpointServer {
           })
         }
 
-        try {
-          await remoteAppLaunchClaimPromise
-        } catch (e) {
-          this._denyWebSocket(socket, 403, e)
-          return
-        }
+        // TODO Disabled for now until we have something more rigid.
+        // try {
+        //   await remoteAppLaunchClaimPromise
+        // } catch (e) {
+        //   this._denyWebSocket(socket, 403, e)
+        //   return
+        // }
 
         appEndpointSessionFork.send(
           [{
