@@ -1,14 +1,14 @@
+# Context for this build should be root of repo.
+
 FROM ubuntu:19.04
 RUN apt-get update -qq
 
 # Install gstreamer 1.16 from source
 RUN apt-get install -qq build-essential git autoconf pkg-config autopoint libtool bison flex libglib2.0-dev gettext libgl-dev libx264-dev libpng-dev
-
-WORKDIR /nvenc
-curl -O http://developer.download.nvidia.com/compute/nvenc/v5.0/
+COPY ext/Video_Codec_SDK_9.0.20/include/ /usr/local/nvidia/
 WORKDIR /gstreamer
-COPY app-endpoint-server/build_gst.sh build_gst.sh
-RUN bash build_gst.sh
+COPY ext/build_gst_with_nvenc.sh build_gst_with_nvenc.sh
+RUN bash build_gst_with_nvenc.sh
 
 WORKDIR /app
 

@@ -52,7 +52,7 @@ cd ..
 
 cd gst-plugins-bad
 git checkout $BRANCH
-./autogen.sh --disable-gtk-doc --enable-orc
+./autogen.sh --disable-gtk-doc --enable-orc NVENCODE_CFLAGS="-I/usr/local/nvidia/include" NVENCODE_LIBS="-L/usr/local/nvidia/lib64/"
 make
 make install
 cd ..
