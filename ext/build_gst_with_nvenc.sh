@@ -14,7 +14,7 @@ exec 2>&1
 [ ! -d gst-libav ] && git clone git://anongit.freedesktop.org/git/gstreamer/gst-libav
 [ ! -d gst-plugins-ugly ] && git clone git://anongit.freedesktop.org/git/gstreamer/gst-plugins-ugly
 
-export LD_LIBRARY_PATH=/usr/local/lib/
+export LD_LIBRARY_PATH="/usr/local/lib/:/usr/local/nvidia/lib64/"
 
 cd orc
 ./autogen.sh --disable-gtk-doc
@@ -63,17 +63,6 @@ git checkout $BRANCH
 make
 make install
 cd ..
-
-# export PYTHON=/usr/bin/python3 (Specify required python version)
-
-#cd gst-python
-#git checkout $BRANCH
-#./autogen.sh --disable-gtk-doc --noconfigure
-## with-libpython-dir -> location of libpython*.so
-#./configure --with-libpython-dir="/usr/lib/x86_64-linux-gnu"
-#make
-#make install
-#cd ..
 
 
 ldconfig
