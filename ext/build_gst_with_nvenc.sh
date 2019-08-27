@@ -11,10 +11,7 @@ exec 2>&1
 [ ! -d gst-plugins-base ] && git clone git://anongit.freedesktop.org/git/gstreamer/gst-plugins-base
 [ ! -d gst-plugins-good ] && git clone git://anongit.freedesktop.org/git/gstreamer/gst-plugins-good
 [ ! -d gst-plugins-bad ] && git clone git://anongit.freedesktop.org/git/gstreamer/gst-plugins-bad
-[ ! -d gst-libav ] && git clone git://anongit.freedesktop.org/git/gstreamer/gst-libav
 [ ! -d gst-plugins-ugly ] && git clone git://anongit.freedesktop.org/git/gstreamer/gst-plugins-ugly
-
-export LD_LIBRARY_PATH="/usr/local/lib/:/usr/local/nvidia/lib64/"
 
 cd orc
 ./autogen.sh --disable-gtk-doc
@@ -32,13 +29,6 @@ cd ..
 cd gst-plugins-base
 git checkout $BRANCH
 ./autogen.sh --disable-gtk-doc --enable-opengl
-make
-make install
-cd ..
-
-cd gst-libav
-git checkout $BRANCH
-./autogen.sh --disable-gtk-doc --enable-orc
 make
 make install
 cd ..
