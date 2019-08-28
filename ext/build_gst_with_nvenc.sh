@@ -28,6 +28,7 @@ cd ..
 
 cd gst-plugins-base
 git checkout $BRANCH
+# TODO disable unused plugins
 ./autogen.sh --disable-gtk-doc --enable-opengl
 make
 make install
@@ -35,6 +36,7 @@ cd ..
 
 cd gst-plugins-good
 git checkout $BRANCH
+# TODO disable unused plugins
 ./autogen.sh --disable-gtk-doc
 make
 make install
@@ -42,6 +44,7 @@ cd ..
 
 cd gst-plugins-bad
 git checkout $BRANCH
+# TODO disable unused plugins
 ./autogen.sh --disable-gtk-doc --enable-orc NVENCODE_CFLAGS="-I/usr/local/nvidia/include" NVENCODE_LIBS="-L/usr/local/nvidia/lib64/" --with-cuda-prefix="/usr"
 make
 make install

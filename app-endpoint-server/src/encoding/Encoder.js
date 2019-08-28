@@ -19,8 +19,10 @@
 
 const { sessionConfig } = require('../../config.json5')
 
-const H264OpaqueEncoder = require('./H264OpaqueEncoder')
-const H264AlphaEncoder = require('./H264AlphaEncoder')
+const X264OpaqueEncoder = require('./X264OpaqueEncoder')
+const NVH264OpaqueEncoder = require('./NVH264OpaqueEncoder')
+const X264AlphaEncoder = require('./X264AlphaEncoder')
+const NVH264AlphaEncoder = require('./NVH264AlphaEncoder')
 const PNGEncoder = require('./PNGEncoder')
 const WlShmFormat = require('./WlShmFormat')
 
@@ -43,7 +45,7 @@ class Encoder {
      */
     this._bufferFormat = 0
     /**
-     * @type {H264AlphaEncoder | H264OpaqueEncoder}
+     * @type {X264AlphaEncoder | X264OpaqueEncoder}
      * @private
      */
     this._frameEncoder = null
@@ -137,7 +139,7 @@ class Encoder {
    */
   async _encodeFrame (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial) {
     if (!this._frameEncoder) {
-      this._frameEncoder = Encoder.types[bufferFormat].FrameEncoder.create(bufferWidth, bufferHeight, bufferFormat)
+      this._frameEncoder = Encoder.types[bufferFormat][sessionConfig.encoder.h264Encoder].create(bufferWidth, bufferHeight, bufferFormat)
     }
     return this._frameEncoder.encodeBuffer(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial)
   }
@@ -148,10 +150,12 @@ Encoder.types = {}
 // TODO add more types
 // TODO different frame encoders could probably share code from a common super class
 Encoder.types[WlShmFormat.argb8888] = {
-  FrameEncoder: H264AlphaEncoder
+  x264: X264AlphaEncoder,
+  nvh264: NVH264AlphaEncoder
 }
 Encoder.types[WlShmFormat.xrgb8888] = {
-  FrameEncoder: H264OpaqueEncoder
+  x264: X264OpaqueEncoder,
+  nvh264: NVH264OpaqueEncoder
 }
 
 module.exports = Encoder

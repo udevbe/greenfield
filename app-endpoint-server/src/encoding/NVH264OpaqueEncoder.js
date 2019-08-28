@@ -18,8 +18,6 @@
 'use strict'
 
 const gstreamer = require('gstreamer-superficial')
-const Logger = require('pino')
-
 const WlShmFormat = require('./WlShmFormat')
 
 const EncodedFrame = require('./EncodedFrame')
@@ -33,88 +31,40 @@ const gstFormats = {
   [WlShmFormat.xrgb8888]: 'BGRx'
 }
 
-const logger = Logger({
-  name: `h264-alpha-encoder`,
-  prettyPrint: (process.env.DEBUG && process.env.DEBUG == true),
-  level: (process.env.DEBUG && process.env.DEBUG == true) ? 20 : 30
-})
-
 /**
  * @implements FrameEncoder
  */
-class H264AlphaEncoder {
+class X264OpaqueEncoder {
   /**
    * @param {number}width
    * @param {number}height
    * @param {number}wlShmFormat
-   * @return {H264AlphaEncoder}
+   * @return {X264OpaqueEncoder}
    */
   static create (width, height, wlShmFormat) {
     const gstBufferFormat = gstFormats[wlShmFormat]
     const pipeline = new gstreamer.Pipeline(
-      // scale & convert to RGBA
       `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! 
       videoscale ! capsfilter name=scale caps=video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)} ! 
-      
-      tee name=t ! queue ! 
       glupload ! 
-      glcolorconvert ! 
-      glshader fragment="
-        #version 120
-        #ifdef GL_ES
-        precision mediump float;
-        #endif
-        varying vec2 v_texcoord;
-        uniform sampler2D tex;
-        uniform float time;
-        uniform float width;
-        uniform float height;
-
-        void main () {
-          vec4 pix = texture2D(tex, v_texcoord);
-          gl_FragColor = vec4(pix.a,pix.a,pix.a,0);
-        }
-      " 
-      vertex = "
-        #version 120
-        #ifdef GL_ES
-        precision mediump float;
-        #endif
-        attribute vec4 a_position;
-        attribute vec2 a_texcoord;
-        varying vec2 v_texcoord;
-        
-        void main() {
-          gl_Position = a_position;
-          v_texcoord = a_texcoord;
-      }
-      " ! 
       glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! 
       gldownload ! 
-      x264enc key-int-max=900 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! 
-      video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! 
-      appsink name=alphasink 
-      
-      t. ! queue ! 
-      videoconvert ! video/x-raw,format=I420 ! 
-      x264enc key-int-max=900 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! 
+      x264enc key-int-max=1 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! 
       video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! 
       appsink name=sink`
     )
 
-    const alphasink = pipeline.findChild('alphasink')
     const sink = pipeline.findChild('sink')
     const src = pipeline.findChild('source')
     const scale = pipeline.findChild('scale')
     pipeline.play()
 
-    return new H264AlphaEncoder(pipeline, sink, alphasink, src, width, height, wlShmFormat, scale)
+    return new X264OpaqueEncoder(pipeline, sink, src, width, height, wlShmFormat, scale)
   }
 
   /**
    * @param {Object}pipeline
    * @param {Object}sink
-   * @param {Object}alphaSink
    * @param {Object}src
    * @param {number}width
    * @param {number}height
@@ -122,7 +72,7 @@ class H264AlphaEncoder {
    * @param {Object}scale
    * @private
    */
-  constructor (pipeline, sink, alphaSink, src, width, height, wlShmFormat, scale) {
+  constructor (pipeline, sink, src, width, height, wlShmFormat, scale) {
     /**
      * @type {Object}
      * @private
@@ -133,11 +83,6 @@ class H264AlphaEncoder {
      * @private
      */
     this._sink = sink
-    /**
-     * @type {Object}
-     * @private
-     */
-    this._alphaSink = alphaSink
     /**
      * @type {Object}
      * @private
@@ -196,31 +141,20 @@ class H264AlphaEncoder {
       this._configure(width, height, gstBufferFormat)
     }
 
-    const encodingPromise = new Promise((resolve) => {
-      let opaque = null
-      let alpha = null
+    const opaquePromise = new Promise((resolve, reject) => {
       this._sink.pull((opaqueH264) => {
-        opaque = opaqueH264
-        if (opaque && alpha) {
-          resolve({ opaque: opaque, alpha: alpha })
-        }
-      })
-
-      this._alphaSink.pull((alphaH264) => {
-        alpha = alphaH264
-        if (opaque && alpha) {
-          resolve({ opaque: opaque, alpha: alpha })
+        if (opaqueH264) {
+          resolve(opaqueH264)
+        } else {
+          reject(new Error('Pulled empty opaque buffer. Gstreamer opaque h264 encoder pipeline is probably in error.'))
         }
       })
     })
 
     this._src.push(pixelBuffer)
 
-    logger.debug(`Waiting for H264 Alpha encoder to finish...`)
-    const { opaque, alpha } = await encodingPromise
-    logger.debug(`...H264 Alpha encoder finished.`)
-
-    return EncodedFrameFragment.create(x, y, width, height, opaque, alpha)
+    const opaque = await opaquePromise
+    return EncodedFrameFragment.create(x, y, width, height, opaque, Buffer.allocUnsafe(0))
   }
 
   /**
@@ -234,11 +168,10 @@ class H264AlphaEncoder {
    */
   async encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial) {
     let encodingOptions = 0
-    encodingOptions = EncodingOptions.enableSplitAlpha(encodingOptions)
     encodingOptions = EncodingOptions.enableFullFrame(encodingOptions)
     const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)
     return EncodedFrame.create(serial, h264, encodingOptions, bufferWidth, bufferHeight, [encodedFrameFragment])
   }
 }
 
-module.exports = H264AlphaEncoder
+module.exports = X264OpaqueEncoder
