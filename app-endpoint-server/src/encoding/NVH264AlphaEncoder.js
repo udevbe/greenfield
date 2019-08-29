@@ -90,24 +90,23 @@ class X264AlphaEncoder {
       " ! 
       glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! 
       nvh264enc gop-size=-1 qp-max=32 preset=low-latency-hp rc-mode=constqp ! 
-      video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! 
+      video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! 
       appsink name=alphasink 
       
       t. ! queue ! 
       glupload ! 
       glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! 
       nvh264enc gop-size=-1 qp-max=32 preset=low-latency-hp rc-mode=constqp ! 
-      video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! 
+      video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! 
       appsink name=sink`
     )
 
     const alphasink = pipeline.findChild('alphasink')
     const sink = pipeline.findChild('sink')
     const src = pipeline.findChild('source')
-    const scale = pipeline.findChild('scale')
     pipeline.play()
 
-    return new X264AlphaEncoder(pipeline, sink, alphasink, src, width, height, wlShmFormat, scale)
+    return new X264AlphaEncoder(pipeline, sink, alphasink, src, width, height, wlShmFormat)
   }
 
   /**
@@ -118,10 +117,9 @@ class X264AlphaEncoder {
    * @param {number}width
    * @param {number}height
    * @param {number}wlShmFormat
-   * @param {Object}scale
    * @private
    */
-  constructor (pipeline, sink, alphaSink, src, width, height, wlShmFormat, scale) {
+  constructor (pipeline, sink, alphaSink, src, width, height, wlShmFormat) {
     /**
      * @type {Object}
      * @private
@@ -157,11 +155,6 @@ class X264AlphaEncoder {
      * @private
      */
     this._wlShmFormat = wlShmFormat
-    /**
-     * @type {Object}
-     * @private
-     */
-    this._scale = scale
   }
 
   /**
@@ -171,8 +164,8 @@ class X264AlphaEncoder {
    * @private
    */
   _configure (width, height, gstBufferFormat) {
+    // TODO reconfigure nvh264enc caps else it errors out on stream size
     this._src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1`
-    this._scale.caps = `video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)}`
   }
 
   /**
