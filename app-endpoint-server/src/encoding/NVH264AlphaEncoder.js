@@ -42,12 +42,12 @@ const logger = Logger({
 /**
  * @implements FrameEncoder
  */
-class X264AlphaEncoder {
+class NVH264AlphaEncoder {
   /**
    * @param {number}width
    * @param {number}height
    * @param {number}wlShmFormat
-   * @return {X264AlphaEncoder}
+   * @return {NVH264AlphaEncoder}
    */
   static create (width, height, wlShmFormat) {
     const gstBufferFormat = gstFormats[wlShmFormat]
@@ -89,24 +89,27 @@ class X264AlphaEncoder {
       }
       " ! 
       glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! 
-      nvh264enc gop-size=-1 qp-max=32 preset=low-latency-hp rc-mode=constqp ! 
-      video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! 
+      nvh264enc name=alphaenc gop-size=-1 qp-max=32 preset=low-latency-hp rc-mode=constqp ! 
+      video/x-h264,width=${width},height=${height},profile=baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! 
       appsink name=alphasink 
       
       t. ! queue ! 
       glupload ! 
       glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! 
-      nvh264enc gop-size=-1 qp-max=32 preset=low-latency-hp rc-mode=constqp ! 
-      video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! 
+      nvh264enc name=enc gop-size=-1 qp-max=32 preset=low-latency-hp rc-mode=constqp ! 
+      video/x-h264,width=${width},height=${height},profile=baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! 
       appsink name=sink`
     )
 
     const alphasink = pipeline.findChild('alphasink')
     const sink = pipeline.findChild('sink')
     const src = pipeline.findChild('source')
+    const alphaenc = pipeline.findChild('alphaenc')
+    const enc = pipeline.findChild('enc')
+
     pipeline.play()
 
-    return new X264AlphaEncoder(pipeline, sink, alphasink, src, width, height, wlShmFormat)
+    return new NVH264AlphaEncoder(pipeline, sink, alphasink, src, width, height, wlShmFormat, alphaenc, enc)
   }
 
   /**
@@ -117,9 +120,11 @@ class X264AlphaEncoder {
    * @param {number}width
    * @param {number}height
    * @param {number}wlShmFormat
+   * @param {Object}alphaenc
+   * @param {Object}enc
    * @private
    */
-  constructor (pipeline, sink, alphaSink, src, width, height, wlShmFormat) {
+  constructor (pipeline, sink, alphaSink, src, width, height, wlShmFormat, alphaenc, enc) {
     /**
      * @type {Object}
      * @private
@@ -155,6 +160,9 @@ class X264AlphaEncoder {
      * @private
      */
     this._wlShmFormat = wlShmFormat
+
+    this._alphaenc = alphaenc
+    this._enc = enc
   }
 
   /**
@@ -166,6 +174,8 @@ class X264AlphaEncoder {
   _configure (width, height, gstBufferFormat) {
     // TODO reconfigure nvh264enc caps else it errors out on stream size
     this._src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1`
+    this._alphaenc.caps = `video/x-h264,width=${width},height=${height},profile=baseline,stream-format=byte-stream,alignment=au,framerate=60/1`
+    this._enc = `video/x-h264,width=${width},height=${height},profile=baseline,stream-format=byte-stream,alignment=au,framerate=60/1`
   }
 
   /**
@@ -233,4 +243,4 @@ class X264AlphaEncoder {
   }
 }
 
-module.exports = X264AlphaEncoder
+module.exports = NVH264AlphaEncoder

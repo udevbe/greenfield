@@ -34,12 +34,12 @@ const gstFormats = {
 /**
  * @implements FrameEncoder
  */
-class X264OpaqueEncoder {
+class NVH264OpaqueEncoder {
   /**
    * @param {number}width
    * @param {number}height
    * @param {number}wlShmFormat
-   * @return {X264OpaqueEncoder}
+   * @return {NVH264OpaqueEncoder}
    */
   static create (width, height, wlShmFormat) {
     const gstBufferFormat = gstFormats[wlShmFormat]
@@ -59,7 +59,7 @@ class X264OpaqueEncoder {
     const scale = pipeline.findChild('scale')
     pipeline.play()
 
-    return new X264OpaqueEncoder(pipeline, sink, src, width, height, wlShmFormat, scale)
+    return new NVH264OpaqueEncoder(pipeline, sink, src, width, height, wlShmFormat, scale)
   }
 
   /**
@@ -174,4 +174,4 @@ class X264OpaqueEncoder {
   }
 }
 
-module.exports = X264OpaqueEncoder
+module.exports = NVH264OpaqueEncoder
