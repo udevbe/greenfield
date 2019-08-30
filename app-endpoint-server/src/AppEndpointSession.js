@@ -33,7 +33,7 @@ const { /** @type {WebSocketServer} */Server } = require('ws')
 const { sessionConfig } = require('../config.json5')
 const SurfaceBufferEncoding = require('./SurfaceBufferEncoding')
 const NativeCompositorSession = require('./NativeCompositorSession')
-const { authorizeApplicationLaunch } = require('./CloudFunctions')
+// const { authorizeApplicationLaunch } = require('./CloudFunctions')
 
 class AppEndpointSession {
   /**
@@ -108,16 +108,16 @@ class AppEndpointSession {
         this._nativeCompositorSession.socketForClient(webSocket, Number.parseInt(query.clientId))
       } else if (query['launch']) {
         const applicationId = query['launch']
-        try {
-          await authorizeApplicationLaunch(headers['sec-websocket-protocol'], applicationId)
-        } catch (e) {
-          this._logger.error(`Application: ${applicationId} failed to start.`)
-          this._logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
-          this._logger.error('error object stack: ')
-          this._logger.error(e.stack)
-          webSocket.close(4403, `[app-endpoint-session: ${this.compositorSessionId}] - Application: ${applicationId} access denied.`)
-          return
-        }
+        // try {
+        //   await authorizeApplicationLaunch(headers['sec-websocket-protocol'], applicationId)
+        // } catch (e) {
+        //   this._logger.error(`Application: ${applicationId} failed to start.`)
+        //   this._logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+        //   this._logger.error('error object stack: ')
+        //   this._logger.error(e.stack)
+        //   webSocket.close(4403, `[app-endpoint-session: ${this.compositorSessionId}] - Application: ${applicationId} access denied.`)
+        //   return
+        // }
 
         const appConfig = /** @type{{bin: string, args: Array<string>}} */sessionConfig.apps[applicationId]
         if (appConfig) {
