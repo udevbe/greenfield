@@ -10,7 +10,7 @@ exec 2>&1
 [ ! -d gstreamer ] && git clone git://anongit.freedesktop.org/git/gstreamer/gstreamer
 [ ! -d gst-plugins-base ] && git clone git://anongit.freedesktop.org/git/gstreamer/gst-plugins-base
 [ ! -d gst-plugins-good ] && git clone git://anongit.freedesktop.org/git/gstreamer/gst-plugins-good
-[ ! -d gst-plugins-bad ] && git clone git://anongit.freedesktop.org/git/gstreamer/gst-plugins-bad
+[ ! -d gst-plugins-bad ] && git clone https://gitlab.freedesktop.org/zubzub/gst-plugins-bad.git
 [ ! -d gst-plugins-ugly ] && git clone git://anongit.freedesktop.org/git/gstreamer/gst-plugins-ugly
 
 cd orc
@@ -190,7 +190,7 @@ DISABLED_BAG_PLUGINS="--disable-accurip \
  --disable-webrtc \
  --disable-wpe  \
  --disable-sctp"
-./autogen.sh --disable-gtk-doc --enable-orc
+./autogen.sh --disable-gtk-doc --enable-orc $DISABLED_BAG_PLUGINS
 make
 make install
 cd ..
