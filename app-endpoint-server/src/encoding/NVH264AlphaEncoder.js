@@ -50,12 +50,10 @@ class NVH264AlphaEncoder {
    * @return {NVH264AlphaEncoder}
    */
   static create (width, height, wlShmFormat) {
-    width = 4096
-    height = 2160
     const gstBufferFormat = gstFormats[wlShmFormat]
     const pipeline = new gstreamer.Pipeline(
       // scale & convert to RGBA
-      `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! 
+      `appsrc name=source block=true is-live=true min-latency=0 max-latency=-1 do-timestamp=true format=bytes stream-type=stream caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! 
       
       tee name=t ! queue ! 
       glupload ! 
@@ -106,8 +104,6 @@ class NVH264AlphaEncoder {
     const alphasink = pipeline.findChild('alphasink')
     const sink = pipeline.findChild('sink')
     const src = pipeline.findChild('source')
-    const alphaenc = pipeline.findChild('alphaenc')
-    const enc = pipeline.findChild('enc')
 
     pipeline.play()
 
@@ -169,7 +165,6 @@ class NVH264AlphaEncoder {
    * @private
    */
   _configure (width, height, gstBufferFormat) {
-    // TODO reconfigure nvh264enc caps else it errors out on stream size
     this._src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1`
   }
 
