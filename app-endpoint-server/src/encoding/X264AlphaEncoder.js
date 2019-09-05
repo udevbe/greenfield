@@ -91,13 +91,15 @@ class X264AlphaEncoder {
       " ! 
       glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! 
       gldownload ! 
-      x264enc key-int-max=900 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! 
+      x264enc byte-stream=true qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! 
       video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! 
       appsink name=alphasink 
       
       t. ! queue ! 
-      videoconvert ! video/x-raw,format=I420 ! 
-      x264enc key-int-max=900 byte-stream=true pass=quant qp-max=32 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! 
+      glupload ! 
+      glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! 
+      gldownload ! 
+      x264enc byte-stream=true qp-max=26 tune=zerolatency speed-preset=veryfast intra-refresh=0 ! 
       video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! 
       appsink name=sink`
     )
