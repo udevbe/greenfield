@@ -1,9 +1,10 @@
-FROM debian:jessie
+FROM marketplace.gcr.io/google/debian9
 
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update \
-    && apt-get -y install xserver-xorg
+    && apt-get -qq -y install xserver-xorg \
+    && rm -rf /var/lib/apt/lists/*
 
 VOLUME /tmp/.X11-unix
 

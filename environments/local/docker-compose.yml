@@ -14,7 +14,7 @@ services:
 #      GST_DEBUG: '3'
   xdummy:
     build:
-      context: ../../docker/compose-demo
+      context: containers/xdummy
       dockerfile: xdummy.dockerfile
     volumes:
       - x11temp:/tmp/.X11-unix

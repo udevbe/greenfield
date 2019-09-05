@@ -1,9 +1,7 @@
 version: "3.3"
 services:
   app-endpoint-server:
-    build:
-      context: ../../
-      dockerfile: app-endpoint-server/Dockerfile
+    image: gcr.io/greenfield-app-0/app-endpoint-server:latest
     volumes:
       - x11temp:/tmp/.X11-unix
       - nvidia_driver:/usr/local/nvidia/lib64:ro
@@ -19,10 +17,8 @@ services:
       - /dev/nvidia-uvm-tools
 
   xnvidia:
+    image: gcr.io/greenfield-app-0/xnvidia:latest
     privileged: true
-    build:
-      context: .
-      dockerfile: xnvidia.dockerfile
     volumes:
       - x11temp:/tmp/.X11-unix
       - nvidia_driver:/usr/local/nvidia/lib64:ro

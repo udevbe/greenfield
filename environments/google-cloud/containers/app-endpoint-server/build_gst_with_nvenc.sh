@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -e
 # Set your target branch
 BRANCH="master"
 
@@ -28,16 +28,73 @@ cd ..
 
 cd gst-plugins-base
 git checkout $BRANCH
-# TODO disable unused plugins
-./autogen.sh --disable-gtk-doc --enable-opengl
+DISABLED_BASE_PLUGINS="--disable-adder \
+ --disable-audioconvert \
+ --disable-audiomixer \
+ --disable-audiorate \
+ --disable-audioresample \
+ --disable-audiotestsrc \
+ --disable-compositor \
+ --disable-encoding \
+ --disable-gio \
+ --disable-overlaycomposition \
+ --disable-playback \
+ --disable-rawparse \
+ --disable-subparse \
+ --disable-tcp \
+ --disable-typefind \
+ --disable-videorate \
+ --disable-volume"
+./autogen.sh --disable-gtk-doc --enable-opengl $DISABLED_BASE_PLUGINS
 make
 make install
 cd ..
 
 cd gst-plugins-good
 git checkout $BRANCH
+DISABLED_GOOD_PLUGINS="--disable-alpha \
+ --disable-apetag \
+ --disable-audiofx \
+ --disable-audioparsers \
+ --disable-auparse	\
+ --disable-autodetect \
+ --disable-avi \
+ --disable-cutter \
+ --disable-debugutils \
+ --disable-deinterlace \
+ --disable-dtmf \
+ --disable-effectv \
+ --disable-equalizer \
+ --disable-flv \
+ --disable-flx \
+ --disable-goom \
+ --disable-goom2k1 \
+ --disable-icydemux \
+ --disable-id3demux \
+ --disable-imagefreeze \
+ --disable-interleave \
+ --disable-isomp4 \
+ --disable-law \
+ --disable-level \
+ --disable-matroska \
+ --disable-multifile \
+ --disable-multipart \
+ --disable-replaygain \
+ --disable-rtp \
+ --disable-rtpmanager \
+ --disable-rtsp \
+ --disable-shapewipe \
+ --disable-smpte \
+ --disable-spectrum \
+ --disable-udp \
+ --disable-videocrop \
+ --disable-videofilter \
+ --disable-videomixer \
+ --disable-wavenc \
+ --disable-wavparse \
+ --disable-y4m"
 # TODO disable unused plugins
-./autogen.sh --disable-gtk-doc
+./autogen.sh --disable-gtk-doc $DISABLED_GOOD_PLUGINS
 make
 make install
 cd ..
@@ -196,8 +253,20 @@ make install
 cd ..
 
 cd gst-plugins-ugly
+DISABLED_UGLY_PLUGINS="--disable-asfdemux \
+ --disable-dvdlpcmdec \
+ --disable-dvdsub \
+ --disable-realmedia \
+ --disable-xingmux \
+ --disable-a52dec \
+ --disable-amrnb \
+ --disable-amrwbdec \
+ --disable-cdio \
+ --disable-dvdreadsrc \
+ --disable-mpeg2dec \
+ --disable-sid"
 git checkout $BRANCH
-./autogen.sh --disable-gtk-doc --enable-orc
+./autogen.sh --disable-gtk-doc --enable-orc $DISABLED_UGLY_PLUGINS
 make
 make install
 cd ..
