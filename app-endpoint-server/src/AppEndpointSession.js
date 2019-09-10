@@ -33,6 +33,7 @@ const { /** @type {WebSocketServer} */Server } = require('ws')
 const { sessionConfig } = require('../config.json5')
 const SurfaceBufferEncoding = require('./SurfaceBufferEncoding')
 const NativeCompositorSession = require('./NativeCompositorSession')
+
 // const { authorizeApplicationLaunch } = require('./CloudFunctions')
 
 class AppEndpointSession {
@@ -108,6 +109,7 @@ class AppEndpointSession {
         this._nativeCompositorSession.socketForClient(webSocket, Number.parseInt(query.clientId))
       } else if (query['launch']) {
         const applicationId = query['launch']
+        // FIXME authorization check disabled beause it's slow and broken.
         // try {
         //   await authorizeApplicationLaunch(headers['sec-websocket-protocol'], applicationId)
         // } catch (e) {
@@ -125,6 +127,8 @@ class AppEndpointSession {
             const childProcess = child_process.spawn(appConfig.bin, appConfig.args, {
               env: {
                 ...process.env,
+                'GDK_BACKEND': 'wayland',
+                'XDG_SESSION_TYPE': 'wayland',
                 'WAYLAND_DISPLAY': `${this._nativeCompositorSession.waylandDisplay}`
               }
             })
