@@ -89,15 +89,15 @@ class NVH264AlphaEncoder {
       }
       " ! 
       glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! 
-      nvh264enc name=alphaenc gop-size=-1 qp-min=36 qp-max=42 preset=low-latency-hp rc-mode=vbr-minqp !
-      video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! 
+      nvh264enc gop-size=1 qp-min=23 qp-max=42 preset=low-latency-hp rc-mode=vbr-minqp !
+      video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! 
       appsink name=alphasink 
       
       t. ! queue ! 
       glupload ! 
       glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! 
-      nvh264enc name=enc gop-size=-1 qp-min=34 qp-max=38 preset=low-latency-hp rc-mode=vbr-minqp ! 
-      video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! 
+      nvh264enc gop-size=1 qp-min=23 qp-max=38 preset=low-latency-hp rc-mode=vbr-minqp ! 
+      video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! 
       appsink name=sink`
     )
 
@@ -179,14 +179,14 @@ class NVH264AlphaEncoder {
    * @private
    */
   async _encodeFragment (pixelBuffer, wlShmFormat, x, y, width, height) {
-    if (this._width !== width || this._height !== height || this._wlShmFormat !== wlShmFormat) {
-      this._width = width
-      this._height = height
-      this._wlShmFormat = wlShmFormat
+    // if (this._width !== width || this._height !== height || this._wlShmFormat !== wlShmFormat) {
+    this._width = width
+    this._height = height
+    this._wlShmFormat = wlShmFormat
 
-      const gstBufferFormat = gstFormats[wlShmFormat]
-      this._configure(width, height, gstBufferFormat)
-    }
+    const gstBufferFormat = gstFormats[wlShmFormat]
+    this._configure(width, height, gstBufferFormat)
+    // }
 
     const encodingPromise = new Promise((resolve) => {
       let opaque = null
