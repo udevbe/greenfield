@@ -3,5 +3,5 @@
   "title": "Remote GTK3 Demo",
   "icon": "https://preview.greenfield.app/store/remote-gtk3-demo/icon.svg",
   "type": "remote",
-  "url": "ws://104.155.64.42:8081"
+  "url": "ws://localhost:8081"
 }
