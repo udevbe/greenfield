@@ -11,7 +11,7 @@ For more information, visit the [documentation](https://greenfield.app/docs/) or
 
 ### Quick Demo
 - `git clone https://github.com/udevbe/greenfield.git`
-- `cd greenfield/docker/compose-demo`
+- `cd greenfield/environments/local`
 - `docker-compose up`
 - Go to https://preview.greenfield.app. Click the top right raster icon. Click the + icon. Click the cloud icon.
 Select the [remote-gtk3-demo](https://github.com/udevbe/greenfield/blob/master/compositor/public/store/remote-gtk3-demo/link.json)

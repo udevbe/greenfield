@@ -1,5 +1,7 @@
 # Context for this build should be root of repo because of reasons.
 FROM marketplace.gcr.io/google/ubuntu1804
+MAINTAINER Erik De Rijcke <erik.de.rijcke@udev.be>
+
 RUN apt-get update -qq && \
     apt-get install -qq -y \
         build-essential \

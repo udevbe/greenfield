@@ -1,17 +1,13 @@
-# Context for this build should be root of repo.
-
 FROM ubuntu:19.04
-RUN apt-get update -qq
-
-# Install gstreamer 1.16 from source
-RUN apt-get install -qq build-essential git autoconf pkg-config autopoint libtool bison flex libglib2.0-dev gettext libgl-dev libx264-dev libpng-dev
+MAINTAINER Erik De Rijcke <erik.de.rijcke@udev.be>
 
 WORKDIR /app
 
 # Install node.js
-RUN apt-get install -qq curl && \
-  curl -sL https://deb.nodesource.com/setup_10.x | bash - && \
-  apt-get install -y nodejs
+RUN apt-get update -qq && \
+    apt-get install -qq curl && \
+    curl -sL https://deb.nodesource.com/setup_10.x | bash - && \
+    apt-get install -y nodejs
 
 # Install sample applications
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -qq \
@@ -23,7 +19,11 @@ RUN apt-get install -qq \
 
 # Install app-endpoint-server dependencies
 RUN apt-get install -qq \
-  libffi-dev && \
+  libffi-dev \
+  libgstreamer1.0-dev \
+  libgstreamer-plugins-base1.0-dev \
+  gstreamer1.0-plugins-good \
+  gstreamer1.0-plugins-ugly && \
   npm install -g cmake-js
 
 # Add source files

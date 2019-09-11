@@ -1,4 +1,5 @@
 FROM marketplace.gcr.io/google/debian9
+MAINTAINER Erik De Rijcke <erik.de.rijcke@udev.be>
 
 ENV DEBIAN_FRONTEND noninteractive
 

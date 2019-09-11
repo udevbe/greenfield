@@ -3,8 +3,9 @@
 For use with Google Compute Engine (GCE) using the Container optimized OS (COS) as the host OS image. The COS
 image is expected to have GPU drivers installed using: https://github.com/udevbe/cos-gpu-installer. For decent performance
 we recommend at least an Nvidia K80 with 8 vCPUs for a smooth 1080p experience as the encoding is currently still done in software
-due to encoder software bugs in the Nvidia gstreamer plugin. See bugs: [1077](https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/issues/1077) 
-and [1074](https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/issues/1074)
+due to encoder software bugs in the Nvidia gstreamer plugin. See bugs [1077](https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/issues/1077) 
+and [1074](https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/issues/1074). 
+This effectively leaves alpha color splitting and RGB+A to YUV+A color conversion to be done on the GPU.
 
 ## Usage
 
