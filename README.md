@@ -21,8 +21,7 @@ This will start 3 containers.
 
 Your browser will, by default, reject the secure websocket connection as it uses a self-signed certificate. 
 You can however force your browser to accept the certificate.
-- Go to https://localhost
-- In Firefox, simply follow the dialogue and accept the certificate. You should now get a `502 bad gateway` which means
+- In Firefox, go to https://localhost and simply follow the dialogue and accept the certificate. You should now get a `502 bad gateway` which means
 your browser can communicate. This is fine as the app-endpoint-server only handles websocket requests, hence you get a `5xx error`.
 Simply close the tab, the certificate has now been permanently accepted.
 - In Chrome there is no dialogue button. Go to `chrome://flags/#allow-insecure-localhost` and enable `Allow invalid certificates for resources loaded from localhost.`
