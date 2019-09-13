@@ -5,11 +5,13 @@ MAINTAINER Erik De Rijcke <erik.de.rijcke@udev.be>
 RUN apt-get update -qq && \
     apt-get install -qq -y \
         build-essential \
-        git autoconf \
-        pkg-config \
-        autopoint \
-        libtool \
+        python3 \
+        python3-pip \
+        python3-setuptools \
+        python3-wheel \
+        ninja-build \
         bison \
+        git \
         flex \
         libglib2.0-dev \
         gettext \
@@ -25,14 +27,15 @@ RUN apt-get update -qq && \
         nodejs \
         gtk-3-examples \
      && rm -rf /var/lib/apt/lists/*
+RUN cd /root && pip3 install meson && cd /
 
 # setup nvidia-cuda-dev for gstreamer nvencoder compilation
-COPY environments/google-cloud/containers/app-endpoint-server/Video_Codec_SDK_9.0.20/include/ /usr/local/nvidia/include/
-COPY environments/google-cloud/containers/app-endpoint-server/Video_Codec_SDK_9.0.20/linux/stubs/x86_64/ /usr/local/nvidia/lib64/
+COPY environments/gcloud-cos-gpu/containers/app-endpoint-server/Video_Codec_SDK_9.0.20/include/ /usr/local/nvidia/include/
+COPY environments/gcloud-cos-gpu/containers/app-endpoint-server/Video_Codec_SDK_9.0.20/linux/stubs/x86_64/ /usr/local/nvidia/lib64/
 WORKDIR /gstreamer
 
 # setup gstreamer install script & environment
-COPY environments/google-cloud/containers/app-endpoint-server/build_gst_with_nvenc.sh build_gst_with_nvenc.sh
+COPY environments/gcloud-cos-gpu/containers/app-endpoint-server/build_gst_with_nvenc.sh build_gst_with_nvenc.sh
 ENV LD_LIBRARY_PATH "/usr/local/lib/:/usr/local/nvidia/lib64/"
 
 # Install gstreamer master from source
