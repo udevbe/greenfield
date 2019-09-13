@@ -1,6 +1,6 @@
 {
   "name": "greenfield-compositor",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "HTML5 Wayland compositor",
   "bin": {
     "greenfield": "./server/src/index.js"
