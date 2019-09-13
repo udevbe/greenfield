@@ -6,270 +6,247 @@ BRANCH="master"
 exec > >(tee build-gstreamer.log)
 exec 2>&1
 
-[ ! -d orc ] && git clone git://anongit.freedesktop.org/git/gstreamer/orc
-[ ! -d gstreamer ] && git clone git://anongit.freedesktop.org/git/gstreamer/gstreamer
-[ ! -d gst-plugins-base ] && git clone git://anongit.freedesktop.org/git/gstreamer/gst-plugins-base
-[ ! -d gst-plugins-good ] && git clone git://anongit.freedesktop.org/git/gstreamer/gst-plugins-good
-[ ! -d gst-plugins-bad ] && git clone https://gitlab.freedesktop.org/zubzub/gst-plugins-bad.git
-[ ! -d gst-plugins-ugly ] && git clone git://anongit.freedesktop.org/git/gstreamer/gst-plugins-ugly
+checkout_sources() {
+    [ ! -d orc ] && git clone git://anongit.freedesktop.org/git/gstreamer/orc
+    [ ! -d gstreamer ] && git clone git://anongit.freedesktop.org/git/gstreamer/gstreamer
+    [ ! -d gst-plugins-base ] && git clone git://anongit.freedesktop.org/git/gstreamer/gst-plugins-base
+    [ ! -d gst-plugins-good ] && git clone git://anongit.freedesktop.org/git/gstreamer/gst-plugins-good
+    [ ! -d gst-plugins-bad ] && git clone https://anongit.freedesktop.org/git/gstreamer/gst-plugins-bad
+    [ ! -d gst-plugins-ugly ] && git clone git://anongit.freedesktop.org/git/gstreamer/gst-plugins-ugly
+}
 
-cd orc
-./autogen.sh --disable-gtk-doc
-make
-make install
-cd ..
+build_source() {
+    pushd $1
+        git checkout ${BRANCH}
+        meson build/
+        meson configure build -Dbuildtype=release $2
+        ninja -C build/
+        meson install -C build/
+        ldconfig
+    popd
+}
 
-cd gstreamer
-git checkout $BRANCH
-./autogen.sh --disable-gtk-doc
-make
-make install
-cd ..
+main() {
+    checkout_sources
 
-cd gst-plugins-base
-git checkout $BRANCH
-DISABLED_BASE_PLUGINS="--disable-adder \
- --disable-audioconvert \
- --disable-audiomixer \
- --disable-audiorate \
- --disable-audioresample \
- --disable-audiotestsrc \
- --disable-compositor \
- --disable-encoding \
- --disable-gio \
- --disable-overlaycomposition \
- --disable-playback \
- --disable-rawparse \
- --disable-subparse \
- --disable-tcp \
- --disable-typefind \
- --disable-videorate \
- --disable-volume"
-./autogen.sh --disable-gtk-doc --enable-opengl $DISABLED_BASE_PLUGINS
-make
-make install
-cd ..
+    build_source orc
+    build_source gstreamer
 
-cd gst-plugins-good
-git checkout $BRANCH
-DISABLED_GOOD_PLUGINS="--disable-alpha \
- --disable-apetag \
- --disable-audiofx \
- --disable-audioparsers \
- --disable-auparse	\
- --disable-autodetect \
- --disable-avi \
- --disable-cutter \
- --disable-debugutils \
- --disable-deinterlace \
- --disable-dtmf \
- --disable-effectv \
- --disable-equalizer \
- --disable-flv \
- --disable-flx \
- --disable-goom \
- --disable-goom2k1 \
- --disable-icydemux \
- --disable-id3demux \
- --disable-imagefreeze \
- --disable-interleave \
- --disable-isomp4 \
- --disable-law \
- --disable-level \
- --disable-matroska \
- --disable-multifile \
- --disable-multipart \
- --disable-replaygain \
- --disable-rtp \
- --disable-rtpmanager \
- --disable-rtsp \
- --disable-shapewipe \
- --disable-smpte \
- --disable-spectrum \
- --disable-udp \
- --disable-videocrop \
- --disable-videofilter \
- --disable-videomixer \
- --disable-wavenc \
- --disable-wavparse \
- --disable-y4m"
-# TODO disable unused plugins
-./autogen.sh --disable-gtk-doc $DISABLED_GOOD_PLUGINS
-make
-make install
-cd ..
+    build_source gst-plugins-base "-Daudioconvert=disabled \
+ -Daudiomixer=disabled \
+ -Daudiorate=disabled \
+ -Daudioresample=disabled \
+ -Daudiotestsrc=disabled \
+ -Dcompositor=disabled \
+ -Dencodig=disabled \
+ -Dgio=disabled \
+ -Doverlaycomposition=disabled \
+ -Dplayback=disabled \
+ -Drawparse=disabled \
+ -Dsubparse=disabled \
+ -Dtcp=disabled \
+ -Dtypefind=disabled \
+ -Dvideorate=disabled \
+ -Dvolume=disabled"
 
-cd gst-plugins-bad
-git checkout $BRANCH
-DISABLED_BAG_PLUGINS="--disable-accurip \
- --disable-adpcmdec \
- --disable-adpcmenc  \
- --disable-aiff \
- --disable-videoframe_audiolevel \
- --disable-asfmux  \
- --disable-audiobuffersplit \
- --disable-audiofxbad \
- --disable-audiolatency  \
- --disable-audiomixmatrix \
- --disable-audiovisualizers \
- --disable-autoconvert \
- --disable-bayer \
- --disable-camerabin2  \
- --disable-coloreffects \
- --disable-debugutils \
- --disable-dvbsuboverlay \
- --disable-dvdspu  \
- --disable-faceoverlay  \
- --disable-festival  \
- --disable-fieldanalysis \
- --disable-freeverb  \
- --disable-frei0r \
- --disable-gaudieffects  \
- --disable-geometrictransform \
- --disable-gdp  \
- --disable-id3tag  \
- --disable-inter  \
- --disable-interlace  \
- --disable-ivfparse \
- --disable-ivtc  \
- --disable-jp2kdecimator \
- --disable-jpegformat \
- --disable-librfb \
- --disable-midi \
- --disable-mpegdemux \
- --disable-mpegtsdemux  \
- --disable-mpegtsmux \
- --disable-mpegpsmux \
- --disable-mxf \
- --disable-netsim  \
- --disable-onvif \
- --disable-pcapparse  \
- --disable-pnm  \
- --disable-proxy  \
- --disable-rawparse \
- --disable-removesilence \
- --disable-rist \
- --disable-rtp  \
- --disable-sdp \
- --disable-segmentclip  \
- --disable-siren \
- --disable-smooth  \
- --disable-speed \
- --disable-subenc \
- --disable-timecode  \
- --disable-videofilters \
- --disable-videoparsers  \
- --disable-videosignal \
- --disable-vmnc \
- --disable-y4m  \
- --disable-yadif  \
- --disable-directsound \
- --disable-wasapi \
- --disable-direct3d  \
- --disable-winscreencap  \
- --disable-winks  \
- --disable-android_media \
- --disable-apple_media  \
- --disable-bluez \
- --disable-avc \
- --disable-shm \
- --disable-ipcpipeline \
- --disable-opensles  \
- --disable-uvch264 \
- --disable-tinyalsa \
- --disable-msdk  \
- --disable-assrender \
- --disable-aom  \
- --disable-avtp  \
- --disable-voamrwbenc  \
- --disable-voaacenc  \
- --disable-bs2b  \
- --disable-bz2 \
- --disable-chromaprint  \
- --disable-curl  \
- --disable-dash \
- --disable-dc1394 \
- --disable-decklink  \
- --disable-directfb \
- --disable-wayland \
- --disable-webp  \
- --disable-dts \
- --disable-resindvd \
- --disable-faac \
- --disable-faad  \
- --disable-fbdev  \
- --disable-fdk_aac  \
- --disable-flite \
- --disable-gsm  \
- --disable-fluidsynth \
- --disable-kate \
- --disable-kms  \
- --disable-ladspa  \
- --disable-lcms2  \
- --disable-lv2  \
- --disable-libde265 \
- --disable-libmms \
- --disable-srt \
- --disable-srtp  \
- --disable-dtls  \
- --disable-ttml  \
- --disable-modplug  \
- --disable-mpeg2enc \
- --disable-mplex \
- --disable-musepack \
- --disable-neon \
- --disable-ofa \
- --disable-openal \
- --disable-opencv  \
- --disable-openexr \
- --disable-openh264  \
- --disable-openjpeg  \
- --disable-openmpt  \
- --disable-openni2 \
- --disable-opus  \
- --disable-pango  \
- --disable-rsvg  \
- --disable-gl \
- --disable-teletextdec  \
- --disable-wildmidi \
- --disable-smoothstreaming  \
- --disable-sndfile  \
- --disable-soundtouch \
- --disable-gme  \
- --disable-dvb  \
- --disable-sbc \
- --disable-zbar  \
- --disable-rtmp  \
- --disable-spandsp \
- --disable-hls \
- --disable-x265  \
- --disable-webrtcdsp \
- --disable-webrtc \
- --disable-wpe  \
- --disable-sctp"
-./autogen.sh --disable-gtk-doc --enable-orc $DISABLED_BAG_PLUGINS
-make
-make install
-cd ..
+    build_source gst-plugins-good "-Dalpha=disabled \
+ -Dapetag=disabled \
+ -Daudiofx=disabled \
+ -Daudioparsers=disabled \
+ -Dauparse=disabled	\
+ -Dautodetect=disabled \
+ -Davi=disabled \
+ -Dcutter=disabled \
+ -Ddebugutils=disabled \
+ -Ddeinterlace=disabled \
+ -Ddtmf=disabled \
+ -Deffectv=disabled \
+ -Dequalizer=disabled \
+ -Dflv=disabled \
+ -Dflx=disabled \
+ -Dgoom=disabled \
+ -Dgoom2k1=disabled \
+ -Dicydemux=disabled \
+ -Did3demux=disabled \
+ -Dimagefreeze=disabled \
+ -Dinterleave=disabled \
+ -Disomp4=disabled \
+ -Dlaw=disabled \
+ -Dlevel=disabled \
+ -Dmatroska=disabled \
+ -Dmultifile=disabled \
+ -Dmultipart=disabled \
+ -Dreplaygain=disabled \
+ -Drtp=disabled \
+ -Drtpmanager=disabled \
+ -Drtsp=disabled \
+ -Dshapewipe=disabled \
+ -Dmonoscope=disabled \
+ -Doss4=disabled \
+ -Doss=disabled \
+ -Dv4l2=disabled \
+ -Dximagesrc=disabled \
+ -Dsmpte=disabled \
+ -Dspectrum=disabled \
+ -Dudp=disabled \
+ -Dvideocrop=disabled \
+ -Dvideofilter=disabled \
+ -Dvideomixer=disabled \
+ -Dwavenc=disabled \
+ -Dwavparse=disabled \
+ -Dy4m=disabled"
 
-cd gst-plugins-ugly
-DISABLED_UGLY_PLUGINS="--disable-asfdemux \
- --disable-dvdlpcmdec \
- --disable-dvdsub \
- --disable-realmedia \
- --disable-xingmux \
- --disable-a52dec \
- --disable-amrnb \
- --disable-amrwbdec \
- --disable-cdio \
- --disable-dvdreadsrc \
- --disable-mpeg2dec \
- --disable-sid"
-git checkout $BRANCH
-./autogen.sh --disable-gtk-doc --enable-orc $DISABLED_UGLY_PLUGINS
-make
-make install
-cd ..
+    build_source gst-plugins-bad "-Daccurip=disabled \
+ -Dcurl-ssh2=disabled \
+ -Dcolormanagement=disabled \
+ -Dclosedcaption=disabled \
+ -Dadpcmdec=disabled \
+ -Dadpcmenc=disabled \
+ -Daiff=disabled \
+ -Dvideoframe_audiolevel=disabled \
+ -Dasfmux=disabled \
+ -Daudiobuffersplit=disabled \
+ -Daudiofxbad=disabled \
+ -Daudiolatency=disabled \
+ -Daudiomixmatrix=disabled \
+ -Daudiovisualizers=disabled \
+ -Dautoconvert=disabled \
+ -Dbayer=disabled \
+ -Dcamerabin2=disabled \
+ -Dcoloreffects=disabled \
+ -Ddebugutils=disabled \
+ -Ddvbsuboverlay=disabled \
+ -Ddvdspu=disabled \
+ -Dfaceoverlay=disabled \
+ -Dfestival=disabled \
+ -Dfieldanalysis=disabled \
+ -Dfreeverb=disabled \
+ -Dfrei0r=disabled \
+ -Dgaudieffects=disabled \
+ -Dgeometrictransform=disabled \
+ -Dgdp=disabled \
+ -Did3tag=disabled \
+ -Dinter=disabled \
+ -Dinterlace=disabled \
+ -Divfparse=disabled \
+ -Divtc=disabled \
+ -Djp2kdecimator=disabled \
+ -Djpegformat=disabled \
+ -Dlibrfb=disabled \
+ -Dmidi=disabled \
+ -Dmpegdemux=disabled \
+ -Dmpegtsdemux=disabled \
+ -Dmpegtsmux=disabled \
+ -Dmpegpsmux=disabled \
+ -Dmxf=disabled \
+ -Dnetsim=disabled \
+ -Donvif=disabled \
+ -Dpcapparse=disabled \
+ -Dpnm=disabled \
+ -Dproxy=disabled \
+ -Drawparse=disabled \
+ -Dremovesilence=disabled \
+ -Drist=disabled \
+ -Drtp=disabled \
+ -Dsdp=disabled \
+ -Dsegmentclip=disabled \
+ -Dsiren=disabled \
+ -Dsmooth=disabled \
+ -Dspeed=disabled \
+ -Dsubenc=disabled \
+ -Dtimecode=disabled \
+ -Dvideofilters=disabled \
+ -Dvideoparsers=disabled \
+ -Dvideosignal=disabled \
+ -Dvmnc=disabled \
+ -Dy4m=disabled \
+ -Dyadif=disabled \
+ -Ddirectsound=disabled \
+ -Dwasapi=disabled \
+ -Dwinscreencap=disabled \
+ -Dwinks=disabled \
+ -Dbluez=disabled \
+ -Dipcpipeline=disabled \
+ -Dopensles=disabled \
+ -Duvch264=disabled \
+ -Dtinyalsa=disabled \
+ -Dmsdk=disabled \
+ -Dassrender=disabled \
+ -Daom=disabled \
+ -Davtp=disabled \
+ -Dvoamrwbenc=disabled \
+ -Dvoaacenc=disabled \
+ -Dbs2b=disabled \
+ -Dbz2=disabled \
+ -Dchromaprint=disabled \
+ -Dcurl=disabled \
+ -Ddash=disabled \
+ -Ddc1394=disabled \
+ -Ddecklink=disabled \
+ -Ddirectfb=disabled \
+ -Dwayland=disabled \
+ -Dwebp=disabled \
+ -Ddts=disabled \
+ -Dresindvd=disabled \
+ -Dfaac=disabled \
+ -Dfaad=disabled \
+ -Dfbdev=disabled \
+ -Dflite=disabled \
+ -Dgsm=disabled \
+ -Dfluidsynth=disabled \
+ -Dkate=disabled \
+ -Dkms=disabled \
+ -Dladspa=disabled \
+ -Dlv2=disabled \
+ -Dlibde265=disabled \
+ -Dlibmms=disabled \
+ -Dsrt=disabled \
+ -Dsrtp=disabled \
+ -Ddtls=disabled \
+ -Dttml=disabled \
+ -Dmodplug=disabled \
+ -Dmpeg2enc=disabled \
+ -Dmplex=disabled \
+ -Dmusepack=disabled \
+ -Dneon=disabled \
+ -Dofa=disabled \
+ -Dopenal=disabled \
+ -Dopencv=disabled \
+ -Dopenexr=disabled \
+ -Dopenh264=disabled \
+ -Dopenjpeg=disabled \
+ -Dopenmpt=disabled \
+ -Dopenni2=disabled \
+ -Dopus=disabled \
+ -Drsvg=disabled \
+ -Dgl=disabled \
+ -Dwildmidi=disabled \
+ -Dsmoothstreaming=disabled \
+ -Dsndfile=disabled \
+ -Dsoundtouch=disabled \
+ -Dgme=disabled \
+ -Ddvb=disabled \
+ -Dsbc=disabled \
+ -Dzbar=disabled \
+ -Drtmp=disabled \
+ -Dspandsp=disabled \
+ -Dhls=disabled \
+ -Dx265=disabled \
+ -Dwebrtcdsp=disabled \
+ -Dwebrtc=disabled \
+ -Dwpe=disabled \
+ -Dsctp=disabled"
 
+    build_source gst-plugins-ugly "-Dasfdemux=disabled \
+ -Ddvdlpcmdec=disabled \
+ -Ddvdsub=disabled \
+ -Drealmedia=disabled \
+ -Dxingmux=disabled \
+ -Da52dec=disabled \
+ -Damrnb=disabled \
+ -Damrwbdec=disabled \
+ -Dcdio=disabled \
+ -Dmpeg2dec=disabled"
+}
 
-ldconfig
+main
