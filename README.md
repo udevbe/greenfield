@@ -16,7 +16,7 @@ For more information, visit the [documentation](https://greenfield.app/docs/) or
 
 This will start 3 containers.
 - An app-endpoint-server, has the gtk3-demo-application as launchable application.
-- A dummy X server, used by the gstreamer encoder from the app-endpoint-server container.
+- A dummy X server, required by the gstreamer encoder from the app-endpoint-server to run OpengGL commands. Not used for anything else.
 - An nginx server, has ssl termination and uses a self-signed localhost certificate so a secure websocket connection can be set up.
 
 Your browser will, by default, reject the secure websocket connection as it uses a self-signed certificate. 
