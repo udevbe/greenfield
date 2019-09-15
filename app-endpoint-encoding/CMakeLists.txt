@@ -9,7 +9,7 @@ find_package(GLIB2)
 find_package(GStreamer)
 
 add_library(${PROJECT_NAME} SHARED
-        src/nvh264.c)
+        src/x264gst_encoder.c src/x264gst_encoder.h src/encoder.h)
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE ${CMAKE_JS_INC}
