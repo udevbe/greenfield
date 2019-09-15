@@ -56,16 +56,17 @@ class PNGEncoder {
 
     const pipeline = new gstreamer.Pipeline(
       `appsrc do-timestamp=true name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 !
-      videobox border-alpha=0.0 bottom=${bottomPadding} right=${rightPadding} !
+      videobox name=videobox border-alpha=0.0 bottom=${bottomPadding} right=${rightPadding} !
       videoconvert ! videoscale ! 
       pngenc ! 
       appsink name=sink`
     )
     const sink = pipeline.findChild('sink')
     const src = pipeline.findChild('source')
+    const videobox = pipeline.findChild('videobox')
     pipeline.play()
 
-    return new PNGEncoder(pipeline, sink, src, width, height, wlShmFormat)
+    return new PNGEncoder(pipeline, sink, src, width, height, wlShmFormat, videobox)
   }
 
   /**
@@ -75,8 +76,9 @@ class PNGEncoder {
    * @param {number}width
    * @param {number}height
    * @param {number}wlShmFormat
+   * @param {Object}videobox
    */
-  constructor (pipeline, sink, src, width, height, wlShmFormat) {
+  constructor (pipeline, sink, src, width, height, wlShmFormat, videobox) {
     /**
      * @type {Object}
      * @private
@@ -107,6 +109,11 @@ class PNGEncoder {
      * @private
      */
     this._wlShmFormat = wlShmFormat
+    /**
+     * @type {Object}
+     * @private
+     */
+    this._videobox = videobox
   }
 
   /**
@@ -117,6 +124,10 @@ class PNGEncoder {
    */
   _configure (width, height, gstBufferFormat) {
     this._src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1`
+    const rightPadding = width < 16 ? width - 16 : 0
+    const bottomPadding = height < 16 ? height - 16 : 0
+    this._videobox.bottom = bottomPadding
+    this._videobox.right = rightPadding
   }
 
   /**

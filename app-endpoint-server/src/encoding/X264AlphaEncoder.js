@@ -54,8 +54,7 @@ class X264AlphaEncoder {
     const pipeline = new gstreamer.Pipeline(
       // scale & convert to RGBA
       `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! 
-      videoscale ! capsfilter name=scale caps=video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)} ! 
-      
+       videobox name=videobox border-alpha=0.0 bottom=${0 - (height % 2)} right=${0 - (width % 2)} ! 
       tee name=t ! queue ! 
       glupload ! 
       glcolorconvert ! 
@@ -107,10 +106,10 @@ class X264AlphaEncoder {
     const alphasink = pipeline.findChild('alphasink')
     const sink = pipeline.findChild('sink')
     const src = pipeline.findChild('source')
-    const scale = pipeline.findChild('scale')
+    const videobox = pipeline.findChild('videobox')
     pipeline.play()
 
-    return new X264AlphaEncoder(pipeline, sink, alphasink, src, width, height, wlShmFormat, scale)
+    return new X264AlphaEncoder(pipeline, sink, alphasink, src, width, height, wlShmFormat, videobox)
   }
 
   /**
@@ -121,10 +120,10 @@ class X264AlphaEncoder {
    * @param {number}width
    * @param {number}height
    * @param {number}wlShmFormat
-   * @param {Object}scale
+   * @param {Object}videobox
    * @private
    */
-  constructor (pipeline, sink, alphaSink, src, width, height, wlShmFormat, scale) {
+  constructor (pipeline, sink, alphaSink, src, width, height, wlShmFormat, videobox) {
     /**
      * @type {Object}
      * @private
@@ -164,7 +163,7 @@ class X264AlphaEncoder {
      * @type {Object}
      * @private
      */
-    this._scale = scale
+    this._videobox = videobox
   }
 
   /**
@@ -175,7 +174,8 @@ class X264AlphaEncoder {
    */
   _configure (width, height, gstBufferFormat) {
     this._src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1`
-    this._scale.caps = `video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)}`
+    this._videobox.bottom = 0 - (height % 2)
+    this._videobox.right = 0 - (width % 2)
   }
 
   /**

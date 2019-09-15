@@ -45,7 +45,7 @@ class X264OpaqueEncoder {
     const gstBufferFormat = gstFormats[wlShmFormat]
     const pipeline = new gstreamer.Pipeline(
       `appsrc name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 ! 
-      videoscale ! capsfilter name=scale caps=video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)} ! 
+       videobox name=videobox border-alpha=0.0 bottom=${0 - (height % 2)} right=${0 - (width % 2)} ! 
       glupload ! 
       glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! 
       gldownload ! 
@@ -56,10 +56,10 @@ class X264OpaqueEncoder {
 
     const sink = pipeline.findChild('sink')
     const src = pipeline.findChild('source')
-    const scale = pipeline.findChild('scale')
+    const videobox = pipeline.findChild('videobox')
     pipeline.play()
 
-    return new X264OpaqueEncoder(pipeline, sink, src, width, height, wlShmFormat, scale)
+    return new X264OpaqueEncoder(pipeline, sink, src, width, height, wlShmFormat, videobox)
   }
 
   /**
@@ -69,10 +69,10 @@ class X264OpaqueEncoder {
    * @param {number}width
    * @param {number}height
    * @param {number}wlShmFormat
-   * @param {Object}scale
+   * @param {Object}videobox
    * @private
    */
-  constructor (pipeline, sink, src, width, height, wlShmFormat, scale) {
+  constructor (pipeline, sink, src, width, height, wlShmFormat, videobox) {
     /**
      * @type {Object}
      * @private
@@ -107,7 +107,7 @@ class X264OpaqueEncoder {
      * @type {Object}
      * @private
      */
-    this._scale = scale
+    this._videobox = videobox
   }
 
   /**
@@ -118,7 +118,8 @@ class X264OpaqueEncoder {
    */
   _configure (width, height, gstBufferFormat) {
     this._src.caps = `video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1`
-    this._scale.caps = `video/x-raw,width=${width + (width % 2)},height=${height + (height % 2)}`
+    this._videobox.bottom = 0 - (height % 2)
+    this._videobox.right = 0 - (width % 2)
   }
 
   /**
