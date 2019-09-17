@@ -9,13 +9,16 @@ find_package(GLIB2)
 find_package(GStreamer)
 
 add_library(${PROJECT_NAME} SHARED
-        src/x264gst_encoder.c src/x264gst_encoder.h src/encoder.h)
+        src/x264gst_encoder.c
+        src/x264gst_encoder.h
+        src/encoder.h
+        src/node_encoder.c)
 
 target_include_directories(${PROJECT_NAME}
-    PRIVATE ${CMAKE_JS_INC}
-    PRIVATE ${GSTREAMER_INCLUDE_DIR}
-    PRIVATE ${GLIB2_INCLUDE_DIR}
-)
+        PRIVATE ${CMAKE_JS_INC}
+        PRIVATE ${GSTREAMER_INCLUDE_DIR}
+        PRIVATE ${GLIB2_INCLUDE_DIR}
+        )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".node")
 target_link_libraries(${PROJECT_NAME} ${CMAKE_JS_LIB})
