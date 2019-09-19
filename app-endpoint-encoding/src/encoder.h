@@ -5,17 +5,20 @@
 #ifndef APP_ENDPOINT_ENCODING_ENCODER_H
 #define APP_ENDPOINT_ENCODING_ENCODER_H
 
+#include <gst/gstsample.h>
+#include "/home/erik/.nvm/versions/node/v12.9.1/include/node/node_api.h"
 
 struct encoding_callback_data;
 
-typedef void (*encode_callback_func)(const struct encoding_callback_data *encoding_callback_data, const void *frame);
+typedef void (*encode_callback_func)(struct encoding_callback_data *encoding_callback_data,
+                                     GstSample *sample);
 
 struct encoding_callback_data {
-    encode_callback_func encode_callback;
-    void *user_data;
+    encode_callback_func encoder_opaque_sample_ready_callback;
+    napi_threadsafe_function js_cb_ref;
 
-    encode_callback_func alpha_encode_callback;
-    void *alpha_user_data;
+    encode_callback_func encoder_alpha_sample_ready_callback;
+    napi_threadsafe_function js_cb_ref_alpha;
 };
 
 // encoder interface
@@ -24,8 +27,9 @@ struct encoder;
 typedef int (*encode_func)(
         const struct encoder *encoder,
         void *buffer,
-        const uint32_t bufferWidth,
-        const uint32_t bufferHeight,
+        const char *format,
+        const uint32_t width,
+        const uint32_t height,
         struct encoding_callback_data *encoding_callback_data
 );
 
