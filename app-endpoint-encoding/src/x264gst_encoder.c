@@ -106,6 +106,9 @@ x264gst_alpha_encoder_encode(const struct encoder *encoder,
                              struct encoding_callback_data *encoding_callback_data) {
     struct x264gst_alpha_encoder *x264gst_alpha_encoder = (struct x264gst_alpha_encoder *) encoder;
     GstBuffer *buffer = gst_buffer_new_wrapped(buffer_data, buffer_width * buffer_height * 4);
+    // FIXME find a way so that the buffer doesn't free the memory instead of keeping the buffer object alive eternally (mem leak)
+    gst_buffer_ref(buffer);
+
     GstAppSinkCallbacks opaque_sample_callbacks = {
             .eos = NULL,
             .new_sample = new_opaque_sample,

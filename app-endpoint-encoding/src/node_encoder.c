@@ -101,6 +101,10 @@ finalize_gst_buffer(napi_env env,
 
 static void
 gst_sample_to_node_buffer_cb(napi_env env, napi_value js_callback, void *context, void *data) {
+    if (env == NULL) {
+        gst_sample_unref(data);
+        return;
+    }
     napi_value buffer_value, global, cb_result;
     GstSample *sample = data;
     GstBuffer *buffer = gst_sample_get_buffer(sample);
@@ -113,20 +117,42 @@ gst_sample_to_node_buffer_cb(napi_env env, napi_value js_callback, void *context
     napi_value args[] = {buffer_value};
     NAPI_CALL(env, napi_get_global(env, &global))
     NAPI_CALL(env, napi_call_function(env, global, js_callback, 1, args, &cb_result))
+
+    NAPI_CALL(env, napi_unref_threadsafe_function(env, encoding_callback_data.js_cb_ref))
+    napi_release_threadsafe_function(encoding_callback_data.js_cb_ref, napi_tsfn_release);
+}
+
+static void
+gst_alpha_sample_to_node_buffer_cb(napi_env env, napi_value js_callback, void *context, void *data) {
+    if (env == NULL) {
+        gst_sample_unref(data);
+        return;
+    }
+    napi_value buffer_value, global, cb_result;
+    GstSample *sample = data;
+    GstBuffer *buffer = gst_sample_get_buffer(sample);
+    GstMapInfo map;
+    gst_buffer_map(buffer, &map, GST_MAP_READ);
+
+    NAPI_CALL(env,
+              napi_create_external_buffer(env, map.size, map.data, finalize_gst_buffer, sample, &buffer_value))
+    gst_buffer_unmap(buffer, &map);
+    napi_value args[] = {buffer_value};
+    NAPI_CALL(env, napi_get_global(env, &global))
+    NAPI_CALL(env, napi_call_function(env, global, js_callback, 1, args, &cb_result))
+
+    NAPI_CALL(env, napi_unref_threadsafe_function(env, encoding_callback_data.js_cb_ref_alpha))
+    napi_release_threadsafe_function(encoding_callback_data.js_cb_ref_alpha, napi_tsfn_release);
 }
 
 static void
 encoder_opaque_sample_ready_callback(struct encoding_callback_data *encoding_callback_data, GstSample *sample) {
     napi_call_threadsafe_function(encoding_callback_data->js_cb_ref, sample, napi_tsfn_blocking);
-    napi_release_threadsafe_function(encoding_callback_data->js_cb_ref, napi_tsfn_abort);
-    encoding_callback_data->js_cb_ref = NULL;
 }
 
 static void
 encoder_alpha_sample_ready_callback(struct encoding_callback_data *encoding_callback_data, GstSample *sample) {
     napi_call_threadsafe_function(encoding_callback_data->js_cb_ref_alpha, sample, napi_tsfn_blocking);
-    napi_release_threadsafe_function(encoding_callback_data->js_cb_ref_alpha, napi_tsfn_abort);
-    encoding_callback_data->js_cb_ref_alpha = NULL;
 }
 
 // expected arguments in order:
@@ -170,13 +196,12 @@ encodeBuffer(napi_env env, napi_callback_info info) {
             NULL,
             cb_name,
             0,
-            1,
+            2,
             NULL,
             NULL,
             NULL,
             gst_sample_to_node_buffer_cb,
             &js_cb_ref))
-    NAPI_CALL(env, napi_acquire_threadsafe_function(js_cb_ref))
     encoding_callback_data.js_cb_ref = js_cb_ref;
 
     NAPI_CALL(env, napi_get_null(env, &null_value))
@@ -191,13 +216,12 @@ encodeBuffer(napi_env env, napi_callback_info info) {
                 NULL, // async_resource
                 cb_alpha_name, // async_resource_name
                 0, // max_queue_size
-                1, // initial_thread_count
+                2, // initial_thread_count
                 NULL, // thread_finalize_data
                 NULL, // thread_finalize_cb
                 NULL, // context
-                gst_sample_to_node_buffer_cb, // call_js_cb
+                gst_alpha_sample_to_node_buffer_cb, // call_js_cb
                 &js_cb_ref_alpha)) // result
-        NAPI_CALL(env, napi_acquire_threadsafe_function(js_cb_ref_alpha))
         encoding_callback_data.js_cb_ref_alpha = js_cb_ref_alpha;
     }
 
