@@ -26,43 +26,53 @@
     }                                                                    \
 }
 
+struct encoding_callback_data encoding_callback_data = {
+        .js_cb_ref_alpha = NULL,
+        .js_cb_ref = NULL,
+        .encoder_opaque_sample_ready_callback = NULL,
+        .encoder_alpha_sample_ready_callback = NULL
+};
+
 static void encoder_finalize_cb(napi_env env,
                                 void *finalize_data,
                                 void *finalize_hint) {
-    struct encoder *encoder;
-
-    encoder = finalize_data;
-
+    struct encoder *encoder = finalize_data;
     encoder->destroy(encoder);
 }
 
 // expected arguments in order:
 // - string encoder_type
+// - string format
 // - number width
 // - number height
 // return:
 // - encoderContext
 napi_value
 createEncoder(napi_env env, napi_callback_info info) {
-    size_t argc = 3;
+    size_t argc = 4;
     napi_value argv[argc];
     napi_value encoder_value;
 
-    size_t encoder_type_length;
+    size_t encoder_type_length, format_length;
     uint32_t width, height;
     const struct encoder *encoder;
 
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
     NAPI_CALL(env, napi_get_value_string_latin1(env, argv[0], NULL, 0L, &encoder_type_length))
     char encoder_type[encoder_type_length + 1];
-    NAPI_CALL(env, napi_get_value_string_latin1(env, argv[0], encoder_type, encoder_type_length, NULL))
-    NAPI_CALL(env, napi_get_value_uint32(env, argv[1], &width))
-    NAPI_CALL(env, napi_get_value_uint32(env, argv[2], &height))
+    NAPI_CALL(env, napi_get_value_string_latin1(env, argv[0], encoder_type, sizeof(encoder_type), NULL))
+
+    NAPI_CALL(env, napi_get_value_string_latin1(env, argv[1], NULL, 0L, &format_length))
+    char format[format_length + 1];
+    NAPI_CALL(env, napi_get_value_string_latin1(env, argv[1], format, sizeof(format), NULL))
+
+    NAPI_CALL(env, napi_get_value_uint32(env, argv[2], &width))
+    NAPI_CALL(env, napi_get_value_uint32(env, argv[3], &height))
 
     if (strcmp(encoder_type, "x264_alpha") == 0) {
-        encoder = x264gst_alpha_encoder_create(width, height);
+        encoder = x264gst_alpha_encoder_create(format, width, height);
     } else if (strcmp(encoder_type, "x264") == 0) {
-        encoder = x264gst_encoder_create(width, height);
+        encoder = x264gst_encoder_create(format, width, height);
     } else {
         const char msg[] = "No encoder found with type %s";
         char *error_msg = calloc(sizeof(msg) + encoder_type_length, sizeof(char));
@@ -85,47 +95,38 @@ static void
 finalize_gst_buffer(napi_env env,
                     void *finalize_data,
                     void *finalize_hint) {
-    GstBuffer *buffer;
-
-    buffer = finalize_data;
-    gst_buffer_unref(buffer);
+    GstSample *sample = finalize_hint;
+    gst_sample_unref(sample);
 }
-
 
 static void
 gst_sample_to_node_buffer_cb(napi_env env, napi_value js_callback, void *context, void *data) {
     napi_value buffer_value, global, cb_result;
-    GstSample *sample;
-    GstBuffer *buffer;
-    gsize size;
+    GstSample *sample = data;
+    GstBuffer *buffer = gst_sample_get_buffer(sample);
+    GstMapInfo map;
+    gst_buffer_map(buffer, &map, GST_MAP_READ);
 
-    sample = data;
-    buffer = gst_sample_get_buffer(sample);
-    size = gst_buffer_get_size(buffer);
-
-    NAPI_CALL(env, napi_create_external_buffer(env, size, (void **) &buffer, finalize_gst_buffer, NULL, &buffer_value))
+    NAPI_CALL(env,
+              napi_create_external_buffer(env, map.size, map.data, finalize_gst_buffer, sample, &buffer_value))
+    gst_buffer_unmap(buffer, &map);
+    napi_value args[] = {buffer_value};
     NAPI_CALL(env, napi_get_global(env, &global))
-    NAPI_CALL(env, napi_call_function(env, global, js_callback, 1, &buffer_value, &cb_result))
+    NAPI_CALL(env, napi_call_function(env, global, js_callback, 1, args, &cb_result))
 }
 
 static void
 encoder_opaque_sample_ready_callback(struct encoding_callback_data *encoding_callback_data, GstSample *sample) {
     napi_call_threadsafe_function(encoding_callback_data->js_cb_ref, sample, napi_tsfn_blocking);
-
+    napi_release_threadsafe_function(encoding_callback_data->js_cb_ref, napi_tsfn_abort);
     encoding_callback_data->js_cb_ref = NULL;
-    if (encoding_callback_data->js_cb_ref_alpha == NULL) {
-        free(encoding_callback_data);
-    }
 }
 
 static void
 encoder_alpha_sample_ready_callback(struct encoding_callback_data *encoding_callback_data, GstSample *sample) {
     napi_call_threadsafe_function(encoding_callback_data->js_cb_ref_alpha, sample, napi_tsfn_blocking);
-
+    napi_release_threadsafe_function(encoding_callback_data->js_cb_ref_alpha, napi_tsfn_abort);
     encoding_callback_data->js_cb_ref_alpha = NULL;
-    if (encoding_callback_data->js_cb_ref == NULL) {
-        free(encoding_callback_data);
-    }
 }
 
 // expected arguments in order:
@@ -141,19 +142,18 @@ encoder_alpha_sample_ready_callback(struct encoding_callback_data *encoding_call
 napi_value
 encodeBuffer(napi_env env, napi_callback_info info) {
     size_t argc = 7;
-    napi_value argv[argc], return_value, null_value;
+    napi_value argv[argc], return_value, null_value, cb_name, cb_alpha_name;
     napi_threadsafe_function js_cb_ref, js_cb_ref_alpha;
 
     const struct encoder *encoder;
     void *buffer;
     size_t buffer_length, format_length;
     uint32_t width, height;
-    struct encoding_callback_data *encoding_callback_data;
     bool alpha_cb_is_null;
 
-    encoding_callback_data = malloc(sizeof(struct encoding_callback_data));
-    encoding_callback_data->encoder_opaque_sample_ready_callback = encoder_opaque_sample_ready_callback;
-    encoding_callback_data->encoder_alpha_sample_ready_callback = encoder_alpha_sample_ready_callback;
+
+    encoding_callback_data.encoder_opaque_sample_ready_callback = encoder_opaque_sample_ready_callback;
+    encoding_callback_data.encoder_alpha_sample_ready_callback = encoder_alpha_sample_ready_callback;
 
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
     NAPI_CALL(env, napi_get_value_external(env, argv[0], (void **) &encoder))
@@ -163,21 +163,45 @@ encodeBuffer(napi_env env, napi_callback_info info) {
     NAPI_CALL(env, napi_get_value_string_latin1(env, argv[2], format, format_length, NULL))
     NAPI_CALL(env, napi_get_value_uint32(env, argv[3], &width))
     NAPI_CALL(env, napi_get_value_uint32(env, argv[4], &height))
+    napi_create_string_utf8(env, "opaque_callback", NAPI_AUTO_LENGTH, &cb_name);
     NAPI_CALL(env, napi_create_threadsafe_function(
-            env, argv[5], NULL, NULL, 0, 2, NULL, NULL, NULL, &gst_sample_to_node_buffer_cb, &js_cb_ref))
-    encoding_callback_data->js_cb_ref = js_cb_ref;
+            env,
+            argv[5],
+            NULL,
+            cb_name,
+            0,
+            1,
+            NULL,
+            NULL,
+            NULL,
+            gst_sample_to_node_buffer_cb,
+            &js_cb_ref))
+    NAPI_CALL(env, napi_acquire_threadsafe_function(js_cb_ref))
+    encoding_callback_data.js_cb_ref = js_cb_ref;
 
     NAPI_CALL(env, napi_get_null(env, &null_value))
     NAPI_CALL(env, napi_strict_equals(env, argv[6], null_value, &alpha_cb_is_null))
     if (alpha_cb_is_null) {
-        encoding_callback_data->js_cb_ref_alpha = NULL;
+        encoding_callback_data.js_cb_ref_alpha = NULL;
     } else {
+        napi_create_string_utf8(env, "alpha_callback", NAPI_AUTO_LENGTH, &cb_alpha_name);
         NAPI_CALL(env, napi_create_threadsafe_function(
-                env, argv[6], NULL, NULL, 0, 2, NULL, NULL, NULL, &gst_sample_to_node_buffer_cb, &js_cb_ref_alpha))
-        encoding_callback_data->js_cb_ref_alpha = js_cb_ref_alpha;
+                env, // env
+                argv[6], // func
+                NULL, // async_resource
+                cb_alpha_name, // async_resource_name
+                0, // max_queue_size
+                1, // initial_thread_count
+                NULL, // thread_finalize_data
+                NULL, // thread_finalize_cb
+                NULL, // context
+                gst_sample_to_node_buffer_cb, // call_js_cb
+                &js_cb_ref_alpha)) // result
+        NAPI_CALL(env, napi_acquire_threadsafe_function(js_cb_ref_alpha))
+        encoding_callback_data.js_cb_ref_alpha = js_cb_ref_alpha;
     }
 
-    encoder->encode(encoder, buffer, format, width, height, encoding_callback_data);
+    encoder->encode(encoder, buffer, format, width, height, &encoding_callback_data);
 
     NAPI_CALL(env, napi_get_undefined(env, &return_value))
     return return_value;
