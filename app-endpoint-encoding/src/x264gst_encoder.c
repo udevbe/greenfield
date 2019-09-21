@@ -19,22 +19,20 @@ struct x264gst_alpha_encoder {
 
 static GstFlowReturn
 new_opaque_sample(GstAppSink *appsink, gpointer user_data) {
-    GstSample *sample;
-    struct encoding_callback_data *encoding_callback_data = user_data;
+    const struct encoder *encoder = user_data;
+    const GstSample *sample = gst_app_sink_pull_sample(appsink);
 
-    sample = gst_app_sink_pull_sample(appsink);
-    encoding_callback_data->encoder_opaque_sample_ready_callback(encoding_callback_data, sample);
+    encoder->callback_data.opaque_sample_ready_callback(encoder, sample);
 
     return GST_FLOW_OK;
 }
 
 static GstFlowReturn
 new_alpha_sample(GstAppSink *appsink, gpointer user_data) {
-    GstSample *sample;
-    struct encoding_callback_data *encoding_callback_data = user_data;
+    const struct encoder *encoder = user_data;
+    const GstSample *sample = gst_app_sink_pull_sample(appsink);
 
-    sample = gst_app_sink_pull_sample(appsink);
-    encoding_callback_data->encoder_alpha_sample_ready_callback(encoding_callback_data, sample);
+    encoder->callback_data.alpha_sample_ready_callback(encoder, sample);
 
     return GST_FLOW_OK;
 }
@@ -102,11 +100,10 @@ x264gst_alpha_encoder_encode(const struct encoder *encoder,
                              void *buffer_data,
                              const char *format,
                              const uint32_t buffer_width,
-                             const uint32_t buffer_height,
-                             struct encoding_callback_data *encoding_callback_data) {
+                             const uint32_t buffer_height) {
     struct x264gst_alpha_encoder *x264gst_alpha_encoder = (struct x264gst_alpha_encoder *) encoder;
     GstBuffer *buffer = gst_buffer_new_wrapped(buffer_data, buffer_width * buffer_height * 4);
-    // FIXME find a way so that the buffer doesn't free the memory instead of keeping the buffer object alive eternally (mem leak)
+    // FIXME find a way so that the buffer doesn't free the memory instead of keeping the gst_buffer object alive eternally (mem leak)
     gst_buffer_ref(buffer);
 
     GstAppSinkCallbacks opaque_sample_callbacks = {
@@ -121,11 +118,11 @@ x264gst_alpha_encoder_encode(const struct encoder *encoder,
 
     gst_app_sink_set_callbacks(x264gst_alpha_encoder->app_sink,
                                &opaque_sample_callbacks,
-                               encoding_callback_data,
+                               (gpointer) encoder,
                                destroy_notify);
     gst_app_sink_set_callbacks(x264gst_alpha_encoder->app_sink_alpha,
                                &alpha_sample_callbacks,
-                               encoding_callback_data,
+                               (gpointer) encoder,
                                destroy_notify);
 
     x264gst_alpha_encoder_ensure_size(x264gst_alpha_encoder, format, buffer_width, buffer_height);
@@ -134,7 +131,7 @@ x264gst_alpha_encoder_encode(const struct encoder *encoder,
     return 0;
 }
 
-const struct encoder *
+struct encoder *
 x264gst_alpha_encoder_create(const char *format, const uint32_t width, const uint32_t height) {
     struct x264gst_alpha_encoder *x264gst_alpha_encoder;
 
@@ -202,5 +199,5 @@ x264gst_alpha_encoder_create(const char *format, const uint32_t width, const uin
 
     gst_element_set_state(x264gst_alpha_encoder->pipeline, GST_STATE_PLAYING);
 
-    return (const struct encoder *) x264gst_alpha_encoder;
+    return (struct encoder *) x264gst_alpha_encoder;
 }
