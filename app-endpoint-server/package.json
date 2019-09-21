@@ -17,6 +17,7 @@
     "start": "node index.js"
   },
   "dependencies": {
+    "app-endpoint-encoding": "file:../app-endpoint-encoding",
     "epoll": "^2.0.9",
     "firebase": "^6.2.4",
     "gstreamer-superficial": "^1.2.0",

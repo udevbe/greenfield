@@ -24,7 +24,7 @@ const Logger = require('pino')
 require('json5/lib/register')
 const AppEndpointServer = require('./src/AppEndpointServer')
 
-async function main () {
+function main () {
   const logger = Logger({
     name: `app-endpoint-server`,
     prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)

@@ -98,11 +98,12 @@ x264gst_alpha_encoder_destroy(const struct encoder *encoder) {
 static int
 x264gst_alpha_encoder_encode(const struct encoder *encoder,
                              void *buffer_data,
+                             const size_t buffer_size,
                              const char *format,
                              const uint32_t buffer_width,
                              const uint32_t buffer_height) {
     struct x264gst_alpha_encoder *x264gst_alpha_encoder = (struct x264gst_alpha_encoder *) encoder;
-    GstBuffer *buffer = gst_buffer_new_wrapped(buffer_data, buffer_width * buffer_height * 4);
+    GstBuffer *buffer = gst_buffer_new_wrapped(buffer_data, buffer_size);
     // FIXME find a way so that the buffer doesn't free the memory instead of keeping the gst_buffer object alive eternally (mem leak)
     gst_buffer_ref(buffer);
 
@@ -119,11 +120,11 @@ x264gst_alpha_encoder_encode(const struct encoder *encoder,
     gst_app_sink_set_callbacks(x264gst_alpha_encoder->app_sink,
                                &opaque_sample_callbacks,
                                (gpointer) encoder,
-                               destroy_notify);
+                               NULL);
     gst_app_sink_set_callbacks(x264gst_alpha_encoder->app_sink_alpha,
                                &alpha_sample_callbacks,
                                (gpointer) encoder,
-                               destroy_notify);
+                               NULL);
 
     x264gst_alpha_encoder_ensure_size(x264gst_alpha_encoder, format, buffer_width, buffer_height);
     gst_app_src_push_buffer(x264gst_alpha_encoder->app_src, buffer);
@@ -183,7 +184,7 @@ x264gst_alpha_encoder_create(const char *format, const uint32_t width, const uin
             "glupload ! "
             "glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! "
             "gldownload !"
-            "x264enc byte-stream=true qp-max=26 tune=zerolatency speed-preset=veryfast ! "
+            "x264enc byte-stream=true qp-max=32 tune=zerolatency speed-preset=veryfast ! "
             "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! "
             "appsink name=sink",
             NULL);

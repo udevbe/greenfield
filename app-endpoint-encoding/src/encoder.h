@@ -16,6 +16,7 @@ typedef void (*encode_callback_func)(const struct encoder *encoder, const GstSam
 typedef int (*encode_func)(
         const struct encoder *encoder,
         void *buffer,
+        const size_t buffer_size,
         const char *format,
         const uint32_t width,
         const uint32_t height
