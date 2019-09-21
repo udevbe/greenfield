@@ -1,6 +1,8 @@
 # Greenfield
 ### The in-browser wayland compositor [![Build Status](https://travis-ci.org/udevbe/greenfield.svg)](https://travis-ci.org/udevbe/greenfield)
 
+[<img src="https://storage.googleapis.com/greenfield.app/Greenfield_2019-09-11.png" height="200" />](https://storage.googleapis.com/greenfield.app/Greenfield_2019-09-11.png)
+
 Greenfield is a [Wayland compositor](https://en.wikipedia.org/wiki/Wayland_%28display_server_protocol%29) written entirely
 in JavaScript while utilizing WebAssembly for the performance critical parts. It can run native Wayland 
 applications remotely or it can run Wayland [web applications](https://preview.greenfield.app) directly in your browser.
@@ -16,7 +18,7 @@ For more information, visit the [documentation](https://greenfield.app/docs/) or
 
 This will start 3 containers.
 - An app-endpoint-server, has the gtk3-demo-application as launchable application.
-- A dummy X server, used by the gstreamer encoder from the app-endpoint-server container.
+- A dummy X server, required by the gstreamer encoder from the app-endpoint-server to run OpengGL commands. Not used for anything else.
 - An nginx server, has ssl termination and uses a self-signed localhost certificate so a secure websocket connection can be set up.
 
 Your browser will, by default, reject the secure websocket connection as it uses a self-signed certificate. 
