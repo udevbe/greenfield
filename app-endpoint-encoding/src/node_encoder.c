@@ -1,5 +1,3 @@
-// TODO replace with generic ones, once we get everything working
-
 #include <stdio.h>
 #include "encoder.h"
 #include "x264gst_encoder.h"
