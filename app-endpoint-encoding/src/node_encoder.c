@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "encoder.h"
-#include "x264gst_encoder.h"
+#include "x264_gst_encoder.h"
+#include "png_gst_encoder.h"
 
 #define DECLARE_NAPI_METHOD(name, func)                          \
   { name, 0, func, 0, 0, 0, napi_default, 0 }
@@ -128,9 +129,11 @@ createEncoder(napi_env env, napi_callback_info info) {
     NAPI_CALL(env, napi_get_value_uint32(env, argv[3], &height))
 
     if (strcmp(encoder_type, "x264_alpha") == 0) {
-        encoder = x264gst_alpha_encoder_create(format, width, height);
+        encoder = x264_gst_alpha_encoder_create(format, width, height);
     } else if (strcmp(encoder_type, "x264") == 0) {
-        encoder = x264gst_encoder_create(format, width, height);
+        encoder = x264_gst_encoder_create(format, width, height);
+    } else if (strcmp(encoder_type, "png") == 0) {
+        encoder = png_gst_encoder_create(format, width, height);
     } else {
         const char msg[] = "No encoder found with type %s";
         char *error_msg = calloc(sizeof(msg) + encoder_type_length, sizeof(char));

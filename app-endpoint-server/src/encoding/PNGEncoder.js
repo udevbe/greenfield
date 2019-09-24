@@ -55,7 +55,7 @@ class PNGEncoder {
     const bottomPadding = height < 16 ? height - 16 : 0
 
     const pipeline = new gstreamer.Pipeline(
-      `appsrc do-timestamp=true name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 !
+      `appsrc block=true format=3 is-live=true max-latency=-1 min-latency=0 do-timestamp=true name=source caps=video/x-raw,format=${gstBufferFormat},width=${width},height=${height},framerate=60/1 !
       videobox name=videobox border-alpha=0.0 bottom=${bottomPadding} right=${rightPadding} !
       videoconvert ! videoscale ! 
       pngenc ! 

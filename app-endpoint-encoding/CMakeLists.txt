@@ -24,10 +24,10 @@ find_gstreamer_component(gstvideo gstreamer-video-1.0 gstvideo-1.0)
 find_gstreamer_component(gstvideo gstreamer-video-1.0 gstvideo-1.0)
 
 add_library(${PROJECT_NAME} SHARED
-        src/x264gst_encoder.c
-        src/x264gst_encoder.h
+        src/x264_gst_encoder.c
+        src/x264_gst_encoder.h
         src/encoder.h
-        src/node_encoder.c)
+        src/node_encoder.c src/png_gst_encoder.c src/png_gst_encoder.h)
 
 target_include_directories(${PROJECT_NAME}
         PRIVATE ${CMAKE_JS_INC}

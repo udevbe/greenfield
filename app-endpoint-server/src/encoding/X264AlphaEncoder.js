@@ -34,12 +34,6 @@ const gstFormats = {
   [WlShmFormat.xrgb8888]: 'BGRx'
 }
 
-const logger = Logger({
-  name: `h264-alpha-encoder`,
-  prettyPrint: (process.env.DEBUG && process.env.DEBUG == true),
-  level: (process.env.DEBUG && process.env.DEBUG == true) ? 20 : 30
-})
-
 /**
  * @implements FrameEncoder
  */
@@ -105,14 +99,11 @@ class X264AlphaEncoder {
       appEndpointEncoding.encodeBuffer(this._encodingContext, pixelBuffer, gstBufferFormat, width, height)
     })
 
-    logger.debug(`Waiting for H264 Alpha encoder to finish...`)
     await encodingPromise
-    logger.debug(`...H264 Alpha encoder finished.`)
-
     return EncodedFrameFragment.create(x, y, width, height, this._opaque, this._alpha)
   }
 
-  /**
+  /*
    * @param {Buffer}pixelBuffer
    * @param {number}wlShmFormat
    * @param {number}bufferWidth
