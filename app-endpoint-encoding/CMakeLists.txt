@@ -27,7 +27,11 @@ add_library(${PROJECT_NAME} SHARED
         src/x264_gst_encoder.c
         src/x264_gst_encoder.h
         src/encoder.h
-        src/node_encoder.c src/png_gst_encoder.c src/png_gst_encoder.h)
+        src/png_gst_encoder.c
+        src/png_gst_encoder.h
+        src/nv264_gst_encoder.c
+        src/nv264_gst_encoder.h
+        src/node_encoder.c)
 
 target_include_directories(${PROJECT_NAME}
         PRIVATE ${CMAKE_JS_INC}

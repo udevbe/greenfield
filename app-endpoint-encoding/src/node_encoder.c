@@ -2,6 +2,7 @@
 #include "encoder.h"
 #include "x264_gst_encoder.h"
 #include "png_gst_encoder.h"
+#include "nv264_gst_encoder.h"
 
 #define DECLARE_NAPI_METHOD(name, func)                          \
   { name, 0, func, 0, 0, 0, napi_default, 0 }
@@ -134,10 +135,15 @@ createEncoder(napi_env env, napi_callback_info info) {
         encoder = x264_gst_encoder_create(format, width, height);
     } else if (strcmp(encoder_type, "png") == 0) {
         encoder = png_gst_encoder_create(format, width, height);
+    } else if (strcmp(encoder_type, "nv264") == 0) {
+        encoder = nv264_gst_encoder_create(format, width, height);
+    } else if (strcmp(encoder_type, "nv264_alpha") == 0) {
+        encoder = nv264_gst_alpha_encoder_create(format, width, height);
     } else {
         const char msg[] = "No encoder found with type %s";
         char *error_msg = calloc(sizeof(msg) + encoder_type_length, sizeof(char));
-        sprintf(error_msg, msg, encoder_type);
+        sprintf(error_msg, msg, encoder_type
+        );
         napi_throw_error((env), NULL, error_msg);
 
         NAPI_CALL(env, napi_get_undefined(env, &encoder_value))
@@ -145,16 +151,20 @@ createEncoder(napi_env env, napi_callback_info info) {
     }
 
     if (encoder) {
-        encoder->callback_data.opaque_sample_ready_callback = encoder_opaque_sample_ready_callback;
-        encoder->callback_data.alpha_sample_ready_callback = encoder_alpha_sample_ready_callback;
+        encoder->callback_data.
+                opaque_sample_ready_callback = encoder_opaque_sample_ready_callback;
+        encoder->callback_data.
+                alpha_sample_ready_callback = encoder_alpha_sample_ready_callback;
 
         NAPI_CALL(env, napi_create_external(env, (void *) encoder, encoder_finalize_cb, NULL, &encoder_value))
     } else {
         NAPI_CALL(env, napi_get_undefined(env, &encoder_value))
-        return encoder_value;
+        return
+                encoder_value;
     }
 
-    napi_create_string_utf8(env, "opaque_callback", NAPI_AUTO_LENGTH, &cb_name);
+    napi_create_string_utf8(env,
+                            "opaque_callback", NAPI_AUTO_LENGTH, &cb_name);
     NAPI_CALL(env, napi_create_threadsafe_function(
             env,
             argv[4],
@@ -167,14 +177,17 @@ createEncoder(napi_env env, napi_callback_info info) {
             encoder,
             gst_sample_to_node_buffer_cb,
             &js_cb_ref))
-    encoder->callback_data.js_cb_ref = js_cb_ref;
+    encoder->callback_data.
+            js_cb_ref = js_cb_ref;
 
     NAPI_CALL(env, napi_get_null(env, &null_value))
     NAPI_CALL(env, napi_strict_equals(env, argv[5], null_value, &alpha_cb_is_null))
     if (alpha_cb_is_null) {
-        encoder->callback_data.js_cb_ref_alpha = NULL;
+        encoder->callback_data.
+                js_cb_ref_alpha = NULL;
     } else {
-        napi_create_string_utf8(env, "alpha_callback", NAPI_AUTO_LENGTH, &cb_alpha_name);
+        napi_create_string_utf8(env,
+                                "alpha_callback", NAPI_AUTO_LENGTH, &cb_alpha_name);
         NAPI_CALL(env, napi_create_threadsafe_function(
                 env, // env
                 argv[5], // func
@@ -187,10 +200,12 @@ createEncoder(napi_env env, napi_callback_info info) {
                 encoder, // context
                 gst_alpha_sample_to_node_buffer_cb, // call_js_cb
                 &js_cb_ref_alpha)) // result
-        encoder->callback_data.js_cb_ref_alpha = js_cb_ref_alpha;
+        encoder->callback_data.
+                js_cb_ref_alpha = js_cb_ref_alpha;
     }
 
-    return encoder_value;
+    return
+            encoder_value;
 }
 
 // expected arguments in order:
