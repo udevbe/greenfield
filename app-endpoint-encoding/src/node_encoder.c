@@ -216,7 +216,7 @@ encodeBuffer(napi_env env, napi_callback_info info) {
     NAPI_CALL(env, napi_get_buffer_info(env, argv[1], &buffer, &buffer_length))
     NAPI_CALL(env, napi_get_value_string_latin1(env, argv[2], NULL, 0L, &format_length))
     char format[format_length + 1];
-    NAPI_CALL(env, napi_get_value_string_latin1(env, argv[2], format, format_length, NULL))
+    NAPI_CALL(env, napi_get_value_string_latin1(env, argv[2], format, sizeof(format), NULL))
     NAPI_CALL(env, napi_get_value_uint32(env, argv[3], &width))
     NAPI_CALL(env, napi_get_value_uint32(env, argv[4], &height))
 

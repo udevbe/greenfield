@@ -30,7 +30,7 @@ const { h264 } = require('./EncodingTypes')
 const appEndpointEncoding = require('app-endpoint-encoding')
 
 const gstFormats = {
-  [WlShmFormat.argb8888]: 'BGRA ',
+  [WlShmFormat.argb8888]: 'BGRA',
   [WlShmFormat.xrgb8888]: 'BGRx'
 }
 
