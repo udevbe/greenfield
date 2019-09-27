@@ -71,8 +71,8 @@ x264_gst_alpha_encoder_ensure_size(struct x264_gst_alpha_encoder *x264_gst_alpha
     gst_caps_unref((GstCaps *) new_src_caps);
 
     g_object_set(x264_gst_alpha_encoder->videobox,
-                 "bottom", 0 - (height % 2),
-                 "right", 0 - (width % 2),
+                 "bottom", -(height % 2),
+                 "right", -(width % 2),
                  NULL);
 
     return 0;
@@ -101,8 +101,8 @@ x264_gst_encoder_ensure_size(struct x264_gst_encoder *x264_gst_encoder,
     gst_caps_unref((GstCaps *) new_src_caps);
 
     g_object_set(x264_gst_encoder->videobox,
-                 "bottom", 0 - (height % 2),
-                 "right", 0 - (width % 2),
+                 "bottom", -(height % 2),
+                 "right", -(width % 2),
                  NULL);
 
     return 0;
@@ -199,7 +199,7 @@ x264_gst_alpha_encoder_create(const char *format, uint32_t width, uint32_t heigh
     gst_init(NULL, NULL);
     x264_gst_alpha_encoder->pipeline = gst_parse_launch(
             "appsrc name=src caps=video/x-raw block=true format=3 is-live=true max-latency=-1 min-latency=0 do-timestamp=true ! "
-            "videobox name=videobox border-alpha=0.0 ! "
+            "videobox name=videobox border-alpha=0 ! "
             "tee name=t ! queue ! "
             "glupload ! "
             "glcolorconvert ! "
@@ -233,14 +233,14 @@ x264_gst_alpha_encoder_create(const char *format, uint32_t width, uint32_t heigh
             "\" ! "
             "glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! "
             "gldownload ! "
-            "x264enc byte-stream=true qp-max=32 tune=zerolatency speed-preset=veryfast ! "
+            "x264enc key-int-max=500 byte-stream=true qp-max=32 tune=zerolatency speed-preset=veryfast ! "
             "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! "
             "appsink name=alphasink "
             "t. ! queue ! "
             "glupload ! "
             "glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! "
             "gldownload !"
-            "x264enc byte-stream=true qp-max=32 tune=zerolatency speed-preset=veryfast ! "
+            "x264enc key-int-max=500 byte-stream=true qp-max=32 tune=zerolatency speed-preset=veryfast ! "
             "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! "
             "appsink name=sink",
             NULL);
@@ -290,7 +290,7 @@ x264_gst_encoder_create(char *format, uint32_t width, uint32_t height) {
     gst_init(NULL, NULL);
     x264_gst_encoder->pipeline = gst_parse_launch(
             "appsrc name=src caps=video/x-raw block=true format=3 is-live=true max-latency=-1 min-latency=0 do-timestamp=true ! "
-            "videobox name=videobox border-alpha=0.0 ! "
+            "videobox name=videobox border-alpha=0 ! "
             "glupload ! "
             "glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! "
             "gldownload !"

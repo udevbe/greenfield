@@ -29,14 +29,14 @@ export default class Renderer {
   static create () {
     // create offscreen gl context
     const canvas = /** @type{HTMLCanvasElement} */document.createElement('canvas')
-    const gl = canvas.getContext('webgl2', {
+    const gl = canvas.getContext('webgl', {
       antialias: false,
       depth: false,
       alpha: true,
       preserveDrawingBuffer: false
     })
     if (!gl) {
-      throw new Error('This browser doesn\'t support WebGL2!')
+      throw new Error('This browser doesn\'t support WebGL!')
     }
 
     gl.clearColor(0, 0, 0, 0)
@@ -169,7 +169,7 @@ export default class Renderer {
       if (canvasSizeChanged) {
         this._canvas.width = frameWidth
         this._canvas.height = frameHeight
-        this._yuvaSurfaceShader.updatePerspective(encodedFrame.size)
+        this._yuvaSurfaceShader.updateShaderData(encodedFrame.size, h264RenderState)
       }
 
       // TODO we could try to optimize and only shade the fragments of the texture that were updated

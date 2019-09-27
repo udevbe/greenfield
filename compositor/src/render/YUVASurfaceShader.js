@@ -113,11 +113,12 @@ export default class YUVASurfaceShader {
   }
 
   /**
-   * @param {!Size}viewportSize
+   * @param {!Size}encodedFrameSize
+   * @param {H264RenderState} h264RenderState
    */
-  updatePerspective (viewportSize) {
+  updateShaderData (encodedFrameSize, h264RenderState) {
     const gl = this.gl
-    const {w, h} = viewportSize
+    const { w, h } = encodedFrameSize
     gl.viewport(0, 0, w, h)
     this.program.setUniformM4(this.shaderArgs.u_projection, [
       2.0 / w, 0, 0, 0,
@@ -127,16 +128,19 @@ export default class YUVASurfaceShader {
     ])
     gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
     gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
+      // First triangle
       // top left:
       0, 0, 0, 0,
       // top right:
-      w, 0, 1, 0,
+      w, 0, h264RenderState.maxXTexCoord, 0,
       // bottom right:
-      w, h, 1, 1,
+      w, h, h264RenderState.maxXTexCoord, h264RenderState.maxYTexCoord,
+
+      // Second triangle
       // bottom right:
-      w, h, 1, 1,
+      w, h, h264RenderState.maxXTexCoord, h264RenderState.maxYTexCoord,
       // bottom left:
-      0, h, 0, 1,
+      0, h, 0, h264RenderState.maxYTexCoord,
       // top left:
       0, 0, 0, 0
     ]), this.gl.DYNAMIC_DRAW)

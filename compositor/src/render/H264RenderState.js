@@ -73,6 +73,9 @@ export default class H264RenderState extends RenderState {
      * @private
      */
     this._h264BufferContentDecoder = h264BufferContentDecoder
+
+    this.maxXTexCoord = 1
+    this.maxYTexCoord = 1
   }
 
   /**
@@ -83,13 +86,16 @@ export default class H264RenderState extends RenderState {
   async update (encodedFrame) {
     const { alpha, opaque } = await this._h264BufferContentDecoder.decode(encodedFrame)
 
-    // the width & height returned are actually paddded, so we have to use the frame size to get the real image dimension
+    // the width & height returned are actually padded, so we have to use the frame size to get the real image dimension
     // when uploading to texture
     const opaqueBuffer = opaque.buffer
-    const opaqueWidth = opaque.width // stride
+    const opaqueStride = opaque.width // stride
     const opaqueHeight = opaque.height // padded with filler rows
 
-    const lumaSize = opaqueWidth * opaqueHeight
+    this.maxXTexCoord = encodedFrame.size.w / opaqueStride
+    this.maxYTexCoord = encodedFrame.size.h / opaqueHeight
+
+    const lumaSize = opaqueStride * opaqueHeight
     const chromaSize = lumaSize >> 2
 
     const yBuffer = opaqueBuffer.subarray(0, lumaSize)
@@ -98,29 +104,31 @@ export default class H264RenderState extends RenderState {
 
     const isSubImage = encodedFrame.size.equals(this.size)
 
-    const chromaWidth = encodedFrame.size.w >> 1
-    const chromaHeight = encodedFrame.size.h >> 1
-    const chromaStride = opaqueWidth >> 1
+    const chromaHeight = opaqueHeight >> 1
+    const chromaStride = opaqueStride >> 1
+
+    // we upload the entire image, including stride padding & filler rows. The actual visible image will be mapped
+    // from texture coordinates as to crop out stride padding & filler rows.
     if (isSubImage) {
-      this.yTexture.subImage2dBuffer(yBuffer, Rect.create(0, 0, encodedFrame.size.w, encodedFrame.size.h), opaqueWidth)
-      this.uTexture.subImage2dBuffer(uBuffer, Rect.create(0, 0, chromaWidth, chromaHeight), chromaStride)
-      this.vTexture.subImage2dBuffer(vBuffer, Rect.create(0, 0, chromaWidth, chromaHeight), chromaStride)
+      this.yTexture.subImage2dBuffer(yBuffer, Rect.create(0, 0, opaqueStride, opaqueHeight))
+      this.uTexture.subImage2dBuffer(uBuffer, Rect.create(0, 0, chromaStride, chromaHeight))
+      this.vTexture.subImage2dBuffer(vBuffer, Rect.create(0, 0, chromaStride, chromaHeight))
     } else {
-      this.yTexture.image2dBuffer(yBuffer, encodedFrame.size.w, encodedFrame.size.h, opaqueWidth)
-      this.uTexture.image2dBuffer(uBuffer, chromaWidth, chromaHeight, chromaStride)
-      this.vTexture.image2dBuffer(vBuffer, chromaWidth, chromaHeight, chromaStride)
+      this.yTexture.image2dBuffer(yBuffer, opaqueStride, opaqueHeight)
+      this.uTexture.image2dBuffer(uBuffer, chromaStride, chromaHeight)
+      this.vTexture.image2dBuffer(vBuffer, chromaStride, chromaHeight)
     }
 
     if (alpha) {
-      const alphaWidth = alpha.width // stride
+      const alphaStride = alpha.width // stride
       const alphaHeight = alpha.height // padded with filler rows
-      const alphaLumaSize = alphaWidth * alphaHeight
+      const alphaLumaSize = alphaStride * alphaHeight
 
       const alphaBuffer = alpha.buffer.subarray(0, alphaLumaSize)
       if (isSubImage) {
-        this.alphaTexture.subImage2dBuffer(alphaBuffer, Rect.create(0, 0, encodedFrame.size.w, encodedFrame.size.h), alphaWidth)
+        this.alphaTexture.subImage2dBuffer(alphaBuffer, Rect.create(0, 0, alphaStride, alphaHeight))
       } else {
-        this.alphaTexture.image2dBuffer(alphaBuffer, encodedFrame.size.w, encodedFrame.size.h, alphaWidth)
+        this.alphaTexture.image2dBuffer(alphaBuffer, alphaStride, alphaHeight)
       }
     }
   }
