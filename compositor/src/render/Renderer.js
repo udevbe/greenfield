@@ -124,10 +124,10 @@ export default class Renderer {
 
     if (fullFrame && !splitAlpha) {
       // Full frame without a separate alpha. Let the browser do all the drawing.
-      const frame = encodedFrame.pixelContent[0]
-      const opaqueImageBlob = new window.Blob([frame.opaque], { 'type': 'image/png' })
-      const opaqueImageBitmap = await window.createImageBitmap(opaqueImageBlob, 0, 0, frame.geo.width, frame.geo.height)
-      views.forEach(view => view.draw(opaqueImageBitmap))
+      const img = new window.Image()
+      img.src = URL.createObjectURL(new window.Blob([encodedFrame.pixelContent[0].opaque], { type: 'image/png' }))
+      await new Promise(resolve => { img.onload = resolve })
+      views.forEach(view => view.draw(img))
     } else {
       // we don't support/care about fragmented pngs (and definitely not with a separate alpha channel as png has it internal)
       throw new Error(`Unsupported buffer. Encoding type: ${encodedFrame.mimeType}, full frame:${fullFrame}, split alpha: ${splitAlpha}`)
