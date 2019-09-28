@@ -66,7 +66,7 @@ export const fragmentYUVA = {
     vec4 channels = vec4(yChannel, uChannel, vChannel, 1.0);
     vec3 rgb = (channels * conversion).xyz;
 
-    gl_FragColor = vec4(rgb, alphaChannel*1.0893617021276596);
+    gl_FragColor = vec4(rgb, alphaChannel*1.0894);
   }
 `
 }
