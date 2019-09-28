@@ -17,8 +17,6 @@
 
 'use strict'
 
-const Logger = require('pino')
-
 const WlShmFormat = require('./WlShmFormat')
 
 const EncodedFrame = require('./EncodedFrame')
@@ -27,7 +25,7 @@ const EncodingOptions = require('./EncodingOptions')
 
 const { h264 } = require('./EncodingTypes')
 
-const appEndpointEncoding = require('app-endpoint-encoding')
+const appEndpointNative = require('app-endpoint-native')
 
 const gstFormats = {
   [WlShmFormat.argb8888]: 'BGRA',
@@ -47,7 +45,7 @@ class X264AlphaEncoder {
   static create (width, height, wlShmFormat) {
     const gstBufferFormat = gstFormats[wlShmFormat]
     const x264AlphaEncoder = new X264AlphaEncoder()
-    const encodingContext = appEndpointEncoding.createEncoder(
+    const encodingContext = appEndpointNative.createEncoder(
       'x264_alpha', gstBufferFormat, width, height,
       opaqueH264 => {
         x264AlphaEncoder._opaque = opaqueH264
@@ -96,7 +94,7 @@ class X264AlphaEncoder {
       this._alpha = null
       this._opaque = null
       this._encodingResolve = resolve
-      appEndpointEncoding.encodeBuffer(this._encodingContext, pixelBuffer, gstBufferFormat, width, height)
+      appEndpointNative.encodeBuffer(this._encodingContext, pixelBuffer, gstBufferFormat, width, height)
     })
 
     await encodingPromise

@@ -25,7 +25,7 @@ const EncodingOptions = require('./EncodingOptions')
 
 const { h264 } = require('./EncodingTypes')
 
-const appEndpointEncoding = require('app-endpoint-encoding')
+const appEndpointNative = require('app-endpoint-native')
 
 const gstFormats = {
   [WlShmFormat.argb8888]: 'BGRA',
@@ -45,7 +45,7 @@ class NVH264AlphaEncoder {
   static create (width, height, wlShmFormat) {
     const gstBufferFormat = gstFormats[wlShmFormat]
     const nvh264AlphaEncoder = new NVH264AlphaEncoder()
-    const encodingContext = appEndpointEncoding.createEncoder(
+    const encodingContext = appEndpointNative.createEncoder(
       'nv264_alpha', gstBufferFormat, width, height,
       opaqueH264 => {
         nvh264AlphaEncoder._opaque = opaqueH264
@@ -94,7 +94,7 @@ class NVH264AlphaEncoder {
       this._alpha = null
       this._opaque = null
       this._encodingResolve = resolve
-      appEndpointEncoding.encodeBuffer(this._encodingContext, pixelBuffer, gstBufferFormat, width, height)
+      appEndpointNative.encodeBuffer(this._encodingContext, pixelBuffer, gstBufferFormat, width, height)
     })
 
     await encodingPromise

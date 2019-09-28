@@ -23,7 +23,7 @@ const EncodedFrame = require('./EncodedFrame')
 const EncodedFrameFragment = require('./EncodedFrameFragment')
 const EncodingOptions = require('./EncodingOptions')
 const { png } = require('./EncodingTypes')
-const appEndpointEncoding = require('app-endpoint-encoding')
+const appEndpointNative = require('app-endpoint-native')
 
 const gstFormats = {
   [WlShmFormat.argb8888]: 'BGRA',
@@ -43,7 +43,7 @@ class PNGEncoder {
   static create (width, height, wlShmFormat) {
     const gstBufferFormat = gstFormats[wlShmFormat]
     const pngEncoder = new PNGEncoder()
-    pngEncoder._encodingContext = appEndpointEncoding.createEncoder(
+    pngEncoder._encodingContext = appEndpointNative.createEncoder(
       'png', gstBufferFormat, width, height,
       pngImage => {
         pngEncoder._pngImage = pngImage
@@ -86,7 +86,7 @@ class PNGEncoder {
     const encodingPromise = new Promise(resolve => {
       this._pngImage = null
       this._encodingResolve = resolve
-      appEndpointEncoding.encodeBuffer(this._encodingContext, pixelBuffer, gstBufferFormat, width, height)
+      appEndpointNative.encodeBuffer(this._encodingContext, pixelBuffer, gstBufferFormat, width, height)
     })
 
     await encodingPromise

@@ -1,5 +1,5 @@
 {
-  "name": "app-endpoint-encoding",
+  "name": "greenfield-app-endpoint-native",
   "version": "1.0.0",
   "main": "./build/Release/app-endpoint-encoding.node",
   "scripts": {
