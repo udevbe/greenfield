@@ -203,6 +203,8 @@ export default class Pointer extends WlPointerRequests {
      * @type {?Seat}
      */
     this.seat = null
+
+    this._cursorURL = null
   }
 
   onButtonPress () {
@@ -250,7 +252,11 @@ export default class Pointer extends WlPointerRequests {
         if (fullFrame && !splitAlpha) {
           await surface.render(renderFrame, newState, true)
           const imageBlob = new window.Blob([newState.bufferContents.pixelContent[0].opaque], { 'type': newState.bufferContents.mimeType })
-          window.document.body.style.cursor = `url("${URL.createObjectURL(imageBlob)}") ${hotspotX} ${hotspotY}, pointer`
+          if (this._cursorURL) {
+            URL.revokeObjectURL(this._cursorURL)
+          }
+          this._cursorURL = URL.createObjectURL(imageBlob)
+          window.document.body.style.cursor = `url("${this._cursorURL}") ${hotspotX} ${hotspotY}, pointer`
 
           renderFrame.fire()
           await renderFrame
@@ -413,6 +419,10 @@ export default class Pointer extends WlPointerRequests {
       surface.state.inputPixmanRegion = Region.createPixmanRegion()
       surface._pendingInputRegion = Region.createPixmanRegion()
     } else {
+      if (this._cursorURL) {
+        URL.revokeObjectURL(this._cursorURL)
+        this._cursorURL = null
+      }
       window.document.body.style.cursor = 'none'
     }
   }
@@ -711,6 +721,10 @@ export default class Pointer extends WlPointerRequests {
   }
 
   setDefaultCursor () {
+    if (this._cursorURL) {
+      URL.revokeObjectURL(this._cursorURL)
+      this._cursorURL = null
+    }
     window.document.body.style.cursor = 'auto'
   }
 

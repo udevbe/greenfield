@@ -126,7 +126,12 @@ export default class Renderer {
       // Full frame without a separate alpha. Let the browser do all the drawing.
       const img = new window.Image()
       img.src = URL.createObjectURL(new window.Blob([encodedFrame.pixelContent[0].opaque], { type: 'image/png' }))
-      await new Promise(resolve => { img.onload = resolve })
+      await new Promise(resolve => {
+        img.onload = () => {
+          resolve()
+          URL.revokeObjectURL(img.src)
+        }
+      })
       views.forEach(view => view.draw(img))
     } else {
       // we don't support/care about fragmented pngs (and definitely not with a separate alpha channel as png has it internal)
