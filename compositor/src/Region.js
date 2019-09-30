@@ -19,7 +19,7 @@
 
 import WlRegionRequests from './protocol/WlRegionRequests'
 
-import pixman from './lib/libpixman-1'
+import pixman from './lib/libpixman'
 import Rect from './math/Rect'
 
 /**
@@ -57,6 +57,7 @@ class Region extends WlRegionRequests {
    * @param {!number} pixmanRegion
    */
   static fini (pixmanRegion) {
+    // FIXME double free somewhere in the code, so disable this for now
     // pixman._pixman_region32_fini(pixmanRegion)
   }
 
@@ -109,6 +110,7 @@ class Region extends WlRegionRequests {
    * @param {!number}pixmanRegion
    */
   static destroyPixmanRegion (pixmanRegion) {
+    // FIXME double free somewhere in the code, so disable this for now
     // pixman._pixman_region32_fini(pixmanRegion)
     // pixman._free(pixmanRegion)
   }

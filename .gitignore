@@ -123,5 +123,8 @@ CTestTestfile.cmake
 /wasmlibs/libxkbcommon.js
 /wasmlibs/libxkbcommon.data
 /wasmlibs/libxkbcommon.wasm
-/app-endpoint-encoding/build/
-/app-endpoint-encoding/cmake-build-debug/
+/app-endpoint-native/build/
+/app-endpoint-native/cmake-build-debug/
+/wasmlibs/libpixman/
+/wasmlibs/libpixman.js
+/wasmlibs/libpixman.wasm

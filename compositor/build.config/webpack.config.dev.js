@@ -19,6 +19,7 @@ const dev = {
   ],
   devServer: {
     contentBase: path.join(__dirname, '../dev'),
+    port: 8080,
     hot: true,
     open: true
   }
