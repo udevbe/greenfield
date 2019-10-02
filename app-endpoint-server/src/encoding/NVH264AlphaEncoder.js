@@ -45,7 +45,7 @@ class NVH264AlphaEncoder {
   static create (width, height, wlShmFormat) {
     const gstBufferFormat = gstFormats[wlShmFormat]
     const nvh264AlphaEncoder = new NVH264AlphaEncoder()
-    const encodingContext = appEndpointNative.createEncoder(
+    nvh264AlphaEncoder._encodingContext = appEndpointNative.createEncoder(
       'nv264_alpha', gstBufferFormat, width, height,
       opaqueH264 => {
         nvh264AlphaEncoder._opaque = opaqueH264
@@ -59,7 +59,6 @@ class NVH264AlphaEncoder {
           nvh264AlphaEncoder._encodingResolve()
         }
       })
-    nvh264AlphaEncoder._encodingContext = encodingContext
     return nvh264AlphaEncoder
   }
 
@@ -114,7 +113,9 @@ class NVH264AlphaEncoder {
     let encodingOptions = 0
     encodingOptions = EncodingOptions.enableSplitAlpha(encodingOptions)
     encodingOptions = EncodingOptions.enableFullFrame(encodingOptions)
+    const start = Date.now()
     const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)
+    console.log(`---------> NVH264Alpha encoding frame took ${Date.now() - start}ms`)
     return EncodedFrame.create(serial, h264, encodingOptions, bufferWidth, bufferHeight, [encodedFrameFragment])
   }
 }

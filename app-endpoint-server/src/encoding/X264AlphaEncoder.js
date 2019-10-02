@@ -45,7 +45,7 @@ class X264AlphaEncoder {
   static create (width, height, wlShmFormat) {
     const gstBufferFormat = gstFormats[wlShmFormat]
     const x264AlphaEncoder = new X264AlphaEncoder()
-    const encodingContext = appEndpointNative.createEncoder(
+    x264AlphaEncoder._encodingContext = appEndpointNative.createEncoder(
       'x264_alpha', gstBufferFormat, width, height,
       opaqueH264 => {
         x264AlphaEncoder._opaque = opaqueH264
@@ -59,7 +59,6 @@ class X264AlphaEncoder {
           x264AlphaEncoder._encodingResolve()
         }
       })
-    x264AlphaEncoder._encodingContext = encodingContext
     return x264AlphaEncoder
   }
 
