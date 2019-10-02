@@ -19,7 +19,7 @@
 
 import Session from './Session'
 import Compositor from './Compositor'
-import pixman from './lib/libpixman-1'
+import pixman from './lib/libpixman'
 import libxkbcommon from './lib/libxkbcommon'
 import Shell from './Shell'
 import Seat from './Seat'
