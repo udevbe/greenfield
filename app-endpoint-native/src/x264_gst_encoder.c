@@ -198,7 +198,7 @@ x264_gst_alpha_encoder_create(const char *format, uint32_t width, uint32_t heigh
 
     gst_init(NULL, NULL);
     x264_gst_alpha_encoder->pipeline = gst_parse_launch(
-            "appsrc name=src caps=video/x-raw block=true format=3 is-live=true max-latency=-1 min-latency=0 do-timestamp=true ! "
+            "appsrc name=src format=3 caps=video/x-raw ! "
             "videobox name=videobox border-alpha=0 ! "
             "tee name=t ! queue ! "
             "glupload ! "
@@ -289,7 +289,7 @@ x264_gst_encoder_create(char *format, uint32_t width, uint32_t height) {
 
     gst_init(NULL, NULL);
     x264_gst_encoder->pipeline = gst_parse_launch(
-            "appsrc name=src caps=video/x-raw block=true format=3 is-live=true max-latency=-1 min-latency=0 do-timestamp=true ! "
+            "appsrc name=src format=3 caps=video/x-raw ! "
             "videobox name=videobox border-alpha=0 ! "
             "glupload ! "
             "glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! "

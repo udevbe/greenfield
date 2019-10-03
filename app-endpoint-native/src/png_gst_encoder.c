@@ -108,7 +108,7 @@ png_gst_encoder_create(const char *format, uint32_t width, uint32_t height) {
 
     gst_init(NULL, NULL);
     png_gst_encoder->pipeline = gst_parse_launch(
-            "appsrc name=src caps=video/x-raw block=true format=3 is-live=true max-latency=-1 min-latency=0 do-timestamp=true ! "
+            "appsrc name=src format=3 caps=video/x-raw ! "
             "videobox name=videobox border-alpha=0.0 ! "
             "videoconvert ! videoscale ! "
             "pngenc ! "
