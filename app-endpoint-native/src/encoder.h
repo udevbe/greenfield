@@ -6,8 +6,7 @@
 #define APP_ENDPOINT_ENCODING_ENCODER_H
 
 #include <gst/gstsample.h>
-// TODO use system header once everything is working (currently set to make ide happy)
-#include "/home/erik/.nvm/versions/node/v12.9.1/include/node/node_api.h"
+#include <node_api.h>
 
 // encoder interface
 struct encoder;

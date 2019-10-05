@@ -44,6 +44,7 @@ RUN bash build_gst_with_nvenc.sh
 WORKDIR /app
 COPY app-endpoint-server app-endpoint-server
 COPY protocol protocol
+COPY app-endpoint-native app-endpoint-native
 
 # Enter application directory
 WORKDIR /app/app-endpoint-server
