@@ -871,17 +871,20 @@ export default class Surface extends WlSurfaceRequests {
    * @override
    */
   async commit (resource, serial) {
+    const startCommit = Date.now()
     let bufferContents = this.state.bufferContents
 
     if (this.pendingWlBuffer) {
       this.pendingWlBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
 
       const buffer = /** @type{BufferImplementation} */this.pendingWlBuffer.implementation
+      const startBufferContents = Date.now()
       try {
         bufferContents = await buffer.getContents(serial)
       } catch (e) {
         console.error(`[surface: ${resource.id}] - Failed to receive buffer contents.`, e.toString())
       }
+      console.log(`|- Buffer contents took ${Date.now() - startBufferContents}ms`)
       this.pendingWlBuffer.release()
       this.pendingWlBuffer = null
     }
@@ -894,7 +897,9 @@ export default class Surface extends WlSurfaceRequests {
 
     if (newState && this.role && typeof this.role.onCommit === 'function') {
       const animationFrame = Renderer.createRenderFrame()
+      const startFrameCommit = Date.now()
       await this.role.onCommit(this, animationFrame, newState)
+      console.log(`|- Role commit took ${Date.now() - startFrameCommit}ms`)
       if (newState.inputPixmanRegion) {
         Region.destroyPixmanRegion(newState.inputPixmanRegion)
       }
@@ -902,6 +907,8 @@ export default class Surface extends WlSurfaceRequests {
         Region.destroyPixmanRegion(newState.opaquePixmanRegion)
       }
     }
+
+    console.log(`-------> total commit took ${Date.now() - startCommit}`)
   }
 
   /**

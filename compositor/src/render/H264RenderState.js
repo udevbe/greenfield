@@ -84,7 +84,9 @@ export default class H264RenderState extends RenderState {
    * @override
    */
   async update (encodedFrame) {
+    const start = Date.now()
     const { alpha, opaque } = await this._h264BufferContentDecoder.decode(encodedFrame)
+    console.log(`|- Decoding took ${Date.now() - start}ms`)
 
     // the width & height returned are actually padded, so we have to use the frame size to get the real image dimension
     // when uploading to texture
@@ -102,7 +104,7 @@ export default class H264RenderState extends RenderState {
     const uBuffer = opaqueBuffer.subarray(lumaSize, lumaSize + chromaSize)
     const vBuffer = opaqueBuffer.subarray(lumaSize + chromaSize, lumaSize + (2 * chromaSize))
 
-    const isSubImage = encodedFrame.size.equals(this.size)
+    const isSubImage = this.size.w === opaqueStride && this.size.h === opaqueHeight
 
     const chromaHeight = opaqueHeight >> 1
     const chromaStride = opaqueStride >> 1
@@ -110,10 +112,11 @@ export default class H264RenderState extends RenderState {
     // we upload the entire image, including stride padding & filler rows. The actual visible image will be mapped
     // from texture coordinates as to crop out stride padding & filler rows.
     if (isSubImage) {
-      this.yTexture.subImage2dBuffer(yBuffer, Rect.create(0, 0, opaqueStride, opaqueHeight))
-      this.uTexture.subImage2dBuffer(uBuffer, Rect.create(0, 0, chromaStride, chromaHeight))
-      this.vTexture.subImage2dBuffer(vBuffer, Rect.create(0, 0, chromaStride, chromaHeight))
+      this.yTexture.subImage2dBuffer(yBuffer, 0, 0, opaqueStride, opaqueHeight)
+      this.uTexture.subImage2dBuffer(uBuffer, 0, 0, chromaStride, chromaHeight)
+      this.vTexture.subImage2dBuffer(vBuffer, 0, 0, chromaStride, chromaHeight)
     } else {
+      this.size = Size.create(opaqueStride, opaqueHeight)
       this.yTexture.image2dBuffer(yBuffer, opaqueStride, opaqueHeight)
       this.uTexture.image2dBuffer(uBuffer, chromaStride, chromaHeight)
       this.vTexture.image2dBuffer(vBuffer, chromaStride, chromaHeight)
@@ -126,7 +129,7 @@ export default class H264RenderState extends RenderState {
 
       const alphaBuffer = alpha.buffer.subarray(0, alphaLumaSize)
       if (isSubImage) {
-        this.alphaTexture.subImage2dBuffer(alphaBuffer, Rect.create(0, 0, alphaStride, alphaHeight))
+        this.alphaTexture.subImage2dBuffer(alphaBuffer, 0, 0, alphaStride, alphaHeight)
       } else {
         this.alphaTexture.image2dBuffer(alphaBuffer, alphaStride, alphaHeight)
       }

@@ -32,7 +32,7 @@
       // is a pure software encoder. While 'nvh264' is a hw accelerated encoder for Nvidia based GPUs.
       // see https://gstreamer.freedesktop.org/documentation/x264/index.html
       // see https://gstreamer.freedesktop.org/documentation/nvenc/nvh264enc.html
-      h264Encoder: 'x264',
+      h264Encoder: 'nvh264',
       // Maximum number of pixels an image can have before we switch to h264 encoding.
       // If lower, png encoding is used.
       // Png encoding has perfect image quality but has a far larger image size than
