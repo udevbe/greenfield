@@ -176,9 +176,9 @@ export default class Renderer {
         // TODO we could try to optimize and only shade the fragments of the texture that were updated
         this._videoAlphaSurfaceShader.draw()
         this._videoAlphaSurfaceShader.release()
-        const imageBitmapStart = Date.now()
+        // const imageBitmapStart = Date.now()
         const image = await window.createImageBitmap(this._canvas)
-        console.log(`|- Create image bitmap took ${Date.now() - imageBitmapStart}ms`)
+        // console.log(`|- Create image bitmap took ${Date.now() - imageBitmapStart}ms`)
         views.forEach(view => view.draw(image))
       }
     } else {
@@ -227,9 +227,9 @@ export default class Renderer {
       // TODO we could try to optimize and only shade the fragments of the texture that were updated
       this._yuvaSurfaceShader.draw()
       this._yuvaSurfaceShader.release()
-      const imageBitmapStart = Date.now()
+      // const imageBitmapStart = Date.now()
       const image = await window.createImageBitmap(this._canvas)
-      console.log(`|- Create image bitmap took ${Date.now() - imageBitmapStart}ms`)
+      // console.log(`|- Create image bitmap took ${Date.now() - imageBitmapStart}ms`)
       views.forEach(view => view.draw(image))
     } else {
       // Image is in h264 format with no separate alpha channel, color convert yuv fragments to rgb using webgl.

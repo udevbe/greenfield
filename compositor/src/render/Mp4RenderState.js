@@ -40,22 +40,25 @@ class Mp4RenderState extends RenderState {
 
     const [opaqueSourceBuffer, alphaSourceBuffer] = await Promise.all([
       new Promise(resolve => {
-        opaqueMediaSource.addEventListener('sourceopen', event => {
+        opaqueMediaSource.addEventListener('sourceopen', () => {
           URL.revokeObjectURL(opaqueVideoElement.src)
-          const opaqueMediaSource = event.target
+          opaqueMediaSource.clearLiveSeekableRange()
           const opaqueSourceBuffer = opaqueMediaSource.addSourceBuffer(mime)
           resolve(opaqueSourceBuffer)
         })
       }),
       new Promise(resolve => {
-        alphaMediaSource.addEventListener('sourceopen', event => {
+        alphaMediaSource.addEventListener('sourceopen', () => {
           URL.revokeObjectURL(alphaVideoElement.src)
-          const alphaMediaSource = event.target
+          alphaMediaSource.clearLiveSeekableRange()
           const alphaSourceBuffer = alphaMediaSource.addSourceBuffer(mime)
           resolve(alphaSourceBuffer)
         })
       })
     ])
+
+    opaqueSourceBuffer.mode = 'sequence'
+    alphaSourceBuffer.mode = 'sequence'
 
     return new Mp4RenderState(gl, opaqueVideoElement, alphaVideoElement, opaqueSourceBuffer, alphaSourceBuffer)
   }

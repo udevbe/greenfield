@@ -231,14 +231,11 @@ nv264_gst_alpha_encoder_create(const char *format, uint32_t width, uint32_t heig
             "        v_texcoord = a_texcoord;\n"
             "}\n"
             "\" ! "
-            "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
-            "nvh264enc gop-size=-1 qp-min=32 qp-max=38 preset=low-latency-hp rc-mode=vbr-minqp ! "
+            "nvh264enc gop-size=500 qp-min=29 qp-max=40 zerolatency=true preset=5 rc-mode=4 ! "
             "video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! "
             "appsink name=alphasink "
             "t. ! queue ! "
-            "glupload ! "
-            "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
-            "nvh264enc gop-size=-1 qp-min=32 qp-max=38 preset=low-latency-hp rc-mode=vbr-minqp ! "
+            "nvh264enc gop-size=500 qp-min=29 qp-max=40 zerolatency=true preset=5 rc-mode=4 ! "
             "video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! "
             "appsink name=sink",
             NULL);
@@ -289,9 +286,7 @@ nv264_gst_encoder_create(char *format, uint32_t width, uint32_t height) {
     nv264_gst_encoder->pipeline = gst_parse_launch(
             "appsrc name=src format=3 caps=video/x-raw ! "
             "videobox name=videobox border-alpha=0.0 ! "
-            "glupload ! "
-            "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
-            "nvh264enc gop-size=1 qp-min=32 qp-max=38 preset=low-latency-hp rc-mode=vbr-minqp ! "
+            "nvh264enc gop-size=1 qp-min=32 qp-max=38 zerolatency=true preset=5 rc-mode=4 ! "
             "video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! "
             "appsink name=sink",
             NULL);

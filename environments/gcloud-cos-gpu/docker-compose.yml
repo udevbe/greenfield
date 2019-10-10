@@ -1,7 +1,7 @@
 version: "3.3"
 services:
   app-endpoint-server:
-    image: gcr.io/greenfield-app-0/app-endpoint-server:latest
+    image: gcr.io/yourprojectname/app-endpoint-server:latest
     volumes:
       - x11temp:/tmp/.X11-unix
       - nvidia_driver:/usr/local/nvidia/lib64:ro
@@ -17,7 +17,7 @@ services:
       - /dev/nvidia-uvm-tools
 
   xnvidia:
-    image: gcr.io/greenfield-app-0/xnvidia:latest
+    image: gcr.io/yourprojectname/xnvidia:latest
     privileged: true
     volumes:
       - x11temp:/tmp/.X11-unix
