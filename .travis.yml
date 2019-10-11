@@ -1,7 +1,7 @@
 dist: xenial
 language:
 node_js:
-  - lts/*
+  - node
 branches:
   only:
     - master
