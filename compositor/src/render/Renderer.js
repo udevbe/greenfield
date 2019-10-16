@@ -19,7 +19,6 @@
 
 import EncodingOptions from '../remotestreaming/EncodingOptions'
 import H264RenderState from './H264RenderState'
-import Mp4RenderState from './Mp4RenderState'
 import YUVASurfaceShader from './YUVASurfaceShader'
 import YUVSurfaceShader from './YUVSurfaceShader'
 import VideoAlphaSurfaceShader from './VideoAlphaSurfaceShader'
@@ -144,48 +143,6 @@ export default class Renderer {
     }
   }
 
-  async ['video/mp4'] (encodedFrame, surface, views) {
-    let renderState = surface.renderState
-    if (!renderState) {
-      renderState = Mp4RenderState.create(this._gl, 'video/mp4; codecs="avc1.420033"') // baseline 5.1
-      surface.renderState = renderState
-    }
-
-    const mp4RenderState = /** @type Mp4RenderState */ renderState
-    const {
-      /** @type {number} */ w: frameWidth,
-      /** @type {number} */ h: frameHeight
-    } = encodedFrame.size
-
-    // We update the texture with the fragments as early as possible, this is to avoid gl state mixup with other
-    // calls to _draw() while we're in await. If we were to do this call later, this.canvas will have state specifically
-    // for our _draw() call, yet because we are in (a late) await, another call might adjust our canvas, which results
-    // in bad draws/flashing/flickering/...
-    await mp4RenderState.update(encodedFrame)
-
-    if (EncodingOptions.splitAlpha(encodedFrame.encodingOptions)) {
-      this._videoAlphaSurfaceShader.use()
-      this._videoAlphaSurfaceShader.setTexture(mp4RenderState.opaqueTexture, mp4RenderState.alphaTexture)
-
-      const canvasSizeChanged = (this._canvas.width !== frameWidth) || (this._canvas.height !== frameHeight)
-      if (canvasSizeChanged) {
-        this._canvas.width = frameWidth
-        this._canvas.height = frameHeight
-        this._videoAlphaSurfaceShader.updateShaderData(encodedFrame.size)
-
-        // TODO we could try to optimize and only shade the fragments of the texture that were updated
-        this._videoAlphaSurfaceShader.draw()
-        this._videoAlphaSurfaceShader.release()
-        // const imageBitmapStart = Date.now()
-        const image = await window.createImageBitmap(this._canvas)
-        // console.log(`|- Create image bitmap took ${Date.now() - imageBitmapStart}ms`)
-        views.forEach(view => view.draw(image))
-      }
-    } else {
-      views.forEach(view => view.draw(mp4RenderState.opaqueVideoElement))
-    }
-  }
-
   /**
    * @param {EncodedFrame}encodedFrame
    * @param {Surface}surface
@@ -227,9 +184,9 @@ export default class Renderer {
       // TODO we could try to optimize and only shade the fragments of the texture that were updated
       this._yuvaSurfaceShader.draw()
       this._yuvaSurfaceShader.release()
-      // const imageBitmapStart = Date.now()
+      const imageBitmapStart = Date.now()
       const image = await window.createImageBitmap(this._canvas)
-      // console.log(`|- Create image bitmap took ${Date.now() - imageBitmapStart}ms`)
+      console.log(`|- Create image bitmap took ${Date.now() - imageBitmapStart}ms`)
       views.forEach(view => view.draw(image))
     } else {
       // Image is in h264 format with no separate alpha channel, color convert yuv fragments to rgb using webgl.
