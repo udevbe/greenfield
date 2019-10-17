@@ -39,25 +39,6 @@ export const vertexQuad = {
 /**
  * @type {{type: string, source: string}}
  */
-export const fragmentVideoAlpha = {
-  type: 'x-shader/x-fragment',
-  source: `
-  precision lowp float;
-  
-  varying vec2 v_texCoord;
-  
-  uniform sampler2D opaqueTexture;
-  uniform sampler2D alphaTexture;
-
-  void main(void) {
-    gl_FragColor = vec4(texture2D(opaqueTexture, v_texCoord).xyz, texture2D(alphaTexture, v_texCoord).x);
-  }
-`
-}
-
-/**
- * @type {{type: string, source: string}}
- */
 export const fragmentYUVA = {
   type: 'x-shader/x-fragment',
   source: `

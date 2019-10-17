@@ -61,7 +61,7 @@ export default class Renderer {
     let animationResolve = null
     const animationPromise = new Promise((resolve) => { animationResolve = resolve })
     animationPromise._animationResolve = animationResolve
-    animationPromise.fire = () => window.requestAnimationFrame(time => animationPromise._animationResolve(time))
+    animationPromise.fire = () => animationPromise._animationResolve(Date.now())
     return animationPromise
   }
 
@@ -73,7 +73,7 @@ export default class Renderer {
    * @param {YUVSurfaceShader}yuvSurfaceShader
    * @param {HTMLCanvasElement}canvas
    */
-  constructor (gl, yuvaSurfaceShader, yuvSurfaceShader, videoAlphaSurfaceShader, canvas) {
+  constructor (gl, yuvaSurfaceShader, yuvSurfaceShader, canvas) {
     /**
      * @type {WebGLRenderingContext}
      */
@@ -88,8 +88,6 @@ export default class Renderer {
      * @private
      */
     this._yuvSurfaceShader = yuvSurfaceShader
-
-    this._videoAlphaSurfaceShader = videoAlphaSurfaceShader
     /**
      * @type {HTMLCanvasElement}
      * @private
