@@ -21,7 +21,6 @@ import EncodingOptions from '../remotestreaming/EncodingOptions'
 import H264RenderState from './H264RenderState'
 import YUVASurfaceShader from './YUVASurfaceShader'
 import YUVSurfaceShader from './YUVSurfaceShader'
-import VideoAlphaSurfaceShader from './VideoAlphaSurfaceShader'
 
 export default class Renderer {
   /**
@@ -43,9 +42,8 @@ export default class Renderer {
     gl.clearColor(0, 0, 0, 0)
     const yuvaSurfaceShader = YUVASurfaceShader.create(gl)
     const yuvSurfaceShader = YUVSurfaceShader.create(gl)
-    const videoAlphaSurfaceShader = VideoAlphaSurfaceShader.create(gl)
 
-    return new Renderer(gl, yuvaSurfaceShader, yuvSurfaceShader, videoAlphaSurfaceShader, canvas)
+    return new Renderer(gl, yuvaSurfaceShader, yuvSurfaceShader, canvas)
   }
 
   /**
@@ -59,9 +57,9 @@ export default class Renderer {
    */
   static createRenderFrame () {
     let animationResolve = null
-    const animationPromise = new Promise((resolve) => { animationResolve = resolve })
-    animationPromise._animationResolve = animationResolve
-    animationPromise.fire = () => animationPromise._animationResolve(Date.now())
+    const animationPromise = new Promise(resolve => { animationResolve = resolve })
+    // animationPromise.fire = () => window.requestAnimationFrame(time => animationResolve(time))
+    animationPromise.fire = () => animationResolve(Date.now())
     return animationPromise
   }
 
@@ -107,6 +105,7 @@ export default class Renderer {
     const bufferContents = newState.bufferContents
 
     if (bufferContents) {
+      DEBUG && console.log('|- Awaiting surface views draw.')
       await this._draw(bufferContents, surface, views)
     } else {
       views.forEach((view) => { view.draw(this._emptyImage) })
@@ -126,15 +125,10 @@ export default class Renderer {
 
     if (fullFrame && !splitAlpha) {
       // Full frame without a separate alpha. Let the browser do all the drawing.
-      const img = new window.Image()
-      img.src = URL.createObjectURL(new window.Blob([encodedFrame.pixelContent[0].opaque], { type: 'image/png' }))
-      await new Promise(resolve => {
-        img.onload = () => {
-          resolve()
-          URL.revokeObjectURL(img.src)
-        }
-      })
-      views.forEach(view => view.draw(img))
+      const frame = encodedFrame.pixelContent[0]
+      const opaqueImageBlob = new window.Blob([frame.opaque], { 'type': 'image/png' })
+      const opaqueImageBitmap = await window.createImageBitmap(opaqueImageBlob, 0, 0, frame.geo.width, frame.geo.height)
+      views.forEach(view => view.draw(opaqueImageBitmap))
     } else {
       // we don't support/care about fragmented pngs (and definitely not with a separate alpha channel as png has it internal)
       throw new Error(`Unsupported buffer. Encoding type: ${encodedFrame.mimeType}, full frame:${fullFrame}, split alpha: ${splitAlpha}`)
@@ -165,6 +159,7 @@ export default class Renderer {
     // calls to _draw() while we're in await. If we were to do this call later, this.canvas will have state specifically
     // for our _draw() call, yet because we are in (a late) await, another call might adjust our canvas, which results
     // in bad draws/flashing/flickering/...
+    DEBUG && console.log('|- Awaiting h264 render-state update.')
     await h264RenderState.update(encodedFrame)
 
     if (EncodingOptions.splitAlpha(encodedFrame.encodingOptions)) {
@@ -183,8 +178,9 @@ export default class Renderer {
       this._yuvaSurfaceShader.draw()
       this._yuvaSurfaceShader.release()
       const imageBitmapStart = Date.now()
+      DEBUG && console.log('|- Awaiting image bitmap creation.')
       const image = await window.createImageBitmap(this._canvas)
-      console.log(`|- Create image bitmap took ${Date.now() - imageBitmapStart}ms`)
+      DEBUG && console.log(`|- Create image bitmap took ${Date.now() - imageBitmapStart}ms`)
       views.forEach(view => view.draw(image))
     } else {
       // Image is in h264 format with no separate alpha channel, color convert yuv fragments to rgb using webgl.

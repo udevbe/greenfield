@@ -48,13 +48,12 @@ encoder_alpha_sample_ready_callback(const struct encoder *encoder, const GstSamp
     napi_call_threadsafe_function(encoder->callback_data.js_cb_ref_alpha, (void *) sample, napi_tsfn_blocking);
 }
 
-static void
-finalize_gst_buffer(napi_env env,
-                    void *finalize_data,
-                    void *finalize_hint) {
-    GstSample *sample = finalize_hint;
-    gst_sample_unref(sample);
-}
+//static void
+//finalize_gst_buffer(napi_env env,
+//                    void *finalize_data,
+//                    void *finalize_hint) {
+//    free(finalize_data);
+//}
 
 static void
 gst_sample_to_node_buffer_cb(napi_env env, napi_value js_callback, void *context, void *data) {
@@ -66,11 +65,15 @@ gst_sample_to_node_buffer_cb(napi_env env, napi_value js_callback, void *context
     GstSample *sample = data;
     GstBuffer *buffer = gst_sample_get_buffer(sample);
     GstMapInfo map;
+    // TODO avoid copying and use napi_create_external_array_buffer + cleanup in finalize callback
     gst_buffer_map(buffer, &map, GST_MAP_READ);
+    void *buffer_data = malloc(map.size);
+    memcpy(buffer_data, map.data, map.size);
+    gst_buffer_unmap(buffer, &map);
+    gst_sample_unref(data);
 
     NAPI_CALL(env,
-              napi_create_external_buffer(env, map.size, map.data, finalize_gst_buffer, sample, &buffer_value))
-    gst_buffer_unmap(buffer, &map);
+              napi_create_external_buffer(env, map.size, buffer_data, NULL, NULL, &buffer_value))
     napi_value args[] = {buffer_value};
     NAPI_CALL(env, napi_get_global(env, &global))
     NAPI_CALL(env, napi_call_function(env, global, js_callback, 1, args, &cb_result))
@@ -83,15 +86,18 @@ gst_alpha_sample_to_node_buffer_cb(napi_env env, napi_value js_callback, void *c
         return;
     }
     napi_value buffer_value, global, cb_result;
-    struct encoder *encoder = context;
     GstSample *sample = data;
     GstBuffer *buffer = gst_sample_get_buffer(sample);
     GstMapInfo map;
+    // TODO avoid copying and use napi_create_external_array_buffer + cleanup in finalize callback
     gst_buffer_map(buffer, &map, GST_MAP_READ);
+    void *buffer_data = malloc(map.size);
+    memcpy(buffer_data, map.data, map.size);
+    gst_buffer_unmap(buffer, &map);
+    gst_sample_unref(data);
 
     NAPI_CALL(env,
-              napi_create_external_buffer(env, map.size, map.data, finalize_gst_buffer, sample, &buffer_value))
-    gst_buffer_unmap(buffer, &map);
+              napi_create_external_buffer(env, map.size, buffer_data, NULL, NULL, &buffer_value))
     napi_value args[] = {buffer_value};
     NAPI_CALL(env, napi_get_global(env, &global))
     NAPI_CALL(env, napi_call_function(env, global, js_callback, 1, args, &cb_result))

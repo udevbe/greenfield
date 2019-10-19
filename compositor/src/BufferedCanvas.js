@@ -152,24 +152,8 @@ export default class BufferedCanvas {
     return Size.create(this.frontContext.canvas.width, this.frontContext.canvas.height)
   }
 
-  /**
-   * @param {string}cssClass
-   */
-  addCssClass (cssClass) {
-    this.frontContext.canvas.classList.add(cssClass)
-    this.backContext.canvas.classList.add(cssClass)
-  }
-
-  /**
-   * @param {string}cssClass
-   */
-  removeCssClass (cssClass) {
-    this.frontContext.canvas.classList.remove(cssClass)
-    this.backContext.canvas.classList.remove(cssClass)
-  }
-
   _detachInputDivs () {
-    this.inputDivs.forEach((inputDiv) => {
+    this.inputDivs.forEach(inputDiv => {
       if (inputDiv.parentElement) {
         inputDiv.parentElement.removeChild(inputDiv)
       }

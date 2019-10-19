@@ -107,13 +107,13 @@ class EncodedFrameFragment {
     offset += 4
 
     this._opaque.copy(buffer, offset)
-    offset += this._opaque.byteLength
+    offset += this._opaque.length
 
     buffer.writeUInt32LE(this._alpha.length, offset, true)
     offset += 4
 
     this._alpha.copy(buffer, offset)
-    offset += this._alpha.byteLength
+    offset += this._alpha.length
 
     return offset
   }

@@ -57,7 +57,7 @@ png_gst_encoder_ensure_size(struct png_gst_encoder *png_gst_encoder,
                             const u_int32_t height) {
     const GstCaps *current_src_caps = gst_app_src_get_caps(png_gst_encoder->app_src);
     const GstCaps *new_src_caps = gst_caps_new_simple("video/x-raw",
-                                                      "framerate", GST_TYPE_FRACTION, 60, 1,
+                                                      "framerate", GST_TYPE_FRACTION, 0, 1,
                                                       "format", G_TYPE_STRING, format,
                                                       "width", G_TYPE_INT, width,
                                                       "height", G_TYPE_INT, height,

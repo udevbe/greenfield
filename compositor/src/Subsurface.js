@@ -149,7 +149,7 @@ export default class Subsurface extends WlSubsurfaceRequests {
    * @param {Surface}parentSurface
    * @param {RenderFrame}renderFrame
    */
-  onParentCommit (parentSurface, renderFrame) {
+  async onParentCommit (parentSurface, renderFrame) {
     if (this._inert) {
       return
     }
@@ -158,9 +158,7 @@ export default class Subsurface extends WlSubsurfaceRequests {
     // sibling stacking order & position is committed by the parent itself so no need to do it here.
 
     if (this._effectiveSync && this._cachedState) {
-      surface.render(renderFrame, this._cachedState)
-      // TODO if we throw away cached state, we need to free the pixman regions in it
-      this._cachedState = null
+      await surface.render(renderFrame, this._cachedState, false)
     }
   }
 
@@ -189,7 +187,7 @@ export default class Subsurface extends WlSubsurfaceRequests {
         // TODO if we throw away cached state, we need to free the pixman regions in it
         this._cachedState = null
       }
-      await surface.render(renderFrame, renderState)
+      await surface.render(renderFrame, renderState, false)
       renderFrame.fire()
       await renderFrame
       surface.session.flush()

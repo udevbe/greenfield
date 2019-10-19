@@ -252,9 +252,9 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
     await surface.render(renderFrame, newState)
     renderFrame.fire()
-    // const renderFrameStart = Date.now()
+    const renderFrameStart = Date.now()
     await renderFrame
-    // console.log(`|- Render frame fire took ${Date.now() - renderFrameStart}ms`)
+    DEBUG && console.log(`|- Render frame fire took ${Date.now() - renderFrameStart}ms`)
     this._session.flush()
   }
 

@@ -878,13 +878,14 @@ export default class Surface extends WlSurfaceRequests {
       this.pendingWlBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
 
       const buffer = /** @type{BufferImplementation} */this.pendingWlBuffer.implementation
-      // const startBufferContents = Date.now()
+      const startBufferContents = Date.now()
       try {
+        DEBUG && console.log('|- Awaiting buffer contents.')
         bufferContents = await buffer.getContents(serial)
       } catch (e) {
         console.error(`[surface: ${resource.id}] - Failed to receive buffer contents.`, e.toString())
       }
-      // console.log(`|- Buffer contents took ${Date.now() - startBufferContents}ms`)
+      DEBUG && console.log(`|- Buffer contents took ${Date.now() - startBufferContents}ms`)
       this.pendingWlBuffer.release()
       this.pendingWlBuffer = null
     }
@@ -897,9 +898,10 @@ export default class Surface extends WlSurfaceRequests {
 
     if (newState && this.role && typeof this.role.onCommit === 'function') {
       const animationFrame = Renderer.createRenderFrame()
-      // const startFrameCommit = Date.now()
+      DEBUG && console.log('|- Awaiting surface role commit.')
+      const startFrameCommit = Date.now()
       await this.role.onCommit(this, animationFrame, newState)
-      // console.log(`|- Role commit took ${Date.now() - startFrameCommit}ms`)
+      DEBUG && console.log(`|- Role commit took ${Date.now() - startFrameCommit}ms`)
       if (newState.inputPixmanRegion) {
         Region.destroyPixmanRegion(newState.inputPixmanRegion)
       }
@@ -908,13 +910,13 @@ export default class Surface extends WlSurfaceRequests {
       }
     }
 
-    // console.log(`-------> total commit took ${Date.now() - startCommit}`)
+    DEBUG && console.log(`-------> total commit took ${Date.now() - startCommit}`)
   }
 
   /**
    * @param {RenderFrame}renderFrame
    * @param {SurfaceState}newState
-   * @param {boolean=}skipDraw
+   * @param {boolean|undefined}skipDraw
    */
   async render (renderFrame, newState, skipDraw) {
     if (skipDraw == null) {
@@ -930,7 +932,7 @@ export default class Surface extends WlSurfaceRequests {
       this.subsurfaceChildren = this.pendingSubsurfaceChildren.slice()
       this.updateChildViewsZIndexes()
 
-      this.subsurfaceChildren.forEach((surfaceChild) => {
+      await Promise.all(this.subsurfaceChildren.map(async (surfaceChild) => {
         const siblingSurface = surfaceChild.surface
         if (siblingSurface !== this) {
           const siblingSubsurface = /** @type Subsurface */ siblingSurface.role
@@ -939,14 +941,16 @@ export default class Surface extends WlSurfaceRequests {
             surfaceChild.position = siblingSubsurface.pendingPosition
             siblingSubsurface.pendingPosition = null
           }
-          siblingSubsurface.onParentCommit(this, renderFrame)
+          await siblingSubsurface.onParentCommit(this, renderFrame)
         }
-      })
+      }))
     }
 
-    if (!skipDraw && newState.bufferContents !== this.state.bufferContents) {
+    if (!skipDraw) {
+      DEBUG && console.log('|- Awaiting surface render.')
       await this.renderer.render(this, newState)
     }
+
     const { w: oldWidth, h: oldHeight } = this.size
     this._updateDerivedState(newState)
     Surface.mergeState(this.state, newState)
@@ -959,7 +963,9 @@ export default class Surface extends WlSurfaceRequests {
       this.views.forEach(view => view.updateInputRegion())
     }
 
-    this.views.forEach(view => view.swapBuffers(renderFrame))
+    if (!skipDraw) {
+      this.views.forEach(view => view.swapBuffers(renderFrame))
+    }
   }
 
   /**
