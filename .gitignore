@@ -128,3 +128,6 @@ CTestTestfile.cmake
 /wasmlibs/libpixman/
 /wasmlibs/libpixman.js
 /wasmlibs/libpixman.wasm
+/wasmlibs/TinyH264.js
+/wasmlibs/TinyH264.wasm
+/wasmlibs/tinyh264/
