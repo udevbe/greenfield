@@ -233,14 +233,14 @@ x264_gst_alpha_encoder_create(const char *format, uint32_t width, uint32_t heigh
             "\" ! "
             "glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! "
             "gldownload ! "
-            "x264enc key-int-max=-1 byte-stream=true qp-max=32 tune=zerolatency speed-preset=veryfast ! "
+            "x264enc key-int-max=1000 byte-stream=true qp-max=32 tune=zerolatency speed-preset=veryfast ! "
             "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! "
             "appsink name=alphasink "
             "t. ! queue ! "
             "glupload ! "
             "glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! "
             "gldownload !"
-            "x264enc key-int-max=-1 byte-stream=true qp-max=32 tune=zerolatency speed-preset=veryfast ! "
+            "x264enc key-int-max=1000 byte-stream=true qp-max=32 tune=zerolatency speed-preset=veryfast ! "
             "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! "
             "appsink name=sink",
             NULL);
