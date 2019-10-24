@@ -27,6 +27,7 @@ import Point from './math/Point'
 import Size from './Size'
 import Renderer from './render/Renderer'
 import Mat4 from './math/Mat4'
+import RenderFrame from './render/RenderFrame'
 
 const { none, bottom, bottomLeft, bottomRight, left, right, top, topLeft, topRight } = XdgToplevelResource.ResizeEdge
 const { fullscreen, activated, maximized, resizing } = XdgToplevelResource.State
@@ -227,35 +228,29 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
   /**
    * @param {Surface}surface
-   * @param {RenderFrame}renderFrame
    * @param {SurfaceState}newState
    * @return {Promise<void>}
    * @override
    */
-  async onCommit (surface, renderFrame, newState) {
+  async onCommit (surface, newState) {
     if (newState.bufferContents) {
       if (!this.mapped) {
         this._map(surface)
       }
       if (newState.roleState.configureState.state.includes(resizing)) {
-        this._resizingCommit(surface, renderFrame, newState)
+        this._resizingCommit(surface, surface.renderFrame, newState)
       } else if (newState.roleState.configureState.state.includes(maximized)) {
-        this._maximizedCommit(surface, renderFrame, newState)
+        this._maximizedCommit(surface, surface.renderFrame, newState)
       } else if (newState.roleState.configureState.state.includes(fullscreen)) {
-        this._fullscreenCommit(surface, renderFrame, newState)
+        this._fullscreenCommit(surface, surface.renderFrame, newState)
       } else {
-        this._normalCommit(surface, renderFrame, newState)
+        this._normalCommit(surface, surface.renderFrame, newState)
       }
     } else if (this.mapped) {
       this._unmap()
     }
 
-    await surface.render(renderFrame, newState)
-    renderFrame.fire()
-    const renderFrameStart = Date.now()
-    await renderFrame
-    DEBUG && console.log(`|- Render frame fire took ${Date.now() - renderFrameStart}ms`)
-    this._session.flush()
+    await surface.render(surface.renderFrame, newState)
   }
 
   /**
@@ -636,6 +631,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const pointerX = pointer.x
     const pointerY = pointer.y
 
+    let renderFrame = null
     const moveListener = () => {
       if (!this.mapped) {
         pointer.removeMouseMoveListener(moveListener)
@@ -647,11 +643,12 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
       surfaceChildSelf.position = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
 
-      const renderFrame = Renderer.createRenderFrame()
-      surface.views.forEach((view) => {
-        view.applyTransformations(renderFrame)
-      })
-      renderFrame.fire()
+      if (renderFrame === null) {
+        renderFrame = RenderFrame.create()
+        surface.views.forEach(view => view.applyTransformations(renderFrame))
+        renderFrame.then(() => { renderFrame = null })
+        renderFrame.fire()
+      }
     }
 
     pointer.onButtonRelease().then(() => {

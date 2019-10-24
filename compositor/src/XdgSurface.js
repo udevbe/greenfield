@@ -26,6 +26,7 @@ import XdgToplevel from './XdgToplevel'
 import XdgPopup from './XdgPopup'
 import Rect from './math/Rect'
 import Renderer from './render/Renderer'
+import RenderFrame from './render/RenderFrame'
 
 /**
  *
@@ -217,17 +218,13 @@ export default class XdgSurface extends XdgSurfaceRequests {
 
     const xdgPopupResource = new XdgPopupResource(resource.client, id, resource.version)
     const xdgPopup = XdgPopup.create(xdgPopupResource, this, parent, positionerState, this._session, this._seat)
-    this.ackConfigure = (resource, serial) => {
-      xdgPopup.ackConfigure(serial)
-    }
+    this.ackConfigure = (resource, serial) => xdgPopup.ackConfigure(serial)
 
     const onNewView = (view) => {
-      const renderFrame = Renderer.createRenderFrame()
+      const renderFrame = RenderFrame.create()
       view.applyTransformations(renderFrame)
       renderFrame.fire()
-      view.onDestroy().then(() => {
-        view.detach()
-      })
+      view.onDestroy().then(() => view.detach())
     }
 
     if (parent) {

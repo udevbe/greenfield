@@ -247,12 +247,11 @@ export default class XdgPopup extends XdgPopupRequests {
 
   /**
    * @param {Surface}surface
-   * @param {RenderFrame}renderFrame
    * @param {SurfaceState}newState
    * @return {Promise<void>}
    * @override
    */
-  async onCommit (surface, renderFrame, newState) {
+  async onCommit (surface, newState) {
     if (this.dismissed) {
       return
     }
@@ -265,10 +264,7 @@ export default class XdgPopup extends XdgPopupRequests {
       this._dismiss()
     }
 
-    await surface.render(renderFrame, newState)
-    renderFrame.fire()
-    await renderFrame
-    this._session.flush()
+    await surface.render(surface.renderFrame, newState)
   }
 
   /**

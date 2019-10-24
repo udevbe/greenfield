@@ -24,6 +24,7 @@ import Region from './Region'
 import Renderer from './render/Renderer'
 import Point from './math/Point'
 import Rect from './math/Rect'
+import RenderFrame from './render/RenderFrame'
 
 export default class View {
   /**
@@ -128,7 +129,7 @@ export default class View {
           this.parent = null
         }
       })
-      const renderFrame = Renderer.createRenderFrame()
+      const renderFrame = RenderFrame.create()
       this.applyTransformations(renderFrame)
       renderFrame.fire()
       if (this._parent.isAttached()) {
@@ -201,15 +202,13 @@ export default class View {
   }
 
   /**
-   * @param renderFrame
+   * @param {RenderFrame}renderFrame
    * @private
    */
   _applyTransformationsChild (renderFrame) {
     // find all child views who have this view as it's parent and update their transformation
     this.surface.children.forEach(surfaceChild => {
-      if (surfaceChild.surface === this.surface) {
-        return
-      }
+      if (surfaceChild.surface === this.surface) { return }
 
       surfaceChild.surface.views
         .filter(view => view.parent === this)
@@ -299,17 +298,16 @@ export default class View {
   /**
    * @param {RenderFrame}renderFrame
    */
-  swapBuffers (renderFrame) {
+  swapBuffers () {
     if (this.destroyed) { return }
 
     this.transformation = this._backBufferTransformation
-    renderFrame.then(() => {
+    this.surface.renderFrame.then(() => {
       if (this.destroyed) { return }
-
       this.bufferedCanvas.swapBuffers()
     })
     // update child transformations as new parent buffer is visible
-    this._applyTransformationsChild(renderFrame)
+    this._applyTransformationsChild(this.surface.renderFrame)
   }
 
   /**
