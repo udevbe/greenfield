@@ -233,12 +233,11 @@ export default class Pointer extends WlPointerRequests {
 
   /**
    * @param {Surface}surface
-   * @param {RenderFrame}renderFrame
    * @param {SurfaceState}newState
    * @return {Promise<void>}
    * @override
    */
-  async onCommit (surface, renderFrame, newState) {
+  async onCommit (surface, newState) {
     this.hotspotX -= newState.dx
     this.hotspotY -= newState.dy
 
@@ -250,29 +249,21 @@ export default class Pointer extends WlPointerRequests {
         const fullFrame = EncodingOptions.fullFrame(newState.bufferContents.encodingOptions)
         const splitAlpha = EncodingOptions.splitAlpha(newState.bufferContents.encodingOptions)
         if (fullFrame && !splitAlpha) {
-          await surface.render(renderFrame, newState, true)
+          await surface.render(surface.renderFrame, newState, true)
           const imageBlob = new window.Blob([newState.bufferContents.pixelContent[0].opaque], { 'type': newState.bufferContents.mimeType })
           if (this._cursorURL) {
             URL.revokeObjectURL(this._cursorURL)
           }
           this._cursorURL = URL.createObjectURL(imageBlob)
           window.document.body.style.cursor = `url("${this._cursorURL}") ${hotspotX} ${hotspotY}, pointer`
-
-          renderFrame.fire()
-          await renderFrame
         } else {
-          await surface.render(renderFrame, newState)
+          await surface.render(surface.renderFrame, newState)
 
           const dataURL = this._view.bufferedCanvas.frontContext.canvas.toDataURL()
           window.document.body.style.cursor = `url("${dataURL}") ${hotspotX} ${hotspotY}, pointer`
-
-          renderFrame.fire()
-          await renderFrame
         }
       }
     }
-
-    surface.session.flush()
   }
 
   /**

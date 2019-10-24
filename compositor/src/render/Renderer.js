@@ -47,23 +47,6 @@ export default class Renderer {
   }
 
   /**
-   * @name RenderFrame
-   * @type{Promise<number>}
-   * @property {Function} fire
-   * @property {Function} then
-   */
-  /**
-   * @return {RenderFrame}
-   */
-  static createRenderFrame () {
-    let animationResolve = null
-    const animationPromise = new Promise(resolve => { animationResolve = resolve })
-    // animationPromise.fire = () => window.requestAnimationFrame(time => animationResolve(time))
-    animationPromise.fire = () => animationResolve(Date.now())
-    return animationPromise
-  }
-
-  /**
    * Use Renderer.create(..) instead.
    * @private
    * @param {WebGLRenderingContext}gl
@@ -238,13 +221,3 @@ export default class Renderer {
     await this[bufferContents.mimeType](bufferContents, surface, views)
   }
 }
-/**
- * @type {Promise<number>}
- * @private
- */
-Renderer._animationPromise = null
-/**
- * @type {Function}
- * @private
- */
-Renderer._animationResolve = null

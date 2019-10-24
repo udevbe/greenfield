@@ -164,12 +164,11 @@ export default class Subsurface extends WlSubsurfaceRequests {
 
   /**
    * @param {Surface}surface
-   * @param {RenderFrame}renderFrame
    * @param {SurfaceState}newState
    * @return {Promise<void>}
    * @override
    */
-  async onCommit (surface, renderFrame, newState) {
+  async onCommit (surface, newState) {
     if (this._inert) {
       return
     }
@@ -187,10 +186,7 @@ export default class Subsurface extends WlSubsurfaceRequests {
         // TODO if we throw away cached state, we need to free the pixman regions in it
         this._cachedState = null
       }
-      await surface.render(renderFrame, renderState, false)
-      renderFrame.fire()
-      await renderFrame
-      surface.session.flush()
+      await surface.render(surface.renderFrame, renderState)
     }
   }
 

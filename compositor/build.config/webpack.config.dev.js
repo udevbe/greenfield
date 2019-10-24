@@ -14,7 +14,7 @@ const dev = {
   mode: 'development',
   plugins: [
     new webpack.DefinePlugin({
-      DEBUG: JSON.stringify(true)
+      DEBUG: JSON.stringify(false)
     })
   ],
   devServer: {

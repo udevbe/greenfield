@@ -43,11 +43,11 @@
     "firebase": "^7.2.0",
     "firebaseui": "^4.2.0",
     "prop-types": "^15.7.2",
-    "react": "^16.10.2",
-    "react-dom": "^16.10.2",
+    "react": "^16.11.0",
+    "react-dom": "^16.11.0",
     "westfield-runtime-common": "0.2.5",
     "westfield-runtime-server": "0.2.6",
-    "ws": "^7.1.2"
+    "ws": "^7.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.6.4",
@@ -64,7 +64,7 @@
     "style-loader": "^1.0.0",
     "webpack": "^4.41.0",
     "webpack-cli": "^3.3.9",
-    "webpack-dev-server": "^3.8.2",
+    "webpack-dev-server": "^3.9.0",
     "webpack-merge": "^4.2.2",
     "westfield-scanner-server": "0.2.4"
   },

@@ -39,7 +39,7 @@ import {
 import Size from './Size'
 import Region from './Region'
 import SurfaceChild from './SurfaceChild'
-import Renderer from './render/Renderer'
+import RenderFrame from './render/RenderFrame'
 import Point from './math/Point'
 import SurfaceState from './SurfaceState'
 
@@ -135,7 +135,7 @@ export default class Surface extends WlSurfaceRequests {
   }
 
   /**
-   * Use Surface.create(wlSurfaceResource) instead.
+   * Use Surface.create() instead.
    * @private
    * @param {!WlSurfaceResource} wlSurfaceResource
    * @param {!Renderer} renderer
@@ -304,6 +304,12 @@ export default class Surface extends WlSurfaceRequests {
      */
     this.size = Size.create(0, 0)
     // <- derived states above
+
+    /**
+     * The RenderFrame associated with the latest commit of this surface.
+     * @type {null|RenderFrame}
+     */
+    this.renderFrame = null
   }
 
   /**
@@ -383,7 +389,7 @@ export default class Surface extends WlSurfaceRequests {
   }
 
   updateChildViewsZIndexes () {
-    let parentPosition = this.children.indexOf(this.surfaceChildSelf)
+    const parentPosition = this.children.indexOf(this.surfaceChildSelf)
     this.views.forEach(view => {
       const parentViewZIndex = view.zIndex
       // Children can be displayed below their parent, therefor we have to subtract the parent position from it's zIndex
@@ -441,10 +447,7 @@ export default class Surface extends WlSurfaceRequests {
       }
     })
 
-    this.children.forEach(surfaceChild => {
-      this._ensureChildView(surfaceChild, view)
-    })
-
+    this.children.forEach(surfaceChild => this._ensureChildView(surfaceChild, view))
     this.updateChildViewsZIndexes()
     this.onViewCreated(view)
 
@@ -871,6 +874,7 @@ export default class Surface extends WlSurfaceRequests {
    * @override
    */
   async commit (resource, serial) {
+    this.renderFrame = RenderFrame.create()
     const startCommit = Date.now()
     let bufferContents = this.state.bufferContents
 
@@ -890,17 +894,14 @@ export default class Surface extends WlSurfaceRequests {
       this.pendingWlBuffer = null
     }
 
-    if (this.destroyed) {
-      return
-    }
+    if (this.destroyed) { return }
 
     const newState = this._captureState(resource, bufferContents)
 
     if (newState && this.role && typeof this.role.onCommit === 'function') {
-      const animationFrame = Renderer.createRenderFrame()
       DEBUG && console.log('|- Awaiting surface role commit.')
       const startFrameCommit = Date.now()
-      await this.role.onCommit(this, animationFrame, newState)
+      await this.role.onCommit(this, newState)
       DEBUG && console.log(`|- Role commit took ${Date.now() - startFrameCommit}ms`)
       if (newState.inputPixmanRegion) {
         Region.destroyPixmanRegion(newState.inputPixmanRegion)
@@ -910,24 +911,17 @@ export default class Surface extends WlSurfaceRequests {
       }
     }
 
+    this.renderFrame.fire()
+    this.session.flush()
     DEBUG && console.log(`-------> total commit took ${Date.now() - startCommit}`)
   }
 
   /**
-   * @param {RenderFrame}renderFrame
+   * @param {RenderFrame}renderFrame Drawing frame to sync to.
    * @param {SurfaceState}newState
    * @param {boolean|undefined}skipDraw
    */
-  async render (renderFrame, newState, skipDraw) {
-    if (skipDraw == null) {
-      skipDraw = false
-    }
-
-    renderFrame.then((timestamp) => {
-      this.state.frameCallbacks.forEach(frameCallback => frameCallback.done(timestamp & 0x7fffffff))
-      this.state.frameCallbacks = []
-    })
-
+  async render (renderFrame, newState, skipDraw = false) {
     if (this.subsurfaceChildren.length > 1) {
       this.subsurfaceChildren = this.pendingSubsurfaceChildren.slice()
       this.updateChildViewsZIndexes()
@@ -954,6 +948,13 @@ export default class Surface extends WlSurfaceRequests {
     const { w: oldWidth, h: oldHeight } = this.size
     this._updateDerivedState(newState)
     Surface.mergeState(this.state, newState)
+
+    const frameCallbacks = this.state.frameCallbacks
+    this.state.frameCallbacks = []
+    renderFrame.then(timestamp => {
+      frameCallbacks.forEach(frameCallback => frameCallback.done(timestamp & 0x7fffffff))
+      this.session.flush()
+    })
 
     if (this.role && this.role.setRoleState) {
       this.role.setRoleState(newState.roleState)

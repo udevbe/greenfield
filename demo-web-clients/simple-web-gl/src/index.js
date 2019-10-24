@@ -165,6 +165,8 @@ class Window {
      * @private
      */
     this._glBuffer = null
+    this._lastFrameRenderTime = Date.now()
+    this._frameCount = 0
   }
 
   /**
@@ -229,6 +231,10 @@ class Window {
     this._gl = /** @type {WebGLRenderingContext} */this._glBuffer.canvas.getContext('webgl')
 
     this._drawState = initDraw(this._gl)
+    setInterval(() => {
+      console.log(`Simpl-WebGL: ${this._frameCount} fps`)
+      this._frameCount = 0
+    }, 1000)
   }
 
   /**
@@ -248,6 +254,8 @@ class Window {
     // serial is only required if our buffer contents would take a long time to send to the compositor ie. in a network remote case
     this._surface.commit(0)
     display.flush()
+
+    this._frameCount++
   }
 
   /**

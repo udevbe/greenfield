@@ -231,6 +231,7 @@ nv264_gst_alpha_encoder_create(const char *format, uint32_t width, uint32_t heig
             "        v_texcoord = a_texcoord;\n"
             "}\n"
             "\" ! "
+            "glcolorconvert ! "
             "nvh264enc gop-size=500 qp-min=29 qp-max=40 zerolatency=true preset=5 rc-mode=4 ! "
             "video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! "
             "appsink name=alphasink "

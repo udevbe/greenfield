@@ -24,6 +24,7 @@ import Point from './math/Point'
 import Renderer from './render/Renderer'
 
 import userShell from './UserShell'
+import RenderFrame from './render/RenderFrame'
 
 const { bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight } = WlShellSurfaceResource.Resize
 const { inactive } = WlShellSurfaceResource.Transient
@@ -143,12 +144,11 @@ export default class ShellSurface extends WlShellSurfaceRequests {
 
   /**
    * @param {Surface}surface
-   * @param {RenderFrame}renderFrame
    * @param {?SurfaceState}newState
    * @return {Promise<void>}
    * @override
    */
-  async onCommit (surface, renderFrame, newState) {
+  async onCommit (surface, newState) {
     const oldPosition = surface.surfaceChildSelf.position
     surface.surfaceChildSelf.position = Point.create(oldPosition.x + newState.dx, oldPosition.y + newState.dy)
 
@@ -162,10 +162,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
       }
     }
 
-    await surface.render(renderFrame, newState)
-    renderFrame.fire()
-    await renderFrame
-    this.session.flush()
+    await surface.render(surface.renderFrame, newState)
   }
 
   /**
@@ -261,6 +258,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     const pointerX = pointer.x
     const pointerY = pointer.y
 
+    let renderFrame = null
     const moveListener = () => {
       const deltaX = pointer.x - pointerX
       const deltaY = pointer.y - pointerY
@@ -268,14 +266,15 @@ export default class ShellSurface extends WlShellSurfaceRequests {
       // TODO we could try to be smart, and only apply the latest move, depending on how often the render frame fires.
       surfaceChildSelf.position = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
 
-      const renderFrame = Renderer.createRenderFrame()
-      surface.views.forEach((view) => view.applyTransformations(renderFrame))
-      renderFrame.fire()
+      if (renderFrame === null) {
+        renderFrame = RenderFrame.create()
+        surface.views.forEach(view => view.applyTransformations(renderFrame))
+        renderFrame.then(() => { renderFrame = null })
+        renderFrame.fire()
+      }
     }
 
-    pointer.onButtonRelease().then(() => {
-      pointer.removeMouseMoveListener(moveListener)
-    })
+    pointer.onButtonRelease().then(() => pointer.removeMouseMoveListener(moveListener))
     pointer.addMouseMoveListener(moveListener)
   }
 
@@ -545,8 +544,8 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     const surface = /** @type {Surface} */this.wlSurfaceResource.implementation
     const surfaceChild = surface.surfaceChildSelf
     surfaceChild.position = Point.create(x, y)
-    const onNewView = (view) => {
-      const renderFrame = Renderer.createRenderFrame()
+    const onNewView = view => {
+      const renderFrame = RenderFrame.create()
       view.applyTransformations(renderFrame)
       renderFrame.fire()
       view.onDestroy().then(() => view.detach())

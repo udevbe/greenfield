@@ -25,11 +25,10 @@ export default class SurfaceRole {
   /**
    *
    * @param {Surface}surface
-   * @param {RenderFrame}renderFrame
    * @param {SurfaceState}newState
    * @return {Promise<void>}
    */
-  onCommit (surface, renderFrame, newState) {}
+  onCommit (surface, newState) {}
 
   /**
    * @return {*}
