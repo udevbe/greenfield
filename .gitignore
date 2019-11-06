@@ -112,11 +112,11 @@ CTestTestfile.cmake
 /local/native/build/
 /stats/stats.js
 
-/compositor/dev/
-/compositor/dist/
-/compositor/src/protocol/
+/compositor-module/dev/
+/compositor-module/dist/
+/compositor-module/src/protocol/
 /app-endpoint-server/src/protocol
-/compositor/public/clients/f
+/compositor-module/public/clients/
 /wasmlibs/libxkbcommon/
 /wasmlibs/emsdk/
 /wasmlibs/xkeyboard-config/
@@ -131,3 +131,6 @@ CTestTestfile.cmake
 /wasmlibs/TinyH264.js
 /wasmlibs/TinyH264.wasm
 /wasmlibs/tinyh264/
+/compositor-module/lib
+/compositor-module/es
+/compositor-module/node_modules
