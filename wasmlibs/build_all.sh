@@ -60,21 +60,10 @@ build_libpixman() {
     popd
 }
 
-build_tinyh264() {
-    ensure_repo url="https://github.com/udevbe/tinyh264.git" name="tinyh264"
-    rm -f TinyH264.wasm TinyH264.js
-    pushd tinyh264/wasm
-        rake clean
-        rake
-        cp TinyH264.wasm TinyH264.js -t ../..
-    popd
-}
-
 main() {
     ensure_emscripten
     build_libxkbcommon
     build_libpixman
-    build_tinyh264
 }
 
 main

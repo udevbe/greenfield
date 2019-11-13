@@ -20,7 +20,8 @@
   },
   "dependencies": {
     "westfield-runtime-common": "0.3.0",
-    "westfield-runtime-server": "0.3.0"
+    "westfield-runtime-server": "0.3.0",
+    "tinyh264": "0.0.1"
   },
   "devDependencies": {
     "eslint": "^6.6.0",

@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 // eslint-disable-next-line import/no-webpack-loader-syntax
-import Worker from 'worker-loader!./../lib/TinyH264.worker'
+import Worker from 'worker-loader!./H264NALDecoderWorker'
 
 export default class H264NALDecoder {
   /**
