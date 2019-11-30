@@ -28,6 +28,7 @@ RUN apt-get install -qq \
 
 # Add source files
 COPY app-endpoint-server app-endpoint-server
+COPY app-endpoint-native app-endpoint-native
 COPY protocol protocol
 
 # Enter application directory
