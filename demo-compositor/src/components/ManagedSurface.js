@@ -15,8 +15,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-
-
 /**
  * @implements UserShellSurface
  */
@@ -98,6 +96,18 @@ class ManagedSurface {
   }
 
   /**
+   * @param {UserSurfaceState}userSurfaceState
+   */
+  updateUserSurfaceState (userSurfaceState) {
+    this.title = userSurfaceState.title
+    this.appId = userSurfaceState.appId
+    this.mapped = userSurfaceState.mapped
+    this.unresponsive = userSurfaceState.unresponsive
+    if (userSurfaceState.minimized) { this.minimize() }
+    if (userSurfaceState.active) { this.activation() }
+  }
+
+  /**
    * The title of the surface
    * @param {string} title
    */
@@ -163,18 +173,18 @@ class ManagedSurface {
 
   /**
    * Registers a callback that will be fired when the user shell wants to make a surface active (ie give it input)
-   * @param {function(UserShellSurface):void}activeCallback
+   * @param {function():void}activeCallback
    */
   set onActivationRequest (activeCallback) {
-    this.requestActivation = () => activeCallback(this)
+    this.requestActivation = activeCallback
   }
 
   /**
    * Registers callback that notifies if a surface is no longer active (ie no longer receives input)
-   * @param {function(UserShellSurface):void}inactiveCallback
+   * @param {function():void}inactiveCallback
    */
   set onInactive (inactiveCallback) {
-    this.deactivate = () => inactiveCallback(this)
+    this.deactivate = inactiveCallback
   }
 
   /**

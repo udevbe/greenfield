@@ -273,7 +273,7 @@ export default class XdgPopup extends XdgPopupRequests {
       if (surfaceChild !== surface.surfaceChildSelf &&
         surfaceChild.surface.role instanceof XdgPopup) {
         this.resource.postError(XdgWmBaseResource.Error.notTheTopmostPopup, 'Client tried to map a non-topmost popup')
-        DEBUG && console.log('[client-protocol-error] - Client tried to map a non-topmost popup.')
+        window.GREENFIELD_DEBUG && console.log('[client-protocol-error] - Client tried to map a non-topmost popup.')
         return
       }
     }
@@ -341,7 +341,7 @@ export default class XdgPopup extends XdgPopupRequests {
       if (surfaceChild !== surface.surfaceChildSelf &&
         surfaceChild.surface.role instanceof XdgPopup) {
         resource.postError(XdgWmBaseResource.Error.notTheTopmostPopup, 'Client tried to destroy a non-topmost popup')
-        DEBUG && console.log('[client-protocol-error] - Client tried to destroy a non-topmost popup.')
+        window.GREENFIELD_DEBUG && console.log('[client-protocol-error] - Client tried to destroy a non-topmost popup.')
         return
       }
     }
@@ -409,13 +409,13 @@ export default class XdgPopup extends XdgPopupRequests {
     // Gtk3 doesn't give us the latest input serial, but the latest button press. Other compositors seem to ignore the serial.
     // if (!seat.isValidInputSerial(serial)) {
     //   this._dismiss()
-    //   DEBUG && console.log('[client-protocol-warning] - Popup grab input serial mismatch. Ignoring.')
+    //   window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Popup grab input serial mismatch. Ignoring.')
     //   return
     // }
 
     if (this.mapped) {
       resource.postError(XdgPopupResource.Error.invalidGrab, 'Client tried to grab popup after it being mapped.')
-      DEBUG && console.error('[client-protocol-error] Client tried to grab popup after it being mapped.')
+      window.GREENFIELD_DEBUG && console.error('[client-protocol-error] Client tried to grab popup after it being mapped.')
       return
     }
 
@@ -429,7 +429,7 @@ export default class XdgPopup extends XdgPopupRequests {
         return
       } else if (!pointer.findPopupGrab(parentWlSurfaceResource)) {
         resource.postError(XdgWmBaseResource.Error.invalidPopupParent, 'Popup parent is a popup that did not take an explicit grab.')
-        DEBUG && console.error('[client-protocol-error]  Popup parent is a popup that did not take an explicit grab.')
+        window.GREENFIELD_DEBUG && console.error('[client-protocol-error]  Popup parent is a popup that did not take an explicit grab.')
         return
       }
     }

@@ -16,7 +16,6 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { Display } from 'westfield-runtime-server'
-import { init } from './lib'
 import WebFS from './WebFS'
 
 /**
@@ -26,11 +25,10 @@ export default class Session {
   /**
    * @returns {Session}
    */
-  static async create () {
+  static create () {
     const display = new Display()
     const compositorSessionId = this._uuidv4()
-    DEBUG && console.log(`[compositor-session: ${compositorSessionId}] - Starting new compositor session.`)
-    await init()
+    window.GREENFIELD_DEBUG && console.log(`[compositor-session: ${compositorSessionId}] - Starting new compositor session.`)
     return new Session(display, compositorSessionId)
   }
 

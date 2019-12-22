@@ -312,7 +312,7 @@ export default class Pointer extends WlPointerRequests {
       const surface = /** @type {Surface} */surfaceResource.implementation
       if (surface.role && surface.role !== this) {
         resource.postError(WlPointerResource.Error.role, 'Given surface has another role.')
-        DEBUG && console.log('[client-protocol-error] - Given surface has another role')
+        window.GREENFIELD_DEBUG && console.log('[client-protocol-error] - Given surface has another role')
         return
       }
     }

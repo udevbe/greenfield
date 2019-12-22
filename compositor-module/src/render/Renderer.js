@@ -86,7 +86,7 @@ export default class Renderer {
     const bufferContents = newState.bufferContents
 
     if (bufferContents) {
-      DEBUG && console.log('|- Awaiting surface views draw.')
+      window.GREENFIELD_DEBUG && console.log('|- Awaiting surface views draw.')
       await this._draw(bufferContents, surface, views)
     } else {
       views.forEach((view) => { view.draw(this._emptyImage) })
@@ -140,7 +140,7 @@ export default class Renderer {
     // calls to _draw() while we're in await. If we were to do this call later, this.canvas will have state specifically
     // for our _draw() call, yet because we are in (a late) await, another call might adjust our canvas, which results
     // in bad draws/flashing/flickering/...
-    DEBUG && console.log('|- Awaiting h264 render-state update.')
+    window.GREENFIELD_DEBUG && console.log('|- Awaiting h264 render-state update.')
     await h264RenderState.update(encodedFrame)
 
     if (EncodingOptions.splitAlpha(encodedFrame.encodingOptions)) {
@@ -159,9 +159,9 @@ export default class Renderer {
       this._yuvaSurfaceShader.draw()
       this._yuvaSurfaceShader.release()
       const imageBitmapStart = Date.now()
-      DEBUG && console.log('|- Awaiting image bitmap creation.')
+      window.GREENFIELD_DEBUG && console.log('|- Awaiting image bitmap creation.')
       const image = await window.createImageBitmap(this._canvas)
-      DEBUG && console.log(`|- Create image bitmap took ${Date.now() - imageBitmapStart}ms`)
+      window.GREENFIELD_DEBUG && console.log(`|- Create image bitmap took ${Date.now() - imageBitmapStart}ms`)
       views.forEach(view => view.draw(image))
     } else {
       // Image is in h264 format with no separate alpha channel, color convert yuv fragments to rgb using webgl.

@@ -15,9 +15,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+import { init, isInitialized } from './lib'
 import Session from './Session'
 import './style/greenfield.css'
-import userShellHooks from './UserShellHooks'
+import UserShellApi from './UserShellApi'
 import Globals from './Globals'
 import WebAppLauncher from './WebAppLauncher'
 import RemoteAppLauncher from './RemoteAppLauncher'
@@ -26,8 +27,10 @@ import RemoteSocket from './RemoteSocket'
 import Mat4 from './math/Mat4'
 
 export {
+  init,
+  isInitialized,
   Session,
-  userShellHooks,
+  UserShellApi,
   WebAppLauncher,
   WebAppSocket,
   RemoteAppLauncher,

@@ -15,8 +15,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-
-
 import './style.css'
 import ReactDOM from 'react-dom'
 import React from 'react'
@@ -31,7 +29,7 @@ import Snackbar from '@material-ui/core/es/Snackbar'
 import NotificationContent from './NotificationContent'
 import { createMuiTheme, MuiThemeProvider } from '@material-ui/core/es/styles'
 import themeConfig from './theme.json'
-import { userShellHooks, WebAppSocket, RemoteSocket, WebAppLauncher, RemoteAppLauncher } from 'compositor-module'
+import { RemoteAppLauncher, RemoteSocket, UserShellApi, WebAppLauncher, WebAppSocket } from 'compositor-module'
 
 const theme = createMuiTheme(themeConfig)
 
@@ -77,14 +75,15 @@ class DesktopUserShell extends React.Component {
       notifications: []
     }
 
-    userShellHooks.manage = (surface, activeCallback, inactivateCallback) => this._manage(surface, activeCallback, inactivateCallback)
-    userShellHooks.notify = (variant, message) => this._notify(variant, message)
+    UserShellApi.manage = (surface, userSurfaceState) => this._manage(surface)
+    UserShellApi.notify = (variant, message) => this._notify(variant, message)
+    UserShellApi.updateUserSurfaceState = (surface, userSurfaceState) => this.state.managedSurfaces.find(managedSurface => managedSurface.surface === surface).updateUserSurfaceState(userSurfaceState)
 
     window.onerror = (msg, url, line, col, error) => {
       let extra = !col ? '' : '\ncolumn: ' + col
       extra += !error ? '' : '\nerror: ' + error
       console.error(msg + '\nurl: ' + url + '\nline: ' + line + extra)
-      userShellHooks.notify('error', error.message)
+      UserShellApi.notify('error', error.message)
       // TODO: Report this error in a backend error log
       return true
     }
@@ -128,7 +127,7 @@ class DesktopUserShell extends React.Component {
   }
 
   componentDidCatch (error, info) {
-    userShellHooks.notify('error', 'Error: ' + error)
+    UserShellApi.notify('error', 'Error: ' + error)
   }
 
   /**
@@ -139,13 +138,13 @@ class DesktopUserShell extends React.Component {
    * @return {UserShellSurface}
    * @private
    */
-  _manage (surface, activeCallback, inactivateCallback) {
+  _manage (surface) {
     const { seat } = /** @type{{seat:Seat}} */this.props
 
     // create new managed surface
     const managedSurface = new ManagedSurface(surface)
-    managedSurface.onActivationRequest = activeCallback
-    managedSurface.onInactive = inactivateCallback
+    managedSurface.onActivationRequest = () => { UserShellApi.actions.requestActivate(surface) }
+    managedSurface.onInactive = () => { UserShellApi.actions.notifyInactive(surface) }
 
     // listen for client keyboard resource creation and store it in the managed surface
     const keyboardResourceListener = (wlKeyboardResource) => {
@@ -182,8 +181,6 @@ class DesktopUserShell extends React.Component {
       }
       return { activeManagedSurface: managedSurface }
     }))
-
-    return managedSurface
   }
 
   /**

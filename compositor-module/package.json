@@ -19,14 +19,14 @@
     "test:watch": "nwb test --server"
   },
   "dependencies": {
+    "tinyh264": "0.0.1",
     "westfield-runtime-common": "0.3.0",
-    "westfield-runtime-server": "0.3.0",
-    "tinyh264": "0.0.1"
+    "westfield-runtime-server": "0.3.0"
   },
   "devDependencies": {
-    "eslint": "^6.6.0",
+    "eslint": "^6.7.2",
     "eslint-config-standard": "^14.1.0",
-    "eslint-plugin-import": "^2.18.2",
+    "eslint-plugin-import": "^2.19.1",
     "eslint-plugin-node": "^10.0.0",
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-standard": "^4.0.1",

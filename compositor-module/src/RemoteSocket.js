@@ -107,12 +107,12 @@ class RemoteSocket {
    */
   onWebSocket (webSocket) {
     return new Promise(resolve => {
-      DEBUG && console.log('[WebSocket] - created.')
+      window.GREENFIELD_DEBUG && console.log('[WebSocket] - created.')
 
       webSocket.binaryType = 'arraybuffer'
       webSocket.onclose = () => { throw new Error('Remote connection failed.') }
       webSocket.onopen = () => {
-        DEBUG && console.log('[WebSocket] - open.')
+        window.GREENFIELD_DEBUG && console.log('[WebSocket] - open.')
 
         const client = this._session.display.createClient()
         client.onClose().then(() => DEBUG && console.log('[client] - closed.'))
@@ -124,10 +124,10 @@ class RemoteSocket {
         })
 
         webSocket.onclose = () => {
-          DEBUG && console.log('[WebSocket] - closed.')
+          window.GREENFIELD_DEBUG && console.log('[WebSocket] - closed.')
           client.close()
         }
-        webSocket.onerror = event => DEBUG && console.log(`[WebSocket] - error: ${event.message}.`)
+        webSocket.onerror = event => window.GREENFIELD_DEBUG && console.log(`[WebSocket] - error: ${event.message}.`)
 
         /**
          * @param {Array<{buffer: ArrayBuffer, fds: Array<WebFD>}>}wireMessages

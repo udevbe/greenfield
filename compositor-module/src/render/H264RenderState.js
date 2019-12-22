@@ -83,7 +83,7 @@ export default class H264RenderState extends RenderState {
   async update (encodedFrame) {
     const start = Date.now()
     const { alpha, opaque } = await this._h264BufferContentDecoder.decode(encodedFrame)
-    DEBUG && console.log(`|- Decoding took ${Date.now() - start}ms`)
+    window.GREENFIELD_DEBUG && console.log(`|- Decoding took ${Date.now() - start}ms`)
 
     // the width & height returned are actually padded, so we have to use the frame size to get the real image dimension
     // when uploading to texture

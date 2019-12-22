@@ -57,4 +57,8 @@ async function init () {
   }
 }
 
+export function isInitialized () {
+  return lib.pixman !== null && lib.xkbcommon !== null
+}
+
 export { init, lib }

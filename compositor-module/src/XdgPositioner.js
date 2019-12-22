@@ -328,7 +328,7 @@ export default class XdgPositioner extends XdgPositionerRequests {
   setSize (resource, width, height) {
     if (width <= 0 || height <= 0) {
       resource.postError(XdgPositionerResource.Error.invalidInput, 'Size width or height of positioner can not be negative.')
-      DEBUG && console.log('[client-protocol-error]. Size width or height of positioner can not be negative.')
+      window.GREENFIELD_DEBUG && console.log('[client-protocol-error]. Size width or height of positioner can not be negative.')
       return
     }
     this.size = Rect.create(0, 0, width, height)
@@ -360,7 +360,7 @@ export default class XdgPositioner extends XdgPositionerRequests {
   setAnchorRect (resource, x, y, width, height) {
     if (width <= 0 || height <= 0) {
       resource.postError(XdgPositionerResource.Error.invalidInput, 'Anchor rect width or height of positioner can not be negative.')
-      DEBUG && console.log('[client-protocol-error] - Anchor rect width or height of positioner can not be negative.')
+      window.GREENFIELD_DEBUG && console.log('[client-protocol-error] - Anchor rect width or height of positioner can not be negative.')
       return
     }
     this.anchorRect = Rect.create(x, y, x + width, y + height)

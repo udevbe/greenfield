@@ -84,9 +84,7 @@ export default class Compositor extends WlCompositorRequests {
     if (this._global) {
       return
     }
-    this._global = registry.createGlobal(this, WlCompositorResource.protocolName, 4, (client, id, version) => {
-      this.bindClient(client, id, version)
-    })
+    this._global = registry.createGlobal(this, WlCompositorResource.protocolName, 4, (client, id, version) => this.bindClient(client, id, version))
   }
 
   unregisterGlobal () {

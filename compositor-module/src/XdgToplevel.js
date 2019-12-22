@@ -15,9 +15,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { XdgToplevelResource, XdgToplevelRequests, XdgWmBaseResource } from 'westfield-runtime-server'
+import { XdgToplevelRequests, XdgToplevelResource, XdgWmBaseResource } from 'westfield-runtime-server'
 
-import userShellHooks from './UserShellHooks'
+import UserShellApi from './UserShellApi'
 
 import Point from './math/Point'
 import Size from './Size'
@@ -58,26 +58,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     xdgToplevelResource.implementation = xdgToplevel
     surface.role = xdgToplevel
 
-    xdgToplevel.userShellSurface = userShellHooks.manage(
-      surface,
-      (userShellSurface) => {
-        if (xdgToplevel._configureState.state.includes(activated)) {
-          userShellSurface.activation()
-        } else {
-          const newState = xdgToplevel._configureState.state.slice()
-          newState.push(activated)
-          xdgToplevel._emitConfigure(xdgToplevelResource, xdgToplevel._configureState.width, xdgToplevel._configureState.height, newState, none)
-        }
-      },
-      (userShellSurface) => {
-        if (xdgToplevel._configureState.state.includes(activated)) {
-          const newState = xdgToplevel._configureState.state.slice()
-          const idx = newState.indexOf(activated)
-          newState.splice(idx, 1)
-          xdgToplevel._emitConfigure(xdgToplevelResource, xdgToplevel._configureState.width, xdgToplevel._configureState.height, newState, none)
-        }
-      }
-    )
+    UserShellApi.manage(surface, xdgToplevel.userSurfaceState)
 
     return xdgToplevel
   }
@@ -105,24 +86,23 @@ export default class XdgToplevel extends XdgToplevelRequests {
      */
     this._session = session
     /**
-     * @type {UserShellSurface}
-     */
-    this.userShellSurface = null
-    /**
      * @type {XdgToplevelResource|null}
      * @private
      */
     this._parent = null
+
     /**
-     * @type {string}
-     * @private
+     * @type {UserSurfaceState}
      */
-    this._title = ''
-    /**
-     * @type {string}
-     * @private
-     */
-    this._appId = ''
+    this.userSurfaceState = {
+      appId: '',
+      active: false,
+      mapped: false,
+      minimized: false,
+      title: '',
+      unresponsive: false
+    }
+
     /**
      * @type {Point}
      * @private
@@ -166,10 +146,28 @@ export default class XdgToplevel extends XdgToplevelRequests {
      * @private
      */
     this._previousGeometry = null
-    /**
-     * @type {boolean}
-     */
-    this.mapped = false
+  }
+
+  requestActive () {
+    if (this._configureState.state.includes(activated)) {
+      this.userSurfaceState.active = true
+      UserShellApi.events.updateUserSurfaceState(this.xdgSurface.wlSurfaceResource.implementation, this.userSurfaceState)
+    } else {
+      const newState = this._configureState.state.slice()
+      newState.push(activated)
+      this._emitConfigure(this.resource, this._configureState.width, this._configureState.height, newState, none)
+    }
+  }
+
+  notifyInactive () {
+    if (this._configureState.state.includes(activated)) {
+      const newState = this._configureState.state.slice()
+      const idx = newState.indexOf(activated)
+      newState.splice(idx, 1)
+      this._emitConfigure(this.resource, this._configureState.width, this._configureState.height, newState, none)
+      this.userSurfaceState.active = false
+      UserShellApi.events.updateUserSurfaceState(this.xdgSurface.wlSurfaceResource.implementation, this.userSurfaceState)
+    }
   }
 
   /**
@@ -200,12 +198,12 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
     if (minWidth < 0 || minHeight < 0 || minWidth > maxWidth || minHeight > maxHeight) {
       this.resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Min size can not be greater than max size.')
-      DEBUG && console.log('[client-protocol-error] Min size can not be greater than max size.')
+      window.GREENFIELD_DEBUG && console.log('[client-protocol-error] Min size can not be greater than max size.')
       return
     }
     if (maxWidth < 0 || maxHeight < 0 || maxWidth < minWidth || maxHeight < minHeight) {
       this.resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Max size can not be me smaller than min size.')
-      DEBUG && console.log('[client-protocol-error] Max size can not be less than min size.')
+      window.GREENFIELD_DEBUG && console.log('[client-protocol-error] Max size can not be less than min size.')
       return
     }
 
@@ -214,7 +212,8 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
     if (roleState.configureState.state.includes(activated) &&
       !this._configureState.state.includes(activated)) {
-      this.userShellSurface.activation()
+      this.userSurfaceState.active = true
+      UserShellApi.events.updateUserSurfaceState(this.xdgSurface.wlSurfaceResource.implementation, this.userSurfaceState)
     }
 
     this._configureState = roleState.configureState
@@ -253,8 +252,8 @@ export default class XdgToplevel extends XdgToplevelRequests {
    * @private
    */
   _map (surface) {
-    this.mapped = true
-    this.userShellSurface.mapped = true
+    this.userSurfaceState.mapped = true
+    UserShellApi.events.updateUserSurfaceState(this.xdgSurface.wlSurfaceResource.implementation, this.userSurfaceState)
   }
 
   /**
@@ -263,7 +262,8 @@ export default class XdgToplevel extends XdgToplevelRequests {
   _unmap () {
     this.mapped = false
     this._configureState = { serial: 0, state: [], width: 0, height: 0, resizeEdge: 0 }
-    this.userShellSurface.mapped = false
+    this.userSurfaceState.mapped = false
+    UserShellApi.events.updateUserSurfaceState(this.xdgSurface.wlSurfaceResource.implementation, this.userSurfaceState)
   }
 
   /**
@@ -323,7 +323,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
     if (newSurfaceWidth !== roleState.configureState.width || newSurfaceHeight !== roleState.configureState.height) {
       this.resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Surface size does not match configure event.')
-      DEBUG && console.log('[client-protocol-error] Surface size does not match configure event.')
+      window.GREENFIELD_DEBUG && console.log('[client-protocol-error] Surface size does not match configure event.')
       return
     }
 
@@ -353,7 +353,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const { x: newSurfaceWidth, y: newSurfaceHeight } = surface.toSurfaceSpace(Point.create(bufferSize.w, bufferSize.h))
     if (newSurfaceWidth > this._configureState.width || newSurfaceHeight > this._configureState.height) {
       this.resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Surface size does not match configure event.')
-      DEBUG && console.log('[client protocol error] Surface size does not match configure event.')
+      window.GREENFIELD_DEBUG && console.log('[client protocol error] Surface size does not match configure event.')
       return
     }
 
@@ -497,8 +497,8 @@ export default class XdgToplevel extends XdgToplevelRequests {
    * @override
    */
   setTitle (resource, title) {
-    this._title = title
-    this.userShellSurface.title = title
+    this.userSurfaceState.title = title
+    UserShellApi.events.updateUserSurfaceState(this.xdgSurface.wlSurfaceResource.implementation, this.userSurfaceState)
   }
 
   /**
@@ -532,8 +532,8 @@ export default class XdgToplevel extends XdgToplevelRequests {
    * @override
    */
   setAppId (resource, appId) {
-    this._appId = appId
-    this.userShellSurface.appId = appId
+    this.userSurfaceState.appId = appId
+    UserShellApi.events.updateUserSurfaceState(this.xdgSurface.wlSurfaceResource.implementation, this.userSurfaceState)
   }
 
   /**
@@ -564,7 +564,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const seat = /** @type {Seat} */wlSeatResource.implementation
 
     if (!seat.isValidInputSerial(serial)) {
-      DEBUG && console.log('[client-protocol-warning] - showWindowMenu serial mismatch. Ignoring.')
+      window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - showWindowMenu serial mismatch. Ignoring.')
       return
     }
 
@@ -614,7 +614,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const seat = /** @type {Seat} */wlSeatResource.implementation
 
     // if (!seat.isValidInputSerial(serial)) {
-    //   DEBUG && console.log('[client-protocol-warning] - Move serial mismatch. Ignoring.')
+    //   window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Move serial mismatch. Ignoring.')
     //   return
     // }
 
@@ -709,7 +709,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const pointer = seat.pointer
 
     if (!seat.isValidInputSerial(serial)) {
-      DEBUG && console.log('[client-protocol-warning] - Resize serial mismatch. Ignoring.')
+      window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Resize serial mismatch. Ignoring.')
       return
     }
     // assigned in switch statement
@@ -1132,6 +1132,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
    * @override
    */
   setMinimized (resource) {
-    this.userShellSurface.minimize()
+    this.userSurfaceState.minimized = true
+    UserShellApi.events.updateUserSurfaceState(this.xdgSurface.wlSurfaceResource.implementation, this.userSurfaceState)
   }
 }

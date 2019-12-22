@@ -16,15 +16,16 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import {
-  XdgWmBaseRequests,
-  XdgWmBaseResource,
   XdgPositionerResource,
-  XdgSurfaceResource
+  XdgSurfaceResource,
+  XdgWmBaseRequests,
+  XdgWmBaseResource
 } from 'westfield-runtime-server'
 
 import XdgSurface from './XdgSurface'
 import XdgPositioner from './XdgPositioner'
 import XdgToplevel from './XdgToplevel'
+import UserShellApi from './UserShellApi'
 
 /**
  *
@@ -143,7 +144,7 @@ export default class XdgWmBase extends XdgWmBaseRequests {
   destroy (resource) {
     if (this._wlSurfaceResources.length > 0) {
       resource.postError(XdgWmBaseResource.Error.defunctSurfaces, 'xdg_wm_base was destroyed before children.')
-      DEBUG && console.log('[client-protocol-error] - xdg_wm_base was destroyed before children.')
+      window.GREENFIELD_DEBUG && console.log('[client-protocol-error] - xdg_wm_base was destroyed before children.')
       return
     }
     resource.destroy()
@@ -193,7 +194,7 @@ export default class XdgWmBase extends XdgWmBaseRequests {
     const surface = /** @type {Surface} */wlSurfaceResource.implementation
     if (surface.pendingWlBuffer || surface.state.bufferContents) {
       resource.postError(XdgWmBase.Error.invalidSurfaceState, 'Surface had a buffer attached before xdg surface was created.')
-      DEBUG && console.log('[client-protocol-error] - Surface had a buffer attached before xdg surface was created.')
+      window.GREENFIELD_DEBUG && console.log('[client-protocol-error] - Surface had a buffer attached before xdg surface was created.')
       return
     }
 
@@ -260,7 +261,9 @@ export default class XdgWmBase extends XdgWmBaseRequests {
       .forEach((wlSurfaceResource) => {
         const xdgSurfaceRole = (/** @type {Surface} */wlSurfaceResource.implementation).role
         if (xdgSurfaceRole instanceof XdgToplevel) {
-          (/** @type {XdgToplevel} */ xdgSurfaceRole).userShellSurface.unresponsive = value
+          const xdgToplevel = /** @type {XdgToplevel} */ xdgSurfaceRole
+          xdgToplevel.userSurfaceState.unresponsive = value
+          UserShellApi.events.updateUserSurfaceState(wlSurfaceResource.implementation, xdgToplevel.userSurfaceState)
         }
       })
   }

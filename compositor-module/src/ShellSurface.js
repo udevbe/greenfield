@@ -19,7 +19,7 @@ import { WlShellSurfaceRequests, WlShellSurfaceResource } from 'westfield-runtim
 
 import Point from './math/Point'
 
-import userShellHooks from './UserShellHooks'
+import UserShellApi from './UserShellApi'
 import RenderFrame from './render/RenderFrame'
 
 const { bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight } = WlShellSurfaceResource.Resize
@@ -94,15 +94,21 @@ export default class ShellSurface extends WlShellSurfaceRequests {
      */
     this.wlSurfaceResource = wlSurfaceResource
     /**
-     * @type {string}
+     * @type {boolean}
      * @private
      */
-    this._title = ''
+    this._managed = false
     /**
-     * @type {string}
-     * @private
+     * @type {UserSurfaceState}
      */
-    this._clazz = ''
+    this.userSurfaceState = {
+      appId: '',
+      active: false,
+      mapped: false,
+      minimized: false,
+      title: '',
+      unresponsive: false
+    }
     /**
      * @type {string}
      */
@@ -117,11 +123,6 @@ export default class ShellSurface extends WlShellSurfaceRequests {
      */
     this._pingTimeoutActive = false
     /**
-     * @type {UserShellSurface}
-     * @private
-     */
-    this._userShellSurface = null
-    /**
      * @type {number}
      * @private
      */
@@ -131,11 +132,6 @@ export default class ShellSurface extends WlShellSurfaceRequests {
      * @private
      */
     this._pingTimer = 0
-    /**
-     * @type {boolean}
-     * @private
-     */
-    this._mapped = false
   }
 
   /**
@@ -165,20 +161,16 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    * @private
    */
   _map () {
-    this._mapped = true
-    if (this._userShellSurface) {
-      this._userShellSurface.mapped = true
-    }
+    this.userSurfaceState.mapped = true
+    UserShellApi.events.updateUserSurfaceState(this.wlSurfaceResource.implementation, this.userSurfaceState)
   }
 
   /**
    * @private
    */
   _unmap () {
-    this._mapped = false
-    if (this._userShellSurface) {
-      this._userShellSurface.mapped = false
-    }
+    this.userSurfaceState.mapped = false
+    UserShellApi.events.updateUserSurfaceState(this.wlSurfaceResource.implementation, this.userSurfaceState)
   }
 
   /**
@@ -195,7 +187,8 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    */
   pong (resource, serial) {
     if (this._pingTimeoutActive) {
-      this._userShellSurface.unresponsive = false
+      this.userSurfaceState.unresponsive = false
+      UserShellApi.events.updateUserSurfaceState(this.wlSurfaceResource.implementation, this.userSurfaceState)
       this._pingTimeoutActive = false
     }
     window.clearTimeout(this._timeoutTimer)
@@ -211,7 +204,8 @@ export default class ShellSurface extends WlShellSurfaceRequests {
       if (!this._pingTimeoutActive) {
         // ping timed out, make view gray
         this._pingTimeoutActive = true
-        this._userShellSurface.unresponsive = true
+        this.userSurfaceState.unresponsive = true
+        UserShellApi.events.updateUserSurfaceState(this.wlSurfaceResource.implementation, this.userSurfaceState)
       }
     }, 5000)
     // FIXME use a proper serial
@@ -239,7 +233,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     const seat = /** @type {Seat} */wlSeatResource.implementation
 
     // if (!seat.isValidInputSerial(serial)) {
-    //   DEBUG && console.log('[client-protocol-warning] - Move serial mismatch. Ignoring.')
+    //   window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Move serial mismatch. Ignoring.')
     //   return
     // }
 
@@ -294,7 +288,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
   resize (resource, wlSeatResource, serial, edges) {
     const seat = /** @type {Seat} */wlSeatResource.implementation
     if (!seat.isValidInputSerial(serial)) {
-      DEBUG && console.log('[client-protocol-warning] - Resize serial mismatch. Ignoring.')
+      window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Resize serial mismatch. Ignoring.')
       return
     }
 
@@ -364,15 +358,21 @@ export default class ShellSurface extends WlShellSurfaceRequests {
   /**
    * @private
    */
-  _createUserShellSurface () {
-    this._userShellSurface = userShellHooks.manage(
-      /** @type {Surface} */this.wlSurfaceResource.implementation,
-      (userShellSurface) => userShellSurface.activation(),
-      (userShellSurface) => { /* NOOP */ }
-    )
-    this._userShellSurface.title = this._title
-    this._userShellSurface.appId = this._clazz
-    this._userShellSurface.mapped = this._mapped
+  _ensureUserShellSurface () {
+    if (!this._managed) {
+      this._managed = true
+      UserShellApi.manage(/** @type {Surface} */this.wlSurfaceResource.implementation, this.userSurfaceState)
+    }
+  }
+
+  requestActive () {
+    this.userSurfaceState.active = true
+    UserShellApi.events.updateUserSurfaceState(this.wlSurfaceResource.implementation, this.userSurfaceState)
+  }
+
+  notifyInactive () {
+    this.userSurfaceState.active = false
+    UserShellApi.events.updateUserSurfaceState(this.wlSurfaceResource.implementation, this.userSurfaceState)
   }
 
   /**
@@ -392,9 +392,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
       return
     }
 
-    if (!this._userShellSurface) {
-      this._createUserShellSurface()
-    }
+    this._ensureUserShellSurface()
     this.state = SurfaceStates.TOP_LEVEL
   }
 
@@ -432,9 +430,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
 
     this.wlSurfaceResource.implementation.hasKeyboardInput = (flags & inactive) === 0
 
-    if (!this._userShellSurface) {
-      this._createUserShellSurface()
-    }
+    this._ensureUserShellSurface()
     this.state = SurfaceStates.TRANSIENT
   }
 
@@ -529,7 +525,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     const seat = /** @type {Seat} */wlSeatResource.implementation
     if (!seat.isValidInputSerial(seat.buttonPressSerial)) {
       this._dismiss()
-      DEBUG && console.log('[client-protocol-warning] - Popup grab input serial mismatch. Ignoring.')
+      window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Popup grab input serial mismatch. Ignoring.')
       return
     }
 
@@ -593,8 +589,8 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     // TODO get proper size in surface coordinates instead of assume surface space === global space
     const x = 0
     // FIXME
-    const { height: y } = userShellHooks.panel.getBoundingClientRect()
-    const { width, height } = userShellHooks.workspace.getBoundingClientRect()
+    const { height: y } = UserShellApi.panel.getBoundingClientRect()
+    const { width, height } = UserShellApi.workspace.getBoundingClientRect()
 
     surface.surfaceChildSelf.position = Point.create(x, y)
     this.resource.configure(none, width, height)
@@ -618,10 +614,8 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    * @override
    */
   setTitle (resource, title) {
-    this._title = title
-    if (this._userShellSurface) {
-      this._userShellSurface.title = title
-    }
+    this.userSurfaceState.title = title
+    UserShellApi.events.updateUserSurfaceState(this.wlSurfaceResource.implementation, this.userSurfaceState)
   }
 
   /**
@@ -641,10 +635,8 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    * @override
    */
   setClass (resource, clazz) {
-    this._clazz = clazz
-    if (this._userShellSurface) {
-      this._userShellSurface.appId = clazz
-    }
+    this.userSurfaceState.appId = clazz
+    UserShellApi.events.updateUserSurfaceState(this.wlSurfaceResource.implementation, this.userSurfaceState)
   }
 
   /**
