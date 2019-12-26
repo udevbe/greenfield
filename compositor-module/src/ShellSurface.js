@@ -114,8 +114,9 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     this._managed = false
     /**
      * @type {UserSurfaceState}
+     * @private
      */
-    this.userSurfaceState = userSurfaceState
+    this._userSurfaceState = userSurfaceState
     /**
      * @type {string}
      */
@@ -168,16 +169,16 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    * @private
    */
   _map () {
-    this.userSurfaceState.mapped = true
-    this.session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
+    this._userSurfaceState = { mapped: true, ...this._userSurfaceState }
+    this.session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
   }
 
   /**
    * @private
    */
   _unmap () {
-    this.userSurfaceState.mapped = false
-    this.session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
+    this._userSurfaceState = { mapped: false, ...this._userSurfaceState }
+    this.session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
   }
 
   /**
@@ -194,8 +195,8 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    */
   pong (resource, serial) {
     if (this._pingTimeoutActive) {
-      this.userSurfaceState.unresponsive = false
-      this.session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
+      this._userSurfaceState = { unresponsive: false, ...this._userSurfaceState }
+      this.session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
       this._pingTimeoutActive = false
     }
     window.clearTimeout(this._timeoutTimer)
@@ -211,8 +212,8 @@ export default class ShellSurface extends WlShellSurfaceRequests {
       if (!this._pingTimeoutActive) {
         // ping timed out, make view gray
         this._pingTimeoutActive = true
-        this.userSurfaceState.unresponsive = true
-        this.session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
+        this._userSurfaceState = { unresponsive: true, ...this._userSurfaceState }
+        this.session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
       }
     }, 5000)
     // FIXME use a proper serial
@@ -369,18 +370,18 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     if (!this._managed) {
       this._managed = true
       this.wlSurfaceResource.onDestroy().then(() => this.session.userShell.events.destroyUserSurface(this.userSurface))
-      this.session.userShell.events.createUserSurface(this.userSurface, this.userSurfaceState)
+      this.session.userShell.events.createUserSurface(this.userSurface, this._userSurfaceState)
     }
   }
 
   requestActive () {
-    this.userSurfaceState.active = true
-    this.session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
+    this._userSurfaceState = { active: true, ...this._userSurfaceState }
+    this.session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
   }
 
   notifyInactive () {
-    this.userSurfaceState.active = false
-    this.session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
+    this._userSurfaceState = { active: false, ...this._userSurfaceState }
+    this.session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
   }
 
   /**
@@ -622,8 +623,8 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    * @override
    */
   setTitle (resource, title) {
-    this.userSurfaceState.title = title
-    this.session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
+    this._userSurfaceState = { title, ...this._userSurfaceState }
+    this.session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
   }
 
   /**
@@ -643,8 +644,8 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    * @override
    */
   setClass (resource, clazz) {
-    this.userSurfaceState.appId = clazz
-    this.session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
+    this._userSurfaceState = { appId: clazz, ...this._userSurfaceState }
+    this.session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
   }
 
   /**

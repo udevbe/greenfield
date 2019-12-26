@@ -1,6 +1,6 @@
 
 var Module = (function() {
-  var _scriptDir = import.meta.url;
+  var _scriptDir = document.currentScript.src;
   
   return (
 function(Module) {

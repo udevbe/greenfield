@@ -58,7 +58,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     surface.role = xdgToplevel
 
     xdgSurface.wlSurfaceResource.onDestroy().then(() => session.userShell.events.destroyUserSurface(userSurface))
-    session.userShell.events.createUserSurface(userSurface, xdgToplevel.userSurfaceState)
+    session.userShell.events.createUserSurface(userSurface, xdgToplevel._userSurfaceState)
 
     return xdgToplevel
   }
@@ -78,6 +78,18 @@ export default class XdgToplevel extends XdgToplevelRequests {
      */
     this.userSurface = userSurface
     /**
+     * @type {UserSurfaceState}
+     * @private
+     */
+    this._userSurfaceState = {
+      appId: '',
+      active: false,
+      mapped: false,
+      minimized: false,
+      title: '',
+      unresponsive: false
+    }
+    /**
      * @type {XdgToplevelResource}
      */
     this.resource = xdgToplevelResource
@@ -95,19 +107,6 @@ export default class XdgToplevel extends XdgToplevelRequests {
      * @private
      */
     this._parent = null
-
-    /**
-     * @type {UserSurfaceState}
-     */
-    this.userSurfaceState = {
-      appId: '',
-      active: false,
-      mapped: false,
-      minimized: false,
-      title: '',
-      unresponsive: false
-    }
-
     /**
      * @type {Point}
      * @private
@@ -155,8 +154,8 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
   requestActive () {
     if (this._configureState.state.includes(activated)) {
-      this.userSurfaceState.active = true
-      this._session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
+      this._userSurfaceState = { active: true, ...this._userSurfaceState }
+      this._session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
     } else {
       const newState = this._configureState.state.slice()
       newState.push(activated)
@@ -170,8 +169,8 @@ export default class XdgToplevel extends XdgToplevelRequests {
       const idx = newState.indexOf(activated)
       newState.splice(idx, 1)
       this._emitConfigure(this.resource, this._configureState.width, this._configureState.height, newState, none)
-      this.userSurfaceState.active = false
-      this._session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
+      this._userSurfaceState = { active: false, ...this._userSurfaceState }
+      this._session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
     }
   }
 
@@ -217,8 +216,8 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
     if (roleState.configureState.state.includes(activated) &&
       !this._configureState.state.includes(activated)) {
-      this.userSurfaceState.active = true
-      this._session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
+      this._userSurfaceState = { active: true, ...this._userSurfaceState }
+      this._session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
     }
 
     this._configureState = roleState.configureState
@@ -257,8 +256,8 @@ export default class XdgToplevel extends XdgToplevelRequests {
    * @private
    */
   _map (surface) {
-    this.userSurfaceState.mapped = true
-    this._session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
+    this._userSurfaceState = { mapped: true, ...this._userSurfaceState }
+    this._session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
   }
 
   /**
@@ -267,8 +266,8 @@ export default class XdgToplevel extends XdgToplevelRequests {
   _unmap () {
     this.mapped = false
     this._configureState = { serial: 0, state: [], width: 0, height: 0, resizeEdge: 0 }
-    this.userSurfaceState.mapped = false
-    this._session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
+    this._userSurfaceState = { mapped: false, ...this._userSurfaceState }
+    this._session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
   }
 
   /**
@@ -502,8 +501,8 @@ export default class XdgToplevel extends XdgToplevelRequests {
    * @override
    */
   setTitle (resource, title) {
-    this.userSurfaceState.title = title
-    this._session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
+    this._userSurfaceState = { title, ...this._userSurfaceState }
+    this._session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
   }
 
   /**
@@ -537,8 +536,8 @@ export default class XdgToplevel extends XdgToplevelRequests {
    * @override
    */
   setAppId (resource, appId) {
-    this.userSurfaceState.appId = appId
-    this._session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
+    this._userSurfaceState = { appId, ...this._userSurfaceState }
+    this._session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
   }
 
   /**
@@ -1137,7 +1136,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
    * @override
    */
   setMinimized (resource) {
-    this.userSurfaceState.minimized = true
-    this._session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
+    this._userSurfaceState = { minimized: true, ...this._userSurfaceState }
+    this._session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
   }
 }

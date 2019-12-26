@@ -39,12 +39,13 @@ build_libxkbcommon() {
     ensure_repo url='https://github.com/xkbcommon/libxkbcommon.git' name='libxkbcommon'
     rm -f libxkbcommon.data libxkbcommon.js libxkbcommon.wasm
     pushd libxkbcommon
+    # TODO generate meson wasm cross txt file instead.
         # Latest commit with autotools support
         git checkout e7bb7045b8e7e550eb05c8f5f71ce3d9142d6429
         ./autogen.sh --disable-x11
         emconfigure ./configure --disable-x11
         emmake make clean all
-        emcc -s MODULARIZE=1 -s EXPORT_ES6=1 -s ENVIRONMENT='web' -s ERROR_ON_UNDEFINED_SYMBOLS=0 -O2 .libs/libxkbcommon.so -o ../libxkbcommon.js --preload-file $(pwd)/../xkeyboard-config/X11/xkb@/usr/local/share/X11/xkb -s EXPORTED_RUNTIME_METHODS='["lengthBytesUTF8","stringToUTF8","UTF8ToString","FS"]' -s EXPORTED_FUNCTIONS='["_malloc", "_free", "_xkb_context_new","_xkb_keymap_new_from_string","_xkb_state_new","_free","_xkb_keymap_get_as_string","_xkb_state_update_key","_xkb_state_update_key","_xkb_state_serialize_mods","_xkb_state_serialize_layout","_xkb_keymap_new_from_names","_xkb_context_include_path_append"]'
+        emcc -s MODULARIZE=1 -s EXPORT_ES6=1 -s ENVIRONMENT='web' -s ERROR_ON_UNDEFINED_SYMBOLS=0 -O2  --llvm-opts 3 --llvm-lto 3 .libs/libxkbcommon.so -o ../libxkbcommon.js --preload-file $(pwd)/../xkeyboard-config/X11/xkb@/usr/local/share/X11/xkb -s EXPORTED_RUNTIME_METHODS='["lengthBytesUTF8","stringToUTF8","UTF8ToString","FS"]' -s EXPORTED_FUNCTIONS='["_malloc", "_free", "_xkb_context_new","_xkb_keymap_new_from_string","_xkb_state_new","_free","_xkb_keymap_get_as_string","_xkb_state_update_key","_xkb_state_update_key","_xkb_state_serialize_mods","_xkb_state_serialize_layout","_xkb_keymap_new_from_names","_xkb_context_include_path_append"]'
         git checkout master
     popd
 }

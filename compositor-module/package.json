@@ -9,7 +9,7 @@
     "lib"
   ],
   "scripts": {
-    "build": "npm run lint && nwb build-web-module --copy-files",
+    "build": "export DEBUG=nwb && npm run lint && nwb build-web-module --copy-files",
     "clean": "nwb clean-module",
     "prepublishOnly": "npm run build",
     "test": "nwb test",

@@ -28,11 +28,6 @@
     memory-fs "^0.4.1"
     resolve "^1.2.0"
 
-"@open-wc/webpack-import-meta-loader@^0.4.1":
-  version "0.4.1"
-  resolved "https://artifactory.persgroep.cloud/artifactory/api/npm/npm/@open-wc/webpack-import-meta-loader/-/webpack-import-meta-loader-0.4.1.tgz#d4d165dd998ecfab6ab3dcd66456eadf62348af2"
-  integrity sha1-1NFl3ZmOz6tqs9zWZFbq32I0ivI=
-
 "@webassemblyjs/ast@1.5.13":
   version "1.5.13"
   resolved "https://artifactory.persgroep.cloud/artifactory/api/npm/npm/@webassemblyjs/ast/-/ast-1.5.13.tgz#81155a570bd5803a30ec31436bc2c9c0ede38f25"
