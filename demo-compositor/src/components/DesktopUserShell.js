@@ -75,7 +75,7 @@ class DesktopUserShell extends React.Component {
       notifications: []
     }
 
-    UserShellApi.manage = (surface, userSurfaceState) => this._manage(surface)
+    UserShellApi.manage = (surface, userSurfaceState) => this._manage(surface, userSurfaceState)
     UserShellApi.notify = (variant, message) => this._notify(variant, message)
     UserShellApi.updateUserSurfaceState = (surface, userSurfaceState) => this.state.managedSurfaces.find(managedSurface => managedSurface.surface === surface).updateUserSurfaceState(userSurfaceState)
 
@@ -138,13 +138,11 @@ class DesktopUserShell extends React.Component {
    * @return {UserShellSurface}
    * @private
    */
-  _manage (surface) {
+  _manage (surface, userSurfaceState) {
     const { seat } = /** @type{{seat:Seat}} */this.props
 
     // create new managed surface
     const managedSurface = new ManagedSurface(surface)
-    managedSurface.onActivationRequest = () => { UserShellApi.actions.requestActivate(surface) }
-    managedSurface.onInactive = () => { UserShellApi.actions.notifyInactive(surface) }
 
     // listen for client keyboard resource creation and store it in the managed surface
     const keyboardResourceListener = (wlKeyboardResource) => {
@@ -181,6 +179,8 @@ class DesktopUserShell extends React.Component {
       }
       return { activeManagedSurface: managedSurface }
     }))
+
+    managedSurface.updateUserSurfaceState(userSurfaceState)
   }
 
   /**
@@ -198,11 +198,11 @@ class DesktopUserShell extends React.Component {
           return !managedSurface.view.destroyed &&
             seat.pointer.focus.surface === managedSurface.surface &&
             managedSurface !== activeManagedSurface &&
-            managedSurface.requestActivation
+            managedSurface.requestActive
         })
 
         if (targetManagedSurface) {
-          targetManagedSurface.requestActivation(targetManagedSurface)
+          targetManagedSurface.requestActive()
         }
       }
       setTimeout(() => this._activateManagedSurfaceOnPointerButton())

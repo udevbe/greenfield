@@ -41,7 +41,7 @@ class Workspace extends React.PureComponent {
               seat={seat}
               managedSurface={managedSurface}
               active={activeManagedSurface === managedSurface}
-              workspace={this}
+              workspaceRef={this.ref}
             />
           )
         })

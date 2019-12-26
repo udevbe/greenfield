@@ -35,6 +35,13 @@ export default class WebAppLauncher {
     this._webAppSocket = webAppSocket
   }
 
+  launchBlob (blob) {
+    const worker = new window.Worker(URL.createObjectURL(blob))
+    const client = this._webAppSocket.onWebAppWorker(worker)
+    client.onClose().then(() => worker.terminate())
+    return client
+  }
+
   /**
    * @param {URL}webAppURL
    * @return {Promise<Client>}
@@ -51,11 +58,7 @@ export default class WebAppLauncher {
             try {
               const workerSrc = xhr.responseText
               const blob = new window.Blob([workerSrc], { type: 'application/javascript' })
-
-              const worker = new window.Worker(URL.createObjectURL(blob))
-              const client = this._webAppSocket.onWebAppWorker(worker)
-              client.onClose().then(() => worker.terminate())
-
+              const client = this.launchBlob(blob)
               resolve(client)
             } catch (e) {
               console.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)

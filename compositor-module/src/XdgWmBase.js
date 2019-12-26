@@ -25,7 +25,6 @@ import {
 import XdgSurface from './XdgSurface'
 import XdgPositioner from './XdgPositioner'
 import XdgToplevel from './XdgToplevel'
-import UserShellApi from './UserShellApi'
 
 /**
  *
@@ -263,7 +262,9 @@ export default class XdgWmBase extends XdgWmBaseRequests {
         if (xdgSurfaceRole instanceof XdgToplevel) {
           const xdgToplevel = /** @type {XdgToplevel} */ xdgSurfaceRole
           xdgToplevel.userSurfaceState.unresponsive = value
-          UserShellApi.events.updateUserSurfaceState(wlSurfaceResource.implementation, xdgToplevel.userSurfaceState)
+          const { client, id } = wlSurfaceResource
+          const userSurface = { id, clientId: client.id }
+          this._session.userShell.events.updateUserSurface(userSurface, xdgToplevel.userSurfaceState)
         }
       })
   }

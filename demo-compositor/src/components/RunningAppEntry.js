@@ -54,7 +54,7 @@ class RunningAppEntry extends React.PureComponent {
    */
   _handleSurfaceSelection (managedSurface) {
     const { seat } = this.props
-    managedSurface.requestActivation()
+    managedSurface.requestActive()
     seat.pointer.session.flush()
     this._surfaceListClose()
   }

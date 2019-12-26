@@ -32,9 +32,9 @@ class ManagedSurfaceView extends React.Component {
   }
 
   componentDidMount () {
-    const { seat, managedSurface, workspace } = /** @type {{ seat: Seat, managedSurface: ManagedSurface, workspace: Workspace }} */ this.props
-    managedSurface.view.attachTo(workspace.ref.current)
-    managedSurface.requestActivation(managedSurface)
+    const { seat, managedSurface, workspaceRef } = /** @type {{ seat: Seat, managedSurface: ManagedSurface, workspace: Workspace }} */ this.props
+    managedSurface.view.attachTo(workspaceRef.current)
+    managedSurface.requestActive()
     seat.pointer.session.flush()
   }
 

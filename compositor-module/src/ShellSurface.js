@@ -19,7 +19,6 @@ import { WlShellSurfaceRequests, WlShellSurfaceResource } from 'westfield-runtim
 
 import Point from './math/Point'
 
-import UserShellApi from './UserShellApi'
 import RenderFrame from './render/RenderFrame'
 
 const { bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight } = WlShellSurfaceResource.Resize
@@ -59,7 +58,17 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    * @return {ShellSurface}
    */
   static create (wlShellSurfaceResource, wlSurfaceResource, session) {
-    const shellSurface = new ShellSurface(wlShellSurfaceResource, wlSurfaceResource, session)
+    const { client, id } = wlSurfaceResource
+    const userSurface = { id, clientId: client.id }
+    const userSurfaceState = {
+      appId: '',
+      active: false,
+      mapped: false,
+      minimized: false,
+      title: '',
+      unresponsive: false
+    }
+    const shellSurface = new ShellSurface(wlShellSurfaceResource, wlSurfaceResource, session, userSurface, userSurfaceState)
     wlShellSurfaceResource.implementation = shellSurface
 
     // destroy the shell-surface if the surface is destroyed.
@@ -82,9 +91,14 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    * @param {WlShellSurfaceResource}wlShellSurfaceResource
    * @param {WlSurfaceResource}wlSurfaceResource
    * @param {Session} session
+   * @param {UserSurface}userSurface
    */
-  constructor (wlShellSurfaceResource, wlSurfaceResource, session) {
+  constructor (wlShellSurfaceResource, wlSurfaceResource, session, userSurface, userSurfaceState) {
     super()
+    /**
+     * @type {UserSurface}
+     */
+    this.userSurface = userSurface
     /**
      * @type {WlShellSurfaceResource}
      */
@@ -101,14 +115,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     /**
      * @type {UserSurfaceState}
      */
-    this.userSurfaceState = {
-      appId: '',
-      active: false,
-      mapped: false,
-      minimized: false,
-      title: '',
-      unresponsive: false
-    }
+    this.userSurfaceState = userSurfaceState
     /**
      * @type {string}
      */
@@ -162,7 +169,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    */
   _map () {
     this.userSurfaceState.mapped = true
-    UserShellApi.events.updateUserSurfaceState(this.wlSurfaceResource.implementation, this.userSurfaceState)
+    this.session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
   }
 
   /**
@@ -170,7 +177,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    */
   _unmap () {
     this.userSurfaceState.mapped = false
-    UserShellApi.events.updateUserSurfaceState(this.wlSurfaceResource.implementation, this.userSurfaceState)
+    this.session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
   }
 
   /**
@@ -188,7 +195,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
   pong (resource, serial) {
     if (this._pingTimeoutActive) {
       this.userSurfaceState.unresponsive = false
-      UserShellApi.events.updateUserSurfaceState(this.wlSurfaceResource.implementation, this.userSurfaceState)
+      this.session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
       this._pingTimeoutActive = false
     }
     window.clearTimeout(this._timeoutTimer)
@@ -205,7 +212,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
         // ping timed out, make view gray
         this._pingTimeoutActive = true
         this.userSurfaceState.unresponsive = true
-        UserShellApi.events.updateUserSurfaceState(this.wlSurfaceResource.implementation, this.userSurfaceState)
+        this.session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
       }
     }, 5000)
     // FIXME use a proper serial
@@ -361,18 +368,19 @@ export default class ShellSurface extends WlShellSurfaceRequests {
   _ensureUserShellSurface () {
     if (!this._managed) {
       this._managed = true
-      UserShellApi.manage(/** @type {Surface} */this.wlSurfaceResource.implementation, this.userSurfaceState)
+      this.wlSurfaceResource.onDestroy().then(() => this.session.userShell.events.destroyUserSurface(this.userSurface))
+      this.session.userShell.events.createUserSurface(this.userSurface, this.userSurfaceState)
     }
   }
 
   requestActive () {
     this.userSurfaceState.active = true
-    UserShellApi.events.updateUserSurfaceState(this.wlSurfaceResource.implementation, this.userSurfaceState)
+    this.session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
   }
 
   notifyInactive () {
     this.userSurfaceState.active = false
-    UserShellApi.events.updateUserSurfaceState(this.wlSurfaceResource.implementation, this.userSurfaceState)
+    this.session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
   }
 
   /**
@@ -589,8 +597,8 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     // TODO get proper size in surface coordinates instead of assume surface space === global space
     const x = 0
     // FIXME
-    const { height: y } = UserShellApi.panel.getBoundingClientRect()
-    const { width, height } = UserShellApi.workspace.getBoundingClientRect()
+    const { height: y } = this.session.userShell.panel.getBoundingClientRect()
+    const { width, height } = this.session.userShell.workspace.getBoundingClientRect()
 
     surface.surfaceChildSelf.position = Point.create(x, y)
     this.resource.configure(none, width, height)
@@ -615,7 +623,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    */
   setTitle (resource, title) {
     this.userSurfaceState.title = title
-    UserShellApi.events.updateUserSurfaceState(this.wlSurfaceResource.implementation, this.userSurfaceState)
+    this.session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
   }
 
   /**
@@ -636,7 +644,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    */
   setClass (resource, clazz) {
     this.userSurfaceState.appId = clazz
-    UserShellApi.events.updateUserSurfaceState(this.wlSurfaceResource.implementation, this.userSurfaceState)
+    this.session.userShell.events.updateUserSurface(this.userSurface, this.userSurfaceState)
   }
 
   /**

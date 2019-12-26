@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+import { UserShellApi } from 'compositor-module'
+
 /**
  * @implements UserShellSurface
  */
@@ -56,11 +58,6 @@ class ManagedSurface {
      * @type {Array<function():void>}
      */
     this.onMinimize = []
-
-    /**
-     * @type {function():void|null}
-     */
-    this.requestActivation = null
     /**
      * @type {function():void|null}
      */
@@ -172,19 +169,14 @@ class ManagedSurface {
   }
 
   /**
-   * Registers a callback that will be fired when the user shell wants to make a surface active (ie give it input)
-   * @param {function():void}activeCallback
+   * @type {function():void|null}
    */
-  set onActivationRequest (activeCallback) {
-    this.requestActivation = activeCallback
+  requestActive () {
+    UserShellApi.actions.requestActive(this.surface)
   }
 
-  /**
-   * Registers callback that notifies if a surface is no longer active (ie no longer receives input)
-   * @param {function():void}inactiveCallback
-   */
-  set onInactive (inactiveCallback) {
-    this.deactivate = inactiveCallback
+  deactivate () {
+    UserShellApi.actions.notifyInactive(this.surface)
   }
 
   /**

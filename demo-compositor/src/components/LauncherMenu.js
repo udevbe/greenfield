@@ -23,7 +23,7 @@ import { withStyles } from '@material-ui/core/es/styles'
 import Typography from '@material-ui/core/es/Typography'
 import ButtonBase from '@material-ui/core/es/ButtonBase'
 
-import { WebAppLauncher, RemoteAppLauncher } from 'compositor-module'
+import { RemoteAppLauncher, WebAppLauncher } from 'compositor-module'
 import Grid from '@material-ui/core/es/Grid'
 import ManagedSurface from './ManagedSurface'
 
@@ -126,7 +126,7 @@ class LauncherMenu extends React.PureComponent {
     if (appLauncherEntry.client) {
       const clientManagedSurface = managedSurfaces.find(managedSurface => managedSurface.surface.resource.client === appLauncherEntry.client)
       if (clientManagedSurface) {
-        clientManagedSurface.requestActivation()
+        clientManagedSurface.requestActive()
         seat.pointer.session.flush()
       }
     } else {
@@ -148,7 +148,7 @@ class LauncherMenu extends React.PureComponent {
     if (appLauncherEntry.client) {
       const clientManagedSurface = managedSurfaces.find(managedSurface => managedSurface.surface.resource.client === appLauncherEntry.client)
       if (clientManagedSurface) {
-        clientManagedSurface.requestActivation()
+        clientManagedSurface.requestActive()
         seat.pointer.session.flush()
       }
     } else {

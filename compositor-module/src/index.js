@@ -18,7 +18,6 @@
 import { init, isInitialized } from './lib'
 import Session from './Session'
 import './style/greenfield.css'
-import UserShellApi from './UserShellApi'
 import Globals from './Globals'
 import WebAppLauncher from './WebAppLauncher'
 import RemoteAppLauncher from './RemoteAppLauncher'
@@ -30,7 +29,6 @@ export {
   init,
   isInitialized,
   Session,
-  UserShellApi,
   WebAppLauncher,
   WebAppSocket,
   RemoteAppLauncher,

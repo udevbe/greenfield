@@ -17,6 +17,7 @@
 
 import { Display } from 'westfield-runtime-server'
 import WebFS from './WebFS'
+import UserShellApi from './UserShellApi'
 
 /**
  * Listens for client announcements from the server.
@@ -61,6 +62,10 @@ export default class Session {
      * @type {WebFS}
      */
     this.webFS = WebFS.create(this.compositorSessionId)
+    /**
+     * @type {UserShell}
+     */
+    this.userShell = UserShellApi(display)
   }
 
   terminate () {
