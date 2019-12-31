@@ -19,6 +19,8 @@
  * @interface
  */
 export default class BufferContents {
+  validateSize () {}
+
   /**
    * @return {Size}
    */

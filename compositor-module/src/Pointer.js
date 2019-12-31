@@ -131,7 +131,7 @@ export default class Pointer extends WlPointerRequests {
      * Currently active surface grab (if any)
      * @type {?View}
      */
-    this.grab = null
+    this._grab = null
     /**
      * @type {!Array<{popup: WlSurfaceResource, resolve: function():void, promise: Promise<void>}>}
      * @private
@@ -202,6 +202,31 @@ export default class Pointer extends WlPointerRequests {
     this.seat = null
 
     this._cursorURL = null
+  }
+
+  /**
+   * @return {?View}
+   */
+  get grab () {
+    return this._grab
+  }
+
+  /**
+   * @param grab
+   */
+  set grab (grab) {
+    if (grab !== this._grab) {
+      if (grab === null) {
+        this.seat.userSeatState = { ...this.seat.userSeatState, pointerGrab: null }
+        this.session.userShell.events.updateUserSeat(this.seat.userSeatState)
+      } else if (grab.primary) {
+        const { client, id } = grab.surface.resource
+        this.seat.userSeatState = { ...this.seat.userSeatState, pointerGrab: { id, clientId: client.id } }
+        this.session.userShell.events.updateUserSeat(this.seat.userSeatState)
+      }
+
+      this._grab = grab
+    }
   }
 
   onButtonPress () {
@@ -701,6 +726,7 @@ export default class Pointer extends WlPointerRequests {
 
     this.focus = null
     this.grab = null
+
     this.view = null
     if (this._cursorSurface) {
       this._cursorSurface.implementation.role = null

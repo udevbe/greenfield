@@ -15,22 +15,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { WlSurfaceRequests, WlCallbackResource, WlSurfaceResource, WlOutputResource } from 'westfield-runtime-server'
+import { WlCallbackResource, WlOutputResource, WlSurfaceRequests, WlSurfaceResource } from 'westfield-runtime-server'
 
 import View from './View'
 import Callback from './Callback'
 import Rect from './math/Rect'
 import Mat4 from './math/Mat4'
-import {
-  NORMAL,
-  _90,
-  _180,
-  _270,
-  FLIPPED,
-  FLIPPED_90,
-  FLIPPED_180,
-  FLIPPED_270
-} from './math/Transformations'
+import { _180, _270, _90, FLIPPED, FLIPPED_180, FLIPPED_270, FLIPPED_90, NORMAL } from './math/Transformations'
 import Size from './Size'
 import Region from './Region'
 import SurfaceChild from './SurfaceChild'
@@ -365,6 +356,7 @@ export default class Surface extends WlSurfaceRequests {
    */
   _updateDerivedState (newState) {
     const oldBufferSize = this.state.bufferContents ? this.state.bufferContents.size : Size.create(0, 0)
+    if (this.state.bufferContents) { this.state.bufferContents.validateSize() }
     const newBufferSize = newState.bufferContents ? newState.bufferContents.size : Size.create(0, 0)
 
     if (newState.bufferScale !== this.state.bufferScale ||
@@ -584,6 +576,7 @@ export default class Surface extends WlSurfaceRequests {
    * @private
    */
   _handleDestruction () {
+    this.destroyed = true
     this.views.forEach(view => {
       delete view.surface
       view.destroy()

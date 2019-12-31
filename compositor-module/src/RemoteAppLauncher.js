@@ -18,11 +18,11 @@
 class RemoteAppLauncher {
   /**
    * @param {Session}session
-   * @param {RemoteSocket}wsSocket
+   * @param {RemoteSocket}remoteSocket
    * @return {RemoteAppLauncher}
    */
-  static create (session, wsSocket) {
-    return new RemoteAppLauncher(session, wsSocket)
+  static create (session, remoteSocket) {
+    return new RemoteAppLauncher(session, remoteSocket)
   }
 
   /**
@@ -45,6 +45,7 @@ class RemoteAppLauncher {
   /**
    * @param {URL}appEndpointURL
    * @param {string}remoteAppId
+   * @return {Promise<Client>}
    */
   async launch (appEndpointURL, remoteAppId) {
     appEndpointURL.searchParams.delete('compositorSessionId')

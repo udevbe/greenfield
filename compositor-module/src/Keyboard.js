@@ -236,6 +236,12 @@ export default class Keyboard extends WlKeyboardRequests {
 
     if (focus) {
       this.focus = focus
+      const { client, id } = focus.resource
+      this._session.userShell.events.updateUserSeat({
+        ...this.seat.userSeatState,
+        keyboardFocus: { id, clientId: client.id }
+      })
+
       this._dataDevice.onKeyboardFocusGained(focus)
 
       focus.resource.onDestroy().then(() => {
@@ -268,6 +274,10 @@ export default class Keyboard extends WlKeyboardRequests {
         .forEach(resource => resource.leave(serial, surface))
 
       this.focus = null
+      this._session.userShell.events.updateUserSeat({
+        ...this.seat.userSeatState,
+        keyboardFocus: null
+      })
     }
   }
 

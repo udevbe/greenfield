@@ -140,6 +140,11 @@ export default class ShellSurface extends WlShellSurfaceRequests {
      * @private
      */
     this._pingTimer = 0
+    /**
+     * @type {boolean}
+     * @private
+     */
+    this._mapped = false
   }
 
   /**
@@ -169,7 +174,8 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    * @private
    */
   _map () {
-    this._userSurfaceState = { mapped: true, ...this._userSurfaceState }
+    this._mapped = true
+    this._userSurfaceState = { ...this._userSurfaceState, mapped: this._mapped }
     this.session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
   }
 
@@ -177,7 +183,8 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    * @private
    */
   _unmap () {
-    this._userSurfaceState = { mapped: false, ...this._userSurfaceState }
+    this._mapped = false
+    this._userSurfaceState = { ...this._userSurfaceState, mapped: this._mapped }
     this.session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
   }
 
@@ -195,7 +202,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    */
   pong (resource, serial) {
     if (this._pingTimeoutActive) {
-      this._userSurfaceState = { unresponsive: false, ...this._userSurfaceState }
+      this._userSurfaceState = { ...this._userSurfaceState, unresponsive: false }
       this.session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
       this._pingTimeoutActive = false
     }
@@ -212,7 +219,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
       if (!this._pingTimeoutActive) {
         // ping timed out, make view gray
         this._pingTimeoutActive = true
-        this._userSurfaceState = { unresponsive: true, ...this._userSurfaceState }
+        this._userSurfaceState = { ...this._userSurfaceState, unresponsive: true }
         this.session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
       }
     }, 5000)
@@ -375,12 +382,18 @@ export default class ShellSurface extends WlShellSurfaceRequests {
   }
 
   requestActive () {
-    this._userSurfaceState = { active: true, ...this._userSurfaceState }
+    if (this._userSurfaceState.active) {
+      return
+    }
+    this._userSurfaceState = { ...this._userSurfaceState, active: true }
     this.session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
   }
 
   notifyInactive () {
-    this._userSurfaceState = { active: false, ...this._userSurfaceState }
+    if (!this._userSurfaceState.active) {
+      return
+    }
+    this._userSurfaceState = { ...this._userSurfaceState, active: false }
     this.session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
   }
 
@@ -623,7 +636,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    * @override
    */
   setTitle (resource, title) {
-    this._userSurfaceState = { title, ...this._userSurfaceState }
+    this._userSurfaceState = { ...this._userSurfaceState, title }
     this.session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
   }
 
@@ -644,7 +657,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    * @override
    */
   setClass (resource, clazz) {
-    this._userSurfaceState = { appId: clazz, ...this._userSurfaceState }
+    this._userSurfaceState = { ...this._userSurfaceState, appId: clazz }
     this.session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
   }
 

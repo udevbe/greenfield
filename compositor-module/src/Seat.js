@@ -16,10 +16,10 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import {
+  WlKeyboardResource,
+  WlPointerResource,
   WlSeatRequests,
   WlSeatResource,
-  WlPointerResource,
-  WlKeyboardResource,
   WlTouchResource
 } from 'westfield-runtime-server'
 
@@ -50,7 +50,9 @@ class Seat extends WlSeatRequests {
     const touch = Touch.create()
     const hasTouch = 'ontouchstart' in document.documentElement
 
-    const seat = new Seat(dataDevice, pointer, keyboard, touch, hasTouch)
+    const userSeatState = { pointerGrab: null, keyboardFocus: null, requestedActive: [] }
+
+    const seat = new Seat(dataDevice, pointer, keyboard, touch, hasTouch, userSeatState)
     dataDevice.seat = seat
 
     keyboard.seat = seat
@@ -66,9 +68,10 @@ class Seat extends WlSeatRequests {
    * @param {Keyboard} keyboard
    * @param {Touch} touch
    * @param {boolean} hasTouch
+   * @param {UserSeatState}userSeatState
    * @private
    */
-  constructor (dataDevice, pointer, keyboard, touch, hasTouch) {
+  constructor (dataDevice, pointer, keyboard, touch, hasTouch, userSeatState) {
     super()
     /**
      * @type {!DataDevice}
@@ -110,12 +113,15 @@ class Seat extends WlSeatRequests {
      * @type {number}
      */
     this.serial = 0
-
     /**
      * @type {Array<function(WlKeyboardResource):void>}
      * @private
      */
     this._keyboardResourceListeners = []
+    /**
+     * @type {UserSeatState}
+     */
+    this.userSeatState = userSeatState
   }
 
   /**

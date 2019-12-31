@@ -69,4 +69,8 @@ export default class WebGLFrame extends BufferContents {
    * @return {Size}
    */
   get size () { return this._size }
+
+  validateSize () {
+    this._size = Size.create(this._canvas.width, this._canvas.height)
+  }
 }

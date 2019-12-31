@@ -261,7 +261,7 @@ export default class XdgWmBase extends XdgWmBaseRequests {
         const xdgSurfaceRole = (/** @type {Surface} */wlSurfaceResource.implementation).role
         if (xdgSurfaceRole instanceof XdgToplevel) {
           const xdgToplevel = /** @type {XdgToplevel} */ xdgSurfaceRole
-          xdgToplevel._userSurfaceState = { unresponsive: value, ...xdgToplevel._userSurfaceState }
+          xdgToplevel._userSurfaceState = { ...xdgToplevel._userSurfaceState, unresponsive: value }
           const { client, id } = wlSurfaceResource
           const userSurface = { id, clientId: client.id }
           this._session.userShell.events.updateUserSurface(userSurface, xdgToplevel._userSurfaceState)

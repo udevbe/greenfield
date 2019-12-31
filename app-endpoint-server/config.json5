@@ -44,7 +44,7 @@
     apps: {
       'remote-gtk3-demo': {
         // The full path of the executable binary. Can also be a symlink.
-        bin: "/usr/local/bin/weston-terminal",
+        bin: "/usr/bin/gtk3-demo",
         // Arguments passed to the binary
         args: [],
       }

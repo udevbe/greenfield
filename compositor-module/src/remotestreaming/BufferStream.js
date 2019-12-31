@@ -24,7 +24,12 @@ export default class BufferStream {
    */
   static create (wlBufferResource) {
     const bufferStream = new BufferStream()
-    wlBufferResource.onDestroy().then(() => Object.values(bufferStream._bufferStates).forEach(({ completionReject }) => completionReject(new Error('Buffer resource destroyed before contents arrived.'))))
+    // TODO we probably want to trigger a custom timeout error here.
+    wlBufferResource.onDestroy().then(() => {
+      Object.entries(bufferStream._bufferStates).forEach(([serial, bufferState]) => {
+        bufferStream._onComplete(serial, null)
+      })
+    })
     return bufferStream
   }
 
@@ -96,6 +101,7 @@ export default class BufferStream {
       this._newBufferState(serial)
     }
 
+    // TODO we probably want to trigger a custom timeout error here if contents take too long to arrive.
     return this._bufferStates[serial].completionPromise
   }
 

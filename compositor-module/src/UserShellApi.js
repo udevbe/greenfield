@@ -8,12 +8,26 @@
 export default (display) => (
   {
     /**
+     * @typedef {{id: string, variant: 'web'|'remote'}}ApplicationClient
+     */
+    /**
+     * @typedef {{pointerGrab: UserSurface, keyboardFocus: UserSurface}}UserSeatState
+     */
+    /**
      * @typedef {{clientId: string, id: number}}UserSurface
      */
     /**
      * @typedef {{title:string, appId:string, mapped:boolean, active: boolean, unresponsive: boolean, minimized: boolean}}UserSurfaceState
      */
     events: {
+      /**
+       * @param {ApplicationClient}applicationClient
+       */
+      createApplicationClient: (applicationClient) => {},
+      /**
+       * @param {ApplicationClient}applicationClient
+       */
+      destroyApplicationClient: (applicationClient) => {},
       /**
        * Ask the user shell to start managing the given surface.
        * @param {{clientId: string, id}}userSurface
@@ -38,7 +52,12 @@ export default (display) => (
       /**
        * @param {UserSurface}userSurface
        */
-      destroyUserSurface: userSurface => {}
+      destroyUserSurface: userSurface => {},
+
+      /**
+       * @param {UserSeatState}userSeatState
+       */
+      updateUserSeat: (userSeatState) => {}
     },
 
     actions: {
@@ -56,7 +75,19 @@ export default (display) => (
        */
       notifyInactive: userSurface => display.clients[userSurface.clientId].connection.wlObjects[userSurface.id].implementation.role.notifyInactive(),
 
-      createView: userSurface => display.clients[userSurface.clientId].connection.wlObjects[userSurface.id].implementation.createView()
+      /**
+       * @param {UserSurface}userSurface
+       * @return {View}
+       */
+      createView: userSurface => display.clients[userSurface.clientId].connection.wlObjects[userSurface.id].implementation.createView(),
+
+      /**
+       * @param {UserSurface}userSurface
+       */
+      setKeyboardFocus: userSurface => {
+        const surface = display.clients[userSurface.clientId].connection.wlObjects[userSurface.id].implementation
+        surface.seat.keyboard.focusGained(surface)
+      }
     }
   }
 )

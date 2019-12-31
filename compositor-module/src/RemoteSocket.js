@@ -106,16 +106,16 @@ class RemoteSocket {
    * @return {Promise<Client>}
    */
   onWebSocket (webSocket) {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
       window.GREENFIELD_DEBUG && console.log('[WebSocket] - created.')
 
       webSocket.binaryType = 'arraybuffer'
-      webSocket.onclose = () => { throw new Error('Remote connection failed.') }
+      webSocket.onclose = () => { reject(new Error('Remote connection failed.')) }
       webSocket.onopen = () => {
         window.GREENFIELD_DEBUG && console.log('[WebSocket] - open.')
 
         const client = this._session.display.createClient()
-        client.onClose().then(() => DEBUG && console.log('[client] - closed.'))
+        client.onClose().then(() => window.GREENFIELD_DEBUG && console.log('[client] - closed.'))
         client.addResourceCreatedListener(resource => {
           if (resource.id >= 0xff000000 && client.recycledIds.length === 0) {
             console.error('[client] - Ran out of reserved browser resource ids.')
@@ -139,7 +139,10 @@ class RemoteSocket {
             try {
               webSocket.send(sendBuffer)
             } catch (e) {
-              console.log(e.message)
+              // TODO use centralized error reporting
+              console.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+              console.error('error object stack: ')
+              console.error(e.stack)
               client.close()
             }
           }
@@ -147,6 +150,14 @@ class RemoteSocket {
         this._setupClientOutOfBandHandlers(webSocket, client, wsOutOfBandChannel)
 
         webSocket.onmessage = event => this._handleMessageEvent(client, event, wsOutOfBandChannel)
+
+        client.onClose().then(() => {
+          this._session.userShell.events.destroyApplicationClient({
+            id: client.id,
+            variant: 'remote'
+          })
+        })
+        this._session.userShell.events.createApplicationClient({ id: client.id, variant: 'remote' })
         resolve(client)
       }
     })
@@ -246,23 +257,37 @@ class RemoteSocket {
    * @private
    */
   _handleMessageEvent (client, event, wsOutOfBandChannel) {
-    const arrayBuffer = /** @type {ArrayBuffer} */event.data
-    const dataView = new DataView(arrayBuffer)
-    const outOfBand = dataView.getUint32(0, true)
-    if (outOfBand) {
-      wsOutOfBandChannel.message(arrayBuffer)
-    } else {
-      let offset = 0
-      const receiveBuffer = new Uint32Array(arrayBuffer, Uint32Array.BYTES_PER_ELEMENT)
-      const fdsInCount = receiveBuffer[offset++]
-      const webFDs = new Array(fdsInCount)
-      for (let i = 0; i < fdsInCount; i++) {
-        const { read, webFd } = this._deserializeWebFD(receiveBuffer.subarray(offset))
-        offset += read
-        webFDs[i] = webFd
+    if (client.connection.closed) { return }
+
+    try {
+      const arrayBuffer = /** @type {ArrayBuffer} */event.data
+      const dataView = new DataView(arrayBuffer)
+      const outOfBand = dataView.getUint32(0, true)
+      if (outOfBand) {
+        wsOutOfBandChannel.message(arrayBuffer)
+      } else {
+        let offset = 0
+        const receiveBuffer = new Uint32Array(arrayBuffer, Uint32Array.BYTES_PER_ELEMENT)
+        const fdsInCount = receiveBuffer[offset++]
+        const webFDs = new Array(fdsInCount)
+        for (let i = 0; i < fdsInCount; i++) {
+          const { read, webFd } = this._deserializeWebFD(receiveBuffer.subarray(offset))
+          offset += read
+          webFDs[i] = webFd
+        }
+        const buffer = receiveBuffer.subarray(offset)
+        client.connection.message({ buffer, fds: webFDs }).catch(e => {
+          // TODO use centralized error reporting
+          console.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+          console.error('error object stack: ')
+          console.error(e.stack)
+        })
       }
-      const buffer = receiveBuffer.subarray(offset)
-      client.connection.message({ buffer, fds: webFDs })
+    } catch (e) {
+      // TODO use centralized error reporting
+      console.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+      console.error('error object stack: ')
+      console.error(e.stack)
     }
   }
 
@@ -273,6 +298,8 @@ class RemoteSocket {
    * @private
    */
   _flushWireMessages (client, webSocket, wireMessages) {
+    if (client.connection.closed) { return }
+
     let messageSize = 1 // +1 for indicator of it's an out of band message
     /**
      * @type {Array<{buffer: ArrayBuffer, serializedWebFds: Array<Uint8Array>}>}

@@ -109,6 +109,13 @@ export default class WebAppSocket {
       }
     }
 
+    client.onClose().then(() => {
+      this._session.userShell.events.destroyApplicationClient({
+        id: client.id,
+        variant: 'web'
+      })
+    })
+    this._session.userShell.events.createApplicationClient({ id: client.id, variant: 'web' })
     return client
   }
 }
