@@ -105,35 +105,38 @@ export default class YUVSurfaceShader {
   }
 
   /**
-   * @param {!Size}viewportSize
+   * @param {!Size}encodedFrameSize
+   * @param {H264RenderState} h264RenderState
    */
-  updatePerspective (viewportSize) {
-    const gl = this.gl
-    const { w, h } = viewportSize
-    gl.viewport(0, 0, w, h)
+  updateShaderData (encodedFrameSize, h264RenderState) {
+    const { w, h } = encodedFrameSize
+    this.gl.viewport(0, 0, w, h)
     this.program.setUniformM4(this.shaderArgs.u_projection, [
       2.0 / w, 0, 0, 0,
       0, 2.0 / -h, 0, 0,
       0, 0, 1, 0,
       -1, 1, 0, 1
     ])
-    gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
-    gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
+      // First triangle
       // top left:
       0, 0, 0, 0,
       // top right:
-      w, 0, 1, 0,
+      w, 0, h264RenderState.maxXTexCoord, 0,
       // bottom right:
-      w, h, 1, 1,
+      w, h, h264RenderState.maxXTexCoord, h264RenderState.maxYTexCoord,
+
+      // Second triangle
       // bottom right:
-      w, h, 1, 1,
+      w, h, h264RenderState.maxXTexCoord, h264RenderState.maxYTexCoord,
       // bottom left:
-      0, h, 0, 1,
+      0, h, 0, h264RenderState.maxYTexCoord,
       // top left:
       0, 0, 0, 0
     ]), this.gl.DYNAMIC_DRAW)
-    gl.vertexAttribPointer(this.shaderArgs.a_position, 2, gl.FLOAT, false, 16, 0)
-    gl.vertexAttribPointer(this.shaderArgs.a_texCoord, 2, gl.FLOAT, false, 16, 8)
+    this.gl.vertexAttribPointer(this.shaderArgs.a_position, 2, this.gl.FLOAT, false, 16, 0)
+    this.gl.vertexAttribPointer(this.shaderArgs.a_texCoord, 2, this.gl.FLOAT, false, 16, 8)
   }
 
   draw () {
