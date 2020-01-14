@@ -87,6 +87,13 @@ export default (display) => (
       setKeyboardFocus: userSurface => {
         const surface = display.clients[userSurface.clientId].connection.wlObjects[userSurface.id].implementation
         surface.seat.keyboard.focusGained(surface)
+      },
+
+      /**
+       * @param {ApplicationClient}applicationClient
+       */
+      closeClient: applicationClient => {
+        display.clients[applicationClient.id].close()
       }
     }
   }

@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { XdgPositionerResource, XdgPopupRequests, XdgPopupResource, XdgWmBaseResource } from 'westfield-runtime-server'
+import { XdgPopupRequests, XdgPopupResource, XdgPositionerResource, XdgWmBaseResource } from 'westfield-runtime-server'
 
 import Point from './math/Point'
 
@@ -437,6 +437,10 @@ export default class XdgPopup extends XdgPopupRequests {
     this._updatePopupKeyboardFocus()
     pointer.popupGrab(this.xdgSurface.wlSurfaceResource).then(() => this._dismiss())
   }
+
+  notifyInactive () { /* NOOP */ }
+
+  requestActive () { /* NOOP */ }
 
   /**
    * @param {number}serial

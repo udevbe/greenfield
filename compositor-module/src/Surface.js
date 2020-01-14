@@ -503,12 +503,14 @@ export default class Surface extends WlSurfaceRequests {
     const primaryChildView = surfaceChild.surface.views.find(view => view.primary)
     const primaryView = this.views.find(view => view.primary)
 
-    const zIndexOrder = this.children.indexOf(surfaceChild)
-    primaryChildView.zIndex = primaryView.zIndex + zIndexOrder
-    primaryChildView.parent = primaryView
+    if (primaryChildView && primaryView) {
+      const zIndexOrder = this.children.indexOf(surfaceChild)
+      primaryChildView.zIndex = primaryView.zIndex + zIndexOrder
+      primaryChildView.parent = primaryView
 
-    surfaceChild.surface.resource.onDestroy().then(() => this.removeChild(surfaceChild))
-    this.updateChildViewsZIndexes()
+      surfaceChild.surface.resource.onDestroy().then(() => this.removeChild(surfaceChild))
+      this.updateChildViewsZIndexes()
+    }
   }
 
   /**

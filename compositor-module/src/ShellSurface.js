@@ -78,7 +78,6 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     shellSurface._doPing(wlShellSurfaceResource)
 
     wlShellSurfaceResource.onDestroy().then(() => {
-      shellSurface._unmap()
       window.clearTimeout(shellSurface._timeoutTimer)
       window.clearTimeout(shellSurface._pingTimer)
     })
