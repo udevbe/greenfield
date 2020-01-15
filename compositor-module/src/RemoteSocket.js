@@ -107,15 +107,15 @@ class RemoteSocket {
    */
   onWebSocket (webSocket) {
     return new Promise((resolve, reject) => {
-      window.GREENFIELD_DEBUG && console.log('[WebSocket] - created.')
+      // window.GREENFIELD_DEBUG && console.log('[WebSocket] - created.')
 
       webSocket.binaryType = 'arraybuffer'
       webSocket.onclose = () => { reject(new Error('Remote connection failed.')) }
       webSocket.onopen = () => {
-        window.GREENFIELD_DEBUG && console.log('[WebSocket] - open.')
+        // window.GREENFIELD_DEBUG && console.log('[WebSocket] - open.')
 
         const client = this._session.display.createClient()
-        client.onClose().then(() => window.GREENFIELD_DEBUG && console.log('[client] - closed.'))
+        // client.onClose().then(() => window.GREENFIELD_DEBUG && console.log('[client] - closed.'))
         client.addResourceCreatedListener(resource => {
           if (resource.id >= 0xff000000 && client.recycledIds.length === 0) {
             console.error('[client] - Ran out of reserved browser resource ids.')
@@ -124,10 +124,10 @@ class RemoteSocket {
         })
 
         webSocket.onclose = () => {
-          window.GREENFIELD_DEBUG && console.log('[WebSocket] - closed.')
+          // window.GREENFIELD_DEBUG && console.log('[WebSocket] - closed.')
           client.close()
         }
-        webSocket.onerror = event => window.GREENFIELD_DEBUG && console.log(`[WebSocket] - error: ${event.message}.`)
+        // webSocket.onerror = event =>  window.GREENFIELD_DEBUG && console.log(`[WebSocket] - error: ${event.message}.`)
 
         /**
          * @param {Array<{buffer: ArrayBuffer, fds: Array<WebFD>}>}wireMessages

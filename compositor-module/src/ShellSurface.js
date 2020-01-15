@@ -247,7 +247,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     const seat = /** @type {Seat} */wlSeatResource.implementation
 
     // if (!seat.isValidInputSerial(serial)) {
-    //   window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Move serial mismatch. Ignoring.')
+    //   // window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Move serial mismatch. Ignoring.')
     //   return
     // }
 
@@ -302,7 +302,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
   resize (resource, wlSeatResource, serial, edges) {
     const seat = /** @type {Seat} */wlSeatResource.implementation
     if (!seat.isValidInputSerial(serial)) {
-      window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Resize serial mismatch. Ignoring.')
+      // window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Resize serial mismatch. Ignoring.')
       return
     }
 
@@ -546,7 +546,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     const seat = /** @type {Seat} */wlSeatResource.implementation
     if (!seat.isValidInputSerial(seat.buttonPressSerial)) {
       this._dismiss()
-      window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Popup grab input serial mismatch. Ignoring.')
+      // window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Popup grab input serial mismatch. Ignoring.')
       return
     }
 

@@ -272,7 +272,7 @@ export default class Subsurface extends WlSubsurfaceRequests {
     if (!parentSurface.subsurfaceChildren.includes(siblingSurfaceChildSelf) ||
       siblingSurface === parentSurface) {
       resource.postError(WlSubsurfaceResource.Error.badSurface, 'Surface is not a sibling or the parent.')
-      window.GREENFIELD_DEBUG && console.log('[client-protocol-error] - Surface is not a sibling or the parent.')
+      // window.GREENFIELD_DEBUG && console.log('[client-protocol-error] - Surface is not a sibling or the parent.')
       return
     }
 

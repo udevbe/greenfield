@@ -29,7 +29,7 @@ export default class Session {
   static create () {
     const display = new Display()
     const compositorSessionId = this._uuidv4()
-    window.GREENFIELD_DEBUG && console.log(`[compositor-session: ${compositorSessionId}] - Starting new compositor session.`)
+    // window.GREENFIELD_DEBUG && console.log(`[compositor-session: ${compositorSessionId}] - Starting new compositor session.`)
     return new Session(display, compositorSessionId)
   }
 

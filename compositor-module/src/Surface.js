@@ -866,7 +866,7 @@ export default class Surface extends WlSurfaceRequests {
    */
   async commit (resource, serial) {
     this.renderFrame = RenderFrame.create()
-    const startCommit = Date.now()
+    // const startCommit = Date.now()
     let bufferContents = this.state.bufferContents
 
     if (this.state.bufferResource !== this.pendingWlBuffer) {
@@ -876,14 +876,14 @@ export default class Surface extends WlSurfaceRequests {
       if (this.pendingWlBuffer) {
         this.pendingWlBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
         const buffer = /** @type{BufferImplementation} */this.pendingWlBuffer.implementation
-        const startBufferContents = Date.now()
+        // const startBufferContents = Date.now()
         try {
-          window.GREENFIELD_DEBUG && console.log('|- Awaiting buffer contents.')
+          // window.GREENFIELD_DEBUG && console.log('|- Awaiting buffer contents.')
           bufferContents = await buffer.getContents(serial)
         } catch (e) {
           console.error(`[surface: ${resource.id}] - Failed to receive buffer contents.`, e.toString())
         }
-        window.GREENFIELD_DEBUG && console.log(`|- Buffer contents took ${Date.now() - startBufferContents}ms`)
+        // window.GREENFIELD_DEBUG && console.log(`|- Buffer contents took ${Date.now() - startBufferContents}ms`)
       } else {
         bufferContents = null
       }
@@ -894,10 +894,10 @@ export default class Surface extends WlSurfaceRequests {
     const newState = this._captureState(resource, this.pendingWlBuffer, bufferContents)
 
     if (newState && this.role && typeof this.role.onCommit === 'function') {
-      window.GREENFIELD_DEBUG && console.log('|- Awaiting surface role commit.')
-      const startFrameCommit = Date.now()
+      // window.GREENFIELD_DEBUG && console.log('|- Awaiting surface role commit.')
+      // const startFrameCommit = Date.now()
       await this.role.onCommit(this, newState)
-      window.GREENFIELD_DEBUG && console.log(`|- Role commit took ${Date.now() - startFrameCommit}ms`)
+      // window.GREENFIELD_DEBUG && console.log(`|- Role commit took ${Date.now() - startFrameCommit}ms`)
       if (newState.inputPixmanRegion) {
         Region.destroyPixmanRegion(newState.inputPixmanRegion)
       }
@@ -908,7 +908,7 @@ export default class Surface extends WlSurfaceRequests {
 
     this.renderFrame.fire()
     this.session.flush()
-    window.GREENFIELD_DEBUG && console.log(`-------> total commit took ${Date.now() - startCommit}`)
+    // window.GREENFIELD_DEBUG && console.log(`-------> total commit took ${Date.now() - startCommit}`)
   }
 
   /**
@@ -936,7 +936,7 @@ export default class Surface extends WlSurfaceRequests {
     }
 
     if (!skipDraw) {
-      window.GREENFIELD_DEBUG && console.log('|- Awaiting surface render.')
+      // window.GREENFIELD_DEBUG && console.log('|- Awaiting surface render.')
       await this.renderer.render(this, newState)
     }
 
@@ -999,13 +999,13 @@ export default class Surface extends WlSurfaceRequests {
   _captureState (resource, bufferResource, bufferContents) {
     if (this._pendingBufferScale < 1) {
       resource.postError(WlSurfaceResource.Error.invalidScale, 'Buffer scale value is invalid.')
-      window.GREENFIELD_DEBUG && console.log('[client-protocol-error] - Buffer scale value is invalid.')
+      // window.GREENFIELD_DEBUG && console.log('[client-protocol-error] - Buffer scale value is invalid.')
       return null
     }
 
     if (!Object.values(WlOutputResource.Transform).includes(this._pendingBufferTransform)) {
       resource.postError(WlSurfaceResource.Error.invalidTransform, 'Buffer transform value is invalid.')
-      window.GREENFIELD_DEBUG && console.log('[client-protocol-error] - Buffer transform value is invalid.')
+      // window.GREENFIELD_DEBUG && console.log('[client-protocol-error] - Buffer transform value is invalid.')
       return null
     }
 

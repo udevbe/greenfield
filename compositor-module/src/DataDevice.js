@@ -173,7 +173,7 @@ export default class DataDevice extends WlDataDeviceRequests {
   startDrag (resource, source, origin, icon, serial) {
     if (icon && (/** @type {Surface} */ icon.implementation).role) {
       resource.postError(WlDataDeviceResource.Error.role, 'Given surface has another role.')
-      window.GREENFIELD_DEBUG && console.log('[client-protocol-error] - Given surface has another role.')
+      // window.GREENFIELD_DEBUG && console.log('[client-protocol-error] - Given surface has another role.')
       return
     }
 
@@ -388,13 +388,13 @@ export default class DataDevice extends WlDataDeviceRequests {
    */
   setSelection (resource, source, serial) {
     if (!this.seat.isValidInputSerial(serial)) {
-      window.GREENFIELD_DEBUG && console.log('Invalid selection serial. Ignoring request.')
+      // window.GREENFIELD_DEBUG && console.log('Invalid selection serial. Ignoring request.')
       return
     }
 
     if (source && (/** @type {DataSource} */source.implementation).dndActions) {
       source.postError(WlDataSourceResource.Error.invalidSource, 'Can not set selection when source has dnd actions active.')
-      window.GREENFIELD_DEBUG && console.log('[client-protocol-error] - Can not set selection when source has dnd actions active.')
+      // window.GREENFIELD_DEBUG && console.log('[client-protocol-error] - Can not set selection when source has dnd actions active.')
       return
     }
 

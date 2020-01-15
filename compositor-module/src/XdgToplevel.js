@@ -212,12 +212,12 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
     if (minWidth < 0 || minHeight < 0 || minWidth > maxWidth || minHeight > maxHeight) {
       this.resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Min size can not be greater than max size.')
-      window.GREENFIELD_DEBUG && console.log('[client-protocol-error] Min size can not be greater than max size.')
+      // window.GREENFIELD_DEBUG && console.log('[client-protocol-error] Min size can not be greater than max size.')
       return
     }
     if (maxWidth < 0 || maxHeight < 0 || maxWidth < minWidth || maxHeight < minHeight) {
       this.resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Max size can not be me smaller than min size.')
-      window.GREENFIELD_DEBUG && console.log('[client-protocol-error] Max size can not be less than min size.')
+      // window.GREENFIELD_DEBUG && console.log('[client-protocol-error] Max size can not be less than min size.')
       return
     }
 
@@ -338,7 +338,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
     if (newSurfaceWidth !== roleState.configureState.width || newSurfaceHeight !== roleState.configureState.height) {
       this.resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Surface size does not match configure event.')
-      window.GREENFIELD_DEBUG && console.log('[client-protocol-error] Surface size does not match configure event.')
+      // window.GREENFIELD_DEBUG && console.log('[client-protocol-error] Surface size does not match configure event.')
       return
     }
 
@@ -368,7 +368,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const { x: newSurfaceWidth, y: newSurfaceHeight } = surface.toSurfaceSpace(Point.create(bufferSize.w, bufferSize.h))
     if (newSurfaceWidth > this._configureState.width || newSurfaceHeight > this._configureState.height) {
       this.resource.postError(XdgWmBaseResource.Error.invalidSurfaceState, 'Surface size does not match configure event.')
-      window.GREENFIELD_DEBUG && console.log('[client protocol error] Surface size does not match configure event.')
+      // window.GREENFIELD_DEBUG && console.log('[client protocol error] Surface size does not match configure event.')
       return
     }
 
@@ -579,7 +579,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const seat = /** @type {Seat} */wlSeatResource.implementation
 
     if (!seat.isValidInputSerial(serial)) {
-      window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - showWindowMenu serial mismatch. Ignoring.')
+      // window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - showWindowMenu serial mismatch. Ignoring.')
       return
     }
 
@@ -629,7 +629,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const seat = /** @type {Seat} */wlSeatResource.implementation
 
     // if (!seat.isValidInputSerial(serial)) {
-    //   window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Move serial mismatch. Ignoring.')
+    //   // window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Move serial mismatch. Ignoring.')
     //   return
     // }
 
@@ -724,7 +724,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const pointer = seat.pointer
 
     if (!seat.isValidInputSerial(serial)) {
-      window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Resize serial mismatch. Ignoring.')
+      // window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Resize serial mismatch. Ignoring.')
       return
     }
     // assigned in switch statement
