@@ -167,6 +167,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
       const newState = this._configureState.state.slice()
       newState.push(activated)
       this._emitConfigure(this.resource, this._configureState.width, this._configureState.height, newState, none)
+      this._session.flush()
     }
   }
 
@@ -181,6 +182,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
       this._emitConfigure(this.resource, this._configureState.width, this._configureState.height, newState, none)
       this._userSurfaceState = { ...this._userSurfaceState, active: false }
       this._session.userShell.events.updateUserSurface(this.userSurface, this._userSurfaceState)
+      this._session.flush()
     }
   }
 
