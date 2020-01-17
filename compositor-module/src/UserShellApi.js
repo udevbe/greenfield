@@ -1,11 +1,24 @@
 /**
  * @typedef {{actions: {notifyInactive: (function(UserSurface): void), requestActive: (function(UserSurface): (void)}, events: {updateUserSurface: function(UserSurface,UserSurfaceState):void, destroyUserSurface: function(UserSurface):void, createUserSurface: function(UserSurface,UserSurfaceState):void, notify: function(string,string):void}}}UserShell
  */
+
 /**
- * @param display
+ * @param {Display}display
+ * @param {UserSurface}userSurface
+ * @param {function(surface: Surface):void}surfaceAction
+ */
+const performSurfaceAction = (display, userSurface, surfaceAction) => {
+  const wlSurfaceResource = display.clients[userSurface.clientId].connection.wlObjects[userSurface.id]
+  if (wlSurfaceResource) {
+    surfaceAction(wlSurfaceResource.implementation)
+  }
+}
+
+/**
+ * @param {Display}display
  * @return UserShell
  */
-export default (display) => (
+export default display => (
   {
     /**
      * @typedef {{id: string, variant: 'web'|'remote'}}ApplicationClient
@@ -66,14 +79,14 @@ export default (display) => (
        * an inactive surface. An active surface can receive user input after it has confirmed it's active state.
        * @param {UserSurface}userSurface
        */
-      requestActive: userSurface => display.clients[userSurface.clientId].connection.wlObjects[userSurface.id].implementation.role.requestActive(),
+      requestActive: userSurface => performSurfaceAction(display, userSurface, surface => surface.role.requestActive()),
 
       /**
        * Notify a surface that it will no longer receive user input. An inactive surface can update it's visual clue
        * to reflect it's inactive state.
        * @param {UserSurface}userSurface
        */
-      notifyInactive: userSurface => display.clients[userSurface.clientId].connection.wlObjects[userSurface.id].implementation.role.notifyInactive(),
+      notifyInactive: userSurface => performSurfaceAction(display, userSurface, surface => surface.role.notifyInactive()),
 
       /**
        * @param {UserSurface}userSurface
@@ -84,17 +97,12 @@ export default (display) => (
       /**
        * @param {UserSurface}userSurface
        */
-      setKeyboardFocus: userSurface => {
-        const surface = display.clients[userSurface.clientId].connection.wlObjects[userSurface.id].implementation
-        surface.seat.keyboard.focusGained(surface)
-      },
+      setKeyboardFocus: userSurface => performSurfaceAction(display, userSurface, surface => surface.seat.keyboard.focusGained(surface)),
 
       /**
        * @param {ApplicationClient}applicationClient
        */
-      closeClient: applicationClient => {
-        display.clients[applicationClient.id].close()
-      }
+      closeClient: applicationClient => display.clients[applicationClient.id].close()
     }
   }
 )
