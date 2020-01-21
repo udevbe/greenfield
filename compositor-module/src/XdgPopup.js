@@ -438,10 +438,6 @@ export default class XdgPopup extends XdgPopupRequests {
     pointer.popupGrab(this.xdgSurface.wlSurfaceResource).then(() => this._dismiss())
   }
 
-  notifyInactive () { /* NOOP */ }
-
-  requestActive () { /* NOOP */ }
-
   /**
    * @param {number}serial
    */
