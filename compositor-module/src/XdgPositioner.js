@@ -514,7 +514,7 @@ export default class XdgPositioner extends XdgPositionerRequests {
         const surfaceSpaceWinGeoMax = surfaceSpaceAnchorPoint.plus(Point.create(this.size.x1, this.size.y1))
 
         const surfaceSpaceMinBound = parentView.toSurfaceSpace(Point.create(0, 0))
-        const surfaceSpaceMaxBound = parentView.toSurfaceSpace(Point.create(window.document.body.clientWidth, window.document.body.clientHeight))
+        const surfaceSpaceMaxBound = parentView.toSurfaceSpace(Point.create(window.document.documentElement.clientWidth, document.documentElement.clientHeight))
 
         let topViolation = 0
         let rightViolation = 0
