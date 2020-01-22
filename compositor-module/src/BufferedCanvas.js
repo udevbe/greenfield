@@ -35,7 +35,7 @@ export default class BufferedCanvas {
     frontCanvas.height = height
     frontCanvas.style.display = 'inline'
     frontCanvas.style.zIndex = '0'
-    const frontContext = frontCanvas.getContext('2d')
+    const frontContext = frontCanvas.getContext('2d', { alpha: true, desynchronized: true })
     if (!frontContext.canvas) {
       frontContext.canvas = frontCanvas
     }
@@ -45,7 +45,7 @@ export default class BufferedCanvas {
     backCanvas.height = height
     backCanvas.style.display = 'none'
     backCanvas.style.zIndex = '0'
-    const backContext = backCanvas.getContext('2d')
+    const backContext = backCanvas.getContext('2d', { alpha: true, desynchronized: true })
     if (!backContext.canvas) {
       backContext.canvas = backCanvas
     }

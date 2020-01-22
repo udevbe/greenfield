@@ -31,7 +31,8 @@ export default class Renderer {
       antialias: false,
       depth: false,
       alpha: true,
-      preserveDrawingBuffer: false
+      preserveDrawingBuffer: false,
+      desynchronized: true
     })
     if (!gl) {
       throw new Error('This browser doesn\'t support WebGL!')
