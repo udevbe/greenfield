@@ -18,14 +18,14 @@
 import {
   display,
   frame,
-  WlCompositorProxy,
   GrWebGlProxy,
-  WlShellProxy,
+  WlCompositorProxy,
+  WlPointerProxy,
   WlSeatProxy,
-  WlPointerProxy
+  WlShellProxy
 } from 'westfield-runtime-client'
 
-import { initDraw, drawScene } from './webgl-demo'
+import { drawScene, initDraw } from './webgl-demo'
 
 /**
  * @implements GrWebGLBufferEvents
@@ -228,7 +228,11 @@ class Window {
 
     this._glBuffer.canvas.width = width
     this._glBuffer.canvas.height = height
-    this._gl = /** @type {WebGLRenderingContext} */this._glBuffer.canvas.getContext('webgl')
+    this._gl = /** @type {WebGLRenderingContext} */this._glBuffer.canvas.getContext('webgl', {
+      desynchronized: true,
+      alpha: true,
+      preserveDrawingBuffer: false
+    })
 
     this._drawState = initDraw(this._gl)
     setInterval(() => {

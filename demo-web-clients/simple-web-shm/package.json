@@ -20,16 +20,15 @@
   },
   "homepage": "https://github.com/udevbe/greenfield#readme",
   "scripts": {
-    "prepare:prod": "webpack --config build.config/webpack.config.prod.js",
-    "prepare": "webpack --config build.config/webpack.config.dev.js"
+    "build": "webpack --config webpack.config.js"
   },
   "dependencies": {
+    "babel-runtime": "^6.26.0",
     "westfield-runtime-client": "0.3.0"
   },
   "devDependencies": {
     "standard": "^14.3.1",
-    "webpack": "^4.35.3",
-    "webpack-cli": "^3.3.5",
-    "webpack-merge": "^4.2.1"
+    "webpack": "^4.41.5",
+    "webpack-cli": "^3.3.10"
   }
 }
