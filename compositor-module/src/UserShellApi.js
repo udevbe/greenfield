@@ -1,5 +1,16 @@
 /**
- * @typedef {{actions: {notifyInactive: (function(UserSurface): void), requestActive: (function(UserSurface): (void)}, events: {updateUserSurface: function(UserSurface,UserSurfaceState):void, destroyUserSurface: function(UserSurface):void, createUserSurface: function(UserSurface,UserSurfaceState):void, notify: function(string,string):void}}}UserShell
+ * @typedef {{
+ * actions: {
+ * notifyInactive: (function(UserSurface): void),
+ * requestActive: (function(UserSurface): (void)
+ * },
+ * events: {
+ * updateUserSurface: function(UserSurface,UserSurfaceState):void,
+ * destroyUserSurface: function(UserSurface):void,
+ * createUserSurface: function(UserSurface,UserSurfaceState):void,
+ * notify: function(string,string):void
+ * }
+ * }}UserShell
  */
 
 /**
@@ -24,13 +35,16 @@ export default display => (
      * @typedef {{id: string, variant: 'web'|'remote'}}ApplicationClient
      */
     /**
-     * @typedef {{pointerGrab: UserSurface, keyboardFocus: UserSurface}}UserSeatState
+     * @typedef {{pointerGrab: UserSurface, keyboardFocus: UserSurface, scrollFactor: number}}UserSeatState
      */
     /**
      * @typedef {{clientId: string, id: number}}UserSurface
      */
     /**
      * @typedef {{title:string, appId:string, mapped:boolean, active: boolean, unresponsive: boolean, minimized: boolean}}UserSurfaceState
+     */
+    /**
+     * @typedef {{scrollFactor:number, keyboardLayoutName: ?string}}UserConfiguration
      */
     events: {
       /**
@@ -98,6 +112,22 @@ export default display => (
        * @param {UserSurface}userSurface
        */
       setKeyboardFocus: userSurface => performSurfaceAction(display, userSurface, surface => surface.seat.keyboard.focusGained(surface)),
+
+      /**
+       * @param {Globals}globals
+       * @param {UserConfiguration}userConfiguration
+       */
+      setUserConfiguration: (globals, userConfiguration) => {
+        const { pointer, keyboard } = globals.seat
+
+        pointer.scrollFactor = userConfiguration.scrollFactor
+
+        if (userConfiguration.keyboardLayoutName) {
+          keyboard.updateKeymapFromNames(keyboard.nrmlvoEntries.find(nrmlvo => nrmlvo.name === userConfiguration.keyboardLayoutName))
+        } else {
+          keyboard.updateKeymapFromNames(keyboard.defaultNrmlvo)
+        }
+      },
 
       /**
        * @param {ApplicationClient}applicationClient

@@ -37,9 +37,9 @@ export default class Keyboard extends WlKeyboardRequests {
   static create (session, dataDevice) {
     const nrmlvoEntries = Xkb.buildNrmlvoEntries()
 
+    // deduce from browser language settings
     const langTokens = navigator.language.split('-')
     const lang = langTokens.length === 1 ? langTokens[0].toLowerCase() : langTokens[1].toLowerCase()
-    // TODO load rmlvo (names) from profile(?) and if not defined in profile, deduce from browser language settings
     const nrmlvoEntry = nrmlvoEntries.find(nrmlvo => nrmlvo.layout === lang && nrmlvo.variant == null) || nrmlvoEntries.find(nrmlvo => nrmlvo.layout === 'us')
 
     const keyboard = new Keyboard(dataDevice, session, nrmlvoEntries, nrmlvoEntry)
@@ -88,7 +88,6 @@ export default class Keyboard extends WlKeyboardRequests {
     this._session = session
     /**
      * @type {Array<{name: string, rules: string, model: string, layout: string, variant: string, options: string}>}
-     * @private
      */
     this.nrmlvoEntries = nrmlvoEntries
     /**
@@ -103,6 +102,10 @@ export default class Keyboard extends WlKeyboardRequests {
      * @type {{name: string, rules: string, model: string, layout: string, variant: string, options: string}}
      */
     this.nrmlvo = nrmlvoEntry
+    /**
+     * @type {{name: string, rules: string, model: string, layout: string, variant: string, options: string}}
+     */
+    this.defaultNrmlvo = nrmlvoEntry
     /**
      * @type {?Surface}
      */
