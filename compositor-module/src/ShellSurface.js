@@ -19,8 +19,6 @@ import { WlShellSurfaceRequests, WlShellSurfaceResource } from 'westfield-runtim
 
 import Point from './math/Point'
 
-import RenderFrame from './render/RenderFrame'
-
 const { bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight } = WlShellSurfaceResource.Resize
 const { inactive } = WlShellSurfaceResource.Transient
 
@@ -166,7 +164,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
       }
     }
 
-    await surface.render(surface.renderFrame, newState)
+    await surface.updateRenderState(newState)
   }
 
   /**
@@ -262,7 +260,6 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     const pointerX = pointer.x
     const pointerY = pointer.y
 
-    let renderFrame = null
     const moveListener = () => {
       const deltaX = pointer.x - pointerX
       const deltaY = pointer.y - pointerY
@@ -270,12 +267,8 @@ export default class ShellSurface extends WlShellSurfaceRequests {
       // TODO we could try to be smart, and only apply the latest move, depending on how often the render frame fires.
       surfaceChildSelf.position = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
 
-      if (renderFrame === null) {
-        renderFrame = RenderFrame.create()
-        surface.views.forEach(view => view.applyTransformations(renderFrame))
-        renderFrame.then(() => { renderFrame = null })
-        renderFrame.fire()
-      }
+      surface.views.forEach(view => view.applyTransformations())
+      surface.renderer.scene.render()
     }
 
     pointer.onButtonRelease().then(() => pointer.removeMouseMoveListener(moveListener))
@@ -544,11 +537,11 @@ export default class ShellSurface extends WlShellSurfaceRequests {
    */
   async setPopup (resource, wlSeatResource, serial, parent, x, y, flags) {
     const seat = /** @type {Seat} */wlSeatResource.implementation
-    if (!seat.isValidInputSerial(seat.buttonPressSerial)) {
-      this._dismiss()
-      // window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Popup grab input serial mismatch. Ignoring.')
-      return
-    }
+    // if (!seat.isValidInputSerial(seat.buttonPressSerial)) {
+    //   this._dismiss()
+    //  // window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Popup grab input serial mismatch. Ignoring.')
+    //   return
+    // }
 
     if (this.state) { return }
 
@@ -558,9 +551,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     const surfaceChild = surface.surfaceChildSelf
     surfaceChild.position = Point.create(x, y)
     const onNewView = view => {
-      const renderFrame = RenderFrame.create()
-      view.applyTransformations(renderFrame)
-      renderFrame.fire()
+      view.applyTransformations()
       view.onDestroy().then(() => view.detach())
     }
     // having added this shell-surface to a parent will have it create a view for each parent view

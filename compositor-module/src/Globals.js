@@ -10,11 +10,27 @@ import WebGL from './webgl/WebGL'
 import Seat from './Seat'
 
 class Globals {
-  static create (session) {
+  /**
+   * @param {Session}session
+   * @param {HTMLCanvasElement}canvas
+   * @return {Globals}
+   */
+  static create (session, canvas) {
+    const gl = canvas.getContext('webgl', {
+      antialias: false,
+      depth: false,
+      alpha: false,
+      preserveDrawingBuffer: false,
+      desynchronized: true
+    })
+    if (!gl) {
+      throw new Error('This browser doesn\'t support WebGL!')
+    }
+    const renderer = Renderer.create(canvas, gl)
+
     const seat = Seat.create(session)
 
     const output = Output.create()
-    const renderer = Renderer.create()
     const compositor = Compositor.create(session, renderer, seat)
     const dataDeviceManager = DataDeviceManager.create()
     const subcompositor = Subcompositor.create()

@@ -296,11 +296,12 @@ export default class Mat4 {
     )
   }
 
-  /**
-   * @return {string}
-   */
-  toCssMatrix () {
-    // css matrix is column major order
-    return `matrix3d(${this.m00}, ${this.m01}, ${this.m02}, ${this.m03}, ${this.m10}, ${this.m11}, ${this.m12}, ${this.m13}, ${this.m20}, ${this.m21}, ${this.m22}, ${this.m23}, ${this.m30}, ${this.m31}, ${this.m32}, ${this.m33})`
+  toArray () {
+    return [
+      this.m00, this.m10, this.m20, this.m30,
+      this.m01, this.m11, this.m21, this.m31,
+      this.m02, this.m12, this.m22, this.m32,
+      this.m03, this.m13, this.m23, this.m33
+    ]
   }
 }

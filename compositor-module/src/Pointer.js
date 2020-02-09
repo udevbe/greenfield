@@ -21,6 +21,7 @@ import { Fixed } from 'westfield-runtime-common'
 import Point from './math/Point'
 import EncodingOptions from './remotestreaming/EncodingOptions'
 import Region from './Region'
+import Surface from './Surface'
 
 const { pressed, released } = WlPointerResource.ButtonState
 const { horizontalScroll, verticalScroll } = WlPointerResource.Axis
@@ -151,11 +152,6 @@ export default class Pointer extends WlPointerRequests {
      */
     this._cursorSurface = null
     /**
-     * @type {?View}
-     * @private
-     */
-    this._view = null
-    /**
      * @type {!function():void}
      * @private
      */
@@ -271,7 +267,9 @@ export default class Pointer extends WlPointerRequests {
         const fullFrame = EncodingOptions.fullFrame(newState.bufferContents.encodingOptions)
         const splitAlpha = EncodingOptions.splitAlpha(newState.bufferContents.encodingOptions)
         if (fullFrame && !splitAlpha) {
-          await surface.render(surface.renderFrame, newState, true)
+          surface._updateDerivedState(newState)
+          Surface.mergeState(surface.state, newState)
+
           const imageBlob = new window.Blob([newState.bufferContents.pixelContent[0].opaque], { type: newState.bufferContents.mimeType })
           if (this._cursorURL) {
             URL.revokeObjectURL(this._cursorURL)
@@ -279,10 +277,8 @@ export default class Pointer extends WlPointerRequests {
           this._cursorURL = URL.createObjectURL(imageBlob)
           window.document.body.style.cursor = `url("${this._cursorURL}") ${hotspotX} ${hotspotY}, pointer`
         } else {
-          await surface.render(surface.renderFrame, newState)
-
-          const dataURL = this._view.bufferedCanvas.frontContext.canvas.toDataURL()
-          window.document.body.style.cursor = `url("${dataURL}") ${hotspotX} ${hotspotY}, pointer`
+          console.warn('Unsupported cursor format.')
+          window.document.body.style.cursor = 'pointer'
         }
       }
     }
@@ -423,10 +419,6 @@ export default class Pointer extends WlPointerRequests {
 
     if (surfaceResource) {
       const surface = /** @type {Surface} */surfaceResource.implementation
-      if (this._view) {
-        this._view.destroy()
-      }
-      this._view = surface.createView()
       surface.resource.addDestroyListener(this._cursorDestroyListener)
       surface.role = this
       surface.state.inputPixmanRegion = Region.createPixmanRegion()

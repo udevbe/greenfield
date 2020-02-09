@@ -15,14 +15,38 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-/**
- * @interface
- */
-export default class RenderState {
-  /**
-   * @param {EncodedFrame}encodedFrame
-   */
-  update (encodedFrame) {}
+import Texture from './Texture'
+import Size from '../Size'
 
-  destroy () {}
+class RenderState {
+  /**
+   * @param {WebGLRenderingContext}gl
+   * @return {RenderState}
+   */
+  static create (gl) {
+    const texture = Texture.create(gl, gl.RGBA)
+    const size = Size.create(0, 0)
+    return new RenderState(texture, size)
+  }
+
+  /**
+   * @param {Texture}texture
+   * @param {Size}size
+   */
+  constructor (texture, size) {
+    /**
+     * @type {Texture}
+     */
+    this.texture = texture
+    /**
+     * @type {Size}
+     */
+    this.size = size
+  }
+
+  destroy () {
+    this.texture.delete()
+  }
 }
+
+export default RenderState

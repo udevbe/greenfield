@@ -17,39 +17,55 @@
 
 import Program from './Program'
 import ShaderCompiler from './ShaderCompiler'
-import { vertexQuad, fragmentYUVA } from './ShaderSources'
+import { FRAGMENT_YUV_TO_RGB, VERTEX_QUAD } from './ShaderSources'
 
-export default class YUVASurfaceShader {
+class YUV2RGBShader {
   /**
    *
    * @param {WebGLRenderingContext} gl
-   * @returns {YUVASurfaceShader}
+   * @returns {YUV2RGBShader}
    */
   static create (gl) {
     const program = this._initShaders(gl)
     const shaderArgs = this._initShaderArgs(gl, program)
     const vertexBuffer = this._initBuffers(gl)
 
-    return new YUVASurfaceShader(gl, vertexBuffer, shaderArgs, program)
+    return new YUV2RGBShader(gl, vertexBuffer, shaderArgs, program)
   }
 
+  /**
+   * @param {WebGLRenderingContext}gl
+   * @return {Program}
+   * @private
+   */
   static _initShaders (gl) {
     const program = new Program(gl)
-    program.attach(ShaderCompiler.compile(gl, vertexQuad))
-    program.attach(ShaderCompiler.compile(gl, fragmentYUVA))
+    program.attach(ShaderCompiler.compile(gl, VERTEX_QUAD))
+    program.attach(ShaderCompiler.compile(gl, FRAGMENT_YUV_TO_RGB))
     program.link()
     program.use()
 
     return program
   }
 
+  /**
+   * @param {WebGLRenderingContext}gl
+   * @param {Program}program
+   * @return {{
+   * yTexture:WebGLUniformLocation,
+   * uTexture:WebGLUniformLocation,
+   * vTexture:WebGLUniformLocation,
+   * u_projection:WebGLUniformLocation,
+   * a_position: GLint,
+   * a_texCoord: GLint}}
+   * @private
+   */
   static _initShaderArgs (gl, program) {
     // find shader arguments
     const shaderArgs = {}
     shaderArgs.yTexture = program.getUniformLocation('yTexture')
     shaderArgs.uTexture = program.getUniformLocation('uTexture')
     shaderArgs.vTexture = program.getUniformLocation('vTexture')
-    shaderArgs.alphaYTexture = program.getUniformLocation('alphaYTexture')
 
     shaderArgs.u_projection = program.getUniformLocation('u_projection')
 
@@ -61,42 +77,67 @@ export default class YUVASurfaceShader {
     return shaderArgs
   }
 
+  /**
+   * @param {WebGLRenderingContext}gl
+   * @return {WebGLBuffer}
+   * @private
+   */
   static _initBuffers (gl) {
     // Create vertex buffer object.
     return gl.createBuffer()
   }
 
+  /**
+   * @param {WebGLRenderingContext}gl
+   * @param {WebGLBuffer}vertexBuffer
+   * @param {{
+   * yTexture:WebGLUniformLocation,
+   * uTexture:WebGLUniformLocation,
+   * vTexture:WebGLUniformLocation,
+   * u_projection:WebGLUniformLocation,
+   * a_position: GLint,
+   * a_texCoord: GLint}}shaderArgs
+   * @param {Program}program
+   */
   constructor (gl, vertexBuffer, shaderArgs, program) {
+    /**
+     * @type {WebGLRenderingContext}
+     */
     this.gl = gl
+    /**
+     * @type {WebGLBuffer}
+     */
     this.vertexBuffer = vertexBuffer
+    /**
+     * @type {{yTexture: WebGLUniformLocation, uTexture: WebGLUniformLocation, vTexture: WebGLUniformLocation, u_projection: WebGLUniformLocation, a_position: GLint, a_texCoord: GLint}}
+     */
     this.shaderArgs = shaderArgs
+    /**
+     * @type {Program}
+     */
     this.program = program
   }
 
   /**
-   *
    * @param {Texture} textureY
    * @param {Texture} textureU
    * @param {Texture} textureV
-   * @param {Texture} textureAlphaY
    */
-  setTexture (textureY, textureU, textureV, textureAlphaY) {
-    this.gl.uniform1i(this.shaderArgs.yTexture, 0)
-    this.gl.uniform1i(this.shaderArgs.uTexture, 1)
-    this.gl.uniform1i(this.shaderArgs.vTexture, 2)
-    this.gl.uniform1i(this.shaderArgs.alphaYTexture, 3)
+  setTexture (textureY, textureU, textureV) {
+    const gl = this.gl
 
-    this.gl.activeTexture(this.gl.TEXTURE0)
-    this.gl.bindTexture(this.gl.TEXTURE_2D, textureY.texture)
+    gl.uniform1i(this.shaderArgs.yTexture, 0)
+    gl.uniform1i(this.shaderArgs.uTexture, 1)
+    gl.uniform1i(this.shaderArgs.vTexture, 2)
 
-    this.gl.activeTexture(this.gl.TEXTURE1)
-    this.gl.bindTexture(this.gl.TEXTURE_2D, textureU.texture)
+    gl.activeTexture(gl.TEXTURE0)
+    gl.bindTexture(gl.TEXTURE_2D, textureY.texture)
 
-    this.gl.activeTexture(this.gl.TEXTURE2)
-    this.gl.bindTexture(this.gl.TEXTURE_2D, textureV.texture)
+    gl.activeTexture(gl.TEXTURE1)
+    gl.bindTexture(gl.TEXTURE_2D, textureU.texture)
 
-    this.gl.activeTexture(this.gl.TEXTURE3)
-    this.gl.bindTexture(this.gl.TEXTURE_2D, textureAlphaY.texture)
+    gl.activeTexture(gl.TEXTURE2)
+    gl.bindTexture(gl.TEXTURE_2D, textureV.texture)
   }
 
   use () {
@@ -104,14 +145,16 @@ export default class YUVASurfaceShader {
   }
 
   release () {
-    this.gl.useProgram(null)
+    const gl = this.gl
+    gl.useProgram(null)
   }
 
   /**
    * @param {!Size}encodedFrameSize
-   * @param {H264RenderState} h264RenderState
+   * @param {number}maxXTexCoord
+   * @param {number}maxYTexCoord
    */
-  updateShaderData (encodedFrameSize, h264RenderState) {
+  updateShaderData (encodedFrameSize, maxXTexCoord, maxYTexCoord) {
     const { w, h } = encodedFrameSize
     this.gl.viewport(0, 0, w, h)
     this.program.setUniformM4(this.shaderArgs.u_projection, [
@@ -126,15 +169,15 @@ export default class YUVASurfaceShader {
       // top left:
       0, 0, 0, 0,
       // top right:
-      w, 0, h264RenderState.maxXTexCoord, 0,
+      w, 0, maxXTexCoord, 0,
       // bottom right:
-      w, h, h264RenderState.maxXTexCoord, h264RenderState.maxYTexCoord,
+      w, h, maxXTexCoord, maxYTexCoord,
 
       // Second triangle
       // bottom right:
-      w, h, h264RenderState.maxXTexCoord, h264RenderState.maxYTexCoord,
+      w, h, maxXTexCoord, maxYTexCoord,
       // bottom left:
-      0, h, 0, h264RenderState.maxYTexCoord,
+      0, h, 0, maxYTexCoord,
       // top left:
       0, 0, 0, 0
     ]), this.gl.DYNAMIC_DRAW)
@@ -143,8 +186,11 @@ export default class YUVASurfaceShader {
   }
 
   draw () {
-    this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT | this.gl.STENCIL_BUFFER_BIT)
-    this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 6)
-    this.gl.bindTexture(this.gl.TEXTURE_2D, null)
+    const gl = this.gl
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
+    gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 6)
+    gl.bindTexture(gl.TEXTURE_2D, null)
   }
 }
+
+export default YUV2RGBShader

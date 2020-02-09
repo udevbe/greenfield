@@ -259,7 +259,7 @@ export default class XdgPopup extends XdgPopupRequests {
       this._dismiss()
     }
 
-    await surface.render(surface.renderFrame, newState)
+    await surface.updateRenderState(newState)
   }
 
   /**

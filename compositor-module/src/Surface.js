@@ -25,7 +25,6 @@ import { _180, _270, _90, FLIPPED, FLIPPED_180, FLIPPED_270, FLIPPED_90, NORMAL 
 import Size from './Size'
 import Region from './Region'
 import SurfaceChild from './SurfaceChild'
-import RenderFrame from './render/RenderFrame'
 import Point from './math/Point'
 import SurfaceState from './SurfaceState'
 
@@ -291,12 +290,6 @@ export default class Surface extends WlSurfaceRequests {
      */
     this.size = Size.create(0, 0)
     // <- derived states above
-
-    /**
-     * The RenderFrame associated with the latest commit of this surface.
-     * @type {null|RenderFrame}
-     */
-    this.renderFrame = null
   }
 
   /**
@@ -376,17 +369,6 @@ export default class Surface extends WlSurfaceRequests {
     }
   }
 
-  updateChildViewsZIndexes () {
-    const parentPosition = this.children.indexOf(this.surfaceChildSelf)
-    this.views.forEach(view => {
-      const parentViewZIndex = view.zIndex
-      // Children can be displayed below their parent, therefor we have to subtract the parent position from it's zIndex
-      // to get the starting zIndexOffset
-      const zIndexOffset = parentViewZIndex - parentPosition
-      this._updateZIndex(view, zIndexOffset)
-    })
-  }
-
   /**
    * @param {View}parentView
    * @param {number}zIndexOffset
@@ -436,7 +418,6 @@ export default class Surface extends WlSurfaceRequests {
     })
 
     this.children.forEach(surfaceChild => this._ensureChildView(surfaceChild, view))
-    this.updateChildViewsZIndexes()
     this.onViewCreated(view)
 
     return view
@@ -454,8 +435,8 @@ export default class Surface extends WlSurfaceRequests {
     }
 
     const childView = surfaceChild.surface.createView()
-    const zIndexOrder = this.children.indexOf(surfaceChild)
-    childView.zIndex = view.zIndex + zIndexOrder
+    // const zIndexOrder = this.children.indexOf(surfaceChild)
+    // childView.zIndex = view.zIndex + zIndexOrder
     childView.parent = view
 
     return childView
@@ -509,7 +490,6 @@ export default class Surface extends WlSurfaceRequests {
       primaryChildView.parent = primaryView
 
       surfaceChild.surface.resource.onDestroy().then(() => this.removeChild(surfaceChild))
-      this.updateChildViewsZIndexes()
     }
   }
 
@@ -537,7 +517,6 @@ export default class Surface extends WlSurfaceRequests {
       }
     })
     surfaceChild.surface.resource.onDestroy().then(() => this.removeChild(surfaceChild))
-    this.updateChildViewsZIndexes()
     return childViews
   }
 
@@ -865,7 +844,6 @@ export default class Surface extends WlSurfaceRequests {
    * @override
    */
   async commit (resource, serial) {
-    this.renderFrame = RenderFrame.create()
     // const startCommit = Date.now()
     let bufferContents = this.state.bufferContents
 
@@ -906,20 +884,32 @@ export default class Surface extends WlSurfaceRequests {
       }
     }
 
-    this.renderFrame.fire()
-    this.session.flush()
+    const frameCallbacks = this.state.frameCallbacks
+    this.state.frameCallbacks = []
+
+    if (this.scene.renderFrame && frameCallbacks.length) {
+      this.scene.renderFrame.then(timestamp => {
+        frameCallbacks.forEach(frameCallback => frameCallback.done(timestamp & 0x7fffffff))
+        this.session.flush()
+      })
+    } else {
+      this.resource.client.connection.addIdleHandler(() => {
+        this.scene.render().then(timestamp => {
+          frameCallbacks.forEach(frameCallback => frameCallback.done(timestamp & 0x7fffffff))
+          this.session.flush()
+        })
+      })
+    }
+
     // window.GREENFIELD_DEBUG && console.log(`-------> total commit took ${Date.now() - startCommit}`)
   }
 
   /**
-   * @param {RenderFrame}renderFrame Drawing frame to sync to.
    * @param {SurfaceState}newState
-   * @param {boolean|undefined}skipDraw
    */
-  async render (renderFrame, newState, skipDraw = false) {
+  async updateRenderState (newState) {
     if (this.subsurfaceChildren.length > 1) {
       this.subsurfaceChildren = this.pendingSubsurfaceChildren.slice()
-      this.updateChildViewsZIndexes()
 
       await Promise.all(this.subsurfaceChildren.map(async (surfaceChild) => {
         const siblingSurface = surfaceChild.surface
@@ -930,37 +920,19 @@ export default class Surface extends WlSurfaceRequests {
             surfaceChild.position = siblingSubsurface.pendingPosition
             siblingSubsurface.pendingPosition = null
           }
-          await siblingSubsurface.onParentCommit(this, renderFrame)
+          await siblingSubsurface.onParentCommit(this)
         }
       }))
     }
 
-    if (!skipDraw) {
-      // window.GREENFIELD_DEBUG && console.log('|- Awaiting surface render.')
-      await this.renderer.render(this, newState)
-    }
+    // window.GREENFIELD_DEBUG && console.log('|- Awaiting surface render.')
+    await this.renderer.updateSurfaceRenderState(this, newState)
 
-    const { w: oldWidth, h: oldHeight } = this.size
     this._updateDerivedState(newState)
     Surface.mergeState(this.state, newState)
 
-    const frameCallbacks = this.state.frameCallbacks
-    this.state.frameCallbacks = []
-    renderFrame.then(timestamp => {
-      frameCallbacks.forEach(frameCallback => frameCallback.done(timestamp & 0x7fffffff))
-      this.session.flush()
-    })
-
     if (this.role && this.role.setRoleState) {
       this.role.setRoleState(newState.roleState)
-    }
-
-    if (oldWidth !== this.size.w || oldHeight !== this.size.h) {
-      this.views.forEach(view => view.updateInputRegion())
-    }
-
-    if (!skipDraw) {
-      this.views.forEach(view => view.swapBuffers(renderFrame))
     }
   }
 

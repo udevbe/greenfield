@@ -15,12 +15,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { XdgSurfaceRequests, XdgToplevelResource, XdgWmBaseResource, XdgPopupResource } from 'westfield-runtime-server'
+import { XdgPopupResource, XdgSurfaceRequests, XdgToplevelResource, XdgWmBaseResource } from 'westfield-runtime-server'
 
 import XdgToplevel from './XdgToplevel'
 import XdgPopup from './XdgPopup'
 import Rect from './math/Rect'
-import RenderFrame from './render/RenderFrame'
 
 /**
  *
@@ -198,13 +197,11 @@ export default class XdgSurface extends XdgSurfaceRequests {
     const xdgPositioner = positioner.implementation
     if (xdgPositioner.size === null) {
       resource.postError(XdgWmBaseResource.Error.invalidPositioner, 'Client provided an invalid positioner. Size is NULL.')
-      // window.GREENFIELD_DEBUG && console.log('[client-protocol-error] - Client provided an invalid positioner. Size is NULL.')
       return
     }
 
     if (xdgPositioner.anchorRect === null) {
       resource.postError(XdgWmBaseResource.Error.invalidPositioner, 'Client provided an invalid positioner. AnchorRect is NULL.')
-      // window.GREENFIELD_DEBUG && console.log('[client-protocol-error] - Client provided an invalid positioner. AnchorRect is NULL.')
       return
     }
 
@@ -214,22 +211,18 @@ export default class XdgSurface extends XdgSurfaceRequests {
     const xdgPopup = XdgPopup.create(xdgPopupResource, this, parent, positionerState, this._session, this._seat)
     this.ackConfigure = (resource, serial) => xdgPopup.ackConfigure(serial)
 
-    const onNewView = (view) => {
-      const renderFrame = RenderFrame.create()
-      view.applyTransformations(renderFrame)
-      renderFrame.fire()
-      view.onDestroy().then(() => view.detach())
-    }
+    const onNewView = view => view.applyTransformations()
 
     if (parent) {
       const parentXdgSurface = /** @type {XdgSurface} */parent.implementation
       const parentSurface = /** @type {Surface} */parentXdgSurface.wlSurfaceResource.implementation
       const views = parentSurface.addChild(surface.surfaceChildSelf)
       views.forEach(onNewView)
-    } else {
-      const view = surface.createView()
-      onNewView(view)
     }
+    // else {
+    //   const view = surface.createView()
+    //   onNewView(view)
+    // }
 
     // this handles the case where a view is created later on (ie if a new parent view is created)
     surface.onViewCreated = onNewView

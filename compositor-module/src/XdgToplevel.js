@@ -19,7 +19,6 @@ import { XdgToplevelRequests, XdgToplevelResource, XdgWmBaseResource } from 'wes
 import Point from './math/Point'
 import Size from './Size'
 import Mat4 from './math/Mat4'
-import RenderFrame from './render/RenderFrame'
 
 const { none, bottom, bottomLeft, bottomRight, left, right, top, topLeft, topRight } = XdgToplevelResource.ResizeEdge
 const { fullscreen, activated, maximized, resizing } = XdgToplevelResource.State
@@ -248,19 +247,19 @@ export default class XdgToplevel extends XdgToplevelRequests {
         this._map(surface)
       }
       if (newState.roleState.configureState.state.includes(resizing)) {
-        this._resizingCommit(surface, surface.renderFrame, newState)
+        this._resizingCommit(surface, newState)
       } else if (newState.roleState.configureState.state.includes(maximized)) {
-        this._maximizedCommit(surface, surface.renderFrame, newState)
+        this._maximizedCommit(surface, newState)
       } else if (newState.roleState.configureState.state.includes(fullscreen)) {
-        this._fullscreenCommit(surface, surface.renderFrame, newState)
+        this._fullscreenCommit(surface, newState)
       } else {
-        this._normalCommit(surface, surface.renderFrame, newState)
+        this._normalCommit(surface, newState)
       }
     } else if (this.mapped) {
       this._unmap()
     }
 
-    await surface.render(surface.renderFrame, newState)
+    await surface.updateRenderState(newState)
   }
 
   /**
@@ -285,11 +284,10 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
   /**
    * @param {Surface}surface
-   * @param {RenderFrame}renderFrame
    * @param {SurfaceState}newState
    * @private
    */
-  _resizingCommit (surface, renderFrame, newState) {
+  _resizingCommit (surface, newState) {
     const roleState = newState.roleState
     const { w: newSurfaceWidth, h: newSurfaceHeight } = roleState.windowGeometry.size
 
@@ -322,19 +320,16 @@ export default class XdgToplevel extends XdgToplevelRequests {
     if (dx || dy) {
       const { x, y } = surface.surfaceChildSelf.position
       surface.surfaceChildSelf.position = Point.create(x + dx, y + dy)
-      surface.views.forEach(value => {
-        value.applyTransformations(renderFrame)
-      })
+      surface.views.forEach(value => value.applyTransformations())
     }
   }
 
   /**
    * @param {Surface}surface
-   * @param {RenderFrame}renderFrame
    * @param {SurfaceState}newState
    * @private
    */
-  _maximizedCommit (surface, renderFrame, newState) {
+  _maximizedCommit (surface, newState) {
     const roleState = newState.roleState
     const { w: newSurfaceWidth, h: newSurfaceHeight } = roleState.windowGeometry.size
 
@@ -352,20 +347,19 @@ export default class XdgToplevel extends XdgToplevelRequests {
     }
     const windowGeoPositionOffset = newState.roleState.windowGeometry.position
 
-    const primaryView = surface.views.find(view => { return view.primary })
+    const primaryView = surface.views.find(view => view.primary)
     const viewPositionOffset = primaryView.toViewSpaceFromSurface(windowGeoPositionOffset)
 
     primaryView.customTransformation = Mat4.translation(0 - viewPositionOffset.x, 0 - viewPositionOffset.y)
-    primaryView.applyTransformations(renderFrame)
+    primaryView.applyTransformations()
   }
 
   /**
    * @param {Surface}surface
-   * @param {RenderFrame}renderFrame
    * @param {SurfaceState}newState
    * @private
    */
-  _fullscreenCommit (surface, renderFrame, newState) {
+  _fullscreenCommit (surface, newState) {
     const bufferSize = newState.bufferContents.size
     const { x: newSurfaceWidth, y: newSurfaceHeight } = surface.toSurfaceSpace(Point.create(bufferSize.w, bufferSize.h))
     if (newSurfaceWidth > this._configureState.width || newSurfaceHeight > this._configureState.height) {
@@ -385,26 +379,21 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const y = (window.innerHeight - newSurfaceHeight) / 2
 
     surface.surfaceChildSelf.position = Point.create(x, y)
-    surface.views.forEach(value => {
-      value.applyTransformations(renderFrame)
-    })
-    // TODO put an opaque black fullscreen div behind the fullscreened application
-    // TODO make sure z-order is always the highest
-    // TODO also do this for ShellSurface
+    surface.views.forEach(value => value.applyTransformations())
+    // TODO use api to nofity user shell scene canvas should be made fullscreen
   }
 
   /**
    * @param {Surface}surface
-   * @param {RenderFrame}renderFrame
    * @param {SurfaceState}newState
    * @private
    */
-  _normalCommit (surface, renderFrame, newState) {
+  _normalCommit (surface, newState) {
     if (this._previousGeometry) {
       // restore position (we came from a fullscreen or maximize and must restore the position)
       const primaryView = surface.views.find(view => { return view.primary })
       primaryView.customTransformation = null
-      primaryView.applyTransformations(renderFrame)
+      primaryView.applyTransformations()
       this._previousGeometry = null
     }
     if (this._unfullscreenConfigureState) {
@@ -643,7 +632,6 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const pointerX = pointer.x
     const pointerY = pointer.y
 
-    let renderFrame = null
     const moveListener = () => {
       if (!this.mapped) {
         pointer.removeMouseMoveListener(moveListener)
@@ -655,12 +643,8 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
       surfaceChildSelf.position = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
 
-      if (renderFrame === null) {
-        renderFrame = RenderFrame.create()
-        surface.views.forEach(view => view.applyTransformations(renderFrame))
-        renderFrame.then(() => { renderFrame = null })
-        renderFrame.fire()
-      }
+      surface.views.forEach(view => view.applyTransformations())
+      surface.renderer.scene.render()
     }
 
     pointer.onButtonRelease().then(() => {

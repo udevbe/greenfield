@@ -27,8 +27,8 @@ export default class Texture {
   static create (gl, format) {
     const texture = gl.createTexture()
     gl.bindTexture(gl.TEXTURE_2D, texture)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
     gl.bindTexture(gl.TEXTURE_2D, null)
@@ -58,27 +58,27 @@ export default class Texture {
   }
 
   /**
-   * @param {!Uint8Array|HTMLVideoElement}buffer
-   * @param {!Rect}geo
-   * @param {number}stride
+   * @param {!ImageBitmap | ImageData | HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | OffscreenCanvas}buffer
+   * @param {number}x
+   * @param {number}y
+   * @param {number}width
+   * @param {number}height
    */
   subImage2dBuffer (buffer, x, y, width, height) {
-    const gl = this.gl
-    gl.bindTexture(gl.TEXTURE_2D, this.texture)
-    gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, width, height, this.format, gl.UNSIGNED_BYTE, buffer)
-    gl.bindTexture(gl.TEXTURE_2D, null)
+    this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture)
+    this.gl.texSubImage2D(this.gl.TEXTURE_2D, 0, x, y, width, height, this.format, this.gl.UNSIGNED_BYTE, buffer)
+    this.gl.bindTexture(this.gl.TEXTURE_2D, null)
   }
 
   /**
-   * @param {!Uint8Array|HTMLVideoElement}buffer
+   * @param {!ImageBitmap | ImageData | HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | OffscreenCanvas}buffer
    * @param {number}width
    * @param {number}height
    */
   image2dBuffer (buffer, width, height) {
-    const gl = this.gl
-    gl.bindTexture(gl.TEXTURE_2D, this.texture)
-    gl.texImage2D(gl.TEXTURE_2D, 0, this.format, width, height, 0, this.format, gl.UNSIGNED_BYTE, buffer)
-    gl.bindTexture(gl.TEXTURE_2D, null)
+    this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture)
+    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.format, width, height, 0, this.format, this.gl.UNSIGNED_BYTE, buffer)
+    this.gl.bindTexture(this.gl.TEXTURE_2D, null)
   }
 
   delete () {

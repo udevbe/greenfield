@@ -16,27 +16,18 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import Mat4 from './math/Mat4'
-import BufferedCanvas from './BufferedCanvas'
 import Vec4 from './math/Vec4'
-import Region from './Region'
-import Point from './math/Point'
-import Rect from './math/Rect'
-import RenderFrame from './render/RenderFrame'
 
 export default class View {
   /**
    *
    * @param {Surface} surface
-   * @param {number} width
-   * @param {number} height
+   * @param {number} width width in compositor space
+   * @param {number} height height in compositor space
    * @returns {View}
    */
   static create (surface, width, height) {
-    const bufferedCanvas = BufferedCanvas.create(width, height)
-    const view = new View(bufferedCanvas, surface, Mat4.IDENTITY())
-    bufferedCanvas.view = view
-    view.updateInputRegion()
-    return view
+    return new View(surface, width, height, Mat4.IDENTITY())
   }
 
   /**
@@ -51,15 +42,12 @@ export default class View {
   /**
    * Use View.create(..) instead.
    * @private
-   * @param {BufferedCanvas}bufferedCanvas
    * @param {Surface}surface
+   * @param {number}width
+   * @param {number}height
    * @param {Mat4} transformation
    */
-  constructor (bufferedCanvas, surface, transformation) {
-    /**
-     * @type {BufferedCanvas}
-     */
-    this.bufferedCanvas = bufferedCanvas
+  constructor (surface, width, height, transformation) {
     /**
      * @type {Surface}
      */
@@ -72,6 +60,14 @@ export default class View {
      * @type {Map<string, Mat4>}
      */
     this.userTransformations = new Map()
+    /**
+     * @type {number}
+     */
+    this.width = width
+    /**
+     * @type {number}
+     */
+    this.height = height
     /**
      * @type {boolean}
      */
@@ -107,6 +103,14 @@ export default class View {
      * @private
      */
     this._primary = false
+    /**
+     * @type {number}
+     */
+    this.zIndex = View._topZIndex
+    /**
+     * @type {boolean}
+     */
+    this.mapped = true
   }
 
   /**
@@ -126,14 +130,7 @@ export default class View {
           this.parent = null
         }
       })
-      const renderFrame = RenderFrame.create()
-      this.applyTransformations(renderFrame)
-      renderFrame.fire()
-      if (this._parent.isAttached()) {
-        this.attachTo(this._parent.parentElement())
-      } else {
-        this.detach()
-      }
+      this.applyTransformations()
     }
   }
 
@@ -183,46 +180,25 @@ export default class View {
     return this._transformation
   }
 
-  /**
-   * @param {RenderFrame}renderFrame
-   */
-  applyTransformations (renderFrame) {
+  applyTransformations () {
     if (this.destroyed) { return }
 
-    const transformation = this._calculateTransformation()
-    this.transformation = transformation
-    const bufferToViewTransformation = transformation.timesMat4(this.surface.inverseBufferTransformation)
-    // update canvas
-    const newCssTransform = bufferToViewTransformation.toCssMatrix()
-    renderFrame.then(() => this.bufferedCanvas.setElementTransformation(newCssTransform))
-    this._applyTransformationsChild(renderFrame)
+    this.transformation = this._calculateTransformation()
+    this._applyTransformationsChild()
+  }
+
+  _applyTransformationsChild () {
+    this.findChildViews().forEach(childView => childView.applyTransformations())
   }
 
   /**
-   * @param {RenderFrame}renderFrame
-   * @private
+   * @return {View[]}
    */
-  _applyTransformationsChild (renderFrame) {
-    // find all child views who have this view as it's parent and update their transformation
-    this.surface.children.forEach(surfaceChild => {
+  findChildViews () {
+    return this.surface.children.map(surfaceChild => {
       if (surfaceChild.surface === this.surface) { return }
-
-      surfaceChild.surface.views
-        .filter(view => view.parent === this)
-        .forEach(childView => childView.applyTransformations(renderFrame))
-    })
-  }
-
-  /**
-   * @private
-   */
-  _applyTransformationsBackBuffer () {
-    const transformation = this._calculateTransformation()
-    this._backBufferTransformation = transformation
-    const bufferToViewTransformation = transformation.timesMat4(this.surface.inverseBufferTransformation)
-    // update canvas
-    const newCssTransform = bufferToViewTransformation.toCssMatrix()
-    this.bufferedCanvas.setBackBufferElementTransformation(newCssTransform)
+      return surfaceChild.surface.views.filter(view => view.parent === this)
+    }).flat()
   }
 
   /**
@@ -259,92 +235,32 @@ export default class View {
     if (this.destroyed) { return }
 
     this.zIndex = View._nextTopZIndex()
-    this.surface.updateChildViewsZIndexes()
-  }
-
-  /**
-   * @param {number}index
-   */
-  set zIndex (index) {
-    if (this.destroyed) { return }
-
-    if (index >= View._topZIndex) {
-      View._topZIndex = index
-    }
-    this.bufferedCanvas.zIndex = index
-  }
-
-  /**
-   * @return {number}
-   */
-  get zIndex () {
-    return window.parseInt(this.bufferedCanvas.frontContext.canvas.style.zIndex, 10)
-  }
-
-  /**
-   * @param {HTMLImageElement|HTMLCanvasElement|HTMLVideoElement|ImageBitmap|ImageData}image
-   */
-  draw (image) {
-    if (this.destroyed) { return }
-
-    // FIXME adjust final transformation with additional transformations defined in the surface
-    this._applyTransformationsBackBuffer()
-    this.bufferedCanvas.draw(image)
-  }
-
-  /**
-   * @param {RenderFrame}renderFrame
-   */
-  swapBuffers () {
-    if (this.destroyed) { return }
-
-    this.transformation = this._backBufferTransformation
-    this.surface.renderFrame.then(() => {
-      if (this.destroyed) { return }
-      this.bufferedCanvas.swapBuffers()
-    })
-    // update child transformations as new parent buffer is visible
-    this._applyTransformationsChild(this.surface.renderFrame)
-  }
-
-  /**
-   * @return {Point}
-   * @private
-   */
-  _calculateWorkspaceOffset () {
-    const { left, top } = document.getElementById('workspace').getBoundingClientRect()
-    return Point.create(left, top)
   }
 
   /**
    * @param {Point} viewPoint point in view coordinates with respect to view transformations
    * @return {Point} point in browser coordinates
    */
-  toBrowserSpace (viewPoint) {
-    return this.transformation.timesPoint(viewPoint).plus(this._calculateWorkspaceOffset())
+  toCompositorSpace (viewPoint) {
+    return this.transformation.timesPoint(viewPoint)
   }
 
   /**
    * @param {Point} browserPoint point in browser coordinates
    * @return {Point} point in view coordinates with respect to view transformations
    */
-  toViewSpaceFromBrowser (browserPoint) {
+  toViewSpaceFromCompositor (browserPoint) {
     // normalize first by subtracting view offset
-    return this._inverseTransformation.timesPoint(browserPoint.minus(this._calculateWorkspaceOffset()))
+    return this._inverseTransformation.timesPoint(browserPoint)
   }
 
   toViewSpaceFromSurface (surfacePoint) {
-    const canvas = this.bufferedCanvas.frontContext.canvas
-    const boundingRect = canvas.getBoundingClientRect()
-    const canvasWidth = Math.round(boundingRect.width)
-    const canvasHeight = Math.round(boundingRect.height)
-    const surfaceSize = this.surface.size
-    const surfaceWidth = surfaceSize.w
-    const surfaceHeight = surfaceSize.h
-    if (surfaceWidth === canvasWidth && surfaceHeight === canvasHeight) {
+    const { w, h } = this.surface.renderState.size
+    const { h: surfaceHeight, w: surfaceWidth } = this.surface.size
+    if (surfaceWidth === w && surfaceHeight === h) {
       return surfacePoint
     } else {
-      return Mat4.scalarVector(Vec4.create2D(canvasWidth / surfaceWidth, canvasHeight / surfaceHeight)).timesPoint(surfacePoint)
+      return Mat4.scalarVector(Vec4.create2D(w / surfaceWidth, h / surfaceHeight)).timesPoint(surfacePoint)
     }
   }
 
@@ -353,32 +269,32 @@ export default class View {
    * @return {Point}
    */
   toSurfaceSpace (browserPoint) {
-    const viewPoint = this.toViewSpaceFromBrowser(browserPoint)
+    const viewPoint = this.toViewSpaceFromCompositor(browserPoint)
 
-    const canvas = this.bufferedCanvas.frontContext.canvas
-    const boundingRect = canvas.getBoundingClientRect()
-    const canvasWidth = Math.round(boundingRect.width)
-    const canvasHeight = Math.round(boundingRect.height)
     const surfaceSize = this.surface.size
     const surfaceWidth = surfaceSize.w
     const surfaceHeight = surfaceSize.h
-    if (surfaceWidth === canvasWidth && surfaceHeight === canvasHeight) {
+    if (surfaceWidth === this.width && surfaceHeight === this.height) {
       return viewPoint
     } else {
-      return Mat4.scalarVector(Vec4.create2D(surfaceWidth / canvasWidth, surfaceHeight / canvasHeight)).timesPoint(viewPoint)
+      return Mat4.scalarVector(Vec4.create2D(surfaceWidth / this.width, surfaceHeight / this.height)).timesPoint(viewPoint)
     }
   }
 
   show () {
     if (this.destroyed) { return }
 
-    this.bufferedCanvas.containerDiv.style.display = 'contents'
+    this.mapped = true
+
+    // TODO trigger scene redraw
   }
 
   hide () {
     if (this.destroyed) { return }
 
-    this.bufferedCanvas.containerDiv.style.display = 'none'
+    this.mapped = false
+
+    // TODO trigger scene redraw
   }
 
   destroy () {
@@ -391,52 +307,6 @@ export default class View {
    */
   onDestroy () {
     return this._destroyPromise
-  }
-
-  isAttached () {
-    return this.bufferedCanvas.isAttachedToElement()
-  }
-
-  /**
-   * @param {HTMLElement}element
-   */
-  attachTo (element) {
-    if (this.destroyed) { return }
-    this.bufferedCanvas.attachToElement(element)
-
-    // attach child views
-    this.surface.children.forEach(surfaceChild => {
-      surfaceChild.surface.views
-        .filter(childView => childView.parent === this)
-        .forEach(childView => childView.attachTo(element))
-    })
-  }
-
-  /**
-   * @return {HTMLElement}
-   */
-  parentElement () {
-    return this.bufferedCanvas.containerDiv.parentElement
-  }
-
-  detach () {
-    this.bufferedCanvas.detachFromElement()
-  }
-
-  updateInputRegion () {
-    if (this.destroyed) { return }
-
-    let inputRectangles = [Rect.create(0, 0, 0, 0)]
-    if (!this.disableInputRegion) {
-      const inputPixmanRegion = this.surface.state.inputPixmanRegion
-      const surfacePixmanRegion = this.surface.pixmanRegion
-      const intersectionResult = Region.createPixmanRegion()
-      Region.intersect(intersectionResult, inputPixmanRegion, surfacePixmanRegion)
-      inputRectangles = Region.rectangles(intersectionResult)
-      Region.destroyPixmanRegion(intersectionResult)
-    }
-
-    this.bufferedCanvas.updateInputRegionElements(inputRectangles)
   }
 }
 

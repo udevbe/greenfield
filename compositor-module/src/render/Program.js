@@ -45,7 +45,7 @@ export default class Program {
 
   /**
    * @param {string}name
-   * @return {number}
+   * @return {GLint}
    */
   getAttributeLocation (name) {
     return this.gl.getAttribLocation(this.program, name)
