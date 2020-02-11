@@ -58,7 +58,7 @@ export default class Texture {
   }
 
   /**
-   * @param {!ImageBitmap | ImageData | HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | OffscreenCanvas}buffer
+   * @param {!ArrayBufferView}buffer
    * @param {number}x
    * @param {number}y
    * @param {number}width
@@ -71,13 +71,33 @@ export default class Texture {
   }
 
   /**
-   * @param {!ImageBitmap | ImageData | HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | OffscreenCanvas}buffer
+   * @param {!TexImageSource}buffer
+   * @param {number}x
+   * @param {number}y
+   */
+  subImage2d (buffer, x, y) {
+    this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture)
+    this.gl.texSubImage2D(this.gl.TEXTURE_2D, 0, x, y, this.format, this.gl.UNSIGNED_BYTE, buffer)
+    this.gl.bindTexture(this.gl.TEXTURE_2D, null)
+  }
+
+  /**
+   * @param {!ArrayBufferView}buffer
    * @param {number}width
    * @param {number}height
    */
   image2dBuffer (buffer, width, height) {
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture)
     this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.format, width, height, 0, this.format, this.gl.UNSIGNED_BYTE, buffer)
+    this.gl.bindTexture(this.gl.TEXTURE_2D, null)
+  }
+
+  /**
+   * @param {!TexImageSource}buffer
+   */
+  image2d (buffer) {
+    this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture)
+    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.format, 0, this.format, this.gl.UNSIGNED_BYTE, buffer)
     this.gl.bindTexture(this.gl.TEXTURE_2D, null)
   }
 

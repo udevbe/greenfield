@@ -19,6 +19,7 @@ import { Display } from 'westfield-runtime-server'
 import WebFS from './WebFS'
 import UserShellApi from './UserShellApi'
 import Renderer from './render/Renderer'
+import Globals from './Globals'
 
 class Session {
   /**
@@ -27,7 +28,6 @@ class Session {
   static create () {
     const display = new Display()
     const compositorSessionId = this._uuidv4()
-    const renderer = Renderer.create()
     return new Session(display, compositorSessionId, renderer)
   }
 
@@ -58,13 +58,17 @@ class Session {
      */
     this.compositorSessionId = compositorSessionId
     /**
-     * @type {Renderer}
-     */
-    this.renderer = renderer
-    /**
      * @type {WebFS}
      */
     this.webFS = WebFS.create(this.compositorSessionId)
+    /**
+     * @type {Globals}
+     */
+    this.globals = Globals.create(this)
+    /**
+     * @type {Renderer}
+     */
+    this.renderer = Renderer.create(this)
     /**
      * @type {UserShell}
      */
@@ -72,6 +76,7 @@ class Session {
   }
 
   terminate () {
+    this.globals.unregister()
     this.display.clients.forEach(client => client.close())
   }
 

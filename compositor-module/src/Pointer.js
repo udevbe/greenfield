@@ -267,7 +267,7 @@ export default class Pointer extends WlPointerRequests {
         const fullFrame = EncodingOptions.fullFrame(newState.bufferContents.encodingOptions)
         const splitAlpha = EncodingOptions.splitAlpha(newState.bufferContents.encodingOptions)
         if (fullFrame && !splitAlpha) {
-          surface._updateDerivedState(newState)
+          surface.updateDerivedState(newState)
           Surface.mergeState(surface.state, newState)
 
           const imageBlob = new window.Blob([newState.bufferContents.pixelContent[0].opaque], { type: newState.bufferContents.mimeType })

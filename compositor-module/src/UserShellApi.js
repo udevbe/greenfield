@@ -2,7 +2,7 @@
  * @typedef {{
  * actions: {
  * notifyInactive: (function(UserSurface): void),
- * requestActive: (function(UserSurface): (void)
+ * requestActive: (function(UserSurface): void)
  * },
  * events: {
  * updateUserSurface: function(UserSurface,UserSurfaceState):void,
@@ -35,7 +35,7 @@ export default session => (
      * @typedef {{id: string, variant: 'web'|'remote'}}ApplicationClient
      */
     /**
-     * @typedef {{pointerGrab: UserSurface, keyboardFocus: UserSurface, scrollFactor: number}}UserSeatState
+     * @typedef {{pointerGrab: UserSurface, keyboardFocus: UserSurface}}UserSeatState
      */
     /**
      * @typedef {{clientId: string, id: number}}UserSurface
@@ -111,12 +111,19 @@ export default session => (
       initScene: (sceneId, canvas) => session.renderer.initScene(sceneId, canvas),
 
       /**
+       * @param {string}sceneId
+       * @param {{width:number, height:number}}sceneConfig
+       */
+      setSceneConfiguration: (sceneId, sceneConfig) => { session.renderer.scenes[sceneId].resolution(sceneConfig.width, sceneConfig.height) },
+
+      /**
        * Destroy a scene and all the views that were displayed on it.
        * @param {string}sceneId
        */
       destroyScene: sceneId => session.renderer.scenes[sceneId].destroy(),
 
       /**
+       * Create a new application view that will be shown on the canvas identified by a scene id.
        * @param {UserSurface}userSurface
        * @param {string}sceneId
        * @return {View}
@@ -147,7 +154,7 @@ export default session => (
       /**
        * @param {ApplicationClient}applicationClient
        */
-      closeClient: applicationClient => display.clients[applicationClient.id].close()
+      closeClient: applicationClient => session.display.clients[applicationClient.id].close()
     }
   }
 )

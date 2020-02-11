@@ -18,24 +18,31 @@
 import EncodingOptions from '../remotestreaming/EncodingOptions'
 import Scene from './Scene'
 import Size from '../Size'
+import Output from '../Output'
 
 export default class Renderer {
   /**
+   * @param {Session}session
    * @returns {Renderer}
    */
-  static create () {
-    return new Renderer()
+  static create (session) {
+    return new Renderer(session)
   }
 
   /**
    * Use Renderer.create(..) instead.
+   * @param {Session}session
    * @private
    */
-  constructor () {
+  constructor (session) {
     /**
      * @type {Object.<number, Scene>}
      */
     this.scenes = {}
+    /**
+     * @type {Session}
+     */
+    this.session = session
     /**
      * @type {HTMLImageElement}
      * @private
@@ -50,18 +57,16 @@ export default class Renderer {
 
   /**
    * @param {View}view
-   * @param {!ImageBitmap | ImageData | HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | OffscreenCanvas}buffer
-   * @param {number}width
-   * @param {number}height
+   * @param {TexImageSource}buffer
    * @private
    */
-  _updateRenderState (view, buffer, width, height) {
+  _updateRenderState (view, buffer) {
     const { texture, size: { w, h } } = view.renderState
-    if (width === w && height === h) {
-      texture.subImage2dBuffer(buffer, 0, 0, w, h)
+    if (buffer.width === w && buffer.height === h) {
+      texture.subImage2d(buffer, 0, 0)
     } else {
-      view.renderState.size = Size.create(width, height)
-      texture.image2dBuffer(buffer, width, height)
+      view.renderState.size = Size.create(buffer.width, buffer.height)
+      texture.image2d(buffer)
     }
   }
 
@@ -92,13 +97,10 @@ export default class Renderer {
   /**
    * @param {string}sceneId
    * @param {HTMLCanvasElement|OffscreenCanvas}canvas
-   * @return {Scene|null}
    */
   initScene (sceneId, canvas) {
     let scene = this.scenes[sceneId] || null
-    if (scene) {
-      return scene
-    } else {
+    if (!scene) {
       const gl = canvas.getContext('webgl', {
         antialias: false,
         depth: false,
@@ -109,11 +111,15 @@ export default class Renderer {
       if (!gl) {
         throw new Error('This browser doesn\'t support WebGL!')
       }
-      scene = Scene.create(gl, canvas)
+      // TODO sync output properties with scene
+      const output = Output.create(canvas)
+      scene = Scene.create(gl, canvas, output)
       this.scenes = { ...this.scenes, [sceneId]: scene }
+      this.session.globals.registerOutput(output)
       scene.onDestroy().then(() => {
         this.scenes = this.scenes.filter(otherScene => otherScene !== scene)
         scene.topLevelViews.forEach(view => view.destroy())
+        this.session.globals.unregisterOutput(output)
       })
     }
   }
@@ -158,7 +164,7 @@ export default class Renderer {
    */
   ['image/rgba'] (shmFrame, view) {
     const imageData = shmFrame.pixelContent
-    this._updateRenderState(view, imageData, imageData.width, imageData.height)
+    this._updateRenderState(view, imageData)
   }
 
   /**
@@ -168,6 +174,6 @@ export default class Renderer {
    */
   ['image/canvas'] (webGLFrame, view) {
     const canvas = webGLFrame.pixelContent
-    this._updateRenderState(view, canvas, canvas.width, canvas.height)
+    this._updateRenderState(view, canvas)
   }
 }

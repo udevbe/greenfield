@@ -29,23 +29,33 @@ import { WlOutputRequests, WlOutputResource } from 'westfield-runtime-server'
  */
 export default class Output extends WlOutputRequests {
   /**
+   * @param {HTMLCanvasElement|OffscreenCanvas}canvas
    * @return {!Output}
    */
-  static create () {
-    return new Output()
+  static create (canvas) {
+    return new Output(canvas)
   }
 
   /**
    * Use Output.create(..) instead.
+   * @param {HTMLCanvasElement|OffscreenCanvas}canvas
    * @private
    */
-  constructor () {
+  constructor (canvas) {
     super()
+    /**
+     * @type {HTMLCanvasElement|OffscreenCanvas}
+     */
+    this.canvas = canvas
     /**
      * @type {Global}
      * @private
      */
     this._global = null
+    /**
+     * @type {Array<WlOutputResource>}
+     */
+    this.resources = []
   }
 
   /**
@@ -75,14 +85,25 @@ export default class Output extends WlOutputRequests {
    */
   bindClient (client, id, version) {
     const wlOutputResource = new WlOutputResource(client, id, version)
-    wlOutputResource.implementation = this
-    this.emitSpecs(wlOutputResource)
+    if (this._global) {
+      this.resources = [...this.resources, wlOutputResource]
+      wlOutputResource.implementation = this
+      this.emitSpecs(wlOutputResource)
+    } else {
+      // no global present and still receiving a bind can happen when there is a race between the compositor
+      // unregistering the global and a client binding to it. As such we handle it here.
+      wlOutputResource.implementation = new WlOutputRequests()
+      wlOutputResource.implementation.release = () => wlOutputResource.destroy()
+    }
   }
 
   /**
    * @param {!WlOutputResource}wlOutputResource
    */
   emitSpecs (wlOutputResource) {
+    if (!this._global) {
+      return
+    }
     // TODO we might want to listen for window/document size changes and emit on update
     this._emitGeomtry(wlOutputResource)
     this._emitMode(wlOutputResource)
@@ -98,11 +119,9 @@ export default class Output extends WlOutputRequests {
    */
   _emitMode (wlOutputResource) {
     const flags = WlOutputResource.Mode.current
-    const width = Math.ceil(window.innerWidth * window.devicePixelRatio)
-    const height = Math.ceil(window.innerHeight * window.devicePixelRatio)
     // the refresh rate is impossible to query without manual measuring, which is error prone.
     const refresh = 60
-    wlOutputResource.mode(flags, width, height, refresh)
+    wlOutputResource.mode(flags, this.canvas.width, this.canvas.height, refresh)
   }
 
   /**
@@ -114,8 +133,8 @@ export default class Output extends WlOutputRequests {
     // this is really just an approximation as browsers don't offer a way to get the physical width :(
     // A css pixel is roughly 1/96 of an inch, so ~0.2646 mm
     // TODO test this on high dpi devices
-    const physicalWidth = Math.ceil(window.innerWidth * 0.2646)
-    const physicalHeight = Math.ceil(window.innerHeight * 0.2646)
+    const physicalWidth = Math.ceil(this.canvas.width * 0.2646)
+    const physicalHeight = Math.ceil(this.canvas.height * 0.2646)
     const subpixel = WlOutputResource.Subpixel.unknown
     const make = 'Greenfield'
     const model = window.navigator.userAgent
@@ -159,5 +178,6 @@ export default class Output extends WlOutputRequests {
    */
   release (resource) {
     resource.destroy()
+    this.resources = this.resources.filter(otherResource => otherResource !== resource)
   }
 }

@@ -18,7 +18,6 @@
 import { init, isInitialized } from './lib'
 import Session from './Session'
 import './style/greenfield.css'
-import Globals from './Globals'
 import WebAppLauncher from './WebAppLauncher'
 import RemoteAppLauncher from './RemoteAppLauncher'
 import WebAppSocket from './WebAppSocket'
@@ -33,6 +32,5 @@ export {
   WebAppSocket,
   RemoteAppLauncher,
   RemoteSocket,
-  Globals,
   Mat4
 }

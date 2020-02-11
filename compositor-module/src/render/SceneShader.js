@@ -96,6 +96,11 @@ class SceneShader {
      * @type {Program}
      */
     this.program = program
+    /**
+     * @type {Size|null}
+     * @private
+     */
+    this._sceneSize = null
   }
 
   use () {
@@ -111,14 +116,17 @@ class SceneShader {
    * @param {Size}sceneSize
    */
   updateSceneData (sceneSize) {
-    const { w, h } = sceneSize
-    this.gl.viewport(0, 0, w, h)
-    this.program.setUniformM4(this.shaderArgs.u_projection, [
-      2.0 / w, 0, 0, 0,
-      0, 2.0 / -h, 0, 0,
-      0, 0, 1, 0,
-      -1, 1, 0, 1
-    ])
+    if (!this._sceneSize.equals(sceneSize)) {
+      this._sceneSize = sceneSize
+      const { w, h } = this._sceneSize
+      this.gl.viewport(0, 0, w, h)
+      this.program.setUniformM4(this.shaderArgs.u_projection, [
+        2.0 / w, 0, 0, 0,
+        0, 2.0 / -h, 0, 0,
+        0, 0, 1, 0,
+        -1, 1, 0, 1
+      ])
+    }
   }
 
   /**
@@ -133,6 +141,7 @@ class SceneShader {
     this.gl.bindTexture(this.gl.TEXTURE_2D, texture.texture)
 
     this.program.setUniformM4(this.shaderArgs.u_transform, transformation.toArray)
+
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
     this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
       // First triangle

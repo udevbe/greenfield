@@ -18,8 +18,8 @@
 import {
   WlCompositorRequests,
   WlCompositorResource,
-  WlSurfaceResource,
-  WlRegionResource
+  WlRegionResource,
+  WlSurfaceResource
 } from 'westfield-runtime-server'
 
 import Surface from './Surface'
@@ -35,22 +35,20 @@ import Region from './Region'
 export default class Compositor extends WlCompositorRequests {
   /**
    * @param {!Session} session
-   * @param {Renderer}renderer
    * @param {!Seat} seat
    * @returns {!Compositor}
    */
-  static create (session, renderer, seat) {
-    return new Compositor(session, renderer, seat)
+  static create (session, seat) {
+    return new Compositor(session, seat)
   }
 
   /**
    * Use Compositor.create(server) instead.
    * @param {!Session} session
-   * @param {!Renderer} renderer
    * @param {!Seat} seat
    * @private
    */
-  constructor (session, renderer, seat) {
+  constructor (session, seat) {
     super()
     /**
      * @type {!Session}
@@ -58,12 +56,6 @@ export default class Compositor extends WlCompositorRequests {
      * @private
      */
     this._session = session
-    /**
-     * @type {!Renderer}
-     * @const
-     * @private
-     */
-    this._renderer = renderer
     /**
      * @type {!Seat}
      * @const
@@ -121,7 +113,7 @@ export default class Compositor extends WlCompositorRequests {
    */
   createSurface (resource, id) {
     const wlSurfaceResource = new WlSurfaceResource(resource.client, id, resource.version)
-    Surface.create(wlSurfaceResource, this._renderer, this._seat, this._session)
+    Surface.create(wlSurfaceResource, this._seat, this._session)
   }
 
   /**

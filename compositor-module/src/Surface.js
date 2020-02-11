@@ -88,12 +88,11 @@ const bufferTransformations = [
 export default class Surface extends WlSurfaceRequests {
   /**
    * @param {!WlSurfaceResource} wlSurfaceResource
-   * @param {!Renderer} renderer
    * @param {!Seat} seat
    * @param {!Session} session
    * @returns {!Surface}
    */
-  static create (wlSurfaceResource, renderer, seat, session) {
+  static create (wlSurfaceResource, seat, session) {
     const opaquePixmanRegion = Region.createPixmanRegion()
     const inputPixmanRegion = Region.createPixmanRegion()
     const surfacePixmanRegion = Region.createPixmanRegion()
@@ -102,7 +101,7 @@ export default class Surface extends WlSurfaceRequests {
     Region.initInfinite(inputPixmanRegion)
     Region.initRect(surfacePixmanRegion, Rect.create(0, 0, 0, 0))
 
-    const surface = new Surface(wlSurfaceResource, renderer, seat, session, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion)
+    const surface = new Surface(wlSurfaceResource, session.renderer, seat, session, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion)
     wlSurfaceResource.implementation = surface
 
     wlSurfaceResource.onDestroy().then(() => {
@@ -341,9 +340,8 @@ export default class Surface extends WlSurfaceRequests {
 
   /**
    * @param {SurfaceState}newState
-   * @private
    */
-  _updateDerivedState (newState) {
+  updateDerivedState (newState) {
     const oldBufferSize = this.state.bufferContents ? this.state.bufferContents.size : Size.create(0, 0)
     if (this.state.bufferContents) { this.state.bufferContents.validateSize() }
     const newBufferSize = newState.bufferContents ? newState.bufferContents.size : Size.create(0, 0)
@@ -936,7 +934,7 @@ export default class Surface extends WlSurfaceRequests {
     // window.GREENFIELD_DEBUG && console.log('|- Awaiting surface render.')
     await this.renderer.updateSurfaceRenderState(this, newState)
 
-    this._updateDerivedState(newState)
+    this.updateDerivedState(newState)
     Surface.mergeState(this.state, newState)
 
     if (this.role && this.role.setRoleState) {

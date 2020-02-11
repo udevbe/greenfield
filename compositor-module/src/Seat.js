@@ -50,7 +50,7 @@ class Seat extends WlSeatRequests {
     const touch = Touch.create()
     const hasTouch = 'ontouchstart' in document.documentElement
 
-    const userSeatState = { pointerGrab: null, keyboardFocus: null, requestedActive: [] }
+    const userSeatState = { pointerGrab: null, keyboardFocus: null }
 
     const seat = new Seat(dataDevice, pointer, keyboard, touch, hasTouch, userSeatState)
     dataDevice.seat = seat
@@ -151,10 +151,17 @@ class Seat extends WlSeatRequests {
    */
   bindClient (client, id, version) {
     const wlSeatResource = new WlSeatResource(client, id, version)
-    wlSeatResource.implementation = this
+    if (this._global) {
+      wlSeatResource.implementation = this
 
-    this._emitCapabilities(wlSeatResource)
-    this._emitName(wlSeatResource)
+      this._emitCapabilities(wlSeatResource)
+      this._emitName(wlSeatResource)
+    } else {
+      // no global present and still receiving a bind can happen when there is a race between the compositor
+      // unregistering the global and a client binding to it. As such we handle it here.
+      wlSeatResource.implementation = new WlSeatRequests()
+      wlSeatResource.implementation.release = resource => resource.destroy()
+    }
   }
 
   /**
@@ -162,6 +169,10 @@ class Seat extends WlSeatRequests {
    * @private
    */
   _emitCapabilities (wlSeatResource) {
+    if (!this._global) {
+      return
+    }
+
     let caps = pointer | keyboard
     if (this.hasTouch) {
       caps |= touch

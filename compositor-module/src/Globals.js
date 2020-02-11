@@ -11,14 +11,12 @@ import Seat from './Seat'
 class Globals {
   /**
    * @param {Session}session
-   * @param {HTMLCanvasElement}canvas
    * @return {Globals}
    */
-  static create (session, canvas) {
+  static create (session) {
     const seat = Seat.create(session)
 
-    const output = Output.create()
-    const compositor = Compositor.create(session, renderer, seat)
+    const compositor = Compositor.create(session, seat)
     const dataDeviceManager = DataDeviceManager.create()
     const subcompositor = Subcompositor.create()
 
@@ -28,13 +26,12 @@ class Globals {
     const webShm = WebShm.create()
     const webGL = WebGL.create(session)
 
-    return new Globals(session, seat, output, compositor, dataDeviceManager, subcompositor, shell, xdgWmBase, webShm, webGL)
+    return new Globals(session, seat, compositor, dataDeviceManager, subcompositor, shell, xdgWmBase, webShm, webGL)
   }
 
   /**
    * @param {Session}session
    * @param {Seat}seat
-   * @param {Output}output
    * @param {Compositor}compositor
    * @param {DataDeviceManager}dataDeviceManager
    * @param {Subcompositor}subcompositor
@@ -46,7 +43,6 @@ class Globals {
   constructor (
     session,
     seat,
-    output,
     compositor,
     dataDeviceManager,
     subcompositor,
@@ -64,9 +60,9 @@ class Globals {
      */
     this.seat = seat
     /**
-     * @type {Output}
+     * @type {Array<Output>}
      */
-    this.output = output
+    this.outputs = []
     /**
      * @type {Compositor}
      */
@@ -97,8 +93,23 @@ class Globals {
     this.webGL = webGL
   }
 
+  /**
+   * @param {Output}output
+   */
+  registerOutput (output) {
+    this.outputs = [...this.outputs, output]
+    output.registerGlobal(this.session.display.registry)
+  }
+
+  /**
+   * @param {Output}output
+   */
+  unregisterOutput (output) {
+    output.unregisterGlobal()
+    this.outputs = this.outputs.filter(otherOutput => otherOutput !== output)
+  }
+
   register () {
-    this.output.registerGlobal(this.session.display.registry)
     this.compositor.registerGlobal(this.session.display.registry)
     this.dataDeviceManager.registerGlobal(this.session.display.registry)
     this.seat.registerGlobal(this.session.display.registry)
@@ -112,7 +123,6 @@ class Globals {
   }
 
   unregister () {
-    this.output.unregisterGlobal()
     this.compositor.unregisterGlobal()
     this.dataDeviceManager.unregisterGlobal()
     this.seat.unregisterGlobal()
