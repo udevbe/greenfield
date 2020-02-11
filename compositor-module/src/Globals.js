@@ -1,5 +1,4 @@
 import Output from './Output'
-import Renderer from './render/Renderer'
 import Compositor from './Compositor'
 import DataDeviceManager from './DataDeviceManager'
 import Subcompositor from './Subcompositor'
@@ -16,18 +15,6 @@ class Globals {
    * @return {Globals}
    */
   static create (session, canvas) {
-    const gl = canvas.getContext('webgl', {
-      antialias: false,
-      depth: false,
-      alpha: false,
-      preserveDrawingBuffer: false,
-      desynchronized: true
-    })
-    if (!gl) {
-      throw new Error('This browser doesn\'t support WebGL!')
-    }
-    const renderer = Renderer.create(canvas, gl)
-
     const seat = Seat.create(session)
 
     const output = Output.create()
@@ -41,20 +28,72 @@ class Globals {
     const webShm = WebShm.create()
     const webGL = WebGL.create(session)
 
-    return new Globals(session, seat, output, renderer, compositor, dataDeviceManager, subcompositor, shell, xdgWmBase, webShm, webGL)
+    return new Globals(session, seat, output, compositor, dataDeviceManager, subcompositor, shell, xdgWmBase, webShm, webGL)
   }
 
-  constructor (session, seat, output, renderer, compositor, dataDeviceManager, subcompositor, shell, xdgWmBase, webShm, webGL) {
+  /**
+   * @param {Session}session
+   * @param {Seat}seat
+   * @param {Output}output
+   * @param {Compositor}compositor
+   * @param {DataDeviceManager}dataDeviceManager
+   * @param {Subcompositor}subcompositor
+   * @param {Shell}shell
+   * @param {XdgWmBase}xdgWmBase
+   * @param {WebShm}webShm
+   * @param {WebGL}webGL
+   */
+  constructor (
+    session,
+    seat,
+    output,
+    compositor,
+    dataDeviceManager,
+    subcompositor,
+    shell,
+    xdgWmBase,
+    webShm,
+    webGL
+  ) {
+    /**
+     * @type {Session}
+     */
     this.session = session
+    /**
+     * @type {Seat}
+     */
     this.seat = seat
+    /**
+     * @type {Output}
+     */
     this.output = output
-    this.renderer = renderer
+    /**
+     * @type {Compositor}
+     */
     this.compositor = compositor
+    /**
+     * @type {DataDeviceManager}
+     */
     this.dataDeviceManager = dataDeviceManager
+    /**
+     * @type {Subcompositor}
+     */
     this.subcompositor = subcompositor
+    /**
+     * @type {Shell}
+     */
     this.shell = shell
+    /**
+     * @type {XdgWmBase}
+     */
     this.xdgWmBase = xdgWmBase
+    /**
+     * @type {WebShm}
+     */
     this.webShm = webShm
+    /**
+     * @type {WebGL}
+     */
     this.webGL = webGL
   }
 

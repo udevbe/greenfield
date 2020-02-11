@@ -23,9 +23,8 @@ class RenderState {
    * @param {WebGLRenderingContext}gl
    * @return {RenderState}
    */
-  static create (gl) {
+  static create (gl, size) {
     const texture = Texture.create(gl, gl.RGBA)
-    const size = Size.create(0, 0)
     return new RenderState(texture, size)
   }
 

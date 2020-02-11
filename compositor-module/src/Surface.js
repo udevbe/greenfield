@@ -147,10 +147,6 @@ export default class Surface extends WlSurfaceRequests {
      */
     this.renderer = renderer
     /**
-     * @type {?RenderState}
-     */
-    this.renderState = null
-    /**
      * @type {SurfaceState}
      */
     this.state = SurfaceState.create(
@@ -400,11 +396,27 @@ export default class Surface extends WlSurfaceRequests {
   onViewCreated (view) {}
 
   /**
+   * @param {string}sceneId
    * @return {View}
    */
-  createView () {
+  createTopLevelView (sceneId) {
+    const scene = this.renderer.scenes[sceneId]
+    const topLevelView = this.createView(scene)
+    this.renderer.scene.topLevelViews = [...this.renderer.scene.topLevelViews, topLevelView]
+    topLevelView.onDestroy().then(() => {
+      this.renderer.scene.topLevelViews = this.renderer.scene.topLevelViews.filter(view => view !== topLevelView)
+    })
+
+    return topLevelView
+  }
+
+  /**
+   * @param {Scene}scene
+   * @return {View}
+   */
+  createView (scene) {
     const bufferSize = this.state.bufferContents ? this.state.bufferContents.size : Size.create(0, 0)
-    const view = View.create(this, bufferSize.w, bufferSize.h)
+    const view = View.create(this, bufferSize.w, bufferSize.h, this.renderer.scene)
     if (this.views.length === 0) {
       view.primary = true
     }
@@ -434,7 +446,7 @@ export default class Surface extends WlSurfaceRequests {
       return null
     }
 
-    const childView = surfaceChild.surface.createView()
+    const childView = surfaceChild.surface.createView(view.scene)
     // const zIndexOrder = this.children.indexOf(surfaceChild)
     // childView.zIndex = view.zIndex + zIndexOrder
     childView.parent = view
@@ -547,10 +559,6 @@ export default class Surface extends WlSurfaceRequests {
     // this._handleDestruction()
     this.destroyed = true
     resource.destroy()
-    if (this.renderState) {
-      this.renderState.destroy()
-      this.renderState = null
-    }
   }
 
   /**

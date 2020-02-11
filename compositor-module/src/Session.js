@@ -18,19 +18,17 @@
 import { Display } from 'westfield-runtime-server'
 import WebFS from './WebFS'
 import UserShellApi from './UserShellApi'
+import Renderer from './render/Renderer'
 
-/**
- * Listens for client announcements from the server.
- */
-export default class Session {
+class Session {
   /**
    * @returns {Session}
    */
   static create () {
     const display = new Display()
     const compositorSessionId = this._uuidv4()
-    // window.GREENFIELD_DEBUG && console.log(`[compositor-session: ${compositorSessionId}] - Starting new compositor session.`)
-    return new Session(display, compositorSessionId)
+    const renderer = Renderer.create()
+    return new Session(display, compositorSessionId, renderer)
   }
 
   /**
@@ -47,9 +45,10 @@ export default class Session {
    * Use Session.create(..) instead
    * @param {Display}display
    * @param {string}compositorSessionId
+   * @param {Renderer}renderer
    * @private
    */
-  constructor (display, compositorSessionId) {
+  constructor (display, compositorSessionId, renderer) {
     /**
      * @type {Display}
      */
@@ -59,13 +58,17 @@ export default class Session {
      */
     this.compositorSessionId = compositorSessionId
     /**
+     * @type {Renderer}
+     */
+    this.renderer = renderer
+    /**
      * @type {WebFS}
      */
     this.webFS = WebFS.create(this.compositorSessionId)
     /**
      * @type {UserShell}
      */
-    this.userShell = UserShellApi(display)
+    this.userShell = UserShellApi(this)
   }
 
   terminate () {
@@ -76,3 +79,5 @@ export default class Session {
     this.display.flushClients()
   }
 }
+
+export default Session

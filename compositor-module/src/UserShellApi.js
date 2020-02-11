@@ -26,10 +26,10 @@ const performSurfaceAction = (display, userSurface, surfaceAction) => {
 }
 
 /**
- * @param {Display}display
+ * @param {Session}session
  * @return UserShell
  */
-export default display => (
+export default session => (
   {
     /**
      * @typedef {{id: string, variant: 'web'|'remote'}}ApplicationClient
@@ -93,25 +93,40 @@ export default display => (
        * an inactive surface. An active surface can receive user input after it has confirmed it's active state.
        * @param {UserSurface}userSurface
        */
-      requestActive: userSurface => performSurfaceAction(display, userSurface, surface => surface.role.requestActive()),
+      requestActive: userSurface => performSurfaceAction(session.display, userSurface, surface => surface.role.requestActive()),
 
       /**
        * Notify a surface that it will no longer receive user input. An inactive surface can update it's visual clue
        * to reflect it's inactive state.
        * @param {UserSurface}userSurface
        */
-      notifyInactive: userSurface => performSurfaceAction(display, userSurface, surface => surface.role.notifyInactive()),
+      notifyInactive: userSurface => performSurfaceAction(session.display, userSurface, surface => surface.role.notifyInactive()),
+
+      /**
+       * Register a canvas so it can be used to draw applications.
+       *
+       * @param {string}sceneId
+       * @param {HTMLCanvasElement|OffscreenCanvas}canvas
+       */
+      initScene: (sceneId, canvas) => session.renderer.initScene(sceneId, canvas),
+
+      /**
+       * Destroy a scene and all the views that were displayed on it.
+       * @param {string}sceneId
+       */
+      destroyScene: sceneId => session.renderer.scenes[sceneId].destroy(),
 
       /**
        * @param {UserSurface}userSurface
+       * @param {string}sceneId
        * @return {View}
        */
-      createView: userSurface => display.clients[userSurface.clientId].connection.wlObjects[userSurface.id].implementation.createView(),
+      createView: (userSurface, sceneId) => session.display.clients[userSurface.clientId].connection.wlObjects[userSurface.id].implementation.createTopLevelView(sceneId),
 
       /**
        * @param {UserSurface}userSurface
        */
-      setKeyboardFocus: userSurface => performSurfaceAction(display, userSurface, surface => surface.seat.keyboard.focusGained(surface)),
+      setKeyboardFocus: userSurface => performSurfaceAction(session.display, userSurface, surface => surface.seat.keyboard.focusGained(surface)),
 
       /**
        * @param {Globals}globals

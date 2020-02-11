@@ -17,6 +17,8 @@
 
 import Mat4 from './math/Mat4'
 import Vec4 from './math/Vec4'
+import RenderState from './render/RenderState'
+import Size from './Size'
 
 export default class View {
   /**
@@ -24,10 +26,12 @@ export default class View {
    * @param {Surface} surface
    * @param {number} width width in compositor space
    * @param {number} height height in compositor space
+   * @param {Scene}scene
    * @returns {View}
    */
-  static create (surface, width, height) {
-    return new View(surface, width, height, Mat4.IDENTITY())
+  static create (surface, width, height, scene) {
+    const renderState = RenderState.create(scene.sceneShader.gl, Size.create(width, height))
+    return new View(surface, width, height, Mat4.IDENTITY(), scene, renderState)
   }
 
   /**
@@ -46,12 +50,22 @@ export default class View {
    * @param {number}width
    * @param {number}height
    * @param {Mat4} transformation
+   * @param {Scene}scene
+   * @param {RenderState}renderState
    */
-  constructor (surface, width, height, transformation) {
+  constructor (surface, width, height, transformation, scene, renderState) {
     /**
      * @type {Surface}
      */
     this.surface = surface
+    /**
+     * @type {Scene}
+     */
+    this.scene = scene
+    /**
+     * @type {RenderState}
+     */
+    this.renderState = renderState
     /**
      * @type {?Mat4}
      */
@@ -298,6 +312,11 @@ export default class View {
   }
 
   destroy () {
+    if (this.renderState) {
+      this.renderState.destroy()
+      this.renderState = null
+    }
+
     this.destroyed = true
     this._destroyResolve()
   }

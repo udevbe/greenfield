@@ -2,17 +2,17 @@ import Program from './Program'
 import ShaderCompiler from './ShaderCompiler'
 import { FRAGMENT_ARGB8888, VERTEX_QUAD_TRANSFORM } from './ShaderSources'
 
-class SceneShaderRGBA {
+class SceneShader {
   /**
    * @param {WebGLRenderingContext} gl
-   * @returns {SceneShaderRGBA}
+   * @returns {SceneShader}
    */
   static create (gl) {
     const program = this._initShaders(gl)
     const shaderArgs = this._initShaderArgs(gl, program)
     const vertexBuffer = this._initBuffers(gl)
 
-    return new SceneShaderRGBA(gl, vertexBuffer, shaderArgs, program)
+    return new SceneShader(gl, vertexBuffer, shaderArgs, program)
   }
 
   /**
@@ -98,18 +98,6 @@ class SceneShaderRGBA {
     this.program = program
   }
 
-  /**
-   * @param {Texture} texture
-   */
-  setTexture (texture) {
-    const gl = this.gl
-
-    gl.uniform1i(this.shaderArgs.u_texture, 0)
-
-    gl.activeTexture(gl.TEXTURE0)
-    gl.bindTexture(gl.TEXTURE_2D, texture.texture)
-  }
-
   use () {
     this.program.use()
   }
@@ -120,13 +108,10 @@ class SceneShaderRGBA {
   }
 
   /**
-   * @param {!Size}size
-   * @param {number}maxXTexCoord
-   * @param {number}maxYTexCoord
-   * @param {Mat4}transformation
+   * @param {Size}sceneSize
    */
-  updateShaderData (size, maxXTexCoord, maxYTexCoord, transformation) {
-    const { w, h } = size
+  updateSceneData (sceneSize) {
+    const { w, h } = sceneSize
     this.gl.viewport(0, 0, w, h)
     this.program.setUniformM4(this.shaderArgs.u_projection, [
       2.0 / w, 0, 0, 0,
@@ -134,24 +119,35 @@ class SceneShaderRGBA {
       0, 0, 1, 0,
       -1, 1, 0, 1
     ])
+  }
+
+  /**
+   * @param {View}view
+   */
+  updateViewData (view) {
+    const { texture, width: w, height: h, transformation } = view.renderState
+
+    this.gl.uniform1i(this.shaderArgs.u_texture, 0)
+
+    this.gl.activeTexture(this.gl.TEXTURE0)
+    this.gl.bindTexture(this.gl.TEXTURE_2D, texture.texture)
+
     this.program.setUniformM4(this.shaderArgs.u_transform, transformation.toArray)
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
-    // TODO apply transformation
-    // TODO add transformation uniform & do transform in shader
     this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
       // First triangle
       // top left:
       0, 0, 0, 0,
       // top right:
-      w, 0, maxXTexCoord, 0,
+      w, 0, 1, 0,
       // bottom right:
-      w, h, maxXTexCoord, maxYTexCoord,
+      w, h, 1, 1,
 
       // Second triangle
       // bottom right:
-      w, h, maxXTexCoord, maxYTexCoord,
+      w, h, 1, 1,
       // bottom left:
-      0, h, 0, maxYTexCoord,
+      0, h, 0, 1,
       // top left:
       0, 0, 0, 0
     ]), this.gl.DYNAMIC_DRAW)
@@ -160,11 +156,10 @@ class SceneShaderRGBA {
   }
 
   draw () {
-    const gl = this.gl
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
-    gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 6)
-    gl.bindTexture(gl.TEXTURE_2D, null)
+    this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT | this.gl.STENCIL_BUFFER_BIT)
+    this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 6)
+    this.gl.bindTexture(this.gl.TEXTURE_2D, null)
   }
 }
 
-export default SceneShaderRGBA
+export default SceneShader

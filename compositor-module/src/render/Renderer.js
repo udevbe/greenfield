@@ -16,48 +16,31 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import EncodingOptions from '../remotestreaming/EncodingOptions'
-import H264ToRGBA from './H264ToRGBA'
 import Scene from './Scene'
 import Size from '../Size'
-import RenderState from './RenderState'
 
 export default class Renderer {
   /**
    * @returns {Renderer}
    */
-  static create (canvas, gl) {
-    const scene = Scene.create(canvas, gl)
-    const h264ToRGBA = H264ToRGBA.create(gl)
-    return new Renderer(gl, h264ToRGBA, scene)
+  static create () {
+    return new Renderer()
   }
 
   /**
    * Use Renderer.create(..) instead.
    * @private
-   * @param {WebGLRenderingContext}gl
-   * @param {H264ToRGBA}h264ToRGBA
-   * @param {Scene}scene
    */
-  constructor (gl, h264ToRGBA, scene) {
+  constructor () {
     /**
-     * @type {WebGLRenderingContext}
-     * @private
+     * @type {Object.<number, Scene>}
      */
-    this._gl = gl
-    /**
-     * @type {H264ToRGBA}
-     * @private
-     */
-    this._h264ToRGBA = h264ToRGBA
-    /**
-     * @type {Scene}
-     */
-    this.scene = scene
+    this.scenes = {}
     /**
      * @type {HTMLImageElement}
      * @private
      */
-    this._emptyImage = new window.Image(0, 0)
+    this._emptyImage = new Image(0, 0)
     /**
      * @type {string}
      * @private
@@ -66,33 +49,18 @@ export default class Renderer {
   }
 
   /**
-   * @param {Surface}surface
-   * @return {RenderState}
-   * @private
-   */
-  _ensureRenderState (surface) {
-    let renderState = surface.renderState
-    if (!renderState) {
-      renderState = RenderState.create(this._gl)
-      surface.renderState = renderState
-    }
-    return renderState
-  }
-
-  /**
-   * @param {Surface}surface
+   * @param {View}view
    * @param {!ImageBitmap | ImageData | HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | OffscreenCanvas}buffer
    * @param {number}width
    * @param {number}height
    * @private
    */
-  _updateRenderState (surface, buffer, width, height) {
-    const renderState = this._ensureRenderState(surface)
-    const { texture, size: { w, h } } = renderState
+  _updateRenderState (view, buffer, width, height) {
+    const { texture, size: { w, h } } = view.renderState
     if (width === w && height === h) {
       texture.subImage2dBuffer(buffer, 0, 0, w, h)
     } else {
-      renderState.size = Size.create(width, height)
+      view.renderState.size = Size.create(width, height)
       texture.image2dBuffer(buffer, width, height)
     }
   }
@@ -106,33 +74,67 @@ export default class Renderer {
     const bufferContents = newState.bufferContents
 
     if (bufferContents) {
-      // window.GREENFIELD_DEBUG && console.log('|- Awaiting surface views draw.')
-      // invokes mime type named drawing methods
-      await this[bufferContents.mimeType](bufferContents, surface)
-      views.forEach((view) => { view.mapped = true })
+      const renderStateUpdates = []
+      views.forEach(view => {
+        renderStateUpdates.push(this[bufferContents.mimeType](bufferContents, view))
+        view.mapped = true
+      })
+      await Promise.all(renderStateUpdates)
     } else {
-      views.forEach((view) => { view.mapped = false })
+      views.forEach(view => { view.mapped = false })
+    }
+  }
+
+  render () {
+    this.scenes.forEach(scene => scene.render())
+  }
+
+  /**
+   * @param {string}sceneId
+   * @param {HTMLCanvasElement|OffscreenCanvas}canvas
+   * @return {Scene|null}
+   */
+  initScene (sceneId, canvas) {
+    let scene = this.scenes[sceneId] || null
+    if (scene) {
+      return scene
+    } else {
+      const gl = canvas.getContext('webgl', {
+        antialias: false,
+        depth: false,
+        alpha: false,
+        preserveDrawingBuffer: false,
+        desynchronized: true
+      })
+      if (!gl) {
+        throw new Error('This browser doesn\'t support WebGL!')
+      }
+      scene = Scene.create(gl, canvas)
+      this.scenes = { ...this.scenes, [sceneId]: scene }
+      scene.onDestroy().then(() => {
+        this.scenes = this.scenes.filter(otherScene => otherScene !== scene)
+        scene.topLevelViews.forEach(view => view.destroy())
+      })
     }
   }
 
   /**
    * @param {EncodedFrame}encodedFrame
-   * @param {Surface}surface
-   * @param {Array<View>}views
+   * @param {View}view
    * @return {Promise<void>}
    * @private
    */
-  async ['image/png'] (encodedFrame, surface, views) {
+  async ['image/png'] (encodedFrame, view) {
     const fullFrame = EncodingOptions.fullFrame(encodedFrame.encodingOptions)
     const splitAlpha = EncodingOptions.splitAlpha(encodedFrame.encodingOptions)
 
     if (fullFrame && !splitAlpha) {
       // Full frame without a separate alpha. Let the browser do all the drawing.
       const frame = encodedFrame.pixelContent[0]
-      const opaqueImageBlob = new window.Blob([frame.opaque], { type: 'image/png' })
-      const imageBitmap = await window.createImageBitmap(opaqueImageBlob, 0, 0, frame.geo.width, frame.geo.height)
+      const opaqueImageBlob = new Blob([frame.opaque], { type: 'image/png' })
+      const imageBitmap = await createImageBitmap(opaqueImageBlob, 0, 0, frame.geo.width, frame.geo.height)
 
-      this._updateRenderState(surface, imageBitmap, imageBitmap.width, imageBitmap.height)
+      this._updateRenderState(view, imageBitmap, imageBitmap.width, imageBitmap.height)
     } else {
       // we don't support/care about fragmented pngs (and definitely not with a separate alpha channel as png has it internal)
       throw new Error(`Unsupported buffer. Encoding type: ${encodedFrame.mimeType}, full frame:${fullFrame}, split alpha: ${splitAlpha}`)
@@ -141,32 +143,31 @@ export default class Renderer {
 
   /**
    * @param {EncodedFrame}encodedFrame
-   * @param {Surface}surface
+   * @param {View}view
    * @return {Promise<void>}
    * @private
    */
-  async ['video/h264'] (encodedFrame, surface) {
-    const renderState = this._ensureRenderState(surface)
-    await this._h264ToRGBA.decodeInto(encodedFrame, renderState.texture)
+  ['video/h264'] (encodedFrame, view) {
+    return view.scene.h264ToRGBA.decodeInto(encodedFrame, view.renderState.texture)
   }
 
   /**
    * @param {WebShmFrame}shmFrame
-   * @param {Surface}surface
+   * @param {View}view
    * @return {Promise<void>}
    */
-  ['image/rgba'] (shmFrame, surface) {
+  ['image/rgba'] (shmFrame, view) {
     const imageData = shmFrame.pixelContent
-    this._updateRenderState(surface, imageData, imageData.width, imageData.height)
+    this._updateRenderState(view, imageData, imageData.width, imageData.height)
   }
 
   /**
    * @param {WebGLFrame}webGLFrame
-   * @param surface
+   * @param {View}view
    * @return {Promise<void>}
    */
-  ['image/canvas'] (webGLFrame, surface) {
+  ['image/canvas'] (webGLFrame, view) {
     const canvas = webGLFrame.pixelContent
-    this._updateRenderState(surface, canvas, canvas.width, canvas.height)
+    this._updateRenderState(view, canvas, canvas.width, canvas.height)
   }
 }
