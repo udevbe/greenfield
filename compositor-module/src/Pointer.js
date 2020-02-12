@@ -62,29 +62,7 @@ export default class Pointer extends WlPointerRequests {
    * @returns {!Pointer}
    */
   static create (session, dataDevice) {
-    const pointer = new Pointer(session, dataDevice)
-    document.addEventListener('mousemove', event => {
-      if (pointer._handleMouseMove(event)) {
-        session.flush()
-      }
-    })
-    document.addEventListener('mouseup', event => {
-      if (pointer._handleMouseUp(event)) {
-        session.flush()
-      }
-    })
-    document.addEventListener('mousedown', event => {
-      if (pointer._handleMouseDown(event)) {
-        session.flush()
-      }
-    })
-    document.addEventListener('wheel', event => {
-      if (pointer._handleWheel(event)) {
-        session.flush()
-      }
-    })
-    // other mouse events are set in the surface view class
-    return pointer
+    return new Pointer(session, dataDevice)
   }
 
   /**
@@ -116,7 +94,7 @@ export default class Pointer extends WlPointerRequests {
      */
     this._dataDevice = dataDevice
     /**
-     * @type {!Array<WlPointerResource>}
+     * @type {Array<WlPointerResource>}
      */
     this.resources = []
     /**
@@ -178,7 +156,7 @@ export default class Pointer extends WlPointerRequests {
      */
     this._buttonPressPromise = null
     /**
-     * @type {?function(MouseEvent):void}
+     * @type {?function(ButtonEvent):void}
      * @private
      */
     this._buttonPressResolve = null
@@ -188,7 +166,7 @@ export default class Pointer extends WlPointerRequests {
      */
     this._buttonReleasePromise = null
     /**
-     * @type {?function(MouseEvent):void}
+     * @type {?function(ButtonEvent):void}
      * @private
      */
     this._buttonReleaseResolve = null
@@ -270,7 +248,7 @@ export default class Pointer extends WlPointerRequests {
           surface.updateDerivedState(newState)
           Surface.mergeState(surface.state, newState)
 
-          const imageBlob = new window.Blob([newState.bufferContents.pixelContent[0].opaque], { type: newState.bufferContents.mimeType })
+          const imageBlob = new Blob([newState.bufferContents.pixelContent[0].opaque], { type: newState.bufferContents.mimeType })
           if (this._cursorURL) {
             URL.revokeObjectURL(this._cursorURL)
           }
@@ -472,30 +450,19 @@ export default class Pointer extends WlPointerRequests {
   }
 
   /**
-   * @param {MouseEvent}event
+   * @param {ButtonEvent}event
+   * @return {View}
    */
   _focusFromEvent (event) {
-    const focusCandidate = event.target
-
-    if (focusCandidate.view &&
-      !focusCandidate.view.destroyed &&
-      focusCandidate.view.surface &&
-      focusCandidate.view.surface.hasPointerInput) {
-      return focusCandidate.view
-    }
-
-    return null
+    return this.session.renderer.scenes[event.sceneId].pickSurface(Point.create(event.x, event.y))
   }
 
   /**
-   * @param {MouseEvent}event
-   * @return {boolean}
-   * @private
+   * @param {ButtonEvent}event
    */
-  _handleMouseMove (event) {
-    let consumed = false
-    this.x = event.clientX < 0 ? 0 : event.clientX
-    this.y = event.clientY < 0 ? 0 : event.clientY
+  handleMouseMove (event) {
+    this.x = event.x
+    this.y = event.y
 
     let currentFocus = this._focusFromEvent(event)
 
@@ -507,7 +474,7 @@ export default class Pointer extends WlPointerRequests {
 
     if (this._dataDevice.dndSourceClient) {
       this._dataDevice.onMouseMotion(currentFocus)
-      return true
+      return
     }
 
     // if we don't have a grab, update the focus
@@ -525,18 +492,15 @@ export default class Pointer extends WlPointerRequests {
     this._mouseMoveListeners.forEach(listener => listener(this.focus))
 
     if (this.focus && this.focus.surface) {
-      consumed = true
       const surfacePoint = this._calculateSurfacePoint(this.focus)
       const surfaceResource = this.focus.surface.resource
       this._doPointerEventFor(surfaceResource, pointerResource => {
-        pointerResource.motion(event.timeStamp, Fixed.parse(surfacePoint.x), Fixed.parse(surfacePoint.y))
+        pointerResource.motion(event.timestamp, Fixed.parse(surfacePoint.x), Fixed.parse(surfacePoint.y))
         if (pointerResource.version >= 5) {
           pointerResource.frame()
         }
       })
     }
-
-    return consumed
   }
 
   /**
@@ -553,26 +517,21 @@ export default class Pointer extends WlPointerRequests {
   }
 
   /**
-   * @param {MouseEvent}event
-   * @return {boolean}
-   * @private
+   * @param {ButtonEvent}event
    */
-  _handleMouseUp (event) {
-    let consumed = false
+  handleMouseUp (event) {
     if (this._dataDevice.dndSourceClient) {
       this._dataDevice.onMouseUp()
-      return true
+      return
     }
 
     const nroPopups = this._popupStack.length
 
     if (this.focus && this.focus.surface) {
-      consumed = true
-
       if (this.grab || nroPopups) {
         const surfaceResource = this.focus.surface.resource
         this._doPointerEventFor(surfaceResource, pointerResource => {
-          pointerResource.button(this.seat.nextSerial(), event.timeStamp, linuxInput[event.button], released)
+          pointerResource.button(this.seat.nextSerial(), event.timestamp, linuxInput[event.buttonCode], released)
           if (pointerResource.version >= 5) {
             pointerResource.frame()
           }
@@ -594,27 +553,23 @@ export default class Pointer extends WlPointerRequests {
     if (this._buttonReleaseResolve) {
       this._buttonReleaseResolve(event)
     }
-
-    return consumed
   }
 
   /**
-   * @param {MouseEvent}event
+   * @param {ButtonEvent}event
    * @return {boolean}
-   * @private
    */
-  _handleMouseDown (event) {
-    let consumed = this._handleMouseMove(event)
+  handleMouseDown (event) {
+    this.handleMouseMove(event)
 
     if (this.focus && this.focus.surface) {
-      consumed = true
       if (this.grab === null && this._popupStack.length === 0) {
         this.grab = this.focus
       }
 
       const surfaceResource = this.focus.surface.resource
       this._doPointerEventFor(surfaceResource, pointerResource => {
-        pointerResource.button(this.seat.nextSerial(), event.timeStamp, linuxInput[event.button], pressed)
+        pointerResource.button(this.seat.nextSerial(), event.timestamp, linuxInput[event.buttonCode], pressed)
         if (pointerResource.version >= 5) {
           pointerResource.frame()
         }
@@ -624,8 +579,6 @@ export default class Pointer extends WlPointerRequests {
     if (this._buttonPressResolve) {
       this._buttonPressResolve(event)
     }
-
-    return consumed
   }
 
   /**
@@ -735,10 +688,10 @@ export default class Pointer extends WlPointerRequests {
   }
 
   /**
-   * @param {WheelEvent}event
+   * @param {AxisEvent}event
    * @return {boolean}
    */
-  _handleWheel (event) {
+  handleWheel (event) {
     let consumed = false
     if (this.focus && this.focus.surface) {
       consumed = true
@@ -793,7 +746,7 @@ export default class Pointer extends WlPointerRequests {
             pointerResource.axisDiscrete(xAxis, deltaX)
           }
           const scrollAmount = deltaTransform(deltaX, xAxis)
-          pointerResource.axis(event.timeStamp, xAxis, Fixed.parse(scrollAmount))
+          pointerResource.axis(event.timestamp, xAxis, Fixed.parse(scrollAmount))
         }
 
         let deltaY = event.deltaY
@@ -805,7 +758,7 @@ export default class Pointer extends WlPointerRequests {
             pointerResource.axisDiscrete(yAxis, deltaY)
           }
           const scrollAmount = deltaTransform(deltaY, yAxis)
-          pointerResource.axis(event.timeStamp, yAxis, Fixed.parse(scrollAmount))
+          pointerResource.axis(event.timestamp, yAxis, Fixed.parse(scrollAmount))
         }
         if (pointerResource.version >= 5) {
           pointerResource.axisSource(wheel)

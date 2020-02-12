@@ -162,12 +162,11 @@ export default class XdgPopup extends XdgPopupRequests {
    * @param {XdgSurface}xdgSurface
    * @param {XdgSurfaceResource|null}parent
    * @param {{size: Rect, anchorRect: Rect, anchor: number, gravity: number, constraintAdjustment: number, offset: Point, surfaceSpaceAnchorPoint: (function(XdgSurface): Point), checkScreenConstraints: (function(XdgSurface, View): {topViolation: number, rightViolation: number, bottomViolation: number, leftViolation: number})}}positionerState
-   * @param {Session}session
    * @param {Seat}seat
    * @return {XdgPopup}
    */
-  static create (xdgPopupResource, xdgSurface, parent, positionerState, session, seat) {
-    const xdgPopup = new XdgPopup(xdgPopupResource, xdgSurface, parent, positionerState, session, seat)
+  static create (xdgPopupResource, xdgSurface, parent, positionerState, seat) {
+    const xdgPopup = new XdgPopup(xdgPopupResource, xdgSurface, parent, positionerState, seat)
     xdgPopupResource.implementation = xdgPopup
     const surface = /** @type {Surface} */xdgSurface.wlSurfaceResource.implementation
     surface.role = xdgPopup
@@ -181,10 +180,9 @@ export default class XdgPopup extends XdgPopupRequests {
    * @param {XdgSurface}xdgSurface
    * @param {XdgSurfaceResource|null}parent
    * @param {{size: Rect, anchorRect: Rect, anchor: number, gravity: number, constraintAdjustment: number, offset: Point, surfaceSpaceAnchorPoint: (function(XdgSurface): Point), checkScreenConstraints: (function(XdgSurface, View): {topViolation: number, rightViolation: number, bottomViolation: number, leftViolation: number})}}positionerState
-   * @param {Session}session
    * @param {Seat}seat
    */
-  constructor (xdgPopupResource, xdgSurface, parent, positionerState, session, seat) {
+  constructor (xdgPopupResource, xdgSurface, parent, positionerState, seat) {
     super()
     /**
      * @type {XdgPopupResource}
@@ -210,11 +208,6 @@ export default class XdgPopup extends XdgPopupRequests {
      * @type {boolean}
      */
     this.dismissed = false
-    /**
-     * @type {Session}
-     * @private
-     */
-    this._session = session
     /**
      * @type {Seat}
      * @private

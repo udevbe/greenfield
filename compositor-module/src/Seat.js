@@ -16,10 +16,13 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import {
+  WlKeyboardRequests,
   WlKeyboardResource,
+  WlPointerRequests,
   WlPointerResource,
   WlSeatRequests,
   WlSeatResource,
+  WlTouchRequests,
   WlTouchResource
 } from 'westfield-runtime-server'
 
@@ -224,14 +227,18 @@ class Seat extends WlSeatRequests {
    */
   getPointer (resource, id) {
     const wlPointerResource = new WlPointerResource(resource.client, id, resource.version)
-    wlPointerResource.implementation = this.pointer
-    this.pointer.resources.push(wlPointerResource)
-    wlPointerResource.onDestroy().then(() => {
-      const idx = this.pointer.resources.indexOf(wlPointerResource)
-      if (idx > -1) {
-        this.pointer.resources.splice(idx, 1)
-      }
-    })
+
+    if (this._global) {
+      wlPointerResource.implementation = this.pointer
+      this.pointer.resources = [...this.pointer.resources, wlPointerResource]
+      wlPointerResource.onDestroy().then(() => {
+        this.pointer.resources = this.pointer.resources.filter(otherResource => otherResource !== wlPointerResource)
+      })
+    } else {
+      // race situation. Seat global is no longer active, but the client still managed to send a request. handle this.
+      wlPointerResource.implementation = new WlPointerRequests()
+      wlPointerResource.implementation.release = resource => resource.destroy()
+    }
   }
 
   /**
@@ -253,35 +260,35 @@ class Seat extends WlSeatRequests {
    */
   getKeyboard (resource, id) {
     const wlKeyboardResource = new WlKeyboardResource(resource.client, id, resource.version)
-    wlKeyboardResource.implementation = this.keyboard
-    this.keyboard.resources.push(wlKeyboardResource)
-    wlKeyboardResource.onDestroy().then(() => {
-      const idx = this.keyboard.resources.indexOf(wlKeyboardResource)
-      if (idx > -1) {
-        this.keyboard.resources.splice(idx, 1)
-      }
-    })
+    if (this._global) {
+      wlKeyboardResource.implementation = this.keyboard
+      this.keyboard.resources = [...this.keyboard.resources, wlKeyboardResource]
+      wlKeyboardResource.onDestroy().then(() => {
+        this.keyboard.resources = this.keyboard.resources.filter(otherResource => otherResource !== wlKeyboardResource)
+      })
 
-    this.keyboard.emitKeymap(wlKeyboardResource)
-    this.keyboard.emitKeyRepeatInfo(wlKeyboardResource)
-    this._keyboardResourceListeners.forEach((listener) => listener(wlKeyboardResource))
+      this.keyboard.emitKeymap(wlKeyboardResource)
+      this.keyboard.emitKeyRepeatInfo(wlKeyboardResource)
+      this._keyboardResourceListeners.forEach((listener) => listener(wlKeyboardResource))
+    } else {
+      // race situation. Seat global is no longer active, but the client still managed to send a request. handle this.
+      wlKeyboardResource.implementation = new WlKeyboardRequests()
+      wlKeyboardResource.implementation.release = resource => resource.destroy()
+    }
   }
 
   /**
    * @param {function(WlKeyboardResource):void}listener
    */
   addKeyboardResourceListener (listener) {
-    this._keyboardResourceListeners.push(listener)
+    this._keyboardResourceListeners = [...this._keyboardResourceListeners, listener]
   }
 
   /**
    * @param {function(WlKeyboardResource):void}listener
    */
   removeKeyboardResourceListener (listener) {
-    const idx = this._keyboardResourceListeners.indexOf(listener)
-    if (idx > -1) {
-      this._keyboardResourceListeners.splice(idx, 1)
-    }
+    this._keyboardResourceListeners = this._keyboardResourceListeners.filter(otherListener => otherListener !== listener)
   }
 
   /**
@@ -303,10 +310,14 @@ class Seat extends WlSeatRequests {
    */
   getTouch (resource, id) {
     const wlTouchResource = new WlTouchResource(resource.client, id, resource.version)
-    this.touch.resources.push(wlTouchResource)
 
-    if (this.hasTouch) {
+    if (this.hasTouch && this._global) {
+      this.touch.resources = [...this.touch.resources, wlTouchResource]
       wlTouchResource.implementation = this.touch
+    } else {
+      // race situation. Seat global is no longer active, but the client still managed to send a request. handle this.
+      wlTouchResource.implementation = new WlTouchRequests()
+      wlTouchResource.implementation.release = resource => resource.destroy()
     }
   }
 

@@ -35,20 +35,18 @@ import Region from './Region'
 export default class Compositor extends WlCompositorRequests {
   /**
    * @param {!Session} session
-   * @param {!Seat} seat
    * @returns {!Compositor}
    */
-  static create (session, seat) {
-    return new Compositor(session, seat)
+  static create (session) {
+    return new Compositor(session)
   }
 
   /**
    * Use Compositor.create(server) instead.
    * @param {!Session} session
-   * @param {!Seat} seat
    * @private
    */
-  constructor (session, seat) {
+  constructor (session) {
     super()
     /**
      * @type {!Session}
@@ -56,12 +54,6 @@ export default class Compositor extends WlCompositorRequests {
      * @private
      */
     this._session = session
-    /**
-     * @type {!Seat}
-     * @const
-     * @private
-     */
-    this._seat = seat
     /**
      * @type {Global}
      * @private
@@ -113,7 +105,7 @@ export default class Compositor extends WlCompositorRequests {
    */
   createSurface (resource, id) {
     const wlSurfaceResource = new WlSurfaceResource(resource.client, id, resource.version)
-    Surface.create(wlSurfaceResource, this._seat, this._session)
+    Surface.create(wlSurfaceResource, this._session)
   }
 
   /**

@@ -13,12 +13,16 @@
  * }}UserShell
  */
 
+import ButtonEvent from './ButtonEvent'
+import AxisEvent from './AxisEvent'
+import KeyEvent from './KeyEvent'
+
 /**
  * @param {Display}display
  * @param {UserSurface}userSurface
  * @param {function(surface: Surface):void}surfaceAction
  */
-const performSurfaceAction = (display, userSurface, surfaceAction) => {
+function performSurfaceAction (display, userSurface, surfaceAction) {
   const wlSurfaceResource = display.clients[userSurface.clientId].connection.wlObjects[userSurface.id]
   if (wlSurfaceResource) {
     surfaceAction(wlSurfaceResource.implementation)
@@ -88,6 +92,14 @@ export default session => (
     },
 
     actions: {
+      input: {
+        pointerMove: (mouseEvent, sceneId) => session.globals.seat.pointer.handleMouseMove(ButtonEvent.fromMouseEvent(mouseEvent, null, sceneId)),
+        buttonUp: (mouseEvent, sceneId) => session.globals.seat.pointer.handleMouseUp(ButtonEvent.fromMouseEvent(mouseEvent, true, sceneId)),
+        buttonDown: (mouseEvent, sceneId) => session.globals.seat.pointer.handleMouseDown(ButtonEvent.fromMouseEvent(mouseEvent, false, sceneId)),
+        axis: (wheelEvent, sceneId) => session.globals.seat.pointer.handleWheel(AxisEvent.fromWheelEvent(wheelEvent, sceneId)),
+
+        key: (keyboardEvent, down) => session.globals.seat.keyboard.handleKey(KeyEvent.fromKeyboardEvent(keyboardEvent, down))
+      },
       /**
        * Request the surface to be made active. An active surface will have a different visual clue ie brighter than
        * an inactive surface. An active surface can receive user input after it has confirmed it's active state.
@@ -136,11 +148,10 @@ export default session => (
       setKeyboardFocus: userSurface => performSurfaceAction(session.display, userSurface, surface => surface.seat.keyboard.focusGained(surface)),
 
       /**
-       * @param {Globals}globals
        * @param {UserConfiguration}userConfiguration
        */
-      setUserConfiguration: (globals, userConfiguration) => {
-        const { pointer, keyboard } = globals.seat
+      setUserConfiguration: userConfiguration => {
+        const { pointer, keyboard } = session.globals.seat
 
         pointer.scrollFactor = userConfiguration.scrollFactor
 

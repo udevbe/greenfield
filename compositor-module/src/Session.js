@@ -28,7 +28,7 @@ class Session {
   static create () {
     const display = new Display()
     const compositorSessionId = this._uuidv4()
-    return new Session(display, compositorSessionId, renderer)
+    return new Session(display, compositorSessionId)
   }
 
   /**
@@ -45,10 +45,9 @@ class Session {
    * Use Session.create(..) instead
    * @param {Display}display
    * @param {string}compositorSessionId
-   * @param {Renderer}renderer
    * @private
    */
-  constructor (display, compositorSessionId, renderer) {
+  constructor (display, compositorSessionId) {
     /**
      * @type {Display}
      */

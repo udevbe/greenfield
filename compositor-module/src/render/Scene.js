@@ -99,7 +99,8 @@ class Scene {
   }
 
   /**
-   * @param point
+   * @param {Point}point
+   * @return {View|null}
    */
   pickSurface (point) {
     // TODO find matching surface

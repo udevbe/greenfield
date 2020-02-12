@@ -88,11 +88,10 @@ const bufferTransformations = [
 export default class Surface extends WlSurfaceRequests {
   /**
    * @param {!WlSurfaceResource} wlSurfaceResource
-   * @param {!Seat} seat
    * @param {!Session} session
    * @returns {!Surface}
    */
-  static create (wlSurfaceResource, seat, session) {
+  static create (wlSurfaceResource, session) {
     const opaquePixmanRegion = Region.createPixmanRegion()
     const inputPixmanRegion = Region.createPixmanRegion()
     const surfacePixmanRegion = Region.createPixmanRegion()
@@ -101,7 +100,7 @@ export default class Surface extends WlSurfaceRequests {
     Region.initInfinite(inputPixmanRegion)
     Region.initRect(surfacePixmanRegion, Rect.create(0, 0, 0, 0))
 
-    const surface = new Surface(wlSurfaceResource, session.renderer, seat, session, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion)
+    const surface = new Surface(wlSurfaceResource, session.renderer, session, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion)
     wlSurfaceResource.implementation = surface
 
     wlSurfaceResource.onDestroy().then(() => {
@@ -123,13 +122,12 @@ export default class Surface extends WlSurfaceRequests {
    * @private
    * @param {!WlSurfaceResource} wlSurfaceResource
    * @param {!Renderer} renderer
-   * @param {!Seat} seat
    * @param {!Session} session
    * @param {!number} opaquePixmanRegion
    * @param {!number} inputPixmanRegion
    * @param {!number} surfacePixmanRegion
    */
-  constructor (wlSurfaceResource, renderer, seat, session, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion) {
+  constructor (wlSurfaceResource, renderer, session, opaquePixmanRegion, inputPixmanRegion, surfacePixmanRegion) {
     super()
     /**
      * @type {!WlSurfaceResource}
@@ -213,11 +211,6 @@ export default class Surface extends WlSurfaceRequests {
      * @type {!Array<View>}
      */
     this.views = []
-    /**
-     * @type {!Seat}
-     * @const
-     */
-    this.seat = seat
     /**
      * @type {!Session}
      * @const

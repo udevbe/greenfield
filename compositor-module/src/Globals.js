@@ -16,7 +16,7 @@ class Globals {
   static create (session) {
     const seat = Seat.create(session)
 
-    const compositor = Compositor.create(session, seat)
+    const compositor = Compositor.create(session)
     const dataDeviceManager = DataDeviceManager.create()
     const subcompositor = Subcompositor.create()
 

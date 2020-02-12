@@ -45,23 +45,6 @@ export default class Keyboard extends WlKeyboardRequests {
     const keyboard = new Keyboard(dataDevice, session, nrmlvoEntries, nrmlvoEntry)
     keyboard.updateKeymapFromNames(keyboard.nrmlvo)
 
-    document.addEventListener('keyup', event => {
-      const keyboardEvent = /** @type {KeyboardEvent} */ event
-      if (keyboard._handleKey(keyboardEvent, false)) {
-        keyboardEvent.preventDefault()
-        keyboardEvent.stopPropagation()
-        session.flush()
-      }
-    })
-    document.addEventListener('keydown', event => {
-      const keyboardEvent = /** @type {KeyboardEvent} */ event
-      if (keyboard._handleKey(keyboardEvent, true)) {
-        keyboardEvent.preventDefault()
-        keyboardEvent.stopPropagation()
-        session.flush()
-      }
-    })
-
     return keyboard
   }
 
@@ -107,44 +90,44 @@ export default class Keyboard extends WlKeyboardRequests {
      */
     this.defaultNrmlvo = nrmlvoEntry
     /**
-     * @type {?Surface}
+     * @type {Surface}
      */
     this._focus = null
     /**
-     * @type {?Array<number>}
+     * @type {Array<number>}
      * @private
      */
     this._keys = []
     /**
-     * @type {?Array<function():void>}
+     * @type {Array<function():void>}
      * @private
      */
     this._keyboardFocusListeners = []
     /**
-     * @type {?function():void|null}
+     * @type {function():void|null}
      * @private
      */
     this._keyboardFocusResolve = null
     /**
-     * @type {?Promise<void>}
+     * @type {Promise<void>}
      * @private
      */
     this._keyboardFocusPromise = null
     /**
-     * @type {?Seat}
+     * @type {Seat}
      */
     this.seat = null
   }
 
   /**
-   * @param {!function():void}listener
+   * @param {function():void}listener
    */
   addKeyboardFocusListener (listener) {
     this._keyboardFocusListeners.push(listener)
   }
 
   /**
-   * @param {!function():void}listener
+   * @param {function():void}listener
    */
   removeKeyboardFocusListener (listener) {
     const idx = this._keyboardFocusListeners.indexOf(listener)
@@ -171,7 +154,7 @@ export default class Keyboard extends WlKeyboardRequests {
 
   /**
    *
-   * @param {!WlKeyboardResource} resource
+   * @param {WlKeyboardResource} resource
    *
    * @since 3
    *
@@ -197,7 +180,7 @@ export default class Keyboard extends WlKeyboardRequests {
   }
 
   /**
-   * @param {!string}keymapFileName
+   * @param {string}keymapFileName
    */
   updateKeymap (keymapFileName) {
     Xkb.createFromResource(keymapFileName).then(
@@ -214,7 +197,7 @@ export default class Keyboard extends WlKeyboardRequests {
   }
 
   /**
-   * @param {!WlKeyboardResource}resource
+   * @param {WlKeyboardResource}resource
    */
   emitKeymap (resource) {
     const keymapString = this.xkb.asString()
@@ -304,21 +287,18 @@ export default class Keyboard extends WlKeyboardRequests {
 
   /**
    *
-   * @param {!KeyboardEvent}event
-   * @param {!boolean}down
-   * @return {!boolean}
+   * @param {KeyEvent}event
    */
-  _handleKey (event, down) {
-    let consumed = false
+  handleKey (event) {
     const keyCode = event.code
     const linuxKeyCode = Xkb.linuxKeycode[keyCode]
-    if (down && this._keys.includes(linuxKeyCode)) {
+    if (event.down && this._keys.includes(linuxKeyCode)) {
       // prevent key repeat from browser
-      return false
+      return
     }
 
-    const modsUpdate = down ? this.xkb.keyDown(linuxKeyCode) : this.xkb.keyUp(linuxKeyCode)
-    if (down) {
+    const modsUpdate = event.down ? this.xkb.keyDown(linuxKeyCode) : this.xkb.keyUp(linuxKeyCode)
+    if (event.down) {
       this._keys.push(linuxKeyCode)
     } else {
       const index = this._keys.indexOf(linuxKeyCode)
@@ -328,10 +308,9 @@ export default class Keyboard extends WlKeyboardRequests {
     }
 
     if (this.focus) {
-      consumed = true
-      const time = event.timeStamp
+      const time = event.timestamp
       const evdevKeyCode = linuxKeyCode - 8
-      const state = down ? pressed : released
+      const state = event.down ? pressed : released
       const serial = this.seat.nextSerial()
 
       const modsDepressed = this.xkb.modsDepressed
@@ -348,8 +327,6 @@ export default class Keyboard extends WlKeyboardRequests {
           }
         })
     }
-
-    return consumed
   }
 
   /**

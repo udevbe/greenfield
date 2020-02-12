@@ -208,7 +208,7 @@ export default class XdgSurface extends XdgSurfaceRequests {
     const positionerState = xdgPositioner.createStateCopy()
 
     const xdgPopupResource = new XdgPopupResource(resource.client, id, resource.version)
-    const xdgPopup = XdgPopup.create(xdgPopupResource, this, parent, positionerState, this._session, this._seat)
+    const xdgPopup = XdgPopup.create(xdgPopupResource, this, parent, positionerState, this._seat)
     this.ackConfigure = (resource, serial) => xdgPopup.ackConfigure(serial)
 
     const onNewView = view => view.applyTransformations()
