@@ -108,39 +108,36 @@ class SceneShader {
   }
 
   release () {
-    const gl = this.gl
-    gl.useProgram(null)
+    this.gl.useProgram(null)
   }
 
   /**
    * @param {Size}sceneSize
    */
   updateSceneData (sceneSize) {
-    if (!this._sceneSize.equals(sceneSize)) {
-      this._sceneSize = sceneSize
-      const { w, h } = this._sceneSize
-      this.gl.viewport(0, 0, w, h)
-      this.program.setUniformM4(this.shaderArgs.u_projection, [
-        2.0 / w, 0, 0, 0,
-        0, 2.0 / -h, 0, 0,
-        0, 0, 1, 0,
-        -1, 1, 0, 1
-      ])
-    }
+    const { w, h } = sceneSize
+    this._sceneSize = sceneSize
+    this.gl.viewport(0, 0, w, h)
+    this.program.setUniformM4(this.shaderArgs.u_projection, [
+      2.0 / w, 0, 0, 0,
+      0, 2.0 / -h, 0, 0,
+      0, 0, 1, 0,
+      -1, 1, 0, 1
+    ])
   }
 
   /**
    * @param {View}view
    */
   updateViewData (view) {
-    const { texture, width: w, height: h, transformation } = view.renderState
+    const { texture, size: { w, h } } = view.renderState
 
     this.gl.uniform1i(this.shaderArgs.u_texture, 0)
 
     this.gl.activeTexture(this.gl.TEXTURE0)
     this.gl.bindTexture(this.gl.TEXTURE_2D, texture.texture)
 
-    this.program.setUniformM4(this.shaderArgs.u_transform, transformation.toArray)
+    this.program.setUniformM4(this.shaderArgs.u_transform, view.transformation.toArray())
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
     this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([

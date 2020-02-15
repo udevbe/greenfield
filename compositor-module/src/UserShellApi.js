@@ -20,12 +20,15 @@ import KeyEvent from './KeyEvent'
 /**
  * @param {Display}display
  * @param {UserSurface}userSurface
- * @param {function(surface: Surface):void}surfaceAction
+ * @param {function(surface: Surface):*}surfaceAction
+ * @return {*}
  */
 function performSurfaceAction (display, userSurface, surfaceAction) {
   const wlSurfaceResource = display.clients[userSurface.clientId].connection.wlObjects[userSurface.id]
   if (wlSurfaceResource) {
-    surfaceAction(wlSurfaceResource.implementation)
+    return surfaceAction(wlSurfaceResource.implementation)
+  } else {
+    return null
   }
 }
 
@@ -101,6 +104,11 @@ export default session => (
         key: (keyboardEvent, down) => session.globals.seat.keyboard.handleKey(KeyEvent.fromKeyboardEvent(keyboardEvent, down))
       },
       /**
+       * @param {UserSurface}userSurface
+       * @param {string}sceneId
+       */
+      raise: (userSurface, sceneId) => performSurfaceAction(session.display, userSurface, surface => session.renderer.scenes[sceneId].raiseSurface(surface)),
+      /**
        * Request the surface to be made active. An active surface will have a different visual clue ie brighter than
        * an inactive surface. An active surface can receive user input after it has confirmed it's active state.
        * @param {UserSurface}userSurface
@@ -126,7 +134,7 @@ export default session => (
        * @param {string}sceneId
        * @param {{width:number, height:number}}sceneConfig
        */
-      setSceneConfiguration: (sceneId, sceneConfig) => { session.renderer.scenes[sceneId].resolution(sceneConfig.width, sceneConfig.height) },
+      setSceneConfiguration: (sceneId, sceneConfig) => { session.renderer.scenes[sceneId].updateResolution(sceneConfig.width, sceneConfig.height) },
 
       /**
        * Destroy a scene and all the views that were displayed on it.
@@ -140,12 +148,12 @@ export default session => (
        * @param {string}sceneId
        * @return {View}
        */
-      createView: (userSurface, sceneId) => session.display.clients[userSurface.clientId].connection.wlObjects[userSurface.id].implementation.createTopLevelView(sceneId),
+      createView: (userSurface, sceneId) => session.display.clients[userSurface.clientId].connection.wlObjects[userSurface.id].implementation.createTopLevelView(session.renderer.scenes[sceneId]),
 
       /**
        * @param {UserSurface}userSurface
        */
-      setKeyboardFocus: userSurface => performSurfaceAction(session.display, userSurface, surface => surface.seat.keyboard.focusGained(surface)),
+      setKeyboardFocus: userSurface => performSurfaceAction(session.display, userSurface, surface => session.globals.seat.keyboard.focusGained(surface)),
 
       /**
        * @param {UserConfiguration}userConfiguration

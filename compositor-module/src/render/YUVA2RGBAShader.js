@@ -56,7 +56,6 @@ class YUVA2RGBAShader {
    * uTexture:WebGLUniformLocation,
    * vTexture:WebGLUniformLocation,
    * alphaTexture:WebGLUniformLocation,
-   * u_projection:WebGLUniformLocation,
    * a_position: GLint,
    * a_texCoord: GLint}}
    * @private
@@ -68,8 +67,6 @@ class YUVA2RGBAShader {
     shaderArgs.uTexture = program.getUniformLocation('uTexture')
     shaderArgs.vTexture = program.getUniformLocation('vTexture')
     shaderArgs.alphaYTexture = program.getUniformLocation('alphaYTexture')
-
-    shaderArgs.u_projection = program.getUniformLocation('u_projection')
 
     shaderArgs.a_position = program.getAttributeLocation('a_position')
     gl.enableVertexAttribArray(shaderArgs.a_position)
@@ -97,7 +94,6 @@ class YUVA2RGBAShader {
    * uTexture:WebGLUniformLocation,
    * vTexture:WebGLUniformLocation,
    * alphaTexture:WebGLUniformLocation,
-   * u_projection:WebGLUniformLocation,
    * a_position: GLint,
    * a_texCoord: GLint}}shaderArgs
    * @param {Program}program
@@ -112,7 +108,7 @@ class YUVA2RGBAShader {
      */
     this.vertexBuffer = vertexBuffer
     /**
-     * @type {{yTexture: WebGLUniformLocation, uTexture: WebGLUniformLocation, vTexture: WebGLUniformLocation, alphaTexture: WebGLUniformLocation, u_projection: WebGLUniformLocation, a_position: GLint, a_texCoord: GLint}}
+     * @type {{yTexture: WebGLUniformLocation, uTexture: WebGLUniformLocation, vTexture: WebGLUniformLocation, alphaTexture: WebGLUniformLocation, a_position: GLint, a_texCoord: GLint}}
      */
     this.shaderArgs = shaderArgs
     /**
@@ -163,29 +159,23 @@ class YUVA2RGBAShader {
   updateShaderData (encodedFrameSize, maxXTexCoord, maxYTexCoord) {
     const { w, h } = encodedFrameSize
     this.gl.viewport(0, 0, w, h)
-    this.program.setUniformM4(this.shaderArgs.u_projection, [
-      2.0 / w, 0, 0, 0,
-      0, 2.0 / -h, 0, 0,
-      0, 0, 1, 0,
-      -1, 1, 0, 1
-    ])
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
     this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
       // First triangle
       // top left:
-      0, 0, 0, 0,
+      -1, 1, 0, maxYTexCoord,
       // top right:
-      w, 0, maxXTexCoord, 0,
+      1, 1, maxXTexCoord, maxYTexCoord,
       // bottom right:
-      w, h, maxXTexCoord, maxYTexCoord,
+      1, -1, maxXTexCoord, 0,
 
       // Second triangle
       // bottom right:
-      w, h, maxXTexCoord, maxYTexCoord,
+      1, -1, maxXTexCoord, 0,
       // bottom left:
-      0, h, 0, maxYTexCoord,
+      -1, -1, 0, 0,
       // top left:
-      0, 0, 0, 0
+      -1, 1, 0, maxYTexCoord
     ]), this.gl.DYNAMIC_DRAW)
     this.gl.vertexAttribPointer(this.shaderArgs.a_position, 2, this.gl.FLOAT, false, 16, 0)
     this.gl.vertexAttribPointer(this.shaderArgs.a_texCoord, 2, this.gl.FLOAT, false, 16, 8)

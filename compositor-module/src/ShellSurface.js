@@ -254,20 +254,20 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     }
     const pointer = seat.pointer
     const surface = this.wlSurfaceResource.implementation
-    const surfaceChildSelf = surface.surfaceChildSelf
-    const origPosition = surfaceChildSelf.position
 
     const pointerX = pointer.x
     const pointerY = pointer.y
+    const scene = pointer.scene
+    // TODO Only move that view that was last interacted with instead of finding the first one that matches.
+    const topLevelView = scene.topLevelViews.find(topLevelView => topLevelView.surface === surface)
+    const origPosition = topLevelView.positionOffset
 
     const moveListener = () => {
       const deltaX = pointer.x - pointerX
       const deltaY = pointer.y - pointerY
 
-      // TODO we could try to be smart, and only apply the latest move, depending on how often the render frame fires.
-      surfaceChildSelf.position = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
-
-      surface.views.forEach(view => view.applyTransformations())
+      topLevelView.positionOffset = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
+      topLevelView.applyTransformations()
       surface.renderer.scene.render()
     }
 

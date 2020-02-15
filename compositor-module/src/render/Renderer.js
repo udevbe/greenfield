@@ -79,19 +79,14 @@ export default class Renderer {
     const bufferContents = newState.bufferContents
 
     if (bufferContents) {
-      const renderStateUpdates = []
-      views.forEach(view => {
-        renderStateUpdates.push(this[bufferContents.mimeType](bufferContents, view))
+      const renderStateUpdates = views.map(view => {
         view.mapped = true
+        return this[bufferContents.mimeType](bufferContents, view)
       })
       await Promise.all(renderStateUpdates)
     } else {
       views.forEach(view => { view.mapped = false })
     }
-  }
-
-  render () {
-    this.scenes.forEach(scene => scene.render())
   }
 
   /**
@@ -113,12 +108,11 @@ export default class Renderer {
       }
       // TODO sync output properties with scene
       const output = Output.create(canvas)
-      scene = Scene.create(gl, canvas, output)
+      scene = Scene.create(this.session, gl, canvas, output)
       this.scenes = { ...this.scenes, [sceneId]: scene }
       this.session.globals.registerOutput(output)
       scene.onDestroy().then(() => {
         this.scenes = this.scenes.filter(otherScene => otherScene !== scene)
-        scene.topLevelViews.forEach(view => view.destroy())
         this.session.globals.unregisterOutput(output)
       })
     }
@@ -140,7 +134,7 @@ export default class Renderer {
       const opaqueImageBlob = new Blob([frame.opaque], { type: 'image/png' })
       const imageBitmap = await createImageBitmap(opaqueImageBlob, 0, 0, frame.geo.width, frame.geo.height)
 
-      this._updateRenderState(view, imageBitmap, imageBitmap.width, imageBitmap.height)
+      this._updateRenderState(view, imageBitmap)
     } else {
       // we don't support/care about fragmented pngs (and definitely not with a separate alpha channel as png has it internal)
       throw new Error(`Unsupported buffer. Encoding type: ${encodedFrame.mimeType}, full frame:${fullFrame}, split alpha: ${splitAlpha}`)
@@ -154,7 +148,7 @@ export default class Renderer {
    * @private
    */
   ['video/h264'] (encodedFrame, view) {
-    return view.scene.h264ToRGBA.decodeInto(encodedFrame, view.renderState.texture)
+    return view.scene.h264ToRGBA.decodeInto(encodedFrame, view.renderState)
   }
 
   /**

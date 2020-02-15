@@ -19,6 +19,7 @@ import Mat4 from './math/Mat4'
 import Vec4 from './math/Vec4'
 import RenderState from './render/RenderState'
 import Size from './Size'
+import Point from './math/Point'
 
 export default class View {
   /**
@@ -32,15 +33,6 @@ export default class View {
   static create (surface, width, height, scene) {
     const renderState = RenderState.create(scene.sceneShader.gl, Size.create(width, height))
     return new View(surface, width, height, Mat4.IDENTITY(), scene, renderState)
-  }
-
-  /**
-   * @return {number}
-   * @private
-   */
-  static _nextTopZIndex () {
-    this._topZIndex++
-    return this._topZIndex
   }
 
   /**
@@ -83,6 +75,10 @@ export default class View {
      */
     this.height = height
     /**
+     * @type {Point}
+     */
+    this.positionOffset = Point.create(0, 0)
+    /**
      * @type {boolean}
      */
     this.disableInputRegion = false
@@ -90,10 +86,6 @@ export default class View {
      * @type {Mat4}
      */
     this._transformation = transformation
-    /**
-     * @type {Mat4}
-     */
-    this._backBufferTransformation = transformation
     /**
      * @type {Mat4}
      */
@@ -117,10 +109,6 @@ export default class View {
      * @private
      */
     this._primary = false
-    /**
-     * @type {number}
-     */
-    this.zIndex = View._topZIndex
     /**
      * @type {boolean}
      */
@@ -209,10 +197,10 @@ export default class View {
    * @return {View[]}
    */
   findChildViews () {
-    return this.surface.children.map(surfaceChild => {
-      if (surfaceChild.surface === this.surface) { return }
-      return surfaceChild.surface.views.filter(view => view.parent === this)
-    }).flat()
+    return this.surface.children
+      .filter(surfaceChild => surfaceChild.surface !== this.surface)
+      .map(surfaceChild => surfaceChild.surface.views.filter(view => view.parent === this))
+      .flat()
   }
 
   /**
@@ -233,7 +221,7 @@ export default class View {
 
     // position transformation
     const surfaceChild = this.surface.surfaceChildSelf
-    const { x, y } = surfaceChild.position
+    const { x, y } = surfaceChild.position.plus(this.positionOffset)
     const positionTransformation = Mat4.translation(x, y)
 
     return parentTransformation.timesMat4(positionTransformation)
@@ -241,14 +229,9 @@ export default class View {
 
   withUserTransformations (transformation) {
     let finalTransformation = transformation
+    // TODO use reduce
     this.userTransformations.forEach(value => { finalTransformation = transformation.timesMat4(value) })
     return finalTransformation
-  }
-
-  raise () {
-    if (this.destroyed) { return }
-
-    this.zIndex = View._nextTopZIndex()
   }
 
   /**
@@ -279,11 +262,11 @@ export default class View {
   }
 
   /**
-   * @param {Point} browserPoint point in browser coordinates
+   * @param {Point} scenePoint point in browser coordinates
    * @return {Point}
    */
-  toSurfaceSpace (browserPoint) {
-    const viewPoint = this.toViewSpaceFromCompositor(browserPoint)
+  toSurfaceSpace (scenePoint) {
+    const viewPoint = this.toViewSpaceFromCompositor(scenePoint)
 
     const surfaceSize = this.surface.size
     const surfaceWidth = surfaceSize.w
@@ -293,22 +276,6 @@ export default class View {
     } else {
       return Mat4.scalarVector(Vec4.create2D(surfaceWidth / this.width, surfaceHeight / this.height)).timesPoint(viewPoint)
     }
-  }
-
-  show () {
-    if (this.destroyed) { return }
-
-    this.mapped = true
-
-    // TODO trigger scene redraw
-  }
-
-  hide () {
-    if (this.destroyed) { return }
-
-    this.mapped = false
-
-    // TODO trigger scene redraw
   }
 
   destroy () {
@@ -328,9 +295,3 @@ export default class View {
     return this._destroyPromise
   }
 }
-
-/**
- * @type {number}
- * @private
- */
-View._topZIndex = 20

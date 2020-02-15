@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { init, isInitialized } from './lib'
+import { init as initWasm, isInitialized } from './lib'
 import Session from './Session'
 import './style/greenfield.css'
 import WebAppLauncher from './WebAppLauncher'
@@ -25,7 +25,7 @@ import RemoteSocket from './RemoteSocket'
 import Mat4 from './math/Mat4'
 
 export {
-  init,
+  initWasm,
   isInitialized,
   Session,
   WebAppLauncher,

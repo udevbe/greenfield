@@ -624,13 +624,16 @@ export default class XdgToplevel extends XdgToplevelRequests {
     //   return
     // }
 
+    // FIXME move view instead of surface
     const pointer = seat.pointer
     const surface = /** @type {Surface} */this.xdgSurface.wlSurfaceResource.implementation
-    const surfaceChildSelf = surface.surfaceChildSelf
-    const origPosition = surfaceChildSelf.position
 
     const pointerX = pointer.x
     const pointerY = pointer.y
+    const scene = pointer.scene
+    // TODO Only move that view that was last interacted with instead of finding the first one that matches.
+    const topLevelView = scene.topLevelViews.find(topLevelView => topLevelView.surface === surface)
+    const origPosition = topLevelView.positionOffset
 
     const moveListener = () => {
       if (!this.mapped) {
@@ -641,9 +644,8 @@ export default class XdgToplevel extends XdgToplevelRequests {
       const deltaX = pointer.x - pointerX
       const deltaY = pointer.y - pointerY
 
-      surfaceChildSelf.position = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
-
-      surface.views.forEach(view => view.applyTransformations())
+      topLevelView.positionOffset = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
+      topLevelView.applyTransformations()
       surface.renderer.scene.render()
     }
 

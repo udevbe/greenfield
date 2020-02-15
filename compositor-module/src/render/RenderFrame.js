@@ -1,6 +1,9 @@
 class RenderFrame {
+  /**
+   * @return {Promise<void>}
+   */
   static create () {
-    return new Promise(resolve => window.requestAnimationFrame(() => resolve(Date.now())))
+    return new Promise(resolve => requestAnimationFrame(() => resolve()))
   }
 }
 

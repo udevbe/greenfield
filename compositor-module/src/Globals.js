@@ -1,4 +1,3 @@
-import Output from './Output'
 import Compositor from './Compositor'
 import DataDeviceManager from './DataDeviceManager'
 import Subcompositor from './Subcompositor'

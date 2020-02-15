@@ -16,7 +16,6 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import Texture from './Texture'
-import Size from '../Size'
 
 class RenderState {
   /**
@@ -25,6 +24,7 @@ class RenderState {
    */
   static create (gl, size) {
     const texture = Texture.create(gl, gl.RGBA)
+    texture.image2dBuffer(null, size.w, size.h)
     return new RenderState(texture, size)
   }
 

@@ -387,15 +387,26 @@ export default class Surface extends WlSurfaceRequests {
   onViewCreated (view) {}
 
   /**
-   * @param {string}sceneId
+   * @param {Scene}scene
    * @return {View}
    */
-  createTopLevelView (sceneId) {
-    const scene = this.renderer.scenes[sceneId]
+  createTopLevelView (scene) {
     const topLevelView = this.createView(scene)
-    this.renderer.scene.topLevelViews = [...this.renderer.scene.topLevelViews, topLevelView]
+    scene.topLevelViews = [...scene.topLevelViews, topLevelView]
+    scene.onDestroy().then(() => {
+      scene.topLevelViews.forEach(topLevelView => topLevelView.destroy())
+      if (scene.pointerView) {
+        scene.pointerView.destroy()
+      }
+      scene.topLevelViews = []
+      scene.pointerView = null
+    })
     topLevelView.onDestroy().then(() => {
-      this.renderer.scene.topLevelViews = this.renderer.scene.topLevelViews.filter(view => view !== topLevelView)
+      scene.topLevelViews = scene.topLevelViews.filter(view => view !== topLevelView)
+      if (scene.pointerView === topLevelView) {
+        scene.pointerView = null
+      }
+      scene.render()
     })
 
     return topLevelView
@@ -407,7 +418,7 @@ export default class Surface extends WlSurfaceRequests {
    */
   createView (scene) {
     const bufferSize = this.state.bufferContents ? this.state.bufferContents.size : Size.create(0, 0)
-    const view = View.create(this, bufferSize.w, bufferSize.h, this.renderer.scene)
+    const view = View.create(this, bufferSize.w, bufferSize.h, scene)
     if (this.views.length === 0) {
       view.primary = true
     }
@@ -886,20 +897,14 @@ export default class Surface extends WlSurfaceRequests {
     const frameCallbacks = this.state.frameCallbacks
     this.state.frameCallbacks = []
 
-    if (this.scene.renderFrame && frameCallbacks.length) {
-      this.scene.renderFrame.then(timestamp => {
-        frameCallbacks.forEach(frameCallback => frameCallback.done(timestamp & 0x7fffffff))
+    Promise.all(
+      this.views
+        .map(view => view.scene)
+        .map(scene => scene.renderFrame ? scene.renderFrame : scene.render()))
+      .then(() => {
+        frameCallbacks.forEach(frameCallback => frameCallback.done(Date.now() & 0x7fffffff))
         this.session.flush()
       })
-    } else {
-      this.resource.client.connection.addIdleHandler(() => {
-        this.scene.render().then(timestamp => {
-          frameCallbacks.forEach(frameCallback => frameCallback.done(timestamp & 0x7fffffff))
-          this.session.flush()
-        })
-      })
-    }
-
     // window.GREENFIELD_DEBUG && console.log(`-------> total commit took ${Date.now() - startCommit}`)
   }
 

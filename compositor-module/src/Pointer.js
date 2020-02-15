@@ -19,9 +19,7 @@ import { WlPointerRequests, WlPointerResource } from 'westfield-runtime-server'
 import { Fixed } from 'westfield-runtime-common'
 
 import Point from './math/Point'
-import EncodingOptions from './remotestreaming/EncodingOptions'
 import Region from './Region'
-import Surface from './Surface'
 
 const { pressed, released } = WlPointerResource.ButtonState
 const { horizontalScroll, verticalScroll } = WlPointerResource.Axis
@@ -125,6 +123,10 @@ export default class Pointer extends WlPointerRequests {
      */
     this.y = 0
     /**
+     * @type {Scene|null}
+     */
+    this.scene = null
+    /**
      * @type {?WlSurfaceResource}
      * @private
      */
@@ -174,8 +176,6 @@ export default class Pointer extends WlPointerRequests {
      * @type {?Seat}
      */
     this.seat = null
-
-    this._cursorURL = null
   }
 
   /**
@@ -198,7 +198,6 @@ export default class Pointer extends WlPointerRequests {
         this.seat.userSeatState = { ...this.seat.userSeatState, pointerGrab: { id, clientId: client.id } }
         this.session.userShell.events.updateUserSeat(this.seat.userSeatState)
       }
-
       this._grab = grab
     }
   }
@@ -237,27 +236,26 @@ export default class Pointer extends WlPointerRequests {
     this.hotspotX -= newState.dx
     this.hotspotY -= newState.dy
 
-    const hotspotX = this.hotspotX
-    const hotspotY = this.hotspotY
-
     if (this._cursorSurface && this._cursorSurface.implementation === surface) {
       if (newState.bufferContents) {
-        const fullFrame = EncodingOptions.fullFrame(newState.bufferContents.encodingOptions)
-        const splitAlpha = EncodingOptions.splitAlpha(newState.bufferContents.encodingOptions)
-        if (fullFrame && !splitAlpha) {
-          surface.updateDerivedState(newState)
-          Surface.mergeState(surface.state, newState)
+        await surface.updateRenderState(newState)
 
-          const imageBlob = new Blob([newState.bufferContents.pixelContent[0].opaque], { type: newState.bufferContents.mimeType })
-          if (this._cursorURL) {
-            URL.revokeObjectURL(this._cursorURL)
-          }
-          this._cursorURL = URL.createObjectURL(imageBlob)
-          window.document.body.style.cursor = `url("${this._cursorURL}") ${hotspotX} ${hotspotY}, pointer`
-        } else {
-          console.warn('Unsupported cursor format.')
-          window.document.body.style.cursor = 'pointer'
-        }
+        // const fullFrame = EncodingOptions.fullFrame(newState.bufferContents.encodingOptions)
+        // const splitAlpha = EncodingOptions.splitAlpha(newState.bufferContents.encodingOptions)
+        // if (fullFrame && !splitAlpha) {
+        //   surface.updateDerivedState(newState)
+        //   Surface.mergeState(surface.state, newState)
+        //
+        //   const imageBlob = new Blob([newState.bufferContents.pixelContent[0].opaque], { type: newState.bufferContents.mimeType })
+        //   if (this._cursorURL) {
+        //     URL.revokeObjectURL(this._cursorURL)
+        //   }
+        //   this._cursorURL = URL.createObjectURL(imageBlob)
+        //   window.document.body.style.cursor = `url("${this._cursorURL}") ${hotspotX} ${hotspotY}, pointer`
+        // } else {
+        //   console.warn('Unsupported cursor format.')
+        //   window.document.body.style.cursor = 'pointer'
+        // }
       }
     }
   }
@@ -381,7 +379,7 @@ export default class Pointer extends WlPointerRequests {
   }
 
   /**
-   * @param {?WlSurfaceResource}surfaceResource
+   * @param {WlSurfaceResource|null}surfaceResource
    * @param {number} hotspotX surface-local x coordinate
    * @param {number} hotspotY surface-local y coordinate
    */
@@ -395,18 +393,19 @@ export default class Pointer extends WlPointerRequests {
     }
     this._cursorSurface = surfaceResource
 
-    if (surfaceResource) {
-      const surface = /** @type {Surface} */surfaceResource.implementation
-      surface.resource.addDestroyListener(this._cursorDestroyListener)
-      surface.role = this
-      surface.state.inputPixmanRegion = Region.createPixmanRegion()
-      surface._pendingInputRegion = Region.createPixmanRegion()
-    } else {
-      if (this._cursorURL) {
-        URL.revokeObjectURL(this._cursorURL)
-        this._cursorURL = null
+    if (this.scene) {
+      this.scene.canvas.style.cursor = 'none'
+
+      if (surfaceResource) {
+        const surface = /** @type {Surface} */surfaceResource.implementation
+        surface.resource.addDestroyListener(this._cursorDestroyListener)
+        surface.role = this
+        surface.state.inputPixmanRegion = Region.createPixmanRegion()
+        surface._pendingInputRegion = Region.createPixmanRegion()
+        this.scene.updatePointerView(surface)
+      } else {
+        this.scene.destroyPointerView()
       }
-      window.document.body.style.cursor = 'none'
     }
   }
 
@@ -454,7 +453,7 @@ export default class Pointer extends WlPointerRequests {
    * @return {View}
    */
   _focusFromEvent (event) {
-    return this.session.renderer.scenes[event.sceneId].pickSurface(Point.create(event.x, event.y))
+    return this.session.renderer.scenes[event.sceneId].pickView(Point.create(event.x, event.y))
   }
 
   /**
@@ -463,6 +462,12 @@ export default class Pointer extends WlPointerRequests {
   handleMouseMove (event) {
     this.x = event.x
     this.y = event.y
+    this.scene = this.session.renderer.scenes[event.sceneId]
+    if (this.scene.pointerView) {
+      this.scene.pointerView.positionOffset = Point.create(this.x, this.y).minus(Point.create(this.hotspotX, this.hotspotY))
+      this.scene.pointerView.applyTransformations()
+      this.scene.render()
+    }
 
     let currentFocus = this._focusFromEvent(event)
 
@@ -680,11 +685,7 @@ export default class Pointer extends WlPointerRequests {
   }
 
   setDefaultCursor () {
-    if (this._cursorURL) {
-      URL.revokeObjectURL(this._cursorURL)
-      this._cursorURL = null
-    }
-    window.document.body.style.cursor = 'auto'
+    this.scene.canvas.style.cursor = 'auto'
   }
 
   /**
@@ -695,7 +696,7 @@ export default class Pointer extends WlPointerRequests {
     let consumed = false
     if (this.focus && this.focus.surface) {
       consumed = true
-      // TODO configure the scoll transform through the config menu
+      // TODO configure the scroll transform through the config menu
       /**
        * @type{Function}
        */
