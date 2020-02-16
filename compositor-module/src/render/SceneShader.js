@@ -11,7 +11,6 @@ class SceneShader {
     const program = this._initShaders(gl)
     const shaderArgs = this._initShaderArgs(gl, program)
     const vertexBuffer = this._initBuffers(gl)
-
     return new SceneShader(gl, vertexBuffer, shaderArgs, program)
   }
 
@@ -118,6 +117,9 @@ class SceneShader {
     const { w, h } = sceneSize
     this._sceneSize = sceneSize
     this.gl.viewport(0, 0, w, h)
+    this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT | this.gl.STENCIL_BUFFER_BIT)
+    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA)
+    this.gl.enable(this.gl.BLEND)
     this.program.setUniformM4(this.shaderArgs.u_projection, [
       2.0 / w, 0, 0, 0,
       0, 2.0 / -h, 0, 0,
@@ -162,7 +164,6 @@ class SceneShader {
   }
 
   draw () {
-    this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT | this.gl.STENCIL_BUFFER_BIT)
     this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 6)
     this.gl.bindTexture(this.gl.TEXTURE_2D, null)
   }
