@@ -96,12 +96,30 @@ export default session => (
 
     actions: {
       input: {
-        pointerMove: (mouseEvent, sceneId) => session.globals.seat.pointer.handleMouseMove(ButtonEvent.fromMouseEvent(mouseEvent, null, sceneId)),
-        buttonUp: (mouseEvent, sceneId) => session.globals.seat.pointer.handleMouseUp(ButtonEvent.fromMouseEvent(mouseEvent, true, sceneId)),
-        buttonDown: (mouseEvent, sceneId) => session.globals.seat.pointer.handleMouseDown(ButtonEvent.fromMouseEvent(mouseEvent, false, sceneId)),
-        axis: (wheelEvent, sceneId) => session.globals.seat.pointer.handleWheel(AxisEvent.fromWheelEvent(wheelEvent, sceneId)),
+        pointerMove: (mouseEvent, sceneId) => {
+          mouseEvent.preventDefault()
+          session.globals.seat.pointer.handleMouseMove(ButtonEvent.fromMouseEvent(mouseEvent, null, sceneId))
+          session.flush()
+        },
+        buttonUp: (mouseEvent, sceneId) => {
+          mouseEvent.preventDefault()
+          session.globals.seat.pointer.handleMouseUp(ButtonEvent.fromMouseEvent(mouseEvent, true, sceneId))
+          session.flush()
+        },
+        buttonDown: (mouseEvent, sceneId) => {
+          mouseEvent.preventDefault()
+          session.globals.seat.pointer.handleMouseDown(ButtonEvent.fromMouseEvent(mouseEvent, false, sceneId))
+          session.flush()
+        },
+        axis: (wheelEvent, sceneId) => {
+          wheelEvent.preventDefault()
+          session.globals.seat.pointer.handleWheel(AxisEvent.fromWheelEvent(wheelEvent, sceneId))
+          session.flush()
+        },
 
-        key: (keyboardEvent, down) => session.globals.seat.keyboard.handleKey(KeyEvent.fromKeyboardEvent(keyboardEvent, down))
+        key: (keyboardEvent, down) => {
+          session.globals.seat.keyboard.handleKey(KeyEvent.fromKeyboardEvent(keyboardEvent, down))
+        }
       },
       /**
        * @param {UserSurface}userSurface

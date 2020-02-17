@@ -67,14 +67,6 @@ export default class View {
      */
     this.userTransformations = new Map()
     /**
-     * @type {number}
-     */
-    this.width = width
-    /**
-     * @type {number}
-     */
-    this.height = height
-    /**
      * @type {Point}
      */
     this.positionOffset = Point.create(0, 0)
@@ -271,10 +263,10 @@ export default class View {
     const surfaceSize = this.surface.size
     const surfaceWidth = surfaceSize.w
     const surfaceHeight = surfaceSize.h
-    if (surfaceWidth === this.width && surfaceHeight === this.height) {
+    if (surfaceWidth === this.renderState.size.w && surfaceHeight === this.renderState.size.h) {
       return viewPoint
     } else {
-      return Mat4.scalarVector(Vec4.create2D(surfaceWidth / this.width, surfaceHeight / this.height)).timesPoint(viewPoint)
+      return Mat4.scalarVector(Vec4.create2D(surfaceWidth / this.renderState.size.w, surfaceHeight / this.renderState.size.h)).timesPoint(viewPoint)
     }
   }
 

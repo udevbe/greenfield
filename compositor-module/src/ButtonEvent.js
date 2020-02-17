@@ -20,9 +20,12 @@ class ButtonEvent {
    * @return {ButtonEvent}
    */
   static fromMouseEvent (mouseEvent, released, sceneId) {
+    const currentTarget = /** @type{HTMLElement} */mouseEvent.currentTarget
+    const { left: targetX, top: targetY } = currentTarget.getBoundingClientRect()
+
     return ButtonEvent.create(
-      mouseEvent.clientX,
-      mouseEvent.clientY,
+      mouseEvent.clientX - targetX,
+      mouseEvent.clientY - targetY,
       mouseEvent.timeStamp,
       mouseEvent.button,
       released,

@@ -646,7 +646,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
 
       topLevelView.positionOffset = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
       topLevelView.applyTransformations()
-      surface.renderer.scene.render()
+      surface.scheduleRender()
     }
 
     pointer.onButtonRelease().then(() => {

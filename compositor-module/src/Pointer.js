@@ -239,23 +239,6 @@ export default class Pointer extends WlPointerRequests {
     if (this._cursorSurface && this._cursorSurface.implementation === surface) {
       if (newState.bufferContents) {
         await surface.updateRenderState(newState)
-
-        // const fullFrame = EncodingOptions.fullFrame(newState.bufferContents.encodingOptions)
-        // const splitAlpha = EncodingOptions.splitAlpha(newState.bufferContents.encodingOptions)
-        // if (fullFrame && !splitAlpha) {
-        //   surface.updateDerivedState(newState)
-        //   Surface.mergeState(surface.state, newState)
-        //
-        //   const imageBlob = new Blob([newState.bufferContents.pixelContent[0].opaque], { type: newState.bufferContents.mimeType })
-        //   if (this._cursorURL) {
-        //     URL.revokeObjectURL(this._cursorURL)
-        //   }
-        //   this._cursorURL = URL.createObjectURL(imageBlob)
-        //   window.document.body.style.cursor = `url("${this._cursorURL}") ${hotspotX} ${hotspotY}, pointer`
-        // } else {
-        //   console.warn('Unsupported cursor format.')
-        //   window.document.body.style.cursor = 'pointer'
-        // }
       }
     }
   }
@@ -686,6 +669,10 @@ export default class Pointer extends WlPointerRequests {
 
   setDefaultCursor () {
     this.scene.canvas.style.cursor = 'auto'
+    if (this.scene.pointerView) {
+      this.scene.pointerView.destroy()
+      this.scene.pointerView = null
+    }
   }
 
   /**

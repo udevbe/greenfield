@@ -393,14 +393,6 @@ export default class Surface extends WlSurfaceRequests {
   createTopLevelView (scene) {
     const topLevelView = this.createView(scene)
     scene.topLevelViews = [...scene.topLevelViews, topLevelView]
-    scene.onDestroy().then(() => {
-      scene.topLevelViews.forEach(topLevelView => topLevelView.destroy())
-      if (scene.pointerView) {
-        scene.pointerView.destroy()
-      }
-      scene.topLevelViews = []
-      scene.pointerView = null
-    })
     topLevelView.onDestroy().then(() => {
       scene.topLevelViews = scene.topLevelViews.filter(view => view !== topLevelView)
       if (scene.pointerView === topLevelView) {
@@ -543,7 +535,6 @@ export default class Surface extends WlSurfaceRequests {
     const index = siblings.indexOf(surfaceChild)
     if (index > -1) {
       siblings.splice(index, 1)
-      this.updateChildViewsZIndexes()
     }
   }
 
@@ -897,15 +888,22 @@ export default class Surface extends WlSurfaceRequests {
     const frameCallbacks = this.state.frameCallbacks
     this.state.frameCallbacks = []
 
-    Promise.all(
+    this.scheduleRender().then(() => {
+      frameCallbacks.forEach(frameCallback => frameCallback.done(Date.now() & 0x7fffffff))
+      this.session.flush()
+    })
+    // window.GREENFIELD_DEBUG && console.log(`-------> total commit took ${Date.now() - startCommit}`)
+  }
+
+  /**
+   * @param frameCallbacks
+   * @return {Promise<void[]>}
+   */
+  scheduleRender () {
+    return Promise.all(
       this.views
         .map(view => view.scene)
         .map(scene => scene.renderFrame ? scene.renderFrame : scene.render()))
-      .then(() => {
-        frameCallbacks.forEach(frameCallback => frameCallback.done(Date.now() & 0x7fffffff))
-        this.session.flush()
-      })
-    // window.GREENFIELD_DEBUG && console.log(`-------> total commit took ${Date.now() - startCommit}`)
   }
 
   /**

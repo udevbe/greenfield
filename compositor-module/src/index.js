@@ -17,7 +17,6 @@
 
 import { init as initWasm, isInitialized } from './lib'
 import Session from './Session'
-import './style/greenfield.css'
 import WebAppLauncher from './WebAppLauncher'
 import RemoteAppLauncher from './RemoteAppLauncher'
 import WebAppSocket from './WebAppSocket'

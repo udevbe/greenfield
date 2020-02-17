@@ -103,7 +103,7 @@ class Scene {
         this.sceneShader.use()
         this.sceneShader.updateSceneData(Size.create(this.canvas.width, this.canvas.height))
         this._viewStack().forEach(view => this._renderView(view))
-        if (this.session.globals.seat.pointer.scene === this) {
+        if (this.pointerView && this.session.globals.seat.pointer.scene === this) {
           this._renderView(this.pointerView)
         }
         this.sceneShader.release()
@@ -115,9 +115,9 @@ class Scene {
   updatePointerView (surface) {
     if (this.pointerView !== null && this.pointerView.surface !== surface) {
       this.pointerView.destroy()
-      this.pointerView = surface.createTopLevelView(this)
+      this.pointerView = surface.createView(this)
     } else if (this.pointerView === null) {
-      this.pointerView = surface.createTopLevelView(this)
+      this.pointerView = surface.createView(this)
     }
   }
 
@@ -160,6 +160,12 @@ class Scene {
   }
 
   destroy () {
+    this.topLevelViews.forEach(topLevelView => topLevelView.destroy())
+    if (this.pointerView) {
+      this.pointerView.destroy()
+    }
+    this.topLevelViews = []
+    this.pointerView = null
     this._destroyResolve()
   }
 
