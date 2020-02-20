@@ -148,7 +148,7 @@ export default class Renderer {
    * @private
    */
   ['video/h264'] (encodedFrame, view) {
-    return view.scene.h264ToRGBA.decodeInto(encodedFrame, view.renderState)
+    return view.scene.h264ToRGBA.decodeInto(encodedFrame, view)
   }
 
   /**

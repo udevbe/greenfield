@@ -27,6 +27,7 @@ import Region from './Region'
 import SurfaceChild from './SurfaceChild'
 import Point from './math/Point'
 import SurfaceState from './SurfaceState'
+import H264BufferContentDecoder from './render/H264BufferContentDecoder'
 
 /**
  * @type {{transformation: Mat4, inverseTransformation:Mat4}[]}
@@ -41,6 +42,8 @@ const bufferTransformations = [
   { transformation: FLIPPED_180, inverseTransformation: FLIPPED_180.invert() }, // 6
   { transformation: FLIPPED_270, inverseTransformation: FLIPPED_270.invert() } // 7
 ]
+
+let surfaceH264DecodeId = 0
 
 /**
  *
@@ -85,7 +88,7 @@ const bufferTransformations = [
  *            switching is not allowed).
  * @implements WlSurfaceRequests
  */
-export default class Surface extends WlSurfaceRequests {
+class Surface extends WlSurfaceRequests {
   /**
    * @param {!WlSurfaceResource} wlSurfaceResource
    * @param {!Session} session
@@ -278,6 +281,21 @@ export default class Surface extends WlSurfaceRequests {
      */
     this.size = Size.create(0, 0)
     // <- derived states above
+    /**
+     * @type {H264BufferContentDecoder}
+     * @private
+     */
+    this._h264BufferContentDecoder = null
+  }
+
+  /**
+   * @return {H264BufferContentDecoder}
+   */
+  get h264BufferContentDecoder () {
+    if (this._h264BufferContentDecoder === null) {
+      this._h264BufferContentDecoder = H264BufferContentDecoder.create(`${surfaceH264DecodeId++}`)
+    }
+    return this._h264BufferContentDecoder
   }
 
   /**
@@ -563,6 +581,9 @@ export default class Surface extends WlSurfaceRequests {
       delete view.surface
       view.destroy()
     })
+    if (this._h264BufferContentDecoder) {
+      this._h264BufferContentDecoder.destroy()
+    }
   }
 
   /**
@@ -1137,3 +1158,5 @@ export default class Surface extends WlSurfaceRequests {
     this._pendingBufferDamageRects.push(Rect.create(x, y, x + width, y + height))
   }
 }
+
+export default Surface

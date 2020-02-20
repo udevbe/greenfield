@@ -20,11 +20,12 @@ import Texture from './Texture'
 class RenderState {
   /**
    * @param {WebGLRenderingContext}gl
+   * @param {Size}size
    * @return {RenderState}
    */
   static create (gl, size) {
     const texture = Texture.create(gl, gl.RGBA)
-    texture.image2dBuffer(null, size.w, size.h)
+    texture.image2dBuffer(null, size.w === 0 ? 2 : size.w, size.h === 0 ? 2 : size.h)
     return new RenderState(texture, size)
   }
 

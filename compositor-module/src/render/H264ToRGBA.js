@@ -1,7 +1,6 @@
 import YUVA2RGBAShader from './YUVA2RGBAShader'
 import YUV2RGBShader from './YUV2RGBShader'
 import Texture from './Texture'
-import H264BufferContentDecoder from './H264BufferContentDecoder'
 
 class H264ToRGBA {
   static create (gl) {
@@ -17,8 +16,6 @@ class H264ToRGBA {
 
     const framebuffer = gl.createFramebuffer()
 
-    const h264BufferContentDecoder = H264BufferContentDecoder.create()
-
     return new H264ToRGBA(
       gl,
       yuvaSurfaceShader,
@@ -27,8 +24,7 @@ class H264ToRGBA {
       yTexture,
       uTexture,
       vTexture,
-      alphaTexture,
-      h264BufferContentDecoder
+      alphaTexture
     )
   }
 
@@ -71,10 +67,6 @@ class H264ToRGBA {
      */
     this.alphaTexture = alphaTexture
     /**
-     * @type {H264BufferContentDecoder}
-     */
-    this.h264BufferContentDecoder = h264BufferContentDecoder
-    /**
      * @type {WebGLRenderingContext}
      */
     this.gl = gl
@@ -94,13 +86,14 @@ class H264ToRGBA {
 
   /**
    * @param {EncodedFrame}encodedFrame
-   * @param {RenderState}renderState
+   * @param {View}view
    * @return {Promise<void>}
    * @override
    */
-  async decodeInto (encodedFrame, renderState) {
+  async decodeInto (encodedFrame, view) {
     // const start = Date.now()
-    const { alpha, opaque } = await this.h264BufferContentDecoder.decode(encodedFrame)
+    const { alpha, opaque } = await view.surface.h264BufferContentDecoder.decode(encodedFrame)
+    const renderState = view.renderState
     // window.GREENFIELD_DEBUG && console.log(`|- Decoding took ${Date.now() - start}ms`)
 
     // the width & height returned are actually padded, so we have to use the frame size to get the real image dimension

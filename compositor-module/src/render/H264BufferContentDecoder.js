@@ -15,43 +15,64 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import H264NALDecoder from './H264NALDecoder'
 import EncodingOptions from '../remotestreaming/EncodingOptions'
+// eslint-disable-next-line import/no-webpack-loader-syntax
+import Worker from 'worker-loader!./H264NALDecoderWorker'
 
-export default class H264BufferContentDecoder {
+const opaqueWorker = new Promise(resolve => {
+  const worker = new Worker()
+  worker.addEventListener('message', (e) => {
+    const message = /** @type {{type:string, width:number, height:number, data:ArrayBuffer, renderStateId:number}} */e.data
+    switch (message.type) {
+      case 'pictureReady':
+        H264BufferContentDecoder._decoders[message.renderStateId]._onOpaquePictureDecoded(message)
+        break
+      case 'decoderReady':
+        resolve(worker)
+        break
+    }
+  })
+})
+
+const alphaWorker = new Promise(resolve => {
+  const worker = new Worker()
+  worker.addEventListener('message', (e) => {
+    const message = /** @type {{type:string, width:number, height:number, data:ArrayBuffer, renderStateId:number}} */e.data
+    switch (message.type) {
+      case 'pictureReady':
+        H264BufferContentDecoder._decoders[message.renderStateId]._onAlphaPictureDecoded(message)
+        break
+      case 'decoderReady':
+        resolve(worker)
+        break
+    }
+  })
+})
+
+class H264BufferContentDecoder {
   /**
+   * @param {string}surfaceH264DecodeId
    * @return {H264BufferContentDecoder}
    */
-  static create () {
-    return new H264BufferContentDecoder()
+  static create (surfaceH264DecodeId) {
+    const h264BufferContentDecoder = new H264BufferContentDecoder(surfaceH264DecodeId)
+    H264BufferContentDecoder._decoders[surfaceH264DecodeId] = h264BufferContentDecoder
+    return h264BufferContentDecoder
   }
 
-  constructor () {
+  /**
+   * @param {string}surfaceH264DecodeId
+   */
+  constructor (surfaceH264DecodeId) {
     /**
-     * @type {H264NALDecoder}
-     * @private
+     * @type {string}
      */
-    this._decoder = null
-    /**
-     * @type {Promise<H264NALDecoder>}
-     * @private
-     */
-    this._decoderFactory = null
+    this.surfaceH264DecodeId = surfaceH264DecodeId
     /**
      * @type {number[]}
      * @private
      */
     this._decodingSerialsQueue = []
-    /**
-     * @type {H264NALDecoder}
-     * @private
-     */
-    this._alphaDecoder = null
-    /**
-     * @type {Promise<H264NALDecoder>}
-     * @private
-     */
-    this._alphaDecoderFactory = null
     /**
      * @type {number[]}
      * @private
@@ -85,65 +106,47 @@ export default class H264BufferContentDecoder {
   }
 
   /**
-   * @param {boolean}hasAlpha
-   * @private
-   */
-  async _ensureH264Decoders (hasAlpha) {
-    if (!this._decoder) {
-      if (!this._decoderFactory) {
-        this._decoderFactory = H264NALDecoder.create(H264BufferContentDecoder._nextDecoderId++)
-      }
-      const decoder = await this._decoderFactory
-      decoder.onPicture = (buffer, width, height) => {
-        this._onPictureDecoded(buffer, width, height)
-      }
-      this._decoder = decoder
-    }
-
-    if (hasAlpha && !this._alphaDecoder) {
-      if (!this._alphaDecoderFactory) {
-        this._alphaDecoderFactory = H264NALDecoder.create(H264BufferContentDecoder._nextDecoderId++)
-      }
-      const alphaDecoder = await this._alphaDecoderFactory
-      alphaDecoder.onPicture = (buffer, width, height) => {
-        this._onAlphaPictureDecoded(buffer, width, height)
-      }
-      this._alphaDecoder = alphaDecoder
-    }
-
-    if (!hasAlpha && this._alphaDecoder) {
-      this._alphaDecoder.release()
-      this._alphaDecoder = null
-      this._alphaDecoderFactory = null
-    }
-  }
-
-  /**
    * @param {EncodedFrame}bufferContents
    * @return {Promise<void>}
    * @private
    */
-  async _decodeH264 (bufferContents) {
+  _decodeH264 (bufferContents) {
+    const bufferSerial = bufferContents.serial
     const fullFrame = EncodingOptions.fullFrame(bufferContents.encodingOptions)
     if (!fullFrame) {
       throw new Error('h264 encoded buffers must contain the full frame.')
     }
     const hasAlpha = EncodingOptions.splitAlpha(bufferContents.encodingOptions)
-    await this._ensureH264Decoders(hasAlpha)
 
     if (hasAlpha) {
-      this._decodingAlphaSerialsQueue.push(bufferContents.serial)
-      // create a copy of the arraybuffer so we can zero-copy the opaque part (after zero-copying, we can no longer use the underlying array in any way)
       const alphaPixelContent = bufferContents.pixelContent[0].alpha
-      const alphaH264Nal = alphaPixelContent.slice()
-      this._alphaDecoder.decode(alphaH264Nal)
+      const h264Nal = alphaPixelContent.slice()
+      alphaWorker.then(worker => {
+        this._decodingAlphaSerialsQueue = [...this._decodingAlphaSerialsQueue, bufferSerial]
+        // create a copy of the arraybuffer so we can zero-copy the opaque part (after zero-copying, we can no longer use the underlying array in any way)
+        worker.postMessage({
+          type: 'decode',
+          data: h264Nal.buffer,
+          offset: h264Nal.byteOffset,
+          length: h264Nal.byteLength,
+          renderStateId: this.surfaceH264DecodeId
+        }, [h264Nal.buffer])
+      })
     } else {
-      this._frameStates[bufferContents.serial].state = 'pending_opaque'
+      this._frameStates[bufferSerial].state = 'pending_opaque'
     }
 
-    this._decodingSerialsQueue.push(bufferContents.serial)
-    const opaqueH264Nal = bufferContents.pixelContent[0].opaque
-    this._decoder.decode(opaqueH264Nal)
+    const h264Nal = bufferContents.pixelContent[0].opaque
+    opaqueWorker.then(worker => {
+      this._decodingSerialsQueue = [...this._decodingSerialsQueue, bufferSerial]
+      worker.postMessage({
+        type: 'decode',
+        data: h264Nal.buffer,
+        offset: h264Nal.byteOffset,
+        length: h264Nal.byteLength,
+        renderStateId: this.surfaceH264DecodeId
+      }, [h264Nal.buffer])
+    })
   }
 
   /**
@@ -157,12 +160,12 @@ export default class H264BufferContentDecoder {
   }
 
   /**
-   * @param {Uint8Array}buffer
+   * @param {ArrayBuffer}data
    * @param {number}width
    * @param {number}height
-   * @private
    */
-  _onPictureDecoded (buffer, width, height) {
+  _onOpaquePictureDecoded ({ width, height, data }) {
+    const buffer = new Uint8Array(data)
     const frameSerial = this._decodingSerialsQueue.shift()
     const frameState = this._frameStates[frameSerial]
     frameState.result.opaque = {
@@ -182,9 +185,9 @@ export default class H264BufferContentDecoder {
    * @param {Uint8Array}buffer
    * @param {number}width
    * @param {number}height
-   * @private
    */
-  _onAlphaPictureDecoded (buffer, width, height) {
+  _onAlphaPictureDecoded ({ width, height, data }) {
+    const buffer = new Uint8Array(data)
     const frameSerial = this._decodingAlphaSerialsQueue.shift()
     const frameState = this._frameStates[frameSerial]
     frameState.result.alpha = {
@@ -201,21 +204,14 @@ export default class H264BufferContentDecoder {
   }
 
   destroy () {
-    if (this._decoder) {
-      this._decoder.release()
-      this._decoderFactory = null
-      this._decoder = null
-    }
-    if (this._alphaDecoder) {
-      this._alphaDecoder.release()
-      this._alphaDecoderFactory = null
-      this._alphaDecoder = null
-    }
+    opaqueWorker.then(worker => worker.postMessage({ type: 'release', renderStateId: this.surfaceH264DecodeId }))
+    alphaWorker.then(worker => worker.postMessage({ type: 'release', renderStateId: this.surfaceH264DecodeId }))
   }
 }
 
 /**
- * @type {number}
- * @private
+ * @type {Object.<string, H264BufferContentDecoder>}
  */
-H264BufferContentDecoder._nextDecoderId = 0
+H264BufferContentDecoder._decoders = {}
+
+export default H264BufferContentDecoder

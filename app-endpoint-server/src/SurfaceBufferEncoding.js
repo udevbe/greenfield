@@ -29,34 +29,35 @@ const { WireMessageUtil, Endpoint } = require('westfield-endpoint')
 const wlSurfaceInterceptor = require('./protocol/wl_surface_interceptor')
 const Encoder = require('./encoding/Encoder')
 
+let bufferSerial = -1
+
 class SurfaceBufferEncoding {
   static init () {
 
     /**
-     * attach
+     * attach, [R]equest w opcode [1]
      * @param {{buffer: ArrayBuffer, fds: Array<number>, bufferOffset: number, consumed: number, size: number}} message
      * @return {number}
      */
     wlSurfaceInterceptor.prototype.R1 = function (message) {
       const [bufferResourceId, x, y] = WireMessageUtil.unmarshallArgs(message, 'oii')
-      this.bufferResourceId = bufferResourceId
-      logger.debug(`Buffer attached with id: serial=${this.bufferSerial}, id=${this.bufferResourceId}`)
+      this.bufferResourceId = bufferResourceId || null
+      logger.debug(`Buffer attached with id: serial=${bufferSerial}, id=${this.bufferResourceId}`)
 
       return 0
     }
 
     /**
-     * commit
+     * commit, [R]equest with opcode [6]
      * @param {{buffer: ArrayBuffer, fds: Array<number>, bufferOffset: number, consumed: number, size: number}} message
      * @return {number}
      */
     wlSurfaceInterceptor.prototype.R6 = function (message) {
       if (!this.encoder) {
         this.encoder = Encoder.create()
-        this.bufferSerial = -1
       }
 
-      const syncSerial = ++this.bufferSerial
+      const syncSerial = ++bufferSerial
 
       // inject the frame serial in the commit message
       const origMessageBuffer = message.buffer
@@ -67,7 +68,7 @@ class SurfaceBufferEncoding {
       uint32Array[1] = ((message.size) << 16) | 6 // size + opcode
       uint32Array[2] = syncSerial
 
-      logger.debug(`Butter committing buffer: serial=${syncSerial}, id=${this.bufferResourceId}`)
+      logger.debug(`Buffer committed: serial=${syncSerial}, id=${this.bufferResourceId}`)
       if (this.bufferResourceId) {
         const bufferId = this.bufferResourceId
         this.bufferResourceId = 0

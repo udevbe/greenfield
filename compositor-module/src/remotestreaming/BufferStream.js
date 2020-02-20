@@ -44,11 +44,6 @@ export default class BufferStream {
      * @private
      */
     this._bufferStates = {}
-    /**
-     * @type {!Object.<number, {chunks: Array<ArrayBuffer>, received: number, totalSize: number}>}
-     * @private
-     */
-    this._bufferChunks = {}
   }
 
   /**
