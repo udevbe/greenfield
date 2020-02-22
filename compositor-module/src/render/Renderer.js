@@ -15,9 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import EncodingOptions from '../remotestreaming/EncodingOptions'
 import Scene from './Scene'
-import Size from '../Size'
 import Output from '../Output'
 
 export default class Renderer {
@@ -43,50 +41,6 @@ export default class Renderer {
      * @type {Session}
      */
     this.session = session
-    /**
-     * @type {HTMLImageElement}
-     * @private
-     */
-    this._emptyImage = new Image(0, 0)
-    /**
-     * @type {string}
-     * @private
-     */
-    this._emptyImage.src = '//:0'
-  }
-
-  /**
-   * @param {View}view
-   * @param {TexImageSource}buffer
-   * @private
-   */
-  _updateRenderState (view, buffer) {
-    const { texture, size: { w, h } } = view.renderState
-    if (buffer.width === w && buffer.height === h) {
-      texture.subImage2d(buffer, 0, 0)
-    } else {
-      view.renderState.size = Size.create(buffer.width, buffer.height)
-      texture.image2d(buffer)
-    }
-  }
-
-  /**
-   * @param {Surface}surface
-   * @param {SurfaceState}newState
-   */
-  async updateSurfaceRenderState (surface, newState) {
-    const views = surface.views
-    const bufferContents = newState.bufferContents
-
-    if (bufferContents) {
-      const renderStateUpdates = views.map(view => {
-        view.mapped = true
-        return this[bufferContents.mimeType](bufferContents, view)
-      })
-      await Promise.all(renderStateUpdates)
-    } else {
-      views.forEach(view => { view.mapped = false })
-    }
   }
 
   /**
@@ -116,58 +70,6 @@ export default class Renderer {
         this.session.globals.unregisterOutput(output)
       })
     }
-  }
-
-  /**
-   * @param {EncodedFrame}encodedFrame
-   * @param {View}view
-   * @return {Promise<void>}
-   * @private
-   */
-  async ['image/png'] (encodedFrame, view) {
-    const fullFrame = EncodingOptions.fullFrame(encodedFrame.encodingOptions)
-    const splitAlpha = EncodingOptions.splitAlpha(encodedFrame.encodingOptions)
-
-    if (fullFrame && !splitAlpha) {
-      // Full frame without a separate alpha. Let the browser do all the drawing.
-      const frame = encodedFrame.pixelContent[0]
-      const opaqueImageBlob = new Blob([frame.opaque], { type: 'image/png' })
-      const imageBitmap = await createImageBitmap(opaqueImageBlob, 0, 0, frame.geo.width, frame.geo.height)
-
-      this._updateRenderState(view, imageBitmap)
-    } else {
-      // we don't support/care about fragmented pngs (and definitely not with a separate alpha channel as png has it internal)
-      throw new Error(`Unsupported buffer. Encoding type: ${encodedFrame.mimeType}, full frame:${fullFrame}, split alpha: ${splitAlpha}`)
-    }
-  }
-
-  /**
-   * @param {EncodedFrame}encodedFrame
-   * @param {View}view
-   * @return {Promise<void>}
-   * @private
-   */
-  ['video/h264'] (encodedFrame, view) {
-    return view.scene.h264ToRGBA.decodeInto(encodedFrame, view)
-  }
-
-  /**
-   * @param {WebShmFrame}shmFrame
-   * @param {View}view
-   * @return {Promise<void>}
-   */
-  ['image/rgba'] (shmFrame, view) {
-    const imageData = shmFrame.pixelContent
-    this._updateRenderState(view, imageData)
-  }
-
-  /**
-   * @param {WebGLFrame}webGLFrame
-   * @param {View}view
-   * @return {Promise<void>}
-   */
-  ['image/canvas'] (webGLFrame, view) {
-    const canvas = webGLFrame.pixelContent
-    this._updateRenderState(view, canvas)
+    scene.render()
   }
 }

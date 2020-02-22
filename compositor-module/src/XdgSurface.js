@@ -211,13 +211,13 @@ export default class XdgSurface extends XdgSurfaceRequests {
     const xdgPopup = XdgPopup.create(xdgPopupResource, this, parent, positionerState, this._seat)
     this.ackConfigure = (resource, serial) => xdgPopup.ackConfigure(serial)
 
-    const onNewView = view => view.applyTransformations()
+    // const onNewView = view => view.applyTransformations()
 
     if (parent) {
       const parentXdgSurface = /** @type {XdgSurface} */parent.implementation
       const parentSurface = /** @type {Surface} */parentXdgSurface.wlSurfaceResource.implementation
-      const views = parentSurface.addChild(surface.surfaceChildSelf)
-      views.forEach(onNewView)
+      parentSurface.addChild(surface.surfaceChildSelf)
+      // views.forEach(onNewView)
     }
     // else {
     //   const view = surface.createView()
@@ -225,7 +225,7 @@ export default class XdgSurface extends XdgSurfaceRequests {
     // }
 
     // this handles the case where a view is created later on (ie if a new parent view is created)
-    surface.onViewCreated = onNewView
+    // surface.onViewCreated = onNewView
   }
 
   /**

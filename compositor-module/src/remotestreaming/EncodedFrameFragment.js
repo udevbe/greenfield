@@ -17,7 +17,7 @@
 
 import Rect from '../math/Rect'
 
-export default class EncodedFrameFragment {
+class EncodedFrameFragment {
   /**
    * @param {!string}encodingType
    * @param {!number}fragmentX
@@ -63,3 +63,5 @@ export default class EncodedFrameFragment {
     this.alpha = alpha
   }
 }
+
+export default EncodedFrameFragment

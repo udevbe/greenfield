@@ -61,6 +61,11 @@ export default class WebShmBuffer extends GrWebShmBufferRequests {
      * @type {WebShmFrame}
      */
     this._webShmFrame = webShmFrame
+    /**
+     * @type {boolean}
+     * @private
+     */
+    this._captured = false
   }
 
   /**
@@ -98,15 +103,28 @@ export default class WebShmBuffer extends GrWebShmBufferRequests {
   }
 
   /**
+   * @param {Surface}surface
    * @param {number}serial
    * @return {Promise<WebShmFrame>}
    */
-  async getContents (serial) {
+  async getContents (surface, serial) {
     return Promise.resolve(this._webShmFrame)
   }
 
   release () {
     this.resource.detach(this._pixelContent)
     this.bufferResource.release()
+    this._captured = false
+  }
+
+  capture () {
+    this._captured = true
+  }
+
+  /**
+   * @return {boolean}
+   */
+  get captured () {
+    return this._captured
   }
 }

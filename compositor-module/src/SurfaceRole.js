@@ -24,7 +24,6 @@ export default class SurfaceRole {
    *
    * @param {Surface}surface
    * @param {SurfaceState}newState
-   * @return {Promise<void>}
    */
   onCommit (surface, newState) {}
 

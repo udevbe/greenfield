@@ -867,25 +867,22 @@ class Surface extends WlSurfaceRequests {
    */
   async commit (resource, serial) {
     // const startCommit = Date.now()
-    let bufferContents = this.state.bufferContents
+    let bufferContents = null
 
-    if (this.state.bufferResource !== this.pendingWlBuffer) {
-      if (this.state.bufferResource) {
-        this.state.bufferResource.implementation.release()
-      }
-      if (this.pendingWlBuffer) {
-        this.pendingWlBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
-        const buffer = /** @type{BufferImplementation} */this.pendingWlBuffer.implementation
-        // const startBufferContents = Date.now()
-        try {
-          // window.GREENFIELD_DEBUG && console.log('|- Awaiting buffer contents.')
-          bufferContents = await buffer.getContents(serial)
-        } catch (e) {
-          console.error(`[surface: ${resource.id}] - Failed to receive buffer contents.`, e.toString())
-        }
-        // window.GREENFIELD_DEBUG && console.log(`|- Buffer contents took ${Date.now() - startBufferContents}ms`)
-      } else {
-        bufferContents = null
+    if (this.state.bufferResource && this.state.bufferResource.implementation.captured) {
+      this.state.bufferResource.implementation.release()
+    }
+
+    if (this.pendingWlBuffer) {
+      this.pendingWlBuffer.implementation.capture()
+      this.pendingWlBuffer.removeDestroyListener(this.pendingBufferDestroyListener)
+      // const startBufferContents = Date.now()
+      try {
+        // console.log('|- Awaiting buffer contents.')
+        bufferContents = await this.pendingWlBuffer.implementation.getContents(this, serial)
+        // console.log(`|--> Buffer contents took ${Date.now() - startBufferContents}ms`)
+      } catch (e) {
+        console.warn(`[surface: ${resource.id}] - Failed to receive buffer contents.`, e.toString())
       }
     }
 
@@ -894,10 +891,10 @@ class Surface extends WlSurfaceRequests {
     const newState = this._captureState(resource, this.pendingWlBuffer, bufferContents)
 
     if (newState && this.role && typeof this.role.onCommit === 'function') {
-      // window.GREENFIELD_DEBUG && console.log('|- Awaiting surface role commit.')
+      // console.log('|- Awaiting surface role commit.')
       // const startFrameCommit = Date.now()
-      await this.role.onCommit(this, newState)
-      // window.GREENFIELD_DEBUG && console.log(`|- Role commit took ${Date.now() - startFrameCommit}ms`)
+      this.role.onCommit(this, newState)
+      // console.log(`|--> Role commit took ${Date.now() - startFrameCommit}ms`)
       if (newState.inputPixmanRegion) {
         Region.destroyPixmanRegion(newState.inputPixmanRegion)
       }
@@ -909,11 +906,14 @@ class Surface extends WlSurfaceRequests {
     const frameCallbacks = this.state.frameCallbacks
     this.state.frameCallbacks = []
 
+    // console.log('|- Awaiting scene render.')
+    // const startSceneRender = Date.now()
     this.scheduleRender().then(() => {
       frameCallbacks.forEach(frameCallback => frameCallback.done(Date.now() & 0x7fffffff))
       this.session.flush()
+      // console.log(`|--> Scene render took ${Date.now() - startSceneRender}ms.`)
     })
-    // window.GREENFIELD_DEBUG && console.log(`-------> total commit took ${Date.now() - startCommit}`)
+    // console.log(`-------> total commit took ${Date.now() - startCommit}`)
   }
 
   /**
@@ -923,18 +923,22 @@ class Surface extends WlSurfaceRequests {
   scheduleRender () {
     return Promise.all(
       this.views
+        .map(view => {
+          view.damaged = true
+          return view
+        })
         .map(view => view.scene)
-        .map(scene => scene.renderFrame ? scene.renderFrame : scene.render()))
+        .map(scene => scene.render()))
   }
 
   /**
    * @param {SurfaceState}newState
    */
-  async updateRenderState (newState) {
+  updateState (newState) {
     if (this.subsurfaceChildren.length > 1) {
       this.subsurfaceChildren = this.pendingSubsurfaceChildren.slice()
 
-      await Promise.all(this.subsurfaceChildren.map(async (surfaceChild) => {
+      this.subsurfaceChildren.map(async (surfaceChild) => {
         const siblingSurface = surfaceChild.surface
         if (siblingSurface !== this) {
           const siblingSubsurface = /** @type Subsurface */ siblingSurface.role
@@ -945,11 +949,8 @@ class Surface extends WlSurfaceRequests {
           }
           await siblingSubsurface.onParentCommit(this)
         }
-      }))
+      })
     }
-
-    // window.GREENFIELD_DEBUG && console.log('|- Awaiting surface render.')
-    await this.renderer.updateSurfaceRenderState(this, newState)
 
     this.updateDerivedState(newState)
     Surface.mergeState(this.state, newState)

@@ -71,10 +71,6 @@ export default class View {
      */
     this.positionOffset = Point.create(0, 0)
     /**
-     * @type {boolean}
-     */
-    this.disableInputRegion = false
-    /**
      * @type {Mat4}
      */
     this._transformation = transformation
@@ -105,6 +101,10 @@ export default class View {
      * @type {boolean}
      */
     this.mapped = true
+    /**
+     * @type {boolean}
+     */
+    this.damaged = true
   }
 
   /**
@@ -124,7 +124,7 @@ export default class View {
           this.parent = null
         }
       })
-      this.applyTransformations()
+      // this.applyTransformations()
     }
   }
 

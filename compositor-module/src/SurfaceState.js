@@ -17,8 +17,8 @@
 
 export default class SurfaceState {
   /**
-   * @param {?WlBufferResource}bufferResource
-   * @param {?BufferContents}bufferContents
+   * @param {WlBufferResource}bufferResource
+   * @param {BufferContents}bufferContents
    * @param {Array<Rect>}bufferDamageRects
    * @param {number}opaquePixmanRegion
    * @param {number}inputPixmanRegion
@@ -58,8 +58,8 @@ export default class SurfaceState {
   }
 
   /**
-   * @param {?WlBufferResource}bufferResource
-   * @param {?BufferContents}bufferContents
+   * @param {WlBufferResource}bufferResource
+   * @param {BufferContents}bufferContents
    * @param {Array<Rect>}bufferDamageRects
    * @param {number}opaquePixmanRegion
    * @param {number}inputPixmanRegion
@@ -84,11 +84,11 @@ export default class SurfaceState {
     roleState
   ) {
     /**
-     * @type {?WlBufferResource}
+     * @type {WlBufferResource}
      */
     this.bufferResource = bufferResource
     /**
-     * @type {?BufferContents}
+     * @type {BufferContents}
      */
     this.bufferContents = bufferContents
     /**

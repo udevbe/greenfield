@@ -147,10 +147,9 @@ export default class ShellSurface extends WlShellSurfaceRequests {
   /**
    * @param {Surface}surface
    * @param {?SurfaceState}newState
-   * @return {Promise<void>}
    * @override
    */
-  async onCommit (surface, newState) {
+  onCommit (surface, newState) {
     const oldPosition = surface.surfaceChildSelf.position
     surface.surfaceChildSelf.position = Point.create(oldPosition.x + newState.dx, oldPosition.y + newState.dy)
 
@@ -164,7 +163,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
       }
     }
 
-    await surface.updateRenderState(newState)
+    surface.updateState(newState)
   }
 
   /**
@@ -267,7 +266,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
       const deltaY = pointer.y - pointerY
 
       topLevelView.positionOffset = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
-      topLevelView.applyTransformations()
+      // topLevelView.applyTransformations()
       surface.scheduleRender()
     }
 
@@ -551,7 +550,7 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     const surfaceChild = surface.surfaceChildSelf
     surfaceChild.position = Point.create(x, y)
     const onNewView = view => {
-      view.applyTransformations()
+      // view.applyTransformations()
       view.onDestroy().then(() => view.detach())
     }
     // having added this shell-surface to a parent will have it create a view for each parent view

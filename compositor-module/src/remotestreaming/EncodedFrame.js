@@ -18,12 +18,11 @@
 import EncodedFrameFragment from './EncodedFrameFragment'
 import EncodingTypes from './EncodingMimeTypes'
 import Size from '../Size'
-import BufferContents from '../BufferContents'
 
 /**
  * @implements BufferContents
  */
-export default class EncodedFrame extends BufferContents {
+export default class EncodedFrame {
   /**
    * @param {!Uint8Array}u8Buffer
    * @return {!EncodedFrame}
@@ -76,14 +75,13 @@ export default class EncodedFrame extends BufferContents {
 
   /**
    * @private
-   * @param {!number}serial
-   * @param {!string}mimeType
-   * @param {!number}encodingOptions
-   * @param {!Size}size
-   * @param {!Array<EncodedFrameFragment>}fragments
+   * @param {number}serial
+   * @param {string}mimeType
+   * @param {number}encodingOptions
+   * @param {Size}size
+   * @param {Array<EncodedFrameFragment>}fragments
    */
   constructor (serial, mimeType, encodingOptions, size, fragments) {
-    super()
     /**
      * @type {number}
      * @private
@@ -136,4 +134,9 @@ export default class EncodedFrame extends BufferContents {
    * @override
    */
   get size () { return this._size }
+
+  /**
+   *@override
+   */
+  validateSize () { /* NOOP */ }
 }

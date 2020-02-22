@@ -18,12 +18,22 @@
 /**
  * @interface
  */
-export default class BufferImplementation {
+class BufferImplementation {
   /**
+   * @param {Surface}surface
    * @param {number}serial
-   * @return {BufferContents}
+   * @return {Promise<BufferContents>}
    */
-  async getContents (serial) {}
+  async getContents (surface, serial) {}
 
   release () {}
+
+  capture () {}
+
+  /**
+   * @return {boolean}
+   */
+  get captured () {}
 }
+
+export default BufferImplementation

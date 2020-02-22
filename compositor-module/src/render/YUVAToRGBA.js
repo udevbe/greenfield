@@ -2,7 +2,7 @@ import YUVA2RGBAShader from './YUVA2RGBAShader'
 import YUV2RGBShader from './YUV2RGBShader'
 import Texture from './Texture'
 
-class H264ToRGBA {
+class YUVAToRGBA {
   static create (gl) {
     gl.clearColor(0, 0, 0, 0)
 
@@ -16,7 +16,7 @@ class H264ToRGBA {
 
     const framebuffer = gl.createFramebuffer()
 
-    return new H264ToRGBA(
+    return new YUVAToRGBA(
       gl,
       yuvaSurfaceShader,
       yuvSurfaceShader,
@@ -37,7 +37,6 @@ class H264ToRGBA {
    * @param {Texture}uTexture
    * @param {Texture}vTexture
    * @param {Texture}alphaTexture
-   * @param {H264BufferContentDecoder}h264BufferContentDecoder
    */
   constructor (
     gl,
@@ -47,8 +46,7 @@ class H264ToRGBA {
     yTexture,
     uTexture,
     vTexture,
-    alphaTexture,
-    h264BufferContentDecoder
+    alphaTexture
   ) {
     /**
      * @type {Texture}
@@ -85,16 +83,18 @@ class H264ToRGBA {
   }
 
   /**
-   * @param {EncodedFrame}encodedFrame
+   * @param {opaque: {buffer:Uint8Array, width: number, height:number}, alpha:{buffer:Uint8Array, width: number, height:number}}yuva
+   * @param {Size}frameSize
    * @param {View}view
-   * @return {Promise<void>}
-   * @override
    */
-  async decodeInto (encodedFrame, view) {
+  convertInto (yuva, frameSize, view) {
+    const { alpha, opaque } = yuva
     // const start = Date.now()
-    const { alpha, opaque } = await view.surface.h264BufferContentDecoder.decode(encodedFrame)
+    if (view.destroyed) {
+      return
+    }
     const renderState = view.renderState
-    // window.GREENFIELD_DEBUG && console.log(`|- Decoding took ${Date.now() - start}ms`)
+    // console.log(`|--> Decoding took ${Date.now() - start}ms`)
 
     // the width & height returned are actually padded, so we have to use the frame size to get the real image dimension
     // when uploading to texture
@@ -102,8 +102,8 @@ class H264ToRGBA {
     const opaqueStride = opaque.width // stride
     const opaqueHeight = opaque.height // padded with filler rows
 
-    const maxXTexCoord = encodedFrame.size.w / opaqueStride
-    const maxYTexCoord = encodedFrame.size.h / opaqueHeight
+    const maxXTexCoord = frameSize.w / opaqueStride
+    const maxYTexCoord = frameSize.h / opaqueHeight
 
     const lumaSize = opaqueStride * opaqueHeight
     const chromaSize = lumaSize >> 2
@@ -112,7 +112,7 @@ class H264ToRGBA {
     const uBuffer = opaqueBuffer.subarray(lumaSize, lumaSize + chromaSize)
     const vBuffer = opaqueBuffer.subarray(lumaSize + chromaSize, lumaSize + (2 * chromaSize))
 
-    const isSubImage = encodedFrame.size.w === opaqueStride && encodedFrame.size.h === opaqueHeight
+    const isSubImage = frameSize.w === opaqueStride && frameSize.h === opaqueHeight
 
     const chromaHeight = opaqueHeight >> 1
     const chromaStride = opaqueStride >> 1
@@ -129,9 +129,9 @@ class H264ToRGBA {
       this.vTexture.image2dBuffer(vBuffer, chromaStride, chromaHeight)
     }
 
-    if (!renderState.size.equals(encodedFrame.size)) {
-      renderState.size = encodedFrame.size
-      renderState.texture.image2dBuffer(null, encodedFrame.size.w, encodedFrame.size.h)
+    if (!renderState.size.equals(frameSize)) {
+      renderState.size = frameSize
+      renderState.texture.image2dBuffer(null, frameSize.w, frameSize.h)
     }
     if (alpha) {
       const alphaStride = alpha.width // stride
@@ -167,7 +167,7 @@ class H264ToRGBA {
     this.yuvSurfaceShader.setTexture(this.yTexture, this.uTexture, this.vTexture)
     this.yuvSurfaceShader.updateShaderData(renderState.size, maxXTexCoord, maxYTexCoord)
     this.yuvSurfaceShader.draw()
-    this.yuvaSurfaceShader.release()
+    this.yuvSurfaceShader.release()
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null)
   }
 
@@ -178,13 +178,12 @@ class H264ToRGBA {
    * @private
    */
   _yuva2rgba (renderState, maxXTexCoord, maxYTexCoord) {
-    this.yuvaSurfaceShader.use()
-
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer)
     const attachmentPoint = this.gl.COLOR_ATTACHMENT0
     const level = 0
     this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, attachmentPoint, this.gl.TEXTURE_2D, renderState.texture.texture, level)
 
+    this.yuvaSurfaceShader.use()
     this.yuvaSurfaceShader.setTexture(this.yTexture, this.uTexture, this.vTexture, this.alphaTexture)
     this.yuvaSurfaceShader.updateShaderData(renderState.size, maxXTexCoord, maxYTexCoord)
     this.yuvaSurfaceShader.draw()
@@ -193,4 +192,4 @@ class H264ToRGBA {
   }
 }
 
-export default H264ToRGBA
+export default YUVAToRGBA

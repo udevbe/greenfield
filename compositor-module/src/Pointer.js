@@ -229,16 +229,15 @@ export default class Pointer extends WlPointerRequests {
   /**
    * @param {Surface}surface
    * @param {SurfaceState}newState
-   * @return {Promise<void>}
    * @override
    */
-  async onCommit (surface, newState) {
+  onCommit (surface, newState) {
     this.hotspotX -= newState.dx
     this.hotspotY -= newState.dy
 
     if (this._cursorSurface && this._cursorSurface.implementation === surface) {
       if (newState.bufferContents) {
-        await surface.updateRenderState(newState)
+        surface.updateState(newState)
       }
     }
   }
@@ -448,7 +447,7 @@ export default class Pointer extends WlPointerRequests {
     this.scene = this.session.renderer.scenes[event.sceneId]
     if (this.scene.pointerView) {
       this.scene.pointerView.positionOffset = Point.create(this.x, this.y).minus(Point.create(this.hotspotX, this.hotspotY))
-      this.scene.pointerView.applyTransformations()
+      // this.scene.pointerView.applyTransformations()
       this.scene.render()
     }
 

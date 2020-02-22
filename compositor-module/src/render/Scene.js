@@ -1,7 +1,7 @@
 import RenderFrame from './RenderFrame'
 import SceneShader from './SceneShader'
 import Size from '../Size'
-import H264ToRGBA from './H264ToRGBA'
+import YUVAToRGBA from './YUVAToRGBA'
 
 class Scene {
   /**
@@ -13,8 +13,8 @@ class Scene {
    */
   static create (session, gl, canvas, output) {
     const sceneShader = SceneShader.create(gl)
-    const h264ToRGBA = H264ToRGBA.create(gl)
-    return new Scene(session, canvas, gl, sceneShader, h264ToRGBA, output)
+    const yuvaToRgba = YUVAToRGBA.create(gl)
+    return new Scene(session, canvas, gl, sceneShader, yuvaToRgba, output)
   }
 
   /**
@@ -22,10 +22,10 @@ class Scene {
    * @param {HTMLCanvasElement}canvas
    * @param {WebGLRenderingContext}gl
    * @param {SceneShader}sceneShader
-   * @param {H264ToRGBA}h264ToRGBA
+   * @param {YUVAToRGBA}yuvaToRgba
    * @param {Output}output
    */
-  constructor (session, canvas, gl, sceneShader, h264ToRGBA, output) {
+  constructor (session, canvas, gl, sceneShader, yuvaToRgba, output) {
     /**
      * @type {Session}
      */
@@ -47,9 +47,9 @@ class Scene {
      */
     this.sceneShader = sceneShader
     /**
-     * @type {H264ToRGBA}
+     * @type {YUVAToRGBA}
      */
-    this.h264ToRGBA = h264ToRGBA
+    this._yuvaToRGBA = yuvaToRgba
     /**
      * @type {Output}
      */
@@ -64,8 +64,9 @@ class Scene {
     this.pointerView = null
     /**
      * @type {Promise<void>}
+     * @private
      */
-    this.renderFrame = null
+    this._renderFrame = null
     /**
      * @type {function():void}
      * @private
@@ -91,27 +92,56 @@ class Scene {
   }
 
   /**
+   * @param {View}view
+   * @private
+   */
+  _prepareViewRenderState (view) {
+    view.applyTransformations()
+    const { bufferResource, bufferContents } = view.surface.state
+    if (view.mapped && bufferResource && bufferContents && view.damaged) {
+      this[bufferContents.mimeType](bufferContents, view)
+      view.damaged = false
+    }
+
+    if (bufferResource && bufferResource.implementation.captured && view.surface.views.filter(view => view.damaged).length === 0) {
+      bufferResource.implementation.release()
+    }
+  }
+
+  /**
    * @return {Promise<void>}
    */
   render () {
-    if (!this.renderFrame) {
-      this.renderFrame = RenderFrame.create()
-      this.renderFrame.then(() => {
+    if (!this._renderFrame) {
+      this._renderFrame = RenderFrame.create()
+      this._renderFrame.then(() => {
         this._ensureResolution()
+        const viewStack = this._viewStack()
 
-        this.renderFrame = null
+        // update textures
+        viewStack.forEach(view => this._prepareViewRenderState(view))
+        if (this.pointerView && this.session.globals.seat.pointer.scene === this) {
+          this._prepareViewRenderState(this.pointerView)
+        }
+
+        // render view texture
         this.sceneShader.use()
         this.sceneShader.updateSceneData(Size.create(this.canvas.width, this.canvas.height))
-        this._viewStack().forEach(view => this._renderView(view))
+        viewStack.forEach(view => this._renderView(view))
         if (this.pointerView && this.session.globals.seat.pointer.scene === this) {
           this._renderView(this.pointerView)
         }
         this.sceneShader.release()
+
+        this._renderFrame = null
       })
     }
-    return this.renderFrame
+    return this._renderFrame
   }
 
+  /**
+   * @param {Surface}surface
+   */
   updatePointerView (surface) {
     if (this.pointerView !== null && this.pointerView.surface !== surface) {
       this.pointerView.destroy()
@@ -129,10 +159,26 @@ class Scene {
 
   /**
    * @param {View}view
+   * @param {TexImageSource}buffer
+   * @private
+   */
+  _updateViewRenderStateWithTexImageSource (view, buffer) {
+    const { texture, size: { w, h } } = view.renderState
+    if (buffer.width === w && buffer.height === h) {
+      texture.subImage2d(buffer, 0, 0)
+    } else {
+      view.renderState.size = Size.create(buffer.width, buffer.height)
+      texture.image2d(buffer)
+    }
+  }
+
+  /**
+   * @param {View}view
    * @private
    */
   _renderView (view) {
-    if (view.mapped) {
+    const { bufferResource, bufferContents } = view.surface.state
+    if (view.mapped && bufferResource && bufferContents) {
       this.sceneShader.updateViewData(view)
       this.sceneShader.draw()
     }
@@ -207,6 +253,42 @@ class Scene {
   _addToViewStack (stack, view) {
     stack.push(view)
     view.findChildViews().forEach(view => this._addToViewStack(stack, view))
+  }
+
+  /**
+   * @param {DecodedFrame}decodedFrame
+   * @param {View}view
+   * @private
+   */
+  ['video/h264'] (decodedFrame, view) {
+    this._yuvaToRGBA.convertInto(decodedFrame.pixelContent, decodedFrame.size, view)
+  }
+
+  /**
+   * @param {DecodedFrame}decodedFrame
+   * @param {View}view
+   * @private
+   */
+  ['image/png'] (decodedFrame, view) {
+    this._updateViewRenderStateWithTexImageSource(view, decodedFrame.pixelContent)
+  }
+
+  /**
+   * @param {WebShmFrame}shmFrame
+   * @param {View}view
+   * @return {Promise<void>}
+   */
+  ['image/rgba'] (shmFrame, view) {
+    this._updateViewRenderStateWithTexImageSource(view, shmFrame.pixelContent)
+  }
+
+  /**
+   * @param {WebGLFrame}webGLFrame
+   * @param {View}view
+   * @return {Promise<void>}
+   */
+  ['image/canvas'] (webGLFrame, view) {
+    this._updateViewRenderStateWithTexImageSource(view, webGLFrame.pixelContent)
   }
 }
 

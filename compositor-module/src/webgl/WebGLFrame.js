@@ -15,13 +15,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import BufferContents from '../BufferContents'
 import Size from '../Size'
 
 /**
  * @implements BufferContents
  */
-export default class WebGLFrame extends BufferContents {
+export default class WebGLFrame {
   /**
    * @param {HTMLCanvasElement} canvas
    * @return {WebGLFrame}
@@ -35,7 +34,6 @@ export default class WebGLFrame extends BufferContents {
    * @param {Size}size
    */
   constructor (canvas, size) {
-    super()
     /**
      * @type {HTMLCanvasElement}
      * @private
@@ -70,6 +68,9 @@ export default class WebGLFrame extends BufferContents {
    */
   get size () { return this._size }
 
+  /**
+   * @override
+   */
   validateSize () {
     this._size = Size.create(this._canvas.width, this._canvas.height)
   }

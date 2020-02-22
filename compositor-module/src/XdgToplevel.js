@@ -238,10 +238,9 @@ export default class XdgToplevel extends XdgToplevelRequests {
   /**
    * @param {Surface}surface
    * @param {SurfaceState}newState
-   * @return {Promise<void>}
    * @override
    */
-  async onCommit (surface, newState) {
+  onCommit (surface, newState) {
     if (newState.bufferContents) {
       if (!this.mapped) {
         this._map(surface)
@@ -259,7 +258,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
       this._unmap()
     }
 
-    await surface.updateRenderState(newState)
+    surface.updateState(newState)
   }
 
   /**
@@ -318,9 +317,18 @@ export default class XdgToplevel extends XdgToplevelRequests {
     }
 
     if (dx || dy) {
-      const { x, y } = surface.surfaceChildSelf.position
-      surface.surfaceChildSelf.position = Point.create(x + dx, y + dy)
-      surface.views.forEach(value => value.applyTransformations())
+      Object.values(this._session.renderer.scenes).forEach(scene => {
+        scene.topLevelViews
+          .filter(topLevelView => topLevelView.surface === surface)
+          .forEach(topLevelView => {
+            const origPosition = topLevelView.positionOffset
+            topLevelView.positionOffset = Point.create(origPosition.x + dx, origPosition.y + dy)
+          })
+      })
+
+      // const { x, y } = surface.surfaceChildSelf.position
+      // surface.surfaceChildSelf.position = Point.create(x + dx, y + dy)
+      // surface.views.forEach(value => value.applyTransformations())
     }
   }
 
@@ -351,7 +359,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const viewPositionOffset = primaryView.toViewSpaceFromSurface(windowGeoPositionOffset)
 
     primaryView.customTransformation = Mat4.translation(0 - viewPositionOffset.x, 0 - viewPositionOffset.y)
-    primaryView.applyTransformations()
+    // primaryView.applyTransformations()
   }
 
   /**
@@ -379,7 +387,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
     const y = (window.innerHeight - newSurfaceHeight) / 2
 
     surface.surfaceChildSelf.position = Point.create(x, y)
-    surface.views.forEach(value => value.applyTransformations())
+    // surface.views.forEach(value => value.applyTransformations())
     // TODO use api to nofity user shell scene canvas should be made fullscreen
   }
 
@@ -393,7 +401,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
       // restore position (we came from a fullscreen or maximize and must restore the position)
       const primaryView = surface.views.find(view => { return view.primary })
       primaryView.customTransformation = null
-      primaryView.applyTransformations()
+      // primaryView.applyTransformations()
       this._previousGeometry = null
     }
     if (this._unfullscreenConfigureState) {
@@ -645,7 +653,7 @@ export default class XdgToplevel extends XdgToplevelRequests {
       const deltaY = pointer.y - pointerY
 
       topLevelView.positionOffset = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
-      topLevelView.applyTransformations()
+      // topLevelView.applyTransformations()
       surface.scheduleRender()
     }
 

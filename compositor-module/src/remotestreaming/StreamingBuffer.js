@@ -17,6 +17,9 @@
 
 import { WlBufferRequests } from 'westfield-runtime-server'
 import BufferStream from './BufferStream'
+import FrameDecoder from './FrameDecoder'
+
+const frameDecoder = FrameDecoder.create()
 
 /**
  *
@@ -30,9 +33,8 @@ import BufferStream from './BufferStream'
  */
 export default class StreamingBuffer extends WlBufferRequests {
   /**
-   *
-   * @param {!WlBufferResource} wlBufferResource
-   * @return {!StreamingBuffer}
+   * @param {WlBufferResource} wlBufferResource
+   * @return {StreamingBuffer}
    */
   static create (wlBufferResource) {
     const bufferStream = BufferStream.create(wlBufferResource)
@@ -44,7 +46,7 @@ export default class StreamingBuffer extends WlBufferRequests {
   /**
    * Instead use StreamingBuffer.create(..)
    * @private
-   * @param {!WlBufferResource}wlBufferResource
+   * @param {WlBufferResource}wlBufferResource
    * @param {BufferStream}bufferStream
    */
   constructor (wlBufferResource, bufferStream) {
@@ -58,11 +60,16 @@ export default class StreamingBuffer extends WlBufferRequests {
      * @type {BufferStream}
      */
     this.bufferStream = bufferStream
+    /**
+     * @type {boolean}
+     * @private
+     */
+    this._captured = false
   }
 
   /**
    *
-   * @param {!WlBufferResource} resource
+   * @param {WlBufferResource} resource
    *
    * @since 1
    * @override
@@ -73,15 +80,28 @@ export default class StreamingBuffer extends WlBufferRequests {
   }
 
   /**
-   * @param commitSerial
-   * @return {!Promise<EncodedFrame>}
+   * @param {Surface}surface
+   * @param {number}commitSerial
+   * @return {Promise<DecodedFrame>}
    * @override
    */
-  async getContents (commitSerial) {
-    return this.bufferStream.onFrameAvailable(commitSerial)
+  getContents (surface, commitSerial) {
+    return this.bufferStream.onFrameAvailable(commitSerial).then(encodedFrame => frameDecoder.decode(surface, encodedFrame))
   }
 
   release () {
     this.resource.release()
+    this._captured = false
+  }
+
+  capture () {
+    this._captured = true
+  }
+
+  /**
+   * @return {boolean}
+   */
+  get captured () {
+    return this._captured
   }
 }

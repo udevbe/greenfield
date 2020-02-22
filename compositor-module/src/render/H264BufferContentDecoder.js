@@ -106,20 +106,20 @@ class H264BufferContentDecoder {
   }
 
   /**
-   * @param {EncodedFrame}bufferContents
+   * @param {EncodedFrame}encodedFrame
    * @return {Promise<void>}
    * @private
    */
-  _decodeH264 (bufferContents) {
-    const bufferSerial = bufferContents.serial
-    const fullFrame = EncodingOptions.fullFrame(bufferContents.encodingOptions)
+  _decodeH264 (encodedFrame) {
+    const bufferSerial = encodedFrame.serial
+    const fullFrame = EncodingOptions.fullFrame(encodedFrame.encodingOptions)
     if (!fullFrame) {
       throw new Error('h264 encoded buffers must contain the full frame.')
     }
-    const hasAlpha = EncodingOptions.splitAlpha(bufferContents.encodingOptions)
+    const hasAlpha = EncodingOptions.splitAlpha(encodedFrame.encodingOptions)
 
     if (hasAlpha) {
-      const alphaPixelContent = bufferContents.pixelContent[0].alpha
+      const alphaPixelContent = encodedFrame.pixelContent[0].alpha
       const h264Nal = alphaPixelContent.slice()
       alphaWorker.then(worker => {
         this._decodingAlphaSerialsQueue = [...this._decodingAlphaSerialsQueue, bufferSerial]
@@ -136,7 +136,7 @@ class H264BufferContentDecoder {
       this._frameStates[bufferSerial].state = 'pending_opaque'
     }
 
-    const h264Nal = bufferContents.pixelContent[0].opaque
+    const h264Nal = encodedFrame.pixelContent[0].opaque
     opaqueWorker.then(worker => {
       this._decodingSerialsQueue = [...this._decodingSerialsQueue, bufferSerial]
       worker.postMessage({

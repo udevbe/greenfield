@@ -54,6 +54,11 @@ export default class WebGLBuffer {
      * @private
      */
     this._canvas = canvas
+    /**
+     * @type {boolean}
+     * @private
+     */
+    this._captured = false
   }
 
   /**
@@ -76,14 +81,27 @@ export default class WebGLBuffer {
   }
 
   /**
-   * @param serial
+   * @param {Surface}surface
+   * @param {number}serial
    * @return {Promise<WebGLFrame>}
    */
-  async getContents (serial) {
+  async getContents (surface, serial) {
     return WebGLFrame.create(this._canvas)
   }
 
   release () {
     this.bufferResource.release()
+    this._captured = false
+  }
+
+  capture () {
+    this._captured = true
+  }
+
+  /**
+   * @return {boolean}
+   */
+  get captured () {
+    return this._captured
   }
 }

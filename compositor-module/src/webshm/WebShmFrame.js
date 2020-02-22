@@ -16,12 +16,11 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import Size from '../Size'
-import BufferContents from '../BufferContents'
 
 /**
  * @implements BufferContents
  */
-export default class WebShmFrame extends BufferContents {
+export default class WebShmFrame {
   /**
    * @param {number}width
    * @param {number}height
@@ -36,7 +35,6 @@ export default class WebShmFrame extends BufferContents {
    * @param {number}height
    */
   constructor (width, height) {
-    super()
     /**
      * @type {Size}
      * @private
@@ -80,4 +78,9 @@ export default class WebShmFrame extends BufferContents {
     const arrayBuffer = /** @type {ArrayBuffer} */ await pixelContent.getTransferable()
     this._pixelContent = new ImageData(new Uint8ClampedArray(arrayBuffer), this._size.w, this._size.h)
   }
+
+  /**
+   * @override
+   */
+  validateSize () { /* NOOP */ }
 }
