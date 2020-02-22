@@ -29,8 +29,6 @@ const { WireMessageUtil, Endpoint } = require('westfield-endpoint')
 const wlSurfaceInterceptor = require('./protocol/wl_surface_interceptor')
 const Encoder = require('./encoding/Encoder')
 
-let bufferSerial = -1
-
 class SurfaceBufferEncoding {
   static init () {
 
@@ -42,7 +40,7 @@ class SurfaceBufferEncoding {
     wlSurfaceInterceptor.prototype.R1 = function (message) {
       const [bufferResourceId, x, y] = WireMessageUtil.unmarshallArgs(message, 'oii')
       this.bufferResourceId = bufferResourceId || null
-      logger.debug(`Buffer attached with id: serial=${bufferSerial}, id=${this.bufferResourceId}`)
+      // logger.debug(`Buffer attached with id: serial=${bufferSerial}, id=${this.bufferResourceId}`)
 
       return 0
     }
@@ -55,9 +53,10 @@ class SurfaceBufferEncoding {
     wlSurfaceInterceptor.prototype.R6 = function (message) {
       if (!this.encoder) {
         this.encoder = Encoder.create()
+        this._bufferSerial = -1
       }
 
-      const syncSerial = ++bufferSerial
+      const syncSerial = ++this._bufferSerial
 
       // inject the frame serial in the commit message
       const origMessageBuffer = message.buffer
@@ -68,20 +67,23 @@ class SurfaceBufferEncoding {
       uint32Array[1] = ((message.size) << 16) | 6 // size + opcode
       uint32Array[2] = syncSerial
 
-      logger.debug(`Buffer committed: serial=${syncSerial}, id=${this.bufferResourceId}`)
+      // logger.debug(`Buffer committed: serial=${syncSerial}, id=${this.bufferResourceId}`)
       if (this.bufferResourceId) {
         const bufferId = this.bufferResourceId
         this.bufferResourceId = 0
 
         const { buffer, format, width, height } = Endpoint.getShmBuffer(this.wlClient, bufferId)
-        logger.debug(`Request buffer encoding: serial=${syncSerial}, id=${bufferId}`)
+        // logger.debug(`Request buffer encoding: serial=${syncSerial}, id=${bufferId}`)
+        // console.log('|- Awaiting buffer encoding.')
+        // const start = Date.now()
         this.encoder.encodeBuffer(Buffer.from(buffer), format, width, height, syncSerial).then((/** @type {EncodedFrame} */encodedFrame) => {
-          logger.debug(`Buffer encoding finished: serial=${syncSerial}, id=${bufferId}`)
+          // console.log(`|--> Buffer encoding took: ${Date.now() - start}`)
+          // logger.debug(`Buffer encoding finished: serial=${syncSerial}, id=${bufferId}`)
 
           // send buffer contents. opcode: 3. bufferId + chunk
           const sendBuffer = Buffer.concat([Buffer.from(new Uint32Array([3, bufferId]).buffer), encodedFrame.toBuffer()])
           if (this.userData.communicationChannel.readyState === 1) { // 1 === 'open'
-            logger.debug(`Sending buffer contents: serial=${syncSerial}, id=${bufferId}`)
+            // logger.debug(`Sending buffer contents: serial=${syncSerial}, id=${bufferId}`)
             this.userData.communicationChannel.send(sendBuffer.buffer.slice(sendBuffer.byteOffset, sendBuffer.byteOffset + sendBuffer.byteLength))
           } // else connection was probably closed, don't attempt to send a buffer chunk
         }).catch(e => {

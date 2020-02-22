@@ -7,6 +7,6 @@
     "postinstall": "cmake-js"
   },
   "devDependencies": {
-    "cmake-js": "^5.3.2"
+    "cmake-js": "^6.0.0"
   }
 }

@@ -113,9 +113,7 @@ class NVH264AlphaEncoder {
     let encodingOptions = 0
     encodingOptions = EncodingOptions.enableSplitAlpha(encodingOptions)
     encodingOptions = EncodingOptions.enableFullFrame(encodingOptions)
-    const start = Date.now()
     const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)
-    console.log(`---------> NVH264Alpha encoding frame took ${Date.now() - start}ms`)
     return EncodedFrame.create(serial, h264, encodingOptions, bufferWidth, bufferHeight, [encodedFrameFragment])
   }
 }

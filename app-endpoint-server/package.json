@@ -21,7 +21,7 @@
     "epoll": "^3.0.0",
     "json5": "^2.1.1",
     "pino": "^5.16.0",
-    "pino-pretty": "^3.5.0",
+    "pino-pretty": "^3.6.0",
     "websocket-stream": "^5.5.0",
     "westfield-endpoint": "0.2.6",
     "ws": "^7.2.1"
