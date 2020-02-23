@@ -597,13 +597,13 @@ export default class ShellSurface extends WlShellSurfaceRequests {
     this.state = SurfaceStates.MAXIMIZED
     const surface = this.wlSurfaceResource.implementation
 
-    // TODO get proper size in surface coordinates instead of assume surface space === global space
-    const x = 0
-    // FIXME
-    const { height: y } = this.session.userShell.panel.getBoundingClientRect()
-    const { width, height } = this.session.userShell.workspace.getBoundingClientRect()
+    // FIXME get proper size in surface coordinates instead of assume surface space === global space
+    const scene = this._session.globals.seat.pointer.scene
 
-    surface.surfaceChildSelf.position = Point.create(x, y)
+    const width = scene.canvas.width
+    const height = scene.canvas.height
+
+    surface.views.forEach(view => { view.positionOffset = Point.create(0, 0) })
     this.resource.configure(none, width, height)
   }
 

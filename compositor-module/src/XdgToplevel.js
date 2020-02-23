@@ -317,19 +317,24 @@ export default class XdgToplevel extends XdgToplevelRequests {
     }
 
     if (dx || dy) {
-      Object.values(this._session.renderer.scenes).forEach(scene => {
-        scene.topLevelViews
-          .filter(topLevelView => topLevelView.surface === surface)
-          .forEach(topLevelView => {
-            const origPosition = topLevelView.positionOffset
-            topLevelView.positionOffset = Point.create(origPosition.x + dx, origPosition.y + dy)
-          })
+      this._findTopLevelViews(surface).forEach(topLevelView => {
+        const origPosition = topLevelView.positionOffset
+        topLevelView.positionOffset = Point.create(origPosition.x + dx, origPosition.y + dy)
       })
 
       // const { x, y } = surface.surfaceChildSelf.position
       // surface.surfaceChildSelf.position = Point.create(x + dx, y + dy)
       // surface.views.forEach(value => value.applyTransformations())
     }
+  }
+
+  /**
+   * @param {Surface}surface
+   * @return {View[]}
+   * @private
+   */
+  _findTopLevelViews (surface) {
+    return Object.values(this._session.renderer.scenes).flatMap(scene => scene.topLevelViews.filter(topLevelView => topLevelView.surface === surface))
   }
 
   /**
@@ -987,10 +992,11 @@ export default class XdgToplevel extends XdgToplevelRequests {
     if (this._configureState.state.includes(resizing)) {
       return
     }
+    const scene = this._session.globals.seat.pointer.scene
 
-    const { width: workspaceWidth, height: workspaceHeight } = document.getElementById('workspace').getBoundingClientRect()
-    const maxWidth = Math.round(workspaceWidth)
-    const maxHeight = Math.round(workspaceHeight)
+    // FIXME get proper size in surface coordinates instead of assume surface space === global space
+    const maxWidth = scene.canvas.width
+    const maxHeight = scene.canvas.height
 
     if (this._configureState.state.includes(fullscreen)) {
       this._unfullscreenConfigureState = {

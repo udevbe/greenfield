@@ -659,7 +659,6 @@ export default class Pointer extends WlPointerRequests {
     this.focus = null
     this.grab = null
 
-    this.view = null
     if (this._cursorSurface) {
       this._cursorSurface.implementation.role = null
       this._cursorSurface = null

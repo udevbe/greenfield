@@ -244,7 +244,7 @@ export default class View {
   }
 
   toViewSpaceFromSurface (surfacePoint) {
-    const { w, h } = this.surface.renderState.size
+    const { w, h } = this.renderState.size
     const { h: surfaceHeight, w: surfaceWidth } = this.surface.size
     if (surfaceWidth === w && surfaceHeight === h) {
       return surfacePoint
