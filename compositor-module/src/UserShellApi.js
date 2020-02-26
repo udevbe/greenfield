@@ -150,6 +150,12 @@ export default session => (
 
       /**
        * @param {string}sceneId
+       * @return {Promise<void>}
+       */
+      refreshScene: sceneId => session.renderer.scenes[sceneId].render(),
+
+      /**
+       * @param {string}sceneId
        * @param {{width:number, height:number}}sceneConfig
        */
       setSceneConfiguration: (sceneId, sceneConfig) => { session.renderer.scenes[sceneId].updateResolution(sceneConfig.width, sceneConfig.height) },

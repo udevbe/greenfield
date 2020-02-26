@@ -46,6 +46,7 @@ export default class Renderer {
   /**
    * @param {string}sceneId
    * @param {HTMLCanvasElement|OffscreenCanvas}canvas
+   * @return {Promise<void>}
    */
   initScene (sceneId, canvas) {
     let scene = this.scenes[sceneId] || null
@@ -70,6 +71,6 @@ export default class Renderer {
         this.session.globals.unregisterOutput(output)
       })
     }
-    scene.render()
+    return scene.render()
   }
 }
