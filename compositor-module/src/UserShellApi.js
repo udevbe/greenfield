@@ -93,32 +93,51 @@ export default session => (
        */
       updateUserSeat: (userSeatState) => {}
     },
-
     actions: {
       input: {
+        /**
+         * @param {MouseEvent}mouseEvent
+         * @param {string}sceneId
+         */
         pointerMove: (mouseEvent, sceneId) => {
           mouseEvent.preventDefault()
           session.globals.seat.pointer.handleMouseMove(ButtonEvent.fromMouseEvent(mouseEvent, null, sceneId))
           session.flush()
         },
+        /**
+         * @param {MouseEvent}mouseEvent
+         * @param {string}sceneId
+         */
         buttonUp: (mouseEvent, sceneId) => {
           mouseEvent.preventDefault()
           session.globals.seat.pointer.handleMouseUp(ButtonEvent.fromMouseEvent(mouseEvent, true, sceneId))
           session.flush()
         },
+        /**
+         * @param {MouseEvent}mouseEvent
+         * @param {string}sceneId
+         */
         buttonDown: (mouseEvent, sceneId) => {
           mouseEvent.preventDefault()
           session.globals.seat.pointer.handleMouseDown(ButtonEvent.fromMouseEvent(mouseEvent, false, sceneId))
           session.flush()
         },
+        /**
+         * @param {WheelEvent}wheelEvent
+         * @param {string}sceneId
+         */
         axis: (wheelEvent, sceneId) => {
           wheelEvent.preventDefault()
           session.globals.seat.pointer.handleWheel(AxisEvent.fromWheelEvent(wheelEvent, sceneId))
           session.flush()
         },
-
+        /**
+         * @param {KeyEvent}keyboardEvent
+         * @param {boolean}down
+         */
         key: (keyboardEvent, down) => {
           session.globals.seat.keyboard.handleKey(KeyEvent.fromKeyboardEvent(keyboardEvent, down))
+          session.flush()
         }
       },
       /**
