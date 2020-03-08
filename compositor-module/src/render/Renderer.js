@@ -62,12 +62,13 @@ export default class Renderer {
         throw new Error('This browser doesn\'t support WebGL!')
       }
       // TODO sync output properties with scene
+      // TODO notify client on which output their surfaces are being displayed
       const output = Output.create(canvas)
       scene = Scene.create(this.session, gl, canvas, output)
       this.scenes = { ...this.scenes, [sceneId]: scene }
       this.session.globals.registerOutput(output)
       scene.onDestroy().then(() => {
-        this.scenes = this.scenes.filter(otherScene => otherScene !== scene)
+        delete this.scenes[sceneId]
         this.session.globals.unregisterOutput(output)
       })
     }
