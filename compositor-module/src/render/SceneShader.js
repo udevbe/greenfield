@@ -117,7 +117,7 @@ class SceneShader {
     const { w, h } = sceneSize
     this._sceneSize = sceneSize
     this.gl.viewport(0, 0, w, h)
-    this.gl.clearColor(0.9411, 0.9411, 0.9411, 1)
+    this.gl.clearColor(0.2656, 0.2773, 0.2969, 0)
     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT | this.gl.STENCIL_BUFFER_BIT)
     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA)
     this.gl.enable(this.gl.BLEND)
