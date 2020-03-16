@@ -20,14 +20,14 @@
     "app-endpoint-native": "file:../app-endpoint-native",
     "epoll": "^3.0.0",
     "json5": "^2.1.1",
-    "pino": "^5.16.0",
-    "pino-pretty": "^3.6.0",
-    "websocket-stream": "^5.5.0",
-    "westfield-endpoint": "0.2.6",
-    "ws": "^7.2.1"
+    "pino": "^5.17.0",
+    "pino-pretty": "^3.6.1",
+    "websocket-stream": "^5.5.2",
+    "westfield-endpoint": "0.3.1",
+    "ws": "^7.2.3"
   },
   "devDependencies": {
-    "standard": "^14.3.1",
-    "westfield-endpoint-generator": "^0.2.4"
+    "standard": "^14.3.3",
+    "westfield-endpoint-generator": "^0.3.1"
   }
 }
