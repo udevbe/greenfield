@@ -9,12 +9,13 @@ class Scene {
    * @param {WebGLRenderingContext}gl
    * @param {HTMLCanvasElement|OffscreenCanvas}canvas
    * @param {Output}output
+   * @param {string}sceneId
    * @return {Scene}
    */
-  static create (session, gl, canvas, output) {
+  static create (session, gl, canvas, output, sceneId) {
     const sceneShader = SceneShader.create(gl)
     const yuvaToRgba = YUVAToRGBA.create(gl)
-    return new Scene(session, canvas, gl, sceneShader, yuvaToRgba, output)
+    return new Scene(session, canvas, gl, sceneShader, yuvaToRgba, output, sceneId)
   }
 
   /**
@@ -24,8 +25,9 @@ class Scene {
    * @param {SceneShader}sceneShader
    * @param {YUVAToRGBA}yuvaToRgba
    * @param {Output}output
+   * @param {string}sceneId
    */
-  constructor (session, canvas, gl, sceneShader, yuvaToRgba, output) {
+  constructor (session, canvas, gl, sceneShader, yuvaToRgba, output, sceneId) {
     /**
      * @type {Session}
      */
@@ -54,6 +56,10 @@ class Scene {
      * @type {Output}
      */
     this.output = output
+    /**
+     * @type {string}
+     */
+    this.id = sceneId
     /**
      * @type {View[]}
      */
@@ -134,6 +140,8 @@ class Scene {
         this.sceneShader.release()
 
         this._renderFrame = null
+
+        this.session.userShell.events.sceneRefresh(this.id)
       })
     }
     return this._renderFrame

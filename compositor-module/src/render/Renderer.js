@@ -64,7 +64,7 @@ export default class Renderer {
       // TODO sync output properties with scene
       // TODO notify client on which output their surfaces are being displayed
       const output = Output.create(canvas)
-      scene = Scene.create(this.session, gl, canvas, output)
+      scene = Scene.create(this.session, gl, canvas, output, sceneId)
       this.scenes = { ...this.scenes, [sceneId]: scene }
       this.session.globals.registerOutput(output)
       scene.onDestroy().then(() => {

@@ -13,10 +13,6 @@
  * }}UserShell
  */
 
-import ButtonEvent from './ButtonEvent'
-import AxisEvent from './AxisEvent'
-import KeyEvent from './KeyEvent'
-
 /**
  * @param {Display}display
  * @param {UserSurface}userSurface
@@ -91,52 +87,57 @@ export default session => (
       /**
        * @param {UserSeatState}userSeatState
        */
-      updateUserSeat: (userSeatState) => {}
+      updateUserSeat: (userSeatState) => {},
+
+      /**
+       * @param {string}sceneId
+       */
+      sceneRefresh: (sceneId) => {}
     },
     actions: {
       input: {
         /**
-         * @param {MouseEvent}mouseEvent
-         * @param {string}sceneId
+         * @param {ButtonEvent}buttonEvent
          */
-        pointerMove: (mouseEvent, sceneId) => {
-          mouseEvent.preventDefault()
-          session.globals.seat.pointer.handleMouseMove(ButtonEvent.fromMouseEvent(mouseEvent, null, sceneId))
+        pointerMove: (buttonEvent) => {
+          // mouseEvent.preventDefault()
+          session.globals.seat.pointer.handleMouseMove(buttonEvent)
+          // session.globals.seat.pointer.handleMouseMove(ButtonEvent.fromMouseEvent(mouseEvent, null, sceneId))
           session.flush()
         },
         /**
-         * @param {MouseEvent}mouseEvent
-         * @param {string}sceneId
+         * @param {ButtonEvent}buttonEvent
          */
-        buttonUp: (mouseEvent, sceneId) => {
-          mouseEvent.preventDefault()
-          session.globals.seat.pointer.handleMouseUp(ButtonEvent.fromMouseEvent(mouseEvent, true, sceneId))
+        buttonUp: (buttonEvent) => {
+          // mouseEvent.preventDefault()
+          session.globals.seat.pointer.handleMouseUp(buttonEvent)
+          // session.globals.seat.pointer.handleMouseUp(ButtonEvent.fromMouseEvent(mouseEvent, true, sceneId))
           session.flush()
         },
         /**
-         * @param {MouseEvent}mouseEvent
-         * @param {string}sceneId
+         * @param {ButtonEvent}buttonEvent
          */
-        buttonDown: (mouseEvent, sceneId) => {
-          mouseEvent.preventDefault()
-          session.globals.seat.pointer.handleMouseDown(ButtonEvent.fromMouseEvent(mouseEvent, false, sceneId))
+        buttonDown: (buttonEvent) => {
+          // mouseEvent.preventDefault()
+          session.globals.seat.pointer.handleMouseDown(buttonEvent)
+          // session.globals.seat.pointer.handleMouseDown(ButtonEvent.fromMouseEvent(mouseEvent, false, sceneId))
           session.flush()
         },
         /**
-         * @param {WheelEvent}wheelEvent
-         * @param {string}sceneId
+         * @param {AxisEvent}axisEvent
          */
-        axis: (wheelEvent, sceneId) => {
-          wheelEvent.preventDefault()
-          session.globals.seat.pointer.handleWheel(AxisEvent.fromWheelEvent(wheelEvent, sceneId))
+        axis: (axisEvent) => {
+          // wheelEvent.preventDefault()
+          session.globals.seat.pointer.handleWheel(axisEvent)
+          // session.globals.seat.pointer.handleWheel(AxisEvent.fromWheelEvent(wheelEvent, sceneId))
           session.flush()
         },
         /**
-         * @param {KeyEvent}keyboardEvent
-         * @param {boolean}down
+         * @param {KeyEvent}keyEvent
          */
-        key: (keyboardEvent, down) => {
-          session.globals.seat.keyboard.handleKey(KeyEvent.fromKeyboardEvent(keyboardEvent, down))
+        key: (keyEvent) => {
+          session.globals.seat.keyboard.handleKey(keyEvent)
+          // session.globals.seat.keyboard.handleKey(KeyEvent.fromKeyboardEvent(keyboardEvent, down))
           session.flush()
         }
       },

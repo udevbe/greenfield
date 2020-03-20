@@ -22,6 +22,31 @@ import RemoteAppLauncher from './RemoteAppLauncher'
 import WebAppSocket from './WebAppSocket'
 import RemoteSocket from './RemoteSocket'
 import Mat4 from './math/Mat4'
+import ButtonEvent from './ButtonEvent'
+import AxisEvent from './AxisEvent'
+import KeyEvent from './KeyEvent'
+
+/**
+ * @param {MouseEvent}mouseEvent
+ * @param {boolean}released
+ * @param {string}sceneId
+ * @return {ButtonEvent}
+ */
+const createButtonEventFromMouseEvent = (mouseEvent, released, sceneId) => ButtonEvent.fromMouseEvent(mouseEvent, released, sceneId)
+
+/**
+ * @param {WheelEvent}wheelEvent
+ * @param {string}sceneId
+ * @return {AxisEvent}
+ */
+const createAxisEventFromWheelEvent = (wheelEvent, sceneId) => AxisEvent.fromWheelEvent(wheelEvent, sceneId)
+
+/**
+ * @param {KeyboardEvent}keyboardEvent
+ * @param {boolean}down
+ * @return {KeyEvent}
+ */
+const createKeyEventFromKeyboardEvent = (keyboardEvent, down) => KeyEvent.fromKeyboardEvent(keyboardEvent, down)
 
 export {
   initWasm,
@@ -31,5 +56,8 @@ export {
   WebAppSocket,
   RemoteAppLauncher,
   RemoteSocket,
-  Mat4
+  Mat4,
+  createButtonEventFromMouseEvent,
+  createAxisEventFromWheelEvent,
+  createKeyEventFromKeyboardEvent
 }
