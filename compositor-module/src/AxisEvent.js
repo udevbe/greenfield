@@ -7,8 +7,17 @@ class AxisEvent {
    * @param {number}deltaX
    * @param {number}deltaY
    * @param {number}timestamp
-   * @param {number}sceneId
-   * @return {AxisEvent}
+   * @param {string}sceneId
+   * @return {{
+   * deltaMode: number,
+   * DOM_DELTA_LINE: number,
+   * DOM_DELTA_PAGE: number,
+   * DOM_DELTA_PIXEL: number,
+   * deltaX: number,
+   * deltaY: number,
+   * timestamp: number,
+   * sceneId: string
+   * }}
    */
   static create (
     deltaMode,
@@ -20,7 +29,7 @@ class AxisEvent {
     timestamp,
     sceneId
   ) {
-    return new AxisEvent(
+    return {
       deltaMode,
       DOM_DELTA_LINE,
       DOM_DELTA_PAGE,
@@ -29,7 +38,7 @@ class AxisEvent {
       deltaY,
       timestamp,
       sceneId
-    )
+    }
   }
 
   /**
@@ -47,37 +56,6 @@ class AxisEvent {
       wheelEvent.timeStamp,
       sceneId
     )
-  }
-
-  /**
-   * @param {number}deltaMode
-   * @param {number}DOM_DELTA_LINE
-   * @param {number}DOM_DELTA_PAGE
-   * @param {number}DOM_DELTA_PIXEL
-   * @param {number}deltaX
-   * @param {number}deltaY
-   * @param {number}timestamp
-   * @param {number}sceneId
-   * @return {AxisEvent}
-   */
-  constructor (
-    deltaMode,
-    DOM_DELTA_LINE,
-    DOM_DELTA_PAGE,
-    DOM_DELTA_PIXEL,
-    deltaX,
-    deltaY,
-    timestamp,
-    sceneId
-  ) {
-    this.deltaMode = deltaMode
-    this.DOM_DELTA_LINE = DOM_DELTA_LINE
-    this.DOM_DELTA_PAGE = DOM_DELTA_PAGE
-    this.DOM_DELTA_PIXEL = DOM_DELTA_PIXEL
-    this.deltaX = deltaX
-    this.deltaY = deltaY
-    this.timestamp = timestamp
-    this.sceneId = sceneId
   }
 }
 

@@ -3,9 +3,10 @@ class KeyEvent {
    * @param {string}code
    * @param {number}timestamp
    * @param {boolean}down
+   * @return {{code: string, timestamp: number, down: boolean}}
    */
   static create (code, timestamp, down) {
-    return new KeyEvent(code, timestamp, down)
+    return { code, timestamp, down }
   }
 
   /**
@@ -14,26 +15,6 @@ class KeyEvent {
    */
   static fromKeyboardEvent (keyboardEvent, down) {
     return KeyEvent.create(keyboardEvent.code, keyboardEvent.timeStamp, down)
-  }
-
-  /**
-   * @param {string}code
-   * @param {number}timestamp
-   * @param {boolean}down
-   */
-  constructor (code, timestamp, down) {
-    /**
-     * @type {string}
-     */
-    this.code = code
-    /**
-     * @type {number}
-     */
-    this.timestamp = timestamp
-    /**
-     * @type {boolean}
-     */
-    this.down = down
   }
 }
 

@@ -7,10 +7,10 @@ class ButtonEvent {
    * @param {boolean}released
    * @param {number}buttons
    * @param {string}sceneId
-   * @return {ButtonEvent}
+   * @return {{x: number, y:  number, timestamp: number, buttonCode: number, released: boolean, buttons: number, sceneId: string}}
    */
   static create (x, y, timestamp, buttonCode, released, buttons, sceneId) {
-    return new ButtonEvent(x, y, timestamp, buttonCode, released, buttons, sceneId)
+    return { x, y, timestamp, buttonCode, released, buttons, sceneId }
   }
 
   /**
@@ -32,46 +32,6 @@ class ButtonEvent {
       mouseEvent.buttons,
       sceneId
     )
-  }
-
-  /**
-   * @param {number}x
-   * @param {number}y
-   * @param {number}timestamp
-   * @param {number}buttonCode
-   * @param {boolean}released
-   * @param {number}buttons
-   * @param {string}sceneId
-   */
-  constructor (x, y, timestamp, buttonCode, released, buttons, sceneId) {
-    /**
-     * @type {number}
-     */
-    this.timestamp = timestamp
-    /**
-     * @type {number}
-     */
-    this.x = x
-    /**
-     * @type {number}
-     */
-    this.y = y
-    /**
-     * @type {number}
-     */
-    this.buttonCode = buttonCode
-    /**
-     * @type {boolean}
-     */
-    this.released = released
-    /**
-     * @type {number}
-     */
-    this.buttons = buttons
-    /**
-     * @type {string}
-     */
-    this.sceneId = sceneId
   }
 }
 
