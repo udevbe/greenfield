@@ -1,9 +1,10 @@
 {
-  "name": "compositor-module",
-  "version": "1.0.0",
+  "name": "greenfield-compositor",
+  "version": "0.0.1",
   "description": "Describe compositor-module here",
-  "main": "lib/index.js",
-  "module": "es/index.js",
+  "main": "./lib/index.js",
+  "types": "./lib/types.d.ts",
+  "module": "./es/index.js",
   "files": [
     "es",
     "lib"
@@ -20,17 +21,19 @@
   },
   "dependencies": {
     "tinyh264": "^0.0.5",
-    "westfield-runtime-common": "^0.3.1",
-    "westfield-runtime-server": "^0.3.1"
+    "westfield-runtime-common": "^0.3.2",
+    "westfield-runtime-server": "^0.3.2"
   },
   "devDependencies": {
     "eslint": "^6.8.0",
-    "eslint-config-standard": "^14.1.0",
-    "eslint-plugin-import": "^2.20.1",
-    "eslint-plugin-node": "^11.0.0",
+    "eslint-config-standard": "^14.1.1",
+    "eslint-plugin-import": "^2.20.2",
+    "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-standard": "^4.0.1",
-    "nwb": "^0.24.3",
+    "inferno": "^7.4.2",
+    "nwb": "^0.24.5",
+    "webpack": "^4.43.0",
     "worker-loader": "^2.0.0"
   },
   "author": "",

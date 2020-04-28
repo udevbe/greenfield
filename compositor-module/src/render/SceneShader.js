@@ -167,6 +167,7 @@ class SceneShader {
   draw () {
     this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 6)
     this.gl.bindTexture(this.gl.TEXTURE_2D, null)
+    this.gl.flush()
   }
 }
 

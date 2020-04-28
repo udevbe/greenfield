@@ -79,7 +79,7 @@ class H264BufferContentDecoder {
      */
     this._decodingAlphaSerialsQueue = []
     /**
-     * @rtype {Object.<number,{serial: number, resolve:Function, state: 'pending'|'pending_opaque'|'pending_alpha'|'complete', result: {opaque: {buffer:Uint8Array, width: number, height:number}, alpha:{buffer:Uint8Array, width: number, height:number}}}>}
+     * @type {Object.<number,{serial: number, resolve:Function, state: 'pending'|'pending_opaque'|'pending_alpha'|'complete', result: {opaque: {buffer:Uint8Array, width: number, height:number}, alpha:{buffer:Uint8Array, width: number, height:number}}}>}
      * @private
      */
     this._frameStates = {}

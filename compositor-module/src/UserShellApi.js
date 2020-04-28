@@ -190,9 +190,8 @@ export default session => (
        * Create a new application view that will be shown on the canvas identified by a scene id.
        * @param {UserSurface}userSurface
        * @param {string}sceneId
-       * @return {View}
        */
-      createView: (userSurface, sceneId) => session.display.clients[userSurface.clientId].connection.wlObjects[userSurface.id].implementation.createTopLevelView(session.renderer.scenes[sceneId]),
+      createView: (userSurface, sceneId) => { session.display.clients[userSurface.clientId].connection.wlObjects[userSurface.id].implementation.createTopLevelView(session.renderer.scenes[sceneId]) },
 
       /**
        * @param {UserSurface}userSurface
