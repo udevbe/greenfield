@@ -78,25 +78,17 @@ function linkUserShellEvents(session) {
     const userShell = session.userShell;
 
     userShell.events.notify = (variant, message) => window.alert(message)
-    userShell.events.createApplicationClient = (client) => {
-    }
-    userShell.events.destroyApplicationClient = (client) => {
-    }
     userShell.events.createUserSurface = (compositorSurface, compositorSurfaceState) => {
         // create view on our scene for the newly created surface
         userShell.actions.createView(compositorSurface, 'myOutputId')
-    }
-    userShell.events.updateUserSurface = (compositorSurface, compositorSurfaceState) => {
-    }
-    userShell.events.destroyUserSurface = (compositorSurface) => {
+        // request the client to make this surface active
+        userShell.actions.requestActive(compositorSurface)
     }
     userShell.events.updateUserSeat = ({keyboardFocus, pointerGrab,}) => {
         // raise the surface when a user clicks on it
         if (pointerGrab) {
             userShell.actions.raise(pointerGrab, 'myOutputId')
         }
-    }
-    userShell.events.sceneRefresh = (sceneId) => {
     }
 }
 
@@ -111,6 +103,8 @@ async function main() {
     const canvas = /** @type {HTMLCanvasElement} */ document.createElement('canvas')
     canvas.width = 1024
     canvas.height = 768
+    canvas.style.width = canvas.width
+    canvas.style.height = canvas.height
     // hook up the canvas to our compositor
     initializeCanvas(session, canvas, 'myOutputId')
     linkUserShellEvents(session)
@@ -127,10 +121,11 @@ async function main() {
     const launchWebGLAppButton = /** @type {HTMLButtonElement} */ document.createElement('button')
     launchWebGLAppButton.textContent = 'WebGL'
     const launchRemoteAppButton = /** @type {HTMLButtonElement} */ document.createElement('button')
+    launchRemoteAppButton.textContent = 'Remote GTK3-Demo'
 
-    launchWebShmAppButton.onclick = () => webAppLauncher.launch(new URL(`${window.location.href}/apps/webshmapp.js`))
-    launchWebGLAppButton.onclick = () => webAppLauncher.launch(new URL(`${window.location.href}/apps/webglapp.js`))
-    launchRemoteAppButton.onclick = () => remoteAppLauncher.launch(new URL("ws://localhost:8080"), "gtk3-demo-application")
+    launchWebShmAppButton.onclick = () => webAppLauncher.launch(new URL(`${window.location.href}/apps/simple-web-shm/app.js`))
+    launchWebGLAppButton.onclick = () => webAppLauncher.launch(new URL(`${window.location.href}/apps/simple-web-gl/app.js`))
+    launchRemoteAppButton.onclick = () => remoteAppLauncher.launch(new URL("ws://localhost:8081"), "remote-gtk3-demo")
 
 
     // make compositor global protocol objects available to client
@@ -140,7 +135,6 @@ async function main() {
     document.body.appendChild(launchWebShmAppButton)
     document.body.appendChild(launchWebGLAppButton)
     document.body.appendChild(launchRemoteAppButton)
-
 }
 
 window.onload = () => main()

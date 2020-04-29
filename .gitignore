@@ -136,3 +136,5 @@ CTestTestfile.cmake
 /compositor-module/node_modules
 /demo-web-clients/simple-web-gl/build/
 /demo-web-clients/simple-web-shm/build/
+/client-demos/simple-web-shm/build/
+/client-demos/simple-web-gl/build/

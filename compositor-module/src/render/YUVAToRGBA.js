@@ -112,22 +112,12 @@ class YUVAToRGBA {
     const uBuffer = opaqueBuffer.subarray(lumaSize, lumaSize + chromaSize)
     const vBuffer = opaqueBuffer.subarray(lumaSize + chromaSize, lumaSize + (2 * chromaSize))
 
-    const isSubImage = frameSize.w === opaqueStride && frameSize.h === opaqueHeight
-
     const chromaHeight = opaqueHeight >> 1
     const chromaStride = opaqueStride >> 1
 
-    // we upload the entire image, including stride padding & filler rows. The actual visible image will be mapped
-    // from texture coordinates as to crop out stride padding & filler rows.
-    if (isSubImage) {
-      this.yTexture.subImage2dBuffer(yBuffer, 0, 0, opaqueStride, opaqueHeight)
-      this.uTexture.subImage2dBuffer(uBuffer, 0, 0, chromaStride, chromaHeight)
-      this.vTexture.subImage2dBuffer(vBuffer, 0, 0, chromaStride, chromaHeight)
-    } else {
-      this.yTexture.image2dBuffer(yBuffer, opaqueStride, opaqueHeight)
-      this.uTexture.image2dBuffer(uBuffer, chromaStride, chromaHeight)
-      this.vTexture.image2dBuffer(vBuffer, chromaStride, chromaHeight)
-    }
+    this.yTexture.image2dBuffer(yBuffer, opaqueStride, opaqueHeight)
+    this.uTexture.image2dBuffer(uBuffer, chromaStride, chromaHeight)
+    this.vTexture.image2dBuffer(vBuffer, chromaStride, chromaHeight)
 
     if (!renderState.size.equals(frameSize)) {
       renderState.size = frameSize
@@ -139,11 +129,7 @@ class YUVAToRGBA {
       const alphaLumaSize = alphaStride * alphaHeight
 
       const alphaBuffer = alpha.buffer.subarray(0, alphaLumaSize)
-      if (isSubImage) {
-        this.alphaTexture.subImage2dBuffer(alphaBuffer, 0, 0, alphaStride, alphaHeight)
-      } else {
-        this.alphaTexture.image2dBuffer(alphaBuffer, alphaStride, alphaHeight)
-      }
+      this.alphaTexture.image2dBuffer(alphaBuffer, alphaStride, alphaHeight)
 
       this._yuva2rgba(renderState, maxXTexCoord, maxYTexCoord)
     } else {
