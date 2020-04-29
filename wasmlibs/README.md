@@ -9,5 +9,3 @@ The following files should appear after build:
 - libxkbcommon.data
 - libxkbcommon.js
 - libxkbcommon.wasm
-- TinyH264.js
-- TinyH264.wasm
