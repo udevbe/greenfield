@@ -1,3 +1,7 @@
+// Type definitions for greenfield-compositor 0.0.1
+// Project: Greenfield
+// Definitions by: Erik De Rijcke
+
 export interface Session {
     userShell: UserShellApi
     globals: Globals

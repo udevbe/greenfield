@@ -2,12 +2,12 @@
   "name": "greenfield-compositor",
   "version": "0.0.1",
   "description": "Describe compositor-module here",
-  "main": "./lib/index.js",
-  "types": "./lib/types.d.ts",
+  "main": "./lib/index,js",
   "module": "./es/index.js",
   "files": [
     "es",
-    "lib"
+    "lib",
+    "index.d.ts"
   ],
   "scripts": {
     "build": "npm run lint && nwb build-web-module --copy-files",
