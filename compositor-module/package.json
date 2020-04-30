@@ -36,8 +36,8 @@
     "webpack": "^4.43.0",
     "worker-loader": "^2.0.0"
   },
-  "author": "",
-  "homepage": "",
-  "license": "MIT",
-  "repository": ""
+  "author": "Erik De Rijcke",
+  "homepage": "https://www.greenfield.app",
+  "license": "AGPLv3",
+  "repository": "https://github.com/udevbe/greenfield/tree/master/compositor-module"
 }
