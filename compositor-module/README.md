@@ -1,6 +1,6 @@
 ## About
 
-This is the Greenfield Compositor module source. An HTML5 Wayland compositor library.
+The HTML5 Wayland compositor library for Greenfield.
 
 ## Building
 
