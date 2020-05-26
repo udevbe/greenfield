@@ -116,29 +116,44 @@ async function main () {
   const remoteSocket = RemoteSocket.create(session)
   const remoteAppLauncher = RemoteAppLauncher.create(session, remoteSocket)
 
-  const launchWebShmAppButton = /** @type {HTMLButtonElement} */ document.createElement('button')
-  launchWebShmAppButton.textContent = 'WebSHM'
-  const launchWebGLAppButton = /** @type {HTMLButtonElement} */ document.createElement('button')
-  launchWebGLAppButton.textContent = 'WebGL'
-  const launchRemoteAppButton = /** @type {HTMLButtonElement} */ document.createElement('button')
-  launchRemoteAppButton.textContent = 'Remote GTK3-Demo'
+  const webShmAppURLButton = /** @type {HTMLButtonElement} */ document.createElement('button')
+  webShmAppURLButton.textContent = 'WebSHM URL'
+  const webGLURLButton = /** @type {HTMLButtonElement} */ document.createElement('button')
+  webGLURLButton.textContent = 'WebGL URL'
+  const remoteURLButton = /** @type {HTMLButtonElement} */ document.createElement('button')
+  remoteURLButton.textContent = 'Remote GTK3-Demo URL'
+  const urlInput = /** @type {HTMLInputElement} */ document.createElement('input')
+  urlInput.type = 'text'
+  urlInput.style.width = '595px'
+  const launchButton = /** @type {HTMLButtonElement} */ document.createElement('button')
+  launchButton.textContent = 'Launch'
 
-  const simpleWebShmAppURL = new URL(`${window.location.href}/apps/simple-web-shm/app.js`)
-  launchWebShmAppButton.onclick = () => webAppLauncher.launch(simpleWebShmAppURL)
-  const simpleWebGLAppURL = new URL(`${window.location.href}/apps/simple-web-gl/app.js`)
-  launchWebGLAppButton.onclick = () => webAppLauncher.launch(simpleWebGLAppURL)
+  const container = /** @type {HTMLDivElement} */document.createElement('div')
+  container.appendChild(webShmAppURLButton)
+  container.appendChild(webGLURLButton)
+  container.appendChild(remoteURLButton)
+  container.appendChild(urlInput)
+  container.appendChild(launchButton)
 
-  const remoteAppId = 'remote-gtk3-demo'
-  const appEndpointServerURL = new URL('ws://localhost:8081')
-  launchRemoteAppButton.onclick = () => remoteAppLauncher.launch(appEndpointServerURL, remoteAppId)
+  webShmAppURLButton.onclick = () => urlInput.value = `${window.location.href}apps/simple-web-shm/app.js`
+  webGLURLButton.onclick = () => urlInput.value = `${window.location.href}apps/simple-web-gl/app.js`
+  remoteURLButton.onclick = () => urlInput.value = `ws://localhost:8081?launch=remote-gtk3-demo`
+
+  launchButton.onclick = () => {
+    const urlString = urlInput.value
+    const url = new URL(urlString)
+    if (url.protocol.startsWith('ws')) {
+      remoteAppLauncher.launchURL(url)
+    } else if (url.protocol.startsWith('http')) {
+      webAppLauncher.launch(url)
+    }
+  }
 
   // make compositor global protocol objects available to client
   session.globals.register()
 
   document.body.appendChild(canvas)
-  document.body.appendChild(launchWebShmAppButton)
-  document.body.appendChild(launchWebGLAppButton)
-  document.body.appendChild(launchRemoteAppButton)
+  document.body.appendChild(container)
 }
 
 window.onload = () => main()

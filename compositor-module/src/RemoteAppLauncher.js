@@ -48,11 +48,19 @@ class RemoteAppLauncher {
    * @return {Promise<Client>}
    */
   async launch (appEndpointURL, remoteAppId) {
-    appEndpointURL.searchParams.delete('compositorSessionId')
-    appEndpointURL.searchParams.append('compositorSessionId', this._session.compositorSessionId)
     appEndpointURL.searchParams.delete('launch')
     appEndpointURL.searchParams.append('launch', remoteAppId)
+    return this.launchURL(appEndpointURL)
+  }
 
+  /**
+   * @param {URL}appEndpointURL
+   * @param appEndpointURL
+   * @return {Promise<Client>}
+   */
+  async launchURL (appEndpointURL) {
+    appEndpointURL.searchParams.delete('compositorSessionId')
+    appEndpointURL.searchParams.append('compositorSessionId', this._session.compositorSessionId)
     const webSocket = new window.WebSocket(appEndpointURL.href)
     return this._remoteSocket.onWebSocket(webSocket)
   }
