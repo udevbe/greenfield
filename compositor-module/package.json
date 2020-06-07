@@ -2,22 +2,26 @@
   "name": "greenfield-compositor",
   "version": "0.0.2",
   "description": "A Wayland HTML5 Compositor Library.",
-  "main": "./lib/index,js",
-  "module": "./es/index.js",
+  "main": "dist/greenfield-compositor.umd.js",
+  "module": "dist/greenfield-compositor.es5.js",
+  "typings": "dist/types/greenfield-compositor.d.ts",
   "files": [
-    "es",
-    "lib",
-    "index.d.ts"
+    "dist"
   ],
   "scripts": {
-    "build": "npm run lint && nwb build-web-module --copy-files",
-    "clean": "nwb clean-module",
-    "prepublishOnly": "npm run build",
-    "test": "nwb test",
-    "lint": "eslint *.js src tests",
-    "lint:fix": "npm run lint -- --fix",
-    "test:coverage": "nwb test --coverage",
-    "test:watch": "nwb test --server"
+    "lint": "tslint  --project tsconfig.json -t codeFrame 'src/**/*.ts' 'test/**/*.ts'",
+    "prebuild": "rimraf dist",
+    "build": "tsc --module commonjs && rollup -c rollup.config.ts && typedoc --out docs --target es6 --theme minimal --mode file src",
+    "start": "rollup -c rollup.config.ts -w",
+    "test": "jest --coverage",
+    "test:watch": "jest --coverage --watch",
+    "test:prod": "yarn lint && yarn test -- --no-cache",
+    "deploy-docs": "ts-node tools/gh-pages-publish",
+    "report-coverage": "cat ./coverage/lcov.info | coveralls",
+    "commit": "git-cz",
+    "semantic-release": "semantic-release",
+    "semantic-release-prepare": "ts-node tools/semantic-release-prepare",
+    "precommit": "lint-staged"
   },
   "dependencies": {
     "tinyh264": "^0.0.5",
@@ -25,19 +29,96 @@
     "westfield-runtime-server": "^0.3.2"
   },
   "devDependencies": {
-    "eslint": "^6.8.0",
-    "eslint-config-standard": "^14.1.1",
-    "eslint-plugin-import": "^2.20.2",
-    "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-promise": "^4.2.1",
-    "eslint-plugin-standard": "^4.0.1",
-    "inferno": "^7.4.2",
-    "nwb": "^0.24.5",
-    "webpack": "^4.43.0",
-    "worker-loader": "^2.0.0"
+    "@commitlint/cli": "^8.3.5",
+    "@commitlint/config-conventional": "^8.3.4",
+    "@types/jest": "^25.2.3",
+    "@types/node": "^14.0.11",
+    "colors": "^1.4.0",
+    "commitizen": "^4.1.2",
+    "coveralls": "^3.1.0",
+    "cross-env": "^7.0.2",
+    "cz-conventional-changelog": "^3.2.0",
+    "husky": "^4.2.5",
+    "jest": "^26.0.1",
+    "jest-config": "^26.0.1",
+    "lint-staged": "^10.2.9",
+    "lodash.camelcase": "^4.3.0",
+    "prettier": "^2.0.5",
+    "prompt": "^1.0.0",
+    "replace-in-file": "^6.1.0",
+    "rimraf": "^3.0.2",
+    "rollup": "^2.14.0",
+    "rollup-plugin-commonjs": "^10.1.0",
+    "rollup-plugin-json": "^4.0.0",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-sourcemaps": "^0.6.2",
+    "rollup-plugin-typescript2": "^0.27.1",
+    "semantic-release": "^17.0.8",
+    "shelljs": "^0.8.4",
+    "travis-deploy-once": "^5.0.11",
+    "ts-jest": "^26.1.0",
+    "ts-node": "^8.10.2",
+    "tslint": "^6.1.2",
+    "tslint-config-prettier": "^1.18.0",
+    "tslint-config-standard": "^9.0.0",
+    "typedoc": "^0.17.7",
+    "typescript": "^3.9.5"
   },
   "author": "Erik De Rijcke",
   "homepage": "https://www.greenfield.app",
   "license": "AGPLv3",
-  "repository": "https://github.com/udevbe/greenfield/tree/master/compositor-module"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/udevbe/greenfield/tree/master/compositor-module"
+  },
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "lint-staged": {
+    "{src,test}/**/*.ts": [
+      "prettier --write",
+      "git add"
+    ]
+  },
+  "config": {
+    "commitizen": {
+      "path": "node_modules/cz-conventional-changelog"
+    }
+  },
+  "jest": {
+    "transform": {
+      ".(ts|tsx)": "ts-jest"
+    },
+    "testEnvironment": "node",
+    "testRegex": "(/__tests__/.*|\\.(test|spec))\\.(ts|tsx|js)$",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "/test/"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 90,
+        "functions": 95,
+        "lines": 95,
+        "statements": 95
+      }
+    },
+    "collectCoverageFrom": [
+      "src/*.{js,ts}"
+    ]
+  },
+  "prettier": {
+    "semi": false,
+    "singleQuote": true
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  }
 }
