@@ -11,27 +11,27 @@ export interface SessionClass {
     create(): Session
 }
 
-export interface CompositorSurfaceState {
-    title?: string
-    appId?: string
-    mapped?: boolean
-    active?: boolean
-    unresponsive?: boolean
-    minimized?: boolean
-    key?: string
-    lastActive?: number
-    type?: 'remote' | 'local'
-}
+// export interface CompositorSurfaceState {
+//     title?: string
+//     appId?: string
+//     mapped?: boolean
+//     active?: boolean
+//     unresponsive?: boolean
+//     minimized?: boolean
+//     key?: string
+//     lastActive?: number
+//     type?: 'remote' | 'local'
+// }
 
 export interface CompositorClient {
     variant: 'web' | 'remote'
     id: string
 }
 
-export interface CompositorSurface {
-    id: string
-    clientId: string
-}
+// export interface CompositorSurface {
+//     id: string
+//     clientId: string
+// }
 
 export type nrmlvo = {
     name: string
@@ -64,10 +64,10 @@ export interface ApplicationClient {
     variant: 'web' | 'remote'
 }
 
-export interface UserSeatState {
-    pointerGrab: CompositorSurface
-    keyboardFocus: CompositorSurface
-}
+// export interface UserSeatState {
+//     pointerGrab: CompositorSurface
+//     keyboardFocus: CompositorSurface
+// }
 
 export interface UserConfiguration {
     scrollFactor: number

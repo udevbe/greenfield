@@ -21,12 +21,14 @@
     "commit": "git-cz",
     "semantic-release": "semantic-release",
     "semantic-release-prepare": "ts-node tools/semantic-release-prepare",
-    "precommit": "lint-staged"
+    "precommit": "lint-staged",
+    "prepush": "npm run test:prod && npm run build",
+    "commitmsg": "commitlint -E HUSKY_GIT_PARAMS"
   },
   "dependencies": {
     "tinyh264": "^0.0.5",
-    "westfield-runtime-common": "^0.3.2",
-    "westfield-runtime-server": "^0.3.2"
+    "westfield-runtime-common": "0.4.0",
+    "westfield-runtime-server": "0.4.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^8.3.5",
@@ -82,7 +84,7 @@
   },
   "config": {
     "commitizen": {
-      "path": "node_modules/cz-conventional-changelog"
+      "path": "compositor-module/node_modules/cz-conventional-changelog"
     }
   },
   "jest": {
