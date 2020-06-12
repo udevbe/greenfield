@@ -32,7 +32,7 @@ export default class BufferStream {
     const bufferStream = new BufferStream()
     // TODO we probably want to trigger a custom timeout error here.
     wlBufferResource.onDestroy().then(() => {
-      Object.entries(bufferStream._bufferStates).forEach(([serial, bufferState]) => {
+      Object.entries(bufferStream._bufferStates).forEach(([serial, _]) => {
         bufferStream._onComplete(Number.parseInt(serial))
       })
     })
@@ -47,8 +47,7 @@ export default class BufferStream {
   }
 
   private _newBufferState(syncSerial: number): BufferState {
-    const bufferState: BufferState
-      = {
+    const bufferState: BufferState = {
       // @ts-ignore
       completionPromise: null,
       // @ts-ignore

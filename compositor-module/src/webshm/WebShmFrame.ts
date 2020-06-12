@@ -19,11 +19,10 @@ import { WebFD } from 'westfield-runtime-common'
 import BufferContents from '../BufferContents'
 import Size from '../Size'
 
-export default class WebShmFrame implements BufferContents<ImageData> {
+export default class WebShmFrame implements BufferContents<ImageData, 'image/rgba'> {
   readonly size: Size
   pixelContent: ImageData
   readonly mimeType: 'image/rgba' = 'image/rgba'
-  readonly serial: 0 = 0
 
   static create(width: number, height: number): WebShmFrame {
     return new WebShmFrame(width, height)
@@ -40,8 +39,5 @@ export default class WebShmFrame implements BufferContents<ImageData> {
       throw new Error('web fd attached to web shm frame is not an array buffer.')
     }
     this.pixelContent = new ImageData(new Uint8ClampedArray(arrayBuffer), this.size.w, this.size.h)
-  }
-
-  validateSize() { /* NOOP */
   }
 }

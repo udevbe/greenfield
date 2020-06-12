@@ -1,4 +1,4 @@
-// Copyright 2019 Erik De Rijcke
+// Copyright 2020 Erik De Rijcke
 //
 // This file is part of Greenfield.
 //
@@ -16,10 +16,11 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 // TODO use rollup worker loader with custom regex
+// @ts-ignore
 import H264NALDecoderWorker from 'worker-loader!./H264NALDecoderWorker'
 import { OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
-import EncodedFrame from "../remotestreaming/EncodedFrame";
-import EncodingOptions from '../remotestreaming/EncodingOptions'
+import EncodedFrame from '../remotestreaming/EncodedFrame'
+import { fullFrame, splitAlpha } from '../remotestreaming/EncodingOptions'
 
 type H264NALDecoderWorkerMessage = { type: string, width: number, height: number, data: ArrayBuffer, renderStateId: number }
 type FrameState = {
@@ -62,10 +63,10 @@ const alphaWorker = new Promise<Worker>(resolve => {
 })
 
 class H264BufferContentDecoder {
-  readonly surfaceH264DecodeId: string;
-  private _decodingSerialsQueue: number[];
-  private _decodingAlphaSerialsQueue: number[];
-  private readonly _frameStates: { [key: number]: FrameState };
+  readonly surfaceH264DecodeId: string
+  private _decodingSerialsQueue: number[]
+  private _decodingAlphaSerialsQueue: number[]
+  private readonly _frameStates: { [key: number]: FrameState }
 
   static create(surfaceH264DecodeId: string): H264BufferContentDecoder {
     const h264BufferContentDecoder = new H264BufferContentDecoder(surfaceH264DecodeId)
@@ -98,11 +99,11 @@ class H264BufferContentDecoder {
 
   private _decodeH264(encodedFrame: EncodedFrame) {
     const bufferSerial = encodedFrame.serial
-    const fullFrame = EncodingOptions.fullFrame(encodedFrame.encodingOptions)
-    if (!fullFrame) {
+    const isFullFrame = fullFrame(encodedFrame.encodingOptions)
+    if (!isFullFrame) {
       throw new Error('h264 encoded buffers must contain the full frame.')
     }
-    const hasAlpha = EncodingOptions.splitAlpha(encodedFrame.encodingOptions)
+    const hasAlpha = splitAlpha(encodedFrame.encodingOptions)
 
     if (hasAlpha) {
       const alphaPixelContent = encodedFrame.pixelContent[0].alpha
@@ -139,7 +140,7 @@ class H264BufferContentDecoder {
     frameState.state = 'complete'
     delete this._frameStates[frameState.serial]
     const decodeResult = frameState.result
-    if(decodeResult.opaque === undefined){
+    if (decodeResult.opaque === undefined) {
       throw new Error('BUG. No opaque frame decode result found!')
     }
     frameState.resolve({
@@ -148,7 +149,7 @@ class H264BufferContentDecoder {
     })
   }
 
-  _onOpaquePictureDecoded({width, height, data}: { width: number, height: number, data: ArrayBuffer }) {
+  _onOpaquePictureDecoded({ width, height, data }: { width: number, height: number, data: ArrayBuffer }) {
     const buffer = new Uint8Array(data)
     const frameSerial = this._decodingSerialsQueue.shift()
     if (!frameSerial) {
@@ -168,7 +169,7 @@ class H264BufferContentDecoder {
     }
   }
 
-  _onAlphaPictureDecoded({width, height, data}: { width: number, height: number, data: ArrayBuffer }) {
+  _onAlphaPictureDecoded({ width, height, data }: { width: number, height: number, data: ArrayBuffer }) {
     const buffer = new Uint8Array(data)
     const frameSerial = this._decodingAlphaSerialsQueue.shift()
     if (!frameSerial) {

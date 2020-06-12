@@ -17,10 +17,13 @@
 
 import {
   Client,
-  Global, Registry,
+  Global,
+  Registry,
   WlShellRequests,
-  WlShellResource, WlShellResourceError,
-  WlShellSurfaceResource, WlSurfaceResource
+  WlShellResource,
+  WlShellResourceError,
+  WlShellSurfaceResource,
+  WlSurfaceResource
 } from 'westfield-runtime-server'
 import Session from './Session'
 
@@ -39,20 +42,20 @@ export default class Shell implements WlShellRequests {
   readonly session: Session
   private _global?: Global
 
-  static create (session: Session): Shell {
+  static create(session: Session): Shell {
     return new Shell(session)
   }
 
-  private constructor (session: Session) {
+  private constructor(session: Session) {
     this.session = session
   }
 
-  bindClient (client: Client, id: number, version: number) {
+  bindClient(client: Client, id: number, version: number) {
     const wlShellResource = new WlShellResource(client, id, version)
     wlShellResource.implementation = this
   }
 
-  registerGlobal (registry: Registry) {
+  registerGlobal(registry: Registry) {
     if (this._global) {
       return
     }
@@ -61,7 +64,7 @@ export default class Shell implements WlShellRequests {
     })
   }
 
-  unregisterGlobal () {
+  unregisterGlobal() {
     if (!this._global) {
       return
     }
@@ -69,10 +72,10 @@ export default class Shell implements WlShellRequests {
     this._global = undefined
   }
 
-  getShellSurface (resource: WlShellResource, id: number, surfaceResource: WlSurfaceResource) {
+  getShellSurface(resource: WlShellResource, id: number, surfaceResource: WlSurfaceResource) {
     if ((surfaceResource.implementation as Surface).role) {
       resource.postError(WlShellResourceError.role, 'Given surface has another role.')
-      // window.GREENFIELD_DEBUG && console.log('[client-protocol-error] - Given surface has another role.')
+      console.log('[client-protocol-error] - Given surface has another role.')
       return
     }
 

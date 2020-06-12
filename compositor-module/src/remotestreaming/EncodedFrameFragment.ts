@@ -17,11 +17,11 @@
 
 import Rect from '../math/Rect'
 
-class EncodedFrameFragment {
-  readonly encodingType: string;
-  readonly geo: Rect;
-  readonly opaque: Uint8Array;
-  readonly alpha: Uint8Array;
+export default class EncodedFrameFragment {
+  readonly encodingType: string
+  readonly geo: Rect
+  readonly opaque: Uint8Array
+  readonly alpha: Uint8Array
 
   static create(encodingType: string, fragmentX: number, fragmentY: number, fragmentWidth: number, fragmentHeight: number, opaque: Uint8Array, alpha: Uint8Array): EncodedFrameFragment {
     const geo = Rect.create(fragmentX, fragmentY, fragmentX + fragmentWidth, fragmentY + fragmentHeight)
@@ -35,5 +35,3 @@ class EncodedFrameFragment {
     this.alpha = alpha
   }
 }
-
-export default EncodedFrameFragment

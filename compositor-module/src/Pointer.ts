@@ -116,15 +116,15 @@ export default class Pointer implements WlPointerRequests, SurfaceRole<void> {
   set grab(grab) {
     if (grab !== this._grab) {
       if (grab === undefined) {
-        this.seat.compositorSeatState = { ...this.seat.compositorSeatState, pointerGrab: null }
-        this.session.userShell.events.updateUserSeat(this.seat.compositorSeatState)
+        this.seat.compositorSeatState = { ...this.seat.compositorSeatState, pointerGrab: undefined }
+        this.session.userShell.events.updateUserSeat?.(this.seat.compositorSeatState)
       } else if (grab.primary) {
         const { client, id } = grab.surface.resource
         this.seat.compositorSeatState = {
           ...this.seat.compositorSeatState,
-          pointerGrab: { id, clientId: client.id }
+          pointerGrab: { id: `${id}`, clientId: client.id }
         }
-        this.session.userShell.events.updateUserSeat(this.seat.compositorSeatState)
+        this.session.userShell.events.updateUserSeat?.(this.seat.compositorSeatState)
       }
       this._grab = grab
     }

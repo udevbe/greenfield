@@ -15,8 +15,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import BufferContents from "../BufferContents";
-import Size from "../Size";
+import BufferContents from '../BufferContents'
+import Size from '../Size'
 
 export type OpaqueAndAlphaPlanes = {
   opaque: { buffer: Uint8Array, width: number, height: number },
@@ -25,25 +25,19 @@ export type OpaqueAndAlphaPlanes = {
 
 export type DecodedPixelContent = OpaqueAndAlphaPlanes | ImageBitmap
 
-class DecodedFrame implements BufferContents<DecodedPixelContent> {
-  readonly mimeType: string;
-  readonly pixelContent: DecodedPixelContent;
-  readonly serial: number;
-  readonly size: Size;
+class DecodedFrame implements BufferContents<DecodedPixelContent, 'video/h264' | 'image/png'> {
+  readonly mimeType: 'video/h264' | 'image/png'
+  readonly pixelContent: DecodedPixelContent
+  readonly size: Size
 
-  static create(mimeType: string, pixelContent: DecodedPixelContent, serial: number, size: Size): DecodedFrame {
-    return new DecodedFrame(mimeType, pixelContent, serial, size)
+  static create(mimeType: 'video/h264' | 'image/png', pixelContent: DecodedPixelContent, size: Size): DecodedFrame {
+    return new DecodedFrame(mimeType, pixelContent, size)
   }
 
-  constructor(mimeType: string, pixelContent: DecodedPixelContent, serial: number, size: Size) {
+  constructor(mimeType: 'video/h264' | 'image/png', pixelContent: DecodedPixelContent, size: Size) {
     this.mimeType = mimeType
     this.pixelContent = pixelContent
-    this.serial = serial
     this.size = size
-  }
-
-  validateSize() {
-    /* NOOP */
   }
 }
 

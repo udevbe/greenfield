@@ -15,40 +15,46 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import Point from "../math/Point";
+import BufferImplementation from '../BufferImplementation'
+import Point from '../math/Point'
 import Output from '../Output'
-import DecodedFrame, {OpaqueAndAlphaPlanes} from "../remotestreaming/DecodedFrame";
+import DecodedFrame, { OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
 import Session from '../Session'
 import Size from '../Size'
 import Surface from '../Surface'
 import View from '../View'
-import RenderFrame from './RenderFrame'
+import WebGLFrame from '../webgl/WebGLFrame'
+import WebShmFrame from '../webshm/WebShmFrame'
 import SceneShader from './SceneShader'
 import YUVAToRGBA from './YUVAToRGBA'
 
-class Scene {
-  readonly session: Session;
-  readonly canvas: HTMLCanvasElement | OffscreenCanvas;
-  resolution: Size | 'auto';
-  readonly gl: WebGLRenderingContext;
-  readonly sceneShader: SceneShader;
-  private readonly _yuvaToRGBA: YUVAToRGBA;
-  readonly output: Output;
-  readonly id: string;
-  topLevelViews: View[];
-  pointerView?: View;
-  private _renderFrame?: Promise<void>;
-  // @ts-ignore
-  private _destroyResolve: (value?: void | PromiseLike<void>) => void;
-  private readonly _destroyPromise: Promise<void>;
+function createRenderFrame(): Promise<void> {
+  return new Promise(resolve => requestAnimationFrame(() => resolve()))
+}
 
-  static create(session: Session, gl: WebGLRenderingContext, canvas: HTMLCanvasElement | OffscreenCanvas, output: Output, sceneId: string): Scene {
+class Scene {
+  readonly session: Session
+  readonly canvas: HTMLCanvasElement
+  resolution: Size | 'auto'
+  readonly gl: WebGLRenderingContext
+  readonly sceneShader: SceneShader
+  private readonly _yuvaToRGBA: YUVAToRGBA
+  readonly output: Output
+  readonly id: string
+  topLevelViews: View[]
+  pointerView?: View
+  private _renderFrame?: Promise<void>
+  // @ts-ignore
+  private _destroyResolve: (value?: void | PromiseLike<void>) => void
+  private readonly _destroyPromise: Promise<void>
+
+  static create(session: Session, gl: WebGLRenderingContext, canvas: HTMLCanvasElement, output: Output, sceneId: string): Scene {
     const sceneShader = SceneShader.create(gl)
     const yuvaToRgba = YUVAToRGBA.create(gl)
     return new Scene(session, canvas, gl, sceneShader, yuvaToRgba, output, sceneId)
   }
 
-  private constructor(session: Session, canvas: HTMLCanvasElement | OffscreenCanvas, gl: WebGLRenderingContext, sceneShader: SceneShader, yuvaToRgba: YUVAToRGBA, output: Output, sceneId: string) {
+  private constructor(session: Session, canvas: HTMLCanvasElement, gl: WebGLRenderingContext, sceneShader: SceneShader, yuvaToRgba: YUVAToRGBA, output: Output, sceneId: string) {
     this.session = session
     this.canvas = canvas
     this.resolution = 'auto'
@@ -77,20 +83,31 @@ class Scene {
 
   private _prepareViewRenderState(view: View) {
     view.applyTransformations()
-    const {bufferResource, bufferContents} = view.surface.state
-    if (view.mapped && bufferResource && bufferContents && view.damaged) {
-      this[bufferContents.mimeType](bufferContents, view)
-      view.damaged = false
-    }
+    const { bufferResource, bufferContents } = view.surface.state
+    if (bufferContents instanceof DecodedFrame
+      || bufferContents instanceof WebGLFrame
+      || bufferContents instanceof WebShmFrame) {
 
-    if (bufferResource && bufferResource.implementation.captured && view.surface.views.filter(view => view.damaged).length === 0) {
-      bufferResource.implementation.release()
+      if (view.mapped && bufferResource && bufferContents && view.damaged) {
+        // @ts-ignore que?
+        this[bufferContents.mimeType](bufferContents, view)
+        view.damaged = false
+      }
+
+      if (bufferResource) {
+        const bufferImplementation = bufferResource.implementation as BufferImplementation<any>
+        if (bufferImplementation.captured && view.surface.views.filter(view => view.damaged).length === 0) {
+          bufferImplementation.release()
+        }
+      }
+    } else {
+      throw new Error(`BUG. Unsupported buffer type: ${typeof bufferContents}`)
     }
   }
 
   render(): Promise<void> {
     if (!this._renderFrame) {
-      this._renderFrame = RenderFrame.create()
+      this._renderFrame = createRenderFrame()
       this._renderFrame.then(() => {
         this._ensureResolution()
         const viewStack = this._viewStack()
@@ -112,7 +129,7 @@ class Scene {
 
         this._renderFrame = undefined
 
-        this.session.userShell.events.sceneRefresh(this.id)
+        this.session.userShell.events.sceneRefresh?.(this.id)
       })
     }
     return this._renderFrame
@@ -134,7 +151,7 @@ class Scene {
   }
 
   private _updateViewRenderStateWithTexImageSource(view: View, buffer: TexImageSource) {
-    const {texture, size: {w, h}} = view.renderState
+    const { texture, size: { w, h } } = view.renderState
     if (buffer.width === w && buffer.height === h) {
       texture.subImage2d(buffer, 0, 0)
     } else {
@@ -144,7 +161,7 @@ class Scene {
   }
 
   private _renderView(view: View) {
-    const {bufferResource, bufferContents} = view.surface.state
+    const { bufferResource, bufferContents } = view.surface.state
     if (view.mapped && bufferResource && bufferContents) {
       this.sceneShader.updateViewData(view)
       this.sceneShader.draw()
@@ -201,19 +218,19 @@ class Scene {
     view.findChildViews().forEach(view => this._addToViewStack(stack, view))
   }
 
-  private ['video/h264'](decodedFrame: DecodedFrame, view: View) {
+  public ['video/h264'](decodedFrame: DecodedFrame, view: View) {
     this._yuvaToRGBA.convertInto(decodedFrame.pixelContent as OpaqueAndAlphaPlanes, decodedFrame.size, view)
   }
 
-  private ['image/png'](decodedFrame: DecodedFrame, view: View) {
+  public ['image/png'](decodedFrame: DecodedFrame, view: View) {
     this._updateViewRenderStateWithTexImageSource(view, decodedFrame.pixelContent as ImageBitmap)
   }
 
-  private ['image/rgba'](shmFrame: WebShmFrame, view: View) {
+  public ['image/rgba'](shmFrame: WebShmFrame, view: View) {
     this._updateViewRenderStateWithTexImageSource(view, shmFrame.pixelContent)
   }
 
-  private ['image/canvas'](webGLFrame: WebGLFrame, view: View) {
+  public ['image/canvas'](webGLFrame: WebGLFrame, view: View) {
     this._updateViewRenderStateWithTexImageSource(view, webGLFrame.pixelContent)
   }
 }

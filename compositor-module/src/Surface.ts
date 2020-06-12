@@ -251,7 +251,7 @@ class Surface implements WlSurfaceRequests {
 
   updateDerivedState(newState: SurfaceState) {
     const oldBufferSize = this.state.bufferContents?.size ?? Size.create(0, 0)
-    this.state.bufferContents?.validateSize()
+    this.state.bufferContents?.validateSize?.()
     const newBufferSize = newState.bufferContents?.size ?? Size.create(0, 0)
 
     if (newState.bufferScale !== this.state.bufferScale ||
@@ -430,7 +430,7 @@ class Surface implements WlSurfaceRequests {
     return this.inverseBufferTransformation.timesPoint(bufferPoint)
   }
 
-  async commit(resource: WlSurfaceResource, serial: number) {
+  async commit(resource: WlSurfaceResource, serial?: number) {
     // const startCommit = Date.now()
     let bufferContents: any = null
 

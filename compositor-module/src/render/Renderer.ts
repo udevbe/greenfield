@@ -32,7 +32,7 @@ export default class Renderer {
     this.session = session
   }
 
-  initScene(sceneId: string, canvas: HTMLCanvasElement | OffscreenCanvas): Promise<void> {
+  initScene(sceneId: string, canvas: HTMLCanvasElement): Promise<void> {
     let scene = this.scenes[sceneId] || null
     if (!scene) {
       const gl = canvas.getContext('webgl', {

@@ -31,9 +31,9 @@ import Seat from './Seat'
  *
  */
 export default class Touch {
-  private resources: WlTouchResource[] = []
+  resources: WlTouchResource[] = []
   // @ts-ignore set in Seat creation
-  private seat: Seat
+  seat: Seat
 
   static create(): Touch {
     return new Touch()

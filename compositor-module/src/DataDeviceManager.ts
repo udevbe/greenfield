@@ -26,6 +26,7 @@ import {
 } from 'westfield-runtime-server'
 
 import DataSource from './DataSource'
+import Seat from './Seat'
 
 /**
  *
@@ -79,7 +80,7 @@ export default class DataDeviceManager implements WlDataDeviceManagerRequests {
 
   getDataDevice(resource: WlDataDeviceManagerResource, id: number, seatResource: WlSeatResource) {
     const wlDataDeviceResource = new WlDataDeviceResource(resource.client, id, resource.version)
-    const seat = /** @type {Seat} */seatResource.implementation
+    const seat = seatResource.implementation as Seat
     wlDataDeviceResource.implementation = seat.dataDevice
     seat.dataDevice.resources.push(wlDataDeviceResource)
   }

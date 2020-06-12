@@ -18,14 +18,10 @@
 const ALPHA = (1 << 0)
 const FULL_FRAME = (1 << 1)
 
-class EncodingOptions {
-  static splitAlpha(encodingOptions: number): boolean {
-    return (encodingOptions & ALPHA) !== 0
-  }
-
-  static fullFrame(encodingOptions: number): boolean {
-    return (encodingOptions & FULL_FRAME) !== 0
-  }
+export function splitAlpha(encodingOptions: number): boolean {
+  return (encodingOptions & ALPHA) !== 0
 }
 
-export default EncodingOptions
+export function fullFrame(encodingOptions: number): boolean {
+  return (encodingOptions & FULL_FRAME) !== 0
+}

@@ -24,6 +24,7 @@ import {
   WlDataOfferResourceError,
   WlDataSourceResource
 } from 'westfield-runtime-server'
+import DataSource from './DataSource'
 
 const { copy, move, ask, none } = WlDataDeviceManagerResourceDndAction
 const ALL_ACTIONS = (copy | move | ask)
@@ -84,27 +85,32 @@ export default class DataOffer implements WlDataOfferRequests {
      * won't be called, so do this here as a safety net, because
      * we still want the version >=3 drag source to be happy.
      */
-    if (this.resource < 3) {
+    if (this.resource.version < 3) {
       dataSoure.notifyFinish()
-    } else if (this.wlDataSource.resource &&
-      this.wlDataSource.resource.version >= 3) {
-      this.wlDataSource.resource.cancelled()
+    } else if (this.wlDataSource &&
+      this.wlDataSource.version >= 3) {
+      this.wlDataSource.cancelled()
     }
 
-    dataSoure.wlDataOffer = null
+    dataSoure.wlDataOffer = undefined
   }
 
   accept(resource: WlDataOfferResource, serial: number, mimeType: string | undefined) {
-    if (!this.wlDataSource || !this.wlDataSource.implementation.wlDataOffer) {
+    if (this.wlDataSource === undefined) {
       return
     }
+    const dataSource = this.wlDataSource.implementation as DataSource
+    if (dataSource.wlDataOffer === undefined) {
+      return
+    }
+
     if (this._finished) {
       // TODO raise protocol error
     }
 
     this.acceptMimeType = mimeType
     this.wlDataSource.target(mimeType)
-    this.wlDataSource.implementation.accepted = mimeType !== null
+    dataSource.accepted = mimeType !== null
   }
 
   receive(resource: WlDataOfferResource, mimeType: string, fd: WebFD) {
@@ -121,7 +127,7 @@ export default class DataOffer implements WlDataOfferRequests {
   }
 
   finish(resource: WlDataOfferResource) {
-    if (this.wlDataSource || !this.preferredAction) {
+    if (!this.wlDataSource || !this.preferredAction) {
       return
     }
     if (!this.acceptMimeType || this._finished) {
@@ -131,21 +137,22 @@ export default class DataOffer implements WlDataOfferRequests {
     /* Disallow finish while we have a grab driving drag-and-drop, or
      * if the negotiation is not at the right stage
      */
-    if (!this.wlDataSource.implementation.accepted) {
-      resource.postError(WlDataOfferResource.Error.invalidFinish, 'premature finish request')
+    const dataSource = this.wlDataSource.implementation as DataSource
+    if (!dataSource.accepted) {
+      resource.postError(WlDataOfferResourceError.invalidFinish, 'premature finish request')
       return
     }
 
-    switch (this.wlDataSource.implementation.currentDndAction) {
+    switch (dataSource.currentDndAction) {
       case none:
       case ask:
-        resource.postError(WlDataOfferResource.Error.invalidOffer, 'offer finished with an invalid action')
+        resource.postError(WlDataOfferResourceError.invalidOffer, 'offer finished with an invalid action')
         return
       default:
         break
     }
 
-    this.wlDataSource.implementation.notifyFinish()
+    dataSource.notifyFinish()
   }
 
   private _bitCount(u: number): number {
@@ -188,11 +195,12 @@ export default class DataOffer implements WlDataOfferRequests {
 
     const action = this._chooseAction()
 
-    if (this.wlDataSource.implementation.currentDndAction === action) {
+    const dataSource = this.wlDataSource.implementation as DataSource
+    if (dataSource.currentDndAction === action) {
       return
     }
 
-    this.wlDataSource.implementation.currentDndAction = action
+    dataSource.currentDndAction = action
 
     if (this.inAsk) {
       return
@@ -210,7 +218,7 @@ export default class DataOffer implements WlDataOfferRequests {
   private _chooseAction() {
     let offerActions = none
     let preferredAction = none
-    if (this.resource >= 3) {
+    if (this.resource.version >= 3) {
       offerActions = this.dndActions
       preferredAction = this.preferredAction
     } else {
@@ -219,7 +227,8 @@ export default class DataOffer implements WlDataOfferRequests {
 
     let sourceActions = none
     if (this.wlDataSource.version >= 3) {
-      sourceActions = this.wlDataSource.implementation.dndActions
+      const dataSource = this.wlDataSource.implementation as DataSource
+      sourceActions = dataSource.dndActions
     } else {
       sourceActions = copy
     }

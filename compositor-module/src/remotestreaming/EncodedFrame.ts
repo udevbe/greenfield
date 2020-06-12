@@ -20,7 +20,7 @@ import Size from '../Size'
 import EncodedFrameFragment from './EncodedFrameFragment'
 import EncodingTypes, {EncodingMimeTypes} from './EncodingMimeTypes'
 
-export default class EncodedFrame implements BufferContents<EncodedFrameFragment[]> {
+export default class EncodedFrame implements BufferContents<EncodedFrameFragment[], EncodingMimeTypes[keyof EncodingMimeTypes]> {
   readonly serial: number;
   readonly mimeType: EncodingMimeTypes[keyof EncodingMimeTypes];
   readonly encodingOptions: number;
@@ -83,9 +83,5 @@ export default class EncodedFrame implements BufferContents<EncodedFrameFragment
     this.encodingOptions = encodingOptions
     this.size = size
     this.pixelContent = fragments
-  }
-
-  validateSize() {
-    /* NOOP */
   }
 }

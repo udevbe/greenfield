@@ -15,12 +15,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import {
-  WlRegionRequests,
-  WlRegionResource
-} from 'westfield-runtime-server'
-import {lib} from './lib'
-import Point from "./math/Point";
+import { WlRegionRequests, WlRegionResource } from 'westfield-runtime-server'
+import { lib } from './lib'
+import Point from './math/Point'
 import Rect from './math/Rect'
 
 /**
@@ -29,11 +26,10 @@ import Rect from './math/Rect'
  *
  *            Region objects are used to describe the opaque and input
  *            regions of a surface.
- * @implements WlRegionRequests
  */
-class Region extends WlRegionRequests {
+class Region implements WlRegionRequests {
   readonly resource: WlRegionResource
-  readonly pixmanRegion: number;
+  readonly pixmanRegion: number
 
   static create(wlRegionResource: WlRegionResource): Region {
     const pixmanRegion = Region.createPixmanRegion()
@@ -110,7 +106,6 @@ class Region extends WlRegionRequests {
   }
 
   private constructor(wlRegionResource: WlRegionResource, pixmanRegion: number) {
-    super()
     this.resource = wlRegionResource
     this.pixmanRegion = pixmanRegion
   }

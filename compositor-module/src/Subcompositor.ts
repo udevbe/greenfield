@@ -28,7 +28,6 @@ import {
 
 import Subsurface from './Subsurface'
 import Surface from './Surface'
-import View from './View'
 
 /**
  *
@@ -89,7 +88,7 @@ export default class Subcompositor implements WlSubcompositorRequests {
     const surface = wlSurfaceResource.implementation as Surface
     if (surface.role) {
       resource.postError(WlSubcompositorResourceError.badSurface, 'Given surface has another role.')
-      // window.GREENFIELD_DEBUG && console.log('[client-protocol-error] - Given surface has another role.')
+      console.log('[client-protocol-error] - Given surface has another role.')
       return
     }
 
@@ -100,14 +99,6 @@ export default class Subcompositor implements WlSubcompositorRequests {
 
     // having added this sub-surface to a parent will have it create a view for each parent view
     const views = parentSurface.addSubsurface(surface.surfaceChildSelf)
-    const onNewView = (view: View) => {
-      view.onDestroy().then(() => {
-        view.detach()
-      })
-    }
-    views.forEach(onNewView)
-    // this handles the case where a view is created later on (ie if a new parent view is created)
-    surface.onViewCreated = onNewView
   }
 
   destroy(resource: WlSubcompositorResource): void {

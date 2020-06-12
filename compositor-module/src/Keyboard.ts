@@ -22,11 +22,18 @@ import {
   WlKeyboardResourceKeyState
 } from 'westfield-runtime-server'
 import DataDevice from './DataDevice'
+import { KeyEvent } from './KeyEvent'
 import Seat from './Seat'
 import Session from './Session'
 import Surface from './Surface'
-
-import Xkb from './Xkb'
+import {
+  buildNrmlvoEntries,
+  createFromNames,
+  createFromResource,
+  linuxKeycode,
+  nrmlvo,
+  Xkb
+} from './Xkb'
 
 const { pressed, released } = WlKeyboardResourceKeyState
 const { xkbV1 } = WlKeyboardResourceKeymapFormat
@@ -37,11 +44,12 @@ const { xkbV1 } = WlKeyboardResourceKeymapFormat
  *            associated with a seat.
  */
 export default class Keyboard implements WlKeyboardRequests {
-  nrmlvo: { name: string; rules: string; model: string; layout: string; variant: string; options: string }
-  defaultNrmlvo: { name: string; rules: string; model: string; layout: string; variant: string; options: string }
-  nrmlvoEntries: { name: string; rules: string; model: string; layout: string; variant: string; options: string }[]
+  nrmlvo: nrmlvo
+  defaultNrmlvo: nrmlvo
+  nrmlvoEntries: nrmlvo[]
   resources: WlKeyboardResource[] = []
-  xkb?: Xkb
+  // @ts-ignore set in create of Keyboard
+  xkb: Xkb
   // @ts-ignore set in create of Seat
   seat: Seat
   private _dataDevice: DataDevice
@@ -53,12 +61,15 @@ export default class Keyboard implements WlKeyboardRequests {
   private _keyboardFocusPromise?: Promise<void>
 
   static create(session: Session, dataDevice: DataDevice): Keyboard {
-    const nrmlvoEntries = Xkb.buildNrmlvoEntries()
+    const nrmlvoEntries = buildNrmlvoEntries()
 
     // deduce from browser language settings
     const langTokens = navigator.language.split('-')
     const lang = langTokens.length === 1 ? langTokens[0].toLowerCase() : langTokens[1].toLowerCase()
     const nrmlvoEntry = nrmlvoEntries.find(nrmlvo => nrmlvo.layout === lang && nrmlvo.variant == null) || nrmlvoEntries.find(nrmlvo => nrmlvo.layout === 'us')
+    if (nrmlvoEntry === undefined) {
+      throw new Error('BUG. No default nrmlvo entry found.')
+    }
 
     const keyboard = new Keyboard(dataDevice, session, nrmlvoEntries, nrmlvoEntry)
     keyboard.updateKeymapFromNames(keyboard.nrmlvo)
@@ -69,8 +80,8 @@ export default class Keyboard implements WlKeyboardRequests {
   private constructor(
     dataDevice: DataDevice,
     session: Session,
-    nrmlvoEntries: { name: string, rules: string, model: string, layout: string, variant: string, options: string }[],
-    nrmlvoEntry: { name: string, rules: string, model: string, layout: string, variant: string, options: string }
+    nrmlvoEntries: nrmlvo[],
+    nrmlvoEntry: nrmlvo
   ) {
     this._dataDevice = dataDevice
     this._session = session
@@ -111,17 +122,17 @@ export default class Keyboard implements WlKeyboardRequests {
     }
   }
 
-  updateKeymapFromNames(nrmlvo: { name: string, rules: string, model: string, layout: string, variant: string, options: string }) {
+  updateKeymapFromNames(nrmlvo: nrmlvo) {
     if (this.xkb) {
       // TODO cleanup previous keymap state
     }
     this.nrmlvo = nrmlvo
-    this.xkb = Xkb.createFromNames(nrmlvo)
+    this.xkb = createFromNames(nrmlvo)
     this.resources.forEach(resource => this.emitKeymap(resource))
   }
 
   updateKeymap(keymapFileName: string) {
-    Xkb.createFromResource(keymapFileName).then(
+    createFromResource(keymapFileName).then(
       (xkb: Xkb) => {
         if (this.xkb) {
           // TODO cleanup previous keymap state
@@ -152,25 +163,26 @@ export default class Keyboard implements WlKeyboardRequests {
     if (focus) {
       this.focus = focus
       const { client, id } = focus.resource
-      this._session.userShell.events.updateUserSeat({
+      this._session.userShell.events.updateUserSeat?.({
         ...this.seat.compositorSeatState,
-        keyboardFocus: { id, clientId: client.id }
+        keyboardFocus: { id: `${id}`, clientId: client.id }
       })
 
       this._dataDevice.onKeyboardFocusGained(focus)
 
       focus.resource.onDestroy().then(() => {
         if (this.focus === focus) {
-          this.focus = null
+          this.focus = undefined
         }
       })
 
       const serial = this.seat.nextSerial()
       const surface = this.focus.resource
-      const keys = new Uint8Array(this._keys).buffer
+      const keys = new Uint8Array(this._keys)
 
+      const targetFocus = this.focus
       this.resources
-        .filter(resource => resource.client === this.focus.resource.client)
+        .filter(resource => resource.client === targetFocus.resource.client)
         .forEach(resource => resource.enter(serial, surface, keys))
       if (this._keyboardFocusResolve) {
         this._keyboardFocusResolve()
@@ -184,14 +196,15 @@ export default class Keyboard implements WlKeyboardRequests {
       const serial = this.seat.nextSerial()
       const surface = this.focus.resource
 
+      const targetFocus = this.focus
       this.resources
-        .filter(resource => resource.client === this.focus.resource.client)
+        .filter(resource => resource.client === targetFocus.resource.client)
         .forEach(resource => resource.leave(serial, surface))
 
       this.focus = undefined
-      this._session.userShell.events.updateUserSeat({
+      this._session.userShell.events.updateUserSeat?.({
         ...this.seat.compositorSeatState,
-        keyboardFocus: null
+        keyboardFocus: undefined
       })
     }
   }
@@ -208,9 +221,9 @@ export default class Keyboard implements WlKeyboardRequests {
     return this._focus
   }
 
-  handleKey(event) {
+  handleKey(event: KeyEvent) {
     const keyCode = event.code
-    const linuxKeyCode = Xkb.linuxKeycode[keyCode]
+    const linuxKeyCode = linuxKeycode[keyCode]
     if (event.down && this._keys.includes(linuxKeyCode)) {
       // prevent key repeat from browser
       return
@@ -237,8 +250,9 @@ export default class Keyboard implements WlKeyboardRequests {
       const modsLocked = this.xkb.modsLocked
       const group = this.xkb.group
 
+      const targetFocus = this.focus
       this.resources
-        .filter(resource => resource.client === this.focus.resource.client)
+        .filter(resource => resource.client === targetFocus.resource.client)
         .forEach(resource => {
           resource.key(serial, time, evdevKeyCode, state)
           if (modsUpdate) {

@@ -22,6 +22,7 @@ import {
   WlDataSourceResource,
   WlDataSourceResourceError
 } from 'westfield-runtime-server'
+import DataOffer from './DataOffer'
 
 const { copy, move, ask, none } = WlDataDeviceManagerResourceDndAction
 const ALL_ACTIONS = (copy | move | ask)
@@ -92,11 +93,11 @@ export default class DataSource implements WlDataSourceRequests {
       return
     }
 
-    if (this.wlDataOffer.implementation.inAsk && this.resource.version >= 3) {
+    if (this.wlDataOffer && (this.wlDataOffer.implementation as DataOffer).inAsk && this.resource.version >= 3) {
       this.resource.action(this.currentDndAction)
     }
 
-    if (this.resource >= 3) {
+    if (this.resource.version >= 3) {
       this.resource.dndFinished()
     }
 

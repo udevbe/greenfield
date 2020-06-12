@@ -25,7 +25,7 @@ import {
 import Point from './math/Point'
 import Surface from './Surface'
 import SurfaceRole from './SurfaceRole'
-import SurfaceState from './SurfaceState'
+import { SurfaceState } from './SurfaceState'
 
 /**
  *
