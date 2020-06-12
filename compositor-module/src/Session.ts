@@ -15,19 +15,19 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import {Display} from 'westfield-runtime-server'
+import { Display } from 'westfield-runtime-server'
 import Globals from './Globals'
 import Renderer from './render/Renderer'
-import UserShellApi from './UserShellApi'
+import { createUserShellApi, UserShellApi } from './UserShellApi'
 import WebFS from './WebFS'
 
 class Session {
-  readonly display: Display;
-  readonly compositorSessionId: string;
-  readonly webFS: WebFS;
-  readonly globals: Globals;
-  readonly renderer: Renderer;
-  readonly userShell: UserShellApi;
+  readonly display: Display
+  readonly compositorSessionId: string
+  readonly webFS: WebFS
+  readonly globals: Globals
+  readonly renderer: Renderer
+  readonly userShell: UserShellApi
 
   static create(): Session {
     const display = new Display()
@@ -36,6 +36,7 @@ class Session {
   }
 
   private static _uuidv4(): string {
+    // @ts-ignore
     return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
       (c ^ window.crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
     )
@@ -47,12 +48,12 @@ class Session {
     this.webFS = WebFS.create(this.compositorSessionId)
     this.globals = Globals.create(this)
     this.renderer = Renderer.create(this)
-    this.userShell = UserShellApi(this)
+    this.userShell = createUserShellApi(this)
   }
 
   terminate() {
     this.globals.unregister()
-    this.display.clients.forEach(client => client.close())
+    Object.values(this.display.clients).forEach(client => client.close())
   }
 
   flush() {

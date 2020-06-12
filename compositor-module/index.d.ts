@@ -23,24 +23,24 @@ export interface SessionClass {
 //     type?: 'remote' | 'local'
 // }
 
-export interface CompositorClient {
-    variant: 'web' | 'remote'
-    id: string
-}
+// export interface CompositorClient {
+//     variant: 'web' | 'remote'
+//     id: string
+// }
 
 // export interface CompositorSurface {
 //     id: string
 //     clientId: string
 // }
 
-export type nrmlvo = {
-    name: string
-    rules: string
-    model: string
-    layout: string
-    variant: string
-    options: string
-}
+// export type nrmlvo = {
+//     name: string
+//     rules: string
+//     model: string
+//     layout: string
+//     variant: string
+//     options: string
+// }
 
 export interface Keyboard {
     defaultNrmlvo: nrmlvo
@@ -59,112 +59,112 @@ export interface Globals {
     seat: Seat
 }
 
-export interface ApplicationClient {
-    id: string
-    variant: 'web' | 'remote'
-}
+// export interface ApplicationClient {
+//     id: string
+//     variant: 'web' | 'remote'
+// }
 
 // export interface UserSeatState {
 //     pointerGrab: CompositorSurface
 //     keyboardFocus: CompositorSurface
 // }
 
-export interface UserConfiguration {
-    scrollFactor: number
-    keyboardLayoutName?: string
-}
+// export interface UserConfiguration {
+//     scrollFactor: number
+//     keyboardLayoutName?: string
+// }
 
-export interface UserShellApiEvents {
-    createApplicationClient(applicationClient: ApplicationClient): void
+// export interface UserShellApiEvents {
+//     createApplicationClient(applicationClient: ApplicationClient): void
+//
+//     destroyApplicationClient(applicationClient: ApplicationClient): void
+//
+//     createUserSurface(
+//         userSurface: CompositorSurface,
+//         state: CompositorSurfaceState
+//     ): void
+//
+//     notify(variant: string, message: string): void
+//
+//     updateUserSurface(
+//         userSurface: CompositorSurface,
+//         state: CompositorSurfaceState
+//     ): void
+//
+//     destroyUserSurface(userSurface: CompositorSurface): void
+//
+//     updateUserSeat(userSeatState: UserSeatState): void
+//
+//     sceneRefresh(sceneId: string): void
+// }
 
-    destroyApplicationClient(applicationClient: ApplicationClient): void
+// export interface ButtonEvent {
+//     x: number
+//     y: number
+//     timestamp: number
+//     buttonCode: number
+//     released: boolean
+//     buttons: number
+//     sceneId: string
+// }
 
-    createUserSurface(
-        userSurface: CompositorSurface,
-        state: CompositorSurfaceState
-    ): void
+// export interface AxisEvent {
+//     deltaMode: number
+//     DOM_DELTA_LINE: number
+//     DOM_DELTA_PAGE: number
+//     DOM_DELTA_PIXEL: number
+//     deltaX: number
+//     deltaY: number
+//     timestamp: number
+//     sceneId: string
+// }
 
-    notify(variant: string, message: string): void
+// export interface KeyEvent {
+//     code: number
+//     timestamp: number
+//     down: boolean
+// }
 
-    updateUserSurface(
-        userSurface: CompositorSurface,
-        state: CompositorSurfaceState
-    ): void
+// export interface UserShellApiInputActions {
+//     pointerMove(buttonEvent: ButtonEvent): void
+//
+//     buttonUp(buttonEvent: ButtonEvent): void
+//
+//     buttonDown(buttonEvent: ButtonEvent): void
+//
+//     axis(axisEvent: AxisEvent): void
+//
+//     key(keyEvent: KeyEvent): void
+// }
 
-    destroyUserSurface(userSurface: CompositorSurface): void
-
-    updateUserSeat(userSeatState: UserSeatState): void
-
-    sceneRefresh(sceneId: string): void
-}
-
-export interface ButtonEvent {
-    x: number
-    y: number
-    timestamp: number
-    buttonCode: number
-    released: boolean
-    buttons: number
-    sceneId: string
-}
-
-export interface AxisEvent {
-    deltaMode: number
-    DOM_DELTA_LINE: number
-    DOM_DELTA_PAGE: number
-    DOM_DELTA_PIXEL: number
-    deltaX: number
-    deltaY: number
-    timestamp: number
-    sceneId: string
-}
-
-export interface KeyEvent {
-    code: number
-    timestamp: number
-    down: boolean
-}
-
-export interface UserShellApiInputActions {
-    pointerMove(buttonEvent: ButtonEvent): void
-
-    buttonUp(buttonEvent: ButtonEvent): void
-
-    buttonDown(buttonEvent: ButtonEvent): void
-
-    axis(axisEvent: AxisEvent): void
-
-    key(keyEvent: KeyEvent): void
-}
-
-export interface UserShellApiActions {
-    input: UserShellApiInputActions
-
-    raise(userSurface: CompositorSurface, sceneId: string): void
-
-    requestActive(userSurface: CompositorSurface): void
-
-    notifyInactive(userSurface: CompositorSurface): void
-
-    initScene(sceneId: string, canvas: HTMLCanvasElement): void
-
-    refreshScene(sceneId: string): Promise<void>
-
-    setSceneConfiguration(
-        sceneId: string,
-        sceneConfig: { width: number; height: number }
-    ): void
-
-    destroyScene(sceneId: string): void
-
-    createView(userSurface: CompositorSurface, sceneId: string): void
-
-    setKeyboardFocus(userSurface: CompositorSurface): void
-
-    setUserConfiguration(userConfiguration: Partial<UserConfiguration>): void
-
-    closeClient(applicationClient: Pick<ApplicationClient, 'id'>): void
-}
+// export interface UserShellApiActions {
+//     input: UserShellApiInputActions
+//
+//     raise(userSurface: CompositorSurface, sceneId: string): void
+//
+//     requestActive(userSurface: CompositorSurface): void
+//
+//     notifyInactive(userSurface: CompositorSurface): void
+//
+//     initScene(sceneId: string, canvas: HTMLCanvasElement): void
+//
+//     refreshScene(sceneId: string): Promise<void>
+//
+//     setSceneConfiguration(
+//         sceneId: string,
+//         sceneConfig: { width: number; height: number }
+//     ): void
+//
+//     destroyScene(sceneId: string): void
+//
+//     createView(userSurface: CompositorSurface, sceneId: string): void
+//
+//     setKeyboardFocus(userSurface: CompositorSurface): void
+//
+//     setUserConfiguration(userConfiguration: Partial<UserConfiguration>): void
+//
+//     closeClient(applicationClient: Pick<ApplicationClient, 'id'>): void
+// }
 
 export interface WebAppSocket {
     onWebAppWorker(webWorker): Client

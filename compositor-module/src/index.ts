@@ -46,3 +46,13 @@ export interface CompositorSeatState {
   pointerGrab?: CompositorSurface
   keyboardFocus?: CompositorSurface
 }
+
+export interface CompositorClient {
+  id: string
+  variant: 'web' | 'remote'
+}
+
+export interface UserConfiguration {
+  scrollFactor: number
+  keyboardLayoutName?: string
+}

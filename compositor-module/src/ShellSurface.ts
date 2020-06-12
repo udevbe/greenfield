@@ -30,7 +30,8 @@ import Seat from './Seat'
 import Session from './Session'
 import Surface from './Surface'
 import SurfaceRole from './SurfaceRole'
-import SurfaceState from './SurfaceState'
+import { SurfaceState } from './SurfaceState'
+import { UserShellSurfaceRole } from './UserShellSurfaceRole'
 
 const { bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight } = WlShellSurfaceResourceResize
 const { inactive } = WlShellSurfaceResourceTransient
@@ -57,7 +58,7 @@ const SurfaceStates = {
  *            wl_shell_surface_destroy() must be called before destroying
  *            the wl_surface object.
  */
-export default class ShellSurface implements WlShellSurfaceRequests, SurfaceRole<void> {
+export default class ShellSurface implements WlShellSurfaceRequests, UserShellSurfaceRole<void> {
   readonly userSurface: CompositorSurface
   readonly resource: WlShellSurfaceResource
   readonly wlSurfaceResource: WlSurfaceResource

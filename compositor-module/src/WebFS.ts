@@ -1,4 +1,4 @@
-// Copyright 2019 Erik De Rijcke
+// Copyright 2020 Erik De Rijcke
 //
 // This file is part of Greenfield.
 //
@@ -18,59 +18,37 @@
 import { WebFD } from 'westfield-runtime-common'
 
 export default class WebFS {
-  /**
-   * @param {string}compositorSessionId
-   * @return {WebFS}
-   */
-  static create (compositorSessionId) {
+  private readonly _compositorSessionId: string
+  private _webFDs: { [key: number]: WebFD } = {}
+  private _nextFD: number = 0
+
+  static create(compositorSessionId: string): WebFS {
     return new WebFS(compositorSessionId)
   }
 
-  /**
-   * @param {string}compositorSessionId
-   */
-  constructor (compositorSessionId) {
-    /**
-     * @type {string}
-     * @private
-     */
+  private constructor(compositorSessionId: string) {
     this._compositorSessionId = compositorSessionId
-    /**
-     * @type {Object.<number,WebFD>}
-     * @private
-     */
-    this._webFDs = {}
-    /**
-     * @type {number}
-     * @private
-     */
-    this._nextFD = 0
   }
 
-  /**
-   * @param {ArrayBuffer} arrayBuffer
-   * @return {WebFD}
-   */
-  fromArrayBuffer (arrayBuffer) {
+  fromArrayBuffer(arrayBuffer: ArrayBuffer): WebFD {
     const fd = this._nextFD++
     const type = 'ArrayBuffer'
     // FIXME we want to use reference counting here instead of simply deleting.
     // Sending the WebFD to an endpoint will increase the ref, and we should wait until the endpoint has closed the fd as well.
+    // TODO probably lots of other edge cases here as well => write some extensive e2e tests
     const webFdURL = new URL('compositor://')
     webFdURL.searchParams.append('fd', `${fd}`)
     webFdURL.searchParams.append('type', type)
     webFdURL.searchParams.append('compositorSessionId', this._compositorSessionId)
 
-    const webFD = new WebFD(fd, type, webFdURL, () => Promise.resolve(arrayBuffer), () => { delete this._webFDs[fd] })
+    const webFD = new WebFD(fd, type, webFdURL, () => Promise.resolve(arrayBuffer), () => {
+      delete this._webFDs[fd]
+    })
     this._webFDs[fd] = webFD
     return webFD
   }
 
-  /**
-   * @param {ImageBitmap}imageBitmap
-   * @return {WebFD}
-   */
-  fromImageBitmap (imageBitmap) {
+  fromImageBitmap(imageBitmap: ImageBitmap): WebFD {
     const fd = this._nextFD++
     const type = 'ImageBitmap'
 
@@ -79,16 +57,14 @@ export default class WebFS {
     webFdURL.searchParams.append('type', type)
     webFdURL.searchParams.append('compositorSessionId', this._compositorSessionId)
 
-    const webFD = new WebFD(fd, 'ImageBitmap', webFdURL, () => Promise.resolve(imageBitmap), () => { delete this._webFDs[fd] })
+    const webFD = new WebFD(fd, 'ImageBitmap', webFdURL, () => Promise.resolve(imageBitmap), () => {
+      delete this._webFDs[fd]
+    })
     this._webFDs[fd] = webFD
     return webFD
   }
 
-  /**
-   * @param offscreenCanvas
-   * @return {WebFD}
-   */
-  fromOffscreenCanvas (offscreenCanvas) {
+  fromOffscreenCanvas(offscreenCanvas: OffscreenCanvas): WebFD {
     const fd = this._nextFD++
     const type = 'OffscreenCanvas'
 
@@ -97,18 +73,16 @@ export default class WebFS {
     webFdURL.searchParams.append('type', type)
     webFdURL.searchParams.append('compositorSessionId', this._compositorSessionId)
 
-    const webFD = new WebFD(fd, 'ImageBitmap', webFdURL, () => Promise.resolve(offscreenCanvas), () => { delete this._webFDs[fd] })
+    const webFD = new WebFD(fd, 'ImageBitmap', webFdURL, () => Promise.resolve(offscreenCanvas), () => {
+      delete this._webFDs[fd]
+    })
     this._webFDs[fd] = webFD
     return webFD
   }
 
   // TODO fromMessagePort
 
-  /**
-   * @param {number}fd
-   * @return {WebFD}
-   */
-  getWebFD (fd) {
+  getWebFD(fd: number): WebFD {
     return this._webFDs[fd]
   }
 }

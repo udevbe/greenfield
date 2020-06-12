@@ -1,4 +1,4 @@
-// Copyright 2019 Erik De Rijcke
+// Copyright 2020 Erik De Rijcke
 //
 // This file is part of Greenfield.
 //
@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import Surface from "./Surface";
-import SurfaceState from "./SurfaceState";
+import { SurfaceState } from "./SurfaceState";
 
 /**
  * surface role interface. See 'role' in https://wayland.freedesktop.org/docs/html/apa.html#protocol-spec-wl_surface

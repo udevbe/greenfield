@@ -1,4 +1,4 @@
-// Copyright 2019 Erik De Rijcke
+// Copyright 2020 Erik De Rijcke
 //
 // This file is part of Greenfield.
 //
@@ -15,38 +15,28 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+import { Client } from 'westfield-runtime-server'
+import WebAppSocket from './WebAppSocket'
+
 export default class WebAppLauncher {
-  /**
-   * @param {WebAppSocket}webAppSocket
-   * @return {WebAppLauncher}
-   */
-  static create (webAppSocket) {
+  private readonly _webAppSocket: WebAppSocket
+
+  static create(webAppSocket: WebAppSocket) {
     return new WebAppLauncher(webAppSocket)
   }
 
-  /**
-   * @param {WebAppSocket}webAppSocket
-   */
-  constructor (webAppSocket) {
-    /**
-     * @type {WebAppSocket}
-     * @private
-     */
+  private constructor(webAppSocket: WebAppSocket) {
     this._webAppSocket = webAppSocket
   }
 
-  launchBlob (blob) {
+  launchBlob(blob: Blob): Client {
     const worker = new window.Worker(URL.createObjectURL(blob))
     const client = this._webAppSocket.onWebAppWorker(worker)
     client.onClose().then(() => worker.terminate())
     return client
   }
 
-  /**
-   * @param {URL}webAppURL
-   * @return {Promise<Client>}
-   */
-  launch (webAppURL) {
+  launch(webAppURL: URL): Promise<Client> {
     // TODO store web apps locally so they can be used offline and/or faster
     // TODO alternatively web apps could be served through web-sockets and avoid the same origin policy.
     return new Promise(resolve => {

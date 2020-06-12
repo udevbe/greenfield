@@ -1,4 +1,4 @@
-// Copyright 2019 Erik De Rijcke
+// Copyright 2020 Erik De Rijcke
 //
 // This file is part of Greenfield.
 //
@@ -15,74 +15,71 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+import { SendMessage } from 'westfield-runtime-common'
+import { Client } from 'westfield-runtime-server'
+import Session from './Session'
+
+interface WebAppSocketMessage {
+  protocolMessage: ArrayBuffer
+  meta: Transferable[]
+}
+
+function instanceOfWebAppSocketMessage(object: any): object is WebAppSocketMessage {
+  return (
+    'protocolMessage' in object
+    && 'meta' in object
+    && object.protocolMessage instanceof ArrayBuffer
+    && Array.isArray(object.meta)
+  )
+}
+
 export default class WebAppSocket {
-  /**
-   * @param {Session}session
-   * @return {WebAppSocket}
-   */
-  static create (session) {
+  private _session: Session
+
+  static create(session: Session): WebAppSocket {
     return new WebAppSocket(session)
   }
 
-  /**
-   * @param {Session}session
-   */
-  constructor (session) {
-    /**
-     * @type {Session}
-     */
+  private constructor(session: Session) {
     this._session = session
   }
 
-  /**
-   * @param {Worker}webWorker
-   * @return {Client}
-   */
-  onWebAppWorker (webWorker) {
+  onWebAppWorker(webWorker: Worker): Client {
     // TODO How listen for webWorker terminate/close/destroy?
     // TODO close client connection when worker is terminated
 
-    const client = this._session.display.createClient((sendBuffer) => webWorker.postMessage(sendBuffer, [sendBuffer]))
+    const client = this._session.display.createClient()
 
-    /**
-     * @param {MessageEvent}event
-     */
     webWorker.onmessage = event => {
-      const webWorkerMessage = /** @type {{protocolMessage:ArrayBuffer, meta:Array<Transferable>}} */event.data
-      if (webWorkerMessage.protocolMessage instanceof ArrayBuffer) {
-        const buffer = new Uint32Array(/** @type {ArrayBuffer} */webWorkerMessage.protocolMessage)
-        const fds = /** @type {Array<WebFD>} */webWorkerMessage.meta.map(transferable => {
-          if (transferable instanceof window.ArrayBuffer) {
-            return this._session.webFS.fromArrayBuffer(transferable)
-          } else if (transferable instanceof window.ImageBitmap) {
-            return this._session.webFS.fromImageBitmap(transferable)
-          } else if (transferable instanceof window.OffscreenCanvas) {
-            return this._session.webFS.fromOffscreenCanvas(transferable)
-          }// else if (transferable instanceof MessagePort) {
-          // }
-          throw new Error(`Unsupported transferable: ${transferable}`)
-        })
-        client.connection.message({ buffer, fds })
-        fds.forEach(fd => fd.close())
-      } else {
+      if (!instanceOfWebAppSocketMessage(event.data)) {
         console.error('[web-worker-connection] client send an illegal message object. Expected ArrayBuffer.')
         client.close()
       }
+
+      const webAppSocketMessage = event.data as WebAppSocketMessage
+      const buffer = new Uint32Array(webAppSocketMessage.protocolMessage)
+      const fds = webAppSocketMessage.meta.map(transferable => {
+        if (transferable instanceof window.ArrayBuffer) {
+          return this._session.webFS.fromArrayBuffer(transferable)
+        } else if (transferable instanceof window.ImageBitmap) {
+          return this._session.webFS.fromImageBitmap(transferable)
+        } else if (transferable instanceof window.OffscreenCanvas) {
+          return this._session.webFS.fromOffscreenCanvas(transferable)
+        }// else if (transferable instanceof MessagePort) {
+        // }
+        throw new Error(`Unsupported transferable: ${transferable}`)
+      })
+      client.connection.message({ buffer, fds })
+      fds.forEach(fd => fd.close())
     }
 
-    /**
-     * @type {Array<Array<{buffer: ArrayBuffer, fds: Array<WebFD>}>>}
-     * @private
-     */
-    const flushQueue = []
-
-    /**
-     * @param {Array<{buffer: ArrayBuffer, fds: Array<WebFD>}>}wireMessages
-     */
+    const flushQueue: SendMessage[][] = []
     client.connection.onFlush = async (wireMessages) => {
       flushQueue.push(wireMessages)
 
-      if (flushQueue.length > 1) { return }
+      if (flushQueue.length > 1) {
+        return
+      }
 
       while (flushQueue.length) {
         const sendWireMessages = flushQueue[0]
@@ -92,7 +89,7 @@ export default class WebAppSocket {
 
         const sendBuffer = new Uint32Array(new ArrayBuffer(messagesSize))
         let offset = 0
-        const meta = []
+        const meta: Transferable[] = []
         for (const wireMessage of sendWireMessages) {
           for (const webFd of wireMessage.fds) {
             const transferable = await webFd.getTransferable()
@@ -104,18 +101,21 @@ export default class WebAppSocket {
           offset += message.length
         }
 
-        webWorker.postMessage({ protocolMessage: sendBuffer.buffer, meta }, [sendBuffer.buffer].concat(meta))
+        webWorker.postMessage({
+          protocolMessage: sendBuffer.buffer,
+          meta
+        }, [sendBuffer.buffer, ...meta])
         flushQueue.shift()
       }
     }
 
     client.onClose().then(() => {
-      this._session.userShell.events.destroyApplicationClient({
+      this._session.userShell.events.destroyApplicationClient?.({
         id: client.id,
         variant: 'web'
       })
     })
-    this._session.userShell.events.createApplicationClient({ id: client.id, variant: 'web' })
+    this._session.userShell.events.createApplicationClient?.({ id: client.id, variant: 'web' })
     return client
   }
 }
