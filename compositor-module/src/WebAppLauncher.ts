@@ -16,9 +16,10 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { Client } from 'westfield-runtime-server'
+import { CompositorWebAppLauncher } from './index'
 import WebAppSocket from './WebAppSocket'
 
-export default class WebAppLauncher {
+export default class WebAppLauncher implements CompositorWebAppLauncher{
   private readonly _webAppSocket: WebAppSocket
 
   static create(webAppSocket: WebAppSocket) {

@@ -19,7 +19,7 @@ import { WebFD } from 'westfield-runtime-common'
 import BufferContents from '../BufferContents'
 import Size from '../Size'
 
-export default class WebShmFrame implements BufferContents<ImageData, 'image/rgba'> {
+export default class WebShmFrame implements BufferContents<ImageData> {
   readonly size: Size
   pixelContent: ImageData
   readonly mimeType: 'image/rgba' = 'image/rgba'

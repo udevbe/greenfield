@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+// @ts-ignore
 import { init } from 'tinyh264'
 
 init()

@@ -25,7 +25,7 @@ export type OpaqueAndAlphaPlanes = {
 
 export type DecodedPixelContent = OpaqueAndAlphaPlanes | ImageBitmap
 
-class DecodedFrame implements BufferContents<DecodedPixelContent, 'video/h264' | 'image/png'> {
+class DecodedFrame implements BufferContents<DecodedPixelContent> {
   readonly mimeType: 'video/h264' | 'image/png'
   readonly pixelContent: DecodedPixelContent
   readonly size: Size

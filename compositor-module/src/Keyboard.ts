@@ -22,6 +22,7 @@ import {
   WlKeyboardResourceKeyState
 } from 'westfield-runtime-server'
 import DataDevice from './DataDevice'
+import { CompositorKeyboard } from './index'
 import { KeyEvent } from './KeyEvent'
 import Seat from './Seat'
 import Session from './Session'
@@ -43,7 +44,7 @@ const { xkbV1 } = WlKeyboardResourceKeymapFormat
  *            The wl_keyboard interface represents one or more keyboards
  *            associated with a seat.
  */
-export default class Keyboard implements WlKeyboardRequests {
+export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard {
   nrmlvo: nrmlvo
   defaultNrmlvo: nrmlvo
   nrmlvoEntries: nrmlvo[]

@@ -24,7 +24,8 @@ import {
   WlDataDeviceResource,
   WlDataDeviceResourceError,
   WlDataOfferResource,
-  WlDataSourceResource, WlDataSourceResourceError,
+  WlDataSourceResource,
+  WlDataSourceResourceError,
   WlSurfaceResource
 } from 'westfield-runtime-server'
 import DataOffer from './DataOffer'
@@ -114,7 +115,7 @@ export default class DataDevice implements WlDataDeviceRequests {
     if (this.seat.serial !== serial) {
       return
     }
-    if (pointer.grab.surface.resource !== origin) {
+    if (pointer.grab?.surface.resource !== origin) {
       return
     }
 

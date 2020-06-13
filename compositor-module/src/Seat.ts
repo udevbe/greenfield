@@ -24,11 +24,10 @@ import {
   WlSeatRequests,
   WlSeatResource,
   WlSeatResourceCapability,
-  WlSurfaceResource,
   WlTouchResource
 } from 'westfield-runtime-server'
 import DataDevice from './DataDevice'
-import { CompositorSeatState, CompositorSurface } from './index'
+import { CompositorSeat, CompositorSeatState } from './index'
 import Keyboard from './Keyboard'
 
 import Pointer from './Pointer'
@@ -45,7 +44,7 @@ const { keyboard, pointer, touch } = WlSeatResourceCapability
  *            maintains a keyboard focus and a pointer focus.
  *
  */
-class Seat implements WlSeatRequests {
+class Seat implements WlSeatRequests, CompositorSeat {
   readonly dataDevice: DataDevice
   readonly pointer: Pointer
   readonly keyboard: Keyboard
@@ -112,11 +111,11 @@ class Seat implements WlSeatRequests {
       // no global present and still receiving a bind can happen when there is a race between the compositor
       // unregistering the global and a client binding to it. As such we handle it here.
       wlSeatResource.implementation = {
-        getKeyboard(resource: WlSeatResource, id: number): void {
+        getKeyboard(): void {
         },
-        getPointer(resource: WlSeatResource, id: number): void {
+        getPointer(): void {
         },
-        getTouch(resource: WlSeatResource, id: number): void {
+        getTouch(): void {
         },
         release: resource => resource.destroy()
       }
@@ -164,7 +163,7 @@ class Seat implements WlSeatRequests {
         release(resource: WlPointerResource): void {
           resource.destroy()
         },
-        setCursor(resource: WlPointerResource, serial: number, surface: WlSurfaceResource | undefined, hotspotX: number, hotspotY: number): void {
+        setCursor(): void {
         }
       }
     }

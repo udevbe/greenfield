@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+// @ts-ignore
 import { lib } from './lib'
 
 const XKB_KEYMAP_FORMAT_TEXT_V1 = 1

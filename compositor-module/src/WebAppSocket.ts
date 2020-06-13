@@ -17,6 +17,7 @@
 
 import { SendMessage } from 'westfield-runtime-common'
 import { Client } from 'westfield-runtime-server'
+import { CompositorWebAppSocket } from './index'
 import Session from './Session'
 
 interface WebAppSocketMessage {
@@ -33,7 +34,7 @@ function instanceOfWebAppSocketMessage(object: any): object is WebAppSocketMessa
   )
 }
 
-export default class WebAppSocket {
+export default class WebAppSocket implements CompositorWebAppSocket {
   private _session: Session
 
   static create(session: Session): WebAppSocket {

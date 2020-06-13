@@ -17,11 +17,11 @@
 
 import Size from './Size'
 
-export default interface BufferContents<T, U extends 'video/h264'|'image/png'|'image/rgba'|'image/canvas'> {
+export default interface BufferContents<T> {
   validateSize?: () => void
 
   size: Size
-  mimeType: U
+  mimeType: 'video/h264'|'image/png'|'image/rgba'|'image/canvas'
   pixelContent: T
   serial?: number
 }

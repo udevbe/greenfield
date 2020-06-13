@@ -1,4 +1,4 @@
-// Copyright 2019 Erik De Rijcke
+// Copyright 2020 Erik De Rijcke
 //
 // This file is part of Greenfield.
 //
@@ -15,15 +15,46 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+import { Client } from 'westfield-runtime-server'
+import RemoteAppLauncher from './RemoteAppLauncher'
+import RemoteSocket from './RemoteSocket'
+import Session from './Session'
+import WebAppLauncher from './WebAppLauncher'
+import WebAppSocket from './WebAppSocket'
+import { UserShellApi } from './UserShellApi'
+import { nrmlvo } from './Xkb'
+
+// @ts-ignore
 export { init as initWasm } from './lib'
-export { default as Session } from './Session'
-export { default as WebAppLauncher } from './WebAppLauncher'
-export { default as RemoteAppLauncher } from './RemoteAppLauncher'
-export { default as WebAppSocket } from './WebAppSocket'
-export { default as RemoteSocket } from './RemoteSocket'
 export * from './ButtonEvent'
 export * from './AxisEvent'
 export * from './KeyEvent'
+
+export function createCompositorSession(): CompositorSession {
+  return Session.create()
+}
+
+export interface CompositorKeyboard {
+  defaultNrmlvo: nrmlvo
+  nrmlvoEntries: nrmlvo[]
+}
+
+export interface CompositorSeat {
+  keyboard: CompositorKeyboard
+}
+
+export interface CompositorSession {
+  userShell: UserShellApi
+  globals: CompositorGlobals
+}
+
+export interface CompositorGlobals {
+  register(): void
+
+  unregister(): void
+
+  seat: CompositorSeat
+}
 
 export interface CompositorSurfaceState {
   title?: string
@@ -52,7 +83,47 @@ export interface CompositorClient {
   variant: 'web' | 'remote'
 }
 
-export interface UserConfiguration {
+export interface CompositorConfiguration {
   scrollFactor: number
   keyboardLayoutName?: string
 }
+
+export interface CompositorWebAppSocket {
+}
+
+export function createCompositorWebAppSocket(session: Session): CompositorWebAppSocket {
+  return WebAppSocket.create(session)
+}
+
+export interface CompositorRemoteSocket {
+}
+
+export function createCompositorRemoteSocket(session: Session): CompositorRemoteSocket {
+  return RemoteSocket.create(session)
+}
+
+export interface CompositorRemoteAppLauncher {
+  launch(appEndpointURL: URL, remoteAppId: string): Promise<Client>
+}
+
+export function createCompositorRemoteAppLauncher(session: CompositorSession, remoteSocket: CompositorRemoteSocket): CompositorRemoteAppLauncher {
+  if (session instanceof Session && remoteSocket instanceof RemoteSocket) {
+    return RemoteAppLauncher.create(session, remoteSocket)
+  } else {
+    throw new Error('Session and/or remote socket do not have expected implementation.')
+  }
+}
+
+export interface CompositorWebAppLauncher {
+  launch(webAppURL: URL): Promise<Client>
+}
+
+export function createCompositorWebAppLauncher(webAppSocket: CompositorWebAppSocket): CompositorWebAppLauncher {
+  if (webAppSocket instanceof WebAppSocket) {
+    return WebAppLauncher.create(webAppSocket)
+  } else {
+    throw new Error('Web app socket does not have expected implementation.')
+  }
+}
+
+

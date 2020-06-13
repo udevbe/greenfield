@@ -16,34 +16,33 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { Client } from 'westfield-runtime-server'
+import { CompositorRemoteAppLauncher } from './index'
 import RemoteSocket from './RemoteSocket'
 import Session from './Session'
 
-class RemoteAppLauncher {
+export default class RemoteAppLauncher implements CompositorRemoteAppLauncher {
   private readonly _session: Session
   private readonly _remoteSocket: RemoteSocket
 
-  static create (session: Session, remoteSocket: RemoteSocket): RemoteAppLauncher {
+  static create(session: Session, remoteSocket: RemoteSocket): RemoteAppLauncher {
     return new RemoteAppLauncher(session, remoteSocket)
   }
 
-  private constructor (session: Session, remoteSocket: RemoteSocket) {
+  private constructor(session: Session, remoteSocket: RemoteSocket) {
     this._session = session
     this._remoteSocket = remoteSocket
   }
 
-  async launch (appEndpointURL: URL, remoteAppId: string): Promise<Client> {
+  async launch(appEndpointURL: URL, remoteAppId: string): Promise<Client> {
     appEndpointURL.searchParams.delete('launch')
     appEndpointURL.searchParams.append('launch', remoteAppId)
     return this.launchURL(appEndpointURL)
   }
 
-  async launchURL (appEndpointURL: URL): Promise<Client> {
+  async launchURL(appEndpointURL: URL): Promise<Client> {
     appEndpointURL.searchParams.delete('compositorSessionId')
     appEndpointURL.searchParams.append('compositorSessionId', this._session.compositorSessionId)
     const webSocket = new window.WebSocket(appEndpointURL.href)
     return this._remoteSocket.onWebSocket(webSocket)
   }
 }
-
-export default RemoteAppLauncher

@@ -17,11 +17,12 @@
 
 import { Display } from 'westfield-runtime-server'
 import Globals from './Globals'
+import { CompositorSession } from './index'
 import Renderer from './render/Renderer'
 import { createUserShellApi, UserShellApi } from './UserShellApi'
 import WebFS from './WebFS'
 
-class Session {
+class Session implements CompositorSession{
   readonly display: Display
   readonly compositorSessionId: string
   readonly webFS: WebFS

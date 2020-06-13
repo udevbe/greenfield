@@ -1,5 +1,6 @@
 import Compositor from './Compositor'
 import DataDeviceManager from './DataDeviceManager'
+import { CompositorGlobals } from './index'
 import Output from './Output'
 import Seat from './Seat'
 import Session from './Session'
@@ -9,7 +10,7 @@ import WebGL from './webgl/WebGL'
 import WebShm from './webshm/WebShm'
 import XdgWmBase from './XdgWmBase'
 
-class Globals {
+class Globals implements CompositorGlobals{
   readonly session: Session
   readonly seat: Seat
   readonly compositor: Compositor

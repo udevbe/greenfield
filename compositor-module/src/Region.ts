@@ -16,6 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { WlRegionRequests, WlRegionResource } from 'westfield-runtime-server'
+// @ts-ignore
 import { lib } from './lib'
 import Point from './math/Point'
 import Rect from './math/Rect'

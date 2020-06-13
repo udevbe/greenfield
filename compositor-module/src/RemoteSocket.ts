@@ -17,11 +17,12 @@
 
 import { SendMessage, WebFD } from 'westfield-runtime-common'
 import { Client, WlBufferResource } from 'westfield-runtime-server'
+import { CompositorRemoteSocket } from './index'
 import RemoteOutOfBandChannel from './RemoteOutOfBandChannel'
 import StreamingBuffer from './remotestreaming/StreamingBuffer'
 import Session from './Session'
 
-class RemoteSocket {
+class RemoteSocket implements CompositorRemoteSocket {
   private readonly _session: Session
   private readonly _textEncoder: TextEncoder = new TextEncoder()
   private readonly _textDecoder: TextDecoder = new window.TextDecoder()
@@ -38,12 +39,12 @@ class RemoteSocket {
     // TODO get all contents at once from remote endpoint and put it in an array buffer
     // TODO do this on each invocation
     // return new ArrayBuffer(0)
-    throw new Error('shm transferable from endpoint not yet implemented.')
+    throw new Error('TODO. Shm transferable from endpoint not yet implemented.')
   }
 
   private async _closeShmTransferable(webFD: WebFD): Promise<void> {
     // TODO signal the remote end (if any) that it should close the fd
-    throw new Error('close shm transferable from endpoint not yet implemented.')
+    throw new Error('TODO. Close shm transferable from endpoint not yet implemented.')
   }
 
   private async _getPipeTransferable(webFD: WebFD): Promise<MessagePort> {
@@ -53,13 +54,13 @@ class RemoteSocket {
     // TODO only do this once until the messageChannel is closed
     // return messageChannel.port2
 
-    throw new Error('pipe transferable from endpoint not yet implemented.')
+    throw new Error('TODO. Pipe transferable from endpoint not yet implemented.')
   }
 
   private async _closePipeTransferable(webFD: WebFD): Promise<void> {
     // TODO signal the remote end (if any) that it should close the fd
     // TODO close the messageChannel object
-    throw new Error('close pipe transferable from endpoint not yet implemented.')
+    throw new Error('TODO. close pipe transferable from endpoint not yet implemented.')
   }
 
   onWebSocket(webSocket: WebSocket): Promise<Client> {
@@ -237,8 +238,9 @@ class RemoteSocket {
           webFDs[i] = webFd
         }
         const buffer = receiveBuffer.subarray(offset)
-        client.connection.message({ buffer, fds: webFDs }).catch(e => {
+        client.connection.message({ buffer, fds: webFDs }).catch((e: Error) => {
           // TODO use centralized error reporting
+          // @ts-ignore
           console.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
           console.error('error object stack: ')
           console.error(e.stack)
@@ -260,7 +262,7 @@ class RemoteSocket {
     let messageSize = 1 // +1 for indicator of it's an out of band message
     const serializedWireMessages = wireMessages.map(wireMessage => {
       let size = 1 // +1 for fd length
-      const serializedWebFds = wireMessage.fds.map(webFd => {
+      const serializedWebFds: Uint8Array[] = wireMessage.fds.map((webFd: WebFD) => {
         const serializedWebFD = this._textEncoder.encode(webFd.url.href)
         size += 1 + (((serializedWebFD.byteLength + 3) & ~3) / 4) // +1 for fd url length
         return serializedWebFD
@@ -308,7 +310,11 @@ class RemoteSocket {
     const webFdBytes = new Uint8Array(sourceBuf.buffer, sourceBuf.byteOffset + Uint32Array.BYTES_PER_ELEMENT, webFdbyteLength)
 
     const webFdURL = new URL(this._textDecoder.decode(webFdBytes))
-    const fd = Number.parseInt(webFdURL.searchParams.get('fd'))
+    const fdParam = webFdURL.searchParams.get('fd')
+    if (fdParam === null) {
+      throw new Error('BUG. WebFD URL does not have fd query param.')
+    }
+    const fd = Number.parseInt(fdParam)
     const type = webFdURL.searchParams.get('type')
 
     let onGetTransferable
@@ -324,12 +330,7 @@ class RemoteSocket {
         break
       // case 3: 'ImageBitmap' can not be transferred to a remote
       default:
-        onGetTransferable = () => {
-          throw new Error('unsupported fd type')
-        }
-        onClose = () => {
-          throw new Error('unsupported fd type')
-        }
+        throw new Error(`Unsupported WebFD type: ${type}`)
     }
     return {
       read: 1 + (((webFdbyteLength + 3) & ~3) / 4),
