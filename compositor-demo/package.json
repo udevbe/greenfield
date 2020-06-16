@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "webpack-dev-server --open",
+    "prebuild": "rimraf dist",
     "build": "webpack"
   },
   "keywords": [],
@@ -15,6 +16,7 @@
     "source-map-loader": "^1.0.0"
   },
   "devDependencies": {
+    "rimraf": "^3.0.2",
     "clean-webpack-plugin": "^3.0.0",
     "copy-webpack-plugin": "^6.0.2",
     "file-loader": "^6.0.0",
