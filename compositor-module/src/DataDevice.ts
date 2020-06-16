@@ -162,7 +162,7 @@ export default class DataDevice implements WlDataDeviceRequests {
     const client = surfaceResource.client
 
     // if source is null, only transfers within the same client can take place
-    if (this.dndSource === null && client !== this.dndSourceClient) {
+    if (this.dndSource === undefined && client !== this.dndSourceClient) {
       return
     }
 
@@ -187,7 +187,7 @@ export default class DataDevice implements WlDataDeviceRequests {
     const client = surfaceResource.client
 
     // if source is null, only transfers within the same client can take place
-    if (this.dndSource === null && client !== this.dndSourceClient) {
+    if (this.dndSource === undefined && client !== this.dndSourceClient) {
       return
     }
 
@@ -231,7 +231,7 @@ export default class DataDevice implements WlDataDeviceRequests {
     const client = surfaceResource.client
 
     // if source is null, only transfers within the same client can take place
-    if (this.dndSource === null && client !== this.dndSourceClient) {
+    if (this.dndSource === undefined && client !== this.dndSourceClient) {
       return
     }
 

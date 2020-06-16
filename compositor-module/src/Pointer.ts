@@ -377,7 +377,7 @@ export default class Pointer implements WlPointerRequests, SurfaceRole<void> {
     this.handleMouseMove(event)
 
     if (this.focus && this.focus.surface) {
-      if (this.grab === null && this._popupStack.length === 0) {
+      if (this.grab === undefined && this._popupStack.length === 0) {
         this.grab = this.focus
       }
 
