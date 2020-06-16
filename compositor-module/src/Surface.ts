@@ -18,11 +18,11 @@
 import {
   WlBufferResource,
   WlCallbackResource,
-  WlOutputResourceTransform,
+  WlOutputTransform,
   WlRegionResource,
   WlSurfaceRequests,
   WlSurfaceResource,
-  WlSurfaceResourceError
+  WlSurfaceError
 } from 'westfield-runtime-server'
 import BufferContents from './BufferContents'
 import BufferImplementation from './BufferImplementation'
@@ -547,13 +547,13 @@ class Surface implements WlSurfaceRequests {
 
   private _captureState(resource: WlSurfaceResource, bufferResource: WlBufferResource | undefined, bufferContents: BufferContents<any> | undefined): SurfaceState | undefined {
     if ((this._pendingBufferScale ?? 1) < 1) {
-      resource.postError(WlSurfaceResourceError.invalidScale, 'Buffer scale value is invalid.')
+      resource.postError(WlSurfaceError.invalidScale, 'Buffer scale value is invalid.')
       console.log('[client-protocol-error] - Buffer scale value is invalid.')
       return undefined
     }
 
-    if (!(this._pendingBufferTransform in WlOutputResourceTransform)) {
-      resource.postError(WlSurfaceResourceError.invalidTransform, 'Buffer transform value is invalid.')
+    if (!(this._pendingBufferTransform in WlOutputTransform)) {
+      resource.postError(WlSurfaceError.invalidTransform, 'Buffer transform value is invalid.')
       console.log('[client-protocol-error] - Buffer transform value is invalid.')
       return undefined
     }

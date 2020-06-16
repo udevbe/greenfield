@@ -21,7 +21,7 @@ import {
   Registry,
   WlShellRequests,
   WlShellResource,
-  WlShellResourceError,
+  WlShellError,
   WlShellSurfaceResource,
   WlSurfaceResource
 } from 'westfield-runtime-server'
@@ -74,7 +74,7 @@ export default class Shell implements WlShellRequests {
 
   getShellSurface(resource: WlShellResource, id: number, surfaceResource: WlSurfaceResource) {
     if ((surfaceResource.implementation as Surface).role) {
-      resource.postError(WlShellResourceError.role, 'Given surface has another role.')
+      resource.postError(WlShellError.role, 'Given surface has another role.')
       console.log('[client-protocol-error] - Given surface has another role.')
       return
     }

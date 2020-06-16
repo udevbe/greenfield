@@ -19,8 +19,9 @@ import {
   WlOutputResource,
   WlSeatResource,
   WlShellSurfaceRequests,
-  WlShellSurfaceResource, WlShellSurfaceResourceResize,
-  WlShellSurfaceResourceTransient,
+  WlShellSurfaceResource,
+  WlShellSurfaceResize,
+  WlShellSurfaceTransient,
   WlSurfaceResource
 } from 'westfield-runtime-server'
 import { CompositorSurface, CompositorSurfaceState } from './index'
@@ -29,12 +30,11 @@ import Point from './math/Point'
 import Seat from './Seat'
 import Session from './Session'
 import Surface from './Surface'
-import SurfaceRole from './SurfaceRole'
 import { SurfaceState } from './SurfaceState'
 import { UserShellSurfaceRole } from './UserShellSurfaceRole'
 
-const { bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight } = WlShellSurfaceResourceResize
-const { inactive } = WlShellSurfaceResourceTransient
+const { bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight } = WlShellSurfaceResize
+const { inactive } = WlShellSurfaceTransient
 
 const SurfaceStates = {
   MAXIMIZED: 'maximized',

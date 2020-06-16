@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "typings": "types/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "types"
   ],
   "scripts": {
     "lint": "tslint  --project tsconfig.json -t codeFrame 'src/**/*.ts' 'test/**/*.ts'",
@@ -25,8 +26,8 @@
   },
   "dependencies": {
     "tinyh264": "^0.0.5",
-    "westfield-runtime-common": "0.4.0",
-    "westfield-runtime-server": "0.4.0"
+    "westfield-runtime-common": "0.4.2",
+    "westfield-runtime-server": "0.4.1"
   },
   "devDependencies": {
     "@commitlint/cli": "^8.3.5",
@@ -34,7 +35,7 @@
     "@rollup/plugin-typescript": "^4.1.2",
     "@rollup/plugin-url": "^5.0.1",
     "@surma/rollup-plugin-off-main-thread": "^1.4.1",
-    "@types/jest": "^25.2.3",
+    "@types/jest": "^26.0.0",
     "@types/node": "^14.0.11",
     "colors": "^1.4.0",
     "commitizen": "^4.1.2",
@@ -70,7 +71,7 @@
   },
   "author": "Erik De Rijcke",
   "homepage": "https://www.greenfield.app",
-  "license": "AGPLv3",
+  "license": "AGPL-3.0-or-later",
   "repository": {
     "type": "git",
     "url": "https://github.com/udevbe/greenfield/tree/master/compositor-module"

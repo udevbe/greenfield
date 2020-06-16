@@ -18,8 +18,8 @@
 import {
   WlKeyboardRequests,
   WlKeyboardResource,
-  WlKeyboardResourceKeymapFormat,
-  WlKeyboardResourceKeyState
+  WlKeyboardKeymapFormat,
+  WlKeyboardKeyState
 } from 'westfield-runtime-server'
 import DataDevice from './DataDevice'
 import { CompositorKeyboard } from './index'
@@ -36,8 +36,8 @@ import {
   Xkb
 } from './Xkb'
 
-const { pressed, released } = WlKeyboardResourceKeyState
-const { xkbV1 } = WlKeyboardResourceKeymapFormat
+const { pressed, released } = WlKeyboardKeyState
+const { xkbV1 } = WlKeyboardKeymapFormat
 
 /**
  *

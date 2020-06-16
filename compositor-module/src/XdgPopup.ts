@@ -16,13 +16,11 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import {
-  WlSeatResource,
+  WlSeatResource, XdgPopupError,
   XdgPopupRequests,
   XdgPopupResource,
-  XdgPopupResourceError,
-  XdgPositionerResourceConstraintAdjustment,
-  XdgSurfaceResource,
-  XdgWmBaseResourceError
+  XdgPositionerConstraintAdjustment,
+  XdgSurfaceResource, XdgWmBaseError
 } from 'westfield-runtime-server'
 
 import Point from './math/Point'
@@ -34,7 +32,7 @@ import { SurfaceState } from './SurfaceState'
 import { XdgPositionerState } from './XdgPositioner'
 import XdgSurface from './XdgSurface'
 
-const { none, slideX, slideY, flipX, flipY, resizeX, resizeY } = XdgPositionerResourceConstraintAdjustment
+const { none, slideX, slideY, flipX, flipY, resizeX, resizeY } = XdgPositionerConstraintAdjustment
 
 interface InverseY {
   0: 0
@@ -233,7 +231,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole<{ windowG
     for (const surfaceChild of surface.children) {
       if (surfaceChild !== surface.surfaceChildSelf &&
         surfaceChild.surface.role instanceof XdgPopup) {
-        this.resource.postError(XdgWmBaseResourceError.notTheTopmostPopup, 'Client tried to map a non-topmost popup')
+        this.resource.postError(XdgWmBaseError.notTheTopmostPopup, 'Client tried to map a non-topmost popup')
         console.log('[client-protocol-error] - Client tried to map a non-topmost popup.')
         return
       }
@@ -284,7 +282,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole<{ windowG
     for (const surfaceChild of surface.children) {
       if (surfaceChild !== surface.surfaceChildSelf &&
         surfaceChild.surface.role instanceof XdgPopup) {
-        resource.postError(XdgWmBaseResourceError.notTheTopmostPopup, 'Client tried to destroy a non-topmost popup')
+        resource.postError(XdgWmBaseError.notTheTopmostPopup, 'Client tried to destroy a non-topmost popup')
         console.log('[client-protocol-error] - Client tried to destroy a non-topmost popup.')
         return
       }
@@ -306,7 +304,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole<{ windowG
     // }
 
     if (this.mapped) {
-      resource.postError(XdgPopupResourceError.invalidGrab, 'Client tried to grab popup after it being mapped.')
+      resource.postError(XdgPopupError.invalidGrab, 'Client tried to grab popup after it being mapped.')
       console.error('[client-protocol-error] Client tried to grab popup after it being mapped.')
       return
     }
@@ -320,7 +318,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole<{ windowG
         this._dismiss()
         return
       } else if (!pointer.findPopupGrab(parentWlSurfaceResource)) {
-        resource.postError(XdgWmBaseResourceError.invalidPopupParent, 'Popup parent is a popup that did not take an explicit grab.')
+        resource.postError(XdgWmBaseError.invalidPopupParent, 'Popup parent is a popup that did not take an explicit grab.')
         console.error('[client-protocol-error]  Popup parent is a popup that did not take an explicit grab.')
         return
       }

@@ -18,7 +18,7 @@
 import {
   XdgPositionerRequests,
   XdgPositionerResource,
-  XdgPositionerResourceError
+  XdgPositionerError
 } from 'westfield-runtime-server'
 import Point from './math/Point'
 
@@ -262,7 +262,7 @@ export default class XdgPositioner implements XdgPositionerRequests {
 
   setSize(resource: XdgPositionerResource, width: number, height: number) {
     if (width <= 0 || height <= 0) {
-      resource.postError(XdgPositionerResourceError.invalidInput, 'Size width or height of positioner can not be negative.')
+      resource.postError(XdgPositionerError.invalidInput, 'Size width or height of positioner can not be negative.')
       console.log('[client-protocol-error]. Size width or height of positioner can not be negative.')
       return
     }
@@ -271,7 +271,7 @@ export default class XdgPositioner implements XdgPositionerRequests {
 
   setAnchorRect(resource: XdgPositionerResource, x: number, y: number, width: number, height: number) {
     if (width <= 0 || height <= 0) {
-      resource.postError(XdgPositionerResourceError.invalidInput, 'Anchor rect width or height of positioner can not be negative.')
+      resource.postError(XdgPositionerError.invalidInput, 'Anchor rect width or height of positioner can not be negative.')
       console.log('[client-protocol-error] - Anchor rect width or height of positioner can not be negative.')
       return
     }
@@ -282,7 +282,7 @@ export default class XdgPositioner implements XdgPositionerRequests {
     if (anchor in Object.keys(anchorCalculation)) {
       this.anchor = anchor as keyof AnchorCalculation
     } else {
-      resource.postError(XdgPositionerResourceError.invalidInput, `Invalid anchor: ${anchor}`)
+      resource.postError(XdgPositionerError.invalidInput, `Invalid anchor: ${anchor}`)
     }
   }
 
@@ -290,7 +290,7 @@ export default class XdgPositioner implements XdgPositionerRequests {
     if (gravity in Object.keys(offsetCalculation)) {
       this.gravity = gravity as keyof OffsetCalculation
     } else {
-      resource.postError(XdgPositionerResourceError.invalidInput, `Invalid gravity: ${gravity}`)
+      resource.postError(XdgPositionerError.invalidInput, `Invalid gravity: ${gravity}`)
     }
   }
 
@@ -326,7 +326,7 @@ export default class XdgPositioner implements XdgPositionerRequests {
           const surfaceSpaceAnchorPoint = anchorCalculation[this.anchor](surfaceSpaceAnchorRect)
           return offsetCalculation[this.gravity](surfaceSpaceAnchorPoint, this.offset, this.size)
         } else {
-          resource.postError(XdgPositionerResourceError.invalidInput, `Positioner not fully configured.`)
+          resource.postError(XdgPositionerError.invalidInput, `Positioner not fully configured.`)
           return undefined
         }
       },
@@ -366,7 +366,7 @@ export default class XdgPositioner implements XdgPositionerRequests {
             leftViolation: leftViolation
           }
         } else {
-          resource.postError(XdgPositionerResourceError.invalidInput, `Positioner not fully configured.`)
+          resource.postError(XdgPositionerError.invalidInput, `Positioner not fully configured.`)
           return undefined
         }
       }

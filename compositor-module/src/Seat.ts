@@ -23,7 +23,7 @@ import {
   WlPointerResource,
   WlSeatRequests,
   WlSeatResource,
-  WlSeatResourceCapability,
+  WlSeatCapability,
   WlTouchResource
 } from 'westfield-runtime-server'
 import DataDevice from './DataDevice'
@@ -34,7 +34,7 @@ import Pointer from './Pointer'
 import Session from './Session'
 import Touch from './Touch'
 
-const { keyboard, pointer, touch } = WlSeatResourceCapability
+const { keyboard, pointer, touch } = WlSeatCapability
 
 /**
  *

@@ -19,9 +19,9 @@ import {
   Client,
   Global,
   Registry,
+  WlSubcompositorError,
   WlSubcompositorRequests,
   WlSubcompositorResource,
-  WlSubcompositorResourceError,
   WlSubsurfaceResource,
   WlSurfaceResource
 } from 'westfield-runtime-server'
@@ -87,7 +87,7 @@ export default class Subcompositor implements WlSubcompositorRequests {
   getSubsurface(resource: WlSubcompositorResource, id: number, wlSurfaceResource: WlSurfaceResource, wlParentSurfaceResource: WlSurfaceResource) {
     const surface = wlSurfaceResource.implementation as Surface
     if (surface.role) {
-      resource.postError(WlSubcompositorResourceError.badSurface, 'Given surface has another role.')
+      resource.postError(WlSubcompositorError.badSurface, 'Given surface has another role.')
       console.log('[client-protocol-error] - Given surface has another role.')
       return
     }

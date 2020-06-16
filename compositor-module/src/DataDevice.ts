@@ -19,13 +19,13 @@ import { Fixed } from 'westfield-runtime-common'
 
 import {
   Client,
-  WlDataDeviceManagerResourceDndAction,
+  WlDataDeviceManagerDndAction,
   WlDataDeviceRequests,
   WlDataDeviceResource,
-  WlDataDeviceResourceError,
+  WlDataDeviceError,
   WlDataOfferResource,
   WlDataSourceResource,
-  WlDataSourceResourceError,
+  WlDataSourceError,
   WlSurfaceResource
 } from 'westfield-runtime-server'
 import DataOffer from './DataOffer'
@@ -36,7 +36,7 @@ import Seat from './Seat'
 import Surface from './Surface'
 import View from './View'
 
-const DndAction = WlDataDeviceManagerResourceDndAction
+const DndAction = WlDataDeviceManagerDndAction
 
 /**
  *
@@ -105,7 +105,7 @@ export default class DataDevice implements WlDataDeviceRequests {
 
   startDrag(resource: WlDataDeviceResource, source: WlDataSourceResource | undefined, origin: WlSurfaceResource, icon: WlSurfaceResource | undefined, serial: number) {
     if (icon && (icon.implementation as Surface).role) {
-      resource.postError(WlDataDeviceResourceError.role, 'Given surface has another role.')
+      resource.postError(WlDataDeviceError.role, 'Given surface has another role.')
       console.log('[client-protocol-error] - Given surface has another role.')
       return
     }
@@ -299,7 +299,7 @@ export default class DataDevice implements WlDataDeviceRequests {
     // }
 
     if (source && (source.implementation as DataSource).dndActions) {
-      source.postError(WlDataSourceResourceError.invalidSource, 'Can not set selection when source has dnd actions active.')
+      source.postError(WlDataSourceError.invalidSource, 'Can not set selection when source has dnd actions active.')
       console.log('[client-protocol-error] - Can not set selection when source has dnd actions active.')
       return
     }

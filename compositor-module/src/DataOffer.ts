@@ -17,16 +17,16 @@
 
 import { WebFD } from 'westfield-runtime-common'
 import {
-  WlDataDeviceManagerResourceDndAction,
+  WlDataDeviceManagerDndAction,
   WlDataDeviceResource,
   WlDataOfferRequests,
   WlDataOfferResource,
-  WlDataOfferResourceError,
+  WlDataOfferError,
   WlDataSourceResource
 } from 'westfield-runtime-server'
 import DataSource from './DataSource'
 
-const { copy, move, ask, none } = WlDataDeviceManagerResourceDndAction
+const { copy, move, ask, none } = WlDataDeviceManagerDndAction
 const ALL_ACTIONS = (copy | move | ask)
 
 /**
@@ -43,7 +43,7 @@ export default class DataOffer implements WlDataOfferRequests {
   resource: WlDataOfferResource
   acceptMimeType?: string
   preferredAction: number = 0
-  dndActions: WlDataDeviceManagerResourceDndAction = none
+  dndActions: WlDataDeviceManagerDndAction = none
   wlDataSource: WlDataSourceResource
   inAsk: boolean = false
   private readonly _finished: boolean = false
@@ -139,14 +139,14 @@ export default class DataOffer implements WlDataOfferRequests {
      */
     const dataSource = this.wlDataSource.implementation as DataSource
     if (!dataSource.accepted) {
-      resource.postError(WlDataOfferResourceError.invalidFinish, 'premature finish request')
+      resource.postError(WlDataOfferError.invalidFinish, 'premature finish request')
       return
     }
 
     switch (dataSource.currentDndAction) {
       case none:
       case ask:
-        resource.postError(WlDataOfferResourceError.invalidOffer, 'offer finished with an invalid action')
+        resource.postError(WlDataOfferError.invalidOffer, 'offer finished with an invalid action')
         return
       default:
         break
@@ -170,7 +170,7 @@ export default class DataOffer implements WlDataOfferRequests {
     }
 
     if (dndActions & ~ALL_ACTIONS) {
-      resource.postError(WlDataOfferResourceError.invalidActionMask, `invalid action mask ${dndActions}`)
+      resource.postError(WlDataOfferError.invalidActionMask, `invalid action mask ${dndActions}`)
       console.log('[client protocol error] - invalid data offer action mask')
       return
     }
@@ -178,7 +178,7 @@ export default class DataOffer implements WlDataOfferRequests {
     if (preferredAction &&
       (!(preferredAction & dndActions) ||
         this._bitCount(preferredAction) > 1)) {
-      resource.postError(WlDataOfferResourceError.invalidAction, `invalid action ${preferredAction}`)
+      resource.postError(WlDataOfferError.invalidAction, `invalid action ${preferredAction}`)
       console.log('[client protocol error] - invalid data offer action')
       return
     }

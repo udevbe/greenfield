@@ -18,7 +18,7 @@
 import {
   WlSubsurfaceRequests,
   WlSubsurfaceResource,
-  WlSubsurfaceResourceError,
+  WlSubsurfaceError,
   WlSurfaceResource
 } from 'westfield-runtime-server'
 
@@ -172,7 +172,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole<voi
     const siblingSurfaceChildSelf = siblingSurface.surfaceChildSelf
     if (!parentSurface.subsurfaceChildren.includes(siblingSurfaceChildSelf) ||
       siblingSurface === parentSurface) {
-      resource.postError(WlSubsurfaceResourceError.badSurface, 'Surface is not a sibling or the parent.')
+      resource.postError(WlSubsurfaceError.badSurface, 'Surface is not a sibling or the parent.')
       console.log('[client-protocol-error] - Surface is not a sibling or the parent.')
       return
     }

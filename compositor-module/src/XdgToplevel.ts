@@ -19,10 +19,10 @@ import {
   WlOutputResource,
   WlSeatResource,
   XdgToplevelRequests,
+  XdgToplevelResizeEdge,
   XdgToplevelResource,
-  XdgToplevelResourceResizeEdge,
-  XdgToplevelResourceState,
-  XdgWmBaseResourceError
+  XdgToplevelState,
+  XdgWmBaseError
 } from 'westfield-runtime-server'
 import { CompositorSurface, CompositorSurfaceState } from './index'
 import Mat4 from './math/Mat4'
@@ -37,8 +37,8 @@ import { UserShellSurfaceRole } from './UserShellSurfaceRole'
 import View from './View'
 import XdgSurface from './XdgSurface'
 
-const { none, bottom, bottomLeft, bottomRight, left, right, top, topLeft, topRight } = XdgToplevelResourceResizeEdge
-const { fullscreen, activated, maximized, resizing } = XdgToplevelResourceState
+const { none, bottom, bottomLeft, bottomRight, left, right, top, topLeft, topRight } = XdgToplevelResizeEdge
+const { fullscreen, activated, maximized, resizing } = XdgToplevelState
 
 interface ConfigureState {
   serial: number,
@@ -179,12 +179,12 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     maxHeight = maxHeight === 0 ? Number.MAX_SAFE_INTEGER : maxHeight
 
     if (minWidth < 0 || minHeight < 0 || minWidth > maxWidth || minHeight > maxHeight) {
-      this.resource.postError(XdgWmBaseResourceError.invalidSurfaceState, 'Min size can not be greater than max size.')
+      this.resource.postError(XdgWmBaseError.invalidSurfaceState, 'Min size can not be greater than max size.')
       console.log('[client-protocol-error] Min size can not be greater than max size.')
       return
     }
     if (maxWidth < 0 || maxHeight < 0 || maxWidth < minWidth || maxHeight < minHeight) {
-      this.resource.postError(XdgWmBaseResourceError.invalidSurfaceState, 'Max size can not be me smaller than min size.')
+      this.resource.postError(XdgWmBaseError.invalidSurfaceState, 'Max size can not be me smaller than min size.')
       console.log('[client-protocol-error] Max size can not be less than min size.')
       return
     }
@@ -286,7 +286,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     const { w: newSurfaceWidth, h: newSurfaceHeight } = roleState.windowGeometry.size
 
     if (newSurfaceWidth !== roleState.configureState.width || newSurfaceHeight !== roleState.configureState.height) {
-      this.resource.postError(XdgWmBaseResourceError.invalidSurfaceState, 'Surface size does not match configure event.')
+      this.resource.postError(XdgWmBaseError.invalidSurfaceState, 'Surface size does not match configure event.')
       console.log('[client-protocol-error] Surface size does not match configure event.')
       return
     }
@@ -311,7 +311,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       const bufferSize = newState.bufferContents.size
       const { x: newSurfaceWidth, y: newSurfaceHeight } = surface.toSurfaceSpace(Point.create(bufferSize.w, bufferSize.h))
       if (newSurfaceWidth > this._configureState.width || newSurfaceHeight > this._configureState.height) {
-        this.resource.postError(XdgWmBaseResourceError.invalidSurfaceState, 'Surface size does not match configure event.')
+        this.resource.postError(XdgWmBaseError.invalidSurfaceState, 'Surface size does not match configure event.')
         console.log('[client protocol error] Surface size does not match configure event.')
         return
       }

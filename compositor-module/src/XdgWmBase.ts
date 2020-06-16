@@ -24,7 +24,7 @@ import {
   XdgSurfaceResource,
   XdgWmBaseRequests,
   XdgWmBaseResource,
-  XdgWmBaseResourceError
+  XdgWmBaseError
 } from 'westfield-runtime-server'
 import Seat from './Seat'
 import Session from './Session'
@@ -97,7 +97,7 @@ export default class XdgWmBase implements XdgWmBaseRequests {
 
   destroy(resource: XdgWmBaseResource) {
     if (this._wlSurfaceResources.length > 0) {
-      resource.postError(XdgWmBaseResourceError.defunctSurfaces, 'xdg_wm_base was destroyed before children.')
+      resource.postError(XdgWmBaseError.defunctSurfaces, 'xdg_wm_base was destroyed before children.')
       console.log('[client-protocol-error] - xdg_wm_base was destroyed before children.')
       return
     }
@@ -112,7 +112,7 @@ export default class XdgWmBase implements XdgWmBaseRequests {
   getXdgSurface(resource: XdgWmBaseResource, id: number, wlSurfaceResource: WlSurfaceResource) {
     const surface = /** @type {Surface} */wlSurfaceResource.implementation as Surface
     if (surface.pendingWlBuffer || surface.state.bufferContents) {
-      resource.postError(XdgWmBaseResourceError.invalidSurfaceState, 'Surface had a buffer attached before xdg surface was created.')
+      resource.postError(XdgWmBaseError.invalidSurfaceState, 'Surface had a buffer attached before xdg surface was created.')
       console.log('[client-protocol-error] - Surface had a buffer attached before xdg surface was created.')
       return
     }

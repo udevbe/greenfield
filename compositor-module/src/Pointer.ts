@@ -19,10 +19,10 @@ import { Fixed } from 'westfield-runtime-common'
 import {
   WlPointerRequests,
   WlPointerResource,
-  WlPointerResourceAxis,
-  WlPointerResourceAxisSource,
-  WlPointerResourceButtonState,
-  WlPointerResourceError,
+  WlPointerAxis,
+  WlPointerAxisSource,
+  WlPointerButtonState,
+  WlPointerError,
   WlSurfaceResource
 } from 'westfield-runtime-server'
 import { AxisEvent } from './AxisEvent'
@@ -39,9 +39,9 @@ import SurfaceRole from './SurfaceRole'
 import { SurfaceState } from './SurfaceState'
 import View from './View'
 
-const { pressed, released } = WlPointerResourceButtonState
-const { horizontalScroll, verticalScroll } = WlPointerResourceAxis
-const { wheel } = WlPointerResourceAxisSource
+const { pressed, released } = WlPointerButtonState
+const { horizontalScroll, verticalScroll } = WlPointerAxis
+const { wheel } = WlPointerAxisSource
 
 // translates between browser button codes & kernel code as expected by wayland protocol
 const linuxInput = {
@@ -171,7 +171,7 @@ export default class Pointer implements WlPointerRequests, SurfaceRole<void> {
     if (surfaceResource) {
       const surface = surfaceResource.implementation as Surface
       if (surface.role && surface.role !== this) {
-        resource.postError(WlPointerResourceError.role, 'Given surface has another role.')
+        resource.postError(WlPointerError.role, 'Given surface has another role.')
         console.log('[client-protocol-error] - Given surface has another role')
         return
       }

@@ -22,7 +22,7 @@ import {
   XdgSurfaceRequests,
   XdgSurfaceResource,
   XdgToplevelResource,
-  XdgWmBaseResourceError
+  XdgWmBaseError
 } from 'westfield-runtime-server'
 import Rect from './math/Rect'
 import Seat from './Seat'
@@ -108,7 +108,7 @@ export default class XdgSurface implements XdgSurfaceRequests {
   getToplevel(resource: XdgSurfaceResource, id: number) {
     const surface = this.wlSurfaceResource.implementation as Surface
     if (surface.role) {
-      resource.postError(XdgWmBaseResourceError.role, 'Given surface has another role.')
+      resource.postError(XdgWmBaseError.role, 'Given surface has another role.')
       console.log('[client-protocol-error] - Given surface has another role.')
       return
     }
@@ -121,19 +121,19 @@ export default class XdgSurface implements XdgSurfaceRequests {
   getPopup(resource: XdgSurfaceResource, id: number, parent: XdgSurfaceResource, positioner: XdgPositionerResource) {
     const surface = this.wlSurfaceResource.implementation as Surface
     if (surface.role) {
-      resource.postError(XdgWmBaseResourceError.role, 'Given surface has another role.')
+      resource.postError(XdgWmBaseError.role, 'Given surface has another role.')
       console.log('[client-protocol-error] - Given surface has another role.')
       return
     }
 
     const xdgPositioner = positioner.implementation as XdgPositioner
     if (xdgPositioner.size === undefined) {
-      resource.postError(XdgWmBaseResourceError.invalidPositioner, 'Client provided an invalid positioner. Size is NULL.')
+      resource.postError(XdgWmBaseError.invalidPositioner, 'Client provided an invalid positioner. Size is NULL.')
       return
     }
 
     if (xdgPositioner.anchorRect === undefined) {
-      resource.postError(XdgWmBaseResourceError.invalidPositioner, 'Client provided an invalid positioner. AnchorRect is NULL.')
+      resource.postError(XdgWmBaseError.invalidPositioner, 'Client provided an invalid positioner. AnchorRect is NULL.')
       return
     }
 
@@ -152,7 +152,7 @@ export default class XdgSurface implements XdgSurfaceRequests {
 
   setWindowGeometry(resource: XdgSurfaceResource, x: number, y: number, width: number, height: number) {
     if (width <= 0 || height <= 0) {
-      resource.postError(XdgWmBaseResourceError.invalidSurfaceState, 'Client provided negative window geometry.')
+      resource.postError(XdgWmBaseError.invalidSurfaceState, 'Client provided negative window geometry.')
       console.log('[client-protocol-error] - Client provided negative window geometry.')
       return
     }

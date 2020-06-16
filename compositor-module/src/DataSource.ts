@@ -16,15 +16,15 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import {
-  WlDataDeviceManagerResourceDndAction,
+  WlDataDeviceManagerDndAction,
   WlDataOfferResource,
   WlDataSourceRequests,
   WlDataSourceResource,
-  WlDataSourceResourceError
+  WlDataSourceError
 } from 'westfield-runtime-server'
 import DataOffer from './DataOffer'
 
-const { copy, move, ask, none } = WlDataDeviceManagerResourceDndAction
+const { copy, move, ask, none } = WlDataDeviceManagerDndAction
 const ALL_ACTIONS = (copy | move | ask)
 
 /**
@@ -38,7 +38,7 @@ export default class DataSource implements WlDataSourceRequests {
   readonly resource: WlDataSourceResource
   mimeTypes: string[] = []
   dndActions: number = 0
-  currentDndAction: WlDataDeviceManagerResourceDndAction = none
+  currentDndAction: WlDataDeviceManagerDndAction = none
   accepted: boolean = false
   wlDataOffer?: WlDataOfferResource
   private _actionsSet: boolean = false
@@ -66,12 +66,12 @@ export default class DataSource implements WlDataSourceRequests {
 
   setActions(resource: WlDataSourceResource, dndActions: number) {
     if (this._actionsSet) {
-      resource.postError(WlDataSourceResourceError.invalidActionMask, 'cannot set actions more than once')
+      resource.postError(WlDataSourceError.invalidActionMask, 'cannot set actions more than once')
       return
     }
 
     if (this.dndActions & ~ALL_ACTIONS) {
-      resource.postError(WlDataSourceResourceError.invalidActionMask, `invalid action mask ${dndActions}`)
+      resource.postError(WlDataSourceError.invalidActionMask, `invalid action mask ${dndActions}`)
       return
     }
 

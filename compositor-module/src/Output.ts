@@ -21,9 +21,9 @@ import {
   Registry,
   WlOutputRequests,
   WlOutputResource,
-  WlOutputResourceMode,
-  WlOutputResourceSubpixel,
-  WlOutputResourceTransform
+  WlOutputMode,
+  WlOutputSubpixel,
+  WlOutputTransform
 } from 'westfield-runtime-server'
 
 /**
@@ -95,7 +95,7 @@ export default class Output implements WlOutputRequests {
   }
 
   private _emitMode(wlOutputResource: WlOutputResource) {
-    const flags = WlOutputResourceMode.current
+    const flags = WlOutputMode.current
     // the refresh rate is impossible to query without manual measuring, which is error prone.
     const refresh = 60
     wlOutputResource.mode(flags, this.canvas.width, this.canvas.height, refresh)
@@ -109,29 +109,29 @@ export default class Output implements WlOutputRequests {
     // TODO test this on high dpi devices
     const physicalWidth = Math.ceil(this.canvas.width * 0.2646)
     const physicalHeight = Math.ceil(this.canvas.height * 0.2646)
-    const subpixel = WlOutputResourceSubpixel.unknown
+    const subpixel = WlOutputSubpixel.unknown
     const make = 'Greenfield'
     const model = window.navigator.userAgent
 
     const orientation = window.screen.orientation.type
-    let transform = WlOutputResourceTransform.normal
+    let transform = WlOutputTransform.normal
 
     // FIXME this requires some experimentation to get it right
     switch (orientation) {
       case 'portrait-primary': {
-        transform = WlOutputResourceTransform.normal
+        transform = WlOutputTransform.normal
         break
       }
       case 'portrait-secondary': {
-        transform = WlOutputResourceTransform._180
+        transform = WlOutputTransform._180
         break
       }
       case 'landscape-primary': {
-        transform = WlOutputResourceTransform.normal
+        transform = WlOutputTransform.normal
         break
       }
       case 'landscape-secondary': {
-        transform = WlOutputResourceTransform._180
+        transform = WlOutputTransform._180
         break
       }
     }

@@ -15,7 +15,7 @@ module.exports = {
     new HtmlWebpackPlugin({
       title: 'Greenfield Compositor Demo'
     }),
-    new CopyPlugin([{ from: 'public' }]),
+    new CopyPlugin({ patterns: [{ from: 'public' }] }),
     // apply this plugin only to .ts files - the rest is taken care of
     new webpack.SourceMapDevToolPlugin({
       filename: null,
@@ -49,6 +49,11 @@ module.exports = {
             loader: 'file-loader'
           }
         ]
+      },
+      {
+        test: /\.js$/,
+        enforce: 'pre',
+        use: ['source-map-loader']
       }
     ]
   }
