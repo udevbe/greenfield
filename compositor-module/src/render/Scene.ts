@@ -100,7 +100,7 @@ class Scene {
           bufferImplementation.release()
         }
       }
-    } else {
+    } else if (bufferResource !== undefined) {
       throw new Error(`BUG. Unsupported buffer type: ${typeof bufferContents}`)
     }
   }

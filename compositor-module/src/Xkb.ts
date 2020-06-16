@@ -39,6 +39,7 @@ export type nrmlvo = {
 }
 
 export function buildNrmlvoEntries(): nrmlvo[] {
+  // @ts-ignore
   const evdevList: string = lib.xkbcommon.FS.readFile('/usr/local/share/X11/xkb/rules/evdev.lst', { encoding: 'utf8' })
   const lines = evdevList.split('\n')
 
@@ -127,20 +128,27 @@ export function createFromResource(resource: string): Promise<Xkb> {
  * @param keymapLayout an xkb keymap as a single string.
  */
 export function createFromString(keymapLayout: string): Xkb {
+  // @ts-ignore
   const keymapLayoutPtr = lib.xkbcommon._malloc(lib.xkbcommon.lengthBytesUTF8(keymapLayout) + 1)
+  // @ts-ignore
   lib.xkbcommon.stringToUTF8(keymapLayout, keymapLayoutPtr, lib.xkbcommon.lengthBytesUTF8(keymapLayout) + 1)
 
+  // @ts-ignore
   const xkbContext = lib.xkbcommon._xkb_context_new(XKB_CONTEXT_NO_DEFAULT_INCLUDES | XKB_CONTEXT_NO_ENVIRONMENT_NAMES)
+  // @ts-ignore
   const keymap = lib.xkbcommon._xkb_keymap_new_from_string(xkbContext, keymapLayoutPtr, XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS)
+  // @ts-ignore
   const state = lib.xkbcommon._xkb_state_new(keymap)
-
+  // @ts-ignore
   lib.xkbcommon._free(keymapLayoutPtr)
 
   return new Xkb(xkbContext, keymap, state)
 }
 
 export function createFromNames({ rules, model, layout, variant, options }: { rules?: string, model?: string, layout?: string, variant?: string, options?: string }) {
+  // @ts-ignore
   const xkbRuleNamesPtr = lib.xkbcommon._malloc(5 * 4)
+  // @ts-ignore
   const xkbRuleNamesBuffer = new Uint32Array(lib.xkbcommon.HEAP8.buffer, xkbRuleNamesPtr, 5)
 
   xkbRuleNamesBuffer[0] = _stringToPointer(rules)
@@ -149,12 +157,16 @@ export function createFromNames({ rules, model, layout, variant, options }: { ru
   xkbRuleNamesBuffer[3] = _stringToPointer(variant)
   xkbRuleNamesBuffer[4] = _stringToPointer(options)
 
+  // @ts-ignore
   const xkbContext = lib.xkbcommon._xkb_context_new(0)
+  // @ts-ignore
   const keymap = lib.xkbcommon._xkb_keymap_new_from_names(xkbContext, xkbRuleNamesPtr, XKB_KEYMAP_COMPILE_NO_FLAGS)
-
+  // @ts-ignore
   const state = lib.xkbcommon._xkb_state_new(keymap)
 
+  // @ts-ignore
   xkbRuleNamesBuffer.forEach(pointer => lib.xkbcommon._free(pointer))
+  // @ts-ignore
   lib.xkbcommon._free(xkbRuleNamesPtr)
 
   return new Xkb(xkbContext, keymap, state)
@@ -162,7 +174,9 @@ export function createFromNames({ rules, model, layout, variant, options }: { ru
 
 function _stringToPointer(value?: string): number {
   if (value) {
+    // @ts-ignore
     const stringPtr = lib.xkbcommon._malloc(lib.xkbcommon.lengthBytesUTF8(value) + 1)
+    // @ts-ignore
     lib.xkbcommon.stringToUTF8(value, stringPtr, lib.xkbcommon.lengthBytesUTF8(value) + 1)
     return stringPtr
   } else {
@@ -184,31 +198,39 @@ export class Xkb {
   }
 
   asString() {
+    // @ts-ignore
     const keymapStringPtr = lib.xkbcommon._xkb_keymap_get_as_string(this.keymap, XKB_KEYMAP_FORMAT_TEXT_V1)
+    // @ts-ignore
     return lib.xkbcommon.UTF8ToString(keymapStringPtr)
   }
 
   keyUp(linuxKeyCode: LinuxKeyCode[keyof LinuxKeyCode]) {
+    // @ts-ignore
     return lib.xkbcommon._xkb_state_update_key(this.state, linuxKeyCode, XKB_KEY_UP) !== 0
   }
 
   keyDown(linuxKeyCode: LinuxKeyCode[keyof LinuxKeyCode]): boolean {
+    // @ts-ignore
     return lib.xkbcommon._xkb_state_update_key(this.state, linuxKeyCode, XKB_KEY_DOWN) !== 0
   }
 
   get modsDepressed() {
+    // @ts-ignore
     return lib.xkbcommon._xkb_state_serialize_mods(this.state, XKB_STATE_MODS_DEPRESSED)
   }
 
   get modsLatched() {
+    // @ts-ignore
     return lib.xkbcommon._xkb_state_serialize_mods(this.state, XKB_STATE_MODS_LATCHED)
   }
 
   get modsLocked() {
+    // @ts-ignore
     return lib.xkbcommon._xkb_state_serialize_mods(this.state, XKB_STATE_MODS_LOCKED)
   }
 
   get group() {
+    // @ts-ignore
     return lib.xkbcommon._xkb_state_serialize_layout(this.state, XKB_STATE_LAYOUT_EFFECTIVE)
   }
 }

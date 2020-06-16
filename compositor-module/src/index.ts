@@ -19,9 +19,9 @@ import { Client } from 'westfield-runtime-server'
 import RemoteAppLauncher from './RemoteAppLauncher'
 import RemoteSocket from './RemoteSocket'
 import Session from './Session'
+import { UserShellApi } from './UserShellApi'
 import WebAppLauncher from './WebAppLauncher'
 import WebAppSocket from './WebAppSocket'
-import { UserShellApi } from './UserShellApi'
 import { nrmlvo } from './Xkb'
 
 // @ts-ignore
@@ -91,15 +91,23 @@ export interface CompositorConfiguration {
 export interface CompositorWebAppSocket {
 }
 
-export function createCompositorWebAppSocket(session: Session): CompositorWebAppSocket {
-  return WebAppSocket.create(session)
+export function createCompositorWebAppSocket(session: CompositorSession): CompositorWebAppSocket {
+  if (session instanceof Session) {
+    return WebAppSocket.create(session)
+  } else {
+    throw new Error('Session does not have expected implementation.')
+  }
 }
 
 export interface CompositorRemoteSocket {
 }
 
-export function createCompositorRemoteSocket(session: Session): CompositorRemoteSocket {
-  return RemoteSocket.create(session)
+export function createCompositorRemoteSocket(session: CompositorSession): CompositorRemoteSocket {
+  if (session instanceof Session) {
+    return RemoteSocket.create(session)
+  } else {
+    throw new Error('Session does not have expected implementation.')
+  }
 }
 
 export interface CompositorRemoteAppLauncher {

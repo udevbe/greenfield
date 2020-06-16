@@ -44,7 +44,9 @@ class Region implements WlRegionRequests {
 
   // TODO move to stand-alone exported function
   static createPixmanRegion(): number {
+    // @ts-ignore
     const pixmanRegion = lib.pixman._malloc(20)// region struct is pointer + 4*uint32 = 5*4 = 20
+    // @ts-ignore
     lib.pixman._pixman_region32_init(pixmanRegion)
     return pixmanRegion
   }
@@ -57,26 +59,31 @@ class Region implements WlRegionRequests {
 
   // TODO move to stand-alone exported function
   static initInfinite(pixmanRegion: number) {
+    // @ts-ignore
     lib.pixman._pixman_region32_init_rect(pixmanRegion, -0x3FFFFFFF, -0x3FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
   }
 
   // TODO move to stand-alone exported function
   static initRect(pixmanRegion: number, rect: Rect) {
+    // @ts-ignore
     lib.pixman._pixman_region32_init_rect(pixmanRegion, rect.x0, rect.y0, rect.x1 - rect.x0, rect.y1 - rect.y0)
   }
 
   // TODO move to stand-alone exported function
   static union(result: number, left: number, right: number) {
+    // @ts-ignore
     lib.pixman._pixman_region32_union(result, left, right)
   }
 
   // TODO move to stand-alone exported function
   static intersect(result: number, left: number, right: number) {
+    // @ts-ignore
     lib.pixman._pixman_region32_intersect(result, left, right)
   }
 
   // TODO move to stand-alone exported function
   static unionRect(result: number, left: number, x: number, y: number, width: number, height: number) {
+    // @ts-ignore
     lib.pixman._pixman_region32_union_rect(result, left, x, y, width, height)
   }
 
@@ -89,10 +96,14 @@ class Region implements WlRegionRequests {
 
   // TODO move to stand-alone exported function
   static rectangles(pixmanRegion: number): Rect[] {
+    // @ts-ignore
     const nroRectsPtr = lib.pixman._malloc(4) // uint32
+    // @ts-ignore
     const pixmanBoxPtr = lib.pixman._pixman_region32_rectangles(pixmanRegion, nroRectsPtr)
     const rectangles = []
+    // @ts-ignore
     const nroRects = new Uint32Array(lib.pixman.HEAPU8.buffer, nroRectsPtr, 1)[0]
+    // @ts-ignore
     const rectangleStructs = new Uint32Array(lib.pixman.HEAPU8.buffer, pixmanBoxPtr, (4 * nroRects))
     for (let i = 0; i < nroRects; i++) {
       const x0 = rectangleStructs[i * 4]
@@ -101,6 +112,7 @@ class Region implements WlRegionRequests {
       const y1 = rectangleStructs[(i * 4) + 3]
       rectangles.push(Rect.create(x0, y0, x1, y1))
     }
+    // @ts-ignore
     lib.pixman._free(nroRectsPtr)
 
     return rectangles
@@ -140,6 +152,7 @@ class Region implements WlRegionRequests {
    * @override
    */
   add(resource: WlRegionResource, x: number, y: number, width: number, height: number) {
+    // @ts-ignore
     lib.pixman._pixman_region32_union_rect(this.pixmanRegion, this.pixmanRegion, x, y, width, height)
   }
 
@@ -158,19 +171,24 @@ class Region implements WlRegionRequests {
    * @override
    */
   subtract(resource: WlRegionResource, x: number, y: number, width: number, height: number) {
+    // @ts-ignore
     const deltaPixmanRegion = lib.pixman._malloc(20)
+    // @ts-ignore
     lib.pixman._pixman_region32_init_rect(deltaPixmanRegion, x, y, width, height)
+    // @ts-ignore
     lib.pixman._pixman_region32_subtract(this.pixmanRegion, this.pixmanRegion, deltaPixmanRegion)
     Region.destroyPixmanRegion(deltaPixmanRegion)
   }
 
   // TODO move to stand-alone exported function
   static contains(pixmanRegion: number, point: Point): boolean {
+    // @ts-ignore
     return lib.pixman._pixman_region32_contains_point(pixmanRegion, point.x, point.y, null) !== 0
   }
 
   // TODO move to stand-alone exported function
   static copyTo(destination: number, source: number) {
+    // @ts-ignore
     lib.pixman._pixman_region32_copy(destination, source)
   }
 }

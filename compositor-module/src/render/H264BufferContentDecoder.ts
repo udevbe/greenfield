@@ -15,9 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-// TODO use rollup worker loader with custom regex
-// @ts-ignore
-import H264NALDecoderWorker from 'worker-loader!./H264NALDecoderWorker'
+import H264NALDecoderWorker from 'worker-loader!./H264NALDecoderWorker';
 import { OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
 import EncodedFrame from '../remotestreaming/EncodedFrame'
 import { fullFrame, splitAlpha } from '../remotestreaming/EncodingOptions'
@@ -48,7 +46,7 @@ const opaqueWorker = new Promise<Worker>(resolve => {
 })
 
 const alphaWorker = new Promise<Worker>(resolve => {
-  const h264NALDecoderWorker: Worker = new H264NALDecoderWorker()
+  const h264NALDecoderWorker: Worker = new Worker("./H264NALDecoderWorker", { type: "module" })
   h264NALDecoderWorker.addEventListener('message', (e) => {
     const message = /** @type {{type:string, width:number, height:number, data:ArrayBuffer, renderStateId:number}} */e.data
     switch (message.type) {

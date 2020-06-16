@@ -1,8 +1,13 @@
+// @ts-ignore
 import pixman from './pixman'
+// @ts-ignore
 import xkbcommon from './xkbcommon'
-import libxkbcommonWasm from './libxkbcommon.wasm.asset'
-import libpixmanWasm from './libpixman.wasm.asset'
-import libxkbcommonData from './libxkbcommon.data.asset'
+// @ts-ignore
+import libxkbcommonWasm from '../assets/libxkbcommon.wasm.asset'
+// @ts-ignore
+import libpixmanWasm from '../assets/libpixman.wasm.asset'
+// @ts-ignore
+import libxkbcommonData from '../assets/libxkbcommon.data.asset'
 
 const assets = {
   'libpixman.wasm': libpixmanWasm,
@@ -10,12 +15,10 @@ const assets = {
   'libxkbcommon.wasm': libxkbcommonWasm
 }
 
-const assetLocator = path => assets[path]
+// @ts-ignore
+const assetLocator = (path: string) => assets[path]
 
-/**
- * @param {*}module
- */
-function loadNativeModule (module) {
+function loadNativeModule (module: { calledRun: any; onRuntimeInitialized: () => void }) {
   return new Promise(resolve => {
     if (module.calledRun) {
       resolve()

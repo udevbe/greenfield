@@ -3,15 +3,15 @@ import {
   createButtonEventFromMouseEvent,
   createKeyEventFromKeyboardEvent,
   initWasm,
-  RemoteAppLauncher,
-  RemoteSocket,
-  Session,
-  WebAppLauncher,
-  WebAppSocket,
+  CompositorSession,
+  createCompositorSession,
+  createCompositorWebAppLauncher,
+  createCompositorWebAppSocket,
+  createCompositorRemoteAppLauncher, createCompositorRemoteSocket
 } from 'greenfield-compositor'
 
 /**
- * @param {Session}session
+ * @param {CompositorSession}session
  * @param {HTMLCanvasElement}canvas
  * @param {string}myId
  */
@@ -71,8 +71,7 @@ function initializeCanvas (session, canvas, myId) {
 }
 
 /**
- *
- * @param {Session}session
+ * @param {CompositorSession}session
  */
 function linkUserShellEvents (session) {
   const userShell = session.userShell
@@ -97,7 +96,7 @@ async function main () {
   await initWasm()
 
   // create new compositor context
-  const session = Session.create()
+  const session = createCompositorSession()
 
   // Get an HTML5 canvas for use as an output for the compositor. Multiple outputs can be used.
   const canvas = /** @type {HTMLCanvasElement} */ document.createElement('canvas')
@@ -110,11 +109,11 @@ async function main () {
   linkUserShellEvents(session)
 
   // create application launchers for web & remote applications
-  const webAppSocket = WebAppSocket.create(session)
-  const webAppLauncher = WebAppLauncher.create(webAppSocket)
+  const webAppSocket = createCompositorWebAppSocket(session)
+  const webAppLauncher = createCompositorWebAppLauncher(webAppSocket)
 
-  const remoteSocket = RemoteSocket.create(session)
-  const remoteAppLauncher = RemoteAppLauncher.create(session, remoteSocket)
+  const remoteSocket = createCompositorRemoteSocket(session)
+  const remoteAppLauncher = createCompositorRemoteAppLauncher(session, remoteSocket)
 
   const webShmAppURLButton = /** @type {HTMLButtonElement} */ document.createElement('button')
   webShmAppURLButton.textContent = 'WebSHM URL'
