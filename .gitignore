@@ -139,3 +139,4 @@ CTestTestfile.cmake
 /client-demos/simple-web-shm/build/
 /client-demos/simple-web-gl/build/
 /compositor-module/types/
+/compositor-demo/dist/

@@ -1,14 +1,17 @@
 import {
+  CompositorSession,
   createAxisEventFromWheelEvent,
   createButtonEventFromMouseEvent,
-  createKeyEventFromKeyboardEvent,
-  initWasm,
-  CompositorSession,
+  createCompositorRemoteAppLauncher,
+  createCompositorRemoteSocket,
   createCompositorSession,
   createCompositorWebAppLauncher,
   createCompositorWebAppSocket,
-  createCompositorRemoteAppLauncher, createCompositorRemoteSocket
+  createKeyEventFromKeyboardEvent,
+  initWasm
 } from 'greenfield-compositor'
+
+let compositorPointerGrab
 
 /**
  * @param {CompositorSession}session
@@ -58,15 +61,21 @@ function initializeCanvas (session, canvas, myId) {
    * @param {KeyboardEvent}event
    */
   canvas.onkeydown = (event) => {
-    event.preventDefault()
-    session.userShell.actions.input.key(createKeyEventFromKeyboardEvent(event, true))
+    const keyEvent = createKeyEventFromKeyboardEvent(event, true)
+    if (keyEvent) {
+      event.preventDefault()
+      session.userShell.actions.input.key(keyEvent)
+    }
   }
   /**
    * @param {KeyboardEvent}event
    */
   canvas.onkeyup = (event) => {
-    event.preventDefault()
-    session.userShell.actions.input.key(createKeyEventFromKeyboardEvent(event, false))
+    const keyEvent = createKeyEventFromKeyboardEvent(event, false)
+    if (keyEvent) {
+      event.preventDefault()
+      session.userShell.actions.input.key(keyEvent)
+    }
   }
 }
 
@@ -83,10 +92,11 @@ function linkUserShellEvents (session) {
     // request the client to make this surface active
     userShell.actions.requestActive(compositorSurface)
   }
-  userShell.events.updateUserSeat = ({ keyboardFocus, pointerGrab, }) => {
+  userShell.events.updateUserSeat = ({ keyboardFocus, pointerGrab }) => {
     // raise the surface when a user clicks on it
-    if (pointerGrab) {
+    if (pointerGrab !== compositorPointerGrab) {
       userShell.actions.raise(pointerGrab, 'myOutputId')
+      userShell.actions.setKeyboardFocus(pointerGrab)
     }
   }
 }

@@ -16,10 +16,10 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import {
-  WlKeyboardRequests,
-  WlKeyboardResource,
   WlKeyboardKeymapFormat,
-  WlKeyboardKeyState
+  WlKeyboardKeyState,
+  WlKeyboardRequests,
+  WlKeyboardResource
 } from 'westfield-runtime-server'
 import DataDevice from './DataDevice'
 import { CompositorKeyboard } from './index'
@@ -27,14 +27,7 @@ import { KeyEvent } from './KeyEvent'
 import Seat from './Seat'
 import Session from './Session'
 import Surface from './Surface'
-import {
-  buildNrmlvoEntries,
-  createFromNames,
-  createFromResource,
-  linuxKeycode,
-  nrmlvo,
-  Xkb
-} from './Xkb'
+import { buildNrmlvoEntries, createFromNames, createFromResource, nrmlvo, Xkb } from './Xkb'
 
 const { pressed, released } = WlKeyboardKeyState
 const { xkbV1 } = WlKeyboardKeymapFormat
@@ -164,11 +157,11 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
     if (focus) {
       this.focus = focus
       const { client, id } = focus.resource
-      this._session.userShell.events.updateUserSeat?.({
+      this.seat.compositorSeatState = {
         ...this.seat.compositorSeatState,
         keyboardFocus: { id: `${id}`, clientId: client.id }
-      })
-
+      }
+      this._session.userShell.events.updateUserSeat?.({ ...this.seat.compositorSeatState })
       this._dataDevice.onKeyboardFocusGained(focus)
 
       focus.resource.onDestroy().then(() => {
@@ -203,10 +196,8 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
         .forEach(resource => resource.leave(serial, surface))
 
       this.focus = undefined
-      this._session.userShell.events.updateUserSeat?.({
-        ...this.seat.compositorSeatState,
-        keyboardFocus: undefined
-      })
+      this.seat.compositorSeatState = { ...this.seat.compositorSeatState, keyboardFocus: undefined }
+      this._session.userShell.events.updateUserSeat?.(this.seat.compositorSeatState)
     }
   }
 
@@ -223,8 +214,7 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
   }
 
   handleKey(event: KeyEvent) {
-    const keyCode = event.code
-    const linuxKeyCode = linuxKeycode[keyCode]
+    const linuxKeyCode = event.code
     if (event.down && this._keys.includes(linuxKeyCode)) {
       // prevent key repeat from browser
       return

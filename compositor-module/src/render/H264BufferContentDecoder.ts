@@ -15,10 +15,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import H264NALDecoderWorker from 'worker-loader!./H264NALDecoderWorker';
 import { OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
 import EncodedFrame from '../remotestreaming/EncodedFrame'
 import { fullFrame, splitAlpha } from '../remotestreaming/EncodingOptions'
+// @ts-ignore
+import H264NALDecoderWorker from './H264NALDecoder.worker'
 
 type H264NALDecoderWorkerMessage = { type: string, width: number, height: number, data: ArrayBuffer, renderStateId: number }
 type FrameState = {
@@ -46,7 +47,7 @@ const opaqueWorker = new Promise<Worker>(resolve => {
 })
 
 const alphaWorker = new Promise<Worker>(resolve => {
-  const h264NALDecoderWorker: Worker = new Worker("./H264NALDecoderWorker", { type: "module" })
+  const h264NALDecoderWorker: Worker = new H264NALDecoderWorker()
   h264NALDecoderWorker.addEventListener('message', (e) => {
     const message = /** @type {{type:string, width:number, height:number, data:ArrayBuffer, renderStateId:number}} */e.data
     switch (message.type) {
