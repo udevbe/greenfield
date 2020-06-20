@@ -25,8 +25,24 @@ export interface ButtonEvent {
   sceneId: string
 }
 
+export interface CreateButtonEvent {
+  (x: number,
+   y: number,
+   timestamp: number,
+   buttonCode: 0 | 1 | 2 | 3 | 4,
+   released: boolean,
+   buttons: number,
+   sceneId: string): ButtonEvent
+}
 
-export function createButtonEvent(
+export interface CreateButtonEventFromMouseEvent {
+  (mouseEvent: MouseEvent,
+   released: boolean,
+   sceneId: string
+  ): ButtonEvent
+}
+
+export const createButtonEvent: CreateButtonEvent = (
   x: number,
   y: number,
   timestamp: number,
@@ -34,15 +50,13 @@ export function createButtonEvent(
   released: boolean,
   buttons: number,
   sceneId: string
-): ButtonEvent {
-  return { x, y, timestamp, buttonCode, released, buttons, sceneId }
-}
+): ButtonEvent => ({ x, y, timestamp, buttonCode, released, buttons, sceneId })
 
-export function createButtonEventFromMouseEvent(
+export const createButtonEventFromMouseEvent: CreateButtonEventFromMouseEvent = (
   mouseEvent: MouseEvent,
   released: boolean,
   sceneId: string
-): ButtonEvent {
+): ButtonEvent => {
   const currentTarget = mouseEvent.currentTarget as HTMLElement
   const { left: targetX, top: targetY } = currentTarget.getBoundingClientRect()
   const button = mouseEvent.button as 0 | 1 | 2 | 3 | 4

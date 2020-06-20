@@ -18,8 +18,7 @@
 import { OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
 import EncodedFrame from '../remotestreaming/EncodedFrame'
 import { fullFrame, splitAlpha } from '../remotestreaming/EncodingOptions'
-// @ts-ignore
-import H264NALDecoderWorker from './H264NALDecoder.worker'
+import H264NALDecoderWorker from 'worker-loader!./H264NALDecoder.worker'
 
 type H264NALDecoderWorkerMessage = { type: string, width: number, height: number, data: ArrayBuffer, renderStateId: number }
 type FrameState = {

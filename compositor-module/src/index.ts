@@ -29,6 +29,7 @@ export { init as initWasm } from './lib'
 export * from './ButtonEvent'
 export * from './AxisEvent'
 export * from './KeyEvent'
+export { nrmlvo }
 
 export function createCompositorSession(): CompositorSession {
   return Session.create()

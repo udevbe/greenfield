@@ -26,7 +26,19 @@ export interface AxisEvent {
   sceneId: string
 }
 
-export function createAxisEvent(
+export interface CreateAxisEvent {
+  (deltaMode: number,
+   DOM_DELTA_LINE: number,
+   DOM_DELTA_PAGE: number,
+   DOM_DELTA_PIXEL: number,
+   deltaX: number,
+   deltaY: number,
+   timestamp: number,
+   sceneId: string
+  ): AxisEvent
+}
+
+export const createAxisEvent: CreateAxisEvent = (
   deltaMode: number,
   DOM_DELTA_LINE: number,
   DOM_DELTA_PAGE: number,
@@ -35,28 +47,29 @@ export function createAxisEvent(
   deltaY: number,
   timestamp: number,
   sceneId: string
-) {
-  return {
-    deltaMode,
-    DOM_DELTA_LINE,
-    DOM_DELTA_PAGE,
-    DOM_DELTA_PIXEL,
-    deltaX,
-    deltaY,
-    timestamp,
-    sceneId
-  }
+): AxisEvent => ({
+  deltaMode,
+  DOM_DELTA_LINE,
+  DOM_DELTA_PAGE,
+  DOM_DELTA_PIXEL,
+  deltaX,
+  deltaY,
+  timestamp,
+  sceneId
+})
+
+export interface CreateAxisEventFromWheelEvent {
+  (wheelEvent: WheelEvent, sceneId: string): AxisEvent
 }
 
-export function createAxisEventFromWheelEvent(wheelEvent: WheelEvent, sceneId: string) {
-  return createAxisEvent(
-    wheelEvent.deltaMode,
-    wheelEvent.DOM_DELTA_LINE,
-    wheelEvent.DOM_DELTA_PAGE,
-    wheelEvent.DOM_DELTA_PIXEL,
-    wheelEvent.deltaX,
-    wheelEvent.deltaY,
-    wheelEvent.timeStamp,
-    sceneId
-  )
-}
+export const createAxisEventFromWheelEvent: CreateAxisEventFromWheelEvent
+  = (wheelEvent: WheelEvent, sceneId: string) => createAxisEvent(
+  wheelEvent.deltaMode,
+  wheelEvent.DOM_DELTA_LINE,
+  wheelEvent.DOM_DELTA_PAGE,
+  wheelEvent.DOM_DELTA_PIXEL,
+  wheelEvent.deltaX,
+  wheelEvent.deltaY,
+  wheelEvent.timeStamp,
+  sceneId
+)
