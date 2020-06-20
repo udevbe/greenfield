@@ -57,7 +57,9 @@
     "tslint-config-prettier": "^1.18.0",
     "tslint-config-standard": "^9.0.0",
     "typedoc": "^0.17.7",
-    "typescript": "^3.9.5"
+    "typescript": "^3.9.5",
+    "webpack": "^4.43.0",
+    "worker-loader": "^2.0.0"
   },
   "author": "Erik De Rijcke",
   "homepage": "https://www.greenfield.app",
