@@ -140,3 +140,4 @@ CTestTestfile.cmake
 /client-demos/simple-web-gl/build/
 /compositor-module/types/
 /compositor-demo/dist/
+/client-demos/react-canvaskit/build/app.js
