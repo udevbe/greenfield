@@ -129,6 +129,8 @@ async function main () {
   webShmAppURLButton.textContent = 'WebSHM URL'
   const webGLURLButton = /** @type {HTMLButtonElement} */ document.createElement('button')
   webGLURLButton.textContent = 'WebGL URL'
+  const reactCanvasKitURLButton = /** @type {HTMLButtonElement} */ document.createElement('button')
+  reactCanvasKitURLButton.textContent = 'React-CanvasKit URL'
   const remoteURLButton = /** @type {HTMLButtonElement} */ document.createElement('button')
   remoteURLButton.textContent = 'Remote GTK3-Demo URL'
   const urlInput = /** @type {HTMLInputElement} */ document.createElement('input')
@@ -140,12 +142,14 @@ async function main () {
   const container = /** @type {HTMLDivElement} */document.createElement('div')
   container.appendChild(webShmAppURLButton)
   container.appendChild(webGLURLButton)
+  container.appendChild(reactCanvasKitURLButton)
   container.appendChild(remoteURLButton)
   container.appendChild(urlInput)
   container.appendChild(launchButton)
 
   webShmAppURLButton.onclick = () => urlInput.value = `${window.location.href}apps/simple-web-shm/app.js`
   webGLURLButton.onclick = () => urlInput.value = `${window.location.href}apps/simple-web-gl/app.js`
+  reactCanvasKitURLButton.onclick = () => urlInput.value = `${window.location.href}apps/react-canvaskit/app.js`
   remoteURLButton.onclick = () => urlInput.value = `ws://localhost:8081?launch=remote-gtk3-demo`
 
   launchButton.onclick = () => {

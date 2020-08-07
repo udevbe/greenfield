@@ -13,7 +13,7 @@ export let GreenfieldProvider: FunctionComponent = undefined
 export function initGreenfieldContext(contextConfig: GreenfieldContextConfig) {
   const FrameContext = React.createContext(contextConfig)
   useGreenfield = () => React.useContext(FrameContext)
-  GreenfieldProvider = ({ children }) => <FrameContext.Provider value={contextConfig}>children</FrameContext.Provider>
+  GreenfieldProvider = ({ children }) => <FrameContext.Provider value={contextConfig}>{children}</FrameContext.Provider>
 }
 
 

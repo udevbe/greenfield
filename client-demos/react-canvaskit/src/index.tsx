@@ -138,12 +138,6 @@ class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, Wl
     if (this._surface === undefined) {
       throw new Error('No surface.')
     }
-    if (this._glBuffer === undefined) {
-      throw new Error('No GLBuffer.')
-    }
-    if (this._glBuffer.canvas === undefined) {
-      throw new Error('No canvas on GLBuffer.')
-    }
 
     this._shellSurface = this._shell.getShellSurface(this._surface)
     this._shellSurface.listener = this
@@ -153,6 +147,13 @@ class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, Wl
     const syncPromise = display.sync()
     display.flush()
     await syncPromise
+
+    if (this._glBuffer === undefined) {
+      throw new Error('No GLBuffer.')
+    }
+    if (this._glBuffer.canvas === undefined) {
+      throw new Error('No canvas on GLBuffer.')
+    }
 
     this._glBuffer.canvas.width = width
     this._glBuffer.canvas.height = height
@@ -166,6 +167,8 @@ class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, Wl
       requestSurfaceFrame: frameCallback => this._onFrame?.().then(time => frameCallback(time))
     })
     const canvas = this._glBuffer.canvas
+    // @ts-ignore trick canvas-kit to accept our offscreen canvas
+    canvas.tagName = 'CANVAS'
     init().then(() => render(<GreenfieldProvider><App/></GreenfieldProvider>, canvas, () => this.draw()))
 
     setInterval(() => {

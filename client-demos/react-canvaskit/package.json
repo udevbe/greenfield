@@ -23,10 +23,10 @@
     "build": "webpack"
   },
   "dependencies": {
-    "@babel/runtime": "^7.11.0",
+    "@babel/runtime": "7.11.2",
     "canvaskit-wasm": "0.16.2",
-    "react": "^16.13.1",
-    "react-canvaskit": "^0.0.1-alpha.2",
+    "react": "16.13.1",
+    "react-canvaskit": "0.0.1-alpha.3",
     "westfield-runtime-client": "0.4.2",
     "westfield-runtime-common": "0.4.3"
   },
