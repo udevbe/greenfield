@@ -87,7 +87,6 @@ class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, Wl
   }
 
   private readonly _registry: WlRegistryProxy
-  private _gl: WebGLRenderingContext | null = null
   private _webGL?: GrWebGlProxy
   private _compositor?: WlCompositorProxy
   private _shell?: WlShellProxy
@@ -98,6 +97,7 @@ class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, Wl
   private _lastFrameRenderTime = Date.now()
   private _frameCount = 0
   private _onFrame?: () => Promise<number>
+  private _frameCallbacks: ((time: number) => void)[] = []
   private _pointer?: WlPointerProxy
 
   constructor(registry: WlRegistryProxy) {
@@ -157,19 +157,13 @@ class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, Wl
 
     this._glBuffer.canvas.width = width
     this._glBuffer.canvas.height = height
-    this._gl = this._glBuffer.canvas.getContext('webgl', {
-      desynchronized: true,
-      alpha: true,
-      preserveDrawingBuffer: false
-    })
 
     initGreenfieldContext({
-      requestSurfaceFrame: frameCallback => this._onFrame?.().then(time => frameCallback(time))
+      requestSurfaceFrame: frameCallback => this._frameCallbacks = [...this._frameCallbacks, frameCallback]
     })
     const canvas = this._glBuffer.canvas
-    // @ts-ignore trick canvas-kit to accept our offscreen canvas
-    canvas.tagName = 'CANVAS'
-    init().then(() => render(<GreenfieldProvider><App/></GreenfieldProvider>, canvas, () => this.draw()))
+    await init()
+    render(<GreenfieldProvider><App/></GreenfieldProvider>, canvas, () => this.draw())
 
     setInterval(() => {
       console.log(`Simpl-WebGL: ${this._frameCount} fps`)
@@ -187,6 +181,13 @@ class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, Wl
     if (this._glBuffer.canvas === undefined) {
       throw new Error('No canvas on GLBuffer.')
     }
+
+    this._onFrame?.().then(time => {
+      // we need to create a copy to avoid deleting new callbacks that are added by our foreach loop.
+      const frameCallbackCopy = this._frameCallbacks
+      this._frameCallbacks = []
+      frameCallbackCopy.forEach(frameCallback => frameCallback(time))
+    })
 
     this._surface.attach(this._glBuffer.bufferProxy, 0, 0)
     this._surface.damage(0, 0, this._glBuffer.canvas.width, this._glBuffer.canvas.height)
@@ -280,8 +281,7 @@ async function main() {
   await syncPromise
 
   // Now begin drawing after the compositor is done processing all our requests
-  await window.init(800, 600)
-  window.draw()
+  await window.init(500, 500)
   display.flush()
 
   // wait for the display connection to close

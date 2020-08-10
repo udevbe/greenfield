@@ -2,13 +2,6 @@
 # yarn lockfile v1
 
 
-"@babel/runtime@7.11.2":
-  version "7.11.2"
-  resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.11.2.tgz#f549c13c754cc40b87644b9fa9f09a6a95fe0736"
-  integrity sha512-TeWkU52so0mPtDcaCTxNBI/IHiz0pZgr8VEFqXFtZWpYD08ZB6FaSwVAS8MKRQAP3bYKiVjwysOJgMFY28o6Tw==
-  dependencies:
-    regenerator-runtime "^0.13.4"
-
 "@types/json-schema@^7.0.4":
   version "7.0.5"
   resolved "https://registry.yarnpkg.com/@types/json-schema/-/json-schema-7.0.5.tgz#dcce4430e64b443ba8945f0290fb564ad5bac6dd"
@@ -20,9 +13,9 @@
   integrity sha512-KfRL3PuHmqQLOG+2tGpRO26Ctg+Cq1E01D2DMriKEATHgWLfeNDmq9e29Q9WIky0dQ3NPkd1mzYH8Lm936Z9qw==
 
 "@types/react@^16.9.44":
-  version "16.9.44"
-  resolved "https://registry.yarnpkg.com/@types/react/-/react-16.9.44.tgz#da84b179c031aef67dc92c33bd3401f1da2fa3bc"
-  integrity sha512-BtLoJrXdW8DVZauKP+bY4Kmiq7ubcJq+H/aCpRfvPF7RAT3RwR73Sg8szdc2YasbAlWBDrQ6Q+AFM0KwtQY+WQ==
+  version "16.9.45"
+  resolved "https://registry.yarnpkg.com/@types/react/-/react-16.9.45.tgz#b43ccf3d8a3d2020e6a48c8c8492e5a4bc10f097"
+  integrity sha512-vv950slTF5UZ5eDOf13b8qC1SD4rTvkqg3HfaUKzr17U97oeJZAa+dUaIHn0QoOJflNTIt6Pem9MmapULs9dkA==
   dependencies:
     "@types/prop-types" "*"
     csstype "^3.0.2"
@@ -519,10 +512,10 @@ camelcase@^5.0.0:
   resolved "https://registry.yarnpkg.com/camelcase/-/camelcase-5.3.1.tgz#e3c9b31569e106811df242f715725a1f4c494320"
   integrity sha512-L28STB170nwWS63UjtlEOE3dldQApaJXZkOI1uMFfzf3rRuPegHaHesyee+YxQ+W6SvRDQV6UrdOdRiR153wJg==
 
-canvaskit-wasm@0.16.2:
-  version "0.16.2"
-  resolved "https://registry.yarnpkg.com/canvaskit-wasm/-/canvaskit-wasm-0.16.2.tgz#defb8f0b1e6bef2fae6aef1b4c90083dbdf9ee7a"
-  integrity sha512-0rmzT33Li/WV6Mi5+W374Higfq7ffTtsCZi1WhvfaTyRzgPwaurH6hXy537gv93dgyte7z1f6etDsnsqY0t1Jg==
+canvaskit-oc@0.0.1-alpha.1:
+  version "0.0.1-alpha.1"
+  resolved "https://registry.yarnpkg.com/canvaskit-oc/-/canvaskit-oc-0.0.1-alpha.1.tgz#283ffaca30021b802551b92e88cf7b0fc11bbf37"
+  integrity sha512-Ii0x2+JE3DzYakoi9QJ5bhpX+H8kD6U10HRgYBwY7jtTg9Jjmf4cAGlLFHC1lL+L0YznUQDicGiI3WYuh9piOQ==
 
 chalk@^2.3.0, chalk@^2.4.2:
   version "2.4.2"
@@ -2051,10 +2044,10 @@ randomfill@^1.0.3:
     randombytes "^2.0.5"
     safe-buffer "^5.1.0"
 
-react-canvaskit@0.0.1-alpha.3:
-  version "0.0.1-alpha.3"
-  resolved "https://registry.yarnpkg.com/react-canvaskit/-/react-canvaskit-0.0.1-alpha.3.tgz#a1e7ca4c28fa95dbc153c81396bff23711f8ec50"
-  integrity sha512-4uYai/ffgqs01U6ATZiOd31kIeRjB0Okkh0fVn2srUIPlOwZiILmML6c9AhCWxzE5VIWhsum7WI7tkQAocY3JQ==
+react-canvaskit@0.0.1-alpha.7:
+  version "0.0.1-alpha.7"
+  resolved "https://registry.yarnpkg.com/react-canvaskit/-/react-canvaskit-0.0.1-alpha.7.tgz#2825ba68d432d817434dbaae0c7c9b2a185da60c"
+  integrity sha512-lVfMqioHlSx0kcnHuB5cQ8trmv2oj8gPapmER5O+I+Etypo5ehGye/OythU0OU25PZia/PXp5k1r34gH5s403w==
   dependencies:
     react-reconciler "0.25.1"
 
@@ -2119,11 +2112,6 @@ readdirp@~3.4.0:
   integrity sha512-0xe001vZBnJEK+uKcj8qOhyAKPzIT+gStxWr3LCB0DwcXR5NZJ3IaC+yGnHCYzB/S7ov3m3EEbZI2zeNvX+hGQ==
   dependencies:
     picomatch "^2.2.1"
-
-regenerator-runtime@^0.13.4:
-  version "0.13.7"
-  resolved "https://registry.yarnpkg.com/regenerator-runtime/-/regenerator-runtime-0.13.7.tgz#cac2dacc8a1ea675feaabaeb8ae833898ae46f55"
-  integrity sha512-a54FxoJDIr27pgf7IgeQGxmqUNYrcV338lf/6gH456HZ/PhX+5BcwHXG9ajESmwe6WRO0tAzRUrRmNONWgkrew==
 
 regex-not@^1.0.0, regex-not@^1.0.2:
   version "1.0.2"
