@@ -135,7 +135,7 @@ async function main () {
   remoteURLButton.textContent = 'Remote GTK3-Demo URL'
   const urlInput = /** @type {HTMLInputElement} */ document.createElement('input')
   urlInput.type = 'text'
-  urlInput.style.width = '595px'
+  urlInput.style.width = '445px'
   const launchButton = /** @type {HTMLButtonElement} */ document.createElement('button')
   launchButton.textContent = 'Launch'
 
