@@ -17,15 +17,37 @@
 
 import { mat4, vec3 } from 'gl-matrix'
 
+export type  DrawingState = {
+  programInfo: {
+    uniformLocations: {
+      projectionMatrix: WebGLUniformLocation;
+      modelViewMatrix: WebGLUniformLocation
+    };
+    attribLocations: {
+      vertexColor: number;
+      vertexPosition: number
+    };
+    program: WebGLProgram
+  };
+  buffers: {
+    color: WebGLBuffer;
+    position: WebGLBuffer
+  }
+}
+
+
 //
 // initBuffers
 //
 // Initialize the buffers we'll need. For this demo, we just
 // have one object -- a simple two-dimensional square.
 //
-function initBuffers (gl) {
+function initBuffers(gl: WebGLRenderingContext): { color: WebGLBuffer; position: WebGLBuffer } {
   // Create a buffer for the square's positions.
   const positionBuffer = gl.createBuffer()
+  if (positionBuffer === null) {
+    throw new Error('Could not create buffer.')
+  }
 
   // Select the positionBuffer as the one to apply buffer
   // operations to from here out.
@@ -53,6 +75,9 @@ function initBuffers (gl) {
   ]
 
   const colorBuffer = gl.createBuffer()
+  if (colorBuffer === null) {
+    throw new Error('Could not create buffer.')
+  }
   gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer)
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW)
 
@@ -62,12 +87,7 @@ function initBuffers (gl) {
   }
 }
 
-/**
- * @param gl
- * @param {{programInfo: {uniformLocations: {projectionMatrix: (WebGLUniformLocation|WebGLUniformLocation), modelViewMatrix: (WebGLUniformLocation|WebGLUniformLocation)}, attribLocations: {vertexColor: GLint, vertexPosition: GLint}, program: *}, buffers: {color, position}}} programState
- * @param time
- */
-function drawScene (gl, { programInfo, buffers }, time) {
+function drawScene(gl: WebGLRenderingContext, { programInfo, buffers }: DrawingState, time: number) {
   const squareRotation = time * 0.001
   gl.clearColor(0.0, 0.0, 0.0, 0.7) // Clear to black, fully opaque
   gl.clearDepth(1.0) // Clear everything
@@ -169,26 +189,39 @@ function drawScene (gl, { programInfo, buffers }, time) {
   const vertexCount = 4
   gl.drawArrays(gl.TRIANGLE_STRIP, offset, vertexCount)
 
-  if (gl.commit) { gl.commit() }
+  // @ts-ignore
+  if (gl.commit) {
+    // @ts-ignore
+    gl.commit()
+  }
 }
 
 //
 // Initialize a shader program, so WebGL knows how to draw our data
 //
-function initShaderProgram (gl, vsSource, fsSource) {
+function initShaderProgram(gl: WebGLRenderingContext, vsSource: string, fsSource: string): WebGLProgram {
   const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource)
+  if (vertexShader === null) {
+    throw new Error('Could not create vertex shader.')
+  }
   const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource)
+  if (fragmentShader === null) {
+    throw new Error('Could not crate fragment shader.')
+  }
 
   // Create the shader program
   const shaderProgram = gl.createProgram()
+  if (shaderProgram === null) {
+    throw new Error('Could not create shader program')
+  }
+
   gl.attachShader(shaderProgram, vertexShader)
   gl.attachShader(shaderProgram, fragmentShader)
   gl.linkProgram(shaderProgram)
 
   // If creating the shader program failed, alert
   if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-    console.error('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram))
-    return null
+    throw new Error('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram))
   }
 
   return shaderProgram
@@ -198,8 +231,11 @@ function initShaderProgram (gl, vsSource, fsSource) {
 // creates a shader of the given type, uploads the source and
 // compiles it.
 //
-function loadShader (gl, type, source) {
+function loadShader(gl: WebGLRenderingContext, type: number, source: string): WebGLShader {
   const shader = gl.createShader(type)
+  if (shader === null) {
+    throw new Error('Could not create shader.')
+  }
 
   // Send the source to the shader object
   gl.shaderSource(shader, source)
@@ -209,19 +245,14 @@ function loadShader (gl, type, source) {
 
   // See if it compiled successfully
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    console.error('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader))
     gl.deleteShader(shader)
-    return null
+    throw new Error('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader))
   }
 
   return shader
 }
 
-/**
- * @param {WebGLRenderingContext}gl
- * @return {{programInfo: {uniformLocations: {projectionMatrix: (WebGLUniformLocation|WebGLUniformLocation), modelViewMatrix: (WebGLUniformLocation|WebGLUniformLocation)}, attribLocations: {vertexColor: GLint, vertexPosition: GLint}, program: *}, buffers: {color, position}}}
- */
-function initDraw (gl) {
+function initDraw(gl: WebGLRenderingContext): DrawingState {
   // Vertex shader program
   const vsSource = `
     attribute vec4 aVertexPosition;
@@ -255,6 +286,15 @@ function initDraw (gl) {
   // Look up which attributes our shader program is using
   // for aVertexPosition, aVevrtexColor and also
   // look up uniform locations.
+  const projectionMatrix = gl.getUniformLocation(shaderProgram, 'uProjectionMatrix')
+  if (projectionMatrix === null) {
+    throw new Error('Could not find uniform location uProjectionMatrix')
+  }
+  const modelViewMatrix = gl.getUniformLocation(shaderProgram, 'uModelViewMatrix')
+  if (modelViewMatrix === null) {
+    throw new Error('Could not find uniform location uModelViewMatrix')
+  }
+
   const programInfo = {
     program: shaderProgram,
     attribLocations: {
@@ -262,8 +302,8 @@ function initDraw (gl) {
       vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor')
     },
     uniformLocations: {
-      projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
-      modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix')
+      projectionMatrix,
+      modelViewMatrix
     }
   }
 

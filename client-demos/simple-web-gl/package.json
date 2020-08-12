@@ -23,9 +23,11 @@
     "build": "webpack"
   },
   "dependencies": {
-    "@babel/runtime": "^7.9.2",
-    "gl-matrix": "^3.3.0",
-    "westfield-runtime-client": "^0.3.2"
+    "gl-matrix": "3.3.0",
+    "ts-loader": "8.0.2",
+    "typescript": "3.9.7",
+    "westfield-runtime-client": "0.4.2",
+    "westfield-runtime-common": "0.4.3"
   },
   "devDependencies": {
     "standard": "^14.3.3",
