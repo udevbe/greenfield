@@ -26,11 +26,11 @@
     "canvaskit-oc": "0.0.1-alpha.1",
     "react": "16.13.1",
     "react-canvaskit": "0.0.1-alpha.7",
-    "westfield-runtime-client": "0.4.2",
+    "westfield-runtime-client": "0.4.3",
     "westfield-runtime-common": "0.4.3"
   },
   "devDependencies": {
-    "@types/react": "^16.9.44",
+    "@types/react": "^16.9.46",
     "source-map-loader": "^1.0.1",
     "ts-loader": "^8.0.2",
     "typescript": "^3.9.7",

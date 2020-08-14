@@ -24,13 +24,13 @@
   },
   "dependencies": {
     "gl-matrix": "3.3.0",
-    "westfield-runtime-client": "0.4.2",
+    "westfield-runtime-client": "0.4.3",
     "westfield-runtime-common": "0.4.3"
   },
   "devDependencies": {
     "ts-loader": "8.0.2",
     "typescript": "3.9.7",
-    "webpack": "^4.43.0",
-    "webpack-cli": "^3.3.11"
+    "webpack": "^4.44.1",
+    "webpack-cli": "^3.3.12"
   }
 }

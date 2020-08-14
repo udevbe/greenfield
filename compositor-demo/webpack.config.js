@@ -7,7 +7,7 @@ const webpack = require('webpack')
 module.exports = {
   mode: 'development',
   entry: {
-    app: './src/index.js'
+    app: './src/index.ts'
   },
   devtool: 'source-map',
   plugins: [
@@ -31,6 +31,12 @@ module.exports = {
   },
   module: {
     rules: [
+      // Handle TypeScript
+      {
+        test: /\.(ts?)$/,
+        use: 'ts-loader',
+        exclude: [/node_modules/]
+      },
       {
         test: /\.(wasm\.asset)$/i,
         use: [
@@ -57,7 +63,7 @@ module.exports = {
       },
       {
         test: /\.worker\.js$/,
-        use: { loader: 'worker-loader' },
+        use: { loader: 'worker-loader' }
       }
     ]
   }
