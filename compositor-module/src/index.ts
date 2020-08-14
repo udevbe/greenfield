@@ -113,6 +113,7 @@ export function createCompositorRemoteSocket(session: CompositorSession): Compos
 
 export interface CompositorRemoteAppLauncher {
   launch(appEndpointURL: URL, remoteAppId: string): Promise<Client>
+  launchURL(appEndpointURL: URL): Promise<Client>
 }
 
 export function createCompositorRemoteAppLauncher(session: CompositorSession, remoteSocket: CompositorRemoteSocket): CompositorRemoteAppLauncher {
