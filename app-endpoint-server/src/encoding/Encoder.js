@@ -55,7 +55,7 @@ class Encoder {
      */
     this._pngFrameEncoder = null
     /**
-     * @type {Array<{pixelBuffer:Buffer, bufferFormat:number, bufferWidth:number, bufferHeight:number, serial:number, resolve: function(EncodedFrame):void}>}
+     * @type {Array<{pixelBuffer:Buffer, bufferFormat:number, bufferWidth:number, bufferHeight:number, bufferStride:number, serial:number, resolve: function(EncodedFrame):void}>}
      * @private
      */
     this._queue = []
@@ -65,16 +65,16 @@ class Encoder {
    * @private
    */
   _doEncodeBuffer () {
-    const { pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, resolve, reject } = this._queue[0]
+    const { pixelBuffer, bufferFormat, bufferWidth, bufferHeight, bufferStride, serial, resolve, reject } = this._queue[0]
 
     try {
       let encodingPromise = null
 
       const bufferArea = bufferWidth * bufferHeight
       if (bufferArea <= sessionConfig.encoder.maxPngBufferSize) {
-        encodingPromise = this._encodePNGFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial)
+        encodingPromise = this._encodePNGFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, bufferStride, serial)
       } else {
-        encodingPromise = this._encodeFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial)
+        encodingPromise = this._encodeFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, bufferStride, serial)
       }
 
       encodingPromise.then(encodedFrame => {
@@ -90,22 +90,23 @@ class Encoder {
   }
 
   /**
-   * @param {Buffer}pixelBuffer
+   * @param {Object}pixelBuffer
    * @param {number}bufferFormat
    * @param {number}bufferWidth
    * @param {number}bufferHeight
+   * @param {number}bufferStride
    * @param {number}serial
    * @return {Promise<EncodedFrame>}
    * @override
    */
-  encodeBuffer (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial) {
+  encodeBuffer (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, bufferStride, serial) {
     if (this._bufferFormat !== bufferFormat) {
       this._bufferFormat = bufferFormat
       this._frameEncoder = null
     }
 
     return new Promise((resolve, reject) => {
-      this._queue.push({ pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial, resolve, reject })
+      this._queue.push({ pixelBuffer, bufferFormat, bufferWidth, bufferHeight, bufferStride, serial, resolve, reject })
       if (this._queue.length === 1) {
         this._doEncodeBuffer()
       }
@@ -113,7 +114,7 @@ class Encoder {
   }
 
   /**
-   * @param {Buffer}pixelBuffer
+   * @param {Object}pixelBuffer
    * @param {number}bufferFormat
    * @param {number}bufferWidth
    * @param {number}bufferHeight
@@ -121,15 +122,15 @@ class Encoder {
    * @return {Promise<EncodedFrame>}
    * @private
    */
-  _encodePNGFrame (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial) {
+  _encodePNGFrame (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, bufferStride, serial) {
     if (!this._pngFrameEncoder) {
       this._pngFrameEncoder = PNGEncoder.create(bufferWidth, bufferHeight, bufferFormat)
     }
-    return this._pngFrameEncoder.encodeBuffer(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial)
+    return this._pngFrameEncoder.encodeBuffer(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, bufferStride, serial)
   }
 
   /**
-   * @param {Buffer}pixelBuffer
+   * @param {Object}pixelBuffer
    * @param {number}bufferFormat
    * @param {number}bufferWidth
    * @param {number}bufferHeight
@@ -137,11 +138,11 @@ class Encoder {
    * @return {Promise<EncodedFrame>}
    * @private
    */
-  async _encodeFrame (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial) {
+  async _encodeFrame (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, bufferStride, serial) {
     if (!this._frameEncoder) {
       this._frameEncoder = Encoder.types[bufferFormat][sessionConfig.encoder.h264Encoder].create(bufferWidth, bufferHeight, bufferFormat)
     }
-    return this._frameEncoder.encodeBuffer(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, serial)
+    return this._frameEncoder.encodeBuffer(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, bufferStride, serial)
   }
 }
 

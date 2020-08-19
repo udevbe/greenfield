@@ -67,16 +67,17 @@ class NVH264OpaqueEncoder {
   }
 
   /**
-   * @param {Buffer}pixelBuffer
+   * @param {Object}pixelBuffer
    * @param {number}wlShmFormat
    * @param {number}x
    * @param {number}y
    * @param {number}width
    * @param {number}height
+   * @param {number}stride
    * @return {Promise<EncodedFrameFragment>}
    * @private
    */
-  async _encodeFragment (pixelBuffer, wlShmFormat, x, y, width, height) {
+  async _encodeFragment (pixelBuffer, wlShmFormat, x, y, width, height, stride) {
     const gstBufferFormat = gstFormats[wlShmFormat]
 
     const encodingPromise = new Promise(resolve => {
@@ -90,7 +91,7 @@ class NVH264OpaqueEncoder {
   }
 
   /**
-   * @param {Buffer}pixelBuffer
+   * @param {Object}pixelBuffer
    * @param {number}wlShmFormat
    * @param {number}bufferWidth
    * @param {number}bufferHeight
@@ -98,10 +99,10 @@ class NVH264OpaqueEncoder {
    * @return {Promise<EncodedFrame>}
    * @override
    */
-  async encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, serial) {
+  async encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, bufferStride, serial) {
     let encodingOptions = 0
     encodingOptions = EncodingOptions.enableFullFrame(encodingOptions)
-    const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)
+    const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight, bufferStride)
     return EncodedFrame.create(serial, h264, encodingOptions, bufferWidth, bufferHeight, [encodedFrameFragment])
   }
 }

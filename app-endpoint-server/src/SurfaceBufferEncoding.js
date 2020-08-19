@@ -72,11 +72,11 @@ class SurfaceBufferEncoding {
         const bufferId = this.bufferResourceId
         this.bufferResourceId = 0
 
-        const { buffer, format, width, height } = Endpoint.getShmBuffer(this.wlClient, bufferId)
+        const { buffer, format, width, height, stride } = Endpoint.getShmBuffer(this.wlClient, bufferId)
         // logger.debug(`Request buffer encoding: serial=${syncSerial}, id=${bufferId}`)
         // console.log('|- Awaiting buffer encoding.')
         // const start = Date.now()
-        this.encoder.encodeBuffer(Buffer.from(buffer), format, width, height, syncSerial).then((/** @type {EncodedFrame} */encodedFrame) => {
+        this.encoder.encodeBuffer(buffer, format, width, height, stride, syncSerial).then((/** @type {EncodedFrame} */encodedFrame) => {
           // console.log(`|--> Buffer encoding took: ${Date.now() - start}`)
           // logger.debug(`Buffer encoding finished: serial=${syncSerial}, id=${bufferId}`)
 

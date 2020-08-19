@@ -220,28 +220,30 @@ createEncoder(napi_env env, napi_callback_info info) {
 // - string format - argv[2]
 // - number width - argv[3]
 // - number height - argv[4]
+// - number stride - argv[5]
 // return:
 // - void
 napi_value
 encodeBuffer(napi_env env, napi_callback_info info) {
-    size_t argc = 5;
+    size_t argc = 6;
     napi_value argv[argc], return_value;
 
     struct encoder *encoder;
     void *buffer;
-    size_t buffer_length, format_length;
-    uint32_t width, height;
+    size_t format_length;
+    uint32_t width, height, stride;
 
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
     NAPI_CALL(env, napi_get_value_external(env, argv[0], (void **) &encoder))
-    NAPI_CALL(env, napi_get_buffer_info(env, argv[1], &buffer, &buffer_length))
+    NAPI_CALL(env, napi_get_value_external(env, argv[1], (void **) &buffer))
     NAPI_CALL(env, napi_get_value_string_latin1(env, argv[2], NULL, 0L, &format_length))
     char format[format_length + 1];
     NAPI_CALL(env, napi_get_value_string_latin1(env, argv[2], format, sizeof(format), NULL))
     NAPI_CALL(env, napi_get_value_uint32(env, argv[3], &width))
     NAPI_CALL(env, napi_get_value_uint32(env, argv[4], &height))
+    NAPI_CALL(env, napi_get_value_uint32(env, argv[5], &stride))
 
-    encoder->encode(encoder, buffer, buffer_length, format, width, height);
+    encoder->encode(encoder, buffer, stride*height, format, width, height);
 
     NAPI_CALL(env, napi_get_undefined(env, &return_value))
     return return_value;

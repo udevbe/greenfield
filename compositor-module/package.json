@@ -1,43 +1,134 @@
 {
   "name": "greenfield-compositor",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "A Wayland HTML5 Compositor Library.",
-  "main": "./lib/index,js",
-  "module": "./es/index.js",
+  "keywords": [
+    "linux",
+    "wayland",
+    "javascript",
+    "typescript",
+    "compositor",
+    "html5",
+    "browser",
+    "canvas",
+    "webgl",
+    "websocket",
+    "remote",
+    "web"
+  ],
+  "main": "dist/index.js",
+  "typings": "types/index.d.ts",
   "files": [
-    "es",
-    "lib",
-    "index.d.ts"
+    "dist",
+    "types"
   ],
   "scripts": {
-    "build": "npm run lint && nwb build-web-module --copy-files",
-    "clean": "nwb clean-module",
-    "prepublishOnly": "npm run build",
-    "test": "nwb test",
-    "lint": "eslint *.js src tests",
-    "lint:fix": "npm run lint -- --fix",
-    "test:coverage": "nwb test --coverage",
-    "test:watch": "nwb test --server"
+    "lint": "tslint  --project tsconfig.json -t codeFrame 'src/**/*.ts' 'test/**/*.ts'",
+    "prebuild": "rimraf dist types",
+    "build": "tsc && cpy './src/assets/**' './dist/assets/' && typedoc --includeDeclarations --excludeExternals --excludeNotExported --excludePrivate --ignoreCompilerErrors --out docs --target es6 --theme minimal --mode modules --inputFiles src/index.ts --inputFiles src/ButtonEvent.ts --inputFiles src/AxisEvent.ts --inputFiles src/KeyEvent.ts --inputFiles src/lib/index.ts",
+    "test": "jest --coverage",
+    "test:watch": "jest --coverage --watch",
+    "test:prod": "yarn lint && yarn test -- --no-cache",
+    "deploy-docs": "ts-node tools/gh-pages-publish",
+    "report-coverage": "cat ./coverage/lcov.info | coveralls",
+    "commit": "git-cz",
+    "semantic-release": "semantic-release",
+    "semantic-release-prepare": "ts-node tools/semantic-release-prepare",
+    "precommit": "lint-staged",
+    "prepush": "npm run test:prod && npm run build",
+    "commitmsg": "commitlint -E HUSKY_GIT_PARAMS"
   },
   "dependencies": {
-    "tinyh264": "^0.0.5",
-    "westfield-runtime-common": "^0.3.2",
-    "westfield-runtime-server": "^0.3.2"
+    "tinyh264": "0.0.6",
+    "westfield-runtime-common": "0.4.3",
+    "westfield-runtime-server": "0.4.3"
   },
   "devDependencies": {
-    "eslint": "^6.8.0",
-    "eslint-config-standard": "^14.1.1",
-    "eslint-plugin-import": "^2.20.2",
-    "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-promise": "^4.2.1",
-    "eslint-plugin-standard": "^4.0.1",
-    "inferno": "^7.4.2",
-    "nwb": "^0.24.5",
-    "webpack": "^4.43.0",
-    "worker-loader": "^2.0.0"
+    "@commitlint/cli": "^9.1.1",
+    "@commitlint/config-conventional": "^9.1.1",
+    "@types/jest": "^26.0.9",
+    "@types/node": "^14.0.27",
+    "colors": "^1.4.0",
+    "commitizen": "^4.1.2",
+    "coveralls": "^3.1.0",
+    "cpy-cli": "^3.1.1",
+    "cross-env": "^7.0.2",
+    "cz-conventional-changelog": "^3.2.0",
+    "husky": "^4.2.5",
+    "jest": "^26.4.0",
+    "jest-config": "^26.4.0",
+    "lint-staged": "^10.2.11",
+    "prettier": "^2.0.5",
+    "prompt": "^1.0.0",
+    "replace-in-file": "^6.1.0",
+    "rimraf": "^3.0.2",
+    "semantic-release": "^17.1.1",
+    "shelljs": "^0.8.4",
+    "ts-jest": "^26.2.0",
+    "ts-node": "^8.10.2",
+    "tslint": "^6.1.3",
+    "tslint-config-prettier": "^1.18.0",
+    "tslint-config-standard": "^9.0.0",
+    "typedoc": "^0.18.0",
+    "typescript": "^3.9.7",
+    "webpack": "^4.44.1",
+    "worker-loader": "^3.0.1"
   },
   "author": "Erik De Rijcke",
   "homepage": "https://www.greenfield.app",
-  "license": "AGPLv3",
-  "repository": "https://github.com/udevbe/greenfield/tree/master/compositor-module"
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/udevbe/greenfield/tree/master/compositor-module"
+  },
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "lint-staged": {
+    "{src,test}/**/*.ts": [
+      "prettier --write",
+      "git add"
+    ]
+  },
+  "config": {
+    "commitizen": {
+      "path": "compositor-module/node_modules/cz-conventional-changelog"
+    }
+  },
+  "jest": {
+    "transform": {
+      ".(ts|tsx)": "ts-jest"
+    },
+    "testEnvironment": "node",
+    "testRegex": "(/__tests__/.*|\\.(test|spec))\\.(ts|tsx|js)$",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "/test/"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 90,
+        "functions": 95,
+        "lines": 95,
+        "statements": 95
+      }
+    },
+    "collectCoverageFrom": [
+      "src/*.{js,ts}"
+    ]
+  },
+  "prettier": {
+    "semi": false,
+    "singleQuote": true
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  }
 }
