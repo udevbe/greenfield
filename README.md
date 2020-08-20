@@ -4,15 +4,15 @@
 Latest development snapshot: https://greenfield-preview.web.app/
 
 Greenfield is a [Wayland compositor](https://en.wikipedia.org/wiki/Wayland_%28display_server_protocol%29) written entirely
-in JavaScript while utilizing WebAssembly and WebGL for the performance critical parts. It can run native Wayland 
+in TypeScript while utilizing WebAssembly and WebGL for the performance critical parts. It can run native Wayland 
 applications remotely, or it can run Wayland web applications directly in your browser.
 
 
 For more information, visit the [documentation](https://greenfield.app/docs/) or have a look on the [website](https://greenfield.app).
 
 ### Modular Compositor
-Greenfield consists of 3 separated parts.
- - [Westfield](https://github.com/udevbe/westfield) A Wayland protocol implementated in JavaScript.
+Greenfield consists of 3 separate parts.
+ - [Westfield](https://github.com/udevbe/westfield) A Wayland protocol implementation.
  - [Greenfield Compositor Module](https://github.com/udevbe/greenfield) A bare bones Wayland compositor library.
  - [Greenfield Web Shell](https://github.com/udevbe/greenfield-webshell) An extensive implementation of the Greenfield Compositor Module.
 
