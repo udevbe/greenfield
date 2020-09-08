@@ -15,10 +15,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+import H264NALDecoderWorker from 'worker-loader!./H264NALDecoderWorker'
 import { OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
 import EncodedFrame from '../remotestreaming/EncodedFrame'
 import { fullFrame, splitAlpha } from '../remotestreaming/EncodingOptions'
-import H264NALDecoderWorker from 'worker-loader!./H264NALDecoder.worker'
 
 type H264NALDecoderWorkerMessage = { type: string, width: number, height: number, data: ArrayBuffer, renderStateId: number }
 type FrameState = {
