@@ -26,7 +26,6 @@ import {
   WlSeatCapability,
   WlTouchResource
 } from 'westfield-runtime-server'
-import { hasTouch } from './browser/attributes'
 import DataDevice from './DataDevice'
 import { CompositorSeat, CompositorSeatState } from './index'
 import Keyboard from './Keyboard'
@@ -34,6 +33,8 @@ import Keyboard from './Keyboard'
 import Pointer from './Pointer'
 import Session from './Session'
 import Touch from './Touch'
+
+import { capabilities } from './browser/capabilities'
 
 const { keyboard, pointer, touch } = WlSeatCapability
 
@@ -62,6 +63,7 @@ class Seat implements WlSeatRequests, CompositorSeat {
     const keyboard = Keyboard.create(session, dataDevice)
     const pointer = Pointer.create(session, dataDevice)
     const touch = Touch.create()
+    const hasTouch = capabilities.hasTouch
 
     const userSeatState = { pointerGrab: undefined, keyboardFocus: undefined }
 
