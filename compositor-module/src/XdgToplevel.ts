@@ -24,6 +24,7 @@ import {
   XdgToplevelState,
   XdgWmBaseError
 } from 'westfield-runtime-server'
+import { setCursor } from './browser/cursor'
 import { CompositorSurface, CompositorSurfaceState } from './index'
 import Mat4 from './math/Mat4'
 import Point from './math/Point'
@@ -32,12 +33,21 @@ import Seat from './Seat'
 import Session from './Session'
 import Size from './Size'
 import Surface from './Surface'
-import { SurfaceState } from './SurfaceState'
 import { UserShellSurfaceRole } from './UserShellSurfaceRole'
 import View from './View'
 import XdgSurface from './XdgSurface'
 
-const { none, bottom, bottomLeft, bottomRight, left, right, top, topLeft, topRight } = XdgToplevelResizeEdge
+const {
+  none,
+  bottom,
+  bottomLeft,
+  bottomRight,
+  left,
+  right,
+  top,
+  topLeft,
+  topRight
+} = XdgToplevelResizeEdge
 const { fullscreen, activated, maximized, resizing } = XdgToplevelState
 
 interface ConfigureState {
@@ -46,13 +56,6 @@ interface ConfigureState {
   width: number,
   height: number,
   resizeEdge: number
-}
-
-interface RoleState {
-  windowGeometry: Rect,
-  maxSize: Point,
-  minSize: Point,
-  configureState: ConfigureState
 }
 
 /**
@@ -72,7 +75,7 @@ interface RoleState {
  *      Attaching a null buffer to a toplevel unmaps the surface.
  *
  */
-export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfaceRole<RoleState> {
+export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfaceRole {
   readonly userSurface: CompositorSurface
   readonly resource: XdgToplevelResource
   readonly xdgSurface: XdgSurface
@@ -160,21 +163,12 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     }
   }
 
-  captureRoleState(): RoleState {
-    return {
-      windowGeometry: this.xdgSurface.pendingWindowGeometry,
-      maxSize: this._pendingMaxSize,
-      minSize: this._pendingMinSize,
-      configureState: this._ackedConfigureState
-    }
-  }
+  private commitRoleState() {
+    this._minSize = this._pendingMinSize
+    this._maxSize = this._pendingMaxSize
 
-  setRoleState(roleState: RoleState) {
-    this._minSize = roleState.minSize
-    this._maxSize = roleState.maxSize
-
-    const { x: minWidth, y: minHeight } = roleState.minSize
-    let { x: maxWidth, y: maxHeight } = roleState.maxSize
+    const { x: minWidth, y: minHeight } = this._pendingMinSize
+    let { x: maxWidth, y: maxHeight } = this._pendingMaxSize
     maxWidth = maxWidth === 0 ? Number.MAX_SAFE_INTEGER : maxWidth
     maxHeight = maxHeight === 0 ? Number.MAX_SAFE_INTEGER : maxHeight
 
@@ -192,43 +186,57 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     this._minSize = Point.create(minWidth, minHeight)
     this._maxSize = Point.create(maxWidth, maxHeight)
 
-    if (roleState.configureState.state.includes(activated) &&
+    if (this._ackedConfigureState.state.includes(activated) &&
       !this._configureState.state.includes(activated)) {
       this._userSurfaceState = { ...this._userSurfaceState, active: true }
       this._session.userShell.events.updateUserSurface?.(this.userSurface, this._userSurfaceState)
     }
 
-    this._configureState = roleState.configureState
-    this.xdgSurface.updateWindowGeometry(roleState.windowGeometry)
+    this._configureState = this._ackedConfigureState
+    this.xdgSurface.updateWindowGeometry(this.xdgSurface.pendingWindowGeometry)
   }
 
-  onCommit(surface: Surface, newState: SurfaceState) {
-    if (newState.bufferContents) {
+  /**
+   * Called during commit
+   * @param surface
+   */
+  onCommit(surface: Surface) {
+    if (surface.pendingState.bufferContents) {
       if (!this.mapped) {
         this._map(surface)
       }
-      if (newState.roleState.configureState.state.includes(resizing)) {
-        this._resizingCommit(surface, newState)
-      } else if (newState.roleState.configureState.state.includes(maximized)) {
-        this._maximizedCommit(surface, newState)
-      } else if (newState.roleState.configureState.state.includes(fullscreen)) {
-        this._fullscreenCommit(surface, newState)
+      if (this._ackedConfigureState.state.includes(resizing)) {
+        this._resizingCommit(surface)
+      } else if (this._ackedConfigureState.state.includes(maximized)) {
+        this._maximizedCommit(surface)
+      } else if (this._ackedConfigureState.state.includes(fullscreen)) {
+        this._fullscreenCommit(surface)
       } else {
-        this._normalCommit(surface, newState)
+        this._normalCommit(surface)
       }
     } else if (this.mapped) {
       this._unmap()
     }
 
-    surface.updateState(newState)
+    this.commitRoleState()
+    surface.commitPending()
   }
 
+  /**
+   * Called during commit
+   * @param surface
+   * @private
+   */
   private _map(surface: Surface) {
     this.mapped = true
     this._userSurfaceState = { ...this._userSurfaceState, mapped: true }
     this._session.userShell.events.updateUserSurface?.(this.userSurface, this._userSurfaceState)
   }
 
+  /**
+   * Called during commit
+   * @private
+   */
   private _unmap() {
     this.mapped = false
     this._configureState = { serial: 0, state: [], width: 0, height: 0, resizeEdge: 0 }
@@ -236,9 +244,13 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     this._session.userShell.events.updateUserSurface?.(this.userSurface, this._userSurfaceState)
   }
 
-  private _resizingCommit(surface: Surface, newState: SurfaceState) {
-    const roleState = newState.roleState
-    const { w: newSurfaceWidth, h: newSurfaceHeight } = roleState.windowGeometry.size
+  /**
+   * Called during commit
+   * @param surface
+   * @private
+   */
+  private _resizingCommit(surface: Surface) {
+    const { w: newSurfaceWidth, h: newSurfaceHeight } = this.xdgSurface.pendingWindowGeometry.size
     const { w: oldSurfaceWidth, h: oldSurfaceHeight } = this.xdgSurface.windowGeometry.size
 
     let dx = 0
@@ -270,10 +282,6 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
         const origPosition = topLevelView.positionOffset
         topLevelView.positionOffset = Point.create(origPosition.x + dx, origPosition.y + dy)
       })
-
-      // const { x, y } = surface.surfaceChildSelf.position
-      // surface.surfaceChildSelf.position = Point.create(x + dx, y + dy)
-      // surface.views.forEach(value => value.applyTransformations())
     }
   }
 
@@ -281,11 +289,14 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     return Object.values(this._session.renderer.scenes).flatMap(scene => scene.topLevelViews.filter(topLevelView => topLevelView.surface === surface))
   }
 
-  _maximizedCommit(surface: Surface, newState: SurfaceState) {
-    const roleState = newState.roleState
-    const { w: newSurfaceWidth, h: newSurfaceHeight } = roleState.windowGeometry.size
+  /**
+   * Called during commit
+   * @param surface
+   */
+  _maximizedCommit(surface: Surface) {
+    const { w: newSurfaceWidth, h: newSurfaceHeight } = this.xdgSurface.pendingWindowGeometry.size
 
-    if (newSurfaceWidth !== roleState.configureState.width || newSurfaceHeight !== roleState.configureState.height) {
+    if (newSurfaceWidth !== this._ackedConfigureState.width || newSurfaceHeight !== this._ackedConfigureState.height) {
       this.resource.postError(XdgWmBaseError.invalidSurfaceState, 'Surface size does not match configure event.')
       console.log('[client-protocol-error] Surface size does not match configure event.')
       return
@@ -297,7 +308,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     if (this._unfullscreenConfigureState) {
       this._unfullscreenConfigureState = undefined
     }
-    const windowGeoPositionOffset = newState.roleState.windowGeometry.position
+    const windowGeoPositionOffset = this.xdgSurface.pendingWindowGeometry.position
 
     const primaryView = surface.views.find(view => view.primary)
     if (primaryView) {
@@ -306,10 +317,18 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     }
   }
 
-  private _fullscreenCommit(surface: Surface, newState: SurfaceState) {
-    if (newState.bufferContents) {
-      const bufferSize = newState.bufferContents.size
-      const { x: newSurfaceWidth, y: newSurfaceHeight } = surface.toSurfaceSpace(Point.create(bufferSize.w, bufferSize.h))
+  /**
+   * Called during commit
+   * @param surface
+   * @private
+   */
+  private _fullscreenCommit(surface: Surface) {
+    if (surface.pendingState.bufferContents) {
+      const bufferSize = surface.pendingState.bufferContents.size
+      const {
+        x: newSurfaceWidth,
+        y: newSurfaceHeight
+      } = surface.toSurfaceSpace(Point.create(bufferSize.w, bufferSize.h))
       if (newSurfaceWidth > this._configureState.width || newSurfaceHeight > this._configureState.height) {
         this.resource.postError(XdgWmBaseError.invalidSurfaceState, 'Surface size does not match configure event.')
         console.log('[client protocol error] Surface size does not match configure event.')
@@ -331,7 +350,12 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     // TODO use api to nofity user shell scene canvas should be made fullscreen
   }
 
-  private _normalCommit(surface: Surface, newState: SurfaceState) {
+  /**
+   * Called during commit
+   * @param surface
+   * @private
+   */
+  private _normalCommit(surface: Surface) {
     if (this._previousGeometry) {
       // restore position (we came from a fullscreen or maximize and must restore the position)
       const primaryView = surface.views.find(view => view.primary)
@@ -447,18 +471,17 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
           const deltaY = pointer.y - pointerY
 
           topLevelView.positionOffset = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
-          // topLevelView.applyTransformations()
-          surface.scheduleRender()
+          topLevelView.applyTransformations()
+          topLevelView.scene.render()
         }
 
         pointer.onButtonRelease().then(() => {
-          surface.hasPointerInput = true
+          pointer.enableFocus()
           pointer.removeMouseMoveListener(moveListener)
           pointer.setDefaultCursor()
         })
 
-        surface.hasPointerInput = false
-        pointer.unsetFocus()
+        pointer.disableFocus()
         pointer.addMouseMoveListener(moveListener)
         window.document.body.style.cursor = 'move'
       }
@@ -484,56 +507,56 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
 
     switch (edges) {
       case bottomRight: {
-        window.document.body.style.cursor = 'nwse-resize'
+        setCursor('nwse-resize')
         sizeAdjustment = (width, height, deltaX, deltaY) => {
           return { w: width + deltaX, h: height + deltaY }
         }
         break
       }
       case top: {
-        window.document.body.style.cursor = 'ns-resize'
+        setCursor('ns-resize')
         sizeAdjustment = (width, height, deltaX, deltaY) => {
           return { w: width, h: height - deltaY }
         }
         break
       }
       case bottom: {
-        window.document.body.style.cursor = 'ns-resize'
+        setCursor('ns-resize')
         sizeAdjustment = (width, height, deltaX, deltaY) => {
           return { w: width, h: height + deltaY }
         }
         break
       }
       case left: {
-        window.document.body.style.cursor = 'ew-resize'
+        setCursor('ew-resize')
         sizeAdjustment = (width, height, deltaX, deltaY) => {
           return { w: width - deltaX, h: height }
         }
         break
       }
       case topLeft: {
-        window.document.body.style.cursor = 'nwse-resize'
+        setCursor('nwse-resize')
         sizeAdjustment = (width, height, deltaX, deltaY) => {
           return { w: width - deltaX, h: height - deltaY }
         }
         break
       }
       case bottomLeft: {
-        window.document.body.style.cursor = 'nesw-resize'
+        setCursor('nesw-resize')
         sizeAdjustment = (width, height, deltaX, deltaY) => {
           return { w: width - deltaX, h: height + deltaY }
         }
         break
       }
       case right: {
-        window.document.body.style.cursor = 'ew-resize'
+        setCursor('ew-resize')
         sizeAdjustment = (width, height, deltaX, deltaY) => {
           return { w: width + deltaX, h: height }
         }
         break
       }
       case topRight: {
-        window.document.body.style.cursor = 'nesw-resize'
+        setCursor('nesw-resize')
         sizeAdjustment = (width, height, deltaX, deltaY) => {
           return { w: width + deltaX, h: height - deltaY }
         }
@@ -551,7 +574,10 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
 
     const pointerX = pointer.x
     const pointerY = pointer.y
-    const { width: windowGeometryWidth, height: windowGeometryHeight } = this.xdgSurface.windowGeometry
+    const {
+      width: windowGeometryWidth,
+      height: windowGeometryHeight
+    } = this.xdgSurface.windowGeometry
 
     const sizeCalculation = () => {
       const deltaX = pointer.x - pointerX
@@ -578,17 +604,16 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
 
     const surface = this.xdgSurface.wlSurfaceResource.implementation as Surface
     pointer.onButtonRelease().then(() => {
-      surface.hasPointerInput = true
       pointer.removeMouseMoveListener(resizeListener)
       pointer.setDefaultCursor()
+      pointer.enableFocus()
 
       const { w: width, h: height } = sizeCalculation()
       this._emitConfigure(resource, width, height, [activated], none)
       this._session.flush()
     })
 
-    surface.hasPointerInput = false
-    pointer.unsetFocus()
+    pointer.disableFocus()
     pointer.addMouseMoveListener(resizeListener)
   }
 

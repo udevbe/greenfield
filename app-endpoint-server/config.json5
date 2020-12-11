@@ -16,6 +16,8 @@
     }
   },
   sessionConfig: {
+    // Indicates if we should launch an XWayland server to support legacy X11 applications.
+    xWayland: true,
     // Time to wait in milli seconds before destroying this session when no
     // more native clients are running.
     destroyTimeout: 60000,
@@ -46,6 +48,14 @@
         // The full path of the executable binary. Can also be a symlink.
         bin: "/usr/bin/gtk3-demo",
         // Arguments passed to the binary
+        args: [],
+      },
+      'remote-xterm': {
+        bin: "/usr/bin/xterm",
+        args: [],
+      },
+      'remote-gnome-terminal': {
+        bin: "/usr/bin/gnome-terminal",
         args: [],
       }
     }

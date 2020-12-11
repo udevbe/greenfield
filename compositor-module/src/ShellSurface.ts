@@ -19,8 +19,8 @@ import {
   WlOutputResource,
   WlSeatResource,
   WlShellSurfaceRequests,
-  WlShellSurfaceResource,
   WlShellSurfaceResize,
+  WlShellSurfaceResource,
   WlShellSurfaceTransient,
   WlSurfaceResource
 } from 'westfield-runtime-server'
@@ -30,10 +30,19 @@ import Point from './math/Point'
 import Seat from './Seat'
 import Session from './Session'
 import Surface from './Surface'
-import { SurfaceState } from './SurfaceState'
 import { UserShellSurfaceRole } from './UserShellSurfaceRole'
 
-const { bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight } = WlShellSurfaceResize
+const {
+  bottom,
+  bottomLeft,
+  bottomRight,
+  left,
+  none,
+  right,
+  top,
+  topLeft,
+  topRight
+} = WlShellSurfaceResize
 const { inactive } = WlShellSurfaceTransient
 
 const SurfaceStates = {
@@ -58,7 +67,7 @@ const SurfaceStates = {
  *            wl_shell_surface_destroy() must be called before destroying
  *            the wl_surface object.
  */
-export default class ShellSurface implements WlShellSurfaceRequests, UserShellSurfaceRole<void> {
+export default class ShellSurface implements WlShellSurfaceRequests, UserShellSurfaceRole {
   readonly userSurface: CompositorSurface
   readonly resource: WlShellSurfaceResource
   readonly wlSurfaceResource: WlSurfaceResource
@@ -92,8 +101,8 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     shellSurface._doPing(wlShellSurfaceResource)
 
     wlShellSurfaceResource.onDestroy().then(() => {
-      window.clearTimeout(shellSurface._timeoutTimer)
-      window.clearTimeout(shellSurface._pingTimer)
+      clearTimeout(shellSurface._timeoutTimer)
+      clearTimeout(shellSurface._pingTimer)
     })
 
     return shellSurface
@@ -113,11 +122,11 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     this.session = session
   }
 
-  onCommit(surface: Surface, newState: SurfaceState) {
+  onCommit(surface: Surface) {
     const oldPosition = surface.surfaceChildSelf.position
-    surface.surfaceChildSelf.position = Point.create(oldPosition.x + newState.dx, oldPosition.y + newState.dy)
+    surface.surfaceChildSelf.position = Point.create(oldPosition.x + surface.pendingState.dx, oldPosition.y + surface.pendingState.dy)
 
-    if (newState.bufferContents) {
+    if (surface.pendingState.bufferContents) {
       if (!this._mapped) {
         this._map()
       }
@@ -127,7 +136,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
       }
     }
 
-    surface.updateState(newState)
+    surface.commitPending()
   }
 
   private _map() {
@@ -148,12 +157,12 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
       this.session.userShell.events.updateUserSurface?.(this.userSurface, this._userSurfaceState)
       this._pingTimeoutActive = false
     }
-    window.clearTimeout(this._timeoutTimer)
-    this._pingTimer = window.setTimeout(() => this._doPing(resource), 5000)
+    clearTimeout(this._timeoutTimer)
+    this._pingTimer = self.setTimeout(() => this._doPing(resource), 5000)
   }
 
   _doPing(resource: WlShellSurfaceResource) {
-    this._timeoutTimer = window.setTimeout(() => {
+    this._timeoutTimer = self.setTimeout(() => {
       if (!this._pingTimeoutActive) {
         // ping timed out, make view gray
         this._pingTimeoutActive = true
@@ -194,8 +203,8 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
           const deltaY = pointer.y - pointerY
 
           topLevelView.positionOffset = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
-          // topLevelView.applyTransformations()
-          surface.scheduleRender()
+          topLevelView.applyTransformations()
+          topLevelView.scene.render()
         }
 
         pointer.onButtonRelease().then(() => pointer.removeMouseMoveListener(moveListener))
@@ -273,7 +282,10 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
 
     const pointerX = pointer.x
     const pointerY = pointer.y
-    const { w: surfaceWidth, h: surfaceHeight } = (this.wlSurfaceResource.implementation as Surface).size || {}
+    const {
+      w: surfaceWidth,
+      h: surfaceHeight
+    } = (this.wlSurfaceResource.implementation as Surface).size || {}
 
     if (surfaceWidth && surfaceHeight) {
       const resizeListener = () => {
@@ -282,16 +294,14 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
 
         const size = sizeAdjustment(surfaceWidth, surfaceHeight, deltaX, deltaY)
         this.resource.configure(edges, size.w, size.h)
+        this.session.flush()
       }
       pointer.onButtonRelease().then(() => pointer.removeMouseMoveListener(resizeListener))
       pointer.addMouseMoveListener(resizeListener)
     }
   }
 
-  /**
-   * @private
-   */
-  _ensureUserShellSurface() {
+  private _ensureUserShellSurface() {
     if (!this._managed) {
       this._managed = true
       this.wlSurfaceResource.onDestroy().then(() => this.session.userShell.events.destroyUserSurface?.(this.userSurface))
@@ -342,7 +352,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     this.state = SurfaceStates.TRANSIENT
   }
 
-  setFullscreen(resource: WlShellSurfaceResource, method: number, framerate: number, output: WlOutputResource|undefined) {
+  setFullscreen(resource: WlShellSurfaceResource, method: number, framerate: number, output: WlOutputResource | undefined) {
     this.state = SurfaceStates.FULLSCREEN
     const surface = this.wlSurfaceResource.implementation as Surface
     // TODO get proper size in surface coordinates instead of assume surface space === global space
@@ -385,7 +395,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     // FIXME get proper size in surface coordinates instead of assume surface space === global space
     const scene = this.session.globals.seat.pointer.scene
 
-    if(scene){
+    if (scene) {
       const width = scene.canvas.width
       const height = scene.canvas.height
 
@@ -402,11 +412,5 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
   setClass(resource: WlShellSurfaceResource, clazz: string) {
     this._userSurfaceState = { ...this._userSurfaceState, appId: clazz }
     this.session.userShell.events.updateUserSurface?.(this.userSurface, this._userSurfaceState)
-  }
-
-  captureRoleState() {
-  }
-
-  setRoleState(roleState: void) {
   }
 }

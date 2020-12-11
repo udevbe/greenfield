@@ -60,11 +60,11 @@ export default class WebAppSocket implements CompositorWebAppSocket {
       const webAppSocketMessage = event.data as WebAppSocketMessage
       const buffer = new Uint32Array(webAppSocketMessage.protocolMessage)
       const fds = webAppSocketMessage.meta.map(transferable => {
-        if (transferable instanceof window.ArrayBuffer) {
+        if (transferable instanceof ArrayBuffer) {
           return this._session.webFS.fromArrayBuffer(transferable)
-        } else if (transferable instanceof window.ImageBitmap) {
+        } else if (transferable instanceof ImageBitmap) {
           return this._session.webFS.fromImageBitmap(transferable)
-        } else if (transferable instanceof window.OffscreenCanvas) {
+        } else if (transferable instanceof OffscreenCanvas) {
           return this._session.webFS.fromOffscreenCanvas(transferable)
         }// else if (transferable instanceof MessagePort) {
         // }

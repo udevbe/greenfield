@@ -6,8 +6,8 @@ const entryFile = path.resolve(__dirname, './src/index.ts')
 
 const commonConfig = () => {
   return {
-    mode: 'development',
-    devtool: 'inline-source-map',
+    // mode: 'development',
+    // devtool: 'inline-source-map',
     entry: [entryFile],
     target: 'webworker',
     module: {

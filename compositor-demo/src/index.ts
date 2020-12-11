@@ -1,6 +1,8 @@
 import {
+  CompositorSeatState,
   CompositorSession,
   CompositorSurface,
+  CompositorSurfaceState,
   createAxisEventFromWheelEvent,
   createButtonEventFromMouseEvent,
   createCompositorRemoteAppLauncher,
@@ -60,14 +62,14 @@ function initializeCanvas(session: CompositorSession, canvas: HTMLCanvasElement,
 function linkUserShellEvents(session: CompositorSession) {
   const userShell = session.userShell
 
-  userShell.events.notify = (variant, message) => window.alert(message)
-  userShell.events.createUserSurface = (compositorSurface, compositorSurfaceState) => {
+  userShell.events.notify = (variant: string, message: string) => window.alert(message)
+  userShell.events.createUserSurface = (compositorSurface: CompositorSurface, compositorSurfaceState: CompositorSurfaceState) => {
     // create view on our scene for the newly created surface
     userShell.actions.createView(compositorSurface, 'myOutputId')
     // request the client to make this surface active
     userShell.actions.requestActive(compositorSurface)
   }
-  userShell.events.updateUserSeat = ({ keyboardFocus, pointerGrab }) => {
+  userShell.events.updateUserSeat = ({ keyboardFocus, pointerGrab }: CompositorSeatState) => {
     // raise the surface when a user clicks on it
     if (pointerGrab !== compositorPointerGrab && pointerGrab) {
       userShell.actions.raise(pointerGrab, 'myOutputId')
@@ -85,8 +87,8 @@ async function main() {
 
   // Get an HTML5 canvas for use as an output for the compositor. Multiple outputs can be used.
   const canvas: HTMLCanvasElement = document.createElement('canvas')
-  canvas.width = 1024
-  canvas.height = 768
+  canvas.width = 1280
+  canvas.height = 720
   canvas.style.width = `${canvas.width}`
   canvas.style.height = `${canvas.height}`
 
@@ -103,16 +105,19 @@ async function main() {
 
   // Add some HTML buttons so the user can launch applications.
   const webShmAppURLButton: HTMLButtonElement = document.createElement('button')
-  webShmAppURLButton.textContent = 'WebSHM URL'
+  webShmAppURLButton.textContent = 'WebSHM'
   const webGLURLButton: HTMLButtonElement = document.createElement('button')
-  webGLURLButton.textContent = 'WebGL URL'
+  webGLURLButton.textContent = 'WebGL'
   const reactCanvasKitURLButton: HTMLButtonElement = document.createElement('button')
-  reactCanvasKitURLButton.textContent = 'React-CanvasKit URL'
-  const remoteURLButton: HTMLButtonElement = document.createElement('button')
-  remoteURLButton.textContent = 'Remote GTK3-Demo URL'
+  reactCanvasKitURLButton.textContent = 'React-CanvasKit'
+  const remoteGtk3URLButton: HTMLButtonElement = document.createElement('button')
+  remoteGtk3URLButton.textContent = 'GTK3-Demo'
+  const remoteGnomeTerminalURLButton: HTMLButtonElement = document.createElement('button')
+  remoteGnomeTerminalURLButton.textContent = 'Gnome-Terminal'
+
   const urlInput: HTMLInputElement = document.createElement('input')
   urlInput.type = 'text'
-  urlInput.style.width = '445px'
+  urlInput.style.width = '715px'
   const launchButton: HTMLButtonElement = document.createElement('button')
   launchButton.textContent = 'Launch'
 
@@ -120,14 +125,16 @@ async function main() {
   container.appendChild(webShmAppURLButton)
   container.appendChild(webGLURLButton)
   container.appendChild(reactCanvasKitURLButton)
-  container.appendChild(remoteURLButton)
+  container.appendChild(remoteGtk3URLButton)
+  container.appendChild(remoteGnomeTerminalURLButton)
   container.appendChild(urlInput)
   container.appendChild(launchButton)
 
   webShmAppURLButton.onclick = () => urlInput.value = `${window.location.href}apps/simple-web-shm/app.js`
   webGLURLButton.onclick = () => urlInput.value = `${window.location.href}apps/simple-web-gl/app.js`
   reactCanvasKitURLButton.onclick = () => urlInput.value = `${window.location.href}apps/react-canvaskit/app.js`
-  remoteURLButton.onclick = () => urlInput.value = `ws://localhost:8081?launch=remote-gtk3-demo`
+  remoteGtk3URLButton.onclick = () => urlInput.value = `ws://localhost:8081?launch=remote-gtk3-demo`
+  remoteGnomeTerminalURLButton.onclick = () => urlInput.value = `ws://localhost:8081?launch=remote-gnome-terminal`
 
   launchButton.onclick = () => {
     const urlString = urlInput.value

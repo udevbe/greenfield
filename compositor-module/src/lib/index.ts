@@ -19,7 +19,7 @@ const assets = {
 const assetLocator = (path: string) => assets[path]
 
 function loadNativeModule (module: { calledRun: any; onRuntimeInitialized: () => void }) {
-  return new Promise(resolve => {
+  return new Promise<void>(resolve => {
     if (module.calledRun) {
       resolve()
     } else {
@@ -30,10 +30,10 @@ function loadNativeModule (module: { calledRun: any; onRuntimeInitialized: () =>
 
 function isWasmSupported () {
   try {
-    if (typeof window.WebAssembly === 'object' &&
-      typeof window.WebAssembly.instantiate === 'function') {
-      const module = new window.WebAssembly.Module(Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00))
-      if (module instanceof window.WebAssembly.Module) { return new window.WebAssembly.Instance(module) instanceof window.WebAssembly.Instance }
+    if (typeof WebAssembly === 'object' &&
+      typeof WebAssembly.instantiate === 'function') {
+      const module = new WebAssembly.Module(Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00))
+      if (module instanceof WebAssembly.Module) { return new WebAssembly.Instance(module) instanceof WebAssembly.Instance }
     }
   } catch (e) {}
   return false

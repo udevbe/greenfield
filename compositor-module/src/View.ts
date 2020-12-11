@@ -33,7 +33,6 @@ export default class View {
   positionOffset: Point
   destroyed: boolean
   mapped: boolean
-  damaged: boolean
 
   private readonly _destroyPromise: Promise<void>
   private _transformation: Mat4
@@ -61,7 +60,6 @@ export default class View {
     this.destroyed = false
     this._primary = false
     this.mapped = true
-    this.damaged = true
   }
 
   set parent(parent: View | undefined) {

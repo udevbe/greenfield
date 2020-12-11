@@ -97,14 +97,14 @@ class NativeCompositorSession {
     this.wlDisplay = null
     /**
      * @type {Array<{webSocketChannel: WebSocketChannel, nativeClientSession: ?NativeClientSession, id: number}>}
-     * @private
      */
-    this._clients = []
+    this.clients = []
     /**
      * @type {number}
+     * 0-99 reserved for privileged compositor clients.
      * @private
      */
-    this._nextClientId = 0
+    this._nextClientId = 100
     /**
      * @type {?number}
      * @private
@@ -138,7 +138,7 @@ class NativeCompositorSession {
       this._destroyTimeoutTimer = null
     }
 
-    this._clients.forEach(client => client.nativeClientSession.destroy())
+    this.clients.forEach(client => client.nativeClientSession.destroy())
     Endpoint.destroyDisplay(this.wlDisplay)
 
     this._destroyResolve()
@@ -152,7 +152,7 @@ class NativeCompositorSession {
    */
   _requestWebSocket (clientId, wlClient) {
     // We hijack the very first web socket connection we find to send an out of band message asking for a new web socket.
-    const client = this._clients.find(client => client.webSocketChannel.webSocket !== null)
+    const client = this.clients.find(client => client.webSocketChannel.webSocket !== null)
     if (client) {
       client.nativeClientSession.requestWebSocket(clientId)
     } else {
@@ -170,7 +170,7 @@ class NativeCompositorSession {
     this._logger.info(`New Wayland client connected.`)
     this._stopDestroyTimeout()
 
-    let client = this._clients.find((client) => client.nativeClientSession === null)
+    let client = this.clients.find((client) => client.nativeClientSession === null)
 
     if (client) {
       client.nativeClientSession = NativeClientSession.create(wlClient, this, client.webSocketChannel)
@@ -182,21 +182,14 @@ class NativeCompositorSession {
         webSocketChannel,
         id
       }
-      this._clients.push(client)
+      this.clients.push(client)
       // no browser initiated web sockets available, so ask compositor to create a new one linked to clientId
       this._requestWebSocket(id, wlClient)
     }
 
-    client.nativeClientSession.onDestroy().then(() => {
-      const idx = this._clients.indexOf(client)
-      if (idx > -1) {
-        this._clients.splice(idx, 1)
-
-        if (this._clients.length === 0) {
-          this._startDestroyTimeout()
-        }
-      }
-    })
+    if (client.nativeClientSession) {
+      client.nativeClientSession.onDestroy().then(() => this.removeClient(client))
+    }
   }
 
   _stopDestroyTimeout () {
@@ -209,13 +202,34 @@ class NativeCompositorSession {
     this._destroyTimeoutTimer = setTimeout(() => this.destroy(), sessionConfig.destroyTimeout)
   }
 
+  /**
+   * @param {WebSocket}webSocket
+   */
   childSpawned (webSocket) {
     webSocket.binaryType = 'arraybuffer'
-    this._clients.push({
+    this.clients.push({
       webSocketChannel: WebSocketChannel.create(webSocket),
-      nativeClientSession: null,
-      id: this._nextClientId++
+      id: this._nextClientId++,
+      nativeClientSession: null
     })
+  }
+
+  /**
+   * @param {{
+      webSocketChannel: WebSocketChannel,
+      nativeClientSession: NativeClientSession,
+      id: number
+    }}client
+   */
+  removeClient (client) {
+    const idx = this.clients.indexOf(client)
+    if (idx > -1) {
+      this.clients.splice(idx, 1)
+
+      if (this.clients.length === 0) {
+        this._startDestroyTimeout()
+      }
+    }
   }
 
   /**
@@ -225,7 +239,7 @@ class NativeCompositorSession {
   socketForClient (webSocket, clientId) {
     // As a side effect, this will notify the NativeClientSession that a web socket is now available
     webSocket.binaryType = 'arraybuffer'
-    this._clients.find(client => client.id === clientId).webSocketChannel.webSocket = webSocket
+    this.clients.find(client => client.id === clientId).webSocketChannel.webSocket = webSocket
   }
 
   /**

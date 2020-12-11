@@ -15,16 +15,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import Surface from "./Surface";
-import { SurfaceState } from "./SurfaceState";
+import Surface, { SurfaceState } from './Surface'
 
 /**
  * surface role interface. See 'role' in https://wayland.freedesktop.org/docs/html/apa.html#protocol-spec-wl_surface
  */
-export default interface SurfaceRole<T> {
-  onCommit(surface: Surface, newState: SurfaceState): void
-
-  captureRoleState(): T
-
-  setRoleState(roleState: T): void
+export default interface SurfaceRole {
+  /**
+   * Called during commit
+   * @param surface
+   */
+  onCommit(surface: Surface): void
 }

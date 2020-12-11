@@ -1,9 +1,10 @@
 {
   "compilerOptions": {
-    "target": "ES6",
+    "target": "ES2017",
     "lib": [
       "ES2015",
       "ES2016",
+      "ES2017",
       "WebWorker",
       "ScriptHost"
     ],

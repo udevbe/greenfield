@@ -103,7 +103,7 @@ class X264OpaqueEncoder {
   async encodeBuffer (pixelBuffer, wlShmFormat, bufferWidth, bufferHeight, bufferStride, serial) {
     let encodingOptions = 0
     encodingOptions = EncodingOptions.enableFullFrame(encodingOptions)
-    const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight)
+    const encodedFrameFragment = await this._encodeFragment(pixelBuffer, wlShmFormat, 0, 0, bufferWidth, bufferHeight, bufferStride)
     return EncodedFrame.create(serial, h264, encodingOptions, bufferWidth, bufferHeight, [encodedFrameFragment])
   }
 }

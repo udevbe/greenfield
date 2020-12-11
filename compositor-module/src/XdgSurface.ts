@@ -173,7 +173,7 @@ export default class XdgSurface implements XdgSurfaceRequests {
       xs.push(size.w)
       ys.push(size.h)
 
-      surface.subsurfaceChildren.forEach((subsurfaceChild) => {
+      surface.state.subsurfaceChildren.forEach((subsurfaceChild) => {
         const subsurfacePosition = subsurfaceChild.position
         const subsurfaceSize = subsurfaceChild.surface.size
         if (subsurfaceSize) {

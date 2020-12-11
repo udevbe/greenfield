@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "moduleResolution": "node",
-    "target": "ES6",
+    "target": "ES2017",
     "module": "ES6",
     "lib": [
       "es2015",

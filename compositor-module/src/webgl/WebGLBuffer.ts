@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { GrWebGlBufferResource, WlBufferRequests, WlBufferResource } from 'westfield-runtime-server'
+import { GrWebGlBufferResource, WlBufferResource } from 'westfield-runtime-server'
 import BufferImplementation from '../BufferImplementation'
 import Surface from '../Surface'
 import WebFS from '../WebFS'
@@ -25,16 +25,16 @@ export default class WebGLBuffer implements BufferImplementation<WebGLFrame> {
   readonly resource: GrWebGlBufferResource
   readonly bufferResource: WlBufferResource
   private readonly _canvas: HTMLCanvasElement
-  captured: boolean = false
+  released = false
 
-  static create (resource: GrWebGlBufferResource, bufferResource: WlBufferResource, webFS: WebFS): WebGLBuffer {
+  static create(resource: GrWebGlBufferResource, bufferResource: WlBufferResource, webFS: WebFS): WebGLBuffer {
     const canvas = window.document.createElement('canvas')
     const offscreenCanvas = canvas.transferControlToOffscreen()
     resource.offscreenCanvas(webFS.fromOffscreenCanvas(offscreenCanvas))
     return new WebGLBuffer(resource, bufferResource, canvas)
   }
 
-  constructor (resource: GrWebGlBufferResource, bufferResource: WlBufferResource, canvas: HTMLCanvasElement) {
+  constructor(resource: GrWebGlBufferResource, bufferResource: WlBufferResource, canvas: HTMLCanvasElement) {
     this.resource = resource
     this.bufferResource = bufferResource
     this._canvas = canvas
@@ -53,22 +53,23 @@ export default class WebGLBuffer implements BufferImplementation<WebGLFrame> {
    * @since 1
    *
    */
-  destroy (resource: WlBufferResource) {
+  destroy(resource: WlBufferResource) {
     this.resource.destroy()
     this.bufferResource.destroy()
     // TODO what more to do here?
   }
 
-  async getContents (surface: Surface, serial: number): Promise<WebGLFrame> {
+  getContents(surface: Surface, serial: number): WebGLFrame {
     return WebGLFrame.create(this._canvas)
   }
 
-  release () {
+  release() {
+    if (this.released) {
+      throw new Error('BUG. Buffer already released.')
+    }
     this.bufferResource.release()
-    this.captured = false
+    this.bufferResource.client.connection.flush()
+    this.released = true
   }
 
-  capture () {
-    this.captured = true
-  }
 }

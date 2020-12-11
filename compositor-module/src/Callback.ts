@@ -24,13 +24,17 @@ import { WlCallbackResource } from 'westfield-runtime-server'
  *
  */
 export default class Callback {
-  resource?: WlCallbackResource;
+  resource?: WlCallbackResource
 
-  static create (wlCallbackResource: WlCallbackResource): Callback {
-    return new Callback(wlCallbackResource)
+  static create(wlCallbackResource: WlCallbackResource): Callback {
+    const callback = new Callback(wlCallbackResource)
+    wlCallbackResource.addDestroyListener(() => {
+      callback.resource = undefined
+    })
+    return callback
   }
 
-  private constructor (wlCallbackResource: WlCallbackResource) {
+  private constructor(wlCallbackResource: WlCallbackResource) {
     this.resource = wlCallbackResource
   }
 
@@ -44,7 +48,7 @@ export default class Callback {
    * @since 1
    *
    */
-  done (data: number) {
+  done(data: number) {
     this.resource?.done(data)
     this.resource?.destroy()
     this.resource = undefined

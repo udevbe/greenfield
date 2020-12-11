@@ -16,19 +16,20 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import {
-  WlSeatResource, XdgPopupError,
+  WlSeatResource,
+  XdgPopupError,
   XdgPopupRequests,
   XdgPopupResource,
   XdgPositionerConstraintAdjustment,
-  XdgSurfaceResource, XdgWmBaseError
+  XdgSurfaceResource,
+  XdgWmBaseError
 } from 'westfield-runtime-server'
+import { clientHeight, clientWidth } from './browser/attributes'
 
 import Point from './math/Point'
-import Rect from './math/Rect'
 import Seat from './Seat'
-import Surface from './Surface'
+import Surface, { SurfaceState } from './Surface'
 import SurfaceRole from './SurfaceRole'
-import { SurfaceState } from './SurfaceState'
 import { XdgPositionerState } from './XdgPositioner'
 import XdgSurface from './XdgSurface'
 
@@ -173,7 +174,7 @@ const inverseX: InverseX = {
  *      for the xdg_popup state to take effect.
  *
  */
-export default class XdgPopup implements XdgPopupRequests, SurfaceRole<{ windowGeometry: Rect }> {
+export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
   readonly resource: XdgPopupResource
   readonly xdgSurface: XdgSurface
   readonly parent: XdgSurfaceResource
@@ -200,30 +201,21 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole<{ windowG
     this._seat = seat
   }
 
-  captureRoleState() {
-    return {
-      windowGeometry: this.xdgSurface.pendingWindowGeometry
-    }
-  }
-
-  setRoleState(roleState: { windowGeometry: Rect }) {
-    this.xdgSurface.updateWindowGeometry(roleState.windowGeometry)
-  }
-
-  onCommit(surface: Surface, newState: SurfaceState) {
+  onCommit(surface: Surface) {
     if (this.dismissed) {
       return
     }
 
-    if (newState.bufferContents) {
+    if (surface.pendingState.bufferContents) {
       if (!this.mapped) {
-        this._map(surface, newState)
+        this._map(surface, surface.pendingState)
       }
     } else if (this.mapped) {
       this._dismiss()
     }
 
-    surface.updateState(newState)
+    this.xdgSurface.updateWindowGeometry(this.xdgSurface.pendingWindowGeometry)
+    surface.commitPending()
   }
 
   private _map(surface: Surface, newState: SurfaceState) {
@@ -244,7 +236,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole<{ windowG
     // set position based on positioner object
     const surfaceSpaceAnchorPoint = this.positionerState.surfaceSpaceAnchorPoint(parentXdgSurface)
     if (surfaceSpaceAnchorPoint) {
-      surface.surfaceChildSelf.position = surfaceSpaceAnchorPoint.minus(newState.roleState.windowGeometry.position)
+      surface.surfaceChildSelf.position = surfaceSpaceAnchorPoint.minus(this.xdgSurface.pendingWindowGeometry.position)
       parentSurface.addChild(surface.surfaceChildSelf)
     }
   }
@@ -312,7 +304,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole<{ windowG
     const parentXdgSurface = this.parent.implementation as XdgSurface
     const parentWlSurfaceResource = parentXdgSurface.wlSurfaceResource
     const parentSurface = parentWlSurfaceResource.implementation as Surface
-    const parentRole = parentSurface.role as SurfaceRole<any>
+    const parentRole = parentSurface.role as SurfaceRole
     if (parentRole instanceof XdgPopup) {
       if (parentRole.dismissed) {
         this._dismiss()
@@ -363,7 +355,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole<{ windowG
         // X-Axis:
         // we can't use slide or flip if if the height is greater than the screen height
         if ((violations.leftViolation || violations.rightViolation) &&
-          positionerState.size.width < window.document.body.clientWidth) {
+          positionerState.size.width < clientWidth()) {
           if (canFlipX) {
             // TODO try flipping
             const oldAnchor = positionerState.anchor
@@ -409,7 +401,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole<{ windowG
         // we can't use slide or flip if if the height is greater than the screen height
         violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
         if (violations && (violations.topViolation || violations.bottomViolation) &&
-          positionerState.size.height < window.document.body.clientHeight) {
+          positionerState.size.height < clientHeight()) {
           if (canFlipY) {
             const oldAnchor = positionerState.anchor
             const oldGravity = positionerState.gravity

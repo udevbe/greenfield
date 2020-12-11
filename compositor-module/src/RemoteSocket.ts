@@ -25,7 +25,7 @@ import Session from './Session'
 class RemoteSocket implements CompositorRemoteSocket {
   private readonly _session: Session
   private readonly _textEncoder: TextEncoder = new TextEncoder()
-  private readonly _textDecoder: TextDecoder = new window.TextDecoder()
+  private readonly _textDecoder: TextDecoder = new TextDecoder()
 
   static create(session: Session): RemoteSocket {
     return new RemoteSocket(session)
@@ -199,13 +199,15 @@ class RemoteSocket implements CompositorRemoteSocket {
       const uint32Array = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)
       const clientId = uint32Array[0]
 
-      const webSocketURL = new URL(webSocket.url)
+      const webSocketURL = new URL(new URL(webSocket.url).origin)
       webSocketURL.searchParams.append('clientId', `${clientId}`)
+      webSocketURL.searchParams.append('compositorSessionId', this._session.compositorSessionId)
 
       const newWebSocket = new WebSocket(webSocketURL.href)
       this.onWebSocket(newWebSocket)
     })
 
+    // listen for recycled resource ids
     outOfBandChannel.setListener(6, outOfBandMessage => {
       if (client.connection.closed) {
         return

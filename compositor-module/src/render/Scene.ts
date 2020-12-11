@@ -15,9 +15,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+import { resetCursorImage, setCursor, setCursorImage } from '../browser/cursor'
 import BufferImplementation from '../BufferImplementation'
+import Callback from '../Callback'
 import Point from '../math/Point'
 import Output from '../Output'
+import Pointer from '../Pointer'
 import DecodedFrame, { OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
 import Session from '../Session'
 import Size from '../Size'
@@ -28,8 +31,10 @@ import WebShmFrame from '../webshm/WebShmFrame'
 import SceneShader from './SceneShader'
 import YUVAToRGBA from './YUVAToRGBA'
 
-function createRenderFrame(): Promise<void> {
-  return new Promise(resolve => requestAnimationFrame(() => resolve()))
+function createRenderFrame(): Promise<number> {
+  return new Promise<number>(resolve => {
+    requestAnimationFrame(resolve)
+  })
 }
 
 class Scene {
@@ -47,6 +52,7 @@ class Scene {
   // @ts-ignore
   private _destroyResolve: (value?: void | PromiseLike<void>) => void
   private readonly _destroyPromise: Promise<void>
+  private frameCallbacks: Callback[] = []
 
   static create(session: Session, gl: WebGLRenderingContext, canvas: HTMLCanvasElement, output: Output, sceneId: string): Scene {
     const sceneShader = SceneShader.create(gl)
@@ -69,7 +75,7 @@ class Scene {
     })
   }
 
-  private _ensureResolution() {
+  private ensureResolution() {
     if (this.resolution === 'auto') {
       if (this.canvas.width !== this.canvas.clientWidth || this.canvas.height !== this.canvas.clientHeight) {
         this.canvas.width = this.canvas.clientWidth
@@ -81,58 +87,91 @@ class Scene {
     }
   }
 
-  private _prepareViewRenderState(view: View) {
+  hidePointer() {
+    setCursor('none')
+    this.destroyPointerView()
+  }
+
+
+  resetPointer() {
+    resetCursorImage()
+    this.destroyPointerView()
+  }
+
+  private preparePointerViewRenderState(view: View) {
+    const pointerSurface = view.surface
+    const bufferContents = pointerSurface.state.bufferContents
+    if (bufferContents) {
+      const { blob } = pointerSurface.state.bufferContents?.pixelContent as { blob: Blob }
+      const pointer = pointerSurface.role as Pointer
+      setCursorImage(blob, pointer.hotspotX, pointer.hotspotY)
+    } else {
+      resetCursorImage()
+    }
+  }
+
+  prepareViewRenderState(view: View) {
     view.applyTransformations()
-    const { bufferResource, bufferContents } = view.surface.state
+    const { buffer, bufferContents } = view.surface.state
     if (bufferContents instanceof DecodedFrame
       || bufferContents instanceof WebGLFrame
       || bufferContents instanceof WebShmFrame) {
 
-      if (view.mapped && bufferResource && bufferContents && view.damaged) {
-        // @ts-ignore que?
-        this[bufferContents.mimeType](bufferContents, view)
-        view.damaged = false
-      }
-
-      if (bufferResource) {
-        const bufferImplementation = bufferResource.implementation as BufferImplementation<any>
-        if (bufferImplementation.captured && view.surface.views.filter(view => view.damaged).length === 0) {
+      if (view.mapped && buffer && view.surface.damaged) {
+        const bufferImplementation = buffer.implementation as BufferImplementation<any>
+        if (!bufferImplementation.released) {
+          if (view === this.pointerView) {
+            this.preparePointerViewRenderState(view)
+          } else {
+            // @ts-ignore que?
+            this[bufferContents.mimeType](bufferContents, view)
+          }
+          view.surface.damaged = false
           bufferImplementation.release()
         }
       }
-    } else if (bufferResource !== undefined) {
+    } else if (buffer !== undefined) {
       throw new Error(`BUG. Unsupported buffer type: ${typeof bufferContents}`)
+    }
+  }
+
+  registerFrameCallbacks(frameCallbacks?: Callback[]) {
+    if (frameCallbacks) {
+      this.frameCallbacks = [...this.frameCallbacks, ...frameCallbacks]
     }
   }
 
   render(): Promise<void> {
     if (!this._renderFrame) {
-      this._renderFrame = createRenderFrame()
-      this._renderFrame.then(() => {
-        this._ensureResolution()
-        const viewStack = this._viewStack()
-
-        // update textures
-        viewStack.forEach(view => this._prepareViewRenderState(view))
-        if (this.pointerView && this.session.globals.seat.pointer.scene === this) {
-          this._prepareViewRenderState(this.pointerView)
-        }
-
-        // render view texture
-        this.sceneShader.use()
-        this.sceneShader.updateSceneData(Size.create(this.canvas.width, this.canvas.height))
-        viewStack.forEach(view => this._renderView(view))
-        if (this.pointerView && this.session.globals.seat.pointer.scene === this) {
-          this._renderView(this.pointerView)
-        }
-        this.sceneShader.release()
-
-        this._renderFrame = undefined
-
-        this.session.userShell.events.sceneRefresh?.(this.id)
+      this._renderFrame = createRenderFrame().then((time) => {
+        this.renderNow()
+        this.frameCallbacks.forEach(callback => callback.done(time))
+        this.frameCallbacks = []
+        this.session.flush()
       })
     }
     return this._renderFrame
+  }
+
+  prepareAllViewRenderState() {
+    const viewStack = this.viewStack()
+    // update textures
+    viewStack.forEach(view => this.prepareViewRenderState(view))
+  }
+
+  private renderNow() {
+    this.ensureResolution()
+    const viewStack = this.viewStack()
+
+    // render view texture
+    this.sceneShader.use()
+    this.sceneShader.updateSceneData(Size.create(this.canvas.width, this.canvas.height))
+    viewStack.forEach(view => this.renderView(view))
+    this.sceneShader.release()
+
+    this._renderFrame = undefined
+
+    this.session.userShell.events.sceneRefresh?.(this.id)
   }
 
   updatePointerView(surface: Surface) {
@@ -147,10 +186,11 @@ class Scene {
   destroyPointerView() {
     if (this.pointerView !== undefined) {
       this.pointerView.destroy()
+      this.pointerView = undefined
     }
   }
 
-  private _updateViewRenderStateWithTexImageSource(view: View, buffer: TexImageSource) {
+  private updateViewRenderStateWithTexImageSource(view: View, buffer: TexImageSource) {
     const { texture, size: { w, h } } = view.renderState
     if (buffer.width === w && buffer.height === h) {
       texture.subImage2d(buffer, 0, 0)
@@ -160,9 +200,8 @@ class Scene {
     }
   }
 
-  private _renderView(view: View) {
-    const { bufferResource, bufferContents } = view.surface.state
-    if (view.mapped && bufferResource && bufferContents) {
+  private renderView(view: View) {
+    if (view.mapped) {
       this.sceneShader.updateViewData(view)
       this.sceneShader.draw()
     }
@@ -176,7 +215,7 @@ class Scene {
 
   pickView(scenePoint: Point): View | undefined {
     // test views from front to back
-    return this._viewStack().reverse().find(view => {
+    return this.viewStack().reverse().find(view => {
       const surfacePoint = view.toSurfaceSpace(scenePoint)
       return view.surface.isWithinInputRegion(surfacePoint)
     })
@@ -207,15 +246,15 @@ class Scene {
   /**
    * Stack of all views of this scene, in-order from bottom to top.
    */
-  private _viewStack(): View[] {
+  private viewStack(): View[] {
     const stack: View[] = []
-    this.topLevelViews.forEach(topLevelView => this._addToViewStack(stack, topLevelView))
+    this.topLevelViews.forEach(topLevelView => this.addToViewStack(stack, topLevelView))
     return stack
   }
 
-  private _addToViewStack(stack: View[], view: View) {
+  private addToViewStack(stack: View[], view: View) {
     stack.push(view)
-    view.findChildViews().forEach(view => this._addToViewStack(stack, view))
+    view.findChildViews().forEach(view => this.addToViewStack(stack, view))
   }
 
   public ['video/h264'](decodedFrame: DecodedFrame, view: View) {
@@ -223,15 +262,16 @@ class Scene {
   }
 
   public ['image/png'](decodedFrame: DecodedFrame, view: View) {
-    this._updateViewRenderStateWithTexImageSource(view, decodedFrame.pixelContent as ImageBitmap)
+    const { bitmap } = decodedFrame.pixelContent as { bitmap: ImageBitmap, blob: Blob }
+    this.updateViewRenderStateWithTexImageSource(view, bitmap)
   }
 
   public ['image/rgba'](shmFrame: WebShmFrame, view: View) {
-    this._updateViewRenderStateWithTexImageSource(view, shmFrame.pixelContent)
+    this.updateViewRenderStateWithTexImageSource(view, shmFrame.pixelContent)
   }
 
   public ['image/canvas'](webGLFrame: WebGLFrame, view: View) {
-    this._updateViewRenderStateWithTexImageSource(view, webGLFrame.pixelContent)
+    this.updateViewRenderStateWithTexImageSource(view, webGLFrame.pixelContent)
   }
 }
 

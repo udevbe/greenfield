@@ -19,7 +19,6 @@ import { WebFD } from 'westfield-runtime-common'
 import {
   GrWebShmBufferRequests,
   GrWebShmBufferResource,
-  WlBufferRequests,
   WlBufferResource
 } from 'westfield-runtime-server'
 import BufferImplementation from '../BufferImplementation'
@@ -31,7 +30,7 @@ export default class WebShmBuffer implements GrWebShmBufferRequests, BufferImple
   readonly bufferResource: WlBufferResource
   private readonly _webShmFrame: WebShmFrame
   private _pixelContent?: WebFD
-  captured: boolean = false
+  released = false
 
   static create(
     resource: GrWebShmBufferResource,
@@ -90,19 +89,19 @@ export default class WebShmBuffer implements GrWebShmBufferRequests, BufferImple
    * @param {number}serial
    * @return {Promise<WebShmFrame>}
    */
-  async getContents(surface: Surface, serial: number) {
-    return Promise.resolve(this._webShmFrame)
+  getContents(surface: Surface, serial: number) {
+    return this._webShmFrame
   }
 
   release() {
-    if (this._pixelContent !== undefined) {
+    if (this.released) {
+      throw new Error('BUG. Buffer already released.')
+    }
+    if (this._pixelContent) {
       this.resource.detach(this._pixelContent)
     }
     this.bufferResource.release()
-    this.captured = false
-  }
-
-  capture() {
-    this.captured = true
+    this.bufferResource.client.connection.flush()
+    this.released = true
   }
 }

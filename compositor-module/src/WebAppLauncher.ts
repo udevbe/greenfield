@@ -31,7 +31,7 @@ export default class WebAppLauncher implements CompositorWebAppLauncher{
   }
 
   launchBlob(blob: Blob): Client {
-    const worker = new window.Worker(URL.createObjectURL(blob))
+    const worker = new Worker(URL.createObjectURL(blob))
     const client = this._webAppSocket.onWebAppWorker(worker)
     client.onClose().then(() => worker.terminate())
     return client
@@ -41,14 +41,15 @@ export default class WebAppLauncher implements CompositorWebAppLauncher{
     // TODO store web apps locally so they can be used offline and/or faster
     // TODO alternatively web apps could be served through web-sockets and avoid the same origin policy.
     return new Promise(resolve => {
-      const xhr = new window.XMLHttpRequest()
+      // TODO use fetch api
+      const xhr = new XMLHttpRequest()
 
       xhr.onreadystatechange = () => {
-        if (xhr.readyState === window.XMLHttpRequest.DONE) {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
           if (xhr.status === 200) {
             try {
               const workerSrc = xhr.responseText
-              const blob = new window.Blob([workerSrc], { type: 'application/javascript' })
+              const blob = new Blob([workerSrc], { type: 'application/javascript' })
               const client = this.launchBlob(blob)
               resolve(client)
             } catch (e) {

@@ -84,8 +84,8 @@ export default class XdgWmBase implements XdgWmBaseRequests {
       client.onClose().then(() => {
         const pingState = this._clientPingStates.get(client)
         if (pingState) {
-          window.clearTimeout(pingState.timeoutTimer)
-          window.clearTimeout(pingState.pingTimer)
+          clearTimeout(pingState.timeoutTimer)
+          clearTimeout(pingState.pingTimer)
           this._clientPingStates.delete(client)
         }
       })
@@ -111,7 +111,7 @@ export default class XdgWmBase implements XdgWmBaseRequests {
 
   getXdgSurface(resource: XdgWmBaseResource, id: number, wlSurfaceResource: WlSurfaceResource) {
     const surface = /** @type {Surface} */wlSurfaceResource.implementation as Surface
-    if (surface.pendingWlBuffer || surface.state.bufferContents) {
+    if (surface.pendingState.buffer || surface.state.bufferContents) {
       resource.postError(XdgWmBaseError.invalidSurfaceState, 'Surface had a buffer attached before xdg surface was created.')
       console.log('[client-protocol-error] - Surface had a buffer attached before xdg surface was created.')
       return
@@ -135,8 +135,8 @@ export default class XdgWmBase implements XdgWmBaseRequests {
         this._setUnresponsive(resource.client, false)
         pingState.pingTimeoutActive = false
       }
-      window.clearTimeout(pingState.timeoutTimer)
-      pingState.pingTimer = window.setTimeout(() => {
+      self.clearTimeout(pingState.timeoutTimer)
+      pingState.pingTimer = self.setTimeout(() => {
         this._doPing(resource, pingState)
       }, 5000)
     }

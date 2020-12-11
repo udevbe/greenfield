@@ -37,6 +37,8 @@ import Surface from './Surface'
  */
 export default class Compositor implements WlCompositorRequests {
   private readonly _session: Session
+  private _surfaceCreationListeners: ((surface: Surface) => void)[] = []
+
   private _global?: Global
 
   static create(session: Session): Compositor {
@@ -67,13 +69,24 @@ export default class Compositor implements WlCompositorRequests {
     wlCompositorResource.implementation = this
   }
 
-  createSurface(resource: WlCompositorResource, id: number) {
+  async createSurface(resource: WlCompositorResource, id: number) {
     const wlSurfaceResource = new WlSurfaceResource(resource.client, id, resource.version)
-    Surface.create(wlSurfaceResource, this._session)
+    const surface = Surface.create(wlSurfaceResource, this._session)
+    for (const surfaceCreationListener of this._surfaceCreationListeners) {
+      await surfaceCreationListener(surface)
+    }
   }
 
   createRegion(resource: WlCompositorResource, id: number) {
     const wlRegionResource = new WlRegionResource(resource.client, id, resource.version)
     Region.create(wlRegionResource)
+  }
+
+  removeSurfaceCreationListener(listener: (surface: Surface) => void) {
+    this._surfaceCreationListeners = this._surfaceCreationListeners.filter(value => value !== listener)
+  }
+
+  addSurfaceCreationListener(listener: (surface: Surface) => void) {
+    this._surfaceCreationListeners = [...this._surfaceCreationListeners, listener]
   }
 }

@@ -98,7 +98,7 @@ export default class Subcompositor implements WlSubcompositorRequests {
     const parentSurface = wlParentSurfaceResource.implementation as Surface
 
     // having added this sub-surface to a parent will have it create a view for each parent view
-    const views = parentSurface.addSubsurface(surface.surfaceChildSelf)
+    parentSurface.addSubsurface(surface.surfaceChildSelf)
   }
 
   destroy(resource: WlSubcompositorResource): void {

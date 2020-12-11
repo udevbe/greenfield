@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.7)
 
 project(app-endpoint-encoding C)
-set(CMAKE_BUILD_TYPE "Debug")
+#set(CMAKE_BUILD_TYPE "Debug")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules")
 

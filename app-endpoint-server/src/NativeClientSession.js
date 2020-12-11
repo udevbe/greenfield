@@ -91,6 +91,7 @@ class NativeClientSession {
    * @param {NativeCompositorSession}nativeCompositorSession
    * @param {WebSocketChannel}webSocketChannel
    * @param {MessageInterceptor}messageInterceptor
+   * @private
    */
   constructor (logger, wlClient, nativeCompositorSession, webSocketChannel, messageInterceptor) {
     /**

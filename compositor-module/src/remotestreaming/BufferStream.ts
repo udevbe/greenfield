@@ -18,7 +18,7 @@
 import EncodedFrame from './EncodedFrame'
 
 type BufferState = {
-  completionPromise: Promise<EncodedFrame>,
+  completionPromise: Promise<EncodedFrame | undefined>,
   completionResolve: (value?: EncodedFrame | PromiseLike<EncodedFrame>) => void,
   completionReject: (reason?: any) => void,
   state: 'pending' | 'complete' | 'pending_alpha' | 'pending_opaque',
@@ -57,7 +57,7 @@ export default class BufferStream {
       state: 'pending', // or 'pending_alpha' or 'pending_opaque' or 'complete'
       encodedFrame: undefined
     }
-    bufferState.completionPromise = new Promise((resolve, reject) => {
+    bufferState.completionPromise = new Promise<EncodedFrame | undefined>((resolve, reject) => {
       bufferState.completionResolve = resolve
       bufferState.completionReject = reject
     })
@@ -68,7 +68,7 @@ export default class BufferStream {
   /**
    * Returns a promise that will resolve as soon as the buffer is in the 'complete' state.
    */
-  onFrameAvailable(serial: number): Promise<EncodedFrame> {
+  onFrameAvailable(serial: number): Promise<EncodedFrame | undefined> {
     if (this._bufferStates[serial] && this._bufferStates[serial].encodedFrame) {
       // state already exists, this means the contents arrived before this call, which means we can now decode it
       this._onComplete(serial, this._bufferStates[serial].encodedFrame)

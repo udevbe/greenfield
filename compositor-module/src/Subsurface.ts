@@ -16,16 +16,17 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import {
+  WlSubsurfaceError,
   WlSubsurfaceRequests,
   WlSubsurfaceResource,
-  WlSubsurfaceError,
   WlSurfaceResource
 } from 'westfield-runtime-server'
+import BufferImplementation from './BufferImplementation'
 
 import Point from './math/Point'
-import Surface from './Surface'
+import Region from './Region'
+import Surface, { mergeSurfaceState, SurfaceState } from './Surface'
 import SurfaceRole from './SurfaceRole'
-import { SurfaceState } from './SurfaceState'
 
 /**
  *
@@ -80,14 +81,27 @@ import { SurfaceState } from './SurfaceState'
  *            unmapped.
  *
  */
-export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole<void> {
-  readonly parentWlSurfaceResource: WlSurfaceResource
-  readonly wlSurfaceResource: WlSurfaceResource
-  readonly resource: WlSubsurfaceResource
+export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
   pendingPosition?: Point = Point.create(0, 0)
 
-  private _sync: boolean = true
-  private _cachedState?: SurfaceState
+  private sync: boolean = true
+  private cacheDirty = false
+  private readonly cachedState: SurfaceState = {
+    damageRects: [],
+    bufferDamageRects: [],
+    bufferScale: 1,
+    bufferTransform: 0,
+    dx: 0,
+    dy: 0,
+    inputPixmanRegion: Region.createPixmanRegion(),
+    opaquePixmanRegion: Region.createPixmanRegion(),
+    subsurfaceChildren: [],
+    frameCallbacks: [],
+    bufferResourceDestroyListener: () => {
+      this.cachedState.buffer = undefined
+      // this.cachedState.bufferContents = undefined
+    }
+  }
   private _inert: boolean = false
 
   static create(parentWlSurfaceResource: WlSurfaceResource, wlSurfaceResource: WlSurfaceResource, wlSubsurfaceResource: WlSubsurfaceResource): Subsurface {
@@ -109,17 +123,24 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole<voi
   }
 
   private constructor(
-    parentWlSurfaceResource: WlSurfaceResource,
-    wlSurfaceResource: WlSurfaceResource,
-    wlSubsurfaceResource: WlSubsurfaceResource
+    public readonly parentWlSurfaceResource: WlSurfaceResource,
+    public readonly wlSurfaceResource: WlSurfaceResource,
+    public readonly resource: WlSubsurfaceResource
   ) {
-    this.parentWlSurfaceResource = parentWlSurfaceResource
-    this.wlSurfaceResource = wlSurfaceResource
-    this.resource = wlSubsurfaceResource
-    this._cachedState = (wlSurfaceResource.implementation as Surface).state
+    const surface = this.wlSurfaceResource.implementation as Surface
+    mergeSurfaceState(this.cachedState, surface.state)
   }
 
-  onParentCommit(parentSurface: Surface) {
+  private commitCache(surface: Surface) {
+    surface.pendingState = { ...this.cachedState }
+    this.cachedState.damageRects = []
+    this.cachedState.bufferDamageRects = []
+    this.cachedState.frameCallbacks = []
+    this.cacheDirty = false
+    surface.commitPending()
+  }
+
+  onParentCommit() {
     if (this._inert) {
       return
     }
@@ -127,30 +148,50 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole<voi
     const surface = this.wlSurfaceResource.implementation as Surface
     // sibling stacking order & position is committed by the parent itself so no need to do it here.
 
-    if (this._effectiveSync && this._cachedState) {
-      surface.updateState(this._cachedState)
+    if (this.effectiveSync && this.cacheDirty) {
+      this.commitCache(surface)
     }
+    // render triggered by parent.
   }
 
-  onCommit(surface: Surface, newState: SurfaceState) {
+  private commitPendingToCache(surface: Surface) {
+    const { dx, dy } = this.cachedState
+
+    if (this.cacheDirty
+      && this.cachedState.buffer
+      && this.cachedState.buffer?.id !== surface.pendingState.buffer?.id) {
+      const bufferImplementation = this.cachedState.buffer.implementation as BufferImplementation<any>
+      if (!bufferImplementation.released) {
+        bufferImplementation.release()
+      }
+    }
+    mergeSurfaceState(this.cachedState, surface.pendingState)
+    if (this.cachedState.buffer) {
+      const bufferImplementation = this.cachedState.buffer.implementation as BufferImplementation<any>
+      bufferImplementation.released = false
+    }
+
+    surface.pendingState.damageRects = []
+    surface.pendingState.bufferDamageRects = []
+    surface.pendingState.frameCallbacks = []
+    this.cachedState.dx = dx + surface.pendingState.dx
+    this.cachedState.dy = dy + surface.pendingState.dy
+    this.cacheDirty = true
+  }
+
+
+  onCommit(surface: Surface) {
     if (this._inert) {
       return
     }
 
-    if (this._effectiveSync) {
-      if (!this._cachedState) {
-        this._cachedState = surface.state
-      }
-      Surface.mergeState(this._cachedState, newState)
+    if (this.effectiveSync) {
+      this.commitPendingToCache(surface)
+    } else if (this.cacheDirty) {
+      this.commitPendingToCache(surface)
+      this.commitCache(surface)
     } else {
-      let renderState = newState
-      if (this._cachedState) {
-        Surface.mergeState(this._cachedState, newState)
-        renderState = this._cachedState
-        // TODO if we throw away cached state, we need to free the pixman regions in it
-        this._cachedState = undefined
-      }
-      surface.updateState(renderState)
+      surface.commitPending()
     }
   }
 
@@ -170,7 +211,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole<voi
     const parentSurface = this.parentWlSurfaceResource.implementation as Surface
     const siblingSurface = sibling.implementation as Surface
     const siblingSurfaceChildSelf = siblingSurface.surfaceChildSelf
-    if (!parentSurface.subsurfaceChildren.includes(siblingSurfaceChildSelf) ||
+    if (!parentSurface.state.subsurfaceChildren.includes(siblingSurfaceChildSelf) ||
       siblingSurface === parentSurface) {
       resource.postError(WlSubsurfaceError.badSurface, 'Surface is not a sibling or the parent.')
       console.log('[client-protocol-error] - Surface is not a sibling or the parent.')
@@ -183,12 +224,12 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole<voi
 
     const surface = this.wlSurfaceResource.implementation as Surface
 
-    const currentIdx = parentSurface.pendingSubsurfaceChildren.indexOf(surface.surfaceChildSelf)
-    parentSurface.pendingSubsurfaceChildren.splice(currentIdx, 1)
+    const currentIdx = parentSurface.pendingState.subsurfaceChildren.indexOf(surface.surfaceChildSelf)
+    parentSurface.pendingState.subsurfaceChildren.splice(currentIdx, 1)
 
-    const siblingIdx = parentSurface.pendingSubsurfaceChildren.indexOf(siblingSurfaceChildSelf)
+    const siblingIdx = parentSurface.pendingState.subsurfaceChildren.indexOf(siblingSurfaceChildSelf)
     const newIdx = siblingIdx + 1
-    parentSurface.pendingSubsurfaceChildren.splice(newIdx, 0, surface.surfaceChildSelf)
+    parentSurface.pendingState.subsurfaceChildren.splice(newIdx, 0, surface.surfaceChildSelf)
   }
 
   placeBelow(resource: WlSubsurfaceResource, sibling: WlSurfaceResource) {
@@ -199,16 +240,16 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole<voi
     const parentSurface = this.parentWlSurfaceResource.implementation as Surface
     const surface = this.wlSurfaceResource.implementation as Surface
 
-    const currentIdx = parentSurface.pendingSubsurfaceChildren.indexOf(surface.surfaceChildSelf)
-    parentSurface.pendingSubsurfaceChildren.splice(currentIdx, 1)
+    const currentIdx = parentSurface.pendingState.subsurfaceChildren.indexOf(surface.surfaceChildSelf)
+    parentSurface.pendingState.subsurfaceChildren.splice(currentIdx, 1)
 
     const siblingSurface = sibling.implementation as Surface
-    const newIdx = parentSurface.pendingSubsurfaceChildren.indexOf(siblingSurface.surfaceChildSelf)
-    parentSurface.pendingSubsurfaceChildren.splice(newIdx, 0, surface.surfaceChildSelf)
+    const newIdx = parentSurface.pendingState.subsurfaceChildren.indexOf(siblingSurface.surfaceChildSelf)
+    parentSurface.pendingState.subsurfaceChildren.splice(newIdx, 0, surface.surfaceChildSelf)
   }
 
-  private get _effectiveSync(): boolean {
-    return this._sync || this._parentEffectiveSync
+  private get effectiveSync(): boolean {
+    return this.sync || this._parentEffectiveSync
   }
 
   private get _parentEffectiveSync(): boolean {
@@ -217,7 +258,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole<voi
     const parentSurface = this.parentWlSurfaceResource.implementation as Surface
     const parentRole = parentSurface.role
     if (parentRole && parentRole instanceof Subsurface) {
-      parentEffectiveSync = parentRole._effectiveSync
+      parentEffectiveSync = parentRole.effectiveSync
     }
 
     return parentEffectiveSync
@@ -228,7 +269,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole<voi
       return
     }
 
-    this._sync = true
+    this.sync = true
   }
 
   setDesync(resource: WlSubsurfaceResource) {
@@ -236,12 +277,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole<voi
       return
     }
 
-    this._sync = false
-  }
-
-  captureRoleState() {
-  }
-
-  setRoleState(roleState: undefined) {
+    this.sync = false
+    this.onCommit(this.wlSurfaceResource.implementation as Surface)
   }
 }

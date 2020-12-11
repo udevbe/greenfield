@@ -37,6 +37,7 @@ class Region implements WlRegionRequests {
     const region = new Region(wlRegionResource, pixmanRegion)
     wlRegionResource.implementation = region
     wlRegionResource.onDestroy().then(() => {
+      Region.fini(pixmanRegion)
       Region.destroyPixmanRegion(pixmanRegion)
     })
     return region
@@ -54,7 +55,13 @@ class Region implements WlRegionRequests {
   // TODO move to stand-alone exported function
   static fini(pixmanRegion: number) {
     // FIXME double free somewhere in the code, so disable this for now
-    // lib.pixman._pixman_region32_fini(pixmanRegion)
+    // @ts-ignore
+    lib.pixman._pixman_region32_fini(pixmanRegion)
+  }
+
+  static init(pixmanRegion: number) {
+    // @ts-ignore
+    lib.pixman._pixman_region32_init(pixmanRegion)
   }
 
   // TODO move to stand-alone exported function
@@ -89,9 +96,8 @@ class Region implements WlRegionRequests {
 
   // TODO move to stand-alone exported function
   static destroyPixmanRegion(pixmanRegion: number) {
-    // FIXME double free somewhere in the code, so disable this for now
-    // lib.pixman._pixman_region32_fini(pixmanRegion)
-    // lib.pixman._free(pixmanRegion)
+    // @ts-ignore
+    lib.pixman._free(pixmanRegion)
   }
 
   // TODO move to stand-alone exported function
@@ -177,6 +183,7 @@ class Region implements WlRegionRequests {
     lib.pixman._pixman_region32_init_rect(deltaPixmanRegion, x, y, width, height)
     // @ts-ignore
     lib.pixman._pixman_region32_subtract(this.pixmanRegion, this.pixmanRegion, deltaPixmanRegion)
+    Region.fini(deltaPixmanRegion)
     Region.destroyPixmanRegion(deltaPixmanRegion)
   }
 

@@ -47,6 +47,7 @@ class AppEndpointServer {
     server.setTimeout(timeout)
     const appEndpointDaemon = new AppEndpointServer(logger)
     // TODO configure server to only accept websocket connections
+    // FIXME add (websocket) cookie based auth, example: https://github.com/crossbario/autobahn-python/tree/master/examples/twisted/websocket/auth_persona
     server.on('upgrade', (request, socket, head) => appEndpointDaemon.handleHttpUpgradeRequest(request, socket, head))
     server.listen(port, hostname)
     logger.info(`Listening on ${hostname}:${port}.`)
@@ -86,11 +87,8 @@ class AppEndpointServer {
    */
   async handleHttpUpgradeRequest (request, socket, head) {
     try {
-      // TODO Disabled for now until we have something more rigid.
-      // const userToken = request.headers['sec-websocket-protocol']
-      // const remoteAppLaunchClaimPromise = verifyRemoteAppLaunchClaim(userToken)
       const wsURL = url.parse(request.url, true)
-      const compositorSessionId = wsURL.query.compositorSessionId
+      const compositorSessionId = wsURL.query['compositorSessionId']
 
       this._logger.info(`Received web socket upgrade request with compositor session id: ${compositorSessionId}. Delegating to a session child process.`)
       if (compositorSessionId && uuidRegEx.test(compositorSessionId)) {
@@ -102,14 +100,6 @@ class AppEndpointServer {
             appEndpointSessionFork.kill('SIGKILL')
           })
         }
-
-        // TODO Disabled for now until we have something more rigid.
-        // try {
-        //   await remoteAppLaunchClaimPromise
-        // } catch (e) {
-        //   this._denyWebSocket(socket, 403, e)
-        //   return
-        // }
 
         appEndpointSessionFork.send(
           [{

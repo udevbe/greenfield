@@ -19,12 +19,13 @@ import {
   Client,
   Global,
   Registry,
+  WlOutputMode,
   WlOutputRequests,
   WlOutputResource,
-  WlOutputMode,
   WlOutputSubpixel,
   WlOutputTransform
 } from 'westfield-runtime-server'
+import { userAgent, orientation } from './browser/attributes'
 
 /**
  *
@@ -111,13 +112,13 @@ export default class Output implements WlOutputRequests {
     const physicalHeight = Math.ceil(this.canvas.height * 0.2646)
     const subpixel = WlOutputSubpixel.unknown
     const make = 'Greenfield'
-    const model = window.navigator.userAgent
+    const model = userAgent
 
-    const orientation = window.screen.orientation.type
+    const screenOrientation = orientation().type
     let transform = WlOutputTransform.normal
 
     // FIXME this requires some experimentation to get it right
-    switch (orientation) {
+    switch (screenOrientation) {
       case 'portrait-primary': {
         transform = WlOutputTransform.normal
         break

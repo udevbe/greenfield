@@ -4,12 +4,14 @@ const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 const CopyPlugin = require('copy-webpack-plugin')
 const webpack = require('webpack')
 
+const outputPath = path.resolve(__dirname, 'dist')
+
 module.exports = {
-  mode: 'development',
+  // mode: 'development',
   entry: {
     app: './src/index.ts'
   },
-  devtool: 'source-map',
+  // devtool: 'source-map',
   plugins: [
     new CleanWebpackPlugin(),
     new HtmlWebpackPlugin({
@@ -24,7 +26,7 @@ module.exports = {
   ],
   output: {
     filename: '[name].bundle.js',
-    path: path.resolve(__dirname, 'dist')
+    path: outputPath
   },
   devServer: {
     contentBase: './dist'
@@ -37,6 +39,16 @@ module.exports = {
         use: 'ts-loader',
         exclude: [/node_modules/]
       },
+      // Handle png images
+      {
+        test: /\.(png)$/,
+        use: [
+          {
+            loader: 'file-loader'
+          }
+        ]
+      },
+      // Handle web assembly
       {
         test: /\.(wasm\.asset)$/i,
         use: [
@@ -48,6 +60,7 @@ module.exports = {
           }
         ]
       },
+      // Handle generic binary data files
       {
         test: /\.(data\.asset)$/i,
         use: [
@@ -56,6 +69,7 @@ module.exports = {
           }
         ]
       },
+      // Handle sources
       {
         test: /\.js$/,
         enforce: 'pre',

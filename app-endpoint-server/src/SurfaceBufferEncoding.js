@@ -29,6 +29,8 @@ const { WireMessageUtil, Endpoint } = require('westfield-endpoint')
 const wlSurfaceInterceptor = require('./protocol/wl_surface_interceptor')
 const Encoder = require('./encoding/Encoder')
 
+let bufferSerial = -1
+
 class SurfaceBufferEncoding {
   static init () {
 
@@ -53,10 +55,9 @@ class SurfaceBufferEncoding {
     wlSurfaceInterceptor.prototype.R6 = function (message) {
       if (!this.encoder) {
         this.encoder = Encoder.create()
-        this._bufferSerial = -1
       }
 
-      const syncSerial = ++this._bufferSerial
+      const syncSerial = ++bufferSerial
 
       // inject the frame serial in the commit message
       const origMessageBuffer = message.buffer

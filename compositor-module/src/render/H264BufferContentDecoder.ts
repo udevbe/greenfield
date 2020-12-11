@@ -15,7 +15,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import H264NALDecoderWorker from 'worker-loader!./H264NALDecoderWorker'
 import { OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
 import EncodedFrame from '../remotestreaming/EncodedFrame'
 import { fullFrame, splitAlpha } from '../remotestreaming/EncodingOptions'
@@ -23,7 +22,7 @@ import { fullFrame, splitAlpha } from '../remotestreaming/EncodingOptions'
 type H264NALDecoderWorkerMessage = { type: string, width: number, height: number, data: ArrayBuffer, renderStateId: number }
 type FrameState = {
   serial: number,
-  resolve: (value?: OpaqueAndAlphaPlanes | PromiseLike<OpaqueAndAlphaPlanes>) => void,
+  resolve: (value: OpaqueAndAlphaPlanes | PromiseLike<OpaqueAndAlphaPlanes>) => void,
   state: 'pending' | 'pending_opaque' | 'pending_alpha' | 'complete',
   result: Partial<OpaqueAndAlphaPlanes>
 }
@@ -31,7 +30,7 @@ type FrameState = {
 const decoders: { [key: string]: H264BufferContentDecoder } = {}
 
 const opaqueWorker = new Promise<Worker>(resolve => {
-  const h264NALDecoderWorker: Worker = new H264NALDecoderWorker()
+  const h264NALDecoderWorker: Worker = new Worker(new URL('./H264NALDecoderWorker', import.meta.url))
   h264NALDecoderWorker.addEventListener('message', (e) => {
     const message = e.data as H264NALDecoderWorkerMessage
     switch (message.type) {
@@ -46,7 +45,7 @@ const opaqueWorker = new Promise<Worker>(resolve => {
 })
 
 const alphaWorker = new Promise<Worker>(resolve => {
-  const h264NALDecoderWorker: Worker = new H264NALDecoderWorker()
+  const h264NALDecoderWorker: Worker = new Worker(new URL('./H264NALDecoderWorker', import.meta.url))
   h264NALDecoderWorker.addEventListener('message', (e) => {
     const message = /** @type {{type:string, width:number, height:number, data:ArrayBuffer, renderStateId:number}} */e.data
     switch (message.type) {
@@ -83,7 +82,7 @@ class H264BufferContentDecoder {
     return new Promise<OpaqueAndAlphaPlanes>((resolve) => {
       this._frameStates[bufferContents.serial] = {
         serial: bufferContents.serial,
-        resolve: resolve,
+        resolve,
         state: 'pending',
         result: {
           opaque: undefined,
@@ -147,10 +146,14 @@ class H264BufferContentDecoder {
     })
   }
 
-  _onOpaquePictureDecoded({ width, height, data }: { width: number, height: number, data: ArrayBuffer }) {
+  _onOpaquePictureDecoded({
+                            width,
+                            height,
+                            data
+                          }: { width: number, height: number, data: ArrayBuffer }) {
     const buffer = new Uint8Array(data)
     const frameSerial = this._decodingSerialsQueue.shift()
-    if (!frameSerial) {
+    if (frameSerial === undefined) {
       throw new Error('BUG. Invalid state. No frame serial found onOpaquePictureDecoded.')
     }
     const frameState = this._frameStates[frameSerial]
@@ -167,10 +170,14 @@ class H264BufferContentDecoder {
     }
   }
 
-  _onAlphaPictureDecoded({ width, height, data }: { width: number, height: number, data: ArrayBuffer }) {
+  _onAlphaPictureDecoded({
+                           width,
+                           height,
+                           data
+                         }: { width: number, height: number, data: ArrayBuffer }) {
     const buffer = new Uint8Array(data)
     const frameSerial = this._decodingAlphaSerialsQueue.shift()
-    if (!frameSerial) {
+    if (frameSerial === undefined) {
       throw new Error('BUG. Invalid state. No frame serial found onAlphaPictureDecoded.')
     }
     const frameState = this._frameStates[frameSerial]

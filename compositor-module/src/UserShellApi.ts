@@ -139,7 +139,10 @@ export function createUserShellApi(session: Session): UserShellApi {
         }
       }),
       initScene: (sceneId, canvas) => session.renderer.initScene(sceneId, canvas),
-      refreshScene: sceneId => session.renderer.scenes[sceneId].render(),
+      refreshScene: sceneId => {
+        session.renderer.scenes[sceneId].prepareAllViewRenderState()
+        return session.renderer.scenes[sceneId].render()
+      },
       setSceneConfiguration: (sceneId, sceneConfig) => {
         session.renderer.scenes[sceneId].updateResolution(sceneConfig.width, sceneConfig.height)
       },

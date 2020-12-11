@@ -97,7 +97,7 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
 
   onKeyboardFocusChanged(): Promise<void> {
     if (this._keyboardFocusPromise === undefined) {
-      this._keyboardFocusPromise = new Promise(resolve => {
+      this._keyboardFocusPromise = new Promise<void>(resolve => {
         this._keyboardFocusResolve = resolve
       }).then(() => {
         this._keyboardFocusPromise = undefined
@@ -166,7 +166,7 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
 
       focus.resource.onDestroy().then(() => {
         if (this.focus === focus) {
-          this.focus = undefined
+          this.focusLost()
         }
       })
 

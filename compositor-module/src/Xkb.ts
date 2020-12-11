@@ -105,10 +105,10 @@ export function buildNrmlvoEntries(): nrmlvo[] {
 
 export function createFromResource(resource: string): Promise<Xkb> {
   return new Promise((resolve, reject) => {
-    const xhr = new window.XMLHttpRequest()
+    const xhr = new XMLHttpRequest()
 
     xhr.onreadystatechange = () => {
-      if (xhr.readyState === window.XMLHttpRequest.DONE && xhr.status === 200) {
+      if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
         const mappingFile = xhr.responseText
         try {
           const xkb = createFromString(mappingFile)
