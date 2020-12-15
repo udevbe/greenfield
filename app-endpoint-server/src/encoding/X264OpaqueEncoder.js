@@ -24,7 +24,7 @@ const EncodingOptions = require('./EncodingOptions')
 
 const { h264 } = require('./EncodingTypes')
 
-const appEndpointNative = require('app-endpoint-native')
+const appEndpointNative = require('../../build/Release/app-endpoint-encoding')
 
 const gstFormats = {
   [WlShmFormat.argb8888]: 'BGRA',

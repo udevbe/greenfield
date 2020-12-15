@@ -141,3 +141,4 @@ CTestTestfile.cmake
 /compositor-module/types/
 /compositor-demo/dist/
 /client-demos/react-canvaskit/build/app.js
+/app-endpoint-server/build/

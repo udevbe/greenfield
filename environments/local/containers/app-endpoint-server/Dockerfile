@@ -28,14 +28,10 @@ RUN apt-get install -qq \
 
 # Add source files
 COPY app-endpoint-server app-endpoint-server
-COPY app-endpoint-native app-endpoint-native
 
 # Enter application directory
 WORKDIR /app/app-endpoint-server
-
-# Build source
-RUN npm install && \
-  npm run prepare
+RUN npm install && npm run build
 
 # Start server
 CMD npm run start

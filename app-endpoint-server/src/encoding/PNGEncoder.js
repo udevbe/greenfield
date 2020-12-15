@@ -23,7 +23,7 @@ const EncodedFrame = require('./EncodedFrame')
 const EncodedFrameFragment = require('./EncodedFrameFragment')
 const EncodingOptions = require('./EncodingOptions')
 const { png } = require('./EncodingTypes')
-const appEndpointNative = require('app-endpoint-native')
+const appEndpointNative = require('../../build/Release/app-endpoint-encoding')
 
 const gstFormats = {
   [WlShmFormat.argb8888]: 'BGRA',
