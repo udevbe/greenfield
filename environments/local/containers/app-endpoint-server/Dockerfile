@@ -31,7 +31,7 @@ COPY app-endpoint-server app-endpoint-server
 
 # Enter application directory
 WORKDIR /app/app-endpoint-server
-RUN npm install && npm run build
+RUN npm install && npm run generate && npm run build
 
 # Start server
 CMD npm run start

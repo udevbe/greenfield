@@ -11,9 +11,9 @@
     "appendpointd": "index.js"
   },
   "scripts": {
-    "prepare:generate:xdgshell": "westfield-endpoint-generator ./protocol/xdg-shell.xml -o src/protocol",
-    "prepare:generate:wayland": "westfield-endpoint-generator ./protocol/wayland.xml -o src/protocol",
-    "prepare": "mkdir -p src/protocol/ && npm run prepare:generate:wayland && npm run prepare:generate:xdgshell",
+    "generate:xdgshell": "westfield-endpoint-generator ./protocol/xdg-shell.xml -o src/protocol",
+    "generate:wayland": "westfield-endpoint-generator ./protocol/wayland.xml -o src/protocol",
+    "generate": "mkdir -p src/protocol/ && npm run generate:wayland && npm run generate:xdgshell",
     "build": "cmake-js",
     "start": "node index.js"
   },
