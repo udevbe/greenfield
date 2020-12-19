@@ -1,14 +1,21 @@
 import {
   display,
+  GrWebShmProtocolName,
   GrWebShmProxy,
   WlBufferProxy,
+  WlCompositorProtocolName,
   WlCompositorProxy,
-  WlKeyboardProxy, WlOutputEvents,
+  WlKeyboardProxy,
+  WlOutputEvents,
+  WlOutputMode,
+  WlOutputProtocolName,
   WlOutputProxy,
   WlPointerEvents,
   WlPointerProxy,
+  WlRegistryProxy,
   WlSeatCapability,
   WlSeatEvents,
+  WlSeatProtocolName,
   WlSeatProxy,
   WlSurfaceEvents,
   WlSurfaceProxy,
@@ -16,7 +23,7 @@ import {
 } from 'westfield-runtime-client'
 import { Fixed } from 'westfield-runtime-common'
 
-export class Output implements WlOutputEvents {
+class Output implements WlOutputEvents {
   x: number = 0
   y: number = 0
   width: number = 0
@@ -29,29 +36,32 @@ export class Output implements WlOutputEvents {
 
   done(): void {
     this.initialized = true
-
-    // TODO
   }
 
   geometry(x: number, y: number, physicalWidth: number, physicalHeight: number, subpixel: number, make: string, model: string, transform: number): void {
-    // TODO
+    this.x = x
+    this.y = y
   }
 
   mode(flags: number, width: number, height: number, refresh: number): void {
-    // TODO
+    if (flags & WlOutputMode._current) {
+      this.width = width
+      this.height = height
+    }
   }
 
   scale(factor: number): void {
-    // TODO
+    this.scale_ = factor
   }
 }
-export type TestBuffer = {
+
+type TestBuffer = {
   proxy: WlBufferProxy
   // size_t len;
   // pixman_image_t *image;
 }
 
-export class Surface implements WlSurfaceEvents {
+class Surface implements WlSurfaceEvents {
   output?: Output
   x: number = 0
   y: number = 0
@@ -65,7 +75,7 @@ export class Surface implements WlSurfaceEvents {
   enter(output: WlOutputProxy): void {
     this.output = output.listener as Output
 
-    console.log(`test-client: got surface enter output ${this.output.wlOutput.id}`);
+    console.log(`test-client: got surface enter output ${this.output.wlOutput.id}`)
   }
 
   leave(output: WlOutputProxy): void {
@@ -75,7 +85,7 @@ export class Surface implements WlSurfaceEvents {
   }
 }
 
-export class Pointer implements WlPointerEvents {
+class Pointer implements WlPointerEvents {
   focus?: Surface
   x: number = 0
   y: number = 0
@@ -166,7 +176,7 @@ export class Pointer implements WlPointerEvents {
   }
 }
 
-export type Keyboard = {
+type Keyboard = {
   wlKeyboard: WlKeyboardProxy
   surface: Surface
   key: number
@@ -184,7 +194,7 @@ export type Keyboard = {
   keyTimeTimespec: DOMHighResTimeStamp
 }
 
-export type Touch = {
+type Touch = {
   wlTouch: WlTouchProxy
   downX: number
   downY: number
@@ -203,9 +213,13 @@ export type Touch = {
   motionTimeTimespec: DOMHighResTimeStamp
 }
 
-export type Global = { name: number, interface_: string, version: number }
+interface Global {
+  name: number,
+  interface_: string,
+  version: number
+}
 
-export class Input implements WlSeatEvents {
+class Input implements WlSeatEvents {
   pointer?: Pointer
   keyboard?: Keyboard
   touch?: Touch
@@ -213,7 +227,7 @@ export class Input implements WlSeatEvents {
   caps: WlSeatCapability = 0
 
   constructor(
-    public client: TestClient,
+    public client: Client,
     public globalName: number,
     public wlSeat: WlSeatProxy
   ) {
@@ -244,18 +258,50 @@ export class Input implements WlSeatEvents {
       this.pointer.wlPointer.listener = this.pointer
     }
   }
-}
 
-function createTestClient() {
-  const testClient = new TestClient()
-  display.getRegistry().listener = {
-    global: (name: number, interface_: string, version: number): void => testClient.handleGlobal(name, interface_, version),
-    globalRemove: (name: number): void => testClient.handleGlobalRemove(name)
+  destroy() {
+    this.pointer?.wlPointer.release()
+    this.keyboard?.wlKeyboard.release()
+    this.touch?.wlTouch.release()
+
+    this.client.inputs = this.client.inputs.filter(input => input !== this)
+    this.wlSeat.release()
+
+    this.pointer = undefined
+    this.keyboard = undefined
+    this.touch = undefined
+    this.seatName = undefined
   }
 }
 
-class TestClient {
-  compositor?: WlCompositorProxy
+async function createClient() {
+  const wlRegistry = display.getRegistry()
+  const client = new Client(wlRegistry)
+  wlRegistry.listener = {
+    global: (name: number, interface_: string, version: number): void => client.handleGlobal(name, interface_, version),
+    globalRemove: (name: number): void => client.handleGlobalRemove(name)
+  }
+  /* this roundtrip makes sure we have all globals and we bound to them */
+  await client.roundtrip()
+
+  /* this roundtrip makes sure we got all events */
+  await client.roundtrip()
+
+  if (client.output === undefined) {
+    throw new Error('Client did not receive output global from compositor.')
+  }
+  if (!client.output.initialized) {
+    throw new Error('Client did not have an initialized output from compositor.')
+  }
+  if (client.input === undefined) {
+    throw new Error('Client did not receive a seat global from compositor.')
+  }
+
+  return client
+}
+
+class Client {
+  wlCompositor?: WlCompositorProxy
   webShm?: GrWebShmProxy
   /* the seat that is actually used for input events */
   input?: Input
@@ -265,31 +311,102 @@ class TestClient {
    * If some day in the future we will need the other seats,
    * we can just keep them here. */
   inputs: Input[] = []
-  output?: WlOutputProxy
-  surface?: WlSurfaceProxy
+  output?: Output
+  surface?: Surface
   globalList: Global[] = []
-  outputList: WlOutputProxy[] = []
+  outputList: Output[] = []
   bufferCopyDone?: boolean
 
-  handleGlobal(name: number, interface_: string, version: number) {
+  constructor(public wlRegistry: WlRegistryProxy) {
+  }
+
+  handleGlobal(name: number, interface_: string, version: number): void {
     const global: Global = { name, interface_, version }
     this.globalList = [...this.globalList, global]
 
-    if (interface_ === 'wl_compositor') {
-      this.compositor = display.getRegistry().bind(name, interface_, WlCompositorProxy, version)
-    } else if (interface_ === 'wl_seat') {
+    if (interface_ === WlCompositorProtocolName) {
+      this.wlCompositor = this.wlRegistry.bind(name, interface_, WlCompositorProxy, version)
+    } else if (interface_ === WlSeatProtocolName) {
       const input = new Input(
         this,
         global.name,
-        display.getRegistry().bind(name, interface_, WlSeatProxy, version)
+        this.wlRegistry.bind(name, interface_, WlSeatProxy, version)
       )
       input.wlSeat.listener = input
+    } else if (interface_ === GrWebShmProtocolName) {
+      this.webShm = this.wlRegistry.bind(name, interface_, GrWebShmProxy, version)
+      // TODO bufferpool?
+    } else if (interface_ === WlOutputProtocolName) {
+      this.output = new Output(this.wlRegistry.bind(name, interface_, WlOutputProxy, version))
+      this.output.wlOutput.listener = this.output
+      this.outputList = [...this.outputList, this.output]
     }
   }
 
-  handleGlobalRemove(name: number) {
+  handleGlobalRemove(name: number): void {
+    const global = this.findGlobalWithName(name)
+    if (global === undefined) {
+      throw new Error('Request to remove unknown global')
+    }
 
+    if (global.interface_ === WlSeatProtocolName) {
+      const input = this.findInputWithName(name)
+      if (input) {
+        if (this.input === input) {
+          this.input = undefined
+        }
+        input.destroy()
+      }
+    }
+
+    this.globalList = this.globalList.filter(global_ => global !== global_)
   }
+
+  private findInputWithName(name: number): Input | undefined {
+    return this.inputs.find(input => input.globalName === name)
+  }
+
+  private findGlobalWithName(name: number): Global | undefined {
+    return this.globalList.find(global => global.name === name)
+  }
+
+  destroy() {
+    this.surface?.destroy()
+    this.inputs.forEach(input => input.destroy())
+    this.outputList.forEach(output => output.destroy())
+    this.globalList = []
+
+    this.webShm?.destroy()
+    this.wlCompositor?.destroy()
+    this.wlRegistry.destroy()
+  }
+
+  roundtrip(): Promise<number> {
+    display.flush()
+    return display.sync()
+  }
+
+  createTestSurface() {
+    const wlSurface = this.wlCompositor?.createSurface()
+    if(wlSurface === undefined){
+      throw new Error('Compositor global not found.')
+    }
+    const surface = new Surface(wlSurface)
+    wlSurface.listener = surface
+
+    return surface
+  }
+}
+
+async function createClientAndTestSurface(x: number, y: number, width: number, height: number) {
+  const client = await createClient()
+  const surface = client.createTestSurface()
+  client.surface = surface
+
+  surface.width = width
+  surface.height = height
+  surface.buffer = client.createWebShmBuffer(width, height)
+// TODO more
 }
 
 function main() {
