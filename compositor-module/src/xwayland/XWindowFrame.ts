@@ -711,6 +711,10 @@ export interface Theme {
   renderShadow(renderContext: CanvasRenderingContext2D, shadow: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, margin: number, topMargin: number): void
 
   tileSource(renderContext: CanvasRenderingContext2D, surface: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, margin: number, topMargin: number): void
+
+  roundedRect(renderingContext: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, frameRadius: number): void
+
+  setBackgroundSource(renderingContext: CanvasRenderingContext2D, flags: ThemeFrame): void
 }
 
 class XWindowTheme implements Theme {
@@ -739,11 +743,22 @@ class XWindowTheme implements Theme {
     this.shadow.canvas.width = 128
     this.shadow.canvas.height = 128
 
+    this.shadow.fillStyle = '0x000000FF'
+    this.roundedRect(this.shadow, 32, 32, 96, 96, this.frameRadius)
+    this.shadow.filter = 'blur(64px)'
+    this.shadow.fill()
+
     this.activeFrame.canvas.width = 128
     this.activeFrame.canvas.height = 128
+    this.setBackgroundSource(this.activeFrame, ThemeFrame.THEME_FRAME_ACTIVE)
+    this.roundedRect(this.activeFrame, 0, 0, 128, 128, this.frameRadius)
+    this.activeFrame.fill()
 
     this.inactiveFrame.canvas.width = 128
     this.inactiveFrame.canvas.height = 128
+    this.setBackgroundSource(this.inactiveFrame, 0)
+    this.roundedRect(this.inactiveFrame, 0, 0, 128, 128, this.frameRadius)
+    this.inactiveFrame.fill()
   }
 
   getLocation(x: number, y: number, width: number, height: number, flags: ThemeFrame): ThemeLocation {
@@ -844,9 +859,9 @@ class XWindowTheme implements Theme {
       }
 
       if (flags & ThemeFrame.THEME_FRAME_ACTIVE) {
-        renderContext.shadowColor='#1f1f1f'
-        renderContext.shadowBlur=3
-        renderContext.lineWidth=2
+        renderContext.shadowColor = '#1f1f1f'
+        renderContext.shadowBlur = 3
+        renderContext.lineWidth = 2
         renderContext.fillStyle = '#000000'
         renderContext.fillText(title, x + 1, y + 1)
         renderContext.shadowBlur = 0
@@ -857,8 +872,127 @@ class XWindowTheme implements Theme {
     }
   }
 
-  renderShadow(renderContext: CanvasRenderingContext2D, shadow: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, margin: number, topMargin: number) {
-    // TODO
+  renderShadow(renderContext: CanvasRenderingContext2D, surface: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, margin: number, topMargin: number) {
+    renderContext.fillStyle = '0x00000073'
+    const pattern = renderContext.createPattern(surface.canvas, 'repeat')
+    if (pattern === null) {
+      throw new Error('Failed to create pattern')
+    }
+
+    for (let i = 0; i < 4; i++) {
+      /* when fy is set, then we are working with lower corners,
+       * when fx is set, then we are working with right corners
+       *
+       *  00 ------- 01
+       *   |         |
+       *   |         |
+       *  10 ------- 11
+       */
+      const fx = i & 1
+      const fy = i >> 1
+
+      const matrix = new DOMMatrix()
+        .translate(-x + fx * (128 - width), -y + fy * (128 - height))
+      pattern.setTransform(matrix)
+
+      let shadowWidth = margin
+      let shadowHeight = fy ? margin : topMargin
+
+      /* if the shadows together are greater than the surface, we need
+       * to fix it - set the shadow size to the half of
+       * the size of surface. Also handle the case when the size is
+       * not divisible by 2. In that case we need one part of the
+       * shadow to be one pixel greater. !fy or !fx, respectively,
+       * will do the work.
+       */
+      if (height < 2 * shadowHeight) {
+        shadowHeight = (height + (fy ? 0 : 1)) / 2
+      }
+      if (width < 2 * shadowWidth) {
+        shadowWidth = (width + (fx ? 0 : 1)) / 2
+      }
+
+      renderContext.save()
+      renderContext.rect(x + fx * (width - shadowWidth),
+        y + fy * (height - shadowHeight),
+        shadowWidth, shadowHeight)
+      renderContext.clip()
+      renderContext.globalCompositeOperation = 'source-in'
+      renderContext.fill()
+      renderContext.restore()
+    }
+
+    let shadowWidth = width - 2 * margin
+    let shadowHeight = topMargin
+    if(height < 2* shadowHeight) {
+      shadowHeight = height / 2
+    }
+
+    if(shadowWidth > 0 && shadowHeight) {
+      /* Top stretch */
+      const topStretchMatrix = new DOMMatrix()
+        .translate(60, 0)
+        .scale(8.0 / width, 1)
+        .translate(-x - width / 2, -y)
+      pattern.setTransform(topStretchMatrix)
+      renderContext.rect(x + margin, y, shadowWidth, shadowHeight)
+
+      renderContext.save()
+      renderContext.rect(x + margin, y,
+        shadowWidth, shadowHeight)
+      renderContext.clip()
+      renderContext.globalCompositeOperation = 'source-in'
+      renderContext.fill()
+      renderContext.restore()
+
+      /* Bottom stretch */
+      const bottomStretchMatrix = topStretchMatrix.translate(-height + 128)
+      pattern.setTransform(bottomStretchMatrix)
+
+      renderContext.save()
+      renderContext.rect(x + margin, y + height - margin,
+        shadowWidth, margin)
+      renderContext.clip()
+      renderContext.globalCompositeOperation = 'source-in'
+      renderContext.fill()
+      renderContext.restore()
+    }
+
+    shadowWidth = margin
+    if(width < 2 * shadowWidth) {
+      shadowWidth = width / 2
+    }
+
+    shadowHeight = height - margin - topMargin
+
+    /* if height is smaller than sum of margins,
+     * then the shadow is already done by the corners */
+    if(shadowHeight > 0 && shadowWidth) {
+      /* Left stretch */
+      const leftStretchMatrix = new DOMMatrix()
+        .translate(0, 60)
+        .scale(1, 8.0 / height)
+        .translate(-x, -y - height / 2)
+      pattern.setTransform(leftStretchMatrix)
+      renderContext.save()
+      renderContext.rect(x, y + topMargin,
+        shadowWidth, shadowHeight)
+      renderContext.clip()
+      renderContext.globalCompositeOperation = 'source-in'
+      renderContext.fill()
+      renderContext.restore()
+
+      /* Right stretch */
+      const rightStretchMatrix = leftStretchMatrix.translate(-width + 128, 0)
+      pattern.setTransform(rightStretchMatrix)
+      renderContext.rect(x + width - shadowWidth, y + topMargin,
+        shadowWidth, shadowHeight)
+      renderContext.save()
+      renderContext.clip()
+      renderContext.globalCompositeOperation = 'source-in'
+      renderContext.fill()
+      renderContext.restore()
+    }
   }
 
   tileSource(renderContext: CanvasRenderingContext2D, surface: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, margin: number, topMargin: number) {
@@ -908,6 +1042,29 @@ class XWindowTheme implements Theme {
     pattern.setTransform(rightStretchMatrix)
     renderContext.fillRect(x + width - margin, y + topMargin,
       margin, height - margin - topMargin)
+  }
+
+  roundedRect(renderingContext: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, radius: number) {
+    renderingContext.moveTo(x0, y0 + radius)
+    renderingContext.arc(x0 + radius, y0 + radius, radius, Math.PI, 3 * Math.PI / 2)
+    renderingContext.lineTo(x1 - radius, y0)
+    renderingContext.arc(x1 - radius, y0 + radius, radius, 3 * Math.PI / 2, 2 * Math.PI)
+    renderingContext.lineTo(x1, y1 - radius)
+    renderingContext.arc(x1 - radius, y1 - radius, radius, 0, Math.PI / 2)
+    renderingContext.lineTo(x0 + radius, y1)
+    renderingContext.arc(x0 + radius, y1 - radius, radius, Math.PI / 2, Math.PI)
+    renderingContext.closePath()
+  }
+
+  setBackgroundSource(renderingContext: CanvasRenderingContext2D, flags: ThemeFrame) {
+    if (flags & ThemeFrame.THEME_FRAME_ACTIVE) {
+      const pattern = renderingContext.createLinearGradient(16, 16, 16, 112)
+      pattern.addColorStop(0.0, '0xFFFFFF')
+      pattern.addColorStop(0.2, '0xCCCCCC')
+      renderingContext.fillStyle = pattern
+    } else {
+      renderingContext.fillStyle = '0xB2B2B2FF'
+    }
   }
 }
 
