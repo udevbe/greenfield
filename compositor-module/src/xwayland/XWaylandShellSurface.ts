@@ -112,11 +112,18 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   }
 
   setToplevelWithPosition(x: number, y: number): void {
+    if (this.state === SurfaceStates.TRANSIENT) {
+      return
+    }
 
+    this._ensureUserShellSurface()
+    this.state = SurfaceStates.TOP_LEVEL
+
+    // TODO store position?
   }
 
   setParent(parent: Surface): void {
-
+    // TODO set parent?
   }
 
   setTransient(parent: Surface, x: number, y: number): void {

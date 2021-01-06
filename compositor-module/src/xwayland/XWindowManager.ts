@@ -2009,8 +2009,8 @@ export class XWindowManager {
     let vborder, hborder
 
     if (window.decorate && !window.fullscreen) {
-      hborder = 2 * this.theme.width
-      vborder = this.theme.titlebarHeight + this.theme.width
+      hborder = 2 * this.theme.borderWidth
+      vborder = this.theme.titlebarHeight + this.theme.borderWidth
     } else {
       hborder = 0
       vborder = 0

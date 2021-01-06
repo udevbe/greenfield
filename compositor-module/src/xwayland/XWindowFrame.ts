@@ -343,7 +343,7 @@ export class XWindowFrame implements Frame {
     public height: number,
     buttons: number,
     private title: string,
-    private renderContext: CanvasRenderingContext2D,
+    private frameRenderContext: CanvasRenderingContext2D,
     private closeButtonIcon: CanvasRenderingContext2D,
     private maximizeButtonIcon: CanvasRenderingContext2D,
     private minimzeButtonIcon: CanvasRenderingContext2D,
@@ -468,15 +468,15 @@ export class XWindowFrame implements Frame {
     if (this.title || this.buttons.length !== 0) {
       titlebarHeight = this.theme.titlebarHeight
     } else {
-      titlebarHeight = this.theme.width
+      titlebarHeight = this.theme.borderWidth
     }
 
     if (this.flags & FrameFlag.FRAME_FLAG_MAXIMIZED) {
-      decorationWidth = this.theme.width * 2
-      decorationHeight = this.theme.width + titlebarHeight
+      decorationWidth = this.theme.borderWidth * 2
+      decorationHeight = this.theme.borderWidth + titlebarHeight
     } else {
-      decorationWidth = (this.theme.width + this.theme.margin) * 2
-      decorationHeight = this.theme.width + titlebarHeight + this.theme.margin * 2
+      decorationWidth = (this.theme.borderWidth + this.theme.margin) * 2
+      decorationHeight = this.theme.borderWidth + titlebarHeight + this.theme.margin * 2
     }
 
     this.resize(width + decorationWidth, height + decorationHeight)
@@ -492,13 +492,13 @@ export class XWindowFrame implements Frame {
       return
     }
 
-    const titlebarHeight = this.title || this.buttons.length > 0 ? this.theme.titlebarHeight : this.theme.width
+    const titlebarHeight = this.title || this.buttons.length > 0 ? this.theme.titlebarHeight : this.theme.borderWidth
 
     if (this.flags & FrameFlag.FRAME_FLAG_MAXIMIZED) {
-      const decorationWidth = this.theme.width * 2
-      const decorationHeight = this.theme.width + titlebarHeight
+      const decorationWidth = this.theme.borderWidth * 2
+      const decorationHeight = this.theme.borderWidth + titlebarHeight
 
-      this._interior.x = this.theme.width
+      this._interior.x = this.theme.borderWidth
       this._interior.y = titlebarHeight
       this._interior.width = this.width - decorationWidth
       this._interior.height = this.height - decorationHeight
@@ -506,10 +506,10 @@ export class XWindowFrame implements Frame {
       this.opaqueMargin = 0
       this._shadowMargin = 0
     } else {
-      const decorationWidth = (this.theme.width + this.theme.margin) * 2
-      const decorationHeight = this.theme.width + titlebarHeight + this.theme.margin * 2
+      const decorationWidth = (this.theme.borderWidth + this.theme.margin) * 2
+      const decorationHeight = this.theme.borderWidth + titlebarHeight + this.theme.margin * 2
 
-      this._interior.x = this.theme.width + this.theme.margin
+      this._interior.x = this.theme.borderWidth + this.theme.margin
       this._interior.y = titlebarHeight + this.theme.margin
       this._interior.width = this.width - decorationWidth
       this._interior.height = this.height - decorationHeight
@@ -518,9 +518,9 @@ export class XWindowFrame implements Frame {
       this._shadowMargin = this.theme.margin
     }
 
-    let xr = this.width - this.theme.width - this._shadowMargin
-    let xl = this.theme.width + this._shadowMargin
-    const y = this.theme.width + this._shadowMargin
+    let xr = this.width - this.theme.borderWidth - this._shadowMargin
+    let xl = this.theme.borderWidth + this._shadowMargin
+    const y = this.theme.borderWidth + this._shadowMargin
 
     this.buttons.forEach(button => {
       const buttonPadding = 4
@@ -583,7 +583,7 @@ export class XWindowFrame implements Frame {
       flags |= ThemeFrame.THEME_FRAME_ACTIVE
     }
 
-    this.theme.renderFrame(this.renderContext, this.width, this.height, this.title, this.titleRect, this.buttons, flags)
+    this.theme.renderFrame(this.frameRenderContext, this.width, this.height, this.title, this.titleRect, this.buttons, flags)
     this.buttons.forEach(button => button.repaint())
 
     this.statusClear(FrameStatus.FRAME_STATUS_REPAINT)
@@ -696,12 +696,12 @@ export interface Theme {
   readonly shadow?: CanvasRenderingContext2D,
   readonly frameRadius: number,
   readonly margin: number,
-  readonly width: number,
+  readonly borderWidth: number,
   readonly titlebarHeight: number
 
   getLocation(x: number, y: number, width: number, height: number, flags: ThemeFrame): ThemeLocation
 
-  renderFrame(renderContext: CanvasRenderingContext2D, width: number, height: number, title: string, titleRect: {
+  renderFrame(frameRenderContext: CanvasRenderingContext2D, width: number, height: number, title: string, titleRect: {
     x: number,
     y: number,
     width: number,
@@ -721,11 +721,10 @@ class XWindowTheme implements Theme {
   readonly activeFrame: CanvasRenderingContext2D
   readonly frameRadius: number = 3
   readonly inactiveFrame: CanvasRenderingContext2D
-  // FIXME setting this to a non-zero value breaks things somehow
-  readonly margin: number = 0
+  readonly margin: number = 32
   readonly shadow: CanvasRenderingContext2D
   readonly titlebarHeight: number = 27
-  readonly width: number = 6
+  readonly borderWidth: number = 6
 
   constructor() {
     const activeFrame = document.createElement('canvas').getContext('2d')
@@ -736,6 +735,10 @@ class XWindowTheme implements Theme {
       throw new Error('Could not create XWindow Theme. CanvasRenderingContext2D failed to initialize.')
     }
 
+    document.body.appendChild(activeFrame.canvas)
+    document.body.appendChild(inactiveFrame.canvas)
+    document.body.appendChild(shadow.canvas)
+
     this.activeFrame = activeFrame
     this.inactiveFrame = inactiveFrame
     this.shadow = shadow
@@ -743,19 +746,22 @@ class XWindowTheme implements Theme {
     this.shadow.canvas.width = 128
     this.shadow.canvas.height = 128
 
-    this.shadow.fillStyle = '0x000000FF'
+    this.shadow.fillStyle = '#000000FF'
+    this.shadow.beginPath()
     this.roundedRect(this.shadow, 32, 32, 96, 96, this.frameRadius)
     this.shadow.filter = 'blur(64px)'
     this.shadow.fill()
 
     this.activeFrame.canvas.width = 128
     this.activeFrame.canvas.height = 128
+    this.shadow.beginPath()
     this.setBackgroundSource(this.activeFrame, ThemeFrame.THEME_FRAME_ACTIVE)
     this.roundedRect(this.activeFrame, 0, 0, 128, 128, this.frameRadius)
     this.activeFrame.fill()
 
     this.inactiveFrame.canvas.width = 128
     this.inactiveFrame.canvas.height = 128
+    this.shadow.beginPath()
     this.setBackgroundSource(this.inactiveFrame, 0)
     this.roundedRect(this.inactiveFrame, 0, 0, 128, 128, this.frameRadius)
     this.inactiveFrame.fill()
@@ -778,7 +784,7 @@ class XWindowTheme implements Theme {
     }
 
     if (flags & ThemeFrame.THEME_FRAME_NO_TITLE) {
-      topMargin = this.width
+      topMargin = this.borderWidth
     } else {
       topMargin = this.titlebarHeight
     }
@@ -821,7 +827,7 @@ class XWindowTheme implements Theme {
     return location
   }
 
-  renderFrame(renderContext: CanvasRenderingContext2D, width: number, height: number, title: string, titleRect: {
+  renderFrame(frameRenderContext: CanvasRenderingContext2D, width: number, height: number, title: string, titleRect: {
     x: number,
     y: number,
     width: number,
@@ -829,24 +835,25 @@ class XWindowTheme implements Theme {
   }, buttons: XWindowFrameButton[], flags: number) {
     let margin = 0
 
-    const { width: ctxWidth, height: ctxHeight } = renderContext.canvas
-    renderContext.clearRect(0, 0, ctxWidth, ctxHeight)
+    frameRenderContext.canvas.width = width
+    frameRenderContext.canvas.height = height
+    frameRenderContext.clearRect(0, 0, width, height)
 
     if (flags & ThemeFrame.THEME_FRAME_MAXIMIZED) {
       margin = 0
     } else {
-      this.renderShadow(renderContext, this.shadow, 2, 2, width + 8, height + 8, 64, 64)
+      // this.renderShadow(frameRenderContext, this.shadow, 2, 2, width + 8, height + 8, 64, 64)
       margin = this.margin
     }
 
     const source: CanvasRenderingContext2D = flags & ThemeFrame.THEME_FRAME_ACTIVE ? this.activeFrame : this.inactiveFrame
-    const topMargin = title || buttons.length !== 0 ? this.titlebarHeight : this.width
+    const topMargin = title || buttons.length !== 0 ? this.titlebarHeight : this.borderWidth
 
-    this.tileSource(renderContext, source, margin, margin, width - margin * 2, height - margin * 2, this.width, topMargin)
+    this.tileSource(frameRenderContext, source, margin, margin, width - margin * 2, height - margin * 2, this.borderWidth, topMargin)
 
     if (title || buttons.length !== 0) {
-      renderContext.font = '14px sans'
-      const textMetrics = renderContext.measureText(title)
+      frameRenderContext.font = '14px sans'
+      const textMetrics = frameRenderContext.measureText(title)
       const textWidth = textMetrics.width
       const textHeight = textMetrics.fontBoundingBoxDescent - textMetrics.fontBoundingBoxAscent
 
@@ -859,21 +866,21 @@ class XWindowTheme implements Theme {
       }
 
       if (flags & ThemeFrame.THEME_FRAME_ACTIVE) {
-        renderContext.shadowColor = '#1f1f1f'
-        renderContext.shadowBlur = 3
-        renderContext.lineWidth = 2
-        renderContext.fillStyle = '#000000'
-        renderContext.fillText(title, x + 1, y + 1)
-        renderContext.shadowBlur = 0
+        frameRenderContext.shadowColor = '#1f1f1f'
+        frameRenderContext.shadowBlur = 1
+        frameRenderContext.lineWidth = 2
+        frameRenderContext.fillStyle = '#000000'
+        frameRenderContext.fillText(title, x + 1, y + 1)
+        frameRenderContext.shadowBlur = 0
       } else {
-        renderContext.fillStyle = '#7a7a7a'
-        renderContext.fillText(title, x, y)
+        frameRenderContext.fillStyle = '#7a7a7a'
+        frameRenderContext.fillText(title, x, y)
       }
     }
   }
 
   renderShadow(renderContext: CanvasRenderingContext2D, surface: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, margin: number, topMargin: number) {
-    renderContext.fillStyle = '0x00000073'
+    renderContext.fillStyle = '#00000073'
     const pattern = renderContext.createPattern(surface.canvas, 'repeat')
     if (pattern === null) {
       throw new Error('Failed to create pattern')
@@ -891,7 +898,12 @@ class XWindowTheme implements Theme {
       const fx = i & 1
       const fy = i >> 1
 
-      const matrix = new DOMMatrix()
+      const matrix = new DOMMatrix([
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+      ])
         .translate(-x + fx * (128 - width), -y + fy * (128 - height))
       pattern.setTransform(matrix)
 
@@ -924,11 +936,11 @@ class XWindowTheme implements Theme {
 
     let shadowWidth = width - 2 * margin
     let shadowHeight = topMargin
-    if(height < 2* shadowHeight) {
+    if (height < 2 * shadowHeight) {
       shadowHeight = height / 2
     }
 
-    if(shadowWidth > 0 && shadowHeight) {
+    if (shadowWidth > 0 && shadowHeight) {
       /* Top stretch */
       const topStretchMatrix = new DOMMatrix()
         .translate(60, 0)
@@ -959,7 +971,7 @@ class XWindowTheme implements Theme {
     }
 
     shadowWidth = margin
-    if(width < 2 * shadowWidth) {
+    if (width < 2 * shadowWidth) {
       shadowWidth = width / 2
     }
 
@@ -967,7 +979,7 @@ class XWindowTheme implements Theme {
 
     /* if height is smaller than sum of margins,
      * then the shadow is already done by the corners */
-    if(shadowHeight > 0 && shadowWidth) {
+    if (shadowHeight > 0 && shadowWidth) {
       /* Left stretch */
       const leftStretchMatrix = new DOMMatrix()
         .translate(0, 60)
@@ -996,52 +1008,83 @@ class XWindowTheme implements Theme {
   }
 
   tileSource(renderContext: CanvasRenderingContext2D, surface: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, margin: number, topMargin: number) {
-    const pattern = renderContext.createPattern(surface.canvas, 'repeat')
-    if (pattern === null) {
-      throw new Error('Can\'t create canvas pattern')
-    }
-    renderContext.fillStyle = pattern
-
     for (let i = 0; i < 4; i++) {
       const fx = i & 1
       const fy = i >> 1
-      const matrix = new DOMMatrix().translate(-x + fx * (128 - width), -y + fy * (128 - height))
+      const matrix = new DOMMatrix().translate(
+        x + fx * (width - 128),
+        y + fy * (height - 128)
+      )
+
+      const pattern = renderContext.createPattern(surface.canvas, 'repeat')
+      if (pattern === null) {
+        throw new Error('Can\'t create canvas pattern')
+      }
       pattern.setTransform(matrix)
+      renderContext.fillStyle = pattern
 
       const vmargin = fy ? margin : topMargin
-      renderContext.fillRect(x + fx * (width - margin),
+      renderContext.beginPath()
+      renderContext.rect(x + fx * (width - margin),
         y + fy * (height - vmargin),
         margin, vmargin)
+      renderContext.fill()
     }
 
     /* Top stretch */
+    const topPattern = renderContext.createPattern(surface.canvas, 'repeat')
+    if (topPattern === null) {
+      throw new Error('Can\'t create canvas pattern')
+    }
     const topStretchMatrix = new DOMMatrix()
-      .translate(60, 0)
-      .scale(8.0 / (width - 2 * margin), 1)
-      .translate(-x - width / 2, -y)
-    pattern.setTransform(topStretchMatrix)
-    renderContext.fillRect(x + margin, y, width - 2 * margin, topMargin)
+      .scale((width + 2 * margin) / 128, 1, 1, x, y)
+      .translate(x, y)
+    topPattern.setTransform(topStretchMatrix)
+    renderContext.fillStyle = topPattern
+    renderContext.beginPath()
+    renderContext.rect(x + margin, y, width - 2 * margin, topMargin)
+    renderContext.fill()
 
     /* Bottom stretch */
-    const bottomStretchMatrix = topStretchMatrix.translate(0, -height + 128)
-    pattern.setTransform(bottomStretchMatrix)
-    renderContext.fillRect(x + margin, y + height - margin,
+    const bottomPattern = renderContext.createPattern(surface.canvas, 'repeat')
+    if (bottomPattern === null) {
+      throw new Error('Can\'t create canvas pattern')
+    }
+    const bottomStretchMatrix = topStretchMatrix.translate(0, height - 128)
+    bottomPattern.setTransform(bottomStretchMatrix)
+    renderContext.fillStyle = bottomPattern
+    renderContext.beginPath()
+    renderContext.rect(x + margin, y + height - margin,
       width - 2 * margin, margin)
+    renderContext.fill()
 
     /* Left stretch */
+    const leftPattern = renderContext.createPattern(surface.canvas, 'repeat')
+    if (leftPattern === null) {
+      throw new Error('Can\'t create canvas pattern')
+    }
     const leftStretchMatrix = new DOMMatrix()
-      .translate(0, 60)
-      .scale(1, 8.0 / (height - margin - topMargin))
-      .translate(-x, -y - height / 2)
-    pattern.setTransform(leftStretchMatrix)
-    renderContext.fillRect(x, y + topMargin,
+      .translate(0, y - (height + margin + topMargin))
+      .scale(1, ((height + margin + topMargin) * 2) / 128)
+    leftPattern.setTransform(leftStretchMatrix)
+    renderContext.fillStyle = leftPattern
+    renderContext.beginPath()
+    renderContext.rect(x, y + topMargin,
       margin, height - margin - topMargin)
+    renderContext.fill()
 
     /* Right stretch */
-    const rightStretchMatrix = leftStretchMatrix.translate(-width + 128, 0)
-    pattern.setTransform(rightStretchMatrix)
-    renderContext.fillRect(x + width - margin, y + topMargin,
+    const rightPattern = renderContext.createPattern(surface.canvas, 'repeat')
+    if (rightPattern === null) {
+      throw new Error('Can\'t create canvas pattern')
+    }
+    const rightStretchMatrix = leftStretchMatrix.translate(width, 0)
+    rightPattern.setTransform(rightStretchMatrix)
+    renderContext.fillStyle = rightPattern
+    renderContext.beginPath()
+    renderContext.rect(x + width - margin, y + topMargin,
       margin, height - margin - topMargin)
+    renderContext.fill()
   }
 
   roundedRect(renderingContext: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, radius: number) {
@@ -1059,11 +1102,11 @@ class XWindowTheme implements Theme {
   setBackgroundSource(renderingContext: CanvasRenderingContext2D, flags: ThemeFrame) {
     if (flags & ThemeFrame.THEME_FRAME_ACTIVE) {
       const pattern = renderingContext.createLinearGradient(16, 16, 16, 112)
-      pattern.addColorStop(0.0, '0xFFFFFF')
-      pattern.addColorStop(0.2, '0xCCCCCC')
+      pattern.addColorStop(0.0, '#FFFFFF')
+      pattern.addColorStop(0.2, '#CCCCCC')
       renderingContext.fillStyle = pattern
     } else {
-      renderingContext.fillStyle = '0xB2B2B2FF'
+      renderingContext.fillStyle = '#B2B2B2FF'
     }
   }
 }
@@ -1078,17 +1121,16 @@ export async function frameCreate(theme: Theme, width: number, height: number, b
   const signMaximizeIconData = await signMaximizeIconPromise
   const signCloseIconData = await signCloseIconPromise
 
-  const renderContext = document.createElement('canvas').getContext('2d')
+  const frameRenderContext = document.createElement('canvas').getContext('2d')
   const closeIcon = document.createElement('canvas').getContext('2d')
   const maximizeIcon = document.createElement('canvas').getContext('2d')
   const minimizeIcon = document.createElement('canvas').getContext('2d')
 
-  if (renderContext === null || closeIcon === null || maximizeIcon === null || minimizeIcon === null) {
+  if (frameRenderContext === null || closeIcon === null || maximizeIcon === null || minimizeIcon === null) {
     throw new Error('Could not get 2d rendering context from canvas.')
   }
-
-  renderContext.canvas.width = width
-  renderContext.canvas.height = height
+  frameRenderContext.imageSmoothingEnabled = false
+  document.body.appendChild(frameRenderContext.canvas)
 
   closeIcon.canvas.width = signCloseIconData.width
   closeIcon.canvas.height = signCloseIconData.height
@@ -1102,7 +1144,9 @@ export async function frameCreate(theme: Theme, width: number, height: number, b
   minimizeIcon.canvas.height = signMinimizeIconData.height
   minimizeIcon.drawImage(signMinimizeIconData, 0, 0)
 
-  return new XWindowFrame(theme, width, height, buttons, title, renderContext, closeIcon, maximizeIcon, minimizeIcon, icon)
+  const xWindowFrame = new XWindowFrame(theme, 0, 0, buttons, title, frameRenderContext, closeIcon, maximizeIcon, minimizeIcon, icon)
+  xWindowFrame.resizeInside(width, height)
+  return xWindowFrame
 }
 
 export function canvasXtsbSurfaceCreateWithXRenderFormat(connection: XConnection, screen: SCREEN, frameId: WINDOW, formatRgba: PICTFORMINFO, width: number, height: number): HTMLCanvasElement {
