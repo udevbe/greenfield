@@ -1482,9 +1482,6 @@ export class XWindowManager {
       how = 'decorate'
       window.frame?.setTitle(window.name)
       window.frame?.repaint()
-    } else {
-      how = 'shadow'
-      window.frame?.renderShadow(2, 2, width + 8, height + 8, 64, 64)
     }
 
     // console.log(`XWM: draw decoration, win ${window.id}, ${how}`)

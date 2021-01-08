@@ -297,8 +297,6 @@ export interface Frame {
 
   repaint(): void
 
-  renderShadow(x: number, y: number, width: number, height: number, margin: number, topMargin: number): void
-
   inputRect(): { x: number, y: number, width: number, height: number }
 
   pointerEnter(pointer: Pointer | undefined, x: number, y: number): ThemeLocation
@@ -589,11 +587,6 @@ export class XWindowFrame implements Frame {
     this.statusClear(FrameStatus.FRAME_STATUS_REPAINT)
   }
 
-  renderShadow(x: number, y: number, width: number, height: number, margin: number, topMargin: number): void {
-    // TODO render shadow
-    this.theme.shadow
-  }
-
   inputRect(): { x: number, y: number, width: number, height: number } {
     this.refreshGeometry()
 
@@ -693,7 +686,6 @@ export class XWindowFrame implements Frame {
 export interface Theme {
   readonly activeFrame?: CanvasRenderingContext2D,
   readonly inactiveFrame?: CanvasRenderingContext2D,
-  readonly shadow?: CanvasRenderingContext2D,
   readonly frameRadius: number,
   readonly margin: number,
   readonly borderWidth: number,
@@ -708,9 +700,7 @@ export interface Theme {
     height: number
   }, buttons: XWindowFrameButton[], flags: number): void
 
-  renderShadow(renderContext: CanvasRenderingContext2D, shadow: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, margin: number, topMargin: number): void
-
-  tileSource(renderContext: CanvasRenderingContext2D, surface: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, margin: number, topMargin: number): void
+  tileSource(renderContext: CanvasRenderingContext2D, surface: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, margin: number, topMargin: number, shadowBlur: number): void
 
   roundedRect(renderingContext: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, frameRadius: number): void
 
@@ -722,47 +712,34 @@ class XWindowTheme implements Theme {
   readonly frameRadius: number = 3
   readonly inactiveFrame: CanvasRenderingContext2D
   readonly margin: number = 32
-  readonly shadow: CanvasRenderingContext2D
   readonly titlebarHeight: number = 27
   readonly borderWidth: number = 6
 
   constructor() {
     const activeFrame = document.createElement('canvas').getContext('2d')
     const inactiveFrame = document.createElement('canvas').getContext('2d')
-    const shadow = document.createElement('canvas').getContext('2d')
 
-    if (activeFrame === null || inactiveFrame === null || shadow === null) {
+    if (activeFrame === null || inactiveFrame === null) {
       throw new Error('Could not create XWindow Theme. CanvasRenderingContext2D failed to initialize.')
     }
 
     document.body.appendChild(activeFrame.canvas)
     document.body.appendChild(inactiveFrame.canvas)
-    document.body.appendChild(shadow.canvas)
 
     this.activeFrame = activeFrame
     this.inactiveFrame = inactiveFrame
-    this.shadow = shadow
-
-    this.shadow.canvas.width = 128
-    this.shadow.canvas.height = 128
-
-    this.shadow.fillStyle = '#000000FF'
-    this.shadow.beginPath()
-    this.roundedRect(this.shadow, 32, 32, 96, 96, this.frameRadius)
-    this.shadow.filter = 'blur(64px)'
-    this.shadow.fill()
 
     this.activeFrame.canvas.width = 128
     this.activeFrame.canvas.height = 128
-    this.shadow.beginPath()
     this.setBackgroundSource(this.activeFrame, ThemeFrame.THEME_FRAME_ACTIVE)
+    this.activeFrame.beginPath()
     this.roundedRect(this.activeFrame, 0, 0, 128, 128, this.frameRadius)
     this.activeFrame.fill()
 
     this.inactiveFrame.canvas.width = 128
     this.inactiveFrame.canvas.height = 128
-    this.shadow.beginPath()
     this.setBackgroundSource(this.inactiveFrame, 0)
+    this.inactiveFrame.beginPath()
     this.roundedRect(this.inactiveFrame, 0, 0, 128, 128, this.frameRadius)
     this.inactiveFrame.fill()
   }
@@ -842,14 +819,18 @@ class XWindowTheme implements Theme {
     if (flags & ThemeFrame.THEME_FRAME_MAXIMIZED) {
       margin = 0
     } else {
-      // this.renderShadow(frameRenderContext, this.shadow, 2, 2, width + 8, height + 8, 64, 64)
       margin = this.margin
     }
 
-    const source: CanvasRenderingContext2D = flags & ThemeFrame.THEME_FRAME_ACTIVE ? this.activeFrame : this.inactiveFrame
+    const frameWidth = width - margin * 2
+    const frameHeight = height - margin * 2
+
+    const isActive = flags & ThemeFrame.THEME_FRAME_ACTIVE
+    const source: CanvasRenderingContext2D = isActive ? this.activeFrame : this.inactiveFrame
+    const shadowBlur = isActive ? this.margin : 0
     const topMargin = title || buttons.length !== 0 ? this.titlebarHeight : this.borderWidth
 
-    this.tileSource(frameRenderContext, source, margin, margin, width - margin * 2, height - margin * 2, this.borderWidth, topMargin)
+    this.tileSource(frameRenderContext, source, margin, margin, frameWidth, frameHeight, this.borderWidth, topMargin, shadowBlur)
 
     if (title || buttons.length !== 0) {
       frameRenderContext.font = '14px sans'
@@ -879,135 +860,21 @@ class XWindowTheme implements Theme {
     }
   }
 
-  renderShadow(renderContext: CanvasRenderingContext2D, surface: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, margin: number, topMargin: number) {
-    renderContext.fillStyle = '#00000073'
-    const pattern = renderContext.createPattern(surface.canvas, 'repeat')
-    if (pattern === null) {
-      throw new Error('Failed to create pattern')
-    }
+  tileSource(renderContext: CanvasRenderingContext2D, surface: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, margin: number, topMargin: number, shadowBlur: number): void {
+    // draw shadow
+    renderContext.shadowBlur = shadowBlur
+    renderContext.shadowColor = 'lightgray'
+    renderContext.beginPath()
+    renderContext.rect(x, y, width, height)
+    renderContext.fill()
+    renderContext.shadowBlur = 0
+    renderContext.shadowColor = '#00000000'
+    renderContext.globalCompositeOperation = 'destination-out'
+    renderContext.beginPath()
+    renderContext.rect(x, y, width, height)
+    renderContext.fill()
+    renderContext.globalCompositeOperation = 'source-over'
 
-    for (let i = 0; i < 4; i++) {
-      /* when fy is set, then we are working with lower corners,
-       * when fx is set, then we are working with right corners
-       *
-       *  00 ------- 01
-       *   |         |
-       *   |         |
-       *  10 ------- 11
-       */
-      const fx = i & 1
-      const fy = i >> 1
-
-      const matrix = new DOMMatrix([
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1
-      ])
-        .translate(-x + fx * (128 - width), -y + fy * (128 - height))
-      pattern.setTransform(matrix)
-
-      let shadowWidth = margin
-      let shadowHeight = fy ? margin : topMargin
-
-      /* if the shadows together are greater than the surface, we need
-       * to fix it - set the shadow size to the half of
-       * the size of surface. Also handle the case when the size is
-       * not divisible by 2. In that case we need one part of the
-       * shadow to be one pixel greater. !fy or !fx, respectively,
-       * will do the work.
-       */
-      if (height < 2 * shadowHeight) {
-        shadowHeight = (height + (fy ? 0 : 1)) / 2
-      }
-      if (width < 2 * shadowWidth) {
-        shadowWidth = (width + (fx ? 0 : 1)) / 2
-      }
-
-      renderContext.save()
-      renderContext.rect(x + fx * (width - shadowWidth),
-        y + fy * (height - shadowHeight),
-        shadowWidth, shadowHeight)
-      renderContext.clip()
-      renderContext.globalCompositeOperation = 'source-in'
-      renderContext.fill()
-      renderContext.restore()
-    }
-
-    let shadowWidth = width - 2 * margin
-    let shadowHeight = topMargin
-    if (height < 2 * shadowHeight) {
-      shadowHeight = height / 2
-    }
-
-    if (shadowWidth > 0 && shadowHeight) {
-      /* Top stretch */
-      const topStretchMatrix = new DOMMatrix()
-        .translate(60, 0)
-        .scale(8.0 / width, 1)
-        .translate(-x - width / 2, -y)
-      pattern.setTransform(topStretchMatrix)
-      renderContext.rect(x + margin, y, shadowWidth, shadowHeight)
-
-      renderContext.save()
-      renderContext.rect(x + margin, y,
-        shadowWidth, shadowHeight)
-      renderContext.clip()
-      renderContext.globalCompositeOperation = 'source-in'
-      renderContext.fill()
-      renderContext.restore()
-
-      /* Bottom stretch */
-      const bottomStretchMatrix = topStretchMatrix.translate(-height + 128)
-      pattern.setTransform(bottomStretchMatrix)
-
-      renderContext.save()
-      renderContext.rect(x + margin, y + height - margin,
-        shadowWidth, margin)
-      renderContext.clip()
-      renderContext.globalCompositeOperation = 'source-in'
-      renderContext.fill()
-      renderContext.restore()
-    }
-
-    shadowWidth = margin
-    if (width < 2 * shadowWidth) {
-      shadowWidth = width / 2
-    }
-
-    shadowHeight = height - margin - topMargin
-
-    /* if height is smaller than sum of margins,
-     * then the shadow is already done by the corners */
-    if (shadowHeight > 0 && shadowWidth) {
-      /* Left stretch */
-      const leftStretchMatrix = new DOMMatrix()
-        .translate(0, 60)
-        .scale(1, 8.0 / height)
-        .translate(-x, -y - height / 2)
-      pattern.setTransform(leftStretchMatrix)
-      renderContext.save()
-      renderContext.rect(x, y + topMargin,
-        shadowWidth, shadowHeight)
-      renderContext.clip()
-      renderContext.globalCompositeOperation = 'source-in'
-      renderContext.fill()
-      renderContext.restore()
-
-      /* Right stretch */
-      const rightStretchMatrix = leftStretchMatrix.translate(-width + 128, 0)
-      pattern.setTransform(rightStretchMatrix)
-      renderContext.rect(x + width - shadowWidth, y + topMargin,
-        shadowWidth, shadowHeight)
-      renderContext.save()
-      renderContext.clip()
-      renderContext.globalCompositeOperation = 'source-in'
-      renderContext.fill()
-      renderContext.restore()
-    }
-  }
-
-  tileSource(renderContext: CanvasRenderingContext2D, surface: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, margin: number, topMargin: number) {
     for (let i = 0; i < 4; i++) {
       const fx = i & 1
       const fy = i >> 1
