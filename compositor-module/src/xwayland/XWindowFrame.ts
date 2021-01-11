@@ -1,6 +1,4 @@
 import { WlPointerButtonState } from 'westfield-runtime-server'
-import { SCREEN, WINDOW, XConnection } from 'xtsb'
-import { PICTFORMINFO } from 'xtsb/dist/types/xcbRender'
 import signClose from '../assets/sign_close.png'
 import signMaximize from '../assets/sign_maximize.png'
 import signMinimize from '../assets/sign_minimize.png'
@@ -278,6 +276,7 @@ export interface Frame {
   width: number,
   height: number
   interior: { x: number; y: number, width: number, height: number }
+  renderContext: CanvasRenderingContext2D
 
   pointerMotion(pointer: Pointer | undefined, x: number, y: number): ThemeLocation
 
@@ -341,7 +340,7 @@ export class XWindowFrame implements Frame {
     public height: number,
     buttons: number,
     private title: string,
-    private frameRenderContext: CanvasRenderingContext2D,
+    public renderContext: CanvasRenderingContext2D,
     private closeButtonIcon: CanvasRenderingContext2D,
     private maximizeButtonIcon: CanvasRenderingContext2D,
     private minimzeButtonIcon: CanvasRenderingContext2D,
@@ -581,7 +580,7 @@ export class XWindowFrame implements Frame {
       flags |= ThemeFrame.THEME_FRAME_ACTIVE
     }
 
-    this.theme.renderFrame(this.frameRenderContext, this.width, this.height, this.title, this.titleRect, this.buttons, flags)
+    this.theme.renderFrame(this.renderContext, this.width, this.height, this.title, this.titleRect, this.buttons, flags)
     this.buttons.forEach(button => button.repaint())
 
     this.statusClear(FrameStatus.FRAME_STATUS_REPAINT)
@@ -865,13 +864,14 @@ class XWindowTheme implements Theme {
     renderContext.shadowBlur = shadowBlur
     renderContext.shadowColor = 'lightgray'
     renderContext.beginPath()
-    renderContext.rect(x, y, width, height)
+    this.roundedRect(renderContext, x, y, x + width, y + height, this.frameRadius)
     renderContext.fill()
     renderContext.shadowBlur = 0
     renderContext.shadowColor = '#00000000'
+
     renderContext.globalCompositeOperation = 'destination-out'
     renderContext.beginPath()
-    renderContext.rect(x, y, width, height)
+    this.roundedRect(renderContext, x, y, x + width, y + height, this.frameRadius)
     renderContext.fill()
     renderContext.globalCompositeOperation = 'source-over'
 
@@ -979,7 +979,6 @@ class XWindowTheme implements Theme {
 }
 
 export function themeCreate(): Theme {
-  // TODO
   return new XWindowTheme()
 }
 
@@ -996,7 +995,6 @@ export async function frameCreate(theme: Theme, width: number, height: number, b
   if (frameRenderContext === null || closeIcon === null || maximizeIcon === null || minimizeIcon === null) {
     throw new Error('Could not get 2d rendering context from canvas.')
   }
-  frameRenderContext.imageSmoothingEnabled = false
   document.body.appendChild(frameRenderContext.canvas)
 
   closeIcon.canvas.width = signCloseIconData.width
@@ -1014,13 +1012,4 @@ export async function frameCreate(theme: Theme, width: number, height: number, b
   const xWindowFrame = new XWindowFrame(theme, 0, 0, buttons, title, frameRenderContext, closeIcon, maximizeIcon, minimizeIcon, icon)
   xWindowFrame.resizeInside(width, height)
   return xWindowFrame
-}
-
-export function canvasXtsbSurfaceCreateWithXRenderFormat(connection: XConnection, screen: SCREEN, frameId: WINDOW, formatRgba: PICTFORMINFO, width: number, height: number): HTMLCanvasElement {
-  // TODO
-  return document.createElement('canvas')
-}
-
-export function canvasXtsbSurfaceSetSize(canvas: HTMLCanvasElement | undefined, width: number, height: number): void {
-  // TODO
 }

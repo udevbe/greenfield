@@ -66,8 +66,6 @@ import { XWaylandConnection } from './XWaylandConnection'
 import XWaylandShell from './XWaylandShell'
 import XWaylandShellSurface from './XWaylandShellSurface'
 import {
-  canvasXtsbSurfaceCreateWithXRenderFormat,
-  canvasXtsbSurfaceSetSize,
   Frame,
   FrameButton,
   frameCreate,
@@ -320,7 +318,6 @@ export class WmWindow {
   savedHeight = 0
   savedWidth = 0
 
-  canvasSurface?: HTMLCanvasElement
   surface?: Surface
   surfaceId?: number
   surfaceDestroyListener?: (surfaceResource: WlObject) => void
@@ -1335,8 +1332,6 @@ export class XWindowManager {
 
     this.configureWindow(window.id, { borderWidth: 0 })
 
-    window.canvasSurface = canvasXtsbSurfaceCreateWithXRenderFormat(this.xConnection, this.screen, window.frameId, this.formatRgba, width, height)
-
     this.windowHash[window.frameId] = window
   }
 
@@ -1471,8 +1466,7 @@ export class XWindowManager {
 
   private wmWindowDrawDecorations(window: WmWindow) {
 
-    const { width, height } = this.wmWindowGetFrameSize(window)
-    canvasXtsbSurfaceSetSize(window.canvasSurface, width, height)
+    // const { width, height } = this.wmWindowGetFrameSize(window)
 
     let how: string
     if (window.fullscreen) {
@@ -1488,7 +1482,7 @@ export class XWindowManager {
 
     // TODO do paint?
 
-    this.xConnection.flush()
+    // this.xConnection.flush()
   }
 
   private wmWindowSetPendingState(window: WmWindow) {

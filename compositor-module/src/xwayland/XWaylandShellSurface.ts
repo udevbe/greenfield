@@ -3,9 +3,11 @@ import { CompositorSurface, CompositorSurfaceState } from '../index'
 import Point from '../math/Point'
 import Output from '../Output'
 import Pointer from '../Pointer'
+import Scene from '../render/Scene'
 import Session from '../Session'
 import Surface from '../Surface'
 import { UserShellSurfaceRole } from '../UserShellSurfaceRole'
+import View from '../View'
 import { WmWindow } from './XWindowManager'
 
 const {
@@ -90,6 +92,39 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     surface.commitPending()
   }
 
+  prepareFrameDecoration(view: View) {
+    // render frame decoration
+    if (this.window.decorate && this.window.frame) {
+      const { width: frameWidth, height: frameHeight } = this.window.frame
+      const {
+        width: interiorWidth,
+        height: interorHeight,
+        x: interiorX,
+        y: interiorY
+      } = this.window.frame.interior
+
+      const top = this.window.frame.renderContext.getImageData(interiorX, 0, interiorWidth, interiorY)
+      const bottom = this.window.frame.renderContext.getImageData(interiorX, interiorY + interorHeight, interiorWidth, frameHeight - (interiorY + interorHeight))
+      const left = this.window.frame.renderContext.getImageData(0, 0, interiorX, frameHeight)
+      const right = this.window.frame.renderContext.getImageData(interiorX + interiorWidth, 0, frameWidth - (interiorX + interiorWidth), frameHeight)
+
+      const { gl, texture, format } = view.renderState.texture
+      gl.bindTexture(gl.TEXTURE_2D, texture)
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, interiorX, 0, format, gl.UNSIGNED_BYTE, top)
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, interiorX, interiorY + interorHeight, format, gl.UNSIGNED_BYTE, bottom)
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, format, gl.UNSIGNED_BYTE, left)
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, interiorX + interiorWidth, 0, format, gl.UNSIGNED_BYTE, right)
+      gl.bindTexture(gl.TEXTURE_2D, null)
+    }
+  }
+
+  prepareViewRenderState(view: View): void {
+    view.scene.prepareViewRenderState(view)
+    if (view.mapped && view.surface.state.buffer) {
+      this.prepareFrameDecoration(view)
+    }
+  }
+
   private _map() {
     this._mapped = true
     this._userSurfaceState = { ...this._userSurfaceState, mapped: this._mapped }
@@ -154,6 +189,10 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     this.xwayland.isSet = true
   }
 
+  private findTopLevelView(scene: Scene): View | undefined {
+    return scene.topLevelViews.find(topLevelView => topLevelView.surface === this.surface)
+  }
+
   move(pointer: Pointer): void {
     // if (!seat.isValidInputSerial(serial)) {
     //   // window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Move serial mismatch. Ignoring.')
@@ -169,7 +208,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     const scene = pointer.scene
     if (scene) {
       // FIXME Only move that view that was last interacted with instead of finding the first one that matches.
-      const topLevelView = scene.topLevelViews.find(topLevelView => topLevelView.surface === this.surface)
+      const topLevelView = this.findTopLevelView(scene)
       if (topLevelView) {
         const origPosition = topLevelView.positionOffset
 
@@ -277,7 +316,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
 
 
   setWindowGeometry(x: number, y: number, width: number, height: number): void {
-
+    // TODO ?
   }
 
 
