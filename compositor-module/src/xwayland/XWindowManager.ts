@@ -1465,9 +1465,6 @@ export class XWindowManager {
   }
 
   private wmWindowDrawDecorations(window: WmWindow) {
-
-    // const { width, height } = this.wmWindowGetFrameSize(window)
-
     let how: string
     if (window.fullscreen) {
       how = 'fullscreen'
@@ -1475,7 +1472,7 @@ export class XWindowManager {
     } else if (window.decorate) {
       how = 'decorate'
       window.frame?.setTitle(window.name)
-      window.frame?.repaint()
+      window.frame?.refreshGeometry()
     }
 
     // console.log(`XWM: draw decoration, win ${window.id}, ${how}`)

@@ -95,18 +95,19 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   prepareFrameDecoration(view: View) {
     // render frame decoration
     if (this.window.decorate && this.window.frame) {
-      const { width: frameWidth, height: frameHeight } = this.window.frame
+      const { w: frameWidth, h: frameHeight } = view.renderState.size
       const {
         width: interiorWidth,
         height: interorHeight,
         x: interiorX,
         y: interiorY
-      } = this.window.frame.interior
+      } = this.window.frame.repaint(frameWidth, frameHeight)
+      const renderContext = this.window.frame.renderContext
 
-      const top = this.window.frame.renderContext.getImageData(interiorX, 0, interiorWidth, interiorY)
-      const bottom = this.window.frame.renderContext.getImageData(interiorX, interiorY + interorHeight, interiorWidth, frameHeight - (interiorY + interorHeight))
-      const left = this.window.frame.renderContext.getImageData(0, 0, interiorX, frameHeight)
-      const right = this.window.frame.renderContext.getImageData(interiorX + interiorWidth, 0, frameWidth - (interiorX + interiorWidth), frameHeight)
+      const top = renderContext.getImageData(interiorX, 0, interiorWidth, interiorY)
+      const bottom = renderContext.getImageData(interiorX, interiorY + interorHeight, interiorWidth, frameHeight - (interiorY + interorHeight))
+      const left = renderContext.getImageData(0, 0, interiorX, frameHeight)
+      const right = renderContext.getImageData(interiorX + interiorWidth, 0, frameWidth - (interiorX + interiorWidth), frameHeight)
 
       const { gl, texture, format } = view.renderState.texture
       gl.bindTexture(gl.TEXTURE_2D, texture)

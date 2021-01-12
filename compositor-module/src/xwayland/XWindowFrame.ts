@@ -271,6 +271,8 @@ class XWindowFrameButton {
   }
 }
 
+export type FrameInterior = { readonly x: number; readonly y: number; readonly width: number; readonly height: number }
+
 export interface Frame {
   status: number
   width: number,
@@ -294,7 +296,7 @@ export interface Frame {
 
   setTitle(title: string): void
 
-  repaint(): void
+  repaint(frameWidth: number, frameHeight: number): FrameInterior
 
   inputRect(): { x: number, y: number, width: number, height: number }
 
@@ -305,19 +307,20 @@ export interface Frame {
   unsetFlag(flag: FrameFlag): void
 
   setFlag(flag: FrameFlag): void
+
+  refreshGeometry(): void
 }
 
 export class XWindowFrame implements Frame {
   status: FrameStatus = FrameStatus.FRAME_STATUS_REPAINT
   pointers: XWindowFramePointer[] = []
   buttons: XWindowFrameButton[] = []
-  private _interior: { x: number; y: number, width: number, height: number } = {
+  private _interior: FrameInterior = {
     x: 0,
     y: 0,
     width: 0,
     height: 0
   }
-
   private geometryDirty: boolean = true
   flags: FrameFlag = 0
   private opaqueMargin: number = 0
@@ -373,6 +376,7 @@ export class XWindowFrame implements Frame {
       this.buttons = [...this.buttons, xWindowFrameButton]
     }
   }
+
 
   pointerMotion(pointer: Pointer | undefined, x: number, y: number): ThemeLocation {
     const framePointer = this.getPointer(pointer)
@@ -484,40 +488,38 @@ export class XWindowFrame implements Frame {
     this.pointers.forEach(value => value.destroy())
   }
 
-  private refreshGeometry() {
-    if (!this.geometryDirty) {
-      return
-    }
-
+  private calculateMaximizedInterior(width: number, height: number) {
     const titlebarHeight = this.title || this.buttons.length > 0 ? this.theme.titlebarHeight : this.theme.borderWidth
 
-    if (this.flags & FrameFlag.FRAME_FLAG_MAXIMIZED) {
-      const decorationWidth = this.theme.borderWidth * 2
-      const decorationHeight = this.theme.borderWidth + titlebarHeight
+    const decorationWidth = this.theme.borderWidth * 2
+    const decorationHeight = this.theme.borderWidth + titlebarHeight
 
-      this._interior.x = this.theme.borderWidth
-      this._interior.y = titlebarHeight
-      this._interior.width = this.width - decorationWidth
-      this._interior.height = this.height - decorationHeight
+    return {
+      x: this.theme.borderWidth,
+      y: titlebarHeight,
+      width: width - decorationWidth,
+      height: height - decorationHeight
+    } as const
+  }
 
-      this.opaqueMargin = 0
-      this._shadowMargin = 0
-    } else {
-      const decorationWidth = (this.theme.borderWidth + this.theme.margin) * 2
-      const decorationHeight = this.theme.borderWidth + titlebarHeight + this.theme.margin * 2
+  private calculateInterior(width: number, height: number) {
+    const titlebarHeight = this.title || this.buttons.length > 0 ? this.theme.titlebarHeight : this.theme.borderWidth
 
-      this._interior.x = this.theme.borderWidth + this.theme.margin
-      this._interior.y = titlebarHeight + this.theme.margin
-      this._interior.width = this.width - decorationWidth
-      this._interior.height = this.height - decorationHeight
+    const decorationWidth = (this.theme.borderWidth + this.theme.margin) * 2
+    const decorationHeight = this.theme.borderWidth + titlebarHeight + this.theme.margin * 2
 
-      this.opaqueMargin = this.theme.margin + this.theme.frameRadius
-      this._shadowMargin = this.theme.margin
-    }
+    return {
+      x: this.theme.borderWidth + this.theme.margin,
+      y: titlebarHeight + this.theme.margin,
+      width: width - decorationWidth,
+      height: height - decorationHeight
+    } as const
+  }
 
-    let xr = this.width - this.theme.borderWidth - this._shadowMargin
-    let xl = this.theme.borderWidth + this._shadowMargin
-    const y = this.theme.borderWidth + this._shadowMargin
+  private calculateTitleRect(width: number, shadowMargin: number, titlebarHeight: number) {
+    let xr = width - this.theme.borderWidth - shadowMargin
+    let xl = this.theme.borderWidth + shadowMargin
+    const y = this.theme.borderWidth + shadowMargin
 
     this.buttons.forEach(button => {
       const buttonPadding = 4
@@ -548,11 +550,32 @@ export class XWindowFrame implements Frame {
       }
     })
 
-    this.titleRect.x = xl
-    this.titleRect.y = y
-    this.titleRect.width = xr - xl
-    this.titleRect.height = titlebarHeight
+    return {
+      x: xl,
+      y,
+      width: xr - xl,
+      height: titlebarHeight
+    } as const
+  }
 
+  refreshGeometry() {
+    if (!this.geometryDirty) {
+      return
+    }
+
+    const titlebarHeight = this.title || this.buttons.length > 0 ? this.theme.titlebarHeight : this.theme.borderWidth
+
+    if (this.flags & FrameFlag.FRAME_FLAG_MAXIMIZED) {
+      this._interior = this.calculateMaximizedInterior(this.width, this.height)
+      this.opaqueMargin = 0
+      this._shadowMargin = 0
+    } else {
+      this._interior = this.calculateInterior(this.width, this.height)
+      this.opaqueMargin = this.theme.margin + this.theme.frameRadius
+      this._shadowMargin = this.theme.margin
+    }
+
+    this.titleRect = this.calculateTitleRect(this.width, this._shadowMargin, titlebarHeight)
     this.geometryDirty = false
   }
 
@@ -568,8 +591,7 @@ export class XWindowFrame implements Frame {
     this.status = FrameStatus.FRAME_STATUS_REPAINT
   }
 
-  repaint(): void {
-    this.refreshGeometry()
+  repaint(frameWidth: number, frameHeight: number): FrameInterior {
     let flags: ThemeFrame = 0
 
     if (this.flags & FrameFlag.FRAME_FLAG_MAXIMIZED) {
@@ -579,11 +601,25 @@ export class XWindowFrame implements Frame {
     if (this.flags & FrameFlag.FRAME_FLAG_ACTIVE) {
       flags |= ThemeFrame.THEME_FRAME_ACTIVE
     }
+    const titlebarHeight = this.title || this.buttons.length > 0 ? this.theme.titlebarHeight : this.theme.borderWidth
+    let interior: { readonly x: number; readonly width: number; readonly y: number; readonly height: number }
+    let shadowMargin
+    if (this.flags & FrameFlag.FRAME_FLAG_MAXIMIZED) {
+      interior = this.calculateMaximizedInterior(frameWidth, frameHeight)
+      shadowMargin = 0
+    } else {
+      shadowMargin = this.theme.margin
+      interior = this.calculateInterior(frameWidth, frameHeight)
+    }
 
-    this.theme.renderFrame(this.renderContext, this.width, this.height, this.title, this.titleRect, this.buttons, flags)
+    const titleRect = this.calculateTitleRect(frameWidth, shadowMargin, titlebarHeight)
+    this.theme.renderFrame(this.renderContext, frameWidth, frameHeight, this.title, titleRect, this.buttons, flags)
     this.buttons.forEach(button => button.repaint())
+    console.log(`repaint with height: ${this.height}`)
 
     this.statusClear(FrameStatus.FRAME_STATUS_REPAINT)
+
+    return interior
   }
 
   inputRect(): { x: number, y: number, width: number, height: number } {
@@ -862,7 +898,7 @@ class XWindowTheme implements Theme {
   tileSource(renderContext: CanvasRenderingContext2D, surface: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, margin: number, topMargin: number, shadowBlur: number): void {
     // draw shadow
     renderContext.shadowBlur = shadowBlur
-    renderContext.shadowColor = 'lightgray'
+    renderContext.shadowColor = 'rgba(0,0,0,0.3)'
     renderContext.beginPath()
     this.roundedRect(renderContext, x, y, x + width, y + height, this.frameRadius)
     renderContext.fill()
@@ -988,6 +1024,7 @@ export async function frameCreate(theme: Theme, width: number, height: number, b
   const signCloseIconData = await signCloseIconPromise
 
   const frameRenderContext = document.createElement('canvas').getContext('2d')
+  document.createElement('canvas').getContext('2d')
   const closeIcon = document.createElement('canvas').getContext('2d')
   const maximizeIcon = document.createElement('canvas').getContext('2d')
   const minimizeIcon = document.createElement('canvas').getContext('2d')
@@ -995,6 +1032,7 @@ export async function frameCreate(theme: Theme, width: number, height: number, b
   if (frameRenderContext === null || closeIcon === null || maximizeIcon === null || minimizeIcon === null) {
     throw new Error('Could not get 2d rendering context from canvas.')
   }
+
   document.body.appendChild(frameRenderContext.canvas)
 
   closeIcon.canvas.width = signCloseIconData.width
