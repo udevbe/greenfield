@@ -69,7 +69,7 @@ function linkUserShellEvents(session: CompositorSession) {
     // request the client to make this surface active
     userShell.actions.requestActive(compositorSurface)
   }
-  userShell.events.updateUserSeat = ({ keyboardFocus, pointerGrab }: CompositorSeatState) => {
+  userShell.events.updateUserSeat = ({ pointerGrab }: CompositorSeatState) => {
     // raise the surface when a user clicks on it
     if (pointerGrab !== compositorPointerGrab && pointerGrab) {
       userShell.actions.raise(pointerGrab, 'myOutputId')
@@ -112,12 +112,14 @@ async function main() {
   reactCanvasKitURLButton.textContent = 'React-CanvasKit'
   const remoteGtk3URLButton: HTMLButtonElement = document.createElement('button')
   remoteGtk3URLButton.textContent = 'GTK3-Demo'
+  const remoteKwriteURLButton: HTMLButtonElement = document.createElement('button')
+  remoteKwriteURLButton.textContent = 'KWrite'
   const remoteGnomeTerminalURLButton: HTMLButtonElement = document.createElement('button')
   remoteGnomeTerminalURLButton.textContent = 'Gnome-Terminal'
 
   const urlInput: HTMLInputElement = document.createElement('input')
   urlInput.type = 'text'
-  urlInput.style.width = '715px'
+  urlInput.style.width = '600px'
   const launchButton: HTMLButtonElement = document.createElement('button')
   launchButton.textContent = 'Launch'
 
@@ -126,6 +128,7 @@ async function main() {
   container.appendChild(webGLURLButton)
   container.appendChild(reactCanvasKitURLButton)
   container.appendChild(remoteGtk3URLButton)
+  container.appendChild(remoteKwriteURLButton)
   container.appendChild(remoteGnomeTerminalURLButton)
   container.appendChild(urlInput)
   container.appendChild(launchButton)
@@ -134,6 +137,7 @@ async function main() {
   webGLURLButton.onclick = () => urlInput.value = `${window.location.href}apps/simple-web-gl/app.js`
   reactCanvasKitURLButton.onclick = () => urlInput.value = `${window.location.href}apps/react-canvaskit/app.js`
   remoteGtk3URLButton.onclick = () => urlInput.value = `ws://localhost:8081?launch=remote-gtk3-demo`
+  remoteKwriteURLButton.onclick = () => urlInput.value = `ws://localhost:8081?launch=remote-kwrite`
   remoteGnomeTerminalURLButton.onclick = () => urlInput.value = `ws://localhost:8081?launch=remote-gnome-terminal`
 
   launchButton.onclick = () => {

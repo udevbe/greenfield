@@ -50,9 +50,9 @@
         // Arguments passed to the binary
         args: [],
       },
-      'remote-xterm': {
-        bin: "/usr/bin/xterm",
-        args: [],
+      'remote-kwrite': {
+        bin: "/usr/bin/kwrite",
+        args: ['-platform','wayland'],
       },
       'remote-gnome-terminal': {
         bin: "/usr/bin/gnome-terminal",
