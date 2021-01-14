@@ -208,7 +208,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
 
     if (surface.pendingState.bufferContents) {
       if (!this.mapped) {
-        this._map(surface, surface.pendingState)
+        this._map(surface)
       }
     } else if (this.mapped) {
       this._dismiss()
@@ -218,7 +218,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
     surface.commitPending()
   }
 
-  private _map(surface: Surface, newState: SurfaceState) {
+  private _map(surface: Surface) {
     // TODO check if parent is mapped
     for (const surfaceChild of surface.children) {
       if (surfaceChild !== surface.surfaceChildSelf &&
@@ -231,13 +231,11 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
 
     this.mapped = true
     const parentXdgSurface = this.parent.implementation as XdgSurface
-    const parentSurface = parentXdgSurface.wlSurfaceResource.implementation as Surface
 
     // set position based on positioner object
     const surfaceSpaceAnchorPoint = this.positionerState.surfaceSpaceAnchorPoint(parentXdgSurface)
     if (surfaceSpaceAnchorPoint) {
       surface.surfaceChildSelf.position = surfaceSpaceAnchorPoint.minus(this.xdgSurface.pendingWindowGeometry.position)
-      parentSurface.addChild(surface.surfaceChildSelf)
     }
   }
 
