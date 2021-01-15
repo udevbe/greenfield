@@ -23,37 +23,33 @@ function initializeCanvas(session: CompositorSession, canvas: HTMLCanvasElement,
   // make sure the canvas has focus and receives input inputs
   canvas.onmouseover = () => canvas.focus()
   canvas.tabIndex = 1
+  // don't show browser context menu on right click
+  canvas.oncontextmenu = (event: MouseEvent) => event.preventDefault()
 
   //wire up dom input events to compositor input events
   canvas.onpointermove = (event: PointerEvent) => {
-    event.preventDefault()
     session.userShell.actions.input.pointerMove(createButtonEventFromMouseEvent(event, false, myId))
   }
   canvas.onpointerdown = (event: PointerEvent) => {
-    event.preventDefault()
     canvas.setPointerCapture(event.pointerId)
     session.userShell.actions.input.buttonDown(createButtonEventFromMouseEvent(event, false, myId))
   }
   canvas.onpointerup = (event: PointerEvent) => {
-    event.preventDefault()
     session.userShell.actions.input.buttonUp(createButtonEventFromMouseEvent(event, true, myId))
     canvas.releasePointerCapture(event.pointerId)
   }
   canvas.onwheel = (event: WheelEvent) => {
-    event.preventDefault()
     session.userShell.actions.input.axis(createAxisEventFromWheelEvent(event, myId))
   }
   canvas.onkeydown = (event: KeyboardEvent) => {
     const keyEvent = createKeyEventFromKeyboardEvent(event, true)
     if (keyEvent) {
-      event.preventDefault()
       session.userShell.actions.input.key(keyEvent)
     }
   }
   canvas.onkeyup = (event: KeyboardEvent) => {
     const keyEvent = createKeyEventFromKeyboardEvent(event, false)
     if (keyEvent) {
-      event.preventDefault()
       session.userShell.actions.input.key(keyEvent)
     }
   }
