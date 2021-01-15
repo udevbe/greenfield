@@ -16,7 +16,15 @@ Greenfield consists of 3 separate parts.
  - [Greenfield Compositor Module](https://github.com/udevbe/greenfield) A bare bones Wayland compositor library.
  - [Greenfield Web Shell](https://github.com/udevbe/greenfield-webshell) An extensive implementation of the Greenfield Compositor Module.
 
-### Quick Demo
+# Running latest code locally
+From the root of this repository run:
+### app-endpoint server
+- `pushd app-endpoint-server && yarn install && yarn generate && yarn build && GST_GL_WINDOW=gbm yarn start`
+
+### compositor-demo
+- `pushd compositor-module && yarn install && yarn build && yarn link && popd && pushd compositor-demo && yarn install && yarn link greenfield-compositor && yarn start`
+
+# Quick Docker Demo
 - `git clone https://github.com/udevbe/greenfield.git`
 - `cd greenfield/environments/local`
 - `docker-compose up`
