@@ -75,8 +75,8 @@ export interface CompositorSurface {
 }
 
 export interface CompositorSeatState {
-  pointerGrab?: CompositorSurface
-  keyboardFocus?: CompositorSurface
+  readonly pointerGrab?: CompositorSurface
+  readonly keyboardFocus?: CompositorSurface
 }
 
 export interface CompositorClient {

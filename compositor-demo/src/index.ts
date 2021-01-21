@@ -67,7 +67,7 @@ function linkUserShellEvents(session: CompositorSession) {
   }
   userShell.events.updateUserSeat = ({ pointerGrab }: CompositorSeatState) => {
     // raise the surface when a user clicks on it
-    if (pointerGrab !== compositorPointerGrab && pointerGrab) {
+    if (pointerGrab !== undefined && pointerGrab !== compositorPointerGrab) {
       userShell.actions.raise(pointerGrab, 'myOutputId')
       userShell.actions.setKeyboardFocus(pointerGrab)
     }
