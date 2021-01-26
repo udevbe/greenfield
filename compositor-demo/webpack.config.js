@@ -7,11 +7,11 @@ const webpack = require('webpack')
 const outputPath = path.resolve(__dirname, 'dist')
 
 module.exports = {
-  // mode: 'development',
+  mode: 'development',
   entry: {
     app: './src/index.ts'
   },
-  // devtool: 'source-map',
+  devtool: 'source-map',
   plugins: [
     new CleanWebpackPlugin(),
     new HtmlWebpackPlugin({
@@ -74,6 +74,11 @@ module.exports = {
         test: /\.js$/,
         enforce: 'pre',
         use: ['source-map-loader']
+      },
+      {
+        test: /\.worker\.(c|m)?js$/i,
+        loader: 'worker-loader',
+        options: { filename: '[name].[contenthash].js' },
       }
     ]
   }

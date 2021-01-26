@@ -9,4 +9,8 @@ The HTML5 Wayland compositor library for Greenfield.
 
 ## Usage
 
-Check the [demo](https://github.com/udevbe/greenfield/tree/master/compositor-demo) implementation for an example.
+To use this library in your own implementation, you will need:
+- a worker loader that matches on `*.worker.js` imports.
+- a file (url) loader that matches on `*.asset` and `*.png`
+
+An example webpack config can be found in the [demo](https://github.com/udevbe/greenfield/tree/master/compositor-demo) implementation.

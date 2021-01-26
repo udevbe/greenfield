@@ -19,6 +19,9 @@ import { OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
 import EncodedFrame from '../remotestreaming/EncodedFrame'
 import { fullFrame, splitAlpha } from '../remotestreaming/EncodingOptions'
 
+// @ts-ignore requires a loader that treats this import as a web-worker.
+import H264NALDecoderWorker from './H264NALDecoder.worker'
+
 type H264NALDecoderWorkerMessage = { type: string, width: number, height: number, data: ArrayBuffer, renderStateId: number }
 type FrameState = {
   serial: number,
@@ -30,7 +33,7 @@ type FrameState = {
 const decoders: { [key: string]: H264BufferContentDecoder } = {}
 
 const opaqueWorker = new Promise<Worker>(resolve => {
-  const h264NALDecoderWorker: Worker = new Worker(new URL('./H264NALDecoderWorker', import.meta.url))
+  const h264NALDecoderWorker: Worker = new H264NALDecoderWorker()
   h264NALDecoderWorker.addEventListener('message', (e) => {
     const message = e.data as H264NALDecoderWorkerMessage
     switch (message.type) {
@@ -45,7 +48,7 @@ const opaqueWorker = new Promise<Worker>(resolve => {
 })
 
 const alphaWorker = new Promise<Worker>(resolve => {
-  const h264NALDecoderWorker: Worker = new Worker(new URL('./H264NALDecoderWorker', import.meta.url))
+  const h264NALDecoderWorker: Worker = new H264NALDecoderWorker()
   h264NALDecoderWorker.addEventListener('message', (e) => {
     const message = /** @type {{type:string, width:number, height:number, data:ArrayBuffer, renderStateId:number}} */e.data
     switch (message.type) {

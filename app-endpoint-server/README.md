@@ -1,5 +1,5 @@
 ## Building
-- `npm install -g cmake-js`
-- `npm install`
+- `yarn global add cmake-js`
+- `yarn install && yarn generate && yarn build`
 ## Running
-- `npm run start`
+- `yarn start`

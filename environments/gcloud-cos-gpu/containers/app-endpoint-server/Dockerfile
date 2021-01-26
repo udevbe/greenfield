@@ -43,16 +43,15 @@ RUN bash build_gst_with_nvenc.sh
 
 WORKDIR /app
 COPY app-endpoint-server app-endpoint-server
-COPY protocol protocol
-COPY app-endpoint-native app-endpoint-native
 
 # Enter application directory
 WORKDIR /app/app-endpoint-server
 # Install app-endpoint-server dependencies
-RUN npm install -g cmake-js
+RUN npm install -g cmake-js yarn
 # Build source
-RUN npm install && \
-  npm run prepare
+RUN yarn install && \
+  yarn generate && \
+  yarn build
 
 # Start server
 CMD npm run start
