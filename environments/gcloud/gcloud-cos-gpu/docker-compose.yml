@@ -17,7 +17,7 @@ services:
       - /dev/nvidia-uvm-tools
 
   xnvidia:
-    image: gcr.io/yourprojectname/xnvidia:latest
+    image: gcr.io/yourprojectname/xnvidia:0
     privileged: true
     volumes:
       - x11temp:/tmp/.X11-unix

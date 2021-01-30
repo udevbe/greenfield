@@ -29,13 +29,14 @@ function build() {
     network: computeNetwork.id,
     allows: [{
       protocol: 'tcp',
-      ports: ['22', '443']
+      ports: ['22', '443', '8081']
     }]
   })
 
   const computeInstance = new gcp.compute.Instance('app-endpoint-host', {
     machineType: 'n1-standard-8',
     zone: 'europe-west2-b',
+    enableDisplay: true,
     guestAccelerators: [{
       count: 1,
       type: 'nvidia-tesla-t4'

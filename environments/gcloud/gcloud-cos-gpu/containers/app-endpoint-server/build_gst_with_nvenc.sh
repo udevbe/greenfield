@@ -219,7 +219,6 @@ main() {
  -Dopenni2=disabled \
  -Dopus=disabled \
  -Drsvg=disabled \
- -Dgl=disabled \
  -Dwildmidi=disabled \
  -Dsmoothstreaming=disabled \
  -Dsndfile=disabled \

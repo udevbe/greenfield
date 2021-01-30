@@ -3,7 +3,7 @@ set -e
 
 build_app_endpiont_server() {
     pushd containers/app-endpoint-server
-        gcloud builds submit ../../../..
+        gcloud builds submit ../../../../..
     popd
 }
 

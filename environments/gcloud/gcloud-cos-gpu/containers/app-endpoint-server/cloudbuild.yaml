@@ -1,6 +1,6 @@
 steps:
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/app-endpoint-server', '-f', 'environments/gcloud-cos-gpu/containers/app-endpoint-server/Dockerfile', '.']
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/app-endpoint-server', '-f', 'environments/gcloud/gcloud-cos-gpu/containers/app-endpoint-server/Dockerfile', '.']
 images:
   - 'gcr.io/$PROJECT_ID/app-endpoint-server'
 timeout: 3600s
