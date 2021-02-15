@@ -6,6 +6,6 @@ export interface UserShellSurfaceRole extends SurfaceRole {
   notifyInactive(): void
 }
 
-export function instanceOfUserShellSurfaceRole(object: any): object is UserShellSurfaceRole {
+export function isUserShellSurfaceRole(object: any): object is UserShellSurfaceRole {
   return 'requestActive' in object && 'notifyInactive' in object
 }

@@ -29,7 +29,7 @@ import {
 
 import { capabilities } from './browser/capabilities'
 import DataDevice from './DataDevice'
-import { CompositorSeat, CompositorSeatState } from './index'
+import { CompositorSeat } from './index'
 import Keyboard from './Keyboard'
 
 import Pointer from './Pointer'
@@ -53,7 +53,6 @@ class Seat implements WlSeatRequests, CompositorSeat {
   readonly touch: Touch
   readonly hasTouch: boolean
   serial: number = 0
-  private _compositorSeatState: CompositorSeatState
   private _global?: Global
   private readonly _seatName: 'browser-seat0' = 'browser-seat0'
   private _keyboardResourceListeners: ((wlKeyboardResource: WlKeyboardResource) => void)[] = []
@@ -65,9 +64,7 @@ class Seat implements WlSeatRequests, CompositorSeat {
     const touch = Touch.create()
     const hasTouch = capabilities.hasTouch
 
-    const userSeatState = { pointerGrab: undefined, keyboardFocus: undefined }
-
-    const seat = new Seat(session, dataDevice, pointer, keyboard, touch, hasTouch, userSeatState)
+    const seat = new Seat(dataDevice, pointer, keyboard, touch, hasTouch)
     dataDevice.seat = seat
     keyboard.seat = seat
     pointer.seat = seat
@@ -76,26 +73,12 @@ class Seat implements WlSeatRequests, CompositorSeat {
     return seat
   }
 
-  private constructor(private session: Session, dataDevice: DataDevice, pointer: Pointer, keyboard: Keyboard, touch: Touch, hasTouch: boolean, userSeatState: CompositorSeatState) {
+  private constructor(dataDevice: DataDevice, pointer: Pointer, keyboard: Keyboard, touch: Touch, hasTouch: boolean) {
     this.dataDevice = dataDevice
     this.pointer = pointer
     this.keyboard = keyboard
     this.touch = touch
     this.hasTouch = hasTouch
-    this._compositorSeatState = userSeatState
-  }
-
-  set compositorSeatState(compositorSeatState: CompositorSeatState) {
-    const { keyboardFocus, pointerGrab } = compositorSeatState
-    const equals = keyboardFocus?.id === this._compositorSeatState.keyboardFocus?.id
-      && keyboardFocus?.clientId === this._compositorSeatState.keyboardFocus?.clientId
-      && pointerGrab?.id === this._compositorSeatState.pointerGrab?.id
-      && pointerGrab?.clientId === this._compositorSeatState.pointerGrab?.clientId
-
-    this._compositorSeatState = compositorSeatState
-    if (!equals) {
-      this.session.userShell.events.updateUserSeat?.(compositorSeatState)
-    }
   }
 
   registerGlobal(registry: Registry) {

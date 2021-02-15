@@ -15,20 +15,19 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { Display, WlSurfaceResource } from 'westfield-runtime-server'
+import { WlSurfaceResource } from 'westfield-runtime-server'
 import {
   AxisEvent,
   ButtonEvent,
   CompositorClient,
   CompositorConfiguration,
-  CompositorSeatState,
   CompositorSurface,
   CompositorSurfaceState,
   KeyEvent
 } from './index'
 import Session from './Session'
 import Surface from './Surface'
-import { instanceOfUserShellSurfaceRole } from './UserShellSurfaceRole'
+import { isUserShellSurfaceRole, UserShellSurfaceRole } from './UserShellSurfaceRole'
 
 export interface UserShellApiEvents {
   createApplicationClient?: (applicationClient: CompositorClient) => void
@@ -37,7 +36,6 @@ export interface UserShellApiEvents {
   notify?: (variant: string, message: string) => void
   updateUserSurface?: (compositorSurface: CompositorSurface, state: CompositorSurfaceState) => void
   destroyUserSurface?: (compositorSurface: CompositorSurface) => void
-  updateUserSeat?: (userSeatState: CompositorSeatState) => void
   sceneRefresh?: (sceneId: string) => void
 }
 
@@ -56,12 +54,6 @@ export interface UserShellApiInputActions {
 export interface UserShellApiActions {
   input: UserShellApiInputActions
 
-  raise(compositorSurface: CompositorSurface, sceneId: string): void
-
-  requestActive(compositorSurface: CompositorSurface): void
-
-  notifyInactive(compositorSurface: CompositorSurface): void
-
   initScene(sceneId: string, canvas: HTMLCanvasElement): void
 
   refreshScene(sceneId: string): Promise<void>
@@ -75,8 +67,6 @@ export interface UserShellApiActions {
 
   createView(compositorSurface: CompositorSurface, sceneId: string): void
 
-  setKeyboardFocus(compositorSurface: CompositorSurface): void
-
   setUserConfiguration(userConfiguration: Partial<CompositorConfiguration>): void
 
   closeClient(applicationClient: Pick<CompositorClient, 'id'>): void
@@ -85,16 +75,6 @@ export interface UserShellApiActions {
 export interface UserShellApi {
   events: UserShellApiEvents
   actions: UserShellApiActions
-}
-
-function performSurfaceAction<T>(display: Display, compositorSurface: CompositorSurface, surfaceAction: (surface: Surface) => T): T | undefined {
-  const compositorSurfaceId = parseInt(compositorSurface.id)
-  const wlSurfaceResource = display.clients[compositorSurface.clientId].connection.wlObjects[compositorSurfaceId]
-  if (wlSurfaceResource && wlSurfaceResource instanceof WlSurfaceResource) {
-    return surfaceAction(wlSurfaceResource.implementation as Surface)
-  } else {
-    throw new Error('BUG. Compositor surface does not resolve to a valid surface.')
-  }
 }
 
 export function createUserShellApi(session: Session): UserShellApi {
@@ -123,21 +103,6 @@ export function createUserShellApi(session: Session): UserShellApi {
           session.flush()
         }
       },
-      raise: (compositorSurface, sceneId) => performSurfaceAction(session.display, compositorSurface, surface => session.renderer.scenes[sceneId].raiseSurface(surface)),
-      requestActive: compositorSurface => performSurfaceAction(session.display, compositorSurface, surface => {
-        if (surface.role && instanceOfUserShellSurfaceRole(surface.role)) {
-          surface.role.requestActive()
-        } else {
-          throw new Error('BUG. Surface does not have the UserShellSurface role.')
-        }
-      }),
-      notifyInactive: compositorSurface => performSurfaceAction(session.display, compositorSurface, surface => {
-        if (surface.role && instanceOfUserShellSurfaceRole(surface.role)) {
-          surface.role.notifyInactive()
-        } else {
-          throw new Error('BUG. Surface does not have the UserShellSurface role.')
-        }
-      }),
       initScene: (sceneId, canvas) => session.renderer.initScene(sceneId, canvas),
       refreshScene: sceneId => {
         session.renderer.scenes[sceneId].prepareAllViewRenderState()
@@ -157,7 +122,6 @@ export function createUserShellApi(session: Session): UserShellApi {
           throw new Error('BUG. Compositor surface does not resolve to a valid surface.')
         }
       },
-      setKeyboardFocus: compositorSurface => performSurfaceAction(session.display, compositorSurface, surface => session.globals.seat.keyboard.focusGained(surface)),
       setUserConfiguration: userConfiguration => {
         const { pointer, keyboard } = session.globals.seat
         pointer.scrollFactor = userConfiguration.scrollFactor ?? 1
@@ -173,4 +137,37 @@ export function createUserShellApi(session: Session): UserShellApi {
       closeClient: applicationClient => session.display.clients[applicationClient.id].close()
     }
   }
+}
+
+let activeHistory: (Surface & { role: UserShellSurfaceRole })[] = []
+
+export function isUserShellSurface(surface: Surface): surface is (Surface & { role: UserShellSurfaceRole }) {
+  return isUserShellSurfaceRole(surface?.role)
+}
+
+export function makeSurfaceActive(surface: (Surface & { role: UserShellSurfaceRole })) {
+  const lastActive = activeHistory[activeHistory.length - 1]
+
+  if (lastActive && lastActive === surface) {
+    return
+  }
+
+  if (!activeHistory.includes(surface)) {
+    surface.resource.onDestroy().then(() => {
+      const activeDestroyed = activeHistory[activeHistory.length - 1] === surface
+      activeHistory = activeHistory.filter(historySurface => historySurface !== surface)
+      const newActiveSurface = activeHistory[activeHistory.length - 1]
+      if (activeDestroyed) {
+        surface.resource.client.connection.addIdleHandler(() => {
+          if (newActiveSurface === activeHistory[activeHistory.length - 1]) {
+            newActiveSurface?.role.requestActive()
+          }
+        })
+      }
+    })
+  }
+
+  lastActive?.role.notifyInactive()
+  activeHistory.push(surface)
+  surface.role.requestActive()
 }

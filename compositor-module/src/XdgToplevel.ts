@@ -33,6 +33,7 @@ import Seat from './Seat'
 import Session from './Session'
 import Size from './Size'
 import Surface from './Surface'
+import { makeSurfaceActive } from './UserShellApi'
 import { UserShellSurfaceRole } from './UserShellSurfaceRole'
 import View from './View'
 import XdgSurface from './XdgSurface'
@@ -121,6 +122,9 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     surface.role = xdgToplevel
 
     xdgSurface.wlSurfaceResource.onDestroy().then(() => session.userShell.events.destroyUserSurface?.(userSurface))
+
+    // @ts-ignore
+    makeSurfaceActive(surface)
     session.userShell.events.createUserSurface?.(userSurface, xdgToplevel._userSurfaceState)
 
     return xdgToplevel
