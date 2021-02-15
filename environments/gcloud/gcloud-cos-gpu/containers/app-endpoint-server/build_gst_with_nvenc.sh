@@ -7,17 +7,16 @@ exec > >(tee build-gstreamer.log)
 exec 2>&1
 
 checkout_sources() {
-    [ ! -d orc ] && git clone git://anongit.freedesktop.org/git/gstreamer/orc
-    [ ! -d gstreamer ] && git clone git://anongit.freedesktop.org/git/gstreamer/gstreamer
-    [ ! -d gst-plugins-base ] && git clone git://anongit.freedesktop.org/git/gstreamer/gst-plugins-base
-    [ ! -d gst-plugins-good ] && git clone git://anongit.freedesktop.org/git/gstreamer/gst-plugins-good
-    [ ! -d gst-plugins-bad ] && git clone https://anongit.freedesktop.org/git/gstreamer/gst-plugins-bad
-    [ ! -d gst-plugins-ugly ] && git clone git://anongit.freedesktop.org/git/gstreamer/gst-plugins-ugly
+    [ ! -d orc ] && git clone --depth 1 git://anongit.freedesktop.org/git/gstreamer/orc
+    [ ! -d gstreamer ] && git clone --depth 1 --single-branch --branch ${BRANCH} git://anongit.freedesktop.org/git/gstreamer/gstreamer
+    [ ! -d gst-plugins-base ] && git clone --depth 1 --single-branch --branch ${BRANCH} git://anongit.freedesktop.org/git/gstreamer/gst-plugins-base
+    [ ! -d gst-plugins-good ] && git clone --depth 1 --single-branch --branch ${BRANCH} git://anongit.freedesktop.org/git/gstreamer/gst-plugins-good
+    [ ! -d gst-plugins-bad ] && git clone --depth 1 --single-branch --branch ${BRANCH} git://anongit.freedesktop.org/git/gstreamer/gst-plugins-bad
+    [ ! -d gst-plugins-ugly ] && git clone --depth 1 --single-branch --branch ${BRANCH} git://anongit.freedesktop.org/git/gstreamer/gst-plugins-ugly
 }
 
 build_source() {
     pushd $1
-        git checkout ${BRANCH}
         meson build/
         meson configure build -Dbuildtype=release $2
         ninja -C build/
@@ -33,12 +32,13 @@ main() {
     build_source gstreamer
 
     build_source gst-plugins-base "-Daudioconvert=disabled \
+ -Dgl_platform=egl \
+ -Dgl_winsys=egl \
  -Daudiomixer=disabled \
  -Daudiorate=disabled \
  -Daudioresample=disabled \
  -Daudiotestsrc=disabled \
  -Dcompositor=disabled \
- -Dencodig=disabled \
  -Dgio=disabled \
  -Doverlaycomposition=disabled \
  -Dplayback=disabled \

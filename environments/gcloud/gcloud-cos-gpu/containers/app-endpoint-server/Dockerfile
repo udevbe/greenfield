@@ -1,11 +1,15 @@
 # Context for this build should be root of repo because of reasons.
-FROM marketplace.gcr.io/google/debian10
+FROM nvidia/cudagl:11.2.0-devel-ubuntu20.04
 MAINTAINER Erik De Rijcke <erik.de.rijcke@udev.be>
 
-COPY environments/gcloud/gcloud-cos-gpu/containers/app-endpoint-server/sources.list /etc/apt/sources.list
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=all
+ENV GST_GL_WINDOW=egl-device
 
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -qq && \
     apt-get install -qq -y \
+        libdrm-dev \
         build-essential \
         python3 \
         python3-pip \
@@ -17,10 +21,8 @@ RUN apt-get update -qq && \
         flex \
         libglib2.0-dev \
         gettext \
-        libgl-dev \
         libx264-dev \
         libpng-dev \
-        nvidia-cuda-dev \
         curl \
         cmake \
         libffi-dev \
@@ -32,14 +34,11 @@ RUN apt-get update -qq && \
      && rm -rf /var/lib/apt/lists/*
 RUN cd /root && pip3 install meson && cd /
 
-# setup nvidia-cuda-dev for gstreamer nvencoder compilation
-COPY environments/gcloud/gcloud-cos-gpu/containers/app-endpoint-server/Video_Codec_SDK_9.0.20/include/ /usr/local/nvidia/include/
-COPY environments/gcloud/gcloud-cos-gpu/containers/app-endpoint-server/Video_Codec_SDK_9.0.20/linux/stubs/x86_64/ /usr/local/nvidia/lib64/
 WORKDIR /gstreamer
 
 # setup gstreamer install script & environment
 COPY environments/gcloud/gcloud-cos-gpu/containers/app-endpoint-server/build_gst_with_nvenc.sh build_gst_with_nvenc.sh
-ENV LD_LIBRARY_PATH "/usr/local/lib/:/usr/local/nvidia/lib64/"
+#ENV LD_LIBRARY_PATH $LD_LIBRARY_PATH:"/usr/local/lib/:/usr/local/nvidia/lib64/"
 
 # Install gstreamer master from source
 RUN bash build_gst_with_nvenc.sh
