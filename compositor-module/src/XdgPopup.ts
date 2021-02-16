@@ -16,8 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import {
-  WlSeatResource,
-  XdgPopupError,
+  WlSeatResource, XdgPopupError,
   XdgPopupRequests,
   XdgPopupResource,
   XdgPositionerConstraintAdjustment,
@@ -28,7 +27,7 @@ import { clientHeight, clientWidth } from './browser/attributes'
 
 import Point from './math/Point'
 import Seat from './Seat'
-import Surface, { SurfaceState } from './Surface'
+import Surface from './Surface'
 import SurfaceRole from './SurfaceRole'
 import { XdgPositionerState } from './XdgPositioner'
 import XdgSurface from './XdgSurface'
@@ -205,6 +204,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
     if (this.dismissed) {
       return
     }
+    this.xdgSurface.updateWindowGeometry(this.xdgSurface.pendingWindowGeometry)
 
     if (surface.pendingState.bufferContents) {
       if (!this.mapped) {
@@ -214,7 +214,6 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
       this._dismiss()
     }
 
-    this.xdgSurface.updateWindowGeometry(this.xdgSurface.pendingWindowGeometry)
     surface.commitPending()
   }
 
@@ -235,7 +234,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
     // set position based on positioner object
     const surfaceSpaceAnchorPoint = this.positionerState.surfaceSpaceAnchorPoint(parentXdgSurface)
     if (surfaceSpaceAnchorPoint) {
-      surface.surfaceChildSelf.position = surfaceSpaceAnchorPoint.minus(this.xdgSurface.pendingWindowGeometry.position)
+      surface.surfaceChildSelf.position = surfaceSpaceAnchorPoint.minus(this.xdgSurface.windowGeometry.position)
     }
   }
 
