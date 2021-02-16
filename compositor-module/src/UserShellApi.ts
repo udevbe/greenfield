@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { WlSurfaceResource } from 'westfield-runtime-server'
+import { Display, WlSurfaceResource } from 'westfield-runtime-server'
 import {
   AxisEvent,
   ButtonEvent,
@@ -54,6 +54,8 @@ export interface UserShellApiInputActions {
 export interface UserShellApiActions {
   input: UserShellApiInputActions
 
+  requestActive(compositorSurface: CompositorSurface): void
+
   initScene(sceneId: string, canvas: HTMLCanvasElement): void
 
   refreshScene(sceneId: string): Promise<void>
@@ -75,6 +77,16 @@ export interface UserShellApiActions {
 export interface UserShellApi {
   events: UserShellApiEvents
   actions: UserShellApiActions
+}
+
+function performSurfaceAction<T>(display: Display, compositorSurface: CompositorSurface, surfaceAction: (surface: Surface) => T): T | undefined {
+  const compositorSurfaceId = parseInt(compositorSurface.id)
+  const wlSurfaceResource = display.clients[compositorSurface.clientId].connection.wlObjects[compositorSurfaceId]
+  if (wlSurfaceResource && wlSurfaceResource instanceof WlSurfaceResource) {
+    return surfaceAction(wlSurfaceResource.implementation as Surface)
+  } else {
+    throw new Error('BUG. Compositor surface does not resolve to a valid surface.')
+  }
 }
 
 export function createUserShellApi(session: Session): UserShellApi {
@@ -134,7 +146,14 @@ export function createUserShellApi(session: Session): UserShellApi {
           keyboard.updateKeymapFromNames(keyboard.defaultNrmlvo)
         }
       },
-      closeClient: applicationClient => session.display.clients[applicationClient.id].close()
+      closeClient: applicationClient => session.display.clients[applicationClient.id].close(),
+      requestActive: compositorSurface => performSurfaceAction(session.display, compositorSurface, surface => {
+        if (isUserShellSurface(surface)) {
+          makeSurfaceActive(surface)
+        } else {
+          throw new Error('BUG. Surface does not have the UserShellSurface role.')
+        }
+      })
     }
   }
 }
