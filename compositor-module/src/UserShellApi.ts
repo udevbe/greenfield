@@ -170,4 +170,5 @@ export function makeSurfaceActive(surface: (Surface & { role: UserShellSurfaceRo
   lastActive?.role.notifyInactive()
   activeHistory.push(surface)
   surface.role.requestActive()
+  new Set(surface.views.map(view => view.scene)).forEach(scene => scene.raiseSurface(surface))
 }
