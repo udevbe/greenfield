@@ -1,5 +1,4 @@
 import {
-  CompositorSeatState,
   CompositorSession,
   CompositorSurface,
   CompositorSurfaceState,
@@ -14,8 +13,6 @@ import {
   initWasm
 } from 'greenfield-compositor'
 
-let compositorPointerGrab: CompositorSurface | undefined
-
 function initializeCanvas(session: CompositorSession, canvas: HTMLCanvasElement, myId: string) {
   // register canvas with compositor session
   session.userShell.actions.initScene(myId, canvas)
@@ -28,26 +25,38 @@ function initializeCanvas(session: CompositorSession, canvas: HTMLCanvasElement,
 
   //wire up dom input events to compositor input events
   canvas.onpointermove = (event: PointerEvent) => {
+    event.stopPropagation()
+    event.preventDefault()
     session.userShell.actions.input.pointerMove(createButtonEventFromMouseEvent(event, false, myId))
   }
   canvas.onpointerdown = (event: PointerEvent) => {
+    event.stopPropagation()
+    event.preventDefault()
     canvas.setPointerCapture(event.pointerId)
     session.userShell.actions.input.buttonDown(createButtonEventFromMouseEvent(event, false, myId))
   }
   canvas.onpointerup = (event: PointerEvent) => {
+    event.stopPropagation()
+    event.preventDefault()
     session.userShell.actions.input.buttonUp(createButtonEventFromMouseEvent(event, true, myId))
     canvas.releasePointerCapture(event.pointerId)
   }
   canvas.onwheel = (event: WheelEvent) => {
+    event.stopPropagation()
+    event.preventDefault()
     session.userShell.actions.input.axis(createAxisEventFromWheelEvent(event, myId))
   }
   canvas.onkeydown = (event: KeyboardEvent) => {
+    event.stopPropagation()
+    event.preventDefault()
     const keyEvent = createKeyEventFromKeyboardEvent(event, true)
     if (keyEvent) {
       session.userShell.actions.input.key(keyEvent)
     }
   }
   canvas.onkeyup = (event: KeyboardEvent) => {
+    event.stopPropagation()
+    event.preventDefault()
     const keyEvent = createKeyEventFromKeyboardEvent(event, false)
     if (keyEvent) {
       session.userShell.actions.input.key(keyEvent)
@@ -62,15 +71,6 @@ function linkUserShellEvents(session: CompositorSession) {
   userShell.events.createUserSurface = (compositorSurface: CompositorSurface, compositorSurfaceState: CompositorSurfaceState) => {
     // create view on our scene for the newly created surface
     userShell.actions.createView(compositorSurface, 'myOutputId')
-    // request the client to make this surface active
-    userShell.actions.requestActive(compositorSurface)
-  }
-  userShell.events.updateUserSeat = ({ pointerGrab }: CompositorSeatState) => {
-    // raise the surface when a user clicks on it
-    if (pointerGrab !== undefined && pointerGrab !== compositorPointerGrab) {
-      userShell.actions.raise(pointerGrab, 'myOutputId')
-      userShell.actions.setKeyboardFocus(pointerGrab)
-    }
   }
 }
 
@@ -132,7 +132,7 @@ async function main() {
   webShmAppURLButton.onclick = () => urlInput.value = `${window.location.href}apps/simple-web-shm/app.js`
   webGLURLButton.onclick = () => urlInput.value = `${window.location.href}apps/simple-web-gl/app.js`
   reactCanvasKitURLButton.onclick = () => urlInput.value = `${window.location.href}apps/react-canvaskit/app.js`
-  remoteGtk3URLButton.onclick = () => urlInput.value = `ws://localhost:8081?launch=remote-gtk3-demo`
+  remoteGtk3URLButton.onclick = () => urlInput.value = `wss://app-endpoint.greenfield.app?launch=remote-gtk3-demo`
   remoteKwriteURLButton.onclick = () => urlInput.value = `ws://localhost:8081?launch=remote-kwrite`
   remoteGnomeTerminalURLButton.onclick = () => urlInput.value = `ws://localhost:8081?launch=remote-gnome-terminal`
 

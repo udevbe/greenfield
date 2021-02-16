@@ -7,15 +7,8 @@ build_app_endpiont_server() {
     popd
 }
 
-build_xnvidia() {
-    pushd containers/xnvidia
-        gcloud builds submit .
-    popd
-}
-
 main() {
     build_app_endpiont_server
-    build_xnvidia
 }
 
 main

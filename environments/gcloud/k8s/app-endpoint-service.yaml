@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-endpoint
+  namespace: default
+  annotations:
+    cloud.google.com/backend-config: '{"default": "app-endpoint-backend-config"}'
+spec:
+  ports:
+    - port: 8081
+      protocol: TCP
+      targetPort: 8081
+  selector:
+    app: app-endpoint
+  type: NodePort

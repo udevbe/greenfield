@@ -37,6 +37,7 @@ import Seat from './Seat'
 import Session from './Session'
 import Surface from './Surface'
 import SurfaceRole from './SurfaceRole'
+import { isUserShellSurface, makeSurfaceActive } from './UserShellApi'
 import View from './View'
 
 const { pressed, released } = WlPointerButtonState
@@ -116,19 +117,11 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
 
   set grab(grab) {
     if (grab !== this._grab) {
-      if (grab === undefined) {
-        this.seat.compositorSeatState = {
-          ...this.seat.compositorSeatState,
-          pointerGrab: undefined
-        } as const
-      } else if (grab.primary) {
-        const { client, id } = grab.surface.resource
-        this.seat.compositorSeatState = {
-          ...this.seat.compositorSeatState,
-          pointerGrab: { id: `${id}`, clientId: client.id }
-        } as const
-      }
       this._grab = grab
+      if (this._grab && isUserShellSurface(this._grab?.surface)) {
+        makeSurfaceActive(this._grab.surface)
+        this.seat.keyboard.focusGained(this._grab.surface)
+      }
     }
   }
 

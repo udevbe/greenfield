@@ -42,7 +42,12 @@ class AppEndpointServer {
       level: (process.env.DEBUG && process.env.DEBUG == true) ? 20 : 30
     })
 
-    const server = http.createServer()
+    const server = http.createServer((req, res) => {
+      if (req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'text/plain' })
+        res.end('OK')
+      }
+    })
     const { timeout, hostname, port } = serverConfig.httpServer
     server.setTimeout(timeout)
     const appEndpointDaemon = new AppEndpointServer(logger)

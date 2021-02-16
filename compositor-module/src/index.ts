@@ -74,11 +74,6 @@ export interface CompositorSurface {
   clientId: string
 }
 
-export interface CompositorSeatState {
-  readonly pointerGrab?: CompositorSurface
-  readonly keyboardFocus?: CompositorSurface
-}
-
 export interface CompositorClient {
   id: string
   variant: 'web' | 'remote'

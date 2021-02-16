@@ -173,21 +173,12 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
       this.resources
         .filter(resource => resource.client === targetFocus.resource.client)
         .forEach(resource => {
-          console.log('keyboard enter: ' + surface.id)
           resource.enter(serial, surface, keys)
         })
       if (this._keyboardFocusResolve) {
         this._keyboardFocusResolve()
       }
       this._keyboardFocusListeners.forEach(listener => listener())
-
-      // notify user shell of changed seat state
-      // FIXME this is somewhat broken right now...
-      const { client, id } = focus.resource
-      this.seat.compositorSeatState = {
-        ...this.seat.compositorSeatState,
-        keyboardFocus: { id: `${id}`, clientId: client.id }
-      } as const
     }
   }
 
@@ -200,17 +191,10 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
       this.resources
         .filter(resource => resource.client === targetFocus.resource.client)
         .forEach(resource => {
-          console.log('keyboard leave: ' + surface.id)
           resource.leave(serial, surface)
         })
 
       this.focus = undefined
-
-      // notify user shell of changed seat state
-      this.seat.compositorSeatState = {
-        ...this.seat.compositorSeatState,
-        keyboardFocus: undefined
-      } as const
     }
   }
 
