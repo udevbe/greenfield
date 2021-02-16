@@ -1536,10 +1536,10 @@ graceful-fs@^4.1.11, graceful-fs@^4.1.2, graceful-fs@^4.2.4:
   resolved "https://registry.yarnpkg.com/graceful-fs/-/graceful-fs-4.2.4.tgz#2256bde14d3632958c465ebc96dc467ca07a29fb"
   integrity sha512-WjKPNJF79dtJAVniUlGGWHYGz2jWxT6VhN/4m1NdkbZ2nOsEF+cI1Edgql5zCRhs/VsQYRvrXctxktVXZUkixw==
 
-greenfield-compositor@0.0.6:
-  version "0.0.6"
-  resolved "https://registry.yarnpkg.com/greenfield-compositor/-/greenfield-compositor-0.0.6.tgz#262a08702016bd909af3ec78cb5e332d075953f7"
-  integrity sha512-hYRrbFuISsG6InvDoU9mmFBiLuDiY/fRdGgMDtPypshlM7+ASpBv7EtecVfwGni7WbN1xtLAfHD88uczfcBDYA==
+greenfield-compositor@0.0.7:
+  version "0.0.7"
+  resolved "https://registry.yarnpkg.com/greenfield-compositor/-/greenfield-compositor-0.0.7.tgz#19256ad6af6ae923b6560325757a27f3d466c0e8"
+  integrity sha512-m4oSgGWgVsHsVji+l5rhriILRWJuQtl3UtlIb0gBvzXwlwwDHjyj3Gdyv77E0tMVXxVHVNsreLmbHwF/0+z6AQ==
   dependencies:
     tinyh264 "0.0.6"
     westfield-runtime-common "0.4.4"
