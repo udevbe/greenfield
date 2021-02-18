@@ -142,7 +142,7 @@ class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, Wl
     this._shellSurface = this._shell.getShellSurface(this._surface)
     this._shellSurface.listener = this
     this._shellSurface.setToplevel()
-    this._shellSurface.setTitle('Simple WebGL')
+    this._shellSurface.setTitle('React-CanvasKit')
 
     const syncPromise = display.sync()
     display.flush()
