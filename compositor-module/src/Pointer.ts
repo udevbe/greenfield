@@ -266,10 +266,21 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
     return this.session.renderer.scenes[event.sceneId].pickView(Point.create(event.x, event.y))
   }
 
+  private clampMouseMove(event: ButtonEvent, scene: Scene): { x: number, y: number } {
+    return {
+      x: Math.min(Math.max(event.x, 0), scene.canvas.width),
+      y: Math.min(Math.max(event.y, 0), scene.canvas.height)
+    }
+  }
+
   handleMouseMove(event: ButtonEvent) {
-    this.x = event.x
-    this.y = event.y
     this.scene = this.session.renderer.scenes[event.sceneId]
+    if (this.scene) {
+      const { x, y } = this.clampMouseMove(event, this.scene)
+      this.x = x
+      this.y = y
+    }
+
     if (this.scene.pointerView) {
       this.scene.pointerView.positionOffset = Point.create(this.x, this.y).minus(Point.create(this.hotspotX, this.hotspotY))
       this.scene.pointerView.applyTransformations()
