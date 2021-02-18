@@ -26,3 +26,13 @@ spec:
           resources:
             limits:
               nvidia.com/gpu: 1
+          securityContext:
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /tmp
+              name: runtime-dir
+      volumes:
+        - name: runtime-dir
+          hostPath:
+            path: /tmp
+            type: Directory
