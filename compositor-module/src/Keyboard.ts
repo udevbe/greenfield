@@ -190,9 +190,7 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
       const targetFocus = this.focus
       this.resources
         .filter(resource => resource.client === targetFocus.resource.client)
-        .forEach(resource => {
-          resource.leave(serial, surface)
-        })
+        .forEach(resource => resource.leave(serial, surface))
 
       this.focus = undefined
     }

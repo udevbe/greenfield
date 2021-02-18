@@ -22,6 +22,9 @@ function initializeCanvas(session: CompositorSession, canvas: HTMLCanvasElement,
   canvas.tabIndex = 1
   // don't show browser context menu on right click
   canvas.oncontextmenu = (event: MouseEvent) => event.preventDefault()
+  canvas.onblur = () => {
+    session.userShell.actions.input.blur()
+  }
 
   //wire up dom input events to compositor input events
   canvas.onpointermove = (event: PointerEvent) => {

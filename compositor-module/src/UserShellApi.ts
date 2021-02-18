@@ -49,6 +49,8 @@ export interface UserShellApiInputActions {
   axis(axisEvent: AxisEvent): void
 
   key(keyEvent: KeyEvent): void
+
+  blur(): void
 }
 
 export interface UserShellApiActions {
@@ -113,6 +115,10 @@ export function createUserShellApi(session: Session): UserShellApi {
         key: (keyEvent) => {
           session.globals.seat.keyboard.handleKey(keyEvent)
           session.flush()
+        },
+        blur: () => {
+          session.globals.seat.keyboard.focusLost()
+          session.globals.seat.pointer.unsetFocus()
         }
       },
       initScene: (sceneId, canvas) => session.renderer.initScene(sceneId, canvas),
