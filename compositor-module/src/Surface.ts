@@ -530,11 +530,10 @@ class Surface implements WlSurfaceRequests {
     this.pendingState.damageRects = []
     this.pendingState.bufferDamageRects = []
     this.pendingState.frameCallbacks = []
-    this.renderViews()
     this.resource.client.connection.flush()
   }
 
-  private renderViews() {
+  renderViews() {
     if (this.renderSource) {
       return
     }

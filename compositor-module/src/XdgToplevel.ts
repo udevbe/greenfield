@@ -35,7 +35,6 @@ import Size from './Size'
 import Surface from './Surface'
 import { makeSurfaceActive } from './UserShellApi'
 import { UserShellSurfaceRole } from './UserShellSurfaceRole'
-import View from './View'
 import XdgSurface from './XdgSurface'
 
 const {
@@ -111,6 +110,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     height: 0,
     resizeEdge: 0
   }
+  private previousWindowGeometry: Rect = Rect.create(0, 0, 0, 0)
   private _previousGeometry?: Rect
 
   static create(xdgToplevelResource: XdgToplevelResource, xdgSurface: XdgSurface, session: Session) {
@@ -197,7 +197,6 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     }
 
     this._configureState = this._ackedConfigureState
-    this.xdgSurface.updateWindowGeometry(this.xdgSurface.pendingWindowGeometry)
   }
 
   /**
@@ -205,15 +204,20 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
    * @param surface
    */
   onCommit(surface: Surface) {
-    if (surface.pendingState.bufferContents) {
+    this.previousWindowGeometry = this.xdgSurface.windowGeometry
+    surface.commitPending()
+    this.xdgSurface.commitWindowGeometry()
+    this.commitRoleState()
+
+    if (surface.state.bufferContents) {
       if (!this.mapped) {
         this._map(surface)
       }
-      if (this._ackedConfigureState.state.includes(resizing)) {
+      if (this._configureState.state.includes(resizing)) {
         this._resizingCommit(surface)
-      } else if (this._ackedConfigureState.state.includes(maximized)) {
+      } else if (this._configureState.state.includes(maximized)) {
         this._maximizedCommit(surface)
-      } else if (this._ackedConfigureState.state.includes(fullscreen)) {
+      } else if (this._configureState.state.includes(fullscreen)) {
         this._fullscreenCommit(surface)
       } else {
         this._normalCommit(surface)
@@ -222,8 +226,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       this._unmap()
     }
 
-    this.commitRoleState()
-    surface.commitPending()
+    surface.renderViews()
   }
 
   /**
@@ -254,8 +257,8 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
    * @private
    */
   private _resizingCommit(surface: Surface) {
-    const { w: newSurfaceWidth, h: newSurfaceHeight } = this.xdgSurface.pendingWindowGeometry.size
-    const { w: oldSurfaceWidth, h: oldSurfaceHeight } = this.xdgSurface.windowGeometry.size
+    const { x1: newX1, y1: newY1 } = this.xdgSurface.windowGeometry
+    const { x1: oldX1, y1: oldY1 } = this.previousWindowGeometry
 
     let dx = 0
     let dy = 0
@@ -263,17 +266,17 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     switch (edges) {
       case topRight:
       case top: {
-        dy = oldSurfaceHeight - newSurfaceHeight
+        dy = oldY1 - newY1
         break
       }
       case bottomLeft:
       case left: {
-        dx = oldSurfaceWidth - newSurfaceWidth
+        dx = oldX1 - newX1
         break
       }
       case topLeft: {
-        dx = oldSurfaceWidth - newSurfaceWidth
-        dy = oldSurfaceHeight - newSurfaceHeight
+        dx = oldX1 - newX1
+        dy = oldY1 - newY1
         break
       }
       default: {
@@ -281,16 +284,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       }
     }
 
-    if (dx || dy) {
-      this._findTopLevelViews(surface).forEach(topLevelView => {
-        const origPosition = topLevelView.positionOffset
-        topLevelView.positionOffset = Point.create(origPosition.x + dx, origPosition.y + dy)
-      })
-    }
-  }
-
-  private _findTopLevelViews(surface: Surface): View[] {
-    return Object.values(this._session.renderer.scenes).flatMap(scene => scene.topLevelViews.filter(topLevelView => topLevelView.surface === surface))
+    surface.views.forEach(view => view.positionOffset = view.positionOffset.plus(Point.create(dx, dy)))
   }
 
   /**
@@ -298,7 +292,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
    * @param surface
    */
   _maximizedCommit(surface: Surface) {
-    const { w: newSurfaceWidth, h: newSurfaceHeight } = this.xdgSurface.pendingWindowGeometry.size
+    const { w: newSurfaceWidth, h: newSurfaceHeight } = this.xdgSurface.windowGeometry.size
 
     if (newSurfaceWidth !== this._ackedConfigureState.width || newSurfaceHeight !== this._ackedConfigureState.height) {
       this.resource.postError(XdgWmBaseError.invalidSurfaceState, 'Surface size does not match configure event.')
@@ -312,7 +306,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     if (this._unfullscreenConfigureState) {
       this._unfullscreenConfigureState = undefined
     }
-    const windowGeoPositionOffset = this.xdgSurface.pendingWindowGeometry.position
+    const windowGeoPositionOffset = this.xdgSurface.windowGeometry.position
 
     const primaryView = surface.views.find(view => view.primary)
     if (primaryView) {
@@ -327,8 +321,8 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
    * @private
    */
   private _fullscreenCommit(surface: Surface) {
-    if (surface.pendingState.bufferContents) {
-      const bufferSize = surface.pendingState.bufferContents.size
+    if (surface.state.bufferContents) {
+      const bufferSize = surface.state.bufferContents.size
       const {
         x: newSurfaceWidth,
         y: newSurfaceHeight
@@ -350,7 +344,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       const y = (window.innerHeight - newSurfaceHeight) / 2
 
       surface.surfaceChildSelf.position = Point.create(x, y)
-    }
+    }9
     // TODO use api to nofity user shell scene canvas should be made fullscreen
   }
 
@@ -507,88 +501,91 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     // }
 
     // assigned in switch statement
-    let sizeAdjustment: (width: number, height: number, deltaX: number, deltaY: number) => { w: number, h: number }
+    let sizeAdjustment: (deltaX: number, deltaY: number) => { w: number, h: number }
+
+    const pointerX = pointer.x
+    const pointerY = pointer.y
+    const {
+      x0, y0,
+      x1, y1,
+      width: windowGeometryWidth,
+      height: windowGeometryHeight
+    } = this.xdgSurface.windowGeometry
 
     switch (edges) {
       case bottomRight: {
         setCursor('nwse-resize')
-        sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return { w: width + deltaX, h: height + deltaY }
-        }
+        sizeAdjustment = (deltaX, deltaY) => ({
+          w: windowGeometryWidth + deltaX,
+          h: windowGeometryHeight + deltaY
+        })
         break
       }
       case top: {
         setCursor('ns-resize')
-        sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return { w: width, h: height - deltaY }
-        }
+        sizeAdjustment = (deltaX, deltaY) => ({
+          w: windowGeometryWidth,
+          h: windowGeometryHeight - deltaY
+        })
         break
       }
       case bottom: {
         setCursor('ns-resize')
-        sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return { w: width, h: height + deltaY }
+        sizeAdjustment = (deltaX, deltaY) => {
+          return { w: windowGeometryWidth, h: windowGeometryHeight + deltaY }
         }
         break
       }
       case left: {
         setCursor('ew-resize')
-        sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return { w: width - deltaX, h: height }
+        sizeAdjustment = (deltaX, deltaY) => {
+          return { w: windowGeometryWidth - deltaX, h: windowGeometryHeight }
         }
         break
       }
       case topLeft: {
         setCursor('nwse-resize')
-        sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return { w: width - deltaX, h: height - deltaY }
+        sizeAdjustment = (deltaX, deltaY) => {
+          return { w: windowGeometryWidth - deltaX, h: windowGeometryHeight - deltaY }
         }
         break
       }
       case bottomLeft: {
         setCursor('nesw-resize')
-        sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return { w: width - deltaX, h: height + deltaY }
+        sizeAdjustment = (deltaX, deltaY) => {
+          return { w: windowGeometryWidth - deltaX, h: windowGeometryHeight + deltaY }
         }
         break
       }
       case right: {
         setCursor('ew-resize')
-        sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return { w: width + deltaX, h: height }
+        sizeAdjustment = (deltaX, deltaY) => {
+          return { w: windowGeometryWidth + deltaX, h: windowGeometryHeight }
         }
         break
       }
       case topRight: {
         setCursor('nesw-resize')
-        sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return { w: width + deltaX, h: height - deltaY }
+        sizeAdjustment = (deltaX, deltaY) => {
+          return { w: windowGeometryWidth + deltaX, h: windowGeometryHeight - deltaY }
         }
         break
       }
       case none:
       default: {
         pointer.setDefaultCursor()
-        sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return { w: width, h: height }
+        sizeAdjustment = () => {
+          return { w: windowGeometryWidth, h: windowGeometryHeight }
         }
         break
       }
     }
 
-    const pointerX = pointer.x
-    const pointerY = pointer.y
-    const {
-      width: windowGeometryWidth,
-      height: windowGeometryHeight
-    } = this.xdgSurface.windowGeometry
-
     const sizeCalculation = () => {
-      const deltaX = pointer.x - pointerX
-      const deltaY = pointer.y - pointerY
+      const pointerDeltaX = pointer.x - pointerX
+      const pointerDeltaY = pointer.y - pointerY
 
-      const size = sizeAdjustment(windowGeometryWidth, windowGeometryHeight, deltaX, deltaY)
-      // TODO min/max constraints
+      const size = sizeAdjustment(pointerDeltaX, pointerDeltaY)
       const width = Math.max(this._minSize.x, Math.min(size.w, this._maxSize.x))
       const height = Math.max(this._minSize.y, Math.min(size.h, this._maxSize.y))
 
@@ -606,7 +603,6 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       this._session.flush()
     }
 
-    const surface = this.xdgSurface.wlSurfaceResource.implementation as Surface
     pointer.onButtonRelease().then(() => {
       pointer.removeMouseMoveListener(resizeListener)
       pointer.setDefaultCursor()
