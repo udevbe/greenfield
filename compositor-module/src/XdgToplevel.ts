@@ -344,7 +344,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       const y = (window.innerHeight - newSurfaceHeight) / 2
 
       surface.surfaceChildSelf.position = Point.create(x, y)
-    }9
+    }
     // TODO use api to nofity user shell scene canvas should be made fullscreen
   }
 
