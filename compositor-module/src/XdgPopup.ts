@@ -16,7 +16,8 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import {
-  WlSeatResource, XdgPopupError,
+  WlSeatResource,
+  XdgPopupError,
   XdgPopupRequests,
   XdgPopupResource,
   XdgPositionerConstraintAdjustment,
@@ -204,9 +205,10 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
     if (this.dismissed) {
       return
     }
-    this.xdgSurface.updateWindowGeometry(this.xdgSurface.pendingWindowGeometry)
+    surface.commitPending()
+    this.xdgSurface.commitWindowGeometry()
 
-    if (surface.pendingState.bufferContents) {
+    if (surface.state.bufferContents) {
       if (!this.mapped) {
         this._map(surface)
       }
@@ -214,7 +216,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
       this._dismiss()
     }
 
-    surface.commitPending()
+    surface.renderViews()
   }
 
   private _map(surface: Surface) {

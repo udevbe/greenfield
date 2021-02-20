@@ -123,10 +123,8 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
   }
 
   onCommit(surface: Surface) {
-    const oldPosition = surface.surfaceChildSelf.position
-    surface.surfaceChildSelf.position = Point.create(oldPosition.x + surface.pendingState.dx, oldPosition.y + surface.pendingState.dy)
-
-    if (surface.pendingState.bufferContents) {
+    surface.commitPending()
+    if (surface.state.bufferContents) {
       if (!this._mapped) {
         this._map()
       }
@@ -135,8 +133,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
         this._unmap()
       }
     }
-
-    surface.commitPending()
+    surface.renderViews()
   }
 
   private _map() {

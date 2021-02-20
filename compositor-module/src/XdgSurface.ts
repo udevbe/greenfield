@@ -159,8 +159,8 @@ export default class XdgSurface implements XdgSurfaceRequests {
     this.pendingWindowGeometry = Rect.create(x, y, x + width, y + height)
   }
 
-  updateWindowGeometry(windowGeometry: Rect) {
-    this.windowGeometry = this._createBoundingRectangle().intersect(windowGeometry)
+  commitWindowGeometry() {
+    this.windowGeometry = this._createBoundingRectangle().intersect(this.pendingWindowGeometry)
   }
 
   private _createBoundingRectangle(): Rect {

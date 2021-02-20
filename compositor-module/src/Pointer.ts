@@ -149,9 +149,10 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
 
   onCommit(surface: Surface) {
     if (this._cursorSurface && this._cursorSurface.implementation === surface) {
-      this.hotspotX -= surface.pendingState.dx
-      this.hotspotY -= surface.pendingState.dy
       surface.commitPending()
+      this.hotspotX -= surface.state.dx
+      this.hotspotY -= surface.state.dy
+      surface.renderViews()
     }
   }
 
