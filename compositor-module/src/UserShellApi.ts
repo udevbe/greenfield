@@ -183,7 +183,7 @@ export function makeSurfaceActive(surface: (Surface & { role: UserShellSurfaceRo
       activeHistory = activeHistory.filter(historySurface => historySurface !== surface)
       const newActiveSurface = activeHistory[activeHistory.length - 1]
       if (activeDestroyed) {
-        surface.resource.client.connection.addIdleHandler(() => {
+        setTimeout(() => {
           if (newActiveSurface === activeHistory[activeHistory.length - 1]) {
             newActiveSurface?.role.requestActive()
           }
