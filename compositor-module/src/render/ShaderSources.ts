@@ -99,10 +99,9 @@ export const FRAGMENT_YUVA_TO_RGBA = {
     float vChannel = texture2D(vTexture, v_texCoord).x;
     float alphaChannel = texture2D(alphaYTexture, v_texCoord).x;
     vec4 channels = vec4(yChannel, uChannel, vChannel, 1.0);
-    vec3 rgb = ((channels * conversion).xyz -0.062745)*1.0625;
+    vec3 rgb = ((channels * conversion).xyz);
 
     gl_FragColor = vec4(rgb, ((alphaChannel*1.0894)-0.062745)*1.0851063);
-    gl_FragColor *= gl_FragColor.a;
   }
 `
 }
@@ -133,7 +132,7 @@ export const FRAGMENT_YUV_TO_RGB = {
     float uChannel = texture2D(uTexture, v_texCoord).x;
     float vChannel = texture2D(vTexture, v_texCoord).x;
     vec4 channels = vec4(yChannel, uChannel, vChannel, 1.0);
-    vec3 rgb = ((channels * conversion).xyz -0.062745)*1.0625;
+    vec3 rgb = ((channels * conversion).xyz);
     gl_FragColor = vec4(rgb, 1.0);
   }
 `
