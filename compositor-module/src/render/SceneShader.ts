@@ -15,11 +15,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import Size from "../Size";
-import View from "../View";
+import Size from '../Size'
+import View from '../View'
 import Program from './Program'
 import ShaderCompiler from './ShaderCompiler'
-import {FRAGMENT_ARGB8888, VERTEX_QUAD_TRANSFORM} from './ShaderSources'
+import { FRAGMENT_ARGB8888, VERTEX_QUAD_TRANSFORM } from './ShaderSources'
 
 type ShaderArgs = {
   u_projection: WebGLUniformLocation,
@@ -115,12 +115,12 @@ class SceneShader {
   }
 
   updateSceneData(sceneSize: Size) {
-    const {w, h} = sceneSize
+    const { w, h } = sceneSize
     this._sceneSize = sceneSize
     this.gl.viewport(0, 0, w, h)
-    this.gl.clearColor(0.2656, 0.2773, 0.2969, 0)
+    this.gl.clearColor(0, 0, 0, 0)
     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT | this.gl.STENCIL_BUFFER_BIT)
-    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA)
+    this.gl.blendFunc(this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA)
     this.gl.enable(this.gl.BLEND)
     this.program.setUniformM4(this.shaderArgs.u_projection, [
       2.0 / w, 0, 0, 0,
@@ -131,7 +131,7 @@ class SceneShader {
   }
 
   updateViewData(view: View) {
-    const {texture, size: {w, h}} = view.renderState
+    const { texture, size: { w, h } } = view.renderState
 
     this.gl.uniform1i(this.shaderArgs.u_texture, 0)
 
