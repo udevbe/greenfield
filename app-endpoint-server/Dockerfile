@@ -66,9 +66,6 @@ RUN set -ex \
   # smoke test
   && yarn --version
 
-WORKDIR /usr/src/app
-COPY package.json ./
-
 RUN apt-get update && apt-get install -y \
     cmake \
     libffi-dev \
@@ -81,9 +78,11 @@ RUN apt-get update && apt-get install -y \
     libgbm1 \
     libwayland-egl1-mesa \
     libwayland-server0 \
-    gtk-3-examples \
-    kwrite \
     && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/src/app
+COPY package.json ./
+
 RUN npm install -g cmake-js
 RUN npm install
 
