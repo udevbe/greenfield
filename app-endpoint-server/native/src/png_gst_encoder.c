@@ -1,6 +1,4 @@
-//
-// Created by erik on 9/24/19.
-//
+#include <stdlib.h>
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
 #include <gst/app/gstappsink.h>

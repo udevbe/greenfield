@@ -1,4 +1,6 @@
+#include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "encoder.h"
 #include "x264_gst_encoder.h"
 #include "png_gst_encoder.h"
