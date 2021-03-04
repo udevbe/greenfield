@@ -54,10 +54,6 @@
         bin: "/usr/bin/kwrite",
         args: ['-platform','wayland'],
       },
-      'remote-gnome-terminal': {
-        bin: "/usr/bin/gnome-terminal",
-        args: [],
-      }
     }
   }
 }
