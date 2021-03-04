@@ -17,4 +17,4 @@ performance might be degraded.
 - `docker build . -t app-endpoint-server`
 - `docker run -p8081:8081 app-endpoint-server`
 
-The docker build file includes the test applications `gtk3-demo` and `kwrite`.
+The docker build file includes the test applications `gtk3-demo` and `kwrite`. You can replace these with your own preferred applications.
