@@ -120,8 +120,6 @@ async function main() {
   remoteGtk3URLButton.textContent = 'GTK3-Demo'
   const remoteKwriteURLButton: HTMLButtonElement = document.createElement('button')
   remoteKwriteURLButton.textContent = 'KWrite'
-  const remoteGnomeTerminalURLButton: HTMLButtonElement = document.createElement('button')
-  remoteGnomeTerminalURLButton.textContent = 'Gnome-Terminal'
 
   const urlInput: HTMLInputElement = document.createElement('input')
   urlInput.type = 'text'
@@ -135,7 +133,6 @@ async function main() {
   container.appendChild(reactCanvasKitURLButton)
   container.appendChild(remoteGtk3URLButton)
   container.appendChild(remoteKwriteURLButton)
-  container.appendChild(remoteGnomeTerminalURLButton)
   container.appendChild(urlInput)
   container.appendChild(launchButton)
 
@@ -144,7 +141,6 @@ async function main() {
   reactCanvasKitURLButton.onclick = () => urlInput.value = `${window.location.href}apps/react-canvaskit/app.js`
   remoteGtk3URLButton.onclick = () => urlInput.value = `wss://app-endpoint.greenfield.app?launch=remote-gtk3-demo`
   remoteKwriteURLButton.onclick = () => urlInput.value = `ws://localhost:8081?launch=remote-kwrite`
-  remoteGnomeTerminalURLButton.onclick = () => urlInput.value = `ws://localhost:8081?launch=remote-gnome-terminal`
 
   launchButton.onclick = () => {
     const urlString = urlInput.value
