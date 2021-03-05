@@ -95,4 +95,5 @@ ENV GST_GL_WINDOW egl-device
 
 EXPOSE 8081
 
-CMD [ "node", "index.js" ]
+WORKDIR /home/node
+CMD [ "node", "/usr/src/app/index.js" ]
