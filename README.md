@@ -8,8 +8,7 @@ Greenfield is a [Wayland compositor](https://en.wikipedia.org/wiki/Wayland_%28di
 entirely in TypeScript while utilizing WebAssembly and WebGL for the performance critical parts. It can run native
 Wayland applications remotely, or it can run Wayland web applications directly in your browser.
 
-For more information, visit the [documentation](https://greenfield.app/docs/) or have a look on
-the [website](https://greenfield.app).
+For more information, have a look on the [website](https://greenfield.app).
 
 ### Modular Compositor
 
