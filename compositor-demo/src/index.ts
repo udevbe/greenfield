@@ -139,8 +139,8 @@ async function main() {
   webShmAppURLButton.onclick = () => urlInput.value = `${window.location.href}apps/simple-web-shm/app.js`
   webGLURLButton.onclick = () => urlInput.value = `${window.location.href}apps/simple-web-gl/app.js`
   reactCanvasKitURLButton.onclick = () => urlInput.value = `${window.location.href}apps/react-canvaskit/app.js`
-  remoteGtk3URLButton.onclick = () => urlInput.value = `wss://app-endpoint.greenfield.app?launch=remote-gtk3-demo`
-  remoteKwriteURLButton.onclick = () => urlInput.value = `ws://localhost:8081?launch=remote-kwrite`
+  remoteGtk3URLButton.onclick = () => urlInput.value = `wss://app-endpoint.greenfield.app?launch=gtk3-demo`
+  remoteKwriteURLButton.onclick = () => urlInput.value = `ws://localhost:8081?launch=kwrite`
 
   launchButton.onclick = () => {
     const urlString = urlInput.value
