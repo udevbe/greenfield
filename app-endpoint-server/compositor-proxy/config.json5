@@ -41,16 +41,5 @@
       // h264. Default is (256*256)-1 = 0xFFFF
       maxPngBufferSize: 0xffff,
     },
-    // List of apps that can be started from the browser, based on the 'appId' send
-    // from the browser. The 'appId' is then matched with a key value in 'apps'.
-    apps: {
-      "gtk3-demo": {
-        // The docker image to launch.
-        image: "udevbe/gtk3-demo:latest",
-      },
-      kwrite: {
-        image: "udevbe/kwrite:latest",
-      },
-    },
   },
 }

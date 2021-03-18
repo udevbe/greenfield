@@ -86,7 +86,7 @@ COPY package.json ./
 RUN npm install -g cmake-js
 RUN npm install
 
-COPY . .
+COPY .. .
 RUN npm run generate
 RUN npm run build
 

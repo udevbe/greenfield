@@ -115,7 +115,7 @@ CTestTestfile.cmake
 /compositor-module/dev/
 /compositor-module/dist/
 /compositor-module/src/protocol/
-/app-endpoint-server/src/protocol
+/app-endpoint-server/compositor-proxy/src/protocol
 /compositor-module/public/clients/
 /wasmlibs/libxkbcommon/
 /wasmlibs/emsdk/

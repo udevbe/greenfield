@@ -26,20 +26,17 @@ const url = require('url')
 
 const { serverConfig } = require('../config.json5')
 
-// TODO Disabled for now until we have something more rigid.
-// const { verifyRemoteAppLaunchClaim } = require('./CloudFunctions')
-
 const uuidRegEx = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
 
 class AppEndpointServer {
   /**
    * @returns {AppEndpointServer}
    */
-  static create () {
+  static create() {
     const logger = Logger({
       name: `app-endpoint-server`,
-      prettyPrint: (process.env.DEBUG && process.env.DEBUG == true),
-      level: (process.env.DEBUG && process.env.DEBUG == true) ? 20 : 30
+      prettyPrint: process.env.DEBUG && process.env.DEBUG == true,
+      level: process.env.DEBUG && process.env.DEBUG == true ? 20 : 30,
     })
 
     const server = http.createServer((req, res) => {
@@ -63,7 +60,7 @@ class AppEndpointServer {
   /**
    * @param {Object}logger
    */
-  constructor (logger) {
+  constructor(logger) {
     /**
      * @private
      */
@@ -82,7 +79,9 @@ class AppEndpointServer {
      * @type {Promise<void>}
      * @private
      */
-    this._destroyPromise = new Promise(resolve => { this._destroyResolve = resolve })
+    this._destroyPromise = new Promise((resolve) => {
+      this._destroyResolve = resolve
+    })
   }
 
   /**
@@ -90,28 +89,37 @@ class AppEndpointServer {
    * @param {Socket}socket
    * @param {Buffer}head
    */
-  async handleHttpUpgradeRequest (request, socket, head) {
+  async handleHttpUpgradeRequest(request, socket, head) {
     try {
       const wsURL = url.parse(request.url, true)
       const compositorSessionId = wsURL.query['compositorSessionId']
 
-      this._logger.info(`Received web socket upgrade request with compositor session id: ${compositorSessionId}. Delegating to a session child process.`)
+      this._logger.info(
+        `Received web socket upgrade request with compositor session id: ${compositorSessionId}. Delegating to a session child process.`,
+      )
       if (compositorSessionId && uuidRegEx.test(compositorSessionId)) {
         let appEndpointSessionFork = this._appEndpointSessionForks[compositorSessionId]
         if (!appEndpointSessionFork) {
           appEndpointSessionFork = this.createAppEndpointSessionFork(compositorSessionId)
           this.onDestroy().then(() => {
-            this._logger.info(`Killing  app-endpoint-session::${compositorSessionId}]. Sending child ${appEndpointSessionFork.pid} SIGKILL.`)
+            this._logger.info(
+              `Killing  app-endpoint-session::${compositorSessionId}]. Sending child ${appEndpointSessionFork.pid} SIGKILL.`,
+            )
             appEndpointSessionFork.kill('SIGKILL')
           })
         }
 
         appEndpointSessionFork.send(
-          [{
-            headers: request.headers,
-            method: request.method,
-            query: wsURL.query
-          }, head], socket)
+          [
+            {
+              headers: request.headers,
+              method: request.method,
+              query: wsURL.query,
+            },
+            head,
+          ],
+          socket,
+        )
       } else {
         const msg = `Received web socket upgrade request with compositor session id: ${compositorSessionId}. Id is not a valid uuid.`
         this._logger.error(msg)
@@ -131,11 +139,13 @@ class AppEndpointServer {
    * @param {Error}error
    * @private
    */
-  _denyWebSocket (socket, errorCode, error) {
-    socket.write(`HTTP/1.1 ${errorCode} Web Socket Protocol Handshake\r\n` +
-      'Upgrade: WebSocket\r\n' +
-      'Connection: Upgrade\r\n' +
-      '\r\n')
+  _denyWebSocket(socket, errorCode, error) {
+    socket.write(
+      `HTTP/1.1 ${errorCode} Web Socket Protocol Handshake\r\n` +
+        'Upgrade: WebSocket\r\n' +
+        'Connection: Upgrade\r\n' +
+        '\r\n',
+    )
     socket.destroy(error)
   }
 
@@ -143,10 +153,13 @@ class AppEndpointServer {
    * @param {string} compositorSessionId
    * @return {ChildProcess}
    */
-  createAppEndpointSessionFork (compositorSessionId) {
+  createAppEndpointSessionFork(compositorSessionId) {
     this._logger.info('Creating new session child process.')
     const configPath = process.argv[2]
-    const child = childProcess.fork(path.join(__dirname, 'AppEndpointSession.js'), configPath == null ? [] : [`${configPath}`])
+    const child = childProcess.fork(
+      path.join(__dirname, 'AppEndpointSession.js'),
+      configPath == null ? [] : [`${configPath}`],
+    )
 
     const removeChild = () => {
       this._logger.info(`Session child [${child.pid}] exit.`)
@@ -170,11 +183,11 @@ class AppEndpointServer {
   /**
    * @returns {Promise<void>}
    */
-  onDestroy () {
+  onDestroy() {
     return this._destroyPromise
   }
 
-  destroy () {
+  destroy() {
     if (this._destroyResolve) {
       this._logger.info(`Destroyed.`)
       this._destroyResolve()
