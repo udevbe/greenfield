@@ -17,7 +17,7 @@
 
 'use strict'
 
-const WlShm_Format = {
+export const WlShmFormat = {
   /**
    * 32-bit ARGB format, [31:0] A:R:G:B 8:8:8:8 little endian
    */
@@ -249,7 +249,5 @@ const WlShm_Format = {
   /**
    * 3 plane YCbCr format, non-subsampled Cr (1) and Cb (2) planes
    */
-  yvu444: 0x34325659
-}
-
-module.exports = WlShm_Format
+  yvu444: 0x34325659,
+} as const

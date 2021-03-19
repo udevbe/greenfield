@@ -17,7 +17,5 @@
 
 'use strict'
 
-module.exports = {
-  h264: 0,
-  png: 1
-}
+export const h264 = 0
+export const png = 1

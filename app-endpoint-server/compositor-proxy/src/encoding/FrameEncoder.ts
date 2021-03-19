@@ -17,20 +17,22 @@
 
 'use strict'
 
-/**
- * @interface
- */
-class FrameEncoder {
-  /**
-   * @param {Object}pixelBuffer
-   * @param {number}bufferFormat
-   * @param {number}bufferWidth
-   * @param {number}bufferHeight
-   * @param {number}bufferStride
-   * @param {number}serial
-   * @return {Promise<EncodedFrame>}
-   */
-  encodeBuffer (pixelBuffer, bufferFormat, bufferWidth, bufferHeight, bufferStride, serial) {}
+import { EncodedFrame } from './EncodedFrame'
+import { WlShmFormat } from './WlShmFormat'
+
+export type SupportedWlShmFormat = typeof WlShmFormat['argb8888'] | typeof WlShmFormat['xrgb8888']
+
+export interface FrameEncoderFactory {
+  (width: number, height: number, wlShmFormat: SupportedWlShmFormat): FrameEncoder
 }
 
-module.exports = FrameEncoder
+export interface FrameEncoder {
+  encodeBuffer(
+    pixelBuffer: unknown,
+    bufferFormat: SupportedWlShmFormat,
+    bufferWidth: number,
+    bufferHeight: number,
+    bufferStride: number,
+    serial: number,
+  ): Promise<EncodedFrame>
+}

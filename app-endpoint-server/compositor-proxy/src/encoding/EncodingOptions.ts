@@ -15,35 +15,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-'use strict'
-
-class EncodingOptions {
-  /**
-   * @param {number}encodingOptions
-   * @return {number}
-   */
-  static enableSplitAlpha (encodingOptions) {
-    return (encodingOptions | EncodingOptions._ALPHA)
-  }
-
-  /**
-   * @param encodingOptions
-   * @return {number}
-   */
-  static enableFullFrame (encodingOptions) {
-    return (encodingOptions | EncodingOptions._FULL_FRAME)
-  }
+export function enableSplitAlpha(encodingOptions: number): number {
+  return encodingOptions | _ALPHA
 }
 
-/**
- * @type {number}
- * @private
- */
-EncodingOptions._ALPHA = (1 << 0)
-/**
- * @type {number}
- * @private
- */
-EncodingOptions._FULL_FRAME = (1 << 1)
+export function enableFullFrame(encodingOptions: number): number {
+  return encodingOptions | _FULL_FRAME
+}
 
-module.exports = EncodingOptions
+const _ALPHA = 1 << 0
+const _FULL_FRAME = 1 << 1
