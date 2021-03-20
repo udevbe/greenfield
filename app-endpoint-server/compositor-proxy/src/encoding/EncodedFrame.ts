@@ -15,8 +15,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-'use strict'
-
 import { EncodedFrameFragment } from './EncodedFrameFragment'
 
 export class EncodedFrame {

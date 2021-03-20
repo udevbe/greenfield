@@ -15,9 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-'use strict'
-
-import { Epoll } from 'epoll '
+import { Epoll } from 'epoll'
 import Logger from 'pino'
 import { Endpoint, nativeGlobalNames } from 'westfield-endpoint'
 import WebSocket from 'ws'

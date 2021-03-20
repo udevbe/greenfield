@@ -15,12 +15,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-'use strict'
-
 import { SessionConfig, sessionConfig } from '../../config'
 import { createNVH264AlphaEncoder } from './NVH264AlphaEncoder'
 import { createNVH264OpaqueEncoder } from './NVH264OpaqueEncoder'
-import { createPNGEncoder, PNGEncoder } from './PNGEncoder'
+import { createPNGEncoder } from './PNGEncoder'
 import { WlShmFormat } from './WlShmFormat'
 import { FrameEncoder, FrameEncoderFactory, SupportedWlShmFormat } from './FrameEncoder'
 import { createX264AlphaEncoder } from './X264AlphaEncoder'

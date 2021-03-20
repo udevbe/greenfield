@@ -15,8 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-'use strict'
-import appEndpointNative from '../../build/Release/app-endpoint-encoding'
+import appEndpointNative from './app-endpoint-encoding'
 import { EncodedFrame } from './EncodedFrame'
 import { EncodedFrameFragment } from './EncodedFrameFragment'
 import { enableFullFrame } from './EncodingOptions'
@@ -35,7 +34,7 @@ export const createNVH264OpaqueEncoder: FrameEncoderFactory = (
   wlShmFormat: SupportedWlShmFormat,
 ): FrameEncoder => new NVH264OpaqueEncoder(width, height, wlShmFormat)
 
-export class NVH264OpaqueEncoder implements FrameEncoder {
+class NVH264OpaqueEncoder implements FrameEncoder {
   private readonly _encodingContext: unknown
   private _opaque?: Buffer
   private _encodingResolve?: (value: void | PromiseLike<void>) => void

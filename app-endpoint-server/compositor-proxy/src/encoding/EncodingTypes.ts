@@ -15,7 +15,5 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-'use strict'
-
 export const h264 = 0
 export const png = 1

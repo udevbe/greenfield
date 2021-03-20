@@ -1,4 +1,4 @@
-declare module 'epoll ' {
+declare module 'epoll' {
   export interface Epoll {
     add(fd: number, bleh: number): void
   }

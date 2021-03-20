@@ -9,11 +9,6 @@ find_package(GLIB2 REQUIRED)
 find_package(GStreamer REQUIRED COMPONENTS gstreamer-app gstreamer-video)
 find_package(PkgConfig REQUIRED)
 
-#find_gstreamer_component(gst gstreamer-1.0 gstreamer-1.0)
-#find_gstreamer_component(gstbase gstreamer-base-1.0 gstbase-1.0)
-#find_gstreamer_component(gstapp gstreamer-app-1.0 gstapp-1.0)
-#find_gstreamer_component(gstvideo gstreamer-video-1.0 gstvideo-1.0)
-
 add_library(${PROJECT_NAME} SHARED
         native/src/x264_gst_encoder.c
         native/src/x264_gst_encoder.h
@@ -32,3 +27,7 @@ target_include_directories(${PROJECT_NAME}
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".node")
 target_link_libraries(${PROJECT_NAME} ${CMAKE_JS_LIB} ${GLIB2_LIBRARIES} ${GSTREAMER_LIBRARIES} ${GSTREAMER_APP_LIBRARIES} ${GSTREAMER_VIDEO_LIBRARIES})
+set_target_properties(${PROJECT_NAME}
+    PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY ../dist/src/encoding
+)

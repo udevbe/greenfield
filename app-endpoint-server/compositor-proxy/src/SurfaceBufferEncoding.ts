@@ -15,8 +15,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-'use strict'
-
 import Logger from 'pino'
 import { EncodedFrame } from './encoding/EncodedFrame'
 import { loggerConfig } from './index'
@@ -38,6 +36,8 @@ export class SurfaceBufferEncoding {
     /**
      * attach, [R]equest w opcode [1]
      */
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
     wlSurfaceInterceptor.prototype.R1 = function (message: {
       buffer: ArrayBuffer
       fds: Array<number>
@@ -46,6 +46,8 @@ export class SurfaceBufferEncoding {
       size: number
     }) {
       const [bufferResourceId] = WireMessageUtil.unmarshallArgs(message, 'oii')
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       this.bufferResourceId = bufferResourceId || null
       // logger.debug(`Buffer attached with id: serial=${bufferSerial}, id=${this.bufferResourceId}`)
 
@@ -55,6 +57,8 @@ export class SurfaceBufferEncoding {
     /**
      * commit, [R]equest with opcode [6]
      */
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
     wlSurfaceInterceptor.prototype.R6 = function (message: {
       buffer: ArrayBuffer
       fds: Array<number>
@@ -62,7 +66,11 @@ export class SurfaceBufferEncoding {
       consumed: number
       size: number
     }) {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       if (!this.encoder) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         this.encoder = Encoder.create()
       }
 
@@ -78,14 +86,22 @@ export class SurfaceBufferEncoding {
       uint32Array[2] = syncSerial
 
       // logger.debug(`Buffer committed: serial=${syncSerial}, id=${this.bufferResourceId}`)
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       if (this.bufferResourceId) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         const bufferId = this.bufferResourceId
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         this.bufferResourceId = 0
 
         const { buffer, format, width, height, stride } = Endpoint.getShmBuffer(this.wlClient, bufferId)
         // logger.debug(`Request buffer encoding: serial=${syncSerial}, id=${bufferId}`)
         // console.log('|- Awaiting buffer encoding.')
         // const start = Date.now()
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         this.encoder
           .encodeBuffer(buffer, format, width, height, stride, syncSerial)
           .then((encodedFrame: EncodedFrame) => {

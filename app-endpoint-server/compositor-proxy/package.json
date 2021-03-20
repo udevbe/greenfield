@@ -8,22 +8,19 @@
   "license": "AGPL-3.0",
   "description": "Wayland application endpoint.",
   "bin": {
-    "appendpointd": "index.js"
+    "appendpointd": "src/index.js"
   },
   "scripts": {
     "generate:xdgshell": "westfield-endpoint-generator protocol/xdg-shell.xml -o src/protocol",
     "generate:wayland": "westfield-endpoint-generator protocol/wayland.xml -o src/protocol",
     "generate": "mkdir -p src/protocol && npm run generate:wayland && npm run generate:xdgshell",
-    "build": "cmake-js",
-    "start": "node index.js"
+    "build": "cmake-js & tsc",
+    "start": "node ./dist/src/index.js"
   },
   "dependencies": {
     "epoll": "^4.0.0",
-    "json5": "^2.1.3",
     "pino": "^6.8.0",
     "pino-pretty": "^4.1.0",
-    "prettier": "^2.2.1",
-    "typescript": "^4.2.3",
     "websocket-stream": "^5.5.2",
     "westfield-endpoint": "^0.4.4",
     "ws": "^7.4.4"
@@ -38,6 +35,8 @@
     "eslint": "^7.22.0",
     "eslint-config-prettier": "^8.1.0",
     "eslint-plugin-prettier": "^3.3.1",
+    "prettier": "^2.2.1",
+    "typescript": "^4.2.3",
     "westfield-endpoint-generator": "^0.3.1"
   }
 }

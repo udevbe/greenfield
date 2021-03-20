@@ -15,9 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-'use strict'
-
-import appEndpointNative from '../../build/Release/app-endpoint-encoding'
+import appEndpointNative from './app-endpoint-encoding'
 import { EncodedFrame } from './EncodedFrame'
 import { EncodedFrameFragment } from './EncodedFrameFragment'
 import { enableFullFrame, enableSplitAlpha } from './EncodingOptions'
@@ -36,7 +34,7 @@ export const createX264AlphaEncoder: FrameEncoderFactory = (
   wlShmFormat: SupportedWlShmFormat,
 ): FrameEncoder => new X264AlphaEncoder(width, height, wlShmFormat)
 
-export class X264AlphaEncoder implements FrameEncoder {
+class X264AlphaEncoder implements FrameEncoder {
   private readonly _encodingContext: unknown
   private _opaque?: Buffer
   private _alpha?: Buffer

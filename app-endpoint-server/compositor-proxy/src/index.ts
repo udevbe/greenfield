@@ -7,7 +7,7 @@ import { SurfaceBufferEncoding } from './SurfaceBufferEncoding'
 
 export const loggerConfig = {
   prettyPrint: Boolean(process.env.DEBUG),
-  level: Boolean(process.env.DEBUG) ? '20' : '30',
+  // level: Boolean(process.env.DEBUG) ? 20 : 30,
 }
 
 const logger = Logger({

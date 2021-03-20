@@ -17,17 +17,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-'use strict'
-
 const Logger = require('pino')
 
 require('json5/lib/register')
 const AppEndpointServer = require('./src/AppEndpointServer')
 
-function main () {
+function main() {
   const logger = Logger({
     name: `app-endpoint-server`,
-    prettyPrint: (process.env.DEBUG && process.env.DEBUG == true)
+    prettyPrint: process.env.DEBUG && process.env.DEBUG == true,
   })
   try {
     const appEndpointDaemon = AppEndpointServer.create()

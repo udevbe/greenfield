@@ -15,9 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-'use strict'
-
-import appEndpointNative from '../../build/Release/app-endpoint-encoding'
+import appEndpointNative from './app-endpoint-encoding'
 import { EncodedFrame } from './EncodedFrame'
 import { EncodedFrameFragment } from './EncodedFrameFragment'
 import { enableFullFrame } from './EncodingOptions'
@@ -36,7 +34,7 @@ export const createPNGEncoder: FrameEncoderFactory = (
   wlShmFormat: SupportedWlShmFormat,
 ): FrameEncoder => new PNGEncoder(width, height, wlShmFormat)
 
-export class PNGEncoder implements FrameEncoder {
+class PNGEncoder implements FrameEncoder {
   private readonly _encodingContext: unknown
   private _pngImage?: Buffer
   private _encodingResolve?: (value: void | PromiseLike<void>) => void

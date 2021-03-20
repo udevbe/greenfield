@@ -15,8 +15,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-'use strict'
-
 export const WlShmFormat = {
   /**
    * 32-bit ARGB format, [31:0] A:R:G:B 8:8:8:8 little endian
