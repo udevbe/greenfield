@@ -22,6 +22,7 @@ async function handleAnyRequest(req: http.IncomingMessage, res: http.ServerRespo
   }
 
   if (uuidRegEx.test(compositorSessionId)) {
+    // TODO make docker-controller hostname configurable?
     const result = await fetch(`http://docker-controller/compositor/${compositorSessionId}`, {
       method: 'PUT',
       redirect: 'follow',
@@ -42,7 +43,7 @@ async function handleAnyRequest(req: http.IncomingMessage, res: http.ServerRespo
 
 function main() {
   const httpServer = http.createServer(handleAnyRequest)
-  httpServer.on('upgrade', function (req, socket, head) {
+  httpServer.on('upgrade', (req, socket, head) => {
     proxy.ws(req, socket, head)
   })
 

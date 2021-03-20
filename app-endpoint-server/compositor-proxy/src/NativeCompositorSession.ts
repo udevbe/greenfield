@@ -19,7 +19,7 @@ import { Epoll } from 'epoll'
 import Logger from 'pino'
 import { Endpoint, nativeGlobalNames } from 'westfield-endpoint'
 import WebSocket from 'ws'
-import { AppEndpointWebFS } from './AppEndpointWebFS'
+import { CompositorProxyWebFS } from './CompositorProxyWebFS'
 
 import { loggerConfig } from './index'
 
@@ -28,7 +28,7 @@ import { WebSocketChannel } from './WebSocketChannel'
 
 const logger = Logger({
   ...loggerConfig,
-  name: `app-endpoint-session::native-compositor-session`,
+  name: `native-compositor-session`,
 })
 
 export type ClientEntry = { webSocketChannel: WebSocketChannel; nativeClientSession?: NativeClientSession; id: number }
@@ -59,7 +59,7 @@ export class NativeCompositorSession {
 
   constructor(
     public readonly compositorSessionId: string,
-    public readonly appEndpointWebFS = AppEndpointWebFS.create(compositorSessionId),
+    public readonly appEndpointWebFS = CompositorProxyWebFS.create(compositorSessionId),
     public clients: ClientEntry[] = [],
     private _nextClientId = 100,
   ) {
@@ -75,9 +75,6 @@ export class NativeCompositorSession {
     logger.info(`Listening on: WAYLAND_DISPLAY="${this.waylandDisplay}".`)
   }
 
-  /**
-   * @return {Promise<void>}
-   */
   onDestroy(): Promise<void> {
     return this._destroyPromise
   }

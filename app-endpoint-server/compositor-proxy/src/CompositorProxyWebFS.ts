@@ -13,12 +13,12 @@ const textDecoder = new TextDecoder()
 
 // FIXME this class is pretty broken...
 
-export class AppEndpointWebFS {
-  static create(compositorSessionId: string): AppEndpointWebFS {
+export class CompositorProxyWebFS {
+  static create(compositorSessionId: string): CompositorProxyWebFS {
     const { protocol, hostname, port } = serverConfig
     const localWebFDBaseURL = new URL(`${protocol}//${hostname}:${port}`)
 
-    return new AppEndpointWebFS(compositorSessionId, localWebFDBaseURL)
+    return new CompositorProxyWebFS(compositorSessionId, localWebFDBaseURL)
   }
 
   constructor(
@@ -157,29 +157,25 @@ export class AppEndpointWebFS {
     return textEncoder.encode(webFdURL.href)
   }
 
-  /**
-   *
-   * @param {WebSocket}webSocket
-   * @param {ParsedUrlQuery}query
-   */
-  incomingDataTransfer(webSocket: WebSocket, query: { fd: string; compositorSessionId: string }): void {
-    const compositorSessionId = query.compositorSessionId
-    if (compositorSessionId !== this._compositorSessionId) {
-      // fd did not originate from here
-      // TODO close with error code & message (+log?)
-      webSocket.close()
-      return
-    }
-    const fd = query.fd
-    // TODO do we want to do something differently based on the type?
-    // const type = query.type
-
-    // Need to pass in null as path argument so it will use the fd to open the file (undocumented).
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    const target = fs.createWriteStream(null, { fd: Number.parseInt(fd) })
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    websocketStream(webSocket).pipe(target)
-  }
+  // FIXME disabled for now
+  // incomingDataTransfer(webSocket: WebSocket, query: { fd: string; compositorSessionId: string }): void {
+  //   const compositorSessionId = query.compositorSessionId
+  //   if (compositorSessionId !== this._compositorSessionId) {
+  //     // fd did not originate from here
+  //     // TODO close with error code & message (+log?)
+  //     webSocket.close()
+  //     return
+  //   }
+  //   const fd = query.fd
+  //   // TODO do we want to do something differently based on the type?
+  //   // const type = query.type
+  //
+  //   // Need to pass in null as path argument so it will use the fd to open the file (undocumented).
+  //   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  //   // @ts-ignore
+  //   const target = fs.createWriteStream(null, { fd: Number.parseInt(fd) })
+  //   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  //   // @ts-ignore
+  //   websocketStream(webSocket).pipe(target)
+  // }
 }

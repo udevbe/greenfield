@@ -32,7 +32,7 @@ import { noopHandler, WebSocketChannel } from './WebSocketChannel'
 
 const logger = Logger({
   ...loggerConfig,
-  name: `app-endpoint-session::native-client-session`,
+  name: `native-client-session`,
 })
 
 export class NativeClientSession {

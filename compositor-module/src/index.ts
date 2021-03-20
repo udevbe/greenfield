@@ -84,8 +84,7 @@ export interface CompositorConfiguration {
   keyboardLayoutName?: string
 }
 
-export interface CompositorWebAppSocket {
-}
+export interface CompositorWebAppSocket {}
 
 export function createCompositorWebAppSocket(session: CompositorSession): CompositorWebAppSocket {
   if (session instanceof Session) {
@@ -95,8 +94,7 @@ export function createCompositorWebAppSocket(session: CompositorSession): Compos
   }
 }
 
-export interface CompositorRemoteSocket {
-}
+export interface CompositorRemoteSocket {}
 
 export function createCompositorRemoteSocket(session: CompositorSession): CompositorRemoteSocket {
   if (session instanceof Session) {
@@ -107,11 +105,14 @@ export function createCompositorRemoteSocket(session: CompositorSession): Compos
 }
 
 export interface CompositorRemoteAppLauncher {
-  launch(appEndpointURL: URL, remoteAppId: string): Promise<Client>
-  launchURL(appEndpointURL: URL): Promise<Client>
+  launch(appEndpointURL: URL, remoteAppId: string, auth?: string): Promise<Client>
+  launchURL(appEndpointURL: URL, auth?: string): Promise<Client>
 }
 
-export function createCompositorRemoteAppLauncher(session: CompositorSession, remoteSocket: CompositorRemoteSocket): CompositorRemoteAppLauncher {
+export function createCompositorRemoteAppLauncher(
+  session: CompositorSession,
+  remoteSocket: CompositorRemoteSocket
+): CompositorRemoteAppLauncher {
   if (session instanceof Session && remoteSocket instanceof RemoteSocket) {
     return RemoteAppLauncher.create(session, remoteSocket)
   } else {
@@ -123,12 +124,12 @@ export interface CompositorWebAppLauncher {
   launch(webAppURL: URL): Promise<Client>
 }
 
-export function createCompositorWebAppLauncher(webAppSocket: CompositorWebAppSocket): CompositorWebAppLauncher {
+export function createCompositorWebAppLauncher(
+  webAppSocket: CompositorWebAppSocket
+): CompositorWebAppLauncher {
   if (webAppSocket instanceof WebAppSocket) {
     return WebAppLauncher.create(webAppSocket)
   } else {
     throw new Error('Web app socket does not have expected implementation.')
   }
 }
-
-

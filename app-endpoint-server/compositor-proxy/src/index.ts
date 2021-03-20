@@ -1,8 +1,8 @@
 import Logger from 'pino'
-import { URL } from 'url'
+import { URL, URLSearchParams } from 'url'
 import WebSocket from 'ws'
 import { serverConfig } from '../config'
-import { AppEndpointSession } from './AppEndpointSession'
+import { CompositorProxySession } from './CompositorProxySession'
 import { SurfaceBufferEncoding } from './SurfaceBufferEncoding'
 
 export const loggerConfig = {
@@ -22,7 +22,15 @@ function main() {
     console.log('env COMPOSITOR_SESSION_ID must be set.')
     process.exit(1)
   }
-  const appEndpointSession = AppEndpointSession.create(compositorSessionId)
+
+  // TODO pass toke public key when creating container
+  const publicKey = process.env.TOKEN_PUBLIC_KEY
+  if (publicKey === undefined) {
+    console.log('env TOKEN_PUBLIC_KEY must be set.')
+    process.exit(1)
+  }
+
+  const compositorProxySession = CompositorProxySession.create(compositorSessionId, publicKey)
 
   process.on('uncaughtException', (e) => {
     logger.error('\tname: ' + e.name + ' message: ' + e.message)
@@ -32,8 +40,24 @@ function main() {
   SurfaceBufferEncoding.init()
 
   const wss = new WebSocket.Server({ port: serverConfig.port, host: serverConfig.hostname })
-  wss.on('connection', (ws) => {
-    appEndpointSession.handleConnection(ws, new URL(ws.url).searchParams)
+  wss.on('connection', (ws, request) => {
+    if (request.url === undefined) {
+      ws.close(4500, 'BUG? Expected an internal url property on incoming websocket request.')
+      ws.terminate()
+      return
+    }
+
+    const subProtocolWords = ws.protocol.split(' ')
+    if (subProtocolWords[0] !== 'Authorization:' || subProtocolWords[1] !== 'Bearer') {
+      ws.close(4401, 'Access denied.')
+      ws.terminate()
+    }
+
+    const token = subProtocolWords[2]
+
+    const searchParams = new URL(`${serverConfig.protocol}${serverConfig.hostname}:${serverConfig.port}${request.url}`)
+      .searchParams
+    compositorProxySession.handleConnection(ws, searchParams, token)
   })
 
   console.log('Listening to port ' + serverConfig.port)
