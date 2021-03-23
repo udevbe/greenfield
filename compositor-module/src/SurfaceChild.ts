@@ -18,14 +18,14 @@
 import Point from './math/Point'
 import Surface from './Surface'
 
-export interface SurfaceChild {
-  readonly surface: Surface;
-  position: Point;
+export type SurfaceChild = {
+  readonly surface: Surface
+  position: Point
 }
 
-export function createSurfaceChild(surface: Surface) {
+export function createSurfaceChild(surface: Surface): SurfaceChild {
   return {
     surface: surface,
-    position: Point.create(0, 0)
+    position: Point.create(0, 0),
   }
 }

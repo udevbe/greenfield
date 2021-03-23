@@ -21,7 +21,7 @@ export default interface BufferContents<T> {
   validateSize?: () => void
 
   size: Size
-  mimeType: 'video/h264'|'image/png'|'image/rgba'|'image/canvas'
+  mimeType: 'video/h264' | 'image/png' | 'image/rgba' | 'image/canvas'
   pixelContent: T
   serial?: number
 }

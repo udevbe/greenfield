@@ -19,7 +19,7 @@ import {
   WlKeyboardKeymapFormat,
   WlKeyboardKeyState,
   WlKeyboardRequests,
-  WlKeyboardResource
+  WlKeyboardResource,
 } from 'westfield-runtime-server'
 import DataDevice from './DataDevice'
 import { CompositorKeyboard } from './index'
@@ -32,35 +32,16 @@ import { buildNrmlvoEntries, createFromNames, createFromResource, nrmlvo, Xkb } 
 const { pressed, released } = WlKeyboardKeyState
 const { xkbV1 } = WlKeyboardKeymapFormat
 
-/**
- *
- *            The wl_keyboard interface represents one or more keyboards
- *            associated with a seat.
- */
 export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard {
-  nrmlvo: nrmlvo
-  defaultNrmlvo: nrmlvo
-  nrmlvoEntries: nrmlvo[]
-  resources: WlKeyboardResource[] = []
-  // @ts-ignore set in create of Keyboard
-  xkb: Xkb
-  // @ts-ignore set in create of Seat
-  seat: Seat
-  private _dataDevice: DataDevice
-  private _session: Session
-  private _focus?: Surface
-  private _keys: number[] = []
-  private _keyboardFocusListeners: (() => void)[] = []
-  private _keyboardFocusResolve?: () => void
-  private _keyboardFocusPromise?: Promise<void>
-
   static create(session: Session, dataDevice: DataDevice): Keyboard {
     const nrmlvoEntries = buildNrmlvoEntries()
 
     // deduce from browser language settings
     const langTokens = navigator.language.split('-')
     const lang = langTokens.length === 1 ? langTokens[0].toLowerCase() : langTokens[1].toLowerCase()
-    const nrmlvoEntry = nrmlvoEntries.find(nrmlvo => nrmlvo.layout === lang && nrmlvo.variant == null) || nrmlvoEntries.find(nrmlvo => nrmlvo.layout === 'us')
+    const nrmlvoEntry =
+      nrmlvoEntries.find((nrmlvo) => nrmlvo.layout === lang && nrmlvo.variant == null) ||
+      nrmlvoEntries.find((nrmlvo) => nrmlvo.layout === 'us')
     if (nrmlvoEntry === undefined) {
       throw new Error('BUG. No default nrmlvo entry found.')
     }
@@ -71,44 +52,54 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
     return keyboard
   }
 
+  defaultNrmlvo: nrmlvo
+  resources: WlKeyboardResource[] = []
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore set in create of Keyboard
+  xkb: Xkb
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore set in create of Seat
+  seat: Seat
+  private _focus?: Surface
+  private keys: number[] = []
+  private keyboardFocusListeners: (() => void)[] = []
+  private keyboardFocusResolve?: () => void
+  private keyboardFocusPromise?: Promise<void>
+
   private constructor(
-    dataDevice: DataDevice,
-    session: Session,
-    nrmlvoEntries: nrmlvo[],
-    nrmlvoEntry: nrmlvo
+    private dataDevice: DataDevice,
+    private session: Session,
+    public nrmlvoEntries: nrmlvo[],
+    public nrmlvo: nrmlvo,
   ) {
-    this._dataDevice = dataDevice
-    this._session = session
-    this.nrmlvoEntries = nrmlvoEntries
-    this.nrmlvo = nrmlvoEntry
-    this.defaultNrmlvo = nrmlvoEntry
+    this.defaultNrmlvo = nrmlvo
   }
 
-  addKeyboardFocusListener(listener: () => void) {
-    this._keyboardFocusListeners.push(listener)
+  addKeyboardFocusListener(listener: () => void): void {
+    this.keyboardFocusListeners.push(listener)
   }
 
-  removeKeyboardFocusListener(listener: () => void) {
-    const idx = this._keyboardFocusListeners.indexOf(listener)
+  removeKeyboardFocusListener(listener: () => void): void {
+    const idx = this.keyboardFocusListeners.indexOf(listener)
     if (idx > 0) {
-      this._keyboardFocusListeners.splice(idx, 1)
+      this.keyboardFocusListeners.splice(idx, 1)
     }
   }
 
   onKeyboardFocusChanged(): Promise<void> {
-    if (this._keyboardFocusPromise === undefined) {
-      this._keyboardFocusPromise = new Promise<void>(resolve => {
-        this._keyboardFocusResolve = resolve
+    if (this.keyboardFocusPromise === undefined) {
+      this.keyboardFocusPromise = new Promise<void>((resolve) => {
+        this.keyboardFocusResolve = resolve
       }).then(() => {
-        this._keyboardFocusPromise = undefined
-        this._keyboardFocusResolve = undefined
+        this.keyboardFocusPromise = undefined
+        this.keyboardFocusResolve = undefined
       })
     }
 
-    return this._keyboardFocusPromise
+    return this.keyboardFocusPromise
   }
 
-  release(resource: WlKeyboardResource) {
+  release(resource: WlKeyboardResource): void {
     resource.destroy()
     const index = this.resources.indexOf(resource)
     if (index > -1) {
@@ -116,37 +107,36 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
     }
   }
 
-  updateKeymapFromNames(nrmlvo: nrmlvo) {
+  updateKeymapFromNames(nrmlvo: nrmlvo): void {
     if (this.xkb) {
       // TODO cleanup previous keymap state
     }
     this.nrmlvo = nrmlvo
     this.xkb = createFromNames(nrmlvo)
-    this.resources.forEach(resource => this.emitKeymap(resource))
+    this.resources.forEach((resource) => this.emitKeymap(resource))
   }
 
-  updateKeymap(keymapFileName: string) {
-    createFromResource(keymapFileName).then(
-      (xkb: Xkb) => {
-        if (this.xkb) {
-          // TODO cleanup previous keymap state
-        }
-        this.xkb = xkb
-        this.resources.forEach(resource => this.emitKeymap(resource))
-      })
+  updateKeymap(keymapFileName: string): void {
+    createFromResource(keymapFileName).then((xkb: Xkb) => {
+      if (this.xkb) {
+        // TODO cleanup previous keymap state
+      }
+      this.xkb = xkb
+      this.resources.forEach((resource) => this.emitKeymap(resource))
+    })
   }
 
-  emitKeymap(resource: WlKeyboardResource) {
+  emitKeymap(resource: WlKeyboardResource): void {
     const keymapString = this.xkb.asString()
     const textEncoder = new TextEncoder()
     const keymapBuffer = textEncoder.encode(keymapString).buffer
 
-    const keymapWebFD = this._session.webFS.fromArrayBuffer(keymapBuffer)
+    const keymapWebFD = this.session.webFS.fromArrayBuffer(keymapBuffer)
     resource.keymap(xkbV1, keymapWebFD, keymapBuffer.byteLength)
     resource.client.connection.flush()
   }
 
-  focusGained(focus: Surface) {
+  focusGained(focus: Surface): void {
     if (!focus.hasKeyboardInput || this.focus === focus) {
       return
     }
@@ -157,7 +147,7 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
     if (focus) {
       this.focus = focus
 
-      this._dataDevice.onKeyboardFocusGained(focus)
+      this.dataDevice.onKeyboardFocusGained(focus)
 
       focus.resource.onDestroy().then(() => {
         if (this.focus === focus) {
@@ -167,61 +157,61 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
 
       const serial = this.seat.nextSerial()
       const surface = this.focus.resource
-      const keys = new Uint8Array(this._keys)
+      const keys = new Uint8Array(this.keys)
 
       const targetFocus = this.focus
       this.resources
-        .filter(resource => resource.client === targetFocus.resource.client)
-        .forEach(resource => {
+        .filter((resource) => resource.client === targetFocus.resource.client)
+        .forEach((resource) => {
           resource.enter(serial, surface, keys)
         })
-      if (this._keyboardFocusResolve) {
-        this._keyboardFocusResolve()
+      if (this.keyboardFocusResolve) {
+        this.keyboardFocusResolve()
       }
-      this._keyboardFocusListeners.forEach(listener => listener())
+      this.keyboardFocusListeners.forEach((listener) => listener())
     }
   }
 
-  focusLost() {
+  focusLost(): void {
     if (this.focus) {
       const serial = this.seat.nextSerial()
       const surface = this.focus.resource
 
       const targetFocus = this.focus
       this.resources
-        .filter(resource => resource.client === targetFocus.resource.client)
-        .forEach(resource => resource.leave(serial, surface))
+        .filter((resource) => resource.client === targetFocus.resource.client)
+        .forEach((resource) => resource.leave(serial, surface))
 
       this.focus = undefined
     }
   }
 
-  set focus(surface) {
+  set focus(surface: Surface | undefined) {
     this._focus = surface
-    if (this._keyboardFocusResolve) {
-      this._keyboardFocusResolve()
+    if (this.keyboardFocusResolve) {
+      this.keyboardFocusResolve()
     }
-    this._keyboardFocusListeners.forEach(listener => listener())
+    this.keyboardFocusListeners.forEach((listener) => listener())
   }
 
-  get focus() {
+  get focus(): Surface | undefined {
     return this._focus
   }
 
-  handleKey(event: KeyEvent) {
+  handleKey(event: KeyEvent): void {
     const linuxKeyCode = event.code
-    if (event.down && this._keys.includes(linuxKeyCode)) {
+    if (event.down && this.keys.includes(linuxKeyCode)) {
       // prevent key repeat from browser
       return
     }
 
     const modsUpdate = event.down ? this.xkb.keyDown(linuxKeyCode) : this.xkb.keyUp(linuxKeyCode)
     if (event.down) {
-      this._keys.push(linuxKeyCode)
+      this.keys.push(linuxKeyCode)
     } else {
-      const index = this._keys.indexOf(linuxKeyCode)
+      const index = this.keys.indexOf(linuxKeyCode)
       if (index > -1) {
-        this._keys.splice(index, 1)
+        this.keys.splice(index, 1)
       }
     }
 
@@ -238,8 +228,8 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
 
       const targetFocus = this.focus
       this.resources
-        .filter(resource => resource.client === targetFocus.resource.client)
-        .forEach(resource => {
+        .filter((resource) => resource.client === targetFocus.resource.client)
+        .forEach((resource) => {
           resource.key(serial, time, evdevKeyCode, state)
           if (modsUpdate) {
             resource.modifiers(serial, modsDepressed, modsLatched, modsLocked, group)
@@ -248,7 +238,7 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
     }
   }
 
-  emitKeyRepeatInfo(resource: WlKeyboardResource) {
+  emitKeyRepeatInfo(resource: WlKeyboardResource): void {
     if (resource.version >= 4) {
       // TODO get this from some config source
       // TODO make available in config menu

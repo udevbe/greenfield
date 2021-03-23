@@ -10,18 +10,7 @@ import WebGL from './webgl/WebGL'
 import WebShm from './webshm/WebShm'
 import XdgWmBase from './XdgWmBase'
 
-class Globals implements CompositorGlobals{
-  readonly session: Session
-  readonly seat: Seat
-  readonly compositor: Compositor
-  readonly dataDeviceManager: DataDeviceManager
-  readonly subcompositor: Subcompositor
-  readonly shell: Shell
-  readonly xdgWmBase: XdgWmBase
-  readonly webShm: WebShm
-  readonly webGL: WebGL
-  outputs: Output[] = []
-
+class Globals implements CompositorGlobals {
   static create(session: Session): Globals {
     const seat = Seat.create(session)
 
@@ -38,39 +27,31 @@ class Globals implements CompositorGlobals{
     return new Globals(session, seat, compositor, dataDeviceManager, subcompositor, shell, xdgWmBase, webShm, webGL)
   }
 
-  private constructor(
-    session: Session,
-    seat: Seat,
-    compositor: Compositor,
-    dataDeviceManager: DataDeviceManager,
-    subcompositor: Subcompositor,
-    shell: Shell,
-    xdgWmBase: XdgWmBase,
-    webShm: WebShm,
-    webGL: WebGL
-  ) {
-    this.session = session
-    this.seat = seat
-    this.compositor = compositor
-    this.dataDeviceManager = dataDeviceManager
-    this.subcompositor = subcompositor
-    this.shell = shell
-    this.xdgWmBase = xdgWmBase
-    this.webShm = webShm
-    this.webGL = webGL
-  }
+  outputs: Output[] = []
 
-  registerOutput(output: Output) {
+  private constructor(
+    public readonly session: Session,
+    public readonly seat: Seat,
+    public readonly compositor: Compositor,
+    public readonly dataDeviceManager: DataDeviceManager,
+    public readonly subcompositor: Subcompositor,
+    public readonly shell: Shell,
+    public readonly xdgWmBase: XdgWmBase,
+    public readonly webShm: WebShm,
+    public readonly webGL: WebGL,
+  ) {}
+
+  registerOutput(output: Output): void {
     this.outputs = [...this.outputs, output]
     output.registerGlobal(this.session.display.registry)
   }
 
-  unregisterOutput(output: Output) {
+  unregisterOutput(output: Output): void {
     output.unregisterGlobal()
-    this.outputs = this.outputs.filter(otherOutput => otherOutput !== output)
+    this.outputs = this.outputs.filter((otherOutput) => otherOutput !== output)
   }
 
-  register() {
+  register(): void {
     this.compositor.registerGlobal(this.session.display.registry)
     this.dataDeviceManager.registerGlobal(this.session.display.registry)
     this.seat.registerGlobal(this.session.display.registry)
@@ -83,7 +64,7 @@ class Globals implements CompositorGlobals{
     this.webGL.registerGlobal(this.session.display.registry)
   }
 
-  unregister() {
+  unregister(): void {
     this.compositor.unregisterGlobal()
     this.dataDeviceManager.unregisterGlobal()
     this.seat.unregisterGlobal()

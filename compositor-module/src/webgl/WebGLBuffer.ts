@@ -22,9 +22,6 @@ import WebFS from '../WebFS'
 import WebGLFrame from './WebGLFrame'
 
 export default class WebGLBuffer implements BufferImplementation<WebGLFrame> {
-  readonly resource: GrWebGlBufferResource
-  readonly bufferResource: WlBufferResource
-  private readonly _canvas: HTMLCanvasElement
   released = false
 
   static create(resource: GrWebGlBufferResource, bufferResource: WlBufferResource, webFS: WebFS): WebGLBuffer {
@@ -34,36 +31,25 @@ export default class WebGLBuffer implements BufferImplementation<WebGLFrame> {
     return new WebGLBuffer(resource, bufferResource, canvas)
   }
 
-  constructor(resource: GrWebGlBufferResource, bufferResource: WlBufferResource, canvas: HTMLCanvasElement) {
-    this.resource = resource
-    this.bufferResource = bufferResource
-    this._canvas = canvas
-  }
+  constructor(
+    public readonly resource: GrWebGlBufferResource,
+    public readonly bufferResource: WlBufferResource,
+    public readonly canvas: HTMLCanvasElement,
+  ) {}
 
-  /**
-   *
-   *  Destroy a buffer. If and how you need to release the backing
-   *  storage is defined by the buffer factory interface.
-   *
-   *  For possible side-effects to a surface, see wl_surface.attach.
-   *
-   *
-   * @param {WlBufferResource} resource
-   *
-   * @since 1
-   *
-   */
-  destroy(resource: WlBufferResource) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  destroy(resource: WlBufferResource): void {
     this.resource.destroy()
     this.bufferResource.destroy()
     // TODO what more to do here?
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getContents(surface: Surface, serial: number): WebGLFrame {
-    return WebGLFrame.create(this._canvas)
+    return WebGLFrame.create(this.canvas)
   }
 
-  release() {
+  release(): void {
     if (this.released) {
       throw new Error('BUG. Buffer already released.')
     }
@@ -71,5 +57,4 @@ export default class WebGLBuffer implements BufferImplementation<WebGLFrame> {
     this.bufferResource.client.connection.flush()
     this.released = true
   }
-
 }

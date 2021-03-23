@@ -18,50 +18,53 @@
 import EncodedFrame from './EncodedFrame'
 
 type BufferState = {
-  completionPromise: Promise<EncodedFrame | undefined>,
-  completionResolve: (value?: EncodedFrame | PromiseLike<EncodedFrame>) => void,
-  completionReject: (reason?: any) => void,
-  state: 'pending' | 'complete' | 'pending_alpha' | 'pending_opaque',
+  completionPromise: Promise<EncodedFrame | undefined>
+  completionResolve: (value?: EncodedFrame | PromiseLike<EncodedFrame>) => void
+  completionReject: (reason?: Error) => void
+  state: 'pending' | 'complete' | 'pending_alpha' | 'pending_opaque'
   encodedFrame?: EncodedFrame
 }
 
 export default class BufferStream {
-  private readonly _bufferStates: { [key: number]: BufferState } = {}
+  private readonly bufferStates: { [key: number]: BufferState } = {}
 
-  static create(wlBufferResource: { onDestroy: () => Promise<any> }): BufferStream {
+  static create(wlBufferResource: { onDestroy: () => Promise<void> }): BufferStream {
     const bufferStream = new BufferStream()
     // TODO we probably want to trigger a custom timeout error here.
     wlBufferResource.onDestroy().then(() => {
-      Object.entries(bufferStream._bufferStates).forEach(([serial, _]) => {
-        bufferStream._onComplete(Number.parseInt(serial))
+      Object.keys(bufferStream.bufferStates).forEach((serial) => {
+        bufferStream.onComplete(Number.parseInt(serial))
       })
     })
     return bufferStream
   }
 
-  private _onComplete(serial: number, encodedFrame?: EncodedFrame) {
-    const bufferState = this._bufferStates[serial]
+  private onComplete(serial: number, encodedFrame?: EncodedFrame) {
+    const bufferState = this.bufferStates[serial]
     bufferState.state = 'complete'
-    bufferState.completionPromise.then(() => delete this._bufferStates[serial])
+    bufferState.completionPromise.then(() => delete this.bufferStates[serial])
     bufferState.completionResolve(encodedFrame)
   }
 
-  private _newBufferState(syncSerial: number): BufferState {
+  private newBufferState(syncSerial: number): BufferState {
     const bufferState: BufferState = {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       completionPromise: null,
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       completionResolve: null,
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       completionReject: null,
       state: 'pending', // or 'pending_alpha' or 'pending_opaque' or 'complete'
-      encodedFrame: undefined
+      encodedFrame: undefined,
     }
     bufferState.completionPromise = new Promise<EncodedFrame | undefined>((resolve, reject) => {
       bufferState.completionResolve = resolve
       bufferState.completionReject = reject
     })
-    this._bufferStates[syncSerial] = bufferState
+    this.bufferStates[syncSerial] = bufferState
     return bufferState
   }
 
@@ -69,28 +72,28 @@ export default class BufferStream {
    * Returns a promise that will resolve as soon as the buffer is in the 'complete' state.
    */
   onFrameAvailable(serial: number): Promise<EncodedFrame | undefined> {
-    if (this._bufferStates[serial] && this._bufferStates[serial].encodedFrame) {
+    if (this.bufferStates[serial] && this.bufferStates[serial].encodedFrame) {
       // state already exists, this means the contents arrived before this call, which means we can now decode it
-      this._onComplete(serial, this._bufferStates[serial].encodedFrame)
+      this.onComplete(serial, this.bufferStates[serial].encodedFrame)
     } else {
       // state does not exist yet, create a new state and wait for contents to arrive
-      this._newBufferState(serial)
+      this.newBufferState(serial)
     }
 
     // TODO we probably want to trigger a custom timeout error here if contents take too long to arrive.
-    return this._bufferStates[serial].completionPromise
+    return this.bufferStates[serial].completionPromise
   }
 
-  onBufferContents(bufferContents: Uint8Array) {
+  onBufferContents(bufferContents: Uint8Array): void {
     try {
       const encodedFrame = EncodedFrame.create(bufferContents)
-      if (this._bufferStates[encodedFrame.serial]) {
+      if (this.bufferStates[encodedFrame.serial]) {
         // state already exists, this means the syn call arrived before this call, which means we can now decode it
-        this._bufferStates[encodedFrame.serial].encodedFrame = encodedFrame
-        this._onComplete(encodedFrame.serial, encodedFrame)
+        this.bufferStates[encodedFrame.serial].encodedFrame = encodedFrame
+        this.onComplete(encodedFrame.serial, encodedFrame)
       } else {
         // state does not exist yet, create a new state and wait for contents to arrive
-        this._newBufferState(encodedFrame.serial).encodedFrame = encodedFrame
+        this.newBufferState(encodedFrame.serial).encodedFrame = encodedFrame
       }
     } catch (e) {
       // TODO better error handling
@@ -98,7 +101,7 @@ export default class BufferStream {
     }
   }
 
-  destroy() {
-    Object.values(this._bufferStates).forEach(bufferState => bufferState.completionResolve())
+  destroy(): void {
+    Object.values(this.bufferStates).forEach((bufferState) => bufferState.completionResolve())
   }
 }

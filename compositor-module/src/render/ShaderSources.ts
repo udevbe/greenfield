@@ -32,7 +32,7 @@ export const VERTEX_QUAD = {
       v_texCoord = a_texCoord;
       gl_Position = vec4(a_position, 0.0, 1.0);
   }
-`
+`,
 }
 
 /**
@@ -53,7 +53,7 @@ export const VERTEX_QUAD_TRANSFORM = {
         v_texCoord = a_texCoord;
         gl_Position = u_projection * u_transform * vec4(a_position, 0.0, 1.0) ;
     }
-`
+`,
 }
 
 /**
@@ -68,7 +68,7 @@ export const FRAGMENT_ARGB8888 = {
     void main(){
         gl_FragColor = texture2D(u_texture, v_texCoord);
     }
-`
+`,
 }
 
 /**
@@ -98,12 +98,13 @@ export const FRAGMENT_YUVA_TO_RGBA = {
     float uChannel = texture2D(uTexture, v_texCoord).x;
     float vChannel = texture2D(vTexture, v_texCoord).x;
     float alphaChannel = texture2D(alphaYTexture, v_texCoord).x;
+    
     vec4 channels = vec4(yChannel, uChannel, vChannel, 1.0);
     vec3 rgb = ((channels * conversion).xyz);
 
     gl_FragColor = vec4(rgb, ((alphaChannel*1.0894)-0.062745)*1.0851063);
   }
-`
+`,
 }
 
 /**
@@ -135,5 +136,5 @@ export const FRAGMENT_YUV_TO_RGB = {
     vec3 rgb = ((channels * conversion).xyz);
     gl_FragColor = vec4(rgb, 1.0);
   }
-`
+`,
 }

@@ -22,42 +22,39 @@ import Renderer from './render/Renderer'
 import { createUserShellApi, UserShellApi } from './UserShellApi'
 import WebFS from './WebFS'
 
-class Session implements CompositorSession{
-  readonly display: Display
-  readonly compositorSessionId: string
+function uuidv4(): string {
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
+    (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16),
+  )
+}
+
+class Session implements CompositorSession {
+  static create(): Session {
+    const display = new Display()
+    const compositorSessionId = uuidv4()
+    return new Session(display, compositorSessionId)
+  }
+
   readonly webFS: WebFS
   readonly globals: Globals
   readonly renderer: Renderer
   readonly userShell: UserShellApi
 
-  static create(): Session {
-    const display = new Display()
-    const compositorSessionId = this._uuidv4()
-    return new Session(display, compositorSessionId)
-  }
-
-  private static _uuidv4(): string {
-    // @ts-ignore
-    return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
-      (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-    )
-  }
-
-  private constructor(display: Display, compositorSessionId: string) {
-    this.display = display
-    this.compositorSessionId = compositorSessionId
+  private constructor(public readonly display: Display, public readonly compositorSessionId: string) {
     this.webFS = WebFS.create(this.compositorSessionId)
     this.globals = Globals.create(this)
     this.renderer = Renderer.create(this)
     this.userShell = createUserShellApi(this)
   }
 
-  terminate() {
+  terminate(): void {
     this.globals.unregister()
-    Object.values(this.display.clients).forEach(client => client.close())
+    Object.values(this.display.clients).forEach((client) => client.close())
   }
 
-  flush() {
+  flush(): void {
     this.display.flushClients()
   }
 }

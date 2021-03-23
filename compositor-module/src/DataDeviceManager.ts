@@ -22,7 +22,8 @@ import {
   WlDataDeviceManagerRequests,
   WlDataDeviceManagerResource,
   WlDataDeviceResource,
-  WlDataSourceResource, WlSeatResource
+  WlDataSourceResource,
+  WlSeatResource,
 } from 'westfield-runtime-server'
 
 import DataSource from './DataSource'
@@ -42,43 +43,40 @@ import Seat from './Seat'
  *            wldata_offer.accept and wldata_offer.finish for details.
  */
 export default class DataDeviceManager implements WlDataDeviceManagerRequests {
-  private _global?: Global
+  private global?: Global
 
   static create(): DataDeviceManager {
     return new DataDeviceManager()
   }
 
-  private constructor() {
-  }
-
-  registerGlobal(registry: Registry) {
-    if (this._global) {
+  registerGlobal(registry: Registry): void {
+    if (this.global) {
       return
     }
-    this._global = registry.createGlobal(this, WlDataDeviceManagerResource.protocolName, 3, (client, id, version) => {
+    this.global = registry.createGlobal(this, WlDataDeviceManagerResource.protocolName, 3, (client, id, version) => {
       this.bindClient(client, id, version)
     })
   }
 
-  unregisterGlobal() {
-    if (this._global === undefined) {
+  unregisterGlobal(): void {
+    if (this.global === undefined) {
       return
     }
-    this._global.destroy()
-    this._global = undefined
+    this.global.destroy()
+    this.global = undefined
   }
 
-  bindClient(client: Client, id: number, version: number) {
+  bindClient(client: Client, id: number, version: number): void {
     const wlDataDeviceManagerResource = new WlDataDeviceManagerResource(client, id, version)
     wlDataDeviceManagerResource.implementation = this
   }
 
-  createDataSource(resource: WlDataDeviceManagerResource, id: number) {
+  createDataSource(resource: WlDataDeviceManagerResource, id: number): void {
     const wlDataSourceResource = new WlDataSourceResource(resource.client, id, resource.version)
     DataSource.create(wlDataSourceResource)
   }
 
-  getDataDevice(resource: WlDataDeviceManagerResource, id: number, seatResource: WlSeatResource) {
+  getDataDevice(resource: WlDataDeviceManagerResource, id: number, seatResource: WlSeatResource): void {
     const wlDataDeviceResource = new WlDataDeviceResource(resource.client, id, resource.version)
     const seat = seatResource.implementation as Seat
     wlDataDeviceResource.implementation = seat.dataDevice

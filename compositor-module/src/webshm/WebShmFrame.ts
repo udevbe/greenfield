@@ -33,7 +33,7 @@ export default class WebShmFrame implements BufferContents<ImageData> {
     this.pixelContent = new ImageData(new Uint8ClampedArray(new ArrayBuffer(width * height * 4)), width, height)
   }
 
-  async attach(pixelContent: WebFD) {
+  async attach(pixelContent: WebFD): Promise<void> {
     const arrayBuffer = await pixelContent.getTransferable()
     if (!(arrayBuffer instanceof ArrayBuffer)) {
       throw new Error('web fd attached to web shm frame is not an array buffer.')

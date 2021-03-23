@@ -16,25 +16,26 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 export interface AxisEvent {
-  deltaMode: number,
-  DOM_DELTA_LINE: number,
-  DOM_DELTA_PAGE: number,
-  DOM_DELTA_PIXEL: number,
-  deltaX: number,
-  deltaY: number,
-  timestamp: number,
+  deltaMode: number
+  DOM_DELTA_LINE: number
+  DOM_DELTA_PAGE: number
+  DOM_DELTA_PIXEL: number
+  deltaX: number
+  deltaY: number
+  timestamp: number
   sceneId: string
 }
 
 export interface CreateAxisEvent {
-  (deltaMode: number,
-   DOM_DELTA_LINE: number,
-   DOM_DELTA_PAGE: number,
-   DOM_DELTA_PIXEL: number,
-   deltaX: number,
-   deltaY: number,
-   timestamp: number,
-   sceneId: string
+  (
+    deltaMode: number,
+    DOM_DELTA_LINE: number,
+    DOM_DELTA_PAGE: number,
+    DOM_DELTA_PIXEL: number,
+    deltaX: number,
+    deltaY: number,
+    timestamp: number,
+    sceneId: string,
   ): AxisEvent
 }
 
@@ -46,7 +47,7 @@ export const createAxisEvent: CreateAxisEvent = (
   deltaX: number,
   deltaY: number,
   timestamp: number,
-  sceneId: string
+  sceneId: string,
 ): AxisEvent => ({
   deltaMode,
   DOM_DELTA_LINE,
@@ -55,21 +56,21 @@ export const createAxisEvent: CreateAxisEvent = (
   deltaX,
   deltaY,
   timestamp,
-  sceneId
+  sceneId,
 })
 
 export interface CreateAxisEventFromWheelEvent {
   (wheelEvent: WheelEvent, sceneId: string): AxisEvent
 }
 
-export const createAxisEventFromWheelEvent: CreateAxisEventFromWheelEvent
-  = (wheelEvent: WheelEvent, sceneId: string) => createAxisEvent(
-  wheelEvent.deltaMode,
-  wheelEvent.DOM_DELTA_LINE,
-  wheelEvent.DOM_DELTA_PAGE,
-  wheelEvent.DOM_DELTA_PIXEL,
-  wheelEvent.deltaX,
-  wheelEvent.deltaY,
-  wheelEvent.timeStamp,
-  sceneId
-)
+export const createAxisEventFromWheelEvent: CreateAxisEventFromWheelEvent = (wheelEvent: WheelEvent, sceneId: string) =>
+  createAxisEvent(
+    wheelEvent.deltaMode,
+    wheelEvent.DOM_DELTA_LINE,
+    wheelEvent.DOM_DELTA_PAGE,
+    wheelEvent.DOM_DELTA_PIXEL,
+    wheelEvent.deltaX,
+    wheelEvent.deltaY,
+    wheelEvent.timeStamp,
+    sceneId,
+  )

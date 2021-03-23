@@ -22,7 +22,7 @@
 
 export default class ShaderCompiler {
   // TODO convert to stand-alone function
-  static compile(gl: WebGLRenderingContext, script: { type: string, source: string }): WebGLShader {
+  static compile(gl: WebGLRenderingContext, script: { type: string; source: string }): WebGLShader {
     let shader: WebGLShader | undefined
     // Now figure out what type of shader script we have, based on its MIME type.
     if (script.type === 'x-shader/x-fragment') {

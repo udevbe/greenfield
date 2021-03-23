@@ -1,8 +1,8 @@
 import { LinuxKeyCode } from './Xkb'
 
 export interface KeyEvent {
-  code: LinuxKeyCode,
-  timestamp: number,
+  code: LinuxKeyCode
+  timestamp: number
   down: boolean
 }
 
@@ -13,14 +13,17 @@ export interface CreateKeyEvent {
 export const createKeyEvent: CreateKeyEvent = (code: LinuxKeyCode, timestamp: number, down: boolean): KeyEvent => ({
   code,
   timestamp,
-  down
+  down,
 })
 
 export interface CreateKeyEventFromKeyboardEvent {
   (keyboardEvent: KeyboardEvent, down: boolean): KeyEvent | undefined
 }
 
-export const createKeyEventFromKeyboardEvent: CreateKeyEventFromKeyboardEvent = (keyboardEvent: KeyboardEvent, down: boolean): KeyEvent | undefined => {
+export const createKeyEventFromKeyboardEvent: CreateKeyEventFromKeyboardEvent = (
+  keyboardEvent: KeyboardEvent,
+  down: boolean,
+): KeyEvent | undefined => {
   const keyCode: LinuxKeyCode | undefined = LinuxKeyCode[<keyof typeof LinuxKeyCode>keyboardEvent.code]
   if (keyCode) {
     return createKeyEvent(keyCode, keyboardEvent.timeStamp, down)

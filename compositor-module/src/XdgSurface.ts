@@ -22,7 +22,7 @@ import {
   XdgSurfaceRequests,
   XdgSurfaceResource,
   XdgToplevelResource,
-  XdgWmBaseError
+  XdgWmBaseError,
 } from 'westfield-runtime-server'
 import Rect from './math/Rect'
 import Seat from './Seat'
@@ -33,58 +33,13 @@ import XdgPositioner from './XdgPositioner'
 
 import XdgToplevel from './XdgToplevel'
 
-/**
- *
- *      An interface that may be implemented by a wl_surface, for
- *      implementations that provide a desktop-style user interface.
- *
- *      It provides a base set of functionality required to construct user
- *      interface elements requiring management by the compositor, such as
- *      toplevel windows, menus, etc. The types of functionality are split into
- *      xdg_surface roles.
- *
- *      Creating an xdg_surface does not set the role for a wl_surface. In order
- *      to map an xdg_surface, the client must create a role-specific object
- *      using, e.g., get_toplevel, get_popup. The wl_surface for any given
- *      xdg_surface can have at most one role, and may not be assigned any role
- *      not based on xdg_surface.
- *
- *      A role must be assigned before any other requests are made to the
- *      xdg_surface object.
- *
- *      The client must call wl_surface.commit on the corresponding wl_surface
- *      for the xdg_surface state to take effect.
- *
- *      Creating an xdg_surface from a wl_surface which has a buffer attached or
- *      committed is a client error, and any attempts by a client to attach or
- *      manipulate a buffer prior to the first xdg_surface.configure call must
- *      also be treated as errors.
- *
- *      Mapping an xdg_surface-based role surface is defined as making it
- *      possible for the surface to be shown by the compositor. Note that
- *      a mapped surface is not guaranteed to be visible once it is mapped.
- *
- *      For an xdg_surface to be mapped by the compositor, the following
- *      conditions must be met:
- *      (1) the client has assigned an xdg_surface-based role to the surface
- *      (2) the client has set and committed the xdg_surface state and the
- *    role-dependent state to the surface
- *      (3) the client has committed a buffer to the surface
- *
- *      A newly-unmapped surface is considered to have met condition (1) out
- *      of the 3 required conditions for mapping a surface if its role surface
- *      has not been destroyed.
- */
 export default class XdgSurface implements XdgSurfaceRequests {
-  readonly xdgSurfaceResource: XdgSurfaceResource
-  readonly wlSurfaceResource: WlSurfaceResource
-  pendingWindowGeometry: Rect = Rect.create(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)
-  configureSerial: number = 0
-  windowGeometry: Rect = Rect.create(0, 0, 0, 0)
-  private readonly _session: Session
-  private readonly _seat: Seat
-
-  static create(xdgSurfaceResource: XdgSurfaceResource, wlSurfaceResource: WlSurfaceResource, session: Session, seat: Seat): XdgSurface {
+  static create(
+    xdgSurfaceResource: XdgSurfaceResource,
+    wlSurfaceResource: WlSurfaceResource,
+    session: Session,
+    seat: Seat,
+  ): XdgSurface {
     const xdgSurface = new XdgSurface(xdgSurfaceResource, wlSurfaceResource, session, seat)
     xdgSurfaceResource.implementation = xdgSurface
     const surface = wlSurfaceResource.implementation as Surface
@@ -94,18 +49,27 @@ export default class XdgSurface implements XdgSurfaceRequests {
     return xdgSurface
   }
 
-  constructor(xdgSurfaceResource: XdgSurfaceResource, wlSurfaceResource: WlSurfaceResource, session: Session, seat: Seat) {
-    this.xdgSurfaceResource = xdgSurfaceResource
-    this.wlSurfaceResource = wlSurfaceResource
-    this._session = session
-    this._seat = seat
-  }
+  pendingWindowGeometry: Rect = Rect.create(
+    Number.MIN_SAFE_INTEGER,
+    Number.MIN_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER,
+  )
+  configureSerial = 0
+  windowGeometry: Rect = Rect.create(0, 0, 0, 0)
 
-  destroy(resource: XdgSurfaceResource) {
+  constructor(
+    public readonly xdgSurfaceResource: XdgSurfaceResource,
+    public readonly wlSurfaceResource: WlSurfaceResource,
+    private readonly session: Session,
+    private readonly seat: Seat,
+  ) {}
+
+  destroy(resource: XdgSurfaceResource): void {
     resource.destroy()
   }
 
-  getToplevel(resource: XdgSurfaceResource, id: number) {
+  getToplevel(resource: XdgSurfaceResource, id: number): void {
     const surface = this.wlSurfaceResource.implementation as Surface
     if (surface.role) {
       resource.postError(XdgWmBaseError.role, 'Given surface has another role.')
@@ -113,12 +77,17 @@ export default class XdgSurface implements XdgSurfaceRequests {
       return
     }
     const xdgToplevelResource = new XdgToplevelResource(resource.client, id, resource.version)
-    const xdgToplevel = XdgToplevel.create(xdgToplevelResource, this, this._session)
+    const xdgToplevel = XdgToplevel.create(xdgToplevelResource, this, this.session)
     xdgToplevelResource.implementation = xdgToplevel
     this.ackConfigure = (resource, serial) => xdgToplevel.ackConfigure(serial)
   }
 
-  getPopup(resource: XdgSurfaceResource, id: number, parent: XdgSurfaceResource, positioner: XdgPositionerResource) {
+  getPopup(
+    resource: XdgSurfaceResource,
+    id: number,
+    parent: XdgSurfaceResource,
+    positioner: XdgPositionerResource,
+  ): void {
     const surface = this.wlSurfaceResource.implementation as Surface
     if (surface.role) {
       resource.postError(XdgWmBaseError.role, 'Given surface has another role.')
@@ -140,7 +109,7 @@ export default class XdgSurface implements XdgSurfaceRequests {
     const positionerState = xdgPositioner.createStateCopy()
 
     const xdgPopupResource = new XdgPopupResource(resource.client, id, resource.version)
-    const xdgPopup = XdgPopup.create(xdgPopupResource, this, parent, positionerState, this._seat)
+    const xdgPopup = XdgPopup.create(xdgPopupResource, this, parent, positionerState, this.seat)
     this.ackConfigure = (resource, serial) => xdgPopup.ackConfigure(serial)
 
     if (parent) {
@@ -150,7 +119,7 @@ export default class XdgSurface implements XdgSurfaceRequests {
     }
   }
 
-  setWindowGeometry(resource: XdgSurfaceResource, x: number, y: number, width: number, height: number) {
+  setWindowGeometry(resource: XdgSurfaceResource, x: number, y: number, width: number, height: number): void {
     if (width <= 0 || height <= 0) {
       resource.postError(XdgWmBaseError.invalidSurfaceState, 'Client provided negative window geometry.')
       console.log('[client-protocol-error] - Client provided negative window geometry.')
@@ -159,7 +128,7 @@ export default class XdgSurface implements XdgSurfaceRequests {
     this.pendingWindowGeometry = Rect.create(x, y, x + width, y + height)
   }
 
-  commitWindowGeometry() {
+  commitWindowGeometry(): void {
     this.windowGeometry = this._createBoundingRectangle().intersect(this.pendingWindowGeometry)
   }
 
@@ -195,11 +164,12 @@ export default class XdgSurface implements XdgSurfaceRequests {
     }
   }
 
-  ackConfigure(resource: XdgSurfaceResource, serial: number) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  ackConfigure(resource: XdgSurfaceResource, serial: number): void {
     throw new Error('BUG. This call must be implemented by a subclass.')
   }
 
-  emitConfigureDone() {
+  emitConfigureDone(): void {
     this.xdgSurfaceResource.configure(++this.configureSerial)
   }
 }

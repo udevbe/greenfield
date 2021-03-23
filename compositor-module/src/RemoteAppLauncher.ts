@@ -21,30 +21,24 @@ import RemoteSocket from './RemoteSocket'
 import Session from './Session'
 
 export default class RemoteAppLauncher implements CompositorRemoteAppLauncher {
-  private readonly _session: Session
-  private readonly _remoteSocket: RemoteSocket
-
   static create(session: Session, remoteSocket: RemoteSocket): RemoteAppLauncher {
     return new RemoteAppLauncher(session, remoteSocket)
   }
 
-  private constructor(session: Session, remoteSocket: RemoteSocket) {
-    this._session = session
-    this._remoteSocket = remoteSocket
-  }
+  private constructor(private readonly session: Session, private readonly remoteSocket: RemoteSocket) {}
 
-  async launch(appEndpointURL: URL, remoteAppId: string): Promise<Client> {
+  launch(appEndpointURL: URL, remoteAppId: string): Promise<Client> {
     appEndpointURL.searchParams.delete('launch')
     appEndpointURL.searchParams.append('launch', remoteAppId)
     return this.launchURL(appEndpointURL)
   }
 
-  async launchURL(appEndpointURL: URL): Promise<Client> {
+  launchURL(appEndpointURL: URL): Promise<Client> {
     appEndpointURL.searchParams.delete('compositorSessionId')
-    appEndpointURL.searchParams.append('compositorSessionId', this._session.compositorSessionId)
+    appEndpointURL.searchParams.append('compositorSessionId', this.session.compositorSessionId)
 
     // make sure we listen for X connections in case the remote app is an X client
     const webSocket = new WebSocket(appEndpointURL.href)
-    return this._remoteSocket.onWebSocket(webSocket)
+    return this.remoteSocket.onWebSocket(webSocket)
   }
 }

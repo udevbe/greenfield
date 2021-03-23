@@ -15,21 +15,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-/**
- * Represents a 2-dimensional size value.
- */
+// TODO use an object literal
 export default class Size {
-  w: number;
-  h: number;
-
   static create(width: number, height: number): Size {
     return new Size(width, height)
   }
 
-  constructor(w: number, h: number) {
-    this.w = w
-    this.h = h
-  }
+  constructor(public readonly w: number, public readonly h: number) {}
 
   toString(): string {
     return '(' + this.w + ', ' + this.h + ')'

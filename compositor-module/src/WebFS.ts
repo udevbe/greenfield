@@ -18,17 +18,14 @@
 import { WebFD } from 'westfield-runtime-common'
 
 export default class WebFS {
-  private readonly _compositorSessionId: string
   private _webFDs: { [key: number]: WebFD } = {}
-  private _nextFD: number = 0
+  private _nextFD = 0
 
   static create(compositorSessionId: string): WebFS {
     return new WebFS(compositorSessionId)
   }
 
-  private constructor(compositorSessionId: string) {
-    this._compositorSessionId = compositorSessionId
-  }
+  private constructor(private readonly compositorSessionId: string) {}
 
   fromArrayBuffer(arrayBuffer: ArrayBuffer): WebFD {
     const fd = this._nextFD++
@@ -39,11 +36,17 @@ export default class WebFS {
     const webFdURL = new URL('compositor://')
     webFdURL.searchParams.append('fd', `${fd}`)
     webFdURL.searchParams.append('type', type)
-    webFdURL.searchParams.append('compositorSessionId', this._compositorSessionId)
+    webFdURL.searchParams.append('compositorSessionId', this.compositorSessionId)
 
-    const webFD = new WebFD(fd, type, webFdURL, () => Promise.resolve(arrayBuffer), () => {
-      delete this._webFDs[fd]
-    })
+    const webFD = new WebFD(
+      fd,
+      type,
+      webFdURL,
+      () => Promise.resolve(arrayBuffer),
+      () => {
+        delete this._webFDs[fd]
+      },
+    )
     this._webFDs[fd] = webFD
     return webFD
   }
@@ -55,11 +58,17 @@ export default class WebFS {
     const webFdURL = new URL('compositor://')
     webFdURL.searchParams.append('fd', `${fd}`)
     webFdURL.searchParams.append('type', type)
-    webFdURL.searchParams.append('compositorSessionId', this._compositorSessionId)
+    webFdURL.searchParams.append('compositorSessionId', this.compositorSessionId)
 
-    const webFD = new WebFD(fd, 'ImageBitmap', webFdURL, () => Promise.resolve(imageBitmap), () => {
-      delete this._webFDs[fd]
-    })
+    const webFD = new WebFD(
+      fd,
+      'ImageBitmap',
+      webFdURL,
+      () => Promise.resolve(imageBitmap),
+      () => {
+        delete this._webFDs[fd]
+      },
+    )
     this._webFDs[fd] = webFD
     return webFD
   }
@@ -71,11 +80,17 @@ export default class WebFS {
     const webFdURL = new URL('compositor://')
     webFdURL.searchParams.append('fd', `${fd}`)
     webFdURL.searchParams.append('type', type)
-    webFdURL.searchParams.append('compositorSessionId', this._compositorSessionId)
+    webFdURL.searchParams.append('compositorSessionId', this.compositorSessionId)
 
-    const webFD = new WebFD(fd, 'ImageBitmap', webFdURL, () => Promise.resolve(offscreenCanvas), () => {
-      delete this._webFDs[fd]
-    })
+    const webFD = new WebFD(
+      fd,
+      'ImageBitmap',
+      webFdURL,
+      () => Promise.resolve(offscreenCanvas),
+      () => {
+        delete this._webFDs[fd]
+      },
+    )
     this._webFDs[fd] = webFD
     return webFD
   }

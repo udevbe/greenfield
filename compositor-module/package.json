@@ -1,6 +1,6 @@
 {
   "name": "greenfield-compositor",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "A Wayland HTML5 Compositor Library.",
   "keywords": [
     "linux",
@@ -23,20 +23,10 @@
     "types"
   ],
   "scripts": {
-    "lint": "tslint  --project tsconfig.json -t codeFrame 'src/**/*.ts' 'test/**/*.ts'",
     "prebuild": "rimraf dist types",
-    "build": "tsc && cpy './src/assets/**' './dist/assets/' && typedoc --includeDeclarations --excludeExternals --excludeNotExported --excludePrivate --ignoreCompilerErrors --out docs --target es6 --theme minimal --mode modules --inputFiles src/index.ts --inputFiles src/ButtonEvent.ts --inputFiles src/AxisEvent.ts --inputFiles src/KeyEvent.ts --inputFiles src/lib/index.ts",
+    "build": "tsc && cpy './src/assets/**' './dist/assets/'",
     "test": "jest --coverage",
-    "test:watch": "jest --coverage --watch",
-    "test:prod": "yarn lint && yarn test -- --no-cache",
-    "deploy-docs": "ts-node tools/gh-pages-publish",
-    "report-coverage": "cat ./coverage/lcov.info | coveralls",
-    "commit": "git-cz",
-    "semantic-release": "semantic-release",
-    "semantic-release-prepare": "ts-node tools/semantic-release-prepare",
-    "precommit": "lint-staged",
-    "prepush": "npm run test:prod && npm run build",
-    "commitmsg": "commitlint -E HUSKY_GIT_PARAMS"
+    "test:watch": "jest --coverage --watch"
   },
   "dependencies": {
     "tinyh264": "0.0.6",
@@ -44,35 +34,23 @@
     "westfield-runtime-server": "0.4.4"
   },
   "devDependencies": {
-    "@commitlint/cli": "^11.0.0",
-    "@commitlint/config-conventional": "^11.0.0",
-    "@types/jest": "^26.0.19",
-    "@types/node": "^14.14.12",
-    "colors": "^1.4.0",
-    "commitizen": "^4.2.2",
-    "coveralls": "^3.1.0",
-    "cpy": "^8.1.1",
+    "@commitlint/cli": "^12.0.1",
+    "@commitlint/config-conventional": "^12.0.1",
+    "@types/jest": "^26.0.21",
+    "@types/node": "^14.14.35",
+    "@typescript-eslint/eslint-plugin": "^4.17.0",
+    "@typescript-eslint/parser": "^4.17.0",
     "cpy-cli": "^3.1.1",
-    "cross-env": "^7.0.3",
-    "cz-conventional-changelog": "^3.3.0",
-    "husky": "^4.3.5",
+    "eslint": "^7.22.0",
+    "eslint-config-prettier": "^8.1.0",
+    "eslint-plugin-prettier": "^3.3.1",
     "jest": "^26.6.3",
-    "jest-config": "^26.6.3",
-    "lint-staged": "^10.5.3",
     "prettier": "^2.2.1",
-    "prompt": "^1.0.0",
-    "replace-in-file": "^6.1.0",
     "rimraf": "^3.0.2",
-    "semantic-release": "^17.3.0",
-    "shelljs": "^0.8.4",
-    "ts-jest": "^26.4.4",
+    "ts-jest": "^26.5.4",
     "ts-node": "^9.1.1",
-    "tslint": "^6.1.3",
-    "tslint-config-prettier": "^1.18.0",
-    "tslint-config-standard": "^9.0.0",
-    "typedoc": "^0.19.2",
-    "typescript": "^4.1.2",
-    "worker-loader": "^3.0.7"
+    "typescript": "^4.2.3",
+    "worker-loader": "^3.0.8"
   },
   "author": "Erik De Rijcke",
   "homepage": "https://www.greenfield.app",
@@ -80,20 +58,6 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/udevbe/greenfield/tree/master/compositor-module"
-  },
-  "engines": {
-    "node": ">=12.0.0"
-  },
-  "lint-staged": {
-    "{src,test}/**/*.ts": [
-      "prettier --write",
-      "git add"
-    ]
-  },
-  "config": {
-    "commitizen": {
-      "path": "compositor-module/node_modules/cz-conventional-changelog"
-    }
   },
   "jest": {
     "transform": {
@@ -120,15 +84,6 @@
     },
     "collectCoverageFrom": [
       "src/*.{js,ts}"
-    ]
-  },
-  "prettier": {
-    "semi": false,
-    "singleQuote": true
-  },
-  "commitlint": {
-    "extends": [
-      "@commitlint/config-conventional"
     ]
   }
 }

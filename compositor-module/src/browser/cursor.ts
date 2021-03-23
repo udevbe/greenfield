@@ -1,6 +1,6 @@
 let cursorIconURL: string | undefined
 
-export function setCursorImage(cursorImageBlob: Blob, hotspotX: number, hotspotY: number) {
+export function setCursorImage(cursorImageBlob: Blob, hotspotX: number, hotspotY: number): void {
   if (cursorIconURL) {
     URL.revokeObjectURL(cursorIconURL)
   }
@@ -8,11 +8,12 @@ export function setCursorImage(cursorImageBlob: Blob, hotspotX: number, hotspotY
   document.body.style.cursor = `url('${cursorIconURL}') ${hotspotX} ${hotspotY}, auto`
 }
 
-export function resetCursorImage() {
+export function resetCursorImage(): void {
   setCursor('unset')
 }
 
-export type CursorType = 'default'
+export type CursorType =
+  | 'default'
   | 'unset'
   | 'inherit'
   | 'none'
@@ -51,10 +52,9 @@ export type CursorType = 'default'
   | 'grabbing'
   | 'all-scroll'
 
-export function setCursor(cursorType: CursorType) {
+export function setCursor(cursorType: CursorType): void {
   if (cursorIconURL) {
     URL.revokeObjectURL(cursorIconURL)
   }
   document.body.style.cursor = cursorType
 }
-

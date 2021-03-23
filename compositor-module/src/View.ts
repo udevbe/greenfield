@@ -24,42 +24,54 @@ import Size from './Size'
 import Surface from './Surface'
 
 export default class View {
-  readonly surface: Surface
-  readonly scene: Scene
-  readonly userTransformations: Map<string, Mat4> = new Map<string, Mat4>()
-
-  renderState: RenderState
-  customTransformation?: Mat4
-  positionOffset: Point
-  destroyed: boolean
-  mapped: boolean
-
-  private readonly _destroyPromise: Promise<void>
-  private _transformation: Mat4
-  private _inverseTransformation: Mat4
-  // @ts-ignore
-  private _destroyResolve: (value?: (PromiseLike<void> | void)) => void
-  private _parent?: View
-  private _primary: boolean
-
   static create(surface: Surface, width: number, height: number, scene: Scene): View {
     const renderState = RenderState.create(scene.sceneShader.gl, Size.create(width, height))
-    return new View(surface, width, height, Mat4.IDENTITY(), scene, renderState)
+    return new View(surface, Mat4.IDENTITY(), scene, renderState)
   }
 
-  private constructor(surface: Surface, width: number, height: number, transformation: Mat4, scene: Scene, renderState: RenderState) {
-    this.surface = surface
-    this.scene = scene
-    this.renderState = renderState
-    this.positionOffset = Point.create(0, 0)
-    this._transformation = transformation
-    this._inverseTransformation = transformation.invert()
-    this._destroyPromise = new Promise<void>(resolve => {
-      this._destroyResolve = resolve
+  readonly userTransformations: Map<string, Mat4> = new Map<string, Mat4>()
+
+  customTransformation?: Mat4
+
+  private inverseTransformation: Mat4
+  private readonly destroyPromise: Promise<void>
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  private destroyResolve: (value?: PromiseLike<void> | void) => void
+  private _parent?: View
+
+  private constructor(
+    public readonly surface: Surface,
+    private _transformation: Mat4,
+    public readonly scene: Scene,
+    public renderState: RenderState,
+    public positionOffset = Point.create(0, 0),
+    public destroyed = false,
+    private _primary = false,
+    public mapped = true,
+  ) {
+    this.inverseTransformation = this._transformation.invert()
+    this.destroyPromise = new Promise<void>((resolve) => {
+      this.destroyResolve = resolve
     })
-    this.destroyed = false
-    this._primary = false
-    this.mapped = true
+  }
+
+  set primary(primary: boolean) {
+    if (this.destroyed) {
+      return
+    }
+
+    this._primary = primary
+  }
+
+  get primary(): boolean {
+    if (this._primary) {
+      return true
+    } else if (this.parent) {
+      return this.parent.primary
+    } else {
+      return false
+    }
   }
 
   set parent(parent: View | undefined) {
@@ -82,24 +94,6 @@ export default class View {
     }
   }
 
-  set primary(primary: boolean) {
-    if (this.destroyed) {
-      return
-    }
-
-    this._primary = primary
-  }
-
-  get primary(): boolean {
-    if (this._primary) {
-      return true
-    } else if (this.parent) {
-      return this.parent.primary
-    } else {
-      return false
-    }
-  }
-
   get parent(): View | undefined {
     return this._parent
   }
@@ -110,30 +104,30 @@ export default class View {
     }
 
     this._transformation = transformation
-    this._inverseTransformation = transformation.invert()
+    this.inverseTransformation = transformation.invert()
   }
 
   get transformation(): Mat4 {
     return this._transformation
   }
 
-  applyTransformations() {
+  applyTransformations(): void {
     if (this.destroyed) {
       return
     }
 
     this.transformation = this._calculateTransformation()
-    this._applyTransformationsChild()
+    this.applyTransformationsChild()
   }
 
-  _applyTransformationsChild() {
-    this.findChildViews().forEach(childView => childView.applyTransformations())
+  private applyTransformationsChild() {
+    this.findChildViews().forEach((childView) => childView.applyTransformations())
   }
 
   findChildViews(): View[] {
     return this.surface.children
-      .filter(surfaceChild => surfaceChild.surface !== this.surface)
-      .map(surfaceChild => surfaceChild.surface.views.filter(view => view.parent === this))
+      .filter((surfaceChild) => surfaceChild.surface !== this.surface)
+      .map((surfaceChild) => surfaceChild.surface.views.filter((view) => view.parent === this))
       .flat()
   }
 
@@ -157,30 +151,9 @@ export default class View {
     return parentTransformation.timesMat4(positionTransformation)
   }
 
-  withUserTransformations(transformation: Mat4) {
-    let finalTransformation = transformation
-    // TODO use reduce
-    this.userTransformations.forEach(value => {
-      finalTransformation = transformation.timesMat4(value)
-    })
-    return finalTransformation
-  }
-
-  /**
-   * @param viewPoint point in view coordinates with respect to view transformations
-   * @return point in browser coordinates
-   */
-  toCompositorSpace(viewPoint: Point): Point {
-    return this.transformation.timesPoint(viewPoint)
-  }
-
-  /**
-   * @param browserPoint point in browser coordinates
-   * @return point in view coordinates with respect to view transformations
-   */
   toViewSpaceFromCompositor(browserPoint: Point): Point {
     // normalize first by subtracting view offset
-    return this._inverseTransformation.timesPoint(browserPoint)
+    return this.inverseTransformation.timesPoint(browserPoint)
   }
 
   toViewSpaceFromSurface(surfacePoint: Point): Point {
@@ -197,9 +170,6 @@ export default class View {
     }
   }
 
-  /**
-   * @param scenePoint point in browser coordinates
-   */
   toSurfaceSpace(scenePoint: Point): Point {
     const viewPoint = this.toViewSpaceFromCompositor(scenePoint)
 
@@ -210,23 +180,25 @@ export default class View {
       if (surfaceWidth === this.renderState.size.w && surfaceHeight === this.renderState.size.h) {
         return viewPoint
       } else {
-        return Mat4.scalarVector(Vec4.create2D(surfaceWidth / this.renderState.size.w, surfaceHeight / this.renderState.size.h)).timesPoint(viewPoint)
+        return Mat4.scalarVector(
+          Vec4.create2D(surfaceWidth / this.renderState.size.w, surfaceHeight / this.renderState.size.h),
+        ).timesPoint(viewPoint)
       }
     } else {
       return scenePoint
     }
   }
 
-  destroy() {
+  destroy(): void {
     if (this.renderState) {
       this.renderState.destroy()
     }
 
     this.destroyed = true
-    this._destroyResolve()
+    this.destroyResolve()
   }
 
-  onDestroy() {
-    return this._destroyPromise
+  onDestroy(): Promise<void> {
+    return this.destroyPromise
   }
 }
