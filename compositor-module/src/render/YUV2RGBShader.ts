@@ -15,17 +15,17 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import Size from "../Size";
+import Size from '../Size'
 import Program from './Program'
 import ShaderCompiler from './ShaderCompiler'
-import {FRAGMENT_YUV_TO_RGB, VERTEX_QUAD} from './ShaderSources'
-import Texture from "./Texture";
+import { FRAGMENT_YUV_TO_RGB, VERTEX_QUAD } from './ShaderSources'
+import Texture from './Texture'
 
 type ShaderArgs = {
-  yTexture: WebGLUniformLocation,
-  uTexture: WebGLUniformLocation,
-  vTexture: WebGLUniformLocation,
-  a_position: GLint,
+  yTexture: WebGLUniformLocation
+  uTexture: WebGLUniformLocation
+  vTexture: WebGLUniformLocation
+  a_position: GLint
   a_texCoord: GLint
 }
 
@@ -80,7 +80,7 @@ class YUV2RGBShader {
       uTexture,
       vTexture,
       a_position,
-      a_texCoord
+      a_texCoord,
     }
   }
 
@@ -89,7 +89,7 @@ class YUV2RGBShader {
     // Create vertex buffer object.
     const webglBuffer = gl.createBuffer()
     if (webglBuffer === null) {
-      throw new Error('Can\'t create webgl buffer.')
+      throw new Error("Can't create webgl buffer.")
     }
     return webglBuffer
   }
@@ -127,26 +127,48 @@ class YUV2RGBShader {
   }
 
   updateShaderData(encodedFrameSize: Size, maxXTexCoord: number, maxYTexCoord: number) {
-    const {w, h} = encodedFrameSize
+    const { w, h } = encodedFrameSize
     this.gl.viewport(0, 0, w, h)
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
-      // First triangle
-      // top left:
-      -1, 1, 0, maxYTexCoord,
-      // top right:
-      1, 1, maxXTexCoord, maxYTexCoord,
-      // bottom right:
-      1, -1, maxXTexCoord, 0,
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      new Float32Array([
+        // First triangle
+        // top left:
+        -1,
+        1,
+        0,
+        maxYTexCoord,
+        // top right:
+        1,
+        1,
+        maxXTexCoord,
+        maxYTexCoord,
+        // bottom right:
+        1,
+        -1,
+        maxXTexCoord,
+        0,
 
-      // Second triangle
-      // bottom right:
-      1, -1, maxXTexCoord, 0,
-      // bottom left:
-      -1, -1, 0, 0,
-      // top left:
-      -1, 1, 0, maxYTexCoord
-    ]), this.gl.DYNAMIC_DRAW)
+        // Second triangle
+        // bottom right:
+        1,
+        -1,
+        maxXTexCoord,
+        0,
+        // bottom left:
+        -1,
+        -1,
+        0,
+        0,
+        // top left:
+        -1,
+        1,
+        0,
+        maxYTexCoord,
+      ]),
+      this.gl.DYNAMIC_DRAW,
+    )
     this.gl.vertexAttribPointer(this.shaderArgs.a_position, 2, this.gl.FLOAT, false, 16, 0)
     this.gl.vertexAttribPointer(this.shaderArgs.a_texCoord, 2, this.gl.FLOAT, false, 16, 8)
   }

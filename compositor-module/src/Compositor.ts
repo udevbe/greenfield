@@ -22,7 +22,7 @@ import {
   WlCompositorRequests,
   WlCompositorResource,
   WlRegionResource,
-  WlSurfaceResource
+  WlSurfaceResource,
 } from 'westfield-runtime-server'
 import Region from './Region'
 import Session from './Session'
@@ -53,7 +53,9 @@ export default class Compositor implements WlCompositorRequests {
     if (this._global) {
       return
     }
-    this._global = registry.createGlobal(this, WlCompositorResource.protocolName, 4, (client, id, version) => this.bindClient(client, id, version))
+    this._global = registry.createGlobal(this, WlCompositorResource.protocolName, 4, (client, id, version) =>
+      this.bindClient(client, id, version),
+    )
   }
 
   unregisterGlobal() {
@@ -83,7 +85,7 @@ export default class Compositor implements WlCompositorRequests {
   }
 
   removeSurfaceCreationListener(listener: (surface: Surface) => void) {
-    this._surfaceCreationListeners = this._surfaceCreationListeners.filter(value => value !== listener)
+    this._surfaceCreationListeners = this._surfaceCreationListeners.filter((value) => value !== listener)
   }
 
   addSurfaceCreationListener(listener: (surface: Surface) => void) {

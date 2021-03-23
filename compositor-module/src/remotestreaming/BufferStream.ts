@@ -18,10 +18,10 @@
 import EncodedFrame from './EncodedFrame'
 
 type BufferState = {
-  completionPromise: Promise<EncodedFrame | undefined>,
-  completionResolve: (value?: EncodedFrame | PromiseLike<EncodedFrame>) => void,
-  completionReject: (reason?: any) => void,
-  state: 'pending' | 'complete' | 'pending_alpha' | 'pending_opaque',
+  completionPromise: Promise<EncodedFrame | undefined>
+  completionResolve: (value?: EncodedFrame | PromiseLike<EncodedFrame>) => void
+  completionReject: (reason?: any) => void
+  state: 'pending' | 'complete' | 'pending_alpha' | 'pending_opaque'
   encodedFrame?: EncodedFrame
 }
 
@@ -55,7 +55,7 @@ export default class BufferStream {
       // @ts-ignore
       completionReject: null,
       state: 'pending', // or 'pending_alpha' or 'pending_opaque' or 'complete'
-      encodedFrame: undefined
+      encodedFrame: undefined,
     }
     bufferState.completionPromise = new Promise<EncodedFrame | undefined>((resolve, reject) => {
       bufferState.completionResolve = resolve
@@ -99,6 +99,6 @@ export default class BufferStream {
   }
 
   destroy() {
-    Object.values(this._bufferStates).forEach(bufferState => bufferState.completionResolve())
+    Object.values(this._bufferStates).forEach((bufferState) => bufferState.completionResolve())
   }
 }

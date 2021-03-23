@@ -20,12 +20,12 @@ import {
   WlDataOfferResource,
   WlDataSourceRequests,
   WlDataSourceResource,
-  WlDataSourceError
+  WlDataSourceError,
 } from 'westfield-runtime-server'
 import DataOffer from './DataOffer'
 
 const { copy, move, ask, none } = WlDataDeviceManagerDndAction
-const ALL_ACTIONS = (copy | move | ask)
+const ALL_ACTIONS = copy | move | ask
 
 /**
  *
@@ -37,11 +37,11 @@ const ALL_ACTIONS = (copy | move | ask)
 export default class DataSource implements WlDataSourceRequests {
   readonly resource: WlDataSourceResource
   mimeTypes: string[] = []
-  dndActions: number = 0
+  dndActions = 0
   currentDndAction: WlDataDeviceManagerDndAction = none
-  accepted: boolean = false
+  accepted = false
   wlDataOffer?: WlDataOfferResource
-  private _actionsSet: boolean = false
+  private _actionsSet = false
 
   static create(wlDataSourceResource: WlDataSourceResource): DataSource {
     const dataSource = new DataSource(wlDataSourceResource)

@@ -23,7 +23,7 @@ import {
   WlOutputResource,
   WlOutputMode,
   WlOutputSubpixel,
-  WlOutputTransform
+  WlOutputTransform,
 } from 'westfield-runtime-server'
 
 import { capabilities } from './browser/capabilities'
@@ -77,7 +77,7 @@ export default class Output implements WlOutputRequests {
       // no global present and still receiving a bind can happen when there is a race between the compositor
       // unregistering the global and a client binding to it. As such we handle it here.
       wlOutputResource.implementation = {
-        release: () => wlOutputResource.destroy()
+        release: () => wlOutputResource.destroy(),
       }
     }
   }
@@ -143,6 +143,6 @@ export default class Output implements WlOutputRequests {
 
   release(resource: WlOutputResource) {
     resource.destroy()
-    this.resources = this.resources.filter(otherResource => otherResource !== resource)
+    this.resources = this.resources.filter((otherResource) => otherResource !== resource)
   }
 }

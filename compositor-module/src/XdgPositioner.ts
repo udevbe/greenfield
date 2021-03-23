@@ -15,11 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import {
-  XdgPositionerRequests,
-  XdgPositionerResource,
-  XdgPositionerError
-} from 'westfield-runtime-server'
+import { XdgPositionerRequests, XdgPositionerResource, XdgPositionerError } from 'westfield-runtime-server'
 import Point from './math/Point'
 
 import Rect from './math/Rect'
@@ -111,7 +107,7 @@ const anchorCalculation: AnchorCalculation = {
     const x = anchorRect.x1
     const y = anchorRect.y1
     return Point.create(x, y)
-  }
+  },
 }
 
 interface OffsetCalculation {
@@ -131,15 +127,15 @@ const offsetCalculation: OffsetCalculation = {
    * none
    */
   0: (anchor, offset, windowGeometry) => {
-    const x = Math.round(windowGeometry.x0 + (windowGeometry.width) / 2)
-    const y = Math.round(windowGeometry.y0 + (windowGeometry.height) / 2)
+    const x = Math.round(windowGeometry.x0 + windowGeometry.width / 2)
+    const y = Math.round(windowGeometry.y0 + windowGeometry.height / 2)
     return anchor.minus(Point.create(x, y))
   },
   /**
    * top
    */
   1: (anchor, offset, windowGeometry) => {
-    const x = Math.round(windowGeometry.x0 + (windowGeometry.width / 2))
+    const x = Math.round(windowGeometry.x0 + windowGeometry.width / 2)
     const y = windowGeometry.y1
     return anchor.minus(Point.create(x, y)).minus(Point.create(0, offset.y))
   },
@@ -147,7 +143,7 @@ const offsetCalculation: OffsetCalculation = {
    * bottom
    */
   2: (anchor, offset, windowGeometry) => {
-    const x = Math.round(windowGeometry.x0 + (windowGeometry.width / 2))
+    const x = Math.round(windowGeometry.x0 + windowGeometry.width / 2)
     const y = windowGeometry.y0
     return anchor.minus(Point.create(x, y)).plus(Point.create(0, offset.y))
   },
@@ -156,7 +152,7 @@ const offsetCalculation: OffsetCalculation = {
    */
   3: (anchor, offset, windowGeometry) => {
     const x = windowGeometry.x1
-    const y = Math.round(windowGeometry.y0 + (windowGeometry.height) / 2)
+    const y = Math.round(windowGeometry.y0 + windowGeometry.height / 2)
     return anchor.minus(Point.create(x, y)).minus(Point.create(offset.x, 0))
   },
   /**
@@ -164,7 +160,7 @@ const offsetCalculation: OffsetCalculation = {
    */
   4: (anchor, offset, windowGeometry) => {
     const x = windowGeometry.x0
-    const y = Math.round(windowGeometry.y0 + (windowGeometry.height) / 2)
+    const y = Math.round(windowGeometry.y0 + windowGeometry.height / 2)
     return anchor.minus(Point.create(x, y)).plus(Point.create(offset.x, 0))
   },
   /**
@@ -198,7 +194,7 @@ const offsetCalculation: OffsetCalculation = {
     const x = windowGeometry.x0
     const y = windowGeometry.y0
     return anchor.minus(Point.create(x, y)).plus(Point.create(offset.x, offset.y))
-  }
+  },
 }
 
 export interface XdgPositionerState {
@@ -211,7 +207,10 @@ export interface XdgPositionerState {
 
   surfaceSpaceAnchorPoint(xdgSurface: XdgSurface): Point | undefined
 
-  checkScreenConstraints(xdgSurface: XdgSurface, view: View): { topViolation: number, rightViolation: number, bottomViolation: number, leftViolation: number } | undefined
+  checkScreenConstraints(
+    xdgSurface: XdgSurface,
+    view: View,
+  ): { topViolation: number; rightViolation: number; bottomViolation: number; leftViolation: number } | undefined
 }
 
 /**
@@ -243,7 +242,7 @@ export default class XdgPositioner implements XdgPositionerRequests {
   anchorRect?: Rect
   anchor: keyof AnchorCalculation = 0
   gravity: keyof OffsetCalculation = 0
-  constraintAdjustment: number = 0
+  constraintAdjustment = 0
   offset: Point = Point.create(0, 0)
 
   static create(xdgPositionerResource: XdgPositionerResource): XdgPositioner {
@@ -271,7 +270,10 @@ export default class XdgPositioner implements XdgPositionerRequests {
 
   setAnchorRect(resource: XdgPositionerResource, x: number, y: number, width: number, height: number) {
     if (width <= 0 || height <= 0) {
-      resource.postError(XdgPositionerError.invalidInput, 'Anchor rect width or height of positioner can not be negative.')
+      resource.postError(
+        XdgPositionerError.invalidInput,
+        'Anchor rect width or height of positioner can not be negative.',
+      )
       console.log('[client-protocol-error] - Anchor rect width or height of positioner can not be negative.')
       return
     }
@@ -330,14 +332,19 @@ export default class XdgPositioner implements XdgPositionerRequests {
           return undefined
         }
       },
-      checkScreenConstraints(parent: XdgSurface, parentView: View): { topViolation: number, rightViolation: number, bottomViolation: number, leftViolation: number } | undefined {
+      checkScreenConstraints(
+        parent: XdgSurface,
+        parentView: View,
+      ): { topViolation: number; rightViolation: number; bottomViolation: number; leftViolation: number } | undefined {
         const surfaceSpaceAnchorPoint = this.surfaceSpaceAnchorPoint(parent)
         if (surfaceSpaceAnchorPoint && this.size) {
           const surfaceSpaceWinGeoMin = surfaceSpaceAnchorPoint.plus(this.size.position)
           const surfaceSpaceWinGeoMax = surfaceSpaceAnchorPoint.plus(Point.create(this.size.x1, this.size.y1))
 
           const surfaceSpaceMinBound = parentView.toSurfaceSpace(Point.create(0, 0))
-          const surfaceSpaceMaxBound = parentView.toSurfaceSpace(Point.create(window.document.documentElement.clientWidth, document.documentElement.clientHeight))
+          const surfaceSpaceMaxBound = parentView.toSurfaceSpace(
+            Point.create(window.document.documentElement.clientWidth, document.documentElement.clientHeight),
+          )
 
           let topViolation = 0
           let rightViolation = 0
@@ -363,13 +370,13 @@ export default class XdgPositioner implements XdgPositionerRequests {
             topViolation: topViolation,
             rightViolation: rightViolation,
             bottomViolation: bottomViolation,
-            leftViolation: leftViolation
+            leftViolation: leftViolation,
           }
         } else {
           resource.postError(XdgPositionerError.invalidInput, `Positioner not fully configured.`)
           return undefined
         }
-      }
+      },
     }
   }
 }

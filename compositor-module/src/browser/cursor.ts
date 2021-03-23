@@ -12,7 +12,8 @@ export function resetCursorImage() {
   setCursor('unset')
 }
 
-export type CursorType = 'default'
+export type CursorType =
+  | 'default'
   | 'unset'
   | 'inherit'
   | 'none'
@@ -57,4 +58,3 @@ export function setCursor(cursorType: CursorType) {
   }
   document.body.style.cursor = cursorType
 }
-

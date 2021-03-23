@@ -19,7 +19,7 @@ import { Client } from 'westfield-runtime-server'
 import { CompositorWebAppLauncher } from './index'
 import WebAppSocket from './WebAppSocket'
 
-export default class WebAppLauncher implements CompositorWebAppLauncher{
+export default class WebAppLauncher implements CompositorWebAppLauncher {
   private readonly _webAppSocket: WebAppSocket
 
   static create(webAppSocket: WebAppSocket) {
@@ -40,7 +40,7 @@ export default class WebAppLauncher implements CompositorWebAppLauncher{
   launch(webAppURL: URL): Promise<Client> {
     // TODO store web apps locally so they can be used offline and/or faster
     // TODO alternatively web apps could be served through web-sockets and avoid the same origin policy.
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       // TODO use fetch api
       const xhr = new XMLHttpRequest()
 

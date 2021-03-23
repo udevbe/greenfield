@@ -23,7 +23,15 @@ export default class EncodedFrameFragment {
   readonly opaque: Uint8Array
   readonly alpha: Uint8Array
 
-  static create(encodingType: string, fragmentX: number, fragmentY: number, fragmentWidth: number, fragmentHeight: number, opaque: Uint8Array, alpha: Uint8Array): EncodedFrameFragment {
+  static create(
+    encodingType: string,
+    fragmentX: number,
+    fragmentY: number,
+    fragmentWidth: number,
+    fragmentHeight: number,
+    opaque: Uint8Array,
+    alpha: Uint8Array,
+  ): EncodedFrameFragment {
     const geo = Rect.create(fragmentX, fragmentY, fragmentX + fragmentWidth, fragmentY + fragmentHeight)
     return new EncodedFrameFragment(encodingType, geo, opaque, alpha)
   }

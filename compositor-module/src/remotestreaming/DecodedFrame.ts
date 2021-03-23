@@ -19,11 +19,11 @@ import BufferContents from '../BufferContents'
 import Size from '../Size'
 
 export type OpaqueAndAlphaPlanes = {
-  opaque: { buffer: Uint8Array, width: number, height: number },
-  alpha?: { buffer: Uint8Array, width: number, height: number }
+  opaque: { buffer: Uint8Array; width: number; height: number }
+  alpha?: { buffer: Uint8Array; width: number; height: number }
 }
 
-export type DecodedPixelContent = OpaqueAndAlphaPlanes | { bitmap: ImageBitmap, blob: Blob }
+export type DecodedPixelContent = OpaqueAndAlphaPlanes | { bitmap: ImageBitmap; blob: Blob }
 
 class DecodedFrame implements BufferContents<DecodedPixelContent> {
   readonly mimeType: 'video/h264' | 'image/png'

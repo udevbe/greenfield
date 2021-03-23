@@ -71,5 +71,4 @@ export default class WebGLBuffer implements BufferImplementation<WebGLFrame> {
     this.bufferResource.client.connection.flush()
     this.released = true
   }
-
 }

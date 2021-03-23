@@ -16,11 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { WebFD } from 'westfield-runtime-common'
-import {
-  GrWebShmBufferRequests,
-  GrWebShmBufferResource,
-  WlBufferResource
-} from 'westfield-runtime-server'
+import { GrWebShmBufferRequests, GrWebShmBufferResource, WlBufferResource } from 'westfield-runtime-server'
 import BufferImplementation from '../BufferImplementation'
 import Surface from '../Surface'
 import WebShmFrame from './WebShmFrame'
@@ -36,7 +32,7 @@ export default class WebShmBuffer implements GrWebShmBufferRequests, BufferImple
     resource: GrWebShmBufferResource,
     bufferResource: WlBufferResource,
     width: number,
-    height: number
+    height: number,
   ): WebShmBuffer {
     const webShmFrame = WebShmFrame.create(width, height)
     const webArrayBuffer = new WebShmBuffer(resource, bufferResource, webShmFrame)

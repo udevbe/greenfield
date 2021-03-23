@@ -22,7 +22,7 @@ import {
   XdgPopupResource,
   XdgPositionerConstraintAdjustment,
   XdgSurfaceResource,
-  XdgWmBaseError
+  XdgWmBaseError,
 } from 'westfield-runtime-server'
 import { clientHeight, clientWidth } from './browser/attributes'
 
@@ -83,18 +83,18 @@ const inverseY: InverseY = {
   /**
    * bottomRight
    */
-  8: 7
+  8: 7,
 }
 
 interface InverseX {
   0: 0
   1: 1
   2: 2
-  3: 4;
-  4: 3;
-  5: 7;
-  6: 8;
-  7: 5;
+  3: 4
+  4: 3
+  5: 7
+  6: 8
+  7: 5
   8: 6
 }
 
@@ -134,7 +134,7 @@ const inverseX: InverseX = {
   /**
    * bottomRight
    */
-  8: 6
+  8: 6,
 }
 
 /**
@@ -179,11 +179,17 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
   readonly xdgSurface: XdgSurface
   readonly parent: XdgSurfaceResource
   readonly positionerState: XdgPositionerState
-  mapped: boolean = false
-  dismissed: boolean = false
+  mapped = false
+  dismissed = false
   private _seat: Seat
 
-  static create(xdgPopupResource: XdgPopupResource, xdgSurface: XdgSurface, parent: XdgSurfaceResource, positionerState: XdgPositionerState, seat: Seat): XdgPopup {
+  static create(
+    xdgPopupResource: XdgPopupResource,
+    xdgSurface: XdgSurface,
+    parent: XdgSurfaceResource,
+    positionerState: XdgPositionerState,
+    seat: Seat,
+  ): XdgPopup {
     const xdgPopup = new XdgPopup(xdgPopupResource, xdgSurface, parent, positionerState, seat)
     xdgPopupResource.implementation = xdgPopup
     const surface = xdgSurface.wlSurfaceResource.implementation as Surface
@@ -193,7 +199,13 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
     return xdgPopup
   }
 
-  private constructor(xdgPopupResource: XdgPopupResource, xdgSurface: XdgSurface, parent: XdgSurfaceResource, positionerState: XdgPositionerState, seat: Seat) {
+  private constructor(
+    xdgPopupResource: XdgPopupResource,
+    xdgSurface: XdgSurface,
+    parent: XdgSurfaceResource,
+    positionerState: XdgPositionerState,
+    seat: Seat,
+  ) {
     this.resource = xdgPopupResource
     this.xdgSurface = xdgSurface
     this.parent = parent
@@ -222,8 +234,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
   private _map(surface: Surface) {
     // TODO check if parent is mapped
     for (const surfaceChild of surface.children) {
-      if (surfaceChild !== surface.surfaceChildSelf &&
-        surfaceChild.surface.role instanceof XdgPopup) {
+      if (surfaceChild !== surface.surfaceChildSelf && surfaceChild.surface.role instanceof XdgPopup) {
         this.resource.postError(XdgWmBaseError.notTheTopmostPopup, 'Client tried to map a non-topmost popup')
         console.log('[client-protocol-error] - Client tried to map a non-topmost popup.')
         return
@@ -271,8 +282,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
   destroy(resource: XdgPopupResource) {
     const surface = this.xdgSurface.wlSurfaceResource.implementation as Surface
     for (const surfaceChild of surface.children) {
-      if (surfaceChild !== surface.surfaceChildSelf &&
-        surfaceChild.surface.role instanceof XdgPopup) {
+      if (surfaceChild !== surface.surfaceChildSelf && surfaceChild.surface.role instanceof XdgPopup) {
         resource.postError(XdgWmBaseError.notTheTopmostPopup, 'Client tried to destroy a non-topmost popup')
         console.log('[client-protocol-error] - Client tried to destroy a non-topmost popup.')
         return
@@ -309,7 +319,10 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
         this._dismiss()
         return
       } else if (!pointer.findPopupGrab(parentWlSurfaceResource)) {
-        resource.postError(XdgWmBaseError.invalidPopupParent, 'Popup parent is a popup that did not take an explicit grab.')
+        resource.postError(
+          XdgWmBaseError.invalidPopupParent,
+          'Popup parent is a popup that did not take an explicit grab.',
+        )
         console.error('[client-protocol-error]  Popup parent is a popup that did not take an explicit grab.')
         return
       }
@@ -335,11 +348,18 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
 
     const parentXdgSurface = parent.implementation as XdgSurface
     const parentSurface = parentXdgSurface.wlSurfaceResource.implementation as Surface
-    const primaryParentView = parentSurface.views.find(parentView => parentView.primary)
+    const primaryParentView = parentSurface.views.find((parentView) => parentView.primary)
     if (primaryParentView) {
       let violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
       if (violations && positionerState.size) {
-        if (!(violations.topViolation || violations.rightViolation || violations.bottomViolation || violations.leftViolation)) {
+        if (
+          !(
+            violations.topViolation ||
+            violations.rightViolation ||
+            violations.bottomViolation ||
+            violations.leftViolation
+          )
+        ) {
           // all fine, no need to reconfigure
           return
         }
@@ -353,8 +373,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
 
         // X-Axis:
         // we can't use slide or flip if if the height is greater than the screen height
-        if ((violations.leftViolation || violations.rightViolation) &&
-          positionerState.size.width < clientWidth()) {
+        if ((violations.leftViolation || violations.rightViolation) && positionerState.size.width < clientWidth()) {
           if (canFlipX) {
             // TODO try flipping
             const oldAnchor = positionerState.anchor
@@ -399,8 +418,11 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
         // Y-Axis:
         // we can't use slide or flip if if the height is greater than the screen height
         violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
-        if (violations && (violations.topViolation || violations.bottomViolation) &&
-          positionerState.size.height < clientHeight()) {
+        if (
+          violations &&
+          (violations.topViolation || violations.bottomViolation) &&
+          positionerState.size.height < clientHeight()
+        ) {
           if (canFlipY) {
             const oldAnchor = positionerState.anchor
             const oldGravity = positionerState.gravity

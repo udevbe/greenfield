@@ -41,10 +41,10 @@ export default class Renderer {
         alpha: true,
         premultipliedAlpha: false,
         preserveDrawingBuffer: false,
-        desynchronized: true
+        desynchronized: true,
       })
       if (!gl) {
-        throw new Error('This browser doesn\'t support WebGL!')
+        throw new Error("This browser doesn't support WebGL!")
       }
       // TODO sync output properties with scene
       // TODO notify client on which output their surfaces are being displayed

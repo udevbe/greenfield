@@ -23,7 +23,7 @@ import {
   WlSubcompositorRequests,
   WlSubcompositorResource,
   WlSubsurfaceResource,
-  WlSurfaceResource
+  WlSurfaceResource,
 } from 'westfield-runtime-server'
 
 import Subsurface from './Subsurface'
@@ -59,8 +59,7 @@ export default class Subcompositor implements WlSubcompositorRequests {
     return new Subcompositor()
   }
 
-  private constructor() {
-  }
+  private constructor() {}
 
   registerGlobal(registry: Registry) {
     if (this._global) {
@@ -84,7 +83,12 @@ export default class Subcompositor implements WlSubcompositorRequests {
     grSubcompositorResource.implementation = this
   }
 
-  getSubsurface(resource: WlSubcompositorResource, id: number, wlSurfaceResource: WlSurfaceResource, wlParentSurfaceResource: WlSurfaceResource) {
+  getSubsurface(
+    resource: WlSubcompositorResource,
+    id: number,
+    wlSurfaceResource: WlSurfaceResource,
+    wlParentSurfaceResource: WlSurfaceResource,
+  ) {
     const surface = wlSurfaceResource.implementation as Surface
     if (surface.role) {
       resource.postError(WlSubcompositorError.badSurface, 'Given surface has another role.')

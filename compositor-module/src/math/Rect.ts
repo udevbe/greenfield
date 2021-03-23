@@ -19,44 +19,44 @@ import Size from '../Size'
 import Point from './Point'
 
 export default class Rect {
-  x0: number;
-  y0: number;
-  x1: number;
-  y1: number;
+  x0: number
+  y0: number
+  x1: number
+  y1: number
   /**
    * @param x0 top left x
    * @param y0 top left y
    * @param x1 bottom right x
    * @param y1 bottom right y
    */
-  static create (x0: number, y0: number, x1: number, y1: number): Rect {
+  static create(x0: number, y0: number, x1: number, y1: number): Rect {
     return new Rect(x0, y0, x1, y1)
   }
 
-  constructor (x0: number, y0: number, x1: number, y1: number) {
+  constructor(x0: number, y0: number, x1: number, y1: number) {
     this.x0 = x0
     this.y0 = y0
     this.x1 = x1
     this.y1 = y1
   }
 
-  get width (): number {
+  get width(): number {
     return Math.abs(this.x1 - this.x0)
   }
 
-  get height (): number {
+  get height(): number {
     return Math.abs(this.y1 - this.y0)
   }
 
-  get size (): Size {
+  get size(): Size {
     return Size.create(this.width, this.height)
   }
 
-  get position (): Point {
+  get position(): Point {
     return Point.create(this.x0, this.y0)
   }
 
-  intersect (other: Rect): Rect {
+  intersect(other: Rect): Rect {
     const r1 = this
     const r2 = other
 

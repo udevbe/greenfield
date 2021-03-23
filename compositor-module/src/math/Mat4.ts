@@ -20,22 +20,22 @@ import Rect from './Rect'
 import Vec4 from './Vec4'
 
 export default class Mat4 {
-  m00: number;
-  m10: number;
-  m30: number;
-  m20: number;
-  m01: number;
-  m11: number;
-  m21: number;
-  m31: number;
-  m02: number;
-  m12: number;
-  m22: number;
-  m32: number;
-  m03: number;
-  m13: number;
-  m23: number;
-  m33: number;
+  m00: number
+  m10: number
+  m30: number
+  m20: number
+  m01: number
+  m11: number
+  m21: number
+  m31: number
+  m02: number
+  m12: number
+  m22: number
+  m32: number
+  m03: number
+  m13: number
+  m23: number
+  m33: number
 
   /**
    * @param m00 Column 0, Row 0
@@ -56,59 +56,59 @@ export default class Mat4 {
    * @param m33 Column 3, Row 3
    */
   static create(
-    m00: number, m10: number, m20: number, m30: number,
-    m01: number, m11: number, m21: number, m31: number,
-    m02: number, m12: number, m22: number, m32: number,
-    m03: number, m13: number, m23: number, m33: number
+    m00: number,
+    m10: number,
+    m20: number,
+    m30: number,
+    m01: number,
+    m11: number,
+    m21: number,
+    m31: number,
+    m02: number,
+    m12: number,
+    m22: number,
+    m32: number,
+    m03: number,
+    m13: number,
+    m23: number,
+    m33: number,
   ): Mat4 {
-    return new Mat4(
-      m00, m10, m20, m30,
-      m01, m11, m21, m31,
-      m02, m12, m22, m32,
-      m03, m13, m23, m33
-    )
+    return new Mat4(m00, m10, m20, m30, m01, m11, m21, m31, m02, m12, m22, m32, m03, m13, m23, m33)
   }
 
   static IDENTITY(): Mat4 {
-    return this.create(
-      1, 0, 0, 0,
-      0, 1, 0, 0,
-      0, 0, 1, 0,
-      0, 0, 0, 1)
+    return this.create(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
   }
 
   static scalar(scale: number): Mat4 {
-    return this.create(
-      scale, 0, 0, 0,
-      0, scale, 0, 0,
-      0, 0, 1, 0,
-      0, 0, 0, 1
-    )
+    return this.create(scale, 0, 0, 0, 0, scale, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
   }
 
   static scalarVector(vect4: Vec4): Mat4 {
-    return this.create(
-      vect4.x, 0, 0, 0,
-      0, vect4.y, 0, 0,
-      0, 0, vect4.z, 0,
-      0, 0, 0, vect4.w
-    )
+    return this.create(vect4.x, 0, 0, 0, 0, vect4.y, 0, 0, 0, 0, vect4.z, 0, 0, 0, 0, vect4.w)
   }
 
   static translation(x: number, y: number): Mat4 {
-    return this.create(
-      1, 0, 0, x,
-      0, 1, 0, y,
-      0, 0, 1, 0,
-      0, 0, 0, 1
-    )
+    return this.create(1, 0, 0, x, 0, 1, 0, y, 0, 0, 1, 0, 0, 0, 0, 1)
   }
 
   constructor(
-    m00: number, m10: number, m20: number, m30: number,
-    m01: number, m11: number, m21: number, m31: number,
-    m02: number, m12: number, m22: number, m32: number,
-    m03: number, m13: number, m23: number, m33: number
+    m00: number,
+    m10: number,
+    m20: number,
+    m30: number,
+    m01: number,
+    m11: number,
+    m21: number,
+    m31: number,
+    m02: number,
+    m12: number,
+    m22: number,
+    m32: number,
+    m03: number,
+    m13: number,
+    m23: number,
+    m33: number,
   ) {
     this.m00 = m00
     this.m10 = m10
@@ -133,10 +133,22 @@ export default class Mat4 {
    */
   plus(other: Mat4): Mat4 {
     return Mat4.create(
-      this.m00 + other.m00, this.m10 + other.m10, this.m20 + other.m20, this.m30 + other.m30,
-      this.m01 + other.m01, this.m11 + other.m11, this.m21 + other.m21, this.m31 + other.m31,
-      this.m02 + other.m02, this.m12 + other.m12, this.m22 + other.m22, this.m32 + other.m32,
-      this.m03 + other.m03, this.m13 + other.m13, this.m23 + other.m23, this.m33 + other.m33
+      this.m00 + other.m00,
+      this.m10 + other.m10,
+      this.m20 + other.m20,
+      this.m30 + other.m30,
+      this.m01 + other.m01,
+      this.m11 + other.m11,
+      this.m21 + other.m21,
+      this.m31 + other.m31,
+      this.m02 + other.m02,
+      this.m12 + other.m12,
+      this.m22 + other.m22,
+      this.m32 + other.m32,
+      this.m03 + other.m03,
+      this.m13 + other.m13,
+      this.m23 + other.m23,
+      this.m33 + other.m33,
     )
   }
 
@@ -160,7 +172,7 @@ export default class Mat4 {
       this.m00 * rightX + this.m10 * rightY + this.m20 * rightZ + this.m30 * rightW,
       this.m01 * rightX + this.m11 * rightY + this.m21 * rightZ + this.m31 * rightW,
       this.m02 * rightX + this.m12 * rightY + this.m22 * rightZ + this.m32 * rightW,
-      this.m03 * rightX + this.m13 * rightY + this.m23 * rightZ + this.m33 * rightW
+      this.m03 * rightX + this.m13 * rightY + this.m23 * rightZ + this.m33 * rightW,
     )
   }
 
@@ -185,12 +197,7 @@ export default class Mat4 {
     const nm32 = this.m02 * right.m30 + this.m12 * right.m31 + this.m22 * right.m32 + this.m32 * right.m33
     const nm33 = this.m03 * right.m30 + this.m13 * right.m31 + this.m23 * right.m32 + this.m33 * right.m33
 
-    return Mat4.create(
-      nm00, nm10, nm20, nm30,
-      nm01, nm11, nm21, nm31,
-      nm02, nm12, nm22, nm32,
-      nm03, nm13, nm23, nm33
-    )
+    return Mat4.create(nm00, nm10, nm20, nm30, nm01, nm11, nm21, nm31, nm02, nm12, nm22, nm32, nm03, nm13, nm23, nm33)
   }
 
   /**
@@ -207,7 +214,7 @@ export default class Mat4 {
       [this.m00, this.m01, this.m02, this.m03],
       [this.m10, this.m11, this.m12, this.m13],
       [this.m20, this.m21, this.m22, this.m23],
-      [this.m30, this.m31, this.m32, this.m33]
+      [this.m30, this.m31, this.m32, this.m33],
     ]
 
     let i
@@ -274,28 +281,81 @@ export default class Mat4 {
     }
 
     return Mat4.create(
-      I[0][0], I[1][0], I[2][0], I[3][0],
-      I[0][1], I[1][1], I[2][1], I[3][1],
-      I[0][2], I[1][2], I[2][2], I[3][2],
-      I[0][3], I[1][3], I[2][3], I[3][3]
+      I[0][0],
+      I[1][0],
+      I[2][0],
+      I[3][0],
+      I[0][1],
+      I[1][1],
+      I[2][1],
+      I[3][1],
+      I[0][2],
+      I[1][2],
+      I[2][2],
+      I[3][2],
+      I[0][3],
+      I[1][3],
+      I[2][3],
+      I[3][3],
     )
   }
 
   clone(): Mat4 {
     return Mat4.create(
-      this.m00, this.m10, this.m20, this.m30,
-      this.m01, this.m11, this.m21, this.m31,
-      this.m02, this.m12, this.m22, this.m32,
-      this.m03, this.m13, this.m23, this.m33
+      this.m00,
+      this.m10,
+      this.m20,
+      this.m30,
+      this.m01,
+      this.m11,
+      this.m21,
+      this.m31,
+      this.m02,
+      this.m12,
+      this.m22,
+      this.m32,
+      this.m03,
+      this.m13,
+      this.m23,
+      this.m33,
     )
   }
 
-  toArray(): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number] {
+  toArray(): [
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+  ] {
     return [
-      this.m00, this.m01, this.m02, this.m03,
-      this.m10, this.m11, this.m12, this.m13,
-      this.m20, this.m21, this.m22, this.m23,
-      this.m30, this.m31, this.m32, this.m33
+      this.m00,
+      this.m01,
+      this.m02,
+      this.m03,
+      this.m10,
+      this.m11,
+      this.m12,
+      this.m13,
+      this.m20,
+      this.m21,
+      this.m22,
+      this.m23,
+      this.m30,
+      this.m31,
+      this.m32,
+      this.m33,
     ]
   }
 }

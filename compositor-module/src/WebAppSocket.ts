@@ -27,10 +27,10 @@ interface WebAppSocketMessage {
 
 function instanceOfWebAppSocketMessage(object: any): object is WebAppSocketMessage {
   return (
-    'protocolMessage' in object
-    && 'meta' in object
-    && object.protocolMessage instanceof ArrayBuffer
-    && Array.isArray(object.meta)
+    'protocolMessage' in object &&
+    'meta' in object &&
+    object.protocolMessage instanceof ArrayBuffer &&
+    Array.isArray(object.meta)
   )
 }
 
@@ -51,7 +51,7 @@ export default class WebAppSocket implements CompositorWebAppSocket {
 
     const client = this._session.display.createClient()
 
-    webWorker.onmessage = event => {
+    webWorker.onmessage = (event) => {
       if (!instanceOfWebAppSocketMessage(event.data)) {
         console.error('[web-worker-connection] client send an illegal message object. Expected ArrayBuffer.')
         client.close()
@@ -59,19 +59,19 @@ export default class WebAppSocket implements CompositorWebAppSocket {
 
       const webAppSocketMessage = event.data as WebAppSocketMessage
       const buffer = new Uint32Array(webAppSocketMessage.protocolMessage)
-      const fds = webAppSocketMessage.meta.map(transferable => {
+      const fds = webAppSocketMessage.meta.map((transferable) => {
         if (transferable instanceof ArrayBuffer) {
           return this._session.webFS.fromArrayBuffer(transferable)
         } else if (transferable instanceof ImageBitmap) {
           return this._session.webFS.fromImageBitmap(transferable)
         } else if (transferable instanceof OffscreenCanvas) {
           return this._session.webFS.fromOffscreenCanvas(transferable)
-        }// else if (transferable instanceof MessagePort) {
+        } // else if (transferable instanceof MessagePort) {
         // }
         throw new Error(`Unsupported transferable: ${transferable}`)
       })
       client.connection.message({ buffer, fds })
-      fds.forEach(fd => fd.close())
+      fds.forEach((fd) => fd.close())
     }
 
     const flushQueue: SendMessage[][] = []
@@ -86,7 +86,10 @@ export default class WebAppSocket implements CompositorWebAppSocket {
         const sendWireMessages = flushQueue[0]
 
         // convert to as single arrayBuffer so it can be send over a data channel using zero copy semantics.
-        const messagesSize = sendWireMessages.reduce((previousValue, currentValue) => previousValue + currentValue.buffer.byteLength, 0)
+        const messagesSize = sendWireMessages.reduce(
+          (previousValue, currentValue) => previousValue + currentValue.buffer.byteLength,
+          0,
+        )
 
         const sendBuffer = new Uint32Array(new ArrayBuffer(messagesSize))
         let offset = 0
@@ -102,10 +105,13 @@ export default class WebAppSocket implements CompositorWebAppSocket {
           offset += message.length
         }
 
-        webWorker.postMessage({
-          protocolMessage: sendBuffer.buffer,
-          meta
-        }, [sendBuffer.buffer, ...meta])
+        webWorker.postMessage(
+          {
+            protocolMessage: sendBuffer.buffer,
+            meta,
+          },
+          [sendBuffer.buffer, ...meta],
+        )
         flushQueue.shift()
       }
     }
@@ -113,7 +119,7 @@ export default class WebAppSocket implements CompositorWebAppSocket {
     client.onClose().then(() => {
       this._session.userShell.events.destroyApplicationClient?.({
         id: client.id,
-        variant: 'web'
+        variant: 'web',
       })
     })
     this._session.userShell.events.createApplicationClient?.({ id: client.id, variant: 'web' })

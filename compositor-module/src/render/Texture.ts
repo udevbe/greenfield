@@ -19,9 +19,9 @@
  * Represents a WebGL texture object.
  */
 export default class Texture {
-  readonly gl: WebGLRenderingContext;
-  readonly texture: WebGLTexture;
-  readonly format: number;
+  readonly gl: WebGLRenderingContext
+  readonly texture: WebGLTexture
+  readonly format: number
 
   static create(gl: WebGLRenderingContext, format: number): Texture {
     const texture = gl.createTexture()
@@ -44,7 +44,7 @@ export default class Texture {
     this.format = format
   }
 
-  subImage2dBuffer(buffer: ArrayBufferView|null, x: number, y: number, width: number, height: number) {
+  subImage2dBuffer(buffer: ArrayBufferView | null, x: number, y: number, width: number, height: number) {
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture)
     this.gl.texSubImage2D(this.gl.TEXTURE_2D, 0, x, y, width, height, this.format, this.gl.UNSIGNED_BYTE, buffer)
     this.gl.bindTexture(this.gl.TEXTURE_2D, null)
@@ -56,10 +56,20 @@ export default class Texture {
     this.gl.bindTexture(this.gl.TEXTURE_2D, null)
   }
 
-  image2dBuffer(buffer: ArrayBufferView|null, width: number, height: number) {
+  image2dBuffer(buffer: ArrayBufferView | null, width: number, height: number) {
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture)
     const level = 0
-    this.gl.texImage2D(this.gl.TEXTURE_2D, level, this.format, width, height, 0, this.format, this.gl.UNSIGNED_BYTE, buffer)
+    this.gl.texImage2D(
+      this.gl.TEXTURE_2D,
+      level,
+      this.format,
+      width,
+      height,
+      0,
+      this.format,
+      this.gl.UNSIGNED_BYTE,
+      buffer,
+    )
     this.gl.bindTexture(this.gl.TEXTURE_2D, null)
   }
 

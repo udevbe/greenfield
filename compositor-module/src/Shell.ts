@@ -23,7 +23,7 @@ import {
   WlShellResource,
   WlShellError,
   WlShellSurfaceResource,
-  WlSurfaceResource
+  WlSurfaceResource,
 } from 'westfield-runtime-server'
 import Session from './Session'
 

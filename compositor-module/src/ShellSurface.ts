@@ -22,7 +22,7 @@ import {
   WlShellSurfaceResize,
   WlShellSurfaceResource,
   WlShellSurfaceTransient,
-  WlSurfaceResource
+  WlSurfaceResource,
 } from 'westfield-runtime-server'
 import { CompositorSurface, CompositorSurfaceState } from './index'
 
@@ -32,17 +32,7 @@ import Session from './Session'
 import Surface from './Surface'
 import { UserShellSurfaceRole } from './UserShellSurfaceRole'
 
-const {
-  bottom,
-  bottomLeft,
-  bottomRight,
-  left,
-  none,
-  right,
-  top,
-  topLeft,
-  topRight
-} = WlShellSurfaceResize
+const { bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight } = WlShellSurfaceResize
 const { inactive } = WlShellSurfaceTransient
 
 const SurfaceStates = {
@@ -50,7 +40,7 @@ const SurfaceStates = {
   FULLSCREEN: 'fullscreen',
   POPUP: 'popup',
   TRANSIENT: 'transient',
-  TOP_LEVEL: 'top_level'
+  TOP_LEVEL: 'top_level',
 }
 
 /**
@@ -73,14 +63,18 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
   readonly wlSurfaceResource: WlSurfaceResource
   readonly session: Session
   state?: string
-  private _managed: boolean = false
+  private _managed = false
   private _userSurfaceState: CompositorSurfaceState
-  private _pingTimeoutActive: boolean = false
-  private _timeoutTimer: number = 0
-  private _pingTimer: number = 0
-  private _mapped: boolean = false
+  private _pingTimeoutActive = false
+  private _timeoutTimer = 0
+  private _pingTimer = 0
+  private _mapped = false
 
-  static create(wlShellSurfaceResource: WlShellSurfaceResource, wlSurfaceResource: WlSurfaceResource, session: Session): ShellSurface {
+  static create(
+    wlShellSurfaceResource: WlShellSurfaceResource,
+    wlSurfaceResource: WlSurfaceResource,
+    session: Session,
+  ): ShellSurface {
     const { client, id } = wlSurfaceResource
     const userSurface: CompositorSurface = { id: `${id}`, clientId: client.id }
     const userSurfaceState: CompositorSurfaceState = {
@@ -89,15 +83,20 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
       mapped: false,
       minimized: false,
       title: '',
-      unresponsive: false
+      unresponsive: false,
     }
-    const shellSurface = new ShellSurface(wlShellSurfaceResource, wlSurfaceResource, session, userSurface, userSurfaceState)
+    const shellSurface = new ShellSurface(
+      wlShellSurfaceResource,
+      wlSurfaceResource,
+      session,
+      userSurface,
+      userSurfaceState,
+    )
     wlShellSurfaceResource.implementation = shellSurface
 
     // destroy the shell-surface if the surface is destroyed.
-    wlSurfaceResource.onDestroy().then(() => wlShellSurfaceResource.destroy());
-
-    (wlSurfaceResource.implementation as Surface).role = shellSurface
+    wlSurfaceResource.onDestroy().then(() => wlShellSurfaceResource.destroy())
+    ;(wlSurfaceResource.implementation as Surface).role = shellSurface
     shellSurface._doPing(wlShellSurfaceResource)
 
     wlShellSurfaceResource.onDestroy().then(() => {
@@ -113,7 +112,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     wlSurfaceResource: WlSurfaceResource,
     session: Session,
     userSurface: CompositorSurface,
-    userSurfaceState: CompositorSurfaceState
+    userSurfaceState: CompositorSurfaceState,
   ) {
     this.userSurface = userSurface
     this.resource = wlShellSurfaceResource
@@ -191,7 +190,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     const scene = pointer.scene
     if (scene) {
       // FIXME Only move that view that was last interacted with instead of finding the first one that matches.
-      const topLevelView = scene.topLevelViews.find(topLevelView => topLevelView.surface === surface)
+      const topLevelView = scene.topLevelViews.find((topLevelView) => topLevelView.surface === surface)
       if (topLevelView) {
         const origPosition = topLevelView.positionOffset
 
@@ -223,13 +222,13 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
 
     const pointer = seat.pointer
     // assigned in switch statement
-    let sizeAdjustment: (width: number, height: number, deltaX: number, deltaY: number) => { w: number, h: number }
+    let sizeAdjustment: (width: number, height: number, deltaX: number, deltaY: number) => { w: number; h: number }
 
     switch (edges) {
       case bottomRight: {
         sizeAdjustment = (width, height, deltaX, deltaY) => ({
           w: width + deltaX,
-          h: height + deltaY
+          h: height + deltaY,
         })
         break
       }
@@ -248,14 +247,14 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
       case topLeft: {
         sizeAdjustment = (width, height, deltaX, deltaY) => ({
           w: width - deltaX,
-          h: height - deltaY
+          h: height - deltaY,
         })
         break
       }
       case bottomLeft: {
         sizeAdjustment = (width, height, deltaX, deltaY) => ({
           w: width - deltaX,
-          h: height + deltaY
+          h: height + deltaY,
         })
         break
       }
@@ -266,7 +265,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
       case topRight: {
         sizeAdjustment = (width, height, deltaX, deltaY) => ({
           w: width + deltaX,
-          h: height - deltaY
+          h: height - deltaY,
         })
         break
       }
@@ -279,10 +278,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
 
     const pointerX = pointer.x
     const pointerY = pointer.y
-    const {
-      w: surfaceWidth,
-      h: surfaceHeight
-    } = (this.wlSurfaceResource.implementation as Surface).size || {}
+    const { w: surfaceWidth, h: surfaceHeight } = (this.wlSurfaceResource.implementation as Surface).size || {}
 
     if (surfaceWidth && surfaceHeight) {
       const resizeListener = () => {
@@ -301,7 +297,9 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
   private _ensureUserShellSurface() {
     if (!this._managed) {
       this._managed = true
-      this.wlSurfaceResource.onDestroy().then(() => this.session.userShell.events.destroyUserSurface?.(this.userSurface))
+      this.wlSurfaceResource
+        .onDestroy()
+        .then(() => this.session.userShell.events.destroyUserSurface?.(this.userSurface))
       this.session.userShell.events.createUserSurface?.(this.userSurface, this._userSurfaceState)
     }
   }
@@ -349,7 +347,12 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     this.state = SurfaceStates.TRANSIENT
   }
 
-  setFullscreen(resource: WlShellSurfaceResource, method: number, framerate: number, output: WlOutputResource | undefined) {
+  setFullscreen(
+    resource: WlShellSurfaceResource,
+    method: number,
+    framerate: number,
+    output: WlOutputResource | undefined,
+  ) {
     this.state = SurfaceStates.FULLSCREEN
     const surface = this.wlSurfaceResource.implementation as Surface
     // TODO get proper size in surface coordinates instead of assume surface space === global space
@@ -357,7 +360,15 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     this.resource.configure(none, window.innerWidth, window.innerHeight)
   }
 
-  async setPopup(resource: WlShellSurfaceResource, wlSeatResource: WlSeatResource, serial: number, parent: WlSurfaceResource, x: number, y: number, flags: number) {
+  async setPopup(
+    resource: WlShellSurfaceResource,
+    wlSeatResource: WlSeatResource,
+    serial: number,
+    parent: WlSurfaceResource,
+    x: number,
+    y: number,
+    flags: number,
+  ) {
     const seat = wlSeatResource.implementation as Seat
     // if (!seat.isValidInputSerial(seat.buttonPressSerial)) {
     //   this._dismiss()
@@ -396,7 +407,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
       const width = scene.canvas.width
       const height = scene.canvas.height
 
-      surface.views.forEach(view => view.positionOffset = Point.create(0, 0))
+      surface.views.forEach((view) => (view.positionOffset = Point.create(0, 0)))
       this.resource.configure(none, width, height)
     }
   }

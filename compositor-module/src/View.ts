@@ -38,7 +38,7 @@ export default class View {
   private _transformation: Mat4
   private _inverseTransformation: Mat4
   // @ts-ignore
-  private _destroyResolve: (value?: (PromiseLike<void> | void)) => void
+  private _destroyResolve: (value?: PromiseLike<void> | void) => void
   private _parent?: View
   private _primary: boolean
 
@@ -47,14 +47,21 @@ export default class View {
     return new View(surface, width, height, Mat4.IDENTITY(), scene, renderState)
   }
 
-  private constructor(surface: Surface, width: number, height: number, transformation: Mat4, scene: Scene, renderState: RenderState) {
+  private constructor(
+    surface: Surface,
+    width: number,
+    height: number,
+    transformation: Mat4,
+    scene: Scene,
+    renderState: RenderState,
+  ) {
     this.surface = surface
     this.scene = scene
     this.renderState = renderState
     this.positionOffset = Point.create(0, 0)
     this._transformation = transformation
     this._inverseTransformation = transformation.invert()
-    this._destroyPromise = new Promise<void>(resolve => {
+    this._destroyPromise = new Promise<void>((resolve) => {
       this._destroyResolve = resolve
     })
     this.destroyed = false
@@ -127,13 +134,13 @@ export default class View {
   }
 
   _applyTransformationsChild() {
-    this.findChildViews().forEach(childView => childView.applyTransformations())
+    this.findChildViews().forEach((childView) => childView.applyTransformations())
   }
 
   findChildViews(): View[] {
     return this.surface.children
-      .filter(surfaceChild => surfaceChild.surface !== this.surface)
-      .map(surfaceChild => surfaceChild.surface.views.filter(view => view.parent === this))
+      .filter((surfaceChild) => surfaceChild.surface !== this.surface)
+      .map((surfaceChild) => surfaceChild.surface.views.filter((view) => view.parent === this))
       .flat()
   }
 
@@ -160,7 +167,7 @@ export default class View {
   withUserTransformations(transformation: Mat4) {
     let finalTransformation = transformation
     // TODO use reduce
-    this.userTransformations.forEach(value => {
+    this.userTransformations.forEach((value) => {
       finalTransformation = transformation.timesMat4(value)
     })
     return finalTransformation
@@ -210,7 +217,9 @@ export default class View {
       if (surfaceWidth === this.renderState.size.w && surfaceHeight === this.renderState.size.h) {
         return viewPoint
       } else {
-        return Mat4.scalarVector(Vec4.create2D(surfaceWidth / this.renderState.size.w, surfaceHeight / this.renderState.size.h)).timesPoint(viewPoint)
+        return Mat4.scalarVector(
+          Vec4.create2D(surfaceWidth / this.renderState.size.w, surfaceHeight / this.renderState.size.h),
+        ).timesPoint(viewPoint)
       }
     } else {
       return scenePoint

@@ -26,7 +26,7 @@ import {
   WlDataOfferResource,
   WlDataSourceResource,
   WlDataSourceError,
-  WlSurfaceResource
+  WlSurfaceResource,
 } from 'westfield-runtime-server'
 import DataOffer from './DataOffer'
 import DataSource from './DataSource'
@@ -72,7 +72,7 @@ export default class DataDevice implements WlDataDeviceRequests {
   }
 
   private _dataDeviceForClient(client: Client): WlDataDeviceResource | undefined {
-    return this.resources.find(dataDeviceResource => dataDeviceResource.client === client)
+    return this.resources.find((dataDeviceResource) => dataDeviceResource.client === client)
   }
 
   private _handleDndSourceDestroy() {
@@ -103,7 +103,13 @@ export default class DataDevice implements WlDataDeviceRequests {
     this.selectionSource = undefined
   }
 
-  startDrag(resource: WlDataDeviceResource, source: WlDataSourceResource | undefined, origin: WlSurfaceResource, icon: WlSurfaceResource | undefined, serial: number) {
+  startDrag(
+    resource: WlDataDeviceResource,
+    source: WlDataSourceResource | undefined,
+    origin: WlSurfaceResource,
+    icon: WlSurfaceResource | undefined,
+    serial: number,
+  ) {
     if (icon && (icon.implementation as Surface).role) {
       resource.postError(WlDataDeviceError.role, 'Given surface has another role.')
       console.log('[client-protocol-error] - Given surface has another role.')
@@ -170,11 +176,13 @@ export default class DataDevice implements WlDataDeviceRequests {
     const mousePoint = Point.create(pointer.x, pointer.y)
     const surfacePoint = this.dndFocus.toSurfaceSpace(mousePoint)
 
-    this.resources.filter((dataDeviceResource) => {
-      return dataDeviceResource.client === client
-    }).forEach((dataDeviceResource) => {
-      dataDeviceResource.motion(Date.now(), Fixed.parse(surfacePoint.x), Fixed.parse(surfacePoint.y))
-    })
+    this.resources
+      .filter((dataDeviceResource) => {
+        return dataDeviceResource.client === client
+      })
+      .forEach((dataDeviceResource) => {
+        dataDeviceResource.motion(Date.now(), Fixed.parse(surfacePoint.x), Fixed.parse(surfacePoint.y))
+      })
   }
 
   private _onFocusGained(view: View) {
@@ -207,9 +215,9 @@ export default class DataDevice implements WlDataDeviceRequests {
 
     let wlDataOffer: WlDataOfferResource | undefined = undefined
     if (this.dndSource) {
-      wlDataOffer = this._createDataOffer(this.dndSource, dataDeviceResource);
-      (wlDataOffer.implementation as DataOffer).updateAction();
-      (this.dndSource.implementation as DataSource).accepted = false
+      wlDataOffer = this._createDataOffer(this.dndSource, dataDeviceResource)
+      ;(wlDataOffer.implementation as DataOffer).updateAction()
+      ;(this.dndSource.implementation as DataSource).accepted = false
     }
     dataDeviceResource.enter(serial, surfaceResource, x, y, wlDataOffer)
 
@@ -283,12 +291,15 @@ export default class DataDevice implements WlDataDeviceRequests {
 
   // TODO handle touch events
 
-  private _createDataOffer(source: WlDataSourceResource, dataDeviceResource: WlDataDeviceResource): WlDataOfferResource {
-    const offerId = /** @type {number} */dataDeviceResource.dataOffer()
+  private _createDataOffer(
+    source: WlDataSourceResource,
+    dataDeviceResource: WlDataDeviceResource,
+  ): WlDataOfferResource {
+    const offerId = /** @type {number} */ dataDeviceResource.dataOffer()
     const dataOffer = DataOffer.create(source, offerId, dataDeviceResource)
     const dataSource = source.implementation as DataSource
     dataSource.wlDataOffer = dataOffer.resource
-    dataSource.mimeTypes.forEach(mimeType => dataOffer.resource.offer(mimeType))
+    dataSource.mimeTypes.forEach((mimeType) => dataOffer.resource.offer(mimeType))
     return dataOffer.resource
   }
 
@@ -345,8 +356,8 @@ export default class DataDevice implements WlDataDeviceRequests {
       this.selectionSource.action(0)
       wlDataOffer.action(0)
 
-      dataDeviceResource.selection(wlDataOffer);
-      (this.selectionSource.implementation as DataSource).wlDataOffer = wlDataOffer
+      dataDeviceResource.selection(wlDataOffer)
+      ;(this.selectionSource.implementation as DataSource).wlDataOffer = wlDataOffer
     }
   }
 

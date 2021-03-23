@@ -18,8 +18,8 @@
 import Vec4 from './Vec4'
 
 export default class Point {
-  x: number;
-  y: number;
+  x: number
+  y: number
 
   static create(x: number, y: number): Point {
     return new Point(x, y)
@@ -31,24 +31,14 @@ export default class Point {
   }
 
   toVec4(): Vec4 {
-    return Vec4.create(
-      this.x,
-      this.y,
-      0,
-      1)
+    return Vec4.create(this.x, this.y, 0, 1)
   }
 
   plus(right: Point): Point {
-    return Point.create(
-      this.x + right.x,
-      this.y + right.y
-    )
+    return Point.create(this.x + right.x, this.y + right.y)
   }
 
   minus(right: Point): Point {
-    return Point.create(
-      this.x - right.x,
-      this.y - right.y
-    )
+    return Point.create(this.x - right.x, this.y - right.y)
   }
 }

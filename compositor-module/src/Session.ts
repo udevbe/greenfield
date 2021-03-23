@@ -22,7 +22,7 @@ import Renderer from './render/Renderer'
 import { createUserShellApi, UserShellApi } from './UserShellApi'
 import WebFS from './WebFS'
 
-class Session implements CompositorSession{
+class Session implements CompositorSession {
   readonly display: Display
   readonly compositorSessionId: string
   readonly webFS: WebFS
@@ -38,8 +38,8 @@ class Session implements CompositorSession{
 
   private static _uuidv4(): string {
     // @ts-ignore
-    return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
-      (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+    return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
+      (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16),
     )
   }
 
@@ -54,7 +54,7 @@ class Session implements CompositorSession{
 
   terminate() {
     this.globals.unregister()
-    Object.values(this.display.clients).forEach(client => client.close())
+    Object.values(this.display.clients).forEach((client) => client.close())
   }
 
   flush() {

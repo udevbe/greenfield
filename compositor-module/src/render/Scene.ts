@@ -32,7 +32,7 @@ import SceneShader from './SceneShader'
 import YUVAToRGBA from './YUVAToRGBA'
 
 function createRenderFrame(): Promise<number> {
-  return new Promise<number>(resolve => {
+  return new Promise<number>((resolve) => {
     requestAnimationFrame(resolve)
   })
 }
@@ -54,13 +54,27 @@ class Scene {
   private readonly _destroyPromise: Promise<void>
   private frameCallbacks: Callback[] = []
 
-  static create(session: Session, gl: WebGLRenderingContext, canvas: HTMLCanvasElement, output: Output, sceneId: string): Scene {
+  static create(
+    session: Session,
+    gl: WebGLRenderingContext,
+    canvas: HTMLCanvasElement,
+    output: Output,
+    sceneId: string,
+  ): Scene {
     const sceneShader = SceneShader.create(gl)
     const yuvaToRgba = YUVAToRGBA.create(gl)
     return new Scene(session, canvas, gl, sceneShader, yuvaToRgba, output, sceneId)
   }
 
-  private constructor(session: Session, canvas: HTMLCanvasElement, gl: WebGLRenderingContext, sceneShader: SceneShader, yuvaToRgba: YUVAToRGBA, output: Output, sceneId: string) {
+  private constructor(
+    session: Session,
+    canvas: HTMLCanvasElement,
+    gl: WebGLRenderingContext,
+    sceneShader: SceneShader,
+    yuvaToRgba: YUVAToRGBA,
+    output: Output,
+    sceneId: string,
+  ) {
     this.session = session
     this.canvas = canvas
     this.resolution = 'auto'
@@ -70,7 +84,7 @@ class Scene {
     this.output = output
     this.id = sceneId
     this.topLevelViews = []
-    this._destroyPromise = new Promise<void>(resolve => {
+    this._destroyPromise = new Promise<void>((resolve) => {
       this._destroyResolve = resolve
     })
   }
@@ -92,7 +106,6 @@ class Scene {
     this.destroyPointerView()
   }
 
-
   resetPointer() {
     resetCursorImage()
     this.destroyPointerView()
@@ -113,10 +126,11 @@ class Scene {
   prepareViewRenderState(view: View) {
     view.applyTransformations()
     const { buffer, bufferContents } = view.surface.state
-    if (bufferContents instanceof DecodedFrame
-      || bufferContents instanceof WebGLFrame
-      || bufferContents instanceof WebShmFrame) {
-
+    if (
+      bufferContents instanceof DecodedFrame ||
+      bufferContents instanceof WebGLFrame ||
+      bufferContents instanceof WebShmFrame
+    ) {
       if (view.mapped && buffer && view.surface.damaged) {
         const bufferImplementation = buffer.implementation as BufferImplementation<any>
         if (!bufferImplementation.released) {
@@ -145,7 +159,7 @@ class Scene {
     if (!this._renderFrame) {
       this._renderFrame = createRenderFrame().then((time) => {
         this.renderNow()
-        this.frameCallbacks.forEach(callback => callback.done(time))
+        this.frameCallbacks.forEach((callback) => callback.done(time))
         this.frameCallbacks = []
         this.session.flush()
       })
@@ -156,7 +170,7 @@ class Scene {
   prepareAllViewRenderState() {
     const viewStack = this.viewStack()
     // update textures
-    viewStack.forEach(view => this.prepareViewRenderState(view))
+    viewStack.forEach((view) => this.prepareViewRenderState(view))
   }
 
   private renderNow() {
@@ -166,7 +180,7 @@ class Scene {
     // render view texture
     this.sceneShader.use()
     this.sceneShader.updateSceneData(Size.create(this.canvas.width, this.canvas.height))
-    viewStack.forEach(view => this.renderView(view))
+    viewStack.forEach((view) => this.renderView(view))
     this.sceneShader.release()
 
     this._renderFrame = undefined
@@ -191,7 +205,10 @@ class Scene {
   }
 
   private updateViewRenderStateWithTexImageSource(view: View, buffer: TexImageSource) {
-    const { texture, size: { w, h } } = view.renderState
+    const {
+      texture,
+      size: { w, h },
+    } = view.renderState
     if (buffer.width === w && buffer.height === h) {
       texture.subImage2d(buffer, 0, 0)
     } else {
@@ -208,21 +225,23 @@ class Scene {
   }
 
   raiseSurface(surface: Surface) {
-    const raisedViews = this.topLevelViews.filter(topLevelView => topLevelView.surface === surface)
-    const rest = this.topLevelViews.filter(topLevelView => topLevelView.surface !== surface)
+    const raisedViews = this.topLevelViews.filter((topLevelView) => topLevelView.surface === surface)
+    const rest = this.topLevelViews.filter((topLevelView) => topLevelView.surface !== surface)
     this.topLevelViews = [...rest, ...raisedViews]
   }
 
   pickView(scenePoint: Point): View | undefined {
     // test views from front to back
-    return this.viewStack().reverse().find(view => {
-      const surfacePoint = view.toSurfaceSpace(scenePoint)
-      return view.surface.isWithinInputRegion(surfacePoint)
-    })
+    return this.viewStack()
+      .reverse()
+      .find((view) => {
+        const surfacePoint = view.toSurfaceSpace(scenePoint)
+        return view.surface.isWithinInputRegion(surfacePoint)
+      })
   }
 
   destroy() {
-    this.topLevelViews.forEach(topLevelView => topLevelView.destroy())
+    this.topLevelViews.forEach((topLevelView) => topLevelView.destroy())
     if (this.pointerView) {
       this.pointerView.destroy()
     }
@@ -239,7 +258,7 @@ class Scene {
     if (this.resolution instanceof Size && (this.resolution.w !== width || this.resolution.h !== height)) {
       this.resolution = Size.create(width, height)
       this.render()
-      this.output.resources.forEach(resource => this.output.emitSpecs(resource))
+      this.output.resources.forEach((resource) => this.output.emitSpecs(resource))
     }
   }
 
@@ -248,13 +267,13 @@ class Scene {
    */
   private viewStack(): View[] {
     const stack: View[] = []
-    this.topLevelViews.forEach(topLevelView => this.addToViewStack(stack, topLevelView))
+    this.topLevelViews.forEach((topLevelView) => this.addToViewStack(stack, topLevelView))
     return stack
   }
 
   private addToViewStack(stack: View[], view: View) {
     stack.push(view)
-    view.findChildViews().forEach(view => this.addToViewStack(stack, view))
+    view.findChildViews().forEach((view) => this.addToViewStack(stack, view))
   }
 
   public ['video/h264'](decodedFrame: DecodedFrame, view: View) {
@@ -262,7 +281,7 @@ class Scene {
   }
 
   public ['image/png'](decodedFrame: DecodedFrame, view: View) {
-    const { bitmap } = decodedFrame.pixelContent as { bitmap: ImageBitmap, blob: Blob }
+    const { bitmap } = decodedFrame.pixelContent as { bitmap: ImageBitmap; blob: Blob }
     this.updateViewRenderStateWithTexImageSource(view, bitmap)
   }
 

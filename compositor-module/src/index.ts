@@ -36,6 +36,7 @@ export function createCompositorSession(): CompositorSession {
 }
 
 export interface CompositorKeyboard {
+  nrmlvo: nrmlvo
   defaultNrmlvo: nrmlvo
   nrmlvoEntries: nrmlvo[]
 }
@@ -111,7 +112,7 @@ export interface CompositorRemoteAppLauncher {
 
 export function createCompositorRemoteAppLauncher(
   session: CompositorSession,
-  remoteSocket: CompositorRemoteSocket
+  remoteSocket: CompositorRemoteSocket,
 ): CompositorRemoteAppLauncher {
   if (session instanceof Session && remoteSocket instanceof RemoteSocket) {
     return RemoteAppLauncher.create(session, remoteSocket)
@@ -124,9 +125,7 @@ export interface CompositorWebAppLauncher {
   launch(webAppURL: URL): Promise<Client>
 }
 
-export function createCompositorWebAppLauncher(
-  webAppSocket: CompositorWebAppSocket
-): CompositorWebAppLauncher {
+export function createCompositorWebAppLauncher(webAppSocket: CompositorWebAppSocket): CompositorWebAppLauncher {
   if (webAppSocket instanceof WebAppSocket) {
     return WebAppLauncher.create(webAppSocket)
   } else {

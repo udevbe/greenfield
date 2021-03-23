@@ -16,14 +16,14 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 export default class Program {
-  readonly gl: WebGLRenderingContext;
-  readonly program: WebGLProgram;
+  readonly gl: WebGLRenderingContext
+  readonly program: WebGLProgram
 
   constructor(gl: WebGLRenderingContext) {
     this.gl = gl
     const prg = this.gl.createProgram()
     if (!prg) {
-      throw new Error('Can\'t create webgl shader program.');
+      throw new Error("Can't create webgl shader program.")
     }
     this.program = prg
   }

@@ -24,7 +24,7 @@ import {
   XdgSurfaceResource,
   XdgWmBaseRequests,
   XdgWmBaseResource,
-  XdgWmBaseError
+  XdgWmBaseError,
 } from 'westfield-runtime-server'
 import Seat from './Seat'
 import Session from './Session'
@@ -48,7 +48,10 @@ export default class XdgWmBase implements XdgWmBaseRequests {
   private readonly _seat: Seat
   private _wlSurfaceResources: WlSurfaceResource[] = []
   private _global?: Global
-  private _clientPingStates: Map<Client, { timeoutTimer: number, pingTimer: number, pingTimeoutActive: boolean }> = new Map()
+  private _clientPingStates: Map<
+    Client,
+    { timeoutTimer: number; pingTimer: number; pingTimeoutActive: boolean }
+  > = new Map()
 
   static create(session: Session, seat: Seat): XdgWmBase {
     return new XdgWmBase(session, seat)
@@ -110,9 +113,12 @@ export default class XdgWmBase implements XdgWmBaseRequests {
   }
 
   getXdgSurface(resource: XdgWmBaseResource, id: number, wlSurfaceResource: WlSurfaceResource) {
-    const surface = /** @type {Surface} */wlSurfaceResource.implementation as Surface
+    const surface = /** @type {Surface} */ wlSurfaceResource.implementation as Surface
     if (surface.pendingState.buffer || surface.state.bufferContents) {
-      resource.postError(XdgWmBaseError.invalidSurfaceState, 'Surface had a buffer attached before xdg surface was created.')
+      resource.postError(
+        XdgWmBaseError.invalidSurfaceState,
+        'Surface had a buffer attached before xdg surface was created.',
+      )
       console.log('[client-protocol-error] - Surface had a buffer attached before xdg surface was created.')
       return
     }
@@ -142,7 +148,10 @@ export default class XdgWmBase implements XdgWmBaseRequests {
     }
   }
 
-  private _doPing(resource: XdgWmBaseResource, pingState: { timeoutTimer: number, pingTimer: number, pingTimeoutActive: boolean }) {
+  private _doPing(
+    resource: XdgWmBaseResource,
+    pingState: { timeoutTimer: number; pingTimer: number; pingTimeoutActive: boolean },
+  ) {
     pingState.timeoutTimer = window.setTimeout(() => {
       if (!pingState.pingTimeoutActive) {
         // ping timed out, make view gray
@@ -161,7 +170,8 @@ export default class XdgWmBase implements XdgWmBaseRequests {
    * @private
    */
   _setUnresponsive(client: Client, value: boolean) {
-    this._wlSurfaceResources.filter(wlSurfaceResource => wlSurfaceResource.client === client)
+    this._wlSurfaceResources
+      .filter((wlSurfaceResource) => wlSurfaceResource.client === client)
       .forEach((wlSurfaceResource) => {
         const xdgSurfaceRole = (wlSurfaceResource.implementation as Surface).role
         if (xdgSurfaceRole instanceof XdgToplevel) {

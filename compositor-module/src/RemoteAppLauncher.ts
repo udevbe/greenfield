@@ -47,7 +47,7 @@ export default class RemoteAppLauncher implements CompositorRemoteAppLauncher {
     const webSocket = new WebSocket(
       appEndpointURL.href,
       // abuse the sub-protocol header to pass an authorization header.
-      auth ? `Authorization: ${auth}` : undefined
+      auth ? `Authorization: ${auth}` : undefined,
     )
     return this._remoteSocket.onWebSocket(webSocket)
   }

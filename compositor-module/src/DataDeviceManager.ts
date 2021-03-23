@@ -22,7 +22,8 @@ import {
   WlDataDeviceManagerRequests,
   WlDataDeviceManagerResource,
   WlDataDeviceResource,
-  WlDataSourceResource, WlSeatResource
+  WlDataSourceResource,
+  WlSeatResource,
 } from 'westfield-runtime-server'
 
 import DataSource from './DataSource'
@@ -48,8 +49,7 @@ export default class DataDeviceManager implements WlDataDeviceManagerRequests {
     return new DataDeviceManager()
   }
 
-  private constructor() {
-  }
+  private constructor() {}
 
   registerGlobal(registry: Registry) {
     if (this._global) {

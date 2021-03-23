@@ -10,7 +10,7 @@ import WebGL from './webgl/WebGL'
 import WebShm from './webshm/WebShm'
 import XdgWmBase from './XdgWmBase'
 
-class Globals implements CompositorGlobals{
+class Globals implements CompositorGlobals {
   readonly session: Session
   readonly seat: Seat
   readonly compositor: Compositor
@@ -47,7 +47,7 @@ class Globals implements CompositorGlobals{
     shell: Shell,
     xdgWmBase: XdgWmBase,
     webShm: WebShm,
-    webGL: WebGL
+    webGL: WebGL,
   ) {
     this.session = session
     this.seat = seat
@@ -67,7 +67,7 @@ class Globals implements CompositorGlobals{
 
   unregisterOutput(output: Output) {
     output.unregisterGlobal()
-    this.outputs = this.outputs.filter(otherOutput => otherOutput !== output)
+    this.outputs = this.outputs.filter((otherOutput) => otherOutput !== output)
   }
 
   register() {

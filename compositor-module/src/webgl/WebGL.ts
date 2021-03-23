@@ -22,7 +22,7 @@ import {
   GrWebGlRequests,
   GrWebGlResource,
   Registry,
-  WlBufferResource
+  WlBufferResource,
 } from 'westfield-runtime-server'
 import Session from '../Session'
 import WebFS from '../WebFS'
@@ -80,7 +80,7 @@ export default class WebGL implements GrWebGlRequests {
     grWebGlBufferResource.implementation = {
       transfer: () => {
         throw new Error('web gl buffer not wrapped.')
-      }
+      },
     }
   }
 }

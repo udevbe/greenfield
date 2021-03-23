@@ -22,12 +22,12 @@ import {
   WlDataOfferRequests,
   WlDataOfferResource,
   WlDataOfferError,
-  WlDataSourceResource
+  WlDataSourceResource,
 } from 'westfield-runtime-server'
 import DataSource from './DataSource'
 
 const { copy, move, ask, none } = WlDataDeviceManagerDndAction
-const ALL_ACTIONS = (copy | move | ask)
+const ALL_ACTIONS = copy | move | ask
 
 /**
  *
@@ -42,10 +42,10 @@ export default class DataOffer implements WlDataOfferRequests {
   // @ts-ignore set in static create method
   resource: WlDataOfferResource
   acceptMimeType?: string
-  preferredAction: number = 0
+  preferredAction = 0
   dndActions: WlDataDeviceManagerDndAction = none
   wlDataSource: WlDataSourceResource
-  inAsk: boolean = false
+  inAsk = false
   private readonly _finished: boolean = false
 
   static create(source: WlDataSourceResource, offerId: number, dataDeviceResource: WlDataDeviceResource): DataOffer {
@@ -87,8 +87,7 @@ export default class DataOffer implements WlDataOfferRequests {
      */
     if (this.resource.version < 3) {
       dataSoure.notifyFinish()
-    } else if (this.wlDataSource &&
-      this.wlDataSource.version >= 3) {
+    } else if (this.wlDataSource && this.wlDataSource.version >= 3) {
       this.wlDataSource.cancelled()
     }
 
@@ -175,9 +174,7 @@ export default class DataOffer implements WlDataOfferRequests {
       return
     }
 
-    if (preferredAction &&
-      (!(preferredAction & dndActions) ||
-        this._bitCount(preferredAction) > 1)) {
+    if (preferredAction && (!(preferredAction & dndActions) || this._bitCount(preferredAction) > 1)) {
       resource.postError(WlDataOfferError.invalidAction, `invalid action ${preferredAction}`)
       console.log('[client protocol error] - invalid data offer action')
       return

@@ -22,7 +22,7 @@ import {
   GrWebShmRequests,
   GrWebShmResource,
   Registry,
-  WlBufferResource
+  WlBufferResource,
 } from 'westfield-runtime-server'
 import WebShmBuffer from './WebShmBuffer'
 
@@ -33,8 +33,7 @@ export default class WebShm implements GrWebShmRequests {
     return new WebShm()
   }
 
-  private constructor() {
-  }
+  private constructor() {}
 
   registerGlobal(registry: Registry) {
     if (this._global) {
@@ -58,7 +57,13 @@ export default class WebShm implements GrWebShmRequests {
     webShmResource.implementation = this
   }
 
-  async createBuffer(resource: GrWebShmResource, id: number, grWebShmBufferResource: GrWebShmBufferResource, width: number, height: number) {
+  async createBuffer(
+    resource: GrWebShmResource,
+    id: number,
+    grWebShmBufferResource: GrWebShmBufferResource,
+    width: number,
+    height: number,
+  ) {
     const wlBufferResource = new WlBufferResource(resource.client, id, resource.version)
     const webArrayBuffer = await WebShmBuffer.create(grWebShmBufferResource, wlBufferResource, width, height)
 
@@ -72,7 +77,7 @@ export default class WebShm implements GrWebShmRequests {
     grWebShmBufferResource.implementation = {
       attach: () => {
         throw new Error('web shm buffer not wrapped.')
-      }
+      },
     }
   }
 }

@@ -57,7 +57,7 @@ class YUVAToRGBA {
       yTexture,
       uTexture,
       vTexture,
-      alphaTexture
+      alphaTexture,
     )
   }
 
@@ -69,7 +69,7 @@ class YUVAToRGBA {
     yTexture: Texture,
     uTexture: Texture,
     vTexture: Texture,
-    alphaTexture: Texture
+    alphaTexture: Texture,
   ) {
     this.yTexture = yTexture
     this.uTexture = uTexture
@@ -104,7 +104,7 @@ class YUVAToRGBA {
 
     const yBuffer = opaqueBuffer.subarray(0, lumaSize)
     const uBuffer = opaqueBuffer.subarray(lumaSize, lumaSize + chromaSize)
-    const vBuffer = opaqueBuffer.subarray(lumaSize + chromaSize, lumaSize + (2 * chromaSize))
+    const vBuffer = opaqueBuffer.subarray(lumaSize + chromaSize, lumaSize + 2 * chromaSize)
 
     const chromaHeight = opaqueHeight >> 1
     const chromaStride = opaqueStride >> 1
@@ -135,7 +135,13 @@ class YUVAToRGBA {
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer)
     const attachmentPoint = this.gl.COLOR_ATTACHMENT0
     const level = 0
-    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, attachmentPoint, this.gl.TEXTURE_2D, renderState.texture.texture, level)
+    this.gl.framebufferTexture2D(
+      this.gl.FRAMEBUFFER,
+      attachmentPoint,
+      this.gl.TEXTURE_2D,
+      renderState.texture.texture,
+      level,
+    )
 
     this.yuvSurfaceShader.use()
     this.yuvSurfaceShader.setTexture(this.yTexture, this.uTexture, this.vTexture)
@@ -149,7 +155,13 @@ class YUVAToRGBA {
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer)
     const attachmentPoint = this.gl.COLOR_ATTACHMENT0
     const level = 0
-    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, attachmentPoint, this.gl.TEXTURE_2D, renderState.texture.texture, level)
+    this.gl.framebufferTexture2D(
+      this.gl.FRAMEBUFFER,
+      attachmentPoint,
+      this.gl.TEXTURE_2D,
+      renderState.texture.texture,
+      level,
+    )
 
     this.yuvaSurfaceShader.use()
     this.yuvaSurfaceShader.setTexture(this.yTexture, this.uTexture, this.vTexture, this.alphaTexture)

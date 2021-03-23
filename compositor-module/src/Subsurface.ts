@@ -19,7 +19,7 @@ import {
   WlSubsurfaceError,
   WlSubsurfaceRequests,
   WlSubsurfaceResource,
-  WlSurfaceResource
+  WlSurfaceResource,
 } from 'westfield-runtime-server'
 import BufferImplementation from './BufferImplementation'
 
@@ -84,7 +84,7 @@ import SurfaceRole from './SurfaceRole'
 export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
   pendingPosition?: Point = Point.create(0, 0)
 
-  private sync: boolean = true
+  private sync = true
   private cacheDirty = false
   private readonly cachedState: SurfaceState = {
     damageRects: [],
@@ -100,11 +100,15 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
     bufferResourceDestroyListener: () => {
       this.cachedState.buffer = undefined
       // this.cachedState.bufferContents = undefined
-    }
+    },
   }
-  private _inert: boolean = false
+  private _inert = false
 
-  static create(parentWlSurfaceResource: WlSurfaceResource, wlSurfaceResource: WlSurfaceResource, wlSubsurfaceResource: WlSubsurfaceResource): Subsurface {
+  static create(
+    parentWlSurfaceResource: WlSurfaceResource,
+    wlSurfaceResource: WlSurfaceResource,
+    wlSubsurfaceResource: WlSubsurfaceResource,
+  ): Subsurface {
     const subsurface = new Subsurface(parentWlSurfaceResource, wlSurfaceResource, wlSubsurfaceResource)
     wlSubsurfaceResource.implementation = subsurface
 
@@ -114,10 +118,10 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
 
     parentWlSurfaceResource.onDestroy().then(() => {
       // TODO unmap
-    });
+    })
 
     // TODO sync viewable/hidden state with parent
-    (wlSurfaceResource.implementation as Surface).role = subsurface
+    ;(wlSurfaceResource.implementation as Surface).role = subsurface
 
     return subsurface
   }
@@ -125,7 +129,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
   private constructor(
     public readonly parentWlSurfaceResource: WlSurfaceResource,
     public readonly wlSurfaceResource: WlSurfaceResource,
-    public readonly resource: WlSubsurfaceResource
+    public readonly resource: WlSubsurfaceResource,
   ) {
     const surface = this.wlSurfaceResource.implementation as Surface
     mergeSurfaceState(this.cachedState, surface.state)
@@ -158,9 +162,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
   private commitPendingToCache(surface: Surface) {
     const { dx, dy } = this.cachedState
 
-    if (this.cacheDirty
-      && this.cachedState.buffer
-      && this.cachedState.buffer?.id !== surface.pendingState.buffer?.id) {
+    if (this.cacheDirty && this.cachedState.buffer && this.cachedState.buffer?.id !== surface.pendingState.buffer?.id) {
       const bufferImplementation = this.cachedState.buffer.implementation as BufferImplementation<any>
       if (!bufferImplementation.released) {
         bufferImplementation.release()
@@ -179,7 +181,6 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
     this.cachedState.dy = dy + surface.pendingState.dy
     this.cacheDirty = true
   }
-
 
   onCommit(surface: Surface) {
     if (this._inert) {
@@ -213,8 +214,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
     const parentSurface = this.parentWlSurfaceResource.implementation as Surface
     const siblingSurface = sibling.implementation as Surface
     const siblingSurfaceChildSelf = siblingSurface.surfaceChildSelf
-    if (!parentSurface.state.subsurfaceChildren.includes(siblingSurfaceChildSelf) ||
-      siblingSurface === parentSurface) {
+    if (!parentSurface.state.subsurfaceChildren.includes(siblingSurfaceChildSelf) || siblingSurface === parentSurface) {
       resource.postError(WlSubsurfaceError.badSurface, 'Surface is not a sibling or the parent.')
       console.log('[client-protocol-error] - Surface is not a sibling or the parent.')
       return

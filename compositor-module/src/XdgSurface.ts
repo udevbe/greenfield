@@ -22,7 +22,7 @@ import {
   XdgSurfaceRequests,
   XdgSurfaceResource,
   XdgToplevelResource,
-  XdgWmBaseError
+  XdgWmBaseError,
 } from 'westfield-runtime-server'
 import Rect from './math/Rect'
 import Seat from './Seat'
@@ -78,13 +78,23 @@ import XdgToplevel from './XdgToplevel'
 export default class XdgSurface implements XdgSurfaceRequests {
   readonly xdgSurfaceResource: XdgSurfaceResource
   readonly wlSurfaceResource: WlSurfaceResource
-  pendingWindowGeometry: Rect = Rect.create(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)
-  configureSerial: number = 0
+  pendingWindowGeometry: Rect = Rect.create(
+    Number.MIN_SAFE_INTEGER,
+    Number.MIN_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER,
+  )
+  configureSerial = 0
   windowGeometry: Rect = Rect.create(0, 0, 0, 0)
   private readonly _session: Session
   private readonly _seat: Seat
 
-  static create(xdgSurfaceResource: XdgSurfaceResource, wlSurfaceResource: WlSurfaceResource, session: Session, seat: Seat): XdgSurface {
+  static create(
+    xdgSurfaceResource: XdgSurfaceResource,
+    wlSurfaceResource: WlSurfaceResource,
+    session: Session,
+    seat: Seat,
+  ): XdgSurface {
     const xdgSurface = new XdgSurface(xdgSurfaceResource, wlSurfaceResource, session, seat)
     xdgSurfaceResource.implementation = xdgSurface
     const surface = wlSurfaceResource.implementation as Surface
@@ -94,7 +104,12 @@ export default class XdgSurface implements XdgSurfaceRequests {
     return xdgSurface
   }
 
-  constructor(xdgSurfaceResource: XdgSurfaceResource, wlSurfaceResource: WlSurfaceResource, session: Session, seat: Seat) {
+  constructor(
+    xdgSurfaceResource: XdgSurfaceResource,
+    wlSurfaceResource: WlSurfaceResource,
+    session: Session,
+    seat: Seat,
+  ) {
     this.xdgSurfaceResource = xdgSurfaceResource
     this.wlSurfaceResource = wlSurfaceResource
     this._session = session

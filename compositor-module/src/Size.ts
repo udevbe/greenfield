@@ -19,8 +19,8 @@
  * Represents a 2-dimensional size value.
  */
 export default class Size {
-  w: number;
-  h: number;
+  w: number
+  h: number
 
   static create(width: number, height: number): Size {
     return new Size(width, height)

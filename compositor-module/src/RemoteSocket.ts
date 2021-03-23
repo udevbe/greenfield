@@ -76,7 +76,7 @@ class RemoteSocket implements CompositorRemoteSocket {
 
         const client = this._session.display.createClient()
         // client.onClose().then(() => window.GREENFIELD_DEBUG && console.log('[client] - closed.'))
-        client.addResourceCreatedListener(resource => {
+        client.addResourceCreatedListener((resource) => {
           if (resource.id >= 0xff000000 && client.recycledIds.length === 0) {
             console.error('[client] - Ran out of reserved browser resource ids.')
             client.close()
@@ -89,9 +89,10 @@ class RemoteSocket implements CompositorRemoteSocket {
         }
         // webSocket.onerror = event =>  window.GREENFIELD_DEBUG && console.log(`[WebSocket] - error: ${event.message}.`)
 
-        client.connection.onFlush = (wireMessages: SendMessage[]) => this._flushWireMessages(client, webSocket, wireMessages)
+        client.connection.onFlush = (wireMessages: SendMessage[]) =>
+          this._flushWireMessages(client, webSocket, wireMessages)
 
-        const wsOutOfBandChannel = RemoteOutOfBandChannel.create(sendBuffer => {
+        const wsOutOfBandChannel = RemoteOutOfBandChannel.create((sendBuffer) => {
           if (webSocket.readyState === 1) {
             try {
               webSocket.send(sendBuffer)
@@ -106,31 +107,35 @@ class RemoteSocket implements CompositorRemoteSocket {
         })
         this._setupClientOutOfBandHandlers(webSocket, client, wsOutOfBandChannel)
 
-        webSocket.onmessage = event => this._handleMessageEvent(client, event, wsOutOfBandChannel)
+        webSocket.onmessage = (event) => this._handleMessageEvent(client, event, wsOutOfBandChannel)
 
         client.onClose().then(() => {
           this._session.userShell.events.destroyApplicationClient?.({
             id: client.id,
-            variant: 'remote'
+            variant: 'remote',
           })
         })
         this._session.userShell.events.createApplicationClient?.({
           id: client.id,
-          variant: 'remote'
+          variant: 'remote',
         })
         resolve(client)
       }
     })
   }
 
-  private _setupClientOutOfBandHandlers(webSocket: WebSocket, client: Client, outOfBandChannel: RemoteOutOfBandChannel) {
+  private _setupClientOutOfBandHandlers(
+    webSocket: WebSocket,
+    client: Client,
+    outOfBandChannel: RemoteOutOfBandChannel,
+  ) {
     // send out-of-band resource destroy. opcode: 1
-    client.addResourceDestroyListener(resource => {
+    client.addResourceDestroyListener((resource) => {
       outOfBandChannel.send(1, new Uint32Array([resource.id]).buffer)
     })
 
     // listen for buffer creation. opcode: 2
-    outOfBandChannel.setListener(2, message => {
+    outOfBandChannel.setListener(2, (message) => {
       if (client.connection.closed) {
         return
       }
@@ -140,7 +145,7 @@ class RemoteSocket implements CompositorRemoteSocket {
     })
 
     // listen for buffer contents arriving. opcode: 3
-    outOfBandChannel.setListener(3, outOfBandMessage => {
+    outOfBandChannel.setListener(3, (outOfBandMessage) => {
       if (client.connection.closed) {
         return
       }
@@ -153,13 +158,16 @@ class RemoteSocket implements CompositorRemoteSocket {
       if (wlBufferResource) {
         const streamingBuffer = wlBufferResource.implementation as StreamingBuffer
 
-        const bufferContents = new Uint8Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset + Uint32Array.BYTES_PER_ELEMENT)
+        const bufferContents = new Uint8Array(
+          outOfBandMessage.buffer,
+          outOfBandMessage.byteOffset + Uint32Array.BYTES_PER_ELEMENT,
+        )
         streamingBuffer.bufferStream.onBufferContents(bufferContents)
       }
     })
 
     // listen for file contents request. opcode: 4
-    outOfBandChannel.setListener(4, async outOfBandMessage => {
+    outOfBandChannel.setListener(4, async (outOfBandMessage) => {
       if (client.connection.closed) {
         return
       }
@@ -173,7 +181,9 @@ class RemoteSocket implements CompositorRemoteSocket {
       if (transferable instanceof ArrayBuffer) {
         const serializedWebFdURL = this._textEncoder.encode(webFD.url.href)
         const webFDByteLength = serializedWebFdURL.byteLength
-        const message = new Uint8Array(Uint32Array.BYTES_PER_ELEMENT + ((webFDByteLength + 3) & ~3) + transferable.byteLength) // webFdURL + fileContents
+        const message = new Uint8Array(
+          Uint32Array.BYTES_PER_ELEMENT + ((webFDByteLength + 3) & ~3) + transferable.byteLength,
+        ) // webFdURL + fileContents
         let byteOffset = 0
         // web fd url length
         new DataView(message.buffer).setUint32(byteOffset, webFDByteLength, true)
@@ -191,7 +201,7 @@ class RemoteSocket implements CompositorRemoteSocket {
     })
 
     // listen for web socket creation request. opcode: 5
-    outOfBandChannel.setListener(5, outOfBandMessage => {
+    outOfBandChannel.setListener(5, (outOfBandMessage) => {
       if (client.connection.closed) {
         return
       }
@@ -208,7 +218,7 @@ class RemoteSocket implements CompositorRemoteSocket {
     })
 
     // listen for recycled resource ids
-    outOfBandChannel.setListener(6, outOfBandMessage => {
+    outOfBandChannel.setListener(6, (outOfBandMessage) => {
       if (client.connection.closed) {
         return
       }
@@ -262,19 +272,19 @@ class RemoteSocket implements CompositorRemoteSocket {
     }
 
     let messageSize = 1 // +1 for indicator of it's an out of band message
-    const serializedWireMessages = wireMessages.map(wireMessage => {
+    const serializedWireMessages = wireMessages.map((wireMessage) => {
       let size = 1 // +1 for fd length
       const serializedWebFds: Uint8Array[] = wireMessage.fds.map((webFd: WebFD) => {
         const serializedWebFD = this._textEncoder.encode(webFd.url.href)
-        size += 1 + (((serializedWebFD.byteLength + 3) & ~3) / 4) // +1 for fd url length
+        size += 1 + ((serializedWebFD.byteLength + 3) & ~3) / 4 // +1 for fd url length
         return serializedWebFD
       })
 
-      messageSize += (size + (wireMessage.buffer.byteLength / 4))
+      messageSize += size + wireMessage.buffer.byteLength / 4
 
       return {
         buffer: wireMessage.buffer,
-        serializedWebFds
+        serializedWebFds,
       }
     })
 
@@ -282,11 +292,13 @@ class RemoteSocket implements CompositorRemoteSocket {
     let offset = 0
     sendBuffer[offset++] = 0 // no out-of-band opcode
 
-    serializedWireMessages.forEach(serializedWireMessage => {
+    serializedWireMessages.forEach((serializedWireMessage) => {
       sendBuffer[offset++] = serializedWireMessage.serializedWebFds.length
-      serializedWireMessage.serializedWebFds.forEach(serializedWebFd => {
+      serializedWireMessage.serializedWebFds.forEach((serializedWebFd) => {
         sendBuffer[offset++] = serializedWebFd.byteLength
-        new Uint8Array(sendBuffer.buffer, sendBuffer.byteOffset + (offset * Uint32Array.BYTES_PER_ELEMENT)).set(serializedWebFd)
+        new Uint8Array(sendBuffer.buffer, sendBuffer.byteOffset + offset * Uint32Array.BYTES_PER_ELEMENT).set(
+          serializedWebFd,
+        )
         offset += ((serializedWebFd.byteLength + 3) & ~3) / 4
       })
 
@@ -295,7 +307,8 @@ class RemoteSocket implements CompositorRemoteSocket {
       offset += message.length
     })
 
-    if (webSocket.readyState === 1) { // 1 === 'open'
+    if (webSocket.readyState === 1) {
+      // 1 === 'open'
       try {
         webSocket.send(sendBuffer.buffer)
       } catch (e) {
@@ -305,11 +318,15 @@ class RemoteSocket implements CompositorRemoteSocket {
     }
   }
 
-  private _deserializeWebFD(sourceBuf: Uint32Array): { read: number, webFd: WebFD } {
+  private _deserializeWebFD(sourceBuf: Uint32Array): { read: number; webFd: WebFD } {
     // FIXME we only need to handle fetching remote contents if the webfd does not match this compositor
     // If it does match, we simply need to lookup the WebFD from our own WebFS cache, and return that one instead.
     const webFdbyteLength = sourceBuf[0]
-    const webFdBytes = new Uint8Array(sourceBuf.buffer, sourceBuf.byteOffset + Uint32Array.BYTES_PER_ELEMENT, webFdbyteLength)
+    const webFdBytes = new Uint8Array(
+      sourceBuf.buffer,
+      sourceBuf.byteOffset + Uint32Array.BYTES_PER_ELEMENT,
+      webFdbyteLength,
+    )
 
     const webFdURL = new URL(this._textDecoder.decode(webFdBytes))
     const fdParam = webFdURL.searchParams.get('fd')
@@ -335,8 +352,8 @@ class RemoteSocket implements CompositorRemoteSocket {
         throw new Error(`Unsupported WebFD type: ${type}`)
     }
     return {
-      read: 1 + (((webFdbyteLength + 3) & ~3) / 4),
-      webFd: new WebFD(fd, type, webFdURL, onGetTransferable, onClose)
+      read: 1 + ((webFdbyteLength + 3) & ~3) / 4,
+      webFd: new WebFD(fd, type, webFdURL, onGetTransferable, onClose),
     }
   }
 }

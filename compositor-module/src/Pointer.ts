@@ -23,7 +23,7 @@ import {
   WlPointerError,
   WlPointerRequests,
   WlPointerResource,
-  WlSurfaceResource
+  WlSurfaceResource,
 } from 'westfield-runtime-server'
 import { AxisEvent } from './AxisEvent'
 import { ButtonEvent } from './ButtonEvent'
@@ -55,7 +55,7 @@ const linuxInput = {
   // browser back
   3: 0x116,
   // browser forward
-  4: 0x115
+  4: 0x115,
 }
 
 /**
@@ -74,21 +74,25 @@ const linuxInput = {
  */
 export default class Pointer implements WlPointerRequests, SurfaceRole {
   session: Session
-  scrollFactor: number = 1
+  scrollFactor = 1
   resources: WlPointerResource[] = []
   focus?: View
-  x: number = 0
-  y: number = 0
+  x = 0
+  y = 0
   scene?: Scene
-  hotspotX: number = 0
-  hotspotY: number = 0
+  hotspotX = 0
+  hotspotY = 0
   // @ts-ignore set in create of Seat
   seat: Seat
-  buttonsPressed: number = 0
-  private _lineScrollAmount: number = 12
+  buttonsPressed = 0
+  private _lineScrollAmount = 12
   private _dataDevice: DataDevice
   private _grab?: View
-  private readonly _popupStack: { popup: WlSurfaceResource, resolve: (value?: (void | PromiseLike<void> | undefined)) => void, promise: Promise<void> }[] = []
+  private readonly _popupStack: {
+    popup: WlSurfaceResource
+    resolve: (value?: void | PromiseLike<void> | undefined) => void
+    promise: Promise<void>
+  }[] = []
   private _cursorSurface?: WlSurfaceResource
   private readonly _cursorDestroyListener: () => void
   private _mouseMoveListeners: (() => void)[] = []
@@ -96,7 +100,7 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
   private _buttonPressPromise?: Promise<ButtonEvent>
   private _buttonReleaseResolve?: (value: ButtonEvent | PromiseLike<ButtonEvent>) => void
   private _buttonReleasePromise?: Promise<ButtonEvent>
-  private focusDisabled: boolean = false
+  private focusDisabled = false
 
   static create(session: Session, dataDevice: DataDevice): Pointer {
     return new Pointer(session, dataDevice)
@@ -127,7 +131,7 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
 
   onButtonPress(): Promise<ButtonEvent> {
     if (this._buttonPressPromise === undefined) {
-      this._buttonPressPromise = new Promise<ButtonEvent>(resolve => this._buttonPressResolve = resolve)
+      this._buttonPressPromise = new Promise<ButtonEvent>((resolve) => (this._buttonPressResolve = resolve))
       this._buttonPressPromise.then(() => {
         this._buttonPressPromise = undefined
         this._buttonPressResolve = undefined
@@ -138,7 +142,7 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
 
   onButtonRelease(): Promise<ButtonEvent> {
     if (!this._buttonReleasePromise) {
-      this._buttonReleasePromise = new Promise<ButtonEvent>(resolve => this._buttonReleaseResolve = resolve)
+      this._buttonReleasePromise = new Promise<ButtonEvent>((resolve) => (this._buttonReleaseResolve = resolve))
       this._buttonReleasePromise.then(() => {
         this._buttonReleasePromise = undefined
         this._buttonReleaseResolve = undefined
@@ -156,7 +160,13 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
     }
   }
 
-  setCursor(resource: WlPointerResource, serial: number, surfaceResource: WlSurfaceResource | undefined, hotspotX: number, hotspotY: number) {
+  setCursor(
+    resource: WlPointerResource,
+    serial: number,
+    surfaceResource: WlSurfaceResource | undefined,
+    hotspotX: number,
+    hotspotY: number,
+  ) {
     if (surfaceResource) {
       const surface = surfaceResource.implementation as Surface
       if (surface.role && surface.role !== this) {
@@ -183,8 +193,8 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
       return popupGrab.promise
     }
 
-    let popupGrabEndResolve: (value?: (void | PromiseLike<void> | undefined)) => void
-    const popupGrabEndPromise = new Promise<void>(resolve => {
+    let popupGrabEndResolve: (value?: void | PromiseLike<void> | undefined) => void
+    const popupGrabEndPromise = new Promise<void>((resolve) => {
       popup.onDestroy().then(() => resolve())
       popupGrabEndResolve = resolve
     })
@@ -193,7 +203,7 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
       popup: popup,
       // @ts-ignore
       resolve: popupGrabEndResolve,
-      promise: popupGrabEndPromise
+      promise: popupGrabEndPromise,
     }
     this._popupStack.push(newPopupGrab)
 
@@ -205,7 +215,7 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
         this._popupStack.splice(popupGrabIdx)
         // nested array includes the already closed popup, shift will remove it from the array
         nestedPopupGrabs.shift()
-        nestedPopupGrabs.reverse().forEach(nestedPopupGrab => nestedPopupGrab.resolve())
+        nestedPopupGrabs.reverse().forEach((nestedPopupGrab) => nestedPopupGrab.resolve())
       }
     })
 
@@ -216,7 +226,7 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
   }
 
   findPopupGrab(popup: WlSurfaceResource) {
-    return this._popupStack.find(popupGrab => popupGrab.popup === popup)
+    return this._popupStack.find((popupGrab) => popupGrab.popup === popup)
   }
 
   setCursorInternal(surfaceResource: WlSurfaceResource | undefined, hotspotX: number, hotspotY: number) {
@@ -267,10 +277,10 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
     return this.session.renderer.scenes[event.sceneId].pickView(Point.create(event.x, event.y))
   }
 
-  private clampMouseMove(event: ButtonEvent, scene: Scene): { x: number, y: number } {
+  private clampMouseMove(event: ButtonEvent, scene: Scene): { x: number; y: number } {
     return {
       x: Math.min(Math.max(event.x, 0), scene.canvas.width),
-      y: Math.min(Math.max(event.y, 0), scene.canvas.height)
+      y: Math.min(Math.max(event.y, 0), scene.canvas.height),
     }
   }
 
@@ -283,7 +293,9 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
     }
 
     if (this.scene.pointerView) {
-      this.scene.pointerView.positionOffset = Point.create(this.x, this.y).minus(Point.create(this.hotspotX, this.hotspotY))
+      this.scene.pointerView.positionOffset = Point.create(this.x, this.y).minus(
+        Point.create(this.hotspotX, this.hotspotY),
+      )
       this.scene.pointerView.applyTransformations()
       this.scene.render()
     }
@@ -291,8 +303,11 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
     let currentFocus = this.focusFromEvent(event)
 
     const nroPopups = this._popupStack.length
-    if (nroPopups && currentFocus &&
-      currentFocus.surface.resource.client !== this._popupStack[nroPopups - 1].popup.client) {
+    if (
+      nroPopups &&
+      currentFocus &&
+      currentFocus.surface.resource.client !== this._popupStack[nroPopups - 1].popup.client
+    ) {
       currentFocus = undefined
     }
 
@@ -313,12 +328,12 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
       }
     }
 
-    this._mouseMoveListeners.forEach(listener => listener())
+    this._mouseMoveListeners.forEach((listener) => listener())
 
     if (this.focus && this.focus.surface) {
       const surfacePoint = this._calculateSurfacePoint(this.focus)
       const surfaceResource = this.focus.surface.resource
-      this._doPointerEventFor(surfaceResource, pointerResource => {
+      this._doPointerEventFor(surfaceResource, (pointerResource) => {
         pointerResource.motion(event.timestamp, Fixed.parse(surfacePoint.x), Fixed.parse(surfacePoint.y))
         if (pointerResource.version >= 5) {
           pointerResource.frame()
@@ -328,7 +343,7 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
   }
 
   private _doPointerEventFor(surfaceResource: WlSurfaceResource, action: (pointerResource: WlPointerResource) => void) {
-    this.resources.forEach(pointerResource => {
+    this.resources.forEach((pointerResource) => {
       if (pointerResource.client === surfaceResource.client) {
         action(pointerResource)
       }
@@ -350,7 +365,7 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
     if (this.focus && this.focus.surface) {
       if (this.grab || nroPopups) {
         const surfaceResource = this.focus.surface.resource
-        this._doPointerEventFor(surfaceResource, pointerResource => {
+        this._doPointerEventFor(surfaceResource, (pointerResource) => {
           pointerResource.button(this.seat.nextSerial(), event.timestamp, linuxInput[event.buttonCode], released)
           if (pointerResource.version >= 5) {
             pointerResource.frame()
@@ -365,7 +380,11 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
       const focus = this.focusFromEvent(event)
       // popup grab ends when user has clicked on another client's surface
       const popupGrab = this._popupStack[nroPopups - 1]
-      if (!focus || ((popupGrab.popup.implementation as Surface).state.bufferContents && focus.surface.resource.client !== popupGrab.popup.client)) {
+      if (
+        !focus ||
+        ((popupGrab.popup.implementation as Surface).state.bufferContents &&
+          focus.surface.resource.client !== popupGrab.popup.client)
+      ) {
         popupGrab.resolve()
       }
     }
@@ -385,7 +404,7 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
       }
 
       const surfaceResource = this.focus.surface.resource
-      this._doPointerEventFor(surfaceResource, pointerResource => {
+      this._doPointerEventFor(surfaceResource, (pointerResource) => {
         pointerResource.button(this.seat.nextSerial(), event.timestamp, linuxInput[event.buttonCode], pressed)
         if (pointerResource.version >= 5) {
           pointerResource.frame()
@@ -428,8 +447,13 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
     })
 
     const surfacePoint = this._calculateSurfacePoint(newFocus)
-    this._doPointerEventFor(surfaceResource, pointerResource => {
-      pointerResource.enter(this.seat.nextSerial(), surfaceResource, Fixed.parse(surfacePoint.x), Fixed.parse(surfacePoint.y))
+    this._doPointerEventFor(surfaceResource, (pointerResource) => {
+      pointerResource.enter(
+        this.seat.nextSerial(),
+        surfaceResource,
+        Fixed.parse(surfacePoint.x),
+        Fixed.parse(surfacePoint.y),
+      )
     })
   }
 
@@ -445,7 +469,7 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
   unsetFocus() {
     if (this.focus && !this.focus.destroyed && this.focus.surface) {
       const surfaceResource = this.focus.surface.resource
-      this._doPointerEventFor(surfaceResource, pointerResource => {
+      this._doPointerEventFor(surfaceResource, (pointerResource) => {
         pointerResource.leave(this.seat.nextSerial(), surfaceResource)
         if (pointerResource.version >= 5) {
           pointerResource.frame()
@@ -474,14 +498,15 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
       let deltaTransform: (delta: number, axis?: number) => number
       switch (event.deltaMode) {
         case event.DOM_DELTA_LINE: {
-          deltaTransform = delta => delta * this._lineScrollAmount
+          deltaTransform = (delta) => delta * this._lineScrollAmount
           break
         }
         case event.DOM_DELTA_PAGE: {
           deltaTransform = (delta, axis) => {
             if (axis === verticalScroll) {
               return delta * (focusSurface.size?.h ?? 0)
-            } else { // horizontalScroll
+            } else {
+              // horizontalScroll
               return delta * (focusSurface.size?.w ?? 0)
             }
           }
@@ -489,12 +514,12 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
         }
         case event.DOM_DELTA_PIXEL:
         default: {
-          deltaTransform = delta => delta
+          deltaTransform = (delta) => delta
           break
         }
       }
 
-      this._doPointerEventFor(focusSurface.resource, pointerResource => {
+      this._doPointerEventFor(focusSurface.resource, (pointerResource) => {
         let deltaX = event.deltaX
         if (deltaX) {
           const xAxis = this._adjustWithScrollFactor(horizontalScroll)

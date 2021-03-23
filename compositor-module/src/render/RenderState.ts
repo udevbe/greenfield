@@ -15,25 +15,25 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import Size from "../Size";
+import Size from '../Size'
 import Texture from './Texture'
 
 class RenderState {
-  readonly texture: Texture;
-  size: Size;
+  readonly texture: Texture
+  size: Size
 
-  static create (gl: WebGLRenderingContext, size: Size): RenderState {
+  static create(gl: WebGLRenderingContext, size: Size): RenderState {
     const texture = Texture.create(gl, gl.RGBA)
     texture.image2dBuffer(null, size.w === 0 ? 2 : size.w, size.h === 0 ? 2 : size.h)
     return new RenderState(texture, size)
   }
 
-  private constructor (texture: Texture, size: Size) {
+  private constructor(texture: Texture, size: Size) {
     this.texture = texture
     this.size = size
   }
 
-  destroy () {
+  destroy() {
     this.texture.delete()
   }
 }

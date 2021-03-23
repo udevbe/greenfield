@@ -22,10 +22,10 @@ import ShaderCompiler from './ShaderCompiler'
 import { FRAGMENT_ARGB8888, VERTEX_QUAD_TRANSFORM } from './ShaderSources'
 
 type ShaderArgs = {
-  u_projection: WebGLUniformLocation,
-  u_transform: WebGLUniformLocation,
-  u_texture: WebGLUniformLocation,
-  a_position: GLint,
+  u_projection: WebGLUniformLocation
+  u_transform: WebGLUniformLocation
+  u_texture: WebGLUniformLocation
+  a_position: GLint
   a_texCoord: GLint
 }
 
@@ -85,7 +85,7 @@ class SceneShader {
       u_transform,
       u_texture,
       a_position,
-      a_texCoord
+      a_texCoord,
     }
   }
 
@@ -94,7 +94,7 @@ class SceneShader {
     // Create vertex buffer object.
     const webglBuffer = gl.createBuffer()
     if (webglBuffer === null) {
-      throw new Error('Can\'t create webgl buffer.')
+      throw new Error("Can't create webgl buffer.")
     }
     return webglBuffer
   }
@@ -123,15 +123,30 @@ class SceneShader {
     this.gl.blendFunc(this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA)
     this.gl.enable(this.gl.BLEND)
     this.program.setUniformM4(this.shaderArgs.u_projection, [
-      2.0 / w, 0, 0, 0,
-      0, 2.0 / -h, 0, 0,
-      0, 0, 1, 0,
-      -1, 1, 0, 1
+      2.0 / w,
+      0,
+      0,
+      0,
+      0,
+      2.0 / -h,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      -1,
+      1,
+      0,
+      1,
     ])
   }
 
   updateViewData(view: View) {
-    const { texture, size: { w, h } } = view.renderState
+    const {
+      texture,
+      size: { w, h },
+    } = view.renderState
 
     this.gl.uniform1i(this.shaderArgs.u_texture, 0)
 
@@ -141,23 +156,45 @@ class SceneShader {
     this.program.setUniformM4(this.shaderArgs.u_transform, view.transformation.toArray())
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
-      // First triangle
-      // top left:
-      0, 0, 0, 0,
-      // top right:
-      w, 0, 1, 0,
-      // bottom right:
-      w, h, 1, 1,
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      new Float32Array([
+        // First triangle
+        // top left:
+        0,
+        0,
+        0,
+        0,
+        // top right:
+        w,
+        0,
+        1,
+        0,
+        // bottom right:
+        w,
+        h,
+        1,
+        1,
 
-      // Second triangle
-      // bottom right:
-      w, h, 1, 1,
-      // bottom left:
-      0, h, 0, 1,
-      // top left:
-      0, 0, 0, 0
-    ]), this.gl.DYNAMIC_DRAW)
+        // Second triangle
+        // bottom right:
+        w,
+        h,
+        1,
+        1,
+        // bottom left:
+        0,
+        h,
+        0,
+        1,
+        // top left:
+        0,
+        0,
+        0,
+        0,
+      ]),
+      this.gl.DYNAMIC_DRAW,
+    )
     this.gl.vertexAttribPointer(this.shaderArgs.a_position, 2, this.gl.FLOAT, false, 16, 0)
     this.gl.vertexAttribPointer(this.shaderArgs.a_texCoord, 2, this.gl.FLOAT, false, 16, 8)
   }
