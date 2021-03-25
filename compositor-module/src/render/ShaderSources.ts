@@ -97,7 +97,7 @@ export const FRAGMENT_YUVA_TO_RGBA = {
     float alphaChannel = texture2D(alphaYTexture, v_texCoord).r;
 
     rgba.rgb = yuv_to_rgb (texel.xyz, yuv_bt601_offset, yuv_bt601_rcoeff, yuv_bt601_gcoeff, yuv_bt601_bcoeff);
-    rgba.a = yuv_to_rgb (vec3(alphaChannel, 0.55, 0.55), yuv_bt601_offset, yuv_bt601_rcoeff, yuv_bt601_gcoeff, yuv_bt601_bcoeff).r;
+    rgba.a = yuv_to_rgb (vec3(alphaChannel, 0.5, 0.5), yuv_bt601_offset, yuv_bt601_rcoeff, yuv_bt601_gcoeff, yuv_bt601_bcoeff).r;
     gl_FragColor=rgba;
   }
 `,
