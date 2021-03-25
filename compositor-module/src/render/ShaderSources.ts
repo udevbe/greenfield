@@ -74,10 +74,10 @@ export const FRAGMENT_YUVA_TO_RGBA = {
   uniform sampler2D vTexture;
   uniform sampler2D alphaYTexture;
   
-  const vec3 yuv_bt709_offset = vec3(-0.0625, -0.5, -0.5);
-  const vec3 yuv_bt709_rcoeff = vec3(1.164, 0.000, 1.787);
-  const vec3 yuv_bt709_gcoeff = vec3(1.164,-0.213,-0.531);
-  const vec3 yuv_bt709_bcoeff = vec3(1.164,2.112, 0.000);
+  const vec3 yuv_bt601_offset = vec3(-0.0625, -0.5, -0.5);
+  const vec3 yuv_bt601_rcoeff = vec3(1.164, 0.000, 1.596);
+  const vec3 yuv_bt601_gcoeff = vec3(1.164,-0.391,-0.813);
+  const vec3 yuv_bt601_bcoeff = vec3(1.164, 2.018, 0.000);
   
   vec3 yuv_to_rgb (vec3 val, vec3 offset, vec3 ycoeff, vec3 ucoeff, vec3 vcoeff) {
     vec3 rgb;              
@@ -90,14 +90,14 @@ export const FRAGMENT_YUVA_TO_RGBA = {
 
   void main(void) {
     vec4 texel, rgba;
-     
+
     texel.x = texture2D(yTexture, v_texCoord).r;
     texel.y = texture2D(uTexture, v_texCoord).r;
     texel.z = texture2D(vTexture, v_texCoord).r;
     float alphaChannel = texture2D(alphaYTexture, v_texCoord).r;
 
-    rgba.rgb = yuv_to_rgb (texel.xyz, yuv_bt709_offset, yuv_bt709_rcoeff, yuv_bt709_gcoeff, yuv_bt709_bcoeff);
-    rgba.a = yuv_to_rgb (vec3(alphaChannel, 0.5, 0.5), yuv_bt709_offset, yuv_bt709_rcoeff, yuv_bt709_gcoeff, yuv_bt709_bcoeff).r;
+    rgba.rgb = yuv_to_rgb (texel.xyz, yuv_bt601_offset, yuv_bt601_rcoeff, yuv_bt601_gcoeff, yuv_bt601_bcoeff);
+    rgba.a = yuv_to_rgb (vec3(alphaChannel, 0.55, 0.55), yuv_bt601_offset, yuv_bt601_rcoeff, yuv_bt601_gcoeff, yuv_bt601_bcoeff).r;
     gl_FragColor=rgba;
   }
 `,
