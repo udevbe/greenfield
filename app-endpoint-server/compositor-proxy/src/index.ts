@@ -1,5 +1,5 @@
 import Logger from 'pino'
-import { URL, URLSearchParams } from 'url'
+import { URL } from 'url'
 import WebSocket from 'ws'
 import { serverConfig } from '../config'
 import { CompositorProxySession } from './CompositorProxySession'
@@ -23,7 +23,7 @@ function main() {
     process.exit(1)
   }
 
-  // TODO pass toke public key when creating container
+  // TODO pass token public key when creating container
   const publicKey = process.env.TOKEN_PUBLIC_KEY
   if (publicKey === undefined) {
     console.log('env TOKEN_PUBLIC_KEY must be set.')

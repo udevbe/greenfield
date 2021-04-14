@@ -15,12 +15,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import fetch from 'node-fetch'
 import Logger from 'pino'
 import type { URLSearchParams } from 'url'
 import WebSocket from 'ws'
 import { loggerConfig } from './index'
-import { Secret, verify, VerifyErrors } from 'jsonwebtoken'
+import { Secret, verify } from 'jsonwebtoken'
 
 import { NativeCompositorSession } from './NativeCompositorSession'
 
@@ -67,26 +66,26 @@ export class CompositorProxySession {
     this._nativeCompositorSession.socketForClient(webSocket, clientId)
   }
 
-  async launchApplication(webSocket: WebSocket, applicationId: string, token: string): Promise<void> {
-    try {
-      logger.info(`Launching application: ${applicationId}`)
-      this._nativeCompositorSession.childSpawned(webSocket)
-      // TODO make docker-controller hostname configurable
-      await fetch(`http://docker-controller/compositor/${this.compositorSessionId}/application/${applicationId}`, {
-        method: 'POST',
-        headers: {
-          Authentication: `Bearer ${token}`,
-        },
-      })
-    } catch (e) {
-      logger.error(`Application: ${applicationId} failed to start.`)
-      logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
-      logger.error('error object stack: ')
-      logger.error(e.stack)
-
-      webSocket.close(4503, `Application: ${applicationId} failed to start.`)
-    }
-  }
+  // async launchApplication(webSocket: WebSocket, applicationId: string, token: string): Promise<void> {
+  //   try {
+  //     logger.info(`Launching application: ${applicationId}`)
+  //     this._nativeCompositorSession.childSpawned(webSocket)
+  //     // TODO make docker-controller hostname configurable
+  //     await fetch(`http://request-controller/compositor/${this.compositorSessionId}/application/${applicationId}`, {
+  //       method: 'PUT',
+  //       headers: {
+  //         Authentication: `Bearer ${token}`,
+  //       },
+  //     })
+  //   } catch (e) {
+  //     logger.error(`Application: ${applicationId} failed to start.`)
+  //     logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+  //     logger.error('error object stack: ')
+  //     logger.error(e.stack)
+  //
+  //     webSocket.close(4503, `Application: ${applicationId} failed to start.`)
+  //   }
+  // }
 
   // handleIncomingDataTransfer(webSocket: WebSocket, fd: string): void {
   //   const compositorSessionId = query.get('compositorSessionId')
@@ -110,8 +109,8 @@ export class CompositorProxySession {
       // const fd = query.get('fd')
       if (clientId && launch === null) {
         this.createWlConnection(webSocket, clientId)
-      } else if (launch && clientId === null) {
-        this.launchApplication(webSocket, launch, token)
+        // } else if (launch && clientId === null) {
+        //   this.launchApplication(webSocket, launch, token)
         // TODO cross-host c/p
         // FIXME disabled for now
         // } else if (fd && launch === null && clientId === null) {
@@ -128,6 +127,4 @@ export class CompositorProxySession {
       webSocket.close(4503, `Server encountered an exception.`)
     }
   }
-
-  private validateToken(token: string) {}
 }

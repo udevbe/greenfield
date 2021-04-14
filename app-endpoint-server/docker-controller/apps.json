@@ -1,8 +1,0 @@
-{
-  "gtk3-demo": {
-    "image": "udevbe/gtk3-demo:latest"
-  },
-  "kwrite": {
-    "image": "udevbe/kwrite:latest"
-  }
-}

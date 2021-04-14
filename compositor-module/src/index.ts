@@ -24,6 +24,7 @@ import WebAppLauncher from './WebAppLauncher'
 import WebAppSocket from './WebAppSocket'
 import { nrmlvo } from './Xkb'
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 export { init as initWasm } from './lib'
 export * from './ButtonEvent'
@@ -48,6 +49,7 @@ export interface CompositorSeat {
 export interface CompositorSession {
   userShell: UserShellApi
   globals: CompositorGlobals
+  compositorSessionId: string
 }
 
 export interface CompositorGlobals {
@@ -85,6 +87,7 @@ export interface CompositorConfiguration {
   keyboardLayoutName?: string
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface CompositorWebAppSocket {}
 
 export function createCompositorWebAppSocket(session: CompositorSession): CompositorWebAppSocket {
@@ -95,6 +98,7 @@ export function createCompositorWebAppSocket(session: CompositorSession): Compos
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface CompositorRemoteSocket {}
 
 export function createCompositorRemoteSocket(session: CompositorSession): CompositorRemoteSocket {
@@ -105,15 +109,14 @@ export function createCompositorRemoteSocket(session: CompositorSession): Compos
   }
 }
 
-export interface CompositorRemoteAppLauncher {
-  launch(appEndpointURL: URL, remoteAppId: string, auth?: string): Promise<Client>
-  launchURL(appEndpointURL: URL, auth?: string): Promise<Client>
+export interface CompositorProxyConnector {
+  connectTo(url: URL, auth?: string): Promise<Client>
 }
 
-export function createCompositorRemoteAppLauncher(
+export function createCompositorProxyConnector(
   session: CompositorSession,
   remoteSocket: CompositorRemoteSocket,
-): CompositorRemoteAppLauncher {
+): CompositorProxyConnector {
   if (session instanceof Session && remoteSocket instanceof RemoteSocket) {
     return RemoteAppLauncher.create(session, remoteSocket)
   } else {

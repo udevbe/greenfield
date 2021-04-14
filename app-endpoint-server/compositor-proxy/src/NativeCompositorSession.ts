@@ -91,18 +91,13 @@ export class NativeCompositorSession {
     this._destroyResolve = undefined
   }
 
-  private _requestWebSocket(clientId: number, wlClient: unknown) {
+  private _requestWebSocket(clientId: number) {
     // We hijack the very first web socket connection we find to send an out of band message asking for a new web socket.
     const client = this.clients.find((client) => client.webSocketChannel.webSocket !== null)
     if (client) {
       client.nativeClientSession?.requestWebSocket(clientId)
-    } else {
-      // Not a single web socket available. This means the client was definitely started locally and was not the result of a browser initiated parent process.
-      logger.error(
-        `No web sockets available for externally created wayland client. Only child clients created as a side effect of a browser initiated client processes are allowed.`,
-      )
-      Endpoint.destroyClient(wlClient)
     }
+    // else wait for browser make a websocket connection
   }
 
   private _onClientCreated(wlClient: unknown) {
@@ -122,21 +117,13 @@ export class NativeCompositorSession {
       }
       this.clients.push(client)
       // no browser initiated web sockets available, so ask compositor to create a new one linked to clientId
-      this._requestWebSocket(id, wlClient)
+      this._requestWebSocket(id)
     }
 
     if (client.nativeClientSession) {
       const constClient = client
       client.nativeClientSession.onDestroy().then(() => this.removeClient(constClient))
     }
-  }
-
-  childSpawned(webSocket: WebSocket): void {
-    webSocket.binaryType = 'arraybuffer'
-    this.clients.push({
-      webSocketChannel: WebSocketChannel.create(webSocket),
-      id: this._nextClientId++,
-    })
   }
 
   removeClient(client: ClientEntry): void {
@@ -147,12 +134,12 @@ export class NativeCompositorSession {
   }
 
   socketForClient(webSocket: WebSocket, clientId: number): void {
-    // As a side effect, this will notify the NativeClientSession that a web socket is now available
     webSocket.binaryType = 'arraybuffer'
     const foundClientEntry = this.clients.find((client) => client.id === clientId)
     if (foundClientEntry === undefined) {
       throw new Error('BUG. Expected a client entry.')
     }
+    // As a side effect, this will notify the NativeClientSession that a web socket is now available
     foundClientEntry.webSocketChannel.webSocket = webSocket
   }
 

@@ -16,11 +16,11 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { Client } from 'westfield-runtime-server'
-import { CompositorRemoteAppLauncher } from './index'
+import { CompositorProxyConnector } from './index'
 import RemoteSocket from './RemoteSocket'
 import Session from './Session'
 
-export default class RemoteAppLauncher implements CompositorRemoteAppLauncher {
+export default class RemoteAppLauncher implements CompositorProxyConnector {
   private readonly _session: Session
   private readonly _remoteSocket: RemoteSocket
 
@@ -33,13 +33,7 @@ export default class RemoteAppLauncher implements CompositorRemoteAppLauncher {
     this._remoteSocket = remoteSocket
   }
 
-  async launch(appEndpointURL: URL, remoteAppId: string, auth?: string): Promise<Client> {
-    appEndpointURL.searchParams.delete('launch')
-    appEndpointURL.searchParams.append('launch', remoteAppId)
-    return this.launchURL(appEndpointURL, auth)
-  }
-
-  async launchURL(appEndpointURL: URL, auth?: string): Promise<Client> {
+  async connectTo(appEndpointURL: URL, auth?: string): Promise<Client> {
     appEndpointURL.searchParams.delete('compositorSessionId')
     appEndpointURL.searchParams.append('compositorSessionId', this._session.compositorSessionId)
 

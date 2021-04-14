@@ -1583,11 +1583,6 @@ natural-compare@^1.4.0:
   resolved "https://artifactory.persgroep.cloud/artifactory/api/npm/npm/natural-compare/-/natural-compare-1.4.0.tgz#4abebfeed7541f2c27acfb29bdbbd15c8d5ba4f7"
   integrity sha1-Sr6/7tdUHywnrPspvbvRXI1bpPc=
 
-node-fetch@^2.6.1:
-  version "2.6.1"
-  resolved "https://artifactory.persgroep.cloud/artifactory/api/npm/npm/node-fetch/-/node-fetch-2.6.1.tgz#045bd323631f76ed2e2b55573394416b639a0052"
-  integrity sha1-BFvTI2Mfdu0uK1VXM5RBa2OaAFI=
-
 normalize-package-data@^2.5.0:
   version "2.5.0"
   resolved "https://artifactory.persgroep.cloud/artifactory/api/npm/npm/normalize-package-data/-/normalize-package-data-2.5.0.tgz#e66db1838b200c1dfc233225d12cb36520e234a8"
