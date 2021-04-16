@@ -1,26 +1,22 @@
 import { URL } from 'url'
 
-import fs from 'fs'
 import { TextDecoder, TextEncoder } from 'util'
 
-import WebSocket from 'ws'
-import websocketStream from 'websocket-stream'
 import { serverConfig } from '../config'
 import { WebSocketChannel } from './WebSocketChannel'
 
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
 
+export function createCompositorProxyWebFS(compositorSessionId: string): CompositorProxyWebFS {
+  const { protocol, hostname, port } = serverConfig
+  const localWebFDBaseURL = new URL(`${protocol}//${hostname}:${port}`)
+
+  return new CompositorProxyWebFS(compositorSessionId, localWebFDBaseURL)
+}
+
 // FIXME this class is pretty broken...
-
 export class CompositorProxyWebFS {
-  static create(compositorSessionId: string): CompositorProxyWebFS {
-    const { protocol, hostname, port } = serverConfig
-    const localWebFDBaseURL = new URL(`${protocol}//${hostname}:${port}`)
-
-    return new CompositorProxyWebFS(compositorSessionId, localWebFDBaseURL)
-  }
-
   constructor(
     private _compositorSessionId: string,
     private _localWebFDBaseURL: URL,

@@ -54,27 +54,44 @@ export class WebSocketChannel {
 
   set onerror(onErrorEventHandler: (event: WebSocket.ErrorEvent) => void) {
     this._onErrorEventHandler = onErrorEventHandler
+    if (this._webSocket) {
+      this._webSocket.onerror = this._onErrorEventHandler
+    }
   }
 
   set onclose(onCloseEventHandler: (event: WebSocket.CloseEvent) => void) {
     this._onCloseEventHandler = onCloseEventHandler
+    if (this._webSocket) {
+      this._webSocket.onclose = this._onCloseEventHandler
+    }
   }
 
   set onmessage(onMessageEventHandler: (event: WebSocket.MessageEvent) => void) {
     this._onMessageEventHandler = onMessageEventHandler
+    if (this._webSocket) {
+      this._webSocket.onmessage = this._onMessageEventHandler
+    }
   }
 
   set onopen(onOpenEventHandler: (event: WebSocket.OpenEvent) => void) {
-    this._webSocket ? (this._webSocket.onopen = onOpenEventHandler) : (this._onOpenEventHandler = onOpenEventHandler)
+    this._onOpenEventHandler = onOpenEventHandler
+    if (this._webSocket) {
+      this._webSocket.onopen = this._onOpenEventHandler
+    }
   }
 
   set webSocket(webSocket: WebSocket | undefined) {
+    if (this._webSocket) {
+      this._webSocket.onopen = noopHandler
+      this._webSocket.onerror = noopHandler
+      this._webSocket.onclose = noopHandler
+      this._webSocket.onmessage = noopHandler
+    }
     this._webSocket = webSocket
 
     if (this._webSocket) {
       this._webSocket.onopen = this._onOpenEventHandler
       this._webSocket.onerror = this._onErrorEventHandler
-
       this._webSocket.onclose = this._onCloseEventHandler
       this._webSocket.onmessage = this._onMessageEventHandler
 

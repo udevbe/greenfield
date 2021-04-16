@@ -7,7 +7,7 @@
     "start": "ACCESS_TOKEN_SECRET=qwertyuiopasdfghjklzxcvbnm123456 ts-node src/index.ts"
   },
   "dependencies": {
-    "@types/node": "^14.14.37",
+    "@types/node": "^14.14.41",
     "dockerode": "^3.2.1",
     "express": "^4.17.1",
     "jsonwebtoken": "^8.5.1",
@@ -23,7 +23,7 @@
     "@typescript-eslint/parser": "^4.22.0",
     "eslint": "^7.24.0",
     "eslint-config-prettier": "^8.2.0",
-    "eslint-plugin-prettier": "^3.3.1",
+    "eslint-plugin-prettier": "^3.4.0",
     "prettier": "^2.2.1",
     "ts-node": "^9.1.1"
   }

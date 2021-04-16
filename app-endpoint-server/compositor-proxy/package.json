@@ -19,7 +19,6 @@
   },
   "dependencies": {
     "epoll": "^4.0.0",
-    "jsonwebtoken": "^8.5.1",
     "pino": "^6.8.0",
     "pino-pretty": "^4.1.0",
     "westfield-endpoint": "^0.4.4",
@@ -27,18 +26,19 @@
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^8.5.1",
-    "@types/node": "^14.14.35",
-    "@types/node-fetch": "^2.5.8",
-    "@types/pino": "^6.3.6",
-    "@types/ws": "^7.4.0",
-    "@typescript-eslint/eslint-plugin": "^4.18.0",
-    "@typescript-eslint/parser": "^4.18.0",
+    "@types/node": "^14.14.41",
+    "@types/node-fetch": "^2.5.10",
+    "@types/pino": "^6.3.7",
+    "@types/ws": "^7.4.1",
+    "@typescript-eslint/eslint-plugin": "^4.22.0",
+    "@typescript-eslint/parser": "^4.22.0",
     "cmake-js": "^6.1.0",
-    "eslint": "^7.22.0",
-    "eslint-config-prettier": "^8.1.0",
-    "eslint-plugin-prettier": "^3.3.1",
+    "eslint": "^7.24.0",
+    "eslint-config-prettier": "^8.2.0",
+    "eslint-plugin-prettier": "^3.4.0",
     "prettier": "^2.2.1",
-    "typescript": "^4.2.3",
+    "ts-node": "^9.1.1",
+    "typescript": "^4.2.4",
     "westfield-endpoint-generator": "^0.3.1"
   }
 }

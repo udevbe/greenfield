@@ -23,31 +23,31 @@ import StreamingBuffer from './remotestreaming/StreamingBuffer'
 import Session from './Session'
 
 class RemoteSocket implements CompositorRemoteSocket {
-  private readonly _session: Session
-  private readonly _textEncoder: TextEncoder = new TextEncoder()
-  private readonly _textDecoder: TextDecoder = new TextDecoder()
+  private readonly session: Session
+  private readonly textEncoder: TextEncoder = new TextEncoder()
+  private readonly textDecoder: TextDecoder = new TextDecoder()
 
   static create(session: Session): RemoteSocket {
     return new RemoteSocket(session)
   }
 
   private constructor(session: Session) {
-    this._session = session
+    this.session = session
   }
 
-  private async _getShmTransferable(webFD: WebFD): Promise<ArrayBuffer> {
+  private async getShmTransferable(webFD: WebFD): Promise<ArrayBuffer> {
     // TODO get all contents at once from remote endpoint and put it in an array buffer
     // TODO do this on each invocation
     // return new ArrayBuffer(0)
     throw new Error('TODO. Shm transferable from endpoint not yet implemented.')
   }
 
-  private async _closeShmTransferable(webFD: WebFD): Promise<void> {
+  private async closeShmTransferable(webFD: WebFD): Promise<void> {
     // TODO signal the remote end (if any) that it should close the fd
     throw new Error('TODO. Close shm transferable from endpoint not yet implemented.')
   }
 
-  private async _getPipeTransferable(webFD: WebFD): Promise<MessagePort> {
+  private async getPipeTransferable(webFD: WebFD): Promise<MessagePort> {
     // TODO setup an open connection with the remote endpoint and transfer data on demand
     // const messageChannel = new MessageChannel()
     // TODO use port1 to interface with the remote endpoint
@@ -57,7 +57,7 @@ class RemoteSocket implements CompositorRemoteSocket {
     throw new Error('TODO. Pipe transferable from endpoint not yet implemented.')
   }
 
-  private async _closePipeTransferable(webFD: WebFD): Promise<void> {
+  private async closePipeTransferable(webFD: WebFD): Promise<void> {
     // TODO signal the remote end (if any) that it should close the fd
     // TODO close the messageChannel object
     throw new Error('TODO. close pipe transferable from endpoint not yet implemented.')
@@ -74,7 +74,7 @@ class RemoteSocket implements CompositorRemoteSocket {
       webSocket.onopen = () => {
         // window.GREENFIELD_DEBUG && console.log('[WebSocket] - open.')
 
-        const client = this._session.display.createClient()
+        const client = this.session.display.createClient()
         // client.onClose().then(() => window.GREENFIELD_DEBUG && console.log('[client] - closed.'))
         client.addResourceCreatedListener((resource) => {
           if (resource.id >= 0xff000000 && client.recycledIds.length === 0) {
@@ -105,17 +105,17 @@ class RemoteSocket implements CompositorRemoteSocket {
             }
           }
         })
-        this._setupClientOutOfBandHandlers(webSocket, client, wsOutOfBandChannel)
+        this.setupClientOutOfBandHandlers(webSocket, client, wsOutOfBandChannel)
 
-        webSocket.onmessage = (event) => this._handleMessageEvent(client, event, wsOutOfBandChannel)
+        webSocket.onmessage = (event) => this.handleMessageEvent(client, event, wsOutOfBandChannel)
 
         client.onClose().then(() => {
-          this._session.userShell.events.destroyApplicationClient?.({
+          this.session.userShell.events.destroyApplicationClient?.({
             id: client.id,
             variant: 'remote',
           })
         })
-        this._session.userShell.events.createApplicationClient?.({
+        this.session.userShell.events.createApplicationClient?.({
           id: client.id,
           variant: 'remote',
         })
@@ -124,11 +124,7 @@ class RemoteSocket implements CompositorRemoteSocket {
     })
   }
 
-  private _setupClientOutOfBandHandlers(
-    webSocket: WebSocket,
-    client: Client,
-    outOfBandChannel: RemoteOutOfBandChannel,
-  ) {
+  private setupClientOutOfBandHandlers(webSocket: WebSocket, client: Client, outOfBandChannel: RemoteOutOfBandChannel) {
     // send out-of-band resource destroy. opcode: 1
     client.addResourceDestroyListener((resource) => {
       outOfBandChannel.send(1, new Uint32Array([resource.id]).buffer)
@@ -174,12 +170,12 @@ class RemoteSocket implements CompositorRemoteSocket {
 
       const uint32Array = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)
       const fd = uint32Array[0]
-      const webFD = this._session.webFS.getWebFD(fd)
+      const webFD = this.session.webFS.getWebFD(fd)
       const transferable = await webFD.getTransferable()
 
       // Note that after contents have been transmitted, webfd is auto closed.
       if (transferable instanceof ArrayBuffer) {
-        const serializedWebFdURL = this._textEncoder.encode(webFD.url.href)
+        const serializedWebFdURL = this.textEncoder.encode(webFD.url.href)
         const webFDByteLength = serializedWebFdURL.byteLength
         const message = new Uint8Array(
           Uint32Array.BYTES_PER_ELEMENT + ((webFDByteLength + 3) & ~3) + transferable.byteLength,
@@ -211,7 +207,7 @@ class RemoteSocket implements CompositorRemoteSocket {
 
       const webSocketURL = new URL(new URL(webSocket.url).origin)
       webSocketURL.searchParams.append('clientId', `${clientId}`)
-      webSocketURL.searchParams.append('compositorSessionId', this._session.compositorSessionId)
+      webSocketURL.searchParams.append('compositorSessionId', this.session.compositorSessionId)
 
       const newWebSocket = new WebSocket(webSocketURL.href)
       this.onWebSocket(newWebSocket)
@@ -228,7 +224,7 @@ class RemoteSocket implements CompositorRemoteSocket {
     })
   }
 
-  private _handleMessageEvent(client: Client, event: MessageEvent, wsOutOfBandChannel: RemoteOutOfBandChannel) {
+  private handleMessageEvent(client: Client, event: MessageEvent, wsOutOfBandChannel: RemoteOutOfBandChannel) {
     if (client.connection.closed) {
       return
     }
@@ -275,7 +271,7 @@ class RemoteSocket implements CompositorRemoteSocket {
     const serializedWireMessages = wireMessages.map((wireMessage) => {
       let size = 1 // +1 for fd length
       const serializedWebFds: Uint8Array[] = wireMessage.fds.map((webFd: WebFD) => {
-        const serializedWebFD = this._textEncoder.encode(webFd.url.href)
+        const serializedWebFD = this.textEncoder.encode(webFd.url.href)
         size += 1 + ((serializedWebFD.byteLength + 3) & ~3) / 4 // +1 for fd url length
         return serializedWebFD
       })
@@ -328,7 +324,7 @@ class RemoteSocket implements CompositorRemoteSocket {
       webFdbyteLength,
     )
 
-    const webFdURL = new URL(this._textDecoder.decode(webFdBytes))
+    const webFdURL = new URL(this.textDecoder.decode(webFdBytes))
     const fdParam = webFdURL.searchParams.get('fd')
     if (fdParam === null) {
       throw new Error('BUG. WebFD URL does not have fd query param.')
@@ -340,12 +336,12 @@ class RemoteSocket implements CompositorRemoteSocket {
     let onClose
     switch (type) {
       case 'ArrayBuffer':
-        onGetTransferable = (webFD: WebFD) => this._getShmTransferable(webFD)
-        onClose = (webFD: WebFD) => this._closeShmTransferable(webFD)
+        onGetTransferable = (webFD: WebFD) => this.getShmTransferable(webFD)
+        onClose = (webFD: WebFD) => this.closeShmTransferable(webFD)
         break
       case 'MessagePort':
-        onGetTransferable = (webFD: WebFD) => this._getPipeTransferable(webFD)
-        onClose = (webFD: WebFD) => this._closePipeTransferable(webFD)
+        onGetTransferable = (webFD: WebFD) => this.getPipeTransferable(webFD)
+        onClose = (webFD: WebFD) => this.closePipeTransferable(webFD)
         break
       // case 3: 'ImageBitmap' can not be transferred to a remote
       default:

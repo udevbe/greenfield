@@ -9,5 +9,8 @@
     "strict": true,
     "skipLibCheck": true,
     "allowJs": true
+  },
+  "ts-node": {
+    "files": true
   }
 }

@@ -19,11 +19,11 @@ import { Epoll } from 'epoll'
 import Logger from 'pino'
 import { Endpoint, nativeGlobalNames } from 'westfield-endpoint'
 import WebSocket from 'ws'
-import { CompositorProxyWebFS } from './CompositorProxyWebFS'
+import { createCompositorProxyWebFS } from './CompositorProxyWebFS'
 
 import { loggerConfig } from './index'
 
-import { NativeClientSession } from './NativeClientSession'
+import { createNativeClientSession, NativeClientSession } from './NativeClientSession'
 import { WebSocketChannel } from './WebSocketChannel'
 
 const logger = Logger({
@@ -31,42 +31,50 @@ const logger = Logger({
   name: `native-compositor-session`,
 })
 
-export type ClientEntry = { webSocketChannel: WebSocketChannel; nativeClientSession?: NativeClientSession; id: number }
+export type ClientEntry = { webSocketChannel: WebSocketChannel; nativeClientSession?: NativeClientSession }
+
+function onGlobalCreated(globalName: number): void {
+  nativeGlobalNames.push(globalName)
+}
+
+function onGlobalDestroyed(globalName: number): void {
+  const idx = nativeGlobalNames.indexOf(globalName)
+  if (idx > -1) {
+    nativeGlobalNames.splice(idx, 1)
+  }
+}
+
+export function createNativeCompositorSession(compositorSessionId: string): NativeCompositorSession {
+  const compositorSession = new NativeCompositorSession(compositorSessionId)
+
+  const wlDisplayFd = Endpoint.getFd(compositorSession.wlDisplay)
+
+  // TODO handle err
+  // TODO write our own native epoll
+  const fdWatcher = new Epoll((err: unknown) => Endpoint.dispatchRequests(compositorSession.wlDisplay))
+  fdWatcher.add(wlDisplayFd, Epoll.EPOLLPRI | Epoll.EPOLLIN | Epoll.EPOLLERR)
+
+  return compositorSession
+}
 
 export class NativeCompositorSession {
-  static create(compositorSessionId: string): NativeCompositorSession {
-    const compositorSession = new NativeCompositorSession(compositorSessionId)
-
-    // TODO move global create/destroy callback implementations into Endpoint.js
-
-    const wlDisplayFd = Endpoint.getFd(compositorSession.wlDisplay)
-
-    // TODO handle err
-    // TODO write our own native epoll
-    const fdWatcher = new Epoll((err: unknown) => Endpoint.dispatchRequests(compositorSession.wlDisplay))
-    fdWatcher.add(wlDisplayFd, Epoll.EPOLLPRI | Epoll.EPOLLIN | Epoll.EPOLLERR)
-
-    return compositorSession
-  }
-
   readonly wlDisplay: unknown
   readonly waylandDisplay: string
 
-  private _destroyResolve?: (value: void | PromiseLike<void>) => void
-  private _destroyPromise: Promise<void> = new Promise<void>((resolve) => {
-    this._destroyResolve = resolve
+  private destroyResolve?: (value: void | PromiseLike<void>) => void
+  private destroyPromise: Promise<void> = new Promise<void>((resolve) => {
+    this.destroyResolve = resolve
   })
 
   constructor(
     public readonly compositorSessionId: string,
-    public readonly appEndpointWebFS = CompositorProxyWebFS.create(compositorSessionId),
+    public readonly appEndpointWebFS = createCompositorProxyWebFS(compositorSessionId),
     public clients: ClientEntry[] = [],
-    private _nextClientId = 100,
   ) {
     this.wlDisplay = Endpoint.createDisplay(
-      (wlClient: unknown) => this._onClientCreated(wlClient),
-      (globalName: number) => this._onGlobalCreated(globalName),
-      (globalName: number) => this._onGlobalDestroyed(globalName),
+      (wlClient: unknown) => this.clientForSocket(wlClient),
+      (globalName: number) => onGlobalCreated(globalName),
+      (globalName: number) => onGlobalDestroyed(globalName),
     )
 
     this.waylandDisplay = Endpoint.addSocketAuto(this.wlDisplay)
@@ -76,81 +84,66 @@ export class NativeCompositorSession {
   }
 
   onDestroy(): Promise<void> {
-    return this._destroyPromise
+    return this.destroyPromise
   }
 
   destroy(): void {
-    if (this._destroyResolve === undefined) {
+    if (this.destroyResolve === undefined) {
       return
     }
 
     this.clients.forEach((client) => client.nativeClientSession?.destroy())
     Endpoint.destroyDisplay(this.wlDisplay)
 
-    this._destroyResolve()
-    this._destroyResolve = undefined
+    this.destroyResolve()
+    this.destroyResolve = undefined
   }
 
-  private _requestWebSocket(clientId: number) {
-    // We hijack the very first web socket connection we find to send an out of band message asking for a new web socket.
-    const client = this.clients.find((client) => client.webSocketChannel.webSocket !== null)
-    if (client) {
-      client.nativeClientSession?.requestWebSocket(clientId)
-    }
-    // else wait for browser make a websocket connection
-  }
-
-  private _onClientCreated(wlClient: unknown) {
+  private clientForSocket(wlClient: unknown) {
     logger.info(`New Wayland client connected.`)
 
-    let client = this.clients.find((client) => client.nativeClientSession === null)
+    let client = this.clients.find((client) => client.nativeClientSession === undefined)
 
     if (client) {
-      client.nativeClientSession = NativeClientSession.create(wlClient, this, client.webSocketChannel)
+      // associate native wayland connection with previously created placeholder client
+      client.nativeClientSession = createNativeClientSession(wlClient, this, client.webSocketChannel)
     } else {
       const webSocketChannel = WebSocketChannel.createNoWebSocket()
-      const id = this._nextClientId++
       client = {
-        nativeClientSession: NativeClientSession.create(wlClient, this, webSocketChannel),
+        nativeClientSession: createNativeClientSession(wlClient, this, webSocketChannel),
         webSocketChannel,
-        id,
       }
-      this.clients.push(client)
-      // no browser initiated web sockets available, so ask compositor to create a new one linked to clientId
-      this._requestWebSocket(id)
+      this.clients = [...this.clients, client]
+
+      // no previously created web sockets available, so ask compositor to create a new one
+      const otherClient = this.clients.find((client) => client.webSocketChannel.webSocket !== undefined)
+      if (otherClient) {
+        otherClient.nativeClientSession?.requestWebSocket()
+      }
     }
 
     if (client.nativeClientSession) {
-      const constClient = client
-      client.nativeClientSession.onDestroy().then(() => this.removeClient(constClient))
+      client.nativeClientSession.onDestroy().then(() => {
+        this.clients = this.clients.filter((value) => value !== client)
+      })
     }
   }
 
-  removeClient(client: ClientEntry): void {
-    const idx = this.clients.indexOf(client)
-    if (idx > -1) {
-      this.clients.splice(idx, 1)
-    }
-  }
-
-  socketForClient(webSocket: WebSocket, clientId: number): void {
+  socketForClient(webSocket: WebSocket): void {
     webSocket.binaryType = 'arraybuffer'
-    const foundClientEntry = this.clients.find((client) => client.id === clientId)
-    if (foundClientEntry === undefined) {
-      throw new Error('BUG. Expected a client entry.')
-    }
-    // As a side effect, this will notify the NativeClientSession that a web socket is now available
-    foundClientEntry.webSocketChannel.webSocket = webSocket
-  }
-
-  private _onGlobalCreated(globalName: number): void {
-    nativeGlobalNames.push(globalName)
-  }
-
-  private _onGlobalDestroyed(globalName: number): void {
-    const idx = nativeGlobalNames.indexOf(globalName)
-    if (idx > -1) {
-      nativeGlobalNames.splice(idx, 1)
+    // find a client who does not have a websocket associated
+    const client = this.clients.find((client) => client.webSocketChannel.webSocket === undefined)
+    if (client === undefined) {
+      this.clients = [
+        ...this.clients,
+        // create a placeholder client for future wayland client connections.
+        {
+          webSocketChannel: WebSocketChannel.create(webSocket),
+        },
+      ]
+    } else {
+      // associate the websocket with an already connected wayland client.
+      client.webSocketChannel.webSocket = webSocket
     }
   }
 }

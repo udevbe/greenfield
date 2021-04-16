@@ -35,83 +35,83 @@ const logger = Logger({
   name: `native-client-session`,
 })
 
-export class NativeClientSession {
-  static create(
-    wlClient: unknown,
-    nativeCompositorSession: NativeCompositorSession,
-    webSocketChannel: WebSocketChannel,
-  ): NativeClientSession {
-    const messageInterceptor = MessageInterceptor.create(
-      wlClient,
-      nativeCompositorSession.wlDisplay,
-      wl_display_interceptor,
-      { communicationChannel: webSocketChannel },
-    )
+export function createNativeClientSession(
+  wlClient: unknown,
+  nativeCompositorSession: NativeCompositorSession,
+  webSocketChannel: WebSocketChannel,
+): NativeClientSession {
+  const messageInterceptor = MessageInterceptor.create(
+    wlClient,
+    nativeCompositorSession.wlDisplay,
+    wl_display_interceptor,
+    { communicationChannel: webSocketChannel },
+  )
 
-    const nativeClientSession = new NativeClientSession(
-      wlClient,
-      nativeCompositorSession,
-      webSocketChannel,
-      messageInterceptor,
-    )
-    nativeClientSession.onDestroy().then(() => {
-      if (webSocketChannel.readyState === 1 || webSocketChannel.readyState === 0) {
-        webSocketChannel.onerror = noopHandler
-        webSocketChannel.onclose = noopHandler
-        webSocketChannel.onmessage = noopHandler
-        webSocketChannel.close()
-      }
-    })
-
-    Endpoint.setClientDestroyedCallback(wlClient, () => {
-      if (nativeClientSession._destroyResolve) {
-        nativeClientSession._destroyResolve()
-        nativeClientSession._destroyResolve = undefined
-        nativeClientSession.wlClient = undefined
-      }
-    })
-    Endpoint.setRegistryCreatedCallback(wlClient, (wlRegistry: unknown, registryId: number) =>
-      nativeClientSession._onRegistryCreated(wlRegistry, registryId),
-    )
-    Endpoint.setWireMessageCallback(
-      wlClient,
-      (wlClient: unknown, message: ArrayBuffer, objectId: number, opcode: number) =>
-        nativeClientSession._onWireMessageRequest(wlClient, message, objectId, opcode),
-    )
-    Endpoint.setWireMessageEndCallback(wlClient, (wlClient: unknown, fdsIn: ArrayBuffer) =>
-      nativeClientSession._onWireMessageEnd(wlClient, fdsIn),
-    )
-
-    Endpoint.setBufferCreatedCallback(wlClient, (bufferId: number) => {
-      // eslint-disable-next-line new-cap
-      messageInterceptor.interceptors[bufferId] = new wl_buffer_interceptor(
-        wlClient,
-        messageInterceptor.interceptors,
-        1,
-        null,
-        null,
-      )
-      // send buffer creation notification. opcode: 2
-      webSocketChannel.send(new Uint32Array([2, bufferId]).buffer)
-    })
-
-    webSocketChannel.onerror = () => nativeClientSession.destroy()
-    webSocketChannel.onclose = (event) => nativeClientSession._onClose()
-    webSocketChannel.onmessage = (event) => nativeClientSession._onMessage(event)
-
-    webSocketChannel.onopen = () => {
-      webSocketChannel.onerror = (event) => nativeClientSession._onError()
-      // flush out any requests that came in while we were waiting for the data channel to open.
-      logger.info(`Web socket to browser is open.`)
-      nativeClientSession._flushOutboundMessageOnOpen()
+  const nativeClientSession = new NativeClientSession(
+    wlClient,
+    nativeCompositorSession,
+    webSocketChannel,
+    messageInterceptor,
+  )
+  nativeClientSession.onDestroy().then(() => {
+    if (webSocketChannel.readyState === 1 || webSocketChannel.readyState === 0) {
+      webSocketChannel.onerror = noopHandler
+      webSocketChannel.onclose = noopHandler
+      webSocketChannel.onmessage = noopHandler
+      webSocketChannel.close()
     }
+  })
 
-    nativeClientSession._allocateBrowserServerObjectIdsBatch()
+  Endpoint.setClientDestroyedCallback(wlClient, () => {
+    if (nativeClientSession._destroyResolve) {
+      nativeClientSession._destroyResolve()
+      nativeClientSession._destroyResolve = undefined
+      nativeClientSession.wlClient = undefined
+    }
+  })
+  Endpoint.setRegistryCreatedCallback(wlClient, (wlRegistry: unknown, registryId: number) =>
+    nativeClientSession._onRegistryCreated(wlRegistry, registryId),
+  )
+  Endpoint.setWireMessageCallback(
+    wlClient,
+    (wlClient: unknown, message: ArrayBuffer, objectId: number, opcode: number) =>
+      nativeClientSession._onWireMessageRequest(wlClient, message, objectId, opcode),
+  )
+  Endpoint.setWireMessageEndCallback(wlClient, (wlClient: unknown, fdsIn: ArrayBuffer) =>
+    nativeClientSession._onWireMessageEnd(wlClient, fdsIn),
+  )
 
-    return nativeClientSession
+  Endpoint.setBufferCreatedCallback(wlClient, (bufferId: number) => {
+    // eslint-disable-next-line new-cap
+    messageInterceptor.interceptors[bufferId] = new wl_buffer_interceptor(
+      wlClient,
+      messageInterceptor.interceptors,
+      1,
+      null,
+      null,
+    )
+    // send buffer creation notification. opcode: 2
+    webSocketChannel.send(new Uint32Array([2, bufferId]).buffer)
+  })
+
+  webSocketChannel.onerror = () => nativeClientSession.destroy()
+  webSocketChannel.onclose = (event) => nativeClientSession._onClose()
+  webSocketChannel.onmessage = (event) => nativeClientSession.onMessage(event)
+
+  webSocketChannel.onopen = () => {
+    webSocketChannel.onerror = (event) => nativeClientSession._onError()
+    // flush out any requests that came in while we were waiting for the data channel to open.
+    logger.info(`Web socket to browser is open.`)
+    nativeClientSession._flushOutboundMessageOnOpen()
   }
 
-  private _destroyResolve?: (value: void | PromiseLike<void>) => void
+  nativeClientSession._allocateBrowserServerObjectIdsBatch()
+
+  return nativeClientSession
+}
+
+export class NativeClientSession {
+  _destroyResolve?: (value: void | PromiseLike<void>) => void
   private readonly _destroyPromise = new Promise<void>((resolve) => {
     this._destroyResolve = resolve
   })
@@ -141,7 +141,7 @@ export class NativeClientSession {
    * Delegates messages from the browser compositor to it's native counterpart.
    * This method is async as transferring the contents of file descriptors might take some time
    */
-  private async _onWireMessageEvents(receiveBuffer: Uint32Array) {
+  private async onWireMessageEvents(receiveBuffer: Uint32Array) {
     if (this._inboundMessages.push(receiveBuffer) > 1) {
       return
     }
@@ -200,7 +200,7 @@ export class NativeClientSession {
     }
   }
 
-  private _allocateBrowserServerObjectIdsBatch() {
+  _allocateBrowserServerObjectIdsBatch() {
     const idsReply = new Uint32Array(1001)
     Endpoint.getServerObjectIdsBatch(this.wlClient, idsReply.subarray(1))
     // out-of-band w. opcode 6
@@ -213,7 +213,7 @@ export class NativeClientSession {
     }
   }
 
-  private _flushOutboundMessageOnOpen() {
+  _flushOutboundMessageOnOpen() {
     this._allocateBrowserServerObjectIdsBatch()
     while (this._outboundMessages.length) {
       const outboundMessage = this._outboundMessages.shift()
@@ -238,7 +238,7 @@ export class NativeClientSession {
     return false
   }
 
-  private _onWireMessageRequest(wlClient: unknown, message: ArrayBuffer, objectId: number, opcode: number): number {
+  _onWireMessageRequest(wlClient: unknown, message: ArrayBuffer, objectId: number, opcode: number): number {
     if (this._disconnecting) {
       return 0
     }
@@ -266,7 +266,7 @@ export class NativeClientSession {
     }
   }
 
-  private _onWireMessageEnd(wlClient: unknown, fdsInBuffer: ArrayBuffer) {
+  _onWireMessageEnd(wlClient: unknown, fdsInBuffer: ArrayBuffer) {
     let nroFds = 0
     let fdsIntBufferSize = 1 // start with one because we start with the number of webfds specified
     /** @type {Array<Uint8Array>} */ const serializedWebFDs = new Array(nroFds)
@@ -328,11 +328,11 @@ export class NativeClientSession {
     }
   }
 
-  requestWebSocket(clientId: number): void {
-    this._webSocketChannel.send(Uint32Array.from([5, clientId]).buffer)
+  requestWebSocket(): void {
+    this._webSocketChannel.send(Uint32Array.from([5]).buffer)
   }
 
-  private _onMessage(event: MessageEvent) {
+  onMessage(event: MessageEvent): void {
     if (!this.wlClient) {
       return
     }
@@ -344,7 +344,7 @@ export class NativeClientSession {
         new Uint8Array(receiveBuffer, Uint32Array.BYTES_PER_ELEMENT),
       )
     } else {
-      this._onWireMessageEvents(new Uint32Array(receiveBuffer, Uint32Array.BYTES_PER_ELEMENT))
+      this.onWireMessageEvents(new Uint32Array(receiveBuffer, Uint32Array.BYTES_PER_ELEMENT))
     }
   }
 
@@ -358,16 +358,16 @@ export class NativeClientSession {
     }
   }
 
-  private _onError(): void {
+  _onError(): void {
     logger.error(`Web socket is in error.`)
   }
 
-  private _onClose(): void {
+  _onClose(): void {
     logger.info(`Web socket is closed.`)
     this.destroy()
   }
 
-  private _onRegistryCreated(wlRegistry: unknown, registryId: number) {
+  _onRegistryCreated(wlRegistry: unknown, registryId: number) {
     this._wlRegistries[registryId] = wlRegistry
   }
 }

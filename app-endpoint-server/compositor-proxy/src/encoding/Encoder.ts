@@ -50,11 +50,11 @@ const types: {
   },
 } as const
 
-export class Encoder implements FrameEncoder {
-  static create(): Encoder {
-    return new Encoder()
-  }
+export function createEncoder(): Encoder {
+  return new Encoder()
+}
 
+export class Encoder implements FrameEncoder {
   constructor(
     private _bufferFormat = 0,
     private readonly _queue: QueueElement[] = [],
@@ -165,5 +165,3 @@ export class Encoder implements FrameEncoder {
     return this._frameEncoder.encodeBuffer(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, bufferStride, serial)
   }
 }
-
-module.exports = Encoder
