@@ -709,9 +709,9 @@ camelcase@^5.0.0:
   integrity sha1-48mzFWnhBoEd8kL3FXJaH0xJQyA=
 
 caniuse-lite@^1.0.30001208:
-  version "1.0.30001208"
-  resolved "https://artifactory.persgroep.cloud/artifactory/api/npm/npm/caniuse-lite/-/caniuse-lite-1.0.30001208.tgz#a999014a35cebd4f98c405930a057a0d75352eb9"
-  integrity sha1-qZkBSjXOvU+YxAWTCgV6DXU1Lrk=
+  version "1.0.30001209"
+  resolved "https://artifactory.persgroep.cloud/artifactory/api/npm/npm/caniuse-lite/-/caniuse-lite-1.0.30001209.tgz#1bb4be0bd118e98e21cfb7ef617b1ef2164622f4"
+  integrity sha1-G7S+C9EY6Y4hz7fvYXse8hZGIvQ=
 
 chalk@^2.0.0:
   version "2.4.2"

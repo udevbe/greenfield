@@ -51,7 +51,13 @@ export function createNativeCompositorSession(compositorSessionId: string): Nati
 
   // TODO handle err
   // TODO write our own native epoll
-  const fdWatcher = new Epoll((err: unknown) => Endpoint.dispatchRequests(compositorSession.wlDisplay))
+  const fdWatcher = new Epoll((err: unknown) => {
+    if (err) {
+      console.error('epoll error: ', err)
+      process.exit(1)
+    }
+    Endpoint.dispatchRequests(compositorSession.wlDisplay)
+  })
   fdWatcher.add(wlDisplayFd, Epoll.EPOLLPRI | Epoll.EPOLLIN | Epoll.EPOLLERR)
 
   return compositorSession
@@ -100,14 +106,18 @@ export class NativeCompositorSession {
   }
 
   private clientForSocket(wlClient: unknown) {
-    logger.info(`New Wayland client connected.`)
+    logger.info(`New Wayland connection.`)
 
     let client = this.clients.find((client) => client.nativeClientSession === undefined)
 
     if (client) {
+      logger.debug('Found client without a wayland connection, will associating with new wayland connection.')
       // associate native wayland connection with previously created placeholder client
       client.nativeClientSession = createNativeClientSession(wlClient, this, client.webSocketChannel)
     } else {
+      logger.debug(
+        'No client found without a wayland connection, will create a placeholder client without a websocket connection.',
+      )
       const webSocketChannel = WebSocketChannel.createNoWebSocket()
       client = {
         nativeClientSession: createNativeClientSession(wlClient, this, webSocketChannel),
@@ -118,6 +128,7 @@ export class NativeCompositorSession {
       // no previously created web sockets available, so ask compositor to create a new one
       const otherClient = this.clients.find((client) => client.webSocketChannel.webSocket !== undefined)
       if (otherClient) {
+        logger.debug('Previous client found with a websocket connection, will ask for a new a websocket connection.')
         otherClient.nativeClientSession?.requestWebSocket()
       }
     }
@@ -130,6 +141,8 @@ export class NativeCompositorSession {
   }
 
   socketForClient(webSocket: WebSocket): void {
+    logger.info(`New websocket connected.`)
+
     webSocket.binaryType = 'arraybuffer'
     // find a client who does not have a websocket associated
     const client = this.clients.find((client) => client.webSocketChannel.webSocket === undefined)

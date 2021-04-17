@@ -103,7 +103,7 @@ async function main() {
   await initWasm()
 
   // create new compositor context
-  const session = createCompositorSession()
+  const session = createCompositorSession('02bea934-7cfe-4324-9024-9bda9ef56cc8')
 
   // Get an HTML5 canvas for use as an output for the compositor. Multiple outputs can be used.
   const canvas: HTMLCanvasElement = document.createElement('canvas')

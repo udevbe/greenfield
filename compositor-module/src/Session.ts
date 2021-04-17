@@ -30,9 +30,9 @@ class Session implements CompositorSession {
   readonly renderer: Renderer
   readonly userShell: UserShellApi
 
-  static create(): Session {
+  static create(sessionId?: string): Session {
     const display = new Display()
-    const compositorSessionId = this._uuidv4()
+    const compositorSessionId = sessionId ?? this._uuidv4()
     return new Session(display, compositorSessionId)
   }
 

@@ -70,7 +70,7 @@ export function createNativeClientSession(
     }
   })
   Endpoint.setRegistryCreatedCallback(wlClient, (wlRegistry: unknown, registryId: number) =>
-    nativeClientSession._onRegistryCreated(wlRegistry, registryId),
+    nativeClientSession.onRegistryCreated(wlRegistry, registryId),
   )
   Endpoint.setWireMessageCallback(
     wlClient,
@@ -78,7 +78,7 @@ export function createNativeClientSession(
       nativeClientSession._onWireMessageRequest(wlClient, message, objectId, opcode),
   )
   Endpoint.setWireMessageEndCallback(wlClient, (wlClient: unknown, fdsIn: ArrayBuffer) =>
-    nativeClientSession._onWireMessageEnd(wlClient, fdsIn),
+    nativeClientSession.onWireMessageEnd(wlClient, fdsIn),
   )
 
   Endpoint.setBufferCreatedCallback(wlClient, (bufferId: number) => {
@@ -102,10 +102,10 @@ export function createNativeClientSession(
     webSocketChannel.onerror = (event) => nativeClientSession._onError()
     // flush out any requests that came in while we were waiting for the data channel to open.
     logger.info(`Web socket to browser is open.`)
-    nativeClientSession._flushOutboundMessageOnOpen()
+    nativeClientSession.flushOutboundMessageOnOpen()
   }
 
-  nativeClientSession._allocateBrowserServerObjectIdsBatch()
+  nativeClientSession.allocateBrowserServerObjectIdsBatch()
 
   return nativeClientSession
 }
@@ -142,6 +142,8 @@ export class NativeClientSession {
    * This method is async as transferring the contents of file descriptors might take some time
    */
   private async onWireMessageEvents(receiveBuffer: Uint32Array) {
+    logger.debug('Delegating messages from browser to client. Total size: ', receiveBuffer.byteLength)
+
     if (this._inboundMessages.push(receiveBuffer) > 1) {
       return
     }
@@ -179,10 +181,12 @@ export class NativeClientSession {
         const fdsBuffer = new Uint32Array(fdsCount)
         for (let i = 0; i < webFdURLs.length; i++) {
           const webFdURL = webFdURLs[i]
+          console.debug('Waiting for webfd conversion to native fd...')
           fdsBuffer[i] = await this._nativeCompositorSession.appEndpointWebFS.handleWebFdURL(
             webFdURL,
             this._webSocketChannel,
           )
+          console.debug('...done waiting for webfd conversion to native fd.')
         }
 
         this._messageInterceptor.interceptEvent(objectId, opcode, {
@@ -192,15 +196,17 @@ export class NativeClientSession {
           consumed: 0,
           size: messageBuffer.length * 4 * Uint32Array.BYTES_PER_ELEMENT,
         })
+        logger.debug('Sending messages to client. Total size: ', messageBuffer.byteLength)
         Endpoint.sendEvents(this.wlClient, messageBuffer, fdsBuffer)
       }
+      logger.debug('Flushing messages send to client.')
       Endpoint.flush(this.wlClient)
 
       this._inboundMessages.shift()
     }
   }
 
-  _allocateBrowserServerObjectIdsBatch() {
+  allocateBrowserServerObjectIdsBatch() {
     const idsReply = new Uint32Array(1001)
     Endpoint.getServerObjectIdsBatch(this.wlClient, idsReply.subarray(1))
     // out-of-band w. opcode 6
@@ -213,8 +219,8 @@ export class NativeClientSession {
     }
   }
 
-  _flushOutboundMessageOnOpen() {
-    this._allocateBrowserServerObjectIdsBatch()
+  flushOutboundMessageOnOpen() {
+    this.allocateBrowserServerObjectIdsBatch()
     while (this._outboundMessages.length) {
       const outboundMessage = this._outboundMessages.shift()
       if (outboundMessage) {
@@ -239,6 +245,14 @@ export class NativeClientSession {
   }
 
   _onWireMessageRequest(wlClient: unknown, message: ArrayBuffer, objectId: number, opcode: number): number {
+    logger.debug(
+      'Received messages from client, will delegate. Size: ',
+      message.byteLength,
+      'object-id: ',
+      objectId,
+      'opcode: ',
+      opcode,
+    )
     if (this._disconnecting) {
       return 0
     }
@@ -257,6 +271,10 @@ export class NativeClientSession {
       }
 
       // destination: 0 => browser only,  1 => native only, 2 => both
+      console.debug(
+        'Message from client delegated to ',
+        destination === 0 ? 'browser only' : destination === 1 ? 'native only' : 'both browser and native.',
+      )
       return destination
     } catch (e) {
       logger.fatal('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
@@ -266,7 +284,8 @@ export class NativeClientSession {
     }
   }
 
-  _onWireMessageEnd(wlClient: unknown, fdsInBuffer: ArrayBuffer) {
+  onWireMessageEnd(wlClient: unknown, fdsInBuffer: ArrayBuffer) {
+    console.debug('Received end of client message.')
     let nroFds = 0
     let fdsIntBufferSize = 1 // start with one because we start with the number of webfds specified
     /** @type {Array<Uint8Array>} */ const serializedWebFDs = new Array(nroFds)
@@ -305,9 +324,11 @@ export class NativeClientSession {
 
     if (this._webSocketChannel.readyState === 1) {
       // 1 === 'open'
+      console.debug('Client message send over websocket.')
       this._webSocketChannel.send(sendBuffer.buffer)
     } else {
       // queue up data until the channel is open
+      console.debug('Client message queued because websocket is not open.')
       this._outboundMessages.push(sendBuffer.buffer)
     }
 
@@ -340,6 +361,7 @@ export class NativeClientSession {
     const receiveBuffer = event.data as ArrayBufferLike
     const outOfBandOpcode = new Uint32Array(receiveBuffer, 0, 1)[0]
     if (outOfBandOpcode) {
+      logger.debug('Received out of band message with opcode: ', outOfBandOpcode)
       this._browserChannelOutOfBandHandlers[outOfBandOpcode](
         new Uint8Array(receiveBuffer, Uint32Array.BYTES_PER_ELEMENT),
       )
@@ -367,7 +389,7 @@ export class NativeClientSession {
     this.destroy()
   }
 
-  _onRegistryCreated(wlRegistry: unknown, registryId: number) {
+  onRegistryCreated(wlRegistry: unknown, registryId: number) {
     this._wlRegistries[registryId] = wlRegistry
   }
 }
