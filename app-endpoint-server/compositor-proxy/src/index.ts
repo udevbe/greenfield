@@ -1,22 +1,14 @@
-import Logger from 'pino'
 import { URL } from 'url'
 import WebSocket from 'ws'
 import { serverConfig } from '../config'
 import { createCompositorProxySession } from './CompositorProxySession'
+import { createLogger } from './Logger'
 import { initSurfaceBufferEncoding } from './SurfaceBufferEncoding'
 
 const urlProtocolAndDomain = `${serverConfig.protocol}${serverConfig.hostname}:${serverConfig.port}` as const
 const compositorSessionId = process.env.COMPOSITOR_SESSION_ID || '02bea934-7cfe-4324-9024-9bda9ef56cc8'
 
-export const loggerConfig = {
-  prettyPrint: Boolean(process.env.DEBUG),
-  // level: Boolean(process.env.DEBUG) ? 20 : 30,
-}
-
-const logger = Logger({
-  ...loggerConfig,
-  name: `app-endpoint-session-process`,
-})
+const logger = createLogger('main')
 
 function main() {
   if (compositorSessionId === undefined) {

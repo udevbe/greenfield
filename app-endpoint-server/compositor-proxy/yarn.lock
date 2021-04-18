@@ -1726,7 +1726,7 @@ picomatch@^2.2.1, picomatch@^2.2.3:
   resolved "https://artifactory.persgroep.cloud/artifactory/api/npm/npm/picomatch/-/picomatch-2.2.3.tgz#465547f359ccc206d3c48e46a1bcb89bf7ee619d"
   integrity sha1-RlVH81nMwgbTxI5Goby4m/fuYZ0=
 
-pino-pretty@^4.1.0:
+pino-pretty@^4.7.1:
   version "4.7.1"
   resolved "https://artifactory.persgroep.cloud/artifactory/api/npm/npm/pino-pretty/-/pino-pretty-4.7.1.tgz#499cf185e110399deae731221c899915c811bd1a"
   integrity sha1-SZzxheEQOZ3q5zEiHImZFcgRvRo=
@@ -2498,10 +2498,10 @@ ws@^3.2.0:
     safe-buffer "~5.1.0"
     ultron "~1.1.0"
 
-ws@^7.4.4:
-  version "7.4.4"
-  resolved "https://artifactory.persgroep.cloud/artifactory/api/npm/npm/ws/-/ws-7.4.4.tgz#383bc9742cb202292c9077ceab6f6047b17f2d59"
-  integrity sha1-ODvJdCyyAikskHfOq29gR7F/LVk=
+ws@^7.4.5:
+  version "7.4.5"
+  resolved "https://artifactory.persgroep.cloud/artifactory/api/npm/npm/ws/-/ws-7.4.5.tgz#a484dd851e9beb6fdb420027e3885e8ce48986c1"
+  integrity sha1-pITdhR6b62/bQgAn44hejOSJhsE=
 
 xml2js@^0.4.23:
   version "0.4.23"

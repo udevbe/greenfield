@@ -20,10 +20,10 @@
   "dependencies": {
     "epoll": "^4.0.0",
     "pino": "^6.11.3",
-    "pino-pretty": "^4.1.0",
+    "pino-pretty": "^4.7.1",
     "websocket-stream": "^5.5.2",
     "westfield-endpoint": "^0.4.4",
-    "ws": "^7.4.4"
+    "ws": "^7.4.5"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^8.5.1",

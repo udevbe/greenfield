@@ -16,20 +16,15 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { Epoll } from 'epoll'
-import Logger from 'pino'
 import { Endpoint, nativeGlobalNames } from 'westfield-endpoint'
 import WebSocket from 'ws'
 import { createCompositorProxyWebFS } from './CompositorProxyWebFS'
-
-import { loggerConfig } from './index'
+import { createLogger } from './Logger'
 
 import { createNativeClientSession, NativeClientSession } from './NativeClientSession'
 import { WebSocketChannel } from './WebSocketChannel'
 
-const logger = Logger({
-  ...loggerConfig,
-  name: `native-compositor-session`,
-})
+const logger = createLogger('native-compositor-session')
 
 export type ClientEntry = { webSocketChannel: WebSocketChannel; nativeClientSession?: NativeClientSession }
 

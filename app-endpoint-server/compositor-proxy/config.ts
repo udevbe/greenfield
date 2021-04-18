@@ -1,3 +1,11 @@
+export type LoggingConfig = {
+  level: 'info' | 'debug'
+}
+
+export const loggingConfig: LoggingConfig = {
+  level: process.env.DEBUG === '1' || process.env.DEBUG === 'true' ? 'debug' : 'info',
+} as const
+
 export type ServerConfig = {
   protocol: 'ws:' | 'wss:'
   hostname: string
@@ -19,7 +27,6 @@ export const serverConfig: ServerConfig = {
 } as const
 
 export type SessionConfig = {
-  xWayland: boolean
   encoder: {
     h264Encoder: 'x264' | 'nvh264'
     maxPngBufferSize: number
@@ -27,8 +34,6 @@ export type SessionConfig = {
 }
 
 export const sessionConfig: SessionConfig = {
-  // Indicates if we should launch an XWayland server to support legacy X11 applications.
-  xWayland: true,
   encoder: {
     // The gstreamer h264 encoder to use. For now only 'x264' or 'nvh264' is supported. 'x264'
     // is a pure software encoder. While 'nvh264' is a hw accelerated encoder for Nvidia based GPUs.

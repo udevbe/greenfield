@@ -15,16 +15,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import Logger from 'pino'
 import WebSocket from 'ws'
-import { loggerConfig } from './index'
+import { createLogger } from './Logger'
 
 import { createNativeCompositorSession, NativeCompositorSession } from './NativeCompositorSession'
 
-const logger = Logger({
-  ...loggerConfig,
-  name: `session`,
-})
+const logger = createLogger('compositor-proxy-session')
 
 export function createCompositorProxySession(compositorSessionId: string): CompositorProxySession {
   const nativeCompositorSession = createNativeCompositorSession(compositorSessionId)
@@ -55,7 +51,7 @@ class CompositorProxySession {
     try {
       this.nativeCompositorSession.socketForClient(webSocket)
     } catch (e) {
-      logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+      logger.error(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
       logger.error('error object stack: ')
       logger.error(e.stack)
       webSocket.close(4503, `Server encountered an exception.`)
