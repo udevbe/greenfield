@@ -1,7 +1,10 @@
 config:
+  greenfield:auth-domain: auth.dev.greenfield.app
+  greenfield:auth-password:
+    secure: AAABAGRtrKskpt9si3Tt01FMZFHNg4Ce/6WLEsrb33rXVlImYwL/JEbMJiLIDcZb
+  greenfield:auth-user: admin
   greenfield:gcp-project: greenfield-startup-dev
   greenfield:gcp-region: europe-west2
   greenfield:gcp-zone: europe-west2-b
-  greenfield:zone-dns-name: dev.greenfield.app
-  greenfield:auth-domain: auth.dev.greenfield.app
   greenfield:stage: dev
+  greenfield:zone-dns-name: dev.greenfield.app

@@ -3,7 +3,7 @@ import { provider } from '../provider'
 import { bitnamiPostgresql } from './helm/bitnami-postgresql'
 import { keykloakNamespace } from './namespace'
 
-import { stage } from '../../configuration'
+import { authPassword, authUser, stage } from '../../configuration'
 
 export const keycloakDeployment = new kubernetes.apps.v1.Deployment(
   `${stage}-keycloak-deployment`,
@@ -38,11 +38,11 @@ export const keycloakDeployment = new kubernetes.apps.v1.Deployment(
               env: [
                 {
                   name: 'KEYCLOAK_USER',
-                  value: 'admin',
+                  value: authUser,
                 },
                 {
                   name: 'KEYCLOAK_PASSWORD',
-                  value: 'sIERfjsi8435',
+                  value: authPassword,
                 },
                 {
                   name: 'PROXY_ADDRESS_FORWARDING',
