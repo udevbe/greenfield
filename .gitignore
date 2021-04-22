@@ -143,3 +143,5 @@ CTestTestfile.cmake
 /client-demos/react-canvaskit/build/app.js
 /app-endpoint-server/compositor-proxy/build/
 /app-endpoint-server/compositor-proxy/dist/
+/compositor-proxy/dist/
+/compositor-proxy/build/

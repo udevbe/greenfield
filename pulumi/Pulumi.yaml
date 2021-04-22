@@ -1,0 +1,3 @@
+name: greenfield-startup-dev
+runtime: nodejs
+description: Greenfield development environment
