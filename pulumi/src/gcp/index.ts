@@ -1,0 +1,5 @@
+export { authDevRecord } from './auth-dev-record'
+export { cluster } from './cluster'
+export { clusterAddress } from './cluster-address'
+export { kubeconfig } from './kubeconfig'
+export { zone } from './zone'
