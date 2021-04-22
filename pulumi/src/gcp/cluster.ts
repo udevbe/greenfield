@@ -1,10 +1,11 @@
 import * as gcp from '@pulumi/gcp'
 import { provider } from './provider'
+import { stage } from '../configuration'
 
 export const cluster = new gcp.container.Cluster(
-  'cluster',
+  `${stage}-cluster`,
   {
-    //
+    // can't use this for now: https://github.com/pulumi/pulumi-gcp/issues/560
     // enableAutopilot: true,
     initialNodeCount: 1,
     location: 'europe-west2-b',

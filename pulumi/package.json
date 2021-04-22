@@ -1,5 +1,5 @@
 {
-    "name": "greenfield-startup-dev",
+    "name": "greenfield-infra",
     "version": "1.0.0",
     "main": "src/index.ts",
     "devDependencies": {

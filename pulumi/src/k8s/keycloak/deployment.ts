@@ -3,13 +3,15 @@ import { provider } from '../provider'
 import { bitnamiPostgresql } from './helm/bitnami-postgresql'
 import { keykloakNamespace } from './namespace'
 
+import { stage } from '../../configuration'
+
 export const keycloakDeployment = new kubernetes.apps.v1.Deployment(
-  'keycloakKeycloakDeployment',
+  `${stage}-keycloak-deployment`,
   {
     apiVersion: 'apps/v1',
     kind: 'Deployment',
     metadata: {
-      name: 'keycloak',
+      name: `${stage}-keycloak-deployment`,
       namespace: keykloakNamespace.metadata.name,
       labels: {
         app: 'keycloak',

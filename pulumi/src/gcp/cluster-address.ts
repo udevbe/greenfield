@@ -1,10 +1,11 @@
 import * as gcp from '@pulumi/gcp'
 import { provider } from './provider'
+import { stage } from '../configuration'
 
 export const clusterAddress = new gcp.compute.GlobalAddress(
-  'greenfield-dev-pub',
+  `${stage}-greenfield-cluster-address`,
   {
-    name: 'greenfield-dev-pub',
+    name: `${stage}-greenfield-cluster-address`,
   },
   {
     provider,

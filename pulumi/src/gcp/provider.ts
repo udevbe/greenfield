@@ -1,7 +1,10 @@
 import { Provider } from '@pulumi/gcp'
 
-export const provider = new Provider('greenfield-dev', {
-  project: 'greenfield-startup-dev',
-  region: 'europe-west2',
-  zone: 'europe-west2-b',
+import { zone, project, region } from './configuration'
+import { stage } from '../configuration'
+
+export const provider = new Provider(`${stage}-gcp-provider`, {
+  project,
+  region,
+  zone,
 })

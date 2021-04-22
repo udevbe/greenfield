@@ -2,8 +2,10 @@ import * as kubernetes from '@pulumi/kubernetes'
 import { provider } from '../provider'
 import { keykloakNamespace } from './namespace'
 
+import { stage } from '../../configuration'
+
 export const keycloakService = new kubernetes.core.v1.Service(
-  'keycloak',
+  `${stage}-keycloak`,
   {
     apiVersion: 'v1',
     kind: 'Service',

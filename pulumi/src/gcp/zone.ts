@@ -1,12 +1,14 @@
 import * as gcp from '@pulumi/gcp'
 import { provider } from './provider'
 
+import { stage, zoneDnsName } from '../configuration'
+
 export const zone = new gcp.dns.ManagedZone(
-  'greenfield-dev-zone',
+  `${stage}-managed-zone`,
   {
-    name: 'devgreenfieldapp',
-    description: 'dev.greenfield.app',
-    dnsName: 'dev.greenfield.app.',
+    name: `${stage}greenfieldapp`,
+    description: `Dns managed zone for stage: ${stage}`,
+    dnsName: `${zoneDnsName}.`,
     visibility: 'public',
   },
   {

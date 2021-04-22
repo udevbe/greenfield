@@ -1,21 +1,21 @@
 import * as k8s from '@pulumi/kubernetes'
-import { authDevRecord } from '../../gcp'
 import { provider } from '../provider'
 import { keykloakNamespace } from './namespace'
+import { authDomain, stage } from '../../configuration'
 
 export const keycloakManagedCertificate = new k8s.apiextensions.CustomResource(
-  'keycloakcert',
+  `${stage}-keycloakcert`,
   {
     apiVersion: 'networking.gke.io/v1',
     kind: 'ManagedCertificate',
     metadata: {
       namespace: keykloakNamespace.metadata.name,
-      name: 'keycloakcert',
+      name: `${stage}-keycloakcert`,
     },
-    spec: { domains: ['auth.dev.greenfield.app'] },
+    spec: { domains: [authDomain] },
   },
   {
-    dependsOn: [keykloakNamespace, authDevRecord],
+    dependsOn: [keykloakNamespace],
     provider,
   },
 )
