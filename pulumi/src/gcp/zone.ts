@@ -13,5 +13,6 @@ export const zone = new gcp.dns.ManagedZone(
   },
   {
     provider,
+    protect: true,
   },
 )
