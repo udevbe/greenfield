@@ -145,3 +145,4 @@ CTestTestfile.cmake
 /app-endpoint-server/compositor-proxy/dist/
 /compositor-proxy/dist/
 /compositor-proxy/build/
+/compositor-proxy/src/protocol/
