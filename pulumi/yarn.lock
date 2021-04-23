@@ -149,10 +149,10 @@
     shell-quote "^1.6.1"
     tmp "^0.0.33"
 
-"@pulumi/pulumi@^3.0.0":
-  version "3.0.0"
-  resolved "https://artifactory.persgroep.cloud/artifactory/api/npm/npm/@pulumi/pulumi/-/pulumi-3.0.0.tgz#b1a1a845718b21d3b4975740627f5b25f2c04fcb"
-  integrity sha1-saGoRXGLIdO0l1dAYn9bJfLAT8s=
+"@pulumi/pulumi@^3.0.0", "@pulumi/pulumi@^3.1.0":
+  version "3.1.0"
+  resolved "https://artifactory.persgroep.cloud/artifactory/api/npm/npm/@pulumi/pulumi/-/pulumi-3.1.0.tgz#a972fd4b97fe6b9b9c825c70c4b1f6c1e450cd8a"
+  integrity sha1-qXL9S5f+a5ucglxwxLH2weRQzYo=
   dependencies:
     "@grpc/grpc-js" "^1.2.7"
     "@logdna/tail-file" "^2.0.6"
@@ -1767,14 +1767,11 @@ supports-color@^7.1.0:
     has-flag "^4.0.0"
 
 table@^6.0.4:
-  version "6.3.2"
-  resolved "https://artifactory.persgroep.cloud/artifactory/api/npm/npm/table/-/table-6.3.2.tgz#afa86bee5cfe305f9328f89bb3e5454132cdea28"
-  integrity sha1-r6hr7lz+MF+TKPibs+VFQTLN6ig=
+  version "6.3.4"
+  resolved "https://artifactory.persgroep.cloud/artifactory/api/npm/npm/table/-/table-6.3.4.tgz#5d8a7fa1c887bd1ef08741751ec36246255a80b6"
+  integrity sha1-XYp/ociHvR7wh0F1HsNiRiVagLY=
   dependencies:
     ajv "^8.0.1"
-    is-boolean-object "^1.1.0"
-    is-number-object "^1.0.4"
-    is-string "^1.0.5"
     lodash.clonedeep "^4.5.0"
     lodash.flatten "^4.4.0"
     lodash.truncate "^4.4.2"
