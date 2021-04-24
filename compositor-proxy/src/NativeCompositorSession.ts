@@ -142,16 +142,14 @@ export class NativeCompositorSession {
     // find a client who does not have a websocket associated
     const client = this.clients.find((client) => client.webSocketChannel.webSocket === undefined)
     if (client === undefined) {
-      this.clients = [
-        ...this.clients,
-        // create a placeholder client for future wayland client connections.
-        {
-          webSocketChannel: WebSocketChannel.create(webSocket),
-        },
-      ]
+      // create a placeholder client for future wayland client connections.
+      const placeHolderClient: ClientEntry = { webSocketChannel: WebSocketChannel.create(webSocket) }
+      this.clients = [...this.clients, placeHolderClient]
+      webSocket.addListener('close', () => placeHolderClient.nativeClientSession?.destroy())
     } else {
       // associate the websocket with an already connected wayland client.
       client.webSocketChannel.webSocket = webSocket
+      webSocket.addListener('close', () => client.nativeClientSession?.destroy())
     }
   }
 }
