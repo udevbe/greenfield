@@ -6,7 +6,7 @@ import { createLogger } from './Logger'
 import { initSurfaceBufferEncoding } from './SurfaceBufferEncoding'
 
 const urlProtocolAndDomain = `${serverConfig.protocol}${serverConfig.hostname}:${serverConfig.port}` as const
-const compositorSessionId = process.env.COMPOSITOR_SESSION_ID || '02bea934-7cfe-4324-9024-9bda9ef56cc8'
+const compositorSessionId = process.env.COMPOSITOR_SESSION_ID
 
 const logger = createLogger('main')
 
