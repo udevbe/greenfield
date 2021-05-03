@@ -103,7 +103,9 @@ async function main() {
   await initWasm()
 
   // create new compositor context
-  const session = createCompositorSession('02bea934-7cfe-4324-9024-9bda9ef56cc8')
+  // const compositorSessionId = '02bea934-7cfe-4324-9024-9bda9ef56cc8'
+  const compositorSessionId = 'dcfc073d-269f-41d3-91a6-745e8438071b'
+  const session = createCompositorSession(compositorSessionId)
 
   // Get an HTML5 canvas for use as an output for the compositor. Multiple outputs can be used.
   const canvas: HTMLCanvasElement = document.createElement('canvas')
@@ -136,16 +138,13 @@ async function main() {
   container.appendChild(urlInput)
   container.appendChild(launchButton)
 
-  remoteGtk3URLButton.onclick = () => (urlInput.value = `docker:udevbe/gtk3-demo:latest`)
-  remoteKwriteURLButton.onclick = () => (urlInput.value = `docker:udevbe/kwrite:latest`)
+  remoteGtk3URLButton.onclick = () => (urlInput.value = `udevbe/gtk3-demo:latest`)
+  remoteKwriteURLButton.onclick = () => (urlInput.value = `udevbe/kwrite:latest`)
 
-  launchButton.onclick = () => {
-    const urlString = urlInput.value
-    const url = new URL(urlString)
-    const image = url.pathname
-
+  launchButton.onclick = async () => {
+    // const image = urlInput.value
     // const applicationLaunchResponse = await fetch(
-    //   `http://localhost:8000/compositor/${session.compositorSessionId}/application/${image}`,
+    //   `http://localhost:8000/compositor/${session.compositorSessionId}/application?image=${image}`,
     //   {
     //     method: 'POST',
     //     headers: {
@@ -160,8 +159,8 @@ async function main() {
     //   }
     // }
 
-    const compositorProxyURL = new URL('ws://localhost:8081')
-    compositorProxyURL.searchParams.append('compositorSessionId', '02bea934-7cfe-4324-9024-9bda9ef56cc8')
+    const compositorProxyURL = new URL('ws://greenfield.development/sample-pod')
+    compositorProxyURL.searchParams.append('compositorSessionId', compositorSessionId)
     compositorProxyConnector.connectTo(compositorProxyURL)
   }
 
