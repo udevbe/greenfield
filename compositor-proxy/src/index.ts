@@ -27,6 +27,11 @@ function main() {
 
   const wss = new WebSocket.Server({ port: serverConfig.port, host: serverConfig.hostname })
   wss.on('connection', (ws, request) => {
+    logger.debug(
+      `Incoming websocket connection.\n\tURL: ${JSON.stringify(request.url)}\n\tHEADERS: ${JSON.stringify(
+        request.headers,
+      )}`,
+    )
     const searchParams = new URL(`${urlProtocolAndDomain}${request.url}`).searchParams
     if (searchParams.get('compositorSessionId') !== compositorSessionId) {
       ws.close(4403)
