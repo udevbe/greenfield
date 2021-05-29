@@ -24,7 +24,7 @@
     "pino-pretty": "^4.7.1",
     "websocket-stream": "^5.5.2",
     "westfield-endpoint": "^0.4.4",
-    "ws": "^7.4.4"
+    "ws": "^7.4.6"
   },
   "devDependencies": {
     "cmake-js": "^6.1.0",
