@@ -34,12 +34,6 @@ export default class RemoteAppLauncher implements CompositorProxyConnector {
   }
 
   async connectTo(appEndpointURL: URL, auth?: string): Promise<Client> {
-    // make sure we listen for X connections in case the remote app is an X client
-    const webSocket = new WebSocket(
-      appEndpointURL.href,
-      // abuse the sub-protocol header to pass an authorization header.
-      auth ? `Authorization: ${auth}` : undefined,
-    )
-    return this.remoteSocket.onWebSocket(webSocket)
+    return this.remoteSocket.onWebSocket(new WebSocket(appEndpointURL.href))
   }
 }

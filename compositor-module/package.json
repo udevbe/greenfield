@@ -1,6 +1,6 @@
 {
   "name": "greenfield-compositor",
-  "version": "0.0.9",
+  "version": "0.0.11",
   "description": "A Wayland HTML5 Compositor Library.",
   "keywords": [
     "linux",

@@ -34,7 +34,9 @@ function main() {
     )
     const searchParams = new URL(`${urlProtocolAndDomain}${request.url}`).searchParams
     if (searchParams.get('compositorSessionId') !== compositorSessionId) {
-      ws.close(4403)
+      const message = 'Bad or missing compositorSessionId query parameter.'
+      logger.error(message)
+      ws.close(4403, message)
       return
     }
     compositorProxySession.handleConnection(ws)
