@@ -68,8 +68,8 @@ class RemoteSocket implements CompositorRemoteSocket {
       // window.GREENFIELD_DEBUG && console.log('[WebSocket] - created.')
 
       webSocket.binaryType = 'arraybuffer'
-      webSocket.onclose = () => {
-        reject(new Error('Remote connection failed.'))
+      webSocket.onclose = (event) => {
+        reject(new Error(`Failed to connect to application. ${event.reason} ${event.code}`))
       }
       webSocket.onopen = () => {
         // window.GREENFIELD_DEBUG && console.log('[WebSocket] - open.')
