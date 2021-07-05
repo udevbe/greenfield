@@ -24,6 +24,11 @@ import WebAppLauncher from './WebAppLauncher'
 import WebAppSocket from './WebAppSocket'
 import { nrmlvo } from './Xkb'
 
+// Polyfills
+import { polyfillCreateImageBitmap } from './polyfill/createImageBitmap'
+
+polyfillCreateImageBitmap()
+
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 export { init as initWasm } from './lib'
