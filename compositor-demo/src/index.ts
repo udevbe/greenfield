@@ -11,19 +11,6 @@ import {
   initWasm,
 } from 'greenfield-compositor'
 
-// claim set:
-// {
-//   "iss": "Online JWT Builder",
-//   "iat": 1618412733,
-//   "exp": 1744643120,
-//   "aud": "localhost:3000",
-//   "sub": "demouser",
-//   "name": "demo user"
-// }
-// key (HS256): qwertyuiopasdfghjklzxcvbnm123456
-const JWT_TOKEN =
-  'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2MTg0MTI3MzMsImV4cCI6MTc0NDY0MzEyMCwiYXVkIjoibG9jYWxob3N0OjMwMDAiLCJzdWIiOiJkZW1vdXNlciIsIm5hbWUiOiJkZW1vIHVzZXIifQ.cvrbNdOI4EqjPuSinH0FtMCtQqsOKK_HYC_MclN7Od4'
-
 function initializeCanvas(session: CompositorSession, canvas: HTMLCanvasElement, myId: string) {
   // register canvas with compositor session
   session.userShell.actions.initScene(myId, canvas)
@@ -103,8 +90,7 @@ async function main() {
   await initWasm()
 
   // create new compositor context
-  // const compositorSessionId = '02bea934-7cfe-4324-9024-9bda9ef56cc8'
-  const compositorSessionId = 'dcfc073d-269f-41d3-91a6-745e8438071b'
+  const compositorSessionId = 'test123'
   const session = createCompositorSession(compositorSessionId)
 
   // Get an HTML5 canvas for use as an output for the compositor. Multiple outputs can be used.
@@ -121,45 +107,15 @@ async function main() {
   const remoteSocket = createCompositorRemoteSocket(session)
   const compositorProxyConnector = createCompositorProxyConnector(session, remoteSocket)
 
-  const remoteGtk3URLButton: HTMLButtonElement = document.createElement('button')
-  remoteGtk3URLButton.textContent = 'GTK3-Demo'
-  const remoteKwriteURLButton: HTMLButtonElement = document.createElement('button')
-  remoteKwriteURLButton.textContent = 'KWrite'
-
-  const urlInput: HTMLInputElement = document.createElement('input')
-  urlInput.type = 'text'
-  urlInput.style.width = '600px'
-  const launchButton: HTMLButtonElement = document.createElement('button')
-  launchButton.textContent = 'Launch'
+  const connectButton: HTMLButtonElement = document.createElement('button')
+  connectButton.textContent = 'connect to proxy compositor'
 
   const container: HTMLDivElement = document.createElement('div')
-  container.appendChild(remoteGtk3URLButton)
-  container.appendChild(remoteKwriteURLButton)
-  container.appendChild(urlInput)
-  container.appendChild(launchButton)
 
-  remoteGtk3URLButton.onclick = () => (urlInput.value = `udevbe/gtk3-demo:latest`)
-  remoteKwriteURLButton.onclick = () => (urlInput.value = `udevbe/kwrite:latest`)
+  container.appendChild(connectButton)
 
-  launchButton.onclick = async () => {
-    // const image = urlInput.value
-    // const applicationLaunchResponse = await fetch(
-    //   `http://localhost:8000/compositor/${session.compositorSessionId}/application?image=${image}`,
-    //   {
-    //     method: 'POST',
-    //     headers: {
-    //       Authorization: JWT_TOKEN,
-    //     },
-    //   },
-    // )
-    // if (applicationLaunchResponse.status === 201) {
-    //   const compositorProxyURL = applicationLaunchResponse.headers.get('location')
-    //   if (compositorProxyURL) {
-    //     await compositorProxyConnector.connectTo(new URL(compositorProxyURL))
-    //   }
-    // }
-
-    const compositorProxyURL = new URL('ws://greenfield.development/sample-pod')
+  connectButton.onclick = async () => {
+    const compositorProxyURL = new URL('ws://localhost:8081')
     compositorProxyURL.searchParams.append('compositorSessionId', compositorSessionId)
     compositorProxyConnector.connectTo(compositorProxyURL)
   }
