@@ -34,11 +34,6 @@ export default class RemoteAppLauncher implements CompositorProxyConnector {
   }
 
   async connectTo(appEndpointURL: URL): Promise<Client> {
-    try {
-      return this.remoteSocket.onWebSocket(new WebSocket(appEndpointURL.href))
-    } catch (error) {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      return this.remoteSocket.onWebSocket(new WebSocket(appEndpointURL.href))
-    }
+    return this.remoteSocket.onWebSocket(new WebSocket(appEndpointURL.href))
   }
 }
