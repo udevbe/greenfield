@@ -197,19 +197,12 @@ class RemoteSocket implements CompositorRemoteSocket {
     })
 
     // listen for web socket creation request. opcode: 5
-    outOfBandChannel.setListener(5, (outOfBandMessage) => {
+    outOfBandChannel.setListener(5, () => {
       if (client.connection.closed) {
         return
       }
 
-      const uint32Array = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)
-      const clientId = uint32Array[0]
-
-      const webSocketURL = new URL(new URL(webSocket.url).origin)
-      webSocketURL.searchParams.append('clientId', `${clientId}`)
-      webSocketURL.searchParams.append('compositorSessionId', this.session.compositorSessionId)
-
-      const newWebSocket = new WebSocket(webSocketURL.href)
+      const newWebSocket = new WebSocket(webSocket.url)
       this.onWebSocket(newWebSocket)
     })
 
