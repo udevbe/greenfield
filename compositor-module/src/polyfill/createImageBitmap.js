@@ -7,6 +7,7 @@ export function polyfillCreateImageBitmap() {
         let img = document.createElement('img');
         img.addEventListener('load', function () {
           resolve(this);
+          URL.revokeObjectURL(img.src)
         });
         img.src = URL.createObjectURL(blob);
       });
