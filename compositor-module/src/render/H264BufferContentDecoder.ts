@@ -56,8 +56,7 @@ const opaqueWorker = new Promise<Worker>((resolve) => {
 const alphaWorker = new Promise<Worker>((resolve) => {
   const h264NALDecoderWorker: Worker = new H264NALDecoderWorker()
   h264NALDecoderWorker.addEventListener('message', (e) => {
-    const message =
-       e.dataas H264NALDecoderWorkerMessage
+    const message = e.data as H264NALDecoderWorkerMessage
     switch (message.type) {
       case 'pictureReady':
         decoders[message.renderStateId]._onAlphaPictureDecoded(message)

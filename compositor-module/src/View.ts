@@ -195,10 +195,10 @@ export default class View {
     }
 
     this.destroyed = true
-    this._destroyResolve()
+    this.destroyResolve()
   }
 
   onDestroy() {
-    return this._destroyPromise
+    return this.destroyPromise
   }
 }

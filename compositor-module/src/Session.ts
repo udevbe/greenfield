@@ -31,9 +31,9 @@ function uuidv4(): string {
 }
 
 class Session implements CompositorSession {
-  static create(): Session {
+  static create(sessionId?: string): Session {
     const display = new Display()
-    const compositorSessionId = uuidv4()
+    const compositorSessionId = sessionId ?? uuidv4()
     return new Session(display, compositorSessionId)
   }
 

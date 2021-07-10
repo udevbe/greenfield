@@ -31,8 +31,8 @@ export * from './AxisEvent'
 export * from './KeyEvent'
 export { nrmlvo }
 
-export function createCompositorSession(): CompositorSession {
-  return Session.create()
+export function createCompositorSession(sessionId?: string): CompositorSession {
+  return Session.create(sessionId)
 }
 
 export interface CompositorPointer {

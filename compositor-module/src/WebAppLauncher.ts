@@ -36,7 +36,7 @@ export default class WebAppLauncher implements CompositorWebAppLauncher {
   launch(webAppURL: URL): Promise<Client> {
     // TODO store web apps locally so they can be used offline and/or faster
     // TODO alternatively web apps could be served through web-sockets and avoid the same origin policy.
-    return new Promise<Client>(((resolve) => {
+    return new Promise<Client>((resolve) => {
       // TODO use fetch api
       const xhr = new XMLHttpRequest()
 
