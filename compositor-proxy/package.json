@@ -18,21 +18,19 @@
     "start": "node ./dist/src/index.js"
   },
   "dependencies": {
+    "epoll": "^4.0.1",
+    "pino": "^6.11.3",
+    "pino-pretty": "^5.1.0",
+    "websocket-stream": "^5.5.2",
+    "westfield-endpoint": "^0.4.4",
+    "ws": "^7.5.2"
+  },
+  "devDependencies": {
     "@types/jsonwebtoken": "^8.5.3",
     "@types/node": "^16.0.0",
     "@types/node-fetch": "^2.5.10",
     "@types/pino": "^6.3.8",
     "@types/ws": "^7.4.6",
-    "epoll": "^4.0.1",
-    "pino": "^6.11.3",
-    "pino-pretty": "^5.1.0",
-    "typescript": "^4.3.5",
-    "websocket-stream": "^5.5.2",
-    "westfield-endpoint": "^0.4.4",
-    "westfield-endpoint-generator": "^0.3.1",
-    "ws": "^7.5.2"
-  },
-  "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^4.28.1",
     "@typescript-eslint/parser": "^4.28.1",
     "cmake-js": "^6.1.0",
@@ -40,6 +38,8 @@
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^3.4.0",
     "prettier": "^2.3.2",
-    "ts-node": "^10.0.0"
+    "ts-node": "^10.0.0",
+    "typescript": "^4.3.5",
+    "westfield-endpoint-generator": "^0.3.1"
   }
 }

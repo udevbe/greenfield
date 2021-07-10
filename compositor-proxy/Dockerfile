@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:15.14.0-buster
+FROM node:16-buster-slim
 
 RUN apt-get update && apt-get install -y \
     cmake \
@@ -14,8 +14,6 @@ RUN apt-get update && apt-get install -y \
     libwayland-egl1-mesa \
     libwayland-server0 \
     && rm -rf /var/lib/apt/lists/*
-
-ENV NODE_ENV=production
 WORKDIR /app
 
 COPY ["package.json", "yarn.lock", "./"]
@@ -26,8 +24,9 @@ COPY . .
 RUN yarn generate
 RUN yarn build
 
-ENV XDG_RUNTIME_DIR /tmp
-ENV GST_GL_WINDOW egl-device
+ENV NODE_ENV=production
+#ENV XDG_RUNTIME_DIR /tmp
+#ENV GST_GL_WINDOW egl-device
 
 EXPOSE 8081
 
