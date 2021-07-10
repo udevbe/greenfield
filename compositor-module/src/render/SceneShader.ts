@@ -29,92 +29,85 @@ type ShaderArgs = {
   a_texCoord: GLint
 }
 
+function initShaders(gl: WebGLRenderingContext): Program {
+  const program = new Program(gl)
+  program.attach(ShaderCompiler.compile(gl, VERTEX_QUAD_TRANSFORM))
+  program.attach(ShaderCompiler.compile(gl, FRAGMENT_ARGB8888))
+  program.link()
+  program.use()
+
+  return program
+}
+
+function initShaderArgs(gl: WebGLRenderingContext, program: Program): ShaderArgs {
+  // find shader arguments
+  const u_projection = program.getUniformLocation('u_projection')
+  if (u_projection === null) {
+    throw new Error('u_projection not found in shader')
+  }
+  const u_transform = program.getUniformLocation('u_transform')
+  if (u_transform === null) {
+    throw new Error('u_transform not found in shader')
+  }
+  const u_texture = program.getUniformLocation('u_texture')
+  if (u_texture === null) {
+    throw new Error('u_texture not found in shader')
+  }
+  const a_position = program.getAttributeLocation('a_position')
+  if (a_position === null) {
+    throw new Error('a_position not found in shader')
+  }
+  gl.enableVertexAttribArray(a_position)
+  const a_texCoord = program.getAttributeLocation('a_texCoord')
+  if (a_texCoord === null) {
+    throw new Error('a_texCoord not found in shader')
+  }
+  gl.enableVertexAttribArray(a_texCoord)
+
+  return {
+    u_projection,
+    u_transform,
+    u_texture,
+    a_position,
+    a_texCoord,
+  }
+}
+
+function initBuffers(gl: WebGLRenderingContext): WebGLBuffer {
+  // Create vertex buffer object.
+  const webglBuffer = gl.createBuffer()
+  if (webglBuffer === null) {
+    throw new Error("Can't create webgl buffer.")
+  }
+  return webglBuffer
+}
+
 class SceneShader {
-  readonly gl: WebGLRenderingContext
-  readonly vertexBuffer: WebGLBuffer
-  readonly shaderArgs: ShaderArgs
-  readonly program: Program
   private _sceneSize?: Size
 
   static create(gl: WebGLRenderingContext): SceneShader {
-    const program = this._initShaders(gl)
-    const shaderArgs = this._initShaderArgs(gl, program)
-    const vertexBuffer = this._initBuffers(gl)
+    const program = initShaders(gl)
+    const shaderArgs = initShaderArgs(gl, program)
+    const vertexBuffer = initBuffers(gl)
     return new SceneShader(gl, vertexBuffer, shaderArgs, program)
   }
 
-  // TODO move to stand-alone function
-  private static _initShaders(gl: WebGLRenderingContext): Program {
-    const program = new Program(gl)
-    program.attach(ShaderCompiler.compile(gl, VERTEX_QUAD_TRANSFORM))
-    program.attach(ShaderCompiler.compile(gl, FRAGMENT_ARGB8888))
-    program.link()
-    program.use()
+  private constructor(
+    public readonly gl: WebGLRenderingContext,
+    public readonly vertexBuffer: WebGLBuffer,
+    public readonly shaderArgs: ShaderArgs,
+    public readonly program: Program,
+  ) {}
 
-    return program
-  }
-
-  // TODO move to stand-alone function
-  private static _initShaderArgs(gl: WebGLRenderingContext, program: Program): ShaderArgs {
-    // find shader arguments
-    const u_projection = program.getUniformLocation('u_projection')
-    if (u_projection === null) {
-      throw new Error('u_projection not found in shader')
-    }
-    const u_transform = program.getUniformLocation('u_transform')
-    if (u_transform === null) {
-      throw new Error('u_transform not found in shader')
-    }
-    const u_texture = program.getUniformLocation('u_texture')
-    if (u_texture === null) {
-      throw new Error('u_texture not found in shader')
-    }
-    const a_position = program.getAttributeLocation('a_position')
-    if (a_position === null) {
-      throw new Error('a_position not found in shader')
-    }
-    gl.enableVertexAttribArray(a_position)
-    const a_texCoord = program.getAttributeLocation('a_texCoord')
-    if (a_texCoord === null) {
-      throw new Error('a_texCoord not found in shader')
-    }
-    gl.enableVertexAttribArray(a_texCoord)
-
-    return {
-      u_projection,
-      u_transform,
-      u_texture,
-      a_position,
-      a_texCoord,
-    }
-  }
-
-  // TODO move to stand-alone function
-  private static _initBuffers(gl: WebGLRenderingContext): WebGLBuffer {
-    // Create vertex buffer object.
-    const webglBuffer = gl.createBuffer()
-    if (webglBuffer === null) {
-      throw new Error("Can't create webgl buffer.")
-    }
-    return webglBuffer
-  }
-
-  private constructor(gl: WebGLRenderingContext, vertexBuffer: WebGLBuffer, shaderArgs: ShaderArgs, program: Program) {
-    this.gl = gl
-    this.vertexBuffer = vertexBuffer
-    this.shaderArgs = shaderArgs
-    this.program = program
-  }
-
-  use() {
+  use(): void {
     this.program.use()
   }
 
-  release() {
+  release(): void {
     this.gl.useProgram(null)
   }
 
-  updateSceneData(sceneSize: Size) {
+  updateSceneData(sceneSize: Size): void {
     const { w, h } = sceneSize
     this._sceneSize = sceneSize
     this.gl.viewport(0, 0, w, h)
@@ -142,7 +135,7 @@ class SceneShader {
     ])
   }
 
-  updateViewData(view: View) {
+  updateViewData(view: View): void {
     const {
       texture,
       size: { w, h },
@@ -199,7 +192,7 @@ class SceneShader {
     this.gl.vertexAttribPointer(this.shaderArgs.a_texCoord, 2, this.gl.FLOAT, false, 16, 8)
   }
 
-  draw() {
+  draw(): void {
     this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 6)
     this.gl.bindTexture(this.gl.TEXTURE_2D, null)
     this.gl.flush()

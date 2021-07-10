@@ -19,21 +19,15 @@ import Size from '../Size'
 import Texture from './Texture'
 
 class RenderState {
-  readonly texture: Texture
-  size: Size
-
   static create(gl: WebGLRenderingContext, size: Size): RenderState {
     const texture = Texture.create(gl, gl.RGBA)
     texture.image2dBuffer(null, size.w === 0 ? 2 : size.w, size.h === 0 ? 2 : size.h)
     return new RenderState(texture, size)
   }
 
-  private constructor(texture: Texture, size: Size) {
-    this.texture = texture
-    this.size = size
-  }
+  private constructor(public readonly texture: Texture, public size: Size) {}
 
-  destroy() {
+  destroy(): void {
     this.texture.delete()
   }
 }

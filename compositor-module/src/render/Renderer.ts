@@ -20,17 +20,11 @@ import Session from '../Session'
 import Scene from './Scene'
 
 export default class Renderer {
-  scenes: { [key: string]: Scene }
-  session: Session
-
   static create(session: Session): Renderer {
     return new Renderer(session)
   }
 
-  private constructor(session: Session) {
-    this.scenes = {}
-    this.session = session
-  }
+  private constructor(public readonly session: Session, public scenes: { [key: string]: Scene } = {}) {}
 
   initScene(sceneId: string, canvas: HTMLCanvasElement): Promise<void> {
     let scene = this.scenes[sceneId] || null

@@ -21,12 +21,6 @@ import EncodedFrameFragment from './EncodedFrameFragment'
 import EncodingTypes, { EncodingMimeTypes } from './EncodingMimeTypes'
 
 export default class EncodedFrame implements BufferContents<EncodedFrameFragment[]> {
-  readonly serial: number
-  readonly mimeType: EncodingMimeTypes[keyof EncodingMimeTypes]
-  readonly encodingOptions: number
-  readonly size: Size
-  readonly pixelContent: EncodedFrameFragment[]
-
   static create(u8Buffer: Uint8Array): EncodedFrame {
     const dataView = new DataView(u8Buffer.buffer, u8Buffer.byteOffset)
     let offset = 0
@@ -80,16 +74,10 @@ export default class EncodedFrame implements BufferContents<EncodedFrameFragment
   }
 
   constructor(
-    serial: number,
-    mimeType: EncodingMimeTypes[keyof EncodingMimeTypes],
-    encodingOptions: number,
-    size: Size,
-    fragments: EncodedFrameFragment[],
-  ) {
-    this.serial = serial
-    this.mimeType = mimeType
-    this.encodingOptions = encodingOptions
-    this.size = size
-    this.pixelContent = fragments
-  }
+    public readonly serial: number,
+    public readonly mimeType: EncodingMimeTypes[keyof EncodingMimeTypes],
+    public readonly encodingOptions: number,
+    public readonly size: Size,
+    public readonly pixelContent: EncodedFrameFragment[],
+  ) {}
 }

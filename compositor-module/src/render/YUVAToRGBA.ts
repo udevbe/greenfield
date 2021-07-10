@@ -24,15 +24,6 @@ import YUV2RGBShader from './YUV2RGBShader'
 import YUVA2RGBAShader from './YUVA2RGBAShader'
 
 class YUVAToRGBA {
-  readonly yTexture: Texture
-  readonly uTexture: Texture
-  readonly vTexture: Texture
-  readonly alphaTexture: Texture
-  readonly gl: WebGLRenderingContext
-  readonly framebuffer: WebGLFramebuffer
-  readonly yuvaSurfaceShader: YUVA2RGBAShader
-  readonly yuvSurfaceShader: YUV2RGBShader
-
   static create(gl: WebGLRenderingContext): YUVAToRGBA {
     gl.clearColor(0, 0, 0, 0)
 
@@ -62,26 +53,17 @@ class YUVAToRGBA {
   }
 
   private constructor(
-    gl: WebGLRenderingContext,
-    yuvaSurfaceShader: YUVA2RGBAShader,
-    yuvSurfaceShader: YUV2RGBShader,
-    framebuffer: WebGLFramebuffer,
-    yTexture: Texture,
-    uTexture: Texture,
-    vTexture: Texture,
-    alphaTexture: Texture,
-  ) {
-    this.yTexture = yTexture
-    this.uTexture = uTexture
-    this.vTexture = vTexture
-    this.alphaTexture = alphaTexture
-    this.gl = gl
-    this.framebuffer = framebuffer
-    this.yuvaSurfaceShader = yuvaSurfaceShader
-    this.yuvSurfaceShader = yuvSurfaceShader
-  }
+    public readonly gl: WebGLRenderingContext,
+    public readonly yuvaSurfaceShader: YUVA2RGBAShader,
+    public readonly yuvSurfaceShader: YUV2RGBShader,
+    public readonly framebuffer: WebGLFramebuffer,
+    public readonly yTexture: Texture,
+    public readonly uTexture: Texture,
+    public readonly vTexture: Texture,
+    public readonly alphaTexture: Texture,
+  ) {}
 
-  convertInto(yuva: OpaqueAndAlphaPlanes, frameSize: Size, view: View) {
+  convertInto(yuva: OpaqueAndAlphaPlanes, frameSize: Size, view: View): void {
     const { alpha, opaque } = yuva
     // const start = Date.now()
     if (view.destroyed) {
@@ -125,13 +107,13 @@ class YUVAToRGBA {
       const alphaBuffer = alpha.buffer.subarray(0, alphaLumaSize)
       this.alphaTexture.image2dBuffer(alphaBuffer, alphaStride, alphaHeight)
 
-      this._yuva2rgba(renderState, maxXTexCoord, maxYTexCoord)
+      this.yuva2rgba(renderState, maxXTexCoord, maxYTexCoord)
     } else {
-      this._yuv2rgb(renderState, maxXTexCoord, maxYTexCoord)
+      this.yuv2rgb(renderState, maxXTexCoord, maxYTexCoord)
     }
   }
 
-  private _yuv2rgb(renderState: RenderState, maxXTexCoord: number, maxYTexCoord: number) {
+  private yuv2rgb(renderState: RenderState, maxXTexCoord: number, maxYTexCoord: number) {
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer)
     const attachmentPoint = this.gl.COLOR_ATTACHMENT0
     const level = 0
@@ -151,7 +133,7 @@ class YUVAToRGBA {
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null)
   }
 
-  private _yuva2rgba(renderState: RenderState, maxXTexCoord: number, maxYTexCoord: number) {
+  private yuva2rgba(renderState: RenderState, maxXTexCoord: number, maxYTexCoord: number) {
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer)
     const attachmentPoint = this.gl.COLOR_ATTACHMENT0
     const level = 0

@@ -22,23 +22,11 @@ import Rect from './math/Rect'
 import View from './View'
 import XdgSurface from './XdgSurface'
 
-interface AnchorCalculation {
-  0: (rect: Rect) => Point
-  1: (rect: Rect) => Point
-  2: (rect: Rect) => Point
-  3: (rect: Rect) => Point
-  4: (rect: Rect) => Point
-  5: (rect: Rect) => Point
-  6: (rect: Rect) => Point
-  7: (rect: Rect) => Point
-  8: (rect: Rect) => Point
-}
-
-const anchorCalculation: AnchorCalculation = {
+const anchorCalculation = {
   /**
    * none
    */
-  0: (anchorRect) => {
+  0: (anchorRect: Rect) => {
     // calculate center
     const x = Math.round((anchorRect.x0 + anchorRect.width) / 2)
     const y = Math.round((anchorRect.y0 + anchorRect.height) / 2)
@@ -47,7 +35,7 @@ const anchorCalculation: AnchorCalculation = {
   /**
    * top
    */
-  1: (anchorRect) => {
+  1: (anchorRect: Rect) => {
     const x = Math.round((anchorRect.x0 + anchorRect.width) / 2)
     const y = anchorRect.y0
     return Point.create(x, y)
@@ -55,7 +43,7 @@ const anchorCalculation: AnchorCalculation = {
   /**
    * bottom
    */
-  2: (anchorRect) => {
+  2: (anchorRect: Rect) => {
     const x = Math.round((anchorRect.x0 + anchorRect.width) / 2)
     const y = anchorRect.y1
     return Point.create(x, y)
@@ -63,7 +51,7 @@ const anchorCalculation: AnchorCalculation = {
   /**
    * left
    */
-  3: (anchorRect) => {
+  3: (anchorRect: Rect) => {
     const x = anchorRect.x0
     const y = Math.round((anchorRect.y0 + anchorRect.height) / 2)
     return Point.create(x, y)
@@ -71,7 +59,7 @@ const anchorCalculation: AnchorCalculation = {
   /**
    * right
    */
-  4: (anchorRect) => {
+  4: (anchorRect: Rect) => {
     const x = anchorRect.x1
     const y = Math.round((anchorRect.y0 + anchorRect.height) / 2)
     return Point.create(x, y)
@@ -79,7 +67,7 @@ const anchorCalculation: AnchorCalculation = {
   /**
    * topLeft
    */
-  5: (anchorRect) => {
+  5: (anchorRect: Rect) => {
     const x = anchorRect.x0
     const y = anchorRect.y0
     return Point.create(x, y)
@@ -87,7 +75,7 @@ const anchorCalculation: AnchorCalculation = {
   /**
    * bottomLeft
    */
-  6: (anchorRect) => {
+  6: (anchorRect: Rect) => {
     const x = anchorRect.x0
     const y = anchorRect.y1
     return Point.create(x, y)
@@ -95,7 +83,7 @@ const anchorCalculation: AnchorCalculation = {
   /**
    * topRight
    */
-  7: (anchorRect) => {
+  7: (anchorRect: Rect) => {
     const x = anchorRect.x1
     const y = anchorRect.y0
     return Point.create(x, y)
@@ -103,30 +91,18 @@ const anchorCalculation: AnchorCalculation = {
   /**
    * bottomRight
    */
-  8: (anchorRect) => {
+  8: (anchorRect: Rect) => {
     const x = anchorRect.x1
     const y = anchorRect.y1
     return Point.create(x, y)
   },
-}
+} as const
 
-interface OffsetCalculation {
-  0: (anchor: Point, offset: Point, windowGeometry: Rect) => Point
-  1: (anchor: Point, offset: Point, windowGeometry: Rect) => Point
-  2: (anchor: Point, offset: Point, windowGeometry: Rect) => Point
-  3: (anchor: Point, offset: Point, windowGeometry: Rect) => Point
-  4: (anchor: Point, offset: Point, windowGeometry: Rect) => Point
-  5: (anchor: Point, offset: Point, windowGeometry: Rect) => Point
-  6: (anchor: Point, offset: Point, windowGeometry: Rect) => Point
-  7: (anchor: Point, offset: Point, windowGeometry: Rect) => Point
-  8: (anchor: Point, offset: Point, windowGeometry: Rect) => Point
-}
-
-const offsetCalculation: OffsetCalculation = {
+const offsetCalculation = {
   /**
    * none
    */
-  0: (anchor, offset, windowGeometry) => {
+  0: (anchor: Point, offset: Point, windowGeometry: Rect) => {
     const x = Math.round(windowGeometry.x0 + windowGeometry.width / 2)
     const y = Math.round(windowGeometry.y0 + windowGeometry.height / 2)
     return anchor.minus(Point.create(x, y))
@@ -134,7 +110,7 @@ const offsetCalculation: OffsetCalculation = {
   /**
    * top
    */
-  1: (anchor, offset, windowGeometry) => {
+  1: (anchor: Point, offset: Point, windowGeometry: Rect) => {
     const x = Math.round(windowGeometry.x0 + windowGeometry.width / 2)
     const y = windowGeometry.y1
     return anchor.minus(Point.create(x, y)).minus(Point.create(0, offset.y))
@@ -142,7 +118,7 @@ const offsetCalculation: OffsetCalculation = {
   /**
    * bottom
    */
-  2: (anchor, offset, windowGeometry) => {
+  2: (anchor: Point, offset: Point, windowGeometry: Rect) => {
     const x = Math.round(windowGeometry.x0 + windowGeometry.width / 2)
     const y = windowGeometry.y0
     return anchor.minus(Point.create(x, y)).plus(Point.create(0, offset.y))
@@ -150,7 +126,7 @@ const offsetCalculation: OffsetCalculation = {
   /**
    * left
    */
-  3: (anchor, offset, windowGeometry) => {
+  3: (anchor: Point, offset: Point, windowGeometry: Rect) => {
     const x = windowGeometry.x1
     const y = Math.round(windowGeometry.y0 + windowGeometry.height / 2)
     return anchor.minus(Point.create(x, y)).minus(Point.create(offset.x, 0))
@@ -158,7 +134,7 @@ const offsetCalculation: OffsetCalculation = {
   /**
    * right
    */
-  4: (anchor, offset, windowGeometry) => {
+  4: (anchor: Point, offset: Point, windowGeometry: Rect) => {
     const x = windowGeometry.x0
     const y = Math.round(windowGeometry.y0 + windowGeometry.height / 2)
     return anchor.minus(Point.create(x, y)).plus(Point.create(offset.x, 0))
@@ -166,7 +142,7 @@ const offsetCalculation: OffsetCalculation = {
   /**
    * topLeft
    */
-  5: (anchor, offset, windowGeometry) => {
+  5: (anchor: Point, offset: Point, windowGeometry: Rect) => {
     const x = windowGeometry.x1
     const y = windowGeometry.y1
     return anchor.minus(Point.create(x, y)).minus(offset)
@@ -174,7 +150,7 @@ const offsetCalculation: OffsetCalculation = {
   /**
    * bottomLeft
    */
-  6: (anchor, offset, windowGeometry) => {
+  6: (anchor: Point, offset: Point, windowGeometry: Rect) => {
     const x = windowGeometry.x1
     const y = windowGeometry.y0
     return anchor.minus(Point.create(x, y)).plus(Point.create(-offset.x, offset.y))
@@ -182,7 +158,7 @@ const offsetCalculation: OffsetCalculation = {
   /**
    * topRight
    */
-  7: (anchor, offset, windowGeometry) => {
+  7: (anchor: Point, offset: Point, windowGeometry: Rect) => {
     const x = windowGeometry.x0
     const y = windowGeometry.y1
     return anchor.minus(Point.create(x, y)).plus(Point.create(offset.x, -offset.y))
@@ -190,18 +166,18 @@ const offsetCalculation: OffsetCalculation = {
   /**
    * bottomRight
    */
-  8: (anchor, offset, windowGeometry) => {
+  8: (anchor: Point, offset: Point, windowGeometry: Rect) => {
     const x = windowGeometry.x0
     const y = windowGeometry.y0
     return anchor.minus(Point.create(x, y)).plus(Point.create(offset.x, offset.y))
   },
-}
+} as const
 
 export interface XdgPositionerState {
   size?: Rect
   anchorRect?: Rect
-  anchor: keyof AnchorCalculation
-  gravity: keyof OffsetCalculation
+  anchor: keyof typeof anchorCalculation
+  gravity: keyof typeof offsetCalculation
   constraintAdjustment: number
   offset: Point
 
@@ -213,35 +189,12 @@ export interface XdgPositionerState {
   ): { topViolation: number; rightViolation: number; bottomViolation: number; leftViolation: number } | undefined
 }
 
-/**
- *
- *      The xdg_positioner provides a collection of rules for the placement of a
- *      child surface relative to a parent surface. Rules can be defined to ensure
- *      the child surface remains within the visible area's borders, and to
- *      specify how the child surface changes its position, such as sliding along
- *      an axis, or flipping around a rectangle. These positioner-created rules are
- *      constrained by the requirement that a child surface must intersect with or
- *      be at least partially adjacent to its parent surface.
- *
- *      See the various requests for details about possible rules.
- *
- *      At the time of the request, the compositor makes a copy of the rules
- *      specified by the xdg_positioner. Thus, after the request is complete the
- *      xdg_positioner object can be destroyed or reused; further changes to the
- *      object will have no effect on previous usages.
- *
- *      For an xdg_positioner object to be considered complete, it must have a
- *      non-zero size set by set_size, and a non-zero anchor rectangle set by
- *      set_anchor_rect. Passing an incomplete xdg_positioner object when
- *      positioning a surface raises an error.
- *
- */
 export default class XdgPositioner implements XdgPositionerRequests {
   readonly xdgPositionerResource: XdgPositionerResource
   size?: Rect
   anchorRect?: Rect
-  anchor: keyof AnchorCalculation = 0
-  gravity: keyof OffsetCalculation = 0
+  anchor: keyof typeof anchorCalculation = 0
+  gravity: keyof typeof offsetCalculation = 0
   constraintAdjustment = 0
   offset: Point = Point.create(0, 0)
 
@@ -255,11 +208,11 @@ export default class XdgPositioner implements XdgPositionerRequests {
     this.xdgPositionerResource = xdgPositionerResource
   }
 
-  destroy(resource: XdgPositionerResource) {
+  destroy(resource: XdgPositionerResource): void {
     resource.destroy()
   }
 
-  setSize(resource: XdgPositionerResource, width: number, height: number) {
+  setSize(resource: XdgPositionerResource, width: number, height: number): void {
     if (width <= 0 || height <= 0) {
       resource.postError(XdgPositionerError.invalidInput, 'Size width or height of positioner can not be negative.')
       console.log('[client-protocol-error]. Size width or height of positioner can not be negative.')
@@ -268,7 +221,7 @@ export default class XdgPositioner implements XdgPositionerRequests {
     this.size = Rect.create(0, 0, width, height)
   }
 
-  setAnchorRect(resource: XdgPositionerResource, x: number, y: number, width: number, height: number) {
+  setAnchorRect(resource: XdgPositionerResource, x: number, y: number, width: number, height: number): void {
     if (width <= 0 || height <= 0) {
       resource.postError(
         XdgPositionerError.invalidInput,
@@ -280,27 +233,27 @@ export default class XdgPositioner implements XdgPositionerRequests {
     this.anchorRect = Rect.create(x, y, x + width, y + height)
   }
 
-  setAnchor(resource: XdgPositionerResource, anchor: number) {
+  setAnchor(resource: XdgPositionerResource, anchor: number): void {
     if (anchor in Object.keys(anchorCalculation)) {
-      this.anchor = anchor as keyof AnchorCalculation
+      this.anchor = anchor as keyof typeof anchorCalculation
     } else {
       resource.postError(XdgPositionerError.invalidInput, `Invalid anchor: ${anchor}`)
     }
   }
 
-  setGravity(resource: XdgPositionerResource, gravity: number) {
+  setGravity(resource: XdgPositionerResource, gravity: number): void {
     if (gravity in Object.keys(offsetCalculation)) {
-      this.gravity = gravity as keyof OffsetCalculation
+      this.gravity = gravity as keyof typeof offsetCalculation
     } else {
       resource.postError(XdgPositionerError.invalidInput, `Invalid gravity: ${gravity}`)
     }
   }
 
-  setConstraintAdjustment(resource: XdgPositionerResource, constraintAdjustment: number) {
+  setConstraintAdjustment(resource: XdgPositionerResource, constraintAdjustment: number): void {
     this.constraintAdjustment = constraintAdjustment
   }
 
-  setOffset(resource: XdgPositionerResource, x: number, y: number) {
+  setOffset(resource: XdgPositionerResource, x: number, y: number): void {
     this.offset = Point.create(x, y)
   }
 

@@ -173,7 +173,7 @@ export function isUserShellSurface(surface: Surface): surface is Surface & { rol
   return isUserShellSurfaceRole(surface?.role)
 }
 
-export function makeSurfaceActive(surface: Surface & { role: UserShellSurfaceRole }) {
+export function makeSurfaceActive(surface: Surface & { role: UserShellSurfaceRole }): void {
   const lastActive = activeHistory[activeHistory.length - 1]
 
   if (lastActive && lastActive === surface) {

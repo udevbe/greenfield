@@ -16,11 +16,9 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 export default class Program {
-  readonly gl: WebGLRenderingContext
   readonly program: WebGLProgram
 
-  constructor(gl: WebGLRenderingContext) {
-    this.gl = gl
+  constructor(public readonly gl: WebGLRenderingContext) {
     const prg = this.gl.createProgram()
     if (!prg) {
       throw new Error("Can't create webgl shader program.")
@@ -28,11 +26,11 @@ export default class Program {
     this.program = prg
   }
 
-  attach(shader: WebGLShader) {
+  attach(shader: WebGLShader): void {
     this.gl.attachShader(this.program, shader)
   }
 
-  link() {
+  link(): void {
     this.gl.linkProgram(this.program)
     // If creating the shader program failed, alert.
     if (!this.gl.getProgramParameter(this.program, this.gl.LINK_STATUS)) {
@@ -40,7 +38,7 @@ export default class Program {
     }
   }
 
-  use() {
+  use(): void {
     this.gl.useProgram(this.program)
   }
 
@@ -52,7 +50,7 @@ export default class Program {
     return this.gl.getUniformLocation(this.program, name)
   }
 
-  setUniformM4(uniformLocation: WebGLUniformLocation, array: Float32Array | GLfloat[]) {
+  setUniformM4(uniformLocation: WebGLUniformLocation, array: Float32Array | GLfloat[]): void {
     this.gl.uniformMatrix4fv(uniformLocation, false, array)
   }
 }

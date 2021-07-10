@@ -20,23 +20,6 @@ import Rect from './Rect'
 import Vec4 from './Vec4'
 
 export default class Mat4 {
-  m00: number
-  m10: number
-  m30: number
-  m20: number
-  m01: number
-  m11: number
-  m21: number
-  m31: number
-  m02: number
-  m12: number
-  m22: number
-  m32: number
-  m03: number
-  m13: number
-  m23: number
-  m33: number
-
   /**
    * @param m00 Column 0, Row 0
    * @param m10 Column 1, Row 0
@@ -93,40 +76,23 @@ export default class Mat4 {
   }
 
   constructor(
-    m00: number,
-    m10: number,
-    m20: number,
-    m30: number,
-    m01: number,
-    m11: number,
-    m21: number,
-    m31: number,
-    m02: number,
-    m12: number,
-    m22: number,
-    m32: number,
-    m03: number,
-    m13: number,
-    m23: number,
-    m33: number,
-  ) {
-    this.m00 = m00
-    this.m10 = m10
-    this.m20 = m20
-    this.m30 = m30
-    this.m01 = m01
-    this.m11 = m11
-    this.m21 = m21
-    this.m31 = m31
-    this.m02 = m02
-    this.m12 = m12
-    this.m22 = m22
-    this.m32 = m32
-    this.m03 = m03
-    this.m13 = m13
-    this.m23 = m23
-    this.m33 = m33
-  }
+   public readonly m00: number,
+   public readonly m10: number,
+   public readonly m20: number,
+   public readonly m30: number,
+   public readonly m01: number,
+   public readonly m11: number,
+   public readonly m21: number,
+   public readonly m31: number,
+   public readonly m02: number,
+   public readonly m12: number,
+   public readonly m22: number,
+   public readonly m32: number,
+   public readonly m03: number,
+   public readonly m13: number,
+   public readonly m23: number,
+   public readonly m33: number,
+  ) {}
 
   /**
    * Add a matrix using this matrix, resulting in a new matrix.

@@ -29,79 +29,71 @@ type ShaderArgs = {
   a_texCoord: GLint
 }
 
-class YUV2RGBShader {
-  readonly gl: WebGLRenderingContext
-  readonly vertexBuffer: WebGLBuffer
-  readonly shaderArgs: ShaderArgs
-  readonly program: Program
+function initShaders(gl: WebGLRenderingContext): Program {
+  const program = new Program(gl)
+  program.attach(ShaderCompiler.compile(gl, VERTEX_QUAD))
+  program.attach(ShaderCompiler.compile(gl, FRAGMENT_YUV_TO_RGB))
+  program.link()
+  program.use()
 
+  return program
+}
+
+function initShaderArgs(gl: WebGLRenderingContext, program: Program): ShaderArgs {
+  // find shader arguments
+  const yTexture = program.getUniformLocation('yTexture')
+  if (yTexture === null) {
+    throw new Error('yTexture not found shader')
+  }
+  const uTexture = program.getUniformLocation('uTexture')
+  if (uTexture === null) {
+    throw new Error('uTexture not found shader')
+  }
+  const vTexture = program.getUniformLocation('vTexture')
+  if (vTexture === null) {
+    throw new Error('vTexture not found shader')
+  }
+
+  const a_position = program.getAttributeLocation('a_position')
+  gl.enableVertexAttribArray(a_position)
+  const a_texCoord = program.getAttributeLocation('a_texCoord')
+  gl.enableVertexAttribArray(a_texCoord)
+
+  return {
+    yTexture,
+    uTexture,
+    vTexture,
+    a_position,
+    a_texCoord,
+  }
+}
+
+function initBuffers(gl: WebGLRenderingContext): WebGLBuffer {
+  // Create vertex buffer object.
+  const webglBuffer = gl.createBuffer()
+  if (webglBuffer === null) {
+    throw new Error("Can't create webgl buffer.")
+  }
+  return webglBuffer
+}
+
+class YUV2RGBShader {
   static create(gl: WebGLRenderingContext): YUV2RGBShader {
-    const program = this._initShaders(gl)
-    const shaderArgs = this._initShaderArgs(gl, program)
-    const vertexBuffer = this._initBuffers(gl)
+    const program = initShaders(gl)
+    const shaderArgs = initShaderArgs(gl, program)
+    const vertexBuffer = initBuffers(gl)
 
     return new YUV2RGBShader(gl, vertexBuffer, shaderArgs, program)
   }
 
-  // TODO convert to stand-alone function
-  private static _initShaders(gl: WebGLRenderingContext): Program {
-    const program = new Program(gl)
-    program.attach(ShaderCompiler.compile(gl, VERTEX_QUAD))
-    program.attach(ShaderCompiler.compile(gl, FRAGMENT_YUV_TO_RGB))
-    program.link()
-    program.use()
+  private constructor(
+    public readonly gl: WebGLRenderingContext,
+    public readonly vertexBuffer: WebGLBuffer,
+    public readonly shaderArgs: ShaderArgs,
+    public readonly program: Program,
+  ) {}
 
-    return program
-  }
-
-  // TODO convert to stand-alone function
-  private static _initShaderArgs(gl: WebGLRenderingContext, program: Program): ShaderArgs {
-    // find shader arguments
-    const yTexture = program.getUniformLocation('yTexture')
-    if (yTexture === null) {
-      throw new Error('yTexture not found shader')
-    }
-    const uTexture = program.getUniformLocation('uTexture')
-    if (uTexture === null) {
-      throw new Error('uTexture not found shader')
-    }
-    const vTexture = program.getUniformLocation('vTexture')
-    if (vTexture === null) {
-      throw new Error('vTexture not found shader')
-    }
-
-    const a_position = program.getAttributeLocation('a_position')
-    gl.enableVertexAttribArray(a_position)
-    const a_texCoord = program.getAttributeLocation('a_texCoord')
-    gl.enableVertexAttribArray(a_texCoord)
-
-    return {
-      yTexture,
-      uTexture,
-      vTexture,
-      a_position,
-      a_texCoord,
-    }
-  }
-
-  // TODO convert to stand-alone function
-  private static _initBuffers(gl: WebGLRenderingContext): WebGLBuffer {
-    // Create vertex buffer object.
-    const webglBuffer = gl.createBuffer()
-    if (webglBuffer === null) {
-      throw new Error("Can't create webgl buffer.")
-    }
-    return webglBuffer
-  }
-
-  private constructor(gl: WebGLRenderingContext, vertexBuffer: WebGLBuffer, shaderArgs: ShaderArgs, program: Program) {
-    this.gl = gl
-    this.vertexBuffer = vertexBuffer
-    this.shaderArgs = shaderArgs
-    this.program = program
-  }
-
-  setTexture(textureY: Texture, textureU: Texture, textureV: Texture) {
+  setTexture(textureY: Texture, textureU: Texture, textureV: Texture): void {
     const gl = this.gl
 
     gl.uniform1i(this.shaderArgs.yTexture, 0)
@@ -118,15 +110,15 @@ class YUV2RGBShader {
     gl.bindTexture(gl.TEXTURE_2D, textureV.texture)
   }
 
-  use() {
+  use(): void {
     this.program.use()
   }
 
-  release() {
+  release(): void {
     this.gl.useProgram(null)
   }
 
-  updateShaderData(encodedFrameSize: Size, maxXTexCoord: number, maxYTexCoord: number) {
+  updateShaderData(encodedFrameSize: Size, maxXTexCoord: number, maxYTexCoord: number): void {
     const { w, h } = encodedFrameSize
     this.gl.viewport(0, 0, w, h)
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
@@ -173,7 +165,7 @@ class YUV2RGBShader {
     this.gl.vertexAttribPointer(this.shaderArgs.a_texCoord, 2, this.gl.FLOAT, false, 16, 8)
   }
 
-  draw() {
+  draw(): void {
     const gl = this.gl
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
     gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 6)

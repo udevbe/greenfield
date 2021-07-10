@@ -30,49 +30,38 @@ import Session from './Session'
 import ShellSurface from './ShellSurface'
 import Surface from './Surface'
 
-/**
- *
- *            This interface is implemented by servers that provide
- *            desktop-style user interfaces.
- *
- *            It allows clients to associate a wl_shell_surface with
- *            a basic surface.
- */
 export default class Shell implements WlShellRequests {
-  readonly session: Session
-  private _global?: Global
+  private global?: Global
 
   static create(session: Session): Shell {
     return new Shell(session)
   }
 
-  private constructor(session: Session) {
-    this.session = session
-  }
+  private constructor(public readonly session: Session) {}
 
-  bindClient(client: Client, id: number, version: number) {
+  bindClient(client: Client, id: number, version: number): void {
     const wlShellResource = new WlShellResource(client, id, version)
     wlShellResource.implementation = this
   }
 
-  registerGlobal(registry: Registry) {
-    if (this._global) {
+  registerGlobal(registry: Registry): void {
+    if (this.global) {
       return
     }
-    this._global = registry.createGlobal(this, WlShellResource.protocolName, 1, (client, id, version) => {
+    this.global = registry.createGlobal(this, WlShellResource.protocolName, 1, (client, id, version) => {
       this.bindClient(client, id, version)
     })
   }
 
-  unregisterGlobal() {
-    if (!this._global) {
+  unregisterGlobal(): void {
+    if (!this.global) {
       return
     }
-    this._global.destroy()
-    this._global = undefined
+    this.global.destroy()
+    this.global = undefined
   }
 
-  getShellSurface(resource: WlShellResource, id: number, surfaceResource: WlSurfaceResource) {
+  getShellSurface(resource: WlShellResource, id: number, surfaceResource: WlSurfaceResource): void {
     if ((surfaceResource.implementation as Surface).role) {
       resource.postError(WlShellError.role, 'Given surface has another role.')
       console.log('[client-protocol-error] - Given surface has another role.')

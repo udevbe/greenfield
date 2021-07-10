@@ -20,7 +20,7 @@ import EncodedFrame from './EncodedFrame'
 type BufferState = {
   completionPromise: Promise<EncodedFrame | undefined>
   completionResolve: (value?: EncodedFrame | PromiseLike<EncodedFrame>) => void
-  completionReject: (reason?: any) => void
+  completionReject: (reason?: Error) => void
   state: 'pending' | 'complete' | 'pending_alpha' | 'pending_opaque'
   encodedFrame?: EncodedFrame
 }
@@ -28,11 +28,11 @@ type BufferState = {
 export default class BufferStream {
   private readonly bufferStates: { [key: number]: BufferState } = {}
 
-  static create(wlBufferResource: { onDestroy: () => Promise<any> }): BufferStream {
+  static create(wlBufferResource: { onDestroy: () => Promise<void> }): BufferStream {
     const bufferStream = new BufferStream()
     // TODO we probably want to trigger a custom timeout error here.
     wlBufferResource.onDestroy().then(() => {
-      Object.entries(bufferStream.bufferStates).forEach(([serial, _]) => {
+      Object.keys(bufferStream.bufferStates).forEach((serial) => {
         bufferStream.onComplete(Number.parseInt(serial))
       })
     })
@@ -81,7 +81,7 @@ export default class BufferStream {
     return this.bufferStates[serial].completionPromise
   }
 
-  onBufferContents(bufferContents: Uint8Array) {
+  onBufferContents(bufferContents: Uint8Array): void {
     try {
       const encodedFrame = EncodedFrame.create(bufferContents)
       if (this.bufferStates[encodedFrame.serial]) {
@@ -98,7 +98,7 @@ export default class BufferStream {
     }
   }
 
-  destroy() {
+  destroy(): void {
     Object.values(this.bufferStates).forEach((bufferState) => bufferState.completionResolve())
   }
 }

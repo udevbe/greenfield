@@ -57,7 +57,7 @@ const alphaWorker = new Promise<Worker>((resolve) => {
   const h264NALDecoderWorker: Worker = new H264NALDecoderWorker()
   h264NALDecoderWorker.addEventListener('message', (e) => {
     const message =
-      /** @type {{type:string, width:number, height:number, data:ArrayBuffer, renderStateId:number}} */ e.data
+       e.dataas H264NALDecoderWorkerMessage
     switch (message.type) {
       case 'pictureReady':
         decoders[message.renderStateId]._onAlphaPictureDecoded(message)
@@ -70,27 +70,22 @@ const alphaWorker = new Promise<Worker>((resolve) => {
 })
 
 class H264BufferContentDecoder {
-  readonly surfaceH264DecodeId: string
-  private _decodingSerialsQueue: number[]
-  private _decodingAlphaSerialsQueue: number[]
-  private readonly _frameStates: { [key: number]: FrameState }
-
   static create(surfaceH264DecodeId: string): H264BufferContentDecoder {
     const h264BufferContentDecoder = new H264BufferContentDecoder(surfaceH264DecodeId)
     decoders[surfaceH264DecodeId] = h264BufferContentDecoder
     return h264BufferContentDecoder
   }
 
-  private constructor(surfaceH264DecodeId: string) {
-    this.surfaceH264DecodeId = surfaceH264DecodeId
-    this._decodingSerialsQueue = []
-    this._decodingAlphaSerialsQueue = []
-    this._frameStates = {}
-  }
+  private constructor(
+    public readonly surfaceH264DecodeId: string,
+    private decodingSerialsQueue: number[] = [],
+    private decodingAlphaSerialsQueue: number[] = [],
+    private readonly frameStates: { [key: number]: FrameState } = {},
+  ) {}
 
   async decode(bufferContents: EncodedFrame): Promise<OpaqueAndAlphaPlanes> {
     return new Promise<OpaqueAndAlphaPlanes>((resolve) => {
-      this._frameStates[bufferContents.serial] = {
+      this.frameStates[bufferContents.serial] = {
         serial: bufferContents.serial,
         resolve,
         state: 'pending',
@@ -113,10 +108,9 @@ class H264BufferContentDecoder {
     const hasAlpha = splitAlpha(encodedFrame.encodingOptions)
 
     if (hasAlpha) {
-      const alphaPixelContent = encodedFrame.pixelContent[0].alpha
-      const h264Nal = alphaPixelContent.slice()
+      const h264Nal = encodedFrame.pixelContent[0].alpha.slice()
       alphaWorker.then((worker) => {
-        this._decodingAlphaSerialsQueue = [...this._decodingAlphaSerialsQueue, bufferSerial]
+        this.decodingAlphaSerialsQueue = [...this.decodingAlphaSerialsQueue, bufferSerial]
         // create a copy of the arraybuffer so we can zero-copy the opaque part (after zero-copying, we can no longer use the underlying array in any way)
         worker.postMessage(
           {
@@ -130,12 +124,12 @@ class H264BufferContentDecoder {
         )
       })
     } else {
-      this._frameStates[bufferSerial].state = 'pending_opaque'
+      this.frameStates[bufferSerial].state = 'pending_opaque'
     }
 
     const h264Nal = encodedFrame.pixelContent[0].opaque
     opaqueWorker.then((worker) => {
-      this._decodingSerialsQueue = [...this._decodingSerialsQueue, bufferSerial]
+      this.decodingSerialsQueue = [...this.decodingSerialsQueue, bufferSerial]
       worker.postMessage(
         {
           type: 'decode',
@@ -151,7 +145,7 @@ class H264BufferContentDecoder {
 
   private _onComplete(frameState: FrameState) {
     frameState.state = 'complete'
-    delete this._frameStates[frameState.serial]
+    delete this.frameStates[frameState.serial]
     const decodeResult = frameState.result
     if (decodeResult.opaque === undefined) {
       throw new Error('BUG. No opaque frame decode result found!')
@@ -162,13 +156,13 @@ class H264BufferContentDecoder {
     })
   }
 
-  _onOpaquePictureDecoded({ width, height, data }: { width: number; height: number; data: ArrayBuffer }) {
+  _onOpaquePictureDecoded({ width, height, data }: { width: number; height: number; data: ArrayBuffer }): void {
     const buffer = new Uint8Array(data)
-    const frameSerial = this._decodingSerialsQueue.shift()
+    const frameSerial = this.decodingSerialsQueue.shift()
     if (frameSerial === undefined) {
       throw new Error('BUG. Invalid state. No frame serial found onOpaquePictureDecoded.')
     }
-    const frameState = this._frameStates[frameSerial]
+    const frameState = this.frameStates[frameSerial]
     frameState.result.opaque = {
       buffer: buffer,
       width: width,
@@ -182,13 +176,13 @@ class H264BufferContentDecoder {
     }
   }
 
-  _onAlphaPictureDecoded({ width, height, data }: { width: number; height: number; data: ArrayBuffer }) {
+  _onAlphaPictureDecoded({ width, height, data }: { width: number; height: number; data: ArrayBuffer }): void {
     const buffer = new Uint8Array(data)
-    const frameSerial = this._decodingAlphaSerialsQueue.shift()
+    const frameSerial = this.decodingAlphaSerialsQueue.shift()
     if (frameSerial === undefined) {
       throw new Error('BUG. Invalid state. No frame serial found onAlphaPictureDecoded.')
     }
-    const frameState = this._frameStates[frameSerial]
+    const frameState = this.frameStates[frameSerial]
     frameState.result.alpha = {
       buffer: buffer,
       width: width,
@@ -198,11 +192,11 @@ class H264BufferContentDecoder {
     if (frameState.state === 'pending_alpha') {
       this._onComplete(frameState)
     } else {
-      this._frameStates[frameSerial].state = 'pending_opaque'
+      this.frameStates[frameSerial].state = 'pending_opaque'
     }
   }
 
-  destroy() {
+  destroy(): void {
     opaqueWorker.then((worker) =>
       worker.postMessage({
         type: 'release',

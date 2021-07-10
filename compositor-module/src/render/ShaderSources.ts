@@ -15,9 +15,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-/**
- * @type {{type: string, source: string}}
- */
 export const VERTEX_QUAD = {
   type: 'x-shader/x-vertex',
   source: `
@@ -33,11 +30,8 @@ export const VERTEX_QUAD = {
       gl_Position = vec4(a_position, 0.0, 1.0);
   }
 `,
-}
+} as const
 
-/**
- * @type {{type: string, source: string}}
- */
 export const VERTEX_QUAD_TRANSFORM = {
   type: 'x-shader/x-vertex',
   source: `
@@ -54,11 +48,8 @@ export const VERTEX_QUAD_TRANSFORM = {
         gl_Position = u_projection * u_transform * vec4(a_position, 0.0, 1.0) ;
     }
 `,
-}
+} as const
 
-/**
- * @type {{type: string, source: string}}
- */
 export const FRAGMENT_ARGB8888 = {
   type: 'x-shader/x-fragment',
   source: `
@@ -69,11 +60,8 @@ export const FRAGMENT_ARGB8888 = {
         gl_FragColor = texture2D(u_texture, v_texCoord);
     }
 `,
-}
+} as const
 
-/**
- * @type {{type: string, source: string}}
- */
 export const FRAGMENT_YUVA_TO_RGBA = {
   type: 'x-shader/x-fragment',
   source: `
@@ -85,30 +73,36 @@ export const FRAGMENT_YUVA_TO_RGBA = {
   uniform sampler2D uTexture;
   uniform sampler2D vTexture;
   uniform sampler2D alphaYTexture;
-
-  const mat4 conversion = mat4(
-    1.0,     0.0,     1.402,  -0.701,
-    1.0,    -0.344,  -0.714,   0.529,
-    1.0,     1.772,   0.0,    -0.886,
-    0.0,     0.0,     0.0,     0.0
-  );
+  
+  const vec3 yuv_bt601_offset = vec3(-0.0625, -0.5, -0.5);
+  const vec3 yuv_bt601_rcoeff = vec3(1.164, 0.000, 1.596);
+  const vec3 yuv_bt601_gcoeff = vec3(1.164,-0.391,-0.813);
+  const vec3 yuv_bt601_bcoeff = vec3(1.164, 2.018, 0.000);
+  
+  vec3 yuv_to_rgb (vec3 val, vec3 offset, vec3 ycoeff, vec3 ucoeff, vec3 vcoeff) {
+    vec3 rgb;              
+    val += offset;        
+    rgb.r = dot(val, ycoeff);
+    rgb.g = dot(val, ucoeff);
+    rgb.b = dot(val, vcoeff);
+    return rgb;
+  }
 
   void main(void) {
-    float yChannel = texture2D(yTexture, v_texCoord).x;
-    float uChannel = texture2D(uTexture, v_texCoord).x;
-    float vChannel = texture2D(vTexture, v_texCoord).x;
-    float alphaChannel = texture2D(alphaYTexture, v_texCoord).x;
-    vec4 channels = vec4(yChannel, uChannel, vChannel, 1.0);
-    vec3 rgb = ((channels * conversion).xyz);
+    vec4 texel, rgba;
 
-    gl_FragColor = vec4(rgb, ((alphaChannel*1.0894)-0.062745)*1.0851063);
+    texel.x = texture2D(yTexture, v_texCoord).r;
+    texel.y = texture2D(uTexture, v_texCoord).r;
+    texel.z = texture2D(vTexture, v_texCoord).r;
+    float alphaChannel = texture2D(alphaYTexture, v_texCoord).r;
+
+    rgba.rgb = yuv_to_rgb (texel.xyz, yuv_bt601_offset, yuv_bt601_rcoeff, yuv_bt601_gcoeff, yuv_bt601_bcoeff);
+    rgba.a = yuv_to_rgb (vec3(alphaChannel, 0.5, 0.5), yuv_bt601_offset, yuv_bt601_rcoeff, yuv_bt601_gcoeff, yuv_bt601_bcoeff).r;
+    gl_FragColor=rgba;
   }
 `,
-}
+} as const
 
-/**
- * @type {{type: string, source: string}}
- */
 export const FRAGMENT_YUV_TO_RGB = {
   type: 'x-shader/x-fragment',
   source: `
@@ -120,20 +114,30 @@ export const FRAGMENT_YUV_TO_RGB = {
   uniform sampler2D uTexture;
   uniform sampler2D vTexture;
 
-  const mat4 conversion = mat4(
-    1.0,     0.0,     1.402,  -0.701,
-    1.0,    -0.344,  -0.714,   0.529,
-    1.0,     1.772,   0.0,    -0.886,
-    0.0,     0.0,     0.0,     0.0
-  );
+  const vec3 yuv_bt709_offset = vec3(-0.0625, -0.5, -0.5);
+  const vec3 yuv_bt709_rcoeff = vec3(1.164, 0.000, 1.787);
+  const vec3 yuv_bt709_gcoeff = vec3(1.164,-0.213,-0.531);
+  const vec3 yuv_bt709_bcoeff = vec3(1.164,2.112, 0.000);
+  
+  vec3 yuv_to_rgb (vec3 val, vec3 offset, vec3 ycoeff, vec3 ucoeff, vec3 vcoeff) {
+    vec3 rgb;              
+    val += offset;        
+    rgb.r = dot(val, ycoeff);
+    rgb.g = dot(val, ucoeff);
+    rgb.b = dot(val, vcoeff);
+    return rgb;
+  }
 
   void main(void) {
-    float yChannel = texture2D(yTexture, v_texCoord).x;
-    float uChannel = texture2D(uTexture, v_texCoord).x;
-    float vChannel = texture2D(vTexture, v_texCoord).x;
-    vec4 channels = vec4(yChannel, uChannel, vChannel, 1.0);
-    vec3 rgb = ((channels * conversion).xyz);
-    gl_FragColor = vec4(rgb, 1.0);
+    vec4 texel, rgba;
+     
+    texel.x = texture2D(yTexture, v_texCoord).r;
+    texel.y = texture2D(uTexture, v_texCoord).r;
+    texel.z = texture2D(vTexture, v_texCoord).r;
+
+    rgba.rgb = yuv_to_rgb (texel.xyz, yuv_bt709_offset, yuv_bt709_rcoeff, yuv_bt709_gcoeff, yuv_bt709_bcoeff);
+    rgba.a = 1.0;
+    gl_FragColor=rgba;
   }
 `,
-}
+} as const

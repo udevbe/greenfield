@@ -103,8 +103,7 @@ export function buildNrmlvoEntries(): nrmlvo[] {
 
       // due to a bug in xkb config, we need to check duplicate entries
       return nrmlvoItems
-    })
-    .sort(({ name: name0 }, { name: name1 }) => name0.localeCompare(name1))
+  }).sort(({ name: name0 }, { name: name1 }) => name0.localeCompare(name1))
 }
 
 export function createFromResource(resource: string): Promise<Xkb> {
@@ -128,6 +127,8 @@ export function createFromResource(resource: string): Promise<Xkb> {
   })
 }
 
+// TODO create typedefinitions for libxkb
+
 /**
  * @param keymapLayout an xkb keymap as a single string.
  */
@@ -146,6 +147,7 @@ export function createFromString(keymapLayout: string): Xkb {
     XKB_KEYMAP_FORMAT_TEXT_V1,
     XKB_KEYMAP_COMPILE_NO_FLAGS,
   )
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const state = lib.xkbcommon._xkb_state_new(keymap)
   // @ts-ignore
@@ -166,17 +168,18 @@ export function createFromNames({
   layout?: string
   variant?: string
   options?: string
-}) {
+}): Xkb {
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const xkbRuleNamesPtr = lib.xkbcommon._malloc(5 * 4)
   // @ts-ignore
   const xkbRuleNamesBuffer = new Uint32Array(lib.xkbcommon.HEAP8.buffer, xkbRuleNamesPtr, 5)
 
-  xkbRuleNamesBuffer[0] = _stringToPointer(rules)
-  xkbRuleNamesBuffer[1] = _stringToPointer(model)
-  xkbRuleNamesBuffer[2] = _stringToPointer(layout)
-  xkbRuleNamesBuffer[3] = _stringToPointer(variant)
-  xkbRuleNamesBuffer[4] = _stringToPointer(options)
+  xkbRuleNamesBuffer[0] = stringToPointer(rules)
+  xkbRuleNamesBuffer[1] = stringToPointer(model)
+  xkbRuleNamesBuffer[2] = stringToPointer(layout)
+  xkbRuleNamesBuffer[3] = stringToPointer(variant)
+  xkbRuleNamesBuffer[4] = stringToPointer(options)
 
   // @ts-ignore
   const xkbContext = lib.xkbcommon._xkb_context_new(0)
@@ -193,7 +196,7 @@ export function createFromNames({
   return new Xkb(xkbContext, keymap, state)
 }
 
-function _stringToPointer(value?: string): number {
+function stringToPointer(value?: string): number {
   if (value) {
     // @ts-ignore
     const stringPtr = lib.xkbcommon._malloc(lib.xkbcommon.lengthBytesUTF8(value) + 1)

@@ -19,7 +19,7 @@ import { WlBufferRequests } from 'westfield-runtime-server'
 import BufferContents from './BufferContents'
 import Surface from './Surface'
 
-interface BufferImplementation<T extends BufferContents<any> | Promise<BufferContents<any> | undefined>>
+export interface BufferImplementation<T extends BufferContents<unknown> | Promise<BufferContents<unknown> | undefined>>
   extends WlBufferRequests {
   release(): void
 

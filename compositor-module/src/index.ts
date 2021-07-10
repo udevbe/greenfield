@@ -24,12 +24,6 @@ import WebAppLauncher from './WebAppLauncher'
 import WebAppSocket from './WebAppSocket'
 import { nrmlvo } from './Xkb'
 
-// Polyfills
-import { polyfillCreateImageBitmap } from './polyfill/createImageBitmap'
-
-polyfillCreateImageBitmap()
-
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 export { init as initWasm } from './lib'
 export * from './ButtonEvent'
@@ -37,8 +31,12 @@ export * from './AxisEvent'
 export * from './KeyEvent'
 export { nrmlvo }
 
-export function createCompositorSession(sessionId?: string): CompositorSession {
-  return Session.create(sessionId)
+export function createCompositorSession(): CompositorSession {
+  return Session.create()
+}
+
+export interface CompositorPointer {
+  scrollFactor: number
 }
 
 export interface CompositorKeyboard {
@@ -49,6 +47,7 @@ export interface CompositorKeyboard {
 
 export interface CompositorSeat {
   keyboard: CompositorKeyboard
+  pointer: CompositorPointer
 }
 
 export interface CompositorSession {
@@ -93,7 +92,7 @@ export interface CompositorConfiguration {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface CompositorWebAppSocket {}
+export type CompositorWebAppSocket = unknown
 
 export function createCompositorWebAppSocket(session: CompositorSession): CompositorWebAppSocket {
   if (session instanceof Session) {
@@ -104,7 +103,7 @@ export function createCompositorWebAppSocket(session: CompositorSession): Compos
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface CompositorRemoteSocket {}
+export type CompositorRemoteSocket = unknown
 
 export function createCompositorRemoteSocket(session: CompositorSession): CompositorRemoteSocket {
   if (session instanceof Session) {

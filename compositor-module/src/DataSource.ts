@@ -53,18 +53,18 @@ export default class DataSource implements WlDataSourceRequests {
     this.resource = wlDataSourceResource
   }
 
-  offer(resource: WlDataSourceResource, mimeType: string) {
+  offer(resource: WlDataSourceResource, mimeType: string): void {
     this.mimeTypes.push(mimeType)
     if (this.wlDataOffer) {
       this.wlDataOffer.offer(mimeType)
     }
   }
 
-  destroy(resource: WlDataSourceResource) {
+  destroy(resource: WlDataSourceResource): void {
     resource.destroy()
   }
 
-  setActions(resource: WlDataSourceResource, dndActions: number) {
+  setActions(resource: WlDataSourceResource, dndActions: number): void {
     if (this._actionsSet) {
       resource.postError(WlDataSourceError.invalidActionMask, 'cannot set actions more than once')
       return
@@ -88,7 +88,7 @@ export default class DataSource implements WlDataSourceRequests {
     this._actionsSet = true
   }
 
-  notifyFinish() {
+  notifyFinish(): void {
     if (!this.dndActions) {
       return
     }

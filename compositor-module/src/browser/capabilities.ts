@@ -11,5 +11,7 @@ if (window.screen.orientation) {
 export const capabilities = {
   hasTouch: 'ontouchstart' in document.documentElement,
   userAgent: window.navigator.userAgent,
-  orientationType
-}
+  // Safari doesn't undestand window.screen.orientation, for now hardcode this
+  // TODO: fix this so ipad's can properly work
+  orientationType: window.screen.orientation ? window.screen.orientation.type : 'landscape-primary'
+} as const

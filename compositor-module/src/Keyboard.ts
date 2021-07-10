@@ -32,30 +32,7 @@ import { buildNrmlvoEntries, createFromNames, createFromResource, nrmlvo, Xkb } 
 const { pressed, released } = WlKeyboardKeyState
 const { xkbV1 } = WlKeyboardKeymapFormat
 
-/**
- *
- *            The wl_keyboard interface represents one or more keyboards
- *            associated with a seat.
- */
 export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard {
-  nrmlvo: nrmlvo
-  defaultNrmlvo: nrmlvo
-  nrmlvoEntries: nrmlvo[]
-  resources: WlKeyboardResource[] = []
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore set in create of Keyboard
-  xkb: Xkb
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore set in create of Seat
-  seat: Seat
-  private _dataDevice: DataDevice
-  private _session: Session
-  private _focus?: Surface
-  private _keys: number[] = []
-  private _keyboardFocusListeners: (() => void)[] = []
-  private _keyboardFocusResolve?: () => void
-  private _keyboardFocusPromise?: Promise<void>
-
   static create(session: Session, dataDevice: DataDevice): Keyboard {
     const nrmlvoEntries = buildNrmlvoEntries()
 
@@ -75,36 +52,51 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
     return keyboard
   }
 
-  private constructor(dataDevice: DataDevice, session: Session, nrmlvoEntries: nrmlvo[], nrmlvoEntry: nrmlvo) {
-    this._dataDevice = dataDevice
-    this._session = session
-    this.nrmlvoEntries = nrmlvoEntries
-    this.nrmlvo = nrmlvoEntry
-    this.defaultNrmlvo = nrmlvoEntry
+  defaultNrmlvo: nrmlvo
+  resources: WlKeyboardResource[] = []
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore set in create of Keyboard
+  xkb: Xkb
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore set in create of Seat
+  seat: Seat
+  private _focus?: Surface
+  private keys: number[] = []
+  private keyboardFocusListeners: (() => void)[] = []
+  private keyboardFocusResolve?: () => void
+  private keyboardFocusPromise?: Promise<void>
+
+  private constructor(
+    private dataDevice: DataDevice,
+    private session: Session,
+    public nrmlvoEntries: nrmlvo[],
+    public nrmlvo: nrmlvo,
+  ) {
+    this.defaultNrmlvo = nrmlvo
   }
 
   addKeyboardFocusListener(listener: () => void): void {
-    this._keyboardFocusListeners.push(listener)
+    this.keyboardFocusListeners.push(listener)
   }
 
   removeKeyboardFocusListener(listener: () => void): void {
-    const idx = this._keyboardFocusListeners.indexOf(listener)
+    const idx = this.keyboardFocusListeners.indexOf(listener)
     if (idx > 0) {
-      this._keyboardFocusListeners.splice(idx, 1)
+      this.keyboardFocusListeners.splice(idx, 1)
     }
   }
 
   onKeyboardFocusChanged(): Promise<void> {
-    if (this._keyboardFocusPromise === undefined) {
-      this._keyboardFocusPromise = new Promise<void>((resolve) => {
-        this._keyboardFocusResolve = resolve
+    if (this.keyboardFocusPromise === undefined) {
+      this.keyboardFocusPromise = new Promise<void>((resolve) => {
+        this.keyboardFocusResolve = resolve
       }).then(() => {
-        this._keyboardFocusPromise = undefined
-        this._keyboardFocusResolve = undefined
+        this.keyboardFocusPromise = undefined
+        this.keyboardFocusResolve = undefined
       })
     }
 
-    return this._keyboardFocusPromise
+    return this.keyboardFocusPromise
   }
 
   release(resource: WlKeyboardResource): void {
@@ -139,7 +131,7 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
     const textEncoder = new TextEncoder()
     const keymapBuffer = textEncoder.encode(keymapString).buffer
 
-    const keymapWebFD = this._session.webFS.fromArrayBuffer(keymapBuffer)
+    const keymapWebFD = this.session.webFS.fromArrayBuffer(keymapBuffer)
     resource.keymap(xkbV1, keymapWebFD, keymapBuffer.byteLength)
     resource.client.connection.flush()
   }
@@ -155,7 +147,7 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
     if (focus) {
       this.focus = focus
 
-      this._dataDevice.onKeyboardFocusGained(focus)
+      this.dataDevice.onKeyboardFocusGained(focus)
 
       focus.resource.onDestroy().then(() => {
         if (this.focus === focus) {
@@ -165,7 +157,7 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
 
       const serial = this.seat.nextSerial()
       const surface = this.focus.resource
-      const keys = new Uint8Array(this._keys)
+      const keys = new Uint8Array(this.keys)
 
       const targetFocus = this.focus
       this.resources
@@ -173,10 +165,10 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
         .forEach((resource) => {
           resource.enter(serial, surface, keys)
         })
-      if (this._keyboardFocusResolve) {
-        this._keyboardFocusResolve()
+      if (this.keyboardFocusResolve) {
+        this.keyboardFocusResolve()
       }
-      this._keyboardFocusListeners.forEach((listener) => listener())
+      this.keyboardFocusListeners.forEach((listener) => listener())
     }
   }
 
@@ -196,10 +188,10 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
 
   set focus(surface: Surface | undefined) {
     this._focus = surface
-    if (this._keyboardFocusResolve) {
-      this._keyboardFocusResolve()
+    if (this.keyboardFocusResolve) {
+      this.keyboardFocusResolve()
     }
-    this._keyboardFocusListeners.forEach((listener) => listener())
+    this.keyboardFocusListeners.forEach((listener) => listener())
   }
 
   get focus(): Surface | undefined {
@@ -208,18 +200,18 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
 
   handleKey(event: KeyEvent): void {
     const linuxKeyCode = event.code
-    if (event.down && this._keys.includes(linuxKeyCode)) {
+    if (event.down && this.keys.includes(linuxKeyCode)) {
       // prevent key repeat from browser
       return
     }
 
     const modsUpdate = event.down ? this.xkb.keyDown(linuxKeyCode) : this.xkb.keyUp(linuxKeyCode)
     if (event.down) {
-      this._keys.push(linuxKeyCode)
+      this.keys.push(linuxKeyCode)
     } else {
-      const index = this._keys.indexOf(linuxKeyCode)
+      const index = this.keys.indexOf(linuxKeyCode)
       if (index > -1) {
-        this._keys.splice(index, 1)
+        this.keys.splice(index, 1)
       }
     }
 

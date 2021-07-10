@@ -19,10 +19,6 @@ import Size from '../Size'
 import Point from './Point'
 
 export default class Rect {
-  x0: number
-  y0: number
-  x1: number
-  y1: number
   /**
    * @param x0 top left x
    * @param y0 top left y
@@ -33,12 +29,7 @@ export default class Rect {
     return new Rect(x0, y0, x1, y1)
   }
 
-  constructor(x0: number, y0: number, x1: number, y1: number) {
-    this.x0 = x0
-    this.y0 = y0
-    this.x1 = x1
-    this.y1 = y1
-  }
+  constructor(public x0: number, public y0: number, public x1: number, public y1: number) {}
 
   get width(): number {
     return Math.abs(this.x1 - this.x0)
@@ -57,13 +48,10 @@ export default class Rect {
   }
 
   intersect(other: Rect): Rect {
-    const r1 = this
-    const r2 = other
-
-    const leftX = Math.max(r1.x0, r2.x0)
-    const rightX = Math.min(r1.x1, r2.x1)
-    const topY = Math.max(r1.y0, r2.y0)
-    const bottomY = Math.min(r1.y1, r2.y1)
+    const leftX = Math.max(this.x0, other.x0)
+    const rightX = Math.min(this.x1, other.x1)
+    const topY = Math.max(this.y0, other.y0)
+    const bottomY = Math.min(this.y1, other.y1)
 
     let intersectionRect
     if (leftX < rightX && topY < bottomY) {

@@ -16,22 +16,19 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 export default class RemoteOutOfBandChannel {
-  private readonly _outOfBandListeners: { [key: number]: (outOfBandMsg: Uint8Array) => void } = {}
-  private readonly _onOutOfBandSend: (outData: ArrayBuffer) => void
+  private readonly outOfBandListeners: { [key: number]: (outOfBandMsg: Uint8Array) => void } = {}
 
   static create(onOutOfBandSend: (outData: ArrayBuffer) => void): RemoteOutOfBandChannel {
     return new RemoteOutOfBandChannel(onOutOfBandSend)
   }
 
-  private constructor(onOutOfBandSend: (outData: ArrayBuffer) => void) {
-    this._onOutOfBandSend = onOutOfBandSend
-  }
+  private constructor(private readonly onOutOfBandSend: (outData: ArrayBuffer) => void) {}
 
-  message(incomingMessage: ArrayBuffer) {
+  message(incomingMessage: ArrayBuffer): void {
     const dataView = new DataView(incomingMessage)
     const opcode = dataView.getUint32(0, true)
 
-    const outOfBandHandler = this._outOfBandListeners[opcode]
+    const outOfBandHandler = this.outOfBandListeners[opcode]
     if (outOfBandHandler) {
       outOfBandHandler(new Uint8Array(incomingMessage, 4))
     } else {
@@ -39,20 +36,20 @@ export default class RemoteOutOfBandChannel {
     }
   }
 
-  setListener(opcode: number, listener: (outOfBandMsg: Uint8Array) => void) {
-    this._outOfBandListeners[opcode] = listener
+  setListener(opcode: number, listener: (outOfBandMsg: Uint8Array) => void): void {
+    this.outOfBandListeners[opcode] = listener
   }
 
-  removeListener(opcode: number) {
-    delete this._outOfBandListeners[opcode]
+  removeListener(opcode: number): void {
+    delete this.outOfBandListeners[opcode]
   }
 
-  send(opcode: number, payload: ArrayBuffer) {
+  send(opcode: number, payload: ArrayBuffer): void {
     const sendBuffer = new ArrayBuffer(Uint32Array.BYTES_PER_ELEMENT + payload.byteLength)
     const dataView = new DataView(sendBuffer)
     dataView.setUint32(0, opcode, true)
     new Uint8Array(sendBuffer, Uint32Array.BYTES_PER_ELEMENT).set(new Uint8Array(payload))
 
-    this._onOutOfBandSend(sendBuffer)
+    this.onOutOfBandSend(sendBuffer)
   }
 }

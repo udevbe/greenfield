@@ -18,11 +18,6 @@
 import Point from './Point'
 
 export default class Vec4 {
-  x: number
-  y: number
-  z: number
-  w: number
-
   static create(x: number, y: number, z: number, w: number): Vec4 {
     return new Vec4(x, y, z, w)
   }
@@ -31,12 +26,12 @@ export default class Vec4 {
     return this.create(x, y, 1, 1)
   }
 
-  constructor(x: number, y: number, z: number, w: number) {
-    this.x = x
-    this.y = y
-    this.z = z
-    this.w = w
-  }
+  constructor(
+    public readonly x: number,
+    public readonly y: number,
+    public readonly z: number,
+    public readonly w: number,
+  ) {}
 
   plus(right: Vec4): Vec4 {
     return Vec4.create(this.x + right.x, this.y + right.y, this.z + right.z, this.w + right.w)

@@ -17,12 +17,8 @@
 
 import Rect from '../math/Rect'
 
+// TODO use an object literal instead
 export default class EncodedFrameFragment {
-  readonly encodingType: string
-  readonly geo: Rect
-  readonly opaque: Uint8Array
-  readonly alpha: Uint8Array
-
   static create(
     encodingType: string,
     fragmentX: number,
@@ -36,10 +32,10 @@ export default class EncodedFrameFragment {
     return new EncodedFrameFragment(encodingType, geo, opaque, alpha)
   }
 
-  constructor(encodingType: string, geo: Rect, opaque: Uint8Array, alpha: Uint8Array) {
-    this.encodingType = encodingType
-    this.geo = geo
-    this.opaque = opaque
-    this.alpha = alpha
-  }
+  constructor(
+    public readonly encodingType: string,
+    public readonly geo: Rect,
+    public readonly opaque: Uint8Array,
+    public readonly alpha: Uint8Array,
+  ) {}
 }

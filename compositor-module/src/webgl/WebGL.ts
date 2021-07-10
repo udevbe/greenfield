@@ -28,22 +28,16 @@ import Session from '../Session'
 import WebFS from '../WebFS'
 import WebGLBuffer from './WebGLBuffer'
 
-/**
- * @implements GrWebGlRequests
- */
 export default class WebGL implements GrWebGlRequests {
   private _global?: Global
-  private readonly _webFS: WebFS
 
   static create(session: Session): WebGL {
     return new WebGL(session.webFS)
   }
 
-  private constructor(webFS: WebFS) {
-    this._webFS = webFS
-  }
+  private constructor(private readonly webFS: WebFS) {}
 
-  registerGlobal(registry: Registry) {
+  registerGlobal(registry: Registry): void {
     if (this._global) {
       return
     }
@@ -52,7 +46,7 @@ export default class WebGL implements GrWebGlRequests {
     })
   }
 
-  unregisterGlobal() {
+  unregisterGlobal(): void {
     if (!this._global) {
       return
     }
@@ -60,21 +54,21 @@ export default class WebGL implements GrWebGlRequests {
     this._global = undefined
   }
 
-  bindClient(client: Client, id: number, version: number) {
+  bindClient(client: Client, id: number, version: number): void {
     const webGlResource = new GrWebGlResource(client, id, version)
     webGlResource.implementation = this
   }
 
-  createBuffer(resource: GrWebGlResource, id: number, grWebGlBuffer: GrWebGlBufferResource) {
+  createBuffer(resource: GrWebGlResource, id: number, grWebGlBuffer: GrWebGlBufferResource): void {
     const wlBufferResource = new WlBufferResource(resource.client, id, resource.version)
 
-    const webGLBuffer = WebGLBuffer.create(grWebGlBuffer, wlBufferResource, this._webFS)
+    const webGLBuffer = WebGLBuffer.create(grWebGlBuffer, wlBufferResource, this.webFS)
 
     grWebGlBuffer.implementation = webGLBuffer
     wlBufferResource.implementation = webGLBuffer
   }
 
-  createWebGlBuffer(resource: GrWebGlResource, id: number) {
+  createWebGlBuffer(resource: GrWebGlResource, id: number): void {
     const grWebGlBufferResource = new GrWebGlBufferResource(resource.client, id, resource.version)
     // FIXME use protocol error instead of exception
     grWebGlBufferResource.implementation = {

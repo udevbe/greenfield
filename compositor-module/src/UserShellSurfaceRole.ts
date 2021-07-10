@@ -6,6 +6,7 @@ export interface UserShellSurfaceRole extends SurfaceRole {
   notifyInactive(): void
 }
 
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function isUserShellSurfaceRole(object: any): object is UserShellSurfaceRole {
   return 'requestActive' in object && 'notifyInactive' in object
 }

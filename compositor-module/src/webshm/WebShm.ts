@@ -33,9 +33,7 @@ export default class WebShm implements GrWebShmRequests {
     return new WebShm()
   }
 
-  private constructor() {}
-
-  registerGlobal(registry: Registry) {
+  registerGlobal(registry: Registry): void {
     if (this._global) {
       return
     }
@@ -44,7 +42,7 @@ export default class WebShm implements GrWebShmRequests {
     })
   }
 
-  unregisterGlobal() {
+  unregisterGlobal(): void {
     if (!this._global) {
       return
     }
@@ -52,7 +50,7 @@ export default class WebShm implements GrWebShmRequests {
     this._global = undefined
   }
 
-  bindClient(client: Client, id: number, version: number) {
+  bindClient(client: Client, id: number, version: number): void {
     const webShmResource = new GrWebShmResource(client, id, version)
     webShmResource.implementation = this
   }
@@ -63,7 +61,7 @@ export default class WebShm implements GrWebShmRequests {
     grWebShmBufferResource: GrWebShmBufferResource,
     width: number,
     height: number,
-  ) {
+  ): Promise<void> {
     const wlBufferResource = new WlBufferResource(resource.client, id, resource.version)
     const webArrayBuffer = await WebShmBuffer.create(grWebShmBufferResource, wlBufferResource, width, height)
 
@@ -71,7 +69,7 @@ export default class WebShm implements GrWebShmRequests {
     grWebShmBufferResource.implementation = webArrayBuffer
   }
 
-  createWebArrayBuffer(resource: GrWebShmResource, id: number) {
+  createWebArrayBuffer(resource: GrWebShmResource, id: number): void {
     const grWebShmBufferResource = new GrWebShmBufferResource(resource.client, id, resource.version)
     // FIXME use protocol error instead of exception
     grWebShmBufferResource.implementation = {

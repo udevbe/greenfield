@@ -17,13 +17,11 @@
 
 import { SendMessage, WebFD } from 'westfield-runtime-common'
 import { Client, WlBufferResource } from 'westfield-runtime-server'
-import { CompositorRemoteSocket } from './index'
 import RemoteOutOfBandChannel from './RemoteOutOfBandChannel'
 import StreamingBuffer from './remotestreaming/StreamingBuffer'
 import Session from './Session'
 
-class RemoteSocket implements CompositorRemoteSocket {
-  private readonly session: Session
+class RemoteSocket {
   private readonly textEncoder: TextEncoder = new TextEncoder()
   private readonly textDecoder: TextDecoder = new TextDecoder()
 
@@ -31,9 +29,7 @@ class RemoteSocket implements CompositorRemoteSocket {
     return new RemoteSocket(session)
   }
 
-  private constructor(session: Session) {
-    this.session = session
-  }
+  private constructor(private readonly session: Session) {}
 
   private async getShmTransferable(webFD: WebFD): Promise<ArrayBuffer> {
     // TODO get all contents at once from remote endpoint and put it in an array buffer
@@ -90,7 +86,7 @@ class RemoteSocket implements CompositorRemoteSocket {
         // webSocket.onerror = event =>  window.GREENFIELD_DEBUG && console.log(`[WebSocket] - error: ${event.message}.`)
 
         client.connection.onFlush = (wireMessages: SendMessage[]) =>
-          this._flushWireMessages(client, webSocket, wireMessages)
+          this.flushWireMessages(client, webSocket, wireMessages)
 
         const wsOutOfBandChannel = RemoteOutOfBandChannel.create((sendBuffer) => {
           if (webSocket.readyState === 1) {
@@ -234,7 +230,7 @@ class RemoteSocket implements CompositorRemoteSocket {
         const fdsInCount = receiveBuffer[offset++]
         const webFDs = new Array(fdsInCount)
         for (let i = 0; i < fdsInCount; i++) {
-          const { read, webFd } = this._deserializeWebFD(receiveBuffer.subarray(offset))
+          const { read, webFd } = this.deserializeWebFD(receiveBuffer.subarray(offset))
           offset += read
           webFDs[i] = webFd
         }
@@ -255,7 +251,7 @@ class RemoteSocket implements CompositorRemoteSocket {
     }
   }
 
-  private _flushWireMessages(client: Client, webSocket: WebSocket, wireMessages: SendMessage[]) {
+  private flushWireMessages(client: Client, webSocket: WebSocket, wireMessages: SendMessage[]) {
     if (client.connection.closed) {
       return
     }
@@ -307,7 +303,7 @@ class RemoteSocket implements CompositorRemoteSocket {
     }
   }
 
-  private _deserializeWebFD(sourceBuf: Uint32Array): { read: number; webFd: WebFD } {
+  private deserializeWebFD(sourceBuf: Uint32Array): { read: number; webFd: WebFD } {
     // FIXME we only need to handle fetching remote contents if the webfd does not match this compositor
     // If it does match, we simply need to lookup the WebFD from our own WebFS cache, and return that one instead.
     const webFdbyteLength = sourceBuf[0]

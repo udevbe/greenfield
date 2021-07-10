@@ -25,20 +25,17 @@ export type OpaqueAndAlphaPlanes = {
 
 export type DecodedPixelContent = OpaqueAndAlphaPlanes | { bitmap: ImageBitmap; blob: Blob }
 
+// TODO use an object literal instead
 class DecodedFrame implements BufferContents<DecodedPixelContent> {
-  readonly mimeType: 'video/h264' | 'image/png'
-  readonly pixelContent: DecodedPixelContent
-  readonly size: Size
-
   static create(mimeType: 'video/h264' | 'image/png', pixelContent: DecodedPixelContent, size: Size): DecodedFrame {
     return new DecodedFrame(mimeType, pixelContent, size)
   }
 
-  constructor(mimeType: 'video/h264' | 'image/png', pixelContent: DecodedPixelContent, size: Size) {
-    this.mimeType = mimeType
-    this.pixelContent = pixelContent
-    this.size = size
-  }
+  constructor(
+    public readonly mimeType: 'video/h264' | 'image/png',
+    public readonly pixelContent: DecodedPixelContent,
+    public readonly size: Size,
+  ) {}
 }
 
 export default DecodedFrame

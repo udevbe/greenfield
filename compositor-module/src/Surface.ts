@@ -31,7 +31,16 @@ import Mat4 from './math/Mat4'
 import Point from './math/Point'
 import Rect from './math/Rect'
 import { _180, _270, _90, FLIPPED, FLIPPED_180, FLIPPED_270, FLIPPED_90, NORMAL } from './math/Transformations'
-import Region from './Region'
+import Region, {
+  copyTo,
+  init,
+  fini,
+  createPixmanRegion,
+  initInfinite,
+  initRect,
+  destroyPixmanRegion,
+  contains,
+} from './Region'
 import H264BufferContentDecoder from './render/H264BufferContentDecoder'
 import Renderer from './render/Renderer'
 import Scene from './render/Scene'
@@ -55,24 +64,24 @@ export interface SurfaceState {
 
   bufferResourceDestroyListener: () => void
   buffer?: WlBufferResource
-  bufferContents?: BufferContents<any>
+  bufferContents?: BufferContents<unknown>
 
   subsurfaceChildren: SurfaceChild[]
 
   frameCallbacks: Callback[]
 }
 
-export function mergeSurfaceState(targetState: SurfaceState, sourceState: SurfaceState) {
+export function mergeSurfaceState(targetState: SurfaceState, sourceState: SurfaceState): void {
   targetState.dx = sourceState.dx
   targetState.dy = sourceState.dy
 
-  Region.fini(targetState.inputPixmanRegion)
-  Region.init(targetState.inputPixmanRegion)
-  Region.copyTo(targetState.inputPixmanRegion, sourceState.inputPixmanRegion)
+  fini(targetState.inputPixmanRegion)
+  init(targetState.inputPixmanRegion)
+  copyTo(targetState.inputPixmanRegion, sourceState.inputPixmanRegion)
 
-  Region.fini(targetState.opaquePixmanRegion)
-  Region.init(targetState.opaquePixmanRegion)
-  Region.copyTo(targetState.opaquePixmanRegion, sourceState.opaquePixmanRegion)
+  fini(targetState.opaquePixmanRegion)
+  init(targetState.opaquePixmanRegion)
+  copyTo(targetState.opaquePixmanRegion, sourceState.opaquePixmanRegion)
 
   targetState.bufferDamageRects = [...sourceState.bufferDamageRects]
 
@@ -88,6 +97,13 @@ export function mergeSurfaceState(targetState: SurfaceState, sourceState: Surfac
   targetState.subsurfaceChildren = [...sourceState.subsurfaceChildren]
 
   targetState.frameCallbacks = [...sourceState.frameCallbacks, ...targetState.frameCallbacks]
+}
+
+function removeChildFromList(surfaceChild: SurfaceChild, siblings: SurfaceChild[]): void {
+  const index = siblings.indexOf(surfaceChild)
+  if (index > -1) {
+    siblings.splice(index, 1)
+  }
 }
 
 /**
@@ -161,8 +177,8 @@ class Surface implements WlSurfaceRequests {
     bufferTransform: 0,
     dx: 0,
     dy: 0,
-    inputPixmanRegion: Region.createPixmanRegion(),
-    opaquePixmanRegion: Region.createPixmanRegion(),
+    inputPixmanRegion: createPixmanRegion(),
+    opaquePixmanRegion: createPixmanRegion(),
     subsurfaceChildren: [this.surfaceChildSelf],
     frameCallbacks: [],
     bufferResourceDestroyListener: () => {
@@ -179,8 +195,8 @@ class Surface implements WlSurfaceRequests {
     bufferTransform: 0,
     dx: 0,
     dy: 0,
-    inputPixmanRegion: Region.createPixmanRegion(),
-    opaquePixmanRegion: Region.createPixmanRegion(),
+    inputPixmanRegion: createPixmanRegion(),
+    opaquePixmanRegion: createPixmanRegion(),
     subsurfaceChildren: [this.surfaceChildSelf],
     frameCallbacks: [],
     bufferResourceDestroyListener: () => {
@@ -197,7 +213,7 @@ class Surface implements WlSurfaceRequests {
   bufferTransformation: Mat4 = Mat4.IDENTITY()
   inverseBufferTransformation: Mat4 = Mat4.IDENTITY()
 
-  readonly pixmanRegion: number = Region.createPixmanRegion()
+  readonly pixmanRegion: number = createPixmanRegion()
   size?: Size
 
   private readonly _surfaceChildren: SurfaceChild[] = []
@@ -206,25 +222,25 @@ class Surface implements WlSurfaceRequests {
 
   static create(wlSurfaceResource: WlSurfaceResource, session: Session): Surface {
     const surface = new Surface(wlSurfaceResource, session.renderer, session)
-    Region.initInfinite(surface.state.opaquePixmanRegion)
-    Region.initInfinite(surface.state.inputPixmanRegion)
-    Region.initInfinite(surface.pendingState.opaquePixmanRegion)
-    Region.initInfinite(surface.pendingState.inputPixmanRegion)
-    Region.initRect(surface.pixmanRegion, Rect.create(0, 0, 0, 0))
+    initInfinite(surface.state.opaquePixmanRegion)
+    initInfinite(surface.state.inputPixmanRegion)
+    initInfinite(surface.pendingState.opaquePixmanRegion)
+    initInfinite(surface.pendingState.inputPixmanRegion)
+    initRect(surface.pixmanRegion, Rect.create(0, 0, 0, 0))
     wlSurfaceResource.implementation = surface
 
     wlSurfaceResource.onDestroy().then(() => {
-      Region.fini(surface.state.opaquePixmanRegion)
-      Region.fini(surface.state.inputPixmanRegion)
-      Region.fini(surface.pendingState.opaquePixmanRegion)
-      Region.fini(surface.pendingState.inputPixmanRegion)
-      Region.fini(surface.pixmanRegion)
+      fini(surface.state.opaquePixmanRegion)
+      fini(surface.state.inputPixmanRegion)
+      fini(surface.pendingState.opaquePixmanRegion)
+      fini(surface.pendingState.inputPixmanRegion)
+      fini(surface.pixmanRegion)
 
-      Region.destroyPixmanRegion(surface.state.opaquePixmanRegion)
-      Region.destroyPixmanRegion(surface.state.inputPixmanRegion)
-      Region.destroyPixmanRegion(surface.pendingState.opaquePixmanRegion)
-      Region.destroyPixmanRegion(surface.pendingState.inputPixmanRegion)
-      Region.destroyPixmanRegion(surface.pixmanRegion)
+      destroyPixmanRegion(surface.state.opaquePixmanRegion)
+      destroyPixmanRegion(surface.state.inputPixmanRegion)
+      destroyPixmanRegion(surface.pendingState.opaquePixmanRegion)
+      destroyPixmanRegion(surface.pendingState.inputPixmanRegion)
+      destroyPixmanRegion(surface.pixmanRegion)
 
       surface._handleDestruction()
     })
@@ -252,8 +268,8 @@ class Surface implements WlSurfaceRequests {
   }
 
   isWithinInputRegion(surfacePoint: Point): boolean {
-    const withinInput = Region.contains(this.state.inputPixmanRegion, surfacePoint)
-    const withinSurface = Region.contains(this.pixmanRegion, surfacePoint)
+    const withinInput = contains(this.state.inputPixmanRegion, surfacePoint)
+    const withinSurface = contains(this.pixmanRegion, surfacePoint)
     return withinSurface && withinInput
   }
 
@@ -317,8 +333,8 @@ class Surface implements WlSurfaceRequests {
 
       const surfacePoint = inverseBufferTransformation.timesPoint(Point.create(newBufferSize.w, newBufferSize.h))
       this.size = Size.create(Math.abs(surfacePoint.x), Math.abs(surfacePoint.y))
-      Region.fini(this.pixmanRegion)
-      Region.initRect(this.pixmanRegion, Rect.create(0, 0, this.size.w, this.size.h))
+      fini(this.pixmanRegion)
+      initRect(this.pixmanRegion, Rect.create(0, 0, this.size.w, this.size.h))
 
       this._applyBufferTransformWithPositionCorrection(this.pendingState.bufferTransform, bufferTransformation)
     }
@@ -368,7 +384,7 @@ class Surface implements WlSurfaceRequests {
     return childView
   }
 
-  addSubsurface(surfaceChild: SurfaceChild) {
+  addSubsurface(surfaceChild: SurfaceChild): void {
     this._addChild(surfaceChild, this.state.subsurfaceChildren)
     this.pendingState.subsurfaceChildren.push(surfaceChild)
 
@@ -377,16 +393,16 @@ class Surface implements WlSurfaceRequests {
     })
   }
 
-  removeSubsurface(surfaceChild: SurfaceChild) {
-    this._removeChild(surfaceChild, this.state.subsurfaceChildren)
-    this._removeChild(surfaceChild, this.pendingState.subsurfaceChildren)
+  removeSubsurface(surfaceChild: SurfaceChild): void {
+    removeChildFromList(surfaceChild, this.state.subsurfaceChildren)
+    removeChildFromList(surfaceChild, this.pendingState.subsurfaceChildren)
   }
 
   addChild(surfaceChild: SurfaceChild): View[] {
     return this._addChild(surfaceChild, this._surfaceChildren)
   }
 
-  addToplevelChild(surfaceChild: SurfaceChild) {
+  addToplevelChild(surfaceChild: SurfaceChild): void {
     this._surfaceChildren.push(surfaceChild)
 
     const primaryChildView = surfaceChild.surface.views.find((view) => view.primary)
@@ -398,8 +414,8 @@ class Surface implements WlSurfaceRequests {
     }
   }
 
-  removeChild(surfaceChild: SurfaceChild) {
-    this._removeChild(surfaceChild, this._surfaceChildren)
+  removeChild(surfaceChild: SurfaceChild): void {
+    removeChildFromList(surfaceChild, this._surfaceChildren)
   }
 
   private _addChild(surfaceChild: SurfaceChild, siblings: SurfaceChild[]): View[] {
@@ -416,14 +432,7 @@ class Surface implements WlSurfaceRequests {
     return childViews
   }
 
-  private _removeChild(surfaceChild: SurfaceChild, siblings: SurfaceChild[]) {
-    const index = siblings.indexOf(surfaceChild)
-    if (index > -1) {
-      siblings.splice(index, 1)
-    }
-  }
-
-  destroy(resource: WlSurfaceResource) {
+  destroy(resource: WlSurfaceResource): void {
     // this._handleDestruction()
     this.destroyed = true
     resource.destroy()
@@ -435,7 +444,7 @@ class Surface implements WlSurfaceRequests {
     this._h264BufferContentDecoder?.destroy()
   }
 
-  attach(resource: WlSurfaceResource, buffer: WlBufferResource | undefined, x: number, y: number) {
+  attach(resource: WlSurfaceResource, buffer: WlBufferResource | undefined, x: number, y: number): void {
     this.pendingState.dx = x
     this.pendingState.dy = y
 
@@ -445,33 +454,33 @@ class Surface implements WlSurfaceRequests {
     this.pendingState.buffer?.addDestroyListener(this.pendingState.bufferResourceDestroyListener)
   }
 
-  damage(resource: WlSurfaceResource, x: number, y: number, width: number, height: number) {
+  damage(resource: WlSurfaceResource, x: number, y: number, width: number, height: number): void {
     this.pendingState.damageRects.push(Rect.create(x, y, x + width, y + height))
   }
 
-  frame(resource: WlSurfaceResource, callback: number) {
+  frame(resource: WlSurfaceResource, callback: number): void {
     this.pendingState.frameCallbacks.push(Callback.create(new WlCallbackResource(resource.client, callback, 1)))
   }
 
-  setOpaqueRegion(resource: WlSurfaceResource, regionResource: WlRegionResource | undefined) {
-    Region.fini(this.pendingState.opaquePixmanRegion)
+  setOpaqueRegion(resource: WlSurfaceResource, regionResource: WlRegionResource | undefined): void {
+    fini(this.pendingState.opaquePixmanRegion)
     if (regionResource) {
       const region = regionResource.implementation as Region
-      Region.init(this.pendingState.opaquePixmanRegion)
-      Region.copyTo(this.pendingState.opaquePixmanRegion, region.pixmanRegion)
+      init(this.pendingState.opaquePixmanRegion)
+      copyTo(this.pendingState.opaquePixmanRegion, region.pixmanRegion)
     } else {
-      Region.initInfinite(this.pendingState.opaquePixmanRegion)
+      initInfinite(this.pendingState.opaquePixmanRegion)
     }
   }
 
-  setInputRegion(resource: WlSurfaceResource, regionResource: WlRegionResource | undefined) {
-    Region.fini(this.pendingState.inputPixmanRegion)
+  setInputRegion(resource: WlSurfaceResource, regionResource: WlRegionResource | undefined): void {
+    fini(this.pendingState.inputPixmanRegion)
     if (regionResource) {
       const region = regionResource.implementation as Region
-      Region.init(this.pendingState.inputPixmanRegion)
-      Region.copyTo(this.pendingState.inputPixmanRegion, region.pixmanRegion)
+      init(this.pendingState.inputPixmanRegion)
+      copyTo(this.pendingState.inputPixmanRegion, region.pixmanRegion)
     } else {
-      Region.initInfinite(this.pendingState.inputPixmanRegion)
+      initInfinite(this.pendingState.inputPixmanRegion)
     }
   }
 
@@ -479,10 +488,10 @@ class Surface implements WlSurfaceRequests {
     return this.inverseBufferTransformation.timesPoint(bufferPoint)
   }
 
-  async commit(resource: WlSurfaceResource, serial?: number) {
+  async commit(resource: WlSurfaceResource, serial?: number): Promise<void> {
     // const startCommit = Date.now()
     const bufferImplementation = this.pendingState.buffer?.implementation as
-      | BufferImplementation<BufferContents<any> | Promise<BufferContents<any>>>
+      | BufferImplementation<BufferContents<unknown> | Promise<BufferContents<unknown>>>
       | undefined
     if (bufferImplementation && this.pendingState.bufferContents === undefined) {
       try {
@@ -541,7 +550,7 @@ class Surface implements WlSurfaceRequests {
     this.resource.client.connection.flush()
   }
 
-  renderViews() {
+  renderViews(): void {
     if (this.renderSource) {
       return
     }
@@ -562,7 +571,7 @@ class Surface implements WlSurfaceRequests {
     })
   }
 
-  setBufferTransform(resource: WlSurfaceResource, transform: number) {
+  setBufferTransform(resource: WlSurfaceResource, transform: number): void {
     if (!(transform in WlOutputTransform)) {
       resource.postError(WlSurfaceError.invalidTransform, 'Buffer transform value is invalid.')
       console.log('[client-protocol-error] - Buffer transform value is invalid.')
@@ -572,7 +581,7 @@ class Surface implements WlSurfaceRequests {
     this.pendingState.bufferTransform = transform
   }
 
-  setBufferScale(resource: WlSurfaceResource, scale: number) {
+  setBufferScale(resource: WlSurfaceResource, scale: number): void {
     if (scale < 1) {
       resource.postError(WlSurfaceError.invalidScale, 'Buffer scale value is invalid.')
       console.log('[client-protocol-error] - Buffer scale value is invalid.')
@@ -581,7 +590,7 @@ class Surface implements WlSurfaceRequests {
     this.pendingState.bufferScale = scale
   }
 
-  damageBuffer(resource: WlSurfaceResource, x: number, y: number, width: number, height: number) {
+  damageBuffer(resource: WlSurfaceResource, x: number, y: number, width: number, height: number): void {
     this.pendingState.bufferDamageRects.push(Rect.create(x, y, x + width, y + height))
   }
 }
