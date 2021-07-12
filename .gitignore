@@ -146,3 +146,4 @@ CTestTestfile.cmake
 /compositor-proxy/dist/
 /compositor-proxy/build/
 /compositor-proxy/src/protocol/
+/compositor-proxy/src/encoding/app-endpoint-encoding.node

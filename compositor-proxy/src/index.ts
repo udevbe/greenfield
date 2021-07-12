@@ -5,7 +5,7 @@ import { createCompositorProxySession } from './CompositorProxySession'
 import { createLogger } from './Logger'
 import { initSurfaceBufferEncoding } from './SurfaceBufferEncoding'
 
-const urlProtocolAndDomain = `${serverConfig.protocol}${serverConfig.hostname}:${serverConfig.port}` as const
+const urlProtocolAndDomain = `${serverConfig.protocol}${serverConfig.bindIP}:${serverConfig.bindPort}` as const
 const compositorSessionId = process.env.COMPOSITOR_SESSION_ID
 
 const logger = createLogger('main')
@@ -25,7 +25,8 @@ function main() {
   })
   initSurfaceBufferEncoding()
 
-  const wss = new WebSocket.Server({ port: serverConfig.port, host: serverConfig.hostname })
+  const port = +(process.env.PORT ?? serverConfig.bindPort)
+  const wss = new WebSocket.Server({ port, host: serverConfig.bindIP })
   wss.on('connection', (ws, request) => {
     logger.debug(
       `Incoming websocket connection.\n\tURL: ${JSON.stringify(request.url)}\n\tHEADERS: ${JSON.stringify(
@@ -42,7 +43,7 @@ function main() {
     compositorProxySession.handleConnection(ws)
   })
 
-  console.log('Listening to port ' + serverConfig.port)
+  console.log('Listening to port ' + port)
 }
 
 main()

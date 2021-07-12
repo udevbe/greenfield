@@ -107,18 +107,27 @@ async function main() {
   const remoteSocket = createCompositorRemoteSocket(session)
   const compositorProxyConnector = createCompositorProxyConnector(session, remoteSocket)
 
-  const connectButton: HTMLButtonElement = document.createElement('button')
-  connectButton.textContent = `connect to ws://localhost:8081?compositorSessionId=${compositorSessionId}`
+  const connect8081Button: HTMLButtonElement = document.createElement('button')
+  connect8081Button.textContent = `connect to ws://localhost:8081?compositorSessionId=${compositorSessionId}`
 
-  const container: HTMLDivElement = document.createElement('div')
-
-  container.appendChild(connectButton)
-
-  connectButton.onclick = async () => {
+  connect8081Button.onclick = async () => {
     const compositorProxyURL = new URL('ws://localhost:8081')
     compositorProxyURL.searchParams.append('compositorSessionId', compositorSessionId)
     compositorProxyConnector.connectTo(compositorProxyURL)
   }
+
+  const connect8082Button: HTMLButtonElement = document.createElement('button')
+  connect8082Button.textContent = `connect to ws://localhost:8082?compositorSessionId=${compositorSessionId}`
+
+  connect8082Button.onclick = async () => {
+    const compositorProxyURL = new URL('ws://localhost:8082')
+    compositorProxyURL.searchParams.append('compositorSessionId', compositorSessionId)
+    compositorProxyConnector.connectTo(compositorProxyURL)
+  }
+
+  const container: HTMLDivElement = document.createElement('div')
+  container.appendChild(connect8081Button)
+  container.appendChild(connect8082Button)
 
   // make compositor global protocol objects available to client
   session.globals.register()

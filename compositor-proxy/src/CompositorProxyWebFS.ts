@@ -6,7 +6,7 @@ import { Endpoint } from 'westfield-endpoint'
 import WebsocketStream from 'websocket-stream'
 
 import WebSocket from 'ws'
-import { serverConfig } from '../config'
+import { config } from './config'
 
 import { WebSocketChannel } from './WebSocketChannel'
 
@@ -15,8 +15,8 @@ const textDecoder = new TextDecoder()
 
 // FIXME this class is pretty broken...
 export function createCompositorProxyWebFS(compositorSessionId: string): AppEndpointWebFS {
-  const { protocol, hostname, port } = serverConfig
-  const localWebFDBaseURL = new URL(`${protocol}//${hostname}:${port}`)
+  const { protocol, bindIP, bindPort } = config.public
+  const localWebFDBaseURL = new URL(`${protocol}//${bindIP}:${bindPort}`)
 
   return new AppEndpointWebFS(compositorSessionId, localWebFDBaseURL)
 }

@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "epoll": "^4.0.1",
+    "js-yaml": "^4.1.0",
     "pino": "^6.11.3",
     "pino-pretty": "^5.1.0",
     "websocket-stream": "^5.5.2",
@@ -26,6 +27,7 @@
     "ws": "^7.5.2"
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.2",
     "@types/jsonwebtoken": "^8.5.3",
     "@types/node": "^16.0.0",
     "@types/node-fetch": "^2.5.10",
