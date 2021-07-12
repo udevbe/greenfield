@@ -20,3 +20,6 @@ encoder:
   # Png encoding has perfect image quality but has a far larger image size than
   # h264. Default is (256*256)-1 = 0xFFFF
   maxPngBufferSize: 0xffff
+logging:
+  # "fatal" | "error" | "warn" | "info" | "debug" | "trace"
+  level: info

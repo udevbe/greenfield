@@ -15,22 +15,23 @@ const textDecoder = new TextDecoder()
 
 // FIXME this class is pretty broken...
 export function createCompositorProxyWebFS(compositorSessionId: string): AppEndpointWebFS {
-  const { protocol, bindIP, bindPort } = config.public
-  const localWebFDBaseURL = new URL(`${protocol}//${bindIP}:${bindPort}`)
+  // @ts-ignore
+  const baseURL = config.public.baseURL
+  const localWebFDBaseURL = new URL(baseURL)
 
   return new AppEndpointWebFS(compositorSessionId, localWebFDBaseURL)
 }
 
 export class AppEndpointWebFS {
   constructor(
-    private _compositorSessionId: string,
-    private _localWebFDBaseURL: URL,
-    private _webFDTransferRequests: Record<string, (data: Uint8Array) => void> = {},
+    private compositorSessionId: string,
+    private localWebFDBaseURL: URL,
+    private webFDTransferRequests: Record<string, (data: Uint8Array) => void> = {},
   ) {}
 
   private _createLocalWebFDURL(fd: number, type: string): URL {
-    const localWebFDURL = new URL(this._localWebFDBaseURL.href)
-    localWebFDURL.searchParams.append('compositorSessionId', `${this._compositorSessionId}`)
+    const localWebFDURL = new URL(this.localWebFDBaseURL.href)
+    localWebFDURL.searchParams.append('compositorSessionId', `${this.compositorSessionId}`)
     localWebFDURL.searchParams.append('fd', `${fd}`)
     localWebFDURL.searchParams.append('type', type)
     localWebFDURL.searchParams.sort()
@@ -58,8 +59,8 @@ export class AppEndpointWebFS {
    */
   async handleWebFdURL(webFdURL: URL, clientWebSocketChannel: WebSocketChannel): Promise<number> {
     if (
-      webFdURL.host === this._localWebFDBaseURL.host &&
-      webFdURL.searchParams.get('compositorSessionId') === this._compositorSessionId
+      webFdURL.host === this.localWebFDBaseURL.host &&
+      webFdURL.searchParams.get('compositorSessionId') === this.compositorSessionId
     ) {
       const fd = webFdURL.searchParams.get('fd') ?? '-1'
       // the fd originally came from this process, which means we can just use it as is.
@@ -76,7 +77,7 @@ export class AppEndpointWebFS {
   private findFdTransferWebSocket(webFdURL: URL, clientWebSocketChannel: WebSocketChannel) {
     if (
       webFdURL.protocol === 'compositor:' &&
-      this._compositorSessionId === webFdURL.searchParams.get('compositorSessionId') &&
+      this.compositorSessionId === webFdURL.searchParams.get('compositorSessionId') &&
       clientWebSocketChannel.webSocket
     ) {
       // If the fd originated from the compositor, we can reuse the existing websocket connection to transfer the fd contents
@@ -110,7 +111,7 @@ export class AppEndpointWebFS {
   private async _handleForeignWebFDShm(fdTransferWebSocket: WebSocket, webFdURL: URL): Promise<number> {
     return new Promise<Uint8Array>((resolve, reject) => {
       // register listener for incoming content on com chanel
-      this._webFDTransferRequests[webFdURL.href] = resolve
+      this.webFDTransferRequests[webFdURL.href] = resolve
       // request file contents. opcode: 4
 
       // TODO ensure this fd is present
@@ -141,8 +142,8 @@ export class AppEndpointWebFS {
   handleWebFDContentTransferReply(payload: Uint8Array): void {
     // payload = fdURLByteSize (4 bytes) + fdURL (aligned to 4 bytes) + contents
     const { webFdURL, bytesRead } = this.deserializeWebFdURL(payload)
-    const webFDTransfer = this._webFDTransferRequests[webFdURL.href]
-    delete this._webFDTransferRequests[webFdURL.href]
+    const webFDTransfer = this.webFDTransferRequests[webFdURL.href]
+    delete this.webFDTransferRequests[webFdURL.href]
     webFDTransfer(payload.subarray(bytesRead))
   }
 
@@ -174,7 +175,7 @@ export class AppEndpointWebFS {
    */
   incomingDataTransfer(webSocket: WebSocket, query: { fd: string; compositorSessionId: string }): void {
     const compositorSessionId = query.compositorSessionId
-    if (compositorSessionId !== this._compositorSessionId) {
+    if (compositorSessionId !== this.compositorSessionId) {
       // fd did not originate from here
       // TODO close with error code & message (+log?)
       webSocket.close()

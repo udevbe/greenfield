@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { SessionConfig, sessionConfig } from '../../config'
+import { config } from '../config'
 import { createNVH264AlphaEncoder } from './NVH264AlphaEncoder'
 import { createNVH264OpaqueEncoder } from './NVH264OpaqueEncoder'
 import { createPNGEncoder } from './PNGEncoder'
@@ -37,7 +37,9 @@ type QueueElement = {
 }
 
 // wayland to gstreamer mappings
+
 const types: {
+  // @ts-ignore
   [key in SupportedWlShmFormat]: { [key in SessionConfig['encoder']['h264Encoder']]: FrameEncoderFactory }
 } = {
   [WlShmFormat.argb8888]: {
@@ -63,22 +65,15 @@ export class Encoder implements FrameEncoder {
   ) {}
 
   private _doEncodeBuffer() {
-    const {
-      pixelBuffer,
-      bufferFormat,
-      bufferWidth,
-      bufferHeight,
-      bufferStride,
-      serial,
-      resolve,
-      reject,
-    } = this._queue[0]
+    const { pixelBuffer, bufferFormat, bufferWidth, bufferHeight, bufferStride, serial, resolve, reject } =
+      this._queue[0]
 
     try {
       let encodingPromise = null
 
       const bufferArea = bufferWidth * bufferHeight
-      if (bufferArea <= sessionConfig.encoder.maxPngBufferSize) {
+      // @ts-ignore
+      if (bufferArea <= config.encoder.maxPngBufferSize) {
         encodingPromise = this._encodePNGFrame(
           pixelBuffer,
           bufferFormat,
@@ -156,11 +151,8 @@ export class Encoder implements FrameEncoder {
     serial: number,
   ): Promise<EncodedFrame> {
     if (!this._frameEncoder) {
-      this._frameEncoder = types[bufferFormat][sessionConfig.encoder.h264Encoder](
-        bufferWidth,
-        bufferHeight,
-        bufferFormat,
-      )
+      // @ts-ignore
+      this._frameEncoder = types[bufferFormat][config.encoder.h264Encoder](bufferWidth, bufferHeight, bufferFormat)
     }
     return this._frameEncoder.encodeBuffer(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, bufferStride, serial)
   }

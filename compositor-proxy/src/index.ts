@@ -1,11 +1,12 @@
 import { URL } from 'url'
 import WebSocket from 'ws'
-import { serverConfig } from '../config'
+import { config } from './config'
 import { createCompositorProxySession } from './CompositorProxySession'
 import { createLogger } from './Logger'
 import { initSurfaceBufferEncoding } from './SurfaceBufferEncoding'
 
-const urlProtocolAndDomain = `${serverConfig.protocol}${serverConfig.bindIP}:${serverConfig.bindPort}` as const
+// @ts-ignore
+const urlProtocolAndDomain = `ws://${config.server.bindIP}:${config.server.bindPort}` as const
 const compositorSessionId = process.env.COMPOSITOR_SESSION_ID
 
 const logger = createLogger('main')
@@ -25,8 +26,10 @@ function main() {
   })
   initSurfaceBufferEncoding()
 
-  const port = +(process.env.PORT ?? serverConfig.bindPort)
-  const wss = new WebSocket.Server({ port, host: serverConfig.bindIP })
+  // @ts-ignore
+  const port = +(process.env.PORT ?? config.server.bindPort)
+  // @ts-ignore
+  const wss = new WebSocket.Server({ port, host: config.server.bindIP })
   wss.on('connection', (ws, request) => {
     logger.debug(
       `Incoming websocket connection.\n\tURL: ${JSON.stringify(request.url)}\n\tHEADERS: ${JSON.stringify(
