@@ -1,7 +1,22 @@
+import Ajv from 'ajv'
+import addFormats from 'ajv-formats'
 import yaml from 'js-yaml'
 import fs from 'fs'
-// Get document, or throw exception on error
+import { Configschema } from './@types/config'
+
+import configschema from './configschema.json'
+
+const ajv = new Ajv()
+addFormats(ajv)
+
+const validate = ajv.compile(configschema)
 
 const configLocation = process.env.CONFIG ?? 'config.yaml'
 
-export const config = yaml.load(fs.readFileSync(configLocation, 'utf8'))
+const rawConfig = yaml.load(fs.readFileSync(configLocation, 'utf8'))
+const isValid = validate(rawConfig)
+if (!isValid) {
+  throw new Error(`Error validating configuration: ${JSON.stringify(validate.errors)}`)
+}
+
+export const config: Configschema = rawConfig as Configschema

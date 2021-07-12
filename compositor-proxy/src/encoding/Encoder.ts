@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+import { Configschema } from '../@types/config'
 import { config } from '../config'
 import { createNVH264AlphaEncoder } from './NVH264AlphaEncoder'
 import { createNVH264OpaqueEncoder } from './NVH264OpaqueEncoder'
@@ -39,8 +40,7 @@ type QueueElement = {
 // wayland to gstreamer mappings
 
 const types: {
-  // @ts-ignore
-  [key in SupportedWlShmFormat]: { [key in SessionConfig['encoder']['h264Encoder']]: FrameEncoderFactory }
+  [key in SupportedWlShmFormat]: { [key in Configschema['encoder']['h264Encoder']]: FrameEncoderFactory }
 } = {
   [WlShmFormat.argb8888]: {
     x264: createX264AlphaEncoder,
@@ -72,7 +72,6 @@ export class Encoder implements FrameEncoder {
       let encodingPromise = null
 
       const bufferArea = bufferWidth * bufferHeight
-      // @ts-ignore
       if (bufferArea <= config.encoder.maxPngBufferSize) {
         encodingPromise = this._encodePNGFrame(
           pixelBuffer,
@@ -151,7 +150,6 @@ export class Encoder implements FrameEncoder {
     serial: number,
   ): Promise<EncodedFrame> {
     if (!this._frameEncoder) {
-      // @ts-ignore
       this._frameEncoder = types[bufferFormat][config.encoder.h264Encoder](bufferWidth, bufferHeight, bufferFormat)
     }
     return this._frameEncoder.encodeBuffer(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, bufferStride, serial)

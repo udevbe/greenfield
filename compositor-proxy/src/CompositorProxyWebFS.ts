@@ -15,7 +15,6 @@ const textDecoder = new TextDecoder()
 
 // FIXME this class is pretty broken...
 export function createCompositorProxyWebFS(compositorSessionId: string): AppEndpointWebFS {
-  // @ts-ignore
   const baseURL = config.public.baseURL
   const localWebFDBaseURL = new URL(baseURL)
 
