@@ -70,7 +70,7 @@ export class AppEndpointWebFS {
       // the fd comes from a different host. In case of shm, we need to create local shm and
       // transfer the contents of the remote fd. In case of pipe, we need to create a local pipe and transfer
       // the contents on-demand.
-      return this._handleForeignWebFdURL(webFdURL, clientWebSocketChannel)
+      return this.handleForeignWebFdURL(webFdURL, clientWebSocketChannel)
     }
   }
 
@@ -93,22 +93,22 @@ export class AppEndpointWebFS {
     }
   }
 
-  private async _handleForeignWebFdURL(webFdURL: URL, clientWebSocketChannel: WebSocketChannel): Promise<number> {
+  private async handleForeignWebFdURL(webFdURL: URL, clientWebSocketChannel: WebSocketChannel): Promise<number> {
     const fdTransferWebSocket = this.findFdTransferWebSocket(webFdURL, clientWebSocketChannel)
 
     let localFD = -1
     const webFdType = webFdURL.searchParams.get('type')
     if (webFdType === 'ArrayBuffer') {
-      localFD = await this._handleForeignWebFDShm(fdTransferWebSocket, webFdURL)
+      localFD = await this.handleForeignWebFDShm(fdTransferWebSocket, webFdURL)
     } else if (webFdType === 'MessagePort') {
       // because we can't distinguish between read or write end of a pipe, we always assume write-end of pipe here (as per c/p & DnD use-case in wayland protocol)
-      localFD = this._handleForeignWebFDWritePipe(fdTransferWebSocket, webFdURL)
+      localFD = this.handleForeignWebFDWritePipe(fdTransferWebSocket, webFdURL)
     }
 
     return localFD
   }
 
-  private async _handleForeignWebFDShm(fdTransferWebSocket: WebSocket, webFdURL: URL): Promise<number> {
+  private async handleForeignWebFDShm(fdTransferWebSocket: WebSocket, webFdURL: URL): Promise<number> {
     return new Promise<Uint8Array>((resolve, reject) => {
       // register listener for incoming content on com chanel
       this.webFDTransferRequests[webFdURL.href] = resolve
@@ -124,17 +124,19 @@ export class AppEndpointWebFS {
     )
   }
 
-  private _handleForeignWebFDWritePipe(fdCommunicationChannel: WebSocket, webFdURL: URL): number {
+  private handleForeignWebFDWritePipe(fdCommunicationChannel: WebSocket, webFdURL: URL): number {
     const resultBuffer = new Uint32Array(2)
     Endpoint.makePipe(resultBuffer)
-    const fd = resultBuffer[0]
+    const readFd = resultBuffer[0]
 
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    const readStream = fs.createReadStream(null, { fd })
+    const readStream = fs.createReadStream(null, { fd: readFd })
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    readStream.pipe(new WebsocketStream(fdCommunicationChannel))
+    const websocketStream = new WebsocketStream(fdCommunicationChannel)
+
+    readStream.pipe(websocketStream)
 
     return resultBuffer[1]
   }
@@ -173,14 +175,7 @@ export class AppEndpointWebFS {
    * @param {WebSocket}webSocket
    * @param {ParsedUrlQuery}query
    */
-  incomingDataTransfer(webSocket: WebSocket, query: { fd: string; compositorSessionId: string }): void {
-    const compositorSessionId = query.compositorSessionId
-    if (compositorSessionId !== this.compositorSessionId) {
-      // fd did not originate from here
-      // TODO close with error code & message (+log?)
-      webSocket.close()
-      return
-    }
+  incomingDataTransfer(webSocket: WebSocket, query: { fd: number }): void {
     const fd = query.fd
     // TODO do we want to do something differently based on the type?
     // const type = query.type
@@ -188,9 +183,12 @@ export class AppEndpointWebFS {
     // Need to pass in null as path argument so it will use the fd to open the file (undocumented).
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    const target = fs.createWriteStream(null, { fd: Number.parseInt(fd) })
+    const target = fs.createWriteStream(null, { fd })
+
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    websocketStream(webSocket).pipe(target)
+    const websocketStream = new WebsocketStream(webSocket)
+
+    websocketStream.pipe(target)
   }
 }

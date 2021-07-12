@@ -36,7 +36,10 @@ class CompositorProxySession {
     this.destroyResolve = resolve
   })
 
-  constructor(private nativeCompositorSession: NativeCompositorSession, public compositorSessionId: string) {}
+  constructor(
+    public readonly nativeCompositorSession: NativeCompositorSession,
+    public readonly compositorSessionId: string,
+  ) {}
 
   onDestroy(): Promise<void> {
     return this._destroyPromise

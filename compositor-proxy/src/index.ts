@@ -43,7 +43,14 @@ function main() {
       ws.close(4403, message)
       return
     }
-    compositorProxySession.handleConnection(ws)
+
+    if (searchParams.has('type') && searchParams.has('fd')) {
+      // data transfer
+      const fd = Number.parseInt(searchParams.get('fd') ?? '0')
+      compositorProxySession.nativeCompositorSession.appEndpointWebFS.incomingDataTransfer(ws, { fd })
+    } else {
+      compositorProxySession.handleConnection(ws)
+    }
   })
 
   console.log('Listening to port ' + port)
