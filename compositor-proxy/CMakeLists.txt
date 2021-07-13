@@ -29,5 +29,5 @@ set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".node")
 target_link_libraries(${PROJECT_NAME} ${CMAKE_JS_LIB} ${GLIB2_LIBRARIES} ${GSTREAMER_LIBRARIES} ${GSTREAMER_APP_LIBRARIES} ${GSTREAMER_VIDEO_LIBRARIES})
 set_target_properties(${PROJECT_NAME}
     PROPERTIES
-        LIBRARY_OUTPUT_DIRECTORY ../dist/src/encoding
+        LIBRARY_OUTPUT_DIRECTORY ../dist/encoding
 )

@@ -31,4 +31,4 @@ ENV NODE_ENV=production
 EXPOSE 8081
 
 WORKDIR /home/node
-CMD [ "node", "/app/dist/src/index.js" ]
+CMD [ "node", "/app/dist/index.js" ]

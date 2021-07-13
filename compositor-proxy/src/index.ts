@@ -11,8 +11,9 @@ const compositorSessionId = process.env.COMPOSITOR_SESSION_ID
 const logger = createLogger('main')
 
 function main() {
+  logger.info('Starting compositor proxy...')
   if (compositorSessionId === undefined) {
-    console.error('env COMPOSITOR_SESSION_ID must be set.')
+    logger.error('env COMPOSITOR_SESSION_ID must be set.')
     process.exit(1)
   }
 
@@ -50,7 +51,7 @@ function main() {
     }
   })
 
-  console.log('Listening to port ' + port)
+  logger.info('Compositor proxy started. Listening on port ' + port)
 }
 
 main()
