@@ -1,14 +1,14 @@
-const { AppEndpointServer } = require('app-endpoint-server')
+// const { AppEndpointServer } = require('app-endpoint-server')
 
-function setupAppEndpointServer () {
-  global.__APP_ENDPOINT_SERVER__ = AppEndpointServer.create()
+function setupAppEndpointServer() {
+  // global.__APP_ENDPOINT_SERVER__ = AppEndpointServer.create()
 }
 
-function teardownAppEndpointServer () {
-  global.__APP_ENDPOINT_SERVER__.destroy()
+function teardownAppEndpointServer() {
+  // global.__APP_ENDPOINT_SERVER__.destroy()
 }
 
 module.exports = {
   setupAppEndpointServer,
-  teardownAppEndpointServer
+  teardownAppEndpointServer,
 }

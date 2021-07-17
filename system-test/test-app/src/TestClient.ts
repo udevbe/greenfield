@@ -19,7 +19,7 @@ import {
   WlSeatProxy,
   WlSurfaceEvents,
   WlSurfaceProxy,
-  WlTouchProxy
+  WlTouchProxy,
 } from 'westfield-runtime-client'
 import { Fixed } from 'westfield-runtime-common'
 
@@ -31,14 +31,22 @@ class Output implements WlOutputEvents {
   scale_: number = 1
   initialized: boolean = false
 
-  constructor(public wlOutput: WlOutputProxy) {
-  }
+  constructor(public wlOutput: WlOutputProxy) {}
 
   done(): void {
     this.initialized = true
   }
 
-  geometry(x: number, y: number, physicalWidth: number, physicalHeight: number, subpixel: number, make: string, model: string, transform: number): void {
+  geometry(
+    x: number,
+    y: number,
+    physicalWidth: number,
+    physicalHeight: number,
+    subpixel: number,
+    make: string,
+    model: string,
+    transform: number,
+  ): void {
     this.x = x
     this.y = y
   }
@@ -69,8 +77,7 @@ class Surface implements WlSurfaceEvents {
   height: number = 0
   buffer?: TestBuffer
 
-  constructor(public wlSurface: WlSurfaceProxy) {
-  }
+  constructor(public wlSurface: WlSurfaceProxy) {}
 
   enter(output: WlOutputProxy): void {
     this.output = output.listener as Output
@@ -103,8 +110,7 @@ class Pointer implements WlPointerEvents {
   axisTimeTimespec: DOMHighResTimeStamp = 0
   axisStopTimeTimespec: DOMHighResTimeStamp = 0
 
-  constructor(public wlPointer: WlPointerProxy) {
-  }
+  constructor(public wlPointer: WlPointerProxy) {}
 
   axis(time: number, axis: number, value: Fixed): void {
     this.axis_ = axis
@@ -201,7 +207,7 @@ type Touch = {
   x: number
   y: number
   id: number
-  upId: number/* id of last wl_touch.up event */
+  upId: number /* id of last wl_touch.up event */
   frameNo: number
   cancelNo: number
   downTimeMsec: number
@@ -214,8 +220,8 @@ type Touch = {
 }
 
 interface Global {
-  name: number,
-  interface_: string,
+  name: number
+  interface_: string
   version: number
 }
 
@@ -226,12 +232,7 @@ class Input implements WlSeatEvents {
   seatName?: string
   caps: WlSeatCapability = 0
 
-  constructor(
-    public client: Client,
-    public globalName: number,
-    public wlSeat: WlSeatProxy
-  ) {
-  }
+  constructor(public client: Client, public globalName: number, public wlSeat: WlSeatProxy) {}
 
   capabilities(capabilities: number): void {
     this.caps = capabilities
@@ -253,7 +254,7 @@ class Input implements WlSeatEvents {
   }
 
   private updateDevices() {
-    if ((this.caps & WlSeatCapability._pointer) && !this.pointer) {
+    if (this.caps & WlSeatCapability._pointer && !this.pointer) {
       this.pointer = new Pointer(this.wlSeat.getPointer())
       this.pointer.wlPointer.listener = this.pointer
     }
@@ -264,7 +265,7 @@ class Input implements WlSeatEvents {
     this.keyboard?.wlKeyboard.release()
     this.touch?.wlTouch.release()
 
-    this.client.inputs = this.client.inputs.filter(input => input !== this)
+    this.client.inputs = this.client.inputs.filter((input) => input !== this)
     this.wlSeat.release()
 
     this.pointer = undefined
@@ -279,7 +280,7 @@ async function createClient() {
   const client = new Client(wlRegistry)
   wlRegistry.listener = {
     global: (name: number, interface_: string, version: number): void => client.handleGlobal(name, interface_, version),
-    globalRemove: (name: number): void => client.handleGlobalRemove(name)
+    globalRemove: (name: number): void => client.handleGlobalRemove(name),
   }
   /* this roundtrip makes sure we have all globals and we bound to them */
   await client.roundtrip()
@@ -317,8 +318,7 @@ class Client {
   outputList: Output[] = []
   bufferCopyDone?: boolean
 
-  constructor(public wlRegistry: WlRegistryProxy) {
-  }
+  constructor(public wlRegistry: WlRegistryProxy) {}
 
   handleGlobal(name: number, interface_: string, version: number): void {
     const global: Global = { name, interface_, version }
@@ -327,11 +327,7 @@ class Client {
     if (interface_ === WlCompositorProtocolName) {
       this.wlCompositor = this.wlRegistry.bind(name, interface_, WlCompositorProxy, version)
     } else if (interface_ === WlSeatProtocolName) {
-      const input = new Input(
-        this,
-        global.name,
-        this.wlRegistry.bind(name, interface_, WlSeatProxy, version)
-      )
+      const input = new Input(this, global.name, this.wlRegistry.bind(name, interface_, WlSeatProxy, version))
       input.wlSeat.listener = input
     } else if (interface_ === GrWebShmProtocolName) {
       this.webShm = this.wlRegistry.bind(name, interface_, GrWebShmProxy, version)
@@ -359,21 +355,21 @@ class Client {
       }
     }
 
-    this.globalList = this.globalList.filter(global_ => global !== global_)
+    this.globalList = this.globalList.filter((global_) => global !== global_)
   }
 
   private findInputWithName(name: number): Input | undefined {
-    return this.inputs.find(input => input.globalName === name)
+    return this.inputs.find((input) => input.globalName === name)
   }
 
   private findGlobalWithName(name: number): Global | undefined {
-    return this.globalList.find(global => global.name === name)
+    return this.globalList.find((global) => global.name === name)
   }
 
   destroy() {
-    this.surface?.destroy()
-    this.inputs.forEach(input => input.destroy())
-    this.outputList.forEach(output => output.destroy())
+    this.surface?.wlSurface.destroy()
+    this.inputs.forEach((input) => input.destroy())
+    this.outputList.forEach((output) => output.wlOutput.destroy())
     this.globalList = []
 
     this.webShm?.destroy()
@@ -387,14 +383,24 @@ class Client {
   }
 
   createTestSurface() {
-    const wlSurface = this.wlCompositor?.createSurface()
-    if(wlSurface === undefined){
-      throw new Error('Compositor global not found.')
+    if (this.wlCompositor === undefined) {
+      throw new Error('WlCompositor global not set.')
     }
+
+    const wlSurface = this.wlCompositor.createSurface()
     const surface = new Surface(wlSurface)
     wlSurface.listener = surface
 
     return surface
+  }
+
+  createWebShmBuffer(width: number, height: number): TestBuffer {
+    if (this.webShm === undefined) {
+      throw new Error('WebShm global not set')
+    }
+
+    const webArrayBuffer = this.webShm.createWebArrayBuffer()
+    return { proxy: this.webShm.createBuffer(webArrayBuffer, width, height) }
   }
 }
 
@@ -406,11 +412,9 @@ async function createClientAndTestSurface(x: number, y: number, width: number, h
   surface.width = width
   surface.height = height
   surface.buffer = client.createWebShmBuffer(width, height)
-// TODO more
+  // TODO more
 }
 
-function main() {
-
-}
+function main() {}
 
 main()

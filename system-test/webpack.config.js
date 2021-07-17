@@ -11,43 +11,60 @@ const outputPath = path.resolve(__dirname, 'dist')
 module.exports = {
   mode: 'development',
   entry: {
-    app: './src/index.ts'
+    app: './src/index.ts',
   },
   devtool: 'source-map',
   plugins: [
     new CleanWebpackPlugin(),
     new HtmlWebpackPlugin({
-      title: 'Greenfield Compositor Demo'
+      title: 'Greenfield Compositor Demo',
     }),
-    new CopyPlugin({ patterns: [{ from: 'public' }] }),
+    // new CopyPlugin({ patterns: [{ from: 'public' }] }),
     // apply this plugin only to .ts files - the rest is taken care of
     new webpack.SourceMapDevToolPlugin({
-      test: /\.ts($|\?)/i
-    })
+      filename: null,
+      test: /\.ts($|\?)/i,
+    }),
   ],
   output: {
     filename: '[name].bundle.js',
-    path: outputPath
+    path: outputPath,
+  },
+  resolve: {
+    // Add `.ts` and `.tsx` as a resolvable extension.
+    extensions: ['.ts', '.tsx', '.js'],
   },
   devServer: {
-    contentBase: './dist'
+    contentBase: './dist',
   },
   module: {
     rules: [
+      {
+        test: /\.worker\.(c|m)?js$/i,
+        loader: 'worker-loader',
+        options: { filename: '[name].[contenthash].js' },
+      },
       // Handle TypeScript
       {
         test: /\.(ts?)$/,
-        use: 'ts-loader',
-        exclude: [/node_modules/]
+        use: [
+          {
+            loader: 'ts-loader',
+            // options: {
+            //   configFile: './demo-compositor/tsconfig.json',
+            // },
+          },
+        ],
+        exclude: [/node_modules/],
       },
       // Handle png images
       {
         test: /\.(png)$/,
         use: [
           {
-            loader: 'file-loader'
-          }
-        ]
+            loader: 'file-loader',
+          },
+        ],
       },
       // Handle web assembly
       {
@@ -56,28 +73,26 @@ module.exports = {
           {
             loader: 'file-loader',
             options: {
-              name: '[contenthash].wasm'
-            }
-          }
-        ]
+              name: '[contenthash].wasm',
+            },
+          },
+        ],
       },
       // Handle generic binary data files
       {
         test: /\.(data\.asset)$/i,
         use: [
           {
-            loader: 'file-loader'
-          }
-        ]
+            loader: 'file-loader',
+          },
+        ],
       },
       // Handle sources
       {
         test: /\.js$/,
         enforce: 'pre',
         use: ['source-map-loader'],
-        exclude: /node_modules/
-      }
-    ]
-  }
+      },
+    ],
+  },
 }
-

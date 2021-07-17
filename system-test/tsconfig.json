@@ -25,7 +25,6 @@
   },
   "include": [
     "src",
-    "webpack.config.ts",
     "test"
   ]
 }
