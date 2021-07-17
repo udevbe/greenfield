@@ -116,7 +116,7 @@ export class NativeClientSession {
   constructor(
     public wlClient: unknown,
     private readonly _nativeCompositorSession: NativeCompositorSession,
-    private readonly _webSocketChannel: WebSocketChannel,
+    private readonly webSocketChannel: WebSocketChannel,
     private readonly _messageInterceptor: MessageInterceptor,
     private _pendingWireMessages: Uint32Array[] = [],
     private _pendingMessageBufferSize = 0,
@@ -180,7 +180,7 @@ export class NativeClientSession {
           logger.debug('Waiting for webfd conversion to native fd...')
           fdsBuffer[i] = await this._nativeCompositorSession.appEndpointWebFS.handleWebFdURL(
             webFdURL,
-            this._webSocketChannel,
+            this.webSocketChannel,
           )
           logger.debug('...done waiting for webfd conversion to native fd.')
         }
@@ -207,8 +207,8 @@ export class NativeClientSession {
     Endpoint.getServerObjectIdsBatch(this.wlClient, idsReply.subarray(1))
     // out-of-band w. opcode 6
     idsReply[0] = 6
-    if (this._webSocketChannel.readyState === 1) {
-      this._webSocketChannel.send(idsReply.buffer)
+    if (this.webSocketChannel.readyState === 1) {
+      this.webSocketChannel.send(idsReply.buffer)
     } else {
       // web socket not open, queue up reply
       this._outboundMessages.push(idsReply.buffer)
@@ -220,7 +220,7 @@ export class NativeClientSession {
     while (this._outboundMessages.length) {
       const outboundMessage = this._outboundMessages.shift()
       if (outboundMessage) {
-        this._webSocketChannel.send(outboundMessage)
+        this.webSocketChannel.send(outboundMessage)
       }
     }
   }
@@ -314,10 +314,10 @@ export class NativeClientSession {
       offset += pendingWireMessage.length
     })
 
-    if (this._webSocketChannel.readyState === 1) {
+    if (this.webSocketChannel.readyState === 1) {
       // 1 === 'open'
       logger.debug('Client message send over websocket.')
-      this._webSocketChannel.send(sendBuffer.buffer)
+      this.webSocketChannel.send(sendBuffer.buffer)
     } else {
       // queue up data until the channel is open
       logger.debug('Client message queued because websocket is not open.')
@@ -342,7 +342,7 @@ export class NativeClientSession {
   }
 
   requestWebSocket(): void {
-    this._webSocketChannel.send(Uint32Array.from([5]).buffer)
+    this.webSocketChannel.send(Uint32Array.from([5]).buffer)
   }
 
   onMessage(event: MessageEvent): void {

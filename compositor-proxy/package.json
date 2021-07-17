@@ -16,7 +16,7 @@
     "generate:wayland": "westfield-endpoint-generator protocol/wayland.xml -o src/protocol",
     "generate": "yarn generate:config-types && mkdir -p src/protocol && yarn generate:wayland && yarn generate:xdgshell",
     "build": "cmake-js & tsc",
-    "start": "node ./dist/src/index.js"
+    "start": "COMPOSITOR_SESSION_ID=test123 ts-node ./src/index.ts"
   },
   "dependencies": {
     "ajv": "^8.6.1",
@@ -49,3 +49,4 @@
     "westfield-endpoint-generator": "^0.3.1"
   }
 }
+

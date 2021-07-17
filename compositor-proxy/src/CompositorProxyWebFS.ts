@@ -7,8 +7,11 @@ import WebsocketStream from 'websocket-stream'
 
 import WebSocket from 'ws'
 import { config } from './config'
+import { createLogger } from './Logger'
 
 import { WebSocketChannel } from './WebSocketChannel'
+
+const logger = createLogger('webfs')
 
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
@@ -73,7 +76,7 @@ export class AppEndpointWebFS {
     }
   }
 
-  private findFdTransferWebSocket(webFdURL: URL, clientWebSocketChannel: WebSocketChannel) {
+  private findFdTransferWebSocket(webFdURL: URL, clientWebSocketChannel: WebSocketChannel): WebSocket | undefined {
     if (
       webFdURL.protocol === 'compositor:' &&
       this.compositorSessionId === webFdURL.searchParams.get('compositorSessionId') &&
@@ -82,18 +85,23 @@ export class AppEndpointWebFS {
       // If the fd originated from the compositor, we can reuse the existing websocket connection to transfer the fd contents
       return clientWebSocketChannel.webSocket
     } else if (webFdURL.protocol.startsWith('ws')) {
-      // TODO currently unsupported => need this once we properly implement c/p & dnd functionality
       // fd came from another endpoint, establish a new communication channel
-      return this._createFdTransferWebSocket(webFdURL)
+      logger.info(`Establishing data transfer websocket connection to ${webFdURL.href}`)
+      const webSocket = new WebSocket(webFdURL)
+      webSocket.addEventListener('error', (event) =>
+        logger.error(`Data transfer websocket is in error. ${event.message}`),
+      )
+      return webSocket
     } else {
-      // TODO unsupported websocket url
-      // logger.error(`Unsupported websocket URL ${webFdURL.href}.`)
-      throw new Error(`Unsupported websocket URL ${webFdURL.href}.`)
+      logger.error(`Unsupported websocket URL ${webFdURL.href}.`)
     }
   }
 
   private async handleForeignWebFdURL(webFdURL: URL, clientWebSocketChannel: WebSocketChannel): Promise<number> {
     const fdTransferWebSocket = this.findFdTransferWebSocket(webFdURL, clientWebSocketChannel)
+    if (fdTransferWebSocket === undefined) {
+      return -1
+    }
 
     let localFD = -1
     const webFdType = webFdURL.searchParams.get('type')
@@ -148,10 +156,6 @@ export class AppEndpointWebFS {
     webFDTransfer(payload.subarray(bytesRead))
   }
 
-  private _createFdTransferWebSocket(webFdURL: URL): WebSocket {
-    return new WebSocket(webFdURL)
-  }
-
   serializeWebFD(fd: number, fdType: number): Uint8Array {
     let type
     switch (fdType) {
@@ -175,19 +179,15 @@ export class AppEndpointWebFS {
    * @param {ParsedUrlQuery}query
    */
   incomingDataTransfer(webSocket: WebSocket, query: { fd: number }): void {
+    logger.info('Handling incoming data transfer from: ' + webSocket.url)
     const fd = query.fd
-    // TODO do we want to do something differently based on the type?
-    // const type = query.type
-
     // Need to pass in null as path argument so it will use the fd to open the file (undocumented).
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const target = fs.createWriteStream(null, { fd })
-
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const websocketStream = new WebsocketStream(webSocket)
-
     websocketStream.pipe(target)
   }
 }

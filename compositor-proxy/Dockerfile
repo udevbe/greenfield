@@ -25,6 +25,7 @@ RUN yarn generate
 RUN yarn build
 
 ENV NODE_ENV=production
+ENV DEBUG=0
 #ENV XDG_RUNTIME_DIR /tmp
 #ENV GST_GL_WINDOW egl-device
 
