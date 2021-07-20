@@ -1,0 +1,30 @@
+version: "3.4"
+services:
+  compositor-proxy:
+    image: gcr.io/greenfield-startup-dev/compositor-proxy
+    privileged: true
+    volumes:
+      - tmp:/xdgruntimedir
+      - ${PWD}/src/config.yaml:/app/dist/config.yaml
+    ports:
+      - 8081:8081
+    environment:
+      GST_GL_WINDOW: gbm
+      XDG_RUNTIME_DIR: /xdgruntimedir
+      COMPOSITOR_SESSION_ID: test123
+      DEBUG: 1
+      GST_DEBUG: 3
+  gtk3-demo:
+    image: gcr.io/greenfield-startup-dev/gtk3-demo
+    privileged: true
+    volumes:
+      - tmp:/xdgruntimedir
+    environment:
+      XDG_RUNTIME_DIR: /xdgruntimedir
+    restart: always
+volumes:
+  tmp:
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+
