@@ -15,7 +15,7 @@
     "generate:xdgshell": "westfield-endpoint-generator protocol/xdg-shell.xml -o src/protocol",
     "generate:wayland": "westfield-endpoint-generator protocol/wayland.xml -o src/protocol",
     "generate": "yarn generate:config-types && mkdir -p src/protocol && yarn generate:wayland && yarn generate:xdgshell",
-    "build": "cmake-js & tsc",
+    "build": "cmake-js && tsc",
     "start": "COMPOSITOR_SESSION_ID=test123 ts-node ./src/index.ts"
   },
   "dependencies": {
@@ -38,7 +38,7 @@
     "@types/ws": "^7.4.6",
     "@typescript-eslint/eslint-plugin": "^4.28.3",
     "@typescript-eslint/parser": "^4.28.3",
-    "cmake-js": "^6.1.0",
+    "cmake-js": "6.1.0",
     "eslint": "^7.30.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^3.4.0",
@@ -49,4 +49,3 @@
     "westfield-endpoint-generator": "^0.3.1"
   }
 }
-
