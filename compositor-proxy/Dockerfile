@@ -25,11 +25,7 @@ RUN yarn generate
 RUN yarn build
 
 ENV NODE_ENV=production
-ENV DEBUG=0
-#ENV XDG_RUNTIME_DIR /tmp
-#ENV GST_GL_WINDOW egl-device
-
-EXPOSE 8081
-
 WORKDIR /home/node
-CMD [ "node", "/app/dist/index.js" ]
+
+RUN usermod -a -G video node
+CMD ["setpriv", "--reuid=1000", "--regid=1000", "--init-groups", "node", "/app/dist/index.js"]
