@@ -82,7 +82,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
   }
 
   private commitCache(surface: Surface) {
-    surface.pendingState = { ...this.cachedState }
+    mergeSurfaceState(surface.pendingState, this.cachedState)
     this.cachedState.damageRects = []
     this.cachedState.bufferDamageRects = []
     this.cachedState.frameCallbacks = []
