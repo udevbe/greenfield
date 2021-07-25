@@ -91,7 +91,7 @@ export function rectangles(pixmanRegion: number): Rect[] {
   // @ts-ignore
   const nroRects = new Uint32Array(lib.pixman.HEAPU8.buffer, nroRectsPtr, 1)[0]
   // @ts-ignore
-  const rectangleStructs = new Uint32Array(lib.pixman.HEAPU8.buffer, pixmanBoxPtr, 4 * nroRects)
+  const rectangleStructs = new Int32Array(lib.pixman.HEAPU8.buffer, pixmanBoxPtr, 4 * nroRects)
   for (let i = 0; i < nroRects; i++) {
     const x0 = rectangleStructs[i * 4]
     const y0 = rectangleStructs[i * 4 + 1]
