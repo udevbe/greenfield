@@ -117,7 +117,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     } else {
       const newState = this.configureState.state.slice()
       newState.push(activated)
-      this._emitConfigure(this.resource, this.configureState.width, this.configureState.height, newState, none)
+      this.emitConfigure(this.resource, this.configureState.width, this.configureState.height, newState, none)
       this.session.flush()
     }
   }
@@ -130,7 +130,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       const newState = this.configureState.state.slice()
       const idx = newState.indexOf(activated)
       newState.splice(idx, 1)
-      this._emitConfigure(this.resource, this.configureState.width, this.configureState.height, newState, none)
+      this.emitConfigure(this.resource, this.configureState.width, this.configureState.height, newState, none)
       this.userSurfaceState = { ...this.userSurfaceState, active: false }
       this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
       this.session.flush()
@@ -552,7 +552,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       }
 
       const { w: width, h: height } = sizeCalculation()
-      this._emitConfigure(resource, width, height, [activated, resizing], edges)
+      this.emitConfigure(resource, width, height, [activated, resizing], edges)
       this.session.flush()
     }
 
@@ -562,7 +562,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       pointer.enableFocus()
 
       const { w: width, h: height } = sizeCalculation()
-      this._emitConfigure(resource, width, height, [activated], none)
+      this.emitConfigure(resource, width, height, [activated], none)
       this.session.flush()
     })
 
@@ -570,7 +570,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     pointer.addMouseMoveListener(resizeListener)
   }
 
-  private _emitConfigure(
+  private emitConfigure(
     resource: XdgToplevelResource,
     width: number,
     height: number,
@@ -616,7 +616,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
           resizeEdge: 0,
         }
       } else {
-        this._emitConfigure(resource, maxWidth, maxHeight, [maximized, activated], none)
+        this.emitConfigure(resource, maxWidth, maxHeight, [maximized, activated], none)
       }
     }
   }
@@ -635,21 +635,21 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
         resizeEdge: 0,
       }
     } else if (this.configureState.state.includes(maximized) && this.previousGeometry) {
-      this._emitConfigure(resource, this.previousGeometry.width, this.previousGeometry.height, [activated], none)
+      this.emitConfigure(resource, this.previousGeometry.width, this.previousGeometry.height, [activated], none)
     } else {
-      this._emitConfigure(resource, 0, 0, [activated], none)
+      this.emitConfigure(resource, 0, 0, [activated], none)
     }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   setFullscreen(resource: XdgToplevelResource, output: WlOutputResource | undefined): void {
-    this._emitConfigure(resource, window.innerWidth, window.innerHeight, [fullscreen, activated], none)
+    this.emitConfigure(resource, window.innerWidth, window.innerHeight, [fullscreen, activated], none)
   }
 
   unsetFullscreen(resource: XdgToplevelResource): void {
     if (this.configureState.state.includes(fullscreen)) {
       if (this.unfullscreenConfigureState) {
-        this._emitConfigure(
+        this.emitConfigure(
           resource,
           this.unfullscreenConfigureState.width,
           this.unfullscreenConfigureState.height,
@@ -657,9 +657,9 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
           none,
         )
       } else if (this.previousGeometry) {
-        this._emitConfigure(resource, this.previousGeometry.width, this.previousGeometry.height, [activated], none)
+        this.emitConfigure(resource, this.previousGeometry.width, this.previousGeometry.height, [activated], none)
       } else {
-        this._emitConfigure(resource, 0, 0, [activated], none)
+        this.emitConfigure(resource, 0, 0, [activated], none)
       }
     }
   }
