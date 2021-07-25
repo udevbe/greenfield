@@ -2,6 +2,9 @@ version: "3.4"
 services:
   compositor-proxy:
     image: gcr.io/greenfield-startup-dev/compositor-proxy
+    build:
+      context: .
+      dockerfile: ./Dockerfile
     privileged: true
     volumes:
       - tmp:/xdgruntimedir
@@ -15,8 +18,9 @@ services:
       DEBUG: 1
       GST_DEBUG: 3
   gtk3-demo:
+    pid: "service:compositor-proxy"
     image: gcr.io/greenfield-startup-dev/gtk3-demo
-    privileged: true
+    privileged: false
     volumes:
       - tmp:/xdgruntimedir
     environment:
