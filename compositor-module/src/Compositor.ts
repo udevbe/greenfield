@@ -22,71 +22,63 @@ import {
   WlCompositorRequests,
   WlCompositorResource,
   WlRegionResource,
-  WlSurfaceResource
+  WlSurfaceResource,
 } from 'westfield-runtime-server'
 import Region from './Region'
 import Session from './Session'
 
 import Surface from './Surface'
 
-/**
- *
- *            A compositor.  This object is a singleton global.  The
- *            compositor is in charge of combining the contents of multiple
- *            surfaces into one displayable output.
- */
 export default class Compositor implements WlCompositorRequests {
-  private readonly _session: Session
-  private _surfaceCreationListeners: ((surface: Surface) => void)[] = []
-
-  private _global?: Global
+  private surfaceCreationListeners: ((surface: Surface) => void)[] = []
+  private global?: Global
 
   static create(session: Session): Compositor {
     return new Compositor(session)
   }
 
-  private constructor(session: Session) {
-    this._session = session
-  }
+  private constructor(private readonly session: Session) {}
 
-  registerGlobal(registry: Registry) {
-    if (this._global) {
+  registerGlobal(registry: Registry): void {
+    if (this.global) {
       return
     }
-    this._global = registry.createGlobal(this, WlCompositorResource.protocolName, 4, (client, id, version) => this.bindClient(client, id, version))
+    this.global = registry.createGlobal(this, WlCompositorResource.protocolName, 4, (client, id, version) =>
+      this.bindClient(client, id, version),
+    )
   }
 
-  unregisterGlobal() {
-    if (!this._global) {
+  unregisterGlobal(): void {
+    if (!this.global) {
       return
     }
-    this._global.destroy()
-    this._global = undefined
+    this.global.destroy()
+    this.global = undefined
   }
 
-  bindClient(client: Client, id: number, version: number) {
+  bindClient(client: Client, id: number, version: number): void {
     const wlCompositorResource = new WlCompositorResource(client, id, version)
     wlCompositorResource.implementation = this
   }
 
-  async createSurface(resource: WlCompositorResource, id: number) {
+  async createSurface(resource: WlCompositorResource, id: number): Promise<void> {
     const wlSurfaceResource = new WlSurfaceResource(resource.client, id, resource.version)
-    const surface = Surface.create(wlSurfaceResource, this._session)
-    for (const surfaceCreationListener of this._surfaceCreationListeners) {
+    const surface = Surface.create(wlSurfaceResource, this.session)
+    for (const surfaceCreationListener of this.surfaceCreationListeners) {
       await surfaceCreationListener(surface)
     }
   }
 
-  createRegion(resource: WlCompositorResource, id: number) {
+  createRegion(resource: WlCompositorResource, id: number): void {
     const wlRegionResource = new WlRegionResource(resource.client, id, resource.version)
     Region.create(wlRegionResource)
   }
 
-  removeSurfaceCreationListener(listener: (surface: Surface) => void) {
-    this._surfaceCreationListeners = this._surfaceCreationListeners.filter(value => value !== listener)
+  removeSurfaceCreationListener(listener: (surface: Surface) => void): void {
+    this.surfaceCreationListeners = this.surfaceCreationListeners.filter((value) => value !== listener)
   }
 
-  addSurfaceCreationListener(listener: (surface: Surface) => void) {
-    this._surfaceCreationListeners = [...this._surfaceCreationListeners, listener]
+  addSurfaceCreationListener(listener: (surface: Surface) => void): void {
+    this.surfaceCreationListeners = [...this.surfaceCreationListeners, listener]
   }
 }

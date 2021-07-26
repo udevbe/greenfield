@@ -19,14 +19,14 @@ import { Fixed } from 'westfield-runtime-common'
 
 import {
   Client,
+  WlDataDeviceError,
   WlDataDeviceManagerDndAction,
   WlDataDeviceRequests,
   WlDataDeviceResource,
-  WlDataDeviceError,
   WlDataOfferResource,
-  WlDataSourceResource,
   WlDataSourceError,
-  WlSurfaceResource
+  WlDataSourceResource,
+  WlSurfaceResource,
 } from 'westfield-runtime-server'
 import DataOffer from './DataOffer'
 import DataSource from './DataSource'
@@ -54,30 +54,30 @@ export default class DataDevice implements WlDataDeviceRequests {
   selectionSource?: WlDataSourceResource
   dndFocus?: View
   dndSourceClient?: Client
-  private _selectionFocus?: Surface
-  private readonly _dndSourceDestroyListener: () => void
-  private readonly _selectionSourceDestroyListener: () => void
+  private selectionFocus?: Surface
+  private readonly dndSourceDestroyListener: () => void
+  private readonly selectionSourceDestroyListener: () => void
 
   static create(): DataDevice {
     return new DataDevice()
   }
 
   private constructor() {
-    this._dndSourceDestroyListener = () => {
-      this._handleDndSourceDestroy()
+    this.dndSourceDestroyListener = () => {
+      this.handleDndSourceDestroy()
     }
-    this._selectionSourceDestroyListener = () => {
-      this._handleSelectionSourceDestroy()
+    this.selectionSourceDestroyListener = () => {
+      this.handleSelectionSourceDestroy()
     }
   }
 
-  private _dataDeviceForClient(client: Client): WlDataDeviceResource | undefined {
-    return this.resources.find(dataDeviceResource => dataDeviceResource.client === client)
+  private dataDeviceForClient(client: Client): WlDataDeviceResource | undefined {
+    return this.resources.find((dataDeviceResource) => dataDeviceResource.client === client)
   }
 
-  private _handleDndSourceDestroy() {
+  private handleDndSourceDestroy() {
     if (this.dndSourceClient) {
-      const dataDeviceResource = this._dataDeviceForClient(this.dndSourceClient)
+      const dataDeviceResource = this.dataDeviceForClient(this.dndSourceClient)
       if (dataDeviceResource === undefined) {
         return
       }
@@ -86,15 +86,14 @@ export default class DataDevice implements WlDataDeviceRequests {
     }
   }
 
-  private _handleSelectionSourceDestroy() {
-    if (this._selectionFocus === undefined) {
+  private handleSelectionSourceDestroy() {
+    if (this.selectionFocus === undefined) {
       return
     }
 
-    const surfaceResource = this._selectionFocus.resource
-    const client = surfaceResource.client
+    const client = this.selectionFocus.resource.client
 
-    const dataDeviceResource = this._dataDeviceForClient(client)
+    const dataDeviceResource = this.dataDeviceForClient(client)
     if (dataDeviceResource === undefined) {
       return
     }
@@ -103,7 +102,13 @@ export default class DataDevice implements WlDataDeviceRequests {
     this.selectionSource = undefined
   }
 
-  startDrag(resource: WlDataDeviceResource, source: WlDataSourceResource | undefined, origin: WlSurfaceResource, icon: WlSurfaceResource | undefined, serial: number) {
+  startDrag(
+    resource: WlDataDeviceResource,
+    source: WlDataSourceResource | undefined,
+    origin: WlSurfaceResource,
+    icon: WlSurfaceResource | undefined,
+    serial: number,
+  ): void {
     if (icon && (icon.implementation as Surface).role) {
       resource.postError(WlDataDeviceError.role, 'Given surface has another role.')
       console.log('[client-protocol-error] - Given surface has another role.')
@@ -133,23 +138,23 @@ export default class DataDevice implements WlDataDeviceRequests {
      * For objects of version 2 or older, wl_data_source.cancelled will only be emitted if the data source was
      * replaced by another data source.
      */
-    this.dndSource?.removeDestroyListener(this._dndSourceDestroyListener)
+    this.dndSource?.removeDestroyListener(this.dndSourceDestroyListener)
 
     this.dndSource = source
-    this.dndSource?.addDestroyListener(this._dndSourceDestroyListener)
+    this.dndSource?.addDestroyListener(this.dndSourceDestroyListener)
 
     if (dndFocus) {
-      this._onFocusGained(dndFocus)
+      this.onFocusGained(dndFocus)
     }
   }
 
-  onMouseMotion(focus: View | undefined) {
+  onMouseMotion(focus: View | undefined): void {
     if (this.dndFocus !== focus) {
       if (this.dndFocus) {
-        this._onFocusLost()
+        this.onFocusLost()
       }
       if (focus) {
-        this._onFocusGained(focus)
+        this.onFocusGained(focus)
       }
     }
 
@@ -158,8 +163,7 @@ export default class DataDevice implements WlDataDeviceRequests {
       return
     }
 
-    const surfaceResource = this.dndFocus.surface.resource
-    const client = surfaceResource.client
+    const client = this.dndFocus.surface.resource.client
 
     // if source is null, only transfers within the same client can take place
     if (this.dndSource === undefined && client !== this.dndSourceClient) {
@@ -170,14 +174,16 @@ export default class DataDevice implements WlDataDeviceRequests {
     const mousePoint = Point.create(pointer.x, pointer.y)
     const surfacePoint = this.dndFocus.toSurfaceSpace(mousePoint)
 
-    this.resources.filter((dataDeviceResource) => {
-      return dataDeviceResource.client === client
-    }).forEach((dataDeviceResource) => {
-      dataDeviceResource.motion(Date.now(), Fixed.parse(surfacePoint.x), Fixed.parse(surfacePoint.y))
-    })
+    this.resources
+      .filter((dataDeviceResource) => {
+        return dataDeviceResource.client === client
+      })
+      .forEach((dataDeviceResource) => {
+        dataDeviceResource.motion(Date.now(), Fixed.parse(surfacePoint.x), Fixed.parse(surfacePoint.y))
+      })
   }
 
-  private _onFocusGained(view: View) {
+  private onFocusGained(view: View): void {
     this.dndFocus = view
     if (!this.dndSourceClient) {
       return
@@ -199,7 +205,7 @@ export default class DataDevice implements WlDataDeviceRequests {
     const x = Fixed.parse(surfacePoint.x)
     const y = Fixed.parse(surfacePoint.y)
 
-    const dataDeviceResource = this._dataDeviceForClient(client)
+    const dataDeviceResource = this.dataDeviceForClient(client)
     if (dataDeviceResource === undefined) {
       // target doesn't support dnd
       return
@@ -207,9 +213,9 @@ export default class DataDevice implements WlDataDeviceRequests {
 
     let wlDataOffer: WlDataOfferResource | undefined = undefined
     if (this.dndSource) {
-      wlDataOffer = this._createDataOffer(this.dndSource, dataDeviceResource);
-      (wlDataOffer.implementation as DataOffer).updateAction();
-      (this.dndSource.implementation as DataSource).accepted = false
+      wlDataOffer = this.createDataOffer(this.dndSource, dataDeviceResource)
+      ;(wlDataOffer.implementation as DataOffer).updateAction()
+      ;(this.dndSource.implementation as DataSource).accepted = false
     }
     dataDeviceResource.enter(serial, surfaceResource, x, y, wlDataOffer)
 
@@ -222,31 +228,29 @@ export default class DataDevice implements WlDataDeviceRequests {
     }
   }
 
-  private _onFocusLost() {
+  private onFocusLost(): void {
     if (!this.dndSourceClient || this.dndFocus === undefined) {
       return
     }
 
-    const surfaceResource = this.dndFocus.surface.resource
-    const client = surfaceResource.client
+    const client = this.dndFocus.surface.resource.client
 
     // if source is null, only transfers within the same client can take place
     if (this.dndSource === undefined && client !== this.dndSourceClient) {
       return
     }
 
-    const dataDeviceResource = this._dataDeviceForClient(client)
+    const dataDeviceResource = this.dataDeviceForClient(client)
     if (dataDeviceResource) {
       dataDeviceResource.leave()
     }
     this.dndFocus = undefined
   }
 
-  onMouseUp() {
+  onMouseUp(): void {
     if (this.dndSource && this.dndFocus) {
-      const surfaceResource = this.dndFocus.surface.resource
-      const client = surfaceResource.client
-      const dataDeviceResource = this._dataDeviceForClient(client)
+      const client = this.dndFocus.surface.resource.client
+      const dataDeviceResource = this.dataDeviceForClient(client)
 
       if (dataDeviceResource) {
         const dataSource = this.dndSource.implementation as DataSource
@@ -283,16 +287,19 @@ export default class DataDevice implements WlDataDeviceRequests {
 
   // TODO handle touch events
 
-  private _createDataOffer(source: WlDataSourceResource, dataDeviceResource: WlDataDeviceResource): WlDataOfferResource {
-    const offerId = /** @type {number} */dataDeviceResource.dataOffer()
+  private createDataOffer(
+    source: WlDataSourceResource,
+    dataDeviceResource: WlDataDeviceResource,
+  ): WlDataOfferResource {
+    const offerId = /** @type {number} */ dataDeviceResource.dataOffer()
     const dataOffer = DataOffer.create(source, offerId, dataDeviceResource)
     const dataSource = source.implementation as DataSource
     dataSource.wlDataOffer = dataOffer.resource
-    dataSource.mimeTypes.forEach(mimeType => dataOffer.resource.offer(mimeType))
+    dataSource.mimeTypes.forEach((mimeType) => dataOffer.resource.offer(mimeType))
     return dataOffer.resource
   }
 
-  setSelection(resource: WlDataDeviceResource, source: WlDataSourceResource | undefined, serial: number) {
+  setSelection(resource: WlDataDeviceResource, source: WlDataSourceResource | undefined, serial: number): void {
     // if (!this.seat.isValidInputSerial(serial)) {
     //   console.log('Invalid selection serial. Ignoring request.')
     //   return
@@ -309,7 +316,7 @@ export default class DataDevice implements WlDataDeviceRequests {
     }
 
     if (this.selectionSource) {
-      this.selectionSource.removeDestroyListener(this._selectionSourceDestroyListener)
+      this.selectionSource.removeDestroyListener(this.selectionSourceDestroyListener)
       if (this.selectionSource.client !== resource.client) {
         this.selectionSource.cancelled()
       }
@@ -317,22 +324,21 @@ export default class DataDevice implements WlDataDeviceRequests {
 
     this.selectionSource = source
     if (this.selectionSource) {
-      this.selectionSource.addDestroyListener(this._selectionSourceDestroyListener)
+      this.selectionSource.addDestroyListener(this.selectionSourceDestroyListener)
     }
 
     // send out selection if there is a keyboard focus
-    if (this._selectionFocus) {
-      this.onKeyboardFocusGained(this._selectionFocus)
+    if (this.selectionFocus) {
+      this.onKeyboardFocusGained(this.selectionFocus)
     }
   }
 
-  onKeyboardFocusGained(newSelectionFocus: Surface) {
-    this._selectionFocus = newSelectionFocus
+  onKeyboardFocusGained(newSelectionFocus: Surface): void {
+    this.selectionFocus = newSelectionFocus
 
-    const surfaceResource = this._selectionFocus.resource
-    const client = surfaceResource.client
+    const client = this.selectionFocus.resource.client
 
-    const dataDeviceResource = this._dataDeviceForClient(client)
+    const dataDeviceResource = this.dataDeviceForClient(client)
     if (dataDeviceResource == null) {
       return
     }
@@ -340,19 +346,19 @@ export default class DataDevice implements WlDataDeviceRequests {
     if (this.selectionSource === undefined) {
       dataDeviceResource.selection(undefined)
     } else {
-      const wlDataOffer = this._createDataOffer(this.selectionSource, dataDeviceResource)
+      const wlDataOffer = this.createDataOffer(this.selectionSource, dataDeviceResource)
 
       this.selectionSource.action(0)
       wlDataOffer.action(0)
 
-      dataDeviceResource.selection(wlDataOffer);
-      (this.selectionSource.implementation as DataSource).wlDataOffer = wlDataOffer
+      dataDeviceResource.selection(wlDataOffer)
+      ;(this.selectionSource.implementation as DataSource).wlDataOffer = wlDataOffer
     }
   }
 
-  release(resource: WlDataDeviceResource) {
+  release(resource: WlDataDeviceResource): void {
     if (this.dndSource) {
-      this.dndSource.removeDestroyListener(this._dndSourceDestroyListener)
+      this.dndSource.removeDestroyListener(this.dndSourceDestroyListener)
     }
 
     const index = this.resources.indexOf(resource)

@@ -15,18 +15,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import BufferContents from "../BufferContents";
+import BufferContents from '../BufferContents'
 import Size from '../Size'
 import EncodedFrameFragment from './EncodedFrameFragment'
-import EncodingTypes, {EncodingMimeTypes} from './EncodingMimeTypes'
+import EncodingTypes, { EncodingMimeTypes } from './EncodingMimeTypes'
 
 export default class EncodedFrame implements BufferContents<EncodedFrameFragment[]> {
-  readonly serial: number;
-  readonly mimeType: EncodingMimeTypes[keyof EncodingMimeTypes];
-  readonly encodingOptions: number;
-  readonly size: Size;
-  readonly pixelContent: EncodedFrameFragment[];
-
   static create(u8Buffer: Uint8Array): EncodedFrame {
     const dataView = new DataView(u8Buffer.buffer, u8Buffer.byteOffset)
     let offset = 0
@@ -34,7 +28,7 @@ export default class EncodedFrame implements BufferContents<EncodedFrameFragment
     const serial = dataView.getUint32(offset, true)
     offset += 4
 
-    const encodingTypeCode = dataView.getUint16(offset, true);
+    const encodingTypeCode = dataView.getUint16(offset, true)
     if (encodingTypeCode !== 0 && encodingTypeCode !== 1) {
       throw new Error(`Received invalid encoding type, code = ${encodingTypeCode}`)
     }
@@ -72,16 +66,18 @@ export default class EncodedFrame implements BufferContents<EncodedFrameFragment
       const alpha = new Uint8Array(u8Buffer.buffer, u8Buffer.byteOffset + offset, alphaLength)
       offset += alphaLength
 
-      encodedFragments.push(EncodedFrameFragment.create(encodingType, fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha))
+      encodedFragments.push(
+        EncodedFrameFragment.create(encodingType, fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha),
+      )
     }
     return new EncodedFrame(serial, encodingType, encodingOptions, Size.create(width, height), encodedFragments)
   }
 
-  constructor(serial: number, mimeType: EncodingMimeTypes[keyof EncodingMimeTypes], encodingOptions: number, size: Size, fragments: EncodedFrameFragment[]) {
-    this.serial = serial
-    this.mimeType = mimeType
-    this.encodingOptions = encodingOptions
-    this.size = size
-    this.pixelContent = fragments
-  }
+  constructor(
+    public readonly serial: number,
+    public readonly mimeType: EncodingMimeTypes[keyof EncodingMimeTypes],
+    public readonly encodingOptions: number,
+    public readonly size: Size,
+    public readonly pixelContent: EncodedFrameFragment[],
+  ) {}
 }

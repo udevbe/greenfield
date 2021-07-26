@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { WlSurfaceResource } from 'westfield-runtime-server'
+import { Display, WlSurfaceResource } from 'westfield-runtime-server'
 import {
   AxisEvent,
   ButtonEvent,
@@ -23,7 +23,7 @@ import {
   CompositorConfiguration,
   CompositorSurface,
   CompositorSurfaceState,
-  KeyEvent
+  KeyEvent,
 } from './index'
 import Session from './Session'
 import Surface from './Surface'
@@ -49,19 +49,20 @@ export interface UserShellApiInputActions {
   axis(axisEvent: AxisEvent): void
 
   key(keyEvent: KeyEvent): void
+
+  blur(): void
 }
 
 export interface UserShellApiActions {
   input: UserShellApiInputActions
 
+  requestActive(compositorSurface: CompositorSurface): void
+
   initScene(sceneId: string, canvas: HTMLCanvasElement): void
 
   refreshScene(sceneId: string): Promise<void>
 
-  setSceneConfiguration(
-    sceneId: string,
-    sceneConfig: { width: number; height: number }
-  ): void
+  setSceneConfiguration(sceneId: string, sceneConfig: { width: number; height: number }): void
 
   destroyScene(sceneId: string): void
 
@@ -75,6 +76,20 @@ export interface UserShellApiActions {
 export interface UserShellApi {
   events: UserShellApiEvents
   actions: UserShellApiActions
+}
+
+function performSurfaceAction<T>(
+  display: Display,
+  compositorSurface: CompositorSurface,
+  surfaceAction: (surface: Surface) => T,
+): T | undefined {
+  const compositorSurfaceId = parseInt(compositorSurface.id)
+  const wlSurfaceResource = display.clients[compositorSurface.clientId].connection.wlObjects[compositorSurfaceId]
+  if (wlSurfaceResource && wlSurfaceResource instanceof WlSurfaceResource) {
+    return surfaceAction(wlSurfaceResource.implementation as Surface)
+  } else {
+    throw new Error('BUG. Compositor surface does not resolve to a valid surface.')
+  }
 }
 
 export function createUserShellApi(session: Session): UserShellApi {
@@ -101,20 +116,25 @@ export function createUserShellApi(session: Session): UserShellApi {
         key: (keyEvent) => {
           session.globals.seat.keyboard.handleKey(keyEvent)
           session.flush()
-        }
+        },
+        blur: () => {
+          session.globals.seat.keyboard.focusLost()
+          session.globals.seat.pointer.unsetFocus()
+        },
       },
       initScene: (sceneId, canvas) => session.renderer.initScene(sceneId, canvas),
-      refreshScene: sceneId => {
+      refreshScene: (sceneId) => {
         session.renderer.scenes[sceneId].prepareAllViewRenderState()
         return session.renderer.scenes[sceneId].render()
       },
       setSceneConfiguration: (sceneId, sceneConfig) => {
         session.renderer.scenes[sceneId].updateResolution(sceneConfig.width, sceneConfig.height)
       },
-      destroyScene: sceneId => session.renderer.scenes[sceneId].destroy(),
+      destroyScene: (sceneId) => session.renderer.scenes[sceneId].destroy(),
       createView: (compositorSurface, sceneId) => {
         const compositorSurfaceId = parseInt(compositorSurface.id)
-        const wlSurfaceResource = session.display.clients[compositorSurface.clientId].connection.wlObjects[compositorSurfaceId]
+        const wlSurfaceResource =
+          session.display.clients[compositorSurface.clientId].connection.wlObjects[compositorSurfaceId]
         if (wlSurfaceResource && wlSurfaceResource instanceof WlSurfaceResource) {
           const surface = wlSurfaceResource.implementation as Surface
           surface.createTopLevelView(session.renderer.scenes[sceneId])
@@ -122,30 +142,38 @@ export function createUserShellApi(session: Session): UserShellApi {
           throw new Error('BUG. Compositor surface does not resolve to a valid surface.')
         }
       },
-      setUserConfiguration: userConfiguration => {
+      setUserConfiguration: (userConfiguration) => {
         const { pointer, keyboard } = session.globals.seat
-        pointer.scrollFactor = userConfiguration.scrollFactor ?? 1
+        pointer.scrollFactor = userConfiguration.scrollFactor ?? pointer.scrollFactor
         if (userConfiguration.keyboardLayoutName) {
-          const foundNrmlvo = keyboard.nrmlvoEntries.find(nrmlvo => nrmlvo.name === userConfiguration.keyboardLayoutName)
+          const foundNrmlvo = keyboard.nrmlvoEntries.find(
+            (nrmlvo) => nrmlvo.name === userConfiguration.keyboardLayoutName,
+          )
           if (foundNrmlvo) {
             keyboard.updateKeymapFromNames(foundNrmlvo)
           }
-        } else {
-          keyboard.updateKeymapFromNames(keyboard.defaultNrmlvo)
         }
       },
-      closeClient: applicationClient => session.display.clients[applicationClient.id].close()
-    }
+      closeClient: (applicationClient) => session.display.clients[applicationClient.id].close(),
+      requestActive: (compositorSurface) =>
+        performSurfaceAction(session.display, compositorSurface, (surface) => {
+          if (isUserShellSurface(surface)) {
+            makeSurfaceActive(surface)
+          } else {
+            throw new Error('BUG. Surface does not have the UserShellSurface role.')
+          }
+        }),
+    },
   }
 }
 
 let activeHistory: (Surface & { role: UserShellSurfaceRole })[] = []
 
-export function isUserShellSurface(surface: Surface): surface is (Surface & { role: UserShellSurfaceRole }) {
+export function isUserShellSurface(surface: Surface): surface is Surface & { role: UserShellSurfaceRole } {
   return isUserShellSurfaceRole(surface?.role)
 }
 
-export function makeSurfaceActive(surface: (Surface & { role: UserShellSurfaceRole })) {
+export function makeSurfaceActive(surface: Surface & { role: UserShellSurfaceRole }): void {
   const lastActive = activeHistory[activeHistory.length - 1]
 
   if (lastActive && lastActive === surface) {
@@ -155,10 +183,10 @@ export function makeSurfaceActive(surface: (Surface & { role: UserShellSurfaceRo
   if (!activeHistory.includes(surface)) {
     surface.resource.onDestroy().then(() => {
       const activeDestroyed = activeHistory[activeHistory.length - 1] === surface
-      activeHistory = activeHistory.filter(historySurface => historySurface !== surface)
+      activeHistory = activeHistory.filter((historySurface) => historySurface !== surface)
       const newActiveSurface = activeHistory[activeHistory.length - 1]
       if (activeDestroyed) {
-        surface.resource.client.connection.addIdleHandler(() => {
+        setTimeout(() => {
           if (newActiveSurface === activeHistory[activeHistory.length - 1]) {
             newActiveSurface?.role.requestActive()
           }
@@ -170,5 +198,5 @@ export function makeSurfaceActive(surface: (Surface & { role: UserShellSurfaceRo
   lastActive?.role.notifyInactive()
   activeHistory.push(surface)
   surface.role.requestActive()
-  new Set(surface.views.map(view => view.scene)).forEach(scene => scene.raiseSurface(surface))
+  new Set(surface.views.map((view) => view.scene)).forEach((scene) => scene.raiseSurface(surface))
 }

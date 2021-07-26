@@ -15,13 +15,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-export type EncodingMimeTypes = { 0: 'video/h264'; 1: 'image/png'; }
+export type EncodingMimeTypes = { 0: 'video/h264'; 1: 'image/png' }
 
 const encodingMimeTypes: EncodingMimeTypes = {
   0: 'video/h264',
-  1: 'image/png'
-}
+  1: 'image/png',
+} as const
 
 export default encodingMimeTypes
-
-

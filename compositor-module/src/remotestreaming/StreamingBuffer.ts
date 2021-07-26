@@ -33,10 +33,6 @@ const frameDecoder = FrameDecoder.create()
  *            updates the contents is defined by the buffer factory interface.
  */
 export default class StreamingBuffer implements BufferImplementation<Promise<DecodedFrame | undefined>> {
-  readonly resource: WlBufferResource
-  readonly bufferStream: BufferStream
-  released: boolean = false
-
   static create(wlBufferResource: WlBufferResource): StreamingBuffer {
     const bufferStream = BufferStream.create(wlBufferResource)
     const buffer = new StreamingBuffer(wlBufferResource, bufferStream)
@@ -44,12 +40,13 @@ export default class StreamingBuffer implements BufferImplementation<Promise<Dec
     return buffer
   }
 
-  private constructor(wlBufferResource: WlBufferResource, bufferStream: BufferStream) {
-    this.resource = wlBufferResource
-    this.bufferStream = bufferStream
-  }
+  private constructor(
+    public readonly resource: WlBufferResource,
+    public readonly bufferStream: BufferStream,
+    public released = false,
+  ) {}
 
-  destroy(resource: WlBufferResource) {
+  destroy(resource: WlBufferResource): void {
     this.bufferStream.destroy()
     resource.destroy()
   }
@@ -59,7 +56,7 @@ export default class StreamingBuffer implements BufferImplementation<Promise<Dec
     return encodedFrame ? frameDecoder.decode(surface, encodedFrame) : undefined
   }
 
-  release() {
+  release(): void {
     if (this.released) {
       throw new Error('double release')
     }

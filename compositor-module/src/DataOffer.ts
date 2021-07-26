@@ -22,31 +22,27 @@ import {
   WlDataOfferRequests,
   WlDataOfferResource,
   WlDataOfferError,
-  WlDataSourceResource
+  WlDataSourceResource,
 } from 'westfield-runtime-server'
 import DataSource from './DataSource'
 
-const { copy, move, ask, none } = WlDataDeviceManagerDndAction
-const ALL_ACTIONS = (copy | move | ask)
+function bitCount(u: number): number {
+  // https://blogs.msdn.microsoft.com/jeuge/2005/06/08/bit-fiddling-3/
+  const uCount = u - ((u >> 1) & 0o33333333333) - ((u >> 2) & 0o11111111111)
+  return ((uCount + (uCount >> 3)) & 0o30707070707) % 63
+}
 
-/**
- *
- *            A wl_data_offer represents a piece of data offered for transfer
- *            by another client (the source client).  It is used by the
- *            copy-and-paste and drag-and-drop mechanisms.  The offer
- *            describes the different mime types that the data can be
- *            converted to and provides the mechanism for transferring the
- *            data directly from the source client.
- */
+const { copy, move, ask, none } = WlDataDeviceManagerDndAction
+const ALL_ACTIONS = copy | move | ask
+
 export default class DataOffer implements WlDataOfferRequests {
   // @ts-ignore set in static create method
   resource: WlDataOfferResource
   acceptMimeType?: string
-  preferredAction: number = 0
+  preferredAction = 0
   dndActions: WlDataDeviceManagerDndAction = none
-  wlDataSource: WlDataSourceResource
-  inAsk: boolean = false
-  private readonly _finished: boolean = false
+  inAsk = false
+  private finished = false
 
   static create(source: WlDataSourceResource, offerId: number, dataDeviceResource: WlDataDeviceResource): DataOffer {
     const dataOffer = new DataOffer(source)
@@ -58,11 +54,7 @@ export default class DataOffer implements WlDataOfferRequests {
     return dataOffer
   }
 
-  private constructor(source: WlDataSourceResource) {
-    this.wlDataSource = source
-    this._finished = false
-    this.inAsk = false
-  }
+  private constructor(public wlDataSource: WlDataSourceResource) {}
 
   private _handleDestroy() {
     if (!this.wlDataSource) {
@@ -74,7 +66,7 @@ export default class DataOffer implements WlDataOfferRequests {
     // wl_list_remove(&offer->source_destroy_listener.link);
 
     const dataSoure = this.wlDataSource.implementation as DataSource | undefined
-    if (dataSoure === undefined || !(dataSoure instanceof DataSource)) {
+    if (dataSoure === undefined) {
       throw new Error('BUG. data source resource must have data source implementation set.')
     }
     if (dataSoure.wlDataOffer !== this.resource) {
@@ -87,15 +79,14 @@ export default class DataOffer implements WlDataOfferRequests {
      */
     if (this.resource.version < 3) {
       dataSoure.notifyFinish()
-    } else if (this.wlDataSource &&
-      this.wlDataSource.version >= 3) {
+    } else if (this.wlDataSource && this.wlDataSource.version >= 3) {
       this.wlDataSource.cancelled()
     }
 
     dataSoure.wlDataOffer = undefined
   }
 
-  accept(resource: WlDataOfferResource, serial: number, mimeType: string | undefined) {
+  accept(resource: WlDataOfferResource, serial: number, mimeType: string | undefined): void {
     if (this.wlDataSource === undefined) {
       return
     }
@@ -104,7 +95,7 @@ export default class DataOffer implements WlDataOfferRequests {
       return
     }
 
-    if (this._finished) {
+    if (this.finished) {
       // TODO raise protocol error
     }
 
@@ -113,8 +104,8 @@ export default class DataOffer implements WlDataOfferRequests {
     dataSource.accepted = mimeType !== null
   }
 
-  receive(resource: WlDataOfferResource, mimeType: string, fd: WebFD) {
-    if (this._finished) {
+  receive(resource: WlDataOfferResource, mimeType: string, fd: WebFD): void {
+    if (this.finished) {
       // TODO raise protocol error
     }
     if (this.wlDataSource) {
@@ -122,15 +113,15 @@ export default class DataOffer implements WlDataOfferRequests {
     }
   }
 
-  destroy(resource: WlDataOfferResource) {
+  destroy(resource: WlDataOfferResource): void {
     resource.destroy()
   }
 
-  finish(resource: WlDataOfferResource) {
+  finish(resource: WlDataOfferResource): void {
     if (!this.wlDataSource || !this.preferredAction) {
       return
     }
-    if (!this.acceptMimeType || this._finished) {
+    if (!this.acceptMimeType || this.finished) {
       return
     }
 
@@ -155,17 +146,11 @@ export default class DataOffer implements WlDataOfferRequests {
     dataSource.notifyFinish()
   }
 
-  private _bitCount(u: number): number {
-    // https://blogs.msdn.microsoft.com/jeuge/2005/06/08/bit-fiddling-3/
-    const uCount = u - ((u >> 1) & 0o33333333333) - ((u >> 2) & 0o11111111111)
-    return ((uCount + (uCount >> 3)) & 0o30707070707) % 63
-  }
-
-  setActions(resource: WlDataOfferResource, dndActions: number, preferredAction: number) {
+  setActions(resource: WlDataOfferResource, dndActions: number, preferredAction: number): void {
     if (!this.wlDataSource) {
       return
     }
-    if (this._finished) {
+    if (this.finished) {
       // TODO raise protocol error
     }
 
@@ -175,9 +160,7 @@ export default class DataOffer implements WlDataOfferRequests {
       return
     }
 
-    if (preferredAction &&
-      (!(preferredAction & dndActions) ||
-        this._bitCount(preferredAction) > 1)) {
+    if (preferredAction && (!(preferredAction & dndActions) || bitCount(preferredAction) > 1)) {
       resource.postError(WlDataOfferError.invalidAction, `invalid action ${preferredAction}`)
       console.log('[client protocol error] - invalid data offer action')
       return
@@ -188,12 +171,12 @@ export default class DataOffer implements WlDataOfferRequests {
     this.updateAction()
   }
 
-  updateAction() {
+  updateAction(): void {
     if (!this.wlDataSource) {
       return
     }
 
-    const action = this._chooseAction()
+    const action = this.chooseAction()
 
     const dataSource = this.wlDataSource.implementation as DataSource
     if (dataSource.currentDndAction === action) {
@@ -215,8 +198,8 @@ export default class DataOffer implements WlDataOfferRequests {
     }
   }
 
-  private _chooseAction() {
-    let offerActions = none
+  private chooseAction() {
+    let offerActions: WlDataDeviceManagerDndAction
     let preferredAction = none
     if (this.resource.version >= 3) {
       offerActions = this.dndActions
@@ -225,7 +208,7 @@ export default class DataOffer implements WlDataOfferRequests {
       offerActions = copy
     }
 
-    let sourceActions = none
+    let sourceActions: WlDataDeviceManagerDndAction
     if (this.wlDataSource.version >= 3) {
       const dataSource = this.wlDataSource.implementation as DataSource
       sourceActions = dataSource.dndActions

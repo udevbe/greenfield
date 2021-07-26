@@ -1,0 +1,48 @@
+{
+  "name": "compositor-demo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "webpack serve",
+    "prebuild": "rimraf dist",
+    "build": "webpack",
+    "test": "jest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "greenfield-compositor": "link:../compositor-module",
+    "source-map-loader": "^3.0.0"
+  },
+  "devDependencies": {
+    "@jest/types": "^27.0.6",
+    "@types/copy-webpack-plugin": "^8.0.1",
+    "@types/expect-puppeteer": "^4.4.6",
+    "@types/html-webpack-plugin": "^3.2.6",
+    "@types/jest": "^26.0.24",
+    "@types/jest-environment-puppeteer": "^4.4.1",
+    "@types/node": "^16.3.1",
+    "@types/puppeteer": "^5.4.4",
+    "@types/webpack-dev-server": "^3.11.5",
+    "clean-webpack-plugin": "^4.0.0-alpha.0",
+    "copy-webpack-plugin": "^9.0.1",
+    "file-loader": "^6.2.0",
+    "html-webpack-plugin": "^5.3.2",
+    "jest": "^27.0.6",
+    "jest-puppeteer": "^5.0.4",
+    "mkdirp": "^1.0.4",
+    "puppeteer": "^10.1.0",
+    "rimraf": "^3.0.2",
+    "ts-jest": "^27.0.3",
+    "ts-loader": "9.2.3",
+    "ts-node": "^10.1.0",
+    "typescript": "^4.3.5",
+    "webpack": "^5.44.0",
+    "webpack-cli": "^4.7.2",
+    "webpack-dev-server": "^3.11.2",
+    "westfield-runtime-client": "^0.4.4",
+    "worker-loader": "^3.0.8"
+  }
+}

@@ -19,20 +19,16 @@ import { Client } from 'westfield-runtime-server'
 import { CompositorWebAppLauncher } from './index'
 import WebAppSocket from './WebAppSocket'
 
-export default class WebAppLauncher implements CompositorWebAppLauncher{
-  private readonly _webAppSocket: WebAppSocket
-
-  static create(webAppSocket: WebAppSocket) {
+export default class WebAppLauncher implements CompositorWebAppLauncher {
+  static create(webAppSocket: WebAppSocket): WebAppLauncher {
     return new WebAppLauncher(webAppSocket)
   }
 
-  private constructor(webAppSocket: WebAppSocket) {
-    this._webAppSocket = webAppSocket
-  }
+  private constructor(private readonly webAppSocket: WebAppSocket) {}
 
   launchBlob(blob: Blob): Client {
     const worker = new Worker(URL.createObjectURL(blob))
-    const client = this._webAppSocket.onWebAppWorker(worker)
+    const client = this.webAppSocket.onWebAppWorker(worker)
     client.onClose().then(() => worker.terminate())
     return client
   }
@@ -40,7 +36,7 @@ export default class WebAppLauncher implements CompositorWebAppLauncher{
   launch(webAppURL: URL): Promise<Client> {
     // TODO store web apps locally so they can be used offline and/or faster
     // TODO alternatively web apps could be served through web-sockets and avoid the same origin policy.
-    return new Promise(resolve => {
+    return new Promise<Client>((resolve) => {
       // TODO use fetch api
       const xhr = new XMLHttpRequest()
 

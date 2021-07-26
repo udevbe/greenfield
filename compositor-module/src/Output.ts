@@ -23,22 +23,12 @@ import {
   WlOutputResource,
   WlOutputMode,
   WlOutputSubpixel,
-  WlOutputTransform
+  WlOutputTransform,
 } from 'westfield-runtime-server'
 
 import { capabilities } from './browser/capabilities'
 
-/**
- *
- *            An output describes part of the compositor geometry.  The
- *            compositor works in the 'compositor coordinate system' and an
- *            output corresponds to a rectangular area in that space that is
- *            actually visible.  This typically corresponds to a monitor that
- *            displays part of the compositor space.  This object is published
- *            as global during start up, or when a monitor is hotplugged.
- */
 export default class Output implements WlOutputRequests {
-  readonly canvas: HTMLCanvasElement | OffscreenCanvas
   private _global?: Global
   resources: WlOutputResource[] = []
 
@@ -46,11 +36,9 @@ export default class Output implements WlOutputRequests {
     return new Output(canvas)
   }
 
-  private constructor(canvas: HTMLCanvasElement | OffscreenCanvas) {
-    this.canvas = canvas
-  }
+  private constructor(public readonly canvas: HTMLCanvasElement | OffscreenCanvas) {}
 
-  registerGlobal(registry: Registry) {
+  registerGlobal(registry: Registry): void {
     if (this._global) {
       return
     }
@@ -59,7 +47,7 @@ export default class Output implements WlOutputRequests {
     })
   }
 
-  unregisterGlobal() {
+  unregisterGlobal(): void {
     if (!this._global) {
       return
     }
@@ -67,7 +55,7 @@ export default class Output implements WlOutputRequests {
     this._global = undefined
   }
 
-  bindClient(client: Client, id: number, version: number) {
+  bindClient(client: Client, id: number, version: number): void {
     const wlOutputResource = new WlOutputResource(client, id, version)
     if (this._global) {
       this.resources = [...this.resources, wlOutputResource]
@@ -77,18 +65,18 @@ export default class Output implements WlOutputRequests {
       // no global present and still receiving a bind can happen when there is a race between the compositor
       // unregistering the global and a client binding to it. As such we handle it here.
       wlOutputResource.implementation = {
-        release: () => wlOutputResource.destroy()
+        release: () => wlOutputResource.destroy(),
       }
     }
   }
 
-  emitSpecs(wlOutputResource: WlOutputResource) {
+  emitSpecs(wlOutputResource: WlOutputResource): void {
     if (!this._global) {
       return
     }
     // TODO we might want to listen for window/document size changes and emit on update
-    this._emitGeometry(wlOutputResource)
-    this._emitMode(wlOutputResource)
+    this.emitGeometry(wlOutputResource)
+    this.emitMode(wlOutputResource)
     // TODO scaling info using window.devicePixelRatio
     // TODO expose pixel scaling in config menu
     if (wlOutputResource.version >= 2) {
@@ -96,14 +84,14 @@ export default class Output implements WlOutputRequests {
     }
   }
 
-  private _emitMode(wlOutputResource: WlOutputResource) {
+  private emitMode(wlOutputResource: WlOutputResource) {
     const flags = WlOutputMode.current
     // the refresh rate is impossible to query without manual measuring, which is error prone.
     const refresh = 60
     wlOutputResource.mode(flags, this.canvas.width, this.canvas.height, refresh)
   }
 
-  private _emitGeometry(wlOutputResource: WlOutputResource) {
+  private emitGeometry(wlOutputResource: WlOutputResource) {
     const x = 0
     const y = 0
     // this is really just an approximation as browsers don't offer a way to get the physical width :(
@@ -141,8 +129,8 @@ export default class Output implements WlOutputRequests {
     wlOutputResource.geometry(x, y, physicalWidth, physicalHeight, subpixel, make, model, transform)
   }
 
-  release(resource: WlOutputResource) {
+  release(resource: WlOutputResource): void {
     resource.destroy()
-    this.resources = this.resources.filter(otherResource => otherResource !== resource)
+    this.resources = this.resources.filter((otherResource) => otherResource !== resource)
   }
 }

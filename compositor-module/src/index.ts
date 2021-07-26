@@ -31,22 +31,29 @@ export * from './AxisEvent'
 export * from './KeyEvent'
 export { nrmlvo }
 
-export function createCompositorSession(): CompositorSession {
-  return Session.create()
+export function createCompositorSession(sessionId?: string): CompositorSession {
+  return Session.create(sessionId)
+}
+
+export interface CompositorPointer {
+  scrollFactor: number
 }
 
 export interface CompositorKeyboard {
+  nrmlvo: nrmlvo
   defaultNrmlvo: nrmlvo
   nrmlvoEntries: nrmlvo[]
 }
 
 export interface CompositorSeat {
   keyboard: CompositorKeyboard
+  pointer: CompositorPointer
 }
 
 export interface CompositorSession {
   userShell: UserShellApi
   globals: CompositorGlobals
+  compositorSessionId: string
 }
 
 export interface CompositorGlobals {
@@ -84,8 +91,8 @@ export interface CompositorConfiguration {
   keyboardLayoutName?: string
 }
 
-export interface CompositorWebAppSocket {
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export type CompositorWebAppSocket = unknown
 
 export function createCompositorWebAppSocket(session: CompositorSession): CompositorWebAppSocket {
   if (session instanceof Session) {
@@ -95,8 +102,8 @@ export function createCompositorWebAppSocket(session: CompositorSession): Compos
   }
 }
 
-export interface CompositorRemoteSocket {
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export type CompositorRemoteSocket = unknown
 
 export function createCompositorRemoteSocket(session: CompositorSession): CompositorRemoteSocket {
   if (session instanceof Session) {
@@ -106,12 +113,14 @@ export function createCompositorRemoteSocket(session: CompositorSession): Compos
   }
 }
 
-export interface CompositorRemoteAppLauncher {
-  launch(appEndpointURL: URL, remoteAppId: string): Promise<Client>
-  launchURL(appEndpointURL: URL): Promise<Client>
+export interface CompositorProxyConnector {
+  connectTo(url: URL, auth?: string): Promise<Client>
 }
 
-export function createCompositorRemoteAppLauncher(session: CompositorSession, remoteSocket: CompositorRemoteSocket): CompositorRemoteAppLauncher {
+export function createCompositorProxyConnector(
+  session: CompositorSession,
+  remoteSocket: CompositorRemoteSocket,
+): CompositorProxyConnector {
   if (session instanceof Session && remoteSocket instanceof RemoteSocket) {
     return RemoteAppLauncher.create(session, remoteSocket)
   } else {
@@ -130,5 +139,3 @@ export function createCompositorWebAppLauncher(webAppSocket: CompositorWebAppSoc
     throw new Error('Web app socket does not have expected implementation.')
   }
 }
-
-

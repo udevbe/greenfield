@@ -23,68 +23,47 @@ import {
   WlSubcompositorRequests,
   WlSubcompositorResource,
   WlSubsurfaceResource,
-  WlSurfaceResource
+  WlSurfaceResource,
 } from 'westfield-runtime-server'
 
 import Subsurface from './Subsurface'
 import Surface from './Surface'
 
-/**
- *
- *            The global interface exposing sub-surface compositing capabilities.
- *            A wl_surface, that has sub-surfaces associated, is called the
- *            parent surface. Sub-surfaces can be arbitrarily nested and create
- *            a tree of sub-surfaces.
- *
- *            The root surface in a tree of sub-surfaces is the main
- *            surface. The main surface cannot be a sub-surface, because
- *            sub-surfaces must always have a parent.
- *
- *            A main surface with its sub-surfaces forms a (compound) window.
- *            For window management purposes, this set of wl_surface objects is
- *            to be considered as a single window, and it should also behave as
- *            such.
- *
- *            The aim of sub-surfaces is to offload some of the compositing work
- *            within a window from clients to the compositor. A prime example is
- *            a video player with decorations and video in separate wl_surface
- *            objects. This should allow the compositor to pass YUV video buffer
- *            processing to dedicated overlay hardware when possible.
- *
- */
 export default class Subcompositor implements WlSubcompositorRequests {
-  private _global?: Global
+  private global?: Global
 
   static create(): Subcompositor {
     return new Subcompositor()
   }
 
-  private constructor() {
-  }
-
-  registerGlobal(registry: Registry) {
-    if (this._global) {
+  registerGlobal(registry: Registry): void {
+    if (this.global) {
       return
     }
-    this._global = registry.createGlobal(this, WlSubcompositorResource.protocolName, 1, (client, id, version) => {
+    this.global = registry.createGlobal(this, WlSubcompositorResource.protocolName, 1, (client, id, version) => {
       this.bindClient(client, id, version)
     })
   }
 
-  unregisterGlobal() {
-    if (!this._global) {
+  unregisterGlobal(): void {
+    if (!this.global) {
       return
     }
-    this._global.destroy()
-    this._global = undefined
+    this.global.destroy()
+    this.global = undefined
   }
 
-  bindClient(client: Client, id: number, version: number) {
+  bindClient(client: Client, id: number, version: number): void {
     const grSubcompositorResource = new WlSubcompositorResource(client, id, version)
     grSubcompositorResource.implementation = this
   }
 
-  getSubsurface(resource: WlSubcompositorResource, id: number, wlSurfaceResource: WlSurfaceResource, wlParentSurfaceResource: WlSurfaceResource) {
+  getSubsurface(
+    resource: WlSubcompositorResource,
+    id: number,
+    wlSurfaceResource: WlSurfaceResource,
+    wlParentSurfaceResource: WlSurfaceResource,
+  ): void {
     const surface = wlSurfaceResource.implementation as Surface
     if (surface.role) {
       resource.postError(WlSubcompositorError.badSurface, 'Given surface has another role.')

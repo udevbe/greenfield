@@ -16,27 +16,20 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { WebFD } from 'westfield-runtime-common'
-import {
-  GrWebShmBufferRequests,
-  GrWebShmBufferResource,
-  WlBufferResource
-} from 'westfield-runtime-server'
+import { GrWebShmBufferRequests, GrWebShmBufferResource, WlBufferResource } from 'westfield-runtime-server'
 import BufferImplementation from '../BufferImplementation'
 import Surface from '../Surface'
 import WebShmFrame from './WebShmFrame'
 
 export default class WebShmBuffer implements GrWebShmBufferRequests, BufferImplementation<WebShmFrame> {
-  readonly resource: GrWebShmBufferResource
-  readonly bufferResource: WlBufferResource
-  private readonly _webShmFrame: WebShmFrame
-  private _pixelContent?: WebFD
+  private pixelContent?: WebFD
   released = false
 
   static create(
     resource: GrWebShmBufferResource,
     bufferResource: WlBufferResource,
     width: number,
-    height: number
+    height: number,
   ): WebShmBuffer {
     const webShmFrame = WebShmFrame.create(width, height)
     const webArrayBuffer = new WebShmBuffer(resource, bufferResource, webShmFrame)
@@ -44,61 +37,33 @@ export default class WebShmBuffer implements GrWebShmBufferRequests, BufferImple
     return webArrayBuffer
   }
 
-  private constructor(resource: GrWebShmBufferResource, bufferResource: WlBufferResource, webShmFrame: WebShmFrame) {
-    this.resource = resource
-    this.bufferResource = bufferResource
-    this._webShmFrame = webShmFrame
-  }
+  private constructor(
+    public readonly resource: GrWebShmBufferResource,
+    public readonly bufferResource: WlBufferResource,
+    private readonly webShmFrame: WebShmFrame,
+  ) {}
 
-  /**
-   *
-   *  Destroy a buffer. If and how you need to release the backing
-   *  storage is defined by the buffer factory interface.
-   *
-   *  For possible side-effects to a surface, see wl_surface.attach.
-   *
-   *
-   * @param {WlBufferResource} resource
-   *
-   * @since 1
-   * @override
-   *
-   */
-  destroy(resource: WlBufferResource) {
+  destroy(resource: WlBufferResource): void {
     // TODO what to do here?
     resource.destroy()
   }
 
-  /**
-   *
-   *
-   *
-   * @param {GrWebShmBufferResource} resource
-   * @param {WebFD} pixelContent HTML5 array buffer to attach to the compositor.
-   *
-   * @since 1
-   *
-   */
-  async attach(resource: GrWebShmBufferResource, pixelContent: WebFD) {
-    this._pixelContent = pixelContent
-    await this._webShmFrame.attach(pixelContent)
+  async attach(resource: GrWebShmBufferResource, pixelContent: WebFD): Promise<void> {
+    this.pixelContent = pixelContent
+    await this.webShmFrame.attach(pixelContent)
   }
 
-  /**
-   * @param {Surface}surface
-   * @param {number}serial
-   * @return {Promise<WebShmFrame>}
-   */
-  getContents(surface: Surface, serial: number) {
-    return this._webShmFrame
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  getContents(surface: Surface, serial: number): WebShmFrame {
+    return this.webShmFrame
   }
 
-  release() {
+  release(): void {
     if (this.released) {
       throw new Error('BUG. Buffer already released.')
     }
-    if (this._pixelContent) {
-      this.resource.detach(this._pixelContent)
+    if (this.pixelContent) {
+      this.resource.detach(this.pixelContent)
     }
     this.bufferResource.release()
     this.bufferResource.client.connection.flush()

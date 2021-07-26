@@ -24,7 +24,7 @@ import {
   WlSeatCapability,
   WlSeatRequests,
   WlSeatResource,
-  WlTouchResource
+  WlTouchResource,
 } from 'westfield-runtime-server'
 
 import { capabilities } from './browser/capabilities'
@@ -38,25 +38,7 @@ import Touch from './Touch'
 
 const { keyboard, pointer, touch } = WlSeatCapability
 
-/**
- *
- *            A seat is a group of keyboards, pointer and touch devices. This
- *            object is published as a global during start up, or when such a
- *            device is hot plugged.  A seat typically has a pointer and
- *            maintains a keyboard focus and a pointer focus.
- *
- */
 class Seat implements WlSeatRequests, CompositorSeat {
-  readonly dataDevice: DataDevice
-  readonly pointer: Pointer
-  readonly keyboard: Keyboard
-  readonly touch: Touch
-  readonly hasTouch: boolean
-  serial: number = 0
-  private _global?: Global
-  private readonly _seatName: 'browser-seat0' = 'browser-seat0'
-  private _keyboardResourceListeners: ((wlKeyboardResource: WlKeyboardResource) => void)[] = []
-
   static create(session: Session): Seat {
     const dataDevice = DataDevice.create()
     const keyboard = Keyboard.create(session, dataDevice)
@@ -73,15 +55,20 @@ class Seat implements WlSeatRequests, CompositorSeat {
     return seat
   }
 
-  private constructor(dataDevice: DataDevice, pointer: Pointer, keyboard: Keyboard, touch: Touch, hasTouch: boolean) {
-    this.dataDevice = dataDevice
-    this.pointer = pointer
-    this.keyboard = keyboard
-    this.touch = touch
-    this.hasTouch = hasTouch
-  }
+  serial = 0
+  private _global?: Global
+  private readonly _seatName: 'browser-seat0' = 'browser-seat0'
+  private _keyboardResourceListeners: ((wlKeyboardResource: WlKeyboardResource) => void)[] = []
 
-  registerGlobal(registry: Registry) {
+  private constructor(
+    public readonly dataDevice: DataDevice,
+    public readonly pointer: Pointer,
+    public readonly keyboard: Keyboard,
+    public readonly touch: Touch,
+    public readonly hasTouch: boolean,
+  ) {}
+
+  registerGlobal(registry: Registry): void {
     if (this._global) {
       return
     }
@@ -90,7 +77,7 @@ class Seat implements WlSeatRequests, CompositorSeat {
     })
   }
 
-  unregisterGlobal() {
+  unregisterGlobal(): void {
     if (!this._global) {
       return
     }
@@ -98,29 +85,29 @@ class Seat implements WlSeatRequests, CompositorSeat {
     this._global = undefined
   }
 
-  bindClient(client: Client, id: number, version: number) {
+  bindClient(client: Client, id: number, version: number): void {
     const wlSeatResource = new WlSeatResource(client, id, version)
     if (this._global) {
       wlSeatResource.implementation = this
 
-      this._emitCapabilities(wlSeatResource)
-      this._emitName(wlSeatResource)
+      this.emitCapabilities(wlSeatResource)
+      this.emitName(wlSeatResource)
     } else {
       // no global present and still receiving a bind can happen when there is a race between the compositor
       // unregistering the global and a client binding to it. As such we handle it here.
       wlSeatResource.implementation = {
-        getKeyboard(): void {
-        },
-        getPointer(): void {
-        },
-        getTouch(): void {
-        },
-        release: resource => resource.destroy()
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
+        getKeyboard(): void {},
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
+        getPointer(): void {},
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
+        getTouch(): void {},
+        release: (resource) => resource.destroy(),
       }
     }
   }
 
-  private _emitCapabilities(wlSeatResource: WlSeatResource) {
+  private emitCapabilities(wlSeatResource: WlSeatResource) {
     if (!this._global) {
       return
     }
@@ -132,7 +119,7 @@ class Seat implements WlSeatRequests, CompositorSeat {
     wlSeatResource.capabilities(caps)
   }
 
-  private _emitName(wlSeatResource: WlSeatResource) {
+  private emitName(wlSeatResource: WlSeatResource) {
     if (wlSeatResource.version >= 2) {
       wlSeatResource.name(this._seatName)
     }
@@ -146,14 +133,14 @@ class Seat implements WlSeatRequests, CompositorSeat {
     return serial === this.serial
   }
 
-  getPointer(resource: WlSeatResource, id: number) {
+  getPointer(resource: WlSeatResource, id: number): void {
     const wlPointerResource = new WlPointerResource(resource.client, id, resource.version)
 
     if (this._global) {
       wlPointerResource.implementation = this.pointer
       this.pointer.resources = [...this.pointer.resources, wlPointerResource]
       wlPointerResource.onDestroy().then(() => {
-        this.pointer.resources = this.pointer.resources.filter(otherResource => otherResource !== wlPointerResource)
+        this.pointer.resources = this.pointer.resources.filter((otherResource) => otherResource !== wlPointerResource)
       })
     } else {
       // race situation. Seat global is no longer active, but the client still managed to send a request. handle this.
@@ -161,19 +148,20 @@ class Seat implements WlSeatRequests, CompositorSeat {
         release(resource: WlPointerResource): void {
           resource.destroy()
         },
-        setCursor(): void {
-        }
+        setCursor(): void {},
       }
     }
   }
 
-  getKeyboard(resource: WlSeatResource, id: number) {
+  getKeyboard(resource: WlSeatResource, id: number): void {
     const wlKeyboardResource = new WlKeyboardResource(resource.client, id, resource.version)
     if (this._global) {
       wlKeyboardResource.implementation = this.keyboard
       this.keyboard.resources = [...this.keyboard.resources, wlKeyboardResource]
       wlKeyboardResource.onDestroy().then(() => {
-        this.keyboard.resources = this.keyboard.resources.filter(otherResource => otherResource !== wlKeyboardResource)
+        this.keyboard.resources = this.keyboard.resources.filter(
+          (otherResource) => otherResource !== wlKeyboardResource,
+        )
       })
 
       this.keyboard.emitKeymap(wlKeyboardResource)
@@ -184,20 +172,22 @@ class Seat implements WlSeatRequests, CompositorSeat {
       wlKeyboardResource.implementation = {
         release(resource: WlKeyboardResource): void {
           resource.destroy()
-        }
+        },
       }
     }
   }
 
-  addKeyboardResourceListener(listener: (wlKeyboardResource: WlKeyboardResource) => void) {
+  addKeyboardResourceListener(listener: (wlKeyboardResource: WlKeyboardResource) => void): void {
     this._keyboardResourceListeners = [...this._keyboardResourceListeners, listener]
   }
 
-  removeKeyboardResourceListener(listener: (wlKeyboardResource: WlKeyboardResource) => void) {
-    this._keyboardResourceListeners = this._keyboardResourceListeners.filter(otherListener => otherListener !== listener)
+  removeKeyboardResourceListener(listener: (wlKeyboardResource: WlKeyboardResource) => void): void {
+    this._keyboardResourceListeners = this._keyboardResourceListeners.filter(
+      (otherListener) => otherListener !== listener,
+    )
   }
 
-  getTouch(resource: WlSeatResource, id: number) {
+  getTouch(resource: WlSeatResource, id: number): void {
     const wlTouchResource = new WlTouchResource(resource.client, id, resource.version)
 
     if (this.hasTouch && this._global) {
@@ -208,12 +198,12 @@ class Seat implements WlSeatRequests, CompositorSeat {
       wlTouchResource.implementation = {
         release(resource: WlTouchResource): void {
           resource.destroy()
-        }
+        },
       }
     }
   }
 
-  release(resource: WlSeatResource) {
+  release(resource: WlSeatResource): void {
     resource.destroy()
   }
 }

@@ -34,7 +34,7 @@ class FrameDecoder {
     return surface.h264BufferContentDecoder.decode(encodedFrame)
   }
 
-  async ['image/png'](surface: Surface, encodedFrame: EncodedFrame): Promise<{ bitmap: ImageBitmap, blob: Blob }> {
+  async ['image/png'](surface: Surface, encodedFrame: EncodedFrame): Promise<{ bitmap: ImageBitmap; blob: Blob }> {
     const isFullFrame = fullFrame(encodedFrame.encodingOptions)
     const hasSplitAlpha = splitAlpha(encodedFrame.encodingOptions)
 
@@ -46,7 +46,9 @@ class FrameDecoder {
       return { bitmap, blob }
     } else {
       // we don't support/care about fragmented pngs (and definitely not with a separate alpha channel as png has it internal)
-      throw new Error(`Unsupported buffer. Encoding type: ${encodedFrame.mimeType}, full frame:${isFullFrame}, split alpha: ${hasSplitAlpha}`)
+      throw new Error(
+        `Unsupported buffer. Encoding type: ${encodedFrame.mimeType}, full frame:${isFullFrame}, split alpha: ${hasSplitAlpha}`,
+      )
     }
   }
 }

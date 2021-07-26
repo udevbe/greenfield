@@ -16,30 +16,29 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 export interface ButtonEvent {
-  x: number,
-  y: number,
-  timestamp: number,
-  buttonCode: 0 | 1 | 2 | 3 | 4,
-  released: boolean,
-  buttons: number,
+  x: number
+  y: number
+  timestamp: number
+  buttonCode: 0 | 1 | 2 | 3 | 4
+  released: boolean
+  buttons: number
   sceneId: string
 }
 
 export interface CreateButtonEvent {
-  (x: number,
-   y: number,
-   timestamp: number,
-   buttonCode: 0 | 1 | 2 | 3 | 4,
-   released: boolean,
-   buttons: number,
-   sceneId: string): ButtonEvent
+  (
+    x: number,
+    y: number,
+    timestamp: number,
+    buttonCode: 0 | 1 | 2 | 3 | 4,
+    released: boolean,
+    buttons: number,
+    sceneId: string,
+  ): ButtonEvent
 }
 
 export interface CreateButtonEventFromMouseEvent {
-  (mouseEvent: MouseEvent,
-   released: boolean,
-   sceneId: string
-  ): ButtonEvent
+  (mouseEvent: MouseEvent, released: boolean, sceneId: string): ButtonEvent
 }
 
 export const createButtonEvent: CreateButtonEvent = (
@@ -49,13 +48,13 @@ export const createButtonEvent: CreateButtonEvent = (
   buttonCode: 0 | 1 | 2 | 3 | 4,
   released: boolean,
   buttons: number,
-  sceneId: string
+  sceneId: string,
 ): ButtonEvent => ({ x, y, timestamp, buttonCode, released, buttons, sceneId })
 
 export const createButtonEventFromMouseEvent: CreateButtonEventFromMouseEvent = (
   mouseEvent: MouseEvent,
   released: boolean,
-  sceneId: string
+  sceneId: string,
 ): ButtonEvent => {
   const currentTarget = mouseEvent.currentTarget as HTMLElement
   const { left: targetX, top: targetY } = currentTarget.getBoundingClientRect()
@@ -68,6 +67,6 @@ export const createButtonEventFromMouseEvent: CreateButtonEventFromMouseEvent = 
     button,
     released,
     mouseEvent.buttons,
-    sceneId
+    sceneId,
   )
 }

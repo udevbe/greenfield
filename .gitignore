@@ -115,7 +115,7 @@ CTestTestfile.cmake
 /compositor-module/dev/
 /compositor-module/dist/
 /compositor-module/src/protocol/
-/app-endpoint-server/src/protocol
+/app-endpoint-server/compositor-proxy/src/protocol
 /compositor-module/public/clients/
 /wasmlibs/libxkbcommon/
 /wasmlibs/emsdk/
@@ -141,4 +141,11 @@ CTestTestfile.cmake
 /compositor-module/types/
 /compositor-demo/dist/
 /client-demos/react-canvaskit/build/app.js
-/app-endpoint-server/build/
+/app-endpoint-server/compositor-proxy/build/
+/app-endpoint-server/compositor-proxy/dist/
+/compositor-proxy/dist/
+/compositor-proxy/build/
+/compositor-proxy/src/protocol/
+/compositor-proxy/src/encoding/app-endpoint-encoding.node
+/compositor-proxy/src/@types/config.d.ts
+/compositor-proxy/src/configschema.json

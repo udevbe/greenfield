@@ -19,10 +19,6 @@
  * Represents a WebGL texture object.
  */
 export default class Texture {
-  readonly gl: WebGLRenderingContext;
-  readonly texture: WebGLTexture;
-  readonly format: number;
-
   static create(gl: WebGLRenderingContext, format: number): Texture {
     const texture = gl.createTexture()
     if (texture === null) {
@@ -38,39 +34,49 @@ export default class Texture {
     return new Texture(gl, format, texture)
   }
 
-  private constructor(gl: WebGLRenderingContext, format: number, texture: WebGLTexture) {
-    this.gl = gl
-    this.texture = texture
-    this.format = format
-  }
+  private constructor(
+    public readonly gl: WebGLRenderingContext,
+    public readonly format: number,
+    public readonly texture: WebGLTexture,
+  ) {}
 
-  subImage2dBuffer(buffer: ArrayBufferView|null, x: number, y: number, width: number, height: number) {
+  subImage2dBuffer(buffer: ArrayBufferView | null, x: number, y: number, width: number, height: number): void {
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture)
     this.gl.texSubImage2D(this.gl.TEXTURE_2D, 0, x, y, width, height, this.format, this.gl.UNSIGNED_BYTE, buffer)
     this.gl.bindTexture(this.gl.TEXTURE_2D, null)
   }
 
-  subImage2d(buffer: TexImageSource, x: number, y: number) {
+  subImage2d(buffer: TexImageSource, x: number, y: number): void {
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture)
     this.gl.texSubImage2D(this.gl.TEXTURE_2D, 0, x, y, this.format, this.gl.UNSIGNED_BYTE, buffer)
     this.gl.bindTexture(this.gl.TEXTURE_2D, null)
   }
 
-  image2dBuffer(buffer: ArrayBufferView|null, width: number, height: number) {
+  image2dBuffer(buffer: ArrayBufferView | null, width: number, height: number): void {
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture)
     const level = 0
-    this.gl.texImage2D(this.gl.TEXTURE_2D, level, this.format, width, height, 0, this.format, this.gl.UNSIGNED_BYTE, buffer)
+    this.gl.texImage2D(
+      this.gl.TEXTURE_2D,
+      level,
+      this.format,
+      width,
+      height,
+      0,
+      this.format,
+      this.gl.UNSIGNED_BYTE,
+      buffer,
+    )
     this.gl.bindTexture(this.gl.TEXTURE_2D, null)
   }
 
-  image2d(buffer: TexImageSource) {
+  image2d(buffer: TexImageSource): void {
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture)
     const level = 0
     this.gl.texImage2D(this.gl.TEXTURE_2D, level, this.format, this.format, this.gl.UNSIGNED_BYTE, buffer)
     this.gl.bindTexture(this.gl.TEXTURE_2D, null)
   }
 
-  delete() {
+  delete(): void {
     this.gl.deleteTexture(this.texture)
   }
 }

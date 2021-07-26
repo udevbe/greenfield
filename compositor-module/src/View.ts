@@ -26,31 +26,33 @@ import Surface from './Surface'
 export default class View {
   readonly userTransformations: Map<string, Mat4> = new Map<string, Mat4>()
   customTransformation?: Mat4
-
-  private readonly _destroyPromise: Promise<void>
+  private inverseTransformation: Mat4
+  private readonly destroyPromise: Promise<void>
   // @ts-ignore
-  private _destroyResolve: (value?: (PromiseLike<void> | void)) => void
-  private _parent?: View
-
-  static create(surface: Surface, width: number, height: number, scene: Scene): View {
-    const renderState = RenderState.create(scene.sceneShader.gl, Size.create(width, height))
-    return new View(scene, surface, renderState)
-  }
+  private destroyResolve: (value?: PromiseLike<void> | void) => void
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 
   private constructor(
-    public readonly scene: Scene,
     public readonly surface: Surface,
-    public readonly renderState: RenderState,
+    private _transformation: Mat4,
+    public readonly scene: Scene,
+    public renderState: RenderState,
+    public positionOffset = Point.create(0, 0),
     public destroyed = false,
+    private _primary = false,
     public mapped = true,
-    public positionOffset: Point = Point.create(0, 0),
-    private _transformation: Mat4 = Mat4.IDENTITY(),
-    private _inverseTransformation = Mat4.IDENTITY(),
-    private _primary = false
+    public extraTransformations: Mat4[] = [],
   ) {
-    this._destroyPromise = new Promise<void>(resolve => {
-      this._destroyResolve = resolve
+    this.inverseTransformation = this._transformation.invert()
+    this.destroyPromise = new Promise<void>((resolve) => {
+      this.destroyResolve = resolve
     })
+  }
+
+  private _parent?: View
+
+  get parent(): View | undefined {
+    return this._parent
   }
 
   set parent(parent: View | undefined) {
@@ -73,14 +75,6 @@ export default class View {
     }
   }
 
-  set primary(primary: boolean) {
-    if (this.destroyed) {
-      return
-    }
-
-    this._primary = primary
-  }
-
   get primary(): boolean {
     if (this._primary) {
       return true
@@ -91,8 +85,16 @@ export default class View {
     }
   }
 
-  get parent(): View | undefined {
-    return this._parent
+  set primary(primary: boolean) {
+    if (this.destroyed) {
+      return
+    }
+
+    this._primary = primary
+  }
+
+  get transformation(): Mat4 {
+    return this._transformation
   }
 
   set transformation(transformation: Mat4) {
@@ -101,77 +103,33 @@ export default class View {
     }
 
     this._transformation = transformation
-    this._inverseTransformation = transformation.invert()
+    this.inverseTransformation = transformation.invert()
   }
 
-  get transformation(): Mat4 {
-    return this._transformation
+  static create(surface: Surface, width: number, height: number, scene: Scene): View {
+    const renderState = RenderState.create(scene.sceneShader.gl, Size.create(width, height))
+    return new View(surface, Mat4.IDENTITY(), scene, renderState)
   }
 
-  applyTransformations() {
+  applyTransformations(): void {
     if (this.destroyed) {
       return
     }
 
-    this.transformation = this._calculateTransformation()
-    this._applyTransformationsChild()
-  }
-
-  _applyTransformationsChild() {
-    this.findChildViews().forEach(childView => childView.applyTransformations())
+    this.transformation = this.calculateTransformation()
+    this.applyTransformationsChild()
   }
 
   findChildViews(): View[] {
     return this.surface.children
-      .filter(surfaceChild => surfaceChild.surface !== this.surface)
-      .map(surfaceChild => surfaceChild.surface.views.filter(view => view.parent === this))
+      .filter((surfaceChild) => surfaceChild.surface !== this.surface)
+      .map((surfaceChild) => surfaceChild.surface.views.filter((view) => view.parent === this))
       .flat()
   }
 
-  private _calculateTransformation(): Mat4 {
-    if (this.customTransformation) {
-      return this.customTransformation
-    }
-    // TODO we might want to keep some 'transformation dirty' flags to avoid needless matrix multiplications
-
-    // inherit parent transformation
-    let parentTransformation = Mat4.IDENTITY()
-    if (this._parent) {
-      parentTransformation = this._parent.transformation
-    }
-
-    // position transformation
-    const surfaceChild = this.surface.surfaceChildSelf
-    const { x, y } = surfaceChild.position.plus(this.positionOffset)
-    const positionTransformation = Mat4.translation(x, y)
-
-    return parentTransformation.timesMat4(positionTransformation)
-  }
-
-  withUserTransformations(transformation: Mat4) {
-    let finalTransformation = transformation
-    // TODO use reduce
-    this.userTransformations.forEach(value => {
-      finalTransformation = transformation.timesMat4(value)
-    })
-    return finalTransformation
-  }
-
-  /**
-   * @param viewPoint point in view coordinates with respect to view transformations
-   * @return point in browser coordinates
-   */
-  toCompositorSpace(viewPoint: Point): Point {
-    return this.transformation.timesPoint(viewPoint)
-  }
-
-  /**
-   * @param browserPoint point in browser coordinates
-   * @return point in view coordinates with respect to view transformations
-   */
   toViewSpaceFromCompositor(browserPoint: Point): Point {
     // normalize first by subtracting view offset
-    return this._inverseTransformation.timesPoint(browserPoint)
+    return this.inverseTransformation.timesPoint(browserPoint)
   }
 
   toViewSpaceFromSurface(surfacePoint: Point): Point {
@@ -188,9 +146,6 @@ export default class View {
     }
   }
 
-  /**
-   * @param scenePoint point in browser coordinates
-   */
   toSurfaceSpace(scenePoint: Point): Point {
     const viewPoint = this.toViewSpaceFromCompositor(scenePoint)
 
@@ -201,7 +156,9 @@ export default class View {
       if (surfaceWidth === this.renderState.size.w && surfaceHeight === this.renderState.size.h) {
         return viewPoint
       } else {
-        return Mat4.scalarVector(Vec4.create2D(surfaceWidth / this.renderState.size.w, surfaceHeight / this.renderState.size.h)).timesPoint(viewPoint)
+        return Mat4.scalarVector(
+          Vec4.create2D(surfaceWidth / this.renderState.size.w, surfaceHeight / this.renderState.size.h),
+        ).timesPoint(viewPoint)
       }
     } else {
       return scenePoint
@@ -214,10 +171,39 @@ export default class View {
     }
 
     this.destroyed = true
-    this._destroyResolve()
+    this.destroyResolve()
   }
 
   onDestroy() {
-    return this._destroyPromise
+    return this.destroyPromise
+  }
+
+  private applyTransformationsChild() {
+    this.findChildViews().forEach((childView) => childView.applyTransformations())
+  }
+
+  private calculateTransformation(): Mat4 {
+    if (this.customTransformation) {
+      return this.customTransformation
+    }
+    // TODO we might want to keep some 'transformation dirty' flags to avoid needless matrix multiplications.
+    //  For this we need to find out what the 'dependencies' are and mark the transformation dirty if they change so the transformation can be recalculated.
+
+    // inherit parent transformation
+    let parentTransformation = Mat4.IDENTITY()
+    if (this._parent) {
+      parentTransformation = this._parent.transformation
+    }
+
+    // position transformation
+    const surfaceChild = this.surface.surfaceChildSelf
+    const { x, y } = surfaceChild.position.plus(this.positionOffset)
+    const positionTransformation = Mat4.translation(x, y)
+    const vanillaTransformation = parentTransformation.timesMat4(positionTransformation)
+
+    return this.extraTransformations.reduce(
+      (previousValue, currentValue) => currentValue.timesMat4(previousValue),
+      vanillaTransformation,
+    )
   }
 }

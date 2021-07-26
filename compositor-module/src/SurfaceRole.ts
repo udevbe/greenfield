@@ -15,8 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import Surface, { SurfaceState } from './Surface'
-import View from './View'
+import Surface from './Surface'
 
 /**
  * surface role interface. See 'role' in https://wayland.freedesktop.org/docs/html/apa.html#protocol-spec-wl_surface
@@ -27,6 +26,4 @@ export default interface SurfaceRole {
    * @param surface
    */
   onCommit(surface: Surface): void
-
-  prepareViewRenderState(view: View): void
 }

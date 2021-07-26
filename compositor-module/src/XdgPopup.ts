@@ -16,12 +16,13 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import {
-  WlSeatResource, XdgPopupError,
+  WlSeatResource,
+  XdgPopupError,
   XdgPopupRequests,
   XdgPopupResource,
   XdgPositionerConstraintAdjustment,
   XdgSurfaceResource,
-  XdgWmBaseError
+  XdgWmBaseError,
 } from 'westfield-runtime-server'
 import { clientHeight, clientWidth } from './browser/attributes'
 
@@ -29,25 +30,12 @@ import Point from './math/Point'
 import Seat from './Seat'
 import Surface from './Surface'
 import SurfaceRole from './SurfaceRole'
-import View from './View'
 import { XdgPositionerState } from './XdgPositioner'
 import XdgSurface from './XdgSurface'
 
 const { none, slideX, slideY, flipX, flipY, resizeX, resizeY } = XdgPositionerConstraintAdjustment
 
-interface InverseY {
-  0: 0
-  1: 2
-  2: 1
-  3: 3
-  4: 4
-  5: 6
-  6: 5
-  7: 8
-  8: 7
-}
-
-const inverseY: InverseY = {
+const inverseY = {
   /**
    * none
    */
@@ -83,22 +71,10 @@ const inverseY: InverseY = {
   /**
    * bottomRight
    */
-  8: 7
-}
+  8: 7,
+} as const
 
-interface InverseX {
-  0: 0
-  1: 1
-  2: 2
-  3: 4;
-  4: 3;
-  5: 7;
-  6: 8;
-  7: 5;
-  8: 6
-}
-
-const inverseX: InverseX = {
+const inverseX = {
   /**
    * none
    */
@@ -134,56 +110,17 @@ const inverseX: InverseX = {
   /**
    * bottomRight
    */
-  8: 6
-}
+  8: 6,
+} as const
 
-/**
- *
- *      A popup surface is a short-lived, temporary surface. It can be used to
- *      implement for example menus, popovers, tooltips and other similar user
- *      interface concepts.
- *
- *      A popup can be made to take an explicit grab. See xdg_popup.grab for
- *      details.
- *
- *      When the popup is dismissed, a popup_done event will be sent out, and at
- *      the same time the surface will be unmapped. See the xdg_popup.popup_done
- *      event for details.
- *
- *      Explicitly destroying the xdg_popup object will also dismiss the popup and
- *      unmap the surface. Clients that want to dismiss the popup when another
- *      surface of their own is clicked should dismiss the popup using the destroy
- *      request.
- *
- *      The parent surface must have either the xdg_toplevel or xdg_popup surface
- *      role.
- *
- *      A newly created xdg_popup will be stacked on top of all previously created
- *      xdg_popup surfaces associated with the same xdg_toplevel.
- *
- *      The parent of an xdg_popup must be mapped (see the xdg_surface
- *      description) before the xdg_popup itself.
- *
- *      The x and y arguments passed when creating the popup object specify
- *      where the top left of the popup should be placed, relative to the
- *      local surface coordinates of the parent surface. See
- *      xdg_surface.get_popup. An xdg_popup must intersect with or be at least
- *      partially adjacent to its parent surface.
- *
- *      The client must call wl_surface.commit on the corresponding wl_surface
- *      for the xdg_popup state to take effect.
- *
- */
 export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
-  readonly resource: XdgPopupResource
-  readonly xdgSurface: XdgSurface
-  readonly parent: XdgSurfaceResource
-  readonly positionerState: XdgPositionerState
-  mapped: boolean = false
-  dismissed: boolean = false
-  private _seat: Seat
-
-  static create(xdgPopupResource: XdgPopupResource, xdgSurface: XdgSurface, parent: XdgSurfaceResource, positionerState: XdgPositionerState, seat: Seat): XdgPopup {
+  static create(
+    xdgPopupResource: XdgPopupResource,
+    xdgSurface: XdgSurface,
+    parent: XdgSurfaceResource,
+    positionerState: XdgPositionerState,
+    seat: Seat,
+  ): XdgPopup {
     const xdgPopup = new XdgPopup(xdgPopupResource, xdgSurface, parent, positionerState, seat)
     xdgPopupResource.implementation = xdgPopup
     const surface = xdgSurface.wlSurfaceResource.implementation as Surface
@@ -193,40 +130,39 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
     return xdgPopup
   }
 
-  private constructor(xdgPopupResource: XdgPopupResource, xdgSurface: XdgSurface, parent: XdgSurfaceResource, positionerState: XdgPositionerState, seat: Seat) {
-    this.resource = xdgPopupResource
-    this.xdgSurface = xdgSurface
-    this.parent = parent
-    this.positionerState = positionerState
-    this._seat = seat
-  }
+  mapped = false
+  dismissed = false
 
-  prepareViewRenderState(view: View): void {
-    view.scene.prepareViewRenderState(view)
-  }
+  private constructor(
+    public readonly resource: XdgPopupResource,
+    public readonly xdgSurface: XdgSurface,
+    public readonly parent: XdgSurfaceResource,
+    public readonly positionerState: XdgPositionerState,
+    private readonly seat: Seat,
+  ) {}
 
-  onCommit(surface: Surface) {
+  onCommit(surface: Surface): void {
     if (this.dismissed) {
       return
     }
-    this.xdgSurface.updateWindowGeometry(this.xdgSurface.pendingWindowGeometry)
+    surface.commitPending()
+    this.xdgSurface.commitWindowGeometry()
 
-    if (surface.pendingState.bufferContents) {
+    if (surface.state.bufferContents) {
       if (!this.mapped) {
-        this._map(surface)
+        this.map(surface)
       }
     } else if (this.mapped) {
-      this._dismiss()
+      this.dismiss()
     }
 
-    surface.commitPending()
+    surface.renderViews()
   }
 
-  private _map(surface: Surface) {
+  private map(surface: Surface) {
     // TODO check if parent is mapped
     for (const surfaceChild of surface.children) {
-      if (surfaceChild !== surface.surfaceChildSelf &&
-        surfaceChild.surface.role instanceof XdgPopup) {
+      if (surfaceChild !== surface.surfaceChildSelf && surfaceChild.surface.role instanceof XdgPopup) {
         this.resource.postError(XdgWmBaseError.notTheTopmostPopup, 'Client tried to map a non-topmost popup')
         console.log('[client-protocol-error] - Client tried to map a non-topmost popup.')
         return
@@ -243,11 +179,11 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
     }
   }
 
-  private _dismiss() {
+  private dismiss() {
     if (!this.dismissed) {
       this.dismissed = true
-      if (this._seat.pointer) {
-        const popupGrab = this._seat.pointer.findPopupGrab(this.xdgSurface.wlSurfaceResource)
+      if (this.seat.pointer) {
+        const popupGrab = this.seat.pointer.findPopupGrab(this.xdgSurface.wlSurfaceResource)
         if (popupGrab) {
           popupGrab.resolve()
         }
@@ -257,36 +193,36 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
       const parentSurface = parentXdgSurface.wlSurfaceResource.implementation as Surface
       const surface = this.xdgSurface.wlSurfaceResource.implementation as Surface
       parentSurface.removeChild(surface.surfaceChildSelf)
-      this._seat.keyboard.focusGained(parentSurface)
+      this.seat.keyboard.focusGained(parentSurface)
     }
   }
 
   private _updatePopupKeyboardFocus() {
-    this._seat.keyboard.focusGained(this.xdgSurface.wlSurfaceResource.implementation as Surface)
+    this.seat.keyboard.focusGained(this.xdgSurface.wlSurfaceResource.implementation as Surface)
     // if the keyboard or focus changes to a different client, we have to dismiss the popup
-    this._seat.keyboard.onKeyboardFocusChanged().then(() => {
-      if (!this._seat.keyboard.focus || this._seat.keyboard.focus.resource.client !== this.resource.client) {
-        this._dismiss()
+    this.seat.keyboard.onKeyboardFocusChanged().then(() => {
+      if (!this.seat.keyboard.focus || this.seat.keyboard.focus.resource.client !== this.resource.client) {
+        this.dismiss()
       }
     })
   }
 
-  destroy(resource: XdgPopupResource) {
+  destroy(resource: XdgPopupResource): void {
     const surface = this.xdgSurface.wlSurfaceResource.implementation as Surface
     for (const surfaceChild of surface.children) {
-      if (surfaceChild !== surface.surfaceChildSelf &&
-        surfaceChild.surface.role instanceof XdgPopup) {
+      if (surfaceChild !== surface.surfaceChildSelf && surfaceChild.surface.role instanceof XdgPopup) {
         resource.postError(XdgWmBaseError.notTheTopmostPopup, 'Client tried to destroy a non-topmost popup')
         console.log('[client-protocol-error] - Client tried to destroy a non-topmost popup.')
         return
       }
     }
 
-    this._dismiss()
+    this.dismiss()
     resource.destroy()
   }
 
-  async grab(resource: XdgPopupResource, wlSeatResource: WlSeatResource, serial: number) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  grab(resource: XdgPopupResource, wlSeatResource: WlSeatResource, serial: number): void {
     const seat = wlSeatResource.implementation as Seat
     const pointer = seat.pointer
 
@@ -309,27 +245,28 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
     const parentRole = parentSurface.role as SurfaceRole
     if (parentRole instanceof XdgPopup) {
       if (parentRole.dismissed) {
-        this._dismiss()
+        this.dismiss()
         return
       } else if (!pointer.findPopupGrab(parentWlSurfaceResource)) {
-        resource.postError(XdgWmBaseError.invalidPopupParent, 'Popup parent is a popup that did not take an explicit grab.')
+        resource.postError(
+          XdgWmBaseError.invalidPopupParent,
+          'Popup parent is a popup that did not take an explicit grab.',
+        )
         console.error('[client-protocol-error]  Popup parent is a popup that did not take an explicit grab.')
         return
       }
     }
 
     this._updatePopupKeyboardFocus()
-    pointer.popupGrab(this.xdgSurface.wlSurfaceResource).then(() => this._dismiss())
+    pointer.popupGrab(this.xdgSurface.wlSurfaceResource).then(() => this.dismiss())
   }
 
-  /**
-   * @param {number}serial
-   */
-  ackConfigure(serial: number) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  ackConfigure(serial: number): void {
     // TODO what to do here?
   }
 
-  ensureGeometryConstraints(parent: XdgSurfaceResource, positionerState: XdgPositionerState) {
+  ensureGeometryConstraints(parent: XdgSurfaceResource, positionerState: XdgPositionerState): void {
     // TODO we can probably rewrite & make this method better using libpixman(?)
     if (positionerState.constraintAdjustment === none) {
       // we can't even
@@ -338,11 +275,18 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
 
     const parentXdgSurface = parent.implementation as XdgSurface
     const parentSurface = parentXdgSurface.wlSurfaceResource.implementation as Surface
-    const primaryParentView = parentSurface.views.find(parentView => parentView.primary)
+    const primaryParentView = parentSurface.views.find((parentView) => parentView.primary)
     if (primaryParentView) {
       let violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
       if (violations && positionerState.size) {
-        if (!(violations.topViolation || violations.rightViolation || violations.bottomViolation || violations.leftViolation)) {
+        if (
+          !(
+            violations.topViolation ||
+            violations.rightViolation ||
+            violations.bottomViolation ||
+            violations.leftViolation
+          )
+        ) {
           // all fine, no need to reconfigure
           return
         }
@@ -356,8 +300,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
 
         // X-Axis:
         // we can't use slide or flip if if the height is greater than the screen height
-        if ((violations.leftViolation || violations.rightViolation) &&
-          positionerState.size.width < clientWidth()) {
+        if ((violations.leftViolation || violations.rightViolation) && positionerState.size.width < clientWidth()) {
           if (canFlipX) {
             // TODO try flipping
             const oldAnchor = positionerState.anchor
@@ -402,8 +345,11 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
         // Y-Axis:
         // we can't use slide or flip if if the height is greater than the screen height
         violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
-        if (violations && (violations.topViolation || violations.bottomViolation) &&
-          positionerState.size.height < clientHeight()) {
+        if (
+          violations &&
+          (violations.topViolation || violations.bottomViolation) &&
+          positionerState.size.height < clientHeight()
+        ) {
           if (canFlipY) {
             const oldAnchor = positionerState.anchor
             const oldGravity = positionerState.gravity

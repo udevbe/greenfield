@@ -39,11 +39,8 @@ export default class Touch {
     return new Touch()
   }
 
-  private constructor() {
-  }
-
-  release(resource: WlTouchResource) {
+  release(resource: WlTouchResource): void {
     resource.destroy()
-    this.resources = this.resources.filter(otherResource => otherResource !== resource)
+    this.resources = this.resources.filter((otherResource) => otherResource !== resource)
   }
 }

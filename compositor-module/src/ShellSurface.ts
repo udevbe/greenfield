@@ -22,7 +22,7 @@ import {
   WlShellSurfaceResize,
   WlShellSurfaceResource,
   WlShellSurfaceTransient,
-  WlSurfaceResource
+  WlSurfaceResource,
 } from 'westfield-runtime-server'
 import { CompositorSurface, CompositorSurfaceState } from './index'
 
@@ -31,19 +31,8 @@ import Seat from './Seat'
 import Session from './Session'
 import Surface from './Surface'
 import { UserShellSurfaceRole } from './UserShellSurfaceRole'
-import View from './View'
 
-const {
-  bottom,
-  bottomLeft,
-  bottomRight,
-  left,
-  none,
-  right,
-  top,
-  topLeft,
-  topRight
-} = WlShellSurfaceResize
+const { bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight } = WlShellSurfaceResize
 const { inactive } = WlShellSurfaceTransient
 
 const SurfaceStates = {
@@ -51,37 +40,15 @@ const SurfaceStates = {
   FULLSCREEN: 'fullscreen',
   POPUP: 'popup',
   TRANSIENT: 'transient',
-  TOP_LEVEL: 'top_level'
+  TOP_LEVEL: 'top_level',
 }
 
-/**
- *
- *            An interface that may be implemented by a wl_surface, for
- *            implementations that provide a desktop-style user interface.
- *
- *            It provides requests to treat surfaces like toplevel, fullscreen
- *            or popup windows, move, resize or maximize them, associate
- *            metadata like title and class, etc.
- *
- *            On the server side the object is automatically destroyed when
- *            the related wl_surface is destroyed. On the client side,
- *            wl_shell_surface_destroy() must be called before destroying
- *            the wl_surface object.
- */
 export default class ShellSurface implements WlShellSurfaceRequests, UserShellSurfaceRole {
-  readonly userSurface: CompositorSurface
-  readonly resource: WlShellSurfaceResource
-  readonly wlSurfaceResource: WlSurfaceResource
-  readonly session: Session
-  state?: string
-  private _managed: boolean = false
-  private _userSurfaceState: CompositorSurfaceState
-  private _pingTimeoutActive: boolean = false
-  private _timeoutTimer: number = 0
-  private _pingTimer: number = 0
-  private _mapped: boolean = false
-
-  static create(wlShellSurfaceResource: WlShellSurfaceResource, wlSurfaceResource: WlSurfaceResource, session: Session): ShellSurface {
+  static create(
+    wlShellSurfaceResource: WlShellSurfaceResource,
+    wlSurfaceResource: WlSurfaceResource,
+    session: Session,
+  ): ShellSurface {
     const { client, id } = wlSurfaceResource
     const userSurface: CompositorSurface = { id: `${id}`, clientId: client.id }
     const userSurfaceState: CompositorSurfaceState = {
@@ -90,16 +57,21 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
       mapped: false,
       minimized: false,
       title: '',
-      unresponsive: false
+      unresponsive: false,
     }
-    const shellSurface = new ShellSurface(wlShellSurfaceResource, wlSurfaceResource, session, userSurface, userSurfaceState)
+    const shellSurface = new ShellSurface(
+      wlShellSurfaceResource,
+      wlSurfaceResource,
+      session,
+      userSurface,
+      userSurfaceState,
+    )
     wlShellSurfaceResource.implementation = shellSurface
 
     // destroy the shell-surface if the surface is destroyed.
-    wlSurfaceResource.onDestroy().then(() => wlShellSurfaceResource.destroy());
-
-    (wlSurfaceResource.implementation as Surface).role = shellSurface
-    shellSurface._doPing(wlShellSurfaceResource)
+    wlSurfaceResource.onDestroy().then(() => wlShellSurfaceResource.destroy())
+    ;(wlSurfaceResource.implementation as Surface).role = shellSurface
+    shellSurface.doPing(wlShellSurfaceResource)
 
     wlShellSurfaceResource.onDestroy().then(() => {
       clearTimeout(shellSurface._timeoutTimer)
@@ -109,70 +81,65 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     return shellSurface
   }
 
+  state?: string
+  private _managed = false
+  private _pingTimeoutActive = false
+  private _timeoutTimer = 0
+  private _pingTimer = 0
+  private _mapped = false
+
   private constructor(
-    wlShellSurfaceResource: WlShellSurfaceResource,
-    wlSurfaceResource: WlSurfaceResource,
-    session: Session,
-    userSurface: CompositorSurface,
-    userSurfaceState: CompositorSurfaceState
-  ) {
-    this.userSurface = userSurface
-    this.resource = wlShellSurfaceResource
-    this.wlSurfaceResource = wlSurfaceResource
-    this._userSurfaceState = userSurfaceState
-    this.session = session
-  }
+    public readonly resource: WlShellSurfaceResource,
+    public readonly wlSurfaceResource: WlSurfaceResource,
+    public readonly session: Session,
+    public readonly userSurface: CompositorSurface,
+    private userSurfaceState: CompositorSurfaceState,
+  ) {}
 
-  prepareViewRenderState(view: View): void {
-    view.scene.prepareViewRenderState(view)
-  }
-
-  onCommit(surface: Surface) {
-    const oldPosition = surface.surfaceChildSelf.position
-    surface.surfaceChildSelf.position = Point.create(oldPosition.x + surface.pendingState.dx, oldPosition.y + surface.pendingState.dy)
-
-    if (surface.pendingState.bufferContents) {
+  onCommit(surface: Surface): void {
+    surface.commitPending()
+    if (surface.state.bufferContents) {
       if (!this._mapped) {
-        this._map()
+        this.map()
       }
     } else {
       if (this._mapped) {
-        this._unmap()
+        this.unmap()
       }
     }
-
-    surface.commitPending()
+    surface.renderViews()
   }
 
-  private _map() {
+  private map() {
     this._mapped = true
-    this._userSurfaceState = { ...this._userSurfaceState, mapped: this._mapped }
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this._userSurfaceState)
+    this.userSurfaceState = { ...this.userSurfaceState, mapped: this._mapped }
+    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
   }
 
-  private _unmap() {
+  private unmap() {
     this._mapped = false
-    this._userSurfaceState = { ...this._userSurfaceState, mapped: this._mapped }
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this._userSurfaceState)
+    this.userSurfaceState = { ...this.userSurfaceState, mapped: this._mapped }
+    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
   }
 
-  pong(resource: WlShellSurfaceResource, serial: number) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  pong(resource: WlShellSurfaceResource, serial: number): void {
     if (this._pingTimeoutActive) {
-      this._userSurfaceState = { ...this._userSurfaceState, unresponsive: false }
-      this.session.userShell.events.updateUserSurface?.(this.userSurface, this._userSurfaceState)
+      this.userSurfaceState = { ...this.userSurfaceState, unresponsive: false }
+      this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
       this._pingTimeoutActive = false
     }
     clearTimeout(this._timeoutTimer)
-    this._pingTimer = self.setTimeout(() => this._doPing(resource), 5000)
+    this._pingTimer = self.setTimeout(() => this.doPing(resource), 5000)
   }
 
-  _doPing(resource: WlShellSurfaceResource) {
+  doPing(resource: WlShellSurfaceResource): void {
     this._timeoutTimer = self.setTimeout(() => {
       if (!this._pingTimeoutActive) {
         // ping timed out, make view gray
         this._pingTimeoutActive = true
-        this._userSurfaceState = { ...this._userSurfaceState, unresponsive: true }
-        this.session.userShell.events.updateUserSurface?.(this.userSurface, this._userSurfaceState)
+        this.userSurfaceState = { ...this.userSurfaceState, unresponsive: true }
+        this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
       }
     }, 5000)
     // FIXME use a proper serial
@@ -180,7 +147,8 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     this.session.flush()
   }
 
-  move(resource: WlShellSurfaceResource, wlSeatResource: WlSeatResource, serial: number) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  move(resource: WlShellSurfaceResource, wlSeatResource: WlSeatResource, serial: number): void {
     const seat = wlSeatResource.implementation as Seat
 
     // if (!seat.isValidInputSerial(serial)) {
@@ -199,7 +167,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     const scene = pointer.scene
     if (scene) {
       // FIXME Only move that view that was last interacted with instead of finding the first one that matches.
-      const topLevelView = scene.topLevelViews.find(topLevelView => topLevelView.surface === surface)
+      const topLevelView = scene.topLevelViews.find((topLevelView) => topLevelView.surface === surface)
       if (topLevelView) {
         const origPosition = topLevelView.positionOffset
 
@@ -218,7 +186,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     }
   }
 
-  resize(resource: WlShellSurfaceResource, wlSeatResource: WlSeatResource, serial: number, edges: number) {
+  resize(resource: WlShellSurfaceResource, wlSeatResource: WlSeatResource, serial: number, edges: number): void {
     const seat = wlSeatResource.implementation as Seat
     if (!seat.isValidInputSerial(serial)) {
       // window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Resize serial mismatch. Ignoring.')
@@ -231,13 +199,13 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
 
     const pointer = seat.pointer
     // assigned in switch statement
-    let sizeAdjustment: (width: number, height: number, deltaX: number, deltaY: number) => { w: number, h: number }
+    let sizeAdjustment: (width: number, height: number, deltaX: number, deltaY: number) => { w: number; h: number }
 
     switch (edges) {
       case bottomRight: {
         sizeAdjustment = (width, height, deltaX, deltaY) => ({
           w: width + deltaX,
-          h: height + deltaY
+          h: height + deltaY,
         })
         break
       }
@@ -250,47 +218,44 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
         break
       }
       case left: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => ({ w: width - deltaX, h: height })
+        sizeAdjustment = (width, height, deltaX) => ({ w: width - deltaX, h: height })
         break
       }
       case topLeft: {
         sizeAdjustment = (width, height, deltaX, deltaY) => ({
           w: width - deltaX,
-          h: height - deltaY
+          h: height - deltaY,
         })
         break
       }
       case bottomLeft: {
         sizeAdjustment = (width, height, deltaX, deltaY) => ({
           w: width - deltaX,
-          h: height + deltaY
+          h: height + deltaY,
         })
         break
       }
       case right: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => ({ w: width + deltaX, h: height })
+        sizeAdjustment = (width, height, deltaX) => ({ w: width + deltaX, h: height })
         break
       }
       case topRight: {
         sizeAdjustment = (width, height, deltaX, deltaY) => ({
           w: width + deltaX,
-          h: height - deltaY
+          h: height - deltaY,
         })
         break
       }
       case none:
       default: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => ({ w: width, h: height })
+        sizeAdjustment = (width, height) => ({ w: width, h: height })
         break
       }
     }
 
     const pointerX = pointer.x
     const pointerY = pointer.y
-    const {
-      w: surfaceWidth,
-      h: surfaceHeight
-    } = (this.wlSurfaceResource.implementation as Surface).size || {}
+    const { w: surfaceWidth, h: surfaceHeight } = (this.wlSurfaceResource.implementation as Surface).size || {}
 
     if (surfaceWidth && surfaceHeight) {
       const resizeListener = () => {
@@ -309,28 +274,31 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
   private _ensureUserShellSurface() {
     if (!this._managed) {
       this._managed = true
-      this.wlSurfaceResource.onDestroy().then(() => this.session.userShell.events.destroyUserSurface?.(this.userSurface))
-      this.session.userShell.events.createUserSurface?.(this.userSurface, this._userSurfaceState)
+      this.wlSurfaceResource
+        .onDestroy()
+        .then(() => this.session.userShell.events.destroyUserSurface?.(this.userSurface))
+      this.session.userShell.events.createUserSurface?.(this.userSurface, this.userSurfaceState)
     }
   }
 
-  requestActive() {
-    if (this._userSurfaceState.active) {
+  requestActive(): void {
+    if (this.userSurfaceState.active) {
       return
     }
-    this._userSurfaceState = { ...this._userSurfaceState, active: true }
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this._userSurfaceState)
+    this.userSurfaceState = { ...this.userSurfaceState, active: true }
+    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
   }
 
-  notifyInactive() {
-    if (!this._userSurfaceState.active) {
+  notifyInactive(): void {
+    if (!this.userSurfaceState.active) {
       return
     }
-    this._userSurfaceState = { ...this._userSurfaceState, active: false }
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this._userSurfaceState)
+    this.userSurfaceState = { ...this.userSurfaceState, active: false }
+    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
   }
 
-  setToplevel(resource: WlShellSurfaceResource) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  setToplevel(resource: WlShellSurfaceResource): void {
     if (this.state === SurfaceStates.POPUP || this.state === SurfaceStates.TRANSIENT) {
       return
     }
@@ -339,7 +307,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     this.state = SurfaceStates.TOP_LEVEL
   }
 
-  setTransient(resource: WlShellSurfaceResource, parent: WlSurfaceResource, x: number, y: number, flags: number) {
+  setTransient(resource: WlShellSurfaceResource, parent: WlSurfaceResource, x: number, y: number, flags: number): void {
     if (this.state === SurfaceStates.POPUP || this.state === SurfaceStates.TOP_LEVEL) {
       return
     }
@@ -357,7 +325,17 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     this.state = SurfaceStates.TRANSIENT
   }
 
-  setFullscreen(resource: WlShellSurfaceResource, method: number, framerate: number, output: WlOutputResource | undefined) {
+  // TODO take over the complete webgl canvas directly, perhaps even make the browser fullscreen
+  setFullscreen(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    resource: WlShellSurfaceResource,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    method: number,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    framerate: number,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    output: WlOutputResource | undefined,
+  ): void {
     this.state = SurfaceStates.FULLSCREEN
     const surface = this.wlSurfaceResource.implementation as Surface
     // TODO get proper size in surface coordinates instead of assume surface space === global space
@@ -365,7 +343,15 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     this.resource.configure(none, window.innerWidth, window.innerHeight)
   }
 
-  async setPopup(resource: WlShellSurfaceResource, wlSeatResource: WlSeatResource, serial: number, parent: WlSurfaceResource, x: number, y: number, flags: number) {
+  setPopup(
+    resource: WlShellSurfaceResource,
+    wlSeatResource: WlSeatResource,
+    serial: number,
+    parent: WlSurfaceResource,
+    x: number,
+    y: number,
+    flags: number,
+  ): void {
     const seat = wlSeatResource.implementation as Seat
     // if (!seat.isValidInputSerial(seat.buttonPressSerial)) {
     //   this._dismiss()
@@ -382,10 +368,8 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     const surface = this.wlSurfaceResource.implementation as Surface
     const surfaceChild = surface.surfaceChildSelf
     surfaceChild.position = Point.create(x, y)
-
     // having added this shell-surface to a parent will have it create a view for each parent view
-    const views = (parent.implementation as Surface).addChild(surfaceChild)
-    // this handles the case where a view is created later on (ie if a new parent view is created)
+    ;(parent.implementation as Surface).addChild(surfaceChild)
 
     surface.hasKeyboardInput = (flags & inactive) === 0
 
@@ -393,7 +377,8 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     pointer.popupGrab(this.wlSurfaceResource).then(() => resource.popupDone())
   }
 
-  setMaximized(resource: WlShellSurfaceResource, output: WlOutputResource) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  setMaximized(resource: WlShellSurfaceResource, output: WlOutputResource): void {
     this.state = SurfaceStates.MAXIMIZED
     const surface = this.wlSurfaceResource.implementation as Surface
 
@@ -404,18 +389,18 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
       const width = scene.canvas.width
       const height = scene.canvas.height
 
-      surface.views.forEach(view => view.positionOffset = Point.create(0, 0))
+      surface.views.forEach((view) => (view.positionOffset = Point.create(0, 0)))
       this.resource.configure(none, width, height)
     }
   }
 
-  setTitle(resource: WlShellSurfaceResource, title: string) {
-    this._userSurfaceState = { ...this._userSurfaceState, title }
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this._userSurfaceState)
+  setTitle(resource: WlShellSurfaceResource, title: string): void {
+    this.userSurfaceState = { ...this.userSurfaceState, title }
+    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
   }
 
-  setClass(resource: WlShellSurfaceResource, clazz: string) {
-    this._userSurfaceState = { ...this._userSurfaceState, appId: clazz }
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this._userSurfaceState)
+  setClass(resource: WlShellSurfaceResource, clazz: string): void {
+    this.userSurfaceState = { ...this.userSurfaceState, appId: clazz }
+    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
   }
 }

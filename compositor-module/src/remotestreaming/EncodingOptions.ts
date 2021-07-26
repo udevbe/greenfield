@@ -15,8 +15,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-const ALPHA = (1 << 0)
-const FULL_FRAME = (1 << 1)
+const ALPHA = 1 << 0
+const FULL_FRAME = 1 << 1
 
 export function splitAlpha(encodingOptions: number): boolean {
   return (encodingOptions & ALPHA) !== 0
