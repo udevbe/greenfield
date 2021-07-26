@@ -6,22 +6,21 @@ import Pointer from '../Pointer'
 
 function fetchIcon(url: string): Promise<ImageBitmap> {
   return fetch(url)
-    .then(value => value.blob())
-    .then(value => value.arrayBuffer())
-    .then(value => new Uint8ClampedArray(value))
-    .then(value => new Blob([value], { type: 'image/png' }))
-    .then(value => createImageBitmap(value))
+    .then((value) => value.blob())
+    .then((value) => value.arrayBuffer())
+    .then((value) => new Uint8ClampedArray(value))
+    .then((value) => new Blob([value], { type: 'image/png' }))
+    .then((value) => createImageBitmap(value))
 }
 
 const signCloseIconPromise = fetchIcon(signClose)
 const signMaximizeIconPromise = fetchIcon(signMaximize)
 const signMinimizeIconPromise = fetchIcon(signMinimize)
 
-
 enum ThemeFrame {
   THEME_FRAME_ACTIVE = 1,
   THEME_FRAME_MAXIMIZED = 2,
-  THEME_FRAME_NO_TITLE = 4
+  THEME_FRAME_NO_TITLE = 4,
 }
 
 export enum FrameStatus {
@@ -33,7 +32,7 @@ export enum FrameStatus {
   FRAME_STATUS_MENU = 0x10,
   FRAME_STATUS_RESIZE = 0x20,
   FRAME_STATUS_MOVE = 0x40,
-  FRAME_STATUS_ALL = 0x7f
+  FRAME_STATUS_ALL = 0x7f,
 }
 
 export enum ThemeLocation {
@@ -57,7 +56,7 @@ export enum FrameButton {
   FRAME_BUTTON_CLOSE = 0x1,
   FRAME_BUTTON_MAXIMIZE = 0x2,
   FRAME_BUTTON_MINIMIZE = 0x4,
-  FRAME_BUTTON_ALL = 0x7
+  FRAME_BUTTON_ALL = 0x7,
 }
 
 enum FrameButtonFlags {
@@ -68,7 +67,7 @@ enum FrameButtonFlags {
 
 export enum FrameFlag {
   FRAME_FLAG_ACTIVE = 0x1,
-  FRAME_FLAG_MAXIMIZED = 0x2
+  FRAME_FLAG_MAXIMIZED = 0x2,
 }
 
 // from input-event-codes.h
@@ -78,10 +77,15 @@ const BTN_RIGHT = 0x111
 class XWindowFramePointer {
   // @ts-ignore
   private destroyResolve: (value?: void | PromiseLike<void>) => void
-  private destroyPromise = new Promise(resolve => this.destroyResolve = resolve)
+  private destroyPromise = new Promise((resolve) => (this.destroyResolve = resolve))
 
-  constructor(public pointer?: Pointer, public x: number = 0, public y: number = 0, public hoverButton?: XWindowFrameButton, public downButtons: XWindowFramePointerButton[] = []) {
-  }
+  constructor(
+    public pointer?: Pointer,
+    public x: number = 0,
+    public y: number = 0,
+    public hoverButton?: XWindowFrameButton,
+    public downButtons: XWindowFramePointerButton[] = [],
+  ) {}
 
   enter(frame: XWindowFrame, pointer: Pointer | undefined, x: number, y: number) {
     this.motion(frame, pointer, x, y)
@@ -90,7 +94,13 @@ class XWindowFramePointer {
   motion(frame: XWindowFrame, pointer: Pointer | undefined, x: number, y: number) {
     const framePointer = frame.getPointer(pointer)
     const button = frame.findButton(x, y)
-    const location = frame.theme.getLocation(x, y, frame.width, frame.height, frame.flags & FrameFlag.FRAME_FLAG_MAXIMIZED ? ThemeFrame.THEME_FRAME_MAXIMIZED : 0)
+    const location = frame.theme.getLocation(
+      x,
+      y,
+      frame.width,
+      frame.height,
+      frame.flags & FrameFlag.FRAME_FLAG_MAXIMIZED ? ThemeFrame.THEME_FRAME_MAXIMIZED : 0,
+    )
 
     if (!framePointer) {
       return location
@@ -122,10 +132,9 @@ class XWindowFramePointer {
 class XWindowFramePointerButton {
   // @ts-ignore
   private destroyResolve: (value?: void | PromiseLike<void>) => void
-  private destroyPromise = new Promise(resolve => this.destroyResolve = resolve)
+  private destroyPromise = new Promise((resolve) => (this.destroyResolve = resolve))
 
-  constructor(public button: number, public pressLocation: ThemeLocation, private frameButton?: XWindowFrameButton) {
-  }
+  constructor(public button: number, public pressLocation: ThemeLocation, private frameButton?: XWindowFrameButton) {}
 
   press(frame: XWindowFrame, pointer: XWindowFramePointer) {
     if (this.button === BTN_RIGHT) {
@@ -155,7 +164,6 @@ class XWindowFramePointerButton {
             break
           default:
             break
-
         }
       }
     }
@@ -186,22 +194,30 @@ class XWindowFramePointerButton {
 
 class XWindowFrameButton {
   allocation: {
-    x: number, y: number
-    width: number, height: number
+    x: number
+    y: number
+    width: number
+    height: number
   } = {
-    x: 0, y: 0,
-    width: 0, height: 0
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
   }
 
   // @ts-ignore
   private destroyResolve: (value?: void | PromiseLike<void>) => void
-  private destroyPromise = new Promise(resolve => this.destroyResolve = resolve)
+  private destroyPromise = new Promise((resolve) => (this.destroyResolve = resolve))
 
-  private hoverCount: number = 0
-  private pressCount: number = 0
+  private hoverCount = 0
+  private pressCount = 0
 
-  constructor(private frame: XWindowFrame, public icon: CanvasRenderingContext2D, private statusEffect: FrameStatus, public flags: FrameButtonFlags) {
-  }
+  constructor(
+    private frame: XWindowFrame,
+    public icon: CanvasRenderingContext2D,
+    private statusEffect: FrameStatus,
+    public flags: FrameButtonFlags,
+  ) {}
 
   enter() {
     if (!this.hoverCount) {
@@ -275,9 +291,9 @@ export type FrameInterior = { readonly x: number; readonly y: number; readonly w
 
 export interface Frame {
   status: number
-  width: number,
+  width: number
   height: number
-  interior: { x: number; y: number, width: number, height: number }
+  interior: { x: number; y: number; width: number; height: number }
   renderContext: CanvasRenderingContext2D
 
   pointerMotion(pointer: Pointer | undefined, x: number, y: number): ThemeLocation
@@ -292,13 +308,11 @@ export interface Frame {
 
   destroy(): void
 
-  resizeInside(width: number, height: number): void
-
   setTitle(title: string): void
 
   repaint(frameWidth: number, frameHeight: number): FrameInterior
 
-  inputRect(): { x: number, y: number, width: number, height: number }
+  inputRect(): { x: number; y: number; width: number; height: number }
 
   pointerEnter(pointer: Pointer | undefined, x: number, y: number): ThemeLocation
 
@@ -315,26 +329,19 @@ export class XWindowFrame implements Frame {
   status: FrameStatus = FrameStatus.FRAME_STATUS_REPAINT
   pointers: XWindowFramePointer[] = []
   buttons: XWindowFrameButton[] = []
-  private _interior: FrameInterior = {
-    x: 0,
-    y: 0,
-    width: 0,
-    height: 0
-  }
-  private geometryDirty: boolean = true
   flags: FrameFlag = 0
-  private opaqueMargin: number = 0
-  private _shadowMargin: number = 0
+  private geometryDirty = true
+  private opaqueMargin = 0
   private titleRect: {
-    x: number,
-    y: number,
-    width: number,
+    x: number
+    y: number
+    width: number
     height: number
   } = {
     x: 0,
     y: 0,
     width: 0,
-    height: 0
+    height: 0,
   }
 
   constructor(
@@ -347,11 +354,16 @@ export class XWindowFrame implements Frame {
     private closeButtonIcon: CanvasRenderingContext2D,
     private maximizeButtonIcon: CanvasRenderingContext2D,
     private minimzeButtonIcon: CanvasRenderingContext2D,
-    private icon?: CanvasRenderingContext2D
+    private icon?: CanvasRenderingContext2D,
   ) {
     if (title) {
       if (icon) {
-        const xWindowFrameButton = new XWindowFrameButton(this, icon, FrameStatus.FRAME_STATUS_MENU, FrameButtonFlags.FRAME_BUTTON_CLICK_DOWN)
+        const xWindowFrameButton = new XWindowFrameButton(
+          this,
+          icon,
+          FrameStatus.FRAME_STATUS_MENU,
+          FrameButtonFlags.FRAME_BUTTON_CLICK_DOWN,
+        )
         this.buttons = [...this.buttons, xWindowFrameButton]
       } else {
         // TODO load a png and use it as a default icon?
@@ -359,30 +371,77 @@ export class XWindowFrame implements Frame {
     }
 
     if (buttons & FrameButton.FRAME_BUTTON_CLOSE) {
-      const xWindowFrameButton = new XWindowFrameButton(this, closeButtonIcon, FrameStatus.FRAME_STATUS_MENU, FrameButtonFlags.FRAME_BUTTON_CLICK_DOWN)
-      xWindowFrameButton.onDestroy().then(() => this.buttons = this.buttons.filter(value => value !== xWindowFrameButton))
+      const xWindowFrameButton = new XWindowFrameButton(
+        this,
+        closeButtonIcon,
+        FrameStatus.FRAME_STATUS_MENU,
+        FrameButtonFlags.FRAME_BUTTON_CLICK_DOWN,
+      )
+      xWindowFrameButton
+        .onDestroy()
+        .then(() => (this.buttons = this.buttons.filter((value) => value !== xWindowFrameButton)))
       this.buttons = [...this.buttons, xWindowFrameButton]
     }
 
     if (buttons & FrameButton.FRAME_BUTTON_MAXIMIZE) {
-      const xWindowFrameButton = new XWindowFrameButton(this, maximizeButtonIcon, FrameStatus.FRAME_STATUS_MENU, FrameButtonFlags.FRAME_BUTTON_CLICK_DOWN)
-      xWindowFrameButton.onDestroy().then(() => this.buttons = this.buttons.filter(value => value !== xWindowFrameButton))
+      const xWindowFrameButton = new XWindowFrameButton(
+        this,
+        maximizeButtonIcon,
+        FrameStatus.FRAME_STATUS_MENU,
+        FrameButtonFlags.FRAME_BUTTON_CLICK_DOWN,
+      )
+      xWindowFrameButton
+        .onDestroy()
+        .then(() => (this.buttons = this.buttons.filter((value) => value !== xWindowFrameButton)))
       this.buttons = [...this.buttons, xWindowFrameButton]
     }
 
     if (buttons & FrameButton.FRAME_BUTTON_MINIMIZE) {
-      const xWindowFrameButton = new XWindowFrameButton(this, minimzeButtonIcon, FrameStatus.FRAME_STATUS_MENU, FrameButtonFlags.FRAME_BUTTON_CLICK_DOWN)
-      xWindowFrameButton.onDestroy().then(() => this.buttons = this.buttons.filter(value => value !== xWindowFrameButton))
+      const xWindowFrameButton = new XWindowFrameButton(
+        this,
+        minimzeButtonIcon,
+        FrameStatus.FRAME_STATUS_MENU,
+        FrameButtonFlags.FRAME_BUTTON_CLICK_DOWN,
+      )
+      xWindowFrameButton
+        .onDestroy()
+        .then(() => (this.buttons = this.buttons.filter((value) => value !== xWindowFrameButton)))
       this.buttons = [...this.buttons, xWindowFrameButton]
     }
   }
 
+  private _interior: FrameInterior = {
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+  }
+
+  get interior(): { x: number; y: number; width: number; height: number } {
+    this.refreshGeometry()
+
+    return { ...this._interior }
+  }
+
+  private _shadowMargin = 0
+
+  get shadowMargin(): number {
+    this.refreshGeometry()
+
+    return this._shadowMargin
+  }
 
   pointerMotion(pointer: Pointer | undefined, x: number, y: number): ThemeLocation {
     const framePointer = this.getPointer(pointer)
     const button = this.findButton(x, y)
 
-    const location = this.theme.getLocation(x, y, this.width, this.height, this.flags & FrameFlag.FRAME_FLAG_MAXIMIZED ? ThemeFrame.THEME_FRAME_MAXIMIZED : 0)
+    const location = this.theme.getLocation(
+      x,
+      y,
+      this.width,
+      this.height,
+      this.flags & FrameFlag.FRAME_FLAG_MAXIMIZED ? ThemeFrame.THEME_FRAME_MAXIMIZED : 0,
+    )
     if (!framePointer) {
       return location
     }
@@ -409,7 +468,13 @@ export class XWindowFrame implements Frame {
 
   doubleClick(pointer: Pointer | undefined, btn: number, state: WlPointerButtonState): ThemeLocation {
     const framePointer = this.getPointer(pointer)
-    const location = this.theme.getLocation(framePointer.x, framePointer.y, this.width, this.height, this.flags & FrameFlag.FRAME_FLAG_MAXIMIZED ? ThemeFrame.THEME_FRAME_MAXIMIZED : 0)
+    const location = this.theme.getLocation(
+      framePointer.x,
+      framePointer.y,
+      this.width,
+      this.height,
+      this.flags & FrameFlag.FRAME_FLAG_MAXIMIZED ? ThemeFrame.THEME_FRAME_MAXIMIZED : 0,
+    )
     const button = this.findButton(framePointer.x, framePointer.y)
 
     if (location !== ThemeLocation.THEME_LOCATION_TITLEBAR || btn !== BTN_LEFT) {
@@ -439,14 +504,20 @@ export class XWindowFrame implements Frame {
       return location
     }
 
-    location = this.theme.getLocation(framePointer.x, framePointer.y, this.width, this.height, this.flags & FrameFlag.FRAME_FLAG_MAXIMIZED ? ThemeFrame.THEME_FRAME_MAXIMIZED : 0)
+    location = this.theme.getLocation(
+      framePointer.x,
+      framePointer.y,
+      this.width,
+      this.height,
+      this.flags & FrameFlag.FRAME_FLAG_MAXIMIZED ? ThemeFrame.THEME_FRAME_MAXIMIZED : 0,
+    )
 
     if (state === WlPointerButtonState.pressed) {
       const button = new XWindowFramePointerButton(btn, location, framePointer.hoverButton)
       framePointer.downButtons = [...framePointer.downButtons, button]
       button.press(this, framePointer)
     } else if (state === WlPointerButtonState.released) {
-      const button = framePointer.downButtons.find(button => button.button === btn)
+      const button = framePointer.downButtons.find((button) => button.button === btn)
       if (!button) {
         return location
       }
@@ -484,78 +555,8 @@ export class XWindowFrame implements Frame {
   }
 
   destroy(): void {
-    this.buttons.forEach(value => value.destroy())
-    this.pointers.forEach(value => value.destroy())
-  }
-
-  private calculateMaximizedInterior(width: number, height: number) {
-    const titlebarHeight = this.title || this.buttons.length > 0 ? this.theme.titlebarHeight : this.theme.borderWidth
-
-    const decorationWidth = this.theme.borderWidth * 2
-    const decorationHeight = this.theme.borderWidth + titlebarHeight
-
-    return {
-      x: this.theme.borderWidth,
-      y: titlebarHeight,
-      width: width - decorationWidth,
-      height: height - decorationHeight
-    } as const
-  }
-
-  private calculateInterior(width: number, height: number) {
-    const titlebarHeight = this.title || this.buttons.length > 0 ? this.theme.titlebarHeight : this.theme.borderWidth
-
-    const decorationWidth = (this.theme.borderWidth + this.theme.margin) * 2
-    const decorationHeight = this.theme.borderWidth + titlebarHeight + this.theme.margin * 2
-
-    return {
-      x: this.theme.borderWidth + this.theme.margin,
-      y: titlebarHeight + this.theme.margin,
-      width: width - decorationWidth,
-      height: height - decorationHeight
-    } as const
-  }
-
-  private calculateTitleRect(width: number, shadowMargin: number, titlebarHeight: number) {
-    let xr = width - this.theme.borderWidth - shadowMargin
-    let xl = this.theme.borderWidth + shadowMargin
-    const y = this.theme.borderWidth + shadowMargin
-
-    this.buttons.forEach(button => {
-      const buttonPadding = 4
-      let w = button.icon.canvas.width
-      const h = button.icon.canvas.height
-
-      if (button.flags & FrameButtonFlags.FRAME_BUTTON_DECORATED) {
-        w += 10
-      }
-
-      if (button.flags & FrameButtonFlags.FRAME_BUTTON_ALIGN_RIGHT) {
-        xr -= w
-
-        button.allocation.x = xr
-        button.allocation.y = y
-        button.allocation.width = w + 1
-        button.allocation.height = h + 1
-
-        xr -= buttonPadding
-      } else {
-        button.allocation.x = xl
-        button.allocation.y = y
-        button.allocation.width = w + 1
-        button.allocation.height = h + 1
-
-        xl += w
-        xl += buttonPadding
-      }
-    })
-
-    return {
-      x: xl,
-      y,
-      width: xr - xl,
-      height: titlebarHeight
-    } as const
+    this.buttons.forEach((value) => value.destroy())
+    this.pointers.forEach((value) => value.destroy())
   }
 
   refreshGeometry() {
@@ -577,12 +578,6 @@ export class XWindowFrame implements Frame {
 
     this.titleRect = this.calculateTitleRect(this.width, this._shadowMargin, titlebarHeight)
     this.geometryDirty = false
-  }
-
-  get interior(): { x: number; y: number; width: number; height: number } {
-    this.refreshGeometry()
-
-    return { ...this._interior }
   }
 
   setTitle(title: string): void {
@@ -614,7 +609,7 @@ export class XWindowFrame implements Frame {
 
     const titleRect = this.calculateTitleRect(frameWidth, shadowMargin, titlebarHeight)
     this.theme.renderFrame(this.renderContext, frameWidth, frameHeight, this.title, titleRect, this.buttons, flags)
-    this.buttons.forEach(button => button.repaint())
+    this.buttons.forEach((button) => button.repaint())
     console.log(`repaint with height: ${this.height}`)
 
     this.statusClear(FrameStatus.FRAME_STATUS_REPAINT)
@@ -622,32 +617,26 @@ export class XWindowFrame implements Frame {
     return interior
   }
 
-  inputRect(): { x: number, y: number, width: number, height: number } {
+  inputRect(): { x: number; y: number; width: number; height: number } {
     this.refreshGeometry()
 
     return {
       x: this._shadowMargin,
       y: this._shadowMargin,
       width: this.width - this._shadowMargin * 2,
-      height: this.height - this._shadowMargin * 2
+      height: this.height - this._shadowMargin * 2,
     }
   }
 
-  opaqueRect(): { x: number, y: number, width: number, height: number } {
+  opaqueRect(): { x: number; y: number; width: number; height: number } {
     this.refreshGeometry()
 
     return {
       x: this.opaqueMargin,
       y: this.opaqueMargin,
       width: this.width - this.opaqueMargin * 2,
-      height: this.height - this.opaqueMargin * 2
+      height: this.height - this.opaqueMargin * 2,
     }
-  }
-
-  get shadowMargin(): number {
-    this.refreshGeometry()
-
-    return this._shadowMargin
   }
 
   pointerEnter(pointer: Pointer | undefined, x: number, y: number): ThemeLocation {
@@ -662,7 +651,7 @@ export class XWindowFrame implements Frame {
 
     framePointer.hoverButton?.leave()
 
-    framePointer.downButtons.forEach(button => {
+    framePointer.downButtons.forEach((button) => {
       button.cancel()
       button.destroy()
     })
@@ -696,48 +685,144 @@ export class XWindowFrame implements Frame {
   }
 
   getPointer(pointer?: Pointer): XWindowFramePointer {
-    const framePointer = this.pointers.find(framePointer => framePointer.pointer === pointer)
+    const framePointer = this.pointers.find((framePointer) => framePointer.pointer === pointer)
     if (framePointer) {
       return framePointer
     }
 
     const xWindowFramePointer = new XWindowFramePointer(pointer)
-    xWindowFramePointer.onDestroy().then(value => this.pointers = this.pointers.filter(value => value !== xWindowFramePointer))
+    xWindowFramePointer
+      .onDestroy()
+      .then((value) => (this.pointers = this.pointers.filter((value) => value !== xWindowFramePointer)))
     this.pointers = [...this.pointers, xWindowFramePointer]
     return xWindowFramePointer
   }
 
   findButton(x: number, y: number): XWindowFrameButton | undefined {
-    return this.buttons.find(button => {
+    return this.buttons.find((button) => {
       const relX = x - button.allocation.x
       const relY = y - button.allocation.y
 
-      return (0 <= relX && relX < button.allocation.width &&
-        0 <= relY && relY < button.allocation.height)
+      return 0 <= relX && relX < button.allocation.width && 0 <= relY && relY < button.allocation.height
     })
+  }
+
+  private calculateMaximizedInterior(width: number, height: number) {
+    const titlebarHeight = this.title || this.buttons.length > 0 ? this.theme.titlebarHeight : this.theme.borderWidth
+
+    const decorationWidth = this.theme.borderWidth * 2
+    const decorationHeight = this.theme.borderWidth + titlebarHeight
+
+    return {
+      x: this.theme.borderWidth,
+      y: titlebarHeight,
+      width: width - decorationWidth,
+      height: height - decorationHeight,
+    } as const
+  }
+
+  private calculateInterior(width: number, height: number) {
+    const titlebarHeight = this.title || this.buttons.length > 0 ? this.theme.titlebarHeight : this.theme.borderWidth
+
+    const decorationWidth = (this.theme.borderWidth + this.theme.margin) * 2
+    const decorationHeight = this.theme.borderWidth + titlebarHeight + this.theme.margin * 2
+
+    return {
+      x: this.theme.borderWidth + this.theme.margin,
+      y: titlebarHeight + this.theme.margin,
+      width: width - decorationWidth,
+      height: height - decorationHeight,
+    } as const
+  }
+
+  private calculateTitleRect(width: number, shadowMargin: number, titlebarHeight: number) {
+    let xr = width - this.theme.borderWidth - shadowMargin
+    let xl = this.theme.borderWidth + shadowMargin
+    const y = this.theme.borderWidth + shadowMargin
+
+    this.buttons.forEach((button) => {
+      const buttonPadding = 4
+      let w = button.icon.canvas.width
+      const h = button.icon.canvas.height
+
+      if (button.flags & FrameButtonFlags.FRAME_BUTTON_DECORATED) {
+        w += 10
+      }
+
+      if (button.flags & FrameButtonFlags.FRAME_BUTTON_ALIGN_RIGHT) {
+        xr -= w
+
+        button.allocation.x = xr
+        button.allocation.y = y
+        button.allocation.width = w + 1
+        button.allocation.height = h + 1
+
+        xr -= buttonPadding
+      } else {
+        button.allocation.x = xl
+        button.allocation.y = y
+        button.allocation.width = w + 1
+        button.allocation.height = h + 1
+
+        xl += w
+        xl += buttonPadding
+      }
+    })
+
+    return {
+      x: xl,
+      y,
+      width: xr - xl,
+      height: titlebarHeight,
+    } as const
   }
 }
 
 export interface Theme {
-  readonly activeFrame?: CanvasRenderingContext2D,
-  readonly inactiveFrame?: CanvasRenderingContext2D,
-  readonly frameRadius: number,
-  readonly margin: number,
-  readonly borderWidth: number,
+  readonly activeFrame?: CanvasRenderingContext2D
+  readonly inactiveFrame?: CanvasRenderingContext2D
+  readonly frameRadius: number
+  readonly margin: number
+  readonly borderWidth: number
   readonly titlebarHeight: number
 
   getLocation(x: number, y: number, width: number, height: number, flags: ThemeFrame): ThemeLocation
 
-  renderFrame(frameRenderContext: CanvasRenderingContext2D, width: number, height: number, title: string, titleRect: {
+  renderFrame(
+    frameRenderContext: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    title: string,
+    titleRect: {
+      x: number
+      y: number
+      width: number
+      height: number
+    },
+    buttons: XWindowFrameButton[],
+    flags: number,
+  ): void
+
+  tileSource(
+    renderContext: CanvasRenderingContext2D,
+    surface: CanvasRenderingContext2D,
     x: number,
     y: number,
     width: number,
-    height: number
-  }, buttons: XWindowFrameButton[], flags: number): void
+    height: number,
+    margin: number,
+    topMargin: number,
+    shadowBlur: number,
+  ): void
 
-  tileSource(renderContext: CanvasRenderingContext2D, surface: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, margin: number, topMargin: number, shadowBlur: number): void
-
-  roundedRect(renderingContext: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, frameRadius: number): void
+  roundedRect(
+    renderingContext: CanvasRenderingContext2D,
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
+    frameRadius: number,
+  ): void
 
   setBackgroundSource(renderingContext: CanvasRenderingContext2D, flags: ThemeFrame): void
 }
@@ -829,8 +914,7 @@ class XWindowTheme implements Theme {
     if (location & ThemeLocation.THEME_LOCATION_EXTERIOR) {
       location = ThemeLocation.THEME_LOCATION_EXTERIOR
     }
-    if (location === ThemeLocation.THEME_LOCATION_INTERIOR &&
-      y < margin + topMargin) {
+    if (location === ThemeLocation.THEME_LOCATION_INTERIOR && y < margin + topMargin) {
       location = ThemeLocation.THEME_LOCATION_TITLEBAR
     } else if (location === ThemeLocation.THEME_LOCATION_INTERIOR) {
       location = ThemeLocation.THEME_LOCATION_CLIENT_AREA
@@ -839,12 +923,20 @@ class XWindowTheme implements Theme {
     return location
   }
 
-  renderFrame(frameRenderContext: CanvasRenderingContext2D, width: number, height: number, title: string, titleRect: {
-    x: number,
-    y: number,
+  renderFrame(
+    frameRenderContext: CanvasRenderingContext2D,
     width: number,
-    height: number
-  }, buttons: XWindowFrameButton[], flags: number) {
+    height: number,
+    title: string,
+    titleRect: {
+      x: number
+      y: number
+      width: number
+      height: number
+    },
+    buttons: XWindowFrameButton[],
+    flags: number,
+  ) {
     let margin = 0
 
     frameRenderContext.canvas.width = width
@@ -865,20 +957,30 @@ class XWindowTheme implements Theme {
     const shadowBlur = isActive ? this.margin : 0
     const topMargin = title || buttons.length !== 0 ? this.titlebarHeight : this.borderWidth
 
-    this.tileSource(frameRenderContext, source, margin, margin, frameWidth, frameHeight, this.borderWidth, topMargin, shadowBlur)
+    this.tileSource(
+      frameRenderContext,
+      source,
+      margin,
+      margin,
+      frameWidth,
+      frameHeight,
+      this.borderWidth,
+      topMargin,
+      shadowBlur,
+    )
 
     if (title || buttons.length !== 0) {
       frameRenderContext.font = '14px sans'
       const textMetrics = frameRenderContext.measureText(title)
       const textWidth = textMetrics.width
-      const textHeight = textMetrics.fontBoundingBoxDescent - textMetrics.fontBoundingBoxAscent
+      const textHeight = textMetrics.actualBoundingBoxDescent - textMetrics.actualBoundingBoxAscent
 
       let x = (width - textWidth) / 2
       const y = margin + (this.titlebarHeight - textHeight) / 2
       if (x < titleRect.x) {
         x = titleRect.x
-      } else if (x + textWidth > (titleRect.x + titleRect.width)) {
-        x = (titleRect.x + titleRect.width) - textWidth
+      } else if (x + textWidth > titleRect.x + titleRect.width) {
+        x = titleRect.x + titleRect.width - textWidth
       }
 
       if (flags & ThemeFrame.THEME_FRAME_ACTIVE) {
@@ -895,7 +997,17 @@ class XWindowTheme implements Theme {
     }
   }
 
-  tileSource(renderContext: CanvasRenderingContext2D, surface: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, margin: number, topMargin: number, shadowBlur: number): void {
+  tileSource(
+    renderContext: CanvasRenderingContext2D,
+    surface: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    margin: number,
+    topMargin: number,
+    shadowBlur: number,
+  ): void {
     // draw shadow
     renderContext.shadowBlur = shadowBlur
     renderContext.shadowColor = 'rgba(0,0,0,0.3)'
@@ -914,34 +1026,27 @@ class XWindowTheme implements Theme {
     for (let i = 0; i < 4; i++) {
       const fx = i & 1
       const fy = i >> 1
-      const matrix = new DOMMatrix().translate(
-        x + fx * (width - 128),
-        y + fy * (height - 128)
-      )
+      const matrix = new DOMMatrix().translate(x + fx * (width - 128), y + fy * (height - 128))
 
       const pattern = renderContext.createPattern(surface.canvas, 'repeat')
       if (pattern === null) {
-        throw new Error('Can\'t create canvas pattern')
+        throw new Error("Can't create canvas pattern")
       }
       pattern.setTransform(matrix)
       renderContext.fillStyle = pattern
 
       const vmargin = fy ? margin : topMargin
       renderContext.beginPath()
-      renderContext.rect(x + fx * (width - margin),
-        y + fy * (height - vmargin),
-        margin, vmargin)
+      renderContext.rect(x + fx * (width - margin), y + fy * (height - vmargin), margin, vmargin)
       renderContext.fill()
     }
 
     /* Top stretch */
     const topPattern = renderContext.createPattern(surface.canvas, 'repeat')
     if (topPattern === null) {
-      throw new Error('Can\'t create canvas pattern')
+      throw new Error("Can't create canvas pattern")
     }
-    const topStretchMatrix = new DOMMatrix()
-      .scale((width + 2 * margin) / 128, 1, 1, x, y)
-      .translate(x, y)
+    const topStretchMatrix = new DOMMatrix().scale((width + 2 * margin) / 128, 1, 1, x, y).translate(x, y)
     topPattern.setTransform(topStretchMatrix)
     renderContext.fillStyle = topPattern
     renderContext.beginPath()
@@ -951,20 +1056,19 @@ class XWindowTheme implements Theme {
     /* Bottom stretch */
     const bottomPattern = renderContext.createPattern(surface.canvas, 'repeat')
     if (bottomPattern === null) {
-      throw new Error('Can\'t create canvas pattern')
+      throw new Error("Can't create canvas pattern")
     }
     const bottomStretchMatrix = topStretchMatrix.translate(0, height - 128)
     bottomPattern.setTransform(bottomStretchMatrix)
     renderContext.fillStyle = bottomPattern
     renderContext.beginPath()
-    renderContext.rect(x + margin, y + height - margin,
-      width - 2 * margin, margin)
+    renderContext.rect(x + margin, y + height - margin, width - 2 * margin, margin)
     renderContext.fill()
 
     /* Left stretch */
     const leftPattern = renderContext.createPattern(surface.canvas, 'repeat')
     if (leftPattern === null) {
-      throw new Error('Can\'t create canvas pattern')
+      throw new Error("Can't create canvas pattern")
     }
     const leftStretchMatrix = new DOMMatrix()
       .translate(0, y - (height + margin + topMargin))
@@ -972,29 +1076,34 @@ class XWindowTheme implements Theme {
     leftPattern.setTransform(leftStretchMatrix)
     renderContext.fillStyle = leftPattern
     renderContext.beginPath()
-    renderContext.rect(x, y + topMargin,
-      margin, height - margin - topMargin)
+    renderContext.rect(x, y + topMargin, margin, height - margin - topMargin)
     renderContext.fill()
 
     /* Right stretch */
     const rightPattern = renderContext.createPattern(surface.canvas, 'repeat')
     if (rightPattern === null) {
-      throw new Error('Can\'t create canvas pattern')
+      throw new Error("Can't create canvas pattern")
     }
     const rightStretchMatrix = leftStretchMatrix.translate(width, 0)
     rightPattern.setTransform(rightStretchMatrix)
     renderContext.fillStyle = rightPattern
     renderContext.beginPath()
-    renderContext.rect(x + width - margin, y + topMargin,
-      margin, height - margin - topMargin)
+    renderContext.rect(x + width - margin, y + topMargin, margin, height - margin - topMargin)
     renderContext.fill()
   }
 
-  roundedRect(renderingContext: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, radius: number) {
+  roundedRect(
+    renderingContext: CanvasRenderingContext2D,
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
+    radius: number,
+  ) {
     renderingContext.moveTo(x0, y0 + radius)
-    renderingContext.arc(x0 + radius, y0 + radius, radius, Math.PI, 3 * Math.PI / 2)
+    renderingContext.arc(x0 + radius, y0 + radius, radius, Math.PI, (3 * Math.PI) / 2)
     renderingContext.lineTo(x1 - radius, y0)
-    renderingContext.arc(x1 - radius, y0 + radius, radius, 3 * Math.PI / 2, 2 * Math.PI)
+    renderingContext.arc(x1 - radius, y0 + radius, radius, (3 * Math.PI) / 2, 2 * Math.PI)
     renderingContext.lineTo(x1, y1 - radius)
     renderingContext.arc(x1 - radius, y1 - radius, radius, 0, Math.PI / 2)
     renderingContext.lineTo(x0 + radius, y1)
@@ -1018,7 +1127,14 @@ export function themeCreate(): Theme {
   return new XWindowTheme()
 }
 
-export async function frameCreate(theme: Theme, width: number, height: number, buttons: number, title: string, icon?: CanvasRenderingContext2D): Promise<Frame> {
+export async function frameCreate(
+  theme: Theme,
+  width: number,
+  height: number,
+  buttons: number,
+  title: string,
+  icon?: CanvasRenderingContext2D,
+): Promise<Frame> {
   const signMinimizeIconData = await signMinimizeIconPromise
   const signMaximizeIconData = await signMaximizeIconPromise
   const signCloseIconData = await signCloseIconPromise
@@ -1047,7 +1163,18 @@ export async function frameCreate(theme: Theme, width: number, height: number, b
   minimizeIcon.canvas.height = signMinimizeIconData.height
   minimizeIcon.drawImage(signMinimizeIconData, 0, 0)
 
-  const xWindowFrame = new XWindowFrame(theme, 0, 0, buttons, title, frameRenderContext, closeIcon, maximizeIcon, minimizeIcon, icon)
+  const xWindowFrame = new XWindowFrame(
+    theme,
+    0,
+    0,
+    buttons,
+    title,
+    frameRenderContext,
+    closeIcon,
+    maximizeIcon,
+    minimizeIcon,
+    icon,
+  )
   xWindowFrame.resizeInside(width, height)
   return xWindowFrame
 }

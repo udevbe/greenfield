@@ -3,13 +3,13 @@ import { connect, webConnectionSetup, XConnection } from 'xtsb'
 export class XWaylandConnection {
   static create(webSocket: WebSocket): Promise<XWaylandConnection> {
     return new Promise<XWaylandConnection>((resolve, reject) => {
-      webSocket.onopen = async _ => {
-        webSocket.onerror = ev => console.log(`XWM connection ${webSocket.url} error: ${ev}`)
+      webSocket.onopen = async (_) => {
+        webSocket.onerror = (ev) => console.log(`XWM connection ${webSocket.url} error: ${ev}`)
         const xwm = new XWaylandConnection(webSocket)
-        webSocket.onclose = _ => xwm.destroy()
+        webSocket.onclose = (_) => xwm.destroy()
         resolve(xwm)
       }
-      webSocket.onerror = ev => {
+      webSocket.onerror = (ev) => {
         if (webSocket.readyState === WebSocket.CONNECTING) {
           reject(new Error(`XWM connection ${webSocket.url} failed: ${ev}`))
         }
@@ -18,7 +18,7 @@ export class XWaylandConnection {
   }
 
   // @ts-ignore assigned in constructor in promise cb
-  private destroyResolve: (value?: (PromiseLike<void> | void)) => void
+  private destroyResolve: (value?: PromiseLike<void> | void) => void
   private readonly destroyPromise: Promise<void>
 
   // @ts-ignore assigned in constructor in promise cb
@@ -29,7 +29,7 @@ export class XWaylandConnection {
 
   constructor(webSocket: WebSocket) {
     this.webSocket = webSocket
-    this.destroyPromise = new Promise<void>(resolve => this.destroyResolve = resolve)
+    this.destroyPromise = new Promise<void>((resolve) => (this.destroyResolve = resolve))
   }
 
   destroy() {
@@ -43,7 +43,7 @@ export class XWaylandConnection {
 
   setup(): Promise<XConnection> {
     if (this.setupPromise === undefined) {
-      this.setupPromise = new Promise<XConnection>(async resolve => {
+      this.setupPromise = new Promise<XConnection>(async (resolve) => {
         this.xConnection = await connect(webConnectionSetup(this.webSocket))
         resolve(this.xConnection)
       })

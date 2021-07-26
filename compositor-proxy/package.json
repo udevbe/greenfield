@@ -27,7 +27,8 @@
     "pino-pretty": "^5.1.1",
     "websocket-stream": "^5.5.2",
     "westfield-endpoint": "^0.4.4",
-    "ws": "^7.5.3"
+    "ws": "^7.5.3",
+    "xtsb": "^0.0.1-alpha.3"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.2",

@@ -19,15 +19,22 @@ import WebSocket from 'ws'
 import { createLogger } from './Logger'
 
 import { createNativeCompositorSession, NativeCompositorSession } from './NativeCompositorSession'
+import { XWaylandSession } from './XWaylandSession'
 
 const logger = createLogger('compositor-proxy-session')
 
 export function createCompositorProxySession(compositorSessionId: string): CompositorProxySession {
   const nativeCompositorSession = createNativeCompositorSession(compositorSessionId)
-  const appEndpointSession = new CompositorProxySession(nativeCompositorSession, compositorSessionId)
-  nativeCompositorSession.onDestroy().then(() => appEndpointSession.destroy())
+  const xWaylandSession = XWaylandSession.create(nativeCompositorSession, compositorSessionId)
+  xWaylandSession.createXWaylandListenerSocket()
+  const compositorProxySession = new CompositorProxySession(
+    nativeCompositorSession,
+    compositorSessionId,
+    xWaylandSession,
+  )
+  nativeCompositorSession.onDestroy().then(() => compositorProxySession.destroy())
   logger.info(`Session created.`)
-  return appEndpointSession
+  return compositorProxySession
 }
 
 class CompositorProxySession {
@@ -39,6 +46,7 @@ class CompositorProxySession {
   constructor(
     public readonly nativeCompositorSession: NativeCompositorSession,
     public readonly compositorSessionId: string,
+    private readonly xWaylandSession: XWaylandSession,
   ) {}
 
   onDestroy(): Promise<void> {
@@ -59,5 +67,9 @@ class CompositorProxySession {
       logger.error(e.stack)
       webSocket.close(4503, `Server encountered an exception.`)
     }
+  }
+
+  handleXWMConnection(webSocket: WebSocket, xwmFD: number): void {
+    this.xWaylandSession.createXWMConnection(webSocket, xwmFD)
   }
 }

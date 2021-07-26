@@ -56,12 +56,16 @@ module.exports = {
       },
       // Handle png images
       {
-        test: /\.(png)$/,
+        test: /\.(png)$/i,
         use: [
           {
-            loader: 'file-loader',
+            loader: 'url-loader',
+            options: {
+              limit: 8192,
+            },
           },
         ],
+        type: 'javascript/auto',
       },
       // Handle web assembly
       {

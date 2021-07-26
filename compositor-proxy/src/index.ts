@@ -46,6 +46,9 @@ function main() {
       // data transfer
       const fd = Number.parseInt(searchParams.get('fd') ?? '0')
       compositorProxySession.nativeCompositorSession.appEndpointWebFS.incomingDataTransfer(ws, { fd })
+    } else if (searchParams.has('xwmFD')) {
+      const wmFD = Number.parseInt(searchParams.get('xwmFD') ?? '0')
+      compositorProxySession.handleXWMConnection(ws, wmFD)
     } else {
       compositorProxySession.handleConnection(ws)
     }

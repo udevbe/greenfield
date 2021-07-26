@@ -18,7 +18,7 @@
 import BufferContents from '../BufferContents'
 import Size from '../Size'
 
-export default class HTMLCanvasFrame implements BufferContents<HTMLCanvasElement> {
+export default class WebGLFrame implements BufferContents<HTMLCanvasElement> {
   readonly mimeType: 'image/canvas' = 'image/canvas'
 
   static create(canvas: HTMLCanvasElement): WebGLFrame {

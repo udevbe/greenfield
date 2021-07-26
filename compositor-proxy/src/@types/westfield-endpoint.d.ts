@@ -31,6 +31,14 @@ declare module 'westfield-endpoint' {
   }
 
   export const Endpoint: {
+    equalValueExternal(objectA: unknown, objectB: unknown): boolean
+    getXWaylandDisplay(xWayland: unknown): number
+    setupXWayland(
+      wlDisplay: unknown,
+      onXWaylandStarting: (wmFd: number, wlClient: unknown) => void,
+      onXWaylandDestroyed: () => void,
+    ): unknown | undefined
+    teardownXWayland(westfieldXWayland: unknown): void
     createMemoryMappedFile(buffer: Buffer): Promise<number>
     makePipe(resultBuffer: Uint32Array): void
     setClientDestroyedCallback(wlClient: unknown, callback: () => void): void

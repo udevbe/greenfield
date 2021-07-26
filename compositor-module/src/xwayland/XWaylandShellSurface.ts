@@ -10,23 +10,13 @@ import { UserShellSurfaceRole } from '../UserShellSurfaceRole'
 import View from '../View'
 import { WmWindow } from './XWindowManager'
 
-const {
-  bottom,
-  bottomLeft,
-  bottomRight,
-  left,
-  none,
-  right,
-  top,
-  topLeft,
-  topRight
-} = WlShellSurfaceResize
+const { bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight } = WlShellSurfaceResize
 
 const SurfaceStates = {
   MAXIMIZED: 'maximized',
   FULLSCREEN: 'fullscreen',
   TRANSIENT: 'transient',
-  TOP_LEVEL: 'top_level'
+  TOP_LEVEL: 'top_level',
 }
 
 export default class XWaylandShellSurface implements UserShellSurfaceRole {
@@ -39,7 +29,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       mapped: false,
       minimized: false,
       title: '',
-      unresponsive: false
+      unresponsive: false,
     }
 
     const xWaylandShellSurface = new XWaylandShellSurface(session, window, surface, userSurface, userSurfaceState)
@@ -47,8 +37,8 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     return xWaylandShellSurface
   }
 
-  private _mapped: boolean = false
-  private _managed: boolean = false
+  private _mapped = false
+  private _managed = false
 
   state?: string
   sendConfigure?: (width: number, height: number) => void
@@ -56,7 +46,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   private xwayland = {
     x: 0,
     y: 0,
-    isSet: false
+    isSet: false,
   }
 
   constructor(
@@ -64,8 +54,8 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     private readonly window: WmWindow,
     private readonly surface: Surface,
     readonly userSurface: CompositorSurface,
-    private _userSurfaceState: CompositorSurfaceState) {
-  }
+    private _userSurfaceState: CompositorSurfaceState,
+  ) {}
 
   private _ensureUserShellSurface() {
     if (!this._managed) {
@@ -76,8 +66,13 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   }
 
   onCommit(surface: Surface): void {
+    surface.commitPending()
+
     const oldPosition = surface.surfaceChildSelf.position
-    surface.surfaceChildSelf.position = Point.create(oldPosition.x + surface.pendingState.dx, oldPosition.y + surface.pendingState.dy)
+    surface.surfaceChildSelf.position = Point.create(
+      oldPosition.x + surface.pendingState.dx,
+      oldPosition.y + surface.pendingState.dy,
+    )
 
     if (surface.pendingState.bufferContents) {
       if (!this._mapped) {
@@ -89,7 +84,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       }
     }
 
-    surface.commitPending()
+    surface.renderViews()
   }
 
   prepareFrameDecoration(view: View) {
@@ -100,14 +95,24 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
         width: interiorWidth,
         height: interorHeight,
         x: interiorX,
-        y: interiorY
+        y: interiorY,
       } = this.window.frame.repaint(frameWidth, frameHeight)
       const renderContext = this.window.frame.renderContext
 
       const top = renderContext.getImageData(interiorX, 0, interiorWidth, interiorY)
-      const bottom = renderContext.getImageData(interiorX, interiorY + interorHeight, interiorWidth, frameHeight - (interiorY + interorHeight))
+      const bottom = renderContext.getImageData(
+        interiorX,
+        interiorY + interorHeight,
+        interiorWidth,
+        frameHeight - (interiorY + interorHeight),
+      )
       const left = renderContext.getImageData(0, 0, interiorX, frameHeight)
-      const right = renderContext.getImageData(interiorX + interiorWidth, 0, frameWidth - (interiorX + interiorWidth), frameHeight)
+      const right = renderContext.getImageData(
+        interiorX + interiorWidth,
+        0,
+        frameWidth - (interiorX + interiorWidth),
+        frameHeight,
+      )
 
       const { gl, texture, format } = view.renderState.texture
       gl.bindTexture(gl.TEXTURE_2D, texture)
@@ -191,7 +196,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   }
 
   private findTopLevelView(scene: Scene): View | undefined {
-    return scene.topLevelViews.find(topLevelView => topLevelView.surface === this.surface)
+    return scene.topLevelViews.find((topLevelView) => topLevelView.surface === this.surface)
   }
 
   move(pointer: Pointer): void {
@@ -237,13 +242,13 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       return
     }
     // assigned in switch statement
-    let sizeAdjustment: (width: number, height: number, deltaX: number, deltaY: number) => { w: number, h: number }
+    let sizeAdjustment: (width: number, height: number, deltaX: number, deltaY: number) => { w: number; h: number }
 
     switch (edges) {
       case bottomRight: {
         sizeAdjustment = (width, height, deltaX, deltaY) => ({
           w: width + deltaX,
-          h: height + deltaY
+          h: height + deltaY,
         })
         break
       }
@@ -262,14 +267,14 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       case topLeft: {
         sizeAdjustment = (width, height, deltaX, deltaY) => ({
           w: width - deltaX,
-          h: height - deltaY
+          h: height - deltaY,
         })
         break
       }
       case bottomLeft: {
         sizeAdjustment = (width, height, deltaX, deltaY) => ({
           w: width - deltaX,
-          h: height + deltaY
+          h: height + deltaY,
         })
         break
       }
@@ -280,7 +285,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       case topRight: {
         sizeAdjustment = (width, height, deltaX, deltaY) => ({
           w: width + deltaX,
-          h: height - deltaY
+          h: height - deltaY,
         })
         break
       }
@@ -315,11 +320,9 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     this.session.userShell.events.updateUserSurface?.(this.userSurface, this._userSurfaceState)
   }
 
-
   setWindowGeometry(x: number, y: number, width: number, height: number): void {
     // TODO ?
   }
-
 
   setMaximized(): void {
     this.state = SurfaceStates.MAXIMIZED
@@ -331,14 +334,12 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       const width = scene.canvas.width
       const height = scene.canvas.height
 
-      this.surface.views.forEach(view => view.positionOffset = Point.create(0, 0))
+      this.surface.views.forEach((view) => (view.positionOffset = Point.create(0, 0)))
       this.sendConfigure?.(width, height)
     }
   }
 
-
-  setPid(pid: number): void {
-  }
+  setPid(pid: number): void {}
 
   requestActive() {
     if (this._userSurfaceState.active) {

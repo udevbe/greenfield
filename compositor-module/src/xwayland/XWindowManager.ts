@@ -23,7 +23,7 @@ import type {
   UnmapNotifyEvent,
   WINDOW,
   XConnection,
-  XFixes
+  XFixes,
 } from 'xtsb'
 import {
   Atom,
@@ -46,7 +46,7 @@ import {
   StackMode,
   Time,
   Window,
-  WindowClass
+  WindowClass,
 } from 'xtsb'
 import eResize from '../assets/e-resize.png'
 import leftPtr from '../assets/left_ptr.png'
@@ -59,7 +59,7 @@ import swResize from '../assets/sw-resize.png'
 import wResize from '../assets/w-resize.png'
 import Rect from '../math/Rect'
 import Output from '../Output'
-import Region from '../Region'
+import { fini, init, initRect } from '../Region'
 import Session from '../Session'
 import Surface from '../Surface'
 import { XWaylandConnection } from './XWaylandConnection'
@@ -73,7 +73,7 @@ import {
   FrameStatus,
   Theme,
   themeCreate,
-  ThemeLocation
+  ThemeLocation,
 } from './XWindowFrame'
 
 type ConfigureValueList = Parameters<XConnection['configureWindow']>[1]
@@ -83,57 +83,54 @@ const topBarHeight = 25
 
 const SEND_EVENT_MASK = 0x80
 
-const MWM_DECOR_ALL: 1 = 1
-const MWM_DECOR_BORDER: 2 = 2
-const MWM_DECOR_RESIZEH: 4 = 4
-const MWM_DECOR_TITLE: 8 = 8
-const MWM_DECOR_MENU: 16 = 16
-const MWM_DECOR_MINIMIZE: 32 = 32
-const MWM_DECOR_MAXIMIZE: 64 = 64
+const MWM_DECOR_ALL = 1 as const
+const MWM_DECOR_BORDER = 2 as const
+const MWM_DECOR_RESIZEH = 4 as const
+const MWM_DECOR_TITLE = 8 as const
+const MWM_DECOR_MENU = 16 as const
+const MWM_DECOR_MINIMIZE = 32 as const
+const MWM_DECOR_MAXIMIZE = 64 as const
 
-const MWM_DECOR_EVERYTHING: 126 = 126
+const MWM_DECOR_EVERYTHING = 126 as const
 
-const MWM_HINTS_FUNCTIONS: 1 = 1
-const MWM_HINTS_DECORATIONS: 2 = 2
-const MWM_HINTS_INPUT_MODE: 4 = 4
-const MWM_HINTS_STATUS: 8 = 8
+const MWM_HINTS_FUNCTIONS = 1 as const
+const MWM_HINTS_DECORATIONS = 2 as const
+const MWM_HINTS_INPUT_MODE = 4 as const
+const MWM_HINTS_STATUS = 8 as const
 
-const MWM_FUNC_ALL: 1 = 1
-const MWM_FUNC_RESIZE: 2 = 2
-const MWM_FUNC_MOVE: 4 = 4
-const MWM_FUNC_MINIMIZE: 8 = 8
-const MWM_FUNC_MAXIMIZE: 16 = 16
-const MWM_FUNC_CLOSE: 32 = 32
+const MWM_FUNC_ALL = 1 as const
+const MWM_FUNC_RESIZE = 2 as const
+const MWM_FUNC_MOVE = 4 as const
+const MWM_FUNC_MINIMIZE = 8 as const
+const MWM_FUNC_MAXIMIZE = 16 as const
+const MWM_FUNC_CLOSE = 32 as const
 
-const MWM_INPUT_MODELESS: 0 = 0
-const MWM_INPUT_PRIMARY_APPLICATION_MODAL: 1 = 1
-const MWM_INPUT_SYSTEM_MODAL: 2 = 2
-const MWM_INPUT_FULL_APPLICATION_MODAL: 3 = 3
+const MWM_INPUT_MODELESS = 0 as const
+const MWM_INPUT_PRIMARY_APPLICATION_MODAL = 1 as const
+const MWM_INPUT_SYSTEM_MODAL = 2 as const
+const MWM_INPUT_FULL_APPLICATION_MODAL = 3 as const
 const MWM_INPUT_APPLICATION_MODAL = MWM_INPUT_PRIMARY_APPLICATION_MODAL
 
-const MWM_TEAROFF_WINDOW: 1 = 1
+const MWM_TEAROFF_WINDOW = 1 as const
 
-const _NET_WM_MOVERESIZE_SIZE_TOPLEFT: 0 = 0
-const _NET_WM_MOVERESIZE_SIZE_TOP: 1 = 1
-const _NET_WM_MOVERESIZE_SIZE_TOPRIGHT: 2 = 2
-const _NET_WM_MOVERESIZE_SIZE_RIGHT: 3 = 3
-const _NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT: 4 = 4
-const _NET_WM_MOVERESIZE_SIZE_BOTTOM: 5 = 5
-const _NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT: 6 = 6
-const _NET_WM_MOVERESIZE_SIZE_LEFT: 7 = 7
-const _NET_WM_MOVERESIZE_MOVE: 8 = 8   /* movement only */
-const _NET_WM_MOVERESIZE_SIZE_KEYBOARD: 9 = 9   /* size via keyboard */
-const _NET_WM_MOVERESIZE_MOVE_KEYBOARD: 10 = 10   /* move via keyboard */
-const _NET_WM_MOVERESIZE_CANCEL: 11 = 11   /* cancel operation */
+const _NET_WM_MOVERESIZE_SIZE_TOPLEFT = 0 as const
+const _NET_WM_MOVERESIZE_SIZE_TOP = 1 as const
+const _NET_WM_MOVERESIZE_SIZE_TOPRIGHT = 2 as const
+const _NET_WM_MOVERESIZE_SIZE_RIGHT = 3 as const
+const _NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT = 4 as const
+const _NET_WM_MOVERESIZE_SIZE_BOTTOM = 5 as const
+const _NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT = 6 as const
+const _NET_WM_MOVERESIZE_SIZE_LEFT = 7 as const
+const _NET_WM_MOVERESIZE_MOVE = 8 as const /* movement only */
+const _NET_WM_MOVERESIZE_SIZE_KEYBOARD = 9 as const /* size via keyboard */
+const _NET_WM_MOVERESIZE_MOVE_KEYBOARD = 10 as const /* move via keyboard */
+const _NET_WM_MOVERESIZE_CANCEL = 11 as const /* cancel operation */
 
-const ICCCM_WITHDRAWN_STATE: 0 = 0
-const ICCCM_NORMAL_STATE: 1 = 1
-const ICCCM_ICONIC_STATE: 3 = 3
+const ICCCM_WITHDRAWN_STATE = 0 as const
+const ICCCM_NORMAL_STATE = 1 as const
+const ICCCM_ICONIC_STATE = 3 as const
 
-type NamedAtom = [
-  name: string,
-  value: number
-]
+type NamedAtom = [name: string, value: number]
 
 /* We reuse some predefined, but otherwise useles atoms
  * as local type placeholders that never touch the X11 server,
@@ -215,35 +212,35 @@ type XWMAtoms = {
 }
 
 interface XWindowManagerResources {
-  xFixes: XFixes.XFixes,
-  composite: Composite.Composite,
-  render: Render.Render,
-  xwmAtoms: XWMAtoms,
-  formatRgb: Render.PICTFORMINFO,
+  xFixes: XFixes.XFixes
+  composite: Composite.Composite
+  render: Render.Render
+  xwmAtoms: XWMAtoms
+  formatRgb: Render.PICTFORMINFO
   formatRgba: Render.PICTFORMINFO
 }
 
 interface VisualAndColormap {
-  visualId: number,
+  visualId: number
   colormap: number
 }
 
 interface SizeHints {
-  flags: number,
+  flags: number
   x: number
   y: number
-  width: number,
+  width: number
   height: number
-  minWidth: number,
-  minHeight: number,
-  maxWidth: number,
-  maxHeight: number,
+  minWidth: number
+  minHeight: number
+  maxWidth: number
+  maxHeight: number
   widthInc: number
   heightInc: number
-  minAspect: { x: number, y: number }
-  maxAspect: { x: number, y: number }
-  baseWidth: number,
-  baseHeight: number,
+  minAspect: { x: number; y: number }
+  maxAspect: { x: number; y: number }
+  baseWidth: number
+  baseHeight: number
   winGravity: number
 }
 
@@ -259,10 +256,10 @@ const PBaseSize = 256
 const PWinGravity = 512
 
 interface MotifWmHints {
-  flags: number,
-  functions: number,
-  decorations: number,
-  inputMode: number,
+  flags: number
+  functions: number
+  decorations: number
+  inputMode: number
   status: number
 }
 
@@ -287,13 +284,13 @@ const cursorImageNames = {
     xhot: 27,
     yhot: 27,
     width: 32,
-    height: 32
+    height: 32,
   },
   [CursorType.XWM_CURSOR_LEFT]: { url: wResize, xhot: 6, yhot: 15, width: 32, height: 32 },
   [CursorType.XWM_CURSOR_RIGHT]: { url: eResize, xhot: 27, yhot: 15, width: 32, height: 32 },
   [CursorType.XWM_CURSOR_TOP]: { url: nResize, xhot: 16, yhot: 6, width: 32, height: 32 },
   [CursorType.XWM_CURSOR_TOP_LEFT]: { url: nwResize, xhot: 6, yhot: 6, width: 32, height: 32 },
-  [CursorType.XWM_CURSOR_TOP_RIGHT]: { url: neResize, xhot: 27, yhot: 6, width: 32, height: 32 }
+  [CursorType.XWM_CURSOR_TOP_RIGHT]: { url: neResize, xhot: 27, yhot: 6, width: 32, height: 32 },
 } as const
 
 export class WmWindow {
@@ -337,8 +334,8 @@ export class WmWindow {
     public x: number,
     public y: number,
     public width: number,
-    public height: number) {
-  }
+    public height: number,
+  ) {}
 
   wmWindowActivate(surface?: Surface) {
     if (surface === undefined) {
@@ -434,7 +431,7 @@ async function setupResources(xConnection: XConnection): Promise<XWindowManagerR
     ['XdndTypeList', 0],
     ['XdndActionCopy', 0],
     ['_XWAYLAND_ALLOW_COMMITS', 0],
-    ['WL_SURFACE_ID', 0]
+    ['WL_SURFACE_ID', 0],
   ]
 
   const [xFixes, composite, render] = await Promise.all([xFixesPromise, compositePromise, renderPromise])
@@ -442,24 +439,24 @@ async function setupResources(xConnection: XConnection): Promise<XWindowManagerR
   const interAtomCookies = atoms.map(([name]) => xConnection.internAtom(0, chars(name)))
 
   const atomReplies = await Promise.all(interAtomCookies)
-  atomReplies.forEach(({ atom }, index) => atoms[index][1] = atom)
+  atomReplies.forEach(({ atom }, index) => (atoms[index][1] = atom))
 
   const { formats } = await formatsReply
   let formatRgb: Render.PICTFORMINFO | undefined = undefined
   let formatRgba: Render.PICTFORMINFO | undefined = undefined
-  formats.forEach(format => {
-    if (format.direct.redMask != 0xff &&
-      format.direct.redShift != 16) {
+  formats.forEach((format) => {
+    if (format.direct.redMask != 0xff && format.direct.redShift != 16) {
       return
     }
-    if (format._type == Render.PictType.Direct &&
-      format.depth == 24) {
+    if (format._type == Render.PictType.Direct && format.depth == 24) {
       formatRgb = format
     }
-    if (format._type == Render.PictType.Direct &&
+    if (
+      format._type == Render.PictType.Direct &&
       format.depth == 32 &&
       format.direct.alphaMask == 0xff &&
-      format.direct.alphaShift == 24) {
+      format.direct.alphaShift == 24
+    ) {
       formatRgba = format
     }
   })
@@ -479,13 +476,13 @@ async function setupResources(xConnection: XConnection): Promise<XWindowManagerR
     render,
     xwmAtoms,
     formatRgb,
-    formatRgba
+    formatRgba,
   }
 }
 
 function setupVisualAndColormap(xConnection: XConnection): VisualAndColormap {
-  const visuals = xConnection.setup.roots.map(screen => {
-    const depth = screen.allowedDepths.find(depth => depth.depth === 32)
+  const visuals = xConnection.setup.roots.map((screen) => {
+    const depth = screen.allowedDepths.find((depth) => depth.depth === 32)
     return depth?.visuals
   })?.[0]
 
@@ -499,7 +496,7 @@ function setupVisualAndColormap(xConnection: XConnection): VisualAndColormap {
 
   return {
     visualId,
-    colormap
+    colormap,
   }
 }
 
@@ -507,8 +504,8 @@ const _NET_WM_STATE_REMOVE = 0
 const _NET_WM_STATE_ADD = 1
 const _NET_WM_STATE_TOGGLE = 2
 
-function updateState(action: number, state: number | boolean): { newState: number | boolean, changed: boolean } {
-  let newState, changed
+function updateState(action: number, state: number | boolean): { newState: number | boolean; changed: boolean } {
+  let newState
 
   switch (action) {
     case _NET_WM_STATE_REMOVE:
@@ -524,7 +521,7 @@ function updateState(action: number, state: number | boolean): { newState: numbe
       return { changed: false, newState: state }
   }
 
-  changed = (state !== newState)
+  const changed = state !== newState
 
   return { changed, newState }
 }
@@ -563,7 +560,14 @@ function dndInit() {
 }
 
 function setNetActiveWindow(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMAtoms, window: WINDOW) {
-  xConnection.changeProperty(PropMode.Replace, screen.root, xwmAtoms._NET_ACTIVE_WINDOW, xwmAtoms.WINDOW, 32, new Uint32Array([window]))
+  xConnection.changeProperty(
+    PropMode.Replace,
+    screen.root,
+    xwmAtoms._NET_ACTIVE_WINDOW,
+    xwmAtoms.WINDOW,
+    32,
+    new Uint32Array([window]),
+  )
 }
 
 function createWMWindow(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMAtoms): number {
@@ -579,7 +583,7 @@ function createWMWindow(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMA
     0,
     WindowClass.InputOutput,
     screen.rootVisual,
-    {}
+    {},
   )
 
   xConnection.changeProperty(
@@ -588,7 +592,7 @@ function createWMWindow(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMA
     xwmAtoms._NET_SUPPORTING_WM_CHECK,
     Atom.WINDOW,
     32,
-    new Uint32Array([wmWindow])
+    new Uint32Array([wmWindow]),
   )
 
   xConnection.changeProperty(
@@ -597,7 +601,7 @@ function createWMWindow(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMA
     xwmAtoms._NET_WM_NAME,
     xwmAtoms.UTF8_STRING,
     8,
-    chars('Greenfield WM')
+    chars('Greenfield WM'),
   )
 
   xConnection.changeProperty(
@@ -606,7 +610,7 @@ function createWMWindow(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMA
     xwmAtoms._NET_SUPPORTING_WM_CHECK,
     Atom.WINDOW,
     32,
-    new Uint32Array([wmWindow])
+    new Uint32Array([wmWindow]),
   )
 
   xConnection.setSelectionOwner(wmWindow, xwmAtoms.WM_S0, Time.CurrentTime)
@@ -616,91 +620,10 @@ function createWMWindow(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMA
 }
 
 export class XWindowManager {
-  static async create(session: Session, xWaylandConnetion: XWaylandConnection, client: Client, xWaylandShell: XWaylandShell) {
-    const xConnection = await xWaylandConnetion.setup()
-    xConnection.onPostEventLoop = () => {
-      xConnection.flush()
-    }
-    // TODO expand error information in xtsb so we know which call the error originated from
-    xConnection.defaultExceptionHandler = (error: Error) => {
-      console.error(JSON.stringify(error))
-    }
-
-    // TODO listen for any event here
-    // TODO see weston weston_wm_handle_selection_event
-    // xConnection.onEvent = xWindowManager.handleSelectionEvent(event)
-    // TODO see weston weston_wm_handle_dnd_event
-    // xConnection.onEvent = xWindowManager.handleDndEvent(event)
-
-    xConnection.onButtonPressEvent = async event => await xWindowManager.handleButton(event)
-    xConnection.onButtonReleaseEvent = async event => await xWindowManager.handleButton(event)
-    xConnection.onEnterNotifyEvent = async event => await xWindowManager.handleEnter(event)
-    xConnection.onLeaveNotifyEvent = async event => await xWindowManager.handleLeave(event)
-    xConnection.onMotionNotifyEvent = async event => await xWindowManager.handleMotion(event)
-    xConnection.onCreateNotifyEvent = async event => await xWindowManager.handleCreateNotify(event)
-    xConnection.onMapRequestEvent = async event => await xWindowManager.handleMapRequest(event)
-    xConnection.onMapNotifyEvent = async event => await xWindowManager.handleMapNotify(event)
-    xConnection.onUnmapNotifyEvent = async event => await xWindowManager.handleUnmapNotify(event)
-    xConnection.onReparentNotifyEvent = async event => await xWindowManager.handleReparentNotify(event)
-    xConnection.onConfigureRequestEvent = async event => await xWindowManager.handleConfigureRequest(event)
-    xConnection.onConfigureNotifyEvent = async event => await xWindowManager.handleConfigureNotify(event)
-    xConnection.onDestroyNotifyEvent = async event => await xWindowManager.handleDestroyNotify(event)
-    // xConnection.onMappingNotifyEvent = async event => console.log('XCB_MAPPING_NOTIFY')
-    xConnection.onPropertyNotifyEvent = async event => await xWindowManager.handlePropertyNotify(event)
-    xConnection.onClientMessageEvent = async event => await xWindowManager.handleClientMessage(event)
-    xConnection.onFocusInEvent = async event => await xWindowManager.handleFocusIn(event)
-
-    const xWmResources = await setupResources(xConnection)
-    const visualAndColormap = setupVisualAndColormap(xConnection)
-
-    xConnection.changeWindowAttributes(xConnection.setup.roots[0].root, { eventMask: EventMask.SubstructureNotify | EventMask.SubstructureRedirect | EventMask.PropertyChange })
-    const { composite, xwmAtoms } = xWmResources
-    composite.redirectSubwindows(xConnection.setup.roots[0].root, Composite.Redirect.Manual)
-
-    // An immediately invoked lambda that uses function argument destructuring to filter out elements and return them as an array.
-    const supported = (({
-                          _NET_WM_MOVERESIZE,
-                          _NET_WM_STATE,
-                          _NET_WM_STATE_FULLSCREEN,
-                          _NET_WM_STATE_MAXIMIZED_VERT,
-                          _NET_WM_STATE_MAXIMIZED_HORZ,
-                          _NET_ACTIVE_WINDOW
-                        }: XWMAtoms) => [
-      _NET_WM_MOVERESIZE,
-      _NET_WM_STATE,
-      _NET_WM_STATE_FULLSCREEN,
-      _NET_WM_STATE_MAXIMIZED_VERT,
-      _NET_WM_STATE_MAXIMIZED_HORZ,
-      _NET_ACTIVE_WINDOW
-    ])(xwmAtoms)
-
-    xConnection.changeProperty(PropMode.Replace, xConnection.setup.roots[0].root, xwmAtoms._NET_SUPPORTED, Atom.ATOM, 32, new Uint32Array(supported))
-
-    setNetActiveWindow(xConnection, xConnection.setup.roots[0], xwmAtoms, Window.None)
-
-    // TODO
-    selectionInit()
-    // TODO
-    dndInit()
-    // TODO
-
-    xConnection.flush()
-
-    const wmWindow = createWMWindow(xConnection, xConnection.setup.roots[0], xwmAtoms)
-
-    const xWindowManager = new XWindowManager(session, xConnection, client, xWaylandShell, xConnection.setup.roots[0], xWmResources, visualAndColormap, wmWindow)
-
-    // FIXME causes connection to hang
-    await xWindowManager.createCursors()
-    xWindowManager.wmWindowSetCursor(xWindowManager.screen.root, CursorType.XWM_CURSOR_LEFT_PTR)
-
-    session.globals.compositor.addSurfaceCreationListener(async surface => await xWindowManager.handleCreateSurface(surface))
-
-    return xWindowManager
-  }
-
-  private readonly session: Session
   readonly xConnection: XConnection
+  readonly windowHash: { [key: number]: WmWindow } = {}
+  focusWindow?: WmWindow
+  private readonly session: Session
   private readonly client: Client
   private readonly xWaylandShell: XWaylandShell
   private readonly atoms: XWMAtoms
@@ -713,14 +636,13 @@ export class XWindowManager {
   private readonly colormap: number
   private readonly screen: SCREEN
   private readonly wmWindow: WINDOW
-  readonly windowHash: { [key: number]: WmWindow } = {}
   private unpairedWindowList: WmWindow[] = []
   private readonly theme: Theme = themeCreate()
   private readonly imageDecodingCanvas: HTMLCanvasElement = document.createElement('canvas')
   private readonly imageDecodingContext: CanvasRenderingContext2D = this.imageDecodingCanvas.getContext('2d', {
     alpha: true,
-    desynchronized: true
-  })!!
+    desynchronized: true,
+  })!
 
   private cursors: { [key in CursorType]: Cursor } = {
     [CursorType.XWM_CURSOR_BOTTOM]: Cursor.None,
@@ -731,12 +653,10 @@ export class XWindowManager {
     [CursorType.XWM_CURSOR_RIGHT]: Cursor.None,
     [CursorType.XWM_CURSOR_TOP]: Cursor.None,
     [CursorType.XWM_CURSOR_TOP_LEFT]: Cursor.None,
-    [CursorType.XWM_CURSOR_TOP_RIGHT]: Cursor.None
+    [CursorType.XWM_CURSOR_TOP_RIGHT]: Cursor.None,
   }
   private lastCursor: CursorType = -1
-
-  focusWindow?: WmWindow
-  private doubleClickPeriod: number = 250
+  private doubleClickPeriod = 250
 
   constructor(
     session: Session,
@@ -746,7 +666,7 @@ export class XWindowManager {
     screen: SCREEN,
     { xwmAtoms, composite, render, xFixes, formatRgb, formatRgba }: XWindowManagerResources,
     { visualId, colormap }: VisualAndColormap,
-    wmWindow: WINDOW
+    wmWindow: WINDOW,
   ) {
     this.session = session
     this.xConnection = xConnection
@@ -764,12 +684,213 @@ export class XWindowManager {
     this.wmWindow = wmWindow
   }
 
+  static async create(
+    session: Session,
+    xWaylandConnetion: XWaylandConnection,
+    client: Client,
+    xWaylandShell: XWaylandShell,
+  ) {
+    const xConnection = await xWaylandConnetion.setup()
+    xConnection.onPostEventLoop = () => {
+      xConnection.flush()
+    }
+    // TODO expand error information in xtsb so we know which call the error originated from
+    xConnection.defaultExceptionHandler = (error: Error) => {
+      console.error(JSON.stringify(error))
+    }
+
+    // TODO listen for any event here
+    // TODO see weston weston_wm_handle_selection_event
+    // xConnection.onEvent = xWindowManager.handleSelectionEvent(event)
+    // TODO see weston weston_wm_handle_dnd_event
+    // xConnection.onEvent = xWindowManager.handleDndEvent(event)
+
+    xConnection.onButtonPressEvent = async (event) => await xWindowManager.handleButton(event)
+    xConnection.onButtonReleaseEvent = async (event) => await xWindowManager.handleButton(event)
+    xConnection.onEnterNotifyEvent = async (event) => await xWindowManager.handleEnter(event)
+    xConnection.onLeaveNotifyEvent = async (event) => await xWindowManager.handleLeave(event)
+    xConnection.onMotionNotifyEvent = async (event) => await xWindowManager.handleMotion(event)
+    xConnection.onCreateNotifyEvent = async (event) => await xWindowManager.handleCreateNotify(event)
+    xConnection.onMapRequestEvent = async (event) => await xWindowManager.handleMapRequest(event)
+    xConnection.onMapNotifyEvent = async (event) => await xWindowManager.handleMapNotify(event)
+    xConnection.onUnmapNotifyEvent = async (event) => await xWindowManager.handleUnmapNotify(event)
+    xConnection.onReparentNotifyEvent = async (event) => await xWindowManager.handleReparentNotify(event)
+    xConnection.onConfigureRequestEvent = async (event) => await xWindowManager.handleConfigureRequest(event)
+    xConnection.onConfigureNotifyEvent = async (event) => await xWindowManager.handleConfigureNotify(event)
+    xConnection.onDestroyNotifyEvent = async (event) => await xWindowManager.handleDestroyNotify(event)
+    // xConnection.onMappingNotifyEvent = async event => console.log('XCB_MAPPING_NOTIFY')
+    xConnection.onPropertyNotifyEvent = async (event) => await xWindowManager.handlePropertyNotify(event)
+    xConnection.onClientMessageEvent = async (event) => await xWindowManager.handleClientMessage(event)
+    xConnection.onFocusInEvent = async (event) => await xWindowManager.handleFocusIn(event)
+
+    const xWmResources = await setupResources(xConnection)
+    const visualAndColormap = setupVisualAndColormap(xConnection)
+
+    xConnection.changeWindowAttributes(xConnection.setup.roots[0].root, {
+      eventMask: EventMask.SubstructureNotify | EventMask.SubstructureRedirect | EventMask.PropertyChange,
+    })
+    const { composite, xwmAtoms } = xWmResources
+    composite.redirectSubwindows(xConnection.setup.roots[0].root, Composite.Redirect.Manual)
+
+    // An immediately invoked lambda that uses function argument destructuring to filter out elements and return them as an array.
+    const supported = (({
+      _NET_WM_MOVERESIZE,
+      _NET_WM_STATE,
+      _NET_WM_STATE_FULLSCREEN,
+      _NET_WM_STATE_MAXIMIZED_VERT,
+      _NET_WM_STATE_MAXIMIZED_HORZ,
+      _NET_ACTIVE_WINDOW,
+    }: XWMAtoms) => [
+      _NET_WM_MOVERESIZE,
+      _NET_WM_STATE,
+      _NET_WM_STATE_FULLSCREEN,
+      _NET_WM_STATE_MAXIMIZED_VERT,
+      _NET_WM_STATE_MAXIMIZED_HORZ,
+      _NET_ACTIVE_WINDOW,
+    ])(xwmAtoms)
+
+    xConnection.changeProperty(
+      PropMode.Replace,
+      xConnection.setup.roots[0].root,
+      xwmAtoms._NET_SUPPORTED,
+      Atom.ATOM,
+      32,
+      new Uint32Array(supported),
+    )
+
+    setNetActiveWindow(xConnection, xConnection.setup.roots[0], xwmAtoms, Window.None)
+
+    // TODO
+    selectionInit()
+    // TODO
+    dndInit()
+    // TODO
+
+    xConnection.flush()
+
+    const wmWindow = createWMWindow(xConnection, xConnection.setup.roots[0], xwmAtoms)
+
+    const xWindowManager = new XWindowManager(
+      session,
+      xConnection,
+      client,
+      xWaylandShell,
+      xConnection.setup.roots[0],
+      xWmResources,
+      visualAndColormap,
+      wmWindow,
+    )
+
+    // FIXME causes connection to hang
+    await xWindowManager.createCursors()
+    xWindowManager.wmWindowSetCursor(xWindowManager.screen.root, CursorType.XWM_CURSOR_LEFT_PTR)
+
+    session.globals.compositor.addSurfaceCreationListener(
+      async (surface) => await xWindowManager.handleCreateSurface(surface),
+    )
+
+    return xWindowManager
+  }
+
   async createCursors() {
-    // @ts-ignore
-    await Promise.all(Object.entries(cursorImageNames).map(async ([name, cursorImage]) => this.cursors[name] = await this.loadCursor(cursorImage)))
+    await Promise.all(
+      Object.entries(cursorImageNames).map(
+        // @ts-ignore
+        async ([name, cursorImage]) => (this.cursors[name] = await this.loadCursor(cursorImage)),
+      ),
+    )
     this.lastCursor = -1
   }
 
+  wmWindowScheduleRepaint(window: WmWindow) {
+    if (window.frameId === Window.None) {
+      /* Override-redirect windows go through here, but we
+       * cannot assert(window->override_redirect); because
+       * we do not deal with changing OR flag yet.
+       * XXX: handle OR flag changes in message handlers
+       */
+      this.wmWindowSetPendingStateOR(window)
+      return
+    }
+
+    if (window.repaintSource) {
+      return
+    }
+
+    // console.log(`XWM: schedule repaint, win ${window.id}`)
+
+    window.repaintSource = this.client.connection.addIdleHandler(() => {
+      this.wmWindowDoRepaint(window)
+    })
+  }
+
+  sendFocusWindow(window?: WmWindow) {
+    if (window) {
+      if (window.overrideRedirect) {
+        return
+      }
+
+      const clientMessage = marshallClientMessageEvent({
+        responseType: 0,
+        format: 32,
+        window: window.id,
+        _type: this.atoms.WM_PROTOCOLS,
+        data: {
+          data32: new Uint32Array([this.atoms.WM_TAKE_FOCUS, Time.CurrentTime]),
+        },
+      })
+
+      this.xConnection.sendEvent(0, window.id, EventMask.SubstructureRedirect, new Int8Array(clientMessage))
+      this.xConnection.setInputFocus(InputFocus.PointerRoot, window.id, Time.CurrentTime)
+      this.configureWindow(window.id, { stackMode: StackMode.Above })
+    } else {
+      this.xConnection.setInputFocus(InputFocus.PointerRoot, Window.None, Time.CurrentTime)
+    }
+  }
+
+  async handleCreateSurface(surface: Surface) {
+    if (surface.resource.client !== this.client) {
+      return
+    }
+
+    // console.log(`XWM: create surface ${surface.resource.id}@${surface.resource.client.id}`, surface)
+
+    const window = this.unpairedWindowList.find((window) => window.surfaceId === surface.resource.id)
+    if (window) {
+      await this.xServerMapShellSurface(window, surface)
+      window.surfaceId = 0
+      this.unpairedWindowList = this.unpairedWindowList.filter((value) => value !== window)
+    }
+  }
+
+  // TODO called by compositor implementation
+  sendPosition(surface: Surface, x: number, y: number) {
+    const window = Object.values(this.windowHash).find((window) => window.surface === surface)
+    if (window === undefined) {
+      return
+    }
+
+    /* We use pos_dirty to tell whether a configure message is in flight.
+     * This is needed in case we send two configure events in a very
+     * short time, since window->x/y is set in after a roundtrip, hence
+     * we cannot just check if the current x and y are different. */
+    if (window.x !== x || window.y !== y || window.positionDirty) {
+      window.positionDirty = true
+      this.configureWindow(window.frameId, { x, y })
+      this.xConnection.flush()
+    }
+  }
+
+  setNetActiveWindow(window: Window) {
+    this.xConnection.changeProperty(
+      PropMode.Replace,
+      this.screen.root,
+      this.atoms._NET_ACTIVE_WINDOW,
+      this.atoms.WINDOW,
+      32,
+      new Uint32Array([window]),
+    )
+  }
 
   private async handleButton(event: ButtonPressEvent | ButtonReleaseEvent) {
     // TODO we want event codes from xtsb
@@ -789,16 +910,15 @@ export class XWindowManager {
     const seat = this.session.globals.seat
     const pointer = seat.pointer
 
-    const buttonState = event.responseType === buttonPress ?
-      WlPointerButtonState.pressed :
-      WlPointerButtonState.released
+    const buttonState =
+      event.responseType === buttonPress ? WlPointerButtonState.pressed : WlPointerButtonState.released
 
     // TODO constants from input.h ?
     const buttonId = event.detail === 1 ? 0x110 : 0x111
 
     let doubleClick = false
     if (buttonState === WlPointerButtonState.pressed) {
-      if ((event.time - window.lastButtonTime) <= this.doubleClickPeriod) {
+      if (event.time - window.lastButtonTime <= this.doubleClickPeriod) {
         doubleClick = true
         window.didDouble = true
       } else {
@@ -869,7 +989,7 @@ export class XWindowManager {
     }
 
     const location = window.frame?.pointerEnter(undefined, event.eventX, event.eventY)
-    if (window.frame?.status && (window.frame?.status & FrameStatus.FRAME_STATUS_REPAINT)) {
+    if (window.frame?.status && window.frame?.status & FrameStatus.FRAME_STATUS_REPAINT) {
       this.wmWindowScheduleRepaint(window)
     }
 
@@ -885,7 +1005,7 @@ export class XWindowManager {
     }
 
     window.frame?.pointerLeave(undefined)
-    if (window.frame?.status && (window.frame?.status & FrameStatus.FRAME_STATUS_REPAINT)) {
+    if (window.frame?.status && window.frame?.status & FrameStatus.FRAME_STATUS_REPAINT) {
       this.wmWindowScheduleRepaint(window)
     }
 
@@ -900,7 +1020,7 @@ export class XWindowManager {
     }
 
     const location = window.frame?.pointerMotion(undefined, event.eventX, event.eventY)
-    if (window.frame?.status && (window.frame?.status & FrameStatus.FRAME_STATUS_REPAINT)) {
+    if (window.frame?.status && window.frame?.status & FrameStatus.FRAME_STATUS_REPAINT) {
       this.wmWindowScheduleRepaint(window)
     }
 
@@ -1068,7 +1188,7 @@ export class XWindowManager {
       y,
       width: window.width,
       height: window.height,
-      borderWidth: 0
+      borderWidth: 0,
     }
     if (event.valueMask & ConfigWindow.Sibling) {
       values.sibling = event.sibling
@@ -1186,83 +1306,122 @@ export class XWindowManager {
     window.propertiesDirty = false
 
     const props: Prop[] = [
-      [Atom.wmClass, Atom.STRING, ({ value }) => window.class = value.chars()],
-      [Atom.wmName, Atom.STRING, ({ value }) => window.name = value.chars()],
-      [Atom.wmTransientFor, Atom.WINDOW, ({ value }) => {
-        const lookupWindow = this.lookupWindow(new Uint32Array(value.buffer)[0])
-        if (lookupWindow === undefined) {
-          // console.log('XCB_ATOM_WINDOW contains window id not found in hash table.')
-        } else {
-          window.transientFor = lookupWindow
-        }
-      }],
-      [this.atoms.WM_PROTOCOLS, TYPE_WM_PROTOCOLS, ({ value, valueLen }) => {
-        const atoms = new Uint32Array(value.buffer)
-        for (let i = 0; i < valueLen; i++) {
-          if (atoms[i] === this.atoms.WM_DELETE_WINDOW) {
-            window.deleteWindow = true
-            break
-          }
-        }
-      }],
-      [this.atoms.WM_NORMAL_HINTS, TYPE_WM_NORMAL_HINTS, ({ value }) => {
-        const [flags, x, y, width, height, minWidth, minHeight, maxWidth, maxHeight, widthInc, heightInc, minAspectX, minAspectY, maxAspectX, maxAspectY, baseWidth, baseHeight, winGravity] = new Uint32Array(value.buffer)
-        window.sizeHints = {
-          flags,
-          x,
-          y,
-          width,
-          height,
-          minWidth,
-          minHeight,
-          maxWidth,
-          maxHeight,
-          widthInc,
-          heightInc,
-          minAspect: { x: minAspectX, y: minAspectY },
-          maxAspect: { x: maxAspectX, y: maxAspectY },
-          baseWidth,
-          baseHeight,
-          winGravity
-        }
-      }],
-      [this.atoms._NET_WM_STATE, TYPE_NET_WM_STATE, ({ value, valueLen }) => {
-        window.fullscreen = false
-        const atoms = new Uint32Array(value.buffer)
-        for (let i = 0; i < valueLen; i++) {
-          if (atoms[i] === this.atoms._NET_WM_STATE_FULLSCREEN) {
-            window.fullscreen = true
-          }
-          if (atoms[i] === this.atoms._NET_WM_STATE_MAXIMIZED_VERT) {
-            window.maximizedVertical = true
-          }
-          if (atoms[i] === this.atoms._NET_WM_STATE_MAXIMIZED_HORZ) {
-            window.maximizedHorizontal = true
-          }
-        }
-      }],
-      [this.atoms._NET_WM_WINDOW_TYPE, Atom.ATOM, ({ value }) => window.type = new Uint32Array(value.buffer)[0]],
-      [this.atoms._NET_WM_NAME, Atom.STRING, ({ value }) => window.name = value.chars()],
-      [this.atoms._NET_WM_PID, Atom.CARDINAL, ({ value }) => window.pid = new Uint32Array(value.buffer)[0]],
-      [this.atoms._MOTIF_WM_HINTS, TYPE_MOTIF_WM_HINTS, ({ value }) => {
-        const [flags, functions, decorations, inputMode, status] = new Uint32Array(value.buffer)
-        window.motifHints = {
-          flags,
-          functions,
-          decorations,
-          inputMode,
-          status
-        }
-        if (window.motifHints.flags & MWM_HINTS_DECORATIONS) {
-          if (window.motifHints.decorations & MWM_DECOR_ALL) {
-            /* MWM_DECOR_ALL means all except the other values listed. */
-            window.decorate = MWM_DECOR_EVERYTHING & (~window.motifHints.decorations)
+      [Atom.wmClass, Atom.STRING, ({ value }) => (window.class = value.chars())],
+      [Atom.wmName, Atom.STRING, ({ value }) => (window.name = value.chars())],
+      [
+        Atom.wmTransientFor,
+        Atom.WINDOW,
+        ({ value }) => {
+          const lookupWindow = this.lookupWindow(new Uint32Array(value.buffer)[0])
+          if (lookupWindow === undefined) {
+            // console.log('XCB_ATOM_WINDOW contains window id not found in hash table.')
           } else {
-            window.decorate = window.motifHints.decorations
+            window.transientFor = lookupWindow
           }
-        }
-      }],
-      [this.atoms.WM_CLIENT_MACHINE, Atom.wmClientMachine, ({ value }) => window.machine = value.chars()]
+        },
+      ],
+      [
+        this.atoms.WM_PROTOCOLS,
+        TYPE_WM_PROTOCOLS,
+        ({ value, valueLen }) => {
+          const atoms = new Uint32Array(value.buffer)
+          for (let i = 0; i < valueLen; i++) {
+            if (atoms[i] === this.atoms.WM_DELETE_WINDOW) {
+              window.deleteWindow = true
+              break
+            }
+          }
+        },
+      ],
+      [
+        this.atoms.WM_NORMAL_HINTS,
+        TYPE_WM_NORMAL_HINTS,
+        ({ value }) => {
+          const [
+            flags,
+            x,
+            y,
+            width,
+            height,
+            minWidth,
+            minHeight,
+            maxWidth,
+            maxHeight,
+            widthInc,
+            heightInc,
+            minAspectX,
+            minAspectY,
+            maxAspectX,
+            maxAspectY,
+            baseWidth,
+            baseHeight,
+            winGravity,
+          ] = new Uint32Array(value.buffer)
+          window.sizeHints = {
+            flags,
+            x,
+            y,
+            width,
+            height,
+            minWidth,
+            minHeight,
+            maxWidth,
+            maxHeight,
+            widthInc,
+            heightInc,
+            minAspect: { x: minAspectX, y: minAspectY },
+            maxAspect: { x: maxAspectX, y: maxAspectY },
+            baseWidth,
+            baseHeight,
+            winGravity,
+          }
+        },
+      ],
+      [
+        this.atoms._NET_WM_STATE,
+        TYPE_NET_WM_STATE,
+        ({ value, valueLen }) => {
+          window.fullscreen = false
+          const atoms = new Uint32Array(value.buffer)
+          for (let i = 0; i < valueLen; i++) {
+            if (atoms[i] === this.atoms._NET_WM_STATE_FULLSCREEN) {
+              window.fullscreen = true
+            }
+            if (atoms[i] === this.atoms._NET_WM_STATE_MAXIMIZED_VERT) {
+              window.maximizedVertical = true
+            }
+            if (atoms[i] === this.atoms._NET_WM_STATE_MAXIMIZED_HORZ) {
+              window.maximizedHorizontal = true
+            }
+          }
+        },
+      ],
+      [this.atoms._NET_WM_WINDOW_TYPE, Atom.ATOM, ({ value }) => (window.type = new Uint32Array(value.buffer)[0])],
+      [this.atoms._NET_WM_NAME, Atom.STRING, ({ value }) => (window.name = value.chars())],
+      [this.atoms._NET_WM_PID, Atom.CARDINAL, ({ value }) => (window.pid = new Uint32Array(value.buffer)[0])],
+      [
+        this.atoms._MOTIF_WM_HINTS,
+        TYPE_MOTIF_WM_HINTS,
+        ({ value }) => {
+          const [flags, functions, decorations, inputMode, status] = new Uint32Array(value.buffer)
+          window.motifHints = {
+            flags,
+            functions,
+            decorations,
+            inputMode,
+            status,
+          }
+          if (window.motifHints.flags & MWM_HINTS_DECORATIONS) {
+            if (window.motifHints.decorations & MWM_DECOR_ALL) {
+              /* MWM_DECOR_ALL means all except the other values listed. */
+              window.decorate = MWM_DECOR_EVERYTHING & ~window.motifHints.decorations
+            } else {
+              window.decorate = window.motifHints.decorations
+            }
+          }
+        },
+      ],
+      [this.atoms.WM_CLIENT_MACHINE, Atom.wmClientMachine, ({ value }) => (window.machine = value.chars())],
     ]
 
     window.decorate = window.overrideRedirect ? 0 : MWM_DECOR_EVERYTHING
@@ -1275,8 +1434,9 @@ export class XWindowManager {
     window.deleteWindow = false
 
     props.forEach(([atom, type, propUpdater]: Prop) =>
-      this.xConnection.getProperty(0, window.id, atom, Atom.Any, 0, 2048)
-        .then(property => {
+      this.xConnection
+        .getProperty(0, window.id, atom, Atom.Any, 0, 2048)
+        .then((property) => {
           if (property._type === Atom.None) {
             /* No such property */
             return
@@ -1285,7 +1445,8 @@ export class XWindowManager {
         })
         .catch(() => {
           /* Bad window, typically */
-        }))
+        }),
+    )
   }
 
   private async wmWindowCreateFrame(window: WmWindow) {
@@ -1316,7 +1477,8 @@ export class XWindowManager {
       this.visualId,
       {
         borderPixel: this.screen.blackPixel,
-        eventMask: EventMask.KeyPress |
+        eventMask:
+          EventMask.KeyPress |
           EventMask.KeyRelease |
           EventMask.ButtonPress |
           EventMask.ButtonRelease |
@@ -1325,8 +1487,9 @@ export class XWindowManager {
           EventMask.LeaveWindow |
           EventMask.SubstructureNotify |
           EventMask.SubstructureRedirect,
-        colormap: this.colormap
-      })
+        colormap: this.colormap,
+      },
+    )
 
     this.xConnection.reparentWindow(window.id, window.frameId, x, y)
 
@@ -1356,7 +1519,14 @@ export class XWindowManager {
       throw new Error('Window does not have a parent.')
     }
 
-    this.xConnection.changeProperty(PropMode.Replace, window.frameId, this.atoms._XWAYLAND_ALLOW_COMMITS, Atom.CARDINAL, 32, new Uint32Array([allow ? 1 : 0]))
+    this.xConnection.changeProperty(
+      PropMode.Replace,
+      window.frameId,
+      this.atoms._XWAYLAND_ALLOW_COMMITS,
+      Atom.CARDINAL,
+      32,
+      new Uint32Array([allow ? 1 : 0]),
+    )
     this.xConnection.flush()
   }
 
@@ -1372,7 +1542,14 @@ export class XWindowManager {
       property.push(this.atoms._NET_WM_STATE_MAXIMIZED_HORZ)
     }
 
-    this.xConnection.changeProperty(PropMode.Replace, window.id, this.atoms._NET_WM_STATE, Atom.ATOM, 32, new Uint32Array(property))
+    this.xConnection.changeProperty(
+      PropMode.Replace,
+      window.id,
+      this.atoms._NET_WM_STATE,
+      Atom.ATOM,
+      32,
+      new Uint32Array(property),
+    )
   }
 
   /*
@@ -1381,30 +1558,17 @@ export class XWindowManager {
    */
   private wmWindowSetVirtualDesktop(window: WmWindow, desktop: number) {
     if (desktop >= 0) {
-      this.xConnection.changeProperty(PropMode.Replace, window.id, this.atoms._NET_WM_DESKTOP, Atom.CARDINAL, 32, new Uint32Array([desktop]))
+      this.xConnection.changeProperty(
+        PropMode.Replace,
+        window.id,
+        this.atoms._NET_WM_DESKTOP,
+        Atom.CARDINAL,
+        32,
+        new Uint32Array([desktop]),
+      )
     } else {
       this.xConnection.deleteProperty(window.id, this.atoms._NET_WM_DESKTOP)
     }
-  }
-
-  wmWindowScheduleRepaint(window: WmWindow) {
-    if (window.frameId === Window.None) {
-      /* Override-redirect windows go through here, but we
-       * cannot assert(window->override_redirect); because
-       * we do not deal with changing OR flag yet.
-       * XXX: handle OR flag changes in message handlers
-       */
-      this.wmWindowSetPendingStateOR(window)
-      return
-    }
-
-    if (window.repaintSource) {
-      return
-    }
-
-    // console.log(`XWM: schedule repaint, win ${window.id}`)
-
-    window.repaintSource = this.client.connection.addIdleHandler(() => { this.wmWindowDoRepaint(window) })
   }
 
   private wmWindowSetPendingStateOR(window: WmWindow) {
@@ -1418,15 +1582,15 @@ export class XWindowManager {
     }
 
     const { width, height } = this.wmWindowGetFrameSize(window)
-    Region.fini(window.surface.pendingState.opaquePixmanRegion)
+    fini(window.surface.pendingState.opaquePixmanRegion)
     if (window.hasAlpha) {
-      Region.init(window.surface.pendingState.opaquePixmanRegion)
+      init(window.surface.pendingState.opaquePixmanRegion)
     } else {
-      Region.initRect(window.surface.pendingState.opaquePixmanRegion, Rect.create(0, 0, width, height))
+      initRect(window.surface.pendingState.opaquePixmanRegion, Rect.create(0, 0, width, height))
     }
   }
 
-  private wmWindowGetChildPosition(window: WmWindow): { x: number, y: number } {
+  private wmWindowGetChildPosition(window: WmWindow): { x: number; y: number } {
     if (window.fullscreen) {
       return { x: 0, y: 0 }
     }
@@ -1438,9 +1602,7 @@ export class XWindowManager {
     return { x: this.theme.margin, y: this.theme.margin }
   }
 
-
-  private wmWindowGetFrameSize(window: WmWindow): { width: number, height: number } {
-
+  private wmWindowGetFrameSize(window: WmWindow): { width: number; height: number } {
     if (window.fullscreen) {
       return { width: window.width, height: window.height }
     }
@@ -1451,7 +1613,7 @@ export class XWindowManager {
 
     return {
       width: window.width + this.theme.margin * 2,
-      height: window.height + this.theme.margin * 2
+      height: window.height + this.theme.margin * 2,
     }
   }
 
@@ -1490,14 +1652,17 @@ export class XWindowManager {
     const { width, height } = this.wmWindowGetFrameSize(window)
     const { x, y } = this.wmWindowGetChildPosition(window)
 
-    Region.fini(window.surface.pendingState.opaquePixmanRegion)
+    fini(window.surface.pendingState.opaquePixmanRegion)
     if (window.hasAlpha) {
-      Region.init(window.surface.pendingState.opaquePixmanRegion)
+      init(window.surface.pendingState.opaquePixmanRegion)
     } else {
       /* We leave an extra pixel around the X window area to
        * make sure we don't sample from the undefined alpha
        * channel when filtering. */
-      Region.initRect(window.surface.pendingState.opaquePixmanRegion, Rect.create(x - 1, y - 1, window.width + 2, window.height + 2))
+      initRect(
+        window.surface.pendingState.opaquePixmanRegion,
+        Rect.create(x - 1, y - 1, window.width + 2, window.height + 2),
+      )
     }
 
     let inputX: number
@@ -1519,8 +1684,8 @@ export class XWindowManager {
 
     // console.log(`XWM: win ${window.id} geometry: ${inputX},${inputY} ${inputW}x${inputH}`)
 
-    Region.fini(window.surface.pendingState.inputPixmanRegion)
-    Region.initRect(window.surface.pendingState.inputPixmanRegion, Rect.create(inputX, inputY, inputW, inputH))
+    fini(window.surface.pendingState.inputPixmanRegion)
+    initRect(window.surface.pendingState.inputPixmanRegion, Rect.create(inputX, inputY, inputW, inputH))
 
     window.shsurf?.setWindowGeometry(inputX, inputY, inputW, inputH)
 
@@ -1543,7 +1708,7 @@ export class XWindowManager {
       width: window.width,
       height: window.height,
       borderWidth: 0,
-      overrideRedirect: 0
+      overrideRedirect: 0,
     })
     this.xConnection.sendEvent(0, window.id, EventMask.StructureNotify, new Int8Array(event))
   }
@@ -1557,7 +1722,14 @@ export class XWindowManager {
     this.configureWindow(window.frameId, { width, height })
   }
 
-  private async wmWindowCreate(id: WINDOW, width: number, height: number, x: number, y: number, overrideRedirect: number) {
+  private async wmWindowCreate(
+    id: WINDOW,
+    width: number,
+    height: number,
+    x: number,
+    y: number,
+    overrideRedirect: number,
+  ) {
     const geometryReplyPromise = this.xConnection.getGeometry(id)
 
     this.xConnection.changeWindowAttributes(id, { eventMask: EventMask.PropertyChange | EventMask.FocusChange })
@@ -1597,7 +1769,7 @@ export class XWindowManager {
     }
 
     if (window.surfaceId) {
-      this.unpairedWindowList = this.unpairedWindowList.filter(value => value !== window)
+      this.unpairedWindowList = this.unpairedWindowList.filter((value) => value !== window)
     }
 
     if (window.surface && window.surfaceDestroyListener) {
@@ -1608,7 +1780,14 @@ export class XWindowManager {
   }
 
   private wmWindowSetWmState(window: WmWindow, state: number) {
-    this.xConnection.changeProperty(PropMode.Replace, window.id, this.atoms.WM_STATE, this.atoms.WM_STATE, 32, new Uint32Array([state, Window.None]))
+    this.xConnection.changeProperty(
+      PropMode.Replace,
+      window.id,
+      this.atoms.WM_STATE,
+      this.atoms.WM_STATE,
+      32,
+      new Uint32Array([state, Window.None]),
+    )
   }
 
   private async getAtomName(atom: ATOM) {
@@ -1629,13 +1808,11 @@ export class XWindowManager {
       ThemeLocation.THEME_LOCATION_RESIZING_BOTTOM_RIGHT,
       ThemeLocation.THEME_LOCATION_RESIZING_BOTTOM,
       ThemeLocation.THEME_LOCATION_RESIZING_BOTTOM_LEFT,
-      ThemeLocation.THEME_LOCATION_RESIZING_LEFT
+      ThemeLocation.THEME_LOCATION_RESIZING_LEFT,
     ] as const
 
     const pointer = this.session.globals.seat.pointer
-    if (pointer.buttonsPressed !== 1
-      || pointer.focus === undefined
-      || pointer.focus.surface !== window.surface) {
+    if (pointer.buttonsPressed !== 1 || pointer.focus === undefined || pointer.focus.surface !== window.surface) {
       return
     }
 
@@ -1670,14 +1847,15 @@ export class XWindowManager {
     const property1 = event.data.data32?.[1]
     const property2 = event.data.data32?.[2]
 
-    if ((property1 === this.atoms._NET_WM_STATE_FULLSCREEN
-      || property2 === this.atoms._NET_WM_STATE_FULLSCREEN)
-      && action
-      && ((): boolean => {
+    if (
+      (property1 === this.atoms._NET_WM_STATE_FULLSCREEN || property2 === this.atoms._NET_WM_STATE_FULLSCREEN) &&
+      action &&
+      ((): boolean => {
         const { changed, newState } = updateState(action, window.fullscreen)
         window.fullscreen = !!newState
         return changed
-      })()) {
+      })()
+    ) {
       this.wmWindowSetNetWmState(window)
       if (window.fullscreen) {
         window.savedWidth = window.width
@@ -1688,24 +1866,28 @@ export class XWindowManager {
         window.shsurf?.setToplevel()
       }
     } else {
-      if ((property1 === this.atoms._NET_WM_STATE_MAXIMIZED_VERT
-        || property2 === this.atoms._NET_WM_STATE_MAXIMIZED_VERT)
-        && action
-        && ((): boolean => {
+      if (
+        (property1 === this.atoms._NET_WM_STATE_MAXIMIZED_VERT ||
+          property2 === this.atoms._NET_WM_STATE_MAXIMIZED_VERT) &&
+        action &&
+        ((): boolean => {
           const { changed, newState } = updateState(action, window.maximizedVertical)
           window.maximizedVertical = !!newState
           return changed
-        })()) {
+        })()
+      ) {
         this.wmWindowSetNetWmState(window)
       }
-      if ((property1 === this.atoms._NET_WM_STATE_MAXIMIZED_HORZ
-        || property2 === this.atoms._NET_WM_STATE_MAXIMIZED_HORZ)
-        && action
-        && ((): boolean => {
+      if (
+        (property1 === this.atoms._NET_WM_STATE_MAXIMIZED_HORZ ||
+          property2 === this.atoms._NET_WM_STATE_MAXIMIZED_HORZ) &&
+        action &&
+        ((): boolean => {
           const { changed, newState } = updateState(action, window.maximizedHorizontal)
           window.maximizedHorizontal = !!newState
           return changed
-        })()) {
+        })()
+      ) {
         this.wmWindowSetNetWmState(window)
       }
 
@@ -1750,48 +1932,6 @@ export class XWindowManager {
     }
   }
 
-  sendFocusWindow(window?: WmWindow) {
-    if (window) {
-      if (window.overrideRedirect) {
-        return
-      }
-
-      const clientMessage = marshallClientMessageEvent({
-        responseType: 0,
-        format: 32,
-        window: window.id,
-        _type: this.atoms.WM_PROTOCOLS,
-        data: {
-          data32: new Uint32Array([
-            this.atoms.WM_TAKE_FOCUS,
-            Time.CurrentTime
-          ])
-        }
-      })
-
-      this.xConnection.sendEvent(0, window.id, EventMask.SubstructureRedirect, new Int8Array(clientMessage))
-      this.xConnection.setInputFocus(InputFocus.PointerRoot, window.id, Time.CurrentTime)
-      this.configureWindow(window.id, { stackMode: StackMode.Above })
-    } else {
-      this.xConnection.setInputFocus(InputFocus.PointerRoot, Window.None, Time.CurrentTime)
-    }
-  }
-
-  async handleCreateSurface(surface: Surface) {
-    if (surface.resource.client !== this.client) {
-      return
-    }
-
-    // console.log(`XWM: create surface ${surface.resource.id}@${surface.resource.client.id}`, surface)
-
-    const window = this.unpairedWindowList.find(window => window.surfaceId === surface.resource.id)
-    if (window) {
-      await this.xServerMapShellSurface(window, surface)
-      window.surfaceId = 0
-      this.unpairedWindowList = this.unpairedWindowList.filter(value => value !== window)
-    }
-  }
-
   private async xServerMapShellSurface(window: WmWindow, surface: Surface) {
     /* This should be necessary only for override-redirected windows,
      * because otherwise MapRequest handler would have already updated
@@ -1815,7 +1955,7 @@ export class XWindowManager {
     window.surfaceDestroyListener = (surfaceResource) => {
       // console.log(`surface for xid ${window.id} destroyed`)
       /* This should have been freed by the shell.
-	     * Don't try to use it later. */
+       * Don't try to use it later. */
       window.shsurf = undefined
       window.surface = undefined
     }
@@ -1871,12 +2011,14 @@ export class XWindowManager {
   }
 
   private wmWindowTypeInactive(window: WmWindow) {
-    return window.type === this.atoms._NET_WM_WINDOW_TYPE_TOOLTIP ||
+    return (
+      window.type === this.atoms._NET_WM_WINDOW_TYPE_TOOLTIP ||
       window.type === this.atoms._NET_WM_WINDOW_TYPE_DROPDOWN_MENU ||
       window.type === this.atoms._NET_WM_WINDOW_TYPE_DND ||
       window.type === this.atoms._NET_WM_WINDOW_TYPE_COMBO ||
       window.type === this.atoms._NET_WM_WINDOW_TYPE_POPUP_MENU ||
       window.type === this.atoms._NET_WM_WINDOW_TYPE_UTILITY
+    )
   }
 
   private wmWindowIsMaximized(window: WmWindow) {
@@ -1892,17 +2034,16 @@ export class XWindowManager {
 
   private legacyFullscreen(window: WmWindow) {
     const minmax = PMinSize | PMaxSize
-    return this.session.globals.outputs.find(output => {
+    return this.session.globals.outputs.find((output) => {
       if (output.canvas.width === window.width && output.canvas.height === window.height && window.overrideRedirect) {
         return true
       }
-
 
       let matchingSize = false
       const sizeHintsFlags = window.sizeHints?.flags ?? 0
 
       if (
-        (sizeHintsFlags & (USSize | PSize)) &&
+        sizeHintsFlags & (USSize | PSize) &&
         window.sizeHints?.width === output.canvas.width &&
         window.sizeHints.height === output.canvas.height
       ) {
@@ -1919,27 +2060,8 @@ export class XWindowManager {
         matchingSize = true
       }
 
-      return !!(matchingSize && !window.decorate &&
-        (sizeHintsFlags & (USPosition | PPosition)))
+      return !!(matchingSize && !window.decorate && sizeHintsFlags & (USPosition | PPosition))
     })
-  }
-
-  // TODO called by compositor implementation
-  sendPosition(surface: Surface, x: number, y: number) {
-    const window = Object.values(this.windowHash).find(window => window.surface === surface)
-    if (window === undefined) {
-      return
-    }
-
-    /* We use pos_dirty to tell whether a configure message is in flight.
-     * This is needed in case we send two configure events in a very
-     * short time, since window->x/y is set in after a roundtrip, hence
-     * we cannot just check if the current x and y are different. */
-    if (window.x !== x || window.y !== y || window.positionDirty) {
-      window.positionDirty = true
-      this.configureWindow(window.frameId, { x, y })
-      this.xConnection.flush()
-    }
   }
 
   private wmWindowClose(window: WmWindow, time: TIMESTAMP) {
@@ -1950,11 +2072,8 @@ export class XWindowManager {
         window: window.id,
         _type: this.atoms.WM_PROTOCOLS,
         data: {
-          data32: new Uint32Array([
-            this.atoms.WM_DELETE_WINDOW,
-            time
-          ])
-        }
+          data32: new Uint32Array([this.atoms.WM_DELETE_WINDOW, time]),
+        },
       })
       this.xConnection.sendEvent(0, window.id, EventMask.NoEvent, new Int8Array(clientMessageEvent))
     } else {
@@ -1985,7 +2104,7 @@ export class XWindowManager {
       x,
       y,
       width: window.width,
-      height: window.height
+      height: window.height,
     })
 
     this.wmWindowConfigureFrame(window)
@@ -2027,7 +2146,9 @@ export class XWindowManager {
       return
     }
 
-    window.configureSource = this.client.connection.addIdleHandler(() => { this.wmWindowConfigure(window) })
+    window.configureSource = this.client.connection.addIdleHandler(() => {
+      this.wmWindowConfigure(window)
+    })
   }
 
   private wmWindowSetCursor(windowId: WINDOW, cursor: CursorType) {
@@ -2046,9 +2167,10 @@ export class XWindowManager {
     // TODO check fetch response
     const { url, yhot, xhot, height, width } = cursorImage
     const response = await fetch(url)
-    const cursorPNGImageData = await response.blob()
-      .then(value => value.arrayBuffer())
-      .then(value => new Uint8ClampedArray(value))
+    const cursorPNGImageData = await response
+      .blob()
+      .then((value) => value.arrayBuffer())
+      .then((value) => new Uint8ClampedArray(value))
 
     const cursorImageBlob = new Blob([cursorPNGImageData], { type: 'image/png' })
     const cursorImageBitmap = await createImageBitmap(cursorImageBlob, 0, 0, width, height)
@@ -2060,7 +2182,7 @@ export class XWindowManager {
     return this.loadCursorImage({ pixels, xhot: xhot, yhot: yhot })
   }
 
-  private loadCursorImage(cursorImage: { xhot: number, yhot: number, pixels: ImageData }): Cursor {
+  private loadCursorImage(cursorImage: { xhot: number; yhot: number; pixels: ImageData }): Cursor {
     const pix = this.xConnection.allocateID()
     this.xConnection.createPixmap(32, pix, this.screen.root, cursorImage.pixels.width, cursorImage.pixels.height)
 
@@ -2071,7 +2193,19 @@ export class XWindowManager {
     this.xConnection.createGC(gc, pix, {})
 
     const stride = cursorImage.pixels.width * 4
-    this.xConnection.putImage(ImageFormat.ZPixmap, pix, gc, cursorImage.pixels.width, cursorImage.pixels.height, 0, 0, 0, 32, stride * cursorImage.pixels.height, new Uint8Array(cursorImage.pixels.data.buffer))
+    this.xConnection.putImage(
+      ImageFormat.ZPixmap,
+      pix,
+      gc,
+      cursorImage.pixels.width,
+      cursorImage.pixels.height,
+      0,
+      0,
+      0,
+      32,
+      stride * cursorImage.pixels.height,
+      new Uint8Array(cursorImage.pixels.data.buffer),
+    )
     this.xConnection.freeGC(gc)
 
     const cursor = this.xConnection.allocateID()
@@ -2081,9 +2215,5 @@ export class XWindowManager {
     this.xConnection.freePixmap(pix)
 
     return cursor
-  }
-
-  setNetActiveWindow(window: Window) {
-    this.xConnection.changeProperty(PropMode.Replace, this.screen.root, this.atoms._NET_ACTIVE_WINDOW, this.atoms.WINDOW, 32, new Uint32Array([window]))
   }
 }

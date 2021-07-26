@@ -25,13 +25,13 @@ import XWaylandShell from './xwayland/XWaylandShell'
 import { XWindowManager } from './xwayland/XWindowManager'
 
 type XWaylandConectionState = {
-  state: 'pending' | 'open',
-  xConnection?: XWaylandConnection,
-  wlClient?: Client,
+  state: 'pending' | 'open'
+  xConnection?: XWaylandConnection
+  wlClient?: Client
   xwm?: XWindowManager
 }
 
-const xWaylandConnections: { [key: string]: XWaylandConectionState } = {}
+const xWaylandProxyStates: { [key: string]: XWaylandConectionState } = {}
 
 class RemoteSocket {
   private readonly textEncoder: TextEncoder = new TextEncoder()
@@ -43,24 +43,13 @@ class RemoteSocket {
 
   private constructor(private readonly session: Session) {}
 
-  async ensureXWayland(appEndpointURL: URL) {
+  ensureXWayland(appEndpointURL: URL) {
     const xWaylandBaseURL = new URL(appEndpointURL.origin)
-    xWaylandBaseURL.searchParams.append('compositorSessionId', this._session.compositorSessionId)
+    xWaylandBaseURL.searchParams.append('compositorSessionId', this.session.compositorSessionId)
     const xWaylandBaseURLhref = xWaylandBaseURL.href
 
-    if (xWaylandConnections[xWaylandBaseURLhref] === undefined) {
-      xWaylandConnections[xWaylandBaseURLhref] = { state: 'pending', }
-      xWaylandBaseURL.searchParams.append('xwayland', 'connection')
-      const xWaylandConnectionEndpointURL = xWaylandBaseURL.href
-
-      // The backend might choose to (re)use a different websocket connection. The chosen xwayland websocket connection will receive an out-of-band opcode 7.
-      try {
-        const anyWaylandClientWebSocket = new WebSocket(xWaylandConnectionEndpointURL)
-        await this.onWebSocket(anyWaylandClientWebSocket)
-      } catch (e) {
-        delete xWaylandConnections[xWaylandBaseURLhref]
-        throw e
-      }
+    if (xWaylandProxyStates[xWaylandBaseURLhref] === undefined) {
+      xWaylandProxyStates[xWaylandBaseURLhref] = { state: 'pending' }
     }
   }
 
@@ -253,20 +242,27 @@ class RemoteSocket {
       xWaylandBaseURL.searchParams.append('compositorSessionId', this.session.compositorSessionId)
       const xWaylandBaseURLhref = xWaylandBaseURL.href
 
-      const xWaylandConnection = xWaylandConnections[xWaylandBaseURLhref]
+      const xWaylandConnection = xWaylandProxyStates[xWaylandBaseURLhref]
       if (xWaylandConnection !== undefined) {
         xWaylandConnection.state = 'open'
         xWaylandConnection.wlClient = client
         xWaylandBaseURL.searchParams.append('xwmFD', `${wmFD}`)
         const xConnection = await XWaylandConnection.create(new WebSocket(xWaylandBaseURL.href))
         client.onClose().then(() => xConnection.destroy())
-        xConnection.onDestroy().then(() => delete xWaylandConnections[xWaylandBaseURLhref])
+        xConnection.onDestroy().then(() => delete xWaylandProxyStates[xWaylandBaseURLhref])
         xWaylandConnection.xConnection = xConnection
         try {
-          xWaylandConnection.xwm = await XWindowManager.create(this.session, xConnection, client, XWaylandShell.create(this._session))
+          xWaylandConnection.xwm = await XWindowManager.create(
+            this.session,
+            xConnection,
+            client,
+            XWaylandShell.create(this.session),
+          )
         } catch (e) {
           console.error('Failed to create X Window Manager.', e)
         }
+      } else {
+        console.error('BUG? Received an XWM message from an unregistered XWayland proxy.')
       }
     })
   }
