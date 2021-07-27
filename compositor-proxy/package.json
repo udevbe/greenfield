@@ -26,9 +26,9 @@
     "pino": "^6.12.0",
     "pino-pretty": "^5.1.1",
     "websocket-stream": "^5.5.2",
-    "westfield-endpoint": "^0.4.4",
+    "westfield-endpoint": "^0.4.5",
     "ws": "^7.5.3",
-    "xtsb": "^0.0.1-alpha.3"
+    "xtsb": "^0.0.1-alpha.5"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.2",
@@ -39,7 +39,7 @@
     "@types/ws": "^7.4.6",
     "@typescript-eslint/eslint-plugin": "^4.28.3",
     "@typescript-eslint/parser": "^4.28.3",
-    "cmake-js": "6.1.0",
+    "cmake-js": "6.2.1",
     "eslint": "^7.30.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^3.4.0",

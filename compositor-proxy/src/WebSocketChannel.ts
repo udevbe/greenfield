@@ -96,9 +96,10 @@ export class WebSocketChannel {
       this._webSocket.onmessage = this._onMessageEventHandler
 
       if (this._webSocket.readyState === 1) {
-        this._onOpenEventHandler({ target: this._webSocket })
+        this._onOpenEventHandler({ target: this._webSocket, type: 'open' })
       } else if (this._webSocket.readyState === 3) {
         this._onCloseEventHandler({
+          type: 'close',
           wasClean: true,
           code: 1000,
           reason: 'proxy websocket closed',

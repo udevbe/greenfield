@@ -843,8 +843,8 @@ class XWindowTheme implements Theme {
       throw new Error('Could not create XWindow Theme. CanvasRenderingContext2D failed to initialize.')
     }
 
-    document.body.appendChild(activeFrame.canvas)
-    document.body.appendChild(inactiveFrame.canvas)
+    // document.body.appendChild(activeFrame.canvas)
+    // document.body.appendChild(inactiveFrame.canvas)
 
     this.activeFrame = activeFrame
     this.inactiveFrame = inactiveFrame
@@ -1148,8 +1148,6 @@ export async function frameCreate(
   if (frameRenderContext === null || closeIcon === null || maximizeIcon === null || minimizeIcon === null) {
     throw new Error('Could not get 2d rendering context from canvas.')
   }
-
-  document.body.appendChild(frameRenderContext.canvas)
 
   closeIcon.canvas.width = signCloseIconData.width
   closeIcon.canvas.height = signCloseIconData.height

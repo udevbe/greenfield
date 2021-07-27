@@ -46,12 +46,12 @@ export class XWaylandSession {
       })
 
       if (xWaylandClient === undefined) {
-        logger.error('Could not find a XWayland wayland client entry after XWayland startup.')
+        logger.error('BUG? Could not find a XWayland wayland client entry after XWayland startup.')
         return
       }
 
       if (xWaylandClient.nativeClientSession === undefined) {
-        logger.error('Found XWaylandClient entry did not have a native client session associated.')
+        logger.error('BUG? Found XWaylandClient entry but it did not have a native wayland client session associated.')
         return
       }
 

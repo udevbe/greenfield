@@ -13,6 +13,9 @@ RUN apt-get update && apt-get install -y \
     libgbm1 \
     libwayland-egl1-mesa \
     libwayland-server0 \
+    xwayland \
+    xauth \
+    xxd \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
@@ -28,4 +31,5 @@ ENV NODE_ENV=production
 WORKDIR /home/node
 
 RUN usermod -a -G video node
-CMD ["setpriv", "--reuid=1000", "--regid=1000", "--init-groups", "node", "/app/dist/index.js"]
+
+CMD ["setpriv", "--reuid=1000", "--regid=1000", "--init-groups", "sh", "/app/docker-entrypoint.sh"]

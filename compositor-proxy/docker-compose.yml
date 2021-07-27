@@ -1,4 +1,4 @@
-version: "3.4"
+version: '3.4'
 services:
   compositor-proxy:
     image: gcr.io/greenfield-startup-dev/compositor-proxy
@@ -7,28 +7,45 @@ services:
       dockerfile: ./Dockerfile
     privileged: true
     volumes:
-      - tmp:/xdgruntimedir
+      - xdg-runtime-dir:/xdg-runtime-dir
+      - x11-unix:/tmp/.X11-unix
       - ${PWD}/src/config.yaml:/app/dist/config.yaml
     ports:
       - 8081:8081
     environment:
       GST_GL_WINDOW: gbm
-      XDG_RUNTIME_DIR: /xdgruntimedir
       COMPOSITOR_SESSION_ID: test123
       DEBUG: 1
       GST_DEBUG: 3
+      XDG_RUNTIME_DIR: /xdg-runtime-dir
+      XAUTHORITY: /tmp/.X11-unix/Xauthority
   gtk3-demo:
-    pid: "service:compositor-proxy"
+    pid: 'service:compositor-proxy'
     image: gcr.io/greenfield-startup-dev/gtk3-demo
     privileged: false
     volumes:
-      - tmp:/xdgruntimedir
+      - xdg-runtime-dir:/xdg-runtime-dir
     environment:
-      XDG_RUNTIME_DIR: /xdgruntimedir
+      XDG_RUNTIME_DIR: /xdg-runtime-dir
+    restart: always
+  xterm:
+    pid: 'service:compositor-proxy'
+    image: gcr.io/greenfield-startup-dev/xterm
+    privileged: false
+    volumes:
+      - xdg-runtime-dir:/xdg-runtime-dir
+      - x11-unix:/tmp/.X11-unix
+    environment:
+      XAUTHORITY: /tmp/.X11-unix/Xauthority
+      XDG_RUNTIME_DIR: /xdg-runtime-dir
+      DISPLAY: ':0'
     restart: always
 volumes:
-  tmp:
+  xdg-runtime-dir:
     driver_opts:
       type: tmpfs
       device: tmpfs
-
+  x11-unix:
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
