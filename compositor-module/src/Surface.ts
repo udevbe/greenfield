@@ -503,7 +503,7 @@ class Surface implements WlSurfaceRequests {
           return
         }
       } catch (e) {
-        console.warn(`[surface: ${resource.id}] - Failed to receive buffer contents.`, e.toString())
+        // console.warn(`[surface: ${resource.id}] - Failed to receive buffer contents.`, e.toString())
       }
     }
     this.role?.onCommit(this)

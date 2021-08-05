@@ -21,12 +21,10 @@
   "dependencies": {
     "ajv": "^8.6.1",
     "ajv-formats": "^2.1.0",
-    "epoll": "^4.0.1",
     "js-yaml": "^4.1.0",
     "pino": "^6.12.0",
     "pino-pretty": "^5.1.1",
     "websocket-stream": "^5.5.2",
-    "westfield-endpoint": "^0.4.5",
     "ws": "^7.5.3",
     "xtsb": "^0.0.1-alpha.5"
   },
@@ -40,6 +38,8 @@
     "@typescript-eslint/eslint-plugin": "^4.28.3",
     "@typescript-eslint/parser": "^4.28.3",
     "cmake-js": "6.2.1",
+    "westfield-endpoint": "0.4.16",
+    "epoll": "^4.0.1",
     "eslint": "^7.30.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^3.4.0",

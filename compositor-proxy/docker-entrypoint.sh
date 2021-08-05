@@ -1,5 +1,5 @@
 #!/bin/env sh
-
+set -e
 touch "$XAUTHORITY"
-xauth add "${HOST}":0 . "$(xxd -l 16 -p /dev/urandom)"
-node /app/dist/index.js
+xauth add "${HOST}":1 . "$(xxd -l 16 -p /dev/urandom)"
+node /app/index.js

@@ -817,7 +817,7 @@ export class XWindowManager {
       return
     }
 
-    // console.log(`XWM: schedule repaint, win ${window.id}`)
+    console.log(`XWM: schedule repaint, win ${window.id}`)
 
     window.repaintSource = this.client.connection.addIdleHandler(() => {
       this.wmWindowDoRepaint(window)
@@ -853,7 +853,7 @@ export class XWindowManager {
       return
     }
 
-    // console.log(`XWM: create surface ${surface.resource.id}@${surface.resource.client.id}`, surface)
+    console.log(`XWM: create surface ${surface.resource.id}@${surface.resource.client.id}`, surface)
 
     const window = this.unpairedWindowList.find((window) => window.surfaceId === surface.resource.id)
     if (window) {
@@ -895,7 +895,7 @@ export class XWindowManager {
   private async handleButton(event: ButtonPressEvent | ButtonReleaseEvent) {
     // TODO we want event codes from xtsb
     const buttonPress = 4
-    // console.log(`XCB_BUTTON_${event.responseType === buttonPress ? 'PRESS' : 'RELEASE'} (detail ${event.detail})`)
+    console.log(`XCB_BUTTON_${event.responseType === buttonPress ? 'PRESS' : 'RELEASE'} (detail ${event.detail})`)
 
     const window = this.lookupWindow(event.event)
 
@@ -1029,7 +1029,11 @@ export class XWindowManager {
   }
 
   private async handleCreateNotify(event: CreateNotifyEvent) {
-    // console.log(`XCB_CREATE_NOTIFY (window ${event.window}, at (${event.x}, ${event.y}), width ${event.width}, height ${event.height}${event.overrideRedirect ? 'override' : ''}${this.isOurResource(event.window) ? ', ours' : ''})`)
+    console.log(
+      `XCB_CREATE_NOTIFY (window ${event.window}, at (${event.x}, ${event.y}), width ${event.width}, height ${
+        event.height
+      }${event.overrideRedirect ? 'override' : ''}${this.isOurResource(event.window) ? ', ours' : ''})`,
+    )
     if (this.isOurResource(event.window)) {
       return
     }
@@ -1039,7 +1043,7 @@ export class XWindowManager {
 
   private async handleMapRequest(event: MapRequestEvent) {
     if (this.isOurResource(event.window)) {
-      // console.log(`XCB_MAP_REQUEST (window ${event.window}, ours)`)
+      console.log(`XCB_MAP_REQUEST (window ${event.window}, ours)`)
       return
     }
 
@@ -1075,7 +1079,9 @@ export class XWindowManager {
       throw new Error('Assertion failed. X window should have a parent window.')
     }
 
-    // console.log(`XCB_MAP_REQUEST (window ${window.id}, frame ${window.frameId}, ${window.width}x${window.height} @ ${window.mapRequestX},${window.mapRequestY})`)
+    console.log(
+      `XCB_MAP_REQUEST (window ${window.id}, frame ${window.frameId}, ${window.width}x${window.height} @ ${window.mapRequestX},${window.mapRequestY})`,
+    )
 
     this.wmWindowSetAllowCommits(window, false)
     this.wmWindowSetWmState(window, ICCCM_NORMAL_STATE)
@@ -1098,15 +1104,19 @@ export class XWindowManager {
 
   private handleMapNotify(event: MapNotifyEvent) {
     if (this.isOurResource(event.window)) {
-      // console.log(`XCB_MAP_NOTIFY (window ${event.window}, ours)`)
+      console.log(`XCB_MAP_NOTIFY (window ${event.window}, ours)`)
       return
     }
 
-    // console.log(`XCB_MAP_NOTIFY (window ${event.window}${event.overrideRedirect ? ', override' : ''})`)
+    console.log(`XCB_MAP_NOTIFY (window ${event.window}${event.overrideRedirect ? ', override' : ''})`)
   }
 
   private async handleUnmapNotify(event: UnmapNotifyEvent) {
-    // console.log(`XCB_UNMAP_NOTIFY (window ${event.window}, event ${event.event}${this.isOurResource(event.window) ? ', ours' : ''})`)
+    console.log(
+      `XCB_UNMAP_NOTIFY (window ${event.window}, event ${event.event}${
+        this.isOurResource(event.window) ? ', ours' : ''
+      })`,
+    )
     if (this.isOurResource(event.window)) {
       return
     }
@@ -1146,7 +1156,11 @@ export class XWindowManager {
   }
 
   private async handleReparentNotify(event: ReparentNotifyEvent) {
-    // console.log(`XCB_REPARENT_NOTIFY (window ${event.window}, parent ${event.parent}, event ${event.event}${event.overrideRedirect ? ', override' : ''})`)
+    console.log(
+      `XCB_REPARENT_NOTIFY (window ${event.window}, parent ${event.parent}, event ${event.event}${
+        event.overrideRedirect ? ', override' : ''
+      })`,
+    )
 
     if (event.parent === this.screen.root) {
       await this.wmWindowCreate(event.window, 10, 10, event.x, event.y, event.overrideRedirect)
@@ -1203,7 +1217,11 @@ export class XWindowManager {
   }
 
   private async handleConfigureNotify(event: ConfigureNotifyEvent) {
-    // console.log(`XCB_CONFIGURE_NOTIFY (window ${event.window}) ${event.x},${event.y} @ ${event.width}x${event.height}${event.overrideRedirect ? ', override' : ''})`)
+    console.log(
+      `XCB_CONFIGURE_NOTIFY (window ${event.window}) ${event.x},${event.y} @ ${event.width}x${event.height}${
+        event.overrideRedirect ? ', override' : ''
+      })`,
+    )
 
     const window = this.lookupWindow(event.window)
     if (!window) {
@@ -1229,7 +1247,7 @@ export class XWindowManager {
   }
 
   private async handleDestroyNotify(event: DestroyNotifyEvent) {
-    // console.log(`XCB_DESTROY_NOTIFY, win ${event.window}, event ${event.event}${event.window ? ', ours' : ''}`)
+    console.log(`XCB_DESTROY_NOTIFY, win ${event.window}, event ${event.event}${event.window ? ', ours' : ''}`)
 
     if (this.isOurResource(event.window)) {
       return
@@ -1258,7 +1276,11 @@ export class XWindowManager {
   }
 
   private async handleClientMessage(event: ClientMessageEvent) {
-    // console.log(`XCB_CLIENT_MESSAGE (${await this.getAtomName(event._type)} ${event.data.data32?.[0]} ${event.data.data32?.[1]} ${event.data.data32?.[2]} ${event.data.data32?.[3]} ${event.data.data32?.[4]} win ${event.window})`)
+    console.log(
+      `XCB_CLIENT_MESSAGE (${await this.getAtomName(event._type)} ${event.data.data32?.[0]} ${event.data.data32?.[1]} ${
+        event.data.data32?.[2]
+      } ${event.data.data32?.[3]} ${event.data.data32?.[4]} win ${event.window})`,
+    )
 
     const window = this.lookupWindow(event.window)
     /* The window may get created and destroyed before we actually
@@ -1314,7 +1336,7 @@ export class XWindowManager {
         ({ value }) => {
           const lookupWindow = this.lookupWindow(new Uint32Array(value.buffer)[0])
           if (lookupWindow === undefined) {
-            // console.log('XCB_ATOM_WINDOW contains window id not found in hash table.')
+            console.log('XCB_ATOM_WINDOW contains window id not found in hash table.')
           } else {
             window.transientFor = lookupWindow
           }
@@ -1627,7 +1649,7 @@ export class XWindowManager {
   }
 
   private wmWindowDrawDecorations(window: WmWindow) {
-    let how: string
+    let how = ''
     if (window.fullscreen) {
       how = 'fullscreen'
       /* nothing */
@@ -1637,7 +1659,7 @@ export class XWindowManager {
       window.frame?.refreshGeometry()
     }
 
-    // console.log(`XWM: draw decoration, win ${window.id}, ${how}`)
+    console.log(`XWM: draw decoration, win ${window.id}, ${how}`)
 
     // TODO do paint?
 
@@ -1682,7 +1704,7 @@ export class XWindowManager {
       inputH = height
     }
 
-    // console.log(`XWM: win ${window.id} geometry: ${inputX},${inputY} ${inputW}x${inputH}`)
+    console.log(`XWM: win ${window.id} geometry: ${inputX},${inputY} ${inputW}x${inputH}`)
 
     fini(window.surface.pendingState.inputPixmanRegion)
     initRect(window.surface.pendingState.inputPixmanRegion, Rect.create(inputX, inputY, inputW, inputH))
@@ -1906,7 +1928,7 @@ export class XWindowManager {
 
   private async wmWindowHandleSurfaceId(window: WmWindow, event: ClientMessageEvent) {
     if (window.surfaceId) {
-      // console.log(`already have surface id for window ${window.id}`)
+      console.log(`already have surface id for window ${window.id}`)
       return
     }
 
@@ -1953,7 +1975,7 @@ export class XWindowManager {
 
     window.surface = surface
     window.surfaceDestroyListener = (surfaceResource) => {
-      // console.log(`surface for xid ${window.id} destroyed`)
+      console.log(`surface for xid ${window.id} destroyed`)
       /* This should have been freed by the shell.
        * Don't try to use it later. */
       window.shsurf = undefined
@@ -1964,7 +1986,9 @@ export class XWindowManager {
     window.shsurf = this.xWaylandShell.createSurface(window, surface)
     window.shsurf.sendConfigure = (width, height) => this.sendConfigure(window, width, height)
 
-    // console.log(`XWM: map shell surface, win ${window.id}, weston_surface ${window.surface}, xwayland surface ${window.shsurf}`)
+    console.log(
+      `XWM: map shell surface, win ${window.id}, weston_surface ${window.surface}, xwayland surface ${window.shsurf}`,
+    )
 
     if (window.name) {
       window.shsurf.setTitle(window.name)
@@ -2027,7 +2051,7 @@ export class XWindowManager {
 
   private wmWindowIsPositioned(window: WmWindow) {
     if (window.mapRequestX === Number.MIN_SAFE_INTEGER || window.mapRequestY === Number.MIN_SAFE_INTEGER) {
-      // console.log(`XWM warning: win ${window.id} did not see map request`)
+      console.log(`XWM warning: win ${window.id} did not see map request`)
     }
     return window.mapRequestX !== 0 || window.mapRequestY !== 0
   }

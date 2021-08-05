@@ -44,9 +44,7 @@ class RemoteSocket {
   private constructor(private readonly session: Session) {}
 
   ensureXWayland(appEndpointURL: URL) {
-    const xWaylandBaseURL = new URL(appEndpointURL.origin)
-    xWaylandBaseURL.searchParams.append('compositorSessionId', this.session.compositorSessionId)
-    const xWaylandBaseURLhref = xWaylandBaseURL.href
+    const xWaylandBaseURLhref = appEndpointURL.href
 
     if (xWaylandProxyStates[xWaylandBaseURLhref] === undefined) {
       xWaylandProxyStates[xWaylandBaseURLhref] = { state: 'pending' }
@@ -238,8 +236,7 @@ class RemoteSocket {
     outOfBandChannel.setListener(7, async (outOfBandMessage) => {
       const wmFD = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)[0]
 
-      const xWaylandBaseURL = new URL(new URL(webSocket.url).origin)
-      xWaylandBaseURL.searchParams.append('compositorSessionId', this.session.compositorSessionId)
+      const xWaylandBaseURL = new URL(webSocket.url)
       const xWaylandBaseURLhref = xWaylandBaseURL.href
 
       const xWaylandConnection = xWaylandProxyStates[xWaylandBaseURLhref]
