@@ -37,8 +37,8 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     return xWaylandShellSurface
   }
 
-  private _mapped = false
-  private _managed = false
+  private mapped = false
+  private managed = false
 
   state?: string
   sendConfigure?: (width: number, height: number) => void
@@ -54,14 +54,14 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     private readonly window: WmWindow,
     private readonly surface: Surface,
     readonly userSurface: CompositorSurface,
-    private _userSurfaceState: CompositorSurfaceState,
+    private userSurfaceState: CompositorSurfaceState,
   ) {}
 
   private _ensureUserShellSurface() {
-    if (!this._managed) {
-      this._managed = true
+    if (!this.managed) {
+      this.managed = true
       this.surface.resource.onDestroy().then(() => this.session.userShell.events.destroyUserSurface?.(this.userSurface))
-      this.session.userShell.events.createUserSurface?.(this.userSurface, this._userSurfaceState)
+      this.session.userShell.events.createUserSurface?.(this.userSurface, this.userSurfaceState)
     }
   }
 
@@ -75,16 +75,20 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     )
 
     if (surface.pendingState.bufferContents) {
-      if (!this._mapped) {
-        this._map()
+      if (!this.mapped) {
+        this.map()
       }
     } else {
-      if (this._mapped) {
-        this._unmap()
+      if (this.mapped) {
+        this.unmap()
       }
     }
 
-    surface.renderViews()
+    surface.renderViews((view) => {
+      if (view.mapped && view.surface.state.buffer) {
+        this.prepareFrameDecoration(view)
+      }
+    })
   }
 
   prepareFrameDecoration(view: View) {
@@ -124,23 +128,16 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     }
   }
 
-  prepareViewRenderState(view: View): void {
-    view.scene.prepareViewRenderState(view)
-    if (view.mapped && view.surface.state.buffer) {
-      this.prepareFrameDecoration(view)
-    }
+  private map() {
+    this.mapped = true
+    this.userSurfaceState = { ...this.userSurfaceState, mapped: this.mapped }
+    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
   }
 
-  private _map() {
-    this._mapped = true
-    this._userSurfaceState = { ...this._userSurfaceState, mapped: this._mapped }
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this._userSurfaceState)
-  }
-
-  private _unmap() {
-    this._mapped = false
-    this._userSurfaceState = { ...this._userSurfaceState, mapped: this._mapped }
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this._userSurfaceState)
+  private unmap() {
+    this.mapped = false
+    this.userSurfaceState = { ...this.userSurfaceState, mapped: this.mapped }
+    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
   }
 
   setToplevel(): void {
@@ -316,8 +313,8 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   }
 
   setTitle(title: string): void {
-    this._userSurfaceState = { ...this._userSurfaceState, title }
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this._userSurfaceState)
+    this.userSurfaceState = { ...this.userSurfaceState, title }
+    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
   }
 
   setWindowGeometry(x: number, y: number, width: number, height: number): void {
@@ -339,23 +336,24 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   setPid(pid: number): void {}
 
   requestActive() {
-    if (this._userSurfaceState.active) {
+    if (this.userSurfaceState.active) {
       return
     }
-    this._userSurfaceState = { ...this._userSurfaceState, active: true }
+    this.userSurfaceState = { ...this.userSurfaceState, active: true }
     this.window.wmWindowActivate(this.surface)
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this._userSurfaceState)
+    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
   }
 
   notifyInactive() {
-    if (!this._userSurfaceState.active) {
+    if (!this.userSurfaceState.active) {
       return
     }
-    this._userSurfaceState = { ...this._userSurfaceState, active: false }
+    this.userSurfaceState = { ...this.userSurfaceState, active: false }
     this.window.wmWindowActivate(undefined)
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this._userSurfaceState)
+    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
   }
 }

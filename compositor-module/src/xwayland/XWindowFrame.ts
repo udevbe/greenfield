@@ -1140,7 +1140,6 @@ export async function frameCreate(
   const signCloseIconData = await signCloseIconPromise
 
   const frameRenderContext = document.createElement('canvas').getContext('2d')
-  document.createElement('canvas').getContext('2d')
   const closeIcon = document.createElement('canvas').getContext('2d')
   const maximizeIcon = document.createElement('canvas').getContext('2d')
   const minimizeIcon = document.createElement('canvas').getContext('2d')

@@ -82,10 +82,6 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
     mergeSurfaceState(this.cachedState, surface.state)
   }
 
-  prepareViewRenderState(view: View): void {
-    view.scene.prepareViewRenderState(view)
-  }
-
   private commitCache(surface: Surface) {
     mergeSurfaceState(surface.pendingState, this.cachedState)
     this.cachedState.damageRects = []

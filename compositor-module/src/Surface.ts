@@ -550,7 +550,7 @@ class Surface implements WlSurfaceRequests {
     this.resource.client.connection.flush()
   }
 
-  renderViews(): void {
+  renderViews(prepareRenderOnIdle?: (view: View) => void): void {
     if (this.renderSource) {
       return
     }
@@ -560,6 +560,7 @@ class Surface implements WlSurfaceRequests {
         new Set(
           this.views.map((view) => {
             view.scene.prepareViewRenderState(view)
+            prepareRenderOnIdle?.(view)
             return view.scene
           }),
         ).forEach((scene) => {
