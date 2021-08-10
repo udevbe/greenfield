@@ -8,7 +8,7 @@ import Session from '../Session'
 import Surface from '../Surface'
 import { UserShellSurfaceRole } from '../UserShellSurfaceRole'
 import View from '../View'
-import { WmWindow } from './XWindowManager'
+import { XWindow } from './XWindow'
 
 const { bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight } = WlShellSurfaceResize
 
@@ -20,7 +20,7 @@ const SurfaceStates = {
 }
 
 export default class XWaylandShellSurface implements UserShellSurfaceRole {
-  static create(session: Session, window: WmWindow, surface: Surface) {
+  static create(session: Session, window: XWindow, surface: Surface) {
     const { client, id } = surface.resource
     const userSurface: CompositorSurface = { id: `${id}`, clientId: client.id }
     const userSurfaceState: CompositorSurfaceState = {
@@ -51,7 +51,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
 
   constructor(
     private readonly session: Session,
-    private readonly window: WmWindow,
+    private readonly window: XWindow,
     private readonly surface: Surface,
     readonly userSurface: CompositorSurface,
     private userSurfaceState: CompositorSurfaceState,
@@ -344,7 +344,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       return
     }
     this.userSurfaceState = { ...this.userSurfaceState, active: true }
-    this.window.wmWindowActivate(this.surface)
+    this.window.activate(this.surface)
     this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
   }
 
@@ -353,7 +353,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       return
     }
     this.userSurfaceState = { ...this.userSurfaceState, active: false }
-    this.window.wmWindowActivate(undefined)
+    this.window.activate(undefined)
     this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
   }
 }

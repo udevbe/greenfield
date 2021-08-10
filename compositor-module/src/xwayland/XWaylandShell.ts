@@ -1,7 +1,7 @@
 import Session from '../Session'
 import Surface from '../Surface'
 import XWaylandShellSurface from './XWaylandShellSurface'
-import { WmWindow } from './XWindowManager'
+import { XWindow } from './XWindow'
 
 class XWaylandShell {
   static create(session: Session) {
@@ -14,7 +14,7 @@ class XWaylandShell {
     this.session = session
   }
 
-  createSurface(window: WmWindow, surface: Surface): XWaylandShellSurface {
+  createSurface(window: XWindow, surface: Surface): XWaylandShellSurface {
     return XWaylandShellSurface.create(this.session, window, surface)
   }
 }

@@ -289,43 +289,7 @@ class XWindowFrameButton {
 
 export type FrameInterior = { readonly x: number; readonly y: number; readonly width: number; readonly height: number }
 
-export interface Frame {
-  status: number
-  width: number
-  height: number
-  interior: { x: number; y: number; width: number; height: number }
-  renderContext: CanvasRenderingContext2D
-
-  pointerMotion(pointer: Pointer | undefined, x: number, y: number): ThemeLocation
-
-  doubleClick(undefined: Pointer | undefined, buttonId: number, buttonState: WlPointerButtonState): ThemeLocation
-
-  pointerButton(pointer: Pointer | undefined, buttonId: number, buttonState: WlPointerButtonState): ThemeLocation
-
-  statusClear(frameStatus: FrameStatus): void
-
-  resizeInside(width: number, height: number): void
-
-  destroy(): void
-
-  setTitle(title: string): void
-
-  repaint(frameWidth: number, frameHeight: number): FrameInterior
-
-  inputRect(): { x: number; y: number; width: number; height: number }
-
-  pointerEnter(pointer: Pointer | undefined, x: number, y: number): ThemeLocation
-
-  pointerLeave(pointer: Pointer | undefined): void
-
-  unsetFlag(flag: FrameFlag): void
-
-  setFlag(flag: FrameFlag): void
-
-  refreshGeometry(): void
-}
-
-export class XWindowFrame implements Frame {
+export class XWindowFrame {
   status: FrameStatus = FrameStatus.FRAME_STATUS_REPAINT
   pointers: XWindowFramePointer[] = []
   buttons: XWindowFrameButton[] = []
@@ -843,9 +807,6 @@ class XWindowTheme implements Theme {
       throw new Error('Could not create XWindow Theme. CanvasRenderingContext2D failed to initialize.')
     }
 
-    // document.body.appendChild(activeFrame.canvas)
-    // document.body.appendChild(inactiveFrame.canvas)
-
     this.activeFrame = activeFrame
     this.inactiveFrame = inactiveFrame
 
@@ -1134,7 +1095,7 @@ export async function frameCreate(
   buttons: number,
   title: string,
   icon?: CanvasRenderingContext2D,
-): Promise<Frame> {
+): Promise<XWindowFrame> {
   const signMinimizeIconData = await signMinimizeIconPromise
   const signMaximizeIconData = await signMaximizeIconPromise
   const signCloseIconData = await signCloseIconPromise
