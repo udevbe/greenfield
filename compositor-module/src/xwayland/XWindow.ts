@@ -16,6 +16,7 @@ import {
   Window,
   WindowClass,
 } from 'xtsb'
+import { queueCancellableMicrotask } from '../Loop'
 import Rect from '../math/Rect'
 import Output from '../Output'
 import { fini, init, initRect } from '../Region'
@@ -136,8 +137,8 @@ export class XWindow {
   shsurf?: XWaylandShellSurface
   legacyFullscreenOutput?: Output
   transientFor?: XWindow
-  configureSource?: () => void
-  repaintSource?: () => void
+  configureTaskRegistration?: () => void
+  repaintRegistration?: () => void
 
   constructor(
     private wm: XWindowManager,
@@ -149,7 +150,7 @@ export class XWindow {
     public height: number,
   ) {}
 
-  sendFocusWindow() {
+  sendFocusWindow(): void {
     if (this.overrideRedirect) {
       return
     }
@@ -169,7 +170,7 @@ export class XWindow {
     this.wm.configureWindow(this.id, { stackMode: StackMode.Above })
   }
 
-  activate(surface?: Surface) {
+  activate(surface?: Surface): void {
     if (surface === undefined) {
       this.wm.setNetActiveWindow(Window.None)
     } else {
@@ -190,29 +191,29 @@ export class XWindow {
     this.wm.xConnection.flush()
   }
 
-  scheduleRepaint() {
+  scheduleRepaint(): void {
     if (this.frameId === Window.None) {
       /* Override-redirect windows go through here, but we
        * cannot assert(window->override_redirect); because
        * we do not deal with changing OR flag yet.
        * XXX: handle OR flag changes in message handlers
        */
-      this.setPendingStateOR()
+      this.setPendingStateOverrideRedirect()
       return
     }
 
-    if (this.repaintSource) {
+    if (this.repaintRegistration) {
       return
     }
 
     console.log(`XWM: schedule repaint, win ${this.id}`)
 
-    this.repaintSource = this.wm.client.connection.addIdleHandler(() => {
+    this.repaintRegistration = queueCancellableMicrotask(() => {
       this.doRepaint()
     })
   }
 
-  setPendingStateOR() {
+  private setPendingStateOverrideRedirect() {
     /* for override-redirect windows */
     if (this.frameId !== Window.None) {
       throw new Error('Can only set pending state for windows without a parent.')
@@ -232,7 +233,7 @@ export class XWindow {
   }
 
   private async doRepaint() {
-    this.repaintSource = undefined
+    this.repaintRegistration = undefined
     this.setAllowCommits(false)
     await this.readProperties()
     this.drawDecorations()
@@ -240,7 +241,7 @@ export class XWindow {
     this.setAllowCommits(true)
   }
 
-  getFrameSize(): { width: number; height: number } {
+  private getFrameSize(): { width: number; height: number } {
     if (this.fullscreen) {
       return { width: this.width, height: this.height }
     }
@@ -416,7 +417,7 @@ export class XWindow {
     }
     this.deleteWindow = false
 
-    props.forEach(([atom, type, propUpdater]: Prop) =>
+    props.forEach(([atom, , propUpdater]: Prop) =>
       this.wm.xConnection
         .getProperty(0, this.id, atom, Atom.Any, 0, 2048)
         .then((property) => {
@@ -445,12 +446,11 @@ export class XWindow {
 
     console.log(`XWM: draw decoration, win ${this.id}, ${how}`)
 
-    // TODO do paint?
-
-    // this.xConnection.flush()
+    // this.wm.xConnection.clearArea(0, this.frameId, 0, 0, 1, 1)
+    // this.wm.xConnection.flush()
   }
 
-  setPendingState() {
+  private setPendingState() {
     if (this.surface === undefined) {
       return
     }
@@ -465,7 +465,10 @@ export class XWindow {
       /* We leave an extra pixel around the X window area to
        * make sure we don't sample from the undefined alpha
        * channel when filtering. */
-      initRect(this.surface.pendingState.opaquePixmanRegion, Rect.create(x - 1, y - 1, this.width + 2, this.height + 2))
+      initRect(
+        this.surface.pendingState.opaquePixmanRegion,
+        Rect.create(x - 1, y - 1, x - 1 + this.width + 2, y - 1 + this.height + 2),
+      )
     }
 
     let inputX: number
@@ -487,8 +490,8 @@ export class XWindow {
 
     console.log(`XWM: win ${this.id} geometry: ${inputX},${inputY} ${inputW}x${inputH}`)
 
-    fini(this.surface.pendingState.inputPixmanRegion)
-    initRect(this.surface.pendingState.inputPixmanRegion, Rect.create(inputX, inputY, inputW, inputH))
+    fini(this.surface.state.inputPixmanRegion)
+    initRect(this.surface.state.inputPixmanRegion, Rect.create(inputX, inputY, inputX + inputW, inputY + inputH))
 
     this.shsurf?.setWindowGeometry(inputX, inputY, inputW, inputH)
 
@@ -599,7 +602,7 @@ export class XWindow {
     }
   }
 
-  handleState(event: ClientMessageEvent) {
+  handleState(event: ClientMessageEvent): void {
     const maximized = this.isMaximized()
 
     const action = event.data.data32?.[0]
@@ -663,11 +666,11 @@ export class XWindow {
     }
   }
 
-  isMaximized() {
+  isMaximized(): boolean {
     return this.maximizedHorizontal && this.maximizedVertical
   }
 
-  setNetWmState() {
+  setNetWmState(): void {
     const property: number[] = []
     if (this.fullscreen) {
       property.push(this.wm.atoms._NET_WM_STATE_FULLSCREEN)
@@ -689,7 +692,7 @@ export class XWindow {
     )
   }
 
-  setWmState(state: number) {
+  setWmState(state: number): void {
     this.wm.xConnection.changeProperty(
       PropMode.Replace,
       this.id,
@@ -704,7 +707,7 @@ export class XWindow {
    * Sets the _NET_WM_DESKTOP property for the window to 'desktop'.
    * Passing a <0 desktop value deletes the property.
    */
-  setVirtualDesktop(desktop: number) {
+  setVirtualDesktop(desktop: number): void {
     if (desktop >= 0) {
       this.wm.xConnection.changeProperty(
         PropMode.Replace,
@@ -719,7 +722,7 @@ export class XWindow {
     }
   }
 
-  async handleSurfaceId(event: ClientMessageEvent) {
+  async handleSurfaceId(event: ClientMessageEvent): Promise<void> {
     if (this.surfaceId) {
       console.log(`already have surface id for window ${this.id}`)
       return
@@ -747,7 +750,7 @@ export class XWindow {
     }
   }
 
-  async xServerMapShellSurface(surface: Surface) {
+  async xServerMapShellSurface(surface: Surface): Promise<void> {
     /* This should be necessary only for override-redirected windows,
      * because otherwise MapRequest handler would have already updated
      * the properties. However, if X11 clients set properties after
@@ -767,7 +770,7 @@ export class XWindow {
     }
 
     this.surface = surface
-    this.surfaceDestroyListener = (surfaceResource) => {
+    this.surfaceDestroyListener = () => {
       console.log(`surface for xid ${this.id} destroyed`)
       /* This should have been freed by the shell.
        * Don't try to use it later. */
@@ -778,6 +781,7 @@ export class XWindow {
 
     this.shsurf = this.wm.xWaylandShell.createSurface(this, surface)
     this.shsurf.sendConfigure = (width, height) => this.sendConfigure(width, height)
+    this.shsurf.sendPosition = (x, y) => this.sendPosition(x, y)
 
     console.log(
       `XWM: map shell surface, win ${this.id}, weston_surface ${this.surface}, xwayland surface ${this.shsurf}`,
@@ -819,7 +823,7 @@ export class XWindow {
     }
 
     if (this.frameId === Window.None) {
-      this.setPendingStateOR()
+      this.setPendingStateOverrideRedirect()
     } else {
       this.setPendingState()
       this.setAllowCommits(true)
@@ -827,7 +831,20 @@ export class XWindow {
     }
   }
 
-  sendConfigure(width: number, height: number) {
+  // TODO called by compositor implementation
+  sendPosition(x: number, y: number) {
+    /* We use pos_dirty to tell whether a configure message is in flight.
+     * This is needed in case we send two configure events in a very
+     * short time, since window->x/y is set in after a roundtrip, hence
+     * we cannot just check if the current x and y are different. */
+    if (this.x !== x || this.y !== y || this.positionDirty) {
+      this.positionDirty = true
+      this.wm.configureWindow(this.frameId, { x, y })
+      this.wm.xConnection.flush()
+    }
+  }
+
+  private sendConfigure(width: number, height: number) {
     let newWidth, newHeight
     let vborder, hborder
 
@@ -858,16 +875,16 @@ export class XWindow {
       this.frame?.resizeInside(this.width, this.height)
     }
 
-    if (this.configureSource) {
+    if (this.configureTaskRegistration) {
       return
     }
 
-    this.configureSource = this.wm.client.connection.addIdleHandler(() => {
+    this.configureTaskRegistration = queueCancellableMicrotask(() => {
       this.configure()
     })
   }
 
-  isTypeInactive(): boolean {
+  private isTypeInactive(): boolean {
     return (
       this.type === this.wm.atoms._NET_WM_WINDOW_TYPE_TOOLTIP ||
       this.type === this.wm.atoms._NET_WM_WINDOW_TYPE_DROPDOWN_MENU ||
@@ -885,10 +902,10 @@ export class XWindow {
     return this.mapRequestX !== 0 || this.mapRequestY !== 0
   }
 
-  configure() {
-    if (this.configureSource) {
-      this.wm.client.connection.removeIdleHandler(this.configureSource)
-      this.configureSource = undefined
+  private configure() {
+    if (this.configureTaskRegistration) {
+      this.configureTaskRegistration()
+      this.configureTaskRegistration = undefined
     }
     this.setAllowCommits(false)
 
@@ -923,7 +940,7 @@ export class XWindow {
     await this.configure()
   }
 
-  sendConfigureNotify() {
+  sendConfigureNotify(): void {
     const { x, y } = this.getChildPosition()
 
     const event = marshallConfigureNotifyEvent({
@@ -942,14 +959,14 @@ export class XWindow {
     this.wm.xConnection.sendEvent(0, this.id, EventMask.StructureNotify, new Int8Array(event))
   }
 
-  destroy() {
-    if (this.configureSource) {
-      this.wm.client.connection.removeIdleHandler(this.configureSource)
-      this.configureSource = undefined
+  destroy(): void {
+    if (this.configureTaskRegistration) {
+      this.configureTaskRegistration()
+      this.configureTaskRegistration = undefined
     }
-    if (this.repaintSource) {
-      this.wm.client.connection.removeIdleHandler(this.repaintSource)
-      this.repaintSource = undefined
+    if (this.repaintRegistration) {
+      this.repaintRegistration()
+      this.repaintRegistration = undefined
     }
     // TODO destroy canvas surface?
 
@@ -977,7 +994,7 @@ export class XWindow {
     delete this.wm.windowHash[this.id]
   }
 
-  close(time: TIMESTAMP) {
+  close(time: TIMESTAMP): void {
     if (this.deleteWindow) {
       const clientMessageEvent = marshallClientMessageEvent({
         responseType: 0,
@@ -995,7 +1012,7 @@ export class XWindow {
     }
   }
 
-  legacyFullscreen() {
+  legacyFullscreen(): Output | undefined {
     const minmax = PMinSize | PMaxSize
     return this.wm.session.globals.outputs.find((output) => {
       if (output.canvas.width === this.width && output.canvas.height === this.height && this.overrideRedirect) {

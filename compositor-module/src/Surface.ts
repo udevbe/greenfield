@@ -27,6 +27,7 @@ import {
 import BufferContents from './BufferContents'
 import BufferImplementation from './BufferImplementation'
 import Callback from './Callback'
+import { queueCancellableMicrotask } from './Loop'
 import Mat4 from './math/Mat4'
 import Point from './math/Point'
 import Rect from './math/Rect'
@@ -218,7 +219,7 @@ class Surface implements WlSurfaceRequests {
 
   private readonly _surfaceChildren: SurfaceChild[] = []
   private _h264BufferContentDecoder?: H264BufferContentDecoder
-  private renderSource?: () => void
+  private renderTaskRegistration?: () => void
 
   static create(wlSurfaceResource: WlSurfaceResource, session: Session): Surface {
     const surface = new Surface(wlSurfaceResource, session.renderer, session)
@@ -551,11 +552,11 @@ class Surface implements WlSurfaceRequests {
   }
 
   renderViews(prepareRenderOnIdle?: (view: View) => void): void {
-    if (this.renderSource) {
+    if (this.renderTaskRegistration) {
       return
     }
-    this.renderSource = this.resource.client.connection.addIdleHandler(() => {
-      this.renderSource = undefined
+    this.renderTaskRegistration = queueCancellableMicrotask(() => {
+      this.renderTaskRegistration = undefined
       if (this.views.length > 0) {
         new Set(
           this.views.map((view) => {

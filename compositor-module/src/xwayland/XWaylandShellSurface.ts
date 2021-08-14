@@ -17,7 +17,7 @@ const SurfaceStates = {
   FULLSCREEN: 'fullscreen',
   TRANSIENT: 'transient',
   TOP_LEVEL: 'top_level',
-}
+} as const
 
 export default class XWaylandShellSurface implements UserShellSurfaceRole {
   static create(session: Session, window: XWindow, surface: Surface) {
@@ -39,14 +39,23 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
 
   private mapped = false
   private managed = false
+  private pendingPositionOffset: Point | undefined = undefined
 
-  state?: string
+  state?: typeof SurfaceStates[keyof typeof SurfaceStates]
   sendConfigure?: (width: number, height: number) => void
+  sendPosition?: (x: number, y: number) => void
 
   private xwayland = {
     x: 0,
     y: 0,
     isSet: false,
+  }
+
+  private windowGeometry = {
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
   }
 
   constructor(
@@ -57,7 +66,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     private userSurfaceState: CompositorSurfaceState,
   ) {}
 
-  private _ensureUserShellSurface() {
+  private ensureUserShellSurface() {
     if (!this.managed) {
       this.managed = true
       this.surface.resource.onDestroy().then(() => this.session.userShell.events.destroyUserSurface?.(this.userSurface))
@@ -85,13 +94,17 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     }
 
     surface.renderViews((view) => {
+      if (this.pendingPositionOffset) {
+        view.positionOffset = this.pendingPositionOffset
+        this.pendingPositionOffset = undefined
+      }
       if (view.mapped && view.surface.state.buffer) {
         this.prepareFrameDecoration(view)
       }
     })
   }
 
-  prepareFrameDecoration(view: View) {
+  private prepareFrameDecoration(view: View) {
     // render frame decoration
     if (this.window.decorate && this.window.frame) {
       const { w: frameWidth, h: frameHeight } = view.renderState.size
@@ -145,7 +158,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       return
     }
 
-    this._ensureUserShellSurface()
+    this.ensureUserShellSurface()
     this.state = SurfaceStates.TOP_LEVEL
   }
 
@@ -154,7 +167,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       return
     }
 
-    this._ensureUserShellSurface()
+    this.ensureUserShellSurface()
     this.state = SurfaceStates.TOP_LEVEL
 
     // TODO store position?
@@ -175,7 +188,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     // FIXME we probably want to provide a method to translate from (abstract) surface space to global space
     surfaceChild.position = Point.create(parentPosition.x + x, parentPosition.y + y)
 
-    this._ensureUserShellSurface()
+    this.ensureUserShellSurface()
     this.state = SurfaceStates.TRANSIENT
   }
 
@@ -239,48 +252,63 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       return
     }
     // assigned in switch statement
-    let sizeAdjustment: (width: number, height: number, deltaX: number, deltaY: number) => { w: number; h: number }
+    let sizeAdjustment: (
+      width: number,
+      height: number,
+      deltaX: number,
+      deltaY: number,
+    ) => { dx: number; dy: number; w: number; h: number }
 
     switch (edges) {
       case bottomRight: {
         sizeAdjustment = (width, height, deltaX, deltaY) => ({
+          dx: 0,
+          dy: 0,
           w: width + deltaX,
           h: height + deltaY,
         })
         break
       }
       case top: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => ({ w: width, h: height - deltaY })
+        sizeAdjustment = (width, height, deltaX, deltaY) => ({ dx: 0, dy: deltaY, w: width, h: height - deltaY })
         break
       }
       case bottom: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => ({ w: width, h: height + deltaY })
+        sizeAdjustment = (width, height, deltaX, deltaY) => ({ dx: 0, dy: 0, w: width, h: height + deltaY })
         break
       }
       case left: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => ({ w: width - deltaX, h: height })
+        sizeAdjustment = (width, height, deltaX) => ({ dx: deltaX, dy: 0, w: width - deltaX, h: height })
         break
       }
       case topLeft: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => ({
-          w: width - deltaX,
-          h: height - deltaY,
-        })
+        sizeAdjustment = (width, height, deltaX, deltaY) => {
+          return {
+            dx: deltaX,
+            dy: deltaY,
+            w: width - deltaX,
+            h: height - deltaY,
+          }
+        }
         break
       }
       case bottomLeft: {
         sizeAdjustment = (width, height, deltaX, deltaY) => ({
+          dx: deltaX,
+          dy: 0,
           w: width - deltaX,
           h: height + deltaY,
         })
         break
       }
       case right: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => ({ w: width + deltaX, h: height })
+        sizeAdjustment = (width, height, deltaX) => ({ dx: 0, dy: 0, w: width + deltaX, h: height })
         break
       }
       case topRight: {
         sizeAdjustment = (width, height, deltaX, deltaY) => ({
+          dx: 0,
+          dy: deltaY,
           w: width + deltaX,
           h: height - deltaY,
         })
@@ -288,26 +316,35 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       }
       case none:
       default: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => ({ w: width, h: height })
+        sizeAdjustment = (width, height) => ({ dx: 0, dy: 0, w: width, h: height })
         break
       }
     }
 
     const pointerX = pointer.x
     const pointerY = pointer.y
-    const { w: surfaceWidth, h: surfaceHeight } = this.surface.size || {}
+    const { width: surfaceWidth, height: surfaceHeight } = this.windowGeometry || {}
+    const scene = pointer.scene
+    const topLevelView = scene ? this.findTopLevelView(scene) : undefined
+    const origPosition = topLevelView ? topLevelView.positionOffset : undefined
 
     if (surfaceWidth && surfaceHeight) {
       const resizeListener = () => {
         const deltaX = pointer.x - pointerX
         const deltaY = pointer.y - pointerY
 
-        const size = sizeAdjustment(surfaceWidth, surfaceHeight, deltaX, deltaY)
-        this.sendConfigure?.(size.w, size.h)
+        const { dx, dy, w, h } = sizeAdjustment(surfaceWidth, surfaceHeight, deltaX, deltaY)
+        this.sendConfigure?.(w, h)
+
+        if (topLevelView && origPosition) {
+          this.pendingPositionOffset = Point.create(origPosition.x + dx, origPosition.y + dy)
+        }
       }
       pointer.onButtonRelease().then(() => {
         pointer.removeMouseMoveListener(resizeListener)
+        pointer.enableFocus()
       })
+      pointer.disableFocus()
       pointer.addMouseMoveListener(resizeListener)
     }
   }
@@ -318,7 +355,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   }
 
   setWindowGeometry(x: number, y: number, width: number, height: number): void {
-    // TODO ?
+    this.windowGeometry = { x, y, width, height }
   }
 
   setMaximized(): void {

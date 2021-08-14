@@ -309,7 +309,7 @@ export class XWindowFrame {
   }
 
   constructor(
-    public theme: Theme,
+    public theme: XWindowTheme,
     public width: number,
     public height: number,
     buttons: number,
@@ -407,13 +407,15 @@ export class XWindowFrame {
       this.flags & FrameFlag.FRAME_FLAG_MAXIMIZED ? ThemeFrame.THEME_FRAME_MAXIMIZED : 0,
     )
     if (!framePointer) {
+      console.log(`XWindowFrame pointer motion ${x}-${y} (no frame pointer), location: ${location}`)
       return location
     }
 
     framePointer.x = x
     framePointer.y = y
 
-    if (framePointer.hoverButton === button) {
+    if (framePointer.hoverButton !== undefined && framePointer.hoverButton === button) {
+      console.log(`XWindowFrame pointer motion ${x}-${y} (with frame pointer hover button), location: ${location}`)
       return location
     }
 
@@ -427,6 +429,7 @@ export class XWindowFrame {
       framePointer.hoverButton.enter()
     }
 
+    console.log(`XWindowFrame pointer motion ${x}-${y} (with frame pointer), location: ${location}`)
     return location
   }
 
@@ -498,6 +501,8 @@ export class XWindowFrame {
   }
 
   resizeInside(width: number, height: number): void {
+    console.log(`XWindowFrame resize inside: ${width}x${height}`)
+
     let decorationWidth = 0
     let decorationHeight = 0
     let titlebarHeight = 0
@@ -528,6 +533,8 @@ export class XWindowFrame {
       return
     }
 
+    console.log('XWindowFrame refresh geometry')
+
     const titlebarHeight = this.title || this.buttons.length > 0 ? this.theme.titlebarHeight : this.theme.borderWidth
 
     if (this.flags & FrameFlag.FRAME_FLAG_MAXIMIZED) {
@@ -545,6 +552,7 @@ export class XWindowFrame {
   }
 
   setTitle(title: string): void {
+    console.log(`XWindowFrame set title: ${title}`)
     this.title = title
     this.geometryDirty = true
     this.status = FrameStatus.FRAME_STATUS_REPAINT
@@ -574,10 +582,9 @@ export class XWindowFrame {
     const titleRect = this.calculateTitleRect(frameWidth, shadowMargin, titlebarHeight)
     this.theme.renderFrame(this.renderContext, frameWidth, frameHeight, this.title, titleRect, this.buttons, flags)
     this.buttons.forEach((button) => button.repaint())
-    console.log(`repaint with height: ${this.height}`)
+    console.log(`XWindowFrame repaint ${this.width}x${this.height}`)
 
     this.statusClear(FrameStatus.FRAME_STATUS_REPAINT)
-
     return interior
   }
 
@@ -642,6 +649,7 @@ export class XWindowFrame {
   }
 
   resize(width: number, height: number) {
+    console.log(`XWindowFrame resize: ${width}x${height}`)
     this.width = width
     this.height = height
     this.geometryDirty = true
@@ -742,56 +750,7 @@ export class XWindowFrame {
   }
 }
 
-export interface Theme {
-  readonly activeFrame?: CanvasRenderingContext2D
-  readonly inactiveFrame?: CanvasRenderingContext2D
-  readonly frameRadius: number
-  readonly margin: number
-  readonly borderWidth: number
-  readonly titlebarHeight: number
-
-  getLocation(x: number, y: number, width: number, height: number, flags: ThemeFrame): ThemeLocation
-
-  renderFrame(
-    frameRenderContext: CanvasRenderingContext2D,
-    width: number,
-    height: number,
-    title: string,
-    titleRect: {
-      x: number
-      y: number
-      width: number
-      height: number
-    },
-    buttons: XWindowFrameButton[],
-    flags: number,
-  ): void
-
-  tileSource(
-    renderContext: CanvasRenderingContext2D,
-    surface: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    margin: number,
-    topMargin: number,
-    shadowBlur: number,
-  ): void
-
-  roundedRect(
-    renderingContext: CanvasRenderingContext2D,
-    x0: number,
-    y0: number,
-    x1: number,
-    y1: number,
-    frameRadius: number,
-  ): void
-
-  setBackgroundSource(renderingContext: CanvasRenderingContext2D, flags: ThemeFrame): void
-}
-
-class XWindowTheme implements Theme {
+export class XWindowTheme {
   readonly activeFrame: CanvasRenderingContext2D
   readonly frameRadius: number = 3
   readonly inactiveFrame: CanvasRenderingContext2D
@@ -1084,12 +1043,12 @@ class XWindowTheme implements Theme {
   }
 }
 
-export function themeCreate(): Theme {
+export function themeCreate(): XWindowTheme {
   return new XWindowTheme()
 }
 
 export async function frameCreate(
-  theme: Theme,
+  theme: XWindowTheme,
   width: number,
   height: number,
   buttons: number,

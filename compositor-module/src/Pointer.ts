@@ -293,13 +293,13 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
       this.y = y
     }
 
-    if (this.scene.pointerView) {
-      this.scene.pointerView.positionOffset = Point.create(this.x, this.y).minus(
-        Point.create(this.hotspotX, this.hotspotY),
-      )
-      this.scene.pointerView.applyTransformations()
-      this.scene.render()
-    }
+    // if (this.scene.pointerView) {
+    //   this.scene.pointerView.positionOffset = Point.create(this.x, this.y).minus(
+    //     Point.create(this.hotspotX, this.hotspotY),
+    //   )
+    //   this.scene.pointerView.applyTransformations()
+    //   this.scene.render()
+    // }
 
     let currentFocus = this.focusFromEvent(event)
 
@@ -332,8 +332,9 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
     this._mouseMoveListeners.forEach((listener) => listener())
 
     if (this.focus && this.focus.surface) {
-      const surfacePoint = this._calculateSurfacePoint(this.focus)
+      const surfacePoint = this.calculateSurfacePoint(this.focus)
       this._doPointerEventFor(this.focus.surface.resource, (pointerResource) => {
+        console.log(`Motion event: ${surfacePoint.x}-${surfacePoint.y}`)
         pointerResource.motion(event.timestamp, Fixed.parse(surfacePoint.x), Fixed.parse(surfacePoint.y))
         if (pointerResource.version >= 5) {
           pointerResource.frame()
@@ -415,7 +416,7 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
     }
   }
 
-  private _calculateSurfacePoint(view: View): Point {
+  private calculateSurfacePoint(view: View): Point {
     const mousePoint = Point.create(this.x, this.y)
     return view.toSurfaceSpace(mousePoint)
   }
@@ -444,7 +445,7 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
       }
     })
 
-    const surfacePoint = this._calculateSurfacePoint(newFocus)
+    const surfacePoint = this.calculateSurfacePoint(newFocus)
     this._doPointerEventFor(surfaceResource, (pointerResource) => {
       pointerResource.enter(
         this.seat.nextSerial(),

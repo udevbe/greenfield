@@ -58,7 +58,7 @@ import { ICCCM_NORMAL_STATE, ICCCM_WITHDRAWN_STATE, SEND_EVENT_MASK } from './XC
 import { XWaylandConnection } from './XWaylandConnection'
 import XWaylandShell from './XWaylandShell'
 import { XWindow } from './XWindow'
-import { FrameStatus, Theme, themeCreate, ThemeLocation } from './XWindowFrame'
+import { FrameStatus, themeCreate, ThemeLocation, XWindowTheme } from './XWindowFrame'
 
 type ConfigureValueList = Parameters<XConnection['configureWindow']>[1]
 
@@ -414,7 +414,7 @@ export class XWindowManager {
   readonly screen: SCREEN
   readonly wmWindow: WINDOW
   unpairedWindowList: XWindow[] = []
-  readonly theme: Theme = themeCreate()
+  readonly theme: XWindowTheme = themeCreate()
   private readonly imageDecodingCanvas: HTMLCanvasElement = document.createElement('canvas')
   private readonly imageDecodingContext: CanvasRenderingContext2D = this.imageDecodingCanvas.getContext('2d', {
     alpha: true,
@@ -466,7 +466,7 @@ export class XWindowManager {
     xWaylandConnetion: XWaylandConnection,
     client: Client,
     xWaylandShell: XWaylandShell,
-  ) {
+  ): Promise<XWindowManager> {
     const xConnection = await xWaylandConnetion.setup()
     xConnection.onPostEventLoop = () => {
       xConnection.flush()
@@ -558,7 +558,6 @@ export class XWindowManager {
       wmWindow,
     )
 
-    // FIXME causes connection to hang
     await xWindowManager.createCursors()
     xWindowManager.wmWindowSetCursor(xWindowManager.screen.root, CursorType.XWM_CURSOR_LEFT_PTR)
 
@@ -569,7 +568,7 @@ export class XWindowManager {
     return xWindowManager
   }
 
-  async createCursors() {
+  private async createCursors() {
     await Promise.all(
       Object.entries(cursorImageNames).map(
         // @ts-ignore
@@ -579,7 +578,7 @@ export class XWindowManager {
     this.lastCursor = -1
   }
 
-  async handleCreateSurface(surface: Surface) {
+  private async handleCreateSurface(surface: Surface) {
     if (surface.resource.client !== this.client) {
       return
     }
@@ -591,24 +590,6 @@ export class XWindowManager {
       await window.xServerMapShellSurface(surface)
       window.surfaceId = 0
       this.unpairedWindowList = this.unpairedWindowList.filter((value) => value !== window)
-    }
-  }
-
-  // TODO called by compositor implementation
-  sendPosition(surface: Surface, x: number, y: number) {
-    const window = Object.values(this.windowHash).find((window) => window.surface === surface)
-    if (window === undefined) {
-      return
-    }
-
-    /* We use pos_dirty to tell whether a configure message is in flight.
-     * This is needed in case we send two configure events in a very
-     * short time, since window->x/y is set in after a roundtrip, hence
-     * we cannot just check if the current x and y are different. */
-    if (window.x !== x || window.y !== y || window.positionDirty) {
-      window.positionDirty = true
-      this.configureWindow(window.frameId, { x, y })
-      this.xConnection.flush()
     }
   }
 
@@ -638,8 +619,7 @@ export class XWindowManager {
       return
     }
 
-    const seat = this.session.globals.seat
-    const pointer = seat.pointer
+    const pointer = this.session.globals.seat.pointer
 
     const buttonState =
       event.responseType === buttonPress ? WlPointerButtonState.pressed : WlPointerButtonState.released
@@ -660,16 +640,16 @@ export class XWindowManager {
       window.didDouble = false
     }
 
-    /* Make sure we're looking at the right location.  The frame
-     * could have received a motion event from a pointer from a
-     * different wl_seat, but under X it looks like our core
-     * pointer moved.  Move the frame pointer to the button press
-     * location before deciding what to do. */
     const windowFrame = window.frame
     if (windowFrame === undefined) {
       console.error('BUG. No window frame.')
       return
     }
+    /* Make sure we're looking at the right location.  The frame
+     * could have received a motion event from a pointer from a
+     * different wl_seat, but under X it looks like our core
+     * pointer moved.  Move the frame pointer to the button press
+     * location before deciding what to do. */
     let location = windowFrame.pointerMotion(undefined, event.eventX, event.eventY)
 
     if (doubleClick) {
@@ -744,6 +724,7 @@ export class XWindowManager {
   }
 
   private async handleMotion(event: MotionNotifyEvent) {
+    console.log(`XWM motion: ${event.eventX}-${event.eventY}`)
     const window = this.lookupXWindow(event.event)
 
     if (window === undefined || !window.decorate) {
