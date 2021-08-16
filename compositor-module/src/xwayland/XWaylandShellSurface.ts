@@ -376,7 +376,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   setPid(pid: number): void {}
 
-  requestActive() {
+  requestActive(): void {
     if (this.userSurfaceState.active) {
       return
     }
@@ -385,7 +385,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
   }
 
-  notifyInactive() {
+  notifyInactive(): void {
     if (!this.userSurfaceState.active) {
       return
     }

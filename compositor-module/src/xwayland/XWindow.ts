@@ -448,8 +448,9 @@ export class XWindow {
 
     console.log(`XWM: draw decoration, win ${this.id}, ${how}`)
 
-    // this.wm.xConnection.clearArea(0, this.frameId, 0, 0, 1, 1)
-    // this.wm.xConnection.flush()
+    // clear a single pixel to trigger a re-commit of the xwayland surface which in turn redraws the decoration & sets pending state
+    this.wm.xConnection.clearArea(0, this.frameId, 0, 0, 1, 1)
+    this.wm.xConnection.flush()
   }
 
   private setPendingState() {
@@ -492,8 +493,8 @@ export class XWindow {
 
     console.log(`XWM: win ${this.id} geometry: ${inputX},${inputY} ${inputW}x${inputH}`)
 
-    fini(this.surface.state.inputPixmanRegion)
-    initRect(this.surface.state.inputPixmanRegion, Rect.create(inputX, inputY, inputX + inputW, inputY + inputH))
+    fini(this.surface.pendingState.inputPixmanRegion)
+    initRect(this.surface.pendingState.inputPixmanRegion, Rect.create(inputX, inputY, inputX + inputW, inputY + inputH))
 
     this.shsurf?.setWindowGeometry(inputX, inputY, inputW, inputH)
 
