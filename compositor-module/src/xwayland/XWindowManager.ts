@@ -482,23 +482,23 @@ export class XWindowManager {
     // TODO see weston weston_wm_handle_dnd_event
     // xConnection.onEvent = xWindowManager.handleDndEvent(event)
 
-    xConnection.onButtonPressEvent = async (event) => await xWindowManager.handleButton(event)
-    xConnection.onButtonReleaseEvent = async (event) => await xWindowManager.handleButton(event)
-    xConnection.onEnterNotifyEvent = async (event) => await xWindowManager.handleEnter(event)
-    xConnection.onLeaveNotifyEvent = async (event) => await xWindowManager.handleLeave(event)
-    xConnection.onMotionNotifyEvent = async (event) => await xWindowManager.handleMotion(event)
-    xConnection.onCreateNotifyEvent = async (event) => await xWindowManager.handleCreateNotify(event)
-    xConnection.onMapRequestEvent = async (event) => await xWindowManager.handleMapRequest(event)
-    xConnection.onMapNotifyEvent = async (event) => await xWindowManager.handleMapNotify(event)
-    xConnection.onUnmapNotifyEvent = async (event) => await xWindowManager.handleUnmapNotify(event)
-    xConnection.onReparentNotifyEvent = async (event) => await xWindowManager.handleReparentNotify(event)
-    xConnection.onConfigureRequestEvent = async (event) => await xWindowManager.handleConfigureRequest(event)
-    xConnection.onConfigureNotifyEvent = async (event) => await xWindowManager.handleConfigureNotify(event)
-    xConnection.onDestroyNotifyEvent = async (event) => await xWindowManager.handleDestroyNotify(event)
-    // xConnection.onMappingNotifyEvent = async event => console.log('XCB_MAPPING_NOTIFY')
-    xConnection.onPropertyNotifyEvent = async (event) => await xWindowManager.handlePropertyNotify(event)
-    xConnection.onClientMessageEvent = async (event) => await xWindowManager.handleClientMessage(event)
-    xConnection.onFocusInEvent = async (event) => await xWindowManager.handleFocusIn(event)
+    xConnection.onButtonPressEvent = (event) => xWindowManager.handleButton(event)
+    xConnection.onButtonReleaseEvent = (event) => xWindowManager.handleButton(event)
+    xConnection.onEnterNotifyEvent = (event) => xWindowManager.handleEnter(event)
+    xConnection.onLeaveNotifyEvent = (event) => xWindowManager.handleLeave(event)
+    xConnection.onMotionNotifyEvent = (event) => xWindowManager.handleMotion(event)
+    xConnection.onCreateNotifyEvent = (event) => xWindowManager.handleCreateNotify(event)
+    xConnection.onMapRequestEvent = (event) => xWindowManager.handleMapRequest(event)
+    xConnection.onMapNotifyEvent = (event) => xWindowManager.handleMapNotify(event)
+    xConnection.onUnmapNotifyEvent = (event) => xWindowManager.handleUnmapNotify(event)
+    xConnection.onReparentNotifyEvent = (event) => xWindowManager.handleReparentNotify(event)
+    xConnection.onConfigureRequestEvent = (event) => xWindowManager.handleConfigureRequest(event)
+    xConnection.onConfigureNotifyEvent = (event) => xWindowManager.handleConfigureNotify(event)
+    xConnection.onDestroyNotifyEvent = (event) => xWindowManager.handleDestroyNotify(event)
+    // xConnection.onMappingNotifyEvent = event => console.log('XCB_MAPPING_NOTIFY')
+    xConnection.onPropertyNotifyEvent = (event) => xWindowManager.handlePropertyNotify(event)
+    xConnection.onClientMessageEvent = (event) => xWindowManager.handleClientMessage(event)
+    xConnection.onFocusInEvent = (event) => xWindowManager.handleFocusIn(event)
 
     const xWmResources = await setupResources(xConnection)
     const visualAndColormap = setupVisualAndColormap(xConnection)
@@ -604,7 +604,7 @@ export class XWindowManager {
     )
   }
 
-  private async handleButton(event: ButtonPressEvent | ButtonReleaseEvent) {
+  private handleButton(event: ButtonPressEvent | ButtonReleaseEvent) {
     // TODO we want event codes from xtsb
     const buttonPress = 4
     console.log(`XCB_BUTTON_${event.responseType === buttonPress ? 'PRESS' : 'RELEASE'} (detail ${event.detail})`)
@@ -686,13 +686,13 @@ export class XWindowManager {
         window.savedHeight = window.height
         window.shsurf?.setMaximized()
       } else {
-        await window.setToplevel()
+        window.setToplevel()
       }
       windowFrame.statusClear(FrameStatus.FRAME_STATUS_MAXIMIZE)
     }
   }
 
-  private async handleEnter(event: EnterNotifyEvent) {
+  private handleEnter(event: EnterNotifyEvent) {
     const window = this.lookupXWindow(event.event)
 
     if (window === undefined || !window.decorate) {
@@ -708,7 +708,7 @@ export class XWindowManager {
     this.wmWindowSetCursor(window.frameId, cursor)
   }
 
-  private async handleLeave(event: LeaveNotifyEvent) {
+  private handleLeave(event: LeaveNotifyEvent) {
     const window = this.lookupXWindow(event.event)
 
     if (window === undefined || !window.decorate) {
@@ -723,7 +723,7 @@ export class XWindowManager {
     this.wmWindowSetCursor(window.frameId, CursorType.XWM_CURSOR_LEFT_PTR)
   }
 
-  private async handleMotion(event: MotionNotifyEvent) {
+  private handleMotion(event: MotionNotifyEvent) {
     console.log(`XWM motion: ${event.eventX}-${event.eventY}`)
     const window = this.lookupXWindow(event.event)
 
@@ -823,7 +823,7 @@ export class XWindowManager {
     console.log(`XCB_MAP_NOTIFY (window ${event.window}${event.overrideRedirect ? ', override' : ''})`)
   }
 
-  private async handleUnmapNotify(event: UnmapNotifyEvent) {
+  private handleUnmapNotify(event: UnmapNotifyEvent) {
     console.log(
       `XCB_UNMAP_NOTIFY (window ${event.window}, event ${event.event}${
         this.isOurResource(event.window) ? ', ours' : ''
@@ -885,7 +885,7 @@ export class XWindowManager {
     }
   }
 
-  private async handleConfigureRequest(event: ConfigureRequestEvent) {
+  private handleConfigureRequest(event: ConfigureRequestEvent) {
     const window = this.lookupXWindow(event.window)
     if (window === undefined) {
       return
@@ -928,7 +928,7 @@ export class XWindowManager {
     window.scheduleRepaint()
   }
 
-  private async handleConfigureNotify(event: ConfigureNotifyEvent) {
+  private handleConfigureNotify(event: ConfigureNotifyEvent) {
     console.log(
       `XCB_CONFIGURE_NOTIFY (window ${event.window}) ${event.x},${event.y} @ ${event.width}x${event.height}${
         event.overrideRedirect ? ', override' : ''
@@ -958,7 +958,7 @@ export class XWindowManager {
     }
   }
 
-  private async handleDestroyNotify(event: DestroyNotifyEvent) {
+  private handleDestroyNotify(event: DestroyNotifyEvent) {
     console.log(`XCB_DESTROY_NOTIFY, win ${event.window}, event ${event.event}${event.window ? ', ours' : ''}`)
 
     if (this.isOurResource(event.window)) {
@@ -973,7 +973,7 @@ export class XWindowManager {
     window.destroy()
   }
 
-  private async handlePropertyNotify(event: PropertyNotifyEvent) {
+  private handlePropertyNotify(event: PropertyNotifyEvent) {
     const window = this.lookupXWindow(event.window)
 
     if (window === undefined) {
@@ -1011,7 +1011,7 @@ export class XWindowManager {
     }
   }
 
-  private async handleFocusIn(event: FocusInEvent) {
+  private handleFocusIn(event: FocusInEvent) {
     /* Do not interfere with grabs */
     if (event.mode === NotifyMode.Grab || event.mode === NotifyMode.Ungrab) {
       return

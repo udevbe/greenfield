@@ -417,19 +417,21 @@ export class XWindow {
     }
     this.deleteWindow = false
 
-    props.forEach(([atom, , propUpdater]: Prop) =>
-      this.wm.xConnection
-        .getProperty(0, this.id, atom, Atom.Any, 0, 2048)
-        .then((property) => {
-          if (property._type === Atom.None) {
-            /* No such property */
-            return
-          }
-          propUpdater(property)
-        })
-        .catch(() => {
-          /* Bad window, typically */
-        }),
+    await Promise.all(
+      props.map(([atom, , propUpdater]: Prop) =>
+        this.wm.xConnection
+          .getProperty(0, this.id, atom, Atom.Any, 0, 2048)
+          .then((property) => {
+            if (property._type === Atom.None) {
+              /* No such property */
+              return
+            }
+            propUpdater(property)
+          })
+          .catch(() => {
+            /* Bad window, typically */
+          }),
+      ),
     )
   }
 
@@ -930,14 +932,14 @@ export class XWindow {
     this.wm.configureWindow(this.frameId, { width, height })
   }
 
-  async setToplevel(): Promise<void> {
+  setToplevel(): void {
     this.shsurf?.setToplevel()
     this.width = this.savedWidth
     this.height = this.savedHeight
     if (this.frame) {
       this.frame.resizeInside(this.width, this.height)
     }
-    await this.configure()
+    this.configure()
   }
 
   sendConfigureNotify(): void {
