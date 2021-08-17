@@ -187,8 +187,9 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     const surfaceChild = this.surface.surfaceChildSelf
     // FIXME we probably want to provide a method to translate from (abstract) surface space to global space
     surfaceChild.position = Point.create(parentPosition.x + x, parentPosition.y + y)
+    parent.addChild(surfaceChild)
 
-    this.ensureUserShellSurface()
+    // this.ensureUserShellSurface()
     this.state = SurfaceStates.TRANSIENT
   }
 
@@ -202,7 +203,14 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   setXwayland(x: number, y: number): void {
     this.xwayland.x = x
     this.xwayland.y = y
-    this.xwayland.isSet = true
+    const view = this.xwayland.isSet
+      ? this.surface.views.find((view) => view.primary)
+      : // FIXME this is obviously going to break once we have deal with multiple scenes. How can we fix this?
+        this.surface.createTopLevelView(Object.values(this.session.renderer.scenes)[0])
+    if (view) {
+      this.xwayland.isSet = true
+      view.positionOffset = Point.create(x, y)
+    }
   }
 
   private findTopLevelView(scene: Scene): View | undefined {

@@ -57,8 +57,8 @@ import { CursorType } from './CursorType'
 import { ICCCM_NORMAL_STATE, ICCCM_WITHDRAWN_STATE, SEND_EVENT_MASK } from './XConstants'
 import { XWaylandConnection } from './XWaylandConnection'
 import XWaylandShell from './XWaylandShell'
-import { XWindow } from './XWindow'
 import { FrameStatus, themeCreate, ThemeLocation, XWindowTheme } from './XWindowFrame'
+import { XWindow } from './XWindow'
 
 type ConfigureValueList = Parameters<XConnection['configureWindow']>[1]
 
