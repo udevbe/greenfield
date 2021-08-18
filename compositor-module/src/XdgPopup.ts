@@ -275,7 +275,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
 
     const parentXdgSurface = parent.implementation as XdgSurface
     const parentSurface = parentXdgSurface.wlSurfaceResource.implementation as Surface
-    const primaryParentView = parentSurface.views.find((parentView) => parentView.primary)
+    const primaryParentView = parentSurface.view
     if (primaryParentView) {
       let violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
       if (violations && positionerState.size) {

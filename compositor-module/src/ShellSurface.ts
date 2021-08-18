@@ -177,7 +177,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
 
           topLevelView.positionOffset = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
           topLevelView.applyTransformations()
-          topLevelView.scene.render()
+          topLevelView.renderState.scene.render()
         }
 
         pointer.onButtonRelease().then(() => pointer.removeMouseMoveListener(moveListener))
@@ -389,7 +389,9 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
       const width = scene.canvas.width
       const height = scene.canvas.height
 
-      surface.views.forEach((view) => (view.positionOffset = Point.create(0, 0)))
+      if (surface.view) {
+        surface.view.positionOffset = Point.create(0, 0)
+      }
       this.resource.configure(none, width, height)
     }
   }

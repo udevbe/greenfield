@@ -205,7 +205,7 @@ class Surface implements WlSurfaceRequests {
       this.pendingState.bufferContents = undefined
     },
   }
-  views: View[] = []
+  view?: View
   hasKeyboardInput = true
   hasPointerInput = true
   hasTouchInput = true
@@ -356,18 +356,16 @@ class Surface implements WlSurfaceRequests {
   }
 
   createView(scene: Scene): View {
+    if (this.view !== undefined) {
+      throw new Error(' BUG. View already created for surface.')
+    }
+
     const bufferSize = this.state.bufferContents ? this.state.bufferContents.size : Size.create(0, 0)
     const view = View.create(this, bufferSize.w, bufferSize.h, scene)
-    if (this.views.length === 0) {
-      view.primary = true
-    }
-    this.views.push(view)
+    this.view = view
 
     view.onDestroy().then(() => {
-      const idx = this.views.indexOf(view)
-      if (idx > -1) {
-        this.views.splice(idx, 1)
-      }
+      this.view = undefined
     })
 
     this.children.forEach((surfaceChild) => this.ensureChildView(surfaceChild, view))
@@ -379,7 +377,7 @@ class Surface implements WlSurfaceRequests {
       return undefined
     }
 
-    const childView = surfaceChild.surface.createView(view.scene)
+    const childView = surfaceChild.surface.createView(view.renderState.scene)
     childView.parent = view
 
     return childView
@@ -399,15 +397,15 @@ class Surface implements WlSurfaceRequests {
     removeChildFromList(surfaceChild, this.pendingState.subsurfaceChildren)
   }
 
-  addChild(surfaceChild: SurfaceChild): View[] {
+  addChild(surfaceChild: SurfaceChild): View | undefined {
     return this._addChild(surfaceChild, this._surfaceChildren)
   }
 
   addToplevelChild(surfaceChild: SurfaceChild): void {
     this._surfaceChildren.push(surfaceChild)
 
-    const primaryChildView = surfaceChild.surface.views.find((view) => view.primary)
-    const primaryView = this.views.find((view) => view.primary)
+    const primaryChildView = surfaceChild.surface.view
+    const primaryView = this.view
 
     if (primaryChildView && primaryView) {
       primaryChildView.parent = primaryView
@@ -419,18 +417,15 @@ class Surface implements WlSurfaceRequests {
     removeChildFromList(surfaceChild, this._surfaceChildren)
   }
 
-  private _addChild(surfaceChild: SurfaceChild, siblings: SurfaceChild[]): View[] {
+  private _addChild(surfaceChild: SurfaceChild, siblings: SurfaceChild[]): View | undefined {
     siblings.push(surfaceChild)
 
-    const childViews: View[] = []
-    this.views.forEach((view) => {
-      const childView = this.ensureChildView(surfaceChild, view)
-      if (childView) {
-        childViews.push(childView)
-      }
-    })
+    let childView: View | undefined
+    if (this.view) {
+      childView = this.ensureChildView(surfaceChild, this.view)
+    }
     surfaceChild.surface.resource.onDestroy().then(() => this.removeChild(surfaceChild))
-    return childViews
+    return childView
   }
 
   destroy(resource: WlSurfaceResource): void {
@@ -441,7 +436,7 @@ class Surface implements WlSurfaceRequests {
 
   private _handleDestruction() {
     this.destroyed = true
-    this.views.forEach((view) => view.destroy())
+    this.view?.destroy()
     this._h264BufferContentDecoder?.destroy()
   }
 
@@ -557,17 +552,12 @@ class Surface implements WlSurfaceRequests {
     }
     this.renderTaskRegistration = queueCancellableMicrotask(() => {
       this.renderTaskRegistration = undefined
-      if (this.views.length > 0) {
-        new Set(
-          this.views.map((view) => {
-            view.scene.prepareViewRenderState(view)
-            prepareRenderOnIdle?.(view)
-            return view.scene
-          }),
-        ).forEach((scene) => {
-          scene.registerFrameCallbacks(this.state.frameCallbacks)
-          scene.render()
-        })
+      const view = this.view
+      if (view) {
+        view.renderState.scene.prepareViewRenderState(view)
+        prepareRenderOnIdle?.(view)
+        view.renderState.scene.registerFrameCallbacks(this.state.frameCallbacks)
+        view.renderState.scene.render()
         this.state.frameCallbacks = []
       }
     })

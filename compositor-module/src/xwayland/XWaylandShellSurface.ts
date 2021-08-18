@@ -204,8 +204,8 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     this.xwayland.x = x
     this.xwayland.y = y
     const view = this.xwayland.isSet
-      ? this.surface.views.find((view) => view.primary)
-      : // FIXME this is obviously going to break once we have deal with multiple scenes. How can we fix this?
+      ? this.surface.view
+      : // FIXME this is obviously going to break once we have deal with multiple scenes. We need to refactor to a common compositor space accross all scenes.
         this.surface.createTopLevelView(Object.values(this.session.renderer.scenes)[0])
     if (view) {
       this.xwayland.isSet = true
@@ -242,7 +242,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
 
           topLevelView.positionOffset = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
           topLevelView.applyTransformations()
-          topLevelView.scene.render()
+          topLevelView.renderState.scene.render()
         }
 
         pointer.onButtonRelease().then(() => {
@@ -376,7 +376,9 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       const width = scene.canvas.width
       const height = scene.canvas.height
 
-      this.surface.views.forEach((view) => (view.positionOffset = Point.create(0, 0)))
+      if (this.surface.view) {
+        this.surface.view.positionOffset = Point.create(0, 0)
+      }
       this.sendConfigure?.(width, height)
     }
   }

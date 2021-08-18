@@ -64,7 +64,6 @@ export default class XdgSurface implements XdgSurfaceRequests {
     public readonly wlSurfaceResource: WlSurfaceResource,
     private readonly session: Session,
     private readonly seat: Seat,
-    private windowGeometryOffset = Mat4.IDENTITY(),
   ) {}
 
   destroy(resource: XdgSurfaceResource): void {
@@ -131,22 +130,15 @@ export default class XdgSurface implements XdgSurfaceRequests {
   }
 
   commitWindowGeometry(): void {
-    this.windowGeometry = this.createBoundingRectangle().intersect(this.pendingWindowGeometry)
+    if (this.pendingWindowGeometry !== this.windowGeometry) {
+      this.windowGeometry = this.createBoundingRectangle().intersect(this.pendingWindowGeometry)
+      this.pendingWindowGeometry = this.windowGeometry
 
-    // we need to adjust the view so it's displayed inside the compositor screen bounds.
-    const newWindowGeometryOffset = Mat4.translation(-this.windowGeometry.x0, -this.windowGeometry.y0)
-    const surface = this.wlSurfaceResource.implementation as Surface
-    surface.views
-      .filter((view) => view.primary)
-      .forEach((view) => {
-        const windowGeometryTransformationIdx = view.extraTransformations.indexOf(this.windowGeometryOffset)
-        if (windowGeometryTransformationIdx === -1) {
-          view.extraTransformations = [newWindowGeometryOffset, ...view.extraTransformations]
-        } else {
-          view.extraTransformations[windowGeometryTransformationIdx] = newWindowGeometryOffset
-        }
-      })
-    this.windowGeometryOffset = newWindowGeometryOffset
+      const surface = this.wlSurfaceResource.implementation as Surface
+      if (surface.view) {
+        surface.view.windowGeometryOffset = Mat4.translation(-this.windowGeometry.x0, -this.windowGeometry.y0)
+      }
+    }
   }
 
   private createBoundingRectangle(): Rect {

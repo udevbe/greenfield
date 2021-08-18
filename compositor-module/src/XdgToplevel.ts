@@ -247,7 +247,9 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       }
     }
 
-    surface.views.forEach((view) => (view.positionOffset = view.positionOffset.plus(Point.create(dx, dy))))
+    if (surface.view) {
+      surface.view.positionOffset = surface.view.positionOffset.plus(Point.create(dx, dy))
+    }
   }
 
   private maximizedCommit(surface: Surface) {
@@ -267,7 +269,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     }
     const windowGeoPositionOffset = this.xdgSurface.windowGeometry.position
 
-    const primaryView = surface.views.find((view) => view.primary)
+    const primaryView = surface.view
     if (primaryView) {
       const viewPositionOffset = primaryView.toViewSpaceFromSurface(windowGeoPositionOffset)
       primaryView.customTransformation = Mat4.translation(0 - viewPositionOffset.x, 0 - viewPositionOffset.y)
@@ -310,7 +312,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
   private normalCommit(surface: Surface) {
     if (this.previousGeometry) {
       // restore position (we came from a fullscreen or maximize and must restore the position)
-      const primaryView = surface.views.find((view) => view.primary)
+      const primaryView = surface.view
       if (primaryView) {
         primaryView.customTransformation = undefined
       }
@@ -428,7 +430,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
 
           topLevelView.positionOffset = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
           topLevelView.applyTransformations()
-          topLevelView.scene.render()
+          topLevelView.renderState.scene.render()
         }
 
         pointer.onButtonRelease().then(() => {

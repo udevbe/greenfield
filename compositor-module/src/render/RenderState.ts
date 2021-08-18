@@ -16,16 +16,17 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import Size from '../Size'
+import Scene from './Scene'
 import Texture from './Texture'
 
 class RenderState {
-  static create(gl: WebGLRenderingContext, size: Size): RenderState {
+  static create(gl: WebGLRenderingContext, size: Size, scene: Scene): RenderState {
     const texture = Texture.create(gl, gl.RGBA)
     texture.image2dBuffer(null, size.w === 0 ? 2 : size.w, size.h === 0 ? 2 : size.h)
-    return new RenderState(texture, size)
+    return new RenderState(texture, size, scene)
   }
 
-  private constructor(public readonly texture: Texture, public size: Size) {}
+  private constructor(public readonly texture: Texture, public size: Size, public readonly scene: Scene) {}
 
   destroy(): void {
     this.texture.delete()
