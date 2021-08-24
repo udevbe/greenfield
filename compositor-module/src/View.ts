@@ -19,7 +19,7 @@ import Mat4 from './math/Mat4'
 import Point from './math/Point'
 import Rect from './math/Rect'
 import Vec4 from './math/Vec4'
-import { copyTo, createPixmanRegion, fini, initRect, intersect, notEmpty } from './Region'
+import { copyTo, createPixmanRegion, destroyPixmanRegion, fini, initRect, intersect, notEmpty } from './Region'
 import RenderState from './render/RenderState'
 import Scene from './render/Scene'
 import Size from './Size'
@@ -232,13 +232,15 @@ export default class View {
         this.renderStates[sceneId] = RenderState.create(scene.sceneShader.gl, Size.create(w, h), scene, visibleRegion)
       } else {
         copyTo(renderState.visibleSceneRegion, visibleRegion)
+        fini(visibleRegion)
+        destroyPixmanRegion(visibleRegion)
       }
     })
 
     // cleanup renderstates of scenes where this view is no longer visible on
     const visibleRegionBySceneId = Object.fromEntries(scenesWithVisibleRegion)
     Object.entries(this.renderStates).forEach(([sceneId, renderState]) => {
-      const { visibleRegion } = visibleRegionBySceneId[renderState.scene.id]
+      const visibleRegion = visibleRegionBySceneId[renderState.scene.id]
       if (visibleRegion === undefined) {
         renderState.destroy()
         delete this.renderStates[sceneId]
