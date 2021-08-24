@@ -24,7 +24,6 @@ import WebAppLauncher from './WebAppLauncher'
 import WebAppSocket from './WebAppSocket'
 import { nrmlvo } from './Xkb'
 
-// @ts-ignore
 export { init as initWasm } from './lib'
 export * from './ButtonEvent'
 export * from './AxisEvent'
