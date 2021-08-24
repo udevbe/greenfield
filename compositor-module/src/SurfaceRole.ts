@@ -16,14 +16,12 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import Surface from './Surface'
+import View from './View'
 
 /**
  * surface role interface. See 'role' in https://wayland.freedesktop.org/docs/html/apa.html#protocol-spec-wl_surface
  */
 export default interface SurfaceRole {
-  /**
-   * Called during commit
-   * @param surface
-   */
   onCommit(surface: Surface): void
+  view: View
 }

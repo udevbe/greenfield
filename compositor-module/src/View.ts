@@ -17,27 +17,33 @@
 
 import Mat4 from './math/Mat4'
 import Point from './math/Point'
+import Rect from './math/Rect'
 import Vec4 from './math/Vec4'
+import { copyTo, createPixmanRegion, fini, initRect, intersect, notEmpty } from './Region'
 import RenderState from './render/RenderState'
 import Scene from './render/Scene'
 import Size from './Size'
 import Surface from './Surface'
 
 export default class View {
+  readonly pixmanRegion: number = createPixmanRegion()
+  relevantScene?: Scene
+  regionRect: Rect = Rect.create(0, 0, 0, 0)
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   private inverseTransformation: Mat4
   private readonly destroyPromise: Promise<void>
   // @ts-ignore
   private destroyResolve: (value?: PromiseLike<void> | void) => void
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  prepareRender?: (renderState: RenderState) => void
 
   private constructor(
     public readonly surface: Surface,
-    private _transformation: Mat4,
-    public renderState: RenderState,
+    private _transformation: Mat4 = Mat4.IDENTITY(),
+    public renderStates: { [sceneId: string]: RenderState } = {},
     private _positionOffset = Point.create(0, 0),
     public destroyed = false,
     public mapped = true,
-    private _dirty: boolean = false,
+    private _dirty: boolean = true,
     private _windowGeometryOffset = Mat4.IDENTITY(),
     public transformationUpdatedListeners: ((transformation: Mat4) => void)[] = [],
   ) {
@@ -59,34 +65,11 @@ export default class View {
     }
 
     this._customTransformation = customTransformation
-    this._dirty = true
+    this.markDirty()
   }
-
-  private _parent?: View
 
   get parent(): View | undefined {
-    return this._parent
-  }
-
-  set parent(parent: View | undefined) {
-    if (this.destroyed) {
-      return
-    }
-    if (this._parent === parent) {
-      return
-    }
-
-    this._parent = parent
-
-    if (parent) {
-      parent.onDestroy().then(() => {
-        if (this.parent === parent) {
-          this.destroy()
-          this.parent = undefined
-        }
-      })
-    }
-    this._dirty = true
+    return this.surface.parent?.role?.view
   }
 
   get dirty(): boolean {
@@ -99,7 +82,7 @@ export default class View {
 
   set windowGeometryOffset(windowGeometryOffset: Mat4) {
     this._windowGeometryOffset = windowGeometryOffset
-    this._dirty = true
+    this.markDirty()
   }
 
   get positionOffset(): Point {
@@ -111,14 +94,14 @@ export default class View {
       return
     }
     this._positionOffset = positionOffset
-    this._dirty = true
+    this.markDirty()
   }
 
   get transformation(): Mat4 {
     return this._transformation
   }
 
-  set transformation(transformation: Mat4) {
+  private set transformation(transformation: Mat4) {
     if (this.destroyed) {
       return
     }
@@ -127,9 +110,12 @@ export default class View {
     this.inverseTransformation = transformation.invert()
   }
 
-  static create(surface: Surface, width: number, height: number, scene: Scene): View {
-    const renderStates = RenderState.create(scene.sceneShader.gl, Size.create(width, height), scene)
-    return new View(surface, Mat4.IDENTITY(), renderStates)
+  static create(surface: Surface): View {
+    return new View(surface)
+  }
+
+  markDirty(): void {
+    this._dirty = true
   }
 
   applyTransformations(): void {
@@ -139,17 +125,11 @@ export default class View {
 
     if (this.dirty) {
       this.transformation = this.calculateTransformation()
+      this.updateRegion()
       this.applyTransformationsChild()
       this._dirty = false
       this.transformationUpdatedListeners.forEach((listener) => listener(this.transformation))
     }
-  }
-
-  findChildViews(): View[] {
-    return this.surface.children
-      .filter((surfaceChild) => surfaceChild.surface !== this.surface)
-      .map((surfaceChild) => surfaceChild.surface.view)
-      .filter((view): view is View => view !== undefined)
   }
 
   toViewSpaceFromCompositor(browserPoint: Point): Point {
@@ -158,7 +138,7 @@ export default class View {
   }
 
   toViewSpaceFromSurface(surfacePoint: Point): Point {
-    const { w, h } = this.renderState.size
+    const { w, h } = this.regionRect.size
     if (this.surface.size) {
       const { h: surfaceHeight, w: surfaceWidth } = this.surface.size
       if (surfaceWidth === w && surfaceHeight === h) {
@@ -178,11 +158,11 @@ export default class View {
     if (surfaceSize) {
       const surfaceWidth = surfaceSize.w
       const surfaceHeight = surfaceSize.h
-      if (surfaceWidth === this.renderState.size.w && surfaceHeight === this.renderState.size.h) {
+      if (surfaceWidth === this.regionRect.size.w && surfaceHeight === this.regionRect.size.h) {
         return viewPoint
       } else {
         return Mat4.scalarVector(
-          Vec4.create2D(surfaceWidth / this.renderState.size.w, surfaceHeight / this.renderState.size.h),
+          Vec4.create2D(surfaceWidth / this.regionRect.size.w, surfaceHeight / this.regionRect.size.h),
         ).timesPoint(viewPoint)
       }
     } else {
@@ -191,8 +171,9 @@ export default class View {
   }
 
   destroy(): void {
-    if (this.renderState) {
-      this.renderState.destroy()
+    if (this.renderStates) {
+      Object.values(this.renderStates).forEach((renderState) => renderState.destroy())
+      this.renderStates = {}
     }
 
     this.destroyed = true
@@ -203,8 +184,69 @@ export default class View {
     return this.destroyPromise
   }
 
+  private findChildViews(): View[] {
+    return this.surface.children
+      .filter((surfaceChild) => surfaceChild.surface !== this.surface)
+      .map((surfaceChild) => surfaceChild.surface.role?.view)
+      .filter((view): view is View => view !== undefined)
+  }
+
   private applyTransformationsChild() {
     this.findChildViews().forEach((childView) => childView.applyTransformations())
+  }
+
+  private updateRegion() {
+    const x0 = 0
+    const y0 = 0
+    const x1 = this.surface.size?.w ?? 0
+    const y1 = this.surface.size?.h ?? 0
+
+    this.regionRect = this.transformation.timesRectToBoundingBox(Rect.create(x0, y0, x1, y1))
+
+    fini(this.pixmanRegion)
+    initRect(this.pixmanRegion, this.regionRect)
+
+    this.ensureRenderStatesForMatchingScenes()
+  }
+
+  private ensureRenderStatesForMatchingScenes() {
+    // find visible region for scenes where this view is visible
+    const scenesWithVisibleRegion = Object.values(this.surface.session.renderer.scenes)
+      .map((scene) => {
+        const visibleRegion = createPixmanRegion()
+        intersect(visibleRegion, this.pixmanRegion, scene.region)
+        return [scene.id, { scene, visibleRegion }] as const
+      })
+      .filter(([, { visibleRegion }]) => {
+        return notEmpty(visibleRegion)
+      })
+
+    // update & add new renderstates for scenes where this view is visible
+    scenesWithVisibleRegion.forEach(([sceneId, { scene, visibleRegion }]) => {
+      const renderState = this.renderStates[sceneId]
+      if (renderState === undefined) {
+        const bufferSize = this.surface.state.bufferContents
+          ? this.surface.state.bufferContents.size
+          : Size.create(0, 0)
+        const { w, h } = bufferSize
+        this.renderStates[sceneId] = RenderState.create(scene.sceneShader.gl, Size.create(w, h), scene, visibleRegion)
+      } else {
+        copyTo(renderState.visibleSceneRegion, visibleRegion)
+      }
+    })
+
+    // cleanup renderstates of scenes where this view is no longer visible on
+    const visibleRegionBySceneId = Object.fromEntries(scenesWithVisibleRegion)
+    Object.entries(this.renderStates).forEach(([sceneId, renderState]) => {
+      const { visibleRegion } = visibleRegionBySceneId[renderState.scene.id]
+      if (visibleRegion === undefined) {
+        renderState.destroy()
+        delete this.renderStates[sceneId]
+      }
+    })
+
+    // TODO use scene with most visible coverage as relevant scene
+    this.relevantScene = Object.values(this.renderStates)[0]?.scene
   }
 
   private calculateTransformation(): Mat4 {
@@ -212,18 +254,14 @@ export default class View {
       return this.customTransformation
     }
 
-    // inherit parent transformation
-    let parentTransformation = Mat4.IDENTITY()
-    if (this._parent) {
-      parentTransformation = this._parent.transformation
-    }
+    const startingTransformation = this.parent ? this.parent.transformation : Mat4.IDENTITY()
 
     // position transformation
     const { x, y } = this.surface.surfaceChildSelf.position.plus(this._positionOffset)
     const positionTransformation = Mat4.translation(x, y)
-    const vanillaTransformation = parentTransformation.timesMat4(positionTransformation)
-    return this._windowGeometryOffset !== Mat4.IDENTITY()
-      ? vanillaTransformation.timesMat4(this._windowGeometryOffset)
+    const vanillaTransformation = startingTransformation.timesMat4(positionTransformation)
+    return this.windowGeometryOffset !== Mat4.IDENTITY()
+      ? vanillaTransformation.timesMat4(this.windowGeometryOffset)
       : vanillaTransformation
   }
 }

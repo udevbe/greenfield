@@ -32,7 +32,6 @@ import DataDevice from './DataDevice'
 import Point from './math/Point'
 import Rect from './math/Rect'
 import { fini, initRect } from './Region'
-import Scene from './render/Scene'
 import Seat from './Seat'
 import Session from './Session'
 import Surface from './Surface'
@@ -43,6 +42,15 @@ import View from './View'
 const { pressed, released } = WlPointerButtonState
 const { horizontalScroll, verticalScroll } = WlPointerAxis
 const { wheel } = WlPointerAxisSource
+
+export class PointerRole implements SurfaceRole {
+  constructor(public readonly pointer: Pointer, public readonly view: View) {}
+
+  onCommit(surface: Surface): void {
+    surface.commitPending()
+    this.pointer.onCommit(surface)
+  }
+}
 
 // translates between browser button codes & kernel code as expected by wayland protocol
 const linuxInput = {
@@ -58,35 +66,13 @@ const linuxInput = {
   4: 0x115,
 }
 
-function clampMouseMove(event: ButtonEvent, scene: Scene): { x: number; y: number } {
-  return {
-    x: Math.min(Math.max(event.x, 0), scene.canvas.width),
-    y: Math.min(Math.max(event.y, 0), scene.canvas.height),
-  }
-}
-
-/**
- *
- *            The wl_pointer interface represents one or more input devices,
- *            such as mice, which control the pointer location and pointer_focus
- *            of a seat.
- *
- *            The wl_pointer interface generates motion, enter and leave
- *            events for the surfaces that the pointer is located over,
- *            and button and axis events for button presses, button releases
- *            and scrolling.
- *            @implements {SurfaceRole}
- *            @implements {WlPointerRequests}
- *
- */
-export default class Pointer implements WlPointerRequests, SurfaceRole {
+export default class Pointer implements WlPointerRequests {
   session: Session
   scrollFactor = 1
   resources: WlPointerResource[] = []
   focus?: View
   x = 0
   y = 0
-  scene?: Scene
   hotspotX = 0
   hotspotY = 0
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -161,10 +147,11 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
 
   onCommit(surface: Surface): void {
     if (this._cursorSurface && this._cursorSurface.implementation === surface) {
-      surface.commitPending()
       this.hotspotX -= surface.state.dx
       this.hotspotY -= surface.state.dy
-      surface.renderViews()
+      if (surface.role) {
+        this.session.renderer.updatePointerCursor(surface.role.view)
+      }
     }
   }
 
@@ -177,7 +164,7 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
   ): void {
     if (surfaceResource) {
       const surface = surfaceResource.implementation as Surface
-      if (surface.role && surface.role !== this) {
+      if (surface.role && !(surface.role instanceof PointerRole)) {
         resource.postError(WlPointerError.role, 'Given surface has another role.')
         console.log('[client-protocol-error] - Given surface has another role')
         return
@@ -248,17 +235,17 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
     }
     this._cursorSurface = surfaceResource
 
-    if (this.scene) {
-      if (surfaceResource) {
-        const surface = surfaceResource.implementation as Surface
-        surface.resource.addDestroyListener(this._cursorDestroyListener)
-        surface.role = this
-        fini(surface.state.inputPixmanRegion)
-        initRect(surface.state.inputPixmanRegion, Rect.create(0, 0, 0, 0))
-        this.scene.updatePointerView(surface)
-      } else {
-        this.scene.hidePointer()
+    if (surfaceResource) {
+      const surface = surfaceResource.implementation as Surface
+      surface.resource.addDestroyListener(this._cursorDestroyListener)
+      if (surface.role === undefined) {
+        surface.role = new PointerRole(this, View.create(surface))
       }
+      this.session.renderer.updatePointerCursor(surface.role.view)
+      fini(surface.state.inputPixmanRegion)
+      initRect(surface.state.inputPixmanRegion, Rect.create(0, 0, 0, 0))
+    } else {
+      this.session.renderer.hidePointer()
     }
   }
 
@@ -282,16 +269,13 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
   }
 
   private focusFromEvent(event: ButtonEvent): View | undefined {
-    return this.session.renderer.scenes[event.sceneId].pickView(Point.create(event.x, event.y))
+    return this.session.renderer.pickView(Point.create(event.x, event.y))
   }
 
   handleMouseMove(event: ButtonEvent): void {
-    this.scene = this.session.renderer.scenes[event.sceneId]
-    if (this.scene) {
-      const { x, y } = clampMouseMove(event, this.scene)
-      this.x = x
-      this.y = y
-    }
+    const { x, y } = this.session.renderer.clampMouseMove(event)
+    this.x = x
+    this.y = y
 
     // if (this.scene.pointerView) {
     //   this.scene.pointerView.positionOffset = Point.create(this.x, this.y).minus(
@@ -334,7 +318,6 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
     if (this.focus && this.focus.surface) {
       const surfacePoint = this.calculateSurfacePoint(this.focus)
       this._doPointerEventFor(this.focus.surface.resource, (pointerResource) => {
-        console.log(`Motion event: ${surfacePoint.x}-${surfacePoint.y}`)
         pointerResource.motion(event.timestamp, Fixed.parse(surfacePoint.x), Fixed.parse(surfacePoint.y))
         if (pointerResource.version >= 5) {
           pointerResource.frame()
@@ -436,7 +419,7 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
         return
       }
       // recalculate focus and consequently enter event
-      const focus = this.scene?.pickView(Point.create(this.x, this.y))
+      const focus = this.session.renderer.pickView(Point.create(this.x, this.y))
       if (focus) {
         this.setFocus(focus)
       } else {
@@ -485,9 +468,7 @@ export default class Pointer implements WlPointerRequests, SurfaceRole {
   }
 
   setDefaultCursor(): void {
-    if (this.scene) {
-      this.scene.resetPointer()
-    }
+    this.session.renderer.resetPointer()
   }
 
   handleWheel(event: AxisEvent): void {

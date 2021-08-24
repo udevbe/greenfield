@@ -18,6 +18,7 @@
 import Size from '../Size'
 import View from '../View'
 import Program from './Program'
+import RenderState from './RenderState'
 import ShaderCompiler from './ShaderCompiler'
 import { FRAGMENT_ARGB8888, VERTEX_QUAD_TRANSFORM } from './ShaderSources'
 
@@ -135,11 +136,11 @@ class SceneShader {
     ])
   }
 
-  updateViewData(view: View): void {
+  updateViewData(view: View, renderState: RenderState): void {
     const {
       texture,
       size: { w, h },
-    } = view.renderState
+    } = renderState
 
     this.gl.uniform1i(this.shaderArgs.u_texture, 0)
 

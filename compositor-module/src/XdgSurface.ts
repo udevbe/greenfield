@@ -135,8 +135,9 @@ export default class XdgSurface implements XdgSurfaceRequests {
       this.pendingWindowGeometry = this.windowGeometry
 
       const surface = this.wlSurfaceResource.implementation as Surface
-      if (surface.view) {
-        surface.view.windowGeometryOffset = Mat4.translation(-this.windowGeometry.x0, -this.windowGeometry.y0)
+      const view = surface.role?.view
+      if (view) {
+        view.windowGeometryOffset = Mat4.translation(-this.windowGeometry.x0, -this.windowGeometry.y0)
       }
     }
   }

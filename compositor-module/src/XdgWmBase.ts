@@ -41,10 +41,8 @@ export default class XdgWmBase implements XdgWmBaseRequests {
 
   private wlSurfaceResources: WlSurfaceResource[] = []
   private global?: Global
-  private clientPingStates: Map<
-    Client,
-    { timeoutTimer: number; pingTimer: number; pingTimeoutActive: boolean }
-  > = new Map()
+  private clientPingStates: Map<Client, { timeoutTimer: number; pingTimer: number; pingTimeoutActive: boolean }> =
+    new Map()
 
   private constructor(private readonly session: Session, private readonly seat: Seat) {}
 

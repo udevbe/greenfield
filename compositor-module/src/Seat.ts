@@ -148,6 +148,7 @@ class Seat implements WlSeatRequests, CompositorSeat {
         release(resource: WlPointerResource): void {
           resource.destroy()
         },
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
         setCursor(): void {},
       }
     }

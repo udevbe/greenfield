@@ -61,6 +61,9 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
   // @ts-ignore set in create of Seat
   seat: Seat
   private _focus?: Surface
+  private readonly focusDestroyListener = () => {
+    this._focus = undefined
+  }
   private keys: number[] = []
   private keyboardFocusListeners: (() => void)[] = []
   private keyboardFocusResolve?: () => void
@@ -181,13 +184,15 @@ export default class Keyboard implements WlKeyboardRequests, CompositorKeyboard 
       this.resources
         .filter((resource) => resource.client === targetFocus.resource.client)
         .forEach((resource) => resource.leave(serial, surface))
-
-      this.focus = undefined
     }
   }
 
   set focus(surface: Surface | undefined) {
+    if (this._focus) {
+      this._focus.resource.removeDestroyListener(this.focusDestroyListener)
+    }
     this._focus = surface
+    this._focus?.resource.addDestroyListener(this.focusDestroyListener)
     if (this.keyboardFocusResolve) {
       this.keyboardFocusResolve()
     }

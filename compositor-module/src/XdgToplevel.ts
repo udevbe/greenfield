@@ -35,6 +35,7 @@ import Size from './Size'
 import Surface from './Surface'
 import { makeSurfaceActive } from './UserShellApi'
 import { UserShellSurfaceRole } from './UserShellSurfaceRole'
+import View from './View'
 import XdgSurface from './XdgSurface'
 
 const { none, bottom, bottomLeft, bottomRight, left, right, top, topLeft, topRight } = XdgToplevelResizeEdge
@@ -53,7 +54,9 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     const surface = xdgSurface.wlSurfaceResource.implementation as Surface
     const { client, id } = surface.resource
     const userSurface: CompositorSurface = { id: `${id}`, clientId: client.id }
-    const xdgToplevel = new XdgToplevel(xdgToplevelResource, xdgSurface, session, userSurface)
+    const view = View.create(surface)
+    surface.session.renderer.addTopLevelView(view)
+    const xdgToplevel = new XdgToplevel(xdgToplevelResource, xdgSurface, session, userSurface, view)
     xdgToplevelResource.implementation = xdgToplevel
     surface.role = xdgToplevel
 
@@ -105,6 +108,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     public readonly xdgSurface: XdgSurface,
     private readonly session: Session,
     public readonly userSurface: CompositorSurface,
+    public readonly view: View,
   ) {}
 
   requestActive(): void {
@@ -188,13 +192,13 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       } else if (this.configureState.state.includes(fullscreen)) {
         this.fullscreenCommit(surface)
       } else {
-        this.normalCommit(surface)
+        this.normalCommit()
       }
     } else if (this.mapped) {
       this.unmap()
     }
 
-    surface.renderViews()
+    surface.session.renderer.render()
   }
 
   /**
@@ -247,9 +251,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       }
     }
 
-    if (surface.view) {
-      surface.view.positionOffset = surface.view.positionOffset.plus(Point.create(dx, dy))
-    }
+    this.view.positionOffset = this.view.positionOffset.plus(Point.create(dx, dy))
   }
 
   private maximizedCommit(surface: Surface) {
@@ -269,11 +271,8 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     }
     const windowGeoPositionOffset = this.xdgSurface.windowGeometry.position
 
-    const primaryView = surface.view
-    if (primaryView) {
-      const viewPositionOffset = primaryView.toViewSpaceFromSurface(windowGeoPositionOffset)
-      primaryView.customTransformation = Mat4.translation(0 - viewPositionOffset.x, 0 - viewPositionOffset.y)
-    }
+    const viewPositionOffset = this.view.toViewSpaceFromSurface(windowGeoPositionOffset)
+    this.view.customTransformation = Mat4.translation(0 - viewPositionOffset.x, 0 - viewPositionOffset.y)
   }
 
   /**
@@ -309,13 +308,10 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
   /**
    * Called during commit
    */
-  private normalCommit(surface: Surface) {
+  private normalCommit() {
     if (this.previousGeometry) {
       // restore position (we came from a fullscreen or maximize and must restore the position)
-      const primaryView = surface.view
-      if (primaryView) {
-        primaryView.customTransformation = undefined
-      }
+      this.view.customTransformation = undefined
       this.previousGeometry = undefined
     }
     if (this.unfullscreenConfigureState) {
@@ -356,7 +352,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       const parentXdgToplevel = parent.implementation as XdgToplevel
       const parentSurface = parentXdgToplevel.xdgSurface.wlSurfaceResource.implementation as Surface
       const surface = this.xdgSurface.wlSurfaceResource.implementation as Surface
-      parentSurface.addToplevelChild(surface.surfaceChildSelf)
+      parentSurface.addChild(surface.surfaceChildSelf)
     }
 
     this.parent = parent
@@ -407,42 +403,38 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     // }
 
     const pointer = seat.pointer
-    const surface = this.xdgSurface.wlSurfaceResource.implementation as Surface
 
     const pointerX = pointer.x
     const pointerY = pointer.y
-    const scene = pointer.scene
 
-    if (scene) {
-      // FIXME Only move that view that was last interacted with instead of finding the first one that matches.
-      const topLevelView = scene.topLevelViews.find((topLevelView) => topLevelView.surface === surface)
-      if (topLevelView) {
-        const origPosition = topLevelView.positionOffset
+    // FIXME Only move that view that was last interacted with instead of finding the first one that matches.
+    const topLevelView = this.view
+    if (topLevelView) {
+      const origPosition = topLevelView.positionOffset
 
-        const moveListener = () => {
-          if (!this.mapped) {
-            pointer.removeMouseMoveListener(moveListener)
-            return
-          }
-
-          const deltaX = pointer.x - pointerX
-          const deltaY = pointer.y - pointerY
-
-          topLevelView.positionOffset = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
-          topLevelView.applyTransformations()
-          topLevelView.renderState.scene.render()
+      const moveListener = () => {
+        if (!this.mapped) {
+          pointer.removeMouseMoveListener(moveListener)
+          return
         }
 
-        pointer.onButtonRelease().then(() => {
-          pointer.enableFocus()
-          pointer.removeMouseMoveListener(moveListener)
-          pointer.setDefaultCursor()
-        })
+        const deltaX = pointer.x - pointerX
+        const deltaY = pointer.y - pointerY
 
-        pointer.disableFocus()
-        pointer.addMouseMoveListener(moveListener)
-        window.document.body.style.cursor = 'move'
+        topLevelView.positionOffset = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
+        topLevelView.applyTransformations()
+        this.session.renderer.render()
       }
+
+      pointer.onButtonRelease().then(() => {
+        pointer.enableFocus()
+        pointer.removeMouseMoveListener(moveListener)
+        pointer.setDefaultCursor()
+      })
+
+      pointer.disableFocus()
+      pointer.addMouseMoveListener(moveListener)
+      window.document.body.style.cursor = 'move'
     }
   }
 
@@ -602,7 +594,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     if (this.configureState.state.includes(resizing)) {
       return
     }
-    const scene = this.session.globals.seat.pointer.scene
+    const scene = this.view.relevantScene
 
     if (scene) {
       // FIXME get proper size in surface coordinates instead of assume surface space === global space

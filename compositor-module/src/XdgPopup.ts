@@ -30,6 +30,7 @@ import Point from './math/Point'
 import Seat from './Seat'
 import Surface from './Surface'
 import SurfaceRole from './SurfaceRole'
+import View from './View'
 import { XdgPositionerState } from './XdgPositioner'
 import XdgSurface from './XdgSurface'
 
@@ -121,9 +122,10 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
     positionerState: XdgPositionerState,
     seat: Seat,
   ): XdgPopup {
-    const xdgPopup = new XdgPopup(xdgPopupResource, xdgSurface, parent, positionerState, seat)
-    xdgPopupResource.implementation = xdgPopup
     const surface = xdgSurface.wlSurfaceResource.implementation as Surface
+    const view = View.create(surface)
+    const xdgPopup = new XdgPopup(xdgPopupResource, xdgSurface, parent, positionerState, seat, view)
+    xdgPopupResource.implementation = xdgPopup
     surface.role = xdgPopup
     xdgPopup.ensureGeometryConstraints(parent, positionerState)
     xdgSurface.emitConfigureDone()
@@ -139,6 +141,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
     public readonly parent: XdgSurfaceResource,
     public readonly positionerState: XdgPositionerState,
     private readonly seat: Seat,
+    public readonly view: View,
   ) {}
 
   onCommit(surface: Surface): void {
@@ -156,7 +159,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
       this.dismiss()
     }
 
-    surface.renderViews()
+    surface.session.renderer.render()
   }
 
   private map(surface: Surface) {
@@ -275,9 +278,9 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
 
     const parentXdgSurface = parent.implementation as XdgSurface
     const parentSurface = parentXdgSurface.wlSurfaceResource.implementation as Surface
-    const primaryParentView = parentSurface.view
-    if (primaryParentView) {
-      let violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
+    const parentView = parentSurface.role?.view
+    if (parentView) {
+      let violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
       if (violations && positionerState.size) {
         if (
           !(
@@ -309,7 +312,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
             positionerState.anchor = inverseX[oldAnchor]
             positionerState.gravity = inverseX[oldGravity]
 
-            violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
+            violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
             if (violations && (violations.leftViolation || violations.rightViolation)) {
               // still violating, revert
               positionerState.anchor = oldAnchor
@@ -318,7 +321,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
           }
 
           // check for violations in case the flip caused the violations to disappear
-          violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
+          violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
           if (violations && (violations.leftViolation || violations.rightViolation) && canSlideX) {
             // try sliding
             const newXDeltaOffset = violations.rightViolation ? -violations.rightViolation : violations.leftViolation
@@ -329,7 +332,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
         }
 
         // check for violations in case the flip or slide caused the violations to disappear
-        violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
+        violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
         if (violations && (violations.leftViolation || violations.rightViolation) && canResizeX) {
           if (violations.leftViolation) {
             const oldOffset = positionerState.offset
@@ -344,7 +347,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
 
         // Y-Axis:
         // we can't use slide or flip if if the height is greater than the screen height
-        violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
+        violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
         if (
           violations &&
           (violations.topViolation || violations.bottomViolation) &&
@@ -357,7 +360,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
             positionerState.anchor = inverseY[oldAnchor]
             positionerState.gravity = inverseY[oldGravity]
 
-            violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
+            violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
             if (violations && (violations.topViolation || violations.bottomViolation)) {
               // still violating, revert
               positionerState.anchor = oldAnchor
@@ -366,7 +369,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
           }
 
           // check for violations in case the flip caused the violations to disappear
-          violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
+          violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
           if (violations && (violations.topViolation || violations.bottomViolation) && canSlideY) {
             // try sliding
             const newYDeltaOffset = violations.bottomViolation ? -violations.bottomViolation : violations.topViolation
@@ -377,7 +380,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
         }
 
         // check for violations in case the flip or slide caused the violations to disappear
-        violations = positionerState.checkScreenConstraints(parentXdgSurface, primaryParentView)
+        violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
         if (violations && (violations.topViolation || violations.bottomViolation) && canResizeY) {
           if (violations.topViolation) {
             const oldOffset = positionerState.offset

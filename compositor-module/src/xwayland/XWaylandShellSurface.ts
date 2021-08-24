@@ -3,7 +3,6 @@ import { CompositorSurface, CompositorSurfaceState } from '../index'
 import Point from '../math/Point'
 import Output from '../Output'
 import Pointer from '../Pointer'
-import Scene from '../render/Scene'
 import Session from '../Session'
 import Surface from '../Surface'
 import { UserShellSurfaceRole } from '../UserShellSurfaceRole'
@@ -20,37 +19,27 @@ const SurfaceStates = {
 } as const
 
 export default class XWaylandShellSurface implements UserShellSurfaceRole {
-  static create(session: Session, window: XWindow, surface: Surface) {
-    const { client, id } = surface.resource
-    const userSurface: CompositorSurface = { id: `${id}`, clientId: client.id }
-    const userSurfaceState: CompositorSurfaceState = {
-      appId: '',
-      active: false,
-      mapped: false,
-      minimized: false,
-      title: '',
-      unresponsive: false,
-    }
-
-    const xWaylandShellSurface = new XWaylandShellSurface(session, window, surface, userSurface, userSurfaceState)
-    surface.role = xWaylandShellSurface
-    return xWaylandShellSurface
-  }
-
-  private mapped = false
-  private managed = false
-  private pendingPositionOffset: Point | undefined = undefined
-
   state?: typeof SurfaceStates[keyof typeof SurfaceStates]
   sendConfigure?: (width: number, height: number) => void
   sendPosition?: (x: number, y: number) => void
-
+  frameDecoration?: {
+    top: ImageData
+    bottom: ImageData
+    left: ImageData
+    right: ImageData
+    interiorWidth: number
+    interiorHeight: number
+    interiorX: number
+    interiorY: number
+  }
+  private mapped = false
+  private managed = false
+  private pendingPositionOffset: Point | undefined = undefined
   private xwayland = {
     x: 0,
     y: 0,
     isSet: false,
   }
-
   private windowGeometry = {
     x: 0,
     y: 0,
@@ -64,14 +53,46 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     private readonly surface: Surface,
     readonly userSurface: CompositorSurface,
     private userSurfaceState: CompositorSurfaceState,
+    public readonly view: View,
   ) {}
 
-  private ensureUserShellSurface() {
-    if (!this.managed) {
-      this.managed = true
-      this.surface.resource.onDestroy().then(() => this.session.userShell.events.destroyUserSurface?.(this.userSurface))
-      this.session.userShell.events.createUserSurface?.(this.userSurface, this.userSurfaceState)
+  static create(session: Session, window: XWindow, surface: Surface) {
+    const { client, id } = surface.resource
+    const userSurface: CompositorSurface = { id: `${id}`, clientId: client.id }
+    const userSurfaceState: CompositorSurfaceState = {
+      appId: '',
+      active: false,
+      mapped: false,
+      minimized: false,
+      title: '',
+      unresponsive: false,
     }
+
+    const view = View.create(surface)
+    const xWaylandShellSurface = new XWaylandShellSurface(session, window, surface, userSurface, userSurfaceState, view)
+    surface.role = xWaylandShellSurface
+    session.renderer.addTopLevelView(view)
+    view.transformationUpdatedListeners = [
+      ...view.transformationUpdatedListeners,
+      () => {
+        const { x, y } = view.positionOffset
+        xWaylandShellSurface.sendPosition?.(x, y)
+      },
+    ]
+    view.prepareRender = (renderState) => {
+      if (xWaylandShellSurface.frameDecoration) {
+        const { top, left, right, bottom, interiorWidth, interiorY, interiorX, interiorHeight } =
+          xWaylandShellSurface.frameDecoration
+        const { gl, texture, format } = renderState.texture
+        gl.bindTexture(gl.TEXTURE_2D, texture)
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, interiorX, 0, format, gl.UNSIGNED_BYTE, top)
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, interiorX, interiorY + interiorHeight, format, gl.UNSIGNED_BYTE, bottom)
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, format, gl.UNSIGNED_BYTE, left)
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, interiorX + interiorWidth, 0, format, gl.UNSIGNED_BYTE, right)
+        gl.bindTexture(gl.TEXTURE_2D, null)
+      }
+    }
+    return xWaylandShellSurface
   }
 
   onCommit(surface: Surface): void {
@@ -92,65 +113,12 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
         this.unmap()
       }
     }
-
-    surface.renderViews((view) => {
-      if (this.pendingPositionOffset) {
-        view.positionOffset = this.pendingPositionOffset
-        this.pendingPositionOffset = undefined
-      }
-      if (view.mapped && view.surface.state.buffer) {
-        this.prepareFrameDecoration(view)
-      }
-    })
-  }
-
-  private prepareFrameDecoration(view: View) {
-    // render frame decoration
-    if (this.window.decorate && this.window.frame) {
-      const { w: frameWidth, h: frameHeight } = view.renderState.size
-      const {
-        width: interiorWidth,
-        height: interorHeight,
-        x: interiorX,
-        y: interiorY,
-      } = this.window.frame.repaint(frameWidth, frameHeight)
-      const renderContext = this.window.frame.renderContext
-
-      const top = renderContext.getImageData(interiorX, 0, interiorWidth, interiorY)
-      const bottom = renderContext.getImageData(
-        interiorX,
-        interiorY + interorHeight,
-        interiorWidth,
-        frameHeight - (interiorY + interorHeight),
-      )
-      const left = renderContext.getImageData(0, 0, interiorX, frameHeight)
-      const right = renderContext.getImageData(
-        interiorX + interiorWidth,
-        0,
-        frameWidth - (interiorX + interiorWidth),
-        frameHeight,
-      )
-
-      const { gl, texture, format } = view.renderState.texture
-      gl.bindTexture(gl.TEXTURE_2D, texture)
-      gl.texSubImage2D(gl.TEXTURE_2D, 0, interiorX, 0, format, gl.UNSIGNED_BYTE, top)
-      gl.texSubImage2D(gl.TEXTURE_2D, 0, interiorX, interiorY + interorHeight, format, gl.UNSIGNED_BYTE, bottom)
-      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, format, gl.UNSIGNED_BYTE, left)
-      gl.texSubImage2D(gl.TEXTURE_2D, 0, interiorX + interiorWidth, 0, format, gl.UNSIGNED_BYTE, right)
-      gl.bindTexture(gl.TEXTURE_2D, null)
+    if (this.pendingPositionOffset) {
+      this.view.positionOffset = this.pendingPositionOffset
+      this.pendingPositionOffset = undefined
     }
-  }
 
-  private map() {
-    this.mapped = true
-    this.userSurfaceState = { ...this.userSurfaceState, mapped: this.mapped }
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
-  }
-
-  private unmap() {
-    this.mapped = false
-    this.userSurfaceState = { ...this.userSurfaceState, mapped: this.mapped }
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
+    this.session.renderer.render(() => this.prepareFrameDecoration())
   }
 
   setToplevel(): void {
@@ -174,7 +142,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   }
 
   setParent(parent: Surface): void {
-    // TODO set parent?
+    parent.addChild(this.surface.surfaceChildSelf)
   }
 
   setTransient(parent: Surface, x: number, y: number): void {
@@ -203,18 +171,8 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   setXwayland(x: number, y: number): void {
     this.xwayland.x = x
     this.xwayland.y = y
-    const view = this.xwayland.isSet
-      ? this.surface.view
-      : // FIXME this is obviously going to break once we have deal with multiple scenes. We need to refactor to a common compositor space accross all scenes.
-        this.surface.createTopLevelView(Object.values(this.session.renderer.scenes)[0])
-    if (view) {
-      this.xwayland.isSet = true
-      view.positionOffset = Point.create(x, y)
-    }
-  }
-
-  private findTopLevelView(scene: Scene): View | undefined {
-    return scene.topLevelViews.find((topLevelView) => topLevelView.surface === this.surface)
+    this.xwayland.isSet = true
+    this.view.positionOffset = Point.create(x, y)
   }
 
   move(pointer: Pointer): void {
@@ -229,29 +187,26 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
 
     const pointerX = pointer.x
     const pointerY = pointer.y
-    const scene = pointer.scene
-    if (scene) {
-      // FIXME Only move that view that was last interacted with instead of finding the first one that matches.
-      const topLevelView = this.findTopLevelView(scene)
-      if (topLevelView) {
-        const origPosition = topLevelView.positionOffset
+    // FIXME Only move that view that was last interacted with instead of finding the first one that matches.
+    const topLevelView = this.view
+    if (topLevelView) {
+      const origPosition = topLevelView.positionOffset
 
-        const moveListener = () => {
-          const deltaX = pointer.x - pointerX
-          const deltaY = pointer.y - pointerY
+      const moveListener = () => {
+        const deltaX = pointer.x - pointerX
+        const deltaY = pointer.y - pointerY
 
-          topLevelView.positionOffset = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
-          topLevelView.applyTransformations()
-          topLevelView.renderState.scene.render()
-        }
-
-        pointer.onButtonRelease().then(() => {
-          pointer.removeMouseMoveListener(moveListener)
-          pointer.enableFocus()
-        })
-        pointer.disableFocus()
-        pointer.addMouseMoveListener(moveListener)
+        topLevelView.positionOffset = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
+        topLevelView.applyTransformations()
+        this.surface.session.renderer.render()
       }
+
+      pointer.onButtonRelease().then(() => {
+        pointer.removeMouseMoveListener(moveListener)
+        pointer.enableFocus()
+      })
+      pointer.disableFocus()
+      pointer.addMouseMoveListener(moveListener)
     }
   }
 
@@ -332,9 +287,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     const pointerX = pointer.x
     const pointerY = pointer.y
     const { width: surfaceWidth, height: surfaceHeight } = this.windowGeometry || {}
-    const scene = pointer.scene
-    const topLevelView = scene ? this.findTopLevelView(scene) : undefined
-    const origPosition = topLevelView ? topLevelView.positionOffset : undefined
+    const origPosition = this.view.positionOffset
 
     if (surfaceWidth && surfaceHeight) {
       const resizeListener = () => {
@@ -344,9 +297,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
         const { dx, dy, w, h } = sizeAdjustment(surfaceWidth, surfaceHeight, deltaX, deltaY)
         this.sendConfigure?.(w, h)
 
-        if (topLevelView && origPosition) {
-          this.pendingPositionOffset = Point.create(origPosition.x + dx, origPosition.y + dy)
-        }
+        this.pendingPositionOffset = Point.create(origPosition.x + dx, origPosition.y + dy)
       }
       pointer.onButtonRelease().then(() => {
         pointer.removeMouseMoveListener(resizeListener)
@@ -370,15 +321,13 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     this.state = SurfaceStates.MAXIMIZED
 
     // FIXME get proper size in surface coordinates instead of assume surface space === global space
-    const scene = this.session.globals.seat.pointer.scene
+    const scene = this.view.relevantScene
 
     if (scene) {
       const width = scene.canvas.width
       const height = scene.canvas.height
 
-      if (this.surface.view) {
-        this.surface.view.positionOffset = Point.create(0, 0)
-      }
+      this.view.positionOffset = Point.create(0, 0)
       this.sendConfigure?.(width, height)
     }
   }
@@ -401,6 +350,67 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     }
     this.userSurfaceState = { ...this.userSurfaceState, active: false }
     this.window.activate(undefined)
+    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
+  }
+
+  private ensureUserShellSurface() {
+    if (!this.managed) {
+      this.managed = true
+      this.surface.resource.onDestroy().then(() => this.session.userShell.events.destroyUserSurface?.(this.userSurface))
+      this.session.userShell.events.createUserSurface?.(this.userSurface, this.userSurfaceState)
+    }
+  }
+
+  private prepareFrameDecoration() {
+    // render frame decoration
+    const { w: frameWidth, h: frameHeight } = this.view.regionRect.size
+    if (this.window.decorate && this.window.frame) {
+      const {
+        width: interiorWidth,
+        height: interiorHeight,
+        x: interiorX,
+        y: interiorY,
+      } = this.window.frame.repaint(frameWidth, frameHeight)
+      const renderContext = this.window.frame.renderContext
+
+      const top = renderContext.getImageData(interiorX, 0, interiorWidth, interiorY)
+      const bottom = renderContext.getImageData(
+        interiorX,
+        interiorY + interiorHeight,
+        interiorWidth,
+        frameHeight - (interiorY + interiorHeight),
+      )
+      const left = renderContext.getImageData(0, 0, interiorX, frameHeight)
+      const right = renderContext.getImageData(
+        interiorX + interiorWidth,
+        0,
+        frameWidth - (interiorX + interiorWidth),
+        frameHeight,
+      )
+      this.frameDecoration = {
+        top,
+        interiorX,
+        interiorY,
+        interiorWidth,
+        interiorHeight,
+        bottom,
+        right,
+        left,
+      }
+    } else {
+      this.frameDecoration = undefined
+    }
+  }
+
+  private map() {
+    this.mapped = true
+    this.userSurfaceState = { ...this.userSurfaceState, mapped: this.mapped }
+    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
+  }
+
+  private unmap() {
+    this.mapped = false
+    this.userSurfaceState = { ...this.userSurfaceState, mapped: this.mapped }
     this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
   }
 }

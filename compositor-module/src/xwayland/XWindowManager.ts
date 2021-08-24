@@ -724,7 +724,6 @@ export class XWindowManager {
   }
 
   private handleMotion(event: MotionNotifyEvent) {
-    console.log(`XWM motion: ${event.eventX}-${event.eventY}`)
     const window = this.lookupXWindow(event.event)
 
     if (window === undefined || !window.decorate) {
@@ -1019,9 +1018,11 @@ export class XWindowManager {
 
     /* Do not let X clients change the focus behind the compositor's
      * back. Reset the focus to the old one if it changed. */
-    if (this.focusWindow === undefined || event.event !== this.focusWindow.id) {
-      this.focusWindow?.sendFocusWindow() ??
-        this.xConnection.setInputFocus(InputFocus.PointerRoot, Window.None, Time.CurrentTime)
+    if (
+      (this.focusWindow === undefined || event.event !== this.focusWindow.id) &&
+      this.focusWindow?.sendFocusWindow() === undefined
+    ) {
+      this.xConnection.setInputFocus(InputFocus.PointerRoot, Window.None, Time.CurrentTime)
     }
   }
 

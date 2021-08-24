@@ -27,7 +27,6 @@ import {
 import BufferContents from './BufferContents'
 import BufferImplementation from './BufferImplementation'
 import Callback from './Callback'
-import { queueCancellableMicrotask } from './Loop'
 import Mat4 from './math/Mat4'
 import Point from './math/Point'
 import Rect from './math/Rect'
@@ -44,14 +43,11 @@ import Region, {
 } from './Region'
 import H264BufferContentDecoder from './render/H264BufferContentDecoder'
 import Renderer from './render/Renderer'
-import Scene from './render/Scene'
 import Session from './Session'
 import Size from './Size'
 import Subsurface from './Subsurface'
 import { createSurfaceChild, SurfaceChild } from './SurfaceChild'
 import SurfaceRole from './SurfaceRole'
-
-import View from './View'
 
 export interface SurfaceState {
   damageRects: Rect[]
@@ -100,13 +96,6 @@ export function mergeSurfaceState(targetState: SurfaceState, sourceState: Surfac
   targetState.frameCallbacks = [...sourceState.frameCallbacks, ...targetState.frameCallbacks]
 }
 
-function removeChildFromList(surfaceChild: SurfaceChild, siblings: SurfaceChild[]): void {
-  const index = siblings.indexOf(surfaceChild)
-  if (index > -1) {
-    siblings.splice(index, 1)
-  }
-}
-
 /**
  * @type {{transformation: Mat4, inverseTransformation:Mat4}[]}
  */
@@ -123,49 +112,8 @@ const bufferTransformations = [
 
 let surfaceH264DecodeId = 0
 
-/**
- *
- *            A surface is a rectangular area that is displayed on the screen.
- *            It has a location, size and pixel contents.
- *
- *            The size of a surface (and relative positions on it) is described
- *            in surface-local coordinates, which may differ from the buffer
- *            coordinates of the pixel content, in case a buffer_transform
- *            or a buffer_scale is used.
- *
- *            A surface without a "role" is fairly useless: a compositor does
- *            not know where, when or how to present it. The role is the
- *            purpose of a wl_surface. Examples of roles are a cursor for a
- *            pointer (as set by wl_pointer.set_cursor), a drag icon
- *            (wl_data_device.start_drag), a sub-surface
- *            (wl_subcompositor.get_subsurface), and a window as defined by a
- *            shell protocol (e.g. wl_shell.get_shell_surface).
- *
- *            A surface can have only one role at a time. Initially a
- *            wl_surface does not have a role. Once a wl_surface is given a
- *            role, it is set permanently for the whole lifetime of the
- *            wl_surface object. Giving the current role again is allowed,
- *            unless explicitly forbidden by the relevant interface
- *            specification.
- *
- *            Surface roles are given by requests in other interfaces such as
- *            wl_pointer.set_cursor. The request should explicitly mention
- *            that this request gives a role to a wl_surface. Often, this
- *            request also creates a new protocol object that represents the
- *            role and adds additional functionality to wl_surface. When a
- *            client wants to destroy a wl_surface, they must destroy this 'role
- *            object' before the wl_surface.
- *
- *            Destroying the role object does not remove the role from the
- *            wl_surface, but it may stop the wl_surface from "playing the role".
- *            For instance, if a wl_subsurface object is destroyed, the wl_surface
- *            it was created for will be unmapped and forget its position and
- *            z-order. It is allowed to create a wl_subsurface for the same
- *            wl_surface again, but it is not allowed to use the wl_surface as
- *            a cursor (cursor is a different role than sub-surface, and role
- *            switching is not allowed).
- */
 class Surface implements WlSurfaceRequests {
+  private _parent?: Surface
   readonly surfaceChildSelf: SurfaceChild = createSurfaceChild(this)
   destroyed = false
   damaged = false
@@ -205,7 +153,6 @@ class Surface implements WlSurfaceRequests {
       this.pendingState.bufferContents = undefined
     },
   }
-  view?: View
   hasKeyboardInput = true
   hasPointerInput = true
   hasTouchInput = true
@@ -219,7 +166,6 @@ class Surface implements WlSurfaceRequests {
 
   private readonly _surfaceChildren: SurfaceChild[] = []
   private _h264BufferContentDecoder?: H264BufferContentDecoder
-  private renderTaskRegistration?: () => void
 
   static create(wlSurfaceResource: WlSurfaceResource, session: Session): Surface {
     const surface = new Surface(wlSurfaceResource, session.renderer, session)
@@ -254,6 +200,17 @@ class Surface implements WlSurfaceRequests {
     public readonly renderer: Renderer,
     public readonly session: Session,
   ) {}
+
+  get parent(): Surface | undefined {
+    return this._parent
+  }
+
+  private set parent(parent: Surface | undefined) {
+    if (this._parent !== parent) {
+      this._parent = parent
+      this.role?.view.markDirty()
+    }
+  }
 
   get h264BufferContentDecoder(): H264BufferContentDecoder {
     if (this._h264BufferContentDecoder === undefined) {
@@ -333,54 +290,15 @@ class Surface implements WlSurfaceRequests {
         this.pendingState.bufferScale === 1 ? transformations.inverseTransformation : bufferTransformation.invert()
 
       const surfacePoint = inverseBufferTransformation.timesPoint(Point.create(newBufferSize.w, newBufferSize.h))
+      const newSisze = Size.create(Math.abs(surfacePoint.x), Math.abs(surfacePoint.y))
+      if (this.role && this.size && !this.size.equals(newSisze)) {
+        this.role.view.markDirty()
+      }
       this.size = Size.create(Math.abs(surfacePoint.x), Math.abs(surfacePoint.y))
       fini(this.pixmanRegion)
       initRect(this.pixmanRegion, Rect.create(0, 0, this.size.w, this.size.h))
-
       this._applyBufferTransformWithPositionCorrection(this.pendingState.bufferTransform, bufferTransformation)
     }
-  }
-
-  createTopLevelView(scene: Scene): View {
-    const topLevelView = this.createView(scene)
-    scene.topLevelViews = [...scene.topLevelViews, topLevelView]
-    topLevelView.onDestroy().then(() => {
-      scene.topLevelViews = scene.topLevelViews.filter((view) => view !== topLevelView)
-      if (scene.pointerView === topLevelView) {
-        scene.pointerView = undefined
-      }
-      scene.render()
-    })
-
-    return topLevelView
-  }
-
-  createView(scene: Scene): View {
-    if (this.view !== undefined) {
-      throw new Error(' BUG. View already created for surface.')
-    }
-
-    const bufferSize = this.state.bufferContents ? this.state.bufferContents.size : Size.create(0, 0)
-    const view = View.create(this, bufferSize.w, bufferSize.h, scene)
-    this.view = view
-
-    view.onDestroy().then(() => {
-      this.view = undefined
-    })
-
-    this.children.forEach((surfaceChild) => this.ensureChildView(surfaceChild, view))
-    return view
-  }
-
-  private ensureChildView(surfaceChild: SurfaceChild, view: View): View | undefined {
-    if (surfaceChild.surface === this) {
-      return undefined
-    }
-
-    const childView = surfaceChild.surface.createView(view.renderState.scene)
-    childView.parent = view
-
-    return childView
   }
 
   addSubsurface(surfaceChild: SurfaceChild): void {
@@ -392,40 +310,38 @@ class Surface implements WlSurfaceRequests {
     })
   }
 
-  removeSubsurface(surfaceChild: SurfaceChild): void {
-    removeChildFromList(surfaceChild, this.state.subsurfaceChildren)
-    removeChildFromList(surfaceChild, this.pendingState.subsurfaceChildren)
+  private removeChildFromList(surfaceChild: SurfaceChild, siblings: SurfaceChild[]): void {
+    const index = siblings.indexOf(surfaceChild)
+    if (index > -1) {
+      siblings.splice(index, 1)
+    }
+    if (surfaceChild.surface.parent === this) {
+      surfaceChild.surface.parent = undefined
+    }
   }
 
-  addChild(surfaceChild: SurfaceChild): View | undefined {
+  private removeSubsurface(surfaceChild: SurfaceChild): void {
+    this.removeChildFromList(surfaceChild, this.state.subsurfaceChildren)
+    this.removeChildFromList(surfaceChild, this.pendingState.subsurfaceChildren)
+  }
+
+  addChild(surfaceChild: SurfaceChild): void {
     return this._addChild(surfaceChild, this._surfaceChildren)
   }
 
-  addToplevelChild(surfaceChild: SurfaceChild): void {
-    this._surfaceChildren.push(surfaceChild)
-
-    const primaryChildView = surfaceChild.surface.view
-    const primaryView = this.view
-
-    if (primaryChildView && primaryView) {
-      primaryChildView.parent = primaryView
-      surfaceChild.surface.resource.onDestroy().then(() => this.removeChild(surfaceChild))
-    }
-  }
-
   removeChild(surfaceChild: SurfaceChild): void {
-    removeChildFromList(surfaceChild, this._surfaceChildren)
+    this.removeChildFromList(surfaceChild, this._surfaceChildren)
   }
 
-  private _addChild(surfaceChild: SurfaceChild, siblings: SurfaceChild[]): View | undefined {
+  private _addChild(surfaceChild: SurfaceChild, siblings: SurfaceChild[]) {
     siblings.push(surfaceChild)
-
-    let childView: View | undefined
-    if (this.view) {
-      childView = this.ensureChildView(surfaceChild, this.view)
-    }
-    surfaceChild.surface.resource.onDestroy().then(() => this.removeChild(surfaceChild))
-    return childView
+    surfaceChild.surface.parent = this
+    surfaceChild.surface.resource.onDestroy().then(() => {
+      this.removeChild(surfaceChild)
+    })
+    this.resource.onDestroy().then(() => {
+      this.removeChild(surfaceChild)
+    })
   }
 
   destroy(resource: WlSurfaceResource): void {
@@ -436,7 +352,7 @@ class Surface implements WlSurfaceRequests {
 
   private _handleDestruction() {
     this.destroyed = true
-    this.view?.destroy()
+    this.role?.view?.destroy()
     this._h264BufferContentDecoder?.destroy()
   }
 
@@ -532,6 +448,7 @@ class Surface implements WlSurfaceRequests {
       const bufferImplementation = this.state.buffer.implementation as BufferImplementation<any>
       if (!bufferImplementation.released) {
         bufferImplementation.release()
+        this.resource.client.connection.flush()
       }
     }
     mergeSurfaceState(this.state, this.pendingState)
@@ -543,24 +460,6 @@ class Surface implements WlSurfaceRequests {
     this.pendingState.damageRects = []
     this.pendingState.bufferDamageRects = []
     this.pendingState.frameCallbacks = []
-    this.resource.client.connection.flush()
-  }
-
-  renderViews(prepareRenderOnIdle?: (view: View) => void): void {
-    if (this.renderTaskRegistration) {
-      return
-    }
-    this.renderTaskRegistration = queueCancellableMicrotask(() => {
-      this.renderTaskRegistration = undefined
-      const view = this.view
-      if (view) {
-        view.renderState.scene.prepareViewRenderState(view)
-        prepareRenderOnIdle?.(view)
-        view.renderState.scene.registerFrameCallbacks(this.state.frameCallbacks)
-        view.renderState.scene.render()
-        this.state.frameCallbacks = []
-      }
-    })
   }
 
   setBufferTransform(resource: WlSurfaceResource, transform: number): void {

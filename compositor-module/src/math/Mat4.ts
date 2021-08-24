@@ -76,22 +76,22 @@ export default class Mat4 {
   }
 
   constructor(
-   public readonly m00: number,
-   public readonly m10: number,
-   public readonly m20: number,
-   public readonly m30: number,
-   public readonly m01: number,
-   public readonly m11: number,
-   public readonly m21: number,
-   public readonly m31: number,
-   public readonly m02: number,
-   public readonly m12: number,
-   public readonly m22: number,
-   public readonly m32: number,
-   public readonly m03: number,
-   public readonly m13: number,
-   public readonly m23: number,
-   public readonly m33: number,
+    public readonly m00: number,
+    public readonly m10: number,
+    public readonly m20: number,
+    public readonly m30: number,
+    public readonly m01: number,
+    public readonly m11: number,
+    public readonly m21: number,
+    public readonly m31: number,
+    public readonly m02: number,
+    public readonly m12: number,
+    public readonly m22: number,
+    public readonly m32: number,
+    public readonly m03: number,
+    public readonly m13: number,
+    public readonly m23: number,
+    public readonly m33: number,
   ) {}
 
   /**
@@ -167,12 +167,21 @@ export default class Mat4 {
   }
 
   /**
-   * Multiply a rectangle using this matrix, resulting in a new rectangle.
+   * Multiply a rectangle using this matrix, resulting in the bounding box of the transformed rectangle.
    */
-  timesRect(right: Rect): Rect {
+  timesRectToBoundingBox(right: Rect): Rect {
     const topLeft = this.timesPoint(Point.create(right.x0, right.y0))
+    const bottomLeft = this.timesPoint(Point.create(right.x0, right.y1))
     const bottomRight = this.timesPoint(Point.create(right.x1, right.y1))
-    return Rect.create(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y)
+    const topRight = this.timesPoint(Point.create(right.x1, right.y0))
+
+    const x0 = Math.min(topLeft.x, bottomLeft.x, bottomRight.x, topRight.x)
+    const y0 = Math.min(topLeft.y, bottomLeft.y, bottomRight.y, topRight.y)
+
+    const x1 = Math.max(topLeft.x, bottomLeft.x, bottomRight.x, topRight.x)
+    const y1 = Math.max(topLeft.y, bottomLeft.y, bottomRight.y, topRight.y)
+
+    return Rect.create(x0, y0, x1, y1)
   }
 
   invert(): Mat4 {

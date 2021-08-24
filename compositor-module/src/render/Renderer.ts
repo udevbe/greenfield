@@ -15,18 +15,47 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+import { resetCursorImage, setCursor, setCursorImage } from '../browser/cursor'
+import BufferImplementation from '../BufferImplementation'
+import { ButtonEvent } from '../ButtonEvent'
+import Callback from '../Callback'
+import { queueCancellableMicrotask } from '../Loop'
+import Point from '../math/Point'
 import Output from '../Output'
+import { PointerRole } from '../Pointer'
+import DecodedFrame from '../remotestreaming/DecodedFrame'
 import Session from '../Session'
+import Surface from '../Surface'
+import View from '../View'
+import WebGLFrame from '../webgl/WebGLFrame'
+import WebShmFrame from '../webshm/WebShmFrame'
 import Scene from './Scene'
 
+function createRenderFrame(): Promise<number> {
+  return new Promise<number>((resolve) => {
+    requestAnimationFrame(resolve)
+  })
+}
+
 export default class Renderer {
+  private _renderFrame?: Promise<void>
+  private _cursorFrame?: Promise<void>
+  private renderTaskRegistration?: () => void
+
+  private constructor(
+    public readonly session: Session,
+    public scenes: { [key: string]: Scene } = {},
+    public topLevelViews: View[] = [],
+    private frameCallbacks: Callback[] = [],
+    private viewStack: View[] = [],
+    private cursorView?: View,
+  ) {}
+
   static create(session: Session): Renderer {
     return new Renderer(session)
   }
 
-  private constructor(public readonly session: Session, public scenes: { [key: string]: Scene } = {}) {}
-
-  initScene(sceneId: string, canvas: HTMLCanvasElement): Promise<void> {
+  initScene(sceneId: string, canvas: HTMLCanvasElement): void {
     let scene = this.scenes[sceneId] || null
     if (!scene) {
       const gl = canvas.getContext('webgl', {
@@ -51,6 +80,155 @@ export default class Renderer {
         this.session.globals.unregisterOutput(output)
       })
     }
-    return scene.render()
+    this.render()
+  }
+
+  updatePointerCursor(view: View): void {
+    if (view.surface.state.bufferContents) {
+      this.cursorView = view
+
+      if (this._cursorFrame) {
+        return
+      }
+
+      this._cursorFrame = createRenderFrame().then((time) => {
+        this._cursorFrame = undefined
+        if (this.cursorView === undefined) {
+          return
+        }
+        const { blob } = this.cursorView.surface.state.bufferContents?.pixelContent as { blob: Blob }
+        const pointerRole = this.cursorView.surface.role as PointerRole
+        setCursorImage(blob, pointerRole.pointer.hotspotX, pointerRole.pointer.hotspotY)
+        this.cursorView.surface.state.frameCallbacks.forEach((callback) => callback.done(time))
+        this.cursorView.surface.state.frameCallbacks = []
+        this.session.flush()
+      })
+    } else {
+      this.cursorView = undefined
+      resetCursorImage()
+    }
+  }
+
+  raiseSurface(surface: Surface): void {
+    const raisedViews = this.topLevelViews.filter((topLevelView) => topLevelView.surface === surface)
+    const rest = this.topLevelViews.filter((topLevelView) => topLevelView.surface !== surface)
+    this.topLevelViews = [...rest, ...raisedViews]
+  }
+
+  render(afterUpdatePixelContent?: () => void): void {
+    if (this.renderTaskRegistration) {
+      return
+    }
+    this.renderTaskRegistration = queueCancellableMicrotask(() => {
+      this.renderTaskRegistration = undefined
+      const sceneList = Object.values(this.scenes)
+      if (sceneList.length === 0) {
+        return
+      }
+      this.updateViewStack()
+      this.viewStack.forEach((view) => {
+        this.updateRenderStatesPixelContent(view)
+        this.registerFrameCallbacks(view.surface.state.frameCallbacks)
+        view.surface.state.frameCallbacks = []
+      })
+      afterUpdatePixelContent?.()
+      // TODO we can check which views are damaged and filter out only those scenes that need a re-render
+      if (this._renderFrame) {
+        return
+      }
+      this._renderFrame = createRenderFrame().then((time) => {
+        this._renderFrame = undefined
+        // TODO we can further limit the visible region of each view by removing the area covered by other views
+        sceneList.forEach((scene) => scene.render([...this.viewStack]))
+        this.frameCallbacks.forEach((callback) => callback.done(time))
+        this.frameCallbacks = []
+        this.session.flush()
+      })
+    })
+  }
+
+  pickView(scenePoint: Point): View | undefined {
+    // test views from front to back
+    return [...this.viewStack].reverse().find((view) => {
+      const surfacePoint = view.toSurfaceSpace(scenePoint)
+      return view.surface.isWithinInputRegion(surfacePoint)
+    })
+  }
+
+  hidePointer(): void {
+    setCursor('none')
+  }
+
+  resetPointer(): void {
+    resetCursorImage()
+  }
+
+  addTopLevelView(topLevelView: View): void {
+    this.topLevelViews = [...this.topLevelViews, topLevelView]
+    topLevelView.onDestroy().then(() => {
+      this.topLevelViews = this.topLevelViews.filter((view) => view !== topLevelView)
+      this.render()
+    })
+  }
+
+  clampMouseMove(event: ButtonEvent): { x: number; y: number } {
+    return {
+      x: Math.min(Math.max(event.x, 0), this.scenes[event.sceneId].canvas.width),
+      y: Math.min(Math.max(event.y, 0), this.scenes[event.sceneId].canvas.height),
+    }
+  }
+
+  /**
+   * Update stack of all views of this scene, in-order from bottom to top.
+   */
+  private updateViewStack(): void {
+    const stack: View[] = []
+    this.topLevelViews.forEach((topLevelView) => {
+      // toplevel surface with a parent will be added automatically by the parent so we filter them out here.
+      this.addToViewStack(stack, topLevelView)
+    })
+    this.viewStack = stack
+  }
+
+  private addToViewStack(stack: View[], view: View) {
+    view.surface.children.forEach((surfaceChild) => {
+      const childViewOrParentView = surfaceChild.surface.role?.view
+      if (childViewOrParentView) {
+        stack.push(childViewOrParentView)
+        if (childViewOrParentView !== view) {
+          this.addToViewStack(stack, childViewOrParentView)
+        }
+      }
+    })
+  }
+
+  private registerFrameCallbacks(frameCallbacks?: Callback[]): void {
+    if (frameCallbacks) {
+      this.frameCallbacks = [...this.frameCallbacks, ...frameCallbacks]
+    }
+  }
+
+  private updateRenderStatesPixelContent(view: View): void {
+    view.applyTransformations()
+    const { buffer, bufferContents } = view.surface.state
+    if (
+      bufferContents instanceof DecodedFrame ||
+      bufferContents instanceof WebGLFrame ||
+      bufferContents instanceof WebShmFrame
+    ) {
+      if (view.mapped && buffer && view.surface.damaged) {
+        const bufferImplementation = buffer.implementation as BufferImplementation<any>
+        if (!bufferImplementation.released) {
+          Object.values(view.renderStates).forEach((renderState) => {
+            // @ts-ignore
+            renderState.scene[bufferContents.mimeType](bufferContents, renderState)
+          })
+          view.surface.damaged = false
+          bufferImplementation.release()
+        }
+      }
+    } else if (buffer !== undefined) {
+      throw new Error(`BUG. Unsupported buffer type: ${typeof bufferContents}`)
+    }
   }
 }

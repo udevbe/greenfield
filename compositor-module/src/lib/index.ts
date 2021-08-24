@@ -1,28 +1,33 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import pixman from './pixman'
+import pixman from './libpixman'
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import xkbcommon from './xkbcommon'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import libxkbcommonWasm from '../assets/libxkbcommon.wasm.asset'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import libpixmanWasm from '../assets/libpixman.wasm.asset'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import libxkbcommonData from '../assets/libxkbcommon.data.asset'
+import xkbcommon from './libxkbcommon'
 
-const assets = {
-  'libpixman.wasm': libpixmanWasm,
-  'libxkbcommon.data': libxkbcommonData,
-  'libxkbcommon.wasm': libxkbcommonWasm,
+type libpixman = {
+  HEAPU8: Uint8Array
+  _malloc(bytes: number): number
+  _pixman_region32_init(pixmanRegion: number): void
+  _pixman_region32_fini(pixmanRegion: number): void
+  _pixman_region32_init_rect(pixmanRegion: number, x0: number, y0: number, x1: number, y1: number): void
+  _pixman_region32_union(result: number, left: number, right: number): void
+  _pixman_region32_intersect(result: number, left: number, right: number): void
+  // TODO check if this one is works/is correct?
+  _pixman_region32_union_rect(result: number, left: number, x: number, y: number, width: number, height: number): void
+  _free(pixmanRegion: number): void
+  _pixman_region32_contains_point(pixmanRegion: number, x: number, y: number, box: number | null): number
+  _pixman_region32_copy(dest: number, source: number): void
+  _pixman_region32_contains_rectangle(region: number, box: number): number
+  _pixman_region32_not_empty(region: number): number
+  _pixman_region32_equal(region1: number, region2: number): number
+  _pixman_region32_rectangles(region: number, nRects: number): number
+  _pixman_region32_subtract(regD: number, regM: number, regS: number): void
 }
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-const assetLocator = (path: string) => assets[path]
+type libxkbcommon = {
+  // TODO
+}
 
 function loadNativeModule(module: { calledRun: any; onRuntimeInitialized: () => void }) {
   return new Promise<void>((resolve) => {
@@ -46,19 +51,23 @@ function isWasmSupported() {
   return false
 }
 
-const lib = {
-  pixman: null,
-  xkbcommon: null,
+const lib: {
+  pixman: libpixman
+  xkbcommon: libxkbcommon
+} = {
+  // @ts-ignore
+  pixman: undefined,
+  // @ts-ignore
+  xkbcommon: undefined,
 }
 
 async function init(): Promise<void> {
   if (isWasmSupported()) {
-    const libpixman = pixman({ locateFile: assetLocator })
-    const libxkbcommon = xkbcommon({ locateFile: assetLocator })
-    await Promise.all([loadNativeModule(libpixman), loadNativeModule(libxkbcommon)])
+    const libpixman: Promise<libpixman> = pixman()
+    const libxkbcommon: Promise<any> = xkbcommon()
 
-    lib.pixman = libpixman
-    lib.xkbcommon = libxkbcommon
+    lib.pixman = await libpixman
+    lib.xkbcommon = await libxkbcommon
   } else {
     throw new Error('WebAssembly is not supported on your browser.')
   }

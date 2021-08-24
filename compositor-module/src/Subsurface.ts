@@ -25,17 +25,27 @@ import BufferImplementation from './BufferImplementation'
 
 import Point from './math/Point'
 import { createPixmanRegion } from './Region'
+import Renderer from './render/Renderer'
+import Session from './Session'
 import Surface, { mergeSurfaceState, SurfaceState } from './Surface'
 import SurfaceRole from './SurfaceRole'
 import View from './View'
 
 export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
   static create(
+    session: Session,
     parentWlSurfaceResource: WlSurfaceResource,
     wlSurfaceResource: WlSurfaceResource,
     wlSubsurfaceResource: WlSubsurfaceResource,
   ): Subsurface {
-    const subsurface = new Subsurface(parentWlSurfaceResource, wlSurfaceResource, wlSubsurfaceResource)
+    const view = View.create(wlSurfaceResource.implementation as Surface)
+    const subsurface = new Subsurface(
+      parentWlSurfaceResource,
+      wlSurfaceResource,
+      wlSubsurfaceResource,
+      view,
+      session.renderer,
+    )
     wlSubsurfaceResource.implementation = subsurface
 
     wlSurfaceResource.onDestroy().then(() => {
@@ -77,6 +87,8 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
     public readonly parentWlSurfaceResource: WlSurfaceResource,
     public readonly wlSurfaceResource: WlSurfaceResource,
     public readonly resource: WlSubsurfaceResource,
+    public readonly view: View,
+    private readonly renderer: Renderer,
   ) {
     const surface = this.wlSurfaceResource.implementation as Surface
     mergeSurfaceState(this.cachedState, surface.state)
@@ -89,7 +101,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
     this.cachedState.frameCallbacks = []
     this.cacheDirty = false
     surface.commitPending()
-    surface.renderViews()
+    this.renderer.render()
   }
 
   onParentCommit(): void {
@@ -141,7 +153,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
       this.commitCache(surface)
     } else {
       surface.commitPending()
-      surface.renderViews()
+      this.renderer.render()
     }
   }
 

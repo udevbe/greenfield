@@ -63,13 +63,9 @@ class YUVAToRGBA {
     public readonly alphaTexture: Texture,
   ) {}
 
-  convertInto(yuva: OpaqueAndAlphaPlanes, frameSize: Size, view: View): void {
+  convertInto(yuva: OpaqueAndAlphaPlanes, frameSize: Size, renderState: RenderState): void {
     const { alpha, opaque } = yuva
     // const start = Date.now()
-    if (view.destroyed) {
-      return
-    }
-    const renderState = view.renderState
     // console.log(`|--> Decoding took ${Date.now() - start}ms`)
 
     // the width & height returned are actually padded, so we have to use the frame size to get the real image dimension

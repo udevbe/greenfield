@@ -76,13 +76,6 @@ function linkUserShellEvents(session: CompositorSession) {
   const userShell = session.userShell
 
   userShell.events.notify = (variant: string, message: string) => window.alert(message)
-  userShell.events.createUserSurface = (
-    compositorSurface: CompositorSurface,
-    compositorSurfaceState: CompositorSurfaceState,
-  ) => {
-    // create view on our scene for the newly created surface
-    userShell.actions.createView(compositorSurface, 'myOutputId')
-  }
 }
 
 async function main() {
