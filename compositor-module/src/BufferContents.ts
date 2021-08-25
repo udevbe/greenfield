@@ -15,13 +15,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import Size from './Size'
+import { SizeRO } from './math/Size'
 
 export default interface BufferContents<T> {
-  validateSize?: () => void
+  readonly validateSize?: () => void
 
-  size: Size
-  mimeType: 'video/h264' | 'image/png' | 'image/rgba' | 'image/canvas'
-  pixelContent: T
-  serial?: number
+  readonly size: SizeRO
+  readonly mimeType: 'video/h264' | 'image/png' | 'image/rgba' | 'image/canvas'
+  readonly pixelContent: T
+  readonly serial?: number
 }

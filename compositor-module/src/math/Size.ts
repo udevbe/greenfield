@@ -15,23 +15,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-// TODO use an object literal
-export default class Size {
-  static create(width: number, height: number): Size {
-    return new Size(width, height)
-  }
+export type SizeRO = {
+  readonly width: number
+  readonly height: number
+}
 
-  constructor(public readonly w: number, public readonly h: number) {}
+export function half(size: SizeRO): SizeRO {
+  return { width: size.width >>> 1, height: size.height >>> 1 }
+}
 
-  toString(): string {
-    return '(' + this.w + ', ' + this.h + ')'
-  }
-
-  getHalfSize(): Size {
-    return new Size(this.w >>> 1, this.h >>> 1)
-  }
-
-  equals(size: Size): boolean {
-    return size.w === this.w && size.h === this.h
-  }
+export function sizeEquals(size: SizeRO, other: SizeRO): boolean {
+  return size.width === other.width && size.height === other.height
 }

@@ -15,24 +15,32 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import Vec4 from './Vec4'
+import { Vec4RO } from './Vec4'
 
-export default class Point {
-  static create(x: number, y: number): Point {
-    return new Point(x, y)
-  }
+export type PointRO = {
+  readonly x: number
+  readonly y: number
+}
 
-  constructor(public readonly x: number, public readonly y: number) {}
+export function toVec4({ x, y }: PointRO): Vec4RO {
+  return {
+    x,
+    y,
+    z: 1,
+    w: 1,
+  } as const
+}
 
-  toVec4(): Vec4 {
-    return Vec4.create(this.x, this.y, 0, 1)
-  }
+export function plusPoint({ x: x0, y: y0 }: PointRO, { x: x1, y: y1 }: PointRO): PointRO {
+  return {
+    x: x0 + x1,
+    y: y0 + y1,
+  } as const
+}
 
-  plus(right: Point): Point {
-    return Point.create(this.x + right.x, this.y + right.y)
-  }
-
-  minus(right: Point): Point {
-    return Point.create(this.x - right.x, this.y - right.y)
-  }
+export function minusPoint({ x: x0, y: y0 }: PointRO, { x: x1, y: y1 }: PointRO): PointRO {
+  return {
+    x: x0 - x1,
+    y: y0 - y1,
+  } as const
 }

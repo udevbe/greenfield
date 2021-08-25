@@ -23,7 +23,7 @@ import {
 } from 'westfield-runtime-server'
 import BufferImplementation from './BufferImplementation'
 
-import Point from './math/Point'
+import { PointRO } from './math/Point'
 import { createPixmanRegion } from './Region'
 import Renderer from './render/Renderer'
 import Session from './Session'
@@ -62,7 +62,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
     return subsurface
   }
 
-  pendingPosition?: Point = Point.create(0, 0)
+  pendingPosition?: PointRO = { x: 0, y: 0 }
   private sync = true
   private cacheDirty = false
   private readonly cachedState: SurfaceState = {
@@ -166,7 +166,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
       return
     }
 
-    this.pendingPosition = Point.create(x, y)
+    this.pendingPosition = { x, y }
   }
 
   placeAbove(resource: WlSubsurfaceResource, sibling: WlSurfaceResource): void {

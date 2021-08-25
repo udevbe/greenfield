@@ -15,12 +15,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import Rect from '../math/Rect'
+import Size from '../../types/Size'
+import { createRect } from '../math/Rect'
+import { SizeRO } from '../math/Size'
 import Output from '../Output'
 import { createPixmanRegion, initRect } from '../Region'
 import DecodedFrame, { OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
 import Session from '../Session'
-import Size from '../Size'
 import View from '../View'
 import WebGLFrame from '../webgl/WebGLFrame'
 import WebShmFrame from '../webshm/WebShmFrame'
@@ -31,12 +32,12 @@ import YUVAToRGBA from './YUVAToRGBA'
 function updateViewRenderStateWithTexImageSource(buffer: TexImageSource, renderState: RenderState) {
   const {
     texture,
-    size: { w, h },
+    size: { width, height },
   } = renderState
-  if (buffer.width === w && buffer.height === h) {
+  if (buffer.width === width && buffer.height === height) {
     texture.subImage2d(buffer, 0, 0)
   } else {
-    renderState.size = Size.create(buffer.width, buffer.height)
+    renderState.size = buffer
     texture.image2d(buffer)
   }
 }
@@ -67,7 +68,7 @@ class Scene {
     public readonly yuvaToRGBA: YUVAToRGBA,
     public readonly output: Output,
     public readonly id: string,
-    public resolution: Size | 'auto' = 'auto',
+    public resolution: SizeRO | 'auto' = 'auto',
   ) {
     this._destroyPromise = new Promise<void>((resolve) => {
       this._destroyResolve = resolve
@@ -81,15 +82,12 @@ class Scene {
         this.canvas.width = this.canvas.clientWidth
         this.canvas.height = this.canvas.clientHeight
       }
-    } else if (this.canvas.width !== this.resolution.w || this.canvas.height !== this.resolution.h) {
-      this.canvas.width = this.resolution.w
-      this.canvas.height = this.resolution.h
+    } else if (this.canvas.width !== this.resolution.width || this.canvas.height !== this.resolution.height) {
+      this.canvas.width = this.resolution.width
+      this.canvas.height = this.resolution.height
     }
 
-    initRect(
-      this.region,
-      Rect.create(this.output.x, this.output.y, this.output.x + this.canvas.width, this.output.y + this.canvas.height),
-    )
+    initRect(this.region, createRect(this.output, this.canvas))
   }
 
   render(viewStack: View[]): void {
@@ -97,7 +95,7 @@ class Scene {
 
     // render view texture
     this.sceneShader.use()
-    this.sceneShader.updateSceneData(Size.create(this.canvas.width, this.canvas.height))
+    this.sceneShader.updateSceneData(this.canvas)
     viewStack.forEach((view) => this.renderView(view))
     this.sceneShader.release()
 

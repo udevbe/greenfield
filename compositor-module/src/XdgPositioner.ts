@@ -16,9 +16,9 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { XdgPositionerRequests, XdgPositionerResource, XdgPositionerError } from 'westfield-runtime-server'
-import Point from './math/Point'
+import { minusPoint, plusPoint, PointRO } from './math/Point'
 
-import Rect from './math/Rect'
+import { createRect, RectRO, RectROWithInfo } from './math/Rect'
 import View from './View'
 import XdgSurface from './XdgSurface'
 
@@ -26,75 +26,75 @@ const anchorCalculation = {
   /**
    * none
    */
-  0: (anchorRect: Rect) => {
+  0: (anchorRect: RectROWithInfo): PointRO => {
     // calculate center
-    const x = Math.round((anchorRect.x0 + anchorRect.width) / 2)
-    const y = Math.round((anchorRect.y0 + anchorRect.height) / 2)
-    return Point.create(x, y)
+    const x = Math.round((anchorRect.x0 + anchorRect.size.width) / 2)
+    const y = Math.round((anchorRect.y0 + anchorRect.size.height) / 2)
+    return { x, y }
   },
   /**
    * top
    */
-  1: (anchorRect: Rect) => {
-    const x = Math.round((anchorRect.x0 + anchorRect.width) / 2)
+  1: (anchorRect: RectROWithInfo): PointRO => {
+    const x = Math.round((anchorRect.x0 + anchorRect.size.width) / 2)
     const y = anchorRect.y0
-    return Point.create(x, y)
+    return { x, y }
   },
   /**
    * bottom
    */
-  2: (anchorRect: Rect) => {
-    const x = Math.round((anchorRect.x0 + anchorRect.width) / 2)
+  2: (anchorRect: RectROWithInfo): PointRO => {
+    const x = Math.round((anchorRect.x0 + anchorRect.size.width) / 2)
     const y = anchorRect.y1
-    return Point.create(x, y)
+    return { x, y }
   },
   /**
    * left
    */
-  3: (anchorRect: Rect) => {
+  3: (anchorRect: RectROWithInfo): PointRO => {
     const x = anchorRect.x0
-    const y = Math.round((anchorRect.y0 + anchorRect.height) / 2)
-    return Point.create(x, y)
+    const y = Math.round((anchorRect.y0 + anchorRect.size.height) / 2)
+    return { x, y }
   },
   /**
    * right
    */
-  4: (anchorRect: Rect) => {
+  4: (anchorRect: RectROWithInfo): PointRO => {
     const x = anchorRect.x1
-    const y = Math.round((anchorRect.y0 + anchorRect.height) / 2)
-    return Point.create(x, y)
+    const y = Math.round((anchorRect.y0 + anchorRect.size.height) / 2)
+    return { x, y }
   },
   /**
    * topLeft
    */
-  5: (anchorRect: Rect) => {
+  5: (anchorRect: RectROWithInfo): PointRO => {
     const x = anchorRect.x0
     const y = anchorRect.y0
-    return Point.create(x, y)
+    return { x, y }
   },
   /**
    * bottomLeft
    */
-  6: (anchorRect: Rect) => {
+  6: (anchorRect: RectROWithInfo): PointRO => {
     const x = anchorRect.x0
     const y = anchorRect.y1
-    return Point.create(x, y)
+    return { x, y }
   },
   /**
    * topRight
    */
-  7: (anchorRect: Rect) => {
+  7: (anchorRect: RectROWithInfo): PointRO => {
     const x = anchorRect.x1
     const y = anchorRect.y0
-    return Point.create(x, y)
+    return { x, y }
   },
   /**
    * bottomRight
    */
-  8: (anchorRect: Rect) => {
+  8: (anchorRect: RectROWithInfo): PointRO => {
     const x = anchorRect.x1
     const y = anchorRect.y1
-    return Point.create(x, y)
+    return { x, y }
   },
 } as const
 
@@ -102,86 +102,86 @@ const offsetCalculation = {
   /**
    * none
    */
-  0: (anchor: Point, offset: Point, windowGeometry: Rect) => {
-    const x = Math.round(windowGeometry.x0 + windowGeometry.width / 2)
-    const y = Math.round(windowGeometry.y0 + windowGeometry.height / 2)
-    return anchor.minus(Point.create(x, y))
+  0: (anchor: PointRO, offset: PointRO, windowGeometry: RectROWithInfo): PointRO => {
+    const x = Math.round(windowGeometry.x0 + windowGeometry.size.width / 2)
+    const y = Math.round(windowGeometry.y0 + windowGeometry.size.height / 2)
+    return minusPoint(anchor, { x, y })
   },
   /**
    * top
    */
-  1: (anchor: Point, offset: Point, windowGeometry: Rect) => {
-    const x = Math.round(windowGeometry.x0 + windowGeometry.width / 2)
+  1: (anchor: PointRO, offset: PointRO, windowGeometry: RectROWithInfo): PointRO => {
+    const x = Math.round(windowGeometry.x0 + windowGeometry.size.width / 2)
     const y = windowGeometry.y1
-    return anchor.minus(Point.create(x, y)).minus(Point.create(0, offset.y))
+    return minusPoint(minusPoint(anchor, { x, y }), { x: 0, y: offset.y })
   },
   /**
    * bottom
    */
-  2: (anchor: Point, offset: Point, windowGeometry: Rect) => {
-    const x = Math.round(windowGeometry.x0 + windowGeometry.width / 2)
+  2: (anchor: PointRO, offset: PointRO, windowGeometry: RectROWithInfo): PointRO => {
+    const x = Math.round(windowGeometry.x0 + windowGeometry.size.width / 2)
     const y = windowGeometry.y0
-    return anchor.minus(Point.create(x, y)).plus(Point.create(0, offset.y))
+    return plusPoint(minusPoint(anchor, { x, y }), { x: 0, y: offset.y })
   },
   /**
    * left
    */
-  3: (anchor: Point, offset: Point, windowGeometry: Rect) => {
+  3: (anchor: PointRO, offset: PointRO, windowGeometry: RectROWithInfo): PointRO => {
     const x = windowGeometry.x1
-    const y = Math.round(windowGeometry.y0 + windowGeometry.height / 2)
-    return anchor.minus(Point.create(x, y)).minus(Point.create(offset.x, 0))
+    const y = Math.round(windowGeometry.y0 + windowGeometry.size.height / 2)
+    return minusPoint(minusPoint(anchor, { x, y }), { x: offset.x, y: 0 })
   },
   /**
    * right
    */
-  4: (anchor: Point, offset: Point, windowGeometry: Rect) => {
+  4: (anchor: PointRO, offset: PointRO, windowGeometry: RectROWithInfo): PointRO => {
     const x = windowGeometry.x0
-    const y = Math.round(windowGeometry.y0 + windowGeometry.height / 2)
-    return anchor.minus(Point.create(x, y)).plus(Point.create(offset.x, 0))
+    const y = Math.round(windowGeometry.y0 + windowGeometry.size.height / 2)
+    return plusPoint(minusPoint(anchor, { x, y }), { x: offset.x, y: 0 })
   },
   /**
    * topLeft
    */
-  5: (anchor: Point, offset: Point, windowGeometry: Rect) => {
+  5: (anchor: PointRO, offset: PointRO, windowGeometry: RectROWithInfo): PointRO => {
     const x = windowGeometry.x1
     const y = windowGeometry.y1
-    return anchor.minus(Point.create(x, y)).minus(offset)
+    return minusPoint(minusPoint(anchor, { x, y }), offset)
   },
   /**
    * bottomLeft
    */
-  6: (anchor: Point, offset: Point, windowGeometry: Rect) => {
+  6: (anchor: PointRO, offset: PointRO, windowGeometry: RectROWithInfo): PointRO => {
     const x = windowGeometry.x1
     const y = windowGeometry.y0
-    return anchor.minus(Point.create(x, y)).plus(Point.create(-offset.x, offset.y))
+    return plusPoint(minusPoint(anchor, { x, y }), { x: -offset.x, y: offset.y })
   },
   /**
    * topRight
    */
-  7: (anchor: Point, offset: Point, windowGeometry: Rect) => {
+  7: (anchor: PointRO, offset: PointRO, windowGeometry: RectROWithInfo): PointRO => {
     const x = windowGeometry.x0
     const y = windowGeometry.y1
-    return anchor.minus(Point.create(x, y)).plus(Point.create(offset.x, -offset.y))
+    return plusPoint(minusPoint(anchor, { x, y }), { x: offset.x, y: -offset.y })
   },
   /**
    * bottomRight
    */
-  8: (anchor: Point, offset: Point, windowGeometry: Rect) => {
+  8: (anchor: PointRO, offset: PointRO, windowGeometry: RectROWithInfo): PointRO => {
     const x = windowGeometry.x0
     const y = windowGeometry.y0
-    return anchor.minus(Point.create(x, y)).plus(Point.create(offset.x, offset.y))
+    return plusPoint(minusPoint(anchor, { x, y }), { x: offset.x, y: offset.y })
   },
 } as const
 
 export interface XdgPositionerState {
-  size?: Rect
-  anchorRect?: Rect
+  sizeRect?: RectROWithInfo
+  anchorRect?: RectROWithInfo
   anchor: keyof typeof anchorCalculation
   gravity: keyof typeof offsetCalculation
   constraintAdjustment: number
-  offset: Point
+  offset: PointRO
 
-  surfaceSpaceAnchorPoint(xdgSurface: XdgSurface): Point | undefined
+  surfaceSpaceAnchorPoint(xdgSurface: XdgSurface): PointRO | undefined
 
   checkScreenConstraints(
     xdgSurface: XdgSurface,
@@ -191,12 +191,12 @@ export interface XdgPositionerState {
 
 export default class XdgPositioner implements XdgPositionerRequests {
   readonly xdgPositionerResource: XdgPositionerResource
-  size?: Rect
-  anchorRect?: Rect
+  size?: RectROWithInfo
+  anchorRect?: RectROWithInfo
   anchor: keyof typeof anchorCalculation = 0
   gravity: keyof typeof offsetCalculation = 0
   constraintAdjustment = 0
-  offset: Point = Point.create(0, 0)
+  offset: PointRO = { x: 0, y: 0 }
 
   static create(xdgPositionerResource: XdgPositionerResource): XdgPositioner {
     const xdgPositioner = new XdgPositioner(xdgPositionerResource)
@@ -218,7 +218,7 @@ export default class XdgPositioner implements XdgPositionerRequests {
       console.log('[client-protocol-error]. Size width or height of positioner can not be negative.')
       return
     }
-    this.size = Rect.create(0, 0, width, height)
+    this.size = createRect({ x: 0, y: 0 }, { width, height })
   }
 
   setAnchorRect(resource: XdgPositionerResource, x: number, y: number, width: number, height: number): void {
@@ -230,7 +230,7 @@ export default class XdgPositioner implements XdgPositionerRequests {
       console.log('[client-protocol-error] - Anchor rect width or height of positioner can not be negative.')
       return
     }
-    this.anchorRect = Rect.create(x, y, x + width, y + height)
+    this.anchorRect = createRect({ x, y }, { width, height })
   }
 
   setAnchor(resource: XdgPositionerResource, anchor: number): void {
@@ -254,7 +254,7 @@ export default class XdgPositioner implements XdgPositionerRequests {
   }
 
   setOffset(resource: XdgPositionerResource, x: number, y: number): void {
-    this.offset = Point.create(x, y)
+    this.offset = { x, y }
   }
 
   createStateCopy(): XdgPositionerState {
@@ -266,20 +266,23 @@ export default class XdgPositioner implements XdgPositionerRequests {
     const selfOffset = this.offset
     const resource = this.xdgPositionerResource
     return {
-      size: selfSize,
+      sizeRect: selfSize,
       anchorRect: selfAnchorRect,
       anchor: selfAnchor,
       gravity: selfGravity,
       constraintAdjustment: selfConstraintAdjustment,
       offset: selfOffset,
-      surfaceSpaceAnchorPoint(parent: XdgSurface): Point | undefined {
-        if (this.anchorRect && this.size) {
+      surfaceSpaceAnchorPoint(parent: XdgSurface): PointRO | undefined {
+        if (this.anchorRect && this.sizeRect) {
           const parentWindowGeometry = parent.windowGeometry
-          const surfaceSpaceAnchorRectPosition = parentWindowGeometry.position.plus(this.anchorRect.position)
+          const surfaceSpaceAnchorRectPosition = plusPoint(parentWindowGeometry.position, this.anchorRect.position)
           const { x, y } = surfaceSpaceAnchorRectPosition
-          const surfaceSpaceAnchorRect = Rect.create(x, y, x + this.anchorRect.width, y + this.anchorRect.height)
+          const surfaceSpaceAnchorRect = createRect(
+            { x, y },
+            { width: this.anchorRect.size.width, height: this.anchorRect.size.height },
+          )
           const surfaceSpaceAnchorPoint = anchorCalculation[this.anchor](surfaceSpaceAnchorRect)
-          return offsetCalculation[this.gravity](surfaceSpaceAnchorPoint, this.offset, this.size)
+          return offsetCalculation[this.gravity](surfaceSpaceAnchorPoint, this.offset, this.sizeRect)
         } else {
           resource.postError(XdgPositionerError.invalidInput, `Positioner not fully configured.`)
           return undefined
@@ -290,14 +293,15 @@ export default class XdgPositioner implements XdgPositionerRequests {
         parentView: View,
       ): { topViolation: number; rightViolation: number; bottomViolation: number; leftViolation: number } | undefined {
         const surfaceSpaceAnchorPoint = this.surfaceSpaceAnchorPoint(parent)
-        if (surfaceSpaceAnchorPoint && this.size) {
-          const surfaceSpaceWinGeoMin = surfaceSpaceAnchorPoint.plus(this.size.position)
-          const surfaceSpaceWinGeoMax = surfaceSpaceAnchorPoint.plus(Point.create(this.size.x1, this.size.y1))
+        if (surfaceSpaceAnchorPoint && this.sizeRect) {
+          const surfaceSpaceWinGeoMin = plusPoint(surfaceSpaceAnchorPoint, this.sizeRect.position)
+          const surfaceSpaceWinGeoMax = plusPoint(surfaceSpaceAnchorPoint, { x: this.sizeRect.x1, y: this.sizeRect.y1 })
 
-          const surfaceSpaceMinBound = parentView.toSurfaceSpace(Point.create(0, 0))
-          const surfaceSpaceMaxBound = parentView.toSurfaceSpace(
-            Point.create(window.document.documentElement.clientWidth, document.documentElement.clientHeight),
-          )
+          const surfaceSpaceMinBound = parentView.toSurfaceSpace({ x: 0, y: 0 })
+          const surfaceSpaceMaxBound = parentView.toSurfaceSpace({
+            x: window.document.documentElement.clientWidth,
+            y: document.documentElement.clientHeight,
+          })
 
           let topViolation = 0
           let rightViolation = 0

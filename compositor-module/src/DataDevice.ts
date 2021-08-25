@@ -30,8 +30,8 @@ import {
 } from 'westfield-runtime-server'
 import DataOffer from './DataOffer'
 import DataSource from './DataSource'
+import { PointRO } from './math/Point'
 
-import Point from './math/Point'
 import Seat from './Seat'
 import Surface from './Surface'
 import View from './View'
@@ -170,9 +170,7 @@ export default class DataDevice implements WlDataDeviceRequests {
       return
     }
 
-    const pointer = this.seat.pointer
-    const mousePoint = Point.create(pointer.x, pointer.y)
-    const surfacePoint = this.dndFocus.toSurfaceSpace(mousePoint)
+    const surfacePoint = this.dndFocus.toSurfaceSpace(this.seat.pointer)
 
     this.resources
       .filter((dataDeviceResource) => {
@@ -197,9 +195,7 @@ export default class DataDevice implements WlDataDeviceRequests {
       return
     }
 
-    const pointer = this.seat.pointer
-    const mousePoint = Point.create(pointer.x, pointer.y)
-    const surfacePoint = view.toSurfaceSpace(mousePoint)
+    const surfacePoint = view.toSurfaceSpace(this.seat.pointer)
     const serial = this.seat.nextSerial()
 
     const x = Fixed.parse(surfacePoint.x)
@@ -287,10 +283,7 @@ export default class DataDevice implements WlDataDeviceRequests {
 
   // TODO handle touch events
 
-  private createDataOffer(
-    source: WlDataSourceResource,
-    dataDeviceResource: WlDataDeviceResource,
-  ): WlDataOfferResource {
+  private createDataOffer(source: WlDataSourceResource, dataDeviceResource: WlDataDeviceResource): WlDataOfferResource {
     const offerId = /** @type {number} */ dataDeviceResource.dataOffer()
     const dataOffer = DataOffer.create(source, offerId, dataDeviceResource)
     const dataSource = source.implementation as DataSource

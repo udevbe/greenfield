@@ -15,15 +15,62 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import Mat4 from './Mat4'
+import { IDENTITY, Mat4RO } from './Mat4'
 
-const NORMAL = Mat4.IDENTITY()
-const _90 = Mat4.create(0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
-const _180 = Mat4.create(-1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
-const _270 = Mat4.create(0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
-const FLIPPED = Mat4.create(-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
-const FLIPPED_90 = Mat4.create(0, -1, 0, 0, -1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
-const FLIPPED_180 = Mat4.create(1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
-const FLIPPED_270 = Mat4.create(0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
+export const NORMAL: Mat4RO = IDENTITY
 
-export { NORMAL, _90, _180, _270, FLIPPED, FLIPPED_90, FLIPPED_180, FLIPPED_270 }
+// prettier-ignore
+export const _90: Mat4RO = {
+  m00: 0, m10: -1, m20: 0, m30: 0,
+  m01: 1, m11:  0, m21: 0, m31: 0,
+  m02: 0, m12:  0, m22: 1, m32: 0,
+  m03: 0, m13:  0, m23: 0, m33: 1
+} as const
+
+// prettier-ignore
+export const _180: Mat4RO = {
+  m00: -1, m10:  0, m20: 0, m30: 0,
+  m01:  1, m11: -1, m21: 0, m31: 0,
+  m02:  0, m12:  0, m22: 1, m32: 0,
+  m03:  0, m13:  0, m23: 0, m33: 1
+} as const
+
+// prettier-ignore
+export const _270: Mat4RO = {
+  m00:  0, m10: 1, m20: 0, m30: 0,
+  m01: -1, m11: 0, m21: 0, m31: 0,
+  m02:  0, m12: 0, m22: 1, m32: 0,
+  m03:  0, m13: 0, m23: 0, m33: 1
+} as const
+
+// prettier-ignore
+export const FLIPPED: Mat4RO = {
+  m00: -1, m10: 0, m20: 0, m30: 0,
+  m01:  0, m11: 1, m21: 0, m31: 0,
+  m02:  0, m12: 0, m22: 1, m32: 0,
+  m03:  0, m13: 0, m23: 0, m33: 1
+} as const
+
+// prettier-ignore
+export const FLIPPED_90: Mat4RO = {
+  m00:  0, m10: -1, m20: 0, m30: 0,
+  m01: -1, m11:  0, m21: 0, m31: 0,
+  m02:  0, m12:  0, m22: 1, m32: 0,
+  m03:  0, m13:  0, m23: 0, m33: 1
+} as const
+
+// prettier-ignore
+export const FLIPPED_180: Mat4RO = {
+  m00: 1, m10:  0, m20: 0, m30: 0,
+  m01: 0, m11: -1, m21: 0, m31: 0,
+  m02: 0, m12:  0, m22: 1, m32: 0,
+  m03: 0, m13:  0, m23: 0, m33: 1
+} as const
+
+// prettier-ignore
+export const FLIPPED_270: Mat4RO = {
+  m00: 0, m10:  1, m20: 0, m30: 0,
+  m01: 1, m11:  0, m21: 0, m31: 0,
+  m02: 0, m12:  0, m22: 1, m32: 0,
+  m03: 0, m13:  0, m23: 0, m33: 1
+} as const

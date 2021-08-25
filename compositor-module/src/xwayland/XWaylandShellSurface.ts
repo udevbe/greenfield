@@ -1,6 +1,6 @@
 import { WlShellSurfaceResize } from 'westfield-runtime-server'
 import { CompositorSurface, CompositorSurfaceState } from '../index'
-import Point from '../math/Point'
+import { PointRO } from '../math/Point'
 import Output from '../Output'
 import Pointer from '../Pointer'
 import Session from '../Session'
@@ -34,7 +34,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   }
   private mapped = false
   private managed = false
-  private pendingPositionOffset: Point | undefined = undefined
+  private pendingPositionOffset?: PointRO
   private xwayland = {
     x: 0,
     y: 0,
@@ -99,10 +99,10 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     surface.commitPending()
 
     const oldPosition = surface.surfaceChildSelf.position
-    surface.surfaceChildSelf.position = Point.create(
-      oldPosition.x + surface.pendingState.dx,
-      oldPosition.y + surface.pendingState.dy,
-    )
+    surface.surfaceChildSelf.position = {
+      x: oldPosition.x + surface.pendingState.dx,
+      y: oldPosition.y + surface.pendingState.dy,
+    }
 
     if (surface.pendingState.bufferContents) {
       if (!this.mapped) {
@@ -154,7 +154,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
 
     const surfaceChild = this.surface.surfaceChildSelf
     // FIXME we probably want to provide a method to translate from (abstract) surface space to global space
-    surfaceChild.position = Point.create(parentPosition.x + x, parentPosition.y + y)
+    surfaceChild.position = { x: parentPosition.x + x, y: parentPosition.y + y }
     parent.addChild(surfaceChild)
 
     // this.ensureUserShellSurface()
@@ -164,7 +164,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   setFullscreen(output?: Output): void {
     this.state = SurfaceStates.FULLSCREEN
     // TODO get proper size in surface coordinates instead of assume surface space === global space
-    this.surface.surfaceChildSelf.position = Point.create(0, 0)
+    this.surface.surfaceChildSelf.position = { x: 0, y: 0 }
     this.sendConfigure?.(window.innerWidth, window.innerHeight)
   }
 
@@ -172,7 +172,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     this.xwayland.x = x
     this.xwayland.y = y
     this.xwayland.isSet = true
-    this.view.positionOffset = Point.create(x, y)
+    this.view.positionOffset = { x, y }
   }
 
   move(pointer: Pointer): void {
@@ -196,7 +196,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
         const deltaX = pointer.x - pointerX
         const deltaY = pointer.y - pointerY
 
-        topLevelView.positionOffset = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
+        topLevelView.positionOffset = { x: origPosition.x + deltaX, y: origPosition.y + deltaY }
         topLevelView.applyTransformations()
         this.surface.session.renderer.render()
       }
@@ -297,7 +297,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
         const { dx, dy, w, h } = sizeAdjustment(surfaceWidth, surfaceHeight, deltaX, deltaY)
         this.sendConfigure?.(w, h)
 
-        this.pendingPositionOffset = Point.create(origPosition.x + dx, origPosition.y + dy)
+        this.pendingPositionOffset = { x: origPosition.x + dx, y: origPosition.y + dy }
       }
       pointer.onButtonRelease().then(() => {
         pointer.removeMouseMoveListener(resizeListener)
@@ -327,7 +327,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       const width = scene.canvas.width
       const height = scene.canvas.height
 
-      this.view.positionOffset = Point.create(0, 0)
+      this.view.positionOffset = { x: 0, y: 0 }
       this.sendConfigure?.(width, height)
     }
   }
@@ -363,7 +363,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
 
   private prepareFrameDecoration() {
     // render frame decoration
-    const { w: frameWidth, h: frameHeight } = this.view.regionRect.size
+    const { width: frameWidth, height: frameHeight } = this.view.regionRect.size
     if (this.window.decorate && this.window.frame) {
       const {
         width: interiorWidth,

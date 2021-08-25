@@ -26,7 +26,8 @@ import {
 } from 'westfield-runtime-server'
 import { clientHeight, clientWidth } from './browser/attributes'
 
-import Point from './math/Point'
+import { minusPoint, PointRO } from './math/Point'
+import { RectRO, withInfo } from './math/Rect'
 import Seat from './Seat'
 import Surface from './Surface'
 import SurfaceRole from './SurfaceRole'
@@ -178,7 +179,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
     // set position based on positioner object
     const surfaceSpaceAnchorPoint = this.positionerState.surfaceSpaceAnchorPoint(parentXdgSurface)
     if (surfaceSpaceAnchorPoint) {
-      surface.surfaceChildSelf.position = surfaceSpaceAnchorPoint.minus(this.xdgSurface.windowGeometry.position)
+      surface.surfaceChildSelf.position = minusPoint(surfaceSpaceAnchorPoint, this.xdgSurface.windowGeometry.position)
     }
   }
 
@@ -281,7 +282,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
     const parentView = parentSurface.role?.view
     if (parentView) {
       let violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
-      if (violations && positionerState.size) {
+      if (violations && positionerState.sizeRect) {
         if (
           !(
             violations.topViolation ||
@@ -303,7 +304,10 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
 
         // X-Axis:
         // we can't use slide or flip if if the height is greater than the screen height
-        if ((violations.leftViolation || violations.rightViolation) && positionerState.size.width < clientWidth()) {
+        if (
+          (violations.leftViolation || violations.rightViolation) &&
+          positionerState.sizeRect.size.width < clientWidth()
+        ) {
           if (canFlipX) {
             // TODO try flipping
             const oldAnchor = positionerState.anchor
@@ -326,7 +330,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
             // try sliding
             const newXDeltaOffset = violations.rightViolation ? -violations.rightViolation : violations.leftViolation
             const oldOffset = positionerState.offset
-            positionerState.offset = Point.create(oldOffset.x + newXDeltaOffset, oldOffset.y)
+            positionerState.offset = { x: oldOffset.x + newXDeltaOffset, y: oldOffset.y }
             // no need to check if there is still a X violation as we already ensured the width < max width
           }
         }
@@ -336,12 +340,16 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
         if (violations && (violations.leftViolation || violations.rightViolation) && canResizeX) {
           if (violations.leftViolation) {
             const oldOffset = positionerState.offset
-            positionerState.offset = Point.create(oldOffset.x + violations.leftViolation, oldOffset.y)
-            positionerState.size.x1 = positionerState.size.x1 - violations.leftViolation
+            positionerState.offset = { x: oldOffset.x + violations.leftViolation, y: oldOffset.y }
+            const x1 = positionerState.sizeRect.x1 - violations.leftViolation
+            const { x0, y0, y1 } = positionerState.sizeRect
+            positionerState.sizeRect = withInfo({ x0, y0, x1, y1 })
           }
 
           if (violations.rightViolation) {
-            positionerState.size.x1 = positionerState.size.x1 - violations.rightViolation
+            const x1 = positionerState.sizeRect.x1 - violations.rightViolation
+            const { x0, y0, y1 } = positionerState.sizeRect
+            positionerState.sizeRect = withInfo({ x0, y0, x1, y1 })
           }
         }
 
@@ -351,7 +359,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
         if (
           violations &&
           (violations.topViolation || violations.bottomViolation) &&
-          positionerState.size.height < clientHeight()
+          positionerState.sizeRect.size.height < clientHeight()
         ) {
           if (canFlipY) {
             const oldAnchor = positionerState.anchor
@@ -374,7 +382,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
             // try sliding
             const newYDeltaOffset = violations.bottomViolation ? -violations.bottomViolation : violations.topViolation
             const oldOffset = positionerState.offset
-            positionerState.offset = Point.create(oldOffset.x, oldOffset.y + newYDeltaOffset)
+            positionerState.offset = { x: oldOffset.x, y: oldOffset.y + newYDeltaOffset }
             // no need to check if there is still a Y violation as we already ensured the height < max height
           }
         }
@@ -384,16 +392,23 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
         if (violations && (violations.topViolation || violations.bottomViolation) && canResizeY) {
           if (violations.topViolation) {
             const oldOffset = positionerState.offset
-            positionerState.offset = Point.create(oldOffset.x, oldOffset.y + violations.topViolation)
-            positionerState.size.y1 = positionerState.size.y1 - violations.topViolation
+            positionerState.offset = { x: oldOffset.x, y: oldOffset.y + violations.topViolation }
+            const y1 = positionerState.sizeRect.y1 - violations.topViolation
+            const { x0, y0, x1 } = positionerState.sizeRect
+            positionerState.sizeRect = withInfo({ x0, y0, x1, y1 })
           }
 
           if (violations.bottomViolation) {
-            positionerState.size.y1 = positionerState.size.y1 - violations.bottomViolation
+            const y1 = positionerState.sizeRect.y1 - violations.bottomViolation
+            const { x0, y0, x1 } = positionerState.sizeRect
+            positionerState.sizeRect = withInfo({ x0, y0, x1, y1 })
           }
         }
 
-        const { x0: x, y0: y, width, height } = positionerState.size
+        const {
+          position: { x, y },
+          size: { width, height },
+        } = positionerState.sizeRect
         this.resource.configure(x, y, width, height)
       }
     }

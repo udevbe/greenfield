@@ -26,7 +26,7 @@ import {
 } from 'westfield-runtime-server'
 import { CompositorSurface, CompositorSurfaceState } from './index'
 
-import Point from './math/Point'
+import { plusPoint, PointRO } from './math/Point'
 import Seat from './Seat'
 import Session from './Session'
 import Surface from './Surface'
@@ -166,7 +166,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
         const deltaX = pointer.x - pointerX
         const deltaY = pointer.y - pointerY
 
-        topLevelView.positionOffset = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
+        topLevelView.positionOffset = plusPoint(origPosition, { x: deltaX, y: deltaY })
         topLevelView.applyTransformations()
         this.session.renderer.render()
       }
@@ -245,7 +245,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
 
     const pointerX = pointer.x
     const pointerY = pointer.y
-    const { w: surfaceWidth, h: surfaceHeight } = (this.wlSurfaceResource.implementation as Surface).size || {}
+    const { width: surfaceWidth, height: surfaceHeight } = (this.wlSurfaceResource.implementation as Surface).size || {}
 
     if (surfaceWidth && surfaceHeight) {
       const resizeListener = () => {
@@ -297,7 +297,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     const surface = this.wlSurfaceResource.implementation as Surface
     const surfaceChild = surface.surfaceChildSelf
     // FIXME we probably want to provide a method to translate from (abstract) surface space to global space
-    surfaceChild.position = Point.create(parentPosition.x + x, parentPosition.y + y)
+    surfaceChild.position = plusPoint(parentPosition, { x, y })
 
     surface.hasKeyboardInput = (flags & inactive) === 0
 
@@ -319,7 +319,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     this.state = SurfaceStates.FULLSCREEN
     const surface = this.wlSurfaceResource.implementation as Surface
     // TODO get proper size in surface coordinates instead of assume surface space === global space
-    surface.surfaceChildSelf.position = Point.create(0, 0)
+    surface.surfaceChildSelf.position = { x: 0, y: 0 }
     this.resource.configure(none, window.innerWidth, window.innerHeight)
   }
 
@@ -347,7 +347,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     this.state = SurfaceStates.POPUP
     const surface = this.wlSurfaceResource.implementation as Surface
     const surfaceChild = surface.surfaceChildSelf
-    surfaceChild.position = Point.create(x, y)
+    surfaceChild.position = { x, y }
     // having added this shell-surface to a parent will have it create a view for each parent view
     ;(parent.implementation as Surface).addChild(surfaceChild)
 
@@ -365,10 +365,8 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     const scene = this.view.relevantScene
 
     if (scene) {
-      const width = scene.canvas.width
-      const height = scene.canvas.height
-
-      this.view.positionOffset = Point.create(0, 0)
+      const { width, height } = scene.canvas
+      this.view.positionOffset = { x: 0, y: 0 }
       this.resource.configure(none, width, height)
     }
   }

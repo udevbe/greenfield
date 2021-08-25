@@ -29,8 +29,8 @@ import { AxisEvent } from './AxisEvent'
 import { ButtonEvent } from './ButtonEvent'
 import DataDevice from './DataDevice'
 
-import Point from './math/Point'
-import Rect from './math/Rect'
+import { PointRO } from './math/Point'
+import { RectRO } from './math/Rect'
 import { fini, initRect } from './Region'
 import Seat from './Seat'
 import Session from './Session'
@@ -66,6 +66,12 @@ const linuxInput = {
   4: 0x115,
 }
 
+export type PopupStackElement = {
+  popup: WlSurfaceResource
+  resolve: (value?: void | PromiseLike<void> | undefined) => void
+  promise: Promise<void>
+}
+
 export default class Pointer implements WlPointerRequests {
   session: Session
   scrollFactor = 1
@@ -82,11 +88,7 @@ export default class Pointer implements WlPointerRequests {
   private _lineScrollAmount = 12
   private _dataDevice: DataDevice
   private _grab?: View
-  private readonly _popupStack: {
-    popup: WlSurfaceResource
-    resolve: (value?: void | PromiseLike<void> | undefined) => void
-    promise: Promise<void>
-  }[] = []
+  private readonly _popupStack: PopupStackElement[] = []
   private _cursorSurface?: WlSurfaceResource
   private readonly _cursorDestroyListener: () => void
   private _mouseMoveListeners: (() => void)[] = []
@@ -220,11 +222,11 @@ export default class Pointer implements WlPointerRequests {
     return popupGrabEndPromise
   }
 
-  findPopupGrab(popup: WlSurfaceResource) {
+  findPopupGrab(popup: WlSurfaceResource): PopupStackElement | undefined {
     return this._popupStack.find((popupGrab) => popupGrab.popup === popup)
   }
 
-  setCursorInternal(surfaceResource: WlSurfaceResource | undefined, hotspotX: number, hotspotY: number) {
+  setCursorInternal(surfaceResource: WlSurfaceResource | undefined, hotspotX: number, hotspotY: number): void {
     this.hotspotX = hotspotX
     this.hotspotY = hotspotY
 
@@ -243,7 +245,7 @@ export default class Pointer implements WlPointerRequests {
       }
       this.session.renderer.updatePointerCursor(surface.role.view)
       fini(surface.state.inputPixmanRegion)
-      initRect(surface.state.inputPixmanRegion, Rect.create(0, 0, 0, 0))
+      initRect(surface.state.inputPixmanRegion, { x0: 0, y0: 0, x1: 0, y1: 0 })
     } else {
       this.session.renderer.hidePointer()
     }
@@ -269,21 +271,13 @@ export default class Pointer implements WlPointerRequests {
   }
 
   private focusFromEvent(event: ButtonEvent): View | undefined {
-    return this.session.renderer.pickView(Point.create(event.x, event.y))
+    return this.session.renderer.pickView(event)
   }
 
   handleMouseMove(event: ButtonEvent): void {
     const { x, y } = this.session.renderer.clampMouseMove(event)
     this.x = x
     this.y = y
-
-    // if (this.scene.pointerView) {
-    //   this.scene.pointerView.positionOffset = Point.create(this.x, this.y).minus(
-    //     Point.create(this.hotspotX, this.hotspotY),
-    //   )
-    //   this.scene.pointerView.applyTransformations()
-    //   this.scene.render()
-    // }
 
     let currentFocus = this.focusFromEvent(event)
 
@@ -399,9 +393,8 @@ export default class Pointer implements WlPointerRequests {
     }
   }
 
-  private calculateSurfacePoint(view: View): Point {
-    const mousePoint = Point.create(this.x, this.y)
-    return view.toSurfaceSpace(mousePoint)
+  private calculateSurfacePoint(view: View): PointRO {
+    return view.toSurfaceSpace(this)
   }
 
   setFocus(newFocus: View): void {
@@ -419,7 +412,7 @@ export default class Pointer implements WlPointerRequests {
         return
       }
       // recalculate focus and consequently enter event
-      const focus = this.session.renderer.pickView(Point.create(this.x, this.y))
+      const focus = this.session.renderer.pickView(this)
       if (focus) {
         this.setFocus(focus)
       } else {
@@ -484,10 +477,10 @@ export default class Pointer implements WlPointerRequests {
         case event.DOM_DELTA_PAGE: {
           deltaTransform = (delta, axis) => {
             if (axis === verticalScroll) {
-              return delta * (focusSurface.size?.h ?? 0)
+              return delta * (focusSurface.size?.height ?? 0)
             } else {
               // horizontalScroll
-              return delta * (focusSurface.size?.w ?? 0)
+              return delta * (focusSurface.size?.width ?? 0)
             }
           }
           break

@@ -16,8 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
-import Size from '../Size'
-import View from '../View'
+import { sizeEquals, SizeRO } from '../math/Size'
 import RenderState from './RenderState'
 import Texture from './Texture'
 import YUV2RGBShader from './YUV2RGBShader'
@@ -63,7 +62,7 @@ class YUVAToRGBA {
     public readonly alphaTexture: Texture,
   ) {}
 
-  convertInto(yuva: OpaqueAndAlphaPlanes, frameSize: Size, renderState: RenderState): void {
+  convertInto(yuva: OpaqueAndAlphaPlanes, frameSize: SizeRO, renderState: RenderState): void {
     const { alpha, opaque } = yuva
     // const start = Date.now()
     // console.log(`|--> Decoding took ${Date.now() - start}ms`)
@@ -74,8 +73,8 @@ class YUVAToRGBA {
     const opaqueStride = opaque.width // stride
     const opaqueHeight = opaque.height // padded with filler rows
 
-    const maxXTexCoord = frameSize.w / opaqueStride
-    const maxYTexCoord = frameSize.h / opaqueHeight
+    const maxXTexCoord = frameSize.width / opaqueStride
+    const maxYTexCoord = frameSize.height / opaqueHeight
 
     const lumaSize = opaqueStride * opaqueHeight
     const chromaSize = lumaSize >> 2
@@ -91,9 +90,9 @@ class YUVAToRGBA {
     this.uTexture.image2dBuffer(uBuffer, chromaStride, chromaHeight)
     this.vTexture.image2dBuffer(vBuffer, chromaStride, chromaHeight)
 
-    if (!renderState.size.equals(frameSize)) {
+    if (!sizeEquals(renderState.size, frameSize)) {
       renderState.size = frameSize
-      renderState.texture.image2dBuffer(null, frameSize.w, frameSize.h)
+      renderState.texture.image2dBuffer(null, frameSize.width, frameSize.height)
     }
     if (alpha) {
       const alphaStride = alpha.width // stride

@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import BufferContents from '../BufferContents'
-import Size from '../Size'
+import { SizeRO } from '../math/Size'
 import EncodedFrameFragment from './EncodedFrameFragment'
 import EncodingTypes, { EncodingMimeTypes } from './EncodingMimeTypes'
 
@@ -70,14 +70,14 @@ export default class EncodedFrame implements BufferContents<EncodedFrameFragment
         EncodedFrameFragment.create(encodingType, fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha),
       )
     }
-    return new EncodedFrame(serial, encodingType, encodingOptions, Size.create(width, height), encodedFragments)
+    return new EncodedFrame(serial, encodingType, encodingOptions, { width, height }, encodedFragments)
   }
 
   constructor(
     public readonly serial: number,
     public readonly mimeType: EncodingMimeTypes[keyof EncodingMimeTypes],
     public readonly encodingOptions: number,
-    public readonly size: Size,
+    public readonly size: SizeRO,
     public readonly pixelContent: EncodedFrameFragment[],
   ) {}
 }

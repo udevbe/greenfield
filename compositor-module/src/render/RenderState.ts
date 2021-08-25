@@ -16,14 +16,14 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { copyTo, createPixmanRegion, destroyPixmanRegion, fini } from '../Region'
-import Size from '../Size'
+import { SizeRO } from '../math/Size'
 import Scene from './Scene'
 import Texture from './Texture'
 
 class RenderState {
-  static create(gl: WebGLRenderingContext, size: Size, scene: Scene, visibleSceneRegion: number): RenderState {
+  static create(gl: WebGLRenderingContext, size: SizeRO, scene: Scene, visibleSceneRegion: number): RenderState {
     const texture = Texture.create(gl, gl.RGBA)
-    texture.image2dBuffer(null, size.w === 0 ? 2 : size.w, size.h === 0 ? 2 : size.h)
+    texture.image2dBuffer(null, size.width === 0 ? 2 : size.width, size.height === 0 ? 2 : size.height)
     return new RenderState(texture, size, scene, visibleSceneRegion)
   }
 
@@ -31,7 +31,7 @@ class RenderState {
 
   private constructor(
     public readonly texture: Texture,
-    public size: Size,
+    public size: SizeRO,
     public readonly scene: Scene,
     public readonly visibleSceneRegion: number,
   ) {

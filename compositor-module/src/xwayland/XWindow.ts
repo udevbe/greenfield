@@ -17,7 +17,7 @@ import {
   WindowClass,
 } from 'xtsb'
 import { queueCancellableMicrotask } from '../Loop'
-import Rect from '../math/Rect'
+import { createRect, RectRO } from '../math/Rect'
 import Output from '../Output'
 import { fini, init, initRect } from '../Region'
 import Surface from '../Surface'
@@ -228,7 +228,7 @@ export class XWindow {
     if (this.hasAlpha) {
       init(this.surface.pendingState.opaquePixmanRegion)
     } else {
-      initRect(this.surface.pendingState.opaquePixmanRegion, Rect.create(0, 0, width, height))
+      initRect(this.surface.pendingState.opaquePixmanRegion, createRect({ x: 0, y: 0 }, { width, height }))
     }
   }
 
@@ -470,7 +470,7 @@ export class XWindow {
        * channel when filtering. */
       initRect(
         this.surface.pendingState.opaquePixmanRegion,
-        Rect.create(x - 1, y - 1, x - 1 + this.width + 2, y - 1 + this.height + 2),
+        createRect({ x: x - 1, y: y - 1 }, { width: this.width + 2, height: this.height + 2 }),
       )
     }
 
@@ -494,7 +494,10 @@ export class XWindow {
     console.log(`XWM: win ${this.id} geometry: ${inputX},${inputY} ${inputW}x${inputH}`)
 
     fini(this.surface.pendingState.inputPixmanRegion)
-    initRect(this.surface.pendingState.inputPixmanRegion, Rect.create(inputX, inputY, inputX + inputW, inputY + inputH))
+    initRect(
+      this.surface.pendingState.inputPixmanRegion,
+      createRect({ x: inputX, y: inputY }, { width: inputW, height: inputH }),
+    )
 
     this.shsurf?.setWindowGeometry(inputX, inputY, inputW, inputH)
 
