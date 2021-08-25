@@ -170,25 +170,33 @@ export class XWindow {
     this.wm.configureWindow(this.id, { stackMode: StackMode.Above })
   }
 
-  activate(surface?: Surface): void {
-    if (surface === undefined) {
-      this.wm.setNetActiveWindow(Window.None)
-    } else {
+  updateActivateStatus(activate: boolean): void {
+    if (activate) {
       this.wm.setNetActiveWindow(this.id)
+    } else {
+      this.wm.setNetActiveWindow(Window.None)
     }
 
-    this.sendFocusWindow()
+    if (activate) {
+      this.sendFocusWindow()
+    } else {
+      this.wm.xConnection.setInputFocus(InputFocus.PointerRoot, Window.None, Time.CurrentTime)
+    }
 
     if (this.wm.focusWindow) {
       this.wm.focusWindow.frame?.unsetFlag(FrameFlag.FRAME_FLAG_ACTIVE)
       this.wm.focusWindow.scheduleRepaint()
+      this.wm.focusWindow = undefined
     }
 
-    this.wm.focusWindow = this
-    this.wm.focusWindow.frame?.setFlag(FrameFlag.FRAME_FLAG_ACTIVE)
-    this.scheduleRepaint()
+    if (activate) {
+      this.wm.focusWindow = this
+      this.wm.focusWindow.frame?.setFlag(FrameFlag.FRAME_FLAG_ACTIVE)
+      this.wm.focusWindow.scheduleRepaint()
+    }
 
     this.wm.xConnection.flush()
+    this.surface?.session.flush()
   }
 
   scheduleRepaint(): void {

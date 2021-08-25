@@ -340,7 +340,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       return
     }
     this.userSurfaceState = { ...this.userSurfaceState, active: true }
-    this.window.activate(this.surface)
+    this.window.updateActivateStatus(true)
     this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
   }
 
@@ -349,7 +349,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       return
     }
     this.userSurfaceState = { ...this.userSurfaceState, active: false }
-    this.window.activate(undefined)
+    this.window.updateActivateStatus(false)
     this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
   }
 
