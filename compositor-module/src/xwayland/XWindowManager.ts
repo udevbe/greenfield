@@ -857,13 +857,24 @@ export class XWindowManager {
     if (window.surface && window.surfaceDestroyListener) {
       window.surface.resource.removeDestroyListener(window.surfaceDestroyListener)
     }
+    if (window.shsurf) {
+      const { keyboard, pointer } = window.shsurf.surface.session.globals.seat
+      if (keyboard.focus === window.shsurf.surface) {
+        keyboard.focusLost()
+      }
+      if (pointer.focus?.surface === window.shsurf.surface) {
+        pointer.unsetFocus()
+      }
+    }
     window.surface = undefined
     window.shsurf = undefined
 
     window.setWmState(ICCCM_WITHDRAWN_STATE)
     window.setVirtualDesktop(-1)
 
-    this.xConnection.unmapWindow(window.frameId)
+    if (window.frameId !== 0) {
+      this.xConnection.unmapWindow(window.frameId)
+    }
   }
 
   private async handleReparentNotify(event: ReparentNotifyEvent) {
@@ -964,12 +975,7 @@ export class XWindowManager {
       return
     }
 
-    const window = this.lookupXWindow(event.window)
-    if (!window) {
-      return
-    }
-
-    window.destroy()
+    this.lookupXWindow(event.window)?.destroy()
   }
 
   private handlePropertyNotify(event: PropertyNotifyEvent) {

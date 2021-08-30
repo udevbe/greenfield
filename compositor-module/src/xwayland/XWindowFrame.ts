@@ -407,7 +407,7 @@ export class XWindowFrame {
       this.flags & FrameFlag.FRAME_FLAG_MAXIMIZED ? ThemeFrame.THEME_FRAME_MAXIMIZED : 0,
     )
     if (!framePointer) {
-      console.log(`XWindowFrame pointer motion ${x}-${y} (no frame pointer), location: ${location}`)
+      // console.log(`XWindowFrame pointer motion ${x}-${y} (no frame pointer), location: ${location}`)
       return location
     }
 
@@ -415,7 +415,7 @@ export class XWindowFrame {
     framePointer.y = y
 
     if (framePointer.hoverButton !== undefined && framePointer.hoverButton === button) {
-      console.log(`XWindowFrame pointer motion ${x}-${y} (with frame pointer hover button), location: ${location}`)
+      // console.log(`XWindowFrame pointer motion ${x}-${y} (with frame pointer hover button), location: ${location}`)
       return location
     }
 
@@ -429,7 +429,7 @@ export class XWindowFrame {
       framePointer.hoverButton.enter()
     }
 
-    console.log(`XWindowFrame pointer motion ${x}-${y} (with frame pointer), location: ${location}`)
+    // console.log(`XWindowFrame pointer motion ${x}-${y} (with frame pointer), location: ${location}`)
     return location
   }
 

@@ -167,36 +167,25 @@ export class XWindow {
 
     this.wm.xConnection.sendEvent(0, this.id, EventMask.SubstructureRedirect, new Int8Array(clientMessage))
     this.wm.xConnection.setInputFocus(InputFocus.PointerRoot, this.id, Time.CurrentTime)
-    this.wm.configureWindow(this.id, { stackMode: StackMode.Above })
+    this.wm.configureWindow(this.frameId, { stackMode: StackMode.Above })
   }
 
   updateActivateStatus(activate: boolean): void {
     if (activate) {
+      this.wm.focusWindow = this
       this.wm.setNetActiveWindow(this.id)
-    } else {
-      this.wm.setNetActiveWindow(Window.None)
-    }
-
-    if (activate) {
+      this.wm.focusWindow.frame?.setFlag(FrameFlag.FRAME_FLAG_ACTIVE)
+      this.wm.focusWindow.scheduleRepaint()
       this.sendFocusWindow()
-    } else {
+    } else if (this.wm.focusWindow === this) {
       this.wm.xConnection.setInputFocus(InputFocus.PointerRoot, Window.None, Time.CurrentTime)
-    }
-
-    if (this.wm.focusWindow) {
+      this.wm.setNetActiveWindow(Window.None)
       this.wm.focusWindow.frame?.unsetFlag(FrameFlag.FRAME_FLAG_ACTIVE)
       this.wm.focusWindow.scheduleRepaint()
       this.wm.focusWindow = undefined
     }
 
-    if (activate) {
-      this.wm.focusWindow = this
-      this.wm.focusWindow.frame?.setFlag(FrameFlag.FRAME_FLAG_ACTIVE)
-      this.wm.focusWindow.scheduleRepaint()
-    }
-
     this.wm.xConnection.flush()
-    this.surface?.session.flush()
   }
 
   scheduleRepaint(): void {
@@ -214,54 +203,11 @@ export class XWindow {
       return
     }
 
-    console.log(`XWM: schedule repaint, win ${this.id}`)
+    console.log(`XWindow: schedule repaint, win ${this.id}`)
 
     this.repaintRegistration = queueCancellableMicrotask(() => {
       this.doRepaint()
     })
-  }
-
-  private setPendingStateOverrideRedirect() {
-    /* for override-redirect windows */
-    if (this.frameId !== Window.None) {
-      throw new Error('Can only set pending state for windows without a parent.')
-    }
-
-    if (this.surface === undefined) {
-      return
-    }
-
-    const { width, height } = this.getFrameSize()
-    fini(this.surface.pendingState.opaquePixmanRegion)
-    if (this.hasAlpha) {
-      init(this.surface.pendingState.opaquePixmanRegion)
-    } else {
-      initRect(this.surface.pendingState.opaquePixmanRegion, createRect({ x: 0, y: 0 }, { width, height }))
-    }
-  }
-
-  private async doRepaint() {
-    this.repaintRegistration = undefined
-    this.setAllowCommits(false)
-    await this.readProperties()
-    this.drawDecorations()
-    this.setPendingState()
-    this.setAllowCommits(true)
-  }
-
-  private getFrameSize(): { width: number; height: number } {
-    if (this.fullscreen) {
-      return { width: this.width, height: this.height }
-    }
-
-    if (this.decorate && this.frame) {
-      return { width: this.frame.width, height: this.frame.height }
-    }
-
-    return {
-      width: this.width + this.wm.theme.margin * 2,
-      height: this.height + this.wm.theme.margin * 2,
-    }
   }
 
   /** Control Xwayland wl_surface.commit behaviour
@@ -441,77 +387,6 @@ export class XWindow {
           }),
       ),
     )
-  }
-
-  private drawDecorations() {
-    let how = ''
-    if (this.fullscreen) {
-      how = 'fullscreen'
-      /* nothing */
-    } else if (this.decorate) {
-      how = 'decorate'
-      this.frame?.setTitle(this.name)
-      this.frame?.refreshGeometry()
-    }
-
-    console.log(`XWM: draw decoration, win ${this.id}, ${how}`)
-
-    // clear a single pixel to trigger a re-commit of the xwayland surface which in turn redraws the decoration & sets pending state
-    this.wm.xConnection.clearArea(0, this.frameId, 0, 0, 1, 1)
-    this.wm.xConnection.flush()
-  }
-
-  private setPendingState() {
-    if (this.surface === undefined) {
-      return
-    }
-
-    const { width, height } = this.getFrameSize()
-    const { x, y } = this.getChildPosition()
-
-    fini(this.surface.pendingState.opaquePixmanRegion)
-    if (this.hasAlpha) {
-      init(this.surface.pendingState.opaquePixmanRegion)
-    } else {
-      /* We leave an extra pixel around the X window area to
-       * make sure we don't sample from the undefined alpha
-       * channel when filtering. */
-      initRect(
-        this.surface.pendingState.opaquePixmanRegion,
-        createRect({ x: x - 1, y: y - 1 }, { width: this.width + 2, height: this.height + 2 }),
-      )
-    }
-
-    let inputX: number
-    let inputY: number
-    let inputW: number
-    let inputH: number
-    if (this.decorate && !this.fullscreen && this.frame) {
-      const { x, y, width, height } = this.frame?.inputRect()
-      inputX = x
-      inputY = y
-      inputW = width
-      inputH = height
-    } else {
-      inputX = x
-      inputY = y
-      inputW = width
-      inputH = height
-    }
-
-    console.log(`XWM: win ${this.id} geometry: ${inputX},${inputY} ${inputW}x${inputH}`)
-
-    fini(this.surface.pendingState.inputPixmanRegion)
-    initRect(
-      this.surface.pendingState.inputPixmanRegion,
-      createRect({ x: inputX, y: inputY }, { width: inputW, height: inputH }),
-    )
-
-    this.shsurf?.setWindowGeometry(inputX, inputY, inputW, inputH)
-
-    if (this.name) {
-      this.shsurf?.setTitle(this.name)
-    }
   }
 
   getChildPosition(): { x: number; y: number } {
@@ -785,7 +660,7 @@ export class XWindow {
 
     this.surface = surface
     this.surfaceDestroyListener = () => {
-      console.log(`surface for xid ${this.id} destroyed`)
+      console.log(`XWindow: surface for xid ${this.id} destroyed`)
       /* This should have been freed by the shell.
        * Don't try to use it later. */
       this.shsurf = undefined
@@ -797,9 +672,7 @@ export class XWindow {
     this.shsurf.sendConfigure = (width, height) => this.sendConfigure(width, height)
     this.shsurf.sendPosition = (x, y) => this.sendPosition(x, y)
 
-    console.log(
-      `XWM: map shell surface, win ${this.id}, weston_surface ${this.surface}, xwayland surface ${this.shsurf}`,
-    )
+    console.log(`XWindow: map shell surface, win ${this.id}, greenfield surface ${this.surface.resource.id}`)
 
     if (this.name) {
       this.shsurf.setTitle(this.name)
@@ -856,83 +729,6 @@ export class XWindow {
       this.wm.configureWindow(this.frameId, { x, y })
       this.wm.xConnection.flush()
     }
-  }
-
-  private sendConfigure(width: number, height: number) {
-    let newWidth, newHeight
-    let vborder, hborder
-
-    if (this.decorate && !this.fullscreen) {
-      hborder = 2 * this.wm.theme.borderWidth
-      vborder = this.wm.theme.titlebarHeight + this.wm.theme.borderWidth
-    } else {
-      hborder = 0
-      vborder = 0
-    }
-
-    if (width > hborder) {
-      newWidth = width - hborder
-    } else {
-      newWidth = 1
-    }
-
-    if (height > vborder) {
-      newHeight = height - vborder
-    } else {
-      newHeight = 1
-    }
-
-    if (this.width !== newWidth || this.height !== newHeight) {
-      this.width = newWidth
-      this.height = newHeight
-
-      this.frame?.resizeInside(this.width, this.height)
-    }
-
-    if (this.configureTaskRegistration) {
-      return
-    }
-
-    this.configureTaskRegistration = queueCancellableMicrotask(() => {
-      this.configure()
-    })
-  }
-
-  private isTypeInactive(): boolean {
-    return (
-      this.type === this.wm.atoms._NET_WM_WINDOW_TYPE_TOOLTIP ||
-      this.type === this.wm.atoms._NET_WM_WINDOW_TYPE_DROPDOWN_MENU ||
-      this.type === this.wm.atoms._NET_WM_WINDOW_TYPE_DND ||
-      this.type === this.wm.atoms._NET_WM_WINDOW_TYPE_COMBO ||
-      this.type === this.wm.atoms._NET_WM_WINDOW_TYPE_POPUP_MENU ||
-      this.type === this.wm.atoms._NET_WM_WINDOW_TYPE_UTILITY
-    )
-  }
-
-  private isPositioned() {
-    if (this.mapRequestX === Number.MIN_SAFE_INTEGER || this.mapRequestY === Number.MIN_SAFE_INTEGER) {
-      console.log(`XWM warning: win ${this.id} did not see map request`)
-    }
-    return this.mapRequestX !== 0 || this.mapRequestY !== 0
-  }
-
-  private configure() {
-    if (this.configureTaskRegistration) {
-      this.configureTaskRegistration()
-      this.configureTaskRegistration = undefined
-    }
-    this.setAllowCommits(false)
-
-    const { x, y } = this.getChildPosition()
-    this.wm.configureWindow(this.id, {
-      x,
-      y,
-      width: this.width,
-      height: this.height,
-    })
-
-    this.configureFrame()
-    this.scheduleRepaint()
   }
 
   configureFrame(): void {
@@ -1056,5 +852,196 @@ export class XWindow {
 
       return !!(matchingSize && !this.decorate && sizeHintsFlags & (USPosition | PPosition))
     })
+  }
+
+  private setPendingStateOverrideRedirect() {
+    /* for override-redirect windows */
+    if (this.frameId !== Window.None) {
+      throw new Error('Can only set pending state for windows without a parent.')
+    }
+
+    if (this.surface === undefined) {
+      return
+    }
+
+    const { width, height } = this.getFrameSize()
+    fini(this.surface.pendingState.opaquePixmanRegion)
+    if (this.hasAlpha) {
+      init(this.surface.pendingState.opaquePixmanRegion)
+    } else {
+      initRect(this.surface.pendingState.opaquePixmanRegion, createRect({ x: 0, y: 0 }, { width, height }))
+    }
+  }
+
+  private async doRepaint() {
+    this.repaintRegistration = undefined
+    this.setAllowCommits(false)
+    await this.readProperties()
+    this.drawDecorations()
+    this.setPendingState()
+    this.setAllowCommits(true)
+  }
+
+  private getFrameSize(): { width: number; height: number } {
+    if (this.fullscreen) {
+      return { width: this.width, height: this.height }
+    }
+
+    if (this.decorate && this.frame) {
+      return { width: this.frame.width, height: this.frame.height }
+    }
+
+    return {
+      width: this.width + this.wm.theme.margin * 2,
+      height: this.height + this.wm.theme.margin * 2,
+    }
+  }
+
+  private drawDecorations() {
+    let how = ''
+    if (this.fullscreen) {
+      how = 'fullscreen'
+      /* nothing */
+    } else if (this.decorate) {
+      how = 'decorate'
+      this.frame?.setTitle(this.name)
+      this.frame?.refreshGeometry()
+    }
+
+    console.log(`XWindow: draw decoration, win ${this.id}, ${how}`)
+
+    // clear a single pixel to trigger a re-commit of the xwayland surface which in turn redraws the decoration & sets pending state
+    this.wm.xConnection.clearArea(0, this.frameId, 0, 0, 1, 1)
+    this.wm.xConnection.flush()
+  }
+
+  private setPendingState() {
+    if (this.surface === undefined) {
+      return
+    }
+
+    const { width, height } = this.getFrameSize()
+    const { x, y } = this.getChildPosition()
+
+    fini(this.surface.pendingState.opaquePixmanRegion)
+    if (this.hasAlpha) {
+      init(this.surface.pendingState.opaquePixmanRegion)
+    } else {
+      /* We leave an extra pixel around the X window area to
+       * make sure we don't sample from the undefined alpha
+       * channel when filtering. */
+      initRect(
+        this.surface.pendingState.opaquePixmanRegion,
+        createRect({ x: x - 1, y: y - 1 }, { width: this.width + 2, height: this.height + 2 }),
+      )
+    }
+
+    let inputX: number
+    let inputY: number
+    let inputW: number
+    let inputH: number
+    if (this.decorate && !this.fullscreen && this.frame) {
+      const { x, y, width, height } = this.frame?.inputRect()
+      inputX = x
+      inputY = y
+      inputW = width
+      inputH = height
+    } else {
+      inputX = x
+      inputY = y
+      inputW = width
+      inputH = height
+    }
+
+    console.log(`XWindow: win ${this.id} geometry: ${inputX},${inputY} ${inputW}x${inputH}`)
+
+    fini(this.surface.pendingState.inputPixmanRegion)
+    initRect(
+      this.surface.pendingState.inputPixmanRegion,
+      createRect({ x: inputX, y: inputY }, { width: inputW, height: inputH }),
+    )
+
+    this.shsurf?.setWindowGeometry(inputX, inputY, inputW, inputH)
+
+    if (this.name) {
+      this.shsurf?.setTitle(this.name)
+    }
+  }
+
+  private sendConfigure(width: number, height: number) {
+    let newWidth, newHeight
+    let vborder, hborder
+
+    if (this.decorate && !this.fullscreen) {
+      hborder = 2 * this.wm.theme.borderWidth
+      vborder = this.wm.theme.titlebarHeight + this.wm.theme.borderWidth
+    } else {
+      hborder = 0
+      vborder = 0
+    }
+
+    if (width > hborder) {
+      newWidth = width - hborder
+    } else {
+      newWidth = 1
+    }
+
+    if (height > vborder) {
+      newHeight = height - vborder
+    } else {
+      newHeight = 1
+    }
+
+    if (this.width !== newWidth || this.height !== newHeight) {
+      this.width = newWidth
+      this.height = newHeight
+
+      this.frame?.resizeInside(this.width, this.height)
+    }
+
+    if (this.configureTaskRegistration) {
+      return
+    }
+
+    this.configureTaskRegistration = queueCancellableMicrotask(() => {
+      this.configure()
+    })
+  }
+
+  private isTypeInactive(): boolean {
+    return (
+      this.type === this.wm.atoms._NET_WM_WINDOW_TYPE_TOOLTIP ||
+      this.type === this.wm.atoms._NET_WM_WINDOW_TYPE_DROPDOWN_MENU ||
+      this.type === this.wm.atoms._NET_WM_WINDOW_TYPE_DND ||
+      this.type === this.wm.atoms._NET_WM_WINDOW_TYPE_COMBO ||
+      this.type === this.wm.atoms._NET_WM_WINDOW_TYPE_POPUP_MENU ||
+      this.type === this.wm.atoms._NET_WM_WINDOW_TYPE_UTILITY
+    )
+  }
+
+  private isPositioned() {
+    if (this.mapRequestX === Number.MIN_SAFE_INTEGER || this.mapRequestY === Number.MIN_SAFE_INTEGER) {
+      console.log(`XWindow warning: win ${this.id} did not see map request`)
+    }
+    return this.mapRequestX !== 0 || this.mapRequestY !== 0
+  }
+
+  private configure() {
+    if (this.configureTaskRegistration) {
+      this.configureTaskRegistration()
+      this.configureTaskRegistration = undefined
+    }
+    this.setAllowCommits(false)
+
+    const { x, y } = this.getChildPosition()
+    this.wm.configureWindow(this.id, {
+      x,
+      y,
+      width: this.width,
+      height: this.height,
+    })
+
+    this.configureFrame()
+    this.scheduleRepaint()
   }
 }

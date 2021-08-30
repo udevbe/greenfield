@@ -443,7 +443,7 @@ class Surface implements WlSurfaceRequests {
         y: newBufferSize.height,
       })
       const newSize = { width: Math.abs(surfacePoint.x), height: Math.abs(surfacePoint.y) }
-      if (this.role && this.size && !sizeEquals(this.size, newSize)) {
+      if ((this.role && !this.size) || (this.role && this.size && !sizeEquals(this.size, newSize))) {
         this.role.view.markDirty()
       }
       this.size = newSize

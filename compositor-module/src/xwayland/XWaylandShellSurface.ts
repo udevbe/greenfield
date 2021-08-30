@@ -5,6 +5,7 @@ import Output from '../Output'
 import Pointer from '../Pointer'
 import Session from '../Session'
 import Surface from '../Surface'
+import { makeSurfaceActive } from '../UserShellApi'
 import { UserShellSurfaceRole } from '../UserShellSurfaceRole'
 import View from '../View'
 import { XWindow } from './XWindow'
@@ -48,15 +49,15 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   }
 
   constructor(
-    private readonly session: Session,
-    private readonly window: XWindow,
-    private readonly surface: Surface,
+    readonly session: Session,
+    readonly window: XWindow,
+    readonly surface: Surface,
     readonly userSurface: CompositorSurface,
     private userSurfaceState: CompositorSurfaceState,
     public readonly view: View,
   ) {}
 
-  static create(session: Session, window: XWindow, surface: Surface) {
+  static create(session: Session, window: XWindow, surface: Surface): XWaylandShellSurface {
     const { client, id } = surface.resource
     const userSurface: CompositorSurface = { id: `${id}`, clientId: client.id }
     const userSurfaceState: CompositorSurfaceState = {
@@ -92,6 +93,9 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
         gl.bindTexture(gl.TEXTURE_2D, null)
       }
     }
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    makeSurfaceActive(surface)
     return xWaylandShellSurface
   }
 
