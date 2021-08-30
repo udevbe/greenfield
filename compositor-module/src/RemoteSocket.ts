@@ -81,34 +81,34 @@ class RemoteSocket {
 
   onWebSocket(webSocket: WebSocket): Promise<Client> {
     return new Promise((resolve, reject) => {
-      // window.GREENFIELD_DEBUG && console.log('[WebSocket] - created.')
+      this.session.logger.info('[WebSocket] - created.')
 
       webSocket.binaryType = 'arraybuffer'
       webSocket.onclose = (event) => {
         reject(new Error(`Failed to connect to application. ${event.reason} ${event.code}`))
       }
       webSocket.onopen = () => {
-        // window.GREENFIELD_DEBUG && console.log('[WebSocket] - open.')
+        this.session.logger.info('[WebSocket] - open.')
 
         const client = this.session.display.createClient()
-        // client.onClose().then(() => window.GREENFIELD_DEBUG && console.log('[client] - closed.'))
+        client.onClose().then(() => this.session.logger.info('[client] - closed.'))
         client.addResourceCreatedListener((resource) => {
           if (resource.id >= 0xff000000 && client.recycledIds.length === 0) {
-            console.error('[client] - Ran out of reserved browser resource ids.')
+            this.session.logger.warn('[client] - Ran out of reserved browser resource ids.')
             client.close()
           }
         })
 
         webSocket.onclose = () => {
-          // window.GREENFIELD_DEBUG && console.log('[WebSocket] - closed.')
+          this.session.logger.info('[WebSocket] - closed.')
           client.close()
         }
-        // webSocket.onerror = event =>  window.GREENFIELD_DEBUG && console.log(`[WebSocket] - error: ${event.message}.`)
+        webSocket.onerror = (event) => this.session.logger.warn(`[WebSocket] - error`, event)
 
         client.connection.onFlush = (wireMessages: SendMessage[]) =>
           this.flushWireMessages(client, webSocket, wireMessages)
 
-        const wsOutOfBandChannel = RemoteOutOfBandChannel.create((sendBuffer) => {
+        const wsOutOfBandChannel = RemoteOutOfBandChannel.create(this.session, (sendBuffer) => {
           if (webSocket.readyState === 1) {
             try {
               webSocket.send(sendBuffer)
@@ -244,7 +244,7 @@ class RemoteSocket {
         xWaylandConnection.state = 'open'
         xWaylandConnection.wlClient = client
         xWaylandBaseURL.searchParams.append('xwmFD', `${wmFD}`)
-        const xConnection = await XWaylandConnection.create(new WebSocket(xWaylandBaseURL.href))
+        const xConnection = await XWaylandConnection.create(this.session, new WebSocket(xWaylandBaseURL.href))
         client.onClose().then(() => xConnection.destroy())
         xConnection.onDestroy().then(() => delete xWaylandProxyStates[xWaylandBaseURLhref])
         xWaylandConnection.xConnection = xConnection
@@ -348,7 +348,7 @@ class RemoteSocket {
       try {
         webSocket.send(sendBuffer.buffer)
       } catch (e) {
-        console.log(e.message)
+        this.session.logger.error(e)
         client.close()
       }
     }

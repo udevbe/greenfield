@@ -17,9 +17,10 @@ import {
   WindowClass,
 } from 'xtsb'
 import { queueCancellableMicrotask } from '../Loop'
-import { createRect, RectRO } from '../math/Rect'
+import { createRect } from '../math/Rect'
 import Output from '../Output'
 import { fini, init, initRect } from '../Region'
+import Session from '../Session'
 import Surface from '../Surface'
 import {
   _NET_WM_MOVERESIZE_MOVE,
@@ -148,6 +149,7 @@ export class XWindow {
     public y: number,
     public width: number,
     public height: number,
+    public readonly session: Session,
   ) {}
 
   sendFocusWindow(): void {
@@ -203,7 +205,7 @@ export class XWindow {
       return
     }
 
-    console.log(`XWindow: schedule repaint, win ${this.id}`)
+    this.session.logger.debug(`XWindow: schedule repaint, win ${this.id}`)
 
     this.repaintRegistration = queueCancellableMicrotask(() => {
       this.doRepaint()
@@ -252,7 +254,7 @@ export class XWindow {
         ({ value }) => {
           const lookupWindow = this.wm.lookupXWindow(new Uint32Array(value.buffer)[0])
           if (lookupWindow === undefined) {
-            console.log('XCB_ATOM_WINDOW contains window id not found in hash table.')
+            this.session.logger.debug('XCB_ATOM_WINDOW contains window id not found in hash table.')
           } else {
             this.transientFor = lookupWindow
           }
@@ -408,7 +410,7 @@ export class XWindow {
       buttons |= FrameButton.FRAME_BUTTON_MAXIMIZE
     }
 
-    this.frame = await frameCreate(this.wm.theme, this.width, this.height, buttons, this.name)
+    this.frame = await frameCreate(this.session, this.wm.theme, this.width, this.height, buttons, this.name)
 
     this.frame?.resizeInside(this.width, this.height)
 
@@ -613,7 +615,7 @@ export class XWindow {
 
   async handleSurfaceId(event: ClientMessageEvent): Promise<void> {
     if (this.surfaceId) {
-      console.log(`already have surface id for window ${this.id}`)
+      this.session.logger.debug(`already have surface id for window ${this.id}`)
       return
     }
 
@@ -660,7 +662,7 @@ export class XWindow {
 
     this.surface = surface
     this.surfaceDestroyListener = () => {
-      console.log(`XWindow: surface for xid ${this.id} destroyed`)
+      this.session.logger.debug(`XWindow: surface for xid ${this.id} destroyed`)
       /* This should have been freed by the shell.
        * Don't try to use it later. */
       this.shsurf = undefined
@@ -672,7 +674,9 @@ export class XWindow {
     this.shsurf.sendConfigure = (width, height) => this.sendConfigure(width, height)
     this.shsurf.sendPosition = (x, y) => this.sendPosition(x, y)
 
-    console.log(`XWindow: map shell surface, win ${this.id}, greenfield surface ${this.surface.resource.id}`)
+    this.session.logger.debug(
+      `XWindow: map shell surface, win ${this.id}, greenfield surface ${this.surface.resource.id}`,
+    )
 
     if (this.name) {
       this.shsurf.setTitle(this.name)
@@ -908,7 +912,7 @@ export class XWindow {
       this.frame?.refreshGeometry()
     }
 
-    console.log(`XWindow: draw decoration, win ${this.id}, ${how}`)
+    this.session.logger.debug(`XWindow: draw decoration, win ${this.id}, ${how}`)
 
     // clear a single pixel to trigger a re-commit of the xwayland surface which in turn redraws the decoration & sets pending state
     this.wm.xConnection.clearArea(0, this.frameId, 0, 0, 1, 1)
@@ -953,7 +957,7 @@ export class XWindow {
       inputH = height
     }
 
-    console.log(`XWindow: win ${this.id} geometry: ${inputX},${inputY} ${inputW}x${inputH}`)
+    this.session.logger.debug(`XWindow: win ${this.id} geometry: ${inputX},${inputY} ${inputW}x${inputH}`)
 
     fini(this.surface.pendingState.inputPixmanRegion)
     initRect(
@@ -1021,7 +1025,7 @@ export class XWindow {
 
   private isPositioned() {
     if (this.mapRequestX === Number.MIN_SAFE_INTEGER || this.mapRequestY === Number.MIN_SAFE_INTEGER) {
-      console.log(`XWindow warning: win ${this.id} did not see map request`)
+      this.session.logger.debug(`XWindow warning: win ${this.id} did not see map request`)
     }
     return this.mapRequestX !== 0 || this.mapRequestY !== 0
   }

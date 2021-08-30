@@ -17,13 +17,14 @@
 
 import { OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
 import { sizeEquals, SizeRO } from '../math/Size'
+import Session from '../Session'
 import RenderState from './RenderState'
 import Texture from './Texture'
 import YUV2RGBShader from './YUV2RGBShader'
 import YUVA2RGBAShader from './YUVA2RGBAShader'
 
 class YUVAToRGBA {
-  static create(gl: WebGLRenderingContext): YUVAToRGBA {
+  static create(session: Session, gl: WebGLRenderingContext): YUVAToRGBA {
     gl.clearColor(0, 0, 0, 0)
 
     const yTexture = Texture.create(gl, gl.LUMINANCE)
@@ -40,6 +41,7 @@ class YUVAToRGBA {
     }
 
     return new YUVAToRGBA(
+      session,
       gl,
       yuvaSurfaceShader,
       yuvSurfaceShader,
@@ -52,6 +54,7 @@ class YUVAToRGBA {
   }
 
   private constructor(
+    private readonly session: Session,
     public readonly gl: WebGLRenderingContext,
     public readonly yuvaSurfaceShader: YUVA2RGBAShader,
     public readonly yuvSurfaceShader: YUV2RGBShader,
@@ -64,8 +67,8 @@ class YUVAToRGBA {
 
   convertInto(yuva: OpaqueAndAlphaPlanes, frameSize: SizeRO, renderState: RenderState): void {
     const { alpha, opaque } = yuva
-    // const start = Date.now()
-    // console.log(`|--> Decoding took ${Date.now() - start}ms`)
+    const start = Date.now()
+    this.session.logger.trace(`|--> Decoding took ${Date.now() - start}ms`)
 
     // the width & height returned are actually padded, so we have to use the frame size to get the real image dimension
     // when uploading to texture

@@ -15,7 +15,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import Size from '../../types/Size'
 import { createRect } from '../math/Rect'
 import { SizeRO } from '../math/Size'
 import Output from '../Output'
@@ -56,7 +55,7 @@ class Scene {
     sceneId: string,
   ): Scene {
     const sceneShader = SceneShader.create(gl)
-    const yuvaToRgba = YUVAToRGBA.create(gl)
+    const yuvaToRgba = YUVAToRGBA.create(session, gl)
     return new Scene(session, canvas, gl, sceneShader, yuvaToRgba, output, sceneId)
   }
 

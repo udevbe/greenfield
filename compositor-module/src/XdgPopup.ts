@@ -26,9 +26,10 @@ import {
 } from 'westfield-runtime-server'
 import { clientHeight, clientWidth } from './browser/attributes'
 
-import { minusPoint, PointRO } from './math/Point'
-import { RectRO, withInfo } from './math/Rect'
+import { minusPoint } from './math/Point'
+import { withInfo } from './math/Rect'
 import Seat from './Seat'
+import Session from './Session'
 import Surface from './Surface'
 import SurfaceRole from './SurfaceRole'
 import View from './View'
@@ -117,6 +118,7 @@ const inverseX = {
 
 export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
   static create(
+    session: Session,
     xdgPopupResource: XdgPopupResource,
     xdgSurface: XdgSurface,
     parent: XdgSurfaceResource,
@@ -125,7 +127,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
   ): XdgPopup {
     const surface = xdgSurface.wlSurfaceResource.implementation as Surface
     const view = View.create(surface)
-    const xdgPopup = new XdgPopup(xdgPopupResource, xdgSurface, parent, positionerState, seat, view)
+    const xdgPopup = new XdgPopup(session, xdgPopupResource, xdgSurface, parent, positionerState, seat, view)
     xdgPopupResource.implementation = xdgPopup
     surface.role = xdgPopup
     xdgPopup.ensureGeometryConstraints(parent, positionerState)
@@ -137,6 +139,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
   dismissed = false
 
   private constructor(
+    private readonly session: Session,
     public readonly resource: XdgPopupResource,
     public readonly xdgSurface: XdgSurface,
     public readonly parent: XdgSurfaceResource,
@@ -168,7 +171,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
     for (const surfaceChild of surface.children) {
       if (surfaceChild !== surface.surfaceChildSelf && surfaceChild.surface.role instanceof XdgPopup) {
         this.resource.postError(XdgWmBaseError.notTheTopmostPopup, 'Client tried to map a non-topmost popup')
-        console.log('[client-protocol-error] - Client tried to map a non-topmost popup.')
+        this.session.logger.warn('[client-protocol-error] - Client tried to map a non-topmost popup.')
         return
       }
     }
@@ -216,7 +219,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
     for (const surfaceChild of surface.children) {
       if (surfaceChild !== surface.surfaceChildSelf && surfaceChild.surface.role instanceof XdgPopup) {
         resource.postError(XdgWmBaseError.notTheTopmostPopup, 'Client tried to destroy a non-topmost popup')
-        console.log('[client-protocol-error] - Client tried to destroy a non-topmost popup.')
+        this.session.logger.warn('[client-protocol-error] - Client tried to destroy a non-topmost popup.')
         return
       }
     }
@@ -229,13 +232,6 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
   grab(resource: XdgPopupResource, wlSeatResource: WlSeatResource, serial: number): void {
     const seat = wlSeatResource.implementation as Seat
     const pointer = seat.pointer
-
-    // Gtk3 doesn't give us the latest input serial, but the latest button press. Other compositors seem to ignore the serial.
-    // if (!seat.isValidInputSerial(serial)) {
-    //   this._dismiss()
-    //   // window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Popup grab input serial mismatch. Ignoring.')
-    //   return
-    // }
 
     if (this.mapped) {
       resource.postError(XdgPopupError.invalidGrab, 'Client tried to grab popup after it being mapped.')

@@ -18,7 +18,8 @@
 import { XdgPositionerRequests, XdgPositionerResource, XdgPositionerError } from 'westfield-runtime-server'
 import { minusPoint, plusPoint, PointRO } from './math/Point'
 
-import { createRect, RectRO, RectROWithInfo } from './math/Rect'
+import { createRect, RectROWithInfo } from './math/Rect'
+import Session from './Session'
 import View from './View'
 import XdgSurface from './XdgSurface'
 
@@ -190,7 +191,6 @@ export interface XdgPositionerState {
 }
 
 export default class XdgPositioner implements XdgPositionerRequests {
-  readonly xdgPositionerResource: XdgPositionerResource
   size?: RectROWithInfo
   anchorRect?: RectROWithInfo
   anchor: keyof typeof anchorCalculation = 0
@@ -198,15 +198,13 @@ export default class XdgPositioner implements XdgPositionerRequests {
   constraintAdjustment = 0
   offset: PointRO = { x: 0, y: 0 }
 
-  static create(xdgPositionerResource: XdgPositionerResource): XdgPositioner {
-    const xdgPositioner = new XdgPositioner(xdgPositionerResource)
+  static create(session: Session, xdgPositionerResource: XdgPositionerResource): XdgPositioner {
+    const xdgPositioner = new XdgPositioner(session, xdgPositionerResource)
     xdgPositionerResource.implementation = xdgPositioner
     return xdgPositioner
   }
 
-  constructor(xdgPositionerResource: XdgPositionerResource) {
-    this.xdgPositionerResource = xdgPositionerResource
-  }
+  constructor(private session: Session, public readonly xdgPositionerResource: XdgPositionerResource) {}
 
   destroy(resource: XdgPositionerResource): void {
     resource.destroy()
@@ -215,7 +213,7 @@ export default class XdgPositioner implements XdgPositionerRequests {
   setSize(resource: XdgPositionerResource, width: number, height: number): void {
     if (width <= 0 || height <= 0) {
       resource.postError(XdgPositionerError.invalidInput, 'Size width or height of positioner can not be negative.')
-      console.log('[client-protocol-error]. Size width or height of positioner can not be negative.')
+      this.session.logger.warn('[client-protocol-error]. Size width or height of positioner can not be negative.')
       return
     }
     this.size = createRect({ x: 0, y: 0 }, { width, height })
@@ -227,7 +225,9 @@ export default class XdgPositioner implements XdgPositionerRequests {
         XdgPositionerError.invalidInput,
         'Anchor rect width or height of positioner can not be negative.',
       )
-      console.log('[client-protocol-error] - Anchor rect width or height of positioner can not be negative.')
+      this.session.logger.warn(
+        '[client-protocol-error] - Anchor rect width or height of positioner can not be negative.',
+      )
       return
     }
     this.anchorRect = createRect({ x, y }, { width, height })

@@ -30,11 +30,73 @@ function uuidv4(): string {
   )
 }
 
+export interface LogFn {
+  /* tslint:disable:no-unnecessary-generics */
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  <T extends object>(obj: T, msg?: string, ...args: any[]): void
+  (msg: string, ...args: any[]): void
+}
+
+export type GreenfieldLogger = {
+  /**
+   * Log at `'error'` level the given msg. If the first argument is an object, all its properties will be included in the JSON line.
+   * If more args follows `msg`, these will be used to format `msg` using `util.format`.
+   *
+   * @typeParam T: the interface of the object being serialized. Default is object.
+   * @param obj: object to be serialized
+   * @param msg: the log message to write
+   * @param ...args: format string values when `msg` is a format string
+   */
+  error: LogFn
+  /**
+   * Log at `'warn'` level the given msg. If the first argument is an object, all its properties will be included in the JSON line.
+   * If more args follows `msg`, these will be used to format `msg` using `util.format`.
+   *
+   * @typeParam T: the interface of the object being serialized. Default is object.
+   * @param obj: object to be serialized
+   * @param msg: the log message to write
+   * @param ...args: format string values when `msg` is a format string
+   */
+  warn: LogFn
+  /**
+   * Log at `'info'` level the given msg. If the first argument is an object, all its properties will be included in the JSON line.
+   * If more args follows `msg`, these will be used to format `msg` using `util.format`.
+   *
+   * @typeParam T: the interface of the object being serialized. Default is object.
+   * @param obj: object to be serialized
+   * @param msg: the log message to write
+   * @param ...args: format string values when `msg` is a format string
+   */
+  info: LogFn
+  /**
+   * Log at `'debug'` level the given msg. If the first argument is an object, all its properties will be included in the JSON line.
+   * If more args follows `msg`, these will be used to format `msg` using `util.format`.
+   *
+   * @typeParam T: the interface of the object being serialized. Default is object.
+   * @param obj: object to be serialized
+   * @param msg: the log message to write
+   * @param ...args: format string values when `msg` is a format string
+   */
+  debug: LogFn
+  /**
+   * Log at `'trace'` level the given msg. If the first argument is an object, all its properties will be included in the JSON line.
+   * If more args follows `msg`, these will be used to format `msg` using `util.format`.
+   *
+   * @typeParam T: the interface of the object being serialized. Default is object.
+   * @param obj: object to be serialized
+   * @param msg: the log message to write
+   * @param ...args: format string values when `msg` is a format string
+   */
+  trace: LogFn
+}
+
 class Session implements CompositorSession {
-  static create(sessionId?: string): Session {
+  static create(sessionId?: string, logger?: GreenfieldLogger): Session {
     const display = new Display()
     const compositorSessionId = sessionId ?? uuidv4()
-    return new Session(display, compositorSessionId)
+    const session = new Session(display, compositorSessionId, logger)
+    session.logger.info('Session created.')
+    return session
   }
 
   readonly webFS: WebFS
@@ -42,7 +104,11 @@ class Session implements CompositorSession {
   readonly renderer: Renderer
   readonly userShell: UserShellApi
 
-  private constructor(public readonly display: Display, public readonly compositorSessionId: string) {
+  private constructor(
+    public readonly display: Display,
+    public readonly compositorSessionId: string,
+    public readonly logger: GreenfieldLogger = console,
+  ) {
     this.webFS = WebFS.create(this.compositorSessionId)
     this.globals = Globals.create(this)
     this.renderer = Renderer.create(this)

@@ -74,7 +74,7 @@ export default class XdgSurface implements XdgSurfaceRequests {
     const surface = this.wlSurfaceResource.implementation as Surface
     if (surface.role) {
       resource.postError(XdgWmBaseError.role, 'Given surface has another role.')
-      console.log('[client-protocol-error] - Given surface has another role.')
+      this.session.logger.warn('[client-protocol-error] - Given surface has another role.')
       return
     }
     const xdgToplevelResource = new XdgToplevelResource(resource.client, id, resource.version)
@@ -92,25 +92,27 @@ export default class XdgSurface implements XdgSurfaceRequests {
     const surface = this.wlSurfaceResource.implementation as Surface
     if (surface.role) {
       resource.postError(XdgWmBaseError.role, 'Given surface has another role.')
-      console.log('[client-protocol-error] - Given surface has another role.')
+      this.session.logger.warn('[client-protocol-error] - Given surface has another role.')
       return
     }
 
     const xdgPositioner = positioner.implementation as XdgPositioner
     if (xdgPositioner.size === undefined) {
       resource.postError(XdgWmBaseError.invalidPositioner, 'Client provided an invalid positioner. Size is NULL.')
+      this.session.logger.warn('[client-protocol-error] - Client provided an invalid positioner. Size is NULL.')
       return
     }
 
     if (xdgPositioner.anchorRect === undefined) {
       resource.postError(XdgWmBaseError.invalidPositioner, 'Client provided an invalid positioner. AnchorRect is NULL.')
+      this.session.logger.warn('[client-protocol-error] - Client provided an invalid positioner. AnchorRect is NULL.')
       return
     }
 
     const positionerState = xdgPositioner.createStateCopy()
 
     const xdgPopupResource = new XdgPopupResource(resource.client, id, resource.version)
-    const xdgPopup = XdgPopup.create(xdgPopupResource, this, parent, positionerState, this.seat)
+    const xdgPopup = XdgPopup.create(this.session, xdgPopupResource, this, parent, positionerState, this.seat)
     this.ackConfigure = (resource, serial) => xdgPopup.ackConfigure(serial)
 
     if (parent) {
@@ -123,7 +125,7 @@ export default class XdgSurface implements XdgSurfaceRequests {
   setWindowGeometry(resource: XdgSurfaceResource, x: number, y: number, width: number, height: number): void {
     if (width <= 0 || height <= 0) {
       resource.postError(XdgWmBaseError.invalidSurfaceState, 'Client provided negative window geometry.')
-      console.log('[client-protocol-error] - Client provided negative window geometry.')
+      this.session.logger.warn('[client-protocol-error] - Client provided negative window geometry.')
       return
     }
     this.pendingWindowGeometry = createRect({ x, y }, { width, height })

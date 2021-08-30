@@ -495,7 +495,7 @@ export class XWindowManager {
     xConnection.onConfigureRequestEvent = (event) => xWindowManager.handleConfigureRequest(event)
     xConnection.onConfigureNotifyEvent = (event) => xWindowManager.handleConfigureNotify(event)
     xConnection.onDestroyNotifyEvent = (event) => xWindowManager.handleDestroyNotify(event)
-    // xConnection.onMappingNotifyEvent = event => console.log('XCB_MAPPING_NOTIFY')
+    xConnection.onMappingNotifyEvent = () => session.logger.trace('XCB_MAPPING_NOTIFY')
     xConnection.onPropertyNotifyEvent = (event) => xWindowManager.handlePropertyNotify(event)
     xConnection.onClientMessageEvent = (event) => xWindowManager.handleClientMessage(event)
     xConnection.onFocusInEvent = (event) => xWindowManager.handleFocusIn(event)
@@ -583,7 +583,7 @@ export class XWindowManager {
       return
     }
 
-    console.log(`XWM: create surface ${surface.resource.id}@${surface.resource.client.id}`, surface)
+    this.session.logger.trace(`XWM: create surface ${surface.resource.id}@${surface.resource.client.id}`, surface)
 
     const window = this.unpairedWindowList.find((window) => window.surfaceId === surface.resource.id)
     if (window) {
@@ -607,7 +607,9 @@ export class XWindowManager {
   private handleButton(event: ButtonPressEvent | ButtonReleaseEvent) {
     // TODO we want event codes from xtsb
     const buttonPress = 4
-    console.log(`XCB_BUTTON_${event.responseType === buttonPress ? 'PRESS' : 'RELEASE'} (detail ${event.detail})`)
+    this.session.logger.trace(
+      `XCB_BUTTON_${event.responseType === buttonPress ? 'PRESS' : 'RELEASE'} (detail ${event.detail})`,
+    )
 
     const window = this.lookupXWindow(event.event)
 
@@ -740,7 +742,7 @@ export class XWindowManager {
   }
 
   private async handleCreateNotify(event: CreateNotifyEvent) {
-    console.log(
+    this.session.logger.trace(
       `XCB_CREATE_NOTIFY (window ${event.window}, at (${event.x}, ${event.y}), width ${event.width}, height ${
         event.height
       }${event.overrideRedirect ? 'override' : ''}${this.isOurResource(event.window) ? ', ours' : ''})`,
@@ -754,7 +756,7 @@ export class XWindowManager {
 
   private async handleMapRequest(event: MapRequestEvent) {
     if (this.isOurResource(event.window)) {
-      console.log(`XCB_MAP_REQUEST (window ${event.window}, ours)`)
+      this.session.logger.trace(`XCB_MAP_REQUEST (window ${event.window}, ours)`)
       return
     }
 
@@ -790,7 +792,7 @@ export class XWindowManager {
       throw new Error('Assertion failed. X window should have a parent window.')
     }
 
-    console.log(
+    this.session.logger.trace(
       `XCB_MAP_REQUEST (window ${window.id}, frame ${window.frameId}, ${window.width}x${window.height} @ ${window.mapRequestX},${window.mapRequestY})`,
     )
 
@@ -815,15 +817,15 @@ export class XWindowManager {
 
   private handleMapNotify(event: MapNotifyEvent) {
     if (this.isOurResource(event.window)) {
-      console.log(`XCB_MAP_NOTIFY (window ${event.window}, ours)`)
+      this.session.logger.trace(`XCB_MAP_NOTIFY (window ${event.window}, ours)`)
       return
     }
 
-    console.log(`XCB_MAP_NOTIFY (window ${event.window}${event.overrideRedirect ? ', override' : ''})`)
+    this.session.logger.trace(`XCB_MAP_NOTIFY (window ${event.window}${event.overrideRedirect ? ', override' : ''})`)
   }
 
   private handleUnmapNotify(event: UnmapNotifyEvent) {
-    console.log(
+    this.session.logger.trace(
       `XCB_UNMAP_NOTIFY (window ${event.window}, event ${event.event}${
         this.isOurResource(event.window) ? ', ours' : ''
       })`,
@@ -878,7 +880,7 @@ export class XWindowManager {
   }
 
   private async handleReparentNotify(event: ReparentNotifyEvent) {
-    console.log(
+    this.session.logger.trace(
       `XCB_REPARENT_NOTIFY (window ${event.window}, parent ${event.parent}, event ${event.event}${
         event.overrideRedirect ? ', override' : ''
       })`,
@@ -939,7 +941,7 @@ export class XWindowManager {
   }
 
   private handleConfigureNotify(event: ConfigureNotifyEvent) {
-    console.log(
+    this.session.logger.trace(
       `XCB_CONFIGURE_NOTIFY (window ${event.window}) ${event.x},${event.y} @ ${event.width}x${event.height}${
         event.overrideRedirect ? ', override' : ''
       })`,
@@ -969,7 +971,9 @@ export class XWindowManager {
   }
 
   private handleDestroyNotify(event: DestroyNotifyEvent) {
-    console.log(`XCB_DESTROY_NOTIFY, win ${event.window}, event ${event.event}${event.window ? ', ours' : ''}`)
+    this.session.logger.trace(
+      `XCB_DESTROY_NOTIFY, win ${event.window}, event ${event.event}${event.window ? ', ours' : ''}`,
+    )
 
     if (this.isOurResource(event.window)) {
       return
@@ -993,7 +997,7 @@ export class XWindowManager {
   }
 
   private async handleClientMessage(event: ClientMessageEvent) {
-    console.log(
+    this.session.logger.trace(
       `XCB_CLIENT_MESSAGE (${await this.getAtomName(event._type)} ${event.data.data32?.[0]} ${event.data.data32?.[1]} ${
         event.data.data32?.[2]
       } ${event.data.data32?.[3]} ${event.data.data32?.[4]} win ${event.window})`,
@@ -1057,7 +1061,7 @@ export class XWindowManager {
 
     this.xConnection.changeWindowAttributes(id, { eventMask: EventMask.PropertyChange | EventMask.FocusChange })
 
-    const window: XWindow = new XWindow(this, id, overrideRedirect !== 0, x, y, width, height)
+    const window: XWindow = new XWindow(this, id, overrideRedirect !== 0, x, y, width, height, this.session)
 
     const geometryReply = await geometryReplyPromise
     /* technically we should use XRender and check the visual format's

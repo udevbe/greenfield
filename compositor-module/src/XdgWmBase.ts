@@ -85,7 +85,7 @@ export default class XdgWmBase implements XdgWmBaseRequests {
   destroy(resource: XdgWmBaseResource): void {
     if (this.wlSurfaceResources.length > 0) {
       resource.postError(XdgWmBaseError.defunctSurfaces, 'xdg_wm_base was destroyed before children.')
-      console.log('[client-protocol-error] - xdg_wm_base was destroyed before children.')
+      this.session.logger.warn('[client-protocol-error] - xdg_wm_base was destroyed before children.')
       return
     }
     resource.destroy()
@@ -93,7 +93,7 @@ export default class XdgWmBase implements XdgWmBaseRequests {
 
   createPositioner(resource: XdgWmBaseResource, id: number): void {
     const xdgPositionerResource = new XdgPositionerResource(resource.client, id, resource.version)
-    XdgPositioner.create(xdgPositionerResource)
+    XdgPositioner.create(this.session, xdgPositionerResource)
   }
 
   getXdgSurface(resource: XdgWmBaseResource, id: number, wlSurfaceResource: WlSurfaceResource): void {
@@ -103,7 +103,9 @@ export default class XdgWmBase implements XdgWmBaseRequests {
         XdgWmBaseError.invalidSurfaceState,
         'Surface had a buffer attached before xdg surface was created.',
       )
-      console.log('[client-protocol-error] - Surface had a buffer attached before xdg surface was created.')
+      this.session.logger.warn(
+        '[client-protocol-error] - Surface had a buffer attached before xdg surface was created.',
+      )
       return
     }
 

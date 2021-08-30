@@ -25,7 +25,6 @@ import BufferImplementation from './BufferImplementation'
 
 import { PointRO } from './math/Point'
 import { createPixmanRegion } from './Region'
-import Renderer from './render/Renderer'
 import Session from './Session'
 import Surface, { mergeSurfaceState, SurfaceState } from './Surface'
 import SurfaceRole from './SurfaceRole'
@@ -39,13 +38,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
     wlSubsurfaceResource: WlSubsurfaceResource,
   ): Subsurface {
     const view = View.create(wlSurfaceResource.implementation as Surface)
-    const subsurface = new Subsurface(
-      parentWlSurfaceResource,
-      wlSurfaceResource,
-      wlSubsurfaceResource,
-      view,
-      session.renderer,
-    )
+    const subsurface = new Subsurface(session, parentWlSurfaceResource, wlSurfaceResource, wlSubsurfaceResource, view)
     wlSubsurfaceResource.implementation = subsurface
 
     wlSurfaceResource.onDestroy().then(() => {
@@ -84,11 +77,11 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
   private inert = false
 
   private constructor(
+    private readonly session: Session,
     public readonly parentWlSurfaceResource: WlSurfaceResource,
     public readonly wlSurfaceResource: WlSurfaceResource,
     public readonly resource: WlSubsurfaceResource,
     public readonly view: View,
-    private readonly renderer: Renderer,
   ) {
     const surface = this.wlSurfaceResource.implementation as Surface
     mergeSurfaceState(this.cachedState, surface.state)
@@ -101,7 +94,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
     this.cachedState.frameCallbacks = []
     this.cacheDirty = false
     surface.commitPending()
-    this.renderer.render()
+    this.session.renderer.render()
   }
 
   onParentCommit(): void {
@@ -153,7 +146,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
       this.commitCache(surface)
     } else {
       surface.commitPending()
-      this.renderer.render()
+      this.session.renderer.render()
     }
   }
 
@@ -175,7 +168,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
     const siblingSurfaceChildSelf = siblingSurface.surfaceChildSelf
     if (!parentSurface.state.subsurfaceChildren.includes(siblingSurfaceChildSelf) || siblingSurface === parentSurface) {
       resource.postError(WlSubsurfaceError.badSurface, 'Surface is not a sibling or the parent.')
-      console.log('[client-protocol-error] - Surface is not a sibling or the parent.')
+      this.session.logger.warn('[client-protocol-error] - Surface is not a sibling or the parent.')
       return
     }
 

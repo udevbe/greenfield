@@ -1,10 +1,11 @@
 import { connect, webConnectionSetup, XConnection } from 'xtsb'
+import Session from '../Session'
 
 export class XWaylandConnection {
-  static create(webSocket: WebSocket): Promise<XWaylandConnection> {
+  static create(session: Session, webSocket: WebSocket): Promise<XWaylandConnection> {
     return new Promise<XWaylandConnection>((resolve, reject) => {
       webSocket.onopen = async (_) => {
-        webSocket.onerror = (ev) => console.log(`XWM connection ${webSocket.url} error: ${ev}`)
+        webSocket.onerror = (ev) => session.logger.error(`XWM connection ${webSocket.url} error: ${ev}`)
         const xwm = new XWaylandConnection(webSocket)
         webSocket.onclose = (_) => xwm.destroy()
         resolve(xwm)

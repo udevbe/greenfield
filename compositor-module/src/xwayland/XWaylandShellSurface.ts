@@ -180,11 +180,6 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   }
 
   move(pointer: Pointer): void {
-    // if (!seat.isValidInputSerial(serial)) {
-    //   // window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Move serial mismatch. Ignoring.')
-    //   return
-    // }
-
     if (this.state === SurfaceStates.FULLSCREEN || this.state === SurfaceStates.MAXIMIZED) {
       return
     }
