@@ -1,3 +1,4 @@
+import { unlink } from 'fs/promises'
 import { URL } from 'url'
 import WebSocket from 'ws'
 import { config } from './config'
@@ -9,6 +10,10 @@ const urlProtocolAndDomain = `ws://${config.server.bindIP}:${config.server.bindP
 const compositorSessionId = process.env.COMPOSITOR_SESSION_ID
 
 const logger = createLogger('main')
+
+function deleteStartingFile() {
+  unlink('/var/run/compositor-proxy/starting')
+}
 
 function main() {
   logger.info('Starting compositor proxy...')
@@ -55,6 +60,7 @@ function main() {
   })
 
   logger.info('Compositor proxy started. Listening on port ' + port)
+  deleteStartingFile()
 }
 
 main()

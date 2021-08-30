@@ -45,6 +45,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xwayland \
     xauth \
     xxd \
+    inotify-tools \
     && apt-get autoremove -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -63,5 +64,6 @@ ENV NODE_ENV=production
 WORKDIR /home/node
 
 RUN usermod -a -G video node
-
+RUN mkdir -p /var/run/compositor-proxy && chown 1000:1000 /var/run/compositor-proxy && touch /var/run/compositor-proxy/starting
+COPY wait-until-ready.sh /app
 CMD ["setpriv", "--reuid=1000", "--regid=1000", "--init-groups", "sh", "/app/docker-entrypoint.sh"]

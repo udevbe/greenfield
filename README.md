@@ -38,7 +38,7 @@ To run locally without docker, we will need the following environment variables:
 
 The above is already specified in the demo `package.json` script. Now all that is left, is to generate some code and set up the native parts of the compositor-proxy.
 
-Inside `compository-proxy`, run:
+Inside `compositor-proxy`, run:
 - `yarn install`
 - `yarn generate`
 - `yarn build:native`
