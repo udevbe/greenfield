@@ -29,6 +29,7 @@ export * from './ButtonEvent'
 export * from './AxisEvent'
 export * from './KeyEvent'
 export { nrmlvo }
+export { GreenfieldLogger }
 
 export function createCompositorSession(sessionId?: string, logger?: GreenfieldLogger): CompositorSession {
   return Session.create(sessionId, logger)
