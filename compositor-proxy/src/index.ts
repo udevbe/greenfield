@@ -12,7 +12,10 @@ const compositorSessionId = process.env.COMPOSITOR_SESSION_ID
 const logger = createLogger('main')
 
 function deleteStartingFile() {
-  unlink('/var/run/compositor-proxy/starting')
+  unlink('/var/run/compositor-proxy/starting').catch(() => {
+    // deleting the starting file is not fatal
+    // TODO log this?
+  })
 }
 
 function main() {
