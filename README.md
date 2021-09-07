@@ -67,21 +67,21 @@ have to include it yourself using a mount. An example docker-compose file is als
 
 ### Compositor-Proxy
 
-A Greenfield browser compositor uses a native compositor-proxy running on Node.js to talk to native applications. 
+A Greenfield browser compositor uses a native compositor-proxy to talk to native applications. 
 This proxy compositor accepts native Wayland client connections and assigns them to a WebSocket connection as soon as 
 one becomes available. A native client and it's WebSocket connection are bound to each other until either one is closed.
 
 A compositor-proxy proxy can request additional WebSocket connections from an already connected Greenfield browser compositor.
-This is needed in case a Wayland client spawns a new Wayland client process. If no WebSocket connections already exists, 
-the compositor-proxy will wait until a new WebSocket connection is becomes available. In other words, the first WebSocket connection
+This is needed in case a Wayland client spawns a new Wayland client process. If no WebSocket connections already exists,
+the compositor-proxy will wait until a new WebSocket connection is available. In other words, the first WebSocket connection
 is always initiated from the browser.
 
-Each application's content is encoded to H264 video frames using GStreamer and send to the browser for decoding. In the browser the applications is realised by a WebGL texture inside a HTML5 canvas.
-This canvas is basically what you would commonly call a 'workspace'. The browser compositor is implemented asynchronous, meaning one heavy client will not block the processing of another client.
+Each application's content is encoded to video frames using GStreamer and send to the browser for decoding. In the browser the applications is realised by a WebGL texture inside a HTML5 canvas.
+This canvas is basically what you would call an 'output' in Wayland terminology. The browser compositor is asynchronous, meaning a slow client will not block the processing of another client.
 
 ### Copy-Paste
 
-Copy-paste is implemented using a direct transfer between compositor-proxies if 2 clients are connected to separate compositor-proxy.
+If both clients are connected to separate compositor-proxy, copy-paste will use a direct peer to peer transfer between compositor-proxies.
 This avoids the round trip and massive overhead of transferring all content to the browser and back. How this works is illustrated in the image below:
 
 [<img src="https://docs.google.com/drawings/d/e/2PACX-1vQfr7I8GaalOzmOAwAOFYK8bzdeQna82JwxesDvD22_kj5BgSIKM16JKk-E2G-nPt5Ssgrhyi9kO9ZV/pub?w=1056&h=620" />](https://docs.google.com/drawings/d/e/2PACX-1vQfr7I8GaalOzmOAwAOFYK8bzdeQna82JwxesDvD22_kj5BgSIKM16JKk-E2G-nPt5Ssgrhyi9kO9ZV/pub?w=1056&h=620)
