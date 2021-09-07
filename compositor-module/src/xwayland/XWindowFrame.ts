@@ -3,6 +3,7 @@ import signClose from '../assets/sign_close.png'
 import signMaximize from '../assets/sign_maximize.png'
 import signMinimize from '../assets/sign_minimize.png'
 import Pointer from '../Pointer'
+import Session from '../Session'
 
 function fetchIcon(url: string): Promise<ImageBitmap> {
   return fetch(url)
@@ -309,6 +310,7 @@ export class XWindowFrame {
   }
 
   constructor(
+    private readonly session: Session,
     public theme: XWindowTheme,
     public width: number,
     public height: number,
@@ -407,7 +409,6 @@ export class XWindowFrame {
       this.flags & FrameFlag.FRAME_FLAG_MAXIMIZED ? ThemeFrame.THEME_FRAME_MAXIMIZED : 0,
     )
     if (!framePointer) {
-      // console.log(`XWindowFrame pointer motion ${x}-${y} (no frame pointer), location: ${location}`)
       return location
     }
 
@@ -415,7 +416,6 @@ export class XWindowFrame {
     framePointer.y = y
 
     if (framePointer.hoverButton !== undefined && framePointer.hoverButton === button) {
-      // console.log(`XWindowFrame pointer motion ${x}-${y} (with frame pointer hover button), location: ${location}`)
       return location
     }
 
@@ -429,7 +429,6 @@ export class XWindowFrame {
       framePointer.hoverButton.enter()
     }
 
-    // console.log(`XWindowFrame pointer motion ${x}-${y} (with frame pointer), location: ${location}`)
     return location
   }
 
@@ -501,7 +500,7 @@ export class XWindowFrame {
   }
 
   resizeInside(width: number, height: number): void {
-    console.log(`XWindowFrame resize inside: ${width}x${height}`)
+    this.session.logger.trace(`XWindowFrame resize inside: ${width}x${height}`)
 
     let decorationWidth = 0
     let decorationHeight = 0
@@ -533,7 +532,7 @@ export class XWindowFrame {
       return
     }
 
-    console.log('XWindowFrame refresh geometry')
+    this.session.logger.trace('XWindowFrame refresh geometry')
 
     const titlebarHeight = this.title || this.buttons.length > 0 ? this.theme.titlebarHeight : this.theme.borderWidth
 
@@ -552,7 +551,7 @@ export class XWindowFrame {
   }
 
   setTitle(title: string): void {
-    console.log(`XWindowFrame set title: ${title}`)
+    this.session.logger.trace(`XWindowFrame set title: ${title}`)
     this.title = title
     this.geometryDirty = true
     this.status = FrameStatus.FRAME_STATUS_REPAINT
@@ -582,7 +581,7 @@ export class XWindowFrame {
     const titleRect = this.calculateTitleRect(frameWidth, shadowMargin, titlebarHeight)
     this.theme.renderFrame(this.renderContext, frameWidth, frameHeight, this.title, titleRect, this.buttons, flags)
     this.buttons.forEach((button) => button.repaint())
-    console.log(`XWindowFrame repaint ${this.width}x${this.height}`)
+    this.session.logger.trace(`XWindowFrame repaint ${this.width}x${this.height}`)
 
     this.statusClear(FrameStatus.FRAME_STATUS_REPAINT)
     return interior
@@ -649,7 +648,7 @@ export class XWindowFrame {
   }
 
   resize(width: number, height: number) {
-    console.log(`XWindowFrame resize: ${width}x${height}`)
+    this.session.logger.trace(`XWindowFrame resize: ${width}x${height}`)
     this.width = width
     this.height = height
     this.geometryDirty = true
@@ -1048,6 +1047,7 @@ export function themeCreate(): XWindowTheme {
 }
 
 export async function frameCreate(
+  session: Session,
   theme: XWindowTheme,
   width: number,
   height: number,
@@ -1081,6 +1081,7 @@ export async function frameCreate(
   minimizeIcon.drawImage(signMinimizeIconData, 0, 0)
 
   const xWindowFrame = new XWindowFrame(
+    session,
     theme,
     0,
     0,

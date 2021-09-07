@@ -30,9 +30,9 @@ import {
 } from 'westfield-runtime-server'
 import DataOffer from './DataOffer'
 import DataSource from './DataSource'
-import { PointRO } from './math/Point'
 
 import Seat from './Seat'
+import Session from './Session'
 import Surface from './Surface'
 import View from './View'
 
@@ -58,11 +58,11 @@ export default class DataDevice implements WlDataDeviceRequests {
   private readonly dndSourceDestroyListener: () => void
   private readonly selectionSourceDestroyListener: () => void
 
-  static create(): DataDevice {
-    return new DataDevice()
+  static create(session: Session): DataDevice {
+    return new DataDevice(session)
   }
 
-  private constructor() {
+  private constructor(private readonly session: Session) {
     this.dndSourceDestroyListener = () => {
       this.handleDndSourceDestroy()
     }
@@ -111,7 +111,7 @@ export default class DataDevice implements WlDataDeviceRequests {
   ): void {
     if (icon && (icon.implementation as Surface).role) {
       resource.postError(WlDataDeviceError.role, 'Given surface has another role.')
-      console.log('[client-protocol-error] - Given surface has another role.')
+      this.session.logger.warn('[client-protocol-error] - Given surface has another role.')
       return
     }
 
@@ -285,7 +285,7 @@ export default class DataDevice implements WlDataDeviceRequests {
 
   private createDataOffer(source: WlDataSourceResource, dataDeviceResource: WlDataDeviceResource): WlDataOfferResource {
     const offerId = /** @type {number} */ dataDeviceResource.dataOffer()
-    const dataOffer = DataOffer.create(source, offerId, dataDeviceResource)
+    const dataOffer = DataOffer.create(this.session, source, offerId, dataDeviceResource)
     const dataSource = source.implementation as DataSource
     dataSource.wlDataOffer = dataOffer.resource
     dataSource.mimeTypes.forEach((mimeType) => dataOffer.resource.offer(mimeType))
@@ -293,14 +293,13 @@ export default class DataDevice implements WlDataDeviceRequests {
   }
 
   setSelection(resource: WlDataDeviceResource, source: WlDataSourceResource | undefined, serial: number): void {
-    // if (!this.seat.isValidInputSerial(serial)) {
-    //   console.log('Invalid selection serial. Ignoring request.')
-    //   return
-    // }
+    if (!this.seat.isValidInputSerial(serial)) {
+      this.session.logger.debug('Invalid selection serial. Ignoring request.')
+    }
 
     if (source && (source.implementation as DataSource).dndActions) {
       source.postError(WlDataSourceError.invalidSource, 'Can not set selection when source has dnd actions active.')
-      console.log('[client-protocol-error] - Can not set selection when source has dnd actions active.')
+      this.session.logger.warn('[client-protocol-error] - Can not set selection when source has dnd actions active.')
       return
     }
 

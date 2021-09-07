@@ -15,14 +15,19 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+import Session from './Session'
+
 export default class RemoteOutOfBandChannel {
   private readonly outOfBandListeners: { [key: number]: (outOfBandMsg: Uint8Array) => void } = {}
 
-  static create(onOutOfBandSend: (outData: ArrayBuffer) => void): RemoteOutOfBandChannel {
-    return new RemoteOutOfBandChannel(onOutOfBandSend)
+  static create(session: Session, onOutOfBandSend: (outData: ArrayBuffer) => void): RemoteOutOfBandChannel {
+    return new RemoteOutOfBandChannel(session, onOutOfBandSend)
   }
 
-  private constructor(private readonly onOutOfBandSend: (outData: ArrayBuffer) => void) {}
+  private constructor(
+    private readonly session: Session,
+    private readonly onOutOfBandSend: (outData: ArrayBuffer) => void,
+  ) {}
 
   message(incomingMessage: ArrayBuffer): void {
     const dataView = new DataView(incomingMessage)
@@ -32,7 +37,7 @@ export default class RemoteOutOfBandChannel {
     if (outOfBandHandler) {
       outOfBandHandler(new Uint8Array(incomingMessage, 4))
     } else {
-      console.log(`[BUG?] Out of band using opcode: ${opcode} not found. Ignoring.`)
+      this.session.logger.warn(`[BUG?] Out of band using opcode: ${opcode} not found. Ignoring.`)
     }
   }
 

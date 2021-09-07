@@ -151,12 +151,12 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
 
     if (minWidth < 0 || minHeight < 0 || minWidth > maxWidth || minHeight > maxHeight) {
       this.resource.postError(XdgWmBaseError.invalidSurfaceState, 'Min size can not be greater than max size.')
-      console.log('[client-protocol-error] Min size can not be greater than max size.')
+      this.session.logger.warn('[client-protocol-error] Min size can not be greater than max size.')
       return
     }
     if (maxWidth < 0 || maxHeight < 0 || maxWidth < minWidth || maxHeight < minHeight) {
       this.resource.postError(XdgWmBaseError.invalidSurfaceState, 'Max size can not be me smaller than min size.')
-      console.log('[client-protocol-error] Max size can not be less than min size.')
+      this.session.logger.warn('[client-protocol-error] Max size can not be less than min size.')
       return
     }
 
@@ -258,7 +258,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
 
     if (newSurfaceWidth !== this.ackedConfigureState.width || newSurfaceHeight !== this.ackedConfigureState.height) {
       this.resource.postError(XdgWmBaseError.invalidSurfaceState, 'Surface size does not match configure event.')
-      console.log('[client-protocol-error] Surface size does not match configure event.')
+      this.session.logger.warn('[client-protocol-error] Surface size does not match configure event.')
       return
     }
 
@@ -286,7 +286,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       })
       if (newSurfaceWidth > this.configureState.width || newSurfaceHeight > this.configureState.height) {
         this.resource.postError(XdgWmBaseError.invalidSurfaceState, 'Surface size does not match configure event.')
-        console.log('[client protocol error] Surface size does not match configure event.')
+        this.session.logger.warn('[client protocol error] Surface size does not match configure event.')
         return
       }
 
@@ -376,11 +376,6 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     y: number,
   ): void {
     // const seat = wlSeatResource.implementation as Seat
-    // Most clients don't do this correctly. So ignore this.
-    // if (!seat.isValidInputSerial(serial)) {
-    //   console.log('[client-protocol-warning] - showWindowMenu serial mismatch. Ignoring.')
-    //   return
-    // }
     // this.showWindowMenuAt(Point.create(x, y))
   }
 
@@ -396,12 +391,6 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     }
 
     const seat = wlSeatResource.implementation as Seat
-    // Most clients don't do this correctly. So ignore this.
-    // if (!seat.isValidInputSerial(serial)) {
-    //   // window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Move serial mismatch. Ignoring.')
-    //   return
-    // }
-
     const pointer = seat.pointer
 
     const pointerX = pointer.x
@@ -445,12 +434,6 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
 
     const seat = wlSeatResource.implementation as Seat
     const pointer = seat.pointer
-
-    // Most clients don't do this correctly. So ignore this.
-    // if (!seat.isValidInputSerial(serial)) {
-    // window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Resize serial mismatch. Ignoring.')
-    // return
-    // }
 
     // assigned in switch statement
     let sizeAdjustment: (deltaX: number, deltaY: number) => { w: number; h: number }

@@ -18,7 +18,7 @@
 import { Client } from 'westfield-runtime-server'
 import RemoteAppLauncher from './RemoteAppLauncher'
 import RemoteSocket from './RemoteSocket'
-import Session from './Session'
+import Session, { GreenfieldLogger } from './Session'
 import { UserShellApi } from './UserShellApi'
 import WebAppLauncher from './WebAppLauncher'
 import WebAppSocket from './WebAppSocket'
@@ -29,9 +29,10 @@ export * from './ButtonEvent'
 export * from './AxisEvent'
 export * from './KeyEvent'
 export { nrmlvo }
+export { GreenfieldLogger }
 
-export function createCompositorSession(sessionId?: string): CompositorSession {
-  return Session.create(sessionId)
+export function createCompositorSession(sessionId?: string, logger?: GreenfieldLogger): CompositorSession {
+  return Session.create(sessionId, logger)
 }
 
 export interface CompositorPointer {

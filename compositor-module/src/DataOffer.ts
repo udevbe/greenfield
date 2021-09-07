@@ -25,6 +25,7 @@ import {
   WlDataSourceResource,
 } from 'westfield-runtime-server'
 import DataSource from './DataSource'
+import Session from './Session'
 
 function bitCount(u: number): number {
   // https://blogs.msdn.microsoft.com/jeuge/2005/06/08/bit-fiddling-3/
@@ -44,8 +45,13 @@ export default class DataOffer implements WlDataOfferRequests {
   inAsk = false
   private finished = false
 
-  static create(source: WlDataSourceResource, offerId: number, dataDeviceResource: WlDataDeviceResource): DataOffer {
-    const dataOffer = new DataOffer(source)
+  static create(
+    session: Session,
+    source: WlDataSourceResource,
+    offerId: number,
+    dataDeviceResource: WlDataDeviceResource,
+  ): DataOffer {
+    const dataOffer = new DataOffer(session, source)
     const wlDataOfferResource = new WlDataOfferResource(dataDeviceResource.client, offerId, dataDeviceResource.version)
     wlDataOfferResource.implementation = dataOffer
     dataOffer.resource = wlDataOfferResource
@@ -54,7 +60,7 @@ export default class DataOffer implements WlDataOfferRequests {
     return dataOffer
   }
 
-  private constructor(public wlDataSource: WlDataSourceResource) {}
+  private constructor(private readonly session: Session, public wlDataSource: WlDataSourceResource) {}
 
   private _handleDestroy() {
     if (!this.wlDataSource) {
@@ -156,13 +162,13 @@ export default class DataOffer implements WlDataOfferRequests {
 
     if (dndActions & ~ALL_ACTIONS) {
       resource.postError(WlDataOfferError.invalidActionMask, `invalid action mask ${dndActions}`)
-      console.log('[client protocol error] - invalid data offer action mask')
+      this.session.logger.warn('[client protocol error] - invalid data offer action mask')
       return
     }
 
     if (preferredAction && (!(preferredAction & dndActions) || bitCount(preferredAction) > 1)) {
       resource.postError(WlDataOfferError.invalidAction, `invalid action ${preferredAction}`)
-      console.log('[client protocol error] - invalid data offer action')
+      this.session.logger.warn('[client protocol error] - invalid data offer action')
       return
     }
 

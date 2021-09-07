@@ -295,21 +295,20 @@ class Surface implements WlSurfaceRequests {
   }
 
   async commit(resource: WlSurfaceResource, serial?: number): Promise<void> {
-    // const startCommit = Date.now()
     const bufferImplementation = this.pendingState.buffer?.implementation as
       | BufferImplementation<BufferContents<unknown> | Promise<BufferContents<unknown>>>
       | undefined
     if (bufferImplementation && this.pendingState.bufferContents === undefined) {
       try {
-        // console.log('|- Awaiting buffer contents.')
-        // const startBufferContents = Date.now()
+        this.session.logger.trace('|- Awaiting buffer contents.')
+        const startBufferContents = Date.now()
         this.pendingState.bufferContents = await bufferImplementation.getContents(this, serial)
-        // console.log(`|--> Buffer contents took ${Date.now() - startBufferContents}ms`)
+        this.session.logger.trace(`|--> Buffer contents took ${Date.now() - startBufferContents}ms`)
         if (this.destroyed) {
           return
         }
       } catch (e) {
-        // console.warn(`[surface: ${resource.id}] - Failed to receive buffer contents.`, e.toString())
+        this.session.logger.warn(`[surface: ${resource.id}] - Failed to receive buffer contents.`, e.toString())
       }
     }
     this.role?.onCommit(this)
@@ -359,8 +358,8 @@ class Surface implements WlSurfaceRequests {
   setBufferTransform(resource: WlSurfaceResource, transform: number): void {
     if (!(transform in WlOutputTransform)) {
       resource.postError(WlSurfaceError.invalidTransform, 'Buffer transform value is invalid.')
-      console.log('[client-protocol-error] - Buffer transform value is invalid.')
-      return undefined
+      this.session.logger.warn('[client-protocol-error] - Buffer transform value is invalid.')
+      return
     }
 
     this.pendingState.bufferTransform = transform
@@ -369,7 +368,8 @@ class Surface implements WlSurfaceRequests {
   setBufferScale(resource: WlSurfaceResource, scale: number): void {
     if (scale < 1) {
       resource.postError(WlSurfaceError.invalidScale, 'Buffer scale value is invalid.')
-      console.log('[client-protocol-error] - Buffer scale value is invalid.')
+      this.session.logger.warn('[client-protocol-error] - Buffer scale value is invalid.')
+      return
     }
 
     this.pendingState.bufferScale = scale

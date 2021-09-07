@@ -30,7 +30,6 @@ import { ButtonEvent } from './ButtonEvent'
 import DataDevice from './DataDevice'
 
 import { PointRO } from './math/Point'
-import { RectRO } from './math/Rect'
 import { fini, initRect } from './Region'
 import Seat from './Seat'
 import Session from './Session'
@@ -168,7 +167,7 @@ export default class Pointer implements WlPointerRequests {
       const surface = surfaceResource.implementation as Surface
       if (surface.role && !(surface.role instanceof PointerRole)) {
         resource.postError(WlPointerError.role, 'Given surface has another role.')
-        console.log('[client-protocol-error] - Given surface has another role')
+        this.session.logger.warn('[client-protocol-error] - Given surface has another role')
         return
       }
     }

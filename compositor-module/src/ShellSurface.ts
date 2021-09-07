@@ -144,16 +144,14 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
   move(resource: WlShellSurfaceResource, wlSeatResource: WlSeatResource, serial: number): void {
     const seat = wlSeatResource.implementation as Seat
 
-    // if (!seat.isValidInputSerial(serial)) {
-    //   // window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Move serial mismatch. Ignoring.')
-    //   return
-    // }
+    if (!seat.isValidInputSerial(serial)) {
+      this.session.logger.warn('[client-protocol-warning] - Move serial mismatch. Ignoring.')
+    }
 
     if (this.state === SurfaceStates.FULLSCREEN || this.state === SurfaceStates.MAXIMIZED) {
       return
     }
     const pointer = seat.pointer
-    const surface = this.wlSurfaceResource.implementation as Surface
 
     const pointerX = pointer.x
     const pointerY = pointer.y
@@ -179,8 +177,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
   resize(resource: WlShellSurfaceResource, wlSeatResource: WlSeatResource, serial: number, edges: number): void {
     const seat = wlSeatResource.implementation as Seat
     if (!seat.isValidInputSerial(serial)) {
-      // window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Resize serial mismatch. Ignoring.')
-      return
+      this.session.logger.debug('[client-protocol-warning] - Resize serial mismatch. Ignoring.')
     }
 
     if (this.state === SurfaceStates.FULLSCREEN || this.state === SurfaceStates.MAXIMIZED) {
@@ -333,11 +330,6 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     flags: number,
   ): void {
     const seat = wlSeatResource.implementation as Seat
-    // if (!seat.isValidInputSerial(seat.buttonPressSerial)) {
-    //   this._dismiss()
-    //  // window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Popup grab input serial mismatch. Ignoring.')
-    //   return
-    // }
 
     if (this.state) {
       return

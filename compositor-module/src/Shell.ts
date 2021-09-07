@@ -64,7 +64,7 @@ export default class Shell implements WlShellRequests {
   getShellSurface(resource: WlShellResource, id: number, surfaceResource: WlSurfaceResource): void {
     if ((surfaceResource.implementation as Surface).role) {
       resource.postError(WlShellError.role, 'Given surface has another role.')
-      console.log('[client-protocol-error] - Given surface has another role.')
+      this.session.logger.warn('[client-protocol-error] - Given surface has another role.')
       return
     }
 
