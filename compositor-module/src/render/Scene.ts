@@ -22,8 +22,6 @@ import { createPixmanRegion, initRect } from '../Region'
 import DecodedFrame, { OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
 import Session from '../Session'
 import View from '../View'
-import WebGLFrame from '../webgl/WebGLFrame'
-import WebShmFrame from '../webshm/WebShmFrame'
 import RenderState from './RenderState'
 import SceneShader from './SceneShader'
 import YUVAToRGBA from './YUVAToRGBA'
@@ -133,14 +131,6 @@ class Scene {
   ['image/png'](decodedFrame: DecodedFrame, renderState: RenderState): void {
     const { bitmap } = decodedFrame.pixelContent as { bitmap: ImageBitmap; blob: Blob }
     updateViewRenderStateWithTexImageSource(bitmap, renderState)
-  }
-
-  ['image/rgba'](shmFrame: WebShmFrame, renderState: RenderState): void {
-    updateViewRenderStateWithTexImageSource(shmFrame.pixelContent, renderState)
-  }
-
-  ['image/canvas'](webGLFrame: WebGLFrame, renderState: RenderState): void {
-    updateViewRenderStateWithTexImageSource(webGLFrame.pixelContent, renderState)
   }
 }
 

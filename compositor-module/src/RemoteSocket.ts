@@ -112,7 +112,7 @@ class RemoteSocket {
           if (webSocket.readyState === 1) {
             try {
               webSocket.send(sendBuffer)
-            } catch (e) {
+            } catch (e: any) {
               // TODO use centralized error reporting
               console.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
               console.error('error object stack: ')
@@ -294,7 +294,7 @@ class RemoteSocket {
           console.error(e.stack)
         })
       }
-    } catch (e) {
+    } catch (e: any) {
       // TODO use centralized error reporting
       console.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
       console.error('error object stack: ')
@@ -347,7 +347,7 @@ class RemoteSocket {
       // 1 === 'open'
       try {
         webSocket.send(sendBuffer.buffer)
-      } catch (e) {
+      } catch (e: any) {
         this.session.logger.error(e)
         client.close()
       }

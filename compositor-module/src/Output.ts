@@ -32,11 +32,11 @@ export default class Output implements WlOutputRequests {
   private _global?: Global
   resources: WlOutputResource[] = []
 
-  static create(canvas: HTMLCanvasElement | OffscreenCanvas): Output {
+  static create(canvas: HTMLCanvasElement): Output {
     return new Output(canvas)
   }
 
-  private constructor(public readonly canvas: HTMLCanvasElement | OffscreenCanvas, private _x = 0, private _y = 0) {}
+  private constructor(public readonly canvas: HTMLCanvasElement, private _x = 0, private _y = 0) {}
 
   get x(): number {
     return this._x

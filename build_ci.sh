@@ -16,6 +16,6 @@ build () {
 
 printf "======[ STARTING BUILDS ]=====\n"
 build component=compositor-module
-build component=app-endpoint-server
+build component=compositor-proxy
 printf "======[ ALL BUILDS DONE ]======\n"
 

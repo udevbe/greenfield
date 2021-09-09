@@ -1,7 +1,5 @@
 import {
   CompositorSession,
-  CompositorSurface,
-  CompositorSurfaceState,
   createAxisEventFromWheelEvent,
   createButtonEventFromMouseEvent,
   createCompositorProxyConnector,

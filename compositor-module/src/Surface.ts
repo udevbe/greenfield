@@ -307,7 +307,7 @@ class Surface implements WlSurfaceRequests {
         if (this.destroyed) {
           return
         }
-      } catch (e) {
+      } catch (e: any) {
         this.session.logger.warn(`[surface: ${resource.id}] - Failed to receive buffer contents.`, e.toString())
       }
     }

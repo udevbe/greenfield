@@ -20,8 +20,6 @@ import RemoteAppLauncher from './RemoteAppLauncher'
 import RemoteSocket from './RemoteSocket'
 import Session, { GreenfieldLogger } from './Session'
 import { UserShellApi } from './UserShellApi'
-import WebAppLauncher from './WebAppLauncher'
-import WebAppSocket from './WebAppSocket'
 import { nrmlvo } from './Xkb'
 
 export { init as initWasm } from './lib'
@@ -94,14 +92,6 @@ export interface CompositorConfiguration {
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export type CompositorWebAppSocket = unknown
 
-export function createCompositorWebAppSocket(session: CompositorSession): CompositorWebAppSocket {
-  if (session instanceof Session) {
-    return WebAppSocket.create(session)
-  } else {
-    throw new Error('Session does not have expected implementation.')
-  }
-}
-
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export type CompositorRemoteSocket = unknown
 
@@ -130,12 +120,4 @@ export function createCompositorProxyConnector(
 
 export interface CompositorWebAppLauncher {
   launch(webAppURL: URL): Promise<Client>
-}
-
-export function createCompositorWebAppLauncher(webAppSocket: CompositorWebAppSocket): CompositorWebAppLauncher {
-  if (webAppSocket instanceof WebAppSocket) {
-    return WebAppLauncher.create(webAppSocket)
-  } else {
-    throw new Error('Web app socket does not have expected implementation.')
-  }
 }

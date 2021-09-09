@@ -73,28 +73,6 @@ export default class WebFS {
     return webFD
   }
 
-  fromOffscreenCanvas(offscreenCanvas: OffscreenCanvas): WebFD {
-    const fd = this._nextFD++
-    const type = 'OffscreenCanvas'
-
-    const webFdURL = new URL('compositor://')
-    webFdURL.searchParams.append('fd', `${fd}`)
-    webFdURL.searchParams.append('type', type)
-    webFdURL.searchParams.append('compositorSessionId', this.compositorSessionId)
-
-    const webFD = new WebFD(
-      fd,
-      'ImageBitmap',
-      webFdURL,
-      () => Promise.resolve(offscreenCanvas),
-      () => {
-        delete this._webFDs[fd]
-      },
-    )
-    this._webFDs[fd] = webFD
-    return webFD
-  }
-
   // TODO fromMessagePort
 
   getWebFD(fd: number): WebFD {

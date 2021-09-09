@@ -27,8 +27,6 @@ import DecodedFrame from '../remotestreaming/DecodedFrame'
 import Session from '../Session'
 import Surface from '../Surface'
 import View from '../View'
-import WebGLFrame from '../webgl/WebGLFrame'
-import WebShmFrame from '../webshm/WebShmFrame'
 import Scene from './Scene'
 
 function createRenderFrame(): Promise<number> {
@@ -211,11 +209,7 @@ export default class Renderer {
   private updateRenderStatesPixelContent(view: View): void {
     view.applyTransformations()
     const { buffer, bufferContents } = view.surface.state
-    if (
-      bufferContents instanceof DecodedFrame ||
-      bufferContents instanceof WebGLFrame ||
-      bufferContents instanceof WebShmFrame
-    ) {
+    if (bufferContents instanceof DecodedFrame) {
       if (view.mapped && buffer && view.surface.damaged) {
         const bufferImplementation = buffer.implementation as BufferImplementation<any>
         if (!bufferImplementation.released) {

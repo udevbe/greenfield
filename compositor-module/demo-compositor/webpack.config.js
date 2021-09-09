@@ -32,7 +32,7 @@ module.exports = {
     extensions: ['.ts', '.tsx', '.js'],
   },
   devServer: {
-    contentBase: './dist',
+    static: './dist',
   },
   module: {
     rules: [
@@ -47,9 +47,10 @@ module.exports = {
         use: [
           {
             loader: 'ts-loader',
-            // options: {
-            //   configFile: './demo-compositor/tsconfig.json',
-            // },
+            options: {
+              configFile: __dirname + '/tsconfig.json',
+              logLevel: 'info',
+            },
           },
         ],
         exclude: [/node_modules/],

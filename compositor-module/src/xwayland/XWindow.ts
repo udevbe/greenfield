@@ -838,7 +838,8 @@ export class XWindow {
 
       if (
         sizeHintsFlags & (USSize | PSize) &&
-        this.sizeHints?.width === output.canvas.width &&
+        this.sizeHints &&
+        this.sizeHints.width === output.canvas.width &&
         this.sizeHints.height === output.canvas.height
       ) {
         matchingSize = true
@@ -846,7 +847,8 @@ export class XWindow {
 
       if (
         (sizeHintsFlags & minmax) === minmax &&
-        this.sizeHints?.minWidth === output.canvas.width &&
+        this.sizeHints &&
+        this.sizeHints.minWidth === output.canvas.width &&
         this.sizeHints.minHeight === output.canvas.height &&
         this.sizeHints.maxWidth === output.canvas.width &&
         this.sizeHints.maxHeight === output.canvas.height

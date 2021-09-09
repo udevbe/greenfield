@@ -6,8 +6,6 @@ import Seat from './Seat'
 import Session from './Session'
 import Shell from './Shell'
 import Subcompositor from './Subcompositor'
-import WebGL from './webgl/WebGL'
-import WebShm from './webshm/WebShm'
 import XdgWmBase from './XdgWmBase'
 
 class Globals implements CompositorGlobals {
@@ -21,10 +19,7 @@ class Globals implements CompositorGlobals {
     const shell = Shell.create(session)
     const xdgWmBase = XdgWmBase.create(session, seat)
 
-    const webShm = WebShm.create()
-    const webGL = WebGL.create(session)
-
-    return new Globals(session, seat, compositor, dataDeviceManager, subcompositor, shell, xdgWmBase, webShm, webGL)
+    return new Globals(session, seat, compositor, dataDeviceManager, subcompositor, shell, xdgWmBase)
   }
 
   outputs: Output[] = []
@@ -37,8 +32,6 @@ class Globals implements CompositorGlobals {
     public readonly subcompositor: Subcompositor,
     public readonly shell: Shell,
     public readonly xdgWmBase: XdgWmBase,
-    public readonly webShm: WebShm,
-    public readonly webGL: WebGL,
   ) {}
 
   registerOutput(output: Output): void {
@@ -59,9 +52,6 @@ class Globals implements CompositorGlobals {
     this.subcompositor.registerGlobal(this.session.display.registry)
 
     this.xdgWmBase.registerGlobal(this.session.display.registry)
-
-    this.webShm.registerGlobal(this.session.display.registry)
-    this.webGL.registerGlobal(this.session.display.registry)
   }
 
   unregister(): void {
@@ -72,9 +62,6 @@ class Globals implements CompositorGlobals {
     this.subcompositor.unregisterGlobal()
 
     this.xdgWmBase.unregisterGlobal()
-
-    this.webShm.unregisterGlobal()
-    this.webGL.unregisterGlobal()
   }
 }
 
