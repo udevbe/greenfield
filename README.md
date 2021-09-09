@@ -36,7 +36,7 @@ To run locally without docker, we will need the following environment variables:
   This is a security measure so other Greenfield browser compositors can't simply connect to your compositor-proxy. To work with the demo compositor that we started earlier, you can simply use the value stated here (`test123`)
 - `GST_GL_WINDOW=gbm` This is a GStreamer variable that we can set. More info [here](https://gstreamer.freedesktop.org/documentation/gl/gstgldisplay.html?gi-language=c)
 
-The above is already specified in the demo `package.json` script. Now all that is left, is to generate some code and set up the native parts of the compositor-proxy.
+The above is already specified in the `package.json` script in the `compositor-proxy` directory. Now all that is left, is to generate some code and set up the native parts of the compositor-proxy.
 
 Inside `compositor-proxy`, run:
 - `yarn install`
