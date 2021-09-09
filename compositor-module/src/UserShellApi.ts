@@ -60,13 +60,9 @@ export interface UserShellApiActions {
 
   initScene(sceneId: string, canvas: HTMLCanvasElement): void
 
-  refreshScene(sceneId: string): Promise<void>
-
-  setSceneConfiguration(sceneId: string, sceneConfig: { width: number; height: number }): void
+  refresh(): void
 
   destroyScene(sceneId: string): void
-
-  createView(compositorSurface: CompositorSurface, sceneId: string): void
 
   setUserConfiguration(userConfiguration: Partial<CompositorConfiguration>): void
 
@@ -123,25 +119,10 @@ export function createUserShellApi(session: Session): UserShellApi {
         },
       },
       initScene: (sceneId, canvas) => session.renderer.initScene(sceneId, canvas),
-      refreshScene: (sceneId) => {
-        session.renderer.scenes[sceneId].prepareAllViewRenderState()
-        return session.renderer.scenes[sceneId].render()
-      },
-      setSceneConfiguration: (sceneId, sceneConfig) => {
-        session.renderer.scenes[sceneId].updateResolution(sceneConfig.width, sceneConfig.height)
+      refresh: () => {
+        session.renderer.render()
       },
       destroyScene: (sceneId) => session.renderer.scenes[sceneId].destroy(),
-      createView: (compositorSurface, sceneId) => {
-        const compositorSurfaceId = parseInt(compositorSurface.id)
-        const wlSurfaceResource =
-          session.display.clients[compositorSurface.clientId].connection.wlObjects[compositorSurfaceId]
-        if (wlSurfaceResource && wlSurfaceResource instanceof WlSurfaceResource) {
-          const surface = wlSurfaceResource.implementation as Surface
-          surface.createTopLevelView(session.renderer.scenes[sceneId])
-        } else {
-          throw new Error('BUG. Compositor surface does not resolve to a valid surface.')
-        }
-      },
       setUserConfiguration: (userConfiguration) => {
         const { pointer, keyboard } = session.globals.seat
         pointer.scrollFactor = userConfiguration.scrollFactor ?? pointer.scrollFactor
@@ -198,5 +179,5 @@ export function makeSurfaceActive(surface: Surface & { role: UserShellSurfaceRol
   lastActive?.role.notifyInactive()
   activeHistory.push(surface)
   surface.role.requestActive()
-  new Set(surface.views.map((view) => view.scene)).forEach((scene) => scene.raiseSurface(surface))
+  surface.session.renderer.raiseSurface(surface)
 }

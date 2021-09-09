@@ -19,7 +19,6 @@ import { OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
 import EncodedFrame from '../remotestreaming/EncodedFrame'
 import { fullFrame, splitAlpha } from '../remotestreaming/EncodingOptions'
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore requires a loader that treats this import as a web-worker.
 import H264NALDecoderWorker from './H264NALDecoder.worker'
 

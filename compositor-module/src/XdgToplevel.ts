@@ -26,15 +26,15 @@ import {
 } from 'westfield-runtime-server'
 import { setCursor } from './browser/cursor'
 import { CompositorSurface, CompositorSurfaceState } from './index'
-import Mat4 from './math/Mat4'
-import Point from './math/Point'
-import Rect from './math/Rect'
+import { translation } from './math/Mat4'
+import { plusPoint, PointRO } from './math/Point'
+import { RectRO, RectROWithInfo } from './math/Rect'
 import Seat from './Seat'
 import Session from './Session'
-import Size from './Size'
 import Surface from './Surface'
 import { makeSurfaceActive } from './UserShellApi'
 import { UserShellSurfaceRole } from './UserShellSurfaceRole'
+import View from './View'
 import XdgSurface from './XdgSurface'
 
 const { none, bottom, bottomLeft, bottomRight, left, right, top, topLeft, topRight } = XdgToplevelResizeEdge
@@ -53,7 +53,9 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     const surface = xdgSurface.wlSurfaceResource.implementation as Surface
     const { client, id } = surface.resource
     const userSurface: CompositorSurface = { id: `${id}`, clientId: client.id }
-    const xdgToplevel = new XdgToplevel(xdgToplevelResource, xdgSurface, session, userSurface)
+    const view = View.create(surface)
+    surface.session.renderer.addTopLevelView(view)
+    const xdgToplevel = new XdgToplevel(xdgToplevelResource, xdgSurface, session, userSurface, view)
     xdgToplevelResource.implementation = xdgToplevel
     surface.role = xdgToplevel
 
@@ -77,10 +79,10 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     unresponsive: false,
   }
   private parent?: XdgToplevelResource
-  private pendingMaxSize: Point = Point.create(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)
-  private maxSize: Point = Point.create(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)
-  private pendingMinSize: Point = Point.create(0, 0)
-  private minSize: Point = Point.create(0, 0)
+  private pendingMaxSize: PointRO = { x: Number.MAX_SAFE_INTEGER, y: Number.MAX_SAFE_INTEGER }
+  private maxSize: PointRO = { x: Number.MAX_SAFE_INTEGER, y: Number.MAX_SAFE_INTEGER }
+  private pendingMinSize: PointRO = { x: 0, y: 0 }
+  private minSize: PointRO = { x: 0, y: 0 }
   private pendingConfigureStates: ConfigureState[] = []
   private unfullscreenConfigureState?: ConfigureState
   private ackedConfigureState: ConfigureState = {
@@ -97,14 +99,15 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     height: 0,
     resizeEdge: 0,
   }
-  private previousWindowGeometry: Rect = Rect.create(0, 0, 0, 0)
-  private previousGeometry?: Rect
+  private previousWindowGeometry: RectRO = { x0: 0, y0: 0, x1: 0, y1: 0 }
+  private previousGeometry?: RectROWithInfo
 
   private constructor(
     public readonly resource: XdgToplevelResource,
     public readonly xdgSurface: XdgSurface,
     private readonly session: Session,
     public readonly userSurface: CompositorSurface,
+    public readonly view: View,
   ) {}
 
   requestActive(): void {
@@ -117,7 +120,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     } else {
       const newState = this.configureState.state.slice()
       newState.push(activated)
-      this._emitConfigure(this.resource, this.configureState.width, this.configureState.height, newState, none)
+      this.emitConfigure(this.resource, this.configureState.width, this.configureState.height, newState, none)
       this.session.flush()
     }
   }
@@ -130,7 +133,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       const newState = this.configureState.state.slice()
       const idx = newState.indexOf(activated)
       newState.splice(idx, 1)
-      this._emitConfigure(this.resource, this.configureState.width, this.configureState.height, newState, none)
+      this.emitConfigure(this.resource, this.configureState.width, this.configureState.height, newState, none)
       this.userSurfaceState = { ...this.userSurfaceState, active: false }
       this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
       this.session.flush()
@@ -148,17 +151,17 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
 
     if (minWidth < 0 || minHeight < 0 || minWidth > maxWidth || minHeight > maxHeight) {
       this.resource.postError(XdgWmBaseError.invalidSurfaceState, 'Min size can not be greater than max size.')
-      console.log('[client-protocol-error] Min size can not be greater than max size.')
+      this.session.logger.warn('[client-protocol-error] Min size can not be greater than max size.')
       return
     }
     if (maxWidth < 0 || maxHeight < 0 || maxWidth < minWidth || maxHeight < minHeight) {
       this.resource.postError(XdgWmBaseError.invalidSurfaceState, 'Max size can not be me smaller than min size.')
-      console.log('[client-protocol-error] Max size can not be less than min size.')
+      this.session.logger.warn('[client-protocol-error] Max size can not be less than min size.')
       return
     }
 
-    this.minSize = Point.create(minWidth, minHeight)
-    this.maxSize = Point.create(maxWidth, maxHeight)
+    this.minSize = { x: minWidth, y: minHeight }
+    this.maxSize = { x: maxWidth, y: maxHeight }
 
     if (this.ackedConfigureState.state.includes(activated) && !this.configureState.state.includes(activated)) {
       this.userSurfaceState = { ...this.userSurfaceState, active: true }
@@ -182,19 +185,19 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
         this.map()
       }
       if (this.configureState.state.includes(resizing)) {
-        this.resizingCommit(surface)
+        this.resizingCommit()
       } else if (this.configureState.state.includes(maximized)) {
         this.maximizedCommit(surface)
       } else if (this.configureState.state.includes(fullscreen)) {
         this.fullscreenCommit(surface)
       } else {
-        this.normalCommit(surface)
+        this.normalCommit()
       }
     } else if (this.mapped) {
       this.unmap()
     }
 
-    surface.renderViews()
+    surface.session.renderer.render()
   }
 
   /**
@@ -219,7 +222,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
   /**
    * Called during commit
    */
-  private resizingCommit(surface: Surface) {
+  private resizingCommit() {
     const { x1: newX1, y1: newY1 } = this.xdgSurface.windowGeometry
     const { x1: oldX1, y1: oldY1 } = this.previousWindowGeometry
 
@@ -247,15 +250,15 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       }
     }
 
-    surface.views.forEach((view) => (view.positionOffset = view.positionOffset.plus(Point.create(dx, dy))))
+    this.view.positionOffset = plusPoint(this.view.positionOffset, { x: dx, y: dy })
   }
 
   private maximizedCommit(surface: Surface) {
-    const { w: newSurfaceWidth, h: newSurfaceHeight } = this.xdgSurface.windowGeometry.size
+    const { width: newSurfaceWidth, height: newSurfaceHeight } = this.xdgSurface.windowGeometry.size
 
     if (newSurfaceWidth !== this.ackedConfigureState.width || newSurfaceHeight !== this.ackedConfigureState.height) {
       this.resource.postError(XdgWmBaseError.invalidSurfaceState, 'Surface size does not match configure event.')
-      console.log('[client-protocol-error] Surface size does not match configure event.')
+      this.session.logger.warn('[client-protocol-error] Surface size does not match configure event.')
       return
     }
 
@@ -267,11 +270,8 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     }
     const windowGeoPositionOffset = this.xdgSurface.windowGeometry.position
 
-    const primaryView = surface.views.find((view) => view.primary)
-    if (primaryView) {
-      const viewPositionOffset = primaryView.toViewSpaceFromSurface(windowGeoPositionOffset)
-      primaryView.customTransformation = Mat4.translation(0 - viewPositionOffset.x, 0 - viewPositionOffset.y)
-    }
+    const viewPositionOffset = this.view.toViewSpaceFromSurface(windowGeoPositionOffset)
+    this.view.customTransformation = translation(0 - viewPositionOffset.x, 0 - viewPositionOffset.y)
   }
 
   /**
@@ -280,12 +280,13 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
   private fullscreenCommit(surface: Surface) {
     if (surface.state.bufferContents) {
       const bufferSize = surface.state.bufferContents.size
-      const { x: newSurfaceWidth, y: newSurfaceHeight } = surface.toSurfaceSpace(
-        Point.create(bufferSize.w, bufferSize.h),
-      )
+      const { x: newSurfaceWidth, y: newSurfaceHeight } = surface.toSurfaceSpace({
+        x: bufferSize.width,
+        y: bufferSize.height,
+      })
       if (newSurfaceWidth > this.configureState.width || newSurfaceHeight > this.configureState.height) {
         this.resource.postError(XdgWmBaseError.invalidSurfaceState, 'Surface size does not match configure event.')
-        console.log('[client protocol error] Surface size does not match configure event.')
+        this.session.logger.warn('[client protocol error] Surface size does not match configure event.')
         return
       }
 
@@ -299,7 +300,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       const x = (window.innerWidth - newSurfaceWidth) / 2
       const y = (window.innerHeight - newSurfaceHeight) / 2
 
-      surface.surfaceChildSelf.position = Point.create(x, y)
+      surface.surfaceChildSelf.position = { x, y }
     }
     // TODO use api to nofity user shell scene canvas should be made fullscreen
   }
@@ -307,13 +308,10 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
   /**
    * Called during commit
    */
-  private normalCommit(surface: Surface) {
+  private normalCommit() {
     if (this.previousGeometry) {
       // restore position (we came from a fullscreen or maximize and must restore the position)
-      const primaryView = surface.views.find((view) => view.primary)
-      if (primaryView) {
-        primaryView.customTransformation = undefined
-      }
+      this.view.customTransformation = undefined
       this.previousGeometry = undefined
     }
     if (this.unfullscreenConfigureState) {
@@ -354,7 +352,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       const parentXdgToplevel = parent.implementation as XdgToplevel
       const parentSurface = parentXdgToplevel.xdgSurface.wlSurfaceResource.implementation as Surface
       const surface = this.xdgSurface.wlSurfaceResource.implementation as Surface
-      parentSurface.addToplevelChild(surface.surfaceChildSelf)
+      parentSurface.addChild(surface.surfaceChildSelf)
     }
 
     this.parent = parent
@@ -378,11 +376,6 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     y: number,
   ): void {
     // const seat = wlSeatResource.implementation as Seat
-    // Most clients don't do this correctly. So ignore this.
-    // if (!seat.isValidInputSerial(serial)) {
-    //   console.log('[client-protocol-warning] - showWindowMenu serial mismatch. Ignoring.')
-    //   return
-    // }
     // this.showWindowMenuAt(Point.create(x, y))
   }
 
@@ -398,49 +391,39 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     }
 
     const seat = wlSeatResource.implementation as Seat
-    // Most clients don't do this correctly. So ignore this.
-    // if (!seat.isValidInputSerial(serial)) {
-    //   // window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Move serial mismatch. Ignoring.')
-    //   return
-    // }
-
     const pointer = seat.pointer
-    const surface = this.xdgSurface.wlSurfaceResource.implementation as Surface
 
     const pointerX = pointer.x
     const pointerY = pointer.y
-    const scene = pointer.scene
 
-    if (scene) {
-      // FIXME Only move that view that was last interacted with instead of finding the first one that matches.
-      const topLevelView = scene.topLevelViews.find((topLevelView) => topLevelView.surface === surface)
-      if (topLevelView) {
-        const origPosition = topLevelView.positionOffset
+    // FIXME Only move that view that was last interacted with instead of finding the first one that matches.
+    const topLevelView = this.view
+    if (topLevelView) {
+      const origPosition = topLevelView.positionOffset
 
-        const moveListener = () => {
-          if (!this.mapped) {
-            pointer.removeMouseMoveListener(moveListener)
-            return
-          }
-
-          const deltaX = pointer.x - pointerX
-          const deltaY = pointer.y - pointerY
-
-          topLevelView.positionOffset = Point.create(origPosition.x + deltaX, origPosition.y + deltaY)
-          topLevelView.applyTransformations()
-          topLevelView.scene.render()
+      const moveListener = () => {
+        if (!this.mapped) {
+          pointer.removeMouseMoveListener(moveListener)
+          return
         }
 
-        pointer.onButtonRelease().then(() => {
-          pointer.enableFocus()
-          pointer.removeMouseMoveListener(moveListener)
-          pointer.setDefaultCursor()
-        })
+        const deltaX = pointer.x - pointerX
+        const deltaY = pointer.y - pointerY
 
-        pointer.disableFocus()
-        pointer.addMouseMoveListener(moveListener)
-        window.document.body.style.cursor = 'move'
+        topLevelView.positionOffset = { x: origPosition.x + deltaX, y: origPosition.y + deltaY }
+        topLevelView.applyTransformations()
+        this.session.renderer.render()
       }
+
+      pointer.onButtonRelease().then(() => {
+        pointer.enableFocus()
+        pointer.removeMouseMoveListener(moveListener)
+        pointer.setDefaultCursor()
+      })
+
+      pointer.disableFocus()
+      pointer.addMouseMoveListener(moveListener)
+      window.document.body.style.cursor = 'move'
     }
   }
 
@@ -452,18 +435,14 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     const seat = wlSeatResource.implementation as Seat
     const pointer = seat.pointer
 
-    // Most clients don't do this correctly. So ignore this.
-    // if (!seat.isValidInputSerial(serial)) {
-    // window.GREENFIELD_DEBUG && console.log('[client-protocol-warning] - Resize serial mismatch. Ignoring.')
-    // return
-    // }
-
     // assigned in switch statement
     let sizeAdjustment: (deltaX: number, deltaY: number) => { w: number; h: number }
 
     const pointerX = pointer.x
     const pointerY = pointer.y
-    const { width: windowGeometryWidth, height: windowGeometryHeight } = this.xdgSurface.windowGeometry
+    const {
+      size: { width: windowGeometryWidth, height: windowGeometryHeight },
+    } = this.xdgSurface.windowGeometry
 
     switch (edges) {
       case bottomRight: {
@@ -542,7 +521,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       const width = Math.max(this.minSize.x, Math.min(size.w, this.maxSize.x))
       const height = Math.max(this.minSize.y, Math.min(size.h, this.maxSize.y))
 
-      return Size.create(width, height)
+      return { width, height }
     }
 
     const resizeListener = () => {
@@ -551,8 +530,8 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
         return
       }
 
-      const { w: width, h: height } = sizeCalculation()
-      this._emitConfigure(resource, width, height, [activated, resizing], edges)
+      const { width: width, height: height } = sizeCalculation()
+      this.emitConfigure(resource, width, height, [activated, resizing], edges)
       this.session.flush()
     }
 
@@ -561,8 +540,8 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       pointer.setDefaultCursor()
       pointer.enableFocus()
 
-      const { w: width, h: height } = sizeCalculation()
-      this._emitConfigure(resource, width, height, [activated], none)
+      const { width: width, height: height } = sizeCalculation()
+      this.emitConfigure(resource, width, height, [activated], none)
       this.session.flush()
     })
 
@@ -570,7 +549,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     pointer.addMouseMoveListener(resizeListener)
   }
 
-  private _emitConfigure(
+  private emitConfigure(
     resource: XdgToplevelResource,
     width: number,
     height: number,
@@ -589,18 +568,18 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
   }
 
   setMaxSize(resource: XdgToplevelResource, width: number, height: number): void {
-    this.pendingMaxSize = Point.create(width, height)
+    this.pendingMaxSize = { x: width, y: height }
   }
 
   setMinSize(resource: XdgToplevelResource, width: number, height: number): void {
-    this.pendingMinSize = Point.create(width, height)
+    this.pendingMinSize = { x: width, y: height }
   }
 
   setMaximized(resource: XdgToplevelResource): void {
     if (this.configureState.state.includes(resizing)) {
       return
     }
-    const scene = this.session.globals.seat.pointer.scene
+    const scene = this.view.relevantScene
 
     if (scene) {
       // FIXME get proper size in surface coordinates instead of assume surface space === global space
@@ -616,7 +595,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
           resizeEdge: 0,
         }
       } else {
-        this._emitConfigure(resource, maxWidth, maxHeight, [maximized, activated], none)
+        this.emitConfigure(resource, maxWidth, maxHeight, [maximized, activated], none)
       }
     }
   }
@@ -629,27 +608,33 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     if (this.configureState.state.includes(fullscreen) && this.previousGeometry) {
       this.unfullscreenConfigureState = {
         state: [activated],
-        width: this.previousGeometry.width,
-        height: this.previousGeometry.height,
+        width: this.previousGeometry.size.width,
+        height: this.previousGeometry.size.height,
         serial: 0,
         resizeEdge: 0,
       }
     } else if (this.configureState.state.includes(maximized) && this.previousGeometry) {
-      this._emitConfigure(resource, this.previousGeometry.width, this.previousGeometry.height, [activated], none)
+      this.emitConfigure(
+        resource,
+        this.previousGeometry.size.width,
+        this.previousGeometry.size.height,
+        [activated],
+        none,
+      )
     } else {
-      this._emitConfigure(resource, 0, 0, [activated], none)
+      this.emitConfigure(resource, 0, 0, [activated], none)
     }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   setFullscreen(resource: XdgToplevelResource, output: WlOutputResource | undefined): void {
-    this._emitConfigure(resource, window.innerWidth, window.innerHeight, [fullscreen, activated], none)
+    this.emitConfigure(resource, window.innerWidth, window.innerHeight, [fullscreen, activated], none)
   }
 
   unsetFullscreen(resource: XdgToplevelResource): void {
     if (this.configureState.state.includes(fullscreen)) {
       if (this.unfullscreenConfigureState) {
-        this._emitConfigure(
+        this.emitConfigure(
           resource,
           this.unfullscreenConfigureState.width,
           this.unfullscreenConfigureState.height,
@@ -657,9 +642,15 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
           none,
         )
       } else if (this.previousGeometry) {
-        this._emitConfigure(resource, this.previousGeometry.width, this.previousGeometry.height, [activated], none)
+        this.emitConfigure(
+          resource,
+          this.previousGeometry.size.width,
+          this.previousGeometry.size.height,
+          [activated],
+          none,
+        )
       } else {
-        this._emitConfigure(resource, 0, 0, [activated], none)
+        this.emitConfigure(resource, 0, 0, [activated], none)
       }
     }
   }

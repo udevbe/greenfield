@@ -40,7 +40,7 @@ const { keyboard, pointer, touch } = WlSeatCapability
 
 class Seat implements WlSeatRequests, CompositorSeat {
   static create(session: Session): Seat {
-    const dataDevice = DataDevice.create()
+    const dataDevice = DataDevice.create(session)
     const keyboard = Keyboard.create(session, dataDevice)
     const pointer = Pointer.create(session, dataDevice)
     const touch = Touch.create()
@@ -148,6 +148,7 @@ class Seat implements WlSeatRequests, CompositorSeat {
         release(resource: WlPointerResource): void {
           resource.destroy()
         },
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
         setCursor(): void {},
       }
     }

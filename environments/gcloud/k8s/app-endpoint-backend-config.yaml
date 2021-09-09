@@ -1,6 +1,0 @@
-apiVersion: cloud.google.com/v1beta1
-kind: BackendConfig
-metadata:
-  name: app-endpoint-backend-config
-spec:
-  timeoutSec: 3600

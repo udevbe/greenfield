@@ -16,11 +16,10 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import BufferContents from '../BufferContents'
-import Size from '../Size'
+import { SizeRO } from '../math/Size'
 import EncodedFrameFragment from './EncodedFrameFragment'
 import EncodingTypes, { EncodingMimeTypes } from './EncodingMimeTypes'
 
-// TODO use an object literal instead
 export default class EncodedFrame implements BufferContents<EncodedFrameFragment[]> {
   static create(u8Buffer: Uint8Array): EncodedFrame {
     const dataView = new DataView(u8Buffer.buffer, u8Buffer.byteOffset)
@@ -71,14 +70,14 @@ export default class EncodedFrame implements BufferContents<EncodedFrameFragment
         EncodedFrameFragment.create(encodingType, fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha),
       )
     }
-    return new EncodedFrame(serial, encodingType, encodingOptions, Size.create(width, height), encodedFragments)
+    return new EncodedFrame(serial, encodingType, encodingOptions, { width, height }, encodedFragments)
   }
 
   constructor(
     public readonly serial: number,
     public readonly mimeType: EncodingMimeTypes[keyof EncodingMimeTypes],
     public readonly encodingOptions: number,
-    public readonly size: Size,
+    public readonly size: SizeRO,
     public readonly pixelContent: EncodedFrameFragment[],
   ) {}
 }

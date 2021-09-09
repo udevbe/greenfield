@@ -15,10 +15,17 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import Rect from '../math/Rect'
+import { createRect, RectROWithInfo } from '../math/Rect'
 
 // TODO use an object literal instead
 export default class EncodedFrameFragment {
+  constructor(
+    public readonly encodingType: string,
+    public readonly geo: RectROWithInfo,
+    public readonly opaque: Uint8Array,
+    public readonly alpha: Uint8Array,
+  ) {}
+
   static create(
     encodingType: string,
     fragmentX: number,
@@ -28,14 +35,7 @@ export default class EncodedFrameFragment {
     opaque: Uint8Array,
     alpha: Uint8Array,
   ): EncodedFrameFragment {
-    const geo = Rect.create(fragmentX, fragmentY, fragmentX + fragmentWidth, fragmentY + fragmentHeight)
+    const geo = createRect({ x: fragmentX, y: fragmentY }, { width: fragmentWidth, height: fragmentHeight })
     return new EncodedFrameFragment(encodingType, geo, opaque, alpha)
   }
-
-  constructor(
-    public readonly encodingType: string,
-    public readonly geo: Rect,
-    public readonly opaque: Uint8Array,
-    public readonly alpha: Uint8Array,
-  ) {}
 }

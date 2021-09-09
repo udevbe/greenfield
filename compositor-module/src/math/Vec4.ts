@@ -15,33 +15,42 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import Point from './Point'
+import { PointRO } from './Point'
 
-export default class Vec4 {
-  static create(x: number, y: number, z: number, w: number): Vec4 {
-    return new Vec4(x, y, z, w)
-  }
+export type Vec4RO = {
+  readonly x: number
+  readonly y: number
+  readonly z: number
+  readonly w: number
+}
 
-  static create2D(x: number, y: number): Vec4 {
-    return this.create(x, y, 1, 1)
-  }
+export function createVec4_2D(x: number, y: number): Vec4RO {
+  return {
+    x,
+    y,
+    z: 1,
+    w: 1,
+  } as const
+}
 
-  constructor(
-    public readonly x: number,
-    public readonly y: number,
-    public readonly z: number,
-    public readonly w: number,
-  ) {}
+export function plusVec4({ x: x0, y: y0, z: z0, w: w0 }: Vec4RO, { x: x1, y: y1, z: z1, w: w1 }: Vec4RO): Vec4RO {
+  return {
+    x: x0 + x1,
+    y: y0 + y1,
+    z: z0 + z1,
+    w: w0 + w1,
+  } as const
+}
 
-  plus(right: Vec4): Vec4 {
-    return Vec4.create(this.x + right.x, this.y + right.y, this.z + right.z, this.w + right.w)
-  }
+export function minusVec4({ x: x0, y: y0, z: z0, w: w0 }: Vec4RO, { x: x1, y: y1, z: z1, w: w1 }: Vec4RO): Vec4RO {
+  return {
+    x: x0 - x1,
+    y: y0 - y1,
+    z: z0 - z1,
+    w: w0 - w1,
+  } as const
+}
 
-  minus(right: Vec4): Vec4 {
-    return Vec4.create(this.x - right.x, this.y - right.y, this.z - right.z, this.w - right.w)
-  }
-
-  toPoint(): Point {
-    return Point.create(this.x, this.y)
-  }
+export function toPoint({ x, y }: Vec4RO): PointRO {
+  return { x, y }
 }

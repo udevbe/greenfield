@@ -2,7 +2,7 @@
 
 ### The in-browser wayland compositor [![Build Status](https://travis-ci.org/udevbe/greenfield.svg)](https://travis-ci.org/udevbe/greenfield)
 
-Latest development snapshot: https://greenfield-preview.web.app/
+Live demo: https://greenfield-preview.web.app/
 
 Greenfield is a [Wayland compositor](https://en.wikipedia.org/wiki/Wayland_%28display_server_protocol%29) written
 entirely in TypeScript while utilizing WebAssembly and WebGL for the performance critical parts. It can run native
@@ -14,33 +14,86 @@ For more information, have a look on the [website](https://greenfield.app).
 
 Greenfield consists of 3 separate parts.
 
-- [Westfield](https://github.com/udevbe/westfield) A Wayland protocol implementation.
-- [Greenfield Compositor Module](https://github.com/udevbe/greenfield) A bare bones Wayland compositor library.
-- [Greenfield Web Shell](https://github.com/udevbe/greenfield-webshell) An extensive implementation of the Greenfield
-  Compositor Module.
+- [Westfield](https://github.com/udevbe/westfield) A Wayland protocols implementation in TypeScript.
+- [Greenfield Compositor Module](https://github.com/udevbe/greenfield) A bare-bones Wayland compositor library.
+- [Greenfield Web Shell](https://github.com/udevbe/greenfield-webshell) An extensive demo implementation of the Greenfield
+  Compositor Module (outdated).
 
-# Running latest code locally
+# Running locally
 
-From the root of this repository run:
+The Greenfield Compositor Module comes with a very simple demo compositor implementation that you can use. Inside `compositor-module` directory run.
+- `yarn install`
+- `yarn demo`
 
-### app-endpoint server
+Go to [http://localhost:8080]() and be greeted with a nice white compositor with 2 buttons. Each button click creates a new WebSocket connection to a remote compositor-proxy as indicated
+by the text on the button. 
 
-- `pushd app-endpoint-server && yarn install && yarn generate && yarn build && GST_GL_WINDOW=gbm yarn start`
+Next we need to run a compositor-proxy that will act as a bridge between the native world and the browser. Running a compositor-proxy is a bit more complicated as it requires a set of environment variables to work properly. 
+Running the compositor-proxy locally can also be done using docker-compose (see `docker-compose.yml` in the `compositor-proxy` directory), but you will be limited to the applications specified in the docker-compose file.
 
-### compositor-demo
+To run locally without docker, we will need the following environment variables:
+- `COMPOSITOR_SESSION_ID=test123` This has to match the compositor session id of the Greenfield browser compositor.
+  This is a security measure so other Greenfield browser compositors can't simply connect to your compositor-proxy. To work with the demo compositor that we started earlier, you can simply use the value stated here (`test123`)
+- `GST_GL_WINDOW=gbm` This is a GStreamer variable that we can set. More info [here](https://gstreamer.freedesktop.org/documentation/gl/gstgldisplay.html?gi-language=c)
 
-- `pushd compositor-module && yarn install && yarn build && yarn link && popd && pushd compositor-demo && yarn install && yarn link greenfield-compositor && yarn start`
-- Go to [http://localhost:8080]()
+The above is already specified in the `package.json` script in the `compositor-proxy` directory. Now all that is left, is to generate some code and set up the native parts of the compositor-proxy.
 
-## Demo Webshell implementation
+Inside `compositor-proxy`, run:
+- `yarn install`
+- `yarn generate`
+- `yarn build:native`
+- `cp dist/encoding/app-endpoint-encoding.node src/encoding/app-endpoint-encoding.node`
 
-See [https://github.com/udevbe/webshell]()
+and finally
+- `yarn demo`
+
+You should now see something that says `Compositor proxy started. Listening on port 8081`. You can also adjust some things
+in `src/config.yaml`.
+
+In our browser compositor we can click the first button to make a connection to the compositor-proxy. You should see a
+message appear in the log output of the compositor-proxy that we started earlier: `New websocket connected.`.
+
+You now have a Wayland compositor running on your system, so let's start some applications. Most recent GTK3 applications (like gnome-terminal) should
+auto-detect the compositor-proxy and simply connect without issues or extra setup. QT applications often require an extra `-platform wayland` parameter.
+If your application can't connect, try setting the `WAYLAND_DISPLAY` environment variable to the value that was printed by compositor-proxy. ie if you see `Listening on: WAYLAND_DISPLAY=\"wayland-0\".`
+then set the environment variable `export WAYLAND_DISPLAY=wayland-0`.
+
+# Docker
+
+The compositor-proxy is available as a Docker image `docker.io/udevbe/compositor-proxy` but does not include any `config.yaml`. This means you'll
+have to include it yourself using a mount. An example docker-compose file is also available.
+
+# High level technical
+
+### Compositor-Proxy
+
+A Greenfield browser compositor uses a native compositor-proxy to talk to native applications. 
+This proxy compositor accepts native Wayland client connections and assigns them to a WebSocket connection as soon as 
+one becomes available. A native client and it's WebSocket connection are bound to each other until either one is closed.
+
+A compositor-proxy proxy can request additional WebSocket connections from an already connected Greenfield browser compositor.
+This is needed in case a Wayland client spawns a new Wayland client process. If no WebSocket connections already exists,
+the compositor-proxy will wait until a new WebSocket connection is available. In other words, the first WebSocket connection
+is always initiated from the browser.
+
+Each application's content is encoded to video frames using GStreamer and send to the browser for decoding. In the browser the applications is realised by a WebGL texture inside a HTML5 canvas.
+This canvas is basically what you would call an 'output' in Wayland terminology. The browser compositor is asynchronous, meaning a slow client will not block the processing of another client.
+
+### Copy-Paste
+
+If both clients are connected to separate compositor-proxy, copy-paste will use a direct peer to peer transfer between compositor-proxies.
+This avoids the round trip and massive overhead of transferring all content to the browser and back. How this works is illustrated in the image below:
+
+[<img src="https://docs.google.com/drawings/d/e/2PACX-1vQfr7I8GaalOzmOAwAOFYK8bzdeQna82JwxesDvD22_kj5BgSIKM16JKk-E2G-nPt5Ssgrhyi9kO9ZV/pub?w=1056&h=620" />](https://docs.google.com/drawings/d/e/2PACX-1vQfr7I8GaalOzmOAwAOFYK8bzdeQna82JwxesDvD22_kj5BgSIKM16JKk-E2G-nPt5Ssgrhyi9kO9ZV/pub?w=1056&h=620)
+
+# XWayland
+
+Very much alpha. Still work in progress. Expect something to show up on screen. Don't expect it to work very well.
+
+## Misc
+- [Demo Webshell repository](https://github.com/udevbe/webshell)
 
 # Media
-
-First User Shell implementation (April 2019)
-
-[<img src="https://storage.googleapis.com/greenfield.app/Greenfield_2019-09-11.png" height="200" />](https://storage.googleapis.com/greenfield.app/Greenfield_2019-09-11.png)
 
 Fosdem presentation + demo (2 Feb 2019):
 

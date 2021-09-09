@@ -15,20 +15,33 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import Size from '../Size'
+import { copyTo, createPixmanRegion, destroyPixmanRegion, fini } from '../Region'
+import { SizeRO } from '../math/Size'
+import Scene from './Scene'
 import Texture from './Texture'
 
 class RenderState {
-  static create(gl: WebGLRenderingContext, size: Size): RenderState {
+  static create(gl: WebGLRenderingContext, size: SizeRO, scene: Scene, visibleSceneRegion: number): RenderState {
     const texture = Texture.create(gl, gl.RGBA)
-    texture.image2dBuffer(null, size.w === 0 ? 2 : size.w, size.h === 0 ? 2 : size.h)
-    return new RenderState(texture, size)
+    texture.image2dBuffer(null, size.width === 0 ? 2 : size.width, size.height === 0 ? 2 : size.height)
+    return new RenderState(texture, size, scene, visibleSceneRegion)
   }
 
-  private constructor(public readonly texture: Texture, public size: Size) {}
+  readonly visibleRegion = createPixmanRegion()
+
+  private constructor(
+    public readonly texture: Texture,
+    public size: SizeRO,
+    public readonly scene: Scene,
+    public readonly visibleSceneRegion: number,
+  ) {
+    copyTo(this.visibleRegion, visibleSceneRegion)
+  }
 
   destroy(): void {
     this.texture.delete()
+    fini(this.visibleRegion)
+    destroyPixmanRegion(this.visibleRegion)
   }
 }
 

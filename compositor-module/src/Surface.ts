@@ -27,9 +27,9 @@ import {
 import BufferContents from './BufferContents'
 import BufferImplementation from './BufferImplementation'
 import Callback from './Callback'
-import Mat4 from './math/Mat4'
-import Point from './math/Point'
-import Rect from './math/Rect'
+import { IDENTITY, invert, Mat4RO, scalar, timesMat4, timesPoint, translation } from './math/Mat4'
+import { PointRO } from './math/Point'
+import { createRect, RectRO } from './math/Rect'
 import { _180, _270, _90, FLIPPED, FLIPPED_180, FLIPPED_270, FLIPPED_90, NORMAL } from './math/Transformations'
 import Region, {
   copyTo,
@@ -43,18 +43,15 @@ import Region, {
 } from './Region'
 import H264BufferContentDecoder from './render/H264BufferContentDecoder'
 import Renderer from './render/Renderer'
-import Scene from './render/Scene'
 import Session from './Session'
-import Size from './Size'
+import { sizeEquals, SizeRO } from './math/Size'
 import Subsurface from './Subsurface'
 import { createSurfaceChild, SurfaceChild } from './SurfaceChild'
 import SurfaceRole from './SurfaceRole'
 
-import View from './View'
-
 export interface SurfaceState {
-  damageRects: Rect[]
-  bufferDamageRects: Rect[]
+  damageRects: RectRO[]
+  bufferDamageRects: RectRO[]
   readonly opaquePixmanRegion: number
   readonly inputPixmanRegion: number
   dx: number
@@ -99,71 +96,19 @@ export function mergeSurfaceState(targetState: SurfaceState, sourceState: Surfac
   targetState.frameCallbacks = [...sourceState.frameCallbacks, ...targetState.frameCallbacks]
 }
 
-function removeChildFromList(surfaceChild: SurfaceChild, siblings: SurfaceChild[]): void {
-  const index = siblings.indexOf(surfaceChild)
-  if (index > -1) {
-    siblings.splice(index, 1)
-  }
-}
-
-/**
- * @type {{transformation: Mat4, inverseTransformation:Mat4}[]}
- */
 const bufferTransformations = [
-  { transformation: NORMAL, inverseTransformation: NORMAL.invert() }, // 0
-  { transformation: _90, inverseTransformation: _90.invert() }, // 1
-  { transformation: _180, inverseTransformation: _180.invert() }, // 2
-  { transformation: _270, inverseTransformation: _270.invert() }, // 3
-  { transformation: FLIPPED, inverseTransformation: FLIPPED.invert() }, // 4
-  { transformation: FLIPPED_90, inverseTransformation: FLIPPED_90.invert() }, // 5
-  { transformation: FLIPPED_180, inverseTransformation: FLIPPED_180.invert() }, // 6
-  { transformation: FLIPPED_270, inverseTransformation: FLIPPED_270.invert() }, // 7
-]
+  { transformation: NORMAL, inverseTransformation: invert(NORMAL) } as const, // 0
+  { transformation: _90, inverseTransformation: invert(_90) } as const, // 1
+  { transformation: _180, inverseTransformation: invert(_180) } as const, // 2
+  { transformation: _270, inverseTransformation: invert(_270) } as const, // 3
+  { transformation: FLIPPED, inverseTransformation: invert(FLIPPED) } as const, // 4
+  { transformation: FLIPPED_90, inverseTransformation: invert(FLIPPED_90) } as const, // 5
+  { transformation: FLIPPED_180, inverseTransformation: invert(FLIPPED_180) } as const, // 6
+  { transformation: FLIPPED_270, inverseTransformation: invert(FLIPPED_270) } as const, // 7
+] as const
 
 let surfaceH264DecodeId = 0
 
-/**
- *
- *            A surface is a rectangular area that is displayed on the screen.
- *            It has a location, size and pixel contents.
- *
- *            The size of a surface (and relative positions on it) is described
- *            in surface-local coordinates, which may differ from the buffer
- *            coordinates of the pixel content, in case a buffer_transform
- *            or a buffer_scale is used.
- *
- *            A surface without a "role" is fairly useless: a compositor does
- *            not know where, when or how to present it. The role is the
- *            purpose of a wl_surface. Examples of roles are a cursor for a
- *            pointer (as set by wl_pointer.set_cursor), a drag icon
- *            (wl_data_device.start_drag), a sub-surface
- *            (wl_subcompositor.get_subsurface), and a window as defined by a
- *            shell protocol (e.g. wl_shell.get_shell_surface).
- *
- *            A surface can have only one role at a time. Initially a
- *            wl_surface does not have a role. Once a wl_surface is given a
- *            role, it is set permanently for the whole lifetime of the
- *            wl_surface object. Giving the current role again is allowed,
- *            unless explicitly forbidden by the relevant interface
- *            specification.
- *
- *            Surface roles are given by requests in other interfaces such as
- *            wl_pointer.set_cursor. The request should explicitly mention
- *            that this request gives a role to a wl_surface. Often, this
- *            request also creates a new protocol object that represents the
- *            role and adds additional functionality to wl_surface. When a
- *            client wants to destroy a wl_surface, they must destroy this 'role
- *            object' before the wl_surface.
- *
- *            Destroying the role object does not remove the role from the
- *            wl_surface, but it may stop the wl_surface from "playing the role".
- *            For instance, if a wl_subsurface object is destroyed, the wl_surface
- *            it was created for will be unmapped and forget its position and
- *            z-order. It is allowed to create a wl_subsurface for the same
- *            wl_surface again, but it is not allowed to use the wl_surface as
- *            a cursor (cursor is a different role than sub-surface, and role
- *            switching is not allowed).
- */
 class Surface implements WlSurfaceRequests {
   readonly surfaceChildSelf: SurfaceChild = createSurfaceChild(this)
   destroyed = false
@@ -204,21 +149,49 @@ class Surface implements WlSurfaceRequests {
       this.pendingState.bufferContents = undefined
     },
   }
-  views: View[] = []
   hasKeyboardInput = true
   hasPointerInput = true
   hasTouchInput = true
   role?: SurfaceRole
-
-  bufferTransformation: Mat4 = Mat4.IDENTITY()
-  inverseBufferTransformation: Mat4 = Mat4.IDENTITY()
-
+  bufferTransformation: Mat4RO = IDENTITY
+  inverseBufferTransformation: Mat4RO = IDENTITY
   readonly pixmanRegion: number = createPixmanRegion()
-  size?: Size
-
+  size?: SizeRO
   private readonly _surfaceChildren: SurfaceChild[] = []
+
+  private constructor(
+    public readonly resource: WlSurfaceResource,
+    public readonly renderer: Renderer,
+    public readonly session: Session,
+  ) {}
+
+  private _parent?: Surface
+
+  get parent(): Surface | undefined {
+    return this._parent
+  }
+
+  private set parent(parent: Surface | undefined) {
+    if (this._parent !== parent) {
+      this._parent = parent
+      this.role?.view.markDirty()
+    }
+  }
+
   private _h264BufferContentDecoder?: H264BufferContentDecoder
-  private renderSource?: () => void
+
+  get h264BufferContentDecoder(): H264BufferContentDecoder {
+    if (this._h264BufferContentDecoder === undefined) {
+      this._h264BufferContentDecoder = H264BufferContentDecoder.create(`${surfaceH264DecodeId++}`)
+      return this._h264BufferContentDecoder
+    } else {
+      return this._h264BufferContentDecoder
+    }
+  }
+
+  get children(): SurfaceChild[] {
+    return this.state.subsurfaceChildren.concat(this._surfaceChildren)
+  }
 
   static create(wlSurfaceResource: WlSurfaceResource, session: Session): Surface {
     const surface = new Surface(wlSurfaceResource, session.renderer, session)
@@ -226,7 +199,7 @@ class Surface implements WlSurfaceRequests {
     initInfinite(surface.state.inputPixmanRegion)
     initInfinite(surface.pendingState.opaquePixmanRegion)
     initInfinite(surface.pendingState.inputPixmanRegion)
-    initRect(surface.pixmanRegion, Rect.create(0, 0, 0, 0))
+    initRect(surface.pixmanRegion, { x0: 0, y0: 0, x1: 0, y1: 0 })
     wlSurfaceResource.implementation = surface
 
     wlSurfaceResource.onDestroy().then(() => {
@@ -248,140 +221,10 @@ class Surface implements WlSurfaceRequests {
     return surface
   }
 
-  private constructor(
-    public readonly resource: WlSurfaceResource,
-    public readonly renderer: Renderer,
-    public readonly session: Session,
-  ) {}
-
-  get h264BufferContentDecoder(): H264BufferContentDecoder {
-    if (this._h264BufferContentDecoder === undefined) {
-      this._h264BufferContentDecoder = H264BufferContentDecoder.create(`${surfaceH264DecodeId++}`)
-      return this._h264BufferContentDecoder
-    } else {
-      return this._h264BufferContentDecoder
-    }
-  }
-
-  get children(): SurfaceChild[] {
-    return this.state.subsurfaceChildren.concat(this._surfaceChildren)
-  }
-
-  isWithinInputRegion(surfacePoint: Point): boolean {
+  isWithinInputRegion(surfacePoint: PointRO): boolean {
     const withinInput = contains(this.state.inputPixmanRegion, surfacePoint)
     const withinSurface = contains(this.pixmanRegion, surfacePoint)
     return withinSurface && withinInput
-  }
-
-  private _applyBufferTransformWithPositionCorrection(newBufferTransform: number, bufferTransformation: Mat4) {
-    switch (newBufferTransform) {
-      case 3: // 270
-      case 4: {
-        // flipped
-        this.bufferTransformation = bufferTransformation.timesMat4(Mat4.translation(this.size?.w ?? 0, 0).invert())
-        this.inverseBufferTransformation = this.bufferTransformation.invert()
-        break
-      }
-      case 2: // 180
-      case 5: {
-        // 90 flipped
-        this.bufferTransformation = bufferTransformation.timesMat4(
-          Mat4.translation(this.size?.w ?? 0, this.size?.h ?? 0).invert(),
-        )
-        this.inverseBufferTransformation = this.bufferTransformation.invert()
-        break
-      }
-      case 1: // 90
-      case 6: {
-        // 180 flipped
-        this.bufferTransformation = bufferTransformation.timesMat4(Mat4.translation(0, this.size?.h ?? 0).invert())
-        this.inverseBufferTransformation = this.bufferTransformation.invert()
-        break
-      }
-      case 0: // normal
-      case 7: {
-        // 270 flipped
-        this.bufferTransformation = bufferTransformation.timesMat4(Mat4.translation(0, 0))
-        this.inverseBufferTransformation = this.bufferTransformation.invert()
-        break
-      }
-    }
-  }
-
-  /**
-   * Called during commit
-   * @private
-   */
-  private calculateDerivedPendingState() {
-    const oldBufferSize = this.state.bufferContents?.size ?? Size.create(0, 0)
-    this.state.bufferContents?.validateSize?.()
-    const newBufferSize = this.pendingState.bufferContents?.size ?? Size.create(0, 0)
-
-    if (
-      this.pendingState.bufferScale !== this.state.bufferScale ||
-      this.pendingState.bufferTransform !== this.state.bufferTransform ||
-      oldBufferSize.w !== newBufferSize.w ||
-      oldBufferSize.h !== newBufferSize.h
-    ) {
-      const transformations = bufferTransformations[this.pendingState.bufferTransform]
-      const bufferTransformation =
-        this.pendingState.bufferScale === 1
-          ? transformations.transformation
-          : transformations.transformation.timesMat4(Mat4.scalar(this.pendingState.bufferScale))
-      const inverseBufferTransformation =
-        this.pendingState.bufferScale === 1 ? transformations.inverseTransformation : bufferTransformation.invert()
-
-      const surfacePoint = inverseBufferTransformation.timesPoint(Point.create(newBufferSize.w, newBufferSize.h))
-      this.size = Size.create(Math.abs(surfacePoint.x), Math.abs(surfacePoint.y))
-      fini(this.pixmanRegion)
-      initRect(this.pixmanRegion, Rect.create(0, 0, this.size.w, this.size.h))
-
-      this._applyBufferTransformWithPositionCorrection(this.pendingState.bufferTransform, bufferTransformation)
-    }
-  }
-
-  createTopLevelView(scene: Scene): View {
-    const topLevelView = this.createView(scene)
-    scene.topLevelViews = [...scene.topLevelViews, topLevelView]
-    topLevelView.onDestroy().then(() => {
-      scene.topLevelViews = scene.topLevelViews.filter((view) => view !== topLevelView)
-      if (scene.pointerView === topLevelView) {
-        scene.pointerView = undefined
-      }
-      scene.render()
-    })
-
-    return topLevelView
-  }
-
-  createView(scene: Scene): View {
-    const bufferSize = this.state.bufferContents ? this.state.bufferContents.size : Size.create(0, 0)
-    const view = View.create(this, bufferSize.w, bufferSize.h, scene)
-    if (this.views.length === 0) {
-      view.primary = true
-    }
-    this.views.push(view)
-
-    view.onDestroy().then(() => {
-      const idx = this.views.indexOf(view)
-      if (idx > -1) {
-        this.views.splice(idx, 1)
-      }
-    })
-
-    this.children.forEach((surfaceChild) => this.ensureChildView(surfaceChild, view))
-    return view
-  }
-
-  private ensureChildView(surfaceChild: SurfaceChild, view: View): View | undefined {
-    if (surfaceChild.surface === this) {
-      return undefined
-    }
-
-    const childView = surfaceChild.surface.createView(view.scene)
-    childView.parent = view
-
-    return childView
   }
 
   addSubsurface(surfaceChild: SurfaceChild): void {
@@ -393,55 +236,18 @@ class Surface implements WlSurfaceRequests {
     })
   }
 
-  removeSubsurface(surfaceChild: SurfaceChild): void {
-    removeChildFromList(surfaceChild, this.state.subsurfaceChildren)
-    removeChildFromList(surfaceChild, this.pendingState.subsurfaceChildren)
-  }
-
-  addChild(surfaceChild: SurfaceChild): View[] {
+  addChild(surfaceChild: SurfaceChild): void {
     return this._addChild(surfaceChild, this._surfaceChildren)
   }
 
-  addToplevelChild(surfaceChild: SurfaceChild): void {
-    this._surfaceChildren.push(surfaceChild)
-
-    const primaryChildView = surfaceChild.surface.views.find((view) => view.primary)
-    const primaryView = this.views.find((view) => view.primary)
-
-    if (primaryChildView && primaryView) {
-      primaryChildView.parent = primaryView
-      surfaceChild.surface.resource.onDestroy().then(() => this.removeChild(surfaceChild))
-    }
-  }
-
   removeChild(surfaceChild: SurfaceChild): void {
-    removeChildFromList(surfaceChild, this._surfaceChildren)
-  }
-
-  private _addChild(surfaceChild: SurfaceChild, siblings: SurfaceChild[]): View[] {
-    siblings.push(surfaceChild)
-
-    const childViews: View[] = []
-    this.views.forEach((view) => {
-      const childView = this.ensureChildView(surfaceChild, view)
-      if (childView) {
-        childViews.push(childView)
-      }
-    })
-    surfaceChild.surface.resource.onDestroy().then(() => this.removeChild(surfaceChild))
-    return childViews
+    this.removeChildFromList(surfaceChild, this._surfaceChildren)
   }
 
   destroy(resource: WlSurfaceResource): void {
     // this._handleDestruction()
     this.destroyed = true
     resource.destroy()
-  }
-
-  private _handleDestruction() {
-    this.destroyed = true
-    this.views.forEach((view) => view.destroy())
-    this._h264BufferContentDecoder?.destroy()
   }
 
   attach(resource: WlSurfaceResource, buffer: WlBufferResource | undefined, x: number, y: number): void {
@@ -455,7 +261,7 @@ class Surface implements WlSurfaceRequests {
   }
 
   damage(resource: WlSurfaceResource, x: number, y: number, width: number, height: number): void {
-    this.pendingState.damageRects.push(Rect.create(x, y, x + width, y + height))
+    this.pendingState.damageRects.push(createRect({ x, y }, { width, height }))
   }
 
   frame(resource: WlSurfaceResource, callback: number): void {
@@ -484,26 +290,25 @@ class Surface implements WlSurfaceRequests {
     }
   }
 
-  toSurfaceSpace(bufferPoint: Point): Point {
-    return this.inverseBufferTransformation.timesPoint(bufferPoint)
+  toSurfaceSpace(bufferPoint: PointRO): PointRO {
+    return timesPoint(this.inverseBufferTransformation, bufferPoint)
   }
 
   async commit(resource: WlSurfaceResource, serial?: number): Promise<void> {
-    // const startCommit = Date.now()
     const bufferImplementation = this.pendingState.buffer?.implementation as
       | BufferImplementation<BufferContents<unknown> | Promise<BufferContents<unknown>>>
       | undefined
     if (bufferImplementation && this.pendingState.bufferContents === undefined) {
       try {
-        // console.log('|- Awaiting buffer contents.')
-        // const startBufferContents = Date.now()
+        this.session.logger.trace('|- Awaiting buffer contents.')
+        const startBufferContents = Date.now()
         this.pendingState.bufferContents = await bufferImplementation.getContents(this, serial)
-        // console.log(`|--> Buffer contents took ${Date.now() - startBufferContents}ms`)
+        this.session.logger.trace(`|--> Buffer contents took ${Date.now() - startBufferContents}ms`)
         if (this.destroyed) {
           return
         }
       } catch (e) {
-        console.warn(`[surface: ${resource.id}] - Failed to receive buffer contents.`, e.toString())
+        this.session.logger.warn(`[surface: ${resource.id}] - Failed to receive buffer contents.`, e.toString())
       }
     }
     this.role?.onCommit(this)
@@ -536,6 +341,7 @@ class Surface implements WlSurfaceRequests {
       const bufferImplementation = this.state.buffer.implementation as BufferImplementation<any>
       if (!bufferImplementation.released) {
         bufferImplementation.release()
+        this.resource.client.connection.flush()
       }
     }
     mergeSurfaceState(this.state, this.pendingState)
@@ -547,35 +353,13 @@ class Surface implements WlSurfaceRequests {
     this.pendingState.damageRects = []
     this.pendingState.bufferDamageRects = []
     this.pendingState.frameCallbacks = []
-    this.resource.client.connection.flush()
-  }
-
-  renderViews(): void {
-    if (this.renderSource) {
-      return
-    }
-    this.renderSource = this.resource.client.connection.addIdleHandler(() => {
-      this.renderSource = undefined
-      if (this.views.length > 0) {
-        new Set(
-          this.views.map((view) => {
-            view.scene.prepareViewRenderState(view)
-            return view.scene
-          }),
-        ).forEach((scene) => {
-          scene.registerFrameCallbacks(this.state.frameCallbacks)
-          scene.render()
-        })
-        this.state.frameCallbacks = []
-      }
-    })
   }
 
   setBufferTransform(resource: WlSurfaceResource, transform: number): void {
     if (!(transform in WlOutputTransform)) {
       resource.postError(WlSurfaceError.invalidTransform, 'Buffer transform value is invalid.')
-      console.log('[client-protocol-error] - Buffer transform value is invalid.')
-      return undefined
+      this.session.logger.warn('[client-protocol-error] - Buffer transform value is invalid.')
+      return
     }
 
     this.pendingState.bufferTransform = transform
@@ -584,14 +368,121 @@ class Surface implements WlSurfaceRequests {
   setBufferScale(resource: WlSurfaceResource, scale: number): void {
     if (scale < 1) {
       resource.postError(WlSurfaceError.invalidScale, 'Buffer scale value is invalid.')
-      console.log('[client-protocol-error] - Buffer scale value is invalid.')
+      this.session.logger.warn('[client-protocol-error] - Buffer scale value is invalid.')
+      return
     }
 
     this.pendingState.bufferScale = scale
   }
 
   damageBuffer(resource: WlSurfaceResource, x: number, y: number, width: number, height: number): void {
-    this.pendingState.bufferDamageRects.push(Rect.create(x, y, x + width, y + height))
+    this.pendingState.bufferDamageRects.push(createRect({ x, y }, { width, height }))
+  }
+
+  private _applyBufferTransformWithPositionCorrection(newBufferTransform: number, bufferTransformation: Mat4RO) {
+    switch (newBufferTransform) {
+      case 3: // 270
+      case 4: {
+        // flipped
+        this.bufferTransformation = timesMat4(bufferTransformation, invert(translation(this.size?.width ?? 0, 0)))
+        this.inverseBufferTransformation = invert(this.bufferTransformation)
+        break
+      }
+      case 2: // 180
+      case 5: {
+        // 90 flipped
+        this.bufferTransformation = timesMat4(
+          bufferTransformation,
+          invert(translation(this.size?.width ?? 0, this.size?.height ?? 0)),
+        )
+        this.inverseBufferTransformation = invert(this.bufferTransformation)
+        break
+      }
+      case 1: // 90
+      case 6: {
+        // 180 flipped
+        this.bufferTransformation = timesMat4(bufferTransformation, invert(translation(0, this.size?.height ?? 0)))
+        this.inverseBufferTransformation = invert(this.bufferTransformation)
+        break
+      }
+      case 0: // normal
+      case 7: {
+        // 270 flipped
+        this.bufferTransformation = timesMat4(bufferTransformation, translation(0, 0))
+        this.inverseBufferTransformation = invert(this.bufferTransformation)
+        break
+      }
+    }
+  }
+
+  /**
+   * Called during commit
+   * @private
+   */
+  private calculateDerivedPendingState() {
+    const oldBufferSize = this.state.bufferContents?.size ?? { width: 0, height: 0 }
+    this.state.bufferContents?.validateSize?.()
+    const newBufferSize = this.pendingState.bufferContents?.size ?? { width: 0, height: 0 }
+
+    if (
+      this.pendingState.bufferScale !== this.state.bufferScale ||
+      this.pendingState.bufferTransform !== this.state.bufferTransform ||
+      oldBufferSize.width !== newBufferSize.width ||
+      oldBufferSize.height !== newBufferSize.height
+    ) {
+      const transformations = bufferTransformations[this.pendingState.bufferTransform]
+      const bufferTransformation =
+        this.pendingState.bufferScale === 1
+          ? transformations.transformation
+          : timesMat4(transformations.transformation, scalar(this.pendingState.bufferScale))
+      const inverseBufferTransformation =
+        this.pendingState.bufferScale === 1 ? transformations.inverseTransformation : invert(bufferTransformation)
+
+      const surfacePoint = timesPoint(inverseBufferTransformation, {
+        x: newBufferSize.width,
+        y: newBufferSize.height,
+      })
+      const newSize = { width: Math.abs(surfacePoint.x), height: Math.abs(surfacePoint.y) }
+      if ((this.role && !this.size) || (this.role && this.size && !sizeEquals(this.size, newSize))) {
+        this.role.view.markDirty()
+      }
+      this.size = newSize
+      fini(this.pixmanRegion)
+      initRect(this.pixmanRegion, { x0: 0, y0: 0, x1: this.size.width, y1: this.size.height })
+      this._applyBufferTransformWithPositionCorrection(this.pendingState.bufferTransform, bufferTransformation)
+    }
+  }
+
+  private removeChildFromList(surfaceChild: SurfaceChild, siblings: SurfaceChild[]): void {
+    const index = siblings.indexOf(surfaceChild)
+    if (index > -1) {
+      siblings.splice(index, 1)
+    }
+    if (surfaceChild.surface.parent === this) {
+      surfaceChild.surface.parent = undefined
+    }
+  }
+
+  private removeSubsurface(surfaceChild: SurfaceChild): void {
+    this.removeChildFromList(surfaceChild, this.state.subsurfaceChildren)
+    this.removeChildFromList(surfaceChild, this.pendingState.subsurfaceChildren)
+  }
+
+  private _addChild(surfaceChild: SurfaceChild, siblings: SurfaceChild[]) {
+    siblings.push(surfaceChild)
+    surfaceChild.surface.parent = this
+    surfaceChild.surface.resource.onDestroy().then(() => {
+      this.removeChild(surfaceChild)
+    })
+    this.resource.onDestroy().then(() => {
+      this.removeChild(surfaceChild)
+    })
+  }
+
+  private _handleDestruction() {
+    this.destroyed = true
+    this.role?.view?.destroy()
+    this._h264BufferContentDecoder?.destroy()
   }
 }
 

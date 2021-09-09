@@ -20,16 +20,36 @@ import { Client, WlBufferResource } from 'westfield-runtime-server'
 import RemoteOutOfBandChannel from './RemoteOutOfBandChannel'
 import StreamingBuffer from './remotestreaming/StreamingBuffer'
 import Session from './Session'
+import { XWaylandConnection } from './xwayland/XWaylandConnection'
+import XWaylandShell from './xwayland/XWaylandShell'
+import { XWindowManager } from './xwayland/XWindowManager'
+
+type XWaylandConectionState = {
+  state: 'pending' | 'open'
+  xConnection?: XWaylandConnection
+  wlClient?: Client
+  xwm?: XWindowManager
+}
+
+const xWaylandProxyStates: { [key: string]: XWaylandConectionState } = {}
 
 class RemoteSocket {
-  private readonly _textEncoder: TextEncoder = new TextEncoder()
-  private readonly _textDecoder: TextDecoder = new TextDecoder()
+  private readonly textEncoder: TextEncoder = new TextEncoder()
+  private readonly textDecoder: TextDecoder = new TextDecoder()
 
   static create(session: Session): RemoteSocket {
     return new RemoteSocket(session)
   }
 
   private constructor(private readonly session: Session) {}
+
+  ensureXWayland(appEndpointURL: URL) {
+    const xWaylandBaseURLhref = appEndpointURL.href
+
+    if (xWaylandProxyStates[xWaylandBaseURLhref] === undefined) {
+      xWaylandProxyStates[xWaylandBaseURLhref] = { state: 'pending' }
+    }
+  }
 
   private async getShmTransferable(webFD: WebFD): Promise<ArrayBuffer> {
     // TODO get all contents at once from remote endpoint and put it in an array buffer
@@ -61,34 +81,34 @@ class RemoteSocket {
 
   onWebSocket(webSocket: WebSocket): Promise<Client> {
     return new Promise((resolve, reject) => {
-      // window.GREENFIELD_DEBUG && console.log('[WebSocket] - created.')
+      this.session.logger.info('[WebSocket] - created.')
 
       webSocket.binaryType = 'arraybuffer'
-      webSocket.onclose = () => {
-        reject(new Error('Remote connection failed.'))
+      webSocket.onclose = (event) => {
+        reject(new Error(`Failed to connect to application. ${event.reason} ${event.code}`))
       }
       webSocket.onopen = () => {
-        // window.GREENFIELD_DEBUG && console.log('[WebSocket] - open.')
+        this.session.logger.info('[WebSocket] - open.')
 
         const client = this.session.display.createClient()
-        // client.onClose().then(() => window.GREENFIELD_DEBUG && console.log('[client] - closed.'))
+        client.onClose().then(() => this.session.logger.info('[client] - closed.'))
         client.addResourceCreatedListener((resource) => {
           if (resource.id >= 0xff000000 && client.recycledIds.length === 0) {
-            console.error('[client] - Ran out of reserved browser resource ids.')
+            this.session.logger.warn('[client] - Ran out of reserved browser resource ids.')
             client.close()
           }
         })
 
         webSocket.onclose = () => {
-          // window.GREENFIELD_DEBUG && console.log('[WebSocket] - closed.')
+          this.session.logger.info('[WebSocket] - closed.')
           client.close()
         }
-        // webSocket.onerror = event =>  window.GREENFIELD_DEBUG && console.log(`[WebSocket] - error: ${event.message}.`)
+        webSocket.onerror = (event) => this.session.logger.warn(`[WebSocket] - error`, event)
 
         client.connection.onFlush = (wireMessages: SendMessage[]) =>
           this.flushWireMessages(client, webSocket, wireMessages)
 
-        const wsOutOfBandChannel = RemoteOutOfBandChannel.create((sendBuffer) => {
+        const wsOutOfBandChannel = RemoteOutOfBandChannel.create(this.session, (sendBuffer) => {
           if (webSocket.readyState === 1) {
             try {
               webSocket.send(sendBuffer)
@@ -171,7 +191,7 @@ class RemoteSocket {
 
       // Note that after contents have been transmitted, webfd is auto closed.
       if (transferable instanceof ArrayBuffer) {
-        const serializedWebFdURL = this._textEncoder.encode(webFD.url.href)
+        const serializedWebFdURL = this.textEncoder.encode(webFD.url.href)
         const webFDByteLength = serializedWebFdURL.byteLength
         const message = new Uint8Array(
           Uint32Array.BYTES_PER_ELEMENT + ((webFDByteLength + 3) & ~3) + transferable.byteLength,
@@ -193,19 +213,12 @@ class RemoteSocket {
     })
 
     // listen for web socket creation request. opcode: 5
-    outOfBandChannel.setListener(5, (outOfBandMessage) => {
+    outOfBandChannel.setListener(5, () => {
       if (client.connection.closed) {
         return
       }
 
-      const uint32Array = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)
-      const clientId = uint32Array[0]
-
-      const webSocketURL = new URL(new URL(webSocket.url).origin)
-      webSocketURL.searchParams.append('clientId', `${clientId}`)
-      webSocketURL.searchParams.append('compositorSessionId', this.session.compositorSessionId)
-
-      const newWebSocket = new WebSocket(webSocketURL.href)
+      const newWebSocket = new WebSocket(webSocket.url)
       this.onWebSocket(newWebSocket)
     })
 
@@ -217,6 +230,37 @@ class RemoteSocket {
 
       const ids = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)
       client.recycledIds = Array.from(ids)
+    })
+
+    // listen for XWayland XWM connection request
+    outOfBandChannel.setListener(7, async (outOfBandMessage) => {
+      const wmFD = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)[0]
+
+      const xWaylandBaseURL = new URL(webSocket.url)
+      const xWaylandBaseURLhref = xWaylandBaseURL.href
+
+      const xWaylandConnection = xWaylandProxyStates[xWaylandBaseURLhref]
+      if (xWaylandConnection !== undefined) {
+        xWaylandConnection.state = 'open'
+        xWaylandConnection.wlClient = client
+        xWaylandBaseURL.searchParams.append('xwmFD', `${wmFD}`)
+        const xConnection = await XWaylandConnection.create(this.session, new WebSocket(xWaylandBaseURL.href))
+        client.onClose().then(() => xConnection.destroy())
+        xConnection.onDestroy().then(() => delete xWaylandProxyStates[xWaylandBaseURLhref])
+        xWaylandConnection.xConnection = xConnection
+        try {
+          xWaylandConnection.xwm = await XWindowManager.create(
+            this.session,
+            xConnection,
+            client,
+            XWaylandShell.create(this.session),
+          )
+        } catch (e) {
+          console.error('Failed to create X Window Manager.', e)
+        }
+      } else {
+        console.error('BUG? Received an XWM message from an unregistered XWayland proxy.')
+      }
     })
   }
 
@@ -244,7 +288,6 @@ class RemoteSocket {
         const buffer = receiveBuffer.subarray(offset)
         client.connection.message({ buffer, fds: webFDs }).catch((e: Error) => {
           // TODO use centralized error reporting
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore
           console.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
           console.error('error object stack: ')
@@ -268,7 +311,7 @@ class RemoteSocket {
     const serializedWireMessages = wireMessages.map((wireMessage) => {
       let size = 1 // +1 for fd length
       const serializedWebFds: Uint8Array[] = wireMessage.fds.map((webFd: WebFD) => {
-        const serializedWebFD = this._textEncoder.encode(webFd.url.href)
+        const serializedWebFD = this.textEncoder.encode(webFd.url.href)
         size += 1 + ((serializedWebFD.byteLength + 3) & ~3) / 4 // +1 for fd url length
         return serializedWebFD
       })
@@ -305,7 +348,7 @@ class RemoteSocket {
       try {
         webSocket.send(sendBuffer.buffer)
       } catch (e) {
-        console.log(e.message)
+        this.session.logger.error(e)
         client.close()
       }
     }
@@ -321,7 +364,7 @@ class RemoteSocket {
       webFdbyteLength,
     )
 
-    const webFdURL = new URL(this._textDecoder.decode(webFdBytes))
+    const webFdURL = new URL(this.textDecoder.decode(webFdBytes))
     const fdParam = webFdURL.searchParams.get('fd')
     if (fdParam === null) {
       throw new Error('BUG. WebFD URL does not have fd query param.')

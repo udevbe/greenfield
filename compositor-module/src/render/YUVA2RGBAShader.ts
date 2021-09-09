@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import Size from '../Size'
+import { SizeRO } from '../math/Size'
 import Program from './Program'
 import ShaderCompiler from './ShaderCompiler'
 import { FRAGMENT_YUVA_TO_RGBA, VERTEX_QUAD } from './ShaderSources'
@@ -126,46 +126,29 @@ class YUVA2RGBAShader {
     this.gl.useProgram(null)
   }
 
-  updateShaderData(encodedFrameSize: Size, maxXTexCoord: number, maxYTexCoord: number): void {
-    const { w, h } = encodedFrameSize
-    this.gl.viewport(0, 0, w, h)
+  updateShaderData(encodedFrameSize: SizeRO, maxXTexCoord: number, maxYTexCoord: number): void {
+    const { width, height } = encodedFrameSize
+    this.gl.viewport(0, 0, width, height)
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
     this.gl.bufferData(
       this.gl.ARRAY_BUFFER,
+      // prettier-ignore
       new Float32Array([
         // First triangle
         // top left:
-        -1,
-        1,
-        0,
-        maxYTexCoord,
+        -1, 1, 0, maxYTexCoord,
         // top right:
-        1,
-        1,
-        maxXTexCoord,
-        maxYTexCoord,
+        1, 1, maxXTexCoord, maxYTexCoord,
         // bottom right:
-        1,
-        -1,
-        maxXTexCoord,
-        0,
+        1, -1, maxXTexCoord, 0,
 
         // Second triangle
         // bottom right:
-        1,
-        -1,
-        maxXTexCoord,
-        0,
+        1, -1,  maxXTexCoord, 0,
         // bottom left:
-        -1,
-        -1,
-        0,
-        0,
+        -1, -1, 0, 0,
         // top left:
-        -1,
-        1,
-        0,
-        maxYTexCoord,
+        -1, 1, 0, maxYTexCoord,
       ]),
       this.gl.DYNAMIC_DRAW,
     )

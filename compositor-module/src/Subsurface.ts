@@ -23,18 +23,22 @@ import {
 } from 'westfield-runtime-server'
 import BufferImplementation from './BufferImplementation'
 
-import Point from './math/Point'
+import { PointRO } from './math/Point'
 import { createPixmanRegion } from './Region'
+import Session from './Session'
 import Surface, { mergeSurfaceState, SurfaceState } from './Surface'
 import SurfaceRole from './SurfaceRole'
+import View from './View'
 
 export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
   static create(
+    session: Session,
     parentWlSurfaceResource: WlSurfaceResource,
     wlSurfaceResource: WlSurfaceResource,
     wlSubsurfaceResource: WlSubsurfaceResource,
   ): Subsurface {
-    const subsurface = new Subsurface(parentWlSurfaceResource, wlSurfaceResource, wlSubsurfaceResource)
+    const view = View.create(wlSurfaceResource.implementation as Surface)
+    const subsurface = new Subsurface(session, parentWlSurfaceResource, wlSurfaceResource, wlSubsurfaceResource, view)
     wlSubsurfaceResource.implementation = subsurface
 
     wlSurfaceResource.onDestroy().then(() => {
@@ -51,7 +55,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
     return subsurface
   }
 
-  pendingPosition?: Point = Point.create(0, 0)
+  pendingPosition?: PointRO = { x: 0, y: 0 }
   private sync = true
   private cacheDirty = false
   private readonly cachedState: SurfaceState = {
@@ -73,22 +77,24 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
   private inert = false
 
   private constructor(
+    private readonly session: Session,
     public readonly parentWlSurfaceResource: WlSurfaceResource,
     public readonly wlSurfaceResource: WlSurfaceResource,
     public readonly resource: WlSubsurfaceResource,
+    public readonly view: View,
   ) {
     const surface = this.wlSurfaceResource.implementation as Surface
     mergeSurfaceState(this.cachedState, surface.state)
   }
 
   private commitCache(surface: Surface) {
-    surface.pendingState = { ...this.cachedState }
+    mergeSurfaceState(surface.pendingState, this.cachedState)
     this.cachedState.damageRects = []
     this.cachedState.bufferDamageRects = []
     this.cachedState.frameCallbacks = []
     this.cacheDirty = false
     surface.commitPending()
-    surface.renderViews()
+    this.session.renderer.render()
   }
 
   onParentCommit(): void {
@@ -140,7 +146,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
       this.commitCache(surface)
     } else {
       surface.commitPending()
-      surface.renderViews()
+      this.session.renderer.render()
     }
   }
 
@@ -153,7 +159,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
       return
     }
 
-    this.pendingPosition = Point.create(x, y)
+    this.pendingPosition = { x, y }
   }
 
   placeAbove(resource: WlSubsurfaceResource, sibling: WlSurfaceResource): void {
@@ -162,7 +168,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
     const siblingSurfaceChildSelf = siblingSurface.surfaceChildSelf
     if (!parentSurface.state.subsurfaceChildren.includes(siblingSurfaceChildSelf) || siblingSurface === parentSurface) {
       resource.postError(WlSubsurfaceError.badSurface, 'Surface is not a sibling or the parent.')
-      console.log('[client-protocol-error] - Surface is not a sibling or the parent.')
+      this.session.logger.warn('[client-protocol-error] - Surface is not a sibling or the parent.')
       return
     }
 

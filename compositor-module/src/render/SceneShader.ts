@@ -15,9 +15,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import Size from '../Size'
+import { mat4ToArray } from '../math/Mat4'
+import { SizeRO } from '../math/Size'
 import View from '../View'
 import Program from './Program'
+import RenderState from './RenderState'
 import ShaderCompiler from './ShaderCompiler'
 import { FRAGMENT_ARGB8888, VERTEX_QUAD_TRANSFORM } from './ShaderSources'
 
@@ -83,7 +85,7 @@ function initBuffers(gl: WebGLRenderingContext): WebGLBuffer {
 }
 
 class SceneShader {
-  private _sceneSize?: Size
+  private _sceneSize?: SizeRO
 
   static create(gl: WebGLRenderingContext): SceneShader {
     const program = initShaders(gl)
@@ -107,21 +109,21 @@ class SceneShader {
     this.gl.useProgram(null)
   }
 
-  updateSceneData(sceneSize: Size): void {
-    const { w, h } = sceneSize
+  updateSceneData(sceneSize: SizeRO): void {
+    const { width, height } = sceneSize
     this._sceneSize = sceneSize
-    this.gl.viewport(0, 0, w, h)
+    this.gl.viewport(0, 0, width, height)
     this.gl.clearColor(0, 0, 0, 0)
     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT | this.gl.STENCIL_BUFFER_BIT)
     this.gl.blendFunc(this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA)
     this.gl.enable(this.gl.BLEND)
     this.program.setUniformM4(this.shaderArgs.u_projection, [
-      2.0 / w,
+      2.0 / width,
       0,
       0,
       0,
       0,
-      2.0 / -h,
+      2.0 / -height,
       0,
       0,
       0,
@@ -135,56 +137,38 @@ class SceneShader {
     ])
   }
 
-  updateViewData(view: View): void {
+  updateViewData(view: View, renderState: RenderState): void {
     const {
       texture,
-      size: { w, h },
-    } = view.renderState
+      size: { width, height },
+    } = renderState
 
     this.gl.uniform1i(this.shaderArgs.u_texture, 0)
 
     this.gl.activeTexture(this.gl.TEXTURE0)
     this.gl.bindTexture(this.gl.TEXTURE_2D, texture.texture)
 
-    this.program.setUniformM4(this.shaderArgs.u_transform, view.transformation.toArray())
+    this.program.setUniformM4(this.shaderArgs.u_transform, mat4ToArray(view.transformation))
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
     this.gl.bufferData(
       this.gl.ARRAY_BUFFER,
+      // prettier-ignore
       new Float32Array([
         // First triangle
         // top left:
-        0,
-        0,
-        0,
-        0,
+        0, 0, 0, 0,
         // top right:
-        w,
-        0,
-        1,
-        0,
+        width, 0, 1, 0,
         // bottom right:
-        w,
-        h,
-        1,
-        1,
-
+        width, height, 1, 1,
         // Second triangle
         // bottom right:
-        w,
-        h,
-        1,
-        1,
+        width, height, 1, 1,
         // bottom left:
-        0,
-        h,
-        0,
-        1,
+        0, height, 0, 1,
         // top left:
-        0,
-        0,
-        0,
-        0,
+        0, 0, 0, 0,
       ]),
       this.gl.DYNAMIC_DRAW,
     )

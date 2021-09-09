@@ -24,7 +24,8 @@ import {
   XdgToplevelResource,
   XdgWmBaseError,
 } from 'westfield-runtime-server'
-import Rect from './math/Rect'
+import { translation } from './math/Mat4'
+import { createRect, intersect, RectRO, RectROWithInfo, withInfo } from './math/Rect'
 import Seat from './Seat'
 import Session from './Session'
 import Surface from './Surface'
@@ -34,6 +35,22 @@ import XdgPositioner from './XdgPositioner'
 import XdgToplevel from './XdgToplevel'
 
 export default class XdgSurface implements XdgSurfaceRequests {
+  private pendingWindowGeometry: RectRO = {
+    x0: Number.MIN_SAFE_INTEGER,
+    y0: Number.MIN_SAFE_INTEGER,
+    x1: Number.MAX_SAFE_INTEGER,
+    y1: Number.MAX_SAFE_INTEGER,
+  }
+  configureSerial = 0
+  windowGeometry: RectROWithInfo = createRect({ x: 0, y: 0 }, { width: 0, height: 0 })
+
+  constructor(
+    public readonly xdgSurfaceResource: XdgSurfaceResource,
+    public readonly wlSurfaceResource: WlSurfaceResource,
+    private readonly session: Session,
+    private readonly seat: Seat,
+  ) {}
+
   static create(
     xdgSurfaceResource: XdgSurfaceResource,
     wlSurfaceResource: WlSurfaceResource,
@@ -49,22 +66,6 @@ export default class XdgSurface implements XdgSurfaceRequests {
     return xdgSurface
   }
 
-  pendingWindowGeometry: Rect = Rect.create(
-    Number.MIN_SAFE_INTEGER,
-    Number.MIN_SAFE_INTEGER,
-    Number.MAX_SAFE_INTEGER,
-    Number.MAX_SAFE_INTEGER,
-  )
-  configureSerial = 0
-  windowGeometry: Rect = Rect.create(0, 0, 0, 0)
-
-  constructor(
-    public readonly xdgSurfaceResource: XdgSurfaceResource,
-    public readonly wlSurfaceResource: WlSurfaceResource,
-    private readonly session: Session,
-    private readonly seat: Seat,
-  ) {}
-
   destroy(resource: XdgSurfaceResource): void {
     resource.destroy()
   }
@@ -73,7 +74,7 @@ export default class XdgSurface implements XdgSurfaceRequests {
     const surface = this.wlSurfaceResource.implementation as Surface
     if (surface.role) {
       resource.postError(XdgWmBaseError.role, 'Given surface has another role.')
-      console.log('[client-protocol-error] - Given surface has another role.')
+      this.session.logger.warn('[client-protocol-error] - Given surface has another role.')
       return
     }
     const xdgToplevelResource = new XdgToplevelResource(resource.client, id, resource.version)
@@ -91,25 +92,27 @@ export default class XdgSurface implements XdgSurfaceRequests {
     const surface = this.wlSurfaceResource.implementation as Surface
     if (surface.role) {
       resource.postError(XdgWmBaseError.role, 'Given surface has another role.')
-      console.log('[client-protocol-error] - Given surface has another role.')
+      this.session.logger.warn('[client-protocol-error] - Given surface has another role.')
       return
     }
 
     const xdgPositioner = positioner.implementation as XdgPositioner
     if (xdgPositioner.size === undefined) {
       resource.postError(XdgWmBaseError.invalidPositioner, 'Client provided an invalid positioner. Size is NULL.')
+      this.session.logger.warn('[client-protocol-error] - Client provided an invalid positioner. Size is NULL.')
       return
     }
 
     if (xdgPositioner.anchorRect === undefined) {
       resource.postError(XdgWmBaseError.invalidPositioner, 'Client provided an invalid positioner. AnchorRect is NULL.')
+      this.session.logger.warn('[client-protocol-error] - Client provided an invalid positioner. AnchorRect is NULL.')
       return
     }
 
     const positionerState = xdgPositioner.createStateCopy()
 
     const xdgPopupResource = new XdgPopupResource(resource.client, id, resource.version)
-    const xdgPopup = XdgPopup.create(xdgPopupResource, this, parent, positionerState, this.seat)
+    const xdgPopup = XdgPopup.create(this.session, xdgPopupResource, this, parent, positionerState, this.seat)
     this.ackConfigure = (resource, serial) => xdgPopup.ackConfigure(serial)
 
     if (parent) {
@@ -122,45 +125,22 @@ export default class XdgSurface implements XdgSurfaceRequests {
   setWindowGeometry(resource: XdgSurfaceResource, x: number, y: number, width: number, height: number): void {
     if (width <= 0 || height <= 0) {
       resource.postError(XdgWmBaseError.invalidSurfaceState, 'Client provided negative window geometry.')
-      console.log('[client-protocol-error] - Client provided negative window geometry.')
+      this.session.logger.warn('[client-protocol-error] - Client provided negative window geometry.')
       return
     }
-    this.pendingWindowGeometry = Rect.create(x, y, x + width, y + height)
+    this.pendingWindowGeometry = createRect({ x, y }, { width, height })
   }
 
   commitWindowGeometry(): void {
-    this.windowGeometry = this._createBoundingRectangle().intersect(this.pendingWindowGeometry)
-  }
+    if (this.pendingWindowGeometry !== this.windowGeometry) {
+      this.windowGeometry = withInfo(intersect(this.createBoundingRectangle(), this.pendingWindowGeometry))
+      this.pendingWindowGeometry = this.windowGeometry
 
-  private _createBoundingRectangle(): Rect {
-    const xs = [0]
-    const ys = [0]
-
-    const surface = this.wlSurfaceResource.implementation as Surface
-    const size = surface.size
-    if (size) {
-      xs.push(size.w)
-      ys.push(size.h)
-
-      surface.state.subsurfaceChildren.forEach((subsurfaceChild) => {
-        const subsurfacePosition = subsurfaceChild.position
-        const subsurfaceSize = subsurfaceChild.surface.size
-        if (subsurfaceSize) {
-          xs.push(subsurfacePosition.x)
-          ys.push(subsurfacePosition.y)
-          xs.push(subsurfacePosition.x + subsurfaceSize.w)
-          ys.push(subsurfacePosition.y + subsurfaceSize.h)
-        }
-      })
-
-      const minX = Math.min(...xs)
-      const maxX = Math.max(...xs)
-      const minY = Math.min(...ys)
-      const maxY = Math.max(...ys)
-
-      return Rect.create(minX, minY, maxX, maxY)
-    } else {
-      return Rect.create(0, 0, 0, 0)
+      const surface = this.wlSurfaceResource.implementation as Surface
+      const view = surface.role?.view
+      if (view) {
+        view.windowGeometryOffset = translation(-this.windowGeometry.x0, -this.windowGeometry.y0)
+      }
     }
   }
 
@@ -171,5 +151,37 @@ export default class XdgSurface implements XdgSurfaceRequests {
 
   emitConfigureDone(): void {
     this.xdgSurfaceResource.configure(++this.configureSerial)
+  }
+
+  private createBoundingRectangle(): RectRO {
+    const xs = [0]
+    const ys = [0]
+
+    const surface = this.wlSurfaceResource.implementation as Surface
+    const size = surface.size
+    if (size) {
+      xs.push(size.width)
+      ys.push(size.height)
+
+      surface.state.subsurfaceChildren.forEach((subsurfaceChild) => {
+        const subsurfacePosition = subsurfaceChild.position
+        const subsurfaceSize = subsurfaceChild.surface.size
+        if (subsurfaceSize) {
+          xs.push(subsurfacePosition.x)
+          ys.push(subsurfacePosition.y)
+          xs.push(subsurfacePosition.x + subsurfaceSize.width)
+          ys.push(subsurfacePosition.y + subsurfaceSize.height)
+        }
+      })
+
+      const minX = Math.min(...xs)
+      const maxX = Math.max(...xs)
+      const minY = Math.min(...ys)
+      const maxY = Math.max(...ys)
+
+      return { x0: minX, y0: minY, x1: maxX, y1: maxY }
+    } else {
+      return { x0: 0, y0: 0, x1: 0, y1: 0 }
+    }
   }
 }

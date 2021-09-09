@@ -36,7 +36,15 @@ export default class Output implements WlOutputRequests {
     return new Output(canvas)
   }
 
-  private constructor(public readonly canvas: HTMLCanvasElement | OffscreenCanvas) {}
+  private constructor(public readonly canvas: HTMLCanvasElement | OffscreenCanvas, private _x = 0, private _y = 0) {}
+
+  get x(): number {
+    return this._x
+  }
+
+  get y(): number {
+    return this._y
+  }
 
   registerGlobal(registry: Registry): void {
     if (this._global) {
@@ -70,6 +78,15 @@ export default class Output implements WlOutputRequests {
     }
   }
 
+  update(location?: { x: number; y: number }): void {
+    if (location) {
+      this._x = location.x
+      this._y = location.y
+    }
+
+    this.resources.forEach((resource) => this.emitSpecs(resource))
+  }
+
   emitSpecs(wlOutputResource: WlOutputResource): void {
     if (!this._global) {
       return
@@ -92,8 +109,6 @@ export default class Output implements WlOutputRequests {
   }
 
   private emitGeometry(wlOutputResource: WlOutputResource) {
-    const x = 0
-    const y = 0
     // this is really just an approximation as browsers don't offer a way to get the physical width :(
     // A css pixel is roughly 1/96 of an inch, so ~0.2646 mm
     // TODO test this on high dpi devices
@@ -126,7 +141,7 @@ export default class Output implements WlOutputRequests {
       }
     }
 
-    wlOutputResource.geometry(x, y, physicalWidth, physicalHeight, subpixel, make, model, transform)
+    wlOutputResource.geometry(this._x, this._y, physicalWidth, physicalHeight, subpixel, make, model, transform)
   }
 
   release(resource: WlOutputResource): void {

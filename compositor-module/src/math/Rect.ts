@@ -15,52 +15,59 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import Size from '../Size'
-import Point from './Point'
+import { SizeRO } from './Size'
+import { PointRO } from './Point'
 
-export default class Rect {
-  /**
-   * @param x0 top left x
-   * @param y0 top left y
-   * @param x1 bottom right x
-   * @param y1 bottom right y
-   */
-  static create(x0: number, y0: number, x1: number, y1: number): Rect {
-    return new Rect(x0, y0, x1, y1)
+export type RectRO = {
+  readonly x0: number
+  readonly y0: number
+  readonly x1: number
+  readonly y1: number
+}
+
+export type RectROWithInfo = {
+  readonly size: SizeRO
+  readonly position: PointRO
+} & RectRO
+
+export function createRect(position: PointRO, size: SizeRO): RectROWithInfo {
+  return {
+    x0: position.x,
+    y0: position.y,
+    x1: position.x + size.width,
+    y1: position.x + size.height,
+    size,
+    position,
+  }
+}
+
+export function withInfo(rect: RectRO): RectROWithInfo {
+  return {
+    ...rect,
+    size: {
+      width: Math.abs(rect.x1 - rect.x0),
+      height: Math.abs(rect.y1 - rect.y0),
+    },
+    position: {
+      x: rect.x0,
+      y: rect.y0,
+    },
+  }
+}
+
+export function intersect(rect: RectRO, other: RectRO): RectRO {
+  const leftX = Math.max(rect.x0, other.x0)
+  const rightX = Math.min(rect.x1, other.x1)
+  const topY = Math.max(rect.y0, other.y0)
+  const bottomY = Math.min(rect.y1, other.y1)
+
+  let intersectionRect
+  if (leftX < rightX && topY < bottomY) {
+    intersectionRect = { x0: leftX, y0: topY, x1: rightX, y1: bottomY }
+  } else {
+    // Rectangles do not overlap, or overlap has an area of zero (edge/corner overlap)
+    intersectionRect = { x0: 0, y0: 0, x1: 0, y1: 0 }
   }
 
-  constructor(public x0: number, public y0: number, public x1: number, public y1: number) {}
-
-  get width(): number {
-    return Math.abs(this.x1 - this.x0)
-  }
-
-  get height(): number {
-    return Math.abs(this.y1 - this.y0)
-  }
-
-  get size(): Size {
-    return Size.create(this.width, this.height)
-  }
-
-  get position(): Point {
-    return Point.create(this.x0, this.y0)
-  }
-
-  intersect(other: Rect): Rect {
-    const leftX = Math.max(this.x0, other.x0)
-    const rightX = Math.min(this.x1, other.x1)
-    const topY = Math.max(this.y0, other.y0)
-    const bottomY = Math.min(this.y1, other.y1)
-
-    let intersectionRect
-    if (leftX < rightX && topY < bottomY) {
-      intersectionRect = Rect.create(leftX, topY, rightX, bottomY)
-    } else {
-      // Rectangles do not overlap, or overlap has an area of zero (edge/corner overlap)
-      intersectionRect = Rect.create(0, 0, 0, 0)
-    }
-
-    return intersectionRect
-  }
+  return intersectionRect
 }

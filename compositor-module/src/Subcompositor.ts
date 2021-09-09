@@ -25,16 +25,19 @@ import {
   WlSubsurfaceResource,
   WlSurfaceResource,
 } from 'westfield-runtime-server'
+import Session from './Session'
 
 import Subsurface from './Subsurface'
 import Surface from './Surface'
 
 export default class Subcompositor implements WlSubcompositorRequests {
-  private global?: Global
-
-  static create(): Subcompositor {
-    return new Subcompositor()
+  static create(session: Session): Subcompositor {
+    return new Subcompositor(session)
   }
+
+  constructor(public readonly session: Session) {}
+
+  private global?: Global
 
   registerGlobal(registry: Registry): void {
     if (this.global) {
@@ -67,12 +70,12 @@ export default class Subcompositor implements WlSubcompositorRequests {
     const surface = wlSurfaceResource.implementation as Surface
     if (surface.role) {
       resource.postError(WlSubcompositorError.badSurface, 'Given surface has another role.')
-      console.log('[client-protocol-error] - Given surface has another role.')
+      this.session.logger.warn('[client-protocol-error] - Given surface has another role.')
       return
     }
 
     const wlSubsurfaceResource = new WlSubsurfaceResource(resource.client, id, resource.version)
-    Subsurface.create(wlParentSurfaceResource, wlSurfaceResource, wlSubsurfaceResource)
+    Subsurface.create(this.session, wlParentSurfaceResource, wlSurfaceResource, wlSubsurfaceResource)
 
     const parentSurface = wlParentSurfaceResource.implementation as Surface
 

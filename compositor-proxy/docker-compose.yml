@@ -1,0 +1,54 @@
+version: '3.4'
+services:
+  compositor-proxy:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    privileged: true
+    volumes:
+      - xdg-runtime-dir:/xdg-runtime-dir
+      - x11-unix:/tmp/.X11-unix
+      - ${PWD}/src/config.yaml:/app/config.yaml
+    ports:
+      - 8081:8081
+    environment:
+      GST_GL_WINDOW: gbm
+      COMPOSITOR_SESSION_ID: test123
+      DEBUG: 1
+      GST_DEBUG: 3
+      XDG_RUNTIME_DIR: /xdg-runtime-dir
+      XAUTHORITY: /tmp/.X11-unix/Xauthority
+  gtk3-demo:
+    pid: 'service:compositor-proxy'
+    build:
+      context: example-apps/gtk3-demo
+      dockerfile: Dockerfile
+    privileged: false
+    volumes:
+      - xdg-runtime-dir:/xdg-runtime-dir
+    environment:
+      XDG_RUNTIME_DIR: /xdg-runtime-dir
+    restart: always
+  xterm:
+    pid: 'service:compositor-proxy'
+    build:
+      context: example-apps/xterm
+      dockerfile: Dockerfile
+    privileged: false
+    volumes:
+      - xdg-runtime-dir:/xdg-runtime-dir
+      - x11-unix:/tmp/.X11-unix
+    environment:
+      XAUTHORITY: /tmp/.X11-unix/Xauthority
+      XDG_RUNTIME_DIR: /xdg-runtime-dir
+      DISPLAY: ':1'
+    restart: always
+volumes:
+  xdg-runtime-dir:
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+  x11-unix:
+    driver_opts:
+      type: tmpfs
+      device: tmpfs

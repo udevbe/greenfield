@@ -42,7 +42,7 @@ class FrameDecoder {
       // Full frame without a separate alpha. Let the browser do all the drawing.
       const frame = encodedFrame.pixelContent[0]
       const blob = new Blob([frame.opaque], { type: 'image/png' })
-      const bitmap = await createImageBitmap(blob, 0, 0, frame.geo.width, frame.geo.height)
+      const bitmap = await createImageBitmap(blob, 0, 0, frame.geo.size.width, frame.geo.size.height)
       return { bitmap, blob }
     } else {
       // we don't support/care about fragmented pngs (and definitely not with a separate alpha channel as png has it internal)

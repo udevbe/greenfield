@@ -1,0 +1,54 @@
+{
+  "name": "greenfield-app-endpoint-server",
+  "version": "0.0.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/udevbe/greenfield.git"
+  },
+  "license": "AGPL-3.0",
+  "description": "Wayland application endpoint.",
+  "bin": {
+    "appendpointd": "src/index.js"
+  },
+  "scripts": {
+    "generate:config-types": "js-yaml ./configschema.yaml > ./src/configschema.json && json2ts -i ./src/configschema.json -o ./src/@types/config.d.ts --style.singleQuote --no-style.semi",
+    "generate:xdgshell": "westfield-endpoint-generator protocol/xdg-shell.xml -o src/protocol",
+    "generate:wayland": "westfield-endpoint-generator protocol/wayland.xml -o src/protocol",
+    "generate": "yarn generate:config-types && mkdir -p src/protocol && yarn generate:wayland && yarn generate:xdgshell",
+    "build:native": "cmake-js",
+    "build:typescript": "tsc",
+    "build": "yarn build:native && yarn build:typescript",
+    "demo": "COMPOSITOR_SESSION_ID=test123 GST_GL_WINDOW=gbm ts-node ./src/index.ts"
+  },
+  "dependencies": {
+    "ajv": "^8.6.1",
+    "ajv-formats": "^2.1.0",
+    "js-yaml": "^4.1.0",
+    "pino": "^6.12.0",
+    "pino-pretty": "^5.1.1",
+    "websocket-stream": "^5.5.2",
+    "ws": "^7.5.3",
+    "xtsb": "^0.0.1-alpha.5"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.2",
+    "@types/jsonwebtoken": "^8.5.4",
+    "@types/node": "^16.3.1",
+    "@types/node-fetch": "^2.5.11",
+    "@types/pino": "^6.3.9",
+    "@types/ws": "^7.4.6",
+    "@typescript-eslint/eslint-plugin": "^4.28.3",
+    "@typescript-eslint/parser": "^4.28.3",
+    "cmake-js": "6.2.1",
+    "westfield-endpoint": "0.4.16",
+    "epoll": "^4.0.1",
+    "eslint": "^7.30.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^3.4.0",
+    "json-schema-to-typescript": "^10.1.4",
+    "prettier": "^2.3.2",
+    "ts-node": "^10.1.0",
+    "typescript": "^4.3.5",
+    "westfield-endpoint-generator": "^0.3.1"
+  }
+}

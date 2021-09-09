@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import BufferContents from '../BufferContents'
-import Size from '../Size'
+import { SizeRO } from '../math/Size'
 
 export type OpaqueAndAlphaPlanes = {
   opaque: { buffer: Uint8Array; width: number; height: number }
@@ -27,14 +27,14 @@ export type DecodedPixelContent = OpaqueAndAlphaPlanes | { bitmap: ImageBitmap; 
 
 // TODO use an object literal instead
 class DecodedFrame implements BufferContents<DecodedPixelContent> {
-  static create(mimeType: 'video/h264' | 'image/png', pixelContent: DecodedPixelContent, size: Size): DecodedFrame {
+  static create(mimeType: 'video/h264' | 'image/png', pixelContent: DecodedPixelContent, size: SizeRO): DecodedFrame {
     return new DecodedFrame(mimeType, pixelContent, size)
   }
 
   constructor(
     public readonly mimeType: 'video/h264' | 'image/png',
     public readonly pixelContent: DecodedPixelContent,
-    public readonly size: Size,
+    public readonly size: SizeRO,
   ) {}
 }
 

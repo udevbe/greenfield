@@ -16,15 +16,15 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
-import Size from '../Size'
-import View from '../View'
+import { sizeEquals, SizeRO } from '../math/Size'
+import Session from '../Session'
 import RenderState from './RenderState'
 import Texture from './Texture'
 import YUV2RGBShader from './YUV2RGBShader'
 import YUVA2RGBAShader from './YUVA2RGBAShader'
 
 class YUVAToRGBA {
-  static create(gl: WebGLRenderingContext): YUVAToRGBA {
+  static create(session: Session, gl: WebGLRenderingContext): YUVAToRGBA {
     gl.clearColor(0, 0, 0, 0)
 
     const yTexture = Texture.create(gl, gl.LUMINANCE)
@@ -41,6 +41,7 @@ class YUVAToRGBA {
     }
 
     return new YUVAToRGBA(
+      session,
       gl,
       yuvaSurfaceShader,
       yuvSurfaceShader,
@@ -53,6 +54,7 @@ class YUVAToRGBA {
   }
 
   private constructor(
+    private readonly session: Session,
     public readonly gl: WebGLRenderingContext,
     public readonly yuvaSurfaceShader: YUVA2RGBAShader,
     public readonly yuvSurfaceShader: YUV2RGBShader,
@@ -63,14 +65,10 @@ class YUVAToRGBA {
     public readonly alphaTexture: Texture,
   ) {}
 
-  convertInto(yuva: OpaqueAndAlphaPlanes, frameSize: Size, view: View): void {
+  convertInto(yuva: OpaqueAndAlphaPlanes, frameSize: SizeRO, renderState: RenderState): void {
     const { alpha, opaque } = yuva
-    // const start = Date.now()
-    if (view.destroyed) {
-      return
-    }
-    const renderState = view.renderState
-    // console.log(`|--> Decoding took ${Date.now() - start}ms`)
+    const start = Date.now()
+    this.session.logger.trace(`|--> Decoding took ${Date.now() - start}ms`)
 
     // the width & height returned are actually padded, so we have to use the frame size to get the real image dimension
     // when uploading to texture
@@ -78,8 +76,8 @@ class YUVAToRGBA {
     const opaqueStride = opaque.width // stride
     const opaqueHeight = opaque.height // padded with filler rows
 
-    const maxXTexCoord = frameSize.w / opaqueStride
-    const maxYTexCoord = frameSize.h / opaqueHeight
+    const maxXTexCoord = frameSize.width / opaqueStride
+    const maxYTexCoord = frameSize.height / opaqueHeight
 
     const lumaSize = opaqueStride * opaqueHeight
     const chromaSize = lumaSize >> 2
@@ -95,9 +93,9 @@ class YUVAToRGBA {
     this.uTexture.image2dBuffer(uBuffer, chromaStride, chromaHeight)
     this.vTexture.image2dBuffer(vBuffer, chromaStride, chromaHeight)
 
-    if (!renderState.size.equals(frameSize)) {
+    if (!sizeEquals(renderState.size, frameSize)) {
       renderState.size = frameSize
-      renderState.texture.image2dBuffer(null, frameSize.w, frameSize.h)
+      renderState.texture.image2dBuffer(null, frameSize.width, frameSize.height)
     }
     if (alpha) {
       const alphaStride = alpha.width // stride

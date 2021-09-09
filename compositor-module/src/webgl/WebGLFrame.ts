@@ -16,18 +16,18 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import BufferContents from '../BufferContents'
-import Size from '../Size'
+import { SizeRO } from '../math/Size'
 
 export default class WebGLFrame implements BufferContents<HTMLCanvasElement> {
   readonly mimeType: 'image/canvas' = 'image/canvas'
 
   static create(canvas: HTMLCanvasElement): WebGLFrame {
-    return new WebGLFrame(canvas, Size.create(canvas.width, canvas.height))
+    return new WebGLFrame(canvas, canvas)
   }
 
-  private constructor(public readonly pixelContent: HTMLCanvasElement, public size: Size) {}
+  private constructor(public readonly pixelContent: HTMLCanvasElement, public size: SizeRO) {}
 
   validateSize(): void {
-    this.size = Size.create(this.pixelContent.width, this.pixelContent.height)
+    this.size = this.pixelContent
   }
 }

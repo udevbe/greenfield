@@ -48,13 +48,10 @@ export default class BufferStream {
 
   private newBufferState(syncSerial: number): BufferState {
     const bufferState: BufferState = {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       completionPromise: null,
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       completionResolve: null,
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       completionReject: null,
       state: 'pending', // or 'pending_alpha' or 'pending_opaque' or 'complete'

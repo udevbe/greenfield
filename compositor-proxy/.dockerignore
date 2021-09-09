@@ -1,0 +1,6 @@
+node_modules
+npm-debug.log
+build
+example-apps
+README.md
+docker-compose.yml

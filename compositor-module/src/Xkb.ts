@@ -15,7 +15,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { lib } from './lib'
 
@@ -40,7 +39,6 @@ export type nrmlvo = {
 }
 
 export function buildNrmlvoEntries(): nrmlvo[] {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const evdevList: string = lib.xkbcommon.FS.readFile('/usr/local/share/X11/xkb/rules/evdev.lst', { encoding: 'utf8' })
   const lines = evdevList.split('\n')
@@ -105,8 +103,7 @@ export function buildNrmlvoEntries(): nrmlvo[] {
 
       // due to a bug in xkb config, we need to check duplicate entries
       return nrmlvoItems
-    })
-    .sort(({ name: name0 }, { name: name1 }) => name0.localeCompare(name1))
+  }).sort(({ name: name0 }, { name: name1 }) => name0.localeCompare(name1))
 }
 
 export function createFromResource(resource: string): Promise<Xkb> {
@@ -136,17 +133,13 @@ export function createFromResource(resource: string): Promise<Xkb> {
  * @param keymapLayout an xkb keymap as a single string.
  */
 export function createFromString(keymapLayout: string): Xkb {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const keymapLayoutPtr = lib.xkbcommon._malloc(lib.xkbcommon.lengthBytesUTF8(keymapLayout) + 1)
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   lib.xkbcommon.stringToUTF8(keymapLayout, keymapLayoutPtr, lib.xkbcommon.lengthBytesUTF8(keymapLayout) + 1)
 
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const xkbContext = lib.xkbcommon._xkb_context_new(XKB_CONTEXT_NO_DEFAULT_INCLUDES | XKB_CONTEXT_NO_ENVIRONMENT_NAMES)
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const keymap = lib.xkbcommon._xkb_keymap_new_from_string(
     xkbContext,
@@ -157,7 +150,6 @@ export function createFromString(keymapLayout: string): Xkb {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const state = lib.xkbcommon._xkb_state_new(keymap)
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   lib.xkbcommon._free(keymapLayoutPtr)
 
@@ -180,7 +172,6 @@ export function createFromNames({
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const xkbRuleNamesPtr = lib.xkbcommon._malloc(5 * 4)
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const xkbRuleNamesBuffer = new Uint32Array(lib.xkbcommon.HEAP8.buffer, xkbRuleNamesPtr, 5)
 
@@ -190,20 +181,15 @@ export function createFromNames({
   xkbRuleNamesBuffer[3] = stringToPointer(variant)
   xkbRuleNamesBuffer[4] = stringToPointer(options)
 
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const xkbContext = lib.xkbcommon._xkb_context_new(0)
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const keymap = lib.xkbcommon._xkb_keymap_new_from_names(xkbContext, xkbRuleNamesPtr, XKB_KEYMAP_COMPILE_NO_FLAGS)
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const state = lib.xkbcommon._xkb_state_new(keymap)
 
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   xkbRuleNamesBuffer.forEach((pointer) => lib.xkbcommon._free(pointer))
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   lib.xkbcommon._free(xkbRuleNamesPtr)
 
@@ -212,10 +198,8 @@ export function createFromNames({
 
 function stringToPointer(value?: string): number {
   if (value) {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const stringPtr = lib.xkbcommon._malloc(lib.xkbcommon.lengthBytesUTF8(value) + 1)
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     lib.xkbcommon.stringToUTF8(value, stringPtr, lib.xkbcommon.lengthBytesUTF8(value) + 1)
     return stringPtr
@@ -238,46 +222,38 @@ export class Xkb {
   }
 
   asString() {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const keymapStringPtr = lib.xkbcommon._xkb_keymap_get_as_string(this.keymap, XKB_KEYMAP_FORMAT_TEXT_V1)
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     return lib.xkbcommon.UTF8ToString(keymapStringPtr)
   }
 
   keyUp(linuxKeyCode: LinuxKeyCode): boolean {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     return lib.xkbcommon._xkb_state_update_key(this.state, linuxKeyCode, XKB_KEY_UP) !== 0
   }
 
   keyDown(linuxKeyCode: LinuxKeyCode): boolean {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     return lib.xkbcommon._xkb_state_update_key(this.state, linuxKeyCode, XKB_KEY_DOWN) !== 0
   }
 
   get modsDepressed(): number {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     return lib.xkbcommon._xkb_state_serialize_mods(this.state, XKB_STATE_MODS_DEPRESSED)
   }
 
   get modsLatched(): number {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     return lib.xkbcommon._xkb_state_serialize_mods(this.state, XKB_STATE_MODS_LATCHED)
   }
 
   get modsLocked(): number {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     return lib.xkbcommon._xkb_state_serialize_mods(this.state, XKB_STATE_MODS_LOCKED)
   }
 
   get group(): number {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     return lib.xkbcommon._xkb_state_serialize_layout(this.state, XKB_STATE_LAYOUT_EFFECTIVE)
   }
