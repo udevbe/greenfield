@@ -61,7 +61,7 @@ class CompositorProxySession {
   handleConnection(webSocket: WebSocket): void {
     try {
       this.nativeCompositorSession.socketForClient(webSocket)
-    } catch (e) {
+    } catch (e: any) {
       logger.error(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
       logger.error('error object stack: ')
       logger.error(e.stack)

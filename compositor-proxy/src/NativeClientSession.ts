@@ -268,7 +268,7 @@ export class NativeClientSession {
         }`,
       )
       return destination
-    } catch (e) {
+    } catch (e: any) {
       logger.fatal(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
       logger.fatal('error object stack: ')
       logger.fatal(e.stack)
