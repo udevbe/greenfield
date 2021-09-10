@@ -20,6 +20,44 @@ const SurfaceStates = {
 } as const
 
 export default class XWaylandShellSurface implements UserShellSurfaceRole {
+  static create(session: Session, window: XWindow, surface: Surface): XWaylandShellSurface {
+    const { client, id } = surface.resource
+    const userSurface: CompositorSurface = { id: `${id}`, clientId: client.id }
+    const userSurfaceState: CompositorSurfaceState = {
+      appId: '',
+      active: false,
+      mapped: false,
+      minimized: false,
+      title: '',
+      unresponsive: false,
+    }
+
+    const view = View.create(surface)
+    const xWaylandShellSurface = new XWaylandShellSurface(session, window, surface, userSurface, userSurfaceState, view)
+    surface.role = xWaylandShellSurface
+    view.transformationUpdatedListeners = [
+      ...view.transformationUpdatedListeners,
+      () => {
+        const { x, y } = view.positionOffset
+        xWaylandShellSurface.sendPosition?.(x, y)
+      },
+    ]
+    view.prepareRender = (renderState) => {
+      if (xWaylandShellSurface.frameDecoration) {
+        const { top, left, right, bottom, interiorWidth, interiorY, interiorX, interiorHeight } =
+          xWaylandShellSurface.frameDecoration
+        const { gl, texture, format } = renderState.texture
+        gl.bindTexture(gl.TEXTURE_2D, texture)
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, interiorX, 0, format, gl.UNSIGNED_BYTE, top)
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, interiorX, interiorY + interiorHeight, format, gl.UNSIGNED_BYTE, bottom)
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, format, gl.UNSIGNED_BYTE, left)
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, interiorX + interiorWidth, 0, format, gl.UNSIGNED_BYTE, right)
+        gl.bindTexture(gl.TEXTURE_2D, null)
+      }
+    }
+    return xWaylandShellSurface
+  }
+
   state?: typeof SurfaceStates[keyof typeof SurfaceStates]
   sendConfigure?: (width: number, height: number) => void
   sendPosition?: (x: number, y: number) => void
@@ -57,48 +95,6 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     public readonly view: View,
   ) {}
 
-  static create(session: Session, window: XWindow, surface: Surface): XWaylandShellSurface {
-    const { client, id } = surface.resource
-    const userSurface: CompositorSurface = { id: `${id}`, clientId: client.id }
-    const userSurfaceState: CompositorSurfaceState = {
-      appId: '',
-      active: false,
-      mapped: false,
-      minimized: false,
-      title: '',
-      unresponsive: false,
-    }
-
-    const view = View.create(surface)
-    const xWaylandShellSurface = new XWaylandShellSurface(session, window, surface, userSurface, userSurfaceState, view)
-    surface.role = xWaylandShellSurface
-    session.renderer.addTopLevelView(view)
-    view.transformationUpdatedListeners = [
-      ...view.transformationUpdatedListeners,
-      () => {
-        const { x, y } = view.positionOffset
-        xWaylandShellSurface.sendPosition?.(x, y)
-      },
-    ]
-    view.prepareRender = (renderState) => {
-      if (xWaylandShellSurface.frameDecoration) {
-        const { top, left, right, bottom, interiorWidth, interiorY, interiorX, interiorHeight } =
-          xWaylandShellSurface.frameDecoration
-        const { gl, texture, format } = renderState.texture
-        gl.bindTexture(gl.TEXTURE_2D, texture)
-        gl.texSubImage2D(gl.TEXTURE_2D, 0, interiorX, 0, format, gl.UNSIGNED_BYTE, top)
-        gl.texSubImage2D(gl.TEXTURE_2D, 0, interiorX, interiorY + interiorHeight, format, gl.UNSIGNED_BYTE, bottom)
-        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, format, gl.UNSIGNED_BYTE, left)
-        gl.texSubImage2D(gl.TEXTURE_2D, 0, interiorX + interiorWidth, 0, format, gl.UNSIGNED_BYTE, right)
-        gl.bindTexture(gl.TEXTURE_2D, null)
-      }
-    }
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    makeSurfaceActive(surface)
-    return xWaylandShellSurface
-  }
-
   onCommit(surface: Surface): void {
     surface.commitPending()
 
@@ -122,30 +118,40 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       this.pendingPositionOffset = undefined
     }
 
-    this.session.renderer.render(() => this.prepareFrameDecoration())
+    if (this.mapped) {
+      this.session.renderer.render(() => this.prepareFrameDecoration())
+    } else {
+      this.session.renderer.render()
+    }
   }
 
   setToplevel(): void {
     if (this.state === SurfaceStates.TRANSIENT) {
       return
     }
-
+    this.ensureToplevelView()
     this.ensureUserShellSurface()
     this.state = SurfaceStates.TOP_LEVEL
+    // @ts-ignore
+    makeSurfaceActive(this.surface)
+    this.window.setToplevel()
   }
 
   setToplevelWithPosition(x: number, y: number): void {
     if (this.state === SurfaceStates.TRANSIENT) {
       return
     }
-
+    this.ensureToplevelView()
     this.ensureUserShellSurface()
     this.state = SurfaceStates.TOP_LEVEL
-
-    // TODO store position?
+    this.view.positionOffset = { x, y }
+    // @ts-ignore
+    makeSurfaceActive(this.surface)
   }
 
   setParent(parent: Surface): void {
+    this.session.renderer.removeTopLevelView(this.view)
+    this.view.parent?.surface.removeChild(this.surface.surfaceChildSelf)
     parent.addChild(this.surface.surfaceChildSelf)
   }
 
@@ -159,9 +165,8 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     const surfaceChild = this.surface.surfaceChildSelf
     // FIXME we probably want to provide a method to translate from (abstract) surface space to global space
     surfaceChild.position = { x: parentPosition.x + x, y: parentPosition.y + y }
-    parent.addChild(surfaceChild)
 
-    // this.ensureUserShellSurface()
+    this.setParent(parent)
     this.state = SurfaceStates.TRANSIENT
   }
 
@@ -172,9 +177,18 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     this.sendConfigure?.(window.innerWidth, window.innerHeight)
   }
 
+  private ensureToplevelView() {
+    if (!this.session.renderer.hasTopLevelView(this.view)) {
+      this.session.renderer.addTopLevelView(this.view)
+    }
+  }
+
   setXwayland(x: number, y: number): void {
     this.xwayland.x = x
     this.xwayland.y = y
+    if (!this.xwayland.isSet) {
+      this.ensureToplevelView()
+    }
     this.xwayland.isSet = true
     this.view.positionOffset = { x, y }
   }
@@ -186,27 +200,23 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
 
     const pointerX = pointer.x
     const pointerY = pointer.y
-    // FIXME Only move that view that was last interacted with instead of finding the first one that matches.
-    const topLevelView = this.view
-    if (topLevelView) {
-      const origPosition = topLevelView.positionOffset
 
-      const moveListener = () => {
-        const deltaX = pointer.x - pointerX
-        const deltaY = pointer.y - pointerY
+    const origPosition = this.view.positionOffset
 
-        topLevelView.positionOffset = { x: origPosition.x + deltaX, y: origPosition.y + deltaY }
-        topLevelView.applyTransformations()
-        this.surface.session.renderer.render()
-      }
+    const moveListener = () => {
+      const deltaX = pointer.x - pointerX
+      const deltaY = pointer.y - pointerY
 
-      pointer.onButtonRelease().then(() => {
-        pointer.removeMouseMoveListener(moveListener)
-        pointer.enableFocus()
-      })
-      pointer.disableFocus()
-      pointer.addMouseMoveListener(moveListener)
+      this.view.positionOffset = { x: origPosition.x + deltaX, y: origPosition.y + deltaY }
+      this.surface.session.renderer.render()
     }
+
+    pointer.onButtonRelease().then(() => {
+      pointer.removeMouseMoveListener(moveListener)
+      pointer.enableFocus()
+    })
+    pointer.disableFocus()
+    pointer.addMouseMoveListener(moveListener)
   }
 
   resize(pointer: Pointer, edges: number): void {
@@ -326,7 +336,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       const width = scene.canvas.width
       const height = scene.canvas.height
 
-      this.view.positionOffset = { x: 0, y: 0 }
+      this.view.positionOffset = { x: -this.windowGeometry.x, y: -this.windowGeometry.y }
       this.sendConfigure?.(width, height)
     }
   }
@@ -334,17 +344,23 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   setPid(pid: number): void {}
 
-  requestActive(): void {
-    if (this.userSurfaceState.active) {
-      return
+  requestActive(): boolean {
+    if (
+      this.userSurfaceState.active ||
+      this.xwayland.isSet ||
+      this.state === 'fullscreen' ||
+      this.state === 'transient'
+    ) {
+      return false
     }
     this.userSurfaceState = { ...this.userSurfaceState, active: true }
     this.window.updateActivateStatus(true)
     this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
+    return true
   }
 
   notifyInactive(): void {
-    if (!this.userSurfaceState.active) {
+    if (!this.userSurfaceState.active || this.xwayland.isSet) {
       return
     }
     this.userSurfaceState = { ...this.userSurfaceState, active: false }
@@ -363,6 +379,9 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   private prepareFrameDecoration() {
     // render frame decoration
     const { width: frameWidth, height: frameHeight } = this.view.regionRect.size
+    if (frameWidth === 0 || frameHeight === 0) {
+      return
+    }
     if (this.window.decorate && this.window.frame) {
       const {
         width: interiorWidth,

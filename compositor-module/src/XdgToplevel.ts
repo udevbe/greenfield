@@ -110,9 +110,9 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     public readonly view: View,
   ) {}
 
-  requestActive(): void {
+  requestActive(): boolean {
     if (this.userSurfaceState.active) {
-      return
+      return true
     }
     if (this.configureState.state.includes(activated)) {
       this.userSurfaceState = { ...this.userSurfaceState, active: true }
@@ -123,6 +123,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       this.emitConfigure(this.resource, this.configureState.width, this.configureState.height, newState, none)
       this.session.flush()
     }
+    return true
   }
 
   notifyInactive(): void {
@@ -411,7 +412,6 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
         const deltaY = pointer.y - pointerY
 
         topLevelView.positionOffset = { x: origPosition.x + deltaX, y: origPosition.y + deltaY }
-        topLevelView.applyTransformations()
         this.session.renderer.render()
       }
 

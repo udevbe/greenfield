@@ -1,7 +1,10 @@
 import SurfaceRole from './SurfaceRole'
 
 export interface UserShellSurfaceRole extends SurfaceRole {
-  requestActive(): void
+  /**
+   * true if surface was made active, false if not
+   */
+  requestActive(): boolean
 
   notifyInactive(): void
 }

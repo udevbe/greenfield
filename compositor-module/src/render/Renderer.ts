@@ -161,10 +161,18 @@ export default class Renderer {
     resetCursorImage()
   }
 
+  removeTopLevelView(topLevelView: View): void {
+    this.topLevelViews = this.topLevelViews.filter((view) => view !== topLevelView)
+  }
+
+  hasTopLevelView(topLevelView: View): boolean {
+    return this.topLevelViews.includes(topLevelView)
+  }
+
   addTopLevelView(topLevelView: View): void {
     this.topLevelViews = [...this.topLevelViews, topLevelView]
     topLevelView.onDestroy().then(() => {
-      this.topLevelViews = this.topLevelViews.filter((view) => view !== topLevelView)
+      this.removeTopLevelView(topLevelView)
       this.render()
     })
   }

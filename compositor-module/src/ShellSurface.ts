@@ -165,7 +165,6 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
         const deltaY = pointer.y - pointerY
 
         topLevelView.positionOffset = plusPoint(origPosition, { x: deltaX, y: deltaY })
-        topLevelView.applyTransformations()
         this.session.renderer.render()
       }
 
@@ -258,12 +257,13 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     }
   }
 
-  requestActive(): void {
-    if (this.userSurfaceState.active) {
-      return
+  requestActive(): boolean {
+    if (this.userSurfaceState.active || this.state !== SurfaceStates.TOP_LEVEL) {
+      return false
     }
     this.userSurfaceState = { ...this.userSurfaceState, active: true }
     this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
+    return true
   }
 
   notifyInactive(): void {

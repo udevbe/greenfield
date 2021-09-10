@@ -502,7 +502,7 @@ export class XWindow {
 
     if (
       (property1 === this.wm.atoms._NET_WM_STATE_FULLSCREEN || property2 === this.wm.atoms._NET_WM_STATE_FULLSCREEN) &&
-      action &&
+      action !== undefined &&
       ((): boolean => {
         const { changed, newState } = updateState(action, this.fullscreen)
         this.fullscreen = !!newState
@@ -522,7 +522,7 @@ export class XWindow {
       if (
         (property1 === this.wm.atoms._NET_WM_STATE_MAXIMIZED_VERT ||
           property2 === this.wm.atoms._NET_WM_STATE_MAXIMIZED_VERT) &&
-        action &&
+        action !== undefined &&
         ((): boolean => {
           const { changed, newState } = updateState(action, this.maximizedVertical)
           this.maximizedVertical = !!newState
@@ -534,7 +534,7 @@ export class XWindow {
       if (
         (property1 === this.wm.atoms._NET_WM_STATE_MAXIMIZED_HORZ ||
           property2 === this.wm.atoms._NET_WM_STATE_MAXIMIZED_HORZ) &&
-        action &&
+        action !== undefined &&
         ((): boolean => {
           const { changed, newState } = updateState(action, this.maximizedHorizontal)
           this.maximizedHorizontal = !!newState
@@ -745,13 +745,11 @@ export class XWindow {
   }
 
   setToplevel(): void {
-    this.shsurf?.setToplevel()
-    this.width = this.savedWidth
-    this.height = this.savedHeight
-    if (this.frame) {
-      this.frame.resizeInside(this.width, this.height)
+    if (this.savedWidth && this.savedHeight) {
+      this.width = this.savedWidth
+      this.height = this.savedHeight
+      this.sendConfigure(this.width, this.height)
     }
-    this.configure()
   }
 
   sendConfigureNotify(): void {

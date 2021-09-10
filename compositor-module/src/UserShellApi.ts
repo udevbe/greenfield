@@ -176,8 +176,9 @@ export function makeSurfaceActive(surface: Surface & { role: UserShellSurfaceRol
     })
   }
 
-  lastActive?.role.notifyInactive()
-  activeHistory.push(surface)
-  surface.role.requestActive()
-  surface.session.renderer.raiseSurface(surface)
+  if (surface.role.requestActive()) {
+    lastActive?.role.notifyInactive()
+    activeHistory.push(surface)
+    surface.session.renderer.raiseSurface(surface)
+  }
 }
