@@ -85,6 +85,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     width: 0,
     height: 0,
   }
+  private savedViewPosition?: PointRO
 
   constructor(
     readonly session: Session,
@@ -113,6 +114,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
         this.unmap()
       }
     }
+
     if (this.pendingPositionOffset) {
       this.view.positionOffset = this.pendingPositionOffset
       this.pendingPositionOffset = undefined
@@ -134,6 +136,10 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     this.state = SurfaceStates.TOP_LEVEL
     // @ts-ignore
     makeSurfaceActive(this.surface)
+    if (this.savedViewPosition) {
+      this.pendingPositionOffset = this.savedViewPosition
+      this.savedViewPosition = undefined
+    }
     this.window.setToplevel()
   }
 
@@ -336,6 +342,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       const width = scene.canvas.width
       const height = scene.canvas.height
 
+      this.savedViewPosition = this.view.positionOffset
       this.view.positionOffset = { x: -this.windowGeometry.x, y: -this.windowGeometry.y }
       this.sendConfigure?.(width, height)
     }

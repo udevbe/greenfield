@@ -148,7 +148,7 @@ export default class Renderer {
   pickView(scenePoint: PointRO): View | undefined {
     // test views from front to back
     return [...this.viewStack].reverse().find((view) => {
-      const surfacePoint = view.toSurfaceSpace(scenePoint)
+      const surfacePoint = view.sceneToSurfaceSpace(scenePoint)
       return view.surface.isWithinInputRegion(surfacePoint)
     })
   }

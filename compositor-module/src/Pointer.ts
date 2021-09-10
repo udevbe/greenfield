@@ -393,7 +393,7 @@ export default class Pointer implements WlPointerRequests {
   }
 
   private calculateSurfacePoint(view: View): PointRO {
-    return view.toSurfaceSpace(this)
+    return view.sceneToSurfaceSpace(this)
   }
 
   setFocus(newFocus: View): void {

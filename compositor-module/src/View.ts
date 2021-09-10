@@ -56,7 +56,6 @@ export default class View {
     public destroyed = false,
     public mapped = true,
     private _dirty: boolean = true,
-    private _windowGeometryOffset: Mat4RO = IDENTITY,
     public transformationUpdatedListeners: ((transformation: Mat4RO) => void)[] = [],
   ) {
     this.inverseTransformation = invert(this._transformation)
@@ -65,36 +64,12 @@ export default class View {
     })
   }
 
-  private _customTransformation?: Mat4RO
-
-  get customTransformation(): Mat4RO | undefined {
-    return this._customTransformation
-  }
-
-  set customTransformation(customTransformation: Mat4RO | undefined) {
-    if (this._customTransformation === customTransformation) {
-      return
-    }
-
-    this._customTransformation = customTransformation
-    this.markDirty()
-  }
-
   get parent(): View | undefined {
     return this.surface.parent?.role?.view
   }
 
   get dirty(): boolean {
     return this.parent?.dirty || this._dirty
-  }
-
-  get windowGeometryOffset(): Mat4RO {
-    return this._windowGeometryOffset
-  }
-
-  set windowGeometryOffset(windowGeometryOffset: Mat4RO) {
-    this._windowGeometryOffset = windowGeometryOffset
-    this.markDirty()
   }
 
   get positionOffset(): PointRO {
@@ -144,12 +119,16 @@ export default class View {
     }
   }
 
-  toViewSpaceFromCompositor(browserPoint: PointRO): PointRO {
+  sceneToViewSpace(scenePoint: PointRO): PointRO {
     // normalize first by subtracting view offset
-    return timesPoint(this.inverseTransformation, browserPoint)
+    return timesPoint(this.inverseTransformation, scenePoint)
   }
 
-  toViewSpaceFromSurface(surfacePoint: PointRO): PointRO {
+  viewToSceneSpace(viewPoint: PointRO): PointRO {
+    return timesPoint(this.transformation, viewPoint)
+  }
+
+  surfaceToViewSpace(surfacePoint: PointRO): PointRO {
     const { width, height } = this.regionRect.size
     if (this.surface.size) {
       const { height: surfaceHeight, width: surfaceWidth } = this.surface.size
@@ -163,8 +142,8 @@ export default class View {
     }
   }
 
-  toSurfaceSpace(scenePoint: PointRO): PointRO {
-    const viewPoint = this.toViewSpaceFromCompositor(scenePoint)
+  sceneToSurfaceSpace(scenePoint: PointRO): PointRO {
+    const viewPoint = this.sceneToViewSpace(scenePoint)
 
     const surfaceSize = this.surface.size
     if (surfaceSize) {
@@ -267,18 +246,11 @@ export default class View {
   }
 
   private calculateTransformation(): Mat4RO {
-    if (this.customTransformation) {
-      return this.customTransformation
-    }
-
     const startingTransformation = this.parent ? this.parent.transformation : IDENTITY
 
     // position transformation
     const { x, y } = plusPoint(this.surface.surfaceChildSelf.position, this._positionOffset)
     const positionTransformation = translation(x, y)
-    const vanillaTransformation = timesMat4(startingTransformation, positionTransformation)
-    return this.windowGeometryOffset !== IDENTITY
-      ? timesMat4(vanillaTransformation, this.windowGeometryOffset)
-      : vanillaTransformation
+    return timesMat4(startingTransformation, positionTransformation)
   }
 }

@@ -170,7 +170,7 @@ export default class DataDevice implements WlDataDeviceRequests {
       return
     }
 
-    const surfacePoint = this.dndFocus.toSurfaceSpace(this.seat.pointer)
+    const surfacePoint = this.dndFocus.sceneToSurfaceSpace(this.seat.pointer)
 
     this.resources
       .filter((dataDeviceResource) => {
@@ -195,7 +195,7 @@ export default class DataDevice implements WlDataDeviceRequests {
       return
     }
 
-    const surfacePoint = view.toSurfaceSpace(this.seat.pointer)
+    const surfacePoint = view.sceneToSurfaceSpace(this.seat.pointer)
     const serial = this.seat.nextSerial()
 
     const x = Fixed.parse(surfacePoint.x)
