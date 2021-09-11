@@ -26,7 +26,7 @@ import {
 } from 'westfield-runtime-server'
 import { setCursor } from './browser/cursor'
 import { CompositorSurface, CompositorSurfaceState } from './index'
-import { plusPoint, PointRO } from './math/Point'
+import { minusPoint, plusPoint, PointRO } from './math/Point'
 import { RectRO } from './math/Rect'
 import { SizeRO } from './math/Size'
 import Seat from './Seat'
@@ -264,10 +264,17 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
       return
     }
 
-    const clientTopLeftOnScreen = this.view.viewToSceneSpace(
-      this.view.surfaceToViewSpace(this.xdgSurface.windowGeometry.position),
-    )
-    this.view.positionOffset = { x: -clientTopLeftOnScreen.x, y: -clientTopLeftOnScreen.y }
+    // FIXME take view to scene space conversion into account
+    const clientTopLeftOnScreen = this.view.surfaceToViewSpace(this.xdgSurface.windowGeometry.position)
+    if (this.view.parent) {
+      // FIXME listen to parent position and update our own position
+      this.view.positionOffset = minusPoint(
+        { x: -clientTopLeftOnScreen.x, y: -clientTopLeftOnScreen.y },
+        this.view.parent.positionOffset,
+      )
+    } else {
+      this.view.positionOffset = { x: -clientTopLeftOnScreen.x, y: -clientTopLeftOnScreen.y }
+    }
   }
 
   /**
