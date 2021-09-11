@@ -1,6 +1,7 @@
 import { WlShellSurfaceResize } from 'westfield-runtime-server'
 import { CompositorSurface, CompositorSurfaceState } from '../index'
-import { PointRO } from '../math/Point'
+import { plusPoint, PointRO } from '../math/Point'
+import { SizeRO } from '../math/Size'
 import Output from '../Output'
 import Pointer from '../Pointer'
 import Session from '../Session'
@@ -12,12 +13,16 @@ import { XWindow } from './XWindow'
 
 const { bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight } = WlShellSurfaceResize
 
-const SurfaceStates = {
-  MAXIMIZED: 'maximized',
-  FULLSCREEN: 'fullscreen',
-  TRANSIENT: 'transient',
-  TOP_LEVEL: 'top_level',
-} as const
+enum SurfaceState {
+  TOP_LEVEL,
+  RESIZE,
+  MAXIMIZED,
+  FULLSCREEN,
+  TRANSIENT,
+  NONE,
+}
+
+type WindowGeometry = { x: number; y: number; width: number; height: number }
 
 export default class XWaylandShellSurface implements UserShellSurfaceRole {
   static create(session: Session, window: XWindow, surface: Surface): XWaylandShellSurface {
@@ -58,7 +63,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     return xWaylandShellSurface
   }
 
-  state?: typeof SurfaceStates[keyof typeof SurfaceStates]
+  state = SurfaceState.NONE
   sendConfigure?: (width: number, height: number) => void
   sendPosition?: (x: number, y: number) => void
   frameDecoration?: {
@@ -73,19 +78,28 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   }
   private mapped = false
   private managed = false
-  private pendingPositionOffset?: PointRO
-  private xwayland = {
-    x: 0,
-    y: 0,
-    isSet: false,
-  }
-  private windowGeometry = {
+
+  // private pendingPositionOffset?: PointRO
+  private resizeEdge: WlShellSurfaceResize = WlShellSurfaceResize.none
+  private pendingWindowGeometry: WindowGeometry = {
     x: 0,
     y: 0,
     width: 0,
     height: 0,
   }
+  private windowGeometry: WindowGeometry = {
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+  }
+  private xwayland = {
+    x: 0,
+    y: 0,
+    isSet: false,
+  }
   private savedViewPosition?: PointRO
+  private previousBufferSize?: SizeRO
 
   constructor(
     readonly session: Session,
@@ -98,58 +112,84 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
 
   onCommit(surface: Surface): void {
     surface.commitPending()
+    this.windowGeometry = this.pendingWindowGeometry
 
     const oldPosition = surface.surfaceChildSelf.position
     surface.surfaceChildSelf.position = {
-      x: oldPosition.x + surface.pendingState.dx,
-      y: oldPosition.y + surface.pendingState.dy,
+      x: oldPosition.x + surface.state.dx,
+      y: oldPosition.y + surface.state.dy,
     }
 
-    if (surface.pendingState.bufferContents) {
+    if (surface.state.bufferContents) {
       if (!this.mapped) {
         this.map()
       }
+
+      switch (this.state) {
+        case SurfaceState.MAXIMIZED:
+          {
+            const clientTopLeftOnScreen = this.view.surfaceToViewSpace(this.windowGeometry)
+            this.view.positionOffset = { x: -clientTopLeftOnScreen.x, y: -clientTopLeftOnScreen.y }
+          }
+          break
+        case SurfaceState.FULLSCREEN:
+          break
+        case SurfaceState.TRANSIENT:
+          break
+        case SurfaceState.TOP_LEVEL:
+        case SurfaceState.NONE:
+          if (this.savedViewPosition) {
+            this.view.positionOffset = this.savedViewPosition
+            this.savedViewPosition = undefined
+          }
+          break
+        case SurfaceState.RESIZE:
+          {
+            if (this.savedViewPosition) {
+              this.savedViewPosition = undefined
+            }
+            if (this.previousBufferSize) {
+              const viewOffsetAfterResize = this.viewOffsetAfterResize(
+                surface.state.bufferContents.size,
+                this.previousBufferSize,
+              )
+              if (viewOffsetAfterResize) {
+                this.view.positionOffset = plusPoint(this.view.positionOffset, viewOffsetAfterResize)
+              }
+            }
+          }
+          break
+      }
+
+      this.session.renderer.render(() => this.prepareFrameDecoration())
     } else {
       if (this.mapped) {
         this.unmap()
       }
-    }
-
-    if (this.pendingPositionOffset) {
-      this.view.positionOffset = this.pendingPositionOffset
-      this.pendingPositionOffset = undefined
-    }
-
-    if (this.mapped) {
-      this.session.renderer.render(() => this.prepareFrameDecoration())
-    } else {
       this.session.renderer.render()
     }
+    this.previousBufferSize = surface.state.bufferContents?.size
   }
 
   setToplevel(): void {
-    if (this.state === SurfaceStates.TRANSIENT) {
+    if (this.state === SurfaceState.TRANSIENT) {
       return
     }
     this.ensureToplevelView()
     this.ensureUserShellSurface()
-    this.state = SurfaceStates.TOP_LEVEL
+    this.state = SurfaceState.TOP_LEVEL
     // @ts-ignore
     makeSurfaceActive(this.surface)
-    if (this.savedViewPosition) {
-      this.pendingPositionOffset = this.savedViewPosition
-      this.savedViewPosition = undefined
-    }
     this.window.setToplevel()
   }
 
   setToplevelWithPosition(x: number, y: number): void {
-    if (this.state === SurfaceStates.TRANSIENT) {
+    if (this.state === SurfaceState.TRANSIENT) {
       return
     }
     this.ensureToplevelView()
     this.ensureUserShellSurface()
-    this.state = SurfaceStates.TOP_LEVEL
+    this.state = SurfaceState.TOP_LEVEL
     this.view.positionOffset = { x, y }
     // @ts-ignore
     makeSurfaceActive(this.surface)
@@ -162,7 +202,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   }
 
   setTransient(parent: Surface, x: number, y: number): void {
-    if (this.state === SurfaceStates.TOP_LEVEL) {
+    if (this.state === SurfaceState.TOP_LEVEL) {
       return
     }
 
@@ -173,11 +213,11 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     surfaceChild.position = { x: parentPosition.x + x, y: parentPosition.y + y }
 
     this.setParent(parent)
-    this.state = SurfaceStates.TRANSIENT
+    this.state = SurfaceState.TRANSIENT
   }
 
   setFullscreen(output?: Output): void {
-    this.state = SurfaceStates.FULLSCREEN
+    this.state = SurfaceState.FULLSCREEN
     // TODO get proper size in surface coordinates instead of assume surface space === global space
     this.surface.surfaceChildSelf.position = { x: 0, y: 0 }
     this.sendConfigure?.(window.innerWidth, window.innerHeight)
@@ -200,7 +240,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   }
 
   move(pointer: Pointer): void {
-    if (this.state === SurfaceStates.FULLSCREEN || this.state === SurfaceStates.MAXIMIZED) {
+    if (this.state === SurfaceState.FULLSCREEN || this.state === SurfaceState.MAXIMIZED) {
       return
     }
 
@@ -226,9 +266,11 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   }
 
   resize(pointer: Pointer, edges: number): void {
-    if (this.state === SurfaceStates.FULLSCREEN || this.state === SurfaceStates.MAXIMIZED) {
+    if (this.state === SurfaceState.FULLSCREEN || this.state === SurfaceState.MAXIMIZED) {
       return
     }
+    const previousState = this.state
+    this.state = SurfaceState.RESIZE
     // assigned in switch statement
     let sizeAdjustment: (
       width: number,
@@ -302,7 +344,6 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     const pointerX = pointer.x
     const pointerY = pointer.y
     const { width: surfaceWidth, height: surfaceHeight } = this.windowGeometry || {}
-    const origPosition = this.view.positionOffset
 
     if (surfaceWidth && surfaceHeight) {
       const resizeListener = () => {
@@ -310,11 +351,11 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
         const deltaY = pointer.y - pointerY
 
         const { dx, dy, w, h } = sizeAdjustment(surfaceWidth, surfaceHeight, deltaX, deltaY)
+        this.resizeEdge = edges
         this.sendConfigure?.(w, h)
-
-        this.pendingPositionOffset = { x: origPosition.x + dx, y: origPosition.y + dy }
       }
       pointer.onButtonRelease().then(() => {
+        this.state = previousState
         pointer.removeMouseMoveListener(resizeListener)
         pointer.enableFocus()
       })
@@ -329,11 +370,11 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   }
 
   setWindowGeometry(x: number, y: number, width: number, height: number): void {
-    this.windowGeometry = { x, y, width, height }
+    this.pendingWindowGeometry = { x, y, width, height }
   }
 
   setMaximized(): void {
-    this.state = SurfaceStates.MAXIMIZED
+    this.state = SurfaceState.MAXIMIZED
 
     // FIXME get proper size in surface coordinates instead of assume surface space === global space
     const scene = this.view.relevantScene
@@ -343,7 +384,6 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       const height = scene.canvas.height
 
       this.savedViewPosition = this.view.positionOffset
-      this.view.positionOffset = { x: -this.windowGeometry.x, y: -this.windowGeometry.y }
       this.sendConfigure?.(width, height)
     }
   }
@@ -355,8 +395,9 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     if (
       this.userSurfaceState.active ||
       this.xwayland.isSet ||
-      this.state === 'fullscreen' ||
-      this.state === 'transient'
+      this.state === SurfaceState.FULLSCREEN ||
+      this.state === SurfaceState.TRANSIENT ||
+      this.state === SurfaceState.NONE
     ) {
       return false
     }
@@ -437,5 +478,44 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     this.mapped = false
     this.userSurfaceState = { ...this.userSurfaceState, mapped: this.mapped }
     this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
+  }
+
+  private viewOffsetAfterResize(bufferSize: SizeRO, previousBufferSize: SizeRO): PointRO | undefined {
+    const { width: previousWidth, height: previousHeight } = previousBufferSize
+    const { width, height } = bufferSize
+
+    // FIXME adjust buffer dimensions to scene space
+
+    switch (this.resizeEdge) {
+      case WlShellSurfaceResize.bottomRight:
+      case WlShellSurfaceResize.right:
+      case WlShellSurfaceResize.bottom:
+      case WlShellSurfaceResize.none:
+        return
+      case WlShellSurfaceResize.topRight:
+      case WlShellSurfaceResize.top: {
+        const dY = previousHeight - height
+        if (dY !== 0) {
+          return { x: 0, y: dY }
+        }
+        break
+      }
+      case WlShellSurfaceResize.bottomLeft:
+      case WlShellSurfaceResize.left: {
+        const dX = previousWidth - width
+        if (dX !== 0) {
+          return { x: dX, y: 0 }
+        }
+        break
+      }
+      case WlShellSurfaceResize.topLeft: {
+        const dY = previousHeight - height
+        const dX = previousWidth - width
+        if (dX !== 0 || dY !== 0) {
+          return { x: dX, y: dY }
+        }
+        break
+      }
+    }
   }
 }

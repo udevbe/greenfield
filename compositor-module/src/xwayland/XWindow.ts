@@ -722,7 +722,6 @@ export class XWindow {
     }
   }
 
-  // TODO called by compositor implementation
   sendPosition(x: number, y: number) {
     /* We use pos_dirty to tell whether a configure message is in flight.
      * This is needed in case we send two configure events in a very
