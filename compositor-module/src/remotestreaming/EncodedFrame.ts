@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import BufferContents from '../BufferContents'
-import { SizeRO } from '../math/Size'
+import { Size } from '../math/Size'
 import EncodedFrameFragment from './EncodedFrameFragment'
 import EncodingTypes, { EncodingMimeTypes } from './EncodingMimeTypes'
 
@@ -77,7 +77,7 @@ export default class EncodedFrame implements BufferContents<EncodedFrameFragment
     public readonly serial: number,
     public readonly mimeType: EncodingMimeTypes[keyof EncodingMimeTypes],
     public readonly encodingOptions: number,
-    public readonly size: SizeRO,
+    public readonly size: Size,
     public readonly pixelContent: EncodedFrameFragment[],
   ) {}
 }

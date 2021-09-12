@@ -27,7 +27,7 @@ import {
 import { clientHeight, clientWidth } from './browser/attributes'
 
 import { minusPoint } from './math/Point'
-import { withInfo } from './math/Rect'
+import { withSizeAndPosition } from './math/Rect'
 import Seat from './Seat'
 import Session from './Session'
 import Surface from './Surface'
@@ -117,6 +117,19 @@ const inverseX = {
 } as const
 
 export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
+  mapped = false
+  dismissed = false
+
+  private constructor(
+    private readonly session: Session,
+    public readonly resource: XdgPopupResource,
+    public readonly xdgSurface: XdgSurface,
+    public readonly parent: XdgSurfaceResource,
+    public readonly positionerState: XdgPositionerState,
+    private readonly seat: Seat,
+    public readonly view: View,
+  ) {}
+
   static create(
     session: Session,
     xdgPopupResource: XdgPopupResource,
@@ -135,19 +148,6 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
     return xdgPopup
   }
 
-  mapped = false
-  dismissed = false
-
-  private constructor(
-    private readonly session: Session,
-    public readonly resource: XdgPopupResource,
-    public readonly xdgSurface: XdgSurface,
-    public readonly parent: XdgSurfaceResource,
-    public readonly positionerState: XdgPositionerState,
-    private readonly seat: Seat,
-    public readonly view: View,
-  ) {}
-
   onCommit(surface: Surface): void {
     if (this.dismissed) {
       return
@@ -164,54 +164,6 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
     }
 
     surface.session.renderer.render()
-  }
-
-  private map(surface: Surface) {
-    // TODO check if parent is mapped
-    for (const surfaceChild of surface.children) {
-      if (surfaceChild !== surface.surfaceChildSelf && surfaceChild.surface.role instanceof XdgPopup) {
-        this.resource.postError(XdgWmBaseError.notTheTopmostPopup, 'Client tried to map a non-topmost popup')
-        this.session.logger.warn('[client-protocol-error] - Client tried to map a non-topmost popup.')
-        return
-      }
-    }
-
-    this.mapped = true
-    const parentXdgSurface = this.parent.implementation as XdgSurface
-
-    // set position based on positioner object
-    const surfaceSpaceAnchorPoint = this.positionerState.surfaceSpaceAnchorPoint(parentXdgSurface)
-    if (surfaceSpaceAnchorPoint) {
-      surface.surfaceChildSelf.position = minusPoint(surfaceSpaceAnchorPoint, this.xdgSurface.windowGeometry.position)
-    }
-  }
-
-  private dismiss() {
-    if (!this.dismissed) {
-      this.dismissed = true
-      if (this.seat.pointer) {
-        const popupGrab = this.seat.pointer.findPopupGrab(this.xdgSurface.wlSurfaceResource)
-        if (popupGrab) {
-          popupGrab.resolve()
-        }
-      }
-      this.resource.popupDone()
-      const parentXdgSurface = this.parent.implementation as XdgSurface
-      const parentSurface = parentXdgSurface.wlSurfaceResource.implementation as Surface
-      const surface = this.xdgSurface.wlSurfaceResource.implementation as Surface
-      parentSurface.removeChild(surface.surfaceChildSelf)
-      this.seat.keyboard.focusGained(parentSurface)
-    }
-  }
-
-  private _updatePopupKeyboardFocus() {
-    this.seat.keyboard.focusGained(this.xdgSurface.wlSurfaceResource.implementation as Surface)
-    // if the keyboard or focus changes to a different client, we have to dismiss the popup
-    this.seat.keyboard.onKeyboardFocusChanged().then(() => {
-      if (!this.seat.keyboard.focus || this.seat.keyboard.focus.resource.client !== this.resource.client) {
-        this.dismiss()
-      }
-    })
   }
 
   destroy(resource: XdgPopupResource): void {
@@ -268,145 +220,193 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole {
 
   ensureGeometryConstraints(parent: XdgSurfaceResource, positionerState: XdgPositionerState): void {
     // TODO we can probably rewrite & make this method better using libpixman(?)
-    if (positionerState.constraintAdjustment === none) {
-      // we can't even
-      return
-    }
+    // if (positionerState.constraintAdjustment === none) {
+    //   // we can't even
+    //   return
+    // }
+    //
+    // const parentXdgSurface = parent.implementation as XdgSurface
+    // const parentSurface = parentXdgSurface.wlSurfaceResource.implementation as Surface
+    // const parentView = parentSurface.role?.view
+    // if (parentView) {
+    //   let violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
+    //   if (violations && positionerState.sizeRect) {
+    //     if (
+    //       !(
+    //         violations.topViolation ||
+    //         violations.rightViolation ||
+    //         violations.bottomViolation ||
+    //         violations.leftViolation
+    //       )
+    //     ) {
+    //       // all fine, no need to reconfigure
+    //       return
+    //     }
+    //
+    //     const canFlipX = (positionerState.constraintAdjustment | flipX) !== 0
+    //     const canFlipY = (positionerState.constraintAdjustment | flipY) !== 0
+    //     const canSlideX = (positionerState.constraintAdjustment | slideX) !== 0
+    //     const canSlideY = (positionerState.constraintAdjustment | slideY) !== 0
+    //     const canResizeX = (positionerState.constraintAdjustment | resizeX) !== 0
+    //     const canResizeY = (positionerState.constraintAdjustment | resizeY) !== 0
+    //
+    //     // X-Axis:
+    //     // we can't use slide or flip if if the height is greater than the screen height
+    //     if (
+    //       (violations.leftViolation || violations.rightViolation) &&
+    //       positionerState.sizeRect.size.width < clientWidth()
+    //     ) {
+    //       if (canFlipX) {
+    //         // TODO try flipping
+    //         const oldAnchor = positionerState.anchor
+    //         const oldGravity = positionerState.gravity
+    //
+    //         positionerState.anchor = inverseX[oldAnchor]
+    //         positionerState.gravity = inverseX[oldGravity]
+    //
+    //         violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
+    //         if (violations && (violations.leftViolation || violations.rightViolation)) {
+    //           // still violating, revert
+    //           positionerState.anchor = oldAnchor
+    //           positionerState.gravity = oldGravity
+    //         }
+    //       }
+    //
+    //       // check for violations in case the flip caused the violations to disappear
+    //       violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
+    //       if (violations && (violations.leftViolation || violations.rightViolation) && canSlideX) {
+    //         // try sliding
+    //         const newXDeltaOffset = violations.rightViolation ? -violations.rightViolation : violations.leftViolation
+    //         const oldOffset = positionerState.offset
+    //         positionerState.offset = { x: oldOffset.x + newXDeltaOffset, y: oldOffset.y }
+    //         // no need to check if there is still a X violation as we already ensured the width < max width
+    //       }
+    //     }
+    //
+    //     // check for violations in case the flip or slide caused the violations to disappear
+    //     violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
+    //     if (violations && (violations.leftViolation || violations.rightViolation) && canResizeX) {
+    //       if (violations.leftViolation) {
+    //         const oldOffset = positionerState.offset
+    //         positionerState.offset = { x: oldOffset.x + violations.leftViolation, y: oldOffset.y }
+    //         const x1 = positionerState.sizeRect.x1 - violations.leftViolation
+    //         const { x0, y0, y1 } = positionerState.sizeRect
+    //         positionerState.sizeRect = withInfo({ x0, y0, x1, y1 })
+    //       }
+    //
+    //       if (violations.rightViolation) {
+    //         const x1 = positionerState.sizeRect.x1 - violations.rightViolation
+    //         const { x0, y0, y1 } = positionerState.sizeRect
+    //         positionerState.sizeRect = withInfo({ x0, y0, x1, y1 })
+    //       }
+    //     }
+    //
+    //     // Y-Axis:
+    //     // we can't use slide or flip if if the height is greater than the screen height
+    //     violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
+    //     if (
+    //       violations &&
+    //       (violations.topViolation || violations.bottomViolation) &&
+    //       positionerState.sizeRect.size.height < clientHeight()
+    //     ) {
+    //       if (canFlipY) {
+    //         const oldAnchor = positionerState.anchor
+    //         const oldGravity = positionerState.gravity
+    //
+    //         positionerState.anchor = inverseY[oldAnchor]
+    //         positionerState.gravity = inverseY[oldGravity]
+    //
+    //         violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
+    //         if (violations && (violations.topViolation || violations.bottomViolation)) {
+    //           // still violating, revert
+    //           positionerState.anchor = oldAnchor
+    //           positionerState.gravity = oldGravity
+    //         }
+    //       }
+    //
+    //       // check for violations in case the flip caused the violations to disappear
+    //       violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
+    //       if (violations && (violations.topViolation || violations.bottomViolation) && canSlideY) {
+    //         // try sliding
+    //         const newYDeltaOffset = violations.bottomViolation ? -violations.bottomViolation : violations.topViolation
+    //         const oldOffset = positionerState.offset
+    //         positionerState.offset = { x: oldOffset.x, y: oldOffset.y + newYDeltaOffset }
+    //         // no need to check if there is still a Y violation as we already ensured the height < max height
+    //       }
+    //     }
+    //
+    //     // check for violations in case the flip or slide caused the violations to disappear
+    //     violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
+    //     if (violations && (violations.topViolation || violations.bottomViolation) && canResizeY) {
+    //       if (violations.topViolation) {
+    //         const oldOffset = positionerState.offset
+    //         positionerState.offset = { x: oldOffset.x, y: oldOffset.y + violations.topViolation }
+    //         const y1 = positionerState.sizeRect.y1 - violations.topViolation
+    //         const { x0, y0, x1 } = positionerState.sizeRect
+    //         positionerState.sizeRect = withInfo({ x0, y0, x1, y1 })
+    //       }
+    //
+    //       if (violations.bottomViolation) {
+    //         const y1 = positionerState.sizeRect.y1 - violations.bottomViolation
+    //         const { x0, y0, x1 } = positionerState.sizeRect
+    //         positionerState.sizeRect = withInfo({ x0, y0, x1, y1 })
+    //       }
+    //     }
+    //
+    //     const {
+    //       position: { x, y },
+    //       size: { width, height },
+    //     } = positionerState.sizeRect
+    //     this.resource.configure(x, y, width, height)
+    //   }
+    // }
+  }
 
-    const parentXdgSurface = parent.implementation as XdgSurface
-    const parentSurface = parentXdgSurface.wlSurfaceResource.implementation as Surface
-    const parentView = parentSurface.role?.view
-    if (parentView) {
-      let violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
-      if (violations && positionerState.sizeRect) {
-        if (
-          !(
-            violations.topViolation ||
-            violations.rightViolation ||
-            violations.bottomViolation ||
-            violations.leftViolation
-          )
-        ) {
-          // all fine, no need to reconfigure
-          return
-        }
-
-        const canFlipX = (positionerState.constraintAdjustment | flipX) !== 0
-        const canFlipY = (positionerState.constraintAdjustment | flipY) !== 0
-        const canSlideX = (positionerState.constraintAdjustment | slideX) !== 0
-        const canSlideY = (positionerState.constraintAdjustment | slideY) !== 0
-        const canResizeX = (positionerState.constraintAdjustment | resizeX) !== 0
-        const canResizeY = (positionerState.constraintAdjustment | resizeY) !== 0
-
-        // X-Axis:
-        // we can't use slide or flip if if the height is greater than the screen height
-        if (
-          (violations.leftViolation || violations.rightViolation) &&
-          positionerState.sizeRect.size.width < clientWidth()
-        ) {
-          if (canFlipX) {
-            // TODO try flipping
-            const oldAnchor = positionerState.anchor
-            const oldGravity = positionerState.gravity
-
-            positionerState.anchor = inverseX[oldAnchor]
-            positionerState.gravity = inverseX[oldGravity]
-
-            violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
-            if (violations && (violations.leftViolation || violations.rightViolation)) {
-              // still violating, revert
-              positionerState.anchor = oldAnchor
-              positionerState.gravity = oldGravity
-            }
-          }
-
-          // check for violations in case the flip caused the violations to disappear
-          violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
-          if (violations && (violations.leftViolation || violations.rightViolation) && canSlideX) {
-            // try sliding
-            const newXDeltaOffset = violations.rightViolation ? -violations.rightViolation : violations.leftViolation
-            const oldOffset = positionerState.offset
-            positionerState.offset = { x: oldOffset.x + newXDeltaOffset, y: oldOffset.y }
-            // no need to check if there is still a X violation as we already ensured the width < max width
-          }
-        }
-
-        // check for violations in case the flip or slide caused the violations to disappear
-        violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
-        if (violations && (violations.leftViolation || violations.rightViolation) && canResizeX) {
-          if (violations.leftViolation) {
-            const oldOffset = positionerState.offset
-            positionerState.offset = { x: oldOffset.x + violations.leftViolation, y: oldOffset.y }
-            const x1 = positionerState.sizeRect.x1 - violations.leftViolation
-            const { x0, y0, y1 } = positionerState.sizeRect
-            positionerState.sizeRect = withInfo({ x0, y0, x1, y1 })
-          }
-
-          if (violations.rightViolation) {
-            const x1 = positionerState.sizeRect.x1 - violations.rightViolation
-            const { x0, y0, y1 } = positionerState.sizeRect
-            positionerState.sizeRect = withInfo({ x0, y0, x1, y1 })
-          }
-        }
-
-        // Y-Axis:
-        // we can't use slide or flip if if the height is greater than the screen height
-        violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
-        if (
-          violations &&
-          (violations.topViolation || violations.bottomViolation) &&
-          positionerState.sizeRect.size.height < clientHeight()
-        ) {
-          if (canFlipY) {
-            const oldAnchor = positionerState.anchor
-            const oldGravity = positionerState.gravity
-
-            positionerState.anchor = inverseY[oldAnchor]
-            positionerState.gravity = inverseY[oldGravity]
-
-            violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
-            if (violations && (violations.topViolation || violations.bottomViolation)) {
-              // still violating, revert
-              positionerState.anchor = oldAnchor
-              positionerState.gravity = oldGravity
-            }
-          }
-
-          // check for violations in case the flip caused the violations to disappear
-          violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
-          if (violations && (violations.topViolation || violations.bottomViolation) && canSlideY) {
-            // try sliding
-            const newYDeltaOffset = violations.bottomViolation ? -violations.bottomViolation : violations.topViolation
-            const oldOffset = positionerState.offset
-            positionerState.offset = { x: oldOffset.x, y: oldOffset.y + newYDeltaOffset }
-            // no need to check if there is still a Y violation as we already ensured the height < max height
-          }
-        }
-
-        // check for violations in case the flip or slide caused the violations to disappear
-        violations = positionerState.checkScreenConstraints(parentXdgSurface, parentView)
-        if (violations && (violations.topViolation || violations.bottomViolation) && canResizeY) {
-          if (violations.topViolation) {
-            const oldOffset = positionerState.offset
-            positionerState.offset = { x: oldOffset.x, y: oldOffset.y + violations.topViolation }
-            const y1 = positionerState.sizeRect.y1 - violations.topViolation
-            const { x0, y0, x1 } = positionerState.sizeRect
-            positionerState.sizeRect = withInfo({ x0, y0, x1, y1 })
-          }
-
-          if (violations.bottomViolation) {
-            const y1 = positionerState.sizeRect.y1 - violations.bottomViolation
-            const { x0, y0, x1 } = positionerState.sizeRect
-            positionerState.sizeRect = withInfo({ x0, y0, x1, y1 })
-          }
-        }
-
-        const {
-          position: { x, y },
-          size: { width, height },
-        } = positionerState.sizeRect
-        this.resource.configure(x, y, width, height)
+  private map(surface: Surface) {
+    // TODO check if parent is mapped
+    for (const surfaceChild of surface.children) {
+      if (surfaceChild !== surface.surfaceChildSelf && surfaceChild.surface.role instanceof XdgPopup) {
+        this.resource.postError(XdgWmBaseError.notTheTopmostPopup, 'Client tried to map a non-topmost popup')
+        this.session.logger.warn('[client-protocol-error] - Client tried to map a non-topmost popup.')
+        return
       }
     }
+
+    this.mapped = true
+    const parentXdgSurface = this.parent.implementation as XdgSurface
+
+    // set position based on positioner object
+    const surfaceSpaceAnchorPoint = this.positionerState.surfaceSpaceAnchorPoint(parentXdgSurface)
+    if (surfaceSpaceAnchorPoint) {
+      surface.surfaceChildSelf.position = minusPoint(surfaceSpaceAnchorPoint, this.xdgSurface.windowGeometry.position)
+    }
+  }
+
+  private dismiss() {
+    if (!this.dismissed) {
+      this.dismissed = true
+      if (this.seat.pointer) {
+        const popupGrab = this.seat.pointer.findPopupGrab(this.xdgSurface.wlSurfaceResource)
+        if (popupGrab) {
+          popupGrab.resolve()
+        }
+      }
+      this.resource.popupDone()
+      const parentXdgSurface = this.parent.implementation as XdgSurface
+      const parentSurface = parentXdgSurface.wlSurfaceResource.implementation as Surface
+      const surface = this.xdgSurface.wlSurfaceResource.implementation as Surface
+      parentSurface.removeChild(surface.surfaceChildSelf)
+      this.seat.keyboard.focusGained(parentSurface)
+    }
+  }
+
+  private _updatePopupKeyboardFocus() {
+    this.seat.keyboard.focusGained(this.xdgSurface.wlSurfaceResource.implementation as Surface)
+    // if the keyboard or focus changes to a different client, we have to dismiss the popup
+    this.seat.keyboard.onKeyboardFocusChanged().then(() => {
+      if (!this.seat.keyboard.focus || this.seat.keyboard.focus.resource.client !== this.resource.client) {
+        this.dismiss()
+      }
+    })
   }
 }

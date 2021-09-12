@@ -20,7 +20,7 @@ import BufferImplementation from '../BufferImplementation'
 import { ButtonEvent } from '../ButtonEvent'
 import Callback from '../Callback'
 import { queueCancellableMicrotask } from '../Loop'
-import { PointRO } from '../math/Point'
+import { Point } from '../math/Point'
 import Output from '../Output'
 import { PointerRole } from '../Pointer'
 import DecodedFrame from '../remotestreaming/DecodedFrame'
@@ -145,7 +145,7 @@ export default class Renderer {
     })
   }
 
-  pickView(scenePoint: PointRO): View | undefined {
+  pickView(scenePoint: Point): View | undefined {
     // test views from front to back
     return [...this.viewStack].reverse().find((view) => {
       const surfacePoint = view.sceneToSurfaceSpace(scenePoint)

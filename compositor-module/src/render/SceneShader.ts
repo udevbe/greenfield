@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { mat4ToArray } from '../math/Mat4'
-import { SizeRO } from '../math/Size'
+import { Size } from '../math/Size'
 import View from '../View'
 import Program from './Program'
 import RenderState from './RenderState'
@@ -85,7 +85,7 @@ function initBuffers(gl: WebGLRenderingContext): WebGLBuffer {
 }
 
 class SceneShader {
-  private _sceneSize?: SizeRO
+  private _sceneSize?: Size
 
   static create(gl: WebGLRenderingContext): SceneShader {
     const program = initShaders(gl)
@@ -109,7 +109,7 @@ class SceneShader {
     this.gl.useProgram(null)
   }
 
-  updateSceneData(sceneSize: SizeRO): void {
+  updateSceneData(sceneSize: Size): void {
     const { width, height } = sceneSize
     this._sceneSize = sceneSize
     this.gl.viewport(0, 0, width, height)

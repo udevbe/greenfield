@@ -15,12 +15,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { PointRO } from './math/Point'
+import { Point } from './math/Point'
 import Surface from './Surface'
 
 export type SurfaceChild = {
   readonly surface: Surface
-  position: PointRO
+  position: Point
 }
 
 export function createSurfaceChild(surface: Surface): SurfaceChild {

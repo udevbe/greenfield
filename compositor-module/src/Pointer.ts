@@ -29,7 +29,7 @@ import { AxisEvent } from './AxisEvent'
 import { ButtonEvent } from './ButtonEvent'
 import DataDevice from './DataDevice'
 
-import { PointRO } from './math/Point'
+import { Point } from './math/Point'
 import { fini, initRect } from './Region'
 import Seat from './Seat'
 import Session from './Session'
@@ -392,7 +392,7 @@ export default class Pointer implements WlPointerRequests {
     }
   }
 
-  private calculateSurfacePoint(view: View): PointRO {
+  private calculateSurfacePoint(view: View): Point {
     return view.sceneToSurfaceSpace(this)
   }
 

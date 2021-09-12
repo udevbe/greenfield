@@ -1,7 +1,7 @@
 import { WlShellSurfaceResize } from 'westfield-runtime-server'
 import { CompositorSurface, CompositorSurfaceState } from '../index'
-import { plusPoint, PointRO } from '../math/Point'
-import { SizeRO } from '../math/Size'
+import { plusPoint, Point } from '../math/Point'
+import { Size } from '../math/Size'
 import Output from '../Output'
 import Pointer from '../Pointer'
 import Session from '../Session'
@@ -98,8 +98,8 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     y: 0,
     isSet: false,
   }
-  private savedViewPosition?: PointRO
-  private previousBufferSize?: SizeRO
+  private savedViewPosition?: Point
+  private previousBufferSize?: Size
 
   constructor(
     readonly session: Session,
@@ -480,7 +480,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
   }
 
-  private viewOffsetAfterResize(bufferSize: SizeRO, previousBufferSize: SizeRO): PointRO | undefined {
+  private viewOffsetAfterResize(bufferSize: Size, previousBufferSize: Size): Point | undefined {
     const { width: previousWidth, height: previousHeight } = previousBufferSize
     const { width, height } = bufferSize
 

@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
-import { sizeEquals, SizeRO } from '../math/Size'
+import { sizeEquals, Size } from '../math/Size'
 import Session from '../Session'
 import RenderState from './RenderState'
 import Texture from './Texture'
@@ -65,7 +65,7 @@ class YUVAToRGBA {
     public readonly alphaTexture: Texture,
   ) {}
 
-  convertInto(yuva: OpaqueAndAlphaPlanes, frameSize: SizeRO, renderState: RenderState): void {
+  convertInto(yuva: OpaqueAndAlphaPlanes, frameSize: Size, renderState: RenderState): void {
     const { alpha, opaque } = yuva
     const start = Date.now()
     this.session.logger.trace(`|--> Decoding took ${Date.now() - start}ms`)

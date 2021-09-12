@@ -17,8 +17,8 @@
 
 import { WlRegionRequests, WlRegionResource } from 'westfield-runtime-server'
 import { lib } from './lib'
-import { PointRO } from './math/Point'
-import { RectRO } from './math/Rect'
+import { Point } from './math/Point'
+import { Rect } from './math/Rect'
 
 export function createPixmanRegion(): number {
   const pixmanRegion = lib.pixman._malloc(20) // region struct is pointer + 4*uint32 = 5*4 = 20
@@ -38,7 +38,7 @@ export function initInfinite(pixmanRegion: number): void {
   lib.pixman._pixman_region32_init_rect(pixmanRegion, -0x3fffffff, -0x3fffffff, 0x7fffffff, 0x7fffffff)
 }
 
-export function initRect(pixmanRegion: number, rect: RectRO): void {
+export function initRect(pixmanRegion: number, rect: Rect): void {
   lib.pixman._pixman_region32_init_rect(pixmanRegion, rect.x0, rect.y0, rect.x1 - rect.x0, rect.y1 - rect.y0)
 }
 
@@ -58,7 +58,7 @@ export function destroyPixmanRegion(pixmanRegion: number): void {
   lib.pixman._free(pixmanRegion)
 }
 
-export function contains(pixmanRegion: number, point: PointRO): boolean {
+export function contains(pixmanRegion: number, point: Point): boolean {
   return lib.pixman._pixman_region32_contains_point(pixmanRegion, point.x, point.y, null) !== 0
 }
 
@@ -66,7 +66,7 @@ export function copyTo(destination: number, source: number): void {
   lib.pixman._pixman_region32_copy(destination, source)
 }
 
-export function containsRectangle(pixmanRegion: number, box: RectRO): boolean {
+export function containsRectangle(pixmanRegion: number, box: Rect): boolean {
   const rectsPtr = lib.pixman._malloc(4) // uint32
   const rectStruct = new Int32Array(lib.pixman.HEAPU8.buffer, rectsPtr, 4)
   rectStruct[0] = box.x0
@@ -87,7 +87,7 @@ export function equal(pixmanRegion1: number, pixmanRegion2: number): boolean {
 }
 
 // TODO move to stand-alone exported function
-export function rectangles(pixmanRegion: number): RectRO[] {
+export function rectangles(pixmanRegion: number): Rect[] {
   const nroRectsPtr = lib.pixman._malloc(4) // uint32
   const pixmanBoxPtr = lib.pixman._pixman_region32_rectangles(pixmanRegion, nroRectsPtr)
   const rectangles = []

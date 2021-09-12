@@ -15,12 +15,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { IDENTITY, Mat4RO } from './Mat4'
+import { IDENTITY, Mat4 } from './Mat4'
 
-export const NORMAL: Mat4RO = IDENTITY
+export const NORMAL: Mat4 = IDENTITY
 
 // prettier-ignore
-export const _90: Mat4RO = {
+export const _90: Mat4 = {
   m00: 0, m10: -1, m20: 0, m30: 0,
   m01: 1, m11:  0, m21: 0, m31: 0,
   m02: 0, m12:  0, m22: 1, m32: 0,
@@ -28,7 +28,7 @@ export const _90: Mat4RO = {
 } as const
 
 // prettier-ignore
-export const _180: Mat4RO = {
+export const _180: Mat4 = {
   m00: -1, m10:  0, m20: 0, m30: 0,
   m01:  1, m11: -1, m21: 0, m31: 0,
   m02:  0, m12:  0, m22: 1, m32: 0,
@@ -36,7 +36,7 @@ export const _180: Mat4RO = {
 } as const
 
 // prettier-ignore
-export const _270: Mat4RO = {
+export const _270: Mat4 = {
   m00:  0, m10: 1, m20: 0, m30: 0,
   m01: -1, m11: 0, m21: 0, m31: 0,
   m02:  0, m12: 0, m22: 1, m32: 0,
@@ -44,7 +44,7 @@ export const _270: Mat4RO = {
 } as const
 
 // prettier-ignore
-export const FLIPPED: Mat4RO = {
+export const FLIPPED: Mat4 = {
   m00: -1, m10: 0, m20: 0, m30: 0,
   m01:  0, m11: 1, m21: 0, m31: 0,
   m02:  0, m12: 0, m22: 1, m32: 0,
@@ -52,7 +52,7 @@ export const FLIPPED: Mat4RO = {
 } as const
 
 // prettier-ignore
-export const FLIPPED_90: Mat4RO = {
+export const FLIPPED_90: Mat4 = {
   m00:  0, m10: -1, m20: 0, m30: 0,
   m01: -1, m11:  0, m21: 0, m31: 0,
   m02:  0, m12:  0, m22: 1, m32: 0,
@@ -60,7 +60,7 @@ export const FLIPPED_90: Mat4RO = {
 } as const
 
 // prettier-ignore
-export const FLIPPED_180: Mat4RO = {
+export const FLIPPED_180: Mat4 = {
   m00: 1, m10:  0, m20: 0, m30: 0,
   m01: 0, m11: -1, m21: 0, m31: 0,
   m02: 0, m12:  0, m22: 1, m32: 0,
@@ -68,7 +68,7 @@ export const FLIPPED_180: Mat4RO = {
 } as const
 
 // prettier-ignore
-export const FLIPPED_270: Mat4RO = {
+export const FLIPPED_270: Mat4 = {
   m00: 0, m10:  1, m20: 0, m30: 0,
   m01: 1, m11:  0, m21: 0, m31: 0,
   m02: 0, m12:  0, m22: 1, m32: 0,

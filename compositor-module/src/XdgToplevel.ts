@@ -26,9 +26,9 @@ import {
 } from 'westfield-runtime-server'
 import { setCursor } from './browser/cursor'
 import { CompositorSurface, CompositorSurfaceState } from './index'
-import { minusPoint, plusPoint, PointRO } from './math/Point'
-import { RectRO } from './math/Rect'
-import { SizeRO } from './math/Size'
+import { minusPoint, plusPoint, Point } from './math/Point'
+import { Rect } from './math/Rect'
+import { Size } from './math/Size'
 import Seat from './Seat'
 import Session from './Session'
 import Surface from './Surface'
@@ -79,10 +79,10 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     unresponsive: false,
   }
   private parent?: XdgToplevelResource
-  private pendingMaxSize: PointRO = { x: Number.MAX_SAFE_INTEGER, y: Number.MAX_SAFE_INTEGER }
-  private maxSize: PointRO = { x: Number.MAX_SAFE_INTEGER, y: Number.MAX_SAFE_INTEGER }
-  private pendingMinSize: PointRO = { x: 0, y: 0 }
-  private minSize: PointRO = { x: 0, y: 0 }
+  private pendingMaxSize: Point = { x: Number.MAX_SAFE_INTEGER, y: Number.MAX_SAFE_INTEGER }
+  private maxSize: Point = { x: Number.MAX_SAFE_INTEGER, y: Number.MAX_SAFE_INTEGER }
+  private pendingMinSize: Point = { x: 0, y: 0 }
+  private minSize: Point = { x: 0, y: 0 }
   private pendingConfigureStates: ConfigureState[] = []
   private ackedConfigureState: ConfigureState = {
     serial: 0,
@@ -98,10 +98,10 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
     height: 0,
     resizeEdge: 0,
   }
-  private previousWindowGeometry: RectRO = { x0: 0, y0: 0, x1: 0, y1: 0 }
+  private previousWindowGeometry: Rect = { x0: 0, y0: 0, x1: 0, y1: 0 }
 
   private savedConfigureState?: ConfigureState
-  private savedViewPositionOffset?: PointRO
+  private savedViewPositionOffset?: Point
 
   private constructor(
     public readonly resource: XdgToplevelResource,
@@ -280,7 +280,7 @@ export default class XdgToplevel implements XdgToplevelRequests, UserShellSurfac
   /**
    * Called during commit
    */
-  private fullscreenCommit(surface: Surface, bufferSize: SizeRO) {
+  private fullscreenCommit(surface: Surface, bufferSize: Size) {
     const { x: newSurfaceWidth, y: newSurfaceHeight } = surface.toSurfaceSpace({
       x: bufferSize.width,
       y: bufferSize.height,

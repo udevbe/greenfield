@@ -25,7 +25,7 @@ import {
   XdgWmBaseError,
 } from 'westfield-runtime-server'
 import { translation } from './math/Mat4'
-import { createRect, intersect, RectRO, RectROWithInfo, withInfo } from './math/Rect'
+import { createRect, intersect, Rect, RectWithInfo, withSizeAndPosition } from './math/Rect'
 import Seat from './Seat'
 import Session from './Session'
 import Surface from './Surface'
@@ -35,14 +35,14 @@ import XdgPositioner from './XdgPositioner'
 import XdgToplevel from './XdgToplevel'
 
 export default class XdgSurface implements XdgSurfaceRequests {
-  private pendingWindowGeometry: RectRO = {
+  private pendingWindowGeometry: Rect = {
     x0: Number.MIN_SAFE_INTEGER,
     y0: Number.MIN_SAFE_INTEGER,
     x1: Number.MAX_SAFE_INTEGER,
     y1: Number.MAX_SAFE_INTEGER,
   }
   configureSerial = 0
-  windowGeometry: RectROWithInfo = createRect({ x: 0, y: 0 }, { width: 0, height: 0 })
+  windowGeometry: RectWithInfo = createRect({ x: 0, y: 0 }, { width: 0, height: 0 })
 
   constructor(
     public readonly xdgSurfaceResource: XdgSurfaceResource,
@@ -133,7 +133,7 @@ export default class XdgSurface implements XdgSurfaceRequests {
 
   commitWindowGeometry(): void {
     if (this.pendingWindowGeometry !== this.windowGeometry) {
-      this.windowGeometry = withInfo(intersect(this.createBoundingRectangle(), this.pendingWindowGeometry))
+      this.windowGeometry = withSizeAndPosition(intersect(this.createBoundingRectangle(), this.pendingWindowGeometry))
       this.pendingWindowGeometry = this.windowGeometry
     }
   }
@@ -147,7 +147,7 @@ export default class XdgSurface implements XdgSurfaceRequests {
     this.xdgSurfaceResource.configure(++this.configureSerial)
   }
 
-  private createBoundingRectangle(): RectRO {
+  private createBoundingRectangle(): Rect {
     const xs = [0]
     const ys = [0]
 

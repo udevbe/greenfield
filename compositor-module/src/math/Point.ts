@@ -15,14 +15,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { Vec4RO } from './Vec4'
+import { Vec4 } from './Vec4'
 
-export type PointRO = {
+export type Point = {
   readonly x: number
   readonly y: number
 }
 
-export function toVec4({ x, y }: PointRO): Vec4RO {
+export const ORIGIN: Point = { x: 0, y: 0 }
+
+export function toVec4({ x, y }: Point): Vec4 {
   return {
     x,
     y,
@@ -31,14 +33,14 @@ export function toVec4({ x, y }: PointRO): Vec4RO {
   } as const
 }
 
-export function plusPoint({ x: x0, y: y0 }: PointRO, { x: x1, y: y1 }: PointRO): PointRO {
+export function plusPoint({ x: x0, y: y0 }: Point, { x: x1, y: y1 }: Point): Point {
   return {
     x: x0 + x1,
     y: y0 + y1,
   } as const
 }
 
-export function minusPoint({ x: x0, y: y0 }: PointRO, { x: x1, y: y1 }: PointRO): PointRO {
+export function minusPoint({ x: x0, y: y0 }: Point, { x: x1, y: y1 }: Point): Point {
   return {
     x: x0 - x1,
     y: y0 - y1,

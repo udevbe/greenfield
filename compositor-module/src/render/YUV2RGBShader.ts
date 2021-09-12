@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { SizeRO } from '../math/Size'
+import { Size } from '../math/Size'
 import Program from './Program'
 import ShaderCompiler from './ShaderCompiler'
 import { FRAGMENT_YUV_TO_RGB, VERTEX_QUAD } from './ShaderSources'
@@ -118,7 +118,7 @@ class YUV2RGBShader {
     this.gl.useProgram(null)
   }
 
-  updateShaderData(encodedFrameSize: SizeRO, maxXTexCoord: number, maxYTexCoord: number): void {
+  updateShaderData(encodedFrameSize: Size, maxXTexCoord: number, maxYTexCoord: number): void {
     const { width, height } = encodedFrameSize
     this.gl.viewport(0, 0, width, height)
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)

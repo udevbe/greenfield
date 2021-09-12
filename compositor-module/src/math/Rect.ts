@@ -15,33 +15,40 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { SizeRO } from './Size'
-import { PointRO } from './Point'
+import { Size } from './Size'
+import { Point } from './Point'
 
-export type RectRO = {
+export type Rect = {
   readonly x0: number
   readonly y0: number
   readonly x1: number
   readonly y1: number
 }
 
-export type RectROWithInfo = {
-  readonly size: SizeRO
-  readonly position: PointRO
-} & RectRO
+export const ZERO_RECT: Rect = {
+  x0: 0,
+  y0: 0,
+  x1: 0,
+  y1: 0,
+}
 
-export function createRect(position: PointRO, size: SizeRO): RectROWithInfo {
+export type RectWithInfo = {
+  readonly size: Size
+  readonly position: Point
+} & Rect
+
+export function createRect(position: Point, size: Size): RectWithInfo {
   return {
     x0: position.x,
     y0: position.y,
     x1: position.x + size.width,
-    y1: position.x + size.height,
+    y1: position.y + size.height,
     size,
     position,
   }
 }
 
-export function withInfo(rect: RectRO): RectROWithInfo {
+export function withSizeAndPosition(rect: Rect): RectWithInfo {
   return {
     ...rect,
     size: {
@@ -55,7 +62,7 @@ export function withInfo(rect: RectRO): RectROWithInfo {
   }
 }
 
-export function intersect(rect: RectRO, other: RectRO): RectRO {
+export function intersect(rect: Rect, other: Rect): Rect {
   const leftX = Math.max(rect.x0, other.x0)
   const rightX = Math.min(rect.x1, other.x1)
   const topY = Math.max(rect.y0, other.y0)

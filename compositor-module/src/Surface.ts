@@ -27,9 +27,9 @@ import {
 import BufferContents from './BufferContents'
 import BufferImplementation from './BufferImplementation'
 import Callback from './Callback'
-import { IDENTITY, invert, Mat4RO, scalar, timesMat4, timesPoint, translation } from './math/Mat4'
-import { PointRO } from './math/Point'
-import { createRect, RectRO } from './math/Rect'
+import { IDENTITY, invert, Mat4, scalar, timesMat4, timesPoint, translation } from './math/Mat4'
+import { Point } from './math/Point'
+import { createRect, Rect } from './math/Rect'
 import { _180, _270, _90, FLIPPED, FLIPPED_180, FLIPPED_270, FLIPPED_90, NORMAL } from './math/Transformations'
 import Region, {
   copyTo,
@@ -44,14 +44,14 @@ import Region, {
 import H264BufferContentDecoder from './render/H264BufferContentDecoder'
 import Renderer from './render/Renderer'
 import Session from './Session'
-import { sizeEquals, SizeRO } from './math/Size'
+import { sizeEquals, Size } from './math/Size'
 import Subsurface from './Subsurface'
 import { createSurfaceChild, SurfaceChild } from './SurfaceChild'
 import SurfaceRole from './SurfaceRole'
 
 export interface SurfaceState {
-  damageRects: RectRO[]
-  bufferDamageRects: RectRO[]
+  damageRects: Rect[]
+  bufferDamageRects: Rect[]
   readonly opaquePixmanRegion: number
   readonly inputPixmanRegion: number
   dx: number
@@ -153,10 +153,10 @@ class Surface implements WlSurfaceRequests {
   hasPointerInput = true
   hasTouchInput = true
   role?: SurfaceRole
-  bufferTransformation: Mat4RO = IDENTITY
-  inverseBufferTransformation: Mat4RO = IDENTITY
+  bufferTransformation: Mat4 = IDENTITY
+  inverseBufferTransformation: Mat4 = IDENTITY
   readonly pixmanRegion: number = createPixmanRegion()
-  size?: SizeRO
+  size?: Size
   private readonly _surfaceChildren: SurfaceChild[] = []
 
   private constructor(
@@ -221,7 +221,7 @@ class Surface implements WlSurfaceRequests {
     return surface
   }
 
-  isWithinInputRegion(surfacePoint: PointRO): boolean {
+  isWithinInputRegion(surfacePoint: Point): boolean {
     const withinInput = contains(this.state.inputPixmanRegion, surfacePoint)
     const withinSurface = contains(this.pixmanRegion, surfacePoint)
     return withinSurface && withinInput
@@ -290,7 +290,7 @@ class Surface implements WlSurfaceRequests {
     }
   }
 
-  toSurfaceSpace(bufferPoint: PointRO): PointRO {
+  toSurfaceSpace(bufferPoint: Point): Point {
     return timesPoint(this.inverseBufferTransformation, bufferPoint)
   }
 
@@ -379,7 +379,7 @@ class Surface implements WlSurfaceRequests {
     this.pendingState.bufferDamageRects.push(createRect({ x, y }, { width, height }))
   }
 
-  private _applyBufferTransformWithPositionCorrection(newBufferTransform: number, bufferTransformation: Mat4RO) {
+  private _applyBufferTransformWithPositionCorrection(newBufferTransform: number, bufferTransformation: Mat4) {
     switch (newBufferTransform) {
       case 3: // 270
       case 4: {

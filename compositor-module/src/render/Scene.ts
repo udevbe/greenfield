@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { createRect } from '../math/Rect'
-import { SizeRO } from '../math/Size'
+import { Size } from '../math/Size'
 import Output from '../Output'
 import { createPixmanRegion, initRect } from '../Region'
 import DecodedFrame, { OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
@@ -65,7 +65,7 @@ class Scene {
     public readonly yuvaToRGBA: YUVAToRGBA,
     public readonly output: Output,
     public readonly id: string,
-    public resolution: SizeRO | 'auto' = 'auto',
+    public resolution: Size | 'auto' = 'auto',
   ) {
     this._destroyPromise = new Promise<void>((resolve) => {
       this._destroyResolve = resolve

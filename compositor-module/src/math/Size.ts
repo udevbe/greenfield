@@ -15,15 +15,17 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-export type SizeRO = {
+export type Size = {
   readonly width: number
   readonly height: number
 }
 
-export function half(size: SizeRO): SizeRO {
+export const ZERO_SIZE: Size = { width: 0, height: 0 }
+
+export function half(size: Size): Size {
   return { width: size.width >>> 1, height: size.height >>> 1 }
 }
 
-export function sizeEquals(size: SizeRO, other: SizeRO): boolean {
+export function sizeEquals(size: Size, other: Size): boolean {
   return size.width === other.width && size.height === other.height
 }

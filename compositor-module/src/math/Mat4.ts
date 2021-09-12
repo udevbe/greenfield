@@ -15,12 +15,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { PointRO } from './Point'
-import { RectRO } from './Rect'
-import { Vec4RO } from './Vec4'
+import { Point } from './Point'
+import { Rect } from './Rect'
+import { Vec4 } from './Vec4'
 
 // prettier-ignore
-export type Mat4RO = {
+export type Mat4 = {
   readonly m00: number; readonly m10: number; readonly m20: number; readonly m30: number
   readonly m01: number; readonly m11: number; readonly m21: number; readonly m31: number
   readonly m02: number; readonly m12: number; readonly m22: number; readonly m32: number
@@ -28,14 +28,14 @@ export type Mat4RO = {
 }
 
 // prettier-ignore
-export const IDENTITY: Mat4RO = {
+export const IDENTITY: Mat4 = {
   m00: 1, m10: 0, m20: 0, m30: 0,
   m01: 0, m11: 1, m21: 0, m31: 0,
   m02: 0, m12: 0, m22: 1, m32: 0,
   m03: 0, m13: 0, m23: 0, m33: 1
 } as const;
 
-export function scalar(scale: number): Mat4RO {
+export function scalar(scale: number): Mat4 {
   // prettier-ignore
   return {
     m00: scale, m10: 0,     m20: 0, m30: 0,
@@ -45,7 +45,7 @@ export function scalar(scale: number): Mat4RO {
   } as const;
 }
 
-export function scalarVector({ x, y, z, w }: Vec4RO): Mat4RO {
+export function scalarVector({ x, y, z, w }: Vec4): Mat4 {
   // prettier-ignore
   return {
     m00: x, m10: 0, m20: 0, m30: 0,
@@ -55,7 +55,7 @@ export function scalarVector({ x, y, z, w }: Vec4RO): Mat4RO {
   } as const;
 }
 
-export function translation(x: number, y: number): Mat4RO {
+export function translation(x: number, y: number): Mat4 {
   // prettier-ignore
   return {
     m00: 1, m10: 0, m20: 0, m30: x,
@@ -65,7 +65,7 @@ export function translation(x: number, y: number): Mat4RO {
   } as const;
 }
 
-export function plusMat4(left: Mat4RO, right: Mat4RO): Mat4RO {
+export function plusMat4(left: Mat4, right: Mat4): Mat4 {
   // prettier-ignore
   return {
     m00: left.m00+right.m00, m10: left.m10+right.m10, m20: left.m20+right.m20, m30: left.m30+right.m30,
@@ -75,7 +75,7 @@ export function plusMat4(left: Mat4RO, right: Mat4RO): Mat4RO {
   } as const;
 }
 
-export function timesPoint(left: Mat4RO, right: PointRO): PointRO {
+export function timesPoint(left: Mat4, right: Point): Point {
   // prettier-ignore
   return {
     x: left.m00 * right.x + left.m10 * right.y + left.m30,
@@ -83,7 +83,7 @@ export function timesPoint(left: Mat4RO, right: PointRO): PointRO {
   } as const
 }
 
-export function timesMat4(left: Mat4RO, right: Mat4RO): Mat4RO {
+export function timesMat4(left: Mat4, right: Mat4): Mat4 {
   const m00 = left.m00 * right.m00 + left.m10 * right.m01 + left.m20 * right.m02 + left.m30 * right.m03
   const m01 = left.m01 * right.m00 + left.m11 * right.m01 + left.m21 * right.m02 + left.m31 * right.m03
   const m02 = left.m02 * right.m00 + left.m12 * right.m01 + left.m22 * right.m02 + left.m32 * right.m03
@@ -110,7 +110,7 @@ export function timesMat4(left: Mat4RO, right: Mat4RO): Mat4RO {
   } as const
 }
 
-export function timesRectToBoundingBox(left: Mat4RO, right: RectRO): RectRO {
+export function timesRectToBoundingBox(left: Mat4, right: Rect): Rect {
   const topLeft = timesPoint(left, { x: right.x0, y: right.y0 })
   const bottomLeft = timesPoint(left, { x: right.x0, y: right.y1 })
   const bottomRight = timesPoint(left, { x: right.x1, y: right.y1 })
@@ -129,7 +129,7 @@ export function timesRectToBoundingBox(left: Mat4RO, right: RectRO): RectRO {
   } as const
 }
 
-export function invert(mat: Mat4RO): Mat4RO {
+export function invert(mat: Mat4): Mat4 {
   const M = [
     [mat.m00, mat.m01, mat.m02, mat.m03],
     [mat.m10, mat.m11, mat.m12, mat.m13],
@@ -211,7 +211,7 @@ export function invert(mat: Mat4RO): Mat4RO {
 
 // prettier-ignore
 export function mat4ToArray(
-  mat4: Mat4RO,
+  mat4: Mat4,
 ): [
   number, number, number, number,
   number, number, number, number,

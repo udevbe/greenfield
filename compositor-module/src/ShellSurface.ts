@@ -26,7 +26,7 @@ import {
 } from 'westfield-runtime-server'
 import { CompositorSurface, CompositorSurfaceState } from './index'
 
-import { plusPoint, PointRO } from './math/Point'
+import { plusPoint, Point } from './math/Point'
 import Seat from './Seat'
 import Session from './Session'
 import Surface from './Surface'

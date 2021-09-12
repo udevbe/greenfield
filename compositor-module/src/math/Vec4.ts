@@ -15,16 +15,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { PointRO } from './Point'
+import { Point } from './Point'
 
-export type Vec4RO = {
+export type Vec4 = {
   readonly x: number
   readonly y: number
   readonly z: number
   readonly w: number
 }
 
-export function createVec4_2D(x: number, y: number): Vec4RO {
+export function createVec4_2D(x: number, y: number): Vec4 {
   return {
     x,
     y,
@@ -33,7 +33,7 @@ export function createVec4_2D(x: number, y: number): Vec4RO {
   } as const
 }
 
-export function plusVec4({ x: x0, y: y0, z: z0, w: w0 }: Vec4RO, { x: x1, y: y1, z: z1, w: w1 }: Vec4RO): Vec4RO {
+export function plusVec4({ x: x0, y: y0, z: z0, w: w0 }: Vec4, { x: x1, y: y1, z: z1, w: w1 }: Vec4): Vec4 {
   return {
     x: x0 + x1,
     y: y0 + y1,
@@ -42,7 +42,7 @@ export function plusVec4({ x: x0, y: y0, z: z0, w: w0 }: Vec4RO, { x: x1, y: y1,
   } as const
 }
 
-export function minusVec4({ x: x0, y: y0, z: z0, w: w0 }: Vec4RO, { x: x1, y: y1, z: z1, w: w1 }: Vec4RO): Vec4RO {
+export function minusVec4({ x: x0, y: y0, z: z0, w: w0 }: Vec4, { x: x1, y: y1, z: z1, w: w1 }: Vec4): Vec4 {
   return {
     x: x0 - x1,
     y: y0 - y1,
@@ -51,6 +51,6 @@ export function minusVec4({ x: x0, y: y0, z: z0, w: w0 }: Vec4RO, { x: x1, y: y1
   } as const
 }
 
-export function toPoint({ x, y }: Vec4RO): PointRO {
+export function toPoint({ x, y }: Vec4): Point {
   return { x, y }
 }
