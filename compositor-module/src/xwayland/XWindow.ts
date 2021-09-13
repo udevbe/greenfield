@@ -783,7 +783,7 @@ export class XWindow {
 
     if (this.frameId) {
       this.wm.xConnection.reparentWindow(this.id, this.wm.wmWindow, 0, 0)
-      this.wm.xConnection.destroySubwindows(this.frameId)
+      this.wm.xConnection.destroyWindow(this.frameId)
       this.setWmState(ICCCM_WITHDRAWN_STATE)
       this.setVirtualDesktop(-1)
       delete this.wm.windowHash[this.frameId]
