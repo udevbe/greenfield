@@ -152,6 +152,8 @@ export class XWindow {
     public readonly session: Session,
   ) {}
 
+  // FIXME fix input focus model, see: https://github.com/swaywm/wlroots/blob/52da68b591bedbbf8a01d74b2f08307a28b058c9/xwayland/xwm.c#L2217
+
   sendFocusWindow(): void {
     if (this.overrideRedirect) {
       return
@@ -163,7 +165,7 @@ export class XWindow {
       window: this.id,
       _type: this.wm.atoms.WM_PROTOCOLS,
       data: {
-        data32: new Uint32Array([this.wm.atoms.WM_TAKE_FOCUS, Time.CurrentTime]),
+        data32: new Uint32Array([this.wm.atoms.WM_TAKE_FOCUS, Date.now()]),
       },
     })
 
@@ -252,7 +254,7 @@ export class XWindow {
         Atom.wmTransientFor,
         Atom.WINDOW,
         ({ value }) => {
-          const lookupWindow = this.wm.lookupXWindow(new Uint32Array(value.buffer)[0])
+          const lookupWindow = this.wm.lookupXWindow(new Uint32Array(value.buffer, value.byteOffset)[0])
           if (lookupWindow === undefined) {
             this.session.logger.debug('XCB_ATOM_WINDOW contains window id not found in hash table.')
           } else {
@@ -264,7 +266,7 @@ export class XWindow {
         this.wm.atoms.WM_PROTOCOLS,
         TYPE_WM_PROTOCOLS,
         ({ value, valueLen }) => {
-          const atoms = new Uint32Array(value.buffer)
+          const atoms = new Uint32Array(value.buffer, value.byteOffset)
           for (let i = 0; i < valueLen; i++) {
             if (atoms[i] === this.wm.atoms.WM_DELETE_WINDOW) {
               this.deleteWindow = true
@@ -296,7 +298,7 @@ export class XWindow {
             baseWidth,
             baseHeight,
             winGravity,
-          ] = new Uint32Array(value.buffer)
+          ] = new Uint32Array(value.buffer, value.byteOffset)
           this.sizeHints = {
             flags,
             x,
@@ -322,7 +324,7 @@ export class XWindow {
         TYPE_NET_WM_STATE,
         ({ value, valueLen }) => {
           this.fullscreen = false
-          const atoms = new Uint32Array(value.buffer)
+          const atoms = new Uint32Array(value.buffer, value.byteOffset)
           for (let i = 0; i < valueLen; i++) {
             if (atoms[i] === this.wm.atoms._NET_WM_STATE_FULLSCREEN) {
               this.fullscreen = true
@@ -336,14 +338,22 @@ export class XWindow {
           }
         },
       ],
-      [this.wm.atoms._NET_WM_WINDOW_TYPE, Atom.ATOM, ({ value }) => (this.type = new Uint32Array(value.buffer)[0])],
+      [
+        this.wm.atoms._NET_WM_WINDOW_TYPE,
+        Atom.ATOM,
+        ({ value }) => (this.type = new Uint32Array(value.buffer, value.byteOffset)[0]),
+      ],
       [this.wm.atoms._NET_WM_NAME, Atom.STRING, ({ value }) => (this.name = value.chars())],
-      [this.wm.atoms._NET_WM_PID, Atom.CARDINAL, ({ value }) => (this.pid = new Uint32Array(value.buffer)[0])],
+      [
+        this.wm.atoms._NET_WM_PID,
+        Atom.CARDINAL,
+        ({ value }) => (this.pid = new Uint32Array(value.buffer, value.byteOffset)[0]),
+      ],
       [
         this.wm.atoms._MOTIF_WM_HINTS,
         TYPE_MOTIF_WM_HINTS,
         ({ value }) => {
-          const [flags, functions, decorations, inputMode, status] = new Uint32Array(value.buffer)
+          const [flags, functions, decorations, inputMode, status] = new Uint32Array(value.buffer, value.byteOffset)
           this.motifHints = {
             flags,
             functions,
@@ -770,7 +780,7 @@ export class XWindow {
     this.wm.xConnection.sendEvent(0, this.id, EventMask.StructureNotify, new Int8Array(event))
   }
 
-  destroy(): void {
+  markDestroyed() {
     if (this.configureTaskRegistration) {
       this.configureTaskRegistration()
       this.configureTaskRegistration = undefined
@@ -779,8 +789,20 @@ export class XWindow {
       this.repaintRegistration()
       this.repaintRegistration = undefined
     }
-    // TODO destroy canvas surface?
 
+    if (this.surfaceId) {
+      this.wm.unpairedWindowList = this.wm.unpairedWindowList.filter((value) => value !== this)
+    }
+
+    if (this.surface && this.surfaceDestroyListener) {
+      this.surface.resource.removeDestroyListener(this.surfaceDestroyListener)
+    }
+
+    delete this.wm.windowHash[this.id]
+  }
+
+  destroy(): void {
+    // TODO destroy canvas surface?
     if (this.frameId) {
       this.wm.xConnection.reparentWindow(this.id, this.wm.wmWindow, 0, 0)
       this.wm.xConnection.destroyWindow(this.frameId)
@@ -794,15 +816,7 @@ export class XWindow {
       this.frame.destroy()
     }
 
-    if (this.surfaceId) {
-      this.wm.unpairedWindowList = this.wm.unpairedWindowList.filter((value) => value !== this)
-    }
-
-    if (this.surface && this.surfaceDestroyListener) {
-      this.surface.resource.removeDestroyListener(this.surfaceDestroyListener)
-    }
-
-    delete this.wm.windowHash[this.id]
+    this.wm.xConnection.destroyWindow(this.id)
   }
 
   close(time: TIMESTAMP): void {

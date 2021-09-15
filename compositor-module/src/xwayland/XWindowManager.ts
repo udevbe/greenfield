@@ -979,7 +979,7 @@ export class XWindowManager {
       return
     }
 
-    this.lookupXWindow(event.window)?.destroy()
+    this.lookupXWindow(event.window)?.markDestroyed()
   }
 
   private handlePropertyNotify(event: PropertyNotifyEvent) {
@@ -1057,18 +1057,17 @@ export class XWindowManager {
     y: number,
     overrideRedirect: number,
   ) {
-    const geometryReplyPromise = this.xConnection.getGeometry(id)
-
     this.xConnection.changeWindowAttributes(id, { eventMask: EventMask.PropertyChange | EventMask.FocusChange })
-
     const window: XWindow = new XWindow(this, id, overrideRedirect !== 0, x, y, width, height, this.session)
-
-    const geometryReply = await geometryReplyPromise
-    /* technically we should use XRender and check the visual format's
-        alpha_mask, but checking depth is simpler and works in all known cases */
-    window.hasAlpha = geometryReply.depth === 32
-
-    this.windowHash[id] = window
+    try {
+      const geometryReply = await this.xConnection.getGeometry(id)
+      /* technically we should use XRender and check the visual format's
+          alpha_mask, but checking depth is simpler and works in all known cases */
+      window.hasAlpha = geometryReply.depth === 32
+      this.windowHash[id] = window
+    } catch (e) {
+      // ignore, window was most likely destroyed
+    }
   }
 
   private async getAtomName(atom: ATOM) {
