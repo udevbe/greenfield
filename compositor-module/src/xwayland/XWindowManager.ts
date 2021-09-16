@@ -1,3 +1,4 @@
+import { h } from 'westfield-runtime-common'
 import { Client, WlPointerButtonState } from 'westfield-runtime-server'
 import type {
   ATOM,
@@ -116,7 +117,6 @@ type XWMAtoms = {
   COMPOUND_TEXT: number
   TEXT: number
   STRING: number
-  WINDOW: number
   'text/plain;charset=utf-8': number
   'text/plain': number
   XdndSelection: number
@@ -130,6 +130,11 @@ type XWMAtoms = {
   XdndActionCopy: number
   _XWAYLAND_ALLOW_COMMITS: number
   WL_SURFACE_ID: number
+  _NET_REQUEST_FRAME_EXTENTS: number
+  _NET_FRAME_EXTENTS: number
+  _NET_WORKAREA: number
+  _NET_DESKTOP_GEOMETRY: number
+  _NET_DESKTOP_VIEWPORT: number
 }
 
 interface XWindowManagerResources {
@@ -221,7 +226,6 @@ async function setupResources(xConnection: XConnection): Promise<XWindowManagerR
     ['COMPOUND_TEXT', 0],
     ['TEXT', 0],
     ['STRING', 0],
-    ['WINDOW', 0],
     ['text/plain;charset=utf-8', 0],
     ['text/plain', 0],
     ['XdndSelection', 0],
@@ -235,6 +239,11 @@ async function setupResources(xConnection: XConnection): Promise<XWindowManagerR
     ['XdndActionCopy', 0],
     ['_XWAYLAND_ALLOW_COMMITS', 0],
     ['WL_SURFACE_ID', 0],
+    ['_NET_REQUEST_FRAME_EXTENTS', 0],
+    ['_NET_FRAME_EXTENTS', 0],
+    ['_NET_WORKAREA', 0],
+    ['_NET_DESKTOP_GEOMETRY', 0],
+    ['_NET_DESKTOP_VIEWPORT', 0],
   ]
 
   const [xFixes, composite, render] = await Promise.all([xFixesPromise, compositePromise, renderPromise])
@@ -336,14 +345,53 @@ function dndInit() {
   // TODO see weston's dnd.c
 }
 
-function setNetActiveWindow(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMAtoms, window: WINDOW) {
+export function setNetActiveWindow(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMAtoms, window: WINDOW) {
   xConnection.changeProperty(
     PropMode.Replace,
     screen.root,
     xwmAtoms._NET_ACTIVE_WINDOW,
-    xwmAtoms.WINDOW,
+    Atom.WINDOW,
     32,
     new Uint32Array([window]),
+  )
+}
+
+function setNetWorkArea(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMAtoms) {
+  const width = screen.widthInPixels
+  const height = screen.heightInPixels
+  xConnection.changeProperty(
+    PropMode.Replace,
+    screen.root,
+    xwmAtoms._NET_WORKAREA,
+    Atom.CARDINAL,
+    32,
+    new Uint32Array([0, 0, width, height]),
+  )
+}
+
+function setNetDesktopGeometry(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMAtoms) {
+  const width = screen.widthInPixels
+  const height = screen.heightInPixels
+  xConnection.changeProperty(
+    PropMode.Replace,
+    screen.root,
+    xwmAtoms._NET_DESKTOP_GEOMETRY,
+    Atom.CARDINAL,
+    32,
+    new Uint32Array([width, height]),
+  )
+}
+
+function setNetDesktopViewport(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMAtoms) {
+  const width = screen.widthInPixels
+  const height = screen.heightInPixels
+  xConnection.changeProperty(
+    PropMode.Replace,
+    screen.root,
+    xwmAtoms._NET_DESKTOP_VIEWPORT,
+    Atom.CARDINAL,
+    32,
+    new Uint32Array([width, height]),
   )
 }
 
@@ -536,6 +584,13 @@ export class XWindowManager {
     )
 
     setNetActiveWindow(xConnection, xConnection.setup.roots[0], xwmAtoms, Window.None)
+    setNetWorkArea(xConnection, xConnection.setup.roots[0], xwmAtoms)
+    setNetDesktopGeometry(xConnection, xConnection.setup.roots[0], xwmAtoms)
+    setNetDesktopViewport(xConnection, xConnection.setup.roots[0], xwmAtoms)
+    // TODO
+    // _NET_SUPPORTED
+    // _NET_CURRENT_DESKTOP
+    // _NET_SUPPORTING_WM_CHECK
 
     // TODO
     selectionInit()
@@ -598,7 +653,7 @@ export class XWindowManager {
       PropMode.Replace,
       this.screen.root,
       this.atoms._NET_ACTIVE_WINDOW,
-      this.atoms.WINDOW,
+      Atom.WINDOW,
       32,
       new Uint32Array([window]),
     )
@@ -800,6 +855,7 @@ export class XWindowManager {
     window.setWmState(ICCCM_NORMAL_STATE)
     window.setNetWmState()
     window.setVirtualDesktop(0)
+    window.setFrameExtents()
     const output = window.legacyFullscreen()
     if (output !== undefined) {
       window.fullscreen = true
@@ -904,7 +960,7 @@ export class XWindowManager {
     }
 
     if (window.fullscreen) {
-      window.sendConfigureNotify()
+      window.sendFullscreenConfigureNotify()
       return
     }
 
@@ -979,7 +1035,7 @@ export class XWindowManager {
       return
     }
 
-    this.lookupXWindow(event.window)?.markDestroyed()
+    this.lookupXWindow(event.window)?.destroy()
   }
 
   private handlePropertyNotify(event: PropertyNotifyEvent) {
@@ -1017,6 +1073,8 @@ export class XWindowManager {
       window.handleState(event)
     } else if (event._type === this.atoms.WL_SURFACE_ID) {
       await window.handleSurfaceId(event)
+    } else if (event._type === this.atoms._NET_REQUEST_FRAME_EXTENTS) {
+      window.handleRequestFrameExtends(event)
     }
   }
 

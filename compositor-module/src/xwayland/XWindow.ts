@@ -23,36 +23,36 @@ import { fini, init, initRect } from '../Region'
 import Session from '../Session'
 import Surface from '../Surface'
 import {
-  _NET_WM_MOVERESIZE_MOVE,
-  MWM_DECOR_ALL,
-  TYPE_WM_NORMAL_HINTS,
-  _NET_WM_MOVERESIZE_SIZE_TOPLEFT,
-  _NET_WM_MOVERESIZE_SIZE_RIGHT,
-  _NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT,
   _NET_WM_MOVERESIZE_CANCEL,
-  _NET_WM_MOVERESIZE_SIZE_LEFT,
-  TYPE_NET_WM_STATE,
-  TYPE_MOTIF_WM_HINTS,
-  MWM_HINTS_DECORATIONS,
-  MWM_DECOR_EVERYTHING,
-  MWM_DECOR_MAXIMIZE,
+  _NET_WM_MOVERESIZE_MOVE,
   _NET_WM_MOVERESIZE_SIZE_BOTTOM,
-  _NET_WM_MOVERESIZE_SIZE_TOP,
-  _NET_WM_MOVERESIZE_SIZE_TOPRIGHT,
+  _NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT,
   _NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT,
-  _NET_WM_STATE_REMOVE,
+  _NET_WM_MOVERESIZE_SIZE_LEFT,
+  _NET_WM_MOVERESIZE_SIZE_RIGHT,
+  _NET_WM_MOVERESIZE_SIZE_TOP,
+  _NET_WM_MOVERESIZE_SIZE_TOPLEFT,
+  _NET_WM_MOVERESIZE_SIZE_TOPRIGHT,
   _NET_WM_STATE_ADD,
+  _NET_WM_STATE_REMOVE,
   _NET_WM_STATE_TOGGLE,
   ICCCM_WITHDRAWN_STATE,
-  PMinSize,
+  MWM_DECOR_ALL,
+  MWM_DECOR_EVERYTHING,
+  MWM_DECOR_MAXIMIZE,
+  MWM_HINTS_DECORATIONS,
   PMaxSize,
-  USSize,
-  PSize,
-  USPosition,
+  PMinSize,
   PPosition,
+  PSize,
+  TYPE_MOTIF_WM_HINTS,
+  TYPE_NET_WM_STATE,
+  TYPE_WM_NORMAL_HINTS,
+  TYPE_WM_PROTOCOLS,
+  USPosition,
+  USSize,
 } from './XConstants'
-import { TYPE_WM_PROTOCOLS } from './XConstants'
-import XWaylandShellSurface from './XWaylandShellSurface'
+import XWaylandShellSurface, { SurfaceState } from './XWaylandShellSurface'
 import { FrameButton, frameCreate, FrameFlag, ThemeLocation, XWindowFrame } from './XWindowFrame'
 import { XWindowManager } from './XWindowManager'
 
@@ -140,6 +140,7 @@ export class XWindow {
   transientFor?: XWindow
   configureTaskRegistration?: () => void
   repaintRegistration?: () => void
+  frameExtentsHint = false
 
   constructor(
     private wm: XWindowManager,
@@ -740,6 +741,10 @@ export class XWindow {
     if (this.x !== x || this.y !== y || this.positionDirty) {
       this.positionDirty = true
       this.wm.configureWindow(this.frameId, { x, y })
+      if (this.shsurf?.state === SurfaceState.TOP_LEVEL) {
+        const { x: offsetX, y: offsetY } = this.frame?.interior ?? { x: 0, y: 0 }
+        this.sendConfigureNotify(x + offsetX, y + offsetY)
+      }
       this.wm.xConnection.flush()
     }
   }
@@ -761,9 +766,12 @@ export class XWindow {
     }
   }
 
-  sendConfigureNotify(): void {
+  sendFullscreenConfigureNotify(): void {
     const { x, y } = this.getChildPosition()
+    this.sendConfigureNotify(x, y)
+  }
 
+  sendConfigureNotify(x: number, y: number): void {
     const event = marshallConfigureNotifyEvent({
       // filled in when marshalled
       responseType: 0,
@@ -780,7 +788,7 @@ export class XWindow {
     this.wm.xConnection.sendEvent(0, this.id, EventMask.StructureNotify, new Int8Array(event))
   }
 
-  markDestroyed() {
+  destroy(): void {
     if (this.configureTaskRegistration) {
       this.configureTaskRegistration()
       this.configureTaskRegistration = undefined
@@ -789,19 +797,6 @@ export class XWindow {
       this.repaintRegistration()
       this.repaintRegistration = undefined
     }
-
-    if (this.surfaceId) {
-      this.wm.unpairedWindowList = this.wm.unpairedWindowList.filter((value) => value !== this)
-    }
-
-    if (this.surface && this.surfaceDestroyListener) {
-      this.surface.resource.removeDestroyListener(this.surfaceDestroyListener)
-    }
-
-    delete this.wm.windowHash[this.id]
-  }
-
-  destroy(): void {
     // TODO destroy canvas surface?
     if (this.frameId) {
       this.wm.xConnection.reparentWindow(this.id, this.wm.wmWindow, 0, 0)
@@ -816,7 +811,15 @@ export class XWindow {
       this.frame.destroy()
     }
 
-    this.wm.xConnection.destroyWindow(this.id)
+    if (this.surfaceId) {
+      this.wm.unpairedWindowList = this.wm.unpairedWindowList.filter((value) => value !== this)
+    }
+
+    if (this.surface && this.surfaceDestroyListener) {
+      this.surface.resource.removeDestroyListener(this.surfaceDestroyListener)
+    }
+
+    delete this.wm.windowHash[this.id]
   }
 
   close(time: TIMESTAMP): void {
@@ -1060,5 +1063,33 @@ export class XWindow {
 
     this.configureFrame()
     this.scheduleRepaint()
+  }
+
+  handleRequestFrameExtends(event: ClientMessageEvent) {
+    const windowId = event.window
+    const window = this.wm.windowHash[windowId]
+    window.frameExtentsHint = true
+  }
+
+  setFrameExtents() {
+    if ((this.frameExtentsHint = true)) {
+      let shadowMargin = 0
+      let border = 0
+      let top = 0
+      if (this.frame) {
+        shadowMargin = this.frame.shadowMargin
+        border = this.frame.theme.borderWidth + shadowMargin
+        top = this.frame.theme.titlebarHeight + shadowMargin
+      }
+      this.wm.xConnection.changeProperty(
+        PropMode.Replace,
+        this.id,
+        this.wm.atoms._NET_FRAME_EXTENTS,
+        Atom.CARDINAL,
+        32,
+        // left, right, top, bottom
+        new Uint32Array([border, border, top, border]),
+      )
+    }
   }
 }

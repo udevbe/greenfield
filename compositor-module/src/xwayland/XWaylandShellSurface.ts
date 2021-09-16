@@ -13,7 +13,7 @@ import { XWindow } from './XWindow'
 
 const { bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight } = WlShellSurfaceResize
 
-enum SurfaceState {
+export enum SurfaceState {
   TOP_LEVEL,
   RESIZE,
   MAXIMIZED,
