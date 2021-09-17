@@ -488,12 +488,8 @@ function createWMWindow(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMA
 }
 
 export class XWindowManager {
-  readonly xConnection: XConnection
   readonly windowHash: { [key: number]: XWindow } = {}
   focusWindow?: XWindow
-  readonly session: Session
-  readonly client: Client
-  readonly xWaylandShell: XWaylandShell
   readonly atoms: XWMAtoms
   private readonly composite: Composite.Composite
   private readonly render: Render.Render
@@ -502,8 +498,6 @@ export class XWindowManager {
   private readonly formatRgba: Render.PICTFORMINFO
   readonly visualId: number
   readonly colormap: number
-  readonly screen: SCREEN
-  readonly wmWindow: WINDOW
   unpairedWindowList: XWindow[] = []
   readonly theme: XWindowTheme = themeCreate()
   private readonly imageDecodingCanvas: HTMLCanvasElement = document.createElement('canvas')
@@ -527,19 +521,15 @@ export class XWindowManager {
   private doubleClickPeriod = 250
 
   constructor(
-    session: Session,
-    xConnection: XConnection,
-    client: Client,
-    xWaylandShell: XWaylandShell,
-    screen: SCREEN,
+    public readonly session: Session,
+    public readonly xConnection: XConnection,
+    public readonly client: Client,
+    public readonly xWaylandShell: XWaylandShell,
+    public readonly screen: SCREEN,
     { xwmAtoms, composite, render, xFixes, formatRgb, formatRgba }: XWindowManagerResources,
     { visualId, colormap }: VisualAndColormap,
-    wmWindow: WINDOW,
+    public readonly wmWindow: WINDOW,
   ) {
-    this.session = session
-    this.xConnection = xConnection
-    this.client = client
-    this.xWaylandShell = xWaylandShell
     this.atoms = xwmAtoms
     this.composite = composite
     this.render = render
@@ -548,8 +538,7 @@ export class XWindowManager {
     this.formatRgba = formatRgba
     this.visualId = visualId
     this.colormap = colormap
-    this.screen = screen
-    this.wmWindow = wmWindow
+    this.imageDecodingContext.imageSmoothingEnabled = false
   }
 
   static async create(
@@ -765,7 +754,7 @@ export class XWindowManager {
     }
 
     const location = window.frame?.pointerEnter(undefined, event.eventX, event.eventY)
-    if (window.frame?.status && window.frame?.status & FrameStatus.FRAME_STATUS_REPAINT) {
+    if (window.frame?.status && window.frame.status & FrameStatus.FRAME_STATUS_REPAINT) {
       window.scheduleRepaint()
     }
 

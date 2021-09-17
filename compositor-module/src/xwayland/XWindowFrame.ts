@@ -762,7 +762,7 @@ export class XWindowFrame {
         canvas.width = w + 1
         canvas.height = h + 1
 
-        const context = canvas.getContext('2d')
+        const context = canvas.getContext('2d', { desynchronized: true })
         // TODO session logging
         if (context === null) {
           throw new Error("Can't create 2d canvas context!")
@@ -777,12 +777,12 @@ export class XWindowFrame {
         canvas.width = w + 1
         canvas.height = h + 1
 
-        const context = canvas.getContext('2d')
+        const context = canvas.getContext('2d', { desynchronized: true })
         // TODO session logging
         if (context === null) {
           throw new Error("Can't create 2d canvas context!")
         }
-
+        context.imageSmoothingEnabled = false
         xl += w
         xl += buttonPadding
       }
@@ -806,12 +806,15 @@ export class XWindowTheme {
   readonly borderWidth: number = 6
 
   constructor() {
-    const activeFrame = document.createElement('canvas').getContext('2d')
-    const inactiveFrame = document.createElement('canvas').getContext('2d')
+    const activeFrame = document.createElement('canvas').getContext('2d', { desynchronized: true })
+    const inactiveFrame = document.createElement('canvas').getContext('2d', { desynchronized: true })
 
     if (activeFrame === null || inactiveFrame === null) {
       throw new Error('Could not create XWindow Theme. CanvasRenderingContext2D failed to initialize.')
     }
+
+    activeFrame.imageSmoothingEnabled = false
+    inactiveFrame.imageSmoothingEnabled = false
 
     this.activeFrame = activeFrame
     this.inactiveFrame = inactiveFrame
@@ -1107,14 +1110,19 @@ export async function frameCreate(
   const signMaximizeIconData = await signMaximizeIconPromise
   const signCloseIconData = await signCloseIconPromise
 
-  const frameRenderContext = document.createElement('canvas').getContext('2d')
-  const closeIcon = document.createElement('canvas').getContext('2d')
-  const maximizeIcon = document.createElement('canvas').getContext('2d')
-  const minimizeIcon = document.createElement('canvas').getContext('2d')
+  const frameRenderContext = document.createElement('canvas').getContext('2d', { desynchronized: true })
+  const closeIcon = document.createElement('canvas').getContext('2d', { desynchronized: true })
+  const maximizeIcon = document.createElement('canvas').getContext('2d', { desynchronized: true })
+  const minimizeIcon = document.createElement('canvas').getContext('2d', { desynchronized: true })
 
   if (frameRenderContext === null || closeIcon === null || maximizeIcon === null || minimizeIcon === null) {
     throw new Error('Could not get 2d rendering context from canvas.')
   }
+
+  frameRenderContext.imageSmoothingEnabled = false
+  closeIcon.imageSmoothingEnabled = false
+  maximizeIcon.imageSmoothingEnabled = false
+  minimizeIcon.imageSmoothingEnabled = false
 
   closeIcon.canvas.width = signCloseIconData.width
   closeIcon.canvas.height = signCloseIconData.height

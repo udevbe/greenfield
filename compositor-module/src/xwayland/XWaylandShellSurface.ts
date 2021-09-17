@@ -163,7 +163,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
           break
       }
 
-      this.session.renderer.render(() => this.prepareFrameDecoration())
+      this.session.renderer.render(() => this.withFrameDecoration())
     } else {
       if (this.mapped) {
         this.unmap()
@@ -436,7 +436,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     }
   }
 
-  private prepareFrameDecoration() {
+  withFrameDecoration() {
     // render frame decoration
     const { width: frameWidth, height: frameHeight } = this.view.regionRect.size
     if (frameWidth === 0 || frameHeight === 0) {
@@ -450,8 +450,6 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
         y: interiorY,
       } = this.window.frame.repaint(frameWidth, frameHeight)
       const renderContext = this.window.frame.renderContext
-      renderContext.imageSmoothingEnabled = false
-
       const top = renderContext.getImageData(interiorX, 0, interiorWidth, interiorY)
       const bottom = renderContext.getImageData(
         interiorX,

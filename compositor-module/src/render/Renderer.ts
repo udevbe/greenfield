@@ -63,6 +63,7 @@ export default class Renderer {
         premultipliedAlpha: false,
         preserveDrawingBuffer: false,
         desynchronized: true,
+        powerPreference: 'high-performance',
       })
       if (!gl) {
         throw new Error("This browser doesn't support WebGL!")

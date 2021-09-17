@@ -235,9 +235,9 @@ export class XWindow {
 
     this.session.logger.debug(`XWindow: schedule repaint, win ${this.id}`)
 
-    this.repaintRegistration = queueCancellableMicrotask(() => {
-      this.doRepaint()
-    })
+    this.repaintRegistration = queueCancellableMicrotask(() =>
+      this.doRepaint().then(() => this.session.renderer.render(() => this.shsurf?.withFrameDecoration())),
+    )
   }
 
   /** Control Xwayland wl_surface.commit behaviour
@@ -923,6 +923,7 @@ export class XWindow {
     this.drawDecorations()
     this.setPendingState()
     this.setAllowCommits(true)
+    this.wm.xConnection.flush()
   }
 
   private getFrameSize(): { width: number; height: number } {
@@ -952,10 +953,6 @@ export class XWindow {
     }
 
     this.session.logger.debug(`XWindow: draw decoration, win ${this.id}, ${how}`)
-
-    // clear a single pixel to trigger a re-commit of the xwayland surface which in turn redraws the decoration & sets pending state
-    this.wm.xConnection.clearArea(0, this.frameId, 0, 0, 1, 1)
-    this.wm.xConnection.flush()
   }
 
   private setPendingState() {
