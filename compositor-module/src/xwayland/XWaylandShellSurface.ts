@@ -10,6 +10,7 @@ import { makeSurfaceActive } from '../UserShellApi'
 import { UserShellSurfaceRole } from '../UserShellSurfaceRole'
 import View from '../View'
 import { XWindow } from './XWindow'
+import { FrameFlag } from './XWindowFrame'
 
 const { bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight } = WlShellSurfaceResize
 
@@ -63,6 +64,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     return xWaylandShellSurface
   }
 
+  pid = 0
   state = SurfaceState.NONE
   sendConfigure?: (width: number, height: number) => void
   sendPosition?: (x: number, y: number) => void
@@ -389,7 +391,9 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
-  setPid(pid: number): void {}
+  setPid(pid: number): void {
+    this.pid = pid
+  }
 
   requestActive(): boolean {
     if (
@@ -402,7 +406,10 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       return false
     }
     this.userSurfaceState = { ...this.userSurfaceState, active: true }
-    this.window.updateActivateStatus(true)
+    this.window.wm.activate(this.window)
+    this.window.frame?.setFlag(FrameFlag.FRAME_FLAG_ACTIVE)
+    this.window.scheduleRepaint()
+    this.window.wm.xConnection.flush()
     this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
     return true
   }
@@ -412,7 +419,12 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
       return
     }
     this.userSurfaceState = { ...this.userSurfaceState, active: false }
-    this.window.updateActivateStatus(false)
+    if (this.window.wm.focusWindow === this.window) {
+      this.window.wm.activate(undefined)
+    }
+    this.window.frame?.unsetFlag(FrameFlag.FRAME_FLAG_ACTIVE)
+    this.window.scheduleRepaint()
+    this.window.wm.xConnection.flush()
     this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
   }
 

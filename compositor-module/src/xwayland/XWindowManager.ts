@@ -1,4 +1,3 @@
-import { h } from 'westfield-runtime-common'
 import { Client, WlPointerButtonState } from 'westfield-runtime-server'
 import type {
   ATOM,
@@ -36,9 +35,12 @@ import {
   getXFixes,
   ImageFormat,
   InputFocus,
+  marshallClientMessageEvent,
+  NotifyDetail,
   NotifyMode,
   PropMode,
   Render,
+  StackMode,
   Time,
   Window,
   WindowClass,
@@ -58,8 +60,8 @@ import { CursorType } from './CursorType'
 import { ICCCM_NORMAL_STATE, ICCCM_WITHDRAWN_STATE, SEND_EVENT_MASK } from './XConstants'
 import { XWaylandConnection } from './XWaylandConnection'
 import XWaylandShell from './XWaylandShell'
-import { FrameStatus, themeCreate, ThemeLocation, XWindowTheme } from './XWindowFrame'
 import { XWindow } from './XWindow'
+import { FrameStatus, themeCreate, ThemeLocation, XWindowTheme } from './XWindowFrame'
 
 type ConfigureValueList = Parameters<XConnection['configureWindow']>[1]
 
@@ -81,6 +83,7 @@ type XWMAtoms = {
   _NET_WM_STATE_MAXIMIZED_VERT: number
   _NET_WM_STATE_MAXIMIZED_HORZ: number
   _NET_WM_STATE_FULLSCREEN: number
+  _NET_WM_STATE_FOCUSED: number
   _NET_WM_USER_TIME: number
   _NET_WM_ICON_NAME: number
   _NET_WM_DESKTOP: number
@@ -135,6 +138,8 @@ type XWMAtoms = {
   _NET_WORKAREA: number
   _NET_DESKTOP_GEOMETRY: number
   _NET_DESKTOP_VIEWPORT: number
+  _NET_CURRENT_DESKTOP: number
+  WM_HINTS: number
 }
 
 interface XWindowManagerResources {
@@ -190,6 +195,7 @@ async function setupResources(xConnection: XConnection): Promise<XWindowManagerR
     ['_NET_WM_STATE_MAXIMIZED_VERT', 0],
     ['_NET_WM_STATE_MAXIMIZED_HORZ', 0],
     ['_NET_WM_STATE_FULLSCREEN', 0],
+    ['_NET_WM_STATE_FOCUSED', 0],
     ['_NET_WM_USER_TIME', 0],
     ['_NET_WM_ICON_NAME', 0],
     ['_NET_WM_DESKTOP', 0],
@@ -244,6 +250,9 @@ async function setupResources(xConnection: XConnection): Promise<XWindowManagerR
     ['_NET_WORKAREA', 0],
     ['_NET_DESKTOP_GEOMETRY', 0],
     ['_NET_DESKTOP_VIEWPORT', 0],
+    ['_NET_SUPPORTED', 0],
+    ['_NET_CURRENT_DESKTOP', 0],
+    ['WM_HINTS', 0],
   ]
 
   const [xFixes, composite, render] = await Promise.all([xFixesPromise, compositePromise, renderPromise])
@@ -345,7 +354,35 @@ function dndInit() {
   // TODO see weston's dnd.c
 }
 
-export function setNetActiveWindow(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMAtoms, window: WINDOW) {
+function setNetSupported(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMAtoms) {
+  // An immediately invoked lambda that uses function argument destructuring to filter out elements and return them as an array.
+  const supported = (({
+    _NET_WM_MOVERESIZE,
+    _NET_WM_STATE,
+    _NET_WM_STATE_FULLSCREEN,
+    _NET_WM_STATE_MAXIMIZED_VERT,
+    _NET_WM_STATE_MAXIMIZED_HORZ,
+    _NET_ACTIVE_WINDOW,
+  }: XWMAtoms) => [
+    _NET_WM_MOVERESIZE,
+    _NET_WM_STATE,
+    _NET_WM_STATE_FULLSCREEN,
+    _NET_WM_STATE_MAXIMIZED_VERT,
+    _NET_WM_STATE_MAXIMIZED_HORZ,
+    _NET_ACTIVE_WINDOW,
+  ])(xwmAtoms)
+
+  xConnection.changeProperty(
+    PropMode.Replace,
+    xConnection.setup.roots[0].root,
+    xwmAtoms._NET_SUPPORTED,
+    Atom.ATOM,
+    32,
+    new Uint32Array(supported),
+  )
+}
+
+export function setNetActiveWindow(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMAtoms, window: WINDOW): void {
   xConnection.changeProperty(
     PropMode.Replace,
     screen.root,
@@ -369,29 +406,62 @@ function setNetWorkArea(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMA
   )
 }
 
-function setNetDesktopGeometry(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMAtoms) {
-  const width = screen.widthInPixels
-  const height = screen.heightInPixels
-  xConnection.changeProperty(
-    PropMode.Replace,
-    screen.root,
-    xwmAtoms._NET_DESKTOP_GEOMETRY,
-    Atom.CARDINAL,
-    32,
-    new Uint32Array([width, height]),
-  )
-}
-
 function setNetDesktopViewport(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMAtoms) {
-  const width = screen.widthInPixels
-  const height = screen.heightInPixels
   xConnection.changeProperty(
     PropMode.Replace,
     screen.root,
     xwmAtoms._NET_DESKTOP_VIEWPORT,
     Atom.CARDINAL,
     32,
-    new Uint32Array([width, height]),
+    // From EWMH: For Window Managers that don't support large desktops, this MUST always be set to (0,0).
+    // https://specifications.freedesktop.org/wm-spec/1.3/ar01s03.html
+    new Uint32Array([0, 0]),
+  )
+}
+
+function setNetCurrentDesktop(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMAtoms) {
+  xConnection.changeProperty(
+    PropMode.Replace,
+    screen.root,
+    xwmAtoms._NET_CURRENT_DESKTOP,
+    Atom.CARDINAL,
+    32,
+    new Uint32Array([0]),
+  )
+}
+
+function setNetSupportingWmCheck(
+  xConnection: XConnection,
+  screen: SCREEN,
+  xwmAtoms: XWMAtoms,
+  wmWindow: number,
+  compositorName: string,
+) {
+  xConnection.changeProperty(
+    PropMode.Replace,
+    wmWindow,
+    xwmAtoms._NET_SUPPORTING_WM_CHECK,
+    Atom.WINDOW,
+    32,
+    new Uint32Array([wmWindow]),
+  )
+
+  xConnection.changeProperty(
+    PropMode.Replace,
+    wmWindow,
+    xwmAtoms._NET_WM_NAME,
+    xwmAtoms.UTF8_STRING,
+    8,
+    chars(compositorName),
+  )
+
+  xConnection.changeProperty(
+    PropMode.Replace,
+    screen.root,
+    xwmAtoms._NET_SUPPORTING_WM_CHECK,
+    Atom.WINDOW,
+    32,
+    new Uint32Array([wmWindow]),
   )
 }
 
@@ -409,33 +479,6 @@ function createWMWindow(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMA
     WindowClass.InputOutput,
     screen.rootVisual,
     {},
-  )
-
-  xConnection.changeProperty(
-    PropMode.Replace,
-    wmWindow,
-    xwmAtoms._NET_SUPPORTING_WM_CHECK,
-    Atom.WINDOW,
-    32,
-    new Uint32Array([wmWindow]),
-  )
-
-  xConnection.changeProperty(
-    PropMode.Replace,
-    wmWindow,
-    xwmAtoms._NET_WM_NAME,
-    xwmAtoms.UTF8_STRING,
-    8,
-    chars('Greenfield WM'),
-  )
-
-  xConnection.changeProperty(
-    PropMode.Replace,
-    screen.root,
-    xwmAtoms._NET_SUPPORTING_WM_CHECK,
-    Atom.WINDOW,
-    32,
-    new Uint32Array([wmWindow]),
   )
 
   xConnection.setSelectionOwner(wmWindow, xwmAtoms.WM_S0, Time.CurrentTime)
@@ -557,48 +600,10 @@ export class XWindowManager {
     const { composite, xwmAtoms } = xWmResources
     composite.redirectSubwindows(xConnection.setup.roots[0].root, Composite.Redirect.Manual)
 
-    // An immediately invoked lambda that uses function argument destructuring to filter out elements and return them as an array.
-    const supported = (({
-      _NET_WM_MOVERESIZE,
-      _NET_WM_STATE,
-      _NET_WM_STATE_FULLSCREEN,
-      _NET_WM_STATE_MAXIMIZED_VERT,
-      _NET_WM_STATE_MAXIMIZED_HORZ,
-      _NET_ACTIVE_WINDOW,
-    }: XWMAtoms) => [
-      _NET_WM_MOVERESIZE,
-      _NET_WM_STATE,
-      _NET_WM_STATE_FULLSCREEN,
-      _NET_WM_STATE_MAXIMIZED_VERT,
-      _NET_WM_STATE_MAXIMIZED_HORZ,
-      _NET_ACTIVE_WINDOW,
-    ])(xwmAtoms)
-
-    xConnection.changeProperty(
-      PropMode.Replace,
-      xConnection.setup.roots[0].root,
-      xwmAtoms._NET_SUPPORTED,
-      Atom.ATOM,
-      32,
-      new Uint32Array(supported),
-    )
-
-    setNetActiveWindow(xConnection, xConnection.setup.roots[0], xwmAtoms, Window.None)
-    setNetWorkArea(xConnection, xConnection.setup.roots[0], xwmAtoms)
-    setNetDesktopGeometry(xConnection, xConnection.setup.roots[0], xwmAtoms)
-    setNetDesktopViewport(xConnection, xConnection.setup.roots[0], xwmAtoms)
-    // TODO
-    // _NET_SUPPORTED
-    // _NET_CURRENT_DESKTOP
-    // _NET_SUPPORTING_WM_CHECK
-
     // TODO
     selectionInit()
     // TODO
     dndInit()
-    // TODO
-
-    xConnection.flush()
 
     const wmWindow = createWMWindow(xConnection, xConnection.setup.roots[0], xwmAtoms)
 
@@ -616,10 +621,17 @@ export class XWindowManager {
     await xWindowManager.createCursors()
     xWindowManager.wmWindowSetCursor(xWindowManager.screen.root, CursorType.XWM_CURSOR_LEFT_PTR)
 
-    session.globals.compositor.addSurfaceCreationListener(
-      async (surface) => await xWindowManager.handleCreateSurface(surface),
-    )
+    session.globals.compositor.addSurfaceCreationListener((surface) => xWindowManager.handleCreateSurface(surface))
 
+    // EWMH hints
+    setNetSupported(xConnection, xConnection.setup.roots[0], xwmAtoms)
+    setNetDesktopViewport(xConnection, xConnection.setup.roots[0], xwmAtoms)
+    setNetCurrentDesktop(xConnection, xConnection.setup.roots[0], xwmAtoms)
+    setNetWorkArea(xConnection, xConnection.setup.roots[0], xwmAtoms)
+    setNetActiveWindow(xConnection, xConnection.setup.roots[0], xwmAtoms, Window.None)
+    setNetSupportingWmCheck(xConnection, xConnection.setup.roots[0], xwmAtoms, wmWindow, 'Greenfield')
+
+    xConnection.flush()
     return xWindowManager
   }
 
@@ -702,19 +714,15 @@ export class XWindowManager {
       console.error('BUG. No window frame.')
       return
     }
+
     /* Make sure we're looking at the right location.  The frame
      * could have received a motion event from a pointer from a
      * different wl_seat, but under X it looks like our core
      * pointer moved.  Move the frame pointer to the button press
      * location before deciding what to do. */
-    let location = windowFrame.pointerMotion(undefined, event.eventX, event.eventY)
-
-    if (doubleClick) {
-      location = windowFrame.doubleClick(undefined, buttonId, buttonState)
-    } else {
-      location = windowFrame.pointerButton(undefined, buttonId, buttonState)
-    }
-
+    const location: ThemeLocation = doubleClick
+      ? windowFrame.doubleClick(undefined, buttonId, buttonState)
+      : windowFrame.pointerButton(undefined, buttonId, buttonState)
     const windowFrameStatus = windowFrame.status
     if (windowFrameStatus & FrameStatus.FRAME_STATUS_REPAINT) {
       window.scheduleRepaint()
@@ -1083,14 +1091,29 @@ export class XWindowManager {
     if (event.mode === NotifyMode.Grab || event.mode === NotifyMode.Ungrab) {
       return
     }
+    // Ignore pointer focus change events
+    if (event.detail === NotifyDetail.Pointer) {
+      return
+    }
 
-    /* Do not let X clients change the focus behind the compositor's
-     * back. Reset the focus to the old one if it changed. */
+    // Do not let X clients change the focus behind the compositor's
+    // back. Reset the focus to the old one if it changed.
+    //
+    // Note: Some applications rely on being able to change focus, for ex. Steam:
+    // Because of that, we allow changing focus between surfaces belonging to the
+    // same application. We must be careful to ignore requests that are too old
+    // though, because otherwise it may lead to race conditions:
+    const requestedFocus = this.windowHash[event.event]
     if (
-      (this.focusWindow === undefined || event.event !== this.focusWindow.id) &&
-      this.focusWindow?.sendFocusWindow() === undefined
+      this.focusWindow &&
+      requestedFocus &&
+      requestedFocus.pid === this.focusWindow.pid
+      // TODO implement sequence number for events in xtsb
+      // && validateFocusSerial(this.lastFocusSequence, event.sequence)
     ) {
-      this.xConnection.setInputFocus(InputFocus.PointerRoot, Window.None, Time.CurrentTime)
+      this.setFocusWindow(requestedFocus)
+    } else {
+      this.setFocusWindow(this.focusWindow)
     }
   }
 
@@ -1103,7 +1126,7 @@ export class XWindowManager {
     return this.windowHash[window]
   }
 
-  configureWindow(id: WINDOW, valueList: ConfigureValueList) {
+  configureWindow(id: WINDOW, valueList: ConfigureValueList): void {
     this.xConnection.configureWindow(id, valueList)
   }
 
@@ -1150,7 +1173,7 @@ export class XWindowManager {
   }
 
   private async loadCursor(cursorImage: typeof cursorImageNames[CursorType]): Promise<Cursor> {
-    // TODO check fetch response
+    // FIXME simply use build in browser cursor here instead of loading one through X...
     const { url, yhot, xhot, height, width } = cursorImage
     const response = await fetch(url)
     const cursorPNGImageData = await response
@@ -1201,5 +1224,57 @@ export class XWindowManager {
     this.xConnection.freePixmap(pix)
 
     return cursor
+  }
+
+  setFocusWindow(window: XWindow | undefined): void {
+    const unfocusWindow = this.focusWindow
+    this.focusWindow = window
+
+    if (unfocusWindow) {
+      unfocusWindow.setNetWmState()
+    }
+
+    if (window === undefined) {
+      this.xConnection.setInputFocus(InputFocus.PointerRoot, Window.None, Time.CurrentTime)
+      return
+    }
+
+    if (window.overrideRedirect) {
+      return
+    }
+
+    const clientMessage = marshallClientMessageEvent({
+      responseType: 0,
+      format: 32,
+      window: window.id,
+      _type: this.atoms.WM_PROTOCOLS,
+      data: {
+        data32: new Uint32Array([this.atoms.WM_TAKE_FOCUS, Time.CurrentTime]),
+      },
+    })
+
+    if (window.hints && !window.hints.input) {
+      this.xConnection.sendEvent(0, window.id, EventMask.NoEvent, new Int8Array(clientMessage))
+    } else {
+      this.xConnection.sendEvent(0, window.id, EventMask.SubstructureRedirect, new Int8Array(clientMessage))
+      this.xConnection.setInputFocus(InputFocus.PointerRoot, window.id, Time.CurrentTime)
+    }
+    this.configureWindow(window.frameId, { stackMode: StackMode.Above })
+    window.setNetWmState()
+  }
+
+  activate(window: XWindow | undefined): void {
+    if (this.focusWindow === window || (window && window.overrideRedirect)) {
+      return
+    }
+
+    if (window) {
+      this.setNetActiveWindow(window.id)
+    } else {
+      this.setNetActiveWindow(Window.None)
+    }
+
+    this.setFocusWindow(window)
+    this.xConnection.flush()
   }
 }

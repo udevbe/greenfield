@@ -6,12 +6,9 @@ import {
   ClientMessageEvent,
   EventMask,
   GetPropertyReply,
-  InputFocus,
   marshallClientMessageEvent,
   marshallConfigureNotifyEvent,
   PropMode,
-  StackMode,
-  Time,
   TIMESTAMP,
   Window,
   WindowClass,
@@ -53,10 +50,29 @@ import {
   USSize,
 } from './XConstants'
 import XWaylandShellSurface, { SurfaceState } from './XWaylandShellSurface'
-import { FrameButton, frameCreate, FrameFlag, ThemeLocation, XWindowFrame } from './XWindowFrame'
+import { FrameButton, frameCreate, ThemeLocation, XWindowFrame } from './XWindowFrame'
 import { XWindowManager } from './XWindowManager'
 
 type Prop = [atom: ATOM, type: ATOM, propUpdater: (prop: GetPropertyReply) => void]
+
+enum IcccmInputModel {
+  LOCAL,
+  PASSIVE,
+  GLOBAL,
+  NONE,
+}
+
+interface Hints {
+  flags: number
+  input: number
+  initialState: number
+  iconPixmap: number
+  iconWindow: number
+  iconX: number
+  iconY: number
+  iconMask: number
+  windowGroup: number
+}
 
 interface SizeHints {
   flags: number
@@ -135,15 +151,17 @@ export class XWindow {
   frame?: XWindowFrame
   sizeHints?: SizeHints
   motifHints?: MotifWmHints
+  hints?: Hints
   shsurf?: XWaylandShellSurface
   legacyFullscreenOutput?: Output
   transientFor?: XWindow
   configureTaskRegistration?: () => void
   repaintRegistration?: () => void
   frameExtentsHint = false
+  takeFocus = false
 
   constructor(
-    private wm: XWindowManager,
+    public wm: XWindowManager,
     public id: number,
     public overrideRedirect: boolean,
     public x: number,
@@ -154,43 +172,50 @@ export class XWindow {
   ) {}
 
   // FIXME fix input focus model, see: https://github.com/swaywm/wlroots/blob/52da68b591bedbbf8a01d74b2f08307a28b058c9/xwayland/xwm.c#L2217
-
-  sendFocusWindow(): void {
-    if (this.overrideRedirect) {
-      return
+  inputModel(): IcccmInputModel {
+    if (!this.hints || this.hints.input) {
+      if (this.takeFocus) {
+        return IcccmInputModel.LOCAL
+      }
+      return IcccmInputModel.PASSIVE
+    } else {
+      if (this.takeFocus) {
+        return IcccmInputModel.GLOBAL
+      }
     }
-
-    const clientMessage = marshallClientMessageEvent({
-      responseType: 0,
-      format: 32,
-      window: this.id,
-      _type: this.wm.atoms.WM_PROTOCOLS,
-      data: {
-        data32: new Uint32Array([this.wm.atoms.WM_TAKE_FOCUS, Date.now()]),
-      },
-    })
-
-    this.wm.xConnection.sendEvent(0, this.id, EventMask.SubstructureRedirect, new Int8Array(clientMessage))
-    this.wm.xConnection.setInputFocus(InputFocus.PointerRoot, this.id, Time.CurrentTime)
-    this.wm.configureWindow(this.frameId, { stackMode: StackMode.Above })
+    return IcccmInputModel.NONE
   }
 
-  updateActivateStatus(activate: boolean): void {
-    if (activate) {
-      this.wm.focusWindow = this
-      this.wm.setNetActiveWindow(this.id)
-      this.wm.focusWindow.frame?.setFlag(FrameFlag.FRAME_FLAG_ACTIVE)
-      this.wm.focusWindow.scheduleRepaint()
-      this.sendFocusWindow()
-    } else if (this.wm.focusWindow === this) {
-      this.wm.xConnection.setInputFocus(InputFocus.PointerRoot, Window.None, Time.CurrentTime)
-      this.wm.setNetActiveWindow(Window.None)
-      this.wm.focusWindow.frame?.unsetFlag(FrameFlag.FRAME_FLAG_ACTIVE)
-      this.wm.focusWindow.scheduleRepaint()
-      this.wm.focusWindow = undefined
+  setNetWmState(): void {
+    const property: number[] = []
+    // TODO implement modal window state
+    // if(this.modal) {
+    //   property.push(this.wm.atoms._NET_WM_STATE_MODAL)
+    // }
+    if (this.fullscreen) {
+      property.push(this.wm.atoms._NET_WM_STATE_FULLSCREEN)
     }
-
-    this.wm.xConnection.flush()
+    if (this.maximizedVertical) {
+      property.push(this.wm.atoms._NET_WM_STATE_MAXIMIZED_VERT)
+    }
+    if (this.maximizedHorizontal) {
+      property.push(this.wm.atoms._NET_WM_STATE_MAXIMIZED_HORZ)
+    }
+    // TODO implement minimized window state(?)
+    // if (this.minimized) {
+    //   property.push(this.wm.atoms._NET_WM_STATE_HIDDEN)
+    // }
+    if (this === this.wm.focusWindow) {
+      property.push(this.wm.atoms._NET_WM_STATE_FOCUSED)
+    }
+    this.wm.xConnection.changeProperty(
+      PropMode.Replace,
+      this.id,
+      this.wm.atoms._NET_WM_STATE,
+      Atom.ATOM,
+      32,
+      new Uint32Array(property),
+    )
   }
 
   scheduleRepaint(): void {
@@ -268,11 +293,31 @@ export class XWindow {
         TYPE_WM_PROTOCOLS,
         ({ value, valueLen }) => {
           const atoms = new Uint32Array(value.buffer, value.byteOffset)
-          for (let i = 0; i < valueLen; i++) {
-            if (atoms[i] === this.wm.atoms.WM_DELETE_WINDOW) {
-              this.deleteWindow = true
-              break
-            }
+          atoms.includes(this.wm.atoms.WM_DELETE_WINDOW)
+          if (atoms.includes(this.wm.atoms.WM_DELETE_WINDOW)) {
+            this.deleteWindow = true
+          }
+          if (atoms.includes(this.wm.atoms.WM_TAKE_FOCUS)) {
+            this.takeFocus = true
+          }
+        },
+      ],
+      [
+        this.wm.atoms.WM_HINTS,
+        this.wm.atoms.WM_HINTS,
+        ({ value }) => {
+          const [flags, input, initialState, iconPixmap, iconWindow, iconX, iconY, iconMask, windowGroup] =
+            new Uint32Array(value.buffer, value.byteOffset)
+          this.hints = {
+            flags,
+            input,
+            initialState,
+            iconPixmap,
+            iconWindow,
+            iconX,
+            iconY,
+            iconMask,
+            windowGroup,
           }
         },
       ],
@@ -572,28 +617,6 @@ export class XWindow {
     return this.maximizedHorizontal && this.maximizedVertical
   }
 
-  setNetWmState(): void {
-    const property: number[] = []
-    if (this.fullscreen) {
-      property.push(this.wm.atoms._NET_WM_STATE_FULLSCREEN)
-    }
-    if (this.maximizedVertical) {
-      property.push(this.wm.atoms._NET_WM_STATE_MAXIMIZED_VERT)
-    }
-    if (this.maximizedVertical) {
-      property.push(this.wm.atoms._NET_WM_STATE_MAXIMIZED_HORZ)
-    }
-
-    this.wm.xConnection.changeProperty(
-      PropMode.Replace,
-      this.id,
-      this.wm.atoms._NET_WM_STATE,
-      Atom.ATOM,
-      32,
-      new Uint32Array(property),
-    )
-  }
-
   setWmState(state: number): void {
     this.wm.xConnection.changeProperty(
       PropMode.Replace,
@@ -733,7 +756,7 @@ export class XWindow {
     }
   }
 
-  sendPosition(x: number, y: number) {
+  sendPosition(x: number, y: number): void {
     /* We use pos_dirty to tell whether a configure message is in flight.
      * This is needed in case we send two configure events in a very
      * short time, since window->x/y is set in after a roundtrip, hence
@@ -1065,13 +1088,13 @@ export class XWindow {
     this.scheduleRepaint()
   }
 
-  handleRequestFrameExtends(event: ClientMessageEvent) {
+  handleRequestFrameExtends(event: ClientMessageEvent): void {
     const windowId = event.window
     const window = this.wm.windowHash[windowId]
     window.frameExtentsHint = true
   }
 
-  setFrameExtents() {
+  setFrameExtents(): void {
     if ((this.frameExtentsHint = true)) {
       let shadowMargin = 0
       let border = 0

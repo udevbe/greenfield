@@ -74,3 +74,13 @@ export const PResizeInc = 64
 export const PAspect = 128
 export const PBaseSize = 256
 export const PWinGravity = 512
+
+export const InputHint = 1 //input
+export const StateHint = 2 // initial_state
+export const IconPixmapHint = 4 // icon_pixmap
+export const IconWindowHint = 8 // icon_window
+export const IconPositionHint = 16 // icon_x & icon_y
+export const IconMaskHint = 32 //	icon_mask
+export const WindowGroupHint = 64 //	window_group
+export const MessageHint = 128 //	(this bit is obsolete)
+export const UrgencyHint = 256 //	urgency

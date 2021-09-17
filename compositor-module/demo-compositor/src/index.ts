@@ -82,7 +82,24 @@ async function main() {
 
   // create new compositor context
   const compositorSessionId = 'test123'
-  const session = createCompositorSession(compositorSessionId)
+  const session = createCompositorSession(compositorSessionId, {
+    // We only enable error & warn logging. Uncomment others to get more fine grained logging.
+    debug(object: any) {
+      // console.log(`${object}`)
+    },
+    error(object: any) {
+      console.error(`${object}`)
+    },
+    info(object: any) {
+      // console.info(`${object}`)
+    },
+    trace(object: any) {
+      // console.trace(`${object}`)
+    },
+    warn(object: any) {
+      console.log(`${object}`)
+    },
+  })
 
   // Get an HTML5 canvas for use as an output for the compositor. Multiple outputs can be used.
   const canvas: HTMLCanvasElement = document.createElement('canvas')
