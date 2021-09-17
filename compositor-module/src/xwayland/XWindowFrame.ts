@@ -197,13 +197,10 @@ class XWindowFrameButton {
   allocation: {
     x: number
     y: number
-    width: number
-    height: number
+    context?: CanvasRenderingContext2D
   } = {
     x: 0,
     y: 0,
-    width: 0,
-    height: 0,
   }
 
   // @ts-ignore
@@ -234,7 +231,7 @@ class XWindowFrameButton {
     }
   }
 
-  press() {
+  press(): void {
     if (!this.pressCount) {
       this.frame.status |= FrameStatus.FRAME_STATUS_REPAINT
     }
@@ -245,7 +242,7 @@ class XWindowFrameButton {
     }
   }
 
-  release() {
+  release(): void {
     this.pressCount--
     if (this.pressCount) {
       return
@@ -258,25 +255,52 @@ class XWindowFrameButton {
     }
   }
 
-  cancel() {
+  cancel(): void {
     this.pressCount--
     if (!this.pressCount) {
       this.frame.status |= FrameStatus.FRAME_STATUS_REPAINT
     }
   }
 
-  repaint() {
-    if (!this.allocation.width) {
+  repaint(): void {
+    if (!this.allocation.context?.canvas.width) {
       return
     }
-    if (!this.allocation.height) {
+    if (!this.allocation.context.canvas.height) {
       return
     }
 
-    const x = this.allocation.x
+    let x = this.allocation.x
     const y = this.allocation.y
 
-    // TODO do paint in canvas?
+    // TODO paint button?
+    if (this.flags & FrameButtonFlags.FRAME_BUTTON_DECORATED) {
+      this.allocation.context.save()
+      this.allocation.context.translate(0.5, 0.5)
+      this.allocation.context.lineWidth = 1
+
+      if (this.pressCount) {
+        this.allocation.context.fillStyle = 'rgb(179,179,179)'
+      } else if (this.hoverCount) {
+        this.allocation.context.fillStyle = 'rgb(255,255,255)'
+      } else {
+        this.allocation.context.fillStyle = 'rgb(224,224,224)'
+      }
+      this.allocation.context.fillRect(0, 0, 25, 16)
+
+      this.allocation.context.strokeStyle = 'black'
+      this.allocation.context.strokeRect(0, 0, 25, 16)
+      this.allocation.context.drawImage(
+        this.icon.canvas,
+        Math.round((25 - this.icon.canvas.width) / 2),
+        Math.round((16 - this.icon.canvas.height) / 2),
+      )
+      this.allocation.context.restore()
+
+      x += 4
+    }
+
+    this.frame.renderContext.drawImage(this.allocation.context.canvas, x, y)
   }
 
   destroy() {
@@ -340,8 +364,8 @@ export class XWindowFrame {
       const xWindowFrameButton = new XWindowFrameButton(
         this,
         closeButtonIcon,
-        FrameStatus.FRAME_STATUS_MENU,
-        FrameButtonFlags.FRAME_BUTTON_CLICK_DOWN,
+        FrameStatus.FRAME_STATUS_CLOSE,
+        FrameButtonFlags.FRAME_BUTTON_ALIGN_RIGHT | FrameButtonFlags.FRAME_BUTTON_DECORATED,
       )
       xWindowFrameButton
         .onDestroy()
@@ -353,8 +377,8 @@ export class XWindowFrame {
       const xWindowFrameButton = new XWindowFrameButton(
         this,
         maximizeButtonIcon,
-        FrameStatus.FRAME_STATUS_MENU,
-        FrameButtonFlags.FRAME_BUTTON_CLICK_DOWN,
+        FrameStatus.FRAME_STATUS_MAXIMIZE,
+        FrameButtonFlags.FRAME_BUTTON_ALIGN_RIGHT | FrameButtonFlags.FRAME_BUTTON_DECORATED,
       )
       xWindowFrameButton
         .onDestroy()
@@ -366,8 +390,8 @@ export class XWindowFrame {
       const xWindowFrameButton = new XWindowFrameButton(
         this,
         minimzeButtonIcon,
-        FrameStatus.FRAME_STATUS_MENU,
-        FrameButtonFlags.FRAME_BUTTON_CLICK_DOWN,
+        FrameStatus.FRAME_STATUS_MINIMIZE,
+        FrameButtonFlags.FRAME_BUTTON_ALIGN_RIGHT | FrameButtonFlags.FRAME_BUTTON_DECORATED,
       )
       xWindowFrameButton
         .onDestroy()
@@ -671,10 +695,19 @@ export class XWindowFrame {
 
   findButton(x: number, y: number): XWindowFrameButton | undefined {
     return this.buttons.find((button) => {
+      if (button.allocation.context === undefined) {
+        return false
+      }
+
       const relX = x - button.allocation.x
       const relY = y - button.allocation.y
 
-      return 0 <= relX && relX < button.allocation.width && 0 <= relY && relY < button.allocation.height
+      return (
+        0 <= relX &&
+        relX < button.allocation.context.canvas.width &&
+        0 <= relY &&
+        relY < button.allocation.context.canvas.height
+      )
     })
   }
 
@@ -725,15 +758,30 @@ export class XWindowFrame {
 
         button.allocation.x = xr
         button.allocation.y = y
-        button.allocation.width = w + 1
-        button.allocation.height = h + 1
+        const canvas = document.createElement('canvas')
+        canvas.width = w + 1
+        canvas.height = h + 1
 
+        const context = canvas.getContext('2d')
+        // TODO session logging
+        if (context === null) {
+          throw new Error("Can't create 2d canvas context!")
+        }
+        context.imageSmoothingEnabled = false
+        button.allocation.context = context
         xr -= buttonPadding
       } else {
         button.allocation.x = xl
         button.allocation.y = y
-        button.allocation.width = w + 1
-        button.allocation.height = h + 1
+        const canvas = document.createElement('canvas')
+        canvas.width = w + 1
+        canvas.height = h + 1
+
+        const context = canvas.getContext('2d')
+        // TODO session logging
+        if (context === null) {
+          throw new Error("Can't create 2d canvas context!")
+        }
 
         xl += w
         xl += buttonPadding

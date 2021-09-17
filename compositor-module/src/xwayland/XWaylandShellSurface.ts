@@ -450,6 +450,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
         y: interiorY,
       } = this.window.frame.repaint(frameWidth, frameHeight)
       const renderContext = this.window.frame.renderContext
+      renderContext.imageSmoothingEnabled = false
 
       const top = renderContext.getImageData(interiorX, 0, interiorWidth, interiorY)
       const bottom = renderContext.getImageData(
