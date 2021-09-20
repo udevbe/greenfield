@@ -19,6 +19,7 @@ function initializeCanvas(session: CompositorSession, canvas: HTMLCanvasElement,
   // don't show browser context menu on right click
   canvas.oncontextmenu = (event: MouseEvent) => event.preventDefault()
   canvas.onblur = () => session.userShell.actions.input.blur()
+  canvas.onmouseleave = () => session.userShell.actions.input.blur()
 
   //wire up dom input events to compositor input events
   const pointerMoveHandler = (event: PointerEvent) => {
@@ -85,13 +86,13 @@ async function main() {
   const session = createCompositorSession(compositorSessionId, {
     // We only enable error & warn logging. Uncomment others to get more fine grained logging.
     debug(object: any) {
-      // console.log(`${object}`)
+      // console.debug(`${object}`)
     },
     error(object: any) {
       console.error(`${object}`)
     },
     info(object: any) {
-      // console.info(`${object}`)
+      console.info(`${object}`)
     },
     trace(object: any) {
       // console.trace(`${object}`)

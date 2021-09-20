@@ -4,6 +4,7 @@ import {
   ATOM,
   Atom,
   ClientMessageEvent,
+  CoordMode,
   EventMask,
   GetPropertyReply,
   marshallClientMessageEvent,
@@ -160,6 +161,8 @@ export class XWindow {
   frameExtentsHint = false
   takeFocus = false
 
+  private blackGraphicsContext?: number
+
   constructor(
     public wm: XWindowManager,
     public id: number,
@@ -235,9 +238,7 @@ export class XWindow {
 
     this.session.logger.debug(`XWindow: schedule repaint, win ${this.id}`)
 
-    this.repaintRegistration = queueCancellableMicrotask(() =>
-      this.doRepaint().then(() => this.session.renderer.render(() => this.shsurf?.withFrameDecoration())),
-    )
+    this.repaintRegistration = queueCancellableMicrotask(() => this.doRepaint())
   }
 
   /** Control Xwayland wl_surface.commit behaviour
@@ -500,6 +501,12 @@ export class XWindow {
         colormap: this.wm.colormap,
       },
     )
+
+    // create a drawing context to trigger decoration frame redraws (the actual frame pixels are stored browser side)
+    this.blackGraphicsContext = this.wm.xConnection.allocateID()
+    this.wm.xConnection.createGC(this.blackGraphicsContext, this.frameId, {
+      foreground: this.wm.xConnection.setup.roots[0].blackPixel,
+    })
 
     this.wm.xConnection.reparentWindow(this.id, this.frameId, x, y)
 
@@ -897,6 +904,34 @@ export class XWindow {
     })
   }
 
+  handleRequestFrameExtends(event: ClientMessageEvent): void {
+    const windowId = event.window
+    const window = this.wm.windowHash[windowId]
+    window.frameExtentsHint = true
+  }
+
+  setFrameExtents(): void {
+    if ((this.frameExtentsHint = true)) {
+      let shadowMargin = 0
+      let border = 0
+      let top = 0
+      if (this.frame) {
+        shadowMargin = this.frame.shadowMargin
+        border = this.frame.theme.borderWidth + shadowMargin
+        top = this.frame.theme.titlebarHeight + shadowMargin
+      }
+      this.wm.xConnection.changeProperty(
+        PropMode.Replace,
+        this.id,
+        this.wm.atoms._NET_FRAME_EXTENTS,
+        Atom.CARDINAL,
+        32,
+        // left, right, top, bottom
+        new Uint32Array([border, border, top, border]),
+      )
+    }
+  }
+
   private setPendingStateOverrideRedirect() {
     /* for override-redirect windows */
     if (this.frameId !== Window.None) {
@@ -922,6 +957,7 @@ export class XWindow {
     await this.readProperties()
     this.drawDecorations()
     this.setPendingState()
+
     this.setAllowCommits(true)
     this.wm.xConnection.flush()
   }
@@ -950,6 +986,10 @@ export class XWindow {
       how = 'decorate'
       this.frame?.setTitle(this.name)
       this.frame?.refreshGeometry()
+      if (this.blackGraphicsContext) {
+        // draw  single pixel to trigger a surface commit, actual content is already on the server side
+        this.wm.xConnection.polyPoint(CoordMode.Origin, this.frameId, this.blackGraphicsContext, 1, [{ x: 0, y: 0 }])
+      }
     }
 
     this.session.logger.debug(`XWindow: draw decoration, win ${this.id}, ${how}`)
@@ -1083,33 +1123,5 @@ export class XWindow {
 
     this.configureFrame()
     this.scheduleRepaint()
-  }
-
-  handleRequestFrameExtends(event: ClientMessageEvent): void {
-    const windowId = event.window
-    const window = this.wm.windowHash[windowId]
-    window.frameExtentsHint = true
-  }
-
-  setFrameExtents(): void {
-    if ((this.frameExtentsHint = true)) {
-      let shadowMargin = 0
-      let border = 0
-      let top = 0
-      if (this.frame) {
-        shadowMargin = this.frame.shadowMargin
-        border = this.frame.theme.borderWidth + shadowMargin
-        top = this.frame.theme.titlebarHeight + shadowMargin
-      }
-      this.wm.xConnection.changeProperty(
-        PropMode.Replace,
-        this.id,
-        this.wm.atoms._NET_FRAME_EXTENTS,
-        Atom.CARDINAL,
-        32,
-        // left, right, top, bottom
-        new Uint32Array([border, border, top, border]),
-      )
-    }
   }
 }

@@ -21,33 +21,33 @@
     "demo": "COMPOSITOR_SESSION_ID=test123 GST_GL_WINDOW=gbm ts-node ./src/index.ts"
   },
   "dependencies": {
-    "ajv": "^8.6.1",
+    "ajv": "^8.6.3",
     "ajv-formats": "^2.1.0",
     "js-yaml": "^4.1.0",
     "pino": "^6.12.0",
-    "pino-pretty": "^7.0.0",
+    "pino-pretty": "^7.0.1",
     "websocket-stream": "^5.5.2",
     "ws": "^8.2.2",
-    "xtsb": "^0.0.1-alpha.5"
+    "xtsb": "^0.0.1-alpha.7"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.2",
     "@types/jsonwebtoken": "^8.5.4",
-    "@types/node": "^16.3.1",
+    "@types/node": "^16.9.2",
     "@types/node-fetch": "^3.0.3",
     "@types/pino": "^6.3.9",
     "@types/ws": "^7.4.6",
-    "@typescript-eslint/eslint-plugin": "^4.28.3",
-    "@typescript-eslint/parser": "^4.28.3",
+    "@typescript-eslint/eslint-plugin": "^4.31.1",
+    "@typescript-eslint/parser": "^4.31.1",
     "cmake-js": "6.2.1",
     "epoll": "^4.0.1",
     "eslint": "^7.30.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^4.0.0",
-    "json-schema-to-typescript": "^10.1.4",
-    "prettier": "^2.3.2",
+    "json-schema-to-typescript": "^10.1.5",
+    "prettier": "^2.4.1",
     "ts-node": "^10.1.0",
-    "typescript": "^4.3.5",
+    "typescript": "^4.4.3",
     "westfield-endpoint": "0.4.16",
     "westfield-endpoint-generator": "^0.3.1"
   }

@@ -503,17 +503,20 @@ export class XWindowFrame {
     )
 
     if (state === WlPointerButtonState.pressed) {
-      const button = new XWindowFramePointerButton(btn, location, framePointer.hoverButton)
-      framePointer.downButtons = [...framePointer.downButtons, button]
-      button.press(this, framePointer)
+      const pressedButton = new XWindowFramePointerButton(btn, location, framePointer.hoverButton)
+      framePointer.downButtons = [...framePointer.downButtons, pressedButton]
+      pressedButton.onDestroy().then(() => {
+        framePointer.downButtons = framePointer.downButtons.filter((button) => button !== pressedButton)
+      })
+      pressedButton.press(this, framePointer)
     } else if (state === WlPointerButtonState.released) {
-      const button = framePointer.downButtons.find((button) => button.button === btn)
-      if (!button) {
+      const releaseButton = framePointer.downButtons.find((button) => button.button === btn)
+      if (!releaseButton) {
         return location
       }
-      location = button.pressLocation
-      button.release(framePointer)
-      button.destroy()
+      location = releaseButton.pressLocation
+      releaseButton.release(framePointer)
+      releaseButton.destroy()
     }
 
     return location
@@ -644,12 +647,10 @@ export class XWindowFrame {
     }
 
     framePointer.hoverButton?.leave()
-
     framePointer.downButtons.forEach((button) => {
       button.cancel()
       button.destroy()
     })
-
     framePointer.destroy()
   }
 

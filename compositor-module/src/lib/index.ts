@@ -29,16 +29,6 @@ type libxkbcommon = {
   // TODO
 }
 
-function loadNativeModule(module: { calledRun: any; onRuntimeInitialized: () => void }) {
-  return new Promise<void>((resolve) => {
-    if (module.calledRun) {
-      resolve()
-    } else {
-      module.onRuntimeInitialized = () => resolve()
-    }
-  })
-}
-
 function isWasmSupported() {
   try {
     if (typeof WebAssembly === 'object' && typeof WebAssembly.instantiate === 'function') {
@@ -71,10 +61,6 @@ async function init(): Promise<void> {
   } else {
     throw new Error('WebAssembly is not supported on your browser.')
   }
-}
-
-export function isInitialized(): boolean {
-  return lib.pixman !== null && lib.xkbcommon !== null
 }
 
 export { init, lib }

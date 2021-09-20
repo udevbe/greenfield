@@ -488,59 +488,6 @@ function createWMWindow(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMA
 }
 
 export class XWindowManager {
-  readonly windowHash: { [key: number]: XWindow } = {}
-  focusWindow?: XWindow
-  readonly atoms: XWMAtoms
-  private readonly composite: Composite.Composite
-  private readonly render: Render.Render
-  private readonly xFixes: XFixes.XFixes
-  private readonly formatRgb: Render.PICTFORMINFO
-  private readonly formatRgba: Render.PICTFORMINFO
-  readonly visualId: number
-  readonly colormap: number
-  unpairedWindowList: XWindow[] = []
-  readonly theme: XWindowTheme = themeCreate()
-  private readonly imageDecodingCanvas: HTMLCanvasElement = document.createElement('canvas')
-  private readonly imageDecodingContext: CanvasRenderingContext2D = this.imageDecodingCanvas.getContext('2d', {
-    alpha: true,
-    desynchronized: true,
-  })!
-
-  private cursors: { [key in CursorType]: Cursor } = {
-    [CursorType.XWM_CURSOR_BOTTOM]: Cursor.None,
-    [CursorType.XWM_CURSOR_LEFT_PTR]: Cursor.None,
-    [CursorType.XWM_CURSOR_BOTTOM_LEFT]: Cursor.None,
-    [CursorType.XWM_CURSOR_BOTTOM_RIGHT]: Cursor.None,
-    [CursorType.XWM_CURSOR_LEFT]: Cursor.None,
-    [CursorType.XWM_CURSOR_RIGHT]: Cursor.None,
-    [CursorType.XWM_CURSOR_TOP]: Cursor.None,
-    [CursorType.XWM_CURSOR_TOP_LEFT]: Cursor.None,
-    [CursorType.XWM_CURSOR_TOP_RIGHT]: Cursor.None,
-  }
-  private lastCursor: CursorType = -1
-  private doubleClickPeriod = 250
-
-  constructor(
-    public readonly session: Session,
-    public readonly xConnection: XConnection,
-    public readonly client: Client,
-    public readonly xWaylandShell: XWaylandShell,
-    public readonly screen: SCREEN,
-    { xwmAtoms, composite, render, xFixes, formatRgb, formatRgba }: XWindowManagerResources,
-    { visualId, colormap }: VisualAndColormap,
-    public readonly wmWindow: WINDOW,
-  ) {
-    this.atoms = xwmAtoms
-    this.composite = composite
-    this.render = render
-    this.xFixes = xFixes
-    this.formatRgb = formatRgb
-    this.formatRgba = formatRgba
-    this.visualId = visualId
-    this.colormap = colormap
-    this.imageDecodingContext.imageSmoothingEnabled = false
-  }
-
   static async create(
     session: Session,
     xWaylandConnetion: XWaylandConnection,
@@ -551,7 +498,6 @@ export class XWindowManager {
     xConnection.onPostEventLoop = () => {
       xConnection.flush()
     }
-    // TODO expand error information in xtsb so we know which call the error originated from
     xConnection.defaultExceptionHandler = (error: Error) => {
       console.error(JSON.stringify(error))
     }
@@ -622,6 +568,59 @@ export class XWindowManager {
 
     xConnection.flush()
     return xWindowManager
+  }
+
+  readonly windowHash: { [key: number]: XWindow } = {}
+  focusWindow?: XWindow
+  readonly atoms: XWMAtoms
+  private readonly composite: Composite.Composite
+  private readonly render: Render.Render
+  private readonly xFixes: XFixes.XFixes
+  private readonly formatRgb: Render.PICTFORMINFO
+  private readonly formatRgba: Render.PICTFORMINFO
+  readonly visualId: number
+  readonly colormap: number
+  unpairedWindowList: XWindow[] = []
+  readonly theme: XWindowTheme = themeCreate()
+  private readonly imageDecodingCanvas: HTMLCanvasElement = document.createElement('canvas')
+  private readonly imageDecodingContext: CanvasRenderingContext2D = this.imageDecodingCanvas.getContext('2d', {
+    alpha: true,
+    desynchronized: true,
+  })!
+
+  private cursors: { [key in CursorType]: Cursor } = {
+    [CursorType.XWM_CURSOR_BOTTOM]: Cursor.None,
+    [CursorType.XWM_CURSOR_LEFT_PTR]: Cursor.None,
+    [CursorType.XWM_CURSOR_BOTTOM_LEFT]: Cursor.None,
+    [CursorType.XWM_CURSOR_BOTTOM_RIGHT]: Cursor.None,
+    [CursorType.XWM_CURSOR_LEFT]: Cursor.None,
+    [CursorType.XWM_CURSOR_RIGHT]: Cursor.None,
+    [CursorType.XWM_CURSOR_TOP]: Cursor.None,
+    [CursorType.XWM_CURSOR_TOP_LEFT]: Cursor.None,
+    [CursorType.XWM_CURSOR_TOP_RIGHT]: Cursor.None,
+  }
+  private lastCursor: CursorType = -1
+  private doubleClickPeriod = 250
+
+  constructor(
+    public readonly session: Session,
+    public readonly xConnection: XConnection,
+    public readonly client: Client,
+    public readonly xWaylandShell: XWaylandShell,
+    public readonly screen: SCREEN,
+    { xwmAtoms, composite, render, xFixes, formatRgb, formatRgba }: XWindowManagerResources,
+    { visualId, colormap }: VisualAndColormap,
+    public readonly wmWindow: WINDOW,
+  ) {
+    this.atoms = xwmAtoms
+    this.composite = composite
+    this.render = render
+    this.xFixes = xFixes
+    this.formatRgb = formatRgb
+    this.formatRgba = formatRgba
+    this.visualId = visualId
+    this.colormap = colormap
+    this.imageDecodingContext.imageSmoothingEnabled = false
   }
 
   private async createCursors() {
@@ -712,6 +711,7 @@ export class XWindowManager {
     const location: ThemeLocation = doubleClick
       ? windowFrame.doubleClick(undefined, buttonId, buttonState)
       : windowFrame.pointerButton(undefined, buttonId, buttonState)
+
     const windowFrameStatus = windowFrame.status
     if (windowFrameStatus & FrameStatus.FRAME_STATUS_REPAINT) {
       window.scheduleRepaint()
