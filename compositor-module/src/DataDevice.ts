@@ -51,12 +51,14 @@ export default class DataDevice implements WlDataDeviceRequests {
   // @ts-ignore set in create of Seat
   seat: Seat
   dndSource?: WlDataSourceResource
-  selectionSource?: WlDataSourceResource
+  selectionDataSource?: WlDataSourceResource
   dndFocus?: View
   dndSourceClient?: Client
   private selectionFocus?: Surface
   private readonly dndSourceDestroyListener: () => void
   private readonly selectionSourceDestroyListener: () => void
+
+  public selectionListeners: (() => void)[] = []
 
   static create(session: Session): DataDevice {
     return new DataDevice(session)
@@ -99,7 +101,8 @@ export default class DataDevice implements WlDataDeviceRequests {
     }
 
     dataDeviceResource.selection(undefined)
-    this.selectionSource = undefined
+    this.selectionDataSource = undefined
+    this.selectionListeners.forEach((listener) => listener())
   }
 
   startDrag(
@@ -303,26 +306,25 @@ export default class DataDevice implements WlDataDeviceRequests {
       return
     }
 
-    if (this.selectionSource === source) {
+    if (this.selectionDataSource === source) {
       return
     }
 
-    if (this.selectionSource) {
-      this.selectionSource.removeDestroyListener(this.selectionSourceDestroyListener)
-      if (this.selectionSource.client !== resource.client) {
-        this.selectionSource.cancelled()
-      }
+    if (this.selectionDataSource) {
+      this.selectionDataSource.removeDestroyListener(this.selectionSourceDestroyListener)
+      this.selectionDataSource.cancelled()
     }
 
-    this.selectionSource = source
-    if (this.selectionSource) {
-      this.selectionSource.addDestroyListener(this.selectionSourceDestroyListener)
+    this.selectionDataSource = source
+    if (this.selectionDataSource) {
+      this.selectionDataSource.addDestroyListener(this.selectionSourceDestroyListener)
     }
 
     // send out selection if there is a keyboard focus
     if (this.selectionFocus) {
       this.onKeyboardFocusGained(this.selectionFocus)
     }
+    this.selectionListeners.forEach((listener) => listener())
   }
 
   onKeyboardFocusGained(newSelectionFocus: Surface): void {
@@ -335,16 +337,16 @@ export default class DataDevice implements WlDataDeviceRequests {
       return
     }
 
-    if (this.selectionSource === undefined) {
+    if (this.selectionDataSource === undefined) {
       dataDeviceResource.selection(undefined)
     } else {
-      const wlDataOffer = this.createDataOffer(this.selectionSource, dataDeviceResource)
+      const wlDataOffer = this.createDataOffer(this.selectionDataSource, dataDeviceResource)
 
-      this.selectionSource.action(0)
+      this.selectionDataSource.action(0)
       wlDataOffer.action(0)
 
       dataDeviceResource.selection(wlDataOffer)
-      ;(this.selectionSource.implementation as DataSource).wlDataOffer = wlDataOffer
+      ;(this.selectionDataSource.implementation as DataSource).wlDataOffer = wlDataOffer
     }
   }
 

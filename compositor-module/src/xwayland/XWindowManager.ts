@@ -17,6 +17,7 @@ import type {
   PropertyNotifyEvent,
   ReparentNotifyEvent,
   SCREEN,
+  SelectionRequestEvent,
   UnmapNotifyEvent,
   WINDOW,
   XConnection,
@@ -40,11 +41,13 @@ import {
   NotifyMode,
   PropMode,
   Render,
+  SelectionNotifyEvent,
   StackMode,
   Time,
   Window,
   WindowClass,
 } from 'xtsb'
+import { SelectionEventMask } from 'xtsb/dist/types/xcbXFixes'
 import eResize from '../assets/e-resize.png'
 import leftPtr from '../assets/left_ptr.png'
 import nResize from '../assets/n-resize.png'
@@ -54,6 +57,7 @@ import sResize from '../assets/s-resize.png'
 import seResize from '../assets/se-resize.png'
 import swResize from '../assets/sw-resize.png'
 import wResize from '../assets/w-resize.png'
+import DataSource from '../DataSource'
 import Session from '../Session'
 import Surface from '../Surface'
 import { CursorType } from './CursorType'
@@ -255,7 +259,7 @@ async function setupResources(xConnection: XConnection): Promise<XWindowManagerR
     ['WM_HINTS', 0],
   ]
 
-  const [xFixes, composite, render] = await Promise.all([xFixesPromise, compositePromise, renderPromise])
+  const [xFixes, composite, render] = await Promise.all([xFixesPromise, compositePromise, renderPromise] as const)
   const formatsReply = render.queryPictFormats()
   const interAtomCookies = atoms.map(([name]) => xConnection.internAtom(0, chars(name)))
 
@@ -522,7 +526,11 @@ export class XWindowManager {
     xConnection.onConfigureNotifyEvent = (event) => xWindowManager.handleConfigureNotify(event)
     xConnection.onDestroyNotifyEvent = (event) => xWindowManager.handleDestroyNotify(event)
     xConnection.onMappingNotifyEvent = () => session.logger.trace('XCB_MAPPING_NOTIFY')
-    xConnection.onPropertyNotifyEvent = (event) => xWindowManager.handlePropertyNotify(event)
+    xConnection.onPropertyNotifyEvent = (event) => {
+      if (!xWindowManager.handleSelectionPropertyNotify(event)) {
+        xWindowManager.handlePropertyNotify(event)
+      }
+    }
     xConnection.onClientMessageEvent = (event) => xWindowManager.handleClientMessage(event)
     xConnection.onFocusInEvent = (event) => xWindowManager.handleFocusIn(event)
 
@@ -535,13 +543,43 @@ export class XWindowManager {
     const { composite, xwmAtoms } = xWmResources
     composite.redirectSubwindows(xConnection.setup.roots[0].root, Composite.Redirect.Manual)
 
-    // TODO
-    selectionInit()
+    const selectionWindow = xConnection.allocateID()
+    xConnection.createWindow(
+      WindowClass.CopyFromParent,
+      selectionWindow,
+      xConnection.setup.roots[0].root,
+      0,
+      0,
+      10,
+      10,
+      0,
+      WindowClass.InputOutput,
+      xConnection.setup.roots[0].rootVisual,
+      {
+        eventMask: EventMask.PropertyChange,
+      },
+    )
+    xConnection.setSelectionOwner(selectionWindow, xWmResources.xwmAtoms.CLIPBOARD_MANAGER, Time.CurrentTime)
+    const mask =
+      SelectionEventMask.SetSelectionOwner |
+      SelectionEventMask.SelectionWindowDestroy |
+      SelectionEventMask.SelectionClientClose
+    xWmResources.xFixes.selectSelectionInput(selectionWindow, xWmResources.xwmAtoms.CLIPBOARD, mask)
+    xWmResources.xFixes.onSelectionNotifyEvent = (event: XFixes.SelectionNotifyEvent) => {
+      xWindowManager.handleXFixesSelectionNotify(event)
+    }
+    xConnection.onSelectionNotifyEvent = (event) => {
+      xWindowManager.handleSelectionNotify(event)
+    }
+    xConnection.onSelectionRequestEvent = (event) => {
+      xWindowManager.handleSelectionRequest(event)
+    }
+    session.globals.seat.dataDevice.selectionListeners.push(() => xWindowManager.setSelection())
+
     // TODO
     dndInit()
 
     const wmWindow = createWMWindow(xConnection, xConnection.setup.roots[0], xwmAtoms)
-
     const xWindowManager = new XWindowManager(
       session,
       xConnection,
@@ -551,7 +589,9 @@ export class XWindowManager {
       xWmResources,
       visualAndColormap,
       wmWindow,
+      selectionWindow,
     )
+    xWindowManager.setSelection()
 
     await xWindowManager.createCursors()
     xWindowManager.wmWindowSetCursor(xWindowManager.screen.root, CursorType.XWM_CURSOR_LEFT_PTR)
@@ -575,7 +615,6 @@ export class XWindowManager {
   readonly atoms: XWMAtoms
   private readonly composite: Composite.Composite
   private readonly render: Render.Render
-  private readonly xFixes: XFixes.XFixes
   private readonly formatRgb: Render.PICTFORMINFO
   private readonly formatRgba: Render.PICTFORMINFO
   readonly visualId: number
@@ -602,6 +641,12 @@ export class XWindowManager {
   private lastCursor: CursorType = -1
   private doubleClickPeriod = 250
 
+  // c/p related state
+  private readonly xFixes: XFixes.XFixes
+  private selectionRequestEvent?: SelectionRequestEvent
+  private selectionOwner?: WINDOW
+  private selectionTimestamp = 0
+
   constructor(
     public readonly session: Session,
     public readonly xConnection: XConnection,
@@ -611,6 +656,7 @@ export class XWindowManager {
     { xwmAtoms, composite, render, xFixes, formatRgb, formatRgba }: XWindowManagerResources,
     { visualId, colormap }: VisualAndColormap,
     public readonly wmWindow: WINDOW,
+    private readonly selectionWindow: WINDOW,
   ) {
     this.atoms = xwmAtoms
     this.composite = composite
@@ -648,7 +694,7 @@ export class XWindowManager {
     }
   }
 
-  setNetActiveWindow(window: Window) {
+  private setNetActiveWindow(window: Window) {
     this.xConnection.changeProperty(
       PropMode.Replace,
       this.screen.root,
@@ -1265,5 +1311,55 @@ export class XWindowManager {
 
     this.setFocusWindow(window)
     this.xConnection.flush()
+  }
+
+  private setSelection() {
+    const source = this.session.globals.seat.dataDevice.selectionDataSource?.implementation as DataSource | undefined
+    if (source === undefined) {
+      if (this.selectionOwner === this.selectionWindow) {
+        this.xConnection.setSelectionOwner(Atom.None, this.atoms.CLIPBOARD, this.selectionTimestamp)
+      } else {
+        return
+      }
+    }
+
+    // TODO check if the source object is implemented using XWayland and return early
+    // if (source?.send === dataSourceSend) {
+    //   return
+    // }
+
+    this.xConnection.setSelectionOwner(this.selectionWindow, this.atoms.CLIPBOARD, Time.CurrentTime)
+  }
+
+  private handleXFixesSelectionNotify(event: XFixes.SelectionNotifyEvent) {
+    // TODO selection.c L619
+    if (event.selection !== this.atoms.CLIPBOARD) {
+      return
+    }
+
+    this.session.logger.trace(`xfixes selection notify event: owner ${event.owner}`)
+
+    if (event.owner === Window.None) {
+      if (this.selectionOwner !== this.selectionWindow) {
+        /* A real X client selection went away, not our
+         * proxy selection.  Clear the wayland selection. */
+        const seat = this.session.globals.seat
+        const serial = seat.nextSerial()
+        seat.dataDevice.setSelection()
+      }
+    }
+  }
+
+  private handleSelectionNotify(event: SelectionNotifyEvent) {
+    // TODO selection.c L297
+  }
+
+  private handleSelectionPropertyNotify(event: PropertyNotifyEvent): boolean {
+    // TODO selection.c L554
+    return false
+  }
+
+  private handleSelectionRequest(event: SelectionRequestEvent) {
+    // TODO selection.c L578
   }
 }
