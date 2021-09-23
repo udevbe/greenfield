@@ -88,7 +88,7 @@ This avoids the round trip and massive overhead of transferring all content to t
 
 # XWayland
 
-Very much alpha. Still work in progress. Expect something to show up on screen. Don't expect it to work very well.
+Very much beta. Still work in progress. Most things are implemented except for copy/paste and fullscreen applications. Please report any bugs you find.
 
 ## Misc
 - [Demo Webshell repository](https://github.com/udevbe/webshell)
