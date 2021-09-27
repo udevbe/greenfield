@@ -42,11 +42,11 @@ export default class View {
     x1: 0,
     y1: 0,
   })
+  prepareRender?: (renderState: RenderState) => void
   private inverseTransformation: Mat4
   private readonly destroyPromise: Promise<void>
   // @ts-ignore
   private destroyResolve: (value?: PromiseLike<void> | void) => void
-  prepareRender?: (renderState: RenderState) => void
 
   private constructor(
     public readonly surface: Surface,

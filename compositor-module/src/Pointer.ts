@@ -17,6 +17,7 @@
 
 import { Fixed } from 'westfield-runtime-common'
 import {
+  Client,
   WlPointerAxis,
   WlPointerAxisSource,
   WlPointerButtonState,
@@ -27,27 +28,117 @@ import {
 } from 'westfield-runtime-server'
 import { AxisEvent } from './AxisEvent'
 import { ButtonEvent } from './ButtonEvent'
-import DataDevice from './DataDevice'
+import DataSource from './DataSource'
 
-import { Point } from './math/Point'
-import { fini, initRect } from './Region'
-import Seat from './Seat'
-import Session from './Session'
+import Seat, { Drag } from './Seat'
 import Surface from './Surface'
 import SurfaceRole from './SurfaceRole'
-import { isUserShellSurface, makeSurfaceActive } from './UserShellApi'
 import View from './View'
 
-const { pressed, released } = WlPointerButtonState
 const { horizontalScroll, verticalScroll } = WlPointerAxis
 const { wheel } = WlPointerAxisSource
 
-export class PointerRole implements SurfaceRole {
-  constructor(public readonly pointer: Pointer, public readonly view: View) {}
+export class DefaultPointerGrab implements PointerGrab {
+  private constructor(public readonly pointer: Pointer) {}
+
+  static create(pointer: Pointer): PointerGrab {
+    return new DefaultPointerGrab(pointer)
+  }
+
+  axis(event: AxisEvent): void {
+    this.pointer.sendAxis(event)
+  }
+
+  button(event: ButtonEvent): void {
+    this.pointer.sendButton(event)
+    if (this.pointer.buttonCount === 0 && event.released) {
+      const view = this.pointer.seat.session.renderer.pickView(this.pointer)
+      if (view) {
+        const { x: sx, y: sy } = view.sceneToViewSpace(this.pointer)
+        this.pointer.setFocus(view, Fixed.parse(sx), Fixed.parse(sy))
+      } else {
+        this.pointer.clearFocus()
+      }
+    }
+  }
+
+  cancel(): void {
+    // do nothing
+  }
+
+  focus(): void {
+    if (this.pointer.buttonCount > 0) {
+      return
+    }
+
+    const view = this.pointer.seat.session.renderer.pickView(this.pointer)
+
+    const { x, y } = view?.sceneToViewSpace(this.pointer) ?? { x: -1000000, y: -1000000 }
+    const sx = Fixed.parse(x)
+    const sy = Fixed.parse(y)
+    if (this.pointer.focus !== view || this.pointer.sx !== sx || this.pointer.sy !== sy) {
+      this.pointer.setFocus(view, sx, sy)
+    }
+  }
+
+  frame(): void {
+    this.pointer.sendFrame()
+  }
+
+  motion(event: ButtonEvent): void {
+    this.pointer.sendMotion(event)
+  }
+}
+
+export interface PointerGrab {
+  pointer: Pointer
+
+  focus(): void
+
+  motion(event: ButtonEvent): void
+
+  button(event: ButtonEvent): void
+
+  axis(event: AxisEvent): void
+
+  frame(): void
+
+  cancel(): void
+}
+
+export interface PointerDrag extends Drag {
+  grab?: PointerGrab
+}
+
+export class DragIconRole implements SurfaceRole {
+  private constructor(public readonly pointer: Pointer, public readonly view: View) {}
+
+  public static create(pointer: Pointer, icon: Surface): DragIconRole {
+    const view = View.create(icon)
+    return new DragIconRole(pointer, view)
+  }
 
   onCommit(surface: Surface): void {
     surface.commitPending()
-    this.pointer.onCommit(surface)
+    // TODO update browser drag icon
+  }
+}
+
+export class CursorRole implements SurfaceRole {
+  private constructor(public readonly pointer: Pointer, public readonly view: View) {}
+
+  public static create(pointer: Pointer, cursor: Surface): CursorRole {
+    const view = View.create(cursor)
+    return new CursorRole(pointer, view)
+  }
+
+  onCommit(surface: Surface): void {
+    surface.commitPending()
+    if (this.pointer.sprite?.surface === surface) {
+      this.pointer.hotspotX -= surface.state.dx
+      this.pointer.hotspotY -= surface.state.dy
+      this.pointer.seat.session.renderer.updatePointerCursor(this.view)
+    }
   }
 }
 
@@ -63,96 +154,47 @@ const linuxInput = {
   3: 0x116,
   // browser forward
   4: 0x115,
-}
+} as const
 
-export type PopupStackElement = {
-  popup: WlSurfaceResource
-  resolve: (value?: void | PromiseLike<void> | undefined) => void
-  promise: Promise<void>
-}
+const lineScrollAmount = 12 as const
 
-export default class Pointer implements WlPointerRequests {
-  session: Session
+export class Pointer implements WlPointerRequests {
+  static create(seat: Seat): Pointer {
+    return new Pointer(seat)
+  }
+
+  // surface space x & y coordinates of focused surface
+  sx = Fixed.parse(-1000000)
+  sy = Fixed.parse(-1000000)
+  readonly defaultGrab: PointerGrab = DefaultPointerGrab.create(this)
+  focusListeners: (() => void)[] = []
+  motionListeners: (() => void)[] = []
+  fousSerial = 0
   scrollFactor = 1
   resources: WlPointerResource[] = []
   focus?: View
-  x = 0
-  y = 0
+  private readonly focusViewListener = () => {
+    this.clearFocus()
+  }
+  x = -1000000
+  y = -1000000
   hotspotX = 0
   hotspotY = 0
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore set in create of Seat
-  seat: Seat
-  buttonsPressed = 0
-  private _lineScrollAmount = 12
-  private _dataDevice: DataDevice
-  private _grab?: View
-  private readonly _popupStack: PopupStackElement[] = []
-  private _cursorSurface?: WlSurfaceResource
+  buttonCount = 0
+  sprite?: View
+  grab = DefaultPointerGrab.create(this)
+  grabButton?: 0 | 1 | 2 | 3 | 4
+  grabTime?: number
+  grabX?: number
+  grabY?: number
+  grabSerial?: number
+
   private readonly _cursorDestroyListener: () => void
-  private _mouseMoveListeners: (() => void)[] = []
-  private _buttonPressResolve?: (value: ButtonEvent | PromiseLike<ButtonEvent>) => void
-  private _buttonPressPromise?: Promise<ButtonEvent>
-  private _buttonReleaseResolve?: (value: ButtonEvent | PromiseLike<ButtonEvent>) => void
-  private _buttonReleasePromise?: Promise<ButtonEvent>
-  private focusDisabled = false
 
-  static create(session: Session, dataDevice: DataDevice): Pointer {
-    return new Pointer(session, dataDevice)
-  }
-
-  private constructor(session: Session, dataDevice: DataDevice) {
-    this.session = session
-    this._dataDevice = dataDevice
+  private constructor(public readonly seat: Seat) {
     this._cursorDestroyListener = () => {
-      this._cursorSurface = undefined
+      this.sprite = undefined
       this.setDefaultCursor()
-    }
-  }
-
-  get grab(): View | undefined {
-    return this._grab
-  }
-
-  set grab(grab: View | undefined) {
-    if (grab !== this._grab) {
-      this._grab = grab
-      if (this._grab && isUserShellSurface(this._grab?.surface)) {
-        makeSurfaceActive(this._grab.surface)
-        this.seat.keyboard.focusGained(this._grab.surface)
-      }
-    }
-  }
-
-  onButtonPress(): Promise<ButtonEvent> {
-    if (this._buttonPressPromise === undefined) {
-      this._buttonPressPromise = new Promise<ButtonEvent>((resolve) => (this._buttonPressResolve = resolve))
-      this._buttonPressPromise.then(() => {
-        this._buttonPressPromise = undefined
-        this._buttonPressResolve = undefined
-      })
-    }
-    return this._buttonPressPromise
-  }
-
-  onButtonRelease(): Promise<ButtonEvent> {
-    if (!this._buttonReleasePromise) {
-      this._buttonReleasePromise = new Promise<ButtonEvent>((resolve) => (this._buttonReleaseResolve = resolve))
-      this._buttonReleasePromise.then(() => {
-        this._buttonReleasePromise = undefined
-        this._buttonReleaseResolve = undefined
-      })
-    }
-    return this._buttonReleasePromise
-  }
-
-  onCommit(surface: Surface): void {
-    if (this._cursorSurface && this._cursorSurface.implementation === surface) {
-      this.hotspotX -= surface.state.dx
-      this.hotspotY -= surface.state.dy
-      if (surface.role) {
-        this.session.renderer.updatePointerCursor(surface.role.view)
-      }
     }
   }
 
@@ -163,355 +205,277 @@ export default class Pointer implements WlPointerRequests {
     hotspotX: number,
     hotspotY: number,
   ): void {
-    if (surfaceResource) {
-      const surface = surfaceResource.implementation as Surface
-      if (surface.role && !(surface.role instanceof PointerRole)) {
+    const surface = surfaceResource?.implementation as Surface | undefined
+
+    if (this.focus === undefined) {
+      return
+    }
+    if (this.focus.surface.resource.client !== resource.client) {
+      return
+    }
+    if (this.seat.serial - serial > Number.MIN_SAFE_INTEGER / 2) {
+      return
+    }
+
+    if (surface === undefined) {
+      if (this.sprite) {
+        this.unmapSprite()
+      }
+      return
+    }
+
+    if (this.sprite === undefined || this.sprite.surface !== surface) {
+      if (surface.role && !(surface.role instanceof CursorRole)) {
         resource.postError(WlPointerError.role, 'Given surface has another role.')
-        this.session.logger.warn('[client-protocol-error] - Given surface has another role')
+        this.seat.session.logger.warn('[client-protocol-error] - Given surface has another role')
         return
       }
-    }
-
-    if (this._dataDevice.dndSourceClient) {
-      return
-    }
-    if (serial !== this.seat.serial) {
-      return
-    }
-    this.setCursorInternal(surfaceResource, hotspotX, hotspotY)
-  }
-
-  popupGrab(popup: WlSurfaceResource): Promise<void> {
-    // check if there already is an existing grab
-    const popupGrab = this.findPopupGrab(popup)
-    if (popupGrab) {
-      // TODO return null instead? (grabbing something already grabbed is smelly)
-      return popupGrab.promise
-    }
-
-    let popupGrabEndResolve: (value?: void | PromiseLike<void> | undefined) => void
-    const popupGrabEndPromise = new Promise<void>((resolve) => {
-      popup.onDestroy().then(() => resolve())
-      popupGrabEndResolve = resolve
-    })
-
-    const newPopupGrab = {
-      popup: popup,
-      // @ts-ignore
-      resolve: popupGrabEndResolve,
-      promise: popupGrabEndPromise,
-    }
-    this._popupStack.push(newPopupGrab)
-
-    popupGrabEndPromise.then(() => {
-      const popupGrabIdx = this._popupStack.indexOf(newPopupGrab)
-      if (popupGrabIdx > -1) {
-        const nestedPopupGrabs = this._popupStack.slice(popupGrabIdx)
-        // all nested popup grabs above the resolved popup grab also need to be removed
-        this._popupStack.splice(popupGrabIdx)
-        // nested array includes the already closed popup, shift will remove it from the array
-        nestedPopupGrabs.shift()
-        nestedPopupGrabs.reverse().forEach((nestedPopupGrab) => nestedPopupGrab.resolve())
+      surface.role = CursorRole.create(this, surface)
+      if (this.sprite !== undefined) {
+        this.unmapSprite()
       }
-    })
 
-    // clear any pointer button press grab
-    this.grab = undefined
+      surface.resource.onDestroy().then(() => {
+        if (this.sprite?.surface === surface) {
+          this.sprite = undefined
+        }
+      })
 
-    return popupGrabEndPromise
-  }
+      this.hotspotX = hotspotX
+      this.hotspotY = hotspotY
 
-  findPopupGrab(popup: WlSurfaceResource): PopupStackElement | undefined {
-    return this._popupStack.find((popupGrab) => popupGrab.popup === popup)
-  }
-
-  setCursorInternal(surfaceResource: WlSurfaceResource | undefined, hotspotX: number, hotspotY: number): void {
-    this.hotspotX = hotspotX
-    this.hotspotY = hotspotY
-
-    if (this._cursorSurface) {
-      this._cursorSurface.removeDestroyListener(this._cursorDestroyListener)
-      const surface = this._cursorSurface.implementation as Surface
-      surface.role = undefined
-    }
-    this._cursorSurface = surfaceResource
-
-    if (surfaceResource) {
-      const surface = surfaceResource.implementation as Surface
-      surface.resource.addDestroyListener(this._cursorDestroyListener)
-      if (surface.role === undefined) {
-        surface.role = new PointerRole(this, View.create(surface))
-      }
-      this.session.renderer.updatePointerCursor(surface.role.view)
-      fini(surface.state.inputPixmanRegion)
-      initRect(surface.state.inputPixmanRegion, { x0: 0, y0: 0, x1: 0, y1: 0 })
-    } else {
-      this.session.renderer.hidePointer()
+      this.seat.session.renderer.updatePointerCursor(surface.role.view)
     }
   }
 
   release(resource: WlPointerResource): void {
     resource.destroy()
-    const index = this.resources.indexOf(resource)
-    if (index > -1) {
-      this.resources.splice(index, 1)
-    }
+    this.resources = this.resources.filter((pointerResource) => pointerResource !== resource)
   }
 
-  addMouseMoveListener(func: () => void): void {
-    this._mouseMoveListeners.push(func)
+  clearFocus(): void {
+    this.setFocus(undefined, Fixed.parse(-1000000), Fixed.parse(-1000000))
   }
 
-  removeMouseMoveListener(func: () => void): void {
-    const index = this._mouseMoveListeners.indexOf(func)
-    if (index > -1) {
-      this._mouseMoveListeners.splice(index, 1)
-    }
-  }
+  setFocus(view: View | undefined, sx: Fixed, sy: Fixed): void {
+    const refocus =
+      (!this.focus && view !== undefined) ||
+      (this.focus && view === undefined) ||
+      (this.focus && this.focus.surface !== view?.surface) ||
+      this.sx !== sx ||
+      this.sy !== sy
 
-  private focusFromEvent(event: ButtonEvent): View | undefined {
-    return this.session.renderer.pickView(event)
-  }
-
-  handleMouseMove(event: ButtonEvent): void {
-    const { x, y } = this.session.renderer.clampMouseMove(event)
-    this.x = x
-    this.y = y
-
-    let currentFocus = this.focusFromEvent(event)
-
-    const nroPopups = this._popupStack.length
-    if (
-      nroPopups &&
-      currentFocus &&
-      currentFocus.surface.resource.client !== this._popupStack[nroPopups - 1].popup.client
-    ) {
-      currentFocus = undefined
-    }
-
-    if (this._dataDevice.dndSourceClient) {
-      this._dataDevice.onMouseMotion(currentFocus)
-      return
-    }
-
-    // if we don't have a grab, update the focus
-    if (!this.grab) {
-      if (currentFocus !== this.focus) {
-        this.unsetFocus()
-        if (currentFocus) {
-          this.setFocus(currentFocus)
-        } else {
-          this.setDefaultCursor()
-        }
-      }
-    }
-
-    this._mouseMoveListeners.forEach((listener) => listener())
-
-    if (this.focus && this.focus.surface) {
-      const surfacePoint = this.calculateSurfacePoint(this.focus)
-      this._doPointerEventFor(this.focus.surface.resource, (pointerResource) => {
-        pointerResource.motion(event.timestamp, Fixed.parse(surfacePoint.x), Fixed.parse(surfacePoint.y))
-        if (pointerResource.version >= 5) {
-          pointerResource.frame()
-        }
-      })
-    }
-  }
-
-  private _doPointerEventFor(surfaceResource: WlSurfaceResource, action: (pointerResource: WlPointerResource) => void) {
-    this.resources.forEach((pointerResource) => {
-      if (pointerResource.client === surfaceResource.client) {
-        action(pointerResource)
-      }
-    })
-  }
-
-  handleMouseUp(event: ButtonEvent): void {
-    this.buttonsPressed--
-    if (this.buttonsPressed < 0) {
-      this.buttonsPressed = 0
-    }
-    if (this._dataDevice.dndSourceClient) {
-      this._dataDevice.onMouseUp()
-      return
-    }
-
-    const nroPopups = this._popupStack.length
-
-    if (this.focus && this.focus.surface) {
-      if (this.grab || nroPopups) {
-        this._doPointerEventFor(this.focus.surface.resource, (pointerResource) => {
-          pointerResource.button(this.seat.nextSerial(), event.timestamp, linuxInput[event.buttonCode], released)
-          if (pointerResource.version >= 5) {
-            pointerResource.frame()
-          }
-        })
-      }
-
-      if (this.grab && event.buttons === 0) {
-        this.grab = undefined
-      }
-    } else if (nroPopups) {
-      const focus = this.focusFromEvent(event)
-      // popup grab ends when user has clicked on another client's surface
-      const popupGrab = this._popupStack[nroPopups - 1]
-      if (
-        !focus ||
-        ((popupGrab.popup.implementation as Surface).state.bufferContents &&
-          focus.surface.resource.client !== popupGrab.popup.client)
-      ) {
-        popupGrab.resolve()
-      }
-    }
-
-    if (this._buttonReleaseResolve) {
-      this._buttonReleaseResolve(event)
-    }
-  }
-
-  handleMouseDown(event: ButtonEvent): void {
-    this.buttonsPressed++
-    this.handleMouseMove(event)
-
-    if (this.focus && this.focus.surface) {
-      if (this.grab === undefined && this._popupStack.length === 0) {
-        this.grab = this.focus
-      }
-
-      this._doPointerEventFor(this.focus.surface.resource, (pointerResource) => {
-        pointerResource.button(this.seat.nextSerial(), event.timestamp, linuxInput[event.buttonCode], pressed)
-        if (pointerResource.version >= 5) {
-          pointerResource.frame()
-        }
-      })
-    }
-
-    if (this._buttonPressResolve) {
-      this._buttonPressResolve(event)
-    }
-  }
-
-  private calculateSurfacePoint(view: View): Point {
-    return view.sceneToSurfaceSpace(this)
-  }
-
-  setFocus(newFocus: View): void {
-    if (this.focusDisabled) {
-      return
-    }
-
-    this.focus = newFocus
-    const surfaceResource = this.focus.surface.resource
-    newFocus.onDestroy().then(() => {
-      if (!this.focus) {
-        return
-      }
-      if (newFocus !== this.focus) {
-        return
-      }
-      // recalculate focus and consequently enter event
-      const focus = this.session.renderer.pickView(this)
-      if (focus) {
-        this.setFocus(focus)
-      } else {
-        this.unsetFocus()
-        this.setDefaultCursor()
-      }
-    })
-
-    const surfacePoint = this.calculateSurfacePoint(newFocus)
-    this._doPointerEventFor(surfaceResource, (pointerResource) => {
-      pointerResource.enter(
-        this.seat.nextSerial(),
-        surfaceResource,
-        Fixed.parse(surfacePoint.x),
-        Fixed.parse(surfacePoint.y),
-      )
-    })
-  }
-
-  disableFocus(): void {
-    this.unsetFocus()
-    this.focusDisabled = true
-  }
-
-  enableFocus(): void {
-    this.focusDisabled = false
-  }
-
-  unsetFocus(): void {
-    if (this.focus && !this.focus.destroyed && this.focus.surface) {
+    if (this.focus && refocus) {
       const surfaceResource = this.focus.surface.resource
-      this._doPointerEventFor(surfaceResource, (pointerResource) => {
-        pointerResource.leave(this.seat.nextSerial(), surfaceResource)
-        if (pointerResource.version >= 5) {
+      const serial = this.seat.nextSerial()
+      this.resources
+        .filter((pointerResource) => pointerResource.client === surfaceResource.client)
+        .forEach((pointerResource) => {
+          pointerResource.leave(serial, surfaceResource)
+          pointerResource.frame()
+        })
+      this.focus = undefined
+    }
+
+    if (view && refocus) {
+      const surfaceClient = view.surface.resource.client
+      const serial = this.seat.nextSerial()
+      if (this.seat.keyboard.focus !== view.surface) {
+        this.seat.keyboard.resources
+          .filter((keyboardResource) => keyboardResource.client === surfaceClient)
+          .forEach((keyboardResource) => {
+            keyboardResource.modifiers(
+              serial,
+              this.seat.keyboard.xkb.modsDepressed,
+              this.seat.keyboard.xkb.modsLatched,
+              this.seat.keyboard.xkb.modsLocked,
+              this.seat.keyboard.xkb.group,
+            )
+          })
+      }
+
+      this.resources.forEach((pointerResource) => {
+        if (pointerResource.client === surfaceClient) {
+          pointerResource.enter(serial, view.surface.resource, sx, sy)
           pointerResource.frame()
         }
       })
+      this.fousSerial = serial
     }
-
-    this.focus = undefined
-    this.grab = undefined
-
-    if (this._cursorSurface) {
-      this._cursorSurface = undefined
+    if (this.focus) {
+      this.focus.surface.resource.removeDestroyListener(this.focusViewListener)
     }
+    this.focus = view
+    if (view) {
+      view.surface.resource.addDestroyListener(this.focusViewListener)
+    }
+    this.sx = sx
+    this.sy = sy
+
+    this.focusListeners.forEach((listener) => listener())
   }
 
   setDefaultCursor(): void {
-    this.session.renderer.resetPointer()
+    this.seat.session.renderer.resetPointer()
   }
 
-  handleWheel(event: AxisEvent): void {
-    const focusSurface = this.focus?.surface
-    if (focusSurface !== undefined) {
-      // TODO configure the scroll transform through the config menu
-      let deltaTransform: (delta: number, axis?: number) => number
-      switch (event.deltaMode) {
-        case event.DOM_DELTA_LINE: {
-          deltaTransform = (delta) => delta * this._lineScrollAmount
-          break
+  startDrag(source: DataSource | undefined, icon: Surface | undefined, client: Client): void {
+    const drag: PointerDrag = {
+      client,
+      dataSource: source,
+      dataSourceListener: () => {},
+      dx: 0,
+      dy: 0,
+      focusListener: () => {},
+      focusResource: undefined,
+      focusView: undefined,
+      grab: undefined,
+      icon: undefined,
+      keyboardGrab: undefined,
+    }
+
+    if (icon) {
+      drag.icon = icon.role?.view
+      icon.resource.addDestroyListener(() => {
+        if (icon === drag.icon?.surface) {
+          drag.icon = undefined
         }
-        case event.DOM_DELTA_PAGE: {
-          deltaTransform = (delta, axis) => {
-            if (axis === verticalScroll) {
-              return delta * (focusSurface.size?.height ?? 0)
-            } else {
-              // horizontalScroll
-              return delta * (focusSurface.size?.width ?? 0)
-            }
-          }
-          break
+      })
+    }
+
+    if (source) {
+      source.resource.addDestroyListener(() => {
+        if (drag.dataSource === source) {
+          this.seat.endPointerDragGab(drag)
         }
-        case event.DOM_DELTA_PIXEL:
-        default: {
-          deltaTransform = (delta) => delta
-          break
-        }
+      })
+    }
+
+    this.clearFocus()
+    this.seat.keyboard.setFocus(undefined)
+
+    this.startGrab(drag.grab)
+    this.seat.keyboard.startGrab(drag.keyboardGrab)
+  }
+
+  startGrab(grab: PointerGrab): void {
+    this.grab = grab
+    this.grab.pointer = this
+    this.grab.focus()
+  }
+
+  endGrab(): void {
+    this.grab = this.defaultGrab
+    this.grab.focus()
+  }
+
+  cancelGrab(): void {
+    this.grab?.cancel()
+  }
+
+  private unmapSprite() {
+    this.seat.session.renderer.hidePointer()
+    this.sprite?.surface.resource.removeDestroyListener(this._cursorDestroyListener)
+    this.sprite = undefined
+  }
+
+  private moveTo(x: number, y: number): void {
+    this.x = x
+    this.y = y
+
+    this.grab.focus()
+    this.motionListeners.forEach((listener) => listener())
+  }
+
+  private frame(pointerResource: WlPointerResource) {
+    if (pointerResource.version >= 5) {
+      pointerResource.frame()
+    }
+  }
+
+  sendFrame(): void {
+    if (this.focus === undefined) {
+      return
+    }
+
+    this.resources
+      .filter((pointerResource) => pointerResource.client === this.focus?.surface.resource.client)
+      .forEach((pointerResource) => {
+        this.frame(pointerResource)
+      })
+  }
+
+  private motion(time: number, sx: Fixed, sy: Fixed): void {
+    if (this.focus === undefined) {
+      return
+    }
+
+    this.resources
+      .filter((pointerResource) => pointerResource.client === this.focus?.surface.resource.client)
+      .forEach((pointerResource) => {
+        pointerResource.motion(time, sx, sy)
+      })
+  }
+
+  sendMotion(event: ButtonEvent): void {
+    const oldSx = this.sx
+    const oldSy = this.sy
+
+    if (this.focus) {
+      const { x: sx, y: sy } = this.focus.sceneToViewSpace(event)
+      this.sx = Fixed.parse(sx)
+      this.sy = Fixed.parse(sy)
+    }
+
+    this.moveTo(event.x, event.y)
+
+    if (oldSx._raw !== this.sx._raw || oldSy._raw !== this.sy._raw) {
+      this.motion(event.timestamp, this.sx, this.sy)
+    }
+  }
+
+  sendAxis(event: AxisEvent): void {
+    if (this.focus === undefined) {
+      return
+    }
+
+    let deltaTransform: (delta: number, axis?: number) => number
+    switch (event.deltaMode) {
+      case event.DOM_DELTA_LINE: {
+        deltaTransform = (delta) => delta * lineScrollAmount
+        break
       }
-
-      this._doPointerEventFor(focusSurface.resource, (pointerResource) => {
-        let deltaX = event.deltaX
-        if (deltaX) {
-          const xAxis = this._adjustWithScrollFactor(horizontalScroll)
-          deltaX = this._adjustWithScrollFactor(deltaX)
-
-          if (pointerResource.version >= 5) {
-            pointerResource.axisDiscrete(xAxis, deltaX)
+      case event.DOM_DELTA_PAGE: {
+        deltaTransform = (delta, axis) => {
+          if (axis === verticalScroll) {
+            return delta * (this.focus?.surface.size?.height ?? 0)
+          } else {
+            // horizontalScroll
+            return delta * (this.focus?.surface.size?.width ?? 0)
           }
+        }
+        break
+      }
+      case event.DOM_DELTA_PIXEL:
+      default: {
+        deltaTransform = (delta) => delta
+        break
+      }
+    }
+
+    this.resources
+      .filter((pointerResource) => pointerResource.client === this.focus?.surface.resource.client)
+      .forEach((pointerResource) => {
+        const deltaX = event.deltaX
+        if (deltaX) {
+          const xAxis = horizontalScroll
           const scrollAmount = deltaTransform(deltaX, xAxis)
           pointerResource.axis(event.timestamp, xAxis, Fixed.parse(scrollAmount))
         }
 
-        let deltaY = event.deltaY
+        const deltaY = event.deltaY
         if (deltaY) {
-          const yAxis = this._adjustWithScrollFactor(verticalScroll)
-          deltaY = this._adjustWithScrollFactor(deltaY)
-
-          if (pointerResource.version >= 5) {
-            pointerResource.axisDiscrete(yAxis, deltaY)
-          }
+          const yAxis = verticalScroll
           const scrollAmount = deltaTransform(deltaY, yAxis)
           pointerResource.axis(event.timestamp, yAxis, Fixed.parse(scrollAmount))
         }
@@ -520,10 +484,23 @@ export default class Pointer implements WlPointerRequests {
           pointerResource.frame()
         }
       })
-    }
   }
 
-  private _adjustWithScrollFactor(scroll: number) {
-    return scroll * this.scrollFactor
+  sendButton(event: ButtonEvent): void {
+    if (this.focus === undefined) {
+      return
+    }
+
+    const serial = this.seat.nextSerial()
+    this.resources
+      .filter((pointerResource) => pointerResource.client === this.focus?.surface.resource.client)
+      .forEach((pointerResource) => {
+        pointerResource.button(
+          serial,
+          event.timestamp,
+          linuxInput[event.buttonCode],
+          event.released ? WlPointerButtonState.released : WlPointerButtonState.pressed,
+        )
+      })
   }
 }

@@ -18,16 +18,31 @@
 // @ts-ignore
 import { lib } from './lib'
 
-const XKB_KEYMAP_FORMAT_TEXT_V1 = 1
-const XKB_CONTEXT_NO_DEFAULT_INCLUDES = 1 << 0
-const XKB_CONTEXT_NO_ENVIRONMENT_NAMES = 1 << 1
-const XKB_KEYMAP_COMPILE_NO_FLAGS = 0
-const XKB_KEY_UP = 0
-const XKB_KEY_DOWN = 1
-const XKB_STATE_MODS_DEPRESSED = 1 << 0
-const XKB_STATE_MODS_LATCHED = 1 << 1
-const XKB_STATE_MODS_LOCKED = 1 << 2
-const XKB_STATE_LAYOUT_EFFECTIVE = 1 << 7
+const XKB_KEYMAP_FORMAT_TEXT_V1 = 1 as const
+const XKB_CONTEXT_NO_DEFAULT_INCLUDES = 1 as const
+const XKB_CONTEXT_NO_ENVIRONMENT_NAMES = 2 as const
+const XKB_KEYMAP_COMPILE_NO_FLAGS = 0 as const
+const XKB_KEY_UP = 0 as const
+const XKB_KEY_DOWN = 1 as const
+const XKB_STATE_MODS_DEPRESSED = 1 as const
+const XKB_STATE_MODS_LATCHED = 2 as const
+const XKB_STATE_MODS_LOCKED = 4 as const
+const XKB_STATE_LAYOUT_EFFECTIVE = 128 as const
+const XKB_MOD_NAME_SHIFT = 'Shift' as const
+const XKB_MOD_NAME_CAPS = 'Lock' as const
+const XKB_MOD_NAME_CTRL = 'Control' as const
+const XKB_MOD_NAME_ALT = 'Mod1' as const
+const XKB_MOD_NAME_NUM = 'Mod2' as const
+const XKB_MOD_NAME_LOGO = 'Mod4' as const
+const XKB_LED_NAME_CAPS = 'Caps Lock' as const
+const XKB_LED_NAME_NUM = 'Num Lock' as const
+const XKB_LED_NAME_SCROLL = 'Scroll Lock' as const
+
+export enum Led {
+  LED_NUM_LOCK = 1,
+  LED_CAPS_LOCK = 2,
+  LED_SCROLL_LOCK = 4,
+}
 
 export type nrmlvo = {
   name: string
@@ -103,7 +118,8 @@ export function buildNrmlvoEntries(): nrmlvo[] {
 
       // due to a bug in xkb config, we need to check duplicate entries
       return nrmlvoItems
-  }).sort(({ name: name0 }, { name: name1 }) => name0.localeCompare(name1))
+    })
+    .sort(({ name: name0 }, { name: name1 }) => name0.localeCompare(name1))
 }
 
 export function createFromResource(resource: string): Promise<Xkb> {
@@ -209,23 +225,65 @@ function stringToPointer(value?: string): number {
 }
 
 export class Xkb {
-  readonly xkbContext: number
-  readonly keymap: number
-  readonly state: number
   private _stateComponentMask = 0
 
-  constructor(xkbContext: number, keymap: number, state: number) {
-    this.xkbContext = xkbContext
-    this.keymap = keymap
-    this.state = state
+  leds: Led = 0
+
+  readonly shiftMod: number
+  readonly capsMod: number
+  readonly ctrlMod: number
+  readonly altMod: number
+  readonly mod2Mod: number
+  readonly mod3Mod: number
+  readonly superMod: number
+  readonly mod5Mod: number
+  readonly numLed: number
+  readonly capsLed: number
+  readonly scrollLed: number
+  readonly keymapString: string
+
+  constructor(public readonly xkbContext: number, public readonly keymap: number, public readonly state: number) {
     this._stateComponentMask = 0
+
+    // TODO add to wasm xkbcommon export: xkb_keymap_mod_get_index & xkb_keymap_led_get_index
+    this.shiftMod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, XKB_MOD_NAME_SHIFT)
+    this.capsMod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, XKB_MOD_NAME_CAPS)
+    this.ctrlMod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, XKB_MOD_NAME_CTRL)
+    this.altMod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, XKB_MOD_NAME_ALT)
+    this.mod2Mod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, 'Mod2')
+    this.mod3Mod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, 'Mod3')
+    this.superMod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, XKB_MOD_NAME_LOGO)
+    this.mod5Mod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, 'Mod5')
+
+    this.numLed = lib.xkbcommon._xkb_keymap_led_get_index(this.keymap, XKB_LED_NAME_NUM)
+    this.capsLed = lib.xkbcommon._xkb_keymap_led_get_index(this.keymap, XKB_LED_NAME_CAPS)
+    this.scrollLed = lib.xkbcommon._xkb_keymap_led_get_index(this.keymap, XKB_LED_NAME_SCROLL)
+
+    const keymapStringPtr = lib.xkbcommon._xkb_keymap_get_as_string(this.keymap, XKB_KEYMAP_FORMAT_TEXT_V1)
+    this.keymapString = lib.xkbcommon.UTF8ToString(keymapStringPtr)
   }
 
   asString() {
-    // @ts-ignore
-    const keymapStringPtr = lib.xkbcommon._xkb_keymap_get_as_string(this.keymap, XKB_KEYMAP_FORMAT_TEXT_V1)
-    // @ts-ignore
-    return lib.xkbcommon.UTF8ToString(keymapStringPtr)
+    return this.keymapString
+  }
+
+  updateMask(
+    depressedMods: number,
+    latchedMods: number,
+    lockedMods: number,
+    depressedLayout: number,
+    latchedLayout: number,
+    lockedLayout: number,
+  ) {
+    return lib.xkbcommon._xkb_state_update_mask(
+      this.state,
+      depressedMods,
+      latchedMods,
+      lockedMods,
+      depressedLayout,
+      latchedLayout,
+      lockedLayout,
+    )
   }
 
   keyUp(linuxKeyCode: LinuxKeyCode): boolean {
@@ -256,6 +314,18 @@ export class Xkb {
   get group(): number {
     // @ts-ignore
     return lib.xkbcommon._xkb_state_serialize_layout(this.state, XKB_STATE_LAYOUT_EFFECTIVE)
+  }
+
+  numLedActive(): boolean {
+    return lib.xkbcommon._xkb_state_led_index_is_active(this.state, this.numLed)
+  }
+
+  capsLedActive(): boolean {
+    return lib.xkbcommon._xkb_state_led_index_is_active(this.state, this.capsLed)
+  }
+
+  scrollLockLedActive(): boolean {
+    return lib.xkbcommon._xkb_state_led_index_is_active(this.state, this.scrollLed)
   }
 }
 

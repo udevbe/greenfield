@@ -964,7 +964,7 @@ export class XWindowManager {
         keyboard.focusLost()
       }
       if (pointer.focus?.surface === window.shsurf.surface) {
-        pointer.unsetFocus()
+        pointer.clearFocus()
       }
     }
     window.surface = undefined

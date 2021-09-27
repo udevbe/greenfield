@@ -115,7 +115,7 @@ export function createUserShellApi(session: Session): UserShellApi {
         },
         blur: () => {
           session.globals.seat.keyboard.focusLost()
-          session.globals.seat.pointer.unsetFocus()
+          session.globals.seat.pointer.clearFocus()
         },
       },
       initScene: (sceneId, canvas) => session.renderer.initScene(sceneId, canvas),

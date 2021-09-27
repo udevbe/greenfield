@@ -528,7 +528,7 @@ export class XWindow {
     ] as const
 
     const pointer = this.wm.session.globals.seat.pointer
-    if (pointer.buttonsPressed !== 1 || pointer.focus === undefined || pointer.focus.surface !== this.surface) {
+    if (pointer.buttonCount !== 1 || pointer.focus === undefined || pointer.focus.surface !== this.surface) {
       return
     }
 

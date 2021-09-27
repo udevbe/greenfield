@@ -37,13 +37,9 @@ const { copy, move, ask, none } = WlDataDeviceManagerDndAction
 const ALL_ACTIONS = copy | move | ask
 
 export default class DataOffer implements WlDataOfferRequests {
-  // @ts-ignore set in static create method
-  resource: WlDataOfferResource
-  acceptMimeType?: string
-  preferredAction = 0
-  dndActions: WlDataDeviceManagerDndAction = none
   inAsk = false
-  private finished = false
+  dndActions = 0
+  preferredDndActions = none
 
   static create(
     session: Session,
@@ -51,190 +47,29 @@ export default class DataOffer implements WlDataOfferRequests {
     offerId: number,
     dataDeviceResource: WlDataDeviceResource,
   ): DataOffer {
-    const dataOffer = new DataOffer(session, source)
     const wlDataOfferResource = new WlDataOfferResource(dataDeviceResource.client, offerId, dataDeviceResource.version)
+    const dataOffer = new DataOffer(session, wlDataOfferResource, source)
     wlDataOfferResource.implementation = dataOffer
-    dataOffer.resource = wlDataOfferResource
-    wlDataOfferResource.onDestroy().then(() => dataOffer._handleDestroy())
+    wlDataOfferResource.onDestroy().then(() => dataOffer.handleDestroy())
 
     return dataOffer
   }
 
-  private constructor(private readonly session: Session, public wlDataSource: WlDataSourceResource) {}
+  private constructor(
+    private readonly session: Session,
+    public readonly resource: WlDataOfferResource,
+    public source: WlDataSourceResource,
+  ) {}
 
-  private _handleDestroy() {
-    if (!this.wlDataSource) {
-      return
-    }
+  accept(resource: WlDataOfferResource, serial: number, mimeType: string | undefined): void {}
 
-    // TODO remove source destroy listener
-    // TODO add source destroy listener
-    // wl_list_remove(&offer->source_destroy_listener.link);
+  destroy(resource: WlDataOfferResource): void {}
 
-    const dataSoure = this.wlDataSource.implementation as DataSource | undefined
-    if (dataSoure === undefined) {
-      throw new Error('BUG. data source resource must have data source implementation set.')
-    }
-    if (dataSoure.wlDataOffer !== this.resource) {
-      return
-    }
+  finish(resource: WlDataOfferResource): void {}
 
-    /* If the drag destination has version < 3, wl_data_offer.finish
-     * won't be called, so do this here as a safety net, because
-     * we still want the version >=3 drag source to be happy.
-     */
-    if (this.resource.version < 3) {
-      dataSoure.notifyFinish()
-    } else if (this.wlDataSource && this.wlDataSource.version >= 3) {
-      this.wlDataSource.cancelled()
-    }
+  receive(resource: WlDataOfferResource, mimeType: string, fd: WebFD): void {}
 
-    dataSoure.wlDataOffer = undefined
-  }
+  setActions(resource: WlDataOfferResource, dndActions: number, preferredAction: number): void {}
 
-  accept(resource: WlDataOfferResource, serial: number, mimeType: string | undefined): void {
-    if (this.wlDataSource === undefined) {
-      return
-    }
-    const dataSource = this.wlDataSource.implementation as DataSource
-    if (dataSource.wlDataOffer === undefined) {
-      return
-    }
-
-    if (this.finished) {
-      // TODO raise protocol error
-    }
-
-    this.acceptMimeType = mimeType
-    this.wlDataSource.target(mimeType)
-    dataSource.accepted = mimeType !== null
-  }
-
-  receive(resource: WlDataOfferResource, mimeType: string, fd: WebFD): void {
-    if (this.finished) {
-      // TODO raise protocol error
-    }
-    if (this.wlDataSource) {
-      this.wlDataSource.send(mimeType, fd)
-    }
-  }
-
-  destroy(resource: WlDataOfferResource): void {
-    resource.destroy()
-  }
-
-  finish(resource: WlDataOfferResource): void {
-    if (!this.wlDataSource || !this.preferredAction) {
-      return
-    }
-    if (!this.acceptMimeType || this.finished) {
-      return
-    }
-
-    /* Disallow finish while we have a grab driving drag-and-drop, or
-     * if the negotiation is not at the right stage
-     */
-    const dataSource = this.wlDataSource.implementation as DataSource
-    if (!dataSource.accepted) {
-      resource.postError(WlDataOfferError.invalidFinish, 'premature finish request')
-      return
-    }
-
-    switch (dataSource.currentDndAction) {
-      case none:
-      case ask:
-        resource.postError(WlDataOfferError.invalidOffer, 'offer finished with an invalid action')
-        return
-      default:
-        break
-    }
-
-    dataSource.notifyFinish()
-  }
-
-  setActions(resource: WlDataOfferResource, dndActions: number, preferredAction: number): void {
-    if (!this.wlDataSource) {
-      return
-    }
-    if (this.finished) {
-      // TODO raise protocol error
-    }
-
-    if (dndActions & ~ALL_ACTIONS) {
-      resource.postError(WlDataOfferError.invalidActionMask, `invalid action mask ${dndActions}`)
-      this.session.logger.warn('[client protocol error] - invalid data offer action mask')
-      return
-    }
-
-    if (preferredAction && (!(preferredAction & dndActions) || bitCount(preferredAction) > 1)) {
-      resource.postError(WlDataOfferError.invalidAction, `invalid action ${preferredAction}`)
-      this.session.logger.warn('[client protocol error] - invalid data offer action')
-      return
-    }
-
-    this.dndActions = dndActions
-    this.preferredAction = preferredAction
-    this.updateAction()
-  }
-
-  updateAction(): void {
-    if (!this.wlDataSource) {
-      return
-    }
-
-    const action = this.chooseAction()
-
-    const dataSource = this.wlDataSource.implementation as DataSource
-    if (dataSource.currentDndAction === action) {
-      return
-    }
-
-    dataSource.currentDndAction = action
-
-    if (this.inAsk) {
-      return
-    }
-
-    if (this.wlDataSource.version >= 3) {
-      this.wlDataSource.action(action)
-    }
-
-    if (this.resource.version >= 3) {
-      this.resource.action(action)
-    }
-  }
-
-  private chooseAction() {
-    let offerActions: WlDataDeviceManagerDndAction
-    let preferredAction = none
-    if (this.resource.version >= 3) {
-      offerActions = this.dndActions
-      preferredAction = this.preferredAction
-    } else {
-      offerActions = copy
-    }
-
-    let sourceActions: WlDataDeviceManagerDndAction
-    if (this.wlDataSource.version >= 3) {
-      const dataSource = this.wlDataSource.implementation as DataSource
-      sourceActions = dataSource.dndActions
-    } else {
-      sourceActions = copy
-    }
-    const availableActions = offerActions & sourceActions
-
-    if (!availableActions) {
-      return none
-    }
-
-    // TODO a compositor defined action could be returned here
-
-    /* If the dest side has a preferred DnD action, use it */
-    if ((preferredAction & availableActions) !== 0) {
-      return preferredAction
-    }
-
-    /* Use the first found action, in bit order */
-    return 1 << (Math.floor(Math.log2(availableActions)) - 1)
-  }
+  private handleDestroy() {}
 }

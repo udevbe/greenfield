@@ -22,7 +22,7 @@ import Callback from '../Callback'
 import { queueCancellableMicrotask } from '../Loop'
 import { Point } from '../math/Point'
 import Output from '../Output'
-import { PointerRole } from '../Pointer'
+import { CursorRole } from '../Pointer'
 import DecodedFrame from '../remotestreaming/DecodedFrame'
 import Session from '../Session'
 import Surface from '../Surface'
@@ -96,7 +96,7 @@ export default class Renderer {
           return
         }
         const { blob } = this.cursorView.surface.state.bufferContents?.pixelContent as { blob: Blob }
-        const pointerRole = this.cursorView.surface.role as PointerRole
+        const pointerRole = this.cursorView.surface.role as CursorRole
         setCursorImage(blob, pointerRole.pointer.hotspotX, pointerRole.pointer.hotspotY)
         this.cursorView.surface.state.frameCallbacks.forEach((callback) => callback.done(time))
         this.cursorView.surface.state.frameCallbacks = []

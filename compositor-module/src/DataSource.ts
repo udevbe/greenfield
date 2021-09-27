@@ -15,14 +15,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+import { WebFD } from 'westfield-runtime-common'
 import {
   WlDataDeviceManagerDndAction,
   WlDataOfferResource,
   WlDataSourceRequests,
   WlDataSourceResource,
   WlDataSourceError,
+  WlDataDeviceResource,
 } from 'westfield-runtime-server'
 import DataOffer from './DataOffer'
+import Seat from './Seat'
+import Session from './Session'
 
 const { copy, move, ask, none } = WlDataDeviceManagerDndAction
 const ALL_ACTIONS = copy | move | ask
@@ -35,72 +39,48 @@ const ALL_ACTIONS = copy | move | ask
  *            to requests to transfer the data.
  */
 export default class DataSource implements WlDataSourceRequests {
-  readonly resource: WlDataSourceResource
-  mimeTypes: string[] = []
-  dndActions = 0
-  currentDndAction: WlDataDeviceManagerDndAction = none
-  accepted = false
-  wlDataOffer?: WlDataOfferResource
-  private _actionsSet = false
-
-  static create(wlDataSourceResource: WlDataSourceResource): DataSource {
-    const dataSource = new DataSource(wlDataSourceResource)
+  static create(session: Session, wlDataSourceResource: WlDataSourceResource): DataSource {
+    const dataSource = new DataSource(session, wlDataSourceResource)
     wlDataSourceResource.implementation = dataSource
     return dataSource
   }
 
-  private constructor(wlDataSourceResource: WlDataSourceResource) {
-    this.resource = wlDataSourceResource
+  seat?: Seat
+  mimeTypes: string[] = []
+  dndActions = 0
+  currentDndAction = none
+  compositorAction = none
+  accepted = false
+  dataOffer?: DataOffer
+  actionsSet = false
+  setSelection = false
+
+  accept = (time: number, mimeType: string) => {
+    this.resource.target(mimeType)
+  }
+  send = (mimeType: string, fd: WebFD) => {
+    this.resource.send(mimeType, fd)
+  }
+  cancel = () => {
+    this.resource.cancelled()
   }
 
-  offer(resource: WlDataSourceResource, mimeType: string): void {
-    this.mimeTypes.push(mimeType)
-    if (this.wlDataOffer) {
-      this.wlDataOffer.offer(mimeType)
-    }
+  constructor(public readonly session: Session, public readonly resource: WlDataSourceResource) {}
+
+  sendOffer(target: WlDataDeviceResource): DataOffer {
+    const offerId = /** @type {number} */ target.dataOffer()
+    const offer = DataOffer.create(this.session, this.resource, offerId, target)
+
+    this.mimeTypes.forEach((mimeType) => offer.resource.offer(mimeType))
+    this.dataOffer = offer
+    this.accepted = false
+
+    return offer
   }
 
-  destroy(resource: WlDataSourceResource): void {
-    resource.destroy()
-  }
+  destroy(resource: WlDataSourceResource): void {}
 
-  setActions(resource: WlDataSourceResource, dndActions: number): void {
-    if (this._actionsSet) {
-      resource.postError(WlDataSourceError.invalidActionMask, 'cannot set actions more than once')
-      return
-    }
+  offer(resource: WlDataSourceResource, mimeType: string): void {}
 
-    if (this.dndActions & ~ALL_ACTIONS) {
-      resource.postError(WlDataSourceError.invalidActionMask, `invalid action mask ${dndActions}`)
-      return
-    }
-
-    // TODO
-    // if (source->seat) {
-    //   wl_resource_post_error(source->resource,
-    //     WL_DATA_SOURCE_ERROR_INVALID_ACTION_MASK,
-    //     "invalid action change after "
-    //   "wl_data_device.start_drag");
-    //   return;
-    // }
-
-    this.dndActions = dndActions
-    this._actionsSet = true
-  }
-
-  notifyFinish(): void {
-    if (!this.dndActions) {
-      return
-    }
-
-    if (this.wlDataOffer && (this.wlDataOffer.implementation as DataOffer).inAsk && this.resource.version >= 3) {
-      this.resource.action(this.currentDndAction)
-    }
-
-    if (this.resource.version >= 3) {
-      this.resource.dndFinished()
-    }
-
-    this.wlDataOffer = undefined
-  }
+  setActions(resource: WlDataSourceResource, dndActions: number): void {}
 }
