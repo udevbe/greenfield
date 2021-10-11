@@ -205,10 +205,7 @@ function stringToPointer(value?: string): number {
 }
 
 export class Xkb {
-  private _stateComponentMask = 0
-
   leds: Led = 0
-
   readonly shiftMod: number
   readonly capsMod: number
   readonly ctrlMod: number
@@ -221,6 +218,7 @@ export class Xkb {
   readonly capsLed: number
   readonly scrollLed: number
   readonly keymapString: string
+  private _stateComponentMask = 0
 
   constructor(public readonly xkbContext: number, public readonly keymap: number, public readonly state: number) {
     this._stateComponentMask = 0
@@ -266,6 +264,22 @@ export class Xkb {
     lib.xkbcommon._free(scroll)
   }
 
+  get modsDepressed(): number {
+    return lib.xkbcommon._xkb_state_serialize_mods(this.state, XKB_STATE_MODS_DEPRESSED)
+  }
+
+  get modsLatched(): number {
+    return lib.xkbcommon._xkb_state_serialize_mods(this.state, XKB_STATE_MODS_LATCHED)
+  }
+
+  get modsLocked(): number {
+    return lib.xkbcommon._xkb_state_serialize_mods(this.state, XKB_STATE_MODS_LOCKED)
+  }
+
+  get group(): number {
+    return lib.xkbcommon._xkb_state_serialize_layout(this.state, XKB_STATE_LAYOUT_EFFECTIVE)
+  }
+
   asString(): string {
     return this.keymapString
   }
@@ -289,28 +303,12 @@ export class Xkb {
     )
   }
 
-  keyUp(linuxKeyCode: LinuxKeyCode): boolean {
+  keyUp(linuxKeyCode: EvDevKeyCode): boolean {
     return lib.xkbcommon._xkb_state_update_key(this.state, linuxKeyCode, XKB_KEY_UP) !== 0
   }
 
-  keyDown(linuxKeyCode: LinuxKeyCode): boolean {
+  keyDown(linuxKeyCode: EvDevKeyCode): boolean {
     return lib.xkbcommon._xkb_state_update_key(this.state, linuxKeyCode, XKB_KEY_DOWN) !== 0
-  }
-
-  get modsDepressed(): number {
-    return lib.xkbcommon._xkb_state_serialize_mods(this.state, XKB_STATE_MODS_DEPRESSED)
-  }
-
-  get modsLatched(): number {
-    return lib.xkbcommon._xkb_state_serialize_mods(this.state, XKB_STATE_MODS_LATCHED)
-  }
-
-  get modsLocked(): number {
-    return lib.xkbcommon._xkb_state_serialize_mods(this.state, XKB_STATE_MODS_LOCKED)
-  }
-
-  get group(): number {
-    return lib.xkbcommon._xkb_state_serialize_layout(this.state, XKB_STATE_LAYOUT_EFFECTIVE)
   }
 
   numLedActive(): boolean {
@@ -331,117 +329,117 @@ export class Xkb {
   }
 }
 
-// convert browser neutral key codes (which are strings) to linux (x11) keycode
-export enum LinuxKeyCode {
-  Escape = 0x0009,
-  Digit1 = 0x000a,
-  Digit2 = 0x000b,
-  Digit3 = 0x000c,
-  Digit4 = 0x000d,
-  Digit5 = 0x000e,
-  Digit6 = 0x000f,
-  Digit7 = 0x0010,
-  Digit8 = 0x0011,
-  Digit9 = 0x0012,
-  Digit0 = 0x0013,
-  Minus = 0x0014,
-  Equal = 0x0015,
-  Backspace = 0x0016,
-  Tab = 0x0017,
-  KeyQ = 0x0018,
-  KeyW = 0x0019,
-  KeyE = 0x001a,
-  KeyR = 0x001b,
-  KeyT = 0x001c,
-  KeyY = 0x001d,
-  KeyU = 0x001e,
-  KeyI = 0x001f,
-  KeyO = 0x0020,
-  KeyP = 0x0021,
-  BracketLeft = 0x0022,
-  BracketRight = 0x0023,
-  Enter = 0x0024,
-  ControlLeft = 0x0025,
-  KeyA = 0x0026,
-  KeyS = 0x0027,
-  KeyD = 0x0028,
-  KeyF = 0x0029,
-  KeyG = 0x002a,
-  KeyH = 0x002b,
-  KeyJ = 0x002c,
-  KeyK = 0x002d,
-  KeyL = 0x002e,
-  Semicolon = 0x002f,
-  Quote = 0x0030,
-  Backquote = 0x0031,
-  ShiftLeft = 0x0032,
-  Backslash = 0x0033,
-  KeyZ = 0x0034,
-  KeyX = 0x0035,
-  KeyC = 0x0036,
-  KeyV = 0x0037,
-  KeyB = 0x0038,
-  KeyN = 0x0039,
-  KeyM = 0x003a,
-  Comma = 0x003b,
-  Period = 0x003c,
-  Slash = 0x003d,
-  ShiftRight = 0x003e,
-  NumpadMultiply = 0x003f,
-  AltLeft = 0x0040,
-  Space = 0x0041,
-  CapsLock = 0x0042,
-  F1 = 0x0043,
-  F2 = 0x0044,
-  F3 = 0x0045,
-  F4 = 0x0046,
-  F5 = 0x0047,
-  F6 = 0x0048,
-  F7 = 0x0049,
-  F8 = 0x004a,
-  F9 = 0x004b,
-  F10 = 0x004c,
-  NumLock = 0x004d,
-  ScrollLock = 0x004e,
-  Numpad7 = 0x004f,
-  Numpad8 = 0x0050,
-  Numpad9 = 0x0051,
-  NumpadSubtract = 0x0052,
-  Numpad4 = 0x0053,
-  Numpad5 = 0x0054,
-  Numpad6 = 0x0055,
-  NumpadAdd = 0x0056,
-  Numpad1 = 0x0057,
-  Numpad2 = 0x0058,
-  Numpad3 = 0x0059,
-  Numpad0 = 0x005a,
-  NumpadDecimal = 0x005b,
-  IntlBackslash = 0x005e,
-  F11 = 0x005f,
-  F12 = 0x0060,
-  IntlRo = 0x0061,
-  Convert = 0x0064,
-  KanaMode = 0x0065,
-  NonConvert = 0x0066,
-  NumpadEnter = 0x0068,
-  ControlRight = 0x0069,
-  NumpadDivide = 0x006a,
-  PrintScreen = 0x006b,
-  AltRight = 0x006c,
-  Home = 0x006e,
-  ArrowUp = 0x006f,
-  PageUp = 0x0070,
-  ArrowLeft = 0x0071,
-  ArrowRight = 0x0072,
-  End = 0x0073,
-  ArrowDown = 0x0074,
-  PageDown = 0x0075,
-  Insert = 0x0076,
-  Delete = 0x0077,
-  NumpadEqual = 0x007d,
-  Pause = 0x007f,
-  IntlYen = 0x0084,
-  OSLeft = 0x0085,
-  OSRight = 0x0086,
-  ContextMenu = 0x0087,
+// convert browser neutral key codes (which are strings) to linux (evdev) keycode
+export enum EvDevKeyCode {
+  Escape = 1,
+  Digit1 = 2,
+  Digit2 = 3,
+  Digit3 = 4,
+  Digit4 = 5,
+  Digit5 = 6,
+  Digit6 = 7,
+  Digit7 = 8,
+  Digit8 = 9,
+  Digit9 = 10,
+  Digit0 = 11,
+  Minus = 12,
+  Equal = 13,
+  Backspace = 14,
+  Tab = 15,
+  KeyQ = 16,
+  KeyW = 17,
+  KeyE = 18,
+  KeyR = 19,
+  KeyT = 20,
+  KeyY = 21,
+  KeyU = 22,
+  KeyI = 23,
+  KeyO = 24,
+  KeyP = 25,
+  BracketLeft = 26,
+  BracketRight = 27,
+  Enter = 28,
+  ControlLeft = 29,
+  KeyA = 30,
+  KeyS = 31,
+  KeyD = 32,
+  KeyF = 33,
+  KeyG = 34,
+  KeyH = 35,
+  KeyJ = 36,
+  KeyK = 37,
+  KeyL = 38,
+  Semicolon = 39,
+  Quote = 40,
+  Backquote = 41,
+  ShiftLeft = 42,
+  Backslash = 43,
+  KeyZ = 44,
+  KeyX = 45,
+  KeyC = 46,
+  KeyV = 47,
+  KeyB = 48,
+  KeyN = 49,
+  KeyM = 50,
+  Comma = 51,
+  Period = 52,
+  Slash = 53,
+  ShiftRight = 54,
+  NumpadMultiply = 55,
+  AltLeft = 56,
+  Space = 57,
+  CapsLock = 58,
+  F1 = 59,
+  F2 = 60,
+  F3 = 61,
+  F4 = 62,
+  F5 = 63,
+  F6 = 64,
+  F7 = 65,
+  F8 = 66,
+  F9 = 67,
+  F10 = 68,
+  NumLock = 69,
+  ScrollLock = 70,
+  Numpad7 = 71,
+  Numpad8 = 72,
+  Numpad9 = 73,
+  NumpadSubtract = 74,
+  Numpad4 = 75,
+  Numpad5 = 76,
+  Numpad6 = 77,
+  NumpadAdd = 78,
+  Numpad1 = 79,
+  Numpad2 = 80,
+  Numpad3 = 81,
+  Numpad0 = 82,
+  NumpadDecimal = 83,
+  IntlBackslash = 86,
+  F11 = 87,
+  F12 = 88,
+  IntlRo = 89,
+  Convert = 92,
+  KanaMode = 93,
+  NonConvert = 94,
+  NumpadEnter = 96,
+  ControlRight = 97,
+  NumpadDivide = 98,
+  PrintScreen = 99,
+  AltRight = 100,
+  Home = 102,
+  ArrowUp = 103,
+  PageUp = 104,
+  ArrowLeft = 105,
+  ArrowRight = 106,
+  End = 107,
+  ArrowDown = 108,
+  PageDown = 109,
+  Insert = 110,
+  Delete = 111,
+  NumpadEqual = 117,
+  Pause = 119,
+  IntlYen = 124,
+  OSLeft = 125,
+  OSRight = 126,
+  ContextMenu = 127,
 }

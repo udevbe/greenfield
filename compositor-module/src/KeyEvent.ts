@@ -1,7 +1,7 @@
-import { LinuxKeyCode } from './Xkb'
+import { EvDevKeyCode } from './Xkb'
 
 export interface KeyEvent {
-  keyCode: LinuxKeyCode
+  keyCode: EvDevKeyCode
   timeStamp: number
   pressed: boolean
   capsLock: boolean
@@ -16,7 +16,7 @@ export const createKeyEventFromKeyboardEvent: CreateKeyEventFromKeyboardEvent = 
   keyboardEvent: KeyboardEvent,
   pressed: boolean,
 ): KeyEvent | undefined => {
-  const keyCode: LinuxKeyCode | undefined = LinuxKeyCode[<keyof typeof LinuxKeyCode>keyboardEvent.code]
+  const keyCode: EvDevKeyCode | undefined = EvDevKeyCode[<keyof typeof EvDevKeyCode>keyboardEvent.code]
   if (keyCode) {
     const capsLock = keyboardEvent.getModifierState('CapsLock')
     const numLock = keyboardEvent.getModifierState('NumLock')
