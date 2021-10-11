@@ -25,7 +25,6 @@ import {
   XdgWmBaseError,
 } from 'westfield-runtime-server'
 import { DesktopSurface } from './Desktop'
-import { CompositorSurface } from './index'
 import { RectWithInfo } from './math/Rect'
 import { Size, ZERO_SIZE } from './math/Size'
 import Session from './Session'
@@ -111,12 +110,12 @@ export default class XdgToplevel implements XdgToplevelRequests, DesktopSurfaceR
 
   configureMaximized(maximized: boolean): void {
     this.pending.state.maximized = maximized ? XdgToplevelState.maximized : undefined
-    this.xdgSurface.scheduleConfigure(this.stateCompare(), () => this.sendConfigure())
+    this.xdgSurface.scheduleConfigure(this.stateCompareEquals(), () => this.sendConfigure())
   }
 
   configureFullscreen(fullscreen: boolean): void {
     this.pending.state.fullscreen = fullscreen ? XdgToplevelState.fullscreen : undefined
-    this.xdgSurface.scheduleConfigure(this.stateCompare(), () => this.sendConfigure())
+    this.xdgSurface.scheduleConfigure(this.stateCompareEquals(), () => this.sendConfigure())
   }
 
   onCommit(surface: Surface): void {
@@ -153,7 +152,7 @@ export default class XdgToplevel implements XdgToplevelRequests, DesktopSurfaceR
       return
     }
 
-    this.current.state = this.next.state
+    this.current.state = { ...this.next.state }
     this.current.minSize = this.next.minSize
     this.current.maxSize = this.next.maxSize
 
@@ -162,7 +161,7 @@ export default class XdgToplevel implements XdgToplevelRequests, DesktopSurfaceR
   }
 
   ackConfigure(serial: number, configure: ToplevelXdgConfigure): void {
-    this.next.state = configure.state
+    this.next.state = { ...configure.state }
     this.next.size = configure.size
   }
 
@@ -274,17 +273,17 @@ export default class XdgToplevel implements XdgToplevelRequests, DesktopSurfaceR
 
   configureSize(size: Size): void {
     this.pending.size = size
-    this.xdgSurface.scheduleConfigure(this.stateCompare(), () => this.sendConfigure())
+    this.xdgSurface.scheduleConfigure(this.stateCompareEquals(), () => this.sendConfigure())
   }
 
   configureActivated(activated: boolean): void {
     this.pending.state.activated = activated ? XdgToplevelState.activated : undefined
-    this.xdgSurface.scheduleConfigure(this.stateCompare(), () => this.sendConfigure())
+    this.xdgSurface.scheduleConfigure(this.stateCompareEquals(), () => this.sendConfigure())
   }
 
   configureResizing(resizing: boolean): void {
     this.pending.state.resizing = resizing ? XdgToplevelState.resizing : undefined
-    this.xdgSurface.scheduleConfigure(this.stateCompare(), () => this.sendConfigure())
+    this.xdgSurface.scheduleConfigure(this.stateCompareEquals(), () => this.sendConfigure())
   }
 
   queryMaxSize(): Size {
@@ -301,11 +300,11 @@ export default class XdgToplevel implements XdgToplevelRequests, DesktopSurfaceR
     }
     this.desktopSurface.add()
     this.session.renderer.addTopLevelView(this.view)
-    this.xdgSurface.scheduleConfigure(this.stateCompare(), () => this.sendConfigure())
+    this.xdgSurface.scheduleConfigure(this.stateCompareEquals(), () => this.sendConfigure())
     this.added = true
   }
 
-  private stateCompare() {
+  private stateCompareEquals() {
     if (!this.xdgSurface.configured) {
       return false
     }
