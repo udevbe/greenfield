@@ -95,9 +95,12 @@ export default class Renderer {
         if (this.cursorView === undefined) {
           return
         }
-        const { blob } = this.cursorView.surface.state.bufferContents?.pixelContent as { blob: Blob }
+        const cursorImage = this.cursorView.surface.state.bufferContents?.pixelContent as { blob: Blob } | undefined
+        if (cursorImage === undefined) {
+          return
+        }
         const pointerRole = this.cursorView.surface.role as CursorRole
-        setCursorImage(blob, pointerRole.pointer.hotspotX, pointerRole.pointer.hotspotY)
+        setCursorImage(cursorImage.blob, pointerRole.pointer.hotspotX, pointerRole.pointer.hotspotY)
         this.cursorView.surface.state.frameCallbacks.forEach((callback) => callback.done(time))
         this.cursorView.surface.state.frameCallbacks = []
         this.session.flush()

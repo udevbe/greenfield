@@ -30,6 +30,7 @@ import {
   WlSurfaceResource,
 } from 'westfield-runtime-server'
 import { AxisEvent } from './AxisEvent'
+import { setCursor } from './browser/cursor'
 import { ButtonEvent } from './ButtonEvent'
 import DataSource from './DataSource'
 import { KeyboardGrab } from './Keyboard'
@@ -85,6 +86,9 @@ export class DefaultPointerGrab implements PointerGrab {
     const sy = Fixed.parse(y)
     if (this.pointer.focus !== view || this.pointer.sx !== sx || this.pointer.sy !== sy) {
       this.pointer.setFocus(view, sx, sy)
+      if (view === undefined) {
+        setCursor('default')
+      }
     }
   }
 
@@ -390,7 +394,7 @@ export class Pointer implements WlPointerRequests {
     if (this.focus.surface.resource.client !== resource.client) {
       return
     }
-    if (this.seat.serial - serial > Number.MIN_SAFE_INTEGER / 2) {
+    if (this.seat.serial - serial > Number.MAX_SAFE_INTEGER / 2) {
       return
     }
 
@@ -407,7 +411,9 @@ export class Pointer implements WlPointerRequests {
         resource.postError(WlPointerError.role, 'Given surface has another role.')
         return
       }
-      surface.role = CursorRole.create(this, surface)
+      if (surface.role === undefined) {
+        surface.role = CursorRole.create(this, surface)
+      }
       if (this.sprite !== undefined) {
         this.unmapSprite()
       }

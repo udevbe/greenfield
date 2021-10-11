@@ -4,7 +4,7 @@ import { AxisEvent } from './AxisEvent'
 import { setCursor } from './browser/cursor'
 import { ButtonEvent } from './ButtonEvent'
 import { minusPoint, ORIGIN, plusPoint, Point } from './math/Point'
-import { RectWithInfo, withSizeAndPosition } from './math/Rect'
+import { RectWithInfo } from './math/Rect'
 import { Size } from './math/Size'
 import { PointerGrab } from './Pointer'
 import Surface from './Surface'
@@ -72,7 +72,7 @@ class ResizeGrab implements PointerGrab {
     let height = this.geometry.size.height
     if (this.edges & WlShellSurfaceResize.top) {
       height += from.y - to.y
-    } else if (this.edges & WlShellSurfaceResize.right) {
+    } else if (this.edges & WlShellSurfaceResize.bottom) {
       height += to.y - from.y
     }
 
@@ -93,13 +93,31 @@ class ResizeGrab implements PointerGrab {
     this.desktopSurface.role.configureSize({ width, height })
   }
 
+  private setResizeCursor() {
+    if (
+      this.edges & (WlShellSurfaceResize.top | WlShellSurfaceResize.right) ||
+      this.edges & (WlShellSurfaceResize.bottom | WlShellSurfaceResize.left)
+    ) {
+      setCursor('nwse-resize')
+    } else if (
+      this.edges & (WlShellSurfaceResize.top | WlShellSurfaceResize.left) ||
+      this.edges & (WlShellSurfaceResize.bottom | WlShellSurfaceResize.right)
+    ) {
+      setCursor('nesw-resize')
+    } else if (this.edges & (WlShellSurfaceResize.top | WlShellSurfaceResize.bottom)) {
+      setCursor('ns-resize')
+    } else if (this.edges & (WlShellSurfaceResize.left | WlShellSurfaceResize.right)) {
+      setCursor('ew-resize')
+    }
+  }
+
   start() {
     const pointer = this.desktopSurface.surface.session.globals.seat.pointer
     pointer.seat.popupGrabEnd()
 
     this.desktopSurface.grabbed = true
     pointer.startGrab(this)
-    setCursor('move')
+    this.setResizeCursor()
     pointer.setFocus(this.desktopSurface.role.view, Fixed.parse(0), Fixed.parse(0))
   }
 }
@@ -222,6 +240,11 @@ export class DesktopSurface {
       return
     }
 
+    const focus = this.surface.session.globals.seat.pointer.focus?.surface.getMainSurface()
+    if (focus !== this.surface) {
+      return
+    }
+
     const resizeTopBottom = WlShellSurfaceResize.top | WlShellSurfaceResize.bottom
     const resizeLeftRight = WlShellSurfaceResize.left | WlShellSurfaceResize.right
     const resizeAny = resizeTopBottom | resizeLeftRight
@@ -242,7 +265,7 @@ export class DesktopSurface {
 
     this.resizeEdges = edges
 
-    const geometry = withSizeAndPosition(this.role.queryGeometry())
+    const geometry = this.role.queryGeometry()
     this.role.configureResizing(true)
     ResizeGrab.create(this, edges, geometry).start()
   }
@@ -452,7 +475,10 @@ export class DesktopSurface {
   }
 
   private lastMappedChild(): DesktopSurface | undefined {
-    const mappedChildren = this.surface.parent?.children.filter((child) => child.surface.role?.view.mapped) ?? []
+    const mappedChildren =
+      this.surface.parent?.children
+        .filter((child) => child.surface !== this.surface)
+        .filter((child) => child.surface.role?.view.mapped) ?? []
     if (mappedChildren.length) {
       return mappedChildren[mappedChildren.length - 1].surface.role?.desktopSurface
     } else {
