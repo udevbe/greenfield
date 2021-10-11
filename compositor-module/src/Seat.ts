@@ -472,6 +472,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
       }
       this.pointer.buttonCount++
     }
+    console.assert(this.pointer.buttonCount >= 0, 'BUG. Button count should never be negative.')
     this.runButtonBinding(event)
 
     this.pointer.grab?.button(event)
@@ -575,6 +576,8 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
 
     if (event.pressed) {
       this.keyboard.keys = [...this.keyboard.keys, event.keyCode]
+    } else {
+      this.keyboard.keys = this.keyboard.keys.filter((key) => event.keyCode !== key)
     }
 
     const grab = this.keyboard.grab
