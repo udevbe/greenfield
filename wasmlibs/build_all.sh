@@ -45,7 +45,7 @@ build_libxkbcommon() {
         ./autogen.sh --disable-x11
         emconfigure ./configure --disable-x11 CFLAGS=-O3
         emmake make clean all
-        emcc -s MODULARIZE=1 -s EXPORT_ES6=1 -s ENVIRONMENT='web' -s SINGLE_FILE=1 -O3 .libs/libxkbcommon.so -o ../libxkbcommon.js --embed-file "$(pwd)/../xkeyboard-config/X11/xkb@/usr/local/share/X11/xkb" -s EXPORTED_RUNTIME_METHODS='["lengthBytesUTF8","stringToUTF8","UTF8ToString","FS"]' -s EXPORTED_FUNCTIONS='["_malloc", "_free", "_xkb_context_new","_xkb_keymap_new_from_string","_xkb_state_new","_free","_xkb_keymap_get_as_string","_xkb_state_update_key","_xkb_state_update_key","_xkb_state_serialize_mods","_xkb_state_serialize_layout","_xkb_keymap_new_from_names","_xkb_context_include_path_append","_xkb_keymap_mod_get_index","_xkb_keymap_led_get_index","_xkb_state_update_mask","_xkb_keymap_unref"]'
+        emcc -s MODULARIZE=1 -s EXPORT_ES6=1 -s ENVIRONMENT='web' -s SINGLE_FILE=1 -O3 .libs/libxkbcommon.so -o ../libxkbcommon.js --embed-file "$(pwd)/../xkeyboard-config/X11/xkb@/usr/local/share/X11/xkb" -s EXPORTED_RUNTIME_METHODS='["lengthBytesUTF8","stringToUTF8","UTF8ToString","FS"]' -s EXPORTED_FUNCTIONS='["_malloc", "_free", "_xkb_context_new","_xkb_keymap_new_from_string","_xkb_state_new","_free","_xkb_keymap_get_as_string","_xkb_state_update_key","_xkb_state_update_key","_xkb_state_serialize_mods","_xkb_state_serialize_layout","_xkb_keymap_new_from_names","_xkb_context_include_path_append","_xkb_keymap_mod_get_index","_xkb_keymap_led_get_index","_xkb_state_update_mask","_xkb_keymap_unref","_xkb_state_led_index_is_active"]'
         git checkout master
     popd
 }
