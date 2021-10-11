@@ -27,7 +27,7 @@ import {
 } from 'westfield-runtime-server'
 
 import DataSource from './DataSource'
-import Seat from './Seat'
+import { Seat } from './Seat'
 import Session from './Session'
 
 /**

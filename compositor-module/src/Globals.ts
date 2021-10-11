@@ -2,7 +2,7 @@ import Compositor from './Compositor'
 import DataDeviceManager from './DataDeviceManager'
 import { CompositorGlobals } from './index'
 import Output from './Output'
-import Seat from './Seat'
+import { Seat } from './Seat'
 import Session from './Session'
 import Shell from './Shell'
 import Subcompositor from './Subcompositor'
@@ -13,7 +13,7 @@ class Globals implements CompositorGlobals {
     const seat = Seat.create(session)
 
     const compositor = Compositor.create(session)
-    const dataDeviceManager = DataDeviceManager.create()
+    const dataDeviceManager = DataDeviceManager.create(session)
     const subcompositor = Subcompositor.create(session)
 
     const shell = Shell.create(session)
@@ -21,8 +21,6 @@ class Globals implements CompositorGlobals {
 
     return new Globals(session, seat, compositor, dataDeviceManager, subcompositor, shell, xdgWmBase)
   }
-
-  outputs: Output[] = []
 
   private constructor(
     public readonly session: Session,
@@ -32,6 +30,7 @@ class Globals implements CompositorGlobals {
     public readonly subcompositor: Subcompositor,
     public readonly shell: Shell,
     public readonly xdgWmBase: XdgWmBase,
+    public outputs: Output[] = [],
   ) {}
 
   registerOutput(output: Output): void {

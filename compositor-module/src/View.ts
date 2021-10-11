@@ -253,4 +253,8 @@ export default class View {
     const positionTransformation = translation(x, y)
     return timesMat4(startingTransformation, positionTransformation)
   }
+
+  setInitialPosition(): void {
+    // TODO?
+  }
 }

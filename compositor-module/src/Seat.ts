@@ -37,14 +37,14 @@ import {
 
 import { capabilities } from './browser/capabilities'
 import DataSource from './DataSource'
+import { DesktopSurface } from './Desktop'
 import { AxisEvent, ButtonEvent, CompositorSeat, KeyEvent, nrmlvo } from './index'
 import { Keyboard, KeyboardGrab } from './Keyboard'
 
-import { Pointer, DragIconRole, PointerDrag } from './Pointer'
+import { DragIconRole, Pointer, PointerDrag, PointerGrab } from './Pointer'
 import Session from './Session'
 import Surface from './Surface'
 import Touch from './Touch'
-import View from './View'
 import { createFromNames, Led } from './Xkb'
 
 const { keyboard, pointer, touch } = WlSeatCapability
@@ -61,35 +61,114 @@ export enum KeyboardLocks {
   CAPS_LOCK = 2,
 }
 
-export interface Drag {
-  client: Client
-  dataSource?: DataSource
-  dataSourceListener: () => void
-  focusView?: View
-  focusResource?: WlSurfaceResource
-  focusListener: () => void
-  icon?: View
-  iconDestroyListener?: () => void
-  dx: number
-  dy: number
-  keyboardGrab?: KeyboardGrab
+export type ButtonBinding = {
+  button: ButtonEvent['buttonCode']
+  modifiers: KeyboardModifier
+  handler: (pointer: Pointer, event: ButtonEvent) => void
 }
 
-class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequests {
+export class PopupGrab implements KeyboardGrab, PointerGrab {
+  private constructor(
+    public readonly seat: Seat,
+    public readonly keyboard: Keyboard,
+    public readonly pointer: Pointer,
+    public readonly client: Client,
+    public initialUp: boolean = false,
+    public surfaces: DesktopSurface[] = [],
+  ) {}
+
+  static create(seat: Seat, client: Client): PopupGrab {
+    return new PopupGrab(seat, seat.keyboard, seat.pointer, client)
+  }
+
+  axis(event: AxisEvent): void {
+    this.pointer.sendAxis(event)
+  }
+
+  button(event: ButtonEvent): void {
+    const initialUp = this.initialUp
+    if (event.released) {
+      this.initialUp = true
+    }
+
+    if (this.pointer.focus) {
+      this.pointer.sendButton(event)
+    } else if (event.released && (initialUp || event.timestamp - (this.pointer.grabTime ?? 0) > 500)) {
+      this.seat.popupGrabEnd()
+    }
+  }
+
+  cancel(): void {
+    this.seat.popupGrabEnd()
+  }
+
+  focus(): void {
+    const view = this.seat.session.renderer.pickView(this.pointer)
+    if (view !== undefined && view.surface.resource.client !== this.client) {
+      const { x: sx, y: sy } = view.sceneToViewSpace(this.pointer)
+      this.pointer.setFocus(view, Fixed.parse(sx), Fixed.parse(sy))
+    } else {
+      this.pointer.clearFocus()
+    }
+  }
+
+  motion(event: ButtonEvent): void {
+    this.pointer.sendMotion(event)
+  }
+
+  frame(): void {
+    this.pointer.sendFrame()
+  }
+
+  key(event: KeyEvent): void {
+    this.keyboard.sendKey(event)
+  }
+
+  modifiers(serial: number, modsDepressed: number, modsLatched: number, modsLocked: number, group: number): void {
+    this.keyboard.sendModifiers(serial, modsDepressed, modsLatched, modsLocked, group)
+  }
+
+  getTopmostDesktopSurface(): DesktopSurface | undefined {
+    if (this.surfaces.length === 0) {
+      return undefined
+    }
+
+    return this.surfaces[this.surfaces.length - 1]
+  }
+
+  addSurface(surface: DesktopSurface): void {
+    this.surfaces = [...this.surfaces, surface]
+  }
+
+  removeSurface(surface: DesktopSurface): void {
+    this.surfaces = this.surfaces.filter((popupSurface) => popupSurface !== surface)
+
+    if (this.surfaces.length === 0) {
+      this.seat.popupGrabEnd()
+    }
+  }
+}
+
+export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequests {
   serial = 0
-  public readonly pointer: Pointer
-  public readonly keyboard: Keyboard
-  public readonly touch?: Touch
+  readonly pointer: Pointer
+  readonly keyboard: Keyboard
+  readonly touch?: Touch
+  needFocusInit = false
+  savedKbdFocus?: Surface
+  popupGrab?: PopupGrab
   private global?: Global
   private readonly _seatName: 'browser-seat0' = 'browser-seat0'
-  private selectionDataSource?: DataSource
+  selectionDataSource?: DataSource
   private selectionSerial = 0
-  private selectionListeners: (() => void)[] = []
+  selectionListeners: (() => void)[] = []
   private modifierState: KeyboardModifier = 0
-  savedKbdFocus?: Surface
-  savedKbdFocusListener = () => {
-    this.savedKbdFocus = undefined
-  }
+  buttonBindings: ButtonBinding[] = []
+
+  focusedSurface?: DesktopSurface
+  focusSurfaceDestroyListener = () => this.activateNextFocus()
+
+  activationListeners: ((surface: Surface) => void)[] = []
 
   private constructor(
     public readonly session: Session,
@@ -105,6 +184,10 @@ class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequests {
 
   static create(session: Session): Seat {
     return new Seat(session, [], capabilities.hasTouch)
+  }
+
+  savedKbdFocusListener = (): void => {
+    this.savedKbdFocus = undefined
   }
 
   registerGlobal(registry: Registry): void {
@@ -135,12 +218,15 @@ class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequests {
       // no global present and still receiving a bind can happen when there is a race between the compositor
       // unregistering the global and a client binding to it. As such we handle it here.
       wlSeatResource.implementation = {
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        getKeyboard(): void {},
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        getPointer(): void {},
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        getTouch(): void {},
+        getKeyboard(): void {
+          // do nothing
+        },
+        getPointer(): void {
+          // do nothing
+        },
+        getTouch(): void {
+          // do nothing
+        },
         release: (resource) => resource.destroy(),
       }
     }
@@ -179,8 +265,9 @@ class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequests {
         release(resource: WlPointerResource): void {
           resource.destroy()
         },
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        setCursor(): void {},
+        setCursor(): void {
+          // do nothing
+        },
       }
     }
   }
@@ -266,8 +353,11 @@ class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequests {
   ): void {
     const origin = originResource.implementation as Surface
 
-    const isPointerGrab = this.pointer.buttonCount === 1 && this.pointer.focus?.surface === origin
-    // TODO touch
+    const isPointerGrab =
+      this.pointer.buttonCount === 1 &&
+      this.pointer.grabSerial === serial &&
+      this.pointer.focus !== undefined &&
+      this.pointer.focus.surface === origin
 
     if (!isPointerGrab) {
       return
@@ -282,16 +372,11 @@ class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequests {
         this.session.logger.warn('[client-protocol-error] - Given surface has another role')
         return
       }
-      icon.role = DragIconRole.create(this.pointer, icon)
+      icon.role = DragIconRole.create(icon)
     }
 
-    // TODO touch
     if (isPointerGrab) {
       this.pointer.startDrag(source, icon, resource.client)
-    }
-
-    if (source) {
-      source.seat = this
     }
   }
 
@@ -312,10 +397,10 @@ class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequests {
       return
     }
 
-    this.seatSetSelection(source, serial)
+    this.setSelectionInternal(source, serial)
   }
 
-  seatSetSelection(source: DataSource, serial: number) {
+  setSelectionInternal(source: DataSource | undefined, serial: number): void {
     if (this.selectionDataSource && this.selectionSerial - serial < Number.MAX_SAFE_INTEGER / 2) {
       return
     }
@@ -372,13 +457,6 @@ class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequests {
     this.sendSelection(focus.resource.client)
   }
 
-  endPointerDragGab(drag: PointerDrag): void {
-    // TODO see data-device.c L 636
-    this.endDragGrab(drag)
-    drag.grab?.pointer.endGrab()
-    drag.keyboardGrab?.keyboard.endGrab()
-  }
-
   notifyMotion(event: ButtonEvent): void {
     this.pointer.grab.motion(event)
   }
@@ -390,13 +468,11 @@ class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequests {
       if (this.pointer.buttonCount === 0) {
         this.pointer.grabButton = event.buttonCode
         this.pointer.grabTime = event.timestamp
-        this.pointer.grabX = this.pointer.x
-        this.pointer.grabY = this.pointer.y
+        this.pointer.grabPoint = { x: this.pointer.x, y: this.pointer.y }
       }
       this.pointer.buttonCount++
     }
-    // TODO binding see input.c L1899
-    // runBinding()
+    this.runButtonBinding(event)
 
     this.pointer.grab?.button(event)
     if (this.pointer.buttonCount === 1) {
@@ -414,7 +490,7 @@ class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequests {
     this.pointer.grab.frame()
   }
 
-  notifyModifiers(serial: number) {
+  notifyModifiers(serial: number): void {
     const modsDepressed = this.keyboard.xkb.modsDepressed
     const modsLatched = this.keyboard.xkb.modsLatched
     const modsLocked = this.keyboard.xkb.modsLocked
@@ -465,7 +541,7 @@ class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequests {
     }
   }
 
-  notifyUpdateKeymap(nrmlvo: nrmlvo) {
+  notifyUpdateKeymap(nrmlvo: nrmlvo): void {
     this.keyboard.pendingKeymap = nrmlvo
 
     if (this.keyboard.keys.length === 0) {
@@ -473,15 +549,32 @@ class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequests {
     }
   }
 
-  notifyKey(event: KeyEvent) {
-    const alreadyPressedKey = this.keyboard.keys.find((key) => key === event.code && event.down)
-    if (alreadyPressedKey !== undefined) {
+  notifyKey(event: KeyEvent): void {
+    if (this.needFocusInit) {
+      this.needFocusInit = false
+      // key was pressed while we didn't have input focus from the browser and is now released
+      const { capsLock, numLock } = event
+      const mask: KeyboardLocks = KeyboardLocks.CAPS_LOCK | KeyboardLocks.NUM_LOCK
+      let value: KeyboardLocks = 0
+      if (capsLock) {
+        value |= KeyboardLocks.CAPS_LOCK
+      }
+      if (numLock) {
+        value |= KeyboardLocks.NUM_LOCK
+      }
+      this.keyboard.setLocks(mask, value)
+      if (!event.pressed && this.keyboard.keys.length === 0) {
+        return
+      }
+    }
+
+    if (event.pressed && this.keyboard.keys.includes(event.keyCode)) {
       /* Ignore server-generated repeats. */
       return
     }
 
-    if (event.down) {
-      this.keyboard.keys = [...this.keyboard.keys, event.code]
+    if (event.pressed) {
+      this.keyboard.keys = [...this.keyboard.keys, event.keyCode]
     }
 
     const grab = this.keyboard.grab
@@ -496,13 +589,90 @@ class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequests {
       this.updateKeymap()
     }
 
-    this.updateModifierState(this.serial, event.down, event.code)
+    this.updateModifierState(this.serial, event.pressed, event.keyCode)
     this.keyboard.grabSerial = this.serial
 
-    if (event.down) {
-      this.keyboard.grabTime = event.timestamp
-      this.keyboard.grabKey = event.code
+    if (event.pressed) {
+      this.keyboard.grabTime = event.timeStamp
+      this.keyboard.grabKey = event.keyCode
     }
+  }
+
+  setKeyboardFocus(desktopSurface: DesktopSurface): void {
+    if (this.keyboard.focus !== desktopSurface.surface) {
+      this.keyboard.setFocus(desktopSurface.surface)
+      if (this.keyboard.focus === desktopSurface.surface) {
+        this.gainFocus(desktopSurface)
+      }
+    }
+
+    this.activationListeners.forEach((listener) => listener(desktopSurface.surface))
+  }
+
+  notifyKeyboardFocusOut(): void {
+    const serial = this.nextSerial()
+    const focus = this.keyboard.focus
+
+    this.keyboard.keys.forEach((key) => {
+      this.updateModifierState(serial, false, key)
+    })
+
+    this.modifierState = 0
+
+    this.keyboard.setFocus(undefined)
+    this.keyboard.cancelGrab()
+    this.pointer.grab.cancel()
+
+    if (focus) {
+      this.savedKbdFocus = focus
+      this.savedKbdFocus.resource.addDestroyListener(this.savedKbdFocusListener)
+    }
+
+    this.needFocusInit = true
+  }
+
+  notifyKeyboardFocusIn(): void {
+    if (this.savedKbdFocus) {
+      this.keyboard.setFocus(this.savedKbdFocus)
+    }
+  }
+
+  popupGrabStart(client: Client, serial: number): boolean {
+    if (this.keyboard.grabSerial !== serial && this.pointer.grabSerial !== serial) {
+      return false
+    }
+
+    this.popupGrab = PopupGrab.create(this, client)
+
+    if (!(this.keyboard.grab instanceof PopupGrab)) {
+      this.keyboard.startGrab(this.popupGrab)
+    }
+    if (!(this.pointer.grab instanceof PopupGrab)) {
+      this.pointer.startGrab(this.popupGrab)
+    }
+
+    this.popupGrab.initialUp = this.pointer.buttonCount === 0
+
+    return true
+  }
+
+  popupGrabEnd(): void {
+    if (this.popupGrab === undefined) {
+      return
+    }
+
+    this.popupGrab.surfaces.reverse().forEach((desktopSurface) => {
+      desktopSurface.role.requestClose()
+    })
+
+    if (!(this.keyboard.grab instanceof PopupGrab)) {
+      this.keyboard.endGrab()
+    }
+    if (!(this.pointer.grab instanceof PopupGrab)) {
+      this.pointer.endGrab()
+    }
+
+    this.popupGrab = undefined
   }
 
   private emitCapabilities(wlSeatResource: WlSeatResource) {
@@ -581,42 +751,45 @@ class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequests {
     this.notifyModifiers(serial)
   }
 
-  setKeyboardFocus(surface: Surface): void {
-    if (this.keyboard.focus !== surface) {
-      this.keyboard.setFocus(surface)
-    }
-
-    // TODO activate signal see input.c L3632
+  endDrag(drag: PointerDrag): void {
+    drag.end()
+    this.pointer.endGrab()
+    this.keyboard.endGrab()
   }
 
-  notifyKeyboardFocusOut(): void {
-    const serial = this.nextSerial()
-    this.keyboard.keys.forEach((key) => {
-      this.updateModifierState(serial, false, key)
-    })
-
-    this.modifierState = 0
-
-    this.keyboard.setFocus(undefined)
-    this.keyboard.cancelGrab()
-    this.pointer.cancelGrab()
-
-    if (this.keyboard.focus) {
-      this.savedKbdFocus = this.keyboard.focus
-      this.savedKbdFocus.resource.addDestroyListener(this.savedKbdFocusListener)
-    }
+  private gainFocus(desktopSurface: DesktopSurface): void {
+    this.focusedSurface?.surface.resource.removeDestroyListener(this.focusSurfaceDestroyListener)
+    this.focusedSurface?.loseFocus()
+    this.focusedSurface = desktopSurface
+    desktopSurface.surface.resource.addDestroyListener(this.focusSurfaceDestroyListener)
+    this.focusedSurface.gainFocus()
   }
 
-  notifyKeyboardFocusIn(keys: number[]): void {
-    const serial = this.nextSerial()
-    this.keyboard.keys.forEach((key) => {
-      this.updateModifierState(serial, true, key)
-    })
-
-    if (this.savedKbdFocus) {
-      this.keyboard.setFocus(this.savedKbdFocus)
+  dropFocus(): void {
+    if (this.focusedSurface) {
+      this.focusedSurface.surface.resource.removeDestroyListener(this.focusSurfaceDestroyListener)
+      this.focusedSurface.loseFocus()
     }
+    this.activateNextFocus()
+  }
+
+  private activateNextFocus() {
+    const nextFocusView = this.session.renderer.topLevelViews
+      .reverse()
+      .find((toplevelView) => toplevelView.surface !== this.focusedSurface?.surface)
+    this.focusedSurface = undefined
+    nextFocusView?.surface?.role?.desktopSurface?.activate()
+  }
+
+  private runButtonBinding(event: ButtonEvent) {
+    if (event.released) {
+      return
+    }
+
+    this.buttonBindings
+      .filter(
+        (buttonBinding) => buttonBinding.button === event.buttonCode && buttonBinding.modifiers === this.modifierState,
+      )
+      .forEach((buttonBinding) => buttonBinding.handler(this.pointer, event))
   }
 }
-
-export default Seat

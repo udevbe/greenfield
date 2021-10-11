@@ -66,6 +66,10 @@ export function copyTo(destination: number, source: number): void {
   lib.pixman._pixman_region32_copy(destination, source)
 }
 
+export function clear(pixmanRegion: number): void {
+  lib.pixman._pixman_region32_clear(pixmanRegion)
+}
+
 export function containsRectangle(pixmanRegion: number, box: Rect): boolean {
   const rectsPtr = lib.pixman._malloc(4) // uint32
   const rectStruct = new Int32Array(lib.pixman.HEAPU8.buffer, rectsPtr, 4)
@@ -86,7 +90,6 @@ export function equal(pixmanRegion1: number, pixmanRegion2: number): boolean {
   return lib.pixman._pixman_region32_equal(pixmanRegion1, pixmanRegion2) !== 0
 }
 
-// TODO move to stand-alone exported function
 export function rectangles(pixmanRegion: number): Rect[] {
   const nroRectsPtr = lib.pixman._malloc(4) // uint32
   const pixmanBoxPtr = lib.pixman._pixman_region32_rectangles(pixmanRegion, nroRectsPtr)

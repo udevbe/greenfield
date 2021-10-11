@@ -15,7 +15,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-// @ts-ignore
 import { lib } from './lib'
 
 const XKB_KEYMAP_FORMAT_TEXT_V1 = 1 as const
@@ -143,30 +142,20 @@ export function createFromResource(resource: string): Promise<Xkb> {
   })
 }
 
-// TODO create typedefinitions for libxkb
-
 /**
  * @param keymapLayout an xkb keymap as a single string.
  */
 export function createFromString(keymapLayout: string): Xkb {
-  // @ts-ignore
   const keymapLayoutPtr = lib.xkbcommon._malloc(lib.xkbcommon.lengthBytesUTF8(keymapLayout) + 1)
-  // @ts-ignore
   lib.xkbcommon.stringToUTF8(keymapLayout, keymapLayoutPtr, lib.xkbcommon.lengthBytesUTF8(keymapLayout) + 1)
-
-  // @ts-ignore
   const xkbContext = lib.xkbcommon._xkb_context_new(XKB_CONTEXT_NO_DEFAULT_INCLUDES | XKB_CONTEXT_NO_ENVIRONMENT_NAMES)
-  // @ts-ignore
   const keymap = lib.xkbcommon._xkb_keymap_new_from_string(
     xkbContext,
     keymapLayoutPtr,
     XKB_KEYMAP_FORMAT_TEXT_V1,
     XKB_KEYMAP_COMPILE_NO_FLAGS,
   )
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   const state = lib.xkbcommon._xkb_state_new(keymap)
-  // @ts-ignore
   lib.xkbcommon._free(keymapLayoutPtr)
 
   return new Xkb(xkbContext, keymap, state)
@@ -185,10 +174,7 @@ export function createFromNames({
   variant?: string
   options?: string
 }): Xkb {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   const xkbRuleNamesPtr = lib.xkbcommon._malloc(5 * 4)
-  // @ts-ignore
   const xkbRuleNamesBuffer = new Uint32Array(lib.xkbcommon.HEAP8.buffer, xkbRuleNamesPtr, 5)
 
   xkbRuleNamesBuffer[0] = stringToPointer(rules)
@@ -197,16 +183,11 @@ export function createFromNames({
   xkbRuleNamesBuffer[3] = stringToPointer(variant)
   xkbRuleNamesBuffer[4] = stringToPointer(options)
 
-  // @ts-ignore
   const xkbContext = lib.xkbcommon._xkb_context_new(0)
-  // @ts-ignore
   const keymap = lib.xkbcommon._xkb_keymap_new_from_names(xkbContext, xkbRuleNamesPtr, XKB_KEYMAP_COMPILE_NO_FLAGS)
-  // @ts-ignore
   const state = lib.xkbcommon._xkb_state_new(keymap)
 
-  // @ts-ignore
   xkbRuleNamesBuffer.forEach((pointer) => lib.xkbcommon._free(pointer))
-  // @ts-ignore
   lib.xkbcommon._free(xkbRuleNamesPtr)
 
   return new Xkb(xkbContext, keymap, state)
@@ -214,10 +195,9 @@ export function createFromNames({
 
 function stringToPointer(value?: string): number {
   if (value) {
-    // @ts-ignore
-    const stringPtr = lib.xkbcommon._malloc(lib.xkbcommon.lengthBytesUTF8(value) + 1)
-    // @ts-ignore
-    lib.xkbcommon.stringToUTF8(value, stringPtr, lib.xkbcommon.lengthBytesUTF8(value) + 1)
+    const strLength = lib.xkbcommon.lengthBytesUTF8(value) + 1
+    const stringPtr = lib.xkbcommon._malloc(strLength)
+    lib.xkbcommon.stringToUTF8(value, stringPtr, strLength)
     return stringPtr
   } else {
     return 0
@@ -245,25 +225,48 @@ export class Xkb {
   constructor(public readonly xkbContext: number, public readonly keymap: number, public readonly state: number) {
     this._stateComponentMask = 0
 
-    // TODO add to wasm xkbcommon export: xkb_keymap_mod_get_index & xkb_keymap_led_get_index
-    this.shiftMod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, XKB_MOD_NAME_SHIFT)
-    this.capsMod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, XKB_MOD_NAME_CAPS)
-    this.ctrlMod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, XKB_MOD_NAME_CTRL)
-    this.altMod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, XKB_MOD_NAME_ALT)
-    this.mod2Mod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, 'Mod2')
-    this.mod3Mod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, 'Mod3')
-    this.superMod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, XKB_MOD_NAME_LOGO)
-    this.mod5Mod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, 'Mod5')
+    const modNameShift = stringToPointer(XKB_MOD_NAME_SHIFT)
+    const modNameCaps = stringToPointer(XKB_MOD_NAME_CAPS)
+    const modNameCtrl = stringToPointer(XKB_MOD_NAME_CTRL)
+    const modNameAlt = stringToPointer(XKB_MOD_NAME_ALT)
+    const mod2 = stringToPointer(XKB_MOD_NAME_NUM)
+    const mod3 = stringToPointer('Mod3')
+    const logo = stringToPointer(XKB_MOD_NAME_LOGO)
+    const mod5 = stringToPointer('Mod5')
+    const num = stringToPointer(XKB_LED_NAME_NUM)
+    const caps = stringToPointer(XKB_LED_NAME_CAPS)
+    const scroll = stringToPointer(XKB_LED_NAME_SCROLL)
 
-    this.numLed = lib.xkbcommon._xkb_keymap_led_get_index(this.keymap, XKB_LED_NAME_NUM)
-    this.capsLed = lib.xkbcommon._xkb_keymap_led_get_index(this.keymap, XKB_LED_NAME_CAPS)
-    this.scrollLed = lib.xkbcommon._xkb_keymap_led_get_index(this.keymap, XKB_LED_NAME_SCROLL)
+    this.shiftMod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, modNameShift)
+    this.capsMod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, modNameCaps)
+    this.ctrlMod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, modNameCtrl)
+    this.altMod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, modNameAlt)
+    this.mod2Mod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, mod2)
+    this.mod3Mod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, mod3)
+    this.superMod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, logo)
+    this.mod5Mod = lib.xkbcommon._xkb_keymap_mod_get_index(this.keymap, mod5)
+
+    this.numLed = lib.xkbcommon._xkb_keymap_led_get_index(this.keymap, num)
+    this.capsLed = lib.xkbcommon._xkb_keymap_led_get_index(this.keymap, caps)
+    this.scrollLed = lib.xkbcommon._xkb_keymap_led_get_index(this.keymap, scroll)
 
     const keymapStringPtr = lib.xkbcommon._xkb_keymap_get_as_string(this.keymap, XKB_KEYMAP_FORMAT_TEXT_V1)
     this.keymapString = lib.xkbcommon.UTF8ToString(keymapStringPtr)
+
+    lib.xkbcommon._free(modNameShift)
+    lib.xkbcommon._free(modNameCaps)
+    lib.xkbcommon._free(modNameCtrl)
+    lib.xkbcommon._free(modNameAlt)
+    lib.xkbcommon._free(mod2)
+    lib.xkbcommon._free(mod3)
+    lib.xkbcommon._free(logo)
+    lib.xkbcommon._free(mod5)
+    lib.xkbcommon._free(num)
+    lib.xkbcommon._free(caps)
+    lib.xkbcommon._free(scroll)
   }
 
-  asString() {
+  asString(): string {
     return this.keymapString
   }
 
@@ -274,7 +277,7 @@ export class Xkb {
     depressedLayout: number,
     latchedLayout: number,
     lockedLayout: number,
-  ) {
+  ): number {
     return lib.xkbcommon._xkb_state_update_mask(
       this.state,
       depressedMods,
@@ -287,45 +290,44 @@ export class Xkb {
   }
 
   keyUp(linuxKeyCode: LinuxKeyCode): boolean {
-    // @ts-ignore
     return lib.xkbcommon._xkb_state_update_key(this.state, linuxKeyCode, XKB_KEY_UP) !== 0
   }
 
   keyDown(linuxKeyCode: LinuxKeyCode): boolean {
-    // @ts-ignore
     return lib.xkbcommon._xkb_state_update_key(this.state, linuxKeyCode, XKB_KEY_DOWN) !== 0
   }
 
   get modsDepressed(): number {
-    // @ts-ignore
     return lib.xkbcommon._xkb_state_serialize_mods(this.state, XKB_STATE_MODS_DEPRESSED)
   }
 
   get modsLatched(): number {
-    // @ts-ignore
     return lib.xkbcommon._xkb_state_serialize_mods(this.state, XKB_STATE_MODS_LATCHED)
   }
 
   get modsLocked(): number {
-    // @ts-ignore
     return lib.xkbcommon._xkb_state_serialize_mods(this.state, XKB_STATE_MODS_LOCKED)
   }
 
   get group(): number {
-    // @ts-ignore
     return lib.xkbcommon._xkb_state_serialize_layout(this.state, XKB_STATE_LAYOUT_EFFECTIVE)
   }
 
   numLedActive(): boolean {
-    return lib.xkbcommon._xkb_state_led_index_is_active(this.state, this.numLed)
+    return lib.xkbcommon._xkb_state_led_index_is_active(this.state, this.numLed) !== 0
   }
 
   capsLedActive(): boolean {
-    return lib.xkbcommon._xkb_state_led_index_is_active(this.state, this.capsLed)
+    return lib.xkbcommon._xkb_state_led_index_is_active(this.state, this.capsLed) !== 0
   }
 
   scrollLockLedActive(): boolean {
-    return lib.xkbcommon._xkb_state_led_index_is_active(this.state, this.scrollLed)
+    return lib.xkbcommon._xkb_state_led_index_is_active(this.state, this.scrollLed) !== 0
+  }
+
+  destroy(): void {
+    lib.xkbcommon._free(this.state)
+    // TODO cleanup state & keymaps
   }
 }
 

@@ -15,7 +15,9 @@ import {
   WindowClass,
 } from 'xtsb'
 import { queueCancellableMicrotask } from '../Loop'
+import { Point } from '../math/Point'
 import { createRect } from '../math/Rect'
+import { Size } from '../math/Size'
 import Output from '../Output'
 import { fini, init, initRect } from '../Region'
 import Session from '../Session'
@@ -712,8 +714,8 @@ export class XWindow {
     this.surface.resource.addDestroyListener(this.surfaceDestroyListener)
 
     this.shsurf = this.wm.xWaylandShell.createSurface(this, surface)
-    this.shsurf.sendConfigure = (width, height) => this.sendConfigure(width, height)
-    this.shsurf.sendPosition = (x, y) => this.sendPosition(x, y)
+    this.shsurf.sendConfigure = (size: Size) => this.sendConfigure(size)
+    this.shsurf.sendPosition = (position: Point) => this.sendPosition(position)
 
     this.session.logger.debug(
       `XWindow: map shell surface, win ${this.id}, greenfield surface ${this.surface.resource.id}`,
@@ -731,7 +733,7 @@ export class XWindow {
       this.savedHeight = this.height
       this.shsurf.setFullscreen(this.legacyFullscreenOutput)
     } else if (this.overrideRedirect) {
-      this.shsurf.setXwayland(this.x, this.y)
+      this.shsurf.setXWayland(this.x, this.y)
     } else if (this.transientFor && this.transientFor.surface) {
       const parent = this.transientFor
       if (parent.surface) {
@@ -746,7 +748,7 @@ export class XWindow {
       this.shsurf.setMaximized()
     } else {
       if (this.isTypeInactive()) {
-        this.shsurf.setXwayland(this.x, this.y)
+        this.shsurf.setXWayland(this.x, this.y)
       } else if (this.isPositioned()) {
         this.shsurf.setToplevelWithPosition(this.mapRequestX, this.mapRequestY)
       } else {
@@ -763,7 +765,7 @@ export class XWindow {
     }
   }
 
-  sendPosition(x: number, y: number): void {
+  sendPosition({ x, y }: Point): void {
     /* We use pos_dirty to tell whether a configure message is in flight.
      * This is needed in case we send two configure events in a very
      * short time, since window->x/y is set in after a roundtrip, hence
@@ -789,11 +791,10 @@ export class XWindow {
   }
 
   setToplevel(): void {
-    if (this.savedWidth && this.savedHeight) {
-      this.width = this.savedWidth
-      this.height = this.savedHeight
-      this.sendConfigure(this.width, this.height)
-    }
+    this.shsurf?.setToplevel()
+    this.width = this.savedWidth
+    this.height = this.savedHeight
+    this.configure()
   }
 
   sendFullscreenConfigureNotify(): void {
@@ -1048,7 +1049,7 @@ export class XWindow {
     }
   }
 
-  private sendConfigure(width: number, height: number) {
+  private sendConfigure({ width, height }: Size) {
     let newWidth, newHeight
     let vborder, hborder
 

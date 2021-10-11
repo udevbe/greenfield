@@ -24,12 +24,13 @@ import {
   WlSurfaceRequests,
   WlSurfaceResource,
 } from 'westfield-runtime-server'
+import { withSizeAndPosition } from './math/Rect'
 import BufferContents from './BufferContents'
 import BufferImplementation from './BufferImplementation'
 import Callback from './Callback'
 import { IDENTITY, invert, Mat4, scalar, timesMat4, timesPoint, translation } from './math/Mat4'
 import { Point } from './math/Point'
-import { createRect, Rect } from './math/Rect'
+import { createRect, Rect, RectWithInfo } from './math/Rect'
 import { _180, _270, _90, FLIPPED, FLIPPED_180, FLIPPED_270, FLIPPED_90, NORMAL } from './math/Transformations'
 import Region, {
   copyTo,
@@ -157,7 +158,10 @@ class Surface implements WlSurfaceRequests {
   inverseBufferTransformation: Mat4 = IDENTITY
   readonly pixmanRegion: number = createPixmanRegion()
   size?: Size
-  private readonly _surfaceChildren: SurfaceChild[] = []
+  _geometry?: RectWithInfo
+  hasGeometry = false
+  private _surfaceChildren: SurfaceChild[] = []
+  mapped = false
 
   private constructor(
     public readonly resource: WlSurfaceResource,
@@ -241,7 +245,7 @@ class Surface implements WlSurfaceRequests {
   }
 
   removeChild(surfaceChild: SurfaceChild): void {
-    this.removeChildFromList(surfaceChild, this._surfaceChildren)
+    this._surfaceChildren = this.removeChildFromList(surfaceChild, this._surfaceChildren)
   }
 
   destroy(resource: WlSurfaceResource): void {
@@ -453,19 +457,16 @@ class Surface implements WlSurfaceRequests {
     }
   }
 
-  private removeChildFromList(surfaceChild: SurfaceChild, siblings: SurfaceChild[]): void {
-    const index = siblings.indexOf(surfaceChild)
-    if (index > -1) {
-      siblings.splice(index, 1)
-    }
+  private removeChildFromList(surfaceChild: SurfaceChild, siblings: SurfaceChild[]): SurfaceChild[] {
     if (surfaceChild.surface.parent === this) {
       surfaceChild.surface.parent = undefined
     }
+    return siblings.filter((sibling) => sibling !== surfaceChild)
   }
 
   private removeSubsurface(surfaceChild: SurfaceChild): void {
-    this.removeChildFromList(surfaceChild, this.state.subsurfaceChildren)
-    this.removeChildFromList(surfaceChild, this.pendingState.subsurfaceChildren)
+    this.state.subsurfaceChildren = this.removeChildFromList(surfaceChild, this.state.subsurfaceChildren)
+    this.pendingState.subsurfaceChildren = this.removeChildFromList(surfaceChild, this.pendingState.subsurfaceChildren)
   }
 
   private _addChild(surfaceChild: SurfaceChild, siblings: SurfaceChild[]) {
@@ -483,6 +484,69 @@ class Surface implements WlSurfaceRequests {
     this.destroyed = true
     this.role?.view?.destroy()
     this._h264BufferContentDecoder?.destroy()
+  }
+
+  get geometry(): RectWithInfo {
+    if (this.hasGeometry && this._geometry) {
+      return this._geometry
+    } else {
+      return withSizeAndPosition(this.boundingRectangle())
+    }
+  }
+
+  updateGeometry(rect: Rect): void {
+    this.hasGeometry = true
+    this._geometry = withSizeAndPosition(rect)
+  }
+
+  boundingRectangle(): Rect {
+    const xs = [0]
+    const ys = [0]
+
+    const size = this.size
+    if (size) {
+      xs.push(size.width)
+      ys.push(size.height)
+
+      this.state.subsurfaceChildren.forEach((subsurfaceChild) => {
+        const subsurfacePosition = subsurfaceChild.position
+        const subsurfaceSize = subsurfaceChild.surface.size
+        if (subsurfaceSize) {
+          xs.push(subsurfacePosition.x)
+          ys.push(subsurfacePosition.y)
+          xs.push(subsurfacePosition.x + subsurfaceSize.width)
+          ys.push(subsurfacePosition.y + subsurfaceSize.height)
+        }
+      })
+
+      const minX = Math.min(...xs)
+      const maxX = Math.max(...xs)
+      const minY = Math.min(...ys)
+      const maxY = Math.max(...ys)
+
+      return { x0: minX, y0: minY, x1: maxX, y1: maxY }
+    } else {
+      return { x0: 0, y0: 0, x1: 0, y1: 0 }
+    }
+  }
+
+  /**
+   * Finds the parent surface that is not a subsurface
+   */
+  getMainSurface(): Surface {
+    if (this.role instanceof Subsurface) {
+      return this.role.parent.getMainSurface()
+    } else {
+      return this
+    }
+  }
+
+  unmap(): void {
+    this.mapped = false
+    if (this.role?.view) {
+      // FIXME trigger rerender?
+      this.role.view.mapped = false
+    }
   }
 }
 

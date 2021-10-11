@@ -22,11 +22,12 @@ import {
   WlSurfaceResource,
   XdgPositionerResource,
   XdgSurfaceResource,
+  XdgWmBaseError,
   XdgWmBaseRequests,
   XdgWmBaseResource,
-  XdgWmBaseError,
 } from 'westfield-runtime-server'
-import Seat from './Seat'
+
+import { Seat } from './Seat'
 import Session from './Session'
 import Surface from './Surface'
 import XdgPositioner from './XdgPositioner'
@@ -35,16 +36,16 @@ import XdgSurface from './XdgSurface'
 import XdgToplevel from './XdgToplevel'
 
 export default class XdgWmBase implements XdgWmBaseRequests {
-  static create(session: Session, seat: Seat): XdgWmBase {
-    return new XdgWmBase(session, seat)
-  }
-
   private wlSurfaceResources: WlSurfaceResource[] = []
   private global?: Global
   private clientPingStates: Map<Client, { timeoutTimer: number; pingTimer: number; pingTimeoutActive: boolean }> =
     new Map()
 
   private constructor(private readonly session: Session, private readonly seat: Seat) {}
+
+  static create(session: Session, seat: Seat): XdgWmBase {
+    return new XdgWmBase(session, seat)
+  }
 
   registerGlobal(registry: Registry): void {
     if (this.global) {
@@ -110,7 +111,7 @@ export default class XdgWmBase implements XdgWmBaseRequests {
     }
 
     const xdgSurfaceResource = new XdgSurfaceResource(resource.client, id, resource.version)
-    XdgSurface.create(xdgSurfaceResource, wlSurfaceResource, this.session, this.seat)
+    XdgSurface.create(xdgSurfaceResource, surface, this.session, this.seat)
     this.wlSurfaceResources.push(wlSurfaceResource)
     wlSurfaceResource.onDestroy().then(() => {
       const index = this.wlSurfaceResources.indexOf(wlSurfaceResource)
@@ -158,10 +159,11 @@ export default class XdgWmBase implements XdgWmBaseRequests {
         const xdgSurfaceRole = (wlSurfaceResource.implementation as Surface).role
         if (xdgSurfaceRole instanceof XdgToplevel) {
           const xdgToplevel = xdgSurfaceRole
-          xdgToplevel.userSurfaceState = { ...xdgToplevel.userSurfaceState, unresponsive: value }
-          const { client, id } = wlSurfaceResource
-          const userSurface = { id: `${id}`, clientId: client.id }
-          this.session.userShell.events.updateUserSurface?.(userSurface, xdgToplevel.userSurfaceState)
+          // TODO user shell
+          // xdgToplevel.userSurfaceState = { ...xdgToplevel.userSurfaceState, unresponsive: value }
+          // const { client, id } = wlSurfaceResource
+          // const userSurface = { id: `${id}`, clientId: client.id }
+          // this.session.userShell.events.updateUserSurface?.(userSurface, xdgToplevel.userSurfaceState)
         }
       })
   }

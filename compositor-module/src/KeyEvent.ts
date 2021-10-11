@@ -1,20 +1,12 @@
 import { LinuxKeyCode } from './Xkb'
 
 export interface KeyEvent {
-  code: LinuxKeyCode
-  timestamp: number
-  down: boolean
+  keyCode: LinuxKeyCode
+  timeStamp: number
+  pressed: boolean
+  capsLock: boolean
+  numLock: boolean
 }
-
-export interface CreateKeyEvent {
-  (code: LinuxKeyCode, timestamp: number, down: boolean): KeyEvent
-}
-
-export const createKeyEvent: CreateKeyEvent = (code: LinuxKeyCode, timestamp: number, down: boolean): KeyEvent => ({
-  code,
-  timestamp,
-  down,
-})
 
 export interface CreateKeyEventFromKeyboardEvent {
   (keyboardEvent: KeyboardEvent, down: boolean): KeyEvent | undefined
@@ -22,11 +14,20 @@ export interface CreateKeyEventFromKeyboardEvent {
 
 export const createKeyEventFromKeyboardEvent: CreateKeyEventFromKeyboardEvent = (
   keyboardEvent: KeyboardEvent,
-  down: boolean,
+  pressed: boolean,
 ): KeyEvent | undefined => {
   const keyCode: LinuxKeyCode | undefined = LinuxKeyCode[<keyof typeof LinuxKeyCode>keyboardEvent.code]
   if (keyCode) {
-    return createKeyEvent(keyCode, keyboardEvent.timeStamp, down)
+    const capsLock = keyboardEvent.getModifierState('CapsLock')
+    const numLock = keyboardEvent.getModifierState('NumLock')
+    const timeStamp = keyboardEvent.timeStamp
+    return {
+      keyCode,
+      timeStamp,
+      pressed,
+      capsLock,
+      numLock,
+    }
   }
   console.warn(`Unsupported keycode: ${keyboardEvent.code}. Ignoring.`)
 }

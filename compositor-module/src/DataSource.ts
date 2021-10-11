@@ -18,14 +18,12 @@
 import { WebFD } from 'westfield-runtime-common'
 import {
   WlDataDeviceManagerDndAction,
-  WlDataOfferResource,
   WlDataSourceRequests,
   WlDataSourceResource,
-  WlDataSourceError,
   WlDataDeviceResource,
+  WlDataSourceError,
 } from 'westfield-runtime-server'
 import DataOffer from './DataOffer'
-import Seat from './Seat'
 import Session from './Session'
 
 const { copy, move, ask, none } = WlDataDeviceManagerDndAction
@@ -39,13 +37,6 @@ const ALL_ACTIONS = copy | move | ask
  *            to requests to transfer the data.
  */
 export default class DataSource implements WlDataSourceRequests {
-  static create(session: Session, wlDataSourceResource: WlDataSourceResource): DataSource {
-    const dataSource = new DataSource(session, wlDataSourceResource)
-    wlDataSourceResource.implementation = dataSource
-    return dataSource
-  }
-
-  seat?: Seat
   mimeTypes: string[] = []
   dndActions = 0
   currentDndAction = none
@@ -55,21 +46,29 @@ export default class DataSource implements WlDataSourceRequests {
   actionsSet = false
   setSelection = false
 
-  accept = (time: number, mimeType: string) => {
+  constructor(public readonly session: Session, public readonly resource: WlDataSourceResource) {}
+
+  static create(session: Session, wlDataSourceResource: WlDataSourceResource): DataSource {
+    const dataSource = new DataSource(session, wlDataSourceResource)
+    wlDataSourceResource.implementation = dataSource
+    return dataSource
+  }
+
+  accept(mimeType: string | undefined): void {
     this.resource.target(mimeType)
   }
-  send = (mimeType: string, fd: WebFD) => {
+
+  send(mimeType: string, fd: WebFD): void {
     this.resource.send(mimeType, fd)
   }
-  cancel = () => {
+
+  cancel(): void {
     this.resource.cancelled()
   }
 
-  constructor(public readonly session: Session, public readonly resource: WlDataSourceResource) {}
-
   sendOffer(target: WlDataDeviceResource): DataOffer {
-    const offerId = /** @type {number} */ target.dataOffer()
-    const offer = DataOffer.create(this.session, this.resource, offerId, target)
+    const offerId = target.dataOffer()
+    const offer = DataOffer.create(this.session, this, offerId, target)
 
     this.mimeTypes.forEach((mimeType) => offer.resource.offer(mimeType))
     this.dataOffer = offer
@@ -78,9 +77,50 @@ export default class DataSource implements WlDataSourceRequests {
     return offer
   }
 
-  destroy(resource: WlDataSourceResource): void {}
+  destroy(resource: WlDataSourceResource): void {
+    resource.destroy()
+  }
 
-  offer(resource: WlDataSourceResource, mimeType: string): void {}
+  offer(resource: WlDataSourceResource, mimeType: string): void {
+    this.mimeTypes = [...this.mimeTypes, mimeType]
+  }
 
-  setActions(resource: WlDataSourceResource, dndActions: number): void {}
+  setActions(resource: WlDataSourceResource, dndActions: number): void {
+    if (this.actionsSet) {
+      this.session.logger.warn("Client protocol error. Can't set actions more than once.")
+      resource.postError(
+        WlDataSourceError.invalidActionMask,
+        "Client protocol error. Can't set actions more than once.",
+      )
+      return
+    }
+
+    if (dndActions & ~ALL_ACTIONS) {
+      this.session.logger.warn(`Client protocol error. Invalid action mask. ${dndActions}`)
+      resource.postError(
+        WlDataSourceError.invalidActionMask,
+        `Client protocol error. Invalid action mask. ${dndActions}`,
+      )
+      return
+    }
+
+    this.dndActions = dndActions
+    this.actionsSet = true
+  }
+
+  notifyFinish(): void {
+    if (!this.actionsSet) {
+      return
+    }
+
+    if (this.dataOffer?.inAsk && this.resource.version >= 3) {
+      this.resource.action(this.currentDndAction)
+    }
+
+    if (this.resource.version >= 3) {
+      this.resource.dndFinished()
+    }
+
+    this.dataOffer = undefined
+  }
 }

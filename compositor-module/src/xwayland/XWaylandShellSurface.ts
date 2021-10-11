@@ -1,51 +1,64 @@
-import { WlShellSurfaceResize } from 'westfield-runtime-server'
-import { CompositorSurface, CompositorSurfaceState } from '../index'
-import { plusPoint, Point } from '../math/Point'
-import { Size } from '../math/Size'
+import { Time } from 'xtsb'
+import { DesktopSurface } from '../Desktop'
+import { ORIGIN, Point } from '../math/Point'
+import { createRect, RectWithInfo } from '../math/Rect'
+import { Size, ZERO_SIZE } from '../math/Size'
 import Output from '../Output'
-import Pointer from '../Pointer'
+import { Pointer } from '../Pointer'
 import Session from '../Session'
 import Surface from '../Surface'
-import { makeSurfaceActive } from '../UserShellApi'
-import { UserShellSurfaceRole } from '../UserShellSurfaceRole'
+import { DesktopSurfaceRole } from '../SurfaceRole'
 import View from '../View'
 import { XWindow } from './XWindow'
-import { FrameFlag } from './XWindowFrame'
-
-const { bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight } = WlShellSurfaceResize
 
 export enum SurfaceState {
+  NONE,
   TOP_LEVEL,
-  RESIZE,
   MAXIMIZED,
   FULLSCREEN,
   TRANSIENT,
-  NONE,
+  XWAYLAND,
 }
 
-type WindowGeometry = { x: number; y: number; width: number; height: number }
+export default class XWaylandShellSurface implements DesktopSurfaceRole {
+  added = false
+  pid = 0
+  state = SurfaceState.NONE
+  sendConfigure?: (size: Size) => void
+  sendPosition?: (position: Point) => void
+  frameDecoration?: {
+    top: ImageData
+    bottom: ImageData
+    left: ImageData
+    right: ImageData
+    interiorWidth: number
+    interiorHeight: number
+    interiorX: number
+    interiorY: number
+  }
+  desktopSurface: DesktopSurface
+  private hasNextGeometry = false
+  private nextGeometry?: RectWithInfo
+  private committed = false
 
-export default class XWaylandShellSurface implements UserShellSurfaceRole {
+  constructor(
+    readonly session: Session,
+    readonly window: XWindow,
+    readonly surface: Surface,
+    public readonly view: View,
+  ) {
+    this.desktopSurface = DesktopSurface.create(this.surface, this)
+  }
+
   static create(session: Session, window: XWindow, surface: Surface): XWaylandShellSurface {
-    const { client, id } = surface.resource
-    const userSurface: CompositorSurface = { id: `${id}`, clientId: client.id }
-    const userSurfaceState: CompositorSurfaceState = {
-      appId: '',
-      active: false,
-      mapped: false,
-      minimized: false,
-      title: '',
-      unresponsive: false,
-    }
-
     const view = View.create(surface)
-    const xWaylandShellSurface = new XWaylandShellSurface(session, window, surface, userSurface, userSurfaceState, view)
+    const xWaylandShellSurface = new XWaylandShellSurface(session, window, surface, view)
     surface.role = xWaylandShellSurface
+
     view.transformationUpdatedListeners = [
       ...view.transformationUpdatedListeners,
       () => {
-        const { x, y } = view.positionOffset
-        xWaylandShellSurface.sendPosition?.(x, y)
+        xWaylandShellSurface.sendPosition?.(view.positionOffset)
       },
     ]
     view.prepareRender = (renderState) => {
@@ -61,333 +74,144 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
         gl.bindTexture(gl.TEXTURE_2D, null)
       }
     }
+
+    surface.resource.onDestroy().then(() => xWaylandShellSurface.handleDestroy())
+
     return xWaylandShellSurface
   }
 
-  pid = 0
-  state = SurfaceState.NONE
-  sendConfigure?: (width: number, height: number) => void
-  sendPosition?: (x: number, y: number) => void
-  frameDecoration?: {
-    top: ImageData
-    bottom: ImageData
-    left: ImageData
-    right: ImageData
-    interiorWidth: number
-    interiorHeight: number
-    interiorX: number
-    interiorY: number
+  requestClose(): void {
+    this.window.close(Time.CurrentTime)
   }
-  private mapped = false
-  private managed = false
 
-  // private pendingPositionOffset?: PointRO
-  private resizeEdge: WlShellSurfaceResize = WlShellSurfaceResize.none
-  private pendingWindowGeometry: WindowGeometry = {
-    x: 0,
-    y: 0,
-    width: 0,
-    height: 0,
+  queryMaximized(): boolean {
+    return this.state === SurfaceState.MAXIMIZED
   }
-  private windowGeometry: WindowGeometry = {
-    x: 0,
-    y: 0,
-    width: 0,
-    height: 0,
-  }
-  private xwayland = {
-    x: 0,
-    y: 0,
-    isSet: false,
-  }
-  private savedViewPosition?: Point
-  private previousBufferSize?: Size
 
-  constructor(
-    readonly session: Session,
-    readonly window: XWindow,
-    readonly surface: Surface,
-    readonly userSurface: CompositorSurface,
-    private userSurfaceState: CompositorSurfaceState,
-    public readonly view: View,
-  ) {}
+  queryFullscreen(): boolean {
+    return this.state === SurfaceState.FULLSCREEN
+  }
+
+  queryGeometry(): RectWithInfo {
+    return this.surface.geometry
+  }
+
+  queryMinSize(): Size {
+    const sizeHints = this.window.sizeHints
+    return sizeHints ? { width: sizeHints.minWidth, height: sizeHints.height } : ZERO_SIZE
+  }
+
+  queryMaxSize(): Size {
+    const sizeHints = this.window.sizeHints
+    return sizeHints
+      ? { width: sizeHints.maxWidth, height: sizeHints.maxHeight }
+      : { width: Number.MAX_SAFE_INTEGER, height: Number.MAX_SAFE_INTEGER }
+  }
+
+  configureMaximized(maximized: boolean): void {
+    // no op
+  }
+
+  configureFullscreen(fullscreen: boolean): void {
+    // no op
+  }
+
+  configureSize(size: Size): void {
+    this.sendConfigure?.(size)
+  }
+
+  configureActivated(activated: boolean): void {
+    // no op
+  }
+
+  configureResizing(resizing: boolean): void {
+    // no op
+  }
 
   onCommit(surface: Surface): void {
     surface.commitPending()
-    this.windowGeometry = this.pendingWindowGeometry
 
-    const oldPosition = surface.surfaceChildSelf.position
-    surface.surfaceChildSelf.position = {
-      x: oldPosition.x + surface.state.dx,
-      y: oldPosition.y + surface.state.dy,
+    this.committed = true
+    if (this.hasNextGeometry && this.nextGeometry) {
+      const oldGeometry = this.surface.geometry
+      this.surface.state.dx -= this.nextGeometry.position.x - oldGeometry.position.x
+      this.surface.state.dy -= this.nextGeometry.position.y - oldGeometry.position.y
+
+      this.hasNextGeometry = false
+      this.surface.updateGeometry(this.nextGeometry)
     }
 
-    if (surface.state.bufferContents) {
-      if (!this.mapped) {
-        this.map()
-      }
-
-      switch (this.state) {
-        case SurfaceState.MAXIMIZED:
-          {
-            const clientTopLeftOnScreen = this.view.surfaceToViewSpace(this.windowGeometry)
-            this.view.positionOffset = { x: -clientTopLeftOnScreen.x, y: -clientTopLeftOnScreen.y }
-          }
-          break
-        case SurfaceState.FULLSCREEN:
-          break
-        case SurfaceState.TRANSIENT:
-          break
-        case SurfaceState.TOP_LEVEL:
-        case SurfaceState.NONE:
-          if (this.savedViewPosition) {
-            this.view.positionOffset = this.savedViewPosition
-            this.savedViewPosition = undefined
-          }
-          break
-        case SurfaceState.RESIZE:
-          {
-            if (this.savedViewPosition) {
-              this.savedViewPosition = undefined
-            }
-            if (this.previousBufferSize) {
-              const viewOffsetAfterResize = this.viewOffsetAfterResize(
-                surface.state.bufferContents.size,
-                this.previousBufferSize,
-              )
-              if (viewOffsetAfterResize) {
-                this.view.positionOffset = plusPoint(this.view.positionOffset, viewOffsetAfterResize)
-              }
-            }
-          }
-          break
-      }
-
-      this.session.renderer.render(() => this.withFrameDecoration())
-    } else {
-      if (this.mapped) {
-        this.unmap()
-      }
-      this.session.renderer.render()
-    }
-    this.previousBufferSize = surface.state.bufferContents?.size
+    this.desktopSurface.commit()
+    this.session.renderer.render(() => this.withFrameDecoration())
   }
 
   setToplevel(): void {
-    if (this.state === SurfaceState.TRANSIENT) {
-      return
-    }
-    this.ensureToplevelView()
-    this.ensureUserShellSurface()
-    this.state = SurfaceState.TOP_LEVEL
-    // @ts-ignore
-    makeSurfaceActive(this.surface)
-    this.window.setToplevel()
+    this.changeState(SurfaceState.TOP_LEVEL, undefined, ORIGIN)
   }
 
   setToplevelWithPosition(x: number, y: number): void {
-    if (this.state === SurfaceState.TRANSIENT) {
-      return
-    }
-    this.ensureToplevelView()
-    this.ensureUserShellSurface()
-    this.state = SurfaceState.TOP_LEVEL
-    this.view.positionOffset = { x, y }
-    // @ts-ignore
-    makeSurfaceActive(this.surface)
+    this.changeState(SurfaceState.TOP_LEVEL, undefined, ORIGIN)
+    this.desktopSurface.setXWaylandPosition({ x, y })
   }
 
   setParent(parent: Surface): void {
-    this.session.renderer.removeTopLevelView(this.view)
-    this.view.parent?.surface.removeChild(this.surface.surfaceChildSelf)
-    parent.addChild(this.surface.surfaceChildSelf)
+    if (parent.role?.desktopSurface === undefined) {
+      return
+    }
+    this.desktopSurface.setParent(parent.role.desktopSurface)
   }
 
   setTransient(parent: Surface, x: number, y: number): void {
-    if (this.state === SurfaceState.TOP_LEVEL) {
+    if (parent.role?.desktopSurface === undefined) {
       return
     }
-
-    const parentPosition = parent.surfaceChildSelf.position
-
-    const surfaceChild = this.surface.surfaceChildSelf
-    // FIXME we probably want to provide a method to translate from (abstract) surface space to global space
-    surfaceChild.position = { x: parentPosition.x + x, y: parentPosition.y + y }
-
-    this.setParent(parent)
-    this.state = SurfaceState.TRANSIENT
+    this.changeState(SurfaceState.TRANSIENT, parent.role.desktopSurface, { x, y })
   }
 
   setFullscreen(output?: Output): void {
-    this.state = SurfaceState.FULLSCREEN
-    // TODO get proper size in surface coordinates instead of assume surface space === global space
-    this.surface.surfaceChildSelf.position = { x: 0, y: 0 }
-    this.sendConfigure?.(window.innerWidth, window.innerHeight)
+    this.changeState(SurfaceState.FULLSCREEN, undefined, ORIGIN)
+    this.desktopSurface.setFullscreen(true)
   }
 
-  private ensureToplevelView() {
-    if (!this.session.renderer.hasTopLevelView(this.view)) {
-      this.session.renderer.addTopLevelView(this.view)
-    }
-  }
-
-  setXwayland(x: number, y: number): void {
-    this.xwayland.x = x
-    this.xwayland.y = y
-    if (!this.xwayland.isSet) {
-      this.ensureToplevelView()
-    }
-    this.xwayland.isSet = true
+  setXWayland(x: number, y: number): void {
+    this.changeState(SurfaceState.XWAYLAND, undefined, { x, y })
     this.view.positionOffset = { x, y }
   }
 
   move(pointer: Pointer): void {
-    if (this.state === SurfaceState.FULLSCREEN || this.state === SurfaceState.MAXIMIZED) {
-      return
+    if (
+      (this.state === SurfaceState.TOP_LEVEL ||
+        this.state === SurfaceState.MAXIMIZED ||
+        this.state === SurfaceState.FULLSCREEN) &&
+      pointer.grabSerial
+    ) {
+      this.desktopSurface.move(pointer.grabSerial)
     }
-
-    const pointerX = pointer.x
-    const pointerY = pointer.y
-
-    const origPosition = this.view.positionOffset
-
-    const moveListener = () => {
-      const deltaX = pointer.x - pointerX
-      const deltaY = pointer.y - pointerY
-
-      this.view.positionOffset = { x: origPosition.x + deltaX, y: origPosition.y + deltaY }
-      this.surface.session.renderer.render()
-    }
-
-    pointer.onButtonRelease().then(() => {
-      pointer.removeMouseMoveListener(moveListener)
-      pointer.enableFocus()
-    })
-    pointer.disableFocus()
-    pointer.addMouseMoveListener(moveListener)
   }
 
   resize(pointer: Pointer, edges: number): void {
-    if (this.state === SurfaceState.FULLSCREEN || this.state === SurfaceState.MAXIMIZED) {
-      return
-    }
-    const previousState = this.state
-    this.state = SurfaceState.RESIZE
-    // assigned in switch statement
-    let sizeAdjustment: (
-      width: number,
-      height: number,
-      deltaX: number,
-      deltaY: number,
-    ) => { dx: number; dy: number; w: number; h: number }
-
-    switch (edges) {
-      case bottomRight: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => ({
-          dx: 0,
-          dy: 0,
-          w: width + deltaX,
-          h: height + deltaY,
-        })
-        break
-      }
-      case top: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => ({ dx: 0, dy: deltaY, w: width, h: height - deltaY })
-        break
-      }
-      case bottom: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => ({ dx: 0, dy: 0, w: width, h: height + deltaY })
-        break
-      }
-      case left: {
-        sizeAdjustment = (width, height, deltaX) => ({ dx: deltaX, dy: 0, w: width - deltaX, h: height })
-        break
-      }
-      case topLeft: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => {
-          return {
-            dx: deltaX,
-            dy: deltaY,
-            w: width - deltaX,
-            h: height - deltaY,
-          }
-        }
-        break
-      }
-      case bottomLeft: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => ({
-          dx: deltaX,
-          dy: 0,
-          w: width - deltaX,
-          h: height + deltaY,
-        })
-        break
-      }
-      case right: {
-        sizeAdjustment = (width, height, deltaX) => ({ dx: 0, dy: 0, w: width + deltaX, h: height })
-        break
-      }
-      case topRight: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => ({
-          dx: 0,
-          dy: deltaY,
-          w: width + deltaX,
-          h: height - deltaY,
-        })
-        break
-      }
-      case none:
-      default: {
-        sizeAdjustment = (width, height) => ({ dx: 0, dy: 0, w: width, h: height })
-        break
-      }
-    }
-
-    const pointerX = pointer.x
-    const pointerY = pointer.y
-    const { width: surfaceWidth, height: surfaceHeight } = this.windowGeometry || {}
-
-    if (surfaceWidth && surfaceHeight) {
-      const resizeListener = () => {
-        const deltaX = pointer.x - pointerX
-        const deltaY = pointer.y - pointerY
-
-        const { dx, dy, w, h } = sizeAdjustment(surfaceWidth, surfaceHeight, deltaX, deltaY)
-        this.resizeEdge = edges
-        this.sendConfigure?.(w, h)
-      }
-      pointer.onButtonRelease().then(() => {
-        this.state = previousState
-        pointer.removeMouseMoveListener(resizeListener)
-        pointer.enableFocus()
-      })
-      pointer.disableFocus()
-      pointer.addMouseMoveListener(resizeListener)
+    if (
+      (this.state === SurfaceState.TOP_LEVEL ||
+        this.state === SurfaceState.MAXIMIZED ||
+        this.state === SurfaceState.FULLSCREEN) &&
+      pointer.grabSerial
+    ) {
+      this.desktopSurface.resize(pointer.grabSerial, edges)
     }
   }
 
   setTitle(title: string): void {
-    this.userSurfaceState = { ...this.userSurfaceState, title }
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
+    this.desktopSurface.setTitle(title)
   }
 
   setWindowGeometry(x: number, y: number, width: number, height: number): void {
-    this.pendingWindowGeometry = { x, y, width, height }
+    this.hasNextGeometry = true
+    this.nextGeometry = createRect({ x, y }, { width, height })
   }
 
   setMaximized(): void {
-    this.state = SurfaceState.MAXIMIZED
-
-    // FIXME get proper size in surface coordinates instead of assume surface space === global space
-    const scene = this.view.relevantScene
-
-    if (scene) {
-      const width = scene.canvas.width
-      const height = scene.canvas.height
-
-      this.savedViewPosition = this.view.positionOffset
-      this.sendConfigure?.(width, height)
-    }
+    this.changeState(SurfaceState.MAXIMIZED, undefined, ORIGIN)
+    this.desktopSurface.setMaximized(true)
   }
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -395,48 +219,7 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     this.pid = pid
   }
 
-  requestActive(): boolean {
-    if (
-      this.userSurfaceState.active ||
-      this.xwayland.isSet ||
-      this.state === SurfaceState.FULLSCREEN ||
-      this.state === SurfaceState.TRANSIENT ||
-      this.state === SurfaceState.NONE
-    ) {
-      return false
-    }
-    this.userSurfaceState = { ...this.userSurfaceState, active: true }
-    this.window.wm.activate(this.window)
-    this.window.frame?.setFlag(FrameFlag.FRAME_FLAG_ACTIVE)
-    this.window.scheduleRepaint()
-    this.window.wm.xConnection.flush()
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
-    return true
-  }
-
-  notifyInactive(): void {
-    if (!this.userSurfaceState.active || this.xwayland.isSet) {
-      return
-    }
-    this.userSurfaceState = { ...this.userSurfaceState, active: false }
-    if (this.window.wm.focusWindow === this.window) {
-      this.window.wm.activate(undefined)
-    }
-    this.window.frame?.unsetFlag(FrameFlag.FRAME_FLAG_ACTIVE)
-    this.window.scheduleRepaint()
-    this.window.wm.xConnection.flush()
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
-  }
-
-  private ensureUserShellSurface() {
-    if (!this.managed) {
-      this.managed = true
-      this.surface.resource.onDestroy().then(() => this.session.userShell.events.destroyUserSurface?.(this.userSurface))
-      this.session.userShell.events.createUserSurface?.(this.userSurface, this.userSurfaceState)
-    }
-  }
-
-  withFrameDecoration() {
+  private withFrameDecoration() {
     // render frame decoration
     const { width: frameWidth, height: frameHeight } = this.view.regionRect.size
     if (frameWidth === 0 || frameHeight === 0) {
@@ -479,54 +262,55 @@ export default class XWaylandShellSurface implements UserShellSurfaceRole {
     }
   }
 
-  private map() {
-    this.mapped = true
-    this.userSurfaceState = { ...this.userSurfaceState, mapped: this.mapped }
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
+  private changeState(state: SurfaceState, parent: DesktopSurface | undefined, position: Point) {
+    const toAdd = parent === undefined && state !== SurfaceState.XWAYLAND
+
+    if (toAdd && this.added) {
+      this.state = state
+      return
+    }
+
+    if (this.state !== state) {
+      if (this.state === SurfaceState.XWAYLAND) {
+        // TODO send to centralized logging
+        console.assert(!this.added)
+        // TODO destroy view?
+        this.surface.unmap()
+      }
+
+      if (toAdd) {
+        this.desktopSurface?.setParent(undefined)
+        this.desktopSurface.add()
+        this.added = true
+        if (this.state === SurfaceState.NONE && this.committed) {
+          /* We had a race, and wl_surface.commit() was
+           * faster, just fake a commit to map the
+           * surface */
+          this.desktopSurface.commit()
+        }
+      } else if (this.added) {
+        this.desktopSurface.removed()
+        this.added = false
+      }
+
+      if (state === SurfaceState.XWAYLAND) {
+        // TODO send to centralized logging
+        console.assert(!this.added)
+        this.view.mapped = true
+      }
+
+      this.state = state
+    }
+
+    if (parent !== undefined) {
+      this.surface.surfaceChildSelf.position = position
+      this.desktopSurface.setParent(parent)
+    }
   }
 
-  private unmap() {
-    this.mapped = false
-    this.userSurfaceState = { ...this.userSurfaceState, mapped: this.mapped }
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
-  }
-
-  private viewOffsetAfterResize(bufferSize: Size, previousBufferSize: Size): Point | undefined {
-    const { width: previousWidth, height: previousHeight } = previousBufferSize
-    const { width, height } = bufferSize
-
-    // FIXME adjust buffer dimensions to scene space
-
-    switch (this.resizeEdge) {
-      case WlShellSurfaceResize.bottomRight:
-      case WlShellSurfaceResize.right:
-      case WlShellSurfaceResize.bottom:
-      case WlShellSurfaceResize.none:
-        return
-      case WlShellSurfaceResize.topRight:
-      case WlShellSurfaceResize.top: {
-        const dY = previousHeight - height
-        if (dY !== 0) {
-          return { x: 0, y: dY }
-        }
-        break
-      }
-      case WlShellSurfaceResize.bottomLeft:
-      case WlShellSurfaceResize.left: {
-        const dX = previousWidth - width
-        if (dX !== 0) {
-          return { x: dX, y: 0 }
-        }
-        break
-      }
-      case WlShellSurfaceResize.topLeft: {
-        const dY = previousHeight - height
-        const dX = previousWidth - width
-        if (dX !== 0 || dY !== 0) {
-          return { x: dX, y: dY }
-        }
-        break
-      }
+  private handleDestroy() {
+    if (this.added) {
+      this.desktopSurface.removed()
     }
   }
 }

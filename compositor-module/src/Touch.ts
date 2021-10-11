@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { WlTouchResource } from 'westfield-runtime-server'
-import Seat from './Seat'
+import { Seat } from './Seat'
 
 /**
  *

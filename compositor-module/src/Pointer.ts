@@ -18,6 +18,9 @@
 import { Fixed } from 'westfield-runtime-common'
 import {
   Client,
+  WlDataDeviceManagerDndAction,
+  WlDataDeviceResource,
+  WlDataOfferResource,
   WlPointerAxis,
   WlPointerAxisSource,
   WlPointerButtonState,
@@ -29,8 +32,12 @@ import {
 import { AxisEvent } from './AxisEvent'
 import { ButtonEvent } from './ButtonEvent'
 import DataSource from './DataSource'
+import { KeyboardGrab } from './Keyboard'
+import { KeyEvent } from './KeyEvent'
+import { ORIGIN, Point } from './math/Point'
+import { clear } from './Region'
 
-import Seat, { Drag } from './Seat'
+import { Seat } from './Seat'
 import Surface from './Surface'
 import SurfaceRole from './SurfaceRole'
 import View from './View'
@@ -91,8 +98,6 @@ export class DefaultPointerGrab implements PointerGrab {
 }
 
 export interface PointerGrab {
-  pointer: Pointer
-
   focus(): void
 
   motion(event: ButtonEvent): void
@@ -106,16 +111,193 @@ export interface PointerGrab {
   cancel(): void
 }
 
-export interface PointerDrag extends Drag {
-  grab?: PointerGrab
+export class PointerDrag implements PointerGrab, KeyboardGrab {
+  dataSource?: DataSource
+  dataSourceListener = () => {
+    this.dataSource = undefined
+    this.end()
+  }
+  focusView?: View
+  focusResource?: WlDataDeviceResource
+  deltaPoint?: Point
+  iconListener = () => {
+    this.icon = undefined
+  }
+
+  private constructor(public readonly pointer: Pointer, public readonly client: Client, public icon?: View) {}
+
+  static create(pointer: Pointer, client: Client, icon?: View): PointerDrag {
+    return new PointerDrag(pointer, client, icon)
+  }
+
+  end(): void {
+    if (this.icon) {
+      // TODO remove drag icon from browser pointer
+      this.icon.surface.resource.removeDestroyListener(this.iconDestroyListener)
+      clear(this.icon.surface.pendingState.inputPixmanRegion)
+    }
+    this.setFocus(undefined)
+    this.pointer.endGrab()
+    this.pointer.seat.keyboard.endGrab()
+  }
+
+  axis(event: AxisEvent): void {
+    // do nothing
+  }
+
+  button(event: ButtonEvent): void {
+    if (this.dataSource && this.pointer.grabButton === event.buttonCode && event.released) {
+      if (
+        this.focusResource !== undefined &&
+        this.dataSource.accepted &&
+        this.dataSource.currentDndAction !== WlDataDeviceManagerDndAction.none
+      ) {
+        this.focusResource.drop()
+
+        if (this.dataSource.resource.version >= 3) {
+          this.dataSource.resource.dndDropPerformed()
+        }
+
+        if (this.dataSource.dataOffer) {
+          this.dataSource.dataOffer.inAsk = this.dataSource.currentDndAction === WlDataDeviceManagerDndAction.ask
+        }
+      } else if (this.dataSource.resource.version >= 3) {
+        this.dataSource.resource.cancelled()
+      }
+    }
+
+    if (this.pointer.buttonCount == 0 && event.released) {
+      this.dataSource?.resource.removeDestroyListener(this.dataSourceListener)
+      this.end()
+    }
+  }
+
+  cancel(): void {
+    this.dataSource?.resource.removeDestroyListener(this.dataSourceListener)
+    this.end()
+  }
+
+  focus(): void {
+    const view = this.pointer.seat.session.renderer.pickView(this.pointer)
+    let newFocus: { view: View; sx: Fixed; sy: Fixed } | undefined = undefined
+    if (view) {
+      const { x: sx, y: sy } = view?.sceneToViewSpace(this.pointer) ?? ORIGIN
+      newFocus = { view, sx: Fixed.parse(sx), sy: Fixed.parse(sy) }
+    }
+    if (this.focusView !== view) {
+      this.setFocus(newFocus)
+    }
+  }
+
+  frame(): void {
+    // do nothing
+  }
+
+  key(event: KeyEvent): void {
+    // do nothing
+  }
+
+  modifiers(serial: number, modsDepressed: number, modsLatched: number, modsLocked: number, group: number): void {
+    let compositorAction: WlDataDeviceManagerDndAction
+    if (modsDepressed & (1 << this.pointer.seat.keyboard.xkb.shiftMod)) {
+      compositorAction = WlDataDeviceManagerDndAction.move
+    } else if (modsDepressed & (1 << this.pointer.seat.keyboard.xkb.ctrlMod)) {
+      compositorAction = WlDataDeviceManagerDndAction.copy
+    } else {
+      compositorAction = WlDataDeviceManagerDndAction.none
+    }
+    if (this.dataSource) {
+      this.dataSource.compositorAction = compositorAction
+      this.dataSource.dataOffer?.updateAction()
+    }
+  }
+
+  motion(event: ButtonEvent): void {
+    this.pointer.moveTo(event)
+
+    if (this.icon) {
+      // mouse cursor move is handled by the browser
+      // this.icon.positionOffset = plusPoint(this.pointer, this.deltaPoint ?? ORIGIN)
+      // this.pointer.seat.session.renderer.render()
+    }
+
+    if (this.focusView && this.focusResource) {
+      const { x: sx, y: sy } = this.focusView.sceneToViewSpace(this.pointer)
+      this.focusResource.motion(event.timestamp, Fixed.parse(sx), Fixed.parse(sy))
+    }
+  }
+
+  setFocus(newFocus?: { view: View; sx: Fixed; sy: Fixed }): void {
+    if (this.focusView !== undefined && newFocus?.view && this.focusView?.surface === newFocus?.view.surface) {
+      this.focusView = newFocus.view
+      return
+    }
+
+    if (this.focusResource !== undefined) {
+      this.focusResource.leave()
+      this.focusResource.removeDestroyListener(this.focusListener)
+      this.focusResource = undefined
+      this.focusView = undefined
+    }
+
+    if (newFocus === undefined) {
+      return
+    }
+
+    if (this.dataSource === undefined && newFocus.view.surface.resource.client !== this.client) {
+      return
+    }
+
+    if (this.dataSource?.dataOffer) {
+      /* Unlink the offer from the source */
+      this.dataSource.dataOffer.source?.resource.removeDestroyListener(this.dataSource.dataOffer.sourceDestroyListener)
+      this.dataSource.dataOffer.source = undefined
+      this.dataSource.dataOffer = undefined
+    }
+
+    const resource = this.pointer.seat.dragResourceList.find(
+      (dragResource) => dragResource.client === newFocus.view.surface.resource.client,
+    )
+
+    if (resource === undefined) {
+      return
+    }
+
+    const serial = this.pointer.seat.nextSerial()
+    let offerResource: WlDataOfferResource | undefined
+    if (this.dataSource) {
+      this.dataSource.accepted = false
+      const offer = this.dataSource.sendOffer(resource)
+      offer.updateAction()
+      offerResource = offer.resource
+    }
+
+    resource.enter(serial, newFocus.view.surface.resource, newFocus.sx, newFocus.sy, offerResource)
+
+    this.focusView = newFocus.view
+    resource.addDestroyListener(this.focusListener)
+    this.focusResource = resource
+  }
+
+  private readonly iconDestroyListener = () => {
+    this.icon = undefined
+  }
+
+  private readonly focusListener = () => {
+    this.destroyDragFocus()
+  }
+
+  private destroyDragFocus() {
+    this.focusResource = undefined
+  }
 }
 
 export class DragIconRole implements SurfaceRole {
-  private constructor(public readonly pointer: Pointer, public readonly view: View) {}
+  private constructor(public readonly view: View) {}
 
-  public static create(pointer: Pointer, icon: Surface): DragIconRole {
+  public static create(icon: Surface): DragIconRole {
     const view = View.create(icon)
-    return new DragIconRole(pointer, view)
+    return new DragIconRole(view)
   }
 
   onCommit(surface: Surface): void {
@@ -159,10 +341,6 @@ const linuxInput = {
 const lineScrollAmount = 12 as const
 
 export class Pointer implements WlPointerRequests {
-  static create(seat: Seat): Pointer {
-    return new Pointer(seat)
-  }
-
   // surface space x & y coordinates of focused surface
   sx = Fixed.parse(-1000000)
   sy = Fixed.parse(-1000000)
@@ -173,9 +351,6 @@ export class Pointer implements WlPointerRequests {
   scrollFactor = 1
   resources: WlPointerResource[] = []
   focus?: View
-  private readonly focusViewListener = () => {
-    this.clearFocus()
-  }
   x = -1000000
   y = -1000000
   hotspotX = 0
@@ -185,10 +360,8 @@ export class Pointer implements WlPointerRequests {
   grab = DefaultPointerGrab.create(this)
   grabButton?: 0 | 1 | 2 | 3 | 4
   grabTime?: number
-  grabX?: number
-  grabY?: number
+  grabPoint?: Point
   grabSerial?: number
-
   private readonly _cursorDestroyListener: () => void
 
   private constructor(public readonly seat: Seat) {
@@ -196,6 +369,10 @@ export class Pointer implements WlPointerRequests {
       this.sprite = undefined
       this.setDefaultCursor()
     }
+  }
+
+  static create(seat: Seat): Pointer {
+    return new Pointer(seat)
   }
 
   setCursor(
@@ -226,8 +403,8 @@ export class Pointer implements WlPointerRequests {
 
     if (this.sprite === undefined || this.sprite.surface !== surface) {
       if (surface.role && !(surface.role instanceof CursorRole)) {
-        resource.postError(WlPointerError.role, 'Given surface has another role.')
         this.seat.session.logger.warn('[client-protocol-error] - Given surface has another role')
+        resource.postError(WlPointerError.role, 'Given surface has another role.')
         return
       }
       surface.role = CursorRole.create(this, surface)
@@ -320,33 +497,16 @@ export class Pointer implements WlPointerRequests {
   }
 
   startDrag(source: DataSource | undefined, icon: Surface | undefined, client: Client): void {
-    const drag: PointerDrag = {
-      client,
-      dataSource: source,
-      dataSourceListener: () => {},
-      dx: 0,
-      dy: 0,
-      focusListener: () => {},
-      focusResource: undefined,
-      focusView: undefined,
-      grab: undefined,
-      icon: undefined,
-      keyboardGrab: undefined,
-    }
+    const drag = PointerDrag.create(this, client, icon?.role?.view)
 
     if (icon) {
-      drag.icon = icon.role?.view
-      icon.resource.addDestroyListener(() => {
-        if (icon === drag.icon?.surface) {
-          drag.icon = undefined
-        }
-      })
+      icon.resource.addDestroyListener(drag.iconListener)
     }
 
     if (source) {
       source.resource.addDestroyListener(() => {
         if (drag.dataSource === source) {
-          this.seat.endPointerDragGab(drag)
+          this.seat.endDrag(drag)
         }
       })
     }
@@ -354,13 +514,12 @@ export class Pointer implements WlPointerRequests {
     this.clearFocus()
     this.seat.keyboard.setFocus(undefined)
 
-    this.startGrab(drag.grab)
-    this.seat.keyboard.startGrab(drag.keyboardGrab)
+    this.startGrab(drag)
+    this.seat.keyboard.startGrab(drag)
   }
 
   startGrab(grab: PointerGrab): void {
     this.grab = grab
-    this.grab.pointer = this
     this.grab.focus()
   }
 
@@ -369,28 +528,12 @@ export class Pointer implements WlPointerRequests {
     this.grab.focus()
   }
 
-  cancelGrab(): void {
-    this.grab?.cancel()
-  }
-
-  private unmapSprite() {
-    this.seat.session.renderer.hidePointer()
-    this.sprite?.surface.resource.removeDestroyListener(this._cursorDestroyListener)
-    this.sprite = undefined
-  }
-
-  private moveTo(x: number, y: number): void {
+  moveTo({ x, y }: Point): void {
     this.x = x
     this.y = y
 
     this.grab.focus()
     this.motionListeners.forEach((listener) => listener())
-  }
-
-  private frame(pointerResource: WlPointerResource) {
-    if (pointerResource.version >= 5) {
-      pointerResource.frame()
-    }
   }
 
   sendFrame(): void {
@@ -405,18 +548,6 @@ export class Pointer implements WlPointerRequests {
       })
   }
 
-  private motion(time: number, sx: Fixed, sy: Fixed): void {
-    if (this.focus === undefined) {
-      return
-    }
-
-    this.resources
-      .filter((pointerResource) => pointerResource.client === this.focus?.surface.resource.client)
-      .forEach((pointerResource) => {
-        pointerResource.motion(time, sx, sy)
-      })
-  }
-
   sendMotion(event: ButtonEvent): void {
     const oldSx = this.sx
     const oldSy = this.sy
@@ -427,7 +558,7 @@ export class Pointer implements WlPointerRequests {
       this.sy = Fixed.parse(sy)
     }
 
-    this.moveTo(event.x, event.y)
+    this.moveTo(event)
 
     if (oldSx._raw !== this.sx._raw || oldSy._raw !== this.sy._raw) {
       this.motion(event.timestamp, this.sx, this.sy)
@@ -501,6 +632,34 @@ export class Pointer implements WlPointerRequests {
           linuxInput[event.buttonCode],
           event.released ? WlPointerButtonState.released : WlPointerButtonState.pressed,
         )
+      })
+  }
+
+  private readonly focusViewListener = () => {
+    this.clearFocus()
+  }
+
+  private unmapSprite() {
+    this.seat.session.renderer.hidePointer()
+    this.sprite?.surface.resource.removeDestroyListener(this._cursorDestroyListener)
+    this.sprite = undefined
+  }
+
+  private frame(pointerResource: WlPointerResource) {
+    if (pointerResource.version >= 5) {
+      pointerResource.frame()
+    }
+  }
+
+  private motion(time: number, sx: Fixed, sy: Fixed): void {
+    if (this.focus === undefined) {
+      return
+    }
+
+    this.resources
+      .filter((pointerResource) => pointerResource.client === this.focus?.surface.resource.client)
+      .forEach((pointerResource) => {
+        pointerResource.motion(time, sx, sy)
       })
   }
 }

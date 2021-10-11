@@ -274,7 +274,7 @@ export default class XdgPositioner implements XdgPositionerRequests {
       offset: selfOffset,
       surfaceSpaceAnchorPoint(parent: XdgSurface): Point | undefined {
         if (this.anchorRect && this.sizeRect) {
-          const parentWindowGeometry = parent.windowGeometry
+          const parentWindowGeometry = parent.surface.geometry
           const surfaceSpaceAnchorRectPosition = plusPoint(parentWindowGeometry.position, this.anchorRect.position)
           const { x, y } = surfaceSpaceAnchorRectPosition
           const surfaceSpaceAnchorRect = createRect(

@@ -16,7 +16,6 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import {
-  WlOutputResource,
   WlSeatResource,
   WlShellSurfaceRequests,
   WlShellSurfaceResize,
@@ -24,102 +23,131 @@ import {
   WlShellSurfaceTransient,
   WlSurfaceResource,
 } from 'westfield-runtime-server'
-import { CompositorSurface, CompositorSurfaceState } from './index'
+import { DesktopSurface } from './Desktop'
+import { ORIGIN, Point } from './math/Point'
+import { RectWithInfo } from './math/Rect'
+import { Size, ZERO_SIZE } from './math/Size'
 
-import { plusPoint, Point } from './math/Point'
-import Seat from './Seat'
 import Session from './Session'
 import Surface from './Surface'
-import { UserShellSurfaceRole } from './UserShellSurfaceRole'
+import { DesktopSurfaceRole } from './SurfaceRole'
 import View from './View'
 
-const { bottom, bottomLeft, bottomRight, left, none, right, top, topLeft, topRight } = WlShellSurfaceResize
-const { inactive } = WlShellSurfaceTransient
+const { none } = WlShellSurfaceResize
 
-const SurfaceStates = {
-  MAXIMIZED: 'maximized',
-  FULLSCREEN: 'fullscreen',
-  POPUP: 'popup',
-  TRANSIENT: 'transient',
-  TOP_LEVEL: 'top_level',
+enum SurfaceStates {
+  MAXIMIZED,
+  FULLSCREEN,
+  POPUP,
+  TRANSIENT,
+  TOP_LEVEL,
 }
 
-export default class ShellSurface implements WlShellSurfaceRequests, UserShellSurfaceRole {
-  state?: string
-  private _managed = false
+export default class ShellSurface implements WlShellSurfaceRequests, DesktopSurfaceRole {
+  state?: SurfaceStates
+  readonly desktopSurface: DesktopSurface
   private _pingTimeoutActive = false
   private _timeoutTimer = 0
   private _pingTimer = 0
-  private _mapped = false
+  private added = false
 
   private constructor(
     public readonly resource: WlShellSurfaceResource,
-    public readonly wlSurfaceResource: WlSurfaceResource,
+    public readonly surface: Surface,
     public readonly session: Session,
-    public readonly userSurface: CompositorSurface,
-    private userSurfaceState: CompositorSurfaceState,
     public readonly view: View,
-  ) {}
+  ) {
+    this.desktopSurface = DesktopSurface.create(this.surface, this)
+  }
 
   static create(
     wlShellSurfaceResource: WlShellSurfaceResource,
     wlSurfaceResource: WlSurfaceResource,
     session: Session,
   ): ShellSurface {
-    const { client, id } = wlSurfaceResource
-    const userSurface: CompositorSurface = { id: `${id}`, clientId: client.id }
-    const userSurfaceState: CompositorSurfaceState = {
-      appId: '',
-      active: false,
-      mapped: false,
-      minimized: false,
-      title: '',
-      unresponsive: false,
-    }
-
-    const view = View.create(wlSurfaceResource.implementation as Surface)
-    const shellSurface = new ShellSurface(
-      wlShellSurfaceResource,
-      wlSurfaceResource,
-      session,
-      userSurface,
-      userSurfaceState,
-      view,
-    )
+    wlSurfaceResource.onDestroy().then(() => wlShellSurfaceResource.destroy())
+    const surface = wlSurfaceResource.implementation as Surface
+    const view = View.create(surface)
+    const shellSurface = new ShellSurface(wlShellSurfaceResource, surface, session, view)
     wlShellSurfaceResource.implementation = shellSurface
 
-    // destroy the shell-surface if the surface is destroyed.
-    wlSurfaceResource.onDestroy().then(() => wlShellSurfaceResource.destroy())
-    ;(wlSurfaceResource.implementation as Surface).role = shellSurface
+    surface.role = shellSurface
     shellSurface.doPing(wlShellSurfaceResource)
 
     wlShellSurfaceResource.onDestroy().then(() => {
       clearTimeout(shellSurface._timeoutTimer)
       clearTimeout(shellSurface._pingTimer)
+      shellSurface.handleDestroy()
     })
 
     return shellSurface
   }
 
+  requestClose(): void {
+    if (this.state === SurfaceStates.POPUP) {
+      this.resource.popupDone()
+    }
+  }
+
+  queryMaximized(): boolean {
+    return this.state === SurfaceStates.MAXIMIZED
+  }
+
+  queryFullscreen(): boolean {
+    return this.state === SurfaceStates.FULLSCREEN
+  }
+
+  queryGeometry(): RectWithInfo {
+    return this.surface.geometry
+  }
+
+  queryMinSize(): Size {
+    return ZERO_SIZE
+  }
+
+  queryMaxSize(): Size {
+    return { width: Number.MAX_SAFE_INTEGER, height: Number.MAX_SAFE_INTEGER }
+  }
+
+  configureMaximized(): void {
+    // no op
+  }
+
+  configureFullscreen(): void {
+    // no op
+  }
+
+  configureSize({ width, height }: Size): void {
+    if ((this.surface.size?.width === width && this.surface.size.height === height) || (width === 0 && height === 0)) {
+      return
+    }
+
+    this.resource.configure(none, width, height)
+  }
+
+  configureActivated(): void {
+    throw new Error('Method not implemented.')
+  }
+
+  configureResizing(): void {
+    throw new Error('Method not implemented.')
+  }
+
   onCommit(surface: Surface): void {
     surface.commitPending()
-    if (surface.state.bufferContents) {
-      if (!this._mapped) {
-        this.map()
-      }
-    } else {
-      if (this._mapped) {
-        this.unmap()
-      }
+    if (this.surface.state.buffer === undefined) {
+      this.maybeUngrab()
     }
+    this.desktopSurface.commit()
     this.session.renderer.render()
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  pong(resource: WlShellSurfaceResource, serial: number): void {
+  pong(resource: WlShellSurfaceResource): void {
     if (this._pingTimeoutActive) {
-      this.userSurfaceState = { ...this.userSurfaceState, unresponsive: false }
-      this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
+      // TODO user shell
+      // this.userSurfaceState = { ...this.userSurfaceState, unresponsive: false }
+      // this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
       this._pingTimeoutActive = false
     }
     clearTimeout(this._timeoutTimer)
@@ -129,10 +157,11 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
   doPing(resource: WlShellSurfaceResource): void {
     this._timeoutTimer = self.setTimeout(() => {
       if (!this._pingTimeoutActive) {
+        // TODO user shell
         // ping timed out, make view gray
         this._pingTimeoutActive = true
-        this.userSurfaceState = { ...this.userSurfaceState, unresponsive: true }
-        this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
+        // this.userSurfaceState = { ...this.userSurfaceState, unresponsive: true }
+        // this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
       }
     }, 5000)
     // FIXME use a proper serial
@@ -140,184 +169,40 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     this.session.flush()
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   move(resource: WlShellSurfaceResource, wlSeatResource: WlSeatResource, serial: number): void {
-    const seat = wlSeatResource.implementation as Seat
-
-    if (!seat.isValidInputSerial(serial)) {
-      this.session.logger.warn('[client-protocol-warning] - Move serial mismatch. Ignoring.')
-    }
-
-    if (this.state === SurfaceStates.FULLSCREEN || this.state === SurfaceStates.MAXIMIZED) {
-      return
-    }
-    const pointer = seat.pointer
-
-    const pointerX = pointer.x
-    const pointerY = pointer.y
-
-    const topLevelView = this.view
-    if (topLevelView) {
-      const origPosition = topLevelView.positionOffset
-
-      const moveListener = () => {
-        const deltaX = pointer.x - pointerX
-        const deltaY = pointer.y - pointerY
-
-        topLevelView.positionOffset = plusPoint(origPosition, { x: deltaX, y: deltaY })
-        this.session.renderer.render()
-      }
-
-      pointer.onButtonRelease().then(() => pointer.removeMouseMoveListener(moveListener))
-      pointer.addMouseMoveListener(moveListener)
-    }
+    this.desktopSurface.move(serial)
   }
 
   resize(resource: WlShellSurfaceResource, wlSeatResource: WlSeatResource, serial: number, edges: number): void {
-    const seat = wlSeatResource.implementation as Seat
-    if (!seat.isValidInputSerial(serial)) {
-      this.session.logger.debug('[client-protocol-warning] - Resize serial mismatch. Ignoring.')
-    }
-
-    if (this.state === SurfaceStates.FULLSCREEN || this.state === SurfaceStates.MAXIMIZED) {
-      return
-    }
-
-    const pointer = seat.pointer
-    // assigned in switch statement
-    let sizeAdjustment: (width: number, height: number, deltaX: number, deltaY: number) => { w: number; h: number }
-
-    switch (edges) {
-      case bottomRight: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => ({
-          w: width + deltaX,
-          h: height + deltaY,
-        })
-        break
-      }
-      case top: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => ({ w: width, h: height - deltaY })
-        break
-      }
-      case bottom: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => ({ w: width, h: height + deltaY })
-        break
-      }
-      case left: {
-        sizeAdjustment = (width, height, deltaX) => ({ w: width - deltaX, h: height })
-        break
-      }
-      case topLeft: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => ({
-          w: width - deltaX,
-          h: height - deltaY,
-        })
-        break
-      }
-      case bottomLeft: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => ({
-          w: width - deltaX,
-          h: height + deltaY,
-        })
-        break
-      }
-      case right: {
-        sizeAdjustment = (width, height, deltaX) => ({ w: width + deltaX, h: height })
-        break
-      }
-      case topRight: {
-        sizeAdjustment = (width, height, deltaX, deltaY) => ({
-          w: width + deltaX,
-          h: height - deltaY,
-        })
-        break
-      }
-      case none:
-      default: {
-        sizeAdjustment = (width, height) => ({ w: width, h: height })
-        break
-      }
-    }
-
-    const pointerX = pointer.x
-    const pointerY = pointer.y
-    const { width: surfaceWidth, height: surfaceHeight } = (this.wlSurfaceResource.implementation as Surface).size || {}
-
-    if (surfaceWidth && surfaceHeight) {
-      const resizeListener = () => {
-        const deltaX = pointer.x - pointerX
-        const deltaY = pointer.y - pointerY
-
-        const size = sizeAdjustment(surfaceWidth, surfaceHeight, deltaX, deltaY)
-        this.resource.configure(edges, size.w, size.h)
-        this.session.flush()
-      }
-      pointer.onButtonRelease().then(() => pointer.removeMouseMoveListener(resizeListener))
-      pointer.addMouseMoveListener(resizeListener)
-    }
+    this.desktopSurface.resize(serial, edges)
   }
 
-  requestActive(): boolean {
-    if (this.userSurfaceState.active || this.state !== SurfaceStates.TOP_LEVEL) {
-      return false
-    }
-    this.userSurfaceState = { ...this.userSurfaceState, active: true }
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
-    return true
-  }
-
-  notifyInactive(): void {
-    if (!this.userSurfaceState.active) {
+  setToplevel(): void {
+    this.changeState(SurfaceStates.TOP_LEVEL, undefined, ORIGIN)
+    if (this.surface.parent === undefined) {
       return
     }
-    this.userSurfaceState = { ...this.userSurfaceState, active: false }
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  setToplevel(resource: WlShellSurfaceResource): void {
-    if (this.state === SurfaceStates.POPUP || this.state === SurfaceStates.TRANSIENT) {
-      return
-    }
-
-    this._ensureUserShellSurface()
-    this.state = SurfaceStates.TOP_LEVEL
+    this.desktopSurface.setParent(undefined)
   }
 
   setTransient(resource: WlShellSurfaceResource, parent: WlSurfaceResource, x: number, y: number, flags: number): void {
-    if (this.state === SurfaceStates.POPUP || this.state === SurfaceStates.TOP_LEVEL) {
+    const parentSurface = parent.implementation as Surface
+    if (parentSurface.role?.desktopSurface === undefined) {
       return
     }
 
-    const parentPosition = (parent.implementation as Surface).surfaceChildSelf.position
-
-    const surface = this.wlSurfaceResource.implementation as Surface
-    const surfaceChild = surface.surfaceChildSelf
-    // FIXME we probably want to provide a method to translate from (abstract) surface space to global space
-    surfaceChild.position = plusPoint(parentPosition, { x, y })
-
-    surface.hasKeyboardInput = (flags & inactive) === 0
-
-    this._ensureUserShellSurface()
-    this.state = SurfaceStates.TRANSIENT
+    if (flags & WlShellSurfaceTransient.inactive) {
+      this.changeState(SurfaceStates.TRANSIENT, parentSurface.role.desktopSurface, { x, y })
+    } else {
+      this.changeState(SurfaceStates.TOP_LEVEL, undefined, ORIGIN)
+      this.desktopSurface.setParent(parentSurface.role.desktopSurface)
+    }
   }
 
   // TODO take over the complete webgl canvas directly, perhaps even make the browser fullscreen
-  setFullscreen(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    resource: WlShellSurfaceResource,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    method: number,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    framerate: number,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    output: WlOutputResource | undefined,
-  ): void {
-    this.state = SurfaceStates.FULLSCREEN
-    const surface = this.wlSurfaceResource.implementation as Surface
-    // TODO get proper size in surface coordinates instead of assume surface space === global space
-    surface.surfaceChildSelf.position = { x: 0, y: 0 }
-    this.resource.configure(none, window.innerWidth, window.innerHeight)
+  setFullscreen(): void {
+    this.changeState(SurfaceStates.FULLSCREEN, undefined, ORIGIN)
+    this.desktopSurface.setFullscreen(true)
   }
 
   setPopup(
@@ -327,71 +212,71 @@ export default class ShellSurface implements WlShellSurfaceRequests, UserShellSu
     parent: WlSurfaceResource,
     x: number,
     y: number,
-    flags: number,
   ): void {
-    const seat = wlSeatResource.implementation as Seat
-
-    if (this.state) {
+    const parentSurface = parent.implementation as Surface
+    if (parentSurface.role?.desktopSurface === undefined) {
       return
     }
 
-    const pointer = seat.pointer
-    this.state = SurfaceStates.POPUP
-    const surface = this.wlSurfaceResource.implementation as Surface
-    const surfaceChild = surface.surfaceChildSelf
-    surfaceChild.position = { x, y }
-    // having added this shell-surface to a parent will have it create a view for each parent view
-    ;(parent.implementation as Surface).addChild(surfaceChild)
-
-    surface.hasKeyboardInput = (flags & inactive) === 0
-
-    // handle popup window grab
-    pointer.popupGrab(this.wlSurfaceResource).then(() => resource.popupDone())
+    this.changeState(SurfaceStates.POPUP, parentSurface.role.desktopSurface, { x, y })
+    this.desktopSurface.popupGrab(serial)
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  setMaximized(resource: WlShellSurfaceResource, output: WlOutputResource): void {
-    this.state = SurfaceStates.MAXIMIZED
-
-    // FIXME get proper size in surface coordinates instead of assume surface space === global space
-    const scene = this.view.relevantScene
-
-    if (scene) {
-      const { width, height } = scene.canvas
-      this.view.positionOffset = { x: 0, y: 0 }
-      this.resource.configure(none, width, height)
-    }
+  setMaximized(): void {
+    this.changeState(SurfaceStates.MAXIMIZED, undefined, ORIGIN)
+    this.desktopSurface.setMaximized(true)
   }
 
   setTitle(resource: WlShellSurfaceResource, title: string): void {
-    this.userSurfaceState = { ...this.userSurfaceState, title }
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
+    this.desktopSurface.setTitle(title)
   }
 
   setClass(resource: WlShellSurfaceResource, clazz: string): void {
-    this.userSurfaceState = { ...this.userSurfaceState, appId: clazz }
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
+    this.desktopSurface.setAppId(clazz)
   }
 
-  private map() {
-    this._mapped = true
-    this.userSurfaceState = { ...this.userSurfaceState, mapped: this._mapped }
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
-  }
-
-  private unmap() {
-    this._mapped = false
-    this.userSurfaceState = { ...this.userSurfaceState, mapped: this._mapped }
-    this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
-  }
-
-  private _ensureUserShellSurface() {
-    if (!this._managed) {
-      this._managed = true
-      this.wlSurfaceResource
-        .onDestroy()
-        .then(() => this.session.userShell.events.destroyUserSurface?.(this.userSurface))
-      this.session.userShell.events.createUserSurface?.(this.userSurface, this.userSurfaceState)
+  private changeState(state: SurfaceStates, parent: DesktopSurface | undefined, position: Point) {
+    const toAdd = parent === undefined
+    if (toAdd && this.added) {
+      this.state = state
+      return
     }
+
+    if (this.state !== state) {
+      if (this.state === SurfaceStates.POPUP) {
+        this.maybeUngrab()
+      }
+
+      if (toAdd) {
+        this.desktopSurface.setParent(undefined)
+        this.desktopSurface.add()
+      } else if (this.added) {
+        this.desktopSurface.removed()
+      }
+
+      this.state = state
+      this.added = toAdd
+    }
+
+    if (parent !== undefined) {
+      this.desktopSurface.surface.surfaceChildSelf.position = position
+      this.desktopSurface.setParent(parent)
+    }
+  }
+
+  private handleDestroy() {
+    this.maybeUngrab()
+    if (this.added) {
+      this.desktopSurface.removed()
+    }
+  }
+
+  private maybeUngrab() {
+    const seat = this.session.globals.seat
+    if (this.state !== SurfaceStates.POPUP || !seat.popupGrab?.surfaces?.includes(this.desktopSurface)) {
+      return
+    }
+
+    seat.popupGrab?.removeSurface(this.desktopSurface)
   }
 }

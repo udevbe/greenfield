@@ -57,13 +57,13 @@ import sResize from '../assets/s-resize.png'
 import seResize from '../assets/se-resize.png'
 import swResize from '../assets/sw-resize.png'
 import wResize from '../assets/w-resize.png'
-import DataSource from '../DataSource'
 import Session from '../Session'
 import Surface from '../Surface'
 import { CursorType } from './CursorType'
 import { ICCCM_NORMAL_STATE, ICCCM_WITHDRAWN_STATE, SEND_EVENT_MASK } from './XConstants'
 import { XWaylandConnection } from './XWaylandConnection'
 import XWaylandShell from './XWaylandShell'
+import XWaylandShellSurface from './XWaylandShellSurface'
 import { XWindow } from './XWindow'
 import { FrameStatus, themeCreate, ThemeLocation, XWindowTheme } from './XWindowFrame'
 
@@ -574,7 +574,7 @@ export class XWindowManager {
     xConnection.onSelectionRequestEvent = (event) => {
       xWindowManager.handleSelectionRequest(event)
     }
-    session.globals.seat.dataDevice.selectionListeners.push(() => xWindowManager.setSelection())
+    session.globals.seat.selectionListeners.push(() => xWindowManager.setSelection())
 
     // TODO
     dndInit()
@@ -605,6 +605,8 @@ export class XWindowManager {
     setNetWorkArea(xConnection, xConnection.setup.roots[0], xwmAtoms)
     setNetActiveWindow(xConnection, xConnection.setup.roots[0], xwmAtoms, Window.None)
     setNetSupportingWmCheck(xConnection, xConnection.setup.roots[0], xwmAtoms, wmWindow, 'Greenfield')
+
+    session.globals.seat.activationListeners.push((surface) => xWindowManager.activate(surface))
 
     xConnection.flush()
     return xWindowManager
@@ -961,7 +963,7 @@ export class XWindowManager {
     if (window.shsurf) {
       const { keyboard, pointer } = window.shsurf.surface.session.globals.seat
       if (keyboard.focus === window.shsurf.surface) {
-        keyboard.focusLost()
+        keyboard.setFocus(undefined)
       }
       if (pointer.focus?.surface === window.shsurf.surface) {
         pointer.clearFocus()
@@ -1064,7 +1066,7 @@ export class XWindowManager {
         /* We should check if shsurf has been created because sometimes
          * there are races
          * (configure_notify is sent before xserver_map_surface) */
-        window.shsurf?.setXwayland(window.x, window.y)
+        window.shsurf?.setXWayland(window.x, window.y)
       }
     }
   }
@@ -1298,7 +1300,14 @@ export class XWindowManager {
     window.setNetWmState()
   }
 
-  activate(window: XWindow | undefined): void {
+  activate(surface: Surface): void {
+    const role = surface.role as XWaylandShellSurface | undefined
+    if (role === undefined) {
+      return
+    }
+
+    const window = role.window
+
     if (this.focusWindow === window || (window && window.overrideRedirect)) {
       return
     }
@@ -1314,7 +1323,7 @@ export class XWindowManager {
   }
 
   private setSelection() {
-    const source = this.session.globals.seat.dataDevice.selectionDataSource?.implementation as DataSource | undefined
+    const source = this.session.globals.seat.selectionDataSource
     if (source === undefined) {
       if (this.selectionOwner === this.selectionWindow) {
         this.xConnection.setSelectionOwner(Atom.None, this.atoms.CLIPBOARD, this.selectionTimestamp)
@@ -1345,7 +1354,7 @@ export class XWindowManager {
          * proxy selection.  Clear the wayland selection. */
         const seat = this.session.globals.seat
         const serial = seat.nextSerial()
-        seat.dataDevice.setSelection()
+        seat.setSelectionInternal(undefined, serial)
       }
     }
   }

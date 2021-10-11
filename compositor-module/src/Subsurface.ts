@@ -37,8 +37,11 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
     wlSurfaceResource: WlSurfaceResource,
     wlSubsurfaceResource: WlSubsurfaceResource,
   ): Subsurface {
+    const surface = wlSurfaceResource.implementation as Surface
+    const parent = parentWlSurfaceResource.implementation as Surface
+
     const view = View.create(wlSurfaceResource.implementation as Surface)
-    const subsurface = new Subsurface(session, parentWlSurfaceResource, wlSurfaceResource, wlSubsurfaceResource, view)
+    const subsurface = new Subsurface(session, parent, surface, wlSubsurfaceResource, view)
     wlSubsurfaceResource.implementation = subsurface
 
     wlSurfaceResource.onDestroy().then(() => {
@@ -78,12 +81,11 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
 
   private constructor(
     private readonly session: Session,
-    public readonly parentWlSurfaceResource: WlSurfaceResource,
-    public readonly wlSurfaceResource: WlSurfaceResource,
+    public readonly parent: Surface,
+    public readonly surface: Surface,
     public readonly resource: WlSubsurfaceResource,
     public readonly view: View,
   ) {
-    const surface = this.wlSurfaceResource.implementation as Surface
     mergeSurfaceState(this.cachedState, surface.state)
   }
 
@@ -101,12 +103,9 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
     if (this.inert) {
       return
     }
-
-    const surface = this.wlSurfaceResource.implementation as Surface
     // sibling stacking order & position is committed by the parent itself so no need to do it here.
-
     if (this.effectiveSync && this.cacheDirty) {
-      this.commitCache(surface)
+      this.commitCache(this.surface)
     }
     // render triggered by parent.
   }
@@ -163,10 +162,9 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
   }
 
   placeAbove(resource: WlSubsurfaceResource, sibling: WlSurfaceResource): void {
-    const parentSurface = this.parentWlSurfaceResource.implementation as Surface
     const siblingSurface = sibling.implementation as Surface
     const siblingSurfaceChildSelf = siblingSurface.surfaceChildSelf
-    if (!parentSurface.state.subsurfaceChildren.includes(siblingSurfaceChildSelf) || siblingSurface === parentSurface) {
+    if (!this.parent.state.subsurfaceChildren.includes(siblingSurfaceChildSelf) || siblingSurface === this.parent) {
       resource.postError(WlSubsurfaceError.badSurface, 'Surface is not a sibling or the parent.')
       this.session.logger.warn('[client-protocol-error] - Surface is not a sibling or the parent.')
       return
@@ -176,14 +174,12 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
       return
     }
 
-    const surface = this.wlSurfaceResource.implementation as Surface
+    const currentIdx = this.parent.pendingState.subsurfaceChildren.indexOf(this.surface.surfaceChildSelf)
+    this.parent.pendingState.subsurfaceChildren.splice(currentIdx, 1)
 
-    const currentIdx = parentSurface.pendingState.subsurfaceChildren.indexOf(surface.surfaceChildSelf)
-    parentSurface.pendingState.subsurfaceChildren.splice(currentIdx, 1)
-
-    const siblingIdx = parentSurface.pendingState.subsurfaceChildren.indexOf(siblingSurfaceChildSelf)
+    const siblingIdx = this.parent.pendingState.subsurfaceChildren.indexOf(siblingSurfaceChildSelf)
     const newIdx = siblingIdx + 1
-    parentSurface.pendingState.subsurfaceChildren.splice(newIdx, 0, surface.surfaceChildSelf)
+    this.parent.pendingState.subsurfaceChildren.splice(newIdx, 0, this.surface.surfaceChildSelf)
   }
 
   placeBelow(resource: WlSubsurfaceResource, sibling: WlSurfaceResource): void {
@@ -191,15 +187,12 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
       return
     }
 
-    const parentSurface = this.parentWlSurfaceResource.implementation as Surface
-    const surface = this.wlSurfaceResource.implementation as Surface
-
-    const currentIdx = parentSurface.pendingState.subsurfaceChildren.indexOf(surface.surfaceChildSelf)
-    parentSurface.pendingState.subsurfaceChildren.splice(currentIdx, 1)
+    const currentIdx = this.parent.pendingState.subsurfaceChildren.indexOf(this.surface.surfaceChildSelf)
+    this.parent.pendingState.subsurfaceChildren.splice(currentIdx, 1)
 
     const siblingSurface = sibling.implementation as Surface
-    const newIdx = parentSurface.pendingState.subsurfaceChildren.indexOf(siblingSurface.surfaceChildSelf)
-    parentSurface.pendingState.subsurfaceChildren.splice(newIdx, 0, surface.surfaceChildSelf)
+    const newIdx = this.parent.pendingState.subsurfaceChildren.indexOf(siblingSurface.surfaceChildSelf)
+    this.parent.pendingState.subsurfaceChildren.splice(newIdx, 0, this.surface.surfaceChildSelf)
   }
 
   private get effectiveSync(): boolean {
@@ -209,8 +202,7 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
   private get parentEffectiveSync(): boolean {
     let parentEffectiveSync = false
 
-    const parentSurface = this.parentWlSurfaceResource.implementation as Surface
-    const parentRole = parentSurface.role
+    const parentRole = this.parent.role
     if (parentRole && parentRole instanceof Subsurface) {
       parentEffectiveSync = parentRole.effectiveSync
     }
@@ -234,6 +226,6 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
     }
 
     this.sync = false
-    this.onCommit(this.wlSurfaceResource.implementation as Surface)
+    this.onCommit(this.surface)
   }
 }

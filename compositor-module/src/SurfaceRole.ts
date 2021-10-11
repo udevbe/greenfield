@@ -15,13 +15,39 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+import { DesktopSurface } from './Desktop'
+import { RectWithInfo } from './math/Rect'
+import { Size } from './math/Size'
 import Surface from './Surface'
 import View from './View'
 
-/**
- * surface role interface. See 'role' in https://wayland.freedesktop.org/docs/html/apa.html#protocol-spec-wl_surface
- */
 export default interface SurfaceRole {
+  readonly view: View
+  readonly desktopSurface?: DesktopSurface
+
   onCommit(surface: Surface): void
-  view: View
+}
+
+export interface DesktopSurfaceRole extends SurfaceRole {
+  requestClose(): void
+
+  queryMaximized(): boolean
+
+  queryFullscreen(): boolean
+
+  queryGeometry(): RectWithInfo
+
+  queryMinSize(): Size
+
+  queryMaxSize(): Size
+
+  configureMaximized(maximized: boolean): void
+
+  configureFullscreen(fullscreen: boolean): void
+
+  configureSize(size: Size): void
+
+  configureActivated(activated: boolean): void
+
+  configureResizing(resizing: boolean): void
 }

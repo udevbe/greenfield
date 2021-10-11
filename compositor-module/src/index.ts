@@ -62,35 +62,19 @@ export interface CompositorGlobals {
   seat: CompositorSeat
 }
 
-export interface CompositorSurfaceState {
-  title?: string
-  appId?: string
-  mapped?: boolean
-  active?: boolean
-  unresponsive?: boolean
-  minimized?: boolean
-  key?: string
-  lastActive?: number
-  type?: 'remote' | 'local'
-}
-
 export interface CompositorSurface {
-  id: string
-  clientId: string
+  id: number
+  client: CompositorClient
 }
 
 export interface CompositorClient {
   id: string
-  variant: 'web' | 'remote'
 }
 
 export interface CompositorConfiguration {
   scrollFactor: number
   keyboardLayoutName?: string
 }
-
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export type CompositorWebAppSocket = unknown
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export type CompositorRemoteSocket = unknown
@@ -116,8 +100,4 @@ export function createCompositorProxyConnector(
   } else {
     throw new Error('Session and/or remote socket do not have expected implementation.')
   }
-}
-
-export interface CompositorWebAppLauncher {
-  launch(webAppURL: URL): Promise<Client>
 }

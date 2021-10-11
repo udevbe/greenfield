@@ -15,14 +15,37 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+export enum ButtonCode {
+  /**
+   * Main button pressed, usually the left button or the un-initialized state
+   */
+  MAIN,
+  /**
+   * Auxiliary button pressed, usually the wheel button or the middle button (if present)
+   */
+  AUX,
+  /**
+   * Auxiliary button pressed, usually the wheel button or the middle button (if present)
+   */
+  SECONDARY,
+  /**
+   * Fourth button, typically the Browser Back button
+   */
+  FOURTH,
+  /**
+   * Fifth button, typically the Browser Forward button
+   */
+  FIFTH,
+}
+
 export interface ButtonEvent {
-  x: number
-  y: number
-  timestamp: number
-  buttonCode: 0 | 1 | 2 | 3 | 4
-  released: boolean
-  buttons: number
-  sceneId: string
+  readonly x: number
+  readonly y: number
+  readonly timestamp: number
+  readonly buttonCode: ButtonCode
+  readonly released: boolean
+  readonly buttons: number
+  readonly sceneId: string
 }
 
 export interface CreateButtonEvent {

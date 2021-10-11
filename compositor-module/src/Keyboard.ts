@@ -23,7 +23,7 @@ import {
 } from 'westfield-runtime-server'
 import { CompositorKeyboard } from './index'
 import { KeyEvent } from './KeyEvent'
-import Seat, { KeyboardLocks } from './Seat'
+import { Seat, KeyboardLocks } from './Seat'
 import Surface from './Surface'
 import { buildNrmlvoEntries, createFromNames, nrmlvo, Xkb } from './Xkb'
 
@@ -50,8 +50,6 @@ export class DefaultKeyboardGrab implements KeyboardGrab {
 }
 
 export interface KeyboardGrab {
-  readonly keyboard: Keyboard
-
   key(event: KeyEvent): void
 
   modifiers(serial: number, modsDepressed: number, modsLatched: number, modsLocked: number, group: number): void
@@ -73,7 +71,6 @@ export class Keyboard implements WlKeyboardRequests, CompositorKeyboard {
       throw new Error('BUG. No default nrmlvo entry found.')
     }
 
-    // FIXME sync with browser keyboard state (ie modifiers & pressed keys) & update xkb state accordingly
     const xkb = createFromNames(nrmlvoEntry)
     return new Keyboard(seat, nrmlvoEntries, nrmlvoEntry, xkb)
   }
@@ -186,7 +183,7 @@ export class Keyboard implements WlKeyboardRequests, CompositorKeyboard {
     resource.keymap(xkbV1, keymapWebFD, keymapBuffer.byteLength)
   }
 
-  setLocks(mask: number, value: number): void {
+  setLocks(mask: KeyboardLocks, value: KeyboardLocks): void {
     const modsDepressed = this.xkb.modsDepressed
     const modsLatched = this.xkb.modsLatched
     let modsLocked = this.xkb.modsLocked
@@ -246,9 +243,9 @@ export class Keyboard implements WlKeyboardRequests, CompositorKeyboard {
       .forEach((keyboardResource) => {
         keyboardResource.key(
           serial,
-          event.timestamp,
-          event.code,
-          event.down ? WlKeyboardKeyState.pressed : WlKeyboardKeyState.released,
+          event.timeStamp,
+          event.keyCode,
+          event.pressed ? WlKeyboardKeyState.pressed : WlKeyboardKeyState.released,
         )
       })
   }

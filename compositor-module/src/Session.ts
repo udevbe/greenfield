@@ -17,7 +17,7 @@
 
 import { Display } from 'westfield-runtime-server'
 import Globals from './Globals'
-import { CompositorSession } from './index'
+import { ButtonCode, CompositorSession } from './index'
 import Renderer from './render/Renderer'
 import { createUserShellApi, UserShellApi } from './UserShellApi'
 import WebFS from './WebFS'
@@ -95,6 +95,34 @@ class Session implements CompositorSession {
     const display = new Display()
     const compositorSessionId = sessionId ?? uuidv4()
     const session = new Session(display, compositorSessionId, logger)
+    session.globals.seat.buttonBindings.push({
+      modifiers: 0,
+      button: ButtonCode.MAIN,
+      handler: (pointer, event) => {
+        if (pointer.grab !== pointer.defaultGrab) {
+          return
+        }
+        if (pointer.focus === undefined) {
+          return
+        }
+        pointer.focus.surface.getMainSurface().role?.desktopSurface?.activate()
+      },
+    })
+
+    session.globals.seat.buttonBindings.push({
+      modifiers: 0,
+      button: ButtonCode.SECONDARY,
+      handler: (pointer, event) => {
+        if (pointer.grab !== pointer.defaultGrab) {
+          return
+        }
+        if (pointer.focus === undefined) {
+          return
+        }
+        pointer.focus.surface.getMainSurface().role?.desktopSurface?.activate()
+      },
+    })
+
     session.logger.info('Session created.')
     return session
   }

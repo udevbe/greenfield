@@ -4,7 +4,7 @@ import XWaylandShellSurface from './XWaylandShellSurface'
 import { XWindow } from './XWindow'
 
 class XWaylandShell {
-  static create(session: Session) {
+  static create(session: Session): XWaylandShell {
     return new XWaylandShell(session)
   }
 

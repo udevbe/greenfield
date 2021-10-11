@@ -19,57 +19,196 @@ import { WebFD } from 'westfield-runtime-common'
 import {
   WlDataDeviceManagerDndAction,
   WlDataDeviceResource,
+  WlDataOfferError,
   WlDataOfferRequests,
   WlDataOfferResource,
-  WlDataOfferError,
-  WlDataSourceResource,
 } from 'westfield-runtime-server'
 import DataSource from './DataSource'
 import Session from './Session'
 
-function bitCount(u: number): number {
+const { ask, none, copy, move } = WlDataDeviceManagerDndAction
+
+function popCount(u: number): number {
   // https://blogs.msdn.microsoft.com/jeuge/2005/06/08/bit-fiddling-3/
   const uCount = u - ((u >> 1) & 0o33333333333) - ((u >> 2) & 0o11111111111)
   return ((uCount + (uCount >> 3)) & 0o30707070707) % 63
 }
 
-const { copy, move, ask, none } = WlDataDeviceManagerDndAction
 const ALL_ACTIONS = copy | move | ask
 
 export default class DataOffer implements WlDataOfferRequests {
   inAsk = false
   dndActions = 0
-  preferredDndActions = none
+  preferredDndAction = none
+
+  private constructor(
+    private readonly session: Session,
+    public readonly resource: WlDataOfferResource,
+    public source?: DataSource,
+  ) {}
 
   static create(
     session: Session,
-    source: WlDataSourceResource,
+    source: DataSource,
     offerId: number,
     dataDeviceResource: WlDataDeviceResource,
   ): DataOffer {
     const wlDataOfferResource = new WlDataOfferResource(dataDeviceResource.client, offerId, dataDeviceResource.version)
     const dataOffer = new DataOffer(session, wlDataOfferResource, source)
     wlDataOfferResource.implementation = dataOffer
+    source.resource.addDestroyListener(dataOffer.sourceDestroyListener)
     wlDataOfferResource.onDestroy().then(() => dataOffer.handleDestroy())
 
     return dataOffer
   }
 
-  private constructor(
-    private readonly session: Session,
-    public readonly resource: WlDataOfferResource,
-    public source: WlDataSourceResource,
-  ) {}
+  readonly sourceDestroyListener = (): void => {
+    this.source = undefined
+  }
 
-  accept(resource: WlDataOfferResource, serial: number, mimeType: string | undefined): void {}
+  accept(resource: WlDataOfferResource, serial: number, mimeType: string | undefined): void {
+    /* Protect against untimely calls from older data offers */
+    if (this.source === undefined || this !== this.source.dataOffer) {
+      return
+    }
 
-  destroy(resource: WlDataOfferResource): void {}
+    /* FIXME: Check that client is currently focused by the input
+     * device that is currently dragging this data source.  Should
+     * this be a wl_data_device request? */
 
-  finish(resource: WlDataOfferResource): void {}
+    this.source.accept(mimeType)
+  }
 
-  receive(resource: WlDataOfferResource, mimeType: string, fd: WebFD): void {}
+  destroy(resource: WlDataOfferResource): void {
+    resource.destroy()
+  }
 
-  setActions(resource: WlDataOfferResource, dndActions: number, preferredAction: number): void {}
+  finish(resource: WlDataOfferResource): void {
+    if (this.source === undefined || this.source.dataOffer !== this) {
+      return
+    }
 
-  private handleDestroy() {}
+    if (this.source.setSelection) {
+      this.session.logger.warn('Client protocol error. Finish only valid for drag and drop.')
+      resource.postError(WlDataOfferError.invalidFinish, 'Client protocol error. Finish only valid for drag and drop.')
+      return
+    }
+
+    if (!this.source.accepted) {
+      this.session.logger.warn('Client protocol error. Premature finish request.')
+      resource.postError(WlDataOfferError.invalidFinish, 'Client protocol error. Premature finish request.')
+      return
+    }
+
+    if (this.source.currentDndAction === none || this.source.currentDndAction === ask) {
+      resource.postError(WlDataOfferError.invalidOffer, 'Client protocol error. Offer finished with an invalid action.')
+      return
+    }
+
+    this.source.notifyFinish()
+  }
+
+  receive(resource: WlDataOfferResource, mimeType: string, fd: WebFD): void {
+    if (this.source && this === this.source.dataOffer) {
+      this.source.send(mimeType, fd)
+    } else {
+      fd.close()
+    }
+  }
+
+  setActions(resource: WlDataOfferResource, dndActions: number, preferredAction: number): void {
+    if (dndActions & ~ALL_ACTIONS) {
+      this.session.logger.warn(`Client protocol error. Invalid action mask ${dndActions}`)
+      resource.postError(WlDataOfferError.invalidActionMask, `Client protocol error. Invalid action mask ${dndActions}`)
+      return
+    }
+
+    if (preferredAction && (!(preferredAction & dndActions) || popCount(preferredAction) > 1)) {
+      this.session.logger.warn(`Client protocol error. Invalid action ${preferredAction}`)
+      resource.postError(WlDataOfferError.invalidAction, `Client protocol error. Invalid action ${preferredAction}`)
+      return
+    }
+
+    this.dndActions = dndActions
+    this.preferredDndAction = preferredAction
+    this.updateAction()
+  }
+
+  updateAction(): void {
+    if (this.source === undefined) {
+      return
+    }
+
+    const action = this.chooseAction()
+    if (this.source.currentDndAction === action) {
+      return
+    }
+
+    this.source.currentDndAction = action
+
+    if (this.inAsk) {
+      return
+    }
+
+    if (this.source.resource.version >= 3) {
+      this.source.resource.action(action)
+    }
+
+    if (this.resource.version >= 3) {
+      this.resource.action(action)
+    }
+  }
+
+  private handleDestroy() {
+    if (this.source === undefined) {
+      return
+    }
+
+    this.source.resource.removeDestroyListener(this.sourceDestroyListener)
+    if (this.source.dataOffer !== this) {
+      return
+    }
+
+    if (this.resource.version < 3) {
+      this.source.notifyFinish()
+    } else if (this.source.resource.version >= 3) {
+      this.source.resource.cancelled()
+    }
+
+    this.source.dataOffer = undefined
+  }
+
+  private chooseAction(): WlDataDeviceManagerDndAction {
+    let preferredAction = WlDataDeviceManagerDndAction.none
+
+    let offerActions: WlDataDeviceManagerDndAction
+
+    if (this.resource.version >= 3) {
+      offerActions = this.dndActions
+      preferredAction = this.preferredDndAction
+    } else {
+      offerActions = WlDataDeviceManagerDndAction.copy
+    }
+
+    const sourceActions =
+      this.source && this.source.resource.version >= 3 ? this.source.dndActions : WlDataDeviceManagerDndAction.copy
+
+    const availableActions = offerActions & sourceActions
+
+    if (availableActions === WlDataDeviceManagerDndAction.none) {
+      return WlDataDeviceManagerDndAction.none
+    }
+
+    if (this.source && (this.source.compositorAction & availableActions) !== 0) {
+      return this.source.compositorAction
+    }
+
+    /* If the dest side has a preferred DnD action, use it */
+    if ((preferredAction & availableActions) !== 0) {
+      return preferredAction
+    }
+
+    /* Use the first found action, in bit order */
+    return 1 << (Math.floor(Math.log2(availableActions)) - 1)
+  }
 }

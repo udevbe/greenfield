@@ -2,7 +2,7 @@ import { WlPointerButtonState } from 'westfield-runtime-server'
 import signClose from '../assets/sign_close.png'
 import signMaximize from '../assets/sign_maximize.png'
 import signMinimize from '../assets/sign_minimize.png'
-import Pointer from '../Pointer'
+import { Pointer } from '../Pointer'
 import Session from '../Session'
 
 function fetchIcon(url: string): Promise<ImageBitmap> {
