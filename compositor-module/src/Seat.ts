@@ -72,13 +72,13 @@ export class PopupGrab implements KeyboardGrab, PointerGrab {
     public readonly seat: Seat,
     public readonly keyboard: Keyboard,
     public readonly pointer: Pointer,
-    public readonly client: Client,
+    public client?: Client,
     public initialUp: boolean = false,
     public surfaces: DesktopSurface[] = [],
   ) {}
 
-  static create(seat: Seat, client: Client): PopupGrab {
-    return new PopupGrab(seat, seat.keyboard, seat.pointer, client)
+  static create(seat: Seat): PopupGrab {
+    return new PopupGrab(seat, seat.keyboard, seat.pointer)
   }
 
   axis(event: AxisEvent): void {
@@ -104,7 +104,7 @@ export class PopupGrab implements KeyboardGrab, PointerGrab {
 
   focus(): void {
     const view = this.seat.session.renderer.pickView(this.pointer)
-    if (view !== undefined && view.surface.resource.client !== this.client) {
+    if (view !== undefined && view.surface.resource.client === this.client) {
       const { x: sx, y: sy } = view.sceneToViewSpace(this.pointer)
       this.pointer.setFocus(view, Fixed.parse(sx), Fixed.parse(sy))
     } else {
@@ -156,7 +156,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
   readonly touch?: Touch
   needFocusInit = false
   savedKbdFocus?: Surface
-  popupGrab?: PopupGrab
+  readonly popupGrab: PopupGrab
   private global?: Global
   private readonly _seatName: 'browser-seat0' = 'browser-seat0'
   selectionDataSource?: DataSource
@@ -180,6 +180,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
     if (hasTouch) {
       this.touch = Touch.create(this)
     }
+    this.popupGrab = PopupGrab.create(this)
   }
 
   static create(session: Session): Seat {
@@ -234,10 +235,6 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
 
   nextSerial(): number {
     return ++this.serial
-  }
-
-  isValidInputSerial(serial: number): boolean {
-    return serial === this.serial
   }
 
   getPointer(resource: WlSeatResource, id: number): void {
@@ -464,6 +461,11 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
   notifyButton(event: ButtonEvent): void {
     if (event.released) {
       this.pointer.buttonCount--
+      if (this.pointer.buttonCount < 0) {
+        // A button press happened outside the browser, but the release happend inside. Ignoring.
+        this.pointer.buttonCount = 0
+        return
+      }
     } else {
       if (this.pointer.buttonCount === 0) {
         this.pointer.grabButton = event.buttonCode
@@ -472,7 +474,6 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
       }
       this.pointer.buttonCount++
     }
-    console.assert(this.pointer.buttonCount >= 0, 'BUG. Button count should never be negative.')
     this.runButtonBinding(event)
 
     this.pointer.grab?.button(event)
@@ -645,8 +646,6 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
       return false
     }
 
-    this.popupGrab = PopupGrab.create(this, client)
-
     if (!(this.keyboard.grab instanceof PopupGrab)) {
       this.keyboard.startGrab(this.popupGrab)
     }
@@ -655,6 +654,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
     }
 
     this.popupGrab.initialUp = this.pointer.buttonCount === 0
+    this.popupGrab.client = client
 
     return true
   }
@@ -668,14 +668,14 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
       desktopSurface.role.requestClose()
     })
 
-    if (!(this.keyboard.grab instanceof PopupGrab)) {
+    if (this.keyboard.grab instanceof PopupGrab) {
       this.keyboard.endGrab()
     }
-    if (!(this.pointer.grab instanceof PopupGrab)) {
+    if (this.pointer.grab instanceof PopupGrab) {
       this.pointer.endGrab()
     }
 
-    this.popupGrab = undefined
+    this.popupGrab.client = undefined
   }
 
   private emitCapabilities(wlSeatResource: WlSeatResource) {
