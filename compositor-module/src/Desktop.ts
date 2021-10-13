@@ -171,6 +171,13 @@ class MoveGrab implements PointerGrab {
 
     pointer.moveTo(event)
     this.desktopSurface.role.view.positionOffset = plusPoint(pointer, this.deltaPoint)
+    const parentPosition = this.desktopSurface.role.view.surface.parent?.role?.view.positionOffset
+    if (parentPosition) {
+      this.desktopSurface.role.view.positionOffset = minusPoint(
+        this.desktopSurface.role.view.positionOffset,
+        parentPosition,
+      )
+    }
     pointer.seat.session.renderer.render()
   }
 
