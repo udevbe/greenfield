@@ -133,7 +133,7 @@ export class Keyboard implements WlKeyboardRequests, CompositorKeyboard {
   }
 
   setFocus(surface: Surface | undefined): void {
-    if (this.focus && this.focus !== surface) {
+    if (this.focus && !this.focus.destroyed && this.focus !== surface) {
       const serial = this.seat.nextSerial()
       const focusResource = this.focus.resource
       this.resources

@@ -30,7 +30,6 @@ import {
   WlSurfaceResource,
 } from 'westfield-runtime-server'
 import { AxisEvent } from './AxisEvent'
-import { setCursor } from './browser/cursor'
 import { ButtonEvent } from './ButtonEvent'
 import DataSource from './DataSource'
 import { KeyboardGrab } from './Keyboard'
@@ -81,13 +80,14 @@ export class DefaultPointerGrab implements PointerGrab {
 
     const view = this.pointer.seat.session.renderer.pickView(this.pointer)
 
-    const { x, y } = view?.sceneToViewSpace(this.pointer) ?? { x: -1000000, y: -1000000 }
-    const sx = Fixed.parse(x)
-    const sy = Fixed.parse(y)
-    if (this.pointer.focus !== view || this.pointer.sx !== sx || this.pointer.sy !== sy) {
+    if (this.pointer.focus !== view) {
+      const { x, y } = view?.sceneToViewSpace(this.pointer) ?? { x: -1000000, y: -1000000 }
+      const sx = Fixed.parse(x)
+      const sy = Fixed.parse(y)
       this.pointer.setFocus(view, sx, sy)
       if (view === undefined) {
-        setCursor('default')
+        this.pointer.sprite = undefined
+        this.pointer.setDefaultCursor()
       }
     }
   }
@@ -366,10 +366,10 @@ export class Pointer implements WlPointerRequests {
   grabTime?: number
   grabPoint?: Point
   grabSerial?: number
-  private readonly _cursorDestroyListener: () => void
+  private readonly spriteDestroyListener: () => void
 
   private constructor(public readonly seat: Seat) {
-    this._cursorDestroyListener = () => {
+    this.spriteDestroyListener = () => {
       this.sprite = undefined
       this.setDefaultCursor()
     }
@@ -415,14 +415,11 @@ export class Pointer implements WlPointerRequests {
         surface.role = CursorRole.create(this, surface)
       }
       if (this.sprite !== undefined) {
-        this.unmapSprite()
+        this.sprite.surface.resource.removeDestroyListener(this.spriteDestroyListener)
       }
 
-      surface.resource.onDestroy().then(() => {
-        if (this.sprite?.surface === surface) {
-          this.sprite = undefined
-        }
-      })
+      this.sprite = surface.role.view
+      surface.resource.addDestroyListener(this.spriteDestroyListener)
 
       this.hotspotX = hotspotX
       this.hotspotY = hotspotY
@@ -444,11 +441,9 @@ export class Pointer implements WlPointerRequests {
     const refocus =
       (!this.focus && view !== undefined) ||
       (this.focus && view === undefined) ||
-      (this.focus && this.focus.surface !== view?.surface) ||
-      this.sx !== sx ||
-      this.sy !== sy
+      (this.focus && this.focus.surface !== view?.surface)
 
-    if (this.focus && refocus) {
+    if (this.focus && !this.focus.surface.destroyed && refocus) {
       const surfaceResource = this.focus.surface.resource
       const serial = this.seat.nextSerial()
       this.resources
@@ -457,6 +452,7 @@ export class Pointer implements WlPointerRequests {
           pointerResource.leave(serial, surfaceResource)
           pointerResource.frame()
         })
+      this.focus.surface.resource.removeDestroyListener(this.focusViewListener)
       this.focus = undefined
     }
 
@@ -647,7 +643,7 @@ export class Pointer implements WlPointerRequests {
 
   private unmapSprite() {
     this.seat.session.renderer.hidePointer()
-    this.sprite?.surface.resource.removeDestroyListener(this._cursorDestroyListener)
+    this.sprite?.surface.resource.removeDestroyListener(this.spriteDestroyListener)
     this.sprite = undefined
   }
 
