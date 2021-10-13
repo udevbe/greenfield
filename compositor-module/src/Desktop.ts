@@ -421,7 +421,7 @@ export class DesktopSurface {
     // TODO send user shell api event
   }
 
-  setAppId(appId: string) {
+  setAppId(appId: string): void {
     // TODO send user shell api event
   }
 
@@ -476,7 +476,7 @@ export class DesktopSurface {
 
   private lastMappedChild(): DesktopSurface | undefined {
     const mappedChildren =
-      this.surface.parent?.children
+      this.surface.children
         .filter((child) => child.surface !== this.surface)
         .filter((child) => child.surface.role?.view.mapped) ?? []
     if (mappedChildren.length) {

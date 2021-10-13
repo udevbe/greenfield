@@ -361,7 +361,7 @@ export class Pointer implements WlPointerRequests {
   hotspotY = 0
   buttonCount = 0
   sprite?: View
-  grab = DefaultPointerGrab.create(this)
+  grab = this.defaultGrab
   grabButton?: 0 | 1 | 2 | 3 | 4
   grabTime?: number
   grabPoint?: Point

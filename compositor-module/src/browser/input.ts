@@ -15,6 +15,11 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
   canvas.tabIndex = 1
 
   canvas.onmouseover = () => canvas.focus()
+  canvas.onmouseleave = () => {
+    seat.notifyKeyboardFocusOut()
+    seat.pointer.buttonCount = 0
+    session.flush()
+  }
 
   canvas.onfocus = () => {
     seat.notifyKeyboardFocusIn()
