@@ -98,7 +98,7 @@ export default class XWaylandShellSurface implements DesktopSurfaceRole {
 
   queryMinSize(): Size {
     const sizeHints = this.window.sizeHints
-    return sizeHints ? { width: sizeHints.minWidth, height: sizeHints.height } : ZERO_SIZE
+    return sizeHints ? { width: sizeHints.minWidth, height: sizeHints.minHeight } : ZERO_SIZE
   }
 
   queryMaxSize(): Size {

@@ -117,8 +117,9 @@ class ResizeGrab implements PointerGrab {
 
     this.desktopSurface.grabbed = true
     pointer.startGrab(this)
-    // this.setResizeCursor()
-    pointer.setFocus(this.desktopSurface.role.view, Fixed.parse(0), Fixed.parse(0))
+    pointer.clearFocus()
+    pointer.sprite = undefined
+    this.setResizeCursor()
   }
 }
 
@@ -188,7 +189,8 @@ class MoveGrab implements PointerGrab {
     this.desktopSurface.grabbed = true
     pointer.startGrab(this)
     setCursor('move')
-    pointer.setFocus(this.desktopSurface.role.view, Fixed.parse(0), Fixed.parse(0))
+    pointer.clearFocus()
+    pointer.sprite = undefined
   }
 }
 

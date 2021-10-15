@@ -960,7 +960,7 @@ export class XWindow {
     this.setPendingState()
 
     this.setAllowCommits(true)
-    this.wm.xConnection.flush()
+    // this.wm.xConnection.flush()
   }
 
   private getFrameSize(): { width: number; height: number } {
@@ -992,7 +992,7 @@ export class XWindow {
         this.wm.xConnection.polyPoint(CoordMode.Origin, this.frameId, this.blackGraphicsContext, 1, [{ x: 0, y: 0 }])
       }
     }
-
+    this.wm.xConnection.flush()
     this.session.logger.debug(`XWindow: draw decoration, win ${this.id}, ${how}`)
   }
 

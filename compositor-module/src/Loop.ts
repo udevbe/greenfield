@@ -1,6 +1,6 @@
 export function queueCancellableMicrotask(handler: () => void): () => void {
   let canceled = false
-  queueMicrotask(() => {
+  setTimeout(() => {
     if (canceled) {
       return
     }
