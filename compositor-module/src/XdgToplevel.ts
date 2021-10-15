@@ -299,7 +299,6 @@ export default class XdgToplevel implements XdgToplevelRequests, DesktopSurfaceR
       return
     }
     this.desktopSurface.add()
-    this.session.renderer.addTopLevelView(this.view)
     this.xdgSurface.scheduleConfigure(this.stateCompareEquals(), () => this.sendConfigure())
     this.added = true
   }

@@ -117,7 +117,7 @@ class ResizeGrab implements PointerGrab {
 
     this.desktopSurface.grabbed = true
     pointer.startGrab(this)
-    this.setResizeCursor()
+    // this.setResizeCursor()
     pointer.setFocus(this.desktopSurface.role.view, Fixed.parse(0), Fixed.parse(0))
   }
 }
@@ -417,10 +417,12 @@ export class DesktopSurface {
   }
 
   add(): void {
+    this.surface.session.renderer.addTopLevelView(this.role.view)
     // TODO send user shell api event
   }
 
   removed(): void {
+    this.surface.session.renderer.removeTopLevelView(this.role.view)
     // TODO send user shell api event
   }
 

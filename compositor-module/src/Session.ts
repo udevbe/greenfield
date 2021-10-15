@@ -90,6 +90,16 @@ export type GreenfieldLogger = {
   trace: LogFn
 }
 
+const noOpLogger: GreenfieldLogger = {
+  debug: console.debug,
+  error: console.error,
+  info: console.info,
+  trace() {
+    /*noop*/
+  },
+  warn: console.warn,
+} as const
+
 class Session implements CompositorSession {
   static create(sessionId?: string, logger?: GreenfieldLogger): Session {
     const display = new Display()
@@ -135,7 +145,7 @@ class Session implements CompositorSession {
   private constructor(
     public readonly display: Display,
     public readonly compositorSessionId: string,
-    public readonly logger: GreenfieldLogger = console,
+    public readonly logger: GreenfieldLogger = noOpLogger,
   ) {
     this.webFS = WebFS.create(this.compositorSessionId)
     this.globals = Globals.create(this)
