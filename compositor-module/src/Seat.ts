@@ -106,7 +106,7 @@ export class PopupGrab implements KeyboardGrab, PointerGrab {
     const view = this.seat.session.renderer.pickView(this.pointer)
     if (view !== undefined && view.surface.resource.client === this.client) {
       const { x: sx, y: sy } = view.sceneToViewSpace(this.pointer)
-      this.pointer.setFocus(view, Fixed.parse(sx), Fixed.parse(sy))
+      this.pointer.setFocus(view, sx, sy)
     } else {
       this.pointer.clearFocus()
     }

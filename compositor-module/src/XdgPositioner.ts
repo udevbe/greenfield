@@ -297,8 +297,8 @@ export default class XdgPositioner implements XdgPositionerRequests {
           const surfaceSpaceWinGeoMin = plusPoint(surfaceSpaceAnchorPoint, this.sizeRect.position)
           const surfaceSpaceWinGeoMax = plusPoint(surfaceSpaceAnchorPoint, { x: this.sizeRect.x1, y: this.sizeRect.y1 })
 
-          const surfaceSpaceMinBound = parentView.sceneToSurfaceSpace({ x: 0, y: 0 })
-          const surfaceSpaceMaxBound = parentView.sceneToSurfaceSpace({
+          const surfaceSpaceMinBound = parentView.sceneToViewSpace({ x: 0, y: 0 })
+          const surfaceSpaceMaxBound = parentView.sceneToViewSpace({
             x: window.document.documentElement.clientWidth,
             y: document.documentElement.clientHeight,
           })

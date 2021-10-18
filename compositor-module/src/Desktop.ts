@@ -1,4 +1,3 @@
-import { Fixed } from 'westfield-runtime-common'
 import { WlShellSurfaceResize } from 'westfield-runtime-server'
 import { AxisEvent } from './AxisEvent'
 import { setCursor } from './browser/cursor'
@@ -27,13 +26,15 @@ class ResizeGrab implements PointerGrab {
   }
 
   button(event: ButtonEvent): void {
-    if (this.desktopSurface.surface.session.globals.seat.pointer.buttonCount === 0 && event.released) {
+    const pointer = this.desktopSurface.surface.session.globals.seat.pointer
+    if (pointer.buttonCount === 0 && event.released) {
       if (!this.desktopSurface.surface.destroyed) {
         this.desktopSurface.role.configureResizing(false)
       }
       this.desktopSurface.grabbed = false
       this.desktopSurface.resizeEdges = 0
-      this.desktopSurface.surface.session.globals.seat.pointer.endGrab()
+      pointer.seat.session.renderer.resetPointer()
+      pointer.endGrab()
     }
   }
 
@@ -93,24 +94,6 @@ class ResizeGrab implements PointerGrab {
     this.desktopSurface.role.configureSize({ width, height })
   }
 
-  private setResizeCursor() {
-    if (
-      this.edges & (WlShellSurfaceResize.top | WlShellSurfaceResize.right) ||
-      this.edges & (WlShellSurfaceResize.bottom | WlShellSurfaceResize.left)
-    ) {
-      setCursor('nwse-resize')
-    } else if (
-      this.edges & (WlShellSurfaceResize.top | WlShellSurfaceResize.left) ||
-      this.edges & (WlShellSurfaceResize.bottom | WlShellSurfaceResize.right)
-    ) {
-      setCursor('nesw-resize')
-    } else if (this.edges & (WlShellSurfaceResize.top | WlShellSurfaceResize.bottom)) {
-      setCursor('ns-resize')
-    } else if (this.edges & (WlShellSurfaceResize.left | WlShellSurfaceResize.right)) {
-      setCursor('ew-resize')
-    }
-  }
-
   start() {
     const pointer = this.desktopSurface.surface.session.globals.seat.pointer
     pointer.seat.popupGrabEnd()
@@ -118,8 +101,27 @@ class ResizeGrab implements PointerGrab {
     this.desktopSurface.grabbed = true
     pointer.startGrab(this)
     pointer.clearFocus()
-    pointer.sprite = undefined
-    this.setResizeCursor()
+    if (pointer.sprite === undefined) {
+      this.setResizeCursor()
+    }
+  }
+
+  private setResizeCursor() {
+    if (
+      (this.edges & WlShellSurfaceResize.top && this.edges & WlShellSurfaceResize.right) ||
+      (this.edges & WlShellSurfaceResize.bottom && this.edges & WlShellSurfaceResize.left)
+    ) {
+      setCursor('nesw-resize')
+    } else if (
+      (this.edges & WlShellSurfaceResize.top && this.edges & WlShellSurfaceResize.left) ||
+      (this.edges & WlShellSurfaceResize.bottom && this.edges & WlShellSurfaceResize.right)
+    ) {
+      setCursor('nwse-resize')
+    } else if (this.edges & (WlShellSurfaceResize.top | WlShellSurfaceResize.bottom)) {
+      setCursor('ns-resize')
+    } else if (this.edges & (WlShellSurfaceResize.left | WlShellSurfaceResize.right)) {
+      setCursor('ew-resize')
+    }
   }
 }
 
@@ -146,6 +148,7 @@ class MoveGrab implements PointerGrab {
     const pointer = this.desktopSurface.surface.session.globals.seat.pointer
     if (pointer.buttonCount === 0 && event.released) {
       this.desktopSurface.grabbed = false
+      pointer.seat.session.renderer.resetPointer()
       pointer.endGrab()
     }
   }
@@ -188,9 +191,10 @@ class MoveGrab implements PointerGrab {
 
     this.desktopSurface.grabbed = true
     pointer.startGrab(this)
-    setCursor('move')
     pointer.clearFocus()
-    pointer.sprite = undefined
+    if (pointer.sprite === undefined) {
+      setCursor('move')
+    }
   }
 }
 

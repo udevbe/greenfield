@@ -120,48 +120,11 @@ export default class View {
   }
 
   sceneToViewSpace(scenePoint: Point): Point {
-    // normalize first by subtracting view offset
     return timesPoint(this.inverseTransformation, scenePoint)
   }
 
   viewToSceneSpace(viewPoint: Point): Point {
     return timesPoint(this.transformation, viewPoint)
-  }
-
-  surfaceToViewSpace(surfacePoint: Point): Point {
-    const { width, height } = this.regionRect.size
-    if (this.surface.size) {
-      const { height: surfaceHeight, width: surfaceWidth } = this.surface.size
-      if (surfaceWidth === width && surfaceHeight === height) {
-        return surfacePoint
-      } else {
-        return timesPoint(scalarVector(createVec4_2D(width / surfaceWidth, height / surfaceHeight)), surfacePoint)
-      }
-    } else {
-      return surfacePoint
-    }
-  }
-
-  sceneToSurfaceSpace(scenePoint: Point): Point {
-    const viewPoint = this.sceneToViewSpace(scenePoint)
-
-    const surfaceSize = this.surface.size
-    if (surfaceSize) {
-      const surfaceWidth = surfaceSize.width
-      const surfaceHeight = surfaceSize.height
-      if (surfaceWidth === this.regionRect.size.width && surfaceHeight === this.regionRect.size.height) {
-        return viewPoint
-      } else {
-        return timesPoint(
-          scalarVector(
-            createVec4_2D(surfaceWidth / this.regionRect.size.width, surfaceHeight / this.regionRect.size.height),
-          ),
-          viewPoint,
-        )
-      }
-    } else {
-      return scenePoint
-    }
   }
 
   destroy(): void {

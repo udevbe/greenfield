@@ -34,7 +34,7 @@ import { ButtonEvent } from './ButtonEvent'
 import DataSource from './DataSource'
 import { KeyboardGrab } from './Keyboard'
 import { KeyEvent } from './KeyEvent'
-import { ORIGIN, Point } from './math/Point'
+import { minusPoint, ORIGIN, Point } from './math/Point'
 import { clear } from './Region'
 
 import { Seat } from './Seat'
@@ -62,7 +62,7 @@ export class DefaultPointerGrab implements PointerGrab {
       const view = this.pointer.seat.session.renderer.pickView(this.pointer)
       if (view) {
         const { x: sx, y: sy } = view.sceneToViewSpace(this.pointer)
-        this.pointer.setFocus(view, Fixed.parse(sx), Fixed.parse(sy))
+        this.pointer.setFocus(view, sx, sy)
       } else {
         this.pointer.clearFocus()
       }
@@ -82,12 +82,10 @@ export class DefaultPointerGrab implements PointerGrab {
 
     if (this.pointer.focus !== view) {
       const { x, y } = view?.sceneToViewSpace(this.pointer) ?? { x: -1000000, y: -1000000 }
-      const sx = Fixed.parse(x)
-      const sy = Fixed.parse(y)
-      this.pointer.setFocus(view, sx, sy)
-      if (view === undefined) {
+      this.pointer.setFocus(view, x, y)
+      if (this.pointer.focus === undefined) {
         this.pointer.sprite = undefined
-        this.pointer.setDefaultCursor()
+        this.pointer.seat.session.renderer.resetPointer()
       }
     }
   }
@@ -311,19 +309,22 @@ export class DragIconRole implements SurfaceRole {
 }
 
 export class CursorRole implements SurfaceRole {
-  private constructor(public readonly pointer: Pointer, public readonly view: View) {}
+  private constructor(public readonly pointer: Pointer, public readonly view: View, public hotspot: Point) {}
 
-  public static create(pointer: Pointer, cursor: Surface): CursorRole {
+  public static create(pointer: Pointer, cursor: Surface, hotspot: Point): CursorRole {
     const view = View.create(cursor)
-    return new CursorRole(pointer, view)
+    return new CursorRole(pointer, view, hotspot)
   }
 
   onCommit(surface: Surface): void {
     surface.commitPending()
-    if (this.pointer.sprite?.surface === surface) {
-      this.pointer.hotspotX -= surface.state.dx
-      this.pointer.hotspotY -= surface.state.dy
-      this.pointer.seat.session.renderer.updatePointerCursor(this.view)
+    this.hotspot = minusPoint(this.hotspot, { x: surface.state.dx, y: surface.state.dy })
+    this.renderPointerCursor()
+  }
+
+  renderPointerCursor(): void {
+    if (this.pointer.focus && this.pointer.sprite === this.view) {
+      this.pointer.seat.session.renderer.updatePointerCursor(this.view, this.hotspot)
     }
   }
 }
@@ -346,8 +347,8 @@ const lineScrollAmount = 12 as const
 
 export class Pointer implements WlPointerRequests {
   // surface space x & y coordinates of focused surface
-  sx = Fixed.parse(-1000000)
-  sy = Fixed.parse(-1000000)
+  sx = -1000000
+  sy = -1000000
   readonly defaultGrab: PointerGrab = DefaultPointerGrab.create(this)
   focusListeners: (() => void)[] = []
   motionListeners: (() => void)[] = []
@@ -357,8 +358,6 @@ export class Pointer implements WlPointerRequests {
   focus?: View
   x = -1000000
   y = -1000000
-  hotspotX = 0
-  hotspotY = 0
   buttonCount = 0
   sprite?: View
   grab = this.defaultGrab
@@ -411,20 +410,20 @@ export class Pointer implements WlPointerRequests {
         resource.postError(WlPointerError.role, 'Given surface has another role.')
         return
       }
-      if (surface.role === undefined) {
-        surface.role = CursorRole.create(this, surface)
-      }
       if (this.sprite !== undefined) {
         this.sprite.surface.resource.removeDestroyListener(this.spriteDestroyListener)
       }
-
+      if (surface.role === undefined) {
+        surface.role = CursorRole.create(this, surface, { x: hotspotX, y: hotspotY })
+      }
       this.sprite = surface.role.view
       surface.resource.addDestroyListener(this.spriteDestroyListener)
+    }
 
-      this.hotspotX = hotspotX
-      this.hotspotY = hotspotY
-
-      this.seat.session.renderer.updatePointerCursor(surface.role.view)
+    if (surface.role instanceof CursorRole) {
+      surface.role.hotspot = { x: hotspotX, y: hotspotY }
+      const cursorRole = surface.role as CursorRole
+      cursorRole.renderPointerCursor()
     }
   }
 
@@ -434,10 +433,10 @@ export class Pointer implements WlPointerRequests {
   }
 
   clearFocus(): void {
-    this.setFocus(undefined, Fixed.parse(-1000000), Fixed.parse(-1000000))
+    this.setFocus(undefined, -1000000, -1000000)
   }
 
-  setFocus(view: View | undefined, sx: Fixed, sy: Fixed): void {
+  setFocus(view: View | undefined, sx: number, sy: number): void {
     const refocus =
       (!this.focus && view !== undefined) ||
       (this.focus && view === undefined) ||
@@ -475,7 +474,7 @@ export class Pointer implements WlPointerRequests {
 
       this.resources.forEach((pointerResource) => {
         if (pointerResource.client === surfaceClient) {
-          pointerResource.enter(serial, view.surface.resource, sx, sy)
+          pointerResource.enter(serial, view.surface.resource, Fixed.parse(sx), Fixed.parse(sy))
           pointerResource.frame()
         }
       })
@@ -556,13 +555,13 @@ export class Pointer implements WlPointerRequests {
 
     if (this.focus) {
       const { x: sx, y: sy } = this.focus.sceneToViewSpace(event)
-      this.sx = Fixed.parse(sx)
-      this.sy = Fixed.parse(sy)
+      this.sx = sx
+      this.sy = sy
     }
 
     this.moveTo(event)
 
-    if (oldSx._raw !== this.sx._raw || oldSy._raw !== this.sy._raw) {
+    if (oldSx !== this.sx || oldSy !== this.sy) {
       this.motion(event.timestamp, this.sx, this.sy)
     }
   }
@@ -653,7 +652,7 @@ export class Pointer implements WlPointerRequests {
     }
   }
 
-  private motion(time: number, sx: Fixed, sy: Fixed): void {
+  private motion(time: number, sx: number, sy: number): void {
     if (this.focus === undefined) {
       return
     }
@@ -661,7 +660,7 @@ export class Pointer implements WlPointerRequests {
     this.resources
       .filter((pointerResource) => pointerResource.client === this.focus?.surface.resource.client)
       .forEach((pointerResource) => {
-        pointerResource.motion(time, sx, sy)
+        pointerResource.motion(time, Fixed.parse(sx), Fixed.parse(sy))
       })
   }
 }

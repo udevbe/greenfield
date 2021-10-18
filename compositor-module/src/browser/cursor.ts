@@ -1,11 +1,13 @@
+import { Point } from '../math/Point'
+
 let cursorIconURL: string | undefined
 
-export function setCursorImage(cursorImageBlob: Blob, hotspotX: number, hotspotY: number): void {
+export function setCursorImage(cursorImageBlob: Blob, hotspot: Point): void {
   if (cursorIconURL) {
     URL.revokeObjectURL(cursorIconURL)
   }
   cursorIconURL = URL.createObjectURL(cursorImageBlob)
-  document.body.style.cursor = `url('${cursorIconURL}') ${hotspotX} ${hotspotY}, auto`
+  document.body.style.cursor = `url('${cursorIconURL}') ${hotspot.x} ${hotspot.y}, auto`
 }
 
 export function resetCursorImage(): void {
