@@ -296,7 +296,9 @@ export default class XWaylandShellSurface implements DesktopSurfaceRole {
       if (state === SurfaceState.XWAYLAND) {
         // TODO send to centralized logging
         console.assert(!this.added)
+        this.surface.mapped = true
         this.view.mapped = true
+        this.session.renderer.addTopLevelView(this.view)
       }
 
       this.state = state
