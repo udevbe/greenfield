@@ -17,25 +17,27 @@
 
 import { createRect, RectWithInfo } from '../math/Rect'
 
-// TODO use an object literal instead
-export default class EncodedFrameFragment {
-  constructor(
-    public readonly encodingType: string,
-    public readonly geo: RectWithInfo,
-    public readonly opaque: Uint8Array,
-    public readonly alpha: Uint8Array,
-  ) {}
+export type EncodedFrameFragment = {
+  readonly encodingType: string
+  readonly geo: RectWithInfo
+  readonly opaque: Uint8Array
+  readonly alpha: Uint8Array
+}
 
-  static create(
-    encodingType: string,
-    fragmentX: number,
-    fragmentY: number,
-    fragmentWidth: number,
-    fragmentHeight: number,
-    opaque: Uint8Array,
-    alpha: Uint8Array,
-  ): EncodedFrameFragment {
-    const geo = createRect({ x: fragmentX, y: fragmentY }, { width: fragmentWidth, height: fragmentHeight })
-    return new EncodedFrameFragment(encodingType, geo, opaque, alpha)
+export function createEncodedFrameFragment(
+  encodingType: string,
+  fragmentX: number,
+  fragmentY: number,
+  fragmentWidth: number,
+  fragmentHeight: number,
+  opaque: Uint8Array,
+  alpha: Uint8Array,
+): EncodedFrameFragment {
+  const geo = createRect({ x: fragmentX, y: fragmentY }, { width: fragmentWidth, height: fragmentHeight })
+  return {
+    encodingType,
+    geo,
+    opaque,
+    alpha,
   }
 }

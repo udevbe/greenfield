@@ -2,12 +2,14 @@ import { WlShellSurfaceResize } from 'westfield-runtime-server'
 import { AxisEvent } from './AxisEvent'
 import { setCursor } from './browser/cursor'
 import { ButtonEvent } from './ButtonEvent'
+import { CompositorSurface } from './index'
 import { minusPoint, ORIGIN, plusPoint, Point } from './math/Point'
 import { RectWithInfo } from './math/Rect'
 import { Size } from './math/Size'
 import { PointerGrab } from './Pointer'
 import Surface from './Surface'
 import { DesktopSurfaceRole } from './SurfaceRole'
+import { toCompositorSurface } from './UserShellApi'
 
 class ResizeGrab implements PointerGrab {
   private constructor(
@@ -215,8 +217,11 @@ export class DesktopSurface {
     isSet: false,
     position: ORIGIN,
   }
+  public readonly compositorSurface: CompositorSurface
 
-  private constructor(public surface: Surface, readonly role: DesktopSurfaceRole) {}
+  private constructor(public surface: Surface, readonly role: DesktopSurfaceRole) {
+    this.compositorSurface = toCompositorSurface(this)
+  }
 
   static create(surface: Surface, desktopSurfaceRole: DesktopSurfaceRole): DesktopSurface {
     return new DesktopSurface(surface, desktopSurfaceRole)
@@ -424,20 +429,20 @@ export class DesktopSurface {
 
   add(): void {
     this.surface.session.renderer.addTopLevelView(this.role.view)
-    // TODO send user shell api event
+    this.surface.session.userShell.events.addCompositorSurface?.(this.compositorSurface)
   }
 
   removed(): void {
     this.surface.session.renderer.removeTopLevelView(this.role.view)
-    // TODO send user shell api event
+    this.surface.session.userShell.events.removeCompositorSurface?.(this.compositorSurface)
   }
 
   setTitle(title: string): void {
-    // TODO send user shell api event
+    this.surface.session.userShell.events.title?.(this.compositorSurface, title)
   }
 
   setAppId(appId: string): void {
-    // TODO send user shell api event
+    this.surface.session.userShell.events.appId?.(this.compositorSurface, appId)
   }
 
   private unsetFullscreen() {

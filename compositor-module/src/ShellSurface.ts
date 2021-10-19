@@ -145,9 +145,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, DesktopSurf
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   pong(resource: WlShellSurfaceResource): void {
     if (this._pingTimeoutActive) {
-      // TODO user shell
-      // this.userSurfaceState = { ...this.userSurfaceState, unresponsive: false }
-      // this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
+      this.session.userShell.events.unresponsive?.(this.desktopSurface.compositorSurface, false)
       this._pingTimeoutActive = false
     }
     clearTimeout(this._timeoutTimer)
@@ -157,11 +155,9 @@ export default class ShellSurface implements WlShellSurfaceRequests, DesktopSurf
   doPing(resource: WlShellSurfaceResource): void {
     this._timeoutTimer = self.setTimeout(() => {
       if (!this._pingTimeoutActive) {
-        // TODO user shell
         // ping timed out, make view gray
         this._pingTimeoutActive = true
-        // this.userSurfaceState = { ...this.userSurfaceState, unresponsive: true }
-        // this.session.userShell.events.updateUserSurface?.(this.userSurface, this.userSurfaceState)
+        this.session.userShell.events.unresponsive?.(this.desktopSurface.compositorSurface, true)
       }
     }, 5000)
     // FIXME use a proper serial

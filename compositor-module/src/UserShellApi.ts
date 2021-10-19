@@ -17,6 +17,7 @@
 
 import { WlSurfaceResource } from 'westfield-runtime-server'
 import { addInputOutput } from './browser/input'
+import { DesktopSurface } from './Desktop'
 import { CompositorClient, CompositorConfiguration, CompositorSurface } from './index'
 import Session from './Session'
 import Surface from './Surface'
@@ -32,6 +33,7 @@ export interface UserShellApiEvents {
 
   title?: (compositorSurface: CompositorSurface, title: string) => void
   appId?: (compositorSurface: CompositorSurface, appId: string) => void
+  unresponsive?: (compositorSurface: CompositorSurface, unresponse: boolean) => void
 }
 
 export interface UserShellApiActions {
@@ -45,7 +47,7 @@ export interface UserShellApiActions {
 
   closeClient(applicationClient: Pick<CompositorClient, 'id'>): void
 
-  activateSurface(surface: CompositorSurface): void
+  activateSurface(compositorSurface: CompositorSurface): void
 }
 
 export interface UserShellApi {
@@ -53,15 +55,23 @@ export interface UserShellApi {
   actions: UserShellApiActions
 }
 
+export function toCompositorSurface(desktopSurface: DesktopSurface): CompositorSurface {
+  return { id: desktopSurface.surface.resource.id, client: { id: desktopSurface.surface.resource.client.id } }
+}
+
+function lookupSurface(session: Session, compositorSurface: CompositorSurface) {
+  const resource = session.display.clients[compositorSurface.client.id].connection.wlObjects[
+    compositorSurface.id
+  ] as WlSurfaceResource
+  return resource.implementation as Surface
+}
+
 export function createUserShellApi(session: Session): UserShellApi {
   return {
     events: {},
     actions: {
       activateSurface(compositorSurface: CompositorSurface) {
-        const resource = session.display.clients[compositorSurface.client.id].connection.wlObjects[
-          compositorSurface.id
-        ] as WlSurfaceResource
-        const surface = resource.implementation as Surface
+        const surface = lookupSurface(session, compositorSurface)
         surface.role?.desktopSurface?.activate()
       },
       initScene: (sceneId, canvas) => addInputOutput(session, canvas, sceneId),

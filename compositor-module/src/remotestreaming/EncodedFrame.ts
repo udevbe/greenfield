@@ -17,67 +17,66 @@
 
 import BufferContents from '../BufferContents'
 import { Size } from '../math/Size'
-import EncodedFrameFragment from './EncodedFrameFragment'
+import { EncodedFrameFragment, createEncodedFrameFragment } from './EncodedFrameFragment'
 import EncodingTypes, { EncodingMimeTypes } from './EncodingMimeTypes'
 
-export default class EncodedFrame implements BufferContents<EncodedFrameFragment[]> {
-  static create(u8Buffer: Uint8Array): EncodedFrame {
-    const dataView = new DataView(u8Buffer.buffer, u8Buffer.byteOffset)
-    let offset = 0
+export type EncodedFrame = {
+  readonly serial: number
+  readonly mimeType: EncodingMimeTypes[keyof EncodingMimeTypes]
+  readonly encodingOptions: number
+  readonly size: Size
+  readonly pixelContent: EncodedFrameFragment[]
+} & BufferContents<EncodedFrameFragment[]>
 
-    const serial = dataView.getUint32(offset, true)
+export function createEncodedFrame(u8Buffer: Uint8Array): EncodedFrame {
+  const dataView = new DataView(u8Buffer.buffer, u8Buffer.byteOffset)
+  let offset = 0
+
+  const serial = dataView.getUint32(offset, true)
+  offset += 4
+
+  const encodingTypeCode = dataView.getUint16(offset, true)
+  if (encodingTypeCode !== 0 && encodingTypeCode !== 1) {
+    throw new Error(`Received invalid encoding type, code = ${encodingTypeCode}`)
+  }
+  const encodingType = EncodingTypes[encodingTypeCode]
+  offset += 2
+
+  const encodingOptions = dataView.getUint16(offset, true) // unused for now
+  offset += 2
+
+  const width = dataView.getUint16(offset, true)
+  offset += 2
+
+  const height = dataView.getUint16(offset, true)
+  offset += 2
+
+  const encodedFragmentElements = dataView.getUint32(offset, true)
+  offset += 4
+
+  const encodedFragments: EncodedFrameFragment[] = []
+  for (let i = 0; i < encodedFragmentElements; i++) {
+    const fragmentX = dataView.getUint16(offset, true)
+    offset += 2
+    const fragmentY = dataView.getUint16(offset, true)
+    offset += 2
+    const fragmentWidth = dataView.getUint16(offset, true)
+    offset += 2
+    const fragmentHeight = dataView.getUint16(offset, true)
+    offset += 2
+    const opaqueLength = dataView.getUint32(offset, true)
     offset += 4
-
-    const encodingTypeCode = dataView.getUint16(offset, true)
-    if (encodingTypeCode !== 0 && encodingTypeCode !== 1) {
-      throw new Error(`Received invalid encoding type, code = ${encodingTypeCode}`)
-    }
-    const encodingType = EncodingTypes[encodingTypeCode]
-    offset += 2
-
-    const encodingOptions = dataView.getUint16(offset, true) // unused for now
-    offset += 2
-
-    const width = dataView.getUint16(offset, true)
-    offset += 2
-
-    const height = dataView.getUint16(offset, true)
-    offset += 2
-
-    const encodedFragmentElements = dataView.getUint32(offset, true)
+    const opaque = new Uint8Array(u8Buffer.buffer, u8Buffer.byteOffset + offset, opaqueLength)
+    offset += opaqueLength
+    const alphaLength = dataView.getUint32(offset, true)
     offset += 4
+    const alpha = new Uint8Array(u8Buffer.buffer, u8Buffer.byteOffset + offset, alphaLength)
+    offset += alphaLength
 
-    const encodedFragments = []
-    for (let i = 0; i < encodedFragmentElements; i++) {
-      const fragmentX = dataView.getUint16(offset, true)
-      offset += 2
-      const fragmentY = dataView.getUint16(offset, true)
-      offset += 2
-      const fragmentWidth = dataView.getUint16(offset, true)
-      offset += 2
-      const fragmentHeight = dataView.getUint16(offset, true)
-      offset += 2
-      const opaqueLength = dataView.getUint32(offset, true)
-      offset += 4
-      const opaque = new Uint8Array(u8Buffer.buffer, u8Buffer.byteOffset + offset, opaqueLength)
-      offset += opaqueLength
-      const alphaLength = dataView.getUint32(offset, true)
-      offset += 4
-      const alpha = new Uint8Array(u8Buffer.buffer, u8Buffer.byteOffset + offset, alphaLength)
-      offset += alphaLength
-
-      encodedFragments.push(
-        EncodedFrameFragment.create(encodingType, fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha),
-      )
-    }
-    return new EncodedFrame(serial, encodingType, encodingOptions, { width, height }, encodedFragments)
+    encodedFragments.push(
+      createEncodedFrameFragment(encodingType, fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha),
+    )
   }
 
-  constructor(
-    public readonly serial: number,
-    public readonly mimeType: EncodingMimeTypes[keyof EncodingMimeTypes],
-    public readonly encodingOptions: number,
-    public readonly size: Size,
-    public readonly pixelContent: EncodedFrameFragment[],
-  ) {}
+  return { serial, mimeType: encodingType, encodingOptions, size: { width, height }, pixelContent: encodedFragments }
 }

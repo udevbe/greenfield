@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
-import EncodedFrame from '../remotestreaming/EncodedFrame'
+import { EncodedFrame } from '../remotestreaming/EncodedFrame'
 import { fullFrame, splitAlpha } from '../remotestreaming/EncodingOptions'
 
 // @ts-ignore requires a loader that treats this import as a web-worker.

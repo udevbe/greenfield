@@ -22,7 +22,7 @@ import Callback from '../Callback'
 import { queueCancellableMicrotask } from '../Loop'
 import { Point } from '../math/Point'
 import Output from '../Output'
-import DecodedFrame from '../remotestreaming/DecodedFrame'
+import { DecodedFrame, isDecodedFrame } from '../remotestreaming/DecodedFrame'
 import Session from '../Session'
 import Surface from '../Surface'
 import View from '../View'
@@ -208,12 +208,11 @@ export default class Renderer {
   private updateRenderStatesPixelContent(view: View): void {
     view.applyTransformations()
     const { buffer, bufferContents } = view.surface.state
-    if (bufferContents instanceof DecodedFrame) {
+    if (isDecodedFrame(bufferContents)) {
       if (view.mapped && buffer && view.surface.damaged) {
         const bufferImplementation = buffer.implementation as BufferImplementation<any>
         if (!bufferImplementation.released) {
           Object.values(view.renderStates).forEach((renderState) => {
-            // @ts-ignore
             renderState.scene[bufferContents.mimeType](bufferContents, renderState)
           })
           view.surface.damaged = false

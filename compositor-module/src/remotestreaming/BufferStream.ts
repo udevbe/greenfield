@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import EncodedFrame from './EncodedFrame'
+import { createEncodedFrame, EncodedFrame } from './EncodedFrame'
 
 type BufferState = {
   completionPromise: Promise<EncodedFrame | undefined>
@@ -83,7 +83,7 @@ export default class BufferStream {
 
   onBufferContents(bufferContents: Uint8Array): void {
     try {
-      const encodedFrame = EncodedFrame.create(bufferContents)
+      const encodedFrame = createEncodedFrame(bufferContents)
       if (this.bufferStates[encodedFrame.serial]) {
         // state already exists, this means the syn call arrived before this call, which means we can now decode it
         this.bufferStates[encodedFrame.serial].encodedFrame = encodedFrame
@@ -93,7 +93,7 @@ export default class BufferStream {
         this.newBufferState(encodedFrame.serial).encodedFrame = encodedFrame
       }
     } catch (e) {
-      // TODO better error handling
+      // TODO better error handling & log using session logger
       console.error(e)
     }
   }
