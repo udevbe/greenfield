@@ -32,6 +32,7 @@ export type DecodedFrame = {
 
 export function isDecodedFrame(buffer: any): buffer is DecodedFrame {
   return (
+    buffer !== undefined &&
     (buffer.mimeType === 'video/h264' || buffer.mimeType === 'image/png') &&
     buffer.pixelContent !== undefined &&
     buffer.size !== undefined

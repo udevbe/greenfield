@@ -98,11 +98,11 @@ class RemoteSocket {
         webSocket.onmessage = (event) => this.handleMessageEvent(client, event, wsOutOfBandChannel)
 
         client.onClose().then(() => {
-          this.session.userShell.events.destroyApplicationClient?.({
+          this.session.userShell.events.clientDestroyed?.({
             id: client.id,
           })
         })
-        this.session.userShell.events.createApplicationClient?.({
+        this.session.userShell.events.clientCreated?.({
           id: client.id,
         })
         resolve(client)

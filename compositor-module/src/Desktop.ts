@@ -366,12 +366,14 @@ export class DesktopSurface {
   loseFocus(): void {
     if (--this.focusCount === 0) {
       this.role.configureActivated(false)
+      this.surface.session.userShell.events.active?.(this.compositorSurface, false)
     }
   }
 
   gainFocus(): void {
     if (this.focusCount++ === 0) {
       this.role.configureActivated(true)
+      this.surface.session.userShell.events.active?.(this.compositorSurface, true)
     }
   }
 
@@ -429,12 +431,12 @@ export class DesktopSurface {
 
   add(): void {
     this.surface.session.renderer.addTopLevelView(this.role.view)
-    this.surface.session.userShell.events.addCompositorSurface?.(this.compositorSurface)
+    this.surface.session.userShell.events.clientSurfaceCreated?.(this.compositorSurface)
   }
 
   removed(): void {
     this.surface.session.renderer.removeTopLevelView(this.role.view)
-    this.surface.session.userShell.events.removeCompositorSurface?.(this.compositorSurface)
+    this.surface.session.userShell.events.clientSurfaceDestroyed?.(this.compositorSurface)
   }
 
   setTitle(title: string): void {

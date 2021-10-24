@@ -23,17 +23,18 @@ import Session from './Session'
 import Surface from './Surface'
 
 export interface UserShellApiEvents {
-  createApplicationClient?: (applicationClient: CompositorClient) => void
-  destroyApplicationClient?: (applicationClient: CompositorClient) => void
+  clientCreated?: (applicationClient: CompositorClient) => void
+  clientDestroyed?: (applicationClient: CompositorClient) => void
   notify?: (variant: string, message: string) => void
   sceneRefresh?: (sceneId: string) => void
 
-  addCompositorSurface?: (compositorSurface: CompositorSurface) => void
-  removeCompositorSurface?: (compositorSurface: CompositorSurface) => void
+  clientSurfaceCreated?: (compositorSurface: CompositorSurface) => void
+  clientSurfaceDestroyed?: (compositorSurface: CompositorSurface) => void
 
   title?: (compositorSurface: CompositorSurface, title: string) => void
   appId?: (compositorSurface: CompositorSurface, appId: string) => void
   unresponsive?: (compositorSurface: CompositorSurface, unresponse: boolean) => void
+  active?: (compositorSurface: CompositorSurface, active: boolean) => void
 }
 
 export interface UserShellApiActions {
