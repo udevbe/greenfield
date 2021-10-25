@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { WlTouchResource } from 'westfield-runtime-server'
-import Seat from './Seat'
+import { Seat } from './Seat'
 
 /**
  *
@@ -32,12 +32,12 @@ import Seat from './Seat'
  */
 export default class Touch {
   resources: WlTouchResource[] = []
-  // @ts-ignore set in Seat creation
-  seat: Seat
 
-  static create(): Touch {
-    return new Touch()
+  static create(seat: Seat): Touch {
+    return new Touch(seat)
   }
+
+  private constructor(public readonly seat: Seat) {}
 
   release(resource: WlTouchResource): void {
     resource.destroy()

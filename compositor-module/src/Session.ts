@@ -17,7 +17,7 @@
 
 import { Display } from 'westfield-runtime-server'
 import Globals from './Globals'
-import { CompositorSession } from './index'
+import { ButtonCode, CompositorSession } from './index'
 import Renderer from './render/Renderer'
 import { createUserShellApi, UserShellApi } from './UserShellApi'
 import WebFS from './WebFS'
@@ -90,11 +90,49 @@ export type GreenfieldLogger = {
   trace: LogFn
 }
 
+const noOpLogger: GreenfieldLogger = {
+  debug: console.debug,
+  error: console.error,
+  info: console.info,
+  trace() {
+    /*noop*/
+  },
+  warn: console.warn,
+} as const
+
 class Session implements CompositorSession {
   static create(sessionId?: string, logger?: GreenfieldLogger): Session {
     const display = new Display()
     const compositorSessionId = sessionId ?? uuidv4()
     const session = new Session(display, compositorSessionId, logger)
+    session.globals.seat.buttonBindings.push({
+      modifiers: 0,
+      button: ButtonCode.MAIN,
+      handler: (pointer, event) => {
+        if (pointer.grab !== pointer.defaultGrab) {
+          return
+        }
+        if (pointer.focus === undefined) {
+          return
+        }
+        pointer.focus.surface.getMainSurface().role?.desktopSurface?.activate()
+      },
+    })
+
+    session.globals.seat.buttonBindings.push({
+      modifiers: 0,
+      button: ButtonCode.SECONDARY,
+      handler: (pointer, event) => {
+        if (pointer.grab !== pointer.defaultGrab) {
+          return
+        }
+        if (pointer.focus === undefined) {
+          return
+        }
+        pointer.focus.surface.getMainSurface().role?.desktopSurface?.activate()
+      },
+    })
+
     session.logger.info('Session created.')
     return session
   }
@@ -107,7 +145,7 @@ class Session implements CompositorSession {
   private constructor(
     public readonly display: Display,
     public readonly compositorSessionId: string,
-    public readonly logger: GreenfieldLogger = console,
+    public readonly logger: GreenfieldLogger = noOpLogger,
   ) {
     this.webFS = WebFS.create(this.compositorSessionId)
     this.globals = Globals.create(this)

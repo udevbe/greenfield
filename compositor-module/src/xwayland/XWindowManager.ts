@@ -17,6 +17,7 @@ import type {
   PropertyNotifyEvent,
   ReparentNotifyEvent,
   SCREEN,
+  SelectionRequestEvent,
   UnmapNotifyEvent,
   WINDOW,
   XConnection,
@@ -40,11 +41,13 @@ import {
   NotifyMode,
   PropMode,
   Render,
+  SelectionNotifyEvent,
   StackMode,
   Time,
   Window,
   WindowClass,
 } from 'xtsb'
+import { SelectionEventMask } from 'xtsb/dist/types/xcbXFixes'
 import eResize from '../assets/e-resize.png'
 import leftPtr from '../assets/left_ptr.png'
 import nResize from '../assets/n-resize.png'
@@ -60,8 +63,9 @@ import { CursorType } from './CursorType'
 import { ICCCM_NORMAL_STATE, ICCCM_WITHDRAWN_STATE, SEND_EVENT_MASK } from './XConstants'
 import { XWaylandConnection } from './XWaylandConnection'
 import XWaylandShell from './XWaylandShell'
+import XWaylandShellSurface from './XWaylandShellSurface'
 import { XWindow } from './XWindow'
-import { FrameStatus, themeCreate, ThemeLocation, XWindowTheme } from './XWindowFrame'
+import { FrameFlag, FrameStatus, themeCreate, ThemeLocation, XWindowTheme } from './XWindowFrame'
 
 type ConfigureValueList = Parameters<XConnection['configureWindow']>[1]
 
@@ -255,7 +259,7 @@ async function setupResources(xConnection: XConnection): Promise<XWindowManagerR
     ['WM_HINTS', 0],
   ]
 
-  const [xFixes, composite, render] = await Promise.all([xFixesPromise, compositePromise, renderPromise])
+  const [xFixes, composite, render] = await Promise.all([xFixesPromise, compositePromise, renderPromise] as const)
   const formatsReply = render.queryPictFormats()
   const interAtomCookies = atoms.map(([name]) => xConnection.internAtom(0, chars(name)))
 
@@ -522,7 +526,11 @@ export class XWindowManager {
     xConnection.onConfigureNotifyEvent = (event) => xWindowManager.handleConfigureNotify(event)
     xConnection.onDestroyNotifyEvent = (event) => xWindowManager.handleDestroyNotify(event)
     xConnection.onMappingNotifyEvent = () => session.logger.trace('XCB_MAPPING_NOTIFY')
-    xConnection.onPropertyNotifyEvent = (event) => xWindowManager.handlePropertyNotify(event)
+    xConnection.onPropertyNotifyEvent = (event) => {
+      if (!xWindowManager.handleSelectionPropertyNotify(event)) {
+        xWindowManager.handlePropertyNotify(event)
+      }
+    }
     xConnection.onClientMessageEvent = (event) => xWindowManager.handleClientMessage(event)
     xConnection.onFocusInEvent = (event) => xWindowManager.handleFocusIn(event)
 
@@ -535,13 +543,43 @@ export class XWindowManager {
     const { composite, xwmAtoms } = xWmResources
     composite.redirectSubwindows(xConnection.setup.roots[0].root, Composite.Redirect.Manual)
 
-    // TODO
-    selectionInit()
+    const selectionWindow = xConnection.allocateID()
+    xConnection.createWindow(
+      WindowClass.CopyFromParent,
+      selectionWindow,
+      xConnection.setup.roots[0].root,
+      0,
+      0,
+      10,
+      10,
+      0,
+      WindowClass.InputOutput,
+      xConnection.setup.roots[0].rootVisual,
+      {
+        eventMask: EventMask.PropertyChange,
+      },
+    )
+    xConnection.setSelectionOwner(selectionWindow, xWmResources.xwmAtoms.CLIPBOARD_MANAGER, Time.CurrentTime)
+    const mask =
+      SelectionEventMask.SetSelectionOwner |
+      SelectionEventMask.SelectionWindowDestroy |
+      SelectionEventMask.SelectionClientClose
+    xWmResources.xFixes.selectSelectionInput(selectionWindow, xWmResources.xwmAtoms.CLIPBOARD, mask)
+    xWmResources.xFixes.onSelectionNotifyEvent = (event: XFixes.SelectionNotifyEvent) => {
+      xWindowManager.handleXFixesSelectionNotify(event)
+    }
+    xConnection.onSelectionNotifyEvent = (event) => {
+      xWindowManager.handleSelectionNotify(event)
+    }
+    xConnection.onSelectionRequestEvent = (event) => {
+      xWindowManager.handleSelectionRequest(event)
+    }
+    session.globals.seat.selectionListeners.push(() => xWindowManager.setSelection())
+
     // TODO
     dndInit()
 
     const wmWindow = createWMWindow(xConnection, xConnection.setup.roots[0], xwmAtoms)
-
     const xWindowManager = new XWindowManager(
       session,
       xConnection,
@@ -551,7 +589,9 @@ export class XWindowManager {
       xWmResources,
       visualAndColormap,
       wmWindow,
+      selectionWindow,
     )
+    xWindowManager.setSelection()
 
     await xWindowManager.createCursors()
     xWindowManager.wmWindowSetCursor(xWindowManager.screen.root, CursorType.XWM_CURSOR_LEFT_PTR)
@@ -566,6 +606,8 @@ export class XWindowManager {
     setNetActiveWindow(xConnection, xConnection.setup.roots[0], xwmAtoms, Window.None)
     setNetSupportingWmCheck(xConnection, xConnection.setup.roots[0], xwmAtoms, wmWindow, 'Greenfield')
 
+    session.globals.seat.activationListeners.push((surface) => xWindowManager.activate(surface))
+
     xConnection.flush()
     return xWindowManager
   }
@@ -575,7 +617,6 @@ export class XWindowManager {
   readonly atoms: XWMAtoms
   private readonly composite: Composite.Composite
   private readonly render: Render.Render
-  private readonly xFixes: XFixes.XFixes
   private readonly formatRgb: Render.PICTFORMINFO
   private readonly formatRgba: Render.PICTFORMINFO
   readonly visualId: number
@@ -602,6 +643,12 @@ export class XWindowManager {
   private lastCursor: CursorType = -1
   private doubleClickPeriod = 250
 
+  // c/p related state
+  private readonly xFixes: XFixes.XFixes
+  private selectionRequestEvent?: SelectionRequestEvent
+  private selectionOwner?: WINDOW
+  private selectionTimestamp = 0
+
   constructor(
     public readonly session: Session,
     public readonly xConnection: XConnection,
@@ -611,6 +658,7 @@ export class XWindowManager {
     { xwmAtoms, composite, render, xFixes, formatRgb, formatRgba }: XWindowManagerResources,
     { visualId, colormap }: VisualAndColormap,
     public readonly wmWindow: WINDOW,
+    private readonly selectionWindow: WINDOW,
   ) {
     this.atoms = xwmAtoms
     this.composite = composite
@@ -638,7 +686,7 @@ export class XWindowManager {
       return
     }
 
-    this.session.logger.trace(`XWM: create surface ${surface.resource.id}@${surface.resource.client.id}`, surface)
+    this.session.logger.debug(`XWM: create surface ${surface.resource.id}@${surface.resource.client.id}`, surface)
 
     const window = this.unpairedWindowList.find((window) => window.surfaceId === surface.resource.id)
     if (window) {
@@ -648,7 +696,7 @@ export class XWindowManager {
     }
   }
 
-  setNetActiveWindow(window: Window) {
+  private setNetActiveWindow(window: Window) {
     this.xConnection.changeProperty(
       PropMode.Replace,
       this.screen.root,
@@ -662,7 +710,7 @@ export class XWindowManager {
   private handleButton(event: ButtonPressEvent | ButtonReleaseEvent) {
     // TODO we want event codes from xtsb
     const buttonPress = 4
-    this.session.logger.trace(
+    this.session.logger.debug(
       `XCB_BUTTON_${event.responseType === buttonPress ? 'PRESS' : 'RELEASE'} (detail ${event.detail})`,
     )
 
@@ -794,7 +842,7 @@ export class XWindowManager {
   }
 
   private async handleCreateNotify(event: CreateNotifyEvent) {
-    this.session.logger.trace(
+    this.session.logger.debug(
       `XCB_CREATE_NOTIFY (window ${event.window}, at (${event.x}, ${event.y}), width ${event.width}, height ${
         event.height
       }${event.overrideRedirect ? 'override' : ''}${this.isOurResource(event.window) ? ', ours' : ''})`,
@@ -808,7 +856,7 @@ export class XWindowManager {
 
   private async handleMapRequest(event: MapRequestEvent) {
     if (this.isOurResource(event.window)) {
-      this.session.logger.trace(`XCB_MAP_REQUEST (window ${event.window}, ours)`)
+      this.session.logger.debug(`XCB_MAP_REQUEST (window ${event.window}, ours)`)
       return
     }
 
@@ -844,7 +892,7 @@ export class XWindowManager {
       throw new Error('Assertion failed. X window should have a parent window.')
     }
 
-    this.session.logger.trace(
+    this.session.logger.debug(
       `XCB_MAP_REQUEST (window ${window.id}, frame ${window.frameId}, ${window.width}x${window.height} @ ${window.mapRequestX},${window.mapRequestY})`,
     )
 
@@ -870,15 +918,15 @@ export class XWindowManager {
 
   private handleMapNotify(event: MapNotifyEvent) {
     if (this.isOurResource(event.window)) {
-      this.session.logger.trace(`XCB_MAP_NOTIFY (window ${event.window}, ours)`)
+      this.session.logger.debug(`XCB_MAP_NOTIFY (window ${event.window}, ours)`)
       return
     }
 
-    this.session.logger.trace(`XCB_MAP_NOTIFY (window ${event.window}${event.overrideRedirect ? ', override' : ''})`)
+    this.session.logger.debug(`XCB_MAP_NOTIFY (window ${event.window}${event.overrideRedirect ? ', override' : ''})`)
   }
 
   private handleUnmapNotify(event: UnmapNotifyEvent) {
-    this.session.logger.trace(
+    this.session.logger.debug(
       `XCB_UNMAP_NOTIFY (window ${event.window}, event ${event.event}${
         this.isOurResource(event.window) ? ', ours' : ''
       })`,
@@ -915,10 +963,10 @@ export class XWindowManager {
     if (window.shsurf) {
       const { keyboard, pointer } = window.shsurf.surface.session.globals.seat
       if (keyboard.focus === window.shsurf.surface) {
-        keyboard.focusLost()
+        keyboard.setFocus(undefined)
       }
       if (pointer.focus?.surface === window.shsurf.surface) {
-        pointer.unsetFocus()
+        pointer.clearFocus()
       }
     }
     window.surface = undefined
@@ -933,7 +981,7 @@ export class XWindowManager {
   }
 
   private async handleReparentNotify(event: ReparentNotifyEvent) {
-    this.session.logger.trace(
+    this.session.logger.debug(
       `XCB_REPARENT_NOTIFY (window ${event.window}, parent ${event.parent}, event ${event.event}${
         event.overrideRedirect ? ', override' : ''
       })`,
@@ -994,7 +1042,7 @@ export class XWindowManager {
   }
 
   private handleConfigureNotify(event: ConfigureNotifyEvent) {
-    this.session.logger.trace(
+    this.session.logger.debug(
       `XCB_CONFIGURE_NOTIFY (window ${event.window}) ${event.x},${event.y} @ ${event.width}x${event.height}${
         event.overrideRedirect ? ', override' : ''
       })`,
@@ -1018,13 +1066,13 @@ export class XWindowManager {
         /* We should check if shsurf has been created because sometimes
          * there are races
          * (configure_notify is sent before xserver_map_surface) */
-        window.shsurf?.setXwayland(window.x, window.y)
+        window.shsurf?.setXWayland(window.x, window.y)
       }
     }
   }
 
   private handleDestroyNotify(event: DestroyNotifyEvent) {
-    this.session.logger.trace(
+    this.session.logger.debug(
       `XCB_DESTROY_NOTIFY, win ${event.window}, event ${event.event}${event.window ? ', ours' : ''}`,
     )
 
@@ -1050,7 +1098,7 @@ export class XWindowManager {
   }
 
   private async handleClientMessage(event: ClientMessageEvent) {
-    this.session.logger.trace(
+    this.session.logger.debug(
       `XCB_CLIENT_MESSAGE (${await this.getAtomName(event._type)} ${event.data.data32?.[0]} ${event.data.data32?.[1]} ${
         event.data.data32?.[2]
       } ${event.data.data32?.[3]} ${event.data.data32?.[4]} win ${event.window})`,
@@ -1215,11 +1263,12 @@ export class XWindowManager {
     return cursor
   }
 
-  setFocusWindow(window: XWindow | undefined): void {
+  private setFocusWindow(window: XWindow | undefined) {
     const unfocusWindow = this.focusWindow
     this.focusWindow = window
 
     if (unfocusWindow) {
+      unfocusWindow.frame?.unsetFlag(FrameFlag.FRAME_FLAG_ACTIVE)
       unfocusWindow.setNetWmState()
     }
 
@@ -1231,6 +1280,8 @@ export class XWindowManager {
     if (window.overrideRedirect) {
       return
     }
+
+    window.frame?.setFlag(FrameFlag.FRAME_FLAG_ACTIVE)
 
     const clientMessage = marshallClientMessageEvent({
       responseType: 0,
@@ -1252,7 +1303,14 @@ export class XWindowManager {
     window.setNetWmState()
   }
 
-  activate(window: XWindow | undefined): void {
+  activate(surface: Surface): void {
+    const role = surface.role as XWaylandShellSurface | undefined
+    if (role === undefined) {
+      return
+    }
+
+    const window = role.window
+
     if (this.focusWindow === window || (window && window.overrideRedirect)) {
       return
     }
@@ -1265,5 +1323,55 @@ export class XWindowManager {
 
     this.setFocusWindow(window)
     this.xConnection.flush()
+  }
+
+  private setSelection() {
+    const source = this.session.globals.seat.selectionDataSource
+    if (source === undefined) {
+      if (this.selectionOwner === this.selectionWindow) {
+        this.xConnection.setSelectionOwner(Atom.None, this.atoms.CLIPBOARD, this.selectionTimestamp)
+      } else {
+        return
+      }
+    }
+
+    // TODO check if the source object is implemented using XWayland and return early
+    // if (source?.send === dataSourceSend) {
+    //   return
+    // }
+
+    this.xConnection.setSelectionOwner(this.selectionWindow, this.atoms.CLIPBOARD, Time.CurrentTime)
+  }
+
+  private handleXFixesSelectionNotify(event: XFixes.SelectionNotifyEvent) {
+    // TODO selection.c L619
+    if (event.selection !== this.atoms.CLIPBOARD) {
+      return
+    }
+
+    this.session.logger.debug(`xfixes selection notify event: owner ${event.owner}`)
+
+    if (event.owner === Window.None) {
+      if (this.selectionOwner !== this.selectionWindow) {
+        /* A real X client selection went away, not our
+         * proxy selection.  Clear the wayland selection. */
+        const seat = this.session.globals.seat
+        const serial = seat.nextSerial()
+        seat.setSelectionInternal(undefined, serial)
+      }
+    }
+  }
+
+  private handleSelectionNotify(event: SelectionNotifyEvent) {
+    // TODO selection.c L297
+  }
+
+  private handleSelectionPropertyNotify(event: PropertyNotifyEvent): boolean {
+    // TODO selection.c L554
+    return false
+  }
+
+  private handleSelectionRequest(event: SelectionRequestEvent) {
+    // TODO selection.c L578
   }
 }

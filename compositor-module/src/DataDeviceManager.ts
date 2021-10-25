@@ -27,7 +27,8 @@ import {
 } from 'westfield-runtime-server'
 
 import DataSource from './DataSource'
-import Seat from './Seat'
+import { Seat } from './Seat'
+import Session from './Session'
 
 /**
  *
@@ -45,9 +46,11 @@ import Seat from './Seat'
 export default class DataDeviceManager implements WlDataDeviceManagerRequests {
   private global?: Global
 
-  static create(): DataDeviceManager {
-    return new DataDeviceManager()
+  static create(session: Session): DataDeviceManager {
+    return new DataDeviceManager(session)
   }
+
+  constructor(public readonly session: Session) {}
 
   registerGlobal(registry: Registry): void {
     if (this.global) {
@@ -73,13 +76,16 @@ export default class DataDeviceManager implements WlDataDeviceManagerRequests {
 
   createDataSource(resource: WlDataDeviceManagerResource, id: number): void {
     const wlDataSourceResource = new WlDataSourceResource(resource.client, id, resource.version)
-    DataSource.create(wlDataSourceResource)
+    DataSource.create(this.session, wlDataSourceResource)
   }
 
   getDataDevice(resource: WlDataDeviceManagerResource, id: number, seatResource: WlSeatResource): void {
     const wlDataDeviceResource = new WlDataDeviceResource(resource.client, id, resource.version)
     const seat = seatResource.implementation as Seat
-    wlDataDeviceResource.implementation = seat.dataDevice
-    seat.dataDevice.resources.push(wlDataDeviceResource)
+    wlDataDeviceResource.implementation = seat
+    seat.dragResourceList = [...seat.dragResourceList, wlDataDeviceResource]
+    wlDataDeviceResource.onDestroy().then(() => {
+      seat.dragResourceList = seat.dragResourceList.filter((dragResource) => dragResource !== wlDataDeviceResource)
+    })
   }
 }

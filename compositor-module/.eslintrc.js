@@ -15,4 +15,5 @@ module.exports = {
     // Place to specify ESLint rules. Can be used to overwrite rules specified from the extended configs
     '@typescript-eslint/ban-ts-comment': 'warn',
   },
+  ignorePatterns: ['libpixman.js', 'libxkbcommon.js'],
 }

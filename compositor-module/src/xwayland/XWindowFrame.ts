@@ -2,7 +2,7 @@ import { WlPointerButtonState } from 'westfield-runtime-server'
 import signClose from '../assets/sign_close.png'
 import signMaximize from '../assets/sign_maximize.png'
 import signMinimize from '../assets/sign_minimize.png'
-import Pointer from '../Pointer'
+import { Pointer } from '../Pointer'
 import Session from '../Session'
 
 function fetchIcon(url: string): Promise<ImageBitmap> {
@@ -527,7 +527,7 @@ export class XWindowFrame {
   }
 
   resizeInside(width: number, height: number): void {
-    this.session.logger.trace(`XWindowFrame resize inside: ${width}x${height}`)
+    this.session.logger.debug(`XWindowFrame resize inside: ${width}x${height}`)
 
     let decorationWidth = 0
     let decorationHeight = 0
@@ -559,7 +559,7 @@ export class XWindowFrame {
       return
     }
 
-    this.session.logger.trace('XWindowFrame refresh geometry')
+    this.session.logger.debug('XWindowFrame refresh geometry')
 
     const titlebarHeight = this.title || this.buttons.length > 0 ? this.theme.titlebarHeight : this.theme.borderWidth
 
@@ -578,7 +578,7 @@ export class XWindowFrame {
   }
 
   setTitle(title: string): void {
-    this.session.logger.trace(`XWindowFrame set title: ${title}`)
+    this.session.logger.debug(`XWindowFrame set title: ${title}`)
     this.title = title
     this.geometryDirty = true
     this.status = FrameStatus.FRAME_STATUS_REPAINT
@@ -608,7 +608,7 @@ export class XWindowFrame {
     const titleRect = this.calculateTitleRect(frameWidth, shadowMargin, titlebarHeight)
     this.theme.renderFrame(this.renderContext, frameWidth, frameHeight, this.title, titleRect, this.buttons, flags)
     this.buttons.forEach((button) => button.repaint())
-    this.session.logger.trace(`XWindowFrame repaint ${this.width}x${this.height}`)
+    this.session.logger.debug(`XWindowFrame repaint ${this.width}x${this.height}`)
 
     this.statusClear(FrameStatus.FRAME_STATUS_REPAINT)
     return interior
@@ -673,7 +673,7 @@ export class XWindowFrame {
   }
 
   resize(width: number, height: number) {
-    this.session.logger.trace(`XWindowFrame resize: ${width}x${height}`)
+    this.session.logger.debug(`XWindowFrame resize: ${width}x${height}`)
     this.width = width
     this.height = height
     this.geometryDirty = true

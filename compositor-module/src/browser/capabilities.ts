@@ -5,7 +5,7 @@ if (window.screen.orientation) {
 } else {
   // Safari doesn't undestand window.screen.orientation, for now hardcode this
   // TODO: fix this so ipad's can properly work
-  orientationType = "landscape-primary"
+  orientationType = 'landscape-primary'
 }
 
 export const capabilities = {
@@ -13,5 +13,5 @@ export const capabilities = {
   userAgent: window.navigator.userAgent,
   // Safari doesn't undestand window.screen.orientation, for now hardcode this
   // TODO: fix this so ipad's can properly work
-  orientationType: window.screen.orientation ? window.screen.orientation.type : 'landscape-primary'
+  orientationType: window.screen.orientation ? window.screen.orientation.type : 'landscape-primary',
 } as const

@@ -37,46 +37,18 @@ class RemoteSocket {
   private readonly textEncoder: TextEncoder = new TextEncoder()
   private readonly textDecoder: TextDecoder = new TextDecoder()
 
+  private constructor(private readonly session: Session) {}
+
   static create(session: Session): RemoteSocket {
     return new RemoteSocket(session)
   }
 
-  private constructor(private readonly session: Session) {}
-
-  ensureXWayland(appEndpointURL: URL) {
+  ensureXWayland(appEndpointURL: URL): void {
     const xWaylandBaseURLhref = appEndpointURL.href
 
     if (xWaylandProxyStates[xWaylandBaseURLhref] === undefined) {
       xWaylandProxyStates[xWaylandBaseURLhref] = { state: 'pending' }
     }
-  }
-
-  private async getShmTransferable(webFD: WebFD): Promise<ArrayBuffer> {
-    // TODO get all contents at once from remote endpoint and put it in an array buffer
-    // TODO do this on each invocation
-    // return new ArrayBuffer(0)
-    throw new Error('TODO. Shm transferable from endpoint not yet implemented.')
-  }
-
-  private async closeShmTransferable(webFD: WebFD): Promise<void> {
-    // TODO signal the remote end (if any) that it should close the fd
-    throw new Error('TODO. Close shm transferable from endpoint not yet implemented.')
-  }
-
-  private async getPipeTransferable(webFD: WebFD): Promise<MessagePort> {
-    // TODO setup an open connection with the remote endpoint and transfer data on demand
-    // const messageChannel = new MessageChannel()
-    // TODO use port1 to interface with the remote endpoint
-    // TODO only do this once until the messageChannel is closed
-    // return messageChannel.port2
-
-    throw new Error('TODO. Pipe transferable from endpoint not yet implemented.')
-  }
-
-  private async closePipeTransferable(webFD: WebFD): Promise<void> {
-    // TODO signal the remote end (if any) that it should close the fd
-    // TODO close the messageChannel object
-    throw new Error('TODO. close pipe transferable from endpoint not yet implemented.')
   }
 
   onWebSocket(webSocket: WebSocket): Promise<Client> {
@@ -113,10 +85,10 @@ class RemoteSocket {
             try {
               webSocket.send(sendBuffer)
             } catch (e: any) {
-              // TODO use centralized error reporting
-              console.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
-              console.error('error object stack: ')
-              console.error(e.stack)
+              this.session.logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+              this.session.logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+              this.session.logger.error('error object stack: ')
+              this.session.logger.error(e.stack)
               client.close()
             }
           }
@@ -126,18 +98,44 @@ class RemoteSocket {
         webSocket.onmessage = (event) => this.handleMessageEvent(client, event, wsOutOfBandChannel)
 
         client.onClose().then(() => {
-          this.session.userShell.events.destroyApplicationClient?.({
+          this.session.userShell.events.clientDestroyed?.({
             id: client.id,
-            variant: 'remote',
           })
         })
-        this.session.userShell.events.createApplicationClient?.({
+        this.session.userShell.events.clientCreated?.({
           id: client.id,
-          variant: 'remote',
         })
         resolve(client)
       }
     })
+  }
+
+  private async getShmTransferable(webFD: WebFD): Promise<ArrayBuffer> {
+    // TODO get all contents at once from remote endpoint and put it in an array buffer
+    // TODO do this on each invocation
+    // return new ArrayBuffer(0)
+    throw new Error('TODO. Shm transferable from endpoint not yet implemented.')
+  }
+
+  private async closeShmTransferable(webFD: WebFD): Promise<void> {
+    // TODO signal the remote end (if any) that it should close the fd
+    throw new Error('TODO. Close shm transferable from endpoint not yet implemented.')
+  }
+
+  private async getPipeTransferable(webFD: WebFD): Promise<MessagePort> {
+    // TODO setup an open connection with the remote endpoint and transfer data on demand
+    // const messageChannel = new MessageChannel()
+    // TODO use port1 to interface with the remote endpoint
+    // TODO only do this once until the messageChannel is closed
+    // return messageChannel.port2
+
+    throw new Error('TODO. Pipe transferable from endpoint not yet implemented.')
+  }
+
+  private async closePipeTransferable(webFD: WebFD): Promise<void> {
+    // TODO signal the remote end (if any) that it should close the fd
+    // TODO close the messageChannel object
+    throw new Error('TODO. close pipe transferable from endpoint not yet implemented.')
   }
 
   private setupClientOutOfBandHandlers(webSocket: WebSocket, client: Client, outOfBandChannel: RemoteOutOfBandChannel) {
@@ -287,18 +285,17 @@ class RemoteSocket {
         }
         const buffer = receiveBuffer.subarray(offset)
         client.connection.message({ buffer, fds: webFDs }).catch((e: Error) => {
-          // TODO use centralized error reporting
           // @ts-ignore
-          console.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
-          console.error('error object stack: ')
-          console.error(e.stack)
+          this.session.logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+          this.session.logger.error('error object stack: ')
+          // @ts-ignore
+          this.session.logger.error(e.stack)
         })
       }
     } catch (e: any) {
-      // TODO use centralized error reporting
-      console.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
-      console.error('error object stack: ')
-      console.error(e.stack)
+      this.session.logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+      this.session.logger.error('error object stack: ')
+      this.session.logger.error(e.stack)
     }
   }
 

@@ -135,12 +135,12 @@ export function invert(mat: Mat4): Mat4 {
     [mat.m10, mat.m11, mat.m12, mat.m13],
     [mat.m20, mat.m21, mat.m22, mat.m23],
     [mat.m30, mat.m31, mat.m32, mat.m33],
-  ]
+  ] as const
+  const dim = 4 as const
 
   let i
   let ii = 0
   let j = 0
-  const dim = M.length
   let e = 0
   const I: number[][] = []
   const C: number[][] = []

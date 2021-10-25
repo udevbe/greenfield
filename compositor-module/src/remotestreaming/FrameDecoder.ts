@@ -16,8 +16,8 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import Surface from '../Surface'
-import DecodedFrame, { DecodedPixelContent } from './DecodedFrame'
-import EncodedFrame from './EncodedFrame'
+import { createDecodedFrame, DecodedPixelContent, DecodedFrame } from './DecodedFrame'
+import { EncodedFrame } from './EncodedFrame'
 import { fullFrame, splitAlpha } from './EncodingOptions'
 
 class FrameDecoder {
@@ -27,7 +27,7 @@ class FrameDecoder {
 
   async decode(surface: Surface, encodedFrame: EncodedFrame): Promise<DecodedFrame> {
     const decodedContents = await this[encodedFrame.mimeType](surface, encodedFrame)
-    return DecodedFrame.create(encodedFrame.mimeType, decodedContents, encodedFrame.size)
+    return createDecodedFrame(encodedFrame.mimeType, decodedContents, encodedFrame.size)
   }
 
   ['video/h264'](surface: Surface, encodedFrame: EncodedFrame): Promise<DecodedPixelContent> {

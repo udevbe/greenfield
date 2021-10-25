@@ -1,20 +1,14 @@
-import { LinuxKeyCode } from './Xkb'
+import { EvDevKeyCode } from './Xkb'
 
-export interface KeyEvent {
-  code: LinuxKeyCode
-  timestamp: number
-  down: boolean
+export type KeyCode = { readonly evdevKeyCode: EvDevKeyCode; readonly x11KeyCode: number }
+
+export type KeyEvent = {
+  readonly keyCode: KeyCode
+  readonly timeStamp: number
+  readonly pressed: boolean
+  readonly capsLock: boolean
+  readonly numLock: boolean
 }
-
-export interface CreateKeyEvent {
-  (code: LinuxKeyCode, timestamp: number, down: boolean): KeyEvent
-}
-
-export const createKeyEvent: CreateKeyEvent = (code: LinuxKeyCode, timestamp: number, down: boolean): KeyEvent => ({
-  code,
-  timestamp,
-  down,
-})
 
 export interface CreateKeyEventFromKeyboardEvent {
   (keyboardEvent: KeyboardEvent, down: boolean): KeyEvent | undefined
@@ -22,11 +16,20 @@ export interface CreateKeyEventFromKeyboardEvent {
 
 export const createKeyEventFromKeyboardEvent: CreateKeyEventFromKeyboardEvent = (
   keyboardEvent: KeyboardEvent,
-  down: boolean,
+  pressed: boolean,
 ): KeyEvent | undefined => {
-  const keyCode: LinuxKeyCode | undefined = LinuxKeyCode[<keyof typeof LinuxKeyCode>keyboardEvent.code]
-  if (keyCode) {
-    return createKeyEvent(keyCode, keyboardEvent.timeStamp, down)
+  const evdevKeyCode: EvDevKeyCode | undefined = EvDevKeyCode[<keyof typeof EvDevKeyCode>keyboardEvent.code]
+  if (evdevKeyCode) {
+    const capsLock = keyboardEvent.getModifierState('CapsLock')
+    const numLock = keyboardEvent.getModifierState('NumLock')
+    const timeStamp = keyboardEvent.timeStamp
+    return {
+      keyCode: { evdevKeyCode, x11KeyCode: evdevKeyCode + 8 },
+      timeStamp,
+      pressed,
+      capsLock,
+      numLock,
+    }
   }
   console.warn(`Unsupported keycode: ${keyboardEvent.code}. Ignoring.`)
 }

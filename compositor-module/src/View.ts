@@ -42,11 +42,11 @@ export default class View {
     x1: 0,
     y1: 0,
   })
+  prepareRender?: (renderState: RenderState) => void
   private inverseTransformation: Mat4
   private readonly destroyPromise: Promise<void>
   // @ts-ignore
   private destroyResolve: (value?: PromiseLike<void> | void) => void
-  prepareRender?: (renderState: RenderState) => void
 
   private constructor(
     public readonly surface: Surface,
@@ -120,48 +120,11 @@ export default class View {
   }
 
   sceneToViewSpace(scenePoint: Point): Point {
-    // normalize first by subtracting view offset
     return timesPoint(this.inverseTransformation, scenePoint)
   }
 
   viewToSceneSpace(viewPoint: Point): Point {
     return timesPoint(this.transformation, viewPoint)
-  }
-
-  surfaceToViewSpace(surfacePoint: Point): Point {
-    const { width, height } = this.regionRect.size
-    if (this.surface.size) {
-      const { height: surfaceHeight, width: surfaceWidth } = this.surface.size
-      if (surfaceWidth === width && surfaceHeight === height) {
-        return surfacePoint
-      } else {
-        return timesPoint(scalarVector(createVec4_2D(width / surfaceWidth, height / surfaceHeight)), surfacePoint)
-      }
-    } else {
-      return surfacePoint
-    }
-  }
-
-  sceneToSurfaceSpace(scenePoint: Point): Point {
-    const viewPoint = this.sceneToViewSpace(scenePoint)
-
-    const surfaceSize = this.surface.size
-    if (surfaceSize) {
-      const surfaceWidth = surfaceSize.width
-      const surfaceHeight = surfaceSize.height
-      if (surfaceWidth === this.regionRect.size.width && surfaceHeight === this.regionRect.size.height) {
-        return viewPoint
-      } else {
-        return timesPoint(
-          scalarVector(
-            createVec4_2D(surfaceWidth / this.regionRect.size.width, surfaceHeight / this.regionRect.size.height),
-          ),
-          viewPoint,
-        )
-      }
-    } else {
-      return scenePoint
-    }
   }
 
   destroy(): void {
@@ -252,5 +215,9 @@ export default class View {
     const { x, y } = plusPoint(this.surface.surfaceChildSelf.position, this._positionOffset)
     const positionTransformation = translation(x, y)
     return timesMat4(startingTransformation, positionTransformation)
+  }
+
+  setInitialPosition(): void {
+    // TODO set position randomly on the screen or center it inside the parent if the surface is a toplevel surface with a parent.
   }
 }

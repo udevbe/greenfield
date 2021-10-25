@@ -15,49 +15,29 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { Display, WlSurfaceResource } from 'westfield-runtime-server'
-import {
-  AxisEvent,
-  ButtonEvent,
-  CompositorClient,
-  CompositorConfiguration,
-  CompositorSurface,
-  CompositorSurfaceState,
-  KeyEvent,
-} from './index'
+import { WlSurfaceResource } from 'westfield-runtime-server'
+import { addInputOutput } from './browser/input'
+import { DesktopSurface } from './Desktop'
+import { CompositorClient, CompositorConfiguration, CompositorSurface } from './index'
 import Session from './Session'
 import Surface from './Surface'
-import { isUserShellSurfaceRole, UserShellSurfaceRole } from './UserShellSurfaceRole'
 
 export interface UserShellApiEvents {
-  createApplicationClient?: (applicationClient: CompositorClient) => void
-  destroyApplicationClient?: (applicationClient: CompositorClient) => void
-  createUserSurface?: (compositorSurface: CompositorSurface, state: CompositorSurfaceState) => void
+  clientCreated?: (applicationClient: CompositorClient) => void
+  clientDestroyed?: (applicationClient: CompositorClient) => void
   notify?: (variant: string, message: string) => void
-  updateUserSurface?: (compositorSurface: CompositorSurface, state: CompositorSurfaceState) => void
-  destroyUserSurface?: (compositorSurface: CompositorSurface) => void
   sceneRefresh?: (sceneId: string) => void
-}
 
-export interface UserShellApiInputActions {
-  pointerMove(buttonEvent: ButtonEvent): void
+  clientSurfaceCreated?: (compositorSurface: CompositorSurface) => void
+  clientSurfaceDestroyed?: (compositorSurface: CompositorSurface) => void
 
-  buttonUp(buttonEvent: ButtonEvent): void
-
-  buttonDown(buttonEvent: ButtonEvent): void
-
-  axis(axisEvent: AxisEvent): void
-
-  key(keyEvent: KeyEvent): void
-
-  blur(): void
+  title?: (compositorSurface: CompositorSurface, title: string) => void
+  appId?: (compositorSurface: CompositorSurface, appId: string) => void
+  unresponsive?: (compositorSurface: CompositorSurface, unresponse: boolean) => void
+  active?: (compositorSurface: CompositorSurface, active: boolean) => void
 }
 
 export interface UserShellApiActions {
-  input: UserShellApiInputActions
-
-  requestActive(compositorSurface: CompositorSurface): void
-
   initScene(sceneId: string, canvas: HTMLCanvasElement): void
 
   refresh(): void
@@ -67,6 +47,8 @@ export interface UserShellApiActions {
   setUserConfiguration(userConfiguration: Partial<CompositorConfiguration>): void
 
   closeClient(applicationClient: Pick<CompositorClient, 'id'>): void
+
+  activateSurface(compositorSurface: CompositorSurface): void
 }
 
 export interface UserShellApi {
@@ -74,51 +56,26 @@ export interface UserShellApi {
   actions: UserShellApiActions
 }
 
-function performSurfaceAction<T>(
-  display: Display,
-  compositorSurface: CompositorSurface,
-  surfaceAction: (surface: Surface) => T,
-): T | undefined {
-  const compositorSurfaceId = parseInt(compositorSurface.id)
-  const wlSurfaceResource = display.clients[compositorSurface.clientId].connection.wlObjects[compositorSurfaceId]
-  if (wlSurfaceResource && wlSurfaceResource instanceof WlSurfaceResource) {
-    return surfaceAction(wlSurfaceResource.implementation as Surface)
-  } else {
-    throw new Error('BUG. Compositor surface does not resolve to a valid surface.')
-  }
+export function toCompositorSurface(desktopSurface: DesktopSurface): CompositorSurface {
+  return { id: desktopSurface.surface.resource.id, client: { id: desktopSurface.surface.resource.client.id } }
+}
+
+function lookupSurface(session: Session, compositorSurface: CompositorSurface) {
+  const resource = session.display.clients[compositorSurface.client.id].connection.wlObjects[
+    compositorSurface.id
+  ] as WlSurfaceResource
+  return resource.implementation as Surface
 }
 
 export function createUserShellApi(session: Session): UserShellApi {
   return {
     events: {},
     actions: {
-      input: {
-        pointerMove: (buttonEvent) => {
-          session.globals.seat.pointer.handleMouseMove(buttonEvent)
-          session.flush()
-        },
-        buttonUp: (buttonEvent) => {
-          session.globals.seat.pointer.handleMouseUp(buttonEvent)
-          session.flush()
-        },
-        buttonDown: (buttonEvent) => {
-          session.globals.seat.pointer.handleMouseDown(buttonEvent)
-          session.flush()
-        },
-        axis: (axisEvent) => {
-          session.globals.seat.pointer.handleWheel(axisEvent)
-          session.flush()
-        },
-        key: (keyEvent) => {
-          session.globals.seat.keyboard.handleKey(keyEvent)
-          session.flush()
-        },
-        blur: () => {
-          session.globals.seat.keyboard.focusLost()
-          session.globals.seat.pointer.unsetFocus()
-        },
+      activateSurface(compositorSurface: CompositorSurface) {
+        const surface = lookupSurface(session, compositorSurface)
+        surface.role?.desktopSurface?.activate()
       },
-      initScene: (sceneId, canvas) => session.renderer.initScene(sceneId, canvas),
+      initScene: (sceneId, canvas) => addInputOutput(session, canvas, sceneId),
       refresh: () => {
         session.renderer.render()
       },
@@ -131,54 +88,11 @@ export function createUserShellApi(session: Session): UserShellApi {
             (nrmlvo) => nrmlvo.name === userConfiguration.keyboardLayoutName,
           )
           if (foundNrmlvo) {
-            keyboard.updateKeymapFromNames(foundNrmlvo)
+            session.globals.seat.notifyUpdateKeymap(foundNrmlvo)
           }
         }
       },
       closeClient: (applicationClient) => session.display.clients[applicationClient.id].close(),
-      requestActive: (compositorSurface) =>
-        performSurfaceAction(session.display, compositorSurface, (surface) => {
-          if (isUserShellSurface(surface)) {
-            makeSurfaceActive(surface)
-          } else {
-            throw new Error('BUG. Surface does not have the UserShellSurface role.')
-          }
-        }),
     },
-  }
-}
-
-let activeHistory: (Surface & { role: UserShellSurfaceRole })[] = []
-
-export function isUserShellSurface(surface: Surface): surface is Surface & { role: UserShellSurfaceRole } {
-  return isUserShellSurfaceRole(surface?.role)
-}
-
-export function makeSurfaceActive(surface: Surface & { role: UserShellSurfaceRole }): void {
-  const lastActive = activeHistory[activeHistory.length - 1]
-
-  if (lastActive && lastActive === surface) {
-    return
-  }
-
-  if (!activeHistory.includes(surface)) {
-    surface.resource.onDestroy().then(() => {
-      const activeDestroyed = activeHistory[activeHistory.length - 1] === surface
-      activeHistory = activeHistory.filter((historySurface) => historySurface !== surface)
-      const newActiveSurface = activeHistory[activeHistory.length - 1]
-      if (activeDestroyed) {
-        setTimeout(() => {
-          if (newActiveSurface === activeHistory[activeHistory.length - 1]) {
-            newActiveSurface?.role.requestActive()
-          }
-        })
-      }
-    })
-  }
-
-  if (surface.role.requestActive()) {
-    lastActive?.role.notifyInactive()
-    activeHistory.push(surface)
-    surface.session.renderer.raiseSurface(surface)
   }
 }

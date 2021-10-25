@@ -22,8 +22,7 @@ import Callback from '../Callback'
 import { queueCancellableMicrotask } from '../Loop'
 import { Point } from '../math/Point'
 import Output from '../Output'
-import { PointerRole } from '../Pointer'
-import DecodedFrame from '../remotestreaming/DecodedFrame'
+import { isDecodedFrame } from '../remotestreaming/DecodedFrame'
 import Session from '../Session'
 import Surface from '../Surface'
 import View from '../View'
@@ -36,8 +35,8 @@ function createRenderFrame(): Promise<number> {
 }
 
 export default class Renderer {
-  private _renderFrame?: Promise<void>
-  private _cursorFrame?: Promise<void>
+  private renderFrame?: Promise<void>
+  private cursorFrame?: Promise<void>
   private renderTaskRegistration?: () => void
 
   private constructor(
@@ -46,7 +45,6 @@ export default class Renderer {
     public topLevelViews: View[] = [],
     private frameCallbacks: Callback[] = [],
     private viewStack: View[] = [],
-    private cursorView?: View,
   ) {}
 
   static create(session: Session): Renderer {
@@ -82,29 +80,21 @@ export default class Renderer {
     this.render()
   }
 
-  updatePointerCursor(view: View): void {
+  updatePointerCursor(view: View, hotspot: Point): void {
     if (view.surface.state.bufferContents) {
-      this.cursorView = view
+      const cursorBufferContents = view.surface.state.bufferContents
 
-      if (this._cursorFrame) {
+      const cursorImage = cursorBufferContents.pixelContent as { blob: Blob } | undefined
+      if (cursorImage === undefined) {
         return
       }
 
-      this._cursorFrame = createRenderFrame().then((time) => {
-        this._cursorFrame = undefined
-        if (this.cursorView === undefined) {
-          return
-        }
-        const { blob } = this.cursorView.surface.state.bufferContents?.pixelContent as { blob: Blob }
-        const pointerRole = this.cursorView.surface.role as PointerRole
-        setCursorImage(blob, pointerRole.pointer.hotspotX, pointerRole.pointer.hotspotY)
-        this.cursorView.surface.state.frameCallbacks.forEach((callback) => callback.done(time))
-        this.cursorView.surface.state.frameCallbacks = []
-        this.session.flush()
-      })
+      setCursorImage(cursorImage.blob, hotspot)
+      view.surface.state.frameCallbacks.forEach((callback) => callback.done(Date.now()))
+      view.surface.state.frameCallbacks = []
+      this.session.flush()
     } else {
-      this.cursorView = undefined
-      resetCursorImage()
+      this.hidePointer()
     }
   }
 
@@ -132,11 +122,11 @@ export default class Renderer {
       })
       afterUpdatePixelContent?.()
       // TODO we can check which views are damaged and filter out only those scenes that need a re-render
-      if (this._renderFrame) {
+      if (this.renderFrame) {
         return
       }
-      this._renderFrame = createRenderFrame().then((time) => {
-        this._renderFrame = undefined
+      this.renderFrame = createRenderFrame().then((time) => {
+        this.renderFrame = undefined
         // TODO we can further limit the visible region of each view by removing the area covered by other views
         sceneList.forEach((scene) => scene.render([...this.viewStack]))
         this.frameCallbacks.forEach((callback) => callback.done(time))
@@ -149,7 +139,7 @@ export default class Renderer {
   pickView(scenePoint: Point): View | undefined {
     // test views from front to back
     return [...this.viewStack].reverse().find((view) => {
-      const surfacePoint = view.sceneToSurfaceSpace(scenePoint)
+      const surfacePoint = view.sceneToViewSpace(scenePoint)
       return view.surface.isWithinInputRegion(surfacePoint)
     })
   }
@@ -218,12 +208,11 @@ export default class Renderer {
   private updateRenderStatesPixelContent(view: View): void {
     view.applyTransformations()
     const { buffer, bufferContents } = view.surface.state
-    if (bufferContents instanceof DecodedFrame) {
+    if (isDecodedFrame(bufferContents)) {
       if (view.mapped && buffer && view.surface.damaged) {
         const bufferImplementation = buffer.implementation as BufferImplementation<any>
         if (!bufferImplementation.released) {
           Object.values(view.renderStates).forEach((renderState) => {
-            // @ts-ignore
             renderState.scene[bufferContents.mimeType](bufferContents, renderState)
           })
           view.surface.damaged = false
