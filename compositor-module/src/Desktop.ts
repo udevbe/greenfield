@@ -296,9 +296,11 @@ export class DesktopSurface {
   }
 
   setMaximized(maximized: boolean): void {
-    const size = this.role.view.relevantScene?.canvas ?? { width: 0, height: 0 }
+    // FIXME views should have their relevant scene set explicitly based on their location instead of re-calculated each time.
+    const maximizedScene = this.role.view.relevantScene ?? Object.values(this.surface.session.renderer.scenes)[0]
+    const { width, height } = maximizedScene.canvas
+    this.role.configureSize({ width, height })
     this.role.configureMaximized(maximized)
-    this.role.configureSize(size)
   }
 
   commit(): void {
