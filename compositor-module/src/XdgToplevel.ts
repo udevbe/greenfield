@@ -25,6 +25,7 @@ import {
   XdgWmBaseError,
 } from 'westfield-runtime-server'
 import { DesktopSurface } from './Desktop'
+import { minusPoint, ORIGIN } from './math/Point'
 import { RectWithInfo } from './math/Rect'
 import { Size, ZERO_SIZE } from './math/Size'
 import Session from './Session'
@@ -132,14 +133,18 @@ export default class XdgToplevel implements XdgToplevelRequests, DesktopSurfaceR
 
     const geometry = this.xdgSurface.surface.geometry
 
-    if (
-      this.next.state.maximized &&
-      (this.next.size.width !== geometry.size.width || this.next.size.width !== geometry.size.width)
-    ) {
-      const errorMessage = `Client protocol error. xdg_surface buffer (${geometry.size.width}x${geometry.size.height}) does not match the configured maximum state (${this.next.size.width}x${this.next.size.height})`
-      this.session.logger.warn(errorMessage)
-      this.resource.postError(XdgWmBaseError.invalidSurfaceState, errorMessage)
-      return
+    if (this.next.state.maximized) {
+      if (this.next.size.width !== geometry.size.width || this.next.size.width !== geometry.size.width) {
+        const errorMessage = `Client protocol error. xdg_surface buffer (${geometry.size.width}x${geometry.size.height}) does not match the configured maximum state (${this.next.size.width}x${this.next.size.height})`
+        this.session.logger.warn(errorMessage)
+        this.resource.postError(XdgWmBaseError.invalidSurfaceState, errorMessage)
+        return
+      }
+
+      // FIXME take output scene into account
+      this.view.positionOffset = this.view.parent
+        ? minusPoint(ORIGIN, this.view.parent.viewToSceneSpace(ORIGIN))
+        : ORIGIN
     }
 
     if (
