@@ -1,11 +1,13 @@
 import { EvDevKeyCode } from './Xkb'
 
-export interface KeyEvent {
-  keyCode: EvDevKeyCode
-  timeStamp: number
-  pressed: boolean
-  capsLock: boolean
-  numLock: boolean
+export type KeyCode = { readonly evdevKeyCode: EvDevKeyCode; readonly x11KeyCode: number }
+
+export type KeyEvent = {
+  readonly keyCode: KeyCode
+  readonly timeStamp: number
+  readonly pressed: boolean
+  readonly capsLock: boolean
+  readonly numLock: boolean
 }
 
 export interface CreateKeyEventFromKeyboardEvent {
@@ -16,13 +18,13 @@ export const createKeyEventFromKeyboardEvent: CreateKeyEventFromKeyboardEvent = 
   keyboardEvent: KeyboardEvent,
   pressed: boolean,
 ): KeyEvent | undefined => {
-  const keyCode: EvDevKeyCode | undefined = EvDevKeyCode[<keyof typeof EvDevKeyCode>keyboardEvent.code]
-  if (keyCode) {
+  const evdevKeyCode: EvDevKeyCode | undefined = EvDevKeyCode[<keyof typeof EvDevKeyCode>keyboardEvent.code]
+  if (evdevKeyCode) {
     const capsLock = keyboardEvent.getModifierState('CapsLock')
     const numLock = keyboardEvent.getModifierState('NumLock')
     const timeStamp = keyboardEvent.timeStamp
     return {
-      keyCode,
+      keyCode: { evdevKeyCode, x11KeyCode: evdevKeyCode + 8 },
       timeStamp,
       pressed,
       capsLock,

@@ -158,7 +158,7 @@ export function createFromString(keymapLayout: string): Xkb {
   const state = lib.xkbcommon._xkb_state_new(keymap)
   lib.xkbcommon._free(keymapLayoutPtr)
 
-  return new Xkb(xkbContext, keymap, state)
+  return new Xkb(keymap, state)
 }
 
 export function createFromNames({
@@ -190,7 +190,7 @@ export function createFromNames({
   xkbRuleNamesBuffer.forEach((pointer) => lib.xkbcommon._free(pointer))
   lib.xkbcommon._free(xkbRuleNamesPtr)
 
-  return new Xkb(xkbContext, keymap, state)
+  return new Xkb(keymap, state)
 }
 
 function stringToPointer(value?: string): number {
@@ -218,11 +218,8 @@ export class Xkb {
   readonly capsLed: number
   readonly scrollLed: number
   readonly keymapString: string
-  private _stateComponentMask = 0
 
-  constructor(public readonly xkbContext: number, public readonly keymap: number, public readonly state: number) {
-    this._stateComponentMask = 0
-
+  constructor(public readonly keymap: number, public readonly state: number) {
     const modNameShift = stringToPointer(XKB_MOD_NAME_SHIFT)
     const modNameCaps = stringToPointer(XKB_MOD_NAME_CAPS)
     const modNameCtrl = stringToPointer(XKB_MOD_NAME_CTRL)
@@ -262,6 +259,7 @@ export class Xkb {
     lib.xkbcommon._free(num)
     lib.xkbcommon._free(caps)
     lib.xkbcommon._free(scroll)
+    lib.xkbcommon._free(keymapStringPtr)
   }
 
   get modsDepressed(): number {
@@ -301,6 +299,7 @@ export class Xkb {
       latchedLayout,
       lockedLayout,
     )
+    return 0
   }
 
   keyUp(linuxKeyCode: EvDevKeyCode): boolean {

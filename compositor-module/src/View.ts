@@ -218,6 +218,6 @@ export default class View {
   }
 
   setInitialPosition(): void {
-    // TODO?
+    // TODO set position randomly on the screen or center it inside the parent if the surface is a toplevel surface with a parent.
   }
 }

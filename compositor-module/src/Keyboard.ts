@@ -21,7 +21,7 @@ import {
   WlKeyboardRequests,
   WlKeyboardResource,
 } from 'westfield-runtime-server'
-import { CompositorKeyboard } from './index'
+import { CompositorKeyboard, KeyCode } from './index'
 import { KeyEvent } from './KeyEvent'
 import { Seat, KeyboardLocks } from './Seat'
 import Surface from './Surface'
@@ -78,7 +78,7 @@ export class Keyboard implements WlKeyboardRequests, CompositorKeyboard {
   readonly defaultNrmlvo: nrmlvo
   resources: WlKeyboardResource[] = []
   focusSerial = 0
-  grabKey?: number
+  grabKey?: KeyCode
   grabSerial?: number
   grabTime?: number
   focus?: Surface
@@ -244,7 +244,7 @@ export class Keyboard implements WlKeyboardRequests, CompositorKeyboard {
         keyboardResource.key(
           serial,
           event.timeStamp,
-          event.keyCode,
+          event.keyCode.evdevKeyCode,
           event.pressed ? WlKeyboardKeyState.pressed : WlKeyboardKeyState.released,
         )
       })

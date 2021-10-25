@@ -570,15 +570,15 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
       }
     }
 
-    if (event.pressed && this.keyboard.keys.includes(event.keyCode)) {
+    if (event.pressed && this.keyboard.keys.includes(event.keyCode.evdevKeyCode)) {
       /* Ignore server-generated repeats. */
       return
     }
 
     if (event.pressed) {
-      this.keyboard.keys = [...this.keyboard.keys, event.keyCode]
+      this.keyboard.keys = [...this.keyboard.keys, event.keyCode.evdevKeyCode]
     } else {
-      this.keyboard.keys = this.keyboard.keys.filter((key) => event.keyCode !== key)
+      this.keyboard.keys = this.keyboard.keys.filter((key) => event.keyCode.evdevKeyCode !== key)
     }
 
     const grab = this.keyboard.grab
@@ -593,7 +593,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
       this.updateKeymap()
     }
 
-    this.updateModifierState(this.serial, event.pressed, event.keyCode)
+    this.updateModifierState(this.serial, event.pressed, event.keyCode.x11KeyCode)
     this.keyboard.grabSerial = this.serial
 
     if (event.pressed) {
@@ -744,11 +744,11 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
     })
   }
 
-  private updateModifierState(serial: number, down: boolean, key: number) {
+  private updateModifierState(serial: number, down: boolean, x11KeyCode: number) {
     if (down) {
-      this.keyboard.xkb.keyDown(key)
+      this.keyboard.xkb.keyDown(x11KeyCode)
     } else {
-      this.keyboard.xkb.keyUp(key)
+      this.keyboard.xkb.keyUp(x11KeyCode)
     }
 
     this.notifyModifiers(serial)
