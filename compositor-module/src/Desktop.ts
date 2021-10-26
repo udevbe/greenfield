@@ -501,6 +501,7 @@ export class DesktopSurface {
   private lastMappedChild(): DesktopSurface | undefined {
     const mappedChildren =
       this.surface.children
+        .filter((child) => !child.surface.destroyed)
         .filter((child) => child.surface !== this.surface)
         .filter((child) => child.surface.role?.view.mapped) ?? []
     if (mappedChildren.length) {

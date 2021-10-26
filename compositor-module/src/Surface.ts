@@ -194,7 +194,7 @@ class Surface implements WlSurfaceRequests {
   }
 
   get children(): SurfaceChild[] {
-    return this.state.subsurfaceChildren.concat(this._surfaceChildren)
+    return [...this.state.subsurfaceChildren, ...this._surfaceChildren]
   }
 
   static create(wlSurfaceResource: WlSurfaceResource, session: Session): Surface {
@@ -472,15 +472,10 @@ class Surface implements WlSurfaceRequests {
   private _addChild(surfaceChild: SurfaceChild, siblings: SurfaceChild[]) {
     siblings.push(surfaceChild)
     surfaceChild.surface.parent = this
-    surfaceChild.surface.resource.onDestroy().then(() => {
-      this.removeChild(surfaceChild)
-    })
-    this.resource.onDestroy().then(() => {
-      this.removeChild(surfaceChild)
-    })
   }
 
   private _handleDestruction() {
+    this.parent?.removeChild(this.surfaceChildSelf)
     this.destroyed = true
     this.role?.view?.destroy()
     this._h264BufferContentDecoder?.destroy()
