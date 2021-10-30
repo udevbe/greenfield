@@ -773,7 +773,7 @@ export class XWindow {
     if (this.x !== x || this.y !== y || this.positionDirty) {
       this.positionDirty = true
       this.wm.configureWindow(this.frameId, { x, y })
-      if (this.shsurf?.state === SurfaceState.TOP_LEVEL) {
+      if (this.shsurf?.state === SurfaceState.TOP_LEVEL || this.shsurf?.state === SurfaceState.MAXIMIZED) {
         const { x: offsetX, y: offsetY } = this.frame?.interior ?? { x: 0, y: 0 }
         this.sendConfigureNotify(x + offsetX, y + offsetY)
       }

@@ -15,19 +15,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import {
-  IDENTITY,
-  invert,
-  Mat4,
-  scalarVector,
-  timesMat4,
-  timesPoint,
-  timesRectToBoundingBox,
-  translation,
-} from './math/Mat4'
+import { IDENTITY, invert, Mat4, timesMat4, timesPoint, timesRectToBoundingBox, translation } from './math/Mat4'
 import { plusPoint, Point } from './math/Point'
 import { RectWithInfo, withSizeAndPosition } from './math/Rect'
-import { createVec4_2D } from './math/Vec4'
 import { copyTo, createPixmanRegion, destroyPixmanRegion, fini, initRect, intersect, notEmpty } from './Region'
 import RenderState from './render/RenderState'
 import Scene from './render/Scene'
@@ -141,6 +131,10 @@ export default class View {
     return this.destroyPromise
   }
 
+  setInitialPosition(): void {
+    // TODO set position randomly on the screen or center it inside the parent if the surface is a toplevel surface with a parent.
+  }
+
   private findChildViews(): View[] {
     return this.surface.children
       .filter((surfaceChild) => surfaceChild.surface !== this.surface)
@@ -215,9 +209,5 @@ export default class View {
     const { x, y } = plusPoint(this.surface.surfaceChildSelf.position, this._positionOffset)
     const positionTransformation = translation(x, y)
     return timesMat4(startingTransformation, positionTransformation)
-  }
-
-  setInitialPosition(): void {
-    // TODO set position randomly on the screen or center it inside the parent if the surface is a toplevel surface with a parent.
   }
 }
