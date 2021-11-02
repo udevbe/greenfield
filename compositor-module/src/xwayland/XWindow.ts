@@ -565,6 +565,7 @@ export class XWindow {
     const property1 = event.data.data32?.[1]
     const property2 = event.data.data32?.[2]
 
+    let changed = false
     if (
       (property1 === this.wm.atoms._NET_WM_STATE_FULLSCREEN || property2 === this.wm.atoms._NET_WM_STATE_FULLSCREEN) &&
       action !== undefined &&
@@ -574,14 +575,14 @@ export class XWindow {
         return changed
       })()
     ) {
-      this.setNetWmState()
+      changed = true
       if (this.fullscreen) {
         this.savedWidth = this.width
         this.savedHeight = this.height
 
         this.shsurf?.setFullscreen()
       } else {
-        this.shsurf?.setToplevel()
+        this.setToplevel()
       }
     } else {
       if (
@@ -594,7 +595,7 @@ export class XWindow {
           return changed
         })()
       ) {
-        this.setNetWmState()
+        changed = true
       }
       if (
         (property1 === this.wm.atoms._NET_WM_STATE_MAXIMIZED_HORZ ||
@@ -606,7 +607,7 @@ export class XWindow {
           return changed
         })()
       ) {
-        this.setNetWmState()
+        changed = true
       }
 
       if (maximized !== this.isMaximized()) {
@@ -616,9 +617,13 @@ export class XWindow {
 
           this.shsurf?.setMaximized()
         } else {
-          this.shsurf?.setToplevel()
+          this.setToplevel()
         }
       }
+    }
+
+    if (changed) {
+      this.setNetWmState()
     }
   }
 
@@ -794,6 +799,7 @@ export class XWindow {
     this.shsurf?.setToplevel()
     this.width = this.savedWidth
     this.height = this.savedHeight
+    this.frame?.resizeInside(this.width, this.height)
     this.configure()
   }
 

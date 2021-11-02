@@ -296,10 +296,16 @@ export class DesktopSurface {
   }
 
   setMaximized(maximized: boolean): void {
-    // FIXME views should have their relevant scene set explicitly based on their location instead of re-calculated each time.
-    const maximizedScene = this.role.view.relevantScene ?? Object.values(this.surface.session.renderer.scenes)[0]
-    const { width, height } = maximizedScene.canvas
-    this.role.configureSize({ width, height })
+    if (maximized) {
+      // FIXME views should have their relevant scene set explicitly based on their location instead of re-calculated each time.
+      const maximizedScene = this.role.view.relevantScene ?? Object.values(this.surface.session.renderer.scenes)[0]
+      const { width, height } = maximizedScene.canvas
+      this.role.configureSize({ width, height })
+    } else {
+      // zero size means the client should pick it's own size.
+      this.role.configureSize({ width: 0, height: 0 })
+    }
+
     this.role.configureMaximized(maximized)
   }
 
@@ -474,8 +480,13 @@ export class DesktopSurface {
 
   private setMaximizedPosition() {
     const geometry = this.role.queryGeometry()
+
+    // FIXME take output scene into account
     // FIXME get the output/scene where we maximize on and use it's coordinates instead
-    this.role.view.positionOffset = minusPoint(ORIGIN, geometry.position)
+    this.role.view.positionOffset = minusPoint(
+      this.role.view.parent ? minusPoint(ORIGIN, this.role.view.parent.viewToSceneSpace(ORIGIN)) : ORIGIN,
+      geometry.position,
+    )
   }
 
   private map() {

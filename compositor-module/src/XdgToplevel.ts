@@ -140,11 +140,6 @@ export default class XdgToplevel implements XdgToplevelRequests, DesktopSurfaceR
         this.resource.postError(XdgWmBaseError.invalidSurfaceState, errorMessage)
         return
       }
-
-      // FIXME take output scene into account
-      this.view.positionOffset = this.view.parent
-        ? minusPoint(ORIGIN, this.view.parent.viewToSceneSpace(ORIGIN))
-        : ORIGIN
     }
 
     if (

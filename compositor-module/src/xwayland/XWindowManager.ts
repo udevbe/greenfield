@@ -788,9 +788,10 @@ export class XWindowManager {
         window.savedHeight = window.height
         window.shsurf?.setMaximized()
       } else {
-        window.shsurf?.setToplevel()
+        window.setToplevel()
       }
       windowFrame.statusClear(FrameStatus.FRAME_STATUS_MAXIMIZE)
+      window.setNetWmState()
     }
   }
 

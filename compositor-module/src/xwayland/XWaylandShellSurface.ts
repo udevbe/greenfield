@@ -179,23 +179,13 @@ export default class XWaylandShellSurface implements DesktopSurfaceRole {
   }
 
   move(pointer: Pointer): void {
-    if (
-      (this.state === SurfaceState.TOP_LEVEL ||
-        this.state === SurfaceState.MAXIMIZED ||
-        this.state === SurfaceState.FULLSCREEN) &&
-      pointer.grabSerial
-    ) {
+    if (this.state === SurfaceState.TOP_LEVEL && pointer.grabSerial) {
       this.desktopSurface.move(pointer.grabSerial)
     }
   }
 
   resize(pointer: Pointer, edges: number): void {
-    if (
-      (this.state === SurfaceState.TOP_LEVEL ||
-        this.state === SurfaceState.MAXIMIZED ||
-        this.state === SurfaceState.FULLSCREEN) &&
-      pointer.grabSerial
-    ) {
+    if (this.state === SurfaceState.TOP_LEVEL && pointer.grabSerial) {
       this.desktopSurface.resize(pointer.grabSerial, edges)
     }
   }
