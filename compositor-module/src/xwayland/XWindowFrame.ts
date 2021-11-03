@@ -654,7 +654,7 @@ export class XWindowFrame {
     framePointer.destroy()
   }
 
-  setFlag(flag: FrameFlag) {
+  setFlag(flag: FrameFlag): void {
     if (flag & FrameFlag.FRAME_FLAG_MAXIMIZED && !(this.flags & FrameFlag.FRAME_FLAG_MAXIMIZED)) {
       this.geometryDirty = true
     }
@@ -663,7 +663,7 @@ export class XWindowFrame {
     this.status |= FrameStatus.FRAME_STATUS_REPAINT
   }
 
-  unsetFlag(flag: FrameFlag) {
+  unsetFlag(flag: FrameFlag): void {
     if (flag & FrameFlag.FRAME_FLAG_MAXIMIZED && this.flags & FrameFlag.FRAME_FLAG_MAXIMIZED) {
       this.geometryDirty = true
     }
@@ -672,7 +672,7 @@ export class XWindowFrame {
     this.status |= FrameStatus.FRAME_STATUS_REPAINT
   }
 
-  resize(width: number, height: number) {
+  resize(width: number, height: number): void {
     this.session.logger.debug(`XWindowFrame resize: ${width}x${height}`)
     this.width = width
     this.height = height

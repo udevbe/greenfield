@@ -145,8 +145,8 @@ export class XWindow {
   mapRequestY = Number.MIN_SAFE_INTEGER /* out of range for valid positions */
   didDouble = false
   lastButtonTime = 0
-  savedHeight = 0
-  savedWidth = 0
+  savedHeight?: number
+  savedWidth?: number
 
   surface?: Surface
   surfaceId?: number
@@ -797,8 +797,14 @@ export class XWindow {
 
   setToplevel(): void {
     this.shsurf?.setToplevel()
-    this.width = this.savedWidth
-    this.height = this.savedHeight
+    if (this.savedWidth) {
+      this.width = this.savedWidth
+      this.savedWidth = undefined
+    }
+    if (this.savedHeight) {
+      this.height = this.savedHeight
+      this.savedHeight = undefined
+    }
     this.frame?.resizeInside(this.width, this.height)
     this.configure()
   }
