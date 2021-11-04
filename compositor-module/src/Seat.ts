@@ -608,6 +608,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
       if (this.keyboard.focus === desktopSurface.surface) {
         this.gainFocus(desktopSurface)
       }
+      this.dataDeviceSetKeyboardFocus()
     }
 
     this.activationListeners.forEach((listener) => listener(desktopSurface.surface))
