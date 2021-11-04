@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { IDENTITY, invert, Mat4, timesMat4, timesPoint, timesRectToBoundingBox, translation } from './math/Mat4'
-import { plusPoint, Point } from './math/Point'
+import { minusPoint, plusPoint, Point } from './math/Point'
 import { RectWithInfo, withSizeAndPosition } from './math/Rect'
 import { copyTo, createPixmanRegion, destroyPixmanRegion, fini, initRect, intersect, notEmpty } from './Region'
 import RenderState from './render/RenderState'
@@ -132,7 +132,12 @@ export default class View {
   }
 
   setInitialPosition(): void {
-    // TODO set position randomly on the screen or center it inside the parent if the surface is a toplevel surface with a parent.
+    if (this.parent) {
+      // TODO center of parent
+    } else {
+      // TODO set position center of the screen within surface geometry & size constraints
+      this.positionOffset = minusPoint(this.positionOffset, this.surface.geometry.position)
+    }
   }
 
   private findChildViews(): View[] {
