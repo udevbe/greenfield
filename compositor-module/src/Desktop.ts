@@ -241,7 +241,7 @@ export class DesktopSurface {
       pointer.focus &&
       pointer.buttonCount > 0 &&
       pointer.grabSerial === grabSerial &&
-      pointer.focus.surface === this.surface
+      pointer.focus.surface.getMainSurface() === this.surface
     ) {
       MoveGrab.create(this).start()
     }
@@ -253,7 +253,7 @@ export class DesktopSurface {
       pointer.buttonCount === 0 ||
       pointer.grabSerial !== grabSerial ||
       pointer.focus === undefined ||
-      pointer.focus.surface !== this.surface
+      pointer.focus.surface.getMainSurface() !== this.surface
     ) {
       return
     }
