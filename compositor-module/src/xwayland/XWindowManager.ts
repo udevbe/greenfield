@@ -1145,18 +1145,18 @@ export class XWindowManager {
     // Because of that, we allow changing focus between surfaces belonging to the
     // same application. We must be careful to ignore requests that are too old
     // though, because otherwise it may lead to race conditions:
-    const requestedFocus = this.windowHash[event.event]
-    if (
-      this.focusWindow &&
-      requestedFocus &&
-      requestedFocus.pid === this.focusWindow.pid
-      // TODO implement sequence number for events in xtsb
-      // && validateFocusSerial(this.lastFocusSequence, event.sequence)
-    ) {
-      this.setFocusWindow(requestedFocus)
-    } else {
-      this.setFocusWindow(this.focusWindow)
-    }
+    // const requestedFocus = this.windowHash[event.event]
+    // if (
+    //   this.focusWindow &&
+    //   requestedFocus &&
+    //   requestedFocus.pid === this.focusWindow.pid
+    //   TODO implement sequence number for events in xtsb
+    //   && validateFocusSerial(this.lastFocusSequence, event.sequence)
+    // ) {
+    //   this.setFocusWindow(requestedFocus)
+    // } else {
+    this.setFocusWindow(this.focusWindow)
+    // }
   }
 
   private isOurResource(id: number) {
