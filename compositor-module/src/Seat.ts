@@ -157,18 +157,15 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
   needFocusInit = false
   savedKbdFocus?: Surface
   readonly popupGrab: PopupGrab
+  selectionDataSource?: DataSource
+  selectionListeners: (() => void)[] = []
+  buttonBindings: ButtonBinding[] = []
+  focusedSurface?: DesktopSurface
+  activationListeners: ((surface: Surface) => void)[] = []
   private global?: Global
   private readonly _seatName: 'browser-seat0' = 'browser-seat0'
-  selectionDataSource?: DataSource
   private selectionSerial = 0
-  selectionListeners: (() => void)[] = []
   private modifierState: KeyboardModifier = 0
-  buttonBindings: ButtonBinding[] = []
-
-  focusedSurface?: DesktopSurface
-  focusSurfaceDestroyListener = () => this.activateNextFocus()
-
-  activationListeners: ((surface: Surface) => void)[] = []
 
   private constructor(
     public readonly session: Session,
@@ -186,6 +183,8 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
   static create(session: Session): Seat {
     return new Seat(session, [], capabilities.hasTouch)
   }
+
+  focusSurfaceDestroyListener = () => this.activateNextFocus()
 
   savedKbdFocusListener = (): void => {
     this.savedKbdFocus = undefined
@@ -603,6 +602,10 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
   }
 
   setKeyboardFocus(desktopSurface: DesktopSurface): void {
+    if (desktopSurface.surface.destroyed) {
+      return
+    }
+
     if (this.keyboard.focus !== desktopSurface.surface) {
       this.keyboard.setFocus(desktopSurface.surface)
       if (this.keyboard.focus === desktopSurface.surface) {
@@ -637,7 +640,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
   }
 
   notifyKeyboardFocusIn(): void {
-    if (this.savedKbdFocus) {
+    if (this.savedKbdFocus && !this.savedKbdFocus.destroyed) {
       this.keyboard.setFocus(this.savedKbdFocus)
     }
   }
@@ -677,6 +680,20 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
     }
 
     this.popupGrab.client = undefined
+  }
+
+  endDrag(drag: PointerDrag): void {
+    drag.end()
+    this.pointer.endGrab()
+    this.keyboard.endGrab()
+  }
+
+  dropFocus(): void {
+    if (this.focusedSurface) {
+      this.focusedSurface.surface.resource.removeDestroyListener(this.focusSurfaceDestroyListener)
+      this.focusedSurface.loseFocus()
+    }
+    this.activateNextFocus()
   }
 
   private emitCapabilities(wlSeatResource: WlSeatResource) {
@@ -755,26 +772,12 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
     this.notifyModifiers(serial)
   }
 
-  endDrag(drag: PointerDrag): void {
-    drag.end()
-    this.pointer.endGrab()
-    this.keyboard.endGrab()
-  }
-
   private gainFocus(desktopSurface: DesktopSurface): void {
     this.focusedSurface?.surface.resource.removeDestroyListener(this.focusSurfaceDestroyListener)
     this.focusedSurface?.loseFocus()
     this.focusedSurface = desktopSurface
     desktopSurface.surface.resource.addDestroyListener(this.focusSurfaceDestroyListener)
     this.focusedSurface.gainFocus()
-  }
-
-  dropFocus(): void {
-    if (this.focusedSurface) {
-      this.focusedSurface.surface.resource.removeDestroyListener(this.focusSurfaceDestroyListener)
-      this.focusedSurface.loseFocus()
-    }
-    this.activateNextFocus()
   }
 
   private activateNextFocus() {
