@@ -53,7 +53,7 @@ import {
   USSize,
 } from './XConstants'
 import XWaylandShellSurface, { SurfaceState } from './XWaylandShellSurface'
-import { FrameButton, frameCreate, ThemeLocation, XWindowFrame } from './XWindowFrame'
+import { FrameButton, frameCreate, FrameFlag, ThemeLocation, XWindowFrame } from './XWindowFrame'
 import { XWindowManager } from './XWindowManager'
 
 type Prop = [atom: ATOM, type: ATOM, propUpdater: (prop: GetPropertyReply) => void]
@@ -614,9 +614,10 @@ export class XWindow {
         if (this.isMaximized()) {
           this.savedWidth = this.width
           this.savedHeight = this.height
-
+          this.frame?.setFlag(FrameFlag.FRAME_FLAG_MAXIMIZED)
           this.shsurf?.setMaximized()
         } else {
+          this.frame?.unsetFlag(FrameFlag.FRAME_FLAG_MAXIMIZED)
           this.setToplevel()
         }
       }

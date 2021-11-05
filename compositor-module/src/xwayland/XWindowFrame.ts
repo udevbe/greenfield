@@ -798,6 +798,36 @@ export class XWindowFrame {
   }
 }
 
+function setBackgroundSource(renderingContext: CanvasRenderingContext2D, flags: ThemeFrame) {
+  if (flags & ThemeFrame.THEME_FRAME_ACTIVE) {
+    const pattern = renderingContext.createLinearGradient(16, 16, 16, 112)
+    pattern.addColorStop(0.0, '#FFFFFF')
+    pattern.addColorStop(0.2, '#CCCCCC')
+    renderingContext.fillStyle = pattern
+  } else {
+    renderingContext.fillStyle = '#B2B2B2FF'
+  }
+}
+
+function roundedRect(
+  renderingContext: CanvasRenderingContext2D,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  radius: number,
+) {
+  renderingContext.moveTo(x0, y0 + radius)
+  renderingContext.arc(x0 + radius, y0 + radius, radius, Math.PI, (3 * Math.PI) / 2)
+  renderingContext.lineTo(x1 - radius, y0)
+  renderingContext.arc(x1 - radius, y0 + radius, radius, (3 * Math.PI) / 2, 2 * Math.PI)
+  renderingContext.lineTo(x1, y1 - radius)
+  renderingContext.arc(x1 - radius, y1 - radius, radius, 0, Math.PI / 2)
+  renderingContext.lineTo(x0 + radius, y1)
+  renderingContext.arc(x0 + radius, y1 - radius, radius, Math.PI / 2, Math.PI)
+  renderingContext.closePath()
+}
+
 export class XWindowTheme {
   readonly activeFrame: CanvasRenderingContext2D
   readonly frameRadius: number = 3
@@ -822,16 +852,16 @@ export class XWindowTheme {
 
     this.activeFrame.canvas.width = 128
     this.activeFrame.canvas.height = 128
-    this.setBackgroundSource(this.activeFrame, ThemeFrame.THEME_FRAME_ACTIVE)
+    setBackgroundSource(this.activeFrame, ThemeFrame.THEME_FRAME_ACTIVE)
     this.activeFrame.beginPath()
-    this.roundedRect(this.activeFrame, 0, 0, 128, 128, this.frameRadius)
+    roundedRect(this.activeFrame, 0, 0, 128, 128, this.frameRadius)
     this.activeFrame.fill()
 
     this.inactiveFrame.canvas.width = 128
     this.inactiveFrame.canvas.height = 128
-    this.setBackgroundSource(this.inactiveFrame, 0)
+    setBackgroundSource(this.inactiveFrame, 0)
     this.inactiveFrame.beginPath()
-    this.roundedRect(this.inactiveFrame, 0, 0, 128, 128, this.frameRadius)
+    roundedRect(this.inactiveFrame, 0, 0, 128, 128, this.frameRadius)
     this.inactiveFrame.fill()
   }
 
@@ -983,14 +1013,14 @@ export class XWindowTheme {
     renderContext.shadowBlur = shadowBlur
     renderContext.shadowColor = 'rgba(0,0,0,0.3)'
     renderContext.beginPath()
-    this.roundedRect(renderContext, x, y, x + width, y + height, this.frameRadius)
+    roundedRect(renderContext, x, y, x + width, y + height, this.frameRadius)
     renderContext.fill()
     renderContext.shadowBlur = 0
     renderContext.shadowColor = '#00000000'
 
     renderContext.globalCompositeOperation = 'destination-out'
     renderContext.beginPath()
-    this.roundedRect(renderContext, x, y, x + width, y + height, this.frameRadius)
+    roundedRect(renderContext, x, y, x + width, y + height, this.frameRadius)
     renderContext.fill()
     renderContext.globalCompositeOperation = 'source-over'
 
@@ -1061,36 +1091,6 @@ export class XWindowTheme {
     renderContext.beginPath()
     renderContext.rect(x + width - margin, y + topMargin, margin, height - margin - topMargin)
     renderContext.fill()
-  }
-
-  roundedRect(
-    renderingContext: CanvasRenderingContext2D,
-    x0: number,
-    y0: number,
-    x1: number,
-    y1: number,
-    radius: number,
-  ) {
-    renderingContext.moveTo(x0, y0 + radius)
-    renderingContext.arc(x0 + radius, y0 + radius, radius, Math.PI, (3 * Math.PI) / 2)
-    renderingContext.lineTo(x1 - radius, y0)
-    renderingContext.arc(x1 - radius, y0 + radius, radius, (3 * Math.PI) / 2, 2 * Math.PI)
-    renderingContext.lineTo(x1, y1 - radius)
-    renderingContext.arc(x1 - radius, y1 - radius, radius, 0, Math.PI / 2)
-    renderingContext.lineTo(x0 + radius, y1)
-    renderingContext.arc(x0 + radius, y1 - radius, radius, Math.PI / 2, Math.PI)
-    renderingContext.closePath()
-  }
-
-  setBackgroundSource(renderingContext: CanvasRenderingContext2D, flags: ThemeFrame) {
-    if (flags & ThemeFrame.THEME_FRAME_ACTIVE) {
-      const pattern = renderingContext.createLinearGradient(16, 16, 16, 112)
-      pattern.addColorStop(0.0, '#FFFFFF')
-      pattern.addColorStop(0.2, '#CCCCCC')
-      renderingContext.fillStyle = pattern
-    } else {
-      renderingContext.fillStyle = '#B2B2B2FF'
-    }
   }
 }
 
