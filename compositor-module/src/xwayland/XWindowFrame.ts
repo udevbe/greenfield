@@ -554,7 +554,7 @@ export class XWindowFrame {
     this.pointers.forEach((value) => value.destroy())
   }
 
-  refreshGeometry() {
+  refreshGeometry(): void {
     if (!this.geometryDirty) {
       return
     }
@@ -741,12 +741,12 @@ export class XWindowFrame {
   }
 
   private calculateTitleRect(width: number, shadowMargin: number, titlebarHeight: number) {
-    let xr = width - this.theme.borderWidth - shadowMargin
+    const buttonPadding = 4
+    let xr = width - (this.theme.borderWidth + shadowMargin + buttonPadding)
     let xl = this.theme.borderWidth + shadowMargin
     const y = this.theme.borderWidth + shadowMargin
 
     this.buttons.forEach((button) => {
-      const buttonPadding = 4
       let w = button.icon.canvas.width
       const h = button.icon.canvas.height
 
