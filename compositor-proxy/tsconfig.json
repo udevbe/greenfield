@@ -8,7 +8,8 @@
     "resolveJsonModule": true,
     "strict": true,
     "skipLibCheck": true,
-    "allowJs": true
+    "allowJs": true,
+    "rootDirs": ["src","src/@types"]
   },
   "ts-node": {
     "files": true

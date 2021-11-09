@@ -149,3 +149,4 @@ CTestTestfile.cmake
 /compositor-proxy/src/encoding/app-endpoint-encoding.node
 /compositor-proxy/src/@types/config.d.ts
 /compositor-proxy/src/configschema.json
+/compositor-proxy/cmake-build-debug/

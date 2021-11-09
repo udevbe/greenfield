@@ -18,9 +18,8 @@
 import { EncodedFrame } from './encoding/EncodedFrame'
 
 import { createEncoder } from './encoding/Encoder'
+import { SupportedWlShmFormat } from './encoding/FrameEncoder'
 import { createLogger } from './Logger'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import wlSurfaceInterceptor from './protocol/wl_surface_interceptor'
 import { Endpoint, WireMessageUtil } from 'westfield-endpoint'
 
@@ -31,8 +30,6 @@ export function initSurfaceBufferEncoding(): void {
   /**
    * attach, [R]equest w opcode [1]
    */
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   wlSurfaceInterceptor.prototype.R1 = function (message: {
     buffer: ArrayBuffer
     fds: Array<number>
@@ -41,11 +38,7 @@ export function initSurfaceBufferEncoding(): void {
     size: number
   }) {
     const [bufferResourceId] = WireMessageUtil.unmarshallArgs(message, 'oii')
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
     this.bufferResourceId = bufferResourceId || null
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
     logger.debug(`Buffer attached with id: serial=${bufferSerial}, id=${this.bufferResourceId}`)
 
     return 0
@@ -54,8 +47,6 @@ export function initSurfaceBufferEncoding(): void {
   /**
    * commit, [R]equest with opcode [6]
    */
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   wlSurfaceInterceptor.prototype.R6 = function (message: {
     buffer: ArrayBuffer
     fds: Array<number>
@@ -63,11 +54,7 @@ export function initSurfaceBufferEncoding(): void {
     consumed: number
     size: number
   }) {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
     if (!this.encoder) {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
       this.encoder = createEncoder()
     }
 
@@ -82,28 +69,21 @@ export function initSurfaceBufferEncoding(): void {
     uint32Array[1] = (message.size << 16) | 6 // size + opcode
     uint32Array[2] = syncSerial
 
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
     logger.debug(`Buffer committed: serial=${syncSerial}, id=${this.bufferResourceId}`)
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
+
     if (this.bufferResourceId) {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
       const bufferId = this.bufferResourceId
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
       this.bufferResourceId = 0
 
       const { buffer, format, width, height, stride } = Endpoint.getShmBuffer(this.wlClient, bufferId)
+      console.log(`${width}x${height} stride: ${stride} format: ${format}`)
       logger.debug(`Request buffer encoding: serial=${syncSerial}, id=${bufferId}`)
       logger.debug('|- Awaiting buffer encoding.')
       // TODO only profile when in debug
       const start = Date.now()
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
+      console.log()
       this.encoder
-        .encodeBuffer(buffer, format, width, height, stride, syncSerial)
+        .encodeBuffer(buffer, format as SupportedWlShmFormat, width, height, stride, syncSerial)
         .then((encodedFrame: EncodedFrame) => {
           logger.debug(`|--> Buffer encoding took: ${Date.now() - start}ms`)
           logger.debug(`Buffer encoding finished: serial=${syncSerial}, id=${bufferId}`)
@@ -122,6 +102,7 @@ export function initSurfaceBufferEncoding(): void {
           } // else connection was probably closed, don't attempt to send a buffer chunk
         })
         .catch((e: Error) => {
+          Endpoint.shmEndAccess(this.wlClient, bufferId)
           logger.error(`\tname: ${e.name} message: ${e.message}`)
           logger.error('error object stack: ')
           logger.error(e.stack ?? '')

@@ -90,12 +90,12 @@ export default class Renderer {
       }
 
       setCursorImage(cursorImage.blob, hotspot)
-      view.surface.state.frameCallbacks.forEach((callback) => callback.done(Date.now()))
-      view.surface.state.frameCallbacks = []
-      this.session.flush()
     } else {
       this.hidePointer()
     }
+    view.surface.state.frameCallbacks.forEach((callback) => callback.done(Date.now()))
+    view.surface.state.frameCallbacks = []
+    this.session.flush()
   }
 
   raiseSurface(surface: Surface): void {

@@ -70,6 +70,8 @@ declare module 'westfield-endpoint' {
       wlClient: unknown,
       bufferId: number,
     ): { buffer: Buffer; format: number; width: number; height: number; stride: number }
+    shmBeginAccess(wlClient: unknown, bufferId: number): void
+    shmEndAccess(wlClient: unknown, bufferId: number): void
   }
 
   export const WireMessageUtil: {
