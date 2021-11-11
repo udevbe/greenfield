@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 #include "nv264_gst_encoder.h"
+#include "shm.h"
 
 struct nv264_gst_alpha_encoder {
     // base type
@@ -31,25 +32,27 @@ struct nv264_gst_encoder {
 
 static GstFlowReturn
 new_opaque_sample(GstAppSink *appsink, gpointer user_data) {
-    const struct encoder *encoder = user_data;
-    const GstSample *sample = gst_app_sink_pull_sample(appsink);
-
-    encoder->callback_data.opaque_sample_ready_callback(encoder, sample);
-
-    return GST_FLOW_OK;
+    struct encoder *encoder = user_data;
+    GstSample *sample = gst_app_sink_pull_sample(appsink);
+    if (sample) {
+        encoder->callback_data.opaque_sample_ready_callback(encoder, sample);
+        return GST_FLOW_OK;
+    }
+    return GST_FLOW_ERROR;
 }
 
 static GstFlowReturn
 new_alpha_sample(GstAppSink *appsink, gpointer user_data) {
-    const struct encoder *encoder = user_data;
-    const GstSample *sample = gst_app_sink_pull_sample(appsink);
-
-    encoder->callback_data.alpha_sample_ready_callback(encoder, sample);
-
-    return GST_FLOW_OK;
+    struct encoder *encoder = user_data;
+    GstSample *sample = gst_app_sink_pull_sample(appsink);
+    if (sample) {
+        encoder->callback_data.alpha_sample_ready_callback(encoder, sample);
+        return GST_FLOW_OK;
+    }
+    return GST_FLOW_ERROR;
 }
 
-static int
+static void
 nv264_gst_alpha_encoder_ensure_size(struct nv264_gst_alpha_encoder *nv264_gst_alpha_encoder,
                                     const char *format,
                                     const u_int32_t width,
@@ -64,7 +67,7 @@ nv264_gst_alpha_encoder_ensure_size(struct nv264_gst_alpha_encoder *nv264_gst_al
     if (gst_caps_is_equal(current_src_caps, new_src_caps)) {
         gst_caps_unref((GstCaps *) new_src_caps);
         gst_caps_unref((GstCaps *) current_src_caps);
-        return 0;
+        return;
     }
     gst_caps_unref((GstCaps *) current_src_caps);
 
@@ -75,11 +78,9 @@ nv264_gst_alpha_encoder_ensure_size(struct nv264_gst_alpha_encoder *nv264_gst_al
                  "bottom", 0 - (height % 2),
                  "right", 0 - (width % 2),
                  NULL);
-
-    return 0;
 }
 
-static int
+static void
 nv264_gst_encoder_ensure_size(struct nv264_gst_encoder *nv264_gst_encoder,
                               const char *format,
                               const u_int32_t width,
@@ -94,7 +95,7 @@ nv264_gst_encoder_ensure_size(struct nv264_gst_encoder *nv264_gst_encoder,
     if (gst_caps_is_equal(current_src_caps, new_src_caps)) {
         gst_caps_unref((GstCaps *) new_src_caps);
         gst_caps_unref((GstCaps *) current_src_caps);
-        return 0;
+        return;
     }
     gst_caps_unref((GstCaps *) current_src_caps);
 
@@ -105,15 +106,11 @@ nv264_gst_encoder_ensure_size(struct nv264_gst_encoder *nv264_gst_encoder,
                  "bottom", 0 - (height % 2),
                  "right", 0 - (width % 2),
                  NULL);
-
-    return 0;
 }
 
 static int
-nv264_gst_alpha_encoder_destroy(const struct encoder *encoder) {
-    struct nv264_gst_alpha_encoder *nv264_gst_alpha_encoder;
-
-    nv264_gst_alpha_encoder = (struct nv264_gst_alpha_encoder *) encoder;
+nv264_gst_alpha_encoder_destroy(struct encoder *encoder) {
+    struct nv264_gst_alpha_encoder *nv264_gst_alpha_encoder = (struct nv264_gst_alpha_encoder *) encoder;
     // TODO cleanup all gstreamer resources
 
     nv264_gst_alpha_encoder->base_encoder.destroy = NULL;
@@ -132,10 +129,8 @@ nv264_gst_alpha_encoder_destroy(const struct encoder *encoder) {
 }
 
 static int
-nv264_gst_encoder_destroy(const struct encoder *encoder) {
-    struct nv264_gst_encoder *nv264_gst_encoder;
-
-    nv264_gst_encoder = (struct nv264_gst_encoder *) encoder;
+nv264_gst_encoder_destroy(struct encoder *encoder) {
+    struct nv264_gst_encoder *nv264_gst_encoder = (struct nv264_gst_encoder *) encoder;
     // TODO cleanup all gstreamer resources
 
     nv264_gst_encoder->base_encoder.destroy = NULL;
@@ -154,39 +149,65 @@ nv264_gst_encoder_destroy(const struct encoder *encoder) {
 }
 
 static int
-nv264_gst_alpha_encoder_encode(const struct encoder *encoder,
-                               void *buffer_data,
-                               const size_t buffer_size,
-                               const char *format,
-                               const uint32_t buffer_width,
-                               const uint32_t buffer_height) {
+nv264_gst_alpha_encoder_encode(struct encoder *encoder,
+                               struct wl_resource *buffer_resource) {
     struct nv264_gst_alpha_encoder *nv264_gst_alpha_encoder = (struct nv264_gst_alpha_encoder *) encoder;
-    GstBuffer *buffer = gst_buffer_new_wrapped(buffer_data, buffer_size);
-    // FIXME find a way so that the buffer doesn't free the memory instead of keeping the gst_buffer object alive eternally (mem leak)
-    gst_buffer_ref(buffer);
+    GstFlowReturn ret;
+    struct wl_shm_buffer *shm_buffer;
+    GstBuffer *buffer;
+    char *gst_format = NULL;
+    uint32_t buffer_width, buffer_height;
 
-    nv264_gst_alpha_encoder_ensure_size(nv264_gst_alpha_encoder, format, buffer_width, buffer_height);
-    gst_app_src_push_buffer(nv264_gst_alpha_encoder->app_src, buffer);
+    shm_buffer = wl_shm_buffer_get((struct wl_resource *) buffer_resource);
+    if (shm_buffer == NULL) {
+        return TRUE;
+    }
 
-    return 0;
+    buffer = wl_shm_buffer_to_gst_buffer(shm_buffer, &buffer_width, &buffer_height, &gst_format);
+    if(buffer == NULL) {
+        return TRUE;
+    }
+
+    nv264_gst_alpha_encoder_ensure_size(nv264_gst_alpha_encoder, gst_format, buffer_width, buffer_height);
+    ret = gst_app_src_push_buffer(nv264_gst_alpha_encoder->app_src, buffer);
+
+    if (ret != GST_FLOW_OK) {
+        /* We got some error, stop sending data */
+        return TRUE;
+    }
+
+    return FALSE;
 }
 
 static int
-nv264_gst_encoder_encode(const struct encoder *encoder,
-                         void *buffer_data,
-                         const size_t buffer_size,
-                         const char *format,
-                         const uint32_t buffer_width,
-                         const uint32_t buffer_height) {
+nv264_gst_encoder_encode(struct encoder *encoder,
+                         struct wl_resource *buffer_resource) {
     struct nv264_gst_encoder *nv264_gst_encoder = (struct nv264_gst_encoder *) encoder;
-    GstBuffer *buffer = gst_buffer_new_wrapped(buffer_data, buffer_size);
-    // FIXME find a way so that the buffer doesn't free the memory instead of keeping the gst_buffer object alive eternally (mem leak)
-    gst_buffer_ref(buffer);
+    GstFlowReturn ret;
+    struct wl_shm_buffer *shm_buffer;
+    GstBuffer *buffer;
+    char *gst_format = NULL;
+    uint32_t buffer_width, buffer_height;
 
-    nv264_gst_encoder_ensure_size(nv264_gst_encoder, format, buffer_width, buffer_height);
-    gst_app_src_push_buffer(nv264_gst_encoder->app_src, buffer);
+    shm_buffer = wl_shm_buffer_get((struct wl_resource *) buffer_resource);
+    if (shm_buffer == NULL) {
+        return TRUE;
+    }
 
-    return 0;
+    buffer = wl_shm_buffer_to_gst_buffer(shm_buffer, &buffer_width, &buffer_height, &gst_format);
+    if(buffer == NULL) {
+        return TRUE;
+    }
+
+    nv264_gst_encoder_ensure_size(nv264_gst_encoder, gst_format, buffer_width, buffer_height);
+    ret = gst_app_src_push_buffer(nv264_gst_encoder->app_src, buffer);
+
+    if (ret != GST_FLOW_OK) {
+        /* We got some error, stop sending data */
+        return TRUE;
+    }
+
+    return FALSE;
 }
 
 struct encoder *

@@ -5,24 +5,17 @@
 #ifndef APP_ENDPOINT_ENCODING_ENCODER_H
 #define APP_ENDPOINT_ENCODING_ENCODER_H
 
+#include <westfield-extra.h>
 #include <gst/gstsample.h>
 #include <node_api.h>
 
 // encoder interface
 struct encoder;
 
-typedef void (*encode_callback_func)(const struct encoder *encoder, const GstSample *sample);
+typedef void (*encode_callback_func)(struct encoder *encoder, GstSample *sample);
 
-typedef int (*encode_func)(
-        const struct encoder *encoder,
-        void *buffer,
-        const size_t buffer_size,
-        const char *format,
-        const uint32_t width,
-        const uint32_t height
-);
-
-typedef int (*destroy_func)(const struct encoder *encoder);
+typedef int (*encode_func)(struct encoder *encoder, struct wl_resource *buffer_resource);
+typedef int (*destroy_func)(struct encoder *encoder);
 
 struct encoder {
     destroy_func destroy;

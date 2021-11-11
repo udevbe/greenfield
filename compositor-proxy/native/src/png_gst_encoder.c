@@ -4,6 +4,7 @@
 #include <gst/app/gstappsink.h>
 #include <stdint.h>
 #include "png_gst_encoder.h"
+#include "shm.h"
 
 struct png_gst_encoder {
     // base type
@@ -17,8 +18,8 @@ struct png_gst_encoder {
 
 static GstFlowReturn
 new_sample(GstAppSink *appsink, gpointer user_data) {
-    const struct encoder *encoder = user_data;
-    const GstSample *sample = gst_app_sink_pull_sample(appsink);
+    struct encoder *encoder = user_data;
+    GstSample *sample = gst_app_sink_pull_sample(appsink);
 
     if(sample) {
         encoder->callback_data.opaque_sample_ready_callback(encoder, sample);
@@ -35,7 +36,7 @@ static GstAppSinkCallbacks opaque_sample_callbacks = {
 };
 
 static int
-png_encoder_destroy(const struct encoder *encoder) {
+png_encoder_destroy(struct encoder *encoder) {
     struct png_gst_encoder *png_gst_encoder;
 
     png_gst_encoder = (struct png_gst_encoder *) encoder;
@@ -79,21 +80,27 @@ png_gst_encoder_ensure_size(struct png_gst_encoder *png_gst_encoder,
 }
 
 static int
-png_gst_encoder_encode(const struct encoder *encoder,
-                       void *buffer_data,
-                       const size_t buffer_size,
-                       const char *format,
-                       const uint32_t buffer_width,
-                       const uint32_t buffer_height) {
-    GstFlowReturn ret;
+png_gst_encoder_encode(struct encoder *encoder,
+                       struct wl_resource *buffer_resource) {
     struct png_gst_encoder *png_gst_encoder = (struct png_gst_encoder *) encoder;
-    GBytes *data_in = g_bytes_new_static(buffer_data, buffer_size);
-    GstBuffer *buffer = gst_buffer_new_wrapped_bytes(data_in);
+    GstFlowReturn ret;
+    struct wl_shm_buffer *shm_buffer;
+    GstBuffer *buffer;
+    char *gst_format = NULL;
+    uint32_t buffer_width, buffer_height;
 
-    png_gst_encoder_ensure_size(png_gst_encoder, format, buffer_width, buffer_height);
+    shm_buffer = wl_shm_buffer_get((struct wl_resource *) buffer_resource);
+    if (shm_buffer == NULL) {
+        return TRUE;
+    }
 
+    buffer = wl_shm_buffer_to_gst_buffer(shm_buffer, &buffer_width, &buffer_height, &gst_format);
+    if(buffer == NULL) {
+        return TRUE;
+    }
+
+    png_gst_encoder_ensure_size(png_gst_encoder, gst_format, buffer_width, buffer_height);
     ret = gst_app_src_push_buffer(png_gst_encoder->app_src, buffer);
-    gst_buffer_unref(buffer);
 
     if (ret != GST_FLOW_OK) {
         /* We got some error, stop sending data */
@@ -114,6 +121,7 @@ png_gst_encoder_create(const char *format, uint32_t width, uint32_t height) {
     gst_init(NULL, NULL);
     png_gst_encoder->pipeline = gst_parse_launch(
             "appsrc name=src format=3 caps=video/x-raw ! "
+            "videoconvert ! "
             "pngenc ! "
             "appsink name=sink",
             NULL);

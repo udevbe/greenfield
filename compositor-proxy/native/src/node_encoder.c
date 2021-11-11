@@ -30,9 +30,8 @@
 }
 
 struct mapped_gst_buffer {
-    GstSample *sample;
+    GstMapInfo info;
     GstBuffer *buffer;
-    GstMapInfo *info;
 };
 
 static void encoder_finalize_cb(napi_env env,
@@ -62,9 +61,8 @@ finalize_gst_mapped_buffer(napi_env env,
                            void* finalize_data,
                            void* finalize_hint) {
     struct mapped_gst_buffer *mapped_gst_buffer = finalize_hint;
-
-    gst_buffer_unmap(mapped_gst_buffer->buffer, mapped_gst_buffer->info);
-    gst_sample_unref(mapped_gst_buffer->sample);
+    gst_buffer_unmap(mapped_gst_buffer->buffer, &mapped_gst_buffer->info);
+    gst_buffer_unref(mapped_gst_buffer->buffer);
     free(mapped_gst_buffer);
 }
 
@@ -76,14 +74,15 @@ gst_sample_to_node_buffer_cb(napi_env env, napi_value js_callback, void *context
     }
     napi_value buffer_value, global, cb_result;
     GstSample *sample = data;
-    GstBuffer *buffer = gst_sample_get_buffer(sample);
-    struct mapped_gst_buffer *mapped_gst_buffer = malloc(sizeof(struct mapped_gst_buffer));
+    struct mapped_gst_buffer *mapped_gst_buffer = calloc(1, sizeof(struct mapped_gst_buffer));
+    GstBuffer *buffer = gst_buffer_ref(gst_sample_get_buffer(sample));
+    gst_sample_unref(sample);
 
-    GstMapInfo map;
-    gst_buffer_map(buffer, &map, GST_MAP_READ);
+    mapped_gst_buffer->buffer = buffer;
+    gst_buffer_map(buffer, &mapped_gst_buffer->info, GST_MAP_READ);
 
     NAPI_CALL(env,
-              napi_create_external_buffer(env, map.size, map.data, finalize_gst_mapped_buffer, mapped_gst_buffer, &buffer_value))
+              napi_create_external_buffer(env, mapped_gst_buffer->info.size, mapped_gst_buffer->info.data, finalize_gst_mapped_buffer, mapped_gst_buffer, &buffer_value))
     napi_value args[] = {buffer_value};
     NAPI_CALL(env, napi_get_global(env, &global))
     NAPI_CALL(env, napi_call_function(env, global, js_callback, 1, args, &cb_result))
@@ -97,38 +96,68 @@ gst_alpha_sample_to_node_buffer_cb(napi_env env, napi_value js_callback, void *c
     }
     napi_value buffer_value, global, cb_result;
     GstSample *sample = data;
-    GstBuffer *buffer = gst_sample_get_buffer(sample);
-    struct mapped_gst_buffer *mapped_gst_buffer = malloc(sizeof(struct mapped_gst_buffer));
+    struct mapped_gst_buffer *mapped_gst_buffer = calloc(1, sizeof(struct mapped_gst_buffer));
+    GstBuffer *buffer = gst_buffer_ref(gst_sample_get_buffer(sample));
+    gst_sample_unref(sample);
 
-    GstMapInfo map;
-    gst_buffer_map(buffer, &map, GST_MAP_READ);
+    mapped_gst_buffer->buffer = buffer;
+    gst_buffer_map(buffer, &mapped_gst_buffer->info, GST_MAP_READ);
 
     NAPI_CALL(env,
-              napi_create_external_buffer(env, map.size, map.data, finalize_gst_mapped_buffer, mapped_gst_buffer, &buffer_value))
+              napi_create_external_buffer(env, mapped_gst_buffer->info.size, mapped_gst_buffer->info.data, finalize_gst_mapped_buffer, mapped_gst_buffer, &buffer_value))
 
     napi_value args[] = {buffer_value};
     NAPI_CALL(env, napi_get_global(env, &global))
     NAPI_CALL(env, napi_call_function(env, global, js_callback, 1, args, &cb_result))
 }
 
+static int
+createShmEncoder(struct wl_shm_buffer* shm_buffer, char* encoder_type, struct encoder **encoder) {
+    const int32_t width = wl_shm_buffer_get_width(shm_buffer);
+    const int32_t height = wl_shm_buffer_get_height(shm_buffer);
+    const uint32_t shm_format = wl_shm_buffer_get_format(shm_buffer);
+    char* gst_format = NULL;
+
+    wayland_shm_to_gst_format(shm_format, &gst_format);
+    if(gst_format == NULL) {
+        // unsupported shm gst_format.
+        return 1;
+    }
+
+    if (strcmp(encoder_type, "x264_alpha") == 0) {
+        *encoder = x264_gst_alpha_encoder_create(gst_format, width, height);
+    } else if (strcmp(encoder_type, "x264") == 0) {
+        *encoder = x264_gst_encoder_create(gst_format, width, height);
+    } else if (strcmp(encoder_type, "png") == 0) {
+        *encoder = png_gst_encoder_create(gst_format, width, height);
+    } else if (strcmp(encoder_type, "nv264") == 0) {
+        *encoder = nv264_gst_encoder_create(gst_format, width, height);
+    } else if (strcmp(encoder_type, "nv264_alpha") == 0) {
+        *encoder = nv264_gst_alpha_encoder_create(gst_format, width, height);
+    } else {
+        return 1;
+    }
+
+    return 0;
+}
+
 // expected arguments in order:
 // - string encoder_type - argv[0]
-// - string format - argv[1]
-// - number width - argv[2]
-// - number height - argv[3]
-// - function callback - argv[4]
-// - function alpha_callback - argv[5]
+// - object buffer_resource - argv[1]
+// - function callback - argv[2]
+// - function alpha_callback - argv[3]
 // return:
 // - encoderContext
 napi_value
 createEncoder(napi_env env, napi_callback_info info) {
-    size_t argc = 6;
+    size_t argc = 4;
     napi_value encoder_value, null_value, cb_name, cb_alpha_name, argv[argc];
     napi_threadsafe_function js_cb_ref, js_cb_ref_alpha;
 
-    size_t encoder_type_length, format_length;
-    uint32_t width, height;
+    size_t encoder_type_length;
     struct encoder *encoder;
+    struct wl_resource* buffer_resource;
+    struct wl_shm_buffer *shm_buffer;
     bool alpha_cb_is_null;
 
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
@@ -136,28 +165,18 @@ createEncoder(napi_env env, napi_callback_info info) {
     char encoder_type[encoder_type_length + 1];
     NAPI_CALL(env, napi_get_value_string_latin1(env, argv[0], encoder_type, sizeof(encoder_type), NULL))
 
-    NAPI_CALL(env, napi_get_value_string_latin1(env, argv[1], NULL, 0L, &format_length))
-    char format[format_length + 1];
-    NAPI_CALL(env, napi_get_value_string_latin1(env, argv[1], format, sizeof(format), NULL))
+    NAPI_CALL(env, napi_get_value_external(env, argv[1], (void **) &buffer_resource))
+    shm_buffer = wl_shm_buffer_get(buffer_resource);
+    if(shm_buffer == NULL) {
+        napi_throw_error((env), NULL, "Found a unsupported non shm-buffer. Bailing out.");
+        NAPI_CALL(env, napi_get_undefined(env, &encoder_value))
+        return encoder_value;
+    }
 
-    NAPI_CALL(env, napi_get_value_uint32(env, argv[2], &width))
-    NAPI_CALL(env, napi_get_value_uint32(env, argv[3], &height))
-
-    if (strcmp(encoder_type, "x264_alpha") == 0) {
-        encoder = x264_gst_alpha_encoder_create(format, width, height);
-    } else if (strcmp(encoder_type, "x264") == 0) {
-        encoder = x264_gst_encoder_create(format, width, height);
-    } else if (strcmp(encoder_type, "png") == 0) {
-        encoder = png_gst_encoder_create(format, width, height);
-    } else if (strcmp(encoder_type, "nv264") == 0) {
-        encoder = nv264_gst_encoder_create(format, width, height);
-    } else if (strcmp(encoder_type, "nv264_alpha") == 0) {
-        encoder = nv264_gst_alpha_encoder_create(format, width, height);
-    } else {
+    if (createShmEncoder(shm_buffer, encoder_type, &encoder)) {
         const char msg[] = "No encoder found with type %s";
         char *error_msg = calloc(sizeof(msg) + encoder_type_length, sizeof(char));
-        sprintf(error_msg, msg, encoder_type
-        );
+        sprintf(error_msg, msg, encoder_type);
         napi_throw_error((env), NULL, error_msg);
 
         NAPI_CALL(env, napi_get_undefined(env, &encoder_value))
@@ -181,7 +200,7 @@ createEncoder(napi_env env, napi_callback_info info) {
                             "opaque_callback", NAPI_AUTO_LENGTH, &cb_name);
     NAPI_CALL(env, napi_create_threadsafe_function(
             env,
-            argv[4],
+            argv[2],
             NULL,
             cb_name,
             0,
@@ -195,7 +214,7 @@ createEncoder(napi_env env, napi_callback_info info) {
             js_cb_ref = js_cb_ref;
 
     NAPI_CALL(env, napi_get_null(env, &null_value))
-    NAPI_CALL(env, napi_strict_equals(env, argv[5], null_value, &alpha_cb_is_null))
+    NAPI_CALL(env, napi_strict_equals(env, argv[3], null_value, &alpha_cb_is_null))
     if (alpha_cb_is_null) {
         encoder->callback_data.
                 js_cb_ref_alpha = NULL;
@@ -224,34 +243,28 @@ createEncoder(napi_env env, napi_callback_info info) {
 
 // expected arguments in order:
 // - encoder - argv[0]
-// - Buffer buffer - argv[1]
-// - string format - argv[2]
-// - number width - argv[3]
-// - number height - argv[4]
-// - number stride - argv[5]
+// - object wl_client - argv[1]
+// - object buffer_id - argv[2]
 // return:
 // - void
 napi_value
 encodeBuffer(napi_env env, napi_callback_info info) {
-    size_t argc = 6;
+    size_t argc = 3;
     napi_value argv[argc], return_value;
 
     struct encoder *encoder;
-    void *buffer;
-    size_t format_length;
-    uint32_t width, height, stride;
+    struct wl_client *client;
+    uint32_t buffer_id;
+    struct wl_resource *buffer_resource;
 
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
     NAPI_CALL(env, napi_get_value_external(env, argv[0], (void **) &encoder))
-    NAPI_CALL(env, napi_get_value_external(env, argv[1], (void **) &buffer))
-    NAPI_CALL(env, napi_get_value_string_latin1(env, argv[2], NULL, 0L, &format_length))
-    char format[format_length + 1];
-    NAPI_CALL(env, napi_get_value_string_latin1(env, argv[2], format, sizeof(format), NULL))
-    NAPI_CALL(env, napi_get_value_uint32(env, argv[3], &width))
-    NAPI_CALL(env, napi_get_value_uint32(env, argv[4], &height))
-    NAPI_CALL(env, napi_get_value_uint32(env, argv[5], &stride))
+    NAPI_CALL(env, napi_get_value_external(env, argv[1], (void **) &client))
+    NAPI_CALL(env, napi_get_value_uint32(env, argv[2], &buffer_id))
 
-    encoder->encode(encoder, buffer, stride*height, format, width, height);
+    buffer_resource = wl_client_get_object(client, buffer_id);
+
+    encoder->encode(encoder, buffer_resource);
 
     NAPI_CALL(env, napi_get_undefined(env, &return_value))
     return return_value;

@@ -1,9 +1,11 @@
+#include <westfield-extra.h>
 #include <stdlib.h>
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
 #include <gst/app/gstappsink.h>
 
 #include "x264_gst_encoder.h"
+#include "shm.h"
 
 struct x264_gst_alpha_encoder {
     // base type
@@ -11,6 +13,7 @@ struct x264_gst_alpha_encoder {
 
     // gstreamer
     GstAppSrc *app_src;
+    GstElement *videobox;
     GstAppSink *app_sink_alpha;
     GstAppSink *app_sink;
     GstElement *pipeline;
@@ -22,15 +25,16 @@ struct x264_gst_encoder {
 
     // gstreamer
     GstAppSrc *app_src;
+    GstElement *videobox;
     GstAppSink *app_sink;
     GstElement *pipeline;
 };
 
 static GstFlowReturn
 new_opaque_sample(GstAppSink *appsink, gpointer user_data) {
-    const struct encoder *encoder = user_data;
-    const GstSample *sample = gst_app_sink_pull_sample(appsink);
-    if(sample) {
+    struct encoder *encoder = user_data;
+    GstSample *sample = gst_app_sink_pull_sample(appsink);
+    if (sample) {
         encoder->callback_data.opaque_sample_ready_callback(encoder, sample);
         return GST_FLOW_OK;
     }
@@ -45,9 +49,9 @@ static GstAppSinkCallbacks opaque_sample_callbacks = {
 
 static GstFlowReturn
 new_alpha_sample(GstAppSink *appsink, gpointer user_data) {
-    const struct encoder *encoder = user_data;
-    const GstSample *sample = gst_app_sink_pull_sample(appsink);
-    if(sample) {
+    struct encoder *encoder = user_data;
+    GstSample *sample = gst_app_sink_pull_sample(appsink);
+    if (sample) {
         encoder->callback_data.alpha_sample_ready_callback(encoder, sample);
         return GST_FLOW_OK;
     }
@@ -81,6 +85,11 @@ x264_gst_alpha_encoder_ensure_size(struct x264_gst_alpha_encoder *x264_gst_alpha
 
     gst_app_src_set_caps(x264_gst_alpha_encoder->app_src, new_src_caps);
     gst_caps_unref((GstCaps *) new_src_caps);
+
+    g_object_set(x264_gst_alpha_encoder->videobox,
+                 "bottom", -(height % 2),
+                 "right", -(width % 2),
+                 NULL);
 }
 
 static void
@@ -104,10 +113,15 @@ x264_gst_encoder_ensure_size(struct x264_gst_encoder *x264_gst_encoder,
 
     gst_app_src_set_caps(x264_gst_encoder->app_src, new_src_caps);
     gst_caps_unref((GstCaps *) new_src_caps);
+
+    g_object_set(x264_gst_encoder->videobox,
+                 "bottom", -(height % 2),
+                 "right", -(width % 2),
+                 NULL);
 }
 
 static int
-x264_gst_alpha_encoder_destroy(const struct encoder *encoder) {
+x264_gst_alpha_encoder_destroy(struct encoder *encoder) {
     struct x264_gst_alpha_encoder *x264_gst_alpha_encoder;
 
     x264_gst_alpha_encoder = (struct x264_gst_alpha_encoder *) encoder;
@@ -117,6 +131,7 @@ x264_gst_alpha_encoder_destroy(const struct encoder *encoder) {
     x264_gst_alpha_encoder->base_encoder.encode = NULL;
 
     gst_object_unref(x264_gst_alpha_encoder->app_src);
+    gst_object_unref(x264_gst_alpha_encoder->videobox);
     gst_object_unref(x264_gst_alpha_encoder->app_sink);
 
     // gstreamer pipeline
@@ -128,7 +143,7 @@ x264_gst_alpha_encoder_destroy(const struct encoder *encoder) {
 }
 
 static int
-x264_gst_encoder_destroy(const struct encoder *encoder) {
+x264_gst_encoder_destroy(struct encoder *encoder) {
     struct x264_gst_encoder *x264_gst_encoder;
 
     x264_gst_encoder = (struct x264_gst_encoder *) encoder;
@@ -138,6 +153,7 @@ x264_gst_encoder_destroy(const struct encoder *encoder) {
     x264_gst_encoder->base_encoder.encode = NULL;
 
     gst_object_unref(x264_gst_encoder->app_src);
+    gst_object_unref(x264_gst_encoder->videobox);
     gst_object_unref(x264_gst_encoder->app_sink);
 
     // gstreamer pipeline
@@ -147,29 +163,28 @@ x264_gst_encoder_destroy(const struct encoder *encoder) {
     free(x264_gst_encoder);
     return 0;
 }
-
 static int
-x264_gst_alpha_encoder_encode(const struct encoder *encoder,
-                              void *buffer_data,
-                              const size_t buffer_size,
-                              const char *format,
-                              const uint32_t buffer_width,
-                              const uint32_t buffer_height) {
-    GstFlowReturn ret;
+x264_gst_alpha_encoder_encode(struct encoder *encoder,
+                              struct wl_resource *buffer_resource) {
     struct x264_gst_alpha_encoder *x264_gst_alpha_encoder = (struct x264_gst_alpha_encoder *) encoder;
-    GstMemory *data_in = gst_memory_new_wrapped (GST_MEMORY_FLAG_READONLY,
-            buffer_data,
-            buffer_size,
-            0,
-            buffer_size,
-            NULL,
-            NULL);
-    GstBuffer *buffer = gst_buffer_new();
-    gst_buffer_insert_memory (buffer, -1, data_in);
+    GstFlowReturn ret;
+    struct wl_shm_buffer *shm_buffer;
+    GstBuffer *buffer;
+    char *gst_format = NULL;
+    uint32_t buffer_width, buffer_height;
 
-    x264_gst_alpha_encoder_ensure_size(x264_gst_alpha_encoder, format, buffer_width, buffer_height);
+    shm_buffer = wl_shm_buffer_get((struct wl_resource *) buffer_resource);
+    if (shm_buffer == NULL) {
+        return TRUE;
+    }
+
+    buffer = wl_shm_buffer_to_gst_buffer(shm_buffer, &buffer_width, &buffer_height, &gst_format);
+    if(buffer == NULL) {
+        return TRUE;
+    }
+
+    x264_gst_alpha_encoder_ensure_size(x264_gst_alpha_encoder, gst_format, buffer_width, buffer_height);
     ret = gst_app_src_push_buffer(x264_gst_alpha_encoder->app_src, buffer);
-    gst_buffer_unref(buffer);
 
     if (ret != GST_FLOW_OK) {
         /* We got some error, stop sending data */
@@ -180,20 +195,27 @@ x264_gst_alpha_encoder_encode(const struct encoder *encoder,
 }
 
 static int
-x264_gst_encoder_encode(const struct encoder *encoder,
-                        void *buffer_data,
-                        const size_t buffer_size,
-                        const char *format,
-                        const uint32_t buffer_width,
-                        const uint32_t buffer_height) {
-    GstFlowReturn ret;
+x264_gst_encoder_encode(struct encoder *encoder,
+                        struct wl_resource *buffer_resource) {
     struct x264_gst_encoder *x264_gst_encoder = (struct x264_gst_encoder *) encoder;
-    GBytes *data_in = g_bytes_new_static(buffer_data, buffer_size);
-    GstBuffer *buffer = gst_buffer_new_wrapped_bytes(data_in);
+    GstFlowReturn ret;
+    struct wl_shm_buffer *shm_buffer;
+    GstBuffer *buffer;
+    char *gst_format = NULL;
+    uint32_t buffer_width, buffer_height;
 
-    x264_gst_encoder_ensure_size(x264_gst_encoder, format, buffer_width, buffer_height);
+    shm_buffer = wl_shm_buffer_get((struct wl_resource *) buffer_resource);
+    if (shm_buffer == NULL) {
+        return TRUE;
+    }
+
+    buffer = wl_shm_buffer_to_gst_buffer(shm_buffer, &buffer_width, &buffer_height, &gst_format);
+    if(buffer == NULL) {
+        return TRUE;
+    }
+
+    x264_gst_encoder_ensure_size(x264_gst_encoder, gst_format, buffer_width, buffer_height);
     ret = gst_app_src_push_buffer(x264_gst_encoder->app_src, buffer);
-    gst_buffer_unref(buffer);
 
     if (ret != GST_FLOW_OK) {
         /* We got some error, stop sending data */
@@ -214,6 +236,7 @@ x264_gst_alpha_encoder_create(const char *format, uint32_t width, uint32_t heigh
     gst_init(NULL, NULL);
     x264_gst_alpha_encoder->pipeline = gst_parse_launch(
             "appsrc name=src format=3 caps=video/x-raw ! "
+            "videobox name=videobox border-alpha=0 ! "
             "tee name=t ! queue ! "
             "glupload ! "
             "glcolorconvert ! "
@@ -261,6 +284,7 @@ x264_gst_alpha_encoder_create(const char *format, uint32_t width, uint32_t heigh
 
     x264_gst_alpha_encoder->app_src = GST_APP_SRC(
             gst_bin_get_by_name(GST_BIN(x264_gst_alpha_encoder->pipeline), "src"));
+    x264_gst_alpha_encoder->videobox = gst_bin_get_by_name(GST_BIN(x264_gst_alpha_encoder->pipeline), "videobox");
     x264_gst_alpha_encoder->app_sink_alpha = GST_APP_SINK(
             gst_bin_get_by_name(GST_BIN(x264_gst_alpha_encoder->pipeline), "alphasink"));
     x264_gst_alpha_encoder->app_sink = GST_APP_SINK(
@@ -293,6 +317,7 @@ x264_gst_encoder_create(char *format, uint32_t width, uint32_t height) {
     gst_init(NULL, NULL);
     x264_gst_encoder->pipeline = gst_parse_launch(
             "appsrc name=src format=3 caps=video/x-raw ! "
+            "videobox name=videobox border-alpha=0 ! "
             "glupload ! "
             "glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! "
             "gldownload !"
@@ -302,6 +327,7 @@ x264_gst_encoder_create(char *format, uint32_t width, uint32_t height) {
             NULL);
 
     x264_gst_encoder->app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(x264_gst_encoder->pipeline), "src"));
+    x264_gst_encoder->videobox = gst_bin_get_by_name(GST_BIN(x264_gst_encoder->pipeline), "videobox");
     x264_gst_encoder->app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(x264_gst_encoder->pipeline), "sink"));
 
     x264_gst_encoder_ensure_size(x264_gst_encoder, format, width, height);
