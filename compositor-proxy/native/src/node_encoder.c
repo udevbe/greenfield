@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "encoder.h"
+#include "shm.h"
 #include "x264_gst_encoder.h"
 #include "png_gst_encoder.h"
 #include "nv264_gst_encoder.h"
@@ -47,12 +48,12 @@ static void encoder_finalize_cb(napi_env env,
 }
 
 static void
-encoder_opaque_sample_ready_callback(const struct encoder *encoder, const GstSample *sample) {
+encoder_opaque_sample_ready_callback(struct encoder *encoder, GstSample *sample) {
     napi_call_threadsafe_function(encoder->callback_data.js_cb_ref, (void *) sample, napi_tsfn_blocking);
 }
 
 static void
-encoder_alpha_sample_ready_callback(const struct encoder *encoder, const GstSample *sample) {
+encoder_alpha_sample_ready_callback(struct encoder *encoder, GstSample *sample) {
     napi_call_threadsafe_function(encoder->callback_data.js_cb_ref_alpha, (void *) sample, napi_tsfn_blocking);
 }
 
