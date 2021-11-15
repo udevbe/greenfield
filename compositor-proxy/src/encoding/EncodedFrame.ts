@@ -18,25 +18,25 @@
 import { EncodedFrameFragment } from './EncodedFrameFragment'
 
 export class EncodedFrame {
+  constructor(
+    public readonly serial: number,
+    private readonly encodingType: number,
+    private readonly encodingOptions: number,
+    private readonly width: number,
+    private readonly height: number,
+    private readonly frame: EncodedFrameFragment,
+  ) {}
+
   static create(
     serial: number,
     encodingType: number,
     encodingOptions: number,
     width: number,
     height: number,
-    fragments: EncodedFrameFragment[],
+    frame: EncodedFrameFragment,
   ): EncodedFrame {
-    return new EncodedFrame(serial, encodingType, encodingOptions, width, height, fragments)
+    return new EncodedFrame(serial, encodingType, encodingOptions, width, height, frame)
   }
-
-  constructor(
-    public readonly serial: number,
-    private readonly _encodingType: number,
-    private readonly _encodingOptions: number,
-    private readonly _width: number,
-    private readonly _height: number,
-    private readonly _fragments: EncodedFrameFragment[],
-  ) {}
 
   /**
    * A single byte array as native buffer. Layout:
@@ -46,17 +46,10 @@ export class EncodedFrame {
    * encodingOptions: uint16LE,
    * width: uint16LE,
    * height: uint16LE,
-   * fragmentElements: uint32LE,
-   * fragments: uint8[fragmentElements * fragmentSize],
+   * frame: uint8[frameSize],
    * ]
    */
   toBuffer(): Buffer {
-    let fragmentsSize = 0
-
-    this._fragments.forEach((fragment) => {
-      fragmentsSize += fragment.size
-    })
-
     const totalFrameSize =
       4 + // serial: uin32LE
       2 + // encodingType: uint16LE
@@ -64,7 +57,7 @@ export class EncodedFrame {
       2 + // width: uint16LE
       2 + // height: uint16LE
       4 + // fragmentElements: uint32LE
-      fragmentsSize // fragments data: uint8[]
+      this.frame.size // fragments data: uint8[]
     const frameBuffer = Buffer.allocUnsafe(totalFrameSize)
 
     let offset = 0
@@ -72,24 +65,19 @@ export class EncodedFrame {
     frameBuffer.writeUInt32LE(this.serial, offset)
     offset += 4
 
-    frameBuffer.writeUInt16LE(this._encodingType, offset)
+    frameBuffer.writeUInt16LE(this.encodingType, offset)
     offset += 2
 
-    frameBuffer.writeUInt16LE(this._encodingOptions, offset)
+    frameBuffer.writeUInt16LE(this.encodingOptions, offset)
     offset += 2
 
-    frameBuffer.writeUInt16LE(this._width, offset)
+    frameBuffer.writeUInt16LE(this.width, offset)
     offset += 2
 
-    frameBuffer.writeUInt16LE(this._height, offset)
+    frameBuffer.writeUInt16LE(this.height, offset)
     offset += 2
 
-    frameBuffer.writeUInt32LE(this._fragments.length, offset)
-    offset += 4
-
-    this._fragments.forEach((fragment) => {
-      offset = fragment.writeToBuffer(frameBuffer, offset)
-    })
+    this.frame.writeToBuffer(frameBuffer, offset)
 
     return frameBuffer
   }

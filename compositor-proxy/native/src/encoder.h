@@ -20,6 +20,7 @@ typedef int (*destroy_func)(struct encoder *encoder);
 struct encoder {
     destroy_func destroy;
     encode_func encode;
+    int separate_alpha;
 
     struct callback_data {
         encode_callback_func opaque_sample_ready_callback;

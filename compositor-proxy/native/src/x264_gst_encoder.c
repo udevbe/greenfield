@@ -230,6 +230,7 @@ x264_gst_alpha_encoder_create(const char *format, uint32_t width, uint32_t heigh
     struct x264_gst_alpha_encoder *x264_gst_alpha_encoder;
 
     x264_gst_alpha_encoder = calloc(1, sizeof(struct x264_gst_alpha_encoder));
+    x264_gst_alpha_encoder->base_encoder.separate_alpha = 1;
     x264_gst_alpha_encoder->base_encoder.destroy = x264_gst_alpha_encoder_destroy;
     x264_gst_alpha_encoder->base_encoder.encode = x264_gst_alpha_encoder_encode;
 
@@ -311,6 +312,7 @@ x264_gst_encoder_create(char *format, uint32_t width, uint32_t height) {
     struct x264_gst_encoder *x264_gst_encoder;
 
     x264_gst_encoder = calloc(1, sizeof(struct x264_gst_encoder));
+    x264_gst_encoder->base_encoder.separate_alpha = 0;
     x264_gst_encoder->base_encoder.destroy = x264_gst_encoder_destroy;
     x264_gst_encoder->base_encoder.encode = x264_gst_encoder_encode;
 

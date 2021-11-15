@@ -215,6 +215,7 @@ nv264_gst_alpha_encoder_create(const char *format, uint32_t width, uint32_t heig
     struct nv264_gst_alpha_encoder *nv264_gst_alpha_encoder;
 
     nv264_gst_alpha_encoder = calloc(1, sizeof(struct nv264_gst_alpha_encoder));
+    nv264_gst_alpha_encoder->base_encoder.separate_alpha = 1;
     nv264_gst_alpha_encoder->base_encoder.destroy = nv264_gst_alpha_encoder_destroy;
     nv264_gst_alpha_encoder->base_encoder.encode = nv264_gst_alpha_encoder_encode;
 
@@ -302,6 +303,7 @@ nv264_gst_encoder_create(char *format, uint32_t width, uint32_t height) {
     struct nv264_gst_encoder *nv264_gst_encoder;
 
     nv264_gst_encoder = calloc(1, sizeof(struct nv264_gst_encoder));
+    nv264_gst_encoder->base_encoder.separate_alpha = 0;
     nv264_gst_encoder->base_encoder.destroy = nv264_gst_encoder_destroy;
     nv264_gst_encoder->base_encoder.encode = nv264_gst_encoder_encode;
 

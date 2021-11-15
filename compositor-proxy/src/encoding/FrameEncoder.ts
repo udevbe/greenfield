@@ -16,21 +16,11 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { EncodedFrame } from './EncodedFrame'
-import { WlShmFormat } from './WlShmFormat'
-
-export type SupportedWlShmFormat = typeof WlShmFormat['argb8888'] | typeof WlShmFormat['xrgb8888']
 
 export interface FrameEncoderFactory {
-  (width: number, height: number, wlShmFormat: SupportedWlShmFormat): FrameEncoder
+  (wlClient: unknown, bufferId: number): FrameEncoder
 }
 
 export interface FrameEncoder {
-  encodeBuffer(
-    pixelBuffer: unknown,
-    bufferFormat: SupportedWlShmFormat,
-    bufferWidth: number,
-    bufferHeight: number,
-    bufferStride: number,
-    serial: number,
-  ): Promise<EncodedFrame>
+  encodeBuffer(bufferId: number, serial: number): Promise<EncodedFrame>
 }

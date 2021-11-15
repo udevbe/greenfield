@@ -15,10 +15,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+import { createEncoder } from './encoding/Encoder'
 import { EncodedFrame } from './encoding/EncodedFrame'
 
-import { createEncoder } from './encoding/Encoder'
-import { SupportedWlShmFormat } from './encoding/FrameEncoder'
 import { createLogger } from './Logger'
 import wlSurfaceInterceptor from './protocol/wl_surface_interceptor'
 import { Endpoint, WireMessageUtil } from 'westfield-endpoint'
@@ -55,7 +54,7 @@ export function initSurfaceBufferEncoding(): void {
     size: number
   }) {
     if (!this.encoder) {
-      this.encoder = createEncoder()
+      this.encoder = createEncoder(this.wlClient, this.bufferResourceId)
     }
 
     const syncSerial = ++bufferSerial
@@ -75,15 +74,13 @@ export function initSurfaceBufferEncoding(): void {
       const bufferId = this.bufferResourceId
       this.bufferResourceId = 0
 
-      const { buffer, format, width, height, stride } = Endpoint.getShmBuffer(this.wlClient, bufferId)
-      console.log(`${width}x${height} stride: ${stride} format: ${format}`)
       logger.debug(`Request buffer encoding: serial=${syncSerial}, id=${bufferId}`)
       logger.debug('|- Awaiting buffer encoding.')
       // TODO only profile when in debug
       const start = Date.now()
       console.log()
       this.encoder
-        .encodeBuffer(buffer, format as SupportedWlShmFormat, width, height, stride, syncSerial)
+        .encodeBuffer(this.bufferResourceId, syncSerial)
         .then((encodedFrame: EncodedFrame) => {
           logger.debug(`|--> Buffer encoding took: ${Date.now() - start}ms`)
           logger.debug(`Buffer encoding finished: serial=${syncSerial}, id=${bufferId}`)

@@ -15,143 +15,120 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { Configschema } from '../@types/config'
 import { config } from '../config'
-import { createNVH264AlphaEncoder } from './NVH264AlphaEncoder'
-import { createNVH264OpaqueEncoder } from './NVH264OpaqueEncoder'
-import { createPNGEncoder } from './PNGEncoder'
-import { WlShmFormat } from './WlShmFormat'
-import { FrameEncoder, FrameEncoderFactory, SupportedWlShmFormat } from './FrameEncoder'
-import { createX264AlphaEncoder } from './X264AlphaEncoder'
+import appEndpointNative from './app-endpoint-encoding'
 import { EncodedFrame } from './EncodedFrame'
-import { createX264OpaqueEncoder } from './X264OpaqueEncoder'
+import { EncodedFrameFragment } from './EncodedFrameFragment'
+import { enableFullFrame, enableSplitAlpha } from './EncodingOptions'
+import { h264 } from './EncodingTypes'
+import { FrameEncoder } from './FrameEncoder'
 
-type QueueElement = {
-  pixelBuffer: unknown
-  bufferFormat: SupportedWlShmFormat
-  bufferWidth: number
-  bufferHeight: number
-  bufferStride: number
-  serial: number
-  resolve: (value: EncodedFrame) => void
-  reject: (reason?: any) => void
+type EncodingContext = {
+  opaque: Buffer
+  alpha?: Buffer
+  width: number
+  height: number
 }
 
-// wayland to gstreamer mappings
-
-const types: {
-  [key in SupportedWlShmFormat]: { [key in Configschema['encoder']['h264Encoder']]: FrameEncoderFactory }
-} = {
-  [WlShmFormat.argb8888]: {
-    x264: createX264AlphaEncoder,
-    nvh264: createNVH264AlphaEncoder,
-  },
-  [WlShmFormat.xrgb8888]: {
-    x264: createX264OpaqueEncoder,
-    nvh264: createNVH264OpaqueEncoder,
-  },
-} as const
-
-export function createEncoder(): Encoder {
-  return new Encoder()
+type EncodingResult = {
+  encodedFrame: EncodedFrameFragment
+  width: number
+  height: number
 }
 
-export class Encoder implements FrameEncoder {
+export function createEncoder(wlClient: unknown, bufferId: number): FrameEncoder {
+  return new Encoder(config.encoder.h264Encoder, wlClient, bufferId)
+}
+
+class Encoder implements FrameEncoder {
+  private readonly nativeEncoder: unknown
+  private readonly inProgressEncodingContext: Partial<EncodingContext> = {}
+  private encodingResolve?: (value: EncodingContext | PromiseLike<EncodingContext>) => void
+
   constructor(
-    private _bufferFormat = 0,
-    private readonly _queue: QueueElement[] = [],
-    private _frameEncoder?: FrameEncoder,
-    private _pngFrameEncoder?: FrameEncoder,
-  ) {}
-
-  private _doEncodeBuffer() {
-    const { pixelBuffer, bufferFormat, bufferWidth, bufferHeight, bufferStride, serial, resolve, reject } =
-      this._queue[0]
-
-    try {
-      let encodingPromise = null
-
-      const bufferArea = bufferWidth * bufferHeight
-      if (bufferArea <= config.encoder.maxPngBufferSize) {
-        encodingPromise = this._encodePNGFrame(
-          pixelBuffer,
-          bufferFormat,
-          bufferWidth,
-          bufferHeight,
-          bufferStride,
-          serial,
-        )
-      } else {
-        encodingPromise = this._encodeFrame(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, bufferStride, serial)
-      }
-
-      encodingPromise
-        .then((encodedFrame) => {
-          this._queue.shift()
-          if (this._queue.length) {
-            this._doEncodeBuffer()
-          }
-          resolve(encodedFrame)
-        })
-        .catch((error) => reject(error))
-    } catch (e) {
-      reject(e)
-    }
-  }
-
-  encodeBuffer(
-    pixelBuffer: unknown,
-    bufferFormat: SupportedWlShmFormat,
-    bufferWidth: number,
-    bufferHeight: number,
-    bufferStride: number,
-    serial: number,
-  ): Promise<EncodedFrame> {
-    if (this._bufferFormat !== bufferFormat) {
-      this._bufferFormat = bufferFormat
-      this._frameEncoder = undefined
-    }
-
-    return new Promise<EncodedFrame>((resolve, reject) => {
-      this._queue.push({ pixelBuffer, bufferFormat, bufferWidth, bufferHeight, bufferStride, serial, resolve, reject })
-      if (this._queue.length === 1) {
-        this._doEncodeBuffer()
-      }
-    })
-  }
-
-  private _encodePNGFrame(
-    pixelBuffer: unknown,
-    bufferFormat: SupportedWlShmFormat,
-    bufferWidth: number,
-    bufferHeight: number,
-    bufferStride: number,
-    serial: number,
-  ): Promise<EncodedFrame> {
-    if (!this._pngFrameEncoder) {
-      this._pngFrameEncoder = createPNGEncoder(bufferWidth, bufferHeight, bufferFormat)
-    }
-    return this._pngFrameEncoder.encodeBuffer(
-      pixelBuffer,
-      bufferFormat,
-      bufferWidth,
-      bufferHeight,
-      bufferStride,
-      serial,
+    private readonly encoderName: typeof config.encoder.h264Encoder,
+    private readonly wlClient: unknown,
+    bufferId: number,
+  ) {
+    this.nativeEncoder = appEndpointNative.createEncoder(
+      this.encoderName,
+      this.wlClient,
+      bufferId,
+      (opaqueH264: Buffer, separateAlpha) => {
+        if (
+          (!separateAlpha || this.inProgressEncodingContext.alpha !== undefined) &&
+          this.inProgressEncodingContext.width !== undefined &&
+          this.inProgressEncodingContext.height !== undefined
+        ) {
+          this.encodingResolve?.({
+            opaque: opaqueH264,
+            alpha: this.inProgressEncodingContext.alpha,
+            width: this.inProgressEncodingContext.width,
+            height: this.inProgressEncodingContext.height,
+          })
+        } else {
+          this.inProgressEncodingContext.opaque = opaqueH264
+        }
+      },
+      (alphaH264: Buffer) => {
+        if (
+          this.inProgressEncodingContext.opaque !== undefined &&
+          this.inProgressEncodingContext.width !== undefined &&
+          this.inProgressEncodingContext.height !== undefined
+        ) {
+          this.encodingResolve?.({
+            alpha: alphaH264,
+            opaque: this.inProgressEncodingContext.opaque,
+            width: this.inProgressEncodingContext.width,
+            height: this.inProgressEncodingContext.height,
+          })
+        } else {
+          this.inProgressEncodingContext.alpha = alphaH264
+        }
+      },
     )
   }
 
-  private async _encodeFrame(
-    pixelBuffer: unknown,
-    bufferFormat: SupportedWlShmFormat,
-    bufferWidth: number,
-    bufferHeight: number,
-    bufferStride: number,
-    serial: number,
-  ): Promise<EncodedFrame> {
-    if (!this._frameEncoder) {
-      this._frameEncoder = types[bufferFormat][config.encoder.h264Encoder](bufferWidth, bufferHeight, bufferFormat)
+  async encodeBuffer(bufferId: number, serial: number): Promise<EncodedFrame> {
+    let encodingOptions = 0
+    encodingOptions = enableSplitAlpha(encodingOptions)
+    encodingOptions = enableFullFrame(encodingOptions)
+    const { encodedFrame, width, height } = await this.encodeFragment(bufferId)
+    return EncodedFrame.create(serial, h264, encodingOptions, width, height, encodedFrame)
+  }
+
+  private resetInProgressEncodingContext() {
+    this.encodingResolve = undefined
+    this.inProgressEncodingContext.alpha = undefined
+    this.inProgressEncodingContext.opaque = undefined
+    this.inProgressEncodingContext.width = undefined
+    this.inProgressEncodingContext.height = undefined
+  }
+
+  private async encodeFragment(bufferId: number): Promise<EncodingResult> {
+    const encodingContext = await new Promise<EncodingContext>((resolve) => {
+      this.encodingResolve = resolve
+
+      const { width, height } = appEndpointNative.encodeBuffer(this.nativeEncoder, this.wlClient, bufferId)
+
+      if (this.inProgressEncodingContext.opaque !== undefined && this.inProgressEncodingContext.alpha !== undefined) {
+        resolve({
+          alpha: this.inProgressEncodingContext.alpha,
+          opaque: this.inProgressEncodingContext.opaque,
+          width,
+          height,
+        })
+      } else {
+        this.inProgressEncodingContext.width = width
+        this.inProgressEncodingContext.height = height
+      }
+    })
+
+    this.resetInProgressEncodingContext()
+    return {
+      encodedFrame: EncodedFrameFragment.create(encodingContext.opaque, encodingContext.alpha ?? Buffer.allocUnsafe(0)),
+      width: encodingContext.width,
+      height: encodingContext.height,
     }
-    return this._frameEncoder.encodeBuffer(pixelBuffer, bufferFormat, bufferWidth, bufferHeight, bufferStride, serial)
   }
 }

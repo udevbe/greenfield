@@ -16,61 +16,28 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 export class EncodedFrameFragment {
-  static create(
-    fragmentX: number,
-    fragmentY: number,
-    fragmentWidth: number,
-    fragmentHeight: number,
-    opaque: Buffer,
-    alpha: Buffer,
-  ): EncodedFrameFragment {
+  private constructor(private readonly opaque: Buffer, private readonly alpha: Buffer, public readonly size: number) {}
+
+  static create(opaque: Buffer, alpha: Buffer): EncodedFrameFragment {
     const size =
-      2 + // fragmentX (uint16LE)
-      2 + // fragmentY (uint16LE)
-      2 + // fragmentWidth (uint16LE)
-      2 + // fragmentHeight (uint16LE)
       4 + // fragment opaque length (uin32LE)
       opaque.length + // opaque (uint8array)
       4 + // fragment alpha length (uin32LE)
       alpha.length // alpha (uint8array)
-    return new EncodedFrameFragment(fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha, size)
+    return new EncodedFrameFragment(opaque, alpha, size)
   }
 
-  constructor(
-    private readonly _fragmentX: number,
-    private readonly _fragmentY: number,
-    private readonly _fragmentWidth: number,
-    private readonly _fragmentHeight: number,
-    private readonly _opaque: Buffer,
-    private readonly _alpha: Buffer,
-    public readonly size: number,
-  ) {}
-
-  writeToBuffer(buffer: Buffer, offset: number): number {
-    buffer.writeUInt16LE(this._fragmentX, offset)
-    offset += 2
-
-    buffer.writeUInt16LE(this._fragmentY, offset)
-    offset += 2
-
-    buffer.writeUInt16LE(this._fragmentWidth, offset)
-    offset += 2
-
-    buffer.writeUInt16LE(this._fragmentHeight, offset)
-    offset += 2
-
-    buffer.writeUInt32LE(this._opaque.length, offset)
+  writeToBuffer(buffer: Buffer, offset: number): void {
+    buffer.writeUInt32LE(this.opaque.length, offset)
     offset += 4
 
-    this._opaque.copy(buffer, offset)
-    offset += this._opaque.length
+    this.opaque.copy(buffer, offset)
+    offset += this.opaque.length
 
-    buffer.writeUInt32LE(this._alpha.length, offset)
+    buffer.writeUInt32LE(this.alpha.length, offset)
     offset += 4
 
-    this._alpha.copy(buffer, offset)
-    offset += this._alpha.length
-
-    return offset
+    this.alpha.copy(buffer, offset)
+    offset += this.alpha.length
   }
 }
