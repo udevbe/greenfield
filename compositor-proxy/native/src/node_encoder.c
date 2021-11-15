@@ -130,46 +130,6 @@ gst_alpha_sample_to_node_buffer_cb(napi_env env, napi_value js_callback, void *c
     NAPI_CALL(env, napi_call_function(env, global, js_callback, sizeof(args) / sizeof(args[0]), args, &cb_result))
 }
 
-/**
- *
- * @param shm_buffer in
- * @param encoder_type in "x264" or "nvh264"
- * @param encoder out
- * @return 1 on error, 0 on success
- */
-static int
-createShmEncoder(struct wl_shm_buffer *shm_buffer, char *encoder_type, struct encoder **encoder) {
-    const int32_t width = wl_shm_buffer_get_width(shm_buffer);
-    const int32_t height = wl_shm_buffer_get_height(shm_buffer);
-    const uint32_t shm_format = wl_shm_buffer_get_format(
-            shm_buffer); // WL_SHM_FORMAT_ARGB8888 = 0 or WL_SHM_FORMAT_XRGB8888 = 1
-    char *gst_format = NULL;
-
-    wayland_shm_to_gst_format(shm_format, &gst_format);
-    if (gst_format == NULL) {
-        // unsupported shm gst_format.
-        return 1;
-    }
-
-    if (width * height <= 256 * 256) {
-        *encoder = png_gst_encoder_create(gst_format, width, height);
-        return 0;
-    }
-
-    if (strcmp(encoder_type, "x264") == 0 && shm_format == WL_SHM_FORMAT_ARGB8888) {
-        *encoder = x264_gst_alpha_encoder_create(gst_format, width, height);
-    } else if (strcmp(encoder_type, "x264") == 0 && shm_format == WL_SHM_FORMAT_XRGB8888) {
-        *encoder = x264_gst_encoder_create(gst_format, width, height);
-    } else if (strcmp(encoder_type, "nvh264") == 0 && shm_format == WL_SHM_FORMAT_XRGB8888) {
-        *encoder = nv264_gst_encoder_create(gst_format, width, height);
-    } else if (strcmp(encoder_type, "nvh264") == 0 && shm_format == WL_SHM_FORMAT_ARGB8888) {
-        *encoder = nv264_gst_alpha_encoder_create(gst_format, width, height);
-    } else {
-        return 1;
-    }
-
-    return 0;
-}
 
 /**
  *  expected nodejs arguments in order:

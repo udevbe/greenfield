@@ -327,6 +327,44 @@ x264_gst_encoder_create(char *format, uint32_t width, uint32_t height) {
     encoder->encoder_data = (struct encoder *) x264_gst_encoder;
     return 1;
 }
+static int x264_gst_generic_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource, int alpha) {
+    struct wl_shm_buffer *shm_buffer;
+
+    shm_buffer = wl_shm_buffer_get(buffer_resource);
+
+    const int32_t width = wl_shm_buffer_get_width(shm_buffer);
+    const int32_t height = wl_shm_buffer_get_height(shm_buffer);
+    const uint32_t shm_format = wl_shm_buffer_get_format(shm_buffer);
+
+    // Too small needs the png encoder so refuse those
+    if (width * height <= 256 * 256) {
+        return 0;
+    }
+
+    if (strcmp(encoder->encoder_type, "x264")) {
+        // different encoder selected so not for us
+        return 0;
+    }
+
+    if (alpha && shm_format == WL_SHM_FORMAT_ARGB8888) {
+        return 1;
+    }
+    if (!alpha && shm_format == WL_SHM_FORMAT_XRGB8888) {
+        return 1;
+    }
+    return 0;
+}
+
+static int
+x264_gst_alpha_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
+    return x264_gst_generic_supports_buffer(encoder, buffer_resource, 1);
+}
+
+static int
+x264_gst_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
+    return x264_gst_generic_supports_buffer(encoder, buffer_resource, 0);
+}
+
 
 struct encoder_module {
     x264_gst_alpha_supports_buffer,

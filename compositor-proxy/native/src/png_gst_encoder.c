@@ -130,6 +130,22 @@ png_gst_encoder_create(const struct encoder *encoder) {
     return 1;
 }
 
+static int png_supports_buffer(struct encoder *encoder,
+                               struct wl_resource *buffer_resource) {
+
+    struct wl_shm_buffer *shm_buffer;
+
+    shm_buffer = wl_shm_buffer_get(buffer_resource);
+
+    const int32_t width = wl_shm_buffer_get_width(shm_buffer);
+    const int32_t height = wl_shm_buffer_get_height(shm_buffer);
+
+    if (width * height <= 256 * 256) {
+        return 1;
+    }
+    return 0;
+}
+
 struct encoder_module {
     png_supports_buffer,
     png_gst_encoder_create,
