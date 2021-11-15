@@ -3,13 +3,10 @@
 #include <gst/app/gstappsrc.h>
 #include <gst/app/gstappsink.h>
 #include <stdint.h>
-#include "png_gst_encoder.h"
+#include "encoder.h"
 #include "shm.h"
 
 struct png_gst_encoder {
-    // base type
-    struct encoder base_encoder;
-
     // gstreamer
     GstAppSrc *app_src;
     GstAppSink *app_sink;
@@ -37,13 +34,8 @@ static GstAppSinkCallbacks opaque_sample_callbacks = {
 
 static int
 png_encoder_destroy(struct encoder *encoder) {
-    struct png_gst_encoder *png_gst_encoder;
-
-    png_gst_encoder = (struct png_gst_encoder *) encoder;
+    struct png_gst_encoder *png_gst_encoder = (struct png_gst_encoder *) encoder->encoder_data;
     // TODO cleanup all gstreamer resources
-
-    png_gst_encoder->base_encoder.destroy = NULL;
-    png_gst_encoder->base_encoder.encode = NULL;
 
     gst_object_unref(png_gst_encoder->app_src);
     gst_object_unref(png_gst_encoder->app_sink);
@@ -82,7 +74,7 @@ png_gst_encoder_ensure_size(struct png_gst_encoder *png_gst_encoder,
 static int
 png_gst_encoder_encode(struct encoder *encoder,
                        struct wl_resource *buffer_resource) {
-    struct png_gst_encoder *png_gst_encoder = (struct png_gst_encoder *) encoder;
+    struct png_gst_encoder *png_gst_encoder = (struct png_gst_encoder *) encoder->encode_data;
     GstFlowReturn ret;
     struct wl_shm_buffer *shm_buffer;
     GstBuffer *buffer;
@@ -110,13 +102,11 @@ png_gst_encoder_encode(struct encoder *encoder,
     return FALSE;
 }
 
-struct encoder *
-png_gst_encoder_create(const char *format, uint32_t width, uint32_t height) {
+static struct encoder *
+png_gst_encoder_create(const struct encoder *encoder) {
     struct png_gst_encoder *png_gst_encoder;
 
     png_gst_encoder = calloc(1, sizeof(struct png_gst_encoder));
-    png_gst_encoder->base_encoder.destroy = png_encoder_destroy;
-    png_gst_encoder->base_encoder.encode = png_gst_encoder_encode;
 
     gst_init(NULL, NULL);
     png_gst_encoder->pipeline = gst_parse_launch(
@@ -130,13 +120,20 @@ png_gst_encoder_create(const char *format, uint32_t width, uint32_t height) {
     png_gst_encoder->app_sink = GST_APP_SINK(
             gst_bin_get_by_name(GST_BIN(png_gst_encoder->pipeline), "sink"));
 
-    png_gst_encoder_ensure_size(png_gst_encoder, format, width, height);
-
     gst_app_sink_set_callbacks(png_gst_encoder->app_sink,
                                &opaque_sample_callbacks,
-                               (gpointer) png_gst_encoder,
+                               (gpointer) encoder,
                                NULL);
 
     gst_element_set_state(png_gst_encoder->pipeline, GST_STATE_PLAYING);
-    return (struct encoder *) png_gst_encoder;
+    encoder->encoder_data = (struct encoder *) png_gst_encoder;
+    return 1;
 }
+
+struct encoder_module {
+    png_supports_buffer,
+    png_gst_encoder_create,
+    png_gst_encoder_encode,
+    png_encoder_destroy,
+    0,
+} png_module;

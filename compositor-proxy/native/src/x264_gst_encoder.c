@@ -3,14 +3,12 @@
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
 #include <gst/app/gstappsink.h>
+#include <gst/gstelement.h>
 
-#include "x264_gst_encoder.h"
+#include "encoder.h"
 #include "shm.h"
 
 struct x264_gst_alpha_encoder {
-    // base type
-    struct encoder base_encoder;
-
     // gstreamer
     GstAppSrc *app_src;
     GstElement *videobox;
@@ -20,9 +18,6 @@ struct x264_gst_alpha_encoder {
 };
 
 struct x264_gst_encoder {
-    // base type
-    struct encoder base_encoder;
-
     // gstreamer
     GstAppSrc *app_src;
     GstElement *videobox;
@@ -124,11 +119,9 @@ static int
 x264_gst_alpha_encoder_destroy(struct encoder *encoder) {
     struct x264_gst_alpha_encoder *x264_gst_alpha_encoder;
 
-    x264_gst_alpha_encoder = (struct x264_gst_alpha_encoder *) encoder;
+    x264_gst_alpha_encoder = (struct x264_gst_alpha_encoder *) encoder->encoder_data;
     // TODO cleanup all gstreamer resources
 
-    x264_gst_alpha_encoder->base_encoder.destroy = NULL;
-    x264_gst_alpha_encoder->base_encoder.encode = NULL;
 
     gst_object_unref(x264_gst_alpha_encoder->app_src);
     gst_object_unref(x264_gst_alpha_encoder->videobox);
@@ -146,11 +139,8 @@ static int
 x264_gst_encoder_destroy(struct encoder *encoder) {
     struct x264_gst_encoder *x264_gst_encoder;
 
-    x264_gst_encoder = (struct x264_gst_encoder *) encoder;
+    x264_gst_encoder = (struct x264_gst_encoder *) encoder->encoder_data;
     // TODO cleanup all gstreamer resources
-
-    x264_gst_encoder->base_encoder.destroy = NULL;
-    x264_gst_encoder->base_encoder.encode = NULL;
 
     gst_object_unref(x264_gst_encoder->app_src);
     gst_object_unref(x264_gst_encoder->videobox);
@@ -166,7 +156,7 @@ x264_gst_encoder_destroy(struct encoder *encoder) {
 static int
 x264_gst_alpha_encoder_encode(struct encoder *encoder,
                               struct wl_resource *buffer_resource) {
-    struct x264_gst_alpha_encoder *x264_gst_alpha_encoder = (struct x264_gst_alpha_encoder *) encoder;
+    struct x264_gst_alpha_encoder *x264_gst_alpha_encoder = (struct x264_gst_alpha_encoder *) encoder->encoder_data;
     GstFlowReturn ret;
     struct wl_shm_buffer *shm_buffer;
     GstBuffer *buffer;
@@ -225,14 +215,11 @@ x264_gst_encoder_encode(struct encoder *encoder,
     return FALSE;
 }
 
-struct encoder *
-x264_gst_alpha_encoder_create(const char *format, uint32_t width, uint32_t height) {
+int
+x264_gst_alpha_encoder_create(struct encoder* encoder) {
     struct x264_gst_alpha_encoder *x264_gst_alpha_encoder;
 
     x264_gst_alpha_encoder = calloc(1, sizeof(struct x264_gst_alpha_encoder));
-    x264_gst_alpha_encoder->base_encoder.separate_alpha = 1;
-    x264_gst_alpha_encoder->base_encoder.destroy = x264_gst_alpha_encoder_destroy;
-    x264_gst_alpha_encoder->base_encoder.encode = x264_gst_alpha_encoder_encode;
 
     gst_init(NULL, NULL);
     x264_gst_alpha_encoder->pipeline = gst_parse_launch(
@@ -291,30 +278,26 @@ x264_gst_alpha_encoder_create(const char *format, uint32_t width, uint32_t heigh
     x264_gst_alpha_encoder->app_sink = GST_APP_SINK(
             gst_bin_get_by_name(GST_BIN(x264_gst_alpha_encoder->pipeline), "sink"));
 
-    x264_gst_alpha_encoder_ensure_size(x264_gst_alpha_encoder, format, width, height);
-
     gst_app_sink_set_callbacks(x264_gst_alpha_encoder->app_sink,
                                &opaque_sample_callbacks,
-                               (gpointer) x264_gst_alpha_encoder,
+                               (gpointer) encoder,
                                NULL);
     gst_app_sink_set_callbacks(x264_gst_alpha_encoder->app_sink_alpha,
                                &alpha_sample_callbacks,
-                               (gpointer) x264_gst_alpha_encoder,
+                               (gpointer) encoder,
                                NULL);
 
     gst_element_set_state(x264_gst_alpha_encoder->pipeline, GST_STATE_PLAYING);
 
-    return (struct encoder *) x264_gst_alpha_encoder;
+    encoder->encoder_data =  (struct encoder *) x264_gst_alpha_encoder;
+    return 1;
 }
 
-struct encoder *
+int
 x264_gst_encoder_create(char *format, uint32_t width, uint32_t height) {
     struct x264_gst_encoder *x264_gst_encoder;
 
     x264_gst_encoder = calloc(1, sizeof(struct x264_gst_encoder));
-    x264_gst_encoder->base_encoder.separate_alpha = 0;
-    x264_gst_encoder->base_encoder.destroy = x264_gst_encoder_destroy;
-    x264_gst_encoder->base_encoder.encode = x264_gst_encoder_encode;
 
     gst_init(NULL, NULL);
     x264_gst_encoder->pipeline = gst_parse_launch(
@@ -336,10 +319,27 @@ x264_gst_encoder_create(char *format, uint32_t width, uint32_t height) {
 
     gst_app_sink_set_callbacks(x264_gst_encoder->app_sink,
                                &opaque_sample_callbacks,
-                               (gpointer) x264_gst_encoder,
+                               (gpointer) encoder,
                                NULL);
 
     gst_element_set_state(x264_gst_encoder->pipeline, GST_STATE_PLAYING);
 
-    return (struct encoder *) x264_gst_encoder;
+    encoder->encoder_data = (struct encoder *) x264_gst_encoder;
+    return 1;
 }
+
+struct encoder_module {
+    x264_gst_alpha_supports_buffer,
+    x264_gst_alpha_encoder_create,
+    x264_gst_alpha_encoder_encode,
+    x264_gst_alpha_encoder_destroy,
+    1,
+} x264_gst_alpha_module;
+
+struct encoder_module {
+    x264_gst_supports_buffer,
+    x264_gst_encoder_create,
+    x264_gst_encoder_encode,
+    x264_gst_encoder_destroy,
+    0,
+} x264_gst_module;

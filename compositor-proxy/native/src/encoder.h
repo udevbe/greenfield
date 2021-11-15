@@ -9,17 +9,14 @@
 #include <gst/gstsample.h>
 #include <node_api.h>
 
-// encoder interface
-struct encoder;
+// encoder data interface, we don't know it's contents
+struct encoder_data;
 
 typedef void (*encode_callback_func)(struct encoder *encoder, GstSample *sample);
 
-typedef int (*encode_func)(struct encoder *encoder, struct wl_resource *buffer_resource);
-typedef int (*destroy_func)(struct encoder *encoder);
-typedef int (*supports_buffer_func)(struct wl_resource *buffer_resource);
-
-struct encoder_wrapper {
-    struct encoder *encoder_implementation;
+struct encoder {
+    struct encoder_module *encoder_module;
+    struct encoder_data *encoder_data;
     char encoder_type[16];
     struct wl_client *client;
 
@@ -32,15 +29,13 @@ struct encoder_wrapper {
     } callback_data;
 };
 
-struct encoder {
-
-    struct encoder_wrapper *wrapper;
-
-    destroy_func destroy;
-    encode_func encode;
-
-    supports_buffer_func supports_buffer;
+struct encoder_module {
+    int (*supports_buffer)(struct encoder *encoder, struct wl_resource *buffer_resource));
+    int (*create)(struct encoder *encoder);
+    int (*encode)(struct encoder *encoder, struct wl_resource *buffer_resource);
+    int (*destroy)(struct encoder *encoder);
     int separate_alpha;
-};
+}
+
 
 #endif //APP_ENDPOINT_ENCODING_ENCODER_H
