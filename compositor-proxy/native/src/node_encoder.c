@@ -156,14 +156,12 @@ createShmEncoder(struct wl_shm_buffer *shm_buffer, char *encoder_type, struct en
     return 0;
 }
 
-
 /**
  *  expected nodejs arguments in order:
  *  - string encoder_type - argv[0] // 'x264' | 'nvh264'
  *  - object wl_client - argv[1]
- *  - number buffer_id - argv[2]
- *  - function opaque_callback - argv[3]
- *  - function alpha_callback - argv[4]
+ *  - function opaque_callback - argv[2]
+ *  - function alpha_callback - argv[3]
  * return:
  *  - object encoderContext
  * @param env
@@ -173,103 +171,85 @@ createShmEncoder(struct wl_shm_buffer *shm_buffer, char *encoder_type, struct en
 napi_value
 createEncoder(napi_env env, napi_callback_info info) {
     size_t argc = 4;
-    napi_value encoder_value, null_value, cb_name, cb_alpha_name, argv[argc];
+    napi_value encoder_wrapper_value, argv[argc], cb_name, cb_alpha_name;
     napi_threadsafe_function js_cb_ref, js_cb_ref_alpha;
-
     size_t encoder_type_length;
-    struct encoder *encoder;
-    struct wl_resource *buffer_resource;
-    struct wl_shm_buffer *shm_buffer;
-
     struct wl_client *client;
-    uint32_t buffer_id;
 
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
-    NAPI_CALL(env, napi_get_value_string_latin1(env, argv[0], NULL, 0L, &encoder_type_length))
-    char encoder_type[encoder_type_length + 1];
-    NAPI_CALL(env, napi_get_value_string_latin1(env, argv[0], encoder_type, sizeof(encoder_type), NULL))
+
+    struct encoder_wrapper *encoder_wrapper = calloc(1,  sizeof(struct encoder_wrapper));
+    NAPI_CALL(env, napi_get_value_string_latin1(env, argv[0], encoder_wrapper->encoder_type, sizeof(encoder_wrapper->encoder_type), &encoder_type_length))
+
+    encoder_wrapper->callback_data.opaque_sample_ready_callback = encoder_opaque_sample_ready_callback;
+    encoder_wrapper->callback_data.alpha_sample_ready_callback = encoder_alpha_sample_ready_callback;
+
     NAPI_CALL(env, napi_get_value_external(env, argv[1], (void **) &client))
-    NAPI_CALL(env, napi_get_value_uint32(env, argv[2], &buffer_id))
-
-    buffer_resource = wl_client_get_object(client, buffer_id);
-    shm_buffer = wl_shm_buffer_get(buffer_resource);
-    if (shm_buffer == NULL) {
-        napi_throw_error((env), NULL, "Found a unsupported non shm-buffer. Bailing out.");
-        NAPI_CALL(env, napi_get_undefined(env, &encoder_value))
-        return encoder_value;
-    }
-
-    if (createShmEncoder(shm_buffer, encoder_type, &encoder)) {
-        const char msg[] = "No encoder found with type %s";
-        char *error_msg = calloc(sizeof(msg) + encoder_type_length, sizeof(char));
-        sprintf(error_msg, msg, encoder_type);
-        napi_throw_error((env), NULL, error_msg);
-
-        NAPI_CALL(env, napi_get_undefined(env, &encoder_value))
-        return encoder_value;
-    }
-
-    encoder->callback_data.opaque_sample_ready_callback = encoder_opaque_sample_ready_callback;
-    encoder->callback_data.alpha_sample_ready_callback = encoder_alpha_sample_ready_callback;
-    NAPI_CALL(env, napi_create_external(env, (void *) encoder, encoder_finalize_cb, NULL, &encoder_value))
+    encoder_wrapper->client = client;
 
     napi_create_string_utf8(env, "opaque_callback", NAPI_AUTO_LENGTH, &cb_name);
     NAPI_CALL(env, napi_create_threadsafe_function(
             env,
-            argv[3],
+            argv[2],
             NULL,
             cb_name,
             0,
             2,
             NULL,
             NULL,
-            encoder,
+            encoder_wrapper,
             gst_sample_to_node_buffer_cb,
             &js_cb_ref))
-    encoder->callback_data.js_cb_ref = js_cb_ref;
+    encoder_wrapper->callback_data.js_cb_ref = js_cb_ref;
 
     napi_create_string_utf8(env, "alpha_callback", NAPI_AUTO_LENGTH, &cb_alpha_name);
     NAPI_CALL(env, napi_create_threadsafe_function(
             env, // env
-            argv[4], // func
+            argv[3], // func
             NULL, // async_resource
             cb_alpha_name, // async_resource_name
             0, // max_queue_size
             2, // initial_thread_count
             NULL, // thread_finalize_data
             NULL, // thread_finalize_cb
-            encoder, // context
+            encoder_wrapper, // context
             gst_alpha_sample_to_node_buffer_cb, // call_js_cb
             &js_cb_ref_alpha)) // result
-    encoder->callback_data.js_cb_ref_alpha = js_cb_ref_alpha;
+    encoder_wrapper->callback_data.js_cb_ref_alpha = js_cb_ref_alpha;
 
-    return encoder_value;
+    NAPI_CALL(env, napi_create_external(env, (void *) encoder_wrapper, encoder_finalize_cb, NULL, &encoder_wrapper_value))
+    return encoder_wrapper_value;
 }
 
 // expected arguments in order:
 // - encoder - argv[0]
-// - object wl_client - argv[1]
-// - object buffer_id - argv[2]
+// - object buffer_id - argv[1]
 // return:
 // - void
 napi_value
 encodeBuffer(napi_env env, napi_callback_info info) {
-    size_t argc = 3;
+    size_t argc = 2;
     napi_value argv[argc], return_value;
 
-    struct encoder *encoder;
-    struct wl_client *client;
+    struct encoder_wrapper *encoder;
     uint32_t buffer_id;
     struct wl_resource *buffer_resource;
 
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
     NAPI_CALL(env, napi_get_value_external(env, argv[0], (void **) &encoder))
-    NAPI_CALL(env, napi_get_value_external(env, argv[1], (void **) &client))
-    NAPI_CALL(env, napi_get_value_uint32(env, argv[2], &buffer_id))
+    NAPI_CALL(env, napi_get_value_uint32(env, argv[1], &buffer_id))
 
-    buffer_resource = wl_client_get_object(client, buffer_id);
+    buffer_resource = wl_client_get_object(encoder->client, buffer_id);
 
-    encoder->encode(encoder, buffer_resource);
+    if(encoder->encoder_implementation == NULL || !encoder->encoder_implementation->supports_buffer(buffer_resource)) {
+        if(encoder->encoder_implementation != NULL) {
+            encoder->encoder_implementation->destroy(encoder->encoder_implementation);
+        }
+        // (re)initialize
+
+    }
+
+    encoder->encoder_implementation->encode(encoder, buffer_resource);
 
     NAPI_CALL(env, napi_get_undefined(env, &return_value))
     return return_value;

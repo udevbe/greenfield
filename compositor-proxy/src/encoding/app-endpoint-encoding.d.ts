@@ -1,13 +1,12 @@
 declare namespace nativeEncoder {
-  export type EncodingContext = unknown
+  export type EncoderWrapper = unknown
 
   export function createEncoder(
-    encoderName: 'nvh264' | 'x264',
+    encoderType: 'nvh264' | 'x264',
     wlClient: unknown,
-    bufferId: number,
     onOpaqueEncoded: (opaque: Buffer, separateAlpha: boolean) => void,
     onAlphaEncoded: ((alpha: Buffer) => void) | null,
-  ): EncodingContext
+  ): EncoderWrapper
 
   export function encodeBuffer(encoder: unknown, wlClient: unknown, bufferId: number): { width: number; height: number }
 }

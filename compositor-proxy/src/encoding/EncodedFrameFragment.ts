@@ -38,6 +38,5 @@ export class EncodedFrameFragment {
     offset += 4
 
     this.alpha.copy(buffer, offset)
-    offset += this.alpha.length
   }
 }

@@ -28,6 +28,7 @@ type EncodingContext = {
   alpha?: Buffer
   width: number
   height: number
+  // encodingType: 'h264' | 'png'
 }
 
 type EncodingResult = {
@@ -36,8 +37,8 @@ type EncodingResult = {
   height: number
 }
 
-export function createEncoder(wlClient: unknown, bufferId: number): FrameEncoder {
-  return new Encoder(config.encoder.h264Encoder, wlClient, bufferId)
+export function createEncoder(): FrameEncoder {
+  return new Encoder(config.encoder.h264Encoder)
 }
 
 class Encoder implements FrameEncoder {
@@ -45,56 +46,48 @@ class Encoder implements FrameEncoder {
   private readonly inProgressEncodingContext: Partial<EncodingContext> = {}
   private encodingResolve?: (value: EncodingContext | PromiseLike<EncodingContext>) => void
 
-  constructor(
-    private readonly encoderName: typeof config.encoder.h264Encoder,
-    private readonly wlClient: unknown,
-    bufferId: number,
-  ) {
+  constructor(private readonly encoderType: typeof config.encoder.h264Encoder, wlClient: unknown) {
     this.nativeEncoder = appEndpointNative.createEncoder(
-      this.encoderName,
-      this.wlClient,
-      bufferId,
-      (opaqueH264: Buffer, separateAlpha) => {
+      this.encoderType,
+      wlClient,
+      (buffer: Buffer, separateAlpha) => {
         if (
           (!separateAlpha || this.inProgressEncodingContext.alpha !== undefined) &&
           this.inProgressEncodingContext.width !== undefined &&
           this.inProgressEncodingContext.height !== undefined
         ) {
           this.encodingResolve?.({
-            opaque: opaqueH264,
+            opaque: buffer,
             alpha: this.inProgressEncodingContext.alpha,
             width: this.inProgressEncodingContext.width,
             height: this.inProgressEncodingContext.height,
           })
         } else {
-          this.inProgressEncodingContext.opaque = opaqueH264
+          this.inProgressEncodingContext.opaque = buffer
         }
       },
-      (alphaH264: Buffer) => {
+      (alpha: Buffer) => {
         if (
           this.inProgressEncodingContext.opaque !== undefined &&
           this.inProgressEncodingContext.width !== undefined &&
           this.inProgressEncodingContext.height !== undefined
         ) {
           this.encodingResolve?.({
-            alpha: alphaH264,
+            alpha: alpha,
             opaque: this.inProgressEncodingContext.opaque,
             width: this.inProgressEncodingContext.width,
             height: this.inProgressEncodingContext.height,
           })
         } else {
-          this.inProgressEncodingContext.alpha = alphaH264
+          this.inProgressEncodingContext.alpha = alpha
         }
       },
     )
   }
 
   async encodeBuffer(bufferId: number, serial: number): Promise<EncodedFrame> {
-    let encodingOptions = 0
-    encodingOptions = enableSplitAlpha(encodingOptions)
-    encodingOptions = enableFullFrame(encodingOptions)
     const { encodedFrame, width, height } = await this.encodeFragment(bufferId)
-    return EncodedFrame.create(serial, h264, encodingOptions, width, height, encodedFrame)
+    return EncodedFrame.create(serial, h264, 0, width, height, encodedFrame)
   }
 
   private resetInProgressEncodingContext() {

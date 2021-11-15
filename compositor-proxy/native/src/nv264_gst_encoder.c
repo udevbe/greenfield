@@ -298,6 +298,11 @@ nv264_gst_alpha_encoder_create(const char *format, uint32_t width, uint32_t heig
     return (struct encoder *) nv264_gst_alpha_encoder;
 }
 
+int
+nv264_gst_encoder_supports_buffer() {
+
+}
+
 struct encoder *
 nv264_gst_encoder_create(char *format, uint32_t width, uint32_t height) {
     struct nv264_gst_encoder *nv264_gst_encoder;
@@ -306,6 +311,7 @@ nv264_gst_encoder_create(char *format, uint32_t width, uint32_t height) {
     nv264_gst_encoder->base_encoder.separate_alpha = 0;
     nv264_gst_encoder->base_encoder.destroy = nv264_gst_encoder_destroy;
     nv264_gst_encoder->base_encoder.encode = nv264_gst_encoder_encode;
+    nv264_gst_encoder->base_encoder.supports_buffer = nv264_gst_encoder_supports_buffer;
 
     gst_init(NULL, NULL);
     nv264_gst_encoder->pipeline = gst_parse_launch(
