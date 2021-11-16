@@ -71,8 +71,8 @@ encoder_finalize_encoded_frame(napi_env env, void *finalize_data, void *finalize
 }
 
 static void
-gst_sample_to_node_buffer_cb(napi_env env, napi_value js_callback, void *context, void *data) {
-    napi_value separate_alpha_value, buffer_value, global, cb_result;
+encoded_frame_to_node_buffer_cb(napi_env env, napi_value js_callback, void *context, void *data) {
+    napi_value separate_alpha_value, encoding_type_value, buffer_value, global, cb_result;
     struct encoded_frame *encoded_frame = data;
 
     if (env == NULL) {
@@ -83,8 +83,9 @@ gst_sample_to_node_buffer_cb(napi_env env, napi_value js_callback, void *context
     NAPI_CALL(env, napi_create_external_buffer(env, encoded_frame->encoded_data_size, encoded_frame->encoded_data,
                                                encoder_finalize_encoded_frame, encoded_frame, &buffer_value))
     NAPI_CALL(env, napi_get_boolean(env, encoded_frame->encoder->itf.separate_alpha, &separate_alpha_value))
+    NAPI_CALL(env, napi_create_int32(env, encoded_frame->encoder->encoding_type, &encoding_type_value))
 
-    napi_value args[] = {buffer_value, separate_alpha_value};
+    napi_value args[] = {buffer_value, separate_alpha_value, encoding_type_value};
     NAPI_CALL(env, napi_get_global(env, &global))
     NAPI_CALL(env, napi_call_function(env, global, js_callback, sizeof(args) / sizeof(args[0]), args, &cb_result))
 }
@@ -119,7 +120,7 @@ encoded_alpha_frame_to_node_buffer_cb(napi_env env, napi_value js_callback, void
  * @param info
  * @return
  */
-napi_value
+static napi_value
 createEncoder(napi_env env, napi_callback_info info) {
     size_t argc = 4;
     napi_value encoder_value, argv[argc], cb_name, cb_alpha_name;
@@ -151,7 +152,7 @@ createEncoder(napi_env env, napi_callback_info info) {
             NULL,
             NULL,
             encoder,
-            gst_sample_to_node_buffer_cb,
+            encoded_frame_to_node_buffer_cb,
             &js_cb_ref))
     encoder->callback_data.js_cb_ref = js_cb_ref;
 
@@ -178,14 +179,15 @@ createEncoder(napi_env env, napi_callback_info info) {
 // - encoder - argv[0]
 // - object buffer_id - argv[1]
 // return:
-// - void
-napi_value
+// - object - { width: number, height: number }
+static napi_value
 encodeBuffer(napi_env env, napi_callback_info info) {
     size_t argc = 2;
-    napi_value argv[argc], return_value;
+    napi_value argv[argc], buffer_width_value, buffer_height_value, return_value;
 
     struct encoder *encoder;
     uint32_t buffer_id;
+    uint32_t buffer_width, buffer_height;
     struct wl_resource *buffer_resource = wl_client_get_object(encoder->client, buffer_id);
 
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
@@ -204,19 +206,26 @@ encodeBuffer(napi_env env, napi_callback_info info) {
             if (all_encoder_itfs[i].supports_buffer(encoder, buffer_resource)) {
                 encoder->itf = all_encoder_itfs[i];
                 encoder->itf.create(encoder);
+                assert(encoder->impl != NULL);
                 break;
             }
         }
     }
-    assert(encoder->impl != NULL);
-    encoder->itf.encode(encoder, buffer_resource);
 
-    NAPI_CALL(env, napi_get_undefined(env, &return_value))
+    encoder->itf.encode(encoder, buffer_resource, &buffer_width, &buffer_height);
+
+    NAPI_CALL(env, napi_create_int32(env, buffer_width, &buffer_width_value))
+    NAPI_CALL(env, napi_create_int32(env, buffer_height, &buffer_height_value))
+    const napi_property_descriptor properties[] = {
+            {"width",  NULL, NULL, NULL, NULL, buffer_width_value,  napi_default, NULL},
+            {"height", NULL, NULL, NULL, NULL, buffer_height_value, napi_default, NULL},
+    };
+    NAPI_CALL(env, napi_create_object(env, &return_value))
+    NAPI_CALL(env, napi_define_properties(env, return_value, sizeof(properties) / sizeof(properties[0]), properties))
     return return_value;
 }
 
-
-napi_value
+static napi_value
 init(napi_env env, napi_value exports) {
     napi_property_descriptor desc[] = {
             DECLARE_NAPI_METHOD("createEncoder", createEncoder),

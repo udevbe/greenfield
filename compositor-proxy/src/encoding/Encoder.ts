@@ -19,7 +19,6 @@ import { config } from '../config'
 import appEndpointNative from './app-endpoint-encoding'
 import { EncodedFrame } from './EncodedFrame'
 import { EncodedFrameFragment } from './EncodedFrameFragment'
-import { h264 } from './EncodingTypes'
 import { FrameEncoder } from './FrameEncoder'
 
 type EncodingContext = {
@@ -27,13 +26,14 @@ type EncodingContext = {
   alpha?: Buffer
   width: number
   height: number
-  // encodingType: 'h264' | 'png'
+  encodingType: number
 }
 
 type EncodingResult = {
   encodedFrame: EncodedFrameFragment
   width: number
   height: number
+  encodingType: number
 }
 
 export function createEncoder(wlClient: unknown): FrameEncoder {
@@ -49,7 +49,7 @@ class Encoder implements FrameEncoder {
     this.nativeEncoder = appEndpointNative.createEncoder(
       this.encoderType,
       wlClient,
-      (buffer: Buffer, separateAlpha) => {
+      (buffer: Buffer, separateAlpha, encodingType) => {
         if (
           (!separateAlpha || this.inProgressEncodingContext.alpha !== undefined) &&
           this.inProgressEncodingContext.width !== undefined &&
@@ -57,25 +57,29 @@ class Encoder implements FrameEncoder {
         ) {
           this.encodingResolve?.({
             opaque: buffer,
+            encodingType,
             alpha: this.inProgressEncodingContext.alpha,
             width: this.inProgressEncodingContext.width,
             height: this.inProgressEncodingContext.height,
           })
         } else {
           this.inProgressEncodingContext.opaque = buffer
+          this.inProgressEncodingContext.encodingType = encodingType
         }
       },
       (alpha: Buffer) => {
         if (
           this.inProgressEncodingContext.opaque !== undefined &&
           this.inProgressEncodingContext.width !== undefined &&
-          this.inProgressEncodingContext.height !== undefined
+          this.inProgressEncodingContext.height !== undefined &&
+          this.inProgressEncodingContext.encodingType !== undefined
         ) {
           this.encodingResolve?.({
             alpha: alpha,
             opaque: this.inProgressEncodingContext.opaque,
             width: this.inProgressEncodingContext.width,
             height: this.inProgressEncodingContext.height,
+            encodingType: this.inProgressEncodingContext.encodingType,
           })
         } else {
           this.inProgressEncodingContext.alpha = alpha
@@ -85,8 +89,8 @@ class Encoder implements FrameEncoder {
   }
 
   async encodeBuffer(bufferId: number, serial: number): Promise<EncodedFrame> {
-    const { encodedFrame, width, height } = await this.encodeFragment(bufferId)
-    return EncodedFrame.create(serial, h264, 0, width, height, encodedFrame)
+    const { encodedFrame, width, height, encodingType } = await this.encodeFragment(bufferId)
+    return EncodedFrame.create(serial, encodingType, 0, width, height, encodedFrame)
   }
 
   private resetInProgressEncodingContext() {
@@ -102,13 +106,17 @@ class Encoder implements FrameEncoder {
       this.encodingResolve = resolve
 
       const { width, height } = appEndpointNative.encodeBuffer(this.nativeEncoder, bufferId)
-
-      if (this.inProgressEncodingContext.opaque !== undefined && this.inProgressEncodingContext.alpha !== undefined) {
+      if (
+        this.inProgressEncodingContext.opaque !== undefined &&
+        this.inProgressEncodingContext.alpha !== undefined &&
+        this.inProgressEncodingContext.encodingType !== undefined
+      ) {
         resolve({
           alpha: this.inProgressEncodingContext.alpha,
           opaque: this.inProgressEncodingContext.opaque,
           width,
           height,
+          encodingType: this.inProgressEncodingContext.encodingType,
         })
       } else {
         this.inProgressEncodingContext.width = width
@@ -121,6 +129,7 @@ class Encoder implements FrameEncoder {
       encodedFrame: EncodedFrameFragment.create(encodingContext.opaque, encodingContext.alpha ?? Buffer.allocUnsafe(0)),
       width: encodingContext.width,
       height: encodingContext.height,
+      encodingType: encodingContext.encodingType,
     }
   }
 }

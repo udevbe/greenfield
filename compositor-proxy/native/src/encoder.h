@@ -10,6 +10,11 @@
 
 // encoder data interface, we don't know it's contents
 struct encoder;
+enum encoding_type {
+    h264,
+    png
+};
+
 struct encoded_frame {
         struct encoder *encoder;
         size_t encoded_data_size;
@@ -20,7 +25,7 @@ typedef void (*encode_callback_func)(struct encoder *encoder, struct encoded_fra
 struct encoder_itf {
     int (*supports_buffer)(struct encoder *encoder, struct wl_resource *buffer_resource);
     int (*create)(struct encoder *encoder);
-    int (*encode)(struct encoder *encoder, struct wl_resource *buffer_resource);
+    int (*encode)(struct encoder *encoder, struct wl_resource *buffer_resource, uint32_t *buffer_width, uint32_t *buffer_height);
     void (*destroy)(struct encoder *encoder);
     void (*finalize_encoded_frame)(struct encoder *encoder, struct encoded_frame *encoded_frame);
     int separate_alpha;
@@ -30,6 +35,7 @@ struct encoder {
     struct encoder_itf itf;
     void *impl;
     char preferred_encoder[16];
+    enum encoding_type encoding_type;
     struct wl_client *client;
 
     struct callback_data {

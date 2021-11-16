@@ -17,6 +17,7 @@ struct gst_encoder {
     GstAppSink *app_sink_alpha;
     GstAppSink *app_sink;
     GstElement *pipeline;
+    enum encoding_type encoder_type;
 };
 
 struct encoded_frame_gst_sample {
@@ -25,7 +26,7 @@ struct encoded_frame_gst_sample {
     GstBuffer *buffer;
 };
 
-void
+static void
 gst_finalize_encoded_frame(struct encoder *encoder, struct encoded_frame *encoded_frame) {
     struct encoded_frame_gst_sample *encoded_frame_gst_sample = (struct encoded_frame_gst_sample *) encoded_frame;
     gst_buffer_unmap(encoded_frame_gst_sample->buffer, &encoded_frame_gst_sample->info);
@@ -100,7 +101,7 @@ handle_gst_buffer_destroyed(gpointer data) {
     free(shm_pool_ref);
 }
 
-GstBuffer *
+static GstBuffer *
 wl_shm_buffer_to_gst_buffer(struct wl_shm_buffer *shm_buffer, uint32_t *width, uint32_t *height, char *gst_format) {
     void *buffer_data;
     struct shm_pool_ref *pool_ref = calloc(1, sizeof(struct shm_pool_ref));
@@ -180,25 +181,24 @@ gst_encoder_destroy(struct encoder *encoder) {
 }
 
 static int
-gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource) {
+gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource, uint32_t *buffer_width, uint32_t *buffer_height) {
     struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
     GstFlowReturn ret;
     struct wl_shm_buffer *shm_buffer;
     GstBuffer *buffer;
     char gst_format[16];
-    uint32_t buffer_width, buffer_height;
 
     shm_buffer = wl_shm_buffer_get((struct wl_resource *) buffer_resource);
     if (shm_buffer == NULL) {
         return -1;
     }
 
-    buffer = wl_shm_buffer_to_gst_buffer(shm_buffer, &buffer_width, &buffer_height, gst_format);
+    buffer = wl_shm_buffer_to_gst_buffer(shm_buffer, buffer_width, buffer_height, gst_format);
     if (buffer == NULL) {
         return -1;
     }
 
-    gst_encoder_ensure_size(gst_encoder, gst_format, buffer_width, buffer_height);
+    gst_encoder_ensure_size(gst_encoder, gst_format, *buffer_width, *buffer_height);
     ret = gst_app_src_push_buffer(gst_encoder->app_src, buffer);
 
     if (ret != GST_FLOW_OK) {
@@ -209,7 +209,7 @@ gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource)
     return 0;
 }
 
-int
+static int
 nvh264_gst_alpha_encoder_create(struct encoder *encoder) {
     struct gst_encoder *gst_encoder = calloc(1, sizeof(struct gst_encoder));
 
@@ -269,10 +269,12 @@ nvh264_gst_alpha_encoder_create(struct encoder *encoder) {
     gst_element_set_state(gst_encoder->pipeline, GST_STATE_PLAYING);
 
     encoder->impl = gst_encoder;
+    encoder->encoding_type = h264;
+
     return 0;
 }
 
-int
+static int
 nvh264_gst_encoder_create(struct encoder *encoder) {
     struct gst_encoder *gst_encoder = calloc(1, sizeof(struct gst_encoder));
 
@@ -293,6 +295,8 @@ nvh264_gst_encoder_create(struct encoder *encoder) {
     gst_element_set_state(gst_encoder->pipeline, GST_STATE_PLAYING);
 
     encoder->impl = gst_encoder;
+    encoder->encoding_type = h264;
+
     return 0;
 }
 
@@ -328,12 +332,12 @@ h264_gst_generic_encoder_supports_buffer(struct encoder *encoder, struct wl_reso
     return 0;
 }
 
-int
+static int
 nvh264_gst_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
     return h264_gst_generic_encoder_supports_buffer(encoder, buffer_resource, 0, "nvh264");
 }
 
-int
+static int
 nvh264_gst_alpha_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
     return h264_gst_generic_encoder_supports_buffer(encoder, buffer_resource, 1, "nvh264");
 }
@@ -356,7 +360,7 @@ static const struct encoder_itf nv264_gst_itf = {
         .separate_alpha = 0,
 };
 
-int
+static int
 x264_gst_alpha_encoder_create(struct encoder *encoder) {
     struct gst_encoder *gst_encoder = calloc(1, sizeof(struct gst_encoder));
 
@@ -419,6 +423,8 @@ x264_gst_alpha_encoder_create(struct encoder *encoder) {
     gst_element_set_state(gst_encoder->pipeline, GST_STATE_PLAYING);
 
     encoder->impl = (struct encoder *) gst_encoder;
+    encoder->encoding_type = h264;
+
     return 0;
 }
 
@@ -446,6 +452,8 @@ x264_gst_encoder_create(struct encoder *encoder) {
     gst_element_set_state(gst_encoder->pipeline, GST_STATE_PLAYING);
 
     encoder->impl = gst_encoder;
+    encoder->encoding_type = h264;
+
     return 0;
 }
 
@@ -477,7 +485,7 @@ static const struct encoder_itf x264_gst_itf = {
         .separate_alpha = 0,
 };
 
-int
+static int
 png_gst_encoder_create(struct encoder *encoder) {
     struct gst_encoder *gst_encoder = calloc(1, sizeof(struct gst_encoder));
 
@@ -499,11 +507,14 @@ png_gst_encoder_create(struct encoder *encoder) {
                                NULL);
 
     gst_element_set_state(gst_encoder->pipeline, GST_STATE_PLAYING);
+
     encoder->impl = gst_encoder;
+    encoder->encoding_type = png;
+
     return 0;
 }
 
-int
+static int
 png_gst_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
     struct wl_shm_buffer *shm_buffer = wl_shm_buffer_get(buffer_resource);
     if (shm_buffer == NULL) {
