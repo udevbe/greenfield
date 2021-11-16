@@ -20,13 +20,7 @@ find_package(PkgConfig REQUIRED)
 add_library(${PROJECT_NAME} SHARED
         native/src/encoder.h
         native/src/node_encoder.c
-        native/src/nv264_gst_encoder.c
-        native/src/nv264_gst_encoder.h
-        native/src/png_gst_encoder.c
-        native/src/png_gst_encoder.h
-        native/src/x264_gst_encoder.c
-        native/src/x264_gst_encoder.h
-        native/src/shm.h native/src/shm.c)
+        native/src/gst_encoder.c)
 
 target_include_directories(${PROJECT_NAME}
         PRIVATE ${NODE_API_DIR}

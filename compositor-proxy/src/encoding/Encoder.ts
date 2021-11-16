@@ -19,7 +19,6 @@ import { config } from '../config'
 import appEndpointNative from './app-endpoint-encoding'
 import { EncodedFrame } from './EncodedFrame'
 import { EncodedFrameFragment } from './EncodedFrameFragment'
-import { enableFullFrame, enableSplitAlpha } from './EncodingOptions'
 import { h264 } from './EncodingTypes'
 import { FrameEncoder } from './FrameEncoder'
 
@@ -37,8 +36,8 @@ type EncodingResult = {
   height: number
 }
 
-export function createEncoder(): FrameEncoder {
-  return new Encoder(config.encoder.h264Encoder)
+export function createEncoder(wlClient: unknown): FrameEncoder {
+  return new Encoder(config.encoder.h264Encoder, wlClient)
 }
 
 class Encoder implements FrameEncoder {
@@ -102,7 +101,7 @@ class Encoder implements FrameEncoder {
     const encodingContext = await new Promise<EncodingContext>((resolve) => {
       this.encodingResolve = resolve
 
-      const { width, height } = appEndpointNative.encodeBuffer(this.nativeEncoder, this.wlClient, bufferId)
+      const { width, height } = appEndpointNative.encodeBuffer(this.nativeEncoder, bufferId)
 
       if (this.inProgressEncodingContext.opaque !== undefined && this.inProgressEncodingContext.alpha !== undefined) {
         resolve({

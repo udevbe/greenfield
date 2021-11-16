@@ -6,18 +6,30 @@
 #define APP_ENDPOINT_ENCODING_ENCODER_H
 
 #include <westfield-extra.h>
-#include <gst/gstsample.h>
 #include <node_api.h>
 
 // encoder data interface, we don't know it's contents
-struct encoder_data;
+struct encoder;
+struct encoded_frame {
+        struct encoder *encoder;
+        size_t encoded_data_size;
+        void* encoded_data;
+};
+typedef void (*encode_callback_func)(struct encoder *encoder, struct encoded_frame *encoded_frame);
 
-typedef void (*encode_callback_func)(struct encoder *encoder, GstSample *sample);
+struct encoder_itf {
+    int (*supports_buffer)(struct encoder *encoder, struct wl_resource *buffer_resource);
+    int (*create)(struct encoder *encoder);
+    int (*encode)(struct encoder *encoder, struct wl_resource *buffer_resource);
+    void (*destroy)(struct encoder *encoder);
+    void (*finalize_encoded_frame)(struct encoder *encoder, struct encoded_frame *encoded_frame);
+    int separate_alpha;
+};
 
 struct encoder {
-    struct encoder_module *encoder_module;
-    struct encoder_data *encoder_data;
-    char encoder_type[16];
+    struct encoder_itf itf;
+    void *impl;
+    char preferred_encoder[16];
     struct wl_client *client;
 
     struct callback_data {
@@ -28,14 +40,6 @@ struct encoder {
         napi_threadsafe_function js_cb_ref_alpha;
     } callback_data;
 };
-
-struct encoder_module {
-    int (*supports_buffer)(struct encoder *encoder, struct wl_resource *buffer_resource));
-    int (*create)(struct encoder *encoder);
-    int (*encode)(struct encoder *encoder, struct wl_resource *buffer_resource);
-    int (*destroy)(struct encoder *encoder);
-    int separate_alpha;
-}
 
 
 #endif //APP_ENDPOINT_ENCODING_ENCODER_H

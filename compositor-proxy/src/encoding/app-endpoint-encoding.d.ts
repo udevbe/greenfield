@@ -8,7 +8,7 @@ declare namespace nativeEncoder {
     onAlphaEncoded: ((alpha: Buffer) => void) | null,
   ): EncoderWrapper
 
-  export function encodeBuffer(encoder: unknown, wlClient: unknown, bufferId: number): { width: number; height: number }
+  export function encodeBuffer(encoder: unknown, bufferId: number): { width: number; height: number }
 }
 
 export = nativeEncoder

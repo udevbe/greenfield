@@ -1,12 +1,8 @@
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
+#include <assert.h>
 #include "encoder.h"
-#include "shm.h"
-#include "x264_gst_encoder.h"
-#include "png_gst_encoder.h"
-#include "nv264_gst_encoder.h"
 
 #define DECLARE_NAPI_METHOD(name, func)                          \
   { name, 0, func, 0, 0, 0, napi_default, 0 }
@@ -30,31 +26,27 @@
     }                                                                    \
 }
 
-extern struct encoder_module png_module;
-extern struct encoder_module nv264_gst_module;
-extern struct encoder_module nv264_gst_alpha_module;
-extern struct encoder_module x264_gst_module;
-extern struct encoder_module x264_gst_alpha_module;
+extern struct encoder_itf png_gst_itf;
+extern struct encoder_itf nv264_gst_itf;
+extern struct encoder_itf nv264_gst_alpha_itf;
+extern struct encoder_itf x264_gst_itf;
+extern struct encoder_itf x264_gst_alpha_itf;
 
-struct encoder_module[] all_modules = {
-    png_module,
-    nv264_gst_module,
-    nv264_gst_alpha_module,
-    x264_gst_module,
-    x264_gst_alpha_module,
-};
+static size_t encoders_count = 5;
+static struct encoder_itf *all_encoder_itfs = NULL;
 
+void __attribute__ ((constructor)) con() {
+    all_encoder_itfs = calloc(encoders_count, sizeof(struct encoder_itf));
+    all_encoder_itfs[0] = x264_gst_alpha_itf;
+    all_encoder_itfs[1] = x264_gst_itf;
+    all_encoder_itfs[2] = nv264_gst_alpha_itf;
+    all_encoder_itfs[3] = nv264_gst_itf;
+    all_encoder_itfs[4] = png_gst_itf;
+}
 
-struct mapped_gst_buffer {
-    GstMapInfo info;
-    GstBuffer *buffer;
-};
-
-static void encoder_finalize_cb(napi_env env,
-                                void *finalize_data,
-                                void *finalize_hint) {
+static void encoder_finalize_cb(napi_env env, void *finalize_data, void *finalize_hint) {
     struct encoder *encoder = finalize_data;
-    encoder->destroy(encoder);
+    encoder->itf.destroy(encoder);
 
     NAPI_CALL(env, napi_unref_threadsafe_function(env, encoder->callback_data.js_cb_ref))
     NAPI_CALL(env, napi_unref_threadsafe_function(env, encoder->callback_data.js_cb_ref_alpha))
@@ -63,44 +55,34 @@ static void encoder_finalize_cb(napi_env env,
 }
 
 static void
-encoder_opaque_sample_ready_callback(struct encoder *encoder, GstSample *sample) {
-    napi_call_threadsafe_function(encoder->callback_data.js_cb_ref, (void *) sample, napi_tsfn_blocking);
+encoder_opaque_sample_ready_callback(struct encoder *encoder, struct encoded_frame *encoded_frame) {
+    napi_call_threadsafe_function(encoder->callback_data.js_cb_ref, encoded_frame, napi_tsfn_blocking);
 }
 
 static void
-encoder_alpha_sample_ready_callback(struct encoder *encoder, GstSample *sample) {
-    napi_call_threadsafe_function(encoder->callback_data.js_cb_ref_alpha, (void *) sample, napi_tsfn_blocking);
+encoder_alpha_sample_ready_callback(struct encoder *encoder, struct encoded_frame *encoded_frame) {
+    napi_call_threadsafe_function(encoder->callback_data.js_cb_ref_alpha, encoded_frame, napi_tsfn_blocking);
 }
 
 static void
-finalize_gst_mapped_buffer(napi_env env,
-                           void *finalize_data,
-                           void *finalize_hint) {
-    struct mapped_gst_buffer *mapped_gst_buffer = finalize_hint;
-    gst_buffer_unmap(mapped_gst_buffer->buffer, &mapped_gst_buffer->info);
-    gst_buffer_unref(mapped_gst_buffer->buffer);
-    free(mapped_gst_buffer);
+encoder_finalize_encoded_frame(napi_env env, void *finalize_data, void *finalize_hint) {
+    struct encoded_frame *encoded_frame = finalize_hint;
+    encoded_frame->encoder->itf.finalize_encoded_frame(encoded_frame->encoder, encoded_frame);
 }
 
 static void
 gst_sample_to_node_buffer_cb(napi_env env, napi_value js_callback, void *context, void *data) {
+    napi_value separate_alpha_value, buffer_value, global, cb_result;
+    struct encoded_frame *encoded_frame = data;
+
     if (env == NULL) {
-        gst_sample_unref(data);
+        encoded_frame->encoder->itf.finalize_encoded_frame(encoded_frame->encoder, encoded_frame);
         return;
     }
-    napi_value separate_alpha_value, buffer_value, global, cb_result;
-    struct encoder *encoder = context;
-    GstSample *sample = data;
-    struct mapped_gst_buffer *mapped_gst_buffer = calloc(1, sizeof(struct mapped_gst_buffer));
-    GstBuffer *buffer = gst_buffer_ref(gst_sample_get_buffer(sample));
-    gst_sample_unref(sample);
 
-    mapped_gst_buffer->buffer = buffer;
-    gst_buffer_map(buffer, &mapped_gst_buffer->info, GST_MAP_READ);
-
-    NAPI_CALL(env, napi_create_external_buffer(env, mapped_gst_buffer->info.size, mapped_gst_buffer->info.data,
-                                               finalize_gst_mapped_buffer, mapped_gst_buffer, &buffer_value))
-    NAPI_CALL(env, napi_get_boolean(env, encoder->separate_alpha ? TRUE : FALSE, &separate_alpha_value))
+    NAPI_CALL(env, napi_create_external_buffer(env, encoded_frame->encoded_data_size, encoded_frame->encoded_data,
+                                               encoder_finalize_encoded_frame, encoded_frame, &buffer_value))
+    NAPI_CALL(env, napi_get_boolean(env, encoded_frame->encoder->itf.separate_alpha, &separate_alpha_value))
 
     napi_value args[] = {buffer_value, separate_alpha_value};
     NAPI_CALL(env, napi_get_global(env, &global))
@@ -108,28 +90,22 @@ gst_sample_to_node_buffer_cb(napi_env env, napi_value js_callback, void *context
 }
 
 static void
-gst_alpha_sample_to_node_buffer_cb(napi_env env, napi_value js_callback, void *context, void *data) {
+encoded_alpha_frame_to_node_buffer_cb(napi_env env, napi_value js_callback, void *context, void *data) {
+    napi_value buffer_value, global, cb_result;
+    struct encoded_frame *encoded_frame = data;
+
     if (env == NULL) {
-        gst_sample_unref(data);
+        encoded_frame->encoder->itf.finalize_encoded_frame(encoded_frame->encoder, encoded_frame);
         return;
     }
-    napi_value buffer_value, global, cb_result;
-    GstSample *sample = data;
-    struct mapped_gst_buffer *mapped_gst_buffer = calloc(1, sizeof(struct mapped_gst_buffer));
-    GstBuffer *buffer = gst_buffer_ref(gst_sample_get_buffer(sample));
-    gst_sample_unref(sample);
 
-    mapped_gst_buffer->buffer = buffer;
-    gst_buffer_map(buffer, &mapped_gst_buffer->info, GST_MAP_READ);
-
-    NAPI_CALL(env, napi_create_external_buffer(env, mapped_gst_buffer->info.size, mapped_gst_buffer->info.data,
-                                               finalize_gst_mapped_buffer, mapped_gst_buffer, &buffer_value))
+    NAPI_CALL(env, napi_create_external_buffer(env, encoded_frame->encoded_data_size, encoded_frame->encoded_data,
+                                               encoder_finalize_encoded_frame, encoded_frame, &buffer_value))
 
     napi_value args[] = {buffer_value};
     NAPI_CALL(env, napi_get_global(env, &global))
     NAPI_CALL(env, napi_call_function(env, global, js_callback, sizeof(args) / sizeof(args[0]), args, &cb_result))
 }
-
 
 /**
  *  expected nodejs arguments in order:
@@ -153,8 +129,10 @@ createEncoder(napi_env env, napi_callback_info info) {
 
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
 
-    struct encoder *encoder = calloc(1,  sizeof(struct encoder));
-    NAPI_CALL(env, napi_get_value_string_latin1(env, argv[0], encoder->encoder_type, sizeof(encoder_wrapper->encoder_type), &encoder_type_length))
+    struct encoder *encoder = calloc(1, sizeof(struct encoder));
+    NAPI_CALL(env,
+              napi_get_value_string_latin1(env, argv[0], encoder->preferred_encoder, sizeof(encoder->preferred_encoder),
+                                           &encoder_type_length))
 
     encoder->callback_data.opaque_sample_ready_callback = encoder_opaque_sample_ready_callback;
     encoder->callback_data.alpha_sample_ready_callback = encoder_alpha_sample_ready_callback;
@@ -188,7 +166,7 @@ createEncoder(napi_env env, napi_callback_info info) {
             NULL, // thread_finalize_data
             NULL, // thread_finalize_cb
             encoder, // context
-            gst_alpha_sample_to_node_buffer_cb, // call_js_cb
+            encoded_alpha_frame_to_node_buffer_cb, // call_js_cb
             &js_cb_ref_alpha)) // result
     encoder->callback_data.js_cb_ref_alpha = js_cb_ref_alpha;
 
@@ -206,34 +184,32 @@ encodeBuffer(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value argv[argc], return_value;
 
-    struct encoder_wrapper *encoder;
+    struct encoder *encoder;
     uint32_t buffer_id;
-    struct wl_resource *buffer_resource;
+    struct wl_resource *buffer_resource = wl_client_get_object(encoder->client, buffer_id);
 
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
     NAPI_CALL(env, napi_get_value_external(env, argv[0], (void **) &encoder))
     NAPI_CALL(env, napi_get_value_uint32(env, argv[1], &buffer_id))
 
-    buffer_resource = wl_client_get_object(encoder->client, buffer_id);
-
-    if (encoder->encoder_module != NULL) {
-        if (!encoder->encoder_module->supports_buffer(encoder, buffer_resource)) {
-            encoder->encoder_module->destroy(encoder);
-            encoder->encoder_module = NULL;
+    if (encoder->impl != NULL) {
+        if (!encoder->itf.supports_buffer(encoder, buffer_resource)) {
+            encoder->itf.destroy(encoder);
+            encoder->impl = NULL;
         }
     }
 
-    if (encoder->encoder_module == NULL) {
-       for (int i = 0; i<(sizeof(all_modules)/sizeof(all_modules[0])); i++) {
-            if (all_modules[i]->supports_buffer(encoder, buffer_resource)) {
-                encoder->encoder_module = all_modules[i];
-                encoder->encoder_module->create(encoder);
+    if (encoder->impl == NULL) {
+        for (int i = 0; i < encoders_count; i++) {
+            if (all_encoder_itfs[i].supports_buffer(encoder, buffer_resource)) {
+                encoder->itf = all_encoder_itfs[i];
+                encoder->itf.create(encoder);
                 break;
             }
-       }
+        }
     }
-    assert(encoder->encoder_module!=NULL);
-    encoder->encoder_module->encode(encoder, buffer_resource);
+    assert(encoder->impl != NULL);
+    encoder->itf.encode(encoder, buffer_resource);
 
     NAPI_CALL(env, napi_get_undefined(env, &return_value))
     return return_value;

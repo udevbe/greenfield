@@ -54,7 +54,7 @@ export function initSurfaceBufferEncoding(): void {
     size: number
   }) {
     if (!this.encoder) {
-      this.encoder = createEncoder()
+      this.encoder = createEncoder(this.wlClient)
     }
 
     const syncSerial = ++bufferSerial
