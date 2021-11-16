@@ -35,7 +35,7 @@ extern struct encoder_itf x264_gst_alpha_itf;
 static size_t encoders_count = 5;
 static struct encoder_itf *all_encoder_itfs = NULL;
 
-void __attribute__ ((constructor)) con() {
+void __attribute__ ((constructor)) on_load() {
     all_encoder_itfs = calloc(encoders_count, sizeof(struct encoder_itf));
     all_encoder_itfs[0] = x264_gst_alpha_itf;
     all_encoder_itfs[1] = x264_gst_itf;

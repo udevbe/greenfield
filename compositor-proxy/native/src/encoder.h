@@ -8,7 +8,7 @@
 #include <westfield-extra.h>
 #include <node_api.h>
 
-// encoder data interface, we don't know it's contents
+// encoder data interface, we don't know its contents
 struct encoder;
 enum encoding_type {
     h264,
@@ -34,7 +34,7 @@ struct encoder_itf {
 struct encoder {
     struct encoder_itf itf;
     void *impl;
-    char preferred_encoder[16];
+    char preferred_encoder[16]; // "x264" or "nvh264"
     enum encoding_type encoding_type;
     struct wl_client *client;
 

@@ -18,19 +18,11 @@
 import { config } from '../config'
 import appEndpointNative from './app-endpoint-encoding'
 import { EncodedFrame } from './EncodedFrame'
-import { EncodedFrameFragment } from './EncodedFrameFragment'
 import { FrameEncoder } from './FrameEncoder'
 
 type EncodingContext = {
   opaque: Buffer
   alpha?: Buffer
-  width: number
-  height: number
-  encodingType: number
-}
-
-type EncodingResult = {
-  encodedFrame: EncodedFrameFragment
   width: number
   height: number
   encodingType: number
@@ -89,19 +81,6 @@ class Encoder implements FrameEncoder {
   }
 
   async encodeBuffer(bufferId: number, serial: number): Promise<EncodedFrame> {
-    const { encodedFrame, width, height, encodingType } = await this.encodeFragment(bufferId)
-    return EncodedFrame.create(serial, encodingType, 0, width, height, encodedFrame)
-  }
-
-  private resetInProgressEncodingContext() {
-    this.encodingResolve = undefined
-    this.inProgressEncodingContext.alpha = undefined
-    this.inProgressEncodingContext.opaque = undefined
-    this.inProgressEncodingContext.width = undefined
-    this.inProgressEncodingContext.height = undefined
-  }
-
-  private async encodeFragment(bufferId: number): Promise<EncodingResult> {
     const encodingContext = await new Promise<EncodingContext>((resolve) => {
       this.encodingResolve = resolve
 
@@ -125,11 +104,21 @@ class Encoder implements FrameEncoder {
     })
 
     this.resetInProgressEncodingContext()
-    return {
-      encodedFrame: EncodedFrameFragment.create(encodingContext.opaque, encodingContext.alpha ?? Buffer.allocUnsafe(0)),
-      width: encodingContext.width,
-      height: encodingContext.height,
-      encodingType: encodingContext.encodingType,
-    }
+    return EncodedFrame.create(
+      serial,
+      encodingContext.encodingType,
+      encodingContext.width,
+      encodingContext.height,
+      encodingContext.opaque,
+      encodingContext.alpha,
+    )
+  }
+
+  private resetInProgressEncodingContext() {
+    this.encodingResolve = undefined
+    this.inProgressEncodingContext.alpha = undefined
+    this.inProgressEncodingContext.opaque = undefined
+    this.inProgressEncodingContext.width = undefined
+    this.inProgressEncodingContext.height = undefined
   }
 }

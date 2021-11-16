@@ -17,7 +17,6 @@ struct gst_encoder {
     GstAppSink *app_sink_alpha;
     GstAppSink *app_sink;
     GstElement *pipeline;
-    enum encoding_type encoder_type;
 };
 
 struct encoded_frame_gst_sample {
@@ -342,7 +341,7 @@ nvh264_gst_alpha_supports_buffer(struct encoder *encoder, struct wl_resource *bu
     return h264_gst_generic_encoder_supports_buffer(encoder, buffer_resource, 1, "nvh264");
 }
 
-static const struct encoder_itf nv264_gst_alpha_itf = {
+const struct encoder_itf nv264_gst_alpha_itf = {
         .supports_buffer = nvh264_gst_alpha_supports_buffer,
         .create = nvh264_gst_alpha_encoder_create,
         .encode = gst_encoder_encode,
@@ -351,7 +350,7 @@ static const struct encoder_itf nv264_gst_alpha_itf = {
         .separate_alpha = 1,
 };
 
-static const struct encoder_itf nv264_gst_itf = {
+const struct encoder_itf nv264_gst_itf = {
         .supports_buffer = nvh264_gst_supports_buffer,
         .create = nvh264_gst_encoder_create,
         .encode = gst_encoder_encode,
@@ -467,7 +466,7 @@ x264_gst_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *bu
     return h264_gst_generic_encoder_supports_buffer(encoder, buffer_resource, 0, "x264");
 }
 
-static const struct encoder_itf x264_gst_alpha_itf = {
+const struct encoder_itf x264_gst_alpha_itf = {
         .supports_buffer = x264_gst_encoder_supports_buffer,
         .create = x264_gst_alpha_encoder_create,
         .encode = gst_encoder_encode,
@@ -476,7 +475,7 @@ static const struct encoder_itf x264_gst_alpha_itf = {
         .separate_alpha = 1,
 };
 
-static const struct encoder_itf x264_gst_itf = {
+const struct encoder_itf x264_gst_itf = {
         .supports_buffer = x264_gst_alpha_encoder_supports_buffer,
         .create = x264_gst_encoder_create,
         .encode = gst_encoder_encode,
@@ -529,7 +528,7 @@ png_gst_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *buf
            (shm_format == WL_SHM_FORMAT_ARGB8888 || shm_format == WL_SHM_FORMAT_XRGB8888);
 }
 
-static const struct encoder_itf png_gst_itf = {
+const struct encoder_itf png_gst_itf = {
         .supports_buffer = png_gst_encoder_supports_buffer,
         .create = png_gst_encoder_create,
         .encode = gst_encoder_encode,
