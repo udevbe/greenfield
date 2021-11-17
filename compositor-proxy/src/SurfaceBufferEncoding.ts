@@ -80,7 +80,7 @@ export function initSurfaceBufferEncoding(): void {
       const start = Date.now()
       console.log()
       this.encoder
-        .encodeBuffer(this.bufferResourceId, syncSerial)
+        .encodeBuffer(bufferId, syncSerial)
         .then((encodedFrame: EncodedFrame) => {
           logger.debug(`|--> Buffer encoding took: ${Date.now() - start}ms`)
           logger.debug(`Buffer encoding finished: serial=${syncSerial}, id=${bufferId}`)

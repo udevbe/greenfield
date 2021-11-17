@@ -188,11 +188,13 @@ encodeBuffer(napi_env env, napi_callback_info info) {
     struct encoder *encoder;
     uint32_t buffer_id;
     uint32_t buffer_width, buffer_height;
-    struct wl_resource *buffer_resource = wl_client_get_object(encoder->client, buffer_id);
+    struct wl_resource *buffer_resource;
 
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
     NAPI_CALL(env, napi_get_value_external(env, argv[0], (void **) &encoder))
     NAPI_CALL(env, napi_get_value_uint32(env, argv[1], &buffer_id))
+
+    buffer_resource = wl_client_get_object(encoder->client, buffer_id);
 
     if (encoder->impl != NULL) {
         if (!encoder->itf.supports_buffer(encoder, buffer_resource)) {

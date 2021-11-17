@@ -17,7 +17,6 @@
 
 import { OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
 import { EncodedFrame } from '../remotestreaming/EncodedFrame'
-import { fullFrame, splitAlpha } from '../remotestreaming/EncodingOptions'
 
 // @ts-ignore requires a loader that treats this import as a web-worker.
 import H264NALDecoderWorker from './H264NALDecoder.worker'
@@ -100,14 +99,9 @@ class H264BufferContentDecoder {
 
   private _decodeH264(encodedFrame: EncodedFrame) {
     const bufferSerial = encodedFrame.serial
-    const isFullFrame = fullFrame(encodedFrame.encodingOptions)
-    if (!isFullFrame) {
-      throw new Error('h264 encoded buffers must contain the full frame.')
-    }
-    const hasAlpha = splitAlpha(encodedFrame.encodingOptions)
 
-    if (hasAlpha) {
-      const h264Nal = encodedFrame.pixelContent[0].alpha.slice()
+    if (encodedFrame.pixelContent.alpha) {
+      const h264Nal = encodedFrame.pixelContent.alpha.slice()
       alphaWorker.then((worker) => {
         this.decodingAlphaSerialsQueue = [...this.decodingAlphaSerialsQueue, bufferSerial]
         // create a copy of the arraybuffer so we can zero-copy the opaque part (after zero-copying, we can no longer use the underlying array in any way)
@@ -126,7 +120,7 @@ class H264BufferContentDecoder {
       this.frameStates[bufferSerial].state = 'pending_opaque'
     }
 
-    const h264Nal = encodedFrame.pixelContent[0].opaque
+    const h264Nal = encodedFrame.pixelContent.opaque
     opaqueWorker.then((worker) => {
       this.decodingSerialsQueue = [...this.decodingSerialsQueue, bufferSerial]
       worker.postMessage(

@@ -18,7 +18,6 @@
 import Surface from '../Surface'
 import { createDecodedFrame, DecodedPixelContent, DecodedFrame } from './DecodedFrame'
 import { EncodedFrame } from './EncodedFrame'
-import { fullFrame, splitAlpha } from './EncodingOptions'
 
 class FrameDecoder {
   static create(): FrameDecoder {
@@ -35,21 +34,10 @@ class FrameDecoder {
   }
 
   async ['image/png'](surface: Surface, encodedFrame: EncodedFrame): Promise<{ bitmap: ImageBitmap; blob: Blob }> {
-    const isFullFrame = fullFrame(encodedFrame.encodingOptions)
-    const hasSplitAlpha = splitAlpha(encodedFrame.encodingOptions)
-
-    if (isFullFrame && !hasSplitAlpha) {
-      // Full frame without a separate alpha. Let the browser do all the drawing.
-      const frame = encodedFrame.pixelContent[0]
-      const blob = new Blob([frame.opaque], { type: 'image/png' })
-      const bitmap = await createImageBitmap(blob, 0, 0, frame.geo.size.width, frame.geo.size.height)
-      return { bitmap, blob }
-    } else {
-      // we don't support/care about fragmented pngs (and definitely not with a separate alpha channel as png has it internal)
-      throw new Error(
-        `Unsupported buffer. Encoding type: ${encodedFrame.mimeType}, full frame:${isFullFrame}, split alpha: ${hasSplitAlpha}`,
-      )
-    }
+    const frame = encodedFrame.pixelContent
+    const blob = new Blob([frame.opaque], { type: 'image/png' })
+    const bitmap = await createImageBitmap(blob, 0, 0, encodedFrame.size.width, encodedFrame.size.height)
+    return { bitmap, blob }
   }
 }
 

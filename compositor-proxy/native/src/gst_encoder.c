@@ -17,6 +17,7 @@ struct gst_encoder {
     GstAppSink *app_sink_alpha;
     GstAppSink *app_sink;
     GstElement *pipeline;
+    int playing;
 };
 
 struct encoded_frame_gst_sample {
@@ -96,7 +97,8 @@ static void
 handle_gst_buffer_destroyed(gpointer data) {
     struct shm_pool_ref *shm_pool_ref = data;
     wl_shm_pool_unref(shm_pool_ref->pool);
-    wl_shm_buffer_end_access(shm_pool_ref->buffer);
+    // FIXME needs to happen in same thread as begin_access
+//    wl_shm_buffer_end_access(shm_pool_ref->buffer);
     free(shm_pool_ref);
 }
 
@@ -120,7 +122,8 @@ wl_shm_buffer_to_gst_buffer(struct wl_shm_buffer *shm_buffer, uint32_t *width, u
     }
 
     shm_pool = wl_shm_buffer_ref_pool(shm_buffer);
-    wl_shm_buffer_begin_access(shm_buffer);
+    // FIXME needs to happen in same thread as end_access
+//    wl_shm_buffer_begin_access(shm_buffer);
 
     buffer_data = wl_shm_buffer_get_data(shm_buffer);
     buffer_stride = wl_shm_buffer_get_stride(shm_buffer);
@@ -180,7 +183,8 @@ gst_encoder_destroy(struct encoder *encoder) {
 }
 
 static int
-gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource, uint32_t *buffer_width, uint32_t *buffer_height) {
+gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource, uint32_t *buffer_width,
+                   uint32_t *buffer_height) {
     struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
     GstFlowReturn ret;
     struct wl_shm_buffer *shm_buffer;
@@ -198,6 +202,11 @@ gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource,
     }
 
     gst_encoder_ensure_size(gst_encoder, gst_format, *buffer_width, *buffer_height);
+    if(gst_encoder->playing == 0) {
+        gst_element_set_state(gst_encoder->pipeline, GST_STATE_PLAYING);
+        gst_encoder->playing = 1;
+    }
+
     ret = gst_app_src_push_buffer(gst_encoder->app_src, buffer);
 
     if (ret != GST_FLOW_OK) {
@@ -256,6 +265,9 @@ nvh264_gst_alpha_encoder_create(struct encoder *encoder) {
             "video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! "
             "appsink name=sink",
             NULL);
+    if (gst_encoder->pipeline == NULL) {
+        return -1;
+    }
 
     gst_encoder->app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "src"));
     gst_encoder->videobox = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "videobox");
@@ -264,8 +276,6 @@ nvh264_gst_alpha_encoder_create(struct encoder *encoder) {
 
     gst_app_sink_set_callbacks(gst_encoder->app_sink, &sample_callback, (gpointer) encoder, NULL);
     gst_app_sink_set_callbacks(gst_encoder->app_sink_alpha, &alpha_sample_callback, (gpointer) encoder, NULL);
-
-    gst_element_set_state(gst_encoder->pipeline, GST_STATE_PLAYING);
 
     encoder->impl = gst_encoder;
     encoder->encoding_type = h264;
@@ -285,13 +295,15 @@ nvh264_gst_encoder_create(struct encoder *encoder) {
             "video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! "
             "appsink name=sink",
             NULL);
+    if (gst_encoder->pipeline == NULL) {
+        return -1;
+    }
 
     gst_encoder->app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "src"));
     gst_encoder->videobox = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "videobox");
     gst_encoder->app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "sink"));
 
     gst_app_sink_set_callbacks(gst_encoder->app_sink, &sample_callback, (gpointer) encoder, NULL);
-    gst_element_set_state(gst_encoder->pipeline, GST_STATE_PLAYING);
 
     encoder->impl = gst_encoder;
     encoder->encoding_type = h264;
@@ -411,15 +423,17 @@ x264_gst_alpha_encoder_create(struct encoder *encoder) {
             "video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! "
             "appsink name=sink",
             NULL);
+    if (gst_encoder->pipeline == NULL) {
+        return -1;
+    }
 
-    gst_encoder->app_src = GST_APP_SRC((GST_BIN(gst_encoder->pipeline), "src"));
+    gst_encoder->app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "src"));
     gst_encoder->videobox = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "videobox");
     gst_encoder->app_sink_alpha = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "alphasink"));
     gst_encoder->app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "sink"));
 
     gst_app_sink_set_callbacks(gst_encoder->app_sink, &sample_callback, (gpointer) encoder, NULL);
     gst_app_sink_set_callbacks(gst_encoder->app_sink_alpha, &alpha_sample_callback, (gpointer) encoder, NULL);
-    gst_element_set_state(gst_encoder->pipeline, GST_STATE_PLAYING);
 
     encoder->impl = (struct encoder *) gst_encoder;
     encoder->encoding_type = h264;
@@ -442,13 +456,15 @@ x264_gst_encoder_create(struct encoder *encoder) {
             "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au,framerate=60/1 ! "
             "appsink name=sink",
             NULL);
+    if (gst_encoder->pipeline == NULL) {
+        return -1;
+    }
 
     gst_encoder->app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "src"));
     gst_encoder->videobox = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "videobox");
     gst_encoder->app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "sink"));
 
     gst_app_sink_set_callbacks(gst_encoder->app_sink, &sample_callback, (gpointer) encoder, NULL);
-    gst_element_set_state(gst_encoder->pipeline, GST_STATE_PLAYING);
 
     encoder->impl = gst_encoder;
     encoder->encoding_type = h264;
@@ -467,7 +483,7 @@ x264_gst_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *bu
 }
 
 const struct encoder_itf x264_gst_alpha_itf = {
-        .supports_buffer = x264_gst_encoder_supports_buffer,
+        .supports_buffer = x264_gst_alpha_encoder_supports_buffer,
         .create = x264_gst_alpha_encoder_create,
         .encode = gst_encoder_encode,
         .destroy = gst_encoder_destroy,
@@ -476,7 +492,7 @@ const struct encoder_itf x264_gst_alpha_itf = {
 };
 
 const struct encoder_itf x264_gst_itf = {
-        .supports_buffer = x264_gst_alpha_encoder_supports_buffer,
+        .supports_buffer = x264_gst_encoder_supports_buffer,
         .create = x264_gst_encoder_create,
         .encode = gst_encoder_encode,
         .destroy = gst_encoder_destroy,
@@ -495,17 +511,14 @@ png_gst_encoder_create(struct encoder *encoder) {
             "pngenc ! "
             "appsink name=sink",
             NULL);
+    if (gst_encoder->pipeline == NULL) {
+        return -1;
+    }
 
     gst_encoder->app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "src"));
-    gst_encoder->app_sink = GST_APP_SINK(
-            gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "sink"));
+    gst_encoder->app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "sink"));
 
-    gst_app_sink_set_callbacks(gst_encoder->app_sink,
-                               &sample_callback,
-                               (gpointer) encoder,
-                               NULL);
-
-    gst_element_set_state(gst_encoder->pipeline, GST_STATE_PLAYING);
+    gst_app_sink_set_callbacks(gst_encoder->app_sink, &sample_callback, (gpointer) encoder, NULL);
 
     encoder->impl = gst_encoder;
     encoder->encoding_type = png;

@@ -16,17 +16,12 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import BufferContents from '../BufferContents'
-import { Size } from '../math/Size'
-import { EncodedFrameFragment, createEncodedFrameFragment } from './EncodedFrameFragment'
 import EncodingTypes, { EncodingMimeTypes } from './EncodingMimeTypes'
 
 export type EncodedFrame = {
   readonly serial: number
   readonly mimeType: EncodingMimeTypes[keyof EncodingMimeTypes]
-  readonly encodingOptions: number
-  readonly size: Size
-  readonly pixelContent: EncodedFrameFragment[]
-} & BufferContents<EncodedFrameFragment[]>
+} & BufferContents<{ opaque: Uint8Array; alpha?: Uint8Array }>
 
 export function createEncodedFrame(u8Buffer: Uint8Array): EncodedFrame {
   const dataView = new DataView(u8Buffer.buffer, u8Buffer.byteOffset)
@@ -40,43 +35,23 @@ export function createEncodedFrame(u8Buffer: Uint8Array): EncodedFrame {
     throw new Error(`Received invalid encoding type, code = ${encodingTypeCode}`)
   }
   const encodingType = EncodingTypes[encodingTypeCode]
-  offset += 2
-
-  const encodingOptions = dataView.getUint16(offset, true) // unused for now
-  offset += 2
-
-  const width = dataView.getUint16(offset, true)
-  offset += 2
-
-  const height = dataView.getUint16(offset, true)
-  offset += 2
-
-  const encodedFragmentElements = dataView.getUint32(offset, true)
   offset += 4
 
-  const encodedFragments: EncodedFrameFragment[] = []
-  for (let i = 0; i < encodedFragmentElements; i++) {
-    const fragmentX = dataView.getUint16(offset, true)
-    offset += 2
-    const fragmentY = dataView.getUint16(offset, true)
-    offset += 2
-    const fragmentWidth = dataView.getUint16(offset, true)
-    offset += 2
-    const fragmentHeight = dataView.getUint16(offset, true)
-    offset += 2
-    const opaqueLength = dataView.getUint32(offset, true)
-    offset += 4
-    const opaque = new Uint8Array(u8Buffer.buffer, u8Buffer.byteOffset + offset, opaqueLength)
-    offset += opaqueLength
-    const alphaLength = dataView.getUint32(offset, true)
-    offset += 4
-    const alpha = new Uint8Array(u8Buffer.buffer, u8Buffer.byteOffset + offset, alphaLength)
-    offset += alphaLength
+  const width = dataView.getUint16(offset, true)
+  offset += 4
 
-    encodedFragments.push(
-      createEncodedFrameFragment(encodingType, fragmentX, fragmentY, fragmentWidth, fragmentHeight, opaque, alpha),
-    )
-  }
+  const height = dataView.getUint16(offset, true)
+  offset += 4
 
-  return { serial, mimeType: encodingType, encodingOptions, size: { width, height }, pixelContent: encodedFragments }
+  const opaqueLength = dataView.getUint32(offset, true)
+  offset += 4
+  const opaque = new Uint8Array(u8Buffer.buffer, u8Buffer.byteOffset + offset, opaqueLength)
+  offset += opaqueLength
+
+  const alphaLength = dataView.getUint32(offset, true)
+  offset += 4
+  const alpha =
+    alphaLength === 0 ? undefined : new Uint8Array(u8Buffer.buffer, u8Buffer.byteOffset + offset, alphaLength)
+
+  return { serial, mimeType: encodingType, size: { width, height }, pixelContent: { opaque, alpha } }
 }
