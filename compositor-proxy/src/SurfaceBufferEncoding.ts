@@ -78,7 +78,6 @@ export function initSurfaceBufferEncoding(): void {
       logger.debug('|- Awaiting buffer encoding.')
       // TODO only profile when in debug
       const start = Date.now()
-      console.log()
       this.encoder
         .encodeBuffer(bufferId, syncSerial)
         .then((encodedFrame: EncodedFrame) => {
@@ -99,7 +98,6 @@ export function initSurfaceBufferEncoding(): void {
           } // else connection was probably closed, don't attempt to send a buffer chunk
         })
         .catch((e: Error) => {
-          Endpoint.shmEndAccess(this.wlClient, bufferId)
           logger.error(`\tname: ${e.name} message: ${e.message}`)
           logger.error('error object stack: ')
           logger.error(e.stack ?? '')

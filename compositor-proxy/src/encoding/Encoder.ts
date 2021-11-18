@@ -22,9 +22,8 @@ import { FrameEncoder } from './FrameEncoder'
 
 type EncodingContext = {
   opaque: Buffer
+  separateAlpha: boolean
   alpha?: Buffer
-  width: number
-  height: number
   encodingType: number
 }
 
@@ -34,91 +33,59 @@ export function createEncoder(wlClient: unknown): FrameEncoder {
 
 class Encoder implements FrameEncoder {
   private readonly nativeEncoder: unknown
-  private readonly inProgressEncodingContext: Partial<EncodingContext> = {}
+  private inProgressEncodingContext: Partial<EncodingContext> = {}
   private encodingResolve?: (value: EncodingContext | PromiseLike<EncodingContext>) => void
+  private encodingContextPromise?: Promise<EncodingContext>
 
   constructor(private readonly encoderType: typeof config.encoder.h264Encoder, wlClient: unknown) {
     this.nativeEncoder = appEndpointNative.createEncoder(
       this.encoderType,
       wlClient,
       (buffer: Buffer, separateAlpha, encodingType) => {
-        if (
-          (!separateAlpha || this.inProgressEncodingContext.alpha !== undefined) &&
-          this.inProgressEncodingContext.width !== undefined &&
-          this.inProgressEncodingContext.height !== undefined
-        ) {
-          this.encodingResolve?.({
-            opaque: buffer,
-            encodingType,
-            alpha: this.inProgressEncodingContext.alpha,
-            width: this.inProgressEncodingContext.width,
-            height: this.inProgressEncodingContext.height,
-          })
-        } else {
-          this.inProgressEncodingContext.opaque = buffer
-          this.inProgressEncodingContext.encodingType = encodingType
-        }
+        this.inProgressEncodingContext.encodingType = encodingType
+        this.inProgressEncodingContext.opaque = buffer
+        this.inProgressEncodingContext.separateAlpha = separateAlpha
+        this.checkEncodingProgress()
       },
       (alpha: Buffer) => {
-        if (
-          this.inProgressEncodingContext.opaque !== undefined &&
-          this.inProgressEncodingContext.width !== undefined &&
-          this.inProgressEncodingContext.height !== undefined &&
-          this.inProgressEncodingContext.encodingType !== undefined
-        ) {
-          this.encodingResolve?.({
-            alpha: alpha,
-            opaque: this.inProgressEncodingContext.opaque,
-            width: this.inProgressEncodingContext.width,
-            height: this.inProgressEncodingContext.height,
-            encodingType: this.inProgressEncodingContext.encodingType,
-          })
-        } else {
-          this.inProgressEncodingContext.alpha = alpha
-        }
+        this.inProgressEncodingContext.alpha = alpha
+        this.checkEncodingProgress()
       },
     )
   }
 
   async encodeBuffer(bufferId: number, serial: number): Promise<EncodedFrame> {
-    const encodingContext = await new Promise<EncodingContext>((resolve) => {
+    if (this.encodingContextPromise !== undefined) {
+      return this.encodingContextPromise.then(() => this.encodeBuffer(bufferId, serial))
+    }
+    this.encodingContextPromise = new Promise<EncodingContext>((resolve) => {
       this.encodingResolve = resolve
-
-      const { width, height } = appEndpointNative.encodeBuffer(this.nativeEncoder, bufferId)
-      if (
-        this.inProgressEncodingContext.opaque !== undefined &&
-        this.inProgressEncodingContext.alpha !== undefined &&
-        this.inProgressEncodingContext.encodingType !== undefined
-      ) {
-        resolve({
-          alpha: this.inProgressEncodingContext.alpha,
-          opaque: this.inProgressEncodingContext.opaque,
-          width,
-          height,
-          encodingType: this.inProgressEncodingContext.encodingType,
-        })
-      } else {
-        this.inProgressEncodingContext.width = width
-        this.inProgressEncodingContext.height = height
-      }
     })
-
-    this.resetInProgressEncodingContext()
-    return EncodedFrame.create(
-      serial,
-      encodingContext.encodingType,
-      encodingContext.width,
-      encodingContext.height,
-      encodingContext.opaque,
-      encodingContext.alpha,
-    )
+    const { width, height } = appEndpointNative.encodeBuffer(this.nativeEncoder, bufferId)
+    const { alpha, encodingType, opaque } = await this.encodingContextPromise
+    return EncodedFrame.create(serial, encodingType, width, height, opaque, alpha)
   }
 
-  private resetInProgressEncodingContext() {
-    this.encodingResolve = undefined
-    this.inProgressEncodingContext.alpha = undefined
-    this.inProgressEncodingContext.opaque = undefined
-    this.inProgressEncodingContext.width = undefined
-    this.inProgressEncodingContext.height = undefined
+  private checkEncodingProgress() {
+    if (
+      this.inProgressEncodingContext.opaque !== undefined &&
+      this.inProgressEncodingContext.separateAlpha !== undefined &&
+      (this.inProgressEncodingContext.alpha !== undefined || !this.inProgressEncodingContext.separateAlpha) &&
+      this.inProgressEncodingContext.encodingType !== undefined
+    ) {
+      const encodingContext: EncodingContext = {
+        encodingType: this.inProgressEncodingContext.encodingType,
+        opaque: this.inProgressEncodingContext.opaque,
+        alpha: this.inProgressEncodingContext.alpha,
+        separateAlpha: this.inProgressEncodingContext.separateAlpha,
+      }
+      this.inProgressEncodingContext = {}
+      if (this.encodingResolve === undefined) {
+        throw new Error('BUG! Encoding resolve should not be undefined at this point.')
+      }
+      this.encodingResolve(encodingContext)
+      this.encodingResolve = undefined
+      this.encodingContextPromise = undefined
+    }
   }
 }

@@ -7,7 +7,6 @@
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
 #include <gst/app/gstappsink.h>
-#include <assert.h>
 #include "encoder.h"
 
 struct gst_encoder {
@@ -142,8 +141,8 @@ wl_shm_buffer_to_gst_buffer(struct wl_shm_buffer *shm_buffer, uint32_t *width, u
 }
 
 static void
-gst_encoder_ensure_size(struct gst_encoder *gst_encoder, const char *format, const u_int32_t width,
-                        const u_int32_t height) {
+h264_gst_encoder_ensure_size(struct gst_encoder *gst_encoder, const char *format, const u_int32_t width,
+                             const u_int32_t height) {
     const GstCaps *current_src_caps = gst_app_src_get_caps(gst_encoder->app_src);
     const GstCaps *new_src_caps = gst_caps_new_simple("video/x-raw",
                                                       "framerate", GST_TYPE_FRACTION, 60, 1,
@@ -167,16 +166,16 @@ gst_encoder_ensure_size(struct gst_encoder *gst_encoder, const char *format, con
 static void
 gst_encoder_destroy(struct encoder *encoder) {
     struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
+    gst_element_set_state(gst_encoder->pipeline, GST_STATE_NULL);
+
     gst_object_unref(gst_encoder->app_src);
     gst_object_unref(gst_encoder->videobox);
     gst_object_unref(gst_encoder->app_sink);
-    if (encoder->itf.separate_alpha) {
-        assert(gst_encoder->app_sink_alpha);
+    if (gst_encoder->app_sink_alpha) {
         gst_object_unref(gst_encoder->app_sink_alpha);
     }
 
     // gstreamer pipeline
-    gst_element_set_state(gst_encoder->pipeline, GST_STATE_NULL);
     gst_object_unref(gst_encoder->pipeline);
 
     free(gst_encoder);
@@ -184,7 +183,9 @@ gst_encoder_destroy(struct encoder *encoder) {
 
 static int
 gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource, uint32_t *buffer_width,
-                   uint32_t *buffer_height) {
+                   uint32_t *buffer_height,
+                   void (*gst_encoder_ensure_size)(struct gst_encoder *, const char *format,
+                                                   const u_int32_t width, const u_int32_t height)) {
     struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
     GstFlowReturn ret;
     struct wl_shm_buffer *shm_buffer;
@@ -202,8 +203,12 @@ gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource,
     }
 
     gst_encoder_ensure_size(gst_encoder, gst_format, *buffer_width, *buffer_height);
-    if(gst_encoder->playing == 0) {
+
+    if (gst_encoder->playing == 0) {
         gst_element_set_state(gst_encoder->pipeline, GST_STATE_PLAYING);
+        if (gst_element_get_state(gst_encoder->pipeline, NULL, NULL, 0) == GST_STATE_CHANGE_FAILURE) {
+            return -1;
+        };
         gst_encoder->playing = 1;
     }
 
@@ -215,6 +220,12 @@ gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource,
     }
 
     return 0;
+}
+
+static int
+h264_gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource, uint32_t *buffer_width,
+                        uint32_t *buffer_height) {
+    return gst_encoder_encode(encoder, buffer_resource, buffer_width, buffer_height, h264_gst_encoder_ensure_size);
 }
 
 static int
@@ -312,8 +323,8 @@ nvh264_gst_encoder_create(struct encoder *encoder) {
 }
 
 static int
-h264_gst_generic_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource, int alpha,
-                                         char *preferred_encoder) {
+h264_gst_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource, int alpha,
+                                 char *preferred_encoder) {
     // different encoder selected so not for us
     if (strcmp(encoder->preferred_encoder, preferred_encoder) != 0) {
         return 0;
@@ -345,18 +356,19 @@ h264_gst_generic_encoder_supports_buffer(struct encoder *encoder, struct wl_reso
 
 static int
 nvh264_gst_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
-    return h264_gst_generic_encoder_supports_buffer(encoder, buffer_resource, 0, "nvh264");
+    return h264_gst_encoder_supports_buffer(encoder, buffer_resource, 0, "nvh264");
 }
 
 static int
 nvh264_gst_alpha_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
-    return h264_gst_generic_encoder_supports_buffer(encoder, buffer_resource, 1, "nvh264");
+    return h264_gst_encoder_supports_buffer(encoder, buffer_resource, 1, "nvh264");
 }
+
 
 const struct encoder_itf nv264_gst_alpha_itf = {
         .supports_buffer = nvh264_gst_alpha_supports_buffer,
         .create = nvh264_gst_alpha_encoder_create,
-        .encode = gst_encoder_encode,
+        .encode = h264_gst_encoder_encode,
         .destroy = gst_encoder_destroy,
         .finalize_encoded_frame = gst_finalize_encoded_frame,
         .separate_alpha = 1,
@@ -365,7 +377,7 @@ const struct encoder_itf nv264_gst_alpha_itf = {
 const struct encoder_itf nv264_gst_itf = {
         .supports_buffer = nvh264_gst_supports_buffer,
         .create = nvh264_gst_encoder_create,
-        .encode = gst_encoder_encode,
+        .encode = h264_gst_encoder_encode,
         .destroy = gst_encoder_destroy,
         .finalize_encoded_frame = gst_finalize_encoded_frame,
         .separate_alpha = 0,
@@ -474,18 +486,18 @@ x264_gst_encoder_create(struct encoder *encoder) {
 
 static int
 x264_gst_alpha_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
-    return h264_gst_generic_encoder_supports_buffer(encoder, buffer_resource, 1, "x264");
+    return h264_gst_encoder_supports_buffer(encoder, buffer_resource, 1, "x264");
 }
 
 static int
 x264_gst_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
-    return h264_gst_generic_encoder_supports_buffer(encoder, buffer_resource, 0, "x264");
+    return h264_gst_encoder_supports_buffer(encoder, buffer_resource, 0, "x264");
 }
 
 const struct encoder_itf x264_gst_alpha_itf = {
         .supports_buffer = x264_gst_alpha_encoder_supports_buffer,
         .create = x264_gst_alpha_encoder_create,
-        .encode = gst_encoder_encode,
+        .encode = h264_gst_encoder_encode,
         .destroy = gst_encoder_destroy,
         .finalize_encoded_frame = gst_finalize_encoded_frame,
         .separate_alpha = 1,
@@ -494,7 +506,7 @@ const struct encoder_itf x264_gst_alpha_itf = {
 const struct encoder_itf x264_gst_itf = {
         .supports_buffer = x264_gst_encoder_supports_buffer,
         .create = x264_gst_encoder_create,
-        .encode = gst_encoder_encode,
+        .encode = h264_gst_encoder_encode,
         .destroy = gst_encoder_destroy,
         .finalize_encoded_frame = gst_finalize_encoded_frame,
         .separate_alpha = 0,
@@ -507,15 +519,18 @@ png_gst_encoder_create(struct encoder *encoder) {
     gst_init(NULL, NULL);
     gst_encoder->pipeline = gst_parse_launch(
             "appsrc name=src format=3 caps=video/x-raw ! "
-            "videoconvert ! "
+            "videobox name=videobox border-alpha=0.0 ! "
+            "videoconvert ! videoscale ! "
             "pngenc ! "
             "appsink name=sink",
             NULL);
+
     if (gst_encoder->pipeline == NULL) {
         return -1;
     }
 
     gst_encoder->app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "src"));
+    gst_encoder->videobox = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "videobox");
     gst_encoder->app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "sink"));
 
     gst_app_sink_set_callbacks(gst_encoder->app_sink, &sample_callback, (gpointer) encoder, NULL);
@@ -524,6 +539,30 @@ png_gst_encoder_create(struct encoder *encoder) {
     encoder->encoding_type = png;
 
     return 0;
+}
+
+static void
+png_gst_encoder_ensure_size(struct gst_encoder *gst_encoder, const char *format, const u_int32_t width,
+                            const u_int32_t height) {
+    const GstCaps *current_src_caps = gst_app_src_get_caps(gst_encoder->app_src);
+    const GstCaps *new_src_caps = gst_caps_new_simple("video/x-raw",
+                                                      "framerate", GST_TYPE_FRACTION, 60, 1,
+                                                      "format", G_TYPE_STRING, format,
+                                                      "width", G_TYPE_INT, width,
+                                                      "height", G_TYPE_INT, height,
+                                                      NULL);
+    if (gst_caps_is_equal(current_src_caps, new_src_caps)) {
+        gst_caps_unref((GstCaps *) new_src_caps);
+        gst_caps_unref((GstCaps *) current_src_caps);
+        return;
+    }
+    gst_caps_unref((GstCaps *) current_src_caps);
+
+    gst_app_src_set_caps(gst_encoder->app_src, new_src_caps);
+    gst_caps_unref((GstCaps *) new_src_caps);
+
+    g_object_set(gst_encoder->videobox, "bottom", height < 16 ? height - 16 : 0, "right", width < 16 ? width - 16 : 0,
+                 NULL);
 }
 
 static int
@@ -541,10 +580,16 @@ png_gst_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *buf
            (shm_format == WL_SHM_FORMAT_ARGB8888 || shm_format == WL_SHM_FORMAT_XRGB8888);
 }
 
+static int
+png_gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource, uint32_t *buffer_width,
+                       uint32_t *buffer_height) {
+    return gst_encoder_encode(encoder, buffer_resource, buffer_width, buffer_height, png_gst_encoder_ensure_size);
+}
+
 const struct encoder_itf png_gst_itf = {
         .supports_buffer = png_gst_encoder_supports_buffer,
         .create = png_gst_encoder_create,
-        .encode = gst_encoder_encode,
+        .encode = png_gst_encoder_encode,
         .destroy = gst_encoder_destroy,
         .finalize_encoded_frame = gst_finalize_encoded_frame,
         .separate_alpha = 0,

@@ -84,12 +84,13 @@ export default class BufferStream {
   onBufferContents(bufferContents: Uint8Array): void {
     try {
       const encodedFrame = createEncodedFrame(bufferContents)
+      console.debug(`Received buffer with serial: ${encodedFrame.serial}`)
       if (this.bufferStates[encodedFrame.serial]) {
-        // state already exists, this means the syn call arrived before this call, which means we can now decode it
+        console.debug(`Commit state for buffer with serial: ${encodedFrame.serial} exists.`)
         this.bufferStates[encodedFrame.serial].encodedFrame = encodedFrame
         this.onComplete(encodedFrame.serial, encodedFrame)
       } else {
-        // state does not exist yet, create a new state and wait for contents to arrive
+        console.debug(`Commit state for buffer with serial: ${encodedFrame.serial} does not exist yet. Creating it.`)
         this.newBufferState(encodedFrame.serial).encodedFrame = encodedFrame
       }
     } catch (e) {

@@ -207,14 +207,22 @@ encodeBuffer(napi_env env, napi_callback_info info) {
         for (int i = 0; i < encoders_count; i++) {
             if (all_encoder_itfs[i].supports_buffer(encoder, buffer_resource)) {
                 encoder->itf = all_encoder_itfs[i];
-                encoder->itf.create(encoder);
+                if(encoder->itf.create(encoder) == -1) {
+                    NAPI_CALL(env,napi_throw_error((env), NULL, "Can't initialize encoder."))
+                    NAPI_CALL(env,napi_get_undefined(env, &return_value))
+                    return return_value;
+                };
                 assert(encoder->impl != NULL);
                 break;
             }
         }
     }
 
-    encoder->itf.encode(encoder, buffer_resource, &buffer_width, &buffer_height);
+    if(encoder->itf.encode(encoder, buffer_resource, &buffer_width, &buffer_height) == -1) {
+        NAPI_CALL(env,napi_throw_error((env), NULL, "Can't encode buffer."))
+        NAPI_CALL(env,napi_get_undefined(env, &return_value))
+        return return_value;
+    }
 
     NAPI_CALL(env, napi_create_int32(env, buffer_width, &buffer_width_value))
     NAPI_CALL(env, napi_create_int32(env, buffer_height, &buffer_height_value))
