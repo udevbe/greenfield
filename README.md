@@ -15,9 +15,8 @@ For more information, visit the [website](https://greenfield.app), or have [a lo
 Greenfield consists of 3 separate parts.
 
 - [Westfield](https://github.com/udevbe/westfield) A Wayland protocols implementation in TypeScript.
-- [Greenfield Compositor Module](https://github.com/udevbe/greenfield) A bare-bones Wayland compositor library.
-- [Greenfield Web Shell](https://github.com/udevbe/greenfield-webshell) An extensive demo implementation of the Greenfield
-  Compositor Module (outdated).
+- [Greenfield Compositor Proxy](https://github.com/udevbe/greenfield/tree/master/compositor-proxy) A Wayland compositor proxy.
+- [Greenfield Compositor Module](https://github.com/udevbe/greenfield/tree/master/compositor-module) A bare-bones Wayland compositor library.
 
 # Running locally
 
@@ -65,8 +64,7 @@ have to include it yourself using a mount. An example docker-compose file is als
 
 # High level technical
 
-### Compositor-Proxy
-
+### Client connection
 A Greenfield browser compositor uses a native compositor-proxy to talk to native applications. 
 This proxy compositor accepts native Wayland client connections and assigns them to a WebSocket connection as soon as 
 one becomes available. A native client and it's WebSocket connection are bound to each other until either one is closed.
@@ -76,8 +74,30 @@ This is needed in case a Wayland client spawns a new Wayland client process. If 
 the compositor-proxy will wait until a new WebSocket connection is available. In other words, the first WebSocket connection
 is always initiated from the browser.
 
-Each application's content is encoded to video frames using GStreamer and send to the browser for decoding. In the browser the applications is realised by a WebGL texture inside a HTML5 canvas.
+### Client frame encoding
+Each application's content is encoded to video frames using GStreamer and send to the browser for decoding. In the browser the application is realised by a WebGL texture inside a HTML5 canvas.
 This canvas is basically what you would call an 'output' in Wayland terminology. The browser compositor is asynchronous, meaning a slow client will not block the processing of another client.
+
+How the entire pipeline currently works can be seen here:
+
+[<img src="https://docs.google.com/drawings/d/e/2PACX-1vRNgOGRL1OKXFGNeVYDylp8CFZLl-GsWFyuVaZP9GkLpARsoMyZcA0KzbtL6vCxCuxnINETogW2mgUd/pub?w=1985&h=561" />](https://docs.google.com/drawings/d/e/2PACX-1vRNgOGRL1OKXFGNeVYDylp8CFZLl-GsWFyuVaZP9GkLpARsoMyZcA0KzbtL6vCxCuxnINETogW2mgUd/pub?w=1985&h=561)
+
+However, this setup is far from perfect. There is a lot of heavy lifting still done in software (CPU) which is badly suited for pushing pixels and images around. Instead, all image processing
+should be done on the GPU as that is exactly what it was designed to do. Another drawback is that we have to work with a dual encoding/decoding solution as h264 does not support transparency (alpha).
+
+As such, a perfect pipeline would look something like this:
+
+[<img src="https://docs.google.com/drawings/d/e/2PACX-1vQ0BpqicB4wNwYKotSK6Hm1lECZ9k5eQYKekFFjXcx4b2yWEhDIim9Hi0Y1Iq1NoFVaZl-kqA6lJdxh/pub?w=1985&h=561" />](https://docs.google.com/drawings/d/e/2PACX-1vQ0BpqicB4wNwYKotSK6Hm1lECZ9k5eQYKekFFjXcx4b2yWEhDIim9Hi0Y1Iq1NoFVaZl-kqA6lJdxh/pub?w=1985&h=561)
+
+Here all heavy operations are done by the GPU. H264 has been replaced with H265 which supports transparency, so we can use a single encoding/decoding step. There is however one major drawback to this solution: 
+the combination of [WebCodecs API](https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API) and H265 codec simply does not exist in any browser, as such we have to resort back to H264. A more realistic
+solution would look like this:
+
+[<img src="https://docs.google.com/drawings/d/e/2PACX-1vRIPsXAvlTFj-bERKWLeoo5RFWUQHfLyQOymNZ8c-kVEhpsh8GGXYAkudanvpNzycTC3G9xuCPxHX6x/pub?w=1985&h=561" />](https://docs.google.com/drawings/d/e/2PACX-1vRIPsXAvlTFj-bERKWLeoo5RFWUQHfLyQOymNZ8c-kVEhpsh8GGXYAkudanvpNzycTC3G9xuCPxHX6x/pub?w=1985&h=561)
+
+Here we've extended the current solution with support for the Wayland DRM protocol. This allows for a zero-copy transfer of the application pixels to the encoding pipeline. We've also added support
+for the H264 WebCodecs API, which allows us to do decoding on the GPU of the client. The end result is a near ideal solution that should be fast enough to support gaming.
+
 
 ### Copy-Paste
 
