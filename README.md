@@ -2,13 +2,13 @@
 
 ### The in-browser wayland compositor [![Build Status](https://travis-ci.org/udevbe/greenfield.svg)](https://travis-ci.org/udevbe/greenfield)
 
-Website: https://www.greenfield.app/
+- Website: https://www.greenfield.app/
 
 Greenfield is a [Wayland compositor](https://en.wikipedia.org/wiki/Wayland_%28display_server_protocol%29) written
 entirely in TypeScript while utilizing WebAssembly and WebGL for the performance critical parts. It can run native
 Wayland applications remotely, or it can run Wayland web applications directly in your browser.
 
-For more information, have a look on the [website](https://greenfield.app).
+For more information, visit the [website](https://greenfield.app), or have [a look on how it all began]( https://twitter.com/FriedChicken/status/1420671685485867014)
 
 ### Modular Compositor
 
