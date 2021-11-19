@@ -23,7 +23,6 @@
   "dependencies": {
     "ajv": "^8.6.3",
     "ajv-formats": "^2.1.0",
-    "gcontext": "^0.0.3",
     "js-yaml": "^4.1.0",
     "pino": "^6.12.0",
     "pino-pretty": "^7.0.1",
@@ -49,7 +48,7 @@
     "prettier": "^2.4.1",
     "ts-node": "^10.1.0",
     "typescript": "^4.4.3",
-    "westfield-endpoint": "0.5.0",
+    "westfield-endpoint": "0.5.1",
     "westfield-endpoint-generator": "^0.3.1"
   }
 }
