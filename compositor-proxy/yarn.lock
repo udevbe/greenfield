@@ -2475,10 +2475,10 @@ westfield-endpoint-generator@^0.3.1:
     uppercamelcase "^3.0.0"
     xml2js "^0.4.23"
 
-westfield-endpoint@0.5.1:
-  version "0.5.1"
-  resolved "https://registry.yarnpkg.com/westfield-endpoint/-/westfield-endpoint-0.5.1.tgz#4ae4270a1626d34125e14ec3ba1cb64a9af1015f"
-  integrity sha512-zAkKNmHdBbAza8WAL/fFBgCujHU9RtAzgKmg21OOwtLzgE0Z4t8NM3m6uaY5KE4BsCTjlRQThNppsrRx0dDwWA==
+westfield-endpoint@0.5.3:
+  version "0.5.3"
+  resolved "https://registry.yarnpkg.com/westfield-endpoint/-/westfield-endpoint-0.5.3.tgz#1ecab2b9b542f002af45f0565d088939fcbe3c05"
+  integrity sha512-U5GVM9PmL90C2gGJrhzEOL2byfCXjC9fE1y/zwt1LxQ7/gl0KFJuPUiLQePdpQgeLVVahX08LzVT+GIPQ/Gclw==
 
 which@^1.0.9:
   version "1.3.1"
