@@ -15,7 +15,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { resetCursorImage, setCursor, setCursorImage } from '../browser/cursor'
+import {
+  clearBrowserDndImage,
+  resetBrowserCursor,
+  setBrowserCursor,
+  setBrowserDndImage,
+  hideBrowserCursor,
+} from '../browser/pointer'
 import BufferImplementation from '../BufferImplementation'
 import { ButtonEvent } from '../ButtonEvent'
 import Callback from '../Callback'
@@ -36,7 +42,6 @@ function createRenderFrame(): Promise<number> {
 
 export default class Renderer {
   private renderFrame?: Promise<void>
-  private cursorFrame?: Promise<void>
   private renderTaskRegistration?: () => void
 
   private constructor(
@@ -80,18 +85,18 @@ export default class Renderer {
     this.render()
   }
 
-  updatePointerCursor(view: View, hotspot: Point): void {
+  updateCursor(view: View, hotspot: Point): void {
     if (view.surface.state.bufferContents) {
       const cursorBufferContents = view.surface.state.bufferContents
 
-      const cursorImage = cursorBufferContents.pixelContent as { blob: Blob } | undefined
+      const cursorImage = cursorBufferContents.pixelContent as { bitmap: ImageBitmap; blob: Blob } | undefined
       if (cursorImage === undefined) {
         return
       }
 
-      setCursorImage(cursorImage.blob, hotspot)
+      setBrowserCursor(cursorImage.bitmap, cursorImage.blob, hotspot)
     } else {
-      this.hidePointer()
+      this.hideCursor()
     }
     view.surface.state.frameCallbacks.forEach((callback) => callback.done(Date.now()))
     view.surface.state.frameCallbacks = []
@@ -144,12 +149,34 @@ export default class Renderer {
     })
   }
 
-  hidePointer(): void {
-    setCursor('none')
+  hideCursor(): void {
+    hideBrowserCursor()
   }
 
-  resetPointer(): void {
-    resetCursorImage()
+  resetCursor(): void {
+    resetBrowserCursor()
+  }
+
+  clearDndImage(): void {
+    clearBrowserDndImage()
+  }
+
+  updateDndImage(view: View): void {
+    if (view.surface.state.bufferContents) {
+      const cursorBufferContents = view.surface.state.bufferContents
+
+      const dndImage = cursorBufferContents.pixelContent as { bitmap: ImageBitmap; blob: Blob } | undefined
+      if (dndImage === undefined) {
+        return
+      }
+
+      setBrowserDndImage(dndImage.bitmap, dndImage.blob, view.positionOffset)
+    } else {
+      this.clearDndImage()
+    }
+    view.surface.state.frameCallbacks.forEach((callback) => callback.done(Date.now()))
+    view.surface.state.frameCallbacks = []
+    this.session.flush()
   }
 
   removeTopLevelView(topLevelView: View): void {

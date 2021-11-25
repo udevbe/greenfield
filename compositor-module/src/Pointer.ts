@@ -34,7 +34,7 @@ import { ButtonEvent } from './ButtonEvent'
 import DataSource from './DataSource'
 import { KeyboardGrab } from './Keyboard'
 import { KeyEvent } from './KeyEvent'
-import { minusPoint, ORIGIN, Point } from './math/Point'
+import { minusPoint, ORIGIN, plusPoint, Point } from './math/Point'
 import { clear } from './Region'
 
 import { Seat } from './Seat'
@@ -85,7 +85,7 @@ export class DefaultPointerGrab implements PointerGrab {
       this.pointer.setFocus(view, x, y)
       if (this.pointer.focus === undefined) {
         this.pointer.sprite = undefined
-        this.pointer.seat.session.renderer.resetPointer()
+        this.pointer.seat.session.renderer.resetCursor()
       }
     }
   }
@@ -114,7 +114,6 @@ export interface PointerGrab {
 }
 
 export class PointerDrag implements PointerGrab, KeyboardGrab {
-  dataSource?: DataSource
   dataSourceListener = () => {
     this.dataSource = undefined
     this.end()
@@ -126,15 +125,20 @@ export class PointerDrag implements PointerGrab, KeyboardGrab {
     this.icon = undefined
   }
 
-  private constructor(public readonly pointer: Pointer, public readonly client: Client, public icon?: View) {}
+  private constructor(
+    public readonly pointer: Pointer,
+    public readonly client: Client,
+    public icon?: View,
+    public dataSource?: DataSource,
+  ) {}
 
-  static create(pointer: Pointer, client: Client, icon?: View): PointerDrag {
-    return new PointerDrag(pointer, client, icon)
+  static create(pointer: Pointer, client: Client, icon: View | undefined, source: DataSource | undefined): PointerDrag {
+    return new PointerDrag(pointer, client, icon, source)
   }
 
   end(): void {
     if (this.icon) {
-      // TODO remove drag icon from browser pointer
+      this.pointer.seat.session.renderer.clearDndImage()
       this.icon.surface.resource.removeDestroyListener(this.iconDestroyListener)
       clear(this.icon.surface.pendingState.inputPixmanRegion)
     }
@@ -295,16 +299,17 @@ export class PointerDrag implements PointerGrab, KeyboardGrab {
 }
 
 export class DragIconRole implements SurfaceRole {
-  private constructor(public readonly view: View) {}
+  private constructor(public readonly view: View, public readonly pointer: Pointer) {}
 
-  public static create(icon: Surface): DragIconRole {
+  public static create(icon: Surface, pointer: Pointer): DragIconRole {
     const view = View.create(icon)
-    return new DragIconRole(view)
+    return new DragIconRole(view, pointer)
   }
 
   onCommit(surface: Surface): void {
     surface.commitPending()
-    // TODO update browser drag icon
+    this.view.positionOffset = plusPoint(this.view.positionOffset, { x: surface.state.dx, y: surface.state.dy })
+    this.pointer.seat.session.renderer.updateDndImage(this.view)
   }
 }
 
@@ -324,7 +329,7 @@ export class CursorRole implements SurfaceRole {
 
   renderPointerCursor(): void {
     if (this.pointer.focus && this.pointer.sprite === this.view) {
-      this.pointer.seat.session.renderer.updatePointerCursor(this.view, this.hotspot)
+      this.pointer.seat.session.renderer.updateCursor(this.view, this.hotspot)
     } else {
       this.view.surface.state.frameCallbacks.forEach((callback) => callback.done(Date.now()))
       this.view.surface.state.frameCallbacks = []
@@ -498,11 +503,11 @@ export class Pointer implements WlPointerRequests {
   }
 
   setDefaultCursor(): void {
-    this.seat.session.renderer.resetPointer()
+    this.seat.session.renderer.resetCursor()
   }
 
   startDrag(source: DataSource | undefined, icon: Surface | undefined, client: Client): void {
-    const drag = PointerDrag.create(this, client, icon?.role?.view)
+    const drag = PointerDrag.create(this, client, icon?.role?.view, source)
 
     if (icon) {
       icon.resource.addDestroyListener(drag.iconListener)
@@ -645,7 +650,7 @@ export class Pointer implements WlPointerRequests {
   }
 
   private unmapSprite() {
-    this.seat.session.renderer.hidePointer()
+    this.seat.session.renderer.hideCursor()
     this.sprite?.surface.resource.removeDestroyListener(this.spriteDestroyListener)
     this.sprite = undefined
   }

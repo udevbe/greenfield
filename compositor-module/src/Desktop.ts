@@ -1,6 +1,6 @@
 import { WlShellSurfaceResize } from 'westfield-runtime-server'
 import { AxisEvent } from './AxisEvent'
-import { setCursor } from './browser/cursor'
+import { setBrowserCursor } from './browser/pointer'
 import { ButtonEvent } from './ButtonEvent'
 import { CompositorSurface } from './index'
 import { minusPoint, ORIGIN, plusPoint, Point } from './math/Point'
@@ -35,7 +35,7 @@ class ResizeGrab implements PointerGrab {
       }
       this.desktopSurface.grabbed = false
       this.desktopSurface.resizeEdges = 0
-      pointer.seat.session.renderer.resetPointer()
+      pointer.seat.session.renderer.resetCursor()
       pointer.endGrab()
     }
   }
@@ -113,16 +113,20 @@ class ResizeGrab implements PointerGrab {
       (this.edges & WlShellSurfaceResize.top && this.edges & WlShellSurfaceResize.right) ||
       (this.edges & WlShellSurfaceResize.bottom && this.edges & WlShellSurfaceResize.left)
     ) {
-      setCursor('nesw-resize')
+      // TODO
+      // setBrowserCursor('nesw-resize')
     } else if (
       (this.edges & WlShellSurfaceResize.top && this.edges & WlShellSurfaceResize.left) ||
       (this.edges & WlShellSurfaceResize.bottom && this.edges & WlShellSurfaceResize.right)
     ) {
-      setCursor('nwse-resize')
+      // TODO
+      // setBrowserCursor('nwse-resize')
     } else if (this.edges & (WlShellSurfaceResize.top | WlShellSurfaceResize.bottom)) {
-      setCursor('ns-resize')
+      // TODO
+      // setBrowserCursor('ns-resize')
     } else if (this.edges & (WlShellSurfaceResize.left | WlShellSurfaceResize.right)) {
-      setCursor('ew-resize')
+      // TODO
+      // setBrowserCursor('ew-resize')
     }
   }
 }
@@ -150,7 +154,7 @@ class MoveGrab implements PointerGrab {
     const pointer = this.desktopSurface.surface.session.globals.seat.pointer
     if (pointer.buttonCount === 0 && event.released) {
       this.desktopSurface.grabbed = false
-      pointer.seat.session.renderer.resetPointer()
+      pointer.seat.session.renderer.resetCursor()
       pointer.endGrab()
     }
   }
@@ -195,7 +199,8 @@ class MoveGrab implements PointerGrab {
     pointer.startGrab(this)
     pointer.clearFocus()
     if (pointer.sprite === undefined) {
-      setCursor('move')
+      // TODO
+      // setBrowserCursor('move')
     }
   }
 }

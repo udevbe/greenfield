@@ -4,6 +4,7 @@ import {
   createKeyEventFromKeyboardEvent,
 } from '../index'
 import Session from '../Session'
+import { browserDragStarted } from './pointer'
 
 export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outputId: string): void {
   session.renderer.initScene(outputId, canvas)
@@ -14,11 +15,19 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
   canvas.oncontextmenu = (event: MouseEvent) => event.preventDefault()
   canvas.tabIndex = 1
 
+  canvas.draggable = true
+  canvas.ondragstart = browserDragStarted
+  canvas.ondragend = (ev) => {
+    seat.notifyButton(createButtonEventFromMouseEvent(ev, true, outputId))
+    seat.notifyFrame()
+    session.flush()
+  }
+
   canvas.onmouseover = () => canvas.focus()
   canvas.onmouseleave = () => {
     seat.notifyKeyboardFocusOut()
     seat.pointer.buttonCount = 0
-    session.renderer.resetPointer()
+    session.renderer.resetCursor()
     session.flush()
   }
 
@@ -33,8 +42,6 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
 
   //wire up dom input events to compositor input events
   const pointerMoveHandler = (event: PointerEvent) => {
-    event.stopPropagation()
-    event.preventDefault()
     seat.notifyMotion(createButtonEventFromMouseEvent(event, false, outputId))
     seat.notifyFrame()
     session.flush()
@@ -49,8 +56,6 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
   }
 
   canvas.onpointerdown = (event: PointerEvent) => {
-    event.stopPropagation()
-    event.preventDefault()
     canvas.setPointerCapture(event.pointerId)
 
     seat.notifyButton(createButtonEventFromMouseEvent(event, false, outputId))
@@ -58,8 +63,6 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
     session.flush()
   }
   canvas.onpointerup = (event: PointerEvent) => {
-    event.stopPropagation()
-    event.preventDefault()
     canvas.releasePointerCapture(event.pointerId)
 
     seat.notifyButton(createButtonEventFromMouseEvent(event, true, outputId))
@@ -67,16 +70,11 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
     session.flush()
   }
   canvas.onwheel = (event: WheelEvent) => {
-    event.stopPropagation()
-    event.preventDefault()
-
     seat.notifyAxis(createAxisEventFromWheelEvent(event, outputId))
     seat.notifyFrame()
     session.flush()
   }
   canvas.onkeydown = (event: KeyboardEvent) => {
-    event.stopPropagation()
-    event.preventDefault()
     const keyEvent = createKeyEventFromKeyboardEvent(event, true)
     if (keyEvent) {
       seat.notifyKey(keyEvent)
@@ -84,8 +82,6 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
     }
   }
   canvas.onkeyup = (event: KeyboardEvent) => {
-    event.stopPropagation()
-    event.preventDefault()
     const keyEvent = createKeyEventFromKeyboardEvent(event, false)
     if (keyEvent) {
       seat.notifyKey(keyEvent)

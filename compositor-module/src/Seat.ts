@@ -368,7 +368,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
         this.session.logger.warn('[client-protocol-error] - Given surface has another role')
         return
       }
-      icon.role = DragIconRole.create(icon)
+      icon.role = DragIconRole.create(icon, this.pointer)
     }
 
     if (isPointerGrab) {

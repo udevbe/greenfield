@@ -78,3 +78,26 @@ export function intersect(rect: Rect, other: Rect): Rect {
 
   return intersectionRect
 }
+
+export function boundingRect(rects: Rect[]): Rect {
+  const xs: number[] = []
+  const ys: number[] = []
+
+  if (rects.length) {
+    rects.forEach((rect) => {
+      xs.push(rect.x0)
+      ys.push(rect.y0)
+      xs.push(rect.x1)
+      ys.push(rect.y1)
+    })
+
+    const minX = Math.min(...xs)
+    const maxX = Math.max(...xs)
+    const minY = Math.min(...ys)
+    const maxY = Math.max(...ys)
+
+    return { x0: minX, y0: minY, x1: maxX, y1: maxY }
+  } else {
+    return { x0: 0, y0: 0, x1: 0, y1: 0 }
+  }
+}

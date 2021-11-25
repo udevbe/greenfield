@@ -12,7 +12,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Affero General Public License for more details.
 //
-// You should have received a copy of the GNU Affero General Public License
+// You should have received a copy of the GNU Affero General Public Licensef
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { createRect } from '../math/Rect'
@@ -115,14 +115,6 @@ class Scene {
   onDestroy(): Promise<void> {
     return this._destroyPromise
   }
-
-  // updateResolution(width: number, height: number, viewStack: View[]): void {
-  //   if (this.resolution instanceof Size && (this.resolution.w !== width || this.resolution.h !== height)) {
-  //     this.resolution = Size.create(width, height)
-  //     this.render(viewStack)
-  //     this.output.resources.forEach((resource) => this.output.emitSpecs(resource))
-  //   }
-  // }
 
   ['video/h264'](decodedFrame: DecodedFrame, renderState: RenderState): void {
     this.yuvaToRGBA.convertInto(decodedFrame.pixelContent as OpaqueAndAlphaPlanes, decodedFrame.size, renderState)
