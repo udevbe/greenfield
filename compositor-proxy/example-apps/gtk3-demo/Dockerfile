@@ -5,10 +5,11 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 ENV USER=user
-RUN adduser --uid 1000 --disabled-password "$USER"
+RUN useradd --create-home --uid 1000 "$USER"
 
 USER "$USER"
-ENV HOME="/home/user"
-ENV WAYLAND_DISPLAY="wayland-0"
+ENV HOME="/home/$USER"
 WORKDIR "$HOME"
+
+ENV WAYLAND_DISPLAY="wayland-0"
 ENTRYPOINT ["gtk3-demo"]

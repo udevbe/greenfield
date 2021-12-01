@@ -4,6 +4,7 @@ project(app-endpoint-encoding C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED TRUE)
 #set(CMAKE_BUILD_TYPE "Debug")
+set(CMAKE_BUILD_TYPE "Release")
 
 execute_process(COMMAND node -p "require('node-api-headers').include_dir"
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}

@@ -48,7 +48,7 @@
     "prettier": "^2.4.1",
     "ts-node": "^10.1.0",
     "typescript": "^4.4.3",
-    "westfield-endpoint": "0.5.3",
+    "westfield-endpoint": "0.5.5",
     "westfield-endpoint-generator": "^0.3.1"
   }
 }

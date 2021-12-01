@@ -41,7 +41,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libegl1-mesa \
     libgbm1 \
     libwayland-egl1-mesa \
-    libwayland-server0 \
     xwayland \
     xauth \
     xxd \
