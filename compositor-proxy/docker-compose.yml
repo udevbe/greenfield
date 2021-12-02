@@ -29,6 +29,18 @@ services:
     environment:
       XDG_RUNTIME_DIR: /xdg-runtime-dir
     restart: always
+  alacritty:
+    pid: 'service:compositor-proxy'
+    build:
+      context: example-apps/alacritty
+      dockerfile: Dockerfile
+    privileged: false
+    volumes:
+      - xdg-runtime-dir:/xdg-runtime-dir
+    environment:
+      WAYLAND_DISPLAY: wayland-0
+      XDG_RUNTIME_DIR: /xdg-runtime-dir
+    restart: always
   xterm:
     pid: 'service:compositor-proxy'
     build:
