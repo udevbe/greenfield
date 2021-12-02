@@ -82,6 +82,7 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
   canvas.onkeydown = (event: KeyboardEvent) => {
     const keyEvent = createKeyEventFromKeyboardEvent(event, true)
     if (keyEvent) {
+      event.preventDefault()
       seat.notifyKey(keyEvent)
       session.flush()
     }
@@ -89,6 +90,7 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
   canvas.onkeyup = (event: KeyboardEvent) => {
     const keyEvent = createKeyEventFromKeyboardEvent(event, false)
     if (keyEvent) {
+      event.preventDefault()
       seat.notifyKey(keyEvent)
       session.flush()
     }
