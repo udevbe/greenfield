@@ -17,6 +17,11 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
 
   canvas.draggable = true
   canvas.ondragstart = browserDragStarted
+  canvas.ondragover = (event) => {
+    seat.notifyMotion(createButtonEventFromMouseEvent(event, false, outputId))
+    seat.notifyFrame()
+    session.flush()
+  }
   canvas.ondragend = (ev) => {
     seat.notifyButton(createButtonEventFromMouseEvent(ev, true, outputId))
     seat.notifyFrame()

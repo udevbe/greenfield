@@ -77,6 +77,7 @@ export default class DataOffer implements WlDataOfferRequests {
      * this be a wl_data_device request? */
 
     this.source.accept(mimeType)
+    this.source.accepted = mimeType !== undefined
   }
 
   destroy(resource: WlDataOfferResource): void {

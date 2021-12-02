@@ -142,7 +142,7 @@ export class PointerDrag implements PointerGrab, KeyboardGrab {
       this.icon.surface.resource.removeDestroyListener(this.iconDestroyListener)
       clear(this.icon.surface.pendingState.inputPixmanRegion)
     }
-    this.setFocus(undefined)
+    this.setFocus(false, undefined)
     this.pointer.endGrab()
     this.pointer.seat.keyboard.endGrab()
   }
@@ -191,7 +191,7 @@ export class PointerDrag implements PointerGrab, KeyboardGrab {
       newFocus = { view, sx: Fixed.parse(sx), sy: Fixed.parse(sy) }
     }
     if (this.focusView !== view) {
-      this.setFocus(newFocus)
+      this.setFocus(true, newFocus)
     }
   }
 
@@ -221,20 +221,18 @@ export class PointerDrag implements PointerGrab, KeyboardGrab {
   motion(event: ButtonEvent): void {
     this.pointer.moveTo(event)
 
-    if (this.icon) {
-      // mouse cursor move is handled by the browser
-      // this.icon.positionOffset = plusPoint(this.pointer, this.deltaPoint ?? ORIGIN)
-      // this.pointer.seat.session.renderer.render()
-    }
-
     if (this.focusView && this.focusResource) {
       const { x: sx, y: sy } = this.focusView.sceneToViewSpace(this.pointer)
       this.focusResource.motion(event.timestamp, Fixed.parse(sx), Fixed.parse(sy))
     }
   }
 
-  setFocus(newFocus?: { view: View; sx: Fixed; sy: Fixed }): void {
-    if (this.focusView !== undefined && newFocus?.view && this.focusView?.surface === newFocus?.view.surface) {
+  private setFocus(fromMotion: boolean, newFocus?: { view: View; sx: Fixed; sy: Fixed }): void {
+    if (
+      this.focusView !== undefined &&
+      newFocus?.view !== undefined &&
+      this.focusView.surface === newFocus.view.surface
+    ) {
       this.focusView = newFocus.view
       return
     }
@@ -246,11 +244,11 @@ export class PointerDrag implements PointerGrab, KeyboardGrab {
       this.focusView = undefined
     }
 
-    if (newFocus === undefined) {
+    if (!fromMotion && newFocus === undefined) {
       return
     }
 
-    if (this.dataSource === undefined && newFocus.view.surface.resource.client !== this.client) {
+    if (this.dataSource === undefined && newFocus?.view.surface.resource.client !== this.client) {
       return
     }
 
@@ -259,6 +257,10 @@ export class PointerDrag implements PointerGrab, KeyboardGrab {
       this.dataSource.dataOffer.source?.resource.removeDestroyListener(this.dataSource.dataOffer.sourceDestroyListener)
       this.dataSource.dataOffer.source = undefined
       this.dataSource.dataOffer = undefined
+    }
+
+    if (newFocus === undefined) {
+      return
     }
 
     const resource = this.pointer.seat.dragResourceList.find(
