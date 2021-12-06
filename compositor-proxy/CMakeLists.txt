@@ -21,7 +21,8 @@ find_package(PkgConfig REQUIRED)
 add_library(${PROJECT_NAME} SHARED
         native/src/encoder.h
         native/src/node_encoder.c
-        native/src/gst_encoder.c)
+        native/src/gst_encoder.c
+        native/src/gst_main_loop.c)
 
 target_include_directories(${PROJECT_NAME}
         PRIVATE ${NODE_API_DIR}

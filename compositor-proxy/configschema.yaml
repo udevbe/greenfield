@@ -44,6 +44,7 @@ properties:
         enum:
           - x264
           - nvh264
+          - vaapih264
       maxPngBufferSize:
         description: |
           Maximum number of pixels an image can have before we switch to h264 encoding.

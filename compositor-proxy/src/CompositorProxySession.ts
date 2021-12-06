@@ -25,7 +25,7 @@ const logger = createLogger('compositor-proxy-session')
 
 export function createCompositorProxySession(compositorSessionId: string): CompositorProxySession {
   const nativeCompositorSession = createNativeCompositorSession(compositorSessionId)
-  const xWaylandSession = XWaylandSession.create(nativeCompositorSession, compositorSessionId)
+  const xWaylandSession = XWaylandSession.create(nativeCompositorSession)
   xWaylandSession.createXWaylandListenerSocket()
   const compositorProxySession = new CompositorProxySession(
     nativeCompositorSession,

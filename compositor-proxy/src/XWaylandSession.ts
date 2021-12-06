@@ -11,10 +11,10 @@ export class XWaylandSession {
   private xWaylandClient?: ClientEntry
   private xwmWebSocket?: WebSocket
 
-  constructor(private nativeCompositorSession: NativeCompositorSession, private readonly compositorSessionId: string) {}
+  constructor(private nativeCompositorSession: NativeCompositorSession) {}
 
-  static create(nativeCompositorSession: NativeCompositorSession, compositorSessionId: string): XWaylandSession {
-    return new XWaylandSession(nativeCompositorSession, compositorSessionId)
+  static create(nativeCompositorSession: NativeCompositorSession): XWaylandSession {
+    return new XWaylandSession(nativeCompositorSession)
   }
 
   /**
@@ -85,7 +85,7 @@ export class XWaylandSession {
     xConnectionSocket.onData = (data) => this.xwmWebSocket?.send(data)
   }
 
-  destroy() {
+  destroy(): void {
     if (this.xwmWebSocket) {
       this.xwmWebSocket.close()
       this.xwmWebSocket = undefined

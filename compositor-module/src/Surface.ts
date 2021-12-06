@@ -307,7 +307,9 @@ class Surface implements WlSurfaceRequests {
         this.session.logger.trace(`|- Awaiting buffer contents with serial: ${serial ?? 'NO SERIAL'}`)
         const startBufferContents = Date.now()
         this.pendingState.bufferContents = await bufferImplementation.getContents(this, serial)
-        this.session.logger.trace(`|--> Buffer contents took ${Date.now() - startBufferContents}ms`)
+        this.session.logger.trace(
+          `|--> Buffer contents with serial: ${serial ?? 'NO SERIAL'} took ${Date.now() - startBufferContents}ms`,
+        )
         if (this.destroyed) {
           return
         }

@@ -10,42 +10,26 @@
 
 // encoder data interface, we don't know its contents
 struct encoder;
-enum encoding_type {
-    h264,
-    png
-};
 
 struct encoded_frame {
-        struct encoder *encoder;
-        size_t encoded_data_size;
-        void* encoded_data;
-};
-typedef void (*encode_callback_func)(struct encoder *encoder, struct encoded_frame *encoded_frame);
-
-struct encoder_itf {
-    int (*supports_buffer)(struct encoder *encoder, struct wl_resource *buffer_resource);
-    int (*create)(struct encoder *encoder);
-    int (*encode)(struct encoder *encoder, struct wl_resource *buffer_resource, uint32_t *buffer_width, uint32_t *buffer_height);
-    void (*destroy)(struct encoder *encoder);
-    void (*finalize_encoded_frame)(struct encoder *encoder, struct encoded_frame *encoded_frame);
-    int separate_alpha;
+	void *encoded_data;
+	uint32_t size;
 };
 
-struct encoder {
-    struct encoder_itf itf;
-    void *impl;
-    char preferred_encoder[16]; // "x264" or "nvh264"
-    enum encoding_type encoding_type;
-    struct wl_client *client;
+typedef void (*frame_callback_func)(void *user_data, struct encoded_frame *encoded_frame);
 
-    struct callback_data {
-        encode_callback_func opaque_sample_ready_callback;
-        napi_threadsafe_function js_cb_ref;
+struct encoder;
 
-        encode_callback_func alpha_sample_ready_callback;
-        napi_threadsafe_function js_cb_ref_alpha;
-    } callback_data;
-};
+int
+encoder_create(char preferred_encoder[16], frame_callback_func frame_ready_callback, void *user_data, struct encoder **encoder_pp);
 
+int
+encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource, uint32_t serial);
+
+int
+encoder_free(struct encoder **encoder_pp);
+
+int
+encoded_frame_finalize(struct encoded_frame *encoded_frame);
 
 #endif //APP_ENDPOINT_ENCODING_ENCODER_H

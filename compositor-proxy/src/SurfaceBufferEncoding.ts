@@ -16,11 +16,10 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { createEncoder } from './encoding/Encoder'
-import { EncodedFrame } from './encoding/EncodedFrame'
 
 import { createLogger } from './Logger'
 import wlSurfaceInterceptor from './protocol/wl_surface_interceptor'
-import { Endpoint, WireMessageUtil } from 'westfield-endpoint'
+import { WireMessageUtil } from 'westfield-endpoint'
 
 const logger = createLogger('surface-buffer-encoding')
 let bufferSerial = -1
@@ -80,21 +79,16 @@ export function initSurfaceBufferEncoding(): void {
       const start = Date.now()
       this.encoder
         .encodeBuffer(bufferId, syncSerial)
-        .then((encodedFrame: EncodedFrame) => {
+        .then((sendBuffer: Buffer) => {
           logger.debug(`|--> Buffer encoding took: ${Date.now() - start}ms`)
           logger.debug(`Buffer encoding finished: serial=${syncSerial}, id=${bufferId}`)
 
           // send buffer contents. opcode: 3. bufferId + chunk
-          const sendBuffer = Buffer.concat([
-            Buffer.from(new Uint32Array([3, bufferId]).buffer),
-            encodedFrame.toBuffer(),
-          ])
           if (this.userData.communicationChannel.readyState === 1) {
             // 1 === 'open'
             logger.debug(`Sending buffer contents: serial=${syncSerial}, id=${bufferId}`)
-            this.userData.communicationChannel.send(
-              sendBuffer.buffer.slice(sendBuffer.byteOffset, sendBuffer.byteOffset + sendBuffer.byteLength),
-            )
+            this.userData.communicationChannel.send(sendBuffer)
+            // TODO free sendBuffer
           } // else connection was probably closed, don't attempt to send a buffer chunk
         })
         .catch((e: Error) => {
@@ -103,7 +97,6 @@ export function initSurfaceBufferEncoding(): void {
           logger.error(e.stack ?? '')
         })
     }
-
     return 0
   }
 }
