@@ -18,6 +18,7 @@
 import { Epoll } from 'epoll'
 import { Endpoint, nativeGlobalNames } from 'westfield-endpoint'
 import WebSocket from 'ws'
+import { RetransmittingWebSocket } from '../../../retransmit.js'
 import { createCompositorProxyWebFS } from './CompositorProxyWebFS'
 import { createLogger } from './Logger'
 
@@ -135,21 +136,20 @@ export class NativeCompositorSession {
     }
   }
 
-  socketForClient(webSocket: WebSocket): void {
+  socketForClient(webSocket: RetransmittingWebSocket): void {
     logger.info(`New websocket connected.`)
 
-    webSocket.binaryType = 'arraybuffer'
     // find a client who does not have a websocket associated
     const client = this.clients.find((client) => client.webSocketChannel.webSocket === undefined)
     if (client === undefined) {
       // create a placeholder client for future wayland client connections.
       const placeHolderClient: ClientEntry = { webSocketChannel: WebSocketChannel.create(webSocket) }
       this.clients = [...this.clients, placeHolderClient]
-      webSocket.addListener('close', () => placeHolderClient.nativeClientSession?.destroy())
+      webSocket.addEventListener('close', () => placeHolderClient.nativeClientSession?.destroy())
     } else {
       // associate the websocket with an already connected wayland client.
       client.webSocketChannel.webSocket = webSocket
-      webSocket.addListener('close', () => client.nativeClientSession?.destroy())
+      webSocket.addEventListener('close', () => client.nativeClientSession?.destroy())
     }
   }
 }

@@ -30,6 +30,8 @@
     "demo": "webpack serve --config demo-compositor/webpack.config.js"
   },
   "dependencies": {
+    "reconnecting-websocket": "^4.4.0",
+    "retransmit.js": "0.0.1",
     "tinyh264": "0.0.7",
     "westfield-runtime-common": "0.5.0",
     "westfield-runtime-server": "0.5.0",

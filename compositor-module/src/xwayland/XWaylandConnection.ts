@@ -1,8 +1,9 @@
 import { connect, webConnectionSetup, XConnection } from 'xtsb'
+import { RetransmittingWebSocket } from '../../../../retransmit.js'
 import Session from '../Session'
 
 export class XWaylandConnection {
-  static create(session: Session, webSocket: WebSocket): Promise<XWaylandConnection> {
+  static create(session: Session, webSocket: RetransmittingWebSocket): Promise<XWaylandConnection> {
     return new Promise<XWaylandConnection>((resolve, reject) => {
       webSocket.onopen = async (_) => {
         webSocket.onerror = (ev) => session.logger.error(`XWM connection ${webSocket.url} error: ${ev}`)
@@ -26,9 +27,9 @@ export class XWaylandConnection {
   private setupPromise?: Promise<XConnection>
 
   xConnection?: XConnection
-  readonly webSocket: WebSocket
+  readonly webSocket: RetransmittingWebSocket
 
-  constructor(webSocket: WebSocket) {
+  constructor(webSocket: RetransmittingWebSocket) {
     this.webSocket = webSocket
     this.destroyPromise = new Promise<void>((resolve) => (this.destroyResolve = resolve))
   }
@@ -45,7 +46,7 @@ export class XWaylandConnection {
   setup(): Promise<XConnection> {
     if (this.setupPromise === undefined) {
       this.setupPromise = new Promise<XConnection>(async (resolve) => {
-        this.xConnection = await connect(webConnectionSetup(this.webSocket))
+        this.xConnection = await connect(webConnectionSetup(this.webSocket as WebSocket))
         resolve(this.xConnection)
       })
     }

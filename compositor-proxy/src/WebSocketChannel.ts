@@ -15,7 +15,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import WebSocket from 'ws'
+import WebSocket, { MessageEvent } from 'ws'
+import { CloseEvent, ErrorEvent, Event, RetransmittingWebSocket } from 'retransmit.js'
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 export const noopHandler = (): void => {}
@@ -24,7 +25,7 @@ export const noopHandler = (): void => {}
  * Wraps a potentially absent web socket. Useful in case a new web socket still needs  to be created.
  */
 export class WebSocketChannel {
-  static create(webSocket: WebSocket): WebSocketChannel {
+  static create(webSocket: RetransmittingWebSocket): WebSocketChannel {
     const webSocketChannel = new WebSocketChannel()
     webSocketChannel.webSocket = webSocket
     return webSocketChannel
@@ -35,11 +36,11 @@ export class WebSocketChannel {
   }
 
   constructor(
-    private _webSocket?: WebSocket,
-    private _onOpenEventHandler: (event: WebSocket.OpenEvent) => void = noopHandler,
-    private _onErrorEventHandler: (event: WebSocket.ErrorEvent) => void = noopHandler,
-    private _onCloseEventHandler: (event: WebSocket.CloseEvent) => void = noopHandler,
-    private _onMessageEventHandler: (event: WebSocket.MessageEvent) => void = noopHandler,
+    private _webSocket?: RetransmittingWebSocket,
+    private _onOpenEventHandler: (event: Event) => void = noopHandler,
+    private _onErrorEventHandler: (event: ErrorEvent) => void = noopHandler,
+    private _onCloseEventHandler: (event: CloseEvent) => void = noopHandler,
+    private _onMessageEventHandler: (event: MessageEvent) => void = noopHandler,
   ) {}
 
   close(): void {
@@ -80,7 +81,7 @@ export class WebSocketChannel {
     }
   }
 
-  set webSocket(webSocket: WebSocket | undefined) {
+  set webSocket(webSocket: RetransmittingWebSocket | undefined) {
     if (this._webSocket) {
       this._webSocket.onopen = noopHandler
       this._webSocket.onerror = noopHandler
@@ -109,7 +110,7 @@ export class WebSocketChannel {
     }
   }
 
-  get webSocket(): WebSocket | undefined {
+  get webSocket(): RetransmittingWebSocket | undefined {
     return this._webSocket
   }
 

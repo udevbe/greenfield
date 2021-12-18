@@ -15,8 +15,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+import ReconnectingWebSocket from 'reconnecting-websocket'
 import { SendMessage, WebFD } from 'westfield-runtime-common'
 import { Client, WlBufferResource } from 'westfield-runtime-server'
+import { RetransmittingWebSocket } from 'retransmit.js'
 import RemoteOutOfBandChannel from './RemoteOutOfBandChannel'
 import StreamingBuffer from './remotestreaming/StreamingBuffer'
 import Session from './Session'
@@ -32,6 +34,14 @@ type XWaylandConectionState = {
 }
 
 const xWaylandProxyStates: { [key: string]: XWaylandConectionState } = {}
+
+let connectionIdCounter = 0
+export function createRetransmittingWebSocket(url: URL): RetransmittingWebSocket {
+  const retransmittingWebSocket = new RetransmittingWebSocket({ closeTimeout: Number.MAX_SAFE_INTEGER })
+  url.searchParams.set('connectionId', `${connectionIdCounter++}`)
+  retransmittingWebSocket.useWebSocket(new ReconnectingWebSocket(url.href))
+  return retransmittingWebSocket
+}
 
 class RemoteSocket {
   private readonly textEncoder: TextEncoder = new TextEncoder()
@@ -51,11 +61,10 @@ class RemoteSocket {
     }
   }
 
-  onWebSocket(webSocket: WebSocket): Promise<Client> {
+  onWebSocket(webSocket: RetransmittingWebSocket): Promise<Client> {
     return new Promise((resolve, reject) => {
       this.session.logger.info('[WebSocket] - created.')
 
-      webSocket.binaryType = 'arraybuffer'
       webSocket.onclose = (event) => {
         reject(new Error(`Failed to connect to application. ${event.reason} ${event.code}`))
       }
@@ -138,7 +147,11 @@ class RemoteSocket {
     throw new Error('TODO. close pipe transferable from endpoint not yet implemented.')
   }
 
-  private setupClientOutOfBandHandlers(webSocket: WebSocket, client: Client, outOfBandChannel: RemoteOutOfBandChannel) {
+  private setupClientOutOfBandHandlers(
+    webSocket: RetransmittingWebSocket,
+    client: Client,
+    outOfBandChannel: RemoteOutOfBandChannel,
+  ) {
     // send out-of-band resource destroy. opcode: 1
     client.addResourceDestroyListener((resource) => {
       outOfBandChannel.send(1, new Uint32Array([resource.id]).buffer)
@@ -215,9 +228,8 @@ class RemoteSocket {
       if (client.connection.closed) {
         return
       }
-
-      const newWebSocket = new WebSocket(webSocket.url)
-      this.onWebSocket(newWebSocket)
+      const appEndpointURL = new URL(webSocket.url)
+      this.onWebSocket(createRetransmittingWebSocket(appEndpointURL))
     })
 
     // listen for recycled resource ids
@@ -242,7 +254,10 @@ class RemoteSocket {
         xWaylandConnection.state = 'open'
         xWaylandConnection.wlClient = client
         xWaylandBaseURL.searchParams.append('xwmFD', `${wmFD}`)
-        const xConnection = await XWaylandConnection.create(this.session, new WebSocket(xWaylandBaseURL.href))
+        const xConnection = await XWaylandConnection.create(
+          this.session,
+          createRetransmittingWebSocket(xWaylandBaseURL),
+        )
         client.onClose().then(() => xConnection.destroy())
         xConnection.onDestroy().then(() => delete xWaylandProxyStates[xWaylandBaseURLhref])
         xWaylandConnection.xConnection = xConnection
@@ -299,7 +314,7 @@ class RemoteSocket {
     }
   }
 
-  private flushWireMessages(client: Client, webSocket: WebSocket, wireMessages: SendMessage[]) {
+  private flushWireMessages(client: Client, webSocket: RetransmittingWebSocket, wireMessages: SendMessage[]) {
     if (client.connection.closed) {
       return
     }
