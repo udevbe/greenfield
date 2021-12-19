@@ -74,7 +74,7 @@ function main() {
       const wmFD = Number.parseInt(searchParams.get('xwmFD') ?? '0')
       compositorProxySession.handleXWMConnection(retransmittingWebSocket, wmFD)
     } else {
-      compositorProxySession.handleConnection(retransmittingWebSocket, connectionId)
+      compositorProxySession.handleConnection(retransmittingWebSocket)
     }
   })
 

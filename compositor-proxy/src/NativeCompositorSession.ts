@@ -17,8 +17,7 @@
 
 import { Epoll } from 'epoll'
 import { Endpoint, nativeGlobalNames } from 'westfield-endpoint'
-import WebSocket from 'ws'
-import { RetransmittingWebSocket } from '../../../retransmit.js'
+import { RetransmittingWebSocket } from 'retransmit.js'
 import { createCompositorProxyWebFS } from './CompositorProxyWebFS'
 import { createLogger } from './Logger'
 
@@ -139,6 +138,7 @@ export class NativeCompositorSession {
   socketForClient(webSocket: RetransmittingWebSocket): void {
     logger.info(`New websocket connected.`)
 
+    webSocket.binaryType = 'arraybuffer'
     // find a client who does not have a websocket associated
     const client = this.clients.find((client) => client.webSocketChannel.webSocket === undefined)
     if (client === undefined) {

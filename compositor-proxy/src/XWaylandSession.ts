@@ -71,6 +71,7 @@ export class XWaylandSession {
     const setupJSON = JSON.stringify(setup)
     xwmWebSocket.send(setupJSON)
 
+    xwmWebSocket.binaryType = 'arraybuffer'
     xwmWebSocket.onmessage = (ev) => {
       if (ev.data instanceof ArrayBuffer) {
         xConnectionSocket.write(Buffer.from(ev.data))

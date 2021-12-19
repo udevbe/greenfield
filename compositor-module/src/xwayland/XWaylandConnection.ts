@@ -46,7 +46,7 @@ export class XWaylandConnection {
   setup(): Promise<XConnection> {
     if (this.setupPromise === undefined) {
       this.setupPromise = new Promise<XConnection>(async (resolve) => {
-        this.xConnection = await connect(webConnectionSetup(this.webSocket as WebSocket))
+        this.xConnection = await connect(webConnectionSetup(this.webSocket as unknown as WebSocket))
         resolve(this.xConnection)
       })
     }

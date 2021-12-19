@@ -65,6 +65,7 @@ class RemoteSocket {
     return new Promise((resolve, reject) => {
       this.session.logger.info('[WebSocket] - created.')
 
+      webSocket.binaryType = 'arraybuffer'
       webSocket.onclose = (event) => {
         reject(new Error(`Failed to connect to application. ${event.reason} ${event.code}`))
       }
