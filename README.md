@@ -65,8 +65,10 @@ then set the environment variable `export WAYLAND_DISPLAY=wayland-0`.
 
 # Docker
 
-Running the Greenfield Compositor Proxy can also be done using docker-compose (see `docker-compose.yml` in the `compositor-proxy` directory), but you will be limited to the applications specified in the docker-compose file.
-Beware that this docker compose file only provides the Greenfield Compositor Proxy, so you will still need to run a Greenfield Compositor Module implementation yourself.
+Running the Greenfield Compositor Proxy can also be done using docker-compose (see `docker-compose.yml` in the `compositor-proxy` directory), but you will be limited to the applications specified in the docker-compose file. Beware that this docker compose file only provides the Greenfield Compositor Proxy, so you will still need to run a Greenfield Compositor Module implementation yourself.
+
+There is also a short screen-cast, if you're unsure on how to get started:
+[![docker-compose greenfield](https://img.youtube.com/vi/SiVfCMqpj3Q/0.jpg)](https://www.youtube.com/watch?v=SiVfCMqpj3Q)
 
 The compositor-proxy is also available as a public docker image `docker.io/udevbe/compositor-proxy` but does not include any `config.yaml`. This means you'll
 have to include it yourself using a mount. Have a look at the docker-compose file for inspiration.
