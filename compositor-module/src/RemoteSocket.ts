@@ -37,7 +37,7 @@ const xWaylandProxyStates: { [key: string]: XWaylandConectionState } = {}
 
 let connectionIdCounter = 0
 export function createRetransmittingWebSocket(url: URL): RetransmittingWebSocket {
-  const retransmittingWebSocket = new RetransmittingWebSocket({ closeTimeout: Number.MAX_SAFE_INTEGER })
+  const retransmittingWebSocket = new RetransmittingWebSocket()
   url.searchParams.set('connectionId', `${connectionIdCounter++}`)
   retransmittingWebSocket.useWebSocket(new ReconnectingWebSocket(url.href))
   return retransmittingWebSocket
