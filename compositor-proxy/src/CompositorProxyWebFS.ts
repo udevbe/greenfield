@@ -93,12 +93,12 @@ export class AppEndpointWebFS {
     } else if (webFdURL.protocol.startsWith('ws')) {
       // fd came from another endpoint, establish a new communication channel
       logger.info(`Establishing data transfer websocket connection to ${webFdURL.href}`)
-      const { retransmittingWebSocket, isNew } = upsertWebSocket(
+      const { retransmittingWebSocket } = upsertWebSocket(
         webFdURL.href,
         new ReconnectingWebSocket(webFdURL.href, [], { maxEnqueuedMessages: 0 }),
+        { closeTimeoutMs: 2000 },
       )
-      const webSocket = new WebSocket(webFdURL)
-      webSocket.addEventListener('error', (event) =>
+      retransmittingWebSocket.addEventListener('error', (event) =>
         logger.error(`Data transfer websocket is in error. ${event.message}`),
       )
       return retransmittingWebSocket
