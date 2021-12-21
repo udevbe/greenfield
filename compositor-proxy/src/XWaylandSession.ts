@@ -1,4 +1,4 @@
-import { RetransmittingWebSocket } from '../../../retransmit.js'
+import { RetransmittingWebSocket } from 'retransmitting-websocket'
 import { createLogger } from './Logger'
 import { Endpoint } from 'westfield-endpoint'
 import { nodeFDConnectionSetup } from 'xtsb'

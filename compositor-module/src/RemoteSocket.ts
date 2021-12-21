@@ -18,7 +18,7 @@
 import ReconnectingWebSocket from 'reconnecting-websocket'
 import { SendMessage, WebFD } from 'westfield-runtime-common'
 import { Client, WlBufferResource } from 'westfield-runtime-server'
-import { RetransmittingWebSocket } from 'retransmit.js'
+import { RetransmittingWebSocket } from 'retransmitting-websocket'
 import RemoteOutOfBandChannel from './RemoteOutOfBandChannel'
 import StreamingBuffer from './remotestreaming/StreamingBuffer'
 import Session from './Session'

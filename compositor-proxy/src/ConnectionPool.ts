@@ -1,4 +1,4 @@
-import { RetransmittingWebSocket, WebSocketLike } from 'retransmit.js'
+import { RetransmittingWebSocket, WebSocketLike } from 'retransmitting-websocket'
 
 const connections: Record<string, RetransmittingWebSocket> = {}
 
@@ -13,6 +13,9 @@ export function upsertWebSocket(
     retransmittingWebSocket = new RetransmittingWebSocket(config)
     // FIXME when to cleanup/delete the retransmitting websocket?
     connections[connectionId] = retransmittingWebSocket
+    retransmittingWebSocket.addEventListener('close', () => {
+      delete connections[connectionId]
+    })
   }
   retransmittingWebSocket.useWebSocket(webSocketLike)
 

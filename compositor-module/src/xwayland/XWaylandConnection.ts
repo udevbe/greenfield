@@ -1,5 +1,5 @@
 import { connect, webConnectionSetup, XConnection } from 'xtsb'
-import { RetransmittingWebSocket } from '../../../../retransmit.js'
+import { RetransmittingWebSocket } from 'retransmitting-websocket'
 import Session from '../Session'
 
 export class XWaylandConnection {

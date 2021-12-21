@@ -17,7 +17,7 @@
 
 import { Epoll } from 'epoll'
 import { Endpoint, nativeGlobalNames } from 'westfield-endpoint'
-import { RetransmittingWebSocket } from 'retransmit.js'
+import { RetransmittingWebSocket } from 'retransmitting-websocket'
 import { createCompositorProxyWebFS } from './CompositorProxyWebFS'
 import { createLogger } from './Logger'
 

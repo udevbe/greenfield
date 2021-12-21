@@ -7,7 +7,7 @@ import { Endpoint } from 'westfield-endpoint'
 import WebsocketStream from 'websocket-stream'
 
 import WebSocket from 'ws'
-import { RetransmittingWebSocket } from 'retransmit.js'
+import { RetransmittingWebSocket } from 'retransmitting-websocket'
 import { config } from './config'
 import { upsertWebSocket } from './ConnectionPool'
 import { createLogger } from './Logger'

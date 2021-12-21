@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import WebSocket, { MessageEvent } from 'ws'
-import { CloseEvent, ErrorEvent, Event, RetransmittingWebSocket } from 'retransmit.js'
+import { CloseEvent, ErrorEvent, Event, RetransmittingWebSocket } from 'retransmitting-websocket'
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 export const noopHandler = (): void => {}
