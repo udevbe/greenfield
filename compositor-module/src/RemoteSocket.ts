@@ -39,7 +39,11 @@ let connectionIdCounter = 0
 export function createRetransmittingWebSocket(url: URL): RetransmittingWebSocket {
   const retransmittingWebSocket = new RetransmittingWebSocket()
   url.searchParams.set('connectionId', `${connectionIdCounter++}`)
-  retransmittingWebSocket.useWebSocket(new ReconnectingWebSocket(url.href))
+  retransmittingWebSocket.useWebSocket(
+    new ReconnectingWebSocket(url.href, [], {
+      maxEnqueuedMessages: 0,
+    }),
+  )
   return retransmittingWebSocket
 }
 

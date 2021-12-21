@@ -95,7 +95,7 @@ export class AppEndpointWebFS {
       logger.info(`Establishing data transfer websocket connection to ${webFdURL.href}`)
       const { retransmittingWebSocket, isNew } = upsertWebSocket(
         webFdURL.href,
-        new ReconnectingWebSocket(webFdURL.href),
+        new ReconnectingWebSocket(webFdURL.href, [], { maxEnqueuedMessages: 0 }),
       )
       const webSocket = new WebSocket(webFdURL)
       webSocket.addEventListener('error', (event) =>
