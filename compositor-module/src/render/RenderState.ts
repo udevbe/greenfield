@@ -17,7 +17,7 @@
 
 import { copyTo, createPixmanRegion, destroyPixmanRegion, fini } from '../Region'
 import { Size } from '../math/Size'
-import Scene from './Scene'
+import { Scene } from './Scene'
 import Texture from './Texture'
 
 class RenderState {
@@ -42,6 +42,15 @@ class RenderState {
     this.texture.delete()
     fini(this.visibleRegion)
     destroyPixmanRegion(this.visibleRegion)
+  }
+
+  updateWithTexImageSource(buffer: TexImageSource) {
+    if (buffer.width === this.size.width && buffer.height === this.size.height) {
+      this.texture.subImage2d(buffer, 0, 0)
+    } else {
+      this.size = buffer
+      this.texture.image2d(buffer)
+    }
   }
 }
 

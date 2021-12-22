@@ -18,12 +18,33 @@
 import BufferContents from '../BufferContents'
 import { Size } from '../math/Size'
 
-export type OpaqueAndAlphaPlanes = {
+export type DualPlaneYUVAArrayBuffer = {
+  type: 'DualPlaneYUVAArrayBuffer'
   opaque: { buffer: Uint8Array; width: number; height: number }
   alpha?: { buffer: Uint8Array; width: number; height: number }
 }
+export type DualPlaneRGBAArrayBuffer = {
+  type: 'DualPlaneRGBAArrayBuffer'
+  opaque: { buffer: Uint8Array; width: number; height: number }
+  alpha?: { buffer: Uint8Array; width: number; height: number }
+}
+export type DualPlaneRGBAImageBitmap = {
+  type: 'DualPlaneRGBAImageBitmap'
+  opaque: { buffer: ImageBitmap; width: number; height: number }
+  alpha?: { buffer: ImageBitmap; width: number; height: number }
+}
 
-export type DecodedPixelContent = OpaqueAndAlphaPlanes | { bitmap: ImageBitmap; blob: Blob }
+export type SinglePlane = {
+  type: 'SinglePlane'
+  bitmap: ImageBitmap
+  blob: Blob
+}
+
+export type DecodedPixelContent =
+  | DualPlaneYUVAArrayBuffer
+  | DualPlaneRGBAImageBitmap
+  | DualPlaneRGBAArrayBuffer
+  | SinglePlane
 export type DecodedFrame = {
   readonly mimeType: 'video/h264' | 'image/png'
   readonly pixelContent: DecodedPixelContent

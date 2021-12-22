@@ -18,8 +18,47 @@
 import { Size } from '../math/Size'
 import Program from './Program'
 import ShaderCompiler from './ShaderCompiler'
-import { FRAGMENT_YUV_TO_RGB, VERTEX_QUAD } from './ShaderSources'
+import { VERTEX_QUAD } from './ShaderSources'
 import Texture from './Texture'
+
+export const FRAGMENT_YUV_TO_RGB = {
+  type: 'x-shader/x-fragment',
+  source: `
+  precision mediump float;
+
+  varying vec2 v_texCoord;
+
+  uniform sampler2D yTexture;
+  uniform sampler2D uTexture;
+  uniform sampler2D vTexture;
+
+  const vec3 yuv_bt709_offset = vec3(-0.0625, -0.5, -0.5);
+  const vec3 yuv_bt709_rcoeff = vec3(1.164, 0.000, 1.787);
+  const vec3 yuv_bt709_gcoeff = vec3(1.164,-0.213,-0.531);
+  const vec3 yuv_bt709_bcoeff = vec3(1.164,2.112, 0.000);
+  
+  vec3 yuv_to_rgb (vec3 val, vec3 offset, vec3 ycoeff, vec3 ucoeff, vec3 vcoeff) {
+    vec3 rgb;              
+    val += offset;        
+    rgb.r = dot(val, ycoeff);
+    rgb.g = dot(val, ucoeff);
+    rgb.b = dot(val, vcoeff);
+    return rgb;
+  }
+
+  void main(void) {
+    vec4 texel, rgba;
+     
+    texel.x = texture2D(yTexture, v_texCoord).r;
+    texel.y = texture2D(uTexture, v_texCoord).r;
+    texel.z = texture2D(vTexture, v_texCoord).r;
+
+    rgba.rgb = yuv_to_rgb (texel.xyz, yuv_bt709_offset, yuv_bt709_rcoeff, yuv_bt709_gcoeff, yuv_bt709_bcoeff);
+    rgba.a = 1.0;
+    gl_FragColor=rgba;
+  }
+`,
+} as const
 
 type ShaderArgs = {
   yTexture: WebGLUniformLocation

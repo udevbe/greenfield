@@ -15,16 +15,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
 import { sizeEquals, Size } from '../math/Size'
+import { DualPlaneYUVAArrayBuffer } from '../remotestreaming/DecodedFrame'
 import Session from '../Session'
 import RenderState from './RenderState'
 import Texture from './Texture'
 import YUV2RGBShader from './YUV2RGBShader'
 import YUVA2RGBAShader from './YUVA2RGBAShader'
 
-class YUVAToRGBA {
-  static create(session: Session, gl: WebGLRenderingContext): YUVAToRGBA {
+export class YUVA2RGBA {
+  static create(session: Session, gl: WebGLRenderingContext): YUVA2RGBA {
     gl.clearColor(0, 0, 0, 0)
 
     const yTexture = Texture.create(gl, gl.LUMINANCE)
@@ -40,7 +40,7 @@ class YUVAToRGBA {
       throw new Error('Failed to create webgl framebuffer')
     }
 
-    return new YUVAToRGBA(
+    return new YUVA2RGBA(
       session,
       gl,
       yuvaSurfaceShader,
@@ -65,7 +65,7 @@ class YUVAToRGBA {
     public readonly alphaTexture: Texture,
   ) {}
 
-  convertInto(yuva: OpaqueAndAlphaPlanes, frameSize: Size, renderState: RenderState): void {
+  convertInto(yuva: DualPlaneYUVAArrayBuffer, frameSize: Size, renderState: RenderState): void {
     const { alpha, opaque } = yuva
 
     // the width & height returned are actually padded, so we have to use the frame size to get the real image dimension
@@ -149,5 +149,3 @@ class YUVAToRGBA {
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null)
   }
 }
-
-export default YUVAToRGBA

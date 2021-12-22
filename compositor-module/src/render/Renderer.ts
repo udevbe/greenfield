@@ -32,7 +32,7 @@ import { isDecodedFrame } from '../remotestreaming/DecodedFrame'
 import Session from '../Session'
 import Surface from '../Surface'
 import View from '../View'
-import Scene from './Scene'
+import { Scene } from './Scene'
 
 function createRenderFrame(): Promise<number> {
   return new Promise<number>((resolve) => {

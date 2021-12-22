@@ -19,31 +19,36 @@ import { createRect } from '../math/Rect'
 import { Size } from '../math/Size'
 import Output from '../Output'
 import { createPixmanRegion, initRect } from '../Region'
-import { DecodedFrame, OpaqueAndAlphaPlanes } from '../remotestreaming/DecodedFrame'
+import { DecodedFrame } from '../remotestreaming/DecodedFrame'
 import Session from '../Session'
 import View from '../View'
 import RenderState from './RenderState'
+import { RGBXandA2RGBA } from './RGBXandAToRGBA'
 import SceneShader from './SceneShader'
-import YUVAToRGBA from './YUVAToRGBA'
+import { YUVA2RGBA } from './YUVA2RGBA'
 
-function updateViewRenderStateWithTexImageSource(buffer: TexImageSource, renderState: RenderState) {
-  const {
-    texture,
-    size: { width, height },
-  } = renderState
-  if (buffer.width === width && buffer.height === height) {
-    texture.subImage2d(buffer, 0, 0)
-  } else {
-    renderState.size = buffer
-    texture.image2d(buffer)
-  }
-}
-
-class Scene {
+export class Scene {
+  public region = createPixmanRegion()
   // @ts-ignore
   private _destroyResolve: (value?: void | PromiseLike<void>) => void
   private readonly _destroyPromise: Promise<void>
-  public region = createPixmanRegion()
+
+  private constructor(
+    public readonly session: Session,
+    public readonly canvas: HTMLCanvasElement,
+    public readonly gl: WebGLRenderingContext,
+    public readonly sceneShader: SceneShader,
+    public readonly yuvaToRGBA: YUVA2RGBA,
+    public readonly rgbaAnda2RGBA: RGBXandA2RGBA,
+    public readonly output: Output,
+    public readonly id: string,
+    public resolution: Size | 'auto' = 'auto',
+  ) {
+    this._destroyPromise = new Promise<void>((resolve) => {
+      this._destroyResolve = resolve
+    })
+    // this.ensureResolution()
+  }
 
   static create(
     session: Session,
@@ -53,24 +58,48 @@ class Scene {
     sceneId: string,
   ): Scene {
     const sceneShader = SceneShader.create(gl)
-    const yuvaToRgba = YUVAToRGBA.create(session, gl)
-    return new Scene(session, canvas, gl, sceneShader, yuvaToRgba, output, sceneId)
+    const yuvaToRgba = YUVA2RGBA.create(session, gl)
+    const rgbaAnda2RGBA = RGBXandA2RGBA.create(session, gl)
+    return new Scene(session, canvas, gl, sceneShader, yuvaToRgba, rgbaAnda2RGBA, output, sceneId)
   }
 
-  private constructor(
-    public readonly session: Session,
-    public readonly canvas: HTMLCanvasElement,
-    public readonly gl: WebGLRenderingContext,
-    public readonly sceneShader: SceneShader,
-    public readonly yuvaToRGBA: YUVAToRGBA,
-    public readonly output: Output,
-    public readonly id: string,
-    public resolution: Size | 'auto' = 'auto',
-  ) {
-    this._destroyPromise = new Promise<void>((resolve) => {
-      this._destroyResolve = resolve
-    })
-    // this.ensureResolution()
+  render(viewStack: View[]): void {
+    this.ensureResolution()
+
+    // render view texture
+    this.sceneShader.use()
+    this.sceneShader.updateSceneData(this.canvas)
+    viewStack.forEach((view) => this.renderView(view))
+    this.sceneShader.release()
+
+    this.session.userShell.events.sceneRefresh?.(this.id)
+  }
+
+  destroy(): void {
+    this._destroyResolve()
+  }
+
+  onDestroy(): Promise<void> {
+    return this._destroyPromise
+  }
+
+  ['video/h264'](decodedFrame: DecodedFrame, renderState: RenderState): void {
+    if (decodedFrame.pixelContent.type === 'DualPlaneYUVAArrayBuffer') {
+      this.yuvaToRGBA.convertInto(decodedFrame.pixelContent, decodedFrame.size, renderState)
+    } else if (
+      decodedFrame.pixelContent.type === 'DualPlaneRGBAImageBitmap' ||
+      decodedFrame.pixelContent.type === 'DualPlaneRGBAArrayBuffer'
+    ) {
+      this.rgbaAnda2RGBA.convertInto(decodedFrame.pixelContent, decodedFrame.size, renderState)
+    } else {
+      throw new Error(`BUG. Unsupported type ${decodedFrame.pixelContent.type} for video/h264`)
+    }
+  }
+
+  ['image/png'](decodedFrame: DecodedFrame, renderState: RenderState): void {
+    const { bitmap } = decodedFrame.pixelContent as { bitmap: ImageBitmap; blob: Blob }
+    renderState.updateWithTexImageSource(bitmap)
+    bitmap.close()
   }
 
   private ensureResolution() {
@@ -87,18 +116,6 @@ class Scene {
     initRect(this.region, createRect(this.output, this.canvas))
   }
 
-  render(viewStack: View[]): void {
-    this.ensureResolution()
-
-    // render view texture
-    this.sceneShader.use()
-    this.sceneShader.updateSceneData(this.canvas)
-    viewStack.forEach((view) => this.renderView(view))
-    this.sceneShader.release()
-
-    this.session.userShell.events.sceneRefresh?.(this.id)
-  }
-
   private renderView(view: View) {
     const renderState = view.renderStates[this.id]
     if (renderState && view.mapped) {
@@ -107,23 +124,4 @@ class Scene {
       this.sceneShader.draw()
     }
   }
-
-  destroy(): void {
-    this._destroyResolve()
-  }
-
-  onDestroy(): Promise<void> {
-    return this._destroyPromise
-  }
-
-  ['video/h264'](decodedFrame: DecodedFrame, renderState: RenderState): void {
-    this.yuvaToRGBA.convertInto(decodedFrame.pixelContent as OpaqueAndAlphaPlanes, decodedFrame.size, renderState)
-  }
-
-  ['image/png'](decodedFrame: DecodedFrame, renderState: RenderState): void {
-    const { bitmap } = decodedFrame.pixelContent as { bitmap: ImageBitmap; blob: Blob }
-    updateViewRenderStateWithTexImageSource(bitmap, renderState)
-  }
 }
-
-export default Scene

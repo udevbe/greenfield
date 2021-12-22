@@ -19,6 +19,12 @@
  * Represents a WebGL texture object.
  */
 export default class Texture {
+  private constructor(
+    public readonly gl: WebGLRenderingContext,
+    public readonly format: GLenum,
+    public readonly texture: WebGLTexture,
+  ) {}
+
   static create(gl: WebGLRenderingContext, format: number): Texture {
     const texture = gl.createTexture()
     if (texture === null) {
@@ -33,12 +39,6 @@ export default class Texture {
     gl.bindTexture(gl.TEXTURE_2D, null)
     return new Texture(gl, format, texture)
   }
-
-  private constructor(
-    public readonly gl: WebGLRenderingContext,
-    public readonly format: number,
-    public readonly texture: WebGLTexture,
-  ) {}
 
   subImage2dBuffer(buffer: ArrayBufferView | null, x: number, y: number, width: number, height: number): void {
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture)

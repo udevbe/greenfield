@@ -18,11 +18,11 @@
 import { WlBufferResource } from 'westfield-runtime-server'
 import BufferImplementation from '../BufferImplementation'
 import Surface from '../Surface'
+import { createFrameDecoder } from './buffer-decoder'
 import BufferStream from './BufferStream'
 import { DecodedFrame } from './DecodedFrame'
-import FrameDecoder from './FrameDecoder'
 
-const frameDecoder = FrameDecoder.create()
+const frameDecoder = createFrameDecoder()
 
 /**
  *
