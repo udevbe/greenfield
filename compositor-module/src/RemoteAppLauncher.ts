@@ -21,7 +21,7 @@ import RemoteSocket, { createRetransmittingWebSocket } from './RemoteSocket'
 import Session from './Session'
 
 export default class RemoteAppLauncher implements CompositorProxyConnector {
-  private readonly _session: Session
+  private readonly session: Session
   private readonly remoteSocket: RemoteSocket
 
   static create(session: Session, remoteSocket: RemoteSocket): RemoteAppLauncher {
@@ -29,7 +29,7 @@ export default class RemoteAppLauncher implements CompositorProxyConnector {
   }
 
   private constructor(session: Session, remoteSocket: RemoteSocket) {
-    this._session = session
+    this.session = session
     this.remoteSocket = remoteSocket
   }
 

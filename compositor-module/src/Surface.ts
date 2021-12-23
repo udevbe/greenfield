@@ -186,7 +186,7 @@ class Surface implements WlSurfaceRequests {
 
   getH264DecoderContext(frameDecoder: FrameDecoder): H264DecoderContext {
     if (this.h264DecoderContext === undefined) {
-      this.h264DecoderContext = frameDecoder.createH264DecoderContext(`${surfaceH264DecodeId++}`)
+      this.h264DecoderContext = frameDecoder.createH264DecoderContext(this, `${surfaceH264DecodeId++}`)
       return this.h264DecoderContext
     } else {
       return this.h264DecoderContext

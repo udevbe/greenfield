@@ -15,9 +15,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { Display } from 'westfield-runtime-server'
+import { Client, Display } from 'westfield-runtime-server'
 import Globals from './Globals'
 import { ButtonCode, CompositorSession } from './index'
+import RemoteOutOfBandChannel from './RemoteOutOfBandChannel'
+import { FrameDecoder } from './remotestreaming/buffer-decoder'
+import { createWasmFrameDecoder } from './remotestreaming/wasm-buffer-decoder'
+import { createWebCodecFrameDecoder } from './remotestreaming/webcodec-buffer-decoder'
 import Renderer from './render/Renderer'
 import { createUserShellApi, UserShellApi } from './UserShellApi'
 import WebFS from './WebFS'
@@ -90,6 +94,11 @@ export type GreenfieldLogger = {
   trace: LogFn
 }
 
+export type RemoteClientConnection = {
+  remoteOutOfBandChannel: RemoteOutOfBandChannel
+  client: Client
+}
+
 const noOpLogger: GreenfieldLogger = {
   debug: console.debug,
   error: console.error,
@@ -141,6 +150,9 @@ class Session implements CompositorSession {
   readonly globals: Globals
   readonly renderer: Renderer
   readonly userShell: UserShellApi
+  public readonly frameDecoder: FrameDecoder
+
+  private readonly remoteClientConnections: Record<string, RemoteClientConnection> = {}
 
   private constructor(
     public readonly display: Display,
@@ -151,6 +163,7 @@ class Session implements CompositorSession {
     this.globals = Globals.create(this)
     this.renderer = Renderer.create(this)
     this.userShell = createUserShellApi(this)
+    this.frameDecoder = 'VideoDecoder' in window ? createWebCodecFrameDecoder(this) : createWasmFrameDecoder()
   }
 
   terminate(): void {
@@ -160,6 +173,18 @@ class Session implements CompositorSession {
 
   flush(): void {
     this.display.flushClients()
+  }
+
+  getRemoteClientConnection(client: Client): RemoteClientConnection {
+    return this.remoteClientConnections[client.id]
+  }
+
+  registerRemoteClientConnection(client: Client, remoteOutOfBandChannel: RemoteOutOfBandChannel): void {
+    this.remoteClientConnections[client.id] = {
+      client,
+      remoteOutOfBandChannel,
+    }
+    client.onClose().then(() => delete this.remoteClientConnections[client.id])
   }
 }
 

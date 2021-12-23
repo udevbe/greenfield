@@ -18,11 +18,8 @@
 import { WlBufferResource } from 'westfield-runtime-server'
 import BufferImplementation from '../BufferImplementation'
 import Surface from '../Surface'
-import { createFrameDecoder } from './buffer-decoder'
 import BufferStream from './BufferStream'
 import { DecodedFrame } from './DecodedFrame'
-
-const frameDecoder = createFrameDecoder()
 
 /**
  *
@@ -53,7 +50,7 @@ export default class StreamingBuffer implements BufferImplementation<Promise<Dec
 
   async getContents(surface: Surface, commitSerial: number): Promise<DecodedFrame | undefined> {
     const encodedFrame = await this.bufferStream.onFrameAvailable(commitSerial)
-    return encodedFrame ? frameDecoder.decode(surface, encodedFrame) : undefined
+    return encodedFrame ? surface.session.frameDecoder.decode(surface, encodedFrame) : undefined
   }
 
   release(): void {

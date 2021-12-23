@@ -1,3 +1,4 @@
+import Session from '../Session'
 import Surface from '../Surface'
 import {
   DecodedFrame,
@@ -19,10 +20,10 @@ export interface H264DecoderContext {
 export interface FrameDecoder {
   decode(surface: Surface, encodedFrame: EncodedFrame): Promise<DecodedFrame>
 
-  createH264DecoderContext(contextId: string): H264DecoderContext
+  createH264DecoderContext(surface: Surface, contextId: string): H264DecoderContext
 }
 
-export function createFrameDecoder(): FrameDecoder {
-  return 'VideoDecoder' in window ? createWebCodecFrameDecoder() : createWasmFrameDecoder()
+export function createFrameDecoder(session: Session): FrameDecoder {
+  return 'VideoDecoder' in window ? createWebCodecFrameDecoder(session) : createWasmFrameDecoder()
   // return createWasmFrameDecoder()
 }

@@ -25,7 +25,7 @@ class WasmFrameDecoder implements FrameDecoder {
     return { type: 'SinglePlane', bitmap, blob }
   }
 
-  createH264DecoderContext(contextId: string): H264DecoderContext {
+  createH264DecoderContext(_surface: Surface, contextId: string): H264DecoderContext {
     return createWasmH264DecoderContext(contextId)
   }
 }

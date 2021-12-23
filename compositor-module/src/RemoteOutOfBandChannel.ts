@@ -17,6 +17,20 @@
 
 import Session from './Session'
 
+export const enum RemoteOutOfBandListenOpcode {
+  BufferCreation = 2,
+  BufferContents = 3,
+  FileContents = 4,
+  WebSocketCreationRequest = 5,
+  RecycledResourceIds = 6,
+  XWMConnectionRequest = 7,
+}
+export const enum RemoteOutOfBandSendOpcode {
+  ResourceDestroyed = 1,
+  FileContents = 4,
+  ForceKeyFrame = 5,
+}
+
 export default class RemoteOutOfBandChannel {
   private readonly outOfBandListeners: { [key: number]: (outOfBandMsg: Uint8Array) => void } = {}
 
