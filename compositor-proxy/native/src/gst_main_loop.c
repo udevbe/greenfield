@@ -17,6 +17,9 @@ do_gst_encoder_free(struct encoder **encoder_pp);
 extern void
 do_gst_encoded_frame_finalize(struct encoded_frame *encoded_frame);
 
+extern void
+do_gst_request_key_unit(struct encoder **encoder_pp);
+
 struct gf_gst_main_loop {
 	GMainLoop *main;
 	struct SyncSource *src;
@@ -27,7 +30,8 @@ enum gf_message_type {
 	encoder_create_type,
 	encoder_encode_type,
 	encoder_free_type,
-	encoded_frame_finalize_type
+	encoded_frame_finalize_type,
+	encoder_request_key_unit_type
 };
 
 struct gf_message {
@@ -50,6 +54,9 @@ struct gf_message {
 		struct {
 			struct encoded_frame *encoded_frame;
 		} encoded_frame_finalize;
+		struct {
+			struct encoder **encoder_pp;
+		} encoder_request_key_unit;
 	} body;
 };
 
@@ -157,6 +164,9 @@ main_loop_handle_message(struct gf_message *message) {
 		case encoded_frame_finalize_type:
 			do_gst_encoded_frame_finalize(message->body.encoded_frame_finalize.encoded_frame);
 			break;
+		case encoder_request_key_unit_type:
+			do_gst_request_key_unit(message->body.encoder_request_key_unit.encoder_pp);
+			break;
 	}
 	return G_SOURCE_CONTINUE;
 }
@@ -240,6 +250,16 @@ encoded_frame_finalize(struct encoded_frame *encoded_frame) {
 
 	message->type = encoded_frame_finalize_type;
 	message->body.encoded_frame_finalize.encoded_frame = encoded_frame;
+
+	return send_message(message);
+}
+
+int
+encoder_request_key_unit(struct encoder **encoder_pp) {
+	struct gf_message *message = malloc(sizeof(struct gf_message));
+
+	message->type = encoder_request_key_unit_type;
+	message->body.encoder_request_key_unit.encoder_pp = encoder_pp;
 
 	return send_message(message);
 }

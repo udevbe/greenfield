@@ -27,6 +27,9 @@ int
 encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource, uint32_t serial);
 
 int
+encoder_request_key_unit(struct encoder **encoder_pp);
+
+int
 encoder_free(struct encoder **encoder_pp);
 
 int
