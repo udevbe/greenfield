@@ -69,7 +69,7 @@ class WebCodecFrameDecoder implements FrameDecoder {
     const frame = encodedFrame.pixelContent
     const blob = new Blob([frame.opaque], { type: 'image/png' })
     const bitmap = await createImageBitmap(blob, 0, 0, encodedFrame.size.width, encodedFrame.size.height)
-    return { type: 'SinglePlane', bitmap, blob }
+    return { type: 'SinglePlane', bitmap, blob, close: () => bitmap.close() }
   }
 }
 
@@ -94,7 +94,7 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
     private readonly frameStates: Record<number, FrameState> = {},
   ) {}
 
-  async decode(bufferContents: EncodedFrame): Promise<DualPlaneRGBAImageBitmap> {
+  decode(bufferContents: EncodedFrame): Promise<DualPlaneRGBAImageBitmap> {
     return new Promise<DualPlaneRGBAImageBitmap>((resolve) => {
       this.frameStates[bufferContents.serial] = {
         serial: bufferContents.serial,
@@ -151,6 +151,10 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
       type: 'DualPlaneRGBAImageBitmap',
       opaque: decodeResult.opaque,
       alpha: decodeResult.alpha,
+      close: () => {
+        decodeResult.opaque?.buffer.close()
+        decodeResult.alpha?.buffer.close()
+      },
     } as const
     frameState.resolve(dualPlaneRGBAImageBitmap)
   }
@@ -193,7 +197,6 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
 
   private decodeH264(encodedFrame: EncodedFrame) {
     const bufferSerial = encodedFrame.serial
-    this.decodingSerialsQueue = [...this.decodingSerialsQueue, bufferSerial]
     let type: 'delta' | 'key' = 'delta'
     if (this.opaqueDecoder === undefined) {
       if (isKeyFrame(encodedFrame.pixelContent.opaque)) {
@@ -201,17 +204,12 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
         this.opaqueDecoder.configure(config)
         type = 'key'
       } else {
-        // We received a non-keyframe. Ask decoder to produce a keyframe *now*, so we can re-initialize.
-        this.session
-          .getRemoteClientConnection(this.surface.resource.client)
-          .remoteOutOfBandChannel.send(
-            RemoteOutOfBandSendOpcode.ForceKeyFrameNow,
-            new Uint32Array([this.surface.resource.id, bufferSerial]),
-          )
-        return
+        delete this.frameStates[bufferSerial]
+        throw new Error('Tried to instantiate web-codec with non key-frame.')
       }
     }
 
+    this.decodingSerialsQueue = [...this.decodingSerialsQueue, bufferSerial]
     this.opaqueDecoder.decode(
       new EncodedVideoChunk({
         timestamp: 0,
@@ -221,8 +219,6 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
     )
 
     if (encodedFrame.pixelContent.alpha) {
-      this.decodingAlphaSerialsQueue = [...this.decodingAlphaSerialsQueue, bufferSerial]
-
       if (this.alphaDecoder === undefined) {
         if (isKeyFrame(encodedFrame.pixelContent.alpha)) {
           this.alphaDecoder = new VideoDecoder(this.alphaInit)
@@ -235,6 +231,7 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
         }
       }
 
+      this.decodingAlphaSerialsQueue = [...this.decodingAlphaSerialsQueue, bufferSerial]
       this.alphaDecoder.decode(
         new EncodedVideoChunk({
           timestamp: 0,

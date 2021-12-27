@@ -22,7 +22,7 @@ class WasmFrameDecoder implements FrameDecoder {
     const frame = encodedFrame.pixelContent
     const blob = new Blob([frame.opaque], { type: 'image/png' })
     const bitmap = await createImageBitmap(blob, 0, 0, encodedFrame.size.width, encodedFrame.size.height)
-    return { type: 'SinglePlane', bitmap, blob }
+    return { type: 'SinglePlane', bitmap, blob, close: () => bitmap.close() }
   }
 
   createH264DecoderContext(_surface: Surface, contextId: string): H264DecoderContext {

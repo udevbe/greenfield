@@ -69,8 +69,6 @@ export class RGBXandA2RGBA {
       if (rgba.type === 'DualPlaneRGBAImageBitmap') {
         this.rgbTexture.image2d(rgba.opaque.buffer)
         this.alphaTexture.image2d(rgba.alpha.buffer)
-        rgba.opaque.buffer.close()
-        rgba.alpha.buffer.close()
       } else {
         this.rgbTexture.image2dBuffer(rgba.opaque.buffer, opaqueStride, opaqueHeight)
         this.alphaTexture.image2dBuffer(rgba.alpha.buffer, opaqueStride, opaqueStride)
@@ -79,9 +77,7 @@ export class RGBXandA2RGBA {
       this.rgbxAnda2rgba(renderState, maxXTexCoord, maxYTexCoord)
     } else {
       if (rgba.type === 'DualPlaneRGBAImageBitmap') {
-        // renderState.updateWithTexImageSource(rgba.opaque.buffer)
         renderState.texture.image2d(rgba.opaque.buffer)
-        rgba.opaque.buffer.close()
       } else {
         renderState.texture.image2dBuffer(rgba.opaque.buffer, opaqueStride, opaqueHeight)
       }

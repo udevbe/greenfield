@@ -20,22 +20,26 @@ import { Size } from '../math/Size'
 
 export type DualPlaneYUVAArrayBuffer = {
   type: 'DualPlaneYUVAArrayBuffer'
+  close?: () => void
   opaque: { buffer: Uint8Array; width: number; height: number }
   alpha?: { buffer: Uint8Array; width: number; height: number }
 }
 export type DualPlaneRGBAArrayBuffer = {
   type: 'DualPlaneRGBAArrayBuffer'
+  close: () => void
   opaque: { buffer: Uint8Array; width: number; height: number }
   alpha?: { buffer: Uint8Array; width: number; height: number }
 }
 export type DualPlaneRGBAImageBitmap = {
   type: 'DualPlaneRGBAImageBitmap'
+  close: () => void
   opaque: { buffer: ImageBitmap; width: number; height: number }
   alpha?: { buffer: ImageBitmap; width: number; height: number }
 }
 
 export type SinglePlane = {
   type: 'SinglePlane'
+  close: () => void
   bitmap: ImageBitmap
   blob: Blob
 }

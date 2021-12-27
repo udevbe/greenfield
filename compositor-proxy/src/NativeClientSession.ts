@@ -380,7 +380,7 @@ export class NativeClientSession {
 
   private requestKeyFrameUnit(payload: Uint8Array) {
     const wlSurfaceInterceptor = this.messageInterceptor.interceptors[
-      new Uint32Array(payload.buffer, payload.byteOffset, 1)[0]
+      new Uint32Array(payload)[0]
     ] as wl_surface_interceptor
     if (wlSurfaceInterceptor === undefined) {
       logger.error('BUG. Received a key frame unit request but no surface found that matches the request.')
@@ -389,13 +389,13 @@ export class NativeClientSession {
   }
 
   private requestKeyFrameUnitNow(payload: Uint8Array) {
-    const uint32Payload = new Uint32Array(payload.buffer, payload.byteOffset, 2)
+    const uint32Payload = new Uint32Array(payload)
     const wlSurfaceInterceptor = this.messageInterceptor.interceptors[uint32Payload[0]] as wl_surface_interceptor
     if (wlSurfaceInterceptor === undefined) {
       logger.error('BUG. Received a key frame unit request but no surface found that matches the request.')
     }
     wlSurfaceInterceptor.encoder.requestKeyUnit()
-    // wlSurfaceInterceptor.encodeBufferAndTransmit(uint32Payload[1])
+    wlSurfaceInterceptor.encodeAndSendBuffer(uint32Payload[1])
   }
 
   onError(): void {
