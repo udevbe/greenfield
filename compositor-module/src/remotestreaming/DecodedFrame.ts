@@ -64,10 +64,12 @@ export function createDecodedFrame(
   mimeType: 'video/h264' | 'image/png',
   pixelContent: DecodedPixelContent,
   size: Size,
+  serial: number,
 ): DecodedFrame {
   return {
     mimeType,
     pixelContent,
     size,
+    serial,
   }
 }

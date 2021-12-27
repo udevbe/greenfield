@@ -29,6 +29,7 @@ export const enum RemoteOutOfBandSendOpcode {
   ResourceDestroyed = 1,
   FileContents = 4,
   ForceKeyFrame = 5,
+  ForceKeyFrameNow = 6,
 }
 
 export default class RemoteOutOfBandChannel {

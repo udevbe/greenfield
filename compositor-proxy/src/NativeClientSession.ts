@@ -133,6 +133,8 @@ export class NativeClientSession {
       4: (payload) => this.nativeCompositorSession.appEndpointWebFS.handleWebFDContentTransferReply(payload),
       // listen for force key frame request. opcode 5
       5: (payload) => this.requestKeyFrameUnit(payload),
+      // listen for force key frame now request. opcode 6
+      6: (payload) => this.requestKeyFrameUnitNow(payload),
     }
   }
 
@@ -384,6 +386,16 @@ export class NativeClientSession {
       logger.error('BUG. Received a key frame unit request but no surface found that matches the request.')
     }
     wlSurfaceInterceptor.encoder.requestKeyUnit()
+  }
+
+  private requestKeyFrameUnitNow(payload: Uint8Array) {
+    const uint32Payload = new Uint32Array(payload.buffer, payload.byteOffset, 2)
+    const wlSurfaceInterceptor = this.messageInterceptor.interceptors[uint32Payload[0]] as wl_surface_interceptor
+    if (wlSurfaceInterceptor === undefined) {
+      logger.error('BUG. Received a key frame unit request but no surface found that matches the request.')
+    }
+    wlSurfaceInterceptor.encoder.requestKeyUnit()
+    // wlSurfaceInterceptor.encodeBufferAndTransmit(uint32Payload[1])
   }
 
   onError(): void {

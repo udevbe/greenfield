@@ -1,3 +1,4 @@
+import { Encoder } from '../../encoding/Encoder'
 import { WebSocketChannel } from '../../WebSocketChannel'
 
 export default class wl_surface_interceptor {

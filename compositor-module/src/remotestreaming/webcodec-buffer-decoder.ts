@@ -54,7 +54,7 @@ class WebCodecFrameDecoder implements FrameDecoder {
 
   async decode(surface: Surface, encodedFrame: EncodedFrame): Promise<DecodedFrame> {
     const decodedContents = await this[encodedFrame.mimeType](surface, encodedFrame)
-    return createDecodedFrame(encodedFrame.mimeType, decodedContents, encodedFrame.size)
+    return createDecodedFrame(encodedFrame.mimeType, decodedContents, encodedFrame.size, encodedFrame.serial)
   }
 
   createH264DecoderContext(surface: Surface, contextId: string): H264DecoderContext {
@@ -91,7 +91,7 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
     private readonly contextId: string,
     private decodingSerialsQueue: number[] = [],
     private decodingAlphaSerialsQueue: number[] = [],
-    private readonly frameStates: { [key: number]: FrameState } = {},
+    private readonly frameStates: Record<number, FrameState> = {},
   ) {}
 
   async decode(bufferContents: EncodedFrame): Promise<DualPlaneRGBAImageBitmap> {
@@ -122,7 +122,7 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
   }
 
   error(error: DOMException): void {
-    if (error.code === 22) {
+    if (error.name === 'QuotaExceededError') {
       // Codec reclaimed due to inactivity.
       // request next frame to be a key frame, so we can re-initialize once a new frame comes in
       this.session
@@ -134,8 +134,9 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
       this.opaqueDecoder = undefined
       this.alphaDecoder = undefined
     } else {
-      // FIXME use a logger
-      console.error(error)
+      this.session.logger.error(
+        `BUG. Error from WebCodec decoder. Name: ${error.name}, Message: ${error.message}, code: ${error.code}`,
+      )
     }
   }
 
@@ -200,7 +201,13 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
         this.opaqueDecoder.configure(config)
         type = 'key'
       } else {
-        // TODO Request keyframe unit and wait for answer
+        // We received a non-keyframe. Ask decoder to produce a keyframe *now*, so we can re-initialize.
+        this.session
+          .getRemoteClientConnection(this.surface.resource.client)
+          .remoteOutOfBandChannel.send(
+            RemoteOutOfBandSendOpcode.ForceKeyFrameNow,
+            new Uint32Array([this.surface.resource.id, bufferSerial]),
+          )
         return
       }
     }
@@ -222,7 +229,8 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
           this.alphaDecoder.configure(config)
           type = 'key'
         } else {
-          // TODO Request and wait for keyframe unit
+          // At this point a keyframe should already be requested by opaque decoder and function should have returned.
+          this.session.logger.error('BUG. Reached un-initialized alpha decoder without a keyframe.')
           return
         }
       }

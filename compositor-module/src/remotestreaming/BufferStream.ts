@@ -26,7 +26,7 @@ type BufferState = {
 }
 
 export default class BufferStream {
-  private readonly bufferStates: { [key: number]: BufferState } = {}
+  private readonly bufferStates: Record<number, BufferState> = {}
 
   static create(wlBufferResource: { onDestroy: () => Promise<void> }): BufferStream {
     const bufferStream = new BufferStream()
@@ -70,7 +70,7 @@ export default class BufferStream {
    */
   onFrameAvailable(serial: number): Promise<EncodedFrame | undefined> {
     if (this.bufferStates[serial] && this.bufferStates[serial].encodedFrame) {
-      // state already exists, this means the contents arrived before this call, which means we can now decode it
+      // state already exists, contents arrived before this call, decode it
       this.onComplete(serial, this.bufferStates[serial].encodedFrame)
     } else {
       // state does not exist yet, create a new state and wait for contents to arrive
@@ -86,7 +86,7 @@ export default class BufferStream {
       const encodedFrame = createEncodedFrame(bufferContents)
       console.debug(`Received buffer with serial: ${encodedFrame.serial}`)
       if (this.bufferStates[encodedFrame.serial]) {
-        console.debug(`Commit state for buffer with serial: ${encodedFrame.serial} exists.`)
+        console.debug(`Commit state for buffer with serial: ${encodedFrame.serial} already exists.`)
         this.bufferStates[encodedFrame.serial].encodedFrame = encodedFrame
         this.onComplete(encodedFrame.serial, encodedFrame)
       } else {

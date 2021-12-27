@@ -30,18 +30,19 @@ import { DecodedFrame } from './DecodedFrame'
  *            updates the contents is defined by the buffer factory interface.
  */
 export default class StreamingBuffer implements BufferImplementation<Promise<DecodedFrame | undefined>> {
+  private constructor(
+    public readonly resource: WlBufferResource,
+    public readonly bufferStream: BufferStream,
+    public released = false,
+    private decodedFrame?: DecodedFrame,
+  ) {}
+
   static create(wlBufferResource: WlBufferResource): StreamingBuffer {
     const bufferStream = BufferStream.create(wlBufferResource)
     const buffer = new StreamingBuffer(wlBufferResource, bufferStream)
     wlBufferResource.implementation = buffer
     return buffer
   }
-
-  private constructor(
-    public readonly resource: WlBufferResource,
-    public readonly bufferStream: BufferStream,
-    public released = false,
-  ) {}
 
   destroy(resource: WlBufferResource): void {
     this.bufferStream.destroy()

@@ -11,7 +11,7 @@ export function createWasmFrameDecoder(): FrameDecoder {
 class WasmFrameDecoder implements FrameDecoder {
   async decode(surface: Surface, encodedFrame: EncodedFrame): Promise<DecodedFrame> {
     const decodedContents = await this[encodedFrame.mimeType](surface, encodedFrame)
-    return createDecodedFrame(encodedFrame.mimeType, decodedContents, encodedFrame.size)
+    return createDecodedFrame(encodedFrame.mimeType, decodedContents, encodedFrame.size, encodedFrame.serial)
   }
 
   private ['video/h264'](surface: Surface, encodedFrame: EncodedFrame): Promise<DecodedPixelContent> {
