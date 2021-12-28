@@ -19,7 +19,10 @@ import ReconnectingWebSocket from 'reconnecting-websocket'
 import { SendMessage, WebFD } from 'westfield-runtime-common'
 import { Client, WlBufferResource } from 'westfield-runtime-server'
 import { RetransmittingWebSocket } from 'retransmitting-websocket'
-import RemoteOutOfBandChannel from './RemoteOutOfBandChannel'
+import RemoteOutOfBandChannel, {
+  RemoteOutOfBandListenOpcode,
+  RemoteOutOfBandSendOpcode,
+} from './RemoteOutOfBandChannel'
 import StreamingBuffer from './remotestreaming/StreamingBuffer'
 import Session from './Session'
 import { XWaylandConnection } from './xwayland/XWaylandConnection'
@@ -94,7 +97,7 @@ class RemoteSocket {
         client.connection.onFlush = (wireMessages: SendMessage[]) =>
           this.flushWireMessages(client, webSocket, wireMessages)
 
-        const wsOutOfBandChannel = RemoteOutOfBandChannel.create(this.session, (sendBuffer) => {
+        const remoteOutOfBandChannel = RemoteOutOfBandChannel.create(this.session, (sendBuffer) => {
           if (webSocket.readyState === 1) {
             try {
               webSocket.send(sendBuffer)
@@ -107,9 +110,9 @@ class RemoteSocket {
             }
           }
         })
-        this.setupClientOutOfBandHandlers(webSocket, client, wsOutOfBandChannel)
+        this.setupClientOutOfBandHandlers(webSocket, client, remoteOutOfBandChannel)
 
-        webSocket.onmessage = (event) => this.handleMessageEvent(client, event, wsOutOfBandChannel)
+        webSocket.onmessage = (event) => this.handleMessageEvent(client, event, remoteOutOfBandChannel)
 
         client.onClose().then(() => {
           this.session.userShell.events.clientDestroyed?.({
@@ -119,6 +122,7 @@ class RemoteSocket {
         this.session.userShell.events.clientCreated?.({
           id: client.id,
         })
+        this.session.registerRemoteClientConnection(client, remoteOutOfBandChannel)
         resolve(client)
       }
     })
@@ -159,11 +163,11 @@ class RemoteSocket {
   ) {
     // send out-of-band resource destroy. opcode: 1
     client.addResourceDestroyListener((resource) => {
-      outOfBandChannel.send(1, new Uint32Array([resource.id]).buffer)
+      outOfBandChannel.send(RemoteOutOfBandSendOpcode.ResourceDestroyed, new Uint32Array([resource.id]).buffer)
     })
 
     // listen for buffer creation. opcode: 2
-    outOfBandChannel.setListener(2, (message) => {
+    outOfBandChannel.setListener(RemoteOutOfBandListenOpcode.BufferCreation, (message) => {
       if (client.connection.closed) {
         return
       }
@@ -173,7 +177,7 @@ class RemoteSocket {
     })
 
     // listen for buffer contents arriving. opcode: 3
-    outOfBandChannel.setListener(3, (outOfBandMessage) => {
+    outOfBandChannel.setListener(RemoteOutOfBandListenOpcode.BufferContents, (outOfBandMessage) => {
       if (client.connection.closed) {
         return
       }
@@ -195,7 +199,7 @@ class RemoteSocket {
     })
 
     // listen for file contents request. opcode: 4
-    outOfBandChannel.setListener(4, async (outOfBandMessage) => {
+    outOfBandChannel.setListener(RemoteOutOfBandListenOpcode.FileContents, async (outOfBandMessage) => {
       if (client.connection.closed) {
         return
       }
@@ -223,13 +227,13 @@ class RemoteSocket {
         message.set(new Uint8Array(transferable), byteOffset)
 
         // send back file contents. opcode: 4
-        outOfBandChannel.send(4, message.buffer)
+        outOfBandChannel.send(RemoteOutOfBandSendOpcode.FileContents, message.buffer)
         webFD.close()
       }
     })
 
     // listen for web socket creation request. opcode: 5
-    outOfBandChannel.setListener(5, () => {
+    outOfBandChannel.setListener(RemoteOutOfBandListenOpcode.WebSocketCreationRequest, () => {
       if (client.connection.closed) {
         return
       }
@@ -238,7 +242,7 @@ class RemoteSocket {
     })
 
     // listen for recycled resource ids
-    outOfBandChannel.setListener(6, (outOfBandMessage) => {
+    outOfBandChannel.setListener(RemoteOutOfBandListenOpcode.RecycledResourceIds, (outOfBandMessage) => {
       if (client.connection.closed) {
         return
       }
@@ -248,7 +252,7 @@ class RemoteSocket {
     })
 
     // listen for XWayland XWM connection request
-    outOfBandChannel.setListener(7, async (outOfBandMessage) => {
+    outOfBandChannel.setListener(RemoteOutOfBandListenOpcode.XWMConnectionRequest, async (outOfBandMessage) => {
       const wmFD = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)[0]
 
       const xWaylandBaseURL = new URL(webSocket.url)

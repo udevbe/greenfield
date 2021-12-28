@@ -13,19 +13,19 @@
 #define FPS 60
 
 static const char fragment_shader[] =
-	"#version 120\n"
-	"#ifdef GL_ES\n"
-	"    precision mediump float;\n"
-	"#endif\n"
-	"varying vec2 v_texcoord;\n"
-	"uniform sampler2D tex;\n"
-	"uniform float time;\n"
-	"uniform float width;\n"
-	"uniform float height;\n"
-	"void main () {\n"
-	"        vec4 pix = texture2D(tex, v_texcoord);\n"
-	"        gl_FragColor = vec4(pix.a,pix.a,pix.a,0);\n"
-	"}";
+		"#version 120\n"
+		"#ifdef GL_ES\n"
+		"    precision mediump float;\n"
+		"#endif\n"
+		"varying vec2 v_texcoord;\n"
+		"uniform sampler2D tex;\n"
+		"uniform float time;\n"
+		"uniform float width;\n"
+		"uniform float height;\n"
+		"void main () {\n"
+		"        vec4 pix = texture2D(tex, v_texcoord);\n"
+		"        gl_FragColor = vec4(pix.a,pix.a,pix.a,0);\n"
+		"}";
 
 static const char vertex_shader[] =
 		"#version 120\n"
@@ -64,9 +64,16 @@ struct encoding_result {
 
 struct encoder_itf {
 	int (*supports_buffer)(struct encoder *encoder, struct wl_resource *buffer_resource);
+
 	int (*create)(struct encoder *encoder);
-	int (*encode)(struct encoder *encoder, struct wl_resource *buffer_resource, struct encoding_result *encoding_result);
+
+	int
+	(*encode)(struct encoder *encoder, struct wl_resource *buffer_resource, struct encoding_result *encoding_result);
+
 	void (*destroy)(struct encoder *encoder);
+
+	int(*request_key_unit)(struct encoder *encoder);
+
 	int separate_alpha;
 };
 
@@ -305,7 +312,7 @@ h264_gst_encoder_ensure_size(struct gst_encoder *gst_encoder, const char *format
 		gst_caps_unref((GstCaps *) new_src_caps);
 		gst_caps_unref((GstCaps *) current_src_caps);
 		return;
-	} else if(current_src_caps) {
+	} else if (current_src_caps) {
 		gst_caps_unref((GstCaps *) current_src_caps);
 	}
 
@@ -331,6 +338,22 @@ gst_encoder_destroy(struct encoder *encoder) {
 	gst_object_unref(gst_encoder->pipeline);
 
 	free(gst_encoder);
+}
+
+static int
+gst_request_key_unit(struct encoder *encoder) {
+	struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
+
+
+//	GstPad *appsrcpad;
+//
+//	appsrcpad = gst_element_get_static_pad(gst_encoder->app_src, "src");
+//	gst_pad_send_event(appsrcpad, gst_event_new_custom(GST_EVENT_CUSTOM_UPSTREAM,
+//													   gst_structure_new("GstForceKeyUnit", "all-headers",
+//																		   G_TYPE_BOOLEAN, TRUE, NULL)));
+	gst_element_send_event (gst_encoder->pipeline, gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM,
+														   gst_structure_new("GstForceKeyUnit", "all-headers",
+																			 G_TYPE_BOOLEAN, TRUE, NULL)));
 }
 
 static int
@@ -502,6 +525,7 @@ struct encoder_itf nv264_gst_alpha_itf = {
 		.create = nvh264_gst_alpha_encoder_create,
 		.encode = h264_gst_encoder_encode,
 		.destroy = gst_encoder_destroy,
+		.request_key_unit = gst_request_key_unit,
 		.separate_alpha = 1,
 };
 
@@ -510,6 +534,7 @@ struct encoder_itf nv264_gst_itf = {
 		.create = nvh264_gst_encoder_create,
 		.encode = h264_gst_encoder_encode,
 		.destroy = gst_encoder_destroy,
+		.request_key_unit = gst_request_key_unit,
 		.separate_alpha = 0,
 };
 
@@ -604,6 +629,7 @@ struct encoder_itf x264_gst_alpha_itf = {
 		.create = x264_gst_alpha_encoder_create,
 		.encode = h264_gst_encoder_encode,
 		.destroy = gst_encoder_destroy,
+		.request_key_unit = gst_request_key_unit,
 		.separate_alpha = 1,
 };
 
@@ -612,6 +638,7 @@ struct encoder_itf x264_gst_itf = {
 		.create = x264_gst_encoder_create,
 		.encode = h264_gst_encoder_encode,
 		.destroy = gst_encoder_destroy,
+		.request_key_unit = gst_request_key_unit,
 		.separate_alpha = 0,
 };
 
@@ -657,7 +684,7 @@ png_gst_encoder_ensure_size(struct gst_encoder *gst_encoder, const char *format,
 		gst_caps_unref((GstCaps *) new_src_caps);
 		gst_caps_unref((GstCaps *) current_src_caps);
 		return;
-	} else if(current_src_caps){
+	} else if (current_src_caps) {
 		gst_caps_unref((GstCaps *) current_src_caps);
 	}
 
@@ -695,6 +722,7 @@ struct encoder_itf png_gst_itf = {
 		.create = png_gst_encoder_create,
 		.encode = png_gst_encoder_encode,
 		.destroy = gst_encoder_destroy,
+		.request_key_unit = gst_request_key_unit,
 		.separate_alpha = 0,
 };
 
@@ -794,6 +822,7 @@ const struct encoder_itf vaapi264_gst_alpha_itf = {
 		.create = vaapi264_gst_alpha_encoder_create,
 		.encode = vaapih264_gst_encoder_encode,
 		.destroy = gst_encoder_destroy,
+		.request_key_unit = gst_request_key_unit,
 		.separate_alpha = 1,
 };
 
@@ -802,6 +831,7 @@ const struct encoder_itf vaapi264_gst_itf = {
 		.create = vaapi264_gst_encoder_create,
 		.encode = vaapih264_gst_encoder_encode,
 		.destroy = gst_encoder_destroy,
+		.request_key_unit = gst_request_key_unit,
 		.separate_alpha = 0,
 };
 
@@ -873,4 +903,10 @@ void
 do_gst_encoded_frame_finalize(struct encoded_frame *encoded_frame) {
 	free(encoded_frame->encoded_data);
 	free(encoded_frame);
+}
+
+void
+do_gst_request_key_unit(struct encoder **encoder_pp) {
+	struct encoder *encoder = *encoder_pp;
+	encoder->itf.request_key_unit(encoder);
 }

@@ -152,11 +152,31 @@ encodeBuffer(napi_env env, napi_callback_info info) {
     return return_value;
 }
 
+// expected arguments in order:
+// - encoder - argv[0]
+// return:
+// - undefined
+static napi_value
+requestKeyUnit(napi_env env, napi_callback_info info) {
+	size_t argc = 1;
+	napi_value argv[argc], return_value;
+	struct node_encoder *node_encoder;
+
+	NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
+	NAPI_CALL(env, napi_get_value_external(env, argv[0], (void **) &node_encoder))
+
+	encoder_request_key_unit(&node_encoder->encoder);
+
+	NAPI_CALL(env,napi_get_undefined(env, &return_value))
+	return return_value;
+}
+
 static napi_value
 init(napi_env env, napi_value exports) {
     napi_property_descriptor desc[] = {
             DECLARE_NAPI_METHOD("createEncoder", createEncoder),
             DECLARE_NAPI_METHOD("encodeBuffer", encodeBuffer),
+			DECLARE_NAPI_METHOD("requestKeyUnit", requestKeyUnit),
     };
 
     NAPI_CALL(env, napi_define_properties(env, exports, sizeof(desc) / sizeof(napi_property_descriptor), desc))

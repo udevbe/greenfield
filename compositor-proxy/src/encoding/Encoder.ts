@@ -45,4 +45,8 @@ export class Encoder {
     })
     return this.encodingPromise
   }
+
+  requestKeyUnit(): void {
+    appEndpointNative.requestKeyUnit(this.nativeEncoder)
+  }
 }

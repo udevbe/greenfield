@@ -17,12 +17,10 @@
 
 import { WlBufferResource } from 'westfield-runtime-server'
 import BufferImplementation from '../BufferImplementation'
+import { RemoteOutOfBandSendOpcode } from '../RemoteOutOfBandChannel'
 import Surface from '../Surface'
 import BufferStream from './BufferStream'
 import { DecodedFrame } from './DecodedFrame'
-import FrameDecoder from './FrameDecoder'
-
-const frameDecoder = FrameDecoder.create()
 
 /**
  *
@@ -33,6 +31,13 @@ const frameDecoder = FrameDecoder.create()
  *            updates the contents is defined by the buffer factory interface.
  */
 export default class StreamingBuffer implements BufferImplementation<Promise<DecodedFrame | undefined>> {
+  private constructor(
+    public readonly resource: WlBufferResource,
+    public readonly bufferStream: BufferStream,
+    public released = false,
+    private decodedFrame?: DecodedFrame,
+  ) {}
+
   static create(wlBufferResource: WlBufferResource): StreamingBuffer {
     const bufferStream = BufferStream.create(wlBufferResource)
     const buffer = new StreamingBuffer(wlBufferResource, bufferStream)
@@ -40,25 +45,49 @@ export default class StreamingBuffer implements BufferImplementation<Promise<Dec
     return buffer
   }
 
-  private constructor(
-    public readonly resource: WlBufferResource,
-    public readonly bufferStream: BufferStream,
-    public released = false,
-  ) {}
-
   destroy(resource: WlBufferResource): void {
     this.bufferStream.destroy()
+    this.decodedFrame?.pixelContent.close?.()
+    this.decodedFrame = undefined
     resource.destroy()
   }
 
   async getContents(surface: Surface, commitSerial: number): Promise<DecodedFrame | undefined> {
+    if (commitSerial === this.decodedFrame?.serial) {
+      return this.decodedFrame
+    }
+
     const encodedFrame = await this.bufferStream.onFrameAvailable(commitSerial)
-    return encodedFrame ? frameDecoder.decode(surface, encodedFrame) : undefined
+    if (encodedFrame) {
+      try {
+        const oldDecodedFrame = this.decodedFrame
+        this.decodedFrame = await surface.session.frameDecoder.decode(surface, encodedFrame)
+        oldDecodedFrame?.pixelContent.close?.()
+      } catch (e: unknown) {
+        surface.session.logger.warn('Get error during decode, requesting new keyframe.')
+        surface.session
+          .getRemoteClientConnection(surface.resource.client)
+          .remoteOutOfBandChannel.send(
+            RemoteOutOfBandSendOpcode.ForceKeyFrameNow,
+            new Uint32Array([surface.resource.id, commitSerial]),
+          )
+        const encodedFrame = await this.bufferStream.onFrameAvailable(commitSerial)
+        if (encodedFrame) {
+          const oldDecodedFrame = this.decodedFrame
+          this.decodedFrame = await surface.session.frameDecoder.decode(surface, encodedFrame)
+          oldDecodedFrame?.pixelContent.close?.()
+        }
+      }
+
+      return this.decodedFrame
+    } else {
+      return undefined
+    }
   }
 
   release(): void {
     if (this.released) {
-      throw new Error('double release')
+      throw new Error('BUG. Double buffer release.')
     }
     this.resource.release()
     this.released = true

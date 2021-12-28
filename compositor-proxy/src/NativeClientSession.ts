@@ -18,6 +18,7 @@
 import { URL } from 'url'
 import { Endpoint, MessageInterceptor } from 'westfield-endpoint'
 import { MessageEvent } from 'ws'
+import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 import { createLogger } from './Logger'
 import { NativeCompositorSession } from './NativeCompositorSession'
 
@@ -130,6 +131,10 @@ export class NativeClientSession {
       1: (payload) => this.destroyResourceSilently(payload),
       // listen for file contents request. opcode: 4
       4: (payload) => this.nativeCompositorSession.appEndpointWebFS.handleWebFDContentTransferReply(payload),
+      // listen for force key frame request. opcode 5
+      5: (payload) => this.requestKeyFrameUnit(payload),
+      // listen for force key frame now request. opcode 6
+      6: (payload) => this.requestKeyFrameUnitNow(payload),
     }
   }
 
@@ -371,6 +376,26 @@ export class NativeClientSession {
       // 1 is the display id, which means client is being disconnected
       this.disconnecting = true
     }
+  }
+
+  private requestKeyFrameUnit(payload: Uint8Array) {
+    const wlSurfaceInterceptor = this.messageInterceptor.interceptors[
+      new Uint32Array(payload)[0]
+    ] as wl_surface_interceptor
+    if (wlSurfaceInterceptor === undefined) {
+      logger.error('BUG. Received a key frame unit request but no surface found that matches the request.')
+    }
+    wlSurfaceInterceptor.encoder.requestKeyUnit()
+  }
+
+  private requestKeyFrameUnitNow(payload: Uint8Array) {
+    const uint32Payload = new Uint32Array(payload)
+    const wlSurfaceInterceptor = this.messageInterceptor.interceptors[uint32Payload[0]] as wl_surface_interceptor
+    if (wlSurfaceInterceptor === undefined) {
+      logger.error('BUG. Received a key frame unit request but no surface found that matches the request.')
+    }
+    wlSurfaceInterceptor.encoder.requestKeyUnit()
+    wlSurfaceInterceptor.encodeAndSendBuffer(uint32Payload[1])
   }
 
   onError(): void {
