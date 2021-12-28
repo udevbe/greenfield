@@ -109,6 +109,23 @@ const noOpLogger: GreenfieldLogger = {
   warn: console.warn,
 } as const
 
+function h264WebCodecsSupported(): boolean {
+  if ('VideoDecoder' in window) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
+      const videoDecoder = new VideoDecoder({ output: () => {}, error: () => {} })
+      videoDecoder.configure({ codec: 'avc1.42001e' /*h264 Baseline Level 3*/ })
+      const supported = videoDecoder.state === 'configured'
+      videoDecoder.close()
+      return supported
+    } catch (e: unknown) {
+      return false
+    }
+  }
+
+  return false
+}
+
 class Session implements CompositorSession {
   static create(sessionId?: string, logger?: GreenfieldLogger): Session {
     const display = new Display()
@@ -163,7 +180,8 @@ class Session implements CompositorSession {
     this.globals = Globals.create(this)
     this.renderer = Renderer.create(this)
     this.userShell = createUserShellApi(this)
-    this.frameDecoder = 'VideoDecoder' in window ? createWebCodecFrameDecoder(this) : createWasmFrameDecoder()
+    this.frameDecoder = h264WebCodecsSupported() ? createWebCodecFrameDecoder(this) : createWasmFrameDecoder()
+    // this.frameDecoder = createWasmFrameDecoder()
   }
 
   terminate(): void {

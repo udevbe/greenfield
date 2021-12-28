@@ -2,19 +2,18 @@ import { RemoteOutOfBandSendOpcode } from '../RemoteOutOfBandChannel'
 import Session from '../Session'
 import Surface from '../Surface'
 import { FrameDecoder, H264DecoderContext } from './buffer-decoder'
-import { createDecodedFrame, DecodedFrame, DecodedPixelContent, DualPlaneRGBAImageBitmap } from './DecodedFrame'
+import { createDecodedFrame, DecodedFrame, DecodedPixelContent, DualPlaneRGBAVideoFrame } from './DecodedFrame'
 import { EncodedFrame } from './EncodedFrame'
 
 type FrameState = {
   serial: number
-  resolve: (value: DualPlaneRGBAImageBitmap | PromiseLike<DualPlaneRGBAImageBitmap>) => void
+  resolve: (value: DualPlaneRGBAVideoFrame | PromiseLike<DualPlaneRGBAVideoFrame>) => void
   state: 'pending' | 'pending_opaque' | 'pending_alpha' | 'complete'
-  result: Partial<DualPlaneRGBAImageBitmap>
+  result: Partial<DualPlaneRGBAVideoFrame>
 }
 const config: VideoDecoderConfig = {
   codec: 'avc1.42001e', // h264 Baseline Level 3
   optimizeForLatency: true,
-  hardwareAcceleration: 'prefer-hardware',
 } as const
 
 export function createWebCodecFrameDecoder(session: Session): FrameDecoder {
@@ -94,8 +93,8 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
     private readonly frameStates: Record<number, FrameState> = {},
   ) {}
 
-  decode(bufferContents: EncodedFrame): Promise<DualPlaneRGBAImageBitmap> {
-    return new Promise<DualPlaneRGBAImageBitmap>((resolve) => {
+  decode(bufferContents: EncodedFrame): Promise<DualPlaneRGBAVideoFrame> {
+    return new Promise<DualPlaneRGBAVideoFrame>((resolve) => {
       this.frameStates[bufferContents.serial] = {
         serial: bufferContents.serial,
         resolve,
@@ -148,7 +147,7 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
       throw new Error('BUG. No opaque frame decode result found!')
     }
     const dualPlaneRGBAImageBitmap = {
-      type: 'DualPlaneRGBAImageBitmap',
+      type: 'DualPlaneRGBAVideoFrame',
       opaque: decodeResult.opaque,
       alpha: decodeResult.alpha,
       close: () => {
@@ -159,10 +158,9 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
     frameState.resolve(dualPlaneRGBAImageBitmap)
   }
 
-  private opaqueOutput(output: VideoFrame) {
-    const buffer = output as unknown as ImageBitmap
-    const width = output.displayWidth
-    const height = output.displayHeight
+  private opaqueOutput(buffer: VideoFrame) {
+    const width = buffer.displayWidth
+    const height = buffer.displayHeight
     const frameSerial = this.decodingSerialsQueue.shift()
     if (frameSerial === undefined) {
       throw new Error('BUG. Invalid state. No frame serial found onAlphaPictureDecoded.')
@@ -177,10 +175,9 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
     }
   }
 
-  private alphaOutput(output: VideoFrame) {
-    const buffer = output as unknown as ImageBitmap
-    const width = output.displayWidth
-    const height = output.displayHeight
+  private alphaOutput(buffer: VideoFrame) {
+    const width = buffer.displayWidth
+    const height = buffer.displayHeight
     const frameSerial = this.decodingAlphaSerialsQueue.shift()
     if (frameSerial === undefined) {
       throw new Error('BUG. Invalid state. No frame serial found onAlphaPictureDecoded.')
@@ -201,6 +198,7 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
     if (this.opaqueDecoder === undefined) {
       if (isKeyFrame(encodedFrame.pixelContent.opaque)) {
         this.opaqueDecoder = new VideoDecoder(this.opaqueInit)
+        VideoDecoder.isConfigSupported(config)
         this.opaqueDecoder.configure(config)
         type = 'key'
       } else {

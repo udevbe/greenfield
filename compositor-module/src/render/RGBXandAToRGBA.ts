@@ -15,8 +15,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { sizeEquals, Size } from '../math/Size'
-import { DualPlaneRGBAArrayBuffer, DualPlaneRGBAImageBitmap } from '../remotestreaming/DecodedFrame'
+import { Size, sizeEquals } from '../math/Size'
+import {
+  DualPlaneRGBAArrayBuffer,
+  DualPlaneRGBAImageBitmap,
+  DualPlaneRGBAVideoFrame,
+} from '../remotestreaming/DecodedFrame'
 import Session from '../Session'
 import RenderState from './RenderState'
 import { RGBandA2RGBAShader } from './RGBandA2RGBAShader'
@@ -49,13 +53,13 @@ export class RGBXandA2RGBA {
   ) {}
 
   convertInto(
-    rgba: DualPlaneRGBAImageBitmap | DualPlaneRGBAArrayBuffer,
+    rgba: DualPlaneRGBAImageBitmap | DualPlaneRGBAArrayBuffer | DualPlaneRGBAVideoFrame,
     frameSize: Size,
     renderState: RenderState,
   ): void {
     if (!sizeEquals(renderState.size, frameSize)) {
       renderState.size = frameSize
-      renderState.texture.image2dBuffer(null, frameSize.width, frameSize.height)
+      renderState.texture.setContentBuffer(null, frameSize)
     }
 
     // the width & height returned are actually padded, so we have to use the frame size to get the real image dimension
@@ -66,34 +70,35 @@ export class RGBXandA2RGBA {
       const maxXTexCoord = frameSize.width / opaqueStride
       const maxYTexCoord = frameSize.height / opaqueHeight
 
-      if (rgba.type === 'DualPlaneRGBAImageBitmap') {
-        this.rgbTexture.image2d(rgba.opaque.buffer)
-        this.alphaTexture.image2d(rgba.alpha.buffer)
+      if (rgba.type === 'DualPlaneRGBAVideoFrame') {
+        this.rgbTexture.setContent(rgba.opaque.buffer, rgba.opaque)
+        this.alphaTexture.setContent(rgba.alpha.buffer, rgba.alpha)
+      } else if (rgba.type === 'DualPlaneRGBAImageBitmap') {
+        this.rgbTexture.setContent(rgba.opaque.buffer, rgba.opaque)
+        this.alphaTexture.setContent(rgba.alpha.buffer, rgba.alpha)
       } else {
-        this.rgbTexture.image2dBuffer(rgba.opaque.buffer, opaqueStride, opaqueHeight)
-        this.alphaTexture.image2dBuffer(rgba.alpha.buffer, opaqueStride, opaqueStride)
+        this.rgbTexture.setContentBuffer(rgba.opaque.buffer, rgba.opaque)
+        this.alphaTexture.setContentBuffer(rgba.alpha.buffer, rgba.alpha)
       }
 
       this.rgbxAnda2rgba(renderState, maxXTexCoord, maxYTexCoord)
     } else {
-      if (rgba.type === 'DualPlaneRGBAImageBitmap') {
-        renderState.texture.image2d(rgba.opaque.buffer)
+      if (rgba.type === 'DualPlaneRGBAImageBitmap' || rgba.type === 'DualPlaneRGBAVideoFrame') {
+        this.rgbTexture.setContent(rgba.opaque.buffer, rgba.opaque)
       } else {
-        renderState.texture.image2dBuffer(rgba.opaque.buffer, opaqueStride, opaqueHeight)
+        renderState.texture.setContentBuffer(rgba.opaque.buffer, rgba.opaque)
       }
     }
   }
 
   private rgbxAnda2rgba(renderState: RenderState, maxXTexCoord: number, maxYTexCoord: number) {
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer)
-    const attachmentPoint = this.gl.COLOR_ATTACHMENT0
-    const level = 0
     this.gl.framebufferTexture2D(
       this.gl.FRAMEBUFFER,
-      attachmentPoint,
+      this.gl.COLOR_ATTACHMENT0,
       this.gl.TEXTURE_2D,
       renderState.texture.texture,
-      level,
+      0,
     )
 
     this.rgbaSurfaceShader.use()

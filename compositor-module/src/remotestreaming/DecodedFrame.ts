@@ -36,6 +36,12 @@ export type DualPlaneRGBAImageBitmap = {
   opaque: { buffer: ImageBitmap; width: number; height: number }
   alpha?: { buffer: ImageBitmap; width: number; height: number }
 }
+export type DualPlaneRGBAVideoFrame = {
+  type: 'DualPlaneRGBAVideoFrame'
+  close: () => void
+  opaque: { buffer: VideoFrame; width: number; height: number }
+  alpha?: { buffer: VideoFrame; width: number; height: number }
+}
 
 export type SinglePlane = {
   type: 'SinglePlane'
@@ -48,6 +54,7 @@ export type DecodedPixelContent =
   | DualPlaneYUVAArrayBuffer
   | DualPlaneRGBAImageBitmap
   | DualPlaneRGBAArrayBuffer
+  | DualPlaneRGBAVideoFrame
   | SinglePlane
 export type DecodedFrame = {
   readonly mimeType: 'video/h264' | 'image/png'

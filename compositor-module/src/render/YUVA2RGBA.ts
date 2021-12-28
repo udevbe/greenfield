@@ -66,6 +66,10 @@ export class YUVA2RGBA {
   ) {}
 
   convertInto(yuva: DualPlaneYUVAArrayBuffer, frameSize: Size, renderState: RenderState): void {
+    if (!sizeEquals(renderState.size, frameSize)) {
+      renderState.size = frameSize
+      renderState.texture.setContentBuffer(null, frameSize)
+    }
     const { alpha, opaque } = yuva
 
     // the width & height returned are actually padded, so we have to use the frame size to get the real image dimension
@@ -87,21 +91,20 @@ export class YUVA2RGBA {
     const chromaHeight = opaqueHeight >> 1
     const chromaStride = opaqueStride >> 1
 
-    this.yTexture.image2dBuffer(yBuffer, opaqueStride, opaqueHeight)
-    this.uTexture.image2dBuffer(uBuffer, chromaStride, chromaHeight)
-    this.vTexture.image2dBuffer(vBuffer, chromaStride, chromaHeight)
+    const lumaDimension = { width: opaqueStride, height: opaqueHeight }
+    const chromaDimension = { width: chromaStride, height: chromaHeight }
 
-    if (!sizeEquals(renderState.size, frameSize)) {
-      renderState.size = frameSize
-      renderState.texture.image2dBuffer(null, frameSize.width, frameSize.height)
-    }
+    this.yTexture.setContentBuffer(yBuffer, lumaDimension)
+    this.uTexture.setContentBuffer(uBuffer, chromaDimension)
+    this.vTexture.setContentBuffer(vBuffer, chromaDimension)
+
     if (alpha) {
       const alphaStride = alpha.width // stride
       const alphaHeight = alpha.height // padded with filler rows
       const alphaLumaSize = alphaStride * alphaHeight
 
       const alphaBuffer = alpha.buffer.subarray(0, alphaLumaSize)
-      this.alphaTexture.image2dBuffer(alphaBuffer, alphaStride, alphaHeight)
+      this.alphaTexture.setContentBuffer(alphaBuffer, { width: alphaStride, height: alphaHeight })
 
       this.yuva2rgba(renderState, maxXTexCoord, maxYTexCoord)
     } else {

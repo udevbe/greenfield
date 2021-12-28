@@ -88,6 +88,7 @@ export class Scene {
       this.yuvaToRGBA.convertInto(decodedFrame.pixelContent, decodedFrame.size, renderState)
     } else if (
       decodedFrame.pixelContent.type === 'DualPlaneRGBAImageBitmap' ||
+      decodedFrame.pixelContent.type === 'DualPlaneRGBAVideoFrame' ||
       decodedFrame.pixelContent.type === 'DualPlaneRGBAArrayBuffer'
     ) {
       this.rgbaAnda2RGBA.convertInto(decodedFrame.pixelContent, decodedFrame.size, renderState)
@@ -98,7 +99,8 @@ export class Scene {
 
   ['image/png'](decodedFrame: DecodedFrame, renderState: RenderState): void {
     const { bitmap } = decodedFrame.pixelContent as { bitmap: ImageBitmap; blob: Blob }
-    renderState.updateWithTexImageSource(bitmap)
+    renderState.size = bitmap
+    renderState.texture.setContent(bitmap, bitmap)
     bitmap.close()
   }
 

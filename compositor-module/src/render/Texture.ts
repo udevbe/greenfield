@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+import { Size, sizeEquals, ZERO_SIZE } from '../math/Size'
+
 /**
  * Represents a WebGL texture object.
  */
@@ -23,6 +25,7 @@ export default class Texture {
     public readonly gl: WebGLRenderingContext,
     public readonly format: GLenum,
     public readonly texture: WebGLTexture,
+    private size: Size = ZERO_SIZE,
   ) {}
 
   static create(gl: WebGLRenderingContext, format: number): Texture {
@@ -40,39 +43,46 @@ export default class Texture {
     return new Texture(gl, format, texture)
   }
 
-  subImage2dBuffer(buffer: ArrayBufferView | null, x: number, y: number, width: number, height: number): void {
+  setContent(buffer: TexImageSource | VideoFrame, size: Size): void {
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture)
-    this.gl.texSubImage2D(this.gl.TEXTURE_2D, 0, x, y, width, height, this.format, this.gl.UNSIGNED_BYTE, buffer)
+    if (sizeEquals(this.size, size)) {
+      this.gl.texSubImage2D(this.gl.TEXTURE_2D, 0, 0, 0, this.format, this.gl.UNSIGNED_BYTE, buffer)
+    } else {
+      this.size = size
+      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.format, this.format, this.gl.UNSIGNED_BYTE, buffer)
+    }
+
     this.gl.bindTexture(this.gl.TEXTURE_2D, null)
   }
 
-  subImage2d(buffer: TexImageSource, x: number, y: number): void {
+  setContentBuffer(buffer: ArrayBufferView | null, size: Size): void {
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture)
-    this.gl.texSubImage2D(this.gl.TEXTURE_2D, 0, x, y, this.format, this.gl.UNSIGNED_BYTE, buffer)
-    this.gl.bindTexture(this.gl.TEXTURE_2D, null)
-  }
-
-  image2dBuffer(buffer: ArrayBufferView | null, width: number, height: number): void {
-    this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture)
-    const level = 0
-    this.gl.texImage2D(
-      this.gl.TEXTURE_2D,
-      level,
-      this.format,
-      width,
-      height,
-      0,
-      this.format,
-      this.gl.UNSIGNED_BYTE,
-      buffer,
-    )
-    this.gl.bindTexture(this.gl.TEXTURE_2D, null)
-  }
-
-  image2d(buffer: TexImageSource): void {
-    this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture)
-    const level = 0
-    this.gl.texImage2D(this.gl.TEXTURE_2D, level, this.format, this.format, this.gl.UNSIGNED_BYTE, buffer)
+    if (sizeEquals(this.size, size) && buffer !== null) {
+      this.gl.texSubImage2D(
+        this.gl.TEXTURE_2D,
+        0,
+        0,
+        0,
+        size.width,
+        size.height,
+        this.format,
+        this.gl.UNSIGNED_BYTE,
+        buffer,
+      )
+    } else {
+      this.size = size
+      this.gl.texImage2D(
+        this.gl.TEXTURE_2D,
+        0,
+        this.format,
+        size.width,
+        size.height,
+        0,
+        this.format,
+        this.gl.UNSIGNED_BYTE,
+        buffer,
+      )
+    }
     this.gl.bindTexture(this.gl.TEXTURE_2D, null)
   }
 
