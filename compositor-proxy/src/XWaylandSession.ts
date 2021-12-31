@@ -58,7 +58,7 @@ export class XWaylandSession {
       xWaylandClient.nativeClientSession.onDestroy().then(() => {
         this.destroy()
       })
-      xWaylandClient.webSocketChannel.send(Uint32Array.from([7, wmFd]).buffer)
+      xWaylandClient.webSocket.send(Uint32Array.from([7, wmFd]).buffer)
       this.xWaylandClient = xWaylandClient
     })
   }
@@ -97,7 +97,7 @@ export class XWaylandSession {
 
     if (this.xWaylandClient) {
       this.xWaylandClient.nativeClientSession?.destroy()
-      this.xWaylandClient.webSocketChannel.close()
+      this.xWaylandClient.webSocket.close()
       this.xWaylandClient = undefined
     }
   }

@@ -23,6 +23,20 @@ async function main() {
   // hook up the canvas to our compositor
   session.userShell.actions.initScene('myOutputId', canvas)
   session.userShell.events.notify = (variant: string, message: string) => window.alert(message)
+  session.userShell.events.unresponsive = (compositorSurface, unresponse) => {
+    if (unresponse) {
+      const disconnectButton = document.createElement('button')
+      disconnectButton.id = JSON.stringify(compositorSurface)
+      disconnectButton.textContent = `Client: ${compositorSurface.client.id} unresponsive. Force disconnect?`
+      disconnectButton.onclick = () => {
+        session.userShell.actions.closeClient(compositorSurface.client)
+        disconnectButton.remove()
+      }
+      document.body.appendChild(disconnectButton)
+    } else {
+      document.getElementById(JSON.stringify(compositorSurface))?.remove()
+    }
+  }
 
   const remoteSocket = createCompositorRemoteSocket(session)
   const compositorProxyConnector = createCompositorProxyConnector(session, remoteSocket)
@@ -37,10 +51,10 @@ async function main() {
   }
 
   const connect8082Button: HTMLButtonElement = document.createElement('button')
-  connect8082Button.textContent = `connect to ws://localhost:8082?compositorSessionId=${compositorSessionId}`
+  connect8082Button.textContent = `connect to ws://192.168.0.194:8081?compositorSessionId=${compositorSessionId}`
 
   connect8082Button.onclick = () => {
-    const compositorProxyURL = new URL('ws://localhost:8082')
+    const compositorProxyURL = new URL('ws://192.168.0.194:8081')
     compositorProxyURL.searchParams.append('compositorSessionId', compositorSessionId)
     compositorProxyConnector.connectTo(compositorProxyURL)
   }

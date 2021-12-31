@@ -159,7 +159,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, DesktopSurf
         this._pingTimeoutActive = true
         this.session.userShell.events.unresponsive?.(this.desktopSurface.compositorSurface, true)
       }
-    }, 5000)
+    }, 2000)
     // FIXME use a proper serial
     resource.ping(0)
     this.session.flush()

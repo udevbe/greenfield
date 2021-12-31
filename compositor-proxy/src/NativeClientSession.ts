@@ -18,6 +18,7 @@
 import { URL } from 'url'
 import { Endpoint, MessageInterceptor } from 'westfield-endpoint'
 import { MessageEvent } from 'ws'
+import { RetransmittingWebSocket } from 'retransmitting-websocket'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 import { createLogger } from './Logger'
 import { NativeCompositorSession } from './NativeCompositorSession'
@@ -28,34 +29,33 @@ import wl_display_interceptor from './protocol/wl_display_interceptor'
 // eslint-disable-next-line camelcase,@typescript-eslint/ban-ts-comment
 // @ts-ignore
 import wl_buffer_interceptor from './protocol/wl_buffer_interceptor'
-import { noopHandler, WebSocketChannel } from './WebSocketChannel'
 
 const logger = createLogger('native-client-session')
 
 export function createNativeClientSession(
   wlClient: unknown,
   nativeCompositorSession: NativeCompositorSession,
-  webSocketChannel: WebSocketChannel,
+  retransmittingWebSocket: RetransmittingWebSocket,
 ): NativeClientSession {
   const messageInterceptor = MessageInterceptor.create(
     wlClient,
     nativeCompositorSession.wlDisplay,
     wl_display_interceptor,
-    { communicationChannel: webSocketChannel },
+    { communicationChannel: retransmittingWebSocket },
   )
 
   const nativeClientSession = new NativeClientSession(
     wlClient,
     nativeCompositorSession,
-    webSocketChannel,
+    retransmittingWebSocket,
     messageInterceptor,
   )
   nativeClientSession.onDestroy().then(() => {
-    if (webSocketChannel.readyState === 1 || webSocketChannel.readyState === 0) {
-      webSocketChannel.onerror = noopHandler
-      webSocketChannel.onclose = noopHandler
-      webSocketChannel.onmessage = noopHandler
-      webSocketChannel.close()
+    if (retransmittingWebSocket.readyState === 1 || retransmittingWebSocket.readyState === 0) {
+      // retransmittingWebSocket.onerror = noopHandler
+      // retransmittingWebSocket.onclose = noopHandler
+      // retransmittingWebSocket.onmessage = noopHandler
+      retransmittingWebSocket.close()
     }
   })
 
@@ -88,17 +88,32 @@ export function createNativeClientSession(
       null,
     )
     // send buffer creation notification. opcode: 2
-    webSocketChannel.send(new Uint32Array([2, bufferId]).buffer)
+    retransmittingWebSocket.send(new Uint32Array([2, bufferId]).buffer)
   })
 
-  webSocketChannel.onerror = () => nativeClientSession.destroy()
-  webSocketChannel.onclose = (event) => nativeClientSession.onClose()
-  webSocketChannel.onmessage = (event) => nativeClientSession.onMessage(event)
+  retransmittingWebSocket.onerror = (event) => {
+    logger.info(`Wayland client web socket error.`, event)
+    nativeClientSession.destroy()
+  }
+  retransmittingWebSocket.onclose = (event) => {
+    logger.info(`Wayland client web socket closed.`)
+    nativeClientSession.destroy()
+  }
+  retransmittingWebSocket.onmessage = (event) => {
+    try {
+      nativeClientSession.onMessage(event)
+    } catch (e) {
+      logger.error('BUG? Error while processing event from compositor.', e)
+      nativeClientSession.destroy()
+    }
+  }
 
-  webSocketChannel.onopen = () => {
-    webSocketChannel.onerror = (event) => nativeClientSession.onError()
+  retransmittingWebSocket.onopen = () => {
+    retransmittingWebSocket.onerror = (event) => {
+      logger.error(`Wayland client web socket error.`, event)
+    }
     // flush out any requests that came in while we were waiting for the data channel to open.
-    logger.info(`Web socket to browser is open.`)
+    logger.info(`Wayland client web socket to browser is open.`)
     nativeClientSession.flushOutboundMessageOnOpen()
   }
 
@@ -117,7 +132,7 @@ export class NativeClientSession {
   constructor(
     public wlClient: unknown,
     private readonly nativeCompositorSession: NativeCompositorSession,
-    private readonly webSocketChannel: WebSocketChannel,
+    private readonly webSocketChannel: RetransmittingWebSocket,
     private readonly messageInterceptor: MessageInterceptor,
     private pendingWireMessages: Uint32Array[] = [],
     private pendingMessageBufferSize = 0,
@@ -396,15 +411,6 @@ export class NativeClientSession {
     }
     wlSurfaceInterceptor.encoder.requestKeyUnit()
     wlSurfaceInterceptor.encodeAndSendBuffer(uint32Payload[1])
-  }
-
-  onError(): void {
-    logger.error(`Web socket is in error.`)
-  }
-
-  onClose(): void {
-    logger.info(`Web socket is closed.`)
-    this.destroy()
   }
 
   onRegistryCreated(wlRegistry: unknown, registryId: number): void {

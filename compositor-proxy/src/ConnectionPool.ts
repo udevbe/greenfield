@@ -1,23 +1,26 @@
 import { RetransmittingWebSocket, WebSocketLike } from 'retransmitting-websocket'
 
-const connections: Record<string, RetransmittingWebSocket> = {}
+const boundConnections: Record<string, RetransmittingWebSocket> = {}
+const unboundConnections: RetransmittingWebSocket[] = []
 
 export function upsertWebSocket(
   connectionId: string,
   webSocketLike: WebSocketLike,
-  config?: ConstructorParameters<typeof RetransmittingWebSocket>[0],
 ): { retransmittingWebSocket: RetransmittingWebSocket; isNew: boolean } {
-  let retransmittingWebSocket = connections[connectionId]
+  let retransmittingWebSocket = boundConnections[connectionId]
   const isNew = retransmittingWebSocket === undefined
   if (isNew) {
-    retransmittingWebSocket = new RetransmittingWebSocket(config)
-    // FIXME when to cleanup/delete the retransmitting websocket?
-    connections[connectionId] = retransmittingWebSocket
+    retransmittingWebSocket = unboundConnections.shift() ?? new RetransmittingWebSocket()
+    boundConnections[connectionId] = retransmittingWebSocket
     retransmittingWebSocket.addEventListener('close', () => {
-      delete connections[connectionId]
+      delete boundConnections[connectionId]
     })
   }
   retransmittingWebSocket.useWebSocket(webSocketLike)
 
   return { retransmittingWebSocket, isNew }
+}
+
+export function registerUnboundClientConnection(retransmittingWebSocket: RetransmittingWebSocket) {
+  unboundConnections.push(retransmittingWebSocket)
 }

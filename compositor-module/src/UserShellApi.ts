@@ -25,7 +25,7 @@ import Surface from './Surface'
 export interface UserShellApiEvents {
   clientCreated?: (applicationClient: CompositorClient) => void
   clientDestroyed?: (applicationClient: CompositorClient) => void
-  notify?: (variant: string, message: string) => void
+  notify?: (variant: 'warn' | 'info' | 'error', message: string) => void
   sceneRefresh?: (sceneId: string) => void
 
   clientSurfaceCreated?: (compositorSurface: CompositorSurface) => void
@@ -92,7 +92,7 @@ export function createUserShellApi(session: Session): UserShellApi {
           }
         }
       },
-      closeClient: (applicationClient) => session.display.clients[applicationClient.id].close(),
+      closeClient: (applicationClient) => session.display.clients[applicationClient.id]?.close(),
     },
   }
 }

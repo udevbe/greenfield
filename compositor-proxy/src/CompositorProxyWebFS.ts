@@ -1,5 +1,4 @@
 import fs from 'fs'
-import ReconnectingWebSocket from 'reconnecting-websocket'
 import { URL } from 'url'
 
 import { TextDecoder, TextEncoder } from 'util'
@@ -9,10 +8,7 @@ import WebsocketStream from 'websocket-stream'
 import WebSocket from 'ws'
 import { RetransmittingWebSocket } from 'retransmitting-websocket'
 import { config } from './config'
-import { upsertWebSocket } from './ConnectionPool'
 import { createLogger } from './Logger'
-
-import { WebSocketChannel } from './WebSocketChannel'
 
 const logger = createLogger('webfs')
 
@@ -62,7 +58,7 @@ export class AppEndpointWebFS {
   /**
    * Creates a local fd that matches the content & behavior of the foreign webfd
    */
-  async handleWebFdURL(webFdURL: URL, clientWebSocketChannel: WebSocketChannel): Promise<number> {
+  async handleWebFdURL(webFdURL: URL, retransmittingWebSocket: RetransmittingWebSocket): Promise<number> {
     if (
       webFdURL.host === this.localWebFDBaseURL.host &&
       webFdURL.searchParams.get('compositorSessionId') === this.compositorSessionId
@@ -75,29 +71,27 @@ export class AppEndpointWebFS {
       // the fd comes from a different host. In case of shm, we need to create local shm and
       // transfer the contents of the remote fd. In case of pipe, we need to create a local pipe and transfer
       // the contents on-demand.
-      return this.handleForeignWebFdURL(webFdURL, clientWebSocketChannel)
+      return this.handleForeignWebFdURL(webFdURL, retransmittingWebSocket)
     }
   }
 
   private findFdTransferWebSocket(
     webFdURL: URL,
-    clientWebSocketChannel: WebSocketChannel,
+    clientWebSocket: RetransmittingWebSocket,
   ): RetransmittingWebSocket | undefined {
     if (
       webFdURL.protocol === 'compositor:' &&
-      this.compositorSessionId === webFdURL.searchParams.get('compositorSessionId') &&
-      clientWebSocketChannel.webSocket
+      this.compositorSessionId === webFdURL.searchParams.get('compositorSessionId')
     ) {
       // If the fd originated from the compositor, we can reuse the existing websocket connection to transfer the fd contents
-      return clientWebSocketChannel.webSocket
+      return clientWebSocket
     } else if (webFdURL.protocol.startsWith('ws')) {
       // fd came from another endpoint, establish a new communication channel
       logger.info(`Establishing data transfer websocket connection to ${webFdURL.href}`)
-      const { retransmittingWebSocket } = upsertWebSocket(
-        webFdURL.href,
-        new ReconnectingWebSocket(webFdURL.href, [], { maxEnqueuedMessages: 0 }),
-        { closeTimeoutMs: 2000 },
-      )
+      const retransmittingWebSocket = new RetransmittingWebSocket({
+        closeTimeoutMs: 2000,
+        webSocketFactory: () => new WebSocket(webFdURL.href),
+      })
       retransmittingWebSocket.addEventListener('error', (event) =>
         logger.error(`Data transfer websocket is in error. ${event.message}`),
       )
@@ -107,8 +101,8 @@ export class AppEndpointWebFS {
     }
   }
 
-  private async handleForeignWebFdURL(webFdURL: URL, clientWebSocketChannel: WebSocketChannel): Promise<number> {
-    const fdTransferWebSocket = this.findFdTransferWebSocket(webFdURL, clientWebSocketChannel)
+  private async handleForeignWebFdURL(webFdURL: URL, clientWebSocket: RetransmittingWebSocket): Promise<number> {
+    const fdTransferWebSocket = this.findFdTransferWebSocket(webFdURL, clientWebSocket)
     if (fdTransferWebSocket === undefined) {
       return -1
     }

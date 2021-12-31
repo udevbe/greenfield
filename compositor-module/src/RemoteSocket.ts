@@ -15,7 +15,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import ReconnectingWebSocket from 'reconnecting-websocket'
 import { SendMessage, WebFD } from 'westfield-runtime-common'
 import { Client, WlBufferResource } from 'westfield-runtime-server'
 import { RetransmittingWebSocket } from 'retransmitting-websocket'
@@ -40,13 +39,11 @@ const xWaylandProxyStates: { [key: string]: XWaylandConectionState } = {}
 
 let connectionIdCounter = 0
 export function createRetransmittingWebSocket(url: URL): RetransmittingWebSocket {
-  const retransmittingWebSocket = new RetransmittingWebSocket()
-  url.searchParams.set('connectionId', `${connectionIdCounter++}`)
-  retransmittingWebSocket.useWebSocket(
-    new ReconnectingWebSocket(url.href, [], {
-      maxEnqueuedMessages: 0,
-    }),
-  )
+  const connectionURL = new URL(url.href)
+  connectionURL.searchParams.set('connectionId', `${connectionIdCounter++}`)
+  const retransmittingWebSocket = new RetransmittingWebSocket({
+    webSocketFactory: () => new WebSocket(connectionURL.href),
+  })
   return retransmittingWebSocket
 }
 
@@ -80,7 +77,10 @@ class RemoteSocket {
         this.session.logger.info('[WebSocket] - open.')
 
         const client = this.session.display.createClient()
-        client.onClose().then(() => this.session.logger.info('[client] - closed.'))
+        client.onClose().then(() => {
+          this.session.logger.info('[client] - closed.')
+          webSocket.close()
+        })
         client.addResourceCreatedListener((resource) => {
           if (resource.id >= 0xff000000 && client.recycledIds.length === 0) {
             this.session.logger.warn('[client] - Ran out of reserved browser resource ids.')
