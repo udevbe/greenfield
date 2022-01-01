@@ -25,15 +25,15 @@ import Surface from './Surface'
 export interface UserShellApiEvents {
   clientCreated?: (applicationClient: CompositorClient) => void
   clientDestroyed?: (applicationClient: CompositorClient) => void
+  unresponsive?: (applicationClient: CompositorClient, unresponse: boolean) => void
   notify?: (variant: 'warn' | 'info' | 'error', message: string) => void
+
   sceneRefresh?: (sceneId: string) => void
-
   clientSurfaceCreated?: (compositorSurface: CompositorSurface) => void
-  clientSurfaceDestroyed?: (compositorSurface: CompositorSurface) => void
 
+  clientSurfaceDestroyed?: (compositorSurface: CompositorSurface) => void
   title?: (compositorSurface: CompositorSurface, title: string) => void
   appId?: (compositorSurface: CompositorSurface, appId: string) => void
-  unresponsive?: (compositorSurface: CompositorSurface, unresponse: boolean) => void
   active?: (compositorSurface: CompositorSurface, active: boolean) => void
 }
 
@@ -92,7 +92,13 @@ export function createUserShellApi(session: Session): UserShellApi {
           }
         }
       },
-      closeClient: (applicationClient) => session.display.clients[applicationClient.id]?.close(),
+      closeClient: (applicationClient) => {
+        const client = session.display.clients[applicationClient.id]
+        if (client === undefined) {
+          throw new Error(`Client with id ${applicationClient.id} does not exist.`)
+        }
+        client.close()
+      },
     },
   }
 }

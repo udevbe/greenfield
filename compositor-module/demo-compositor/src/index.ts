@@ -23,18 +23,18 @@ async function main() {
   // hook up the canvas to our compositor
   session.userShell.actions.initScene('myOutputId', canvas)
   session.userShell.events.notify = (variant: string, message: string) => window.alert(message)
-  session.userShell.events.unresponsive = (compositorSurface, unresponse) => {
+  session.userShell.events.unresponsive = (compositorClient, unresponse) => {
     if (unresponse) {
       const disconnectButton = document.createElement('button')
-      disconnectButton.id = JSON.stringify(compositorSurface)
-      disconnectButton.textContent = `Client: ${compositorSurface.client.id} unresponsive. Force disconnect?`
+      disconnectButton.id = `client-id-${compositorClient.id}`
+      disconnectButton.textContent = `Client: client-id-${compositorClient.id} unresponsive. Force disconnect?`
       disconnectButton.onclick = () => {
-        session.userShell.actions.closeClient(compositorSurface.client)
+        session.userShell.actions.closeClient(compositorClient)
         disconnectButton.remove()
       }
       document.body.appendChild(disconnectButton)
     } else {
-      document.getElementById(JSON.stringify(compositorSurface))?.remove()
+      document.getElementById(`client-id-${compositorClient.id}`)?.remove()
     }
   }
 

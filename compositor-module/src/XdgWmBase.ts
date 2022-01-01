@@ -157,13 +157,6 @@ export default class XdgWmBase implements XdgWmBaseRequests {
   }
 
   private setUnresponsive(client: Client, value: boolean) {
-    this.wlSurfaceResources
-      .filter((wlSurfaceResource) => wlSurfaceResource.client === client)
-      .forEach((wlSurfaceResource) => {
-        const xdgSurfaceRole = (wlSurfaceResource.implementation as Surface).role
-        if (xdgSurfaceRole instanceof XdgToplevel) {
-          this.session.userShell.events.unresponsive?.(xdgSurfaceRole.desktopSurface.compositorSurface, value)
-        }
-      })
+    this.session.userShell.events.unresponsive?.({ id: client.id }, value)
   }
 }
