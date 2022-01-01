@@ -151,6 +151,7 @@ export class NativeCompositorSession {
           placeHolderClient.nativeClientSession.destroy()
         } else {
           logger.info(`websocket closed without an associated wayland client.`)
+          this.clients = this.clients.filter((value) => value !== placeHolderClient)
         }
       })
     } else {
@@ -161,6 +162,7 @@ export class NativeCompositorSession {
           client.nativeClientSession.destroy()
         } else {
           logger.info(`websocket closed without an associated wayland client.`)
+          this.clients = this.clients.filter((value) => value !== client)
         }
       })
     }
