@@ -29,7 +29,7 @@
     "js-yaml": "^4.1.0",
     "pino": "^6.12.0",
     "pino-pretty": "^7.0.1",
-    "retransmitting-websocket": "0.0.5",
+    "retransmitting-websocket": "0.0.8",
     "websocket-stream": "^5.5.2",
     "ws": "^8.2.2",
     "xtsb": "^0.0.1-alpha.7"

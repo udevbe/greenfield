@@ -37,6 +37,8 @@ async function main() {
       document.getElementById(`client-id-${compositorClient.id}`)?.remove()
     }
   }
+  session.userShell.events.clientDestroyed = (compositorClient) =>
+    document.getElementById(`client-id-${compositorClient.id}`)?.remove()
 
   const remoteSocket = createCompositorRemoteSocket(session)
   const compositorProxyConnector = createCompositorProxyConnector(session, remoteSocket)
@@ -51,10 +53,10 @@ async function main() {
   }
 
   const connect8082Button: HTMLButtonElement = document.createElement('button')
-  connect8082Button.textContent = `connect to ws://192.168.0.194:8081?compositorSessionId=${compositorSessionId}`
+  connect8082Button.textContent = `connect to ws://localhost:8082?compositorSessionId=${compositorSessionId}`
 
   connect8082Button.onclick = () => {
-    const compositorProxyURL = new URL('ws://192.168.0.194:8081')
+    const compositorProxyURL = new URL('ws://localhost:8082')
     compositorProxyURL.searchParams.append('compositorSessionId', compositorSessionId)
     compositorProxyConnector.connectTo(compositorProxyURL)
   }
