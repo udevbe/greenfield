@@ -1,15 +1,11 @@
 {
+  "extends": "@tsconfig/node16/tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "lib": ["ES2020"],
-    "module": "CommonJS",
-    "target": "ES2020",
-    "esModuleInterop": true,
     "resolveJsonModule": true,
-    "strict": true,
-    "skipLibCheck": true,
     "allowJs": true,
-    "rootDirs": ["src","src/@types"]
+    "rootDirs": ["src", "src/@types"],
+    "moduleResolution": "Node",
   },
   "ts-node": {
     "files": true

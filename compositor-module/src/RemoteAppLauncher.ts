@@ -17,11 +17,11 @@
 
 import { Client } from 'westfield-runtime-server'
 import { CompositorProxyConnector } from './index'
-import RemoteSocket from './RemoteSocket'
+import RemoteSocket, { createRetransmittingWebSocket } from './RemoteSocket'
 import Session from './Session'
 
 export default class RemoteAppLauncher implements CompositorProxyConnector {
-  private readonly _session: Session
+  private readonly session: Session
   private readonly remoteSocket: RemoteSocket
 
   static create(session: Session, remoteSocket: RemoteSocket): RemoteAppLauncher {
@@ -29,12 +29,12 @@ export default class RemoteAppLauncher implements CompositorProxyConnector {
   }
 
   private constructor(session: Session, remoteSocket: RemoteSocket) {
-    this._session = session
+    this.session = session
     this.remoteSocket = remoteSocket
   }
 
   async connectTo(appEndpointURL: URL): Promise<Client> {
     this.remoteSocket.ensureXWayland(appEndpointURL)
-    return this.remoteSocket.onWebSocket(new WebSocket(appEndpointURL.href))
+    return this.remoteSocket.onWebSocket(createRetransmittingWebSocket(appEndpointURL))
   }
 }

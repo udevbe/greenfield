@@ -56,8 +56,24 @@ export function initSurfaceBufferEncoding(): void {
       this.encoder = createEncoder(this.wlClient)
     }
 
-    const syncSerial = ++bufferSerial
+    let syncSerial: number
 
+    if (this.bufferResourceId) {
+      syncSerial = ++bufferSerial
+
+      const bufferId = this.bufferResourceId
+      this.sendBufferResourceId = bufferId
+      this.bufferResourceId = 0
+
+      logger.debug(`Request buffer encoding: serial=${syncSerial}, id=${bufferId}`)
+      logger.debug('|- Awaiting buffer encoding.')
+      // TODO only profile when in debug
+      this.encodeAndSendBuffer(syncSerial)
+    } else {
+      syncSerial = bufferSerial
+    }
+
+    logger.debug(`Buffer committed: serial=${syncSerial}, id=${this.bufferResourceId}`)
     // inject the frame serial in the commit message
     const origMessageBuffer = message.buffer
     message.size += Uint32Array.BYTES_PER_ELEMENT
@@ -67,36 +83,24 @@ export function initSurfaceBufferEncoding(): void {
     uint32Array[1] = (message.size << 16) | 6 // size + opcode
     uint32Array[2] = syncSerial
 
-    logger.debug(`Buffer committed: serial=${syncSerial}, id=${this.bufferResourceId}`)
-
-    if (this.bufferResourceId) {
-      const bufferId = this.bufferResourceId
-      this.bufferResourceId = 0
-
-      logger.debug(`Request buffer encoding: serial=${syncSerial}, id=${bufferId}`)
-      logger.debug('|- Awaiting buffer encoding.')
-      // TODO only profile when in debug
-      const start = Date.now()
-      this.encoder
-        .encodeBuffer(bufferId, syncSerial)
-        .then((sendBuffer: Buffer) => {
-          logger.debug(`|--> Buffer encoding took: ${Date.now() - start}ms`)
-          logger.debug(`Buffer encoding finished: serial=${syncSerial}, id=${bufferId}`)
-
-          // send buffer contents. opcode: 3. bufferId + chunk
-          if (this.userData.communicationChannel.readyState === 1) {
-            // 1 === 'open'
-            logger.debug(`Sending buffer contents: serial=${syncSerial}, id=${bufferId}`)
-            this.userData.communicationChannel.send(sendBuffer)
-            // TODO free sendBuffer
-          } // else connection was probably closed, don't attempt to send a buffer chunk
-        })
-        .catch((e: Error) => {
-          logger.error(`\tname: ${e.name} message: ${e.message}`)
-          logger.error('error object stack: ')
-          logger.error(e.stack ?? '')
-        })
-    }
     return 0
+  }
+
+  wlSurfaceInterceptor.prototype.encodeAndSendBuffer = function (syncSerial: number) {
+    this.encoder
+      .encodeBuffer(this.sendBufferResourceId, syncSerial)
+      .then((sendBuffer: Buffer) => {
+        // send buffer contents. opcode: 3. bufferId + chunk
+        if (this.userData.communicationChannel.readyState === 1) {
+          // 1 === 'open'
+          this.userData.communicationChannel.send(sendBuffer)
+          // TODO free sendBuffer
+        } // else connection was probably closed, don't attempt to send a buffer chunk
+      })
+      .catch((e: Error) => {
+        logger.error(`\tname: ${e.name} message: ${e.message}`)
+        logger.error('error object stack: ')
+        logger.error(e.stack ?? '')
+      })
   }
 }

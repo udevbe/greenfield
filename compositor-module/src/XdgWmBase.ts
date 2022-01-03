@@ -89,6 +89,12 @@ export default class XdgWmBase implements XdgWmBaseRequests {
       this.session.logger.warn('[client-protocol-error] - xdg_wm_base was destroyed before children.')
       return
     }
+    const pingState = this.clientPingStates.get(resource.client)
+    if (pingState) {
+      clearTimeout(pingState.timeoutTimer)
+      clearTimeout(pingState.pingTimer)
+      this.clientPingStates.delete(resource.client)
+    }
     resource.destroy()
   }
 
@@ -130,9 +136,7 @@ export default class XdgWmBase implements XdgWmBaseRequests {
         pingState.pingTimeoutActive = false
       }
       self.clearTimeout(pingState.timeoutTimer)
-      pingState.pingTimer = self.setTimeout(() => {
-        this.doPing(resource, pingState)
-      }, 5000)
+      pingState.pingTimer = self.setTimeout(() => this.doPing(resource, pingState), 5000)
     }
   }
 
@@ -146,20 +150,13 @@ export default class XdgWmBase implements XdgWmBaseRequests {
         pingState.pingTimeoutActive = true
         this.setUnresponsive(resource.client, true)
       }
-    }, 5000)
+    }, 2000)
     // FIXME use a proper serial
     resource.ping(0)
     this.session.flush()
   }
 
   private setUnresponsive(client: Client, value: boolean) {
-    this.wlSurfaceResources
-      .filter((wlSurfaceResource) => wlSurfaceResource.client === client)
-      .forEach((wlSurfaceResource) => {
-        const xdgSurfaceRole = (wlSurfaceResource.implementation as Surface).role
-        if (xdgSurfaceRole instanceof XdgToplevel) {
-          this.session.userShell.events.unresponsive?.(xdgSurfaceRole.desktopSurface.compositorSurface, value)
-        }
-      })
+    this.session.userShell.events.unresponsive?.({ id: client.id }, value)
   }
 }

@@ -1,4 +1,4 @@
-import WebSocket from 'ws'
+import { RetransmittingWebSocket } from 'retransmitting-websocket'
 import { createLogger } from './Logger'
 import { Endpoint } from 'westfield-endpoint'
 import { nodeFDConnectionSetup } from 'xtsb'
@@ -9,7 +9,7 @@ const logger = createLogger('xwayland')
 export class XWaylandSession {
   private nativeXWayland?: unknown
   private xWaylandClient?: ClientEntry
-  private xwmWebSocket?: WebSocket
+  xwmWebSocket?: RetransmittingWebSocket
 
   constructor(private nativeCompositorSession: NativeCompositorSession) {}
 
@@ -58,16 +58,15 @@ export class XWaylandSession {
       xWaylandClient.nativeClientSession.onDestroy().then(() => {
         this.destroy()
       })
-      xWaylandClient.webSocketChannel.send(Uint32Array.from([7, wmFd]).buffer)
+      xWaylandClient.webSocket.send(Uint32Array.from([7, wmFd]).buffer)
       this.xWaylandClient = xWaylandClient
     })
   }
 
-  async createXWMConnection(webSocket: WebSocket, wmFD: number): Promise<void> {
+  async createXWMConnection(xwmWebSocket: RetransmittingWebSocket, wmFD: number): Promise<void> {
     logger.info('Handling incoming XWM connection')
     // initialize an X11 client connection, used by the compositor's X11 window manager.
     const { xConnectionSocket, setup } = await nodeFDConnectionSetup(wmFD)()
-    const xwmWebSocket = webSocket
 
     const setupJSON = JSON.stringify(setup)
     xwmWebSocket.send(setupJSON)
@@ -98,7 +97,7 @@ export class XWaylandSession {
 
     if (this.xWaylandClient) {
       this.xWaylandClient.nativeClientSession?.destroy()
-      this.xWaylandClient.webSocketChannel.close()
+      this.xWaylandClient.webSocket.close()
       this.xWaylandClient = undefined
     }
   }

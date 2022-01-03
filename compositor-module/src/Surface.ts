@@ -42,7 +42,7 @@ import Region, {
   destroyPixmanRegion,
   contains,
 } from './Region'
-import H264BufferContentDecoder from './render/H264BufferContentDecoder'
+import { FrameDecoder, H264DecoderContext } from './remotestreaming/buffer-decoder'
 import Renderer from './render/Renderer'
 import Session from './Session'
 import { sizeEquals, Size } from './math/Size'
@@ -182,14 +182,14 @@ class Surface implements WlSurfaceRequests {
     }
   }
 
-  private _h264BufferContentDecoder?: H264BufferContentDecoder
+  private h264DecoderContext?: H264DecoderContext
 
-  get h264BufferContentDecoder(): H264BufferContentDecoder {
-    if (this._h264BufferContentDecoder === undefined) {
-      this._h264BufferContentDecoder = H264BufferContentDecoder.create(`${surfaceH264DecodeId++}`)
-      return this._h264BufferContentDecoder
+  getH264DecoderContext(frameDecoder: FrameDecoder): H264DecoderContext {
+    if (this.h264DecoderContext === undefined) {
+      this.h264DecoderContext = frameDecoder.createH264DecoderContext(this, `${surfaceH264DecodeId++}`)
+      return this.h264DecoderContext
     } else {
-      return this._h264BufferContentDecoder
+      return this.h264DecoderContext
     }
   }
 
@@ -480,7 +480,7 @@ class Surface implements WlSurfaceRequests {
     this.parent?.removeChild(this.surfaceChildSelf)
     this.destroyed = true
     this.role?.view?.destroy()
-    this._h264BufferContentDecoder?.destroy()
+    this.h264DecoderContext?.destroy()
   }
 
   get geometry(): RectWithInfo {

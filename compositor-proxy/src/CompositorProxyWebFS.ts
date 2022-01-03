@@ -6,10 +6,9 @@ import { Endpoint } from 'westfield-endpoint'
 import WebsocketStream from 'websocket-stream'
 
 import WebSocket from 'ws'
+import { RetransmittingWebSocket } from 'retransmitting-websocket'
 import { config } from './config'
 import { createLogger } from './Logger'
-
-import { WebSocketChannel } from './WebSocketChannel'
 
 const logger = createLogger('webfs')
 
@@ -59,7 +58,7 @@ export class AppEndpointWebFS {
   /**
    * Creates a local fd that matches the content & behavior of the foreign webfd
    */
-  async handleWebFdURL(webFdURL: URL, clientWebSocketChannel: WebSocketChannel): Promise<number> {
+  async handleWebFdURL(webFdURL: URL, retransmittingWebSocket: RetransmittingWebSocket): Promise<number> {
     if (
       webFdURL.host === this.localWebFDBaseURL.host &&
       webFdURL.searchParams.get('compositorSessionId') === this.compositorSessionId
@@ -72,33 +71,38 @@ export class AppEndpointWebFS {
       // the fd comes from a different host. In case of shm, we need to create local shm and
       // transfer the contents of the remote fd. In case of pipe, we need to create a local pipe and transfer
       // the contents on-demand.
-      return this.handleForeignWebFdURL(webFdURL, clientWebSocketChannel)
+      return this.handleForeignWebFdURL(webFdURL, retransmittingWebSocket)
     }
   }
 
-  private findFdTransferWebSocket(webFdURL: URL, clientWebSocketChannel: WebSocketChannel): WebSocket | undefined {
+  private findFdTransferWebSocket(
+    webFdURL: URL,
+    clientWebSocket: RetransmittingWebSocket,
+  ): RetransmittingWebSocket | undefined {
     if (
       webFdURL.protocol === 'compositor:' &&
-      this.compositorSessionId === webFdURL.searchParams.get('compositorSessionId') &&
-      clientWebSocketChannel.webSocket
+      this.compositorSessionId === webFdURL.searchParams.get('compositorSessionId')
     ) {
       // If the fd originated from the compositor, we can reuse the existing websocket connection to transfer the fd contents
-      return clientWebSocketChannel.webSocket
+      return clientWebSocket
     } else if (webFdURL.protocol.startsWith('ws')) {
       // fd came from another endpoint, establish a new communication channel
       logger.info(`Establishing data transfer websocket connection to ${webFdURL.href}`)
-      const webSocket = new WebSocket(webFdURL)
-      webSocket.addEventListener('error', (event) =>
+      const retransmittingWebSocket = new RetransmittingWebSocket({
+        closeTimeoutMs: 2000,
+        webSocketFactory: () => new WebSocket(webFdURL.href),
+      })
+      retransmittingWebSocket.addEventListener('error', (event) =>
         logger.error(`Data transfer websocket is in error. ${event.message}`),
       )
-      return webSocket
+      return retransmittingWebSocket
     } else {
       logger.error(`Unsupported websocket URL ${webFdURL.href}.`)
     }
   }
 
-  private async handleForeignWebFdURL(webFdURL: URL, clientWebSocketChannel: WebSocketChannel): Promise<number> {
-    const fdTransferWebSocket = this.findFdTransferWebSocket(webFdURL, clientWebSocketChannel)
+  private async handleForeignWebFdURL(webFdURL: URL, clientWebSocket: RetransmittingWebSocket): Promise<number> {
+    const fdTransferWebSocket = this.findFdTransferWebSocket(webFdURL, clientWebSocket)
     if (fdTransferWebSocket === undefined) {
       return -1
     }
@@ -115,9 +119,9 @@ export class AppEndpointWebFS {
     return localFD
   }
 
-  private async handleForeignWebFDShm(fdTransferWebSocket: WebSocket, webFdURL: URL): Promise<number> {
+  private async handleForeignWebFDShm(fdTransferWebSocket: RetransmittingWebSocket, webFdURL: URL): Promise<number> {
     return new Promise<Uint8Array>((resolve, reject) => {
-      // register listener for incoming content on com chanel
+      // register listener for incoming content on com channel
       this.webFDTransferRequests[webFdURL.href] = resolve
       // request file contents. opcode: 4
 
@@ -131,7 +135,7 @@ export class AppEndpointWebFS {
     )
   }
 
-  private handleForeignWebFDWritePipe(fdCommunicationChannel: WebSocket, webFdURL: URL): number {
+  private handleForeignWebFDWritePipe(fdCommunicationChannel: RetransmittingWebSocket, webFdURL: URL): number {
     const resultBuffer = new Uint32Array(2)
     Endpoint.makePipe(resultBuffer)
     const readFd = resultBuffer[0]
@@ -178,7 +182,7 @@ export class AppEndpointWebFS {
    * @param {WebSocket}webSocket
    * @param {ParsedUrlQuery}query
    */
-  incomingDataTransfer(webSocket: WebSocket, query: { fd: number }): void {
+  incomingDataTransfer(webSocket: RetransmittingWebSocket, query: { fd: number }): void {
     logger.info('Handling incoming data transfer from: ' + webSocket.url)
     const fd = query.fd
     // Need to pass in null as path argument so it will use the fd to open the file (undocumented).

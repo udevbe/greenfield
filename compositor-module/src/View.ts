@@ -20,7 +20,7 @@ import { minusPoint, plusPoint, Point } from './math/Point'
 import { RectWithInfo, withSizeAndPosition } from './math/Rect'
 import { copyTo, createPixmanRegion, destroyPixmanRegion, fini, initRect, intersect, notEmpty } from './Region'
 import RenderState from './render/RenderState'
-import Scene from './render/Scene'
+import { Scene } from './render/Scene'
 import Surface from './Surface'
 
 export default class View {

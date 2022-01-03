@@ -23,6 +23,22 @@ async function main() {
   // hook up the canvas to our compositor
   session.userShell.actions.initScene('myOutputId', canvas)
   session.userShell.events.notify = (variant: string, message: string) => window.alert(message)
+  session.userShell.events.unresponsive = (compositorClient, unresponse) => {
+    if (unresponse) {
+      const disconnectButton = document.createElement('button')
+      disconnectButton.id = `client-id-${compositorClient.id}`
+      disconnectButton.textContent = `Client: client-id-${compositorClient.id} unresponsive. Force disconnect?`
+      disconnectButton.onclick = () => {
+        session.userShell.actions.closeClient(compositorClient)
+        disconnectButton.remove()
+      }
+      document.body.appendChild(disconnectButton)
+    } else {
+      document.getElementById(`client-id-${compositorClient.id}`)?.remove()
+    }
+  }
+  session.userShell.events.clientDestroyed = (compositorClient) =>
+    document.getElementById(`client-id-${compositorClient.id}`)?.remove()
 
   const remoteSocket = createCompositorRemoteSocket(session)
   const compositorProxyConnector = createCompositorProxyConnector(session, remoteSocket)

@@ -21,52 +21,31 @@ import ShaderCompiler from './ShaderCompiler'
 import { VERTEX_QUAD } from './ShaderSources'
 import Texture from './Texture'
 
-const FRAGMENT_YUVA_TO_RGBA = {
+const FRAGMENT_RGB_AND_A_TO_RGBA = {
   type: 'x-shader/x-fragment',
   source: `
   precision mediump float;
 
   varying vec2 v_texCoord;
 
-  uniform sampler2D yTexture;
-  uniform sampler2D uTexture;
-  uniform sampler2D vTexture;
-  uniform sampler2D alphaYTexture;
-  
-  const vec3 yuv_bt601_offset = vec3(-0.0625, -0.5, -0.5);
-  const vec3 yuv_bt601_rcoeff = vec3(1.164, 0.000, 1.596);
-  const vec3 yuv_bt601_gcoeff = vec3(1.164,-0.391,-0.813);
-  const vec3 yuv_bt601_bcoeff = vec3(1.164, 2.018, 0.000);
-  
-  vec3 yuv_to_rgb (vec3 val, vec3 offset, vec3 ycoeff, vec3 ucoeff, vec3 vcoeff) {
-    vec3 rgb;              
-    val += offset;        
-    rgb.r = dot(val, ycoeff);
-    rgb.g = dot(val, ucoeff);
-    rgb.b = dot(val, vcoeff);
-    return rgb;
-  }
+  uniform sampler2D rgbTexture;
+  uniform sampler2D alphaTexture;
 
   void main(void) {
-    vec4 texel, rgba;
-
-    texel.x = texture2D(yTexture, v_texCoord).r;
-    texel.y = texture2D(uTexture, v_texCoord).r;
-    texel.z = texture2D(vTexture, v_texCoord).r;
-    float alphaChannel = texture2D(alphaYTexture, v_texCoord).r;
-
-    rgba.rgb = yuv_to_rgb (texel.xyz, yuv_bt601_offset, yuv_bt601_rcoeff, yuv_bt601_gcoeff, yuv_bt601_bcoeff);
-    rgba.a = yuv_to_rgb (vec3(alphaChannel, 0.5, 0.5), yuv_bt601_offset, yuv_bt601_rcoeff, yuv_bt601_gcoeff, yuv_bt601_bcoeff).r;
+    vec4 rgba = texture2D(rgbTexture, v_texCoord);
+    rgba.a = texture2D(alphaTexture, v_texCoord).g;
+    // rgba.r = 1.;
+    // rgba.g = 1.;
+    // rgba.b = 1.;
+    // rgba.a = 1.;
     gl_FragColor=rgba;
   }
 `,
-}
+} as const
 
 type ShaderArgs = {
-  yTexture: WebGLUniformLocation
-  uTexture: WebGLUniformLocation
-  vTexture: WebGLUniformLocation
-  alphaYTexture: WebGLUniformLocation
+  rgbTexture: WebGLUniformLocation
+  alphaTexture: WebGLUniformLocation
   a_position: GLint
   a_texCoord: GLint
 }
@@ -74,7 +53,7 @@ type ShaderArgs = {
 function initShaders(gl: WebGLRenderingContext): Program {
   const program = new Program(gl)
   program.attach(ShaderCompiler.compile(gl, VERTEX_QUAD))
-  program.attach(ShaderCompiler.compile(gl, FRAGMENT_YUVA_TO_RGBA))
+  program.attach(ShaderCompiler.compile(gl, FRAGMENT_RGB_AND_A_TO_RGBA))
   program.link()
   program.use()
 
@@ -83,21 +62,13 @@ function initShaders(gl: WebGLRenderingContext): Program {
 
 function initShaderArgs(gl: WebGLRenderingContext, program: Program): ShaderArgs {
   // find shader arguments
-  const yTexture = program.getUniformLocation('yTexture')
-  if (yTexture === null) {
-    throw new Error('yTexture not found shader')
+  const rgbTexture = program.getUniformLocation('rgbTexture')
+  if (rgbTexture === null) {
+    throw new Error('rgbTexture not found in shader')
   }
-  const uTexture = program.getUniformLocation('uTexture')
-  if (uTexture === null) {
-    throw new Error('uTexture not found shader')
-  }
-  const vTexture = program.getUniformLocation('vTexture')
-  if (vTexture === null) {
-    throw new Error('vTexture not found shader')
-  }
-  const alphaYTexture = program.getUniformLocation('alphaYTexture')
-  if (alphaYTexture === null) {
-    throw new Error('alphaYTexture not found shader')
+  const alphaTexture = program.getUniformLocation('alphaTexture')
+  if (alphaTexture === null) {
+    throw new Error('alphaTexture not found in shader')
   }
 
   const a_position = program.getAttributeLocation('a_position')
@@ -106,10 +77,8 @@ function initShaderArgs(gl: WebGLRenderingContext, program: Program): ShaderArgs
   gl.enableVertexAttribArray(a_texCoord)
 
   return {
-    yTexture,
-    uTexture,
-    vTexture,
-    alphaYTexture,
+    rgbTexture,
+    alphaTexture,
     a_position,
     a_texCoord,
   }
@@ -124,13 +93,13 @@ function initBuffers(gl: WebGLRenderingContext): WebGLBuffer {
   return webglBuffer
 }
 
-class YUVA2RGBAShader {
-  static create(gl: WebGLRenderingContext): YUVA2RGBAShader {
+export class RGBandA2RGBAShader {
+  static create(gl: WebGLRenderingContext): RGBandA2RGBAShader {
     const program = initShaders(gl)
     const shaderArgs = initShaderArgs(gl, program)
     const vertexBuffer = initBuffers(gl)
 
-    return new YUVA2RGBAShader(gl, vertexBuffer, shaderArgs, program)
+    return new RGBandA2RGBAShader(gl, vertexBuffer, shaderArgs, program)
   }
 
   private constructor(
@@ -140,23 +109,15 @@ class YUVA2RGBAShader {
     public readonly program: Program,
   ) {}
 
-  setTexture(textureY: Texture, textureU: Texture, textureV: Texture, textureAlphaY: Texture): void {
-    this.gl.uniform1i(this.shaderArgs.yTexture, 0)
-    this.gl.uniform1i(this.shaderArgs.uTexture, 1)
-    this.gl.uniform1i(this.shaderArgs.vTexture, 2)
-    this.gl.uniform1i(this.shaderArgs.alphaYTexture, 3)
+  setTexture(textureRGB: Texture, textureAlpha: Texture): void {
+    this.gl.uniform1i(this.shaderArgs.rgbTexture, 0)
+    this.gl.uniform1i(this.shaderArgs.alphaTexture, 1)
 
     this.gl.activeTexture(this.gl.TEXTURE0)
-    this.gl.bindTexture(this.gl.TEXTURE_2D, textureY.texture)
+    this.gl.bindTexture(this.gl.TEXTURE_2D, textureRGB.texture)
 
     this.gl.activeTexture(this.gl.TEXTURE1)
-    this.gl.bindTexture(this.gl.TEXTURE_2D, textureU.texture)
-
-    this.gl.activeTexture(this.gl.TEXTURE2)
-    this.gl.bindTexture(this.gl.TEXTURE_2D, textureV.texture)
-
-    this.gl.activeTexture(this.gl.TEXTURE3)
-    this.gl.bindTexture(this.gl.TEXTURE_2D, textureAlphaY.texture)
+    this.gl.bindTexture(this.gl.TEXTURE_2D, textureAlpha.texture)
   }
 
   use(): void {
@@ -204,5 +165,3 @@ class YUVA2RGBAShader {
     this.gl.bindTexture(this.gl.TEXTURE_2D, null)
   }
 }
-
-export default YUVA2RGBAShader

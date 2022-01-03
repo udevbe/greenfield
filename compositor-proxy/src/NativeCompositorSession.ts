@@ -17,16 +17,17 @@
 
 import { Epoll } from 'epoll'
 import { Endpoint, nativeGlobalNames } from 'westfield-endpoint'
-import WebSocket from 'ws'
+import { RetransmittingWebSocket } from 'retransmitting-websocket'
+import { ReadyState } from '../../../retransmitting-websocket/dist/RetransmittingWebSocket'
 import { createCompositorProxyWebFS } from './CompositorProxyWebFS'
+import { registerUnboundClientConnection } from './ConnectionPool'
 import { createLogger } from './Logger'
 
 import { createNativeClientSession, NativeClientSession } from './NativeClientSession'
-import { WebSocketChannel } from './WebSocketChannel'
 
 const logger = createLogger('native-compositor-session')
 
-export type ClientEntry = { webSocketChannel: WebSocketChannel; nativeClientSession?: NativeClientSession }
+export type ClientEntry = { webSocket: RetransmittingWebSocket; nativeClientSession?: NativeClientSession }
 
 function onGlobalCreated(globalName: number): void {
   nativeGlobalNames.push(globalName)
@@ -108,20 +109,21 @@ export class NativeCompositorSession {
     if (client) {
       logger.debug('Found client without a wayland connection, will associating with new wayland connection.')
       // associate native wayland connection with previously created placeholder client
-      client.nativeClientSession = createNativeClientSession(wlClient, this, client.webSocketChannel)
+      client.nativeClientSession = createNativeClientSession(wlClient, this, client.webSocket)
     } else {
       logger.debug(
-        'No client found without a wayland connection, will create a placeholder client without a websocket connection.',
+        'No client found without a wayland connection, will create a placeholder client without an open websocket connection.',
       )
-      const webSocketChannel = WebSocketChannel.createNoWebSocket()
+      const retransmittingWebSocket = new RetransmittingWebSocket()
       client = {
-        nativeClientSession: createNativeClientSession(wlClient, this, webSocketChannel),
-        webSocketChannel,
+        nativeClientSession: createNativeClientSession(wlClient, this, retransmittingWebSocket),
+        webSocket: retransmittingWebSocket,
       }
       this.clients = [...this.clients, client]
+      registerUnboundClientConnection(retransmittingWebSocket)
 
       // no previously created web sockets available, so ask compositor to create a new one
-      const otherClient = this.clients.find((client) => client.webSocketChannel.webSocket !== undefined)
+      const otherClient = this.clients.find((client) => client.webSocket.readyState === ReadyState.OPEN)
       if (otherClient) {
         logger.debug('Previous client found with a websocket connection, will ask for a new a websocket connection.')
         otherClient.nativeClientSession?.requestWebSocket()
@@ -135,21 +137,34 @@ export class NativeCompositorSession {
     }
   }
 
-  socketForClient(webSocket: WebSocket): void {
+  socketForClient(webSocket: RetransmittingWebSocket): void {
     logger.info(`New websocket connected.`)
-
     webSocket.binaryType = 'arraybuffer'
     // find a client who does not have a websocket associated
-    const client = this.clients.find((client) => client.webSocketChannel.webSocket === undefined)
+    const client = this.clients.find((client) => client.webSocket === webSocket)
     if (client === undefined) {
       // create a placeholder client for future wayland client connections.
-      const placeHolderClient: ClientEntry = { webSocketChannel: WebSocketChannel.create(webSocket) }
+      const placeHolderClient: ClientEntry = { webSocket }
       this.clients = [...this.clients, placeHolderClient]
-      webSocket.addListener('close', () => placeHolderClient.nativeClientSession?.destroy())
+      webSocket.addEventListener('close', () => {
+        if (placeHolderClient.nativeClientSession) {
+          placeHolderClient.nativeClientSession.destroy()
+        } else {
+          logger.info(`websocket closed without an associated wayland client.`)
+          this.clients = this.clients.filter((value) => value !== placeHolderClient)
+        }
+      })
     } else {
       // associate the websocket with an already connected wayland client.
-      client.webSocketChannel.webSocket = webSocket
-      webSocket.addListener('close', () => client.nativeClientSession?.destroy())
+      webSocket.addEventListener('close', () => {
+        logger.info(`websocket closed.`)
+        if (client.nativeClientSession) {
+          client.nativeClientSession.destroy()
+        } else {
+          logger.info(`websocket closed without an associated wayland client.`)
+          this.clients = this.clients.filter((value) => value !== client)
+        }
+      })
     }
   }
 }
