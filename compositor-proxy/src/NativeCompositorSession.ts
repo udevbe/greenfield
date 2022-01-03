@@ -18,7 +18,6 @@
 import { Epoll } from 'epoll'
 import { Endpoint, nativeGlobalNames } from 'westfield-endpoint'
 import { RetransmittingWebSocket } from 'retransmitting-websocket'
-import { ReadyState } from '../../../retransmitting-websocket/dist/RetransmittingWebSocket'
 import { createCompositorProxyWebFS } from './CompositorProxyWebFS'
 import { registerUnboundClientConnection } from './ConnectionPool'
 import { createLogger } from './Logger'
@@ -123,7 +122,7 @@ export class NativeCompositorSession {
       registerUnboundClientConnection(retransmittingWebSocket)
 
       // no previously created web sockets available, so ask compositor to create a new one
-      const otherClient = this.clients.find((client) => client.webSocket.readyState === ReadyState.OPEN)
+      const otherClient = this.clients.find((client) => client.webSocket.readyState === 1)
       if (otherClient) {
         logger.debug('Previous client found with a websocket connection, will ask for a new a websocket connection.')
         otherClient.nativeClientSession?.requestWebSocket()
