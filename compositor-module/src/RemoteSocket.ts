@@ -256,10 +256,13 @@ class RemoteSocket {
       const wmFD = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)[0]
 
       const xWaylandBaseURL = new URL(webSocket.url)
+      xWaylandBaseURL.searchParams.delete('connectionId')
       const xWaylandBaseURLhref = xWaylandBaseURL.href
 
       const xWaylandConnection = xWaylandProxyStates[xWaylandBaseURLhref]
-      if (xWaylandConnection !== undefined) {
+      if (xWaylandConnection === undefined) {
+        console.error('BUG? Received an XWM message from an unregistered XWayland proxy.')
+      } else {
         xWaylandConnection.state = 'open'
         xWaylandConnection.wlClient = client
         xWaylandBaseURL.searchParams.append('xwmFD', `${wmFD}`)
@@ -280,8 +283,6 @@ class RemoteSocket {
         } catch (e) {
           console.error('Failed to create X Window Manager.', e)
         }
-      } else {
-        console.error('BUG? Received an XWM message from an unregistered XWayland proxy.')
       }
     })
   }

@@ -5,6 +5,7 @@ import Session from '../Session'
 export class XWaylandConnection {
   static create(session: Session, webSocket: RetransmittingWebSocket): Promise<XWaylandConnection> {
     return new Promise<XWaylandConnection>((resolve, reject) => {
+      webSocket.binaryType = 'arraybuffer'
       webSocket.onopen = async (_) => {
         webSocket.onerror = (ev) => session.logger.error(`XWM connection ${webSocket.url} error: ${ev}`)
         const xwm = new XWaylandConnection(webSocket)

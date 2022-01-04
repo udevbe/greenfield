@@ -70,6 +70,7 @@ class CompositorProxySession {
   }
 
   handleXWMConnection(webSocket: RetransmittingWebSocket, xwmFD: number): void {
+    webSocket.binaryType = 'arraybuffer'
     this.xWaylandSession.createXWMConnection(webSocket, xwmFD)
   }
 }
