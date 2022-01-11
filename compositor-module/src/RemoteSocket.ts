@@ -302,7 +302,7 @@ class RemoteSocket {
         let offset = 0
         const receiveBuffer = new Uint32Array(arrayBuffer, Uint32Array.BYTES_PER_ELEMENT)
         const fdsInCount = receiveBuffer[offset++]
-        const webFDs = new Array(fdsInCount)
+        const webFDs = new Array<WebFD>(fdsInCount)
         for (let i = 0; i < fdsInCount; i++) {
           const { read, webFd } = this.deserializeWebFD(receiveBuffer.subarray(offset))
           offset += read

@@ -37,6 +37,7 @@ import {
   ImageFormat,
   InputFocus,
   marshallClientMessageEvent,
+  marshallSelectionNotifyEvent,
   NotifyDetail,
   NotifyMode,
   PropMode,
@@ -48,6 +49,7 @@ import {
   WindowClass,
 } from 'xtsb'
 import { SelectionEventMask } from 'xtsb/dist/types/xcbXFixes'
+import { WebFD } from '../../../../westfield/common'
 import eResize from '../assets/e-resize.png'
 import leftPtr from '../assets/left_ptr.png'
 import nResize from '../assets/n-resize.png'
@@ -57,6 +59,7 @@ import sResize from '../assets/s-resize.png'
 import seResize from '../assets/se-resize.png'
 import swResize from '../assets/sw-resize.png'
 import wResize from '../assets/w-resize.png'
+import { RemoteOutOfBandListenOpcode, RemoteOutOfBandSendOpcode } from '../RemoteOutOfBandChannel'
 import Session from '../Session'
 import Surface from '../Surface'
 import { CursorType } from './CursorType'
@@ -159,6 +162,9 @@ interface VisualAndColormap {
   visualId: number
   colormap: number
 }
+
+let webFdRequestSerial = 0
+const webFdTextDecoder = new TextDecoder()
 
 const cursorImageNames = {
   [CursorType.XWM_CURSOR_BOTTOM]: { url: sResize, xhot: 15, yhot: 27, width: 32, height: 32 },
@@ -350,14 +356,6 @@ function getCursorForLocation(location: ThemeLocation | undefined): CursorType {
   }
 }
 
-function selectionInit() {
-  //TODO see weston's selection.c file
-}
-
-function dndInit() {
-  // TODO see weston's dnd.c
-}
-
 function setNetSupported(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMAtoms) {
   // An immediately invoked lambda that uses function argument destructuring to filter out elements and return them as an array.
   const supported = (({
@@ -492,6 +490,67 @@ function createWMWindow(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMA
 }
 
 export class XWindowManager {
+  readonly windowHash: { [key: number]: XWindow } = {}
+  focusWindow?: XWindow
+  readonly atoms: XWMAtoms
+  readonly visualId: number
+  readonly colormap: number
+  unpairedWindowList: XWindow[] = []
+  readonly theme: XWindowTheme = themeCreate()
+  private incr = 0
+  private readonly composite: Composite.Composite
+  private readonly render: Render.Render
+  private readonly formatRgb: Render.PICTFORMINFO
+  private readonly formatRgba: Render.PICTFORMINFO
+  private readonly imageDecodingCanvas: HTMLCanvasElement = document.createElement('canvas')
+  private readonly imageDecodingContext: CanvasRenderingContext2D = this.imageDecodingCanvas.getContext('2d', {
+    alpha: true,
+    desynchronized: true,
+  })!
+  private cursors: { [key in CursorType]: Cursor } = {
+    [CursorType.XWM_CURSOR_BOTTOM]: Cursor.None,
+    [CursorType.XWM_CURSOR_LEFT_PTR]: Cursor.None,
+    [CursorType.XWM_CURSOR_BOTTOM_LEFT]: Cursor.None,
+    [CursorType.XWM_CURSOR_BOTTOM_RIGHT]: Cursor.None,
+    [CursorType.XWM_CURSOR_LEFT]: Cursor.None,
+    [CursorType.XWM_CURSOR_RIGHT]: Cursor.None,
+    [CursorType.XWM_CURSOR_TOP]: Cursor.None,
+    [CursorType.XWM_CURSOR_TOP_LEFT]: Cursor.None,
+    [CursorType.XWM_CURSOR_TOP_RIGHT]: Cursor.None,
+  }
+  private lastCursor: CursorType = -1
+  private doubleClickPeriod = 250
+  // c/p related state
+  private readonly xFixes: XFixes.XFixes
+  private selectionRequestEvent?: SelectionRequestEvent
+  private selectionOwner?: WINDOW
+  private selectionTimestamp = 0
+  private selectionTarget?: Atom
+  private dataSourceFd?: WebFD
+
+  constructor(
+    public readonly session: Session,
+    public readonly xConnection: XConnection,
+    public readonly client: Client,
+    public readonly xWaylandShell: XWaylandShell,
+    public readonly screen: SCREEN,
+    { xwmAtoms, composite, render, xFixes, formatRgb, formatRgba }: XWindowManagerResources,
+    { visualId, colormap }: VisualAndColormap,
+    public readonly wmWindow: WINDOW,
+    private readonly selectionWindow: WINDOW,
+    private readonly dndWindow: WINDOW,
+  ) {
+    this.atoms = xwmAtoms
+    this.composite = composite
+    this.render = render
+    this.xFixes = xFixes
+    this.formatRgb = formatRgb
+    this.formatRgba = formatRgba
+    this.visualId = visualId
+    this.colormap = colormap
+    this.imageDecodingContext.imageSmoothingEnabled = false
+  }
+
   static async create(
     session: Session,
     xWaylandConnetion: XWaylandConnection,
@@ -576,8 +635,39 @@ export class XWindowManager {
     }
     session.globals.seat.selectionListeners.push(() => xWindowManager.setSelection())
 
-    // TODO
-    dndInit()
+    const xFixes = await getXFixes(xConnection)
+    xFixes.selectSelectionInput(
+      selectionWindow,
+      xwmAtoms.XdndSelection,
+      SelectionEventMask.SetSelectionOwner |
+        SelectionEventMask.SelectionWindowDestroy |
+        SelectionEventMask.SelectionClientClose,
+    )
+    const dndWindow = xConnection.allocateID()
+    xConnection.createWindow(
+      WindowClass.CopyFromParent,
+      dndWindow,
+      xConnection.setup.roots[0].root,
+      0,
+      0,
+      8192,
+      8192,
+      0,
+      WindowClass.InputOnly,
+      xConnection.setup.roots[0].rootVisual,
+      {
+        eventMask: EventMask.SubstructureNotify | EventMask.PropertyChange,
+      },
+    )
+    const version = 4
+    xConnection.changeProperty(
+      PropMode.Replace,
+      dndWindow,
+      xwmAtoms.XdndAware,
+      Atom.ATOM,
+      32,
+      new Uint32Array([version]),
+    )
 
     const wmWindow = createWMWindow(xConnection, xConnection.setup.roots[0], xwmAtoms)
     const xWindowManager = new XWindowManager(
@@ -590,9 +680,8 @@ export class XWindowManager {
       visualAndColormap,
       wmWindow,
       selectionWindow,
+      dndWindow,
     )
-    xWindowManager.setSelection()
-
     await xWindowManager.createCursors()
     xWindowManager.wmWindowSetCursor(xWindowManager.screen.root, CursorType.XWM_CURSOR_LEFT_PTR)
 
@@ -612,63 +701,34 @@ export class XWindowManager {
     return xWindowManager
   }
 
-  readonly windowHash: { [key: number]: XWindow } = {}
-  focusWindow?: XWindow
-  readonly atoms: XWMAtoms
-  private readonly composite: Composite.Composite
-  private readonly render: Render.Render
-  private readonly formatRgb: Render.PICTFORMINFO
-  private readonly formatRgba: Render.PICTFORMINFO
-  readonly visualId: number
-  readonly colormap: number
-  unpairedWindowList: XWindow[] = []
-  readonly theme: XWindowTheme = themeCreate()
-  private readonly imageDecodingCanvas: HTMLCanvasElement = document.createElement('canvas')
-  private readonly imageDecodingContext: CanvasRenderingContext2D = this.imageDecodingCanvas.getContext('2d', {
-    alpha: true,
-    desynchronized: true,
-  })!
-
-  private cursors: { [key in CursorType]: Cursor } = {
-    [CursorType.XWM_CURSOR_BOTTOM]: Cursor.None,
-    [CursorType.XWM_CURSOR_LEFT_PTR]: Cursor.None,
-    [CursorType.XWM_CURSOR_BOTTOM_LEFT]: Cursor.None,
-    [CursorType.XWM_CURSOR_BOTTOM_RIGHT]: Cursor.None,
-    [CursorType.XWM_CURSOR_LEFT]: Cursor.None,
-    [CursorType.XWM_CURSOR_RIGHT]: Cursor.None,
-    [CursorType.XWM_CURSOR_TOP]: Cursor.None,
-    [CursorType.XWM_CURSOR_TOP_LEFT]: Cursor.None,
-    [CursorType.XWM_CURSOR_TOP_RIGHT]: Cursor.None,
+  lookupXWindow(window: WINDOW): XWindow | undefined {
+    return this.windowHash[window]
   }
-  private lastCursor: CursorType = -1
-  private doubleClickPeriod = 250
 
-  // c/p related state
-  private readonly xFixes: XFixes.XFixes
-  private selectionRequestEvent?: SelectionRequestEvent
-  private selectionOwner?: WINDOW
-  private selectionTimestamp = 0
+  configureWindow(id: WINDOW, valueList: ConfigureValueList): void {
+    this.xConnection.configureWindow(id, valueList)
+  }
 
-  constructor(
-    public readonly session: Session,
-    public readonly xConnection: XConnection,
-    public readonly client: Client,
-    public readonly xWaylandShell: XWaylandShell,
-    public readonly screen: SCREEN,
-    { xwmAtoms, composite, render, xFixes, formatRgb, formatRgba }: XWindowManagerResources,
-    { visualId, colormap }: VisualAndColormap,
-    public readonly wmWindow: WINDOW,
-    private readonly selectionWindow: WINDOW,
-  ) {
-    this.atoms = xwmAtoms
-    this.composite = composite
-    this.render = render
-    this.xFixes = xFixes
-    this.formatRgb = formatRgb
-    this.formatRgba = formatRgba
-    this.visualId = visualId
-    this.colormap = colormap
-    this.imageDecodingContext.imageSmoothingEnabled = false
+  activate(surface: Surface): void {
+    const role = surface.role as XWaylandShellSurface | undefined
+    if (role === undefined) {
+      return
+    }
+
+    const window = role.window
+
+    if (this.focusWindow === window || (window && window.overrideRedirect)) {
+      return
+    }
+
+    if (window) {
+      this.setNetActiveWindow(window.id)
+    } else {
+      this.setNetActiveWindow(Window.None)
+    }
+
+    this.setFocusWindow(window)
+    this.xConnection.flush()
   }
 
   private async createCursors() {
@@ -1164,14 +1224,6 @@ export class XWindowManager {
     return (id & ~resourceIdMask) === resourceIdBase
   }
 
-  lookupXWindow(window: WINDOW): XWindow | undefined {
-    return this.windowHash[window]
-  }
-
-  configureWindow(id: WINDOW, valueList: ConfigureValueList): void {
-    this.xConnection.configureWindow(id, valueList)
-  }
-
   private async createXWindow(
     id: WINDOW,
     width: number,
@@ -1308,28 +1360,6 @@ export class XWindowManager {
     window.setNetWmState()
   }
 
-  activate(surface: Surface): void {
-    const role = surface.role as XWaylandShellSurface | undefined
-    if (role === undefined) {
-      return
-    }
-
-    const window = role.window
-
-    if (this.focusWindow === window || (window && window.overrideRedirect)) {
-      return
-    }
-
-    if (window) {
-      this.setNetActiveWindow(window.id)
-    } else {
-      this.setNetActiveWindow(Window.None)
-    }
-
-    this.setFocusWindow(window)
-    this.xConnection.flush()
-  }
-
   private setSelection() {
     const source = this.session.globals.seat.selectionDataSource
     if (source === undefined) {
@@ -1340,10 +1370,10 @@ export class XWindowManager {
       }
     }
 
-    // TODO check if the source object is implemented using XWayland and return early
-    // if (source?.send === dataSourceSend) {
-    //   return
-    // }
+    // TODO check if the source object is implemented using XWayland and return early using instanceof?
+    if (source?.send === dataSourceSend) {
+      return
+    }
 
     this.xConnection.setSelectionOwner(this.selectionWindow, this.atoms.CLIPBOARD, Time.CurrentTime)
   }
@@ -1364,11 +1394,41 @@ export class XWindowManager {
         const serial = seat.nextSerial()
         seat.setSelectionInternal(undefined, serial)
       }
+
+      this.selectionOwner = Window.None
+      return
     }
+
+    this.selectionOwner = event.owner
+
+    /* We have to use XCB_TIME_CURRENT_TIME when we claim the
+     * selection, so grab the actual timestamp here so we can
+     * answer TIMESTAMP conversion requests correctly. */
+    if (event.owner === this.selectionWindow) {
+      this.selectionTimestamp = event.timestamp
+      this.session.logger.debug(`our window, skipping`)
+      return
+    }
+
+    this.incr = 0
+    this.xConnection.convertSelection(
+      this.selectionWindow,
+      this.atoms.CLIPBOARD,
+      this.atoms.TARGETS,
+      this.atoms._WL_SELECTION,
+      event.timestamp,
+    )
+    this.xConnection.flush()
   }
 
   private handleSelectionNotify(event: SelectionNotifyEvent) {
-    // TODO selection.c L297
+    if (event.property === Atom.None) {
+      /* convert selection failed */
+    } else if (event.target === this.atoms.TARGETS) {
+      this.getSelectionTargets()
+    } else {
+      this.getSelectionData()
+    }
   }
 
   private handleSelectionPropertyNotify(event: PropertyNotifyEvent): boolean {
@@ -1378,5 +1438,122 @@ export class XWindowManager {
 
   private handleSelectionRequest(event: SelectionRequestEvent) {
     // TODO selection.c L578
+    this.session.logger.debug(`selection request, ${this.xConnection.getAtomName(event.selection)}, `)
+    this.session.logger.debug(`target, ${this.xConnection.getAtomName(event.target)}, `)
+    this.session.logger.debug(`property, ${this.xConnection.getAtomName(event.property)}, `)
+
+    this.selectionRequestEvent = event
+
+    if (event.selection === this.atoms.CLIPBOARD_MANAGER) {
+      /* The clipboard should already have grabbed
+       * the first target, so just send selection notify
+       * now.  This isn't synchronized with the clipboard
+       * finishing getting the data, so there's a race here. */
+      this.sendSelectionNotify(this.selectionRequestEvent.property)
+      return
+    }
+
+    if (event.target === this.atoms.TARGETS) {
+      this.sendTargets()
+    } else if (event.target === this.atoms.TIMESTAMP) {
+      this.sendTimestamp()
+    } else if (event.target === this.atoms.UTF8_STRING || event.target === this.atoms.TEXT) {
+      this.sendData(this.atoms.UTF8_STRING, 'text/plain;charset=utf-8')
+    } else {
+      this.session.logger.warn(`can only handle UTF8_STRING targets...`)
+      this.sendSelectionNotify(Atom.None)
+    }
+  }
+
+  private sendSelectionNotify(property: Atom) {
+    const event = marshallSelectionNotifyEvent({
+      responseType: 0, // filled in by marshaller
+      time: this.selectionRequestEvent?.time ?? 0,
+      requestor: this.selectionRequestEvent?.requestor ?? 0,
+      selection: this.selectionRequestEvent?.selection ?? 0,
+      target: this.selectionRequestEvent?.target ?? 0,
+      property,
+    })
+    this.xConnection.sendEvent(0, this.selectionRequestEvent?.requestor ?? 0, EventMask.NoEvent, new Int8Array(event))
+  }
+
+  private sendTargets() {
+    this.xConnection.changeProperty(
+      PropMode.Replace,
+      this.selectionRequestEvent?.requestor ?? 0,
+      this.selectionRequestEvent?.property ?? 0,
+      Atom.ATOM,
+      32,
+      new Uint32Array([this.atoms.TIMESTAMP, this.atoms.TARGETS, this.atoms.UTF8_STRING, this.atoms.TEXT]),
+    )
+
+    this.sendSelectionNotify(this.selectionRequestEvent?.property ?? 0)
+  }
+
+  private sendTimestamp() {
+    this.xConnection.changeProperty(
+      PropMode.Replace,
+      this.selectionRequestEvent?.requestor ?? 0,
+      this.selectionRequestEvent?.property ?? 0,
+      Atom.INTEGER,
+      32,
+      new Uint32Array([this.selectionTimestamp]),
+    )
+
+    this.sendSelectionNotify(this.selectionRequestEvent?.property ?? 0)
+  }
+
+  private async sendData(target: Atom, mimeType: string) {
+    const webFD = await this.createCopyPasteReadWebFd()
+    this.selectionTarget = target
+    this.dataSourceFd = webFD
+    this.session.globals.seat.selectionDataSource?.send(mimeType, webFD)
+    // TODO weston_wm_read_data_source see selection.c
+  }
+
+  private createCopyPasteReadWebFd() {
+    this.session
+      .getRemoteClientConnection(this.client)
+      .remoteOutOfBandChannel.send(RemoteOutOfBandSendOpcode.RemoteWebFds, new ArrayBuffer(webFdRequestSerial++))
+
+    return new Promise<WebFD>((resolve) => {
+      this.session
+        .getRemoteClientConnection(this.client)
+        .remoteOutOfBandChannel.setListener(RemoteOutOfBandListenOpcode.RemoteWebFds, (message) => {
+          const webFdReplySerial = new Uint32Array(message.buffer, message.byteOffset, 1)[0]
+          if (webFdRequestSerial === webFdReplySerial) {
+          } else {
+            return
+          }
+          const webFdText = webFdTextDecoder.decode(
+            new Uint8Array(message.buffer, message.byteOffset + Uint32Array.BYTES_PER_ELEMENT),
+          )
+          const webFdURL = new URL(webFdText)
+          const fdParam = webFdURL.searchParams.get('fd')
+          if (fdParam === null) {
+            throw new Error('BUG. WebFD URL does not have fd query param.')
+          }
+          const fd = Number.parseInt(fdParam)
+          const type = webFdURL.searchParams.get('type')
+
+          if (type !== 'MessagePort') {
+            throw new Error('BUG. XWM c/p WebFD is not of type MessagePort.')
+          }
+
+          resolve(
+            new WebFD(
+              fd,
+              type,
+              webFdURL,
+              () => {
+                throw new Error('BUG. XWM c/p WebFD should not be read.')
+              },
+              () => {
+                throw new Error('BUG. XWM c/p WebFD should not be closed.')
+              },
+            ),
+          )
+        })
+    })
   }
 }

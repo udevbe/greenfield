@@ -198,7 +198,6 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
     if (this.opaqueDecoder === undefined || this.opaqueDecoder.state === 'closed') {
       if (isKeyFrame(encodedFrame.pixelContent.opaque)) {
         this.opaqueDecoder = new VideoDecoder(this.opaqueInit)
-        VideoDecoder.isConfigSupported(config)
         this.opaqueDecoder.configure(config)
         type = 'key'
       } else {
