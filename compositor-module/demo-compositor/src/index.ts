@@ -11,7 +11,7 @@ async function main() {
 
   // create new compositor context
   const compositorSessionId = 'test123'
-  const session = createCompositorSession(compositorSessionId)
+  const session = await createCompositorSession(compositorSessionId)
 
   // Get an HTML5 canvas for use as an output for the compositor. Multiple outputs can be used.
   const canvas: HTMLCanvasElement = document.createElement('canvas')
@@ -23,8 +23,8 @@ async function main() {
   // hook up the canvas to our compositor
   session.userShell.actions.initScene('myOutputId', canvas)
   session.userShell.events.notify = (variant: string, message: string) => window.alert(message)
-  session.userShell.events.unresponsive = (compositorClient, unresponse) => {
-    if (unresponse) {
+  session.userShell.events.unresponsive = (compositorClient, unresponsive) => {
+    if (unresponsive) {
       const disconnectButton = document.createElement('button')
       disconnectButton.id = `client-id-${compositorClient.id}`
       disconnectButton.textContent = `Client: client-id-${compositorClient.id} unresponsive. Force disconnect?`

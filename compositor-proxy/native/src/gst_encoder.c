@@ -343,14 +343,6 @@ gst_encoder_destroy(struct encoder *encoder) {
 static int
 gst_request_key_unit(struct encoder *encoder) {
 	struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
-
-
-//	GstPad *appsrcpad;
-//
-//	appsrcpad = gst_element_get_static_pad(gst_encoder->app_src, "src");
-//	gst_pad_send_event(appsrcpad, gst_event_new_custom(GST_EVENT_CUSTOM_UPSTREAM,
-//													   gst_structure_new("GstForceKeyUnit", "all-headers",
-//																		   G_TYPE_BOOLEAN, TRUE, NULL)));
 	gst_element_send_event (gst_encoder->pipeline, gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM,
 														   gst_structure_new("GstForceKeyUnit", "all-headers",
 																			 G_TYPE_BOOLEAN, TRUE, NULL)));
@@ -552,14 +544,14 @@ x264_gst_alpha_encoder_create(struct encoder *encoder) {
 			"glshader name=glshader ! "
 			"glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
 			"gldownload ! "
-			"x264enc rc-lookahead=0 sliced-threads=true bframes=0 cabac=false key-int-max=2147483647 qp-max=20 byte-stream=true pass=pass1 tune=zerolatency speed-preset=superfast noise-reduction=0 psy-tune=grain ! "
+			"x264enc rc-lookahead=0 sliced-threads=true qp-max=20 byte-stream=true pass=pass1 tune=zerolatency speed-preset=superfast noise-reduction=0 psy-tune=grain ! "
 			"video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
 			"appsink name=alphasink "
 			"t. ! queue ! "
 			"glupload ! "
 			"glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
 			"gldownload ! "
-			"x264enc rc-lookahead=0 sliced-threads=true bframes=0 cabac=false key-int-max=2147483647 qp-max=20 byte-stream=true pass=pass1 tune=zerolatency speed-preset=superfast noise-reduction=0 psy-tune=grain ! "
+			"x264enc rc-lookahead=0 sliced-threads=true qp-max=20 byte-stream=true pass=pass1 tune=zerolatency speed-preset=superfast noise-reduction=0 psy-tune=grain ! "
 			"video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
 			"appsink name=sink",
 			NULL);
