@@ -31,7 +31,7 @@
   },
   "dependencies": {
     "@types/dom-webcodecs": "^0.1.3",
-    "retransmitting-websocket": "0.0.8",
+    "retransmitting-websocket": "0.0.10",
     "tinyh264": "0.0.7",
     "westfield-runtime-common": "0.5.1",
     "westfield-runtime-server": "0.5.1",
