@@ -17,7 +17,7 @@
 
 import { SendMessage, WebFD } from 'westfield-runtime-common'
 import { Client, WlBufferResource } from 'westfield-runtime-server'
-import { RetransmittingWebSocket } from 'retransmitting-websocket'
+import { MessageEventLike, RetransmittingWebSocket } from 'retransmitting-websocket'
 import RemoteOutOfBandChannel, {
   RemoteOutOfBandListenOpcode,
   RemoteOutOfBandSendOpcode,
@@ -287,7 +287,7 @@ class RemoteSocket {
     })
   }
 
-  private handleMessageEvent(client: Client, event: MessageEvent, wsOutOfBandChannel: RemoteOutOfBandChannel) {
+  private handleMessageEvent(client: Client, event: MessageEventLike, wsOutOfBandChannel: RemoteOutOfBandChannel) {
     if (client.connection.closed) {
       return
     }

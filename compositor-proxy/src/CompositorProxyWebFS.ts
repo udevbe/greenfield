@@ -6,7 +6,7 @@ import { Endpoint } from 'westfield-endpoint'
 import WebsocketStream from 'websocket-stream'
 
 import WebSocket from 'ws'
-import { RetransmittingWebSocket } from 'retransmitting-websocket'
+import { RetransmittingWebSocket, ErrorEventLike } from 'retransmitting-websocket'
 import { config } from './config'
 import { createLogger } from './Logger'
 
@@ -92,7 +92,7 @@ export class AppEndpointWebFS {
         closeTimeoutMs: 2000,
         webSocketFactory: () => new WebSocket(webFdURL.href),
       })
-      retransmittingWebSocket.addEventListener('error', (event) =>
+      retransmittingWebSocket.addEventListener('error', (event: ErrorEventLike) =>
         logger.error(`Data transfer websocket is in error. ${event.message}`),
       )
       return retransmittingWebSocket
