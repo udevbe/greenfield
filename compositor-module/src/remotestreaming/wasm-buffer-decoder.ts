@@ -30,9 +30,6 @@ class WasmFrameDecoder implements FrameDecoder {
   }
 }
 
-// @ts-ignore requires a loader that treats this import as a web-worker.
-import H264NALDecoderWorker from './H264NALDecoder.worker'
-
 type H264NALDecoderWorkerMessage = {
   type: string
   width: number
@@ -50,7 +47,7 @@ type FrameState = {
 const decoders: { [key: string]: WasmH264DecoderContext } = {}
 
 const opaqueWorker = new Promise<Worker>((resolve) => {
-  const h264NALDecoderWorker: Worker = new H264NALDecoderWorker()
+  const h264NALDecoderWorker: Worker = new Worker(new URL('./H264NALDecoder.worker', import.meta.url))
   h264NALDecoderWorker.addEventListener('message', (e) => {
     const message = e.data as H264NALDecoderWorkerMessage
     switch (message.type) {
@@ -65,7 +62,7 @@ const opaqueWorker = new Promise<Worker>((resolve) => {
 })
 
 const alphaWorker = new Promise<Worker>((resolve) => {
-  const h264NALDecoderWorker: Worker = new H264NALDecoderWorker()
+  const h264NALDecoderWorker: Worker = new Worker(new URL('./H264NALDecoder.worker', import.meta.url))
   h264NALDecoderWorker.addEventListener('message', (e) => {
     const message = e.data as H264NALDecoderWorkerMessage
     switch (message.type) {

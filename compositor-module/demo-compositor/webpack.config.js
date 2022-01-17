@@ -36,11 +36,6 @@ module.exports = {
   },
   module: {
     rules: [
-      {
-        test: /\.worker\.(c|m)?ts$/i,
-        loader: 'worker-loader',
-        options: { filename: '[name].[contenthash].js' },
-      },
       // Handle TypeScript
       {
         test: /\.(ts?)$/,
