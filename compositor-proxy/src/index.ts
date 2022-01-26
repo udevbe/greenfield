@@ -3,7 +3,7 @@ import { URL } from 'url'
 import WebSocket from 'ws'
 import { config } from './config'
 import { createCompositorProxySession } from './CompositorProxySession'
-import { upsertWebSocket } from './ConnectionPool'
+import { closeAllWebSockets, upsertWebSocket } from './ConnectionPool'
 import { createLogger } from './Logger'
 import { initSurfaceBufferEncoding } from './SurfaceBufferEncoding'
 
@@ -37,6 +37,15 @@ function main() {
 
   const port = config.server.bindPort
   const wss = new WebSocket.Server({ port, host: config.server.bindIP })
+
+  process.on('SIGTERM', async () => {
+    logger.info('Received SIGTERM. Closing connections.')
+    await closeAllWebSockets()
+    wss.close()
+    logger.info('All Connections closed. Goodbye.')
+    process.exit()
+  })
+
   wss.on('connection', (ws, request) => {
     logger.debug(
       `Incoming websocket connection.\n\tURL: ${JSON.stringify(request.url)}\n\tHEADERS: ${JSON.stringify(

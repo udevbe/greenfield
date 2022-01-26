@@ -2,13 +2,13 @@ import { connect, webConnectionSetup, XConnection } from 'xtsb'
 import { RetransmittingWebSocket } from 'retransmitting-websocket'
 import Session from '../Session'
 
-export class XWaylandConnection {
-  static create(session: Session, webSocket: RetransmittingWebSocket): Promise<XWaylandConnection> {
-    return new Promise<XWaylandConnection>((resolve, reject) => {
+export class XWindowManagerConnection {
+  static create(session: Session, webSocket: RetransmittingWebSocket): Promise<XWindowManagerConnection> {
+    return new Promise<XWindowManagerConnection>((resolve, reject) => {
       webSocket.binaryType = 'arraybuffer'
       webSocket.onopen = async (_) => {
         webSocket.onerror = (ev) => session.logger.error(`XWM connection ${webSocket.url} error: ${ev}`)
-        const xwm = new XWaylandConnection(webSocket)
+        const xwm = new XWindowManagerConnection(webSocket)
         webSocket.onclose = (_) => xwm.destroy()
         resolve(xwm)
       }

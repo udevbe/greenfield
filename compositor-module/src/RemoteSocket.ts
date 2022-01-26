@@ -24,13 +24,13 @@ import RemoteOutOfBandChannel, {
 } from './RemoteOutOfBandChannel'
 import StreamingBuffer from './remotestreaming/StreamingBuffer'
 import Session from './Session'
-import { XWaylandConnection } from './xwayland/XWaylandConnection'
+import { XWindowManagerConnection } from './xwayland/XWindowManagerConnection'
 import XWaylandShell from './xwayland/XWaylandShell'
 import { XWindowManager } from './xwayland/XWindowManager'
 
 type XWaylandConectionState = {
   state: 'pending' | 'open'
-  xConnection?: XWaylandConnection
+  xConnection?: XWindowManagerConnection
   wlClient?: Client
   xwm?: XWindowManager
 }
@@ -79,7 +79,9 @@ class RemoteSocket {
         const client = this.session.display.createClient()
         client.onClose().then(() => {
           this.session.logger.info('[client] - closed.')
-          webSocket.close()
+          if (webSocket.readyState === 1 /* OPEN */ || webSocket.readyState === 0 /* CONNECTING */) {
+            webSocket.close()
+          }
         })
         client.addResourceCreatedListener((resource) => {
           if (resource.id >= 0xff000000 && client.recycledIds.length === 0) {
@@ -266,7 +268,7 @@ class RemoteSocket {
         xWaylandConnection.state = 'open'
         xWaylandConnection.wlClient = client
         xWaylandBaseURL.searchParams.append('xwmFD', `${wmFD}`)
-        const xConnection = await XWaylandConnection.create(
+        const xConnection = await XWindowManagerConnection.create(
           this.session,
           createRetransmittingWebSocket(xWaylandBaseURL),
         )

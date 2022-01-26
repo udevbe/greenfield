@@ -61,7 +61,7 @@ import Session from '../Session'
 import Surface from '../Surface'
 import { CursorType } from './CursorType'
 import { ICCCM_NORMAL_STATE, ICCCM_WITHDRAWN_STATE, SEND_EVENT_MASK } from './XConstants'
-import { XWaylandConnection } from './XWaylandConnection'
+import { XWindowManagerConnection } from './XWindowManagerConnection'
 import XWaylandShell from './XWaylandShell'
 import XWaylandShellSurface from './XWaylandShellSurface'
 import { XWindow } from './XWindow'
@@ -494,7 +494,7 @@ function createWMWindow(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMA
 export class XWindowManager {
   static async create(
     session: Session,
-    xWaylandConnetion: XWaylandConnection,
+    xWaylandConnetion: XWindowManagerConnection,
     client: Client,
     xWaylandShell: XWaylandShell,
   ): Promise<XWindowManager> {
