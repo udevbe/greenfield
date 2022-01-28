@@ -18,12 +18,12 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
   canvas.draggable = true
   canvas.ondragstart = browserDragStarted
   canvas.ondragover = (event) => {
-    seat.notifyMotion(createButtonEventFromMouseEvent(event, false, outputId))
+    seat.notifyMotion(createButtonEventFromMouseEvent(event, false, outputId, canvas.width, canvas.height))
     seat.notifyFrame()
     session.flush()
   }
   canvas.ondragend = (ev) => {
-    seat.notifyButton(createButtonEventFromMouseEvent(ev, true, outputId))
+    seat.notifyButton(createButtonEventFromMouseEvent(ev, true, outputId, canvas.width, canvas.height))
     seat.notifyFrame()
     session.flush()
   }
@@ -47,7 +47,8 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
 
   //wire up dom input events to compositor input events
   const pointerMoveHandler = (event: PointerEvent) => {
-    seat.notifyMotion(createButtonEventFromMouseEvent(event, false, outputId))
+    const buttonEvent = createButtonEventFromMouseEvent(event, false, outputId, canvas.width, canvas.height)
+    seat.notifyMotion(buttonEvent)
     seat.notifyFrame()
     session.flush()
   }
@@ -63,14 +64,14 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
   canvas.onpointerdown = (event: PointerEvent) => {
     canvas.setPointerCapture(event.pointerId)
 
-    seat.notifyButton(createButtonEventFromMouseEvent(event, false, outputId))
+    seat.notifyButton(createButtonEventFromMouseEvent(event, false, outputId, canvas.width, canvas.height))
     seat.notifyFrame()
     session.flush()
   }
   canvas.onpointerup = (event: PointerEvent) => {
     canvas.releasePointerCapture(event.pointerId)
 
-    seat.notifyButton(createButtonEventFromMouseEvent(event, true, outputId))
+    seat.notifyButton(createButtonEventFromMouseEvent(event, true, outputId, canvas.width, canvas.height))
     seat.notifyFrame()
     session.flush()
   }
