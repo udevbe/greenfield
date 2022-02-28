@@ -15,13 +15,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import {
-  clearBrowserDndImage,
-  resetBrowserCursor,
-  setBrowserCursor,
-  setBrowserDndImage,
-  hideBrowserCursor,
-} from '../browser/pointer'
+import { resetBrowserCursor, setBrowserCursor, hideBrowserCursor } from '../browser/pointer'
+import { clearBrowserDndImage, setBrowserDndImage } from '../browser/dnd'
 import BufferImplementation from '../BufferImplementation'
 import { ButtonEvent } from '../ButtonEvent'
 import Callback from '../Callback'
