@@ -13,6 +13,8 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
 
   // don't show browser context menu on right click
   canvas.oncontextmenu = (event: MouseEvent) => event.preventDefault()
+  canvas.style.userSelect = 'none'
+
   canvas.tabIndex = 1
   const dnd = createDnd(canvas, seat, outputId)
 

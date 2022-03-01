@@ -1,11 +1,12 @@
+import BufferContents from '../BufferContents'
 import { createButtonEventFromMouseEvent } from '../ButtonEvent'
 import { Point } from '../math/Point'
 import { Seat } from '../Seat'
 
 type DndImage = {
-  image: ImageBitmap
-  imageBlob: Blob
-  hotspotOffset: Point
+  readonly image: ImageBitmap
+  readonly imageBlob: Blob
+  readonly hotspotOffset: Point
 }
 
 export interface DnD {
@@ -16,6 +17,8 @@ export interface DnD {
 }
 
 let dnd: BrowserDnD | undefined
+const maxCursorWidth = 256 as const
+const maxCursorHeight = 256 as const
 
 export function createDnd(canvas: HTMLCanvasElement, seat: Seat, outputId: string): DnD {
   const cursorCanvas = document.createElement('canvas')
@@ -28,8 +31,8 @@ export function createDnd(canvas: HTMLCanvasElement, seat: Seat, outputId: strin
   }
   cursorCanvas.style.background = '#00000000'
   cursorCanvas.style.position = 'absolute'
-  cursorCanvas.style.left = '-256px'
-  cursorCanvas.style.top = '-256px'
+  cursorCanvas.style.left = `-${maxCursorWidth}px`
+  cursorCanvas.style.top = `-${maxCursorHeight}px`
   document.body.appendChild(cursorCanvas)
 
   dnd = new BrowserDnD(cursorCanvas, cursorCanvasContext, seat, canvas, outputId)
@@ -37,8 +40,8 @@ export function createDnd(canvas: HTMLCanvasElement, seat: Seat, outputId: strin
   return dnd
 }
 
-export function setBrowserDndImage(image: ImageBitmap, imageBlob: Blob, hotspotOffset: Point): void {
-  dnd?.setBrowserDndImage(image, imageBlob, hotspotOffset)
+export function setBrowserDndImage(cursorBufferContents: BufferContents<unknown>, hotspotOffset: Point): void {
+  dnd?.setBrowserDndImage(cursorBufferContents, hotspotOffset)
 }
 
 export function clearBrowserDndImage(): void {
@@ -62,23 +65,41 @@ class BrowserDnD implements DnD {
     private readonly outputId: string,
   ) {}
 
-  setBrowserDndImage(image: ImageBitmap, imageBlob: Blob, hotspotOffset: Point): void {
-    const dndImage = {
-      image,
-      imageBlob,
-      hotspotOffset,
-    }
+  setBrowserDndImage(cursorBufferContents: BufferContents<unknown>, hotspotOffset: Point): void {
+    const dndCursorImage =
+      cursorBufferContents.mimeType === 'image/png'
+        ? (cursorBufferContents.pixelContent as { bitmap: ImageBitmap; blob: Blob } | undefined)
+        : undefined
+    const dndImage: DndImage | undefined = dndCursorImage
+      ? {
+          image: dndCursorImage.bitmap,
+          imageBlob: dndCursorImage.blob,
+          hotspotOffset,
+        }
+      : undefined
     this.dndImage = dndImage
     this.dndImageDirty = true
-
-    const dndImagePosition = dndImage.hotspotOffset
-    this.cursorCanvas.width = dndImage.image.width
-    this.cursorCanvas.height = dndImage.image.height
-    this.cursorCanvas.style.left = `${this.cursorCanvas.clientLeft}px`
-    this.cursorCanvas.style.right = `${this.cursorCanvas.clientTop}px`
-    this.cursorCanvas.style.width = `${this.cursorCanvas.width}px`
-    this.cursorCanvas.style.height = `${this.cursorCanvas.height}px`
-    this.cursorCanvasContext.drawImage(dndImage.image, 0, 0)
+    const dndImagePosition = hotspotOffset
+    if (
+      dndImage &&
+      cursorBufferContents.size.width <= maxCursorWidth &&
+      cursorBufferContents.size.height <= maxCursorHeight
+    ) {
+      this.cursorCanvas.width = dndImage.image.width
+      this.cursorCanvas.height = dndImage.image.height
+      this.cursorCanvas.style.left = `${this.cursorCanvas.clientLeft}px`
+      this.cursorCanvas.style.right = `${this.cursorCanvas.clientTop}px`
+      this.cursorCanvas.style.width = `${this.cursorCanvas.width}px`
+      this.cursorCanvas.style.height = `${this.cursorCanvas.height}px`
+      this.cursorCanvasContext.drawImage(dndImage.image, 0, 0)
+    } else {
+      this.cursorCanvas.width = 1
+      this.cursorCanvas.height = 1
+      this.cursorCanvas.style.left = `1px`
+      this.cursorCanvas.style.right = `1px`
+      this.cursorCanvas.style.width = `1px`
+      this.cursorCanvas.style.height = `1px`
+    }
 
     if (this.dragHelper) {
       return

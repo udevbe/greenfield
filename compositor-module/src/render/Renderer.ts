@@ -158,14 +158,7 @@ export default class Renderer {
 
   updateDndImage(view: View): void {
     if (view.surface.state.bufferContents) {
-      const cursorBufferContents = view.surface.state.bufferContents
-
-      const dndImage = cursorBufferContents.pixelContent as { bitmap: ImageBitmap; blob: Blob } | undefined
-      if (dndImage === undefined) {
-        return
-      }
-
-      setBrowserDndImage(dndImage.bitmap, dndImage.blob, view.positionOffset)
+      setBrowserDndImage(view.surface.state.bufferContents, view.positionOffset)
     } else {
       this.clearDndImage()
     }
@@ -188,13 +181,6 @@ export default class Renderer {
       this.removeTopLevelView(topLevelView)
       this.render()
     })
-  }
-
-  clampMouseMove(event: ButtonEvent): { x: number; y: number } {
-    return {
-      x: Math.min(Math.max(event.x, 0), this.scenes[event.sceneId].canvas.width),
-      y: Math.min(Math.max(event.y, 0), this.scenes[event.sceneId].canvas.height),
-    }
   }
 
   /**
