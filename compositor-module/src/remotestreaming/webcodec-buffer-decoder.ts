@@ -11,9 +11,10 @@ type FrameState = {
   state: 'pending' | 'pending_opaque' | 'pending_alpha' | 'complete'
   result: Partial<DualPlaneRGBAVideoFrame>
 }
-const config: VideoDecoderConfig = {
+export const videoDecoderConfig: VideoDecoderConfig = {
   codec: 'avc1.42001e', // h264 Baseline Level 3
   optimizeForLatency: true,
+  hardwareAcceleration: 'no-preference',
 } as const
 
 export function createWebCodecFrameDecoder(session: Session): FrameDecoder {
@@ -198,8 +199,8 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
     if (this.opaqueDecoder === undefined || this.opaqueDecoder.state === 'closed') {
       if (isKeyFrame(encodedFrame.pixelContent.opaque)) {
         this.opaqueDecoder = new VideoDecoder(this.opaqueInit)
-        VideoDecoder.isConfigSupported(config)
-        this.opaqueDecoder.configure(config)
+        VideoDecoder.isConfigSupported(videoDecoderConfig)
+        this.opaqueDecoder.configure(videoDecoderConfig)
         type = 'key'
       } else {
         delete this.frameStates[bufferSerial]
@@ -220,7 +221,7 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
       if (this.alphaDecoder === undefined || this.alphaDecoder.state === 'closed') {
         if (isKeyFrame(encodedFrame.pixelContent.alpha)) {
           this.alphaDecoder = new VideoDecoder(this.alphaInit)
-          this.alphaDecoder.configure(config)
+          this.alphaDecoder.configure(videoDecoderConfig)
           type = 'key'
         } else {
           // At this point a keyframe should already be requested by opaque decoder and function should have returned.
