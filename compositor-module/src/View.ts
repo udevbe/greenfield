@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { IDENTITY, invert, Mat4, timesMat4, timesPoint, timesRectToBoundingBox, translation } from './math/Mat4'
-import { minusPoint, plusPoint, Point } from './math/Point'
+import { minusPoint, ORIGIN, plusPoint, Point } from './math/Point'
 import { RectWithInfo, withSizeAndPosition } from './math/Rect'
 import { copyTo, createPixmanRegion, destroyPixmanRegion, fini, initRect, intersect, notEmpty } from './Region'
 import RenderState from './render/RenderState'
@@ -136,7 +136,7 @@ export default class View {
       // TODO center of parent
     } else {
       // TODO set position center of the screen within surface geometry & size constraints
-      this.positionOffset = minusPoint(this.positionOffset, this.surface.geometry.position)
+      this.positionOffset = minusPoint(ORIGIN, this.surface.geometry.position)
     }
   }
 

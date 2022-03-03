@@ -1,6 +1,9 @@
+dist
 node_modules
 npm-debug.log
 build
 example-apps
 README.md
 docker-compose.yml
+x264_2pass.log
+x264_2pass.log.temp

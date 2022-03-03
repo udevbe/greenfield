@@ -38,7 +38,7 @@ export enum ButtonCode {
   FIFTH,
 }
 
-export interface ButtonEvent {
+export type ButtonEvent = {
   readonly x: number
   readonly y: number
   readonly timestamp: number
@@ -48,48 +48,19 @@ export interface ButtonEvent {
   readonly sceneId: string
 }
 
-export interface CreateButtonEvent {
-  (
-    x: number,
-    y: number,
-    timestamp: number,
-    buttonCode: 0 | 1 | 2 | 3 | 4,
-    released: boolean,
-    buttons: number,
-    sceneId: string,
-  ): ButtonEvent
-}
-
-export interface CreateButtonEventFromMouseEvent {
-  (mouseEvent: MouseEvent, released: boolean, sceneId: string): ButtonEvent
-}
-
-export const createButtonEvent: CreateButtonEvent = (
-  x: number,
-  y: number,
-  timestamp: number,
-  buttonCode: 0 | 1 | 2 | 3 | 4,
-  released: boolean,
-  buttons: number,
-  sceneId: string,
-): ButtonEvent => ({ x, y, timestamp, buttonCode, released, buttons, sceneId })
-
-export const createButtonEventFromMouseEvent: CreateButtonEventFromMouseEvent = (
+export function createButtonEventFromMouseEvent(
   mouseEvent: MouseEvent,
   released: boolean,
   sceneId: string,
-): ButtonEvent => {
-  const currentTarget = mouseEvent.currentTarget as HTMLElement
-  const { left: targetX, top: targetY } = currentTarget.getBoundingClientRect()
-  const button = mouseEvent.button as 0 | 1 | 2 | 3 | 4
+  maxX: number,
+  maxY: number,
+): ButtonEvent {
+  const buttonCode = mouseEvent.button as 0 | 1 | 2 | 3 | 4
 
-  return createButtonEvent(
-    mouseEvent.clientX - targetX,
-    mouseEvent.clientY - targetY,
-    mouseEvent.timeStamp,
-    button,
-    released,
-    mouseEvent.buttons,
-    sceneId,
-  )
+  const targetX = mouseEvent.offsetX
+  const targetY = mouseEvent.offsetY
+  const x = targetX > maxX ? maxX : targetX < 0 ? 0 : targetX
+  const y = targetY > maxY ? maxY : targetY < 0 ? 0 : targetY
+
+  return { x, y, timestamp: mouseEvent.timeStamp, buttonCode, released, buttons: mouseEvent.buttons, sceneId }
 }

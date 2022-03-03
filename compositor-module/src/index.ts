@@ -29,7 +29,7 @@ export * from './KeyEvent'
 export { nrmlvo }
 export { GreenfieldLogger }
 
-export function createCompositorSession(sessionId?: string, logger?: GreenfieldLogger): CompositorSession {
+export function createCompositorSession(sessionId?: string, logger?: GreenfieldLogger): Promise<CompositorSession> {
   return Session.create(sessionId, logger)
 }
 

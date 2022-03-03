@@ -21,23 +21,17 @@ import { ButtonCode, CompositorSession } from './index'
 import RemoteOutOfBandChannel from './RemoteOutOfBandChannel'
 import { FrameDecoder } from './remotestreaming/buffer-decoder'
 import { createWasmFrameDecoder } from './remotestreaming/wasm-buffer-decoder'
-import { createWebCodecFrameDecoder } from './remotestreaming/webcodec-buffer-decoder'
+import { createWebCodecFrameDecoder, videoDecoderConfig } from './remotestreaming/webcodec-buffer-decoder'
 import Renderer from './render/Renderer'
 import { createUserShellApi, UserShellApi } from './UserShellApi'
 import WebFS from './WebFS'
 
-function uuidv4(): string {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
-    (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16),
-  )
-}
-
 export interface LogFn {
   /* tslint:disable:no-unnecessary-generics */
+
   // eslint-disable-next-line @typescript-eslint/ban-types
   <T extends object>(obj: T, msg?: string, ...args: any[]): void
+
   (msg: string, ...args: any[]): void
 }
 
@@ -99,38 +93,68 @@ export type RemoteClientConnection = {
   client: Client
 }
 
-const noOpLogger: GreenfieldLogger = {
-  debug: console.debug,
-  error: console.error,
-  info: console.info,
-  trace() {
-    /*noop*/
-  },
-  warn: console.warn,
-} as const
-
-function h264WebCodecsSupported(): boolean {
-  if ('VideoDecoder' in window) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
-      const videoDecoder = new VideoDecoder({ output: () => {}, error: () => {} })
-      videoDecoder.configure({ codec: 'avc1.42001e' /*h264 Baseline Level 3*/ })
-      const supported = videoDecoder.state === 'configured'
-      videoDecoder.close()
-      return supported
-    } catch (e: unknown) {
-      return false
-    }
-  }
-
+async function h264WebCodecsSupported(): Promise<boolean> {
+  // TODO enable once webcodecs has less bugs/better support
+  // if ('VideoDecoder' in window) {
+  //   const videoDecoderSupport = await VideoDecoder.isConfigSupported(videoDecoderConfig)
+  //   return videoDecoderSupport.supported
+  // }
   return false
 }
 
 class Session implements CompositorSession {
-  static create(sessionId?: string, logger?: GreenfieldLogger): Session {
+  readonly webFS: WebFS
+  readonly globals: Globals
+  readonly renderer: Renderer
+  readonly userShell: UserShellApi
+  public readonly frameDecoder: FrameDecoder
+  private readonly remoteClientConnections: Record<string, RemoteClientConnection> = {}
+
+  private constructor(
+    public readonly display: Display,
+    public readonly compositorSessionId: string,
+    public readonly logger: GreenfieldLogger,
+    frameDecoderFactory: (session: Session) => FrameDecoder,
+  ) {
+    this.webFS = WebFS.create(this.compositorSessionId)
+    this.globals = Globals.create(this)
+    this.renderer = Renderer.create(this)
+    this.userShell = createUserShellApi(this)
+    this.frameDecoder = frameDecoderFactory(this)
+  }
+
+  static async create(
+    sessionId?: string,
+    logger: GreenfieldLogger = {
+      error: console.error,
+      warn: console.warn,
+      info: console.info,
+      debug: () => {
+        /*noop*/
+      },
+      trace: () => {
+        /*noop*/
+      },
+    },
+  ): Promise<Session> {
     const display = new Display()
-    const compositorSessionId = sessionId ?? uuidv4()
-    const session = new Session(display, compositorSessionId, logger)
+    const compositorSessionId =
+      sessionId ??
+      ((): string => {
+        const randomBytes = new Uint8Array(128)
+        crypto.getRandomValues(randomBytes)
+        return `sid:${[...randomBytes].map((b) => b.toString(16).padStart(2, '0')).join('')}`
+      })()
+    let frameDecoderFactory: (session: Session) => FrameDecoder
+    if (await h264WebCodecsSupported()) {
+      frameDecoderFactory = createWebCodecFrameDecoder
+      logger.info('Will use H.264 WebCodecs Decoder.')
+    } else {
+      logger.info('Will use H.264 WASM Decoder.')
+      frameDecoderFactory = createWasmFrameDecoder
+    }
+
+    const session = new Session(display, compositorSessionId, logger, frameDecoderFactory)
     session.globals.seat.buttonBindings.push({
       modifiers: 0,
       button: ButtonCode.MAIN,
@@ -161,27 +185,6 @@ class Session implements CompositorSession {
 
     session.logger.info('Session created.')
     return session
-  }
-
-  readonly webFS: WebFS
-  readonly globals: Globals
-  readonly renderer: Renderer
-  readonly userShell: UserShellApi
-  public readonly frameDecoder: FrameDecoder
-
-  private readonly remoteClientConnections: Record<string, RemoteClientConnection> = {}
-
-  private constructor(
-    public readonly display: Display,
-    public readonly compositorSessionId: string,
-    public readonly logger: GreenfieldLogger = noOpLogger,
-  ) {
-    this.webFS = WebFS.create(this.compositorSessionId)
-    this.globals = Globals.create(this)
-    this.renderer = Renderer.create(this)
-    this.userShell = createUserShellApi(this)
-    this.frameDecoder = h264WebCodecsSupported() ? createWebCodecFrameDecoder(this) : createWasmFrameDecoder()
-    // this.frameDecoder = createWasmFrameDecoder()
   }
 
   terminate(): void {

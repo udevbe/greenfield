@@ -64,11 +64,11 @@ import Session from '../Session'
 import Surface from '../Surface'
 import { CursorType } from './CursorType'
 import { ICCCM_NORMAL_STATE, ICCCM_WITHDRAWN_STATE, SEND_EVENT_MASK } from './XConstants'
-import { XWaylandConnection } from './XWaylandConnection'
 import XWaylandShell from './XWaylandShell'
 import XWaylandShellSurface from './XWaylandShellSurface'
 import { XWindow } from './XWindow'
 import { FrameFlag, FrameStatus, themeCreate, ThemeLocation, XWindowTheme } from './XWindowFrame'
+import { XWindowManagerConnection } from './XWindowManagerConnection'
 
 type ConfigureValueList = Parameters<XConnection['configureWindow']>[1]
 
@@ -553,7 +553,7 @@ export class XWindowManager {
 
   static async create(
     session: Session,
-    xWaylandConnetion: XWaylandConnection,
+    xWaylandConnetion: XWindowManagerConnection,
     client: Client,
     xWaylandShell: XWaylandShell,
   ): Promise<XWindowManager> {
@@ -707,28 +707,6 @@ export class XWindowManager {
 
   configureWindow(id: WINDOW, valueList: ConfigureValueList): void {
     this.xConnection.configureWindow(id, valueList)
-  }
-
-  activate(surface: Surface): void {
-    const role = surface.role as XWaylandShellSurface | undefined
-    if (role === undefined) {
-      return
-    }
-
-    const window = role.window
-
-    if (this.focusWindow === window || (window && window.overrideRedirect)) {
-      return
-    }
-
-    if (window) {
-      this.setNetActiveWindow(window.id)
-    } else {
-      this.setNetActiveWindow(Window.None)
-    }
-
-    this.setFocusWindow(window)
-    this.xConnection.flush()
   }
 
   private async createCursors() {
@@ -1198,25 +1176,11 @@ export class XWindowManager {
       return
     }
 
-    // Do not let X clients change the focus behind the compositor's
-    // back. Reset the focus to the old one if it changed.
-    //
-    // Note: Some applications rely on being able to change focus, for ex. Steam:
-    // Because of that, we allow changing focus between surfaces belonging to the
-    // same application. We must be careful to ignore requests that are too old
-    // though, because otherwise it may lead to race conditions:
-    // const requestedFocus = this.windowHash[event.event]
-    // if (
-    //   this.focusWindow &&
-    //   requestedFocus &&
-    //   requestedFocus.pid === this.focusWindow.pid
-    //   TODO implement sequence number for events in xtsb
-    //   && validateFocusSerial(this.lastFocusSequence, event.sequence)
-    // ) {
-    //   this.setFocusWindow(requestedFocus)
-    // } else {
-    this.setFocusWindow(this.focusWindow)
-    // }
+    /* Do not let X clients change the focus behind the compositor's
+     * back. Reset the focus to the old one if it changed. */
+    if (this.focusWindow === undefined || event.event !== this.focusWindow.id) {
+      this.sendFocusWindow(this.focusWindow)
+    }
   }
 
   private isOurResource(id: number) {
@@ -1320,44 +1284,60 @@ export class XWindowManager {
     return cursor
   }
 
-  private setFocusWindow(window: XWindow | undefined) {
-    const unfocusWindow = this.focusWindow
-    this.focusWindow = window
+  private sendFocusWindow(window: XWindow | undefined) {
+    if (window) {
+      if (window.overrideRedirect) {
+        return
+      }
+      const clientMessage = marshallClientMessageEvent({
+        responseType: 0,
+        format: 32,
+        window: window.id,
+        _type: this.atoms.WM_PROTOCOLS,
+        data: {
+          data32: new Uint32Array([this.atoms.WM_TAKE_FOCUS, Time.CurrentTime]),
+        },
+      })
 
-    if (unfocusWindow) {
-      unfocusWindow.frame?.unsetFlag(FrameFlag.FRAME_FLAG_ACTIVE)
-      unfocusWindow.setNetWmState()
-    }
-
-    if (window === undefined) {
-      this.xConnection.setInputFocus(InputFocus.PointerRoot, Window.None, Time.CurrentTime)
-      return
-    }
-
-    if (window.overrideRedirect) {
-      return
-    }
-
-    window.frame?.setFlag(FrameFlag.FRAME_FLAG_ACTIVE)
-
-    const clientMessage = marshallClientMessageEvent({
-      responseType: 0,
-      format: 32,
-      window: window.id,
-      _type: this.atoms.WM_PROTOCOLS,
-      data: {
-        data32: new Uint32Array([this.atoms.WM_TAKE_FOCUS, Time.CurrentTime]),
-      },
-    })
-
-    if (window.hints && !window.hints.input) {
       this.xConnection.sendEvent(0, window.id, EventMask.NoEvent, new Int8Array(clientMessage))
-    } else {
-      this.xConnection.sendEvent(0, window.id, EventMask.SubstructureRedirect, new Int8Array(clientMessage))
       this.xConnection.setInputFocus(InputFocus.PointerRoot, window.id, Time.CurrentTime)
+      this.configureWindow(window.frameId, { stackMode: StackMode.Above })
+    } else {
+      this.xConnection.setInputFocus(InputFocus.PointerRoot, Window.None, Time.CurrentTime)
     }
-    this.configureWindow(window.frameId, { stackMode: StackMode.Above })
-    window.setNetWmState()
+  }
+
+  activate(surface: Surface): void {
+    const role = surface.role as XWaylandShellSurface | undefined
+    if (role === undefined) {
+      return
+    }
+
+    const window = role.window
+
+    if (window) {
+      this.setNetActiveWindow(window.id)
+    } else {
+      this.setNetActiveWindow(Window.None)
+    }
+
+    this.sendFocusWindow(window)
+
+    if (this.focusWindow) {
+      if (this.focusWindow.frame) {
+        this.focusWindow.frame.unsetFlag(FrameFlag.FRAME_FLAG_ACTIVE)
+      }
+      this.focusWindow.scheduleRepaint()
+    }
+    this.focusWindow = window
+    if (this.focusWindow) {
+      if (this.focusWindow.frame) {
+        this.focusWindow.frame.setFlag(FrameFlag.FRAME_FLAG_ACTIVE)
+      }
+      this.focusWindow.scheduleRepaint()
+    }
+
+    this.xConnection.flush()
   }
 
   private setSelection() {

@@ -86,7 +86,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole, DesktopS
     const seat = this.session.globals.seat
     if (seat.popupGrab !== undefined) {
       const topmost = seat.popupGrab.getTopmostDesktopSurface()
-      if (topmost !== this.desktopSurface) {
+      if (topmost && topmost !== this.desktopSurface) {
         resource.postError(
           XdgWmBaseError.notTheTopmostPopup,
           'Client protocol error. XdgPopup was destroyed while it was not the topmost popup.',

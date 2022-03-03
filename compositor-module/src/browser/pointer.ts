@@ -1,49 +1,12 @@
 import { Point } from '../math/Point'
 
-const cursorCanvas = document.createElement('canvas')
-cursorCanvas.style.background = '#00000000'
-const cursorCanvasContext = cursorCanvas.getContext('2d', {
-  alpha: true,
-  desynchronized: true,
-})
-if (cursorCanvasContext === null) {
-  throw new Error('Browser does not support 2d canvas.')
-}
-cursorCanvas.style.position = 'absolute'
-cursorCanvas.style.left = '-256px'
-cursorCanvas.style.top = '-256px'
-document.body.appendChild(cursorCanvas)
-
-type DndImage = {
-  image: ImageBitmap
-  imageBlob: Blob
-  hotspotOffset: Point
-}
+let cursor: BrowserCursor | undefined
+let spriteURL: string | undefined
 
 type BrowserCursor = {
   image: ImageBitmap
   imageBlob: Blob
   hotspot: Point
-}
-
-let cursor: BrowserCursor | undefined
-let dndImage: DndImage | undefined
-let spriteURL: string | undefined
-
-export function browserDragStarted(event: DragEvent): void {
-  if (dndImage && cursorCanvasContext) {
-    const dndImagePosition = dndImage.hotspotOffset
-
-    cursorCanvas.width = dndImage.image.width
-    cursorCanvas.height = dndImage.image.height
-    cursorCanvas.style.width = `${cursorCanvas.width}px`
-    cursorCanvas.style.height = `${cursorCanvas.height}px`
-    cursorCanvasContext.drawImage(dndImage.image, 0, 0)
-
-    event.dataTransfer?.setDragImage(cursorCanvas, -dndImagePosition.x, -dndImagePosition.y)
-  } else {
-    event.preventDefault()
-  }
 }
 
 function updateBrowserCursor() {
@@ -61,24 +24,6 @@ function updateBrowserCursor() {
     }
     document.body.style.cursor = 'none'
   }
-}
-
-export function setBrowserDndImage(image: ImageBitmap, imageBlob: Blob, hotspotOffset: Point): void {
-  if (dndImage) {
-    dndImage.image = image
-    dndImage.imageBlob = imageBlob
-    dndImage.hotspotOffset = hotspotOffset
-  } else {
-    dndImage = {
-      image,
-      imageBlob,
-      hotspotOffset,
-    }
-  }
-}
-
-export function clearBrowserDndImage(): void {
-  dndImage = undefined
 }
 
 export function setBrowserCursor(image: ImageBitmap, imageBlob: Blob, hotspot: Point): void {

@@ -166,6 +166,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
   private readonly _seatName: 'browser-seat0' = 'browser-seat0'
   private selectionSerial = 0
   private modifierState: KeyboardModifier = 0
+  private readonly selectionDataSourceDestroyListener: () => void
 
   private constructor(
     public readonly session: Session,
@@ -178,6 +179,9 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
       this.touch = Touch.create(this)
     }
     this.popupGrab = PopupGrab.create(this)
+    this.selectionDataSourceDestroyListener = () => {
+      this.destroySelectionDataSource()
+    }
   }
 
   static create(session: Session): Seat {
@@ -397,12 +401,17 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
   }
 
   setSelectionInternal(source: DataSource | undefined, serial: number): void {
-    if (this.selectionDataSource && this.selectionSerial - serial < Number.MAX_SAFE_INTEGER / 2) {
+    const serialDiff = this.selectionSerial - serial
+    if (
+      this.selectionDataSource &&
+      (serialDiff < 0 ? serialDiff + (Number.MAX_SAFE_INTEGER + 1) : serialDiff) < Number.MAX_SAFE_INTEGER / 2
+    ) {
       return
     }
 
     if (this.selectionDataSource) {
       this.selectionDataSource.cancel()
+      this.selectionDataSource.resource.removeDestroyListener(this.selectionDataSourceDestroyListener)
       this.selectionDataSource = undefined
     }
 
@@ -421,11 +430,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
     this.selectionListeners.forEach((selectionListener) => selectionListener())
 
     if (source) {
-      source.resource.onDestroy().then(() => {
-        if (this.selectionDataSource === source) {
-          this.destroySelectionDataSource()
-        }
-      })
+      source.resource.addDestroyListener(this.selectionDataSourceDestroyListener)
     }
   }
 
