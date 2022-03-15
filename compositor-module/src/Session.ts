@@ -116,7 +116,7 @@ class Session implements CompositorSession {
     public readonly logger: GreenfieldLogger,
     frameDecoderFactory: (session: Session) => FrameDecoder,
   ) {
-    this.webFS = WebFS.create(this.compositorSessionId)
+    this.webFS = WebFS.create(this)
     this.globals = Globals.create(this)
     this.renderer = Renderer.create(this)
     this.userShell = createUserShellApi(this)

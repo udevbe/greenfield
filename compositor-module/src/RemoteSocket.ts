@@ -15,18 +15,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+import { MessageEventLike, RetransmittingWebSocket } from 'retransmitting-websocket'
 import { SendMessage, WebFD } from 'westfield-runtime-common'
 import { Client, WlBufferResource } from 'westfield-runtime-server'
-import { MessageEventLike, RetransmittingWebSocket } from 'retransmitting-websocket'
 import RemoteOutOfBandChannel, {
   RemoteOutOfBandListenOpcode,
   RemoteOutOfBandSendOpcode,
 } from './RemoteOutOfBandChannel'
 import StreamingBuffer from './remotestreaming/StreamingBuffer'
 import Session from './Session'
-import { XWindowManagerConnection } from './xwayland/XWindowManagerConnection'
 import XWaylandShell from './xwayland/XWaylandShell'
 import { XWindowManager } from './xwayland/XWindowManager'
+import { XWindowManagerConnection } from './xwayland/XWindowManagerConnection'
 
 type XWaylandConectionState = {
   state: 'pending' | 'open'
@@ -286,6 +286,11 @@ class RemoteSocket {
           console.error('Failed to create X Window Manager.', e)
         }
       }
+    })
+
+    // listen for pipe read-end webfd creation reply
+    outOfBandChannel.setListener(RemoteOutOfBandListenOpcode.CreatePipeWebFdsReply, (message: Uint8Array) => {
+      this.session.webFS.handleProxyPipeWebFDsReply(message)
     })
   }
 

@@ -60,7 +60,7 @@ function handleWebSocketConnection(ws: WebSocket, request: IncomingMessage) {
     // data transfer
     const fd = Number.parseInt(searchParams.get('fd') ?? '0')
     logger.info(`Handling incoming data transfer from: ${request.url}`)
-    compositorProxySession.nativeCompositorSession.appEndpointWebFS.incomingDataTransfer(ws, {
+    compositorProxySession.nativeCompositorSession.webFS.incomingDataTransfer(ws, {
       fd,
     })
   } else {

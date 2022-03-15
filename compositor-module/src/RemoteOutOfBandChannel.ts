@@ -24,14 +24,16 @@ export const enum RemoteOutOfBandListenOpcode {
   WebSocketCreationRequest = 5,
   RecycledResourceIds = 6,
   XWMConnectionRequest = 7,
-  RemoteWebFds = 8,
+  CreatePipeWebFdsReply = 8,
+  ReadWebFDReply,
 }
 export const enum RemoteOutOfBandSendOpcode {
   ResourceDestroyed = 1,
   FileContents = 4,
   ForceKeyFrame = 5,
   ForceKeyFrameNow = 6,
-  RemoteWebFds = 7,
+  CreatePipeWebFdsRequest = 7,
+  ReadWebFDAndNotify = 8,
 }
 
 export default class RemoteOutOfBandChannel {

@@ -163,9 +163,6 @@ interface VisualAndColormap {
   colormap: number
 }
 
-let webFdRequestSerial = 0
-const webFdTextDecoder = new TextDecoder()
-
 const cursorImageNames = {
   [CursorType.XWM_CURSOR_BOTTOM]: { url: sResize, xhot: 15, yhot: 27, width: 32, height: 32 },
   [CursorType.XWM_CURSOR_LEFT_PTR]: { url: leftPtr, xhot: 3, yhot: 2, width: 32, height: 32 },
@@ -1351,11 +1348,11 @@ export class XWindowManager {
     }
 
     // TODO check if the source object is implemented using XWayland and return early using instanceof?
-    if (source?.send === dataSourceSend) {
-      return
-    }
-
-    this.xConnection.setSelectionOwner(this.selectionWindow, this.atoms.CLIPBOARD, Time.CurrentTime)
+    // if (source?.send === dataSourceSend) {
+    //   return
+    // }
+    //
+    // this.xConnection.setSelectionOwner(this.selectionWindow, this.atoms.CLIPBOARD, Time.CurrentTime)
   }
 
   private handleXFixesSelectionNotify(event: XFixes.SelectionNotifyEvent) {
@@ -1405,9 +1402,11 @@ export class XWindowManager {
     if (event.property === Atom.None) {
       /* convert selection failed */
     } else if (event.target === this.atoms.TARGETS) {
-      this.getSelectionTargets()
+      // TODO
+      // this.getSelectionTargets()
     } else {
-      this.getSelectionData()
+      // TODO
+      // this.getSelectionData()
     }
   }
 
@@ -1484,56 +1483,12 @@ export class XWindowManager {
   }
 
   private async sendData(target: Atom, mimeType: string) {
-    const webFD = await this.createCopyPasteReadWebFd()
+    const webFDpipe = await this.session.webFS.createProxyPipeWebFD(this.client)
     this.selectionTarget = target
-    this.dataSourceFd = webFD
-    this.session.globals.seat.selectionDataSource?.send(mimeType, webFD)
+    this.dataSourceFd = webFDpipe[0]
+    this.session.globals.seat.selectionDataSource?.send(mimeType, webFDpipe[1])
+    this.session.webFS.readAndNotify(this.dataSourceFd, this.client)
+
     // TODO weston_wm_read_data_source see selection.c
-  }
-
-  private createCopyPasteReadWebFd() {
-    this.session
-      .getRemoteClientConnection(this.client)
-      .remoteOutOfBandChannel.send(RemoteOutOfBandSendOpcode.RemoteWebFds, new ArrayBuffer(webFdRequestSerial++))
-
-    return new Promise<WebFD>((resolve) => {
-      this.session
-        .getRemoteClientConnection(this.client)
-        .remoteOutOfBandChannel.setListener(RemoteOutOfBandListenOpcode.RemoteWebFds, (message) => {
-          const webFdReplySerial = new Uint32Array(message.buffer, message.byteOffset, 1)[0]
-          if (webFdRequestSerial === webFdReplySerial) {
-          } else {
-            return
-          }
-          const webFdText = webFdTextDecoder.decode(
-            new Uint8Array(message.buffer, message.byteOffset + Uint32Array.BYTES_PER_ELEMENT),
-          )
-          const webFdURL = new URL(webFdText)
-          const fdParam = webFdURL.searchParams.get('fd')
-          if (fdParam === null) {
-            throw new Error('BUG. WebFD URL does not have fd query param.')
-          }
-          const fd = Number.parseInt(fdParam)
-          const type = webFdURL.searchParams.get('type')
-
-          if (type !== 'MessagePort') {
-            throw new Error('BUG. XWM c/p WebFD is not of type MessagePort.')
-          }
-
-          resolve(
-            new WebFD(
-              fd,
-              type,
-              webFdURL,
-              () => {
-                throw new Error('BUG. XWM c/p WebFD should not be read.')
-              },
-              () => {
-                throw new Error('BUG. XWM c/p WebFD should not be closed.')
-              },
-            ),
-          )
-        })
-    })
   }
 }

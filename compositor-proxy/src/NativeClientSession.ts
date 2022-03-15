@@ -145,11 +145,13 @@ export class NativeClientSession {
       // listen for out-of-band resource destroy. opcode: 1
       1: (payload) => this.destroyResourceSilently(payload),
       // listen for file contents request. opcode: 4
-      4: (payload) => this.nativeCompositorSession.appEndpointWebFS.handleWebFDContentTransferReply(payload),
+      4: (payload) => this.nativeCompositorSession.webFS.handleWebFDContentTransferReply(payload),
       // listen for force key frame request. opcode 5
       5: (payload) => this.requestKeyFrameUnit(payload),
       // listen for force key frame now request. opcode 6
       6: (payload) => this.requestKeyFrameUnitNow(payload),
+      //listen for create pipe WebFds
+      7: (payload) => this.createPipeWebFds(payload),
     }
   }
 
@@ -171,12 +173,13 @@ export class NativeClientSession {
       let localGlobalsEmitted = false
       while (readOffset < inboundMessage.length) {
         const fdsCount = inboundMessage[readOffset++]
-        const webFdURLs: URL[] = []
+        const fdsBuffer = new Uint32Array(fdsCount)
         for (let i = 0; i < fdsCount; i++) {
-          const { webFdURL, bytesRead } = this.nativeCompositorSession.appEndpointWebFS.deserializeWebFdURL(
+          const { fd, bytesRead } = await this.nativeCompositorSession.webFS.toNativeFD(
             inboundMessage.subarray(readOffset),
+            this.retransmittingWebSocket,
           )
-          webFdURLs.push(webFdURL)
+          fdsBuffer[i] = fd
           readOffset += bytesRead / Uint32Array.BYTES_PER_ELEMENT
         }
 
@@ -192,17 +195,6 @@ export class NativeClientSession {
         if (!localGlobalsEmitted) {
           // check if browser compositor is emitting globals, if so, emit the local globals as well.
           localGlobalsEmitted = this.emitLocalGlobals(messageBuffer)
-        }
-
-        const fdsBuffer = new Uint32Array(fdsCount)
-        for (let i = 0; i < webFdURLs.length; i++) {
-          const webFdURL = webFdURLs[i]
-          logger.debug('Waiting for webfd conversion to native fd...')
-          fdsBuffer[i] = await this.nativeCompositorSession.appEndpointWebFS.handleWebFdURL(
-            webFdURL,
-            this.retransmittingWebSocket,
-          )
-          logger.debug('...done waiting for webfd conversion to native fd.')
         }
 
         this.messageInterceptor.interceptEvent(objectId, opcode, {
@@ -309,7 +301,7 @@ export class NativeClientSession {
         const fd = fdsInWithType[i * 2]
         const fdType = fdsInWithType[i * 2 + 1]
 
-        const serializedWebFD = this.nativeCompositorSession.appEndpointWebFS.serializeWebFD(fd, fdType)
+        const serializedWebFD = this.nativeCompositorSession.webFS.toSerializedWebFD(fd, fdType)
         serializedWebFDs[i] = serializedWebFD
         // align webfdurl size to 32bits
         fdsIntBufferSize += 1 + ((serializedWebFD.byteLength + 3) & ~3) / 4 // size (1) + data (n)
@@ -415,5 +407,10 @@ export class NativeClientSession {
 
   onRegistryCreated(wlRegistry: unknown, registryId: number): void {
     this.wlRegistries[registryId] = wlRegistry
+  }
+
+  private createPipeWebFds(payload: Uint8Array) {
+    const reply = this.nativeCompositorSession.webFS.handleCreatePipeWebFds(payload)
+    this.retransmittingWebSocket.send(reply)
   }
 }

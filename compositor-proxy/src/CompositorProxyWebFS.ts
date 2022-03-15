@@ -1,21 +1,112 @@
 import fs from 'fs'
+import { RetransmittingWebSocket } from 'retransmitting-websocket'
+import {
+  CloseEventLike,
+  ErrorEventLike,
+  MessageEventLike,
+  ReadyState,
+} from 'retransmitting-websocket/dist/RetransmittingWebSocket'
+import { Duplex, Transform } from 'stream'
 import { URL } from 'url'
 
 import { TextDecoder, TextEncoder } from 'util'
 import { Endpoint } from 'westfield-endpoint'
-import WebsocketStream from 'websocket-stream'
 
 import WebSocket from 'ws'
-import { RetransmittingWebSocket, WebSocketLike } from 'retransmitting-websocket'
 import { config } from './config'
 import { createLogger } from './Logger'
+import ReadableStream = NodeJS.ReadableStream
 
 const logger = createLogger('webfs')
 
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
 
-// FIXME this class is pretty broken...
+enum FDType {
+  ARRAY_BUFFER = 1 as const,
+  MESSAGE_PORT = 2 as const,
+}
+
+function deserializeWebFdURL(sourceBuf: ArrayBufferView): { webFdURL: URL; bytesRead: number } {
+  const webFDByteLength = new Uint32Array(sourceBuf.buffer, sourceBuf.byteOffset, 1)[0]
+  const fdURLUint8Array = new Uint8Array(
+    sourceBuf.buffer,
+    sourceBuf.byteOffset + Uint32Array.BYTES_PER_ELEMENT,
+    webFDByteLength,
+  )
+  const fdURLString = textDecoder.decode(fdURLUint8Array)
+  const webFdURL = new URL(fdURLString)
+  // sort so we can do string comparison of urls
+  webFdURL.searchParams.sort()
+
+  const alignedWebFDBytesLength = (webFDByteLength + 3) & ~3
+  return { webFdURL, bytesRead: alignedWebFDBytesLength + Uint32Array.BYTES_PER_ELEMENT }
+}
+
+/**
+ * Returns a native write pipe fd that -when written- will transfer its data to the given websocket
+ * @param fdCommunicationChannel
+ */
+function toPipeWriteFD(fdCommunicationChannel: WebSocket | RetransmittingWebSocket): number {
+  const resultBuffer = new Uint32Array(2)
+  Endpoint.makePipe(resultBuffer)
+  const readFd = resultBuffer[0]
+
+  const fileReadStream = fs.createReadStream('ignored', {
+    fd: readFd,
+    autoClose: true,
+    highWaterMark: TRANSFER_CHUNK_SIZE,
+  })
+
+  const websocketStream = webSocketStream(fdCommunicationChannel)
+  if (fdCommunicationChannel.readyState === ReadyState.CONNECTING) {
+    fdCommunicationChannel.addEventListener('open', () => {
+      fileReadStream.pipe(websocketStream)
+    })
+  } else {
+    fileReadStream.pipe(websocketStream)
+  }
+  return resultBuffer[1]
+}
+
+function webSocketStream(socket: WebSocket | RetransmittingWebSocket): Duplex {
+  const proxy = new Transform()
+  proxy._write = (chunk, enc, next) => {
+    // avoid errors, this never happens unless
+    // destroy() is called
+    if (socket.readyState !== ReadyState.OPEN) {
+      next()
+      return
+    }
+    try {
+      // FIXME make retransmitting websocket support done callback as extra argument
+      socket.send(chunk)
+    } catch (err: any) {
+      return next(err)
+    }
+    next()
+  }
+  proxy._flush = (done) => {
+    socket.close()
+    done()
+  }
+  proxy.on('close', () => socket.close())
+  socket.onopen = () => proxy.emit('connect')
+  socket.onclose = (closeDetails: CloseEventLike) => {
+    proxy.emit('ws-close', closeDetails)
+    proxy.end()
+    proxy.destroy()
+  }
+  socket.onerror = (err: ErrorEventLike) => proxy.destroy(err.error)
+  socket.onmessage = (event: MessageEventLike) =>
+    proxy.push(event.data instanceof ArrayBuffer ? Buffer.from(event.data) : event.data)
+
+  return proxy
+}
+
+// 64*1024=64kb
+export const TRANSFER_CHUNK_SIZE = 65792 as const
+
 export function createCompositorProxyWebFS(compositorSessionId: string): AppEndpointWebFS {
   const baseURL = config.public.baseURL
   const localWebFDBaseURL = new URL(baseURL)
@@ -30,7 +121,60 @@ export class AppEndpointWebFS {
     private webFDTransferRequests: Record<string, (data: Uint8Array) => void> = {},
   ) {}
 
-  private _createLocalWebFDURL(fd: number, type: string): URL {
+  async toNativeFD(
+    serializedWebFD: ArrayBufferView,
+    compositorWebSocket: RetransmittingWebSocket,
+  ): Promise<{ fd: number; bytesRead: number }> {
+    const { webFdURL, bytesRead } = deserializeWebFdURL(serializedWebFD)
+    const fd = await this.webFDtoNativeFD(webFdURL, compositorWebSocket)
+    return { fd, bytesRead }
+  }
+
+  handleWebFDContentTransferReply(payload: Uint8Array): void {
+    // payload = fdURLByteSize (4 bytes) + fdURL (aligned to 4 bytes) + contents
+    const { webFdURL, bytesRead } = deserializeWebFdURL(payload)
+    const webFDTransfer = this.webFDTransferRequests[webFdURL.href]
+    delete this.webFDTransferRequests[webFdURL.href]
+    webFDTransfer(payload.subarray(bytesRead))
+  }
+
+  toSerializedWebFD(fd: number, fdType: number): Uint8Array {
+    let type
+    switch (fdType) {
+      case FDType.ARRAY_BUFFER:
+        type = 'ArrayBuffer'
+        break
+      case FDType.MESSAGE_PORT:
+        type = 'MessagePort'
+        break
+      default:
+        type = 'unsupported'
+    }
+
+    const webFdURL = this.createLocalWebFDURL(fd, type)
+    return textEncoder.encode(webFdURL.href)
+  }
+
+  /**
+   * Stream incoming data from websocket to given fd.
+   * @param webSocket
+   * @param query
+   */
+  incomingDataTransfer(webSocket: WebSocket, query: { fd: number }): void {
+    const fd = query.fd
+    const fileWriteStream = fs.createWriteStream('ignored', { fd, highWaterMark: TRANSFER_CHUNK_SIZE, autoClose: true })
+    const websocketStream = webSocketStream(webSocket)
+
+    if (webSocket.readyState === ReadyState.CONNECTING) {
+      webSocket.addEventListener('open', () => {
+        websocketStream.pipe(fileWriteStream)
+      })
+    } else {
+      websocketStream.pipe(fileWriteStream)
+    }
+  }
+
+  private createLocalWebFDURL(fd: number, type: string): URL {
     const localWebFDURL = new URL(this.localWebFDBaseURL.href)
     localWebFDURL.searchParams.append('compositorSessionId', `${this.compositorSessionId}`)
     localWebFDURL.searchParams.append('fd', `${fd}`)
@@ -39,26 +183,10 @@ export class AppEndpointWebFS {
     return localWebFDURL
   }
 
-  deserializeWebFdURL(sourceBuf: ArrayBufferView): { webFdURL: URL; bytesRead: number } {
-    const webFDByteLength = new Uint32Array(sourceBuf.buffer, sourceBuf.byteOffset, 1)[0]
-    const fdURLUint8Array = new Uint8Array(
-      sourceBuf.buffer,
-      sourceBuf.byteOffset + Uint32Array.BYTES_PER_ELEMENT,
-      webFDByteLength,
-    )
-    const fdURLString = textDecoder.decode(fdURLUint8Array)
-    const webFdURL = new URL(fdURLString)
-    // sort so we can do string comparison of urls
-    webFdURL.searchParams.sort()
-
-    const alignedWebFDBytesLength = (webFDByteLength + 3) & ~3
-    return { webFdURL, bytesRead: alignedWebFDBytesLength + Uint32Array.BYTES_PER_ELEMENT }
-  }
-
   /**
-   * Creates a local fd that matches the content & behavior of the foreign webfd
+   * Creates a native fd that matches the content & behavior of the foreign webfd
    */
-  async handleWebFdURL(webFdURL: URL, retransmittingWebSocket: WebSocket | RetransmittingWebSocket): Promise<number> {
+  private async webFDtoNativeFD(webFdURL: URL, compositorWebSocket: RetransmittingWebSocket): Promise<number> {
     if (
       webFdURL.host === this.localWebFDBaseURL.host &&
       webFdURL.searchParams.get('compositorSessionId') === this.compositorSessionId
@@ -71,20 +199,20 @@ export class AppEndpointWebFS {
       // the fd comes from a different host. In case of shm, we need to create local shm and
       // transfer the contents of the remote fd. In case of pipe, we need to create a local pipe and transfer
       // the contents on-demand.
-      return this.handleForeignWebFdURL(webFdURL, retransmittingWebSocket)
+      return this.handleForeignWebFdURL(webFdURL, compositorWebSocket)
     }
   }
 
   private findFdTransferWebSocket(
     webFdURL: URL,
-    clientWebSocket: WebSocket | RetransmittingWebSocket,
+    compositorWebSocket: RetransmittingWebSocket,
   ): WebSocket | RetransmittingWebSocket | undefined {
     if (
       webFdURL.protocol === 'compositor:' &&
       this.compositorSessionId === webFdURL.searchParams.get('compositorSessionId')
     ) {
       // If the fd originated from the compositor, we can reuse the existing websocket connection to transfer the fd contents
-      return clientWebSocket
+      return compositorWebSocket
     } else if (webFdURL.protocol.startsWith('ws')) {
       // fd came from another endpoint, establish a new communication channel
       logger.info(`Establishing data transfer websocket connection to ${webFdURL.href}`)
@@ -96,102 +224,84 @@ export class AppEndpointWebFS {
     }
   }
 
-  private async handleForeignWebFdURL(
-    webFdURL: URL,
-    clientWebSocket: WebSocket | RetransmittingWebSocket,
-  ): Promise<number> {
-    const fdTransferWebSocket = this.findFdTransferWebSocket(webFdURL, clientWebSocket)
+  private async handleForeignWebFdURL(webFdURL: URL, compositorWebSocket: RetransmittingWebSocket): Promise<number> {
+    const fdTransferWebSocket = this.findFdTransferWebSocket(webFdURL, compositorWebSocket)
     if (fdTransferWebSocket === undefined) {
       return -1
     }
 
     let localFD = -1
     const webFdType = webFdURL.searchParams.get('type')
+    if (webFdType === null) {
+      throw new Error(`BUG. WebFD URL does not have a type param: ${webFdURL.href}`)
+    }
     if (webFdType === 'ArrayBuffer') {
-      localFD = await this.handleForeignWebFDShm(fdTransferWebSocket, webFdURL)
+      localFD = await this.receiveForeignShmContent(fdTransferWebSocket, webFdURL)
     } else if (webFdType === 'MessagePort') {
       // because we can't distinguish between read or write end of a pipe, we always assume write-end of pipe here (as per c/p & DnD use-case in wayland protocol)
-      localFD = this.handleForeignWebFDWritePipe(fdTransferWebSocket)
+      localFD = toPipeWriteFD(fdTransferWebSocket)
     }
 
     return localFD
   }
 
-  private async handleForeignWebFDShm(
+  private async receiveForeignShmContent(
     fdTransferWebSocket: WebSocket | RetransmittingWebSocket,
     webFdURL: URL,
   ): Promise<number> {
     return new Promise<Uint8Array>((resolve, reject) => {
       // register listener for incoming content on com channel
       this.webFDTransferRequests[webFdURL.href] = resolve
+      const fdParam = webFdURL.searchParams.get('fd')
+      if (fdParam === null) {
+        throw new Error(`BUG. No fd param from WebFD url: ${webFdURL.href}`)
+      }
+      const fd = Number.parseInt(fdParam)
       // request file contents. opcode: 4
-
-      // TODO ensure this fd is present
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      const fd = Number.parseInt(webFdURL.searchParams.get('fd'))
       fdTransferWebSocket.send(new Uint32Array([4, fd]).buffer)
     }).then((uint8Array: Uint8Array) =>
       Endpoint.createMemoryMappedFile(Buffer.from(uint8Array.buffer, uint8Array.byteOffset)),
     )
   }
 
-  private handleForeignWebFDWritePipe(fdCommunicationChannel: WebSocket | RetransmittingWebSocket): number {
-    const resultBuffer = new Uint32Array(2)
-    Endpoint.makePipe(resultBuffer)
-    const readFd = resultBuffer[0]
+  private createSerializedPipeWebFds(): [Uint8Array, Uint8Array] {
+    const pipeFds = new Uint32Array(2)
+    Endpoint.makePipe(pipeFds)
+    const pipeReadWebFD = this.toSerializedWebFD(pipeFds[0], FDType.MESSAGE_PORT)
+    const pipeWriteWebFD = this.toSerializedWebFD(pipeFds[1], FDType.MESSAGE_PORT)
 
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    const readStream = fs.createReadStream(null, { fd: readFd })
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    const websocketStream = new WebsocketStream(fdCommunicationChannel)
-
-    readStream.pipe(websocketStream)
-
-    return resultBuffer[1]
+    return [pipeReadWebFD, pipeWriteWebFD]
   }
 
-  handleWebFDContentTransferReply(payload: Uint8Array): void {
-    // payload = fdURLByteSize (4 bytes) + fdURL (aligned to 4 bytes) + contents
-    const { webFdURL, bytesRead } = this.deserializeWebFdURL(payload)
-    const webFDTransfer = this.webFDTransferRequests[webFdURL.href]
-    delete this.webFDTransferRequests[webFdURL.href]
-    webFDTransfer(payload.subarray(bytesRead))
-  }
+  handleCreatePipeWebFds(payload: Uint8Array): ArrayBuffer {
+    const webFdRequestSerial = new Uint32Array(payload)[0]
+    const pipeWebFDs = this.createSerializedPipeWebFds()
 
-  serializeWebFD(fd: number, fdType: number): Uint8Array {
-    let type
-    switch (fdType) {
-      case 1:
-        type = 'ArrayBuffer'
-        break
-      case 2:
-        type = 'MessagePort'
-        break
-      default:
-        type = 'unsupported'
-    }
+    const payloadLength =
+      Uint32Array.BYTES_PER_ELEMENT + // opcode
+      Uint32Array.BYTES_PER_ELEMENT + // serial
+      Uint32Array.BYTES_PER_ELEMENT + // pipeReadWebFD length
+      pipeWebFDs[0].byteLength +
+      Uint32Array.BYTES_PER_ELEMENT + // pipeWriteWebFD length
+      pipeWebFDs[1].byteLength
+    const padding = (4 - (payloadLength & 3)) & 3 // 32bit padding
 
-    const webFdURL = this._createLocalWebFDURL(fd, type)
-    return textEncoder.encode(webFdURL.href)
-  }
+    const replyBuffer = new ArrayBuffer(payloadLength + padding)
 
-  /**
-   *
-   * @param {WebSocket}webSocket
-   * @param {ParsedUrlQuery}query
-   */
-  incomingDataTransfer(webSocket: WebSocketLike, query: { fd: number }): void {
-    const fd = query.fd
-    // Need to pass in null as path argument, so it will use the fd to open the file (undocumented).
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    const target = fs.createWriteStream(null, { fd })
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    const websocketStream = new WebsocketStream(webSocket)
-    websocketStream.pipe(target)
+    let offset = 0
+    new Uint32Array(replyBuffer, offset, 1)[0] = 8 // opcode
+    offset += Uint32Array.BYTES_PER_ELEMENT
+    new Uint32Array(replyBuffer, offset, 1)[0] = webFdRequestSerial
+    offset += Uint32Array.BYTES_PER_ELEMENT
+    new Uint32Array(replyBuffer, Uint32Array.BYTES_PER_ELEMENT, 1)[0] = pipeWebFDs[0].byteLength
+    offset += Uint32Array.BYTES_PER_ELEMENT
+    new Uint8Array(replyBuffer, offset, pipeWebFDs[0].byteLength).set(pipeWebFDs[0])
+    offset += pipeWebFDs[0].byteLength
+    new Uint32Array(replyBuffer, offset, 1)[0] = pipeWebFDs[1].byteLength
+    offset += Uint32Array.BYTES_PER_ELEMENT
+    new Uint8Array(replyBuffer, offset, pipeWebFDs[1].byteLength).set(pipeWebFDs[1])
+    offset += pipeWebFDs[1].byteLength
+
+    return replyBuffer
   }
 }

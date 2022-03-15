@@ -69,7 +69,7 @@ export class NativeCompositorSession {
 
   constructor(
     public readonly compositorSessionId: string,
-    public readonly appEndpointWebFS = createCompositorProxyWebFS(compositorSessionId),
+    public readonly webFS = createCompositorProxyWebFS(compositorSessionId),
     public clients: ClientEntry[] = [],
   ) {
     this.wlDisplay = Endpoint.createDisplay(
