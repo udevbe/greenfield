@@ -1,14 +1,14 @@
 import { unlink } from 'fs/promises'
-import { IncomingMessage } from 'http'
-import { URL } from 'url'
-import WebSocket from 'ws'
-import { config } from './config'
+
+import { App, us_listen_socket, us_listen_socket_close } from 'uWebSockets.js'
+import { CloseEventLike, MessageEventLike, WebSocketLike, ReadyState } from 'retransmitting-websocket'
 import { createCompositorProxySession } from './CompositorProxySession'
+import { config } from './config'
 import { closeAllWebSockets, upsertWebSocket } from './ConnectionPool'
 import { createLogger } from './Logger'
 import { initSurfaceBufferEncoding } from './SurfaceBufferEncoding'
+import { UWebSocketLike } from './UWebSocketLike'
 
-const urlProtocolAndDomain = `ws://${config.server.bindIP}:${config.server.bindPort}` as const
 const compositorSessionId = process.env.COMPOSITOR_SESSION_ID
 
 const logger = createLogger('main')
@@ -28,13 +28,7 @@ function deleteStartingFile() {
   })
 }
 
-function handleWebSocketConnection(ws: WebSocket, request: IncomingMessage) {
-  logger.debug(
-    `Incoming websocket connection.\n\tURL: ${JSON.stringify(request.url)}\n\tHEADERS: ${JSON.stringify(
-      request.headers,
-    )}`,
-  )
-  const searchParams = new URL(`${urlProtocolAndDomain}${request.url}`).searchParams
+function handleWebSocketConnection(ws: WebSocketLike, searchParams: URLSearchParams) {
   if (searchParams.get('compositorSessionId') !== compositorSessionId) {
     const message = 'Bad or missing compositorSessionId query parameter.'
     logger.error(message)
@@ -59,7 +53,7 @@ function handleWebSocketConnection(ws: WebSocket, request: IncomingMessage) {
   } else if (searchParams.has('type') && searchParams.has('fd')) {
     // data transfer
     const fd = Number.parseInt(searchParams.get('fd') ?? '0')
-    logger.info(`Handling incoming data transfer from: ${request.url}`)
+    logger.info(`Handling incoming data transfer with params: ${searchParams}`)
     compositorProxySession.nativeCompositorSession.webFS.incomingDataTransfer(ws, {
       fd,
     })
@@ -70,7 +64,7 @@ function handleWebSocketConnection(ws: WebSocket, request: IncomingMessage) {
   }
 }
 
-function main() {
+async function main() {
   process.on('uncaughtException', (e) => {
     logger.error('\tname: ' + e.name + ' message: ' + e.message)
     logger.error('error object stack: ')
@@ -79,17 +73,65 @@ function main() {
   initSurfaceBufferEncoding()
 
   const port = config.server.bindPort
-  const wss = new WebSocket.Server({ port, host: config.server.bindIP })
+
+  const serverStart = new Promise<us_listen_socket>((resolve, reject) => {
+    App()
+      .ws('/', {
+        sendPingsAutomatically: 10000,
+        maxPayloadLength: 4 * 1024 * 1024,
+        upgrade: (res, req, context) => {
+          /* This immediately calls open handler, you must not use res after this call */
+          res.upgrade(
+            {
+              searchParams: new URLSearchParams(req.getQuery()),
+            },
+            /* Spell these correctly */
+            req.getHeader('sec-websocket-key'),
+            req.getHeader('sec-websocket-protocol'),
+            req.getHeader('sec-websocket-extensions'),
+            context,
+          )
+        },
+        open: (ws) => {
+          const uWebSocketLike = new UWebSocketLike(ws)
+          ws.websocketlike = uWebSocketLike
+          handleWebSocketConnection(uWebSocketLike, ws.searchParams)
+        },
+        message: (ws, message, isBinary) => {
+          const messageEventLike: MessageEventLike = {
+            type: 'message',
+            data: message.slice(0),
+            target: ws.websocketlike,
+          }
+          ws.websocketlike.emit('message', messageEventLike)
+        },
+        close: (ws, code, message) => {
+          ws.websocketlike.readyState = ReadyState.CLOSING
+          const closeEventLike: CloseEventLike = {
+            type: 'close',
+            code,
+            reason: Buffer.from(message).toString(),
+            target: ws.websocketlike,
+            wasClean: code === 1000,
+          }
+          ws.websocketlike.emit('close', closeEventLike)
+          ws.websocketlike.readyState = ReadyState.CLOSED
+        },
+      })
+      .listen(port, (listenSocket) => {
+        resolve(listenSocket)
+      })
+  })
+
+  const listenSocket = await serverStart
 
   process.on('SIGTERM', async () => {
     logger.info('Received SIGTERM. Closing connections.')
     await closeAllWebSockets()
-    wss.close()
+    us_listen_socket_close(listenSocket)
     logger.info('All Connections closed. Goodbye.')
     process.exit()
   })
-
-  wss.on('connection', handleWebSocketConnection)
 
   logger.info(`Compositor proxy started. Listening on port ${port}`)
   deleteStartingFile()

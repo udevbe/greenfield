@@ -23,4 +23,4 @@ if (!isValid) {
   throw new Error(`Error validating configuration: ${JSON.stringify(validate.errors)}`)
 }
 
-export const config: Configschema = rawConfig as Configschema
+export const config: Configschema = rawConfig as unknown as Configschema

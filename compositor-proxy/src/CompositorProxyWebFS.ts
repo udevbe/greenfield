@@ -1,5 +1,5 @@
 import fs from 'fs'
-import { RetransmittingWebSocket } from 'retransmitting-websocket'
+import { RetransmittingWebSocket, WebSocketLike } from 'retransmitting-websocket'
 import {
   CloseEventLike,
   ErrorEventLike,
@@ -69,7 +69,7 @@ function toPipeWriteFD(fdCommunicationChannel: WebSocket | RetransmittingWebSock
   return resultBuffer[1]
 }
 
-function webSocketStream(socket: WebSocket | RetransmittingWebSocket): Duplex {
+function webSocketStream(socket: WebSocketLike): Duplex {
   const proxy = new Transform()
   proxy._write = (chunk, enc, next) => {
     // avoid errors, this never happens unless
@@ -87,19 +87,20 @@ function webSocketStream(socket: WebSocket | RetransmittingWebSocket): Duplex {
     next()
   }
   proxy._flush = (done) => {
-    socket.close()
+    socket.close(4000, '')
     done()
   }
-  proxy.on('close', () => socket.close())
-  socket.onopen = () => proxy.emit('connect')
-  socket.onclose = (closeDetails: CloseEventLike) => {
+  proxy.on('close', () => socket.close(4000, ''))
+  socket.addEventListener('open', () => proxy.emit('connect'))
+  socket.addEventListener('close', (closeDetails: CloseEventLike) => {
     proxy.emit('ws-close', closeDetails)
     proxy.end()
     proxy.destroy()
-  }
-  socket.onerror = (err: ErrorEventLike) => proxy.destroy(err.error)
-  socket.onmessage = (event: MessageEventLike) =>
-    proxy.push(event.data instanceof ArrayBuffer ? Buffer.from(event.data) : event.data)
+  })
+  socket.addEventListener('error', (err: ErrorEventLike) => proxy.destroy(err.error))
+  socket.addEventListener('message', (event: MessageEventLike) =>
+    proxy.push(event.data instanceof ArrayBuffer ? Buffer.from(event.data) : event.data),
+  )
 
   return proxy
 }
@@ -160,7 +161,7 @@ export class AppEndpointWebFS {
    * @param webSocket
    * @param query
    */
-  incomingDataTransfer(webSocket: WebSocket, query: { fd: number }): void {
+  incomingDataTransfer(webSocket: WebSocketLike, query: { fd: number }): void {
     const fd = query.fd
     const fileWriteStream = fs.createWriteStream('ignored', { fd, highWaterMark: TRANSFER_CHUNK_SIZE, autoClose: true })
     const websocketStream = webSocketStream(webSocket)
