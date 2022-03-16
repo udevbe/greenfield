@@ -15,10 +15,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { URL } from 'url'
 import { Endpoint, MessageInterceptor } from 'westfield-endpoint'
 import { MessageEvent } from 'ws'
-import { RetransmittingWebSocket } from 'retransmitting-websocket'
+import type { WebSocketLike } from 'retransmitting-websocket'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 import { createLogger } from './Logger'
 import { NativeCompositorSession } from './NativeCompositorSession'
@@ -35,27 +34,22 @@ const logger = createLogger('native-client-session')
 export function createNativeClientSession(
   wlClient: unknown,
   nativeCompositorSession: NativeCompositorSession,
-  retransmittingWebSocket: RetransmittingWebSocket,
+  webSocket: WebSocketLike,
 ): NativeClientSession {
   const messageInterceptor = MessageInterceptor.create(
     wlClient,
     nativeCompositorSession.wlDisplay,
     wl_display_interceptor,
-    { communicationChannel: retransmittingWebSocket },
+    { communicationChannel: webSocket },
   )
 
-  const nativeClientSession = new NativeClientSession(
-    wlClient,
-    nativeCompositorSession,
-    retransmittingWebSocket,
-    messageInterceptor,
-  )
+  const nativeClientSession = new NativeClientSession(wlClient, nativeCompositorSession, webSocket, messageInterceptor)
   nativeClientSession.onDestroy().then(() => {
-    if (retransmittingWebSocket.readyState === 1 || retransmittingWebSocket.readyState === 0) {
+    if (webSocket.readyState === 1 || webSocket.readyState === 0) {
       // retransmittingWebSocket.onerror = noopHandler
       // retransmittingWebSocket.onclose = noopHandler
       // retransmittingWebSocket.onmessage = noopHandler
-      retransmittingWebSocket.close()
+      webSocket.close()
     }
   })
 
@@ -88,34 +82,34 @@ export function createNativeClientSession(
       null,
     )
     // send buffer creation notification. opcode: 2
-    retransmittingWebSocket.send(new Uint32Array([2, bufferId]).buffer)
+    webSocket.send(new Uint32Array([2, bufferId]).buffer)
   })
 
-  retransmittingWebSocket.onerror = (event) => {
+  let wasOpen = false
+  webSocket.addEventListener('error', (event) => {
     logger.info(`Wayland client web socket error.`, event)
-    nativeClientSession.destroy()
-  }
-  retransmittingWebSocket.onclose = (event) => {
+    if (!wasOpen) {
+      nativeClientSession.destroy()
+    }
+  })
+  webSocket.addEventListener('close', (event) => {
     logger.info(`Wayland client web socket closed.`)
     nativeClientSession.destroy()
-  }
-  retransmittingWebSocket.onmessage = (event) => {
+  })
+  webSocket.addEventListener('message', (event) => {
     try {
       nativeClientSession.onMessage(event)
     } catch (e) {
       logger.error('BUG? Error while processing event from compositor.', e)
       nativeClientSession.destroy()
     }
-  }
-
-  retransmittingWebSocket.onopen = () => {
-    retransmittingWebSocket.onerror = (event) => {
-      logger.error(`Wayland client web socket error.`, event)
-    }
+  })
+  webSocket.addEventListener('open', () => {
+    wasOpen = true
     // flush out any requests that came in while we were waiting for the data channel to open.
     logger.info(`Wayland client web socket to browser is open.`)
     nativeClientSession.flushOutboundMessageOnOpen()
-  }
+  })
 
   nativeClientSession.allocateBrowserServerObjectIdsBatch()
 
@@ -132,7 +126,7 @@ export class NativeClientSession {
   constructor(
     public wlClient: unknown,
     private readonly nativeCompositorSession: NativeCompositorSession,
-    private readonly retransmittingWebSocket: RetransmittingWebSocket,
+    private readonly webSocket: WebSocketLike,
     private readonly messageInterceptor: MessageInterceptor,
     private pendingWireMessages: Uint32Array[] = [],
     private pendingMessageBufferSize = 0,
@@ -177,7 +171,7 @@ export class NativeClientSession {
         for (let i = 0; i < fdsCount; i++) {
           const { fd, bytesRead } = await this.nativeCompositorSession.webFS.toNativeFD(
             inboundMessage.subarray(readOffset),
-            this.retransmittingWebSocket,
+            this.webSocket,
           )
           fdsBuffer[i] = fd
           readOffset += bytesRead / Uint32Array.BYTES_PER_ELEMENT
@@ -219,8 +213,8 @@ export class NativeClientSession {
     Endpoint.getServerObjectIdsBatch(this.wlClient, idsReply.subarray(1))
     // out-of-band w. opcode 6
     idsReply[0] = 6
-    if (this.retransmittingWebSocket.readyState === 1) {
-      this.retransmittingWebSocket.send(idsReply.buffer)
+    if (this.webSocket.readyState === 1) {
+      this.webSocket.send(idsReply.buffer)
     } else {
       // web socket not open, queue up reply
       this.outboundMessages.push(idsReply.buffer)
@@ -232,7 +226,7 @@ export class NativeClientSession {
     while (this.outboundMessages.length) {
       const outboundMessage = this.outboundMessages.shift()
       if (outboundMessage) {
-        this.retransmittingWebSocket.send(outboundMessage)
+        this.webSocket.send(outboundMessage)
       }
     }
   }
@@ -326,10 +320,10 @@ export class NativeClientSession {
       offset += pendingWireMessage.length
     })
 
-    if (this.retransmittingWebSocket.readyState === 1) {
+    if (this.webSocket.readyState === 1) {
       // 1 === 'open'
       logger.debug('Client message send over websocket.')
-      this.retransmittingWebSocket.send(sendBuffer.buffer)
+      this.webSocket.send(sendBuffer.buffer)
     } else {
       // queue up data until the channel is open
       logger.debug('Client message queued because websocket is not open.')
@@ -354,7 +348,7 @@ export class NativeClientSession {
   }
 
   requestWebSocket(): void {
-    this.retransmittingWebSocket.send(Uint32Array.from([5]).buffer)
+    this.webSocket.send(Uint32Array.from([5]).buffer)
   }
 
   onMessage(event: MessageEvent): void {
@@ -411,6 +405,6 @@ export class NativeClientSession {
 
   private createPipeWebFds(payload: Uint8Array) {
     const reply = this.nativeCompositorSession.webFS.handleCreatePipeWebFds(payload)
-    this.retransmittingWebSocket.send(reply)
+    this.webSocket.send(reply)
   }
 }

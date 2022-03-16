@@ -1,22 +1,26 @@
 import { connect, webConnectionSetup, XConnection } from 'xtsb'
-import { RetransmittingWebSocket } from 'retransmitting-websocket'
+import type { WebSocketLike } from 'retransmitting-websocket'
 import Session from '../Session'
 
 export class XWindowManagerConnection {
-  static create(session: Session, webSocket: RetransmittingWebSocket): Promise<XWindowManagerConnection> {
+  static create(session: Session, webSocket: WebSocketLike): Promise<XWindowManagerConnection> {
     return new Promise<XWindowManagerConnection>((resolve, reject) => {
-      webSocket.binaryType = 'arraybuffer'
-      webSocket.onopen = async (_) => {
-        webSocket.onerror = (ev) => session.logger.error(`XWM connection ${webSocket.url} error: ${ev}`)
+      let wasOpen = false
+      webSocket.addEventListener('open', (_) => {
+        wasOpen = true
+        webSocket.addEventListener('error', (ev) => session.logger.error(`XWM connection error: ${ev}`))
         const xwm = new XWindowManagerConnection(webSocket)
-        webSocket.onclose = (_) => xwm.destroy()
+        webSocket.addEventListener('close', (_) => xwm.destroy())
         resolve(xwm)
-      }
-      webSocket.onerror = (ev) => {
-        if (webSocket.readyState === WebSocket.CONNECTING) {
-          reject(new Error(`XWM connection ${webSocket.url} failed: ${ev}`))
+      })
+      webSocket.addEventListener('error', (ev) => {
+        if (wasOpen) {
+          return
         }
-      }
+        if (webSocket.readyState === WebSocket.CONNECTING) {
+          reject(new Error(`XWM connection failed: ${ev}`))
+        }
+      })
     })
   }
 
@@ -28,9 +32,9 @@ export class XWindowManagerConnection {
   private setupPromise?: Promise<XConnection>
 
   xConnection?: XConnection
-  readonly webSocket: RetransmittingWebSocket
+  readonly webSocket: WebSocketLike
 
-  constructor(webSocket: RetransmittingWebSocket) {
+  constructor(webSocket: WebSocketLike) {
     this.webSocket = webSocket
     this.destroyPromise = new Promise<void>((resolve) => (this.destroyResolve = resolve))
   }

@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { MessageEventLike, RetransmittingWebSocket } from 'retransmitting-websocket'
+import { MessageEventLike, RetransmittingWebSocket, WebSocketLike } from 'retransmitting-websocket'
 import { SendMessage, WebFD } from 'westfield-runtime-common'
 import { Client, WlBufferResource } from 'westfield-runtime-server'
 import RemoteOutOfBandChannel, {
@@ -38,13 +38,16 @@ type XWaylandConectionState = {
 const xWaylandProxyStates: { [key: string]: XWaylandConectionState } = {}
 
 let connectionIdCounter = 0
-export function createRetransmittingWebSocket(url: URL): RetransmittingWebSocket {
+export function createRetransmittingWebSocket(url: URL): WebSocketLike {
   const connectionURL = new URL(url.href)
   connectionURL.searchParams.set('connectionId', `${connectionIdCounter++}`)
-  const retransmittingWebSocket = new RetransmittingWebSocket({
-    webSocketFactory: () => new WebSocket(connectionURL.href),
+  return new RetransmittingWebSocket({
+    webSocketFactory: () => {
+      const webSocket = new WebSocket(connectionURL.href)
+      webSocket.binaryType = 'arraybuffer'
+      return webSocket
+    },
   })
-  return retransmittingWebSocket
 }
 
 class RemoteSocket {
@@ -65,15 +68,17 @@ class RemoteSocket {
     }
   }
 
-  onWebSocket(webSocket: RetransmittingWebSocket): Promise<Client> {
+  onWebSocket(webSocket: WebSocketLike, appEndpointURL: URL): Promise<Client> {
     return new Promise((resolve, reject) => {
       this.session.logger.info('[WebSocket] - created.')
-
-      webSocket.binaryType = 'arraybuffer'
-      webSocket.onclose = (event) => {
-        reject(new Error(`Failed to connect to application. ${event.reason} ${event.code}`))
-      }
-      webSocket.onopen = () => {
+      let wasOpen = false
+      webSocket.addEventListener('close', (event) => {
+        if (!wasOpen) {
+          reject(new Error(`Failed to connect to application. ${event.reason} ${event.code}`))
+        }
+      })
+      webSocket.addEventListener('open', () => {
+        wasOpen = true
         this.session.logger.info('[WebSocket] - open.')
 
         const client = this.session.display.createClient()
@@ -90,11 +95,11 @@ class RemoteSocket {
           }
         })
 
-        webSocket.onclose = () => {
+        webSocket.addEventListener('close', () => {
           this.session.logger.info('[WebSocket] - closed.')
           client.close()
-        }
-        webSocket.onerror = (event) => this.session.logger.warn(`[WebSocket] - error`, event)
+        })
+        webSocket.addEventListener('error', (event) => this.session.logger.warn(`[WebSocket] - error`, event))
 
         client.connection.onFlush = (wireMessages: SendMessage[]) =>
           this.flushWireMessages(client, webSocket, wireMessages)
@@ -112,9 +117,9 @@ class RemoteSocket {
             }
           }
         })
-        this.setupClientOutOfBandHandlers(webSocket, client, remoteOutOfBandChannel)
+        this.setupClientOutOfBandHandlers(webSocket, client, remoteOutOfBandChannel, appEndpointURL)
 
-        webSocket.onmessage = (event) => this.handleMessageEvent(client, event, remoteOutOfBandChannel)
+        webSocket.addEventListener('message', (event) => this.handleMessageEvent(client, event, remoteOutOfBandChannel))
 
         client.onClose().then(() => {
           this.session.userShell.events.clientDestroyed?.({
@@ -126,7 +131,7 @@ class RemoteSocket {
         })
         this.session.registerRemoteClientConnection(client, remoteOutOfBandChannel)
         resolve(client)
-      }
+      })
     })
   }
 
@@ -159,9 +164,10 @@ class RemoteSocket {
   }
 
   private setupClientOutOfBandHandlers(
-    webSocket: RetransmittingWebSocket,
+    webSocket: WebSocketLike,
     client: Client,
     outOfBandChannel: RemoteOutOfBandChannel,
+    appEndpointURL: URL,
   ) {
     // send out-of-band resource destroy. opcode: 1
     client.addResourceDestroyListener((resource) => {
@@ -239,8 +245,7 @@ class RemoteSocket {
       if (client.connection.closed) {
         return
       }
-      const appEndpointURL = new URL(webSocket.url)
-      this.onWebSocket(createRetransmittingWebSocket(appEndpointURL))
+      this.onWebSocket(createRetransmittingWebSocket(appEndpointURL), appEndpointURL)
     })
 
     // listen for recycled resource ids
@@ -257,7 +262,7 @@ class RemoteSocket {
     outOfBandChannel.setListener(RemoteOutOfBandListenOpcode.XWMConnectionRequest, async (outOfBandMessage) => {
       const wmFD = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)[0]
 
-      const xWaylandBaseURL = new URL(webSocket.url)
+      const xWaylandBaseURL = new URL(appEndpointURL.href)
       xWaylandBaseURL.searchParams.delete('connectionId')
       const xWaylandBaseURLhref = xWaylandBaseURL.href
 
@@ -331,7 +336,7 @@ class RemoteSocket {
     }
   }
 
-  private flushWireMessages(client: Client, webSocket: RetransmittingWebSocket, wireMessages: SendMessage[]) {
+  private flushWireMessages(client: Client, webSocket: WebSocketLike, wireMessages: SendMessage[]) {
     if (client.connection.closed) {
       return
     }

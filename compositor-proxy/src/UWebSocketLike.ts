@@ -19,11 +19,9 @@ export class UWebSocketLike implements WebSocketLike {
     open: [],
   }
 
-  constructor(
-    public readonly uws: WebSocket,
-    public readonly binaryType = 'arrayBuffer',
-    public readyState = ReadyState.OPEN,
-  ) {}
+  readonly binaryType = 'arraybuffer' as const
+  readyState = ReadyState.OPEN
+  constructor(public readonly uws: WebSocket) {}
 
   send(data: ArrayBufferLike): void {
     this.uws.send(data, true)

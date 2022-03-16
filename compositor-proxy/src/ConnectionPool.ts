@@ -7,7 +7,7 @@ const unboundConnections: RetransmittingWebSocket[] = []
 export function upsertWebSocket(
   connectionId: string,
   webSocketLike: WebSocketLike,
-): { retransmittingWebSocket: RetransmittingWebSocket; isNew: boolean } {
+): { retransmittingWebSocket: WebSocketLike; isNew: boolean } {
   let retransmittingWebSocket = boundConnections[connectionId]
   const isNew = retransmittingWebSocket === undefined
   if (isNew) {

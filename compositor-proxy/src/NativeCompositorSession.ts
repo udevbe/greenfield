@@ -17,7 +17,7 @@
 
 import { Epoll } from 'epoll'
 import { Endpoint, nativeGlobalNames } from 'westfield-endpoint'
-import { RetransmittingWebSocket } from 'retransmitting-websocket'
+import { RetransmittingWebSocket, WebSocketLike } from 'retransmitting-websocket'
 import { createCompositorProxyWebFS } from './CompositorProxyWebFS'
 import { registerUnboundClientConnection } from './ConnectionPool'
 import { createLogger } from './Logger'
@@ -26,7 +26,7 @@ import { createNativeClientSession, NativeClientSession } from './NativeClientSe
 
 const logger = createLogger('native-compositor-session')
 
-export type ClientEntry = { webSocket: RetransmittingWebSocket; nativeClientSession?: NativeClientSession }
+export type ClientEntry = { webSocket: WebSocketLike; nativeClientSession?: NativeClientSession }
 
 function onGlobalCreated(globalName: number): void {
   nativeGlobalNames.push(globalName)
@@ -113,13 +113,13 @@ export class NativeCompositorSession {
       logger.debug(
         'No client found without a wayland connection, will create a placeholder client without an open websocket connection.',
       )
-      const retransmittingWebSocket = new RetransmittingWebSocket()
+      const webSocket = new RetransmittingWebSocket()
       client = {
-        nativeClientSession: createNativeClientSession(wlClient, this, retransmittingWebSocket),
-        webSocket: retransmittingWebSocket,
+        nativeClientSession: createNativeClientSession(wlClient, this, webSocket),
+        webSocket,
       }
       this.clients = [...this.clients, client]
-      registerUnboundClientConnection(retransmittingWebSocket)
+      registerUnboundClientConnection(webSocket)
 
       // no previously created web sockets available, so ask compositor to create a new one
       const otherClient = this.clients.find((client) => client.webSocket.readyState === 1)
@@ -136,9 +136,8 @@ export class NativeCompositorSession {
     }
   }
 
-  socketForClient(webSocket: RetransmittingWebSocket): void {
+  socketForClient(webSocket: WebSocketLike): void {
     logger.info(`New websocket connected.`)
-    webSocket.binaryType = 'arraybuffer'
     // find a client who does not have a websocket associated
     const client = this.clients.find((client) => client.webSocket === webSocket)
     if (client === undefined) {

@@ -1,5 +1,5 @@
 import fs from 'fs'
-import { RetransmittingWebSocket, WebSocketLike } from 'retransmitting-websocket'
+import type { WebSocketLike } from 'retransmitting-websocket'
 import {
   CloseEventLike,
   ErrorEventLike,
@@ -15,7 +15,6 @@ import { Endpoint } from 'westfield-endpoint'
 import WebSocket from 'ws'
 import { config } from './config'
 import { createLogger } from './Logger'
-import ReadableStream = NodeJS.ReadableStream
 
 const logger = createLogger('webfs')
 
@@ -47,7 +46,7 @@ function deserializeWebFdURL(sourceBuf: ArrayBufferView): { webFdURL: URL; bytes
  * Returns a native write pipe fd that -when written- will transfer its data to the given websocket
  * @param fdCommunicationChannel
  */
-function toPipeWriteFD(fdCommunicationChannel: WebSocket | RetransmittingWebSocket): number {
+function toPipeWriteFD(fdCommunicationChannel: WebSocketLike): number {
   const resultBuffer = new Uint32Array(2)
   Endpoint.makePipe(resultBuffer)
   const readFd = resultBuffer[0]
@@ -124,7 +123,7 @@ export class AppEndpointWebFS {
 
   async toNativeFD(
     serializedWebFD: ArrayBufferView,
-    compositorWebSocket: RetransmittingWebSocket,
+    compositorWebSocket: WebSocketLike,
   ): Promise<{ fd: number; bytesRead: number }> {
     const { webFdURL, bytesRead } = deserializeWebFdURL(serializedWebFD)
     const fd = await this.webFDtoNativeFD(webFdURL, compositorWebSocket)
@@ -187,7 +186,7 @@ export class AppEndpointWebFS {
   /**
    * Creates a native fd that matches the content & behavior of the foreign webfd
    */
-  private async webFDtoNativeFD(webFdURL: URL, compositorWebSocket: RetransmittingWebSocket): Promise<number> {
+  private async webFDtoNativeFD(webFdURL: URL, compositorWebSocket: WebSocketLike): Promise<number> {
     if (
       webFdURL.host === this.localWebFDBaseURL.host &&
       webFdURL.searchParams.get('compositorSessionId') === this.compositorSessionId
@@ -204,10 +203,7 @@ export class AppEndpointWebFS {
     }
   }
 
-  private findFdTransferWebSocket(
-    webFdURL: URL,
-    compositorWebSocket: RetransmittingWebSocket,
-  ): WebSocket | RetransmittingWebSocket | undefined {
+  private findFdTransferWebSocket(webFdURL: URL, compositorWebSocket: WebSocketLike): WebSocketLike | undefined {
     if (
       webFdURL.protocol === 'compositor:' &&
       this.compositorSessionId === webFdURL.searchParams.get('compositorSessionId')
@@ -217,15 +213,16 @@ export class AppEndpointWebFS {
     } else if (webFdURL.protocol.startsWith('ws')) {
       // fd came from another endpoint, establish a new communication channel
       logger.info(`Establishing data transfer websocket connection to ${webFdURL.href}`)
-      const retransmittingWebSocket = new WebSocket(webFdURL)
-      retransmittingWebSocket.onerror = (event) => logger.error(`Data transfer websocket is in error. ${event.message}`)
-      return retransmittingWebSocket
+      const webSocket = new WebSocket(webFdURL)
+      webSocket.binaryType = 'arraybuffer'
+      webSocket.onerror = (event) => logger.error(`Data transfer websocket is in error. ${event.message}`)
+      return webSocket
     } else {
       logger.error(`Unsupported websocket URL ${webFdURL.href}.`)
     }
   }
 
-  private async handleForeignWebFdURL(webFdURL: URL, compositorWebSocket: RetransmittingWebSocket): Promise<number> {
+  private async handleForeignWebFdURL(webFdURL: URL, compositorWebSocket: WebSocketLike): Promise<number> {
     const fdTransferWebSocket = this.findFdTransferWebSocket(webFdURL, compositorWebSocket)
     if (fdTransferWebSocket === undefined) {
       return -1
@@ -246,10 +243,7 @@ export class AppEndpointWebFS {
     return localFD
   }
 
-  private async receiveForeignShmContent(
-    fdTransferWebSocket: WebSocket | RetransmittingWebSocket,
-    webFdURL: URL,
-  ): Promise<number> {
+  private async receiveForeignShmContent(fdTransferWebSocket: WebSocketLike, webFdURL: URL): Promise<number> {
     return new Promise<Uint8Array>((resolve, reject) => {
       // register listener for incoming content on com channel
       this.webFDTransferRequests[webFdURL.href] = resolve

@@ -79,6 +79,7 @@ async function main() {
       .ws('/', {
         sendPingsAutomatically: 10000,
         maxPayloadLength: 4 * 1024 * 1024,
+        maxBackpressure: 4 * 1024 * 1024,
         upgrade: (res, req, context) => {
           /* This immediately calls open handler, you must not use res after this call */
           res.upgrade(
