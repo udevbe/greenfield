@@ -12,9 +12,9 @@ import { URL } from 'url'
 import { TextDecoder, TextEncoder } from 'util'
 import { Endpoint } from 'westfield-endpoint'
 
-import WebSocket from 'ws'
-import { config } from './config'
-import { createLogger } from './Logger'
+import WebSocket, { createWebSocketStream } from 'ws'
+import { config } from '../config'
+import { createLogger } from '../Logger'
 
 const logger = createLogger('webfs')
 
@@ -57,7 +57,10 @@ function toPipeWriteFD(fdCommunicationChannel: WebSocketLike): number {
     highWaterMark: TRANSFER_CHUNK_SIZE,
   })
 
-  const websocketStream = webSocketStream(fdCommunicationChannel)
+  const websocketStream =
+    fdCommunicationChannel instanceof WebSocket
+      ? createWebSocketStream(fdCommunicationChannel)
+      : webSocketStream(fdCommunicationChannel)
   if (fdCommunicationChannel.readyState === ReadyState.CONNECTING) {
     fdCommunicationChannel.addEventListener('open', () => {
       fileReadStream.pipe(websocketStream)
@@ -69,7 +72,12 @@ function toPipeWriteFD(fdCommunicationChannel: WebSocketLike): number {
 }
 
 function webSocketStream(socket: WebSocketLike): Duplex {
-  const proxy = new Transform()
+  const proxy = new Transform({
+    autoDestroy: true,
+    allowHalfOpen: false,
+    emitClose: true,
+    objectMode: false,
+  })
   proxy._write = (chunk, enc, next) => {
     // avoid errors, this never happens unless
     // destroy() is called
@@ -85,21 +93,19 @@ function webSocketStream(socket: WebSocketLike): Duplex {
     }
     next()
   }
-  proxy._flush = (done) => {
-    socket.close(4000, '')
-    done()
-  }
-  proxy.on('close', () => socket.close(4000, ''))
-  socket.addEventListener('open', () => proxy.emit('connect'))
+  proxy.on('close', () => {
+    if (socket.readyState === ReadyState.OPEN) {
+      socket.close(4000, '')
+    }
+  })
+
   socket.addEventListener('close', (closeDetails: CloseEventLike) => {
-    proxy.emit('ws-close', closeDetails)
-    proxy.end()
-    proxy.destroy()
+    if (!proxy.destroyed) {
+      proxy.end()
+    }
   })
   socket.addEventListener('error', (err: ErrorEventLike) => proxy.destroy(err.error))
-  socket.addEventListener('message', (event: MessageEventLike) =>
-    proxy.push(event.data instanceof ArrayBuffer ? Buffer.from(event.data) : event.data),
-  )
+  socket.addEventListener('message', (event: MessageEventLike) => proxy.push(Buffer.from(event.data as ArrayBuffer)))
 
   return proxy
 }
@@ -121,12 +127,12 @@ export class AppEndpointWebFS {
     private webFDTransferRequests: Record<string, (data: Uint8Array) => void> = {},
   ) {}
 
-  async toNativeFD(
+  toNativeFD(
     serializedWebFD: ArrayBufferView,
     compositorWebSocket: WebSocketLike,
-  ): Promise<{ fd: number; bytesRead: number }> {
+  ): { fd: number | Promise<number>; bytesRead: number } {
     const { webFdURL, bytesRead } = deserializeWebFdURL(serializedWebFD)
-    const fd = await this.webFDtoNativeFD(webFdURL, compositorWebSocket)
+    const fd = this.webFDtoNativeFD(webFdURL, compositorWebSocket)
     return { fd, bytesRead }
   }
 
@@ -163,7 +169,8 @@ export class AppEndpointWebFS {
   incomingDataTransfer(webSocket: WebSocketLike, query: { fd: number }): void {
     const fd = query.fd
     const fileWriteStream = fs.createWriteStream('ignored', { fd, highWaterMark: TRANSFER_CHUNK_SIZE, autoClose: true })
-    const websocketStream = webSocketStream(webSocket)
+    const websocketStream =
+      webSocket instanceof WebSocket ? createWebSocketStream(webSocket) : webSocketStream(webSocket)
 
     if (webSocket.readyState === ReadyState.CONNECTING) {
       webSocket.addEventListener('open', () => {
@@ -186,7 +193,7 @@ export class AppEndpointWebFS {
   /**
    * Creates a native fd that matches the content & behavior of the foreign webfd
    */
-  private async webFDtoNativeFD(webFdURL: URL, compositorWebSocket: WebSocketLike): Promise<number> {
+  private webFDtoNativeFD(webFdURL: URL, compositorWebSocket: WebSocketLike): number | Promise<number> {
     if (
       webFdURL.host === this.localWebFDBaseURL.host &&
       webFdURL.searchParams.get('compositorSessionId') === this.compositorSessionId
@@ -222,19 +229,19 @@ export class AppEndpointWebFS {
     }
   }
 
-  private async handleForeignWebFdURL(webFdURL: URL, compositorWebSocket: WebSocketLike): Promise<number> {
+  private handleForeignWebFdURL(webFdURL: URL, compositorWebSocket: WebSocketLike): number | Promise<number> {
     const fdTransferWebSocket = this.findFdTransferWebSocket(webFdURL, compositorWebSocket)
     if (fdTransferWebSocket === undefined) {
       return -1
     }
 
-    let localFD = -1
+    let localFD: number | Promise<number> = -1
     const webFdType = webFdURL.searchParams.get('type')
     if (webFdType === null) {
       throw new Error(`BUG. WebFD URL does not have a type param: ${webFdURL.href}`)
     }
     if (webFdType === 'ArrayBuffer') {
-      localFD = await this.receiveForeignShmContent(fdTransferWebSocket, webFdURL)
+      localFD = this.receiveForeignShmContent(fdTransferWebSocket, webFdURL)
     } else if (webFdType === 'MessagePort') {
       // because we can't distinguish between read or write end of a pipe, we always assume write-end of pipe here (as per c/p & DnD use-case in wayland protocol)
       localFD = toPipeWriteFD(fdTransferWebSocket)

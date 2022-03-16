@@ -101,6 +101,7 @@ async function main() {
         message: (ws, message, isBinary) => {
           const messageEventLike: MessageEventLike = {
             type: 'message',
+            // we need to copy the data as uwebsocket will free the data as soon as this function exits, regardless of any references to it...
             data: message.slice(0),
             target: ws.websocketlike,
           }

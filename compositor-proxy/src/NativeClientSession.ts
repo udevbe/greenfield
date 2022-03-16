@@ -168,12 +168,15 @@ export class NativeClientSession {
       while (readOffset < inboundMessage.length) {
         const fdsCount = inboundMessage[readOffset++]
         const fdsBuffer = new Uint32Array(fdsCount)
+        const fdsTemp = new Array<number | Promise<number>>(fdsCount)
+        let hasFDPromise = false
         for (let i = 0; i < fdsCount; i++) {
-          const { fd, bytesRead } = await this.nativeCompositorSession.webFS.toNativeFD(
+          const { fd, bytesRead } = this.nativeCompositorSession.webFS.toNativeFD(
             inboundMessage.subarray(readOffset),
             this.webSocket,
           )
-          fdsBuffer[i] = fd
+          hasFDPromise ||= fd instanceof Promise
+          fdsTemp[i] = fd
           readOffset += bytesRead / Uint32Array.BYTES_PER_ELEMENT
         }
 
@@ -189,6 +192,11 @@ export class NativeClientSession {
         if (!localGlobalsEmitted) {
           // check if browser compositor is emitting globals, if so, emit the local globals as well.
           localGlobalsEmitted = this.emitLocalGlobals(messageBuffer)
+        }
+
+        const fds = hasFDPromise ? await Promise.all(fdsTemp) : (fdsTemp as number[])
+        for (let i = 0; i < fds.length; i++) {
+          fdsBuffer[i] = fds[i]
         }
 
         this.messageInterceptor.interceptEvent(objectId, opcode, {
