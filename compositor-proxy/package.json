@@ -29,10 +29,10 @@
     "js-yaml": "^4.1.0",
     "pino": "^6.12.0",
     "pino-pretty": "^7.0.1",
-    "retransmitting-websocket": "0.0.11",
+    "retransmitting-websocket": "0.0.12",
     "uWebSockets.js": "uNetworking/uWebSockets.js#v20.6.0",
     "ws": "^8.2.2",
-    "xtsb": "^0.0.1-alpha.7"
+    "xtsb": "^0.0.1-alpha.8"
   },
   "devDependencies": {
     "@tsconfig/node16": "^1.0.2",
