@@ -84,13 +84,10 @@ export default class BufferStream {
   onBufferContents(bufferContents: Uint8Array): void {
     try {
       const encodedFrame = createEncodedFrame(bufferContents)
-      console.debug(`Received buffer with serial: ${encodedFrame.serial}`)
       if (this.bufferStates[encodedFrame.serial]) {
-        console.debug(`Commit state for buffer with serial: ${encodedFrame.serial} already exists.`)
         this.bufferStates[encodedFrame.serial].encodedFrame = encodedFrame
         this.onComplete(encodedFrame.serial, encodedFrame)
       } else {
-        console.debug(`Commit state for buffer with serial: ${encodedFrame.serial} does not exist yet. Creating it.`)
         this.newBufferState(encodedFrame.serial).encodedFrame = encodedFrame
       }
     } catch (e) {
