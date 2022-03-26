@@ -747,9 +747,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
     xkb.updateMask(0, latchedMods, lockedMods, 0, 0, 0)
     this.keyboard.xkb = xkb
 
-    this.keyboard.resources.forEach((keyboardResource) => {
-      this.keyboard.sendKeymap(keyboardResource)
-    })
+    this.keyboard.resources.forEach((keyboardResource) => this.keyboard.sendKeymap(keyboardResource))
 
     this.notifyModifiers(this.nextSerial())
     if (latchedMods === 0 && lockedMods === 0) {

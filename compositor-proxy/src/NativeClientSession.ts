@@ -16,8 +16,8 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { Endpoint, MessageInterceptor } from 'westfield-endpoint'
-import { MessageEvent } from 'ws'
 import type { WebSocketLike } from 'retransmitting-websocket'
+import { ReadyState } from 'retransmitting-websocket'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 import { createLogger } from './Logger'
 import { NativeCompositorSession } from './NativeCompositorSession'
@@ -28,8 +28,33 @@ import wl_display_interceptor from './protocol/wl_display_interceptor'
 // eslint-disable-next-line camelcase,@typescript-eslint/ban-ts-comment
 // @ts-ignore
 import wl_buffer_interceptor from './protocol/wl_buffer_interceptor'
+import { Webfd } from './webfs/types'
+import { TextDecoder, TextEncoder } from 'util'
 
 const logger = createLogger('native-client-session')
+
+const enum MessageDestination {
+  BROWSER,
+  NATIVE,
+  BOTH,
+}
+
+const textDecoder = new TextDecoder()
+const textEncoder = new TextEncoder()
+
+function deserializeWebFDJSON(sourceBuf: ArrayBufferView): { webfd: Webfd; bytesRead: number } {
+  const webFDByteLength = new Uint32Array(sourceBuf.buffer, sourceBuf.byteOffset, 1)[0]
+  const encodedWebfdJSON = new Uint8Array(
+    sourceBuf.buffer,
+    sourceBuf.byteOffset + Uint32Array.BYTES_PER_ELEMENT,
+    webFDByteLength,
+  )
+  const webfdJSON = textDecoder.decode(encodedWebfdJSON)
+  const webfd: Webfd = JSON.parse(webfdJSON)
+
+  const alignedWebFDBytesLength = (webFDByteLength + 3) & ~3
+  return { webfd, bytesRead: alignedWebFDBytesLength + Uint32Array.BYTES_PER_ELEMENT }
+}
 
 export function createNativeClientSession(
   wlClient: unknown,
@@ -98,7 +123,7 @@ export function createNativeClientSession(
   })
   webSocket.addEventListener('message', (event) => {
     try {
-      nativeClientSession.onMessage(event)
+      nativeClientSession.onMessage(event.data as ArrayBuffer)
     } catch (e) {
       logger.error('BUG? Error while processing event from compositor.', e)
       nativeClientSession.destroy()
@@ -138,22 +163,17 @@ export class NativeClientSession {
     this.browserChannelOutOfBandHandlers = {
       // listen for out-of-band resource destroy. opcode: 1
       1: (payload) => this.destroyResourceSilently(payload),
-      // listen for file contents request. opcode: 4
-      4: (payload) => this.nativeCompositorSession.webFS.handleWebFDContentTransferReply(payload),
       // listen for force key frame request. opcode 5
       5: (payload) => this.requestKeyFrameUnit(payload),
       // listen for force key frame now request. opcode 6
       6: (payload) => this.requestKeyFrameUnitNow(payload),
-      //listen for create pipe WebFds
-      7: (payload) => this.createPipeWebFds(payload),
     }
   }
 
   /**
-   * Delegates messages from the browser compositor to it's native counterpart.
-   * This method is async as transferring the contents of file descriptors might take some time
+   * Delegates messages from the browser compositor to its native counterpart.
    */
-  private async onWireMessageEvents(receiveBuffer: Uint32Array) {
+  private onWireMessageEvents(receiveBuffer: Uint32Array) {
     logger.debug(`Delegating messages from browser to client. Total size: ${receiveBuffer.byteLength}`)
 
     if (this.inboundMessages.push(receiveBuffer) > 1) {
@@ -168,15 +188,10 @@ export class NativeClientSession {
       while (readOffset < inboundMessage.length) {
         const fdsCount = inboundMessage[readOffset++]
         const fdsBuffer = new Uint32Array(fdsCount)
-        const fdsTemp = new Array<number | Promise<number>>(fdsCount)
-        let hasFDPromise = false
+        const fds = new Array<number>(fdsCount)
         for (let i = 0; i < fdsCount; i++) {
-          const { fd, bytesRead } = this.nativeCompositorSession.webFS.toNativeFD(
-            inboundMessage.subarray(readOffset),
-            this.webSocket,
-          )
-          hasFDPromise ||= fd instanceof Promise
-          fdsTemp[i] = fd
+          const { webfd, bytesRead } = deserializeWebFDJSON(inboundMessage.subarray(readOffset))
+          fds[i] = this.nativeCompositorSession.webFS.webFDtoNativeFD(webfd)
           readOffset += bytesRead / Uint32Array.BYTES_PER_ELEMENT
         }
 
@@ -192,11 +207,6 @@ export class NativeClientSession {
         if (!localGlobalsEmitted) {
           // check if browser compositor is emitting globals, if so, emit the local globals as well.
           localGlobalsEmitted = this.emitLocalGlobals(messageBuffer)
-        }
-
-        const fds = hasFDPromise ? await Promise.all(fdsTemp) : (fdsTemp as number[])
-        for (let i = 0; i < fds.length; i++) {
-          fdsBuffer[i] = fds[i]
         }
 
         this.messageInterceptor.interceptEvent(objectId, opcode, {
@@ -268,8 +278,7 @@ export class NativeClientSession {
 
       const interceptedMessage = { buffer: message, fds: [], bufferOffset: 8, consumed: 0, size }
       const destination = this.messageInterceptor.interceptRequest(objectId, opcode, interceptedMessage)
-      if (destination === 1) {
-      } else {
+      if (destination !== MessageDestination.NATIVE) {
         const interceptedBuffer = new Uint32Array(interceptedMessage.buffer)
         this.pendingMessageBufferSize += interceptedBuffer.length
         this.pendingWireMessages.push(interceptedBuffer)
@@ -278,7 +287,11 @@ export class NativeClientSession {
       // destination: 0 => browser only,  1 => native only, 2 => both
       logger.debug(
         `Message from client delegated to ${
-          destination === 0 ? 'browser' : destination === 1 ? 'native' : 'browser and native.'
+          destination === MessageDestination.BROWSER
+            ? 'browser'
+            : destination === MessageDestination.NATIVE
+            ? 'native'
+            : 'browser and native.'
         }`,
       )
       return destination
@@ -294,16 +307,18 @@ export class NativeClientSession {
     logger.debug('Received end of client message.')
     let nroFds = 0
     let fdsIntBufferSize = 1 // start with one because we start with the number of webfds specified
-    /** @type {Array<Uint8Array>} */ const serializedWebFDs = new Array(nroFds)
+    const serializedWebFDs = new Array<Uint8Array>(nroFds)
     if (fdsInBuffer) {
       const fdsInWithType = new Uint32Array(fdsInBuffer)
-      nroFds = fdsInWithType.length / 2 // fd + type (shm or pipe) = 2
+      nroFds = fdsInWithType.length
       for (let i = 0; i < nroFds; i++) {
-        // TODO keep track of (web)fd in case another host wants to get it's content or issues an fd close
-        const fd = fdsInWithType[i * 2]
-        const fdType = fdsInWithType[i * 2 + 1]
-
-        const serializedWebFD = this.nativeCompositorSession.webFS.toSerializedWebFD(fd, fdType)
+        const fd = fdsInWithType[i]
+        const webfd: Webfd = {
+          handle: fd,
+          type: 'unknown',
+          host: this.nativeCompositorSession.webFS.baseURL,
+        }
+        const serializedWebFD = textEncoder.encode(JSON.stringify(webfd))
         serializedWebFDs[i] = serializedWebFD
         // align webfdurl size to 32bits
         fdsIntBufferSize += 1 + ((serializedWebFD.byteLength + 3) & ~3) / 4 // size (1) + data (n)
@@ -328,7 +343,7 @@ export class NativeClientSession {
       offset += pendingWireMessage.length
     })
 
-    if (this.webSocket.readyState === 1) {
+    if (this.webSocket.readyState === ReadyState.OPEN) {
       // 1 === 'open'
       logger.debug('Client message send over websocket.')
       this.webSocket.send(sendBuffer.buffer)
@@ -359,12 +374,11 @@ export class NativeClientSession {
     this.webSocket.send(Uint32Array.from([5]).buffer)
   }
 
-  onMessage(event: MessageEvent): void {
+  onMessage(receiveBuffer: ArrayBuffer): void {
     if (!this.wlClient) {
       return
     }
 
-    const receiveBuffer = event.data as ArrayBufferLike
     const outOfBandOpcode = new Uint32Array(receiveBuffer, 0, 1)[0]
     if (outOfBandOpcode) {
       logger.debug(`Received out of band message with opcode: ${outOfBandOpcode}`)
@@ -409,10 +423,5 @@ export class NativeClientSession {
 
   onRegistryCreated(wlRegistry: unknown, registryId: number): void {
     this.wlRegistries[registryId] = wlRegistry
-  }
-
-  private createPipeWebFds(payload: Uint8Array) {
-    const reply = this.nativeCompositorSession.webFS.handleCreatePipeWebFds(payload)
-    this.webSocket.send(reply)
   }
 }

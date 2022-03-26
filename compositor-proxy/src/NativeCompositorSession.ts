@@ -23,6 +23,7 @@ import { registerUnboundClientConnection } from './ConnectionPool'
 import { createLogger } from './Logger'
 
 import { createNativeClientSession, NativeClientSession } from './NativeClientSession'
+import { config } from './config'
 
 const logger = createLogger('native-compositor-session')
 
@@ -69,7 +70,7 @@ export class NativeCompositorSession {
 
   constructor(
     public readonly compositorSessionId: string,
-    public readonly webFS = createCompositorProxyWebFS(compositorSessionId),
+    public readonly webFS = createCompositorProxyWebFS(compositorSessionId, config.public.baseURL),
     public clients: ClientEntry[] = [],
   ) {
     this.wlDisplay = Endpoint.createDisplay(

@@ -111,9 +111,12 @@ export default class DataOffer implements WlDataOfferRequests {
 
   receive(resource: WlDataOfferResource, mimeType: string, fd: WebFD): void {
     if (this.source && this === this.source.dataOffer) {
-      this.source.send(mimeType, fd)
+      this.source.send(mimeType, {
+        ...fd,
+        type: 'pipe-write',
+      })
     } else {
-      fd.close()
+      resource.client.userData.webfs.close(fd)
     }
   }
 

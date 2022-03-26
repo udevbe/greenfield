@@ -20,20 +20,14 @@ import Session from './Session'
 export const enum RemoteOutOfBandListenOpcode {
   BufferCreation = 2,
   BufferContents = 3,
-  FileContents = 4,
   WebSocketCreationRequest = 5,
   RecycledResourceIds = 6,
   XWMConnectionRequest = 7,
-  CreatePipeWebFdsReply = 8,
-  ReadWebFDReply,
 }
 export const enum RemoteOutOfBandSendOpcode {
   ResourceDestroyed = 1,
-  FileContents = 4,
   ForceKeyFrame = 5,
   ForceKeyFrameNow = 6,
-  CreatePipeWebFdsRequest = 7,
-  ReadWebFDAndNotify = 8,
 }
 
 export default class RemoteOutOfBandChannel {

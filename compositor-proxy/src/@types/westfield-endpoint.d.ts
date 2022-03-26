@@ -39,7 +39,7 @@ declare module 'westfield-endpoint' {
       onXWaylandDestroyed: () => void,
     ): unknown | undefined
     teardownXWayland(westfieldXWayland: unknown): void
-    createMemoryMappedFile(buffer: Buffer): Promise<number>
+    createMemoryMappedFile(buffer: Buffer): number
     makePipe(resultBuffer: Uint32Array): void
     setClientDestroyedCallback(wlClient: unknown, callback: () => void): void
     setRegistryCreatedCallback(wlClient: unknown, callback: (wlRegistry: unknown, registryId: number) => void): void

@@ -15,16 +15,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { Client, Display } from 'westfield-runtime-server'
+import { Display } from 'westfield-runtime-server'
 import Globals from './Globals'
 import { ButtonCode, CompositorSession } from './index'
-import RemoteOutOfBandChannel from './RemoteOutOfBandChannel'
 import { FrameDecoder } from './remotestreaming/buffer-decoder'
 import { createWasmFrameDecoder } from './remotestreaming/wasm-buffer-decoder'
-import { createWebCodecFrameDecoder, videoDecoderConfig } from './remotestreaming/webcodec-buffer-decoder'
+import { createWebCodecFrameDecoder } from './remotestreaming/webcodec-buffer-decoder'
 import Renderer from './render/Renderer'
 import { createUserShellApi, UserShellApi } from './UserShellApi'
-import WebFS from './WebFS'
 
 export interface LogFn {
   /* tslint:disable:no-unnecessary-generics */
@@ -88,11 +86,6 @@ export type GreenfieldLogger = {
   trace: LogFn
 }
 
-export type RemoteClientConnection = {
-  remoteOutOfBandChannel: RemoteOutOfBandChannel
-  client: Client
-}
-
 async function h264WebCodecsSupported(): Promise<boolean> {
   // TODO enable once webcodecs has less bugs/better support
   // if ('VideoDecoder' in window) {
@@ -103,12 +96,10 @@ async function h264WebCodecsSupported(): Promise<boolean> {
 }
 
 class Session implements CompositorSession {
-  readonly webFS: WebFS
   readonly globals: Globals
   readonly renderer: Renderer
   readonly userShell: UserShellApi
   public readonly frameDecoder: FrameDecoder
-  private readonly remoteClientConnections: Record<string, RemoteClientConnection> = {}
 
   private constructor(
     public readonly display: Display,
@@ -116,7 +107,6 @@ class Session implements CompositorSession {
     public readonly logger: GreenfieldLogger,
     frameDecoderFactory: (session: Session) => FrameDecoder,
   ) {
-    this.webFS = WebFS.create(this)
     this.globals = Globals.create(this)
     this.renderer = Renderer.create(this)
     this.userShell = createUserShellApi(this)
@@ -194,18 +184,6 @@ class Session implements CompositorSession {
 
   flush(): void {
     this.display.flushClients()
-  }
-
-  getRemoteClientConnection(client: Client): RemoteClientConnection {
-    return this.remoteClientConnections[client.id]
-  }
-
-  registerRemoteClientConnection(client: Client, remoteOutOfBandChannel: RemoteOutOfBandChannel): void {
-    this.remoteClientConnections[client.id] = {
-      client,
-      remoteOutOfBandChannel,
-    }
-    client.onClose().then(() => delete this.remoteClientConnections[client.id])
   }
 }
 

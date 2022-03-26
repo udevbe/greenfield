@@ -174,12 +174,11 @@ export class Keyboard implements WlKeyboardRequests, CompositorKeyboard {
     this.focusListeners.forEach((listener) => listener())
   }
 
-  sendKeymap(resource: WlKeyboardResource): void {
+  async sendKeymap(resource: WlKeyboardResource): Promise<void> {
     const keymapString = this.xkb.asString()
     const textEncoder = new TextEncoder()
-    const keymapBuffer = textEncoder.encode(keymapString).buffer
-
-    const keymapWebFD = this.seat.session.webFS.fromArrayBuffer(keymapBuffer)
+    const keymapBuffer = textEncoder.encode(keymapString)
+    const keymapWebFD = await resource.client.userData.webfs.mkstempMmap(new Blob([keymapBuffer]))
     resource.keymap(xkbV1, keymapWebFD, keymapBuffer.byteLength)
   }
 

@@ -49,7 +49,6 @@ import {
   WindowClass,
 } from 'xtsb'
 import { SelectionEventMask } from 'xtsb/dist/types/xcbXFixes'
-import { WebFD } from '../../../../westfield/common'
 import eResize from '../assets/e-resize.png'
 import leftPtr from '../assets/left_ptr.png'
 import nResize from '../assets/n-resize.png'
@@ -59,7 +58,6 @@ import sResize from '../assets/s-resize.png'
 import seResize from '../assets/se-resize.png'
 import swResize from '../assets/sw-resize.png'
 import wResize from '../assets/w-resize.png'
-import { RemoteOutOfBandListenOpcode, RemoteOutOfBandSendOpcode } from '../RemoteOutOfBandChannel'
 import Session from '../Session'
 import Surface from '../Surface'
 import { CursorType } from './CursorType'
@@ -69,6 +67,7 @@ import XWaylandShellSurface from './XWaylandShellSurface'
 import { XWindow } from './XWindow'
 import { FrameFlag, FrameStatus, themeCreate, ThemeLocation, XWindowTheme } from './XWindowFrame'
 import { XWindowManagerConnection } from './XWindowManagerConnection'
+import { WebFD } from 'westfield-runtime-common'
 
 type ConfigureValueList = Parameters<XConnection['configureWindow']>[1]
 
@@ -1483,11 +1482,16 @@ export class XWindowManager {
   }
 
   private async sendData(target: Atom, mimeType: string) {
-    const webFDpipe = await this.session.webFS.createProxyPipeWebFD(this.client)
+    if (this.session.globals.seat.selectionDataSource === undefined) {
+      return
+    }
+    const pipe = await this.session.globals.seat.selectionDataSource.resource.client.userData.webfs.mkfifo()
     this.selectionTarget = target
-    this.dataSourceFd = webFDpipe[0]
-    this.session.globals.seat.selectionDataSource?.send(mimeType, webFDpipe[1])
-    this.session.webFS.readAndNotify(this.dataSourceFd, this.client)
+    this.dataSourceFd = pipe[0]
+    this.session.globals.seat.selectionDataSource?.send(mimeType, pipe[1])
+    // TODO get chunk size + MORE
+
+    this.session.globals.seat.selectionDataSource.resource.client.userData.webfs.read(this.dataSourceFd, 64 * 1024)
 
     // TODO weston_wm_read_data_source see selection.c
   }

@@ -65,12 +65,10 @@ export default class StreamingBuffer implements BufferImplementation<Promise<Dec
         oldDecodedFrame?.pixelContent.close?.()
       } catch (e: unknown) {
         surface.session.logger.warn('Get error during decode, requesting new keyframe.')
-        surface.session
-          .getRemoteClientConnection(surface.resource.client)
-          .remoteOutOfBandChannel.send(
-            RemoteOutOfBandSendOpcode.ForceKeyFrameNow,
-            new Uint32Array([surface.resource.id, commitSerial]),
-          )
+        surface.resource.client.userData.oobChannel.send(
+          RemoteOutOfBandSendOpcode.ForceKeyFrameNow,
+          new Uint32Array([surface.resource.id, commitSerial]),
+        )
         const encodedFrame = await this.bufferStream.onFrameAvailable(commitSerial)
         if (encodedFrame) {
           const oldDecodedFrame = this.decodedFrame

@@ -23,8 +23,10 @@
     "types"
   ],
   "scripts": {
-    "prebuild": "rimraf dist types",
-    "build": "tsc && cpy './src/assets/**' './dist/assets/'",
+    "generate:webfs": "openapi-generator-cli generate",
+    "generate": "yarn generate:webfs",
+    "prebuild": "rimraf dist types src/webfs/api",
+    "build": "yarn generate && tsc && cpy './src/assets/**' './dist/assets/'",
     "test": "jest --coverage",
     "test:watch": "jest --coverage --watch",
     "demo": "webpack serve --config demo-compositor/webpack.config.js"
@@ -38,6 +40,7 @@
     "xtsb": "0.0.1-alpha.8"
   },
   "devDependencies": {
+    "@openapitools/openapi-generator-cli": "^2.4.26",
     "@types/jest": "^27.0.1",
     "@types/node": "^16.9.2",
     "@typescript-eslint/eslint-plugin": "^4.31.1",

@@ -1,6 +1,6 @@
 import { unlink } from 'fs/promises'
 
-import { App, us_listen_socket, us_listen_socket_close } from 'uWebSockets.js'
+import { App, HttpRequest, HttpResponse, us_listen_socket, us_listen_socket_close } from 'uWebSockets.js'
 import { CloseEventLike, MessageEventLike, WebSocketLike, ReadyState } from 'retransmitting-websocket'
 import { createCompositorProxySession } from './CompositorProxySession'
 import { config } from './config'
@@ -8,6 +8,8 @@ import { closeAllWebSockets, upsertWebSocket } from './ConnectionPool'
 import { createLogger } from './Logger'
 import { initSurfaceBufferEncoding } from './SurfaceBufferEncoding'
 import { UWebSocketLike } from './UWebSocketLike'
+import { Readable, Writable } from 'stream'
+import { closeFd, fdAsReadStream, fdAsWriteStream } from './webfs/ProxyWebFS'
 
 const compositorSessionId = process.env.COMPOSITOR_SESSION_ID
 
@@ -50,17 +52,98 @@ function handleWebSocketConnection(ws: WebSocketLike, searchParams: URLSearchPar
     } else {
       compositorProxySession.handleConnection(retransmittingWebSocket)
     }
-  } else if (searchParams.has('type') && searchParams.has('fd')) {
-    // data transfer
-    const fd = Number.parseInt(searchParams.get('fd') ?? '0')
-    logger.info(`Handling incoming data transfer with params: ${searchParams}`)
-    compositorProxySession.nativeCompositorSession.webFS.incomingDataTransfer(ws, {
-      fd,
-    })
   } else {
     const message = 'Bad or missing query parameters.'
     logger.error(message)
     ws.close(4403, message)
+  }
+}
+
+function pipeHttpRequestToWritable(httpResponse: HttpResponse, writable: Writable) {
+  writable
+    .on('drain', () => httpResponse.resume())
+    // TODO log error
+    .on('error', (err) => httpResponse.writeStatus('500 Internal Server Error').end())
+    .on('finish', () => httpResponse.writeStatus('200 OK').end())
+
+  httpResponse
+    .onAborted(() => writable.end())
+    .onData((chunk, isLast) => {
+      if (!writable.write(chunk.slice(0))) {
+        httpResponse.pause()
+      } else if (isLast) {
+        writable.end()
+      }
+    })
+}
+
+function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readable) {
+  let lastOffset = 0
+  let dataChunk: Uint8Array | undefined = undefined
+
+  httpResponse
+    .onAborted(() => readable.destroy())
+    .onWritable((newOffset: number) => {
+      if (dataChunk === undefined) {
+        return true
+      }
+
+      const offsetIncrement = newOffset - lastOffset
+      dataChunk = new Uint8Array(
+        dataChunk.buffer,
+        dataChunk.byteOffset + offsetIncrement,
+        dataChunk.byteLength - offsetIncrement,
+      )
+      const ok = httpResponse.write(dataChunk)
+      if (ok) {
+        dataChunk = undefined
+        readable.resume()
+      }
+
+      return ok
+    })
+
+  readable
+    // TODO log error
+    .on('error', (error) => httpResponse.writeStatus('500 Internal Server Error').end())
+    .on('end', () => httpResponse.writeStatus('200 OK').end())
+    .on('data', (chunk) => {
+      dataChunk = chunk
+      lastOffset = httpResponse.getWriteOffset()
+      if (!httpResponse.write(chunk)) {
+        readable.pause()
+      }
+    })
+}
+
+function withFdParam(fdAction: (res: HttpResponse, req: HttpRequest, fd: number) => void) {
+  return (res: HttpResponse, req: HttpRequest) => {
+    const fdParam = req.getParameter(0)
+    if (fdParam == null) {
+      res.writeStatus('400 Bad Request')
+      res.end()
+      return
+    }
+
+    const fd = Number.parseInt(fdParam)
+    if (Number.isNaN(fd)) {
+      res.writeStatus('400 Bad Request')
+      res.end()
+      return
+    }
+
+    fdAction(res, req, fd)
+  }
+}
+
+function withAuth(authorizedAction: (res: HttpResponse, req: HttpRequest) => void) {
+  return (res: HttpResponse, req: HttpRequest) => {
+    if (req.getHeader('x-compositor-session-id') === compositorSessionId) {
+      authorizedAction(res, req)
+    } else {
+      res.writeStatus('401 Unauthorized')
+      res.end()
+    }
   }
 }
 
@@ -76,6 +159,55 @@ async function main() {
 
   const serverStart = new Promise<us_listen_socket>((resolve, reject) => {
     App()
+      .post(
+        '/mkfifo',
+        withAuth((res, req) => {
+          // TODO
+        }),
+      )
+      .post(
+        '/mkstemp-mmap',
+        withAuth((res, req) => {
+          // TODO
+        }),
+      )
+      .get(
+        '/webfd/:fd',
+        withAuth(
+          withFdParam((res, req, fd) => {
+            // TODO
+          }),
+        ),
+      )
+      .del(
+        '/webfd/:fd',
+        withAuth(
+          withFdParam((res, req, fd) => {
+            closeFd(fd, (err) => {
+              if (err) {
+              } else {
+                res.writeStatus('200 OK').end()
+              }
+            })
+          }),
+        ),
+      )
+      .get(
+        '/webfd/:fd/stream',
+        withAuth(
+          withFdParam((res, req, fd) => {
+            pipeReadableToHttpResponse(res, fdAsReadStream(fd))
+          }),
+        ),
+      )
+      .put(
+        '/webfd/:fd/stream',
+        withAuth(
+          withFdParam((res, req, fd) => {
+            pipeHttpRequestToWritable(res, fdAsWriteStream(fd))
+          }),
+        ),
+      )
       .ws('/', {
         sendPingsAutomatically: 10000,
         maxPayloadLength: 4 * 1024 * 1024,
