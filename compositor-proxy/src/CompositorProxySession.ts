@@ -37,7 +37,7 @@ export function createCompositorProxySession(compositorSessionId: string): Compo
   return compositorProxySession
 }
 
-class CompositorProxySession {
+export class CompositorProxySession {
   private destroyResolve?: (value: void | PromiseLike<void>) => void
   private _destroyPromise = new Promise<void>((resolve) => {
     this.destroyResolve = resolve

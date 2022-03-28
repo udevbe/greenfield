@@ -1,44 +1,13 @@
-import fs, { WriteStream } from 'fs'
+import fs from 'fs'
 import http from 'http'
 import { Endpoint } from 'westfield-endpoint'
-import { createLogger } from '../Logger'
 import { Webfd } from './types'
-import { Readable, Writable } from 'stream'
-import { HttpResponse } from 'uWebSockets.js'
-
-const logger = createLogger('webfs')
 
 // 64*1024=64kb
 export const TRANSFER_CHUNK_SIZE = 65792 as const
 
-/* Either onAborted or simply finished request */
-function onAbortedOrFinishedResponse(res: HttpResponse, readStream: Readable) {
-  if (res.id == -1) {
-    console.log('ERROR! onAbortedOrFinishedResponse called twice for the same res!')
-  } else {
-    console.log('Stream was closed')
-    console.timeEnd(res.id)
-    readStream.destroy()
-  }
-
-  /* Mark this response already accounted for */
-  res.id = -1
-}
-
 export function createCompositorProxyWebFS(compositorSessionId: string, baseURL: string): AppEndpointWebFS {
   return new AppEndpointWebFS(compositorSessionId, baseURL)
-}
-
-export function closeFd(fd: number, doneCallback: (err: NodeJS.ErrnoException | null) => void): void {
-  fs.close(fd, doneCallback)
-}
-
-export function fdAsWriteStream(fd: number): WriteStream {
-  return fs.createWriteStream('ignored', { fd, highWaterMark: TRANSFER_CHUNK_SIZE, autoClose: true })
-}
-
-export function fdAsReadStream(fd: number) {
-  return fs.createReadStream('ignored', { fd, highWaterMark: TRANSFER_CHUNK_SIZE, autoClose: true })
 }
 
 export class AppEndpointWebFS {
@@ -56,7 +25,7 @@ export class AppEndpointWebFS {
   }
 
   /**
-   * Returns a native write pipe fd that -when written- will transfer its data to the given websocket
+   * Returns a native write pipe fd that -when written- will transfer its data to the given webfd host
    */
   private toNativePipeWriteFD(webfd: Webfd): number {
     const resultBuffer = new Uint32Array(2)

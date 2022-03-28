@@ -16,6 +16,10 @@ components:
   responses:
     UnauthorizedError:
       description: Authentication information is missing or invalid
+      content:
+        text/plain:
+          schema:
+            type: string
   schemas:
     WebFD:
       description: >
@@ -50,6 +54,7 @@ components:
           example: 'https://proxy-endpoint.com:8081'
           type: string
           format: uri
+          pattern: '^(https?)://'
           readOnly: true
 
 paths:
@@ -67,9 +72,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/WebFD"
-                  minItems: 2
-                  maxItems: 2
+                  $ref: '#/components/schemas/WebFD'
                 example:
                   - fd: 8
                     type: pipe-read
@@ -78,7 +81,7 @@ paths:
                     type: pipe-write
                     location: https://some.proxy.com:8181
         401:
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: '#/components/responses/UnauthorizedError'
   /mkstemp-mmap:
     post:
       tags:
@@ -98,13 +101,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/WebFD"
+                $ref: '#/components/schemas/WebFD'
               example:
                 fd: 10
                 type: shm
                 location: https://some.proxy.com:8181
+        400:
+          description: Bad request. Bad or no content.
+          content:
+            text/plain:
+              schema:
+                type: string
         401:
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: '#/components/responses/UnauthorizedError'
   /webfd/{fd}:
     delete:
       tags:
@@ -124,13 +133,25 @@ paths:
         200:
           description: File descriptor closed succesfully.
         401:
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: '#/components/responses/UnauthorizedError'
         400:
           description: Bad request. FD must be an integer greater than or equal to zero.
+          content:
+            text/plain:
+              schema:
+                type: string
         404:
           description: FD not known.
+          content:
+            text/plain:
+              schema:
+                type: string
         5XX:
           description: Unexpected error.
+          content:
+            text/plain:
+              schema:
+                type: string
     get:
       tags:
         - webfs
@@ -162,13 +183,25 @@ paths:
                 type: string
                 format: binary
         401:
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: '#/components/responses/UnauthorizedError'
         400:
           description: Bad request. FD and count must be an integer greater than or equal to zero.
+          content:
+            text/plain:
+              schema:
+                type: string
         404:
           description: FD not known.
+          content:
+            text/plain:
+              schema:
+                type: string
         5XX:
           description: Unexpected error.
+          content:
+            text/plain:
+              schema:
+                type: string
   /webfd/{fd}/stream:
     put:
       tags:
@@ -201,13 +234,25 @@ paths:
         200:
           description: All content sent succesfully.
         401:
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: '#/components/responses/UnauthorizedError'
         400:
           description: Bad request. FD and chunkSize must be an integer greater than or equal to zero.
+          content:
+            text/plain:
+              schema:
+                type: string
         404:
           description: FD not known.
+          content:
+            text/plain:
+              schema:
+                type: string
         5XX:
           description: Unexpected error.
+          content:
+            text/plain:
+              schema:
+                type: string
     get:
       tags:
         - webfs
@@ -237,10 +282,22 @@ paths:
                 type: string
                 format: binary
         401:
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: '#/components/responses/UnauthorizedError'
         400:
           description: Bad request. FD and chunkSize must be an integer greater than or equal to zero.
+          content:
+            text/plain:
+              schema:
+                type: string
         404:
           description: FD not known.
+          content:
+            text/plain:
+              schema:
+                type: string
         5XX:
           description: Unexpected error.
+          content:
+            text/plain:
+              schema:
+                type: string
