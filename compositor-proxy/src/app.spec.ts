@@ -150,7 +150,8 @@ describe('compositor-proxy', () => {
 
   it('reads a chunk from a WebFD', (done) => {
     // Given
-    const handle = Endpoint.createMemoryMappedFile(Buffer.from([1, 2, 3]))
+    const sendBuffer = Buffer.from([1, 2, 3])
+    const handle = Endpoint.createMemoryMappedFile(sendBuffer)
     const webfd: Webfd = { handle, type: 'shm', host }
     // When
     request(host)
@@ -162,7 +163,7 @@ describe('compositor-proxy', () => {
       .expect('Content-Type', 'application/octet-stream')
       // TODO enable this once https://github.com/openapi-library/OpenAPIValidators/issues/275  is fixed
       //.expect((res) => expect(res).toSatisfyApiSpec())
-      .expect(Buffer.from([1, 2]))
+      .expect(sendBuffer)
       .end((err, res) => {
         fs.close(handle)
         done(err, res)
@@ -286,6 +287,71 @@ describe('compositor-proxy', () => {
       .put(`/webfd/123/stream`)
       .set('X-Compositor-Session-Id', compositorSessionId)
       .set('Content-Type', 'application/octet-stream')
+      // Then
+      .expect(404)
+      .expect('Content-Type', 'text/plain')
+      .expect((res) => expect(res).toSatisfyApiSpec())
+      .end(done)
+  })
+
+  it('streams data from a webfd', (done) => {
+    // Given
+    const pipefds = new Uint32Array(2)
+    Endpoint.makePipe(pipefds)
+    const [readPipeHandle, writePipeHandle] = pipefds
+    const buffer = Buffer.from([1, 2, 3])
+
+    // When
+    fs.writeFile(writePipeHandle, buffer, null, (err) => {
+      if (err) {
+        done(err)
+      }
+      fs.close(writePipeHandle)
+    })
+
+    request(host)
+      .get(`/webfd/${readPipeHandle}/stream`)
+      .set('X-Compositor-Session-Id', compositorSessionId)
+      // Then
+      .expect(200)
+      .expect('Content-Type', 'application/octet-stream')
+      // TODO enable this once https://github.com/openapi-library/OpenAPIValidators/issues/275  is fixed
+      //.expect((res) => expect(res).toSatisfyApiSpec())
+      .expect(buffer)
+      .end(done)
+  })
+
+  it('checks authorization when streaming data from a webfd', (done) => {
+    // Given
+    // When
+    request(host)
+      .get(`/webfd/123/stream`)
+      // Then
+      .expect(401)
+      .expect('Content-Type', 'text/plain')
+      .expect((res) => expect(res).toSatisfyApiSpec())
+      .end(done)
+  })
+
+  it('checks for a malformed fd when streaming data from a webfd', (done) => {
+    // Given
+    // When
+    request(host)
+      .get(`/webfd/abc/stream`)
+      .set('X-Compositor-Session-Id', compositorSessionId)
+      // Then
+      .expect(400)
+      .expect('Content-Type', 'text/plain')
+      .expect((res) => expect(res).toSatisfyApiSpec())
+      .end(done)
+  })
+
+  it('checks for unknown fd when streaming data from a webfd', (done) => {
+    // Given
+    // When
+    request(host)
+      .get(`/webfd/123/stream`)
+      .set('X-Compositor-Session-Id', compositorSessionId)
       // Then
       .expect(404)
       .expect('Content-Type', 'text/plain')

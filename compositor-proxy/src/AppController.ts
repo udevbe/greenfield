@@ -166,7 +166,9 @@ function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readab
   let dataChunk: Uint8Array | undefined = undefined
 
   httpResponse
-    .onAborted(() => readable.destroy())
+    .onAborted(() => {
+      readable.destroy()
+    })
     .onWritable((newOffset: number) => {
       let ok = true
       httpResponse.cork(() => {
@@ -193,7 +195,8 @@ function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readab
     // TODO log error
     .on('error', (error) => {
       httpResponse.cork(() => {
-        if (error.name === 'EBADF') {
+        // @ts-ignore
+        if (error.code === 'EBADF') {
           httpResponse
             .writeStatus('404 Not Found')
             .writeHeader('Content-Type', 'text/plain')
@@ -203,9 +206,10 @@ function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readab
         }
       })
     })
-    .on('end', () =>
+    .on('end', () => httpResponse.cork(() => httpResponse.end()))
+    .once('data', () =>
       httpResponse.cork(() =>
-        httpResponse.writeStatus('200 OK').writeHeader('Content-Type', 'application/octet-stream').end(),
+        httpResponse.writeStatus('200 OK').writeHeader('Content-Type', 'application/octet-stream'),
       ),
     )
     .on('data', (chunk) => {
@@ -227,14 +231,11 @@ export function getWebFDStream(
 ) {
   const fd = asNumber(fdParam)
   if (fd === undefined) {
-    res.writeStatus('400 Bad Request').end()
+    res.writeStatus('400 Bad Request').writeHeader('Content-Type', 'text/plain').end('Bad argument')
     return
   }
 
-  pipeReadableToHttpResponse(
-    res,
-    fs.createReadStream('ignored', { fd, highWaterMark: TRANSFER_CHUNK_SIZE, autoClose: true }),
-  )
+  pipeReadableToHttpResponse(res, fs.createReadStream('ignored', { fd, highWaterMark: TRANSFER_CHUNK_SIZE }))
 }
 
 function pipeHttpRequestToWritable(httpResponse: HttpResponse, writable: Writable) {
@@ -284,10 +285,7 @@ export function putWebFDStream(
     return
   }
 
-  pipeHttpRequestToWritable(
-    res,
-    fs.createWriteStream('ignored', { fd, highWaterMark: TRANSFER_CHUNK_SIZE, autoClose: true }),
-  )
+  pipeHttpRequestToWritable(res, fs.createWriteStream('ignored', { fd, highWaterMark: TRANSFER_CHUNK_SIZE }))
 }
 
 export function webSocketOpen(
