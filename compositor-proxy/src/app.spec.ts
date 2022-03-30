@@ -1,4 +1,4 @@
-import request from 'supertest'
+import request, { agent } from 'supertest'
 import { us_listen_socket, us_listen_socket_close } from 'uWebSockets.js'
 import { createApp } from './App'
 import { CompositorProxySession, createCompositorProxySession } from './CompositorProxySession'
@@ -7,6 +7,7 @@ import path from 'path'
 import { Webfd } from './webfs/types'
 import { Endpoint } from 'westfield-endpoint'
 import fs from 'fs'
+import http from 'http'
 
 describe('compositor-proxy', () => {
   jestOpenAPI(path.resolve('./api.yaml'))
@@ -24,8 +25,8 @@ describe('compositor-proxy', () => {
 
   afterEach(async () => {
     us_listen_socket_close(app)
-    compositorProxySession.nativeCompositorSession.destroy()
-    await compositorProxySession.onDestroy()
+    // compositorProxySession.nativeCompositorSession.destroy()
+    // await compositorProxySession.onDestroy()
   })
 
   it('creates a native pipe', (done) => {
@@ -163,7 +164,7 @@ describe('compositor-proxy', () => {
       .expect('Content-Type', 'application/octet-stream')
       // TODO enable this once https://github.com/openapi-library/OpenAPIValidators/issues/275  is fixed
       //.expect((res) => expect(res).toSatisfyApiSpec())
-      .expect(sendBuffer)
+      .expect(Buffer.from([1, 2]))
       .end((err, res) => {
         fs.close(handle)
         done(err, res)
@@ -320,6 +321,54 @@ describe('compositor-proxy', () => {
       .expect(buffer)
       .end(done)
   })
+
+  it('handles backpressure when streaming data from a webfd', (done) => {
+    // Given
+    const pipefds = new Uint32Array(2)
+    Endpoint.makePipe(pipefds)
+    const [readPipeHandle, writePipeHandle] = pipefds
+    // send 8MB of data
+    const buffer = Buffer.allocUnsafe(8 * 1024 * 1024).fill('ABC')
+
+    // When
+    fs.writeFile(writePipeHandle, buffer, null, (err) => {
+      if (err) {
+        done(err)
+      }
+      fs.close(writePipeHandle)
+    })
+
+    const httpRequest = http
+      .request(
+        {
+          hostname: 'localhost',
+          port: 8888,
+          path: `/webfd/${readPipeHandle}/stream`,
+          method: 'GET',
+          headers: {
+            ['X-Compositor-Session-Id']: compositorSessionId,
+          },
+        },
+        (res) => {
+          res.pause()
+          const receiveChunks: Buffer[] = []
+          const intervalId = setInterval(() => {
+            // slowly read 1MB chunks to trigger backpressure
+            const result: Buffer = res.read(1024 * 1024)
+            if (result) {
+              receiveChunks.push(result)
+            }
+          }, 250)
+          res.on('close', () => {
+            clearInterval(intervalId)
+            const chunksLength = Buffer.concat(receiveChunks).byteLength
+            expect(chunksLength).toBe(buffer.byteLength)
+            done()
+          })
+        },
+      )
+      .end()
+  }, 60000)
 
   it('checks authorization when streaming data from a webfd', (done) => {
     // Given

@@ -38,9 +38,11 @@ export class AppEndpointWebFS {
       highWaterMark: TRANSFER_CHUNK_SIZE,
     })
 
+    const url = new URL(webfd.host)
     const httpRequest = http.request(
       {
-        hostname: webfd.host,
+        hostname: url.hostname,
+        port: url.port,
         path: `/webfd/${webfd.handle}/stream`,
         method: 'PUT',
         searchParams: new URLSearchParams({

@@ -57,9 +57,9 @@ export function createApp(compositorProxySession: CompositorProxySession, port: 
       .put('/webfd/:fd/stream', withAuth(compositorProxySession, withParams(1, putWebFDStream)))
       .ws('/', {
         // TODO set some more sensible numbers & implement backpressure when sending over websocket
-        sendPingsAutomatically: 10000,
-        maxPayloadLength: 4194304,
-        maxBackpressure: 4194304,
+        // sendPingsAutomatically: 10000,
+        // maxPayloadLength: 4194304,
+        // maxBackpressure: 4194304,
         upgrade: (res, req, context) => {
           /* This immediately calls open handler, you must not use res after this call */
           res.upgrade(

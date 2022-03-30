@@ -214,9 +214,9 @@ function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readab
     )
     .on('data', (chunk) => {
       httpResponse.cork(() => {
-        dataChunk = chunk
         lastOffset = httpResponse.getWriteOffset()
         if (!httpResponse.write(chunk)) {
+          dataChunk = chunk
           readable.pause()
         }
       })
