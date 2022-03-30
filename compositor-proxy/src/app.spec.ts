@@ -25,8 +25,8 @@ describe('compositor-proxy', () => {
 
   afterEach(async () => {
     us_listen_socket_close(app)
-    // compositorProxySession.nativeCompositorSession.destroy()
-    // await compositorProxySession.onDestroy()
+    compositorProxySession.nativeCompositorSession.destroy()
+    await compositorProxySession.onDestroy()
   })
 
   it('creates a native pipe', (done) => {

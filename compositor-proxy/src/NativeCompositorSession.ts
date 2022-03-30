@@ -41,27 +41,13 @@ function onGlobalDestroyed(globalName: number): void {
 }
 
 export function createNativeCompositorSession(compositorSessionId: string): NativeCompositorSession {
-  const compositorSession = new NativeCompositorSession(compositorSessionId)
-
-  const wlDisplayFd = Endpoint.getFd(compositorSession.wlDisplay)
-
-  // TODO handle err
-  // TODO write our own native epoll
-  const fdWatcher = new Epoll((err: unknown) => {
-    if (err) {
-      console.error('epoll error: ', err)
-      process.exit(1)
-    }
-    Endpoint.dispatchRequests(compositorSession.wlDisplay)
-  })
-  fdWatcher.add(wlDisplayFd, Epoll.EPOLLPRI | Epoll.EPOLLIN | Epoll.EPOLLERR)
-
-  return compositorSession
+  return new NativeCompositorSession(compositorSessionId)
 }
 
 export class NativeCompositorSession {
   readonly wlDisplay: unknown
   readonly waylandDisplay: string
+  private readonly wlDisplayFdWatcher: Epoll
 
   private destroyResolve?: (value: void | PromiseLike<void>) => void
   private destroyPromise: Promise<void> = new Promise<void>((resolve) => {
@@ -82,6 +68,17 @@ export class NativeCompositorSession {
     this.waylandDisplay = Endpoint.addSocketAuto(this.wlDisplay)
     Endpoint.initShm(this.wlDisplay)
 
+    // TODO handle err
+    // TODO write our own native epoll
+    this.wlDisplayFdWatcher = new Epoll((err: unknown) => {
+      if (err) {
+        console.error('epoll error: ', err)
+        process.exit(1)
+      }
+      Endpoint.dispatchRequests(this.wlDisplay)
+    })
+    this.wlDisplayFdWatcher.add(Endpoint.getFd(this.wlDisplay), Epoll.EPOLLPRI | Epoll.EPOLLIN | Epoll.EPOLLERR)
+
     logger.info(`Listening on: WAYLAND_DISPLAY="${this.waylandDisplay}".`)
   }
 
@@ -93,6 +90,8 @@ export class NativeCompositorSession {
     if (this.destroyResolve === undefined) {
       return
     }
+
+    this.wlDisplayFdWatcher.close()
 
     this.clients.forEach((client) => client.nativeClientSession?.destroy())
     Endpoint.destroyDisplay(this.wlDisplay)
