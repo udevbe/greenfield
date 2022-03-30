@@ -162,33 +162,13 @@ export function delWebFD(
 }
 
 function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readable) {
-  let lastOffset = 0
-  let dataChunk: Uint8Array | undefined = undefined
-
   httpResponse
     .onAborted(() => {
       readable.destroy()
     })
-    .onWritable((newOffset: number) => {
-      let ok = true
-      httpResponse.cork(() => {
-        if (dataChunk === undefined) {
-          return
-        }
-
-        const offsetIncrement = newOffset - lastOffset
-        dataChunk = new Uint8Array(
-          dataChunk.buffer,
-          dataChunk.byteOffset + offsetIncrement,
-          dataChunk.byteLength - offsetIncrement,
-        )
-        ok = httpResponse.write(dataChunk)
-        if (ok) {
-          dataChunk = undefined
-          readable.resume()
-        }
-      })
-      return ok
+    .onWritable(() => {
+      readable.resume()
+      return true
     })
 
   readable
@@ -214,9 +194,7 @@ function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readab
     )
     .on('data', (chunk) => {
       httpResponse.cork(() => {
-        lastOffset = httpResponse.getWriteOffset()
         if (!httpResponse.write(chunk)) {
-          dataChunk = chunk
           readable.pause()
         }
       })

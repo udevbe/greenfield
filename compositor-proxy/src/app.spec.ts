@@ -200,7 +200,7 @@ describe('compositor-proxy', () => {
     // Given
     // When
     request(host)
-      .get(`/webfd/123`)
+      .get(`/webfd/123456`)
       .set('X-Compositor-Session-Id', compositorSessionId)
       .query({ count: 'abc' })
       // Then
@@ -214,7 +214,7 @@ describe('compositor-proxy', () => {
     // Given
     // When
     request(host)
-      .get(`/webfd/123`)
+      .get(`/webfd/123456`)
       .set('X-Compositor-Session-Id', compositorSessionId)
       .query({ count: 123 })
       // Then
@@ -258,7 +258,7 @@ describe('compositor-proxy', () => {
     // Given
     // When
     request(host)
-      .put(`/webfd/123/stream`)
+      .put(`/webfd/123456/stream`)
       .set('Content-Type', 'application/octet-stream')
       // Then
       .expect(401)
@@ -285,7 +285,7 @@ describe('compositor-proxy', () => {
     // Given
     // When
     request(host)
-      .put(`/webfd/123/stream`)
+      .put(`/webfd/123456/stream`)
       .set('X-Compositor-Session-Id', compositorSessionId)
       .set('Content-Type', 'application/octet-stream')
       // Then
@@ -368,13 +368,13 @@ describe('compositor-proxy', () => {
         },
       )
       .end()
-  }, 60000)
+  })
 
   it('checks authorization when streaming data from a webfd', (done) => {
     // Given
     // When
     request(host)
-      .get(`/webfd/123/stream`)
+      .get(`/webfd/123456/stream`)
       // Then
       .expect(401)
       .expect('Content-Type', 'text/plain')
@@ -399,7 +399,7 @@ describe('compositor-proxy', () => {
     // Given
     // When
     request(host)
-      .get(`/webfd/123/stream`)
+      .get(`/webfd/123456/stream`)
       .set('X-Compositor-Session-Id', compositorSessionId)
       // Then
       .expect(404)
