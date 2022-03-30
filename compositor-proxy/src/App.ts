@@ -3,13 +3,13 @@ import { UWebSocketLike } from './UWebSocketLike'
 import { CloseEventLike, MessageEventLike, ReadyState } from 'retransmitting-websocket'
 import { CompositorProxySession } from './CompositorProxySession'
 import {
-  delWebFD,
-  getWebFD,
-  getWebFDStream,
+  DELWebFD,
+  GETWebFD,
+  GETWebFDStream,
   webSocketOpen,
-  postMkFifo,
-  postMkstempMmap,
-  putWebFDStream,
+  POSTMkFifo,
+  POSTMkstempMmap,
+  PUTWebFDStream,
 } from './AppController'
 
 function withParams(
@@ -46,15 +46,18 @@ function withAuth(
   }
 }
 
-export function createApp(compositorProxySession: CompositorProxySession, port: number): Promise<us_listen_socket> {
+export function createApp(
+  compositorProxySession: CompositorProxySession,
+  { host, port }: { host: string; port: number },
+): Promise<us_listen_socket> {
   return new Promise<us_listen_socket>((resolve, reject) => {
     App()
-      .post('/mkfifo', withAuth(compositorProxySession, postMkFifo))
-      .post('/mkstemp-mmap', withAuth(compositorProxySession, postMkstempMmap))
-      .get('/webfd/:fd', withAuth(compositorProxySession, withParams(1, getWebFD)))
-      .del('/webfd/:fd', withAuth(compositorProxySession, withParams(1, delWebFD)))
-      .get('/webfd/:fd/stream', withAuth(compositorProxySession, withParams(1, getWebFDStream)))
-      .put('/webfd/:fd/stream', withAuth(compositorProxySession, withParams(1, putWebFDStream)))
+      .post('/mkfifo', withAuth(compositorProxySession, POSTMkFifo))
+      .post('/mkstemp-mmap', withAuth(compositorProxySession, POSTMkstempMmap))
+      .get('/webfd/:fd', withAuth(compositorProxySession, withParams(1, GETWebFD)))
+      .del('/webfd/:fd', withAuth(compositorProxySession, withParams(1, DELWebFD)))
+      .get('/webfd/:fd/stream', withAuth(compositorProxySession, withParams(1, GETWebFDStream)))
+      .put('/webfd/:fd/stream', withAuth(compositorProxySession, withParams(1, PUTWebFDStream)))
       .ws('/', {
         // TODO set some more sensible numbers & implement backpressure when sending over websocket
         // sendPingsAutomatically: 10000,
@@ -101,8 +104,12 @@ export function createApp(compositorProxySession: CompositorProxySession, port: 
           ws.websocketlike.readyState = ReadyState.CLOSED
         },
       })
-      .listen(port, (listenSocket) => {
-        resolve(listenSocket)
+      .listen(host, port, (listenSocket) => {
+        if (listenSocket) {
+          resolve(listenSocket)
+        } else {
+          reject(new Error(`Failed to start compositor proxy on host: ${host} with port ${port}`))
+        }
       })
   })
 }

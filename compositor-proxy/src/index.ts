@@ -36,7 +36,8 @@ async function main() {
   initSurfaceBufferEncoding()
 
   const port = config.server.bindPort
-  const listenSocket = await createApp(compositorProxySession, port)
+  const host = config.server.bindIP
+  const listenSocket = await createApp(compositorProxySession, { host, port })
 
   process.on('SIGTERM', async () => {
     logger.info('Received SIGTERM. Closing connections.')
@@ -47,7 +48,7 @@ async function main() {
     process.exit()
   })
 
-  logger.info(`Compositor proxy started. Listening on port ${port}`)
+  logger.info(`Compositor proxy started. Listening on ${host}:${port}`)
   deleteStartingFile()
 }
 

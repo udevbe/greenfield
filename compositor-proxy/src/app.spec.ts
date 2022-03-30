@@ -13,14 +13,15 @@ describe('compositor-proxy', () => {
   jestOpenAPI(path.resolve('./api.yaml'))
 
   const port = 8888
-  const host = `http://localhost:${port}`
+  const hostName = '0.0.0.0'
+  const host = `${hostName}:${port}`
   const compositorSessionId = 'test_compositor_session_id'
   let app: us_listen_socket
   let compositorProxySession: CompositorProxySession
 
   beforeEach(async () => {
     compositorProxySession = createCompositorProxySession(compositorSessionId)
-    app = await createApp(compositorProxySession, port)
+    app = await createApp(compositorProxySession, { host: hostName, port })
   })
 
   afterEach(async () => {
@@ -32,7 +33,7 @@ describe('compositor-proxy', () => {
   it('creates a native pipe', (done) => {
     // Given
     // When
-    request(host)
+    request('localhost:8888')
       .post('/mkfifo')
       .set('X-Compositor-Session-Id', compositorSessionId)
       // Then
@@ -250,6 +251,37 @@ describe('compositor-proxy', () => {
         return
       }
       expect(data).toEqual(sendBuffer)
+      done()
+    })
+  })
+
+  it('handles backpressure when streaming data to a webfd', (done) => {
+    // Given
+    const pipefds = new Uint32Array(2)
+    Endpoint.makePipe(pipefds)
+    const [readPipeHandle, writePipeHandle] = pipefds
+    // send 8MB of data
+    const buffer = Buffer.allocUnsafe(8 * 1024 * 1024).fill('ABC')
+    // When
+    request(host)
+      .put(`/webfd/${writePipeHandle}/stream`)
+      .set('X-Compositor-Session-Id', compositorSessionId)
+      .set('Content-Type', 'application/octet-stream')
+      .send(buffer)
+      // Then
+      .expect(200)
+      .expect((res) => expect(res).toSatisfyApiSpec())
+      .end((err, res) => {
+        fs.close(pipefds[0])
+        fs.close(pipefds[1])
+      })
+
+    fs.readFile(readPipeHandle, (err, data) => {
+      if (err) {
+        done(err)
+        return
+      }
+      expect(data.byteLength).toEqual(buffer.byteLength)
       done()
     })
   })

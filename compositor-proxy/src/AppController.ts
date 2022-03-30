@@ -10,12 +10,12 @@ import { URLSearchParams } from 'url'
 
 const logger = createLogger('app')
 
-export function postMkFifo(compositorProxySession: CompositorProxySession, res: HttpResponse, req: HttpRequest) {
+export function POSTMkFifo(compositorProxySession: CompositorProxySession, res: HttpResponse) {
   const jsonPipe = JSON.stringify(compositorProxySession.nativeCompositorSession.webFS.mkpipe())
   res.writeStatus('201 Created').writeHeader('Content-Type', 'application/json').end(jsonPipe)
 }
 
-export function postMkstempMmap(compositorProxySession: CompositorProxySession, res: HttpResponse, req: HttpRequest) {
+export function POSTMkstempMmap(compositorProxySession: CompositorProxySession, res: HttpResponse, req: HttpRequest) {
   const bufferChunks: Uint8Array[] = []
 
   res.onAborted(() => {
@@ -26,10 +26,11 @@ export function postMkstempMmap(compositorProxySession: CompositorProxySession, 
     if (isLast) {
       const buffer = Buffer.concat(bufferChunks)
       if (buffer.byteLength === 0) {
+        // TODO log error
         res
           .writeStatus('400 Bad Request')
           .writeHeader('Content-Type', 'text/plain')
-          .end('Bad argument. Data can not be empty.')
+          .end('Data in HTTP request body can not be empty.')
         return
       }
       const jsonShmWebFD = JSON.stringify(compositorProxySession.nativeCompositorSession.webFS.mkstempMmap(buffer))
@@ -51,16 +52,21 @@ function asNumber(stringParam: string | null | undefined): number | undefined {
   return numberValue
 }
 
-export function getWebFD(
+export function GETWebFD(
   compositorProxySession: CompositorProxySession,
   httpResponse: HttpResponse,
   httpRequest: HttpRequest,
   [fdParam]: string[],
 ) {
   const fd = asNumber(fdParam)
-  const count = asNumber(new URLSearchParams(httpRequest.getQuery()).get('count'))
+  const countParam = new URLSearchParams(httpRequest.getQuery()).get('count')
+  const count = asNumber(countParam)
   if (fd === undefined || count === undefined) {
-    httpResponse.writeStatus('400 Bad Request').writeHeader('Content-Type', 'text/plain').end('Bad argument.')
+    // TODO log error
+    httpResponse
+      .writeStatus('400 Bad Request')
+      .writeHeader('Content-Type', 'text/plain')
+      .end(`File descriptor and count argument must be a positive integer. Got fd: ${fdParam}, count: ${count}`)
     return
   }
 
@@ -73,7 +79,7 @@ export function getWebFD(
   fs.read(fd, readBuffer, 0, count, 0, (err, bytesRead, chunk) => {
     httpResponse.cork(() => {
       if (err) {
-        // TODO check error and write better status
+        // TODO log error
         if (err.code === 'EBADF') {
           httpResponse
             .writeStatus('404 Not Found')
@@ -83,7 +89,7 @@ export function getWebFD(
           httpResponse
             .writeStatus('500 Internal Server Error')
             .writeHeader('Content-Type', 'text/plain')
-            .end(`${err.name}: ${err.message}`)
+            .end(`Unexpected error: ${err.name}: ${err.message}`)
         }
         return
       }
@@ -124,7 +130,7 @@ export function getWebFD(
   })
 }
 
-export function delWebFD(
+export function DELWebFD(
   compositorProxySession: CompositorProxySession,
   httpResponse: HttpResponse,
   httpRequest: HttpRequest,
@@ -132,7 +138,11 @@ export function delWebFD(
 ) {
   const fd = asNumber(fdParam)
   if (fd === undefined) {
-    httpResponse.writeStatus('400 Bad Request').writeHeader('Content-Type', 'text/plain').end('Bad argument.')
+    // TODO log error
+    httpResponse
+      .writeStatus('400 Bad Request')
+      .writeHeader('Content-Type', 'text/plain')
+      .end(`File descriptor argument must be a positive integer. Got: ${fdParam}`)
     return
   }
 
@@ -142,6 +152,7 @@ export function delWebFD(
 
   fs.close(fd, (err) => {
     httpResponse.cork(() => {
+      // TODO log error
       if (err) {
         if (err.code === 'EBADF') {
           httpResponse
@@ -152,7 +163,7 @@ export function delWebFD(
           httpResponse
             .writeStatus('500 Internal Server Error')
             .writeHeader('Content-Type', 'text/plain')
-            .end(`${err.name}: ${err.message}`)
+            .end(`Unexpected error: ${err.name}: ${err.message}`)
         }
         return
       }
@@ -163,9 +174,7 @@ export function delWebFD(
 
 function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readable) {
   httpResponse
-    .onAborted(() => {
-      readable.destroy()
-    })
+    .onAborted(() => readable.destroy())
     .onWritable(() => {
       readable.resume()
       return true
@@ -182,7 +191,10 @@ function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readab
             .writeHeader('Content-Type', 'text/plain')
             .end('File descriptor not found.')
         } else {
-          httpResponse.writeStatus('500 Internal Server Error').end()
+          httpResponse
+            .writeStatus('500 Internal Server Error')
+            .writeHeader('Content-Type', 'text/plain')
+            .end(`Unexpected error: ${error.name}: ${error.message}`)
         }
       })
     })
@@ -201,7 +213,7 @@ function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readab
     })
 }
 
-export function getWebFDStream(
+export function GETWebFDStream(
   compositorProxySession: CompositorProxySession,
   res: HttpResponse,
   req: HttpRequest,
@@ -209,7 +221,11 @@ export function getWebFDStream(
 ) {
   const fd = asNumber(fdParam)
   if (fd === undefined) {
-    res.writeStatus('400 Bad Request').writeHeader('Content-Type', 'text/plain').end('Bad argument')
+    // TODO log error
+    res
+      .writeStatus('400 Bad Request')
+      .writeHeader('Content-Type', 'text/plain')
+      .end(`File descriptor argument must be a positive integer. Got: ${fdParam}`)
     return
   }
 
@@ -224,12 +240,17 @@ function pipeHttpRequestToWritable(httpResponse: HttpResponse, writable: Writabl
       httpResponse.cork(() => {
         // @ts-ignore
         if (error.code === 'EBADF') {
+          logger.error('Attempted to stream data to a non-existing FD.', error)
           httpResponse
             .writeStatus('404 Not Found')
             .writeHeader('Content-Type', 'text/plain')
             .end('File descriptor not found.')
         } else {
-          httpResponse.writeStatus('500 Internal Server Error').end()
+          logger.error('Unexpected error when trying to stream data to an FD.', error)
+          httpResponse
+            .writeStatus('500 Internal Server Error')
+            .writeHeader('Content-Type', 'text/plain')
+            .end(`${error.name}: ${error.message}`)
         }
       })
     })
@@ -251,7 +272,7 @@ function pipeHttpRequestToWritable(httpResponse: HttpResponse, writable: Writabl
     })
 }
 
-export function putWebFDStream(
+export function PUTWebFDStream(
   compositorProxySession: CompositorProxySession,
   res: HttpResponse,
   req: HttpRequest,
@@ -259,7 +280,11 @@ export function putWebFDStream(
 ) {
   const fd = asNumber(fdParam)
   if (fd === undefined) {
-    res.writeStatus('400 Bad Request').writeHeader('Content-Type', 'text/plain').end('Bad argument.')
+    // TODO log error
+    res
+      .writeStatus('400 Bad Request')
+      .writeHeader('Content-Type', 'text/plain')
+      .end(`FD argument must be an unsigned integer. Got: ${fdParam}`)
     return
   }
 
