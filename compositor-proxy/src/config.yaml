@@ -3,6 +3,8 @@ server:
   bindIP: 0.0.0.0
   # Port argument.
   bindPort: 8081
+  # CORS allowed origins
+  allowOrigin: '*'
 public:
   # The base url to use when connecting to this endpoint. This is required to
   # inform other endpoints when doing direct endpoint to endpoint transfers.

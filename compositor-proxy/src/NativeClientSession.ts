@@ -174,7 +174,7 @@ export class NativeClientSession {
    * Delegates messages from the browser compositor to its native counterpart.
    */
   private onWireMessageEvents(receiveBuffer: Uint32Array) {
-    logger.debug(`Delegating messages from browser to client. Total size: ${receiveBuffer.byteLength}`)
+    // logger.debug(`Delegating messages from browser to client. Total size: ${receiveBuffer.byteLength}`)
 
     if (this.inboundMessages.push(receiveBuffer) > 1) {
       return
@@ -216,7 +216,7 @@ export class NativeClientSession {
           consumed: 0,
           size: messageBuffer.length * 4 * Uint32Array.BYTES_PER_ELEMENT,
         })
-        logger.debug(`Sending messages to client. Total size: ${messageBuffer.byteLength}`)
+        // logger.debug(`Sending messages to client. Total size: ${messageBuffer.byteLength}`)
         Endpoint.sendEvents(this.wlClient, messageBuffer, fdsBuffer)
       }
       logger.debug('Flushing messages send to client.')
@@ -285,15 +285,15 @@ export class NativeClientSession {
       }
 
       // destination: 0 => browser only,  1 => native only, 2 => both
-      logger.debug(
-        `Message from client delegated to ${
-          destination === MessageDestination.BROWSER
-            ? 'browser'
-            : destination === MessageDestination.NATIVE
-            ? 'native'
-            : 'browser and native.'
-        }`,
-      )
+      // logger.debug(
+      //   `Message from client delegated to ${
+      //     destination === MessageDestination.BROWSER
+      //       ? 'browser'
+      //       : destination === MessageDestination.NATIVE
+      //       ? 'native'
+      //       : 'browser and native.'
+      //   }`,
+      // )
       return destination
     } catch (e: any) {
       logger.fatal(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
@@ -329,19 +329,21 @@ export class NativeClientSession {
     let offset = 0
     sendBuffer[offset++] = 0 // disable out-of-band
     sendBuffer[offset++] = nroFds
-    serializedWebFDs.forEach((serializedWebFD) => {
+    for (let i = 0; i < serializedWebFDs.length; i++) {
+      const serializedWebFD = serializedWebFDs[i]
       sendBuffer[offset++] = serializedWebFD.byteLength
       new Uint8Array(sendBuffer.buffer, offset * Uint32Array.BYTES_PER_ELEMENT, serializedWebFD.length).set(
         serializedWebFD,
       )
       // align offset to 32bits
       offset += ((serializedWebFD.byteLength + 3) & ~3) / 4
-    })
+    }
 
-    this.pendingWireMessages.forEach((pendingWireMessage) => {
+    for (let i = 0; i < this.pendingWireMessages.length; i++) {
+      const pendingWireMessage = this.pendingWireMessages[i]
       sendBuffer.set(pendingWireMessage, offset)
       offset += pendingWireMessage.length
-    })
+    }
 
     if (this.webSocket.readyState === ReadyState.OPEN) {
       // 1 === 'open'

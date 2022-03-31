@@ -7,35 +7,68 @@ import { WebSocketLike } from 'retransmitting-websocket'
 import { upsertWebSocket } from './ConnectionPool'
 import { createLogger } from './Logger'
 import { URLSearchParams } from 'url'
+import { config } from './config'
 
 const logger = createLogger('app')
 
-export function POSTMkFifo(compositorProxySession: CompositorProxySession, res: HttpResponse) {
-  const jsonPipe = JSON.stringify(compositorProxySession.nativeCompositorSession.webFS.mkpipe())
-  res.writeStatus('201 Created').writeHeader('Content-Type', 'application/json').end(jsonPipe)
+const allowOrigin = config.server.allowOrigin
+const allowHeaders = 'Content-Type, X-Compositor-Session-Id'
+
+export function OPTIONSPreflightRequest(allowMethods: string) {
+  return (res: HttpResponse, req: HttpRequest) => {
+    const origin = req.getHeader('origin')
+    const accessControlRequestMethod = req.getHeader('access-control-request-method')
+    if (origin === '' || accessControlRequestMethod === '') {
+      // not a preflight check, abort
+      res.writeStatus('200 OK').end()
+      return
+    }
+
+    res
+      .writeStatus('204 No Content')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+      .writeHeader('Access-Control-Allow-Methods', allowMethods)
+      .writeHeader('Access-Control-Allow-Headers', allowHeaders)
+      .end()
+  }
 }
 
-export function POSTMkstempMmap(compositorProxySession: CompositorProxySession, res: HttpResponse, req: HttpRequest) {
+export function POSTMkFifo(compositorProxySession: CompositorProxySession, res: HttpResponse) {
+  const jsonPipe = JSON.stringify(compositorProxySession.nativeCompositorSession.webFS.mkpipe())
+  res
+    .writeStatus('201 Created')
+    .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+    .writeHeader('Content-Type', 'application/json')
+    .end(jsonPipe)
+}
+
+export function POSTMkstempMmap(compositorProxySession: CompositorProxySession, res: HttpResponse) {
   const bufferChunks: Uint8Array[] = []
 
   res.onAborted(() => {
     /* nothing todo here */
   })
   res.onData((chunk, isLast) => {
-    bufferChunks.push(new Uint8Array(chunk))
-    if (isLast) {
-      const buffer = Buffer.concat(bufferChunks)
-      if (buffer.byteLength === 0) {
-        // TODO log error
+    res.cork(() => {
+      bufferChunks.push(new Uint8Array(chunk.slice(0)))
+      if (isLast) {
+        const buffer = Buffer.concat(bufferChunks)
+        if (buffer.byteLength === 0) {
+          // TODO log error
+          res
+            .writeStatus('400 Bad Request')
+            .writeHeader('Content-Type', 'text/plain')
+            .end('Data in HTTP request body can not be empty.')
+          return
+        }
+        const jsonShmWebFD = JSON.stringify(compositorProxySession.nativeCompositorSession.webFS.mkstempMmap(buffer))
         res
-          .writeStatus('400 Bad Request')
-          .writeHeader('Content-Type', 'text/plain')
-          .end('Data in HTTP request body can not be empty.')
-        return
+          .writeStatus('201 Created')
+          .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+          .writeHeader('Content-Type', 'application/json')
+          .end(jsonShmWebFD)
       }
-      const jsonShmWebFD = JSON.stringify(compositorProxySession.nativeCompositorSession.webFS.mkstempMmap(buffer))
-      res.writeStatus('201 Created').writeHeader('Content-Type', 'application/json').end(jsonShmWebFD)
-    }
+    })
   })
 }
 
@@ -93,7 +126,10 @@ export function GETWebFD(
         }
         return
       }
-      httpResponse.writeStatus('200 OK').writeHeader('Content-Type', 'application/octet-stream')
+      httpResponse
+        .writeStatus('200 OK')
+        .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+        .writeHeader('Content-Type', 'application/octet-stream')
       if (bytesRead === 0) {
         httpResponse.end(new ArrayBuffer(0))
         return
@@ -167,7 +203,7 @@ export function DELWebFD(
         }
         return
       }
-      httpResponse.writeStatus('200 OK').end()
+      httpResponse.writeStatus('200 OK').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
     })
   })
 }
@@ -201,7 +237,10 @@ function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readab
     .on('end', () => httpResponse.cork(() => httpResponse.end()))
     .once('data', () =>
       httpResponse.cork(() =>
-        httpResponse.writeStatus('200 OK').writeHeader('Content-Type', 'application/octet-stream'),
+        httpResponse
+          .writeStatus('200 OK')
+          .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+          .writeHeader('Content-Type', 'application/octet-stream'),
       ),
     )
     .on('data', (chunk) => {
@@ -256,7 +295,7 @@ function pipeHttpRequestToWritable(httpResponse: HttpResponse, writable: Writabl
     })
     .on('finish', () => {
       httpResponse.cork(() => {
-        httpResponse.writeStatus('200 OK').end()
+        httpResponse.writeStatus('200 OK').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
       })
     })
 

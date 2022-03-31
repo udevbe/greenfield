@@ -10,6 +10,7 @@ import {
   POSTMkFifo,
   POSTMkstempMmap,
   PUTWebFDStream,
+  OPTIONSPreflightRequest,
 } from './AppController'
 
 function withParams(
@@ -52,17 +53,25 @@ export function createApp(
 ): Promise<us_listen_socket> {
   return new Promise<us_listen_socket>((resolve, reject) => {
     App()
+      .options('/mkfifo', OPTIONSPreflightRequest('POST'))
       .post('/mkfifo', withAuth(compositorProxySession, POSTMkFifo))
+
+      .options('/mkstemp-mmap', OPTIONSPreflightRequest('POST'))
       .post('/mkstemp-mmap', withAuth(compositorProxySession, POSTMkstempMmap))
+
+      .options('/webfd/:fd', OPTIONSPreflightRequest('GET, DEL'))
       .get('/webfd/:fd', withAuth(compositorProxySession, withParams(1, GETWebFD)))
       .del('/webfd/:fd', withAuth(compositorProxySession, withParams(1, DELWebFD)))
+
+      .options('/webfd/:fd/stream', OPTIONSPreflightRequest('GET, PUT'))
       .get('/webfd/:fd/stream', withAuth(compositorProxySession, withParams(1, GETWebFDStream)))
       .put('/webfd/:fd/stream', withAuth(compositorProxySession, withParams(1, PUTWebFDStream)))
+
       .ws('/', {
         // TODO set some more sensible numbers & implement backpressure when sending over websocket
-        // sendPingsAutomatically: 10000,
-        // maxPayloadLength: 4194304,
-        // maxBackpressure: 4194304,
+        sendPingsAutomatically: 10000,
+        maxPayloadLength: 4194304,
+        maxBackpressure: 4194304,
         upgrade: (res, req, context) => {
           /* This immediately calls open handler, you must not use res after this call */
           res.upgrade(
@@ -84,9 +93,7 @@ export function createApp(
         message(ws, message) {
           const messageEventLike: MessageEventLike = {
             type: 'message',
-            // TODO see if we can remove this copy
-            // we need to copy the data as uwebsocket will free the data as soon as this function exits, regardless of any references to it...
-            data: message.slice(0),
+            data: message,
             target: ws.websocketlike,
           }
           ws.websocketlike.emit('message', messageEventLike)

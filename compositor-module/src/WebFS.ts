@@ -21,10 +21,10 @@ import { WebFD } from 'westfield-runtime-common'
 export class WebFS {
   private readonly api: WebfsApi
 
-  constructor(host: string, compositorSessionId: string) {
+  constructor(basePath: string, compositorSessionId: string) {
     this.api = new WebfsApi(
       new Configuration({
-        basePath: `https://${host}`,
+        basePath,
         headers: {
           ['X-Compositor-Session-Id']: compositorSessionId,
         },

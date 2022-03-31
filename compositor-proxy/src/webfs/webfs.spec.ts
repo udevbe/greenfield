@@ -1,15 +1,15 @@
-import request, { agent } from 'supertest'
+import request from 'supertest'
 import { us_listen_socket, us_listen_socket_close } from 'uWebSockets.js'
-import { createApp } from './App'
-import { CompositorProxySession, createCompositorProxySession } from './CompositorProxySession'
+import { createApp } from '../App'
+import { CompositorProxySession, createCompositorProxySession } from '../CompositorProxySession'
 import jestOpenAPI from 'jest-openapi'
 import path from 'path'
-import { Webfd } from './webfs/types'
+import { Webfd } from './types'
 import { Endpoint } from 'westfield-endpoint'
 import fs from 'fs'
 import http from 'http'
 
-describe('compositor-proxy', () => {
+describe('compositor-proxy webfs rest api', () => {
   jestOpenAPI(path.resolve('./api.yaml'))
 
   const port = 8888
@@ -33,7 +33,7 @@ describe('compositor-proxy', () => {
   it('creates a native pipe', (done) => {
     // Given
     // When
-    request('localhost:8888')
+    request(host)
       .post('/mkfifo')
       .set('X-Compositor-Session-Id', compositorSessionId)
       // Then

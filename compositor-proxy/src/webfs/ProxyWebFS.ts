@@ -2,6 +2,9 @@ import fs from 'fs'
 import http from 'http'
 import { Endpoint } from 'westfield-endpoint'
 import { Webfd } from './types'
+import { createLogger } from '../Logger'
+
+const logger = createLogger('webfs')
 
 // 64*1024=64kb
 export const TRANSFER_CHUNK_SIZE = 65792 as const
@@ -53,7 +56,9 @@ export class AppEndpointWebFS {
         },
       },
       (response) => {
-        // TODO do something with response
+        if (response.statusCode !== 200) {
+          logger.error(`Failed to stream data to remote compositor-proxy: ${response.statusMessage}`)
+        }
       },
     )
 

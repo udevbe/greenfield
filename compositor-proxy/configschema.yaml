@@ -15,9 +15,13 @@ properties:
         minimum: 1
         maximum: 65535
         description: The port to bind to
+      allowOrigin:
+        type: string
+        description: The allowed origins during CORS checks.
     required:
       - bindIP
       - bindPort
+      - allowOrigin
   public:
     description: Settings for the public endpoint
     type: object

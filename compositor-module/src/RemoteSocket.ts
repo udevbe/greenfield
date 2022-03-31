@@ -106,7 +106,7 @@ class RemoteSocket {
         client.connection.onFlush = (wireMessages: SendMessage[]) =>
           this.flushWireMessages(client, webSocket, wireMessages)
 
-        const remoteOutOfBandChannel = RemoteOutOfBandChannel.create(this.session, (sendBuffer) => {
+        const oobChannel = RemoteOutOfBandChannel.create(this.session, (sendBuffer) => {
           if (webSocket.readyState === 1) {
             try {
               webSocket.send(sendBuffer)
@@ -119,9 +119,9 @@ class RemoteSocket {
             }
           }
         })
-        this.setupClientOutOfBandHandlers(webSocket, client, remoteOutOfBandChannel, compositorProxyURL)
+        this.setupClientOutOfBandHandlers(webSocket, client, oobChannel, compositorProxyURL)
 
-        webSocket.addEventListener('message', (event) => this.handleMessageEvent(client, event, remoteOutOfBandChannel))
+        webSocket.addEventListener('message', (event) => this.handleMessageEvent(client, event, oobChannel))
 
         client.onClose().then(() => {
           this.session.userShell.events.clientDestroyed?.({
@@ -132,9 +132,12 @@ class RemoteSocket {
           id: client.id,
         })
 
+        const protocol = compositorProxyURL.protocol === 'wss' ? 'https' : 'http'
+        const port = compositorProxyURL.port === '' ? '' : `:${compositorProxyURL.port}`
+        const basePath = `${protocol}://${compositorProxyURL.hostname}${port}`
         client.userData = {
-          oobChannel: remoteOutOfBandChannel,
-          webfs: new WebFS(compositorProxyURL.hostname, this.session.compositorSessionId),
+          oobChannel,
+          webfs: new WebFS(basePath, this.session.compositorSessionId),
         }
 
         resolve(client)
