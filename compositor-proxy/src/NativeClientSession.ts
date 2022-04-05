@@ -188,10 +188,9 @@ export class NativeClientSession {
       while (readOffset < inboundMessage.length) {
         const fdsCount = inboundMessage[readOffset++]
         const fdsBuffer = new Uint32Array(fdsCount)
-        const fds = new Array<number>(fdsCount)
         for (let i = 0; i < fdsCount; i++) {
           const { webfd, bytesRead } = deserializeWebFDJSON(inboundMessage.subarray(readOffset))
-          fds[i] = this.nativeCompositorSession.webFS.webFDtoNativeFD(webfd)
+          fdsBuffer[i] = this.nativeCompositorSession.webFS.webFDtoNativeFD(webfd)
           readOffset += bytesRead / Uint32Array.BYTES_PER_ELEMENT
         }
 

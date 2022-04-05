@@ -13,7 +13,10 @@ const logger = createLogger('app')
 
 const allowOrigin = config.server.allowOrigin
 const allowHeaders = 'Content-Type, X-Compositor-Session-Id'
+const maxAge = '36000'
 
+// TODO unit test Access-Control-Allow-Origin header on all handlers
+// TODO unit test optionspreflightrequest
 export function OPTIONSPreflightRequest(allowMethods: string) {
   return (res: HttpResponse, req: HttpRequest) => {
     const origin = req.getHeader('origin')
@@ -29,6 +32,7 @@ export function OPTIONSPreflightRequest(allowMethods: string) {
       .writeHeader('Access-Control-Allow-Origin', allowOrigin)
       .writeHeader('Access-Control-Allow-Methods', allowMethods)
       .writeHeader('Access-Control-Allow-Headers', allowHeaders)
+      .writeHeader('Access-Control-Max-Age', maxAge)
       .end()
   }
 }
@@ -302,11 +306,11 @@ function pipeHttpRequestToWritable(httpResponse: HttpResponse, writable: Writabl
   httpResponse
     .onAborted(() => writable.end())
     .onData((chunk, isLast) => {
-      if (!writable.write(new Uint8Array(chunk.slice(0))) && !isLast) {
-        httpResponse.pause()
-      }
+      const data = new Uint8Array(chunk.slice(0))
       if (isLast) {
-        writable.end()
+        writable.end(data)
+      } else if (!writable.write(data)) {
+        httpResponse.pause()
       }
     })
 }
@@ -327,7 +331,10 @@ export function PUTWebFDStream(
     return
   }
 
-  pipeHttpRequestToWritable(res, fs.createWriteStream('ignored', { fd, highWaterMark: TRANSFER_CHUNK_SIZE }))
+  pipeHttpRequestToWritable(
+    res,
+    fs.createWriteStream('ignored', { fd, autoClose: true, highWaterMark: TRANSFER_CHUNK_SIZE }),
+  )
 }
 
 export function webSocketOpen(

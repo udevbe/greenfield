@@ -8,6 +8,80 @@ import { Webfd } from './types'
 import { Endpoint } from 'westfield-endpoint'
 import fs from 'fs'
 import http from 'http'
+import { createCompositorProxyWebFS } from './ProxyWebFS'
+
+describe('compositor-proxy webfs', () => {
+  const compositorSessionId = 'test_compositor_session_id'
+
+  const ownPort = 8888
+  const ownHostName = '0.0.0.0'
+  const ownHost = `${ownHostName}:${ownPort}`
+  const ownBasePath = `http://localhost:${ownPort}`
+  let ownApp: us_listen_socket
+  let ownCompositorProxySession: CompositorProxySession
+
+  const otherPort = 8889
+  const otherHostName = '0.0.0.0'
+  const otherHost = `${otherHostName}:${otherPort}`
+  const otherBasePath = `http://localhost:${otherPort}`
+  let otherApp: us_listen_socket
+  let otherCompositorProxySession: CompositorProxySession
+
+  beforeEach(async () => {
+    ownCompositorProxySession = createCompositorProxySession(compositorSessionId)
+    ownApp = await createApp(ownCompositorProxySession, { host: ownHostName, port: ownPort })
+
+    otherCompositorProxySession = createCompositorProxySession(compositorSessionId)
+    otherApp = await createApp(otherCompositorProxySession, { host: otherHostName, port: otherPort })
+  })
+
+  afterEach(async () => {
+    us_listen_socket_close(ownApp)
+    us_listen_socket_close(otherApp)
+
+    ownCompositorProxySession.nativeCompositorSession.destroy()
+    otherCompositorProxySession.nativeCompositorSession.destroy()
+
+    await ownCompositorProxySession.onDestroy()
+    await otherCompositorProxySession.onDestroy()
+  })
+
+  it('creates a new local pipe pair when receiving a remote write-pipe webfd', (done) => {
+    // Given
+    const ownProxyWebFS = createCompositorProxyWebFS(compositorSessionId, ownBasePath)
+    const otherPipefds = new Uint32Array(2)
+    Endpoint.makePipe(otherPipefds)
+
+    const [otherReadPipeHandle, otherWritePipeHandle] = otherPipefds
+    const otherWebFD: Webfd = {
+      handle: otherWritePipeHandle,
+      type: 'pipe-write',
+      host: otherBasePath,
+    }
+
+    const ownWritePipeHandle = ownProxyWebFS.webFDtoNativeFD(otherWebFD)
+
+    const sendBuffer = Buffer.from([1, 2, 3, 4])
+    // When
+    fs.writeFile(ownWritePipeHandle, sendBuffer, (err) => {
+      if (err) {
+        done(err)
+      }
+      fs.close(ownWritePipeHandle)
+    })
+
+    // Then
+    fs.readFile(otherReadPipeHandle, (err, data) => {
+      if (err) {
+        done(err)
+        return
+      }
+      expect(data).toEqual(sendBuffer)
+      done()
+      fs.close(otherReadPipeHandle)
+    })
+  })
+})
 
 describe('compositor-proxy webfs rest api', () => {
   jestOpenAPI(path.resolve('./api.yaml'))
