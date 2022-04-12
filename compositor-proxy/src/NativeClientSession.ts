@@ -15,7 +15,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { Endpoint, MessageInterceptor } from 'westfield-endpoint'
 import type { WebSocketLike } from 'retransmitting-websocket'
 import { ReadyState } from 'retransmitting-websocket'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
@@ -30,6 +29,20 @@ import wl_display_interceptor from './protocol/wl_display_interceptor'
 import wl_buffer_interceptor from './protocol/wl_buffer_interceptor'
 import { Webfd } from './webfs/types'
 import { TextDecoder, TextEncoder } from 'util'
+import {
+  destroyClient,
+  destroyWlResourceSilently,
+  emitGlobals,
+  flush,
+  getServerObjectIdsBatch,
+  MessageInterceptor,
+  sendEvents,
+  setBufferCreatedCallback,
+  setClientDestroyedCallback,
+  setRegistryCreatedCallback,
+  setWireMessageCallback,
+  setWireMessageEndCallback,
+} from 'westfield-proxy'
 
 const logger = createLogger('native-client-session')
 
@@ -78,26 +91,24 @@ export function createNativeClientSession(
     }
   })
 
-  Endpoint.setClientDestroyedCallback(wlClient, () => {
+  setClientDestroyedCallback(wlClient, () => {
     if (nativeClientSession.destroyResolve) {
       nativeClientSession.destroyResolve()
       nativeClientSession.destroyResolve = undefined
       nativeClientSession.wlClient = undefined
     }
   })
-  Endpoint.setRegistryCreatedCallback(wlClient, (wlRegistry: unknown, registryId: number) =>
+  setRegistryCreatedCallback(wlClient, (wlRegistry: unknown, registryId: number) =>
     nativeClientSession.onRegistryCreated(wlRegistry, registryId),
   )
-  Endpoint.setWireMessageCallback(
-    wlClient,
-    (wlClient: unknown, message: ArrayBuffer, objectId: number, opcode: number) =>
-      nativeClientSession.onWireMessageRequest(wlClient, message, objectId, opcode),
+  setWireMessageCallback(wlClient, (wlClient: unknown, message: ArrayBuffer, objectId: number, opcode: number) =>
+    nativeClientSession.onWireMessageRequest(wlClient, message, objectId, opcode),
   )
-  Endpoint.setWireMessageEndCallback(wlClient, (wlClient: unknown, fdsIn: ArrayBuffer) =>
+  setWireMessageEndCallback(wlClient, (wlClient: unknown, fdsIn: ArrayBuffer) =>
     nativeClientSession.onWireMessageEnd(wlClient, fdsIn),
   )
 
-  Endpoint.setBufferCreatedCallback(wlClient, (bufferId: number) => {
+  setBufferCreatedCallback(wlClient, (bufferId: number) => {
     // eslint-disable-next-line new-cap
     messageInterceptor.interceptors[bufferId] = new wl_buffer_interceptor(
       wlClient,
@@ -117,7 +128,7 @@ export function createNativeClientSession(
       nativeClientSession.destroy()
     }
   })
-  webSocket.addEventListener('close', (event) => {
+  webSocket.addEventListener('close', () => {
     logger.info(`Wayland client web socket closed.`)
     nativeClientSession.destroy()
   })
@@ -216,10 +227,10 @@ export class NativeClientSession {
           size: messageBuffer.length * 4 * Uint32Array.BYTES_PER_ELEMENT,
         })
         // logger.debug(`Sending messages to client. Total size: ${messageBuffer.byteLength}`)
-        Endpoint.sendEvents(this.wlClient, messageBuffer, fdsBuffer)
+        sendEvents(this.wlClient, messageBuffer, fdsBuffer)
       }
       logger.debug('Flushing messages send to client.')
-      Endpoint.flush(this.wlClient)
+      flush(this.wlClient)
 
       this.inboundMessages.shift()
     }
@@ -227,7 +238,7 @@ export class NativeClientSession {
 
   allocateBrowserServerObjectIdsBatch(): void {
     const idsReply = new Uint32Array(1001)
-    Endpoint.getServerObjectIdsBatch(this.wlClient, idsReply.subarray(1))
+    getServerObjectIdsBatch(this.wlClient, idsReply.subarray(1))
     // out-of-band w. opcode 6
     idsReply[0] = 6
     if (this.webSocket.readyState === 1) {
@@ -256,7 +267,7 @@ export class NativeClientSession {
       const messageOpcode = sizeOpcode & 0x0000ffff
       const globalOpcode = 0
       if (messageOpcode === globalOpcode) {
-        Endpoint.emitGlobals(wlRegistry)
+        emitGlobals(wlRegistry)
         return true
       }
     }
@@ -366,7 +377,7 @@ export class NativeClientSession {
     if (this.destroyResolve) {
       this.destroyResolve()
       this.destroyResolve = undefined
-      Endpoint.destroyClient(this.wlClient)
+      destroyClient(this.wlClient)
       this.wlClient = null
     }
   }
@@ -393,7 +404,7 @@ export class NativeClientSession {
 
   private destroyResourceSilently(payload: Uint8Array) {
     const deleteObjectId = new Uint32Array(payload.buffer, payload.byteOffset, 1)[0]
-    Endpoint.destroyWlResourceSilently(this.wlClient, deleteObjectId)
+    destroyWlResourceSilently(this.wlClient, deleteObjectId)
 
     delete this.messageInterceptor.interceptors[deleteObjectId]
     if (deleteObjectId === 1) {

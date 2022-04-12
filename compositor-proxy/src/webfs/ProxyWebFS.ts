@@ -1,9 +1,9 @@
-import fs from 'fs'
-import http, { ClientRequest, RequestOptions } from 'http'
-import https from 'https'
-import { Endpoint } from 'westfield-endpoint'
+import { createReadStream } from 'fs'
+import { ClientRequest, request as httpRequest, RequestOptions } from 'http'
+import { request as httpsRequest } from 'https'
 import { Webfd } from './types'
 import { createLogger } from '../Logger'
+import { createMemoryMappedFile, makePipe } from 'westfield-proxy'
 
 const logger = createLogger('webfs')
 
@@ -33,10 +33,10 @@ export class ProxyWebFS {
    */
   private toNativePipeWriteFD(webfd: Webfd): number {
     const pipeFds = new Uint32Array(2)
-    Endpoint.makePipe(pipeFds)
+    makePipe(pipeFds)
     const readFd = pipeFds[0]
 
-    const fileReadStream = fs.createReadStream('ignored', {
+    const fileReadStream = createReadStream('ignored', {
       fd: readFd,
       autoClose: true,
       highWaterMark: TRANSFER_CHUNK_SIZE,
@@ -65,17 +65,17 @@ export class ProxyWebFS {
         },
       }
 
-      let httpRequest: ClientRequest
+      let request: ClientRequest
       if (isHttp) {
-        httpRequest = http.request(url, options)
+        request = httpRequest(url, options)
       } else if (isHttps) {
-        httpRequest = https.request(url, options)
+        request = httpsRequest(url, options)
       } else {
         logger.error(`unsupported webfd host protocol. Only http or https is supported. Got: ${url.protocol}`)
         return -1
       }
 
-      httpRequest
+      request
         .once('response', (response) => {
           if (response.statusCode !== 200) {
             logger.error(`Failed to stream data to remote compositor-proxy: ${response.statusMessage}`)
@@ -86,8 +86,8 @@ export class ProxyWebFS {
           logger.error(err)
         })
 
-      httpRequest.write(buffer)
-      httpRequest.end()
+      request.write(buffer)
+      request.end()
     })
 
     return pipeFds[1]
@@ -109,7 +109,7 @@ export class ProxyWebFS {
 
   mkpipe(): [Webfd, Webfd] {
     const pipeFds = new Uint32Array(2)
-    Endpoint.makePipe(pipeFds)
+    makePipe(pipeFds)
 
     return [
       {
@@ -126,7 +126,7 @@ export class ProxyWebFS {
   }
 
   mkstempMmap(buffer: Buffer): Webfd {
-    const fd = Endpoint.createMemoryMappedFile(buffer)
+    const fd = createMemoryMappedFile(buffer)
     return {
       handle: fd,
       type: 'shm',

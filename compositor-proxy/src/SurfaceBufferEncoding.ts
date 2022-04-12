@@ -15,11 +15,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+import { unmarshallArgs } from 'westfield-proxy'
 import { createEncoder } from './encoding/Encoder'
 
 import { createLogger } from './Logger'
 import wlSurfaceInterceptor from './protocol/wl_surface_interceptor'
-import { WireMessageUtil } from 'westfield-endpoint'
 
 const logger = createLogger('surface-buffer-encoding')
 let bufferSerial = -1
@@ -35,8 +35,8 @@ export function initSurfaceBufferEncoding(): void {
     consumed: number
     size: number
   }) {
-    const [bufferResourceId] = WireMessageUtil.unmarshallArgs(message, 'oii')
-    this.bufferResourceId = bufferResourceId || null
+    const [bufferResourceId] = unmarshallArgs(message, 'oii')
+    this.bufferResourceId = (bufferResourceId as number) || undefined
     logger.debug(`Buffer attached with id: serial=${bufferSerial}, id=${this.bufferResourceId}`)
 
     return 0

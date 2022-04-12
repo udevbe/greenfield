@@ -1,8 +1,8 @@
 import { WebSocketLike } from 'retransmitting-websocket'
 import { createLogger } from './Logger'
-import { Endpoint } from 'westfield-endpoint'
 import { nodeFDConnectionSetup } from 'xtsb'
 import { ClientEntry, NativeCompositorSession } from './NativeCompositorSession'
+import { equalValueExternal, setupXWayland, teardownXWayland } from 'westfield-proxy'
 
 const logger = createLogger('xwayland')
 
@@ -42,7 +42,7 @@ export class XWaylandSession {
         if (value.nativeClientSession === undefined) {
           return false
         }
-        return Endpoint.equalValueExternal(value.nativeClientSession.wlClient, wlClient)
+        return equalValueExternal(value.nativeClientSession.wlClient, wlClient)
       })
 
       if (xWaylandClient === undefined) {
@@ -89,7 +89,7 @@ export class XWaylandSession {
     }
 
     if (this.nativeXWayland) {
-      Endpoint.teardownXWayland(this.nativeXWayland)
+      teardownXWayland(this.nativeXWayland)
       this.nativeXWayland = undefined
     }
 
@@ -115,9 +115,9 @@ export class XWaylandSession {
       display: unknown
     }>((resolve) => {
       let display: unknown
-      this.nativeXWayland = Endpoint.setupXWayland(
+      this.nativeXWayland = setupXWayland(
         this.nativeCompositorSession.wlDisplay,
-        (wmFd, wlClient) => {
+        (wmFd: number, wlClient: unknown) => {
           resolve({ wmFd, wlClient, display })
         },
         () => {

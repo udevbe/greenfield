@@ -16,7 +16,6 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { Epoll } from 'epoll'
-import { Endpoint, nativeGlobalNames } from 'westfield-endpoint'
 import { RetransmittingWebSocket, WebSocketLike } from 'retransmitting-websocket'
 import { createCompositorProxyWebFS } from './webfs/ProxyWebFS'
 import { registerUnboundClientConnection } from './ConnectionPool'
@@ -24,6 +23,15 @@ import { createLogger } from './Logger'
 
 import { createNativeClientSession, NativeClientSession } from './NativeClientSession'
 import { config } from './config'
+import {
+  addSocketAuto,
+  createDisplay,
+  destroyDisplay,
+  getFd,
+  initShm,
+  nativeGlobalNames,
+  dispatchRequests,
+} from 'westfield-proxy'
 
 const logger = createLogger('native-compositor-session')
 
@@ -59,14 +67,14 @@ export class NativeCompositorSession {
     public readonly webFS = createCompositorProxyWebFS(compositorSessionId, config.public.baseURL),
     public clients: ClientEntry[] = [],
   ) {
-    this.wlDisplay = Endpoint.createDisplay(
+    this.wlDisplay = createDisplay(
       (wlClient: unknown) => this.clientForSocket(wlClient),
       (globalName: number) => onGlobalCreated(globalName),
       (globalName: number) => onGlobalDestroyed(globalName),
     )
 
-    this.waylandDisplay = Endpoint.addSocketAuto(this.wlDisplay)
-    Endpoint.initShm(this.wlDisplay)
+    this.waylandDisplay = addSocketAuto(this.wlDisplay)
+    initShm(this.wlDisplay)
 
     // TODO handle err
     // TODO write our own native epoll
@@ -75,9 +83,9 @@ export class NativeCompositorSession {
         console.error('epoll error: ', err)
         process.exit(1)
       }
-      Endpoint.dispatchRequests(this.wlDisplay)
+      dispatchRequests(this.wlDisplay)
     })
-    this.wlDisplayFdWatcher.add(Endpoint.getFd(this.wlDisplay), Epoll.EPOLLPRI | Epoll.EPOLLIN | Epoll.EPOLLERR)
+    this.wlDisplayFdWatcher.add(getFd(this.wlDisplay), Epoll.EPOLLPRI | Epoll.EPOLLIN | Epoll.EPOLLERR)
 
     logger.info(`Listening on: WAYLAND_DISPLAY="${this.waylandDisplay}".`)
   }
@@ -94,7 +102,7 @@ export class NativeCompositorSession {
     this.wlDisplayFdWatcher.close()
 
     this.clients.forEach((client) => client.nativeClientSession?.destroy())
-    Endpoint.destroyDisplay(this.wlDisplay)
+    destroyDisplay(this.wlDisplay)
 
     this.destroyResolve()
     this.destroyResolve = undefined

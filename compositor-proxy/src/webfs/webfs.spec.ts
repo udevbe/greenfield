@@ -5,17 +5,16 @@ import { CompositorProxySession, createCompositorProxySession } from '../Composi
 import jestOpenAPI from 'jest-openapi'
 import path from 'path'
 import { Webfd } from './types'
-import { Endpoint } from 'westfield-endpoint'
 import fs from 'fs'
 import http from 'http'
 import { createCompositorProxyWebFS } from './ProxyWebFS'
+import { createMemoryMappedFile, makePipe } from 'westfield-proxy'
 
 describe('compositor-proxy webfs', () => {
   const compositorSessionId = 'test_compositor_session_id'
 
   const ownPort = 8888
   const ownHostName = '0.0.0.0'
-  const ownHost = `${ownHostName}:${ownPort}`
   const ownBasePath = `http://localhost:${ownPort}`
   let ownApp: us_listen_socket
   let ownCompositorProxySession: CompositorProxySession
@@ -50,7 +49,7 @@ describe('compositor-proxy webfs', () => {
     // Given
     const ownProxyWebFS = createCompositorProxyWebFS(compositorSessionId, ownBasePath)
     const otherPipefds = new Uint32Array(2)
-    Endpoint.makePipe(otherPipefds)
+    makePipe(otherPipefds)
 
     const [otherReadPipeHandle, otherWritePipeHandle] = otherPipefds
     const otherWebFD: Webfd = {
@@ -171,7 +170,7 @@ describe('compositor-proxy webfs rest api', () => {
 
   it('closes a WebFd', (done) => {
     // Given
-    const handle = Endpoint.createMemoryMappedFile(Buffer.from([1, 2, 3]))
+    const handle = createMemoryMappedFile(Buffer.from([1, 2, 3]))
     const webfd: Webfd = { handle, type: 'shm', host }
     // When
     request(host)
@@ -227,7 +226,7 @@ describe('compositor-proxy webfs rest api', () => {
   it('reads a chunk from a WebFD', (done) => {
     // Given
     const sendBuffer = Buffer.from([1, 2, 3])
-    const handle = Endpoint.createMemoryMappedFile(sendBuffer)
+    const handle = createMemoryMappedFile(sendBuffer)
     const webfd: Webfd = { handle, type: 'shm', host }
     // When
     request(host)
@@ -302,7 +301,7 @@ describe('compositor-proxy webfs rest api', () => {
   it('streams data to a webfd', (done) => {
     // Given
     const pipefds = new Uint32Array(2)
-    Endpoint.makePipe(pipefds)
+    makePipe(pipefds)
     const [readPipeHandle, writePipeHandle] = pipefds
     const sendBuffer = Buffer.from([1, 2, 3])
     // When
@@ -332,7 +331,7 @@ describe('compositor-proxy webfs rest api', () => {
   it('handles backpressure when streaming data to a webfd', (done) => {
     // Given
     const pipefds = new Uint32Array(2)
-    Endpoint.makePipe(pipefds)
+    makePipe(pipefds)
     const [readPipeHandle, writePipeHandle] = pipefds
     // send 8MB of data
     const buffer = Buffer.allocUnsafe(8 * 1024 * 1024).fill('ABC')
@@ -404,7 +403,7 @@ describe('compositor-proxy webfs rest api', () => {
   it('streams data from a webfd', (done) => {
     // Given
     const pipefds = new Uint32Array(2)
-    Endpoint.makePipe(pipefds)
+    makePipe(pipefds)
     const [readPipeHandle, writePipeHandle] = pipefds
     const buffer = Buffer.from([1, 2, 3])
 
@@ -431,7 +430,7 @@ describe('compositor-proxy webfs rest api', () => {
   it('handles backpressure when streaming data from a webfd', (done) => {
     // Given
     const pipefds = new Uint32Array(2)
-    Endpoint.makePipe(pipefds)
+    makePipe(pipefds)
     const [readPipeHandle, writePipeHandle] = pipefds
     // send 8MB of data
     const buffer = Buffer.allocUnsafe(8 * 1024 * 1024).fill('ABC')
