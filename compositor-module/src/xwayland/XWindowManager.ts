@@ -10,6 +10,7 @@ import type {
   DestroyNotifyEvent,
   EnterNotifyEvent,
   FocusInEvent,
+  GetPropertyReply,
   LeaveNotifyEvent,
   MapNotifyEvent,
   MapRequestEvent,
@@ -32,6 +33,7 @@ import {
   Cursor,
   EventMask,
   getComposite,
+  GetPropertyType,
   getRender,
   getXFixes,
   ImageFormat,
@@ -40,6 +42,7 @@ import {
   marshallSelectionNotifyEvent,
   NotifyDetail,
   NotifyMode,
+  Property,
   PropMode,
   Render,
   SelectionNotifyEvent,
@@ -68,6 +71,7 @@ import { XWindow } from './XWindow'
 import { FrameFlag, FrameStatus, themeCreate, ThemeLocation, XWindowTheme } from './XWindowFrame'
 import { XWindowManagerConnection } from './XWindowManagerConnection'
 import { WebFD } from 'westfield-runtime-common'
+import { createXDataSource, XDataSource } from './XDataSource'
 
 type ConfigureValueList = Parameters<XConnection['configureWindow']>[1]
 
@@ -179,6 +183,8 @@ const cursorImageNames = {
   [CursorType.XWM_CURSOR_TOP_LEFT]: { url: nwResize, xhot: 6, yhot: 6, width: 32, height: 32 },
   [CursorType.XWM_CURSOR_TOP_RIGHT]: { url: neResize, xhot: 27, yhot: 6, width: 32, height: 32 },
 } as const
+
+const INCR_CHUNK_SIZE = 65536
 
 async function setupResources(xConnection: XConnection): Promise<XWindowManagerResources> {
   const xFixesPromise = getXFixes(xConnection)
@@ -493,7 +499,7 @@ export class XWindowManager {
   readonly colormap: number
   unpairedWindowList: XWindow[] = []
   readonly theme: XWindowTheme = themeCreate()
-  private incr = 0
+  private incr = false
   private readonly composite: Composite.Composite
   private readonly render: Render.Render
   private readonly formatRgb: Render.PICTFORMINFO
@@ -518,11 +524,22 @@ export class XWindowManager {
   private doubleClickPeriod = 250
   // c/p related state
   private readonly xFixes: XFixes.XFixes
-  private selectionRequestEvent?: SelectionRequestEvent
+  private selectionRequest: SelectionRequestEvent = {
+    responseType: 0,
+    time: Time.CurrentTime,
+    owner: Window.None,
+    requestor: Window.None,
+    selection: Atom.None,
+    target: Atom.None,
+    property: Atom.None,
+  }
   private selectionOwner?: WINDOW
   private selectionTimestamp = 0
-  private selectionTarget?: Atom
-  private dataSourceFd?: WebFD
+  private selectionTarget = Atom.None
+  dataSourceFd?: WebFD
+  private selectionPropertySet = false
+  private flushPropertyOnDelete = false
+  private sourceData?: Uint8Array
 
   constructor(
     public readonly session: Session,
@@ -533,7 +550,7 @@ export class XWindowManager {
     { xwmAtoms, composite, render, xFixes, formatRgb, formatRgba }: XWindowManagerResources,
     { visualId, colormap }: VisualAndColormap,
     public readonly wmWindow: WINDOW,
-    private readonly selectionWindow: WINDOW,
+    readonly selectionWindow: WINDOW,
     private readonly dndWindow: WINDOW,
   ) {
     this.atoms = xwmAtoms
@@ -581,8 +598,8 @@ export class XWindowManager {
     xConnection.onConfigureNotifyEvent = (event) => xWindowManager.handleConfigureNotify(event)
     xConnection.onDestroyNotifyEvent = (event) => xWindowManager.handleDestroyNotify(event)
     xConnection.onMappingNotifyEvent = () => session.logger.trace('XCB_MAPPING_NOTIFY')
-    xConnection.onPropertyNotifyEvent = (event) => {
-      if (!xWindowManager.handleSelectionPropertyNotify(event)) {
+    xConnection.onPropertyNotifyEvent = async (event) => {
+      if (!(await xWindowManager.handleSelectionPropertyNotify(event))) {
         xWindowManager.handlePropertyNotify(event)
       }
     }
@@ -620,15 +637,10 @@ export class XWindowManager {
       SelectionEventMask.SelectionWindowDestroy |
       SelectionEventMask.SelectionClientClose
     xWmResources.xFixes.selectSelectionInput(selectionWindow, xWmResources.xwmAtoms.CLIPBOARD, mask)
-    xWmResources.xFixes.onSelectionNotifyEvent = (event: XFixes.SelectionNotifyEvent) => {
+    xWmResources.xFixes.onSelectionNotifyEvent = (event: XFixes.SelectionNotifyEvent) =>
       xWindowManager.handleXFixesSelectionNotify(event)
-    }
-    xConnection.onSelectionNotifyEvent = (event) => {
-      xWindowManager.handleSelectionNotify(event)
-    }
-    xConnection.onSelectionRequestEvent = (event) => {
-      xWindowManager.handleSelectionRequest(event)
-    }
+    xConnection.onSelectionNotifyEvent = (event) => xWindowManager.handleSelectionNotify(event)
+    xConnection.onSelectionRequestEvent = (event) => xWindowManager.handleSelectionRequest(event)
     session.globals.seat.selectionListeners.push(() => xWindowManager.setSelection())
 
     const xFixes = await getXFixes(xConnection)
@@ -1341,21 +1353,18 @@ export class XWindowManager {
     if (source === undefined) {
       if (this.selectionOwner === this.selectionWindow) {
         this.xConnection.setSelectionOwner(Atom.None, this.atoms.CLIPBOARD, this.selectionTimestamp)
-      } else {
         return
       }
     }
 
-    // TODO check if the source object is implemented using XWayland and return early using instanceof?
-    // if (source?.send === dataSourceSend) {
-    //   return
-    // }
-    //
-    // this.xConnection.setSelectionOwner(this.selectionWindow, this.atoms.CLIPBOARD, Time.CurrentTime)
+    if (source instanceof XDataSource) {
+      return
+    }
+
+    this.xConnection.setSelectionOwner(this.selectionWindow, this.atoms.CLIPBOARD, Time.CurrentTime)
   }
 
   private handleXFixesSelectionNotify(event: XFixes.SelectionNotifyEvent) {
-    // TODO selection.c L619
     if (event.selection !== this.atoms.CLIPBOARD) {
       return
     }
@@ -1386,7 +1395,7 @@ export class XWindowManager {
       return
     }
 
-    this.incr = 0
+    this.incr = false
     this.xConnection.convertSelection(
       this.selectionWindow,
       this.atoms.CLIPBOARD,
@@ -1397,37 +1406,48 @@ export class XWindowManager {
     this.xConnection.flush()
   }
 
-  private handleSelectionNotify(event: SelectionNotifyEvent) {
+  private async handleSelectionNotify(event: SelectionNotifyEvent) {
     if (event.property === Atom.None) {
       /* convert selection failed */
     } else if (event.target === this.atoms.TARGETS) {
-      // TODO
-      // this.getSelectionTargets()
+      await this.getSelectionTargets()
     } else {
-      // TODO
-      // this.getSelectionData()
+      await this.getSelectionData()
     }
   }
 
-  private handleSelectionPropertyNotify(event: PropertyNotifyEvent): boolean {
+  private async handleSelectionPropertyNotify(event: PropertyNotifyEvent): Promise<boolean> {
     // TODO selection.c L554
+
+    if (event.window === this.selectionWindow) {
+      if (event.state === Property.NewValue && event.atom === this.atoms._WL_SELECTION && this.incr) {
+        await this.getIncrChunk()
+      }
+      return true
+    } else if (event.window === this.selectionRequest.requestor) {
+      if (event.state === Property.Delete && event.atom === this.selectionRequest.property && this.incr) {
+        await this.sendIncrChunk()
+      }
+      return true
+    }
     return false
   }
 
-  private handleSelectionRequest(event: SelectionRequestEvent) {
-    // TODO selection.c L578
-    this.session.logger.debug(`selection request, ${this.xConnection.getAtomName(event.selection)}, `)
-    this.session.logger.debug(`target, ${this.xConnection.getAtomName(event.target)}, `)
-    this.session.logger.debug(`property, ${this.xConnection.getAtomName(event.property)}, `)
+  private async handleSelectionRequest(event: SelectionRequestEvent) {
+    // this.session.logger.debug(`selection request, ${await this.xConnection.getAtomName(event.selection)}, `)
+    // this.session.logger.debug(`target, ${this.xConnection.getAtomName(event.target)}, `)
+    // this.session.logger.debug(`property, ${this.xConnection.getAtomName(event.property)}, `)
 
-    this.selectionRequestEvent = event
+    this.selectionRequest = event
+    this.incr = false
+    this.flushPropertyOnDelete = false
 
     if (event.selection === this.atoms.CLIPBOARD_MANAGER) {
       /* The clipboard should already have grabbed
        * the first target, so just send selection notify
        * now.  This isn't synchronized with the clipboard
        * finishing getting the data, so there's a race here. */
-      this.sendSelectionNotify(this.selectionRequestEvent.property)
+      this.sendSelectionNotify(this.selectionRequest.property)
       return
     }
 
@@ -1436,7 +1456,7 @@ export class XWindowManager {
     } else if (event.target === this.atoms.TIMESTAMP) {
       this.sendTimestamp()
     } else if (event.target === this.atoms.UTF8_STRING || event.target === this.atoms.TEXT) {
-      this.sendData(this.atoms.UTF8_STRING, 'text/plain;charset=utf-8')
+      await this.sendData(this.atoms.UTF8_STRING, 'text/plain;charset=utf-8')
     } else {
       this.session.logger.warn(`can only handle UTF8_STRING targets...`)
       this.sendSelectionNotify(Atom.None)
@@ -1446,53 +1466,245 @@ export class XWindowManager {
   private sendSelectionNotify(property: Atom) {
     const event = marshallSelectionNotifyEvent({
       responseType: 0, // filled in by marshaller
-      time: this.selectionRequestEvent?.time ?? 0,
-      requestor: this.selectionRequestEvent?.requestor ?? 0,
-      selection: this.selectionRequestEvent?.selection ?? 0,
-      target: this.selectionRequestEvent?.target ?? 0,
+      time: this.selectionRequest.time,
+      requestor: this.selectionRequest.requestor,
+      selection: this.selectionRequest.selection,
+      target: this.selectionRequest.target,
       property,
     })
-    this.xConnection.sendEvent(0, this.selectionRequestEvent?.requestor ?? 0, EventMask.NoEvent, new Int8Array(event))
+    this.xConnection.sendEvent(0, this.selectionRequest.requestor, EventMask.NoEvent, new Int8Array(event))
   }
 
   private sendTargets() {
     this.xConnection.changeProperty(
       PropMode.Replace,
-      this.selectionRequestEvent?.requestor ?? 0,
-      this.selectionRequestEvent?.property ?? 0,
+      this.selectionRequest.requestor,
+      this.selectionRequest.property,
       Atom.ATOM,
       32,
       new Uint32Array([this.atoms.TIMESTAMP, this.atoms.TARGETS, this.atoms.UTF8_STRING, this.atoms.TEXT]),
     )
 
-    this.sendSelectionNotify(this.selectionRequestEvent?.property ?? 0)
+    this.sendSelectionNotify(this.selectionRequest.property)
   }
 
   private sendTimestamp() {
     this.xConnection.changeProperty(
       PropMode.Replace,
-      this.selectionRequestEvent?.requestor ?? 0,
-      this.selectionRequestEvent?.property ?? 0,
+      this.selectionRequest.requestor,
+      this.selectionRequest.property,
       Atom.INTEGER,
       32,
       new Uint32Array([this.selectionTimestamp]),
     )
 
-    this.sendSelectionNotify(this.selectionRequestEvent?.property ?? 0)
+    this.sendSelectionNotify(this.selectionRequest?.property ?? 0)
   }
 
   private async sendData(target: Atom, mimeType: string) {
     if (this.session.globals.seat.selectionDataSource === undefined) {
       return
     }
-    const pipe = await this.session.globals.seat.selectionDataSource.resource.client.userData.webfs.mkfifo()
+
+    const pipe = await this.session.globals.seat.selectionDataSource.client.userData.webfs.mkfifo()
     this.selectionTarget = target
     this.dataSourceFd = pipe[0]
     this.session.globals.seat.selectionDataSource?.send(mimeType, pipe[1])
-    // TODO get chunk size + MORE
 
-    this.session.globals.seat.selectionDataSource.resource.client.userData.webfs.read(this.dataSourceFd, 64 * 1024)
+    await this.readDataSource(this.dataSourceFd)
+  }
 
-    // TODO weston_wm_read_data_source see selection.c
+  private async readDataSource(fd: WebFD) {
+    if (this.session.globals.seat.selectionDataSource === undefined) {
+      return
+    }
+
+    const dataStream = await this.session.globals.seat.selectionDataSource.client.userData.webfs.readStream(
+      fd,
+      INCR_CHUNK_SIZE,
+    )
+
+    try {
+      let read = true
+      do {
+        const { value, done } = await dataStream.read()
+        read = !done
+        if (value) {
+          this.readDataSourceData(value)
+        } else if (done) {
+          this.readDataSourceDone()
+        }
+      } while (read)
+    } catch (e: unknown) {
+      this.session.logger.error(`read error from data source ${e}`)
+      this.sendSelectionNotify(Atom.None)
+      // TODO check if we need to close the webfd?
+    }
+  }
+
+  private readDataSourceData(data: Uint8Array) {
+    this.sourceData = data
+    if (data.byteLength >= INCR_CHUNK_SIZE) {
+      if (!this.incr) {
+        this.session.logger.info(`got ${data.byteLength} bytes, starting incr`)
+        this.incr = true
+        this.xConnection.changeProperty(
+          PropMode.Replace,
+          this.selectionRequest?.requestor ?? 0,
+          this.selectionRequest?.property ?? 0,
+          this.atoms.INCR,
+          32,
+          new Uint32Array([INCR_CHUNK_SIZE]),
+        )
+        this.selectionPropertySet = true
+        this.flushPropertyOnDelete = true
+        // TODO don't listen for read data anymore?
+        this.sendSelectionNotify(this.selectionRequest?.property ?? 0)
+      } else if (this.selectionPropertySet) {
+        this.session.logger.info(`got ${data.byteLength} bytes, waiting for property delete`)
+        this.flushPropertyOnDelete = true
+
+        // TODO don't listen for read data anymore?
+      } else {
+        this.session.logger.info(`got ${data.byteLength} bytes, property deleted, setting new property`)
+        this.flushSourceData()
+      }
+    }
+  }
+
+  private readDataSourceDone() {
+    if (this.incr) {
+      this.session.logger.info(`incr transfer complete`)
+
+      this.flushPropertyOnDelete = true
+      if (this.selectionPropertySet) {
+        this.session.logger.info(`waiting for property delete`)
+      } else {
+        this.session.logger.info(`property deleted, setting new property`)
+        this.flushSourceData()
+      }
+      this.xConnection.flush()
+      this.dataSourceFd = undefined
+      // TODO close webfd?
+    } else {
+      this.session.logger.info(`non incr transfer complete`)
+      this.flushSourceData()
+      this.sendSelectionNotify(this.selectionRequest?.property ?? 0)
+      this.xConnection.flush()
+      // TODO close webfd?
+      this.selectionRequest.requestor = Atom.None
+    }
+  }
+
+  private flushSourceData() {
+    const sourceDataBuffer = this.sourceData ?? new Uint8Array(0)
+    this.xConnection.changeProperty(
+      PropMode.Replace,
+      this.selectionRequest.requestor,
+      this.selectionRequest.property,
+      this.selectionTarget,
+      8,
+      sourceDataBuffer,
+    )
+    this.selectionPropertySet = true
+    const length = sourceDataBuffer.length
+    this.sourceData = undefined
+
+    return length
+  }
+
+  private async getIncrChunk() {
+    const reply = await this.xConnection.getProperty(
+      0 /* delete */,
+      this.selectionWindow,
+      this.atoms._WL_SELECTION,
+      GetPropertyType.Any,
+      0,
+      0x1fffffff,
+    )
+    if (reply.value.length > 0) {
+      await this.writeProperty(reply)
+    } else {
+      // transfer complete
+      // TODO close data_source_fd ?
+    }
+  }
+
+  private async writeProperty(reply: GetPropertyReply) {
+    if (this.dataSourceFd === undefined) {
+      return
+    }
+
+    await this.session.globals.seat.selectionDataSource?.client.userData.webfs.write(
+      this.dataSourceFd,
+      new Blob([reply.value]),
+    )
+    if (this.incr) {
+      this.xConnection.deleteProperty(this.selectionWindow, this.atoms._WL_SELECTION)
+    } else {
+      // TODO close dataSourceFD ?
+    }
+  }
+
+  private async sendIncrChunk() {
+    this.selectionPropertySet = false
+    if (this.flushPropertyOnDelete) {
+      this.flushPropertyOnDelete = false
+      const length = this.flushSourceData()
+
+      if (this.dataSourceFd) {
+        await this.readDataSource(this.dataSourceFd)
+      } else if (length > 0) {
+        /* Transfer is all done, but queue a flush for
+         * the delete of the last chunk so we can set
+         * the 0 sized property to signal the end of
+         * the transfer. */
+        this.flushPropertyOnDelete = true
+      } else {
+        this.selectionRequest.requestor = Window.None
+      }
+    }
+  }
+
+  private async getSelectionTargets() {
+    const reply = await this.xConnection.getProperty(
+      1 /*delete*/,
+      this.selectionWindow,
+      this.atoms._WL_SELECTION,
+      GetPropertyType.Any,
+      0,
+      4096,
+    )
+
+    if (reply._type !== Atom.Any) {
+      return
+    }
+
+    const xDataSource = createXDataSource(this)
+    for (const valueElement of reply.value) {
+      if (valueElement === this.atoms.UTF8_STRING) {
+        xDataSource.mimeTypes.push('text/plain;charset=utf-8')
+      }
+    }
+
+    this.session.globals.seat.setSelectionInternal(xDataSource, this.session.globals.seat.nextSerial())
+  }
+
+  private async getSelectionData() {
+    const reply = await this.xConnection.getProperty(
+      1 /* delete */,
+      this.selectionWindow,
+      this.atoms._WL_SELECTION,
+      GetPropertyType.Any,
+      0 /* offset */,
+      0x1fffffff /* length */,
+    )
+
+    if (reply._type === this.atoms.INCR) {
+      this.incr = true
+    } else {
+      this.incr = false
+      await this.writeProperty(reply)
+    }
   }
 }

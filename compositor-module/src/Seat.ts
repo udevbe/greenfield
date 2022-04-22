@@ -36,7 +36,6 @@ import {
 } from 'westfield-runtime-server'
 
 import { capabilities } from './browser/capabilities'
-import DataSource from './DataSource'
 import { DesktopSurface } from './Desktop'
 import { AxisEvent, ButtonEvent, CompositorSeat, KeyEvent, nrmlvo } from './index'
 import { Keyboard, KeyboardGrab } from './Keyboard'
@@ -46,6 +45,8 @@ import Session from './Session'
 import Surface from './Surface'
 import Touch from './Touch'
 import { createFromNames, Led } from './Xkb'
+import { DataSource } from './DataSource'
+import { sendOffer, WaylandDataSource } from './WaylandDataSource'
 
 const { keyboard, pointer, touch } = WlSeatCapability
 
@@ -385,7 +386,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
       return
     }
 
-    const source = sourceResource.implementation as DataSource
+    const source = sourceResource.implementation as WaylandDataSource
     if (source.actionsSet) {
       sourceResource.postError(
         WlDataSourceError.invalidSource,
@@ -411,7 +412,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
 
     if (this.selectionDataSource) {
       this.selectionDataSource.cancel()
-      this.selectionDataSource.resource.removeDestroyListener(this.selectionDataSourceDestroyListener)
+      this.selectionDataSource.removeDestroyListener(this.selectionDataSourceDestroyListener)
       this.selectionDataSource = undefined
     }
 
@@ -430,11 +431,11 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
     this.selectionListeners.forEach((selectionListener) => selectionListener())
 
     if (source) {
-      source.resource.addDestroyListener(this.selectionDataSourceDestroyListener)
+      source.addDestroyListener(this.selectionDataSourceDestroyListener)
     }
   }
 
-  sendSelection(client: Client): void {
+  private sendSelection(client: Client): void {
     this.dragResourceList.forEach((dataDevice) => {
       if (dataDevice.client !== client) {
         return
@@ -443,7 +444,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
       if (this.selectionDataSource === undefined) {
         dataDevice.selection(undefined)
       } else {
-        const offer = this.selectionDataSource.sendOffer(dataDevice)
+        const offer = sendOffer(this.session, this.selectionDataSource, dataDevice)
         dataDevice.selection(offer.resource)
       }
     })

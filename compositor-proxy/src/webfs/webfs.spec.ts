@@ -409,9 +409,7 @@ describe('compositor-proxy webfs rest api', () => {
 
     // When
     fs.writeFile(writePipeHandle, buffer, null, (err) => {
-      if (err) {
-        done(err)
-      }
+      if (err) done(err)
       fs.close(writePipeHandle)
     })
 
@@ -425,6 +423,49 @@ describe('compositor-proxy webfs rest api', () => {
       //.expect((res) => expect(res).toSatisfyApiSpec())
       .expect(buffer)
       .end(done)
+  })
+
+  it('streams data from a webfd using preferred chunk size', (done) => {
+    // Given
+    const pipefds = new Uint32Array(2)
+    makePipe(pipefds)
+    const [readPipeHandle, writePipeHandle] = pipefds
+    const buffer = Buffer.from([1, 2, 3])
+
+    // When
+    fs.writeFile(writePipeHandle, buffer, null, (err) => {
+      if (err) done(err)
+      fs.close(writePipeHandle)
+    })
+
+    const chunks: any[] = []
+    request(host)
+      .get(`/webfd/${readPipeHandle}/stream`)
+      .query({ chunkSize: 1 })
+      .set('X-Compositor-Session-Id', compositorSessionId)
+      // Then
+      .expect(200)
+      .expect('Content-Type', 'application/octet-stream')
+      // TODO enable this once https://github.com/openapi-library/OpenAPIValidators/issues/275  is fixed
+      //.expect((res) => expect(res).toSatisfyApiSpec())
+      .buffer()
+      .parse((res, callback) => {
+        res.on('data', (chunk) => {
+          chunks.push(chunk)
+        })
+        res.on('end', () => {
+          callback(null, null)
+        })
+      })
+      .end((err) => {
+        if (err) {
+          done(err)
+          return
+        }
+        expect(chunks).toHaveLength(3)
+        expect(Buffer.concat(chunks)).toEqual(buffer)
+        done()
+      })
   })
 
   it('handles backpressure when streaming data from a webfd', (done) => {
@@ -442,8 +483,7 @@ describe('compositor-proxy webfs rest api', () => {
       }
       fs.close(writePipeHandle)
     })
-
-    const httpRequest = http
+    http
       .request(
         {
           hostname: 'localhost',

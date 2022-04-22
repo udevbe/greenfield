@@ -263,6 +263,7 @@ export function GETWebFDStream(
   [fdParam]: string[],
 ) {
   const fd = asNumber(fdParam)
+  const chunkSize = asNumber(new URLSearchParams(req.getQuery()).get('chunkSize')) ?? TRANSFER_CHUNK_SIZE
   if (fd === undefined) {
     // TODO log error
     res
@@ -272,7 +273,7 @@ export function GETWebFDStream(
     return
   }
 
-  pipeReadableToHttpResponse(res, fs.createReadStream('ignored', { fd, highWaterMark: TRANSFER_CHUNK_SIZE }))
+  pipeReadableToHttpResponse(res, fs.createReadStream('ignored', { fd, highWaterMark: chunkSize }))
 }
 
 function pipeHttpRequestToWritable(httpResponse: HttpResponse, writable: Writable) {

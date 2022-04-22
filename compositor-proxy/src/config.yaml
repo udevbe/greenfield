@@ -2,7 +2,7 @@ server:
   # Hostname argument.
   bindIP: 0.0.0.0
   # Port argument.
-  bindPort: 8082
+  bindPort: 8081
   # CORS allowed origins, used when doing cross-origin requests. Value can be * or comma seperated domains.
   allowOrigin: '*'
 public:

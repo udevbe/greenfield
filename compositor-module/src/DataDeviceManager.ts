@@ -26,7 +26,7 @@ import {
   WlSeatResource,
 } from 'westfield-runtime-server'
 
-import DataSource from './DataSource'
+import { createWaylandDataSource } from './WaylandDataSource'
 import { Seat } from './Seat'
 import Session from './Session'
 
@@ -76,7 +76,7 @@ export default class DataDeviceManager implements WlDataDeviceManagerRequests {
 
   createDataSource(resource: WlDataDeviceManagerResource, id: number): void {
     const wlDataSourceResource = new WlDataSourceResource(resource.client, id, resource.version)
-    DataSource.create(this.session, wlDataSourceResource)
+    createWaylandDataSource(this.session, wlDataSourceResource)
   }
 
   getDataDevice(resource: WlDataDeviceManagerResource, id: number, seatResource: WlSeatResource): void {

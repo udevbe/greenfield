@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { WebfsApi, Configuration } from './api'
+import { Configuration, WebfsApi } from './api'
 import { WebFD } from 'westfield-runtime-common'
 
 export class WebFS {
@@ -40,12 +40,37 @@ export class WebFS {
     return this.api.mkfifo()
   }
 
+  write(webFd: WebFD, data: Blob): Promise<void> {
+    if (typeof webFd.handle !== 'number') {
+      throw new Error('BUG. Only WebFDs with a number handle are currently supported.')
+    }
+
+    return this.api.writeStream({
+      fd: webFd.handle,
+      body: data,
+    })
+  }
+
   read(webFd: WebFD, count: number): Promise<Blob> {
     if (typeof webFd.handle !== 'number') {
       throw new Error('BUG. Only WebFDs with a number handle are currently supported.')
     }
 
     return this.api.read({ fd: webFd.handle, count })
+  }
+
+  async readStream(webFd: WebFD, chunkSize: number): Promise<ReadableStreamDefaultReader<Uint8Array>> {
+    if (typeof webFd.handle !== 'number') {
+      throw new Error('BUG. Only WebFDs with a number handle are currently supported.')
+    }
+
+    const rawResponse = await this.api.readStreamRaw({ fd: webFd.handle, chunkSize })
+    if (rawResponse.raw.body === null) {
+      throw new Error(
+        `BUG. Tried reading a webfd as stream but failed: ${rawResponse.raw.status} ${rawResponse.raw.statusText}`,
+      )
+    }
+    return rawResponse.raw.body?.getReader()
   }
 
   close(webFd: WebFD): Promise<void> {
