@@ -617,7 +617,7 @@ export class XWindowManager {
       console.error(JSON.stringify(error))
     }
 
-    xConnection.handleEvent = async (eventType, rawEvent) => {
+    xConnection.handleEvent = async (eventType, eventSequenceNumber, rawEvent) => {
       if (await xWindowManager.handleSelectionEvent(eventType, rawEvent)) {
         return
       }
