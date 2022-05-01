@@ -1,57 +1,72 @@
 import { Client, WlPointerButtonState } from 'westfield-runtime-server'
-import type {
+import {
   ATOM,
+  Atom,
   ButtonPressEvent,
   ButtonReleaseEvent,
-  ClientMessageEvent,
-  ConfigureNotifyEvent,
-  ConfigureRequestEvent,
-  CreateNotifyEvent,
-  DestroyNotifyEvent,
-  EnterNotifyEvent,
-  FocusInEvent,
-  GetPropertyReply,
-  LeaveNotifyEvent,
-  MapNotifyEvent,
-  MapRequestEvent,
-  MotionNotifyEvent,
-  PropertyNotifyEvent,
-  ReparentNotifyEvent,
-  SCREEN,
-  SelectionRequestEvent,
-  UnmapNotifyEvent,
-  WINDOW,
-  XConnection,
-  XFixes,
-} from 'xtsb'
-import {
-  Atom,
   chars,
+  ClientMessageEvent,
   ColormapAlloc,
   Composite,
+  ConfigureNotifyEvent,
+  ConfigureRequestEvent,
   ConfigWindow,
+  CreateNotifyEvent,
   Cursor,
+  DestroyNotifyEvent,
+  EnterNotifyEvent,
   EventMask,
+  FocusInEvent,
   getComposite,
+  GetPropertyReply,
   GetPropertyType,
   getRender,
   getXFixes,
   ImageFormat,
   InputFocus,
+  LeaveNotifyEvent,
+  MapNotifyEvent,
+  MapRequestEvent,
   marshallClientMessageEvent,
   marshallSelectionNotifyEvent,
+  MotionNotifyEvent,
   NotifyDetail,
   NotifyMode,
   Property,
+  PropertyNotifyEvent,
   PropMode,
   Render,
+  ReparentNotifyEvent,
+  SCREEN,
   SelectionNotifyEvent,
+  SelectionRequestEvent,
   StackMode,
   Time,
+  UnmapNotifyEvent,
+  unmarshallButtonPressEvent,
+  unmarshallButtonReleaseEvent,
+  unmarshallClientMessageEvent,
+  unmarshallConfigureNotifyEvent,
+  unmarshallConfigureRequestEvent,
+  unmarshallCreateNotifyEvent,
+  unmarshallDestroyNotifyEvent,
+  unmarshallEnterNotifyEvent,
+  unmarshallFocusInEvent,
+  unmarshallLeaveNotifyEvent,
+  unmarshallMapNotifyEvent,
+  unmarshallMapRequestEvent,
+  unmarshallMotionNotifyEvent,
+  unmarshallPropertyNotifyEvent,
+  unmarshallReparentNotifyEvent,
+  unmarshallSelectionNotifyEvent,
+  unmarshallSelectionRequestEvent,
+  unmarshallUnmapNotifyEvent,
+  WINDOW,
   Window,
   WindowClass,
+  XConnection,
+  XFixes,
 } from 'xtsb'
-import { SelectionEventMask } from 'xtsb/dist/types/xcbXFixes'
 import eResize from '../assets/e-resize.png'
 import leftPtr from '../assets/left_ptr.png'
 import nResize from '../assets/n-resize.png'
@@ -268,6 +283,34 @@ async function setupResources(xConnection: XConnection): Promise<XWindowManagerR
   ]
 
   const [xFixes, composite, render] = await Promise.all([xFixesPromise, compositePromise, renderPromise] as const)
+  const xFixesVersionReply = xFixes.queryVersion(XFixes.XFixes.MAJOR_VERSION, XFixes.XFixes.MINOR_VERSION)
+  const compositeVersionReply = composite.queryVersion(
+    Composite.Composite.MAJOR_VERSION,
+    Composite.Composite.MINOR_VERSION,
+  )
+  const renderVersionReply = render.queryVersion(Render.Render.MAJOR_VERSION, Render.Render.MINOR_VERSION)
+
+  const [xFixesVersion, compositeVersion, renderVersion] = await Promise.all([
+    xFixesVersionReply,
+    compositeVersionReply,
+    renderVersionReply,
+  ])
+  if (xFixesVersion.majorVersion < XFixes.XFixes.MAJOR_VERSION) {
+    throw new Error(
+      `XWayland does not support XFixes extension with major version ${XFixes.XFixes.MAJOR_VERSION}, server returned version ${xFixesVersion.majorVersion}`,
+    )
+  }
+  if (compositeVersion.majorVersion < Composite.Composite.MAJOR_VERSION) {
+    throw new Error(
+      `XWayland does not support Composite extension with major version ${Composite.Composite.MAJOR_VERSION}, server returned version ${compositeVersion.majorVersion}`,
+    )
+  }
+  if (renderVersion.majorVersion < Render.Render.MAJOR_VERSION) {
+    throw new Error(
+      `XWayland does not support Render extension with major version ${Render.Render.MAJOR_VERSION}, server returned version ${renderVersion.majorVersion}`,
+    )
+  }
+
   const formatsReply = render.queryPictFormats()
   const interAtomCookies = atoms.map(([name]) => xConnection.internAtom(0, chars(name)))
 
@@ -551,7 +594,6 @@ export class XWindowManager {
     { visualId, colormap }: VisualAndColormap,
     public readonly wmWindow: WINDOW,
     readonly selectionWindow: WINDOW,
-    private readonly dndWindow: WINDOW,
   ) {
     this.atoms = xwmAtoms
     this.composite = composite
@@ -571,40 +613,75 @@ export class XWindowManager {
     xWaylandShell: XWaylandShell,
   ): Promise<XWindowManager> {
     const xConnection = await xWaylandConnetion.setup()
-    xConnection.onPostEventLoop = () => {
-      xConnection.flush()
-    }
     xConnection.defaultExceptionHandler = (error: Error) => {
       console.error(JSON.stringify(error))
     }
 
-    // TODO listen for any event here
-    // TODO see weston weston_wm_handle_selection_event
-    // xConnection.onEvent = xWindowManager.handleSelectionEvent(event)
-    // TODO see weston weston_wm_handle_dnd_event
-    // xConnection.onEvent = xWindowManager.handleDndEvent(event)
+    xConnection.handleEvent = async (eventType, rawEvent) => {
+      if (await xWindowManager.handleSelectionEvent(eventType, rawEvent)) {
+        return
+      }
 
-    xConnection.onButtonPressEvent = (event) => xWindowManager.handleButton(event)
-    xConnection.onButtonReleaseEvent = (event) => xWindowManager.handleButton(event)
-    xConnection.onEnterNotifyEvent = (event) => xWindowManager.handleEnter(event)
-    xConnection.onLeaveNotifyEvent = (event) => xWindowManager.handleLeave(event)
-    xConnection.onMotionNotifyEvent = (event) => xWindowManager.handleMotion(event)
-    xConnection.onCreateNotifyEvent = (event) => xWindowManager.handleCreateNotify(event)
-    xConnection.onMapRequestEvent = (event) => xWindowManager.handleMapRequest(event)
-    xConnection.onMapNotifyEvent = (event) => xWindowManager.handleMapNotify(event)
-    xConnection.onUnmapNotifyEvent = (event) => xWindowManager.handleUnmapNotify(event)
-    xConnection.onReparentNotifyEvent = (event) => xWindowManager.handleReparentNotify(event)
-    xConnection.onConfigureRequestEvent = (event) => xWindowManager.handleConfigureRequest(event)
-    xConnection.onConfigureNotifyEvent = (event) => xWindowManager.handleConfigureNotify(event)
-    xConnection.onDestroyNotifyEvent = (event) => xWindowManager.handleDestroyNotify(event)
-    xConnection.onMappingNotifyEvent = () => session.logger.trace('XCB_MAPPING_NOTIFY')
-    xConnection.onPropertyNotifyEvent = async (event) => {
-      if (!(await xWindowManager.handleSelectionPropertyNotify(event))) {
-        xWindowManager.handlePropertyNotify(event)
+      // TODO dnd event see window-manager.c L2270
+
+      switch (eventType) {
+        case ButtonPressEvent:
+          xWindowManager.handleButton(unmarshallButtonPressEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+          break
+        case ButtonReleaseEvent:
+          xWindowManager.handleButton(unmarshallButtonReleaseEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+          break
+        case EnterNotifyEvent:
+          xWindowManager.handleEnter(unmarshallEnterNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+          break
+        case LeaveNotifyEvent:
+          xWindowManager.handleLeave(unmarshallLeaveNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+          break
+        case MotionNotifyEvent:
+          xWindowManager.handleMotion(unmarshallMotionNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+          break
+        case CreateNotifyEvent:
+          return xWindowManager.handleCreateNotify(
+            unmarshallCreateNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value,
+          )
+        case MapRequestEvent:
+          return xWindowManager.handleMapRequest(unmarshallMapRequestEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+        case MapNotifyEvent:
+          xWindowManager.handleMapNotify(unmarshallMapNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+          break
+        case UnmapNotifyEvent:
+          xWindowManager.handleUnmapNotify(unmarshallUnmapNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+          break
+        case ReparentNotifyEvent:
+          return xWindowManager.handleReparentNotify(
+            unmarshallReparentNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value,
+          )
+        case ConfigureRequestEvent:
+          xWindowManager.handleConfigureRequest(
+            unmarshallConfigureRequestEvent(rawEvent.buffer, rawEvent.byteOffset).value,
+          )
+          break
+        case ConfigureNotifyEvent:
+          xWindowManager.handleConfigureNotify(
+            unmarshallConfigureNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value,
+          )
+          break
+        case DestroyNotifyEvent:
+          xWindowManager.handleDestroyNotify(unmarshallDestroyNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+          break
+        case PropertyNotifyEvent:
+          xWindowManager.handlePropertyNotify(unmarshallPropertyNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+          break
+        case ClientMessageEvent:
+          return xWindowManager.handleClientMessage(
+            unmarshallClientMessageEvent(rawEvent.buffer, rawEvent.byteOffset).value,
+          )
+        case FocusInEvent:
+          xWindowManager.handleFocusIn(unmarshallFocusInEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+          break
       }
     }
-    xConnection.onClientMessageEvent = (event) => xWindowManager.handleClientMessage(event)
-    xConnection.onFocusInEvent = (event) => xWindowManager.handleFocusIn(event)
+    xConnection.onPostEventLoop = () => xConnection.flush()
 
     const xWmResources = await setupResources(xConnection)
     const visualAndColormap = setupVisualAndColormap(xConnection)
@@ -612,71 +689,27 @@ export class XWindowManager {
     xConnection.changeWindowAttributes(xConnection.setup.roots[0].root, {
       eventMask: EventMask.SubstructureNotify | EventMask.SubstructureRedirect | EventMask.PropertyChange,
     })
-    const { composite, xwmAtoms } = xWmResources
+
+    const { composite, xwmAtoms, xFixes } = xWmResources
     composite.redirectSubwindows(xConnection.setup.roots[0].root, Composite.Redirect.Manual)
 
-    const selectionWindow = xConnection.allocateID()
-    xConnection.createWindow(
-      WindowClass.CopyFromParent,
-      selectionWindow,
-      xConnection.setup.roots[0].root,
-      0,
-      0,
-      10,
-      10,
-      0,
-      WindowClass.InputOutput,
-      xConnection.setup.roots[0].rootVisual,
-      {
-        eventMask: EventMask.PropertyChange,
-      },
-    )
-    xConnection.setSelectionOwner(selectionWindow, xWmResources.xwmAtoms.CLIPBOARD_MANAGER, Time.CurrentTime)
-    const mask =
-      SelectionEventMask.SetSelectionOwner |
-      SelectionEventMask.SelectionWindowDestroy |
-      SelectionEventMask.SelectionClientClose
-    xWmResources.xFixes.selectSelectionInput(selectionWindow, xWmResources.xwmAtoms.CLIPBOARD, mask)
-    xWmResources.xFixes.onSelectionNotifyEvent = (event: XFixes.SelectionNotifyEvent) =>
-      xWindowManager.handleXFixesSelectionNotify(event)
-    xConnection.onSelectionNotifyEvent = (event) => xWindowManager.handleSelectionNotify(event)
-    xConnection.onSelectionRequestEvent = (event) => xWindowManager.handleSelectionRequest(event)
-    session.globals.seat.selectionListeners.push(() => xWindowManager.setSelection())
-
-    const xFixes = await getXFixes(xConnection)
-    xFixes.selectSelectionInput(
-      selectionWindow,
-      xwmAtoms.XdndSelection,
-      SelectionEventMask.SetSelectionOwner |
-        SelectionEventMask.SelectionWindowDestroy |
-        SelectionEventMask.SelectionClientClose,
-    )
-    const dndWindow = xConnection.allocateID()
-    xConnection.createWindow(
-      WindowClass.CopyFromParent,
-      dndWindow,
-      xConnection.setup.roots[0].root,
-      0,
-      0,
-      8192,
-      8192,
-      0,
-      WindowClass.InputOnly,
-      xConnection.setup.roots[0].rootVisual,
-      {
-        eventMask: EventMask.SubstructureNotify | EventMask.PropertyChange,
-      },
-    )
-    const version = 4
     xConnection.changeProperty(
       PropMode.Replace,
-      dndWindow,
-      xwmAtoms.XdndAware,
+      xConnection.setup.roots[0].root,
+      xwmAtoms._NET_SUPPORTED,
       Atom.ATOM,
       32,
-      new Uint32Array([version]),
+      new Uint32Array([
+        xwmAtoms._NET_WM_MOVERESIZE,
+        xwmAtoms._NET_WM_STATE,
+        xwmAtoms._NET_WM_STATE_FULLSCREEN,
+        xwmAtoms._NET_WM_STATE_MAXIMIZED_VERT,
+        xwmAtoms._NET_WM_STATE_MAXIMIZED_HORZ,
+        xwmAtoms._NET_ACTIVE_WINDOW,
+      ]),
     )
 
+    const selectionWindow = xConnection.allocateID()
     const wmWindow = createWMWindow(xConnection, xConnection.setup.roots[0], xwmAtoms)
     const xWindowManager = new XWindowManager(
       session,
@@ -688,8 +721,10 @@ export class XWindowManager {
       visualAndColormap,
       wmWindow,
       selectionWindow,
-      dndWindow,
     )
+    xWindowManager.setNetActiveWindow(Window.None)
+    xWindowManager.selectionInit()
+
     await xWindowManager.createCursors()
     xWindowManager.wmWindowSetCursor(xWindowManager.screen.root, CursorType.XWM_CURSOR_LEFT_PTR)
 
@@ -703,6 +738,7 @@ export class XWindowManager {
     setNetActiveWindow(xConnection, xConnection.setup.roots[0], xwmAtoms, Window.None)
     setNetSupportingWmCheck(xConnection, xConnection.setup.roots[0], xwmAtoms, wmWindow, 'Greenfield')
 
+    // FIXME this makes xterm close somehow
     session.globals.seat.activationListeners.push((surface) => xWindowManager.activate(surface))
 
     xConnection.flush()
@@ -1298,7 +1334,7 @@ export class XWindowManager {
         return
       }
       const clientMessage = marshallClientMessageEvent({
-        responseType: 0,
+        responseType: ClientMessageEvent,
         format: 32,
         window: window.id,
         _type: this.atoms.WM_PROTOCOLS,
@@ -1352,7 +1388,7 @@ export class XWindowManager {
     const source = this.session.globals.seat.selectionDataSource
     if (source === undefined) {
       if (this.selectionOwner === this.selectionWindow) {
-        this.xConnection.setSelectionOwner(Atom.None, this.atoms.CLIPBOARD, this.selectionTimestamp)
+        this.xConnection.setSelectionOwner(Window.None, this.atoms.CLIPBOARD, this.selectionTimestamp)
         return
       }
     }
@@ -1406,19 +1442,17 @@ export class XWindowManager {
     this.xConnection.flush()
   }
 
-  private async handleSelectionNotify(event: SelectionNotifyEvent) {
+  private handleSelectionNotify(event: SelectionNotifyEvent) {
     if (event.property === Atom.None) {
       /* convert selection failed */
     } else if (event.target === this.atoms.TARGETS) {
-      await this.getSelectionTargets()
+      return this.getSelectionTargets()
     } else {
-      await this.getSelectionData()
+      return this.getSelectionData()
     }
   }
 
   private async handleSelectionPropertyNotify(event: PropertyNotifyEvent): Promise<boolean> {
-    // TODO selection.c L554
-
     if (event.window === this.selectionWindow) {
       if (event.state === Property.NewValue && event.atom === this.atoms._WL_SELECTION && this.incr) {
         await this.getIncrChunk()
@@ -1433,7 +1467,7 @@ export class XWindowManager {
     return false
   }
 
-  private async handleSelectionRequest(event: SelectionRequestEvent) {
+  private handleSelectionRequest(event: SelectionRequestEvent) {
     // this.session.logger.debug(`selection request, ${await this.xConnection.getAtomName(event.selection)}, `)
     // this.session.logger.debug(`target, ${this.xConnection.getAtomName(event.target)}, `)
     // this.session.logger.debug(`property, ${this.xConnection.getAtomName(event.property)}, `)
@@ -1456,7 +1490,7 @@ export class XWindowManager {
     } else if (event.target === this.atoms.TIMESTAMP) {
       this.sendTimestamp()
     } else if (event.target === this.atoms.UTF8_STRING || event.target === this.atoms.TEXT) {
-      await this.sendData(this.atoms.UTF8_STRING, 'text/plain;charset=utf-8')
+      this.sendData(this.atoms.UTF8_STRING, 'text/plain;charset=utf-8')
     } else {
       this.session.logger.warn(`can only handle UTF8_STRING targets...`)
       this.sendSelectionNotify(Atom.None)
@@ -1465,7 +1499,7 @@ export class XWindowManager {
 
   private sendSelectionNotify(property: Atom) {
     const event = marshallSelectionNotifyEvent({
-      responseType: 0, // filled in by marshaller
+      responseType: SelectionNotifyEvent,
       time: this.selectionRequest.time,
       requestor: this.selectionRequest.requestor,
       selection: this.selectionRequest.selection,
@@ -1676,12 +1710,12 @@ export class XWindowManager {
       4096,
     )
 
-    if (reply._type !== Atom.Any) {
+    if (reply._type !== Atom.ATOM) {
       return
     }
 
     const xDataSource = createXDataSource(this)
-    for (const valueElement of reply.value) {
+    for (const valueElement of new Uint32Array(reply.value.buffer, reply.value.byteOffset)) {
       if (valueElement === this.atoms.UTF8_STRING) {
         xDataSource.mimeTypes.push('text/plain;charset=utf-8')
       }
@@ -1706,5 +1740,58 @@ export class XWindowManager {
       this.incr = false
       await this.writeProperty(reply)
     }
+  }
+
+  private async handleSelectionEvent(eventType: number, rawEvent: Uint8Array) {
+    switch (eventType & ~0x80) {
+      case SelectionNotifyEvent:
+        await this.handleSelectionNotify(unmarshallSelectionNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+        return true
+      case PropertyNotifyEvent:
+        return await this.handleSelectionPropertyNotify(
+          unmarshallPropertyNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value,
+        )
+      case SelectionRequestEvent:
+        this.handleSelectionRequest(unmarshallSelectionRequestEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+        return true
+    }
+
+    switch (eventType - this.xFixes.firstEvent) {
+      case XFixes.SelectionNotifyEvent:
+        return this.handleXFixesSelectionNotify(
+          XFixes.unmarshallSelectionNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value,
+        )
+    }
+    return false
+  }
+
+  private selectionInit() {
+    this.selectionRequest.requestor = Window.None
+
+    this.xConnection.createWindow(
+      WindowClass.CopyFromParent,
+      this.selectionWindow,
+      this.xConnection.setup.roots[0].root,
+      0,
+      0,
+      10,
+      10,
+      0,
+      WindowClass.InputOutput,
+      this.xConnection.setup.roots[0].rootVisual,
+      {
+        eventMask: EventMask.PropertyChange,
+      },
+    )
+
+    const mask =
+      XFixes.SelectionEventMask.SetSelectionOwner |
+      XFixes.SelectionEventMask.SelectionWindowDestroy |
+      XFixes.SelectionEventMask.SelectionClientClose
+
+    this.xConnection.setSelectionOwner(this.selectionWindow, this.atoms.CLIPBOARD_MANAGER, Time.CurrentTime)
+    this.xFixes.selectSelectionInput(this.selectionWindow, this.atoms.CLIPBOARD, mask)
+
+    this.session.globals.seat.selectionListeners.push(() => this.setSelection())
   }
 }

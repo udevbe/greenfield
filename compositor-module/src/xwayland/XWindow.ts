@@ -4,6 +4,7 @@ import {
   ATOM,
   Atom,
   ClientMessageEvent,
+  ConfigureNotifyEvent,
   CoordMode,
   EventMask,
   GetPropertyReply,
@@ -817,8 +818,7 @@ export class XWindow {
 
   sendConfigureNotify(x: number, y: number): void {
     const event = marshallConfigureNotifyEvent({
-      // filled in when marshalled
-      responseType: 0,
+      responseType: ConfigureNotifyEvent,
       event: this.id,
       window: this.id,
       aboveSibling: Window.None,
@@ -869,7 +869,7 @@ export class XWindow {
   close(time: TIMESTAMP): void {
     if (this.deleteWindow) {
       const clientMessageEvent = marshallClientMessageEvent({
-        responseType: 0,
+        responseType: ClientMessageEvent,
         format: 32,
         window: this.id,
         _type: this.wm.atoms.WM_PROTOCOLS,
