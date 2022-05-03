@@ -1344,7 +1344,7 @@ export class XWindowManager {
         },
       })
 
-      this.xConnection.sendEvent(0, window.id, EventMask.NoEvent, new Int8Array(clientMessage))
+      this.xConnection.sendEvent(0, window.id, EventMask.SubstructureRedirect, new Int8Array(clientMessage))
       this.xConnection.setInputFocus(InputFocus.PointerRoot, window.id, Time.CurrentTime)
       this.configureWindow(window.frameId, { stackMode: StackMode.Above })
     } else {

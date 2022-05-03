@@ -20,6 +20,7 @@ import { WebFD } from 'westfield-runtime-common'
 import { Client } from 'westfield-runtime-server'
 
 export function wrapClientWebFD(client: Client, webFd: WebFD) {
+  // TODO check if webFD and webfs api have same origin
   return new GWebFD(client.userData.webfs.api, webFd)
 }
 
