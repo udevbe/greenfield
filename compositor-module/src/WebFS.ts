@@ -17,9 +17,59 @@
 
 import { Configuration, WebfsApi } from './api'
 import { WebFD } from 'westfield-runtime-common'
+import { Client } from 'westfield-runtime-server'
+
+export function wrapClientWebFD(client: Client, webFd: WebFD) {
+  return new GWebFD(client.userData.webfs.api, webFd)
+}
+
+export class GWebFD {
+  constructor(private readonly api: WebfsApi, readonly webFd: WebFD) {}
+
+  write(data: Blob): Promise<void> {
+    if (typeof this.webFd.handle !== 'number') {
+      throw new Error('BUG. Only WebFDs with a number handle are currently supported.')
+    }
+
+    return this.api.writeStream({
+      fd: this.webFd.handle,
+      body: data,
+    })
+  }
+
+  read(count: number): Promise<Blob> {
+    if (typeof this.webFd.handle !== 'number') {
+      throw new Error('BUG. Only WebFDs with a number handle are currently supported.')
+    }
+
+    return this.api.read({ fd: this.webFd.handle, count })
+  }
+
+  async readStream(chunkSize: number): Promise<ReadableStreamDefaultReader<Uint8Array>> {
+    if (typeof this.webFd.handle !== 'number') {
+      throw new Error('BUG. Only WebFDs with a number handle are currently supported.')
+    }
+
+    const rawResponse = await this.api.readStreamRaw({ fd: this.webFd.handle, chunkSize })
+    if (rawResponse.raw.body === null) {
+      throw new Error(
+        `BUG. Tried reading a webfd as stream but failed: ${rawResponse.raw.status} ${rawResponse.raw.statusText}`,
+      )
+    }
+    return rawResponse.raw.body?.getReader()
+  }
+
+  close(): Promise<void> {
+    if (typeof this.webFd.handle !== 'number') {
+      throw new Error('BUG. Only WebFDs with a number handle are currently supported.')
+    }
+
+    return this.api.close({ fd: this.webFd.handle })
+  }
+}
 
 export class WebFS {
-  private readonly api: WebfsApi
+  readonly api: WebfsApi
 
   constructor(basePath: string, compositorSessionId: string) {
     this.api = new WebfsApi(
@@ -32,52 +82,13 @@ export class WebFS {
     )
   }
 
-  mkstempMmap(data: Blob): Promise<WebFD> {
-    return this.api.mkstempMmap({ body: data })
+  async mkstempMmap(data: Blob): Promise<GWebFD> {
+    const webFD: WebFD = await this.api.mkstempMmap({ body: data })
+    return new GWebFD(this.api, webFD)
   }
 
-  mkfifo(): Promise<Array<WebFD>> {
-    return this.api.mkfifo()
-  }
-
-  write(webFd: WebFD, data: Blob): Promise<void> {
-    if (typeof webFd.handle !== 'number') {
-      throw new Error('BUG. Only WebFDs with a number handle are currently supported.')
-    }
-
-    return this.api.writeStream({
-      fd: webFd.handle,
-      body: data,
-    })
-  }
-
-  read(webFd: WebFD, count: number): Promise<Blob> {
-    if (typeof webFd.handle !== 'number') {
-      throw new Error('BUG. Only WebFDs with a number handle are currently supported.')
-    }
-
-    return this.api.read({ fd: webFd.handle, count })
-  }
-
-  async readStream(webFd: WebFD, chunkSize: number): Promise<ReadableStreamDefaultReader<Uint8Array>> {
-    if (typeof webFd.handle !== 'number') {
-      throw new Error('BUG. Only WebFDs with a number handle are currently supported.')
-    }
-
-    const rawResponse = await this.api.readStreamRaw({ fd: webFd.handle, chunkSize })
-    if (rawResponse.raw.body === null) {
-      throw new Error(
-        `BUG. Tried reading a webfd as stream but failed: ${rawResponse.raw.status} ${rawResponse.raw.statusText}`,
-      )
-    }
-    return rawResponse.raw.body?.getReader()
-  }
-
-  close(webFd: WebFD): Promise<void> {
-    if (typeof webFd.handle !== 'number') {
-      throw new Error('BUG. Only WebFDs with a number handle are currently supported.')
-    }
-
-    return this.api.close({ fd: webFd.handle })
+  async mkfifo(): Promise<Array<GWebFD>> {
+    const pipe: WebFD[] = await this.api.mkfifo()
+    return [new GWebFD(this.api, pipe[0]), new GWebFD(this.api, pipe[1])]
   }
 }

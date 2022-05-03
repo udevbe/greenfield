@@ -25,6 +25,7 @@ import {
 } from 'westfield-runtime-server'
 import { DataSource } from './DataSource'
 import Session from './Session'
+import { wrapClientWebFD } from './WebFS'
 
 const { ask, none, copy, move } = WlDataDeviceManagerDndAction
 
@@ -108,13 +109,14 @@ export default class DataOffer implements WlDataOfferRequests {
   }
 
   receive(resource: WlDataOfferResource, mimeType: string, fd: WebFD): void {
+    const gWebFD = wrapClientWebFD(resource.client, {
+      ...fd,
+      type: 'pipe-write',
+    })
     if (this.source && this === this.source.dataOffer) {
-      this.source.send(mimeType, {
-        ...fd,
-        type: 'pipe-write',
-      })
+      this.source.send(mimeType, gWebFD)
     } else {
-      resource.client.userData.webfs.close(fd)
+      gWebFD.close()
     }
   }
 

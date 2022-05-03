@@ -87,6 +87,7 @@ import { FrameFlag, FrameStatus, themeCreate, ThemeLocation, XWindowTheme } from
 import { XWindowManagerConnection } from './XWindowManagerConnection'
 import { WebFD } from 'westfield-runtime-common'
 import { createXDataSource, XDataSource } from './XDataSource'
+import { GWebFD } from '../WebFS'
 
 type ConfigureValueList = Parameters<XConnection['configureWindow']>[1]
 
@@ -579,7 +580,7 @@ export class XWindowManager {
   private selectionOwner?: WINDOW
   private selectionTimestamp = 0
   private selectionTarget = Atom.None
-  dataSourceFd?: WebFD
+  dataSourceFd?: GWebFD
   private selectionPropertySet = false
   private flushPropertyOnDelete = false
   private sourceData?: Uint8Array
@@ -1548,15 +1549,12 @@ export class XWindowManager {
     await this.readDataSource(this.dataSourceFd)
   }
 
-  private async readDataSource(fd: WebFD) {
+  private async readDataSource(fd: GWebFD) {
     if (this.session.globals.seat.selectionDataSource === undefined) {
       return
     }
 
-    const dataStream = await this.session.globals.seat.selectionDataSource.client.userData.webfs.readStream(
-      fd,
-      INCR_CHUNK_SIZE,
-    )
+    const dataStream = await fd.readStream(INCR_CHUNK_SIZE)
 
     try {
       let read = true
@@ -1669,10 +1667,8 @@ export class XWindowManager {
       return
     }
 
-    await this.session.globals.seat.selectionDataSource?.client.userData.webfs.write(
-      this.dataSourceFd,
-      new Blob([reply.value]),
-    )
+    await this.dataSourceFd.write(new Blob([reply.value]))
+
     if (this.incr) {
       this.xConnection.deleteProperty(this.selectionWindow, this.atoms._WL_SELECTION)
     } else {

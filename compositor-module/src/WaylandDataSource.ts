@@ -15,7 +15,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { WebFD } from 'westfield-runtime-common'
 import {
   WlDataDeviceManagerDndAction,
   WlDataSourceRequests,
@@ -26,6 +25,7 @@ import {
 import DataOffer from './DataOffer'
 import Session from './Session'
 import { DataSource } from './DataSource'
+import { GWebFD } from './WebFS'
 
 const { copy, move, ask, none } = WlDataDeviceManagerDndAction
 const ALL_ACTIONS = copy | move | ask
@@ -89,8 +89,8 @@ export class WaylandDataSource implements WlDataSourceRequests, DataSource {
     this.resource.target(mimeType)
   }
 
-  send(mimeType: string, fd: WebFD): void {
-    this.resource.send(mimeType, fd)
+  send(mimeType: string, gWebFD: GWebFD): void {
+    this.resource.send(mimeType, gWebFD.webFd)
   }
 
   cancel(): void {

@@ -15,9 +15,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { WebFD } from 'westfield-runtime-common'
 import { Client, WlDataDeviceManagerDndAction } from 'westfield-runtime-server'
 import DataOffer from './DataOffer'
+import { GWebFD } from './WebFS'
 
 export interface DataSource {
   readonly client: Client
@@ -31,7 +31,7 @@ export interface DataSource {
   readonly version: 3 | number
 
   accept(mimeType: string | undefined): void
-  send(mimeType: string, fd: WebFD): void
+  send(mimeType: string, gWebFD: GWebFD): void
   cancel(force?: boolean): void
 
   action(action: WlDataDeviceManagerDndAction): void

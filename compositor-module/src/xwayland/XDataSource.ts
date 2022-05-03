@@ -4,6 +4,7 @@ import { WlDataDeviceManagerDndAction } from 'westfield-runtime-server'
 import { WebFD } from 'westfield-runtime-common'
 import { XWindowManager } from './XWindowManager'
 import { Time } from 'xtsb'
+import { GWebFD } from '../WebFS'
 
 export function createXDataSource(xWindowManager: XWindowManager): XDataSource {
   return new XDataSource(xWindowManager)
@@ -32,7 +33,7 @@ export class XDataSource implements DataSource {
     // noop
   }
 
-  send(mimeType: string, fd: WebFD): void {
+  send(mimeType: string, fd: GWebFD): void {
     if (mimeType === 'text/plain;charset=utf-8') {
       this.xWindowManager.xConnection.convertSelection(
         this.xWindowManager.selectionWindow,
