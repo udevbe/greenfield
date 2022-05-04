@@ -28,11 +28,11 @@ target_include_directories(${PROJECT_NAME}
         PRIVATE ${NODE_API_DIR}
         PRIVATE ${GSTREAMER_INCLUDE_DIRS}
         PRIVATE ${GLIB2_INCLUDE_DIR}
-        PRIVATE node_modules/westfield-endpoint/native/src/wayland-server
+        PRIVATE node_modules/westfield-proxy/native/src/wayland-server
         )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".node")
-get_filename_component(WESTFIELD_LIBWAYLAND_SERVER node_modules/westfield-endpoint/src/libwayland-server.so ABSOLUTE)
+get_filename_component(WESTFIELD_LIBWAYLAND_SERVER node_modules/westfield-proxy/dist/libwayland-server.so ABSOLUTE)
 target_link_libraries(${PROJECT_NAME}
         ${CMAKE_JS_LIB}
         ${GLIB2_LIBRARIES}
