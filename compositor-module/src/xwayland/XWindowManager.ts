@@ -1,53 +1,72 @@
 import { Client, WlPointerButtonState } from 'westfield-runtime-server'
-import type {
+import {
   ATOM,
+  Atom,
   ButtonPressEvent,
   ButtonReleaseEvent,
-  ClientMessageEvent,
-  ConfigureNotifyEvent,
-  ConfigureRequestEvent,
-  CreateNotifyEvent,
-  DestroyNotifyEvent,
-  EnterNotifyEvent,
-  FocusInEvent,
-  LeaveNotifyEvent,
-  MapNotifyEvent,
-  MapRequestEvent,
-  MotionNotifyEvent,
-  PropertyNotifyEvent,
-  ReparentNotifyEvent,
-  SCREEN,
-  SelectionRequestEvent,
-  UnmapNotifyEvent,
-  WINDOW,
-  XConnection,
-  XFixes,
-} from 'xtsb'
-import {
-  Atom,
   chars,
+  ClientMessageEvent,
   ColormapAlloc,
   Composite,
+  ConfigureNotifyEvent,
+  ConfigureRequestEvent,
   ConfigWindow,
+  CreateNotifyEvent,
   Cursor,
+  DestroyNotifyEvent,
+  EnterNotifyEvent,
   EventMask,
+  FocusInEvent,
   getComposite,
+  GetPropertyReply,
+  GetPropertyType,
   getRender,
   getXFixes,
   ImageFormat,
   InputFocus,
+  LeaveNotifyEvent,
+  MapNotifyEvent,
+  MapRequestEvent,
   marshallClientMessageEvent,
+  marshallSelectionNotifyEvent,
+  MotionNotifyEvent,
   NotifyDetail,
   NotifyMode,
+  Property,
+  PropertyNotifyEvent,
   PropMode,
   Render,
+  ReparentNotifyEvent,
+  SCREEN,
   SelectionNotifyEvent,
+  SelectionRequestEvent,
   StackMode,
   Time,
+  UnmapNotifyEvent,
+  unmarshallButtonPressEvent,
+  unmarshallButtonReleaseEvent,
+  unmarshallClientMessageEvent,
+  unmarshallConfigureNotifyEvent,
+  unmarshallConfigureRequestEvent,
+  unmarshallCreateNotifyEvent,
+  unmarshallDestroyNotifyEvent,
+  unmarshallEnterNotifyEvent,
+  unmarshallFocusInEvent,
+  unmarshallLeaveNotifyEvent,
+  unmarshallMapNotifyEvent,
+  unmarshallMapRequestEvent,
+  unmarshallMotionNotifyEvent,
+  unmarshallPropertyNotifyEvent,
+  unmarshallReparentNotifyEvent,
+  unmarshallSelectionNotifyEvent,
+  unmarshallSelectionRequestEvent,
+  unmarshallUnmapNotifyEvent,
+  WINDOW,
   Window,
   WindowClass,
+  XConnection,
+  XFixes,
 } from 'xtsb'
-import { SelectionEventMask } from 'xtsb/dist/types/xcbXFixes'
 import eResize from '../assets/e-resize.png'
 import leftPtr from '../assets/left_ptr.png'
 import nResize from '../assets/n-resize.png'
@@ -66,6 +85,9 @@ import XWaylandShellSurface from './XWaylandShellSurface'
 import { XWindow } from './XWindow'
 import { FrameFlag, FrameStatus, themeCreate, ThemeLocation, XWindowTheme } from './XWindowFrame'
 import { XWindowManagerConnection } from './XWindowManagerConnection'
+import { WebFD } from 'westfield-runtime-common'
+import { createXDataSource, XDataSource } from './XDataSource'
+import { GWebFD } from '../WebFS'
 
 type ConfigureValueList = Parameters<XConnection['configureWindow']>[1]
 
@@ -178,6 +200,8 @@ const cursorImageNames = {
   [CursorType.XWM_CURSOR_TOP_RIGHT]: { url: neResize, xhot: 27, yhot: 6, width: 32, height: 32 },
 } as const
 
+const INCR_CHUNK_SIZE = 65536
+
 async function setupResources(xConnection: XConnection): Promise<XWindowManagerResources> {
   const xFixesPromise = getXFixes(xConnection)
   const compositePromise = getComposite(xConnection)
@@ -260,6 +284,34 @@ async function setupResources(xConnection: XConnection): Promise<XWindowManagerR
   ]
 
   const [xFixes, composite, render] = await Promise.all([xFixesPromise, compositePromise, renderPromise] as const)
+  const xFixesVersionReply = xFixes.queryVersion(XFixes.XFixes.MAJOR_VERSION, XFixes.XFixes.MINOR_VERSION)
+  const compositeVersionReply = composite.queryVersion(
+    Composite.Composite.MAJOR_VERSION,
+    Composite.Composite.MINOR_VERSION,
+  )
+  const renderVersionReply = render.queryVersion(Render.Render.MAJOR_VERSION, Render.Render.MINOR_VERSION)
+
+  const [xFixesVersion, compositeVersion, renderVersion] = await Promise.all([
+    xFixesVersionReply,
+    compositeVersionReply,
+    renderVersionReply,
+  ])
+  if (xFixesVersion.majorVersion < XFixes.XFixes.MAJOR_VERSION) {
+    throw new Error(
+      `XWayland does not support XFixes extension with major version ${XFixes.XFixes.MAJOR_VERSION}, server returned version ${xFixesVersion.majorVersion}`,
+    )
+  }
+  if (compositeVersion.majorVersion < Composite.Composite.MAJOR_VERSION) {
+    throw new Error(
+      `XWayland does not support Composite extension with major version ${Composite.Composite.MAJOR_VERSION}, server returned version ${compositeVersion.majorVersion}`,
+    )
+  }
+  if (renderVersion.majorVersion < Render.Render.MAJOR_VERSION) {
+    throw new Error(
+      `XWayland does not support Render extension with major version ${Render.Render.MAJOR_VERSION}, server returned version ${renderVersion.majorVersion}`,
+    )
+  }
+
   const formatsReply = render.queryPictFormats()
   const interAtomCookies = atoms.map(([name]) => xConnection.internAtom(0, chars(name)))
 
@@ -348,14 +400,6 @@ function getCursorForLocation(location: ThemeLocation | undefined): CursorType {
     default:
       return CursorType.XWM_CURSOR_LEFT_PTR
   }
-}
-
-function selectionInit() {
-  //TODO see weston's selection.c file
-}
-
-function dndInit() {
-  // TODO see weston's dnd.c
 }
 
 function setNetSupported(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMAtoms) {
@@ -492,6 +536,77 @@ function createWMWindow(xConnection: XConnection, screen: SCREEN, xwmAtoms: XWMA
 }
 
 export class XWindowManager {
+  readonly windowHash: { [key: number]: XWindow } = {}
+  focusWindow?: XWindow
+  readonly atoms: XWMAtoms
+  readonly visualId: number
+  readonly colormap: number
+  unpairedWindowList: XWindow[] = []
+  readonly theme: XWindowTheme = themeCreate()
+  private incr = false
+  private readonly composite: Composite.Composite
+  private readonly render: Render.Render
+  private readonly formatRgb: Render.PICTFORMINFO
+  private readonly formatRgba: Render.PICTFORMINFO
+  private readonly imageDecodingCanvas: HTMLCanvasElement = document.createElement('canvas')
+  private readonly imageDecodingContext: CanvasRenderingContext2D = this.imageDecodingCanvas.getContext('2d', {
+    alpha: true,
+    desynchronized: true,
+  })!
+  private cursors: { [key in CursorType]: Cursor } = {
+    [CursorType.XWM_CURSOR_BOTTOM]: Cursor.None,
+    [CursorType.XWM_CURSOR_LEFT_PTR]: Cursor.None,
+    [CursorType.XWM_CURSOR_BOTTOM_LEFT]: Cursor.None,
+    [CursorType.XWM_CURSOR_BOTTOM_RIGHT]: Cursor.None,
+    [CursorType.XWM_CURSOR_LEFT]: Cursor.None,
+    [CursorType.XWM_CURSOR_RIGHT]: Cursor.None,
+    [CursorType.XWM_CURSOR_TOP]: Cursor.None,
+    [CursorType.XWM_CURSOR_TOP_LEFT]: Cursor.None,
+    [CursorType.XWM_CURSOR_TOP_RIGHT]: Cursor.None,
+  }
+  private lastCursor: CursorType = -1
+  private doubleClickPeriod = 250
+  // c/p related state
+  private readonly xFixes: XFixes.XFixes
+  private selectionRequest: SelectionRequestEvent = {
+    responseType: 0,
+    time: Time.CurrentTime,
+    owner: Window.None,
+    requestor: Window.None,
+    selection: Atom.None,
+    target: Atom.None,
+    property: Atom.None,
+  }
+  private selectionOwner?: WINDOW
+  private selectionTimestamp = 0
+  private selectionTarget = Atom.None
+  dataSourceFd?: GWebFD
+  private selectionPropertySet = false
+  private flushPropertyOnDelete = false
+  private sourceData?: Uint8Array
+
+  constructor(
+    public readonly session: Session,
+    public readonly xConnection: XConnection,
+    public readonly client: Client,
+    public readonly xWaylandShell: XWaylandShell,
+    public readonly screen: SCREEN,
+    { xwmAtoms, composite, render, xFixes, formatRgb, formatRgba }: XWindowManagerResources,
+    { visualId, colormap }: VisualAndColormap,
+    public readonly wmWindow: WINDOW,
+    readonly selectionWindow: WINDOW,
+  ) {
+    this.atoms = xwmAtoms
+    this.composite = composite
+    this.render = render
+    this.xFixes = xFixes
+    this.formatRgb = formatRgb
+    this.formatRgba = formatRgba
+    this.visualId = visualId
+    this.colormap = colormap
+    this.imageDecodingContext.imageSmoothingEnabled = false
+  }
+
   static async create(
     session: Session,
     xWaylandConnetion: XWindowManagerConnection,
@@ -499,87 +614,15 @@ export class XWindowManager {
     xWaylandShell: XWaylandShell,
   ): Promise<XWindowManager> {
     const xConnection = await xWaylandConnetion.setup()
-    xConnection.onPostEventLoop = () => {
-      xConnection.flush()
-    }
-    xConnection.defaultExceptionHandler = (error: Error) => {
-      console.error(JSON.stringify(error))
-    }
-
-    // TODO listen for any event here
-    // TODO see weston weston_wm_handle_selection_event
-    // xConnection.onEvent = xWindowManager.handleSelectionEvent(event)
-    // TODO see weston weston_wm_handle_dnd_event
-    // xConnection.onEvent = xWindowManager.handleDndEvent(event)
-
-    xConnection.onButtonPressEvent = (event) => xWindowManager.handleButton(event)
-    xConnection.onButtonReleaseEvent = (event) => xWindowManager.handleButton(event)
-    xConnection.onEnterNotifyEvent = (event) => xWindowManager.handleEnter(event)
-    xConnection.onLeaveNotifyEvent = (event) => xWindowManager.handleLeave(event)
-    xConnection.onMotionNotifyEvent = (event) => xWindowManager.handleMotion(event)
-    xConnection.onCreateNotifyEvent = (event) => xWindowManager.handleCreateNotify(event)
-    xConnection.onMapRequestEvent = (event) => xWindowManager.handleMapRequest(event)
-    xConnection.onMapNotifyEvent = (event) => xWindowManager.handleMapNotify(event)
-    xConnection.onUnmapNotifyEvent = (event) => xWindowManager.handleUnmapNotify(event)
-    xConnection.onReparentNotifyEvent = (event) => xWindowManager.handleReparentNotify(event)
-    xConnection.onConfigureRequestEvent = (event) => xWindowManager.handleConfigureRequest(event)
-    xConnection.onConfigureNotifyEvent = (event) => xWindowManager.handleConfigureNotify(event)
-    xConnection.onDestroyNotifyEvent = (event) => xWindowManager.handleDestroyNotify(event)
-    xConnection.onMappingNotifyEvent = () => session.logger.trace('XCB_MAPPING_NOTIFY')
-    xConnection.onPropertyNotifyEvent = (event) => {
-      if (!xWindowManager.handleSelectionPropertyNotify(event)) {
-        xWindowManager.handlePropertyNotify(event)
-      }
-    }
-    xConnection.onClientMessageEvent = (event) => xWindowManager.handleClientMessage(event)
-    xConnection.onFocusInEvent = (event) => xWindowManager.handleFocusIn(event)
-
+    xConnection.defaultExceptionHandler = (error: Error) => console.error(JSON.stringify(error))
     const xWmResources = await setupResources(xConnection)
-    const visualAndColormap = setupVisualAndColormap(xConnection)
 
-    xConnection.changeWindowAttributes(xConnection.setup.roots[0].root, {
-      eventMask: EventMask.SubstructureNotify | EventMask.SubstructureRedirect | EventMask.PropertyChange,
-    })
     const { composite, xwmAtoms } = xWmResources
     composite.redirectSubwindows(xConnection.setup.roots[0].root, Composite.Redirect.Manual)
 
     const selectionWindow = xConnection.allocateID()
-    xConnection.createWindow(
-      WindowClass.CopyFromParent,
-      selectionWindow,
-      xConnection.setup.roots[0].root,
-      0,
-      0,
-      10,
-      10,
-      0,
-      WindowClass.InputOutput,
-      xConnection.setup.roots[0].rootVisual,
-      {
-        eventMask: EventMask.PropertyChange,
-      },
-    )
-    xConnection.setSelectionOwner(selectionWindow, xWmResources.xwmAtoms.CLIPBOARD_MANAGER, Time.CurrentTime)
-    const mask =
-      SelectionEventMask.SetSelectionOwner |
-      SelectionEventMask.SelectionWindowDestroy |
-      SelectionEventMask.SelectionClientClose
-    xWmResources.xFixes.selectSelectionInput(selectionWindow, xWmResources.xwmAtoms.CLIPBOARD, mask)
-    xWmResources.xFixes.onSelectionNotifyEvent = (event: XFixes.SelectionNotifyEvent) => {
-      xWindowManager.handleXFixesSelectionNotify(event)
-    }
-    xConnection.onSelectionNotifyEvent = (event) => {
-      xWindowManager.handleSelectionNotify(event)
-    }
-    xConnection.onSelectionRequestEvent = (event) => {
-      xWindowManager.handleSelectionRequest(event)
-    }
-    session.globals.seat.selectionListeners.push(() => xWindowManager.setSelection())
-
-    // TODO
-    dndInit()
-
     const wmWindow = createWMWindow(xConnection, xConnection.setup.roots[0], xwmAtoms)
+    const visualAndColormap = setupVisualAndColormap(xConnection)
     const xWindowManager = new XWindowManager(
       session,
       xConnection,
@@ -591,7 +634,92 @@ export class XWindowManager {
       wmWindow,
       selectionWindow,
     )
-    xWindowManager.setSelection()
+    xConnection.handleEvent = async (eventType, eventSequenceNumber, rawEvent) => {
+      if (await xWindowManager.handleSelectionEvent(eventType, rawEvent)) {
+        return
+      }
+
+      // TODO dnd event see window-manager.c L2270
+      switch (eventType) {
+        case ButtonPressEvent:
+          xWindowManager.handleButton(unmarshallButtonPressEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+          break
+        case ButtonReleaseEvent:
+          xWindowManager.handleButton(unmarshallButtonReleaseEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+          break
+        case EnterNotifyEvent:
+          xWindowManager.handleEnter(unmarshallEnterNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+          break
+        case LeaveNotifyEvent:
+          xWindowManager.handleLeave(unmarshallLeaveNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+          break
+        case MotionNotifyEvent:
+          xWindowManager.handleMotion(unmarshallMotionNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+          break
+        case CreateNotifyEvent:
+          return xWindowManager.handleCreateNotify(
+            unmarshallCreateNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value,
+          )
+        case MapRequestEvent:
+          return xWindowManager.handleMapRequest(unmarshallMapRequestEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+        case MapNotifyEvent:
+          xWindowManager.handleMapNotify(unmarshallMapNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+          break
+        case UnmapNotifyEvent:
+          xWindowManager.handleUnmapNotify(unmarshallUnmapNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+          break
+        case ReparentNotifyEvent:
+          return xWindowManager.handleReparentNotify(
+            unmarshallReparentNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value,
+          )
+        case ConfigureRequestEvent:
+          xWindowManager.handleConfigureRequest(
+            unmarshallConfigureRequestEvent(rawEvent.buffer, rawEvent.byteOffset).value,
+          )
+          break
+        case ConfigureNotifyEvent:
+          xWindowManager.handleConfigureNotify(
+            unmarshallConfigureNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value,
+          )
+          break
+        case DestroyNotifyEvent:
+          xWindowManager.handleDestroyNotify(unmarshallDestroyNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+          break
+        case PropertyNotifyEvent:
+          xWindowManager.handlePropertyNotify(unmarshallPropertyNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+          break
+        case ClientMessageEvent:
+          return xWindowManager.handleClientMessage(
+            unmarshallClientMessageEvent(rawEvent.buffer, rawEvent.byteOffset).value,
+          )
+        case FocusInEvent:
+          xWindowManager.handleFocusIn(unmarshallFocusInEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+          break
+      }
+    }
+    xConnection.onPostEventLoop = () => xConnection.flush()
+
+    xConnection.changeWindowAttributes(xConnection.setup.roots[0].root, {
+      eventMask: EventMask.SubstructureNotify | EventMask.SubstructureRedirect | EventMask.PropertyChange,
+    })
+    xConnection.changeProperty(
+      PropMode.Replace,
+      xConnection.setup.roots[0].root,
+      xwmAtoms._NET_SUPPORTED,
+      Atom.ATOM,
+      32,
+      new Uint32Array([
+        xwmAtoms._NET_WM_MOVERESIZE,
+        xwmAtoms._NET_WM_STATE,
+        xwmAtoms._NET_WM_STATE_FULLSCREEN,
+        xwmAtoms._NET_WM_STATE_MAXIMIZED_VERT,
+        xwmAtoms._NET_WM_STATE_MAXIMIZED_HORZ,
+        xwmAtoms._NET_ACTIVE_WINDOW,
+      ]),
+    )
+
+    xWindowManager.setNetActiveWindow(Window.None)
+    xWindowManager.selectionInit()
 
     await xWindowManager.createCursors()
     xWindowManager.wmWindowSetCursor(xWindowManager.screen.root, CursorType.XWM_CURSOR_LEFT_PTR)
@@ -606,69 +734,19 @@ export class XWindowManager {
     setNetActiveWindow(xConnection, xConnection.setup.roots[0], xwmAtoms, Window.None)
     setNetSupportingWmCheck(xConnection, xConnection.setup.roots[0], xwmAtoms, wmWindow, 'Greenfield')
 
+    // FIXME this makes xterm close somehow
     session.globals.seat.activationListeners.push((surface) => xWindowManager.activate(surface))
 
     xConnection.flush()
     return xWindowManager
   }
 
-  readonly windowHash: { [key: number]: XWindow } = {}
-  focusWindow?: XWindow
-  readonly atoms: XWMAtoms
-  private readonly composite: Composite.Composite
-  private readonly render: Render.Render
-  private readonly formatRgb: Render.PICTFORMINFO
-  private readonly formatRgba: Render.PICTFORMINFO
-  readonly visualId: number
-  readonly colormap: number
-  unpairedWindowList: XWindow[] = []
-  readonly theme: XWindowTheme = themeCreate()
-  private readonly imageDecodingCanvas: HTMLCanvasElement = document.createElement('canvas')
-  private readonly imageDecodingContext: CanvasRenderingContext2D = this.imageDecodingCanvas.getContext('2d', {
-    alpha: true,
-    desynchronized: true,
-  })!
-
-  private cursors: { [key in CursorType]: Cursor } = {
-    [CursorType.XWM_CURSOR_BOTTOM]: Cursor.None,
-    [CursorType.XWM_CURSOR_LEFT_PTR]: Cursor.None,
-    [CursorType.XWM_CURSOR_BOTTOM_LEFT]: Cursor.None,
-    [CursorType.XWM_CURSOR_BOTTOM_RIGHT]: Cursor.None,
-    [CursorType.XWM_CURSOR_LEFT]: Cursor.None,
-    [CursorType.XWM_CURSOR_RIGHT]: Cursor.None,
-    [CursorType.XWM_CURSOR_TOP]: Cursor.None,
-    [CursorType.XWM_CURSOR_TOP_LEFT]: Cursor.None,
-    [CursorType.XWM_CURSOR_TOP_RIGHT]: Cursor.None,
+  lookupXWindow(window: WINDOW): XWindow | undefined {
+    return this.windowHash[window]
   }
-  private lastCursor: CursorType = -1
-  private doubleClickPeriod = 250
 
-  // c/p related state
-  private readonly xFixes: XFixes.XFixes
-  private selectionRequestEvent?: SelectionRequestEvent
-  private selectionOwner?: WINDOW
-  private selectionTimestamp = 0
-
-  constructor(
-    public readonly session: Session,
-    public readonly xConnection: XConnection,
-    public readonly client: Client,
-    public readonly xWaylandShell: XWaylandShell,
-    public readonly screen: SCREEN,
-    { xwmAtoms, composite, render, xFixes, formatRgb, formatRgba }: XWindowManagerResources,
-    { visualId, colormap }: VisualAndColormap,
-    public readonly wmWindow: WINDOW,
-    private readonly selectionWindow: WINDOW,
-  ) {
-    this.atoms = xwmAtoms
-    this.composite = composite
-    this.render = render
-    this.xFixes = xFixes
-    this.formatRgb = formatRgb
-    this.formatRgba = formatRgba
-    this.visualId = visualId
-    this.colormap = colormap
-    this.imageDecodingContext.imageSmoothingEnabled = false
+  configureWindow(id: WINDOW, valueList: ConfigureValueList): void {
+    this.xConnection.configureWindow(id, valueList)
   }
 
   private async createCursors() {
@@ -1150,14 +1228,6 @@ export class XWindowManager {
     return (id & ~resourceIdMask) === resourceIdBase
   }
 
-  lookupXWindow(window: WINDOW): XWindow | undefined {
-    return this.windowHash[window]
-  }
-
-  configureWindow(id: WINDOW, valueList: ConfigureValueList): void {
-    this.xConnection.configureWindow(id, valueList)
-  }
-
   private async createXWindow(
     id: WINDOW,
     width: number,
@@ -1260,7 +1330,7 @@ export class XWindowManager {
         return
       }
       const clientMessage = marshallClientMessageEvent({
-        responseType: 0,
+        responseType: ClientMessageEvent,
         format: 32,
         window: window.id,
         _type: this.atoms.WM_PROTOCOLS,
@@ -1269,7 +1339,7 @@ export class XWindowManager {
         },
       })
 
-      this.xConnection.sendEvent(0, window.id, EventMask.NoEvent, new Int8Array(clientMessage))
+      this.xConnection.sendEvent(0, window.id, EventMask.SubstructureRedirect, new Int8Array(clientMessage))
       this.xConnection.setInputFocus(InputFocus.PointerRoot, window.id, Time.CurrentTime)
       this.configureWindow(window.frameId, { stackMode: StackMode.Above })
     } else {
@@ -1314,22 +1384,19 @@ export class XWindowManager {
     const source = this.session.globals.seat.selectionDataSource
     if (source === undefined) {
       if (this.selectionOwner === this.selectionWindow) {
-        this.xConnection.setSelectionOwner(Atom.None, this.atoms.CLIPBOARD, this.selectionTimestamp)
-      } else {
+        this.xConnection.setSelectionOwner(Window.None, this.atoms.CLIPBOARD, this.selectionTimestamp)
         return
       }
     }
 
-    // TODO check if the source object is implemented using XWayland and return early
-    // if (source?.send === dataSourceSend) {
-    //   return
-    // }
+    if (source instanceof XDataSource) {
+      return
+    }
 
     this.xConnection.setSelectionOwner(this.selectionWindow, this.atoms.CLIPBOARD, Time.CurrentTime)
   }
 
   private handleXFixesSelectionNotify(event: XFixes.SelectionNotifyEvent) {
-    // TODO selection.c L619
     if (event.selection !== this.atoms.CLIPBOARD) {
       return
     }
@@ -1344,19 +1411,378 @@ export class XWindowManager {
         const serial = seat.nextSerial()
         seat.setSelectionInternal(undefined, serial)
       }
+
+      this.selectionOwner = Window.None
+      return
     }
+
+    this.selectionOwner = event.owner
+
+    /* We have to use XCB_TIME_CURRENT_TIME when we claim the
+     * selection, so grab the actual timestamp here so we can
+     * answer TIMESTAMP conversion requests correctly. */
+    if (event.owner === this.selectionWindow) {
+      this.selectionTimestamp = event.timestamp
+      this.session.logger.debug(`our window, skipping`)
+      return
+    }
+
+    this.incr = false
+    this.xConnection.convertSelection(
+      this.selectionWindow,
+      this.atoms.CLIPBOARD,
+      this.atoms.TARGETS,
+      this.atoms._WL_SELECTION,
+      event.timestamp,
+    )
+    this.xConnection.flush()
   }
 
   private handleSelectionNotify(event: SelectionNotifyEvent) {
-    // TODO selection.c L297
+    if (event.property === Atom.None) {
+      /* convert selection failed */
+    } else if (event.target === this.atoms.TARGETS) {
+      return this.getSelectionTargets()
+    } else {
+      return this.getSelectionData()
+    }
   }
 
-  private handleSelectionPropertyNotify(event: PropertyNotifyEvent): boolean {
-    // TODO selection.c L554
+  private async handleSelectionPropertyNotify(event: PropertyNotifyEvent): Promise<boolean> {
+    if (event.window === this.selectionWindow) {
+      if (event.state === Property.NewValue && event.atom === this.atoms._WL_SELECTION && this.incr) {
+        await this.getIncrChunk()
+      }
+      return true
+    } else if (event.window === this.selectionRequest.requestor) {
+      if (event.state === Property.Delete && event.atom === this.selectionRequest.property && this.incr) {
+        await this.sendIncrChunk()
+      }
+      return true
+    }
     return false
   }
 
   private handleSelectionRequest(event: SelectionRequestEvent) {
-    // TODO selection.c L578
+    // this.session.logger.debug(`selection request, ${await this.xConnection.getAtomName(event.selection)}, `)
+    // this.session.logger.debug(`target, ${this.xConnection.getAtomName(event.target)}, `)
+    // this.session.logger.debug(`property, ${this.xConnection.getAtomName(event.property)}, `)
+
+    this.selectionRequest = event
+    this.incr = false
+    this.flushPropertyOnDelete = false
+
+    if (event.selection === this.atoms.CLIPBOARD_MANAGER) {
+      /* The clipboard should already have grabbed
+       * the first target, so just send selection notify
+       * now.  This isn't synchronized with the clipboard
+       * finishing getting the data, so there's a race here. */
+      this.sendSelectionNotify(this.selectionRequest.property)
+      return
+    }
+
+    if (event.target === this.atoms.TARGETS) {
+      this.sendTargets()
+    } else if (event.target === this.atoms.TIMESTAMP) {
+      this.sendTimestamp()
+    } else if (event.target === this.atoms.UTF8_STRING || event.target === this.atoms.TEXT) {
+      this.sendData(this.atoms.UTF8_STRING, 'text/plain;charset=utf-8')
+    } else {
+      this.session.logger.warn(`can only handle UTF8_STRING targets...`)
+      this.sendSelectionNotify(Atom.None)
+    }
+  }
+
+  private sendSelectionNotify(property: Atom) {
+    const event = marshallSelectionNotifyEvent({
+      responseType: SelectionNotifyEvent,
+      time: this.selectionRequest.time,
+      requestor: this.selectionRequest.requestor,
+      selection: this.selectionRequest.selection,
+      target: this.selectionRequest.target,
+      property,
+    })
+    this.xConnection.sendEvent(0, this.selectionRequest.requestor, EventMask.NoEvent, new Int8Array(event))
+  }
+
+  private sendTargets() {
+    this.xConnection.changeProperty(
+      PropMode.Replace,
+      this.selectionRequest.requestor,
+      this.selectionRequest.property,
+      Atom.ATOM,
+      32,
+      new Uint32Array([this.atoms.TIMESTAMP, this.atoms.TARGETS, this.atoms.UTF8_STRING, this.atoms.TEXT]),
+    )
+
+    this.sendSelectionNotify(this.selectionRequest.property)
+  }
+
+  private sendTimestamp() {
+    this.xConnection.changeProperty(
+      PropMode.Replace,
+      this.selectionRequest.requestor,
+      this.selectionRequest.property,
+      Atom.INTEGER,
+      32,
+      new Uint32Array([this.selectionTimestamp]),
+    )
+
+    this.sendSelectionNotify(this.selectionRequest?.property ?? 0)
+  }
+
+  private async sendData(target: Atom, mimeType: string) {
+    if (this.session.globals.seat.selectionDataSource === undefined) {
+      return
+    }
+
+    const pipe = await this.session.globals.seat.selectionDataSource.client.userData.webfs.mkfifo()
+    this.selectionTarget = target
+    this.dataSourceFd = pipe[0]
+    this.session.globals.seat.selectionDataSource?.send(mimeType, pipe[1])
+
+    await this.readDataSource(this.dataSourceFd)
+  }
+
+  private async readDataSource(fd: GWebFD) {
+    if (this.session.globals.seat.selectionDataSource === undefined) {
+      return
+    }
+
+    const dataStream = await fd.readStream(INCR_CHUNK_SIZE)
+
+    try {
+      let read = true
+      do {
+        const { value, done } = await dataStream.read()
+        read = !done
+        if (value) {
+          this.readDataSourceData(value)
+        } else if (done) {
+          this.readDataSourceDone()
+        }
+      } while (read)
+    } catch (e: unknown) {
+      this.session.logger.error(`read error from data source ${e}`)
+      this.sendSelectionNotify(Atom.None)
+      // TODO check if we need to close the webfd?
+    }
+  }
+
+  private readDataSourceData(data: Uint8Array) {
+    this.sourceData = data
+    if (data.byteLength >= INCR_CHUNK_SIZE) {
+      if (!this.incr) {
+        this.session.logger.info(`got ${data.byteLength} bytes, starting incr`)
+        this.incr = true
+        this.xConnection.changeProperty(
+          PropMode.Replace,
+          this.selectionRequest?.requestor ?? 0,
+          this.selectionRequest?.property ?? 0,
+          this.atoms.INCR,
+          32,
+          new Uint32Array([INCR_CHUNK_SIZE]),
+        )
+        this.selectionPropertySet = true
+        this.flushPropertyOnDelete = true
+        // TODO don't listen for read data anymore?
+        this.sendSelectionNotify(this.selectionRequest?.property ?? 0)
+      } else if (this.selectionPropertySet) {
+        this.session.logger.info(`got ${data.byteLength} bytes, waiting for property delete`)
+        this.flushPropertyOnDelete = true
+
+        // TODO don't listen for read data anymore?
+      } else {
+        this.session.logger.info(`got ${data.byteLength} bytes, property deleted, setting new property`)
+        this.flushSourceData()
+      }
+    }
+  }
+
+  private readDataSourceDone() {
+    if (this.incr) {
+      this.session.logger.info(`incr transfer complete`)
+
+      this.flushPropertyOnDelete = true
+      if (this.selectionPropertySet) {
+        this.session.logger.info(`waiting for property delete`)
+      } else {
+        this.session.logger.info(`property deleted, setting new property`)
+        this.flushSourceData()
+      }
+      this.xConnection.flush()
+      this.dataSourceFd = undefined
+      // TODO close webfd?
+    } else {
+      this.session.logger.info(`non incr transfer complete`)
+      this.flushSourceData()
+      this.sendSelectionNotify(this.selectionRequest?.property ?? 0)
+      this.xConnection.flush()
+      // TODO close webfd?
+      this.selectionRequest.requestor = Atom.None
+    }
+  }
+
+  private flushSourceData() {
+    const sourceDataBuffer = this.sourceData ?? new Uint8Array(0)
+    this.xConnection.changeProperty(
+      PropMode.Replace,
+      this.selectionRequest.requestor,
+      this.selectionRequest.property,
+      this.selectionTarget,
+      8,
+      sourceDataBuffer,
+    )
+    this.selectionPropertySet = true
+    const length = sourceDataBuffer.length
+    this.sourceData = undefined
+
+    return length
+  }
+
+  private async getIncrChunk() {
+    const reply = await this.xConnection.getProperty(
+      0 /* delete */,
+      this.selectionWindow,
+      this.atoms._WL_SELECTION,
+      GetPropertyType.Any,
+      0,
+      0x1fffffff,
+    )
+    if (reply.value.length > 0) {
+      await this.writeProperty(reply)
+    } else {
+      // transfer complete
+      // TODO close data_source_fd ?
+    }
+  }
+
+  private async writeProperty(reply: GetPropertyReply) {
+    if (this.dataSourceFd === undefined) {
+      return
+    }
+
+    await this.dataSourceFd.write(new Blob([reply.value]))
+
+    if (this.incr) {
+      this.xConnection.deleteProperty(this.selectionWindow, this.atoms._WL_SELECTION)
+    } else {
+      // TODO close dataSourceFD ?
+    }
+  }
+
+  private async sendIncrChunk() {
+    this.selectionPropertySet = false
+    if (this.flushPropertyOnDelete) {
+      this.flushPropertyOnDelete = false
+      const length = this.flushSourceData()
+
+      if (this.dataSourceFd) {
+        await this.readDataSource(this.dataSourceFd)
+      } else if (length > 0) {
+        /* Transfer is all done, but queue a flush for
+         * the delete of the last chunk so we can set
+         * the 0 sized property to signal the end of
+         * the transfer. */
+        this.flushPropertyOnDelete = true
+      } else {
+        this.selectionRequest.requestor = Window.None
+      }
+    }
+  }
+
+  private async getSelectionTargets() {
+    const reply = await this.xConnection.getProperty(
+      1 /*delete*/,
+      this.selectionWindow,
+      this.atoms._WL_SELECTION,
+      GetPropertyType.Any,
+      0,
+      4096,
+    )
+
+    if (reply._type !== Atom.ATOM) {
+      return
+    }
+
+    const xDataSource = createXDataSource(this)
+    for (const valueElement of new Uint32Array(reply.value.buffer, reply.value.byteOffset)) {
+      if (valueElement === this.atoms.UTF8_STRING) {
+        xDataSource.mimeTypes.push('text/plain;charset=utf-8')
+      }
+    }
+
+    this.session.globals.seat.setSelectionInternal(xDataSource, this.session.globals.seat.nextSerial())
+  }
+
+  private async getSelectionData() {
+    const reply = await this.xConnection.getProperty(
+      1 /* delete */,
+      this.selectionWindow,
+      this.atoms._WL_SELECTION,
+      GetPropertyType.Any,
+      0 /* offset */,
+      0x1fffffff /* length */,
+    )
+
+    if (reply._type === this.atoms.INCR) {
+      this.incr = true
+    } else {
+      this.incr = false
+      await this.writeProperty(reply)
+    }
+  }
+
+  private async handleSelectionEvent(eventType: number, rawEvent: Uint8Array) {
+    switch (eventType & ~0x80) {
+      case SelectionNotifyEvent:
+        await this.handleSelectionNotify(unmarshallSelectionNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+        return true
+      case PropertyNotifyEvent:
+        return await this.handleSelectionPropertyNotify(
+          unmarshallPropertyNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value,
+        )
+      case SelectionRequestEvent:
+        this.handleSelectionRequest(unmarshallSelectionRequestEvent(rawEvent.buffer, rawEvent.byteOffset).value)
+        return true
+    }
+
+    switch (eventType - this.xFixes.firstEvent) {
+      case XFixes.SelectionNotifyEvent:
+        return this.handleXFixesSelectionNotify(
+          XFixes.unmarshallSelectionNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value,
+        )
+    }
+    return false
+  }
+
+  private selectionInit() {
+    this.selectionRequest.requestor = Window.None
+
+    this.xConnection.createWindow(
+      WindowClass.CopyFromParent,
+      this.selectionWindow,
+      this.xConnection.setup.roots[0].root,
+      0,
+      0,
+      10,
+      10,
+      0,
+      WindowClass.InputOutput,
+      this.xConnection.setup.roots[0].rootVisual,
+      {
+        eventMask: EventMask.PropertyChange,
+      },
+    )
+
+    const mask =
+      XFixes.SelectionEventMask.SetSelectionOwner |
+      XFixes.SelectionEventMask.SelectionWindowDestroy |
+      XFixes.SelectionEventMask.SelectionClientClose
+
+    this.xConnection.setSelectionOwner(this.selectionWindow, this.atoms.CLIPBOARD_MANAGER, Time.CurrentTime)
+    this.xFixes.selectSelectionInput(this.selectionWindow, this.atoms.CLIPBOARD, mask)
+
+    this.session.globals.seat.selectionListeners.push(() => this.setSelection())
   }
 }

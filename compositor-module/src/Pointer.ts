@@ -31,7 +31,7 @@ import {
 } from 'westfield-runtime-server'
 import { AxisEvent } from './AxisEvent'
 import { ButtonEvent } from './ButtonEvent'
-import DataSource from './DataSource'
+import { DataSource } from './DataSource'
 import { KeyboardGrab } from './Keyboard'
 import { KeyEvent } from './KeyEvent'
 import { minusPoint, ORIGIN, plusPoint, Point } from './math/Point'
@@ -41,6 +41,7 @@ import { Seat } from './Seat'
 import Surface from './Surface'
 import SurfaceRole from './SurfaceRole'
 import View from './View'
+import { sendOffer } from './WaylandDataSource'
 
 const { horizontalScroll, verticalScroll } = WlPointerAxis
 const { wheel } = WlPointerAxisSource
@@ -160,26 +161,26 @@ export class PointerDrag implements PointerGrab, KeyboardGrab {
       ) {
         this.focusResource.drop()
 
-        if (this.dataSource.resource.version >= 3) {
-          this.dataSource.resource.dndDropPerformed()
+        if (this.dataSource.version >= 3) {
+          this.dataSource.dndDropPerformed()
         }
 
         if (this.dataSource.dataOffer) {
           this.dataSource.dataOffer.inAsk = this.dataSource.currentDndAction === WlDataDeviceManagerDndAction.ask
         }
-      } else if (this.dataSource.resource.version >= 3) {
-        this.dataSource.resource.cancelled()
+      } else if (this.dataSource.version >= 3) {
+        this.dataSource.cancel()
       }
     }
 
     if (this.pointer.buttonCount == 0 && event.released) {
-      this.dataSource?.resource.removeDestroyListener(this.dataSourceListener)
+      this.dataSource?.removeDestroyListener(this.dataSourceListener)
       this.end()
     }
   }
 
   cancel(): void {
-    this.dataSource?.resource.removeDestroyListener(this.dataSourceListener)
+    this.dataSource?.removeDestroyListener(this.dataSourceListener)
     this.end()
   }
 
@@ -254,7 +255,7 @@ export class PointerDrag implements PointerGrab, KeyboardGrab {
 
     if (this.dataSource?.dataOffer) {
       /* Unlink the offer from the source */
-      this.dataSource.dataOffer.source?.resource.removeDestroyListener(this.dataSource.dataOffer.sourceDestroyListener)
+      this.dataSource.dataOffer.source?.removeDestroyListener(this.dataSource.dataOffer.sourceDestroyListener)
       this.dataSource.dataOffer.source = undefined
       this.dataSource.dataOffer = undefined
     }
@@ -275,7 +276,7 @@ export class PointerDrag implements PointerGrab, KeyboardGrab {
     let offerResource: WlDataOfferResource | undefined
     if (this.dataSource) {
       this.dataSource.accepted = false
-      const offer = this.dataSource.sendOffer(resource)
+      const offer = sendOffer(this.pointer.seat.session, this.dataSource, resource)
       offer.updateAction()
       offerResource = offer.resource
     }
@@ -516,7 +517,7 @@ export class Pointer implements WlPointerRequests {
     }
 
     if (source) {
-      source.resource.addDestroyListener(() => {
+      source.addDestroyListener(() => {
         if (drag.dataSource === source) {
           this.seat.endDrag(drag)
         }

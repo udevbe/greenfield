@@ -35,6 +35,6 @@ export default class RemoteAppLauncher implements CompositorProxyConnector {
 
   async connectTo(appEndpointURL: URL): Promise<Client> {
     this.remoteSocket.ensureXWayland(appEndpointURL)
-    return this.remoteSocket.onWebSocket(createRetransmittingWebSocket(appEndpointURL))
+    return this.remoteSocket.onWebSocket(createRetransmittingWebSocket(appEndpointURL), appEndpointURL)
   }
 }

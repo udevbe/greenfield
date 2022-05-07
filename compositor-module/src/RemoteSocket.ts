@@ -15,36 +15,41 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+import { MessageEventLike, ReadyState, RetransmittingWebSocket, WebSocketLike } from 'retransmitting-websocket'
 import { SendMessage, WebFD } from 'westfield-runtime-common'
-import { Client, WlBufferResource } from 'westfield-runtime-server'
-import { MessageEventLike, RetransmittingWebSocket } from 'retransmitting-websocket'
+import { Client, ClientUserData, WlBufferResource } from 'westfield-runtime-server'
+import { Configuration, WebfsApi } from './api'
 import RemoteOutOfBandChannel, {
   RemoteOutOfBandListenOpcode,
   RemoteOutOfBandSendOpcode,
 } from './RemoteOutOfBandChannel'
 import StreamingBuffer from './remotestreaming/StreamingBuffer'
 import Session from './Session'
-import { XWindowManagerConnection } from './xwayland/XWindowManagerConnection'
 import XWaylandShell from './xwayland/XWaylandShell'
 import { XWindowManager } from './xwayland/XWindowManager'
+import { XWindowManagerConnection } from './xwayland/XWindowManagerConnection'
+import { WebFS } from './WebFS'
 
-type XWaylandConectionState = {
+type XWaylandConnectionState = {
   state: 'pending' | 'open'
   xConnection?: XWindowManagerConnection
   wlClient?: Client
   xwm?: XWindowManager
 }
 
-const xWaylandProxyStates: { [key: string]: XWaylandConectionState } = {}
+const xWaylandProxyStates: { [key: string]: XWaylandConnectionState } = {}
 
 let connectionIdCounter = 0
-export function createRetransmittingWebSocket(url: URL): RetransmittingWebSocket {
+export function createRetransmittingWebSocket(url: URL): WebSocketLike {
   const connectionURL = new URL(url.href)
   connectionURL.searchParams.set('connectionId', `${connectionIdCounter++}`)
-  const retransmittingWebSocket = new RetransmittingWebSocket({
-    webSocketFactory: () => new WebSocket(connectionURL.href),
+  return new RetransmittingWebSocket({
+    webSocketFactory: () => {
+      const webSocket = new WebSocket(connectionURL.href)
+      webSocket.binaryType = 'arraybuffer'
+      return webSocket
+    },
   })
-  return retransmittingWebSocket
 }
 
 class RemoteSocket {
@@ -57,23 +62,25 @@ class RemoteSocket {
     return new RemoteSocket(session)
   }
 
-  ensureXWayland(appEndpointURL: URL): void {
-    const xWaylandBaseURLhref = appEndpointURL.href
+  ensureXWayland(compositorProxyURL: URL): void {
+    const xWaylandBaseURLhref = compositorProxyURL.href
 
     if (xWaylandProxyStates[xWaylandBaseURLhref] === undefined) {
       xWaylandProxyStates[xWaylandBaseURLhref] = { state: 'pending' }
     }
   }
 
-  onWebSocket(webSocket: RetransmittingWebSocket): Promise<Client> {
+  onWebSocket(webSocket: WebSocketLike, compositorProxyURL: URL): Promise<Client> {
     return new Promise((resolve, reject) => {
       this.session.logger.info('[WebSocket] - created.')
-
-      webSocket.binaryType = 'arraybuffer'
-      webSocket.onclose = (event) => {
-        reject(new Error(`Failed to connect to application. ${event.reason} ${event.code}`))
-      }
-      webSocket.onopen = () => {
+      let wasOpen = false
+      webSocket.addEventListener('close', (event) => {
+        if (!wasOpen) {
+          reject(new Error(`Failed to connect to application. ${event.reason} ${event.code}`))
+        }
+      })
+      webSocket.addEventListener('open', () => {
+        wasOpen = true
         this.session.logger.info('[WebSocket] - open.')
 
         const client = this.session.display.createClient()
@@ -90,16 +97,16 @@ class RemoteSocket {
           }
         })
 
-        webSocket.onclose = () => {
+        webSocket.addEventListener('close', () => {
           this.session.logger.info('[WebSocket] - closed.')
           client.close()
-        }
-        webSocket.onerror = (event) => this.session.logger.warn(`[WebSocket] - error`, event)
+        })
+        webSocket.addEventListener('error', (event) => this.session.logger.warn(`[WebSocket] - error`, event))
 
         client.connection.onFlush = (wireMessages: SendMessage[]) =>
           this.flushWireMessages(client, webSocket, wireMessages)
 
-        const remoteOutOfBandChannel = RemoteOutOfBandChannel.create(this.session, (sendBuffer) => {
+        const oobChannel = RemoteOutOfBandChannel.create(this.session, (sendBuffer) => {
           if (webSocket.readyState === 1) {
             try {
               webSocket.send(sendBuffer)
@@ -112,9 +119,9 @@ class RemoteSocket {
             }
           }
         })
-        this.setupClientOutOfBandHandlers(webSocket, client, remoteOutOfBandChannel)
+        this.setupClientOutOfBandHandlers(webSocket, client, oobChannel, compositorProxyURL)
 
-        webSocket.onmessage = (event) => this.handleMessageEvent(client, event, remoteOutOfBandChannel)
+        webSocket.addEventListener('message', (event) => this.handleMessageEvent(client, event, oobChannel))
 
         client.onClose().then(() => {
           this.session.userShell.events.clientDestroyed?.({
@@ -124,44 +131,25 @@ class RemoteSocket {
         this.session.userShell.events.clientCreated?.({
           id: client.id,
         })
-        this.session.registerRemoteClientConnection(client, remoteOutOfBandChannel)
+
+        const protocol = compositorProxyURL.protocol === 'wss' ? 'https' : 'http'
+        const port = compositorProxyURL.port === '' ? '' : `:${compositorProxyURL.port}`
+        const basePath = `${protocol}://${compositorProxyURL.hostname}${port}`
+        client.userData = {
+          oobChannel,
+          webfs: new WebFS(basePath, this.session.compositorSessionId),
+        }
+
         resolve(client)
-      }
+      })
     })
   }
 
-  private async getShmTransferable(webFD: WebFD): Promise<ArrayBuffer> {
-    // TODO get all contents at once from remote endpoint and put it in an array buffer
-    // TODO do this on each invocation
-    // return new ArrayBuffer(0)
-    throw new Error('TODO. Shm transferable from endpoint not yet implemented.')
-  }
-
-  private async closeShmTransferable(webFD: WebFD): Promise<void> {
-    // TODO signal the remote end (if any) that it should close the fd
-    throw new Error('TODO. Close shm transferable from endpoint not yet implemented.')
-  }
-
-  private async getPipeTransferable(webFD: WebFD): Promise<MessagePort> {
-    // TODO setup an open connection with the remote endpoint and transfer data on demand
-    // const messageChannel = new MessageChannel()
-    // TODO use port1 to interface with the remote endpoint
-    // TODO only do this once until the messageChannel is closed
-    // return messageChannel.port2
-
-    throw new Error('TODO. Pipe transferable from endpoint not yet implemented.')
-  }
-
-  private async closePipeTransferable(webFD: WebFD): Promise<void> {
-    // TODO signal the remote end (if any) that it should close the fd
-    // TODO close the messageChannel object
-    throw new Error('TODO. close pipe transferable from endpoint not yet implemented.')
-  }
-
   private setupClientOutOfBandHandlers(
-    webSocket: RetransmittingWebSocket,
+    webSocket: WebSocketLike,
     client: Client,
     outOfBandChannel: RemoteOutOfBandChannel,
+    appEndpointURL: URL,
   ) {
     // send out-of-band resource destroy. opcode: 1
     client.addResourceDestroyListener((resource) => {
@@ -200,47 +188,12 @@ class RemoteSocket {
       }
     })
 
-    // listen for file contents request. opcode: 4
-    outOfBandChannel.setListener(RemoteOutOfBandListenOpcode.FileContents, async (outOfBandMessage) => {
-      if (client.connection.closed) {
-        return
-      }
-
-      const uint32Array = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)
-      const fd = uint32Array[0]
-      const webFD = this.session.webFS.getWebFD(fd)
-      const transferable = await webFD.getTransferable()
-
-      // Note that after contents have been transmitted, webfd is auto closed.
-      if (transferable instanceof ArrayBuffer) {
-        const serializedWebFdURL = this.textEncoder.encode(webFD.url.href)
-        const webFDByteLength = serializedWebFdURL.byteLength
-        const message = new Uint8Array(
-          Uint32Array.BYTES_PER_ELEMENT + ((webFDByteLength + 3) & ~3) + transferable.byteLength,
-        ) // webFdURL + fileContents
-        let byteOffset = 0
-        // web fd url length
-        new DataView(message.buffer).setUint32(byteOffset, webFDByteLength, true)
-        byteOffset += Uint32Array.BYTES_PER_ELEMENT
-        // web fd url
-        message.set(serializedWebFdURL, byteOffset)
-        byteOffset += (webFDByteLength + 3) & ~3
-        // fd contents
-        message.set(new Uint8Array(transferable), byteOffset)
-
-        // send back file contents. opcode: 4
-        outOfBandChannel.send(RemoteOutOfBandSendOpcode.FileContents, message.buffer)
-        webFD.close()
-      }
-    })
-
     // listen for web socket creation request. opcode: 5
     outOfBandChannel.setListener(RemoteOutOfBandListenOpcode.WebSocketCreationRequest, () => {
       if (client.connection.closed) {
         return
       }
-      const appEndpointURL = new URL(webSocket.url)
-      this.onWebSocket(createRetransmittingWebSocket(appEndpointURL))
+      this.onWebSocket(createRetransmittingWebSocket(appEndpointURL), appEndpointURL)
     })
 
     // listen for recycled resource ids
@@ -257,7 +210,7 @@ class RemoteSocket {
     outOfBandChannel.setListener(RemoteOutOfBandListenOpcode.XWMConnectionRequest, async (outOfBandMessage) => {
       const wmFD = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)[0]
 
-      const xWaylandBaseURL = new URL(webSocket.url)
+      const xWaylandBaseURL = new URL(appEndpointURL.href)
       xWaylandBaseURL.searchParams.delete('connectionId')
       const xWaylandBaseURLhref = xWaylandBaseURL.href
 
@@ -304,7 +257,7 @@ class RemoteSocket {
         let offset = 0
         const receiveBuffer = new Uint32Array(arrayBuffer, Uint32Array.BYTES_PER_ELEMENT)
         const fdsInCount = receiveBuffer[offset++]
-        const webFDs = new Array(fdsInCount)
+        const webFDs = new Array<WebFD>(fdsInCount)
         for (let i = 0; i < fdsInCount; i++) {
           const { read, webFd } = this.deserializeWebFD(receiveBuffer.subarray(offset))
           offset += read
@@ -326,7 +279,7 @@ class RemoteSocket {
     }
   }
 
-  private flushWireMessages(client: Client, webSocket: RetransmittingWebSocket, wireMessages: SendMessage[]) {
+  private flushWireMessages(client: Client, webSocket: WebSocketLike, wireMessages: SendMessage[]) {
     if (client.connection.closed) {
       return
     }
@@ -335,8 +288,8 @@ class RemoteSocket {
     const serializedWireMessages = wireMessages.map((wireMessage) => {
       let size = 1 // +1 for fd length
       const serializedWebFds: Uint8Array[] = wireMessage.fds.map((webFd: WebFD) => {
-        const serializedWebFD = this.textEncoder.encode(webFd.url.href)
-        size += 1 + ((serializedWebFD.byteLength + 3) & ~3) / 4 // +1 for fd url length
+        const serializedWebFD = this.textEncoder.encode(JSON.stringify(webFd))
+        size += 1 + ((serializedWebFD.byteLength + 3) & ~3) / 4 // +1 for encoded fd length
         return serializedWebFD
       })
 
@@ -359,6 +312,7 @@ class RemoteSocket {
         new Uint8Array(sendBuffer.buffer, sendBuffer.byteOffset + offset * Uint32Array.BYTES_PER_ELEMENT).set(
           serializedWebFd,
         )
+        // TODO we don't need to pad here as it's already padded?
         offset += ((serializedWebFd.byteLength + 3) & ~3) / 4
       })
 
@@ -367,8 +321,7 @@ class RemoteSocket {
       offset += message.length
     })
 
-    if (webSocket.readyState === 1) {
-      // 1 === 'open'
+    if (webSocket.readyState === ReadyState.OPEN) {
       try {
         webSocket.send(sendBuffer.buffer)
       } catch (e: any) {
@@ -379,8 +332,6 @@ class RemoteSocket {
   }
 
   private deserializeWebFD(sourceBuf: Uint32Array): { read: number; webFd: WebFD } {
-    // FIXME we only need to handle fetching remote contents if the webfd does not match this compositor
-    // If it does match, we simply need to lookup the WebFD from our own WebFS cache, and return that one instead.
     const webFdbyteLength = sourceBuf[0]
     const webFdBytes = new Uint8Array(
       sourceBuf.buffer,
@@ -388,32 +339,12 @@ class RemoteSocket {
       webFdbyteLength,
     )
 
-    const webFdURL = new URL(this.textDecoder.decode(webFdBytes))
-    const fdParam = webFdURL.searchParams.get('fd')
-    if (fdParam === null) {
-      throw new Error('BUG. WebFD URL does not have fd query param.')
-    }
-    const fd = Number.parseInt(fdParam)
-    const type = webFdURL.searchParams.get('type')
+    const webFdJSON = this.textDecoder.decode(webFdBytes)
+    const webFd: WebFD = JSON.parse(webFdJSON)
 
-    let onGetTransferable
-    let onClose
-    switch (type) {
-      case 'ArrayBuffer':
-        onGetTransferable = (webFD: WebFD) => this.getShmTransferable(webFD)
-        onClose = (webFD: WebFD) => this.closeShmTransferable(webFD)
-        break
-      case 'MessagePort':
-        onGetTransferable = (webFD: WebFD) => this.getPipeTransferable(webFD)
-        onClose = (webFD: WebFD) => this.closePipeTransferable(webFD)
-        break
-      // case 3: 'ImageBitmap' can not be transferred to a remote
-      default:
-        throw new Error(`Unsupported WebFD type: ${type}`)
-    }
     return {
       read: 1 + ((webFdbyteLength + 3) & ~3) / 4,
-      webFd: new WebFD(fd, type, webFdURL, onGetTransferable, onClose),
+      webFd,
     }
   }
 }

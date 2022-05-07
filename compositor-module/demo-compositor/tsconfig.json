@@ -24,6 +24,7 @@
   },
   "include": [
     "../src/@types",
-    "src"
+    "../src/custom-typings.d.ts",
+    "src",
   ]
 }

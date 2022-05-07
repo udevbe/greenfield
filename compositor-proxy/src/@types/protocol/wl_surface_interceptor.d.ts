@@ -2,7 +2,7 @@ import { RetransmittingWebSocket } from 'retransmitting-websocket'
 import { Encoder } from '../../encoding/Encoder'
 
 export default class wl_surface_interceptor {
-  bufferResourceId: number
+  bufferResourceId?: number
   sendBufferResourceId: number
   encoder: Encoder
   userData: { communicationChannel: RetransmittingWebSocket }

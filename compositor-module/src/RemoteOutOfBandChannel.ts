@@ -20,14 +20,12 @@ import Session from './Session'
 export const enum RemoteOutOfBandListenOpcode {
   BufferCreation = 2,
   BufferContents = 3,
-  FileContents = 4,
   WebSocketCreationRequest = 5,
   RecycledResourceIds = 6,
   XWMConnectionRequest = 7,
 }
 export const enum RemoteOutOfBandSendOpcode {
   ResourceDestroyed = 1,
-  FileContents = 4,
   ForceKeyFrame = 5,
   ForceKeyFrameNow = 6,
 }
@@ -50,13 +48,13 @@ export default class RemoteOutOfBandChannel {
 
     const outOfBandHandler = this.outOfBandListeners[opcode]
     if (outOfBandHandler) {
-      outOfBandHandler(new Uint8Array(incomingMessage, 4))
+      outOfBandHandler(new Uint8Array(incomingMessage, Uint32Array.BYTES_PER_ELEMENT))
     } else {
       this.session.logger.warn(`[BUG?] Out of band using opcode: ${opcode} not found. Ignoring.`)
     }
   }
 
-  setListener(opcode: number, listener: (outOfBandMsg: Uint8Array) => void): void {
+  setListener(opcode: RemoteOutOfBandListenOpcode, listener: (outOfBandMsg: Uint8Array) => void): void {
     this.outOfBandListeners[opcode] = listener
   }
 
@@ -64,7 +62,7 @@ export default class RemoteOutOfBandChannel {
     delete this.outOfBandListeners[opcode]
   }
 
-  send(opcode: number, payload: ArrayBuffer): void {
+  send(opcode: RemoteOutOfBandSendOpcode, payload: ArrayBuffer): void {
     const sendBuffer = new ArrayBuffer(Uint32Array.BYTES_PER_ELEMENT + payload.byteLength)
     const dataView = new DataView(sendBuffer)
     dataView.setUint32(0, opcode, true)

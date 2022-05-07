@@ -1,5 +1,5 @@
 import { RetransmittingWebSocket, WebSocketLike } from 'retransmitting-websocket'
-import { CONNECTING, OPEN } from 'ws'
+import { ReadyState } from 'retransmitting-websocket'
 
 const boundConnections: Record<string, RetransmittingWebSocket> = {}
 const unboundConnections: RetransmittingWebSocket[] = []
@@ -7,7 +7,7 @@ const unboundConnections: RetransmittingWebSocket[] = []
 export function upsertWebSocket(
   connectionId: string,
   webSocketLike: WebSocketLike,
-): { retransmittingWebSocket: RetransmittingWebSocket; isNew: boolean } {
+): { retransmittingWebSocket: WebSocketLike; isNew: boolean } {
   let retransmittingWebSocket = boundConnections[connectionId]
   const isNew = retransmittingWebSocket === undefined
   if (isNew) {
@@ -32,7 +32,8 @@ export function closeAllWebSockets(): Promise<void[]> {
     allWebSocket
       .filter(
         (retransmittingWebSocket: RetransmittingWebSocket) =>
-          retransmittingWebSocket.readyState === OPEN || retransmittingWebSocket.readyState === CONNECTING,
+          retransmittingWebSocket.readyState === ReadyState.OPEN ||
+          retransmittingWebSocket.readyState === ReadyState.CONNECTING,
       )
       .map(
         (retransmittingWebSocket: RetransmittingWebSocket) =>

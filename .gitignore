@@ -150,3 +150,6 @@ CTestTestfile.cmake
 /compositor-proxy/src/@types/config.d.ts
 /compositor-proxy/src/configschema.json
 /compositor-proxy/cmake-build-debug/
+/compositor-module/src/api/
+/compositor-proxy/src/@types/api.d.ts
+/compositor-proxy/src/api/

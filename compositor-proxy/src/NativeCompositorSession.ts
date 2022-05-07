@@ -16,17 +16,26 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { Epoll } from 'epoll'
-import { Endpoint, nativeGlobalNames } from 'westfield-endpoint'
-import { RetransmittingWebSocket } from 'retransmitting-websocket'
-import { createCompositorProxyWebFS } from './CompositorProxyWebFS'
-import { registerUnboundClientConnection } from './ConnectionPool'
+import { RetransmittingWebSocket, WebSocketLike } from 'retransmitting-websocket'
+import { createCompositorProxyWebFS } from './webfs/ProxyWebFS'
+import { registerUnboundClientConnection } from './ClientConnectionPool'
 import { createLogger } from './Logger'
 
 import { createNativeClientSession, NativeClientSession } from './NativeClientSession'
+import { config } from './config'
+import {
+  addSocketAuto,
+  createDisplay,
+  destroyDisplay,
+  getFd,
+  initShm,
+  nativeGlobalNames,
+  dispatchRequests,
+} from 'westfield-proxy'
 
 const logger = createLogger('native-compositor-session')
 
-export type ClientEntry = { webSocket: RetransmittingWebSocket; nativeClientSession?: NativeClientSession }
+export type ClientEntry = { webSocket: WebSocketLike; nativeClientSession?: NativeClientSession }
 
 function onGlobalCreated(globalName: number): void {
   nativeGlobalNames.push(globalName)
@@ -40,27 +49,13 @@ function onGlobalDestroyed(globalName: number): void {
 }
 
 export function createNativeCompositorSession(compositorSessionId: string): NativeCompositorSession {
-  const compositorSession = new NativeCompositorSession(compositorSessionId)
-
-  const wlDisplayFd = Endpoint.getFd(compositorSession.wlDisplay)
-
-  // TODO handle err
-  // TODO write our own native epoll
-  const fdWatcher = new Epoll((err: unknown) => {
-    if (err) {
-      console.error('epoll error: ', err)
-      process.exit(1)
-    }
-    Endpoint.dispatchRequests(compositorSession.wlDisplay)
-  })
-  fdWatcher.add(wlDisplayFd, Epoll.EPOLLPRI | Epoll.EPOLLIN | Epoll.EPOLLERR)
-
-  return compositorSession
+  return new NativeCompositorSession(compositorSessionId)
 }
 
 export class NativeCompositorSession {
   readonly wlDisplay: unknown
   readonly waylandDisplay: string
+  private readonly wlDisplayFdWatcher: Epoll
 
   private destroyResolve?: (value: void | PromiseLike<void>) => void
   private destroyPromise: Promise<void> = new Promise<void>((resolve) => {
@@ -69,17 +64,28 @@ export class NativeCompositorSession {
 
   constructor(
     public readonly compositorSessionId: string,
-    public readonly appEndpointWebFS = createCompositorProxyWebFS(compositorSessionId),
+    public readonly webFS = createCompositorProxyWebFS(compositorSessionId, config.public.baseURL),
     public clients: ClientEntry[] = [],
   ) {
-    this.wlDisplay = Endpoint.createDisplay(
+    this.wlDisplay = createDisplay(
       (wlClient: unknown) => this.clientForSocket(wlClient),
       (globalName: number) => onGlobalCreated(globalName),
       (globalName: number) => onGlobalDestroyed(globalName),
     )
 
-    this.waylandDisplay = Endpoint.addSocketAuto(this.wlDisplay)
-    Endpoint.initShm(this.wlDisplay)
+    this.waylandDisplay = addSocketAuto(this.wlDisplay)
+    initShm(this.wlDisplay)
+
+    // TODO handle err
+    // TODO write our own native epoll
+    this.wlDisplayFdWatcher = new Epoll((err: unknown) => {
+      if (err) {
+        console.error('epoll error: ', err)
+        process.exit(1)
+      }
+      dispatchRequests(this.wlDisplay)
+    })
+    this.wlDisplayFdWatcher.add(getFd(this.wlDisplay), Epoll.EPOLLPRI | Epoll.EPOLLIN | Epoll.EPOLLERR)
 
     logger.info(`Listening on: WAYLAND_DISPLAY="${this.waylandDisplay}".`)
   }
@@ -93,8 +99,10 @@ export class NativeCompositorSession {
       return
     }
 
+    this.wlDisplayFdWatcher.close()
+
     this.clients.forEach((client) => client.nativeClientSession?.destroy())
-    Endpoint.destroyDisplay(this.wlDisplay)
+    destroyDisplay(this.wlDisplay)
 
     this.destroyResolve()
     this.destroyResolve = undefined
@@ -113,13 +121,13 @@ export class NativeCompositorSession {
       logger.debug(
         'No client found without a wayland connection, will create a placeholder client without an open websocket connection.',
       )
-      const retransmittingWebSocket = new RetransmittingWebSocket()
+      const webSocket = new RetransmittingWebSocket()
       client = {
-        nativeClientSession: createNativeClientSession(wlClient, this, retransmittingWebSocket),
-        webSocket: retransmittingWebSocket,
+        nativeClientSession: createNativeClientSession(wlClient, this, webSocket),
+        webSocket,
       }
       this.clients = [...this.clients, client]
-      registerUnboundClientConnection(retransmittingWebSocket)
+      registerUnboundClientConnection(webSocket)
 
       // no previously created web sockets available, so ask compositor to create a new one
       const otherClient = this.clients.find((client) => client.webSocket.readyState === 1)
@@ -136,9 +144,8 @@ export class NativeCompositorSession {
     }
   }
 
-  socketForClient(webSocket: RetransmittingWebSocket): void {
+  socketForClient(webSocket: WebSocketLike): void {
     logger.info(`New websocket connected.`)
-    webSocket.binaryType = 'arraybuffer'
     // find a client who does not have a websocket associated
     const client = this.clients.find((client) => client.webSocket === webSocket)
     if (client === undefined) {

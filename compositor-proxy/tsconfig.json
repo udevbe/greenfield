@@ -5,8 +5,9 @@
     "resolveJsonModule": true,
     "allowJs": true,
     "rootDirs": ["src", "src/@types"],
-    "moduleResolution": "Node",
+    "moduleResolution": "Node"
   },
+  "exclude": ["node_modules", ".eslintrc.js", ".prettierrc.js", "jest.config.js"],
   "ts-node": {
     "files": true
   }

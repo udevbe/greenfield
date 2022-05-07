@@ -15,67 +15,81 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
+import { Configuration, WebfsApi } from './api'
 import { WebFD } from 'westfield-runtime-common'
+import { Client } from 'westfield-runtime-server'
 
-export default class WebFS {
-  private _webFDs: { [key: number]: WebFD } = {}
-  private _nextFD = 0
+export function wrapClientWebFD(client: Client, webFd: WebFD) {
+  // TODO check if webFD and webfs api have same origin
+  return new GWebFD(client.userData.webfs.api, webFd)
+}
 
-  static create(compositorSessionId: string): WebFS {
-    return new WebFS(compositorSessionId)
+export class GWebFD {
+  constructor(private readonly api: WebfsApi, readonly webFd: WebFD) {}
+
+  write(data: Blob): Promise<void> {
+    if (typeof this.webFd.handle !== 'number') {
+      throw new Error('BUG. Only WebFDs with a number handle are currently supported.')
+    }
+
+    return this.api.writeStream({
+      fd: this.webFd.handle,
+      body: data,
+    })
   }
 
-  private constructor(private readonly compositorSessionId: string) {}
+  read(count: number): Promise<Blob> {
+    if (typeof this.webFd.handle !== 'number') {
+      throw new Error('BUG. Only WebFDs with a number handle are currently supported.')
+    }
 
-  fromArrayBuffer(arrayBuffer: ArrayBuffer): WebFD {
-    const fd = this._nextFD++
-    const type = 'ArrayBuffer'
-    // FIXME we want to use reference counting here instead of simply deleting.
-    // Sending the WebFD to an endpoint will increase the ref, and we should wait until the endpoint has closed the fd as well.
-    // TODO probably lots of other edge cases here as well => write some extensive e2e tests
-    const webFdURL = new URL('compositor://')
-    webFdURL.searchParams.append('fd', `${fd}`)
-    webFdURL.searchParams.append('type', type)
-    webFdURL.searchParams.append('compositorSessionId', this.compositorSessionId)
+    return this.api.read({ fd: this.webFd.handle, count })
+  }
 
-    const webFD = new WebFD(
-      fd,
-      type,
-      webFdURL,
-      () => Promise.resolve(arrayBuffer),
-      () => {
-        delete this._webFDs[fd]
-      },
+  async readStream(chunkSize: number): Promise<ReadableStreamDefaultReader<Uint8Array>> {
+    if (typeof this.webFd.handle !== 'number') {
+      throw new Error('BUG. Only WebFDs with a number handle are currently supported.')
+    }
+
+    const rawResponse = await this.api.readStreamRaw({ fd: this.webFd.handle, chunkSize })
+    if (rawResponse.raw.body === null) {
+      throw new Error(
+        `BUG. Tried reading a webfd as stream but failed: ${rawResponse.raw.status} ${rawResponse.raw.statusText}`,
+      )
+    }
+    return rawResponse.raw.body?.getReader()
+  }
+
+  close(): Promise<void> {
+    if (typeof this.webFd.handle !== 'number') {
+      throw new Error('BUG. Only WebFDs with a number handle are currently supported.')
+    }
+
+    return this.api.close({ fd: this.webFd.handle })
+  }
+}
+
+export class WebFS {
+  readonly api: WebfsApi
+
+  constructor(basePath: string, compositorSessionId: string) {
+    this.api = new WebfsApi(
+      new Configuration({
+        basePath,
+        headers: {
+          ['X-Compositor-Session-Id']: compositorSessionId,
+        },
+      }),
     )
-    this._webFDs[fd] = webFD
-    return webFD
   }
 
-  fromImageBitmap(imageBitmap: ImageBitmap): WebFD {
-    const fd = this._nextFD++
-    const type = 'ImageBitmap'
-
-    const webFdURL = new URL('compositor://')
-    webFdURL.searchParams.append('fd', `${fd}`)
-    webFdURL.searchParams.append('type', type)
-    webFdURL.searchParams.append('compositorSessionId', this.compositorSessionId)
-
-    const webFD = new WebFD(
-      fd,
-      'ImageBitmap',
-      webFdURL,
-      () => Promise.resolve(imageBitmap),
-      () => {
-        delete this._webFDs[fd]
-      },
-    )
-    this._webFDs[fd] = webFD
-    return webFD
+  async mkstempMmap(data: Blob): Promise<GWebFD> {
+    const webFD: WebFD = await this.api.mkstempMmap({ body: data })
+    return new GWebFD(this.api, webFD)
   }
 
-  // TODO fromMessagePort
-
-  getWebFD(fd: number): WebFD {
-    return this._webFDs[fd]
+  async mkfifo(): Promise<Array<GWebFD>> {
+    const pipe: WebFD[] = await this.api.mkfifo()
+    return [new GWebFD(this.api, pipe[0]), new GWebFD(this.api, pipe[1])]
   }
 }

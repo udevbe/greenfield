@@ -54,7 +54,7 @@ COPY --from=BUILD /app/yarn.lock .
 COPY --from=BUILD /app/dist .
 COPY --from=BUILD /app/docker-entrypoint.sh .
 RUN yarn install --production --ignore-optional
-COPY --from=BUILD /app/node_modules/westfield-endpoint /app/node_modules/westfield-endpoint
+COPY --from=BUILD /app/node_modules/westfield-proxy /app/node_modules/westfield-proxy
 COPY --from=BUILD /app/node_modules/epoll /app/node_modules/epoll
 COPY --from=BUILD /app/node_modules/bindings /app/node_modules/bindings
 COPY --from=BUILD /app/node_modules/file-uri-to-path /app/node_modules/file-uri-to-path

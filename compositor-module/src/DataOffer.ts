@@ -23,8 +23,9 @@ import {
   WlDataOfferRequests,
   WlDataOfferResource,
 } from 'westfield-runtime-server'
-import DataSource from './DataSource'
+import { DataSource } from './DataSource'
 import Session from './Session'
+import { wrapClientWebFD } from './WebFS'
 
 const { ask, none, copy, move } = WlDataDeviceManagerDndAction
 
@@ -56,15 +57,13 @@ export default class DataOffer implements WlDataOfferRequests {
     const wlDataOfferResource = new WlDataOfferResource(dataDeviceResource.client, offerId, dataDeviceResource.version)
     const dataOffer = new DataOffer(session, wlDataOfferResource, source)
     wlDataOfferResource.implementation = dataOffer
-    source.resource.addDestroyListener(dataOffer.sourceDestroyListener)
+    source.addDestroyListener(dataOffer.sourceDestroyListener)
     wlDataOfferResource.onDestroy().then(() => dataOffer.handleDestroy())
 
     return dataOffer
   }
 
-  readonly sourceDestroyListener = (): void => {
-    this.source = undefined
-  }
+  readonly sourceDestroyListener = (): void => (this.source = undefined)
 
   accept(resource: WlDataOfferResource, serial: number, mimeType: string | undefined): void {
     /* Protect against untimely calls from older data offers */
@@ -110,10 +109,14 @@ export default class DataOffer implements WlDataOfferRequests {
   }
 
   receive(resource: WlDataOfferResource, mimeType: string, fd: WebFD): void {
+    const gWebFD = wrapClientWebFD(resource.client, {
+      ...fd,
+      type: 'pipe-write',
+    })
     if (this.source && this === this.source.dataOffer) {
-      this.source.send(mimeType, fd)
+      this.source.send(mimeType, gWebFD)
     } else {
-      fd.close()
+      gWebFD.close()
     }
   }
 
@@ -151,8 +154,8 @@ export default class DataOffer implements WlDataOfferRequests {
       return
     }
 
-    if (this.source.resource.version >= 3) {
-      this.source.resource.action(action)
+    if (this.source.version >= 3) {
+      this.source.action(action)
     }
 
     if (this.resource.version >= 3) {
@@ -165,15 +168,15 @@ export default class DataOffer implements WlDataOfferRequests {
       return
     }
 
-    this.source.resource.removeDestroyListener(this.sourceDestroyListener)
+    this.source.removeDestroyListener(this.sourceDestroyListener)
     if (this.source.dataOffer !== this) {
       return
     }
 
     if (this.resource.version < 3) {
       this.source.notifyFinish()
-    } else if (this.source.resource.version >= 3) {
-      this.source.resource.cancelled()
+    } else if (this.source.version >= 3) {
+      this.source.cancel()
     }
 
     this.source.dataOffer = undefined
@@ -192,7 +195,7 @@ export default class DataOffer implements WlDataOfferRequests {
     }
 
     const sourceActions =
-      this.source && this.source.resource.version >= 3 ? this.source.dndActions : WlDataDeviceManagerDndAction.copy
+      this.source && this.source.version >= 3 ? this.source.dndActions : WlDataDeviceManagerDndAction.copy
 
     const availableActions = offerActions & sourceActions
 

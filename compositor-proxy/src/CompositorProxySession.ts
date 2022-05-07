@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { RetransmittingWebSocket } from 'retransmitting-websocket'
+import type { WebSocketLike } from 'retransmitting-websocket'
 import { createLogger } from './Logger'
 
 import { createNativeCompositorSession, NativeCompositorSession } from './NativeCompositorSession'
@@ -37,7 +37,7 @@ export function createCompositorProxySession(compositorSessionId: string): Compo
   return compositorProxySession
 }
 
-class CompositorProxySession {
+export class CompositorProxySession {
   private destroyResolve?: (value: void | PromiseLike<void>) => void
   private _destroyPromise = new Promise<void>((resolve) => {
     this.destroyResolve = resolve
@@ -58,7 +58,7 @@ class CompositorProxySession {
     this.destroyResolve?.()
   }
 
-  handleConnection(webSocket: RetransmittingWebSocket): void {
+  handleConnection(webSocket: WebSocketLike): void {
     try {
       this.nativeCompositorSession.socketForClient(webSocket)
     } catch (e: any) {
@@ -69,8 +69,7 @@ class CompositorProxySession {
     }
   }
 
-  handleXWMConnection(webSocket: RetransmittingWebSocket, xwmFD: number): void {
-    webSocket.binaryType = 'arraybuffer'
-    this.xWaylandSession.createXWMConnection(webSocket, xwmFD)
+  handleXWMConnection(webSocket: WebSocketLike, xwmFD: number): void {
+    this.xWaylandSession.upsertXWMConnection(webSocket, xwmFD)
   }
 }

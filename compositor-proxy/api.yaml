@@ -1,0 +1,303 @@
+openapi: 3.0.3
+info:
+  title: Compositor Proxy REST API
+  description: A set of REST API endpoints exposed by the Compositor Proxy.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Compositor-Session-Id
+  responses:
+    UnauthorizedError:
+      description: Authentication information is missing or invalid
+      content:
+        text/plain:
+          schema:
+            type: string
+  schemas:
+    WebFD:
+      description: >
+        This type carefully matches the WebFD type as defined in the [Westfield Wayland protocol generator](https://github.com/udevbe/westfield).
+        It narrows the 'handle' property of the original WebFD type -which has type 'unknown'- to an 'integer' as to mimic a native file descriptor.
+      type: object
+      required:
+        - handle
+        - type
+        - host
+      properties:
+        handle:
+          description: The native FD
+          example: 12
+          type: integer
+          format: int32
+          minimum: 0
+          readOnly: true
+        type:
+          description: >
+            The file type of the native FD. 'unknown' type means that FD was created by an external application, in which
+            case the 'type' should be manually updated to a more concrete type before doing any operations on the WebFD.
+          type: string
+          enum:
+            - pipe-read
+            - pipe-write
+            - shm
+            - unknown
+          readOnly: false
+        host:
+          description: The url where this WebFD originated from and where it can be accessed e.g. for reading.
+          example: 'https://proxy-endpoint.com:8081'
+          type: string
+          format: uri
+          pattern: '^(https?)://'
+          readOnly: true
+
+paths:
+  /mkfifo:
+    post:
+      tags:
+        - webfs
+      summary: Creates a new pipe and returns a read+write WebFD pair.
+      operationId: mkfifo
+      responses:
+        201:
+          description: Pipe pair was succesfully created.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WebFD'
+                example:
+                  - fd: 8
+                    type: pipe-read
+                    location: https://some.proxy.com:8181
+                  - fd: 9
+                    type: pipe-write
+                    location: https://some.proxy.com:8181
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+  /mkstemp-mmap:
+    post:
+      tags:
+        - webfs
+      summary: Creates a tempororay file and returns a memory mapped WebFD of the uploaded data.
+      operationId: mkstempMmap
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        201:
+          description: Data was succesfully uploaded and mapped to a shared memory file.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebFD'
+              example:
+                fd: 10
+                type: shm
+                location: https://some.proxy.com:8181
+        400:
+          description: Bad request. Bad or no content.
+          content:
+            text/plain:
+              schema:
+                type: string
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+  /webfd/{fd}:
+    delete:
+      tags:
+        - webfs
+      summary: close the native fd.
+      operationId: close
+      parameters:
+        - in: path
+          name: fd
+          description: the native fd
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+      responses:
+        200:
+          description: File descriptor closed succesfully.
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        400:
+          description: Bad request. FD must be an integer greater than or equal to zero.
+          content:
+            text/plain:
+              schema:
+                type: string
+        404:
+          description: FD not known.
+          content:
+            text/plain:
+              schema:
+                type: string
+        5XX:
+          description: Unexpected error.
+          content:
+            text/plain:
+              schema:
+                type: string
+    get:
+      tags:
+        - webfs
+      summary: Read a chunk from a WebFD.
+      operationId: read
+      parameters:
+        - in: path
+          name: fd
+          description: the native fd
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+        - in: query
+          name: count
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+          description: Read up to count bytes from file descriptor fd.
+      responses:
+        200:
+          description: Content sent succesfully.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        400:
+          description: Bad request. FD and count must be an integer greater than or equal to zero.
+          content:
+            text/plain:
+              schema:
+                type: string
+        404:
+          description: FD not known.
+          content:
+            text/plain:
+              schema:
+                type: string
+        5XX:
+          description: Unexpected error.
+          content:
+            text/plain:
+              schema:
+                type: string
+  /webfd/{fd}/stream:
+    put:
+      tags:
+        - webfs
+      summary: Write and stream all data to a WebFD until EOF.
+      operationId: writeStream
+      parameters:
+        - in: path
+          name: fd
+          description: the native fd
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+        - in: query
+          name: chunkSize
+          required: false
+          schema:
+            type: integer
+          description: Hint to the receiving end to indicate what chunk size will be used to stream. Defaults to 64 kilobytes.
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        200:
+          description: All content sent succesfully.
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        400:
+          description: Bad request. FD and chunkSize must be an integer greater than or equal to zero.
+          content:
+            text/plain:
+              schema:
+                type: string
+        404:
+          description: FD not known.
+          content:
+            text/plain:
+              schema:
+                type: string
+        5XX:
+          description: Unexpected error.
+          content:
+            text/plain:
+              schema:
+                type: string
+    get:
+      tags:
+        - webfs
+      summary: Read and stream all data from a WebFD until EOF.
+      operationId: readStream
+      parameters:
+        - in: path
+          name: fd
+          description: the native fd
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+        - in: query
+          name: chunkSize
+          required: false
+          schema:
+            type: integer
+          description: Stream data in chunks with a maximum size. Defaults to 64 kilobytes.
+      responses:
+        200:
+          description: All content read succesfully.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        400:
+          description: Bad request. FD and chunkSize must be an integer greater than or equal to zero.
+          content:
+            text/plain:
+              schema:
+                type: string
+        404:
+          description: FD not known.
+          content:
+            text/plain:
+              schema:
+                type: string
+        5XX:
+          description: Unexpected error.
+          content:
+            text/plain:
+              schema:
+                type: string
