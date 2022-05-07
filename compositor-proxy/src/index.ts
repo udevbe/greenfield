@@ -3,7 +3,7 @@ import { unlink } from 'fs/promises'
 import { us_listen_socket_close } from 'uWebSockets.js'
 import { createCompositorProxySession } from './CompositorProxySession'
 import { config } from './config'
-import { closeAllWebSockets } from './ConnectionPool'
+import { closeAllWebSockets } from './ClientConnectionPool'
 import { createLogger } from './Logger'
 import { initSurfaceBufferEncoding } from './SurfaceBufferEncoding'
 import { createApp } from './App'
@@ -22,7 +22,7 @@ const compositorProxySession = createCompositorProxySession(compositorSessionId)
 
 function deleteStartingFile() {
   unlink('/var/run/compositor-proxy/starting').catch(() => {
-    // deleting the starting file is not fatal
+    // not being able to delete the starting file is not fatal
     // TODO log this?
   })
 }

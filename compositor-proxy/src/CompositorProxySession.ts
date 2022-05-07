@@ -70,6 +70,6 @@ export class CompositorProxySession {
   }
 
   handleXWMConnection(webSocket: WebSocketLike, xwmFD: number): void {
-    this.xWaylandSession.createXWMConnection(webSocket, xwmFD)
+    this.xWaylandSession.upsertXWMConnection(webSocket, xwmFD)
   }
 }

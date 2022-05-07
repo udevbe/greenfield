@@ -614,17 +614,32 @@ export class XWindowManager {
     xWaylandShell: XWaylandShell,
   ): Promise<XWindowManager> {
     const xConnection = await xWaylandConnetion.setup()
-    xConnection.defaultExceptionHandler = (error: Error) => {
-      console.error(JSON.stringify(error))
-    }
+    xConnection.defaultExceptionHandler = (error: Error) => console.error(JSON.stringify(error))
+    const xWmResources = await setupResources(xConnection)
 
+    const { composite, xwmAtoms } = xWmResources
+    composite.redirectSubwindows(xConnection.setup.roots[0].root, Composite.Redirect.Manual)
+
+    const selectionWindow = xConnection.allocateID()
+    const wmWindow = createWMWindow(xConnection, xConnection.setup.roots[0], xwmAtoms)
+    const visualAndColormap = setupVisualAndColormap(xConnection)
+    const xWindowManager = new XWindowManager(
+      session,
+      xConnection,
+      client,
+      xWaylandShell,
+      xConnection.setup.roots[0],
+      xWmResources,
+      visualAndColormap,
+      wmWindow,
+      selectionWindow,
+    )
     xConnection.handleEvent = async (eventType, eventSequenceNumber, rawEvent) => {
       if (await xWindowManager.handleSelectionEvent(eventType, rawEvent)) {
         return
       }
 
       // TODO dnd event see window-manager.c L2270
-
       switch (eventType) {
         case ButtonPressEvent:
           xWindowManager.handleButton(unmarshallButtonPressEvent(rawEvent.buffer, rawEvent.byteOffset).value)
@@ -684,16 +699,9 @@ export class XWindowManager {
     }
     xConnection.onPostEventLoop = () => xConnection.flush()
 
-    const xWmResources = await setupResources(xConnection)
-    const visualAndColormap = setupVisualAndColormap(xConnection)
-
     xConnection.changeWindowAttributes(xConnection.setup.roots[0].root, {
       eventMask: EventMask.SubstructureNotify | EventMask.SubstructureRedirect | EventMask.PropertyChange,
     })
-
-    const { composite, xwmAtoms, xFixes } = xWmResources
-    composite.redirectSubwindows(xConnection.setup.roots[0].root, Composite.Redirect.Manual)
-
     xConnection.changeProperty(
       PropMode.Replace,
       xConnection.setup.roots[0].root,
@@ -710,19 +718,6 @@ export class XWindowManager {
       ]),
     )
 
-    const selectionWindow = xConnection.allocateID()
-    const wmWindow = createWMWindow(xConnection, xConnection.setup.roots[0], xwmAtoms)
-    const xWindowManager = new XWindowManager(
-      session,
-      xConnection,
-      client,
-      xWaylandShell,
-      xConnection.setup.roots[0],
-      xWmResources,
-      visualAndColormap,
-      wmWindow,
-      selectionWindow,
-    )
     xWindowManager.setNetActiveWindow(Window.None)
     xWindowManager.selectionInit()
 

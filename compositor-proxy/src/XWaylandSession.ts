@@ -1,17 +1,20 @@
-import { WebSocketLike } from 'retransmitting-websocket'
+import { RetransmittingWebSocket, WebSocketLike } from 'retransmitting-websocket'
 import { createLogger } from './Logger'
 import { nodeFDConnectionSetup } from 'xtsb'
 import { ClientEntry, NativeCompositorSession } from './NativeCompositorSession'
 import { equalValueExternal, setupXWayland, teardownXWayland } from 'westfield-proxy'
+import { createReadStream } from 'fs'
 
 const logger = createLogger('xwayland')
 
 export class XWaylandSession {
   private nativeXWayland?: unknown
   private xWaylandClient?: ClientEntry
-  xwmWebSocket?: WebSocketLike
 
-  constructor(private nativeCompositorSession: NativeCompositorSession) {}
+  constructor(
+    private nativeCompositorSession: NativeCompositorSession,
+    private xwmWebSocket?: RetransmittingWebSocket,
+  ) {}
 
   static create(nativeCompositorSession: NativeCompositorSession): XWaylandSession {
     return new XWaylandSession(nativeCompositorSession)
@@ -29,14 +32,13 @@ export class XWaylandSession {
       this.destroy()
     })
 
-    const { wmFd, wlClient } = await onXWaylandStarting
+    const { wmFd, wlClient, displayFd } = await onXWaylandStarting
 
-    // SIGUSR1 is raised once Xwayland is done initializing.
-    process.on('SIGUSR1', () => {
+    createReadStream('ignored', {
+      fd: displayFd,
+      autoClose: true,
+    }).on('data', (chunk) => {
       logger.info('XWayland started.')
-      process.on('SIGCHLD', () => {
-        // TODO call to native code
-      })
 
       const xWaylandClient = this.nativeCompositorSession.clients.find((value) => {
         if (value.nativeClientSession === undefined) {
@@ -55,30 +57,35 @@ export class XWaylandSession {
         return
       }
 
-      xWaylandClient.nativeClientSession.onDestroy().then(() => {
-        this.destroy()
-      })
+      xWaylandClient.nativeClientSession.onDestroy().then(() => this.destroy())
       xWaylandClient.webSocket.send(Uint32Array.from([7, wmFd]).buffer)
       this.xWaylandClient = xWaylandClient
     })
   }
 
-  async createXWMConnection(xwmWebSocket: WebSocketLike, wmFD: number): Promise<void> {
+  async upsertXWMConnection(xwmWebSocket: WebSocketLike, wmFD: number): Promise<void> {
     logger.info('Handling incoming XWM connection')
+    if (this.xwmWebSocket) {
+      // reconnecting, no need to do anything
+      this.xwmWebSocket.useWebSocket(xwmWebSocket)
+      return
+    } else {
+      this.xwmWebSocket = new RetransmittingWebSocket()
+      this.xwmWebSocket.useWebSocket(xwmWebSocket)
+    }
     // initialize an X11 client connection, used by the compositor's X11 window manager.
     const { xConnectionSocket, setup } = await nodeFDConnectionSetup(wmFD)()
 
     const setupJSON = JSON.stringify(setup)
-    xwmWebSocket.send(setupJSON)
-    xwmWebSocket.addEventListener('message', (ev) => {
+    this.xwmWebSocket.send(setupJSON)
+    this.xwmWebSocket.addEventListener('message', (ev) => {
       if (ev.data instanceof ArrayBuffer) {
         xConnectionSocket.write(Buffer.from(ev.data))
       }
     })
-    xwmWebSocket.addEventListener('close', () => xConnectionSocket.close())
-    xwmWebSocket.addEventListener('error', (ev) => console.error('XConnection websocket error: ' + ev))
+    this.xwmWebSocket.addEventListener('close', () => xConnectionSocket.close())
+    this.xwmWebSocket.addEventListener('error', (ev) => console.error('XConnection websocket error: ' + ev))
 
-    this.xwmWebSocket = xwmWebSocket
     xConnectionSocket.onData = (data) => this.xwmWebSocket?.send(data)
   }
 
@@ -101,28 +108,23 @@ export class XWaylandSession {
   }
 
   private listenXWayland(): {
-    onXWaylandStarting: Promise<{ wmFd: number; wlClient: unknown }>
+    onXWaylandStarting: Promise<{ wmFd: number; wlClient: unknown; displayFd: number }>
     onDestroyed: Promise<void>
   } {
     let destroyResolve: () => void
-    const onDestroyed = new Promise<void>((resolve) => {
-      destroyResolve = resolve
-    })
+    const onDestroyed = new Promise<void>((resolve) => (destroyResolve = resolve))
 
     const onXWaylandStarting = new Promise<{
       wmFd: number
       wlClient: unknown
       display: unknown
+      displayFd: number
     }>((resolve) => {
       let display: unknown
       this.nativeXWayland = setupXWayland(
         this.nativeCompositorSession.wlDisplay,
-        (wmFd: number, wlClient: unknown) => {
-          resolve({ wmFd, wlClient, display })
-        },
-        () => {
-          destroyResolve()
-        },
+        (wmFd: number, wlClient: unknown, displayFd: number) => resolve({ wmFd, wlClient, display, displayFd }),
+        () => destroyResolve(),
       )
     })
 

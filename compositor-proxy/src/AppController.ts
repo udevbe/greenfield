@@ -4,7 +4,7 @@ import fs from 'fs'
 import { TRANSFER_CHUNK_SIZE } from './webfs/ProxyWebFS'
 import { Readable, Writable } from 'stream'
 import { WebSocketLike } from 'retransmitting-websocket'
-import { upsertWebSocket } from './ConnectionPool'
+import { upsertWebSocket } from './ClientConnectionPool'
 import { createLogger } from './Logger'
 import { URLSearchParams } from 'url'
 import { config } from './config'
@@ -351,22 +351,22 @@ export function webSocketOpen(
   }
 
   const connectionId = searchParams.get('connectionId')
-  if (connectionId !== null) {
+  if (connectionId === null) {
+    const message = 'Bad or missing query parameters.'
+    logger.error(message)
+    ws.close(4403, message)
+    return
+  }
+
+  if (searchParams.has('xwmFD')) {
+    const wmFD = Number.parseInt(searchParams.get('xwmFD') ?? '0')
+    compositorProxySession.handleXWMConnection(ws, wmFD)
+  } else {
     const { retransmittingWebSocket, isNew } = upsertWebSocket(connectionId, ws)
     if (!isNew) {
       // reconnecting, no need to do anything
       return
     }
-
-    if (searchParams.has('xwmFD')) {
-      const wmFD = Number.parseInt(searchParams.get('xwmFD') ?? '0')
-      compositorProxySession.handleXWMConnection(retransmittingWebSocket, wmFD)
-    } else {
-      compositorProxySession.handleConnection(retransmittingWebSocket)
-    }
-  } else {
-    const message = 'Bad or missing query parameters.'
-    logger.error(message)
-    ws.close(4403, message)
+    compositorProxySession.handleConnection(retransmittingWebSocket)
   }
 }

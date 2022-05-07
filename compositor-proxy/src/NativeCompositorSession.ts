@@ -18,7 +18,7 @@
 import { Epoll } from 'epoll'
 import { RetransmittingWebSocket, WebSocketLike } from 'retransmitting-websocket'
 import { createCompositorProxyWebFS } from './webfs/ProxyWebFS'
-import { registerUnboundClientConnection } from './ConnectionPool'
+import { registerUnboundClientConnection } from './ClientConnectionPool'
 import { createLogger } from './Logger'
 
 import { createNativeClientSession, NativeClientSession } from './NativeClientSession'
