@@ -1,7 +1,6 @@
 import { DataSource } from '../DataSource'
 import DataOffer from '../DataOffer'
 import { WlDataDeviceManagerDndAction } from 'westfield-runtime-server'
-import { WebFD } from 'westfield-runtime-common'
 import { XWindowManager } from './XWindowManager'
 import { Time } from 'xtsb'
 import { GWebFD } from '../WebFS'
@@ -60,10 +59,6 @@ export class XDataSource implements DataSource {
   }
 
   notifyFinish(): void {
-    if (this.dataOffer?.inAsk && this.version >= 3) {
-      this.action(this.currentDndAction)
-    }
-
     this.dataOffer = undefined
   }
 

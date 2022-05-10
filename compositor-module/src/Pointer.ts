@@ -128,12 +128,12 @@ export class PointerDrag implements PointerGrab, KeyboardGrab {
 
   private constructor(
     public readonly pointer: Pointer,
-    public readonly client: Client,
+    public readonly client?: Client,
     public icon?: View,
     public dataSource?: DataSource,
   ) {}
 
-  static create(pointer: Pointer, client: Client, icon: View | undefined, source: DataSource | undefined): PointerDrag {
+  static create(pointer: Pointer, client?: Client, icon?: View, source?: DataSource): PointerDrag {
     return new PointerDrag(pointer, client, icon, source)
   }
 
@@ -509,7 +509,7 @@ export class Pointer implements WlPointerRequests {
     this.seat.session.renderer.resetCursor()
   }
 
-  startDrag(source: DataSource | undefined, icon: Surface | undefined, client: Client): void {
+  startDrag(source: DataSource | undefined, icon: Surface | undefined, client: Client | undefined): void {
     const drag = PointerDrag.create(this, client, icon?.role?.view, source)
 
     if (icon) {
