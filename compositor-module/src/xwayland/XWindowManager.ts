@@ -85,9 +85,9 @@ import XWaylandShellSurface from './XWaylandShellSurface'
 import { XWindow } from './XWindow'
 import { FrameFlag, FrameStatus, themeCreate, ThemeLocation, XWindowTheme } from './XWindowFrame'
 import { XWindowManagerConnection } from './XWindowManagerConnection'
-import { WebFD } from 'westfield-runtime-common'
 import { createXDataSource, XDataSource } from './XDataSource'
 import { GWebFD } from '../WebFS'
+import { createXDnDDataSource, XDnDDataSource } from './XDnDDataSource'
 
 type ConfigureValueList = Parameters<XConnection['configureWindow']>[1]
 
@@ -595,6 +595,7 @@ export class XWindowManager {
     { visualId, colormap }: VisualAndColormap,
     public readonly wmWindow: WINDOW,
     readonly selectionWindow: WINDOW,
+    readonly dndWindow: WINDOW,
   ) {
     this.atoms = xwmAtoms
     this.composite = composite
@@ -621,6 +622,7 @@ export class XWindowManager {
     composite.redirectSubwindows(xConnection.setup.roots[0].root, Composite.Redirect.Manual)
 
     const selectionWindow = xConnection.allocateID()
+    const dndWindow = xConnection.allocateID()
     const wmWindow = createWMWindow(xConnection, xConnection.setup.roots[0], xwmAtoms)
     const visualAndColormap = setupVisualAndColormap(xConnection)
     const xWindowManager = new XWindowManager(
@@ -633,9 +635,14 @@ export class XWindowManager {
       visualAndColormap,
       wmWindow,
       selectionWindow,
+      dndWindow,
     )
     xConnection.handleEvent = async (eventType, eventSequenceNumber, rawEvent) => {
       if (await xWindowManager.handleSelectionEvent(eventType, rawEvent)) {
+        return
+      }
+
+      if (await xWindowManager.handleDndEvent(eventType, rawEvent)) {
         return
       }
 
@@ -720,6 +727,7 @@ export class XWindowManager {
 
     xWindowManager.setNetActiveWindow(Window.None)
     xWindowManager.selectionInit()
+    xWindowManager.dndInit()
 
     await xWindowManager.createCursors()
     xWindowManager.wmWindowSetCursor(xWindowManager.screen.root, CursorType.XWM_CURSOR_LEFT_PTR)
@@ -1762,14 +1770,14 @@ export class XWindowManager {
     this.xConnection.createWindow(
       WindowClass.CopyFromParent,
       this.selectionWindow,
-      this.xConnection.setup.roots[0].root,
+      this.screen.root,
       0,
       0,
       10,
       10,
       0,
       WindowClass.InputOutput,
-      this.xConnection.setup.roots[0].rootVisual,
+      this.screen.rootVisual,
       {
         eventMask: EventMask.PropertyChange,
       },
@@ -1784,5 +1792,112 @@ export class XWindowManager {
     this.xFixes.selectSelectionInput(this.selectionWindow, this.atoms.CLIPBOARD, mask)
 
     this.session.globals.seat.selectionListeners.push(() => this.setSelection())
+  }
+
+  private async handleDndEvent(eventType: number, rawEvent: Uint8Array) {
+    switch (eventType - this.xFixes.firstEvent) {
+      case XFixes.SelectionNotifyEvent: {
+        const xFixesSelectionNotify = XFixes.unmarshallSelectionNotifyEvent(rawEvent.buffer, rawEvent.byteOffset).value
+        return xFixesSelectionNotify.selection === this.atoms.XdndSelection
+      }
+    }
+
+    switch (eventType & ~0x80) {
+      case ClientMessageEvent: {
+        const clientMessage = unmarshallClientMessageEvent(rawEvent.buffer, rawEvent.byteOffset).value
+        if (clientMessage._type === this.atoms.XdndEnter) {
+          await this.handleDnDEnter(clientMessage)
+          return true
+        } else if (clientMessage._type === this.atoms.XdndLeave) {
+          return true
+        } else if (clientMessage._type === this.atoms.XdndDrop) {
+          return true
+        }
+        return false
+      }
+    }
+    return false
+  }
+
+  private async handleDnDEnter(clientMessage: ClientMessageEvent) {
+    // TODO see dnd.c L114
+    const data32 = clientMessage.data.data32
+    if (data32 === undefined) {
+      throw new Error('BUG. Received X dnd enter client message with undefined data.')
+    }
+    const source = createXDnDDataSource(this, data32[0], data32[1] >> 24)
+
+    let types: Uint32Array
+    if (data32[1] & 1) {
+      const reply = await this.xConnection.getProperty(
+        0 /* delete */,
+        source.window,
+        this.atoms.XdndTypeList,
+        Atom.Any,
+        0,
+        2048,
+      )
+      types = new Uint32Array(reply.value.buffer, reply.value.byteOffset, reply.valueLen)
+    } else {
+      types = new Uint32Array(data32.buffer, 2 * Uint32Array.BYTES_PER_ELEMENT, 3)
+    }
+
+    let hasText = false
+    let name: string
+    for (let i = 0; i < types.length; i++) {
+      if (types[i] === Atom.None) {
+        continue
+      }
+
+      name = await this.getAtomName(types[i])
+      if (
+        types[i] === this.atoms.UTF8_STRING ||
+        types[i] === this.atoms['text/plain;charset=utf-8'] ||
+        types[i] === this.atoms['text/plain']
+      ) {
+        if (hasText) {
+          continue
+        }
+
+        hasText = true
+        source.mimeTypes.push('text/plain;charset=utf-8')
+      } else if (name.includes('/')) {
+        source.mimeTypes.push(name)
+      }
+    }
+
+    this.session.globals.seat.pointer.startDrag(source, undefined, undefined)
+  }
+
+  private dndInit() {
+    const version = 4
+    const mask =
+      XFixes.SelectionEventMask.SetSelectionOwner |
+      XFixes.SelectionEventMask.SelectionWindowDestroy |
+      XFixes.SelectionEventMask.SelectionClientClose
+    this.xFixes.selectSelectionInput(this.selectionWindow, this.atoms.XdndSelection, mask)
+    this.xConnection.createWindow(
+      WindowClass.CopyFromParent,
+      this.dndWindow,
+      this.screen.root,
+      0,
+      0,
+      8192,
+      8192,
+      0,
+      WindowClass.InputOnly,
+      this.screen.rootVisual,
+      {
+        eventMask: EventMask.SubstructureNotify | EventMask.PropertyChange,
+      },
+    )
+    this.xConnection.changeProperty(
+      PropMode.Replace,
+      this.dndWindow,
+      this.atoms.XdndAware,
+      Atom.ATOM,
+      32,
+      new Uint32Array([version]),
+    )
   }
 }
