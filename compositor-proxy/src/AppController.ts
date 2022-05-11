@@ -220,6 +220,7 @@ function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readab
       return true
     })
 
+  let headersWritten = false
   readable
     // TODO log error
     .on('error', (error) => {
@@ -238,20 +239,35 @@ function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readab
         }
       })
     })
-    .on('end', () => httpResponse.cork(() => httpResponse.end()))
-    .once('data', () =>
-      httpResponse.cork(() =>
+    .on('end', () =>
+      httpResponse.cork(() => {
+        if (!headersWritten) {
+          httpResponse
+            .writeStatus('200 OK')
+            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+            .writeHeader('Content-Type', 'application/octet-stream')
+        }
+        httpResponse.end()
+      }),
+    )
+    .once('data', (chunk) => {
+      httpResponse.cork(() => {
         httpResponse
           .writeStatus('200 OK')
           .writeHeader('Access-Control-Allow-Origin', allowOrigin)
-          .writeHeader('Content-Type', 'application/octet-stream'),
-      ),
-    )
-    .on('data', (chunk) => {
-      httpResponse.cork(() => {
+          .writeHeader('Content-Type', 'application/octet-stream')
+        headersWritten = true
         if (!httpResponse.write(chunk)) {
           readable.pause()
         }
+      })
+
+      readable.on('data', (chunk) => {
+        httpResponse.cork(() => {
+          if (!httpResponse.write(chunk)) {
+            readable.pause()
+          }
+        })
       })
     })
 }

@@ -60,6 +60,20 @@ export class GWebFD {
     return rawResponse.raw.body?.getReader()
   }
 
+  async readBlob(): Promise<Blob> {
+    if (typeof this.webFd.handle !== 'number') {
+      throw new Error('BUG. Only WebFDs with a number handle are currently supported.')
+    }
+
+    const rawResponse = await this.api.readStreamRaw({ fd: this.webFd.handle })
+    if (rawResponse.raw.body === null) {
+      throw new Error(
+        `BUG. Tried reading a webfd as stream but failed: ${rawResponse.raw.status} ${rawResponse.raw.statusText}`,
+      )
+    }
+    return rawResponse.raw.blob()
+  }
+
   close(): Promise<void> {
     if (typeof this.webFd.handle !== 'number') {
       throw new Error('BUG. Only WebFDs with a number handle are currently supported.')
