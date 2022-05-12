@@ -4,6 +4,10 @@ The HTML5 Wayland compositor library for Greenfield.
 
 ## Building
 
+Compositor-module uses open-api to generate client code to talk to the compositor-proxy. This requires `java` to be present on your PATH during build.
+
+Next, simply run:
+
 - `yarn install`
 - `yarn generate`
 - `yarn build`
