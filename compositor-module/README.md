@@ -5,6 +5,7 @@ The HTML5 Wayland compositor library for Greenfield.
 ## Building
 
 - `yarn install`
+- `yarn generate`
 - `yarn build`
 
 ## Usage
