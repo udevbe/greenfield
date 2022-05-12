@@ -2,6 +2,10 @@ import Session from '../Session'
 import { Seat } from '../Seat'
 import { DataSource } from '../DataSource'
 
+// The browser somehow has to support the clipboard mimetype (even though it doesn't do anything with the clipboard data...)
+// *and* it also doesn't tell us which mimetypes it supports
+// *and* each browser supports different mimetypes,
+// so we just slim it down to the lowest common set of mimetypes... :(
 const allowedMimeTypes = ['text/plain', 'text/html', 'image/png']
 
 async function blobFromDataSource(mimeType: string, dataSource: DataSource): Promise<Blob> {
@@ -15,20 +19,26 @@ async function blobFromDataSource(mimeType: string, dataSource: DataSource): Pro
 function handleWaylandDataSourceUpdate(seat: Seat) {
   const dataSource = seat.selectionDataSource
   if (dataSource) {
-    const dataSourceMimeTypes = dataSource.mimeTypes
-
-    const clipboardData = Object.fromEntries(
-      dataSourceMimeTypes
-        .filter((mimeType) => allowedMimeTypes.includes(mimeType))
-        .map((mimeType) => [mimeType, blobFromDataSource(mimeType, dataSource)]),
-    )
-
-    navigator.clipboard.write([new ClipboardItem(clipboardData)])
+    const clipboardDataEntries = dataSource.mimeTypes
+      .map((mimeType) => {
+        for (const allowedMimeType of allowedMimeTypes) {
+          if (mimeType.indexOf(allowedMimeType) !== -1) {
+            return allowedMimeType
+          }
+        }
+        return mimeType
+      })
+      .filter((mimeType) => allowedMimeTypes.includes(mimeType))
+      .map((mimeType) => [mimeType, blobFromDataSource(mimeType, dataSource)])
+    if (clipboardDataEntries.length === 0) {
+      navigator.clipboard.writeText('')
+    } else {
+      navigator.clipboard.write([new ClipboardItem(Object.fromEntries(clipboardDataEntries))])
+    }
   } else {
-    navigator.clipboard.write([])
+    navigator.clipboard.writeText('')
   }
 }
-
 function handleBrowserDataSourceUpdate(offers: ClipboardItems) {
   // TODO handle browser clipboard offers
 }

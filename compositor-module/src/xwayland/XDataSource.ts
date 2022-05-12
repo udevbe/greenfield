@@ -33,7 +33,7 @@ export class XDataSource implements DataSource {
   }
 
   send(mimeType: string, fd: GWebFD): void {
-    if (mimeType === 'text/plain;charset=utf-8') {
+    if (mimeType === 'text/plain;charset=utf-8' || mimeType === 'text/plain') {
       this.xWindowManager.xConnection.convertSelection(
         this.xWindowManager.selectionWindow,
         this.xWindowManager.atoms.CLIPBOARD,
