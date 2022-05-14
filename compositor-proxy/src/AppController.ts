@@ -323,11 +323,18 @@ function pipeHttpRequestToWritable(httpResponse: HttpResponse, writable: Writabl
   httpResponse
     .onAborted(() => writable.end())
     .onData((chunk, isLast) => {
-      const data = new Uint8Array(chunk.slice(0))
       if (isLast) {
-        writable.end(data)
-      } else if (!writable.write(data)) {
-        httpResponse.pause()
+        if (chunk.byteLength > 0) {
+          const data = new Uint8Array(chunk.slice(0))
+          writable.end(data)
+        } else {
+          writable.end()
+        }
+      } else if (chunk.byteLength > 0) {
+        const data = new Uint8Array(chunk.slice(0))
+        if (!writable.write(data)) {
+          httpResponse.pause()
+        }
       }
     })
 }

@@ -15,12 +15,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { Client, WlDataDeviceManagerDndAction } from 'westfield-runtime-server'
+import { WlDataDeviceManagerDndAction } from 'westfield-runtime-server'
 import DataOffer from './DataOffer'
-import { GWebFD } from './WebFS'
+import { GWebFD, WebFS } from './WebFS'
 
 export interface DataSource {
-  readonly client: Client
+  /**
+   * The filesystem associated with this datasource in the context of the compositor.
+   * Useful if you want to receive data from this data-source in the compositor.
+   */
+  readonly webfs: WebFS
   mimeTypes: string[]
   setSelection: boolean
   dataOffer?: DataOffer

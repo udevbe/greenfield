@@ -24,7 +24,7 @@ export class XDataSource implements DataSource {
   private destroyResolve: (value: void | PromiseLike<void>) => void
   private destroyPromise = new Promise<void>((resolve) => (this.destroyResolve = resolve))
 
-  constructor(private readonly xWindowManager: XWindowManager, readonly client = xWindowManager.client) {
+  constructor(private readonly xWindowManager: XWindowManager, readonly webfs = xWindowManager.client.userData.webfs) {
     this.destroyPromise.then(() => this.destroyListeners.forEach((listener) => listener()))
   }
 

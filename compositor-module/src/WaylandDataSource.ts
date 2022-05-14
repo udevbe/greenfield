@@ -68,7 +68,11 @@ export class WaylandDataSource implements WlDataSourceRequests, DataSource {
   setSelection = false
   version: number
 
-  constructor(readonly session: Session, readonly resource: WlDataSourceResource, readonly client = resource.client) {
+  constructor(
+    readonly session: Session,
+    readonly resource: WlDataSourceResource,
+    readonly webfs = resource.client.userData.webfs,
+  ) {
     this.version = this.resource.version
   }
 

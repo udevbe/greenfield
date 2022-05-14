@@ -1,7 +1,7 @@
 import Session from '../Session'
 import { Seat } from '../Seat'
 import { DataSource } from '../DataSource'
-import { createBrowserDataSource } from './BrowserDataSource'
+import { BrowserDataSource, createBrowserDataSource } from './BrowserDataSource'
 
 // For reasons unknown, the browser has to support the clipboard mimetype (even though it doesn't do anything with the clipboard data...)
 // *and* it also doesn't tell us which mimetypes it supports
@@ -13,9 +13,8 @@ let browserOffers: ClipboardItems | undefined
 let browserOffersTotalSize = 0
 
 async function blobFromDataSource(mimeType: string, dataSource: DataSource): Promise<Blob> {
-  const [readFD, writeFD] = await dataSource.client.userData.webfs.mkfifo()
+  const [readFD, writeFD] = await dataSource.webfs.mkfifo()
   dataSource.send(mimeType, writeFD)
-  dataSource.client.connection.flush()
   const dataBlob = await readFD.readBlob()
   return new Blob([dataBlob], { type: mimeType })
 }
@@ -23,6 +22,10 @@ async function blobFromDataSource(mimeType: string, dataSource: DataSource): Pro
 function handleWaylandDataSourceUpdate(seat: Seat) {
   const dataSource = seat.selectionDataSource
   if (dataSource) {
+    if (dataSource instanceof BrowserDataSource) {
+      return
+    }
+
     const clipboardDataEntries = dataSource.mimeTypes
       .map((mimeType) => {
         for (const allowedMimeType of allowedMimeTypes) {
@@ -49,12 +52,14 @@ async function updateBrowserOffers(newOffers: ClipboardItems) {
   // Ideally we'd use a clipboardchange event but this is not yet implemented: https://bugs.chromium.org/p/chromium/issues/detail?id=933608
   // so we have to resort to this hack.
   if (browserOffers) {
+    const offerBlobs: (Blob | null)[] = await Promise.all(
+      newOffers.flatMap((newOffer) => newOffer.types.map((mimeType) => newOffer.getType(mimeType))),
+    )
+    const newSize = offerBlobs.reduce((total, newBlob) => total + (newBlob?.size ?? 0), 0)
+
     if (browserOffers.length !== newOffers.length) {
       browserOffers = newOffers
-      const offerBlobs = await Promise.all(
-        newOffers.flatMap((newOffer) => newOffer.types.map((mimeType) => newOffer.getType(mimeType))),
-      )
-      browserOffersTotalSize = offerBlobs.reduce((total, newBlob) => total + newBlob.size, 0)
+      browserOffersTotalSize = newSize
       return true
     }
 
@@ -63,17 +68,10 @@ async function updateBrowserOffers(newOffers: ClipboardItems) {
 
     if (new Set([...browserOfferMimeTypes, ...newOfferMimeTypes]).size !== browserOfferMimeTypes.length) {
       browserOffers = newOffers
-      const offerBlobs = await Promise.all(
-        newOffers.flatMap((newOffer) => newOffer.types.map((mimeType) => newOffer.getType(mimeType))),
-      )
-      browserOffersTotalSize = offerBlobs.reduce((total, newBlob) => total + newBlob.size, 0)
+      browserOffersTotalSize = newSize
       return true
     }
 
-    const offerBlobs = await Promise.all(
-      newOffers.flatMap((newOffer) => newOffer.types.map((mimeType) => newOffer.getType(mimeType))),
-    )
-    const newSize = offerBlobs.reduce((total, newBlob) => total + newBlob.size, 0)
     if (newSize !== browserOffersTotalSize) {
       browserOffers = newOffers
       browserOffersTotalSize = newSize
@@ -103,9 +101,7 @@ function checkBrowserClipboard(session: Session) {
         // no data in clipboard is considered an error, but we don't consider it as one...
         return
       }
-      console.log(e)
-      // most likely the user denied clipboard access
-      session.logger.warn(`Error while trying to access browser clipboard.`)
+      throw e
     })
 }
 

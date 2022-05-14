@@ -1,38 +1,78 @@
 import { DataSource } from '../DataSource'
+import { WlDataDeviceManagerDndAction } from 'westfield-runtime-server'
+import DataOffer from '../DataOffer'
+import { browserWebFS, GWebFD, WebFS } from '../WebFS'
 
 export function createBrowserDataSource(offers: ClipboardItems): DataSource {
-  return new BrowserDataSource()
+  return new BrowserDataSource(
+    offers,
+    offers.flatMap((offer) => offer.types),
+  )
 }
 
-class BrowserDataSource implements DataSource {
-  accepted: boolean
-  readonly client: Client
-  compositorAction: WlDataDeviceManagerDndAction
-  currentDndAction: WlDataDeviceManagerDndAction
-  dndActions: number
-  mimeTypes: string[]
-  setSelection: boolean
-  readonly version: 3 | number
+export class BrowserDataSource implements DataSource {
+  readonly webfs = browserWebFS
+  accepted = false
+  compositorAction = WlDataDeviceManagerDndAction.none
+  currentDndAction = WlDataDeviceManagerDndAction.none
+  dataOffer?: DataOffer
+  dndActions = 0
+  setSelection = false
+  readonly version = 3
 
-  accept(mimeType: string | undefined): void {}
+  private destroyListeners: (() => void)[] = []
+  // @ts-ignore
+  private destroyResolve: (value: void | PromiseLike<void>) => void
+  private destroyPromise = new Promise<void>((resolve) => (this.destroyResolve = resolve))
 
-  action(action: WlDataDeviceManagerDndAction): void {}
-
-  addDestroyListener(destroyListener: () => void): void {}
-
-  cancel(force?: boolean): void {}
-
-  destroyDataSource(): void {}
-
-  dndDropPerformed(): void {}
-
-  notifyFinish(): void {}
-
-  onDestroy(): Promise<void> {
-    return Promise.resolve(undefined)
+  constructor(private readonly offers: ClipboardItems, public mimeTypes: string[]) {
+    this.destroyPromise.then(() => this.destroyListeners.forEach((listener) => listener()))
   }
 
-  removeDestroyListener(destroyListener: () => void): void {}
+  send(mimeType: string, gWebFD: GWebFD) {
+    mimeType = mimeType === 'text/plain;charset=utf-8' ? 'text/plain' : mimeType
+    const matchingOffer = this.offers.find((offer) => offer.types.includes(mimeType))
+    if (matchingOffer) {
+      matchingOffer
+        .getType(mimeType)
+        .then((offerData) => gWebFD.write(offerData))
+        .then(() => gWebFD.close())
+    }
+  }
 
-  send(mimeType: string, gWebFD: GWebFD): void {}
+  accept(mimeType: string | undefined): void {
+    // noop
+  }
+
+  action(action: WlDataDeviceManagerDndAction): void {
+    // noop
+  }
+
+  cancel(force?: boolean): void {
+    // noop
+  }
+
+  dndDropPerformed(): void {
+    // noop
+  }
+
+  notifyFinish(): void {
+    this.dataOffer = undefined
+  }
+
+  addDestroyListener(destroyListener: () => void): void {
+    this.destroyListeners.push(destroyListener)
+  }
+
+  destroyDataSource(): void {
+    this.destroyResolve()
+  }
+
+  onDestroy(): Promise<void> {
+    return this.destroyPromise
+  }
+
+  removeDestroyListener(destroyListener: () => void): void {
+    this.destroyListeners = this.destroyListeners.filter((listener) => listener !== destroyListener)
+  }
 }
