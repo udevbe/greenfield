@@ -4,10 +4,11 @@ import DataOffer from '../DataOffer'
 import { browserWebFS, GWebFD, WebFS } from '../WebFS'
 
 export function createBrowserDataSource(offers: ClipboardItems): DataSource {
-  return new BrowserDataSource(
-    offers,
-    offers.flatMap((offer) => offer.types),
-  )
+  const mimeTypes = offers.flatMap((offer) => offer.types)
+  if (mimeTypes.includes('text/plain')) {
+    mimeTypes.push('text/plain;charset=utf-8')
+  }
+  return new BrowserDataSource(offers, mimeTypes)
 }
 
 export class BrowserDataSource implements DataSource {
