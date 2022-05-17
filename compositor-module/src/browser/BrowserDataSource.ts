@@ -1,21 +1,23 @@
 import { DataSource } from '../DataSource'
-import DataOffer from '../DataOffer'
 import { WlDataDeviceManagerDndAction } from 'westfield-runtime-server'
-import { XWindowManager } from './XWindowManager'
-import { Time } from 'xtsb'
-import { GWebFD } from '../WebFS'
+import DataOffer from '../DataOffer'
+import { browserWebFS, GWebFD, WebFS } from '../WebFS'
 
-export function createXDataSource(xWindowManager: XWindowManager): XDataSource {
-  return new XDataSource(xWindowManager)
+export function createBrowserDataSource(offers: ClipboardItems): DataSource {
+  const mimeTypes = offers.flatMap((offer) => offer.types)
+  if (mimeTypes.includes('text/plain')) {
+    mimeTypes.push('text/plain;charset=utf-8')
+  }
+  return new BrowserDataSource(offers, mimeTypes)
 }
 
-export class XDataSource implements DataSource {
+export class BrowserDataSource implements DataSource {
+  readonly webfs = browserWebFS
   accepted = false
   compositorAction = WlDataDeviceManagerDndAction.none
   currentDndAction = WlDataDeviceManagerDndAction.none
   dataOffer?: DataOffer
   dndActions = 0
-  mimeTypes: string[] = []
   setSelection = false
   readonly version = 3
 
@@ -24,33 +26,30 @@ export class XDataSource implements DataSource {
   private destroyResolve: (value: void | PromiseLike<void>) => void
   private destroyPromise = new Promise<void>((resolve) => (this.destroyResolve = resolve))
 
-  constructor(private readonly xWindowManager: XWindowManager, readonly webfs = xWindowManager.client.userData.webfs) {
+  constructor(private readonly offers: ClipboardItems, public mimeTypes: string[]) {
     this.destroyPromise.then(() => this.destroyListeners.forEach((listener) => listener()))
+  }
+
+  send(mimeType: string, gWebFD: GWebFD) {
+    mimeType = mimeType === 'text/plain;charset=utf-8' ? 'text/plain' : mimeType
+    const matchingOffer = this.offers.find((offer) => offer.types.includes(mimeType))
+    if (matchingOffer) {
+      matchingOffer
+        .getType(mimeType)
+        .then((offerData) => gWebFD.write(offerData))
+        .then(() => gWebFD.close())
+    }
   }
 
   accept(mimeType: string | undefined): void {
     // noop
   }
 
-  send(mimeType: string, fd: GWebFD): void {
-    if (mimeType === 'text/plain;charset=utf-8' || mimeType === 'text/plain') {
-      this.xWindowManager.xConnection.convertSelection(
-        this.xWindowManager.selectionWindow,
-        this.xWindowManager.atoms.CLIPBOARD,
-        this.xWindowManager.atoms.UTF8_STRING,
-        this.xWindowManager.atoms._WL_SELECTION,
-        Time.CurrentTime,
-      )
-      this.xWindowManager.xConnection.flush()
-      this.xWindowManager.dataSourceFd = fd
-    }
-  }
-
-  cancel(): void {
+  action(action: WlDataDeviceManagerDndAction): void {
     // noop
   }
 
-  action(action: WlDataDeviceManagerDndAction): void {
+  cancel(force?: boolean): void {
     // noop
   }
 

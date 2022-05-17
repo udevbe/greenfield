@@ -6,7 +6,7 @@ import { GWebFD } from '../WebFS'
 import { XWindowManager } from './XWindowManager'
 
 export function createXDnDDataSource(xWindowManager: XWindowManager, window: Window, version: number) {
-  return new XDnDDataSource(xWindowManager, xWindowManager.client, window, version)
+  return new XDnDDataSource(xWindowManager, window, version)
 }
 
 export class XDnDDataSource implements DataSource {
@@ -25,9 +25,9 @@ export class XDnDDataSource implements DataSource {
 
   constructor(
     private readonly xWindowManager: XWindowManager,
-    readonly client = xWindowManager.client,
     public readonly window: Window,
     readonly version: number,
+    readonly webfs = xWindowManager.client.userData.webfs,
   ) {
     this.destroyPromise.then(() => this.destroyListeners.forEach((listener) => listener()))
   }

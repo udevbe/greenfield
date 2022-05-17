@@ -28,7 +28,7 @@ import Session from './Session'
 import XWaylandShell from './xwayland/XWaylandShell'
 import { XWindowManager } from './xwayland/XWindowManager'
 import { XWindowManagerConnection } from './xwayland/XWindowManagerConnection'
-import { WebFS } from './WebFS'
+import { createRemoteWebFS, WebFS } from "./WebFS";
 
 type XWaylandConnectionState = {
   state: 'pending' | 'open'
@@ -137,7 +137,7 @@ class RemoteSocket {
         const basePath = `${protocol}://${compositorProxyURL.hostname}${port}`
         client.userData = {
           oobChannel,
-          webfs: new WebFS(basePath, this.session.compositorSessionId),
+          webfs: createRemoteWebFS(basePath, this.session.compositorSessionId),
         }
 
         resolve(client)

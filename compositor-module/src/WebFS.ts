@@ -19,12 +19,59 @@ import { Configuration, WebfsApi } from './api'
 import { WebFD } from 'westfield-runtime-common'
 import { Client } from 'westfield-runtime-server'
 
-export function wrapClientWebFD(client: Client, webFd: WebFD) {
-  // TODO check if webFD and webfs api have same origin
-  return new GWebFD(client.userData.webfs.api, webFd)
+export interface GWebFD {
+  webFd: WebFD
+  write(data: Blob): Promise<void>
+  read(count: number): Promise<Blob>
+  readStream(chunkSize: number): Promise<ReadableStream<Uint8Array>>
+  readBlob(): Promise<Blob>
+  close(): Promise<void>
 }
 
-export class GWebFD {
+export function wrapClientWebFD(client: Client, webFd: WebFD): GWebFD {
+  if (client.userData.webfs instanceof RemoteWebFS) {
+    // TODO check if webFD and webfs api have same origin
+    return new RemoteWebFD(client.userData.webfs.api, webFd)
+  }
+
+  throw new Error('BUG. Unsupported client webfs.')
+}
+
+export interface WebFS {
+  mkstempMmap(data: Blob): Promise<GWebFD>
+  mkfifo(): Promise<Array<GWebFD>>
+}
+
+export function createRemoteWebFS(basePath: string, compositorSessionId: string): WebFS {
+  return new RemoteWebFS(basePath, compositorSessionId)
+}
+
+class RemoteWebFS implements WebFS {
+  readonly api: WebfsApi
+
+  constructor(basePath: string, compositorSessionId: string) {
+    this.api = new WebfsApi(
+      new Configuration({
+        basePath,
+        headers: {
+          ['X-Compositor-Session-Id']: compositorSessionId,
+        },
+      }),
+    )
+  }
+
+  async mkstempMmap(data: Blob): Promise<GWebFD> {
+    const webFD: WebFD = await this.api.mkstempMmap({ body: data })
+    return new RemoteWebFD(this.api, webFD)
+  }
+
+  async mkfifo(): Promise<Array<GWebFD>> {
+    const pipe: WebFD[] = await this.api.mkfifo()
+    return [new RemoteWebFD(this.api, pipe[0]), new RemoteWebFD(this.api, pipe[1])]
+  }
+}
+
+class RemoteWebFD implements GWebFD {
   constructor(private readonly api: WebfsApi, readonly webFd: WebFD) {}
 
   write(data: Blob): Promise<void> {
@@ -46,7 +93,7 @@ export class GWebFD {
     return this.api.read({ fd: this.webFd.handle, count })
   }
 
-  async readStream(chunkSize: number): Promise<ReadableStreamDefaultReader<Uint8Array>> {
+  async readStream(chunkSize: number): Promise<ReadableStream<Uint8Array>> {
     if (typeof this.webFd.handle !== 'number') {
       throw new Error('BUG. Only WebFDs with a number handle are currently supported.')
     }
@@ -57,7 +104,21 @@ export class GWebFD {
         `BUG. Tried reading a webfd as stream but failed: ${rawResponse.raw.status} ${rawResponse.raw.statusText}`,
       )
     }
-    return rawResponse.raw.body?.getReader()
+    return rawResponse.raw.body
+  }
+
+  async readBlob(): Promise<Blob> {
+    if (typeof this.webFd.handle !== 'number') {
+      throw new Error('BUG. Only WebFDs with a number handle are currently supported.')
+    }
+
+    const rawResponse = await this.api.readStreamRaw({ fd: this.webFd.handle })
+    if (rawResponse.raw.body === null) {
+      throw new Error(
+        `BUG. Tried reading a webfd as stream but failed: ${rawResponse.raw.status} ${rawResponse.raw.statusText}`,
+      )
+    }
+    return rawResponse.raw.blob()
   }
 
   close(): Promise<void> {
@@ -69,27 +130,143 @@ export class GWebFD {
   }
 }
 
-export class WebFS {
-  readonly api: WebfsApi
+class BrowserPipeWebFD implements GWebFD {
+  private readBuffer?: Blob
+  constructor(private readonly messageChannel: MessageChannel, private readonly messagePort: MessagePort) {}
 
-  constructor(basePath: string, compositorSessionId: string) {
-    this.api = new WebfsApi(
-      new Configuration({
-        basePath,
-        headers: {
-          ['X-Compositor-Session-Id']: compositorSessionId,
+  get webFd(): WebFD {
+    throw new Error('BUG. Not yet implemented.')
+  }
+
+  async close(): Promise<void> {
+    await this.write(new Blob([new ArrayBuffer(0)]))
+    this.messagePort.close()
+  }
+
+  private readFromBuffer(count: number): Blob | undefined {
+    if (this.readBuffer && this.readBuffer.size >= count) {
+      const readDiff = this.readBuffer.size - count
+      if (readDiff === 0) {
+        const buffer = this.readBuffer
+        this.readBuffer = undefined
+        return buffer
+      } else {
+        const buffer = this.readBuffer.slice(readDiff)
+        this.readBuffer = this.readBuffer.slice(0, readDiff)
+        return buffer
+      }
+    }
+    return undefined
+  }
+
+  private appendBuffer(blob: Blob) {
+    if (this.readBuffer) {
+      this.readBuffer = new Blob([this.readBuffer, blob])
+    } else {
+      this.readBuffer = blob
+    }
+  }
+
+  async read(count: number): Promise<Blob> {
+    const bufferResult = this.readFromBuffer(count)
+    if (bufferResult) {
+      return bufferResult
+    }
+
+    return new Promise<Blob>((resolve, reject) => {
+      this.messagePort.addEventListener(
+        'message',
+        (ev) => {
+          const eventData = ev.data
+          if (eventData instanceof ArrayBuffer) {
+            const data = new Blob([eventData])
+            this.appendBuffer(data)
+            const bufferResult = this.readFromBuffer(count)
+            if (bufferResult) {
+              resolve(data)
+            } else if (data.size === 0) {
+              // EOF
+              resolve(data)
+            }
+          } else {
+            reject(new Error('Received non blob data.'))
+          }
         },
-      }),
-    )
+        {
+          once: true,
+          passive: true,
+        },
+      )
+      this.messagePort.addEventListener(
+        'messageerror',
+        (ev) => {
+          reject(new Error(ev.data))
+        },
+        {
+          once: true,
+          passive: true,
+        },
+      )
+      this.messagePort.start()
+    })
   }
 
-  async mkstempMmap(data: Blob): Promise<GWebFD> {
-    const webFD: WebFD = await this.api.mkstempMmap({ body: data })
-    return new GWebFD(this.api, webFD)
+  readBlob(): Promise<Blob> {
+    return new Promise<Blob>((resolve, reject) => {
+      this.messagePort.addEventListener(
+        'message',
+        (ev) => {
+          const eventData = ev.data
+          if (eventData instanceof ArrayBuffer) {
+            const data = new Blob([eventData])
+            if (data.size === 0) {
+              // EOF
+              const buffer = this.readBuffer ?? data
+              this.readBuffer = undefined
+              resolve(buffer)
+            } else {
+              this.appendBuffer(data)
+            }
+          } else {
+            reject(new Error('Received non ArrayBuffer data.'))
+          }
+        },
+        {
+          passive: true,
+        },
+      )
+      this.messagePort.addEventListener('messageerror', (ev) => reject(new Error(ev.data)), {
+        once: true,
+        passive: true,
+      })
+      this.messagePort.start()
+    })
   }
 
-  async mkfifo(): Promise<Array<GWebFD>> {
-    const pipe: WebFD[] = await this.api.mkfifo()
-    return [new GWebFD(this.api, pipe[0]), new GWebFD(this.api, pipe[1])]
+  async readStream(chunkSize: number): Promise<ReadableStream<Uint8Array>> {
+    const blob = await this.readBlob()
+    // @ts-ignore
+    return blob.stream()
+  }
+
+  async write(data: Blob): Promise<void> {
+    const messageData = await data.arrayBuffer()
+    this.messagePort.postMessage(messageData, [messageData])
   }
 }
+
+class BrowserWebFS implements WebFS {
+  async mkfifo(): Promise<Array<GWebFD>> {
+    const messageChannel = new MessageChannel()
+    return [
+      new BrowserPipeWebFD(messageChannel, messageChannel.port1),
+      new BrowserPipeWebFD(messageChannel, messageChannel.port2),
+    ]
+  }
+
+  mkstempMmap(data: Blob): Promise<GWebFD> {
+    throw new Error('BUG. Not yet implemented.')
+  }
+}
+
+export const browserWebFS: WebFS = new BrowserWebFS()

@@ -1544,7 +1544,7 @@ export class XWindowManager {
       return
     }
 
-    const pipe = await this.session.globals.seat.selectionDataSource.client.userData.webfs.mkfifo()
+    const pipe = await this.session.globals.seat.selectionDataSource.webfs.mkfifo()
     this.selectionTarget = target
     this.dataSourceFd = pipe[0]
     this.session.globals.seat.selectionDataSource?.send(mimeType, pipe[1])
@@ -1558,11 +1558,11 @@ export class XWindowManager {
     }
 
     const dataStream = await fd.readStream(INCR_CHUNK_SIZE)
-
+    const reader = dataStream.getReader()
     try {
       let read = true
       do {
-        const { value, done } = await dataStream.read()
+        const { value, done } = await reader.read()
         read = !done
         if (value) {
           this.readDataSourceData(value)

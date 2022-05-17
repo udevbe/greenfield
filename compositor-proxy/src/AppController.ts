@@ -220,6 +220,7 @@ function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readab
       return true
     })
 
+  let headersWritten = false
   readable
     // TODO log error
     .on('error', (error) => {
@@ -238,20 +239,35 @@ function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readab
         }
       })
     })
-    .on('end', () => httpResponse.cork(() => httpResponse.end()))
-    .once('data', () =>
-      httpResponse.cork(() =>
+    .on('end', () =>
+      httpResponse.cork(() => {
+        if (!headersWritten) {
+          httpResponse
+            .writeStatus('200 OK')
+            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+            .writeHeader('Content-Type', 'application/octet-stream')
+        }
+        httpResponse.end()
+      }),
+    )
+    .once('data', (chunk) => {
+      httpResponse.cork(() => {
         httpResponse
           .writeStatus('200 OK')
           .writeHeader('Access-Control-Allow-Origin', allowOrigin)
-          .writeHeader('Content-Type', 'application/octet-stream'),
-      ),
-    )
-    .on('data', (chunk) => {
-      httpResponse.cork(() => {
+          .writeHeader('Content-Type', 'application/octet-stream')
+        headersWritten = true
         if (!httpResponse.write(chunk)) {
           readable.pause()
         }
+      })
+
+      readable.on('data', (chunk) => {
+        httpResponse.cork(() => {
+          if (!httpResponse.write(chunk)) {
+            readable.pause()
+          }
+        })
       })
     })
 }
@@ -307,11 +323,18 @@ function pipeHttpRequestToWritable(httpResponse: HttpResponse, writable: Writabl
   httpResponse
     .onAborted(() => writable.end())
     .onData((chunk, isLast) => {
-      const data = new Uint8Array(chunk.slice(0))
       if (isLast) {
-        writable.end(data)
-      } else if (!writable.write(data)) {
-        httpResponse.pause()
+        if (chunk.byteLength > 0) {
+          const data = new Uint8Array(chunk.slice(0))
+          writable.end(data)
+        } else {
+          writable.end()
+        }
+      } else if (chunk.byteLength > 0) {
+        const data = new Uint8Array(chunk.slice(0))
+        if (!writable.write(data)) {
+          httpResponse.pause()
+        }
       }
     })
 }

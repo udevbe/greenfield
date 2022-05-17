@@ -5,6 +5,7 @@ import {
 } from '../index'
 import Session from '../Session'
 import { createDnd } from './dnd'
+import { initBrowserSelection } from './selection'
 
 export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outputId: string): void {
   session.renderer.initScene(outputId, canvas)
@@ -28,6 +29,8 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
   }
   dnd.onDnDStarted = () => canvas.removeEventListener('pointerleave', pointerleaveHandler)
   dnd.onDnDEnded = () => canvas.addEventListener('pointerleave', pointerleaveHandler, { passive: true })
+
+  initBrowserSelection(session)
 
   canvas.addEventListener('pointerleave', pointerleaveHandler, { passive: true })
   canvas.addEventListener(
