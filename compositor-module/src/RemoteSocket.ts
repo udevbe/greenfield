@@ -132,7 +132,7 @@ class RemoteSocket {
           id: client.id,
         })
 
-        const protocol = compositorProxyURL.protocol === 'wss' ? 'https' : 'http'
+        const protocol = compositorProxyURL.protocol === 'wss:' ? 'https' : 'http'
         const port = compositorProxyURL.port === '' ? '' : `:${compositorProxyURL.port}`
         const basePath = `${protocol}://${compositorProxyURL.hostname}${port}`
         client.userData = {
