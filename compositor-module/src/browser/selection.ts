@@ -2,6 +2,7 @@ import Session from '../Session'
 import { Seat } from '../Seat'
 import { DataSource } from '../DataSource'
 import { BrowserDataSource, createBrowserDataSource } from './BrowserDataSource'
+import { initBrowserTextSelection } from './text-selection'
 
 // For reasons unknown, the browser has to support the clipboard mimetype (even though it doesn't do anything with the clipboard data...)
 // *and* it also doesn't tell us which mimetypes it supports
@@ -104,9 +105,13 @@ function checkBrowserClipboard(session: Session) {
       throw e
     })
 }
-
-export async function initBrowserSelection(session: Session) {
-  checkBrowserClipboard(session)
-  window.addEventListener('focus', () => checkBrowserClipboard(session))
-  session.globals.seat.selectionListeners.push(() => handleWaylandDataSourceUpdate(session.globals.seat))
+export function initBrowserSelection(session: Session) {
+  if ('write' in navigator.clipboard && 'read' in navigator.clipboard) {
+    checkBrowserClipboard(session)
+    window.addEventListener('focus', () => checkBrowserClipboard(session))
+    session.globals.seat.selectionListeners.push(() => handleWaylandDataSourceUpdate(session.globals.seat))
+  } else {
+    // *sigh* Fallback for Firefox...
+    initBrowserTextSelection(session)
+  }
 }
