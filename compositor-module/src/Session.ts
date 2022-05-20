@@ -20,7 +20,11 @@ import Globals from './Globals'
 import { ButtonCode, CompositorSession } from './index'
 import { FrameDecoder } from './remotestreaming/buffer-decoder'
 import { createWasmFrameDecoder } from './remotestreaming/wasm-buffer-decoder'
-import { createWebCodecFrameDecoder } from './remotestreaming/webcodec-buffer-decoder'
+import {
+  webCodecFrameDecoderFactory,
+  hardwareDecoderConfig,
+  softwareDecoderConfig,
+} from './remotestreaming/webcodec-buffer-decoder'
 import Renderer from './render/Renderer'
 import { createUserShellApi, UserShellApi } from './UserShellApi'
 
@@ -86,13 +90,22 @@ export type GreenfieldLogger = {
   trace: LogFn
 }
 
-async function h264WebCodecsSupported(): Promise<boolean> {
-  // TODO enable once webcodecs has less bugs/better support
-  // if ('VideoDecoder' in window) {
-  //   const videoDecoderSupport = await VideoDecoder.isConfigSupported(videoDecoderConfig)
-  //   return videoDecoderSupport.supported
-  // }
-  return false
+async function webVideoDecoderConfig(): Promise<VideoDecoderConfig | undefined> {
+  if ('VideoDecoder' in window) {
+    const hardwareDecoderSupport = await VideoDecoder.isConfigSupported(hardwareDecoderConfig)
+    if (hardwareDecoderSupport.supported) {
+      return hardwareDecoderConfig
+    }
+
+    const softwareDecoderSupport = await VideoDecoder.isConfigSupported(softwareDecoderConfig)
+    if (softwareDecoderSupport) {
+      // Software decoding often has worse performance then our WASM+WebGL decoder. Re-enable once I420 WebGL color conversion works for WebCodecs.
+      return undefined
+      // return softwareDecoderConfig
+    }
+  }
+
+  return undefined
 }
 
 class Session implements CompositorSession {
@@ -136,8 +149,9 @@ class Session implements CompositorSession {
         return `sid:${[...randomBytes].map((b) => b.toString(16).padStart(2, '0')).join('')}`
       })()
     let frameDecoderFactory: (session: Session) => FrameDecoder
-    if (await h264WebCodecsSupported()) {
-      frameDecoderFactory = createWebCodecFrameDecoder
+    const webCodecSupport = await webVideoDecoderConfig()
+    if (webCodecSupport) {
+      frameDecoderFactory = webCodecFrameDecoderFactory(webCodecSupport)
       logger.info('Will use H.264 WebCodecs Decoder.')
     } else {
       logger.info('Will use H.264 WASM Decoder.')
