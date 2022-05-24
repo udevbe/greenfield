@@ -31,6 +31,7 @@ import {
   initShm,
   nativeGlobalNames,
   dispatchRequests,
+  initDrm,
 } from 'westfield-proxy'
 
 const logger = createLogger('native-compositor-session')
@@ -55,6 +56,7 @@ export function createNativeCompositorSession(compositorSessionId: string): Nati
 export class NativeCompositorSession {
   readonly wlDisplay: unknown
   readonly waylandDisplay: string
+  readonly drmContext: unknown
   private readonly wlDisplayFdWatcher: Epoll
 
   private destroyResolve?: (value: void | PromiseLike<void>) => void
@@ -75,6 +77,7 @@ export class NativeCompositorSession {
 
     this.waylandDisplay = addSocketAuto(this.wlDisplay)
     initShm(this.wlDisplay)
+    this.drmContext = initDrm(this.wlDisplay)
 
     // TODO handle err
     // TODO write our own native epoll

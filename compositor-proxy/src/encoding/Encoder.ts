@@ -18,8 +18,8 @@
 import { config } from '../config'
 import appEndpointNative from './app-endpoint-encoding'
 
-export function createEncoder(wlClient: unknown): Encoder {
-  return new Encoder(config.encoder.h264Encoder, wlClient)
+export function createEncoder(wlClient: unknown, drmContext: unknown): Encoder {
+  return new Encoder(config.encoder.h264Encoder, wlClient, drmContext)
 }
 
 export class Encoder {
@@ -27,8 +27,8 @@ export class Encoder {
   private encodingResolve?: (frame_sample: Buffer) => void
   private encodingPromise?: Promise<Buffer>
 
-  constructor(private readonly encoderType: typeof config.encoder.h264Encoder, wlClient: unknown) {
-    this.nativeEncoder = appEndpointNative.createEncoder(this.encoderType, wlClient, (buffer: Buffer) => {
+  constructor(private readonly encoderType: typeof config.encoder.h264Encoder, wlClient: unknown, drmContext: unknown) {
+    this.nativeEncoder = appEndpointNative.createEncoder(this.encoderType, wlClient, drmContext, (buffer: Buffer) => {
       this.encodingPromise = undefined
       this.encodingResolve?.(buffer)
       this.encodingResolve = undefined

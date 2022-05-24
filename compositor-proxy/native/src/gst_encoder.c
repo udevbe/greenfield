@@ -2,7 +2,7 @@
 // Created by erik on 11/16/21.
 //
 
-#include <westfield-extra.h>
+#include "westfield.h"
 #include <glib.h>
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
@@ -85,6 +85,7 @@ struct encoder {
 	frame_callback_func frame_callback;
 	GQueue *encoding_results;
 	void *user_data;
+    struct westfield_drm *drm_context;
 };
 
 struct gst_encoder {
@@ -839,7 +840,7 @@ const struct encoder_itf *all_encoder_itfs[] = {
 
 int
 do_gst_encoder_create(char preferred_encoder[16], frame_callback_func frame_ready_callback, void *user_data,
-					  struct encoder **encoder_pp) {
+					  struct encoder **encoder_pp, struct westfield_drm *drm_context) {
 	struct encoder *encoder = g_new0(struct encoder, 1);
 
 	strncpy(encoder->preferred_encoder, preferred_encoder, sizeof(encoder->preferred_encoder));
@@ -847,6 +848,7 @@ do_gst_encoder_create(char preferred_encoder[16], frame_callback_func frame_read
 	encoder->frame_callback = frame_ready_callback;
 	encoder->user_data = user_data;
 	encoder->encoding_results = g_queue_new();
+    encoder->drm_context = drm_context;
 
 	*encoder_pp = encoder;
 }

@@ -53,7 +53,7 @@ export function initSurfaceBufferEncoding(): void {
     size: number
   }) {
     if (!this.encoder) {
-      this.encoder = createEncoder(this.wlClient)
+      this.encoder = createEncoder(this.wlClient, this.userData.drmContext)
     }
 
     let syncSerial: number

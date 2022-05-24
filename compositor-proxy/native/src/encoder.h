@@ -5,7 +5,7 @@
 #ifndef APP_ENDPOINT_ENCODING_ENCODER_H
 #define APP_ENDPOINT_ENCODING_ENCODER_H
 
-#include <westfield-extra.h>
+#include "westfield.h"
 #include <node_api.h>
 
 // encoder data interface, we don't know its contents
@@ -21,7 +21,7 @@ typedef void (*frame_callback_func)(void *user_data, struct encoded_frame *encod
 struct encoder;
 
 int
-encoder_create(char preferred_encoder[16], frame_callback_func frame_ready_callback, void *user_data, struct encoder **encoder_pp);
+encoder_create(char preferred_encoder[16], frame_callback_func frame_ready_callback,  void *user_data, struct encoder **encoder_pp, struct westfield_drm *drm_context);
 
 int
 encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource, uint32_t serial);

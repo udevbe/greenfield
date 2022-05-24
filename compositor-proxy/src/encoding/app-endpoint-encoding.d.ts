@@ -4,6 +4,7 @@ declare namespace nativeEncoder {
   export function createEncoder(
     encoderType: 'nvh264' | 'x264' | 'vaapih264',
     wlClient: unknown,
+    drmContext: unknown,
     frameEncoded: (sample: Buffer) => void,
   ): EncoderWrapper
 

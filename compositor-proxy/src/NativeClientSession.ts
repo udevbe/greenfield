@@ -78,7 +78,7 @@ export function createNativeClientSession(
     wlClient,
     nativeCompositorSession.wlDisplay,
     wl_display_interceptor,
-    { communicationChannel: webSocket },
+    { communicationChannel: webSocket, drmContext: nativeCompositorSession.drmContext },
   )
 
   const nativeClientSession = new NativeClientSession(wlClient, nativeCompositorSession, webSocket, messageInterceptor)

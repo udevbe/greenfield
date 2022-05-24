@@ -3,6 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include "encoder.h"
+#include "westfield.h"
 
 #define DECLARE_NAPI_METHOD(name, func)                          \
   { name, 0, func, 0, 0, 0, napi_default, 0 }
@@ -29,6 +30,7 @@
 struct node_encoder {
 	struct encoder* encoder;
 	struct wl_client* client;
+    struct westfield_drm* drm_context;
 	napi_threadsafe_function js_cb_ref;
 };
 
@@ -69,7 +71,8 @@ encoded_frame_to_node_buffer_cb(napi_env env, napi_value js_callback, void *cont
  *  expected nodejs arguments in order:
  *  - string encoder_type - argv[0] // 'x264' | 'nvh264'
  *  - object wl_client - argv[1]
- *  - function opaque_callback - argv[2]
+ *  - object westfield_drm - argv[2]
+ *  - function opaque_callback - argv[3]
  * return:
  *  - object encoderContext
  * @param env
@@ -78,31 +81,36 @@ encoded_frame_to_node_buffer_cb(napi_env env, napi_value js_callback, void *cont
  */
 static napi_value
 createEncoder(napi_env env, napi_callback_info info) {
-    size_t argc = 3;
+    size_t argc = 4;
     napi_value return_value, argv[argc], cb_name;
     napi_threadsafe_function js_cb_ref;
     size_t encoder_type_length;
     struct wl_client *client;
+    struct westfield_drm *drm_context;
 	struct node_encoder* node_encoder;
 	char preferred_encoder[16];
 
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
 	NAPI_CALL(env, napi_get_value_string_latin1(env, argv[0], preferred_encoder, sizeof(preferred_encoder), &encoder_type_length))
 	NAPI_CALL(env, napi_get_value_external(env, argv[1], (void **) &client))
+	NAPI_CALL(env, napi_get_value_external(env, argv[2], (void **) &drm_context))
 
 	node_encoder = calloc(1, sizeof(struct node_encoder));
+    node_encoder->drm_context = drm_context;
+    node_encoder->client = client;
+    node_encoder->js_cb_ref = js_cb_ref;
+
 	if(encoder_create(preferred_encoder, encoder_opaque_sample_ready_callback, node_encoder, &node_encoder->encoder) == -1) {
 		free(node_encoder);
 		NAPI_CALL(env,napi_throw_error((env), NULL, "Can't create encoder."))
 		NAPI_CALL(env,napi_get_undefined(env, &return_value))
 		return return_value;
 	};
-	node_encoder->client = client;
 
 	napi_create_string_utf8(env, "sample_callback", NAPI_AUTO_LENGTH, &cb_name);
 	NAPI_CALL(env, napi_create_threadsafe_function(
 			env,
-			argv[2],
+			argv[3],
 			NULL,
 			cb_name,
 			0,
@@ -112,7 +120,6 @@ createEncoder(napi_env env, napi_callback_info info) {
 			node_encoder,
 			encoded_frame_to_node_buffer_cb,
 			&js_cb_ref))
-	node_encoder->js_cb_ref = js_cb_ref;
 
     NAPI_CALL(env, napi_create_external(env, (void *) node_encoder, encoder_finalize_cb, NULL, &return_value))
     return return_value;
