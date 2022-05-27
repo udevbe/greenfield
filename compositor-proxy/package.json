@@ -22,7 +22,7 @@
     "build:native": "cmake-js",
     "build:typescript": "tsc",
     "build": "yarn build:native && yarn build:typescript",
-    "demo": "COMPOSITOR_SESSION_ID=test123 GST_GL_WINDOW=gbm ts-node ./src/index.ts",
+    "demo": "COMPOSITOR_SESSION_ID=test123 ts-node ./src/index.ts",
     "test": "jest"
   },
   "dependencies": {

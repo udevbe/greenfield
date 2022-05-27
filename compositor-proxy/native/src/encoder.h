@@ -6,7 +6,6 @@
 #define APP_ENDPOINT_ENCODING_ENCODER_H
 
 #include "westfield.h"
-#include <node_api.h>
 
 // encoder data interface, we don't know its contents
 struct encoder;

@@ -5,6 +5,8 @@
 #include "westfield.h"
 #include <glib.h>
 #include <gst/gst.h>
+#include <gst/gl/gstglcontext.h>
+#include <gst/gl/egl/gstgldisplay_egl.h>
 #include <gst/app/gstappsrc.h>
 #include <gst/app/gstappsink.h>
 #include <assert.h>
@@ -401,6 +403,41 @@ h264_gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_reso
 	return gst_encoder_encode(encoder, buffer_resource, h264_gst_encoder_ensure_size, encoding_result);
 }
 
+static GstBusSyncReply
+sync_bus_call (GstBus *bus, GstMessage *msg, gpointer data) {
+    struct encoder *encoder = data;
+
+    switch (GST_MESSAGE_TYPE (msg)) {
+        case GST_MESSAGE_NEED_CONTEXT:
+        {
+            const gchar *context_type;
+            GstContext *context = NULL;
+
+            gst_message_parse_context_type (msg, &context_type);
+            if (g_strcmp0 (context_type, GST_GL_DISPLAY_CONTEXT_TYPE) == 0 && encoder->drm_context) {
+                void *egl_display = westfield_drm_get_egl_display(encoder->drm_context);
+                GstGLDisplay *gst_gl_display = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display(egl_display));
+                context = gst_context_new (GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
+                gst_context_set_gl_display (context, gst_gl_display);
+                gst_element_set_context (GST_ELEMENT (msg->src), context);
+            }
+            if (context)
+                gst_context_unref (context);
+            break;
+        }
+        default:
+            break;
+    }
+
+    return GST_BUS_DROP;
+}
+
+static void
+setup_pipeline_bus_listeners(struct encoder *encoder, GstElement *pipeline){
+    GstBus *bus = gst_element_get_bus(pipeline);
+    gst_bus_set_sync_handler(bus, sync_bus_call, encoder, NULL);
+}
+
 static int
 nvh264_gst_alpha_encoder_create(struct encoder *encoder) {
 	struct gst_encoder *gst_encoder = g_new0(struct gst_encoder, 1);
@@ -425,6 +462,7 @@ nvh264_gst_alpha_encoder_create(struct encoder *encoder) {
 	if (gst_encoder->pipeline == NULL) {
 		return -1;
 	}
+    setup_pipeline_bus_listeners(encoder, gst_encoder->pipeline);
 
 	GstElement *gl_shader = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "glshader");
 	g_object_set(gl_shader, "fragment", fragment_shader, NULL);
@@ -458,6 +496,7 @@ nvh264_gst_encoder_create(struct encoder *encoder) {
 	if (gst_encoder->pipeline == NULL) {
 		return -1;
 	}
+    setup_pipeline_bus_listeners(encoder, gst_encoder->pipeline);
 
 	gst_encoder->app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "src"));
 	gst_encoder->videobox = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "videobox");
@@ -479,6 +518,7 @@ h264_gst_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *bu
 	}
 
 	struct wl_shm_buffer *shm_buffer = wl_shm_buffer_get(buffer_resource);
+    // TODO check for dma buffer
 	// not an shm buffer
 	if (shm_buffer == NULL) {
 		return 0;
@@ -559,6 +599,7 @@ x264_gst_alpha_encoder_create(struct encoder *encoder) {
 	if (gst_encoder->pipeline == NULL) {
 		return -1;
 	}
+    setup_pipeline_bus_listeners(encoder, gst_encoder->pipeline);
 
 	GstElement *gl_shader = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "glshader");
 	g_object_set(gl_shader, "fragment", fragment_shader, NULL);
@@ -595,6 +636,7 @@ x264_gst_encoder_create(struct encoder *encoder) {
 	if (gst_encoder->pipeline == NULL) {
 		return -1;
 	}
+    setup_pipeline_bus_listeners(encoder, gst_encoder->pipeline);
 
 	gst_encoder->app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "src"));
 	gst_encoder->videobox = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "videobox");
@@ -640,6 +682,7 @@ png_gst_encoder_create(struct encoder *encoder) {
 	struct gst_encoder *gst_encoder = g_new0(struct gst_encoder, 1);
 
 	gst_init(NULL, NULL);
+    // TODO add a gldownload element so we can deal with glmemory buffers
 	gst_encoder->pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
 			"videobox name=videobox border-alpha=0.0 ! "
@@ -651,6 +694,7 @@ png_gst_encoder_create(struct encoder *encoder) {
 	if (gst_encoder->pipeline == NULL) {
 		return -1;
 	}
+    setup_pipeline_bus_listeners(encoder, gst_encoder->pipeline);
 
 	gst_encoder->app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "src"));
 	gst_encoder->videobox = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "videobox");
@@ -691,6 +735,7 @@ png_gst_encoder_ensure_size(struct gst_encoder *gst_encoder, const char *format,
 static int
 png_gst_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
 	struct wl_shm_buffer *shm_buffer = wl_shm_buffer_get(buffer_resource);
+    // TODO check for dma buffer
 	if (shm_buffer == NULL) {
 		return 0;
 	}
@@ -747,6 +792,7 @@ vaapi264_gst_alpha_encoder_create(struct encoder *encoder) {
 	if (gst_encoder->pipeline == NULL) {
 		return -1;
 	}
+    setup_pipeline_bus_listeners(encoder, gst_encoder->pipeline);
 
 	GstElement *gl_shader = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "glshader");
 	g_object_set(gl_shader, "fragment", fragment_shader, NULL);
@@ -781,6 +827,7 @@ vaapi264_gst_encoder_create(struct encoder *encoder) {
 	if (gst_encoder->pipeline == NULL) {
 		return -1;
 	}
+    setup_pipeline_bus_listeners(encoder, gst_encoder->pipeline);
 
 	gst_encoder->app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "src"));
 	gst_encoder->videobox = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "videobox");

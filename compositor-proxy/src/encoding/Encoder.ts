@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { config } from '../config'
-import appEndpointNative from './app-endpoint-encoding'
+import appEndpointNative from './proxy-encoding-addon'
 
 export function createEncoder(wlClient: unknown, drmContext: unknown): Encoder {
   return new Encoder(config.encoder.h264Encoder, wlClient, drmContext)

@@ -216,7 +216,7 @@ encoder_create(char preferred_encoder[16],
                void *user_data,
 			   struct encoder **encoder_pp,
                struct westfield_drm *drm_context) {
-	struct gf_message *message = malloc(sizeof(struct gf_message));
+	struct gf_message *message = g_new0(struct gf_message, 1);
 
 	message->type = encoder_create_type;
 	sprintf(message->body.encoder_create.preferred_encoder, "%s", preferred_encoder);
@@ -230,7 +230,7 @@ encoder_create(char preferred_encoder[16],
 
 int
 encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource, uint32_t serial) {
-	struct gf_message *message = malloc(sizeof(struct gf_message));
+    struct gf_message *message = g_new0(struct gf_message, 1);
 
 	message->type = encoder_encode_type;
 	message->body.encoder_encode.encoder_pp = encoder_pp;
@@ -242,7 +242,7 @@ encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource,
 
 int
 encoder_free(struct encoder **encoder_pp) {
-	struct gf_message *message = malloc(sizeof(struct gf_message));
+    struct gf_message *message = g_new0(struct gf_message, 1);
 
 	message->type = encoder_free_type;
 	message->body.encoder_free.encoder_pp = encoder_pp;
@@ -252,7 +252,7 @@ encoder_free(struct encoder **encoder_pp) {
 
 int
 encoded_frame_finalize(struct encoded_frame *encoded_frame) {
-	struct gf_message *message = malloc(sizeof(struct gf_message));
+    struct gf_message *message = g_new0(struct gf_message, 1);
 
 	message->type = encoded_frame_finalize_type;
 	message->body.encoded_frame_finalize.encoded_frame = encoded_frame;
@@ -262,7 +262,7 @@ encoded_frame_finalize(struct encoded_frame *encoded_frame) {
 
 int
 encoder_request_key_unit(struct encoder **encoder_pp) {
-	struct gf_message *message = malloc(sizeof(struct gf_message));
+    struct gf_message *message = g_new0(struct gf_message, 1);
 
 	message->type = encoder_request_key_unit_type;
 	message->body.encoder_request_key_unit.encoder_pp = encoder_pp;
