@@ -15,18 +15,26 @@
 #define FPS 60
 
 static const char fragment_shader[] =
+        "#version 120\n"
+        "#ifdef GL_ES\n"
+        "    precision mediump float;\n"
+        "#endif\n"
+        "varying vec2 v_texcoord;\n"
+        "uniform sampler2D tex;\n"
+        "void main () {\n"
+        "        gl_FragColor = texture2D(tex, v_texcoord);\n"
+        "}";
+
+static const char split_alpha_fragment_shader[] =
 		"#version 120\n"
 		"#ifdef GL_ES\n"
 		"    precision mediump float;\n"
 		"#endif\n"
 		"varying vec2 v_texcoord;\n"
 		"uniform sampler2D tex;\n"
-		"uniform float time;\n"
-		"uniform float width;\n"
-		"uniform float height;\n"
 		"void main () {\n"
 		"        vec4 pix = texture2D(tex, v_texcoord);\n"
-		"        gl_FragColor = vec4(pix.a,pix.a,pix.a,0);\n"
+		"        gl_FragColor = vec4(pix.a, pix.a, pix.a,0);\n"
 		"}";
 
 static const char vertex_shader[] =
@@ -37,9 +45,11 @@ static const char vertex_shader[] =
 		"attribute vec4 a_position;\n"
 		"attribute vec2 a_texcoord;\n"
 		"varying vec2 v_texcoord;\n"
+        "uniform float scale_x;\n"
+        "uniform float scale_y;\n"
 		"void main() {\n"
 		"        gl_Position = a_position;\n"
-		"        v_texcoord = a_texcoord;\n"
+		"        v_texcoord = vec2(a_texcoord.x*scale_x, a_texcoord.y*scale_y);\n"
 		"}";
 
 enum encoding_type {
@@ -93,7 +103,6 @@ struct encoder {
 struct gst_encoder {
 	// gstreamer
 	GstAppSrc *app_src;
-	GstElement *videobox;
 	GstAppSink *app_sink_alpha;
 	GstAppSink *app_sink;
 	GstElement *pipeline;
@@ -301,10 +310,17 @@ wl_shm_buffer_to_gst_buffer(struct wl_shm_buffer *shm_buffer, uint32_t *width, u
 									   handle_gst_buffer_destroyed);
 }
 
+struct h264_gst_encoder {
+    struct gst_encoder base;
+    GstElement *opaque_glshader;
+    GstElement *split_alpha_glshader;
+};
+
 static void
 h264_gst_encoder_ensure_size(struct gst_encoder *gst_encoder, const char *format, const u_int32_t width,
 							 const u_int32_t height) {
-	const GstCaps *current_src_caps = gst_app_src_get_caps(gst_encoder->app_src);
+    struct h264_gst_encoder *h264_gst_encoder = (struct h264_gst_encoder *)gst_encoder;
+	const GstCaps *current_src_caps = gst_app_src_get_caps(h264_gst_encoder->base.app_src);
 	const GstCaps *new_src_caps = gst_caps_new_simple("video/x-raw",
 													  "framerate", GST_TYPE_FRACTION, FPS, 1,
 													  "format", G_TYPE_STRING, format,
@@ -319,10 +335,11 @@ h264_gst_encoder_ensure_size(struct gst_encoder *gst_encoder, const char *format
 		gst_caps_unref((GstCaps *) current_src_caps);
 	}
 
-	gst_app_src_set_caps(gst_encoder->app_src, new_src_caps);
-	gst_caps_unref((GstCaps *) new_src_caps);
+    // TODO update scale_x & scale_y uniforms for shader
+    // TODO update src caps of gl_shaders based on size so we output a multiple of 2
 
-	g_object_set(gst_encoder->videobox, "bottom", 0 - (height % 2), "right", 0 - (width % 2), NULL);
+	gst_app_src_set_caps(h264_gst_encoder->base.app_src, new_src_caps);
+	gst_caps_unref((GstCaps *) new_src_caps);
 }
 
 static void
@@ -331,7 +348,6 @@ gst_encoder_destroy(struct encoder *encoder) {
 	gst_element_set_state(gst_encoder->pipeline, GST_STATE_NULL);
 
 	gst_object_unref(gst_encoder->app_src);
-	gst_object_unref(gst_encoder->videobox);
 	gst_object_unref(gst_encoder->app_sink);
 	if (gst_encoder->app_sink_alpha) {
 		gst_object_unref(gst_encoder->app_sink_alpha);
@@ -404,7 +420,7 @@ h264_gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_reso
 }
 
 static GstBusSyncReply
-sync_bus_call (GstBus *bus, GstMessage *msg, gpointer data) {
+sync_bus_call (__attribute__((unused)) GstBus *bus, GstMessage *msg, gpointer data) {
     struct encoder *encoder = data;
 
     switch (GST_MESSAGE_TYPE (msg)) {
@@ -440,71 +456,86 @@ setup_pipeline_bus_listeners(struct encoder *encoder, GstElement *pipeline){
 
 static int
 nvh264_gst_alpha_encoder_create(struct encoder *encoder) {
-	struct gst_encoder *gst_encoder = g_new0(struct gst_encoder, 1);
+    struct h264_gst_encoder *h264_gst_encoder = g_new0(struct h264_gst_encoder, 1);
 
 	gst_init(NULL, NULL);
-	gst_encoder->pipeline = gst_parse_launch(
+    h264_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
-			"videobox name=videobox border-alpha=0.0 ! "
 			"tee name=t ! queue ! "
 			"glupload ! "
 			"glcolorconvert ! "
-			"glshader name=glshader ! "
-			"glcolorconvert ! "
+			"glshader name=split_alpha ! "
+            "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
 			"nvh264enc gop-size=500 qp-min=29 qp-max=40 zerolatency=true preset=5 rc-mode=4 ! "
 			"video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au ! "
 			"appsink name=alphasink "
 			"t. ! queue ! "
+            "glupload ! "
+            "glcolorconvert ! "
+            "glshader name=opaque ! "
+            "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
 			"nvh264enc gop-size=500 qp-min=29 qp-max=40 zerolatency=true preset=5 rc-mode=4 ! "
 			"video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au ! "
 			"appsink name=sink",
 			NULL);
-	if (gst_encoder->pipeline == NULL) {
+	if (h264_gst_encoder->base.pipeline == NULL) {
 		return -1;
 	}
-    setup_pipeline_bus_listeners(encoder, gst_encoder->pipeline);
+    setup_pipeline_bus_listeners(encoder, h264_gst_encoder->base.pipeline);
 
-	GstElement *gl_shader = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "glshader");
-	g_object_set(gl_shader, "fragment", fragment_shader, NULL);
-	g_object_set(gl_shader, "vertex", vertex_shader, NULL);
+	GstElement *split_alpha_glshader = gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "split_alpha");
+	g_object_set(split_alpha_glshader, "fragment", split_alpha_fragment_shader, NULL);
+	g_object_set(split_alpha_glshader, "vertex", vertex_shader, NULL);
+    h264_gst_encoder->split_alpha_glshader = split_alpha_glshader;
 
-	gst_encoder->app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "src"));
-	gst_encoder->videobox = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "videobox");
-	gst_encoder->app_sink_alpha = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "alphasink"));
-	gst_encoder->app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "sink"));
+    GstElement *opaque_glshader = gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "opaque");
+	g_object_set(opaque_glshader, "fragment", fragment_shader, NULL);
+	g_object_set(opaque_glshader, "vertex", vertex_shader, NULL);
+    h264_gst_encoder->opaque_glshader = opaque_glshader;
 
-	gst_app_sink_set_callbacks(gst_encoder->app_sink, &sample_callback, (gpointer) encoder, NULL);
-	gst_app_sink_set_callbacks(gst_encoder->app_sink_alpha, &alpha_sample_callback, (gpointer) encoder, NULL);
+    h264_gst_encoder->base.app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "src"));
+    h264_gst_encoder->base.app_sink_alpha = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "alphasink"));
+    h264_gst_encoder->base.app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "sink"));
 
-	encoder->impl = gst_encoder;
+	gst_app_sink_set_callbacks(h264_gst_encoder->base.app_sink, &sample_callback, (gpointer) encoder, NULL);
+	gst_app_sink_set_callbacks(h264_gst_encoder->base.app_sink_alpha, &alpha_sample_callback, (gpointer) encoder, NULL);
+
+	encoder->impl = h264_gst_encoder;
 
 	return 0;
 }
 
 static int
 nvh264_gst_encoder_create(struct encoder *encoder) {
-	struct gst_encoder *gst_encoder = g_new0(struct gst_encoder, 1);
+    struct h264_gst_encoder *h264_gst_encoder = g_new0(struct h264_gst_encoder, 1);
 
 	gst_init(NULL, NULL);
-	gst_encoder->pipeline = gst_parse_launch(
+	h264_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
-			"videobox name=videobox border-alpha=0.0 ! "
+            "glupload ! "
+            "glcolorconvert ! "
+            "glshader name=opaque ! "
+            "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
 			"nvh264enc gop-size=500 qp-min=29 qp-max=40 zerolatency=true preset=5 rc-mode=4 ! "
 			"video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au ! "
 			"appsink name=sink",
 			NULL);
-	if (gst_encoder->pipeline == NULL) {
+	if (h264_gst_encoder->base.pipeline == NULL) {
 		return -1;
 	}
-    setup_pipeline_bus_listeners(encoder, gst_encoder->pipeline);
+    setup_pipeline_bus_listeners(encoder, h264_gst_encoder->base.pipeline);
 
-	gst_encoder->app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "src"));
-	gst_encoder->videobox = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "videobox");
-	gst_encoder->app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "sink"));
+    GstElement *opaque_glshader = gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "opaque");
+    g_object_set(opaque_glshader, "fragment", fragment_shader, NULL);
+    g_object_set(opaque_glshader, "vertex", vertex_shader, NULL);
+    h264_gst_encoder->opaque_glshader = opaque_glshader;
 
-	gst_app_sink_set_callbacks(gst_encoder->app_sink, &sample_callback, (gpointer) encoder, NULL);
+    h264_gst_encoder->base.app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "src"));
+    h264_gst_encoder->base.app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "sink"));
 
-	encoder->impl = gst_encoder;
+	gst_app_sink_set_callbacks(h264_gst_encoder->base.app_sink, &sample_callback, (gpointer) encoder, NULL);
+
+	encoder->impl = h264_gst_encoder;
 
 	return 0;
 }
@@ -573,16 +604,15 @@ struct encoder_itf nv264_gst_itf = {
 
 static int
 x264_gst_alpha_encoder_create(struct encoder *encoder) {
-	struct gst_encoder *gst_encoder = g_new0(struct gst_encoder, 1);
+    struct h264_gst_encoder *h264_gst_encoder = g_new0(struct h264_gst_encoder, 1);
 
 	gst_init(NULL, NULL);
-	gst_encoder->pipeline = gst_parse_launch(
+    h264_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
-			"videobox name=videobox border-alpha=0 ! "
 			"tee name=t ! queue ! "
 			"glupload ! "
 			"glcolorconvert ! "
-			"glshader name=glshader ! "
+            "glshader name=split_alpha ! "
 			"glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
 			"gldownload ! "
 			"x264enc rc-lookahead=0 sliced-threads=true qp-max=20 byte-stream=true pass=pass1 tune=zerolatency speed-preset=superfast noise-reduction=0 psy-tune=grain ! "
@@ -590,61 +620,72 @@ x264_gst_alpha_encoder_create(struct encoder *encoder) {
 			"appsink name=alphasink "
 			"t. ! queue ! "
 			"glupload ! "
+            "glshader name=opaque ! "
 			"glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
 			"gldownload ! "
 			"x264enc rc-lookahead=0 sliced-threads=true qp-max=20 byte-stream=true pass=pass1 tune=zerolatency speed-preset=superfast noise-reduction=0 psy-tune=grain ! "
 			"video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
 			"appsink name=sink",
 			NULL);
-	if (gst_encoder->pipeline == NULL) {
+	if (h264_gst_encoder->base.pipeline == NULL) {
 		return -1;
 	}
-    setup_pipeline_bus_listeners(encoder, gst_encoder->pipeline);
+    setup_pipeline_bus_listeners(encoder, h264_gst_encoder->base.pipeline);
 
-	GstElement *gl_shader = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "glshader");
-	g_object_set(gl_shader, "fragment", fragment_shader, NULL);
-	g_object_set(gl_shader, "vertex", vertex_shader, NULL);
+    GstElement *split_alpha_glshader = gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "split_alpha");
+    g_object_set(split_alpha_glshader, "fragment", split_alpha_fragment_shader, NULL);
+    g_object_set(split_alpha_glshader, "vertex", vertex_shader, NULL);
+    h264_gst_encoder->split_alpha_glshader = split_alpha_glshader;
 
-	gst_encoder->app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "src"));
-	gst_encoder->videobox = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "videobox");
-	gst_encoder->app_sink_alpha = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "alphasink"));
-	gst_encoder->app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "sink"));
+    GstElement *opaque_glshader = gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "opaque");
+    g_object_set(opaque_glshader, "fragment", fragment_shader, NULL);
+    g_object_set(opaque_glshader, "vertex", vertex_shader, NULL);
+    h264_gst_encoder->opaque_glshader = opaque_glshader;
 
-	gst_app_sink_set_callbacks(gst_encoder->app_sink, &sample_callback, (gpointer) encoder, NULL);
-	gst_app_sink_set_callbacks(gst_encoder->app_sink_alpha, &alpha_sample_callback, (gpointer) encoder, NULL);
+    h264_gst_encoder->base.app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "src"));
+    h264_gst_encoder->base.app_sink_alpha = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "alphasink"));
+    h264_gst_encoder->base.app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "sink"));
 
-	encoder->impl = (struct encoder *) gst_encoder;
+	gst_app_sink_set_callbacks(h264_gst_encoder->base.app_sink, &sample_callback, (gpointer) encoder, NULL);
+	gst_app_sink_set_callbacks(h264_gst_encoder->base.app_sink_alpha, &alpha_sample_callback, (gpointer) encoder, NULL);
+
+	encoder->impl = h264_gst_encoder;
 
 	return 0;
 }
 
 static int
 x264_gst_encoder_create(struct encoder *encoder) {
-	struct gst_encoder *gst_encoder = g_new0(struct gst_encoder, 1);
+    struct h264_gst_encoder *h264_gst_encoder = g_new0(struct h264_gst_encoder, 1);
 
 	gst_init(NULL, NULL);
-	gst_encoder->pipeline = gst_parse_launch(
+    h264_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
-			"videobox name=videobox border-alpha=0 ! "
 			"glupload ! "
-			"glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
-			"gldownload !"
+            "glcolorconvert ! "
+            "glshader name=opaque ! "
+            "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
+			"gldownload ! "
 			"x264enc qp-max=20 byte-stream=true pass=pass1 tune=zerolatency speed-preset=medium ! "
 			"video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
 			"appsink name=sink",
 			NULL);
-	if (gst_encoder->pipeline == NULL) {
+	if (h264_gst_encoder->base.pipeline == NULL) {
 		return -1;
 	}
-    setup_pipeline_bus_listeners(encoder, gst_encoder->pipeline);
+    setup_pipeline_bus_listeners(encoder, h264_gst_encoder->base.pipeline);
 
-	gst_encoder->app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "src"));
-	gst_encoder->videobox = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "videobox");
-	gst_encoder->app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "sink"));
+    GstElement *opaque_glshader = gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "opaque");
+    g_object_set(opaque_glshader, "fragment", fragment_shader, NULL);
+    g_object_set(opaque_glshader, "vertex", vertex_shader, NULL);
+    h264_gst_encoder->opaque_glshader = opaque_glshader;
 
-	gst_app_sink_set_callbacks(gst_encoder->app_sink, &sample_callback, (gpointer) encoder, NULL);
+    h264_gst_encoder->base.app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "src"));
+    h264_gst_encoder->base.app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "sink"));
 
-	encoder->impl = gst_encoder;
+	gst_app_sink_set_callbacks(h264_gst_encoder->base.app_sink, &sample_callback, (gpointer) encoder, NULL);
+
+	encoder->impl = h264_gst_encoder;
 
 	return 0;
 }
@@ -677,32 +718,38 @@ struct encoder_itf x264_gst_itf = {
 		.separate_alpha = 0,
 };
 
+struct png_gst_encoder {
+    struct gst_encoder base;
+    GstElement *videobox;
+};
+
 static int
 png_gst_encoder_create(struct encoder *encoder) {
-	struct gst_encoder *gst_encoder = g_new0(struct gst_encoder, 1);
+	struct png_gst_encoder *png_gst_encoder = g_new0(struct png_gst_encoder, 1);
 
 	gst_init(NULL, NULL);
     // TODO add a gldownload element so we can deal with glmemory buffers
-	gst_encoder->pipeline = gst_parse_launch(
+    png_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
+            "gldownload ! "
 			"videobox name=videobox border-alpha=0.0 ! "
 			"videoconvert ! videoscale ! "
 			"pngenc ! "
 			"appsink name=sink",
 			NULL);
 
-	if (gst_encoder->pipeline == NULL) {
+	if (png_gst_encoder->base.pipeline == NULL) {
 		return -1;
 	}
-    setup_pipeline_bus_listeners(encoder, gst_encoder->pipeline);
+    setup_pipeline_bus_listeners(encoder, png_gst_encoder->base.pipeline);
 
-	gst_encoder->app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "src"));
-	gst_encoder->videobox = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "videobox");
-	gst_encoder->app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "sink"));
+    png_gst_encoder->base.app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(png_gst_encoder->base.pipeline), "src"));
+    png_gst_encoder->videobox = gst_bin_get_by_name(GST_BIN(png_gst_encoder->base.pipeline), "videobox");
+    png_gst_encoder->base.app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(png_gst_encoder->base.pipeline), "sink"));
 
-	gst_app_sink_set_callbacks(gst_encoder->app_sink, &sample_callback, (gpointer) encoder, NULL);
+	gst_app_sink_set_callbacks(png_gst_encoder->base.app_sink, &sample_callback, (gpointer) encoder, NULL);
 
-	encoder->impl = gst_encoder;
+	encoder->impl = png_gst_encoder;
 
 	return 0;
 }
@@ -710,7 +757,8 @@ png_gst_encoder_create(struct encoder *encoder) {
 static void
 png_gst_encoder_ensure_size(struct gst_encoder *gst_encoder, const char *format, const u_int32_t width,
 							const u_int32_t height) {
-	const GstCaps *current_src_caps = gst_app_src_get_caps(gst_encoder->app_src);
+    struct png_gst_encoder *png_gst_encoder = (struct png_gst_encoder *)gst_encoder;
+	const GstCaps *current_src_caps = gst_app_src_get_caps(png_gst_encoder->base.app_src);
 	const GstCaps *new_src_caps = gst_caps_new_simple("video/x-raw",
 													  "framerate", GST_TYPE_FRACTION, FPS, 1,
 													  "format", G_TYPE_STRING, format,
@@ -725,17 +773,17 @@ png_gst_encoder_ensure_size(struct gst_encoder *gst_encoder, const char *format,
 		gst_caps_unref((GstCaps *) current_src_caps);
 	}
 
-	gst_app_src_set_caps(gst_encoder->app_src, new_src_caps);
+	gst_app_src_set_caps(png_gst_encoder->base.app_src, new_src_caps);
 	gst_caps_unref((GstCaps *) new_src_caps);
 
-	g_object_set(gst_encoder->videobox, "bottom", height < 16 ? height - 16 : 0, "right", width < 16 ? width - 16 : 0,
+	g_object_set(png_gst_encoder->videobox, "bottom", height < 16 ? height - 16 : 0, "right", width < 16 ? width - 16 : 0,
 				 NULL);
 }
 
 static int
 png_gst_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
 	struct wl_shm_buffer *shm_buffer = wl_shm_buffer_get(buffer_resource);
-    // TODO check for dma buffer
+    // TODO check for eglimage (drm/dma) buffer
 	if (shm_buffer == NULL) {
 		return 0;
 	}
@@ -766,76 +814,87 @@ struct encoder_itf png_gst_itf = {
 
 static int
 vaapi264_gst_alpha_encoder_create(struct encoder *encoder) {
-	struct gst_encoder *gst_encoder = g_new0(struct gst_encoder, 1);
+    struct h264_gst_encoder *h264_gst_encoder = g_new0(struct h264_gst_encoder, 1);
 
 	gst_init(NULL, NULL);
-	gst_encoder->pipeline = gst_parse_launch(
+    h264_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
-			"videobox name=videobox border-alpha=0 ! "
 			"tee name=t ! queue ! "
 			"glupload ! "
 			"glcolorconvert ! "
-			"glshader name=glshader ! "
-			"glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
+            "glshader name=split_alpha ! "
+            "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
 			"gldownload ! "
 			"vaapih264enc aud=1 ! "
 			"video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
 			"appsink name=alphasink "
 			"t. ! queue ! "
 			"glupload ! "
-			"glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
+            "glshader name=multiple_of_2 ! "
+            "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
 			"gldownload ! "
 			"vaapih264enc aud=1 ! "
 			"video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
 			"appsink name=sink",
 			NULL);
-	if (gst_encoder->pipeline == NULL) {
-		return -1;
-	}
-    setup_pipeline_bus_listeners(encoder, gst_encoder->pipeline);
+    if (h264_gst_encoder->base.pipeline == NULL) {
+        return -1;
+    }
+    setup_pipeline_bus_listeners(encoder, h264_gst_encoder->base.pipeline);
 
-	GstElement *gl_shader = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "glshader");
-	g_object_set(gl_shader, "fragment", fragment_shader, NULL);
-	g_object_set(gl_shader, "vertex", vertex_shader, NULL);
+    GstElement *split_alpha_glshader = gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "split_alpha");
+    g_object_set(split_alpha_glshader, "fragment", split_alpha_fragment_shader, NULL);
+    g_object_set(split_alpha_glshader, "vertex", vertex_shader, NULL);
+    h264_gst_encoder->split_alpha_glshader = split_alpha_glshader;
 
-	gst_encoder->app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "src"));
-	gst_encoder->videobox = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "videobox");
-	gst_encoder->app_sink_alpha = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "alphasink"));
-	gst_encoder->app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "sink"));
+    GstElement *opaque_glshader = gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "opaque");
+    g_object_set(opaque_glshader, "fragment", fragment_shader, NULL);
+    g_object_set(opaque_glshader, "vertex", vertex_shader, NULL);
+    h264_gst_encoder->opaque_glshader = opaque_glshader;
 
-	gst_app_sink_set_callbacks(gst_encoder->app_sink, &sample_callback, (gpointer) encoder, NULL);
-	gst_app_sink_set_callbacks(gst_encoder->app_sink_alpha, &alpha_sample_callback, (gpointer) encoder, NULL);
+    h264_gst_encoder->base.app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "src"));
+    h264_gst_encoder->base.app_sink_alpha = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "alphasink"));
+    h264_gst_encoder->base.app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "sink"));
 
-	encoder->impl = (struct encoder *) gst_encoder;
+	gst_app_sink_set_callbacks(h264_gst_encoder->base.app_sink, &sample_callback, (gpointer) encoder, NULL);
+	gst_app_sink_set_callbacks(h264_gst_encoder->base.app_sink_alpha, &alpha_sample_callback, (gpointer) encoder, NULL);
+
+	encoder->impl = h264_gst_encoder;
 
 	return 0;
 }
 
 static int
 vaapi264_gst_encoder_create(struct encoder *encoder) {
-	struct gst_encoder *gst_encoder = g_new0(struct gst_encoder, 1);
+    struct h264_gst_encoder *h264_gst_encoder = g_new0(struct h264_gst_encoder, 1);
 
 	gst_init(NULL, NULL);
-	gst_encoder->pipeline = gst_parse_launch(
+    h264_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
-			"videobox name=videobox border-alpha=0 ! "
-			"vaapipostproc ! "
+            "glupload ! "
+            "glshader name=opaque ! "
+            "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
+            "gldownload ! "
 			"vaapih264enc aud=true ! "
 			"video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
 			"appsink name=sink",
 			NULL);
-	if (gst_encoder->pipeline == NULL) {
-		return -1;
-	}
-    setup_pipeline_bus_listeners(encoder, gst_encoder->pipeline);
+    if (h264_gst_encoder->base.pipeline == NULL) {
+        return -1;
+    }
+    setup_pipeline_bus_listeners(encoder, h264_gst_encoder->base.pipeline);
 
-	gst_encoder->app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "src"));
-	gst_encoder->videobox = gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "videobox");
-	gst_encoder->app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(gst_encoder->pipeline), "sink"));
+    GstElement *opaque_glshader = gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "opaque");
+    g_object_set(opaque_glshader, "fragment", fragment_shader, NULL);
+    g_object_set(opaque_glshader, "vertex", vertex_shader, NULL);
+    h264_gst_encoder->opaque_glshader = opaque_glshader;
 
-	gst_app_sink_set_callbacks(gst_encoder->app_sink, &sample_callback, (gpointer) encoder, NULL);
+    h264_gst_encoder->base.app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "src"));
+    h264_gst_encoder->base.app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(h264_gst_encoder->base.pipeline), "sink"));
 
-	encoder->impl = gst_encoder;
+    gst_app_sink_set_callbacks(h264_gst_encoder->base.app_sink, &sample_callback, (gpointer) encoder, NULL);
+
+	encoder->impl = h264_gst_encoder;
 
 	return 0;
 }
