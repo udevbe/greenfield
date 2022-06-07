@@ -2,7 +2,11 @@
 #include <unistd.h>
 #include <sys/eventfd.h>
 #include <stdio.h>
+#include <gst/gst.h>
 #include "encoder.h"
+
+extern int
+do_gst_init();
 
 extern int
 do_gst_encoder_create(char preferred_encoder[16], frame_callback_func frame_ready_callback, void *user_data,
@@ -186,18 +190,13 @@ gf_gst_main_loop_ini(gpointer data) {
 	main_loop->main = main;
 	main_loop->src = (struct SyncSource *) worker;
 
+    do_gst_init();
 	g_main_loop_run(main);
 
 	g_main_loop_unref(main);
 	g_source_destroy(worker);
 
 	return NULL;
-}
-
-__attribute__((constructor))
-static
-void init_gst_main_loop() {
-	g_thread_new("gf_gst_main_loop", gf_gst_main_loop_ini, NULL);
 }
 
 static int
@@ -268,4 +267,10 @@ encoder_request_key_unit(struct encoder **encoder_pp) {
 	message->body.encoder_request_key_unit.encoder_pp = encoder_pp;
 
 	return send_message(message);
+}
+
+__attribute__((constructor))
+static
+void init_gst_main_loop() {
+    g_thread_new("gf_gst_main_loop", gf_gst_main_loop_ini, NULL);
 }

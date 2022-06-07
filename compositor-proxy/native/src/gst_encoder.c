@@ -6,13 +6,25 @@
 #include <glib.h>
 #include <gst/gst.h>
 #include <gst/gl/gstglcontext.h>
+#include <gst/gl/gstglwindow.h>
 #include <gst/gl/egl/gstgldisplay_egl.h>
+#include <gst/gl/egl/gstgldisplay_egl_device.h>
 #include <gst/app/gstappsrc.h>
 #include <gst/app/gstappsink.h>
 #include <assert.h>
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
 #include "encoder.h"
 
 #define FPS 60
+
+static PFNEGLQUERYWAYLANDBUFFERWL eglQueryWaylandBufferWL = 0;
+
+static inline void
+load_egl_pointers() {
+    eglQueryWaylandBufferWL = (PFNEGLQUERYWAYLANDBUFFERWL)
+            eglGetProcAddress("eglQueryWaylandBufferWL");
+}
 
 static const char opaque_fragment_shader[] =
         "#version 120\n"
@@ -89,6 +101,7 @@ struct encoder_itf {
 	int separate_alpha;
 };
 
+// TODO rename to gst_encoder
 struct encoder {
 	struct encoder_itf itf;
 	void *impl;
@@ -98,8 +111,12 @@ struct encoder {
 	GQueue *encoding_results;
 	void *user_data;
     struct westfield_drm *drm_context;
+
+    GstContext *gst_context_gl_display;
+    GstContext *gst_context_gl_context;
 };
 
+// TODO rename to gst_encoder_pipeline
 struct gst_encoder {
 	// gstreamer
 	GstAppSrc *app_src;
@@ -108,6 +125,65 @@ struct gst_encoder {
 	GstElement *pipeline;
 	int playing;
 };
+
+typedef void (*gst_encoder_ensure_size_func_t)(struct gst_encoder *, const GstCaps *new_src_caps, const u_int32_t width,
+                                               const u_int32_t height);
+
+static void
+ensure_gst_gl(struct encoder *encoder, GstElement *pipeline) {
+    if(!encoder->gst_context_gl_display){
+        GstGLDisplay *gst_gl_display;
+
+        EGLDeviceEXT egl_device = westfield_drm_get_egl_device(encoder->drm_context);
+        EGLDisplay egl_display = westfield_drm_get_egl_display(encoder->drm_context);
+        if(egl_device){
+            gst_gl_display = GST_GL_DISPLAY(gst_gl_display_egl_device_new_with_egl_device(egl_device));
+        } else {
+            gst_gl_display = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display (egl_display));
+        }
+        GstContext *gst_context_gl_display = gst_context_new (GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
+        gst_context_set_gl_display (gst_context_gl_display, gst_gl_display);
+        encoder->gst_context_gl_display = gst_context_gl_display;
+
+        if(!encoder->gst_context_gl_context) {
+            gboolean ret;
+            EGLContext egl_context = westfield_drm_get_egl_context(encoder->drm_context);
+            eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, egl_context);
+
+            if(egl_context == NULL) {
+                GST_ERROR_OBJECT (gst_gl_display, "Failed to find EGL context.");
+                return;
+            }
+
+            GstGLContext *gst_gl_context = gst_gl_context_new_wrapped (gst_gl_display,
+                                                                       (guintptr) egl_context,
+                                                                       GST_GL_PLATFORM_EGL,
+                                                                       GST_GL_API_OPENGL);
+            ret = gst_gl_context_activate(gst_gl_context, true);
+            if(!ret) {
+                GST_ERROR_OBJECT (gst_gl_context, "Failed to activate the wrapped EGL Context.");
+                return;
+            }
+
+            GError *error = NULL;
+            ret = gst_gl_context_fill_info(gst_gl_context, &error);
+            if (!ret) {
+                GST_ERROR_OBJECT (gst_gl_context, "Failed to create gpu process context: %s",
+                                  error->message);
+                g_error_free (error);
+                // TODO unref context?
+                return;
+            }
+
+            GstContext *gst_context_gl_context = gst_context_new ("gst.gl.app_context", TRUE);
+            gst_structure_set (gst_context_writable_structure (gst_context_gl_context), "context", GST_TYPE_GL_CONTEXT, gst_gl_context, NULL);
+            encoder->gst_context_gl_context = gst_context_gl_context;
+        }
+    }
+
+    gst_element_set_context (pipeline, encoder->gst_context_gl_context);
+    gst_element_set_context (pipeline, encoder->gst_context_gl_display);
+}
 
 void
 encoding_result_free(struct encoding_result *encoding_result) {
@@ -327,16 +403,11 @@ update_h264_gst_encoder_shader(GstElement * element,
 }
 
 static void
-h264_gst_encoder_ensure_size(struct gst_encoder *gst_encoder, const char *format, const u_int32_t width,
+h264_gst_encoder_ensure_size(struct gst_encoder *gst_encoder, const GstCaps *new_src_caps, const u_int32_t width,
 							 const u_int32_t height) {
     struct h264_gst_encoder *h264_gst_encoder = (struct h264_gst_encoder *)gst_encoder;
 	const GstCaps *current_src_caps = gst_app_src_get_caps(h264_gst_encoder->base.app_src);
-	const GstCaps *new_src_caps = gst_caps_new_simple("video/x-raw",
-													  "framerate", GST_TYPE_FRACTION, FPS, 1,
-													  "format", G_TYPE_STRING, format,
-													  "width", G_TYPE_INT, width,
-													  "height", G_TYPE_INT, height,
-													  NULL);
+
     GstStructure *uniforms;
     GstCaps *shader_src_caps;
     gchar *capsstr;
@@ -404,50 +475,111 @@ gst_request_key_unit(struct encoder *encoder) {
 }
 
 static int
+gst_encoder_encode_shm(struct encoder *encoder,
+                        struct wl_shm_buffer *shm_buffer,
+                        gst_encoder_ensure_size_func_t gst_encoder_ensure_size,
+                        struct encoding_result *encoding_result) {
+    struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
+
+    GstBuffer *buffer;
+    uint32_t buffer_width, buffer_height;
+    GstFlowReturn ret;
+    char gst_format[16];
+    const GstCaps *new_src_caps;
+
+    buffer = wl_shm_buffer_to_gst_buffer(shm_buffer, &buffer_width, &buffer_height, gst_format);
+    if (buffer == NULL) {
+        return -1;
+    }
+
+    encoding_result->width = buffer_width;
+    encoding_result->height = buffer_height;
+
+    new_src_caps = gst_caps_new_simple("video/x-raw",
+                          "framerate", GST_TYPE_FRACTION, FPS, 1,
+                          "format", G_TYPE_STRING, gst_format,
+                          "width", G_TYPE_INT, buffer_width,
+                          "height", G_TYPE_INT, buffer_height,
+                          NULL);
+
+    gst_encoder_ensure_size(gst_encoder, new_src_caps, buffer_width, buffer_height);
+
+    if (gst_encoder->playing == 0) {
+        gst_element_set_state(gst_encoder->pipeline, GST_STATE_PLAYING);
+        if (gst_element_get_state(gst_encoder->pipeline, NULL, NULL, 0) == GST_STATE_CHANGE_FAILURE) {
+            return -1;
+        }
+        gst_encoder->playing = 1;
+    }
+
+    g_queue_push_head(encoder->encoding_results, encoding_result);
+    ret = gst_app_src_push_buffer(gst_encoder->app_src, buffer);
+
+    if (ret != GST_FLOW_OK) {
+        /* We got some error, stop sending data */
+        return -1;
+    }
+
+    return 0;
+}
+
+static int
+gst_encoder_encode_drm(struct encoder *encoder, struct wl_resource *buffer,
+                       gst_encoder_ensure_size_func_t gst_encoder_ensure_size,
+                       struct encoding_result *encoding_result, EGLint texture_format,
+                               EGLDisplay egl_display) {
+    struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
+    EGLint buffer_width, buffer_height;
+    GstCaps *new_src_caps;
+
+    eglQueryWaylandBufferWL(egl_display, buffer, EGL_WIDTH, &buffer_width);
+    eglQueryWaylandBufferWL(egl_display, buffer, EGL_HEIGHT, &buffer_height);
+    EGLAttrib attribs = EGL_NONE;
+    EGLImage image = eglCreateImage(egl_display, EGL_NO_CONTEXT,
+                                    EGL_WAYLAND_BUFFER_WL, buffer, &attribs);
+
+    encoding_result->width = buffer_width;
+    encoding_result->height = buffer_height;
+
+    new_src_caps = gst_caps_new_simple("video/x-raw(memory:GLMemory)",
+                                       "framerate", GST_TYPE_FRACTION, FPS, 1,
+                                       // FIXME convert EGLint texture_format to gstreamer format
+                                       "format", G_TYPE_STRING, "RGBA",
+                                       "width", G_TYPE_INT, buffer_width,
+                                       "height", G_TYPE_INT, buffer_height,
+                                       NULL);
+
+    gst_encoder_ensure_size(gst_encoder, new_src_caps, buffer_width, buffer_height);
+
+    if (gst_encoder->playing == 0) {
+        gst_element_set_state(gst_encoder->pipeline, GST_STATE_PLAYING);
+        if (gst_element_get_state(gst_encoder->pipeline, NULL, NULL, 0) == GST_STATE_CHANGE_FAILURE) {
+            return -1;
+        }
+        gst_encoder->playing = 1;
+    }
+
+
+    return 0;
+}
+
+static int
 gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource,
-				   void (*gst_encoder_ensure_size)(struct gst_encoder *, const char *format, const u_int32_t width,
-												   const u_int32_t height), struct encoding_result *encoding_result) {
-	struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
-	uint32_t buffer_width, buffer_height;
-	GstFlowReturn ret;
-	struct wl_shm_buffer *shm_buffer;
-	GstBuffer *buffer;
-	char gst_format[16];
+                   gst_encoder_ensure_size_func_t ensure_size, struct encoding_result *encoding_result) {
+    EGLDisplay egl_display = westfield_drm_get_egl_display(encoder->drm_context);
+    EGLint texture_format;
+    struct wl_shm_buffer *shm_buffer;
 
+    if(eglQueryWaylandBufferWL(egl_display, buffer_resource, EGL_TEXTURE_FORMAT,
+                               &texture_format)) {
+        return gst_encoder_encode_drm(encoder, buffer_resource, ensure_size, encoding_result, texture_format,
+                                      egl_display);
+    }
 
-    // TODO handle EGLImage buffers
 	shm_buffer = wl_shm_buffer_get((struct wl_resource *) buffer_resource);
-	if (shm_buffer == NULL) {
-		return -1;
+	if (shm_buffer) {
+        return gst_encoder_encode_shm(encoder, shm_buffer, ensure_size, encoding_result);
 	}
-
-	buffer = wl_shm_buffer_to_gst_buffer(shm_buffer, &buffer_width, &buffer_height, gst_format);
-	if (buffer == NULL) {
-		return -1;
-	}
-
-	encoding_result->width = buffer_width;
-	encoding_result->height = buffer_height;
-
-	gst_encoder_ensure_size(gst_encoder, gst_format, buffer_width, buffer_height);
-
-	if (gst_encoder->playing == 0) {
-		gst_element_set_state(gst_encoder->pipeline, GST_STATE_PLAYING);
-		if (gst_element_get_state(gst_encoder->pipeline, NULL, NULL, 0) == GST_STATE_CHANGE_FAILURE) {
-			return -1;
-		}
-		gst_encoder->playing = 1;
-	}
-
-	g_queue_push_head(encoder->encoding_results, encoding_result);
-	ret = gst_app_src_push_buffer(gst_encoder->app_src, buffer);
-
-	if (ret != GST_FLOW_OK) {
-		/* We got some error, stop sending data */
-		return -1;
-	}
-
-	return 0;
 }
 
 static int
@@ -465,18 +597,15 @@ sync_bus_call (__attribute__((unused)) GstBus *bus, GstMessage *msg, gpointer da
         case GST_MESSAGE_NEED_CONTEXT:
         {
             const gchar *context_type;
-            GstContext *context = NULL;
 
             gst_message_parse_context_type (msg, &context_type);
             if (g_strcmp0 (context_type, GST_GL_DISPLAY_CONTEXT_TYPE) == 0 && encoder->drm_context) {
-                void *egl_display = westfield_drm_get_egl_display(encoder->drm_context);
-                GstGLDisplay *gst_gl_display = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display(egl_display));
-                context = gst_context_new (GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
-                gst_context_set_gl_display (context, gst_gl_display);
-                gst_element_set_context (GST_ELEMENT (msg->src), context);
+                gst_element_set_context (GST_ELEMENT (msg->src), encoder->gst_context_gl_display);
             }
-            if (context)
-                gst_context_unref (context);
+
+            if (g_strcmp0 (context_type, "gst.gl.app_context") == 0) {
+                gst_element_set_context (GST_ELEMENT (msg->src), encoder->gst_context_gl_context);
+            }
             break;
         }
         default:
@@ -496,7 +625,6 @@ static int
 nvh264_gst_alpha_encoder_create(struct encoder *encoder) {
     struct h264_gst_encoder *h264_gst_encoder = g_new0(struct h264_gst_encoder, 1);
 
-	gst_init(NULL, NULL);
     h264_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
 			"tee name=t ! queue ! "
@@ -543,6 +671,7 @@ nvh264_gst_alpha_encoder_create(struct encoder *encoder) {
 	gst_app_sink_set_callbacks(h264_gst_encoder->base.app_sink_alpha, &alpha_sample_callback, (gpointer) encoder, NULL);
 
 	encoder->impl = h264_gst_encoder;
+    ensure_gst_gl(encoder, h264_gst_encoder->base.pipeline);
 
 	return 0;
 }
@@ -551,7 +680,6 @@ static int
 nvh264_gst_encoder_create(struct encoder *encoder) {
     struct h264_gst_encoder *h264_gst_encoder = g_new0(struct h264_gst_encoder, 1);
 
-	gst_init(NULL, NULL);
 	h264_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
             "glupload ! "
@@ -580,6 +708,7 @@ nvh264_gst_encoder_create(struct encoder *encoder) {
 	gst_app_sink_set_callbacks(h264_gst_encoder->base.app_sink, &sample_callback, (gpointer) encoder, NULL);
 
 	encoder->impl = h264_gst_encoder;
+    ensure_gst_gl(encoder, h264_gst_encoder->base.pipeline);
 
 	return 0;
 }
@@ -650,7 +779,6 @@ static int
 x264_gst_alpha_encoder_create(struct encoder *encoder) {
     struct h264_gst_encoder *h264_gst_encoder = g_new0(struct h264_gst_encoder, 1);
 
-	gst_init(NULL, NULL);
     h264_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
 			"tee name=t ! queue ! "
@@ -699,6 +827,7 @@ x264_gst_alpha_encoder_create(struct encoder *encoder) {
 	gst_app_sink_set_callbacks(h264_gst_encoder->base.app_sink_alpha, &alpha_sample_callback, (gpointer) encoder, NULL);
 
 	encoder->impl = h264_gst_encoder;
+    ensure_gst_gl(encoder, h264_gst_encoder->base.pipeline);
 
 	return 0;
 }
@@ -707,7 +836,6 @@ static int
 x264_gst_encoder_create(struct encoder *encoder) {
     struct h264_gst_encoder *h264_gst_encoder = g_new0(struct h264_gst_encoder, 1);
 
-	gst_init(NULL, NULL);
     h264_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
 			"glupload ! "
@@ -737,6 +865,7 @@ x264_gst_encoder_create(struct encoder *encoder) {
 	gst_app_sink_set_callbacks(h264_gst_encoder->base.app_sink, &sample_callback, (gpointer) encoder, NULL);
 
 	encoder->impl = h264_gst_encoder;
+    ensure_gst_gl(encoder, h264_gst_encoder->base.pipeline);
 
 	return 0;
 }
@@ -778,7 +907,6 @@ static int
 png_gst_encoder_create(struct encoder *encoder) {
 	struct png_gst_encoder *png_gst_encoder = g_new0(struct png_gst_encoder, 1);
 
-	gst_init(NULL, NULL);
     // TODO add a gldownload element so we can deal with glmemory buffers
     png_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
@@ -801,21 +929,17 @@ png_gst_encoder_create(struct encoder *encoder) {
 	gst_app_sink_set_callbacks(png_gst_encoder->base.app_sink, &sample_callback, (gpointer) encoder, NULL);
 
 	encoder->impl = png_gst_encoder;
+    ensure_gst_gl(encoder, png_gst_encoder->base.pipeline);
 
 	return 0;
 }
 
 static void
-png_gst_encoder_ensure_size(struct gst_encoder *gst_encoder, const char *format, const u_int32_t width,
+png_gst_encoder_ensure_size(struct gst_encoder *gst_encoder, const GstCaps *new_src_caps, const u_int32_t width,
 							const u_int32_t height) {
     struct png_gst_encoder *png_gst_encoder = (struct png_gst_encoder *)gst_encoder;
 	const GstCaps *current_src_caps = gst_app_src_get_caps(png_gst_encoder->base.app_src);
-	const GstCaps *new_src_caps = gst_caps_new_simple("video/x-raw",
-													  "framerate", GST_TYPE_FRACTION, FPS, 1,
-													  "format", G_TYPE_STRING, format,
-													  "width", G_TYPE_INT, width,
-													  "height", G_TYPE_INT, height,
-													  NULL);
+
 	if (current_src_caps && gst_caps_is_equal(current_src_caps, new_src_caps)) {
 		gst_caps_unref((GstCaps *) new_src_caps);
 		gst_caps_unref((GstCaps *) current_src_caps);
@@ -867,7 +991,6 @@ static int
 vaapi264_gst_alpha_encoder_create(struct encoder *encoder) {
     struct h264_gst_encoder *h264_gst_encoder = g_new0(struct h264_gst_encoder, 1);
 
-	gst_init(NULL, NULL);
     h264_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
 			"tee name=t ! queue ! "
@@ -916,6 +1039,7 @@ vaapi264_gst_alpha_encoder_create(struct encoder *encoder) {
 	gst_app_sink_set_callbacks(h264_gst_encoder->base.app_sink_alpha, &alpha_sample_callback, (gpointer) encoder, NULL);
 
 	encoder->impl = h264_gst_encoder;
+    ensure_gst_gl(encoder, h264_gst_encoder->base.pipeline);
 
 	return 0;
 }
@@ -924,7 +1048,6 @@ static int
 vaapi264_gst_encoder_create(struct encoder *encoder) {
     struct h264_gst_encoder *h264_gst_encoder = g_new0(struct h264_gst_encoder, 1);
 
-	gst_init(NULL, NULL);
     h264_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
             "glupload ! "
@@ -953,6 +1076,7 @@ vaapi264_gst_encoder_create(struct encoder *encoder) {
     gst_app_sink_set_callbacks(h264_gst_encoder->base.app_sink, &sample_callback, (gpointer) encoder, NULL);
 
 	encoder->impl = h264_gst_encoder;
+    ensure_gst_gl(encoder, h264_gst_encoder->base.pipeline);
 
 	return 0;
 }
@@ -1001,6 +1125,12 @@ const struct encoder_itf *all_encoder_itfs[] = {
 		&vaapi264_gst_itf,
 		&png_gst_itf
 };
+
+int
+do_gst_init() {
+    load_egl_pointers();
+    gst_init(NULL,NULL);
+}
 
 int
 do_gst_encoder_create(char preferred_encoder[16], frame_callback_func frame_ready_callback, void *user_data,

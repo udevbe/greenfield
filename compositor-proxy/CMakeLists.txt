@@ -16,6 +16,8 @@ pkg_check_modules(GSTREAMER REQUIRED
         gstreamer-gl-1.0
         IMPORTED_TARGET
 )
+pkg_check_modules(EGL REQUIRED egl IMPORTED_TARGET)
+
 get_filename_component(WESTFIELD_LIBWAYLAND_SERVER ${CMAKE_CURRENT_SOURCE_DIR}/node_modules/westfield-proxy/dist/libwestfield-wayland-server.so ABSOLUTE)
 get_filename_component(WESTFIELD ${CMAKE_CURRENT_SOURCE_DIR}/node_modules/westfield-proxy/dist/libwestfield.so ABSOLUTE)
 
@@ -29,10 +31,12 @@ target_include_directories(proxy-encoding PRIVATE
         ${CMAKE_SOURCE_DIR}/node_modules/westfield-proxy/dist/include
         ${GSTREAMER_INCLUDE_DIRS}
         ${GLIB2_INCLUDE_DIRS}
+        ${EGL_INCLUDE_DIRS}
 )
 target_link_libraries(proxy-encoding PRIVATE
         PkgConfig::GLIB2
         PkgConfig::GSTREAMER
+        PkgConfig::EGL
         ${WESTFIELD}
         ${WESTFIELD_LIBWAYLAND_SERVER}
         -Wl,--no-undefined
