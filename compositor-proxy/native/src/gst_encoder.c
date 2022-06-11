@@ -1,30 +1,20 @@
-//
-// Created by erik on 11/16/21.
-//
-
 #include "westfield.h"
 #include <glib.h>
 #include <gst/gst.h>
+#include <gst/allocators/gstdmabuf.h>
 #include <gst/gl/gstglcontext.h>
 #include <gst/gl/gstglwindow.h>
 #include <gst/gl/egl/gstgldisplay_egl.h>
+#include <gst/gl/egl/gsteglimage.h>
 #include <gst/gl/egl/gstgldisplay_egl_device.h>
 #include <gst/app/gstappsrc.h>
 #include <gst/app/gstappsink.h>
 #include <assert.h>
 #include <EGL/egl.h>
-#include <EGL/eglext.h>
 #include "encoder.h"
+#include "westfield-linux-dmabuf-v1.h"
 
 #define FPS 60
-
-static PFNEGLQUERYWAYLANDBUFFERWL eglQueryWaylandBufferWL = 0;
-
-static inline void
-load_egl_pointers() {
-    eglQueryWaylandBufferWL = (PFNEGLQUERYWAYLANDBUFFERWL)
-            eglGetProcAddress("eglQueryWaylandBufferWL");
-}
 
 static const char opaque_fragment_shader[] =
         "#version 120\n"
@@ -119,6 +109,7 @@ struct encoder {
 // TODO rename to gst_encoder_pipeline
 struct gst_encoder {
 	// gstreamer
+    GstAllocator *dma_buf_allocator;
 	GstAppSrc *app_src;
 	GstAppSink *app_sink_alpha;
 	GstAppSink *app_sink;
@@ -394,14 +385,6 @@ struct h264_gst_encoder {
     GstElement *alpha_shader_capsfilter;
 };
 
-static gboolean
-update_h264_gst_encoder_shader(GstElement * element,
-                               GstPad     * pad,
-                               gpointer   user_data) {
-    GstCaps *shader_sink_caps = user_data;
-
-}
-
 static void
 h264_gst_encoder_ensure_size(struct gst_encoder *gst_encoder, const GstCaps *new_src_caps, const u_int32_t width,
 							 const u_int32_t height) {
@@ -524,29 +507,32 @@ gst_encoder_encode_shm(struct encoder *encoder,
 }
 
 static int
-gst_encoder_encode_drm(struct encoder *encoder, struct wl_resource *buffer,
-                       gst_encoder_ensure_size_func_t gst_encoder_ensure_size,
-                       struct encoding_result *encoding_result, EGLint texture_format,
-                               EGLDisplay egl_display) {
+gst_encoder_encode_linux_dmabuf_v1(struct encoder *encoder, struct wl_resource *buffer,
+                                   gst_encoder_ensure_size_func_t gst_encoder_ensure_size,
+                                   struct encoding_result *encoding_result) {
     struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
-    EGLint buffer_width, buffer_height;
+    struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(buffer);
+    int buffer_width = westfield_dmabuf_v1_buffer->base.width;
+    int buffer_height = westfield_dmabuf_v1_buffer->base.height;
+    GstFlowReturn ret;
     GstCaps *new_src_caps;
-
-    eglQueryWaylandBufferWL(egl_display, buffer, EGL_WIDTH, &buffer_width);
-    eglQueryWaylandBufferWL(egl_display, buffer, EGL_HEIGHT, &buffer_height);
-    EGLAttrib attribs = EGL_NONE;
-    EGLImage image = eglCreateImage(egl_display, EGL_NO_CONTEXT,
-                                    EGL_WAYLAND_BUFFER_WL, buffer, &attribs);
 
     encoding_result->width = buffer_width;
     encoding_result->height = buffer_height;
 
-    new_src_caps = gst_caps_new_simple("video/x-raw(memory:GLMemory)",
-                                       "framerate", GST_TYPE_FRACTION, FPS, 1,
-                                       // FIXME convert EGLint texture_format to gstreamer format
-                                       "format", G_TYPE_STRING, "RGBA",
+    GstVideoFormat gst_video_format = gst_video_format_from_fourcc(westfield_dmabuf_v1_buffer->attributes.format);
+    if(gst_video_format == GST_VIDEO_FORMAT_UNKNOWN) {
+        // TODO error out
+        return -1;
+    }
+
+    new_src_caps = gst_caps_new_simple("video/x-raw",
+                                       "format", G_TYPE_STRING,
+                                       gst_video_format_to_string(gst_video_format),
                                        "width", G_TYPE_INT, buffer_width,
                                        "height", G_TYPE_INT, buffer_height,
+                                       "framerate", GST_TYPE_FRACTION,
+                                       FPS, 1000,
                                        NULL);
 
     gst_encoder_ensure_size(gst_encoder, new_src_caps, buffer_width, buffer_height);
@@ -559,6 +545,37 @@ gst_encoder_encode_drm(struct encoder *encoder, struct wl_resource *buffer,
         gst_encoder->playing = 1;
     }
 
+    GstBuffer *buf = gst_buffer_new();
+
+    gsize offsets[westfield_dmabuf_v1_buffer->attributes.n_planes];
+    gint strides[westfield_dmabuf_v1_buffer->attributes.n_planes];
+
+    for (int i = 0; i < westfield_dmabuf_v1_buffer->attributes.n_planes; ++i) {
+        offsets[i] = westfield_dmabuf_v1_buffer->attributes.offset[i];
+        strides[i] = (gint)westfield_dmabuf_v1_buffer->attributes.stride[i];
+        GstMemory *mem = gst_dmabuf_allocator_alloc(gst_encoder->dma_buf_allocator,
+                                                 westfield_dmabuf_v1_buffer->attributes.fd[i],
+                                                 westfield_dmabuf_v1_buffer->attributes.stride[i]*westfield_dmabuf_v1_buffer->attributes.height);
+        gst_buffer_append_memory(buf, mem);
+    }
+
+    gst_buffer_add_video_meta_full(buf,
+                                   GST_VIDEO_FRAME_FLAG_NONE,
+                                   gst_video_format,
+                                   buffer_width,
+                                   buffer_height,
+                                   westfield_dmabuf_v1_buffer->attributes.n_planes,
+                                   offsets,
+                                   strides);
+
+    g_queue_push_head(encoder->encoding_results, encoding_result);
+    ret = gst_app_src_push_buffer(gst_encoder->app_src, buf);
+
+    if (ret != GST_FLOW_OK) {
+        /* We got some error, stop sending data */
+        return -1;
+    }
+    // TODO memory management/lifecycle of buffer?
 
     return 0;
 }
@@ -566,14 +583,11 @@ gst_encoder_encode_drm(struct encoder *encoder, struct wl_resource *buffer,
 static int
 gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource,
                    gst_encoder_ensure_size_func_t ensure_size, struct encoding_result *encoding_result) {
-    EGLDisplay egl_display = westfield_drm_get_egl_display(encoder->drm_context);
-    EGLint texture_format;
     struct wl_shm_buffer *shm_buffer;
 
-    if(eglQueryWaylandBufferWL(egl_display, buffer_resource, EGL_TEXTURE_FORMAT,
-                               &texture_format)) {
-        return gst_encoder_encode_drm(encoder, buffer_resource, ensure_size, encoding_result, texture_format,
-                                      egl_display);
+
+    if(westfield_dmabuf_v1_resource_is_buffer(buffer_resource)) {
+        return gst_encoder_encode_linux_dmabuf_v1(encoder, buffer_resource, ensure_size, encoding_result);
     }
 
 	shm_buffer = wl_shm_buffer_get((struct wl_resource *) buffer_resource);
@@ -624,6 +638,7 @@ setup_pipeline_bus_listeners(struct encoder *encoder, GstElement *pipeline){
 static int
 nvh264_gst_alpha_encoder_create(struct encoder *encoder) {
     struct h264_gst_encoder *h264_gst_encoder = g_new0(struct h264_gst_encoder, 1);
+    h264_gst_encoder->base.dma_buf_allocator = gst_dmabuf_allocator_new();
 
     h264_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
@@ -679,6 +694,7 @@ nvh264_gst_alpha_encoder_create(struct encoder *encoder) {
 static int
 nvh264_gst_encoder_create(struct encoder *encoder) {
     struct h264_gst_encoder *h264_gst_encoder = g_new0(struct h264_gst_encoder, 1);
+    h264_gst_encoder->base.dma_buf_allocator = gst_dmabuf_allocator_new();
 
 	h264_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
@@ -778,6 +794,7 @@ struct encoder_itf nv264_gst_itf = {
 static int
 x264_gst_alpha_encoder_create(struct encoder *encoder) {
     struct h264_gst_encoder *h264_gst_encoder = g_new0(struct h264_gst_encoder, 1);
+    h264_gst_encoder->base.dma_buf_allocator = gst_dmabuf_allocator_new();
 
     h264_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
@@ -835,6 +852,7 @@ x264_gst_alpha_encoder_create(struct encoder *encoder) {
 static int
 x264_gst_encoder_create(struct encoder *encoder) {
     struct h264_gst_encoder *h264_gst_encoder = g_new0(struct h264_gst_encoder, 1);
+    h264_gst_encoder->base.dma_buf_allocator = gst_dmabuf_allocator_new();
 
     h264_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
@@ -906,6 +924,7 @@ struct png_gst_encoder {
 static int
 png_gst_encoder_create(struct encoder *encoder) {
 	struct png_gst_encoder *png_gst_encoder = g_new0(struct png_gst_encoder, 1);
+    png_gst_encoder->base.dma_buf_allocator = gst_dmabuf_allocator_new();
 
     // TODO add a gldownload element so we can deal with glmemory buffers
     png_gst_encoder->base.pipeline = gst_parse_launch(
@@ -990,6 +1009,7 @@ struct encoder_itf png_gst_itf = {
 static int
 vaapi264_gst_alpha_encoder_create(struct encoder *encoder) {
     struct h264_gst_encoder *h264_gst_encoder = g_new0(struct h264_gst_encoder, 1);
+    h264_gst_encoder->base.dma_buf_allocator = gst_dmabuf_allocator_new();
 
     h264_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
@@ -1047,6 +1067,7 @@ vaapi264_gst_alpha_encoder_create(struct encoder *encoder) {
 static int
 vaapi264_gst_encoder_create(struct encoder *encoder) {
     struct h264_gst_encoder *h264_gst_encoder = g_new0(struct h264_gst_encoder, 1);
+    h264_gst_encoder->base.dma_buf_allocator = gst_dmabuf_allocator_new();
 
     h264_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
@@ -1128,7 +1149,6 @@ const struct encoder_itf *all_encoder_itfs[] = {
 
 int
 do_gst_init() {
-    load_egl_pointers();
     gst_init(NULL,NULL);
 }
 

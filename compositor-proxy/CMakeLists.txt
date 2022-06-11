@@ -14,11 +14,12 @@ pkg_check_modules(GSTREAMER REQUIRED
         gstreamer-app-1.0
         gstreamer-video-1.0
         gstreamer-gl-1.0
+        gstreamer-allocators-1.0
         IMPORTED_TARGET
 )
 pkg_check_modules(EGL REQUIRED egl IMPORTED_TARGET)
 
-get_filename_component(WESTFIELD_LIBWAYLAND_SERVER ${CMAKE_CURRENT_SOURCE_DIR}/node_modules/westfield-proxy/dist/libwestfield-wayland-server.so ABSOLUTE)
+get_filename_component(WESTFIELD_LIBWAYLAND_SERVER ${CMAKE_CURRENT_SOURCE_DIR}/node_modules/westfield-proxy/dist/libwayland-server.so.0 ABSOLUTE)
 get_filename_component(WESTFIELD ${CMAKE_CURRENT_SOURCE_DIR}/node_modules/westfield-proxy/dist/libwestfield.so ABSOLUTE)
 
 
