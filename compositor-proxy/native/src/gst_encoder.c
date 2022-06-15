@@ -10,7 +10,9 @@
 #include <gst/app/gstappsrc.h>
 #include <gst/app/gstappsink.h>
 #include <assert.h>
+#include <stdbool.h>
 #include <EGL/egl.h>
+#include <drm_fourcc.h>
 #include "encoder.h"
 #include "westfield-linux-dmabuf-v1.h"
 
@@ -77,7 +79,7 @@ struct encoding_result {
 };
 
 struct encoder_itf {
-	int (*supports_buffer)(struct encoder *encoder, struct wl_resource *buffer_resource);
+	bool (*supports_buffer)(struct encoder *encoder, struct wl_resource *buffer_resource);
 
 	int (*create)(struct encoder *encoder);
 
@@ -460,7 +462,7 @@ gst_request_key_unit(struct encoder *encoder) {
 static int
 gst_encoder_encode_shm(struct encoder *encoder,
                         struct wl_shm_buffer *shm_buffer,
-                        gst_encoder_ensure_size_func_t gst_encoder_ensure_size,
+                        const gst_encoder_ensure_size_func_t gst_encoder_ensure_size,
                         struct encoding_result *encoding_result) {
     struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
 
@@ -506,34 +508,149 @@ gst_encoder_encode_shm(struct encoder *encoder,
     return 0;
 }
 
+/* supported gbm format list */
+struct dmabuf_support_format {
+    /* GBM_FORMAT_* tokens are strictly aliased with DRM_FORMAT_*, so we
+     * use the latter to avoid a dependency on GBM */
+    uint32_t drm_format;
+    const char *gst_format_string;
+    GstVideoFormat gst_video_format;
+};
+
+static const struct dmabuf_support_format dmabuf_supported_formats[] = {
+        {
+                .drm_format = DRM_FORMAT_ARGB8888,
+                .gst_format_string = "BGRA",
+                .gst_video_format = GST_VIDEO_FORMAT_BGRA,
+        },
+        {
+                .drm_format = DRM_FORMAT_RGBA8888,
+                .gst_format_string = "ABGR",
+                .gst_video_format = GST_VIDEO_FORMAT_ABGR,
+        },
+        {
+                .drm_format = DRM_FORMAT_BGRA8888,
+                .gst_format_string = "ARGB",
+                .gst_video_format = GST_VIDEO_FORMAT_ARGB,
+        },
+        {
+                .drm_format =DRM_FORMAT_RGBX8888,
+                .gst_format_string = "xBGR",
+                .gst_video_format = GST_VIDEO_FORMAT_xBGR,
+        },
+        {
+                .drm_format =DRM_FORMAT_BGRX8888,
+                .gst_format_string = "xRGB",
+                .gst_video_format = GST_VIDEO_FORMAT_xRGB,
+        },
+        {
+                .drm_format =DRM_FORMAT_RGB888,
+                .gst_format_string = "BGR",
+                .gst_video_format = GST_VIDEO_FORMAT_BGR,
+        },
+        {
+                .drm_format = DRM_FORMAT_ABGR8888,
+                .gst_format_string = "RGBA",
+                .gst_video_format = GST_VIDEO_FORMAT_RGBA,
+        },
+        {
+                .drm_format = DRM_FORMAT_BGR888,
+                .gst_format_string = "RGB",
+                .gst_video_format = GST_VIDEO_FORMAT_RGB,
+        },
+        {
+                .drm_format = DRM_FORMAT_XBGR8888,
+                .gst_format_string = "RGBx",
+                .gst_video_format = GST_VIDEO_FORMAT_RGBx,
+        },
+        {
+                .drm_format = DRM_FORMAT_XRGB8888,
+                .gst_format_string = "BGRx",
+                .gst_video_format = GST_VIDEO_FORMAT_BGRx,
+        },
+        {
+                .drm_format = DRM_FORMAT_RGB565,
+                .gst_format_string = "RGB16",
+                .gst_video_format = GST_VIDEO_FORMAT_RGB16,
+        },
+        // TODO more
+//        return "GBRA";
+//        return "GBR";
+//        return "RGBP";
+//        return "BGRP";
+//        return "Y444";
+//        return "I420";
+//        return "YV12";
+//        return "Y42B";
+//        return "Y41B";
+//        return "NV12";
+//        return "NV21";
+//        return "NV16";
+//        return "NV61";
+//        return "YUY2";
+//        return "UYVY";
+//        return "Y210";
+//        return "AYUV";
+//        return "VUYA";
+//        return "Y410";
+//        return "GRAY8";
+//        return "GRAY16_LE";
+//        return "GRAY16_BE";
+//        return "BGR16";
+//        return "ARGB64";
+//        return "A420";
+//        return "AV12";
+//        return "NV12_16L32S";
+//        return "NV12_4L4";
+//        return "BGR10A2_LE";
+//        return "RGB10A2_LE";
+//        return "P010_10LE";
+//        return "P012_LE";
+//        return "P016_LE";
+//        return "Y212_LE";
+//        return "Y412_LE";
+};
+
+static inline const struct dmabuf_support_format*
+gst_raw_video_format_from_fourcc(const uint32_t fourcc) {
+    const size_t dmabuf_supported_formats_size = sizeof(dmabuf_supported_formats) / sizeof(dmabuf_supported_formats[0]);
+    for (int i = 0; i < dmabuf_supported_formats_size; ++i) {
+        if(dmabuf_supported_formats[i].drm_format == fourcc) {
+            return &dmabuf_supported_formats[i];
+        }
+    }
+    return NULL;
+}
+
 static int
 gst_encoder_encode_linux_dmabuf_v1(struct encoder *encoder, struct wl_resource *buffer,
-                                   gst_encoder_ensure_size_func_t gst_encoder_ensure_size,
+                                   const gst_encoder_ensure_size_func_t gst_encoder_ensure_size,
                                    struct encoding_result *encoding_result) {
     struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
-    struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(buffer);
-    int buffer_width = westfield_dmabuf_v1_buffer->base.width;
-    int buffer_height = westfield_dmabuf_v1_buffer->base.height;
+    const struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(buffer);
+    const int buffer_width = westfield_dmabuf_v1_buffer->base.width;
+    const int buffer_height = westfield_dmabuf_v1_buffer->base.height;
     GstFlowReturn ret;
     GstCaps *new_src_caps;
 
     encoding_result->width = buffer_width;
     encoding_result->height = buffer_height;
 
-    GstVideoFormat gst_video_format = gst_video_format_from_fourcc(westfield_dmabuf_v1_buffer->attributes.format);
-    if(gst_video_format == GST_VIDEO_FORMAT_UNKNOWN) {
-        // TODO error out
+    const struct dmabuf_support_format* dmabuf_support_format = gst_raw_video_format_from_fourcc(westfield_dmabuf_v1_buffer->attributes.format);
+    if(dmabuf_support_format == NULL) {
+        GST_ERROR_OBJECT (gst_encoder->app_src, "Failed to interpret fourcc format: %c%c%c%c", GST_FOURCC_ARGS(westfield_dmabuf_v1_buffer->attributes.format));
         return -1;
     }
 
     new_src_caps = gst_caps_new_simple("video/x-raw",
-                                       "format", G_TYPE_STRING,
-                                       gst_video_format_to_string(gst_video_format),
+                                       "format", G_TYPE_STRING, dmabuf_support_format->gst_format_string,
                                        "width", G_TYPE_INT, buffer_width,
                                        "height", G_TYPE_INT, buffer_height,
                                        "framerate", GST_TYPE_FRACTION,
                                        FPS, 1000,
                                        NULL);
+    GstCapsFeatures *new_src_caps_feature = gst_caps_features_new_single(GST_CAPS_FEATURE_MEMORY_DMABUF);
+    gst_caps_set_features_simple(new_src_caps, new_src_caps_feature);
 
     gst_encoder_ensure_size(gst_encoder, new_src_caps, buffer_width, buffer_height);
 
@@ -561,7 +678,7 @@ gst_encoder_encode_linux_dmabuf_v1(struct encoder *encoder, struct wl_resource *
 
     gst_buffer_add_video_meta_full(buf,
                                    GST_VIDEO_FRAME_FLAG_NONE,
-                                   gst_video_format,
+                                   dmabuf_support_format->gst_video_format,
                                    buffer_width,
                                    buffer_height,
                                    westfield_dmabuf_v1_buffer->attributes.n_planes,
@@ -575,16 +692,15 @@ gst_encoder_encode_linux_dmabuf_v1(struct encoder *encoder, struct wl_resource *
         /* We got some error, stop sending data */
         return -1;
     }
-    // TODO memory management/lifecycle of buffer?
+    // TODO memory management/lifecycle of buffer? ie handle case where buffer is destroyed by client while it's being encoded, see weston remoting implementation.
 
     return 0;
 }
 
-static int
+static inline int
 gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource,
-                   gst_encoder_ensure_size_func_t ensure_size, struct encoding_result *encoding_result) {
+                   const gst_encoder_ensure_size_func_t ensure_size, struct encoding_result *encoding_result) {
     struct wl_shm_buffer *shm_buffer;
-
 
     if(westfield_dmabuf_v1_resource_is_buffer(buffer_resource)) {
         return gst_encoder_encode_linux_dmabuf_v1(encoder, buffer_resource, ensure_size, encoding_result);
@@ -596,7 +712,7 @@ gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource,
 	}
 }
 
-static int
+static inline int
 h264_gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource,
 						struct encoding_result *encoding_result) {
 	encoding_result->encoding_type = h264;
@@ -729,51 +845,65 @@ nvh264_gst_encoder_create(struct encoder *encoder) {
 	return 0;
 }
 
-static int
-h264_gst_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource, int alpha,
-								 char *preferred_encoder) {
+static inline bool
+h264_gst_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource, const bool alpha,
+								 const char *preferred_encoder) {
+    int32_t width, height;
+    struct wl_shm_buffer *shm_buffer;
+    struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer;
+
 	// different encoder selected so not for us
 	if (strcmp(encoder->preferred_encoder, preferred_encoder) != 0) {
-		return 0;
+		return false;
 	}
 
-	struct wl_shm_buffer *shm_buffer = wl_shm_buffer_get(buffer_resource);
-    // TODO check for dma buffer
-	// not an shm buffer
-	if (shm_buffer == NULL) {
-		return 0;
+    if(westfield_dmabuf_v1_resource_is_buffer(buffer_resource)) {
+        westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(buffer_resource);
+        width = westfield_dmabuf_v1_buffer->base.width;
+        height = westfield_dmabuf_v1_buffer->base.height;
+
+        // Too small needs the png encoder so refuse
+        if (width * height <= 256 * 256) {
+            return false;
+        }
+
+        return true;
+    }
+
+    shm_buffer = wl_shm_buffer_get(buffer_resource);
+	if (shm_buffer != NULL) {
+        const uint32_t shm_format = wl_shm_buffer_get_format(shm_buffer);
+        width = wl_shm_buffer_get_width(shm_buffer);
+        height = wl_shm_buffer_get_height(shm_buffer);
+
+        // Too small needs the png encoder so refuse
+        if (width * height <= 256 * 256) {
+            return false;
+        }
+
+        if (alpha && shm_format == WL_SHM_FORMAT_ARGB8888) {
+            return true;
+        }
+        if (!alpha && shm_format == WL_SHM_FORMAT_XRGB8888) {
+            return true;
+        }
 	}
 
-	int32_t width = wl_shm_buffer_get_width(shm_buffer);
-	int32_t height = wl_shm_buffer_get_height(shm_buffer);
-	uint32_t shm_format = wl_shm_buffer_get_format(shm_buffer);
-
-	// Too small needs the png encoder so refuse those
-	if (width * height <= 256 * 256) {
-		return 0;
-	}
-
-	if (alpha && shm_format == WL_SHM_FORMAT_ARGB8888) {
-		return 1;
-	}
-	if (!alpha && shm_format == WL_SHM_FORMAT_XRGB8888) {
-		return 1;
-	}
-	return 0;
+	return false;
 }
 
-static int
+static inline bool
 nvh264_gst_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
-	return h264_gst_encoder_supports_buffer(encoder, buffer_resource, 0, "nvh264");
+	return h264_gst_encoder_supports_buffer(encoder, buffer_resource, false, "nvh264");
 }
 
-static int
+static inline bool
 nvh264_gst_alpha_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
-	return h264_gst_encoder_supports_buffer(encoder, buffer_resource, 1, "nvh264");
+	return h264_gst_encoder_supports_buffer(encoder, buffer_resource, true, "nvh264");
 }
 
 
-struct encoder_itf nv264_gst_alpha_itf = {
+static const struct encoder_itf nv264_gst_alpha_itf = {
 		.supports_buffer = nvh264_gst_alpha_supports_buffer,
 		.create = nvh264_gst_alpha_encoder_create,
 		.encode = h264_gst_encoder_encode,
@@ -782,7 +912,7 @@ struct encoder_itf nv264_gst_alpha_itf = {
 		.separate_alpha = 1,
 };
 
-struct encoder_itf nv264_gst_itf = {
+static const struct encoder_itf nv264_gst_itf = {
 		.supports_buffer = nvh264_gst_supports_buffer,
 		.create = nvh264_gst_encoder_create,
 		.encode = h264_gst_encoder_encode,
@@ -888,17 +1018,17 @@ x264_gst_encoder_create(struct encoder *encoder) {
 	return 0;
 }
 
-static int
+static inline bool
 x264_gst_alpha_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
-	return h264_gst_encoder_supports_buffer(encoder, buffer_resource, 1, "x264");
+	return h264_gst_encoder_supports_buffer(encoder, buffer_resource, true, "x264");
 }
 
-static int
+static inline bool
 x264_gst_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
-	return h264_gst_encoder_supports_buffer(encoder, buffer_resource, 0, "x264");
+	return h264_gst_encoder_supports_buffer(encoder, buffer_resource, false, "x264");
 }
 
-struct encoder_itf x264_gst_alpha_itf = {
+static const struct encoder_itf x264_gst_alpha_itf = {
 		.supports_buffer = x264_gst_alpha_encoder_supports_buffer,
 		.create = x264_gst_alpha_encoder_create,
 		.encode = h264_gst_encoder_encode,
@@ -907,7 +1037,7 @@ struct encoder_itf x264_gst_alpha_itf = {
 		.separate_alpha = 1,
 };
 
-struct encoder_itf x264_gst_itf = {
+static const struct encoder_itf x264_gst_itf = {
 		.supports_buffer = x264_gst_encoder_supports_buffer,
 		.create = x264_gst_encoder_create,
 		.encode = h264_gst_encoder_encode,
@@ -926,9 +1056,9 @@ png_gst_encoder_create(struct encoder *encoder) {
 	struct png_gst_encoder *png_gst_encoder = g_new0(struct png_gst_encoder, 1);
     png_gst_encoder->base.dma_buf_allocator = gst_dmabuf_allocator_new();
 
-    // TODO add a gldownload element so we can deal with glmemory buffers
     png_gst_encoder->base.pipeline = gst_parse_launch(
 			"appsrc name=src format=3 stream-type=0 ! "
+            "glupload ! "
             "gldownload ! "
 			"videobox name=videobox border-alpha=0.0 ! "
 			"videoconvert ! videoscale ! "
@@ -974,30 +1104,42 @@ png_gst_encoder_ensure_size(struct gst_encoder *gst_encoder, const GstCaps *new_
 				 NULL);
 }
 
-static int
+static bool
 png_gst_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
+    int32_t width, height;
+
 	struct wl_shm_buffer *shm_buffer = wl_shm_buffer_get(buffer_resource);
-    // TODO check for eglimage (drm/dma) buffer
-	if (shm_buffer == NULL) {
-		return 0;
+	if (shm_buffer) {
+        uint32_t shm_format = wl_shm_buffer_get_format(shm_buffer);
+        width = wl_shm_buffer_get_width(shm_buffer);
+        height = wl_shm_buffer_get_height(shm_buffer);
+
+
+		return (width * height) <= (256 * 256) &&
+               (shm_format == WL_SHM_FORMAT_ARGB8888 || shm_format == WL_SHM_FORMAT_XRGB8888);
 	}
 
-	int32_t width = wl_shm_buffer_get_width(shm_buffer);
-	int32_t height = wl_shm_buffer_get_height(shm_buffer);
-	uint32_t shm_format = wl_shm_buffer_get_format(shm_buffer);
+    if(westfield_dmabuf_v1_resource_is_buffer(buffer_resource)) {
+        struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(buffer_resource);
+        width = westfield_dmabuf_v1_buffer->base.width;
+        height = westfield_dmabuf_v1_buffer->base.height;
 
-	return (width * height) <= (256 * 256) &&
-		   (shm_format == WL_SHM_FORMAT_ARGB8888 || shm_format == WL_SHM_FORMAT_XRGB8888);
+        if (width * height <= 256 * 256) {
+            return true;
+        }
+    }
+
+	return false;
 }
 
-static int
+static inline int
 png_gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource,
 					   struct encoding_result *encoding_result) {
 	encoding_result->encoding_type = png;
 	return gst_encoder_encode(encoder, buffer_resource, png_gst_encoder_ensure_size, encoding_result);
 }
 
-struct encoder_itf png_gst_itf = {
+static const struct encoder_itf png_gst_itf = {
 		.supports_buffer = png_gst_encoder_supports_buffer,
 		.create = png_gst_encoder_create,
 		.encode = png_gst_encoder_encode,
@@ -1102,17 +1244,17 @@ vaapi264_gst_encoder_create(struct encoder *encoder) {
 	return 0;
 }
 
-static int
+static inline bool
 vaapi264_gst_alpha_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
-	return h264_gst_encoder_supports_buffer(encoder, buffer_resource, 1, "vaapih264");
+	return h264_gst_encoder_supports_buffer(encoder, buffer_resource, true, "vaapih264");
 }
 
-static int
+static inline bool
 vaapi264_gst_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
-	return h264_gst_encoder_supports_buffer(encoder, buffer_resource, 0, "vaapih264");
+	return h264_gst_encoder_supports_buffer(encoder, buffer_resource, false, "vaapih264");
 }
 
-static int
+static inline int
 vaapih264_gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource,
 							 struct encoding_result *encoding_result) {
 	encoding_result->encoding_type = h264;
@@ -1171,6 +1313,7 @@ int
 do_gst_encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource, uint32_t serial) {
 	struct encoder *encoder = *encoder_pp;
 	struct encoding_result *encoding_result;
+    const size_t nro_encoders = sizeof(all_encoder_itfs)/sizeof(all_encoder_itfs[0]);
 
 	if (encoder->impl != NULL) {
 		if (!encoder->itf.supports_buffer(encoder, buffer_resource)) {
@@ -1180,17 +1323,19 @@ do_gst_encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_re
 	}
 
 	if (encoder->impl == NULL) {
-		for (int i = 0; i < sizeof(all_encoder_itfs); i++) {
+		for (int i = 0; i < nro_encoders; i++) {
 			if (all_encoder_itfs[i]->supports_buffer(encoder, buffer_resource)) {
 				encoder->itf = *all_encoder_itfs[i];
 				if (encoder->itf.create(encoder) == -1) {
 					return -1;
 				}
-				assert(encoder->impl != NULL);
+				assert(encoder->impl != NULL && "Found matching encoder but implementation was still NULL");
 				break;
 			}
 		}
 	}
+
+    assert(encoder->impl != NULL && "No matching encoder found for buffer");
 
 	encoding_result = g_new0(struct encoding_result, 1);
 	g_mutex_init(&encoding_result->mutex);
