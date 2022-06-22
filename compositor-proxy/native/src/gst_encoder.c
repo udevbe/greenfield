@@ -1,25 +1,25 @@
 #include "westfield.h"
 #include <glib.h>
 #include <gst/gst.h>
-//#include <gst/allocators/gstdmabuf.h>
+#include <gst/allocators/gstdmabuf.h>
 #include <gst/gl/gstglcontext.h>
 #include <gst/gl/gstglwindow.h>
 #include <gst/gl/egl/gstgldisplay_egl.h>
-//#include <gst/gl/egl/gsteglimage.h>
+#include <gst/gl/egl/gsteglimage.h>
 #include <gst/gl/egl/gstgldisplay_egl_device.h>
 #include <gst/app/gstappsrc.h>
 #include <gst/app/gstappsink.h>
 #include <assert.h>
 #include <stdbool.h>
 #include <EGL/egl.h>
-//#include <drm_fourcc.h>
+#include <drm_fourcc.h>
 #include <unistd.h>
 #include "encoder.h"
 #include "westfield-linux-dmabuf-v1.h"
 
 #define FPS 60
 
-static const char opaque_fragment_shader[] =
+static const char *opaque_fragment_shader =
         "#version 120\n"
         "#ifdef GL_ES\n"
         "    precision mediump float;\n"
@@ -30,7 +30,7 @@ static const char opaque_fragment_shader[] =
         "        gl_FragColor = texture2D(tex, v_texcoord);\n"
         "}";
 
-static const char alpha_fragment_shader[] =
+static const char *alpha_fragment_shader =
         "#version 120\n"
         "#ifdef GL_ES\n"
         "    precision mediump float;\n"
@@ -42,7 +42,7 @@ static const char alpha_fragment_shader[] =
         "        gl_FragColor = vec4(pix.a, pix.a, pix.a, 0.);\n"
         "}";
 
-static const char vertex_shader[] =
+static const char *vertex_shader =
         "#version 120\n"
         "#ifdef GL_ES\n"
         "    precision mediump float;\n"
@@ -72,7 +72,7 @@ struct encoding_result {
         GstMapInfo info;
         GstBuffer *buffer;
     } sample;
-    bool need_alpha;
+    bool has_split_alpha;
     struct {
         GstMapInfo info;
         GstBuffer *buffer;
@@ -108,6 +108,7 @@ struct encoder {
 };
 
 struct gst_encoder_pipeline {
+    GstAllocator *dma_buf_allocator;
     GstAppSrc *app_src;
     GstAppSink *app_sink;
     GstElement *pipeline;
@@ -115,7 +116,6 @@ struct gst_encoder_pipeline {
 };
 
 struct gst_encoder {
-//    GstAllocator *dma_buf_allocator;
     struct gst_encoder_pipeline *opaque_pipeline;
     struct gst_encoder_pipeline *alpha_pipeline;
 };
@@ -281,7 +281,7 @@ gst_new_sample(GstAppSink *appsink, gpointer user_data) {
         return GST_FLOW_ERROR;
     }
 
-    if (encoding_result->need_alpha) {
+    if (encoding_result->has_split_alpha) {
         g_mutex_lock(&encoding_result->mutex);
 
         if (callback_data->is_alpha) {
@@ -324,7 +324,7 @@ static GstAppSinkCallbacks sample_callback = {
 
 static GstBuffer *
 wl_shm_buffer_to_gst_buffer(struct wl_shm_buffer *shm_buffer, uint32_t *width, uint32_t *height, char *gst_format,
-                            struct encoding_result *encoding_result) {
+                            bool *has_alpha) {
     void *buffer_data;
     struct wl_shm_pool *shm_pool;
     enum wl_shm_format buffer_format;
@@ -335,10 +335,10 @@ wl_shm_buffer_to_gst_buffer(struct wl_shm_buffer *shm_buffer, uint32_t *width, u
 
     if (buffer_format == WL_SHM_FORMAT_ARGB8888) {
         strcpy(gst_format, "BGRA");
-        encoding_result->need_alpha = true;
+        *has_alpha = true;
     } else if (buffer_format == WL_SHM_FORMAT_XRGB8888) {
         strcpy(gst_format, "BGRx");
-        encoding_result->need_alpha = false;
+        *has_alpha = false;
     } else {
         return NULL;
     }
@@ -418,6 +418,11 @@ gst_encoder_pipeline_destroy(struct gst_encoder_pipeline *gst_encoder_pipeline) 
     gst_object_unref(gst_encoder_pipeline->app_src);
     gst_object_unref(gst_encoder_pipeline->app_sink);
     gst_object_unref(gst_encoder_pipeline->pipeline);
+    gst_object_unref(gst_encoder_pipeline->dma_buf_allocator);
+    gst_encoder_pipeline->app_src = NULL;
+    gst_encoder_pipeline->app_sink = NULL;
+    gst_encoder_pipeline->pipeline = NULL;
+    gst_encoder_pipeline->dma_buf_allocator = NULL;
     gst_encoder_pipeline->pipeline = NULL;
     g_free(gst_encoder_pipeline);
 }
@@ -453,7 +458,7 @@ gst_request_key_unit(struct encoder *encoder) {
 }
 
 static inline bool
-gst_encoder_pipeline_encode_shm(struct gst_encoder_pipeline *gst_encoder_pipeline, GstBuffer *buffer) {
+gst_encoder_pipeline_encode(struct gst_encoder_pipeline *gst_encoder_pipeline, GstBuffer *buffer) {
     GstFlowReturn ret;
     if (!gst_encoder_pipeline->playing) {
         gst_element_set_state(gst_encoder_pipeline->pipeline, GST_STATE_PLAYING);
@@ -483,11 +488,11 @@ gst_encoder_encode_shm(struct encoder *encoder,
     GstBuffer *opaque_buffer;
     GstBuffer *alpha_buffer;
     uint32_t buffer_width, buffer_height;
-    bool split_alpha;
+    bool encoder_needs_split_alpha, buffer_has_alpha;
     char gst_format[16];
 
     opaque_buffer = wl_shm_buffer_to_gst_buffer(shm_buffer, &buffer_width, &buffer_height, gst_format,
-                                                encoding_result);
+                                                &buffer_has_alpha);
     if (opaque_buffer == NULL) {
         return true;
     }
@@ -498,21 +503,20 @@ gst_encoder_encode_shm(struct encoder *encoder,
                                                              "height", G_TYPE_INT, buffer_height,
                                                              NULL);
     if (gst_encoder_config(gst_encoder->opaque_pipeline, new_opaque_src_caps, buffer_width, buffer_height,
-                           &split_alpha)) {
+                           &encoder_needs_split_alpha)) {
         gst_buffer_unref(opaque_buffer);
         // TODO log opaque encoding config error?
         return true;
     }
-    if (gst_encoder_pipeline_encode_shm(gst_encoder->opaque_pipeline, opaque_buffer)) {
+    if (gst_encoder_pipeline_encode(gst_encoder->opaque_pipeline, opaque_buffer)) {
         // TODO log opaque encoding pipeline error?
         return true;
     }
 
-    encoding_result->need_alpha &= split_alpha;
-
-    if (encoding_result->need_alpha) {
+    if (buffer_has_alpha && encoder_needs_split_alpha) {
+        encoding_result->has_split_alpha = true;
         alpha_buffer = wl_shm_buffer_to_gst_buffer(shm_buffer, &buffer_width, &buffer_height, gst_format,
-                                                   encoding_result);
+                                                   &buffer_has_alpha);
         if (alpha_buffer == NULL) {
             return true;
         }
@@ -523,15 +527,17 @@ gst_encoder_encode_shm(struct encoder *encoder,
                                                                 "height", G_TYPE_INT, buffer_height,
                                                                 NULL);
         if (gst_encoder_config(gst_encoder->alpha_pipeline, new_alpha_src_caps, buffer_width, buffer_height,
-                               &split_alpha)) {
+                               &encoder_needs_split_alpha)) {
             gst_buffer_unref(alpha_buffer);
             // TODO log alpha encoding config error?
             return true;
         }
-        if (gst_encoder_pipeline_encode_shm(gst_encoder->alpha_pipeline, alpha_buffer)) {
+        if (gst_encoder_pipeline_encode(gst_encoder->alpha_pipeline, alpha_buffer)) {
             // TODO log alpha encoding pipeline error?
             return true;
         }
+    } else {
+        encoding_result->has_split_alpha = false;
     }
 
     encoding_result->width = buffer_width;
@@ -541,213 +547,238 @@ gst_encoder_encode_shm(struct encoder *encoder,
     return false;
 }
 
-///* supported gbm format list */
-//struct dmabuf_support_format {
-//    /* GBM_FORMAT_* tokens are strictly aliased with DRM_FORMAT_*, so we
-//     * use the latter to avoid a dependency on GBM */
-//    uint32_t drm_format;
-//    const char *gst_format_string;
-//    GstVideoFormat gst_video_format;
-//};
-//
-//static const struct dmabuf_support_format dmabuf_supported_formats[] = {
-//        {
-//                .drm_format = DRM_FORMAT_ARGB8888,
-//                .gst_format_string = "BGRA",
-//                .gst_video_format = GST_VIDEO_FORMAT_BGRA,
-//        },
-//        {
-//                .drm_format = DRM_FORMAT_RGBA8888,
-//                .gst_format_string = "ABGR",
-//                .gst_video_format = GST_VIDEO_FORMAT_ABGR,
-//        },
-//        {
-//                .drm_format = DRM_FORMAT_BGRA8888,
-//                .gst_format_string = "ARGB",
-//                .gst_video_format = GST_VIDEO_FORMAT_ARGB,
-//        },
-//        {
-//                .drm_format =DRM_FORMAT_RGBX8888,
-//                .gst_format_string = "xBGR",
-//                .gst_video_format = GST_VIDEO_FORMAT_xBGR,
-//        },
-//        {
-//                .drm_format =DRM_FORMAT_BGRX8888,
-//                .gst_format_string = "xRGB",
-//                .gst_video_format = GST_VIDEO_FORMAT_xRGB,
-//        },
-//        {
-//                .drm_format =DRM_FORMAT_RGB888,
-//                .gst_format_string = "BGR",
-//                .gst_video_format = GST_VIDEO_FORMAT_BGR,
-//        },
-//        {
-//                .drm_format = DRM_FORMAT_ABGR8888,
-//                .gst_format_string = "RGBA",
-//                .gst_video_format = GST_VIDEO_FORMAT_RGBA,
-//        },
-//        {
-//                .drm_format = DRM_FORMAT_BGR888,
-//                .gst_format_string = "RGB",
-//                .gst_video_format = GST_VIDEO_FORMAT_RGB,
-//        },
-//        {
-//                .drm_format = DRM_FORMAT_XBGR8888,
-//                .gst_format_string = "RGBx",
-//                .gst_video_format = GST_VIDEO_FORMAT_RGBx,
-//        },
-//        {
-//                .drm_format = DRM_FORMAT_XRGB8888,
-//                .gst_format_string = "BGRx",
-//                .gst_video_format = GST_VIDEO_FORMAT_BGRx,
-//        },
-//        {
-//                .drm_format = DRM_FORMAT_RGB565,
-//                .gst_format_string = "RGB16",
-//                .gst_video_format = GST_VIDEO_FORMAT_RGB16,
-//        },
-//        // TODO more
-////        return "GBRA";
-////        return "GBR";
-////        return "RGBP";
-////        return "BGRP";
-////        return "Y444";
-////        return "I420";
-////        return "YV12";
-////        return "Y42B";
-////        return "Y41B";
-////        return "NV12";
-////        return "NV21";
-////        return "NV16";
-////        return "NV61";
-////        return "YUY2";
-////        return "UYVY";
-////        return "Y210";
-////        return "AYUV";
-////        return "VUYA";
-////        return "Y410";
-////        return "GRAY8";
-////        return "GRAY16_LE";
-////        return "GRAY16_BE";
-////        return "BGR16";
-////        return "ARGB64";
-////        return "A420";
-////        return "AV12";
-////        return "NV12_16L32S";
-////        return "NV12_4L4";
-////        return "BGR10A2_LE";
-////        return "RGB10A2_LE";
-////        return "P010_10LE";
-////        return "P012_LE";
-////        return "P016_LE";
-////        return "Y212_LE";
-////        return "Y412_LE";
-//};
+struct dmabuf_support_format {
+    const bool has_alpha;
+    const uint32_t drm_format;
+    const char *gst_format_string;
+    const GstVideoFormat gst_video_format;
+};
 
-//static inline const struct dmabuf_support_format*
-//gst_raw_video_format_from_fourcc(const uint32_t fourcc) {
-//    const size_t dmabuf_supported_formats_size = sizeof(dmabuf_supported_formats) / sizeof(dmabuf_supported_formats[0]);
-//    for (int i = 0; i < dmabuf_supported_formats_size; ++i) {
-//        if(dmabuf_supported_formats[i].drm_format == fourcc) {
-//            return &dmabuf_supported_formats[i];
-//        }
-//    }
-//    return NULL;
-//}
-//
-//static void
-//dmabuf_mem_free_cb(GstBuffer *buffer, GstMiniObject *obj)
-//{
-//    gst_buffer_unref(buffer);
-//}
+static const struct dmabuf_support_format dmabuf_supported_formats[] = {
+        {
+                .has_alpha = true,
+                .drm_format = DRM_FORMAT_ARGB8888,
+                .gst_format_string = "BGRA",
+                .gst_video_format = GST_VIDEO_FORMAT_BGRA,
+        },
+        {
+                .has_alpha = true,
+                .drm_format = DRM_FORMAT_RGBA8888,
+                .gst_format_string = "ABGR",
+                .gst_video_format = GST_VIDEO_FORMAT_ABGR,
+        },
+        {
+                .has_alpha = true,
+                .drm_format = DRM_FORMAT_BGRA8888,
+                .gst_format_string = "ARGB",
+                .gst_video_format = GST_VIDEO_FORMAT_ARGB,
+        },
+        {
+                .has_alpha = false,
+                .drm_format =DRM_FORMAT_RGBX8888,
+                .gst_format_string = "xBGR",
+                .gst_video_format = GST_VIDEO_FORMAT_xBGR,
+        },
+        {
+                .has_alpha = false,
+                .drm_format =DRM_FORMAT_BGRX8888,
+                .gst_format_string = "xRGB",
+                .gst_video_format = GST_VIDEO_FORMAT_xRGB,
+        },
+        {
+                .has_alpha = false,
+                .drm_format =DRM_FORMAT_RGB888,
+                .gst_format_string = "BGR",
+                .gst_video_format = GST_VIDEO_FORMAT_BGR,
+        },
+        {
+                .has_alpha = true,
+                .drm_format = DRM_FORMAT_ABGR8888,
+                .gst_format_string = "RGBA",
+                .gst_video_format = GST_VIDEO_FORMAT_RGBA,
+        },
+        {
+                .has_alpha = false,
+                .drm_format = DRM_FORMAT_BGR888,
+                .gst_format_string = "RGB",
+                .gst_video_format = GST_VIDEO_FORMAT_RGB,
+        },
+        {
+                .has_alpha = false,
+                .drm_format = DRM_FORMAT_XBGR8888,
+                .gst_format_string = "RGBx",
+                .gst_video_format = GST_VIDEO_FORMAT_RGBx,
+        },
+        {
+                .has_alpha = false,
+                .drm_format = DRM_FORMAT_XRGB8888,
+                .gst_format_string = "BGRx",
+                .gst_video_format = GST_VIDEO_FORMAT_BGRx,
+        },
+        {
+                .has_alpha = false,
+                .drm_format = DRM_FORMAT_RGB565,
+                .gst_format_string = "RGB16",
+                .gst_video_format = GST_VIDEO_FORMAT_RGB16,
+        },
+        // TODO more
+//        return "GBRA";
+//        return "GBR";
+//        return "RGBP";
+//        return "BGRP";
+//        return "Y444";
+//        return "I420";
+//        return "YV12";
+//        return "Y42B";
+//        return "Y41B";
+//        return "NV12";
+//        return "NV21";
+//        return "NV16";
+//        return "NV61";
+//        return "YUY2";
+//        return "UYVY";
+//        return "Y210";
+//        return "AYUV";
+//        return "VUYA";
+//        return "Y410";
+//        return "GRAY8";
+//        return "GRAY16_LE";
+//        return "GRAY16_BE";
+//        return "BGR16";
+//        return "ARGB64";
+//        return "A420";
+//        return "AV12";
+//        return "NV12_16L32S";
+//        return "NV12_4L4";
+//        return "BGR10A2_LE";
+//        return "RGB10A2_LE";
+//        return "P010_10LE";
+//        return "P012_LE";
+//        return "P016_LE";
+//        return "Y212_LE";
+//        return "Y412_LE";
+};
 
-//static int
-//gst_encoder_encode_linux_dmabuf_v1(struct encoder *encoder, struct wl_resource *buffer,
-//                                   const gst_encoder_ensure_size_func_t gst_encoder_ensure_size,
-//                                   struct encoding_result *encoding_result) {
-//    struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
-//    const struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(buffer);
-//    const int buffer_width = westfield_dmabuf_v1_buffer->base.width;
-//    const int buffer_height = westfield_dmabuf_v1_buffer->base.height;
-//    GstFlowReturn ret;
-//    GstCaps *new_src_caps;
-//
-//    encoding_result->width = buffer_width;
-//    encoding_result->height = buffer_height;
-//
-//    const struct dmabuf_support_format* dmabuf_support_format = gst_raw_video_format_from_fourcc(westfield_dmabuf_v1_buffer->attributes.format);
-//    if(dmabuf_support_format == NULL) {
-//        GST_ERROR_OBJECT (gst_encoder->app_src, "Failed to interpret fourcc format: %c%c%c%c", GST_FOURCC_ARGS(westfield_dmabuf_v1_buffer->attributes.format));
-//        return -1;
-//    }
-//
-//    new_src_caps = gst_caps_new_simple("video/x-raw",
-//                                       "format", G_TYPE_STRING, dmabuf_support_format->gst_format_string,
-//                                       "width", G_TYPE_INT, buffer_width,
-//                                       "height", G_TYPE_INT, buffer_height,
-//                                       "framerate", GST_TYPE_FRACTION,
-//                                       FPS, 1000,
-//                                       NULL);
-//    GstCapsFeatures *new_src_caps_feature = gst_caps_features_new_single(GST_CAPS_FEATURE_MEMORY_DMABUF);
-//    gst_caps_set_features_simple(new_src_caps, new_src_caps_feature);
-//
-//    gst_encoder_ensure_size(gst_encoder, new_src_caps, buffer_width, buffer_height);
-//
-//    if (gst_encoder->playing == 0) {
-//        gst_element_set_state(gst_encoder->pipeline, GST_STATE_PLAYING);
-//        if (gst_element_get_state(gst_encoder->pipeline, NULL, NULL, 0) == GST_STATE_CHANGE_FAILURE) {
-//            return -1;
-//        }
-//        gst_encoder->playing = 1;
-//    }
-//
-//    GstBuffer *buf = gst_buffer_new();
-//
-//    gsize offsets[westfield_dmabuf_v1_buffer->attributes.n_planes];
-//    gint strides[westfield_dmabuf_v1_buffer->attributes.n_planes];
-//
-//    for (int i = 0; i < westfield_dmabuf_v1_buffer->attributes.n_planes; ++i) {
-//        offsets[i] = westfield_dmabuf_v1_buffer->attributes.offset[i];
-//        strides[i] = (gint)westfield_dmabuf_v1_buffer->attributes.stride[i];
-//        GstMemory *mem = gst_dmabuf_allocator_alloc_with_flags(gst_encoder->dma_buf_allocator,
-//                                                 westfield_dmabuf_v1_buffer->attributes.fd[i],
-//                                                 westfield_dmabuf_v1_buffer->attributes.stride[i]*westfield_dmabuf_v1_buffer->attributes.height,
-//                                                 GST_FD_MEMORY_FLAG_DONT_CLOSE);
-//        gst_buffer_append_memory(buf, mem);
-//        gst_buffer_ref(buf);
-//        gst_mini_object_weak_ref(GST_MINI_OBJECT(mem), (GstMiniObjectNotify)dmabuf_mem_free_cb, buf);
-//    }
-//    gst_buffer_unref(buf);
-//
-//    gst_buffer_add_video_meta_full(buf,
-//                                   GST_VIDEO_FRAME_FLAG_NONE,
-//                                   dmabuf_support_format->gst_video_format,
-//                                   buffer_width,
-//                                   buffer_height,
-//                                   westfield_dmabuf_v1_buffer->attributes.n_planes,
-//                                   offsets,
-//                                   strides);
-//
-//    g_queue_push_head(encoder->encoding_results, encoding_result);
-//    ret = gst_app_src_push_buffer(gst_encoder->app_src, buf);
-//
-//    if (ret != GST_FLOW_OK) {
-//        /* We got some error, stop sending data */
-//        return -1;
-//    }
-//    // TODO memory management/lifecycle of buffer? ie handle case where buffer is destroyed by client while it's being encoded, see weston remoting implementation.
-//
-//    return 0;
-//}
+static inline const struct dmabuf_support_format *
+gst_raw_video_format_from_fourcc(const uint32_t fourcc) {
+    const size_t dmabuf_supported_formats_size = sizeof(dmabuf_supported_formats) / sizeof(dmabuf_supported_formats[0]);
+    for (int i = 0; i < dmabuf_supported_formats_size; ++i) {
+        if (dmabuf_supported_formats[i].drm_format == fourcc) {
+            return &dmabuf_supported_formats[i];
+        }
+    }
+    return NULL;
+}
+
+static inline GstBuffer *
+westfield_dmabuf_to_gst_buffer(struct gst_encoder_pipeline *gst_encoder_pipeline,
+                               const struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer,
+                               const struct dmabuf_support_format *dmabuf_support_format) {
+    GstBuffer *buf = gst_buffer_new();
+
+    gsize offsets[westfield_dmabuf_v1_buffer->attributes.n_planes];
+    gint strides[westfield_dmabuf_v1_buffer->attributes.n_planes];
+
+    for (int i = 0; i < westfield_dmabuf_v1_buffer->attributes.n_planes; ++i) {
+        offsets[i] = westfield_dmabuf_v1_buffer->attributes.offset[i];
+        strides[i] = (gint) westfield_dmabuf_v1_buffer->attributes.stride[i];
+        GstMemory *mem = gst_dmabuf_allocator_alloc_with_flags(gst_encoder_pipeline->dma_buf_allocator,
+                                                               westfield_dmabuf_v1_buffer->attributes.fd[i],
+                                                               westfield_dmabuf_v1_buffer->attributes.stride[i] *
+                                                               westfield_dmabuf_v1_buffer->attributes.height,
+                                                               GST_FD_MEMORY_FLAG_DONT_CLOSE);
+        gst_buffer_append_memory(buf, mem);
+    }
+    gst_buffer_add_video_meta_full(buf,
+                                   GST_VIDEO_FRAME_FLAG_NONE,
+                                   dmabuf_support_format->gst_video_format,
+                                   westfield_dmabuf_v1_buffer->base.width,
+                                   westfield_dmabuf_v1_buffer->base.height,
+                                   westfield_dmabuf_v1_buffer->attributes.n_planes,
+                                   offsets,
+                                   strides);
+    return buf;
+}
+
+static bool
+gst_encoder_encode_linux_dmabuf_v1(struct encoder *encoder, struct wl_resource *buffer,
+                                   const gst_encoder_config_func_t gst_encoder_config,
+                                   struct encoding_result *encoding_result) {
+    struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
+    const struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(
+            buffer);
+    bool encoder_needs_split_alpha;
+    GstCaps *new_opaque_src_caps, *new_alpha_src_caps;
+
+    const struct dmabuf_support_format *dmabuf_support_format = gst_raw_video_format_from_fourcc(
+            westfield_dmabuf_v1_buffer->attributes.format);
+    if (dmabuf_support_format == NULL) {
+        // TODO log error
+        //GST_ERROR_OBJECT (gst_encoder->app_src, "Failed to interpret fourcc format: %c%c%c%c", GST_FOURCC_ARGS(westfield_dmabuf_v1_buffer->attributes.format));
+        return true;
+    }
+
+    new_opaque_src_caps = gst_caps_new_simple("video/x-raw",
+                                              "framerate", GST_TYPE_FRACTION, FPS, 1,
+                                              "format", G_TYPE_STRING,
+                                              dmabuf_support_format->gst_format_string,
+                                              "width", G_TYPE_INT, westfield_dmabuf_v1_buffer->base.width,
+                                              "height", G_TYPE_INT, westfield_dmabuf_v1_buffer->base.height,
+                                              NULL);
+
+    GstCapsFeatures *new_src_caps_feature = gst_caps_features_new_single(GST_CAPS_FEATURE_MEMORY_DMABUF);
+    gst_caps_set_features_simple(new_opaque_src_caps, new_src_caps_feature);
+
+    if (gst_encoder_config(gst_encoder->opaque_pipeline, new_opaque_src_caps, westfield_dmabuf_v1_buffer->base.width,
+                           westfield_dmabuf_v1_buffer->base.height, &encoder_needs_split_alpha)) {
+        // TODO log opaque encoding config error?
+        return true;
+    }
+    gst_encoder_pipeline_encode(gst_encoder->opaque_pipeline,
+                                westfield_dmabuf_to_gst_buffer(gst_encoder->opaque_pipeline,
+                                                               westfield_dmabuf_v1_buffer,
+                                                               dmabuf_support_format));
+
+    if (dmabuf_support_format->has_alpha && encoder_needs_split_alpha) {
+        encoding_result->has_split_alpha = true;
+        new_alpha_src_caps = gst_caps_new_simple("video/x-raw",
+                                                 "framerate", GST_TYPE_FRACTION, FPS, 1,
+                                                 "format", G_TYPE_STRING,
+                                                 dmabuf_support_format->gst_format_string,
+                                                 "width", G_TYPE_INT, westfield_dmabuf_v1_buffer->base.width,
+                                                 "height", G_TYPE_INT, westfield_dmabuf_v1_buffer->base.height,
+                                                 NULL);
+        if (gst_encoder_config(gst_encoder->alpha_pipeline, new_alpha_src_caps, westfield_dmabuf_v1_buffer->base.width,
+                               westfield_dmabuf_v1_buffer->base.height, &encoder_needs_split_alpha)) {
+            // TODO log opaque encoding config error?
+            return true;
+        }
+        gst_encoder_pipeline_encode(gst_encoder->alpha_pipeline,
+                                    westfield_dmabuf_to_gst_buffer(gst_encoder->alpha_pipeline,
+                                                                   westfield_dmabuf_v1_buffer,
+                                                                   dmabuf_support_format));
+    } else {
+        encoding_result->has_split_alpha = false;
+    }
+
+
+    encoding_result->width = westfield_dmabuf_v1_buffer->base.width;
+    encoding_result->height = westfield_dmabuf_v1_buffer->base.height;
+    g_queue_push_head(encoder->encoding_results, encoding_result);
+
+    // TODO memory management/lifecycle of buffer? ie handle case where buffer is destroyed by client while it's being encoded, see weston remoting implementation.
+
+    return false;
+}
 
 static inline bool
 gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource,
                    const gst_encoder_config_func_t ensure_size, struct encoding_result *encoding_result) {
     struct wl_shm_buffer *shm_buffer;
 
-//    if(westfield_dmabuf_v1_resource_is_buffer(buffer_resource)) {
-//        return gst_encoder_encode_linux_dmabuf_v1(encoder, buffer_resource, ensure_size, encoding_result);
-//    }
+    if (westfield_dmabuf_v1_resource_is_buffer(buffer_resource)) {
+        return gst_encoder_encode_linux_dmabuf_v1(encoder, buffer_resource, ensure_size, encoding_result);
+    }
 
     shm_buffer = wl_shm_buffer_get((struct wl_resource *) buffer_resource);
     if (shm_buffer) {
@@ -854,6 +885,8 @@ nvh264_gst_encoder_create(struct encoder *encoder) {
         // TODO log alpha pipeline creation failure
         return true;
     }
+    gst_encoder->alpha_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
+
     gst_encoder->opaque_pipeline = (struct gst_encoder_pipeline *) h264_gst_encoder_pipeline_create(encoder,
                                                                                                     nvh264_pipeline,
                                                                                                     false);
@@ -863,8 +896,9 @@ nvh264_gst_encoder_create(struct encoder *encoder) {
         // TODO log pipeline creation failure
         return true;
     }
-    encoder->impl = gst_encoder;
+    gst_encoder->opaque_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
 
+    encoder->impl = gst_encoder;
     return false;
 }
 
@@ -873,25 +907,25 @@ h264_gst_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *bu
                                  const char *preferred_encoder) {
     int32_t width, height;
     struct wl_shm_buffer *shm_buffer;
-//    struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer;
+    struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer;
 
     // different encoder selected so not for us
     if (strcmp(encoder->preferred_encoder, preferred_encoder) != 0) {
         return false;
     }
 
-//    if(westfield_dmabuf_v1_resource_is_buffer(buffer_resource)) {
-//        westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(buffer_resource);
-//        width = westfield_dmabuf_v1_buffer->base.width;
-//        height = westfield_dmabuf_v1_buffer->base.height;
-//
-//        // Too small needs the png encoder so refuse
-//        if (width * height <= 256 * 256) {
-//            return false;
-//        }
-//
-//        return true;
-//    }
+    if (westfield_dmabuf_v1_resource_is_buffer(buffer_resource)) {
+        westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(buffer_resource);
+        width = westfield_dmabuf_v1_buffer->base.width;
+        height = westfield_dmabuf_v1_buffer->base.height;
+
+        // Too small needs the png encoder so refuse
+        if (width * height <= 256 * 256) {
+            return false;
+        }
+
+        return true;
+    }
 
     shm_buffer = wl_shm_buffer_get(buffer_resource);
     if (shm_buffer != NULL) {
@@ -960,6 +994,8 @@ x264_gst_encoder_create(struct encoder *encoder) {
         // TODO log alpha pipeline creation failure
         return true;
     }
+    gst_encoder->alpha_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
+
     gst_encoder->opaque_pipeline = (struct gst_encoder_pipeline *) h264_gst_encoder_pipeline_create(encoder,
                                                                                                     x264_pipeline,
                                                                                                     false);
@@ -969,8 +1005,9 @@ x264_gst_encoder_create(struct encoder *encoder) {
         // TODO log pipeline creation failure
         return true;
     }
-    encoder->impl = gst_encoder;
+    gst_encoder->opaque_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
 
+    encoder->impl = gst_encoder;
     return false;
 }
 
@@ -1007,8 +1044,6 @@ png_gst_encoder_create(struct encoder *encoder) {
     struct png_gst_encoder_pipeline *png_gst_encoder_pipeline = g_new0(struct png_gst_encoder_pipeline, 1);
     struct sample_callback_data *callback_data;
 
-//    png_gst_encoder->base.dma_buf_allocator = gst_dmabuf_allocator_new();
-
     png_gst_encoder_pipeline->base.pipeline = gst_parse_launch(png_pipeline, NULL);
 
     if (png_gst_encoder_pipeline->base.pipeline == NULL) {
@@ -1034,6 +1069,7 @@ png_gst_encoder_create(struct encoder *encoder) {
 
     ensure_gst_gl(encoder, png_gst_encoder_pipeline->base.pipeline);
     gst_encoder->opaque_pipeline = (struct gst_encoder_pipeline *) png_gst_encoder_pipeline;
+    gst_encoder->opaque_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
     encoder->impl = gst_encoder;
 
     return false;
@@ -1141,7 +1177,8 @@ vaapi264_gst_encoder_create(struct encoder *encoder) {
         // TODO log alpha pipeline creation failure
         return true;
     }
-    // TODO check for NULL pipeline creation failure
+    gst_encoder->alpha_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
+
     gst_encoder->opaque_pipeline = (struct gst_encoder_pipeline *) h264_gst_encoder_pipeline_create(encoder,
                                                                                                     vaapih264_pipeline,
                                                                                                     false);
@@ -1151,8 +1188,9 @@ vaapi264_gst_encoder_create(struct encoder *encoder) {
         // TODO log pipeline creation failure
         return true;
     }
-    encoder->impl = gst_encoder;
+    gst_encoder->opaque_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
 
+    encoder->impl = gst_encoder;
     return false;
 }
 
