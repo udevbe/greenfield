@@ -80,21 +80,19 @@ struct encoding_result {
     GMutex mutex;
 };
 
-struct encoder_itf {
-    bool (*supports_buffer)(struct encoder *encoder, struct wl_resource *buffer_resource);
-
-    bool (*create)(struct encoder *encoder);
-
-    bool
-    (*encode)(struct encoder *encoder, struct wl_resource *buffer_resource, struct encoding_result *encoding_result);
-
-    void (*destroy)(struct encoder *encoder);
-
-    int (*request_key_unit)(struct encoder *encoder);
+struct encoder_description {
+    uint8_t width_multiple;
+    uint8_t height_multiple;
+    uint16_t min_width;
+    uint16_t min_height;
+    const char *name;
+    enum encoding_type encoding_type;
+    const char *pipeline_definition;
+    bool split_alpha;
 };
 
 struct encoder {
-    struct encoder_itf itf;
+    const struct encoder_description *description;
     void *impl;
     char preferred_encoder[16]; // "x264" or "nvh264"
 
@@ -112,6 +110,8 @@ struct gst_encoder_pipeline {
     GstAppSrc *app_src;
     GstAppSink *app_sink;
     GstElement *pipeline;
+    GstElement *glshader;
+    GstElement *shader_capsfilter;
     bool playing;
 };
 
@@ -119,12 +119,6 @@ struct gst_encoder {
     struct gst_encoder_pipeline *opaque_pipeline;
     struct gst_encoder_pipeline *alpha_pipeline;
 };
-
-
-typedef bool (*gst_encoder_config_func_t)(struct gst_encoder_pipeline *, const GstCaps *new_src_caps,
-                                          const u_int32_t width,
-                                          const u_int32_t height,
-                                          bool *split_alpha);
 
 static void
 ensure_gst_gl(struct encoder *encoder, GstElement *pipeline) {
@@ -358,24 +352,18 @@ wl_shm_buffer_to_gst_buffer(struct wl_shm_buffer *shm_buffer, uint32_t *width, u
                                        (GDestroyNotify) wl_shm_pool_unref);
 }
 
-struct h264_gst_encoder_pipeline {
-    struct gst_encoder_pipeline base;
-    GstElement *glshader;
-    GstElement *shader_capsfilter;
-};
-
-static bool
-h264_gst_encoder_config(struct gst_encoder_pipeline *gst_encoder_pipeline, const GstCaps *new_src_caps,
-                        const u_int32_t width,
-                        const u_int32_t height,
-                        bool *split_alpha) {
-    struct h264_gst_encoder_pipeline *h264_gst_encoder_pipeline = (struct h264_gst_encoder_pipeline *) gst_encoder_pipeline;
-    const GstCaps *current_src_caps = gst_app_src_get_caps(h264_gst_encoder_pipeline->base.app_src);
+static inline bool
+gst_encoder_pipeline_config(struct gst_encoder_pipeline *gst_encoder_pipeline,
+                            const struct encoder_description *encoder_definition,
+                            const GstCaps *new_src_caps,
+                            const u_int32_t width,
+                            const u_int32_t height) {
+    const GstCaps *current_src_caps = gst_app_src_get_caps(gst_encoder_pipeline->app_src);
     GstStructure *uniforms;
     GstCaps *shader_src_caps;
     gchar *capsstr;
-
-    *split_alpha = true;
+    u_int32_t encoded_width = width;
+    u_int32_t encoded_height = height;
 
     if (current_src_caps && gst_caps_is_equal(current_src_caps, new_src_caps)) {
         gst_caps_unref((GstCaps *) new_src_caps);
@@ -385,13 +373,20 @@ h264_gst_encoder_config(struct gst_encoder_pipeline *gst_encoder_pipeline, const
         gst_caps_unref((GstCaps *) current_src_caps);
     }
 
-    gst_app_src_set_caps(h264_gst_encoder_pipeline->base.app_src, new_src_caps);
+    gst_app_src_set_caps(gst_encoder_pipeline->app_src, new_src_caps);
     gst_caps_unref((GstCaps *) new_src_caps);
 
-    u_int32_t padded_width = width + (width % 2);
-    u_int32_t padded_height = height + (height % 2);
-    gfloat scale_x = (gfloat) width / (gfloat) padded_width;
-    gfloat scale_y = (gfloat) height / (gfloat) padded_height;
+    if(encoded_width < encoder_definition->min_width) {
+        encoded_width = encoder_definition->min_width;
+    }
+    if(encoded_height < encoder_definition->min_height) {
+        encoded_height = encoder_definition->min_height;
+    }
+    encoded_width = encoded_width + (encoded_width % encoder_definition->width_multiple);
+    encoded_height = encoded_height + (encoded_height % encoder_definition->height_multiple);
+
+    gfloat scale_x = (gfloat) width / (gfloat) encoded_width;
+    gfloat scale_y = (gfloat) height / (gfloat) encoded_height;
 
     uniforms = gst_structure_new("uniforms",
                                  "scale_x", G_TYPE_FLOAT, scale_x,
@@ -399,12 +394,12 @@ h264_gst_encoder_config(struct gst_encoder_pipeline *gst_encoder_pipeline, const
                                  NULL);
 
     capsstr = g_strdup_printf("video/x-raw(memory:GLMemory),width=%d,height=%d",
-                              padded_width, padded_height);
+                              encoded_width, encoded_height);
     shader_src_caps = gst_caps_from_string(capsstr);
     g_free(capsstr);
 
-    g_object_set(h264_gst_encoder_pipeline->glshader, "uniforms", uniforms, NULL);
-    g_object_set(h264_gst_encoder_pipeline->shader_capsfilter, "caps", shader_src_caps, NULL);
+    g_object_set(gst_encoder_pipeline->glshader, "uniforms", uniforms, NULL);
+    g_object_set(gst_encoder_pipeline->shader_capsfilter, "caps", shader_src_caps, NULL);
 
     gst_structure_free(uniforms);
     gst_caps_unref(shader_src_caps);
@@ -415,19 +410,25 @@ h264_gst_encoder_config(struct gst_encoder_pipeline *gst_encoder_pipeline, const
 static inline void
 gst_encoder_pipeline_destroy(struct gst_encoder_pipeline *gst_encoder_pipeline) {
     gst_element_set_state(gst_encoder_pipeline->pipeline, GST_STATE_NULL);
-    gst_object_unref(gst_encoder_pipeline->app_src);
-    gst_object_unref(gst_encoder_pipeline->app_sink);
-    gst_object_unref(gst_encoder_pipeline->pipeline);
-    gst_object_unref(gst_encoder_pipeline->dma_buf_allocator);
+    gst_object_unref(GST_OBJECT(gst_encoder_pipeline->app_src));
+    gst_object_unref(GST_OBJECT(gst_encoder_pipeline->app_sink));
+    gst_object_unref(GST_OBJECT(gst_encoder_pipeline->pipeline));
+    gst_object_unref(GST_OBJECT(gst_encoder_pipeline->dma_buf_allocator));
+    gst_object_unref(GST_OBJECT(gst_encoder_pipeline->glshader));
+    gst_object_unref(GST_OBJECT(gst_encoder_pipeline->shader_capsfilter));
+
     gst_encoder_pipeline->app_src = NULL;
     gst_encoder_pipeline->app_sink = NULL;
     gst_encoder_pipeline->pipeline = NULL;
     gst_encoder_pipeline->dma_buf_allocator = NULL;
     gst_encoder_pipeline->pipeline = NULL;
+    gst_encoder_pipeline->glshader = NULL;
+    gst_encoder_pipeline->shader_capsfilter = NULL;
+
     g_free(gst_encoder_pipeline);
 }
 
-static void
+static inline void
 gst_encoder_destroy(struct encoder *encoder) {
     struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
     gst_encoder_pipeline_destroy(gst_encoder->opaque_pipeline);
@@ -440,8 +441,106 @@ gst_encoder_destroy(struct encoder *encoder) {
     encoder->impl = NULL;
 }
 
-static int
-gst_request_key_unit(struct encoder *encoder) {
+static GstBusSyncReply
+sync_bus_call(__attribute__((unused)) GstBus *bus, GstMessage *msg, gpointer data) {
+    struct encoder *encoder = data;
+
+    switch (GST_MESSAGE_TYPE (msg)) {
+        case GST_MESSAGE_NEED_CONTEXT: {
+            const gchar *context_type;
+
+            gst_message_parse_context_type(msg, &context_type);
+            if (g_strcmp0(context_type, GST_GL_DISPLAY_CONTEXT_TYPE) == 0 && encoder->drm_context) {
+                gst_element_set_context(GST_ELEMENT (msg->src), encoder->gst_context_gl_display);
+            }
+
+            if (g_strcmp0(context_type, "gst.gl.app_context") == 0) {
+                gst_element_set_context(GST_ELEMENT (msg->src), encoder->gst_context_gl_context);
+            }
+            break;
+        }
+        default:
+            break;
+    }
+
+    return GST_BUS_DROP;
+}
+
+static inline void
+setup_pipeline_bus_listeners(struct encoder *encoder, GstElement *pipeline) {
+    GstBus *bus = gst_element_get_bus(pipeline);
+    gst_bus_set_sync_handler(bus, sync_bus_call, encoder, NULL);
+}
+
+static inline struct gst_encoder_pipeline *
+gst_encoder_pipeline_create(struct encoder *encoder, const char *pipeline_definition, const bool is_alpha) {
+    struct gst_encoder_pipeline *gst_encoder_pipeline = g_new0(struct gst_encoder_pipeline, 1);
+    struct sample_callback_data *callback_data;
+    gst_encoder_pipeline->pipeline = gst_parse_launch(pipeline_definition, NULL);
+    if (gst_encoder_pipeline->pipeline == NULL) {
+        g_free(gst_encoder_pipeline);
+        // TODO log pipeline creation failure
+        return NULL;
+    }
+    setup_pipeline_bus_listeners(encoder, gst_encoder_pipeline->pipeline);
+
+    GstElement *glshader = gst_bin_get_by_name(GST_BIN(gst_encoder_pipeline->pipeline), "shader");
+    if (is_alpha) {
+        g_object_set(glshader, "fragment", alpha_fragment_shader, NULL);
+    } else {
+        g_object_set(glshader, "fragment", opaque_fragment_shader, NULL);
+    }
+    g_object_set(glshader, "vertex", vertex_shader, NULL);
+    gst_encoder_pipeline->glshader = glshader;
+    gst_encoder_pipeline->shader_capsfilter = gst_bin_get_by_name(
+            GST_BIN(gst_encoder_pipeline->pipeline), "shader_capsfilter");
+
+    gst_encoder_pipeline->app_src = GST_APP_SRC(
+            gst_bin_get_by_name(GST_BIN(gst_encoder_pipeline->pipeline), "src"));
+    gst_encoder_pipeline->app_sink = GST_APP_SINK(
+            gst_bin_get_by_name(GST_BIN(gst_encoder_pipeline->pipeline), "sink"));
+
+    callback_data = g_new0(struct sample_callback_data, 1);
+    callback_data->encoder = encoder;
+    callback_data->is_alpha = is_alpha;
+    gst_app_sink_set_callbacks(gst_encoder_pipeline->app_sink, &sample_callback, (gpointer) callback_data,
+                               NULL);
+    ensure_gst_gl(encoder, gst_encoder_pipeline->pipeline);
+
+    return gst_encoder_pipeline;
+}
+
+static bool
+gst_encoder_create(struct encoder *encoder) {
+    struct gst_encoder *gst_encoder = g_new0(struct gst_encoder, 1);
+    gst_encoder->alpha_pipeline = (struct gst_encoder_pipeline *) gst_encoder_pipeline_create(encoder,
+                                                                                              encoder->description->pipeline_definition,
+                                                                                              true);
+    if (gst_encoder->alpha_pipeline == NULL) {
+        g_free(gst_encoder);
+        // TODO log alpha pipeline creation failure
+        return true;
+    }
+    gst_encoder->alpha_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
+
+    gst_encoder->opaque_pipeline = (struct gst_encoder_pipeline *) gst_encoder_pipeline_create(encoder,
+                                                                                               encoder->description->pipeline_definition,
+                                                                                               false);
+    if (gst_encoder->opaque_pipeline == NULL) {
+        g_free(gst_encoder);
+        // TODO cleanup alpha pipeline
+        // TODO log pipeline creation failure
+        return true;
+    }
+    gst_encoder->opaque_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
+
+    encoder->impl = gst_encoder;
+    return false;
+}
+
+
+static inline int
+gst_encoder_request_key_unit(struct encoder *encoder) {
     struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
     gst_element_send_event(gst_encoder->opaque_pipeline->pipeline, gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM,
                                                                                         gst_structure_new(
@@ -478,17 +577,15 @@ gst_encoder_pipeline_encode(struct gst_encoder_pipeline *gst_encoder_pipeline, G
     return false;
 }
 
-static bool
-gst_encoder_encode_shm(struct encoder *encoder,
-                       struct wl_shm_buffer *shm_buffer,
-                       const gst_encoder_config_func_t gst_encoder_config,
+static inline bool
+gst_encoder_encode_shm(struct encoder *encoder, struct wl_shm_buffer *shm_buffer,
                        struct encoding_result *encoding_result) {
     struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
 
     GstBuffer *opaque_buffer;
     GstBuffer *alpha_buffer;
     uint32_t buffer_width, buffer_height;
-    bool encoder_needs_split_alpha, buffer_has_alpha;
+    bool buffer_has_alpha;
     char gst_format[16];
 
     opaque_buffer = wl_shm_buffer_to_gst_buffer(shm_buffer, &buffer_width, &buffer_height, gst_format,
@@ -502,8 +599,8 @@ gst_encoder_encode_shm(struct encoder *encoder,
                                                              "width", G_TYPE_INT, buffer_width,
                                                              "height", G_TYPE_INT, buffer_height,
                                                              NULL);
-    if (gst_encoder_config(gst_encoder->opaque_pipeline, new_opaque_src_caps, buffer_width, buffer_height,
-                           &encoder_needs_split_alpha)) {
+    if (gst_encoder_pipeline_config(gst_encoder->opaque_pipeline, encoder->description, new_opaque_src_caps,
+                                    buffer_width, buffer_height)) {
         gst_buffer_unref(opaque_buffer);
         // TODO log opaque encoding config error?
         return true;
@@ -513,7 +610,7 @@ gst_encoder_encode_shm(struct encoder *encoder,
         return true;
     }
 
-    if (buffer_has_alpha && encoder_needs_split_alpha) {
+    if (buffer_has_alpha && encoder->description->split_alpha) {
         encoding_result->has_split_alpha = true;
         alpha_buffer = wl_shm_buffer_to_gst_buffer(shm_buffer, &buffer_width, &buffer_height, gst_format,
                                                    &buffer_has_alpha);
@@ -526,8 +623,8 @@ gst_encoder_encode_shm(struct encoder *encoder,
                                                                 "width", G_TYPE_INT, buffer_width,
                                                                 "height", G_TYPE_INT, buffer_height,
                                                                 NULL);
-        if (gst_encoder_config(gst_encoder->alpha_pipeline, new_alpha_src_caps, buffer_width, buffer_height,
-                               &encoder_needs_split_alpha)) {
+        if (gst_encoder_pipeline_config(gst_encoder->alpha_pipeline, encoder->description, new_alpha_src_caps,
+                                        buffer_width, buffer_height)) {
             gst_buffer_unref(alpha_buffer);
             // TODO log alpha encoding config error?
             return true;
@@ -700,14 +797,12 @@ westfield_dmabuf_to_gst_buffer(struct gst_encoder_pipeline *gst_encoder_pipeline
     return buf;
 }
 
-static bool
+static inline bool
 gst_encoder_encode_linux_dmabuf_v1(struct encoder *encoder, struct wl_resource *buffer,
-                                   const gst_encoder_config_func_t gst_encoder_config,
                                    struct encoding_result *encoding_result) {
     struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
     const struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(
             buffer);
-    bool encoder_needs_split_alpha;
     GstCaps *new_opaque_src_caps, *new_alpha_src_caps;
 
     const struct dmabuf_support_format *dmabuf_support_format = gst_raw_video_format_from_fourcc(
@@ -729,8 +824,8 @@ gst_encoder_encode_linux_dmabuf_v1(struct encoder *encoder, struct wl_resource *
     GstCapsFeatures *new_src_caps_feature = gst_caps_features_new_single(GST_CAPS_FEATURE_MEMORY_DMABUF);
     gst_caps_set_features_simple(new_opaque_src_caps, new_src_caps_feature);
 
-    if (gst_encoder_config(gst_encoder->opaque_pipeline, new_opaque_src_caps, westfield_dmabuf_v1_buffer->base.width,
-                           westfield_dmabuf_v1_buffer->base.height, &encoder_needs_split_alpha)) {
+    if (gst_encoder_pipeline_config(gst_encoder->opaque_pipeline, encoder->description, new_opaque_src_caps,
+                                    westfield_dmabuf_v1_buffer->base.width, westfield_dmabuf_v1_buffer->base.height)) {
         // TODO log opaque encoding config error?
         return true;
     }
@@ -739,7 +834,7 @@ gst_encoder_encode_linux_dmabuf_v1(struct encoder *encoder, struct wl_resource *
                                                                westfield_dmabuf_v1_buffer,
                                                                dmabuf_support_format));
 
-    if (dmabuf_support_format->has_alpha && encoder_needs_split_alpha) {
+    if (dmabuf_support_format->has_alpha && encoder->description->split_alpha) {
         encoding_result->has_split_alpha = true;
         new_alpha_src_caps = gst_caps_new_simple("video/x-raw",
                                                  "framerate", GST_TYPE_FRACTION, FPS, 1,
@@ -748,8 +843,9 @@ gst_encoder_encode_linux_dmabuf_v1(struct encoder *encoder, struct wl_resource *
                                                  "width", G_TYPE_INT, westfield_dmabuf_v1_buffer->base.width,
                                                  "height", G_TYPE_INT, westfield_dmabuf_v1_buffer->base.height,
                                                  NULL);
-        if (gst_encoder_config(gst_encoder->alpha_pipeline, new_alpha_src_caps, westfield_dmabuf_v1_buffer->base.width,
-                               westfield_dmabuf_v1_buffer->base.height, &encoder_needs_split_alpha)) {
+        if (gst_encoder_pipeline_config(gst_encoder->alpha_pipeline, encoder->description, new_alpha_src_caps,
+                                        westfield_dmabuf_v1_buffer->base.width,
+                                        westfield_dmabuf_v1_buffer->base.height)) {
             // TODO log opaque encoding config error?
             return true;
         }
@@ -773,144 +869,64 @@ gst_encoder_encode_linux_dmabuf_v1(struct encoder *encoder, struct wl_resource *
 
 static inline bool
 gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource,
-                   const gst_encoder_config_func_t ensure_size, struct encoding_result *encoding_result) {
+                   struct encoding_result *encoding_result) {
     struct wl_shm_buffer *shm_buffer;
+    encoding_result->encoding_type = encoder->description->encoding_type;
 
     if (westfield_dmabuf_v1_resource_is_buffer(buffer_resource)) {
-        return gst_encoder_encode_linux_dmabuf_v1(encoder, buffer_resource, ensure_size, encoding_result);
+        return gst_encoder_encode_linux_dmabuf_v1(encoder, buffer_resource, encoding_result);
     }
 
     shm_buffer = wl_shm_buffer_get((struct wl_resource *) buffer_resource);
     if (shm_buffer) {
-        return gst_encoder_encode_shm(encoder, shm_buffer, ensure_size, encoding_result);
+        return gst_encoder_encode_shm(encoder, shm_buffer, encoding_result);
     }
 
     return true;
 }
 
 static inline bool
-h264_gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource,
-                        struct encoding_result *encoding_result) {
-    encoding_result->encoding_type = h264;
-    return gst_encoder_encode(encoder, buffer_resource, h264_gst_encoder_config, encoding_result);
-}
+png_gst_encoder_supports_buffer(struct wl_resource *buffer_resource) {
+    int32_t width, height;
 
-static GstBusSyncReply
-sync_bus_call(__attribute__((unused)) GstBus *bus, GstMessage *msg, gpointer data) {
-    struct encoder *encoder = data;
+    struct wl_shm_buffer *shm_buffer = wl_shm_buffer_get(buffer_resource);
+    if (shm_buffer) {
+        uint32_t shm_format = wl_shm_buffer_get_format(shm_buffer);
+        width = wl_shm_buffer_get_width(shm_buffer);
+        height = wl_shm_buffer_get_height(shm_buffer);
 
-    switch (GST_MESSAGE_TYPE (msg)) {
-        case GST_MESSAGE_NEED_CONTEXT: {
-            const gchar *context_type;
 
-            gst_message_parse_context_type(msg, &context_type);
-            if (g_strcmp0(context_type, GST_GL_DISPLAY_CONTEXT_TYPE) == 0 && encoder->drm_context) {
-                gst_element_set_context(GST_ELEMENT (msg->src), encoder->gst_context_gl_display);
-            }
+        return (width * height) <= (256 * 256) &&
+               (shm_format == WL_SHM_FORMAT_ARGB8888 || shm_format == WL_SHM_FORMAT_XRGB8888);
+    }
 
-            if (g_strcmp0(context_type, "gst.gl.app_context") == 0) {
-                gst_element_set_context(GST_ELEMENT (msg->src), encoder->gst_context_gl_context);
-            }
-            break;
+    if (westfield_dmabuf_v1_resource_is_buffer(buffer_resource)) {
+        struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(
+                buffer_resource);
+        width = westfield_dmabuf_v1_buffer->base.width;
+        height = westfield_dmabuf_v1_buffer->base.height;
+
+        if (width * height <= 256 * 256) {
+            return true;
         }
-        default:
-            break;
     }
 
-    return GST_BUS_DROP;
-}
-
-static void
-setup_pipeline_bus_listeners(struct encoder *encoder, GstElement *pipeline) {
-    GstBus *bus = gst_element_get_bus(pipeline);
-    gst_bus_set_sync_handler(bus, sync_bus_call, encoder, NULL);
-}
-
-static inline struct h264_gst_encoder_pipeline *
-h264_gst_encoder_pipeline_create(struct encoder *encoder, const char *pipeline_definition, const bool is_alpha) {
-    struct h264_gst_encoder_pipeline *h264_gst_encoder_pipeline = g_new0(struct h264_gst_encoder_pipeline, 1);
-    struct sample_callback_data *callback_data;
-    h264_gst_encoder_pipeline->base.pipeline = gst_parse_launch(pipeline_definition, NULL);
-    if (h264_gst_encoder_pipeline->base.pipeline == NULL) {
-        g_free(h264_gst_encoder_pipeline);
-        // TODO log pipeline creation failure
-        return NULL;
-    }
-    setup_pipeline_bus_listeners(encoder, h264_gst_encoder_pipeline->base.pipeline);
-
-    GstElement *glshader = gst_bin_get_by_name(GST_BIN(h264_gst_encoder_pipeline->base.pipeline), "shader");
-    if (is_alpha) {
-        g_object_set(glshader, "fragment", alpha_fragment_shader, NULL);
-    } else {
-        g_object_set(glshader, "fragment", opaque_fragment_shader, NULL);
-    }
-    g_object_set(glshader, "vertex", vertex_shader, NULL);
-    h264_gst_encoder_pipeline->glshader = glshader;
-    h264_gst_encoder_pipeline->shader_capsfilter = gst_bin_get_by_name(
-            GST_BIN(h264_gst_encoder_pipeline->base.pipeline), "shader_capsfilter");
-
-    h264_gst_encoder_pipeline->base.app_src = GST_APP_SRC(
-            gst_bin_get_by_name(GST_BIN(h264_gst_encoder_pipeline->base.pipeline), "src"));
-    h264_gst_encoder_pipeline->base.app_sink = GST_APP_SINK(
-            gst_bin_get_by_name(GST_BIN(h264_gst_encoder_pipeline->base.pipeline), "sink"));
-
-    callback_data = g_new0(struct sample_callback_data, 1);
-    callback_data->encoder = encoder;
-    callback_data->is_alpha = is_alpha;
-    gst_app_sink_set_callbacks(h264_gst_encoder_pipeline->base.app_sink, &sample_callback, (gpointer) callback_data,
-                               NULL);
-    ensure_gst_gl(encoder, h264_gst_encoder_pipeline->base.pipeline);
-
-    return h264_gst_encoder_pipeline;
-}
-
-static const char *nvh264_pipeline = "appsrc name=src format=3 stream-type=0 ! "
-                                     "glupload ! "
-                                     "glcolorconvert ! "
-                                     "glshader name=shader ! "
-                                     "capsfilter name=shader_capsfilter ! "
-                                     "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
-                                     "nvh264enc qp-max=20 zerolatency=true preset=5 rc-mode=4 ! "
-                                     "video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au ! "
-                                     "appsink name=sink ";
-
-static bool
-nvh264_gst_encoder_create(struct encoder *encoder) {
-    struct gst_encoder *gst_encoder = g_new0(struct gst_encoder, 1);
-    gst_encoder->alpha_pipeline = (struct gst_encoder_pipeline *) h264_gst_encoder_pipeline_create(encoder,
-                                                                                                   nvh264_pipeline,
-                                                                                                   true);
-    if (gst_encoder->alpha_pipeline == NULL) {
-        g_free(gst_encoder);
-        // TODO log alpha pipeline creation failure
-        return true;
-    }
-    gst_encoder->alpha_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
-
-    gst_encoder->opaque_pipeline = (struct gst_encoder_pipeline *) h264_gst_encoder_pipeline_create(encoder,
-                                                                                                    nvh264_pipeline,
-                                                                                                    false);
-    if (gst_encoder->opaque_pipeline == NULL) {
-        g_free(gst_encoder);
-        // TODO cleanup alpha pipeline
-        // TODO log pipeline creation failure
-        return true;
-    }
-    gst_encoder->opaque_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
-
-    encoder->impl = gst_encoder;
     return false;
 }
 
 static inline bool
-h264_gst_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource,
-                                 const char *preferred_encoder) {
+encoder_description_supports_buffer(const struct encoder_description *encoder_itf, const char *preferred_encoder,
+                                    struct wl_resource *buffer_resource) {
     int32_t width, height;
     struct wl_shm_buffer *shm_buffer;
     struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer;
 
-    // different encoder selected so not for us
-    if (strcmp(encoder->preferred_encoder, preferred_encoder) != 0) {
+    if (strcmp(encoder_itf->name, "png") == 0) {
+        return png_gst_encoder_supports_buffer(buffer_resource);
+    }
+
+    // different encoder preferred so not for this interface
+    if (strcmp(encoder_itf->name, preferred_encoder) != 0) {
         return false;
     }
 
@@ -946,273 +962,82 @@ h264_gst_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *bu
     return false;
 }
 
-static void
-h264_gst_encoder_destroy(struct encoder *encoder) {
-    struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
-    struct h264_gst_encoder_pipeline *h264_gst_encoder_pipeline_opaque = (struct h264_gst_encoder_pipeline *) gst_encoder->opaque_pipeline;
-    struct h264_gst_encoder_pipeline *h264_gst_encoder_pipeline_alpha = (struct h264_gst_encoder_pipeline *) gst_encoder->alpha_pipeline;
-    gst_object_unref(GST_OBJECT(h264_gst_encoder_pipeline_opaque->glshader));
-    gst_object_unref(GST_OBJECT(h264_gst_encoder_pipeline_opaque->shader_capsfilter));
-    gst_object_unref(GST_OBJECT(h264_gst_encoder_pipeline_alpha->glshader));
-    gst_object_unref(GST_OBJECT(h264_gst_encoder_pipeline_alpha->shader_capsfilter));
-    gst_encoder_destroy(encoder);
-}
-
-static inline bool
-nvh264_gst_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
-    static const char *nvh264_preferred_encoder = "nvh264";
-    return h264_gst_encoder_supports_buffer(encoder, buffer_resource, nvh264_preferred_encoder);
-}
-
-static const struct encoder_itf nv264_gst_itf = {
-        .supports_buffer = nvh264_gst_supports_buffer,
-        .create = nvh264_gst_encoder_create,
-        .encode = h264_gst_encoder_encode,
-        .destroy = h264_gst_encoder_destroy,
-        .request_key_unit = gst_request_key_unit,
-};
-
-static const char *x264_pipeline = "appsrc name=src format=3 stream-type=0 ! "
-                                   "glupload ! "
-                                   "glcolorconvert ! "
-                                   "glshader name=shader ! "
-                                   "capsfilter name=shader_capsfilter ! "
-                                   "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
-                                   "gldownload ! "
-                                   "x264enc rc-lookahead=0 sliced-threads=true qp-max=20 byte-stream=true pass=pass1 tune=zerolatency speed-preset=superfast noise-reduction=0 psy-tune=grain ! "
-                                   "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
-                                   "appsink name=sink ";
-
-static bool
-x264_gst_encoder_create(struct encoder *encoder) {
-    struct gst_encoder *gst_encoder = g_new0(struct gst_encoder, 1);
-    gst_encoder->alpha_pipeline = (struct gst_encoder_pipeline *) h264_gst_encoder_pipeline_create(encoder,
-                                                                                                   x264_pipeline,
-                                                                                                   true);
-    if (gst_encoder->alpha_pipeline == NULL) {
-        g_free(gst_encoder);
-        // TODO log alpha pipeline creation failure
-        return true;
-    }
-    gst_encoder->alpha_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
-
-    gst_encoder->opaque_pipeline = (struct gst_encoder_pipeline *) h264_gst_encoder_pipeline_create(encoder,
-                                                                                                    x264_pipeline,
-                                                                                                    false);
-    if (gst_encoder->opaque_pipeline == NULL) {
-        g_free(gst_encoder);
-        // TODO cleanup alpha pipeline
-        // TODO log pipeline creation failure
-        return true;
-    }
-    gst_encoder->opaque_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
-
-    encoder->impl = gst_encoder;
-    return false;
-}
-
-static inline bool
-x264_gst_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
-    static const char *x264_preferred_encoder = "x264";
-    return h264_gst_encoder_supports_buffer(encoder, buffer_resource, x264_preferred_encoder);
-}
-
-static const struct encoder_itf x264_gst_itf = {
-        .supports_buffer = x264_gst_encoder_supports_buffer,
-        .create = x264_gst_encoder_create,
-        .encode = h264_gst_encoder_encode,
-        .destroy = h264_gst_encoder_destroy,
-        .request_key_unit = gst_request_key_unit
-};
-
-struct png_gst_encoder_pipeline {
-    struct gst_encoder_pipeline base;
-    GstElement *videobox;
-};
-
-static const char *png_pipeline = "appsrc name=src format=3 stream-type=0 ! "
-                                  "glupload ! "
-                                  "gldownload ! "
-                                  "videobox name=videobox border-alpha=0.0 ! "
-                                  "videoconvert ! videoscale ! "
-                                  "pngenc ! "
-                                  "appsink name=sink";
-
-static bool
-png_gst_encoder_create(struct encoder *encoder) {
-    struct gst_encoder *gst_encoder = g_new0(struct gst_encoder, 1);
-    struct png_gst_encoder_pipeline *png_gst_encoder_pipeline = g_new0(struct png_gst_encoder_pipeline, 1);
-    struct sample_callback_data *callback_data;
-
-    png_gst_encoder_pipeline->base.pipeline = gst_parse_launch(png_pipeline, NULL);
-
-    if (png_gst_encoder_pipeline->base.pipeline == NULL) {
-        g_free(gst_encoder);
-        g_free(png_gst_encoder_pipeline);
-        // TODO log pipeline creation error
-        return true;
-    }
-    setup_pipeline_bus_listeners(encoder, png_gst_encoder_pipeline->base.pipeline);
-
-    png_gst_encoder_pipeline->base.app_src = GST_APP_SRC(
-            gst_bin_get_by_name(GST_BIN(png_gst_encoder_pipeline->base.pipeline), "src"));
-    png_gst_encoder_pipeline->videobox = gst_bin_get_by_name(GST_BIN(png_gst_encoder_pipeline->base.pipeline),
-                                                             "videobox");
-    png_gst_encoder_pipeline->base.app_sink = GST_APP_SINK(
-            gst_bin_get_by_name(GST_BIN(png_gst_encoder_pipeline->base.pipeline), "sink"));
-
-    callback_data = g_new0(struct sample_callback_data, 1);
-    callback_data->encoder = encoder;
-    callback_data->is_alpha = false;
-    gst_app_sink_set_callbacks(png_gst_encoder_pipeline->base.app_sink, &sample_callback, (gpointer) callback_data,
-                               NULL);
-
-    ensure_gst_gl(encoder, png_gst_encoder_pipeline->base.pipeline);
-    gst_encoder->opaque_pipeline = (struct gst_encoder_pipeline *) png_gst_encoder_pipeline;
-    gst_encoder->opaque_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
-    encoder->impl = gst_encoder;
-
-    return false;
-}
-
-static bool
-png_gst_encoder_config(struct gst_encoder_pipeline *gst_encoder_pipeline, const GstCaps *new_src_caps,
-                       const u_int32_t width,
-                       const u_int32_t height,
-                       bool *split_alpha) {
-    struct png_gst_encoder_pipeline *png_gst_encoder_pipeline = (struct png_gst_encoder_pipeline *) gst_encoder_pipeline;
-    const GstCaps *current_src_caps = gst_app_src_get_caps(png_gst_encoder_pipeline->base.app_src);
-
-    *split_alpha = false;
-
-    if (current_src_caps && gst_caps_is_equal(current_src_caps, new_src_caps)) {
-        gst_caps_unref((GstCaps *) new_src_caps);
-        gst_caps_unref((GstCaps *) current_src_caps);
-        return false;
-    } else if (current_src_caps) {
-        gst_caps_unref((GstCaps *) current_src_caps);
-    }
-
-    gst_app_src_set_caps(png_gst_encoder_pipeline->base.app_src, new_src_caps);
-    gst_caps_unref((GstCaps *) new_src_caps);
-
-    g_object_set(png_gst_encoder_pipeline->videobox, "bottom", height < 16 ? height - 16 : 0, "right",
-                 width < 16 ? width - 16 : 0,
-                 NULL);
-    return false;
-}
-
-static bool
-png_gst_encoder_supports_buffer(__attribute__((unused)) struct encoder *encoder, struct wl_resource *buffer_resource) {
-    int32_t width, height;
-
-    struct wl_shm_buffer *shm_buffer = wl_shm_buffer_get(buffer_resource);
-    if (shm_buffer) {
-        uint32_t shm_format = wl_shm_buffer_get_format(shm_buffer);
-        width = wl_shm_buffer_get_width(shm_buffer);
-        height = wl_shm_buffer_get_height(shm_buffer);
-
-
-        return (width * height) <= (256 * 256) &&
-               (shm_format == WL_SHM_FORMAT_ARGB8888 || shm_format == WL_SHM_FORMAT_XRGB8888);
-    }
-
-    if (westfield_dmabuf_v1_resource_is_buffer(buffer_resource)) {
-        struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(
-                buffer_resource);
-        width = westfield_dmabuf_v1_buffer->base.width;
-        height = westfield_dmabuf_v1_buffer->base.height;
-
-        if (width * height <= 256 * 256) {
-            return true;
+static const struct encoder_description encoder_descriptions[] = {
+        {
+                .name = "x264",
+                .encoding_type = h264,
+                .pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
+                                       "glupload ! "
+                                       "glcolorconvert ! "
+                                       "glshader name=shader ! "
+                                       "capsfilter name=shader_capsfilter ! "
+                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
+                                       "gldownload ! "
+                                       "x264enc rc-lookahead=0 sliced-threads=true qp-max=20 byte-stream=true pass=pass1 tune=zerolatency speed-preset=superfast noise-reduction=0 psy-tune=grain ! "
+                                       "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
+                                       "appsink name=sink ",
+                .split_alpha = true,
+                .width_multiple = 2,
+                .height_multiple = 2,
+                .min_width = 4,
+                .min_height = 4,
+        },
+        {
+                .name = "nvh264",
+                .encoding_type = h264,
+                .pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
+                                       "glupload ! "
+                                       "glcolorconvert ! "
+                                       "glshader name=shader ! "
+                                       "capsfilter name=shader_capsfilter ! "
+                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
+                                       "nvh264enc qp-max=20 zerolatency=true preset=5 rc-mode=4 ! "
+                                       "video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au ! "
+                                       "appsink name=sink ",
+                .split_alpha = true,
+                .width_multiple = 2,
+                .height_multiple = 2,
+                .min_width = 4,
+                .min_height = 4,
+        },
+        {
+                .name = "vaapih264",
+                .encoding_type = h264,
+                .pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
+                                       "glupload ! "
+                                       "glcolorconvert ! "
+                                       "glshader name=shader ! "
+                                       "capsfilter name=shader_capsfilter ! "
+                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
+                                       "gldownload ! "
+                                       "vaapih264enc aud=1 ! "
+                                       "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
+                                       "appsink name=sink",
+                .split_alpha = true,
+                .width_multiple = 2,
+                .height_multiple = 2,
+                .min_width = 4,
+                .min_height = 4,
+        },
+        // always keep png last as fallback encoder
+        {
+                .name = "png",
+                .encoding_type = png,
+                .pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
+                                       "glupload ! "
+                                       "glcolorconvert ! "
+                                       "glshader name=shader ! "
+                                       "capsfilter name=shader_capsfilter ! "
+                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=RGBA ! "
+                                       "gldownload ! "
+                                       "pngenc ! "
+                                       "appsink name=sink",
+                .split_alpha = false,
+                .width_multiple = 1,
+                .height_multiple = 1,
+                .min_width = 16,
+                .min_height = 16,
         }
-    }
-
-    return false;
-}
-
-static inline bool
-png_gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource,
-                       struct encoding_result *encoding_result) {
-    encoding_result->encoding_type = png;
-    return gst_encoder_encode(encoder, buffer_resource, png_gst_encoder_config, encoding_result);
-}
-
-static void
-png_gst_encoder_destroy(struct encoder *encoder) {
-    struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
-    struct png_gst_encoder_pipeline *png_gst_encoder_pipeline_opaque = (struct png_gst_encoder_pipeline *) gst_encoder->opaque_pipeline;
-    gst_object_unref(GST_OBJECT(png_gst_encoder_pipeline_opaque->videobox));
-    png_gst_encoder_pipeline_opaque->videobox = NULL;
-    gst_encoder_destroy(encoder);
-}
-
-static const struct encoder_itf png_gst_itf = {
-        .supports_buffer = png_gst_encoder_supports_buffer,
-        .create = png_gst_encoder_create,
-        .encode = png_gst_encoder_encode,
-        .destroy = png_gst_encoder_destroy,
-        .request_key_unit = gst_request_key_unit
-};
-
-static const char *vaapih264_pipeline = "appsrc name=src format=3 stream-type=0 ! "
-                                        "glupload ! "
-                                        "glcolorconvert ! "
-                                        "glshader name=shader ! "
-                                        "capsfilter name=shader_capsfilter ! "
-                                        "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
-                                        "gldownload ! "
-                                        "vaapih264enc aud=1 ! "
-                                        "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
-                                        "appsink name=sink";
-
-static bool
-vaapi264_gst_encoder_create(struct encoder *encoder) {
-    struct gst_encoder *gst_encoder = g_new0(struct gst_encoder, 1);
-    gst_encoder->alpha_pipeline = (struct gst_encoder_pipeline *) h264_gst_encoder_pipeline_create(encoder,
-                                                                                                   vaapih264_pipeline,
-                                                                                                   true);
-    if (gst_encoder->alpha_pipeline == NULL) {
-        g_free(gst_encoder);
-        // TODO log alpha pipeline creation failure
-        return true;
-    }
-    gst_encoder->alpha_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
-
-    gst_encoder->opaque_pipeline = (struct gst_encoder_pipeline *) h264_gst_encoder_pipeline_create(encoder,
-                                                                                                    vaapih264_pipeline,
-                                                                                                    false);
-    if (gst_encoder->opaque_pipeline == NULL) {
-        g_free(gst_encoder);
-        // TODO cleanup alpha pipeline
-        // TODO log pipeline creation failure
-        return true;
-    }
-    gst_encoder->opaque_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
-
-    encoder->impl = gst_encoder;
-    return false;
-}
-
-static inline bool
-vaapi264_gst_encoder_supports_buffer(struct encoder *encoder, struct wl_resource *buffer_resource) {
-    static const char *vaapih264_preferred_encoder = "vaapih264";
-    return h264_gst_encoder_supports_buffer(encoder, buffer_resource, vaapih264_preferred_encoder);
-}
-
-const struct encoder_itf vaapi264_gst_itf = {
-        .supports_buffer = vaapi264_gst_encoder_supports_buffer,
-        .create = vaapi264_gst_encoder_create,
-        .encode = h264_gst_encoder_encode,
-        .destroy = h264_gst_encoder_destroy,
-        .request_key_unit = gst_request_key_unit,
-};
-
-const struct encoder_itf *all_encoder_itfs[] = {
-        &x264_gst_itf,
-        &nv264_gst_itf,
-        &vaapi264_gst_itf,
-        &png_gst_itf
 };
 
 int
@@ -1239,20 +1064,21 @@ bool
 do_gst_encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource, uint32_t serial) {
     struct encoder *encoder = *encoder_pp;
     struct encoding_result *encoding_result;
-    const size_t nro_encoders = sizeof(all_encoder_itfs) / sizeof(all_encoder_itfs[0]);
+    const size_t nro_encoders = sizeof(encoder_descriptions) / sizeof(encoder_descriptions[0]);
 
     if (encoder->impl != NULL) {
-        if (!encoder->itf.supports_buffer(encoder, buffer_resource)) {
-            encoder->itf.destroy(encoder);
+        if (!encoder_description_supports_buffer(encoder->description, encoder->preferred_encoder, buffer_resource)) {
+            gst_encoder_destroy(encoder);
             encoder->impl = NULL;
         }
     }
 
     if (encoder->impl == NULL) {
         for (int i = 0; i < nro_encoders; i++) {
-            if (all_encoder_itfs[i]->supports_buffer(encoder, buffer_resource)) {
-                encoder->itf = *all_encoder_itfs[i];
-                if (encoder->itf.create(encoder)) {
+            if (encoder_description_supports_buffer(&encoder_descriptions[i], encoder->preferred_encoder,
+                                                    buffer_resource)) {
+                encoder->description = &encoder_descriptions[i];
+                if (gst_encoder_create(encoder)) {
                     return false;
                 }
                 assert(encoder->impl != NULL && "Found matching encoder but implementation was still NULL");
@@ -1267,13 +1093,13 @@ do_gst_encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_re
     g_mutex_init(&encoding_result->mutex);
     encoding_result->serial = serial;
     encoding_result->buffer_id = wl_resource_get_id(buffer_resource);
-    return encoder->itf.encode(encoder, buffer_resource, encoding_result);
+    return gst_encoder_encode(encoder, buffer_resource, encoding_result);
 }
 
 void
 do_gst_encoder_free(struct encoder **encoder_pp) {
     struct encoder *encoder = *encoder_pp;
-    encoder->itf.destroy(encoder);
+    gst_encoder_destroy(encoder);
     // TODO drain the queue & send encoded frames anyway?
     g_queue_free_full(encoder->encoding_results, (GDestroyNotify) encoding_result_free);
     free(encoder);
@@ -1288,5 +1114,5 @@ do_gst_encoded_frame_finalize(struct encoded_frame *encoded_frame) {
 void
 do_gst_request_key_unit(struct encoder **encoder_pp) {
     struct encoder *encoder = *encoder_pp;
-    encoder->itf.request_key_unit(encoder);
+    gst_encoder_request_key_unit(encoder);
 }
