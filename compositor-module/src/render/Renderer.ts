@@ -220,9 +220,9 @@ export default class Renderer {
       if (view.mapped && buffer && view.surface.damaged) {
         const bufferImplementation = buffer.implementation as BufferImplementation<any>
         if (!bufferImplementation.released) {
-          Object.values(view.renderStates).forEach((renderState) => {
-            renderState.scene[bufferContents.mimeType](bufferContents, renderState)
-          })
+          Object.values(view.renderStates).forEach((renderState) =>
+            renderState.scene[bufferContents.mimeType](bufferContents, renderState),
+          )
           view.surface.damaged = false
           bufferImplementation.release()
         }

@@ -4,8 +4,8 @@ project(app-endpoint-encoding C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED TRUE)
 
-#set(CMAKE_BUILD_TYPE "Debug")
-set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_BUILD_TYPE "Debug")
+#set(CMAKE_BUILD_TYPE "Release")
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLIB2 REQUIRED glib-2.0 IMPORTED_TARGET)
@@ -14,6 +14,7 @@ pkg_check_modules(GSTREAMER REQUIRED
         gstreamer-app-1.0
         gstreamer-video-1.0
         gstreamer-gl-1.0
+        graphene-1.0
         gstreamer-allocators-1.0
         IMPORTED_TARGET
 )

@@ -225,14 +225,14 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
   }
 
   private opaqueOutput(buffer: VideoFrame) {
-    const width = buffer.displayWidth
-    const height = buffer.displayHeight
+    const width = buffer.codedWidth
+    const height = buffer.codedHeight
     const frameSerial = this.decodingSerialsQueue.shift()
     if (frameSerial === undefined) {
       throw new Error('BUG. Invalid state. No frame serial found onAlphaPictureDecoded.')
     }
     const frameState = this.frameStates[frameSerial]
-    frameState.result.opaque = { buffer, width, height }
+    frameState.result.opaque = { buffer, codedSize: { width, height } }
 
     if (frameState.state === 'pending_opaque') {
       this.onComplete(frameState)
@@ -242,14 +242,14 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
   }
 
   private alphaOutput(buffer: VideoFrame) {
-    const width = buffer.displayWidth
-    const height = buffer.displayHeight
+    const width = buffer.codedWidth
+    const height = buffer.codedHeight
     const frameSerial = this.decodingAlphaSerialsQueue.shift()
     if (frameSerial === undefined) {
       throw new Error('BUG. Invalid state. No frame serial found onAlphaPictureDecoded.')
     }
     const frameState = this.frameStates[frameSerial]
-    frameState.result.alpha = { buffer, width, height }
+    frameState.result.alpha = { buffer, codedSize: { width, height } }
 
     if (frameState.state === 'pending_alpha') {
       this.onComplete(frameState)

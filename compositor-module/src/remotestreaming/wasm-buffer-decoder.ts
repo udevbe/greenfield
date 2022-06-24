@@ -166,7 +166,7 @@ class WasmH264DecoderContext implements H264DecoderContext {
       throw new Error('BUG. Invalid state. No frame serial found onOpaquePictureDecoded.')
     }
     const frameState = this.frameStates[frameSerial]
-    frameState.result.opaque = { buffer, width, height }
+    frameState.result.opaque = { buffer, codedSize: { width, height } }
 
     if (frameState.state === 'pending_opaque') {
       this._onComplete(frameState)
@@ -182,7 +182,7 @@ class WasmH264DecoderContext implements H264DecoderContext {
       throw new Error('BUG. Invalid state. No frame serial found onAlphaPictureDecoded.')
     }
     const frameState = this.frameStates[frameSerial]
-    frameState.result.alpha = { buffer, width: width, height: height }
+    frameState.result.alpha = { buffer, codedSize: { width, height } }
 
     if (frameState.state === 'pending_alpha') {
       this._onComplete(frameState)

@@ -117,36 +117,26 @@ class SceneShader {
     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT | this.gl.STENCIL_BUFFER_BIT)
     this.gl.blendFunc(this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA)
     this.gl.enable(this.gl.BLEND)
+    // prettier-ignore
     this.program.setUniformM4(this.shaderArgs.u_projection, [
-      2.0 / width,
-      0,
-      0,
-      0,
-      0,
-      2.0 / -height,
-      0,
-      0,
-      0,
-      0,
-      1,
-      0,
-      -1,
-      1,
-      0,
-      1,
-    ])
+      2.0 / width, 0, 0, 0,
+      0, 2.0 / -height, 0, 0,
+      0, 0, 1, 0,
+      -1, 1, 0, 1
+    ]);
   }
 
   updateViewData(view: View, renderState: RenderState): void {
     const {
       texture,
-      size: { width, height },
+      texture: {
+        size: { width, height },
+      },
     } = renderState
-
-    this.gl.uniform1i(this.shaderArgs.u_texture, 0)
 
     this.gl.activeTexture(this.gl.TEXTURE0)
     this.gl.bindTexture(this.gl.TEXTURE_2D, texture.texture)
+    this.gl.uniform1i(this.shaderArgs.u_texture, 0)
 
     this.program.setUniformM4(this.shaderArgs.u_transform, mat4ToArray(view.transformation))
 
@@ -168,9 +158,9 @@ class SceneShader {
         // bottom left:
         0, height, 0, 1,
         // top left:
-        0, 0, 0, 0,
+        0, 0, 0, 0
       ]),
-      this.gl.DYNAMIC_DRAW,
+      this.gl.STATIC_DRAW,
     )
     this.gl.vertexAttribPointer(this.shaderArgs.a_position, 2, this.gl.FLOAT, false, 16, 0)
     this.gl.vertexAttribPointer(this.shaderArgs.a_texCoord, 2, this.gl.FLOAT, false, 16, 8)

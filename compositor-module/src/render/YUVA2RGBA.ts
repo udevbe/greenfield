@@ -66,53 +66,52 @@ export class YUVA2RGBA {
   ) {}
 
   convertInto(yuva: DualPlaneYUVAArrayBuffer, frameSize: Size, renderState: RenderState): void {
-    if (!sizeEquals(renderState.size, frameSize)) {
-      renderState.size = frameSize
-      renderState.texture.setContentBuffer(null, frameSize)
-    }
+    renderState.size = frameSize
+
     const { alpha, opaque } = yuva
 
     // the width & height returned are actually padded, so we have to use the frame size to get the real image dimension
     // when uploading to texture
     const opaqueBuffer = opaque.buffer
-    const opaqueStride = opaque.width // stride
-    const opaqueHeight = opaque.height // padded with filler rows
+    const opaqueCodedWidth = opaque.codedSize.width
+    const opaqueCodedHeight = opaque.codedSize.height
 
-    const maxXTexCoord = frameSize.width / opaqueStride
-    const maxYTexCoord = frameSize.height / opaqueHeight
+    if (!sizeEquals(renderState.texture.size, opaque.codedSize)) {
+      renderState.texture.setContentBuffer(null, opaque.codedSize)
+    }
 
-    const lumaSize = opaqueStride * opaqueHeight
+    const lumaSize = opaqueCodedWidth * opaqueCodedHeight
     const chromaSize = lumaSize >> 2
 
     const yBuffer = opaqueBuffer.subarray(0, lumaSize)
     const uBuffer = opaqueBuffer.subarray(lumaSize, lumaSize + chromaSize)
     const vBuffer = opaqueBuffer.subarray(lumaSize + chromaSize, lumaSize + 2 * chromaSize)
 
-    const chromaHeight = opaqueHeight >> 1
-    const chromaStride = opaqueStride >> 1
+    const chromaWidth = opaqueCodedWidth >> 1
+    const chromaHeight = opaqueCodedHeight >> 1
 
-    const lumaDimension = { width: opaqueStride, height: opaqueHeight }
-    const chromaDimension = { width: chromaStride, height: chromaHeight }
+    const lumaDimension = { width: opaqueCodedWidth, height: opaqueCodedHeight }
+    const chromaDimension = { width: chromaWidth, height: chromaHeight }
 
     this.yTexture.setContentBuffer(yBuffer, lumaDimension)
     this.uTexture.setContentBuffer(uBuffer, chromaDimension)
     this.vTexture.setContentBuffer(vBuffer, chromaDimension)
 
     if (alpha) {
-      const alphaStride = alpha.width // stride
-      const alphaHeight = alpha.height // padded with filler rows
-      const alphaLumaSize = alphaStride * alphaHeight
+      const alphaCodedWidth = alpha.codedSize.width
+      const alphaCodedHeight = alpha.codedSize.height
+      const alphaLumaSize = alphaCodedWidth * alphaCodedHeight
 
       const alphaBuffer = alpha.buffer.subarray(0, alphaLumaSize)
-      this.alphaTexture.setContentBuffer(alphaBuffer, { width: alphaStride, height: alphaHeight })
+      this.alphaTexture.setContentBuffer(alphaBuffer, { width: alphaCodedWidth, height: alphaCodedHeight })
 
-      this.yuva2rgba(renderState, maxXTexCoord, maxYTexCoord)
+      this.yuva2rgba(renderState)
     } else {
-      this.yuv2rgb(renderState, maxXTexCoord, maxYTexCoord)
+      this.yuv2rgb(renderState)
     }
   }
 
-  private yuv2rgb(renderState: RenderState, maxXTexCoord: number, maxYTexCoord: number) {
+  private yuv2rgb(renderState: RenderState) {
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer)
     const attachmentPoint = this.gl.COLOR_ATTACHMENT0
     const level = 0
@@ -126,13 +125,13 @@ export class YUVA2RGBA {
 
     this.yuvSurfaceShader.use()
     this.yuvSurfaceShader.setTexture(this.yTexture, this.uTexture, this.vTexture)
-    this.yuvSurfaceShader.updateShaderData(renderState.size, maxXTexCoord, maxYTexCoord)
+    this.yuvSurfaceShader.updateShaderData(renderState)
     this.yuvSurfaceShader.draw()
     this.yuvSurfaceShader.release()
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null)
   }
 
-  private yuva2rgba(renderState: RenderState, maxXTexCoord: number, maxYTexCoord: number) {
+  private yuva2rgba(renderState: RenderState) {
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer)
     const attachmentPoint = this.gl.COLOR_ATTACHMENT0
     const level = 0
@@ -146,7 +145,7 @@ export class YUVA2RGBA {
 
     this.yuvaSurfaceShader.use()
     this.yuvaSurfaceShader.setTexture(this.yTexture, this.uTexture, this.vTexture, this.alphaTexture)
-    this.yuvaSurfaceShader.updateShaderData(renderState.size, maxXTexCoord, maxYTexCoord)
+    this.yuvaSurfaceShader.updateShaderData(renderState)
     this.yuvaSurfaceShader.draw()
     this.yuvaSurfaceShader.release()
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null)

@@ -9,6 +9,7 @@
 #include <gst/gl/egl/gstgldisplay_egl_device.h>
 #include <gst/app/gstappsrc.h>
 #include <gst/app/gstappsink.h>
+#include <graphene-1.0/graphene-gobject.h>
 #include <assert.h>
 #include <stdbool.h>
 #include <EGL/egl.h>
@@ -50,11 +51,10 @@ static const char *vertex_shader =
         "attribute vec4 a_position;\n"
         "attribute vec2 a_texcoord;\n"
         "varying vec2 v_texcoord;\n"
-        "uniform float scale_x;\n"
-        "uniform float scale_y;\n"
+        "uniform mat4 u_transformation;\n"
         "void main() {\n"
-        "        gl_Position = vec4((a_position.x*scale_x)-(1.-scale_x)*2., (a_position.y*scale_y)-(1.-scale_y)*2., 1., 1.);\n"
-        "        v_texcoord = a_texcoord;\n"
+        "    gl_Position = u_transformation * vec4(a_position.x, a_position.y, 0, 1);\n"
+        "    v_texcoord = a_texcoord;\n"
         "}";
 
 enum encoding_type {
@@ -68,6 +68,8 @@ struct encoding_result {
     enum encoding_type encoding_type;
     uint32_t width;
     uint32_t height;
+    uint32_t coded_width;
+    uint32_t coded_height;
     struct {
         GstMapInfo info;
         GstBuffer *buffer;
@@ -208,6 +210,8 @@ encoding_result_to_encoded_frame(struct encoding_result *encoding_result, bool s
             sizeof(encoding_result->encoding_type) + // encodingType: uint32LE
             sizeof(encoding_result->width) + // width: uint32LE
             sizeof(encoding_result->height) + // height: uint32LE
+            sizeof(encoding_result->coded_width) + // coded width: uint32LE
+            sizeof(encoding_result->coded_height) + // coded height: uint32LE
             sizeof(uint32_t) + // fragment opaque length (uin32LE)
             opaque_length +
             sizeof(uint32_t) + // fragment alpha length (uin32LE)
@@ -231,6 +235,12 @@ encoding_result_to_encoded_frame(struct encoding_result *encoding_result, bool s
 
     memcpy(frame_blob + offset, &encoding_result->height, sizeof(encoding_result->height));
     offset += sizeof(encoding_result->height);
+
+    memcpy(frame_blob + offset, &encoding_result->coded_width, sizeof(encoding_result->coded_width));
+    offset += sizeof(encoding_result->coded_width);
+
+    memcpy(frame_blob + offset, &encoding_result->coded_height, sizeof(encoding_result->coded_height));
+    offset += sizeof(encoding_result->coded_height);
 
     memcpy(frame_blob + offset, &encoding_result->sample.info.size, sizeof(uint32_t));
     offset += sizeof(uint32_t);
@@ -357,13 +367,33 @@ gst_encoder_pipeline_config(struct gst_encoder_pipeline *gst_encoder_pipeline,
                             const struct encoder_description *encoder_definition,
                             const GstCaps *new_src_caps,
                             const u_int32_t width,
-                            const u_int32_t height) {
+                            const u_int32_t height,
+                            u_int32_t *coded_width,
+                            u_int32_t *coded_height) {
     const GstCaps *current_src_caps = gst_app_src_get_caps(gst_encoder_pipeline->app_src);
     GstStructure *uniforms;
     GstCaps *shader_src_caps;
     gchar *capsstr;
-    u_int32_t encoded_width = width;
-    u_int32_t encoded_height = height;
+    *coded_width = width;
+    *coded_height = height;
+    uint32_t mod;
+    graphene_matrix_t *graphene_matrix;
+
+    if (*coded_width < encoder_definition->min_width) {
+        *coded_width = encoder_definition->min_width;
+    }
+    if (*coded_height < encoder_definition->min_height) {
+        *coded_height = encoder_definition->min_height;
+    }
+
+    mod = *coded_width % encoder_definition->width_multiple;
+    if(mod) {
+        *coded_width = *coded_width + (encoder_definition->width_multiple - mod);
+    }
+    mod = *coded_height % encoder_definition->height_multiple;
+    if(mod) {
+        *coded_height = *coded_height + (encoder_definition->width_multiple - mod);
+    }
 
     if (current_src_caps && gst_caps_is_equal(current_src_caps, new_src_caps)) {
         gst_caps_unref((GstCaps *) new_src_caps);
@@ -376,25 +406,24 @@ gst_encoder_pipeline_config(struct gst_encoder_pipeline *gst_encoder_pipeline,
     gst_app_src_set_caps(gst_encoder_pipeline->app_src, new_src_caps);
     gst_caps_unref((GstCaps *) new_src_caps);
 
-    if(encoded_width < encoder_definition->min_width) {
-        encoded_width = encoder_definition->min_width;
-    }
-    if(encoded_height < encoder_definition->min_height) {
-        encoded_height = encoder_definition->min_height;
-    }
-    encoded_width = encoded_width + (encoded_width % encoder_definition->width_multiple);
-    encoded_height = encoded_height + (encoded_height % encoder_definition->height_multiple);
+    gfloat scale_x = (gfloat) width / (gfloat) *coded_width;
+    gfloat scale_y = (gfloat) height / (gfloat) *coded_height;
 
-    gfloat scale_x = (gfloat) width / (gfloat) encoded_width;
-    gfloat scale_y = (gfloat) height / (gfloat) encoded_height;
+    const gfloat matrix[] = {
+            scale_x,     0, 0, 0,
+            0, scale_y, 0, 0,
+            0,     0, 1, 0,
+            -scale_x+1, -scale_y+1, 0, 1
+    };
+    graphene_matrix = graphene_matrix_alloc();
+    graphene_matrix_init_from_float(graphene_matrix, matrix);
 
     uniforms = gst_structure_new("uniforms",
-                                 "scale_x", G_TYPE_FLOAT, scale_x,
-                                 "scale_y", G_TYPE_FLOAT, scale_y,
+                                 "u_transformation", GRAPHENE_TYPE_MATRIX, matrix,
                                  NULL);
 
     capsstr = g_strdup_printf("video/x-raw(memory:GLMemory),width=%d,height=%d",
-                              encoded_width, encoded_height);
+                              *coded_width, *coded_height);
     shader_src_caps = gst_caps_from_string(capsstr);
     g_free(capsstr);
 
@@ -403,6 +432,7 @@ gst_encoder_pipeline_config(struct gst_encoder_pipeline *gst_encoder_pipeline,
 
     gst_structure_free(uniforms);
     gst_caps_unref(shader_src_caps);
+    graphene_matrix_free(graphene_matrix);
 
     return false;
 }
@@ -584,11 +614,11 @@ gst_encoder_encode_shm(struct encoder *encoder, struct wl_shm_buffer *shm_buffer
 
     GstBuffer *opaque_buffer;
     GstBuffer *alpha_buffer;
-    uint32_t buffer_width, buffer_height;
+    uint32_t width, height, coded_width, coded_height;
     bool buffer_has_alpha;
     char gst_format[16];
 
-    opaque_buffer = wl_shm_buffer_to_gst_buffer(shm_buffer, &buffer_width, &buffer_height, gst_format,
+    opaque_buffer = wl_shm_buffer_to_gst_buffer(shm_buffer, &width, &height, gst_format,
                                                 &buffer_has_alpha);
     if (opaque_buffer == NULL) {
         return true;
@@ -596,15 +626,16 @@ gst_encoder_encode_shm(struct encoder *encoder, struct wl_shm_buffer *shm_buffer
     const GstCaps *new_opaque_src_caps = gst_caps_new_simple("video/x-raw",
                                                              "framerate", GST_TYPE_FRACTION, FPS, 1,
                                                              "format", G_TYPE_STRING, gst_format,
-                                                             "width", G_TYPE_INT, buffer_width,
-                                                             "height", G_TYPE_INT, buffer_height,
+                                                             "width", G_TYPE_INT, width,
+                                                             "height", G_TYPE_INT, height,
                                                              NULL);
     if (gst_encoder_pipeline_config(gst_encoder->opaque_pipeline, encoder->description, new_opaque_src_caps,
-                                    buffer_width, buffer_height)) {
+                                    width, height, &coded_width, &coded_height)) {
         gst_buffer_unref(opaque_buffer);
         // TODO log opaque encoding config error?
         return true;
     }
+
     if (gst_encoder_pipeline_encode(gst_encoder->opaque_pipeline, opaque_buffer)) {
         // TODO log opaque encoding pipeline error?
         return true;
@@ -612,7 +643,7 @@ gst_encoder_encode_shm(struct encoder *encoder, struct wl_shm_buffer *shm_buffer
 
     if (buffer_has_alpha && encoder->description->split_alpha) {
         encoding_result->has_split_alpha = true;
-        alpha_buffer = wl_shm_buffer_to_gst_buffer(shm_buffer, &buffer_width, &buffer_height, gst_format,
+        alpha_buffer = wl_shm_buffer_to_gst_buffer(shm_buffer, &width, &height, gst_format,
                                                    &buffer_has_alpha);
         if (alpha_buffer == NULL) {
             return true;
@@ -620,11 +651,11 @@ gst_encoder_encode_shm(struct encoder *encoder, struct wl_shm_buffer *shm_buffer
         const GstCaps *new_alpha_src_caps = gst_caps_new_simple("video/x-raw",
                                                                 "framerate", GST_TYPE_FRACTION, FPS, 1,
                                                                 "format", G_TYPE_STRING, gst_format,
-                                                                "width", G_TYPE_INT, buffer_width,
-                                                                "height", G_TYPE_INT, buffer_height,
+                                                                "width", G_TYPE_INT, width,
+                                                                "height", G_TYPE_INT, height,
                                                                 NULL);
         if (gst_encoder_pipeline_config(gst_encoder->alpha_pipeline, encoder->description, new_alpha_src_caps,
-                                        buffer_width, buffer_height)) {
+                                        width, height, &coded_width, &coded_height)) {
             gst_buffer_unref(alpha_buffer);
             // TODO log alpha encoding config error?
             return true;
@@ -637,8 +668,11 @@ gst_encoder_encode_shm(struct encoder *encoder, struct wl_shm_buffer *shm_buffer
         encoding_result->has_split_alpha = false;
     }
 
-    encoding_result->width = buffer_width;
-    encoding_result->height = buffer_height;
+    encoding_result->width = width;
+    encoding_result->height = height;
+    encoding_result->coded_width = coded_width;
+    encoding_result->coded_height = coded_height;
+
     g_queue_push_head(encoder->encoding_results, encoding_result);
 
     return false;
@@ -804,6 +838,7 @@ gst_encoder_encode_linux_dmabuf_v1(struct encoder *encoder, struct wl_resource *
     const struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(
             buffer);
     GstCaps *new_opaque_src_caps, *new_alpha_src_caps;
+    uint32_t coded_width, coded_height;
 
     const struct dmabuf_support_format *dmabuf_support_format = gst_raw_video_format_from_fourcc(
             westfield_dmabuf_v1_buffer->attributes.format);
@@ -825,10 +860,12 @@ gst_encoder_encode_linux_dmabuf_v1(struct encoder *encoder, struct wl_resource *
     gst_caps_set_features_simple(new_opaque_src_caps, new_src_caps_feature);
 
     if (gst_encoder_pipeline_config(gst_encoder->opaque_pipeline, encoder->description, new_opaque_src_caps,
-                                    westfield_dmabuf_v1_buffer->base.width, westfield_dmabuf_v1_buffer->base.height)) {
+                                    westfield_dmabuf_v1_buffer->base.width, westfield_dmabuf_v1_buffer->base.height,
+                                    &coded_width, &coded_height)) {
         // TODO log opaque encoding config error?
         return true;
     }
+
     gst_encoder_pipeline_encode(gst_encoder->opaque_pipeline,
                                 westfield_dmabuf_to_gst_buffer(gst_encoder->opaque_pipeline,
                                                                westfield_dmabuf_v1_buffer,
@@ -845,7 +882,7 @@ gst_encoder_encode_linux_dmabuf_v1(struct encoder *encoder, struct wl_resource *
                                                  NULL);
         if (gst_encoder_pipeline_config(gst_encoder->alpha_pipeline, encoder->description, new_alpha_src_caps,
                                         westfield_dmabuf_v1_buffer->base.width,
-                                        westfield_dmabuf_v1_buffer->base.height)) {
+                                        westfield_dmabuf_v1_buffer->base.height, &coded_width, &coded_height)) {
             // TODO log opaque encoding config error?
             return true;
         }
@@ -857,9 +894,11 @@ gst_encoder_encode_linux_dmabuf_v1(struct encoder *encoder, struct wl_resource *
         encoding_result->has_split_alpha = false;
     }
 
-
     encoding_result->width = westfield_dmabuf_v1_buffer->base.width;
     encoding_result->height = westfield_dmabuf_v1_buffer->base.height;
+    encoding_result->coded_width = coded_width;
+    encoding_result->coded_height = coded_height;
+
     g_queue_push_head(encoder->encoding_results, encoding_result);
 
     // TODO memory management/lifecycle of buffer? ie handle case where buffer is destroyed by client while it's being encoded, see weston remoting implementation.
@@ -977,10 +1016,10 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .split_alpha = true,
-                .width_multiple = 2,
-                .height_multiple = 2,
-                .min_width = 4,
-                .min_height = 4,
+                .width_multiple = 16,
+                .height_multiple = 16,
+                .min_width = 16,
+                .min_height = 16,
         },
         {
                 .name = "nvh264",
@@ -995,10 +1034,10 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .split_alpha = true,
-                .width_multiple = 2,
-                .height_multiple = 2,
-                .min_width = 4,
-                .min_height = 4,
+                .width_multiple = 16,
+                .height_multiple = 16,
+                .min_width = 16,
+                .min_height = 16,
         },
         {
                 .name = "vaapih264",
@@ -1014,10 +1053,10 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink",
                 .split_alpha = true,
-                .width_multiple = 2,
-                .height_multiple = 2,
-                .min_width = 4,
-                .min_height = 4,
+                .width_multiple = 16,
+                .height_multiple = 16,
+                .min_width = 16,
+                .min_height = 16,
         },
         // always keep png last as fallback encoder
         {

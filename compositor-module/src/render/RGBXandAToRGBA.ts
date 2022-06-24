@@ -64,29 +64,29 @@ export class RGBXandA2RGBA {
 
     // the width & height returned are actually padded, so we have to use the frame size to get the real image dimension
     // when uploading to texture
-    const opaqueStride = rgba.opaque.width // stride
-    const opaqueHeight = rgba.opaque.height // padded with filler rows
+    const opaqueStride = rgba.opaque.codedSize.width // stride
+    const opaqueHeight = rgba.opaque.codedSize.height // padded with filler rows
     if (rgba.alpha) {
       const maxXTexCoord = frameSize.width / opaqueStride
       const maxYTexCoord = frameSize.height / opaqueHeight
 
       if (rgba.type === 'DualPlaneRGBAVideoFrame') {
-        this.rgbTexture.setContent(rgba.opaque.buffer, rgba.opaque)
-        this.alphaTexture.setContent(rgba.alpha.buffer, rgba.alpha)
+        this.rgbTexture.setContent(rgba.opaque.buffer, rgba.opaque.codedSize)
+        this.alphaTexture.setContent(rgba.alpha.buffer, rgba.alpha.codedSize)
       } else if (rgba.type === 'DualPlaneRGBAImageBitmap') {
-        this.rgbTexture.setContent(rgba.opaque.buffer, rgba.opaque)
-        this.alphaTexture.setContent(rgba.alpha.buffer, rgba.alpha)
+        this.rgbTexture.setContent(rgba.opaque.buffer, rgba.opaque.codedSize)
+        this.alphaTexture.setContent(rgba.alpha.buffer, rgba.alpha.codedSize)
       } else {
-        this.rgbTexture.setContentBuffer(rgba.opaque.buffer, rgba.opaque)
-        this.alphaTexture.setContentBuffer(rgba.alpha.buffer, rgba.alpha)
+        this.rgbTexture.setContentBuffer(rgba.opaque.buffer, rgba.opaque.codedSize)
+        this.alphaTexture.setContentBuffer(rgba.alpha.buffer, rgba.alpha.codedSize)
       }
 
       this.rgbxAnda2rgba(renderState, maxXTexCoord, maxYTexCoord)
     } else {
       if (rgba.type === 'DualPlaneRGBAImageBitmap' || rgba.type === 'DualPlaneRGBAVideoFrame') {
-        this.rgbTexture.setContent(rgba.opaque.buffer, rgba.opaque)
+        this.rgbTexture.setContent(rgba.opaque.buffer, rgba.opaque.codedSize)
       } else {
-        renderState.texture.setContentBuffer(rgba.opaque.buffer, rgba.opaque)
+        renderState.texture.setContentBuffer(rgba.opaque.buffer, rgba.opaque.codedSize)
       }
     }
   }
