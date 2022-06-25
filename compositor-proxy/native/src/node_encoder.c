@@ -72,7 +72,7 @@ encoded_frame_to_node_buffer_cb(napi_env env, napi_value js_callback, void *cont
  *  expected nodejs arguments in order:
  *  - string encoder_type - argv[0] // 'x264' | 'nvh264'
  *  - object wl_client - argv[1]
- *  - object westfield_drm - argv[2]
+ *  - object westfield_egl - argv[2]
  *  - function opaque_callback - argv[3]
  * return:
  *  - object encoderContext
@@ -86,7 +86,7 @@ createEncoder(napi_env env, napi_callback_info info) {
     napi_value return_value, argv[argc], cb_name;
     size_t encoder_type_length;
     struct wl_client *client;
-    struct westfield_drm *drm_context;
+    struct westfield_egl *westfield_egl;
     struct node_encoder *node_encoder;
     char preferred_encoder[16];
 
@@ -94,13 +94,13 @@ createEncoder(napi_env env, napi_callback_info info) {
     NAPI_CALL(env, napi_get_value_string_latin1(env, argv[0], preferred_encoder, sizeof(preferred_encoder),
                                                 &encoder_type_length))
     NAPI_CALL(env, napi_get_value_external(env, argv[1], (void **) &client))
-    NAPI_CALL(env, napi_get_value_external(env, argv[2], (void **) &drm_context))
+    NAPI_CALL(env, napi_get_value_external(env, argv[2], (void **) &westfield_egl))
 
     node_encoder = calloc(1, sizeof(struct node_encoder));
     node_encoder->client = client;
 
     if (encoder_create(preferred_encoder, encoder_opaque_sample_ready_callback, node_encoder, &node_encoder->encoder,
-                       drm_context) == -1) {
+                       westfield_egl) == -1) {
         free(node_encoder);
         NAPI_CALL(env, napi_throw_error((env), NULL, "Can't create encoder."))
         NAPI_CALL(env, napi_get_undefined(env, &return_value))

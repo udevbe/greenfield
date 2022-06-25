@@ -10,7 +10,7 @@ do_gst_init();
 
 extern int
 do_gst_encoder_create(char preferred_encoder[16], frame_callback_func frame_ready_callback, void *user_data,
-					  struct encoder **encoder_pp, struct westfield_drm *drm_context);
+					  struct encoder **encoder_pp, struct westfield_egl *westfield_egl);
 
 extern int
 do_gst_encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource, uint32_t serial);
@@ -46,7 +46,7 @@ struct gf_message {
 			frame_callback_func frame_ready_callback;
 			void *user_data;
 			struct encoder **encoder_pp;
-            struct westfield_drm *drm_context;
+            struct westfield_egl *westfield_egl;
 		} encoder_create;
 		struct {
 			struct encoder **encoder_pp;
@@ -155,7 +155,7 @@ main_loop_handle_message(struct gf_message *message) {
 								  message->body.encoder_create.frame_ready_callback,
 								  message->body.encoder_create.user_data,
 								  message->body.encoder_create.encoder_pp,
-                                  message->body.encoder_create.drm_context
+                                  message->body.encoder_create.westfield_egl
 			);
 			break;
 		case encoder_encode_type:
@@ -214,7 +214,7 @@ encoder_create(char preferred_encoder[16],
                frame_callback_func frame_ready_callback,
                void *user_data,
 			   struct encoder **encoder_pp,
-               struct westfield_drm *drm_context) {
+               struct westfield_egl *westfield_egl) {
 	struct gf_message *message = g_new0(struct gf_message, 1);
 
 	message->type = encoder_create_type;
@@ -222,7 +222,7 @@ encoder_create(char preferred_encoder[16],
 	message->body.encoder_create.frame_ready_callback = frame_ready_callback;
 	message->body.encoder_create.user_data = user_data;
 	message->body.encoder_create.encoder_pp = encoder_pp;
-    message->body.encoder_create.drm_context = drm_context;
+    message->body.encoder_create.westfield_egl = westfield_egl;
 
 	return send_message(message);
 }

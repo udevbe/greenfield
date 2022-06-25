@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include "encoder.h"
 #include "westfield-linux-dmabuf-v1.h"
+#include "westfield-drm.h"
 
 #define FPS 60
 
@@ -101,7 +102,7 @@ struct encoder {
     frame_callback_func frame_callback;
     GQueue *encoding_results;
     void *user_data;
-    struct westfield_drm *drm_context;
+    struct westfield_egl *westfield_egl;
 
     GstContext *gst_context_gl_display;
     GstContext *gst_context_gl_context;
@@ -127,8 +128,8 @@ ensure_gst_gl(struct encoder *encoder, GstElement *pipeline) {
     if (!encoder->gst_context_gl_display) {
         GstGLDisplay *gst_gl_display;
 
-        EGLDeviceEXT egl_device = westfield_drm_get_egl_device(encoder->drm_context);
-        EGLDisplay egl_display = westfield_drm_get_egl_display(encoder->drm_context);
+        EGLDeviceEXT egl_device = westfield_egl_get_device(encoder->westfield_egl);
+        EGLDisplay egl_display = westfield_egl_get_display(encoder->westfield_egl);
         if (egl_device) {
             gst_gl_display = GST_GL_DISPLAY(gst_gl_display_egl_device_new_with_egl_device(egl_device));
         } else {
@@ -140,7 +141,7 @@ ensure_gst_gl(struct encoder *encoder, GstElement *pipeline) {
 
         if (!encoder->gst_context_gl_context) {
             gboolean ret;
-            EGLContext egl_context = westfield_drm_get_egl_context(encoder->drm_context);
+            EGLContext egl_context = westfield_egl_get_context(encoder->westfield_egl);
             eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, egl_context);
 
             if (egl_context == NULL) {
@@ -387,11 +388,11 @@ gst_encoder_pipeline_config(struct gst_encoder_pipeline *gst_encoder_pipeline,
     }
 
     mod = *coded_width % encoder_definition->width_multiple;
-    if(mod) {
+    if (mod) {
         *coded_width = *coded_width + (encoder_definition->width_multiple - mod);
     }
     mod = *coded_height % encoder_definition->height_multiple;
-    if(mod) {
+    if (mod) {
         *coded_height = *coded_height + (encoder_definition->width_multiple - mod);
     }
 
@@ -410,10 +411,10 @@ gst_encoder_pipeline_config(struct gst_encoder_pipeline *gst_encoder_pipeline,
     gfloat scale_y = (gfloat) height / (gfloat) *coded_height;
 
     const gfloat matrix[] = {
-            scale_x,     0, 0, 0,
+            scale_x, 0, 0, 0,
             0, scale_y, 0, 0,
-            0,     0, 1, 0,
-            -scale_x+1, -scale_y+1, 0, 1
+            0, 0, 1, 0,
+            -scale_x + 1, -scale_y + 1, 0, 1
     };
     graphene_matrix = graphene_matrix_alloc();
     graphene_matrix_init_from_float(graphene_matrix, matrix);
@@ -480,7 +481,7 @@ sync_bus_call(__attribute__((unused)) GstBus *bus, GstMessage *msg, gpointer dat
             const gchar *context_type;
 
             gst_message_parse_context_type(msg, &context_type);
-            if (g_strcmp0(context_type, GST_GL_DISPLAY_CONTEXT_TYPE) == 0 && encoder->drm_context) {
+            if (g_strcmp0(context_type, GST_GL_DISPLAY_CONTEXT_TYPE) == 0 && encoder->westfield_egl) {
                 gst_element_set_context(GST_ELEMENT (msg->src), encoder->gst_context_gl_display);
             }
 
@@ -802,46 +803,46 @@ gst_raw_video_format_from_fourcc(const uint32_t fourcc) {
 }
 
 static inline GstBuffer *
-westfield_dmabuf_to_gst_buffer(struct gst_encoder_pipeline *gst_encoder_pipeline,
-                               const struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer,
-                               const struct dmabuf_support_format *dmabuf_support_format) {
+dmabuf_attributes_to_gst_buffer(struct gst_encoder_pipeline *gst_encoder_pipeline,
+                                struct westfield_buffer *base,
+                                const struct dmabuf_attributes *attributes,
+                                const struct dmabuf_support_format *dmabuf_support_format) {
     GstBuffer *buf = gst_buffer_new();
 
-    gsize offsets[westfield_dmabuf_v1_buffer->attributes.n_planes];
-    gint strides[westfield_dmabuf_v1_buffer->attributes.n_planes];
+    gsize offsets[attributes->n_planes];
+    gint strides[attributes->n_planes];
 
-    for (int i = 0; i < westfield_dmabuf_v1_buffer->attributes.n_planes; ++i) {
-        offsets[i] = westfield_dmabuf_v1_buffer->attributes.offset[i];
-        strides[i] = (gint) westfield_dmabuf_v1_buffer->attributes.stride[i];
+    for (int i = 0; i < attributes->n_planes; ++i) {
+        offsets[i] = attributes->offset[i];
+        strides[i] = (gint) attributes->stride[i];
         GstMemory *mem = gst_dmabuf_allocator_alloc_with_flags(gst_encoder_pipeline->dma_buf_allocator,
-                                                               westfield_dmabuf_v1_buffer->attributes.fd[i],
-                                                               westfield_dmabuf_v1_buffer->attributes.stride[i] *
-                                                               westfield_dmabuf_v1_buffer->attributes.height,
+                                                               attributes->fd[i],
+                                                               attributes->stride[i] *
+                                                               attributes->height,
                                                                GST_FD_MEMORY_FLAG_DONT_CLOSE);
         gst_buffer_append_memory(buf, mem);
     }
     gst_buffer_add_video_meta_full(buf,
                                    GST_VIDEO_FRAME_FLAG_NONE,
                                    dmabuf_support_format->gst_video_format,
-                                   westfield_dmabuf_v1_buffer->base.width,
-                                   westfield_dmabuf_v1_buffer->base.height,
-                                   westfield_dmabuf_v1_buffer->attributes.n_planes,
+                                   base->width,
+                                   base->height,
+                                   attributes->n_planes,
                                    offsets,
                                    strides);
     return buf;
 }
 
 static inline bool
-gst_encoder_encode_linux_dmabuf_v1(struct encoder *encoder, struct wl_resource *buffer,
-                                   struct encoding_result *encoding_result) {
+gst_encoder_encode_dmabuf(struct encoder *encoder,
+                          struct westfield_buffer *base,
+                          struct dmabuf_attributes *attributes,
+                          struct encoding_result *encoding_result) {
     struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
-    const struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(
-            buffer);
     GstCaps *new_opaque_src_caps, *new_alpha_src_caps;
     uint32_t coded_width, coded_height;
 
-    const struct dmabuf_support_format *dmabuf_support_format = gst_raw_video_format_from_fourcc(
-            westfield_dmabuf_v1_buffer->attributes.format);
+    const struct dmabuf_support_format *dmabuf_support_format = gst_raw_video_format_from_fourcc(attributes->format);
     if (dmabuf_support_format == NULL) {
         // TODO log error
         //GST_ERROR_OBJECT (gst_encoder->app_src, "Failed to interpret fourcc format: %c%c%c%c", GST_FOURCC_ARGS(westfield_dmabuf_v1_buffer->attributes.format));
@@ -852,24 +853,25 @@ gst_encoder_encode_linux_dmabuf_v1(struct encoder *encoder, struct wl_resource *
                                               "framerate", GST_TYPE_FRACTION, FPS, 1,
                                               "format", G_TYPE_STRING,
                                               dmabuf_support_format->gst_format_string,
-                                              "width", G_TYPE_INT, westfield_dmabuf_v1_buffer->base.width,
-                                              "height", G_TYPE_INT, westfield_dmabuf_v1_buffer->base.height,
+                                              "width", G_TYPE_INT, base->width,
+                                              "height", G_TYPE_INT, base->height,
                                               NULL);
 
     GstCapsFeatures *new_src_caps_feature = gst_caps_features_new_single(GST_CAPS_FEATURE_MEMORY_DMABUF);
     gst_caps_set_features_simple(new_opaque_src_caps, new_src_caps_feature);
 
     if (gst_encoder_pipeline_config(gst_encoder->opaque_pipeline, encoder->description, new_opaque_src_caps,
-                                    westfield_dmabuf_v1_buffer->base.width, westfield_dmabuf_v1_buffer->base.height,
+                                    base->width, base->height,
                                     &coded_width, &coded_height)) {
         // TODO log opaque encoding config error?
         return true;
     }
 
     gst_encoder_pipeline_encode(gst_encoder->opaque_pipeline,
-                                westfield_dmabuf_to_gst_buffer(gst_encoder->opaque_pipeline,
-                                                               westfield_dmabuf_v1_buffer,
-                                                               dmabuf_support_format));
+                                dmabuf_attributes_to_gst_buffer(gst_encoder->opaque_pipeline,
+                                                                base,
+                                                                attributes,
+                                                                dmabuf_support_format));
 
     if (dmabuf_support_format->has_alpha && encoder->description->split_alpha) {
         encoding_result->has_split_alpha = true;
@@ -877,25 +879,26 @@ gst_encoder_encode_linux_dmabuf_v1(struct encoder *encoder, struct wl_resource *
                                                  "framerate", GST_TYPE_FRACTION, FPS, 1,
                                                  "format", G_TYPE_STRING,
                                                  dmabuf_support_format->gst_format_string,
-                                                 "width", G_TYPE_INT, westfield_dmabuf_v1_buffer->base.width,
-                                                 "height", G_TYPE_INT, westfield_dmabuf_v1_buffer->base.height,
+                                                 "width", G_TYPE_INT, base->width,
+                                                 "height", G_TYPE_INT, base->height,
                                                  NULL);
         if (gst_encoder_pipeline_config(gst_encoder->alpha_pipeline, encoder->description, new_alpha_src_caps,
-                                        westfield_dmabuf_v1_buffer->base.width,
-                                        westfield_dmabuf_v1_buffer->base.height, &coded_width, &coded_height)) {
+                                        base->width,
+                                        base->height, &coded_width, &coded_height)) {
             // TODO log opaque encoding config error?
             return true;
         }
         gst_encoder_pipeline_encode(gst_encoder->alpha_pipeline,
-                                    westfield_dmabuf_to_gst_buffer(gst_encoder->alpha_pipeline,
-                                                                   westfield_dmabuf_v1_buffer,
-                                                                   dmabuf_support_format));
+                                    dmabuf_attributes_to_gst_buffer(gst_encoder->alpha_pipeline,
+                                                                    base,
+                                                                    attributes,
+                                                                    dmabuf_support_format));
     } else {
         encoding_result->has_split_alpha = false;
     }
 
-    encoding_result->width = westfield_dmabuf_v1_buffer->base.width;
-    encoding_result->height = westfield_dmabuf_v1_buffer->base.height;
+    encoding_result->width = base->width;
+    encoding_result->height = base->height;
     encoding_result->coded_width = coded_width;
     encoding_result->coded_height = coded_height;
 
@@ -910,10 +913,20 @@ static inline bool
 gst_encoder_encode(struct encoder *encoder, struct wl_resource *buffer_resource,
                    struct encoding_result *encoding_result) {
     struct wl_shm_buffer *shm_buffer;
+    struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer;
+    struct westfield_drm_buffer *westfield_drm_buffer;
     encoding_result->encoding_type = encoder->description->encoding_type;
 
     if (westfield_dmabuf_v1_resource_is_buffer(buffer_resource)) {
-        return gst_encoder_encode_linux_dmabuf_v1(encoder, buffer_resource, encoding_result);
+        westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(buffer_resource);
+        return gst_encoder_encode_dmabuf(encoder, &westfield_dmabuf_v1_buffer->base,
+                                         &westfield_dmabuf_v1_buffer->attributes, encoding_result);
+    }
+
+    if (westfield_drm_buffer_is_resource(buffer_resource)) {
+        westfield_drm_buffer = westfield_drm_buffer_from_resource(buffer_resource);
+        return gst_encoder_encode_dmabuf(encoder, &westfield_drm_buffer->base,
+                                         &westfield_drm_buffer->dmabuf, encoding_result);
     }
 
     shm_buffer = wl_shm_buffer_get((struct wl_resource *) buffer_resource);
@@ -950,6 +963,17 @@ png_gst_encoder_supports_buffer(struct wl_resource *buffer_resource) {
         }
     }
 
+    if (westfield_drm_buffer_is_resource(buffer_resource)) {
+        struct westfield_drm_buffer *westfield_drm_buffer = westfield_drm_buffer_from_resource(buffer_resource);
+        width = westfield_drm_buffer->base.width;
+        height = westfield_drm_buffer->base.height;
+
+        // Too small needs the png encoder so refuse
+        if (width * height <= 256 * 256) {
+            return true;
+        }
+    }
+
     return false;
 }
 
@@ -959,6 +983,7 @@ encoder_description_supports_buffer(const struct encoder_description *encoder_it
     int32_t width, height;
     struct wl_shm_buffer *shm_buffer;
     struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer;
+    struct westfield_drm_buffer *westfield_drm_buffer;
 
     if (strcmp(encoder_itf->name, "png") == 0) {
         return png_gst_encoder_supports_buffer(buffer_resource);
@@ -973,6 +998,19 @@ encoder_description_supports_buffer(const struct encoder_description *encoder_it
         westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(buffer_resource);
         width = westfield_dmabuf_v1_buffer->base.width;
         height = westfield_dmabuf_v1_buffer->base.height;
+
+        // Too small needs the png encoder so refuse
+        if (width * height <= 256 * 256) {
+            return false;
+        }
+
+        return true;
+    }
+
+    if (westfield_drm_buffer_is_resource(buffer_resource)) {
+        westfield_drm_buffer = westfield_drm_buffer_from_resource(buffer_resource);
+        width = westfield_drm_buffer->base.width;
+        height = westfield_drm_buffer->base.height;
 
         // Too small needs the png encoder so refuse
         if (width * height <= 256 * 256) {
@@ -1086,7 +1124,7 @@ do_gst_init() {
 
 int
 do_gst_encoder_create(char preferred_encoder[16], frame_callback_func frame_ready_callback, void *user_data,
-                      struct encoder **encoder_pp, struct westfield_drm *drm_context) {
+                      struct encoder **encoder_pp, struct westfield_egl *westfield_egl) {
     struct encoder *encoder = g_new0(struct encoder, 1);
 
     strncpy(encoder->preferred_encoder, preferred_encoder, sizeof(encoder->preferred_encoder));
@@ -1094,7 +1132,7 @@ do_gst_encoder_create(char preferred_encoder[16], frame_callback_func frame_read
     encoder->frame_callback = frame_ready_callback;
     encoder->user_data = user_data;
     encoder->encoding_results = g_queue_new();
-    encoder->drm_context = drm_context;
+    encoder->westfield_egl = westfield_egl;
 
     *encoder_pp = encoder;
 }
