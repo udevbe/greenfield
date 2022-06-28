@@ -334,15 +334,20 @@ wl_shm_buffer_to_gst_buffer(struct wl_shm_buffer *shm_buffer, uint32_t *width, u
     struct wl_shm_pool *shm_pool;
     enum wl_shm_format buffer_format;
     uint32_t buffer_width, buffer_height, buffer_stride;
-    gsize buffer_size;
+    gint stride[4];
+    gsize buffer_size, offset[4];
+    static GstBuffer *buffer;
+    GstVideoFormat gst_video_format;
 
     buffer_format = wl_shm_buffer_get_format(shm_buffer);
 
     if (buffer_format == WL_SHM_FORMAT_ARGB8888) {
         strcpy(gst_format, "BGRA");
+        gst_video_format = GST_VIDEO_FORMAT_BGRA;
         *has_alpha = true;
     } else if (buffer_format == WL_SHM_FORMAT_XRGB8888) {
         strcpy(gst_format, "BGRx");
+        gst_video_format = GST_VIDEO_FORMAT_BGRx;
         *has_alpha = false;
     } else {
         return NULL;
@@ -359,8 +364,22 @@ wl_shm_buffer_to_gst_buffer(struct wl_shm_buffer *shm_buffer, uint32_t *width, u
     *width = buffer_width;
     *height = buffer_height;
 
-    return gst_buffer_new_wrapped_full(0, (gpointer) buffer_data, buffer_size, 0, buffer_size, shm_pool,
-                                       (GDestroyNotify) wl_shm_pool_unref);
+    stride[0] = (gint) buffer_stride;
+    offset[0] = 0;
+
+    buffer = gst_buffer_new_wrapped_full(0, (gpointer) buffer_data, buffer_size, 0, buffer_size, shm_pool,
+                                         (GDestroyNotify) wl_shm_pool_unref);
+
+    gst_buffer_add_video_meta_full(buffer,
+                                   GST_VIDEO_FRAME_FLAG_NONE,
+                                   gst_video_format,
+                                   buffer_width,
+                                   buffer_height,
+                                   1,
+                                   offset,
+                                   stride);
+
+    return buffer;
 }
 
 static inline bool
@@ -544,16 +563,6 @@ gst_encoder_pipeline_create(struct encoder *encoder, const char *pipeline_defini
 static bool
 gst_encoder_create(struct encoder *encoder) {
     struct gst_encoder *gst_encoder = g_new0(struct gst_encoder, 1);
-    gst_encoder->alpha_pipeline = (struct gst_encoder_pipeline *) gst_encoder_pipeline_create(encoder,
-                                                                                              encoder->description->pipeline_definition,
-                                                                                              true);
-    if (gst_encoder->alpha_pipeline == NULL) {
-        g_free(gst_encoder);
-        // TODO log alpha pipeline creation failure
-        return true;
-    }
-    gst_encoder->alpha_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
-
     gst_encoder->opaque_pipeline = (struct gst_encoder_pipeline *) gst_encoder_pipeline_create(encoder,
                                                                                                encoder->description->pipeline_definition,
                                                                                                false);
@@ -564,6 +573,18 @@ gst_encoder_create(struct encoder *encoder) {
         return true;
     }
     gst_encoder->opaque_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
+
+    if (encoder->description->split_alpha) {
+        gst_encoder->alpha_pipeline = (struct gst_encoder_pipeline *) gst_encoder_pipeline_create(encoder,
+                                                                                                  encoder->description->pipeline_definition,
+                                                                                                  true);
+        if (gst_encoder->alpha_pipeline == NULL) {
+            g_free(gst_encoder);
+            // TODO log alpha pipeline creation failure
+            return true;
+        }
+        gst_encoder->alpha_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
+    }
 
     encoder->impl = gst_encoder;
     return false;
@@ -803,8 +824,7 @@ gst_raw_video_format_from_fourcc(const uint32_t fourcc) {
 }
 
 static inline GstBuffer *
-dmabuf_attributes_to_gst_buffer(struct gst_encoder_pipeline *gst_encoder_pipeline,
-                                struct westfield_buffer *base,
+dmabuf_attributes_to_gst_buffer(struct gst_encoder_pipeline *gst_encoder_pipeline, struct westfield_buffer *base,
                                 const struct dmabuf_attributes *attributes,
                                 const struct dmabuf_support_format *dmabuf_support_format) {
     GstBuffer *buf = gst_buffer_new();
@@ -822,6 +842,7 @@ dmabuf_attributes_to_gst_buffer(struct gst_encoder_pipeline *gst_encoder_pipelin
                                                                GST_FD_MEMORY_FLAG_DONT_CLOSE);
         gst_buffer_append_memory(buf, mem);
     }
+
     gst_buffer_add_video_meta_full(buf,
                                    GST_VIDEO_FRAME_FLAG_NONE,
                                    dmabuf_support_format->gst_video_format,
@@ -830,6 +851,7 @@ dmabuf_attributes_to_gst_buffer(struct gst_encoder_pipeline *gst_encoder_pipelin
                                    attributes->n_planes,
                                    offsets,
                                    strides);
+
     return buf;
 }
 
@@ -856,9 +878,6 @@ gst_encoder_encode_dmabuf(struct encoder *encoder,
                                               "width", G_TYPE_INT, base->width,
                                               "height", G_TYPE_INT, base->height,
                                               NULL);
-
-    GstCapsFeatures *new_src_caps_feature = gst_caps_features_new_single(GST_CAPS_FEATURE_MEMORY_DMABUF);
-    gst_caps_set_features_simple(new_opaque_src_caps, new_src_caps_feature);
 
     if (gst_encoder_pipeline_config(gst_encoder->opaque_pipeline, encoder->description, new_opaque_src_caps,
                                     base->width, base->height,
