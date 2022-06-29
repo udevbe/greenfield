@@ -82,8 +82,14 @@ class WebCodecFrameDecoder implements FrameDecoder {
   private async ['image/png'](_surface: Surface, encodedFrame: EncodedFrame): Promise<DecodedPixelContent> {
     const frame = encodedFrame.pixelContent
     const blob = new Blob([frame.opaque], { type: 'image/png' })
-    const bitmap = await createImageBitmap(blob, 0, 0, encodedFrame.size.width, encodedFrame.size.height)
-    return { type: 'SinglePlane', bitmap, blob, close: () => bitmap.close() }
+    const bitmap = await createImageBitmap(
+      blob,
+      encodedFrame.encodedSize.width - encodedFrame.size.width,
+      encodedFrame.encodedSize.height - encodedFrame.size.height,
+      encodedFrame.size.width,
+      encodedFrame.size.height,
+    )
+    return { type: 'SinglePlane', bitmap, close: () => bitmap.close() }
   }
 }
 
@@ -182,8 +188,10 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
     //     type: 'DualPlaneYUVAArrayBuffer',
     //     opaque: {
     //       buffer: new Uint8Array(opaqueBuffer),
-    //       width: opaqueVideoFrame.displayWidth,
-    //       height: opaqueVideoFrame.displayHeight,
+    //       codedSize: {
+    //         width: opaqueVideoFrame.codedWidth,
+    //         height: opaqueVideoFrame.codedHeight,
+    //       },
     //     },
     //     close: () => {
     //       /*noop*/
@@ -193,8 +201,10 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
     //   if (alphaBuffer && decodeResult.alpha) {
     //     dualPlaneYUVABuffer.alpha = {
     //       buffer: new Uint8Array(alphaBuffer),
-    //       width: decodeResult.alpha.buffer.displayWidth,
-    //       height: decodeResult.alpha.buffer.displayHeight,
+    //       codedSize: {
+    //         width: decodeResult.alpha.buffer.codedWidth,
+    //         height: decodeResult.alpha.buffer.codedHeight,
+    //       },
     //     }
     //   }
     //

@@ -47,7 +47,6 @@ export type SinglePlane = {
   type: 'SinglePlane'
   close: () => void
   bitmap: ImageBitmap
-  blob: Blob
 }
 
 export type DecodedPixelContent =

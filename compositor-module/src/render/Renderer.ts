@@ -84,12 +84,12 @@ export default class Renderer {
     if (view.surface.state.bufferContents) {
       const cursorBufferContents = view.surface.state.bufferContents
 
-      const cursorImage = cursorBufferContents.pixelContent as { bitmap: ImageBitmap; blob: Blob } | undefined
-      if (cursorImage === undefined) {
+      const cursorImage = cursorBufferContents.pixelContent as { bitmap: ImageBitmap | undefined } | undefined
+      if (cursorImage === undefined || cursorImage.bitmap === undefined) {
         return
       }
 
-      setBrowserCursor(cursorImage.bitmap, cursorImage.blob, hotspot)
+      setBrowserCursor(cursorImage.bitmap, hotspot)
     } else {
       this.hideCursor()
     }

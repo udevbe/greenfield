@@ -1,35 +1,35 @@
 import { Point } from '../math/Point'
 
 let cursor: BrowserCursor | undefined
-let spriteURL: string | undefined
+const cursorCanvasCtx = document.createElement('canvas').getContext('2d')
+if (cursorCanvasCtx === null) {
+  throw new Error('Cant create cursor canvas')
+}
 
 type BrowserCursor = {
-  image: ImageBitmap
-  imageBlob: Blob
+  dataURL: string
   hotspot: Point
 }
 
 function updateBrowserCursor() {
   if (cursor) {
-    if (spriteURL) {
-      URL.revokeObjectURL(spriteURL)
-      spriteURL = undefined
-    }
-    spriteURL = URL.createObjectURL(cursor.imageBlob)
-    document.body.style.cursor = `url('${spriteURL}') ${cursor.hotspot.x} ${cursor.hotspot.y}, auto`
+    document.body.style.cursor = `url('${cursor.dataURL}') ${cursor.hotspot.x} ${cursor.hotspot.y}, auto`
   } else {
-    if (spriteURL) {
-      URL.revokeObjectURL(spriteURL)
-      spriteURL = undefined
-    }
     document.body.style.cursor = 'none'
   }
 }
 
-export function setBrowserCursor(image: ImageBitmap, imageBlob: Blob, hotspot: Point): void {
+export function setBrowserCursor(image: ImageBitmap, hotspot: Point): void {
+  if (cursorCanvasCtx === null) {
+    throw new Error('Cant use cursor canvas')
+  }
+  cursorCanvasCtx.canvas.width = image.width
+  cursorCanvasCtx.canvas.height = image.height
+  cursorCanvasCtx.drawImage(image, 0, 0)
+  const dataURL = cursorCanvasCtx.canvas.toDataURL()
+
   cursor = {
-    image,
-    imageBlob,
+    dataURL,
     hotspot,
   }
   updateBrowserCursor()

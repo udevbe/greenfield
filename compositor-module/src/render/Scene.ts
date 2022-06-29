@@ -98,7 +98,7 @@ export class Scene {
   }
 
   ['image/png'](decodedFrame: DecodedFrame, renderState: RenderState): void {
-    const { bitmap } = decodedFrame.pixelContent as { bitmap: ImageBitmap; blob: Blob }
+    const { bitmap } = decodedFrame.pixelContent as { bitmap: ImageBitmap }
     const { width, height } = bitmap
     renderState.size = { width, height }
     renderState.texture.setContent(bitmap, { width, height })

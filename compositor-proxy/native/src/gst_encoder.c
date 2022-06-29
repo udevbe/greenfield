@@ -397,6 +397,7 @@ gst_encoder_pipeline_config(struct gst_encoder_pipeline *gst_encoder_pipeline,
     *coded_width = width;
     *coded_height = height;
     uint32_t mod;
+    gfloat scale_x, scale_y;
     graphene_matrix_t *graphene_matrix;
 
     if (*coded_width < encoder_definition->min_width) {
@@ -426,8 +427,8 @@ gst_encoder_pipeline_config(struct gst_encoder_pipeline *gst_encoder_pipeline,
     gst_app_src_set_caps(gst_encoder_pipeline->app_src, new_src_caps);
     gst_caps_unref((GstCaps *) new_src_caps);
 
-    gfloat scale_x = (gfloat) width / (gfloat) *coded_width;
-    gfloat scale_y = (gfloat) height / (gfloat) *coded_height;
+    scale_x = (gfloat) width / (gfloat) *coded_width;
+    scale_y = (gfloat) height / (gfloat) *coded_height;
 
     const gfloat matrix[] = {
             scale_x, 0, 0, 0,
