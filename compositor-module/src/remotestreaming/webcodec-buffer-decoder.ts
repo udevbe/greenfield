@@ -172,51 +172,50 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
     const opaqueVideoFrame = decodeResult.opaque.buffer
     const alphaVideoFrame = decodeResult.alpha?.buffer
 
-    // FIXME Needs fixing. Has visual artifacts/bad buffer size etc.
-    // if (opaqueVideoFrame.format === 'I420') {
-    //   const opaqueBuffer = new ArrayBuffer(opaqueVideoFrame.allocationSize())
-    //   const opaquePromise: Promise<PlaneLayout[]> = opaqueVideoFrame.copyTo(opaqueBuffer)
-    //
-    //   let alphaBuffer: ArrayBuffer | undefined
-    //   let alphaPromise: Promise<PlaneLayout[]> | undefined
-    //   if (alphaVideoFrame) {
-    //     alphaBuffer = new ArrayBuffer(alphaVideoFrame.allocationSize())
-    //     alphaPromise = alphaVideoFrame.copyTo(alphaBuffer)
-    //   }
-    //
-    //   const dualPlaneYUVABuffer: DualPlaneYUVAArrayBuffer = {
-    //     type: 'DualPlaneYUVAArrayBuffer',
-    //     opaque: {
-    //       buffer: new Uint8Array(opaqueBuffer),
-    //       codedSize: {
-    //         width: opaqueVideoFrame.codedWidth,
-    //         height: opaqueVideoFrame.codedHeight,
-    //       },
-    //     },
-    //     close: () => {
-    //       /*noop*/
-    //     },
-    //   }
-    //
-    //   if (alphaBuffer && decodeResult.alpha) {
-    //     dualPlaneYUVABuffer.alpha = {
-    //       buffer: new Uint8Array(alphaBuffer),
-    //       codedSize: {
-    //         width: decodeResult.alpha.buffer.codedWidth,
-    //         height: decodeResult.alpha.buffer.codedHeight,
-    //       },
-    //     }
-    //   }
-    //
-    //   Promise.all([opaquePromise, alphaPromise]).then(() => {
-    //     frameState.state = 'complete'
-    //     delete this.frameStates[frameState.serial]
-    //     opaqueVideoFrame.close()
-    //     decodeResult.alpha?.buffer.close()
-    //     frameState.resolve(dualPlaneYUVABuffer)
-    //   })
-    //   return
-    // }
+    if (opaqueVideoFrame.format === 'I420') {
+      const opaqueBuffer = new ArrayBuffer(opaqueVideoFrame.allocationSize())
+      const opaquePromise: Promise<PlaneLayout[]> = opaqueVideoFrame.copyTo(opaqueBuffer)
+
+      let alphaBuffer: ArrayBuffer | undefined
+      let alphaPromise: Promise<PlaneLayout[]> | undefined
+      if (alphaVideoFrame) {
+        alphaBuffer = new ArrayBuffer(alphaVideoFrame.allocationSize())
+        alphaPromise = alphaVideoFrame.copyTo(alphaBuffer)
+      }
+
+      const dualPlaneYUVABuffer: DualPlaneYUVAArrayBuffer = {
+        type: 'DualPlaneYUVAArrayBuffer',
+        opaque: {
+          buffer: new Uint8Array(opaqueBuffer),
+          codedSize: {
+            width: opaqueVideoFrame.codedWidth,
+            height: opaqueVideoFrame.codedHeight,
+          },
+        },
+        close: () => {
+          /*noop*/
+        },
+      }
+
+      if (alphaBuffer && decodeResult.alpha) {
+        dualPlaneYUVABuffer.alpha = {
+          buffer: new Uint8Array(alphaBuffer),
+          codedSize: {
+            width: decodeResult.alpha.buffer.codedWidth,
+            height: decodeResult.alpha.buffer.codedHeight,
+          },
+        }
+      }
+
+      Promise.all([opaquePromise, alphaPromise]).then(() => {
+        frameState.state = 'complete'
+        delete this.frameStates[frameState.serial]
+        opaqueVideoFrame.close()
+        decodeResult.alpha?.buffer.close()
+        frameState.resolve(dualPlaneYUVABuffer)
+      })
+      return
+    }
 
     frameState.state = 'complete'
     delete this.frameStates[frameState.serial]

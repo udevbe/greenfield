@@ -2,17 +2,16 @@
 #include <unistd.h>
 #include <sys/eventfd.h>
 #include <stdio.h>
-#include <gst/gst.h>
 #include "encoder.h"
 
 extern int
 do_gst_init();
 
-extern int
+extern void
 do_gst_encoder_create(char preferred_encoder[16], frame_callback_func frame_ready_callback, void *user_data,
 					  struct encoder **encoder_pp, struct westfield_egl *westfield_egl);
 
-extern int
+extern void
 do_gst_encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource, uint32_t serial);
 
 extern void
