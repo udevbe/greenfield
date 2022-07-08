@@ -18,6 +18,7 @@
 #include "encoder.h"
 #include "westfield-linux-dmabuf-v1.h"
 #include "westfield-drm.h"
+#include "westfield-dmabuf.h"
 
 #define FPS 60
 
@@ -107,7 +108,7 @@ struct encoder {
     struct westfield_egl *westfield_egl;
 
     GstContext *gst_context_gl_display;
-    GstContext *gst_context_gl_context;
+//    GstContext *gst_context_gl_context;
 };
 
 struct gst_encoder_pipeline {
@@ -144,6 +145,30 @@ static const struct shmbuf_support_format shmbuf_supported_formats[] = {
                 .wl_shm_format = WL_SHM_FORMAT_XRGB8888,
                 .gst_format_string = "BGRx",
                 .gst_video_format = GST_VIDEO_FORMAT_BGRx,
+        },
+        {
+                .has_alpha = false,
+                .wl_shm_format = WL_SHM_FORMAT_YUV420,
+                .gst_format_string = "I420",
+                .gst_video_format = GST_VIDEO_FORMAT_I420,
+        },
+        {
+                .has_alpha = false,
+                .wl_shm_format = WL_SHM_FORMAT_NV12,
+                .gst_format_string = "NV12",
+                .gst_video_format = GST_VIDEO_FORMAT_NV12,
+        },
+        {
+                .has_alpha = false,
+                .wl_shm_format = WL_SHM_FORMAT_YUV444,
+                .gst_format_string = "Y444",
+                .gst_video_format = GST_VIDEO_FORMAT_Y444,
+        },
+        {
+                .has_alpha = false,
+                .wl_shm_format = WL_SHM_FORMAT_NV21,
+                .gst_format_string = "NV21",
+                .gst_video_format = GST_VIDEO_FORMAT_NV21,
         },
 };
 
@@ -221,18 +246,38 @@ static const struct dmabuf_support_format dmabuf_supported_formats[] = {
                 .gst_format_string = "RGB16",
                 .gst_video_format = GST_VIDEO_FORMAT_RGB16,
         },
+        {
+                .has_alpha = false,
+                .drm_format = DRM_FORMAT_YUV444,
+                .gst_format_string = "Y444",
+                .gst_video_format = GST_VIDEO_FORMAT_Y444,
+        },
+        {
+                .has_alpha = false,
+                .drm_format = DRM_FORMAT_YUV420,
+                .gst_format_string = "I420",
+                .gst_video_format = GST_VIDEO_FORMAT_I420,
+        },
+        {
+                .has_alpha = false,
+                .drm_format = DRM_FORMAT_NV12,
+                .gst_format_string = "NV12",
+                .gst_video_format = GST_VIDEO_FORMAT_NV12,
+        },
+        {
+                .has_alpha = false,
+                .drm_format = DRM_FORMAT_NV21,
+                .gst_format_string = "NV21",
+                .gst_video_format = GST_VIDEO_FORMAT_NV21,
+        }
         // TODO more
 //        return "GBRA";
 //        return "GBR";
 //        return "RGBP";
 //        return "BGRP";
-//        return "Y444";
-//        return "I420";
 //        return "YV12";
 //        return "Y42B";
 //        return "Y41B";
-//        return "NV12";
-//        return "NV21";
 //        return "NV16";
 //        return "NV61";
 //        return "YUY2";
@@ -275,44 +320,44 @@ ensure_gst_gl(struct encoder *encoder, GstElement *pipeline) {
         gst_context_set_gl_display(gst_context_gl_display, gst_gl_display);
         encoder->gst_context_gl_display = gst_context_gl_display;
 
-        if (!encoder->gst_context_gl_context) {
-            gboolean ret;
-            EGLContext egl_context = westfield_egl_get_context(encoder->westfield_egl);
-            eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, egl_context);
-
-            if (egl_context == NULL) {
-                GST_ERROR_OBJECT (gst_gl_display, "Failed to find EGL context.");
-                return;
-            }
-
-            GstGLContext *gst_gl_context = gst_gl_context_new_wrapped(gst_gl_display,
-                                                                      (guintptr) egl_context,
-                                                                      GST_GL_PLATFORM_EGL,
-                                                                      GST_GL_API_OPENGL);
-            ret = gst_gl_context_activate(gst_gl_context, true);
-            if (!ret) {
-                GST_ERROR_OBJECT (gst_gl_context, "Failed to activate the wrapped EGL Context.");
-                return;
-            }
-
-            GError *error = NULL;
-            ret = gst_gl_context_fill_info(gst_gl_context, &error);
-            if (!ret) {
-                GST_ERROR_OBJECT (gst_gl_context, "Failed to create gpu process context: %s",
-                                  error->message);
-                g_error_free(error);
-                // TODO unref context?
-                return;
-            }
-
-            GstContext *gst_context_gl_context = gst_context_new("gst.gl.app_context", TRUE);
-            gst_structure_set(gst_context_writable_structure(gst_context_gl_context), "context", GST_TYPE_GL_CONTEXT,
-                              gst_gl_context, NULL);
-            encoder->gst_context_gl_context = gst_context_gl_context;
-        }
+//        if (!encoder->gst_context_gl_context) {
+//            gboolean ret;
+//            EGLContext egl_context = westfield_egl_get_context(encoder->westfield_egl);
+//            eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, egl_context);
+//
+//            if (egl_context == NULL) {
+//                GST_ERROR_OBJECT (gst_gl_display, "Failed to find EGL context.");
+//                return;
+//            }
+//
+//            GstGLContext *gst_gl_context = gst_gl_context_new_wrapped(gst_gl_display,
+//                                                                      (guintptr) egl_context,
+//                                                                      GST_GL_PLATFORM_EGL,
+//                                                                      GST_GL_API_OPENGL);
+//            ret = gst_gl_context_activate(gst_gl_context, true);
+//            if (!ret) {
+//                GST_ERROR_OBJECT (gst_gl_context, "Failed to activate the wrapped EGL Context.");
+//                return;
+//            }
+//
+//            GError *error = NULL;
+//            ret = gst_gl_context_fill_info(gst_gl_context, &error);
+//            if (!ret) {
+//                GST_ERROR_OBJECT (gst_gl_context, "Failed to create gpu process context: %s",
+//                                  error->message);
+//                g_error_free(error);
+//                // TODO unref context?
+//                return;
+//            }
+//
+//            GstContext *gst_context_gl_context = gst_context_new("gst.gl.app_context", TRUE);
+//            gst_structure_set(gst_context_writable_structure(gst_context_gl_context), "context", GST_TYPE_GL_CONTEXT,
+//                              gst_gl_context, NULL);
+//            encoder->gst_context_gl_context = gst_context_gl_context;
+//        }
     }
 
-    gst_element_set_context(pipeline, encoder->gst_context_gl_context);
+//    gst_element_set_context(pipeline, encoder->gst_context_gl_context);
     gst_element_set_context(pipeline, encoder->gst_context_gl_display);
 }
 
@@ -452,7 +497,8 @@ wl_shm_buffer_to_gst_buffer(struct wl_shm_buffer *shm_buffer, const uint32_t wid
     gint stride[] = {
             (gint) buffer_stride, 0, 0, 0
     };
-    GstBuffer *buffer = gst_buffer_new_wrapped_full(0, (gpointer) buffer_data, buffer_size, 0, buffer_size, shm_pool,
+    GstBuffer *buffer = gst_buffer_new_wrapped_full(GST_MEMORY_FLAG_READONLY | GST_MEMORY_FLAG_PHYSICALLY_CONTIGUOUS,
+                                                    (gpointer) buffer_data, buffer_size, 0, buffer_size, shm_pool,
                                                     (GDestroyNotify) wl_shm_pool_unref);
     gst_buffer_add_video_meta_full(buffer,
                                    GST_VIDEO_FRAME_FLAG_NONE,
@@ -583,9 +629,9 @@ sync_bus_call(__attribute__((unused)) GstBus *bus, GstMessage *msg, gpointer dat
                 gst_element_set_context(GST_ELEMENT (msg->src), encoder->gst_context_gl_display);
             }
 
-            if (g_strcmp0(context_type, "gst.gl.app_context") == 0) {
-                gst_element_set_context(GST_ELEMENT (msg->src), encoder->gst_context_gl_context);
-            }
+//            if (g_strcmp0(context_type, "gst.gl.app_context") == 0) {
+//                gst_element_set_context(GST_ELEMENT (msg->src), encoder->gst_context_gl_context);
+//            }
             break;
         }
         default:
@@ -774,7 +820,8 @@ gst_encoder_encode_shm(struct encoder *encoder, struct wl_shm_buffer *shm_buffer
 
 static inline const struct dmabuf_support_format *
 dmabuf_support_format_from_fourcc(const uint32_t fourcc) {
-    static const size_t dmabuf_supported_formats_size = sizeof(dmabuf_supported_formats) / sizeof(dmabuf_supported_formats[0]);
+    static const size_t dmabuf_supported_formats_size =
+            sizeof(dmabuf_supported_formats) / sizeof(dmabuf_supported_formats[0]);
     for (int i = 0; i < dmabuf_supported_formats_size; ++i) {
         if (dmabuf_supported_formats[i].drm_format == fourcc) {
             return &dmabuf_supported_formats[i];
@@ -785,9 +832,11 @@ dmabuf_support_format_from_fourcc(const uint32_t fourcc) {
 
 static inline GstBuffer *
 dmabuf_attributes_to_gst_buffer(struct gst_encoder_pipeline *gst_encoder_pipeline, struct westfield_buffer *base,
-                                const struct dmabuf_attributes *attributes,
+                                const struct dmabuf_attributes *src_attributes,
                                 const struct dmabuf_support_format *dmabuf_support_format) {
     GstBuffer *buf = gst_buffer_new();
+    struct dmabuf_attributes *attributes = g_new0(struct dmabuf_attributes, 1);
+    dmabuf_attributes_copy(attributes, src_attributes);
 
     gsize offsets[attributes->n_planes];
     gint strides[attributes->n_planes];
@@ -795,11 +844,10 @@ dmabuf_attributes_to_gst_buffer(struct gst_encoder_pipeline *gst_encoder_pipelin
     for (int i = 0; i < attributes->n_planes; ++i) {
         offsets[i] = attributes->offset[i];
         strides[i] = (gint) attributes->stride[i];
-        GstMemory *mem = gst_dmabuf_allocator_alloc_with_flags(gst_encoder_pipeline->dma_buf_allocator,
-                                                               attributes->fd[i],
-                                                               attributes->stride[i] *
-                                                               attributes->height,
-                                                               GST_FD_MEMORY_FLAG_DONT_CLOSE);
+        GstMemory *mem = gst_dmabuf_allocator_alloc(gst_encoder_pipeline->dma_buf_allocator,
+                                                    attributes->fd[i],
+                                                    attributes->stride[i] *
+                                                    attributes->height);
         gst_buffer_append_memory(buf, mem);
     }
 
