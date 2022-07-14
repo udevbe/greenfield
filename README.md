@@ -27,6 +27,8 @@ To run, you will need 2 parts to work together.
 ### Greenfield Compositor Module
 The Greenfield Compositor Module comes with a very simple demo implementation that you can use. It's hard coded to connect to a Greenfield Compositor Proxy running on your local system [but can be easily adapted to connect to any URL of your choosing.](https://github.com/udevbe/greenfield/blob/master/compositor-module/demo-compositor/src/index.ts#L34)
 
+Compositor-module uses open-api to generate client code to talk to the compositor-proxy. This requires `java` to be present on your PATH during build.
+
 Inside `compositor-module` directory run.
 - `yarn install`
 - `yarn generate`
