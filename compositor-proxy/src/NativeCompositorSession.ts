@@ -77,7 +77,7 @@ export class NativeCompositorSession {
 
     this.waylandDisplay = addSocketAuto(this.wlDisplay)
     initShm(this.wlDisplay)
-    this.drmContext = initDrm(this.wlDisplay)
+    this.drmContext = initDrm(this.wlDisplay, config.encoder.renderDevice)
 
     // TODO handle err
     // TODO write our own native epoll

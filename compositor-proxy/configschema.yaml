@@ -38,6 +38,10 @@ properties:
     type: object
     additionalProperties: false
     properties:
+      renderDevice:
+        description: |
+          Path of the render device that should be used for hardware acceleration. e.g. /dev/dri/renderD128
+        type: string
       h264Encoder:
         description: |
            The gstreamer h264 encoder to use. For now only 'x264' or 'nvh264' is supported. 'x264'
@@ -49,17 +53,9 @@ properties:
           - x264
           - nvh264
           - vaapih264
-      maxPngBufferSize:
-        description: |
-          Maximum number of pixels an image can have before we switch to h264 encoding.
-          If lower, png encoding is used.
-          Png encoding has perfect image quality but has a far larger image size than
-          h264. Default is (256*256)-1 = 0xFFFF
-        type: integer
-        minimum: 1
     required:
+      - renderDevice
       - h264Encoder
-      - maxPngBufferSize
   logging:
     description: Logging options
     type: object

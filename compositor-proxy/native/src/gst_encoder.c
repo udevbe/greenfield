@@ -1,11 +1,11 @@
 #include "westfield.h"
 #include <glib.h>
 #include <gst/gst.h>
-#include <gst/allocators/gstdmabuf.h>
+#include <gst/gl/gstglfuncs.h>
 #include <gst/gl/gstglcontext.h>
 #include <gst/gl/gstglwindow.h>
+#include <gst/gl/gstglbasememory.h>
 #include <gst/gl/egl/gstgldisplay_egl.h>
-#include <gst/gl/egl/gsteglimage.h>
 #include <gst/gl/egl/gstgldisplay_egl_device.h>
 #include <gst/app/gstappsrc.h>
 #include <gst/app/gstappsink.h>
@@ -15,6 +15,10 @@
 #include <EGL/egl.h>
 #include <drm_fourcc.h>
 #include <unistd.h>
+#include <GL/gl.h>
+#include <gst/gl/gstglmemory.h>
+#include <gst/gl/gstglutils.h>
+#include <gst/gl/gstglsyncmeta.h>
 #include "encoder.h"
 #include "westfield-linux-dmabuf-v1.h"
 #include "westfield-drm.h"
@@ -23,36 +27,29 @@
 #define FPS 60
 
 static const char *opaque_fragment_shader =
-        "#version 120\n"
-        "#ifdef GL_ES\n"
-        "    precision mediump float;\n"
-        "#endif\n"
-        "varying vec2 v_texcoord;\n"
+        "#version 330\n"
+        "in vec2 v_texcoord;\n"
+        "out vec4 color;\n"
         "uniform sampler2D tex;\n"
         "void main () {\n"
-        "        gl_FragColor = texture2D(tex, v_texcoord);\n"
+        "        color = texture2D(tex, v_texcoord);\n"
         "}";
 
 static const char *alpha_fragment_shader =
-        "#version 120\n"
-        "#ifdef GL_ES\n"
-        "    precision mediump float;\n"
-        "#endif\n"
-        "varying vec2 v_texcoord;\n"
+        "#version 330\n"
+        "in vec2 v_texcoord;\n"
+        "out vec4 color;\n"
         "uniform sampler2D tex;\n"
         "void main () {\n"
         "        vec4 pix = texture2D(tex, v_texcoord);\n"
-        "        gl_FragColor = vec4(pix.a, pix.a, pix.a, 0.);\n"
+        "        color = vec4(pix.a, pix.a, pix.a, 0.);\n"
         "}";
 
 static const char *vertex_shader =
-        "#version 120\n"
-        "#ifdef GL_ES\n"
-        "    precision mediump float;\n"
-        "#endif\n"
-        "attribute vec4 a_position;\n"
-        "attribute vec2 a_texcoord;\n"
-        "varying vec2 v_texcoord;\n"
+        "#version 330\n"
+        "in vec4 a_position;\n"
+        "in vec2 a_texcoord;\n"
+        "out vec2 v_texcoord;\n"
         "uniform mat4 u_transformation;\n"
         "void main() {\n"
         "    gl_Position = u_transformation * vec4(a_position.x, a_position.y, 0, 1);\n"
@@ -105,14 +102,17 @@ struct encoder {
     frame_callback_func frame_callback;
     GQueue *encoding_results;
     void *user_data;
-    struct westfield_egl *westfield_egl;
 
-    GstContext *gst_context_gl_display;
-//    GstContext *gst_context_gl_context;
+    struct {
+        struct westfield_egl *westfield_egl;
+        GstContext *gst_context_gl_display;
+        GstContext *gst_context_gl_context;
+        GstGLContext *wrapped_gst_gl_context;
+        GstGLContext *shared_gst_gl_context;
+    } gpu;
 };
 
 struct gst_encoder_pipeline {
-    GstAllocator *dma_buf_allocator;
     GstAppSrc *app_src;
     GstAppSink *app_sink;
     GstElement *pipeline;
@@ -306,11 +306,11 @@ static const struct dmabuf_support_format dmabuf_supported_formats[] = {
 
 static void
 ensure_gst_gl(struct encoder *encoder, GstElement *pipeline) {
-    if (!encoder->gst_context_gl_display) {
+    if (!encoder->gpu.gst_context_gl_display) {
         GstGLDisplay *gst_gl_display;
 
-        EGLDeviceEXT egl_device = westfield_egl_get_device(encoder->westfield_egl);
-        EGLDisplay egl_display = westfield_egl_get_display(encoder->westfield_egl);
+        EGLDeviceEXT egl_device = westfield_egl_get_device(encoder->gpu.westfield_egl);
+        EGLDisplay egl_display = westfield_egl_get_display(encoder->gpu.westfield_egl);
         if (egl_device) {
             gst_gl_display = GST_GL_DISPLAY(gst_gl_display_egl_device_new_with_egl_device(egl_device));
         } else {
@@ -318,47 +318,42 @@ ensure_gst_gl(struct encoder *encoder, GstElement *pipeline) {
         }
         GstContext *gst_context_gl_display = gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
         gst_context_set_gl_display(gst_context_gl_display, gst_gl_display);
-        encoder->gst_context_gl_display = gst_context_gl_display;
+        encoder->gpu.gst_context_gl_display = gst_context_gl_display;
 
-//        if (!encoder->gst_context_gl_context) {
-//            gboolean ret;
-//            EGLContext egl_context = westfield_egl_get_context(encoder->westfield_egl);
-//            eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, egl_context);
-//
-//            if (egl_context == NULL) {
-//                GST_ERROR_OBJECT (gst_gl_display, "Failed to find EGL context.");
-//                return;
-//            }
-//
-//            GstGLContext *gst_gl_context = gst_gl_context_new_wrapped(gst_gl_display,
-//                                                                      (guintptr) egl_context,
-//                                                                      GST_GL_PLATFORM_EGL,
-//                                                                      GST_GL_API_OPENGL);
-//            ret = gst_gl_context_activate(gst_gl_context, true);
-//            if (!ret) {
-//                GST_ERROR_OBJECT (gst_gl_context, "Failed to activate the wrapped EGL Context.");
-//                return;
-//            }
-//
-//            GError *error = NULL;
-//            ret = gst_gl_context_fill_info(gst_gl_context, &error);
-//            if (!ret) {
-//                GST_ERROR_OBJECT (gst_gl_context, "Failed to create gpu process context: %s",
-//                                  error->message);
-//                g_error_free(error);
-//                // TODO unref context?
-//                return;
-//            }
-//
-//            GstContext *gst_context_gl_context = gst_context_new("gst.gl.app_context", TRUE);
-//            gst_structure_set(gst_context_writable_structure(gst_context_gl_context), "context", GST_TYPE_GL_CONTEXT,
-//                              gst_gl_context, NULL);
-//            encoder->gst_context_gl_context = gst_context_gl_context;
-//        }
+        if (!encoder->gpu.gst_context_gl_context) {
+            EGLContext egl_context = westfield_egl_get_context(encoder->gpu.westfield_egl);
+            eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, egl_context);
+
+            if (egl_context == NULL) {
+                GST_ERROR_OBJECT (gst_gl_display, "Failed to find EGL context.");
+                return;
+            }
+            encoder->gpu.wrapped_gst_gl_context = gst_gl_context_new_wrapped(gst_gl_display,
+                                                                             (guintptr) egl_context,
+                                                                             GST_GL_PLATFORM_EGL,
+                                                                             GST_GL_API_OPENGL);
+            /* Create a new non-wrapped local GstGlContext to share with other elements. */
+            GError *err = NULL;
+            if (!gst_gl_display_create_context(gst_gl_display,
+                                               encoder->gpu.wrapped_gst_gl_context, &encoder->gpu.shared_gst_gl_context,
+                                               &err)) {
+                fprintf(stderr, "Failed to create GstGLContex context: %s\n", err->message);
+                g_clear_error(&err);
+                exit(EXIT_FAILURE);
+            }
+            gst_gl_display_add_context(gst_gl_display, encoder->gpu.shared_gst_gl_context);
+
+            GstContext *gst_context_gl_context = gst_context_new("gst.gl.app_context", TRUE);
+            gst_structure_set(gst_context_writable_structure(gst_context_gl_context), "context", GST_TYPE_GL_CONTEXT,
+                              encoder->gpu.shared_gst_gl_context, NULL);
+            encoder->gpu.gst_context_gl_context = gst_context_gl_context;
+
+            gst_gl_context_activate(encoder->gpu.shared_gst_gl_context, TRUE);
+        }
     }
 
-//    gst_element_set_context(pipeline, encoder->gst_context_gl_context);
-    gst_element_set_context(pipeline, encoder->gst_context_gl_display);
+    gst_element_set_context(pipeline, encoder->gpu.gst_context_gl_context);
+    gst_element_set_context(pipeline, encoder->gpu.gst_context_gl_display);
 }
 
 void
@@ -588,14 +583,12 @@ gst_encoder_pipeline_destroy(struct gst_encoder_pipeline *gst_encoder_pipeline) 
     gst_object_unref(GST_OBJECT(gst_encoder_pipeline->app_src));
     gst_object_unref(GST_OBJECT(gst_encoder_pipeline->app_sink));
     gst_object_unref(GST_OBJECT(gst_encoder_pipeline->pipeline));
-    gst_object_unref(GST_OBJECT(gst_encoder_pipeline->dma_buf_allocator));
     gst_object_unref(GST_OBJECT(gst_encoder_pipeline->glshader));
     gst_object_unref(GST_OBJECT(gst_encoder_pipeline->shader_capsfilter));
 
     gst_encoder_pipeline->app_src = NULL;
     gst_encoder_pipeline->app_sink = NULL;
     gst_encoder_pipeline->pipeline = NULL;
-    gst_encoder_pipeline->dma_buf_allocator = NULL;
     gst_encoder_pipeline->pipeline = NULL;
     gst_encoder_pipeline->glshader = NULL;
     gst_encoder_pipeline->shader_capsfilter = NULL;
@@ -625,13 +618,13 @@ sync_bus_call(__attribute__((unused)) GstBus *bus, GstMessage *msg, gpointer dat
             const gchar *context_type;
 
             gst_message_parse_context_type(msg, &context_type);
-            if (g_strcmp0(context_type, GST_GL_DISPLAY_CONTEXT_TYPE) == 0 && encoder->westfield_egl) {
-                gst_element_set_context(GST_ELEMENT (msg->src), encoder->gst_context_gl_display);
+            if (g_strcmp0(context_type, GST_GL_DISPLAY_CONTEXT_TYPE) == 0 && encoder->gpu.westfield_egl) {
+                gst_element_set_context(GST_ELEMENT (msg->src), encoder->gpu.gst_context_gl_display);
             }
 
-//            if (g_strcmp0(context_type, "gst.gl.app_context") == 0) {
-//                gst_element_set_context(GST_ELEMENT (msg->src), encoder->gst_context_gl_context);
-//            }
+            if (g_strcmp0(context_type, "gst.gl.app_context") == 0) {
+                gst_element_set_context(GST_ELEMENT (msg->src), encoder->gpu.gst_context_gl_context);
+            }
             break;
         }
         default:
@@ -696,7 +689,6 @@ gst_encoder_create(struct encoder *encoder) {
         g_free(gst_encoder);
         return;
     }
-    gst_encoder->opaque_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
 
     if (encoder->description->split_alpha) {
         gst_encoder->alpha_pipeline = (struct gst_encoder_pipeline *) gst_encoder_pipeline_create(encoder,
@@ -708,7 +700,6 @@ gst_encoder_create(struct encoder *encoder) {
             g_free(gst_encoder);
             return;
         }
-        gst_encoder->alpha_pipeline->dma_buf_allocator = gst_dmabuf_allocator_new();
     }
 
     encoder->impl = gst_encoder;
@@ -831,36 +822,77 @@ dmabuf_support_format_from_fourcc(const uint32_t fourcc) {
 }
 
 static inline GstBuffer *
-dmabuf_attributes_to_gst_buffer(struct gst_encoder_pipeline *gst_encoder_pipeline, struct westfield_buffer *base,
-                                const struct dmabuf_attributes *src_attributes,
-                                const struct dmabuf_support_format *dmabuf_support_format) {
-    GstBuffer *buf = gst_buffer_new();
-    struct dmabuf_attributes *attributes = g_new0(struct dmabuf_attributes, 1);
-    dmabuf_attributes_copy(attributes, src_attributes);
+create_gl_memory(struct encoder *encoder, const struct dmabuf_attributes *attributes, GstCaps *caps) {
+    GstGLMemoryAllocator *allocator;
+    GLenum target;
+    GLuint tex;
+    GstGLVideoAllocationParams *params;
+    bool external_only;
+    gpointer wrapped[1];
+    GstGLFormat formats[1];
+    gboolean ret;
+    GstBuffer *buffer;
+    GstVideoInfo *video_info = gst_video_info_new_from_caps(caps);
 
-    gsize offsets[attributes->n_planes];
-    gint strides[attributes->n_planes];
+    EGLImageKHR egl_image = westfield_egl_create_image_from_dmabuf(encoder->gpu.westfield_egl,
+                                                                   attributes,
+                                                                   &external_only);
 
-    for (int i = 0; i < attributes->n_planes; ++i) {
-        offsets[i] = attributes->offset[i];
-        strides[i] = (gint) attributes->stride[i];
-        GstMemory *mem = gst_dmabuf_allocator_alloc(gst_encoder_pipeline->dma_buf_allocator,
-                                                    attributes->fd[i],
-                                                    attributes->stride[i] *
-                                                    attributes->height);
-        gst_buffer_append_memory(buf, mem);
+    target = external_only ? GL_TEXTURE_EXTERNAL_OES : GL_TEXTURE_2D;
+    encoder->gpu.shared_gst_gl_context->gl_vtable->GenTextures(1, &tex);
+    encoder->gpu.shared_gst_gl_context->gl_vtable->BindTexture(target, tex);
+    encoder->gpu.shared_gst_gl_context->gl_vtable->TexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    encoder->gpu.shared_gst_gl_context->gl_vtable->TexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    encoder->gpu.shared_gst_gl_context->gl_vtable->EGLImageTargetTexture2D(target, egl_image);
+    encoder->gpu.shared_gst_gl_context->gl_vtable->BindTexture(target, 0);
+
+    allocator = gst_gl_memory_allocator_get_default(encoder->gpu.shared_gst_gl_context);
+    params = gst_gl_video_allocation_params_new_wrapped_texture(
+            encoder->gpu.shared_gst_gl_context,
+            NULL,
+            video_info,
+            0,
+            NULL,
+            external_only
+            ? GST_GL_TEXTURE_TARGET_EXTERNAL_OES
+            : GST_GL_TEXTURE_TARGET_2D,
+            GST_GL_RGBA8,
+            tex,
+            // TODO cleanup texture
+            NULL,
+            NULL
+    );
+
+    wrapped[0] = (gpointer) tex;
+    formats[0] = GST_GL_RGBA8;
+
+    // TODO user bufferpool
+    buffer = gst_buffer_new();
+    ret = gst_gl_memory_setup_buffer(allocator, buffer, params,
+                                     formats, wrapped, 1);
+    if (!ret) {
+        g_error ("Failed to setup gl memory\n");
     }
 
-    gst_buffer_add_video_meta_full(buf,
-                                   GST_VIDEO_FRAME_FLAG_NONE,
-                                   dmabuf_support_format->gst_video_format,
-                                   base->width,
-                                   base->height,
-                                   attributes->n_planes,
-                                   offsets,
-                                   strides);
+    gst_gl_allocation_params_free((GstGLAllocationParams *) params);
+    gst_object_unref(allocator);
 
-    return buf;
+    return buffer;
+}
+
+static inline GstBuffer *
+dmabuf_attributes_to_gst_buffer(struct encoder *encoder,
+                                struct gst_encoder_pipeline *gst_encoder_pipeline,
+                                const struct dmabuf_attributes *attributes,
+                                GstCaps *caps) {
+    GstBuffer *buffer = create_gl_memory(encoder, attributes, caps);
+    GstGLSyncMeta *sync_meta = gst_buffer_get_gl_sync_meta (buffer);
+    if (sync_meta) {
+        gst_gl_sync_meta_set_sync_point(sync_meta, encoder->gpu.shared_gst_gl_context);
+        gst_gl_sync_meta_wait(sync_meta, encoder->gpu.shared_gst_gl_context);
+    }
+
+    return buffer;
 }
 
 static inline void
@@ -881,28 +913,27 @@ gst_encoder_encode_dmabuf(struct encoder *encoder,
 
     new_src_caps = gst_caps_new_simple("video/x-raw",
                                        "framerate", GST_TYPE_FRACTION, FPS, 1,
-                                       "format", G_TYPE_STRING,
-                                       dmabuf_support_format->gst_format_string,
+                                       "format", G_TYPE_STRING, dmabuf_support_format->gst_format_string,
                                        "width", G_TYPE_INT, base->width,
                                        "height", G_TYPE_INT, base->height,
                                        NULL);
     gst_encoder_pipeline_config(gst_encoder->opaque_pipeline, encoder->description, new_src_caps,
                                 base->width, base->height, &coded_width, &coded_height);
     gst_encoder_pipeline_encode(gst_encoder->opaque_pipeline,
-                                dmabuf_attributes_to_gst_buffer(gst_encoder->opaque_pipeline,
-                                                                base,
+                                dmabuf_attributes_to_gst_buffer(encoder,
+                                                                gst_encoder->opaque_pipeline,
                                                                 attributes,
-                                                                dmabuf_support_format));
+                                                                new_src_caps));
 
     if (dmabuf_support_format->has_alpha && encoder->description->split_alpha) {
         encoding_result->has_split_alpha = true;
         gst_encoder_pipeline_config(gst_encoder->alpha_pipeline, encoder->description, new_src_caps,
                                     base->width, base->height, &coded_width, &coded_height);
         gst_encoder_pipeline_encode(gst_encoder->alpha_pipeline,
-                                    dmabuf_attributes_to_gst_buffer(gst_encoder->alpha_pipeline,
-                                                                    base,
+                                    dmabuf_attributes_to_gst_buffer(encoder,
+                                                                    gst_encoder->alpha_pipeline,
                                                                     attributes,
-                                                                    dmabuf_support_format));
+                                                                    new_src_caps));
     } else {
         encoding_result->has_split_alpha = false;
     }
@@ -1055,7 +1086,7 @@ static const struct encoder_description encoder_descriptions[] = {
                 .name = "x264",
                 .encoding_type = h264,
                 .pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
-                                       "glupload ! "
+                                       "glupload name=upload ! "
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
                                        "capsfilter name=shader_capsfilter ! "
@@ -1074,7 +1105,7 @@ static const struct encoder_description encoder_descriptions[] = {
                 .name = "nvh264",
                 .encoding_type = h264,
                 .pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
-                                       "glupload ! "
+                                       "glupload name=upload ! "
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
                                        "capsfilter name=shader_capsfilter ! "
@@ -1092,7 +1123,7 @@ static const struct encoder_description encoder_descriptions[] = {
                 .name = "vaapih264",
                 .encoding_type = h264,
                 .pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
-                                       "glupload ! "
+                                       "glupload name=upload ! "
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
                                        "capsfilter name=shader_capsfilter ! "
@@ -1112,7 +1143,7 @@ static const struct encoder_description encoder_descriptions[] = {
                 .name = "png",
                 .encoding_type = png,
                 .pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
-                                       "glupload ! "
+                                       "glupload name=upload ! "
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
                                        "capsfilter name=shader_capsfilter ! "
@@ -1143,7 +1174,7 @@ do_gst_encoder_create(char preferred_encoder[16], frame_callback_func frame_read
     encoder->frame_callback = frame_ready_callback;
     encoder->user_data = user_data;
     encoder->encoding_results = g_queue_new();
-    encoder->westfield_egl = westfield_egl;
+    encoder->gpu.westfield_egl = westfield_egl;
 
     *encoder_pp = encoder;
 }
