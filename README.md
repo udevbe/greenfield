@@ -29,6 +29,7 @@ The Greenfield Compositor Module comes with a very simple demo implementation th
 
 Inside `compositor-module` directory run.
 - `yarn install`
+- `yarn generate`
 - `yarn demo`
 
 Go to [http://localhost:8080]() and be greeted with a nice white compositor with 2 buttons. Each button click creates a new WebSocket connection to a Greenfield Compositor Proxy as indicated
