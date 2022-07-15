@@ -821,32 +821,49 @@ dmabuf_support_format_from_fourcc(const uint32_t fourcc) {
     return NULL;
 }
 
+struct gl_memory_destroyed_data {
+    struct encoder *encoder;
+    GLuint tex;
+    EGLImageKHR egl_image;
+};
+
+static void
+gl_memory_destroyed(struct gl_memory_destroyed_data *gl_memory_destroyed_data) {
+    gl_memory_destroyed_data->encoder->gpu.shared_gst_gl_context->gl_vtable->DeleteTextures(1,
+                                                                                            &gl_memory_destroyed_data->tex);
+    westfield_egl_destroy_image(gl_memory_destroyed_data->encoder->gpu.westfield_egl,
+                                gl_memory_destroyed_data->egl_image);
+    g_free(gl_memory_destroyed_data);
+}
+
 static inline GstBuffer *
 create_gl_memory(struct encoder *encoder, const struct dmabuf_attributes *attributes, GstCaps *caps) {
-    GstGLMemoryAllocator *allocator;
-    GLenum target;
-    GLuint tex;
-    GstGLVideoAllocationParams *params;
-    bool external_only;
-    gpointer wrapped[1];
-    GstGLFormat formats[1];
-    gboolean ret;
-    GstBuffer *buffer;
+    GstGLMemoryAllocator *allocator = gst_gl_memory_allocator_get_default(encoder->gpu.shared_gst_gl_context);
+    GLuint wrapped_tex[] = {0};
+    GstGLFormat formats[] = {GST_GL_RGBA8};
+    GstBuffer *buffer = gst_buffer_new();
     GstVideoInfo *video_info = gst_video_info_new_from_caps(caps);
-
+    struct gl_memory_destroyed_data *gl_memory_destroyed_data = g_new0(struct gl_memory_destroyed_data, 1);
+    GLenum target;
+    GstGLVideoAllocationParams *params;
+    gboolean ret;
+    bool external_only;
     EGLImageKHR egl_image = westfield_egl_create_image_from_dmabuf(encoder->gpu.westfield_egl,
                                                                    attributes,
                                                                    &external_only);
 
     target = external_only ? GL_TEXTURE_EXTERNAL_OES : GL_TEXTURE_2D;
-    encoder->gpu.shared_gst_gl_context->gl_vtable->GenTextures(1, &tex);
-    encoder->gpu.shared_gst_gl_context->gl_vtable->BindTexture(target, tex);
+    encoder->gpu.shared_gst_gl_context->gl_vtable->GenTextures(1, wrapped_tex);
+    encoder->gpu.shared_gst_gl_context->gl_vtable->BindTexture(target, wrapped_tex[0]);
     encoder->gpu.shared_gst_gl_context->gl_vtable->TexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     encoder->gpu.shared_gst_gl_context->gl_vtable->TexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     encoder->gpu.shared_gst_gl_context->gl_vtable->EGLImageTargetTexture2D(target, egl_image);
     encoder->gpu.shared_gst_gl_context->gl_vtable->BindTexture(target, 0);
 
-    allocator = gst_gl_memory_allocator_get_default(encoder->gpu.shared_gst_gl_context);
+    gl_memory_destroyed_data->encoder = encoder;
+    gl_memory_destroyed_data->egl_image = egl_image;
+    gl_memory_destroyed_data->tex = wrapped_tex[0];
+
     params = gst_gl_video_allocation_params_new_wrapped_texture(
             encoder->gpu.shared_gst_gl_context,
             NULL,
@@ -857,19 +874,14 @@ create_gl_memory(struct encoder *encoder, const struct dmabuf_attributes *attrib
             ? GST_GL_TEXTURE_TARGET_EXTERNAL_OES
             : GST_GL_TEXTURE_TARGET_2D,
             GST_GL_RGBA8,
-            tex,
+            wrapped_tex[0],
             // TODO cleanup texture
-            NULL,
-            NULL
+            gl_memory_destroyed_data,
+            (GDestroyNotify) gl_memory_destroyed
     );
 
-    wrapped[0] = (gpointer) tex;
-    formats[0] = GST_GL_RGBA8;
-
-    // TODO user bufferpool
-    buffer = gst_buffer_new();
     ret = gst_gl_memory_setup_buffer(allocator, buffer, params,
-                                     formats, wrapped, 1);
+                                     formats, (gpointer *) wrapped_tex, 1);
     if (!ret) {
         g_error ("Failed to setup gl memory\n");
     }
@@ -882,7 +894,6 @@ create_gl_memory(struct encoder *encoder, const struct dmabuf_attributes *attrib
 
 static inline GstBuffer *
 dmabuf_attributes_to_gst_buffer(struct encoder *encoder,
-                                struct gst_encoder_pipeline *gst_encoder_pipeline,
                                 const struct dmabuf_attributes *attributes,
                                 GstCaps *caps) {
     GstBuffer *buffer = create_gl_memory(encoder, attributes, caps);
@@ -920,20 +931,14 @@ gst_encoder_encode_dmabuf(struct encoder *encoder,
     gst_encoder_pipeline_config(gst_encoder->opaque_pipeline, encoder->description, new_src_caps,
                                 base->width, base->height, &coded_width, &coded_height);
     gst_encoder_pipeline_encode(gst_encoder->opaque_pipeline,
-                                dmabuf_attributes_to_gst_buffer(encoder,
-                                                                gst_encoder->opaque_pipeline,
-                                                                attributes,
-                                                                new_src_caps));
+                                dmabuf_attributes_to_gst_buffer(encoder, attributes, new_src_caps));
 
     if (dmabuf_support_format->has_alpha && encoder->description->split_alpha) {
         encoding_result->has_split_alpha = true;
         gst_encoder_pipeline_config(gst_encoder->alpha_pipeline, encoder->description, new_src_caps,
                                     base->width, base->height, &coded_width, &coded_height);
         gst_encoder_pipeline_encode(gst_encoder->alpha_pipeline,
-                                    dmabuf_attributes_to_gst_buffer(encoder,
-                                                                    gst_encoder->alpha_pipeline,
-                                                                    attributes,
-                                                                    new_src_caps));
+                                    dmabuf_attributes_to_gst_buffer(encoder, attributes, new_src_caps));
     } else {
         encoding_result->has_split_alpha = false;
     }
@@ -947,7 +952,7 @@ gst_encoder_encode_dmabuf(struct encoder *encoder,
 
     g_queue_push_head(encoder->encoding_results, encoding_result);
 
-    // TODO memory management/lifecycle of buffer? ie handle case where buffer is destroyed by client while it's being encoded, see weston remoting implementation.
+    // TODO memory management/lifecycle of buffer? ie handle case where buffer is destroyed by client while it's being encoded, see weston remoting implementation?
 }
 
 static inline void
