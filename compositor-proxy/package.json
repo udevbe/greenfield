@@ -6,7 +6,7 @@
     "url": "git+https://github.com/udevbe/greenfield.git"
   },
   "engines": {
-    "node": "16"
+    "node": ">=16"
   },
   "license": "AGPL-3.0",
   "description": "Wayland application endpoint.",
