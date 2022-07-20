@@ -13,7 +13,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <EGL/egl.h>
-#include <drm_fourcc.h>
+#include <libdrm/drm_fourcc.h>
 #include <unistd.h>
 #include <GL/gl.h>
 #include <gst/gl/gstglmemory.h>
@@ -650,7 +650,7 @@ gst_encoder_pipeline_create(struct encoder *encoder, const char *pipeline_defini
         // TODO log pipeline creation failure
         return NULL;
     }
-    setup_pipeline_bus_listeners(encoder, gst_encoder_pipeline->pipeline);
+
 
     GstElement *glshader = gst_bin_get_by_name(GST_BIN(gst_encoder_pipeline->pipeline), "shader");
     if (is_alpha) {
@@ -673,7 +673,10 @@ gst_encoder_pipeline_create(struct encoder *encoder, const char *pipeline_defini
     callback_data->is_alpha = is_alpha;
     gst_app_sink_set_callbacks(gst_encoder_pipeline->app_sink, &sample_callback, (gpointer) callback_data,
                                NULL);
-    ensure_gst_gl(encoder, gst_encoder_pipeline->pipeline);
+    if (encoder->gpu.westfield_egl) {
+        ensure_gst_gl(encoder, gst_encoder_pipeline->pipeline);
+        setup_pipeline_bus_listeners(encoder, gst_encoder_pipeline->pipeline);
+    }
 
     return gst_encoder_pipeline;
 }
@@ -842,7 +845,8 @@ create_gl_memory(struct encoder *encoder, const struct dmabuf_attributes *attrib
     GLuint wrapped_tex[] = {0};
     GstGLFormat formats[] = {GST_GL_RGBA8};
     GstBuffer *buffer = gst_buffer_new();
-    GstVideoInfo *video_info = gst_video_info_new_from_caps(caps);
+    GstVideoInfo *video_info = gst_video_info_new();
+    gst_video_info_from_caps(video_info, caps);
     struct gl_memory_destroyed_data *gl_memory_destroyed_data = g_new0(struct gl_memory_destroyed_data, 1);
     GLenum target;
     GstGLVideoAllocationParams *params;
