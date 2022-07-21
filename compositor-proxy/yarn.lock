@@ -4478,10 +4478,10 @@ westfield-proxy-generator@1.0.0-alpha.0:
     uppercamelcase "^3.0.0"
     xml2js "^0.4.23"
 
-westfield-proxy@1.0.0-alpha.9:
-  version "1.0.0-alpha.9"
-  resolved "https://registry.yarnpkg.com/westfield-proxy/-/westfield-proxy-1.0.0-alpha.9.tgz#715a28b1aaf6eec813bb33176695ff97439a5f1d"
-  integrity sha512-a23VznSE4Bfp4OmR5I/wzBtobaY4wdmCA2HALE3P6BQIupfmZPvT81M+6uWwbPssbiZ+jWMjQtNP3plX3KBE5w==
+westfield-proxy@1.0.0-alpha.11:
+  version "1.0.0-alpha.11"
+  resolved "https://registry.yarnpkg.com/westfield-proxy/-/westfield-proxy-1.0.0-alpha.11.tgz#3dbe1b1e87d7074b8dd8458362095e192fa73fcf"
+  integrity sha512-BGZ+nmFv7oo8yA80vhFKQ1Q7INNlEYcdflEiAIH2xpP/A4GSGoTDFMLmxQ75J6G7LIjLodGDB8wWZX3j96KlvQ==
 
 which@^1.0.9:
   version "1.3.1"

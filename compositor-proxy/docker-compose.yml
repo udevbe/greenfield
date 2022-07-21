@@ -9,13 +9,13 @@ services:
       - xdg-runtime-dir:/xdg-runtime-dir
       - x11-unix:/tmp/.X11-unix
       - ${PWD}/src/config.yaml:/app/dist/config.yaml
-      - /dev/dri/card0:/dev/dri/renderD128:rw
+      - /dev/dri/renderD128:/dev/dri/renderD128:rw
     ports:
       - 8081:8081
     environment:
       COMPOSITOR_SESSION_ID: test123
       DEBUG: 1
-      GST_DEBUG: 4
+      GST_DEBUG: 3
       XDG_RUNTIME_DIR: /xdg-runtime-dir
       XAUTHORITY: /tmp/.X11-unix/Xauthority
   gtk3-demo:

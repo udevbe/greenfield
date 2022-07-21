@@ -40,6 +40,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gstreamer1.0-plugins-ugly \
     gstreamer1.0-gl \
     libosmesa6 \
+    libdrm2 \
+    libdrm-intel1 \
+    libopengl0 \
+    libglvnd0 \
+    libglapi-mesa \
     libegl1-mesa \
     xwayland \
     xauth \

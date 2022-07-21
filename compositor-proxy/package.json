@@ -60,7 +60,7 @@
     "ts-jest": "^28.0.1",
     "ts-node": "^10.7.0",
     "typescript": "^4.6.4",
-    "westfield-proxy": "1.0.0-alpha.9",
+    "westfield-proxy": "1.0.0-alpha.11",
     "westfield-proxy-generator": "1.0.0-alpha.0"
   }
 }
