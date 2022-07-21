@@ -5,6 +5,8 @@ services:
       context: .
       dockerfile: ./Dockerfile
     privileged: true
+    cap_drop:
+      - ALL
     volumes:
       - xdg-runtime-dir:/xdg-runtime-dir
       - x11-unix:/tmp/.X11-unix
