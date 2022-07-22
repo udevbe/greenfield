@@ -64,11 +64,8 @@ COPY --from=BUILD /app/node_modules/epoll /app/node_modules/epoll
 COPY --from=BUILD /app/node_modules/bindings /app/node_modules/bindings
 COPY --from=BUILD /app/node_modules/file-uri-to-path /app/node_modules/file-uri-to-path
 
-ENV NODE_ENV=production
-WORKDIR /home/node
-
-RUN groupadd render
-RUN usermod -a -G video,render node
 RUN mkdir -p /var/run/compositor-proxy && chown 1000:1000 /var/run/compositor-proxy && touch /var/run/compositor-proxy/starting
 COPY wait-until-ready.sh /app
+
+WORKDIR /home/node
 CMD ["setpriv", "--reuid=1000", "--regid=1000", "--init-groups", "sh", "/app/docker-entrypoint.sh"]

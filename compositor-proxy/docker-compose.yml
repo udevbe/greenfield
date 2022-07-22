@@ -4,20 +4,20 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
-    privileged: true
-    cap_drop:
-      - ALL
+    privileged: false
     volumes:
       - xdg-runtime-dir:/xdg-runtime-dir
       - x11-unix:/tmp/.X11-unix
       - ${PWD}/src/config.yaml:/app/dist/config.yaml
       - /dev/dri/renderD128:/dev/dri/renderD128:rw
+      - /dev/dri/card0:/dev/dri/card0:rw
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
+      - /dev/dri/card0:/dev/dri/card0
     ports:
       - 8081:8081
     environment:
       COMPOSITOR_SESSION_ID: test123
-      DEBUG: 1
-      GST_DEBUG: 3
       XDG_RUNTIME_DIR: /xdg-runtime-dir
       XAUTHORITY: /tmp/.X11-unix/Xauthority
   gtk3-demo:
@@ -28,6 +28,11 @@ services:
     privileged: false
     volumes:
       - xdg-runtime-dir:/xdg-runtime-dir
+      - /dev/dri/renderD128:/dev/dri/renderD128:rw
+      - /dev/dri/card0:/dev/dri/card0:rw
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
+      - /dev/dri/card0:/dev/dri/card0
     environment:
       XDG_RUNTIME_DIR: /xdg-runtime-dir
     restart: always
@@ -39,6 +44,11 @@ services:
     privileged: false
     volumes:
       - xdg-runtime-dir:/xdg-runtime-dir
+      - /dev/dri/renderD128:/dev/dri/renderD128:rw
+      - /dev/dri/card0:/dev/dri/card0:rw
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
+      - /dev/dri/card0:/dev/dri/card0
     environment:
       WAYLAND_DISPLAY: wayland-0
       XDG_RUNTIME_DIR: /xdg-runtime-dir
@@ -52,6 +62,11 @@ services:
     volumes:
       - xdg-runtime-dir:/xdg-runtime-dir
       - x11-unix:/tmp/.X11-unix
+      - /dev/dri/renderD128:/dev/dri/renderD128:rw
+      - /dev/dri/card0:/dev/dri/card0:rw
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
+      - /dev/dri/card0:/dev/dri/card0
     environment:
       XAUTHORITY: /tmp/.X11-unix/Xauthority
       XDG_RUNTIME_DIR: /xdg-runtime-dir
