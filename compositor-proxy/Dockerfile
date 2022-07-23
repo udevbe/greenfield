@@ -4,6 +4,7 @@ FROM node:18-bullseye-slim as BUILD
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
+    ninja-build \
     libffi-dev \
     libudev-dev \
     libdrm-dev \
@@ -11,7 +12,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libegl1-mesa-dev \
     libosmesa6-dev \
     libgstreamer1.0-dev \
-    libglvnd-core-dev \
     libgraphene-1.0-dev \
     libgstreamer-plugins-base1.0-dev \
     gstreamer1.0-plugins-good \
@@ -22,7 +22,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY ["package.json", "yarn.lock", "./"]
-RUN yarn global add cmake-js
 RUN yarn install
 
 COPY . .

@@ -21,8 +21,8 @@ Greenfield consists of 3 separate parts.
 # Running
 
 To run, you will need 2 parts to work together. 
-- The *Greenfield Compositor Proxy* that runs remotely and forwards the native Wayland applications to the browser.
-- An implementation of the *Greenfield Compositor Module* that runs in your browser and receives the forwarded signals of the Greenfield Compositor Proxy.
+- The *Greenfield Compositor Proxy* that runs remotely and forwards the native Wayland applications to the browser. You need at least one, but can run as many as you require e.g. to access different machines.
+- An implementation of the *Greenfield Compositor Module* that runs in your browser and receives the forwarded signals of potential multiple Greenfield Compositor Proxies.
 
 ### Greenfield Compositor Module
 The Greenfield Compositor Module comes with a very simple demo implementation that you can use. It's hard coded to connect to a Greenfield Compositor Proxy running on your local system [but can be easily adapted to connect to any URL of your choosing.](https://github.com/udevbe/greenfield/blob/master/compositor-module/demo-compositor/src/index.ts#L34)
@@ -44,6 +44,8 @@ Running a Greenfield Compositor Proxy requires an environment variable to work p
   This is a security measure so other Greenfield browser compositors can't simply connect to your compositor-proxy. To work with the demo compositor that we started earlier, you can simply use the value stated here (`test123`)
 
 For convenience, there is a demo setup that you can use.
+
+To build you need a set of dependencies. You can look at the [Docker image](https://github.com/udevbe/greenfield/blob/master/compositor-proxy/Dockerfile#L4) to see which ones you need.
 
 Inside `compositor-proxy`, run:
 - `yarn install`
