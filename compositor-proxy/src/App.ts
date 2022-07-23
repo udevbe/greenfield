@@ -68,8 +68,8 @@ export function createApp(
       .put('/webfd/:fd/stream', withAuth(compositorProxySession, withParams(1, PUTWebFDStream)))
 
       .ws('/', {
-        // TODO set some more sensible numbers & implement backpressure when sending over websocket
-        sendPingsAutomatically: 10000,
+        // TODO implement backpressure when sending over websocket
+        sendPingsAutomatically: true,
         maxPayloadLength: 4194304,
         maxBackpressure: 4194304,
         upgrade: (res, req, context) => {

@@ -39,10 +39,9 @@ by the text on the button. Clicking these buttons won't do much for now as we ne
 
 ### Greenfield Compositor Proxy
 
-Running a Greenfield Compositor Proxy requires a set of environment variables to work properly.
+Running a Greenfield Compositor Proxy requires an environment variable to work properly.
 - `COMPOSITOR_SESSION_ID=test123` This has to match the compositor session id of the Greenfield browser compositor.
   This is a security measure so other Greenfield browser compositors can't simply connect to your compositor-proxy. To work with the demo compositor that we started earlier, you can simply use the value stated here (`test123`)
-- `GST_GL_WINDOW=gbm` This is a GStreamer variable that we can set. More info [here](https://gstreamer.freedesktop.org/documentation/gl/gstgldisplay.html?gi-language=c)
 
 For convenience, there is a demo setup that you can use.
 
