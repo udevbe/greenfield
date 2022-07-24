@@ -16,11 +16,13 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import BufferContents from '../BufferContents'
+import { Size } from '../math/Size'
 import EncodingTypes, { EncodingMimeTypes } from './EncodingMimeTypes'
 
 export type EncodedFrame = {
   readonly serial: number
   readonly mimeType: EncodingMimeTypes[keyof EncodingMimeTypes]
+  readonly encodedSize: Size
 } & BufferContents<{ opaque: Uint8Array; alpha?: Uint8Array }>
 
 export function createEncodedFrame(u8Buffer: Uint8Array): EncodedFrame {
@@ -37,10 +39,16 @@ export function createEncodedFrame(u8Buffer: Uint8Array): EncodedFrame {
   const encodingType = EncodingTypes[encodingTypeCode]
   offset += 4
 
-  const width = dataView.getUint16(offset, true)
+  const width = dataView.getUint32(offset, true)
   offset += 4
 
-  const height = dataView.getUint16(offset, true)
+  const height = dataView.getUint32(offset, true)
+  offset += 4
+
+  const encodedWidth = dataView.getUint32(offset, true)
+  offset += 4
+
+  const encodedHeight = dataView.getUint32(offset, true)
   offset += 4
 
   const opaqueLength = dataView.getUint32(offset, true)
@@ -53,5 +61,11 @@ export function createEncodedFrame(u8Buffer: Uint8Array): EncodedFrame {
   const alpha =
     alphaLength === 0 ? undefined : new Uint8Array(u8Buffer.buffer, u8Buffer.byteOffset + offset, alphaLength)
 
-  return { serial, mimeType: encodingType, size: { width, height }, pixelContent: { opaque, alpha } }
+  return {
+    serial,
+    mimeType: encodingType,
+    size: { width, height },
+    encodedSize: { width: encodedWidth, height: encodedHeight },
+    pixelContent: { opaque, alpha },
+  }
 }

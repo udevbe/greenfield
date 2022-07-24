@@ -20,6 +20,7 @@ import Program from './Program'
 import ShaderCompiler from './ShaderCompiler'
 import { VERTEX_QUAD } from './ShaderSources'
 import Texture from './Texture'
+import RenderState from './RenderState'
 
 const FRAGMENT_YUVA_TO_RGBA = {
   type: 'x-shader/x-fragment',
@@ -167,31 +168,35 @@ class YUVA2RGBAShader {
     this.gl.useProgram(null)
   }
 
-  updateShaderData(encodedFrameSize: Size, maxXTexCoord: number, maxYTexCoord: number): void {
-    const { width, height } = encodedFrameSize
-    this.gl.viewport(0, 0, width, height)
+  updateShaderData(renderState: RenderState): void {
+    const { width, height } = renderState.size
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
+    this.gl.viewport(0, 0, width, height)
+
+    const textureMinU = 1 - width / renderState.texture.size.width
+    const textureMinV = 1 - height / renderState.texture.size.height
+
     this.gl.bufferData(
       this.gl.ARRAY_BUFFER,
       // prettier-ignore
       new Float32Array([
         // First triangle
         // top left:
-        -1, 1, 0, maxYTexCoord,
+        -1, 1, textureMinU, 1,
         // top right:
-        1, 1, maxXTexCoord, maxYTexCoord,
+        1, 1, 1, 1,
         // bottom right:
-        1, -1, maxXTexCoord, 0,
+        1, -1, 1, textureMinV,
 
         // Second triangle
         // bottom right:
-        1, -1,  maxXTexCoord, 0,
+        1, -1, 1, textureMinV,
         // bottom left:
-        -1, -1, 0, 0,
+        -1, -1, textureMinU, textureMinV,
         // top left:
-        -1, 1, 0, maxYTexCoord,
+        -1, 1, textureMinU, 1
       ]),
-      this.gl.DYNAMIC_DRAW,
+      this.gl.STATIC_DRAW,
     )
     this.gl.vertexAttribPointer(this.shaderArgs.a_position, 2, this.gl.FLOAT, false, 16, 0)
     this.gl.vertexAttribPointer(this.shaderArgs.a_texCoord, 2, this.gl.FLOAT, false, 16, 8)

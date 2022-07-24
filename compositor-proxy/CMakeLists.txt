@@ -3,45 +3,69 @@ cmake_minimum_required(VERSION 3.13)
 project(app-endpoint-encoding C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED TRUE)
-#set(CMAKE_BUILD_TYPE "Debug")
-set(CMAKE_BUILD_TYPE "Release")
 
-execute_process(COMMAND node -p "require('node-api-headers').include_dir"
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        OUTPUT_VARIABLE NODE_API_DIR
-        )
-string(REGEX REPLACE "[\r\n\"]" "" NODE_API_DIR ${NODE_API_DIR})
+set(CMAKE_BUILD_TYPE "Debug")
+#set(CMAKE_BUILD_TYPE "Release")
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules")
-
-find_package(GLIB2 REQUIRED)
-find_package(GStreamer REQUIRED COMPONENTS gstreamer-app gstreamer-video)
 find_package(PkgConfig REQUIRED)
+pkg_check_modules(GLIB2 REQUIRED glib-2.0 IMPORTED_TARGET)
+pkg_check_modules(GSTREAMER REQUIRED
+        gstreamer-1.0
+        gstreamer-app-1.0
+        gstreamer-video-1.0
+        gstreamer-gl-1.0
+        graphene-1.0
+        gstreamer-allocators-1.0
+        IMPORTED_TARGET
+)
+pkg_check_modules(EGL REQUIRED egl IMPORTED_TARGET)
+pkg_check_modules(GL REQUIRED gl IMPORTED_TARGET)
 
-add_library(${PROJECT_NAME} SHARED
-        native/src/encoder.h
-        native/src/node_encoder.c
-        native/src/gst_encoder.c
-        native/src/gst_main_loop.c)
+get_filename_component(WESTFIELD_LIBWAYLAND_SERVER ${CMAKE_CURRENT_SOURCE_DIR}/node_modules/westfield-proxy/dist/libwayland-server.so.0 ABSOLUTE)
+get_filename_component(WESTFIELD ${CMAKE_CURRENT_SOURCE_DIR}/node_modules/westfield-proxy/dist/libwestfield.so ABSOLUTE)
 
-target_include_directories(${PROJECT_NAME}
-        PRIVATE ${NODE_API_DIR}
-        PRIVATE ${GSTREAMER_INCLUDE_DIRS}
-        PRIVATE ${GLIB2_INCLUDE_DIR}
-        PRIVATE node_modules/westfield-proxy/native/src/wayland-server
-        )
-
-set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".node")
-get_filename_component(WESTFIELD_LIBWAYLAND_SERVER node_modules/westfield-proxy/dist/libwayland-server.so ABSOLUTE)
-target_link_libraries(${PROJECT_NAME}
-        ${CMAKE_JS_LIB}
-        ${GLIB2_LIBRARIES}
-        ${GSTREAMER_LIBRARIES}
-        ${GSTREAMER_APP_LIBRARIES}
-        ${GSTREAMER_VIDEO_LIBRARIES}
+add_library(proxy-encoding SHARED
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/src/encoder.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/src/gst_encoder.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/src/gst_main_loop.c
+)
+target_include_directories(proxy-encoding PRIVATE
+        ${CMAKE_SOURCE_DIR}/node_modules/westfield-proxy/dist/include
+        ${GSTREAMER_INCLUDE_DIRS}
+        ${GLIB2_INCLUDE_DIRS}
+        ${EGL_INCLUDE_DIRS}
+        ${GL_INCLUDE_DIRS}
+)
+target_link_libraries(proxy-encoding PRIVATE
+        PkgConfig::GLIB2
+        PkgConfig::GSTREAMER
+        PkgConfig::EGL
+        PkgConfig::GL
+        ${WESTFIELD}
         ${WESTFIELD_LIBWAYLAND_SERVER}
-        )
-set_target_properties(${PROJECT_NAME}
+        -Wl,--no-undefined
+)
+set_target_properties(proxy-encoding
+        PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/encoding
+)
+
+
+add_library(proxy-encoding-addon SHARED
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/src/encoder.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/src/node_encoder.c
+)
+target_include_directories(proxy-encoding-addon PRIVATE
+        ${CMAKE_SOURCE_DIR}/node_modules/node-api-headers/include
+        ${CMAKE_SOURCE_DIR}/node_modules/westfield-proxy/dist/include
+)
+set_target_properties(proxy-encoding-addon PROPERTIES PREFIX "" SUFFIX ".node")
+target_link_libraries(proxy-encoding-addon PRIVATE
+        ${CMAKE_JS_LIB}
+        ${WESTFIELD}
+        proxy-encoding
+)
+set_target_properties(proxy-encoding-addon
     PROPERTIES
-        LIBRARY_OUTPUT_DIRECTORY ../dist/encoding
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/encoding
 )

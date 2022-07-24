@@ -342,7 +342,7 @@ class Surface implements WlSurfaceRequests {
     }
 
     this.calculateDerivedPendingState()
-    // release old buffer if we're replacing it and it hasn't been released yet
+    // release old buffer if we're replacing it, and it hasn't been released yet
     if (this.state.buffer && this.state.buffer?.id !== this.pendingState.buffer?.id) {
       const bufferImplementation = this.state.buffer.implementation as BufferImplementation<any>
       if (!bufferImplementation.released) {

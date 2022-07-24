@@ -25,7 +25,7 @@ export default class Texture {
     public readonly gl: WebGLRenderingContext,
     public readonly format: GLenum,
     public readonly texture: WebGLTexture,
-    private size: Size = ZERO_SIZE,
+    public size: Size = ZERO_SIZE,
   ) {}
 
   static create(gl: WebGLRenderingContext, format: number): Texture {

@@ -21,8 +21,14 @@ class WasmFrameDecoder implements FrameDecoder {
   private async ['image/png'](_surface: Surface, encodedFrame: EncodedFrame): Promise<DecodedPixelContent> {
     const frame = encodedFrame.pixelContent
     const blob = new Blob([frame.opaque], { type: 'image/png' })
-    const bitmap = await createImageBitmap(blob, 0, 0, encodedFrame.size.width, encodedFrame.size.height)
-    return { type: 'SinglePlane', bitmap, blob, close: () => bitmap.close() }
+    const bitmap = await createImageBitmap(
+      blob,
+      encodedFrame.encodedSize.width - encodedFrame.size.width,
+      encodedFrame.encodedSize.height - encodedFrame.size.height,
+      encodedFrame.size.width,
+      encodedFrame.size.height,
+    )
+    return { type: 'SinglePlane', bitmap, close: () => bitmap.close() }
   }
 
   createH264DecoderContext(_surface: Surface, contextId: string): H264DecoderContext {
@@ -166,7 +172,7 @@ class WasmH264DecoderContext implements H264DecoderContext {
       throw new Error('BUG. Invalid state. No frame serial found onOpaquePictureDecoded.')
     }
     const frameState = this.frameStates[frameSerial]
-    frameState.result.opaque = { buffer, width, height }
+    frameState.result.opaque = { buffer, codedSize: { width, height } }
 
     if (frameState.state === 'pending_opaque') {
       this._onComplete(frameState)
@@ -182,7 +188,7 @@ class WasmH264DecoderContext implements H264DecoderContext {
       throw new Error('BUG. Invalid state. No frame serial found onAlphaPictureDecoded.')
     }
     const frameState = this.frameStates[frameSerial]
-    frameState.result.alpha = { buffer, width: width, height: height }
+    frameState.result.alpha = { buffer, codedSize: { width, height } }
 
     if (frameState.state === 'pending_alpha') {
       this._onComplete(frameState)

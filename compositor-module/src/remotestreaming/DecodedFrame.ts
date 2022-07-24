@@ -21,33 +21,32 @@ import { Size } from '../math/Size'
 export type DualPlaneYUVAArrayBuffer = {
   type: 'DualPlaneYUVAArrayBuffer'
   close?: () => void
-  opaque: { buffer: Uint8Array; width: number; height: number }
-  alpha?: { buffer: Uint8Array; width: number; height: number }
+  opaque: { buffer: Uint8Array; codedSize: Size }
+  alpha?: { buffer: Uint8Array; codedSize: Size }
 }
 export type DualPlaneRGBAArrayBuffer = {
   type: 'DualPlaneRGBAArrayBuffer'
   close: () => void
-  opaque: { buffer: Uint8Array; width: number; height: number }
-  alpha?: { buffer: Uint8Array; width: number; height: number }
+  opaque: { buffer: Uint8Array; codedSize: Size }
+  alpha?: { buffer: Uint8Array; codedSize: Size }
 }
 export type DualPlaneRGBAImageBitmap = {
   type: 'DualPlaneRGBAImageBitmap'
   close: () => void
-  opaque: { buffer: ImageBitmap; width: number; height: number }
-  alpha?: { buffer: ImageBitmap; width: number; height: number }
+  opaque: { buffer: ImageBitmap; codedSize: Size }
+  alpha?: { buffer: ImageBitmap; codedSize: Size }
 }
 export type DualPlaneRGBAVideoFrame = {
   type: 'DualPlaneRGBAVideoFrame'
   close: () => void
-  opaque: { buffer: VideoFrame; width: number; height: number }
-  alpha?: { buffer: VideoFrame; width: number; height: number }
+  opaque: { buffer: VideoFrame; codedSize: Size }
+  alpha?: { buffer: VideoFrame; codedSize: Size }
 }
 
 export type SinglePlane = {
   type: 'SinglePlane'
   close: () => void
   bitmap: ImageBitmap
-  blob: Blob
 }
 
 export type DecodedPixelContent =

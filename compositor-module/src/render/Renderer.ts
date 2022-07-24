@@ -84,12 +84,12 @@ export default class Renderer {
     if (view.surface.state.bufferContents) {
       const cursorBufferContents = view.surface.state.bufferContents
 
-      const cursorImage = cursorBufferContents.pixelContent as { bitmap: ImageBitmap; blob: Blob } | undefined
-      if (cursorImage === undefined) {
+      const cursorImage = cursorBufferContents.pixelContent as { bitmap: ImageBitmap | undefined } | undefined
+      if (cursorImage === undefined || cursorImage.bitmap === undefined) {
         return
       }
 
-      setBrowserCursor(cursorImage.bitmap, cursorImage.blob, hotspot)
+      setBrowserCursor(cursorImage.bitmap, hotspot)
     } else {
       this.hideCursor()
     }
@@ -220,9 +220,9 @@ export default class Renderer {
       if (view.mapped && buffer && view.surface.damaged) {
         const bufferImplementation = buffer.implementation as BufferImplementation<any>
         if (!bufferImplementation.released) {
-          Object.values(view.renderStates).forEach((renderState) => {
-            renderState.scene[bufferContents.mimeType](bufferContents, renderState)
-          })
+          Object.values(view.renderStates).forEach((renderState) =>
+            renderState.scene[bufferContents.mimeType](bufferContents, renderState),
+          )
           view.surface.damaged = false
           bufferImplementation.release()
         }

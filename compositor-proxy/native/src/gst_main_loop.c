@@ -5,10 +5,13 @@
 #include "encoder.h"
 
 extern int
-do_gst_encoder_create(char preferred_encoder[16], frame_callback_func frame_ready_callback, void *user_data,
-					  struct encoder **encoder_pp);
+do_gst_init();
 
-extern int
+extern void
+do_gst_encoder_create(char preferred_encoder[16], frame_callback_func frame_ready_callback, void *user_data,
+					  struct encoder **encoder_pp, struct westfield_egl *westfield_egl);
+
+extern void
 do_gst_encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource, uint32_t serial);
 
 extern void
@@ -42,6 +45,7 @@ struct gf_message {
 			frame_callback_func frame_ready_callback;
 			void *user_data;
 			struct encoder **encoder_pp;
+            struct westfield_egl *westfield_egl;
 		} encoder_create;
 		struct {
 			struct encoder **encoder_pp;
@@ -149,7 +153,8 @@ main_loop_handle_message(struct gf_message *message) {
 			do_gst_encoder_create(message->body.encoder_create.preferred_encoder,
 								  message->body.encoder_create.frame_ready_callback,
 								  message->body.encoder_create.user_data,
-								  message->body.encoder_create.encoder_pp
+								  message->body.encoder_create.encoder_pp,
+                                  message->body.encoder_create.westfield_egl
 			);
 			break;
 		case encoder_encode_type:
@@ -184,18 +189,13 @@ gf_gst_main_loop_ini(gpointer data) {
 	main_loop->main = main;
 	main_loop->src = (struct SyncSource *) worker;
 
+    do_gst_init();
 	g_main_loop_run(main);
 
 	g_main_loop_unref(main);
 	g_source_destroy(worker);
 
 	return NULL;
-}
-
-__attribute__((constructor))
-static
-void init_gst_main_loop() {
-	g_thread_new("gf_gst_main_loop", gf_gst_main_loop_ini, NULL);
 }
 
 static int
@@ -209,22 +209,26 @@ send_message(struct gf_message *message) {
 }
 
 int
-encoder_create(char preferred_encoder[16], frame_callback_func frame_ready_callback, void *user_data,
-			   struct encoder **encoder_pp) {
-	struct gf_message *message = malloc(sizeof(struct gf_message));
+encoder_create(char preferred_encoder[16],
+               frame_callback_func frame_ready_callback,
+               void *user_data,
+			   struct encoder **encoder_pp,
+               struct westfield_egl *westfield_egl) {
+	struct gf_message *message = g_new0(struct gf_message, 1);
 
 	message->type = encoder_create_type;
 	sprintf(message->body.encoder_create.preferred_encoder, "%s", preferred_encoder);
 	message->body.encoder_create.frame_ready_callback = frame_ready_callback;
 	message->body.encoder_create.user_data = user_data;
 	message->body.encoder_create.encoder_pp = encoder_pp;
+    message->body.encoder_create.westfield_egl = westfield_egl;
 
 	return send_message(message);
 }
 
 int
 encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource, uint32_t serial) {
-	struct gf_message *message = malloc(sizeof(struct gf_message));
+    struct gf_message *message = g_new0(struct gf_message, 1);
 
 	message->type = encoder_encode_type;
 	message->body.encoder_encode.encoder_pp = encoder_pp;
@@ -236,7 +240,7 @@ encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource,
 
 int
 encoder_free(struct encoder **encoder_pp) {
-	struct gf_message *message = malloc(sizeof(struct gf_message));
+    struct gf_message *message = g_new0(struct gf_message, 1);
 
 	message->type = encoder_free_type;
 	message->body.encoder_free.encoder_pp = encoder_pp;
@@ -246,7 +250,7 @@ encoder_free(struct encoder **encoder_pp) {
 
 int
 encoded_frame_finalize(struct encoded_frame *encoded_frame) {
-	struct gf_message *message = malloc(sizeof(struct gf_message));
+    struct gf_message *message = g_new0(struct gf_message, 1);
 
 	message->type = encoded_frame_finalize_type;
 	message->body.encoded_frame_finalize.encoded_frame = encoded_frame;
@@ -256,10 +260,16 @@ encoded_frame_finalize(struct encoded_frame *encoded_frame) {
 
 int
 encoder_request_key_unit(struct encoder **encoder_pp) {
-	struct gf_message *message = malloc(sizeof(struct gf_message));
+    struct gf_message *message = g_new0(struct gf_message, 1);
 
 	message->type = encoder_request_key_unit_type;
 	message->body.encoder_request_key_unit.encoder_pp = encoder_pp;
 
 	return send_message(message);
+}
+
+__attribute__((constructor))
+static
+void init_gst_main_loop() {
+    g_thread_new("gf_gst_main_loop", gf_gst_main_loop_ini, NULL);
 }
