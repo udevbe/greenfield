@@ -18,19 +18,13 @@
 import { WlCallbackResource } from 'westfield-runtime-server'
 
 export default class Callback {
-  static create(wlCallbackResource: WlCallbackResource): Callback {
-    const callback = new Callback(wlCallbackResource)
-    wlCallbackResource.addDestroyListener(() => {
-      callback.resource = undefined
-    })
-    return callback
+  static create(): Callback {
+    return new Callback()
   }
 
-  private constructor(public resource: WlCallbackResource | undefined) {}
+  private constructor() {}
 
   done(data: number): void {
-    this.resource?.done(data)
-    this.resource?.destroy()
-    this.resource = undefined
+    // TODO send decoding & presentation feedback to proxy
   }
 }

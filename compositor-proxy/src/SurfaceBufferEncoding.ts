@@ -20,13 +20,35 @@ import { createEncoder } from './encoding/Encoder'
 
 import { createLogger } from './Logger'
 import wlSurfaceInterceptor from './protocol/wl_surface_interceptor'
+import { performance } from 'perf_hooks'
+import { FrameFeedback } from './FrameFeedback'
+import { MessageDestination } from './NativeClientSession'
 
 const logger = createLogger('surface-buffer-encoding')
 let bufferSerial = -1
 
 export function initSurfaceBufferEncoding(): void {
   /**
-   * attach, [R]equest w opcode [1]
+   * frame: [R]equest w opcode [4] = R?
+   */
+  wlSurfaceInterceptor.prototype.R3 = function (message: {
+    buffer: ArrayBuffer
+    fds: Array<number>
+    bufferOffset: number
+    consumed: number
+    size: number
+  }) {
+    const [frameCallbackId] = unmarshallArgs(message, 'n')
+    if (this.frameFeedback === undefined) {
+      this.frameFeedback = new FrameFeedback(this.wlClient, this.userData.messageInterceptors)
+    }
+    this.frameFeedback.addFrameCallbackId(frameCallbackId as number)
+    // @ts-ignore
+    return this.requestHandlers.frame(frameCallbackId)
+  }
+
+  /**
+   * attach: [R]equest w opcode [1] = R1
    */
   wlSurfaceInterceptor.prototype.R1 = function (message: {
     buffer: ArrayBuffer
@@ -37,13 +59,12 @@ export function initSurfaceBufferEncoding(): void {
   }) {
     const [bufferResourceId] = unmarshallArgs(message, 'oii')
     this.bufferResourceId = (bufferResourceId as number) || undefined
-    logger.debug(`Buffer attached with id: serial=${bufferSerial}, id=${this.bufferResourceId}`)
 
-    return 0
+    return MessageDestination.BROWSER
   }
 
   /**
-   * commit, [R]equest with opcode [6]
+   * commit: [R]equest with opcode [6] = R6
    */
   wlSurfaceInterceptor.prototype.R6 = function (message: {
     buffer: ArrayBuffer
@@ -55,25 +76,24 @@ export function initSurfaceBufferEncoding(): void {
     if (!this.encoder) {
       this.encoder = createEncoder(this.wlClient, this.userData.drmContext)
     }
+    if (this.frameFeedback === undefined) {
+      this.frameFeedback = new FrameFeedback(this.wlClient, this.userData.messageInterceptors)
+    }
+    this.frameFeedback?.commitNotify()
 
     let syncSerial: number
 
     if (this.bufferResourceId) {
       syncSerial = ++bufferSerial
 
-      const bufferId = this.bufferResourceId
-      this.sendBufferResourceId = bufferId
+      this.sendBufferResourceId = this.bufferResourceId
       this.bufferResourceId = 0
 
-      logger.debug(`Request buffer encoding: serial=${syncSerial}, id=${bufferId}`)
-      logger.debug('|- Awaiting buffer encoding.')
-      // TODO only profile when in debug
       this.encodeAndSendBuffer(syncSerial)
     } else {
       syncSerial = bufferSerial
     }
 
-    logger.debug(`Buffer committed: serial=${syncSerial}, id=${this.bufferResourceId}`)
     // inject the frame serial in the commit message
     const origMessageBuffer = message.buffer
     message.size += Uint32Array.BYTES_PER_ELEMENT
@@ -83,10 +103,11 @@ export function initSurfaceBufferEncoding(): void {
     uint32Array[1] = (message.size << 16) | 6 // size + opcode
     uint32Array[2] = syncSerial
 
-    return 0
+    return MessageDestination.BROWSER
   }
 
   wlSurfaceInterceptor.prototype.encodeAndSendBuffer = function (syncSerial: number) {
+    const encodeStart = performance.now()
     this.encoder
       .encodeBuffer(this.sendBufferResourceId, syncSerial)
       .then((sendBuffer: Buffer) => {
@@ -94,7 +115,7 @@ export function initSurfaceBufferEncoding(): void {
         if (this.userData.communicationChannel.readyState === 1) {
           // 1 === 'open'
           this.userData.communicationChannel.send(sendBuffer)
-          // TODO free sendBuffer
+          this.frameFeedback?.frameDone(encodeStart)
         } // else connection was probably closed, don't attempt to send a buffer chunk
       })
       .catch((e: Error) => {

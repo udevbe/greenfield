@@ -67,6 +67,11 @@ export function createApp(
       .get('/webfd/:fd/stream', withAuth(compositorProxySession, withParams(1, GETWebFDStream)))
       .put('/webfd/:fd/stream', withAuth(compositorProxySession, withParams(1, PUTWebFDStream)))
 
+      // TODO request key-frame
+      // TODO request key-frame now
+
+      // TODO paint feedback
+
       .ws('/', {
         // TODO implement backpressure when sending over websocket
         sendPingsAutomatically: true,

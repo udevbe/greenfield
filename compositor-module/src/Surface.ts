@@ -269,7 +269,7 @@ class Surface implements WlSurfaceRequests {
   }
 
   frame(resource: WlSurfaceResource, callback: number): void {
-    this.pendingState.frameCallbacks.push(Callback.create(new WlCallbackResource(resource.client, callback, 1)))
+    this.pendingState.frameCallbacks.push(Callback.create())
   }
 
   setOpaqueRegion(resource: WlSurfaceResource, regionResource: WlRegionResource | undefined): void {

@@ -46,7 +46,7 @@ import {
 
 const logger = createLogger('native-client-session')
 
-const enum MessageDestination {
+export const enum MessageDestination {
   BROWSER,
   NATIVE,
   BOTH,
@@ -74,11 +74,13 @@ export function createNativeClientSession(
   nativeCompositorSession: NativeCompositorSession,
   webSocket: WebSocketLike,
 ): NativeClientSession {
+  const messageInterceptors: Record<number, any> = {}
   const messageInterceptor = MessageInterceptor.create(
     wlClient,
     nativeCompositorSession.wlDisplay,
     wl_display_interceptor,
-    { communicationChannel: webSocket, drmContext: nativeCompositorSession.drmContext },
+    { communicationChannel: webSocket, drmContext: nativeCompositorSession.drmContext, messageInterceptors },
+    messageInterceptors,
   )
 
   const nativeClientSession = new NativeClientSession(wlClient, nativeCompositorSession, webSocket, messageInterceptor)
@@ -414,9 +416,8 @@ export class NativeClientSession {
   }
 
   private requestKeyFrameUnit(payload: Uint8Array) {
-    const wlSurfaceInterceptor = this.messageInterceptor.interceptors[
-      new Uint32Array(payload)[0]
-    ] as wl_surface_interceptor
+    const wlSurfaceId = new Uint32Array(payload)[0]
+    const wlSurfaceInterceptor = this.messageInterceptor.interceptors[wlSurfaceId] as wl_surface_interceptor
     if (wlSurfaceInterceptor === undefined) {
       logger.error('BUG. Received a key frame unit request but no surface found that matches the request.')
     }
