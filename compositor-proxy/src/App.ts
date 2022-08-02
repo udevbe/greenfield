@@ -11,6 +11,8 @@ import {
   POSTMkstempMmap,
   PUTWebFDStream,
   OPTIONSPreflightRequest,
+  POSTEncoderKeyframe,
+  PUTEncoderFeedback,
 } from './AppController'
 
 function withParams(
@@ -67,10 +69,17 @@ export function createApp(
       .get('/webfd/:fd/stream', withAuth(compositorProxySession, withParams(1, GETWebFDStream)))
       .put('/webfd/:fd/stream', withAuth(compositorProxySession, withParams(1, PUTWebFDStream)))
 
-      // TODO request key-frame
-      // TODO request key-frame now
+      .options('/:clientId/:surfaceId/encoder/keyframe', OPTIONSPreflightRequest('POST'))
+      .post(
+        '/:clientId/:surfaceId/encoder/keyframe',
+        withAuth(compositorProxySession, withParams(2, POSTEncoderKeyframe)),
+      )
 
-      // TODO paint feedback
+      .options('/:clientId/:surfaceId/encoder/feedback', OPTIONSPreflightRequest('PUT'))
+      .put(
+        '/:clientId/:surfaceId/encoder/feedback',
+        withAuth(compositorProxySession, withParams(2, PUTEncoderFeedback)),
+      )
 
       .ws('/', {
         // TODO implement backpressure when sending over websocket

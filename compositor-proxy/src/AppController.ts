@@ -8,6 +8,7 @@ import { upsertWebSocket } from './ClientConnectionPool'
 import { createLogger } from './Logger'
 import { URLSearchParams } from 'url'
 import { config } from './config'
+import { operations } from './@types/api'
 
 const logger = createLogger('app')
 
@@ -392,4 +393,47 @@ export function webSocketOpen(
     }
     compositorProxySession.handleConnection(retransmittingWebSocket)
   }
+}
+
+/* Helper function for reading a posted JSON body */
+function readJson<T>(res: HttpResponse) {
+  return new Promise<T>((resolve, reject) => {
+    const chunks: Uint8Array[] = []
+    /* Register data cb */
+    res.onData((ab, isLast) => {
+      chunks.push(new Uint8Array(ab))
+      if (isLast) {
+        resolve(JSON.parse(Buffer.concat(chunks).toString()))
+      }
+    })
+    /* Register error cb */
+    res.onAborted(reject)
+  })
+}
+
+export async function POSTEncoderKeyframe(
+  compositorProxySession: CompositorProxySession,
+  httpResponse: HttpResponse,
+  httpRequest: HttpRequest,
+  [clientIdParam, surfaceIdParam]: string[],
+) {
+  const clientId = asNumber(clientIdParam)
+  const surfaceId = asNumber(surfaceIdParam)
+  const keyframeRequest = await readJson<operations['keyframe']['requestBody']['content']['application/json']>(
+    httpResponse,
+  )
+  // TODO request a keyframe from a client's surface's encoder
+}
+
+export async function PUTEncoderFeedback(
+  compositorProxySession: CompositorProxySession,
+  httpResponse: HttpResponse,
+  httpRequest: HttpRequest,
+  [clientIdParam, surfaceIdParam]: string[],
+) {
+  const clientId = asNumber(clientIdParam)
+  const surfaceId = asNumber(surfaceIdParam)
+  const feedback = await readJson<operations['feedback']['requestBody']['content']['application/json']>(httpResponse)
+
+  // TODO provide feedback to a client's surface's encoder
 }

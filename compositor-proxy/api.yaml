@@ -58,6 +58,116 @@ components:
           readOnly: true
 
 paths:
+  /{clientId}/{surfaceId}/encoder/keyframe:
+    post:
+      tags:
+        - encoder
+      summary: Encode a new keyframe.
+      operationId: keyframe
+      parameters:
+        - in: path
+          name: clientId
+          description: the client id
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+        - in: path
+          name: surfaceId
+          description: the surface id
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              description: Describes when the key frame should be generated.
+              type: object
+              required:
+                - now
+              properties:
+                now:
+                  type: boolean
+                  description: Indicates if the key frame should be created ASAP.
+      responses:
+        202:
+          description: Key frame successfully requested.
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        400:
+          description: Bad request. Bad or no content.
+          content:
+            text/plain:
+              schema:
+                type: string
+        404:
+          description: client or surface not found.
+          content:
+            text/plain:
+              schema:
+                type: string
+  /{clientId}/{surfaceId}/encoder/feedback:
+    put:
+      tags:
+        - encoder
+      summary: Encode a new keyframe.
+      operationId: feedback
+      parameters:
+        - in: path
+          name: clientId
+          description: the client id
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+        - in: path
+          name: surfaceId
+          description: the surface id
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              description: Provides the encoder with various frame presentation related feedback.
+              type: object
+              required:
+                - duration
+                - refreshInterval
+              properties:
+                duration:
+                  type: number
+                  description: Informs the encoder how long it took for the client to present the frame to the user when it arrived.
+                refreshInterval:
+                  type: number
+                  description: Informs the encoder how much time there is between VSyncs.
+      responses:
+        204:
+          description: Frame feedback received.
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        400:
+          description: Bad request. Bad or no content.
+          content:
+            text/plain:
+              schema:
+                type: string
+        404:
+          description: client or surface not found.
+          content:
+            text/plain:
+              schema:
+                type: string
   /mkfifo:
     post:
       tags:
