@@ -9,6 +9,7 @@ import { createLogger } from './Logger'
 import { URLSearchParams } from 'url'
 import { config } from './config'
 import { operations } from './@types/api'
+import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 
 const logger = createLogger('app')
 
@@ -183,6 +184,7 @@ export function DELWebFD(
     httpResponse
       .writeStatus('400 Bad Request')
       .writeHeader('Content-Type', 'text/plain')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
       .end(`File descriptor argument must be a positive integer. Got: ${fdParam}`)
     return
   }
@@ -294,11 +296,13 @@ export function GETWebFDStream(
 }
 
 function pipeHttpRequestToWritable(httpResponse: HttpResponse, writable: Writable) {
+  let inError = false
   writable
     .on('drain', () => httpResponse.resume())
     // TODO log error
     .on('error', (error) => {
       httpResponse.cork(() => {
+        inError = true
         // @ts-ignore
         if (error.code === 'EBADF') {
           logger.error('Attempted to stream data to a non-existing FD.', error)
@@ -315,7 +319,10 @@ function pipeHttpRequestToWritable(httpResponse: HttpResponse, writable: Writabl
         }
       })
     })
-    .on('finish', () => {
+    .on('close', () => {
+      if (inError) {
+        return
+      }
       httpResponse.cork(() => {
         httpResponse.writeStatus('200 OK').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
       })
@@ -391,7 +398,7 @@ export function webSocketOpen(
       // reconnecting, no need to do anything
       return
     }
-    compositorProxySession.handleConnection(retransmittingWebSocket)
+    compositorProxySession.handleConnection(retransmittingWebSocket, connectionId)
   }
 }
 
@@ -417,12 +424,44 @@ export async function POSTEncoderKeyframe(
   httpRequest: HttpRequest,
   [clientIdParam, surfaceIdParam]: string[],
 ) {
-  const clientId = asNumber(clientIdParam)
+  const clientId = clientIdParam
   const surfaceId = asNumber(surfaceIdParam)
+  if (clientId === undefined || surfaceId === undefined) {
+    httpResponse
+      .writeStatus('400 Bad Request')
+      .writeHeader('Content-Type', 'text/plain')
+      .end(`Surface id argument must be a positive integer. Got client id: ${clientId}, surface id: ${surfaceId}`)
+    return
+  }
+
   const keyframeRequest = await readJson<operations['keyframe']['requestBody']['content']['application/json']>(
     httpResponse,
   )
-  // TODO request a keyframe from a client's surface's encoder
+  // TODO validate keyframeRequest
+
+  const clientEntry = compositorProxySession.nativeCompositorSession.clients.find(
+    (clientEntry) => clientEntry.clientId === clientId,
+  )
+
+  if (clientEntry === undefined) {
+    httpResponse.writeStatus('404 Not Found').writeHeader('Content-Type', 'text/plain').end('Client not found.')
+    return
+  }
+
+  const wlSurfaceInterceptor = clientEntry.nativeClientSession?.messageInterceptor.interceptors[
+    surfaceId
+  ] as wl_surface_interceptor
+  if (wlSurfaceInterceptor === undefined) {
+    logger.error('BUG. Received a key frame unit request but no surface found that matches the request.')
+    httpResponse.writeStatus('404 Not Found').writeHeader('Content-Type', 'text/plain').end('Surface not found.')
+    return
+  }
+  wlSurfaceInterceptor.encoder.requestKeyUnit()
+  if (keyframeRequest.syncSerial) {
+    wlSurfaceInterceptor.encodeAndSendBuffer(keyframeRequest.syncSerial)
+  }
+
+  httpResponse.writeStatus('202 Accepted').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
 }
 
 export async function PUTEncoderFeedback(
@@ -431,9 +470,41 @@ export async function PUTEncoderFeedback(
   httpRequest: HttpRequest,
   [clientIdParam, surfaceIdParam]: string[],
 ) {
-  const clientId = asNumber(clientIdParam)
+  const clientId = clientIdParam
   const surfaceId = asNumber(surfaceIdParam)
-  const feedback = await readJson<operations['feedback']['requestBody']['content']['application/json']>(httpResponse)
 
-  // TODO provide feedback to a client's surface's encoder
+  if (clientId === undefined || surfaceId === undefined) {
+    httpResponse
+      .writeStatus('400 Bad Request')
+      .writeHeader('Content-Type', 'text/plain')
+      .end(`Surface id argument must be a positive integer. Got client id: ${clientId}, surface id: ${surfaceId}`)
+    return
+  }
+
+  const feedback = await readJson<operations['feedback']['requestBody']['content']['application/json']>(httpResponse)
+  // TODO validate feedback
+
+  const clientEntry = compositorProxySession.nativeCompositorSession.clients.find(
+    (clientEntry) => clientEntry.clientId === clientId,
+  )
+
+  if (clientEntry === undefined) {
+    httpResponse.writeStatus('404 Not Found').writeHeader('Content-Type', 'text/plain').end('Client not found.')
+    return
+  }
+
+  const wlSurfaceInterceptor = clientEntry.nativeClientSession?.messageInterceptor.interceptors[
+    surfaceId
+  ] as wl_surface_interceptor
+  if (wlSurfaceInterceptor === undefined) {
+    logger.error('BUG. Received a feedback but no surface found that matches the request.')
+    httpResponse.writeStatus('404 Not Found').writeHeader('Content-Type', 'text/plain').end('Surface not found.')
+    return
+  }
+
+  if (wlSurfaceInterceptor.frameFeedback) {
+    wlSurfaceInterceptor.frameFeedback.delay = feedback.duration
+  }
+
+  httpResponse.writeStatus('204 No Content').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
 }

@@ -24,7 +24,6 @@ export class FrameFeedback {
       const encodeDuration = performance.now() - encodeStart
       const clientRenderDuration = this.commitTimestamp - this.frameDoneTimestamp
       const totalRenderTime = clientRenderDuration + encodeDuration
-      // TODO Base the max interval time on client rendering speed and browser decoding feedback
       if (totalRenderTime < this.delay) {
         const frameDelay = this.delay - totalRenderTime
         if (frameDelay >= 1) {

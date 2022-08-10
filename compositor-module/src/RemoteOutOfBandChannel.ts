@@ -24,10 +24,9 @@ export const enum RemoteOutOfBandListenOpcode {
   RecycledResourceIds = 6,
   XWMConnectionRequest = 7,
 }
+
 export const enum RemoteOutOfBandSendOpcode {
   ResourceDestroyed = 1,
-  ForceKeyFrame = 5,
-  ForceKeyFrameNow = 6,
 }
 
 export default class RemoteOutOfBandChannel {

@@ -70,9 +70,7 @@ paths:
           description: the client id
           required: true
           schema:
-            type: integer
-            format: int32
-            minimum: 0
+            type: string
         - in: path
           name: surfaceId
           description: the surface id
@@ -88,12 +86,12 @@ paths:
             schema:
               description: Describes when the key frame should be generated.
               type: object
-              required:
-                - now
               properties:
-                now:
-                  type: boolean
-                  description: Indicates if the key frame should be created ASAP.
+                syncSerial:
+                  type: number
+                  format: int32
+                  minimum: 0
+                  description: An optional sync serial. When provided the encoded frame will be send immediately.
       responses:
         202:
           description: Key frame successfully requested.
@@ -116,16 +114,14 @@ paths:
       tags:
         - encoder
       summary: Encode a new keyframe.
-      operationId: keyframe
+      operationId: feedback
       parameters:
         - in: path
           name: clientId
           description: the client id
           required: true
           schema:
-            type: integer
-            format: int32
-            minimum: 0
+            type: string
         - in: path
           name: surfaceId
           description: the surface id

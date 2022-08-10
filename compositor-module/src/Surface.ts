@@ -49,6 +49,7 @@ import { sizeEquals, Size } from './math/Size'
 import Subsurface from './Subsurface'
 import { createSurfaceChild, SurfaceChild } from './SurfaceChild'
 import SurfaceRole from './SurfaceRole'
+import { EncoderApi } from './api'
 
 export interface SurfaceState {
   damageRects: Rect[]
@@ -163,6 +164,13 @@ class Surface implements WlSurfaceRequests {
   private _surfaceChildren: SurfaceChild[] = []
   mapped = false
 
+  readonly encoderFeedback = {
+    durations: [] as number[],
+    durationAvg: 0,
+    commitTime: 0,
+    presentationTime: 0,
+  }
+
   private constructor(
     public readonly resource: WlSurfaceResource,
     public readonly renderer: Renderer,
@@ -199,6 +207,7 @@ class Surface implements WlSurfaceRequests {
 
   static create(wlSurfaceResource: WlSurfaceResource, session: Session): Surface {
     const surface = new Surface(wlSurfaceResource, session.renderer, session)
+
     initInfinite(surface.state.opaquePixmanRegion)
     initInfinite(surface.state.inputPixmanRegion)
     initInfinite(surface.pendingState.opaquePixmanRegion)
@@ -269,7 +278,7 @@ class Surface implements WlSurfaceRequests {
   }
 
   frame(resource: WlSurfaceResource, callback: number): void {
-    this.pendingState.frameCallbacks.push(Callback.create())
+    this.pendingState.frameCallbacks.push(Callback.create(this))
   }
 
   setOpaqueRegion(resource: WlSurfaceResource, regionResource: WlRegionResource | undefined): void {
@@ -299,6 +308,7 @@ class Surface implements WlSurfaceRequests {
   }
 
   async commit(resource: WlSurfaceResource, serial?: number): Promise<void> {
+    this.encoderFeedback.commitTime = performance.now()
     const bufferImplementation = this.pendingState.buffer?.implementation as
       | BufferImplementation<BufferContents<unknown> | Promise<BufferContents<unknown>>>
       | undefined

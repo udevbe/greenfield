@@ -165,7 +165,7 @@ export class NativeClientSession {
     public wlClient: unknown,
     private readonly nativeCompositorSession: NativeCompositorSession,
     private readonly webSocket: WebSocketLike,
-    private readonly messageInterceptor: MessageInterceptor,
+    public readonly messageInterceptor: MessageInterceptor,
     private pendingWireMessages: Uint32Array[] = [],
     private pendingMessageBufferSize = 0,
     private readonly outboundMessages: ArrayBuffer[] = [],

@@ -17,8 +17,7 @@
 
 import { MessageEventLike, ReadyState, RetransmittingWebSocket, WebSocketLike } from 'retransmitting-websocket'
 import { SendMessage, WebFD } from 'westfield-runtime-common'
-import { Client, ClientUserData, WlBufferResource } from 'westfield-runtime-server'
-import { Configuration, WebfsApi } from './api'
+import { Client, WlBufferResource } from 'westfield-runtime-server'
 import RemoteOutOfBandChannel, {
   RemoteOutOfBandListenOpcode,
   RemoteOutOfBandSendOpcode,
@@ -28,7 +27,40 @@ import Session from './Session'
 import XWaylandShell from './xwayland/XWaylandShell'
 import { XWindowManager } from './xwayland/XWindowManager'
 import { XWindowManagerConnection } from './xwayland/XWindowManagerConnection'
-import { createRemoteWebFS, WebFS } from "./WebFS";
+import { createRemoteWebFS } from './WebFS'
+import { Configuration, EncoderApi } from './api'
+
+const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567' as const
+
+function base32Encode(data: Uint8Array) {
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength)
+
+  let bits = 0
+  let value = 0
+  let output = ''
+
+  for (let i = 0; i < view.byteLength; i++) {
+    value = (value << 8) | view.getUint8(i)
+    bits += 8
+
+    while (bits >= 5) {
+      output += alphabet[(value >>> (bits - 5)) & 31]
+      bits -= 5
+    }
+  }
+
+  if (bits > 0) {
+    output += alphabet[(value << (5 - bits)) & 31]
+  }
+
+  return output
+}
+
+export function randomString(): string {
+  const randomBytes = new Uint8Array(16)
+  window.crypto.getRandomValues(randomBytes)
+  return base32Encode(randomBytes).toLowerCase()
+}
 
 type XWaylandConnectionState = {
   state: 'pending' | 'open'
@@ -39,10 +71,9 @@ type XWaylandConnectionState = {
 
 const xWaylandProxyStates: { [key: string]: XWaylandConnectionState } = {}
 
-let connectionIdCounter = 0
-export function createRetransmittingWebSocket(url: URL): WebSocketLike {
+export function createRetransmittingWebSocket(url: URL, connectionId: string): WebSocketLike {
   const connectionURL = new URL(url.href)
-  connectionURL.searchParams.set('connectionId', `${connectionIdCounter++}`)
+  connectionURL.searchParams.set('connectionId', connectionId)
   return new RetransmittingWebSocket({
     webSocketFactory: () => {
       const webSocket = new WebSocket(connectionURL.href)
@@ -70,7 +101,7 @@ class RemoteSocket {
     }
   }
 
-  onWebSocket(webSocket: WebSocketLike, compositorProxyURL: URL): Promise<Client> {
+  onWebSocket(webSocket: WebSocketLike, compositorProxyURL: URL, clientId: string): Promise<Client> {
     return new Promise((resolve, reject) => {
       this.session.logger.info('[WebSocket] - created.')
       let wasOpen = false
@@ -83,7 +114,7 @@ class RemoteSocket {
         wasOpen = true
         this.session.logger.info('[WebSocket] - open.')
 
-        const client = this.session.display.createClient()
+        const client = this.session.display.createClient(clientId)
         client.onClose().then(() => {
           this.session.logger.info('[client] - closed.')
           if (webSocket.readyState === 1 /* OPEN */ || webSocket.readyState === 0 /* CONNECTING */) {
@@ -136,6 +167,14 @@ class RemoteSocket {
         const port = compositorProxyURL.port === '' ? '' : `:${compositorProxyURL.port}`
         const basePath = `${protocol}://${compositorProxyURL.hostname}${port}`
         client.userData = {
+          encoderApi: new EncoderApi(
+            new Configuration({
+              basePath,
+              headers: {
+                ['X-Compositor-Session-Id']: this.session.compositorSessionId,
+              },
+            }),
+          ),
           oobChannel,
           webfs: createRemoteWebFS(basePath, this.session.compositorSessionId),
         }
@@ -193,7 +232,8 @@ class RemoteSocket {
       if (client.connection.closed) {
         return
       }
-      this.onWebSocket(createRetransmittingWebSocket(appEndpointURL), appEndpointURL)
+      const clientId = randomString()
+      this.onWebSocket(createRetransmittingWebSocket(appEndpointURL, clientId), appEndpointURL, clientId)
     })
 
     // listen for recycled resource ids
@@ -223,7 +263,7 @@ class RemoteSocket {
         xWaylandBaseURL.searchParams.append('xwmFD', `${wmFD}`)
         const xConnection = await XWindowManagerConnection.create(
           this.session,
-          createRetransmittingWebSocket(xWaylandBaseURL),
+          createRetransmittingWebSocket(xWaylandBaseURL, randomString()),
         )
         client.onClose().then(() => xConnection.destroy())
         xConnection.onDestroy().then(() => delete xWaylandProxyStates[xWaylandBaseURLhref])
