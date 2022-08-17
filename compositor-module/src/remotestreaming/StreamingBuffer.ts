@@ -90,7 +90,8 @@ export default class StreamingBuffer implements BufferImplementation<Promise<Dec
     if (this.released) {
       throw new Error('BUG. Double buffer release.')
     }
-    this.resource.release()
+    // resource is released by the proxy
+    // this.resource.release()
     this.released = true
   }
 }

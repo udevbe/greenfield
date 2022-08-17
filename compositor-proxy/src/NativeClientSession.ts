@@ -75,16 +75,28 @@ export function createNativeClientSession(
   webSocket: WebSocketLike,
 ): NativeClientSession {
   const messageInterceptors: Record<number, any> = {}
+  const userData: {
+    communicationChannel: WebSocketLike
+    messageInterceptors: Record<number, any>
+    drmContext: unknown
+    nativeClientSession?: NativeClientSession
+  } = {
+    communicationChannel: webSocket,
+    drmContext: nativeCompositorSession.drmContext,
+    messageInterceptors,
+  }
   const messageInterceptor = MessageInterceptor.create(
     wlClient,
     nativeCompositorSession.wlDisplay,
     wl_display_interceptor,
-    { communicationChannel: webSocket, drmContext: nativeCompositorSession.drmContext, messageInterceptors },
+    userData,
     messageInterceptors,
   )
 
   const nativeClientSession = new NativeClientSession(wlClient, nativeCompositorSession, webSocket, messageInterceptor)
+  userData.nativeClientSession = nativeClientSession
   nativeClientSession.onDestroy().then(() => {
+    userData.nativeClientSession = undefined
     if (webSocket.readyState === 1 || webSocket.readyState === 0) {
       // retransmittingWebSocket.onerror = noopHandler
       // retransmittingWebSocket.onclose = noopHandler
@@ -176,10 +188,6 @@ export class NativeClientSession {
     this.browserChannelOutOfBandHandlers = {
       // listen for out-of-band resource destroy. opcode: 1
       1: (payload) => this.destroyResourceSilently(payload),
-      // listen for force key frame request. opcode 5
-      5: (payload) => this.requestKeyFrameUnit(payload),
-      // listen for force key frame now request. opcode 6
-      6: (payload) => this.requestKeyFrameUnitNow(payload),
     }
   }
 
@@ -406,32 +414,17 @@ export class NativeClientSession {
 
   private destroyResourceSilently(payload: Uint8Array) {
     const deleteObjectId = new Uint32Array(payload.buffer, payload.byteOffset, 1)[0]
-    destroyWlResourceSilently(this.wlClient, deleteObjectId)
-
     delete this.messageInterceptor.interceptors[deleteObjectId]
     if (deleteObjectId === 1) {
       // 1 is the display id, which means client is being disconnected
       this.disconnecting = true
     }
-  }
 
-  private requestKeyFrameUnit(payload: Uint8Array) {
-    const wlSurfaceId = new Uint32Array(payload)[0]
-    const wlSurfaceInterceptor = this.messageInterceptor.interceptors[wlSurfaceId] as wl_surface_interceptor
-    if (wlSurfaceInterceptor === undefined) {
-      logger.error('BUG. Received a key frame unit request but no surface found that matches the request.')
+    if (this.disconnecting) {
+      return
     }
-    wlSurfaceInterceptor.encoder.requestKeyUnit()
-  }
 
-  private requestKeyFrameUnitNow(payload: Uint8Array) {
-    const uint32Payload = new Uint32Array(payload)
-    const wlSurfaceInterceptor = this.messageInterceptor.interceptors[uint32Payload[0]] as wl_surface_interceptor
-    if (wlSurfaceInterceptor === undefined) {
-      logger.error('BUG. Received a key frame unit request but no surface found that matches the request.')
-    }
-    wlSurfaceInterceptor.encoder.requestKeyUnit()
-    wlSurfaceInterceptor.encodeAndSendBuffer(uint32Payload[1])
+    destroyWlResourceSilently(this.wlClient, deleteObjectId)
   }
 
   onRegistryCreated(wlRegistry: unknown, registryId: number): void {

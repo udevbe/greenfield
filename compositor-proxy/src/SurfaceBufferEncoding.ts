@@ -29,7 +29,7 @@ let bufferSerial = -1
 
 export function initSurfaceBufferEncoding(): void {
   /**
-   * frame: [R]equest w opcode [4] = R?
+   * frame: [R]equest w opcode [3] = R3
    */
   wlSurfaceInterceptor.prototype.R3 = function (message: {
     buffer: ArrayBuffer
@@ -76,16 +76,20 @@ export function initSurfaceBufferEncoding(): void {
     if (!this.encoder) {
       this.encoder = createEncoder(this.wlClient, this.userData.drmContext)
     }
-    if (this.frameFeedback === undefined) {
-      this.frameFeedback = new FrameFeedback(this.wlClient, this.userData.messageInterceptors)
-    }
-    this.frameFeedback?.commitNotify()
+    const frameFeedback = this.frameFeedback
+      ? this.frameFeedback
+      : (this.frameFeedback = new FrameFeedback(this.wlClient, this.userData.messageInterceptors))
+
+    this.userData.nativeClientSession?.onDestroy().then(() => frameFeedback.destroy())
+    frameFeedback.commitNotify()
 
     let syncSerial: number
 
     if (this.bufferResourceId) {
       syncSerial = ++bufferSerial
-
+      if (this.sendBufferResourceId) {
+        frameFeedback.sendBufferReleaseEvent(this.sendBufferResourceId)
+      }
       this.sendBufferResourceId = this.bufferResourceId
       this.bufferResourceId = 0
 
@@ -111,11 +115,11 @@ export function initSurfaceBufferEncoding(): void {
     this.encoder
       .encodeBuffer(this.sendBufferResourceId, syncSerial)
       .then((sendBuffer: Buffer) => {
+        this.frameFeedback?.frameDone(encodeStart)
         // send buffer contents. opcode: 3. bufferId + chunk
         if (this.userData.communicationChannel.readyState === 1) {
           // 1 === 'open'
           this.userData.communicationChannel.send(sendBuffer)
-          this.frameFeedback?.frameDone(encodeStart)
         } // else connection was probably closed, don't attempt to send a buffer chunk
       })
       .catch((e: Error) => {

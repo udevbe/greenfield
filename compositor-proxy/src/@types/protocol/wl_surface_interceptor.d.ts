@@ -1,6 +1,7 @@
 import { RetransmittingWebSocket } from 'retransmitting-websocket'
 import { Encoder } from '../../encoding/Encoder'
 import { FrameFeedback } from '../../FrameFeedback'
+import { NativeClientSession } from '../../NativeClientSession'
 
 export default class wl_surface_interceptor {
   frameFeedback?: FrameFeedback
@@ -11,6 +12,7 @@ export default class wl_surface_interceptor {
     communicationChannel: RetransmittingWebSocket
     drmContext: unknown
     messageInterceptors: Record<number, any>
+    nativeClientSession?: NativeClientSession
   }
   wlClient: unknown
 

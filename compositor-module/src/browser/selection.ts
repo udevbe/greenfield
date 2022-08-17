@@ -102,6 +102,11 @@ function checkBrowserClipboard(session: Session) {
         // no data in clipboard is considered an error, but we don't consider it as one...
         return
       }
+      if (e.code === 18) {
+        // We can only read the clipbord as a result of a gesture
+        // TODO how do we fix this?
+        return
+      }
       throw e
     })
 }
