@@ -16,13 +16,27 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import Surface from './Surface'
+import { Client, WlCallbackResource } from 'westfield-runtime-server'
 
-export default class Callback {
-  static create(surface: Surface): Callback {
-    return new Callback(surface)
-  }
+export interface Callback {
+  done(time: number): void
+}
 
-  private constructor(public surface: Surface) {}
+export function createProxyCallback(surface: Surface): Callback {
+  return new ProxyCallback(surface)
+}
+
+export function createDefaultCallback(client: Client, resourceId: number, version: number): Callback {
+  const wlCallbackResource = new WlCallbackResource(client, resourceId, version)
+  const callback = new DefaultCallback(wlCallbackResource)
+  wlCallbackResource.addDestroyListener(() => {
+    callback.resource = undefined
+  })
+  return callback
+}
+
+class ProxyCallback implements Callback {
+  constructor(public surface: Surface) {}
 
   done(time: number): void {
     const duration = (performance.now() - this.surface.encoderFeedback.commitTime) << 0
@@ -52,5 +66,17 @@ export default class Callback {
       })
     }
     this.surface.encoderFeedback.presentationTime = time
+  }
+}
+
+class DefaultCallback {
+  constructor(public resource: WlCallbackResource | undefined) {}
+
+  done(data: number): void {
+    if (this.resource) {
+      this.resource.done(data)
+      this.resource.destroy()
+      this.resource = undefined
+    }
   }
 }

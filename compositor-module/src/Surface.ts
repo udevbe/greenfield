@@ -17,7 +17,6 @@
 
 import {
   WlBufferResource,
-  WlCallbackResource,
   WlOutputTransform,
   WlRegionResource,
   WlSurfaceError,
@@ -27,7 +26,6 @@ import {
 import { withSizeAndPosition } from './math/Rect'
 import BufferContents from './BufferContents'
 import BufferImplementation from './BufferImplementation'
-import Callback from './Callback'
 import { IDENTITY, invert, Mat4, scalar, timesMat4, timesPoint, translation } from './math/Mat4'
 import { Point } from './math/Point'
 import { createRect, Rect, RectWithInfo } from './math/Rect'
@@ -49,7 +47,7 @@ import { sizeEquals, Size } from './math/Size'
 import Subsurface from './Subsurface'
 import { createSurfaceChild, SurfaceChild } from './SurfaceChild'
 import SurfaceRole from './SurfaceRole'
-import { EncoderApi } from './api'
+import { Callback } from './Callback'
 
 export interface SurfaceState {
   damageRects: Rect[]
@@ -277,8 +275,14 @@ class Surface implements WlSurfaceRequests {
     this.pendingState.damageRects.push(createRect({ x, y }, { width, height }))
   }
 
-  frame(resource: WlSurfaceResource, callback: number): void {
-    this.pendingState.frameCallbacks.push(Callback.create(this))
+  frame(resource: WlSurfaceResource, resourceId: number): void {
+    const callback = resource.client.userData.frameCallbackFactory.create(
+      this,
+      resource.client,
+      resourceId,
+      resource.version,
+    )
+    this.pendingState.frameCallbacks.push(callback)
   }
 
   setOpaqueRegion(resource: WlSurfaceResource, regionResource: WlRegionResource | undefined): void {

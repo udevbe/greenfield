@@ -29,6 +29,7 @@ import { XWindowManager } from './xwayland/XWindowManager'
 import { XWindowManagerConnection } from './xwayland/XWindowManagerConnection'
 import { createRemoteWebFS } from './WebFS'
 import { Configuration, EncoderApi } from './api'
+import { ProxyFrameCallbackFactory } from './FrameCallbackFactory'
 
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567' as const
 
@@ -177,6 +178,7 @@ class RemoteSocket {
           ),
           oobChannel,
           webfs: createRemoteWebFS(basePath, this.session.compositorSessionId),
+          frameCallbackFactory: new ProxyFrameCallbackFactory(),
         }
 
         resolve(client)
@@ -191,6 +193,7 @@ class RemoteSocket {
     appEndpointURL: URL,
   ) {
     // send out-of-band resource destroy. opcode: 1
+    client.userData.oobChannel
     client.addResourceDestroyListener((resource) => {
       outOfBandChannel.send(RemoteOutOfBandSendOpcode.ResourceDestroyed, new Uint32Array([resource.id]).buffer)
     })
