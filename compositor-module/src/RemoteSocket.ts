@@ -176,7 +176,6 @@ class RemoteSocket {
               },
             }),
           ),
-          oobChannel,
           webfs: createRemoteWebFS(basePath, this.session.compositorSessionId),
           frameCallbackFactory: new ProxyFrameCallbackFactory(),
         }
@@ -193,7 +192,6 @@ class RemoteSocket {
     appEndpointURL: URL,
   ) {
     // send out-of-band resource destroy. opcode: 1
-    client.userData.oobChannel
     client.addResourceDestroyListener((resource) => {
       outOfBandChannel.send(RemoteOutOfBandSendOpcode.ResourceDestroyed, new Uint32Array([resource.id]).buffer)
     })

@@ -56,7 +56,7 @@ class ProxyCallback implements Callback {
     if (refreshFrameDelay - newRefreshFrameDelay) {
       this.surface.encoderFeedback.durationAvg = durationAvg
 
-      this.surface.resource.client.userData.encoderApi.feedback({
+      this.surface.resource.client.userData.encoderApi?.feedback({
         clientId: this.surface.resource.client.id,
         surfaceId: this.surface.resource.id,
         inlineObject1: {

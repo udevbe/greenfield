@@ -17,7 +17,6 @@
 
 import { WlBufferResource } from 'westfield-runtime-server'
 import BufferImplementation from '../BufferImplementation'
-import { RemoteOutOfBandSendOpcode } from '../RemoteOutOfBandChannel'
 import Surface from '../Surface'
 import BufferStream from './BufferStream'
 import { DecodedFrame } from './DecodedFrame'
@@ -65,7 +64,7 @@ export default class StreamingBuffer implements BufferImplementation<Promise<Dec
         oldDecodedFrame?.pixelContent.close?.()
       } catch (e: unknown) {
         surface.session.logger.warn('Get error during decode, requesting new keyframe.')
-        surface.resource.client.userData.encoderApi.keyframe({
+        surface.resource.client.userData.encoderApi?.keyframe({
           clientId: surface.resource.client.id,
           surfaceId: surface.resource.id,
           inlineObject: {
