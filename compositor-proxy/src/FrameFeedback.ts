@@ -3,11 +3,13 @@ import { performance } from 'perf_hooks'
 import { clearTimeout } from 'timers'
 
 export class FrameFeedback {
-  private callbackResourceIds: number[] = []
+  callbackResourceIds: number[] = []
   private commitTimestamp = 0
-  private frameDoneTimestamp = 0
   delay = 16.667
   private delayedFrameDone?: NodeJS.Timeout
+
+  syncParent?: FrameFeedback
+  private syncChildren: FrameFeedback[] = []
 
   constructor(private wlClient: unknown, private messageInterceptors: Record<number, any>) {}
 
@@ -26,38 +28,44 @@ export class FrameFeedback {
   }
 
   frameDone(encodeStart: number): void {
-    if (this.callbackResourceIds.length > 0) {
-      const frameCallbackIds = [...this.callbackResourceIds]
-      this.callbackResourceIds = []
-      const encodeDuration = performance.now() - encodeStart
-      const clientRenderDuration = 0 //this.commitTimestamp - this.frameDoneTimestamp
-      const totalRenderTime = clientRenderDuration + encodeDuration
-      if (totalRenderTime < this.delay) {
-        const frameDelay = this.delay - totalRenderTime
-        if (frameDelay >= 1 && this.delayedFrameDone === undefined) {
-          this.delayedFrameDone = setTimeout(() => {
-            this.delayedFrameDone = undefined
-            this.frameDoneTimestamp = performance.now()
-            frameCallbackIds.forEach((frameCallbackId) => {
-              this.sendFrameDoneEvent(frameCallbackId)
-              delete this.messageInterceptors[frameCallbackId]
-            })
-          }, frameDelay << 0)
-          return
-        }
-      }
+    if (this.syncParent) {
+      // wait for parent to send his done event
+      return
+    }
 
-      if (this.delayedFrameDone === undefined) {
-        frameCallbackIds.forEach((frameCallbackId) => {
-          this.frameDoneTimestamp = performance.now()
-          this.sendFrameDoneEvent(frameCallbackId)
-          delete this.messageInterceptors[frameCallbackId]
-        })
+    const frameCallbackIds = [...this.callbackResourceIds]
+    this.callbackResourceIds = []
+    const totalRenderTime = performance.now() - encodeStart
+    if (totalRenderTime < this.delay) {
+      const frameDelay = this.delay - totalRenderTime
+      if (frameDelay >= 1 && this.delayedFrameDone === undefined) {
+        this.delayedFrameDone = setTimeout(() => {
+          this.delayedFrameDone = undefined
+          this.sendFrameDoneEvents(performance.now(), frameCallbackIds)
+        }, frameDelay << 0)
+        return
       }
+    }
+
+    if (this.delayedFrameDone === undefined) {
+      this.sendFrameDoneEvents(performance.now(), frameCallbackIds)
     }
   }
 
-  private sendFrameDoneEvent(callbackResourceId: number) {
+  sendFrameDoneEvents(frameDoneTimestamp: number, frameCallbackIds: number[]) {
+    frameCallbackIds.forEach((frameCallbackId) => {
+      this.sendFrameDoneEvent(frameDoneTimestamp, frameCallbackId)
+      delete this.messageInterceptors[frameCallbackId]
+    })
+
+    this.syncChildren.forEach((syncChild) => {
+      const frameCallbackIds = [...syncChild.callbackResourceIds]
+      syncChild.callbackResourceIds = []
+      syncChild.sendFrameDoneEvents(frameDoneTimestamp, frameCallbackIds)
+    })
+  }
+
+  private sendFrameDoneEvent(frameDoneTimestamp: number, callbackResourceId: number) {
     // send done event to callback
     const doneSize = 12 // id+size+opcode+time arg
     const doneBuffer = new ArrayBuffer(doneSize)
@@ -66,7 +74,7 @@ export class FrameFeedback {
     doneBufu32[0] = callbackResourceId
     doneBufu16[2] = 0 // done opcode
     doneBufu16[3] = doneSize
-    doneBufu32[2] = this.frameDoneTimestamp << 0
+    doneBufu32[2] = frameDoneTimestamp << 0
     sendEvents(this.wlClient, doneBufu32, new Uint32Array([]))
 
     // send delete id event to display
@@ -95,5 +103,35 @@ export class FrameFeedback {
     sendEvents(this.wlClient, releaseBufu32, new Uint32Array([]))
 
     flush(this.wlClient)
+  }
+
+  addSyncChild(childFrameFeedback: FrameFeedback) {
+    if (this.syncChildren.find((syncChild) => syncChild === childFrameFeedback) === undefined) {
+      this.syncChildren = [...this.syncChildren, childFrameFeedback]
+      childFrameFeedback.syncParent = this
+    }
+  }
+
+  removeSyncChild(childFrameFeedback: FrameFeedback) {
+    if (childFrameFeedback.syncParent === this) {
+      childFrameFeedback.syncParent = undefined
+      this.syncChildren = this.syncChildren.filter((syncChild) => syncChild !== childFrameFeedback)
+    }
+  }
+
+  setModeSync(parentFrameFeedback: FrameFeedback) {
+    if (this.syncParent) {
+      this.syncParent.removeSyncChild(this)
+    }
+    parentFrameFeedback.addSyncChild(this)
+  }
+
+  setModeAsync() {
+    if (this.syncParent) {
+      this.syncParent.removeSyncChild(this)
+      const frameCallbackIds = [...this.callbackResourceIds]
+      this.callbackResourceIds = []
+      this.sendFrameDoneEvents(performance.now(), frameCallbackIds)
+    }
   }
 }

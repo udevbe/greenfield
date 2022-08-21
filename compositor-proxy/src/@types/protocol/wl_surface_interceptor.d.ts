@@ -4,7 +4,7 @@ import { FrameFeedback } from '../../FrameFeedback'
 import { NativeClientSession } from '../../NativeClientSession'
 
 export default class wl_surface_interceptor {
-  frameFeedback?: FrameFeedback
+  frameFeedback: FrameFeedback
   bufferResourceId?: number
   sendBufferResourceId: number
   encoder: Encoder

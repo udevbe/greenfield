@@ -481,8 +481,7 @@ export async function PUTEncoderFeedback(
     return
   }
 
-  const feedback = await readJson<operations['feedback']['requestBody']['content']['application/json']>(httpResponse)
-  // TODO validate feedback
+  const feedbackPromise = readJson<operations['feedback']['requestBody']['content']['application/json']>(httpResponse)
 
   const clientEntry = compositorProxySession.nativeCompositorSession.clients.find(
     (clientEntry) => clientEntry.clientId === clientId,
@@ -503,7 +502,7 @@ export async function PUTEncoderFeedback(
   }
 
   if (wlSurfaceInterceptor.frameFeedback) {
-    wlSurfaceInterceptor.frameFeedback.delay = feedback.duration
+    wlSurfaceInterceptor.frameFeedback.delay = (await feedbackPromise).duration
   }
 
   httpResponse.writeStatus('204 No Content').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
