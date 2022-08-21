@@ -332,6 +332,8 @@ ensure_gst_gl(struct encoder *encoder, GstElement *pipeline) {
                                                                              (guintptr) egl_context,
                                                                              GST_GL_PLATFORM_EGL,
                                                                              GST_GL_API_OPENGL);
+            gst_gl_context_activate(encoder->gpu.wrapped_gst_gl_context, TRUE);
+            gst_gl_context_fill_info(encoder->gpu.wrapped_gst_gl_context, NULL);
             /* Create a new non-wrapped local GstGlContext to share with other elements. */
             GError *err = NULL;
             if (!gst_gl_display_create_context(gst_gl_display,
@@ -347,8 +349,6 @@ ensure_gst_gl(struct encoder *encoder, GstElement *pipeline) {
             gst_structure_set(gst_context_writable_structure(gst_context_gl_context), "context", GST_TYPE_GL_CONTEXT,
                               encoder->gpu.shared_gst_gl_context, NULL);
             encoder->gpu.gst_context_gl_context = gst_context_gl_context;
-
-            gst_gl_context_activate(encoder->gpu.shared_gst_gl_context, TRUE);
         }
     }
 
