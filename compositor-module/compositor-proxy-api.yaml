@@ -113,7 +113,7 @@ paths:
     put:
       tags:
         - encoder
-      summary: Encode a new keyframe.
+      summary: Send frame presentation feedback.
       operationId: feedback
       parameters:
         - in: path
@@ -172,7 +172,7 @@ paths:
       operationId: mkfifo
       responses:
         201:
-          description: Pipe pair was succesfully created.
+          description: Pipe pair was successfully created.
           content:
             application/json:
               schema:
@@ -192,7 +192,7 @@ paths:
     post:
       tags:
         - webfs
-      summary: Creates a tempororay file and returns a memory mapped WebFD of the uploaded data.
+      summary: Creates a temporary file and returns a memory mapped WebFD of the uploaded data.
       operationId: mkstempMmap
       requestBody:
         required: true
@@ -203,7 +203,7 @@ paths:
               format: binary
       responses:
         201:
-          description: Data was succesfully uploaded and mapped to a shared memory file.
+          description: Data was successfully uploaded and mapped to a shared memory file.
           content:
             application/json:
               schema:
@@ -237,7 +237,7 @@ paths:
             minimum: 0
       responses:
         200:
-          description: File descriptor closed succesfully.
+          description: File descriptor closed successfully.
         401:
           $ref: '#/components/responses/UnauthorizedError'
         400:
@@ -282,7 +282,7 @@ paths:
           description: Read up to count bytes from file descriptor fd.
       responses:
         200:
-          description: Content sent succesfully.
+          description: Content sent successfully.
           content:
             application/octet-stream:
               schema:
@@ -338,7 +338,7 @@ paths:
               format: binary
       responses:
         200:
-          description: All content sent succesfully.
+          description: All content sent successfully.
         401:
           $ref: '#/components/responses/UnauthorizedError'
         400:
@@ -381,7 +381,7 @@ paths:
           description: Stream data in chunks with a maximum size. Defaults to 64 kilobytes.
       responses:
         200:
-          description: All content read succesfully.
+          description: All content read successfully.
           content:
             application/octet-stream:
               schema:
