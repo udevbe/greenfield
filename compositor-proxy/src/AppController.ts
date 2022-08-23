@@ -502,7 +502,7 @@ export async function PUTEncoderFeedback(
   }
 
   if (wlSurfaceInterceptor.frameFeedback) {
-    wlSurfaceInterceptor.frameFeedback.delay = (await feedbackPromise).duration
+    wlSurfaceInterceptor.frameFeedback.updateDelay((await feedbackPromise).duration)
   }
 
   httpResponse.writeStatus('204 No Content').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()

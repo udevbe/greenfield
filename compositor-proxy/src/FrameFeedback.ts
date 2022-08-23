@@ -5,7 +5,7 @@ import { clearTimeout } from 'timers'
 export class FrameFeedback {
   callbackResourceIds: number[] = []
   private commitTimestamp = 0
-  delay = 16.667
+  private delay?: number
   private delayedFrameDone?: NodeJS.Timeout
 
   syncParent?: FrameFeedback
@@ -27,8 +27,17 @@ export class FrameFeedback {
     this.commitTimestamp = performance.now()
   }
 
+  updateDelay(delay: number) {
+    if (this.delay === undefined) {
+      const frameCallbackIds = [...this.callbackResourceIds]
+      this.callbackResourceIds = []
+      this.sendFrameDoneEvents(performance.now(), frameCallbackIds)
+    }
+    this.delay = delay
+  }
+
   frameDone(encodeStart: number): void {
-    if (this.syncParent) {
+    if (this.delay === undefined || this.syncParent) {
       // wait for parent to send his done event
       return
     }

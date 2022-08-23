@@ -164,9 +164,8 @@ class Surface implements WlSurfaceRequests {
 
   readonly encoderFeedback = {
     durations: [] as number[],
-    durationAvg: 0,
     commitTime: 0,
-    presentationTime: 0,
+    previousDuration: 10000,
   }
 
   private constructor(

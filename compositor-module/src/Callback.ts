@@ -18,6 +18,22 @@
 import Surface from './Surface'
 import { Client, WlCallbackResource } from 'westfield-runtime-server'
 
+let refreshInterval = 16
+let previousPresentationTimestamp = 0
+
+function updateRefreshInterval() {
+  requestAnimationFrame((presentationTimestamp) => {
+    const newRefreshInterval = presentationTimestamp - previousPresentationTimestamp
+    if (newRefreshInterval !== presentationTimestamp) {
+      refreshInterval = newRefreshInterval
+    }
+    previousPresentationTimestamp = presentationTimestamp
+    updateRefreshInterval()
+  })
+}
+
+updateRefreshInterval()
+
 export interface Callback {
   done(time: number): void
 }
@@ -39,33 +55,29 @@ class ProxyCallback implements Callback {
   constructor(public surface: Surface) {}
 
   done(time: number): void {
-    const duration = (performance.now() - this.surface.encoderFeedback.commitTime) << 0
+    const duration =
+      (Math.ceil((performance.now() - this.surface.encoderFeedback.commitTime) / refreshInterval) * refreshInterval) <<
+      0
+
     this.surface.encoderFeedback.durations.push(duration)
     if (this.surface.encoderFeedback.durations.length > 3) {
       this.surface.encoderFeedback.durations.shift()
     }
 
-    const refreshInterval = (time - this.surface.encoderFeedback.presentationTime) << 0
-
     const durationSum = this.surface.encoderFeedback.durations.reduce((prev, cur) => prev + cur, 0)
-    const durationAvg = durationSum / this.surface.encoderFeedback.durations.length
+    const durationAvg = (durationSum / this.surface.encoderFeedback.durations.length) << 0
 
-    const refreshFrameDelay = (this.surface.encoderFeedback.durationAvg / refreshInterval + 1) << 0
-    const newRefreshFrameDelay = (durationAvg / refreshInterval + 1) << 0
-
-    if (refreshFrameDelay - newRefreshFrameDelay) {
-      this.surface.encoderFeedback.durationAvg = durationAvg
-
+    if (Math.abs(durationAvg - this.surface.encoderFeedback.previousDuration) >= refreshInterval) {
       this.surface.resource.client.userData.encoderApi?.feedback({
         clientId: this.surface.resource.client.id,
         surfaceId: this.surface.resource.id,
         inlineObject1: {
-          duration: newRefreshFrameDelay * refreshInterval,
+          duration: durationAvg,
           refreshInterval,
         },
       })
+      this.surface.encoderFeedback.previousDuration = durationAvg
     }
-    this.surface.encoderFeedback.presentationTime = time
   }
 }
 
