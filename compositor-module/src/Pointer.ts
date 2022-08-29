@@ -334,9 +334,12 @@ export class CursorRole implements SurfaceRole {
     if (this.pointer.focus && this.pointer.sprite === this.view) {
       this.pointer.seat.session.renderer.updateCursor(this.view, this.hotspot)
     } else {
-      this.view.surface.state.frameCallbacks.forEach((callback) => callback.done(Date.now()))
+      const time = performance.now()
+      this.view.surface.state.frameCallbacks.forEach((callback) => callback.done(time))
       this.view.surface.state.frameCallbacks = []
       this.view.surface.session.flush()
+
+      this.view.surface.encoderFeedback.frameProcessed(time)
     }
   }
 }

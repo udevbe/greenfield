@@ -15,6 +15,7 @@ export default class wl_surface_interceptor {
     nativeClientSession?: NativeClientSession
   }
   wlClient: unknown
+  id: number
 
   encodeAndSendBuffer(syncSerial: number): void
 

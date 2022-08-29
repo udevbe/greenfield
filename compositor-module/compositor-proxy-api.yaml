@@ -139,14 +139,10 @@ paths:
               type: object
               required:
                 - duration
-                - refreshInterval
               properties:
                 duration:
                   type: number
                   description: Informs the encoder how long it took for the client to present the frame to the user when it arrived.
-                refreshInterval:
-                  type: number
-                  description: Informs the encoder how much time there is between VSyncs.
       responses:
         204:
           description: Frame feedback received.

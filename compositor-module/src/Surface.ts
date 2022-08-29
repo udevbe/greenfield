@@ -48,6 +48,7 @@ import Subsurface from './Subsurface'
 import { createSurfaceChild, SurfaceChild } from './SurfaceChild'
 import SurfaceRole from './SurfaceRole'
 import { Callback } from './Callback'
+import { createEncoderFeedback, EncoderSurfaceFeedback } from './remotestreaming/EncoderFeedback'
 
 export interface SurfaceState {
   damageRects: Rect[]
@@ -162,16 +163,15 @@ class Surface implements WlSurfaceRequests {
   private _surfaceChildren: SurfaceChild[] = []
   mapped = false
 
-  readonly encoderFeedback = {
-    durations: [] as number[],
-    commitTime: 0,
-    previousDuration: 10000,
-  }
-
   private constructor(
     public readonly resource: WlSurfaceResource,
     public readonly renderer: Renderer,
     public readonly session: Session,
+    public readonly encoderFeedback: EncoderSurfaceFeedback = createEncoderFeedback(
+      resource.client.id,
+      resource.id,
+      resource.client.userData.encoderApi,
+    ),
   ) {}
 
   private _parent?: Surface
@@ -225,7 +225,7 @@ class Surface implements WlSurfaceRequests {
       destroyPixmanRegion(surface.pendingState.inputPixmanRegion)
       destroyPixmanRegion(surface.pixmanRegion)
 
-      surface._handleDestruction()
+      surface.handleDestruction()
     })
 
     return surface
@@ -311,7 +311,6 @@ class Surface implements WlSurfaceRequests {
   }
 
   async commit(resource: WlSurfaceResource, serial?: number): Promise<void> {
-    this.encoderFeedback.commitTime = performance.now()
     const bufferImplementation = this.pendingState.buffer?.implementation as
       | BufferImplementation<BufferContents<unknown> | Promise<BufferContents<unknown>>>
       | undefined
@@ -320,6 +319,9 @@ class Surface implements WlSurfaceRequests {
         this.session.logger.trace(`|- Awaiting buffer contents with serial: ${serial ?? 'NO SERIAL'}`)
         const startBufferContents = Date.now()
         this.pendingState.bufferContents = await bufferImplementation.getContents(this, serial)
+        if (serial !== undefined) {
+          this.encoderFeedback.bufferCommit(serial)
+        }
         this.session.logger.trace(
           `|--> Buffer contents with serial: ${serial ?? 'NO SERIAL'} took ${Date.now() - startBufferContents}ms`,
         )
@@ -372,6 +374,10 @@ class Surface implements WlSurfaceRequests {
     this.pendingState.damageRects = []
     this.pendingState.bufferDamageRects = []
     this.pendingState.frameCallbacks = []
+  }
+
+  notifyPresented(presentationTime: number) {
+    this.encoderFeedback.frameProcessed(presentationTime)
   }
 
   setBufferTransform(resource: WlSurfaceResource, transform: number): void {
@@ -489,7 +495,8 @@ class Surface implements WlSurfaceRequests {
     surfaceChild.surface.parent = this
   }
 
-  private _handleDestruction() {
+  private handleDestruction() {
+    this.encoderFeedback.destroy()
     this.parent?.removeChild(this.surfaceChildSelf)
     this.destroyed = true
     this.role?.view?.destroy()

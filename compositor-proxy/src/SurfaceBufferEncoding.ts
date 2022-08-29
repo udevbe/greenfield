@@ -178,10 +178,13 @@ export function initSurfaceBufferEncoding(): void {
     this.encoder
       .encodeBuffer(this.sendBufferResourceId, syncSerial)
       .then((sendBuffer: Buffer) => {
-        this.frameFeedback.frameDone(encodeStart)
-        // send buffer contents. opcode: 3. bufferId + chunk
+        this.frameFeedback.frameEncodingDone(encodeStart)
+
+        // 1 === 'open'
         if (this.userData.communicationChannel.readyState === 1) {
-          // 1 === 'open'
+          // send buffer sent started marker. opcode: 1. surfaceId + syncSerial
+          this.userData.communicationChannel.send(new Uint32Array([1, this.id, syncSerial]))
+          // send buffer contents. opcode: 3. bufferId + chunk
           this.userData.communicationChannel.send(sendBuffer)
         } // else connection was probably closed, don't attempt to send a buffer chunk
       })

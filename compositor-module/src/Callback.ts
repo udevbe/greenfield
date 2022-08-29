@@ -18,7 +18,7 @@
 import Surface from './Surface'
 import { Client, WlCallbackResource } from 'westfield-runtime-server'
 
-let refreshInterval = 16
+let refreshInterval = 16.667
 let previousPresentationTimestamp = 0
 
 function updateRefreshInterval() {
@@ -52,32 +52,12 @@ export function createDefaultCallback(client: Client, resourceId: number, versio
 }
 
 class ProxyCallback implements Callback {
+  commitSerial?: number
+
   constructor(public surface: Surface) {}
 
   done(time: number): void {
-    const duration =
-      (Math.ceil((performance.now() - this.surface.encoderFeedback.commitTime) / refreshInterval) * refreshInterval) <<
-      0
-
-    this.surface.encoderFeedback.durations.push(duration)
-    if (this.surface.encoderFeedback.durations.length > 3) {
-      this.surface.encoderFeedback.durations.shift()
-    }
-
-    const durationSum = this.surface.encoderFeedback.durations.reduce((prev, cur) => prev + cur, 0)
-    const durationAvg = (durationSum / this.surface.encoderFeedback.durations.length) << 0
-
-    if (Math.abs(durationAvg - this.surface.encoderFeedback.previousDuration) >= refreshInterval) {
-      this.surface.resource.client.userData.encoderApi?.feedback({
-        clientId: this.surface.resource.client.id,
-        surfaceId: this.surface.resource.id,
-        inlineObject1: {
-          duration: durationAvg,
-          refreshInterval,
-        },
-      })
-      this.surface.encoderFeedback.previousDuration = durationAvg
-    }
+    // ignore call, done by proxy
   }
 }
 

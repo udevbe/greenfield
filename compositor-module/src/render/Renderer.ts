@@ -114,20 +114,24 @@ export default class Renderer {
         return
       }
       this.updateViewStack()
-      this.viewStack.forEach((view) => {
+      const viewStack = [...this.viewStack]
+      const processedTime = performance.now()
+      viewStack.forEach((view) => {
         this.updateRenderStatesPixelContent(view)
         this.registerFrameCallbacks(view.surface.state.frameCallbacks)
         view.surface.state.frameCallbacks = []
+        view.surface.encoderFeedback.frameProcessed(processedTime)
       })
       afterUpdatePixelContent?.()
-      // TODO we can check which views are damaged and filter out only those scenes that need a re-render
+      // TODO we can check which views are damaged and filter out only those scenes that need a rerender
       if (this.renderFrame) {
         return
       }
+
       this.renderFrame = createRenderFrame().then((time) => {
         this.renderFrame = undefined
         // TODO we can further limit the visible region of each view by removing the area covered by other views
-        sceneList.forEach((scene) => scene.render([...this.viewStack]))
+        sceneList.forEach((scene) => scene.render(viewStack))
         this.frameCallbacks.forEach((callback) => callback.done(time))
         this.frameCallbacks = []
         this.session.flush()

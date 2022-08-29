@@ -17,7 +17,7 @@
 
 import { MessageEventLike, ReadyState, RetransmittingWebSocket, WebSocketLike } from 'retransmitting-websocket'
 import { SendMessage, WebFD } from 'westfield-runtime-common'
-import { Client, WlBufferResource } from 'westfield-runtime-server'
+import { Client, WlBufferResource, WlSurfaceResource } from 'westfield-runtime-server'
 import RemoteOutOfBandChannel, {
   RemoteOutOfBandListenOpcode,
   RemoteOutOfBandSendOpcode,
@@ -30,6 +30,7 @@ import { XWindowManagerConnection } from './xwayland/XWindowManagerConnection'
 import { createRemoteWebFS } from './WebFS'
 import { Configuration, EncoderApi } from './api'
 import { ProxyFrameCallbackFactory } from './FrameCallbackFactory'
+import Surface from './Surface'
 
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567' as const
 
@@ -194,6 +195,15 @@ class RemoteSocket {
     // send out-of-band resource destroy. opcode: 1
     client.addResourceDestroyListener((resource) => {
       outOfBandChannel.send(RemoteOutOfBandSendOpcode.ResourceDestroyed, new Uint32Array([resource.id]).buffer)
+    })
+
+    outOfBandChannel.setListener(RemoteOutOfBandListenOpcode.BufferSentStarted, (message) => {
+      const payload = new Uint32Array(message.buffer, message.byteOffset)
+      const surfaceId = payload[0]
+      const syncSerial = payload[1]
+      const wlSurface = client.connection.wlObjects[surfaceId] as WlSurfaceResource
+      const surface = wlSurface.implementation as Surface
+      surface.encoderFeedback.bufferSentStartTime(syncSerial, performance.now())
     })
 
     // listen for buffer creation. opcode: 2
