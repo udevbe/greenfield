@@ -31,6 +31,7 @@ import { createRemoteWebFS } from './WebFS'
 import { Configuration, EncoderApi } from './api'
 import { ProxyFrameCallbackFactory } from './FrameCallbackFactory'
 import Surface from './Surface'
+import { createClientEncodersFeedback } from './remotestreaming/EncoderFeedback'
 
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567' as const
 
@@ -160,6 +161,7 @@ class RemoteSocket {
           this.session.userShell.events.clientDestroyed?.({
             id: client.id,
           })
+          client.userData.clientEncodersFeedback?.destroy()
         })
         this.session.userShell.events.clientCreated?.({
           id: client.id,
@@ -168,17 +170,19 @@ class RemoteSocket {
         const protocol = compositorProxyURL.protocol === 'wss:' ? 'https' : 'http'
         const port = compositorProxyURL.port === '' ? '' : `:${compositorProxyURL.port}`
         const basePath = `${protocol}://${compositorProxyURL.hostname}${port}`
+        const encoderApi = new EncoderApi(
+          new Configuration({
+            basePath,
+            headers: {
+              ['X-Compositor-Session-Id']: this.session.compositorSessionId,
+            },
+          }),
+        )
         client.userData = {
-          encoderApi: new EncoderApi(
-            new Configuration({
-              basePath,
-              headers: {
-                ['X-Compositor-Session-Id']: this.session.compositorSessionId,
-              },
-            }),
-          ),
+          encoderApi,
           webfs: createRemoteWebFS(basePath, this.session.compositorSessionId),
           frameCallbackFactory: new ProxyFrameCallbackFactory(),
+          clientEncodersFeedback: createClientEncodersFeedback(clientId, encoderApi),
         }
 
         resolve(client)
@@ -203,7 +207,7 @@ class RemoteSocket {
       const syncSerial = payload[1]
       const wlSurface = client.connection.wlObjects[surfaceId] as WlSurfaceResource
       const surface = wlSurface.implementation as Surface
-      surface.encoderFeedback.bufferSentStartTime(syncSerial, performance.now())
+      surface.encoderFeedback?.bufferSentStartTime(syncSerial, performance.now())
     })
 
     // listen for buffer creation. opcode: 2

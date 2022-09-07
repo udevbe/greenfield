@@ -63,6 +63,7 @@ export function POSTMkstempMmap(compositorProxySession: CompositorProxySession, 
           // TODO log error
           res
             .writeStatus('400 Bad Request')
+            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end('Data in HTTP request body can not be empty.')
           return
@@ -104,6 +105,7 @@ export function GETWebFD(
     // TODO log error
     httpResponse
       .writeStatus('400 Bad Request')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
       .writeHeader('Content-Type', 'text/plain')
       .end(`File descriptor and count argument must be a positive integer. Got fd: ${fdParam}, count: ${count}`)
     return
@@ -122,11 +124,13 @@ export function GETWebFD(
         if (err.code === 'EBADF') {
           httpResponse
             .writeStatus('404 Not Found')
+            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end('File descriptor not found.')
         } else {
           httpResponse
             .writeStatus('500 Internal Server Error')
+            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end(`Unexpected error: ${err.name}: ${err.message}`)
         }
@@ -183,6 +187,7 @@ export function DELWebFD(
     // TODO log error
     httpResponse
       .writeStatus('400 Bad Request')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
       .writeHeader('Content-Type', 'text/plain')
       .writeHeader('Access-Control-Allow-Origin', allowOrigin)
       .end(`File descriptor argument must be a positive integer. Got: ${fdParam}`)
@@ -200,11 +205,13 @@ export function DELWebFD(
         if (err.code === 'EBADF') {
           httpResponse
             .writeStatus('404 Not Found')
+            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end('File descriptor not found.')
         } else {
           httpResponse
             .writeStatus('500 Internal Server Error')
+            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end(`Unexpected error: ${err.name}: ${err.message}`)
         }
@@ -232,11 +239,13 @@ function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readab
         if (error.code === 'EBADF') {
           httpResponse
             .writeStatus('404 Not Found')
+            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end('File descriptor not found.')
         } else {
           httpResponse
             .writeStatus('500 Internal Server Error')
+            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end(`Unexpected error: ${error.name}: ${error.message}`)
         }
@@ -287,6 +296,7 @@ export function GETWebFDStream(
     // TODO log error
     res
       .writeStatus('400 Bad Request')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
       .writeHeader('Content-Type', 'text/plain')
       .end(`File descriptor argument must be a positive integer. Got: ${fdParam}`)
     return
@@ -308,12 +318,14 @@ function pipeHttpRequestToWritable(httpResponse: HttpResponse, writable: Writabl
           logger.error('Attempted to stream data to a non-existing FD.', error)
           httpResponse
             .writeStatus('404 Not Found')
+            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end('File descriptor not found.')
         } else {
           logger.error('Unexpected error when trying to stream data to an FD.', error)
           httpResponse
             .writeStatus('500 Internal Server Error')
+            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end(`${error.name}: ${error.message}`)
         }
@@ -358,6 +370,7 @@ export function PUTWebFDStream(
     // TODO log error
     res
       .writeStatus('400 Bad Request')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
       .writeHeader('Content-Type', 'text/plain')
       .end(`FD argument must be an unsigned integer. Got: ${fdParam}`)
     return
@@ -429,6 +442,7 @@ export async function POSTEncoderKeyframe(
   if (clientId === undefined || surfaceId === undefined) {
     httpResponse
       .writeStatus('400 Bad Request')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
       .writeHeader('Content-Type', 'text/plain')
       .end(`Surface id argument must be a positive integer. Got client id: ${clientId}, surface id: ${surfaceId}`)
     return
@@ -444,7 +458,11 @@ export async function POSTEncoderKeyframe(
   )
 
   if (clientEntry === undefined) {
-    httpResponse.writeStatus('404 Not Found').writeHeader('Content-Type', 'text/plain').end('Client not found.')
+    httpResponse
+      .writeStatus('404 Not Found')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+      .writeHeader('Content-Type', 'text/plain')
+      .end('Client not found.')
     return
   }
 
@@ -453,7 +471,11 @@ export async function POSTEncoderKeyframe(
   ] as wl_surface_interceptor
   if (wlSurfaceInterceptor === undefined) {
     logger.error('BUG. Received a key frame unit request but no surface found that matches the request.')
-    httpResponse.writeStatus('404 Not Found').writeHeader('Content-Type', 'text/plain').end('Surface not found.')
+    httpResponse
+      .writeStatus('404 Not Found')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+      .writeHeader('Content-Type', 'text/plain')
+      .end('Surface not found.')
     return
   }
   wlSurfaceInterceptor.encoder.requestKeyUnit()
@@ -468,16 +490,16 @@ export async function PUTEncoderFeedback(
   compositorProxySession: CompositorProxySession,
   httpResponse: HttpResponse,
   httpRequest: HttpRequest,
-  [clientIdParam, surfaceIdParam]: string[],
+  [clientIdParam]: string[],
 ) {
   const clientId = clientIdParam
-  const surfaceId = asNumber(surfaceIdParam)
 
-  if (clientId === undefined || surfaceId === undefined) {
+  if (clientId === undefined) {
     httpResponse
       .writeStatus('400 Bad Request')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
       .writeHeader('Content-Type', 'text/plain')
-      .end(`Surface id argument must be a positive integer. Got client id: ${clientId}, surface id: ${surfaceId}`)
+      .end(`Surface id argument must be a positive integer. Got client id: ${clientId}`)
     return
   }
 
@@ -488,21 +510,24 @@ export async function PUTEncoderFeedback(
   )
 
   if (clientEntry === undefined) {
-    httpResponse.writeStatus('404 Not Found').writeHeader('Content-Type', 'text/plain').end('Client not found.')
+    httpResponse
+      .writeStatus('404 Not Found')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+      .writeHeader('Content-Type', 'text/plain')
+      .end('Client not found.')
     return
   }
 
-  const wlSurfaceInterceptor = clientEntry.nativeClientSession?.messageInterceptor.interceptors[
-    surfaceId
-  ] as wl_surface_interceptor
-  if (wlSurfaceInterceptor === undefined) {
-    logger.error('BUG. Received a feedback but no surface found that matches the request.')
-    httpResponse.writeStatus('404 Not Found').writeHeader('Content-Type', 'text/plain').end('Surface not found.')
-    return
-  }
-
-  if (wlSurfaceInterceptor.frameFeedback) {
-    wlSurfaceInterceptor.frameFeedback.updateDelay((await feedbackPromise).duration)
+  const feedback = await feedbackPromise
+  if (feedback.surfaceDurations) {
+    Object.entries(feedback.surfaceDurations).forEach(([surfaceId, avgDuration]) => {
+      const wlSurfaceInterceptor = clientEntry.nativeClientSession?.messageInterceptor.interceptors[
+        Number.parseInt(surfaceId)
+      ] as wl_surface_interceptor
+      if (wlSurfaceInterceptor) {
+        wlSurfaceInterceptor.frameFeedback?.updateDelay(feedback.refreshInterval, avgDuration)
+      }
+    })
   }
 
   httpResponse.writeStatus('204 No Content').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()

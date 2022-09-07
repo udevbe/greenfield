@@ -27,6 +27,7 @@ import Session from '../Session'
 import Surface from '../Surface'
 import View from '../View'
 import { Scene } from './Scene'
+import surface from '../Surface'
 
 function createRenderFrame(): Promise<number> {
   return new Promise<number>((resolve) => {
@@ -116,12 +117,15 @@ export default class Renderer {
       this.updateViewStack()
       const viewStack = [...this.viewStack]
       const processedTime = performance.now()
-      viewStack.forEach((view) => {
+      const clients = viewStack.map((view) => {
         this.updateRenderStatesPixelContent(view)
         this.registerFrameCallbacks(view.surface.state.frameCallbacks)
         view.surface.state.frameCallbacks = []
-        view.surface.encoderFeedback.frameProcessed(processedTime)
+        view.surface.encoderFeedback?.frameProcessed(processedTime)
+        return view.surface.resource.client
       })
+      new Set(clients).forEach((client) => client.userData.clientEncodersFeedback?.sendFeedback())
+
       afterUpdatePixelContent?.()
       // TODO we can check which views are damaged and filter out only those scenes that need a rerender
       if (this.renderFrame) {

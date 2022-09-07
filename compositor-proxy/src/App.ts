@@ -75,11 +75,8 @@ export function createApp(
         withAuth(compositorProxySession, withParams(2, POSTEncoderKeyframe)),
       )
 
-      .options('/:clientId/:surfaceId/encoder/feedback', OPTIONSPreflightRequest('PUT'))
-      .put(
-        '/:clientId/:surfaceId/encoder/feedback',
-        withAuth(compositorProxySession, withParams(2, PUTEncoderFeedback)),
-      )
+      .options('/:clientId/encoder/feedback', OPTIONSPreflightRequest('PUT'))
+      .put('/:clientId/encoder/feedback', withAuth(compositorProxySession, withParams(1, PUTEncoderFeedback)))
 
       .ws('/', {
         // TODO implement backpressure when sending over websocket

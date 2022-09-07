@@ -48,7 +48,6 @@ import Subsurface from './Subsurface'
 import { createSurfaceChild, SurfaceChild } from './SurfaceChild'
 import SurfaceRole from './SurfaceRole'
 import { Callback } from './Callback'
-import { createEncoderFeedback, EncoderSurfaceFeedback } from './remotestreaming/EncoderFeedback'
 
 export interface SurfaceState {
   damageRects: Rect[]
@@ -167,10 +166,8 @@ class Surface implements WlSurfaceRequests {
     public readonly resource: WlSurfaceResource,
     public readonly renderer: Renderer,
     public readonly session: Session,
-    public readonly encoderFeedback: EncoderSurfaceFeedback = createEncoderFeedback(
-      resource.client.id,
+    public readonly encoderFeedback = resource.client.userData.clientEncodersFeedback?.createSurfaceEncoderFeedback(
       resource.id,
-      resource.client.userData.encoderApi,
     ),
   ) {}
 
@@ -319,9 +316,7 @@ class Surface implements WlSurfaceRequests {
         this.session.logger.trace(`|- Awaiting buffer contents with serial: ${serial ?? 'NO SERIAL'}`)
         const startBufferContents = Date.now()
         this.pendingState.bufferContents = await bufferImplementation.getContents(this, serial)
-        if (serial !== undefined) {
-          this.encoderFeedback.bufferCommit(serial)
-        }
+
         this.session.logger.trace(
           `|--> Buffer contents with serial: ${serial ?? 'NO SERIAL'} took ${Date.now() - startBufferContents}ms`,
         )
@@ -331,6 +326,9 @@ class Surface implements WlSurfaceRequests {
       } catch (e: any) {
         this.session.logger.warn(`[surface: ${resource.id}] - Failed to receive buffer contents.`, e.toString())
       }
+    }
+    if (this.encoderFeedback && serial !== undefined) {
+      this.encoderFeedback.bufferCommit(serial)
     }
     this.role?.onCommit(this)
   }
@@ -374,10 +372,6 @@ class Surface implements WlSurfaceRequests {
     this.pendingState.damageRects = []
     this.pendingState.bufferDamageRects = []
     this.pendingState.frameCallbacks = []
-  }
-
-  notifyPresented(presentationTime: number) {
-    this.encoderFeedback.frameProcessed(presentationTime)
   }
 
   setBufferTransform(resource: WlSurfaceResource, transform: number): void {
@@ -496,7 +490,7 @@ class Surface implements WlSurfaceRequests {
   }
 
   private handleDestruction() {
-    this.encoderFeedback.destroy()
+    this.encoderFeedback?.destroy()
     this.parent?.removeChild(this.surfaceChildSelf)
     this.destroyed = true
     this.role?.view?.destroy()

@@ -1,47 +1,117 @@
 import { EncoderApi } from '../api'
 
-let refreshInterval = 16.667
+let refreshInterval = 0
 let previousPresentationTimestamp = 0
 
-let encoderSurfaceFeedbacks = [] as EncoderSurfaceFeedback[]
+let clientEncodersFeedbacks = [] as ClientEncodersFeedback[]
 
 function updateRefreshInterval() {
   requestAnimationFrame((presentationTimestamp) => {
-    const newRefreshInterval = presentationTimestamp - previousPresentationTimestamp
-    if (newRefreshInterval !== presentationTimestamp) {
-      if (Math.abs(newRefreshInterval - refreshInterval) > 2) {
-        encoderSurfaceFeedbacks.forEach((encoderSurfaceFeedback) =>
-          encoderSurfaceFeedback.refreshInterval(newRefreshInterval),
-        )
-      }
-
-      refreshInterval = Math.floor(newRefreshInterval)
-    }
-    previousPresentationTimestamp = presentationTimestamp
     updateRefreshInterval()
+    if (previousPresentationTimestamp === 0) {
+      previousPresentationTimestamp = presentationTimestamp
+      return
+    }
+
+    const newRefreshInterval = presentationTimestamp - previousPresentationTimestamp
+
+    if (Math.abs(newRefreshInterval - refreshInterval) > 16) {
+      refreshInterval = newRefreshInterval
+      clientEncodersFeedbacks.forEach((clientEncoderFeedback) => clientEncoderFeedback.sendRefreshIntervalUpdate())
+    }
+
+    previousPresentationTimestamp = presentationTimestamp
   })
 }
 
 updateRefreshInterval()
 
-export function createEncoderFeedback(clientId: string, surfaceId: number, encoderApi?: EncoderApi) {
-  const encoderSurfaceFeedback = new EncoderSurfaceFeedback(clientId, surfaceId, encoderApi)
-  encoderSurfaceFeedbacks = [...encoderSurfaceFeedbacks, encoderSurfaceFeedback]
-  encoderSurfaceFeedback.refreshInterval(refreshInterval)
-  return encoderSurfaceFeedback
+export function createClientEncodersFeedback(clientId: string, encoderApi: EncoderApi) {
+  const clientEncoderFeedback = new ClientEncodersFeedback(clientId, encoderApi)
+  clientEncodersFeedbacks = [...clientEncodersFeedbacks, clientEncoderFeedback]
+  clientEncoderFeedback.sendFeedback()
+  return clientEncoderFeedback
 }
 
-export class EncoderSurfaceFeedback {
+function notNull<TValue>(value: TValue | null): value is TValue {
+  return value !== null
+}
+
+export class ClientEncodersFeedback {
   constructor(
     private readonly clientId: string,
-    private readonly surfaceId: number,
-    private readonly encoderApi?: EncoderApi,
-    private readonly durations = [] as { refreshAlignedDuration: number; duration: number }[],
+    private readonly encoderApi: EncoderApi,
+    private surfaceEncoderFeedbacks: SurfaceEncoderFeedback[] = [],
+  ) {}
+
+  sendRefreshIntervalUpdate() {
+    this.encoderApi.feedback({
+      clientId: this.clientId,
+      inlineObject1: {
+        refreshInterval,
+      },
+    })
+  }
+
+  sendFeedback() {
+    const now = performance.now()
+    const surfaceDurationEntries = this.surfaceEncoderFeedbacks
+      .map((surfaceEncoderFeedback) => {
+        if (now - surfaceEncoderFeedback.durationSentTime < 1000) {
+          return null
+        }
+
+        const durations = surfaceEncoderFeedback.durations
+        if (durations.length === 0) {
+          return null
+        }
+
+        const durationsSum = durations.reduce((prev, cur) => prev + cur, 0)
+        const avgDuration = durationsSum / durations.length
+        surfaceEncoderFeedback.durationSentTime = now
+        surfaceEncoderFeedback.durations = []
+        return [surfaceEncoderFeedback.surfaceId, avgDuration]
+      })
+      .filter(notNull)
+    if (surfaceDurationEntries.length === 0) {
+      return
+    }
+
+    const surfaceDurations = Object.fromEntries(surfaceDurationEntries)
+    this.encoderApi.feedback({
+      clientId: this.clientId,
+      inlineObject1: {
+        surfaceDurations,
+        refreshInterval,
+      },
+    })
+  }
+
+  surfaceDestroyed(destroyedSurfaceEncoderFeedback: SurfaceEncoderFeedback) {
+    this.surfaceEncoderFeedbacks = this.surfaceEncoderFeedbacks.filter(
+      (surfaceEncoderFeedback) => surfaceEncoderFeedback !== destroyedSurfaceEncoderFeedback,
+    )
+  }
+
+  destroy() {
+    clientEncodersFeedbacks = clientEncodersFeedbacks.filter((clientEncoderFeedback) => clientEncoderFeedback !== this)
+  }
+
+  createSurfaceEncoderFeedback(surfaceId: number): SurfaceEncoderFeedback {
+    const surfaceEncoderFeedback = new SurfaceEncoderFeedback(surfaceId, this)
+    this.surfaceEncoderFeedbacks.push(surfaceEncoderFeedback)
+    return surfaceEncoderFeedback
+  }
+}
+
+export class SurfaceEncoderFeedback {
+  constructor(
+    public readonly surfaceId: number,
+    private readonly clientEncodersFeedback: ClientEncodersFeedback,
     private commitSerial?: number,
-    // Record<commitSerial, bufferSentStartTime>
     private bufferSentStartedTimes: Record<number, number> = {},
-    private previousRefreshAlignedDurationAvg = 0,
-    private readonly nFrames = 7,
+    public durations = [] as number[],
+    public durationSentTime = 0,
   ) {}
 
   bufferSentStartTime(commitSerial: number, bufferSentStartedTime: number) {
@@ -54,60 +124,24 @@ export class EncoderSurfaceFeedback {
 
   destroy() {
     this.commitSerial = undefined
-    encoderSurfaceFeedbacks = encoderSurfaceFeedbacks.filter(
-      (encoderSurfaceFeedback) => encoderSurfaceFeedback !== this,
-    )
+    this.clientEncodersFeedback.surfaceDestroyed(this)
   }
 
   frameProcessed(processedTime: number): void {
-    if (this.encoderApi === undefined) {
-      return
-    }
     if (this.commitSerial === undefined) {
       return
     }
+
     const commitSerial = this.commitSerial
     this.commitSerial = undefined
     if (commitSerial === undefined) {
       return
     }
+
     const bufferSentStartedTime = this.bufferSentStartedTimes[commitSerial]
     delete this.bufferSentStartedTimes[commitSerial]
 
-    const duration = processedTime - bufferSentStartedTime
-    const refreshAlignedDuration = (Math.ceil(duration / refreshInterval) * refreshInterval) >> 0
-    this.durations.push({ duration, refreshAlignedDuration })
-    if (this.durations.length > this.nFrames) {
-      this.durations.shift()
-    }
-
-    const durationsSum = this.durations.reduce(
-      (prev, cur) => ({
-        duration: prev.duration + cur.duration,
-        refreshAlignedDuration: prev.refreshAlignedDuration + cur.refreshAlignedDuration,
-      }),
-      { duration: 0, refreshAlignedDuration: 0 },
-    )
-    const durationAvg = durationsSum.duration / this.durations.length
-    const refreshAlignedDurationAvg = durationsSum.refreshAlignedDuration / this.durations.length
-
-    if (refreshAlignedDurationAvg === this.previousRefreshAlignedDurationAvg) {
-      return
-    }
-
-    if (Math.abs(refreshAlignedDurationAvg - this.previousRefreshAlignedDurationAvg) >= refreshInterval) {
-      this.previousRefreshAlignedDurationAvg = refreshAlignedDurationAvg
-      this.encoderApi.feedback({
-        clientId: this.clientId,
-        surfaceId: this.surfaceId,
-        inlineObject1: {
-          duration: durationAvg,
-        },
-      })
-    }
-  }
-
-  refreshInterval(refreshInterval: number) {
-    // TODO send refresh interval to host
+    const duration = bufferSentStartedTime ? processedTime - bufferSentStartedTime : 1
+    this.durations.push(duration)
   }
 }

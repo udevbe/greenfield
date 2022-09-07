@@ -68,7 +68,7 @@ export function initSurfaceBufferEncoding(): void {
     const surfaceId = this.creationArgs[0]
 
     const wlSurfaceInterceptor: wl_surface_interceptor = this.userData.messageInterceptors[surfaceId as number]
-    wlSurfaceInterceptor.frameFeedback.setModeAsync()
+    wlSurfaceInterceptor.frameFeedback.setModeDesync()
 
     return MessageDestination.BROWSER
   }
@@ -143,7 +143,9 @@ export function initSurfaceBufferEncoding(): void {
     }
     ensureFrameFeedback(this)
 
+    // FIXME move this line to ensureFrameFeedback code
     this.userData.nativeClientSession?.onDestroy().then(() => this.frameFeedback.destroy())
+
     this.frameFeedback.commitNotify()
 
     let syncSerial: number
@@ -159,6 +161,7 @@ export function initSurfaceBufferEncoding(): void {
       this.encodeAndSendBuffer(syncSerial)
     } else {
       syncSerial = bufferSerial
+      this.frameFeedback.commitDone()
     }
 
     // inject the frame serial in the commit message
@@ -178,7 +181,7 @@ export function initSurfaceBufferEncoding(): void {
     this.encoder
       .encodeBuffer(this.sendBufferResourceId, syncSerial)
       .then((sendBuffer: Buffer) => {
-        this.frameFeedback.frameEncodingDone(encodeStart)
+        this.frameFeedback.commitDone(encodeStart)
 
         // 1 === 'open'
         if (this.userData.communicationChannel.readyState === 1) {

@@ -109,7 +109,7 @@ paths:
             text/plain:
               schema:
                 type: string
-  /{clientId}/{surfaceId}/encoder/feedback:
+  /{clientId}/encoder/feedback:
     put:
       tags:
         - encoder
@@ -122,14 +122,6 @@ paths:
           required: true
           schema:
             type: string
-        - in: path
-          name: surfaceId
-          description: the surface id
-          required: true
-          schema:
-            type: integer
-            format: int32
-            minimum: 0
       requestBody:
         required: true
         content:
@@ -138,11 +130,17 @@ paths:
               description: Provides the encoder with various frame presentation related feedback.
               type: object
               required:
-                - duration
+                - refreshInterval
               properties:
-                duration:
+                surfaceDurations:
+                  type: object
+                  description: Average duration for each surface of the client
+                  additionalProperties:
+                    type: number
+                    description: Average duration. How long it took for the client to process the surface before presenting it to the user.
+                refreshInterval:
                   type: number
-                  description: Informs the encoder how long it took for the client to present the frame to the user when it arrived.
+                  description: Informs the encoder how much time there is between VSyncs.
       responses:
         204:
           description: Frame feedback received.
