@@ -18,22 +18,6 @@
 import Surface from './Surface'
 import { Client, WlCallbackResource } from 'westfield-runtime-server'
 
-let refreshInterval = 16.667
-let previousPresentationTimestamp = 0
-
-function updateRefreshInterval() {
-  requestAnimationFrame((presentationTimestamp) => {
-    const newRefreshInterval = presentationTimestamp - previousPresentationTimestamp
-    if (newRefreshInterval !== presentationTimestamp) {
-      refreshInterval = newRefreshInterval
-    }
-    previousPresentationTimestamp = presentationTimestamp
-    updateRefreshInterval()
-  })
-}
-
-updateRefreshInterval()
-
 export interface Callback {
   done(time: number): void
 }

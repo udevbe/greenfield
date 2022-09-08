@@ -27,6 +27,7 @@ export class FrameFeedback {
   destroy() {
     if (this.delayedFrameDoneEvents) {
       clearTimeout(this.delayedFrameDoneEvents.timeout)
+      this.delayedFrameDoneEvents = undefined
     }
   }
 

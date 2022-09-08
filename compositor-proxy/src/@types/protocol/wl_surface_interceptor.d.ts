@@ -4,6 +4,7 @@ import { FrameFeedback } from '../../FrameFeedback'
 import { NativeClientSession } from '../../NativeClientSession'
 
 export default class wl_surface_interceptor {
+  destroyed: boolean
   frameFeedback: FrameFeedback
   bufferResourceId?: number
   sendBufferResourceId: number
@@ -18,6 +19,8 @@ export default class wl_surface_interceptor {
   id: number
 
   encodeAndSendBuffer(syncSerial: number): void
+
+  R0(message: { buffer: ArrayBuffer; fds: Array<number>; bufferOffset: number; consumed: number; size: number }): number
 
   R1(message: { buffer: ArrayBuffer; fds: Array<number>; bufferOffset: number; consumed: number; size: number }): number
 

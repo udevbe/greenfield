@@ -11,7 +11,7 @@ async function main() {
 
   // create new compositor context
   const compositorSessionId = 'test123'
-  const session = await createCompositorSession(compositorSessionId, console)
+  const session = await createCompositorSession(compositorSessionId)
 
   // Get an HTML5 canvas for use as an output for the compositor. Multiple outputs can be used.
   const canvas: HTMLCanvasElement = document.createElement('canvas')

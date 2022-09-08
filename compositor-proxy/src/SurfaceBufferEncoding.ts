@@ -96,6 +96,26 @@ export function initSurfaceBufferEncoding(): void {
   }
 
   /**
+   * destroy: [R]equest w opcode [0] = R0
+   */
+  wlSurfaceInterceptor.prototype.R0 = function (message: {
+    buffer: ArrayBuffer
+    fds: Array<number>
+    bufferOffset: number
+    consumed: number
+    size: number
+  }) {
+    if (this.frameFeedback) {
+      if (this.sendBufferResourceId) {
+        this.frameFeedback.sendBufferReleaseEvent(this.sendBufferResourceId)
+      }
+      this.frameFeedback.destroy()
+    }
+    this.destroyed = true
+    return MessageDestination.BROWSER
+  }
+
+  /**
    * frame: [R]equest w opcode [3] = R3
    */
   wlSurfaceInterceptor.prototype.R3 = function (message: {
@@ -181,6 +201,10 @@ export function initSurfaceBufferEncoding(): void {
     this.encoder
       .encodeBuffer(this.sendBufferResourceId, syncSerial)
       .then((sendBuffer: Buffer) => {
+        // if (this.destroyed) {
+        //   return
+        // }
+
         this.frameFeedback.commitDone(encodeStart)
 
         // 1 === 'open'
