@@ -30,13 +30,16 @@ import wl_surface_interceptor from './protocol/wl_surface_interceptor'
 const logger = createLogger('surface-buffer-encoding')
 let bufferSerial = -1
 
-function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor) {
+function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor): FrameFeedback {
   if (wlSurfaceInterceptor.frameFeedback === undefined) {
-    wlSurfaceInterceptor.frameFeedback = new FrameFeedback(
+    const frameFeedback = new FrameFeedback(
       wlSurfaceInterceptor.wlClient,
       wlSurfaceInterceptor.userData.messageInterceptors,
     )
+    wlSurfaceInterceptor.frameFeedback = frameFeedback
+    wlSurfaceInterceptor.userData.nativeClientSession?.onDestroy().then(() => frameFeedback.destroy())
   }
+  return wlSurfaceInterceptor.frameFeedback
 }
 
 export function initSurfaceBufferEncoding(): void {
@@ -53,7 +56,9 @@ export function initSurfaceBufferEncoding(): void {
     const wlSurfaceInterceptor: wl_surface_interceptor = this.userData.messageInterceptors[surfaceId as number]
     const parentWlSurfaceInterceptor: wl_surface_interceptor =
       this.userData.messageInterceptors[parentSurfaceId as number]
-    wlSurfaceInterceptor.frameFeedback.setModeSync(parentWlSurfaceInterceptor.frameFeedback)
+    if (wlSurfaceInterceptor.frameFeedback && parentWlSurfaceInterceptor.frameFeedback) {
+      wlSurfaceInterceptor.frameFeedback.setModeSync(parentWlSurfaceInterceptor.frameFeedback)
+    }
 
     return MessageDestination.BROWSER
   }
@@ -68,7 +73,9 @@ export function initSurfaceBufferEncoding(): void {
     const surfaceId = this.creationArgs[0]
 
     const wlSurfaceInterceptor: wl_surface_interceptor = this.userData.messageInterceptors[surfaceId as number]
-    wlSurfaceInterceptor.frameFeedback.setModeDesync()
+    if (wlSurfaceInterceptor.frameFeedback) {
+      wlSurfaceInterceptor.frameFeedback.setModeDesync()
+    }
 
     return MessageDestination.BROWSER
   }
@@ -86,10 +93,7 @@ export function initSurfaceBufferEncoding(): void {
     const parentWlSurfaceInterceptor: wl_surface_interceptor =
       this.userData.messageInterceptors[parentSurfaceId as number]
 
-    ensureFrameFeedback(wlSurfaceInterceptor)
-    ensureFrameFeedback(parentWlSurfaceInterceptor)
-
-    wlSurfaceInterceptor.frameFeedback.setModeSync(parentWlSurfaceInterceptor.frameFeedback)
+    ensureFrameFeedback(wlSurfaceInterceptor).setModeSync(ensureFrameFeedback(parentWlSurfaceInterceptor))
 
     // @ts-ignore
     return this.requestHandlers.getSubsurface(subsurfaceId, surfaceId, parentSurfaceId)
@@ -110,6 +114,7 @@ export function initSurfaceBufferEncoding(): void {
         this.frameFeedback.sendBufferReleaseEvent(this.sendBufferResourceId)
       }
       this.frameFeedback.destroy()
+      this.frameFeedback = undefined
     }
     this.destroyed = true
     return MessageDestination.BROWSER
@@ -126,8 +131,7 @@ export function initSurfaceBufferEncoding(): void {
     size: number
   }) {
     const [frameCallbackId] = unmarshallArgs(message, 'n')
-    ensureFrameFeedback(this)
-    this.frameFeedback.addFrameCallbackId(frameCallbackId as number)
+    ensureFrameFeedback(this).addFrameCallbackId(frameCallbackId as number)
     // @ts-ignore
     return this.requestHandlers.frame(frameCallbackId)
   }
@@ -161,19 +165,18 @@ export function initSurfaceBufferEncoding(): void {
     if (!this.encoder) {
       this.encoder = createEncoder(this.wlClient, this.userData.drmContext)
     }
-    ensureFrameFeedback(this)
+    const frameFeedback = ensureFrameFeedback(this)
 
     // FIXME move this line to ensureFrameFeedback code
-    this.userData.nativeClientSession?.onDestroy().then(() => this.frameFeedback.destroy())
 
-    this.frameFeedback.commitNotify()
+    frameFeedback.commitNotify()
 
     let syncSerial: number
 
     if (this.bufferResourceId) {
       syncSerial = ++bufferSerial
       if (this.sendBufferResourceId) {
-        this.frameFeedback.sendBufferReleaseEvent(this.sendBufferResourceId)
+        frameFeedback.sendBufferReleaseEvent(this.sendBufferResourceId)
       }
       this.sendBufferResourceId = this.bufferResourceId
       this.bufferResourceId = 0
@@ -181,7 +184,7 @@ export function initSurfaceBufferEncoding(): void {
       this.encodeAndSendBuffer(syncSerial)
     } else {
       syncSerial = bufferSerial
-      this.frameFeedback.commitDone()
+      frameFeedback.commitDone()
     }
 
     // inject the frame serial in the commit message
@@ -201,11 +204,9 @@ export function initSurfaceBufferEncoding(): void {
     this.encoder
       .encodeBuffer(this.sendBufferResourceId, syncSerial)
       .then((sendBuffer: Buffer) => {
-        // if (this.destroyed) {
-        //   return
-        // }
-
-        this.frameFeedback.commitDone(encodeStart)
+        if (!this.destroyed && this.frameFeedback) {
+          this.frameFeedback.commitDone(encodeStart)
+        }
 
         // 1 === 'open'
         if (this.userData.communicationChannel.readyState === 1) {
