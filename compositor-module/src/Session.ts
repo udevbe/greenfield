@@ -16,6 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { Display } from 'westfield-runtime-server'
+import { EncoderApi } from './api'
 import Globals from './Globals'
 import { ButtonCode, CompositorSession } from './index'
 import { FrameDecoder } from './remotestreaming/buffer-decoder'
@@ -108,6 +109,8 @@ async function webVideoDecoderConfig(): Promise<VideoDecoderConfig | undefined> 
   return undefined
 }
 
+export type FrameDecoderFactory = (session: Session) => FrameDecoder
+
 class Session implements CompositorSession {
   readonly globals: Globals
   readonly renderer: Renderer
@@ -118,7 +121,7 @@ class Session implements CompositorSession {
     public readonly display: Display,
     public readonly compositorSessionId: string,
     public readonly logger: GreenfieldLogger,
-    frameDecoderFactory: (session: Session) => FrameDecoder,
+    frameDecoderFactory: FrameDecoderFactory,
   ) {
     this.globals = Globals.create(this)
     this.renderer = Renderer.create(this)
@@ -148,17 +151,17 @@ class Session implements CompositorSession {
         crypto.getRandomValues(randomBytes)
         return `sid:${[...randomBytes].map((b) => b.toString(16).padStart(2, '0')).join('')}`
       })()
-    let frameDecoderFactory: (session: Session) => FrameDecoder
+    let decoderFactory: FrameDecoderFactory
     const webCodecSupport = await webVideoDecoderConfig()
     if (webCodecSupport) {
-      frameDecoderFactory = webCodecFrameDecoderFactory(webCodecSupport)
+      decoderFactory = webCodecFrameDecoderFactory(webCodecSupport)
       logger.info('Will use H.264 WebCodecs Decoder.')
     } else {
       logger.info('Will use H.264 WASM Decoder.')
-      frameDecoderFactory = createWasmFrameDecoder
+      decoderFactory = createWasmFrameDecoder
     }
 
-    const session = new Session(display, compositorSessionId, logger, frameDecoderFactory)
+    const session = new Session(display, compositorSessionId, logger, decoderFactory)
     session.globals.seat.buttonBindings.push({
       modifiers: 0,
       button: ButtonCode.MAIN,

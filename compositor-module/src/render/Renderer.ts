@@ -18,8 +18,7 @@
 import { resetBrowserCursor, setBrowserCursor, hideBrowserCursor } from '../browser/pointer'
 import { clearBrowserDndImage, setBrowserDndImage } from '../browser/dnd'
 import BufferImplementation from '../BufferImplementation'
-import { ButtonEvent } from '../ButtonEvent'
-import Callback from '../Callback'
+import { Callback } from '../Callback'
 import { queueCancellableMicrotask } from '../Loop'
 import { Point } from '../math/Point'
 import Output from '../Output'
@@ -28,6 +27,7 @@ import Session from '../Session'
 import Surface from '../Surface'
 import View from '../View'
 import { Scene } from './Scene'
+import surface from '../Surface'
 
 function createRenderFrame(): Promise<number> {
   return new Promise<number>((resolve) => {
@@ -115,20 +115,27 @@ export default class Renderer {
         return
       }
       this.updateViewStack()
-      this.viewStack.forEach((view) => {
+      const viewStack = [...this.viewStack]
+      const processedTime = performance.now()
+      const clients = viewStack.map((view) => {
         this.updateRenderStatesPixelContent(view)
         this.registerFrameCallbacks(view.surface.state.frameCallbacks)
         view.surface.state.frameCallbacks = []
+        view.surface.encoderFeedback?.frameProcessed(processedTime)
+        return view.surface.resource.client
       })
+      new Set(clients).forEach((client) => client.userData.clientEncodersFeedback?.sendFeedback())
+
       afterUpdatePixelContent?.()
-      // TODO we can check which views are damaged and filter out only those scenes that need a re-render
+      // TODO we can check which views are damaged and filter out only those scenes that need a rerender
       if (this.renderFrame) {
         return
       }
+
       this.renderFrame = createRenderFrame().then((time) => {
         this.renderFrame = undefined
         // TODO we can further limit the visible region of each view by removing the area covered by other views
-        sceneList.forEach((scene) => scene.render([...this.viewStack]))
+        sceneList.forEach((scene) => scene.render(viewStack))
         this.frameCallbacks.forEach((callback) => callback.done(time))
         this.frameCallbacks = []
         this.session.flush()

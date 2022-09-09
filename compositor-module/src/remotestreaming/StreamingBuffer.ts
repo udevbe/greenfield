@@ -17,7 +17,6 @@
 
 import { WlBufferResource } from 'westfield-runtime-server'
 import BufferImplementation from '../BufferImplementation'
-import { RemoteOutOfBandSendOpcode } from '../RemoteOutOfBandChannel'
 import Surface from '../Surface'
 import BufferStream from './BufferStream'
 import { DecodedFrame } from './DecodedFrame'
@@ -65,10 +64,13 @@ export default class StreamingBuffer implements BufferImplementation<Promise<Dec
         oldDecodedFrame?.pixelContent.close?.()
       } catch (e: unknown) {
         surface.session.logger.warn('Get error during decode, requesting new keyframe.')
-        surface.resource.client.userData.oobChannel.send(
-          RemoteOutOfBandSendOpcode.ForceKeyFrameNow,
-          new Uint32Array([surface.resource.id, commitSerial]),
-        )
+        surface.resource.client.userData.encoderApi?.keyframe({
+          clientId: surface.resource.client.id,
+          surfaceId: surface.resource.id,
+          inlineObject: {
+            syncSerial: commitSerial,
+          },
+        })
         const encodedFrame = await this.bufferStream.onFrameAvailable(commitSerial)
         if (encodedFrame) {
           const oldDecodedFrame = this.decodedFrame
@@ -87,7 +89,8 @@ export default class StreamingBuffer implements BufferImplementation<Promise<Dec
     if (this.released) {
       throw new Error('BUG. Double buffer release.')
     }
-    this.resource.release()
+    // resource is released by the proxy
+    // this.resource.release()
     this.released = true
   }
 }

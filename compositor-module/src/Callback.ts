@@ -15,22 +15,44 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { WlCallbackResource } from 'westfield-runtime-server'
+import Surface from './Surface'
+import { Client, WlCallbackResource } from 'westfield-runtime-server'
 
-export default class Callback {
-  static create(wlCallbackResource: WlCallbackResource): Callback {
-    const callback = new Callback(wlCallbackResource)
-    wlCallbackResource.addDestroyListener(() => {
-      callback.resource = undefined
-    })
-    return callback
+export interface Callback {
+  done(time: number): void
+}
+
+export function createProxyCallback(surface: Surface): Callback {
+  return new ProxyCallback(surface)
+}
+
+export function createDefaultCallback(client: Client, resourceId: number, version: number): Callback {
+  const wlCallbackResource = new WlCallbackResource(client, resourceId, version)
+  const callback = new DefaultCallback(wlCallbackResource)
+  wlCallbackResource.addDestroyListener(() => {
+    callback.resource = undefined
+  })
+  return callback
+}
+
+class ProxyCallback implements Callback {
+  commitSerial?: number
+
+  constructor(public surface: Surface) {}
+
+  done(time: number): void {
+    // ignore call, done by proxy
   }
+}
 
-  private constructor(public resource: WlCallbackResource | undefined) {}
+class DefaultCallback {
+  constructor(public resource: WlCallbackResource | undefined) {}
 
   done(data: number): void {
-    this.resource?.done(data)
-    this.resource?.destroy()
-    this.resource = undefined
+    if (this.resource) {
+      this.resource.done(data)
+      this.resource.destroy()
+      this.resource = undefined
+    }
   }
 }

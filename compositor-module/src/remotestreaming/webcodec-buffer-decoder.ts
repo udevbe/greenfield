@@ -1,4 +1,3 @@
-import { RemoteOutOfBandSendOpcode } from '../RemoteOutOfBandChannel'
 import Session from '../Session'
 import Surface from '../Surface'
 import { FrameDecoder, H264DecoderContext } from './buffer-decoder'
@@ -146,11 +145,11 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
     if (error.name === 'QuotaExceededError') {
       // Codec reclaimed due to inactivity.
       // request next frame to be a key frame, so we can re-initialize once a new frame comes in
-      // TODO use compositor-proxy REST api
-      this.surface.resource.client.userData.oobChannel.send(
-        RemoteOutOfBandSendOpcode.ForceKeyFrame,
-        new Uint32Array([this.surface.resource.id]),
-      )
+      this.surface.resource.client.userData.encoderApi?.keyframe({
+        clientId: this.surface.resource.client.id,
+        surfaceId: this.surface.resource.id,
+        inlineObject: {},
+      })
       this.opaqueDecoder = undefined
       this.alphaDecoder = undefined
     } else {

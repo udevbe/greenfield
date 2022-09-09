@@ -58,9 +58,9 @@ export class CompositorProxySession {
     this.destroyResolve?.()
   }
 
-  handleConnection(webSocket: WebSocketLike): void {
+  handleConnection(webSocket: WebSocketLike, clientId: string): void {
     try {
-      this.nativeCompositorSession.socketForClient(webSocket)
+      this.nativeCompositorSession.socketForClient(webSocket, clientId)
     } catch (e: any) {
       logger.error(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
       logger.error('error object stack: ')

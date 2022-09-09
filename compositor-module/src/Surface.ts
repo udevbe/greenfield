@@ -17,7 +17,6 @@
 
 import {
   WlBufferResource,
-  WlCallbackResource,
   WlOutputTransform,
   WlRegionResource,
   WlSurfaceError,
@@ -27,7 +26,6 @@ import {
 import { withSizeAndPosition } from './math/Rect'
 import BufferContents from './BufferContents'
 import BufferImplementation from './BufferImplementation'
-import Callback from './Callback'
 import { IDENTITY, invert, Mat4, scalar, timesMat4, timesPoint, translation } from './math/Mat4'
 import { Point } from './math/Point'
 import { createRect, Rect, RectWithInfo } from './math/Rect'
@@ -49,6 +47,7 @@ import { sizeEquals, Size } from './math/Size'
 import Subsurface from './Subsurface'
 import { createSurfaceChild, SurfaceChild } from './SurfaceChild'
 import SurfaceRole from './SurfaceRole'
+import { Callback } from './Callback'
 
 export interface SurfaceState {
   damageRects: Rect[]
@@ -167,6 +166,9 @@ class Surface implements WlSurfaceRequests {
     public readonly resource: WlSurfaceResource,
     public readonly renderer: Renderer,
     public readonly session: Session,
+    public readonly encoderFeedback = resource.client.userData.clientEncodersFeedback?.createSurfaceEncoderFeedback(
+      resource.id,
+    ),
   ) {}
 
   private _parent?: Surface
@@ -199,6 +201,7 @@ class Surface implements WlSurfaceRequests {
 
   static create(wlSurfaceResource: WlSurfaceResource, session: Session): Surface {
     const surface = new Surface(wlSurfaceResource, session.renderer, session)
+
     initInfinite(surface.state.opaquePixmanRegion)
     initInfinite(surface.state.inputPixmanRegion)
     initInfinite(surface.pendingState.opaquePixmanRegion)
@@ -219,7 +222,7 @@ class Surface implements WlSurfaceRequests {
       destroyPixmanRegion(surface.pendingState.inputPixmanRegion)
       destroyPixmanRegion(surface.pixmanRegion)
 
-      surface._handleDestruction()
+      surface.handleDestruction()
     })
 
     return surface
@@ -268,8 +271,14 @@ class Surface implements WlSurfaceRequests {
     this.pendingState.damageRects.push(createRect({ x, y }, { width, height }))
   }
 
-  frame(resource: WlSurfaceResource, callback: number): void {
-    this.pendingState.frameCallbacks.push(Callback.create(new WlCallbackResource(resource.client, callback, 1)))
+  frame(resource: WlSurfaceResource, resourceId: number): void {
+    const callback = resource.client.userData.frameCallbackFactory.create(
+      this,
+      resource.client,
+      resourceId,
+      resource.version,
+    )
+    this.pendingState.frameCallbacks.push(callback)
   }
 
   setOpaqueRegion(resource: WlSurfaceResource, regionResource: WlRegionResource | undefined): void {
@@ -307,6 +316,7 @@ class Surface implements WlSurfaceRequests {
         this.session.logger.trace(`|- Awaiting buffer contents with serial: ${serial ?? 'NO SERIAL'}`)
         const startBufferContents = Date.now()
         this.pendingState.bufferContents = await bufferImplementation.getContents(this, serial)
+
         this.session.logger.trace(
           `|--> Buffer contents with serial: ${serial ?? 'NO SERIAL'} took ${Date.now() - startBufferContents}ms`,
         )
@@ -316,6 +326,9 @@ class Surface implements WlSurfaceRequests {
       } catch (e: any) {
         this.session.logger.warn(`[surface: ${resource.id}] - Failed to receive buffer contents.`, e.toString())
       }
+    }
+    if (this.encoderFeedback && serial !== undefined) {
+      this.encoderFeedback.bufferCommit(serial)
     }
     this.role?.onCommit(this)
   }
@@ -476,7 +489,8 @@ class Surface implements WlSurfaceRequests {
     surfaceChild.surface.parent = this
   }
 
-  private _handleDestruction() {
+  private handleDestruction() {
+    this.encoderFeedback?.destroy()
     this.parent?.removeChild(this.surfaceChildSelf)
     this.destroyed = true
     this.role?.view?.destroy()

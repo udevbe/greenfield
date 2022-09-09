@@ -8,6 +8,8 @@ import { upsertWebSocket } from './ClientConnectionPool'
 import { createLogger } from './Logger'
 import { URLSearchParams } from 'url'
 import { config } from './config'
+import { operations } from './@types/api'
+import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 
 const logger = createLogger('app')
 
@@ -61,6 +63,7 @@ export function POSTMkstempMmap(compositorProxySession: CompositorProxySession, 
           // TODO log error
           res
             .writeStatus('400 Bad Request')
+            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end('Data in HTTP request body can not be empty.')
           return
@@ -102,6 +105,7 @@ export function GETWebFD(
     // TODO log error
     httpResponse
       .writeStatus('400 Bad Request')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
       .writeHeader('Content-Type', 'text/plain')
       .end(`File descriptor and count argument must be a positive integer. Got fd: ${fdParam}, count: ${count}`)
     return
@@ -120,11 +124,13 @@ export function GETWebFD(
         if (err.code === 'EBADF') {
           httpResponse
             .writeStatus('404 Not Found')
+            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end('File descriptor not found.')
         } else {
           httpResponse
             .writeStatus('500 Internal Server Error')
+            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end(`Unexpected error: ${err.name}: ${err.message}`)
         }
@@ -181,7 +187,9 @@ export function DELWebFD(
     // TODO log error
     httpResponse
       .writeStatus('400 Bad Request')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
       .writeHeader('Content-Type', 'text/plain')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
       .end(`File descriptor argument must be a positive integer. Got: ${fdParam}`)
     return
   }
@@ -197,11 +205,13 @@ export function DELWebFD(
         if (err.code === 'EBADF') {
           httpResponse
             .writeStatus('404 Not Found')
+            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end('File descriptor not found.')
         } else {
           httpResponse
             .writeStatus('500 Internal Server Error')
+            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end(`Unexpected error: ${err.name}: ${err.message}`)
         }
@@ -229,11 +239,13 @@ function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readab
         if (error.code === 'EBADF') {
           httpResponse
             .writeStatus('404 Not Found')
+            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end('File descriptor not found.')
         } else {
           httpResponse
             .writeStatus('500 Internal Server Error')
+            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end(`Unexpected error: ${error.name}: ${error.message}`)
         }
@@ -284,6 +296,7 @@ export function GETWebFDStream(
     // TODO log error
     res
       .writeStatus('400 Bad Request')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
       .writeHeader('Content-Type', 'text/plain')
       .end(`File descriptor argument must be a positive integer. Got: ${fdParam}`)
     return
@@ -293,28 +306,35 @@ export function GETWebFDStream(
 }
 
 function pipeHttpRequestToWritable(httpResponse: HttpResponse, writable: Writable) {
+  let inError = false
   writable
     .on('drain', () => httpResponse.resume())
     // TODO log error
     .on('error', (error) => {
       httpResponse.cork(() => {
+        inError = true
         // @ts-ignore
         if (error.code === 'EBADF') {
           logger.error('Attempted to stream data to a non-existing FD.', error)
           httpResponse
             .writeStatus('404 Not Found')
+            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end('File descriptor not found.')
         } else {
           logger.error('Unexpected error when trying to stream data to an FD.', error)
           httpResponse
             .writeStatus('500 Internal Server Error')
+            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end(`${error.name}: ${error.message}`)
         }
       })
     })
-    .on('finish', () => {
+    .on('close', () => {
+      if (inError) {
+        return
+      }
       httpResponse.cork(() => {
         httpResponse.writeStatus('200 OK').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
       })
@@ -350,6 +370,7 @@ export function PUTWebFDStream(
     // TODO log error
     res
       .writeStatus('400 Bad Request')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
       .writeHeader('Content-Type', 'text/plain')
       .end(`FD argument must be an unsigned integer. Got: ${fdParam}`)
     return
@@ -390,6 +411,124 @@ export function webSocketOpen(
       // reconnecting, no need to do anything
       return
     }
-    compositorProxySession.handleConnection(retransmittingWebSocket)
+    compositorProxySession.handleConnection(retransmittingWebSocket, connectionId)
   }
+}
+
+/* Helper function for reading a posted JSON body */
+function readJson<T>(res: HttpResponse) {
+  return new Promise<T>((resolve, reject) => {
+    const chunks: Uint8Array[] = []
+    /* Register data cb */
+    res.onData((ab, isLast) => {
+      chunks.push(new Uint8Array(ab))
+      if (isLast) {
+        resolve(JSON.parse(Buffer.concat(chunks).toString()))
+      }
+    })
+    /* Register error cb */
+    res.onAborted(reject)
+  })
+}
+
+export async function POSTEncoderKeyframe(
+  compositorProxySession: CompositorProxySession,
+  httpResponse: HttpResponse,
+  httpRequest: HttpRequest,
+  [clientIdParam, surfaceIdParam]: string[],
+) {
+  const clientId = clientIdParam
+  const surfaceId = asNumber(surfaceIdParam)
+  if (clientId === undefined || surfaceId === undefined) {
+    httpResponse
+      .writeStatus('400 Bad Request')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+      .writeHeader('Content-Type', 'text/plain')
+      .end(`Surface id argument must be a positive integer. Got client id: ${clientId}, surface id: ${surfaceId}`)
+    return
+  }
+
+  const keyframeRequest = await readJson<operations['keyframe']['requestBody']['content']['application/json']>(
+    httpResponse,
+  )
+  // TODO validate keyframeRequest
+
+  const clientEntry = compositorProxySession.nativeCompositorSession.clients.find(
+    (clientEntry) => clientEntry.clientId === clientId,
+  )
+
+  if (clientEntry === undefined) {
+    httpResponse
+      .writeStatus('404 Not Found')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+      .writeHeader('Content-Type', 'text/plain')
+      .end('Client not found.')
+    return
+  }
+
+  const wlSurfaceInterceptor = clientEntry.nativeClientSession?.messageInterceptor.interceptors[
+    surfaceId
+  ] as wl_surface_interceptor
+  if (wlSurfaceInterceptor === undefined) {
+    logger.error('BUG. Received a key frame unit request but no surface found that matches the request.')
+    httpResponse
+      .writeStatus('404 Not Found')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+      .writeHeader('Content-Type', 'text/plain')
+      .end('Surface not found.')
+    return
+  }
+  wlSurfaceInterceptor.encoder.requestKeyUnit()
+  if (keyframeRequest.syncSerial) {
+    wlSurfaceInterceptor.encodeAndSendBuffer(keyframeRequest.syncSerial)
+  }
+
+  httpResponse.writeStatus('202 Accepted').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
+}
+
+export async function PUTEncoderFeedback(
+  compositorProxySession: CompositorProxySession,
+  httpResponse: HttpResponse,
+  httpRequest: HttpRequest,
+  [clientIdParam]: string[],
+) {
+  const clientId = clientIdParam
+
+  if (clientId === undefined) {
+    httpResponse
+      .writeStatus('400 Bad Request')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+      .writeHeader('Content-Type', 'text/plain')
+      .end(`Surface id argument must be a positive integer. Got client id: ${clientId}`)
+    return
+  }
+
+  const feedbackPromise = readJson<operations['feedback']['requestBody']['content']['application/json']>(httpResponse)
+
+  const clientEntry = compositorProxySession.nativeCompositorSession.clients.find(
+    (clientEntry) => clientEntry.clientId === clientId,
+  )
+
+  if (clientEntry === undefined) {
+    httpResponse
+      .writeStatus('404 Not Found')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+      .writeHeader('Content-Type', 'text/plain')
+      .end('Client not found.')
+    return
+  }
+
+  const feedback = await feedbackPromise
+  if (feedback.surfaceDurations) {
+    Object.entries(feedback.surfaceDurations).forEach(([surfaceId, avgDuration]) => {
+      const wlSurfaceInterceptor = clientEntry.nativeClientSession?.messageInterceptor.interceptors[
+        Number.parseInt(surfaceId)
+      ] as wl_surface_interceptor
+      if (wlSurfaceInterceptor) {
+        wlSurfaceInterceptor.frameFeedback?.updateDelay(feedback.refreshInterval, avgDuration)
+      }
+    })
+  }
+
+  httpResponse.writeStatus('204 No Content').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
 }

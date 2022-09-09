@@ -58,6 +58,106 @@ components:
           readOnly: true
 
 paths:
+  /{clientId}/{surfaceId}/encoder/keyframe:
+    post:
+      tags:
+        - encoder
+      summary: Encode a new keyframe.
+      operationId: keyframe
+      parameters:
+        - in: path
+          name: clientId
+          description: the client id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: surfaceId
+          description: the surface id
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              description: Describes when the key frame should be generated.
+              type: object
+              properties:
+                syncSerial:
+                  type: number
+                  format: int32
+                  minimum: 0
+                  description: An optional sync serial. When provided the encoded frame will be send immediately.
+      responses:
+        202:
+          description: Key frame successfully requested.
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        400:
+          description: Bad request. Bad or no content.
+          content:
+            text/plain:
+              schema:
+                type: string
+        404:
+          description: client or surface not found.
+          content:
+            text/plain:
+              schema:
+                type: string
+  /{clientId}/encoder/feedback:
+    put:
+      tags:
+        - encoder
+      summary: Send frame presentation feedback.
+      operationId: feedback
+      parameters:
+        - in: path
+          name: clientId
+          description: the client id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              description: Provides the encoder with various frame presentation related feedback.
+              type: object
+              required:
+                - refreshInterval
+              properties:
+                surfaceDurations:
+                  type: object
+                  description: Average duration for each surface of the client
+                  additionalProperties:
+                    type: number
+                    description: Average duration. How long it took for the client to process the surface before presenting it to the user.
+                refreshInterval:
+                  type: number
+                  description: Informs the encoder how much time there is between VSyncs.
+      responses:
+        204:
+          description: Frame feedback received.
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        400:
+          description: Bad request. Bad or no content.
+          content:
+            text/plain:
+              schema:
+                type: string
+        404:
+          description: client or surface not found.
+          content:
+            text/plain:
+              schema:
+                type: string
   /mkfifo:
     post:
       tags:
@@ -66,7 +166,7 @@ paths:
       operationId: mkfifo
       responses:
         201:
-          description: Pipe pair was succesfully created.
+          description: Pipe pair was successfully created.
           content:
             application/json:
               schema:
@@ -86,7 +186,7 @@ paths:
     post:
       tags:
         - webfs
-      summary: Creates a tempororay file and returns a memory mapped WebFD of the uploaded data.
+      summary: Creates a temporary file and returns a memory mapped WebFD of the uploaded data.
       operationId: mkstempMmap
       requestBody:
         required: true
@@ -97,7 +197,7 @@ paths:
               format: binary
       responses:
         201:
-          description: Data was succesfully uploaded and mapped to a shared memory file.
+          description: Data was successfully uploaded and mapped to a shared memory file.
           content:
             application/json:
               schema:
@@ -131,7 +231,7 @@ paths:
             minimum: 0
       responses:
         200:
-          description: File descriptor closed succesfully.
+          description: File descriptor closed successfully.
         401:
           $ref: '#/components/responses/UnauthorizedError'
         400:
@@ -176,7 +276,7 @@ paths:
           description: Read up to count bytes from file descriptor fd.
       responses:
         200:
-          description: Content sent succesfully.
+          description: Content sent successfully.
           content:
             application/octet-stream:
               schema:
@@ -232,7 +332,7 @@ paths:
               format: binary
       responses:
         200:
-          description: All content sent succesfully.
+          description: All content sent successfully.
         401:
           $ref: '#/components/responses/UnauthorizedError'
         400:
@@ -275,7 +375,7 @@ paths:
           description: Stream data in chunks with a maximum size. Defaults to 64 kilobytes.
       responses:
         200:
-          description: All content read succesfully.
+          description: All content read successfully.
           content:
             application/octet-stream:
               schema:

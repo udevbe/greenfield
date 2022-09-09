@@ -36,7 +36,7 @@ import {
 
 const logger = createLogger('native-compositor-session')
 
-export type ClientEntry = { webSocket: WebSocketLike; nativeClientSession?: NativeClientSession }
+export type ClientEntry = { webSocket: WebSocketLike; nativeClientSession?: NativeClientSession; clientId?: string }
 
 function onGlobalCreated(globalName: number): void {
   nativeGlobalNames.push(globalName)
@@ -147,13 +147,13 @@ export class NativeCompositorSession {
     }
   }
 
-  socketForClient(webSocket: WebSocketLike): void {
+  socketForClient(webSocket: WebSocketLike, clientId: string): void {
     logger.info(`New websocket connected.`)
     // find a client who does not have a websocket associated
     const client = this.clients.find((client) => client.webSocket === webSocket)
     if (client === undefined) {
       // create a placeholder client for future wayland client connections.
-      const placeHolderClient: ClientEntry = { webSocket }
+      const placeHolderClient: ClientEntry = { webSocket, clientId }
       this.clients = [...this.clients, placeHolderClient]
       webSocket.addEventListener('close', () => {
         if (placeHolderClient.nativeClientSession) {
@@ -165,6 +165,7 @@ export class NativeCompositorSession {
       })
     } else {
       // associate the websocket with an already connected wayland client.
+      client.clientId = clientId
       webSocket.addEventListener('close', () => {
         logger.info(`websocket closed.`)
         if (client.nativeClientSession) {
