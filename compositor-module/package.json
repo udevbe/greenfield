@@ -35,7 +35,7 @@
     "retransmitting-websocket": "1.0.0-alpha.0",
     "tinyh264": "0.0.7",
     "westfield-runtime-common": "1.0.0-alpha.0",
-    "westfield-runtime-server": "1.0.0-alpha.1",
+    "westfield-runtime-server": "1.0.0-alpha.2",
     "xtsb": "0.0.2-alpha.0"
   },
   "devDependencies": {
