@@ -5,8 +5,9 @@ import { clearTimeout } from 'timers'
 export class FrameFeedback {
   private callbackResourceIds: number[] = []
   private commitTimestamp = 0
+  private virtualRefreshDeadline = 0
   private refreshInterval = 16
-  private processingDuration?: number
+  private clientProcessingDuration?: number
   private clientFeedbackTimestamp = 0
   private delayedFrameDoneEvents?: {
     timeout?: NodeJS.Timeout
@@ -61,7 +62,7 @@ export class FrameFeedback {
     this.refreshInterval = clientRefreshInterval
 
     if (clientProcessingDuration) {
-      this.processingDuration = Math.ceil(clientProcessingDuration / this.refreshInterval) * this.refreshInterval
+      this.clientProcessingDuration = clientProcessingDuration
     }
 
     if (this.paused) {
@@ -69,12 +70,12 @@ export class FrameFeedback {
       return
     }
 
-    if (this.processingDuration === undefined) {
+    if (this.clientProcessingDuration === undefined) {
       return
     }
 
     if (this.delayedFrameDoneEvents && this.delayedFrameDoneEvents.endTime) {
-      const newEndTime = this.delayedFrameDoneEvents.startTime + this.processingDuration
+      const newEndTime = this.delayedFrameDoneEvents.startTime + this.clientProcessingDuration
       if (newEndTime < now) {
         // immediately fire frame done events
         clearTimeout(this.delayedFrameDoneEvents.timeout)
@@ -83,13 +84,16 @@ export class FrameFeedback {
         // If there is a scheduled frame done event that is more in the future compared to a frame done event that
         // would be scheduled now, then we reschedule the old frame done event using the new delay information
         clearTimeout(this.delayedFrameDoneEvents.timeout)
-        this.delayedFrameDoneEvents.timeout = setTimeout(this.delayedFrameDoneEvents.callback, this.processingDuration)
+        this.delayedFrameDoneEvents.timeout = setTimeout(
+          this.delayedFrameDoneEvents.callback,
+          this.clientProcessingDuration,
+        )
       }
     }
   }
 
   commitDone(encodeStartTime?: number): void {
-    if (this.processingDuration === 0 || this.syncParent) {
+    if (this.clientProcessingDuration === 0 || this.syncParent) {
       return
     }
 
@@ -109,7 +113,7 @@ export class FrameFeedback {
 
     const now = performance.now()
 
-    if (now - this.clientFeedbackTimestamp > 2000 || this.processingDuration === undefined) {
+    if (now - this.clientFeedbackTimestamp > 2000 || this.clientProcessingDuration === undefined) {
       // pause sending frame done event until we have a (recent) feedback timestamp
       this.pause()
       this.createDelayedFrameDoneEvents(frameCallbackIds)
@@ -122,11 +126,15 @@ export class FrameFeedback {
     }
 
     const encodingDuration = now - encodeStartTime
-    // const delay = Math.ceil(this.processingDuration / this.refreshInterval) * this.refreshInterval
-    // const delay = Math.max(this.processingDuration, this.refreshInterval)
-    const delay = this.processingDuration
+    const extraDuration =
+      this.clientProcessingDuration > encodingDuration ? this.clientProcessingDuration - encodingDuration : 0
 
-    const callbackDelay = delay - encodingDuration
+    // TODO take expected application wait-for-commit into account when calculating next deadline
+    this.virtualRefreshDeadline +=
+      Math.ceil((now + extraDuration - this.virtualRefreshDeadline) / this.refreshInterval) * this.refreshInterval
+
+    const callbackDelay = this.virtualRefreshDeadline - now
+
     if (callbackDelay >= 1) {
       this.createDelayedFrameDoneEvents(frameCallbackIds, callbackDelay)
     } else {

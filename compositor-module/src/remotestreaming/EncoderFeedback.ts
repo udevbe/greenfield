@@ -62,12 +62,13 @@ export class ClientEncodersFeedback {
         }
 
         const durations = surfaceEncoderFeedback.durations
-        if (durations.length === 0) {
+        const durationsLength = durations.length
+        if (durationsLength === 0) {
           return null
         }
 
         const durationsSum = durations.reduce((prev, cur) => prev + cur, 0)
-        const avgDuration = durationsSum / durations.length
+        const avgDuration = durationsSum / durationsLength
         surfaceEncoderFeedback.durationSentTime = now
         surfaceEncoderFeedback.durations = []
         return [surfaceEncoderFeedback.surfaceId, avgDuration]
