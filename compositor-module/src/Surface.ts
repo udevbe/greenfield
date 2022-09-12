@@ -47,7 +47,7 @@ import { sizeEquals, Size } from './math/Size'
 import Subsurface from './Subsurface'
 import { createSurfaceChild, SurfaceChild } from './SurfaceChild'
 import SurfaceRole from './SurfaceRole'
-import { Callback } from './Callback'
+import { Callback, createCallback } from './Callback'
 
 export interface SurfaceState {
   damageRects: Rect[]
@@ -272,12 +272,7 @@ class Surface implements WlSurfaceRequests {
   }
 
   frame(resource: WlSurfaceResource, resourceId: number): void {
-    const callback = resource.client.userData.frameCallbackFactory.create(
-      this,
-      resource.client,
-      resourceId,
-      resource.version,
-    )
+    const callback = createCallback(resource.client, resourceId, resource.version)
     this.pendingState.frameCallbacks.push(callback)
   }
 

@@ -17,7 +17,6 @@
 
 import type { WebSocketLike } from 'retransmitting-websocket'
 import { ReadyState } from 'retransmitting-websocket'
-import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 import { createLogger } from './Logger'
 import { NativeCompositorSession } from './NativeCompositorSession'
 
@@ -45,12 +44,6 @@ import {
 } from 'westfield-proxy'
 
 const logger = createLogger('native-client-session')
-
-export const enum MessageDestination {
-  BROWSER,
-  NATIVE,
-  BOTH,
-}
 
 const textDecoder = new TextDecoder()
 const textEncoder = new TextEncoder()
@@ -298,23 +291,14 @@ export class NativeClientSession {
 
       const interceptedMessage = { buffer: message, fds: [], bufferOffset: 8, consumed: 0, size }
       const destination = this.messageInterceptor.interceptRequest(objectId, opcode, interceptedMessage)
-      if (destination !== MessageDestination.NATIVE) {
+
+      if (destination.browser) {
         const interceptedBuffer = new Uint32Array(interceptedMessage.buffer)
         this.pendingMessageBufferSize += interceptedBuffer.length
         this.pendingWireMessages.push(interceptedBuffer)
       }
 
-      // destination: 0 => browser only,  1 => native only, 2 => both
-      // logger.debug(
-      //   `Message from client delegated to ${
-      //     destination === MessageDestination.BROWSER
-      //       ? 'browser'
-      //       : destination === MessageDestination.NATIVE
-      //       ? 'native'
-      //       : 'browser and native.'
-      //   }`,
-      // )
-      return destination
+      return destination.native ? 1 : 0
     } catch (e: any) {
       logger.fatal(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
       logger.fatal('error object stack: ')

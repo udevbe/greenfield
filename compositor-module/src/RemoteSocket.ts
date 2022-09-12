@@ -29,7 +29,6 @@ import { XWindowManager } from './xwayland/XWindowManager'
 import { XWindowManagerConnection } from './xwayland/XWindowManagerConnection'
 import { createRemoteWebFS } from './WebFS'
 import { Configuration, EncoderApi } from './api'
-import { ProxyFrameCallbackFactory } from './FrameCallbackFactory'
 import Surface from './Surface'
 import { createClientEncodersFeedback } from './remotestreaming/EncoderFeedback'
 
@@ -181,7 +180,6 @@ class RemoteSocket {
         client.userData = {
           encoderApi,
           webfs: createRemoteWebFS(basePath, this.session.compositorSessionId),
-          frameCallbackFactory: new ProxyFrameCallbackFactory(),
           clientEncodersFeedback: createClientEncodersFeedback(clientId, encoderApi),
         }
 

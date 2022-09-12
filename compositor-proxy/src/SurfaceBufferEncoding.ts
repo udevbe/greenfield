@@ -24,7 +24,6 @@ import wlSubsurfaceInterceptor from './protocol/wl_subsurface_interceptor'
 import wlSubcompositorInterceptor from './protocol/wl_subcompositor_interceptor'
 import { performance } from 'perf_hooks'
 import { FrameFeedback } from './FrameFeedback'
-import { MessageDestination } from './NativeClientSession'
 import wl_surface_interceptor from './protocol/wl_surface_interceptor'
 
 const logger = createLogger('surface-buffer-encoding')
@@ -60,7 +59,10 @@ export function initSurfaceBufferEncoding(): void {
       wlSurfaceInterceptor.frameFeedback.setModeSync(parentWlSurfaceInterceptor.frameFeedback)
     }
 
-    return MessageDestination.BROWSER
+    return {
+      native: false,
+      browser: true,
+    }
   }
 
   wlSubsurfaceInterceptor.prototype.R5 = function (message: {
@@ -77,7 +79,10 @@ export function initSurfaceBufferEncoding(): void {
       wlSurfaceInterceptor.frameFeedback.setModeDesync()
     }
 
-    return MessageDestination.BROWSER
+    return {
+      native: false,
+      browser: true,
+    }
   }
 
   wlSubcompositorInterceptor.prototype.R1 = function (message: {
@@ -117,7 +122,10 @@ export function initSurfaceBufferEncoding(): void {
       this.frameFeedback = undefined
     }
     this.destroyed = true
-    return MessageDestination.BROWSER
+    return {
+      native: false,
+      browser: true,
+    }
   }
 
   /**
@@ -133,7 +141,11 @@ export function initSurfaceBufferEncoding(): void {
     const [frameCallbackId] = unmarshallArgs(message, 'n')
     ensureFrameFeedback(this).addFrameCallbackId(frameCallbackId as number)
     // @ts-ignore
-    return this.requestHandlers.frame(frameCallbackId)
+    this.requestHandlers.frame(frameCallbackId)
+    return {
+      native: false,
+      browser: false,
+    }
   }
 
   /**
@@ -149,7 +161,10 @@ export function initSurfaceBufferEncoding(): void {
     const [bufferResourceId] = unmarshallArgs(message, 'oii')
     this.bufferResourceId = (bufferResourceId as number) || undefined
 
-    return MessageDestination.BROWSER
+    return {
+      native: false,
+      browser: true,
+    }
   }
 
   /**
@@ -196,7 +211,10 @@ export function initSurfaceBufferEncoding(): void {
     uint32Array[1] = (message.size << 16) | 6 // size + opcode
     uint32Array[2] = syncSerial
 
-    return MessageDestination.BROWSER
+    return {
+      native: false,
+      browser: true,
+    }
   }
 
   wlSurfaceInterceptor.prototype.encodeAndSendBuffer = function (syncSerial: number) {

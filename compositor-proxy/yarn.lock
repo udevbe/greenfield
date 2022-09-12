@@ -4020,20 +4020,20 @@ walker@^1.0.8:
   dependencies:
     makeerror "1.0.12"
 
-westfield-proxy-generator@1.0.0-alpha.2:
-  version "1.0.0-alpha.2"
-  resolved "https://registry.yarnpkg.com/westfield-proxy-generator/-/westfield-proxy-generator-1.0.0-alpha.2.tgz#0b467cf2512073e2716e6f40044efba2d10b9ca3"
-  integrity sha512-x+j2bGK0BcJyjrfd58w4AwnL/Q3oUSYJ4i0PHFJf7EjLlULe/coMY8UgTkAvHMEVMxzha+T2HGVyMHCJvP/2Sw==
+westfield-proxy-generator@1.0.0-alpha.3:
+  version "1.0.0-alpha.3"
+  resolved "https://registry.yarnpkg.com/westfield-proxy-generator/-/westfield-proxy-generator-1.0.0-alpha.3.tgz#1d10bd825ddb761d08a7c1a8d4b0e558d32f9860"
+  integrity sha512-zKqNTNnlP4IQH9ODRMPWf2MAyOe5svM0Ui98a65K0qhiclJj2bHz04VQiASthk7ofRYUYGRuirvifqzce5d3mg==
   dependencies:
     camelcase "^7.0.0"
     meow "^10.1.3"
     uppercamelcase "^3.0.0"
     xml2js "^0.4.23"
 
-westfield-proxy@1.0.0-alpha.13:
-  version "1.0.0-alpha.13"
-  resolved "https://registry.yarnpkg.com/westfield-proxy/-/westfield-proxy-1.0.0-alpha.13.tgz#ff4f2d433aa41eed3bec3dbb0ddd3b173cef3524"
-  integrity sha512-JFpd7Ah723C/Wq51YHB8Zq2Xh/knquIL3qAxYdtqImRZSBufwXnBlNmyoLpXg1QNntW5oPQFV8i/NLUVuUqECQ==
+westfield-proxy@1.0.0-alpha.14:
+  version "1.0.0-alpha.14"
+  resolved "https://registry.yarnpkg.com/westfield-proxy/-/westfield-proxy-1.0.0-alpha.14.tgz#15497cecd69ca4f0f64eb4b21889f91939d6cd4d"
+  integrity sha512-u+5padddBEINqZIqkKFRY3DqSLsV4cXYSqepfu9CZq1aYhwIKEomeNu0dGucs7I35IE7kSOmuOWIx2N64F99Rw==
 
 which@^2.0.1:
   version "2.0.2"

@@ -126,12 +126,12 @@ export class FrameFeedback {
     }
 
     const encodingDuration = now - encodeStartTime
-    const extraDuration =
+    const extraClientDuration =
       this.clientProcessingDuration > encodingDuration ? this.clientProcessingDuration - encodingDuration : 0
 
     // TODO take expected application wait-for-commit into account when calculating next deadline
     this.virtualRefreshDeadline +=
-      Math.ceil((now + extraDuration - this.virtualRefreshDeadline) / this.refreshInterval) * this.refreshInterval
+      Math.ceil((now + extraClientDuration - this.virtualRefreshDeadline) / this.refreshInterval) * this.refreshInterval
 
     const callbackDelay = this.virtualRefreshDeadline - now
 
