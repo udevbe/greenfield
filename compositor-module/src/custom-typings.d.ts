@@ -1,6 +1,5 @@
 import { EncoderApi } from './api'
 import { WebFS } from './WebFS'
-import { FrameCallbackFactory } from './FrameCallbackFactory'
 import { ClientEncodersFeedback } from './remotestreaming/EncoderFeedback'
 
 declare module 'westfield-runtime-server' {
