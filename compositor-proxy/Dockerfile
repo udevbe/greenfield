@@ -67,4 +67,4 @@ RUN mkdir -p /var/run/compositor-proxy && chown 1000:1000 /var/run/compositor-pr
 COPY wait-until-ready.sh /app
 
 WORKDIR /home/node
-CMD ["setpriv", "--reuid=1000", "--regid=1000", "--init-groups", "sh", "/app/docker-entrypoint.sh"]
+CMD ["sh", "/app/docker-entrypoint.sh"]

@@ -166,9 +166,9 @@ class RemoteSocket {
           id: client.id,
         })
 
-        const protocol = compositorProxyURL.protocol === 'wss:' ? 'https' : 'http'
-        const port = compositorProxyURL.port === '' ? '' : `:${compositorProxyURL.port}`
-        const basePath = `${protocol}://${compositorProxyURL.hostname}${port}`
+        const protocol = compositorProxyURL.protocol === 'wss:' ? 'https:' : 'http:'
+        const pathname = compositorProxyURL.pathname === '/' ? '' : compositorProxyURL.pathname
+        const basePath = `${protocol}//${compositorProxyURL.host}${pathname}`
         const encoderApi = new EncoderApi(
           new Configuration({
             basePath,

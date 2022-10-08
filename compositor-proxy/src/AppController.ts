@@ -51,16 +51,14 @@ export function POSTMkFifo(compositorProxySession: CompositorProxySession, res: 
 export function POSTMkstempMmap(compositorProxySession: CompositorProxySession, res: HttpResponse) {
   const bufferChunks: Uint8Array[] = []
 
-  res.onAborted(() => {
-    /* nothing todo here */
-  })
+  res.onAborted(() => logger.info('POST /mkstemp-mmap aborted. Ignoring.'))
   res.onData((chunk, isLast) => {
     res.cork(() => {
       bufferChunks.push(new Uint8Array(chunk.slice(0)))
       if (isLast) {
         const buffer = Buffer.concat(bufferChunks)
         if (buffer.byteLength === 0) {
-          // TODO log error
+          logger.error('POST /mkstemp-mmap received empty body from client.')
           res
             .writeStatus('400 Bad Request')
             .writeHeader('Access-Control-Allow-Origin', allowOrigin)
@@ -102,7 +100,7 @@ export function GETWebFD(
   const countParam = new URLSearchParams(httpRequest.getQuery()).get('count')
   const count = asNumber(countParam)
   if (fd === undefined || count === undefined) {
-    // TODO log error
+    logger.error('GET /webfd received empty arguments from client.')
     httpResponse
       .writeStatus('400 Bad Request')
       .writeHeader('Access-Control-Allow-Origin', allowOrigin)
@@ -114,20 +112,23 @@ export function GETWebFD(
   let lastOffset = 0
   let dataChunk: Uint8Array | undefined = undefined
 
-  httpResponse.onAborted(() => dataChunk === undefined)
+  httpResponse.onAborted(() => {
+    logger.info('GET /webfd aborted. Ignoring.')
+  })
 
   const readBuffer = new Uint8Array(count)
   fs.read(fd, readBuffer, 0, count, 0, (err, bytesRead, chunk) => {
     httpResponse.cork(() => {
       if (err) {
-        // TODO log error
         if (err.code === 'EBADF') {
+          logger.error('GET /webfd received unknown fd from client.')
           httpResponse
             .writeStatus('404 Not Found')
             .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end('File descriptor not found.')
         } else {
+          logger.error(`GET /webfd could not read fd received from client: ${err.name}: ${err.message}`)
           httpResponse
             .writeStatus('500 Internal Server Error')
             .writeHeader('Access-Control-Allow-Origin', allowOrigin)
@@ -184,7 +185,7 @@ export function DELWebFD(
 ) {
   const fd = asNumber(fdParam)
   if (fd === undefined) {
-    // TODO log error
+    logger.error('DEL /webfd received empty fd argument from client.')
     httpResponse
       .writeStatus('400 Bad Request')
       .writeHeader('Access-Control-Allow-Origin', allowOrigin)
@@ -195,7 +196,7 @@ export function DELWebFD(
   }
 
   httpResponse.onAborted(() => {
-    /* do nothing */
+    logger.info('DEL /webfd aborted. Ignoring.')
   })
 
   fs.close(fd, (err) => {
@@ -203,12 +204,14 @@ export function DELWebFD(
       // TODO log error
       if (err) {
         if (err.code === 'EBADF') {
+          logger.error('DEL /webfd received unknown fd from client.')
           httpResponse
             .writeStatus('404 Not Found')
             .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end('File descriptor not found.')
         } else {
+          logger.error(`DEL /webfd could not close fd received from client: ${err.name}: ${err.message}`)
           httpResponse
             .writeStatus('500 Internal Server Error')
             .writeHeader('Access-Control-Allow-Origin', allowOrigin)
@@ -237,12 +240,14 @@ function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readab
       httpResponse.cork(() => {
         // @ts-ignore
         if (error.code === 'EBADF') {
+          logger.error(`Bad FD. Could not pipe readable stream: ${error.name}: ${error.message}`)
           httpResponse
             .writeStatus('404 Not Found')
             .writeHeader('Access-Control-Allow-Origin', allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end('File descriptor not found.')
         } else {
+          logger.error(`Could not pipe readable stream: ${error.name}: ${error.message}`)
           httpResponse
             .writeStatus('500 Internal Server Error')
             .writeHeader('Access-Control-Allow-Origin', allowOrigin)

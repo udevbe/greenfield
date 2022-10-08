@@ -5,6 +5,7 @@ services:
       context: .
       dockerfile: ./Dockerfile
     privileged: false
+    user: "1000:1000"
     volumes:
       - xdg-runtime-dir:/xdg-runtime-dir
       - x11-unix:/tmp/.X11-unix
@@ -26,6 +27,7 @@ services:
       context: example-apps/gtk3-demo
       dockerfile: Dockerfile
     privileged: false
+    user: "1000:1000"
     volumes:
       - xdg-runtime-dir:/xdg-runtime-dir
       - /dev/dri/renderD128:/dev/dri/renderD128:rw
@@ -42,6 +44,7 @@ services:
       context: example-apps/alacritty
       dockerfile: Dockerfile
     privileged: false
+    user: "1000:1000"
     volumes:
       - xdg-runtime-dir:/xdg-runtime-dir
       - /dev/dri/renderD128:/dev/dri/renderD128:rw
@@ -59,6 +62,7 @@ services:
       context: example-apps/xterm
       dockerfile: Dockerfile
     privileged: false
+    user: "1000:1000"
     volumes:
       - xdg-runtime-dir:/xdg-runtime-dir
       - x11-unix:/tmp/.X11-unix
