@@ -3,6 +3,7 @@ FROM alpine:3.16
 RUN apk add --no-cache \
     font-noto \
     font-noto-emoji \
+    mesa-gl \
     mesa-egl \
     mesa-gbm \
     mesa-dri-gallium \
@@ -24,6 +25,7 @@ RUN apk add --no-cache \
     nerd-fonts \
     mc
 RUN curl https://raw.githubusercontent.com/riobard/bash-powerline/master/bash-powerline.sh > /etc/profile.d/bash-powerline.sh
+COPY 10_nvidia.json /usr/share/glvnd/egl_vendor.d/10_nvidia.json
 
 RUN adduser -u 1000 -h "/home/$USER" -s "/bin/bash" -D "user"
 
