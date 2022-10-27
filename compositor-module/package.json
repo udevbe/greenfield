@@ -29,7 +29,8 @@
     "build": "yarn generate && tsc && cpy './src/assets/**' './dist/assets/'",
     "test": "jest --coverage",
     "test:watch": "jest --coverage --watch",
-    "demo": "webpack serve --config demo-compositor/webpack.config.js"
+    "demo": "yarn start",
+    "start": "webpack serve --config demo-compositor/webpack.config.js"
   },
   "dependencies": {
     "retransmitting-websocket": "1.0.0-alpha.0",

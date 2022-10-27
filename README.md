@@ -32,7 +32,7 @@ Compositor-module uses open-api to generate client code to talk to the composito
 Inside `compositor-module` directory run.
 - `yarn install`
 - `yarn generate`
-- `yarn demo`
+- `yarn start`
 
 Go to [http://localhost:8080]() and be greeted with a nice white compositor with 2 buttons. Each button click creates a new WebSocket connection to a Greenfield Compositor Proxy as indicated
 by the text on the button. Clicking these buttons won't do much for now as we need to run a Greenfield Compositor Proxy that will act as a bridge between the native world and the browser.
@@ -51,10 +51,10 @@ Inside `compositor-proxy`, run:
 - `yarn install`
 - `yarn generate`
 - `yarn build:native`
-- `cp dist/encoding/app-endpoint-encoding.node src/encoding/app-endpoint-encoding.node`
+- `cp dist/encoding/proxy-encoding-addon.node src/encoding/proxy-encoding-addon.node`
 
 and finally
-- `yarn demo`
+- `yarn start`
 
 You should now see something that says `Compositor proxy started. Listening on port 8081`. You can also adjust some things
 in `src/config.yaml`.
