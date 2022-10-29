@@ -27,7 +27,7 @@ To run, you will need 2 parts to work together.
 ### Greenfield Compositor Module
 The Greenfield Compositor Module comes with a very simple demo implementation that you can use. It's hard coded to connect to a Greenfield Compositor Proxy running on your local system [but can be easily adapted to connect to any URL of your choosing.](https://github.com/udevbe/greenfield/blob/master/compositor-module/demo-compositor/src/index.ts#L34)
 
-Compositor-module uses open-api to generate client code to talk to the compositor-proxy. This requires `java` to be present on your PATH during build.
+Compositor-module uses Open-API to generate client code to talk to the compositor-proxy. This requires `java` to be present on your PATH during build.
 
 Inside `compositor-module` directory run.
 - `yarn install`
@@ -45,16 +45,29 @@ Running a Greenfield Compositor Proxy requires an environment variable to work p
 
 For convenience, there is a demo setup that you can use.
 
-To build you need a set of dependencies. You can look at the [Docker image](https://github.com/udevbe/greenfield/blob/master/compositor-proxy/Dockerfile#L4) to see which ones you need.
+To build you need a set of dependencies. You can look at the [Docker image](https://github.com/udevbe/greenfield/blob/master/compositor-proxy/Dockerfile#L4) to see which ones you need to build and run respectively, or if you're running a Debian based distro you can run:
+```
+sudo apt install cmake build-essential ninja-build pkg-config libffi-dev libudev-dev libgbm-dev libdrm-dev libegl-dev \ 
+ libwayland-dev libglib2.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgraphene-1.0-dev gstreamer1.0-plugins-base \ 
+ gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly gstreamer1.0-gl xwayland
+```
 
-Inside `compositor-proxy`, run:
+More dependencies may be required depending on your GPU.
+
+Next, inside `compositor-proxy`, run:
 - `yarn install`
 - `yarn generate`
 - `yarn build:native`
 - `cp dist/encoding/proxy-encoding-addon.node src/encoding/proxy-encoding-addon.node`
-
+- 
 and finally
 - `yarn start`
+
+For Xwayland support a few extra steps may be needed, this is optional and only required if you don't already hava an X server running.:
+
+- `export XAUTHORITY=.Xauthority`
+- `touch "$HOME/$XAUTHORITY"`
+- `xauth add "${HOST}":1 . "$(xxd -l 16 -p /dev/urandom)"`
 
 You should now see something that says `Compositor proxy started. Listening on port 8081`. You can also adjust some things
 in `src/config.yaml`.
@@ -91,10 +104,11 @@ the compositor-proxy will wait until a new WebSocket connection is available. In
 is always initiated from the browser.
 
 ### Client frame encoding, or "can it run games?"
+
 Each application's content is encoded to video frames using GStreamer and send to the browser for decoding. In the browser the application is realised by a WebGL texture inside a HTML5 canvas.
 This canvas is basically what you would call an 'output' in Wayland terminology. The browser compositor is asynchronous, meaning a slow client will not block the processing of another client.
 
-How the current pipeline works can be seen here:
+## Old implementation
 
 [<img src="https://docs.google.com/drawings/d/e/2PACX-1vRNgOGRL1OKXFGNeVYDylp8CFZLl-GsWFyuVaZP9GkLpARsoMyZcA0KzbtL6vCxCuxnINETogW2mgUd/pub?w=1985&h=561" />](https://docs.google.com/drawings/d/e/2PACX-1vRNgOGRL1OKXFGNeVYDylp8CFZLl-GsWFyuVaZP9GkLpARsoMyZcA0KzbtL6vCxCuxnINETogW2mgUd/pub?w=1985&h=561)
 
@@ -102,9 +116,9 @@ This setup has some performance constraints as a lot of parts still use the CPU 
 that a client (ie a game) needs to download its entire rendering to RAM before passing it to the proxy-compositor. Another drawback is that we have to work with a dual encoding/decoding solution as the H.264 codec
 does not support transparency (alpha).
 
-To fix this, all image processing should be done on the GPU and an image codec that supports alpha (transparency) should be used.
+To make this performant, all image processing should be done on the GPU and an image codec that supports alpha (transparency) should be used.
 
-Such a perfect pipeline would look something like this:
+Such a hypothetical perfect pipeline would look something like this:
 
 [<img src="https://docs.google.com/drawings/d/e/2PACX-1vQ0BpqicB4wNwYKotSK6Hm1lECZ9k5eQYKekFFjXcx4b2yWEhDIim9Hi0Y1Iq1NoFVaZl-kqA6lJdxh/pub?w=1985&h=561" />](https://docs.google.com/drawings/d/e/2PACX-1vQ0BpqicB4wNwYKotSK6Hm1lECZ9k5eQYKekFFjXcx4b2yWEhDIim9Hi0Y1Iq1NoFVaZl-kqA6lJdxh/pub?w=1985&h=561)
 
@@ -114,12 +128,12 @@ directly to the encoder without making any copies.
 There is however one major drawback to this solution: 
 the combination of [WebCodecs API](https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API) and the H.265 codec simply does not exist in any browser.
 
-This means a more realistic solution should be based on the current pipeline and would look like this:
+## The current implementation:
 
 [<img src="https://docs.google.com/drawings/d/e/2PACX-1vRIPsXAvlTFj-bERKWLeoo5RFWUQHfLyQOymNZ8c-kVEhpsh8GGXYAkudanvpNzycTC3G9xuCPxHX6x/pub?w=1985&h=561" />](https://docs.google.com/drawings/d/e/2PACX-1vRIPsXAvlTFj-bERKWLeoo5RFWUQHfLyQOymNZ8c-kVEhpsh8GGXYAkudanvpNzycTC3G9xuCPxHX6x/pub?w=1985&h=561)
 
-Here we've extended the current solution with support for the Wayland DRM protocol. This allows for a zero-copy transfer of the application pixels to the encoding pipeline. We've also added support
-for the H.264 WebCodecs API, which allows us to do decoding on the GPU of the receiving browser client. 
+Here we've extended the old solution with support for the Wayland DRM protocol (+ DMA_BUF protocol). This allows for a zero-copy transfer of the application pixels to the encoding pipeline. We've also added support
+for the H.264 WebCodecs API, which allows us to do decoding on the GPU of the receiving browser client if supported. If no usable GPU is available in the Compositor-Proxy, the piple falls back to slower software rendering.
 
 *The end result is a near ideal solution that is expected be fast enough to support gaming.*
 
@@ -133,7 +147,7 @@ This avoids the round trip and massive overhead of transferring all content to t
 
 # XWayland
 
-Very much beta. Still work in progress. Most things are implemented except for copy/paste and fullscreen applications. Please report any bugs you find.
+Very much beta. Most things are implemented except for fullscreen applications. Please report any bugs or annoyances you find.
 
 ## Misc
 - [Demo Webshell repository](https://github.com/udevbe/webshell)
