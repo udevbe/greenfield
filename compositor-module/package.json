@@ -29,7 +29,6 @@
     "build": "yarn generate && tsc && cpy './src/assets/**' './dist/assets/'",
     "test": "jest --coverage",
     "test:watch": "jest --coverage --watch",
-    "demo": "yarn start",
     "start": "webpack serve --config demo-compositor/webpack.config.js"
   },
   "dependencies": {

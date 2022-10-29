@@ -4,20 +4,19 @@ FROM debian:bookworm-20221004-slim as BUILD
 RUN apt-get update && apt-get install -y --no-install-recommends \
     nodejs \
     npm \
-    build-essential \
     cmake \
+    build-essential \
     ninja-build \
+    pkg-config \
     libffi-dev \
     libudev-dev \
-    libdrm-dev \
     libgbm-dev \
-    libegl1-mesa-dev \
-    libosmesa6-dev \
+    libdrm-dev \
+    libegl-dev \
+    libglib2.0-dev \
     libgstreamer1.0-dev \
-    libgraphene-1.0-dev \
     libgstreamer-plugins-base1.0-dev \
-    gstreamer1.0-plugins-good \
-    gstreamer1.0-plugins-ugly \
+    libgraphene-1.0-dev \
     && apt-get autoremove -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
