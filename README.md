@@ -149,9 +149,6 @@ This avoids the round trip and massive overhead of transferring all content to t
 
 Very much beta. Most things are implemented except for fullscreen applications. Please report any bugs or annoyances you find.
 
-## Misc
-- [Demo Webshell repository](https://github.com/udevbe/webshell)
-
 # Media
 
 Fosdem presentation + demo (2 Feb 2019):
