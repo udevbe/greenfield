@@ -10,7 +10,7 @@ public:
   baseURL: http://localhost:8081
 encoder:
   # Path of the render device that should be used for hardware acceleration. e.g. /dev/dri/renderD128
-  renderDevice: /dev/dri/renderD129
+  renderDevice: /dev/dri/renderD128
   # The gstreamer h264 encoder to use. 'x264' and 'nvh264' are supported ('vaapih264' is currently broken). 'x264'
   # is a pure software encoder. While 'nvh264' is a hw accelerated encoder for Nvidia based GPUs.
   # see https://gstreamer.freedesktop.org/documentation/x264/index.html
