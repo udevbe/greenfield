@@ -6,6 +6,7 @@ services:
       dockerfile: ./Dockerfile
     privileged: false
     user: "1000:1000"
+    ipc: host
     volumes:
       - xdg-runtime-dir:/xdg-runtime-dir
       - x11-unix:/tmp/.X11-unix
@@ -31,10 +32,23 @@ services:
     volumes:
       - xdg-runtime-dir:/xdg-runtime-dir
       - /dev/dri/renderD128:/dev/dri/renderD128:rw
-      - /dev/dri/card0:/dev/dri/card0:rw
     devices:
       - /dev/dri/renderD128:/dev/dri/renderD128
-      - /dev/dri/card0:/dev/dri/card0
+    environment:
+      XDG_RUNTIME_DIR: /xdg-runtime-dir
+    restart: always
+  gtk4-demo:
+    pid: 'service:compositor-proxy'
+    build:
+      context: example-apps/gtk4-demo
+      dockerfile: Dockerfile
+    privileged: false
+    user: "1000:1000"
+    volumes:
+      - xdg-runtime-dir:/xdg-runtime-dir
+      - /dev/dri/renderD128:/dev/dri/renderD128:rw
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
     environment:
       XDG_RUNTIME_DIR: /xdg-runtime-dir
     restart: always
@@ -48,10 +62,8 @@ services:
     volumes:
       - xdg-runtime-dir:/xdg-runtime-dir
       - /dev/dri/renderD128:/dev/dri/renderD128:rw
-      - /dev/dri/card0:/dev/dri/card0:rw
     devices:
       - /dev/dri/renderD128:/dev/dri/renderD128
-      - /dev/dri/card0:/dev/dri/card0
     environment:
       WAYLAND_DISPLAY: wayland-0
       XDG_RUNTIME_DIR: /xdg-runtime-dir
@@ -67,10 +79,27 @@ services:
       - xdg-runtime-dir:/xdg-runtime-dir
       - x11-unix:/tmp/.X11-unix
       - /dev/dri/renderD128:/dev/dri/renderD128:rw
-      - /dev/dri/card0:/dev/dri/card0:rw
     devices:
       - /dev/dri/renderD128:/dev/dri/renderD128
-      - /dev/dri/card0:/dev/dri/card0
+    environment:
+      XAUTHORITY: /tmp/.X11-unix/Xauthority
+      XDG_RUNTIME_DIR: /xdg-runtime-dir
+      DISPLAY: ':1'
+    restart: always
+  glxgears:
+    pid: 'service:compositor-proxy'
+    build:
+      context: example-apps/glxgears
+      dockerfile: Dockerfile
+    ipc: host
+    privileged: false
+    user: "1000:1000"
+    volumes:
+      - xdg-runtime-dir:/xdg-runtime-dir
+      - x11-unix:/tmp/.X11-unix
+      - /dev/dri/renderD128:/dev/dri/renderD128:rw
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
     environment:
       XAUTHORITY: /tmp/.X11-unix/Xauthority
       XDG_RUNTIME_DIR: /xdg-runtime-dir

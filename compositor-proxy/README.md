@@ -3,10 +3,10 @@ run:
 - `yarn install`
 - `yarn generate`
 - `yarn build:native`
-- `cp dist/encoding/app-endpoint-encoding.node src/encoding/app-endpoint-encoding.node`
+- `cp dist/encoding/proxy-encoding-addon.node src/encoding/proxy-encoding-addon.node`
 
 and finally
-- `yarn demo`
+- `yarn start`
 
 You should now see something that says `Compositor proxy started. Listening on port 8081`. You can also adjust some things
 in `src/config.yaml`.
