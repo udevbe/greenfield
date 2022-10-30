@@ -45,7 +45,7 @@ Running a Greenfield Compositor Proxy requires an environment variable to work p
 
 For convenience, there is a demo setup that you can use.
 
-To build you need a set of dependencies. You can look at the [Docker image](https://github.com/udevbe/greenfield/blob/master/compositor-proxy/Dockerfile#L4) to see which ones you need to build and run respectively, or if you're running a Debian based distro you can run:
+To build you need a set of native dependencies. You can look at the [Docker image](https://github.com/udevbe/greenfield/blob/master/compositor-proxy/Dockerfile#L4) to see which ones you need to build and run respectively, or if you're running a Debian based distro you can run:
 ```
 sudo apt install cmake build-essential ninja-build pkg-config libffi-dev libudev-dev libgbm-dev libdrm-dev libegl-dev \ 
  libwayland-dev libglib2.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgraphene-1.0-dev gstreamer1.0-plugins-base \ 
@@ -59,15 +59,15 @@ Next, inside `compositor-proxy`, run:
 - `yarn generate`
 - `yarn build:native`
 - `cp dist/encoding/proxy-encoding-addon.node src/encoding/proxy-encoding-addon.node`
-- 
-and finally
-- `yarn start`
 
 For Xwayland support a few extra steps may be needed, this is optional and only required if you don't already hava an X server running.:
 
 - `export XAUTHORITY=.Xauthority`
 - `touch "$HOME/$XAUTHORITY"`
 - `xauth add "${HOST}":1 . "$(xxd -l 16 -p /dev/urandom)"`
+
+and finally
+- `yarn start`
 
 You should now see something that says `Compositor proxy started. Listening on port 8081`. You can also adjust some things
 in `src/config.yaml`.
