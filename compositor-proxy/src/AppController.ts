@@ -484,8 +484,8 @@ export async function POSTEncoderKeyframe(
     return
   }
   wlSurfaceInterceptor.encoder.requestKeyUnit()
-  if (keyframeRequest.syncSerial) {
-    wlSurfaceInterceptor.encodeAndSendBuffer(keyframeRequest.syncSerial)
+  if (keyframeRequest.syncSerial && wlSurfaceInterceptor.buffer) {
+    wlSurfaceInterceptor.encodeAndSendBuffer(keyframeRequest.syncSerial, wlSurfaceInterceptor.buffer.bufferResourceId)
   }
 
   httpResponse.writeStatus('202 Accepted').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()

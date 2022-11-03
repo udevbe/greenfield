@@ -1106,6 +1106,7 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "capsfilter name=shader_capsfilter ! "
                                        "glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! "
                                        "gldownload ! "
+                                       "queue ! "
                                        "x264enc rc-lookahead=0 sliced-threads=true qp-max=20 byte-stream=true pass=pass1 tune=zerolatency speed-preset=superfast noise-reduction=0 psy-tune=grain ! "
                                        "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
@@ -1124,7 +1125,8 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "glshader name=shader ! "
                                        "capsfilter name=shader_capsfilter ! "
                                        "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
-                                       "nvh264enc qp-max=20 zerolatency=true preset=5 rc-mode=4 ! "
+                                       "queue ! "
+                                       "nvh264enc zerolatency=true preset=5 rc-mode=5 ! "
                                        "video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .split_alpha = true,
@@ -1143,6 +1145,7 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "capsfilter name=shader_capsfilter ! "
                                        "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
                                        "gldownload ! "
+                                       "queue ! "
                                        "vaapih264enc aud=1 ! "
                                        "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink",
@@ -1163,6 +1166,7 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "capsfilter name=shader_capsfilter ! "
                                        "glcolorconvert ! video/x-raw(memory:GLMemory),format=RGBA ! "
                                        "gldownload ! "
+                                       "queue ! "
                                        "pngenc ! "
                                        "appsink name=sink",
                 .split_alpha = false,

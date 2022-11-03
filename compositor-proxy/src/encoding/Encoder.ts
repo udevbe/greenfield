@@ -19,31 +19,37 @@ import { config } from '../config'
 import appEndpointNative from './proxy-encoding-addon'
 
 export function createEncoder(wlClient: unknown, drmContext: unknown): Encoder {
+  // TODO we could probably use a pool here
+  // TODO implement encoder destruction
   return new Encoder(config.encoder.h264Encoder, wlClient, drmContext)
 }
 
 export class Encoder {
   private readonly nativeEncoder: unknown
-  private encodingResolve?: (frame_sample: Buffer) => void
-  private encodingPromise?: Promise<Buffer>
+
+  private encodingQueue: {
+    resolve: (frameSample: { buffer: Buffer; serial: number }) => void
+    serial: number
+    bufferResourceId: number
+  }[] = []
 
   constructor(private readonly encoderType: typeof config.encoder.h264Encoder, wlClient: unknown, drmContext: unknown) {
     this.nativeEncoder = appEndpointNative.createEncoder(this.encoderType, wlClient, drmContext, (buffer: Buffer) => {
-      this.encodingPromise = undefined
-      this.encodingResolve?.(buffer)
-      this.encodingResolve = undefined
+      const encodingResolve = this.encodingQueue.shift()
+      if (encodingResolve) {
+        encodingResolve.resolve({ buffer, serial: encodingResolve.serial })
+      } else {
+        console.error('no buffer callback')
+        // TODO log better error
+      }
     })
   }
 
-  encodeBuffer(bufferId: number, serial: number): Promise<Buffer> {
-    if (this.encodingPromise !== undefined) {
-      return this.encodingPromise.then(() => this.encodeBuffer(bufferId, serial))
-    }
-    this.encodingPromise = new Promise<Buffer>((resolve) => {
-      this.encodingResolve = resolve
-      appEndpointNative.encodeBuffer(this.nativeEncoder, bufferId, serial)
+  encodeBuffer(bufferResourceId: number, serial: number): Promise<{ buffer: Buffer; serial: number }> {
+    return new Promise<{ buffer: Buffer; serial: number }>((resolve) => {
+      this.encodingQueue.push({ resolve, serial, bufferResourceId })
+      appEndpointNative.encodeBuffer(this.nativeEncoder, bufferResourceId, serial)
     })
-    return this.encodingPromise
   }
 
   requestKeyUnit(): void {

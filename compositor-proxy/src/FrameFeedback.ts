@@ -6,7 +6,7 @@ export class FrameFeedback {
   private callbackResourceIds: number[] = []
   private commitTimestamp = 0
   private virtualRefreshDeadline = 0
-  private refreshInterval = 16
+  private refreshInterval = 16.667
   private clientProcessingDuration?: number
   private clientFeedbackTimestamp = 0
   private delayedFrameDoneEvents?: {

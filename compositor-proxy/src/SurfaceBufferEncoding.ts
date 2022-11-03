@@ -115,8 +115,8 @@ export function initSurfaceBufferEncoding(): void {
     size: number
   }) {
     if (this.frameFeedback) {
-      if (this.sendBufferResourceId) {
-        this.frameFeedback.sendBufferReleaseEvent(this.sendBufferResourceId)
+      if (this.buffer) {
+        this.frameFeedback.sendBufferReleaseEvent(this.buffer.bufferResourceId)
       }
       this.frameFeedback.destroy()
       this.frameFeedback = undefined
@@ -159,7 +159,7 @@ export function initSurfaceBufferEncoding(): void {
     size: number
   }) {
     const [bufferResourceId] = unmarshallArgs(message, 'oii')
-    this.bufferResourceId = (bufferResourceId as number) || undefined
+    this.pendingBufferResourceId = (bufferResourceId as number) || undefined
 
     return {
       native: false,
@@ -181,24 +181,22 @@ export function initSurfaceBufferEncoding(): void {
       this.encoder = createEncoder(this.wlClient, this.userData.drmContext)
     }
     const frameFeedback = ensureFrameFeedback(this)
-
-    // FIXME move this line to ensureFrameFeedback code
-
     frameFeedback.commitNotify()
 
-    let syncSerial: number
+    let syncSerial = bufferSerial
 
-    if (this.bufferResourceId) {
+    if (this.pendingBufferResourceId) {
       syncSerial = ++bufferSerial
-      if (this.sendBufferResourceId) {
-        frameFeedback.sendBufferReleaseEvent(this.sendBufferResourceId)
+      if (this.buffer) {
+        const previousBufferResourceId = this.buffer.bufferResourceId
+        this.buffer.encodingPromise.then(() => frameFeedback.sendBufferReleaseEvent(previousBufferResourceId))
       }
-      this.sendBufferResourceId = this.bufferResourceId
-      this.bufferResourceId = 0
 
-      this.encodeAndSendBuffer(syncSerial)
+      this.buffer = {
+        bufferResourceId: this.pendingBufferResourceId,
+        encodingPromise: this.encodeAndSendBuffer(syncSerial, this.pendingBufferResourceId),
+      }
     } else {
-      syncSerial = bufferSerial
       frameFeedback.commitDone()
     }
 
@@ -217,11 +215,11 @@ export function initSurfaceBufferEncoding(): void {
     }
   }
 
-  wlSurfaceInterceptor.prototype.encodeAndSendBuffer = function (syncSerial: number) {
+  wlSurfaceInterceptor.prototype.encodeAndSendBuffer = function (syncSerial: number, bufferResourceId: number) {
     const encodeStart = performance.now()
-    this.encoder
-      .encodeBuffer(this.sendBufferResourceId, syncSerial)
-      .then((sendBuffer: Buffer) => {
+    return this.encoder
+      .encodeBuffer(bufferResourceId, syncSerial)
+      .then(({ buffer, serial }) => {
         if (!this.destroyed && this.frameFeedback) {
           this.frameFeedback.commitDone(encodeStart)
         }
@@ -229,9 +227,9 @@ export function initSurfaceBufferEncoding(): void {
         // 1 === 'open'
         if (this.userData.communicationChannel.readyState === 1) {
           // send buffer sent started marker. opcode: 1. surfaceId + syncSerial
-          this.userData.communicationChannel.send(new Uint32Array([1, this.id, syncSerial]))
+          this.userData.communicationChannel.send(new Uint32Array([1, this.id, serial]))
           // send buffer contents. opcode: 3. bufferId + chunk
-          this.userData.communicationChannel.send(sendBuffer)
+          this.userData.communicationChannel.send(buffer)
         } // else connection was probably closed, don't attempt to send a buffer chunk
       })
       .catch((e: Error) => {
