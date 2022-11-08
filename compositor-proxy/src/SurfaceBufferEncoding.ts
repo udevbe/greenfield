@@ -22,7 +22,6 @@ import { createLogger } from './Logger'
 import wlSurfaceInterceptor from './protocol/wl_surface_interceptor'
 import wlSubsurfaceInterceptor from './protocol/wl_subsurface_interceptor'
 import wlSubcompositorInterceptor from './protocol/wl_subcompositor_interceptor'
-import { performance } from 'perf_hooks'
 import { FrameFeedback } from './FrameFeedback'
 import wl_surface_interceptor from './protocol/wl_surface_interceptor'
 
@@ -216,10 +215,9 @@ export function initSurfaceBufferEncoding(): void {
   }
 
   wlSurfaceInterceptor.prototype.encodeAndSendBuffer = function (syncSerial: number, bufferResourceId: number) {
-    const encodeStart = performance.now()
     return this.encoder
       .encodeBuffer(bufferResourceId, syncSerial)
-      .then(({ buffer, serial }) => {
+      .then(({ buffer, serial, encodeStart }) => {
         if (!this.destroyed && this.frameFeedback) {
           this.frameFeedback.commitDone(encodeStart)
         }

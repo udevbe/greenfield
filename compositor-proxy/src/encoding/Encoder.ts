@@ -17,6 +17,7 @@
 
 import { config } from '../config'
 import appEndpointNative from './proxy-encoding-addon'
+import { performance } from 'perf_hooks'
 
 export function createEncoder(wlClient: unknown, drmContext: unknown): Encoder {
   // TODO we could probably use a pool here
@@ -28,16 +29,17 @@ export class Encoder {
   private readonly nativeEncoder: unknown
 
   private encodingQueue: {
-    resolve: (frameSample: { buffer: Buffer; serial: number }) => void
+    resolve: (frameSample: { buffer: Buffer; serial: number; encodeStart: number }) => void
     serial: number
     bufferResourceId: number
+    encodeStart: number
   }[] = []
 
   constructor(private readonly encoderType: typeof config.encoder.h264Encoder, wlClient: unknown, drmContext: unknown) {
     this.nativeEncoder = appEndpointNative.createEncoder(this.encoderType, wlClient, drmContext, (buffer: Buffer) => {
-      const encodingResolve = this.encodingQueue.shift()
-      if (encodingResolve) {
-        encodingResolve.resolve({ buffer, serial: encodingResolve.serial })
+      const encodingTask = this.encodingQueue.shift()
+      if (encodingTask) {
+        encodingTask.resolve({ buffer, serial: encodingTask.serial, encodeStart: encodingTask.encodeStart })
       } else {
         console.error('no buffer callback')
         // TODO log better error
@@ -45,9 +47,13 @@ export class Encoder {
     })
   }
 
-  encodeBuffer(bufferResourceId: number, serial: number): Promise<{ buffer: Buffer; serial: number }> {
-    return new Promise<{ buffer: Buffer; serial: number }>((resolve) => {
-      this.encodingQueue.push({ resolve, serial, bufferResourceId })
+  encodeBuffer(
+    bufferResourceId: number,
+    serial: number,
+  ): Promise<{ buffer: Buffer; serial: number; encodeStart: number }> {
+    return new Promise<{ buffer: Buffer; serial: number; encodeStart: number }>((resolve) => {
+      const encodeStart = performance.now()
+      this.encodingQueue.push({ resolve, serial, bufferResourceId, encodeStart })
       appEndpointNative.encodeBuffer(this.nativeEncoder, bufferResourceId, serial)
     })
   }
