@@ -27,12 +27,27 @@ import Session from '../Session'
 import Surface from '../Surface'
 import View from '../View'
 import { Scene } from './Scene'
-import surface from '../Surface'
 
 function createRenderFrame(): Promise<number> {
   return new Promise<number>((resolve) => {
     requestAnimationFrame(resolve)
   })
+}
+
+function setupCanvasGLContext(canvas: HTMLCanvasElement): WebGLRenderingContext {
+  const gl = canvas.getContext('webgl', {
+    antialias: false,
+    depth: false,
+    alpha: true,
+    premultipliedAlpha: false,
+    preserveDrawingBuffer: false,
+    desynchronized: true,
+    powerPreference: 'high-performance',
+  })
+  if (!gl) {
+    throw new Error("This browser doesn't support WebGL!")
+  }
+  return gl
 }
 
 export default class Renderer {
@@ -51,31 +66,27 @@ export default class Renderer {
     return new Renderer(session)
   }
 
+  private createAndStoreScene(sceneId: string, canvas: HTMLCanvasElement, output: Output) {
+    const scene = Scene.create(this.session, setupCanvasGLContext(canvas), canvas, output, sceneId)
+    this.scenes = { ...this.scenes, [sceneId]: scene }
+    scene.onDestroy().then(() => {
+      delete this.scenes[sceneId]
+      this.session.globals.unregisterOutput(output)
+    })
+  }
+
   initScene(sceneId: string, canvas: HTMLCanvasElement): void {
-    let scene = this.scenes[sceneId] || null
-    if (!scene) {
-      const gl = canvas.getContext('webgl', {
-        antialias: false,
-        depth: false,
-        alpha: true,
-        premultipliedAlpha: false,
-        preserveDrawingBuffer: false,
-        desynchronized: true,
-        powerPreference: 'high-performance',
-      })
-      if (!gl) {
-        throw new Error("This browser doesn't support WebGL!")
-      }
+    if (this.scenes[sceneId] === undefined) {
+      const output = Output.create(canvas)
+      this.session.globals.registerOutput(output)
+
+      // TODO make sure this works well
+      canvas.addEventListener('webglcontextlost', (event) => event.preventDefault(), false)
+      canvas.addEventListener('webglcontextrestored', () => this.createAndStoreScene(sceneId, canvas, output), false)
+
       // TODO sync output properties with scene
       // TODO notify client on which output their surfaces are being displayed
-      const output = Output.create(canvas)
-      scene = Scene.create(this.session, gl, canvas, output, sceneId)
-      this.scenes = { ...this.scenes, [sceneId]: scene }
-      this.session.globals.registerOutput(output)
-      scene.onDestroy().then(() => {
-        delete this.scenes[sceneId]
-        this.session.globals.unregisterOutput(output)
-      })
+      this.createAndStoreScene(sceneId, canvas, output)
     }
     this.render()
   }
@@ -135,6 +146,10 @@ export default class Renderer {
       this.renderFrame = createRenderFrame().then((time) => {
         this.renderFrame = undefined
         // TODO we can further limit the visible region of each view by removing the area covered by other views
+        const sceneList = Object.values(this.scenes)
+        if (sceneList.length === 0) {
+          return
+        }
         sceneList.forEach((scene) => scene.render(viewStack))
         this.frameCallbacks.forEach((callback) => callback.done(time))
         this.frameCallbacks = []

@@ -33,13 +33,19 @@ export default class Program {
   link(): void {
     this.gl.linkProgram(this.program)
     // If creating the shader program failed, alert.
-    if (!this.gl.getProgramParameter(this.program, this.gl.LINK_STATUS)) {
-      console.error('Unable to initialize the shader program.')
+    const linked = this.gl.getProgramParameter(this.program, this.gl.LINK_STATUS)
+    if (!linked && !this.gl.isContextLost()) {
+      const infoLog = this.gl.getProgramInfoLog(this.program)
+      console.error('BUG? Error linking program:\n' + infoLog)
     }
   }
 
   use(): void {
     this.gl.useProgram(this.program)
+    const error = this.gl.getError()
+    if (error != this.gl.NO_ERROR && error != this.gl.CONTEXT_LOST_WEBGL) {
+      console.error('BUG? use gl program failed.')
+    }
   }
 
   getAttributeLocation(name: string): GLint {
