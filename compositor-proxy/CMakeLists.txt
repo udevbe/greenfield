@@ -10,16 +10,16 @@ set(CMAKE_BUILD_TYPE "Release")
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLIB2 REQUIRED glib-2.0 IMPORTED_TARGET)
 pkg_check_modules(GSTREAMER REQUIRED
-        gstreamer-1.0
-        gstreamer-app-1.0
-        gstreamer-video-1.0
-        gstreamer-gl-1.0
-        graphene-1.0
-        gstreamer-allocators-1.0
         IMPORTED_TARGET
+        gstreamer-1.0>=1.18
+        gstreamer-app-1.0>=1.18
+        gstreamer-video-1.0>=1.18
+        gstreamer-gl-1.0>=1.18
+        gstreamer-allocators-1.0>=1.18
 )
-pkg_check_modules(EGL REQUIRED egl IMPORTED_TARGET)
-pkg_check_modules(GL REQUIRED gl IMPORTED_TARGET)
+pkg_check_modules(GRAPHENE REQUIRED IMPORTED_TARGET graphene-1.0)
+pkg_check_modules(EGL REQUIRED IMPORTED_TARGET egl>=1.5)
+pkg_check_modules(OPENGL REQUIRED IMPORTED_TARGET opengl>=3.3)
 
 get_filename_component(WESTFIELD_LIBWAYLAND_SERVER ${CMAKE_CURRENT_SOURCE_DIR}/node_modules/westfield-proxy/dist/libwayland-server.so.0 ABSOLUTE)
 get_filename_component(WESTFIELD ${CMAKE_CURRENT_SOURCE_DIR}/node_modules/westfield-proxy/dist/libwestfield.so ABSOLUTE)
@@ -32,15 +32,17 @@ add_library(proxy-encoding SHARED
 target_include_directories(proxy-encoding PRIVATE
         ${CMAKE_SOURCE_DIR}/node_modules/westfield-proxy/dist/include
         ${GSTREAMER_INCLUDE_DIRS}
+        ${GRAPHENE_INCLUDE_DIRS}
         ${GLIB2_INCLUDE_DIRS}
         ${EGL_INCLUDE_DIRS}
-        ${GL_INCLUDE_DIRS}
+        ${OPENGL_INCLUDE_DIRS}
 )
 target_link_libraries(proxy-encoding PRIVATE
         PkgConfig::GLIB2
         PkgConfig::GSTREAMER
+        PkgConfig::GRAPHENE
         PkgConfig::EGL
-        PkgConfig::GL
+        PkgConfig::OPENGL
         ${WESTFIELD}
         ${WESTFIELD_LIBWAYLAND_SERVER}
         -Wl,--no-undefined

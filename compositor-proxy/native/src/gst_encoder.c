@@ -428,14 +428,12 @@ gst_new_sample(GstAppSink *appsink, gpointer user_data) {
     struct encoded_frame *encoded_frame;
 
     if (sample == NULL) {
-        // TODO log error
-        return GST_FLOW_ERROR;
+        g_error("BUG? Got a NULL sample from encoding pipeline.");
     }
 
     encoding_result = g_queue_peek_tail(callback_data->encoder->encoding_results);
     if (encoding_result == NULL) {
-        // TODO log error
-        return GST_FLOW_ERROR;
+        g_error("BUG? No encoding result container available for encoded sample.");
     }
 
     if (encoding_result->has_split_alpha) {
@@ -647,12 +645,14 @@ gst_encoder_pipeline_create(struct encoder *encoder, const char *pipeline_defini
     gst_encoder_pipeline->pipeline = gst_parse_launch(pipeline_definition, NULL);
     if (gst_encoder_pipeline->pipeline == NULL) {
         g_free(gst_encoder_pipeline);
-        // TODO log pipeline creation failure
-        return NULL;
+        g_error("BUG? Failed to create encoding pipeline from it's definition.");
     }
 
 
     GstElement *glshader = gst_bin_get_by_name(GST_BIN(gst_encoder_pipeline->pipeline), "shader");
+    if(glshader == NULL) {
+        g_error("Can't get element with name 'shader' from encoding pipeline. Missing gstreamer plugin element?");
+    }
     if (is_alpha) {
         g_object_set(glshader, "fragment", alpha_fragment_shader, NULL);
     } else {
@@ -662,11 +662,20 @@ gst_encoder_pipeline_create(struct encoder *encoder, const char *pipeline_defini
     gst_encoder_pipeline->glshader = glshader;
     gst_encoder_pipeline->shader_capsfilter = gst_bin_get_by_name(
             GST_BIN(gst_encoder_pipeline->pipeline), "shader_capsfilter");
+    if(gst_encoder_pipeline->shader_capsfilter == NULL) {
+        g_error("Can't get element with name 'shader_capsfilter' from encoding pipeline. Missing gstreamer plugin element?");
+    }
 
     gst_encoder_pipeline->app_src = GST_APP_SRC(
             gst_bin_get_by_name(GST_BIN(gst_encoder_pipeline->pipeline), "src"));
+    if(gst_encoder_pipeline->app_src == NULL) {
+        g_error("Can't get element with name 'src' from encoding pipeline. Missing gstreamer plugin element?");
+    }
     gst_encoder_pipeline->app_sink = GST_APP_SINK(
             gst_bin_get_by_name(GST_BIN(gst_encoder_pipeline->pipeline), "sink"));
+    if(gst_encoder_pipeline->app_sink == NULL) {
+        g_error("Can't get element with name 'sink' from encoding pipeline. Missing gstreamer plugin element?");
+    }
 
     callback_data = g_new0(struct sample_callback_data, 1);
     callback_data->encoder = encoder;
@@ -775,9 +784,7 @@ gst_encoder_encode_shm(struct encoder *encoder, struct wl_shm_buffer *shm_buffer
 
     const struct shmbuf_support_format *shmbuf_support_format = shmbuf_support_format_from_wl_shm_format(buffer_format);
     if (shmbuf_support_format == NULL) {
-        // TODO log error
-        //GST_ERROR_OBJECT (gst_encoder->app_src, "Failed to interpret fourcc format: %c%c%c%c", GST_FOURCC_ARGS(westfield_dmabuf_v1_buffer->attributes.format));
-        return;
+        g_error("Failed to interpret shm format: %d", buffer_format);
     }
 
     new_src_caps = gst_caps_new_simple("video/x-raw",
@@ -856,7 +863,7 @@ create_gl_memory(struct encoder *encoder, const struct dmabuf_attributes *attrib
                                                                    attributes,
                                                                    &external_only);
 
-    target = external_only ? GL_TEXTURE_EXTERNAL_OES : GL_TEXTURE_2D;
+    target = GL_TEXTURE_2D;
     encoder->gpu.shared_gst_gl_context->gl_vtable->GenTextures(1, wrapped_tex);
     encoder->gpu.shared_gst_gl_context->gl_vtable->BindTexture(target, wrapped_tex[0]);
     encoder->gpu.shared_gst_gl_context->gl_vtable->TexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -887,7 +894,7 @@ create_gl_memory(struct encoder *encoder, const struct dmabuf_attributes *attrib
     ret = gst_gl_memory_setup_buffer(allocator, buffer, params,
                                      formats, (gpointer *) wrapped_tex, 1);
     if (!ret) {
-        g_error ("Failed to setup gl memory\n");
+        g_error ("Failed to setup gl memory.");
     }
 
     gst_gl_allocation_params_free((GstGLAllocationParams *) params);
@@ -921,9 +928,7 @@ gst_encoder_encode_dmabuf(struct encoder *encoder,
 
     const struct dmabuf_support_format *dmabuf_support_format = dmabuf_support_format_from_fourcc(attributes->format);
     if (dmabuf_support_format == NULL) {
-        // TODO log error
-        //GST_ERROR_OBJECT (gst_encoder->app_src, "Failed to interpret fourcc format: %c%c%c%c", GST_FOURCC_ARGS(westfield_dmabuf_v1_buffer->attributes.format));
-        return;
+        g_error("Can't encode buffer. Failed to interpret buffer's fourcc format: %c%c%c%c", GST_FOURCC_ARGS(attributes->format));
     }
 
     new_src_caps = gst_caps_new_simple("video/x-raw",
@@ -1099,7 +1104,7 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
                                        "capsfilter name=shader_capsfilter ! "
-                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
+                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=I420 ! "
                                        "gldownload ! "
                                        "x264enc rc-lookahead=0 sliced-threads=true qp-max=20 byte-stream=true pass=pass1 tune=zerolatency speed-preset=superfast noise-reduction=0 psy-tune=grain ! "
                                        "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
