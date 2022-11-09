@@ -15,8 +15,8 @@ async function main() {
 
   // Get an HTML5 canvas for use as an output for the compositor. Multiple outputs can be used.
   const canvas: HTMLCanvasElement = document.createElement('canvas')
-  canvas.width = 1440
-  canvas.height = 900
+  canvas.width = 1920
+  canvas.height = 1080
   canvas.style.width = `${canvas.width}`
   canvas.style.height = `${canvas.height}`
 

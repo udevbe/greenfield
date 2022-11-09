@@ -116,6 +116,7 @@ export function initSurfaceBufferEncoding(): void {
     if (this.frameFeedback) {
       if (this.buffer) {
         this.frameFeedback.sendBufferReleaseEvent(this.buffer.bufferResourceId)
+        this.buffer = undefined
       }
       this.frameFeedback.destroy()
       this.frameFeedback = undefined
@@ -138,7 +139,12 @@ export function initSurfaceBufferEncoding(): void {
     size: number
   }) {
     const [frameCallbackId] = unmarshallArgs(message, 'n')
-    ensureFrameFeedback(this).addFrameCallbackId(frameCallbackId as number)
+    // console.debug(`add frame callback ${frameCallbackId}`)
+    if (this.pendingFrameCallbacksIds) {
+      this.pendingFrameCallbacksIds.push(frameCallbackId as number)
+    } else {
+      this.pendingFrameCallbacksIds = [frameCallbackId as number]
+    }
     // @ts-ignore
     this.requestHandlers.frame(frameCallbackId)
     return {
@@ -158,7 +164,7 @@ export function initSurfaceBufferEncoding(): void {
     size: number
   }) {
     const [bufferResourceId] = unmarshallArgs(message, 'oii')
-    this.pendingBufferResourceId = (bufferResourceId as number) || undefined
+    this.pendingBufferResourceId = (bufferResourceId as number) || null
 
     return {
       native: false,
@@ -179,25 +185,41 @@ export function initSurfaceBufferEncoding(): void {
     if (!this.encoder) {
       this.encoder = createEncoder(this.wlClient, this.userData.drmContext)
     }
+
     const frameFeedback = ensureFrameFeedback(this)
-    frameFeedback.commitNotify()
 
     let syncSerial = bufferSerial
 
     if (this.pendingBufferResourceId) {
-      syncSerial = ++bufferSerial
-      if (this.buffer) {
+      if (this.buffer && this.buffer.bufferResourceId !== this.pendingBufferResourceId) {
         const previousBufferResourceId = this.buffer.bufferResourceId
         this.buffer.encodingPromise.then(() => frameFeedback.sendBufferReleaseEvent(previousBufferResourceId))
       }
 
+      syncSerial = ++bufferSerial
+      const frameCallbacksIds = this.pendingFrameCallbacksIds ?? []
+      this.pendingFrameCallbacksIds = []
       this.buffer = {
         bufferResourceId: this.pendingBufferResourceId,
         encodingPromise: this.encodeAndSendBuffer(syncSerial, this.pendingBufferResourceId),
+        frameCallbacksIds,
       }
-    } else {
-      frameFeedback.commitDone()
+      this.pendingFrameCallbacksIds = []
+      this.pendingBufferResourceId = undefined
+
+      frameFeedback.commitNotify(this.buffer, () => this.destroyed)
+    } else if (this.buffer) {
+      const frameCallbacksIds = this.pendingFrameCallbacksIds ?? []
+      this.pendingFrameCallbacksIds = []
+      this.buffer = {
+        ...this.buffer,
+        frameCallbacksIds,
+      }
+      this.pendingFrameCallbacksIds = []
+      frameFeedback.commitNotify(this.buffer, () => this.destroyed)
     }
+
+    // console.debug(`commit ${this.buffer?.bufferResourceId} - #${syncSerial}`)
 
     // inject the frame serial in the commit message
     const origMessageBuffer = message.buffer
@@ -215,13 +237,12 @@ export function initSurfaceBufferEncoding(): void {
   }
 
   wlSurfaceInterceptor.prototype.encodeAndSendBuffer = function (syncSerial: number, bufferResourceId: number) {
+    // console.debug(`Encoding buffer: ${bufferResourceId} - #${syncSerial}`)
     return this.encoder
       .encodeBuffer(bufferResourceId, syncSerial)
-      .then(({ buffer, serial, encodeStart }) => {
-        if (!this.destroyed && this.frameFeedback) {
-          this.frameFeedback.commitDone(encodeStart)
-        }
-
+      .then(({ buffer, serial }) => {
+        // FIXME check buffer result, can have an empty size if encoding pipeline was ended
+        // console.debug(`Done Encoding buffer: ${bufferResourceId} - #${syncSerial}`)
         // 1 === 'open'
         if (this.userData.communicationChannel.readyState === 1) {
           // send buffer sent started marker. opcode: 1. surfaceId + syncSerial

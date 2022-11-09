@@ -17,7 +17,6 @@
 
 import { config } from '../config'
 import appEndpointNative from './proxy-encoding-addon'
-import { performance } from 'perf_hooks'
 
 export function createEncoder(wlClient: unknown, drmContext: unknown): Encoder {
   // TODO we could probably use a pool here
@@ -29,31 +28,38 @@ export class Encoder {
   private readonly nativeEncoder: unknown
 
   private encodingQueue: {
-    resolve: (frameSample: { buffer: Buffer; serial: number; encodeStart: number }) => void
+    resolve: (frameSample: { buffer: Buffer; serial: number }) => void
+    reject: (error: Error) => void
     serial: number
     bufferResourceId: number
-    encodeStart: number
   }[] = []
 
   constructor(private readonly encoderType: typeof config.encoder.h264Encoder, wlClient: unknown, drmContext: unknown) {
     this.nativeEncoder = appEndpointNative.createEncoder(this.encoderType, wlClient, drmContext, (buffer: Buffer) => {
+      // console.debug('encoding done')
       const encodingTask = this.encodingQueue.shift()
       if (encodingTask) {
-        encodingTask.resolve({ buffer, serial: encodingTask.serial, encodeStart: encodingTask.encodeStart })
+        if (buffer) {
+          // console.debug(`Resolve encoding ${encodingTask.serial} with success`)
+          encodingTask.resolve({ buffer, serial: encodingTask.serial })
+        } else {
+          const e = new Error('Buffer encoding failed.')
+          console.error(`\tname: ${e.name} message: ${e.message}`)
+          console.error('error object stack: ')
+          console.error(e.stack ?? '')
+          // console.debug(`Resolve encoding ${encodingTask.serial} with error`)
+          encodingTask.reject(e)
+        }
       } else {
-        console.error('no buffer callback')
+        console.error('BUG? No buffer callback')
         // TODO log better error
       }
     })
   }
 
-  encodeBuffer(
-    bufferResourceId: number,
-    serial: number,
-  ): Promise<{ buffer: Buffer; serial: number; encodeStart: number }> {
-    return new Promise<{ buffer: Buffer; serial: number; encodeStart: number }>((resolve) => {
-      const encodeStart = performance.now()
-      this.encodingQueue.push({ resolve, serial, bufferResourceId, encodeStart })
+  encodeBuffer(bufferResourceId: number, serial: number): Promise<{ buffer: Buffer; serial: number }> {
+    return new Promise<{ buffer: Buffer; serial: number }>((resolve, reject) => {
+      this.encodingQueue.push({ resolve, reject, serial, bufferResourceId })
       appEndpointNative.encodeBuffer(this.nativeEncoder, bufferResourceId, serial)
     })
   }

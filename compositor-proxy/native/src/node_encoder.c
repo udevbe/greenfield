@@ -60,8 +60,12 @@ encoded_frame_to_node_buffer_cb(napi_env env, napi_value js_callback, void *cont
     napi_value buffer_value, global, cb_result;
     struct encoded_frame *encoded_frame = data;
 
-    NAPI_CALL(env, napi_create_external_buffer(env, encoded_frame->size, encoded_frame->encoded_data,
-                                               node_encoder_finalize_encoded_frame, encoded_frame, &buffer_value))
+    if (encoded_frame == NULL) {
+        NAPI_CALL(env, napi_get_undefined(env, &buffer_value))
+    } else {
+        NAPI_CALL(env, napi_create_external_buffer(env, encoded_frame->size, encoded_frame->encoded_data,
+                                                   node_encoder_finalize_encoded_frame, encoded_frame, &buffer_value))
+    }
 
     napi_value args[] = {buffer_value};
     NAPI_CALL(env, napi_get_global(env, &global))
@@ -146,6 +150,9 @@ encodeBuffer(napi_env env, napi_callback_info info) {
     NAPI_CALL(env, napi_get_value_uint32(env, argv[2], &serial))
 
     buffer_resource = wl_client_get_object(node_encoder->client, buffer_id);
+
+//    printf("native ::: queueing encoding job: buffer_id: %d, serial: %d, buffer: %p\n", buffer_id, serial,
+//           buffer_resource);
 
     if (encoder_encode(&node_encoder->encoder, buffer_resource, serial) == -1) {
         NAPI_CALL(env, napi_throw_error((env), NULL, "Can't encode buffer."))

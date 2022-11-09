@@ -53,10 +53,8 @@ RUN  cd /gstreamer \
       -Dgst-plugins-base:gl-graphene=enabled \
       -Dgst-plugins-base:gl_winsys=egl \
       -Dgst-plugins-base:gl_api=opengl \
-      -Dgst-plugins-good:png=enabled \
       -Dgst-plugins-bad:gl=enabled \
       -Dgst-plugins-bad:nvcodec=enabled \
-      -Dgst-plugins-ugly:x264=enabled \
     && ninja -C build
 
 WORKDIR /app

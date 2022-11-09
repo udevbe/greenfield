@@ -16,6 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { createEncodedFrame, EncodedFrame } from './EncodedFrame'
+import { WlBufferResource } from 'westfield-runtime-server'
 
 type BufferState = {
   completionPromise: Promise<EncodedFrame | undefined>
@@ -27,8 +28,7 @@ type BufferState = {
 
 export default class BufferStream {
   private readonly bufferStates: Record<number, BufferState> = {}
-
-  static create(wlBufferResource: { onDestroy: () => Promise<void> }): BufferStream {
+  static create(wlBufferResource: WlBufferResource): BufferStream {
     const bufferStream = new BufferStream()
     // TODO we probably want to trigger a custom timeout error here.
     wlBufferResource.onDestroy().then(() => {

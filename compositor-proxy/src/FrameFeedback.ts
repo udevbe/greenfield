@@ -3,8 +3,7 @@ import { performance } from 'perf_hooks'
 import { clearTimeout } from 'timers'
 
 export class FrameFeedback {
-  private callbackResourceIds: number[] = []
-  private commitTimestamp = 0
+  // frame callback prediction state
   private virtualRefreshDeadline = 0
   private refreshInterval = 16.667
   private clientProcessingDuration?: number
@@ -18,10 +17,13 @@ export class FrameFeedback {
   }
   private paused = false
 
+  // subsurface state
   syncParent?: FrameFeedback
+  private cachedCommittedBuffer?: {
+    readonly frameCallbacksIds: number[]
+    readonly isDestroyed: () => boolean
+  }
   private syncChildren: FrameFeedback[] = []
-
-  private nroPendingClientFrames = 0
 
   constructor(private wlClient: unknown, private messageInterceptors: Record<number, any>) {}
 
@@ -30,30 +32,43 @@ export class FrameFeedback {
       clearTimeout(this.delayedFrameDoneEvents.timeout)
       this.delayedFrameDoneEvents = undefined
     }
+    this.cachedCommittedBuffer = undefined
   }
 
-  addFrameCallbackId(frameCallbackId: number): void {
-    this.callbackResourceIds.push(frameCallbackId)
-  }
-
-  commitNotify(): void {
-    this.commitTimestamp = performance.now()
+  commitNotify(
+    buffer: {
+      readonly bufferResourceId: number
+      readonly encodingPromise: Promise<void>
+      readonly frameCallbacksIds: number[]
+    },
+    isDestroyed: () => boolean,
+  ): void {
+    const committedBuffer = {
+      ...buffer,
+      commitTimestamp: performance.now(),
+      isDestroyed,
+    } as const
+    if (this.syncParent) {
+      this.cachedCommittedBuffer = {
+        frameCallbacksIds: [...(this.cachedCommittedBuffer?.frameCallbacksIds ?? []), ...buffer.frameCallbacksIds],
+        isDestroyed,
+      }
+    } else {
+      committedBuffer.encodingPromise.then(() => this.commitDone(committedBuffer))
+    }
   }
 
   sendDoneEvents(frameDoneTimestamp: number) {
-    if (this.callbackResourceIds.length === 0) {
-      return
+    if (this.cachedCommittedBuffer && !this.cachedCommittedBuffer.isDestroyed()) {
+      const frameCallbackIds = this.cachedCommittedBuffer.frameCallbacksIds
+      this.cachedCommittedBuffer = undefined
+      if (this.paused) {
+        this.createDelayedFrameDoneEvents(frameCallbackIds)
+        return
+      }
+
+      this.sendFrameDoneEventsWithCallbacks(frameDoneTimestamp, frameCallbackIds)
     }
-
-    const frameCallbackIds = [...this.callbackResourceIds]
-    this.callbackResourceIds = []
-
-    if (this.paused) {
-      this.createDelayedFrameDoneEvents(frameCallbackIds)
-      return
-    }
-
-    this.sendFrameDoneEventsWithCallbacks(frameDoneTimestamp, frameCallbackIds)
   }
 
   updateDelay(clientRefreshInterval: number, clientProcessingDuration: number | undefined) {
@@ -92,21 +107,24 @@ export class FrameFeedback {
     }
   }
 
-  commitDone(encodeStartTime?: number): void {
-    if (this.clientProcessingDuration === 0 || this.syncParent) {
+  private commitDone(committedBuffer: {
+    readonly frameCallbacksIds: number[]
+    readonly isDestroyed: () => boolean
+    readonly commitTimestamp: number
+  }): void {
+    if (
+      committedBuffer.frameCallbacksIds.length === 0 ||
+      this.clientProcessingDuration === 0 ||
+      this.syncParent ||
+      committedBuffer.isDestroyed()
+    ) {
+      // console.trace(`not sending feedback`)
       return
     }
-
-    if (this.callbackResourceIds.length === 0) {
-      return
-    }
-
-    const frameCallbackIds = [...this.callbackResourceIds]
-    this.callbackResourceIds = []
 
     if (this.delayedFrameDoneEvents) {
       this.delayedFrameDoneEvents.promise.then((feedbackTime) =>
-        this.sendFrameDoneEventsWithCallbacks(feedbackTime, frameCallbackIds),
+        this.sendFrameDoneEventsWithCallbacks(feedbackTime, committedBuffer.frameCallbacksIds),
       )
       return
     }
@@ -116,18 +134,12 @@ export class FrameFeedback {
     if (now - this.clientFeedbackTimestamp > 2000 || this.clientProcessingDuration === undefined) {
       // pause sending frame done event until we have a (recent) feedback timestamp
       this.pause()
-      this.createDelayedFrameDoneEvents(frameCallbackIds)
+      this.createDelayedFrameDoneEvents(committedBuffer.frameCallbacksIds)
       return
     }
 
-    if (encodeStartTime === undefined) {
-      this.sendFrameDoneEventsWithCallbacks(now, frameCallbackIds)
-      return
-    }
-
-    const encodingDuration = now - encodeStartTime
-    const extraClientDuration =
-      this.clientProcessingDuration > encodingDuration ? this.clientProcessingDuration - encodingDuration : 0
+    const duration = now - committedBuffer.commitTimestamp
+    const extraClientDuration = this.clientProcessingDuration > duration ? this.clientProcessingDuration - duration : 0
 
     // TODO take expected application wait-for-commit into account when calculating next deadline
     this.virtualRefreshDeadline +=
@@ -136,9 +148,9 @@ export class FrameFeedback {
     const callbackDelay = this.virtualRefreshDeadline - now
 
     if (callbackDelay >= 1) {
-      this.createDelayedFrameDoneEvents(frameCallbackIds, callbackDelay)
+      this.createDelayedFrameDoneEvents(committedBuffer.frameCallbacksIds, callbackDelay)
     } else {
-      this.sendFrameDoneEventsWithCallbacks(now, frameCallbackIds)
+      this.sendFrameDoneEventsWithCallbacks(now, committedBuffer.frameCallbacksIds)
     }
   }
 
@@ -222,6 +234,8 @@ export class FrameFeedback {
     flush(this.wlClient)
 
     destroyWlResourceSilently(this.wlClient, callbackResourceId)
+
+    // console.debug(`done sending frame callback: ${callbackResourceId}`)
   }
 
   sendBufferReleaseEvent(bufferResourceId: number) {
