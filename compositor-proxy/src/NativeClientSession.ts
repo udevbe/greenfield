@@ -42,6 +42,7 @@ import {
   setWireMessageCallback,
   setWireMessageEndCallback,
 } from 'westfield-proxy'
+import { ProxyBuffer } from './ProxyBuffer'
 
 const logger = createLogger('native-client-session')
 
@@ -124,14 +125,7 @@ export function createNativeClientSession(
   )
 
   setBufferCreatedCallback(wlClient, (bufferId: number) => {
-    // eslint-disable-next-line new-cap
-    messageInterceptor.interceptors[bufferId] = new wl_buffer_interceptor(
-      wlClient,
-      messageInterceptor.interceptors,
-      1,
-      null,
-      null,
-    )
+    messageInterceptor.interceptors[bufferId] = new ProxyBuffer(messageInterceptor.interceptors, bufferId)
     // send buffer creation notification. opcode: 2
     protocolChannel.send(new Uint32Array([2, bufferId]).buffer)
   })

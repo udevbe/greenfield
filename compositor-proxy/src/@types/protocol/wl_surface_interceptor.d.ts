@@ -7,13 +7,18 @@ import { MessageDestination } from '../../../../../westfield/server/node/proxy'
 export default class wl_surface_interceptor {
   destroyed: boolean
   frameFeedback?: FrameFeedback
+
   pendingBufferResourceId?: number | null
+  pendingBufferDestroyListener?: () => void
   pendingFrameCallbacksIds: number[]
+
   buffer?: {
     readonly bufferResourceId: number
     readonly encodingPromise: Promise<void>
     readonly frameCallbacksIds: number[]
   }
+  bufferDestroyListener?: () => void
+
   encoder: Encoder
   userData: {
     protocolChannel: RetransmittingWebSocket

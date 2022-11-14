@@ -24,6 +24,7 @@ import wlSubsurfaceInterceptor from './protocol/wl_subsurface_interceptor'
 import wlSubcompositorInterceptor from './protocol/wl_subcompositor_interceptor'
 import { FrameFeedback } from './FrameFeedback'
 import wl_surface_interceptor from './protocol/wl_surface_interceptor'
+import { ProxyBuffer } from './ProxyBuffer'
 
 const logger = createLogger('surface-buffer-encoding')
 let bufferSerial = -1
@@ -163,8 +164,24 @@ export function initSurfaceBufferEncoding(): void {
     consumed: number
     size: number
   }) {
+    if (this.pendingBufferDestroyListener === undefined) {
+      this.pendingBufferDestroyListener = () => (this.pendingBufferResourceId = undefined)
+    }
+
+    if (this.pendingBufferResourceId) {
+      const proxyBuffer = this.userData.messageInterceptors[this.pendingBufferResourceId] as ProxyBuffer
+      proxyBuffer.destroyListeners = proxyBuffer.destroyListeners.filter(
+        (listener) => listener !== this.pendingBufferDestroyListener,
+      )
+    }
+
     const [bufferResourceId] = unmarshallArgs(message, 'oii')
     this.pendingBufferResourceId = (bufferResourceId as number) || null
+
+    if (this.pendingBufferResourceId) {
+      const proxyBuffer = this.userData.messageInterceptors[this.pendingBufferResourceId] as ProxyBuffer
+      proxyBuffer.destroyListeners.push(this.pendingBufferDestroyListener)
+    }
 
     return {
       native: false,
@@ -182,6 +199,9 @@ export function initSurfaceBufferEncoding(): void {
     consumed: number
     size: number
   }) {
+    if (this.bufferDestroyListener === undefined) {
+      this.bufferDestroyListener = () => (this.buffer = undefined)
+    }
     if (!this.encoder) {
       this.encoder = createEncoder(this.wlClient, this.userData.drmContext)
     }
@@ -192,19 +212,32 @@ export function initSurfaceBufferEncoding(): void {
 
     if (this.pendingBufferResourceId) {
       if (this.buffer && this.buffer.bufferResourceId !== this.pendingBufferResourceId) {
-        const previousBufferResourceId = this.buffer.bufferResourceId
-        this.buffer.encodingPromise.then(() => frameFeedback.sendBufferReleaseEvent(previousBufferResourceId))
+        const previousProxyBuffer = this.userData.messageInterceptors[this.buffer.bufferResourceId] as ProxyBuffer
+        this.buffer.encodingPromise.then(() => {
+          if (!previousProxyBuffer.destroyed) {
+            frameFeedback.sendBufferReleaseEvent(previousProxyBuffer.bufferId)
+          }
+        })
+        previousProxyBuffer.destroyListeners = previousProxyBuffer.destroyListeners.filter(
+          (listener) => listener !== this.bufferDestroyListener,
+        )
       }
 
       syncSerial = ++bufferSerial
       const frameCallbacksIds = this.pendingFrameCallbacksIds ?? []
       this.pendingFrameCallbacksIds = []
+
       this.buffer = {
         bufferResourceId: this.pendingBufferResourceId,
         encodingPromise: this.encodeAndSendBuffer(syncSerial, this.pendingBufferResourceId),
         frameCallbacksIds,
       }
-      this.pendingFrameCallbacksIds = []
+
+      const proxyBuffer = this.userData.messageInterceptors[this.buffer.bufferResourceId] as ProxyBuffer
+      proxyBuffer.destroyListeners = proxyBuffer.destroyListeners.filter(
+        (listener) => listener !== this.pendingBufferDestroyListener,
+      )
+      proxyBuffer.destroyListeners.push(this.bufferDestroyListener)
       this.pendingBufferResourceId = undefined
 
       frameFeedback.commitNotify(this.buffer, () => this.destroyed)
@@ -238,13 +271,17 @@ export function initSurfaceBufferEncoding(): void {
 
   wlSurfaceInterceptor.prototype.encodeAndSendBuffer = function (syncSerial: number, bufferResourceId: number) {
     // console.debug(`Encoding buffer: ${bufferResourceId} - #${syncSerial}`)
+    const proxyBuffer = this.userData.messageInterceptors[bufferResourceId]
     return this.encoder
       .encodeBuffer(bufferResourceId, syncSerial)
       .then(({ buffer, serial }) => {
+        // if (proxyBuffer.destroyed) {
+        //   return
+        // }
         // FIXME check buffer result, can have an empty size if encoding pipeline was ended
         // console.debug(`Done Encoding buffer: ${bufferResourceId} - #${syncSerial}`)
         // 1 === 'open'
-        if (this.userData.frameDataChannel.readyState === 1) {
+        if (this.userData.protocolChannel.readyState === 1 && this.userData.frameDataChannel.readyState === 1) {
           // send buffer sent started marker. opcode: 1. surfaceId + syncSerial
           this.userData.protocolChannel.send(new Uint32Array([1, this.id, serial]))
           // send buffer contents. opcode: 3. bufferId + chunk
