@@ -183,8 +183,34 @@ class RemoteSocket {
           clientEncodersFeedback: createClientEncodersFeedback(clientId, encoderApi),
         }
 
+        this.setupFrameDataChannel(client, compositorProxyURL, clientId)
         resolve(client)
       })
+    })
+  }
+
+  private setupFrameDataChannel(client: Client, compositorProxyURL: URL, connectionId: string) {
+    const url = new URL(compositorProxyURL)
+    url.searchParams.append('frameData', '')
+    const frameDataChannel = createRetransmittingWebSocket(url, connectionId)
+
+    frameDataChannel.addEventListener('message', (message) => {
+      if (client.connection.closed) {
+        return
+      }
+
+      const messageData = message.data as ArrayBuffer
+      const bufferContentsDataView = new DataView(messageData)
+      const bufferId = bufferContentsDataView.getUint32(0, true)
+      const wlBufferResource = client.connection.wlObjects[bufferId] as WlBufferResource
+
+      // Buffer might be destroyed while waiting for it's content to arrive.
+      if (wlBufferResource) {
+        const streamingBuffer = wlBufferResource.implementation as StreamingBuffer
+
+        const bufferContents = new Uint8Array(messageData, Uint32Array.BYTES_PER_ELEMENT)
+        streamingBuffer.bufferStream.onBufferContents(bufferContents)
+      }
     })
   }
 
@@ -216,28 +242,6 @@ class RemoteSocket {
 
       const wlBufferResource = new WlBufferResource(client, new Uint32Array(message.buffer, message.byteOffset)[0], 1)
       wlBufferResource.implementation = StreamingBuffer.create(wlBufferResource)
-    })
-
-    // listen for buffer contents arriving. opcode: 3
-    outOfBandChannel.setListener(RemoteOutOfBandListenOpcode.BufferContents, (outOfBandMessage) => {
-      if (client.connection.closed) {
-        return
-      }
-
-      const bufferContentsDataView = new DataView(outOfBandMessage.buffer, outOfBandMessage.byteOffset)
-      const bufferId = bufferContentsDataView.getUint32(0, true)
-      const wlBufferResource = client.connection.wlObjects[bufferId] as WlBufferResource
-
-      // Buffer might be destroyed while waiting for it's content to arrive.
-      if (wlBufferResource) {
-        const streamingBuffer = wlBufferResource.implementation as StreamingBuffer
-
-        const bufferContents = new Uint8Array(
-          outOfBandMessage.buffer,
-          outOfBandMessage.byteOffset + Uint32Array.BYTES_PER_ELEMENT,
-        )
-        streamingBuffer.bufferStream.onBufferContents(bufferContents)
-      }
     })
 
     // listen for web socket creation request. opcode: 5

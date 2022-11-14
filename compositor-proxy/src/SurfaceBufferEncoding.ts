@@ -244,11 +244,11 @@ export function initSurfaceBufferEncoding(): void {
         // FIXME check buffer result, can have an empty size if encoding pipeline was ended
         // console.debug(`Done Encoding buffer: ${bufferResourceId} - #${syncSerial}`)
         // 1 === 'open'
-        if (this.userData.communicationChannel.readyState === 1) {
+        if (this.userData.frameDataChannel.readyState === 1) {
           // send buffer sent started marker. opcode: 1. surfaceId + syncSerial
-          this.userData.communicationChannel.send(new Uint32Array([1, this.id, serial]))
+          this.userData.protocolChannel.send(new Uint32Array([1, this.id, serial]))
           // send buffer contents. opcode: 3. bufferId + chunk
-          this.userData.communicationChannel.send(buffer)
+          this.userData.frameDataChannel.send(buffer)
         } // else connection was probably closed, don't attempt to send a buffer chunk
       })
       .catch((e: Error) => {

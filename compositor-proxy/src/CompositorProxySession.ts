@@ -58,18 +58,34 @@ export class CompositorProxySession {
     this.destroyResolve?.()
   }
 
-  handleConnection(webSocket: WebSocketLike, clientId: string): void {
+  handleConnection(protocolChannel: WebSocketLike, clientId: string): void {
     try {
-      this.nativeCompositorSession.socketForClient(webSocket, clientId)
+      this.nativeCompositorSession.socketForClient(protocolChannel, clientId)
     } catch (e: any) {
       logger.error(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
       logger.error('error object stack: ')
       logger.error(e.stack)
-      webSocket.close(4503, `Server encountered an exception.`)
+      protocolChannel.close(4503, `Server encountered an exception.`)
     }
   }
 
-  handleXWMConnection(webSocket: WebSocketLike, xwmFD: number): void {
-    this.xWaylandSession.upsertXWMConnection(webSocket, xwmFD)
+  handleXWMConnection(protocolChannel: WebSocketLike, xwmFD: number): void {
+    this.xWaylandSession.upsertXWMConnection(protocolChannel, xwmFD).catch((e: any) => {
+      logger.error(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
+      logger.error('error object stack: ')
+      logger.error(e.stack)
+      protocolChannel.close(4503, `Server encountered an exception.`)
+    })
+  }
+
+  handleFrameDataConnection(frameDataChannel: WebSocketLike, clientId: string) {
+    try {
+      this.nativeCompositorSession.frameDataChannelForClient(frameDataChannel, clientId)
+    } catch (e: any) {
+      logger.error(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
+      logger.error('error object stack: ')
+      logger.error(e.stack)
+      frameDataChannel.close(4503, `Server encountered an exception.`)
+    }
   }
 }

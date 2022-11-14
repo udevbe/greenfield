@@ -16,7 +16,8 @@ export default class wl_surface_interceptor {
   }
   encoder: Encoder
   userData: {
-    communicationChannel: RetransmittingWebSocket
+    protocolChannel: RetransmittingWebSocket
+    frameDataChannel: RetransmittingWebSocket
     drmContext: unknown
     messageInterceptors: Record<number, any>
     nativeClientSession?: NativeClientSession

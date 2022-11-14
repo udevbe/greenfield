@@ -410,6 +410,8 @@ export function webSocketOpen(
   if (searchParams.has('xwmFD')) {
     const wmFD = Number.parseInt(searchParams.get('xwmFD') ?? '0')
     compositorProxySession.handleXWMConnection(ws, wmFD)
+  } else if (searchParams.has('frameData')) {
+    compositorProxySession.handleFrameDataConnection(ws, connectionId)
   } else {
     const { retransmittingWebSocket, isNew } = upsertWebSocket(connectionId, ws)
     if (!isNew) {

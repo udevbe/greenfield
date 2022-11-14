@@ -36,7 +36,12 @@ import {
 
 const logger = createLogger('native-compositor-session')
 
-export type ClientEntry = { webSocket: WebSocketLike; nativeClientSession?: NativeClientSession; clientId?: string }
+export type ClientEntry = {
+  protocolChannel: WebSocketLike
+  frameDataChannel: WebSocketLike
+  nativeClientSession?: NativeClientSession
+  clientId?: string
+}
 
 function onGlobalCreated(globalName: number): void {
   nativeGlobalNames.push(globalName)
@@ -117,23 +122,33 @@ export class NativeCompositorSession {
     let client = this.clients.find((client) => client.nativeClientSession === undefined)
 
     if (client) {
-      logger.debug('Found client without a wayland connection, will associating with new wayland connection.')
+      logger.debug(
+        'Found browser client without a Wayland connection, will associating this browser client with incoming Wayland connection.',
+      )
       // associate native wayland connection with previously created placeholder client
-      client.nativeClientSession = createNativeClientSession(wlClient, this, client.webSocket)
+      client.nativeClientSession = createNativeClientSession(
+        wlClient,
+        this,
+        client.protocolChannel,
+        client.frameDataChannel,
+      )
     } else {
       logger.debug(
         'No client found without a wayland connection, will create a placeholder client without an open websocket connection.',
       )
-      const webSocket = new RetransmittingWebSocket()
+
+      const protocolChannel = new RetransmittingWebSocket()
+      const frameDataChannel = new RetransmittingWebSocket()
       client = {
-        nativeClientSession: createNativeClientSession(wlClient, this, webSocket),
-        webSocket,
-      }
+        nativeClientSession: createNativeClientSession(wlClient, this, protocolChannel, frameDataChannel),
+        protocolChannel,
+        frameDataChannel,
+      } as ClientEntry
       this.clients = [...this.clients, client]
-      registerUnboundClientConnection(webSocket)
+      registerUnboundClientConnection(protocolChannel)
 
       // no previously created web sockets available, so ask compositor to create a new one
-      const otherClient = this.clients.find((client) => client.webSocket.readyState === 1)
+      const otherClient = this.clients.find((client) => client.protocolChannel.readyState === 1)
       if (otherClient) {
         logger.debug('Previous client found with a websocket connection, will ask for a new a websocket connection.')
         otherClient.nativeClientSession?.requestWebSocket()
@@ -147,15 +162,19 @@ export class NativeCompositorSession {
     }
   }
 
-  socketForClient(webSocket: WebSocketLike, clientId: string): void {
+  socketForClient(protocolChannel: WebSocketLike, clientId: string): void {
     logger.info(`New websocket connected.`)
     // find a client who does not have a websocket associated
-    const client = this.clients.find((client) => client.webSocket === webSocket)
+    const client = this.clients.find((client) => client.protocolChannel === protocolChannel)
     if (client === undefined) {
       // create a placeholder client for future wayland client connections.
-      const placeHolderClient: ClientEntry = { webSocket, clientId }
+      const placeHolderClient: ClientEntry = {
+        protocolChannel,
+        clientId,
+        frameDataChannel: new RetransmittingWebSocket(),
+      }
       this.clients = [...this.clients, placeHolderClient]
-      webSocket.addEventListener('close', () => {
+      protocolChannel.addEventListener('close', () => {
         if (placeHolderClient.nativeClientSession) {
           placeHolderClient.nativeClientSession.destroy()
         } else {
@@ -166,7 +185,7 @@ export class NativeCompositorSession {
     } else {
       // associate the websocket with an already connected wayland client.
       client.clientId = clientId
-      webSocket.addEventListener('close', () => {
+      protocolChannel.addEventListener('close', () => {
         logger.info(`websocket closed.`)
         if (client.nativeClientSession) {
           client.nativeClientSession.destroy()
@@ -176,5 +195,15 @@ export class NativeCompositorSession {
         }
       })
     }
+  }
+
+  frameDataChannelForClient(frameDataChannel: WebSocketLike, clientId: string) {
+    const client = this.clients.find((client) => client.clientId === clientId)
+    if (client === undefined) {
+      throw new Error('No Wayland client found for frame data channel connection.')
+    }
+
+    const retransmittingWebSocket = client.frameDataChannel as RetransmittingWebSocket
+    retransmittingWebSocket.useWebSocket(frameDataChannel)
   }
 }

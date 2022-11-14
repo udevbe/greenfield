@@ -65,16 +65,19 @@ function deserializeWebFDJSON(sourceBuf: ArrayBufferView): { webfd: Webfd; bytes
 export function createNativeClientSession(
   wlClient: unknown,
   nativeCompositorSession: NativeCompositorSession,
-  webSocket: WebSocketLike,
+  protocolChannel: WebSocketLike,
+  frameDataChannel: WebSocketLike,
 ): NativeClientSession {
   const messageInterceptors: Record<number, any> = {}
   const userData: {
-    communicationChannel: WebSocketLike
+    protocolChannel: WebSocketLike
+    frameDataChannel: WebSocketLike
     messageInterceptors: Record<number, any>
     drmContext: unknown
     nativeClientSession?: NativeClientSession
   } = {
-    communicationChannel: webSocket,
+    frameDataChannel,
+    protocolChannel,
     drmContext: nativeCompositorSession.drmContext,
     messageInterceptors,
   }
@@ -86,15 +89,20 @@ export function createNativeClientSession(
     messageInterceptors,
   )
 
-  const nativeClientSession = new NativeClientSession(wlClient, nativeCompositorSession, webSocket, messageInterceptor)
+  const nativeClientSession = new NativeClientSession(
+    wlClient,
+    nativeCompositorSession,
+    protocolChannel,
+    messageInterceptor,
+  )
   userData.nativeClientSession = nativeClientSession
   nativeClientSession.onDestroy().then(() => {
     userData.nativeClientSession = undefined
-    if (webSocket.readyState === 1 || webSocket.readyState === 0) {
+    if (protocolChannel.readyState === 1 || protocolChannel.readyState === 0) {
       // retransmittingWebSocket.onerror = noopHandler
       // retransmittingWebSocket.onclose = noopHandler
       // retransmittingWebSocket.onmessage = noopHandler
-      webSocket.close()
+      protocolChannel.close()
     }
   })
 
@@ -125,21 +133,21 @@ export function createNativeClientSession(
       null,
     )
     // send buffer creation notification. opcode: 2
-    webSocket.send(new Uint32Array([2, bufferId]).buffer)
+    protocolChannel.send(new Uint32Array([2, bufferId]).buffer)
   })
 
   let wasOpen = false
-  webSocket.addEventListener('error', (event) => {
+  protocolChannel.addEventListener('error', (event) => {
     logger.info(`Wayland client web socket error.`, event)
     if (!wasOpen) {
       nativeClientSession.destroy()
     }
   })
-  webSocket.addEventListener('close', () => {
+  protocolChannel.addEventListener('close', () => {
     logger.info(`Wayland client web socket closed.`)
     nativeClientSession.destroy()
   })
-  webSocket.addEventListener('message', (event) => {
+  protocolChannel.addEventListener('message', (event) => {
     try {
       nativeClientSession.onMessage(event.data as ArrayBuffer)
     } catch (e) {
@@ -147,7 +155,7 @@ export function createNativeClientSession(
       nativeClientSession.destroy()
     }
   })
-  webSocket.addEventListener('open', () => {
+  protocolChannel.addEventListener('open', () => {
     wasOpen = true
     // flush out any requests that came in while we were waiting for the data channel to open.
     logger.info(`Wayland client web socket to browser is open.`)

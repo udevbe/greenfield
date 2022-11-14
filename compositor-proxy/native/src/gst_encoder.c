@@ -376,7 +376,6 @@ struct encoded_frame *
 encoding_result_to_encoded_frame(struct encoding_result *encoding_result, bool separate_alpha) {
     gsize opaque_length, alpha_length, offset, encoded_frame_blob_size;
     struct encoded_frame *encoded_frame;
-    uint32_t opcode = 3;
 
     if (encoding_result->alpha_is_eos || encoding_result->opaque_is_eos) {
         return NULL;
@@ -387,16 +386,12 @@ encoding_result_to_encoded_frame(struct encoding_result *encoding_result, bool s
 
     offset = 0;
     encoded_frame_blob_size =
-            sizeof(uint32_t) + // opcode: uin32LE
             sizeof(encoding_result->props) +
             sizeof(uint32_t) + // fragment opaque length (uin32LE)
             opaque_length +
             sizeof(uint32_t) + // fragment alpha length (uin32LE)
             alpha_length;
     void *frame_blob = malloc(encoded_frame_blob_size);
-
-    memcpy(frame_blob + offset, &opcode, sizeof(opcode));
-    offset += sizeof(opcode);
 
     memcpy(frame_blob + offset, &encoding_result->props, sizeof(encoding_result->props));
     offset += sizeof(encoding_result->props);

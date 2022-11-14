@@ -1,4 +1,4 @@
-import { App, HttpRequest, HttpResponse, us_listen_socket } from 'uWebSockets.js'
+import { App, HttpRequest, HttpResponse, us_listen_socket, WebSocketBehavior } from 'uWebSockets.js'
 import { UWebSocketLike } from './UWebSocketLike'
 import { CloseEventLike, MessageEventLike, ReadyState } from 'retransmitting-websocket'
 import { CompositorProxySession } from './CompositorProxySession'
@@ -54,6 +54,51 @@ export function createApp(
   { host, port }: { host: string; port: number },
 ): Promise<us_listen_socket> {
   return new Promise<us_listen_socket>((resolve, reject) => {
+    const webSocketBehavior: WebSocketBehavior = {
+      // TODO implement backpressure when sending over websocket
+      sendPingsAutomatically: true,
+      maxPayloadLength: 4194304,
+      maxBackpressure: 4194304,
+      upgrade: (res, req, context) => {
+        /* This immediately calls open handler, you must not use res after this call */
+        res.upgrade(
+          {
+            searchParams: new URLSearchParams(req.getQuery()),
+          },
+          /* Spell these correctly */
+          req.getHeader('sec-websocket-key'),
+          req.getHeader('sec-websocket-protocol'),
+          req.getHeader('sec-websocket-extensions'),
+          context,
+        )
+      },
+      open(ws) {
+        const uWebSocketLike = new UWebSocketLike(ws)
+        ws.websocketlike = uWebSocketLike
+        webSocketOpen(compositorProxySession, uWebSocketLike, ws.searchParams)
+      },
+      message(ws, message) {
+        const messageEventLike: MessageEventLike = {
+          type: 'message',
+          data: message,
+          target: ws.websocketlike,
+        }
+        ws.websocketlike.emit('message', messageEventLike)
+      },
+      close(ws, code, message) {
+        ws.websocketlike.readyState = ReadyState.CLOSING
+        const closeEventLike: CloseEventLike = {
+          type: 'close',
+          code,
+          reason: Buffer.from(message).toString(),
+          target: ws.websocketlike,
+          wasClean: code === 1000,
+        }
+        ws.websocketlike.emit('close', closeEventLike)
+        ws.websocketlike.readyState = ReadyState.CLOSED
+      },
+    }
+
     App()
       .options('/mkfifo', OPTIONSPreflightRequest('POST'))
       .post('/mkfifo', withAuth(compositorProxySession, POSTMkFifo))
@@ -78,50 +123,7 @@ export function createApp(
       .options('/:clientId/encoder/feedback', OPTIONSPreflightRequest('PUT'))
       .put('/:clientId/encoder/feedback', withAuth(compositorProxySession, withParams(1, PUTEncoderFeedback)))
 
-      .ws('/', {
-        // TODO implement backpressure when sending over websocket
-        sendPingsAutomatically: true,
-        maxPayloadLength: 4194304,
-        maxBackpressure: 4194304,
-        upgrade: (res, req, context) => {
-          /* This immediately calls open handler, you must not use res after this call */
-          res.upgrade(
-            {
-              searchParams: new URLSearchParams(req.getQuery()),
-            },
-            /* Spell these correctly */
-            req.getHeader('sec-websocket-key'),
-            req.getHeader('sec-websocket-protocol'),
-            req.getHeader('sec-websocket-extensions'),
-            context,
-          )
-        },
-        open(ws) {
-          const uWebSocketLike = new UWebSocketLike(ws)
-          ws.websocketlike = uWebSocketLike
-          webSocketOpen(compositorProxySession, uWebSocketLike, ws.searchParams)
-        },
-        message(ws, message) {
-          const messageEventLike: MessageEventLike = {
-            type: 'message',
-            data: message,
-            target: ws.websocketlike,
-          }
-          ws.websocketlike.emit('message', messageEventLike)
-        },
-        close(ws, code, message) {
-          ws.websocketlike.readyState = ReadyState.CLOSING
-          const closeEventLike: CloseEventLike = {
-            type: 'close',
-            code,
-            reason: Buffer.from(message).toString(),
-            target: ws.websocketlike,
-            wasClean: code === 1000,
-          }
-          ws.websocketlike.emit('close', closeEventLike)
-          ws.websocketlike.readyState = ReadyState.CLOSED
-        },
-      })
+      .ws('/', webSocketBehavior)
       .listen(host, port, (listenSocket) => {
         if (listenSocket) {
           resolve(listenSocket)
