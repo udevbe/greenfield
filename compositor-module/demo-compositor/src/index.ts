@@ -5,6 +5,8 @@ import {
   initWasm,
 } from '../../src'
 
+const proxyHost = 'localhost'
+
 async function main() {
   // load web assembly libraries
   await initWasm()
@@ -44,19 +46,19 @@ async function main() {
   const compositorProxyConnector = createCompositorProxyConnector(session, remoteSocket)
 
   const connect8081Button: HTMLButtonElement = document.createElement('button')
-  connect8081Button.textContent = `connect to ws://localhost:8081?compositorSessionId=${compositorSessionId}`
+  connect8081Button.textContent = `connect to ws://${proxyHost}:8081?compositorSessionId=${compositorSessionId}`
 
   connect8081Button.onclick = () => {
-    const compositorProxyURL = new URL('ws://localhost:8081')
+    const compositorProxyURL = new URL(`ws://${proxyHost}:8081`)
     compositorProxyURL.searchParams.append('compositorSessionId', compositorSessionId)
     compositorProxyConnector.connectTo(compositorProxyURL)
   }
 
   const connect8082Button: HTMLButtonElement = document.createElement('button')
-  connect8082Button.textContent = `connect to ws://localhost:8082?compositorSessionId=${compositorSessionId}`
+  connect8082Button.textContent = `connect to ws://${proxyHost}:8082?compositorSessionId=${compositorSessionId}`
 
   connect8082Button.onclick = () => {
-    const compositorProxyURL = new URL('ws://localhost:8082')
+    const compositorProxyURL = new URL(`ws://${proxyHost}:8082`)
     compositorProxyURL.searchParams.append('compositorSessionId', compositorSessionId)
     compositorProxyConnector.connectTo(compositorProxyURL)
   }
