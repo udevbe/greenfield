@@ -1159,7 +1159,6 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
                                        "capsfilter name=shader_capsfilter ! "
-                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
                                        "queue ! "
                                        "nvh264enc qp-max=18 zerolatency=true preset=5 rc-mode=5 max-bitrate=12800 vbv-buffer-size=12800 ! "
                                        "video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au ! "
