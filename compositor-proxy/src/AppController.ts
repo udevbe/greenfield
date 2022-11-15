@@ -428,7 +428,9 @@ function readJson<T>(res: HttpResponse) {
     const chunks: Uint8Array[] = []
     /* Register data cb */
     res.onData((ab, isLast) => {
-      chunks.push(new Uint8Array(ab))
+      const chunk = new Uint8Array(new ArrayBuffer(ab.byteLength))
+      chunk.set(new Uint8Array(ab))
+      chunks.push(chunk)
       if (isLast) {
         resolve(JSON.parse(Buffer.concat(chunks).toString()))
       }
