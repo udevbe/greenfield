@@ -1119,7 +1119,6 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
                                        "capsfilter name=shader_capsfilter ! "
-                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12,colorimetry=1:3:5:1,texture-target=2D ! "
                                        "queue ! "
                                        "nvh264enc qp-max=18 zerolatency=true preset=5 rc-mode=5 max-bitrate=12800 vbv-buffer-size=12800 ! "
                                        "video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au ! "
@@ -1127,8 +1126,8 @@ static const struct encoder_description encoder_descriptions[] = {
                 .split_alpha = true,
                 .width_multiple = 16,
                 .height_multiple = 16,
-                .min_width = 16,
-                .min_height = 16,
+                .min_width = 48,
+                .min_height = 32,
         },
         {
                 .name = "vaapih264",
