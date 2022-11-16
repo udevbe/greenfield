@@ -798,6 +798,7 @@ gst_encoder_encode_shm(struct encoder *encoder, struct wl_shm_buffer *shm_buffer
                                        "format", G_TYPE_STRING, shmbuf_support_format->gst_format_string,
                                        "width", G_TYPE_INT, width,
                                        "height", G_TYPE_INT, height,
+                                       "colorimetry", G_TYPE_STRING, "1:0:5:1",
                                        NULL);
 
     gst_encoder_pipeline_config(gst_encoder->opaque_pipeline, encoder->description, new_src_caps,
@@ -930,6 +931,8 @@ gst_encoder_encode_dmabuf(struct encoder *encoder,
                                        "format", G_TYPE_STRING, "RGBA",
                                        "width", G_TYPE_INT, base->width,
                                        "height", G_TYPE_INT, base->height,
+                                       "texture-target", G_TYPE_STRING, "2D",
+                                       "colorimetry", G_TYPE_STRING, "1:1:5:1",
                                        NULL);
     gst_encoder_pipeline_config(gst_encoder->opaque_pipeline, encoder->description, new_src_caps,
                                 base->width, base->height, &coded_width, &coded_height);
@@ -1096,7 +1099,7 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
                                        "capsfilter name=shader_capsfilter ! "
-                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
+                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12,colorimetry=1:3:5:1,texture-target=2D ! "
                                        "gldownload ! "
                                        "queue ! "
                                        "x264enc rc-lookahead=0 sliced-threads=true qp-max=18 byte-stream=true tune=zerolatency psy-tune=2 pass=0 bitrate=12800 vbv-buf-capacity=1000 ! "
@@ -1116,6 +1119,7 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
                                        "capsfilter name=shader_capsfilter ! "
+                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12,colorimetry=1:3:5:1,texture-target=2D ! "
                                        "queue ! "
                                        "nvh264enc qp-max=18 zerolatency=true preset=5 rc-mode=5 max-bitrate=12800 vbv-buffer-size=12800 ! "
                                        "video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au ! "
@@ -1134,7 +1138,7 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
                                        "capsfilter name=shader_capsfilter ! "
-                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
+                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12,colorimetry=1:3:5:1,texture-target=2D ! "
                                        "gldownload ! "
                                        "queue ! "
                                        "vaapih264enc aud=1 ! "
