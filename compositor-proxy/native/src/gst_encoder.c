@@ -19,6 +19,7 @@
 #include <gst/gl/gstglmemory.h>
 #include <gst/gl/gstglutils.h>
 #include <gst/gl/gstglsyncmeta.h>
+#include <gst/gl/egl/gstglmemoryegl.h>
 #include "encoder.h"
 #include "westfield-linux-dmabuf-v1.h"
 #include "westfield-drm.h"
@@ -177,100 +178,68 @@ static const struct shmbuf_support_format shmbuf_supported_formats[] = {
 struct dmabuf_support_format {
     const bool has_alpha;
     const uint32_t drm_format;
-    const char *gst_format_string;
-    const GstVideoFormat gst_video_format;
 };
 
 static const struct dmabuf_support_format dmabuf_supported_formats[] = {
         {
                 .has_alpha = true,
                 .drm_format = DRM_FORMAT_ARGB8888,
-                .gst_format_string = "BGRA",
-                .gst_video_format = GST_VIDEO_FORMAT_BGRA,
         },
         {
                 .has_alpha = true,
                 .drm_format = DRM_FORMAT_RGBA8888,
-                .gst_format_string = "ABGR",
-                .gst_video_format = GST_VIDEO_FORMAT_ABGR,
         },
         {
                 .has_alpha = true,
                 .drm_format = DRM_FORMAT_BGRA8888,
-                .gst_format_string = "ARGB",
-                .gst_video_format = GST_VIDEO_FORMAT_ARGB,
         },
         {
                 .has_alpha = false,
                 .drm_format =DRM_FORMAT_RGBX8888,
-                .gst_format_string = "xBGR",
-                .gst_video_format = GST_VIDEO_FORMAT_xBGR,
         },
         {
                 .has_alpha = false,
                 .drm_format =DRM_FORMAT_BGRX8888,
-                .gst_format_string = "xRGB",
-                .gst_video_format = GST_VIDEO_FORMAT_xRGB,
         },
         {
                 .has_alpha = false,
                 .drm_format =DRM_FORMAT_RGB888,
-                .gst_format_string = "BGR",
-                .gst_video_format = GST_VIDEO_FORMAT_BGR,
         },
         {
                 .has_alpha = true,
                 .drm_format = DRM_FORMAT_ABGR8888,
-                .gst_format_string = "RGBA",
-                .gst_video_format = GST_VIDEO_FORMAT_RGBA,
         },
         {
                 .has_alpha = false,
                 .drm_format = DRM_FORMAT_BGR888,
-                .gst_format_string = "RGB",
-                .gst_video_format = GST_VIDEO_FORMAT_RGB,
         },
         {
                 .has_alpha = false,
                 .drm_format = DRM_FORMAT_XBGR8888,
-                .gst_format_string = "RGBx",
-                .gst_video_format = GST_VIDEO_FORMAT_RGBx,
         },
         {
                 .has_alpha = false,
                 .drm_format = DRM_FORMAT_XRGB8888,
-                .gst_format_string = "BGRx",
-                .gst_video_format = GST_VIDEO_FORMAT_BGRx,
         },
         {
                 .has_alpha = false,
                 .drm_format = DRM_FORMAT_RGB565,
-                .gst_format_string = "RGB16",
-                .gst_video_format = GST_VIDEO_FORMAT_RGB16,
         },
         {
                 .has_alpha = false,
                 .drm_format = DRM_FORMAT_YUV444,
-                .gst_format_string = "Y444",
-                .gst_video_format = GST_VIDEO_FORMAT_Y444,
         },
         {
                 .has_alpha = false,
                 .drm_format = DRM_FORMAT_YUV420,
-                .gst_format_string = "I420",
-                .gst_video_format = GST_VIDEO_FORMAT_I420,
         },
         {
                 .has_alpha = false,
                 .drm_format = DRM_FORMAT_NV12,
-                .gst_format_string = "NV12",
-                .gst_video_format = GST_VIDEO_FORMAT_NV12,
         },
         {
                 .has_alpha = false,
                 .drm_format = DRM_FORMAT_NV21,
-                .gst_format_string = "NV21",
-                .gst_video_format = GST_VIDEO_FORMAT_NV21,
         }
         // TODO more
 //        return "GBRA";
@@ -823,6 +792,7 @@ gst_encoder_encode_shm(struct encoder *encoder, struct wl_shm_buffer *shm_buffer
         g_error("Failed to interpret shm format: %d", buffer_format);
     }
 
+    // TODO re-use caps if they haven't changed
     new_src_caps = gst_caps_new_simple("video/x-raw",
                                        "framerate", GST_TYPE_FRACTION, FPS, 1,
                                        "format", G_TYPE_STRING, shmbuf_support_format->gst_format_string,
@@ -869,14 +839,11 @@ dmabuf_support_format_from_fourcc(const uint32_t fourcc) {
 
 struct gl_memory_destroyed_data {
     struct encoder *encoder;
-    GLuint tex;
     EGLImageKHR egl_image;
 };
 
 static void
 gl_memory_destroyed(struct gl_memory_destroyed_data *gl_memory_destroyed_data) {
-    gl_memory_destroyed_data->encoder->gpu.shared_gst_gl_context->gl_vtable->DeleteTextures(1,
-                                                                                            &gl_memory_destroyed_data->tex);
     westfield_egl_destroy_image(gl_memory_destroyed_data->encoder->gpu.westfield_egl,
                                 gl_memory_destroyed_data->egl_image);
     g_free(gl_memory_destroyed_data);
@@ -884,14 +851,12 @@ gl_memory_destroyed(struct gl_memory_destroyed_data *gl_memory_destroyed_data) {
 
 static inline GstBuffer *
 create_gl_memory(struct encoder *encoder, const struct dmabuf_attributes *attributes, GstCaps *caps) {
-    GstGLMemoryAllocator *allocator = gst_gl_memory_allocator_get_default(encoder->gpu.shared_gst_gl_context);
-    GLuint wrapped_tex[] = {0};
-    GstGLFormat formats[] = {GST_GL_RGBA8};
+    GstGLMemoryAllocator *allocator = GST_GL_MEMORY_ALLOCATOR (gst_allocator_find(GST_GL_MEMORY_EGL_ALLOCATOR_NAME));
     GstBuffer *buffer = gst_buffer_new();
+    // FIXME video_info mem-leak & re-use video info instead
     GstVideoInfo *video_info = gst_video_info_new();
     gst_video_info_from_caps(video_info, caps);
     struct gl_memory_destroyed_data *gl_memory_destroyed_data = g_new0(struct gl_memory_destroyed_data, 1);
-    GLenum target;
     GstGLVideoAllocationParams *params;
     gboolean ret;
     bool external_only;
@@ -899,36 +864,27 @@ create_gl_memory(struct encoder *encoder, const struct dmabuf_attributes *attrib
                                                                    attributes,
                                                                    &external_only);
 
-    target = GL_TEXTURE_2D;
-    encoder->gpu.shared_gst_gl_context->gl_vtable->GenTextures(1, wrapped_tex);
-    encoder->gpu.shared_gst_gl_context->gl_vtable->BindTexture(target, wrapped_tex[0]);
-    encoder->gpu.shared_gst_gl_context->gl_vtable->TexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    encoder->gpu.shared_gst_gl_context->gl_vtable->TexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    encoder->gpu.shared_gst_gl_context->gl_vtable->EGLImageTargetTexture2D(target, egl_image);
-    encoder->gpu.shared_gst_gl_context->gl_vtable->BindTexture(target, 0);
-
     gl_memory_destroyed_data->encoder = encoder;
     gl_memory_destroyed_data->egl_image = egl_image;
-    gl_memory_destroyed_data->tex = wrapped_tex[0];
 
-    params = gst_gl_video_allocation_params_new_wrapped_texture(
-            encoder->gpu.shared_gst_gl_context,
-            NULL,
-            video_info,
-            0,
-            NULL,
-            external_only
-            ? GST_GL_TEXTURE_TARGET_EXTERNAL_OES
-            : GST_GL_TEXTURE_TARGET_2D,
-            GST_GL_RGBA8,
-            wrapped_tex[0],
-            // TODO cleanup texture
-            gl_memory_destroyed_data,
-            (GDestroyNotify) gl_memory_destroyed
-    );
+    GstEGLImage *gst_egl_image = gst_egl_image_new_wrapped(encoder->gpu.shared_gst_gl_context,
+                                                           egl_image,
+                                                           GST_GL_RGBA8,
+                                                           NULL,
+                                                           NULL);
+    params = gst_gl_video_allocation_params_new_wrapped_gl_handle(encoder->gpu.shared_gst_gl_context,
+                                                                  NULL,
+                                                                  video_info,
+                                                                  -1,
+                                                                  NULL,
+                                                                  GST_GL_TEXTURE_TARGET_2D,
+                                                                  0,
+                                                                  NULL,
+                                                                  gl_memory_destroyed_data,
+                                                                  (GDestroyNotify) gl_memory_destroyed);
 
-    ret = gst_gl_memory_setup_buffer(allocator, buffer, params,
-                                     formats, (gpointer *) wrapped_tex, 1);
+    ret = gst_gl_memory_setup_buffer(allocator, buffer, params, NULL, (gpointer *) &gst_egl_image, 1);
+
     if (!ret) {
         g_error ("Failed to setup gl memory.");
     }
@@ -968,9 +924,10 @@ gst_encoder_encode_dmabuf(struct encoder *encoder,
                 GST_FOURCC_ARGS(attributes->format));
     }
 
+    // TODO re-use caps if they haven't changed
     new_src_caps = gst_caps_new_simple("video/x-raw",
                                        "framerate", GST_TYPE_FRACTION, FPS, 1,
-                                       "format", G_TYPE_STRING, dmabuf_support_format->gst_format_string,
+                                       "format", G_TYPE_STRING, "RGBA",
                                        "width", G_TYPE_INT, base->width,
                                        "height", G_TYPE_INT, base->height,
                                        NULL);
@@ -1135,14 +1092,14 @@ static const struct encoder_description encoder_descriptions[] = {
                 .name = "x264",
                 .encoding_type = h264,
                 .pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
-                                       "glupload name=upload ! "
+                                       "glupload ! "
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
                                        "capsfilter name=shader_capsfilter ! "
                                        "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
                                        "gldownload ! "
                                        "queue ! "
-                                       "x264enc rc-lookahead=0 sliced-threads=true qp-max=18 byte-stream=true tune=zerolatency psy-tune=2 pass=0 bitrate=12800 vbv-buf-capacity=600 ! "
+                                       "x264enc rc-lookahead=0 sliced-threads=true qp-max=18 byte-stream=true tune=zerolatency psy-tune=2 pass=0 bitrate=12800 vbv-buf-capacity=1000 ! "
                                        "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .split_alpha = true,
@@ -1155,7 +1112,7 @@ static const struct encoder_description encoder_descriptions[] = {
                 .name = "nvh264",
                 .encoding_type = h264,
                 .pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
-                                       "glupload name=upload ! "
+                                       "glupload ! "
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
                                        "capsfilter name=shader_capsfilter ! "
@@ -1173,7 +1130,7 @@ static const struct encoder_description encoder_descriptions[] = {
                 .name = "vaapih264",
                 .encoding_type = h264,
                 .pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
-                                       "glupload name=upload ! "
+                                       "glupload ! "
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
                                        "capsfilter name=shader_capsfilter ! "
@@ -1194,7 +1151,7 @@ static const struct encoder_description encoder_descriptions[] = {
                 .name = "png",
                 .encoding_type = png,
                 .pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
-                                       "glupload name=upload ! "
+                                       "glupload ! "
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
                                        "capsfilter name=shader_capsfilter ! "
