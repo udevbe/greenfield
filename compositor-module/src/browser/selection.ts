@@ -8,16 +8,20 @@ import { initBrowserTextSelection } from './text-selection'
 // *and* it also doesn't tell us which mimetypes it supports
 // *and* each browser supports different mimetypes,
 // so we just slim it down to the lowest common set of mimetypes... :(
-const allowedMimeTypes = ['text/plain', 'text/html', 'image/png']
+const browserMimeTypes = ['text/plain', 'text/html', 'image/png']
 
 let browserOffers: ClipboardItems | undefined
 let browserOffersTotalSize = 0
 
-async function blobFromDataSource(mimeType: string, dataSource: DataSource): Promise<Blob> {
+async function blobFromDataSource(
+  browserMimeType: string,
+  dataSourceMimeType: string,
+  dataSource: DataSource,
+): Promise<Blob> {
   const [readFD, writeFD] = await dataSource.webfs.mkfifo()
-  dataSource.send(mimeType, writeFD)
+  dataSource.send(dataSourceMimeType, writeFD)
   const dataBlob = await readFD.readBlob()
-  return new Blob([dataBlob], { type: mimeType })
+  return new Blob([dataBlob], { type: browserMimeType })
 }
 
 function handleWaylandDataSourceUpdate(seat: Seat) {
@@ -28,16 +32,19 @@ function handleWaylandDataSourceUpdate(seat: Seat) {
     }
 
     const clipboardDataEntries = dataSource.mimeTypes
-      .map((mimeType) => {
-        for (const allowedMimeType of allowedMimeTypes) {
-          if (mimeType.indexOf(allowedMimeType) !== -1) {
-            return allowedMimeType
+      .map((dataSourceMimeType) => {
+        for (const browserMimeType of browserMimeTypes) {
+          if (dataSourceMimeType.indexOf(browserMimeType) !== -1) {
+            return [browserMimeType, dataSourceMimeType] as const
           }
         }
-        return mimeType
+        return [dataSourceMimeType, dataSourceMimeType] as const
       })
-      .filter((mimeType) => allowedMimeTypes.includes(mimeType))
-      .map((mimeType) => [mimeType, blobFromDataSource(mimeType, dataSource)])
+      .filter(([browserMimeType]) => browserMimeTypes.includes(browserMimeType))
+      .map(
+        ([browserMimeType, dataSourceMimeType]) =>
+          [browserMimeType, blobFromDataSource(browserMimeType, dataSourceMimeType, dataSource)] as const,
+      )
     if (clipboardDataEntries.length === 0) {
       navigator.clipboard.writeText('')
     } else {
