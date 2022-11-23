@@ -11,8 +11,8 @@
 struct encoder;
 
 struct encoded_frame {
-	void *encoded_data;
-	uint32_t size;
+    void *encoded_data;
+    uint32_t size;
 };
 
 typedef void (*frame_callback_func)(void *user_data, struct encoded_frame *encoded_frame);
@@ -20,10 +20,12 @@ typedef void (*frame_callback_func)(void *user_data, struct encoded_frame *encod
 struct encoder;
 
 int
-encoder_create(char preferred_encoder[16], frame_callback_func frame_ready_callback,  void *user_data, struct encoder **encoder_pp, struct westfield_egl *westfield_egl);
+encoder_create(char preferred_encoder[16], frame_callback_func frame_ready_callback, void *user_data,
+               struct encoder **encoder_pp, struct westfield_egl *westfield_egl);
 
 int
-encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource, uint32_t serial);
+encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource, uint32_t buffer_content_serial,
+               uint32_t buffer_creation_serial);
 
 int
 encoder_request_key_unit(struct encoder **encoder_pp);

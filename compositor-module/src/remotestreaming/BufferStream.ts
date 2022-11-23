@@ -16,7 +16,8 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { createEncodedFrame, EncodedFrame } from './EncodedFrame'
-import { WlBufferResource } from 'westfield-runtime-server'
+import { Client, WlBufferResource } from 'westfield-runtime-server'
+import { StreamingBuffer } from './StreamingBuffer'
 
 type BufferState = {
   completionPromise: Promise<EncodedFrame | undefined>
@@ -26,16 +27,53 @@ type BufferState = {
   encodedFrame?: EncodedFrame
 }
 
-export default class BufferStream {
-  private readonly bufferStates: Record<number, BufferState> = {}
-  static create(wlBufferResource: WlBufferResource): BufferStream {
-    const bufferStream = new BufferStream()
+const eagerBufferContents: Record<string, Uint8Array[]> = {}
+
+export function deliverContentToBufferStream(client: Client, messageData: ArrayBuffer) {
+  const bufferContentsDataView = new DataView(messageData)
+  const bufferId = bufferContentsDataView.getUint32(0, true)
+  const bufferCreationSerial = bufferContentsDataView.getUint32(4, true)
+  const wlBufferResource = client.connection.wlObjects[bufferId] as WlBufferResource
+
+  if (wlBufferResource) {
+    const streamingBuffer = wlBufferResource.implementation as StreamingBuffer
+    const bufferContent = new Uint8Array(messageData, 8)
+    if (streamingBuffer.bufferStream.creationSerial === bufferCreationSerial) {
+      streamingBuffer.bufferStream.onBufferContents(bufferContent)
+      return
+    } else if (streamingBuffer.bufferStream.creationSerial < bufferCreationSerial) {
+      const bufferContentKey = `${bufferId}:${bufferCreationSerial}`
+      let bufferContents = eagerBufferContents[bufferContentKey]
+      if (bufferContents === undefined) {
+        bufferContents = []
+        eagerBufferContents[bufferContentKey] = bufferContents
+      }
+      bufferContents.push(bufferContent)
+      return
+    }
+  }
+  // contents arrived too late
+}
+
+export class BufferStream {
+  constructor(
+    public readonly creationSerial: number,
+    private readonly bufferStates: Record<number, BufferState> = {},
+  ) {}
+
+  static create(wlBufferResource: WlBufferResource, creationSerial: number): BufferStream {
+    const bufferStream = new BufferStream(creationSerial)
     // TODO we probably want to trigger a custom timeout error here.
-    wlBufferResource.onDestroy().then(() => {
+    wlBufferResource.addDestroyListener(() => {
       Object.keys(bufferStream.bufferStates).forEach((serial) => {
         bufferStream.onComplete(Number.parseInt(serial))
       })
     })
+    const bufferContents = eagerBufferContents[`${wlBufferResource.id}:${creationSerial}`]
+    if (bufferContents) {
+      bufferContents.forEach((bufferContent) => bufferStream.onBufferContents(bufferContent))
+      delete eagerBufferContents[`${wlBufferResource.id}:${creationSerial}`]
+    }
     return bufferStream
   }
 

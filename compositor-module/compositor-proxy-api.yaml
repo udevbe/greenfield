@@ -87,11 +87,16 @@ paths:
               description: Describes when the key frame should be generated.
               type: object
               properties:
-                syncSerial:
+                bufferContentSerial:
                   type: number
                   format: int32
                   minimum: 0
-                  description: An optional sync serial. When provided the encoded frame will be send immediately.
+                  description: An optional buffer content serial. When provided the encoded frame will be send immediately.
+                bufferCreationSerial:
+                  type: number
+                  format: int32
+                  minimum: 0
+                  description: An optional buffer creation serial. When provided the encoded frame will be send immediately.
       responses:
         202:
           description: Key frame successfully requested.

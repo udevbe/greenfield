@@ -59,7 +59,7 @@ export interface SurfaceState {
   bufferTransform: number
   bufferScale: number
 
-  bufferResourceDestroyListener: () => void
+  readonly bufferResourceDestroyListener: () => void
   buffer?: WlBufferResource
   bufferContents?: BufferContents<unknown>
 
@@ -308,13 +308,13 @@ class Surface implements WlSurfaceRequests {
       | undefined
     if (bufferImplementation && this.pendingState.bufferContents === undefined) {
       try {
-        this.session.logger.trace(`|- Awaiting buffer contents with serial: ${serial ?? 'NO SERIAL'}`)
-        const startBufferContents = Date.now()
+        // console.log(`|- Awaiting buffer contents with serial: ${serial ?? 'NO SERIAL'}`)
+        // const startBufferContents = Date.now()
         this.pendingState.bufferContents = await bufferImplementation.getContents(this, serial)
 
-        this.session.logger.trace(
-          `|--> Buffer contents with serial: ${serial ?? 'NO SERIAL'} took ${Date.now() - startBufferContents}ms`,
-        )
+        // console.log(
+        //   `|--> Buffer contents with serial: ${serial ?? 'NO SERIAL'} took ${Date.now() - startBufferContents}ms`,
+        // )
         if (this.destroyed) {
           return
         }

@@ -86,7 +86,7 @@ encoded_frame_to_node_buffer_cb(napi_env env, napi_value js_callback, void *cont
  */
 static napi_value
 createEncoder(napi_env env, napi_callback_info info) {
-    size_t argc = 4;
+    static size_t argc = 4;
     napi_value return_value, argv[argc], cb_name;
     size_t encoder_type_length;
     struct wl_client *client;
@@ -131,37 +131,34 @@ createEncoder(napi_env env, napi_callback_info info) {
 
 // expected arguments in order:
 // - encoder - argv[0]
-// - object buffer_id - argv[1]
-// - serial - argv[2]
+// - number buffer_id - argv[1]
+// - number buffer_content_serial - argv[2]
+// - number buffer_creation_serial - argv[3]
 // return:
-// - object - { width: number, height: number }
+// - undefined
 static napi_value
 encodeBuffer(napi_env env, napi_callback_info info) {
-    size_t argc = 3;
-    napi_value argv[argc], buffer_width_value, buffer_height_value, return_value;
+    static size_t argc = 4;
+    napi_value argv[argc], return_value;
 
     struct node_encoder *node_encoder;
-    uint32_t buffer_id, buffer_width, buffer_height, serial;
+    uint32_t buffer_id, buffer_content_serial, buffer_creation_serial;
     struct wl_resource *buffer_resource;
 
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
     NAPI_CALL(env, napi_get_value_external(env, argv[0], (void **) &node_encoder))
     NAPI_CALL(env, napi_get_value_uint32(env, argv[1], &buffer_id))
-    NAPI_CALL(env, napi_get_value_uint32(env, argv[2], &serial))
+    NAPI_CALL(env, napi_get_value_uint32(env, argv[2], &buffer_content_serial))
+    NAPI_CALL(env, napi_get_value_uint32(env, argv[3], &buffer_creation_serial))
 
     buffer_resource = wl_client_get_object(node_encoder->client, buffer_id);
 
-//    printf("native ::: queueing encoding job: buffer_id: %d, serial: %d, buffer: %p\n", buffer_id, serial,
-//           buffer_resource);
-
-    if (encoder_encode(&node_encoder->encoder, buffer_resource, serial) == -1) {
+    if (encoder_encode(&node_encoder->encoder, buffer_resource, buffer_content_serial, buffer_creation_serial) == -1) {
         NAPI_CALL(env, napi_throw_error((env), NULL, "Can't encode buffer."))
         NAPI_CALL(env, napi_get_undefined(env, &return_value))
         return return_value;
     }
 
-    NAPI_CALL(env, napi_create_int32(env, buffer_width, &buffer_width_value))
-    NAPI_CALL(env, napi_create_int32(env, buffer_height, &buffer_height_value))
     NAPI_CALL(env, napi_get_undefined(env, &return_value))
     return return_value;
 }
@@ -172,7 +169,7 @@ encodeBuffer(napi_env env, napi_callback_info info) {
 // - undefined
 static napi_value
 requestKeyUnit(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
+    static size_t argc = 1;
     napi_value argv[argc], return_value;
     struct node_encoder *node_encoder;
 

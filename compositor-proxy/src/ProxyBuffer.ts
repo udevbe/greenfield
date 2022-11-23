@@ -1,13 +1,19 @@
 import { MessageDestination } from 'westfield-proxy'
 
+let bufferSerial = 0
+
+export function incrementAndGetNextBufferSerial() {
+  return ++bufferSerial
+}
+
 export class ProxyBuffer {
   constructor(
     private readonly interceptors: Record<number, any>,
     public readonly bufferId: number,
+    public readonly creationSerial: number,
     public destroyed = false,
+    public destroyListeners: (() => void)[] = [],
   ) {}
-
-  destroyListeners: (() => void)[] = []
 
   // destroy
   R0(message: {

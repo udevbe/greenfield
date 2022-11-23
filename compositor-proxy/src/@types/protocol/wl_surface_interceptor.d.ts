@@ -8,14 +8,13 @@ export default class wl_surface_interceptor {
   destroyed: boolean
   frameFeedback?: FrameFeedback
 
-  pendingBufferResourceId?: number | null
+  pendingBufferResourceId?: number
   pendingBufferDestroyListener?: () => void
   pendingFrameCallbacksIds: number[]
 
-  buffer?: {
+  surfaceState?: {
     readonly bufferResourceId: number
     readonly encodingPromise: Promise<void>
-    readonly frameCallbacksIds: number[]
   }
   bufferDestroyListener?: () => void
 
@@ -30,7 +29,11 @@ export default class wl_surface_interceptor {
   wlClient: unknown
   id: number
 
-  encodeAndSendBuffer(syncSerial: number, bufferResourceId: number): Promise<void>
+  encodeAndSendBuffer(args: {
+    bufferResourceId: number
+    bufferCreationSerial: number
+    bufferContentSerial: number
+  }): Promise<void>
 
   R0(message: {
     buffer: ArrayBuffer

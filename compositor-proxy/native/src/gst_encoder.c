@@ -65,7 +65,8 @@ enum encoding_type {
 struct encoding_result {
     struct __attribute__((__packed__)) {
         uint32_t buffer_id;
-        uint32_t serial;
+        uint32_t buffer_creation_serial;
+        uint32_t buffer_content_serial;
         enum encoding_type encoding_type;
         uint32_t width;
         uint32_t height;
@@ -568,7 +569,7 @@ gst_encoder_pipeline_config(struct gst_encoder_pipeline *gst_encoder_pipeline,
                                  "u_transformation", GRAPHENE_TYPE_MATRIX, matrix,
                                  NULL);
 
-    capsstr = g_strdup_printf("video/x-raw(memory:GLMemory),width=%d,height=%d,texture-target=2D",
+    capsstr = g_strdup_printf("video/x-raw(memory:GLMemory),width=%d,height=%d",
                               *coded_width, *coded_height);
     shader_src_caps = gst_caps_from_string(capsstr);
     g_free(capsstr);
@@ -924,14 +925,15 @@ gst_encoder_encode_dmabuf(struct encoder *encoder,
                 GST_FOURCC_ARGS(attributes->format));
     }
 
-    // TODO re-use caps if they haven't changed
+    // TODO set caps on buffer
     new_src_caps = gst_caps_new_simple("video/x-raw",
                                        "framerate", GST_TYPE_FRACTION, FPS, 1,
                                        "format", G_TYPE_STRING, "RGBA",
                                        "width", G_TYPE_INT, base->width,
                                        "height", G_TYPE_INT, base->height,
-                                       "texture-target", G_TYPE_STRING, "2D",
                                        NULL);
+
+    // TODO configure pipeline elements by listening which buffer is being pulled from appsrc
     gst_encoder_pipeline_config(gst_encoder->opaque_pipeline, encoder->description, new_src_caps,
                                 base->width, base->height, &coded_width, &coded_height);
 
@@ -1088,16 +1090,17 @@ encoder_description_supports_buffer(const struct encoder_description *encoder_it
     return false;
 }
 
+// TODO enable queue element once we properly deal with setting caps based on the pulled buffer from appsrc
 static const struct encoder_description encoder_descriptions[] = {
         {
                 .name = "x264",
                 .encoding_type = h264,
-                .pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
+                .pipeline_definition = "appsrc name=src format=3 stream-type=0 max-buffers=1 block=true ! "
                                        "glupload ! "
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
                                        "capsfilter name=shader_capsfilter ! "
-                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12,texture-target=2D ! "
+                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
                                        "gldownload ! "
                                        "queue ! "
                                        "x264enc rc-lookahead=0 sliced-threads=true qp-max=18 byte-stream=true tune=zerolatency psy-tune=2 pass=0 bitrate=12800 vbv-buf-capacity=1000 ! "
@@ -1105,10 +1108,10 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .split_alpha = true,
-                .width_multiple = 16,
-                .height_multiple = 16,
-                .min_width = 16,
-                .min_height = 16,
+                .width_multiple = 32,
+                .height_multiple = 32,
+                .min_width = 64,
+                .min_height = 64,
         },
         {
                 .name = "nvh264",
@@ -1127,10 +1130,10 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .split_alpha = true,
-                .width_multiple = 16,
-                .height_multiple = 16,
-                .min_width = 48,
-                .min_height = 32,
+                .width_multiple = 32,
+                .height_multiple = 32,
+                .min_width = 64,
+                .min_height = 64,
         },
         {
                 .name = "vaapih264",
@@ -1140,7 +1143,7 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
                                        "capsfilter name=shader_capsfilter ! "
-                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12,texture-target=2D ! "
+                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
                                        "gldownload ! "
                                        "queue ! "
                                        "vaapih264enc aud=1 ! "
@@ -1148,10 +1151,10 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink",
                 .split_alpha = true,
-                .width_multiple = 16,
-                .height_multiple = 16,
-                .min_width = 16,
-                .min_height = 16,
+                .width_multiple = 32,
+                .height_multiple = 32,
+                .min_width = 64,
+                .min_height = 64,
         },
         // always keep png last as fallback encoder
         {
@@ -1168,10 +1171,10 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "pngenc ! "
                                        "appsink name=sink",
                 .split_alpha = false,
-                .width_multiple = 1,
-                .height_multiple = 1,
-                .min_width = 16,
-                .min_height = 16,
+                .width_multiple = 32,
+                .height_multiple = 32,
+                .min_width = 32,
+                .min_height = 32,
         }
 };
 
@@ -1196,7 +1199,8 @@ do_gst_encoder_create(char preferred_encoder[16], frame_callback_func frame_read
 }
 
 void
-do_gst_encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource, uint32_t serial) {
+do_gst_encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource, uint32_t buffer_content_serial,
+                      uint32_t buffer_creation_serial) {
     struct encoder *encoder = *encoder_pp;
     struct encoding_result *encoding_result;
     const size_t nro_encoders = sizeof(encoder_descriptions) / sizeof(encoder_descriptions[0]);
@@ -1228,7 +1232,8 @@ do_gst_encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_re
 
     encoding_result = g_new0(struct encoding_result, 1);
     g_mutex_init(&encoding_result->mutex);
-    encoding_result->props.serial = serial;
+    encoding_result->props.buffer_content_serial = buffer_content_serial;
+    encoding_result->props.buffer_creation_serial = buffer_creation_serial;
     encoding_result->props.buffer_id = wl_resource_get_id(buffer_resource);
     gst_encoder_encode(encoder, buffer_resource, encoding_result);
 }

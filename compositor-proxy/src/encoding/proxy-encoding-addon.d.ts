@@ -8,7 +8,13 @@ declare namespace nativeEncoder {
     frameEncoded: (sample: Buffer) => void,
   ): EncoderWrapper
 
-  export function encodeBuffer(encoder: unknown, bufferId: number, serial: number): void
+  export function encodeBuffer(
+    encoder: unknown,
+    bufferId: number,
+    bufferContentSerial: number,
+    bufferCreationSerial: number,
+  ): void
+
   export function requestKeyUnit(encoder: unknown): void
 }
 

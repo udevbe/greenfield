@@ -18,7 +18,7 @@
 import { WlBufferResource } from 'westfield-runtime-server'
 import BufferImplementation from '../BufferImplementation'
 import Surface from '../Surface'
-import BufferStream from './BufferStream'
+import { BufferStream } from './BufferStream'
 import { DecodedFrame } from './DecodedFrame'
 
 /**
@@ -29,7 +29,7 @@ import { DecodedFrame } from './DecodedFrame'
  *            gr_surface, but the mechanism by which a client provides and
  *            updates the contents is defined by the buffer factory interface.
  */
-export default class StreamingBuffer implements BufferImplementation<Promise<DecodedFrame | undefined>> {
+export class StreamingBuffer implements BufferImplementation<Promise<DecodedFrame | undefined>> {
   private constructor(
     public readonly resource: WlBufferResource,
     public readonly bufferStream: BufferStream,
@@ -37,8 +37,8 @@ export default class StreamingBuffer implements BufferImplementation<Promise<Dec
     private decodedFrame?: DecodedFrame,
   ) {}
 
-  static create(wlBufferResource: WlBufferResource): StreamingBuffer {
-    const bufferStream = BufferStream.create(wlBufferResource)
+  static create(wlBufferResource: WlBufferResource, creationSerial: number): StreamingBuffer {
+    const bufferStream = BufferStream.create(wlBufferResource, creationSerial)
     const buffer = new StreamingBuffer(wlBufferResource, bufferStream)
     wlBufferResource.implementation = buffer
     return buffer
@@ -63,12 +63,14 @@ export default class StreamingBuffer implements BufferImplementation<Promise<Dec
         this.decodedFrame = await surface.session.frameDecoder.decode(surface, encodedFrame)
         oldDecodedFrame?.pixelContent.close?.()
       } catch (e: unknown) {
+        console.log(`Error while decoding buffer ${this.resource.id}`)
         surface.session.logger.warn('Get error during decode, requesting new keyframe.')
         surface.resource.client.userData.encoderApi?.keyframe({
           clientId: surface.resource.client.id,
           surfaceId: surface.resource.id,
           inlineObject: {
-            syncSerial: commitSerial,
+            bufferContentSerial: commitSerial,
+            bufferCreationSerial: this.bufferStream.creationSerial,
           },
         })
         const encodedFrame = await this.bufferStream.onFrameAvailable(commitSerial)
