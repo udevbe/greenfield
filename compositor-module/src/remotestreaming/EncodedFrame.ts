@@ -20,7 +20,7 @@ import { Size } from '../math/Size'
 import EncodingTypes, { EncodingMimeTypes } from './EncodingMimeTypes'
 
 export type EncodedFrame = {
-  readonly serial: number
+  readonly contentSerial: number
   readonly mimeType: EncodingMimeTypes[keyof EncodingMimeTypes]
   readonly encodedSize: Size
 } & BufferContents<{ opaque: Uint8Array; alpha?: Uint8Array }>
@@ -29,7 +29,7 @@ export function createEncodedFrame(u8Buffer: Uint8Array): EncodedFrame {
   const dataView = new DataView(u8Buffer.buffer, u8Buffer.byteOffset)
   let offset = 0
 
-  const serial = dataView.getUint32(offset, true)
+  const contentSerial = dataView.getUint32(offset, true)
   offset += 4
 
   const encodingTypeCode = dataView.getUint16(offset, true)
@@ -62,7 +62,7 @@ export function createEncodedFrame(u8Buffer: Uint8Array): EncodedFrame {
     alphaLength === 0 ? undefined : new Uint8Array(u8Buffer.buffer, u8Buffer.byteOffset + offset, alphaLength)
 
   return {
-    serial,
+    contentSerial,
     mimeType: encodingType,
     size: { width, height },
     encodedSize: { width: encodedWidth, height: encodedHeight },

@@ -23,5 +23,5 @@ export default interface BufferContents<T> {
   readonly size: Size
   readonly mimeType: 'video/h264' | 'image/png' | 'image/rgba' | 'image/canvas'
   readonly pixelContent: T
-  readonly serial: number
+  readonly contentSerial: number
 }

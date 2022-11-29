@@ -308,10 +308,10 @@ class Surface implements WlSurfaceRequests {
       | undefined
     if (bufferImplementation && this.pendingState.bufferContents === undefined) {
       try {
-        // console.log(`|- Awaiting buffer contents with serial: ${serial ?? 'NO SERIAL'}`)
+        console.log(`|- Awaiting buffer contents with serial: ${serial ?? 'NO SERIAL'}`)
         // const startBufferContents = Date.now()
-        this.pendingState.bufferContents = await bufferImplementation.getContents(this, serial)
-
+        const bufferContents = bufferImplementation.getContents(this, serial)
+        this.pendingState.bufferContents = bufferContents instanceof Promise ? await bufferContents : bufferContents
         // console.log(
         //   `|--> Buffer contents with serial: ${serial ?? 'NO SERIAL'} took ${Date.now() - startBufferContents}ms`,
         // )
@@ -319,7 +319,7 @@ class Surface implements WlSurfaceRequests {
           return
         }
       } catch (e: any) {
-        this.session.logger.warn(`[surface: ${resource.id}] - Failed to receive buffer contents.`, e.toString())
+        this.session.logger.warn(`[surface: ${resource.id}] - Failed to process buffer contents.`, e.toString())
       }
     }
     if (this.encoderFeedback && serial !== undefined) {

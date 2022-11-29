@@ -13,7 +13,8 @@ import { EncodedFrame } from './EncodedFrame'
 type FrameState = {
   serial: number
   resolve: (value: DualPlaneRGBAVideoFrame | DualPlaneYUVAArrayBuffer) => void
-  state: 'pending' | 'pending_opaque' | 'pending_alpha' | 'complete'
+  reject: (error: Error) => void
+  state: 'pending' | 'pending_opaque' | 'pending_alpha' | 'complete' | 'error'
   result: Partial<DualPlaneRGBAVideoFrame>
 }
 export const softwareDecoderConfig: VideoDecoderConfig = {
@@ -66,8 +67,9 @@ class WebCodecFrameDecoder implements FrameDecoder {
   constructor(private readonly session: Session, private readonly videoDecoderConfig: VideoDecoderConfig) {}
 
   async decode(surface: Surface, encodedFrame: EncodedFrame): Promise<DecodedFrame> {
+    // console.log(`Decoding encoded frame: ${encodedFrame.contentSerial} using WebCodecs buffer decoder`)
     const decodedContents = await this[encodedFrame.mimeType](surface, encodedFrame)
-    return createDecodedFrame(encodedFrame.mimeType, decodedContents, encodedFrame.size, encodedFrame.serial)
+    return createDecodedFrame(encodedFrame.mimeType, decodedContents, encodedFrame.size, encodedFrame.contentSerial)
   }
 
   createH264DecoderContext(surface: Surface, contextId: string): H264DecoderContext {
@@ -95,11 +97,11 @@ class WebCodecFrameDecoder implements FrameDecoder {
 class WebCodecH264DecoderContext implements H264DecoderContext {
   private readonly opaqueInit: VideoDecoderInit = {
     output: (output) => this.opaqueOutput(output),
-    error: (error) => this.error(error),
+    error: (error) => this.opaqueError(error),
   }
   private readonly alphaInit: VideoDecoderInit = {
     output: (output) => this.alphaOutput(output),
-    error: (error) => this.error(error),
+    error: (error) => this.alphaError(error),
   }
   private opaqueDecoder?: VideoDecoder
   private alphaDecoder?: VideoDecoder
@@ -115,10 +117,11 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
   ) {}
 
   decode(bufferContents: EncodedFrame): Promise<DualPlaneRGBAVideoFrame | DualPlaneYUVAArrayBuffer> {
-    return new Promise<DualPlaneRGBAVideoFrame | DualPlaneYUVAArrayBuffer>((resolve) => {
-      this.frameStates[bufferContents.serial] = {
-        serial: bufferContents.serial,
+    return new Promise<DualPlaneRGBAVideoFrame | DualPlaneYUVAArrayBuffer>((resolve, reject) => {
+      this.frameStates[bufferContents.contentSerial] = {
+        serial: bufferContents.contentSerial,
         resolve,
+        reject,
         state: 'pending',
         result: {
           opaque: undefined,
@@ -141,22 +144,42 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
     }
   }
 
-  error(error: DOMException): void {
-    if (error.name === 'QuotaExceededError') {
-      // Codec reclaimed due to inactivity.
-      // request next frame to be a key frame, so we can re-initialize once a new frame comes in
-      this.surface.resource.client.userData.encoderApi?.keyframe({
-        clientId: this.surface.resource.client.id,
-        surfaceId: this.surface.resource.id,
-        inlineObject: {},
-      })
+  private handleError(frameSerial: number, error: DOMException) {
+    const frameState = this.frameStates[frameSerial]
+    if (frameState.state !== 'error') {
+      if (this.opaqueDecoder && this.opaqueDecoder.state !== 'closed') {
+        this.opaqueDecoder.close()
+      }
+      if (this.alphaDecoder && this.alphaDecoder.state !== 'closed') {
+        this.alphaDecoder.close()
+      }
       this.opaqueDecoder = undefined
-      this.alphaDecoder = undefined
-    } else {
-      this.session.logger.error(
-        `BUG. Error from WebCodec decoder. Name: ${error.name}, Message: ${error.message}, code: ${error.code}`,
-      )
+      this.opaqueDecoder = undefined
+      frameState.result.opaque?.buffer.close()
+      frameState.result.alpha?.buffer.close()
+      frameState.state = 'error'
+      frameState.reject(error)
     }
+  }
+
+  opaqueError(error: DOMException): void {
+    const frameSerial = this.decodingSerialsQueue.shift()
+
+    if (frameSerial === undefined) {
+      throw new Error('BUG. Invalid state. No frame serial found opaqueError.')
+    }
+
+    this.handleError(frameSerial, error)
+  }
+
+  alphaError(error: DOMException): void {
+    const frameSerial = this.decodingAlphaSerialsQueue.shift()
+
+    if (frameSerial === undefined) {
+      throw new Error('BUG. Invalid state. No frame serial found alphaError.')
+    }
+
+    this.handleError(frameSerial, error)
   }
 
   private onComplete(frameState: FrameState) {
@@ -240,6 +263,11 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
       throw new Error('BUG. Invalid state. No frame serial found onAlphaPictureDecoded.')
     }
     const frameState = this.frameStates[frameSerial]
+    if (frameState.state === 'error') {
+      buffer.close()
+      return
+    }
+
     frameState.result.opaque = { buffer, codedSize: { width, height } }
 
     if (frameState.state === 'pending_opaque') {
@@ -257,6 +285,10 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
       throw new Error('BUG. Invalid state. No frame serial found onAlphaPictureDecoded.')
     }
     const frameState = this.frameStates[frameSerial]
+    if (frameState.state === 'error') {
+      buffer.close()
+      return
+    }
     frameState.result.alpha = { buffer, codedSize: { width, height } }
 
     if (frameState.state === 'pending_alpha') {
@@ -267,16 +299,32 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
   }
 
   private decodeH264(encodedFrame: EncodedFrame) {
-    const bufferSerial = encodedFrame.serial
+    const bufferSerial = encodedFrame.contentSerial
     let type: 'delta' | 'key' = 'delta'
+
     if (this.opaqueDecoder === undefined || this.opaqueDecoder.state === 'closed') {
       if (isKeyFrame(encodedFrame.pixelContent.opaque)) {
         this.opaqueDecoder = new VideoDecoder(this.opaqueInit)
         this.opaqueDecoder.configure(this.videoDecoderConfig)
         type = 'key'
       } else {
+        this.destroy()
         delete this.frameStates[bufferSerial]
         throw new Error('Tried to instantiate web-codec with non key-frame.')
+      }
+    }
+    if (encodedFrame.pixelContent.alpha) {
+      if (this.alphaDecoder === undefined || this.alphaDecoder.state === 'closed') {
+        if (isKeyFrame(encodedFrame.pixelContent.alpha)) {
+          this.alphaDecoder = new VideoDecoder(this.alphaInit)
+          this.alphaDecoder.configure(this.videoDecoderConfig)
+          type = 'key'
+        } else {
+          // At this point a keyframe should already be requested by opaque decoder and function should have returned.
+          this.destroy()
+          delete this.frameStates[bufferSerial]
+          throw new Error('Tried to instantiate web-codec with non key-frame.')
+        }
       }
     }
 
@@ -289,19 +337,7 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
       }),
     )
 
-    if (encodedFrame.pixelContent.alpha) {
-      if (this.alphaDecoder === undefined || this.alphaDecoder.state === 'closed') {
-        if (isKeyFrame(encodedFrame.pixelContent.alpha)) {
-          this.alphaDecoder = new VideoDecoder(this.alphaInit)
-          this.alphaDecoder.configure(this.videoDecoderConfig)
-          type = 'key'
-        } else {
-          // At this point a keyframe should already be requested by opaque decoder and function should have returned.
-          this.session.logger.error('BUG. Reached un-initialized alpha decoder without a keyframe.')
-          return
-        }
-      }
-
+    if (this.alphaDecoder && encodedFrame.pixelContent.alpha) {
       this.decodingAlphaSerialsQueue = [...this.decodingAlphaSerialsQueue, bufferSerial]
       this.alphaDecoder.decode(
         new EncodedVideoChunk({

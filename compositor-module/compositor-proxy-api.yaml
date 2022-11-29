@@ -86,17 +86,26 @@ paths:
             schema:
               description: Describes when the key frame should be generated.
               type: object
+              required:
+                - bufferId
+                - bufferCreationSerial
+                - bufferContentSerial
               properties:
+                bufferId:
+                  type: number
+                  format: int32
+                  minimum: 1
+                  description: The buffer id.
                 bufferContentSerial:
                   type: number
                   format: int32
-                  minimum: 0
-                  description: An optional buffer content serial. When provided the encoded frame will be send immediately.
+                  minimum: 1
+                  description: The buffer content serial.
                 bufferCreationSerial:
                   type: number
                   format: int32
-                  minimum: 0
-                  description: An optional buffer creation serial. When provided the encoded frame will be send immediately.
+                  minimum: 1
+                  description: The buffer creation serial.
       responses:
         202:
           description: Key frame successfully requested.
@@ -109,7 +118,7 @@ paths:
               schema:
                 type: string
         404:
-          description: client or surface not found.
+          description: client, surface or buffer not found.
           content:
             text/plain:
               schema:

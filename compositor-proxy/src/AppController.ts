@@ -479,7 +479,9 @@ export async function POSTEncoderKeyframe(
     surfaceId
   ] as wl_surface_interceptor
   if (wlSurfaceInterceptor === undefined) {
-    logger.error('BUG. Received a key frame unit request but no surface found that matches the request.')
+    logger.error(
+      'Received a key frame unit request but no surface found that matches the request. Surface already destroyed?',
+    )
     httpResponse
       .writeStatus('404 Not Found')
       .writeHeader('Access-Control-Allow-Origin', allowOrigin)
@@ -487,18 +489,23 @@ export async function POSTEncoderKeyframe(
       .end('Surface not found.')
     return
   }
+  // if (wlSurfaceInterceptor.surfaceState?.bufferResourceId !== keyframeRequest.bufferId) {
+  //   logger.error(
+  //     'Received a key frame unit request but no buffer for surface found that matches the request. Buffer already destroyed?',
+  //   )
+  //   httpResponse
+  //     .writeStatus('404 Not Found')
+  //     .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+  //     .writeHeader('Content-Type', 'text/plain')
+  //     .end('Surface not found.')
+  //   return
+  // }
   wlSurfaceInterceptor.encoder.requestKeyUnit()
-  if (
-    keyframeRequest.bufferCreationSerial &&
-    keyframeRequest.bufferContentSerial &&
-    wlSurfaceInterceptor.surfaceState
-  ) {
-    wlSurfaceInterceptor.encodeAndSendBuffer({
-      bufferResourceId: wlSurfaceInterceptor.surfaceState.bufferResourceId,
-      bufferCreationSerial: keyframeRequest.bufferCreationSerial,
-      bufferContentSerial: keyframeRequest.bufferContentSerial,
-    })
-  }
+  // wlSurfaceInterceptor.encodeAndSendBuffer({
+  //   bufferResourceId: keyframeRequest.bufferId,
+  //   bufferCreationSerial: keyframeRequest.bufferCreationSerial,
+  //   bufferContentSerial: keyframeRequest.bufferContentSerial,
+  // })
 
   httpResponse.writeStatus('202 Accepted').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
 }

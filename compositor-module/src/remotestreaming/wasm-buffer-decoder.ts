@@ -11,14 +11,16 @@ export function createWasmFrameDecoder(): FrameDecoder {
 class WasmFrameDecoder implements FrameDecoder {
   async decode(surface: Surface, encodedFrame: EncodedFrame): Promise<DecodedFrame> {
     const decodedContents = await this[encodedFrame.mimeType](surface, encodedFrame)
-    return createDecodedFrame(encodedFrame.mimeType, decodedContents, encodedFrame.size, encodedFrame.serial)
+    return createDecodedFrame(encodedFrame.mimeType, decodedContents, encodedFrame.size, encodedFrame.contentSerial)
   }
 
   private ['video/h264'](surface: Surface, encodedFrame: EncodedFrame): Promise<DecodedPixelContent> {
+    // console.log(`Decoding encoded frame: ${encodedFrame.contentSerial} using WASM buffer decoder (video/h264)`)
     return surface.getH264DecoderContext(this).decode(encodedFrame)
   }
 
   private async ['image/png'](_surface: Surface, encodedFrame: EncodedFrame): Promise<DecodedPixelContent> {
+    // console.log(`Decoding encoded frame: ${encodedFrame.contentSerial} using WASM buffer decoder (image/png)`)
     const frame = encodedFrame.pixelContent
     const blob = new Blob([frame.opaque], { type: 'image/png' })
     const bitmap = await createImageBitmap(
@@ -46,37 +48,55 @@ type H264NALDecoderWorkerMessage = {
 type FrameState = {
   serial: number
   resolve: (value: DualPlaneYUVAArrayBuffer | PromiseLike<DualPlaneYUVAArrayBuffer>) => void
+  reject: (error: Error) => void
   state: 'pending' | 'pending_opaque' | 'pending_alpha' | 'complete'
   result: Partial<DualPlaneYUVAArrayBuffer>
 }
 
 const decoders: { [key: string]: WasmH264DecoderContext } = {}
 
-const opaqueWorker = new Promise<Worker>((resolve) => {
+const opaqueWorker = new Promise<Worker>((resolve, reject) => {
   const h264NALDecoderWorker: Worker = new Worker(new URL('./H264NALDecoder.worker', import.meta.url))
   h264NALDecoderWorker.addEventListener('message', (e) => {
     const message = e.data as H264NALDecoderWorkerMessage
     switch (message.type) {
       case 'pictureReady':
-        decoders[message.renderStateId]._onOpaquePictureDecoded(message)
+        decoders[message.renderStateId].onOpaquePictureDecoded(message)
         break
       case 'decoderReady':
+        h264NALDecoderWorker.postMessage({})
         resolve(h264NALDecoderWorker)
+        break
+      case 'error':
+        const error = new Error(message.data as unknown as string)
+        if (decoders[message.renderStateId]) {
+          decoders[message.renderStateId].onOpaqueError(error)
+        } else {
+          reject(error)
+        }
         break
     }
   })
 })
 
-const alphaWorker = new Promise<Worker>((resolve) => {
+const alphaWorker = new Promise<Worker>((resolve, reject) => {
   const h264NALDecoderWorker: Worker = new Worker(new URL('./H264NALDecoder.worker', import.meta.url))
   h264NALDecoderWorker.addEventListener('message', (e) => {
     const message = e.data as H264NALDecoderWorkerMessage
     switch (message.type) {
       case 'pictureReady':
-        decoders[message.renderStateId]._onAlphaPictureDecoded(message)
+        decoders[message.renderStateId].onAlphaPictureDecoded(message)
         break
       case 'decoderReady':
         resolve(h264NALDecoderWorker)
+        break
+      case 'error':
+        const error = new Error(message.data as unknown as string)
+        if (decoders[message.renderStateId]) {
+          decoders[message.renderStateId].onAlphaError(error)
+        } else {
+          reject(error)
+        }
         break
     }
   })
@@ -91,16 +111,17 @@ function createWasmH264DecoderContext(surfaceH264DecodeId: string): WasmH264Deco
 class WasmH264DecoderContext implements H264DecoderContext {
   constructor(
     public readonly surfaceH264DecodeId: string,
-    private decodingSerialsQueue: number[] = [],
-    private decodingAlphaSerialsQueue: number[] = [],
+    private decodingBufferContentSerialsQueue: number[] = [],
+    private decodingAlphaContentSerialsQueue: number[] = [],
     private readonly frameStates: { [key: number]: FrameState } = {},
   ) {}
 
   async decode(bufferContents: EncodedFrame): Promise<DualPlaneYUVAArrayBuffer> {
-    return new Promise<DualPlaneYUVAArrayBuffer>((resolve) => {
-      this.frameStates[bufferContents.serial] = {
-        serial: bufferContents.serial,
+    return new Promise<DualPlaneYUVAArrayBuffer>((resolve, reject) => {
+      this.frameStates[bufferContents.contentSerial] = {
+        serial: bufferContents.contentSerial,
         resolve,
+        reject,
         state: 'pending',
         result: {
           opaque: undefined,
@@ -108,18 +129,18 @@ class WasmH264DecoderContext implements H264DecoderContext {
         },
       }
 
-      this._decodeH264(bufferContents)
+      this.decodeH264(bufferContents)
     })
   }
 
-  private _decodeH264(encodedFrame: EncodedFrame) {
-    const bufferSerial = encodedFrame.serial
+  private decodeH264(encodedFrame: EncodedFrame) {
+    const contentSerial = encodedFrame.contentSerial
 
     if (encodedFrame.pixelContent.alpha) {
       const h264Nal = encodedFrame.pixelContent.alpha.slice()
       alphaWorker.then((worker) => {
-        this.decodingAlphaSerialsQueue = [...this.decodingAlphaSerialsQueue, bufferSerial]
-        // create a copy of the arraybuffer so we can zero-copy the opaque part (after zero-copying, we can no longer use the underlying array in any way)
+        this.decodingAlphaContentSerialsQueue = [...this.decodingAlphaContentSerialsQueue, contentSerial]
+        // create a copy of the arraybuffer, so we can zero-copy the opaque part (after zero-copying, we can no longer use the underlying array in any way)
         worker.postMessage(
           {
             type: 'decode',
@@ -132,12 +153,12 @@ class WasmH264DecoderContext implements H264DecoderContext {
         )
       })
     } else {
-      this.frameStates[bufferSerial].state = 'pending_opaque'
+      this.frameStates[contentSerial].state = 'pending_opaque'
     }
 
     const h264Nal = encodedFrame.pixelContent.opaque
     opaqueWorker.then((worker) => {
-      this.decodingSerialsQueue = [...this.decodingSerialsQueue, bufferSerial]
+      this.decodingBufferContentSerialsQueue = [...this.decodingBufferContentSerialsQueue, contentSerial]
       worker.postMessage(
         {
           type: 'decode',
@@ -151,7 +172,25 @@ class WasmH264DecoderContext implements H264DecoderContext {
     })
   }
 
-  private _onComplete(frameState: FrameState) {
+  onOpaqueError(error: Error) {
+    const frameSerial = this.decodingBufferContentSerialsQueue.shift()
+    if (frameSerial === undefined) {
+      throw new Error('BUG. Invalid state. No frame serial found for onOpaqueError.')
+    }
+    const frameState = this.frameStates[frameSerial]
+    frameState.reject(error)
+  }
+
+  onAlphaError(error: Error) {
+    const alphaBufferContentSerial = this.decodingAlphaContentSerialsQueue.shift()
+    if (alphaBufferContentSerial === undefined) {
+      throw new Error('BUG. Invalid state. No frame serial found for onAlphaError.')
+    }
+    const frameState = this.frameStates[alphaBufferContentSerial]
+    frameState.reject(error)
+  }
+
+  private onComplete(frameState: FrameState) {
     frameState.state = 'complete'
     delete this.frameStates[frameState.serial]
     const decodeResult = frameState.result
@@ -165,9 +204,9 @@ class WasmH264DecoderContext implements H264DecoderContext {
     })
   }
 
-  _onOpaquePictureDecoded({ width, height, data }: { width: number; height: number; data: ArrayBuffer }): void {
+  onOpaquePictureDecoded({ width, height, data }: { width: number; height: number; data: ArrayBuffer }): void {
     const buffer = new Uint8Array(data)
-    const frameSerial = this.decodingSerialsQueue.shift()
+    const frameSerial = this.decodingBufferContentSerialsQueue.shift()
     if (frameSerial === undefined) {
       throw new Error('BUG. Invalid state. No frame serial found onOpaquePictureDecoded.')
     }
@@ -175,25 +214,25 @@ class WasmH264DecoderContext implements H264DecoderContext {
     frameState.result.opaque = { buffer, codedSize: { width, height } }
 
     if (frameState.state === 'pending_opaque') {
-      this._onComplete(frameState)
+      this.onComplete(frameState)
     } else {
       frameState.state = 'pending_alpha'
     }
   }
 
-  _onAlphaPictureDecoded({ width, height, data }: { width: number; height: number; data: ArrayBuffer }): void {
+  onAlphaPictureDecoded({ width, height, data }: { width: number; height: number; data: ArrayBuffer }): void {
     const buffer = new Uint8Array(data)
-    const frameSerial = this.decodingAlphaSerialsQueue.shift()
-    if (frameSerial === undefined) {
+    const alphaBufferContentSerial = this.decodingAlphaContentSerialsQueue.shift()
+    if (alphaBufferContentSerial === undefined) {
       throw new Error('BUG. Invalid state. No frame serial found onAlphaPictureDecoded.')
     }
-    const frameState = this.frameStates[frameSerial]
+    const frameState = this.frameStates[alphaBufferContentSerial]
     frameState.result.alpha = { buffer, codedSize: { width, height } }
 
     if (frameState.state === 'pending_alpha') {
-      this._onComplete(frameState)
+      this.onComplete(frameState)
     } else {
-      this.frameStates[frameSerial].state = 'pending_opaque'
+      this.frameStates[alphaBufferContentSerial].state = 'pending_opaque'
     }
   }
 

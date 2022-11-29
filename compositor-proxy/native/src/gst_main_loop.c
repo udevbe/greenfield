@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "encoder.h"
 
-extern int
+extern void
 do_gst_init();
 
 extern void

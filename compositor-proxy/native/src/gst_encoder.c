@@ -26,6 +26,8 @@
 #include "westfield-dmabuf.h"
 
 #define FPS 60
+#define BUFFER_CONTENT_SERIAL_META "BUFFER_CONTENT_SERIAL"
+const GstMetaInfo *bufferContentSerialMeta = NULL;
 
 static const char *opaque_fragment_shader =
         "#version 330\n"
@@ -78,12 +80,10 @@ struct encoding_result {
         GstMapInfo info;
         GstBuffer *buffer;
     } sample;
-    bool opaque_is_eos;
     struct {
         GstMapInfo info;
         GstBuffer *buffer;
     } alpha_sample;
-    bool alpha_is_eos;
     GMutex mutex;
 };
 
@@ -117,17 +117,27 @@ struct encoder {
 };
 
 struct gst_encoder_pipeline {
+    struct gst_encoder *gst_encoder;
+
     GstAppSrc *app_src;
     GstAppSink *app_sink;
     GstElement *pipeline;
     GstElement *glshader;
     GstElement *shader_capsfilter;
     bool playing;
+    bool eos;
+
+    // configured pipeline sizes for buffers currently traveling through the pipeline
+    uint32_t width;
+    uint32_t height;
+    uint32_t coded_width;
+    uint32_t coded_height;
 };
 
 struct gst_encoder {
-    struct gst_encoder_pipeline *opaque_pipeline;
+    struct encoder *encoder;
     struct gst_encoder_pipeline *alpha_pipeline;
+    struct gst_encoder_pipeline *opaque_pipeline;
 };
 
 struct shmbuf_support_format {
@@ -311,9 +321,7 @@ ensure_gst_gl(struct encoder *encoder, GstElement *pipeline) {
             if (!gst_gl_display_create_context(gst_gl_display,
                                                encoder->gpu.wrapped_gst_gl_context, &encoder->gpu.shared_gst_gl_context,
                                                &err)) {
-                fprintf(stderr, "Failed to create GstGLContex context: %s\n", err->message);
-                g_clear_error(&err);
-                exit(EXIT_FAILURE);
+                g_error("Failed to create GstGLContex context: %s", err->message);
             }
             gst_gl_display_add_context(gst_gl_display, encoder->gpu.shared_gst_gl_context);
 
@@ -346,10 +354,6 @@ struct encoded_frame *
 encoding_result_to_encoded_frame(struct encoding_result *encoding_result, bool separate_alpha) {
     gsize opaque_length, alpha_length, offset, encoded_frame_blob_size;
     struct encoded_frame *encoded_frame;
-
-    if (encoding_result->alpha_is_eos || encoding_result->opaque_is_eos) {
-        return NULL;
-    }
 
     opaque_length = encoding_result->sample.info.size;
     alpha_length = separate_alpha ? encoding_result->alpha_sample.info.size : 0;
@@ -391,17 +395,40 @@ struct sample_callback_data {
     bool is_alpha;
 };
 
+static gint
+has_buffer_content_serial(gconstpointer encoding_result_arg, gconstpointer buffer_content_serial_arg) {
+    const struct encoding_result *encoding_result = encoding_result_arg;
+    uint32_t buffer_content_serial = *((uint32_t *) buffer_content_serial_arg);
+
+    return encoding_result->props.buffer_content_serial != buffer_content_serial;
+}
+
 static GstFlowReturn
 gst_new_sample(GstAppSink *appsink, gpointer user_data) {
     const struct sample_callback_data *callback_data = user_data;
-    struct encoding_result *encoding_result;
+    struct encoding_result *encoding_result = NULL;
+    GList *link;
     struct encoded_frame *encoded_frame;
-    guint nth_encoding_result = 0;
+    GstBuffer *buffer;
+    uint32_t buffer_content_serial = 0;
 
     GstSample *sample = gst_app_sink_pull_sample(appsink);
-    encoding_result = g_queue_peek_nth(callback_data->encoder->encoding_results, nth_encoding_result);
-    if (sample && encoding_result == NULL) {
-        g_error("BUG? No encoding result container available for encoded sample %d.", nth_encoding_result);
+
+    buffer = gst_sample_get_buffer(sample);
+    GstCustomMeta *meta = (GstCustomMeta *)gst_buffer_get_meta(buffer, bufferContentSerialMeta->type);
+    GstStructure *s = gst_custom_meta_get_structure(meta);
+    gst_structure_get_uint(s, "buffer_content_serial", &buffer_content_serial);
+
+    // make sure we have the right encoding result
+    link = g_queue_find_custom(callback_data->encoder->encoding_results, &buffer_content_serial,
+                               has_buffer_content_serial);
+    if (link) {
+        encoding_result = link->data;
+    }
+
+    if (sample == NULL && encoding_result) {
+        g_error("BUG? No sample for encoding result container available with content serial: %d.",
+                buffer_content_serial);
     }
 
     if (sample == NULL && encoding_result == NULL) {
@@ -409,68 +436,40 @@ gst_new_sample(GstAppSink *appsink, gpointer user_data) {
         return GST_FLOW_OK;
     }
 
+    if (sample && encoding_result == NULL) {
+        g_error("BUG? No encoding result container available for encoded sample with content serial: %d.",
+                buffer_content_serial);
+    }
+
     if (encoding_result->has_split_alpha) {
         g_mutex_lock(&encoding_result->mutex);
 
         if (callback_data->is_alpha) {
-            // make sure we have the right encoding result
-            while (encoding_result->alpha_sample.buffer) {
-                g_mutex_unlock(&encoding_result->mutex);
-                encoding_result = g_queue_peek_nth(callback_data->encoder->encoding_results, ++nth_encoding_result);
-                if (encoding_result == NULL) {
-                    g_error("BUG? No encoding result container available for encoded sample %d.", nth_encoding_result);
-                }
-                g_mutex_lock(&encoding_result->mutex);
-            }
-
-            if (sample) {
-                encoding_result->alpha_sample.buffer = gst_buffer_ref(gst_sample_get_buffer(sample));
-                gst_buffer_map(encoding_result->alpha_sample.buffer, &encoding_result->alpha_sample.info, GST_MAP_READ);
-                gst_sample_unref(sample);
-            } else {
-                encoding_result->alpha_is_eos = true;
-            }
+            encoding_result->alpha_sample.buffer = gst_buffer_ref(gst_sample_get_buffer(sample));
+            gst_buffer_map(encoding_result->alpha_sample.buffer, &encoding_result->alpha_sample.info, GST_MAP_READ);
+            gst_sample_unref(sample);
         } else {
-            // make sure we have the right encoding result
-            while (encoding_result->sample.buffer) {
-                g_mutex_unlock(&encoding_result->mutex);
-                encoding_result = g_queue_peek_nth(callback_data->encoder->encoding_results, ++nth_encoding_result);
-                if (encoding_result == NULL) {
-                    g_error("BUG? No encoding result container available for encoded sample.");
-                }
-                g_mutex_lock(&encoding_result->mutex);
-            }
-
-            if (sample) {
-                encoding_result->sample.buffer = gst_buffer_ref(gst_sample_get_buffer(sample));
-                gst_buffer_map(encoding_result->sample.buffer, &encoding_result->sample.info, GST_MAP_READ);
-                gst_sample_unref(sample);
-            } else {
-                encoding_result->opaque_is_eos = true;
-            }
+            encoding_result->sample.buffer = gst_buffer_ref(gst_sample_get_buffer(sample));
+            gst_buffer_map(encoding_result->sample.buffer, &encoding_result->sample.info, GST_MAP_READ);
+            gst_sample_unref(sample);
         }
 
-        const bool is_complete = (encoding_result->sample.buffer || encoding_result->opaque_is_eos) &&
-                                 (encoding_result->alpha_sample.buffer || encoding_result->alpha_is_eos);
+        const bool is_complete = encoding_result->sample.buffer && encoding_result->alpha_sample.buffer;
         g_mutex_unlock(&encoding_result->mutex);
 
         if (is_complete) {
             encoded_frame = encoding_result_to_encoded_frame(encoding_result, true);
-            g_queue_pop_head(callback_data->encoder->encoding_results);
+            g_queue_delete_link(callback_data->encoder->encoding_results, link);
             encoding_result_free(encoding_result);
             callback_data->encoder->frame_callback(callback_data->encoder->user_data, encoded_frame);
         }
     } else {
-        if (sample) {
-            encoding_result->sample.buffer = gst_buffer_ref(gst_sample_get_buffer(sample));
-            gst_buffer_map(encoding_result->sample.buffer, &encoding_result->sample.info, GST_MAP_READ);
-            gst_sample_unref(sample);
-        } else {
-            encoding_result->opaque_is_eos = true;
-        }
+        encoding_result->sample.buffer = gst_buffer_ref(gst_sample_get_buffer(sample));
+        gst_buffer_map(encoding_result->sample.buffer, &encoding_result->sample.info, GST_MAP_READ);
+        gst_sample_unref(sample);
 
         encoded_frame = encoding_result_to_encoded_frame(encoding_result, false);
-        g_queue_pop_head(callback_data->encoder->encoding_results);
+        g_queue_delete_link(callback_data->encoder->encoding_results, link);
         encoding_result_free(encoding_result);
         callback_data->encoder->frame_callback(callback_data->encoder->user_data, encoded_frame);
     }
@@ -484,9 +483,9 @@ static GstAppSinkCallbacks sample_callback = {
         .new_preroll = NULL
 };
 
-static inline GstBuffer *
-wl_shm_buffer_to_gst_buffer(struct wl_shm_buffer *shm_buffer, const uint32_t width, const uint32_t height,
-                            const struct shmbuf_support_format *shmbuf_support_format) {
+static inline GstSample *
+wl_shm_buffer_to_new_gst_sample(struct wl_shm_buffer *shm_buffer, const uint32_t width, const uint32_t height,
+                                const struct shmbuf_support_format *shmbuf_support_format, GstCaps *caps) {
     void *buffer_data = wl_shm_buffer_get_data(shm_buffer);
     struct wl_shm_pool *shm_pool = wl_shm_buffer_ref_pool(shm_buffer);
     const uint32_t buffer_stride = wl_shm_buffer_get_stride(shm_buffer);
@@ -500,6 +499,7 @@ wl_shm_buffer_to_gst_buffer(struct wl_shm_buffer *shm_buffer, const uint32_t wid
     GstBuffer *buffer = gst_buffer_new_wrapped_full(GST_MEMORY_FLAG_READONLY | GST_MEMORY_FLAG_PHYSICALLY_CONTIGUOUS,
                                                     (gpointer) buffer_data, buffer_size, 0, buffer_size, shm_pool,
                                                     (GDestroyNotify) wl_shm_pool_unref);
+
     gst_buffer_add_video_meta_full(buffer,
                                    GST_VIDEO_FRAME_FLAG_NONE,
                                    shmbuf_support_format->gst_video_format,
@@ -509,26 +509,18 @@ wl_shm_buffer_to_gst_buffer(struct wl_shm_buffer *shm_buffer, const uint32_t wid
                                    offset,
                                    stride);
 
-    return buffer;
+    return gst_sample_new(buffer, caps, NULL, NULL);
 }
 
 static inline void
-gst_encoder_pipeline_config(struct gst_encoder_pipeline *gst_encoder_pipeline,
-                            const struct encoder_description *encoder_definition,
-                            const GstCaps *new_src_caps,
-                            const u_int32_t width,
-                            const u_int32_t height,
-                            u_int32_t *coded_width,
-                            u_int32_t *coded_height) {
-    const GstCaps *current_src_caps = gst_app_src_get_caps(gst_encoder_pipeline->app_src);
-    GstStructure *uniforms;
-    GstCaps *shader_src_caps;
-    gchar *capsstr;
+gst_encoder_pipeline_coded_size(const struct encoder_description *encoder_definition,
+                                const u_int32_t width,
+                                const u_int32_t height,
+                                u_int32_t *coded_width,
+                                u_int32_t *coded_height) {
     *coded_width = width;
     *coded_height = height;
     uint32_t mod;
-    gfloat scale_x, scale_y;
-    graphene_matrix_t *graphene_matrix;
 
     if (*coded_width < encoder_definition->min_width) {
         *coded_width = encoder_definition->min_width;
@@ -545,16 +537,18 @@ gst_encoder_pipeline_config(struct gst_encoder_pipeline *gst_encoder_pipeline,
     if (mod) {
         *coded_height = *coded_height + (encoder_definition->width_multiple - mod);
     }
+}
 
-    if (current_src_caps && gst_caps_is_equal(current_src_caps, new_src_caps)) {
-        gst_caps_unref((GstCaps *) current_src_caps);
-        return;
-    }
+static inline void
+gst_encoder_pipeline_config(struct gst_encoder_pipeline *gst_encoder_pipeline) {
+    GstStructure *uniforms;
+    GstCaps *shader_src_caps;
+    gchar *capsstr;
+    gfloat scale_x, scale_y;
+    graphene_matrix_t *graphene_matrix;
 
-    gst_app_src_set_caps(gst_encoder_pipeline->app_src, new_src_caps);
-
-    scale_x = (gfloat) width / (gfloat) *coded_width;
-    scale_y = (gfloat) height / (gfloat) *coded_height;
+    scale_x = (gfloat) gst_encoder_pipeline->width / (gfloat) gst_encoder_pipeline->coded_width;
+    scale_y = (gfloat) gst_encoder_pipeline->height / (gfloat) gst_encoder_pipeline->coded_height;
 
     const gfloat matrix[] = {
             scale_x, 0, 0, 0,
@@ -570,7 +564,7 @@ gst_encoder_pipeline_config(struct gst_encoder_pipeline *gst_encoder_pipeline,
                                  NULL);
 
     capsstr = g_strdup_printf("video/x-raw(memory:GLMemory),width=%d,height=%d",
-                              *coded_width, *coded_height);
+                              gst_encoder_pipeline->coded_width, gst_encoder_pipeline->coded_height);
     shader_src_caps = gst_caps_from_string(capsstr);
     g_free(capsstr);
 
@@ -584,6 +578,9 @@ gst_encoder_pipeline_config(struct gst_encoder_pipeline *gst_encoder_pipeline,
 
 static inline void
 gst_encoder_pipeline_destroy(struct gst_encoder_pipeline *gst_encoder_pipeline) {
+    GstBus *bus = gst_element_get_bus(gst_encoder_pipeline->pipeline);
+    gst_bus_set_sync_handler(bus, NULL, NULL, NULL);
+
     gst_element_set_state(gst_encoder_pipeline->pipeline, GST_STATE_NULL);
     gst_object_unref(GST_OBJECT(gst_encoder_pipeline->app_src));
     gst_object_unref(GST_OBJECT(gst_encoder_pipeline->app_sink));
@@ -602,33 +599,69 @@ gst_encoder_pipeline_destroy(struct gst_encoder_pipeline *gst_encoder_pipeline) 
 }
 
 static inline void
-gst_encoder_destroy(struct encoder *encoder) {
-    struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
-    gst_encoder_pipeline_destroy(gst_encoder->opaque_pipeline);
-    gst_encoder->opaque_pipeline = NULL;
+gst_encoder_eos(struct gst_encoder *gst_encoder) {
+    gst_app_src_end_of_stream(gst_encoder->opaque_pipeline->app_src);
+    if (gst_encoder->alpha_pipeline) {
+        gst_app_src_end_of_stream(gst_encoder->alpha_pipeline->app_src);
+    }
+}
+
+static inline void
+gst_encoder_destroy(struct gst_encoder *gst_encoder) {
+    if (gst_encoder->opaque_pipeline) {
+        gst_encoder_pipeline_destroy(gst_encoder->opaque_pipeline);
+        gst_encoder->opaque_pipeline = NULL;
+    }
+
     if (gst_encoder->alpha_pipeline) {
         gst_encoder_pipeline_destroy(gst_encoder->alpha_pipeline);
         gst_encoder->alpha_pipeline = NULL;
     }
-    free(gst_encoder);
-    encoder->impl = NULL;
+    if (gst_encoder->opaque_pipeline == NULL && gst_encoder->alpha_pipeline == NULL) {
+        free(gst_encoder);
+    }
+}
+
+static inline void
+gst_encoder_destroy_if_eos(struct gst_encoder *gst_encoder) {
+    if (gst_encoder->opaque_pipeline && gst_encoder->opaque_pipeline->eos) {
+        gst_encoder_pipeline_destroy(gst_encoder->opaque_pipeline);
+        gst_encoder->opaque_pipeline = NULL;
+    }
+
+    if (gst_encoder->alpha_pipeline && gst_encoder->alpha_pipeline->eos) {
+        gst_encoder_pipeline_destroy(gst_encoder->alpha_pipeline);
+        gst_encoder->alpha_pipeline = NULL;
+    }
+
+    if (gst_encoder->opaque_pipeline == NULL && gst_encoder->alpha_pipeline == NULL) {
+        free(gst_encoder);
+    }
 }
 
 static GstBusSyncReply
 sync_bus_call(__attribute__((unused)) GstBus *bus, GstMessage *msg, gpointer data) {
-    struct encoder *encoder = data;
+    struct gst_encoder_pipeline *gst_encoder_pipeline = data;
 
     switch (GST_MESSAGE_TYPE (msg)) {
+        case GST_MESSAGE_EOS: {
+            gst_encoder_pipeline->eos = true;
+            gst_encoder_destroy_if_eos(gst_encoder_pipeline->gst_encoder);
+            break;
+        }
         case GST_MESSAGE_NEED_CONTEXT: {
             const gchar *context_type;
 
             gst_message_parse_context_type(msg, &context_type);
-            if (g_strcmp0(context_type, GST_GL_DISPLAY_CONTEXT_TYPE) == 0 && encoder->gpu.westfield_egl) {
-                gst_element_set_context(GST_ELEMENT (msg->src), encoder->gpu.gst_context_gl_display);
+            if (g_strcmp0(context_type, GST_GL_DISPLAY_CONTEXT_TYPE) == 0 &&
+                gst_encoder_pipeline->gst_encoder->encoder->gpu.westfield_egl) {
+                gst_element_set_context(GST_ELEMENT (msg->src),
+                                        gst_encoder_pipeline->gst_encoder->encoder->gpu.gst_context_gl_display);
             }
 
             if (g_strcmp0(context_type, "gst.gl.app_context") == 0) {
-                gst_element_set_context(GST_ELEMENT (msg->src), encoder->gpu.gst_context_gl_context);
+                gst_element_set_context(GST_ELEMENT (msg->src),
+                                        gst_encoder_pipeline->gst_encoder->encoder->gpu.gst_context_gl_context);
             }
             break;
         }
@@ -640,20 +673,53 @@ sync_bus_call(__attribute__((unused)) GstBus *bus, GstMessage *msg, gpointer dat
 }
 
 static inline void
-setup_pipeline_bus_listeners(struct encoder *encoder, GstElement *pipeline) {
-    GstBus *bus = gst_element_get_bus(pipeline);
-    gst_bus_set_sync_handler(bus, sync_bus_call, encoder, NULL);
+setup_pipeline_bus_listeners(struct gst_encoder_pipeline *gst_encoder_pipeline) {
+    GstBus *bus = gst_element_get_bus(gst_encoder_pipeline->pipeline);
+    gst_bus_set_sync_handler(bus, sync_bus_call, gst_encoder_pipeline, NULL);
+}
+
+static GstPadProbeReturn
+app_src_have_data(GstPad *pad, GstPadProbeInfo *info, gpointer user_data) {
+    struct gst_encoder_pipeline *gst_encoder_pipeline = user_data;
+    GstBuffer *buffer = gst_pad_probe_info_get_buffer(info);
+
+    GstVideoMeta *video_meta = gst_buffer_get_video_meta(buffer);
+
+    uint32_t coded_width, coded_height;
+    gst_encoder_pipeline_coded_size(gst_encoder_pipeline->gst_encoder->encoder->description, video_meta->width,
+                                    video_meta->height,
+                                    &coded_width, &coded_height);
+
+    if (gst_encoder_pipeline->width != video_meta->width ||
+        gst_encoder_pipeline->height != video_meta->height ||
+        gst_encoder_pipeline->coded_width != coded_width ||
+        gst_encoder_pipeline->coded_height != coded_height) {
+
+        gst_encoder_pipeline->width = video_meta->width;
+        gst_encoder_pipeline->height = video_meta->height;
+        gst_encoder_pipeline->coded_width = coded_width;
+        gst_encoder_pipeline->coded_height = coded_height;
+
+        gst_encoder_pipeline_config(gst_encoder_pipeline);
+    }
+
+    return GST_PAD_PROBE_OK;
 }
 
 static inline struct gst_encoder_pipeline *
-gst_encoder_pipeline_create(struct encoder *encoder, const char *pipeline_definition, const bool is_alpha) {
+gst_encoder_pipeline_create(struct encoder *encoder, const bool is_alpha) {
     struct gst_encoder_pipeline *gst_encoder_pipeline = g_new0(struct gst_encoder_pipeline, 1);
     struct sample_callback_data *callback_data;
-    gst_encoder_pipeline->pipeline = gst_parse_launch(pipeline_definition, NULL);
+    GstPad *pad;
+    GError *parse_error = NULL;
+    gst_encoder_pipeline->pipeline = gst_parse_launch_full(encoder->description->pipeline_definition, NULL,
+                                                           GST_PARSE_FLAG_FATAL_ERRORS,
+                                                           &parse_error);
     if (gst_encoder_pipeline->pipeline == NULL) {
         g_free(gst_encoder_pipeline);
-        g_error("BUG? Failed to create encoding pipeline from it's definition.");
+        g_error("BUG? Failed to create encoding pipeline from it's definition: %s", parse_error->message);
     }
+    gst_pipeline_set_auto_flush_bus(GST_PIPELINE(gst_encoder_pipeline->pipeline), true);
 
     GstElement *glshader = gst_bin_get_by_name(GST_BIN(gst_encoder_pipeline->pipeline), "shader");
     if (glshader == NULL) {
@@ -677,11 +743,13 @@ gst_encoder_pipeline_create(struct encoder *encoder, const char *pipeline_defini
     if (gst_encoder_pipeline->app_src == NULL) {
         g_error("Can't get element with name 'src' from encoding pipeline. Missing gstreamer plugin element?");
     }
+
     gst_encoder_pipeline->app_sink = GST_APP_SINK(
             gst_bin_get_by_name(GST_BIN(gst_encoder_pipeline->pipeline), "sink"));
     if (gst_encoder_pipeline->app_sink == NULL) {
         g_error("Can't get element with name 'sink' from encoding pipeline. Missing gstreamer plugin element?");
     }
+    gst_app_sink_set_wait_on_eos(gst_encoder_pipeline->app_sink, true);
 
     callback_data = g_new0(struct sample_callback_data, 1);
     callback_data->encoder = encoder;
@@ -690,8 +758,13 @@ gst_encoder_pipeline_create(struct encoder *encoder, const char *pipeline_defini
                                NULL);
     if (encoder->gpu.westfield_egl) {
         ensure_gst_gl(encoder, gst_encoder_pipeline->pipeline);
-        setup_pipeline_bus_listeners(encoder, gst_encoder_pipeline->pipeline);
+        setup_pipeline_bus_listeners(gst_encoder_pipeline);
     }
+
+    pad = gst_element_get_static_pad(GST_ELEMENT(gst_encoder_pipeline->app_src), "src");
+    gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER,
+                      (GstPadProbeCallback) app_src_have_data, gst_encoder_pipeline, NULL);
+    gst_object_unref(pad);
 
     return gst_encoder_pipeline;
 }
@@ -699,25 +772,19 @@ gst_encoder_pipeline_create(struct encoder *encoder, const char *pipeline_defini
 static inline void
 gst_encoder_create(struct encoder *encoder) {
     struct gst_encoder *gst_encoder = g_new0(struct gst_encoder, 1);
-    gst_encoder->opaque_pipeline = (struct gst_encoder_pipeline *) gst_encoder_pipeline_create(encoder,
-                                                                                               encoder->description->pipeline_definition,
-                                                                                               false);
+    gst_encoder->encoder = encoder;
+    gst_encoder->opaque_pipeline = (struct gst_encoder_pipeline *) gst_encoder_pipeline_create(encoder, false);
     if (gst_encoder->opaque_pipeline == NULL) {
-        // TODO log pipeline creation failure
-        g_free(gst_encoder);
-        return;
+        g_error("BUG? Failed to create opaque pipeline.");
     }
+    gst_encoder->opaque_pipeline->gst_encoder = gst_encoder;
 
     if (encoder->description->split_alpha) {
-        gst_encoder->alpha_pipeline = (struct gst_encoder_pipeline *) gst_encoder_pipeline_create(encoder,
-                                                                                                  encoder->description->pipeline_definition,
-                                                                                                  true);
+        gst_encoder->alpha_pipeline = (struct gst_encoder_pipeline *) gst_encoder_pipeline_create(encoder, true);
         if (gst_encoder->alpha_pipeline == NULL) {
-            // TODO cleanup opaque pipeline
-            // TODO log alpha pipeline creation failure
-            g_free(gst_encoder);
-            return;
+            g_error("BUG? Failed to create alpha pipeline.");
         }
+        gst_encoder->alpha_pipeline->gst_encoder = gst_encoder;
     }
 
     encoder->impl = gst_encoder;
@@ -725,44 +792,71 @@ gst_encoder_create(struct encoder *encoder) {
 
 
 static inline int
-gst_encoder_request_key_unit(struct encoder *encoder) {
-    struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
+gst_encoder_request_key_unit(struct gst_encoder *gst_encoder) {
     gst_element_send_event(gst_encoder->opaque_pipeline->pipeline, gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM,
                                                                                         gst_structure_new(
                                                                                                 "GstForceKeyUnit",
                                                                                                 "all-headers",
                                                                                                 G_TYPE_BOOLEAN, TRUE,
                                                                                                 NULL)));
-    gst_element_send_event(gst_encoder->alpha_pipeline->pipeline, gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM,
-                                                                                       gst_structure_new(
-                                                                                               "GstForceKeyUnit",
-                                                                                               "all-headers",
-                                                                                               G_TYPE_BOOLEAN, TRUE,
-                                                                                               NULL)));
+    if (gst_encoder->alpha_pipeline) {
+        gst_element_send_event(gst_encoder->alpha_pipeline->pipeline, gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM,
+                                                                                           gst_structure_new(
+                                                                                                   "GstForceKeyUnit",
+                                                                                                   "all-headers",
+                                                                                                   G_TYPE_BOOLEAN, TRUE,
+                                                                                                   NULL)));
+    }
 }
 
 static inline void
-gst_encoder_pipeline_encode(struct gst_encoder_pipeline *gst_encoder_pipeline, GstBuffer *buffer) {
-    if (buffer == NULL) {
-        // TODO log error
-        return;
+gst_encoder_pipeline_encode(struct gst_encoder_pipeline *gst_encoder_pipeline, GstSample *sample, const guint buffer_content_serial) {
+    if (sample == NULL) {
+        g_error("BUG? Received a NULL sample to encode.");
     }
+
+    GstBuffer *buffer = gst_sample_get_buffer(sample);
+    buffer = gst_buffer_make_writable(buffer);
+    GstCustomMeta *custom_meta = (GstCustomMeta *) gst_buffer_add_meta(buffer, bufferContentSerialMeta, NULL);
+    GstStructure *structure = gst_custom_meta_get_structure(custom_meta);
+    GValue val = G_VALUE_INIT;
+
+    g_value_init (&val, G_TYPE_UINT);
+    g_value_set_uint (&val, buffer_content_serial);
+    gst_structure_set_value(structure,
+                            "buffer_content_serial", &val);
+    g_value_unset (&val);
+    gst_sample_set_buffer(sample, buffer);
 
     GstFlowReturn ret;
-    if (!gst_encoder_pipeline->playing) {
+    if (gst_encoder_pipeline->playing) {
+        ret = gst_app_src_push_sample(gst_encoder_pipeline->app_src, sample);
+        if (ret != GST_FLOW_OK) {
+            g_error("BUG? Could not push sample to pipeline: %s", gst_flow_get_name(ret));
+        }
+    } else {
+        guint32 coded_width, coded_height;
+
+        GstVideoMeta *video_meta = gst_buffer_get_video_meta(buffer);
+        gst_encoder_pipeline_coded_size(gst_encoder_pipeline->gst_encoder->encoder->description, video_meta->width,
+                                        video_meta->height,
+                                        &coded_width, &coded_height);
+        gst_encoder_pipeline->width = video_meta->width;
+        gst_encoder_pipeline->height = video_meta->height;
+        gst_encoder_pipeline->coded_width = coded_width;
+        gst_encoder_pipeline->coded_height = coded_height;
+        gst_encoder_pipeline_config(gst_encoder_pipeline);
+
+        ret = gst_app_src_push_sample(gst_encoder_pipeline->app_src, sample);
+        if (ret != GST_FLOW_FLUSHING && ret != GST_FLOW_OK) {
+            g_error("BUG? Could not push sample to pipeline: %s", gst_flow_get_name(ret));
+        }
+
         gst_element_set_state(gst_encoder_pipeline->pipeline, GST_STATE_PLAYING);
         if (gst_element_get_state(gst_encoder_pipeline->pipeline, NULL, NULL, 0) == GST_STATE_CHANGE_FAILURE) {
-            // TODO log error?
-            return;
+            g_error("BUG? Could not set pipeline to playing state.");
         }
         gst_encoder_pipeline->playing = true;
-    }
-
-    ret = gst_app_src_push_buffer(gst_encoder_pipeline->app_src, buffer);
-
-    if (ret != GST_FLOW_OK) {
-        /* We got some error, stop sending data */
-        // TODO log error?
     }
 }
 
@@ -782,10 +876,11 @@ static inline void
 gst_encoder_encode_shm(struct encoder *encoder, struct wl_shm_buffer *shm_buffer,
                        struct encoding_result *encoding_result) {
     struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
-    GstCaps *new_src_caps;
+    GstCaps *sample_caps;
+    GstSample *opaque_sample, *alpha_sample;
+    uint32_t coded_width, coded_height;
     const uint32_t width = wl_shm_buffer_get_width(shm_buffer);
     const uint32_t height = wl_shm_buffer_get_height(shm_buffer);
-    uint32_t coded_width, coded_height;
     const enum wl_shm_format buffer_format = wl_shm_buffer_get_format(shm_buffer);
 
     const struct shmbuf_support_format *shmbuf_support_format = shmbuf_support_format_from_wl_shm_format(buffer_format);
@@ -793,37 +888,36 @@ gst_encoder_encode_shm(struct encoder *encoder, struct wl_shm_buffer *shm_buffer
         g_error("Failed to interpret shm format: %d", buffer_format);
     }
 
-    // TODO re-use caps if they haven't changed
-    new_src_caps = gst_caps_new_simple("video/x-raw",
-                                       "framerate", GST_TYPE_FRACTION, FPS, 1,
-                                       "format", G_TYPE_STRING, shmbuf_support_format->gst_format_string,
-                                       "width", G_TYPE_INT, width,
-                                       "height", G_TYPE_INT, height,
-                                       NULL);
-
-    gst_encoder_pipeline_config(gst_encoder->opaque_pipeline, encoder->description, new_src_caps,
-                                width, height, &coded_width, &coded_height);
+    sample_caps = gst_caps_new_simple("video/x-raw",
+                                      "framerate", GST_TYPE_FRACTION, FPS, 1,
+                                      "format", G_TYPE_STRING, shmbuf_support_format->gst_format_string,
+                                      "width", G_TYPE_INT, width,
+                                      "height", G_TYPE_INT, height,
+                                      NULL);
+    gst_encoder_pipeline_coded_size(encoder->description, width, height, &coded_width, &coded_height);
 
     encoding_result->props.width = width;
     encoding_result->props.height = height;
     encoding_result->props.coded_width = coded_width;
     encoding_result->props.coded_height = coded_height;
     g_queue_push_tail(encoder->encoding_results, encoding_result);
-    gst_encoder_pipeline_encode(gst_encoder->opaque_pipeline,
-                                wl_shm_buffer_to_gst_buffer(shm_buffer, width, height, shmbuf_support_format));
+    opaque_sample = wl_shm_buffer_to_new_gst_sample(shm_buffer, width, height, shmbuf_support_format, sample_caps);
 
+    gst_encoder_pipeline_encode(gst_encoder->opaque_pipeline, opaque_sample, encoding_result->props.buffer_content_serial);
+    gst_sample_unref(opaque_sample);
 
     if (shmbuf_support_format->has_alpha && encoder->description->split_alpha) {
         encoding_result->has_split_alpha = true;
-        gst_encoder_pipeline_config(gst_encoder->alpha_pipeline, encoder->description, new_src_caps,
-                                    width, height, &coded_width, &coded_height);
-        gst_encoder_pipeline_encode(gst_encoder->alpha_pipeline,
-                                    wl_shm_buffer_to_gst_buffer(shm_buffer, width, height, shmbuf_support_format));
+
+        alpha_sample = wl_shm_buffer_to_new_gst_sample(shm_buffer, width, height, shmbuf_support_format, sample_caps);
+
+        gst_encoder_pipeline_encode(gst_encoder->alpha_pipeline, alpha_sample, encoding_result->props.buffer_content_serial);
+        gst_sample_unref(alpha_sample);
     } else {
         encoding_result->has_split_alpha = false;
     }
 
-    gst_caps_unref(new_src_caps);
+    gst_caps_unref(sample_caps);
 }
 
 static inline const struct dmabuf_support_format *
@@ -896,18 +990,19 @@ create_gl_memory(struct encoder *encoder, const struct dmabuf_attributes *attrib
     return buffer;
 }
 
-static inline GstBuffer *
-dmabuf_attributes_to_gst_buffer(struct encoder *encoder,
-                                const struct dmabuf_attributes *attributes,
-                                GstCaps *caps) {
+static inline GstSample *
+dmabuf_attributes_to_new_gst_sample(struct encoder *encoder, const struct dmabuf_attributes *attributes,
+                                    GstCaps *caps) {
     GstBuffer *buffer = create_gl_memory(encoder, attributes, caps);
+
     GstGLSyncMeta *sync_meta = gst_buffer_get_gl_sync_meta (buffer);
     if (sync_meta) {
         gst_gl_sync_meta_set_sync_point(sync_meta, encoder->gpu.shared_gst_gl_context);
         gst_gl_sync_meta_wait(sync_meta, encoder->gpu.shared_gst_gl_context);
     }
+    GstSample *sample = gst_sample_new(gst_buffer_make_writable(buffer), caps, NULL, NULL);
 
-    return buffer;
+    return sample;
 }
 
 static inline void
@@ -916,46 +1011,44 @@ gst_encoder_encode_dmabuf(struct encoder *encoder,
                           struct dmabuf_attributes *attributes,
                           struct encoding_result *encoding_result) {
     struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
-    GstCaps *new_src_caps;
+    GstCaps *sample_caps;
+    GstSample *opaque_sample, *alpha_sample;
     uint32_t coded_width, coded_height;
 
     const struct dmabuf_support_format *dmabuf_support_format = dmabuf_support_format_from_fourcc(attributes->format);
     if (dmabuf_support_format == NULL) {
-        g_error("Can't encode buffer. Failed to interpret buffer's fourcc format: %c%c%c%c",
+        g_error("Can't encode buffer. Unsupported buffer. Failed to interpret buffer's fourcc format: %c%c%c%c",
                 GST_FOURCC_ARGS(attributes->format));
     }
 
-    // TODO set caps on buffer
-    new_src_caps = gst_caps_new_simple("video/x-raw",
-                                       "framerate", GST_TYPE_FRACTION, FPS, 1,
-                                       "format", G_TYPE_STRING, "RGBA",
-                                       "width", G_TYPE_INT, base->width,
-                                       "height", G_TYPE_INT, base->height,
-                                       NULL);
-
-    // TODO configure pipeline elements by listening which buffer is being pulled from appsrc
-    gst_encoder_pipeline_config(gst_encoder->opaque_pipeline, encoder->description, new_src_caps,
-                                base->width, base->height, &coded_width, &coded_height);
+    sample_caps = gst_caps_new_simple("video/x-raw",
+                                      "framerate", GST_TYPE_FRACTION, FPS, 1,
+                                      "format", G_TYPE_STRING, "RGBA",
+                                      "width", G_TYPE_INT, base->width,
+                                      "height", G_TYPE_INT, base->height,
+                                      NULL);
+    gst_encoder_pipeline_coded_size(encoder->description, base->width, base->height, &coded_width, &coded_height);
 
     encoding_result->props.width = base->width;
     encoding_result->props.height = base->height;
     encoding_result->props.coded_width = coded_width;
     encoding_result->props.coded_height = coded_height;
     g_queue_push_tail(encoder->encoding_results, encoding_result);
-    gst_encoder_pipeline_encode(gst_encoder->opaque_pipeline,
-                                dmabuf_attributes_to_gst_buffer(encoder, attributes, new_src_caps));
+
+    opaque_sample = dmabuf_attributes_to_new_gst_sample(encoder, attributes, sample_caps);
+    gst_encoder_pipeline_encode(gst_encoder->opaque_pipeline, opaque_sample, encoding_result->props.buffer_content_serial);
+    gst_sample_unref(opaque_sample);
 
     if (dmabuf_support_format->has_alpha && encoder->description->split_alpha) {
         encoding_result->has_split_alpha = true;
-        gst_encoder_pipeline_config(gst_encoder->alpha_pipeline, encoder->description, new_src_caps,
-                                    base->width, base->height, &coded_width, &coded_height);
-        gst_encoder_pipeline_encode(gst_encoder->alpha_pipeline,
-                                    dmabuf_attributes_to_gst_buffer(encoder, attributes, new_src_caps));
+        alpha_sample = dmabuf_attributes_to_new_gst_sample(encoder, attributes, sample_caps);
+        gst_encoder_pipeline_encode(gst_encoder->alpha_pipeline, alpha_sample, encoding_result->props.buffer_content_serial);
+        gst_sample_unref(alpha_sample);
     } else {
         encoding_result->has_split_alpha = false;
     }
 
-    gst_caps_unref(new_src_caps);
+    gst_caps_unref(sample_caps);
     // TODO memory management/lifecycle of buffer? ie handle case where buffer is destroyed by client while it's being encoded, see weston remoting implementation?
 }
 
@@ -1090,12 +1183,11 @@ encoder_description_supports_buffer(const struct encoder_description *encoder_it
     return false;
 }
 
-// TODO enable queue element once we properly deal with setting caps based on the pulled buffer from appsrc
 static const struct encoder_description encoder_descriptions[] = {
         {
                 .name = "x264",
                 .encoding_type = h264,
-                .pipeline_definition = "appsrc name=src format=3 stream-type=0 max-buffers=1 block=true ! "
+                .pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
                                        "glupload ! "
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
@@ -1160,7 +1252,7 @@ static const struct encoder_description encoder_descriptions[] = {
         {
                 .name = "png",
                 .encoding_type = png,
-                .pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
+                .pipeline_definition = "appsrc name=src format=3 stream-type=0 block=true max-buffers=1 ! "
                                        "glupload ! "
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
@@ -1171,16 +1263,18 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "pngenc ! "
                                        "appsink name=sink",
                 .split_alpha = false,
-                .width_multiple = 32,
-                .height_multiple = 32,
-                .min_width = 32,
-                .min_height = 32,
+                .width_multiple = 16,
+                .height_multiple = 16,
+                .min_width = 16,
+                .min_height = 16,
         }
 };
 
-int
+void
 do_gst_init() {
     gst_init(NULL, NULL);
+    static const gchar *tags[] = {NULL};
+    bufferContentSerialMeta = gst_meta_register_custom(BUFFER_CONTENT_SERIAL_META, tags, NULL, NULL, NULL);
 }
 
 void
@@ -1207,7 +1301,7 @@ do_gst_encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_re
 
     if (encoder->impl != NULL) {
         if (!encoder_description_supports_buffer(encoder->description, encoder->preferred_encoder, buffer_resource)) {
-            gst_encoder_destroy(encoder);
+            gst_encoder_eos(encoder->impl);
             encoder->impl = NULL;
         }
     }
@@ -1226,6 +1320,7 @@ do_gst_encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_re
 
     if (encoder->impl == NULL) {
         // Buffer could have been destroyed, or no matching encoder is available, return an empty encoding result
+        // FIXME log & handle this
         encoder->frame_callback(encoder->user_data, NULL);
         return;
     }
@@ -1241,8 +1336,8 @@ do_gst_encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_re
 void
 do_gst_encoder_free(struct encoder **encoder_pp) {
     struct encoder *encoder = *encoder_pp;
-    gst_encoder_destroy(encoder);
-    // TODO drain the queue & send encoded frames anyway?
+    gst_encoder_destroy(encoder->impl);
+    encoder->impl = NULL;
     g_queue_free_full(encoder->encoding_results, (GDestroyNotify) encoding_result_free);
     free(encoder);
 }
@@ -1256,5 +1351,6 @@ do_gst_encoded_frame_finalize(struct encoded_frame *encoded_frame) {
 void
 do_gst_request_key_unit(struct encoder **encoder_pp) {
     struct encoder *encoder = *encoder_pp;
-    gst_encoder_request_key_unit(encoder);
+    struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
+    gst_encoder_request_key_unit(gst_encoder);
 }

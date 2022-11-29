@@ -51,38 +51,42 @@ export class StreamingBuffer implements BufferImplementation<Promise<DecodedFram
     resource.destroy()
   }
 
-  async getContents(surface: Surface, commitSerial: number): Promise<DecodedFrame | undefined> {
-    if (commitSerial === this.decodedFrame?.serial) {
+  async getContents(surface: Surface, bufferContentSerial: number): Promise<DecodedFrame | undefined> {
+    if (bufferContentSerial === this.decodedFrame?.contentSerial) {
       return this.decodedFrame
     }
 
-    const encodedFrame = await this.bufferStream.onFrameAvailable(commitSerial)
+    const encodedFrameContent = this.bufferStream.onFrameAvailable(bufferContentSerial)
+    const encodedFrame = encodedFrameContent instanceof Promise ? await encodedFrameContent : encodedFrameContent
+
     if (encodedFrame) {
+      // console.log(`Found encoded buffer content ${bufferContentSerial}. Attempting to decode it.`)
       try {
         const oldDecodedFrame = this.decodedFrame
         this.decodedFrame = await surface.session.frameDecoder.decode(surface, encodedFrame)
         oldDecodedFrame?.pixelContent.close?.()
       } catch (e: unknown) {
-        console.log(`Error while decoding buffer ${this.resource.id}`)
-        surface.session.logger.warn('Get error during decode, requesting new keyframe.')
+        console.log(
+          `Error: ${(e as Error).message} while decoding buffer ${
+            this.resource.id
+          } with content: ${bufferContentSerial}`,
+        )
+        console.log(`${JSON.stringify(encodedFrame)}`)
+        surface.session.logger.warn('Get error during decode, resetting decoder.')
         surface.resource.client.userData.encoderApi?.keyframe({
           clientId: surface.resource.client.id,
           surfaceId: surface.resource.id,
           inlineObject: {
-            bufferContentSerial: commitSerial,
+            bufferId: this.resource.id,
+            bufferContentSerial,
             bufferCreationSerial: this.bufferStream.creationSerial,
           },
         })
-        const encodedFrame = await this.bufferStream.onFrameAvailable(commitSerial)
-        if (encodedFrame) {
-          const oldDecodedFrame = this.decodedFrame
-          this.decodedFrame = await surface.session.frameDecoder.decode(surface, encodedFrame)
-          oldDecodedFrame?.pixelContent.close?.()
-        }
       }
 
       return this.decodedFrame
     } else {
+      console.log(`Found undefined buffer content ${bufferContentSerial}. Returning empty buffer content.`)
       return undefined
     }
   }

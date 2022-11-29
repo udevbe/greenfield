@@ -19,49 +19,41 @@ import { config } from '../config'
 import appEndpointNative from './proxy-encoding-addon'
 
 export function createEncoder(wlClient: unknown, drmContext: unknown): Encoder {
-  // TODO we could probably use a pool here
+  // TODO we could probably use a pool here?
   // TODO implement encoder destruction
   return new Encoder(config.encoder.h264Encoder, wlClient, drmContext)
 }
 
 export class Encoder {
   private readonly nativeEncoder: unknown
-  private encodingResolve?: (frame_sample: Buffer) => void
-  private encodingPromise?: Promise<Buffer>
 
-  // TODO Make gst encoding pipeline deal with multiple concurrent encodings
-  // private encodingQueue: {
-  //   resolve: (frameSample: Buffer) => void
-  //   reject: (error: Error) => void
-  // }[] = []
+  private encodingQueue: {
+    resolve: (frameSample: Buffer) => void
+    reject: (error: Error) => void
+    bufferResourceId: number
+    bufferContentSerial: number
+  }[] = []
 
   constructor(private readonly encoderType: typeof config.encoder.h264Encoder, wlClient: unknown, drmContext: unknown) {
     this.nativeEncoder = appEndpointNative.createEncoder(this.encoderType, wlClient, drmContext, (buffer: Buffer) => {
-      this.encodingPromise = undefined
-      this.encodingResolve?.(buffer)
-      this.encodingResolve = undefined
+      const encodingTask = this.encodingQueue.shift()
+      if (encodingTask) {
+        if (buffer) {
+          // console.debug(`Resolve encoding ${encodingTask.bufferContentSerial} with success`)
+          encodingTask.resolve(buffer)
+        } else {
+          const e = new Error('Buffer encoding failed.')
+          console.error(`\tname: ${e.name} message: ${e.message}`)
+          console.error('error object stack: ')
+          console.error(e.stack ?? '')
+          console.debug(`Resolve encoding ${encodingTask.bufferContentSerial} with error`)
+          encodingTask.reject(e)
+        }
+      } else {
+        console.error('BUG? No buffer callback')
+        // TODO log better error
+      }
     })
-
-    // this.nativeEncoder = appEndpointNative.createEncoder(this.encoderType, wlClient, drmContext, (buffer: Buffer) => {
-    //   // console.debug('encoding done')
-    //   const encodingTask = this.encodingQueue.shift()
-    //   if (encodingTask) {
-    //     if (buffer) {
-    //       // console.debug(`Resolve encoding ${encodingTask.serial} with success`)
-    //       encodingTask.resolve(buffer)
-    //     } else {
-    //       const e = new Error('Buffer encoding failed.')
-    //       console.error(`\tname: ${e.name} message: ${e.message}`)
-    //       console.error('error object stack: ')
-    //       console.error(e.stack ?? '')
-    //       // console.debug(`Resolve encoding ${encodingTask.serial} with error`)
-    //       encodingTask.reject(e)
-    //     }
-    //   } else {
-    //     console.error('BUG? No buffer callback')
-    //     // TODO log better error
-    //   }
-    // })
   }
 
   encodeBuffer({
@@ -73,24 +65,11 @@ export class Encoder {
     bufferCreationSerial: number
     bufferContentSerial: number
   }): Promise<Buffer> {
-    // return new Promise<Buffer>((resolve, reject) => {
-    //   this.encodingQueue.push({ resolve, reject })
-    //   appEndpointNative.encodeBuffer(this.nativeEncoder, bufferResourceId, bufferContentSerial, bufferCreationSerial)
-    // })
-    if (this.encodingPromise !== undefined) {
-      return this.encodingPromise.then(() =>
-        this.encodeBuffer({
-          bufferResourceId,
-          bufferCreationSerial,
-          bufferContentSerial,
-        }),
-      )
-    }
-    this.encodingPromise = new Promise<Buffer>((resolve) => {
-      this.encodingResolve = resolve
+    // console.debug(`Start encoding: ${bufferContentSerial}`)
+    return new Promise<Buffer>((resolve, reject) => {
+      this.encodingQueue.push({ resolve, reject, bufferResourceId, bufferContentSerial })
       appEndpointNative.encodeBuffer(this.nativeEncoder, bufferResourceId, bufferContentSerial, bufferCreationSerial)
     })
-    return this.encodingPromise
   }
 
   requestKeyUnit(): void {

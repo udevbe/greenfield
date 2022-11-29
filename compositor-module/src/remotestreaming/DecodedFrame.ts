@@ -80,6 +80,6 @@ export function createDecodedFrame(
     mimeType,
     pixelContent,
     size,
-    serial,
+    contentSerial: serial,
   }
 }
