@@ -308,7 +308,7 @@ class Surface implements WlSurfaceRequests {
       | undefined
     if (bufferImplementation && this.pendingState.bufferContents === undefined) {
       try {
-        console.log(`|- Awaiting buffer contents with serial: ${serial ?? 'NO SERIAL'}`)
+        // console.log(`|- Awaiting buffer contents with serial: ${serial ?? 'NO SERIAL'}`)
         // const startBufferContents = Date.now()
         const bufferContents = bufferImplementation.getContents(this, serial)
         this.pendingState.bufferContents = bufferContents instanceof Promise ? await bufferContents : bufferContents

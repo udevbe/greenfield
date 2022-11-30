@@ -26,8 +26,8 @@
 #include "westfield-dmabuf.h"
 
 #define FPS 60
-#define BUFFER_CONTENT_SERIAL_META "BUFFER_CONTENT_SERIAL"
-const GstMetaInfo *bufferContentSerialMeta = NULL;
+#define GF_BUFFER_CONTENT_SERIAL_META "BUFFER_CONTENT_SERIAL"
+const GstMetaInfo *gfBufferContentSerialMetaInfo = NULL;
 
 static const char *opaque_fragment_shader =
         "#version 330\n"
@@ -415,7 +415,7 @@ gst_new_sample(GstAppSink *appsink, gpointer user_data) {
     GstSample *sample = gst_app_sink_pull_sample(appsink);
 
     buffer = gst_sample_get_buffer(sample);
-    GstCustomMeta *meta = (GstCustomMeta *)gst_buffer_get_meta(buffer, bufferContentSerialMeta->type);
+    GstCustomMeta *meta = gst_buffer_get_custom_meta(buffer, GF_BUFFER_CONTENT_SERIAL_META);
     GstStructure *s = gst_custom_meta_get_structure(meta);
     gst_structure_get_uint(s, "buffer_content_serial", &buffer_content_serial);
 
@@ -490,24 +490,14 @@ wl_shm_buffer_to_new_gst_sample(struct wl_shm_buffer *shm_buffer, const uint32_t
     struct wl_shm_pool *shm_pool = wl_shm_buffer_ref_pool(shm_buffer);
     const uint32_t buffer_stride = wl_shm_buffer_get_stride(shm_buffer);
     const gsize buffer_size = buffer_stride * height;
-    gsize offset[] = {
-            0, 0, 0, 0
-    };
-    gint stride[] = {
-            (gint) buffer_stride, 0, 0, 0
-    };
+    gsize offset[] = {0, 0, 0, 0};
+    gint stride[] = {(gint) buffer_stride, 0, 0, 0};
     GstBuffer *buffer = gst_buffer_new_wrapped_full(GST_MEMORY_FLAG_READONLY | GST_MEMORY_FLAG_PHYSICALLY_CONTIGUOUS,
                                                     (gpointer) buffer_data, buffer_size, 0, buffer_size, shm_pool,
                                                     (GDestroyNotify) wl_shm_pool_unref);
 
-    gst_buffer_add_video_meta_full(buffer,
-                                   GST_VIDEO_FRAME_FLAG_NONE,
-                                   shmbuf_support_format->gst_video_format,
-                                   width,
-                                   height,
-                                   1,
-                                   offset,
-                                   stride);
+    gst_buffer_add_video_meta_full(buffer, GST_VIDEO_FRAME_FLAG_NONE, shmbuf_support_format->gst_video_format,
+                                   width, height, 1, offset, stride);
 
     return gst_sample_new(buffer, caps, NULL, NULL);
 }
@@ -810,22 +800,22 @@ gst_encoder_request_key_unit(struct gst_encoder *gst_encoder) {
 }
 
 static inline void
-gst_encoder_pipeline_encode(struct gst_encoder_pipeline *gst_encoder_pipeline, GstSample *sample, const guint buffer_content_serial) {
+gst_encoder_pipeline_encode(struct gst_encoder_pipeline *gst_encoder_pipeline, GstSample *sample,
+                            const guint buffer_content_serial) {
     if (sample == NULL) {
         g_error("BUG? Received a NULL sample to encode.");
     }
 
     GstBuffer *buffer = gst_sample_get_buffer(sample);
     buffer = gst_buffer_make_writable(buffer);
-    GstCustomMeta *custom_meta = (GstCustomMeta *) gst_buffer_add_meta(buffer, bufferContentSerialMeta, NULL);
+    GstCustomMeta *custom_meta = (GstCustomMeta *) gst_buffer_add_meta(buffer, gfBufferContentSerialMetaInfo, NULL);
     GstStructure *structure = gst_custom_meta_get_structure(custom_meta);
-    GValue val = G_VALUE_INIT;
 
-    g_value_init (&val, G_TYPE_UINT);
-    g_value_set_uint (&val, buffer_content_serial);
-    gst_structure_set_value(structure,
-                            "buffer_content_serial", &val);
-    g_value_unset (&val);
+    GValue val = G_VALUE_INIT;
+    g_value_init(&val, G_TYPE_UINT);
+    g_value_set_uint(&val, buffer_content_serial);
+    gst_structure_set_value(structure, "buffer_content_serial", &val);
+    g_value_unset(&val);
     gst_sample_set_buffer(sample, buffer);
 
     GstFlowReturn ret;
@@ -903,7 +893,8 @@ gst_encoder_encode_shm(struct encoder *encoder, struct wl_shm_buffer *shm_buffer
     g_queue_push_tail(encoder->encoding_results, encoding_result);
     opaque_sample = wl_shm_buffer_to_new_gst_sample(shm_buffer, width, height, shmbuf_support_format, sample_caps);
 
-    gst_encoder_pipeline_encode(gst_encoder->opaque_pipeline, opaque_sample, encoding_result->props.buffer_content_serial);
+    gst_encoder_pipeline_encode(gst_encoder->opaque_pipeline, opaque_sample,
+                                encoding_result->props.buffer_content_serial);
     gst_sample_unref(opaque_sample);
 
     if (shmbuf_support_format->has_alpha && encoder->description->split_alpha) {
@@ -911,7 +902,8 @@ gst_encoder_encode_shm(struct encoder *encoder, struct wl_shm_buffer *shm_buffer
 
         alpha_sample = wl_shm_buffer_to_new_gst_sample(shm_buffer, width, height, shmbuf_support_format, sample_caps);
 
-        gst_encoder_pipeline_encode(gst_encoder->alpha_pipeline, alpha_sample, encoding_result->props.buffer_content_serial);
+        gst_encoder_pipeline_encode(gst_encoder->alpha_pipeline, alpha_sample,
+                                    encoding_result->props.buffer_content_serial);
         gst_sample_unref(alpha_sample);
     } else {
         encoding_result->has_split_alpha = false;
@@ -1036,13 +1028,15 @@ gst_encoder_encode_dmabuf(struct encoder *encoder,
     g_queue_push_tail(encoder->encoding_results, encoding_result);
 
     opaque_sample = dmabuf_attributes_to_new_gst_sample(encoder, attributes, sample_caps);
-    gst_encoder_pipeline_encode(gst_encoder->opaque_pipeline, opaque_sample, encoding_result->props.buffer_content_serial);
+    gst_encoder_pipeline_encode(gst_encoder->opaque_pipeline, opaque_sample,
+                                encoding_result->props.buffer_content_serial);
     gst_sample_unref(opaque_sample);
 
     if (dmabuf_support_format->has_alpha && encoder->description->split_alpha) {
         encoding_result->has_split_alpha = true;
         alpha_sample = dmabuf_attributes_to_new_gst_sample(encoder, attributes, sample_caps);
-        gst_encoder_pipeline_encode(gst_encoder->alpha_pipeline, alpha_sample, encoding_result->props.buffer_content_serial);
+        gst_encoder_pipeline_encode(gst_encoder->alpha_pipeline, alpha_sample,
+                                    encoding_result->props.buffer_content_serial);
         gst_sample_unref(alpha_sample);
     } else {
         encoding_result->has_split_alpha = false;
@@ -1274,7 +1268,7 @@ void
 do_gst_init() {
     gst_init(NULL, NULL);
     static const gchar *tags[] = {NULL};
-    bufferContentSerialMeta = gst_meta_register_custom(BUFFER_CONTENT_SERIAL_META, tags, NULL, NULL, NULL);
+    gfBufferContentSerialMetaInfo = gst_meta_register_custom(GF_BUFFER_CONTENT_SERIAL_META, tags, NULL, NULL, NULL);
 }
 
 void
