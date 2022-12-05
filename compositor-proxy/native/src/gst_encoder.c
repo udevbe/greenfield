@@ -566,6 +566,7 @@ gst_encoder_pipeline_destroy(struct gst_encoder_pipeline *gst_encoder_pipeline) 
     GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE (gst_encoder_pipeline->pipeline));
     gst_bus_set_sync_handler(bus, NULL, NULL, NULL);
     gst_bus_remove_watch(bus);
+    gst_bus_set_flushing(bus, TRUE);
     gst_object_unref(bus);
 
     app_src = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(gst_encoder_pipeline->pipeline), "src"));
@@ -578,12 +579,6 @@ gst_encoder_pipeline_destroy(struct gst_encoder_pipeline *gst_encoder_pipeline) 
     if (gst_element_get_state(gst_encoder_pipeline->pipeline, NULL, NULL, 0) == GST_STATE_CHANGE_FAILURE) {
         g_warning("BUG? Could not set pipeline to null state.");
     }
-    gst_object_unref(GST_OBJECT(gst_encoder_pipeline->pipeline));
-    gst_object_unref(GST_OBJECT(gst_encoder_pipeline->pipeline));
-    gst_object_unref(GST_OBJECT(gst_encoder_pipeline->pipeline));
-    gst_object_unref(GST_OBJECT(gst_encoder_pipeline->pipeline));
-    gst_object_unref(GST_OBJECT(gst_encoder_pipeline->pipeline));
-    gst_object_unref(GST_OBJECT(gst_encoder_pipeline->pipeline));
     gst_object_unref(GST_OBJECT(gst_encoder_pipeline->pipeline));
 
     gst_encoder_pipeline->pipeline = NULL;
@@ -634,11 +629,8 @@ gst_encoder_destroy_if_eos(struct gst_encoder *gst_encoder) {
         gst_encoder->alpha_pipeline = NULL;
     }
 
-    GstGLDisplay *wrapped_gst_gl_display;
-    GstGLContext *wrapped_gst_gl_context;
-    GstGLContext *shared_gst_gl_context;
-
     if (gst_encoder->opaque_pipeline == NULL && gst_encoder->alpha_pipeline == NULL) {
+        // TODO (re)use gl contexts & display for all pipelines
         if (gst_encoder->shared_gst_gl_context) {
             gst_gl_display_remove_context(gst_encoder->wrapped_gst_gl_display, gst_encoder->shared_gst_gl_context);
             gst_gl_context_destroy(gst_encoder->shared_gst_gl_context);
@@ -648,10 +640,6 @@ gst_encoder_destroy_if_eos(struct gst_encoder *gst_encoder) {
         if (gst_encoder->wrapped_gst_gl_context) {
             gst_object_unref(gst_encoder->wrapped_gst_gl_context);
             gst_encoder->wrapped_gst_gl_context = NULL;
-        }
-        if (gst_encoder->wrapped_gst_gl_display) {
-            gst_object_unref(gst_encoder->wrapped_gst_gl_display);
-            gst_encoder->wrapped_gst_gl_display = NULL;
         }
 
         free(gst_encoder);
@@ -714,6 +702,7 @@ sync_bus_call(__attribute__((unused)) GstBus *bus, GstMessage *msg, gpointer dat
             break;
     }
 
+    gst_message_unref(msg);
     return GST_BUS_DROP;
 }
 
