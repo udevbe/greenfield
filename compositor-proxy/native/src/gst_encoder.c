@@ -974,26 +974,16 @@ dmabuf_support_format_from_fourcc(const uint32_t fourcc) {
     return NULL;
 }
 
-struct gl_memory_destroyed_data {
-    struct gst_encoder_pipeline *gst_encoder_pipeline;
-    EGLImageKHR egl_image;
-};
-
 static void
-gl_memory_destroyed(struct gl_memory_destroyed_data *gl_memory_destroyed_data) {
-    westfield_egl_destroy_image(gl_memory_destroyed_data->gst_encoder_pipeline->gst_encoder->encoder->westfield_egl,
-                                gl_memory_destroyed_data->egl_image);
-    g_free(gl_memory_destroyed_data);
+destroy_gst_egl_image(GstEGLImage *image, gpointer user_data) {
+    struct gst_encoder_pipeline *gst_encoder_pipeline = user_data;
+    westfield_egl_destroy_image(gst_encoder_pipeline->gst_encoder->encoder->westfield_egl, gst_egl_image_get_image(image));
 }
 
 static void
-destroy_egl_image (GstEGLImage * image, gpointer user_data)
-{
-    struct gl_memory_destroyed_data gl_memory_destroyed_data = {
-            .egl_image = gst_egl_image_get_image(image),
-            .gst_encoder_pipeline = user_data
-    };
-    gl_memory_destroyed(&gl_memory_destroyed_data);
+destroy_gst_gl_memory(gpointer data) {
+    GstEGLImage *gst_egl_image = data;
+    gst_egl_image_unref(gst_egl_image);
 }
 
 static inline GstBuffer *
@@ -1012,6 +1002,12 @@ gst_encoder_pipeline_create_gl_memory_buffer(struct gst_encoder_pipeline *gst_en
             attributes,
             &external_only);
 
+    gst_egl_image = gst_egl_image_new_wrapped(gst_encoder_pipeline->gst_encoder->shared_gst_gl_context,
+                                              egl_image,
+                                              GST_GL_RGBA8,
+                                              gst_encoder_pipeline,
+                                              destroy_gst_egl_image);
+
     video_info = gst_video_info_new();
     gst_video_info_from_caps(video_info, caps);
     params = gst_gl_video_allocation_params_new_wrapped_gl_handle(
@@ -1023,15 +1019,9 @@ gst_encoder_pipeline_create_gl_memory_buffer(struct gst_encoder_pipeline *gst_en
             GST_GL_TEXTURE_TARGET_2D,
             0,
             NULL,
-            NULL,
-            NULL);
+            gst_egl_image,
+            destroy_gst_gl_memory);
     gst_video_info_free(video_info);
-
-    gst_egl_image = gst_egl_image_new_wrapped(gst_encoder_pipeline->gst_encoder->shared_gst_gl_context,
-                                              egl_image,
-                                              GST_GL_RGBA8,
-                                              gst_encoder_pipeline,
-                                              (GstEGLImageDestroyNotify) destroy_egl_image);
     ret = gst_gl_memory_setup_buffer(allocator, buffer, params, NULL, (gpointer *) &gst_egl_image, 1);
 
     if (!ret) {
