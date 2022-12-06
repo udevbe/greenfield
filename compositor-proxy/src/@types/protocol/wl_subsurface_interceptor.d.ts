@@ -4,7 +4,7 @@ import { MessageDestination } from '../../../../../westfield/server/node/proxy'
 
 export default class wl_subsurface_interceptor {
   userData: {
-    communicationChannel: RetransmittingWebSocket
+    protocolChannel: RetransmittingWebSocket
     drmContext: unknown
     messageInterceptors: Record<number, any>
     nativeClientSession?: NativeClientSession

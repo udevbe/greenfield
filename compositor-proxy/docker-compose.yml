@@ -1,12 +1,17 @@
+#Uncomment below if you want hw acceleration with an nvidia GPU to work inside the containers (requires nvidia container runtime).
+#Also make sure to configure "/dev/dri/renderD12x" and "/dev/dri/cardx" entries in this file to point to the correct GPU if you have a multi GPU setup.
+#The config.yaml file inside the src directory also needs to be adjusted to point to the correct GPU.
 version: '3.4'
 services:
   compositor-proxy:
+#    runtime: nvidia
     build:
       context: .
       dockerfile: ./Dockerfile
     privileged: false
     user: "1000:1000"
     ipc: host
+    read_only: false
     volumes:
       - xdg-runtime-dir:/xdg-runtime-dir
       - x11-unix:/tmp/.X11-unix
@@ -22,7 +27,10 @@ services:
       COMPOSITOR_SESSION_ID: test123
       XDG_RUNTIME_DIR: /xdg-runtime-dir
       XAUTHORITY: /tmp/.X11-unix/Xauthority
+#      NVIDIA_VISIBLE_DEVICES: all
+#      NVIDIA_DRIVER_CAPABILITIES: all
   gtk3-demo:
+#    runtime: nvidia
     pid: 'service:compositor-proxy'
     build:
       context: example-apps/gtk3-demo
@@ -36,8 +44,11 @@ services:
       - /dev/dri/renderD128:/dev/dri/renderD128
     environment:
       XDG_RUNTIME_DIR: /xdg-runtime-dir
+#      NVIDIA_VISIBLE_DEVICES: all
+#      NVIDIA_DRIVER_CAPABILITIES: all
     restart: always
   gtk4-demo:
+#    runtime: nvidia
     pid: 'service:compositor-proxy'
     build:
       context: example-apps/gtk4-demo
@@ -51,8 +62,11 @@ services:
       - /dev/dri/renderD128:/dev/dri/renderD128
     environment:
       XDG_RUNTIME_DIR: /xdg-runtime-dir
+#      NVIDIA_VISIBLE_DEVICES: all
+#      NVIDIA_DRIVER_CAPABILITIES: all
     restart: always
   alacritty:
+#    runtime: nvidia
     pid: 'service:compositor-proxy'
     build:
       context: example-apps/alacritty
@@ -67,8 +81,11 @@ services:
     environment:
       WAYLAND_DISPLAY: wayland-0
       XDG_RUNTIME_DIR: /xdg-runtime-dir
+#      NVIDIA_VISIBLE_DEVICES: all
+#      NVIDIA_DRIVER_CAPABILITIES: all
     restart: always
   xterm:
+#    runtime: nvidia
     pid: 'service:compositor-proxy'
     build:
       context: example-apps/xterm
@@ -85,8 +102,11 @@ services:
       XAUTHORITY: /tmp/.X11-unix/Xauthority
       XDG_RUNTIME_DIR: /xdg-runtime-dir
       DISPLAY: ':1'
+#      NVIDIA_VISIBLE_DEVICES: all
+#      NVIDIA_DRIVER_CAPABILITIES: all
     restart: always
   glxgears:
+#    runtime: nvidia
     pid: 'service:compositor-proxy'
     build:
       context: example-apps/glxgears
@@ -104,6 +124,8 @@ services:
       XAUTHORITY: /tmp/.X11-unix/Xauthority
       XDG_RUNTIME_DIR: /xdg-runtime-dir
       DISPLAY: ':1'
+#      NVIDIA_VISIBLE_DEVICES: all
+#      NVIDIA_DRIVER_CAPABILITIES: all
     restart: always
 volumes:
   xdg-runtime-dir:

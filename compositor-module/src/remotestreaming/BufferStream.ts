@@ -16,79 +16,126 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { createEncodedFrame, EncodedFrame } from './EncodedFrame'
+import { Client, WlBufferResource } from 'westfield-runtime-server'
+import { StreamingBuffer } from './StreamingBuffer'
 
 type BufferState = {
-  completionPromise: Promise<EncodedFrame | undefined>
-  completionResolve: (value?: EncodedFrame | PromiseLike<EncodedFrame>) => void
-  completionReject: (reason?: Error) => void
-  state: 'pending' | 'complete' | 'pending_alpha' | 'pending_opaque'
+  encodedFrameFuture?: {
+    promise: Promise<EncodedFrame | undefined>
+    resolve: (value: PromiseLike<EncodedFrame | undefined> | EncodedFrame | undefined) => void
+    reject: (reason?: Error) => void
+  }
   encodedFrame?: EncodedFrame
 }
 
-export default class BufferStream {
-  private readonly bufferStates: Record<number, BufferState> = {}
+const eagerBufferContents: Record<string, Uint8Array[]> = {}
 
-  static create(wlBufferResource: { onDestroy: () => Promise<void> }): BufferStream {
-    const bufferStream = new BufferStream()
-    // TODO we probably want to trigger a custom timeout error here.
-    wlBufferResource.onDestroy().then(() => {
-      Object.keys(bufferStream.bufferStates).forEach((serial) => {
-        bufferStream.onComplete(Number.parseInt(serial))
-      })
-    })
+export function deliverContentToBufferStream(client: Client, messageData: ArrayBuffer) {
+  const bufferContentsDataView = new DataView(messageData)
+  const bufferId = bufferContentsDataView.getUint32(0, true)
+  const bufferCreationSerial = bufferContentsDataView.getUint32(4, true)
+  const bufferContentSerial = bufferContentsDataView.getUint32(8, true)
+  // console.log(`received content ${bufferContentSerial}`)
+  const wlBufferResource = client.connection.wlObjects[bufferId] as WlBufferResource | undefined
+  const streamingBuffer = wlBufferResource?.implementation as StreamingBuffer | undefined
+
+  const currentBufferCreationSerial = streamingBuffer?.bufferStream.creationSerial
+
+  if (streamingBuffer && currentBufferCreationSerial === bufferCreationSerial) {
+    // console.log(`Found matching buffer for content ${bufferContentSerial}`)
+    const bufferContent = new Uint8Array(messageData, 8)
+    streamingBuffer.bufferStream.onBufferContents(bufferContent)
+    return
+  } else if (currentBufferCreationSerial && currentBufferCreationSerial > bufferCreationSerial) {
+    // console.log(`Ignoring. Matching buffer too new for content ${bufferContentSerial}`)
+    // contents arrived too late
+    return
+  } else if (
+    currentBufferCreationSerial === undefined ||
+    (currentBufferCreationSerial && currentBufferCreationSerial < bufferCreationSerial)
+  ) {
+    // console.log(`No matching buffer for content ${bufferContentSerial}, storing for future buffer.`)
+    // contents arrived too soon, store for future buffer with same id
+    const bufferContent = new Uint8Array(messageData, 8)
+    const bufferContentKey = `${bufferId}:${bufferCreationSerial}`
+    let bufferContents = eagerBufferContents[bufferContentKey]
+    if (bufferContents === undefined) {
+      bufferContents = []
+      eagerBufferContents[bufferContentKey] = bufferContents
+    }
+    bufferContents.push(bufferContent)
+    return
+  }
+}
+
+export class BufferStream {
+  constructor(
+    public readonly creationSerial: number,
+    private readonly bufferContentStates: Record<number, BufferState> = {},
+  ) {}
+
+  static create(wlBufferResource: WlBufferResource, creationSerial: number): BufferStream {
+    const bufferStream = new BufferStream(creationSerial)
+    wlBufferResource.addDestroyListener(() => bufferStream.destroy())
+    const bufferContentsKey = `${wlBufferResource.id}:${creationSerial}`
+    const bufferContents = eagerBufferContents[bufferContentsKey]
+    if (bufferContents) {
+      // console.log(`Found previous contents for buffer: ${wlBufferResource.id} with content ${creationSerial}`)
+      bufferContents.forEach((bufferContent) => bufferStream.onBufferContents(bufferContent))
+      delete eagerBufferContents[bufferContentsKey]
+    }
+    // TODO delete older contents without a buffer
     return bufferStream
   }
 
-  private onComplete(serial: number, encodedFrame?: EncodedFrame) {
-    const bufferState = this.bufferStates[serial]
-    bufferState.state = 'complete'
-    bufferState.completionPromise.then(() => delete this.bufferStates[serial])
-    bufferState.completionResolve(encodedFrame)
-  }
-
-  private newBufferState(syncSerial: number): BufferState {
-    const bufferState: BufferState = {
-      // @ts-ignore
-      completionPromise: null,
-      // @ts-ignore
-      completionResolve: null,
-      // @ts-ignore
-      completionReject: null,
-      state: 'pending', // or 'pending_alpha' or 'pending_opaque' or 'complete'
-      encodedFrame: undefined,
-    }
-    bufferState.completionPromise = new Promise<EncodedFrame | undefined>((resolve, reject) => {
-      bufferState.completionResolve = resolve
-      bufferState.completionReject = reject
-    })
-    this.bufferStates[syncSerial] = bufferState
+  private newBufferContentState(contentSerial: number): BufferState {
+    // console.log(`Creating new buffer state for content ${contentSerial}`)
+    const bufferState: BufferState = {}
+    this.bufferContentStates[contentSerial] = bufferState
     return bufferState
   }
 
   /**
    * Returns a promise that will resolve as soon as the buffer is in the 'complete' state.
    */
-  onFrameAvailable(serial: number): Promise<EncodedFrame | undefined> {
-    if (this.bufferStates[serial] && this.bufferStates[serial].encodedFrame) {
-      // state already exists, contents arrived before this call, decode it
-      this.onComplete(serial, this.bufferStates[serial].encodedFrame)
-    } else {
-      // state does not exist yet, create a new state and wait for contents to arrive
-      this.newBufferState(serial)
+  onFrameAvailable(bufferContentSerial: number): Promise<EncodedFrame | undefined> | EncodedFrame | undefined {
+    let bufferState = this.bufferContentStates[bufferContentSerial]
+    if (bufferState === undefined) {
+      bufferState = this.newBufferContentState(bufferContentSerial)
     }
 
-    // TODO we probably want to trigger a custom timeout error here if contents take too long to arrive.
-    return this.bufferStates[serial].completionPromise
+    if (bufferState.encodedFrame) {
+      // console.log(`Found buffer content ${bufferContentSerial}`)
+      delete this.bufferContentStates[bufferContentSerial]
+      return bufferState.encodedFrame
+    } else if (bufferState.encodedFrameFuture) {
+      return bufferState.encodedFrameFuture.promise
+    } else {
+      // console.log(`Waiting on buffer content ${bufferContentSerial}`)
+      const partialEncodedFrameFuture: Partial<BufferState['encodedFrameFuture']> = {}
+      partialEncodedFrameFuture.promise = new Promise<EncodedFrame | undefined>((resolve, reject) => {
+        partialEncodedFrameFuture.resolve = resolve
+        partialEncodedFrameFuture.reject = reject
+      })
+      // @ts-ignore
+      bufferState.encodedFrameFuture = partialEncodedFrameFuture
+      // @ts-ignore
+      return bufferState.encodedFrameFuture.promise
+    }
   }
 
   onBufferContents(bufferContents: Uint8Array): void {
     try {
       const encodedFrame = createEncodedFrame(bufferContents)
-      if (this.bufferStates[encodedFrame.serial]) {
-        this.bufferStates[encodedFrame.serial].encodedFrame = encodedFrame
-        this.onComplete(encodedFrame.serial, encodedFrame)
-      } else {
-        this.newBufferState(encodedFrame.serial).encodedFrame = encodedFrame
+      // console.log(`Creating encoded buffer content: ${encodedFrame.contentSerial}`)
+      let bufferState = this.bufferContentStates[encodedFrame.contentSerial]
+      if (bufferState === undefined) {
+        bufferState = this.newBufferContentState(encodedFrame.contentSerial)
+      }
+      bufferState.encodedFrame = encodedFrame
+      if (bufferState.encodedFrameFuture) {
+        delete this.bufferContentStates[encodedFrame.contentSerial]
+        bufferState.encodedFrameFuture.resolve(bufferState.encodedFrame)
       }
     } catch (e) {
       // TODO better error handling & log using session logger
@@ -97,6 +144,10 @@ export default class BufferStream {
   }
 
   destroy(): void {
-    Object.values(this.bufferStates).forEach((bufferState) => bufferState.completionResolve())
+    Object.values(this.bufferContentStates).forEach((bufferState) => {
+      if (bufferState.encodedFrameFuture) {
+        bufferState.encodedFrameFuture.resolve(undefined)
+      }
+    })
   }
 }

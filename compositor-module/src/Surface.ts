@@ -59,7 +59,7 @@ export interface SurfaceState {
   bufferTransform: number
   bufferScale: number
 
-  bufferResourceDestroyListener: () => void
+  readonly bufferResourceDestroyListener: () => void
   buffer?: WlBufferResource
   bufferContents?: BufferContents<unknown>
 
@@ -308,18 +308,18 @@ class Surface implements WlSurfaceRequests {
       | undefined
     if (bufferImplementation && this.pendingState.bufferContents === undefined) {
       try {
-        this.session.logger.trace(`|- Awaiting buffer contents with serial: ${serial ?? 'NO SERIAL'}`)
-        const startBufferContents = Date.now()
-        this.pendingState.bufferContents = await bufferImplementation.getContents(this, serial)
-
-        this.session.logger.trace(
-          `|--> Buffer contents with serial: ${serial ?? 'NO SERIAL'} took ${Date.now() - startBufferContents}ms`,
-        )
+        // console.log(`|- Awaiting buffer contents with serial: ${serial ?? 'NO SERIAL'}`)
+        // const startBufferContents = Date.now()
+        const bufferContents = bufferImplementation.getContents(this, serial)
+        this.pendingState.bufferContents = bufferContents instanceof Promise ? await bufferContents : bufferContents
+        // console.log(
+        //   `|--> Buffer contents with serial: ${serial ?? 'NO SERIAL'} took ${Date.now() - startBufferContents}ms`,
+        // )
         if (this.destroyed) {
           return
         }
       } catch (e: any) {
-        this.session.logger.warn(`[surface: ${resource.id}] - Failed to receive buffer contents.`, e.toString())
+        this.session.logger.warn(`[surface: ${resource.id}] - Failed to process buffer contents.`, e.toString())
       }
     }
     if (this.encoderFeedback && serial !== undefined) {

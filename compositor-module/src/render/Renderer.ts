@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { resetBrowserCursor, setBrowserCursor, hideBrowserCursor } from '../browser/pointer'
+import { hideBrowserCursor, resetBrowserCursor, setBrowserCursor } from '../browser/pointer'
 import { clearBrowserDndImage, setBrowserDndImage } from '../browser/dnd'
 import BufferImplementation from '../BufferImplementation'
 import { Callback } from '../Callback'
@@ -245,6 +245,14 @@ export default class Renderer {
           Object.values(view.renderStates).forEach((renderState) =>
             renderState.scene[bufferContents.mimeType](bufferContents, renderState),
           )
+          view.surface.damaged = false
+          bufferImplementation.release()
+        }
+      }
+    } else if (buffer !== undefined && bufferContents === undefined) {
+      if (view.mapped && buffer && view.surface.damaged) {
+        const bufferImplementation = buffer.implementation as BufferImplementation<any>
+        if (!bufferImplementation.released) {
           view.surface.damaged = false
           bufferImplementation.release()
         }

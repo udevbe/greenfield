@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 FROM debian:bookworm-20221004-slim as BUILD
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install  -y --no-install-recommends  \
     nodejs \
     npm \
     cmake \
@@ -17,12 +17,47 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-dev \
     libgstreamer1.0-dev \
     libgstreamer-plugins-base1.0-dev \
+    libgstreamer-plugins-bad1.0-dev \
     libgraphene-1.0-dev \
+    git \
+    python3 \
+    python3-distutils \
+    curl \
+    ca-certificates \
+    flex \
+    bison \
+    liborc-0.4-dev-bin \
     && apt-get autoremove -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-WORKDIR /app
 
+# build gstreamer from source
+RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
+    && python3 get-pip.py \
+    && python3 -m pip install meson \
+    && git clone --depth 1 --branch 1.20 https://gitlab.freedesktop.org/gstreamer/gstreamer.git
+
+RUN  cd /gstreamer \
+     && meson build \
+      --buildtype=release \
+      --strip \
+      -Dgpl=enabled \
+      -Dorc=enabled \
+      -Dbase=enabled \
+      -Dgood=enabled \
+      -Dbad=enabled \
+      -Dugly=enabled \
+      -Dauto_features=disabled \
+      -Dgst-plugins-base:app=enabled \
+      -Dgst-plugins-base:gl=enabled \
+      -Dgst-plugins-base:gl-graphene=enabled \
+      -Dgst-plugins-base:gl_winsys=egl \
+      -Dgst-plugins-base:gl_api=opengl \
+      -Dgst-plugins-bad:gl=enabled \
+      -Dgst-plugins-bad:nvcodec=enabled \
+    && ninja -C build
+
+WORKDIR /app
 RUN npm install --global yarn
 COPY ["package.json", "yarn.lock", "./"]
 RUN yarn install
@@ -42,6 +77,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgraphene-1.0-0 \
     gstreamer1.0-plugins-base \
     gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad \
     gstreamer1.0-plugins-ugly \
     gstreamer1.0-gl \
     libosmesa6 \
@@ -63,6 +99,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+COPY --from=BUILD /gstreamer/build/subprojects/gst-plugins-bad/sys/nvcodec/libgstnvcodec.so /usr/lib/x86_64-linux-gnu/gstreamer-1.0/libgstnvcodec.so
+
 COPY 10_nvidia.json /usr/share/glvnd/egl_vendor.d/10_nvidia.json
 
 WORKDIR /app
@@ -76,6 +114,7 @@ COPY --from=BUILD /app/node_modules/westfield-proxy /app/node_modules/westfield-
 COPY --from=BUILD /app/node_modules/epoll /app/node_modules/epoll
 COPY --from=BUILD /app/node_modules/bindings /app/node_modules/bindings
 COPY --from=BUILD /app/node_modules/file-uri-to-path /app/node_modules/file-uri-to-path
+RUN chown -R 1000:1000 /app
 
 RUN mkdir -p /var/run/compositor-proxy && chown 1000:1000 /var/run/compositor-proxy && touch /var/run/compositor-proxy/starting
 COPY wait-until-ready.sh /app

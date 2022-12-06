@@ -131,26 +131,25 @@ export default class XdgToplevel implements XdgToplevelRequests, DesktopSurfaceR
       return
     }
 
-    const geometry = this.xdgSurface.surface.geometry
-
-    if (this.next.state.maximized) {
-      if (this.next.size.width !== geometry.size.width || this.next.size.width !== geometry.size.width) {
-        const errorMessage = `Client protocol error. xdg_surface buffer (${geometry.size.width}x${geometry.size.height}) does not match the configured maximum state (${this.next.size.width}x${this.next.size.height})`
-        this.session.logger.warn(errorMessage)
-        this.resource.postError(XdgWmBaseError.invalidSurfaceState, errorMessage)
-        return
-      }
-    }
-
-    if (
-      this.next.state.fullscreen &&
-      (this.next.size.width !== geometry.size.width || this.next.size.width !== geometry.size.width)
-    ) {
-      const errorMessage = `Client protocol error. xdg_surface buffer (${geometry.size.width}x${geometry.size.height})  is larger than the configured fullscreen state  (${this.next.size.width}x${this.next.size.height})`
-      this.session.logger.warn(errorMessage)
-      this.resource.postError(XdgWmBaseError.invalidSurfaceState, errorMessage)
-      return
-    }
+    // const geometry = this.xdgSurface.surface.geometry
+    // if (this.next.state.maximized) {
+    //   if (this.next.size.width !== geometry.size.width || this.next.size.width !== geometry.size.width) {
+    //     const errorMessage = `Client protocol error. xdg_surface buffer (${geometry.size.width}x${geometry.size.height}) does not match the configured maximum state (${this.next.size.width}x${this.next.size.height})`
+    //     this.session.logger.warn(errorMessage)
+    //     this.resource.postError(XdgWmBaseError.invalidSurfaceState, errorMessage)
+    //     return
+    //   }
+    // }
+    //
+    // if (
+    //   this.next.state.fullscreen &&
+    //   (this.next.size.width !== geometry.size.width || this.next.size.width !== geometry.size.width)
+    // ) {
+    //   const errorMessage = `Client protocol error. xdg_surface buffer (${geometry.size.width}x${geometry.size.height})  is larger than the configured fullscreen state  (${this.next.size.width}x${this.next.size.height})`
+    //   this.session.logger.warn(errorMessage)
+    //   this.resource.postError(XdgWmBaseError.invalidSurfaceState, errorMessage)
+    //   return
+    // }
 
     this.current.state = { ...this.next.state }
     this.current.minSize = this.next.minSize

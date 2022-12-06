@@ -100,8 +100,6 @@ async function webVideoDecoderConfig(): Promise<VideoDecoderConfig | undefined> 
 
     const softwareDecoderSupport = await VideoDecoder.isConfigSupported(softwareDecoderConfig)
     if (softwareDecoderSupport) {
-      // Software decoding often has worse performance then our WASM+WebGL decoder, so we mark it as unsupported.
-      // return undefined
       return softwareDecoderConfig
     }
   }

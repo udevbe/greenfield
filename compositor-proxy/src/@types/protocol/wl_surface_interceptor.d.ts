@@ -7,11 +7,21 @@ import { MessageDestination } from '../../../../../westfield/server/node/proxy'
 export default class wl_surface_interceptor {
   destroyed: boolean
   frameFeedback?: FrameFeedback
-  bufferResourceId?: number
-  sendBufferResourceId: number
+
+  pendingBufferResourceId?: number
+  pendingBufferDestroyListener?: () => void
+  pendingFrameCallbacksIds: number[]
+
+  surfaceState?: {
+    readonly bufferResourceId: number
+    readonly encodingPromise: Promise<void>
+  }
+  bufferDestroyListener?: () => void
+
   encoder: Encoder
   userData: {
-    communicationChannel: RetransmittingWebSocket
+    protocolChannel: RetransmittingWebSocket
+    frameDataChannel: RetransmittingWebSocket
     drmContext: unknown
     messageInterceptors: Record<number, any>
     nativeClientSession?: NativeClientSession
@@ -19,7 +29,11 @@ export default class wl_surface_interceptor {
   wlClient: unknown
   id: number
 
-  encodeAndSendBuffer(syncSerial: number): void
+  encodeAndSendBuffer(args: {
+    bufferResourceId: number
+    bufferCreationSerial: number
+    bufferContentSerial: number
+  }): Promise<void>
 
   R0(message: {
     buffer: ArrayBuffer

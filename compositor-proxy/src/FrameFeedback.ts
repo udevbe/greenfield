@@ -3,10 +3,9 @@ import { performance } from 'perf_hooks'
 import { clearTimeout } from 'timers'
 
 export class FrameFeedback {
-  private callbackResourceIds: number[] = []
-  private commitTimestamp = 0
+  // frame callback prediction state
   private virtualRefreshDeadline = 0
-  private refreshInterval = 16
+  private refreshInterval = 16.667
   private clientProcessingDuration?: number
   private clientFeedbackTimestamp = 0
   private delayedFrameDoneEvents?: {
@@ -18,11 +17,6 @@ export class FrameFeedback {
   }
   private paused = false
 
-  syncParent?: FrameFeedback
-  private syncChildren: FrameFeedback[] = []
-
-  private nroPendingClientFrames = 0
-
   constructor(private wlClient: unknown, private messageInterceptors: Record<number, any>) {}
 
   destroy() {
@@ -32,28 +26,21 @@ export class FrameFeedback {
     }
   }
 
-  addFrameCallbackId(frameCallbackId: number): void {
-    this.callbackResourceIds.push(frameCallbackId)
-  }
-
-  commitNotify(): void {
-    this.commitTimestamp = performance.now()
-  }
-
-  sendDoneEvents(frameDoneTimestamp: number) {
-    if (this.callbackResourceIds.length === 0) {
-      return
-    }
-
-    const frameCallbackIds = [...this.callbackResourceIds]
-    this.callbackResourceIds = []
-
-    if (this.paused) {
-      this.createDelayedFrameDoneEvents(frameCallbackIds)
-      return
-    }
-
-    this.sendFrameDoneEventsWithCallbacks(frameDoneTimestamp, frameCallbackIds)
+  commitNotify(
+    buffer: {
+      readonly bufferResourceId: number
+      readonly encodingPromise: Promise<void>
+    },
+    frameCallbacksIds: number[],
+    isDestroyed: () => boolean,
+  ): void {
+    const committedBuffer = {
+      ...buffer,
+      commitTimestamp: performance.now(),
+      isDestroyed,
+      frameCallbacksIds,
+    } as const
+    committedBuffer.encodingPromise.then(() => this.commitDone(committedBuffer))
   }
 
   updateDelay(clientRefreshInterval: number, clientProcessingDuration: number | undefined) {
@@ -92,21 +79,18 @@ export class FrameFeedback {
     }
   }
 
-  commitDone(encodeStartTime?: number): void {
-    if (this.clientProcessingDuration === 0 || this.syncParent) {
+  private commitDone(committedBuffer: {
+    readonly frameCallbacksIds: number[]
+    readonly isDestroyed: () => boolean
+    readonly commitTimestamp: number
+  }): void {
+    if (committedBuffer.isDestroyed()) {
       return
     }
-
-    if (this.callbackResourceIds.length === 0) {
-      return
-    }
-
-    const frameCallbackIds = [...this.callbackResourceIds]
-    this.callbackResourceIds = []
 
     if (this.delayedFrameDoneEvents) {
       this.delayedFrameDoneEvents.promise.then((feedbackTime) =>
-        this.sendFrameDoneEventsWithCallbacks(feedbackTime, frameCallbackIds),
+        this.sendFrameDoneEventsWithCallbacks(feedbackTime, committedBuffer.frameCallbacksIds),
       )
       return
     }
@@ -116,18 +100,12 @@ export class FrameFeedback {
     if (now - this.clientFeedbackTimestamp > 2000 || this.clientProcessingDuration === undefined) {
       // pause sending frame done event until we have a (recent) feedback timestamp
       this.pause()
-      this.createDelayedFrameDoneEvents(frameCallbackIds)
+      this.createDelayedFrameDoneEvents(committedBuffer.frameCallbacksIds)
       return
     }
 
-    if (encodeStartTime === undefined) {
-      this.sendFrameDoneEventsWithCallbacks(now, frameCallbackIds)
-      return
-    }
-
-    const encodingDuration = now - encodeStartTime
-    const extraClientDuration =
-      this.clientProcessingDuration > encodingDuration ? this.clientProcessingDuration - encodingDuration : 0
+    const duration = now - committedBuffer.commitTimestamp
+    const extraClientDuration = this.clientProcessingDuration > duration ? this.clientProcessingDuration - duration : 0
 
     // TODO take expected application wait-for-commit into account when calculating next deadline
     this.virtualRefreshDeadline +=
@@ -136,9 +114,9 @@ export class FrameFeedback {
     const callbackDelay = this.virtualRefreshDeadline - now
 
     if (callbackDelay >= 1) {
-      this.createDelayedFrameDoneEvents(frameCallbackIds, callbackDelay)
+      this.createDelayedFrameDoneEvents(committedBuffer.frameCallbacksIds, callbackDelay)
     } else {
-      this.sendFrameDoneEventsWithCallbacks(now, frameCallbackIds)
+      this.sendFrameDoneEventsWithCallbacks(now, committedBuffer.frameCallbacksIds)
     }
   }
 
@@ -183,17 +161,13 @@ export class FrameFeedback {
     }
   }
 
-  private sendFrameDoneEventsWithCallbacks(frameDoneTimestamp: number, frameCallbackIds: number[]) {
-    if (frameCallbackIds.length > 0) {
-      frameCallbackIds.forEach((frameCallbackId) => {
-        this.sendFrameDoneEvent(frameDoneTimestamp, frameCallbackId)
-        delete this.messageInterceptors[frameCallbackId]
-      })
-    }
+  sendFrameDoneEventsWithCallbacks(frameDoneTimestamp: number, frameCallbackIds: number[]) {
+    frameCallbackIds.forEach((frameCallbackId) => {
+      this.sendFrameDoneEvent(frameDoneTimestamp, frameCallbackId)
+      delete this.messageInterceptors[frameCallbackId]
+    })
 
-    if (this.syncChildren.length > 0) {
-      this.syncChildren.forEach((syncChild) => syncChild.sendDoneEvents(frameDoneTimestamp))
-    }
+    // this.syncChildren.forEach((syncChild) => syncChild.sendDoneEvents(frameDoneTimestamp))
   }
 
   private sendFrameDoneEvent(frameDoneTimestamp: number, callbackResourceId: number) {
@@ -235,33 +209,5 @@ export class FrameFeedback {
     sendEvents(this.wlClient, releaseBufu32, new Uint32Array([]))
 
     flush(this.wlClient)
-  }
-
-  addSyncChild(childFrameFeedback: FrameFeedback) {
-    if (this.syncChildren.find((syncChild) => syncChild === childFrameFeedback) === undefined) {
-      this.syncChildren = [...this.syncChildren, childFrameFeedback]
-      childFrameFeedback.syncParent = this
-    }
-  }
-
-  removeSyncChild(childFrameFeedback: FrameFeedback) {
-    if (childFrameFeedback.syncParent === this) {
-      childFrameFeedback.syncParent = undefined
-      this.syncChildren = this.syncChildren.filter((syncChild) => syncChild !== childFrameFeedback)
-    }
-  }
-
-  setModeSync(parentFrameFeedback: FrameFeedback) {
-    if (this.syncParent) {
-      this.syncParent.removeSyncChild(this)
-    }
-    parentFrameFeedback.addSyncChild(this)
-  }
-
-  setModeDesync() {
-    if (this.syncParent) {
-      this.syncParent.removeSyncChild(this)
-      this.sendDoneEvents(performance.now())
-    }
   }
 }

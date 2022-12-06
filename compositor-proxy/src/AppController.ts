@@ -410,6 +410,8 @@ export function webSocketOpen(
   if (searchParams.has('xwmFD')) {
     const wmFD = Number.parseInt(searchParams.get('xwmFD') ?? '0')
     compositorProxySession.handleXWMConnection(ws, wmFD)
+  } else if (searchParams.has('frameData')) {
+    compositorProxySession.handleFrameDataConnection(ws, connectionId)
   } else {
     const { retransmittingWebSocket, isNew } = upsertWebSocket(connectionId, ws)
     if (!isNew) {
@@ -426,7 +428,9 @@ function readJson<T>(res: HttpResponse) {
     const chunks: Uint8Array[] = []
     /* Register data cb */
     res.onData((ab, isLast) => {
-      chunks.push(new Uint8Array(ab))
+      const chunk = new Uint8Array(new ArrayBuffer(ab.byteLength))
+      chunk.set(new Uint8Array(ab))
+      chunks.push(chunk)
       if (isLast) {
         resolve(JSON.parse(Buffer.concat(chunks).toString()))
       }
@@ -475,7 +479,9 @@ export async function POSTEncoderKeyframe(
     surfaceId
   ] as wl_surface_interceptor
   if (wlSurfaceInterceptor === undefined) {
-    logger.error('BUG. Received a key frame unit request but no surface found that matches the request.')
+    logger.error(
+      'Received a key frame unit request but no surface found that matches the request. Surface already destroyed?',
+    )
     httpResponse
       .writeStatus('404 Not Found')
       .writeHeader('Access-Control-Allow-Origin', allowOrigin)
@@ -483,10 +489,23 @@ export async function POSTEncoderKeyframe(
       .end('Surface not found.')
     return
   }
+  // if (wlSurfaceInterceptor.surfaceState?.bufferResourceId !== keyframeRequest.bufferId) {
+  //   logger.error(
+  //     'Received a key frame unit request but no buffer for surface found that matches the request. Buffer already destroyed?',
+  //   )
+  //   httpResponse
+  //     .writeStatus('404 Not Found')
+  //     .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+  //     .writeHeader('Content-Type', 'text/plain')
+  //     .end('Surface not found.')
+  //   return
+  // }
   wlSurfaceInterceptor.encoder.requestKeyUnit()
-  if (keyframeRequest.syncSerial) {
-    wlSurfaceInterceptor.encodeAndSendBuffer(keyframeRequest.syncSerial)
-  }
+  // wlSurfaceInterceptor.encodeAndSendBuffer({
+  //   bufferResourceId: keyframeRequest.bufferId,
+  //   bufferCreationSerial: keyframeRequest.bufferCreationSerial,
+  //   bufferContentSerial: keyframeRequest.bufferContentSerial,
+  // })
 
   httpResponse.writeStatus('202 Accepted').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
 }
