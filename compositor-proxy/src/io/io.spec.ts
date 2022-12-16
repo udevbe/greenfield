@@ -4,10 +4,10 @@ import { createApp } from '../App'
 import { CompositorProxySession, createCompositorProxySession } from '../CompositorProxySession'
 import jestOpenAPI from 'jest-openapi'
 import path from 'path'
-import { Webfd } from './types'
+import { ProxyFD } from './types'
 import fs from 'fs'
 import http from 'http'
-import { createCompositorProxyWebFS } from './ProxyWebFS'
+import { createProxyInputOutput } from './ProxyInputOutput'
 import { createMemoryMappedFile, makePipe } from 'westfield-proxy'
 
 describe('compositor-proxy webfs', () => {
@@ -21,7 +21,6 @@ describe('compositor-proxy webfs', () => {
 
   const otherPort = 8889
   const otherHostName = '0.0.0.0'
-  const otherHost = `${otherHostName}:${otherPort}`
   const otherBasePath = `http://localhost:${otherPort}`
   let otherApp: us_listen_socket
   let otherCompositorProxySession: CompositorProxySession
@@ -47,18 +46,18 @@ describe('compositor-proxy webfs', () => {
 
   it('creates a new local pipe pair when receiving a remote write-pipe webfd', (done) => {
     // Given
-    const ownProxyWebFS = createCompositorProxyWebFS(compositorSessionId, ownBasePath)
-    const otherPipefds = new Uint32Array(2)
-    makePipe(otherPipefds)
+    const ownProxyIO = createProxyInputOutput(compositorSessionId, ownBasePath)
+    const otherPipeFDs = new Uint32Array(2)
+    makePipe(otherPipeFDs)
 
-    const [otherReadPipeHandle, otherWritePipeHandle] = otherPipefds
-    const otherWebFD: Webfd = {
+    const [otherReadPipeHandle, otherWritePipeHandle] = otherPipeFDs
+    const otherProxyFD: ProxyFD = {
       handle: otherWritePipeHandle,
       type: 'pipe-write',
       host: otherBasePath,
     }
 
-    const ownWritePipeHandle = ownProxyWebFS.webFDtoNativeFD(otherWebFD)
+    const ownWritePipeHandle = ownProxyIO.proxyFDtoNativeFD(otherProxyFD)
 
     const sendBuffer = Buffer.from([1, 2, 3, 4])
     // When
@@ -82,7 +81,7 @@ describe('compositor-proxy webfs', () => {
   })
 })
 
-describe('compositor-proxy webfs rest api', () => {
+describe('compositor-proxy io rest api', () => {
   jestOpenAPI(path.resolve('./api.yaml'))
 
   const port = 8888
@@ -168,13 +167,13 @@ describe('compositor-proxy webfs rest api', () => {
       .end(done)
   })
 
-  it('closes a WebFd', (done) => {
+  it('closes a ProxyFD', (done) => {
     // Given
     const handle = createMemoryMappedFile(Buffer.from([1, 2, 3]))
-    const webfd: Webfd = { handle, type: 'shm', host }
+    const proxyFD: ProxyFD = { handle, type: 'shm', host }
     // When
     request(host)
-      .del(`/webfd/${webfd.handle}`)
+      .del(`/fd/${proxyFD.handle}`)
       .set('X-Compositor-Session-Id', compositorSessionId)
       // Then
       .expect(200)
@@ -185,11 +184,11 @@ describe('compositor-proxy webfs rest api', () => {
       })
   })
 
-  it('checks authorization when closing a WebFd', (done) => {
+  it('checks authorization when closing a ProxyFd', (done) => {
     // Given
     // When
     request(host)
-      .del(`/webfd/123`)
+      .del(`/fd/123`)
       // Then
       .expect(401)
       .expect('Content-Type', 'text/plain')
@@ -197,11 +196,11 @@ describe('compositor-proxy webfs rest api', () => {
       .end(done)
   })
 
-  it('checks for a malformed FD when closing a WebFd', (done) => {
+  it('checks for a malformed FD when closing a ProxyFD', (done) => {
     // Given
     // When
     request(host)
-      .del(`/webfd/abc`)
+      .del(`/fd/abc`)
       .set('X-Compositor-Session-Id', compositorSessionId)
       // Then
       .expect(400)
@@ -210,11 +209,11 @@ describe('compositor-proxy webfs rest api', () => {
       .end(done)
   })
 
-  it('checks for an unknown FD when closing a WebFd', (done) => {
+  it('checks for an unknown FD when closing a ProxyFD', (done) => {
     // Given
     // When
     request(host)
-      .del(`/webfd/123`)
+      .del(`/fd/123`)
       .set('X-Compositor-Session-Id', compositorSessionId)
       // Then
       .expect(404)
@@ -223,14 +222,14 @@ describe('compositor-proxy webfs rest api', () => {
       .end(done)
   })
 
-  it('reads a chunk from a WebFD', (done) => {
+  it('reads a chunk from a ProxyFD', (done) => {
     // Given
     const sendBuffer = Buffer.from([1, 2, 3])
     const handle = createMemoryMappedFile(sendBuffer)
-    const webfd: Webfd = { handle, type: 'shm', host }
+    const proxyFD: ProxyFD = { handle, type: 'shm', host }
     // When
     request(host)
-      .get(`/webfd/${webfd.handle}`)
+      .get(`/fd/${proxyFD.handle}`)
       .set('X-Compositor-Session-Id', compositorSessionId)
       .query({ count: 2 })
       // Then
@@ -245,7 +244,7 @@ describe('compositor-proxy webfs rest api', () => {
       })
   })
 
-  it('checks authorization when reading a chunk from a WebFD', (done) => {
+  it('checks authorization when reading a chunk from a ProxyFD', (done) => {
     // Given
     // When
     request(host)
@@ -257,7 +256,7 @@ describe('compositor-proxy webfs rest api', () => {
       .end(done)
   })
 
-  it('checks for a malformed fd when reading a chunk from a WebFD', (done) => {
+  it('checks for a malformed fd when reading a chunk from a ProxyFD', (done) => {
     // Given
     // When
     request(host)
@@ -270,7 +269,7 @@ describe('compositor-proxy webfs rest api', () => {
       .end(done)
   })
 
-  it('checks for a malformed count query param when reading a chunk from a WebFD', (done) => {
+  it('checks for a malformed count query param when reading a chunk from a ProxyFD', (done) => {
     // Given
     // When
     request(host)
@@ -284,11 +283,11 @@ describe('compositor-proxy webfs rest api', () => {
       .end(done)
   })
 
-  it('checks for unknown fd when reading a chunk from a WebFD', (done) => {
+  it('checks for unknown fd when reading a chunk from a ProxyFD', (done) => {
     // Given
     // When
     request(host)
-      .get(`/webfd/123456`)
+      .get(`/fd/123456`)
       .set('X-Compositor-Session-Id', compositorSessionId)
       .query({ count: 123 })
       // Then
@@ -306,7 +305,7 @@ describe('compositor-proxy webfs rest api', () => {
     const sendBuffer = Buffer.from([1, 2, 3])
     // When
     request(host)
-      .put(`/webfd/${writePipeHandle}/stream`)
+      .put(`/fd/${writePipeHandle}/stream`)
       .set('X-Compositor-Session-Id', compositorSessionId)
       .set('Content-Type', 'application/octet-stream')
       .send(sendBuffer)
@@ -337,7 +336,7 @@ describe('compositor-proxy webfs rest api', () => {
     const buffer = Buffer.allocUnsafe(8 * 1024 * 1024).fill('ABC')
     // When
     request(host)
-      .put(`/webfd/${writePipeHandle}/stream`)
+      .put(`/fd/${writePipeHandle}/stream`)
       .set('X-Compositor-Session-Id', compositorSessionId)
       .set('Content-Type', 'application/octet-stream')
       .send(buffer)
@@ -363,7 +362,7 @@ describe('compositor-proxy webfs rest api', () => {
     // Given
     // When
     request(host)
-      .put(`/webfd/123456/stream`)
+      .put(`/fd/123456/stream`)
       .set('Content-Type', 'application/octet-stream')
       // Then
       .expect(401)
@@ -376,7 +375,7 @@ describe('compositor-proxy webfs rest api', () => {
     // Given
     // When
     request(host)
-      .put(`/webfd/abc/stream`)
+      .put(`/fd/abc/stream`)
       .set('X-Compositor-Session-Id', compositorSessionId)
       .set('Content-Type', 'application/octet-stream')
       // Then
@@ -390,7 +389,7 @@ describe('compositor-proxy webfs rest api', () => {
     // Given
     // When
     request(host)
-      .put(`/webfd/123456/stream`)
+      .put(`/fd/123456/stream`)
       .set('X-Compositor-Session-Id', compositorSessionId)
       .set('Content-Type', 'application/octet-stream')
       // Then
@@ -414,7 +413,7 @@ describe('compositor-proxy webfs rest api', () => {
     })
 
     request(host)
-      .get(`/webfd/${readPipeHandle}/stream`)
+      .get(`/fd/${readPipeHandle}/stream`)
       .set('X-Compositor-Session-Id', compositorSessionId)
       // Then
       .expect(200)
@@ -427,9 +426,9 @@ describe('compositor-proxy webfs rest api', () => {
 
   it('streams data from a webfd using preferred chunk size', (done) => {
     // Given
-    const pipefds = new Uint32Array(2)
-    makePipe(pipefds)
-    const [readPipeHandle, writePipeHandle] = pipefds
+    const pipeFDs = new Uint32Array(2)
+    makePipe(pipeFDs)
+    const [readPipeHandle, writePipeHandle] = pipeFDs
     const buffer = Buffer.from([1, 2, 3])
 
     // When
@@ -440,7 +439,7 @@ describe('compositor-proxy webfs rest api', () => {
 
     const chunks: any[] = []
     request(host)
-      .get(`/webfd/${readPipeHandle}/stream`)
+      .get(`/fd/${readPipeHandle}/stream`)
       .query({ chunkSize: 1 })
       .set('X-Compositor-Session-Id', compositorSessionId)
       // Then
@@ -488,7 +487,7 @@ describe('compositor-proxy webfs rest api', () => {
         {
           hostname: 'localhost',
           port: 8888,
-          path: `/webfd/${readPipeHandle}/stream`,
+          path: `/fd/${readPipeHandle}/stream`,
           method: 'GET',
           headers: {
             ['X-Compositor-Session-Id']: compositorSessionId,
@@ -519,7 +518,7 @@ describe('compositor-proxy webfs rest api', () => {
     // Given
     // When
     request(host)
-      .get(`/webfd/123456/stream`)
+      .get(`/fd/123456/stream`)
       // Then
       .expect(401)
       .expect('Content-Type', 'text/plain')
@@ -531,7 +530,7 @@ describe('compositor-proxy webfs rest api', () => {
     // Given
     // When
     request(host)
-      .get(`/webfd/abc/stream`)
+      .get(`/fd/abc/stream`)
       .set('X-Compositor-Session-Id', compositorSessionId)
       // Then
       .expect(400)
@@ -544,7 +543,7 @@ describe('compositor-proxy webfs rest api', () => {
     // Given
     // When
     request(host)
-      .get(`/webfd/123456/stream`)
+      .get(`/fd/123456/stream`)
       .set('X-Compositor-Session-Id', compositorSessionId)
       // Then
       .expect(404)

@@ -1,7 +1,7 @@
 import type { CompositorProxySession } from './CompositorProxySession'
 import type { HttpRequest, HttpResponse } from 'uWebSockets.js'
 import fs from 'fs'
-import { TRANSFER_CHUNK_SIZE } from './webfs/ProxyWebFS'
+import { TRANSFER_CHUNK_SIZE } from './io/ProxyInputOutput'
 import { Readable, Writable } from 'stream'
 import { WebSocketLike } from 'retransmitting-websocket'
 import { upsertWebSocket } from './ClientConnectionPool'

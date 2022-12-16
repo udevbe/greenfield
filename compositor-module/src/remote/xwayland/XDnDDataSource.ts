@@ -63,7 +63,7 @@ export class XDnDDataSource implements DataSource {
     )
   }
 
-  send(mimeType: string, gWebFD: InputOutputFD) {
+  send(mimeType: string, ioFD: InputOutputFD) {
     this.xWindowManager.xConnection.convertSelection(
       this.xWindowManager.selectionWindow,
       this.xWindowManager.atoms.XdndSelection,
@@ -73,7 +73,7 @@ export class XDnDDataSource implements DataSource {
     )
     this.xWindowManager.xConnection.flush()
 
-    this.xWindowManager.dataSourceFd = gWebFD
+    this.xWindowManager.dataSourceFd = ioFD
   }
 
   cancel(force?: boolean) {

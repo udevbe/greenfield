@@ -17,7 +17,7 @@
 
 import { Epoll } from 'epoll'
 import { RetransmittingWebSocket, WebSocketLike } from 'retransmitting-websocket'
-import { createCompositorProxyWebFS } from './webfs/ProxyWebFS'
+import { createProxyInputOutput } from './io/ProxyInputOutput'
 import { registerUnboundClientConnection } from './ClientConnectionPool'
 import { createLogger } from './Logger'
 
@@ -71,7 +71,7 @@ export class NativeCompositorSession {
 
   constructor(
     public readonly compositorSessionId: string,
-    public readonly webFS = createCompositorProxyWebFS(compositorSessionId, config.public.baseURL),
+    public readonly webFS = createProxyInputOutput(compositorSessionId, config.public.baseURL),
     public clients: ClientEntry[] = [],
   ) {
     this.wlDisplay = createDisplay(

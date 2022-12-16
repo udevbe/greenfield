@@ -30,10 +30,10 @@ export class BrowserTextDataSource implements DataSource {
     this.destroyPromise.then(() => this.destroyListeners.forEach((listener) => listener()))
   }
 
-  send(mimeType: string, gWebFD: InputOutputFD) {
+  send(mimeType: string, ioFD: InputOutputFD) {
     const matchingOffer = this.mimeTypes.includes(mimeType)
     if (matchingOffer) {
-      gWebFD.write(new Blob([textEncoder.encode(this.offer)])).then(() => gWebFD.close())
+      ioFD.write(new Blob([textEncoder.encode(this.offer)])).then(() => ioFD.close())
     }
   }
 

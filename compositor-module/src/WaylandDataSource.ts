@@ -90,8 +90,8 @@ export class WaylandDataSource implements WlDataSourceRequests, DataSource {
     this.resource.target(mimeType)
   }
 
-  send(mimeType: string, gWebFD: InputOutputFD): void {
-    this.resource.send(mimeType, gWebFD.fd)
+  send(mimeType: string, ioFD: InputOutputFD): void {
+    this.resource.send(mimeType, ioFD.fd)
   }
 
   cancel(): void {

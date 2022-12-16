@@ -27,7 +27,7 @@ import Session from '../Session'
 import XWaylandShell from './xwayland/XWaylandShell'
 import { XWindowManager } from './xwayland/XWindowManager'
 import { XWindowManagerConnection } from './xwayland/XWindowManagerConnection'
-import { Configuration, EncoderApi, ProxyWebFD } from '../api'
+import { Configuration, EncoderApi, ProxyFD } from '../api'
 import Surface from '../Surface'
 import { ClientEncodersFeedback, createClientEncodersFeedback } from './EncoderFeedback'
 import { deliverContentToBufferStream } from './BufferStream'
@@ -70,7 +70,7 @@ export function randomString(): string {
   return `ra${base32Encode(randomBytes).toLowerCase()}`
 }
 
-export function isProxyFD(fd: any): fd is ProxyWebFD {
+export function isProxyFD(fd: any): fd is ProxyFD {
   return typeof fd?.handle === 'number' && typeof fd?.host === 'string' && typeof fd?.type === 'string'
 }
 

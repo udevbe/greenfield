@@ -35,7 +35,7 @@ export interface DataSource {
   readonly version: 3 | number
 
   accept(mimeType: string | undefined): void
-  send(mimeType: string, gWebFD: InputOutputFD): void
+  send(mimeType: string, ioFD: InputOutputFD): void
   cancel(force?: boolean): void
 
   action(action: WlDataDeviceManagerDndAction): void

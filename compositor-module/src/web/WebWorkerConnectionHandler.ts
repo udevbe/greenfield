@@ -77,9 +77,8 @@ export class WebWorkerConnectionHandler {
         let offset = 0
         const meta: Transferable[] = []
         for (const wireMessage of sendWireMessages) {
-          for (const webFd of wireMessage.fds) {
-            const transferable = webFd as Transferable
-            meta.push(transferable)
+          for (const fd of wireMessage.fds) {
+            meta.push(fd as Transferable)
           }
           const message = new Uint32Array(wireMessage.buffer)
           sendBuffer.set(message, offset)

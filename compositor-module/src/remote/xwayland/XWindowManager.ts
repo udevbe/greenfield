@@ -1573,7 +1573,7 @@ export class XWindowManager {
     } catch (e: unknown) {
       this.session.logger.error(`read error from data source ${e}`)
       this.sendSelectionNotify(Atom.None)
-      // TODO check if we need to close the webfd?
+      // TODO check if we need to close the fd?
     }
   }
 
@@ -1620,13 +1620,13 @@ export class XWindowManager {
       }
       this.xConnection.flush()
       this.dataSourceFd = undefined
-      // TODO close webfd?
+      // TODO close fd?
     } else {
       this.session.logger.info(`non incr transfer complete`)
       this.flushSourceData()
       this.sendSelectionNotify(this.selectionRequest?.property ?? 0)
       this.xConnection.flush()
-      // TODO close webfd?
+      // TODO close fd?
       this.selectionRequest.requestor = Atom.None
     }
   }

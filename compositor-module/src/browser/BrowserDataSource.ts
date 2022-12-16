@@ -31,14 +31,14 @@ export class BrowserDataSource implements DataSource {
     this.destroyPromise.then(() => this.destroyListeners.forEach((listener) => listener()))
   }
 
-  send(mimeType: string, gWebFD: InputOutputFD) {
+  send(mimeType: string, ioFD: InputOutputFD) {
     mimeType = mimeType === 'text/plain;charset=utf-8' ? 'text/plain' : mimeType
     const matchingOffer = this.offers.find((offer) => offer.types.includes(mimeType))
     if (matchingOffer) {
       matchingOffer
         .getType(mimeType)
-        .then((offerData) => gWebFD.write(offerData))
-        .then(() => gWebFD.close())
+        .then((offerData) => ioFD.write(offerData))
+        .then(() => ioFD.close())
     }
   }
 
