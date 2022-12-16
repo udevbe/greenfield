@@ -16,11 +16,11 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { Client } from 'westfield-runtime-server'
-import RemoteAppLauncher from './RemoteAppLauncher'
-import RemoteSocket from './RemoteSocket'
+import { RemoteAppLauncher } from './remote/RemoteAppLauncher'
 import Session, { GreenfieldLogger } from './Session'
 import { UserShellApi } from './UserShellApi'
 import { nrmlvo } from './Xkb'
+import { WebWorkerAppLauncher } from './web/WebWorkerAppLauncher'
 
 export { init as initWasm } from './lib'
 export * from './ButtonEvent'
@@ -76,28 +76,19 @@ export interface CompositorConfiguration {
   keyboardLayoutName?: string
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export type CompositorRemoteSocket = unknown
+export interface CompositorConnector {
+  connectTo(url: URL, auth?: string): Promise<Client> | Client
+}
 
-export function createCompositorRemoteSocket(session: CompositorSession): CompositorRemoteSocket {
-  if (session instanceof Session) {
-    return RemoteSocket.create(session)
-  } else {
+export function createConnector(session: CompositorSession, type: 'remote' | 'web'): CompositorConnector {
+  if (!(session instanceof Session)) {
     throw new Error('Session does not have expected implementation.')
   }
-}
-
-export interface CompositorProxyConnector {
-  connectTo(url: URL, auth?: string): Promise<Client>
-}
-
-export function createCompositorProxyConnector(
-  session: CompositorSession,
-  remoteSocket: CompositorRemoteSocket,
-): CompositorProxyConnector {
-  if (session instanceof Session && remoteSocket instanceof RemoteSocket) {
-    return RemoteAppLauncher.create(session, remoteSocket)
+  if (type == 'remote') {
+    return RemoteAppLauncher.create(session)
+  } else if (type === 'web') {
+    return WebWorkerAppLauncher.create(session)
   } else {
-    throw new Error('Session and/or remote socket do not have expected implementation.')
+    throw new Error(`Connector type must be 'remote' or 'web'.`)
   }
 }

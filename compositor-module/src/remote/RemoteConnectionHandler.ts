@@ -16,24 +16,29 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { MessageEventLike, ReadyState, RetransmittingWebSocket, WebSocketLike } from 'retransmitting-websocket'
-import { SendMessage, WebFD } from 'westfield-runtime-common'
+import { FD, SendMessage } from 'westfield-runtime-common'
 import { Client, WlBufferResource, WlSurfaceResource } from 'westfield-runtime-server'
 import RemoteOutOfBandChannel, {
   RemoteOutOfBandListenOpcode,
   RemoteOutOfBandSendOpcode,
 } from './RemoteOutOfBandChannel'
-import { StreamingBuffer } from './remotestreaming/StreamingBuffer'
-import Session from './Session'
+import { StreamingBuffer } from './StreamingBuffer'
+import Session from '../Session'
 import XWaylandShell from './xwayland/XWaylandShell'
 import { XWindowManager } from './xwayland/XWindowManager'
 import { XWindowManagerConnection } from './xwayland/XWindowManagerConnection'
-import { createRemoteWebFS } from './WebFS'
-import { Configuration, EncoderApi } from './api'
-import Surface from './Surface'
-import { createClientEncodersFeedback } from './remotestreaming/EncoderFeedback'
-import { deliverContentToBufferStream } from './remotestreaming/BufferStream'
+import { Configuration, EncoderApi, ProxyWebFD } from '../api'
+import Surface from '../Surface'
+import { ClientEncodersFeedback, createClientEncodersFeedback } from './EncoderFeedback'
+import { deliverContentToBufferStream } from './BufferStream'
+import { createRemoteInputOutput } from './RemoteInputOutput'
 
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567' as const
+
+export type RemoteClientContext = {
+  clientEncoderFeedback: ClientEncodersFeedback
+  encoderApi: EncoderApi
+}
 
 function base32Encode(data: Uint8Array) {
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength)
@@ -62,7 +67,11 @@ function base32Encode(data: Uint8Array) {
 export function randomString(): string {
   const randomBytes = new Uint8Array(16)
   window.crypto.getRandomValues(randomBytes)
-  return base32Encode(randomBytes).toLowerCase()
+  return `ra${base32Encode(randomBytes).toLowerCase()}`
+}
+
+export function isProxyFD(fd: any): fd is ProxyWebFD {
+  return typeof fd?.handle === 'number' && typeof fd?.host === 'string' && typeof fd?.type === 'string'
 }
 
 type XWaylandConnectionState = {
@@ -86,14 +95,14 @@ export function createRetransmittingWebSocket(url: URL, connectionId: string): W
   })
 }
 
-class RemoteSocket {
+export class RemoteConnectionHandler {
   private readonly textEncoder: TextEncoder = new TextEncoder()
   private readonly textDecoder: TextDecoder = new TextDecoder()
 
   private constructor(private readonly session: Session) {}
 
-  static create(session: Session): RemoteSocket {
-    return new RemoteSocket(session)
+  static create(session: Session): RemoteConnectionHandler {
+    return new RemoteConnectionHandler(session)
   }
 
   ensureXWayland(compositorProxyURL: URL): void {
@@ -137,8 +146,9 @@ class RemoteSocket {
         })
         webSocket.addEventListener('error', (event) => this.session.logger.warn(`[WebSocket] - error`, event))
 
-        client.connection.onFlush = (wireMessages: SendMessage[]) =>
+        client.connection.onFlush = (wireMessages: SendMessage[]) => {
           this.flushWireMessages(client, webSocket, wireMessages)
+        }
 
         const oobChannel = RemoteOutOfBandChannel.create(this.session, (sendBuffer) => {
           if (webSocket.readyState === 1) {
@@ -180,8 +190,8 @@ class RemoteSocket {
         )
         client.userData = {
           encoderApi,
-          webfs: createRemoteWebFS(basePath, this.session.compositorSessionId),
           clientEncodersFeedback: createClientEncodersFeedback(clientId, encoderApi),
+          inputOutput: createRemoteInputOutput(basePath, this.session.compositorSessionId),
         }
 
         this.setupFrameDataChannel(client, compositorProxyURL, clientId)
@@ -308,14 +318,14 @@ class RemoteSocket {
         let offset = 0
         const receiveBuffer = new Uint32Array(arrayBuffer, Uint32Array.BYTES_PER_ELEMENT)
         const fdsInCount = receiveBuffer[offset++]
-        const webFDs = new Array<WebFD>(fdsInCount)
+        const fds = new Array<FD>(fdsInCount)
         for (let i = 0; i < fdsInCount; i++) {
-          const { read, webFd } = this.deserializeWebFD(receiveBuffer.subarray(offset))
+          const { read, fd } = this.deserializeFD(receiveBuffer.subarray(offset))
           offset += read
-          webFDs[i] = webFd
+          fds[i] = fd
         }
         const buffer = receiveBuffer.subarray(offset)
-        client.connection.message({ buffer, fds: webFDs }).catch((e: Error) => {
+        client.connection.message({ buffer, fds }).catch((e: Error) => {
           // @ts-ignore
           this.session.logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
           this.session.logger.error('error object stack: ')
@@ -335,20 +345,25 @@ class RemoteSocket {
       return
     }
 
-    let messageSize = 1 // +1 for indicator of it's an out of band message
+    let messageSize = 1 // +1 for indicator if it's an out-of-band message
     const serializedWireMessages = wireMessages.map((wireMessage) => {
       let size = 1 // +1 for fd length
-      const serializedWebFds: Uint8Array[] = wireMessage.fds.map((webFd: WebFD) => {
-        const serializedWebFD = this.textEncoder.encode(JSON.stringify(webFd))
-        size += 1 + ((serializedWebFD.byteLength + 3) & ~3) / 4 // +1 for encoded fd length
-        return serializedWebFD
+      const serializedFds: Uint8Array[] = wireMessage.fds.map((fd: FD) => {
+        if (isProxyFD(fd)) {
+          const serializedFD = this.textEncoder.encode(JSON.stringify(fd))
+          size += 1 + ((serializedFD.byteLength + 3) & ~3) / 4 // +1 for encoded fd length
+          return serializedFD
+        } else {
+          // TODO InputOutputFD Communication between remote client and web client
+          throw new Error(`TODO. FD Communication between remote client and web client not yet implemented.`)
+        }
       })
 
       messageSize += size + wireMessage.buffer.byteLength / 4
 
       return {
         buffer: wireMessage.buffer,
-        serializedWebFds,
+        serializedFds,
       }
     })
 
@@ -357,14 +372,14 @@ class RemoteSocket {
     sendBuffer[offset++] = 0 // no out-of-band opcode
 
     serializedWireMessages.forEach((serializedWireMessage) => {
-      sendBuffer[offset++] = serializedWireMessage.serializedWebFds.length
-      serializedWireMessage.serializedWebFds.forEach((serializedWebFd) => {
-        sendBuffer[offset++] = serializedWebFd.byteLength
+      sendBuffer[offset++] = serializedWireMessage.serializedFds.length
+      serializedWireMessage.serializedFds.forEach((serializedFd) => {
+        sendBuffer[offset++] = serializedFd.byteLength
         new Uint8Array(sendBuffer.buffer, sendBuffer.byteOffset + offset * Uint32Array.BYTES_PER_ELEMENT).set(
-          serializedWebFd,
+          serializedFd,
         )
         // TODO we don't need to pad here as it's already padded?
-        offset += ((serializedWebFd.byteLength + 3) & ~3) / 4
+        offset += ((serializedFd.byteLength + 3) & ~3) / 4
       })
 
       const message = new Uint32Array(serializedWireMessage.buffer)
@@ -382,22 +397,16 @@ class RemoteSocket {
     }
   }
 
-  private deserializeWebFD(sourceBuf: Uint32Array): { read: number; webFd: WebFD } {
-    const webFdbyteLength = sourceBuf[0]
-    const webFdBytes = new Uint8Array(
-      sourceBuf.buffer,
-      sourceBuf.byteOffset + Uint32Array.BYTES_PER_ELEMENT,
-      webFdbyteLength,
-    )
+  private deserializeFD(sourceBuf: Uint32Array): { read: number; fd: FD } {
+    const fdByteLength = sourceBuf[0]
+    const fdBytes = new Uint8Array(sourceBuf.buffer, sourceBuf.byteOffset + Uint32Array.BYTES_PER_ELEMENT, fdByteLength)
 
-    const webFdJSON = this.textDecoder.decode(webFdBytes)
-    const webFd: WebFD = JSON.parse(webFdJSON)
+    const fdJSON = this.textDecoder.decode(fdBytes)
+    const fd: FD = JSON.parse(fdJSON)
 
     return {
-      read: 1 + ((webFdbyteLength + 3) & ~3) / 4,
-      webFd,
+      read: 1 + ((fdByteLength + 3) & ~3) / 4,
+      fd,
     }
   }
 }
-
-export default RemoteSocket

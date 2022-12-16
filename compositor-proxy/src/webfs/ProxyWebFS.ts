@@ -1,7 +1,7 @@
 import { createReadStream } from 'fs'
 import { ClientRequest, request as httpRequest, RequestOptions } from 'http'
 import { request as httpsRequest } from 'https'
-import { Webfd } from './types'
+import { ProxyWebFD } from './types'
 import { createLogger } from '../Logger'
 import { createMemoryMappedFile, makePipe } from 'westfield-proxy'
 
@@ -18,20 +18,20 @@ export class ProxyWebFS {
   constructor(private readonly compositorSessionId: string, readonly baseURL: string) {}
 
   /**
-   * Creates a native fd that matches the content & behavior of the foreign webfd
+   * Creates a native fd that matches the content & behavior of the foreign proxyWebFD
    */
-  webFDtoNativeFD(webfd: Webfd): number {
-    if (webfd.host === this.baseURL) {
-      return webfd.handle
+  webFDtoNativeFD(proxyWebFD: ProxyWebFD): number {
+    if (proxyWebFD.host === this.baseURL) {
+      return proxyWebFD.handle
     } else {
-      return this.handleForeignWebFd(webfd)
+      return this.handleForeignWebFd(proxyWebFD)
     }
   }
 
   /**
-   * Returns a native write pipe fd that -when written- will transfer its data to the given webfd host
+   * Returns a native write pipe fd that when written, will transfer its data to the given proxyWebFD's host
    */
-  private toNativePipeWriteFD(webfd: Webfd): number {
+  private toNativePipeWriteFD(proxyWebFD: ProxyWebFD): number {
     const pipeFds = new Uint32Array(2)
     makePipe(pipeFds)
     const readFd = pipeFds[0]
@@ -42,7 +42,7 @@ export class ProxyWebFS {
       highWaterMark: TRANSFER_CHUNK_SIZE,
     })
 
-    const url = new URL(`${webfd.host}/webfd/${webfd.handle}/stream`)
+    const url = new URL(`${proxyWebFD.host}/webfd/${proxyWebFD.handle}/stream`)
     url.searchParams.append('chunkSize', `${TRANSFER_CHUNK_SIZE}`)
     const isHttp = url.protocol === 'http:'
     const isHttps = url.protocol === 'https:'
@@ -82,7 +82,7 @@ export class ProxyWebFS {
           }
         })
         .on('error', (err) => {
-          logger.error('Error while perform a PUT on webfd stream.')
+          logger.error('Error while perform a PUT on proxyWebFD stream.')
           logger.error(err)
         })
 
@@ -93,21 +93,21 @@ export class ProxyWebFS {
     return pipeFds[1]
   }
 
-  private handleForeignWebFd(webfd: Webfd): number {
-    const webFdType = webfd.type
+  private handleForeignWebFd(proxyWebFD: ProxyWebFD): number {
+    const proxyWebFdType = proxyWebFD.type
 
-    switch (webFdType) {
+    switch (proxyWebFdType) {
       case 'pipe-write':
-        return this.toNativePipeWriteFD(webfd)
+        return this.toNativePipeWriteFD(proxyWebFD)
       case 'pipe-read':
       case 'shm':
       case 'unknown':
-        logger.error(`Sharing webfds of type ${webFdType} between proxies is currently not supported.`)
+        logger.error(`Sharing proxy webfds of type ${proxyWebFdType} between proxies is currently not supported.`)
         return -1
     }
   }
 
-  mkpipe(): [Webfd, Webfd] {
+  mkpipe(): [ProxyWebFD, ProxyWebFD] {
     const pipeFds = new Uint32Array(2)
     makePipe(pipeFds)
 
@@ -125,7 +125,7 @@ export class ProxyWebFS {
     ]
   }
 
-  mkstempMmap(buffer: Buffer): Webfd {
+  mkstempMmap(buffer: Buffer): ProxyWebFD {
     const fd = createMemoryMappedFile(buffer)
     return {
       handle: fd,

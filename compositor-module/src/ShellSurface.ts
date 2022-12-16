@@ -65,7 +65,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, DesktopSurf
     wlSurfaceResource: WlSurfaceResource,
     session: Session,
   ): ShellSurface {
-    wlSurfaceResource.onDestroy().then(() => wlShellSurfaceResource.destroy())
+    wlSurfaceResource.addDestroyListener(() => wlShellSurfaceResource.destroy())
     const surface = wlSurfaceResource.implementation as Surface
     const view = View.create(surface)
     const shellSurface = new ShellSurface(wlShellSurfaceResource, surface, session, view)
@@ -74,7 +74,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, DesktopSurf
     surface.role = shellSurface
     shellSurface.doPing(wlShellSurfaceResource)
 
-    wlShellSurfaceResource.onDestroy().then(() => {
+    wlShellSurfaceResource.addDestroyListener(() => {
       clearTimeout(shellSurface._timeoutTimer)
       clearTimeout(shellSurface._pingTimer)
       shellSurface.handleDestroy()
@@ -126,11 +126,11 @@ export default class ShellSurface implements WlShellSurfaceRequests, DesktopSurf
   }
 
   configureActivated(): void {
-    throw new Error('Method not implemented.')
+    console.warn(`WLSHELL DEPRECATED: 'configureActivated' Method not implemented.`)
   }
 
   configureResizing(): void {
-    throw new Error('Method not implemented.')
+    console.warn(`WLSHELL DEPRECATED: 'configureResizing' Method not implemented.`)
   }
 
   onCommit(surface: Surface): void {

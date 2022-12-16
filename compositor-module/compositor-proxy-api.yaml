@@ -21,7 +21,7 @@ components:
           schema:
             type: string
   schemas:
-    WebFD:
+    ProxyWebFD:
       description: >
         This type carefully matches the WebFD type as defined in the [Westfield Wayland protocol generator](https://github.com/udevbe/westfield).
         It narrows the 'handle' property of the original WebFD type -which has type 'unknown'- to an 'integer' as to mimic a native file descriptor.
@@ -186,7 +186,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/WebFD'
+                  $ref: '#/components/schemas/ProxyWebFD'
                 example:
                   - fd: 8
                     type: pipe-read
@@ -215,7 +215,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/WebFD'
+                $ref: '#/components/schemas/ProxyWebFD'
               example:
                 fd: 10
                 type: shm

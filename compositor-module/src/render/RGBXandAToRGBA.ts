@@ -16,11 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { Size, sizeEquals } from '../math/Size'
-import {
-  DualPlaneRGBAArrayBuffer,
-  DualPlaneRGBAImageBitmap,
-  DualPlaneRGBAVideoFrame,
-} from '../remotestreaming/DecodedFrame'
+import { DualPlaneRGBAArrayBuffer, DualPlaneRGBAImageBitmap, DualPlaneRGBAVideoFrame } from '../remote/DecodedFrame'
 import Session from '../Session'
 import RenderState from './RenderState'
 import { RGBandA2RGBAShader } from './RGBandA2RGBAShader'

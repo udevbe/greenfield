@@ -30,7 +30,7 @@ import Session from './Session'
 import Surface from './Surface'
 
 export default class Compositor implements WlCompositorRequests {
-  private surfaceCreationListeners: ((surface: Surface) => void)[] = []
+  private surfaceCreationListeners: ((surface: Surface) => Promise<void> | void)[] = []
   private global?: Global
 
   static create(session: Session): Compositor {
@@ -65,7 +65,10 @@ export default class Compositor implements WlCompositorRequests {
     const wlSurfaceResource = new WlSurfaceResource(resource.client, id, resource.version)
     const surface = Surface.create(wlSurfaceResource, this.session)
     for (const surfaceCreationListener of this.surfaceCreationListeners) {
-      await surfaceCreationListener(surface)
+      const promiseOrVoid = surfaceCreationListener(surface)
+      if (promiseOrVoid instanceof Promise) {
+        await promiseOrVoid
+      }
     }
   }
 

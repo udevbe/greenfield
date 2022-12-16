@@ -26,7 +26,7 @@ import wl_display_interceptor from './protocol/wl_display_interceptor'
 // eslint-disable-next-line camelcase,@typescript-eslint/ban-ts-comment
 // @ts-ignore
 import wl_buffer_interceptor from './protocol/wl_buffer_interceptor'
-import { Webfd } from './webfs/types'
+import { ProxyWebFD } from './webfs/types'
 import { TextDecoder, TextEncoder } from 'util'
 import {
   destroyClient,
@@ -49,18 +49,18 @@ const logger = createLogger('native-client-session')
 const textDecoder = new TextDecoder()
 const textEncoder = new TextEncoder()
 
-function deserializeWebFDJSON(sourceBuf: ArrayBufferView): { webfd: Webfd; bytesRead: number } {
+function deserializeWebFDJSON(sourceBuf: ArrayBufferView): { proxyWebFD: ProxyWebFD; bytesRead: number } {
   const webFDByteLength = new Uint32Array(sourceBuf.buffer, sourceBuf.byteOffset, 1)[0]
-  const encodedWebfdJSON = new Uint8Array(
+  const encodedProxyWeFDdJSON = new Uint8Array(
     sourceBuf.buffer,
     sourceBuf.byteOffset + Uint32Array.BYTES_PER_ELEMENT,
     webFDByteLength,
   )
-  const webfdJSON = textDecoder.decode(encodedWebfdJSON)
-  const webfd: Webfd = JSON.parse(webfdJSON)
+  const proxyWebFDJSON = textDecoder.decode(encodedProxyWeFDdJSON)
+  const proxyWebFD: ProxyWebFD = JSON.parse(proxyWebFDJSON)
 
   const alignedWebFDBytesLength = (webFDByteLength + 3) & ~3
-  return { webfd, bytesRead: alignedWebFDBytesLength + Uint32Array.BYTES_PER_ELEMENT }
+  return { proxyWebFD, bytesRead: alignedWebFDBytesLength + Uint32Array.BYTES_PER_ELEMENT }
 }
 
 export function createNativeClientSession(
@@ -210,8 +210,8 @@ export class NativeClientSession {
         const fdsCount = inboundMessage[readOffset++]
         const fdsBuffer = new Uint32Array(fdsCount)
         for (let i = 0; i < fdsCount; i++) {
-          const { webfd, bytesRead } = deserializeWebFDJSON(inboundMessage.subarray(readOffset))
-          fdsBuffer[i] = this.nativeCompositorSession.webFS.webFDtoNativeFD(webfd)
+          const { proxyWebFD, bytesRead } = deserializeWebFDJSON(inboundMessage.subarray(readOffset))
+          fdsBuffer[i] = this.nativeCompositorSession.webFS.webFDtoNativeFD(proxyWebFD)
           readOffset += bytesRead / Uint32Array.BYTES_PER_ELEMENT
         }
 
@@ -324,15 +324,15 @@ export class NativeClientSession {
       nroFds = fdsInWithType.length
       for (let i = 0; i < nroFds; i++) {
         const fd = fdsInWithType[i]
-        const webfd: Webfd = {
+        const proxyWebFD: ProxyWebFD = {
           handle: fd,
           type: 'unknown',
           host: this.nativeCompositorSession.webFS.baseURL,
         }
-        const serializedWebFD = textEncoder.encode(JSON.stringify(webfd))
-        serializedWebFDs[i] = serializedWebFD
+        const encodedProxyWebFDJSON = textEncoder.encode(JSON.stringify(proxyWebFD))
+        serializedWebFDs[i] = encodedProxyWebFDJSON
         // align webfdurl size to 32bits
-        fdsIntBufferSize += 1 + ((serializedWebFD.byteLength + 3) & ~3) / 4 // size (1) + data (n)
+        fdsIntBufferSize += 1 + ((encodedProxyWebFDJSON.byteLength + 3) & ~3) / 4 // size (1) + data (n)
       }
     }
 

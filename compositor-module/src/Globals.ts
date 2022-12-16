@@ -7,6 +7,7 @@ import Session from './Session'
 import Shell from './Shell'
 import Subcompositor from './Subcompositor'
 import XdgWmBase from './XdgWmBase'
+import { WebBuffersFactory } from './web/WebBuffersFactory'
 
 class Globals implements CompositorGlobals {
   static create(session: Session): Globals {
@@ -19,7 +20,9 @@ class Globals implements CompositorGlobals {
     const shell = Shell.create(session)
     const xdgWmBase = XdgWmBase.create(session, seat)
 
-    return new Globals(session, seat, compositor, dataDeviceManager, subcompositor, shell, xdgWmBase)
+    const webBuffersFactory = WebBuffersFactory.create(session)
+
+    return new Globals(session, seat, compositor, dataDeviceManager, subcompositor, shell, xdgWmBase, webBuffersFactory)
   }
 
   private constructor(
@@ -30,6 +33,7 @@ class Globals implements CompositorGlobals {
     public readonly subcompositor: Subcompositor,
     public readonly shell: Shell,
     public readonly xdgWmBase: XdgWmBase,
+    public readonly webBuffersFactory: WebBuffersFactory,
     public outputs: Output[] = [],
   ) {}
 
@@ -49,8 +53,8 @@ class Globals implements CompositorGlobals {
     this.seat.registerGlobal(this.session.display.registry)
     this.shell.registerGlobal(this.session.display.registry)
     this.subcompositor.registerGlobal(this.session.display.registry)
-
     this.xdgWmBase.registerGlobal(this.session.display.registry)
+    this.webBuffersFactory.registerGlobal(this.session.display.registry)
   }
 
   unregister(): void {
@@ -59,8 +63,8 @@ class Globals implements CompositorGlobals {
     this.seat.unregisterGlobal()
     this.shell.unregisterGlobal()
     this.subcompositor.unregisterGlobal()
-
     this.xdgWmBase.unregisterGlobal()
+    this.webBuffersFactory.unregisterGlobal()
   }
 }
 

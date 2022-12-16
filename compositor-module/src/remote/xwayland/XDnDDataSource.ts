@@ -1,8 +1,8 @@
-import { DataSource } from '../DataSource'
+import { DataSource } from '../../DataSource'
 import { WlDataDeviceManagerDndAction } from 'westfield-runtime-server'
-import DataOffer from '../DataOffer'
+import DataOffer from '../../DataOffer'
 import { ClientMessageEvent, EventMask, marshallClientMessageEvent, SendEventDest, Time, Window } from 'xtsb'
-import { GWebFD } from '../WebFS'
+import { InputOutputFD } from '../../InputOutput'
 import { XWindowManager } from './XWindowManager'
 
 export function createXDnDDataSource(xWindowManager: XWindowManager, window: Window, version: number) {
@@ -27,7 +27,7 @@ export class XDnDDataSource implements DataSource {
     private readonly xWindowManager: XWindowManager,
     public readonly window: Window,
     readonly version: number,
-    readonly webfs = xWindowManager.client.userData.webfs,
+    readonly inputOutput = xWindowManager.client.userData.inputOutput,
   ) {
     this.destroyPromise.then(() => this.destroyListeners.forEach((listener) => listener()))
   }
@@ -63,7 +63,7 @@ export class XDnDDataSource implements DataSource {
     )
   }
 
-  send(mimeType: string, gWebFD: GWebFD) {
+  send(mimeType: string, gWebFD: InputOutputFD) {
     this.xWindowManager.xConnection.convertSelection(
       this.xWindowManager.selectionWindow,
       this.xWindowManager.atoms.XdndSelection,

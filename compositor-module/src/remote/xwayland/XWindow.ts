@@ -15,14 +15,14 @@ import {
   Window,
   WindowClass,
 } from 'xtsb'
-import { queueCancellableMicrotask } from '../Loop'
-import { Point } from '../math/Point'
-import { createRect } from '../math/Rect'
-import { Size } from '../math/Size'
-import Output from '../Output'
-import { fini, init, initRect } from '../Region'
-import Session from '../Session'
-import Surface from '../Surface'
+import { queueCancellableMicrotask } from '../../Loop'
+import { Point } from '../../math/Point'
+import { createRect } from '../../math/Rect'
+import { Size } from '../../math/Size'
+import Output from '../../Output'
+import { fini, init, initRect } from '../../Region'
+import Session from '../../Session'
+import Surface from '../../Surface'
 import {
   _NET_WM_MOVERESIZE_CANCEL,
   _NET_WM_MOVERESIZE_MOVE,

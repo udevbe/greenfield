@@ -16,16 +16,15 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { Display } from 'westfield-runtime-server'
-import { EncoderApi } from './api'
 import Globals from './Globals'
 import { ButtonCode, CompositorSession } from './index'
-import { FrameDecoder } from './remotestreaming/buffer-decoder'
-import { createWasmFrameDecoder } from './remotestreaming/wasm-buffer-decoder'
+import { FrameDecoder } from './remote/buffer-decoder'
+import { createWasmFrameDecoder } from './remote/wasm-buffer-decoder'
 import {
   webCodecFrameDecoderFactory,
   hardwareDecoderConfig,
   softwareDecoderConfig,
-} from './remotestreaming/webcodec-buffer-decoder'
+} from './remote/webcodec-buffer-decoder'
 import Renderer from './render/Renderer'
 import { createUserShellApi, UserShellApi } from './UserShellApi'
 
@@ -90,7 +89,6 @@ export type GreenfieldLogger = {
    */
   trace: LogFn
 }
-
 async function webVideoDecoderConfig(): Promise<VideoDecoderConfig | undefined> {
   if ('VideoDecoder' in window) {
     const hardwareDecoderSupport = await VideoDecoder.isConfigSupported(hardwareDecoderConfig)
@@ -149,6 +147,7 @@ class Session implements CompositorSession {
         crypto.getRandomValues(randomBytes)
         return `sid:${[...randomBytes].map((b) => b.toString(16).padStart(2, '0')).join('')}`
       })()
+
     let decoderFactory: FrameDecoderFactory
     const webCodecSupport = await webVideoDecoderConfig()
     if (webCodecSupport) {

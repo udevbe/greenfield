@@ -164,7 +164,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
   focusedSurface?: DesktopSurface
   activationListeners: ((surface: Surface) => void)[] = []
   private global?: Global
-  private readonly _seatName: 'browser-seat0' = 'browser-seat0'
+  private readonly _seatName = 'browser-seat0' as const
   private selectionSerial = 0
   private modifierState: KeyboardModifier = 0
   private readonly selectionDataSourceDestroyListener: () => void
@@ -247,7 +247,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
     if (this.global) {
       wlPointerResource.implementation = this.pointer
       this.pointer.resources = [...this.pointer.resources, wlPointerResource]
-      wlPointerResource.onDestroy().then(() => {
+      wlPointerResource.addDestroyListener(() => {
         this.pointer.resources = this.pointer.resources.filter((otherResource) => otherResource !== wlPointerResource)
       })
       if (this.pointer.focus?.surface.resource.client === wlPointerResource.client) {
@@ -278,7 +278,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
     if (this.global) {
       wlKeyboardResource.implementation = this.keyboard
       this.keyboard.resources = [...this.keyboard.resources, wlKeyboardResource]
-      wlKeyboardResource.onDestroy().then(() => {
+      wlKeyboardResource.addDestroyListener(() => {
         this.keyboard.resources = this.keyboard.resources.filter(
           (otherResource) => otherResource !== wlKeyboardResource,
         )

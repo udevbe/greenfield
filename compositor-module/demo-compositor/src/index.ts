@@ -1,6 +1,5 @@
 import {
-  createCompositorProxyConnector,
-  createCompositorRemoteSocket,
+  createConnector,
   createCompositorSession,
   initWasm,
 } from '../../src'
@@ -42,12 +41,11 @@ async function main() {
   session.userShell.events.clientDestroyed = (compositorClient) =>
     document.getElementById(`client-id-${compositorClient.id}`)?.remove()
 
-  const remoteSocket = createCompositorRemoteSocket(session)
-  const compositorProxyConnector = createCompositorProxyConnector(session, remoteSocket)
+  const compositorProxyConnector = createConnector(session, 'remote')
+  const compositorWebConnector = createConnector(session, 'web')
 
   const connect8081Button: HTMLButtonElement = document.createElement('button')
   connect8081Button.textContent = `connect to ws://${proxyHost}:8081?compositorSessionId=${compositorSessionId}`
-
   connect8081Button.onclick = () => {
     const compositorProxyURL = new URL(`ws://${proxyHost}:8081`)
     compositorProxyURL.searchParams.append('compositorSessionId', compositorSessionId)
@@ -56,16 +54,23 @@ async function main() {
 
   const connect8082Button: HTMLButtonElement = document.createElement('button')
   connect8082Button.textContent = `connect to ws://${proxyHost}:8082?compositorSessionId=${compositorSessionId}`
-
   connect8082Button.onclick = () => {
     const compositorProxyURL = new URL(`ws://${proxyHost}:8082`)
     compositorProxyURL.searchParams.append('compositorSessionId', compositorSessionId)
     compositorProxyConnector.connectTo(compositorProxyURL)
   }
 
+  const connect9000Button: HTMLButtonElement = document.createElement('button')
+  connect9000Button.textContent = `connect to http://localhost:9000/app.js`
+  connect9000Button.onclick = () => {
+    const webAppURL = new URL(`http://localhost:9000/app.js`)
+    compositorWebConnector.connectTo(webAppURL)
+  }
+
   const container: HTMLDivElement = document.createElement('div')
   container.appendChild(connect8081Button)
   container.appendChild(connect8082Button)
+  container.appendChild(connect9000Button)
 
   // make compositor global protocol objects available to client
   session.globals.register()

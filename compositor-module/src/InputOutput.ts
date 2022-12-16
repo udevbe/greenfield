@@ -15,13 +15,26 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { Size } from './math/Size'
+import { FD } from 'westfield-runtime-common'
 
-export default interface BufferContents<T> {
-  readonly validateSize?: () => void
+export interface InputOutputFD {
+  fd: FD
 
-  readonly size: Size
-  readonly mimeType: 'video/h264' | 'image/png' | 'image/bitmap'
-  readonly pixelContent: T
-  readonly contentSerial: number
+  write(data: Blob): Promise<void>
+
+  read(count: number): Promise<Blob>
+
+  readStream(chunkSize: number): Promise<ReadableStream<Uint8Array>>
+
+  readBlob(): Promise<Blob>
+
+  close(): Promise<void>
+}
+
+export interface InputOutput {
+  mkstempMmap(data: Blob): Promise<InputOutputFD>
+
+  mkfifo(): Promise<Array<InputOutputFD>>
+
+  wrapFD(fd: FD, type: 'pipe-read' | 'pipe-write' | 'shm'): InputOutputFD
 }
