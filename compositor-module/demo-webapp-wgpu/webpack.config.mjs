@@ -1,18 +1,19 @@
 import path from "path";
 import { fileURLToPath } from "url";
 
+// import WasmPackPlugin from "@wasm-tool/wasm-pack-plugin";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const entryFile = path.resolve(__dirname, "./src/index.ts");
-
 const commonConfig = () => {
   return {
-    // mode: 'development',
-    // devtool: 'inline-source-map',
+    mode: 'development',
+    devtool: 'inline-source-map',
     entry: [entryFile],
     target: "webworker",
-    mode: "production",
+    // mode: "production",
     module: {
       rules: [
         // Handle TypeScript
@@ -20,8 +21,16 @@ const commonConfig = () => {
           test: /\.(ts?)$/,
           use: "ts-loader",
           exclude: [/node_modules/]
+        },
+        // Handle WebAssembly
+        {
+          test: /\.wasm$/,
+          type: "webassembly/async"
         }
       ]
+    },
+    experiments: {
+      asyncWebAssembly: true,
     },
     resolve: {
       extensions: [".ts", ".js"]
@@ -33,7 +42,7 @@ const commonConfig = () => {
     devServer: {
       static: "./dist",
       headers: { "Access-Control-Allow-Origin": "*" },
-      port: 9000
+      port: 9001
     }
   };
 };

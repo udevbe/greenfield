@@ -35,35 +35,6 @@ export function randomString(): string {
   return `wa${base32Encode(randomBytes).toLowerCase()}`
 }
 
-function getCrossOriginWorkerURL(originalWorkerUrl: string): Promise<string> | string {
-  const options = {
-    useBlob: false,
-  }
-
-  if (!originalWorkerUrl.includes('://') || originalWorkerUrl.includes(window.location.origin)) {
-    // The same origin - Worker will run fine
-    return originalWorkerUrl
-  }
-
-  return new Promise<string>((resolve, reject) =>
-    fetch(originalWorkerUrl)
-      .then((res) => res.text())
-      .then((codeString) => {
-        const workerPath = new URL(originalWorkerUrl).href.split('/')
-        workerPath.pop()
-
-        const importScriptsFix = `const _importScripts = importScripts;
-const _fixImports = (url) => new URL(url, '${workerPath.join('/') + '/'}').href;
-importScripts = (...urls) => _importScripts(...urls.map(_fixImports));`
-
-        const finalURL = `data:application/javascript,${encodeURIComponent(importScriptsFix + codeString)}`
-
-        resolve(finalURL)
-      })
-      .catch(reject),
-  )
-}
-
 export class WebWorkerAppLauncher implements CompositorConnector {
   static create(session: Session) {
     return new WebWorkerAppLauncher(session)
@@ -77,8 +48,8 @@ export class WebWorkerAppLauncher implements CompositorConnector {
 
   async connectTo(url: URL, auth?: string): Promise<Client> {
     const clientId = randomString()
-    const workerUrl = await getCrossOriginWorkerURL(url.href)
-    const worker = new Worker(new URL(workerUrl), { name: clientId })
+    // const workerUrl = await getCrossOriginWorkerURL(url.href)
+    const worker = new Worker(url, { name: clientId })
     const client = this.webAppSocket.onWebAppWorker(worker, clientId)
     client.onClose().then(() => {
       worker.terminate()

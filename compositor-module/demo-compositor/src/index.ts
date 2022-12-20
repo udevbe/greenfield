@@ -1,8 +1,4 @@
-import {
-  createConnector,
-  createCompositorSession,
-  initWasm,
-} from '../../src'
+import { createConnector, createCompositorSession, initWasm } from '../../src'
 
 const proxyHost = 'localhost'
 
@@ -60,17 +56,25 @@ async function main() {
     compositorProxyConnector.connectTo(compositorProxyURL)
   }
 
-  const connect9000Button: HTMLButtonElement = document.createElement('button')
-  connect9000Button.textContent = `connect to http://localhost:9000/app.js`
-  connect9000Button.onclick = () => {
-    const webAppURL = new URL(`http://localhost:9000/app.js`)
+  const demoWebAppButton: HTMLButtonElement = document.createElement('button')
+  demoWebAppButton.textContent = `Launch demo webapp`
+  demoWebAppButton.onclick = () => {
+    const webAppURL = new URL(`${location.origin}/demo-webapp/app.js`)
+    compositorWebConnector.connectTo(webAppURL)
+  }
+
+  const demoWebAppWGPUButton: HTMLButtonElement = document.createElement('button')
+  demoWebAppWGPUButton.textContent = `Launch demo webapp wgpu`
+  demoWebAppWGPUButton.onclick = () => {
+    const webAppURL = new URL(`${location.origin}/demo-webapp-wgpu/app.js`)
     compositorWebConnector.connectTo(webAppURL)
   }
 
   const container: HTMLDivElement = document.createElement('div')
   container.appendChild(connect8081Button)
   container.appendChild(connect8082Button)
-  container.appendChild(connect9000Button)
+  container.appendChild(demoWebAppButton)
+  container.appendChild(demoWebAppWGPUButton)
 
   // make compositor global protocol objects available to client
   session.globals.register()
