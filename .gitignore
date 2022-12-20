@@ -157,3 +157,5 @@ CTestTestfile.cmake
 /compositor-proxy/src/encoding/proxy-encoding-addon.node
 /compositor-module/demo-webapp/build/
 /compositor-module/demo-webapp-wgpu/target/
+/compositor-module/demo-webapp-wgpu/dist/
+/compositor-module/demo-webapp/dist/
