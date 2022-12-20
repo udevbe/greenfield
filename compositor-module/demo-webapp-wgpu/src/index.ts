@@ -17,7 +17,6 @@
 
 import {
   display,
-  frame,
   GfWebBufferFactoryProtocolName,
   GfWebBufferFactoryProxy,
   WlBufferEvents,
@@ -41,7 +40,7 @@ import {
 } from 'westfield-runtime-client'
 import { Fixed } from 'westfield-runtime-common'
 
-import { setup, draw } from '../pkg'
+import { setup_and_draw } from '../pkg'
 
 class ImageBitmapBuffer implements WlBufferEvents {
   static create(webGL: GfWebBufferFactoryProxy, imageBitmap: ImageBitmap): ImageBitmapBuffer {
@@ -75,7 +74,7 @@ class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, Wl
   private wlSurfaceProxy?: WlSurfaceProxy
   private wlShellSurfaceProxy?: WlShellSurfaceProxy
   private frameCount = 0
-  private onFrame?: () => Promise<number>
+  // private onFrame?: () => Promise<number>
   private wlPointerProxy?: WlPointerProxy
   private readonly canvas: OffscreenCanvas
 
@@ -89,7 +88,7 @@ class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, Wl
       case WlCompositorProtocolName: {
         this.wlCompositorProxy = this.wlRegistryProxy.bind(name, WlCompositorProtocolName, WlCompositorProxy, version)
         this.wlSurfaceProxy = this.wlCompositorProxy.createSurface()
-        this.onFrame = frame(this.wlSurfaceProxy)
+        // this.onFrame = frame(this.wlSurfaceProxy)
         break
       }
 
@@ -132,7 +131,6 @@ class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, Wl
     display.flush()
     await syncPromise
 
-    await setup(this.canvas)
     setInterval(() => {
       console.log(`FPS: ${this.frameCount}`)
       this.frameCount = 0
@@ -142,24 +140,20 @@ class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, Wl
   /**
    * @param {number}time
    */
-  async draw(time: number) {
+  async draw() {
     if (this.wlSurfaceProxy === undefined) {
       throw new Error('No surface.')
     }
     if (this.webGlProxy === undefined) {
       throw new Error('No image bitmap buffer available.')
     }
-    draw(time)
+
+    await setup_and_draw(this.canvas)
 
     const imageBitmap = this.canvas.transferToImageBitmap()
     const imageBitmapBuffer = ImageBitmapBuffer.create(this.webGlProxy, imageBitmap)
     this.wlSurfaceProxy.attach(imageBitmapBuffer.proxy, 0, 0)
     this.wlSurfaceProxy.damage(0, 0, this.canvas.width, this.canvas.height)
-
-    // Wait for the compositor to signal that we can draw the next frame.
-    // Note that using 'await' here would result in a deadlock as the event loop would be blocked, and the event
-    // that resolves the await state would never be picked up by the blocked event loop.
-    this.onFrame?.().then((time) => this.draw(time))
 
     // serial is only required if our buffer contents would take a long time to send to the compositor ie. in a network remote case
     this.wlSurfaceProxy.commit(0)
@@ -259,7 +253,7 @@ async function main() {
   await syncPromise
   // Now begin drawing after the compositor is done processing all our requests
   await window.init()
-  window.draw(0)
+  await window.draw()
   display.flush()
   // wait for the display connection to close
   try {

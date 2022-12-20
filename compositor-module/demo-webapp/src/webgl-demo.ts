@@ -15,7 +15,7 @@
 
 import { mat4, vec3 } from 'gl-matrix'
 
-export type DrawingState = {
+type DrawingState = {
   programInfo: {
     uniformLocations: {
       projectionMatrix: WebGLUniformLocation
@@ -91,12 +91,8 @@ function initGlBuffers(gl: WebGLRenderingContext): { color: WebGLBuffer; positio
   }
 }
 
-function drawScene(
-  canvas: OffscreenCanvas,
-  gl: WebGLRenderingContext,
-  { programInfo, glBuffers }: DrawingState,
-  time: number,
-) {
+function drawScene(canvas: OffscreenCanvas, gl: WebGLRenderingContext, drawingState: unknown, time: number) {
+  const { programInfo, glBuffers } = drawingState as DrawingState
   const squareRotation = time * 0.001
   gl.clearColor(0.0, 0.0, 0.0, 0.7) // Clear to black, fully opaque
   gl.clearDepth(1.0) // Clear everything
@@ -235,7 +231,7 @@ function loadShader(gl: WebGLRenderingContext, type: number, source: string): We
   return shader
 }
 
-function initDraw(gl: WebGLRenderingContext): DrawingState {
+function initDraw(gl: WebGLRenderingContext): unknown {
   // Vertex shader program
   const vsSource = `
     attribute vec4 aVertexPosition;

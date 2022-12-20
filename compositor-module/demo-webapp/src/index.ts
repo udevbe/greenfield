@@ -41,8 +41,7 @@ import {
 } from 'westfield-runtime-client'
 import { Fixed } from 'westfield-runtime-common'
 
-import { DrawingState, drawScene, initDraw } from './webgl-demo'
-
+import { drawScene, initDraw } from './webgl-demo'
 class ImageBitmapBuffer implements WlBufferEvents {
   static create(webGL: GfWebBufferFactoryProxy, imageBitmap: ImageBitmap): ImageBitmapBuffer {
     const proxy = webGL.createBuffer(imageBitmap)
@@ -78,7 +77,7 @@ class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, Wl
   private onFrame?: () => Promise<number>
   private wlPointerProxy?: WlPointerProxy
   private readonly webGLRenderingContext: WebGLRenderingContext
-  private drawingState?: DrawingState
+  private drawingState?: unknown
   private readonly canvas: OffscreenCanvas
 
   constructor(registry: WlRegistryProxy, public width: number, public height: number) {

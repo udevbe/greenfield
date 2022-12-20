@@ -3,7 +3,16 @@ use std::borrow::Cow;
 use wasm_bindgen::prelude::*;
 use wgpu::{Backends, Instance, Surface};
 
-async fn run(instance: Instance, surface: Surface) {
+#[wasm_bindgen]
+pub async fn setup_and_draw(canvas: web_sys::OffscreenCanvas) {
+    std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+    console_log::init_with_level(log::Level::Warn).expect("Couldn't initialize logger");
+
+    let instance = Instance::new(Backends::all());
+    let surface: Surface = instance.create_surface_from_offscreen_canvas(&canvas);
+    let width = canvas.width();
+    let height = canvas.height();
+
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::default(),
@@ -61,12 +70,12 @@ async fn run(instance: Instance, surface: Surface) {
         multiview: None,
     });
 
-    let mut config = wgpu::SurfaceConfiguration {
+    let config = wgpu::SurfaceConfiguration {
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
         format: swapchain_format,
-        width: 500,
-        height: 500,
-        present_mode: wgpu::PresentMode::Fifo,
+        width,
+        height,
+        present_mode: wgpu::PresentMode::AutoNoVsync,
         alpha_mode: surface.get_supported_alpha_modes(&adapter)[0],
     };
 
@@ -78,8 +87,7 @@ async fn run(instance: Instance, surface: Surface) {
     let view = frame
         .texture
         .create_view(&wgpu::TextureViewDescriptor::default());
-    let mut encoder =
-        device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     {
         let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
@@ -100,17 +108,3 @@ async fn run(instance: Instance, surface: Surface) {
     queue.submit(Some(encoder.finish()));
     frame.present();
 }
-
-#[wasm_bindgen]
-pub async fn setup(canvas: web_sys::OffscreenCanvas) {
-    std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-    console_log::init_with_level(log::Level::Warn).expect("Couldn't initialize logger");
-
-    let instance = wgpu::Instance::new(wgpu::Backends::all());
-    let surface: Surface = instance.create_surface_from_offscreen_canvas(&canvas);
-
-    run(instance, surface).await;
-}
-
-#[wasm_bindgen]
-pub fn draw(_time: f64) {}
