@@ -133,9 +133,11 @@ the combination of [WebCodecs API](https://developer.mozilla.org/en-US/docs/Web/
 [<img src="https://docs.google.com/drawings/d/e/2PACX-1vRIPsXAvlTFj-bERKWLeoo5RFWUQHfLyQOymNZ8c-kVEhpsh8GGXYAkudanvpNzycTC3G9xuCPxHX6x/pub?w=1985&h=561" />](https://docs.google.com/drawings/d/e/2PACX-1vRIPsXAvlTFj-bERKWLeoo5RFWUQHfLyQOymNZ8c-kVEhpsh8GGXYAkudanvpNzycTC3G9xuCPxHX6x/pub?w=1985&h=561)
 
 Here we've extended the old solution with support for the Wayland DRM protocol (+ DMA_BUF protocol). This allows for a zero-copy transfer of the application pixels to the encoding pipeline. We've also added support
-for the H.264 WebCodecs API, which allows us to do decoding on the GPU of the receiving browser client if supported. If no usable GPU is available in the Compositor-Proxy, the piple falls back to slower software rendering.
+for the H.264 WebCodecs API, which allows us to do decoding on the GPU of the receiving browser client if supported. If no usable GPU is available in the Compositor-Proxy, the pipeline falls back to slower software rendering.
 
 *The end result is a near ideal solution that is expected be fast enough to support gaming.*
+
+There is however one drawback and that's the use of web sockets which is ill-suited for network constrained environments. Future implementations will use WebTransport with a fallback to WebRTC.
 
 
 ### Copy-Paste
