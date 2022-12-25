@@ -67,17 +67,17 @@ import {
   XConnection,
   XFixes,
 } from 'xtsb'
-import eResize from '../assets/e-resize.png'
-import leftPtr from '../assets/left_ptr.png'
-import nResize from '../assets/n-resize.png'
-import neResize from '../assets/ne-resize.png'
-import nwResize from '../assets/nw-resize.png'
-import sResize from '../assets/s-resize.png'
-import seResize from '../assets/se-resize.png'
-import swResize from '../assets/sw-resize.png'
-import wResize from '../assets/w-resize.png'
-import Session from '../Session'
-import Surface from '../Surface'
+import eResize from '../../assets/e-resize.png'
+import leftPtr from '../../assets/left_ptr.png'
+import nResize from '../../assets/n-resize.png'
+import neResize from '../../assets/ne-resize.png'
+import nwResize from '../../assets/nw-resize.png'
+import sResize from '../../assets/s-resize.png'
+import seResize from '../../assets/se-resize.png'
+import swResize from '../../assets/sw-resize.png'
+import wResize from '../../assets/w-resize.png'
+import Session from '../../Session'
+import Surface from '../../Surface'
 import { CursorType } from './CursorType'
 import { ICCCM_NORMAL_STATE, ICCCM_WITHDRAWN_STATE, SEND_EVENT_MASK } from './XConstants'
 import XWaylandShell from './XWaylandShell'
@@ -86,7 +86,7 @@ import { XWindow } from './XWindow'
 import { FrameFlag, FrameStatus, themeCreate, ThemeLocation, XWindowTheme } from './XWindowFrame'
 import { XWindowManagerConnection } from './XWindowManagerConnection'
 import { createXDataSource, XDataSource } from './XDataSource'
-import { GWebFD } from '../WebFS'
+import { InputOutputFD } from '../../InputOutput'
 import { createXDnDDataSource, XDnDDataSource } from './XDnDDataSource'
 
 type ConfigureValueList = Parameters<XConnection['configureWindow']>[1]
@@ -580,7 +580,7 @@ export class XWindowManager {
   private selectionOwner?: WINDOW
   private selectionTimestamp = 0
   private selectionTarget = Atom.None
-  dataSourceFd?: GWebFD
+  dataSourceFd?: InputOutputFD
   private selectionPropertySet = false
   private flushPropertyOnDelete = false
   private sourceData?: Uint8Array
@@ -1544,7 +1544,7 @@ export class XWindowManager {
       return
     }
 
-    const pipe = await this.session.globals.seat.selectionDataSource.webfs.mkfifo()
+    const pipe = await this.session.globals.seat.selectionDataSource.inputOutput.mkfifo()
     this.selectionTarget = target
     this.dataSourceFd = pipe[0]
     this.session.globals.seat.selectionDataSource?.send(mimeType, pipe[1])
@@ -1552,7 +1552,7 @@ export class XWindowManager {
     await this.readDataSource(this.dataSourceFd)
   }
 
-  private async readDataSource(fd: GWebFD) {
+  private async readDataSource(fd: InputOutputFD) {
     if (this.session.globals.seat.selectionDataSource === undefined) {
       return
     }
@@ -1573,7 +1573,7 @@ export class XWindowManager {
     } catch (e: unknown) {
       this.session.logger.error(`read error from data source ${e}`)
       this.sendSelectionNotify(Atom.None)
-      // TODO check if we need to close the webfd?
+      // TODO check if we need to close the fd?
     }
   }
 
@@ -1620,13 +1620,13 @@ export class XWindowManager {
       }
       this.xConnection.flush()
       this.dataSourceFd = undefined
-      // TODO close webfd?
+      // TODO close fd?
     } else {
       this.session.logger.info(`non incr transfer complete`)
       this.flushSourceData()
       this.sendSelectionNotify(this.selectionRequest?.property ?? 0)
       this.xConnection.flush()
-      // TODO close webfd?
+      // TODO close fd?
       this.selectionRequest.requestor = Atom.None
     }
   }

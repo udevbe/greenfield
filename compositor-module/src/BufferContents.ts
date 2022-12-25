@@ -21,7 +21,7 @@ export default interface BufferContents<T> {
   readonly validateSize?: () => void
 
   readonly size: Size
-  readonly mimeType: 'video/h264' | 'image/png' | 'image/rgba' | 'image/canvas'
+  readonly mimeType: 'video/h264' | 'image/png' | 'image/bitmap'
   readonly pixelContent: T
   readonly contentSerial: number
 }

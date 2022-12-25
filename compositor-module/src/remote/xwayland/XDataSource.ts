@@ -1,9 +1,9 @@
-import { DataSource } from '../DataSource'
-import DataOffer from '../DataOffer'
+import { DataSource } from '../../DataSource'
+import DataOffer from '../../DataOffer'
 import { WlDataDeviceManagerDndAction } from 'westfield-runtime-server'
 import { XWindowManager } from './XWindowManager'
 import { Time } from 'xtsb'
-import { GWebFD } from '../WebFS'
+import { InputOutputFD } from '../../InputOutput'
 
 export function createXDataSource(xWindowManager: XWindowManager): XDataSource {
   return new XDataSource(xWindowManager)
@@ -24,7 +24,10 @@ export class XDataSource implements DataSource {
   private destroyResolve: (value: void | PromiseLike<void>) => void
   private destroyPromise = new Promise<void>((resolve) => (this.destroyResolve = resolve))
 
-  constructor(private readonly xWindowManager: XWindowManager, readonly webfs = xWindowManager.client.userData.webfs) {
+  constructor(
+    private readonly xWindowManager: XWindowManager,
+    readonly inputOutput = xWindowManager.client.userData.inputOutput,
+  ) {
     this.destroyPromise.then(() => this.destroyListeners.forEach((listener) => listener()))
   }
 
@@ -32,7 +35,7 @@ export class XDataSource implements DataSource {
     // noop
   }
 
-  send(mimeType: string, fd: GWebFD): void {
+  send(mimeType: string, fd: InputOutputFD): void {
     if (mimeType === 'text/plain;charset=utf-8' || mimeType === 'text/plain') {
       this.xWindowManager.xConnection.convertSelection(
         this.xWindowManager.selectionWindow,

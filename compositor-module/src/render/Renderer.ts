@@ -22,11 +22,13 @@ import { Callback } from '../Callback'
 import { queueCancellableMicrotask } from '../Loop'
 import { Point } from '../math/Point'
 import Output from '../Output'
-import { isDecodedFrame } from '../remotestreaming/DecodedFrame'
+import { isDecodedFrame } from '../remote/DecodedFrame'
 import Session from '../Session'
 import Surface from '../Surface'
 import View from '../View'
 import { Scene } from './Scene'
+import { isWebBufferContent } from '../web/WebBuffer'
+import renderState from './RenderState'
 
 function createRenderFrame(): Promise<number> {
   return new Promise<number>((resolve) => {
@@ -249,6 +251,10 @@ export default class Renderer {
           bufferImplementation.release()
         }
       }
+    } else if (isWebBufferContent(bufferContents)) {
+      Object.values(view.renderStates).forEach((renderState) =>
+        renderState.scene[bufferContents.mimeType](bufferContents, renderState),
+      )
     } else if (buffer !== undefined && bufferContents === undefined) {
       if (view.mapped && buffer && view.surface.damaged) {
         const bufferImplementation = buffer.implementation as BufferImplementation<any>

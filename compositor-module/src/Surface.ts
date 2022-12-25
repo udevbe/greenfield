@@ -40,7 +40,7 @@ import Region, {
   destroyPixmanRegion,
   contains,
 } from './Region'
-import { FrameDecoder, H264DecoderContext } from './remotestreaming/buffer-decoder'
+import { FrameDecoder, H264DecoderContext } from './remote/buffer-decoder'
 import Renderer from './render/Renderer'
 import Session from './Session'
 import { sizeEquals, Size } from './math/Size'
@@ -62,9 +62,7 @@ export interface SurfaceState {
   readonly bufferResourceDestroyListener: () => void
   buffer?: WlBufferResource
   bufferContents?: BufferContents<unknown>
-
   subsurfaceChildren: SurfaceChild[]
-
   frameCallbacks: Callback[]
 }
 
@@ -209,7 +207,7 @@ class Surface implements WlSurfaceRequests {
     initRect(surface.pixmanRegion, { x0: 0, y0: 0, x1: 0, y1: 0 })
     wlSurfaceResource.implementation = surface
 
-    wlSurfaceResource.onDestroy().then(() => {
+    wlSurfaceResource.addDestroyListener(() => {
       fini(surface.state.opaquePixmanRegion)
       fini(surface.state.inputPixmanRegion)
       fini(surface.pendingState.opaquePixmanRegion)
@@ -238,7 +236,7 @@ class Surface implements WlSurfaceRequests {
     this._addChild(surfaceChild, this.state.subsurfaceChildren)
     this.pendingState.subsurfaceChildren.push(surfaceChild)
 
-    surfaceChild.surface.resource.onDestroy().then(() => {
+    surfaceChild.surface.resource.addDestroyListener(() => {
       this.removeSubsurface(surfaceChild)
     })
   }

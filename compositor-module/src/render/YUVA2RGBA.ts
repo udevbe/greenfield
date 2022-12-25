@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { sizeEquals, Size } from '../math/Size'
-import { DualPlaneYUVAArrayBuffer } from '../remotestreaming/DecodedFrame'
+import { DualPlaneYUVAArrayBuffer } from '../remote/DecodedFrame'
 import Session from '../Session'
 import RenderState from './RenderState'
 import Texture from './Texture'

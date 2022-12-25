@@ -1,7 +1,8 @@
 import { DataSource } from '../DataSource'
 import { WlDataDeviceManagerDndAction } from 'westfield-runtime-server'
 import DataOffer from '../DataOffer'
-import { browserWebFS, GWebFD } from '../WebFS'
+import { InputOutputFD } from '../InputOutput'
+import { webInputOutput } from '../web/WebInputOutput'
 
 const textEncoder = new TextEncoder()
 
@@ -10,7 +11,7 @@ export function createBrowserTextDataSource(offer: string): DataSource {
 }
 
 export class BrowserTextDataSource implements DataSource {
-  readonly webfs = browserWebFS
+  readonly inputOutput = webInputOutput
   accepted = false
   compositorAction = WlDataDeviceManagerDndAction.none
   currentDndAction = WlDataDeviceManagerDndAction.none
@@ -29,10 +30,10 @@ export class BrowserTextDataSource implements DataSource {
     this.destroyPromise.then(() => this.destroyListeners.forEach((listener) => listener()))
   }
 
-  send(mimeType: string, gWebFD: GWebFD) {
+  send(mimeType: string, ioFD: InputOutputFD) {
     const matchingOffer = this.mimeTypes.includes(mimeType)
     if (matchingOffer) {
-      gWebFD.write(new Blob([textEncoder.encode(this.offer)])).then(() => gWebFD.close())
+      ioFD.write(new Blob([textEncoder.encode(this.offer)])).then(() => ioFD.close())
     }
   }
 

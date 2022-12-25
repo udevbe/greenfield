@@ -116,7 +116,7 @@ class Region implements WlRegionRequests {
     const pixmanRegion = createPixmanRegion()
     const region = new Region(wlRegionResource, pixmanRegion)
     wlRegionResource.implementation = region
-    wlRegionResource.onDestroy().then(() => {
+    wlRegionResource.addDestroyListener(() => {
       fini(pixmanRegion)
       destroyPixmanRegion(pixmanRegion)
     })

@@ -16,19 +16,19 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { Client } from 'westfield-runtime-server'
-import { CompositorProxyConnector } from './index'
-import RemoteSocket, { createRetransmittingWebSocket, randomString } from './RemoteSocket'
-import Session from './Session'
+import { CompositorConnector } from '../index'
+import { createRetransmittingWebSocket, randomString, RemoteConnectionHandler } from './RemoteConnectionHandler'
+import Session from '../Session'
 
-export default class RemoteAppLauncher implements CompositorProxyConnector {
+export class RemoteAppLauncher implements CompositorConnector {
   private readonly session: Session
-  private readonly remoteSocket: RemoteSocket
+  private readonly remoteSocket: RemoteConnectionHandler
 
-  static create(session: Session, remoteSocket: RemoteSocket): RemoteAppLauncher {
-    return new RemoteAppLauncher(session, remoteSocket)
+  static create(session: Session): RemoteAppLauncher {
+    return new RemoteAppLauncher(session, RemoteConnectionHandler.create(session))
   }
 
-  private constructor(session: Session, remoteSocket: RemoteSocket) {
+  private constructor(session: Session, remoteSocket: RemoteConnectionHandler) {
     this.session = session
     this.remoteSocket = remoteSocket
   }

@@ -25,7 +25,7 @@ import {
 import DataOffer from './DataOffer'
 import Session from './Session'
 import { DataSource } from './DataSource'
-import { GWebFD } from './WebFS'
+import { InputOutputFD } from './InputOutput'
 
 const { copy, move, ask, none } = WlDataDeviceManagerDndAction
 const ALL_ACTIONS = copy | move | ask
@@ -71,7 +71,7 @@ export class WaylandDataSource implements WlDataSourceRequests, DataSource {
   constructor(
     readonly session: Session,
     readonly resource: WlDataSourceResource,
-    readonly webfs = resource.client.userData.webfs,
+    readonly inputOutput = resource.client.userData.inputOutput,
   ) {
     this.version = this.resource.version
   }
@@ -85,16 +85,13 @@ export class WaylandDataSource implements WlDataSourceRequests, DataSource {
   destroyDataSource(): void {
     this.resource.destroy()
   }
-  onDestroy(): Promise<void> {
-    return this.resource.onDestroy()
-  }
 
   accept(mimeType: string | undefined): void {
     this.resource.target(mimeType)
   }
 
-  send(mimeType: string, gWebFD: GWebFD): void {
-    this.resource.send(mimeType, gWebFD.webFd)
+  send(mimeType: string, ioFD: InputOutputFD): void {
+    this.resource.send(mimeType, ioFD.fd)
   }
 
   cancel(): void {

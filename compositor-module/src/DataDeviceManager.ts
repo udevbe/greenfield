@@ -84,7 +84,7 @@ export default class DataDeviceManager implements WlDataDeviceManagerRequests {
     const seat = seatResource.implementation as Seat
     wlDataDeviceResource.implementation = seat
     seat.dragResourceList = [...seat.dragResourceList, wlDataDeviceResource]
-    wlDataDeviceResource.onDestroy().then(() => {
+    wlDataDeviceResource.addDestroyListener(() => {
       seat.dragResourceList = seat.dragResourceList.filter((dragResource) => dragResource !== wlDataDeviceResource)
     })
   }

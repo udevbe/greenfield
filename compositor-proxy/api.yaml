@@ -21,10 +21,10 @@ components:
           schema:
             type: string
   schemas:
-    WebFD:
+    ProxyFD:
       description: >
-        This type carefully matches the WebFD type as defined in the [Westfield Wayland protocol generator](https://github.com/udevbe/westfield).
-        It narrows the 'handle' property of the original WebFD type -which has type 'unknown'- to an 'integer' as to mimic a native file descriptor.
+        This type carefully mimics a native file descriptor and adds additional information to make it usable in a 
+        remote context.
       type: object
       required:
         - handle
@@ -41,7 +41,7 @@ components:
         type:
           description: >
             The file type of the native FD. 'unknown' type means that FD was created by an external application, in which
-            case the 'type' should be manually updated to a more concrete type before doing any operations on the WebFD.
+            case the 'type' should be manually updated to a more concrete type before doing any operations on the ProxyFD.
           type: string
           enum:
             - pipe-read
@@ -50,7 +50,7 @@ components:
             - unknown
           readOnly: false
         host:
-          description: The url where this WebFD originated from and where it can be accessed e.g. for reading.
+          description: The url where this ProxyFD originated from and where it can be accessed e.g. for reading or writing.
           example: 'https://proxy-endpoint.com:8081'
           type: string
           format: uri
@@ -175,8 +175,8 @@ paths:
   /mkfifo:
     post:
       tags:
-        - webfs
-      summary: Creates a new pipe and returns a read+write WebFD pair.
+        - io
+      summary: Creates a new pipe and returns a read+write ProxyFD pair.
       operationId: mkfifo
       responses:
         201:
@@ -186,7 +186,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/WebFD'
+                  $ref: '#/components/schemas/ProxyFD'
                 example:
                   - fd: 8
                     type: pipe-read
@@ -199,8 +199,8 @@ paths:
   /mkstemp-mmap:
     post:
       tags:
-        - webfs
-      summary: Creates a temporary file and returns a memory mapped WebFD of the uploaded data.
+        - io
+      summary: Creates a temporary file and returns a memory mapped ProxyFD of the uploaded data.
       operationId: mkstempMmap
       requestBody:
         required: true
@@ -215,7 +215,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/WebFD'
+                $ref: '#/components/schemas/ProxyFD'
               example:
                 fd: 10
                 type: shm
@@ -228,10 +228,10 @@ paths:
                 type: string
         401:
           $ref: '#/components/responses/UnauthorizedError'
-  /webfd/{fd}:
+  /fd/{fd}:
     delete:
       tags:
-        - webfs
+        - io
       summary: close the native fd.
       operationId: close
       parameters:
@@ -260,7 +260,7 @@ paths:
             text/plain:
               schema:
                 type: string
-        5XX:
+        500:
           description: Unexpected error.
           content:
             text/plain:
@@ -268,8 +268,8 @@ paths:
                 type: string
     get:
       tags:
-        - webfs
-      summary: Read a chunk from a WebFD.
+        - io
+      summary: Read a chunk from a ProxyFD.
       operationId: read
       parameters:
         - in: path
@@ -310,17 +310,17 @@ paths:
             text/plain:
               schema:
                 type: string
-        5XX:
+        500:
           description: Unexpected error.
           content:
             text/plain:
               schema:
                 type: string
-  /webfd/{fd}/stream:
+  /fd/{fd}/stream:
     put:
       tags:
-        - webfs
-      summary: Write and stream all data to a WebFD until EOF.
+        - io
+      summary: Write and stream all data to a ProxyFD until EOF.
       operationId: writeStream
       parameters:
         - in: path
@@ -361,7 +361,7 @@ paths:
             text/plain:
               schema:
                 type: string
-        5XX:
+        500:
           description: Unexpected error.
           content:
             text/plain:
@@ -369,8 +369,8 @@ paths:
                 type: string
     get:
       tags:
-        - webfs
-      summary: Read and stream all data from a WebFD until EOF.
+        - io
+      summary: Read and stream all data from a ProxyFD until EOF.
       operationId: readStream
       parameters:
         - in: path
@@ -409,7 +409,7 @@ paths:
             text/plain:
               schema:
                 type: string
-        5XX:
+        500:
           description: Unexpected error.
           content:
             text/plain:

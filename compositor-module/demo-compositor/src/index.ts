@@ -1,9 +1,4 @@
-import {
-  createCompositorProxyConnector,
-  createCompositorRemoteSocket,
-  createCompositorSession,
-  initWasm,
-} from '../../src'
+import { createConnector, createCompositorSession, initWasm } from '../../src'
 
 const proxyHost = 'localhost'
 
@@ -42,12 +37,11 @@ async function main() {
   session.userShell.events.clientDestroyed = (compositorClient) =>
     document.getElementById(`client-id-${compositorClient.id}`)?.remove()
 
-  const remoteSocket = createCompositorRemoteSocket(session)
-  const compositorProxyConnector = createCompositorProxyConnector(session, remoteSocket)
+  const compositorProxyConnector = createConnector(session, 'remote')
+  const compositorWebConnector = createConnector(session, 'web')
 
   const connect8081Button: HTMLButtonElement = document.createElement('button')
   connect8081Button.textContent = `connect to ws://${proxyHost}:8081?compositorSessionId=${compositorSessionId}`
-
   connect8081Button.onclick = () => {
     const compositorProxyURL = new URL(`ws://${proxyHost}:8081`)
     compositorProxyURL.searchParams.append('compositorSessionId', compositorSessionId)
@@ -56,16 +50,31 @@ async function main() {
 
   const connect8082Button: HTMLButtonElement = document.createElement('button')
   connect8082Button.textContent = `connect to ws://${proxyHost}:8082?compositorSessionId=${compositorSessionId}`
-
   connect8082Button.onclick = () => {
     const compositorProxyURL = new URL(`ws://${proxyHost}:8082`)
     compositorProxyURL.searchParams.append('compositorSessionId', compositorSessionId)
     compositorProxyConnector.connectTo(compositorProxyURL)
   }
 
+  const demoWebAppButton: HTMLButtonElement = document.createElement('button')
+  demoWebAppButton.textContent = `Launch demo webapp`
+  demoWebAppButton.onclick = () => {
+    const webAppURL = new URL(`${location.origin}/demo-webapp/app.js`)
+    compositorWebConnector.connectTo(webAppURL)
+  }
+
+  const demoWebAppWGPUButton: HTMLButtonElement = document.createElement('button')
+  demoWebAppWGPUButton.textContent = `Launch demo webapp wgpu`
+  demoWebAppWGPUButton.onclick = () => {
+    const webAppURL = new URL(`${location.origin}/demo-webapp-wgpu/app.js`)
+    compositorWebConnector.connectTo(webAppURL)
+  }
+
   const container: HTMLDivElement = document.createElement('div')
   container.appendChild(connect8081Button)
   container.appendChild(connect8082Button)
+  container.appendChild(demoWebAppButton)
+  container.appendChild(demoWebAppWGPUButton)
 
   // make compositor global protocol objects available to client
   session.globals.register()

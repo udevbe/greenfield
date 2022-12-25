@@ -1,5 +1,5 @@
-import Session from '../Session'
-import Surface from '../Surface'
+import Session from '../../Session'
+import Surface from '../../Surface'
 import XWaylandShellSurface from './XWaylandShellSurface'
 import { XWindow } from './XWindow'
 

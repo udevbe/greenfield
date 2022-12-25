@@ -1,7 +1,7 @@
 import { createReadStream } from 'fs'
 import { ClientRequest, request as httpRequest, RequestOptions } from 'http'
 import { request as httpsRequest } from 'https'
-import { Webfd } from './types'
+import { ProxyFD } from './types'
 import { createLogger } from '../Logger'
 import { createMemoryMappedFile, makePipe } from 'westfield-proxy'
 
@@ -10,28 +10,28 @@ const logger = createLogger('webfs')
 // 64*1024=64kb
 export const TRANSFER_CHUNK_SIZE = 65792 as const
 
-export function createCompositorProxyWebFS(compositorSessionId: string, baseURL: string): ProxyWebFS {
-  return new ProxyWebFS(compositorSessionId, baseURL)
+export function createProxyInputOutput(compositorSessionId: string, baseURL: string): ProxyInputOutput {
+  return new ProxyInputOutput(compositorSessionId, baseURL)
 }
 
-export class ProxyWebFS {
+export class ProxyInputOutput {
   constructor(private readonly compositorSessionId: string, readonly baseURL: string) {}
 
   /**
-   * Creates a native fd that matches the content & behavior of the foreign webfd
+   * Creates a native fd that matches the content & behavior of the foreign proxyFD
    */
-  webFDtoNativeFD(webfd: Webfd): number {
-    if (webfd.host === this.baseURL) {
-      return webfd.handle
+  proxyFDtoNativeFD(proxyFD: ProxyFD): number {
+    if (proxyFD.host === this.baseURL) {
+      return proxyFD.handle
     } else {
-      return this.handleForeignWebFd(webfd)
+      return this.handleForeignProxyFd(proxyFD)
     }
   }
 
   /**
-   * Returns a native write pipe fd that -when written- will transfer its data to the given webfd host
+   * Returns a native write pipe fd that when written, will transfer its data to the given proxyFD's host
    */
-  private toNativePipeWriteFD(webfd: Webfd): number {
+  private toNativePipeWriteFD(proxyFD: ProxyFD): number {
     const pipeFds = new Uint32Array(2)
     makePipe(pipeFds)
     const readFd = pipeFds[0]
@@ -42,7 +42,7 @@ export class ProxyWebFS {
       highWaterMark: TRANSFER_CHUNK_SIZE,
     })
 
-    const url = new URL(`${webfd.host}/webfd/${webfd.handle}/stream`)
+    const url = new URL(`${proxyFD.host}/fd/${proxyFD.handle}/stream`)
     url.searchParams.append('chunkSize', `${TRANSFER_CHUNK_SIZE}`)
     const isHttp = url.protocol === 'http:'
     const isHttps = url.protocol === 'https:'
@@ -71,7 +71,7 @@ export class ProxyWebFS {
       } else if (isHttps) {
         request = httpsRequest(url, options)
       } else {
-        logger.error(`unsupported webfd host protocol. Only http or https is supported. Got: ${url.protocol}`)
+        logger.error(`unsupported proxy fd host protocol. Only http or https is supported. Got: ${url.protocol}`)
         return -1
       }
 
@@ -82,7 +82,7 @@ export class ProxyWebFS {
           }
         })
         .on('error', (err) => {
-          logger.error('Error while perform a PUT on webfd stream.')
+          logger.error('Error while perform a PUT on proxyFD stream.')
           logger.error(err)
         })
 
@@ -93,21 +93,21 @@ export class ProxyWebFS {
     return pipeFds[1]
   }
 
-  private handleForeignWebFd(webfd: Webfd): number {
-    const webFdType = webfd.type
+  private handleForeignProxyFd(proxyFD: ProxyFD): number {
+    const proxyFdType = proxyFD.type
 
-    switch (webFdType) {
+    switch (proxyFdType) {
       case 'pipe-write':
-        return this.toNativePipeWriteFD(webfd)
+        return this.toNativePipeWriteFD(proxyFD)
       case 'pipe-read':
       case 'shm':
       case 'unknown':
-        logger.error(`Sharing webfds of type ${webFdType} between proxies is currently not supported.`)
+        logger.error(`Sharing proxy fds of type ${proxyFdType} between proxies is currently not supported.`)
         return -1
     }
   }
 
-  mkpipe(): [Webfd, Webfd] {
+  mkpipe(): [ProxyFD, ProxyFD] {
     const pipeFds = new Uint32Array(2)
     makePipe(pipeFds)
 
@@ -125,7 +125,7 @@ export class ProxyWebFS {
     ]
   }
 
-  mkstempMmap(buffer: Buffer): Webfd {
+  mkstempMmap(buffer: Buffer): ProxyFD {
     const fd = createMemoryMappedFile(buffer)
     return {
       handle: fd,

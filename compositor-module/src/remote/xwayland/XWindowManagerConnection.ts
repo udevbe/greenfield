@@ -1,6 +1,6 @@
 import { connect, webConnectionSetup, XConnection } from 'xtsb'
 import type { WebSocketLike } from 'retransmitting-websocket'
-import Session from '../Session'
+import Session from '../../Session'
 
 export class XWindowManagerConnection {
   static create(session: Session, webSocket: WebSocketLike): Promise<XWindowManagerConnection> {

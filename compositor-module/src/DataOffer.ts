@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { WebFD } from 'westfield-runtime-common'
+import { FD } from 'westfield-runtime-common'
 import {
   WlDataDeviceManagerDndAction,
   WlDataDeviceResource,
@@ -25,7 +25,6 @@ import {
 } from 'westfield-runtime-server'
 import { DataSource } from './DataSource'
 import Session from './Session'
-import { wrapClientWebFD } from './WebFS'
 
 const { ask, none, copy, move } = WlDataDeviceManagerDndAction
 
@@ -58,7 +57,7 @@ export default class DataOffer implements WlDataOfferRequests {
     const dataOffer = new DataOffer(session, wlDataOfferResource, source)
     wlDataOfferResource.implementation = dataOffer
     source.addDestroyListener(dataOffer.sourceDestroyListener)
-    wlDataOfferResource.onDestroy().then(() => dataOffer.handleDestroy())
+    wlDataOfferResource.addDestroyListener(() => dataOffer.handleDestroy())
 
     return dataOffer
   }
@@ -108,15 +107,12 @@ export default class DataOffer implements WlDataOfferRequests {
     this.source.notifyFinish()
   }
 
-  receive(resource: WlDataOfferResource, mimeType: string, fd: WebFD): void {
-    const gWebFD = wrapClientWebFD(resource.client, {
-      ...fd,
-      type: 'pipe-write',
-    })
+  receive(resource: WlDataOfferResource, mimeType: string, fd: FD): void {
+    const clientFD = resource.client.userData.inputOutput.wrapFD(fd, 'pipe-write')
     if (this.source && this === this.source.dataOffer) {
-      this.source.send(mimeType, gWebFD)
+      this.source.send(mimeType, clientFD)
     } else {
-      gWebFD.close()
+      clientFD.close()
     }
   }
 

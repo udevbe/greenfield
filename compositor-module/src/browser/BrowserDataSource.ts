@@ -1,7 +1,8 @@
 import { DataSource } from '../DataSource'
 import { WlDataDeviceManagerDndAction } from 'westfield-runtime-server'
 import DataOffer from '../DataOffer'
-import { browserWebFS, GWebFD, WebFS } from '../WebFS'
+import { InputOutputFD } from '../InputOutput'
+import { webInputOutput } from '../web/WebInputOutput'
 
 export function createBrowserDataSource(offers: ClipboardItems): DataSource {
   const mimeTypes = offers.flatMap((offer) => offer.types)
@@ -12,7 +13,7 @@ export function createBrowserDataSource(offers: ClipboardItems): DataSource {
 }
 
 export class BrowserDataSource implements DataSource {
-  readonly webfs = browserWebFS
+  readonly inputOutput = webInputOutput
   accepted = false
   compositorAction = WlDataDeviceManagerDndAction.none
   currentDndAction = WlDataDeviceManagerDndAction.none
@@ -30,14 +31,14 @@ export class BrowserDataSource implements DataSource {
     this.destroyPromise.then(() => this.destroyListeners.forEach((listener) => listener()))
   }
 
-  send(mimeType: string, gWebFD: GWebFD) {
+  send(mimeType: string, ioFD: InputOutputFD) {
     mimeType = mimeType === 'text/plain;charset=utf-8' ? 'text/plain' : mimeType
     const matchingOffer = this.offers.find((offer) => offer.types.includes(mimeType))
     if (matchingOffer) {
       matchingOffer
         .getType(mimeType)
-        .then((offerData) => gWebFD.write(offerData))
-        .then(() => gWebFD.close())
+        .then((offerData) => ioFD.write(offerData))
+        .then(() => ioFD.close())
     }
   }
 

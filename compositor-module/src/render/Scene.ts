@@ -19,13 +19,14 @@ import { createRect } from '../math/Rect'
 import { Size } from '../math/Size'
 import Output from '../Output'
 import { createPixmanRegion, initRect } from '../Region'
-import { DecodedFrame } from '../remotestreaming/DecodedFrame'
+import { DecodedFrame } from '../remote/DecodedFrame'
 import Session from '../Session'
 import View from '../View'
 import RenderState from './RenderState'
 import { RGBXandA2RGBA } from './RGBXandAToRGBA'
 import SceneShader from './SceneShader'
 import { YUVA2RGBA } from './YUVA2RGBA'
+import { WebBufferContents } from '../web/WebBuffer'
 
 export class Scene {
   public region = createPixmanRegion()
@@ -81,6 +82,12 @@ export class Scene {
 
   onDestroy(): Promise<void> {
     return this._destroyPromise
+  }
+
+  ['image/bitmap'](webBufferContents: WebBufferContents, renderState: RenderState) {
+    const { width, height } = webBufferContents.size
+    renderState.size = { width, height }
+    renderState.texture.setContent(webBufferContents.pixelContent, renderState.size)
   }
 
   ['video/h264'](decodedFrame: DecodedFrame, renderState: RenderState): void {

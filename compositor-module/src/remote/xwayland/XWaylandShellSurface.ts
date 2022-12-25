@@ -1,14 +1,14 @@
 import { Time } from 'xtsb'
-import { DesktopSurface } from '../Desktop'
-import { ORIGIN, Point } from '../math/Point'
-import { createRect, RectWithInfo } from '../math/Rect'
-import { Size, ZERO_SIZE } from '../math/Size'
-import Output from '../Output'
-import { Pointer } from '../Pointer'
-import Session from '../Session'
-import Surface from '../Surface'
-import { DesktopSurfaceRole } from '../SurfaceRole'
-import View from '../View'
+import { DesktopSurface } from '../../Desktop'
+import { ORIGIN, Point } from '../../math/Point'
+import { createRect, RectWithInfo } from '../../math/Rect'
+import { Size, ZERO_SIZE } from '../../math/Size'
+import Output from '../../Output'
+import { Pointer } from '../../Pointer'
+import Session from '../../Session'
+import Surface from '../../Surface'
+import { DesktopSurfaceRole } from '../../SurfaceRole'
+import View from '../../View'
 import { XWindow } from './XWindow'
 
 export enum SurfaceState {
@@ -75,7 +75,7 @@ export default class XWaylandShellSurface implements DesktopSurfaceRole {
       }
     }
 
-    surface.resource.onDestroy().then(() => xWaylandShellSurface.handleDestroy())
+    surface.resource.addDestroyListener(() => xWaylandShellSurface.handleDestroy())
 
     return xWaylandShellSurface
   }

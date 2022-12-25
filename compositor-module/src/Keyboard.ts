@@ -178,8 +178,8 @@ export class Keyboard implements WlKeyboardRequests, CompositorKeyboard {
     const keymapString = this.xkb.asString()
     const textEncoder = new TextEncoder()
     const keymapBuffer = textEncoder.encode(keymapString)
-    const gWebFD = await resource.client.userData.webfs.mkstempMmap(new Blob([keymapBuffer]))
-    resource.keymap(xkbV1, gWebFD.webFd, keymapBuffer.byteLength)
+    const shmFD = await resource.client.userData.inputOutput.mkstempMmap(new Blob([keymapBuffer]))
+    resource.keymap(xkbV1, shmFD.fd, keymapBuffer.byteLength)
   }
 
   setLocks(mask: KeyboardLocks, value: KeyboardLocks): void {

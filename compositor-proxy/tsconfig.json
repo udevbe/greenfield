@@ -7,7 +7,7 @@
     "rootDirs": ["src", "src/@types"],
     "moduleResolution": "Node"
   },
-  "exclude": ["node_modules", ".eslintrc.js", ".prettierrc.js", "jest.config.js"],
+  "exclude": ["node_modules", ".eslintrc.js", ".prettierrc.js", "jest.config.js", "**/*.spec.ts"],
   "ts-node": {
     "files": true
   }

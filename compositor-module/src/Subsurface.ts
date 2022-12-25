@@ -44,11 +44,11 @@ export default class Subsurface implements WlSubsurfaceRequests, SurfaceRole {
     const subsurface = new Subsurface(session, parent, surface, wlSubsurfaceResource, view)
     wlSubsurfaceResource.implementation = subsurface
 
-    wlSurfaceResource.onDestroy().then(() => {
+    wlSurfaceResource.addDestroyListener(() => {
       subsurface.inert = true
     })
 
-    parentWlSurfaceResource.onDestroy().then(() => {
+    parentWlSurfaceResource.addDestroyListener(() => {
       // TODO unmap
     })
 

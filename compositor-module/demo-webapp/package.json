@@ -1,0 +1,37 @@
+{
+  "name": "simple-web-gl",
+  "version": "1.0.0-alpha.0",
+  "description": "HTML5 Wayland Demo Web Client Simple Web GL",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/udevbe/greenfield.git"
+  },
+  "keywords": [
+    "wayland",
+    "html5",
+    "client",
+    "demo",
+    "web"
+  ],
+  "author": "Erik De Rijcke <derijcke.erik@gmail.com> (http://www.udev.be)",
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/udevbe/greenfield/issues"
+  },
+  "homepage": "https://github.com/udevbe/greenfield#readme",
+  "scripts": {
+    "build": "webpack",
+    "start": "webpack serve"
+  },
+  "dependencies": {
+    "gl-matrix": "^3.4.3",
+    "westfield-runtime-client": "1.0.0-alpha.1",
+    "westfield-runtime-common": "1.0.0-alpha.1"
+  },
+  "devDependencies": {
+    "ts-loader": "^9.4.2",
+    "typescript": "^4.9.4",
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.1"
+  }
+}

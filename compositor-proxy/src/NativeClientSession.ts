@@ -26,7 +26,7 @@ import wl_display_interceptor from './protocol/wl_display_interceptor'
 // eslint-disable-next-line camelcase,@typescript-eslint/ban-ts-comment
 // @ts-ignore
 import wl_buffer_interceptor from './protocol/wl_buffer_interceptor'
-import { Webfd } from './webfs/types'
+import { ProxyFD } from './io/types'
 import { TextDecoder, TextEncoder } from 'util'
 import {
   destroyClient,
@@ -49,18 +49,18 @@ const logger = createLogger('native-client-session')
 const textDecoder = new TextDecoder()
 const textEncoder = new TextEncoder()
 
-function deserializeWebFDJSON(sourceBuf: ArrayBufferView): { webfd: Webfd; bytesRead: number } {
-  const webFDByteLength = new Uint32Array(sourceBuf.buffer, sourceBuf.byteOffset, 1)[0]
-  const encodedWebfdJSON = new Uint8Array(
+function deserializeProxyFDJSON(sourceBuf: ArrayBufferView): { proxyFD: ProxyFD; bytesRead: number } {
+  const proxyFDByteLength = new Uint32Array(sourceBuf.buffer, sourceBuf.byteOffset, 1)[0]
+  const encodedProxyFDJSON = new Uint8Array(
     sourceBuf.buffer,
     sourceBuf.byteOffset + Uint32Array.BYTES_PER_ELEMENT,
-    webFDByteLength,
+    proxyFDByteLength,
   )
-  const webfdJSON = textDecoder.decode(encodedWebfdJSON)
-  const webfd: Webfd = JSON.parse(webfdJSON)
+  const proxyFDJSON = textDecoder.decode(encodedProxyFDJSON)
+  const proxyFD: ProxyFD = JSON.parse(proxyFDJSON)
 
-  const alignedWebFDBytesLength = (webFDByteLength + 3) & ~3
-  return { webfd, bytesRead: alignedWebFDBytesLength + Uint32Array.BYTES_PER_ELEMENT }
+  const alignedProxyFDBytesLength = (proxyFDByteLength + 3) & ~3
+  return { proxyFD: proxyFD, bytesRead: alignedProxyFDBytesLength + Uint32Array.BYTES_PER_ELEMENT }
 }
 
 export function createNativeClientSession(
@@ -210,8 +210,8 @@ export class NativeClientSession {
         const fdsCount = inboundMessage[readOffset++]
         const fdsBuffer = new Uint32Array(fdsCount)
         for (let i = 0; i < fdsCount; i++) {
-          const { webfd, bytesRead } = deserializeWebFDJSON(inboundMessage.subarray(readOffset))
-          fdsBuffer[i] = this.nativeCompositorSession.webFS.webFDtoNativeFD(webfd)
+          const { proxyFD, bytesRead } = deserializeProxyFDJSON(inboundMessage.subarray(readOffset))
+          fdsBuffer[i] = this.nativeCompositorSession.webFS.proxyFDtoNativeFD(proxyFD)
           readOffset += bytesRead / Uint32Array.BYTES_PER_ELEMENT
         }
 
@@ -317,22 +317,22 @@ export class NativeClientSession {
   onWireMessageEnd(wlClient: unknown, fdsInBuffer: ArrayBuffer): void {
     logger.debug('Received end of client message.')
     let nroFds = 0
-    let fdsIntBufferSize = 1 // start with one because we start with the number of webfds specified
-    const serializedWebFDs = new Array<Uint8Array>(nroFds)
+    let fdsIntBufferSize = 1 // start with one because we start with the number of proxyfds specified
+    const serializedFDs = new Array<Uint8Array>(nroFds)
     if (fdsInBuffer) {
-      const fdsInWithType = new Uint32Array(fdsInBuffer)
-      nroFds = fdsInWithType.length
+      const fdsIn = new Uint32Array(fdsInBuffer)
+      nroFds = fdsIn.length
       for (let i = 0; i < nroFds; i++) {
-        const fd = fdsInWithType[i]
-        const webfd: Webfd = {
+        const fd = fdsIn[i]
+        const proxyFD: ProxyFD = {
           handle: fd,
           type: 'unknown',
           host: this.nativeCompositorSession.webFS.baseURL,
         }
-        const serializedWebFD = textEncoder.encode(JSON.stringify(webfd))
-        serializedWebFDs[i] = serializedWebFD
-        // align webfdurl size to 32bits
-        fdsIntBufferSize += 1 + ((serializedWebFD.byteLength + 3) & ~3) / 4 // size (1) + data (n)
+        const encodedProxyFDJSON = textEncoder.encode(JSON.stringify(proxyFD))
+        serializedFDs[i] = encodedProxyFDJSON
+        // align fdurl size to 32bits
+        fdsIntBufferSize += 1 + ((encodedProxyFDJSON.byteLength + 3) & ~3) / 4 // size (1) + data (n)
       }
     }
 
@@ -340,14 +340,12 @@ export class NativeClientSession {
     let offset = 0
     sendBuffer[offset++] = 0 // disable out-of-band
     sendBuffer[offset++] = nroFds
-    for (let i = 0; i < serializedWebFDs.length; i++) {
-      const serializedWebFD = serializedWebFDs[i]
-      sendBuffer[offset++] = serializedWebFD.byteLength
-      new Uint8Array(sendBuffer.buffer, offset * Uint32Array.BYTES_PER_ELEMENT, serializedWebFD.length).set(
-        serializedWebFD,
-      )
+    for (let i = 0; i < serializedFDs.length; i++) {
+      const serializedFD = serializedFDs[i]
+      sendBuffer[offset++] = serializedFD.byteLength
+      new Uint8Array(sendBuffer.buffer, offset * Uint32Array.BYTES_PER_ELEMENT, serializedFD.length).set(serializedFD)
       // align offset to 32bits
-      offset += ((serializedWebFD.byteLength + 3) & ~3) / 4
+      offset += ((serializedFD.byteLength + 3) & ~3) / 4
     }
 
     for (let i = 0; i < this.pendingWireMessages.length; i++) {

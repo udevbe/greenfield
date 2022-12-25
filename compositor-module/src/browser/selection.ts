@@ -18,7 +18,7 @@ async function blobFromDataSource(
   dataSourceMimeType: string,
   dataSource: DataSource,
 ): Promise<Blob> {
-  const [readFD, writeFD] = await dataSource.webfs.mkfifo()
+  const [readFD, writeFD] = await dataSource.inputOutput.mkfifo()
   dataSource.send(dataSourceMimeType, writeFD)
   const dataBlob = await readFD.readBlob()
   return new Blob([dataBlob], { type: browserMimeType })

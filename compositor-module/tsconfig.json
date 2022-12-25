@@ -25,5 +25,12 @@
   },
   "include": [
     "src"
+  ],
+  "exclude": [
+    "node_modules",
+    ".eslintrc.js",
+    ".prettierrc.js",
+    "jest.config.js",
+    "**/*.spec.ts"
   ]
 }

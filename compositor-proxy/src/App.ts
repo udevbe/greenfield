@@ -106,13 +106,13 @@ export function createApp(
       .options('/mkstemp-mmap', OPTIONSPreflightRequest('POST'))
       .post('/mkstemp-mmap', withAuth(compositorProxySession, POSTMkstempMmap))
 
-      .options('/webfd/:fd', OPTIONSPreflightRequest('GET, DEL'))
-      .get('/webfd/:fd', withAuth(compositorProxySession, withParams(1, GETWebFD)))
-      .del('/webfd/:fd', withAuth(compositorProxySession, withParams(1, DELWebFD)))
+      .options('/fd/:fd', OPTIONSPreflightRequest('GET, DEL'))
+      .get('/fd/:fd', withAuth(compositorProxySession, withParams(1, GETWebFD)))
+      .del('/fd/:fd', withAuth(compositorProxySession, withParams(1, DELWebFD)))
 
-      .options('/webfd/:fd/stream', OPTIONSPreflightRequest('GET, PUT'))
-      .get('/webfd/:fd/stream', withAuth(compositorProxySession, withParams(1, GETWebFDStream)))
-      .put('/webfd/:fd/stream', withAuth(compositorProxySession, withParams(1, PUTWebFDStream)))
+      .options('/fd/:fd/stream', OPTIONSPreflightRequest('GET, PUT'))
+      .get('/fd/:fd/stream', withAuth(compositorProxySession, withParams(1, GETWebFDStream)))
+      .put('/fd/:fd/stream', withAuth(compositorProxySession, withParams(1, PUTWebFDStream)))
 
       .options('/:clientId/:surfaceId/encoder/keyframe', OPTIONSPreflightRequest('POST'))
       .post(
