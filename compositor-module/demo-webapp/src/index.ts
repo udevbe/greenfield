@@ -33,15 +33,18 @@ import {
   WlSeatEvents,
   WlSeatProtocolName,
   WlSeatProxy,
-  WlShellProtocolName,
-  WlShellProxy,
-  WlShellSurfaceEvents,
-  WlShellSurfaceProxy,
   WlSurfaceProxy,
+  XdgSurfaceProxy,
+  XdgToplevelEvents,
+  XdgToplevelProxy,
+  XdgWmBaseEvents,
+  XdgWmBaseProtocolName,
+  XdgWmBaseProxy,
 } from 'westfield-runtime-client'
 import { Fixed } from 'westfield-runtime-common'
 
 import { drawScene, initDraw } from './webgl-demo'
+
 class ImageBitmapBuffer implements WlBufferEvents {
   static create(webGL: GfWebBufferFactoryProxy, imageBitmap: ImageBitmap): ImageBitmapBuffer {
     const proxy = webGL.createBuffer(imageBitmap)
@@ -58,7 +61,7 @@ class ImageBitmapBuffer implements WlBufferEvents {
   }
 }
 
-class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, WlPointerEvents {
+class Window implements WlRegistryEvents, XdgWmBaseEvents, XdgToplevelEvents, WlSeatEvents, WlPointerEvents {
   static create(width: number, height: number): Window {
     const registry = display.getRegistry()
     const window = new Window(registry, width, height)
@@ -69,10 +72,11 @@ class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, Wl
   private readonly wlRegistryProxy: WlRegistryProxy
   private webGlProxy?: GfWebBufferFactoryProxy
   private wlCompositorProxy?: WlCompositorProxy
-  private wlShellProxy?: WlShellProxy
+  private xdgWmBaseProxy?: XdgWmBaseProxy
   private wlSeatProxy?: WlSeatProxy
   private wlSurfaceProxy?: WlSurfaceProxy
-  private wlShellSurfaceProxy?: WlShellSurfaceProxy
+  private xdgSurfaceProxy?: XdgSurfaceProxy
+  private xdgToplevelProxy?: XdgToplevelProxy
   private frameCount = 0
   private onFrame?: () => Promise<number>
   private wlPointerProxy?: WlPointerProxy
@@ -94,6 +98,10 @@ class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, Wl
     }
   }
 
+  close(): void {
+    throw new Error('Method not implemented.')
+  }
+
   global(name: number, interface_: string, version: number) {
     switch (interface_) {
       case WlCompositorProtocolName: {
@@ -113,36 +121,47 @@ class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, Wl
         break
       }
 
-      case WlShellProtocolName: {
-        this.wlShellProxy = this.wlRegistryProxy.bind(name, WlShellProtocolName, WlShellProxy, version)
+      case XdgWmBaseProtocolName: {
+        this.xdgWmBaseProxy = this.wlRegistryProxy.bind(name, XdgWmBaseProtocolName, XdgWmBaseProxy, version)
+        this.xdgWmBaseProxy.listener = this
         break
       }
 
       case WlSeatProtocolName: {
         this.wlSeatProxy = this.wlRegistryProxy.bind(name, WlSeatProtocolName, WlSeatProxy, version)
         this.wlSeatProxy.listener = this
+        break
       }
     }
   }
 
   async init() {
-    if (this.wlShellProxy === undefined) {
+    if (this.xdgWmBaseProxy === undefined) {
       throw new Error('No shell.')
     }
     if (this.wlSurfaceProxy === undefined) {
       throw new Error('No surface.')
     }
 
-    this.wlShellSurfaceProxy = this.wlShellProxy.getShellSurface(this.wlSurfaceProxy)
-    this.wlShellSurfaceProxy.listener = this
-    this.wlShellSurfaceProxy.setToplevel()
-    this.wlShellSurfaceProxy.setTitle('Simple WebGL')
+    this.xdgSurfaceProxy = this.xdgWmBaseProxy.getXdgSurface(this.wlSurfaceProxy)
+    this.xdgSurfaceProxy.listener = {
+      configure: (serial: number) => {
+        this.xdgSurfaceProxy?.ackConfigure(serial)
+        if (this.drawingState === undefined) {
+          this.drawingState = initDraw(this.webGLRenderingContext)
+          // Now begin drawing after the compositor is done processing all our requests
+          this.draw(0)
+        }
+      },
+    }
+    this.xdgToplevelProxy = this.xdgSurfaceProxy.getToplevel()
+    this.xdgToplevelProxy.listener = this
 
+    this.xdgToplevelProxy.setTitle('Simple WebGL')
+    this.wlSurfaceProxy.commit(0)
     const syncPromise = display.sync()
     display.flush()
     await syncPromise
-
-    this.drawingState = initDraw(this.webGLRenderingContext)
     setInterval(() => {
       console.log(`Simpl-WebGL: ${this.frameCount} fps`)
       this.frameCount = 0
@@ -152,7 +171,7 @@ class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, Wl
   /**
    * @param {number}time
    */
-  async draw(time: number) {
+  draw(time: number) {
     if (this.wlSurfaceProxy === undefined) {
       throw new Error('No surface.')
     }
@@ -185,19 +204,17 @@ class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, Wl
     // FIXME keep track of the name number of the globals we bind so we can do cleanup if a global should go away.
   }
 
-  configure(edges: number, width: number, height: number) {
-    // TODO
+  configure(width: number, height: number, states: ArrayBuffer) {
+    this.width = width === 0 ? this.width : width
+    this.height = height === 0 ? this.height : height
+    // TODO resize
   }
 
   ping(serial: number) {
-    if (this.wlShellSurfaceProxy === undefined) {
+    if (this.xdgWmBaseProxy === undefined) {
       throw new Error('No shellsurface.')
     }
-    this.wlShellSurfaceProxy.pong(serial)
-  }
-
-  popupDone() {
-    // TODO
+    this.xdgWmBaseProxy.pong(serial)
   }
 
   capabilities(capabilities: number) {
@@ -235,12 +252,12 @@ class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, Wl
   }
 
   button(serial: number, time: number, button: number, state: number) {
-    if (this.wlShellSurfaceProxy === undefined || this.wlSeatProxy === undefined) {
+    if (this.xdgToplevelProxy === undefined || this.wlSeatProxy === undefined) {
       return
     }
 
     if (state & WlPointerButtonState._pressed) {
-      this.wlShellSurfaceProxy.move(this.wlSeatProxy, serial)
+      this.xdgToplevelProxy.move(this.wlSeatProxy, serial)
     }
   }
 
@@ -264,16 +281,12 @@ class Window implements WlRegistryEvents, WlShellSurfaceEvents, WlSeatEvents, Wl
 async function main() {
   // create a new window with some buffers
   const window = Window.create(800, 600)
-  // create a sync promise
+  // wait for globals to come in
   const syncPromise = display.sync()
-  // flush out window creation & sync requests to the compositor
   display.flush()
-  // wait for compositor to have processed all our outgoing requests
   await syncPromise
-  // Now begin drawing after the compositor is done processing all our requests
+  // init protocol objects
   await window.init()
-  window.draw(0)
-  display.flush()
   // wait for the display connection to close
   try {
     await display.onClose()

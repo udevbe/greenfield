@@ -14,6 +14,8 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import { mat4, vec3 } from 'gl-matrix'
+import vsSource from './demo.vert'
+import fsSource from './demo.frag'
 
 type DrawingState = {
   programInfo: {
@@ -176,7 +178,7 @@ function drawScene(canvas: OffscreenCanvas, gl: WebGLRenderingContext, drawingSt
 }
 
 //
-// Initialize a shader program, so WebGL knows how to draw our data
+// Initialize a shader program, so WebGL knows how to drawOnce our data
 //
 function initShaderProgram(gl: WebGLRenderingContext, vsSource: string, fsSource: string): WebGLProgram {
   const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource)
@@ -232,31 +234,6 @@ function loadShader(gl: WebGLRenderingContext, type: number, source: string): We
 }
 
 function initDraw(gl: WebGLRenderingContext): unknown {
-  // Vertex shader program
-  const vsSource = `
-    attribute vec4 aVertexPosition;
-    attribute vec4 aVertexColor;
-
-    uniform mat4 uModelViewMatrix;
-    uniform mat4 uProjectionMatrix;
-
-    varying lowp vec4 vColor;
-
-    void main(void) {
-      gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
-      vColor = aVertexColor;
-    }
-  `
-
-  // Fragment shader program
-  const fsSource = `
-    varying lowp vec4 vColor;
-
-    void main(void) {
-      gl_FragColor = vColor;
-    }
-  `
-
   // Initialize a shader program; this is where all the lighting
   // for the vertices and so forth is established.
   const shaderProgram = initShaderProgram(gl, vsSource, fsSource)

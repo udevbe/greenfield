@@ -19,6 +19,11 @@ web-sys = { version = "0.3.60", features = [
     "WorkerGlobalScope",
     "WorkerNavigator"
 ]}
+wee_alloc = "0.4.5"
 
 [lib]
 crate-type = ["cdylib"]
+
+[profile.release]
+lto = true
+opt-level = 's'

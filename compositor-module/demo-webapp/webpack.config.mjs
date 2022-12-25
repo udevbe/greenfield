@@ -8,8 +8,6 @@ const entryFile = path.resolve(__dirname, "./src/index.ts");
 
 const commonConfig = () => {
   return {
-    // mode: 'development',
-    // devtool: 'inline-source-map',
     entry: [entryFile],
     target: "webworker",
     mode: "production",
@@ -20,6 +18,14 @@ const commonConfig = () => {
           test: /\.(ts?)$/,
           use: "ts-loader",
           exclude: [/node_modules/]
+        },
+        {
+          test: /\.frag/,
+          type: "asset/source"
+        },
+        {
+          test: /\.vert/,
+          type: "asset/source"
         }
       ]
     },
