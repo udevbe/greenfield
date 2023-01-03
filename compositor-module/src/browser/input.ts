@@ -49,9 +49,7 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
   //wire up dom input events to compositor input events
   const pointerMoveHandler = (event: PointerEvent) => {
     const buttonEvent = createButtonEventFromMouseEvent(event, false, outputId, canvas.width, canvas.height)
-    seat.notifyMotion(buttonEvent)
-    seat.notifyFrame()
-    session.flush()
+    session.inputQueue.queueMotion(buttonEvent)
   }
 
   // @ts-ignore
@@ -67,10 +65,9 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
     (event: PointerEvent) => {
       dnd.handlePointerDown(event)
       canvas.setPointerCapture(event.pointerId)
-
-      seat.notifyButton(createButtonEventFromMouseEvent(event, false, outputId, canvas.width, canvas.height))
-      seat.notifyFrame()
-      session.flush()
+      session.inputQueue.queueButton(
+        createButtonEventFromMouseEvent(event, false, outputId, canvas.width, canvas.height),
+      )
     },
     { passive: true },
   )
@@ -79,10 +76,9 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
     'pointerup',
     (event: PointerEvent) => {
       canvas.releasePointerCapture(event.pointerId)
-
-      seat.notifyButton(createButtonEventFromMouseEvent(event, true, outputId, canvas.width, canvas.height))
-      seat.notifyFrame()
-      session.flush()
+      session.inputQueue.queueButton(
+        createButtonEventFromMouseEvent(event, true, outputId, canvas.width, canvas.height),
+      )
       dnd.handlePointerUp(event)
     },
     { passive: true },
@@ -91,9 +87,7 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
   canvas.addEventListener(
     'wheel',
     (event: WheelEvent) => {
-      seat.notifyAxis(createAxisEventFromWheelEvent(event, outputId))
-      seat.notifyFrame()
-      session.flush()
+      session.inputQueue.queueAxis(createAxisEventFromWheelEvent(event, outputId))
     },
     { passive: true },
   )
@@ -102,8 +96,7 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
     const keyEvent = createKeyEventFromKeyboardEvent(event, true)
     if (keyEvent) {
       event.preventDefault()
-      seat.notifyKey(keyEvent)
-      session.flush()
+      session.inputQueue.queueKey(keyEvent)
     }
   })
 
@@ -111,8 +104,7 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
     const keyEvent = createKeyEventFromKeyboardEvent(event, false)
     if (keyEvent) {
       event.preventDefault()
-      seat.notifyKey(keyEvent)
-      session.flush()
+      session.inputQueue.queueKey(keyEvent)
     }
   })
 }

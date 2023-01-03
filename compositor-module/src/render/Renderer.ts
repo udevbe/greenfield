@@ -28,9 +28,8 @@ import Surface from '../Surface'
 import View from '../View'
 import { Scene } from './Scene'
 import { isWebBufferContent } from '../web/WebBuffer'
-import renderState from './RenderState'
 
-function createRenderFrame(): Promise<number> {
+export function createRenderFrame(): Promise<number> {
   return new Promise<number>((resolve) => {
     requestAnimationFrame(resolve)
   })
@@ -53,7 +52,7 @@ function setupCanvasGLContext(canvas: HTMLCanvasElement): WebGLRenderingContext 
 }
 
 export default class Renderer {
-  private renderFrame?: Promise<void>
+  renderFrame?: Promise<void>
   private renderTaskRegistration?: () => void
 
   private constructor(
