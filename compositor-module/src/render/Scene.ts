@@ -92,7 +92,9 @@ export class Scene {
 
   ['video/h264'](decodedFrame: DecodedFrame, renderState: RenderState): void {
     if (decodedFrame.pixelContent.type === 'DualPlaneYUVAArrayBuffer') {
-      this.yuvaToRGBA.convertInto(decodedFrame.pixelContent, decodedFrame.size, renderState)
+      this.yuvaToRGBA.convertYUVAArrayBufferInto(decodedFrame.pixelContent, decodedFrame.size, renderState)
+    } else if (decodedFrame.pixelContent.type === 'DualPlaneYUVASplitBuffer') {
+      this.yuvaToRGBA.convertYUVASplitBufferInto(decodedFrame.pixelContent, decodedFrame.size, renderState)
     } else if (
       decodedFrame.pixelContent.type === 'DualPlaneRGBAImageBitmap' ||
       decodedFrame.pixelContent.type === 'DualPlaneRGBAVideoFrame' ||
@@ -100,7 +102,7 @@ export class Scene {
     ) {
       this.rgbaAnda2RGBA.convertInto(decodedFrame.pixelContent, decodedFrame.size, renderState)
     } else {
-      throw new Error(`BUG. Unsupported type ${decodedFrame.pixelContent.type} for video/h264`)
+      throw new Error(`BUG. Unsupported decoded frame type ${decodedFrame.pixelContent.type} for video/h264`)
     }
   }
 

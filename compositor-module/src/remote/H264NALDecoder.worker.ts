@@ -17,6 +17,6 @@
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import { init } from 'tinyh264'
+import { init } from 'ffmpegh264'
 
 init()

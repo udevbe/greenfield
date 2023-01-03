@@ -1,8 +1,8 @@
 import Surface from '../Surface'
-import { createDecodedFrame, DecodedFrame, DecodedPixelContent } from './DecodedFrame'
+import { createDecodedFrame, DecodedFrame, DecodedPixelContent, DualPlaneYUVASplitBuffer } from './DecodedFrame'
 import { EncodedFrame } from './EncodedFrame'
 import { FrameDecoder, H264DecoderContext } from './buffer-decoder'
-import { DualPlaneYUVAArrayBuffer } from './DecodedFrame'
+import type { FfmpegH264Frame } from 'ffmpegh264'
 
 export function createWasmFrameDecoder(): FrameDecoder {
   return new WasmFrameDecoder()
@@ -42,15 +42,15 @@ type H264NALDecoderWorkerMessage = {
   type: string
   width: number
   height: number
-  data: ArrayBuffer
+  data: FfmpegH264Frame
   renderStateId: number
 }
 type FrameState = {
   serial: number
-  resolve: (value: DualPlaneYUVAArrayBuffer | PromiseLike<DualPlaneYUVAArrayBuffer>) => void
+  resolve: (value: DualPlaneYUVASplitBuffer | PromiseLike<DualPlaneYUVASplitBuffer>) => void
   reject: (error: Error) => void
   state: 'pending' | 'pending_opaque' | 'pending_alpha' | 'complete'
-  result: Partial<DualPlaneYUVAArrayBuffer>
+  result: Partial<DualPlaneYUVASplitBuffer>
 }
 
 const decoders: { [key: string]: WasmH264DecoderContext } = {}
@@ -116,8 +116,8 @@ class WasmH264DecoderContext implements H264DecoderContext {
     private readonly frameStates: { [key: number]: FrameState } = {},
   ) {}
 
-  async decode(bufferContents: EncodedFrame): Promise<DualPlaneYUVAArrayBuffer> {
-    return new Promise<DualPlaneYUVAArrayBuffer>((resolve, reject) => {
+  async decode(bufferContents: EncodedFrame): Promise<DualPlaneYUVASplitBuffer> {
+    return new Promise<DualPlaneYUVASplitBuffer>((resolve, reject) => {
       this.frameStates[bufferContents.contentSerial] = {
         serial: bufferContents.contentSerial,
         resolve,
@@ -197,21 +197,35 @@ class WasmH264DecoderContext implements H264DecoderContext {
     if (decodeResult.opaque === undefined) {
       throw new Error('BUG. No opaque frame decode result found!')
     }
+
+    const opaqueFramePtr = decodeResult.opaque.buffer.ptr
+    const alphaFramePtr = decodeResult.alpha?.buffer.ptr
+    const renderStateId = this.surfaceH264DecodeId
+
     frameState.resolve({
-      type: 'DualPlaneYUVAArrayBuffer',
+      close() {
+        opaqueWorker.then((worker) => {
+          worker.postMessage({ type: 'closeFrame', renderStateId, data: opaqueFramePtr })
+        })
+        if (alphaFramePtr) {
+          alphaWorker.then((worker) => {
+            worker.postMessage({ type: 'closeFrame', renderStateId, data: alphaFramePtr })
+          })
+        }
+      },
+      type: 'DualPlaneYUVASplitBuffer',
       opaque: decodeResult.opaque,
       alpha: decodeResult.alpha,
     })
   }
 
-  onOpaquePictureDecoded({ width, height, data }: { width: number; height: number; data: ArrayBuffer }): void {
-    const buffer = new Uint8Array(data)
+  onOpaquePictureDecoded({ width, height, data }: { width: number; height: number; data: FfmpegH264Frame }): void {
     const frameSerial = this.decodingBufferContentSerialsQueue.shift()
     if (frameSerial === undefined) {
       throw new Error('BUG. Invalid state. No frame serial found onOpaquePictureDecoded.')
     }
     const frameState = this.frameStates[frameSerial]
-    frameState.result.opaque = { buffer, codedSize: { width, height } }
+    frameState.result.opaque = { buffer: data, codedSize: { width: data.stride, height } }
 
     if (frameState.state === 'pending_opaque') {
       this.onComplete(frameState)
@@ -220,14 +234,13 @@ class WasmH264DecoderContext implements H264DecoderContext {
     }
   }
 
-  onAlphaPictureDecoded({ width, height, data }: { width: number; height: number; data: ArrayBuffer }): void {
-    const buffer = new Uint8Array(data)
+  onAlphaPictureDecoded({ width, height, data }: { width: number; height: number; data: FfmpegH264Frame }): void {
     const alphaBufferContentSerial = this.decodingAlphaContentSerialsQueue.shift()
     if (alphaBufferContentSerial === undefined) {
       throw new Error('BUG. Invalid state. No frame serial found onAlphaPictureDecoded.')
     }
     const frameState = this.frameStates[alphaBufferContentSerial]
-    frameState.result.alpha = { buffer, codedSize: { width, height } }
+    frameState.result.alpha = { buffer: data, codedSize: { width: data.stride, height } }
 
     if (frameState.state === 'pending_alpha') {
       this.onComplete(frameState)

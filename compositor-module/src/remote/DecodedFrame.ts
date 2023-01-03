@@ -17,7 +17,20 @@
 
 import BufferContents from '../BufferContents'
 import { Size } from '../math/Size'
+import type { FfmpegH264Frame } from 'ffmpegh264'
 
+export type DualPlaneYUVASplitBuffer = {
+  type: 'DualPlaneYUVASplitBuffer'
+  close: () => void
+  opaque: {
+    buffer: FfmpegH264Frame
+    codedSize: Size
+  }
+  alpha?: {
+    buffer: FfmpegH264Frame
+    codedSize: Size
+  }
+}
 export type DualPlaneYUVAArrayBuffer = {
   type: 'DualPlaneYUVAArrayBuffer'
   close?: () => void
@@ -50,6 +63,7 @@ export type SinglePlane = {
 }
 
 export type DecodedPixelContent =
+  | DualPlaneYUVASplitBuffer
   | DualPlaneYUVAArrayBuffer
   | DualPlaneRGBAImageBitmap
   | DualPlaneRGBAArrayBuffer

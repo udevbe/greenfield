@@ -1235,9 +1235,8 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "gldownload ! "
                                        // The ueue is silent
                                        "queue silent=true ! "
-                                       "x264enc rc-lookahead=0 sliced-threads=true qp-max=18 byte-stream=true tune=zerolatency psy-tune=2 pass=0 bitrate=12800 vbv-buf-capacity=1000 ! "
-                                       // TODO if the client is using the WebCodecs decoder, we can use main or high profile.
-                                       "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
+                                       "x264enc me=2 analyse=51 dct8x8=true cabac=true bframes=0 b-adapt=false rc-lookahead=0 sliced-threads=true qp-max=18 byte-stream=true tune=zerolatency psy-tune=2 pass=0 bitrate=12800 vbv-buf-capacity=1000 ! "
+                                       "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .split_alpha = true,
                 .width_multiple = 32,
@@ -1257,9 +1256,8 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "capsfilter name=shader_capsfilter ! "
                                        "queue silent=true ! "
                                        // TODO use cudascale/cudaconvert once gstreamer 1.22 is released
-                                       "nvh264enc qp-max=18 zerolatency=true preset=5 rc-mode=5 max-bitrate=12800 vbv-buffer-size=12800 ! "
-                                       // TODO if the client is using the WebCodecs decoder, we can use main or high profile.
-                                       "video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au ! "
+                                       "nvh264enc qp-max=18 zerolatency=true preset=4 rc-mode=5 max-bitrate=12800 vbv-buffer-size=12800 ! "
+                                       "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .split_alpha = true,
                 .width_multiple = 32,
@@ -1279,8 +1277,7 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "gldownload ! "
                                        "queue silent=true ! "
                                        "vaapih264enc aud=1 ! "
-                                       // TODO if the client is using the WebCodecs decoder, we can use main or high profile.
-                                       "video/x-h264,profile=baseline,stream-format=byte-stream,alignment=au ! "
+                                       "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink",
                 .split_alpha = true,
                 .width_multiple = 32,

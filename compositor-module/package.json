@@ -32,8 +32,8 @@
     "start": "webpack serve --config demo-compositor/webpack.config.js"
   },
   "dependencies": {
+    "ffmpegh264": "1.0.0-alpha.0",
     "retransmitting-websocket": "1.0.0-alpha.0",
-    "tinyh264": "0.0.7",
     "westfield-runtime-common": "1.0.0-alpha.1",
     "westfield-runtime-server": "1.0.0-alpha.4",
     "xtsb": "0.0.2-alpha.0"

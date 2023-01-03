@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { sizeEquals, Size } from '../math/Size'
-import { DualPlaneYUVAArrayBuffer } from '../remote/DecodedFrame'
+import { DualPlaneYUVAArrayBuffer, DualPlaneYUVASplitBuffer } from '../remote/DecodedFrame'
 import Session from '../Session'
 import RenderState from './RenderState'
 import Texture from './Texture'
@@ -65,7 +65,46 @@ export class YUVA2RGBA {
     public readonly alphaTexture: Texture,
   ) {}
 
-  convertInto(yuva: DualPlaneYUVAArrayBuffer, frameSize: Size, renderState: RenderState): void {
+  convertYUVASplitBufferInto(yuva: DualPlaneYUVASplitBuffer, frameSize: Size, renderState: RenderState): void {
+    renderState.size = frameSize
+
+    const { alpha, opaque } = yuva
+
+    // the width & height returned are actually padded, so we have to use the frame size to get the real image dimension
+    // when uploading to texture
+    const opaqueCodedWidth = opaque.codedSize.width
+    const opaqueCodedHeight = opaque.codedSize.height
+
+    if (!sizeEquals(renderState.texture.size, opaque.codedSize)) {
+      renderState.texture.setContentBuffer(null, opaque.codedSize)
+    }
+    const yBuffer = yuva.opaque.buffer.yPlane
+    const uBuffer = yuva.opaque.buffer.uPlane
+    const vBuffer = yuva.opaque.buffer.vPlane
+
+    const chromaWidth = opaqueCodedWidth >> 1
+    const chromaHeight = opaqueCodedHeight >> 1
+
+    const lumaDimension = { width: opaqueCodedWidth, height: opaqueCodedHeight }
+    const chromaDimension = { width: chromaWidth, height: chromaHeight }
+
+    this.yTexture.setContentBuffer(yBuffer, lumaDimension)
+    this.uTexture.setContentBuffer(uBuffer, chromaDimension)
+    this.vTexture.setContentBuffer(vBuffer, chromaDimension)
+
+    if (alpha) {
+      const alphaCodedWidth = alpha.codedSize.width
+      const alphaCodedHeight = alpha.codedSize.height
+      const alphaBuffer = alpha.buffer.yPlane
+      this.alphaTexture.setContentBuffer(alphaBuffer, { width: alphaCodedWidth, height: alphaCodedHeight })
+
+      this.yuva2rgba(renderState)
+    } else {
+      this.yuv2rgb(renderState)
+    }
+  }
+
+  convertYUVAArrayBufferInto(yuva: DualPlaneYUVAArrayBuffer, frameSize: Size, renderState: RenderState): void {
     renderState.size = frameSize
 
     const { alpha, opaque } = yuva
