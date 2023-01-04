@@ -5,13 +5,20 @@ import {
   DualPlaneRGBAImageBitmap,
   DualPlaneRGBAArrayBuffer,
   DualPlaneRGBAVideoFrame,
+  DualPlaneYUVASplitBuffer,
 } from './DecodedFrame'
 import { EncodedFrame } from './EncodedFrame'
 
 export interface H264DecoderContext {
   decode(
     bufferContents: EncodedFrame,
-  ): Promise<DualPlaneYUVAArrayBuffer | DualPlaneRGBAImageBitmap | DualPlaneRGBAArrayBuffer | DualPlaneRGBAVideoFrame>
+  ): Promise<
+    | DualPlaneYUVASplitBuffer
+    | DualPlaneYUVAArrayBuffer
+    | DualPlaneRGBAImageBitmap
+    | DualPlaneRGBAArrayBuffer
+    | DualPlaneRGBAVideoFrame
+  >
   destroy(): void
 }
 

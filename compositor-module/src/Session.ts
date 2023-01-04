@@ -27,6 +27,7 @@ import {
 } from './remote/webcodec-buffer-decoder'
 import Renderer from './render/Renderer'
 import { createUserShellApi, UserShellApi } from './UserShellApi'
+import { InputQueue } from './InputQueue'
 
 export interface LogFn {
   /* tslint:disable:no-unnecessary-generics */
@@ -112,6 +113,7 @@ class Session implements CompositorSession {
   readonly renderer: Renderer
   readonly userShell: UserShellApi
   public readonly frameDecoder: FrameDecoder
+  public readonly inputQueue: InputQueue
 
   private constructor(
     public readonly display: Display,
@@ -123,6 +125,7 @@ class Session implements CompositorSession {
     this.renderer = Renderer.create(this)
     this.userShell = createUserShellApi(this)
     this.frameDecoder = frameDecoderFactory(this)
+    this.inputQueue = new InputQueue(this)
   }
 
   static async create(
