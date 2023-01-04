@@ -2570,10 +2570,10 @@ fb-watchman@^2.0.0:
   dependencies:
     bser "2.1.1"
 
-ffmpegh264@1.0.0-alpha.0:
-  version "1.0.0-alpha.0"
-  resolved "https://registry.yarnpkg.com/ffmpegh264/-/ffmpegh264-1.0.0-alpha.0.tgz#eab23c053068cfb7ec695f0343030da17552b0e3"
-  integrity sha512-k1DyPxGgSqOjb84bJ2MXx5DyRhG4Z65Onf+FeVZPwnSudWkh6I5lyKjeYruiPhN//nXLlfZOin0Bj7e55Td/8A==
+ffmpegh264@1.0.0-alpha.1:
+  version "1.0.0-alpha.1"
+  resolved "https://registry.yarnpkg.com/ffmpegh264/-/ffmpegh264-1.0.0-alpha.1.tgz#dec9376895802fc447a6f00c3d8db93f5756e30b"
+  integrity sha512-5614tg56513dl8NTCiRhKFyHcO8F0ujBy2FN05sbT9fKrpUOlCVJnZwiLXvKVCSjyKlMlD/MAQw8Bq1Ade7RIQ==
 
 figures@^3.0.0:
   version "3.2.0"
