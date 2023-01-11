@@ -1,4 +1,4 @@
-import { CompositorConnector } from '../index'
+import { ClientConnectionListener, CompositorConnector } from '../index'
 import { Client } from 'westfield-runtime-server'
 import { WebWorkerConnectionHandler } from './WebWorkerConnectionHandler'
 import Session from '../Session'
@@ -46,7 +46,7 @@ export class WebWorkerAppLauncher implements CompositorConnector {
     this.webAppSocket = WebWorkerConnectionHandler.create(session)
   }
 
-  async connectTo(url: URL, auth?: string): Promise<Client> {
+  listen(url: URL, auth?: string): ClientConnectionListener {
     const clientId = randomString()
     // const workerUrl = await getCrossOriginWorkerURL(url.href)
     const worker = new Worker(url, { name: clientId })
@@ -54,6 +54,13 @@ export class WebWorkerAppLauncher implements CompositorConnector {
     client.onClose().then(() => {
       worker.terminate()
     })
-    return client
+
+    const clientConnectionListener: ClientConnectionListener = {
+      onClient(client: Client) {
+        /*noop*/
+      },
+    }
+
+    return clientConnectionListener
   }
 }

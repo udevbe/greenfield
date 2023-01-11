@@ -1,10 +1,12 @@
-import { RetransmittingWebSocket } from 'retransmitting-websocket'
 import { Encoder } from '../../encoding/Encoder'
 import { FrameFeedback } from '../../FrameFeedback'
 import { NativeClientSession } from '../../NativeClientSession'
 import { MessageDestination } from '../../../../../westfield/server/node/proxy'
+import { PeerConnection } from 'node-datachannel'
+import { ARQDataChannel } from '../../ARQDataChannel'
 
 export default class wl_surface_interceptor {
+  frameDataChannel: ARQDataChannel
   destroyed: boolean
   frameFeedback?: FrameFeedback
 
@@ -20,11 +22,11 @@ export default class wl_surface_interceptor {
 
   encoder: Encoder
   userData: {
-    protocolChannel: RetransmittingWebSocket
-    frameDataChannel: RetransmittingWebSocket
+    protocolChannel: ARQDataChannel
+    peerConnection: PeerConnection
     drmContext: unknown
     messageInterceptors: Record<number, any>
-    nativeClientSession?: NativeClientSession
+    nativeClientSession: NativeClientSession
   }
   wlClient: unknown
   id: number

@@ -16,31 +16,61 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { Epoll } from 'epoll'
-import { RetransmittingWebSocket, WebSocketLike } from 'retransmitting-websocket'
 import { createProxyInputOutput } from './io/ProxyInputOutput'
-import { registerUnboundClientConnection } from './ClientConnectionPool'
 import { createLogger } from './Logger'
-
 import { createNativeClientSession, NativeClientSession } from './NativeClientSession'
 import { config } from './config'
 import {
   addSocketAuto,
   createDisplay,
   destroyDisplay,
+  dispatchRequests,
   getFd,
+  initDrm,
   initShm,
   nativeGlobalNames,
-  dispatchRequests,
-  initDrm,
 } from 'westfield-proxy'
+import { ARQDataChannel, createProtocolChannel } from './ARQDataChannel'
+import { PeerConnection } from 'node-datachannel'
+import { webcrypto } from 'crypto'
 
 const logger = createLogger('native-compositor-session')
+const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567' as const
 
 export type ClientEntry = {
-  protocolChannel: WebSocketLike
-  frameDataChannel: WebSocketLike
-  nativeClientSession?: NativeClientSession
-  clientId?: string
+  protocolChannel: ARQDataChannel
+  nativeClientSession: NativeClientSession
+  clientId: string
+}
+
+function base32Encode(data: Uint8Array) {
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength)
+
+  let bits = 0
+  let value = 0
+  let output = ''
+
+  for (let i = 0; i < view.byteLength; i++) {
+    value = (value << 8) | view.getUint8(i)
+    bits += 8
+
+    while (bits >= 5) {
+      output += alphabet[(value >>> (bits - 5)) & 31]
+      bits -= 5
+    }
+  }
+
+  if (bits > 0) {
+    output += alphabet[(value << (5 - bits)) & 31]
+  }
+
+  return output
+}
+
+function newClientId(): string {
+  const randomBytes = new Uint8Array(16)
+  webcrypto.getRandomValues(randomBytes)
+  return `cid${base32Encode(randomBytes).toLowerCase()}`
 }
 
 function onGlobalCreated(globalName: number): void {
@@ -54,8 +84,11 @@ function onGlobalDestroyed(globalName: number): void {
   }
 }
 
-export function createNativeCompositorSession(compositorSessionId: string): NativeCompositorSession {
-  return new NativeCompositorSession(compositorSessionId)
+export function createNativeCompositorSession(
+  compositorSessionId: string,
+  peerConnection: PeerConnection,
+): NativeCompositorSession {
+  return new NativeCompositorSession(compositorSessionId, peerConnection)
 }
 
 export class NativeCompositorSession {
@@ -71,6 +104,7 @@ export class NativeCompositorSession {
 
   constructor(
     public readonly compositorSessionId: string,
+    public readonly peerConnection: PeerConnection,
     public readonly webFS = createProxyInputOutput(compositorSessionId, config.public.baseURL),
     public clients: ClientEntry[] = [],
   ) {
@@ -119,91 +153,16 @@ export class NativeCompositorSession {
   private clientForSocket(wlClient: unknown) {
     logger.info(`New Wayland connection.`)
 
-    let client = this.clients.find((client) => client.nativeClientSession === undefined)
-
-    if (client) {
-      logger.debug(
-        'Found browser client without a Wayland connection, will associating this browser client with incoming Wayland connection.',
-      )
-      // associate native wayland connection with previously created placeholder client
-      client.nativeClientSession = createNativeClientSession(
-        wlClient,
-        this,
-        client.protocolChannel,
-        client.frameDataChannel,
-      )
-    } else {
-      logger.debug(
-        'No client found without a wayland connection, will create a placeholder client without an open websocket connection.',
-      )
-
-      const protocolChannel = new RetransmittingWebSocket()
-      const frameDataChannel = new RetransmittingWebSocket()
-      client = {
-        nativeClientSession: createNativeClientSession(wlClient, this, protocolChannel, frameDataChannel),
-        protocolChannel,
-        frameDataChannel,
-      } as ClientEntry
-      this.clients = [...this.clients, client]
-      registerUnboundClientConnection(protocolChannel)
-
-      // no previously created web sockets available, so ask compositor to create a new one
-      const otherClient = this.clients.find((client) => client.protocolChannel.readyState === 1)
-      if (otherClient) {
-        logger.debug('Previous client found with a websocket connection, will ask for a new a websocket connection.')
-        otherClient.nativeClientSession?.requestWebSocket()
-      }
+    const clientId = newClientId()
+    const protocolChannel = createProtocolChannel(this.peerConnection, clientId)
+    const clientEntry: ClientEntry = {
+      nativeClientSession: createNativeClientSession(wlClient, this, protocolChannel, clientId),
+      protocolChannel,
+      clientId,
     }
-
-    if (client.nativeClientSession) {
-      client.nativeClientSession.onDestroy().then(() => {
-        this.clients = this.clients.filter((value) => value !== client)
-      })
-    }
-  }
-
-  socketForClient(protocolChannel: WebSocketLike, clientId: string): void {
-    logger.info(`New websocket connected.`)
-    // find a client who does not have a websocket associated
-    const client = this.clients.find((client) => client.protocolChannel === protocolChannel)
-    if (client === undefined) {
-      // create a placeholder client for future wayland client connections.
-      const placeHolderClient: ClientEntry = {
-        protocolChannel,
-        clientId,
-        frameDataChannel: new RetransmittingWebSocket(),
-      }
-      this.clients = [...this.clients, placeHolderClient]
-      protocolChannel.addEventListener('close', () => {
-        if (placeHolderClient.nativeClientSession) {
-          placeHolderClient.nativeClientSession.destroy()
-        } else {
-          logger.info(`websocket closed without an associated wayland client.`)
-          this.clients = this.clients.filter((value) => value !== placeHolderClient)
-        }
-      })
-    } else {
-      // associate the websocket with an already connected wayland client.
-      client.clientId = clientId
-      protocolChannel.addEventListener('close', () => {
-        logger.info(`websocket closed.`)
-        if (client.nativeClientSession) {
-          client.nativeClientSession.destroy()
-        } else {
-          logger.info(`websocket closed without an associated wayland client.`)
-          this.clients = this.clients.filter((value) => value !== client)
-        }
-      })
-    }
-  }
-
-  frameDataChannelForClient(frameDataChannel: WebSocketLike, clientId: string) {
-    const client = this.clients.find((client) => client.clientId === clientId)
-    if (client === undefined) {
-      throw new Error('No Wayland client found for frame data channel connection.')
-    }
-
-    const retransmittingWebSocket = client.frameDataChannel as RetransmittingWebSocket
-    retransmittingWebSocket.useWebSocket(frameDataChannel)
+    this.clients = [...this.clients, clientEntry]
+    clientEntry.nativeClientSession.onDestroy().then(() => {
+      this.clients = this.clients.filter((value) => value !== clientEntry)
+    })
   }
 }

@@ -20,9 +20,7 @@ import Session from '../Session'
 export const enum RemoteOutOfBandListenOpcode {
   BufferSentStarted = 1,
   BufferCreation = 2,
-  WebSocketCreationRequest = 5,
   RecycledResourceIds = 6,
-  XWMConnectionRequest = 7,
 }
 
 export const enum RemoteOutOfBandSendOpcode {

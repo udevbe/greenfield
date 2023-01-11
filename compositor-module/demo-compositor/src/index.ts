@@ -45,7 +45,7 @@ async function main() {
   connect8081Button.onclick = () => {
     const compositorProxyURL = new URL(`ws://${proxyHost}:8081`)
     compositorProxyURL.searchParams.append('compositorSessionId', compositorSessionId)
-    compositorProxyConnector.connectTo(compositorProxyURL)
+    compositorProxyConnector.listen(compositorProxyURL)
   }
 
   const connect8082Button: HTMLButtonElement = document.createElement('button')
@@ -53,21 +53,21 @@ async function main() {
   connect8082Button.onclick = () => {
     const compositorProxyURL = new URL(`ws://${proxyHost}:8082`)
     compositorProxyURL.searchParams.append('compositorSessionId', compositorSessionId)
-    compositorProxyConnector.connectTo(compositorProxyURL)
+    compositorProxyConnector.listen(compositorProxyURL)
   }
 
   const demoWebAppButton: HTMLButtonElement = document.createElement('button')
   demoWebAppButton.textContent = `Launch demo webapp`
   demoWebAppButton.onclick = () => {
     const webAppURL = new URL(`${location.origin}/demo-webapp/app.js`)
-    compositorWebConnector.connectTo(webAppURL)
+    compositorWebConnector.listen(webAppURL)
   }
 
   const demoWebAppWGPUButton: HTMLButtonElement = document.createElement('button')
   demoWebAppWGPUButton.textContent = `Launch demo webapp wgpu`
   demoWebAppWGPUButton.onclick = () => {
     const webAppURL = new URL(`${location.origin}/demo-webapp-wgpu/app.js`)
-    compositorWebConnector.connectTo(webAppURL)
+    compositorWebConnector.listen(webAppURL)
   }
 
   const container: HTMLDivElement = document.createElement('div')

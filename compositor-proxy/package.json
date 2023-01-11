@@ -32,9 +32,10 @@
     "js-yaml": "^4.1.0",
     "pino": "^8.8.0",
     "pino-pretty": "^9.1.1",
-    "retransmitting-websocket": "1.0.0-alpha.0",
     "uWebSockets.js": "uNetworking/uWebSockets.js#v20.15.0",
-    "xtsb": "0.0.2-alpha.0"
+    "xtsb": "0.0.2-alpha.0",
+    "node-datachannel": "^0.4.1",
+    "node-kcp-x": "^1.1.2"
   },
   "devDependencies": {
     "@tsconfig/node16": "^1.0.3",

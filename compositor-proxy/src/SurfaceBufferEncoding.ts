@@ -22,6 +22,7 @@ import { createLogger } from './Logger'
 import wlSurfaceInterceptor from './protocol/wl_surface_interceptor'
 import { FrameFeedback } from './FrameFeedback'
 import { incrementAndGetNextBufferSerial, ProxyBuffer } from './ProxyBuffer'
+import { createFrameDataChannel } from './ARQDataChannel'
 
 const logger = createLogger('surface-buffer-encoding')
 
@@ -32,9 +33,18 @@ function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor): FrameF
       wlSurfaceInterceptor.userData.messageInterceptors,
     )
     wlSurfaceInterceptor.frameFeedback = frameFeedback
-    wlSurfaceInterceptor.userData.nativeClientSession?.onDestroy().then(() => frameFeedback.destroy())
+    wlSurfaceInterceptor.userData.nativeClientSession.onDestroy().then(() => frameFeedback.destroy())
   }
   return wlSurfaceInterceptor.frameFeedback
+}
+
+function ensureFrameDataChannel(wlSurfaceInterceptor: wlSurfaceInterceptor) {
+  if (wlSurfaceInterceptor.frameDataChannel === undefined) {
+    wlSurfaceInterceptor.frameDataChannel = createFrameDataChannel(
+      wlSurfaceInterceptor.userData.peerConnection,
+      wlSurfaceInterceptor.userData.nativeClientSession.id,
+    )
+  }
 }
 
 export function initSurfaceBufferEncoding(): void {
@@ -202,18 +212,19 @@ export function initSurfaceBufferEncoding(): void {
 }
 
 wlSurfaceInterceptor.prototype.encodeAndSendBuffer = function (args) {
+  ensureFrameDataChannel(this)
   return this.encoder
     .encodeBuffer(args)
-    .then(({ buffer }) => {
-      const bufferView = new DataView(buffer)
+    .then((nodeBuffer) => {
+      const bufferView = new DataView(nodeBuffer.buffer)
       // FIXME check buffer result, can have an empty size if encoding pipeline was ended
-      // 1 === 'open'
-      if (this.userData.protocolChannel.readyState === 1 && this.userData.frameDataChannel.readyState === 1) {
-        // send buffer sent started marker. opcode: 1. surfaceId + syncSerial
-        this.userData.protocolChannel.send(new Uint32Array([1, this.id, bufferView.getUint32(8, true)]))
-        // send buffer contents. opcode: 3. bufferId + chunk
-        this.userData.frameDataChannel.send(buffer)
-      }
+      // send buffer sent started marker. opcode: 1. surfaceId + syncSerial
+      const startMarker = new Uint32Array([1, this.id, bufferView.getUint32(8, true)])
+      this.userData.protocolChannel.sendMessageBinary(
+        Buffer.from(startMarker.buffer, startMarker.byteOffset, startMarker.byteLength),
+      )
+      // send buffer contents. bufferId + chunk
+      this.frameDataChannel.sendMessageBinary(nodeBuffer)
     })
     .catch((e: Error) => {
       logger.error(`\tname: ${e.name} message: ${e.message}`)

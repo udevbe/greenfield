@@ -15,25 +15,34 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import type { WebSocketLike } from 'retransmitting-websocket'
 import { createLogger } from './Logger'
 
 import { createNativeCompositorSession, NativeCompositorSession } from './NativeCompositorSession'
 import { XWaylandSession } from './XWaylandSession'
+import nodeDataChannel, { DataChannel, PeerConnection } from 'node-datachannel'
+import { URLSearchParams } from 'url'
 
 const logger = createLogger('compositor-proxy-session')
 
 export function createCompositorProxySession(compositorSessionId: string): CompositorProxySession {
-  const nativeCompositorSession = createNativeCompositorSession(compositorSessionId)
+  const peerConnection = new nodeDataChannel.PeerConnection('peer', {
+    iceServers: ['stun:stun.l.google.com:19302'],
+    enableIceUdpMux: true,
+  })
+
+  const nativeCompositorSession = createNativeCompositorSession(compositorSessionId, peerConnection)
   const xWaylandSession = XWaylandSession.create(nativeCompositorSession)
   xWaylandSession.createXWaylandListenerSocket()
+
   const compositorProxySession = new CompositorProxySession(
     nativeCompositorSession,
     compositorSessionId,
     xWaylandSession,
+    peerConnection,
   )
   nativeCompositorSession.onDestroy().then(() => compositorProxySession.destroy())
   logger.info(`Session created.`)
+
   return compositorProxySession
 }
 
@@ -47,6 +56,7 @@ export class CompositorProxySession {
     public readonly nativeCompositorSession: NativeCompositorSession,
     public readonly compositorSessionId: string,
     private readonly xWaylandSession: XWaylandSession,
+    public readonly peerConnection: PeerConnection,
   ) {}
 
   onDestroy(): Promise<void> {
@@ -56,36 +66,5 @@ export class CompositorProxySession {
   destroy(): void {
     logger.info(`Session destroyed.`)
     this.destroyResolve?.()
-  }
-
-  handleConnection(protocolChannel: WebSocketLike, clientId: string): void {
-    try {
-      this.nativeCompositorSession.socketForClient(protocolChannel, clientId)
-    } catch (e: any) {
-      logger.error(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
-      logger.error('error object stack: ')
-      logger.error(e.stack)
-      protocolChannel.close(4503, `Server encountered an exception.`)
-    }
-  }
-
-  handleXWMConnection(protocolChannel: WebSocketLike, xwmFD: number): void {
-    this.xWaylandSession.upsertXWMConnection(protocolChannel, xwmFD).catch((e: any) => {
-      logger.error(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
-      logger.error('error object stack: ')
-      logger.error(e.stack)
-      protocolChannel.close(4503, `Server encountered an exception.`)
-    })
-  }
-
-  handleFrameDataConnection(frameDataChannel: WebSocketLike, clientId: string) {
-    try {
-      this.nativeCompositorSession.frameDataChannelForClient(frameDataChannel, clientId)
-    } catch (e: any) {
-      logger.error(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
-      logger.error('error object stack: ')
-      logger.error(e.stack)
-      frameDataChannel.close(4503, `Server encountered an exception.`)
-    }
   }
 }

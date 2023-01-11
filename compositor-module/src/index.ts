@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { Client } from 'westfield-runtime-server'
-import { RemoteAppLauncher } from './remote/RemoteAppLauncher'
+import { RemoteConnector } from './remote/RemoteConnector'
 import Session, { GreenfieldLogger } from './Session'
 import { UserShellApi } from './UserShellApi'
 import { nrmlvo } from './Xkb'
@@ -76,8 +76,12 @@ export interface CompositorConfiguration {
   keyboardLayoutName?: string
 }
 
+export interface ClientConnectionListener {
+  onClient: (client: Client) => void
+}
+
 export interface CompositorConnector {
-  connectTo(url: URL, auth?: string): Promise<Client> | Client
+  listen(url: URL, auth?: string): ClientConnectionListener
 }
 
 export function createConnector(session: CompositorSession, type: 'remote' | 'web'): CompositorConnector {
@@ -85,7 +89,7 @@ export function createConnector(session: CompositorSession, type: 'remote' | 'we
     throw new Error('Session does not have expected implementation.')
   }
   if (type == 'remote') {
-    return RemoteAppLauncher.create(session)
+    return RemoteConnector.create(session)
   } else if (type === 'web') {
     return WebWorkerAppLauncher.create(session)
   } else {

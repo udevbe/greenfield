@@ -33,10 +33,10 @@
   },
   "dependencies": {
     "ffmpegh264": "1.0.0-alpha.1",
-    "retransmitting-websocket": "1.0.0-alpha.0",
     "westfield-runtime-common": "1.0.0-alpha.1",
     "westfield-runtime-server": "1.0.0-alpha.4",
-    "xtsb": "0.0.2-alpha.0"
+    "xtsb": "0.0.2-alpha.0",
+    "reconnecting-websocket": "^4.4.0"
   },
   "devDependencies": {
     "@openapitools/openapi-generator-cli": "^2.5.2",

@@ -15,7 +15,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { MessageEventLike, ReadyState, RetransmittingWebSocket, WebSocketLike } from 'retransmitting-websocket'
 import { FD, SendMessage } from 'westfield-runtime-common'
 import { Client, WlBufferResource, WlSurfaceResource } from 'westfield-runtime-server'
 import RemoteOutOfBandChannel, {
@@ -32,6 +31,7 @@ import Surface from '../Surface'
 import { ClientEncodersFeedback, createClientEncodersFeedback } from './EncoderFeedback'
 import { deliverContentToBufferStream } from './BufferStream'
 import { createRemoteInputOutput } from './RemoteInputOutput'
+import { ARQDataChannel } from './ARQDataChannel'
 
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567' as const
 
@@ -81,20 +81,6 @@ type XWaylandConnectionState = {
   xwm?: XWindowManager
 }
 
-const xWaylandProxyStates: { [key: string]: XWaylandConnectionState } = {}
-
-export function createRetransmittingWebSocket(url: URL, connectionId: string): WebSocketLike {
-  const connectionURL = new URL(url.href)
-  connectionURL.searchParams.set('connectionId', connectionId)
-  return new RetransmittingWebSocket({
-    webSocketFactory: () => {
-      const webSocket = new WebSocket(connectionURL.href)
-      webSocket.binaryType = 'arraybuffer'
-      return webSocket
-    },
-  })
-}
-
 export class RemoteConnectionHandler {
   private readonly textEncoder: TextEncoder = new TextEncoder()
   private readonly textDecoder: TextDecoder = new TextDecoder()
@@ -105,121 +91,107 @@ export class RemoteConnectionHandler {
     return new RemoteConnectionHandler(session)
   }
 
-  ensureXWayland(compositorProxyURL: URL): void {
-    const xWaylandBaseURLhref = compositorProxyURL.href
-
-    if (xWaylandProxyStates[xWaylandBaseURLhref] === undefined) {
-      xWaylandProxyStates[xWaylandBaseURLhref] = { state: 'pending' }
-    }
-  }
-
-  onWebSocket(webSocket: WebSocketLike, compositorProxyURL: URL, clientId: string): Promise<Client> {
-    return new Promise((resolve, reject) => {
-      this.session.logger.info('[WebSocket] - created.')
-      let wasOpen = false
-      webSocket.addEventListener('close', (event) => {
-        if (!wasOpen) {
-          reject(new Error(`Failed to connect to application. ${event.reason} ${event.code}`))
+  onProtocolChannel(protocolChannel: ARQDataChannel, compositorProxyURL: URL, client: Client): void {
+    this.session.logger.info('[ProtocolChannel] - created.')
+    let wasOpen = false
+    protocolChannel.onClose(() => {
+      if (!wasOpen) {
+        throw new Error(`Failed to connect to application.`)
+      }
+    })
+    protocolChannel.onOpen(() => {
+      wasOpen = true
+      this.session.logger.info('[ProtocolChannel] - open.')
+      client.onClose().then(() => {
+        this.session.logger.info('[client] - closed.')
+        if (protocolChannel.readyState === 'open' || protocolChannel.readyState === 'connecting') {
+          protocolChannel.close()
         }
       })
-      webSocket.addEventListener('open', () => {
-        wasOpen = true
-        this.session.logger.info('[WebSocket] - open.')
+      client.addResourceCreatedListener((resource) => {
+        if (resource.id >= 0xff000000 && client.recycledIds.length === 0) {
+          this.session.logger.warn('[client] - Ran out of reserved browser resource ids.')
+          client.close()
+        }
+      })
 
-        const client = this.session.display.createClient(clientId)
-        client.onClose().then(() => {
-          this.session.logger.info('[client] - closed.')
-          if (webSocket.readyState === 1 /* OPEN */ || webSocket.readyState === 0 /* CONNECTING */) {
-            webSocket.close()
-          }
-        })
-        client.addResourceCreatedListener((resource) => {
-          if (resource.id >= 0xff000000 && client.recycledIds.length === 0) {
-            this.session.logger.warn('[client] - Ran out of reserved browser resource ids.')
+      protocolChannel.onClose(() => {
+        this.session.logger.info('[ProtocolChannel] - closed.')
+        client.close()
+      })
+      protocolChannel.onError((event) => {
+        this.session.logger.warn(`[ProtocolChannel] - error`, event)
+      })
+
+      client.connection.onFlush = (wireMessages: SendMessage[]) => {
+        this.flushWireMessages(client, protocolChannel, wireMessages)
+      }
+
+      const oobChannel = RemoteOutOfBandChannel.create(this.session, (sendBuffer) => {
+        if (protocolChannel.readyState === 'open') {
+          try {
+            protocolChannel.send(new Uint8Array(sendBuffer))
+          } catch (e: any) {
+            this.session.logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+            this.session.logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
+            this.session.logger.error('error object stack: ')
+            this.session.logger.error(e.stack)
             client.close()
           }
-        })
-
-        webSocket.addEventListener('close', () => {
-          this.session.logger.info('[WebSocket] - closed.')
-          client.close()
-        })
-        webSocket.addEventListener('error', (event) => this.session.logger.warn(`[WebSocket] - error`, event))
-
-        client.connection.onFlush = (wireMessages: SendMessage[]) => {
-          this.flushWireMessages(client, webSocket, wireMessages)
         }
+      })
+      this.setupClientOutOfBandHandlers(protocolChannel, client, oobChannel)
 
-        const oobChannel = RemoteOutOfBandChannel.create(this.session, (sendBuffer) => {
-          if (webSocket.readyState === 1) {
-            try {
-              webSocket.send(sendBuffer)
-            } catch (e: any) {
-              this.session.logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
-              this.session.logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
-              this.session.logger.error('error object stack: ')
-              this.session.logger.error(e.stack)
-              client.close()
-            }
-          }
-        })
-        this.setupClientOutOfBandHandlers(webSocket, client, oobChannel, compositorProxyURL)
+      protocolChannel.onMessage((event) => this.handleMessageEvent(client, event.data, oobChannel))
 
-        webSocket.addEventListener('message', (event) => this.handleMessageEvent(client, event, oobChannel))
-
-        client.onClose().then(() => {
-          this.session.userShell.events.clientDestroyed?.({
-            id: client.id,
-          })
-          client.userData.clientEncodersFeedback?.destroy()
-        })
-        this.session.userShell.events.clientCreated?.({
+      client.onClose().then(() => {
+        this.session.userShell.events.clientDestroyed?.({
           id: client.id,
         })
-
-        const protocol = compositorProxyURL.protocol === 'wss:' ? 'https:' : 'http:'
-        const pathname = compositorProxyURL.pathname === '/' ? '' : compositorProxyURL.pathname
-        const basePath = `${protocol}//${compositorProxyURL.host}${pathname}`
-        const encoderApi = new EncoderApi(
-          new Configuration({
-            basePath,
-            headers: {
-              ['X-Compositor-Session-Id']: this.session.compositorSessionId,
-            },
-          }),
-        )
-        client.userData = {
-          encoderApi,
-          clientEncodersFeedback: createClientEncodersFeedback(clientId, encoderApi),
-          inputOutput: createRemoteInputOutput(basePath, this.session.compositorSessionId),
-        }
-
-        this.setupFrameDataChannel(client, compositorProxyURL, clientId)
-        resolve(client)
+        client.userData.clientEncodersFeedback?.destroy()
       })
+      this.session.userShell.events.clientCreated?.({
+        id: client.id,
+      })
+
+      const protocol = compositorProxyURL.protocol === 'wss:' ? 'https:' : 'http:'
+      const pathname = compositorProxyURL.pathname === '/' ? '' : compositorProxyURL.pathname
+      const basePath = `${protocol}//${compositorProxyURL.host}${pathname}`
+      const encoderApi = new EncoderApi(
+        new Configuration({
+          basePath,
+          headers: {
+            ['X-Compositor-Session-Id']: this.session.compositorSessionId,
+          },
+        }),
+      )
+      client.userData = {
+        encoderApi,
+        clientEncodersFeedback: createClientEncodersFeedback(client.id, encoderApi),
+        inputOutput: createRemoteInputOutput(basePath, this.session.compositorSessionId),
+      }
     })
   }
 
-  private setupFrameDataChannel(client: Client, compositorProxyURL: URL, connectionId: string) {
-    const url = new URL(compositorProxyURL)
-    url.searchParams.append('frameData', '')
-    const frameDataChannel = createRetransmittingWebSocket(url, connectionId)
-
-    frameDataChannel.addEventListener('message', (message) => {
+  setupFrameDataChannel(client: Client, frameDataChannel: ARQDataChannel) {
+    frameDataChannel.onMessage((message) => {
       if (client.connection.closed) {
         return
       }
-
-      const messageData = message.data as ArrayBuffer
-      deliverContentToBufferStream(client, messageData)
+      deliverContentToBufferStream(client, message.data)
     })
   }
 
+  async setupXWM(client: Client, xwmDataChannel: ARQDataChannel): Promise<XWindowManager> {
+    const xConnection = await XWindowManagerConnection.create(this.session, xwmDataChannel)
+    client.onClose().then(() => xConnection.destroy())
+    return XWindowManager.create(this.session, xConnection, client, XWaylandShell.create(this.session))
+  }
+
   private setupClientOutOfBandHandlers(
-    webSocket: WebSocketLike,
+    protocolChannel: ARQDataChannel,
     client: Client,
     outOfBandChannel: RemoteOutOfBandChannel,
-    appEndpointURL: URL,
   ) {
     // send out-of-band resource destroy. opcode: 1
     client.addResourceDestroyListener((resource) => {
@@ -248,15 +220,6 @@ export class RemoteConnectionHandler {
       wlBufferResource.implementation = StreamingBuffer.create(wlBufferResource, creationSerial)
     })
 
-    // listen for web socket creation request. opcode: 5
-    outOfBandChannel.setListener(RemoteOutOfBandListenOpcode.WebSocketCreationRequest, () => {
-      if (client.connection.closed) {
-        return
-      }
-      const clientId = randomString()
-      this.onWebSocket(createRetransmittingWebSocket(appEndpointURL, clientId), appEndpointURL, clientId)
-    })
-
     // listen for recycled resource ids
     outOfBandChannel.setListener(RemoteOutOfBandListenOpcode.RecycledResourceIds, (outOfBandMessage) => {
       if (client.connection.closed) {
@@ -266,57 +229,21 @@ export class RemoteConnectionHandler {
       const ids = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)
       client.recycledIds = Array.from(ids)
     })
-
-    // listen for XWayland XWM connection request
-    outOfBandChannel.setListener(RemoteOutOfBandListenOpcode.XWMConnectionRequest, async (outOfBandMessage) => {
-      const wmFD = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)[0]
-
-      const xWaylandBaseURL = new URL(appEndpointURL.href)
-      xWaylandBaseURL.searchParams.delete('connectionId')
-      const xWaylandBaseURLhref = xWaylandBaseURL.href
-
-      const xWaylandConnection = xWaylandProxyStates[xWaylandBaseURLhref]
-      if (xWaylandConnection === undefined) {
-        console.error('BUG? Received an XWM message from an unregistered XWayland proxy.')
-      } else {
-        xWaylandConnection.state = 'open'
-        xWaylandConnection.wlClient = client
-        xWaylandBaseURL.searchParams.append('xwmFD', `${wmFD}`)
-        const xConnection = await XWindowManagerConnection.create(
-          this.session,
-          createRetransmittingWebSocket(xWaylandBaseURL, randomString()),
-        )
-        client.onClose().then(() => xConnection.destroy())
-        xConnection.onDestroy().then(() => delete xWaylandProxyStates[xWaylandBaseURLhref])
-        xWaylandConnection.xConnection = xConnection
-        try {
-          xWaylandConnection.xwm = await XWindowManager.create(
-            this.session,
-            xConnection,
-            client,
-            XWaylandShell.create(this.session),
-          )
-        } catch (e) {
-          console.error('Failed to create X Window Manager.', e)
-        }
-      }
-    })
   }
 
-  private handleMessageEvent(client: Client, event: MessageEventLike, wsOutOfBandChannel: RemoteOutOfBandChannel) {
+  private handleMessageEvent(client: Client, messageData: ArrayBuffer, wsOutOfBandChannel: RemoteOutOfBandChannel) {
     if (client.connection.closed) {
       return
     }
 
     try {
-      const arrayBuffer = event.data as ArrayBuffer
-      const dataView = new DataView(arrayBuffer)
+      const dataView = new DataView(messageData)
       const outOfBand = dataView.getUint32(0, true)
       if (outOfBand) {
-        wsOutOfBandChannel.message(arrayBuffer)
+        wsOutOfBandChannel.message(messageData)
       } else {
         let offset = 0
-        const receiveBuffer = new Uint32Array(arrayBuffer, Uint32Array.BYTES_PER_ELEMENT)
+        const receiveBuffer = new Uint32Array(messageData, Uint32Array.BYTES_PER_ELEMENT)
         const fdsInCount = receiveBuffer[offset++]
         const fds = new Array<FD>(fdsInCount)
         for (let i = 0; i < fdsInCount; i++) {
@@ -340,7 +267,7 @@ export class RemoteConnectionHandler {
     }
   }
 
-  private flushWireMessages(client: Client, webSocket: WebSocketLike, wireMessages: SendMessage[]) {
+  private flushWireMessages(client: Client, protocolChannel: ARQDataChannel, wireMessages: SendMessage[]) {
     if (client.connection.closed) {
       return
     }
@@ -387,9 +314,9 @@ export class RemoteConnectionHandler {
       offset += message.length
     })
 
-    if (webSocket.readyState === ReadyState.OPEN) {
+    if (protocolChannel.readyState === 'open') {
       try {
-        webSocket.send(sendBuffer.buffer)
+        protocolChannel.send(sendBuffer)
       } catch (e: any) {
         this.session.logger.error(e)
         client.close()

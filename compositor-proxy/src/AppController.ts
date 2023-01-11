@@ -3,8 +3,6 @@ import type { HttpRequest, HttpResponse } from 'uWebSockets.js'
 import fs from 'fs'
 import { TRANSFER_CHUNK_SIZE } from './io/ProxyInputOutput'
 import { Readable, Writable } from 'stream'
-import { WebSocketLike } from 'retransmitting-websocket'
-import { upsertWebSocket } from './ClientConnectionPool'
 import { createLogger } from './Logger'
 import { URLSearchParams } from 'url'
 import { config } from './config'
@@ -385,41 +383,6 @@ export function PUTWebFDStream(
     res,
     fs.createWriteStream('ignored', { fd, autoClose: true, highWaterMark: TRANSFER_CHUNK_SIZE }),
   )
-}
-
-export function webSocketOpen(
-  compositorProxySession: CompositorProxySession,
-  ws: WebSocketLike,
-  searchParams: URLSearchParams,
-) {
-  if (searchParams.get('compositorSessionId') !== compositorProxySession.compositorSessionId) {
-    const message = 'Bad or missing compositorSessionId query parameter.'
-    logger.error(message)
-    ws.close(4403, message)
-    return
-  }
-
-  const connectionId = searchParams.get('connectionId')
-  if (connectionId === null) {
-    const message = 'Bad or missing query parameters.'
-    logger.error(message)
-    ws.close(4403, message)
-    return
-  }
-
-  if (searchParams.has('xwmFD')) {
-    const wmFD = Number.parseInt(searchParams.get('xwmFD') ?? '0')
-    compositorProxySession.handleXWMConnection(ws, wmFD)
-  } else if (searchParams.has('frameData')) {
-    compositorProxySession.handleFrameDataConnection(ws, connectionId)
-  } else {
-    const { retransmittingWebSocket, isNew } = upsertWebSocket(connectionId, ws)
-    if (!isNew) {
-      // reconnecting, no need to do anything
-      return
-    }
-    compositorProxySession.handleConnection(retransmittingWebSocket, connectionId)
-  }
 }
 
 /* Helper function for reading a posted JSON body */

@@ -15,8 +15,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import type { WebSocketLike } from 'retransmitting-websocket'
-import { ReadyState } from 'retransmitting-websocket'
 import { createLogger } from './Logger'
 import { NativeCompositorSession } from './NativeCompositorSession'
 
@@ -43,6 +41,8 @@ import {
   setWireMessageEndCallback,
 } from 'westfield-proxy'
 import { incrementAndGetNextBufferSerial, ProxyBuffer } from './ProxyBuffer'
+import { ARQDataChannel } from './ARQDataChannel'
+import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 
 const logger = createLogger('native-client-session')
 
@@ -66,43 +66,13 @@ function deserializeProxyFDJSON(sourceBuf: ArrayBufferView): { proxyFD: ProxyFD;
 export function createNativeClientSession(
   wlClient: unknown,
   nativeCompositorSession: NativeCompositorSession,
-  protocolChannel: WebSocketLike,
-  frameDataChannel: WebSocketLike,
+  protocolChannel: ARQDataChannel,
+  id: string,
 ): NativeClientSession {
-  const messageInterceptors: Record<number, any> = {}
-  const userData: {
-    protocolChannel: WebSocketLike
-    frameDataChannel: WebSocketLike
-    messageInterceptors: Record<number, any>
-    drmContext: unknown
-    nativeClientSession?: NativeClientSession
-  } = {
-    frameDataChannel,
-    protocolChannel,
-    drmContext: nativeCompositorSession.drmContext,
-    messageInterceptors,
-  }
-  const messageInterceptor = MessageInterceptor.create(
-    wlClient,
-    nativeCompositorSession.wlDisplay,
-    wl_display_interceptor,
-    userData,
-    messageInterceptors,
-  )
-
-  const nativeClientSession = new NativeClientSession(
-    wlClient,
-    nativeCompositorSession,
-    protocolChannel,
-    messageInterceptor,
-  )
-  userData.nativeClientSession = nativeClientSession
+  const nativeClientSession = new NativeClientSession(wlClient, nativeCompositorSession, protocolChannel, id)
   nativeClientSession.onDestroy().then(() => {
-    userData.nativeClientSession = undefined
-    if (protocolChannel.readyState === 1 || protocolChannel.readyState === 0) {
-      // retransmittingWebSocket.onerror = noopHandler
-      // retransmittingWebSocket.onclose = noopHandler
-      // retransmittingWebSocket.onmessage = noopHandler
+    // userData.nativeClientSession = undefined
+    if (protocolChannel.isOpen()) {
       protocolChannel.close()
     }
   })
@@ -126,35 +96,37 @@ export function createNativeClientSession(
 
   setBufferCreatedCallback(wlClient, (bufferId: number) => {
     const bufferCreationSerial = incrementAndGetNextBufferSerial()
-    messageInterceptor.interceptors[bufferId] = new ProxyBuffer(
-      messageInterceptor.interceptors,
+    nativeClientSession.messageInterceptor.interceptors[bufferId] = new ProxyBuffer(
+      nativeClientSession.messageInterceptor.interceptors,
       bufferId,
       bufferCreationSerial,
     )
     // send buffer creation notification. opcode: 2
-    protocolChannel.send(new Uint32Array([2, bufferId, bufferCreationSerial]).buffer)
+    const msg = new Uint32Array([2, bufferId, bufferCreationSerial])
+    protocolChannel.sendMessageBinary(Buffer.from(msg.buffer, msg.byteOffset, msg.byteLength))
   })
 
   let wasOpen = false
-  protocolChannel.addEventListener('error', (event) => {
+  protocolChannel.onError((event) => {
     logger.info(`Wayland client web socket error.`, event)
     if (!wasOpen) {
       nativeClientSession.destroy()
     }
   })
-  protocolChannel.addEventListener('close', () => {
+  protocolChannel.onClosed(() => {
     logger.info(`Wayland client web socket closed.`)
     nativeClientSession.destroy()
   })
-  protocolChannel.addEventListener('message', (event) => {
+  protocolChannel.onMessage((event) => {
     try {
-      nativeClientSession.onMessage(event.data as ArrayBuffer)
+      const message = event as Buffer
+      nativeClientSession.onMessage(message)
     } catch (e) {
       logger.error('BUG? Error while processing event from compositor.', e)
       nativeClientSession.destroy()
     }
   })
-  protocolChannel.addEventListener('open', () => {
+  protocolChannel.onOpen(() => {
     wasOpen = true
     // flush out any requests that came in while we were waiting for the data channel to open.
     logger.info(`Wayland client web socket to browser is open.`)
@@ -172,15 +144,16 @@ export class NativeClientSession {
     this.destroyResolve = resolve
   })
   private readonly browserChannelOutOfBandHandlers: Record<number, (payload: Uint8Array) => void>
+  public readonly messageInterceptor: MessageInterceptor
 
   constructor(
     public wlClient: unknown,
     private readonly nativeCompositorSession: NativeCompositorSession,
-    private readonly webSocket: WebSocketLike,
-    public readonly messageInterceptor: MessageInterceptor,
+    private readonly protocolDataChannel: ARQDataChannel,
+    public readonly id: string,
     private pendingWireMessages: Uint32Array[] = [],
     private pendingMessageBufferSize = 0,
-    private readonly outboundMessages: ArrayBuffer[] = [],
+    private outboundMessages: Buffer[] = [],
     private readonly inboundMessages: Uint32Array[] = [],
     private readonly wlRegistries: Record<number, unknown> = {},
     private disconnecting = false,
@@ -189,6 +162,22 @@ export class NativeClientSession {
       // listen for out-of-band resource destroy. opcode: 1
       1: (payload) => this.destroyResourceSilently(payload),
     }
+
+    const messageInterceptors: Record<number, any> = {}
+    const userData: wl_surface_interceptor['userData'] = {
+      peerConnection: nativeCompositorSession.peerConnection,
+      protocolChannel: this.protocolDataChannel,
+      drmContext: nativeCompositorSession.drmContext,
+      messageInterceptors,
+      nativeClientSession: this,
+    }
+    this.messageInterceptor = MessageInterceptor.create(
+      wlClient,
+      nativeCompositorSession.wlDisplay,
+      wl_display_interceptor,
+      userData,
+      messageInterceptors,
+    )
   }
 
   /**
@@ -251,22 +240,20 @@ export class NativeClientSession {
     getServerObjectIdsBatch(this.wlClient, idsReply.subarray(1))
     // out-of-band w. opcode 6
     idsReply[0] = 6
-    if (this.webSocket.readyState === 1) {
-      this.webSocket.send(idsReply.buffer)
+    if (this.protocolDataChannel.isOpen()) {
+      this.protocolDataChannel.sendMessageBinary(Buffer.from(idsReply.buffer, idsReply.byteOffset, idsReply.byteLength))
     } else {
       // web socket not open, queue up reply
-      this.outboundMessages.push(idsReply.buffer)
+      this.outboundMessages.push(Buffer.from(idsReply.buffer, idsReply.byteOffset, idsReply.byteLength))
     }
   }
 
   flushOutboundMessageOnOpen(): void {
     this.allocateBrowserServerObjectIdsBatch()
-    while (this.outboundMessages.length) {
-      const outboundMessage = this.outboundMessages.shift()
-      if (outboundMessage) {
-        this.webSocket.send(outboundMessage)
-      }
+    for (const outboundMessage of this.outboundMessages) {
+      this.protocolDataChannel.sendMessageBinary(outboundMessage)
     }
+    this.outboundMessages = []
   }
 
   private emitLocalGlobals(wireMessageBuffer: Uint32Array): boolean {
@@ -354,14 +341,16 @@ export class NativeClientSession {
       offset += pendingWireMessage.length
     }
 
-    if (this.webSocket.readyState === ReadyState.OPEN) {
+    if (this.protocolDataChannel.isOpen()) {
       // 1 === 'open'
       logger.debug('Client message send over websocket.')
-      this.webSocket.send(sendBuffer.buffer)
+      this.protocolDataChannel.sendMessageBinary(
+        Buffer.from(sendBuffer.buffer, sendBuffer.byteOffset, sendBuffer.byteLength),
+      )
     } else {
       // queue up data until the channel is open
       logger.debug('Client message queued because websocket is not open.')
-      this.outboundMessages.push(sendBuffer.buffer)
+      this.outboundMessages.push(Buffer.from(sendBuffer.buffer, sendBuffer.byteOffset, sendBuffer.byteLength))
     }
 
     this.pendingMessageBufferSize = 0
@@ -381,23 +370,21 @@ export class NativeClientSession {
     }
   }
 
-  requestWebSocket(): void {
-    this.webSocket.send(Uint32Array.from([5]).buffer)
-  }
-
-  onMessage(receiveBuffer: ArrayBuffer): void {
+  onMessage(receiveBuffer: Buffer): void {
     if (!this.wlClient) {
       return
     }
 
-    const outOfBandOpcode = new Uint32Array(receiveBuffer, 0, 1)[0]
+    const outOfBandOpcode = new Uint32Array(receiveBuffer.buffer, receiveBuffer.byteOffset, 1)[0]
     if (outOfBandOpcode) {
       logger.debug(`Received out of band message with opcode: ${outOfBandOpcode}`)
       this.browserChannelOutOfBandHandlers[outOfBandOpcode](
-        new Uint8Array(receiveBuffer, Uint32Array.BYTES_PER_ELEMENT),
+        new Uint8Array(receiveBuffer.buffer, receiveBuffer.byteOffset + Uint32Array.BYTES_PER_ELEMENT),
       )
     } else {
-      this.onWireMessageEvents(new Uint32Array(receiveBuffer, Uint32Array.BYTES_PER_ELEMENT))
+      this.onWireMessageEvents(
+        new Uint32Array(receiveBuffer.buffer, receiveBuffer.byteOffset + Uint32Array.BYTES_PER_ELEMENT),
+      )
     }
   }
 

@@ -1,23 +1,23 @@
 import { connect, webConnectionSetup, XConnection } from 'xtsb'
-import type { WebSocketLike } from 'retransmitting-websocket'
 import Session from '../../Session'
+import { ARQDataChannel } from '../ARQDataChannel'
 
 export class XWindowManagerConnection {
-  static create(session: Session, webSocket: WebSocketLike): Promise<XWindowManagerConnection> {
+  static create(session: Session, xwmDataChannel: ARQDataChannel): Promise<XWindowManagerConnection> {
     return new Promise<XWindowManagerConnection>((resolve, reject) => {
       let wasOpen = false
-      webSocket.addEventListener('open', (_) => {
+      xwmDataChannel.onOpen(() => {
         wasOpen = true
-        webSocket.addEventListener('error', (ev) => session.logger.error(`XWM connection error: ${ev}`))
-        const xwm = new XWindowManagerConnection(webSocket)
-        webSocket.addEventListener('close', (_) => xwm.destroy())
+        xwmDataChannel.onError((ev) => session.logger.error(`XWM connection error: ${ev}`))
+        const xwm = new XWindowManagerConnection(xwmDataChannel)
+        xwmDataChannel.onClose(() => xwm.destroy())
         resolve(xwm)
       })
-      webSocket.addEventListener('error', (ev) => {
+      xwmDataChannel.onError((ev) => {
         if (wasOpen) {
           return
         }
-        if (webSocket.readyState === WebSocket.CONNECTING) {
+        if (xwmDataChannel.readyState === 'connecting') {
           reject(new Error(`XWM connection failed: ${ev}`))
         }
       })
@@ -32,15 +32,13 @@ export class XWindowManagerConnection {
   private setupPromise?: Promise<XConnection>
 
   xConnection?: XConnection
-  readonly webSocket: WebSocketLike
 
-  constructor(webSocket: WebSocketLike) {
-    this.webSocket = webSocket
+  constructor(public readonly xwmDataChannel: ARQDataChannel) {
     this.destroyPromise = new Promise<void>((resolve) => (this.destroyResolve = resolve))
   }
 
   destroy() {
-    this.webSocket.close()
+    this.xwmDataChannel.close()
     this.destroyResolve()
   }
 
@@ -51,7 +49,7 @@ export class XWindowManagerConnection {
   setup(): Promise<XConnection> {
     if (this.setupPromise === undefined) {
       this.setupPromise = new Promise<XConnection>(async (resolve) => {
-        this.xConnection = await connect(webConnectionSetup(this.webSocket as unknown as WebSocket))
+        this.xConnection = await connect(webConnectionSetup(this.xwmDataChannel))
         resolve(this.xConnection)
       })
     }
