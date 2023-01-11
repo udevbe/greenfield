@@ -82,10 +82,6 @@ export class ARQDataChannel {
     this.dataChannel.sendMessageBinary(buffer)
   }
 
-  sendMessage(text: string) {
-    this.dataChannel.sendMessage(text)
-  }
-
   close(): void {
     this.dataChannel.close()
   }

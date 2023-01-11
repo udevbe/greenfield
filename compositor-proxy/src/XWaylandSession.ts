@@ -3,10 +3,10 @@ import { nodeFDConnectionSetup } from 'xtsb'
 import { ClientEntry, NativeCompositorSession } from './NativeCompositorSession'
 import { equalValueExternal, setupXWayland, teardownXWayland } from 'westfield-proxy'
 import { createReadStream } from 'fs'
-import { DataChannel } from 'node-datachannel'
 import { ARQDataChannel, createXWMDataChannel } from './ARQDataChannel'
 
 const logger = createLogger('xwayland')
+const textEncoder = new TextEncoder()
 
 export class XWaylandSession {
   private nativeXWayland?: unknown
@@ -76,7 +76,7 @@ export class XWaylandSession {
     const { xConnectionSocket, setup } = await nodeFDConnectionSetup(wmFD)()
 
     const setupJSON = JSON.stringify(setup)
-    xwmDataChannel.sendMessage(setupJSON)
+    xwmDataChannel.sendMessageBinary(Buffer.from(textEncoder.encode(setupJSON).buffer))
     this.xwmDataChannel.onMessage((ev) => {
       if (ev instanceof Buffer) {
         xConnectionSocket.write(ev)
