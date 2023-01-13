@@ -142,7 +142,7 @@ export class RemoteConnectionHandler {
       })
       this.setupClientOutOfBandHandlers(protocolChannel, client, oobChannel)
 
-      protocolChannel.onMessage((event) => this.handleMessageEvent(client, event.data, oobChannel))
+      protocolChannel.onMessage((event) => this.handleMessageEvent(client, event.buffer, oobChannel))
 
       client.onClose().then(() => {
         this.session.userShell.events.clientDestroyed?.({
@@ -178,7 +178,7 @@ export class RemoteConnectionHandler {
       if (client.connection.closed) {
         return
       }
-      deliverContentToBufferStream(client, message.data)
+      deliverContentToBufferStream(client, message.buffer)
     })
   }
 
