@@ -1,6 +1,6 @@
 import { DataChannel, PeerConnection } from 'node-datachannel'
 import { URLSearchParams } from 'url'
-import { KCP } from 'node-kcp-x'
+import { Kcp } from './kcp'
 
 export function createXWMDataChannel(peerConnection: PeerConnection, clientId: string) {
   const labelParams = new URLSearchParams()
@@ -42,7 +42,7 @@ export function createProtocolChannel(peerConnection: PeerConnection, clientId: 
 }
 
 export class ARQDataChannel {
-  private kcp?: KCP
+  private kcp?: Kcp
   private msgCb?: (msg: Buffer) => void
   private openCb?: () => void
   private checkTimer?: NodeJS.Timeout
@@ -62,7 +62,7 @@ export class ARQDataChannel {
     // TODO forward error correction: https://github.com/ronomon/reed-solomon#readme & https://github.com/skywind3000/kcp/wiki/KCP-Best-Practice-EN
     if (this.kcp) {
       this.kcp.send(buffer)
-      this.kcp.flush()
+      this.kcp.flush(false)
     }
   }
 
@@ -72,30 +72,33 @@ export class ARQDataChannel {
       this.checkTimer = undefined
     }
     if (this.kcp) {
+      this.kcp.flush(false)
       this.kcp.release()
       this.kcp = undefined
     }
-    this.dataChannel.close()
+    if (this.dataChannel.isOpen()) {
+      this.dataChannel.close()
+    }
   }
 
   isOpen(): boolean {
     return this.dataChannel.isOpen()
   }
 
-  private checkLoop(kcp: KCP) {
-    kcp.update(Date.now())
+  private checkLoop(kcp: Kcp) {
+    kcp.update()
     this.checkTimer = setTimeout(() => {
       this.checkLoop(kcp)
-    }, kcp.check(Date.now()))
+    }, kcp.check())
   }
 
   private initKcp() {
-    const kcp = new KCP(this.dataChannel.getId(), {})
-    kcp.nodelay(1, 20, 2, 1)
-    kcp.setmtu(1280)
-    kcp.wndsize(1024, 1024)
+    const kcp = new Kcp(this.dataChannel.getId(), {})
+    kcp.setNoDelay(1, 20, 2, 1)
+    kcp.setMtu(1200) // webrtc datachannel MTU
+    kcp.setWndSize(256, 256)
 
-    kcp.output((data, size) => {
+    kcp.setOutput((data, size) => {
       this.dataChannel.sendMessageBinary(data.subarray(0, size))
     })
 
@@ -104,10 +107,11 @@ export class ARQDataChannel {
         throw new Error('Only binary data supported')
       }
       // TODO forward error correction: https://github.com/ronomon/reed-solomon#readme & https://github.com/skywind3000/kcp/wiki/KCP-Best-Practice-EN
-      kcp.input(message)
-      const size = kcp.peeksize()
+      kcp.input(message, true, false)
+      const size = kcp.peekSize()
       if (size > 0) {
-        const buffer = kcp.recv()
+        const buffer = Buffer.alloc(size)
+        kcp.recv(buffer)
         if (this.msgCb) {
           this.msgCb(buffer.subarray(0, size))
         }

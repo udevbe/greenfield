@@ -28,33 +28,33 @@ function currentMs(): number {
 }
 
 /* encode 8 bits unsigned int */
-function ikcp_encode8u(p: DataView, c: number, offset = 0): void {
-  p.setUint8(offset, c)
+function ikcp_encode8u(p: Buffer, c: number, offset = 0): void {
+  p.writeUInt8(c, offset)
 }
 
 /* decode 8 bits unsigned int */
-function ikcp_decode8u(p: DataView, offset = 0): number {
-  return p.getUint8(offset)
+function ikcp_decode8u(p: Buffer, offset = 0): number {
+  return p.readUInt8(offset)
 }
 
 /* encode 16 bits unsigned int (lsb) */
-function ikcp_encode16u(p: DataView, w: number, offset = 0) {
-  p.setUint16(offset, w, true)
+function ikcp_encode16u(p: Buffer, w: number, offset = 0) {
+  p.writeUInt16LE(w, offset)
 }
 
 /* decode 16 bits unsigned int (lsb) */
-function ikcp_decode16u(p: DataView, offset = 0): number {
-  return p.getUint16(offset, true)
+function ikcp_decode16u(p: Buffer, offset = 0): number {
+  return p.readUInt16LE(offset)
 }
 
 /* encode 32 bits unsigned int (lsb) */
-function ikcp_encode32u(p: DataView, l: number, offset = 0): void {
-  p.setUint32(offset, l, true)
+function ikcp_encode32u(p: Buffer, l: number, offset = 0): void {
+  p.writeUInt32LE(l, offset)
 }
 
 /* decode 32 bits unsigned int (lsb) */
-function ikcp_decode32u(p: DataView, offset = 0): number {
-  return p.getUint32(offset, true)
+function ikcp_decode32u(p: Buffer, offset = 0): number {
+  return p.readUInt32LE(offset)
 }
 
 function _ibound_(lower: number, middle: number, upper: number): number {
@@ -97,7 +97,7 @@ class Segment {
   fastack: number
   acked: number
 
-  data!: Uint8Array
+  data!: Buffer
 
   constructor(size?: number) {
     this.conv = 0
@@ -113,23 +113,22 @@ class Segment {
     this.fastack = 0
     this.acked = 0
     if (size) {
-      this.data = new Uint8Array(size)
+      this.data = Buffer.allocUnsafe(size)
     }
   }
 
   // encode a segment into buffer
-  encode(ptr: Uint8Array): Uint8Array {
-    const dataView = new DataView(ptr.buffer, ptr.byteOffset, ptr.byteLength)
-    ikcp_encode32u(dataView, this.conv)
-    ikcp_encode8u(dataView, this.cmd, 4)
-    ikcp_encode8u(dataView, this.frg, 5)
-    ikcp_encode16u(dataView, this.wnd, 6)
-    ikcp_encode32u(dataView, this.ts, 8)
-    ikcp_encode32u(dataView, this.sn, 12)
-    ikcp_encode32u(dataView, this.una, 16)
+  encode(ptr: Buffer): Buffer {
+    ikcp_encode32u(ptr, this.conv)
+    ikcp_encode8u(ptr, this.cmd, 4)
+    ikcp_encode8u(ptr, this.frg, 5)
+    ikcp_encode16u(ptr, this.wnd, 6)
+    ikcp_encode32u(ptr, this.ts, 8)
+    ikcp_encode32u(ptr, this.sn, 12)
+    ikcp_encode32u(ptr, this.una, 16)
     const len = this.data?.byteLength || 0
-    ikcp_encode32u(dataView, len, 20)
-    return ptr.subarray(IKCP_OVERHEAD)
+    ikcp_encode32u(ptr, len, 20)
+    return ptr.slice(IKCP_OVERHEAD)
   }
 }
 
@@ -138,7 +137,7 @@ type AckItem = {
   ts: number // uint32
 }
 
-type output_callback = (buf: Uint8Array, len: number, user: any) => void
+type output_callback = (buf: Buffer, len: number, user: any) => void
 
 export class Kcp {
   conv: number // uint32
@@ -189,7 +188,7 @@ export class Kcp {
   ackcount: number
   ackblock: number
 
-  buffer: Uint8Array
+  buffer: Buffer
 
   fastresend: number // int
   nocwnd: number // int
@@ -204,7 +203,7 @@ export class Kcp {
     this.conv = conv
     this.mtu = IKCP_MTU_DEF
     this.mss = this.mtu - IKCP_OVERHEAD
-    this.buffer = new Uint8Array(this.mtu)
+    this.buffer = Buffer.allocUnsafe(this.mtu)
     this.state = 0
 
     this.snd_una = 0 // 发送出去未得到确认的包的序号
@@ -283,7 +282,7 @@ export class Kcp {
       return -1
     }
 
-    const buffer = new Uint8Array(mtu)
+    const buffer = Buffer.allocUnsafe(mtu)
     if (!buffer) {
       return -2
     }
@@ -345,7 +344,7 @@ export class Kcp {
     return this.user
   }
 
-  recv(buffer: Uint8Array): number {
+  recv(buffer: Buffer): number {
     const peeksize = this.peekSize()
     if (peeksize < 0) {
       return -1
@@ -362,8 +361,8 @@ export class Kcp {
     let n = 0
     let count = 0
     for (const seg of this.rcv_queue) {
-      buffer.set(seg.data)
-      buffer = buffer.subarray(seg.data.byteLength)
+      seg.data.copy(buffer)
+      buffer = buffer.slice(seg.data.byteLength)
       n += seg.data.byteLength
       count++
       this._delSegment(seg)
@@ -405,7 +404,7 @@ export class Kcp {
   //
   // 'ackNoDelay' will trigger immediate ACK, but surely it will not be efficient in bandwidth
   // @ts-ignore
-  input(data: Uint8Array, regular: boolean, ackNodelay: boolean): number {
+  input(data: Buffer, regular: boolean, ackNodelay: boolean): number {
     const snd_una = this.snd_una
     if (data.byteLength < IKCP_OVERHEAD) {
       return -1
@@ -430,20 +429,19 @@ export class Kcp {
         break
       }
 
-      const dataView = new DataView(data.buffer, data.byteOffset, data.byteLength)
-      conv = ikcp_decode32u(dataView)
+      conv = ikcp_decode32u(data)
       if (conv !== this.conv) {
         return -1
       }
 
-      cmd = ikcp_decode8u(dataView, 4)
-      frg = ikcp_decode8u(dataView, 5)
-      wnd = ikcp_decode16u(dataView, 6)
-      ts = ikcp_decode32u(dataView, 8)
-      sn = ikcp_decode32u(dataView, 12)
-      una = ikcp_decode32u(dataView, 16)
-      length = ikcp_decode32u(dataView, 20)
-      data = data.subarray(IKCP_OVERHEAD)
+      cmd = ikcp_decode8u(data, 4)
+      frg = ikcp_decode8u(data, 5)
+      wnd = ikcp_decode16u(data, 6)
+      ts = ikcp_decode32u(data, 8)
+      sn = ikcp_decode32u(data, 12)
+      una = ikcp_decode32u(data, 16)
+      length = ikcp_decode32u(data, 20)
+      data = data.slice(IKCP_OVERHEAD)
       if (data.byteLength < length) {
         return -2
       }
@@ -479,7 +477,7 @@ export class Kcp {
             seg.ts = ts
             seg.sn = sn
             seg.una = una
-            seg.data = data.subarray(0, length) // delayed data copying
+            seg.data = data.slice(0, length) // delayed data copying
             repeat = this._parse_data(seg)
           }
         }
@@ -498,7 +496,7 @@ export class Kcp {
       }
 
       inSegs++
-      data = data.subarray(length)
+      data = data.slice(length)
     }
 
     // update rtt with the latest ts
@@ -634,8 +632,7 @@ export class Kcp {
 
     if (!repeat) {
       // replicate the content if it's new
-      const dataCopy = new Uint8Array(newseg.data.byteLength)
-      dataCopy.set(newseg.data)
+      const dataCopy = Buffer.from(newseg.data)
       newseg.data = dataCopy
 
       this.rcv_buf.splice(insert_idx, 0, newseg)
@@ -688,7 +685,7 @@ export class Kcp {
     this.acklist.push({ sn, ts })
   }
 
-  send(buffer: Uint8Array): number {
+  send(buffer: Buffer): number {
     let count = 0
     if (buffer.byteLength === 0) {
       return -1
@@ -709,10 +706,9 @@ export class Kcp {
           // grow slice, the underlying cap is guaranteed to
           // be larger than kcp.mss
           const oldlen = seg.data.byteLength
-          seg.data = seg.data.subarray(0, oldlen + extend)
-
-          seg.data.set(buffer.subarray(oldlen))
-          buffer = buffer.subarray(extend)
+          seg.data = seg.data.slice(0, oldlen + extend)
+          buffer.copy(seg.data, oldlen)
+          buffer = buffer.slice(extend)
         }
       }
     }
@@ -739,7 +735,7 @@ export class Kcp {
         size = buffer.byteLength
       }
       const seg = new Segment(size)
-      seg.data.set(buffer.subarray(0, size))
+      buffer.copy(seg.data, 0, 0, size)
       if (this.stream === 0) {
         // message mode
         seg.frg = count - i - 1 // uint8
@@ -748,7 +744,7 @@ export class Kcp {
         seg.frg = 0
       }
       this.snd_queue.push(seg)
-      buffer = buffer.subarray(size)
+      buffer = buffer.slice(size)
     }
 
     return 0
@@ -851,14 +847,14 @@ export class Kcp {
     seg.una = this.rcv_nxt
 
     const buffer = this.buffer
-    let ptr = buffer.subarray(this.reserved) // keep n bytes untouched
+    let ptr = buffer.slice(this.reserved) // keep n bytes untouched
 
     // makeSpace makes room for writing
     const makeSpace = (space: number) => {
       const size = buffer.byteLength - ptr.byteLength
       if (size + space > this.mtu) {
         this.output(buffer, size, this.user)
-        ptr = buffer.subarray(this.reserved)
+        ptr = buffer.slice(this.reserved)
       }
     }
 
@@ -1019,8 +1015,8 @@ export class Kcp {
         const need = IKCP_OVERHEAD + segment.data.byteLength
         makeSpace(need)
         ptr = segment.encode(ptr)
-        ptr.set(segment.data)
-        ptr = ptr.subarray(segment.data.byteLength)
+        segment.data.copy(ptr)
+        ptr = ptr.slice(segment.data.byteLength)
 
         if (segment.xmit >= this.dead_link) {
           this.state = 0xffffffff

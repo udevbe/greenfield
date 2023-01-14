@@ -994,7 +994,7 @@ ajv@^6.10.0, ajv@^6.12.4:
     json-schema-traverse "^0.4.1"
     uri-js "^4.2.2"
 
-ajv@^8.0.0, ajv@^8.1.0, ajv@^8.11.2, ajv@^8.4.0:
+ajv@^8.0.0, ajv@^8.1.0, ajv@^8.12.0, ajv@^8.4.0:
   version "8.12.0"
   resolved "https://registry.yarnpkg.com/ajv/-/ajv-8.12.0.tgz#d1a0527323e22f53562c567c00991577dfbe19d1"
   integrity sha512-sRu1kpcO9yLtYxBKvqfTeh9KzZEwO3STyX1HT+4CaDzC6HpTGYhIhPIzj9XuKU7KYDwnaeh5hcOwjy1QuJzBPA==
@@ -3137,11 +3137,6 @@ node-abi@^3.3.0:
   dependencies:
     semver "^7.3.5"
 
-node-addon-api@^5.0.0:
-  version "5.1.0"
-  resolved "https://registry.yarnpkg.com/node-addon-api/-/node-addon-api-5.1.0.tgz#49da1ca055e109a23d537e9de43c09cca21eb762"
-  integrity sha512-eh0GgfEkpnoWDq+VY8OyvYhFEzBk6jIYbRKdIlyTiAXIVJ8PyBaKb0rp7oDtoddbdoHWhq8wwr+XZ81F1rpNdA==
-
 node-api-headers@^0.0.1:
   version "0.0.1"
   resolved "https://registry.yarnpkg.com/node-api-headers/-/node-api-headers-0.0.1.tgz#e49821048943e50d5b93bc12ada0dd072d2b0769"
@@ -3158,13 +3153,6 @@ node-int64@^0.4.0:
   version "0.4.0"
   resolved "https://registry.yarnpkg.com/node-int64/-/node-int64-0.4.0.tgz#87a9065cdb355d3182d8f94ce11188b825c68a3b"
   integrity sha512-O5lz91xSOeoXP6DulyHfllpq+Eg00MWitZIbtPfoSEvqIHdl5gfcY6hYzDWnj0qD5tz52PI08u9qUvSVeUBeHw==
-
-node-kcp-x@^1.1.2:
-  version "1.1.2"
-  resolved "https://registry.yarnpkg.com/node-kcp-x/-/node-kcp-x-1.1.2.tgz#83150f24f33fbde2e0476faaa22a78c0e0082da0"
-  integrity sha512-yFOGoTlbJMHhD8naroIGPBKZkjcGPkYb52SW57JtuNMhmMfMV8sCZOhuJCdEnDTzckWsyiYMy0GFNk/obp6ieQ==
-  dependencies:
-    node-addon-api "^5.0.0"
 
 node-releases@^2.0.6:
   version "2.0.8"
@@ -4136,9 +4124,9 @@ typescript@^4.9.4:
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.9.4.tgz#a2a3d2756c079abda241d75f149df9d561091e78"
   integrity sha512-Uz+dTXYzxXXbsFpM86Wh3dKCxrQqUcVMxwU54orwlJjOpO3ao8L7j5lH+dWfTwgCwIuM9GQ2kvVotzYJMXTBZg==
 
-uWebSockets.js@uNetworking/uWebSockets.js#v20.15.0:
-  version "20.15.0"
-  resolved "https://codeload.github.com/uNetworking/uWebSockets.js/tar.gz/77bc1fd5577ae42b56675912eb8481a31f3fefd2"
+uWebSockets.js@uNetworking/uWebSockets.js#v20.18.0:
+  version "20.18.0"
+  resolved "https://codeload.github.com/uNetworking/uWebSockets.js/tar.gz/35c4c19214215d07691c35224b329997f8669377"
 
 undici@^5.12.0:
   version "5.15.0"

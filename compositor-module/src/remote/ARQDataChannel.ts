@@ -48,7 +48,9 @@ export class ARQDataChannel {
       this.kcp = undefined
     }
 
-    this.dataChannel.close()
+    if (this.dataChannel.readyState === 'open' || this.dataChannel.readyState === 'connecting') {
+      this.dataChannel.close()
+    }
   }
 
   get readyState(): RTCDataChannelState {
@@ -57,9 +59,8 @@ export class ARQDataChannel {
 
   private initKcp() {
     const kcp = new Kcp(this.dataChannel.id ?? 0, this)
-    kcp.setMtu(1280)
-    // Max packet size = 1024 * (1280 - 24) = 1256Kb
-    kcp.setWndSize(1024, 1024)
+    kcp.setMtu(1200) // webrtc datachannel MTU
+    kcp.setWndSize(256, 256)
     kcp.setNoDelay(1, 20, 2, 1)
     kcp.setOutput((buf, len) => {
       this.dataChannel.send(buf.subarray(0, len))

@@ -1,8 +1,12 @@
 import type { WebSocket, WebSocketBehavior } from 'uWebSockets.js'
 import { URLSearchParams } from 'url'
 import type { CompositorProxySession } from './CompositorProxySession'
-import type { PeerConnection } from 'node-datachannel'
 import { DescriptionType } from 'node-datachannel'
+
+type UserData = {
+  searchParams: URLSearchParams
+  compositorProxySession: CompositorProxySession
+}
 
 interface RTCSessionDescriptionInit {
   sdp?: string
@@ -29,14 +33,14 @@ type SignalingMessage =
 const textDecoder = new TextDecoder()
 const textEncoder = new TextEncoder()
 
-let openWs: WebSocket | null = null
+let openWs: WebSocket<UserData> | null = null
 let sendBuffer: Uint8Array[] = []
 
 function cachedSend(message: Uint8Array) {
   openWs?.send(message, true) ?? sendBuffer.push(message)
 }
 
-function flushCachedSends(openWs: WebSocket) {
+function flushCachedSends(openWs: WebSocket<UserData>) {
   if (sendBuffer.length === 0) {
     return
   }
@@ -46,7 +50,7 @@ function flushCachedSends(openWs: WebSocket) {
   sendBuffer = []
 }
 
-export function webRTCSignaling(compositorProxySession: CompositorProxySession): WebSocketBehavior {
+export function webRTCSignaling(compositorProxySession: CompositorProxySession): WebSocketBehavior<UserData> {
   compositorProxySession.peerConnection.onLocalDescription((sdp: string, type: DescriptionType) => {
     const localDescription: RTCSessionDescriptionInit = { type, sdp }
     const signalingMessage: SignalingMessage = {
@@ -103,14 +107,13 @@ export function webRTCSignaling(compositorProxySession: CompositorProxySession):
   }
 }
 
-function signalingOpen(ws: WebSocket) {
+function signalingOpen(ws: WebSocket<UserData>) {
   if (openWs !== null) {
     ws.close()
     return
   }
 
-  const searchParams: URLSearchParams = ws.searchParams
-  const compositorProxySession: CompositorProxySession = ws.compositorProxySession
+  const { searchParams, compositorProxySession } = ws.getUserData()
   if (searchParams.get('compositorSessionId') !== compositorProxySession.compositorSessionId) {
     const message = 'Bad or missing compositorSessionId query parameter.'
     ws.end(4403, message)
@@ -128,20 +131,24 @@ function isSignalingMessage(messageObject: any): messageObject is SignalingMessa
   return messageObject.type === 'sdp' || messageObject.type === 'ice'
 }
 
-function signalingMessage(ws: WebSocket, message: ArrayBuffer) {
+function signalingMessage(ws: WebSocket<UserData>, message: ArrayBuffer) {
   const messageData = textDecoder.decode(message)
   const messageObject = JSON.parse(messageData)
   if (isSignalingMessage(messageObject)) {
     if (messageObject.type === 'ice') {
-      const peerConnection: PeerConnection = ws.compositorProxySession.peerConnection
-      peerConnection.addRemoteCandidate(messageObject.data?.candidate ?? '', messageObject.data?.sdpMid ?? '')
+      ws.getUserData().compositorProxySession.peerConnection.addRemoteCandidate(
+        messageObject.data?.candidate ?? '',
+        messageObject.data?.sdpMid ?? '',
+      )
     } else if (messageObject.type === 'sdp' && messageObject.data.sdp) {
-      const peerConnection: PeerConnection = ws.compositorProxySession.peerConnection
-      peerConnection.setRemoteDescription(messageObject.data.sdp, messageObject.data.type)
+      ws.getUserData().compositorProxySession.peerConnection.setRemoteDescription(
+        messageObject.data.sdp,
+        messageObject.data.type,
+      )
     }
   }
 }
 
-function signalingClose(ws: WebSocket, code: number, message: ArrayBuffer) {
+function signalingClose(ws: WebSocket<UserData>, code: number, message: ArrayBuffer) {
   openWs = null
 }

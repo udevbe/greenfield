@@ -27,14 +27,13 @@
     "test": "jest"
   },
   "dependencies": {
-    "ajv": "^8.11.2",
+    "ajv": "^8.12.0",
     "ajv-formats": "^2.1.1",
     "js-yaml": "^4.1.0",
     "node-datachannel": "^0.4.1",
-    "node-kcp-x": "^1.1.2",
     "pino": "^8.8.0",
     "pino-pretty": "^9.1.1",
-    "uWebSockets.js": "uNetworking/uWebSockets.js#v20.15.0",
+    "uWebSockets.js": "uNetworking/uWebSockets.js#v20.18.0",
     "xtsb": "1.0.0-alpha.0"
   },
   "devDependencies": {

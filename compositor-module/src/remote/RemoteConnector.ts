@@ -38,7 +38,6 @@ export class RemoteConnector implements CompositorConnector {
 
   listen(compositorProxyURL: URL): ClientConnectionListener {
     const { peerConnection, isNew, clientConnectionListener } = ensureProxyPeerConnection(compositorProxyURL)
-
     if (isNew) {
       peerConnection.addEventListener(
         'datachannel',

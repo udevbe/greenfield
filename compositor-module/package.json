@@ -32,7 +32,6 @@
     "start": "webpack serve --config demo-compositor/webpack.config.js"
   },
   "dependencies": {
-    "buffer": "^6.0.3",
     "ffmpegh264": "1.0.0-alpha.1",
     "reconnecting-websocket": "^4.4.0",
     "westfield-runtime-common": "1.0.0-alpha.1",
