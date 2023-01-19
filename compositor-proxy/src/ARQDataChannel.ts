@@ -1,13 +1,14 @@
-import { DataChannel, PeerConnection } from 'node-datachannel'
+import { MessageEvent, RTCDataChannel } from '@koush/wrtc'
 import { URLSearchParams } from 'url'
 import { Kcp } from './kcp'
+import { PeerConnectionState } from './CompositorProxySession'
 
-export function createXWMDataChannel(peerConnection: PeerConnection, clientId: string) {
+export function createXWMDataChannel(peerConnectionState: PeerConnectionState, clientId: string) {
   const labelParams = new URLSearchParams()
   labelParams.append('t', 'xwm')
   labelParams.append('cid', clientId)
 
-  const dataChannel = peerConnection.createDataChannel(labelParams.toString(), {
+  const dataChannel = peerConnectionState.peerConnection.createDataChannel(labelParams.toString(), {
     ordered: false,
     maxRetransmits: 0,
   })
@@ -15,12 +16,12 @@ export function createXWMDataChannel(peerConnection: PeerConnection, clientId: s
   return new ARQDataChannel(dataChannel)
 }
 
-export function createFrameDataChannel(peerConnection: PeerConnection, clientId: string) {
+export function createFrameDataChannel(peerConnectionState: PeerConnectionState, clientId: string) {
   const labelParams = new URLSearchParams()
   labelParams.append('t', 'frmdt')
   labelParams.append('cid', clientId)
 
-  const dataChannel = peerConnection.createDataChannel(labelParams.toString(), {
+  const dataChannel = peerConnectionState.peerConnection.createDataChannel(labelParams.toString(), {
     ordered: false,
     maxRetransmits: 0,
   })
@@ -28,12 +29,12 @@ export function createFrameDataChannel(peerConnection: PeerConnection, clientId:
   return new ARQDataChannel(dataChannel)
 }
 
-export function createProtocolChannel(peerConnection: PeerConnection, clientId: string): ARQDataChannel {
+export function createProtocolChannel(peerConnectionState: PeerConnectionState, clientId: string): ARQDataChannel {
   const labelParams = new URLSearchParams()
   labelParams.append('t', 'prtcl')
   labelParams.append('cid', clientId)
 
-  const dataChannel = peerConnection.createDataChannel(labelParams.toString(), {
+  const dataChannel = peerConnectionState.peerConnection.createDataChannel(labelParams.toString(), {
     ordered: false,
     maxRetransmits: 0,
   })
@@ -43,18 +44,24 @@ export function createProtocolChannel(peerConnection: PeerConnection, clientId: 
 
 export class ARQDataChannel {
   private kcp?: Kcp
-  private msgCb?: (msg: Buffer) => void
+  private msgCb?: (event: MessageEvent<ArrayBuffer>) => void
   private openCb?: () => void
   private checkTimer?: NodeJS.Timeout
 
-  constructor(private readonly dataChannel: DataChannel) {
-    if (dataChannel.isOpen()) {
+  constructor(private readonly dataChannel: RTCDataChannel) {
+    if (dataChannel.readyState === 'open') {
       this.initKcp()
     } else {
-      this.dataChannel.onOpen(() => {
-        this.initKcp()
-        this.openCb?.()
-      })
+      this.dataChannel.addEventListener(
+        'open',
+        () => {
+          this.initKcp()
+          this.openCb?.()
+        },
+        {
+          passive: true,
+        },
+      )
     }
   }
 
@@ -72,17 +79,16 @@ export class ARQDataChannel {
       this.checkTimer = undefined
     }
     if (this.kcp) {
-      this.kcp.flush(false)
       this.kcp.release()
       this.kcp = undefined
     }
-    if (this.dataChannel.isOpen()) {
+    if (this.dataChannel.readyState === 'open' || this.dataChannel.readyState === 'connecting') {
       this.dataChannel.close()
     }
   }
 
   isOpen(): boolean {
-    return this.dataChannel.isOpen()
+    return this.dataChannel.readyState === 'open'
   }
 
   private checkLoop(kcp: Kcp) {
@@ -93,37 +99,49 @@ export class ARQDataChannel {
   }
 
   private initKcp() {
-    const kcp = new Kcp(this.dataChannel.getId(), {})
+    if (this.dataChannel.id === null) {
+      throw new Error('BUG. Datachannel does not have an id.')
+    }
+    const kcp = new Kcp(this.dataChannel.id, {})
     kcp.setNoDelay(1, 20, 2, 1)
     kcp.setMtu(1200) // webrtc datachannel MTU
     kcp.setWndSize(256, 256)
 
     kcp.setOutput((data, size) => {
-      this.dataChannel.sendMessageBinary(data.subarray(0, size))
+      this.dataChannel.send(data.subarray(0, size))
     })
 
-    this.dataChannel.onMessage((message) => {
-      if (typeof message === 'string') {
-        throw new Error('Only binary data supported')
-      }
-      // TODO forward error correction: https://github.com/ronomon/reed-solomon#readme & https://github.com/skywind3000/kcp/wiki/KCP-Best-Practice-EN
-      kcp.input(message, true, false)
-      const size = kcp.peekSize()
-      if (size > 0) {
-        const buffer = Buffer.alloc(size)
-        kcp.recv(buffer)
-        if (this.msgCb) {
-          this.msgCb(buffer.subarray(0, size))
+    this.dataChannel.addEventListener(
+      'message',
+      (message) => {
+        if (typeof message.data === 'string') {
+          throw new Error('Only binary data supported')
         }
-      }
-    })
+        if (this.kcp === undefined) {
+          return
+        }
+        // TODO forward error correction: https://github.com/ronomon/reed-solomon#readme & https://github.com/skywind3000/kcp/wiki/KCP-Best-Practice-EN
+        this.kcp.input(Buffer.from(message.data), true, false)
+        const size = kcp.peekSize()
+        if (size > 0) {
+          const buffer = Buffer.alloc(size)
+          this.kcp.recv(buffer)
+          if (this.msgCb) {
+            this.msgCb({ data: buffer.subarray(0, size) })
+          }
+        }
+      },
+      {
+        passive: true,
+      },
+    )
 
     this.kcp = kcp
     this.checkLoop(kcp)
   }
 
   onOpen(cb: () => void): void {
-    if (this.dataChannel.isOpen()) {
+    if (this.dataChannel.readyState === 'open') {
       cb()
     } else {
       this.openCb = cb
@@ -131,17 +149,17 @@ export class ARQDataChannel {
   }
 
   onClosed(cb: () => void): void {
-    this.dataChannel.onClosed(() => {
+    this.dataChannel.addEventListener('close', () => {
       this.close()
       cb()
     })
   }
 
-  onError(cb: (err: string) => void): void {
-    this.dataChannel.onError(cb)
+  onError(cb: (err: Event) => void): void {
+    this.dataChannel.addEventListener('error', cb)
   }
 
-  onMessage(cb: (msg: Buffer) => void): void {
+  onMessage(cb: (msg: MessageEvent<ArrayBuffer>) => void): void {
     this.msgCb = cb
   }
 }

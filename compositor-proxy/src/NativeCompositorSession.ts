@@ -31,8 +31,8 @@ import {
   nativeGlobalNames,
 } from 'westfield-proxy'
 import { ARQDataChannel, createProtocolChannel } from './ARQDataChannel'
-import { PeerConnection } from 'node-datachannel'
 import { webcrypto } from 'crypto'
+import type { PeerConnectionState } from './CompositorProxySession'
 
 const logger = createLogger('native-compositor-session')
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567' as const
@@ -86,9 +86,9 @@ function onGlobalDestroyed(globalName: number): void {
 
 export function createNativeCompositorSession(
   compositorSessionId: string,
-  peerConnection: PeerConnection,
+  peerConnectionState: PeerConnectionState,
 ): NativeCompositorSession {
-  return new NativeCompositorSession(compositorSessionId, peerConnection)
+  return new NativeCompositorSession(compositorSessionId, peerConnectionState)
 }
 
 export class NativeCompositorSession {
@@ -104,7 +104,7 @@ export class NativeCompositorSession {
 
   constructor(
     public readonly compositorSessionId: string,
-    public readonly peerConnection: PeerConnection,
+    public readonly peerConnectionState: PeerConnectionState,
     public readonly webFS = createProxyInputOutput(compositorSessionId, config.public.baseURL),
     public clients: ClientEntry[] = [],
   ) {
@@ -151,10 +151,10 @@ export class NativeCompositorSession {
   }
 
   private clientForSocket(wlClient: unknown) {
-    logger.info(`New Wayland connection.`)
+    logger.info(`New Wayland client.`)
 
     const clientId = newClientId()
-    const protocolChannel = createProtocolChannel(this.peerConnection, clientId)
+    const protocolChannel = createProtocolChannel(this.peerConnectionState, clientId)
     const clientEntry: ClientEntry = {
       nativeClientSession: createNativeClientSession(wlClient, this, protocolChannel, clientId),
       protocolChannel,

@@ -50,6 +50,8 @@ export class WebWorkerAppLauncher implements CompositorConnector {
     const clientId = randomString()
     // const workerUrl = await getCrossOriginWorkerURL(url.href)
     const worker = new Worker(url, { name: clientId })
+
+    // FIXME use MessagePorts to communicate with webworker, this way a single worker can have multiple client connections.
     const client = this.webAppSocket.onWebAppWorker(worker, clientId)
     client.onClose().then(() => {
       worker.terminate()
@@ -58,6 +60,9 @@ export class WebWorkerAppLauncher implements CompositorConnector {
     const clientConnectionListener: ClientConnectionListener = {
       onClient(client: Client) {
         /*noop*/
+      },
+      close() {
+        worker.terminate()
       },
     }
 

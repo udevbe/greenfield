@@ -2,8 +2,8 @@ import { Encoder } from '../../encoding/Encoder'
 import { FrameFeedback } from '../../FrameFeedback'
 import { NativeClientSession } from '../../NativeClientSession'
 import { MessageDestination } from '../../../../../westfield/server/node/proxy'
-import { PeerConnection } from 'node-datachannel'
 import { ARQDataChannel } from '../../ARQDataChannel'
+import type { PeerConnectionState } from '../../CompositorProxySession'
 
 export default class wl_surface_interceptor {
   frameDataChannel: ARQDataChannel
@@ -23,7 +23,7 @@ export default class wl_surface_interceptor {
   encoder: Encoder
   userData: {
     protocolChannel: ARQDataChannel
-    peerConnection: PeerConnection
+    peerConnectionState: PeerConnectionState
     drmContext: unknown
     messageInterceptors: Record<number, any>
     nativeClientSession: NativeClientSession

@@ -114,13 +114,13 @@ export function createNativeClientSession(
     }
   })
   protocolChannel.onClosed(() => {
-    logger.info(`Wayland client web socket closed.`)
+    logger.info(`Wayland client connection is closed.`)
     nativeClientSession.destroy()
   })
   protocolChannel.onMessage((event) => {
     try {
-      const message = event as Buffer
-      nativeClientSession.onMessage(message)
+      const message = event.data
+      nativeClientSession.onMessage(new Uint8Array(message))
     } catch (e) {
       logger.error('BUG? Error while processing event from compositor.', e)
       nativeClientSession.destroy()
@@ -129,7 +129,7 @@ export function createNativeClientSession(
   protocolChannel.onOpen(() => {
     wasOpen = true
     // flush out any requests that came in while we were waiting for the data channel to open.
-    logger.info(`Wayland client web socket to browser is open.`)
+    logger.info(`Wayland client connection to browser is open.`)
     nativeClientSession.flushOutboundMessageOnOpen()
   })
 
@@ -165,7 +165,7 @@ export class NativeClientSession {
 
     const messageInterceptors: Record<number, any> = {}
     const userData: wl_surface_interceptor['userData'] = {
-      peerConnection: nativeCompositorSession.peerConnection,
+      peerConnectionState: nativeCompositorSession.peerConnectionState,
       protocolChannel: this.protocolDataChannel,
       drmContext: nativeCompositorSession.drmContext,
       messageInterceptors,
@@ -370,7 +370,7 @@ export class NativeClientSession {
     }
   }
 
-  onMessage(receiveBuffer: Buffer): void {
+  onMessage(receiveBuffer: Uint8Array): void {
     if (!this.wlClient) {
       return
     }

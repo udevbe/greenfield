@@ -41,7 +41,7 @@ async function main() {
   const compositorWebConnector = createConnector(session, 'web')
 
   const connect8081Button: HTMLButtonElement = document.createElement('button')
-  connect8081Button.textContent = `connect to ws://${proxyHost}:8081?compositorSessionId=${compositorSessionId}`
+  connect8081Button.textContent = `connect to ${proxyHost}:8081 with compositorSessionId: ${compositorSessionId}`
   connect8081Button.onclick = () => {
     const compositorProxyURL = new URL(`ws://${proxyHost}:8081`)
     compositorProxyURL.searchParams.append('compositorSessionId', compositorSessionId)
@@ -49,7 +49,7 @@ async function main() {
   }
 
   const connect8082Button: HTMLButtonElement = document.createElement('button')
-  connect8082Button.textContent = `connect to ws://${proxyHost}:8082?compositorSessionId=${compositorSessionId}`
+  connect8082Button.textContent = `connect to ${proxyHost}:8082 with compositorSessionId: ${compositorSessionId}`
   connect8082Button.onclick = () => {
     const compositorProxyURL = new URL(`ws://${proxyHost}:8082`)
     compositorProxyURL.searchParams.append('compositorSessionId', compositorSessionId)

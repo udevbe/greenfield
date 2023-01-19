@@ -55,14 +55,19 @@ export class XWaylandSession {
         return
       }
 
-      xWaylandClient.nativeClientSession.onDestroy().then(() => this.destroy())
-
-      const xwmDataChannel = createXWMDataChannel(this.nativeCompositorSession.peerConnection, xWaylandClient.clientId)
+      const xwmDataChannel = createXWMDataChannel(
+        this.nativeCompositorSession.peerConnectionState,
+        xWaylandClient.clientId,
+      )
       this.upsertXWMConnection(xwmDataChannel, wmFd).catch((e: any) => {
         logger.error(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
         logger.error('error object stack: ')
         logger.error(e.stack)
         xwmDataChannel.close()
+      })
+
+      xWaylandClient.nativeClientSession.onDestroy().then(() => {
+        this.destroy()
       })
 
       this.xWaylandClient = xWaylandClient
@@ -78,9 +83,7 @@ export class XWaylandSession {
     const setupJSON = JSON.stringify(setup)
     xwmDataChannel.sendMessageBinary(Buffer.from(textEncoder.encode(setupJSON).buffer))
     this.xwmDataChannel.onMessage((ev) => {
-      if (ev instanceof Buffer) {
-        xConnectionSocket.write(ev)
-      }
+      xConnectionSocket.write(new Uint8Array(ev.data))
     })
     this.xwmDataChannel.onClosed(() => xConnectionSocket.close())
     this.xwmDataChannel.onError((ev) => console.error('XConnection websocket error: ' + ev))

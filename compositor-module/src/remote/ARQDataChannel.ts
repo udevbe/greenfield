@@ -43,7 +43,6 @@ export class ARQDataChannel {
       this.checkTimer = undefined
     }
     if (this.kcp) {
-      this.kcp.flush(false)
       this.kcp.release()
       this.kcp = undefined
     }

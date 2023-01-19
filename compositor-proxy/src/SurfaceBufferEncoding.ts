@@ -33,7 +33,9 @@ function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor): FrameF
       wlSurfaceInterceptor.userData.messageInterceptors,
     )
     wlSurfaceInterceptor.frameFeedback = frameFeedback
-    wlSurfaceInterceptor.userData.nativeClientSession.onDestroy().then(() => frameFeedback.destroy())
+    wlSurfaceInterceptor.userData.nativeClientSession.onDestroy().then(() => {
+      frameFeedback.destroy()
+    })
   }
   return wlSurfaceInterceptor.frameFeedback
 }
@@ -41,9 +43,14 @@ function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor): FrameF
 function ensureFrameDataChannel(wlSurfaceInterceptor: wlSurfaceInterceptor) {
   if (wlSurfaceInterceptor.frameDataChannel === undefined) {
     wlSurfaceInterceptor.frameDataChannel = createFrameDataChannel(
-      wlSurfaceInterceptor.userData.peerConnection,
+      wlSurfaceInterceptor.userData.peerConnectionState,
       wlSurfaceInterceptor.userData.nativeClientSession.id,
     )
+    wlSurfaceInterceptor.userData.nativeClientSession.onDestroy().then(() => {
+      if (wlSurfaceInterceptor.frameDataChannel.isOpen()) {
+        wlSurfaceInterceptor.frameDataChannel.close()
+      }
+    })
   }
 }
 

@@ -78,6 +78,7 @@ export interface CompositorConfiguration {
 
 export interface ClientConnectionListener {
   onClient: (client: Client) => void
+  close(): void
 }
 
 export interface CompositorConnector {

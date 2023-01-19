@@ -11,7 +11,7 @@ import {
   PUTEncoderFeedback,
   PUTWebFDStream,
 } from './AppController'
-import { webRTCSignaling } from './WSSignalingController'
+import { webRTCSignaling } from './SignalingController'
 
 function withParams(
   paramCount: number,
