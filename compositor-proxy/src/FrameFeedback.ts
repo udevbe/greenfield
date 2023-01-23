@@ -162,10 +162,10 @@ export class FrameFeedback {
   }
 
   sendFrameDoneEventsWithCallbacks(frameDoneTimestamp: number, frameCallbackIds: number[]) {
-    frameCallbackIds.forEach((frameCallbackId) => {
+    for (const frameCallbackId of frameCallbackIds) {
       this.sendFrameDoneEvent(frameDoneTimestamp, frameCallbackId)
       delete this.messageInterceptors[frameCallbackId]
-    })
+    }
 
     // this.syncChildren.forEach((syncChild) => syncChild.sendDoneEvents(frameDoneTimestamp))
   }

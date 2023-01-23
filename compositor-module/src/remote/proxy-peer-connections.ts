@@ -7,10 +7,12 @@ type SignalingMessage =
   | {
       type: 'sdp'
       data: RTCSessionDescription | null
+      identity: string
     }
   | {
       type: 'ice'
       data: RTCIceCandidate | null
+      identity: string
     }
   | {
       type: 'identity'
@@ -20,9 +22,10 @@ type SignalingMessage =
 const textDecoder = new TextDecoder()
 const textEncoder = new TextEncoder()
 
+const identity = window.crypto.randomUUID()
 const peerIdentity: SignalingMessage = {
   type: 'identity',
-  data: window.crypto.randomUUID(),
+  data: identity,
 }
 const peerIdentityMessage = textEncoder.encode(JSON.stringify(peerIdentity))
 
@@ -66,6 +69,7 @@ function createPeerConnection(
     const signalingMessage: SignalingMessage = {
       type: 'ice',
       data: ev.candidate,
+      identity,
     }
     signalingWebSocket.send(textEncoder.encode(JSON.stringify(signalingMessage)))
   }
@@ -78,6 +82,7 @@ function createPeerConnection(
       const signalingMessage: SignalingMessage = {
         type: 'sdp',
         data: peerConnection.localDescription,
+        identity,
       }
       signalingWebSocket.send(textEncoder.encode(JSON.stringify(signalingMessage)))
     } catch (err) {
@@ -100,6 +105,7 @@ function createPeerConnection(
           peerConnection.onnegotiationneeded = null
           peerConnection.onicecandidate = null
           peerConnection.close()
+          remotePeerIdentity = messageObject.data
           // start a new peer connection
           onProxyRestart(
             createPeerConnection(
@@ -116,13 +122,17 @@ function createPeerConnection(
           // Connecting to remote proxy for the first time
           remotePeerIdentity = messageObject.data
         } // else re-connecting, ignore.
-      } else if (messageObject.type === 'ice' && messageObject.data) {
+      } else if (messageObject.identity === remotePeerIdentity && messageObject.type === 'ice' && messageObject.data) {
         try {
           await peerConnection.addIceCandidate(messageObject.data)
         } catch (err) {
           if (!ignoreOffer) throw err // Suppress ignored offer's candidates
         }
-      } else if (messageObject.type === 'sdp' && messageObject.data?.sdp) {
+      } else if (
+        messageObject.identity === remotePeerIdentity &&
+        messageObject.type === 'sdp' &&
+        messageObject.data?.sdp
+      ) {
         // An offer may come in while we are busy processing SRD(answer).
         // In this case, we will be in "stable" by the time the offer is processed,
         // so it is safe to chain it on our Operations Chain now.
@@ -143,6 +153,7 @@ function createPeerConnection(
           const signalingMessage: SignalingMessage = {
             type: 'sdp',
             data: peerConnection.localDescription,
+            identity,
           }
           signalingWebSocket.send(textEncoder.encode(JSON.stringify(signalingMessage)))
         }

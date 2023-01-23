@@ -1,11 +1,9 @@
 import { Kcp } from './kcp'
-import { Buffer } from 'buffer/'
 
 export class ARQDataChannel {
   private kcp?: Kcp
   private openCb?: () => void
   private msgCb?: (msg: Uint8Array) => void
-  private checkTimer?: number
 
   constructor(public readonly dataChannel: RTCDataChannel) {
     if (dataChannel.readyState === 'open') {
@@ -22,33 +20,35 @@ export class ARQDataChannel {
     }
   }
 
-  private check(kcp: Kcp) {
-    kcp.update()
-    this.checkTimer = window.setTimeout(() => {
-      this.check(kcp)
-    }, kcp.check())
+  private check() {
+    if (this.kcp) {
+      this.kcp.update()
+      window.setTimeout(() => {
+        this.check()
+      }, this.kcp.check())
+    }
   }
 
   send(buffer: ArrayBufferView) {
     // TODO forward error correction: https://github.com/ronomon/reed-solomon#readme & https://github.com/skywind3000/kcp/wiki/KCP-Best-Practice-EN
     if (this.kcp) {
-      this.kcp.send(Buffer.from(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength).buffer))
+      this.kcp.send(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength))
       this.kcp.flush(false)
     }
   }
 
   close(): void {
-    if (this.checkTimer) {
-      window.clearTimeout(this.checkTimer)
-      this.checkTimer = undefined
-    }
-    if (this.kcp) {
-      this.kcp.release()
-      this.kcp = undefined
+    if (this.dataChannel.readyState === 'open' && this.kcp) {
+      this.kcp.flush(true)
     }
 
     if (this.dataChannel.readyState === 'open' || this.dataChannel.readyState === 'connecting') {
       this.dataChannel.close()
+    }
+
+    if (this.kcp) {
+      this.kcp.release()
+      this.kcp = undefined
     }
   }
 
@@ -57,22 +57,33 @@ export class ARQDataChannel {
   }
 
   private initKcp() {
-    const kcp = new Kcp(this.dataChannel.id ?? 0, this)
+    if (this.dataChannel.id === null) {
+      throw new Error('BUG. Datachannel does not have an id.')
+    }
+    const kcp = new Kcp(this.dataChannel.id, this)
     kcp.setMtu(1200) // webrtc datachannel MTU
     kcp.setWndSize(256, 256)
     kcp.setNoDelay(1, 20, 2, 1)
     kcp.setOutput((buf, len) => {
-      this.dataChannel.send(buf.subarray(0, len))
+      if (this.dataChannel.readyState === 'open') {
+        this.dataChannel.send(buf.subarray(0, len))
+      } else {
+        throw new Error(`BUG. Sending message on a ${this.dataChannel.readyState} channel`)
+      }
     })
+
     this.dataChannel.addEventListener(
       'message',
       (ev) => {
+        if (this.kcp === undefined) {
+          throw new Error(`BUG. Received message on a ${this.dataChannel.readyState} channel`)
+        }
         // TODO forward error correction: https://github.com/ronomon/reed-solomon#readme & https://github.com/skywind3000/kcp/wiki/KCP-Best-Practice-EN
-        kcp.input(Buffer.from(ev.data), true, false)
-        const size = kcp.peekSize()
+        this.kcp.input(new Uint8Array(ev.data), true, false)
+        const size = this.kcp.peekSize()
         if (size > 0) {
-          const buffer = Buffer.alloc(size)
-          const len = kcp.recv(buffer)
+          const buffer = new Uint8Array(size)
+          const len = this.kcp.recv(buffer)
           if (len && this.msgCb) {
             this.msgCb(buffer.subarray(0, len))
           }
@@ -80,8 +91,9 @@ export class ARQDataChannel {
       },
       { passive: true },
     )
-    this.check(kcp)
+
     this.kcp = kcp
+    this.check()
   }
 
   onOpen(cb: () => void): void {
@@ -95,7 +107,7 @@ export class ARQDataChannel {
   onClose(cb: () => void): void {
     this.dataChannel.addEventListener(
       'close',
-      (ev) => {
+      () => {
         this.close()
         cb()
       },

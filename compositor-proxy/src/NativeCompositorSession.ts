@@ -97,11 +97,6 @@ export class NativeCompositorSession {
   readonly drmContext: unknown
   private readonly wlDisplayFdWatcher: Epoll
 
-  private destroyResolve?: (value: void | PromiseLike<void>) => void
-  private destroyPromise: Promise<void> = new Promise<void>((resolve) => {
-    this.destroyResolve = resolve
-  })
-
   constructor(
     public readonly compositorSessionId: string,
     public readonly peerConnectionState: PeerConnectionState,
@@ -132,22 +127,17 @@ export class NativeCompositorSession {
     logger.info(`Listening on: WAYLAND_DISPLAY="${this.waylandDisplay}".`)
   }
 
-  onDestroy(): Promise<void> {
-    return this.destroyPromise
+  destroyAllClients() {
+    for (const client of this.clients) {
+      client.nativeClientSession?.destroy()
+    }
+    this.clients = []
   }
 
   destroy(): void {
-    if (this.destroyResolve === undefined) {
-      return
-    }
-
     this.wlDisplayFdWatcher.close()
-
-    this.clients.forEach((client) => client.nativeClientSession?.destroy())
+    this.destroyAllClients()
     destroyDisplay(this.wlDisplay)
-
-    this.destroyResolve()
-    this.destroyResolve = undefined
   }
 
   private clientForSocket(wlClient: unknown) {
@@ -161,7 +151,7 @@ export class NativeCompositorSession {
       clientId,
     }
     this.clients = [...this.clients, clientEntry]
-    clientEntry.nativeClientSession.onDestroy().then(() => {
+    clientEntry.nativeClientSession.destroyListeners.push(() => {
       this.clients = this.clients.filter((value) => value !== clientEntry)
     })
   }

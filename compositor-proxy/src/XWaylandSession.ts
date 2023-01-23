@@ -66,7 +66,7 @@ export class XWaylandSession {
         xwmDataChannel.close()
       })
 
-      xWaylandClient.nativeClientSession.onDestroy().then(() => {
+      xWaylandClient.nativeClientSession.destroyListeners.push(() => {
         this.destroy()
       })
 
@@ -83,7 +83,7 @@ export class XWaylandSession {
     const setupJSON = JSON.stringify(setup)
     xwmDataChannel.sendMessageBinary(Buffer.from(textEncoder.encode(setupJSON).buffer))
     this.xwmDataChannel.onMessage((ev) => {
-      xConnectionSocket.write(new Uint8Array(ev.data))
+      xConnectionSocket.write(ev)
     })
     this.xwmDataChannel.onClosed(() => xConnectionSocket.close())
     this.xwmDataChannel.onError((ev) => console.error('XConnection websocket error: ' + ev))

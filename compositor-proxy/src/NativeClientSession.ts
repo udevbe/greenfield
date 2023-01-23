@@ -70,19 +70,10 @@ export function createNativeClientSession(
   id: string,
 ): NativeClientSession {
   const nativeClientSession = new NativeClientSession(wlClient, nativeCompositorSession, protocolChannel, id)
-  nativeClientSession.onDestroy().then(() => {
-    // userData.nativeClientSession = undefined
-    if (protocolChannel.isOpen()) {
-      protocolChannel.close()
-    }
-  })
 
   setClientDestroyedCallback(wlClient, () => {
-    if (nativeClientSession.destroyResolve) {
-      nativeClientSession.destroyResolve()
-      nativeClientSession.destroyResolve = undefined
-      nativeClientSession.wlClient = undefined
-    }
+    nativeClientSession.wlClient = undefined
+    nativeClientSession.destroy()
   })
   setRegistryCreatedCallback(wlClient, (wlRegistry: unknown, registryId: number) =>
     nativeClientSession.onRegistryCreated(wlRegistry, registryId),
@@ -119,8 +110,7 @@ export function createNativeClientSession(
   })
   protocolChannel.onMessage((event) => {
     try {
-      const message = event.data
-      nativeClientSession.onMessage(new Uint8Array(message))
+      nativeClientSession.onMessage(event)
     } catch (e) {
       logger.error('BUG? Error while processing event from compositor.', e)
       nativeClientSession.destroy()
@@ -139,10 +129,6 @@ export function createNativeClientSession(
 }
 
 export class NativeClientSession {
-  destroyResolve?: (value: void | PromiseLike<void>) => void
-  private readonly destroyPromise = new Promise<void>((resolve) => {
-    this.destroyResolve = resolve
-  })
   private readonly browserChannelOutOfBandHandlers: Record<number, (payload: Uint8Array) => void>
   public readonly messageInterceptor: MessageInterceptor
 
@@ -157,6 +143,7 @@ export class NativeClientSession {
     private readonly inboundMessages: Uint32Array[] = [],
     private readonly wlRegistries: Record<number, unknown> = {},
     private disconnecting = false,
+    public destroyListeners: (() => void)[] = [],
   ) {
     this.browserChannelOutOfBandHandlers = {
       // listen for out-of-band resource destroy. opcode: 1
@@ -357,14 +344,15 @@ export class NativeClientSession {
     this.pendingWireMessages = []
   }
 
-  onDestroy(): Promise<void> {
-    return this.destroyPromise
-  }
-
   destroy(): void {
-    if (this.destroyResolve) {
-      this.destroyResolve()
-      this.destroyResolve = undefined
+    if (this.protocolDataChannel.isOpen()) {
+      this.protocolDataChannel.close()
+    }
+    for (const destroyListener of this.destroyListeners) {
+      destroyListener()
+    }
+    this.destroyListeners = []
+    if (this.wlClient) {
       destroyClient(this.wlClient)
       this.wlClient = null
     }

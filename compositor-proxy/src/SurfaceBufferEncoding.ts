@@ -33,7 +33,7 @@ function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor): FrameF
       wlSurfaceInterceptor.userData.messageInterceptors,
     )
     wlSurfaceInterceptor.frameFeedback = frameFeedback
-    wlSurfaceInterceptor.userData.nativeClientSession.onDestroy().then(() => {
+    wlSurfaceInterceptor.userData.nativeClientSession.destroyListeners.push(() => {
       frameFeedback.destroy()
     })
   }
@@ -46,7 +46,7 @@ function ensureFrameDataChannel(wlSurfaceInterceptor: wlSurfaceInterceptor) {
       wlSurfaceInterceptor.userData.peerConnectionState,
       wlSurfaceInterceptor.userData.nativeClientSession.id,
     )
-    wlSurfaceInterceptor.userData.nativeClientSession.onDestroy().then(() => {
+    wlSurfaceInterceptor.userData.nativeClientSession.destroyListeners.push(() => {
       if (wlSurfaceInterceptor.frameDataChannel.isOpen()) {
         wlSurfaceInterceptor.frameDataChannel.close()
       }
