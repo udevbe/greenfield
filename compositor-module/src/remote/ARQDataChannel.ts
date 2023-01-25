@@ -1,13 +1,27 @@
 import { Kcp } from './kcp'
 
+const MAX_BUFFERED_AMOUNT = 36000
+const LOW_BUFFERED_AMOUNT = 3600
+
 export class ARQDataChannel {
   private kcp?: Kcp
   private openCb?: () => void
   private msgCb?: (msg: Uint8Array) => void
+  private sendBuffer: ArrayBufferView[] = []
 
   constructor(public readonly dataChannel: RTCDataChannel) {
+    dataChannel.bufferedAmountLowThreshold = LOW_BUFFERED_AMOUNT
+    dataChannel.onbufferedamountlow = () => {
+      for (const buffer of this.sendBuffer) {
+        this.send(buffer)
+      }
+      this.sendBuffer = []
+      this.check()
+    }
+
     if (dataChannel.readyState === 'open') {
       this.initKcp()
+      this.openCb?.()
     } else {
       this.dataChannel.addEventListener(
         'open',
@@ -21,7 +35,7 @@ export class ARQDataChannel {
   }
 
   private check() {
-    if (this.kcp) {
+    if (this.kcp && this.dataChannel.bufferedAmount <= MAX_BUFFERED_AMOUNT) {
       this.kcp.update()
       window.setTimeout(() => {
         this.check()
@@ -31,7 +45,10 @@ export class ARQDataChannel {
 
   send(buffer: ArrayBufferView) {
     // TODO forward error correction: https://github.com/ronomon/reed-solomon#readme & https://github.com/skywind3000/kcp/wiki/KCP-Best-Practice-EN
-    if (this.kcp) {
+    if (this.dataChannel.bufferedAmount > MAX_BUFFERED_AMOUNT) {
+      this.sendBuffer.push(buffer)
+      return
+    } else if (this.kcp) {
       this.kcp.send(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength))
       this.kcp.flush(false)
     }

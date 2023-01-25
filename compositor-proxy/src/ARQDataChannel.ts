@@ -3,6 +3,10 @@ import { URLSearchParams } from 'url'
 import { Kcp } from './kcp'
 import { PeerConnectionState } from './CompositorProxySession'
 
+const MAX_BUFFERED_AMOUNT = 36000
+const LOW_BUFFERED_AMOUNT = 3600
+
+// TODO recycle datachannel ids?
 const dataChannelConfig: DataChannelInitConfig = {
   ordered: false,
   maxRetransmits: 0,
@@ -48,6 +52,7 @@ export class ARQDataChannel {
   private errorCb?: (err: string) => void
   private msgCb?: (event: Buffer) => void
   private checkTimer?: NodeJS.Timeout
+  private sendBuffer: Buffer[] = []
 
   constructor(private dataChannel: DataChannel, private readonly label: string) {
     this.addDataChannelListeners(dataChannel)
@@ -70,11 +75,24 @@ export class ARQDataChannel {
     dataChannel.onError((err) => {
       this.errorCb?.(err)
     })
+    dataChannel.setBufferedAmountLowThreshold(LOW_BUFFERED_AMOUNT)
+    dataChannel.onBufferedAmountLow(() => {
+      for (const buffer of this.sendBuffer) {
+        this.sendMessageBinary(buffer)
+      }
+      this.sendBuffer = []
+      if (this.kcp) {
+        this.check(this.kcp)
+      }
+    })
   }
 
   sendMessageBinary(buffer: Buffer) {
     // TODO forward error correction: https://github.com/ronomon/reed-solomon#readme & https://github.com/skywind3000/kcp/wiki/KCP-Best-Practice-EN
-    if (this.kcp) {
+    if (this.dataChannel.bufferedAmount() > MAX_BUFFERED_AMOUNT) {
+      this.sendBuffer.push(buffer)
+      return
+    } else if (this.kcp) {
       this.kcp.send(buffer)
       this.kcp.flush(false)
     }
@@ -104,10 +122,12 @@ export class ARQDataChannel {
   }
 
   private check(kcp: Kcp) {
-    kcp.update()
-    this.checkTimer = setTimeout(() => {
-      this.check(kcp)
-    }, kcp.check())
+    if (this.dataChannel.bufferedAmount() <= MAX_BUFFERED_AMOUNT) {
+      kcp.update()
+      this.checkTimer = setTimeout(() => {
+        this.check(kcp)
+      }, kcp.check())
+    }
   }
 
   private initKcp(dataChannel: DataChannel) {
