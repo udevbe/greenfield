@@ -3,10 +3,11 @@ import { Client } from 'westfield-runtime-server'
 import Session from '../Session'
 import ReconnectingWebSocket from './reconnecting-websocket'
 
+export type DataChannelDesc = { id: number; type: 'protocol' | 'frame' | 'xwm'; clientId: string }
 type SignalingMessage =
   | {
       type: 'sdp'
-      data: RTCSessionDescription | null
+      data: RTCSessionDescriptionInit | null
       identity: string
     }
   | {
@@ -22,7 +23,9 @@ type SignalingMessage =
 const textDecoder = new TextDecoder()
 const textEncoder = new TextEncoder()
 
-const identity = window.crypto.randomUUID()
+const identity = Array(17)
+  .join((Math.random().toString(36) + '00000000000000000').slice(2, 18))
+  .slice(0, 16)
 const peerIdentity: SignalingMessage = {
   type: 'identity',
   data: identity,
@@ -33,7 +36,12 @@ function isSignalingMessage(messageObject: any): messageObject is SignalingMessa
   if (messageObject === null) {
     return false
   }
-  return messageObject.type === 'sdp' || messageObject.type === 'ice' || messageObject.type === 'identity'
+  return (
+    messageObject.type === 'sdp' ||
+    messageObject.type === 'ice' ||
+    messageObject.type === 'identity' ||
+    messageObject.type === 'datachannel'
+  )
 }
 
 const proxyPeerConnections: Record<
@@ -41,14 +49,31 @@ const proxyPeerConnections: Record<
   { peerConnection: RTCPeerConnection; clientConnectionListener: ClientConnectionListener }
 > = {}
 
+const dataChannelConfig: RTCDataChannelInit = {
+  ordered: false,
+  maxRetransmits: 0,
+}
+
+function newDataChannel(peerConnection: RTCPeerConnection, desc: DataChannelDesc) {
+  console.dir(peerConnection, desc)
+  return peerConnection.createDataChannel(desc.type, {
+    ...dataChannelConfig,
+    id: desc.id,
+  })
+}
+
 function createPeerConnection(
   session: Session,
   signalingWebSocket: ReconnectingWebSocket,
   signalingURL: string,
   clientConnectionListener: ClientConnectionListener,
-  onProxyRestart: (newPeerConnection: RTCPeerConnection, clientConnectionListener: ClientConnectionListener) => void,
+  onDataChannel: (
+    dataChannel: RTCDataChannel,
+    desc: DataChannelDesc,
+    clientConnectionListener: ClientConnectionListener,
+  ) => void,
   remotePeerIdentity?: string,
-): RTCPeerConnection {
+) {
   const peerConnection = new RTCPeerConnection({
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     iceCandidatePoolSize: 4,
@@ -63,6 +88,9 @@ function createPeerConnection(
   let isSettingRemoteAnswerPending = false
 
   peerConnection.onicecandidate = (ev) => {
+    if (!peerConnection.canTrickleIceCandidates) {
+      return
+    }
     if (ev.candidate?.protocol === 'tcp') {
       return
     }
@@ -77,20 +105,62 @@ function createPeerConnection(
   peerConnection.onnegotiationneeded = async () => {
     try {
       makingOffer = true
-      const offer = await peerConnection.createOffer({ offerToReceiveVideo: false, offerToReceiveAudio: false })
-      await peerConnection.setLocalDescription(offer)
-      const signalingMessage: SignalingMessage = {
-        type: 'sdp',
-        data: peerConnection.localDescription,
-        identity,
+      await peerConnection.setLocalDescription()
+      if (peerConnection.canTrickleIceCandidates || peerConnection.iceGatheringState === 'complete') {
+        const signalingMessage: SignalingMessage = {
+          type: 'sdp',
+          data: peerConnection.localDescription,
+          identity,
+        }
+        signalingWebSocket.send(textEncoder.encode(JSON.stringify(signalingMessage)))
+      } else {
+        peerConnection.addEventListener(
+          'icegatheringstatechange',
+          () => {
+            if (peerConnection.iceGatheringState === 'complete') {
+              const signalingMessage: SignalingMessage = {
+                type: 'sdp',
+                data: peerConnection.localDescription,
+                identity,
+              }
+              signalingWebSocket.send(textEncoder.encode(JSON.stringify(signalingMessage)))
+            }
+          },
+          {
+            passive: true,
+            once: true,
+          },
+        )
       }
-      signalingWebSocket.send(textEncoder.encode(JSON.stringify(signalingMessage)))
     } catch (err) {
       console.error(err)
     } finally {
       makingOffer = false
     }
   }
+
+  peerConnection.addEventListener(
+    'iceconnectionstatechange',
+    () => {
+      if (peerConnection.iceConnectionState === 'failed') {
+        peerConnection.restartIce()
+      }
+    },
+    {
+      passive: true,
+    },
+  )
+
+  peerConnection.addEventListener(
+    'datachannel',
+    (event) => {
+      const desc: DataChannelDesc = JSON.parse(event.channel.label)
+      onDataChannel(event.channel, desc, clientConnectionListener)
+    },
+    {
+      passive: true,
+    },
+  )
 
   signalingWebSocket.onmessage = async (event) => {
     const messageObject = JSON.parse(textDecoder.decode(event.data as ArrayBuffer))
@@ -106,18 +176,15 @@ function createPeerConnection(
           peerConnection.onicecandidate = null
           peerConnection.close()
           remotePeerIdentity = messageObject.data
-          // start a new peer connection
-          onProxyRestart(
-            createPeerConnection(
-              session,
-              signalingWebSocket,
-              signalingURL,
-              clientConnectionListener,
-              onProxyRestart,
-              messageObject.data,
-            ),
+          createPeerConnection(
+            session,
+            signalingWebSocket,
+            signalingURL,
             clientConnectionListener,
+            onDataChannel,
+            messageObject.data,
           )
+          // start a new peer connection
         } else if (remotePeerIdentity === undefined) {
           // Connecting to remote proxy for the first time
           remotePeerIdentity = messageObject.data
@@ -169,26 +236,22 @@ function createPeerConnection(
     peerConnection,
     clientConnectionListener,
   }
-
-  return peerConnection
 }
 
 export function ensureProxyPeerConnection(
   session: Session,
   compositorProxyURL: URL,
-  onProxyRestart: (newPeerConnection: RTCPeerConnection, clientConnectionListener: ClientConnectionListener) => void,
-): {
-  peerConnection: RTCPeerConnection
-  clientConnectionListener: ClientConnectionListener
-} {
+  onDataChannel: (
+    dataChannel: RTCDataChannel,
+    desc: DataChannelDesc,
+    clientConnectionListener: ClientConnectionListener,
+  ) => void,
+): ClientConnectionListener {
   const signalingPath = compositorProxyURL.pathname.endsWith('/') ? 'signaling' : '/signaling'
   const signalingURL = `${compositorProxyURL.protocol}//${compositorProxyURL.host}${compositorProxyURL.pathname}${signalingPath}?${compositorProxyURL.searchParams}`
   const peerConnectionEntry = proxyPeerConnections[signalingURL]
   if (peerConnectionEntry) {
-    return {
-      peerConnection: peerConnectionEntry.peerConnection,
-      clientConnectionListener: peerConnectionEntry.clientConnectionListener,
-    }
+    return peerConnectionEntry.clientConnectionListener
   }
 
   session.logger.info(`Trying to connect using compositor proxy signaling URL: ${signalingURL}`)
@@ -209,12 +272,6 @@ export function ensureProxyPeerConnection(
     },
   }
 
-  const peerConnection = createPeerConnection(
-    session,
-    signalingWebSocket,
-    signalingURL,
-    clientConnectionListener,
-    onProxyRestart,
-  )
-  return { peerConnection, clientConnectionListener }
+  createPeerConnection(session, signalingWebSocket, signalingURL, clientConnectionListener, onDataChannel)
+  return clientConnectionListener
 }

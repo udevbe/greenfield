@@ -72,7 +72,6 @@ export function createNativeClientSession(
   const nativeClientSession = new NativeClientSession(wlClient, nativeCompositorSession, protocolChannel, id)
 
   setClientDestroyedCallback(wlClient, () => {
-    nativeClientSession.wlClient = undefined
     nativeClientSession.destroy()
   })
   setRegistryCreatedCallback(wlClient, (wlRegistry: unknown, registryId: number) =>
@@ -97,16 +96,11 @@ export function createNativeClientSession(
     protocolChannel.sendMessageBinary(Buffer.from(msg.buffer, msg.byteOffset, msg.byteLength))
   })
 
-  let wasOpen = false
   protocolChannel.onError((event) => {
-    logger.info(`Wayland client web socket error.`, event)
-    if (!wasOpen) {
-      nativeClientSession.destroy()
-    }
+    logger.info(`Wayland client protocol channel error.`, event)
   })
   protocolChannel.onClosed(() => {
-    logger.info(`Wayland client connection is closed.`)
-    nativeClientSession.destroy()
+    logger.info(`Wayland client protocol channel is closed.`)
   })
   protocolChannel.onMessage((event) => {
     try {
@@ -117,9 +111,9 @@ export function createNativeClientSession(
     }
   })
   protocolChannel.onOpen(() => {
-    wasOpen = true
     // flush out any requests that came in while we were waiting for the data channel to open.
     logger.info(`Wayland client connection to browser is open.`)
+    nativeClientSession.hasCompositorState = true
     nativeClientSession.flushOutboundMessageOnOpen()
   })
 
@@ -144,6 +138,7 @@ export class NativeClientSession {
     private readonly wlRegistries: Record<number, unknown> = {},
     private disconnecting = false,
     public destroyListeners: (() => void)[] = [],
+    public hasCompositorState = false,
   ) {
     this.browserChannelOutOfBandHandlers = {
       // listen for out-of-band resource destroy. opcode: 1
@@ -345,6 +340,13 @@ export class NativeClientSession {
   }
 
   destroy(): void {
+    if (!this.wlClient) {
+      return
+    }
+
+    const wlClient = this.wlClient
+    this.wlClient = undefined
+
     if (this.protocolDataChannel.isOpen()) {
       this.protocolDataChannel.close()
     }
@@ -352,10 +354,7 @@ export class NativeClientSession {
       destroyListener()
     }
     this.destroyListeners = []
-    if (this.wlClient) {
-      destroyClient(this.wlClient)
-      this.wlClient = null
-    }
+    destroyClient(wlClient)
   }
 
   onMessage(receiveBuffer: Uint8Array): void {

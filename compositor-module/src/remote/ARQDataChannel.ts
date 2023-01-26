@@ -7,6 +7,7 @@ export class ARQDataChannel {
   private kcp?: Kcp
   private openCb?: () => void
   private msgCb?: (msg: Uint8Array) => void
+  private checkTimer?: number
   private sendBuffer: ArrayBufferView[] = []
 
   constructor(public readonly dataChannel: RTCDataChannel) {
@@ -35,9 +36,10 @@ export class ARQDataChannel {
   }
 
   private check() {
-    if (this.kcp && this.dataChannel.bufferedAmount <= MAX_BUFFERED_AMOUNT) {
+    if (this.checkTimer === undefined && this.kcp && this.dataChannel.bufferedAmount <= MAX_BUFFERED_AMOUNT) {
       this.kcp.update()
-      window.setTimeout(() => {
+      this.checkTimer = window.setTimeout(() => {
+        this.checkTimer = undefined
         this.check()
       }, this.kcp.check())
     }
@@ -55,6 +57,11 @@ export class ARQDataChannel {
   }
 
   close(): void {
+    if (this.checkTimer) {
+      clearTimeout(this.checkTimer)
+      this.checkTimer = undefined
+    }
+
     if (this.dataChannel.readyState === 'open' && this.kcp) {
       this.kcp.flush(true)
     }

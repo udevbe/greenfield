@@ -25,6 +25,7 @@ interface RTCIceCandidate {
   usernameFragment?: string | null
 }
 
+export type DataChannelDesc = { type: 'protocol' | 'frame' | 'xwm'; clientId: string }
 type SignalingMessage =
   | {
       type: 'sdp'
@@ -72,6 +73,7 @@ function flushCachedSends(openWs: WebSocket<UserData>) {
 export function webRTCSignaling(compositorProxySession: CompositorProxySession): WebSocketBehavior<UserData> {
   logger.info(`Listening for signaling connections using identity: ${peerIdentity.data}`)
   const handleLocalDescription = (sdp: string, type: DescriptionType) => {
+    compositorProxySession.peerConnectionState.makingOffer = true
     const localDescription: RTCSessionDescriptionInit = { type, sdp }
     const signalingMessage: SignalingMessage = {
       type: 'sdp',
@@ -79,6 +81,7 @@ export function webRTCSignaling(compositorProxySession: CompositorProxySession):
       identity,
     }
     cachedSend(textEncoder.encode(JSON.stringify(signalingMessage)))
+    compositorProxySession.peerConnectionState.makingOffer = false
   }
   const handleIceCandidate = (candidate: string, mid: string) => {
     const localCandidate: RTCIceCandidate = { candidate, sdpMid: mid }
@@ -168,10 +171,37 @@ export function webRTCSignaling(compositorProxySession: CompositorProxySession):
           messageObject.data &&
           messageObject.data.sdp
         ) {
+          // An offer may come in while we are busy processing SRD(answer).
+          // In this case, we will be in "stable" by the time the offer is processed,
+          // so it is safe to chain it on our Operations Chain now.
+          const readyForOffer =
+            !compositorProxySession.peerConnectionState.makingOffer &&
+            (compositorProxySession.peerConnectionState.peerConnection.signalingState() == 'stable' ||
+              compositorProxySession.peerConnectionState.isSettingRemoteAnswerPending)
+          const offerCollision = messageObject.data.type === 'offer' && !readyForOffer
+
+          compositorProxySession.peerConnectionState.ignoreOffer =
+            !compositorProxySession.peerConnectionState.polite && offerCollision
+          if (compositorProxySession.peerConnectionState.ignoreOffer) {
+            return
+          }
+
+          compositorProxySession.peerConnectionState.isSettingRemoteAnswerPending = messageObject.data.type === 'answer'
           compositorProxySession.peerConnectionState.peerConnection.setRemoteDescription(
             messageObject.data.sdp,
             messageObject.data.type,
           )
+          compositorProxySession.peerConnectionState.isSettingRemoteAnswerPending = false
+
+          if (messageObject.data.type === 'offer') {
+            compositorProxySession.peerConnectionState.peerConnection.setLocalDescription()
+            const signalingMessage: SignalingMessage = {
+              type: 'sdp',
+              data: compositorProxySession.peerConnectionState.peerConnection.localDescription() as RTCSessionDescriptionInit,
+              identity,
+            }
+            cachedSend(textEncoder.encode(JSON.stringify(signalingMessage)))
+          }
         }
       }
     },
@@ -186,5 +216,10 @@ function isSignalingMessage(messageObject: any): messageObject is SignalingMessa
   if (messageObject === null) {
     return false
   }
-  return messageObject.type === 'sdp' || messageObject.type === 'ice' || messageObject.type === 'identity'
+  return (
+    messageObject.type === 'sdp' ||
+    messageObject.type === 'ice' ||
+    messageObject.type === 'identity' ||
+    messageObject.type === 'datachannel'
+  )
 }

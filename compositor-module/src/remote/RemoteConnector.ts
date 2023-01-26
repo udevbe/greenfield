@@ -18,7 +18,7 @@
 import { ClientConnectionListener, CompositorConnector } from '../index'
 import { RemoteConnectionHandler } from './RemoteConnectionHandler'
 import Session from '../Session'
-import { ensureProxyPeerConnection } from './proxy-peer-connections'
+import { DataChannelDesc, ensureProxyPeerConnection } from './proxy-peer-connections'
 import { ARQDataChannel } from './ARQDataChannel'
 
 export class RemoteConnection {}
@@ -38,46 +38,39 @@ export class RemoteConnector implements CompositorConnector {
 
   private listenForDataChannels(
     compositorProxyURL: URL,
-    peerConnection: RTCPeerConnection,
+    dataChannel: RTCDataChannel,
+    desc: DataChannelDesc,
     clientConnectionListener: ClientConnectionListener,
   ) {
-    peerConnection.ondatachannel = (ev) => {
-      const dataChannel = ev.channel
-      const params = new URLSearchParams(dataChannel.label)
-      const type = params.get('t')
-      const clientId = params.get('cid')
-      if (type === 'prtcl' && clientId) {
-        const client = this.session.display.createClient(clientId)
-        const protocolDataChannel = new ARQDataChannel(dataChannel)
-        client.onClose().then(() => protocolDataChannel.close())
-        this.remoteSocket.onProtocolChannel(protocolDataChannel, compositorProxyURL, client)
-        clientConnectionListener.onClient(client)
-      } else if (type === 'frmdt' && clientId) {
-        const client = this.session.display.clients[clientId]
-        const frameDataChannel = new ARQDataChannel(dataChannel)
-        client.onClose().then(() => frameDataChannel.close())
-        this.remoteSocket.setupFrameDataChannel(client, frameDataChannel)
-      } else if (type === 'xwm' && clientId) {
-        const client = this.session.display.clients[clientId]
-        // TODO associate with proxy connection & cleanup on disconnect?
-        const xwmDataChannel = new ARQDataChannel(dataChannel)
-        client.onClose().then(() => xwmDataChannel.close())
-        this.remoteSocket.setupXWM(client, xwmDataChannel)
-      }
+    const type = desc.type
+    const clientId = desc.clientId
+    if (type === 'protocol' && clientId) {
+      const client = this.session.display.createClient(clientId)
+      const protocolDataChannel = new ARQDataChannel(dataChannel)
+      client.onClose().then(() => protocolDataChannel.close())
+      this.remoteSocket.onProtocolChannel(protocolDataChannel, compositorProxyURL, client)
+      clientConnectionListener.onClient(client)
+    } else if (type === 'frame' && clientId) {
+      const client = this.session.display.clients[clientId]
+      const frameDataChannel = new ARQDataChannel(dataChannel)
+      client.onClose().then(() => frameDataChannel.close())
+      this.remoteSocket.setupFrameDataChannel(client, frameDataChannel)
+    } else if (type === 'xwm' && clientId) {
+      const client = this.session.display.clients[clientId]
+      // TODO associate with proxy connection & cleanup on disconnect?
+      const xwmDataChannel = new ARQDataChannel(dataChannel)
+      client.onClose().then(() => xwmDataChannel.close())
+      this.remoteSocket.setupXWM(client, xwmDataChannel)
     }
   }
 
   listen(compositorProxyURL: URL): ClientConnectionListener {
-    const { peerConnection, clientConnectionListener } = ensureProxyPeerConnection(
+    return ensureProxyPeerConnection(
       this.session,
       compositorProxyURL,
-      (newPeerConnection, clientConnectionListener) => {
-        peerConnection.ondatachannel = null
-        this.listenForDataChannels(compositorProxyURL, newPeerConnection, clientConnectionListener)
+      (dataChannel, desc, clientConnectionListener) => {
+        this.listenForDataChannels(compositorProxyURL, dataChannel, desc, clientConnectionListener)
       },
     )
-
-    this.listenForDataChannels(compositorProxyURL, peerConnection, clientConnectionListener)
-    return clientConnectionListener
   }
 }

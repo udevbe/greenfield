@@ -1,6 +1,6 @@
 import { DataChannel, DataChannelInitConfig, PeerConnection } from 'node-datachannel'
-import { URLSearchParams } from 'url'
 import { Kcp } from './kcp'
+import { DataChannelDesc } from './SignalingController'
 import { PeerConnectionState } from './CompositorProxySession'
 
 const MAX_BUFFERED_AMOUNT = 36000
@@ -10,11 +10,24 @@ const LOW_BUFFERED_AMOUNT = 3600
 const dataChannelConfig: DataChannelInitConfig = {
   ordered: false,
   maxRetransmits: 0,
+  negotiated: false,
 }
 
-function createDataChannel(peerConnectionState: PeerConnectionState, label: string) {
-  const dataChannel = peerConnectionState.peerConnection.createDataChannel(label, dataChannelConfig)
-  const arqDataChannel = new ARQDataChannel(dataChannel, label)
+function createDataChannel(peerConnection: PeerConnection, desc: DataChannelDesc): DataChannel {
+  return peerConnection.createDataChannel(JSON.stringify(desc), dataChannelConfig)
+}
+
+function createARQDataChannel(
+  peerConnectionState: PeerConnectionState,
+  type: DataChannelDesc['type'],
+  clientId: string,
+): ARQDataChannel {
+  const desc: DataChannelDesc = {
+    type,
+    clientId,
+  }
+  const dataChannel = createDataChannel(peerConnectionState.peerConnection, desc)
+  const arqDataChannel = new ARQDataChannel(dataChannel, desc)
   peerConnectionState.peerConnectionResetListeners.push((newPeerConnection) => {
     if (arqDataChannel.state === 'connecting') {
       arqDataChannel.resetDataChannel(newPeerConnection)
@@ -23,25 +36,16 @@ function createDataChannel(peerConnectionState: PeerConnectionState, label: stri
   return arqDataChannel
 }
 
-export function createXWMDataChannel(peerConnectionState: PeerConnectionState, clientId: string) {
-  const labelParams = new URLSearchParams()
-  labelParams.append('t', 'xwm')
-  labelParams.append('cid', clientId)
-  return createDataChannel(peerConnectionState, labelParams.toString())
+export function createXWMDataChannel(peerConnectionState: PeerConnectionState, clientId: string): ARQDataChannel {
+  return createARQDataChannel(peerConnectionState, 'xwm', clientId)
 }
 
-export function createFrameDataChannel(peerConnectionState: PeerConnectionState, clientId: string) {
-  const labelParams = new URLSearchParams()
-  labelParams.append('t', 'frmdt')
-  labelParams.append('cid', clientId)
-  return createDataChannel(peerConnectionState, labelParams.toString())
+export function createFrameDataChannel(peerConnectionState: PeerConnectionState, clientId: string): ARQDataChannel {
+  return createARQDataChannel(peerConnectionState, 'frame', clientId)
 }
 
 export function createProtocolChannel(peerConnectionState: PeerConnectionState, clientId: string): ARQDataChannel {
-  const labelParams = new URLSearchParams()
-  labelParams.append('t', 'prtcl')
-  labelParams.append('cid', clientId)
-  return createDataChannel(peerConnectionState, labelParams.toString())
+  return createARQDataChannel(peerConnectionState, 'protocol', clientId)
 }
 
 export class ARQDataChannel {
@@ -54,7 +58,7 @@ export class ARQDataChannel {
   private checkTimer?: NodeJS.Timeout
   private sendBuffer: Buffer[] = []
 
-  constructor(private dataChannel: DataChannel, private readonly label: string) {
+  constructor(private dataChannel: DataChannel, private readonly desc: DataChannelDesc) {
     this.addDataChannelListeners(dataChannel)
   }
 
@@ -122,9 +126,10 @@ export class ARQDataChannel {
   }
 
   private check(kcp: Kcp) {
-    if (this.dataChannel.bufferedAmount() <= MAX_BUFFERED_AMOUNT) {
+    if (this.checkTimer === undefined && this.dataChannel.bufferedAmount() <= MAX_BUFFERED_AMOUNT) {
       kcp.update()
       this.checkTimer = setTimeout(() => {
+        this.checkTimer = undefined
         this.check(kcp)
       }, kcp.check())
     }
@@ -144,9 +149,6 @@ export class ARQDataChannel {
       if (dataChannel.isOpen()) {
         dataChannel.sendMessageBinary(data.subarray(0, size))
       }
-      // else {
-      //   throw new Error(`BUG. Sending message on a closed channel`)
-      // }
     })
 
     dataChannel.onMessage((message) => {
@@ -185,7 +187,7 @@ export class ARQDataChannel {
 
   resetDataChannel(peerConnection: PeerConnection) {
     this.close()
-    const dataChannel = peerConnection.createDataChannel(this.label, dataChannelConfig)
+    const dataChannel = createDataChannel(peerConnection, this.desc)
     this.dataChannel = dataChannel
     this.addDataChannelListeners(dataChannel)
   }

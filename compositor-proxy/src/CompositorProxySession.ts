@@ -27,6 +27,10 @@ const logger = createLogger('compositor-proxy-session')
 export type PeerConnectionState = {
   peerConnection: PeerConnection
   peerConnectionResetListeners: ((newPeerConnection: PeerConnection) => void)[]
+  polite: false
+  makingOffer: boolean
+  ignoreOffer: boolean
+  isSettingRemoteAnswerPending: boolean
 }
 
 function createPeerConnection(): PeerConnection {
@@ -41,6 +45,10 @@ export function createCompositorProxySession(compositorSessionId: string): Compo
   const peerConnectionState: PeerConnectionState = {
     peerConnection,
     peerConnectionResetListeners: [],
+    polite: false,
+    makingOffer: false,
+    ignoreOffer: false,
+    isSettingRemoteAnswerPending: false,
   }
   const nativeCompositorSession = createNativeCompositorSession(compositorSessionId, peerConnectionState)
   const xWaylandSession = XWaylandSession.create(nativeCompositorSession)
@@ -66,6 +74,11 @@ export class CompositorProxySession {
   ) {}
 
   resetPeerConnectionState(): void {
+    for (const client of this.nativeCompositorSession.clients) {
+      if (client.nativeClientSession.hasCompositorState) {
+        client.nativeClientSession.destroy()
+      }
+    }
     this.peerConnectionState.peerConnection.destroy()
     const newPeerConnection = createPeerConnection()
     this.peerConnectionState.peerConnection = newPeerConnection

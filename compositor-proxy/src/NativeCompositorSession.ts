@@ -127,16 +127,12 @@ export class NativeCompositorSession {
     logger.info(`Listening on: WAYLAND_DISPLAY="${this.waylandDisplay}".`)
   }
 
-  destroyAllClients() {
+  destroy(): void {
+    this.wlDisplayFdWatcher.close()
     for (const client of this.clients) {
       client.nativeClientSession?.destroy()
     }
     this.clients = []
-  }
-
-  destroy(): void {
-    this.wlDisplayFdWatcher.close()
-    this.destroyAllClients()
     destroyDisplay(this.wlDisplay)
   }
 
