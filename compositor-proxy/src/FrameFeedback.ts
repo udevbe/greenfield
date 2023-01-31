@@ -1,6 +1,7 @@
 import { destroyWlResourceSilently, flush, sendEvents } from 'westfield-proxy'
 import { performance } from 'perf_hooks'
 import { clearTimeout } from 'timers'
+import { ARQDataChannel } from './ARQDataChannel'
 
 export class FrameFeedback {
   // frame callback prediction state
@@ -17,13 +18,24 @@ export class FrameFeedback {
   }
   private paused = false
 
-  constructor(private wlClient: unknown, private messageInterceptors: Record<number, any>) {}
+  constructor(
+    private wlClient: unknown,
+    private messageInterceptors: Record<number, any>,
+    private feedbackChannel: ARQDataChannel,
+  ) {
+    feedbackChannel.onMessage((buffer) => {
+      const refreshInterval = buffer.readUInt16LE()
+      const avgDuration = buffer.readUInt16LE(2)
+      this.updateDelay(refreshInterval, avgDuration)
+    })
+  }
 
   destroy() {
     if (this.delayedFrameDoneEvents) {
       clearTimeout(this.delayedFrameDoneEvents.timeout)
       this.delayedFrameDoneEvents = undefined
     }
+    this.feedbackChannel.close()
   }
 
   commitNotify(
@@ -43,21 +55,14 @@ export class FrameFeedback {
     committedBuffer.encodingPromise.then(() => this.commitDone(committedBuffer))
   }
 
-  updateDelay(clientRefreshInterval: number, clientProcessingDuration: number | undefined) {
+  private updateDelay(clientRefreshInterval: number, clientProcessingDuration: number) {
     const now = performance.now()
     this.clientFeedbackTimestamp = now
     this.refreshInterval = clientRefreshInterval
-
-    if (clientProcessingDuration) {
-      this.clientProcessingDuration = clientProcessingDuration
-    }
+    this.clientProcessingDuration = clientProcessingDuration
 
     if (this.paused) {
       this.resume()
-      return
-    }
-
-    if (this.clientProcessingDuration === undefined) {
       return
     }
 
@@ -97,7 +102,7 @@ export class FrameFeedback {
 
     const now = performance.now()
 
-    if (now - this.clientFeedbackTimestamp > 2000 || this.clientProcessingDuration === undefined) {
+    if (now - this.clientFeedbackTimestamp > 1500 || this.clientProcessingDuration === undefined) {
       // pause sending frame done event until we have a (recent) feedback timestamp
       this.pause()
       this.createDelayedFrameDoneEvents(committedBuffer.frameCallbacksIds)

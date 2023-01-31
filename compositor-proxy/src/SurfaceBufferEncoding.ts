@@ -22,15 +22,21 @@ import { createLogger } from './Logger'
 import wlSurfaceInterceptor from './protocol/wl_surface_interceptor'
 import { FrameFeedback } from './FrameFeedback'
 import { incrementAndGetNextBufferSerial, ProxyBuffer } from './ProxyBuffer'
-import { createFrameDataChannel } from './ARQDataChannel'
+import { createFeedbackChannel, createFrameDataChannel } from './ARQDataChannel'
 
 const logger = createLogger('surface-buffer-encoding')
 
 function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor): FrameFeedback {
   if (wlSurfaceInterceptor.frameFeedback === undefined) {
+    const feedbackChannel = createFeedbackChannel(
+      wlSurfaceInterceptor.userData.peerConnectionState,
+      wlSurfaceInterceptor.userData.nativeClientSession.id,
+      wlSurfaceInterceptor.id,
+    )
     const frameFeedback = new FrameFeedback(
       wlSurfaceInterceptor.wlClient,
       wlSurfaceInterceptor.userData.messageInterceptors,
+      feedbackChannel,
     )
     wlSurfaceInterceptor.frameFeedback = frameFeedback
     wlSurfaceInterceptor.userData.nativeClientSession.destroyListeners.push(() => {
@@ -47,9 +53,7 @@ function ensureFrameDataChannel(wlSurfaceInterceptor: wlSurfaceInterceptor) {
       wlSurfaceInterceptor.userData.nativeClientSession.id,
     )
     wlSurfaceInterceptor.userData.nativeClientSession.destroyListeners.push(() => {
-      if (wlSurfaceInterceptor.frameDataChannel.isOpen()) {
-        wlSurfaceInterceptor.frameDataChannel.close()
-      }
+      wlSurfaceInterceptor.frameDataChannel.close()
     })
   }
 }
@@ -223,15 +227,9 @@ wlSurfaceInterceptor.prototype.encodeAndSendBuffer = function (args) {
   return this.encoder
     .encodeBuffer(args)
     .then((nodeBuffer) => {
-      const bufferView = new DataView(nodeBuffer.buffer)
       // FIXME check buffer result, can have an empty size if encoding pipeline was ended
-      // send buffer sent started marker. opcode: 1. surfaceId + syncSerial
-      const startMarker = new Uint32Array([1, this.id, bufferView.getUint32(8, true)])
-      this.userData.protocolChannel.sendMessageBinary(
-        Buffer.from(startMarker.buffer, startMarker.byteOffset, startMarker.byteLength),
-      )
       // send buffer contents. bufferId + chunk
-      this.frameDataChannel.sendMessageBinary(nodeBuffer)
+      this.frameDataChannel.send(nodeBuffer)
     })
     .catch((e: Error) => {
       logger.error(`\tname: ${e.name} message: ${e.message}`)

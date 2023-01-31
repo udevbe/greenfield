@@ -18,7 +18,7 @@
 import { ClientConnectionListener, CompositorConnector } from '../index'
 import { RemoteConnectionHandler } from './RemoteConnectionHandler'
 import Session from '../Session'
-import { DataChannelDesc, ensureProxyPeerConnection } from './proxy-peer-connections'
+import { DataChannelDesc, ensureProxyPeerConnection, FeedbackDataChannelDesc } from './proxy-peer-connections'
 import { ARQDataChannel } from './ARQDataChannel'
 
 export class RemoteConnection {}
@@ -61,6 +61,13 @@ export class RemoteConnector implements CompositorConnector {
       const xwmDataChannel = new ARQDataChannel(dataChannel)
       client.onClose().then(() => xwmDataChannel.close())
       this.remoteSocket.setupXWM(client, xwmDataChannel)
+    } else if (type === 'feedback' && clientId) {
+      const feedbackDesc = desc as FeedbackDataChannelDesc
+      const surfaceId = feedbackDesc.surfaceId
+      const client = this.session.display.clients[clientId]
+      const feedbackChannel = new ARQDataChannel(dataChannel)
+      client.onClose().then(() => feedbackChannel.close())
+      client.userData.clientEncodersFeedback?.addFeedbackChannel(feedbackChannel, surfaceId)
     }
   }
 

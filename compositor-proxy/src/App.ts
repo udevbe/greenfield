@@ -8,7 +8,6 @@ import {
   POSTEncoderKeyframe,
   POSTMkFifo,
   POSTMkstempMmap,
-  PUTEncoderFeedback,
   PUTWebFDStream,
 } from './AppController'
 import { webRTCSignaling } from './SignalingController'
@@ -72,9 +71,6 @@ export function createApp(
         '/:clientId/:surfaceId/encoder/keyframe',
         withAuth(compositorProxySession, withParams(2, POSTEncoderKeyframe)),
       )
-
-      .options('/:clientId/encoder/feedback', OPTIONSPreflightRequest('PUT'))
-      .put('/:clientId/encoder/feedback', withAuth(compositorProxySession, withParams(1, PUTEncoderFeedback)))
 
       .ws('/signaling', webRTCSignaling(compositorProxySession))
 

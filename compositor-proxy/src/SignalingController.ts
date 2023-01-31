@@ -2,10 +2,9 @@ import { createLogger } from './Logger'
 import type { WebSocket, WebSocketBehavior } from 'uWebSockets.js'
 import { URLSearchParams } from 'url'
 import type { CompositorProxySession } from './CompositorProxySession'
-import { DescriptionType, preload } from 'node-datachannel'
-import crypto from 'crypto'
+import { randomBytes } from 'crypto'
+import { RTCIceCandidate, RTCPeerConnection, RTCSessionDescriptionInit } from '@koush/wrtc'
 
-preload()
 const logger = createLogger('compositor-proxy-signaling')
 
 type UserData = {
@@ -13,19 +12,9 @@ type UserData = {
   compositorProxySession: CompositorProxySession
 }
 
-interface RTCSessionDescriptionInit {
-  sdp?: string
-  type: DescriptionType
-}
+export type DataChannelDesc = { type: 'protocol' | 'frame' | 'xwm' | 'feedback'; clientId: string }
+export type FeedbackDataChannelDesc = DataChannelDesc & { surfaceId: number }
 
-interface RTCIceCandidate {
-  candidate?: string
-  sdpMLineIndex?: number | null
-  sdpMid?: string | null
-  usernameFragment?: string | null
-}
-
-export type DataChannelDesc = { type: 'protocol' | 'frame' | 'xwm'; clientId: string }
 type SignalingMessage =
   | {
       type: 'sdp'
@@ -46,7 +35,7 @@ const textDecoder = new TextDecoder()
 const textEncoder = new TextEncoder()
 
 let openWs: WebSocket<UserData> | null = null
-const identity = crypto.randomBytes(8).toString('hex')
+const identity = randomBytes(8).toString('hex')
 const peerIdentity: SignalingMessage = {
   type: 'identity',
   data: identity,
@@ -72,34 +61,49 @@ function flushCachedSends(openWs: WebSocket<UserData>) {
 
 export function webRTCSignaling(compositorProxySession: CompositorProxySession): WebSocketBehavior<UserData> {
   logger.info(`Listening for signaling connections using identity: ${peerIdentity.data}`)
-  const handleLocalDescription = (sdp: string, type: DescriptionType) => {
-    compositorProxySession.peerConnectionState.makingOffer = true
-    const localDescription: RTCSessionDescriptionInit = { type, sdp }
-    const signalingMessage: SignalingMessage = {
-      type: 'sdp',
-      data: localDescription,
-      identity,
+
+  const handleIceCandidate: RTCPeerConnection['onicecandidate'] = (ev) => {
+    if (ev.candidate?.protocol === 'tcp') {
+      return
     }
-    cachedSend(textEncoder.encode(JSON.stringify(signalingMessage)))
-    compositorProxySession.peerConnectionState.makingOffer = false
-  }
-  const handleIceCandidate = (candidate: string, mid: string) => {
-    const localCandidate: RTCIceCandidate = { candidate, sdpMid: mid }
     const signalingMessage: SignalingMessage = {
       type: 'ice',
-      data: localCandidate,
+      data: ev.candidate,
       identity,
     }
     cachedSend(textEncoder.encode(JSON.stringify(signalingMessage)))
   }
 
-  compositorProxySession.peerConnectionState.peerConnection.onLocalDescription(handleLocalDescription)
-  compositorProxySession.peerConnectionState.peerConnection.onLocalCandidate(handleIceCandidate)
+  const handleNegotiationNeeded: RTCPeerConnection['onnegotiationneeded'] = async () => {
+    try {
+      compositorProxySession.peerConnectionState.makingOffer = true
+      const offer = await compositorProxySession.peerConnectionState.peerConnection.createOffer({
+        offerToReceiveVideo: false,
+        offerToReceiveAudio: false,
+      })
+      await compositorProxySession.peerConnectionState.peerConnection.setLocalDescription(offer)
+      const signalingMessage: SignalingMessage = {
+        type: 'sdp',
+        data: compositorProxySession.peerConnectionState.peerConnection.localDescription,
+        identity,
+      }
+      cachedSend(textEncoder.encode(JSON.stringify(signalingMessage)))
+    } catch (err) {
+      console.error(err)
+    } finally {
+      compositorProxySession.peerConnectionState.makingOffer = false
+    }
+  }
 
-  compositorProxySession.peerConnectionState.peerConnectionResetListeners.push((newPeerConnection) => {
-    newPeerConnection.onLocalDescription(handleLocalDescription)
-    newPeerConnection.onLocalCandidate(handleIceCandidate)
-  })
+  const handleIceConnectionStateChange: RTCPeerConnection['oniceconnectionstatechange'] = () => {
+    if (compositorProxySession.peerConnectionState.peerConnection.iceConnectionState === 'failed') {
+      compositorProxySession.peerConnectionState.peerConnection.restartIce()
+    }
+  }
+
+  compositorProxySession.peerConnectionState.peerConnection.onicecandidate = handleIceCandidate
+  compositorProxySession.peerConnectionState.peerConnection.onnegotiationneeded = handleNegotiationNeeded
+  compositorProxySession.peerConnectionState.peerConnection.oniceconnectionstatechange = handleIceConnectionStateChange
 
   return {
     sendPingsAutomatically: true,
@@ -136,7 +140,7 @@ export function webRTCSignaling(compositorProxySession: CompositorProxySession):
       openWs = ws
       flushCachedSends(ws)
     },
-    message: (ws: WebSocket<UserData>, message: ArrayBuffer) => {
+    message: async (ws: WebSocket<UserData>, message: ArrayBuffer) => {
       const messageData = textDecoder.decode(message)
       const messageObject = JSON.parse(messageData)
 
@@ -149,7 +153,14 @@ export function webRTCSignaling(compositorProxySession: CompositorProxySession):
             )
             // Remote compositor has restarted. Shutdown the old peer connection before handling any signaling.
             compositorPeerIdentity = messageObject.data
+            compositorProxySession.peerConnectionState.peerConnection.onicecandidate = null
+            compositorProxySession.peerConnectionState.peerConnection.onnegotiationneeded = null
+            compositorProxySession.peerConnectionState.peerConnection.oniceconnectionstatechange = null
             compositorProxySession.resetPeerConnectionState()
+            compositorProxySession.peerConnectionState.peerConnection.onicecandidate = handleIceCandidate
+            compositorProxySession.peerConnectionState.peerConnection.onnegotiationneeded = handleNegotiationNeeded
+            compositorProxySession.peerConnectionState.peerConnection.oniceconnectionstatechange =
+              handleIceConnectionStateChange
           } else if (compositorPeerIdentity === undefined) {
             // Connecting to remote proxy for the first time
             compositorPeerIdentity = messageObject.data
@@ -157,26 +168,24 @@ export function webRTCSignaling(compositorProxySession: CompositorProxySession):
         } else if (
           messageObject.identity === compositorPeerIdentity &&
           messageObject.type === 'ice' &&
-          messageObject.data &&
-          messageObject.data.candidate &&
-          messageObject.data.sdpMid
+          messageObject.data
         ) {
-          compositorProxySession.peerConnectionState.peerConnection.addRemoteCandidate(
-            messageObject.data.candidate,
-            messageObject.data.sdpMid,
-          )
+          try {
+            await compositorProxySession.peerConnectionState.peerConnection.addIceCandidate(messageObject.data)
+          } catch (err) {
+            if (!compositorProxySession.peerConnectionState.ignoreOffer) throw err // Suppress ignored offer's candidates
+          }
         } else if (
           messageObject.identity === compositorPeerIdentity &&
           messageObject.type === 'sdp' &&
-          messageObject.data &&
-          messageObject.data.sdp
+          messageObject.data?.sdp
         ) {
           // An offer may come in while we are busy processing SRD(answer).
           // In this case, we will be in "stable" by the time the offer is processed,
           // so it is safe to chain it on our Operations Chain now.
           const readyForOffer =
             !compositorProxySession.peerConnectionState.makingOffer &&
-            (compositorProxySession.peerConnectionState.peerConnection.signalingState() == 'stable' ||
+            (compositorProxySession.peerConnectionState.peerConnection.signalingState == 'stable' ||
               compositorProxySession.peerConnectionState.isSettingRemoteAnswerPending)
           const offerCollision = messageObject.data.type === 'offer' && !readyForOffer
 
@@ -187,17 +196,15 @@ export function webRTCSignaling(compositorProxySession: CompositorProxySession):
           }
 
           compositorProxySession.peerConnectionState.isSettingRemoteAnswerPending = messageObject.data.type === 'answer'
-          compositorProxySession.peerConnectionState.peerConnection.setRemoteDescription(
-            messageObject.data.sdp,
-            messageObject.data.type,
-          )
+          await compositorProxySession.peerConnectionState.peerConnection.setRemoteDescription(messageObject.data)
           compositorProxySession.peerConnectionState.isSettingRemoteAnswerPending = false
 
           if (messageObject.data.type === 'offer') {
-            compositorProxySession.peerConnectionState.peerConnection.setLocalDescription()
+            const answer = await compositorProxySession.peerConnectionState.peerConnection.createAnswer()
+            await compositorProxySession.peerConnectionState.peerConnection.setLocalDescription(answer)
             const signalingMessage: SignalingMessage = {
               type: 'sdp',
-              data: compositorProxySession.peerConnectionState.peerConnection.localDescription() as RTCSessionDescriptionInit,
+              data: compositorProxySession.peerConnectionState.peerConnection.localDescription,
               identity,
             }
             cachedSend(textEncoder.encode(JSON.stringify(signalingMessage)))

@@ -23,27 +23,26 @@ import {
   WlSurfaceRequests,
   WlSurfaceResource,
 } from 'westfield-runtime-server'
-import { withSizeAndPosition } from './math/Rect'
+import { createRect, Rect, RectWithInfo, withSizeAndPosition } from './math/Rect'
 import BufferContents from './BufferContents'
 import BufferImplementation from './BufferImplementation'
 import { IDENTITY, invert, Mat4, scalar, timesMat4, timesPoint, translation } from './math/Mat4'
 import { Point } from './math/Point'
-import { createRect, Rect, RectWithInfo } from './math/Rect'
 import { _180, _270, _90, FLIPPED, FLIPPED_180, FLIPPED_270, FLIPPED_90, NORMAL } from './math/Transformations'
 import Region, {
+  contains,
   copyTo,
-  init,
-  fini,
   createPixmanRegion,
+  destroyPixmanRegion,
+  fini,
+  init,
   initInfinite,
   initRect,
-  destroyPixmanRegion,
-  contains,
 } from './Region'
 import { FrameDecoder, H264DecoderContext } from './remote/buffer-decoder'
 import Renderer from './render/Renderer'
 import Session from './Session'
-import { sizeEquals, Size } from './math/Size'
+import { Size, sizeEquals } from './math/Size'
 import Subsurface from './Subsurface'
 import { createSurfaceChild, SurfaceChild } from './SurfaceChild'
 import SurfaceRole from './SurfaceRole'
@@ -164,7 +163,7 @@ class Surface implements WlSurfaceRequests {
     public readonly resource: WlSurfaceResource,
     public readonly renderer: Renderer,
     public readonly session: Session,
-    public readonly encoderFeedback = resource.client.userData.clientEncodersFeedback?.createSurfaceEncoderFeedback(
+    public readonly encoderFeedback = resource.client.userData.clientEncodersFeedback?.ensureSurfaceEncoderFeedback(
       resource.id,
     ),
   ) {}
@@ -310,6 +309,7 @@ class Surface implements WlSurfaceRequests {
         // const startBufferContents = Date.now()
         const bufferContents = bufferImplementation.getContents(this, serial)
         this.pendingState.bufferContents = bufferContents instanceof Promise ? await bufferContents : bufferContents
+
         // console.log(
         //   `|--> Buffer contents with serial: ${serial ?? 'NO SERIAL'} took ${Date.now() - startBufferContents}ms`,
         // )
@@ -319,9 +319,6 @@ class Surface implements WlSurfaceRequests {
       } catch (e: any) {
         this.session.logger.warn(`[surface: ${resource.id}] - Failed to process buffer contents.`, e.toString())
       }
-    }
-    if (this.encoderFeedback && serial !== undefined) {
-      this.encoderFeedback.bufferCommit(serial)
     }
     this.role?.onCommit(this)
   }
@@ -512,7 +509,7 @@ class Surface implements WlSurfaceRequests {
       xs.push(size.width)
       ys.push(size.height)
 
-      this.state.subsurfaceChildren.forEach((subsurfaceChild) => {
+      for (const subsurfaceChild of this.state.subsurfaceChildren) {
         const subsurfacePosition = subsurfaceChild.position
         const subsurfaceSize = subsurfaceChild.surface.size
         if (subsurfaceSize) {
@@ -521,7 +518,7 @@ class Surface implements WlSurfaceRequests {
           xs.push(subsurfacePosition.x + subsurfaceSize.width)
           ys.push(subsurfacePosition.y + subsurfaceSize.height)
         }
-      })
+      }
 
       const minX = Math.min(...xs)
       const maxX = Math.max(...xs)

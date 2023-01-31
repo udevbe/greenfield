@@ -72,7 +72,10 @@ export function createNativeClientSession(
   const nativeClientSession = new NativeClientSession(wlClient, nativeCompositorSession, protocolChannel, id)
 
   setClientDestroyedCallback(wlClient, () => {
-    nativeClientSession.destroy()
+    for (const destroyListener of nativeClientSession.destroyListeners) {
+      destroyListener()
+    }
+    nativeClientSession.destroyListeners = []
   })
   setRegistryCreatedCallback(wlClient, (wlRegistry: unknown, registryId: number) =>
     nativeClientSession.onRegistryCreated(wlRegistry, registryId),
@@ -93,7 +96,7 @@ export function createNativeClientSession(
     )
     // send buffer creation notification. opcode: 2
     const msg = new Uint32Array([2, bufferId, bufferCreationSerial])
-    protocolChannel.sendMessageBinary(Buffer.from(msg.buffer, msg.byteOffset, msg.byteLength))
+    protocolChannel.send(Buffer.from(msg.buffer, msg.byteOffset, msg.byteLength))
   })
 
   protocolChannel.onError((event) => {
@@ -144,6 +147,9 @@ export class NativeClientSession {
       // listen for out-of-band resource destroy. opcode: 1
       1: (payload) => this.destroyResourceSilently(payload),
     }
+    this.destroyListeners.push(() => {
+      this.protocolDataChannel.close()
+    })
 
     const messageInterceptors: Record<number, any> = {}
     const userData: wl_surface_interceptor['userData'] = {
@@ -222,18 +228,16 @@ export class NativeClientSession {
     getServerObjectIdsBatch(this.wlClient, idsReply.subarray(1))
     // out-of-band w. opcode 6
     idsReply[0] = 6
-    if (this.protocolDataChannel.isOpen()) {
-      this.protocolDataChannel.sendMessageBinary(Buffer.from(idsReply.buffer, idsReply.byteOffset, idsReply.byteLength))
+    if (this.protocolDataChannel.readyState === 'open') {
+      this.protocolDataChannel.send(Buffer.from(idsReply.buffer, idsReply.byteOffset, idsReply.byteLength))
     } else {
-      // web socket not open, queue up reply
       this.outboundMessages.push(Buffer.from(idsReply.buffer, idsReply.byteOffset, idsReply.byteLength))
     }
   }
 
   flushOutboundMessageOnOpen(): void {
-    this.allocateBrowserServerObjectIdsBatch()
     for (const outboundMessage of this.outboundMessages) {
-      this.protocolDataChannel.sendMessageBinary(outboundMessage)
+      this.protocolDataChannel.send(outboundMessage)
     }
     this.outboundMessages = []
   }
@@ -323,12 +327,10 @@ export class NativeClientSession {
       offset += pendingWireMessage.length
     }
 
-    if (this.protocolDataChannel.isOpen()) {
+    if (this.protocolDataChannel.readyState === 'open') {
       // 1 === 'open'
-      logger.debug('Client message send over websocket.')
-      this.protocolDataChannel.sendMessageBinary(
-        Buffer.from(sendBuffer.buffer, sendBuffer.byteOffset, sendBuffer.byteLength),
-      )
+      logger.debug('Client message send over protocol channel.')
+      this.protocolDataChannel.send(Buffer.from(sendBuffer.buffer, sendBuffer.byteOffset, sendBuffer.byteLength))
     } else {
       // queue up data until the channel is open
       logger.debug('Client message queued because websocket is not open.')
@@ -346,14 +348,6 @@ export class NativeClientSession {
 
     const wlClient = this.wlClient
     this.wlClient = undefined
-
-    if (this.protocolDataChannel.isOpen()) {
-      this.protocolDataChannel.close()
-    }
-    for (const destroyListener of this.destroyListeners) {
-      destroyListener()
-    }
-    this.destroyListeners = []
     destroyClient(wlClient)
   }
 

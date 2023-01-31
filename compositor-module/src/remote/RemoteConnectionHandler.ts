@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { FD, SendMessage } from 'westfield-runtime-common'
-import { Client, WlBufferResource, WlSurfaceResource } from 'westfield-runtime-server'
+import { Client, WlBufferResource } from 'westfield-runtime-server'
 import RemoteOutOfBandChannel, {
   RemoteOutOfBandListenOpcode,
   RemoteOutOfBandSendOpcode,
@@ -27,7 +27,6 @@ import XWaylandShell from './xwayland/XWaylandShell'
 import { XWindowManager } from './xwayland/XWindowManager'
 import { XWindowManagerConnection } from './xwayland/XWindowManagerConnection'
 import { Configuration, EncoderApi, ProxyFD } from '../api'
-import Surface from '../Surface'
 import { ClientEncodersFeedback, createClientEncodersFeedback } from './EncoderFeedback'
 import { deliverContentToBufferStream } from './BufferStream'
 import { createRemoteInputOutput } from './RemoteInputOutput'
@@ -74,13 +73,6 @@ export function isProxyFD(fd: any): fd is ProxyFD {
   return typeof fd?.handle === 'number' && typeof fd?.host === 'string' && typeof fd?.type === 'string'
 }
 
-type XWaylandConnectionState = {
-  state: 'pending' | 'open'
-  xConnection?: XWindowManagerConnection
-  wlClient?: Client
-  xwm?: XWindowManager
-}
-
 export class RemoteConnectionHandler {
   private readonly textEncoder: TextEncoder = new TextEncoder()
   private readonly textDecoder: TextDecoder = new TextDecoder()
@@ -93,13 +85,13 @@ export class RemoteConnectionHandler {
 
   onProtocolChannel(protocolChannel: ARQDataChannel, compositorProxyURL: URL, client: Client): void {
     this.session.logger.info('[ProtocolChannel] - created.')
-    let wasOpen = false
+    let wasOpen = protocolChannel.readyState === 'open'
     protocolChannel.onClose(() => {
       if (!wasOpen) {
         throw new Error(`Failed to connect to application.`)
       }
     })
-    protocolChannel.onOpen(() => {
+    const handleOpenProtocolChannel = () => {
       wasOpen = true
       this.session.logger.info('[ProtocolChannel] - open.')
       client.onClose().then(() => {
@@ -140,7 +132,7 @@ export class RemoteConnectionHandler {
           }
         }
       })
-      this.setupClientOutOfBandHandlers(protocolChannel, client, oobChannel)
+      this.setupClientOutOfBandHandlers(client, oobChannel)
 
       protocolChannel.onMessage((event) => this.handleMessageEvent(client, event.buffer, oobChannel))
 
@@ -170,7 +162,13 @@ export class RemoteConnectionHandler {
         clientEncodersFeedback: createClientEncodersFeedback(client.id, encoderApi),
         inputOutput: createRemoteInputOutput(basePath, this.session.compositorSessionId),
       }
-    })
+    }
+
+    if (wasOpen) {
+      handleOpenProtocolChannel()
+    } else {
+      protocolChannel.onOpen(handleOpenProtocolChannel)
+    }
   }
 
   setupFrameDataChannel(client: Client, frameDataChannel: ARQDataChannel) {
@@ -188,23 +186,10 @@ export class RemoteConnectionHandler {
     return XWindowManager.create(this.session, xConnection, client, XWaylandShell.create(this.session))
   }
 
-  private setupClientOutOfBandHandlers(
-    protocolChannel: ARQDataChannel,
-    client: Client,
-    outOfBandChannel: RemoteOutOfBandChannel,
-  ) {
+  private setupClientOutOfBandHandlers(client: Client, outOfBandChannel: RemoteOutOfBandChannel) {
     // send out-of-band resource destroy. opcode: 1
     client.addResourceDestroyListener((resource) => {
       outOfBandChannel.send(RemoteOutOfBandSendOpcode.ResourceDestroyed, new Uint32Array([resource.id]).buffer)
-    })
-
-    outOfBandChannel.setListener(RemoteOutOfBandListenOpcode.BufferSentStarted, (message) => {
-      const payload = new Uint32Array(message.buffer, message.byteOffset)
-      const surfaceId = payload[0]
-      const syncSerial = payload[1]
-      const wlSurface = client.connection.wlObjects[surfaceId] as WlSurfaceResource
-      const surface = wlSurface.implementation as Surface
-      surface.encoderFeedback?.bufferSentStartTime(syncSerial, performance.now())
     })
 
     // listen for buffer creation. opcode: 2

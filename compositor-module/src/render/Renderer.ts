@@ -105,7 +105,9 @@ export default class Renderer {
     } else {
       this.hideCursor()
     }
-    view.surface.state.frameCallbacks.forEach((callback) => callback.done(Date.now()))
+    for (const callback of view.surface.state.frameCallbacks) {
+      callback.done(Date.now())
+    }
     view.surface.state.frameCallbacks = []
     this.session.flush()
   }
@@ -129,14 +131,12 @@ export default class Renderer {
       this.updateViewStack()
       const viewStack = [...this.viewStack]
       const processedTime = performance.now()
-      const clients = viewStack.map((view) => {
+      for (const view of viewStack) {
         this.updateRenderStatesPixelContent(view)
         this.registerFrameCallbacks(view.surface.state.frameCallbacks)
         view.surface.state.frameCallbacks = []
         view.surface.encoderFeedback?.frameProcessed(processedTime)
-        return view.surface.resource.client
-      })
-      new Set(clients).forEach((client) => client.userData.clientEncodersFeedback?.sendFeedback())
+      }
 
       afterUpdatePixelContent?.()
       // TODO we can check which views are damaged and filter out only those scenes that need a rerender
@@ -151,8 +151,12 @@ export default class Renderer {
         if (sceneList.length === 0) {
           return
         }
-        sceneList.forEach((scene) => scene.render(viewStack))
-        this.frameCallbacks.forEach((callback) => callback.done(time))
+        for (const scene of sceneList) {
+          scene.render(viewStack)
+        }
+        for (const callback of this.frameCallbacks) {
+          callback.done(time)
+        }
         this.frameCallbacks = []
         this.session.flush()
       })
@@ -185,7 +189,9 @@ export default class Renderer {
     } else {
       this.clearDndImage()
     }
-    view.surface.state.frameCallbacks.forEach((callback) => callback.done(Date.now()))
+    for (const callback of view.surface.state.frameCallbacks) {
+      callback.done(Date.now())
+    }
     view.surface.state.frameCallbacks = []
     this.session.flush()
   }
@@ -211,15 +217,15 @@ export default class Renderer {
    */
   private updateViewStack(): void {
     const stack: View[] = []
-    this.topLevelViews.forEach((topLevelView) => {
+    for (const topLevelView of this.topLevelViews) {
       // toplevel surface with a parent will be added automatically by the parent so we filter them out here.
       this.addToViewStack(stack, topLevelView)
-    })
+    }
     this.viewStack = stack
   }
 
   private addToViewStack(stack: View[], view: View) {
-    view.surface.children.forEach((surfaceChild) => {
+    for (const surfaceChild of view.surface.children) {
       const childViewOrParentView = surfaceChild.surface.role?.view
       if (childViewOrParentView) {
         stack.push(childViewOrParentView)
@@ -227,7 +233,7 @@ export default class Renderer {
           this.addToViewStack(stack, childViewOrParentView)
         }
       }
-    })
+    }
   }
 
   private registerFrameCallbacks(frameCallbacks?: Callback[]): void {
@@ -243,17 +249,17 @@ export default class Renderer {
       if (view.mapped && buffer && view.surface.damaged) {
         const bufferImplementation = buffer.implementation as BufferImplementation<any>
         if (!bufferImplementation.released) {
-          Object.values(view.renderStates).forEach((renderState) =>
-            renderState.scene[bufferContents.mimeType](bufferContents, renderState),
-          )
+          for (const renderState of Object.values(view.renderStates)) {
+            renderState.scene[bufferContents.mimeType](bufferContents, renderState)
+          }
           view.surface.damaged = false
           bufferImplementation.release()
         }
       }
     } else if (isWebBufferContent(bufferContents)) {
-      Object.values(view.renderStates).forEach((renderState) =>
-        renderState.scene[bufferContents.mimeType](bufferContents, renderState),
-      )
+      for (const renderState of Object.values(view.renderStates)) {
+        renderState.scene[bufferContents.mimeType](bufferContents, renderState)
+      }
     } else if (buffer !== undefined && bufferContents === undefined) {
       if (view.mapped && buffer && view.surface.damaged) {
         const bufferImplementation = buffer.implementation as BufferImplementation<any>

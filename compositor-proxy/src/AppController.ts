@@ -452,6 +452,7 @@ export async function POSTEncoderKeyframe(
       .end('Surface not found.')
     return
   }
+  // FIXME currently broken
   // if (wlSurfaceInterceptor.surfaceState?.bufferResourceId !== keyframeRequest.bufferId) {
   //   logger.error(
   //     'Received a key frame unit request but no buffer for surface found that matches the request. Buffer already destroyed?',
@@ -471,51 +472,4 @@ export async function POSTEncoderKeyframe(
   // })
 
   httpResponse.writeStatus('202 Accepted').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
-}
-
-export async function PUTEncoderFeedback(
-  compositorProxySession: CompositorProxySession,
-  httpResponse: HttpResponse,
-  httpRequest: HttpRequest,
-  [clientIdParam]: string[],
-) {
-  const clientId = clientIdParam
-
-  if (clientId === undefined) {
-    httpResponse
-      .writeStatus('400 Bad Request')
-      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
-      .writeHeader('Content-Type', 'text/plain')
-      .end(`Surface id argument must be a positive integer. Got client id: ${clientId}`)
-    return
-  }
-
-  const feedbackPromise = readJson<operations['feedback']['requestBody']['content']['application/json']>(httpResponse)
-
-  const clientEntry = compositorProxySession.nativeCompositorSession.clients.find(
-    (clientEntry) => clientEntry.clientId === clientId,
-  )
-
-  if (clientEntry === undefined) {
-    httpResponse
-      .writeStatus('404 Not Found')
-      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
-      .writeHeader('Content-Type', 'text/plain')
-      .end('Client not found.')
-    return
-  }
-
-  const feedback = await feedbackPromise
-  if (feedback.surfaceDurations) {
-    Object.entries(feedback.surfaceDurations).forEach(([surfaceId, avgDuration]) => {
-      const wlSurfaceInterceptor = clientEntry.nativeClientSession?.messageInterceptor.interceptors[
-        Number.parseInt(surfaceId)
-      ] as wl_surface_interceptor
-      if (wlSurfaceInterceptor) {
-        wlSurfaceInterceptor.frameFeedback?.updateDelay(feedback.refreshInterval, avgDuration)
-      }
-    })
-  }
-
-  httpResponse.writeStatus('204 No Content').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
 }

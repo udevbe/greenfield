@@ -19,24 +19,22 @@ import { createLogger } from './Logger'
 
 import { createNativeCompositorSession, NativeCompositorSession } from './NativeCompositorSession'
 import { XWaylandSession } from './XWaylandSession'
-import { PeerConnection, preload } from 'node-datachannel'
+import { RTCPeerConnection } from '@koush/wrtc'
 
-preload()
 const logger = createLogger('compositor-proxy-session')
 
 export type PeerConnectionState = {
-  peerConnection: PeerConnection
-  peerConnectionResetListeners: ((newPeerConnection: PeerConnection) => void)[]
+  peerConnection: RTCPeerConnection
+  peerConnectionResetListeners: ((newPeerConnection: RTCPeerConnection) => void)[]
   polite: false
   makingOffer: boolean
   ignoreOffer: boolean
   isSettingRemoteAnswerPending: boolean
 }
 
-function createPeerConnection(): PeerConnection {
-  return new PeerConnection('compositor-proxy', {
-    iceServers: ['stun:stun.l.google.com:19302'],
-    enableIceTcp: false,
+function createPeerConnection(): RTCPeerConnection {
+  return new RTCPeerConnection({
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
   })
 }
 
@@ -79,7 +77,9 @@ export class CompositorProxySession {
         client.nativeClientSession.destroy()
       }
     }
-    this.peerConnectionState.peerConnection.destroy()
+
+    this.peerConnectionState.peerConnection.close()
+
     const newPeerConnection = createPeerConnection()
     this.peerConnectionState.peerConnection = newPeerConnection
     for (const peerConnectionResetListener of this.peerConnectionState.peerConnectionResetListeners) {

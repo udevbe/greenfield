@@ -81,14 +81,13 @@ export class XWaylandSession {
     const { xConnectionSocket, setup } = await nodeFDConnectionSetup(wmFD)()
 
     const setupJSON = JSON.stringify(setup)
-    xwmDataChannel.sendMessageBinary(Buffer.from(textEncoder.encode(setupJSON).buffer))
+    xwmDataChannel.send(Buffer.from(textEncoder.encode(setupJSON).buffer))
     this.xwmDataChannel.onMessage((ev) => {
       xConnectionSocket.write(ev)
     })
     this.xwmDataChannel.onClosed(() => xConnectionSocket.close())
     this.xwmDataChannel.onError((ev) => console.error('XConnection websocket error: ' + ev))
-    xConnectionSocket.onData = (data) =>
-      xwmDataChannel.sendMessageBinary(Buffer.from(data.buffer, data.byteOffset, data.byteLength))
+    xConnectionSocket.onData = (data) => xwmDataChannel.send(Buffer.from(data.buffer, data.byteOffset, data.byteLength))
   }
 
   destroy(): void {

@@ -3,7 +3,9 @@ import { Client } from 'westfield-runtime-server'
 import Session from '../Session'
 import ReconnectingWebSocket from './reconnecting-websocket'
 
-export type DataChannelDesc = { id: number; type: 'protocol' | 'frame' | 'xwm'; clientId: string }
+export type DataChannelDesc = { id: number; type: 'protocol' | 'frame' | 'xwm' | 'feedback'; clientId: string }
+export type FeedbackDataChannelDesc = DataChannelDesc & { type: 'feedback'; surfaceId: number }
+
 type SignalingMessage =
   | {
       type: 'sdp'
@@ -54,14 +56,6 @@ const dataChannelConfig: RTCDataChannelInit = {
   maxRetransmits: 0,
 }
 
-function newDataChannel(peerConnection: RTCPeerConnection, desc: DataChannelDesc) {
-  console.dir(peerConnection, desc)
-  return peerConnection.createDataChannel(desc.type, {
-    ...dataChannelConfig,
-    id: desc.id,
-  })
-}
-
 function createPeerConnection(
   session: Session,
   signalingWebSocket: ReconnectingWebSocket,
@@ -76,7 +70,6 @@ function createPeerConnection(
 ) {
   const peerConnection = new RTCPeerConnection({
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-    iceCandidatePoolSize: 4,
   })
 
   // other side has polite = false
@@ -88,9 +81,6 @@ function createPeerConnection(
   let isSettingRemoteAnswerPending = false
 
   peerConnection.onicecandidate = (ev) => {
-    if (!peerConnection.canTrickleIceCandidates) {
-      return
-    }
     if (ev.candidate?.protocol === 'tcp') {
       return
     }
@@ -106,32 +96,12 @@ function createPeerConnection(
     try {
       makingOffer = true
       await peerConnection.setLocalDescription()
-      if (peerConnection.canTrickleIceCandidates || peerConnection.iceGatheringState === 'complete') {
-        const signalingMessage: SignalingMessage = {
-          type: 'sdp',
-          data: peerConnection.localDescription,
-          identity,
-        }
-        signalingWebSocket.send(textEncoder.encode(JSON.stringify(signalingMessage)))
-      } else {
-        peerConnection.addEventListener(
-          'icegatheringstatechange',
-          () => {
-            if (peerConnection.iceGatheringState === 'complete') {
-              const signalingMessage: SignalingMessage = {
-                type: 'sdp',
-                data: peerConnection.localDescription,
-                identity,
-              }
-              signalingWebSocket.send(textEncoder.encode(JSON.stringify(signalingMessage)))
-            }
-          },
-          {
-            passive: true,
-            once: true,
-          },
-        )
+      const signalingMessage: SignalingMessage = {
+        type: 'sdp',
+        data: peerConnection.localDescription,
+        identity,
       }
+      signalingWebSocket.send(textEncoder.encode(JSON.stringify(signalingMessage)))
     } catch (err) {
       console.error(err)
     } finally {
