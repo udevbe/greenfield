@@ -163,6 +163,7 @@ export function initSurfaceBufferEncoding(): void {
     }
 
     const frameFeedback = ensureFrameFeedback(this)
+    const commitTimestamp = performance.now()
 
     const bufferContentSerial = incrementAndGetNextBufferSerial()
 
@@ -195,15 +196,17 @@ export function initSurfaceBufferEncoding(): void {
             bufferContentSerial,
             bufferResourceId: this.pendingBufferResourceId,
             bufferCreationSerial: proxyBuffer.creationSerial,
+          }).then(() => {
+            frameFeedback.encodingDone(commitTimestamp)
           }),
         }
         this.pendingBufferResourceId = undefined
-        frameFeedback.commitNotify(this.surfaceState, frameCallbacksIds, () => this.destroyed)
+        frameFeedback.commitNotify(frameCallbacksIds, () => this.destroyed)
       }
     } else if (this.surfaceState) {
       const frameCallbacksIds = this.pendingFrameCallbacksIds ?? []
       this.pendingFrameCallbacksIds = []
-      frameFeedback.commitNotify(this.surfaceState, frameCallbacksIds, () => this.destroyed)
+      frameFeedback.commitNotify(frameCallbacksIds, () => this.destroyed)
     }
 
     // inject the buffer content serial in the commit message

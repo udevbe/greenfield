@@ -5,8 +5,8 @@ import { RTCDataChannel, RTCDataChannelInit, RTCDataChannelState, RTCErrorEvent,
 
 const MAX_BUFFERED_AMOUNT = 1048576
 const MTU = 1200 // webrtc datachannel MTU
-const SND_WINDOW_SIZE = 512
-const RCV_WINDOW_SIZE = 512
+const SND_WINDOW_SIZE = 256
+const RCV_WINDOW_SIZE = 256
 
 const dataChannelConfig: RTCDataChannelInit = {
   ordered: false,
@@ -151,7 +151,7 @@ export class ARQDataChannel {
 
     dataChannel.addEventListener('message', (message) => {
       if (kcp.snd_buf === undefined) {
-        throw new Error(`BUG. Received message on a closed channel`)
+        return
       }
       // TODO forward error correction: https://github.com/ronomon/reed-solomon#readme & https://github.com/skywind3000/kcp/wiki/KCP-Best-Practice-EN
       kcp.input(Buffer.from(message.data as ArrayBuffer), true, false)
