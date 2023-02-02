@@ -21,9 +21,8 @@
 #include <gst/gl/gstglsyncmeta.h>
 #include <gst/gl/egl/gstglmemoryegl.h>
 #include "encoder.h"
-#include "westfield-linux-dmabuf-v1.h"
-#include "westfield-drm.h"
-#include "westfield-dmabuf.h"
+#include "wlr_drm.h"
+#include "wlr_linux_dmabuf_v1.h"
 
 #define FPS 60
 #define GF_BUFFER_CONTENT_SERIAL_META "BUFFER_CONTENT_SERIAL"
@@ -1095,19 +1094,19 @@ static inline void
 gst_encoder_encode(struct gst_encoder *gst_encoder, struct wl_resource *buffer_resource,
                    struct encoding_result *encoding_result) {
     struct wl_shm_buffer *shm_buffer;
-    struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer;
-    struct westfield_drm_buffer *westfield_drm_buffer;
+    struct wlr_dmabuf_v1_buffer *dmabuf_v1_buffer;
+    struct wlr_drm_buffer *westfield_drm_buffer;
     encoding_result->props.encoding_type = gst_encoder->description->encoding_type;
 
-    if (westfield_dmabuf_v1_resource_is_buffer(buffer_resource)) {
-        westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(buffer_resource);
-        gst_encoder_encode_dmabuf(gst_encoder, &westfield_dmabuf_v1_buffer->base,
-                                  &westfield_dmabuf_v1_buffer->attributes, encoding_result);
+    if (wlr_dmabuf_v1_resource_is_buffer(buffer_resource)) {
+        dmabuf_v1_buffer = wlr_dmabuf_v1_buffer_from_buffer_resource(buffer_resource);
+        gst_encoder_encode_dmabuf(gst_encoder, &dmabuf_v1_buffer->base,
+                                  &dmabuf_v1_buffer->attributes, encoding_result);
         return;
     }
 
-    if (westfield_drm_buffer_is_resource(buffer_resource)) {
-        westfield_drm_buffer = westfield_drm_buffer_from_resource(buffer_resource);
+    if (wlr_drm_buffer_is_resource(buffer_resource)) {
+        westfield_drm_buffer = wlr_drm_buffer_from_resource(buffer_resource);
         gst_encoder_encode_dmabuf(gst_encoder, &westfield_drm_buffer->base,
                                   &westfield_drm_buffer->dmabuf, encoding_result);
         return;
@@ -1135,19 +1134,19 @@ png_gst_encoder_supports_buffer(struct wl_resource *buffer_resource) {
                (shm_format == WL_SHM_FORMAT_ARGB8888 || shm_format == WL_SHM_FORMAT_XRGB8888);
     }
 
-    if (westfield_dmabuf_v1_resource_is_buffer(buffer_resource)) {
-        struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(
+    if (wlr_dmabuf_v1_resource_is_buffer(buffer_resource)) {
+        struct wlr_dmabuf_v1_buffer *dmabuf_v1_buffer = wlr_dmabuf_v1_buffer_from_buffer_resource(
                 buffer_resource);
-        width = westfield_dmabuf_v1_buffer->base.width;
-        height = westfield_dmabuf_v1_buffer->base.height;
+        width = dmabuf_v1_buffer->base.width;
+        height = dmabuf_v1_buffer->base.height;
 
         if (width * height <= 256 * 256) {
             return true;
         }
     }
 
-    if (westfield_drm_buffer_is_resource(buffer_resource)) {
-        struct westfield_drm_buffer *westfield_drm_buffer = westfield_drm_buffer_from_resource(buffer_resource);
+    if (wlr_drm_buffer_is_resource(buffer_resource)) {
+        struct wlr_drm_buffer *westfield_drm_buffer = wlr_drm_buffer_from_resource(buffer_resource);
         width = westfield_drm_buffer->base.width;
         height = westfield_drm_buffer->base.height;
 
@@ -1165,8 +1164,8 @@ encoder_description_supports_buffer(const struct encoder_description *encoder_it
                                     struct wl_resource *buffer_resource) {
     int32_t width, height;
     struct wl_shm_buffer *shm_buffer;
-    struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer;
-    struct westfield_drm_buffer *westfield_drm_buffer;
+    struct wlr_dmabuf_v1_buffer *dmabuf_v1_buffer;
+    struct wlr_drm_buffer *westfield_drm_buffer;
 
     if (strcmp(encoder_itf->name, "png") == 0) {
         return png_gst_encoder_supports_buffer(buffer_resource);
@@ -1177,10 +1176,10 @@ encoder_description_supports_buffer(const struct encoder_description *encoder_it
         return false;
     }
 
-    if (westfield_dmabuf_v1_resource_is_buffer(buffer_resource)) {
-        westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(buffer_resource);
-        width = westfield_dmabuf_v1_buffer->base.width;
-        height = westfield_dmabuf_v1_buffer->base.height;
+    if (wlr_dmabuf_v1_resource_is_buffer(buffer_resource)) {
+        dmabuf_v1_buffer = wlr_dmabuf_v1_buffer_from_buffer_resource(buffer_resource);
+        width = dmabuf_v1_buffer->base.width;
+        height = dmabuf_v1_buffer->base.height;
 
         // Too small needs the png encoder so refuse
         if (width * height <= 256 * 256) {
@@ -1190,8 +1189,8 @@ encoder_description_supports_buffer(const struct encoder_description *encoder_it
         return true;
     }
 
-    if (westfield_drm_buffer_is_resource(buffer_resource)) {
-        westfield_drm_buffer = westfield_drm_buffer_from_resource(buffer_resource);
+    if (wlr_drm_buffer_is_resource(buffer_resource)) {
+        westfield_drm_buffer = wlr_drm_buffer_from_resource(buffer_resource);
         width = westfield_drm_buffer->base.width;
         height = westfield_drm_buffer->base.height;
 

@@ -37,6 +37,7 @@ import {
   setBufferCreatedCallback,
   setClientDestroyedCallback,
   setRegistryCreatedCallback,
+  setSyncDoneCallback,
   setWireMessageCallback,
   setWireMessageEndCallback,
 } from 'westfield-proxy'
@@ -77,15 +78,18 @@ export function createNativeClientSession(
     }
     nativeClientSession.destroyListeners = []
   })
-  setRegistryCreatedCallback(wlClient, (wlRegistry: unknown, registryId: number) =>
-    nativeClientSession.onRegistryCreated(wlRegistry, registryId),
-  )
-  setWireMessageCallback(wlClient, (wlClient: unknown, message: ArrayBuffer, objectId: number, opcode: number) =>
-    nativeClientSession.onWireMessageRequest(wlClient, message, objectId, opcode),
-  )
-  setWireMessageEndCallback(wlClient, (wlClient: unknown, fdsIn: ArrayBuffer) =>
-    nativeClientSession.onWireMessageEnd(wlClient, fdsIn),
-  )
+  setRegistryCreatedCallback(wlClient, (wlRegistry: unknown, registryId: number) => {
+    nativeClientSession.onRegistryCreated(wlRegistry, registryId)
+  })
+  setSyncDoneCallback(wlClient, (callbackId: number) => {
+    nativeClientSession.onNativeSyncDone(callbackId)
+  })
+  setWireMessageCallback(wlClient, (wlClient: unknown, message: ArrayBuffer, objectId: number, opcode: number) => {
+    return nativeClientSession.onWireMessageRequest(wlClient, message, objectId, opcode)
+  })
+  setWireMessageEndCallback(wlClient, (wlClient: unknown, fdsIn: ArrayBuffer) => {
+    nativeClientSession.onWireMessageEnd(wlClient, fdsIn)
+  })
 
   setBufferCreatedCallback(wlClient, (bufferId: number) => {
     const bufferCreationSerial = incrementAndGetNextBufferSerial()
@@ -129,6 +133,11 @@ export class NativeClientSession {
   private readonly browserChannelOutOfBandHandlers: Record<number, (payload: Uint8Array) => void>
   public readonly messageInterceptor: MessageInterceptor
 
+  private syncDoneByCallbackId: Record<
+    string,
+    { nativeDone: boolean; browserDone: boolean; syncDoneMessage?: Uint32Array }
+  > = {}
+
   constructor(
     public wlClient: unknown,
     private readonly nativeCompositorSession: NativeCompositorSession,
@@ -137,7 +146,6 @@ export class NativeClientSession {
     private pendingWireMessages: Uint32Array[] = [],
     private pendingMessageBufferSize = 0,
     private outboundMessages: Buffer[] = [],
-    private readonly inboundMessages: Uint32Array[] = [],
     private readonly wlRegistries: Record<number, unknown> = {},
     private disconnecting = false,
     public destroyListeners: (() => void)[] = [],
@@ -171,56 +179,54 @@ export class NativeClientSession {
   /**
    * Delegates messages from the browser compositor to its native counterpart.
    */
-  private onWireMessageEvents(receiveBuffer: Uint32Array) {
+  private onWireMessageEvents(inboundMessage: Uint32Array) {
     // logger.debug(`Delegating messages from browser to client. Total size: ${receiveBuffer.byteLength}`)
 
-    if (this.inboundMessages.push(receiveBuffer) > 1) {
-      return
-    }
+    let readOffset = 0
+    let localGlobalsEmitted = false
+    while (readOffset < inboundMessage.length) {
+      const fdsCount = inboundMessage[readOffset++]
+      const fdsBuffer = new Uint32Array(fdsCount)
+      for (let i = 0; i < fdsCount; i++) {
+        const { proxyFD, bytesRead } = deserializeProxyFDJSON(inboundMessage.subarray(readOffset))
+        fdsBuffer[i] = this.nativeCompositorSession.webFS.proxyFDtoNativeFD(proxyFD)
+        readOffset += bytesRead / Uint32Array.BYTES_PER_ELEMENT
+      }
 
-    while (this.inboundMessages.length) {
-      const inboundMessage = this.inboundMessages[0]
+      const objectId = inboundMessage[readOffset]
+      const sizeOpcode = inboundMessage[readOffset + 1]
+      const size = sizeOpcode >>> 16
+      const opcode = sizeOpcode & 0x0000ffff
 
-      let readOffset = 0
-      let localGlobalsEmitted = false
-      while (readOffset < inboundMessage.length) {
-        const fdsCount = inboundMessage[readOffset++]
-        const fdsBuffer = new Uint32Array(fdsCount)
-        for (let i = 0; i < fdsCount; i++) {
-          const { proxyFD, bytesRead } = deserializeProxyFDJSON(inboundMessage.subarray(readOffset))
-          fdsBuffer[i] = this.nativeCompositorSession.webFS.proxyFDtoNativeFD(proxyFD)
-          readOffset += bytesRead / Uint32Array.BYTES_PER_ELEMENT
-        }
+      const length = size / Uint32Array.BYTES_PER_ELEMENT
+      const messageBuffer = inboundMessage.subarray(readOffset, readOffset + length)
+      readOffset += length
 
-        const objectId = inboundMessage[readOffset]
-        const sizeOpcode = inboundMessage[readOffset + 1]
-        const size = sizeOpcode >>> 16
-        const opcode = sizeOpcode & 0x0000ffff
+      if (!localGlobalsEmitted) {
+        // check if browser compositor is emitting globals, if so, emit the local globals as well.
+        localGlobalsEmitted = this.emitLocalGlobals(messageBuffer)
+      }
 
-        const length = size / Uint32Array.BYTES_PER_ELEMENT
-        const messageBuffer = inboundMessage.subarray(readOffset, readOffset + length)
-        readOffset += length
-
-        if (!localGlobalsEmitted) {
-          // check if browser compositor is emitting globals, if so, emit the local globals as well.
-          localGlobalsEmitted = this.emitLocalGlobals(messageBuffer)
-        }
-
-        this.messageInterceptor.interceptEvent(objectId, opcode, {
-          buffer: messageBuffer.buffer,
-          fds: Array.from(fdsBuffer),
-          bufferOffset: messageBuffer.byteOffset + 2 * Uint32Array.BYTES_PER_ELEMENT,
-          consumed: 0,
-          size: messageBuffer.length * 4 * Uint32Array.BYTES_PER_ELEMENT,
-        })
-        // logger.debug(`Sending messages to client. Total size: ${messageBuffer.byteLength}`)
+      this.messageInterceptor.interceptEvent(objectId, opcode, {
+        buffer: messageBuffer.buffer,
+        fds: Array.from(fdsBuffer),
+        bufferOffset: messageBuffer.byteOffset + 2 * Uint32Array.BYTES_PER_ELEMENT,
+        consumed: 0,
+        size: messageBuffer.length * 4 * Uint32Array.BYTES_PER_ELEMENT,
+      })
+      // logger.debug(`Sending messages to client. Total size: ${messageBuffer.byteLength}`)
+      const syncDoneState = this.syncDoneByCallbackId[objectId]
+      if (syncDoneState) {
+        syncDoneState.syncDoneMessage = messageBuffer
+        syncDoneState.browserDone = true
+        this.sendIfSyncDone(objectId)
+      } else {
         sendEvents(this.wlClient, messageBuffer, fdsBuffer)
       }
-      logger.debug('Flushing messages send to client.')
-      flush(this.wlClient)
-
-      this.inboundMessages.shift()
     }
+    logger.debug('Flushing messages send to client.')
+
+    flush(this.wlClient)
   }
 
   allocateBrowserServerObjectIdsBatch(): void {
@@ -271,6 +277,14 @@ export class NativeClientSession {
 
       const interceptedMessage = { buffer: message, fds: [], bufferOffset: 8, consumed: 0, size }
       const destination = this.messageInterceptor.interceptRequest(objectId, opcode, interceptedMessage)
+
+      if (objectId === 1 && opcode === 0) {
+        // If we encounter a display sync request, we have to intercept the corresponding callback event
+        // and delay its delivery until both the browser & native requests have been processed else
+        // we risk sending a done event too early.
+        const callbackId = receiveBuffer[2]
+        this.syncDoneByCallbackId[callbackId] = { nativeDone: false, browserDone: false }
+      }
 
       if (destination.browser) {
         const interceptedBuffer = new Uint32Array(interceptedMessage.buffer)
@@ -371,6 +385,7 @@ export class NativeClientSession {
 
   private destroyResourceSilently(payload: Uint8Array) {
     const deleteObjectId = new Uint32Array(payload.buffer, payload.byteOffset, 1)[0]
+
     delete this.messageInterceptor.interceptors[deleteObjectId]
     if (deleteObjectId === 1) {
       // 1 is the display id, which means client is being disconnected
@@ -381,10 +396,30 @@ export class NativeClientSession {
       return
     }
 
+    if (this.syncDoneByCallbackId[deleteObjectId]) {
+      return
+    }
     destroyWlResourceSilently(this.wlClient, deleteObjectId)
   }
 
   onRegistryCreated(wlRegistry: unknown, registryId: number): void {
     this.wlRegistries[registryId] = wlRegistry
+  }
+
+  onNativeSyncDone(callbackId: number) {
+    this.syncDoneByCallbackId[callbackId].nativeDone = true
+    if (this.sendIfSyncDone(callbackId)) {
+      flush(this.wlClient)
+    }
+  }
+
+  private sendIfSyncDone(callbackId: number): boolean {
+    const { nativeDone, browserDone, syncDoneMessage } = this.syncDoneByCallbackId[callbackId]
+    if (browserDone && nativeDone && syncDoneMessage) {
+      delete this.syncDoneByCallbackId[callbackId]
+      sendEvents(this.wlClient, syncDoneMessage, new Uint32Array([]))
+      return true
+    }
+    return false
   }
 }
