@@ -34,8 +34,8 @@ async function main() {
   })
   initSurfaceBufferEncoding()
 
-  const port = config.server.bindPort
-  const host = config.server.bindIP
+  const port = config.server.http.bindPort
+  const host = config.server.http.bindIP
   const listenSocket = await createApp(compositorProxySession, { host, port })
 
   process.on('SIGTERM', async () => {

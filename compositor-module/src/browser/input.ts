@@ -46,19 +46,22 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
     session.flush()
   }
 
-  //wire up dom input events to compositor input events
-  const pointerMoveHandler = (event: PointerEvent) => {
-    const buttonEvent = createButtonEventFromMouseEvent(event, false, outputId, canvas.width, canvas.height)
-    session.inputQueue.queueMotion(buttonEvent)
-  }
-
-  // @ts-ignore
-  if (canvas.onpointerrawupdate) {
-    // @ts-ignore
-    canvas.addEventListener('pointerrawupdate', pointerMoveHandler, { passive: true })
-  } else {
-    canvas.addEventListener('pointermove', pointerMoveHandler, { passive: true })
-  }
+  canvas.addEventListener(
+    'pointermove',
+    (event: PointerEvent) => {
+      for (const coalescedEvent of event.getCoalescedEvents()) {
+        const buttonEvent = createButtonEventFromMouseEvent(
+          coalescedEvent,
+          false,
+          outputId,
+          canvas.width,
+          canvas.height,
+        )
+        session.inputQueue.queueMotion(buttonEvent)
+      }
+    },
+    { passive: true },
+  )
 
   canvas.addEventListener(
     'pointerdown',

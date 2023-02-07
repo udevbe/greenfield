@@ -20,6 +20,7 @@ import { createLogger } from './Logger'
 import { createNativeCompositorSession, NativeCompositorSession } from './NativeCompositorSession'
 import { XWaylandSession } from './XWaylandSession'
 import { RTCPeerConnection } from '@koush/wrtc'
+import { config } from './config'
 
 const logger = createLogger('compositor-proxy-session')
 
@@ -34,7 +35,11 @@ export type PeerConnectionState = {
 
 function createPeerConnection(): RTCPeerConnection {
   return new RTCPeerConnection({
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    iceServers: config.server.webrtc.iceServers,
+    portRange: {
+      min: config.server.webrtc.portRangeMin ?? 0,
+      max: config.server.webrtc.portRangeMax ?? 65535,
+    },
   })
 }
 

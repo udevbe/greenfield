@@ -11,12 +11,10 @@ import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 
 const logger = createLogger('app')
 
-const allowOrigin = config.server.allowOrigin
+const allowOrigin = config.server.http.allowOrigin
 const allowHeaders = 'Content-Type, X-Compositor-Session-Id'
 const maxAge = '36000'
 
-// TODO unit test Access-Control-Allow-Origin header on all handlers
-// TODO unit test optionspreflightrequest
 export function OPTIONSPreflightRequest(allowMethods: string) {
   return (res: HttpResponse, req: HttpRequest) => {
     const origin = req.getHeader('origin')

@@ -611,7 +611,7 @@ export class Pointer implements WlPointerRequests {
       }
       case event.DOM_DELTA_PIXEL:
       default: {
-        deltaTransform = (delta) => delta
+        deltaTransform = (delta) => Math.floor(delta / 3)
         break
       }
     }

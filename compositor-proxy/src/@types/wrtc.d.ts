@@ -44,6 +44,12 @@ declare module '@koush/wrtc' {
     iceServers?: RTCIceServer[]
     iceTransportPolicy?: RTCIceTransportPolicy
     rtcpMuxPolicy?: RTCRtcpMuxPolicy
+
+    // node-webrtc only
+    portRange: {
+      min: number
+      max: number
+    }
   }
 
   export interface RTCDTMFToneChangeEventInit extends EventInit {
