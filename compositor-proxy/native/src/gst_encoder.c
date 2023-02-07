@@ -1238,10 +1238,10 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .split_alpha = true,
-                .width_multiple = 32,
-                .height_multiple = 32,
-                .min_width = 64,
-                .min_height = 64,
+                .width_multiple = 128,
+                .height_multiple = 128,
+                .min_width = 128,
+                .min_height = 128,
         },
         {
                 .name = "nvh264",
@@ -1259,10 +1259,10 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .split_alpha = true,
-                .width_multiple = 32,
-                .height_multiple = 32,
-                .min_width = 64,
-                .min_height = 64,
+                .width_multiple = 128,
+                .height_multiple = 128,
+                .min_width = 128,
+                .min_height = 128,
         },
         {
                 .name = "vaapih264",
@@ -1279,10 +1279,10 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink",
                 .split_alpha = true,
-                .width_multiple = 32,
-                .height_multiple = 32,
-                .min_width = 64,
-                .min_height = 64,
+                .width_multiple = 128,
+                .height_multiple = 128,
+                .min_width = 128,
+                .min_height = 128,
         },
         // always keep png last as fallback encoder
         {
