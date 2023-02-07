@@ -299,7 +299,6 @@ export class Xkb {
       latchedLayout,
       lockedLayout,
     )
-    return 0
   }
 
   keyUp(linuxKeyCode: EvDevKeyCode): boolean {

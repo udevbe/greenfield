@@ -3,7 +3,8 @@ import type { WebSocket, WebSocketBehavior } from 'uWebSockets.js'
 import { URLSearchParams } from 'url'
 import type { CompositorProxySession } from './CompositorProxySession'
 import { randomBytes } from 'crypto'
-import { RTCIceCandidate, RTCPeerConnection, RTCSessionDescriptionInit } from '@koush/wrtc'
+import { RTCIceCandidate, RTCIceServer, RTCPeerConnection, RTCSessionDescriptionInit } from '@koush/wrtc'
+import { config } from './config'
 
 const logger = createLogger('compositor-proxy-signaling')
 
@@ -28,7 +29,8 @@ type SignalingMessage =
     }
   | {
       type: 'identity'
-      data: string
+      data: RTCIceServer[]
+      identity: string
     }
 
 const textDecoder = new TextDecoder()
@@ -38,7 +40,8 @@ let openWs: WebSocket<UserData> | null = null
 const identity = randomBytes(8).toString('hex')
 const peerIdentity: SignalingMessage = {
   type: 'identity',
-  data: identity,
+  data: config.server.webrtc.iceServers ?? [],
+  identity,
 }
 const peerIdentityMessage = textEncoder.encode(JSON.stringify(peerIdentity))
 let compositorPeerIdentity: string | undefined
@@ -60,7 +63,7 @@ function flushCachedSends(openWs: WebSocket<UserData>) {
 }
 
 export function webRTCSignaling(compositorProxySession: CompositorProxySession): WebSocketBehavior<UserData> {
-  logger.info(`Listening for signaling connections using identity: ${peerIdentity.data}`)
+  logger.info(`Listening for signaling connections using identity: ${peerIdentity.identity}`)
 
   const handleIceCandidate: RTCPeerConnection['onicecandidate'] = (ev) => {
     if (ev.candidate?.protocol === 'tcp') {
@@ -158,16 +161,16 @@ export function webRTCSignaling(compositorProxySession: CompositorProxySession):
       if (isSignalingMessage(messageObject)) {
         if (messageObject.type === 'identity') {
           logger.info(`Received compositor signaling identity: ${messageObject.data}.`)
-          if (compositorPeerIdentity && messageObject.data !== compositorPeerIdentity) {
+          if (compositorPeerIdentity && messageObject.identity !== compositorPeerIdentity) {
             logger.info(
               `Compositor signaling identity has changed. Old: ${compositorPeerIdentity}. New: ${messageObject.data}. Creating new peer connection.`,
             )
             // Remote compositor has restarted. Shutdown the old peer connection before handling any signaling.
-            compositorPeerIdentity = messageObject.data
+            compositorPeerIdentity = messageObject.identity
             resetPeerConnection(false)
           } else if (compositorPeerIdentity === undefined) {
             // Connecting to remote proxy for the first time
-            compositorPeerIdentity = messageObject.data
+            compositorPeerIdentity = messageObject.identity
           } // else re-connecting, ignore.
         } else if (
           messageObject.identity === compositorPeerIdentity &&

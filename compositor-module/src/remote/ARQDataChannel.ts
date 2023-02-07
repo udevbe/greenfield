@@ -17,6 +17,7 @@ export class ARQDataChannel {
   }
 
   private addDataChannelListeners(dataChannel: RTCDataChannel) {
+    dataChannel.binaryType = 'arraybuffer'
     if (dataChannel.readyState === 'open') {
       this.initKcp(dataChannel)
       this.openCb?.()

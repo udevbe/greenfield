@@ -19,7 +19,8 @@ type SignalingMessage =
     }
   | {
       type: 'identity'
-      data: string
+      data: RTCIceServer[]
+      identity: string
     }
 
 const textDecoder = new TextDecoder()
@@ -30,7 +31,8 @@ const identity = Array(17)
   .slice(0, 16)
 const peerIdentity: SignalingMessage = {
   type: 'identity',
-  data: identity,
+  data: [],
+  identity,
 }
 const peerIdentityMessage = textEncoder.encode(JSON.stringify(peerIdentity))
 
@@ -67,10 +69,9 @@ function createPeerConnection(
     clientConnectionListener: ClientConnectionListener,
   ) => void,
   remotePeerIdentity?: string,
+  iceServers?: RTCIceServer[],
 ) {
-  const peerConnection = new RTCPeerConnection({
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-  })
+  const peerConnection = new RTCPeerConnection({ iceServers })
 
   // other side has polite = false
   const polite = true
@@ -81,7 +82,7 @@ function createPeerConnection(
   let isSettingRemoteAnswerPending = false
 
   peerConnection.onicecandidate = (ev) => {
-    if (ev.candidate?.protocol === 'tcp') {
+    if (ev.candidate === null || ev.candidate.candidate.length === 0 || ev.candidate.protocol === 'tcp') {
       return
     }
     const signalingMessage: SignalingMessage = {
@@ -137,7 +138,7 @@ function createPeerConnection(
     if (isSignalingMessage(messageObject)) {
       if (messageObject.type === 'identity') {
         session.logger.info(`Received remote signaling identity: ${messageObject.data}.`)
-        if (remotePeerIdentity && messageObject.data !== remotePeerIdentity) {
+        if (remotePeerIdentity && messageObject.identity !== remotePeerIdentity) {
           session.logger.info(
             `Remote signaling identity has changed. Old: ${remotePeerIdentity}. New: ${messageObject.data}. Creating new peer connection.`,
           )
@@ -145,19 +146,23 @@ function createPeerConnection(
           peerConnection.onnegotiationneeded = null
           peerConnection.onicecandidate = null
           peerConnection.close()
-          remotePeerIdentity = messageObject.data
+          remotePeerIdentity = messageObject.identity
           createPeerConnection(
             session,
             signalingWebSocket,
             signalingURL,
             clientConnectionListener,
             onDataChannel,
+            messageObject.identity,
             messageObject.data,
           )
           // start a new peer connection
         } else if (remotePeerIdentity === undefined) {
           // Connecting to remote proxy for the first time
-          remotePeerIdentity = messageObject.data
+          remotePeerIdentity = messageObject.identity
+          peerConnection.setConfiguration({
+            iceServers: messageObject.data,
+          })
         } // else re-connecting, ignore.
       } else if (messageObject.identity === remotePeerIdentity && messageObject.type === 'ice' && messageObject.data) {
         try {
