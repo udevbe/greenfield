@@ -22,7 +22,7 @@ import { createLogger } from './Logger'
 import wlSurfaceInterceptor from './protocol/wl_surface_interceptor'
 import { FrameFeedback } from './FrameFeedback'
 import { incrementAndGetNextBufferSerial, ProxyBuffer } from './ProxyBuffer'
-import { createFeedbackChannel, createFrameDataChannel } from './ARQDataChannel'
+import { createFeedbackChannel, createFrameDataChannel } from './Channel'
 
 const logger = createLogger('surface-buffer-encoding')
 

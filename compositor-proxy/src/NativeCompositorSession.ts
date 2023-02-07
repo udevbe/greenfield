@@ -30,7 +30,7 @@ import {
   initShm,
   nativeGlobalNames,
 } from 'westfield-proxy'
-import { ARQDataChannel, createProtocolChannel } from './ARQDataChannel'
+import { Channel, createProtocolChannel } from './Channel'
 import { webcrypto } from 'crypto'
 import type { PeerConnectionState } from './CompositorProxySession'
 
@@ -38,7 +38,7 @@ const logger = createLogger('native-compositor-session')
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567' as const
 
 export type ClientEntry = {
-  protocolChannel: ARQDataChannel
+  protocolChannel: Channel
   nativeClientSession: NativeClientSession
   clientId: string
 }

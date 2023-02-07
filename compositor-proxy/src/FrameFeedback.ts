@@ -1,6 +1,6 @@
 import { destroyWlResourceSilently, flush, sendEvents } from 'westfield-proxy'
 import { performance } from 'perf_hooks'
-import { ARQDataChannel } from './ARQDataChannel'
+import type { Channel } from './Channel'
 
 let activeFeedbackClockInterval = 16.667
 let feedbackClockTimer: NodeJS.Timer | undefined
@@ -11,7 +11,7 @@ function configureFrameFeedbackClock(interval: number) {
     clearInterval(feedbackClockTimer)
     feedbackClockTimer = undefined
   }
-  activeFeedbackClockInterval = interval
+  activeFeedbackClockInterval = Math.ceil(interval)
   feedbackClockTimer = setInterval(() => {
     if (feedbackClockQueue.length) {
       const time = performance.now()
@@ -34,7 +34,7 @@ export class FrameFeedback {
   constructor(
     private wlClient: unknown,
     private messageInterceptors: Record<number, any>,
-    private feedbackChannel: ARQDataChannel,
+    private feedbackChannel: Channel,
     private clientRefreshInterval = 16.667,
   ) {
     feedbackChannel.onMessage((buffer) => {
@@ -66,7 +66,7 @@ export class FrameFeedback {
       this.clientRefreshInterval,
     )
 
-    if (Math.abs(slowestClockInterval - activeFeedbackClockInterval) > 5) {
+    if (Math.abs(slowestClockInterval - activeFeedbackClockInterval) > 8) {
       configureFrameFeedbackClock(slowestClockInterval)
     }
   }

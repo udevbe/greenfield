@@ -3,7 +3,7 @@ import { nodeFDConnectionSetup } from 'xtsb'
 import { ClientEntry, NativeCompositorSession } from './NativeCompositorSession'
 import { equalValueExternal, setupXWayland, teardownXWayland } from 'westfield-proxy'
 import { createReadStream } from 'fs'
-import { ARQDataChannel, createXWMDataChannel } from './ARQDataChannel'
+import { Channel, createXWMDataChannel } from './Channel'
 
 const logger = createLogger('xwayland')
 const textEncoder = new TextEncoder()
@@ -12,7 +12,7 @@ export class XWaylandSession {
   private nativeXWayland?: unknown
   private xWaylandClient?: ClientEntry
 
-  constructor(private nativeCompositorSession: NativeCompositorSession, private xwmDataChannel?: ARQDataChannel) {}
+  constructor(private nativeCompositorSession: NativeCompositorSession, private xwmDataChannel?: Channel) {}
 
   static create(nativeCompositorSession: NativeCompositorSession): XWaylandSession {
     return new XWaylandSession(nativeCompositorSession)
@@ -75,7 +75,7 @@ export class XWaylandSession {
     })
   }
 
-  async upsertXWMConnection(xwmDataChannel: ARQDataChannel, wmFD: number): Promise<void> {
+  async upsertXWMConnection(xwmDataChannel: Channel, wmFD: number): Promise<void> {
     logger.info('Handling incoming XWM connection')
     this.xwmDataChannel = xwmDataChannel
     // initialize an X11 client connection, used by the compositor's X11 window manager.

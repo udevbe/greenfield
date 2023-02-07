@@ -1,9 +1,9 @@
 import { connect, webConnectionSetup, XConnection } from 'xtsb'
 import Session from '../../Session'
-import { ARQDataChannel } from '../ARQDataChannel'
+import { ARQChannel, Channel } from '../Channel'
 
 export class XWindowManagerConnection {
-  static create(session: Session, xwmDataChannel: ARQDataChannel): Promise<XWindowManagerConnection> {
+  static create(session: Session, xwmDataChannel: Channel): Promise<XWindowManagerConnection> {
     return new Promise<XWindowManagerConnection>((resolve, reject) => {
       let wasOpen = false
       xwmDataChannel.onOpen(() => {
@@ -33,7 +33,7 @@ export class XWindowManagerConnection {
 
   xConnection?: XConnection
 
-  constructor(public readonly xwmDataChannel: ARQDataChannel) {
+  constructor(public readonly xwmDataChannel: Channel) {
     this.destroyPromise = new Promise<void>((resolve) => (this.destroyResolve = resolve))
   }
 

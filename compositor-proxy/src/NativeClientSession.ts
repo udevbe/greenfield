@@ -42,7 +42,7 @@ import {
   setWireMessageEndCallback,
 } from 'westfield-proxy'
 import { incrementAndGetNextBufferSerial, ProxyBuffer } from './ProxyBuffer'
-import { ARQDataChannel } from './ARQDataChannel'
+import type { Channel } from './Channel'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 
 const logger = createLogger('native-client-session')
@@ -67,7 +67,7 @@ function deserializeProxyFDJSON(sourceBuf: ArrayBufferView): { proxyFD: ProxyFD;
 export function createNativeClientSession(
   wlClient: unknown,
   nativeCompositorSession: NativeCompositorSession,
-  protocolChannel: ARQDataChannel,
+  protocolChannel: Channel,
   id: string,
 ): NativeClientSession {
   const nativeClientSession = new NativeClientSession(wlClient, nativeCompositorSession, protocolChannel, id)
@@ -106,7 +106,7 @@ export function createNativeClientSession(
   protocolChannel.onError((event) => {
     logger.info(`Wayland client protocol channel error.`, event)
   })
-  protocolChannel.onClosed(() => {
+  protocolChannel.onClose(() => {
     logger.info(`Wayland client protocol channel is closed.`)
   })
   protocolChannel.onMessage((event) => {
@@ -141,7 +141,7 @@ export class NativeClientSession {
   constructor(
     public wlClient: unknown,
     private readonly nativeCompositorSession: NativeCompositorSession,
-    private readonly protocolDataChannel: ARQDataChannel,
+    private readonly protocolDataChannel: Channel,
     public readonly id: string,
     private pendingWireMessages: Uint32Array[] = [],
     private pendingMessageBufferSize = 0,

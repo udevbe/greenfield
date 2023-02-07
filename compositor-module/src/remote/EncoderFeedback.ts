@@ -1,5 +1,5 @@
 import { EncoderApi } from '../api'
-import { ARQDataChannel } from './ARQDataChannel'
+import type { Channel } from './Channel'
 
 let refreshInterval = 0
 let previousPresentationTimestamp = 0
@@ -50,7 +50,7 @@ export class ClientEncodersFeedback {
     private surfaceEncoderFeedbacks: Record<number, SurfaceEncoderFeedback> = {},
   ) {}
 
-  addFeedbackChannel(feedbackChannel: ARQDataChannel, surfaceId: number) {
+  addFeedbackChannel(feedbackChannel: Channel, surfaceId: number) {
     this.ensureSurfaceEncoderFeedback(surfaceId).feedbackChannel = feedbackChannel
   }
 
@@ -106,7 +106,7 @@ export class SurfaceEncoderFeedback {
     private commitSerial?: number,
     private bufferCommitTimes: Record<number, number> = {},
     public durations = [] as number[],
-    public feedbackChannel?: ARQDataChannel,
+    public feedbackChannel?: Channel,
   ) {}
 
   bufferCommit(commitSerial: number) {

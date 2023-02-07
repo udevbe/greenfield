@@ -19,7 +19,7 @@ import { ClientConnectionListener, CompositorConnector } from '../index'
 import { RemoteConnectionHandler } from './RemoteConnectionHandler'
 import Session from '../Session'
 import { DataChannelDesc, ensureProxyPeerConnection, FeedbackDataChannelDesc } from './proxy-peer-connections'
-import { ARQDataChannel } from './ARQDataChannel'
+import { ARQChannel, Channel, SimpleChannel } from './Channel'
 
 export class RemoteConnection {}
 
@@ -46,26 +46,26 @@ export class RemoteConnector implements CompositorConnector {
     const clientId = desc.clientId
     if (type === 'protocol' && clientId) {
       const client = this.session.display.createClient(clientId)
-      const protocolDataChannel = new ARQDataChannel(dataChannel)
+      const protocolDataChannel: Channel = new ARQChannel(dataChannel)
       client.onClose().then(() => protocolDataChannel.close())
       this.remoteSocket.onProtocolChannel(protocolDataChannel, compositorProxyURL, client)
       clientConnectionListener.onClient(client)
     } else if (type === 'frame' && clientId) {
       const client = this.session.display.clients[clientId]
-      const frameDataChannel = new ARQDataChannel(dataChannel)
+      const frameDataChannel: Channel = new ARQChannel(dataChannel)
       client.onClose().then(() => frameDataChannel.close())
       this.remoteSocket.setupFrameDataChannel(client, frameDataChannel)
     } else if (type === 'xwm' && clientId) {
       const client = this.session.display.clients[clientId]
       // TODO associate with proxy connection & cleanup on disconnect?
-      const xwmDataChannel = new ARQDataChannel(dataChannel)
+      const xwmDataChannel: Channel = new ARQChannel(dataChannel)
       client.onClose().then(() => xwmDataChannel.close())
       this.remoteSocket.setupXWM(client, xwmDataChannel)
     } else if (type === 'feedback' && clientId) {
       const feedbackDesc = desc as FeedbackDataChannelDesc
       const surfaceId = feedbackDesc.surfaceId
       const client = this.session.display.clients[clientId]
-      const feedbackChannel = new ARQDataChannel(dataChannel)
+      const feedbackChannel: Channel = new SimpleChannel(dataChannel)
       client.onClose().then(() => feedbackChannel.close())
       client.userData.clientEncodersFeedback?.addFeedbackChannel(feedbackChannel, surfaceId)
     }

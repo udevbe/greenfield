@@ -30,7 +30,7 @@ import { Configuration, EncoderApi, ProxyFD } from '../api'
 import { ClientEncodersFeedback, createClientEncodersFeedback } from './EncoderFeedback'
 import { deliverContentToBufferStream } from './BufferStream'
 import { createRemoteInputOutput } from './RemoteInputOutput'
-import { ARQDataChannel } from './ARQDataChannel'
+import type { Channel } from './Channel'
 
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567' as const
 
@@ -83,7 +83,7 @@ export class RemoteConnectionHandler {
     return new RemoteConnectionHandler(session)
   }
 
-  onProtocolChannel(protocolChannel: ARQDataChannel, compositorProxyURL: URL, client: Client): void {
+  onProtocolChannel(protocolChannel: Channel, compositorProxyURL: URL, client: Client): void {
     this.session.logger.info('[ProtocolChannel] - created.')
     let wasOpen = protocolChannel.readyState === 'open'
     protocolChannel.onClose(() => {
@@ -171,7 +171,7 @@ export class RemoteConnectionHandler {
     }
   }
 
-  setupFrameDataChannel(client: Client, frameDataChannel: ARQDataChannel) {
+  setupFrameDataChannel(client: Client, frameDataChannel: Channel) {
     frameDataChannel.onMessage((message) => {
       if (client.connection.closed) {
         return
@@ -180,7 +180,7 @@ export class RemoteConnectionHandler {
     })
   }
 
-  async setupXWM(client: Client, xwmDataChannel: ARQDataChannel): Promise<XWindowManager> {
+  async setupXWM(client: Client, xwmDataChannel: Channel): Promise<XWindowManager> {
     const xConnection = await XWindowManagerConnection.create(this.session, xwmDataChannel)
     client.onClose().then(() => xConnection.destroy())
     return XWindowManager.create(this.session, xConnection, client, XWaylandShell.create(this.session))
@@ -252,7 +252,7 @@ export class RemoteConnectionHandler {
     }
   }
 
-  private flushWireMessages(client: Client, protocolChannel: ARQDataChannel, wireMessages: SendMessage[]) {
+  private flushWireMessages(client: Client, protocolChannel: Channel, wireMessages: SendMessage[]) {
     if (client.connection.closed) {
       return
     }
