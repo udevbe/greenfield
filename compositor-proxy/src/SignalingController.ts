@@ -105,6 +105,17 @@ export function webRTCSignaling(compositorProxySession: CompositorProxySession):
   compositorProxySession.peerConnectionState.peerConnection.onnegotiationneeded = handleNegotiationNeeded
   compositorProxySession.peerConnectionState.peerConnection.oniceconnectionstatechange = handleIceConnectionStateChange
 
+  const resetPeerConnection = (killAllClients: boolean) => {
+    compositorProxySession.peerConnectionState.peerConnection.onicecandidate = null
+    compositorProxySession.peerConnectionState.peerConnection.onnegotiationneeded = null
+    compositorProxySession.peerConnectionState.peerConnection.oniceconnectionstatechange = null
+    compositorProxySession.resetPeerConnectionState(killAllClients)
+    compositorProxySession.peerConnectionState.peerConnection.onicecandidate = handleIceCandidate
+    compositorProxySession.peerConnectionState.peerConnection.onnegotiationneeded = handleNegotiationNeeded
+    compositorProxySession.peerConnectionState.peerConnection.oniceconnectionstatechange =
+      handleIceConnectionStateChange
+  }
+
   return {
     sendPingsAutomatically: true,
     upgrade: (res, req, context) => {
@@ -153,14 +164,7 @@ export function webRTCSignaling(compositorProxySession: CompositorProxySession):
             )
             // Remote compositor has restarted. Shutdown the old peer connection before handling any signaling.
             compositorPeerIdentity = messageObject.data
-            compositorProxySession.peerConnectionState.peerConnection.onicecandidate = null
-            compositorProxySession.peerConnectionState.peerConnection.onnegotiationneeded = null
-            compositorProxySession.peerConnectionState.peerConnection.oniceconnectionstatechange = null
-            compositorProxySession.resetPeerConnectionState()
-            compositorProxySession.peerConnectionState.peerConnection.onicecandidate = handleIceCandidate
-            compositorProxySession.peerConnectionState.peerConnection.onnegotiationneeded = handleNegotiationNeeded
-            compositorProxySession.peerConnectionState.peerConnection.oniceconnectionstatechange =
-              handleIceConnectionStateChange
+            resetPeerConnection(false)
           } else if (compositorPeerIdentity === undefined) {
             // Connecting to remote proxy for the first time
             compositorPeerIdentity = messageObject.data
@@ -215,6 +219,11 @@ export function webRTCSignaling(compositorProxySession: CompositorProxySession):
     close: (ws: WebSocket<UserData>, code: number, message: ArrayBuffer) => {
       logger.info(`Signaling connection closed. Code: ${code}. Message: ${textDecoder.decode(message)}`)
       openWs = null
+      if (code === 4001) {
+        // user closed connection
+        compositorPeerIdentity = undefined
+        resetPeerConnection(true)
+      }
     },
   }
 }
@@ -223,10 +232,5 @@ function isSignalingMessage(messageObject: any): messageObject is SignalingMessa
   if (messageObject === null) {
     return false
   }
-  return (
-    messageObject.type === 'sdp' ||
-    messageObject.type === 'ice' ||
-    messageObject.type === 'identity' ||
-    messageObject.type === 'datachannel'
-  )
+  return messageObject.type === 'sdp' || messageObject.type === 'ice' || messageObject.type === 'identity'
 }

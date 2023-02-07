@@ -25,7 +25,7 @@ const logger = createLogger('compositor-proxy-session')
 
 export type PeerConnectionState = {
   peerConnection: RTCPeerConnection
-  peerConnectionResetListeners: ((newPeerConnection: RTCPeerConnection) => void)[]
+  readonly peerConnectionResetListeners: ((newPeerConnection: RTCPeerConnection) => void)[]
   polite: false
   makingOffer: boolean
   ignoreOffer: boolean
@@ -71,9 +71,9 @@ export class CompositorProxySession {
     public readonly peerConnectionState: PeerConnectionState,
   ) {}
 
-  resetPeerConnectionState(): void {
+  resetPeerConnectionState(killAllClients: boolean): void {
     for (const client of this.nativeCompositorSession.clients) {
-      if (client.nativeClientSession.hasCompositorState) {
+      if (client.nativeClientSession.hasCompositorState || killAllClients) {
         client.nativeClientSession.destroy()
       }
     }

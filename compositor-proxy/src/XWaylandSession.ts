@@ -67,6 +67,7 @@ export class XWaylandSession {
       })
 
       xWaylandClient.nativeClientSession.destroyListeners.push(() => {
+        xwmDataChannel.close()
         this.destroy()
       })
 
@@ -85,7 +86,7 @@ export class XWaylandSession {
     this.xwmDataChannel.onMessage((ev) => {
       xConnectionSocket.write(ev)
     })
-    this.xwmDataChannel.onClosed(() => xConnectionSocket.close())
+    // this.xwmDataChannel.onClosed(() => xConnectionSocket.close())
     this.xwmDataChannel.onError((ev) => console.error('XConnection websocket error: ' + ev))
     xConnectionSocket.onData = (data) => xwmDataChannel.send(Buffer.from(data.buffer, data.byteOffset, data.byteLength))
   }

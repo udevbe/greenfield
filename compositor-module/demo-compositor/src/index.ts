@@ -1,6 +1,7 @@
-import { createConnector, createCompositorSession, initWasm } from '../../src'
+import { ClientConnectionListener, createCompositorSession, createConnector, initWasm } from '../../src'
 
-const proxyHost = 'localhost'
+const proxyHost1 = 'localhost:8081'
+const proxyHost2 = 'localhost:8082'
 
 async function main() {
   // load web assembly libraries
@@ -12,10 +13,6 @@ async function main() {
 
   // Get an HTML5 canvas for use as an output for the compositor. Multiple outputs can be used.
   const canvas: HTMLCanvasElement = document.createElement('canvas')
-  canvas.width = 1920
-  canvas.height = 1080
-  canvas.style.width = `${canvas.width}`
-  canvas.style.height = `${canvas.height}`
 
   // hook up the canvas to our compositor
   session.userShell.actions.initScene('myOutputId', canvas)
@@ -40,21 +37,42 @@ async function main() {
   const compositorProxyConnector = createConnector(session, 'remote')
   const compositorWebConnector = createConnector(session, 'web')
 
-  const connect8081Button: HTMLButtonElement = document.createElement('button')
-  connect8081Button.textContent = `connect to ${proxyHost}:8081 with compositorSessionId: ${compositorSessionId}`
-  connect8081Button.onclick = () => {
-    const compositorProxyURL = new URL(`ws://${proxyHost}:8081`)
-    compositorProxyURL.searchParams.append('compositorSessionId', compositorSessionId)
-    compositorProxyConnector.listen(compositorProxyURL)
-  }
+  const proxy1Checkbox: HTMLInputElement = document.createElement('input')
+  const proxy1Label: HTMLLabelElement = document.createElement('label')
+  proxy1Checkbox.id = 'proxy1'
+  proxy1Label.htmlFor = proxy1Checkbox.id
+  proxy1Label.innerText = `listen on ${proxyHost1}`
+  proxy1Checkbox.type = 'checkbox'
 
-  const connect8082Button: HTMLButtonElement = document.createElement('button')
-  connect8082Button.textContent = `connect to ${proxyHost}:8082 with compositorSessionId: ${compositorSessionId}`
-  connect8082Button.onclick = () => {
-    const compositorProxyURL = new URL(`ws://${proxyHost}:8082`)
-    compositorProxyURL.searchParams.append('compositorSessionId', compositorSessionId)
-    compositorProxyConnector.listen(compositorProxyURL)
-  }
+  let proxy1Listener: ClientConnectionListener
+  proxy1Checkbox.addEventListener('change', (e) => {
+    if (proxy1Checkbox.checked) {
+      const compositorProxyURL = new URL(`ws://${proxyHost1}`)
+      compositorProxyURL.searchParams.append('compositorSessionId', compositorSessionId)
+      proxy1Listener = compositorProxyConnector.listen(compositorProxyURL)
+    } else {
+      proxy1Listener.close()
+    }
+  })
+
+  const proxy2Checkbox: HTMLInputElement = document.createElement('input')
+  const proxy2Label: HTMLLabelElement = document.createElement('label')
+  proxy2Checkbox.id = 'proxy2'
+  proxy2Label.htmlFor = proxy2Checkbox.id
+  proxy2Label.innerText = `listen on ${proxyHost2}`
+  proxy2Checkbox.type = 'checkbox'
+  proxy2Checkbox.textContent = `listen on ${proxyHost2}`
+
+  let proxy2Listener: ClientConnectionListener
+  proxy2Checkbox.addEventListener('change', () => {
+    if (proxy2Checkbox.checked) {
+      const compositorProxyURL = new URL(`ws://${proxyHost2}`)
+      compositorProxyURL.searchParams.append('compositorSessionId', compositorSessionId)
+      proxy2Listener = compositorProxyConnector.listen(compositorProxyURL)
+    } else {
+      proxy2Listener.close()
+    }
+  })
 
   const demoWebAppButton: HTMLButtonElement = document.createElement('button')
   demoWebAppButton.textContent = `Launch demo webapp`
@@ -71,8 +89,10 @@ async function main() {
   }
 
   const container: HTMLDivElement = document.createElement('div')
-  container.appendChild(connect8081Button)
-  container.appendChild(connect8082Button)
+  container.appendChild(proxy1Checkbox)
+  container.appendChild(proxy1Label)
+  container.appendChild(proxy2Checkbox)
+  container.appendChild(proxy2Label)
   container.appendChild(demoWebAppButton)
   container.appendChild(demoWebAppWGPUButton)
 
@@ -82,6 +102,11 @@ async function main() {
   // show the html elements on the user's screen
   document.body.appendChild(canvas)
   document.body.appendChild(container)
+
+  canvas.style.width = '100vw'
+  canvas.style.height = `calc(100vh - ${container.offsetHeight}px - 5px)`
+  document.body.style.overflow = 'hidden'
+  document.body.style.margin = '0px'
 }
 
 window.onload = () => main()

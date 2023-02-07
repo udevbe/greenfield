@@ -237,8 +237,9 @@ export function ensureProxyPeerConnection(
       /*noop*/
     },
     close() {
-      // TODO implement clean remote proxy disconnect
-      signalingWebSocket.close()
+      proxyPeerConnections[signalingURL]?.peerConnection.close()
+      delete proxyPeerConnections[signalingURL]
+      signalingWebSocket.close(4001, 'connection closed by user')
     },
   }
 

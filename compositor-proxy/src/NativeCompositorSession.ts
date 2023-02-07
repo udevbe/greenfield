@@ -101,7 +101,7 @@ export class NativeCompositorSession {
     public readonly compositorSessionId: string,
     public readonly peerConnectionState: PeerConnectionState,
     public readonly webFS = createProxyInputOutput(compositorSessionId, config.public.baseURL),
-    public clients: ClientEntry[] = [],
+    public readonly clients: ClientEntry[] = [],
   ) {
     this.wlDisplay = createDisplay(
       (wlClient: unknown) => this.clientForSocket(wlClient),
@@ -130,9 +130,8 @@ export class NativeCompositorSession {
   destroy(): void {
     this.wlDisplayFdWatcher.close()
     for (const client of this.clients) {
-      client.nativeClientSession?.destroy()
+      client.nativeClientSession.destroy()
     }
-    this.clients = []
     destroyDisplay(this.wlDisplay)
   }
 
@@ -141,14 +140,18 @@ export class NativeCompositorSession {
 
     const clientId = newClientId()
     const protocolChannel = createProtocolChannel(this.peerConnectionState, clientId)
-    const clientEntry: ClientEntry = {
-      nativeClientSession: createNativeClientSession(wlClient, this, protocolChannel, clientId),
+    const nativeClientSession = createNativeClientSession(wlClient, this, protocolChannel, clientId)
+    const clientEntry = {
+      nativeClientSession,
       protocolChannel,
       clientId,
     }
-    this.clients = [...this.clients, clientEntry]
-    clientEntry.nativeClientSession.destroyListeners.push(() => {
-      this.clients = this.clients.filter((value) => value !== clientEntry)
+    this.clients.push(clientEntry)
+    nativeClientSession.destroyListeners.push(() => {
+      const index = this.clients.indexOf(clientEntry)
+      if (index > -1) {
+        this.clients.splice(index, 1)
+      }
     })
   }
 }

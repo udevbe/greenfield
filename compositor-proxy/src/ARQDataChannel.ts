@@ -27,10 +27,8 @@ function createARQDataChannel(
   },
 ): ARQDataChannel {
   const dataChannel = createDataChannel(peerConnectionState.peerConnection, desc)
-  const arqDataChannel = new ARQDataChannel(dataChannel, desc)
-  peerConnectionState.peerConnectionResetListeners.push((newPeerConnection) => {
-    arqDataChannel.resetDataChannel(newPeerConnection)
-  })
+  const arqDataChannel = new ARQDataChannel(peerConnectionState, dataChannel, desc)
+  peerConnectionState.peerConnectionResetListeners.push(arqDataChannel.resetListener)
   return arqDataChannel
 }
 
@@ -65,8 +63,15 @@ export class ARQDataChannel {
   private closeCb?: () => void
   private errorCb?: (err: RTCErrorEvent) => void
   private msgCb?: (event: Buffer) => void
+  public resetListener = (newPeerConnection: RTCPeerConnection) => {
+    this.resetDataChannel(newPeerConnection)
+  }
 
-  constructor(private dataChannel: RTCDataChannel, private readonly desc: DataChannelDesc) {
+  constructor(
+    private readonly peerConnectionState: PeerConnectionState,
+    private dataChannel: RTCDataChannel,
+    private readonly desc: DataChannelDesc,
+  ) {
     this.addDataChannelListeners(dataChannel)
   }
 
@@ -129,6 +134,10 @@ export class ARQDataChannel {
     if (this.dataChannel.readyState === 'open' || this.dataChannel.readyState === 'connecting') {
       this.dataChannel.close()
     }
+    const index = this.peerConnectionState.peerConnectionResetListeners.indexOf(this.resetListener)
+    if (index > -1) {
+      this.peerConnectionState.peerConnectionResetListeners.splice(index, 1)
+    }
   }
 
   get readyState(): RTCDataChannelState {
@@ -185,9 +194,11 @@ export class ARQDataChannel {
     this.msgCb = cb
   }
 
-  resetDataChannel(peerConnection: RTCPeerConnection) {
-    this.close()
-    const dataChannel = createDataChannel(peerConnection, this.desc)
+  resetDataChannel(newPeerConnection: RTCPeerConnection) {
+    if (this.dataChannel.readyState === 'open' || this.dataChannel.readyState === 'connecting') {
+      this.dataChannel.close()
+    }
+    const dataChannel = createDataChannel(newPeerConnection, this.desc)
     this.dataChannel = dataChannel
     this.addDataChannelListeners(dataChannel)
   }
