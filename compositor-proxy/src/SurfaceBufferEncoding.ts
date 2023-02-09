@@ -72,7 +72,6 @@ export function initSurfaceBufferEncoding(): void {
   }) {
     if (this.encoder) {
       this.encoder.destroy()
-      this.encoder = undefined
     }
     if (this.frameFeedback) {
       if (this.surfaceState) {

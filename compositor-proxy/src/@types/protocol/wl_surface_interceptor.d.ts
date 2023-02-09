@@ -20,7 +20,7 @@ export default class wl_surface_interceptor {
   }
   bufferDestroyListener?: () => void
 
-  encoder?: Encoder
+  encoder: Encoder
   userData: {
     protocolChannel: Channel
     peerConnectionState: PeerConnectionState
