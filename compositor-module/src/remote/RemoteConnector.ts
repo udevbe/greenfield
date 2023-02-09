@@ -52,22 +52,34 @@ export class RemoteConnector implements CompositorConnector {
       clientConnectionListener.onClient(client)
     } else if (type === 'frame' && clientId) {
       const client = this.session.display.clients[clientId]
-      const frameDataChannel: Channel = new ARQChannel(dataChannel)
-      client.onClose().then(() => frameDataChannel.close())
-      this.remoteSocket.setupFrameDataChannel(client, frameDataChannel)
+      if (client) {
+        const frameDataChannel: Channel = new ARQChannel(dataChannel)
+        client.onClose().then(() => frameDataChannel.close())
+        this.remoteSocket.setupFrameDataChannel(client, frameDataChannel)
+      } else {
+        dataChannel.close()
+      }
     } else if (type === 'xwm' && clientId) {
       const client = this.session.display.clients[clientId]
-      // TODO associate with proxy connection & cleanup on disconnect?
-      const xwmDataChannel: Channel = new ARQChannel(dataChannel)
-      client.onClose().then(() => xwmDataChannel.close())
-      this.remoteSocket.setupXWM(client, xwmDataChannel)
+      if (client) {
+        // TODO associate with proxy connection & cleanup on disconnect?
+        const xwmDataChannel: Channel = new ARQChannel(dataChannel)
+        client.onClose().then(() => xwmDataChannel.close())
+        this.remoteSocket.setupXWM(client, xwmDataChannel)
+      } else {
+        dataChannel.close()
+      }
     } else if (type === 'feedback' && clientId) {
       const feedbackDesc = desc as FeedbackDataChannelDesc
       const surfaceId = feedbackDesc.surfaceId
       const client = this.session.display.clients[clientId]
-      const feedbackChannel: Channel = new SimpleChannel(dataChannel)
-      client.onClose().then(() => feedbackChannel.close())
-      client.userData.clientEncodersFeedback?.addFeedbackChannel(feedbackChannel, surfaceId)
+      if (client) {
+        const feedbackChannel: Channel = new SimpleChannel(dataChannel)
+        client.onClose().then(() => feedbackChannel.close())
+        client.userData.clientEncodersFeedback?.addFeedbackChannel(feedbackChannel, surfaceId)
+      } else {
+        dataChannel.close()
+      }
     }
   }
 

@@ -244,7 +244,7 @@ encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource,
 }
 
 int
-encoder_free(struct encoder **encoder_pp) {
+encoder_destroy(struct encoder **encoder_pp) {
     struct gf_message *message = g_new0(struct gf_message, 1);
 
     message->type = encoder_free_type;

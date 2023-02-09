@@ -75,4 +75,8 @@ export class Encoder {
   requestKeyUnit(): void {
     appEndpointNative.requestKeyUnit(this.nativeEncoder)
   }
+
+  destroy() {
+    appEndpointNative.destroyEncoder(this.nativeEncoder)
+  }
 }

@@ -160,10 +160,10 @@ export function webRTCSignaling(compositorProxySession: CompositorProxySession):
 
       if (isSignalingMessage(messageObject)) {
         if (messageObject.type === 'identity') {
-          logger.info(`Received compositor signaling identity: ${messageObject.data}.`)
+          logger.info(`Received compositor signaling identity: ${messageObject.identity}.`)
           if (compositorPeerIdentity && messageObject.identity !== compositorPeerIdentity) {
             logger.info(
-              `Compositor signaling identity has changed. Old: ${compositorPeerIdentity}. New: ${messageObject.data}. Creating new peer connection.`,
+              `Compositor signaling identity has changed. Old: ${compositorPeerIdentity}. New: ${messageObject.identity}. Creating new peer connection.`,
             )
             // Remote compositor has restarted. Shutdown the old peer connection before handling any signaling.
             compositorPeerIdentity = messageObject.identity

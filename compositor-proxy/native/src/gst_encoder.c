@@ -105,6 +105,8 @@ struct encoder {
     GQueue *encoding_results;
     void *user_data;
     struct westfield_egl *westfield_egl;
+
+    bool terminated;
 };
 
 struct gst_encoder_pipeline {
@@ -598,22 +600,6 @@ gst_encoder_eos(struct gst_encoder *gst_encoder) {
     }
 }
 
-static inline void
-gst_encoder_destroy(struct gst_encoder *gst_encoder) {
-    if (gst_encoder->opaque_pipeline) {
-        gst_encoder_pipeline_destroy(gst_encoder->opaque_pipeline);
-        gst_encoder->opaque_pipeline = NULL;
-    }
-
-    if (gst_encoder->alpha_pipeline) {
-        gst_encoder_pipeline_destroy(gst_encoder->alpha_pipeline);
-        gst_encoder->alpha_pipeline = NULL;
-    }
-    if (gst_encoder->opaque_pipeline == NULL && gst_encoder->alpha_pipeline == NULL) {
-        free(gst_encoder);
-    }
-}
-
 static inline gboolean
 gst_encoder_destroy_if_eos(struct gst_encoder *gst_encoder) {
     if (gst_encoder->opaque_pipeline && gst_encoder->opaque_pipeline->eos) {
@@ -641,7 +627,14 @@ gst_encoder_destroy_if_eos(struct gst_encoder *gst_encoder) {
             gst_encoder->wrapped_gst_gl_context = NULL;
         }
 
+        if(gst_encoder->encoder->terminated){
+            g_queue_free_full(gst_encoder->encoder->encoding_results, (GDestroyNotify) encoding_result_free);
+            gst_encoder->encoder->encoding_results = NULL;
+            free(gst_encoder->encoder);
+        }
+
         free(gst_encoder);
+
         return FALSE;
     }
 
@@ -1332,6 +1325,10 @@ void
 do_gst_encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource, uint32_t buffer_content_serial,
                       uint32_t buffer_creation_serial) {
     struct encoder *encoder = *encoder_pp;
+    if(encoder->terminated) {
+        g_error("BUG. Can not encode. Encoder is terminated.");
+    }
+
     struct encoding_result *encoding_result;
     const size_t nro_encoders = sizeof(encoder_descriptions) / sizeof(encoder_descriptions[0]);
 
@@ -1372,10 +1369,19 @@ do_gst_encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_re
 void
 do_gst_encoder_free(struct encoder **encoder_pp) {
     struct encoder *encoder = *encoder_pp;
-    gst_encoder_destroy(encoder->impl);
-    encoder->impl = NULL;
-    g_queue_free_full(encoder->encoding_results, (GDestroyNotify) encoding_result_free);
-    free(encoder);
+    if(encoder->terminated) {
+        g_error("BUG. Can not free encoder. Encoder is already terminated.");
+    }
+
+    encoder->terminated = true;
+    if (encoder->impl != NULL) {
+        gst_encoder_eos(encoder->impl);
+    }
+    else {
+        g_queue_free(encoder->encoding_results);
+        encoder->encoding_results = NULL;
+        free(encoder);
+    }
 }
 
 void
@@ -1387,6 +1393,9 @@ do_gst_encoded_frame_finalize(struct encoded_frame *encoded_frame) {
 void
 do_gst_request_key_unit(struct encoder **encoder_pp) {
     struct encoder *encoder = *encoder_pp;
+    if(encoder->terminated) {
+        g_error("BUG. Can not request key unit. Encoder is terminated.");
+    }
     struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
     gst_encoder_request_key_unit(gst_encoder);
 }

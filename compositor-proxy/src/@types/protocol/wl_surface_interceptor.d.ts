@@ -20,7 +20,7 @@ export default class wl_surface_interceptor {
   }
   bufferDestroyListener?: () => void
 
-  encoder: Encoder
+  encoder?: Encoder
   userData: {
     protocolChannel: Channel
     peerConnectionState: PeerConnectionState
@@ -30,12 +30,6 @@ export default class wl_surface_interceptor {
   }
   wlClient: unknown
   id: number
-
-  encodeAndSendBuffer(args: {
-    bufferResourceId: number
-    bufferCreationSerial: number
-    bufferContentSerial: number
-  }): Promise<void>
 
   R0(message: {
     buffer: ArrayBuffer

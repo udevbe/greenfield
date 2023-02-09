@@ -31,7 +31,7 @@ int
 encoder_request_key_unit(struct encoder **encoder_pp);
 
 int
-encoder_free(struct encoder **encoder_pp);
+encoder_destroy(struct encoder **encoder_pp);
 
 int
 encoded_frame_finalize(struct encoded_frame *encoded_frame);

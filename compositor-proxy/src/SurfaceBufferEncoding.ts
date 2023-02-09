@@ -16,13 +16,13 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { unmarshallArgs } from 'westfield-proxy'
-import { createEncoder } from './encoding/Encoder'
+import { createEncoder, Encoder } from './encoding/Encoder'
 
 import { createLogger } from './Logger'
 import wlSurfaceInterceptor from './protocol/wl_surface_interceptor'
 import { FrameFeedback } from './FrameFeedback'
 import { incrementAndGetNextBufferSerial, ProxyBuffer } from './ProxyBuffer'
-import { createFeedbackChannel, createFrameDataChannel } from './Channel'
+import { Channel, createFeedbackChannel, createFrameDataChannel } from './Channel'
 
 const logger = createLogger('surface-buffer-encoding')
 
@@ -46,7 +46,7 @@ function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor): FrameF
   return wlSurfaceInterceptor.frameFeedback
 }
 
-function ensureFrameDataChannel(wlSurfaceInterceptor: wlSurfaceInterceptor) {
+function ensureFrameDataChannel(wlSurfaceInterceptor: wlSurfaceInterceptor): Channel {
   if (wlSurfaceInterceptor.frameDataChannel === undefined) {
     wlSurfaceInterceptor.frameDataChannel = createFrameDataChannel(
       wlSurfaceInterceptor.userData.peerConnectionState,
@@ -56,6 +56,7 @@ function ensureFrameDataChannel(wlSurfaceInterceptor: wlSurfaceInterceptor) {
       wlSurfaceInterceptor.frameDataChannel.close()
     })
   }
+  return wlSurfaceInterceptor.frameDataChannel
 }
 
 export function initSurfaceBufferEncoding(): void {
@@ -69,6 +70,10 @@ export function initSurfaceBufferEncoding(): void {
     consumed: number
     size: number
   }) {
+    if (this.encoder) {
+      this.encoder.destroy()
+      this.encoder = undefined
+    }
     if (this.frameFeedback) {
       if (this.surfaceState) {
         this.frameFeedback.sendBufferReleaseEvent(this.surfaceState.bufferResourceId)
@@ -163,6 +168,7 @@ export function initSurfaceBufferEncoding(): void {
     }
 
     const frameFeedback = ensureFrameFeedback(this)
+    const frameDataChannel = ensureFrameDataChannel(this)
     const commitTimestamp = performance.now()
 
     const bufferContentSerial = incrementAndGetNextBufferSerial()
@@ -192,7 +198,9 @@ export function initSurfaceBufferEncoding(): void {
         this.pendingFrameCallbacksIds = []
         this.surfaceState = {
           bufferResourceId: this.pendingBufferResourceId,
-          encodingPromise: this.encodeAndSendBuffer({
+          encodingPromise: encodeAndSendBuffer({
+            frameDataChannel,
+            encoder: this.encoder,
             bufferContentSerial,
             bufferResourceId: this.pendingBufferResourceId,
             bufferCreationSerial: proxyBuffer.creationSerial,
@@ -225,14 +233,19 @@ export function initSurfaceBufferEncoding(): void {
   }
 }
 
-wlSurfaceInterceptor.prototype.encodeAndSendBuffer = function (args) {
-  ensureFrameDataChannel(this)
-  return this.encoder
+function encodeAndSendBuffer(args: {
+  frameDataChannel: Channel
+  encoder: Encoder
+  bufferResourceId: number
+  bufferCreationSerial: number
+  bufferContentSerial: number
+}) {
+  return args.encoder
     .encodeBuffer(args)
     .then((nodeBuffer) => {
       // FIXME check buffer result, can have an empty size if encoding pipeline was ended
       // send buffer contents. bufferId + chunk
-      this.frameDataChannel.send(nodeBuffer)
+      args.frameDataChannel.send(nodeBuffer)
     })
     .catch((e: Error) => {
       logger.error(`\tname: ${e.name} message: ${e.message}`)
