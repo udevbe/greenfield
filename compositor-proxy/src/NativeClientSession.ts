@@ -183,7 +183,6 @@ export class NativeClientSession {
     // logger.debug(`Delegating messages from browser to client. Total size: ${receiveBuffer.byteLength}`)
 
     let readOffset = 0
-    let localGlobalsEmitted = false
     while (readOffset < inboundMessage.length) {
       const fdsCount = inboundMessage[readOffset++]
       const fdsBuffer = new Uint32Array(fdsCount)
@@ -202,10 +201,8 @@ export class NativeClientSession {
       const messageBuffer = inboundMessage.subarray(readOffset, readOffset + length)
       readOffset += length
 
-      if (!localGlobalsEmitted) {
-        // check if browser compositor is emitting globals, if so, emit the local globals as well.
-        localGlobalsEmitted = this.emitLocalGlobals(messageBuffer)
-      }
+      // check if browser compositor is emitting globals, if so, emit the local globals as well.
+      this.emitLocalGlobals(messageBuffer)
 
       this.messageInterceptor.interceptEvent(objectId, opcode, {
         buffer: messageBuffer.buffer,
@@ -248,19 +245,18 @@ export class NativeClientSession {
     this.outboundMessages = []
   }
 
-  private emitLocalGlobals(wireMessageBuffer: Uint32Array): boolean {
+  private emitLocalGlobals(wireMessageBuffer: Uint32Array): void {
     const id = wireMessageBuffer[0]
     const wlRegistry = this.wlRegistries[id]
     if (wlRegistry) {
       const sizeOpcode = wireMessageBuffer[1]
       const messageOpcode = sizeOpcode & 0x0000ffff
       const globalOpcode = 0
-      if (messageOpcode === globalOpcode) {
+      // 4294901761 is the name/code of the first global emitted by the browser
+      if (messageOpcode === globalOpcode && wireMessageBuffer[2] === 4294901761) {
         emitGlobals(wlRegistry)
-        return true
       }
     }
-    return false
   }
 
   onWireMessageRequest(wlClient: unknown, message: ArrayBuffer, objectId: number, opcode: number): number {
