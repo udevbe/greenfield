@@ -1,6 +1,5 @@
 import { WlShellSurfaceResize } from 'westfield-runtime-server'
 import { AxisEvent } from './AxisEvent'
-import { setBrowserCursor } from './browser/pointer'
 import { ButtonEvent } from './ButtonEvent'
 import { CompositorSurface } from './index'
 import { minusPoint, ORIGIN, plusPoint, Point } from './math/Point'
@@ -10,6 +9,7 @@ import { PointerGrab } from './Pointer'
 import Surface from './Surface'
 import { DesktopSurfaceRole } from './SurfaceRole'
 import { toCompositorSurface } from './UserShellApi'
+import { setCursor } from './browser/pointer'
 
 class ResizeGrab implements PointerGrab {
   private constructor(
@@ -103,9 +103,7 @@ class ResizeGrab implements PointerGrab {
     this.desktopSurface.grabbed = true
     pointer.startGrab(this)
     pointer.clearFocus()
-    if (pointer.sprite === undefined) {
-      this.setResizeCursor()
-    }
+    this.setResizeCursor()
   }
 
   private setResizeCursor() {
@@ -113,20 +111,16 @@ class ResizeGrab implements PointerGrab {
       (this.edges & WlShellSurfaceResize.top && this.edges & WlShellSurfaceResize.right) ||
       (this.edges & WlShellSurfaceResize.bottom && this.edges & WlShellSurfaceResize.left)
     ) {
-      // TODO
-      // setBrowserCursor('nesw-resize')
+      setCursor('nesw-resize')
     } else if (
       (this.edges & WlShellSurfaceResize.top && this.edges & WlShellSurfaceResize.left) ||
       (this.edges & WlShellSurfaceResize.bottom && this.edges & WlShellSurfaceResize.right)
     ) {
-      // TODO
-      // setBrowserCursor('nwse-resize')
+      setCursor('nwse-resize')
     } else if (this.edges & (WlShellSurfaceResize.top | WlShellSurfaceResize.bottom)) {
-      // TODO
-      // setBrowserCursor('ns-resize')
+      setCursor('ns-resize')
     } else if (this.edges & (WlShellSurfaceResize.left | WlShellSurfaceResize.right)) {
-      // TODO
-      // setBrowserCursor('ew-resize')
+      setCursor('ew-resize')
     }
   }
 }
@@ -198,10 +192,7 @@ class MoveGrab implements PointerGrab {
     this.desktopSurface.grabbed = true
     pointer.startGrab(this)
     pointer.clearFocus()
-    if (pointer.sprite === undefined) {
-      // TODO
-      // setBrowserCursor('move')
-    }
+    setCursor('move')
   }
 }
 
