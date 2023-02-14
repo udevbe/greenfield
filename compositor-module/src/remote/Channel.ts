@@ -2,8 +2,8 @@ import { Kcp } from './kcp'
 
 const MAX_BUFFERED_AMOUNT = 1048576
 const MTU = 1200 // webrtc datachannel MTU
-const SND_WINDOW_SIZE = 256
-const RCV_WINDOW_SIZE = 256
+const SND_WINDOW_SIZE = 128
+const RCV_WINDOW_SIZE = 1024
 
 export interface Channel {
   send(buffer: ArrayBufferView): void
@@ -103,6 +103,7 @@ export class ARQChannel implements Channel {
   private msgCb?: (msg: Uint8Array) => void
   private closeCb?: () => void
   private errorCb?: (err: RTCErrorEvent) => void
+  private checkInterval?: number
 
   constructor(public readonly dataChannel: RTCDataChannel) {
     this.addDataChannelListeners(dataChannel)
@@ -127,6 +128,10 @@ export class ARQChannel implements Channel {
       'close',
       () => {
         if (this.kcp) {
+          if (this.checkInterval) {
+            clearInterval(this.checkInterval)
+            this.checkInterval = undefined
+          }
           this.kcp.release()
           this.kcp = undefined
         }
@@ -153,15 +158,9 @@ export class ARQChannel implements Channel {
   }
 
   private check(kcp: Kcp) {
-    if (kcp.snd_buf === undefined) {
-      return
-    }
-
-    kcp.update()
-
-    window.setTimeout(() => {
-      this.check(kcp)
-    }, kcp.check())
+    this.checkInterval = window.setInterval(() => {
+      kcp.update()
+    }, 20)
   }
 
   close(): void {
@@ -181,7 +180,7 @@ export class ARQChannel implements Channel {
     const kcp = new Kcp(dataChannel.id, this)
     kcp.setMtu(MTU) // webrtc datachannel MTU
     kcp.setWndSize(SND_WINDOW_SIZE, RCV_WINDOW_SIZE)
-    kcp.setNoDelay(1, 30, 2, 1)
+    kcp.setNoDelay(1, 20, 2, 1)
     kcp.setOutput((buf, len) => {
       if (dataChannel.readyState === 'open' && dataChannel.bufferedAmount <= MAX_BUFFERED_AMOUNT) {
         this.dataChannel.send(buf.subarray(0, len))
@@ -196,11 +195,11 @@ export class ARQChannel implements Channel {
         }
         // TODO forward error correction: https://github.com/ronomon/reed-solomon#readme & https://github.com/skywind3000/kcp/wiki/KCP-Best-Practice-EN
         kcp.input(new Uint8Array(ev.data as ArrayBuffer), true, false)
-        const size = kcp.peekSize()
-        if (size > 0) {
+        let size = -1
+        while ((size = kcp.peekSize()) >= 0) {
           const buffer = new Uint8Array(size)
           const len = kcp.recv(buffer)
-          if (len > 0 && this.msgCb) {
+          if (len >= 0 && this.msgCb) {
             this.msgCb(buffer.subarray(0, len))
           }
         }
