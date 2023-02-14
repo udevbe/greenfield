@@ -85,9 +85,6 @@ export type CursorType =
   | 'grabbing'
   | 'all-scroll'
 
-// export function setCursor(cursorType: CursorType): void {
-//   if (cursor?.cursorIconURL) {
-//     URL.revokeObjectURL(cursor.cursorIconURL)
-//   }
-//   document.body.style.cursor = cursorType
-// }
+export function setCursor(cursorType: CursorType): void {
+  document.body.style.cursor = cursorType
+}

@@ -466,7 +466,7 @@ export class Pointer implements WlPointerRequests {
         (pointerResource) => pointerResource.client === surfaceResource.client,
       )) {
         pointerResource1.leave(serial, surfaceResource)
-        pointerResource1.frame()
+        this.frame(pointerResource1)
       }
       this.focus.surface.resource.removeDestroyListener(this.focusViewListener)
       this.focus = undefined
@@ -492,7 +492,7 @@ export class Pointer implements WlPointerRequests {
       for (const pointerResource of this.resources) {
         if (pointerResource.client === surfaceClient) {
           pointerResource.enter(serial, view.surface.resource, Fixed.parse(sx), Fixed.parse(sy))
-          pointerResource.frame()
+          this.frame(pointerResource)
         }
       }
       this.fousSerial = serial
@@ -634,7 +634,7 @@ export class Pointer implements WlPointerRequests {
       }
       if (pointerResource.version >= 5) {
         pointerResource.axisSource(wheel)
-        pointerResource.frame()
+        this.frame(pointerResource)
       }
     }
   }
