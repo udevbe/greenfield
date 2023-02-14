@@ -720,7 +720,7 @@ export class Kcp {
     }
 
     if (count > 255) {
-      return -2
+      throw new Error(`Send buffer too big (${buffer.byteLength} bytes), needs more than 255 fragments.`)
     }
 
     if (count === 0) {
