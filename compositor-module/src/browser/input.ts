@@ -62,16 +62,6 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
       session.inputQueue.queueMotion(
         createButtonEventFromMouseEvent(event, false, outputId, canvas.width, canvas.height),
       )
-      // for (const predictedEvent of event.getPredictedEvents()) {
-      //   const buttonEvent = createButtonEventFromMouseEvent(
-      //     predictedEvent,
-      //     false,
-      //     outputId,
-      //     canvas.width,
-      //     canvas.height,
-      //   )
-      //   session.inputQueue.queueMotion(buttonEvent)
-      // }
     },
     { passive: true },
   )
