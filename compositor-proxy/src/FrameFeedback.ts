@@ -59,14 +59,18 @@ export class FrameFeedback {
     })
   }
 
-  private ensureCorrectClockInterval() {
+  private tuneFrameRedrawInterval() {
     const slowestClockInterval = Math.max(
       this.serverProcessingDuration,
       this.clientProcessingDuration,
       this.clientRefreshInterval,
     )
 
-    if (Math.abs(slowestClockInterval - activeFeedbackClockInterval) > 8) {
+    if (
+      (slowestClockInterval < 17 && Math.abs(slowestClockInterval - activeFeedbackClockInterval) > 1) ||
+      (slowestClockInterval < 33 && Math.abs(slowestClockInterval - activeFeedbackClockInterval) > 5) ||
+      Math.abs(slowestClockInterval - activeFeedbackClockInterval) > 10
+    ) {
       configureFrameFeedbackClock(slowestClockInterval)
     }
   }
@@ -80,12 +84,12 @@ export class FrameFeedback {
       this.parkedFeedbackClockQueue = []
     }
 
-    this.ensureCorrectClockInterval()
+    this.tuneFrameRedrawInterval()
   }
 
   encodingDone(commitTimestamp: number): void {
     this.serverProcessingDuration = performance.now() - commitTimestamp
-    this.ensureCorrectClockInterval()
+    this.tuneFrameRedrawInterval()
   }
 
   sendFrameDoneEventsWithCallbacks(frameDoneTimestamp: number, frameCallbackIds: number[]) {
