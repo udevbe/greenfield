@@ -1227,7 +1227,7 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "gldownload ! "
                                        // The ueue is silent
                                        "queue silent=true ! "
-                                       "x264enc me=2 analyse=51 dct8x8=true cabac=true bframes=0 b-adapt=false rc-lookahead=0 sliced-threads=true qp-max=28 byte-stream=true tune=zerolatency psy-tune=2 pass=0 bitrate=9600 vbv-buf-capacity=500 ! "
+                                       "x264enc me=2 analyse=51 dct8x8=true cabac=true bframes=0 b-adapt=false rc-lookahead=0 sliced-threads=true qp-max=28 byte-stream=true tune=zerolatency psy-tune=2 pass=0 bitrate=9600 vbv-buf-capacity=250 ! "
                                        "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .split_alpha = true,
@@ -1248,7 +1248,7 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "capsfilter name=shader_capsfilter ! "
                                        "queue silent=true ! "
                                        // TODO use cudascale/cudaconvert once gstreamer 1.22 is released
-                                       "nvh264enc gop-size=-1 qp-max=28 qp-min=12 zerolatency=true preset=4 rc-mode=7 max-bitrate=9600 vbv-buffer-size=4800 ! "
+                                       "nvh264enc gop-size=-1 qp-max=28 qp-min=12 zerolatency=true preset=4 rc-mode=7 max-bitrate=9600 vbv-buffer-size=2400 ! "
                                        "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .split_alpha = true,
