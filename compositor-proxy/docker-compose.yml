@@ -1,7 +1,7 @@
-#Uncomment below if you want hw acceleration with an nvidia GPU to work inside the containers (requires nvidia container runtime).
+#Uncomment nvidia related comments below if you want hw acceleration with an nvidia GPU to work inside the containers (requires nvidia container runtime).
 #Also make sure to configure "/dev/dri/renderD12x" and "/dev/dri/cardx" entries in this file to point to the correct GPU if you have a multi GPU setup.
 #The config.yaml file inside the src directory also needs to be adjusted to point to the correct GPU.
-version: '3.4'
+#Note that nvidia driver support on Wayland is still very much incomplete.
 services:
   compositor-proxy:
 #    runtime: nvidia
@@ -22,7 +22,8 @@ services:
       - /dev/dri/renderD128:/dev/dri/renderD128
       - /dev/dri/card0:/dev/dri/card0
     ports:
-      - 8081:8081
+      - "8081:8081/tcp"
+      - "4222:4222/udp"
     environment:
       COMPOSITOR_SESSION_ID: test123
       XDG_RUNTIME_DIR: /xdg-runtime-dir

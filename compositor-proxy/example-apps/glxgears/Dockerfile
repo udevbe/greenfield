@@ -1,5 +1,5 @@
 FROM debian:bookworm-slim
-RUN sed -r -i 's/^deb(.*)$/deb\1 contrib/g' /etc/apt/sources.list
+RUN sed -i'' -e 's/main$/main contrib non-free/g' /etc/apt/sources.list.d/debian.sources
 RUN apt-get update && apt-get install -y \
     libopengl0 \
     libglvnd0 \
