@@ -3,8 +3,6 @@ import type { HttpRequest, HttpResponse } from 'uWebSockets.js'
 import fs from 'fs'
 import { TRANSFER_CHUNK_SIZE } from './io/ProxyInputOutput'
 import { Readable, Writable } from 'stream'
-import { WebSocketLike } from 'retransmitting-websocket'
-import { upsertWebSocket } from './ClientConnectionPool'
 import { createLogger } from './Logger'
 import { URLSearchParams } from 'url'
 import { config } from './config'
@@ -13,12 +11,10 @@ import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 
 const logger = createLogger('app')
 
-const allowOrigin = config.server.allowOrigin
+const allowOrigin = config.server.http.allowOrigin
 const allowHeaders = 'Content-Type, X-Compositor-Session-Id'
 const maxAge = '36000'
 
-// TODO unit test Access-Control-Allow-Origin header on all handlers
-// TODO unit test optionspreflightrequest
 export function OPTIONSPreflightRequest(allowMethods: string) {
   return (res: HttpResponse, req: HttpRequest) => {
     const origin = req.getHeader('origin')
@@ -387,41 +383,6 @@ export function PUTWebFDStream(
   )
 }
 
-export function webSocketOpen(
-  compositorProxySession: CompositorProxySession,
-  ws: WebSocketLike,
-  searchParams: URLSearchParams,
-) {
-  if (searchParams.get('compositorSessionId') !== compositorProxySession.compositorSessionId) {
-    const message = 'Bad or missing compositorSessionId query parameter.'
-    logger.error(message)
-    ws.close(4403, message)
-    return
-  }
-
-  const connectionId = searchParams.get('connectionId')
-  if (connectionId === null) {
-    const message = 'Bad or missing query parameters.'
-    logger.error(message)
-    ws.close(4403, message)
-    return
-  }
-
-  if (searchParams.has('xwmFD')) {
-    const wmFD = Number.parseInt(searchParams.get('xwmFD') ?? '0')
-    compositorProxySession.handleXWMConnection(ws, wmFD)
-  } else if (searchParams.has('frameData')) {
-    compositorProxySession.handleFrameDataConnection(ws, connectionId)
-  } else {
-    const { retransmittingWebSocket, isNew } = upsertWebSocket(connectionId, ws)
-    if (!isNew) {
-      // reconnecting, no need to do anything
-      return
-    }
-    compositorProxySession.handleConnection(retransmittingWebSocket, connectionId)
-  }
-}
-
 /* Helper function for reading a posted JSON body */
 function readJson<T>(res: HttpResponse) {
   return new Promise<T>((resolve, reject) => {
@@ -489,6 +450,7 @@ export async function POSTEncoderKeyframe(
       .end('Surface not found.')
     return
   }
+  // FIXME currently broken
   // if (wlSurfaceInterceptor.surfaceState?.bufferResourceId !== keyframeRequest.bufferId) {
   //   logger.error(
   //     'Received a key frame unit request but no buffer for surface found that matches the request. Buffer already destroyed?',
@@ -508,51 +470,4 @@ export async function POSTEncoderKeyframe(
   // })
 
   httpResponse.writeStatus('202 Accepted').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
-}
-
-export async function PUTEncoderFeedback(
-  compositorProxySession: CompositorProxySession,
-  httpResponse: HttpResponse,
-  httpRequest: HttpRequest,
-  [clientIdParam]: string[],
-) {
-  const clientId = clientIdParam
-
-  if (clientId === undefined) {
-    httpResponse
-      .writeStatus('400 Bad Request')
-      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
-      .writeHeader('Content-Type', 'text/plain')
-      .end(`Surface id argument must be a positive integer. Got client id: ${clientId}`)
-    return
-  }
-
-  const feedbackPromise = readJson<operations['feedback']['requestBody']['content']['application/json']>(httpResponse)
-
-  const clientEntry = compositorProxySession.nativeCompositorSession.clients.find(
-    (clientEntry) => clientEntry.clientId === clientId,
-  )
-
-  if (clientEntry === undefined) {
-    httpResponse
-      .writeStatus('404 Not Found')
-      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
-      .writeHeader('Content-Type', 'text/plain')
-      .end('Client not found.')
-    return
-  }
-
-  const feedback = await feedbackPromise
-  if (feedback.surfaceDurations) {
-    Object.entries(feedback.surfaceDurations).forEach(([surfaceId, avgDuration]) => {
-      const wlSurfaceInterceptor = clientEntry.nativeClientSession?.messageInterceptor.interceptors[
-        Number.parseInt(surfaceId)
-      ] as wl_surface_interceptor
-      if (wlSurfaceInterceptor) {
-        wlSurfaceInterceptor.frameFeedback?.updateDelay(feedback.refreshInterval, avgDuration)
-      }
-    })
-  }
-
-  httpResponse.writeStatus('204 No Content').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
 }

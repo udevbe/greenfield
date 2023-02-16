@@ -15,77 +15,80 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import type { WebSocketLike } from 'retransmitting-websocket'
 import { createLogger } from './Logger'
 
 import { createNativeCompositorSession, NativeCompositorSession } from './NativeCompositorSession'
 import { XWaylandSession } from './XWaylandSession'
+import { RTCPeerConnection } from '@koush/wrtc'
+import { config } from './config'
 
 const logger = createLogger('compositor-proxy-session')
 
+export type PeerConnectionState = {
+  peerConnection: RTCPeerConnection
+  readonly peerConnectionResetListeners: ((newPeerConnection: RTCPeerConnection) => void)[]
+  polite: false
+  makingOffer: boolean
+  ignoreOffer: boolean
+  isSettingRemoteAnswerPending: boolean
+}
+
+function createPeerConnection(): RTCPeerConnection {
+  return new RTCPeerConnection({
+    iceServers: config.server.webrtc.iceServers,
+    portRange: {
+      min: config.server.webrtc.portRangeMin ?? 0,
+      max: config.server.webrtc.portRangeMax ?? 65535,
+    },
+  })
+}
+
 export function createCompositorProxySession(compositorSessionId: string): CompositorProxySession {
-  const nativeCompositorSession = createNativeCompositorSession(compositorSessionId)
+  const peerConnection = createPeerConnection()
+  const peerConnectionState: PeerConnectionState = {
+    peerConnection,
+    peerConnectionResetListeners: [],
+    polite: false,
+    makingOffer: false,
+    ignoreOffer: false,
+    isSettingRemoteAnswerPending: false,
+  }
+  const nativeCompositorSession = createNativeCompositorSession(compositorSessionId, peerConnectionState)
   const xWaylandSession = XWaylandSession.create(nativeCompositorSession)
   xWaylandSession.createXWaylandListenerSocket()
+
   const compositorProxySession = new CompositorProxySession(
     nativeCompositorSession,
     compositorSessionId,
     xWaylandSession,
+    peerConnectionState,
   )
-  nativeCompositorSession.onDestroy().then(() => compositorProxySession.destroy())
   logger.info(`Session created.`)
+
   return compositorProxySession
 }
 
 export class CompositorProxySession {
-  private destroyResolve?: (value: void | PromiseLike<void>) => void
-  private _destroyPromise = new Promise<void>((resolve) => {
-    this.destroyResolve = resolve
-  })
-
   constructor(
     public readonly nativeCompositorSession: NativeCompositorSession,
     public readonly compositorSessionId: string,
     private readonly xWaylandSession: XWaylandSession,
+    public readonly peerConnectionState: PeerConnectionState,
   ) {}
 
-  onDestroy(): Promise<void> {
-    return this._destroyPromise
-  }
-
-  destroy(): void {
-    logger.info(`Session destroyed.`)
-    this.destroyResolve?.()
-  }
-
-  handleConnection(protocolChannel: WebSocketLike, clientId: string): void {
-    try {
-      this.nativeCompositorSession.socketForClient(protocolChannel, clientId)
-    } catch (e: any) {
-      logger.error(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
-      logger.error('error object stack: ')
-      logger.error(e.stack)
-      protocolChannel.close(4503, `Server encountered an exception.`)
+  resetPeerConnectionState(killAllClients: boolean): void {
+    for (const client of this.nativeCompositorSession.clients) {
+      if (client.nativeClientSession.hasCompositorState || killAllClients) {
+        client.nativeClientSession.destroy()
+      }
     }
-  }
 
-  handleXWMConnection(protocolChannel: WebSocketLike, xwmFD: number): void {
-    this.xWaylandSession.upsertXWMConnection(protocolChannel, xwmFD).catch((e: any) => {
-      logger.error(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
-      logger.error('error object stack: ')
-      logger.error(e.stack)
-      protocolChannel.close(4503, `Server encountered an exception.`)
-    })
-  }
+    this.peerConnectionState.peerConnection.close()
 
-  handleFrameDataConnection(frameDataChannel: WebSocketLike, clientId: string) {
-    try {
-      this.nativeCompositorSession.frameDataChannelForClient(frameDataChannel, clientId)
-    } catch (e: any) {
-      logger.error(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
-      logger.error('error object stack: ')
-      logger.error(e.stack)
-      frameDataChannel.close(4503, `Server encountered an exception.`)
+    const newPeerConnection = createPeerConnection()
+    this.peerConnectionState.peerConnection = newPeerConnection
+    for (const peerConnectionResetListener of this.peerConnectionState.peerConnectionResetListeners) {
+      peerConnectionResetListener(newPeerConnection)
     }
   }
 }

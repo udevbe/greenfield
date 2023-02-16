@@ -8,6 +8,8 @@ declare namespace nativeEncoder {
     frameEncoded: (sample: Buffer) => void,
   ): EncoderWrapper
 
+  export function destroyEncoder(encoder: EncoderWrapper)
+
   export function encodeBuffer(
     encoder: unknown,
     bufferId: number,

@@ -1,10 +1,12 @@
-import { RetransmittingWebSocket } from 'retransmitting-websocket'
 import { Encoder } from '../../encoding/Encoder'
 import { FrameFeedback } from '../../FrameFeedback'
 import { NativeClientSession } from '../../NativeClientSession'
 import { MessageDestination } from '../../../../../westfield/server/node/proxy'
+import type { Channel } from '../../Channel'
+import type { PeerConnectionState } from '../../CompositorProxySession'
 
 export default class wl_surface_interceptor {
+  frameDataChannel: Channel
   destroyed: boolean
   frameFeedback?: FrameFeedback
 
@@ -20,20 +22,14 @@ export default class wl_surface_interceptor {
 
   encoder: Encoder
   userData: {
-    protocolChannel: RetransmittingWebSocket
-    frameDataChannel: RetransmittingWebSocket
+    protocolChannel: Channel
+    peerConnectionState: PeerConnectionState
     drmContext: unknown
     messageInterceptors: Record<number, any>
-    nativeClientSession?: NativeClientSession
+    nativeClientSession: NativeClientSession
   }
   wlClient: unknown
   id: number
-
-  encodeAndSendBuffer(args: {
-    bufferResourceId: number
-    bufferCreationSerial: number
-    bufferContentSerial: number
-  }): Promise<void>
 
   R0(message: {
     buffer: ArrayBuffer

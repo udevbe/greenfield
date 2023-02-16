@@ -117,7 +117,7 @@ function checkBrowserClipboard(session: Session) {
       throw e
     })
 }
-export async function initBrowserSelection(session: Session) {
+export function initBrowserSelection(session: Session): void {
   if (!('clipboard' in navigator)) {
     console.log('No browser clipboard support detected. Try running on a secure domain.')
     return

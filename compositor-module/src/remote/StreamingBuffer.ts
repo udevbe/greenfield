@@ -59,6 +59,9 @@ export class StreamingBuffer implements BufferImplementation<Promise<DecodedFram
     const encodedFrameContent = this.bufferStream.onFrameAvailable(bufferContentSerial)
     const encodedFrame = encodedFrameContent instanceof Promise ? await encodedFrameContent : encodedFrameContent
 
+    if (surface.encoderFeedback) {
+      surface.encoderFeedback.bufferCommit(bufferContentSerial)
+    }
     if (encodedFrame) {
       // console.log(`Found encoded buffer content ${bufferContentSerial}. Attempting to decode it.`)
       try {

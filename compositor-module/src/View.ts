@@ -105,7 +105,9 @@ export default class View {
       this.updateRegion()
       this.applyTransformationsChild()
       this._dirty = false
-      this.transformationUpdatedListeners.forEach((listener) => listener(this.transformation))
+      for (const listener of this.transformationUpdatedListeners) {
+        listener(this.transformation)
+      }
     }
   }
 
@@ -119,7 +121,9 @@ export default class View {
 
   destroy(): void {
     if (this.renderStates) {
-      Object.values(this.renderStates).forEach((renderState) => renderState.destroy())
+      for (const renderState of Object.values(this.renderStates)) {
+        renderState.destroy()
+      }
       this.renderStates = {}
     }
 
@@ -148,7 +152,9 @@ export default class View {
   }
 
   private applyTransformationsChild() {
-    this.findChildViews().forEach((childView) => childView.applyTransformations())
+    for (const childView of this.findChildViews()) {
+      childView.applyTransformations()
+    }
   }
 
   private updateRegion() {
@@ -178,7 +184,7 @@ export default class View {
       })
 
     // update & add new renderstates for scenes where this view is visible
-    scenesWithVisibleRegion.forEach(([sceneId, { scene, visibleRegion }]) => {
+    for (const [sceneId, { scene, visibleRegion }] of scenesWithVisibleRegion) {
       const renderState = this.renderStates[sceneId]
       if (renderState === undefined) {
         const bufferSize = this.surface.state.bufferContents
@@ -191,17 +197,17 @@ export default class View {
         fini(visibleRegion)
         destroyPixmanRegion(visibleRegion)
       }
-    })
+    }
 
     // cleanup renderstates of scenes where this view is no longer visible on
     const visibleRegionBySceneId = Object.fromEntries(scenesWithVisibleRegion)
-    Object.entries(this.renderStates).forEach(([sceneId, renderState]) => {
+    for (const [sceneId, renderState] of Object.entries(this.renderStates)) {
       const visibleRegion = visibleRegionBySceneId[renderState.scene.id]
       if (visibleRegion === undefined) {
         renderState.destroy()
         delete this.renderStates[sceneId]
       }
-    })
+    }
 
     // TODO use scene with most visible coverage as relevant scene
     this.relevantScene = Object.values(this.renderStates)[0]?.scene

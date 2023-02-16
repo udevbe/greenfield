@@ -37,7 +37,11 @@ export class BrowserDataSource implements DataSource {
     if (matchingOffer) {
       matchingOffer
         .getType(mimeType)
-        .then((offerData) => ioFD.write(offerData))
+        .then((offerData) => {
+          if (offerData) {
+            return ioFD.write(offerData)
+          }
+        })
         .then(() => ioFD.close())
     }
   }

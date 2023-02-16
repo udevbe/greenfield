@@ -1,171 +1,102 @@
 import { destroyWlResourceSilently, flush, sendEvents } from 'westfield-proxy'
 import { performance } from 'perf_hooks'
-import { clearTimeout } from 'timers'
+import type { Channel } from './Channel'
+
+let activeFeedbackClockInterval = 16.667
+let feedbackClockTimer: NodeJS.Timer | undefined
+let feedbackClockQueue: ((time: number) => void)[] = []
+
+function configureFrameFeedbackClock(interval: number) {
+  if (feedbackClockTimer) {
+    clearInterval(feedbackClockTimer)
+    feedbackClockTimer = undefined
+  }
+  activeFeedbackClockInterval = Math.ceil(interval)
+  feedbackClockTimer = setInterval(() => {
+    if (feedbackClockQueue.length) {
+      const time = performance.now()
+      for (const virtualVSyncListener of feedbackClockQueue) {
+        virtualVSyncListener(time)
+      }
+      feedbackClockQueue = []
+    }
+  }, activeFeedbackClockInterval)
+}
+
+configureFrameFeedbackClock(activeFeedbackClockInterval)
 
 export class FrameFeedback {
-  // frame callback prediction state
-  private virtualRefreshDeadline = 0
-  private refreshInterval = 16.667
-  private clientProcessingDuration?: number
+  private serverProcessingDuration = 0
+  private clientProcessingDuration = 0
   private clientFeedbackTimestamp = 0
-  private delayedFrameDoneEvents?: {
-    timeout?: NodeJS.Timeout
-    endTime?: number
-    startTime: number
-    callback: () => void
-    promise: Promise<number>
-  }
-  private paused = false
+  private parkedFeedbackClockQueue: ((time: number) => void)[] = []
 
-  constructor(private wlClient: unknown, private messageInterceptors: Record<number, any>) {}
+  constructor(
+    private wlClient: unknown,
+    private messageInterceptors: Record<number, any>,
+    private feedbackChannel: Channel,
+    private clientRefreshInterval = 16.667,
+  ) {
+    feedbackChannel.onMessage((buffer) => {
+      const refreshInterval = buffer.readUInt16LE()
+      const avgDuration = buffer.readUInt16LE(2)
+      this.updateDelay(refreshInterval, avgDuration)
+    })
+  }
 
   destroy() {
-    if (this.delayedFrameDoneEvents) {
-      clearTimeout(this.delayedFrameDoneEvents.timeout)
-      this.delayedFrameDoneEvents = undefined
-    }
+    this.feedbackChannel.close()
   }
 
-  commitNotify(
-    buffer: {
-      readonly bufferResourceId: number
-      readonly encodingPromise: Promise<void>
-    },
-    frameCallbacksIds: number[],
-    isDestroyed: () => boolean,
-  ): void {
-    const committedBuffer = {
-      ...buffer,
-      commitTimestamp: performance.now(),
-      isDestroyed,
-      frameCallbacksIds,
-    } as const
-    committedBuffer.encodingPromise.then(() => this.commitDone(committedBuffer))
-  }
-
-  updateDelay(clientRefreshInterval: number, clientProcessingDuration: number | undefined) {
-    const now = performance.now()
-    this.clientFeedbackTimestamp = now
-    this.refreshInterval = clientRefreshInterval
-
-    if (clientProcessingDuration) {
-      this.clientProcessingDuration = clientProcessingDuration
-    }
-
-    if (this.paused) {
-      this.resume()
-      return
-    }
-
-    if (this.clientProcessingDuration === undefined) {
-      return
-    }
-
-    if (this.delayedFrameDoneEvents && this.delayedFrameDoneEvents.endTime) {
-      const newEndTime = this.delayedFrameDoneEvents.startTime + this.clientProcessingDuration
-      if (newEndTime < now) {
-        // immediately fire frame done events
-        clearTimeout(this.delayedFrameDoneEvents.timeout)
-        this.delayedFrameDoneEvents.callback()
-      } else if (this.delayedFrameDoneEvents.endTime - newEndTime > 0) {
-        // If there is a scheduled frame done event that is more in the future compared to a frame done event that
-        // would be scheduled now, then we reschedule the old frame done event using the new delay information
-        clearTimeout(this.delayedFrameDoneEvents.timeout)
-        this.delayedFrameDoneEvents.timeout = setTimeout(
-          this.delayedFrameDoneEvents.callback,
-          this.clientProcessingDuration,
-        )
-      }
-    }
-  }
-
-  private commitDone(committedBuffer: {
-    readonly frameCallbacksIds: number[]
-    readonly isDestroyed: () => boolean
-    readonly commitTimestamp: number
-  }): void {
-    if (committedBuffer.isDestroyed()) {
-      return
-    }
-
-    if (this.delayedFrameDoneEvents) {
-      this.delayedFrameDoneEvents.promise.then((feedbackTime) =>
-        this.sendFrameDoneEventsWithCallbacks(feedbackTime, committedBuffer.frameCallbacksIds),
-      )
-      return
-    }
-
-    const now = performance.now()
-
-    if (now - this.clientFeedbackTimestamp > 2000 || this.clientProcessingDuration === undefined) {
-      // pause sending frame done event until we have a (recent) feedback timestamp
-      this.pause()
-      this.createDelayedFrameDoneEvents(committedBuffer.frameCallbacksIds)
-      return
-    }
-
-    const duration = now - committedBuffer.commitTimestamp
-    const extraClientDuration = this.clientProcessingDuration > duration ? this.clientProcessingDuration - duration : 0
-
-    // TODO take expected application wait-for-commit into account when calculating next deadline
-    this.virtualRefreshDeadline +=
-      Math.ceil((now + extraClientDuration - this.virtualRefreshDeadline) / this.refreshInterval) * this.refreshInterval
-
-    const callbackDelay = this.virtualRefreshDeadline - now
-
-    if (callbackDelay >= 1) {
-      this.createDelayedFrameDoneEvents(committedBuffer.frameCallbacksIds, callbackDelay)
-    } else {
-      this.sendFrameDoneEventsWithCallbacks(now, committedBuffer.frameCallbacksIds)
-    }
-  }
-
-  private createDelayedFrameDoneEvents(frameCallbackIds: number[], callbackDelay?: number) {
-    let callbackResolve: (value: number | PromiseLike<number>) => void
-    const promise = new Promise<number>((resolve) => {
-      callbackResolve = resolve
-    })
-    const startTime = performance.now()
-    const endTime = callbackDelay ? startTime + callbackDelay : undefined
-    const callback = () => {
-      if (this.delayedFrameDoneEvents && this.paused) {
-        this.delayedFrameDoneEvents.timeout = undefined
-        this.delayedFrameDoneEvents.endTime = undefined
+  commitNotify(frameCallbacksIds: number[], isDestroyed: () => boolean): void {
+    const clockQueue =
+      performance.now() - this.clientFeedbackTimestamp > 1500 ? this.parkedFeedbackClockQueue : feedbackClockQueue
+    clockQueue.push((time) => {
+      if (isDestroyed()) {
         return
       }
+      this.sendFrameDoneEventsWithCallbacks(time, frameCallbacksIds)
+    })
+  }
 
-      this.delayedFrameDoneEvents = undefined
-      const feedbackTime = endTime ?? performance.now()
-      this.sendFrameDoneEventsWithCallbacks(feedbackTime, frameCallbackIds)
+  private tuneFrameRedrawInterval() {
+    const slowestClockInterval = Math.max(
+      this.serverProcessingDuration,
+      this.clientProcessingDuration,
+      this.clientRefreshInterval,
+    )
 
-      callbackResolve(feedbackTime)
-    }
-    this.delayedFrameDoneEvents = {
-      callback,
-      startTime,
-      timeout: callbackDelay ? setTimeout(callback, callbackDelay) : undefined,
-      endTime,
-      promise,
+    if (
+      (slowestClockInterval < 17 && Math.abs(slowestClockInterval - activeFeedbackClockInterval) > 1) ||
+      (slowestClockInterval < 33 && Math.abs(slowestClockInterval - activeFeedbackClockInterval) > 5) ||
+      Math.abs(slowestClockInterval - activeFeedbackClockInterval) > 10
+    ) {
+      configureFrameFeedbackClock(slowestClockInterval)
     }
   }
 
-  pause() {
-    this.paused = true
+  private updateDelay(clientRefreshInterval: number, clientProcessingDuration: number) {
+    this.clientFeedbackTimestamp = performance.now()
+    this.clientProcessingDuration = clientProcessingDuration
+    this.clientRefreshInterval = clientRefreshInterval
+    if (this.parkedFeedbackClockQueue.length) {
+      feedbackClockQueue.push(...this.parkedFeedbackClockQueue)
+      this.parkedFeedbackClockQueue = []
+    }
+
+    this.tuneFrameRedrawInterval()
   }
 
-  resume() {
-    this.paused = false
-
-    if (this.delayedFrameDoneEvents && this.delayedFrameDoneEvents.timeout === undefined) {
-      this.delayedFrameDoneEvents.callback()
-    }
+  encodingDone(commitTimestamp: number): void {
+    this.serverProcessingDuration = performance.now() - commitTimestamp
+    this.tuneFrameRedrawInterval()
   }
 
   sendFrameDoneEventsWithCallbacks(frameDoneTimestamp: number, frameCallbackIds: number[]) {
-    frameCallbackIds.forEach((frameCallbackId) => {
+    for (const frameCallbackId of frameCallbackIds) {
       this.sendFrameDoneEvent(frameDoneTimestamp, frameCallbackId)
       delete this.messageInterceptors[frameCallbackId]
-    })
+    }
 
     // this.syncChildren.forEach((syncChild) => syncChild.sendDoneEvents(frameDoneTimestamp))
   }

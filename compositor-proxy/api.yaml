@@ -123,55 +123,6 @@ paths:
             text/plain:
               schema:
                 type: string
-  /{clientId}/encoder/feedback:
-    put:
-      tags:
-        - encoder
-      summary: Send frame presentation feedback.
-      operationId: feedback
-      parameters:
-        - in: path
-          name: clientId
-          description: the client id
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              description: Provides the encoder with various frame presentation related feedback.
-              type: object
-              required:
-                - refreshInterval
-              properties:
-                surfaceDurations:
-                  type: object
-                  description: Average duration for each surface of the client
-                  additionalProperties:
-                    type: number
-                    description: Average duration. How long it took for the client to process the surface before presenting it to the user.
-                refreshInterval:
-                  type: number
-                  description: Informs the encoder how much time there is between VSyncs.
-      responses:
-        204:
-          description: Frame feedback received.
-        401:
-          $ref: '#/components/responses/UnauthorizedError'
-        400:
-          description: Bad request. Bad or no content.
-          content:
-            text/plain:
-              schema:
-                type: string
-        404:
-          description: client or surface not found.
-          content:
-            text/plain:
-              schema:
-                type: string
   /mkfifo:
     post:
       tags:

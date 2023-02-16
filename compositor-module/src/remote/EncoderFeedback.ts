@@ -1,4 +1,5 @@
 import { EncoderApi } from '../api'
+import type { Channel } from './Channel'
 
 let refreshInterval = 0
 let previousPresentationTimestamp = 0
@@ -17,14 +18,23 @@ function updateRefreshInterval() {
 
     if (Math.abs(newRefreshInterval - refreshInterval) > 16) {
       refreshInterval = newRefreshInterval
-      clientEncodersFeedbacks.forEach((clientEncoderFeedback) => clientEncoderFeedback.sendRefreshIntervalUpdate())
     }
 
     previousPresentationTimestamp = presentationTimestamp
   })
 }
 
+function feedbackLoop() {
+  for (const clientEncodersFeedback of clientEncodersFeedbacks) {
+    clientEncodersFeedback.sendFeedback()
+  }
+  setTimeout(() => {
+    feedbackLoop()
+  }, 500)
+}
+
 updateRefreshInterval()
+feedbackLoop()
 
 export function createClientEncodersFeedback(clientId: string, encoderApi: EncoderApi) {
   const clientEncoderFeedback = new ClientEncodersFeedback(clientId, encoderApi)
@@ -33,74 +43,58 @@ export function createClientEncodersFeedback(clientId: string, encoderApi: Encod
   return clientEncoderFeedback
 }
 
-function notNull<TValue>(value: TValue | null): value is TValue {
-  return value !== null
-}
-
 export class ClientEncodersFeedback {
   constructor(
     private readonly clientId: string,
     private readonly encoderApi: EncoderApi,
-    private surfaceEncoderFeedbacks: SurfaceEncoderFeedback[] = [],
+    private surfaceEncoderFeedbacks: Record<number, SurfaceEncoderFeedback> = {},
   ) {}
 
-  sendRefreshIntervalUpdate() {
-    this.encoderApi.feedback({
-      clientId: this.clientId,
-      inlineObject1: {
-        refreshInterval,
-      },
-    })
+  addFeedbackChannel(feedbackChannel: Channel, surfaceId: number) {
+    this.ensureSurfaceEncoderFeedback(surfaceId).feedbackChannel = feedbackChannel
   }
 
   sendFeedback() {
-    const now = performance.now()
-    const surfaceDurationEntries = this.surfaceEncoderFeedbacks
-      .map((surfaceEncoderFeedback) => {
-        if (now - surfaceEncoderFeedback.durationSentTime < 1000) {
-          return null
-        }
+    for (const surfaceEncoderFeedback of Object.values(this.surfaceEncoderFeedbacks)) {
+      if (
+        surfaceEncoderFeedback.feedbackChannel === undefined ||
+        surfaceEncoderFeedback.feedbackChannel.readyState !== 'open'
+      ) {
+        continue
+      }
 
-        const durations = surfaceEncoderFeedback.durations
-        const durationsLength = durations.length
-        if (durationsLength === 0) {
-          return null
-        }
+      const durations = surfaceEncoderFeedback.durations
+      const durationsLength = durations.length
+      if (durationsLength === 0) {
+        continue
+      }
 
-        const durationsSum = durations.reduce((prev, cur) => prev + cur, 0)
-        const avgDuration = durationsSum / durationsLength
-        surfaceEncoderFeedback.durationSentTime = now
-        surfaceEncoderFeedback.durations = []
-        return [surfaceEncoderFeedback.surfaceId, avgDuration]
-      })
-      .filter(notNull)
-    if (surfaceDurationEntries.length === 0) {
-      return
+      const durationsSum = durations.reduce((prev, cur) => prev + cur, 0)
+      const avgDuration = durationsSum / durationsLength
+
+      surfaceEncoderFeedback.feedbackChannel.send(
+        new Uint16Array([Math.min(65000, refreshInterval), Math.min(65000, avgDuration)]),
+      )
+      surfaceEncoderFeedback.durations = [avgDuration]
     }
-
-    const surfaceDurations = Object.fromEntries(surfaceDurationEntries)
-    this.encoderApi.feedback({
-      clientId: this.clientId,
-      inlineObject1: {
-        surfaceDurations,
-        refreshInterval,
-      },
-    })
   }
 
   surfaceDestroyed(destroyedSurfaceEncoderFeedback: SurfaceEncoderFeedback) {
-    this.surfaceEncoderFeedbacks = this.surfaceEncoderFeedbacks.filter(
-      (surfaceEncoderFeedback) => surfaceEncoderFeedback !== destroyedSurfaceEncoderFeedback,
-    )
+    destroyedSurfaceEncoderFeedback.feedbackChannel?.close()
+    delete this.surfaceEncoderFeedbacks[destroyedSurfaceEncoderFeedback.surfaceId]
   }
 
   destroy() {
     clientEncodersFeedbacks = clientEncodersFeedbacks.filter((clientEncoderFeedback) => clientEncoderFeedback !== this)
   }
 
-  createSurfaceEncoderFeedback(surfaceId: number): SurfaceEncoderFeedback {
-    const surfaceEncoderFeedback = new SurfaceEncoderFeedback(surfaceId, this)
-    this.surfaceEncoderFeedbacks.push(surfaceEncoderFeedback)
+  ensureSurfaceEncoderFeedback(surfaceId: number): SurfaceEncoderFeedback {
+    let surfaceEncoderFeedback = this.surfaceEncoderFeedbacks[surfaceId]
+    if (surfaceEncoderFeedback) {
+      return surfaceEncoderFeedback
+    }
+    surfaceEncoderFeedback = new SurfaceEncoderFeedback(surfaceId, this)
+    this.surfaceEncoderFeedbacks[surfaceId] = surfaceEncoderFeedback
     return surfaceEncoderFeedback
   }
 }
@@ -110,17 +104,16 @@ export class SurfaceEncoderFeedback {
     public readonly surfaceId: number,
     private readonly clientEncodersFeedback: ClientEncodersFeedback,
     private commitSerial?: number,
-    private bufferSentStartedTimes: Record<number, number> = {},
+    private bufferCommitTimes: Record<number, number> = {},
     public durations = [] as number[],
-    public durationSentTime = 0,
+    public feedbackChannel?: Channel,
   ) {}
-
-  bufferSentStartTime(commitSerial: number, bufferSentStartedTime: number) {
-    this.bufferSentStartedTimes[commitSerial] = bufferSentStartedTime
-  }
 
   bufferCommit(commitSerial: number) {
     this.commitSerial = commitSerial
+    if (this.commitSerial) {
+      this.bufferCommitTimes[this.commitSerial] = performance.now()
+    }
   }
 
   destroy() {
@@ -139,10 +132,13 @@ export class SurfaceEncoderFeedback {
       return
     }
 
-    const bufferSentStartedTime = this.bufferSentStartedTimes[commitSerial]
-    delete this.bufferSentStartedTimes[commitSerial]
+    const bufferSentStartedTime = this.bufferCommitTimes[commitSerial]
+    delete this.bufferCommitTimes[commitSerial]
 
     const duration = bufferSentStartedTime ? processedTime - bufferSentStartedTime : 1
     this.durations.push(duration)
+    if (this.durations.length > 20) {
+      this.durations.shift()
+    }
   }
 }

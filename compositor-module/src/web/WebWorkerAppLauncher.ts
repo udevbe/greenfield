@@ -1,4 +1,4 @@
-import { CompositorConnector } from '../index'
+import { WebClientConnectionListener, WebCompositorConnector } from '../index'
 import { Client } from 'westfield-runtime-server'
 import { WebWorkerConnectionHandler } from './WebWorkerConnectionHandler'
 import Session from '../Session'
@@ -35,7 +35,9 @@ export function randomString(): string {
   return `wa${base32Encode(randomBytes).toLowerCase()}`
 }
 
-export class WebWorkerAppLauncher implements CompositorConnector {
+export class WebWorkerAppLauncher implements WebCompositorConnector {
+  readonly type = 'web' as const
+
   static create(session: Session) {
     return new WebWorkerAppLauncher(session)
   }
@@ -46,14 +48,27 @@ export class WebWorkerAppLauncher implements CompositorConnector {
     this.webAppSocket = WebWorkerConnectionHandler.create(session)
   }
 
-  async connectTo(url: URL, auth?: string): Promise<Client> {
+  listen(url: URL, auth?: string): WebClientConnectionListener {
     const clientId = randomString()
     // const workerUrl = await getCrossOriginWorkerURL(url.href)
     const worker = new Worker(url, { name: clientId })
+
+    // FIXME use MessagePorts to communicate with webworker, this way a single worker can have multiple client connections.
     const client = this.webAppSocket.onWebAppWorker(worker, clientId)
     client.onClose().then(() => {
       worker.terminate()
     })
-    return client
+
+    const clientConnectionListener: WebClientConnectionListener = {
+      type: 'web',
+      onClient(client: Client) {
+        /*noop*/
+      },
+      close() {
+        worker.terminate()
+      },
+    }
+
+    return clientConnectionListener
   }
 }

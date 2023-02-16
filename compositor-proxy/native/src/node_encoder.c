@@ -34,14 +34,6 @@ struct node_encoder {
     napi_threadsafe_function js_cb_ref;
 };
 
-static void encoder_finalize_cb(napi_env env, void *finalize_data, void *finalize_hint) {
-    struct node_encoder *node_encoder = finalize_data;
-    encoder_free(&node_encoder->encoder);
-
-    NAPI_CALL(env, napi_unref_threadsafe_function(env, node_encoder->js_cb_ref))
-    napi_release_threadsafe_function(node_encoder->js_cb_ref, napi_tsfn_release);
-}
-
 static void
 encoder_opaque_sample_ready_callback(void *user_data, struct encoded_frame *encoded_frame) {
     struct node_encoder *node_encoder = user_data;
@@ -125,9 +117,39 @@ createEncoder(napi_env env, napi_callback_info info) {
             encoded_frame_to_node_buffer_cb,
             &node_encoder->js_cb_ref))
 
-    NAPI_CALL(env, napi_create_external(env, (void *) node_encoder, encoder_finalize_cb, NULL, &return_value))
+    NAPI_CALL(env, napi_create_external(env, (void *) node_encoder, NULL, NULL, &return_value))
     return return_value;
 }
+
+/**
+ *  expected nodejs arguments in order:
+ *  - unknown encoder - argv[0]
+ * return:
+ *  - object encoderContext
+ * @param env
+ * @param info
+ * @return
+ */
+static napi_value
+destroyEncoder(napi_env env, napi_callback_info info) {
+    static size_t argc = 1;
+    napi_value return_value, argv[argc];
+    struct node_encoder *node_encoder;
+
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
+    NAPI_CALL(env, napi_get_value_external(env, argv[0], (void **) &node_encoder))
+
+    // TODO close encoder first, wait for eos callback, then destroy rest of resources
+    encoder_destroy(&node_encoder->encoder);
+//
+//    NAPI_CALL(env, napi_unref_threadsafe_function(env, node_encoder->js_cb_ref))
+//    napi_release_threadsafe_function(node_encoder->js_cb_ref, napi_tsfn_release);
+//
+//    free(node_encoder);
+    NAPI_CALL(env, napi_get_undefined(env, &return_value))
+    return return_value;
+}
+
 
 // expected arguments in order:
 // - encoder - argv[0]
@@ -186,6 +208,7 @@ static napi_value
 init(napi_env env, napi_value exports) {
     napi_property_descriptor desc[] = {
             DECLARE_NAPI_METHOD("createEncoder", createEncoder),
+            DECLARE_NAPI_METHOD("destroyEncoder", destroyEncoder),
             DECLARE_NAPI_METHOD("encodeBuffer", encodeBuffer),
             DECLARE_NAPI_METHOD("requestKeyUnit", requestKeyUnit),
     };

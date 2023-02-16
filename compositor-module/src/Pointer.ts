@@ -335,12 +335,13 @@ export class CursorRole implements SurfaceRole {
       this.pointer.seat.session.renderer.updateCursor(this.view, this.hotspot)
     } else {
       const time = performance.now()
-      this.view.surface.state.frameCallbacks.forEach((callback) => callback.done(time))
+      for (const callback of this.view.surface.state.frameCallbacks) {
+        callback.done(time)
+      }
       this.view.surface.state.frameCallbacks = []
       this.view.surface.session.flush()
 
       this.view.surface.encoderFeedback?.frameProcessed(time)
-      this.view.surface.resource.client.userData.clientEncodersFeedback?.sendFeedback()
     }
   }
 }
@@ -461,12 +462,12 @@ export class Pointer implements WlPointerRequests {
     if (this.focus && !this.focus.surface.destroyed && refocus) {
       const surfaceResource = this.focus.surface.resource
       const serial = this.seat.nextSerial()
-      this.resources
-        .filter((pointerResource) => pointerResource.client === surfaceResource.client)
-        .forEach((pointerResource) => {
-          pointerResource.leave(serial, surfaceResource)
-          pointerResource.frame()
-        })
+      for (const pointerResource1 of this.resources.filter(
+        (pointerResource) => pointerResource.client === surfaceResource.client,
+      )) {
+        pointerResource1.leave(serial, surfaceResource)
+        this.frame(pointerResource1)
+      }
       this.focus.surface.resource.removeDestroyListener(this.focusViewListener)
       this.focus = undefined
     }
@@ -475,25 +476,25 @@ export class Pointer implements WlPointerRequests {
       const surfaceClient = view.surface.resource.client
       const serial = this.seat.nextSerial()
       if (this.seat.keyboard.focus !== view.surface) {
-        this.seat.keyboard.resources
-          .filter((keyboardResource) => keyboardResource.client === surfaceClient)
-          .forEach((keyboardResource) => {
-            keyboardResource.modifiers(
-              serial,
-              this.seat.keyboard.xkb.modsDepressed,
-              this.seat.keyboard.xkb.modsLatched,
-              this.seat.keyboard.xkb.modsLocked,
-              this.seat.keyboard.xkb.group,
-            )
-          })
+        for (const keyboardResource1 of this.seat.keyboard.resources.filter(
+          (keyboardResource) => keyboardResource.client === surfaceClient,
+        )) {
+          keyboardResource1.modifiers(
+            serial,
+            this.seat.keyboard.xkb.modsDepressed,
+            this.seat.keyboard.xkb.modsLatched,
+            this.seat.keyboard.xkb.modsLocked,
+            this.seat.keyboard.xkb.group,
+          )
+        }
       }
 
-      this.resources.forEach((pointerResource) => {
+      for (const pointerResource of this.resources) {
         if (pointerResource.client === surfaceClient) {
           pointerResource.enter(serial, view.surface.resource, Fixed.parse(sx), Fixed.parse(sy))
-          pointerResource.frame()
+          this.frame(pointerResource)
         }
-      })
+      }
       this.fousSerial = serial
     }
     if (this.focus) {
@@ -506,7 +507,9 @@ export class Pointer implements WlPointerRequests {
     this.sx = sx
     this.sy = sy
 
-    this.focusListeners.forEach((listener) => listener())
+    for (const listener of this.focusListeners) {
+      listener()
+    }
   }
 
   setDefaultCursor(): void {
@@ -550,7 +553,9 @@ export class Pointer implements WlPointerRequests {
     this.y = y
 
     this.grab.focus()
-    this.motionListeners.forEach((listener) => listener())
+    for (const listener of this.motionListeners) {
+      listener()
+    }
   }
 
   sendFrame(): void {
@@ -558,11 +563,11 @@ export class Pointer implements WlPointerRequests {
       return
     }
 
-    this.resources
-      .filter((pointerResource) => pointerResource.client === this.focus?.surface.resource.client)
-      .forEach((pointerResource) => {
-        this.frame(pointerResource)
-      })
+    for (const pointerResource1 of this.resources.filter(
+      (pointerResource) => pointerResource.client === this.focus?.surface.resource.client,
+    )) {
+      this.frame(pointerResource1)
+    }
   }
 
   sendMotion(event: ButtonEvent): void {
@@ -606,32 +611,32 @@ export class Pointer implements WlPointerRequests {
       }
       case event.DOM_DELTA_PIXEL:
       default: {
-        deltaTransform = (delta) => delta
+        deltaTransform = (delta) => Math.floor(delta / 3)
         break
       }
     }
 
-    this.resources
-      .filter((pointerResource) => pointerResource.client === this.focus?.surface.resource.client)
-      .forEach((pointerResource) => {
-        const deltaX = event.deltaX
-        if (deltaX) {
-          const xAxis = horizontalScroll
-          const scrollAmount = deltaTransform(deltaX, xAxis)
-          pointerResource.axis(event.timestamp, xAxis, Fixed.parse(scrollAmount))
-        }
+    for (const pointerResource of this.resources.filter(
+      (pointerResource) => pointerResource.client === this.focus?.surface.resource.client,
+    )) {
+      const deltaX = event.deltaX
+      if (deltaX) {
+        const xAxis = horizontalScroll
+        const scrollAmount = deltaTransform(deltaX, xAxis)
+        pointerResource.axis(event.timestamp, xAxis, Fixed.parse(scrollAmount))
+      }
 
-        const deltaY = event.deltaY
-        if (deltaY) {
-          const yAxis = verticalScroll
-          const scrollAmount = deltaTransform(deltaY, yAxis)
-          pointerResource.axis(event.timestamp, yAxis, Fixed.parse(scrollAmount))
-        }
-        if (pointerResource.version >= 5) {
-          pointerResource.axisSource(wheel)
-          pointerResource.frame()
-        }
-      })
+      const deltaY = event.deltaY
+      if (deltaY) {
+        const yAxis = verticalScroll
+        const scrollAmount = deltaTransform(deltaY, yAxis)
+        pointerResource.axis(event.timestamp, yAxis, Fixed.parse(scrollAmount))
+      }
+      if (pointerResource.version >= 5) {
+        pointerResource.axisSource(wheel)
+        this.frame(pointerResource)
+      }
+    }
   }
 
   sendButton(event: ButtonEvent): void {
@@ -640,16 +645,16 @@ export class Pointer implements WlPointerRequests {
     }
 
     const serial = this.seat.nextSerial()
-    this.resources
-      .filter((pointerResource) => pointerResource.client === this.focus?.surface.resource.client)
-      .forEach((pointerResource) => {
-        pointerResource.button(
-          serial,
-          event.timestamp,
-          linuxInput[event.buttonCode],
-          event.released ? WlPointerButtonState.released : WlPointerButtonState.pressed,
-        )
-      })
+    for (const pointerResource1 of this.resources.filter(
+      (pointerResource) => pointerResource.client === this.focus?.surface.resource.client,
+    )) {
+      pointerResource1.button(
+        serial,
+        event.timestamp,
+        linuxInput[event.buttonCode],
+        event.released ? WlPointerButtonState.released : WlPointerButtonState.pressed,
+      )
+    }
   }
 
   private readonly focusViewListener = () => {
@@ -673,10 +678,10 @@ export class Pointer implements WlPointerRequests {
       return
     }
 
-    this.resources
-      .filter((pointerResource) => pointerResource.client === this.focus?.surface.resource.client)
-      .forEach((pointerResource) => {
-        pointerResource.motion(time, Fixed.parse(sx), Fixed.parse(sy))
-      })
+    for (const pointerResource1 of this.resources.filter(
+      (pointerResource) => pointerResource.client === this.focus?.surface.resource.client,
+    )) {
+      pointerResource1.motion(time, Fixed.parse(sx), Fixed.parse(sy))
+    }
   }
 }

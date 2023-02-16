@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { Client } from 'westfield-runtime-server'
-import { RemoteAppLauncher } from './remote/RemoteAppLauncher'
+import { RemoteConnector } from './remote/RemoteConnector'
 import Session, { GreenfieldLogger } from './Session'
 import { UserShellApi } from './UserShellApi'
 import { nrmlvo } from './Xkb'
@@ -76,17 +76,55 @@ export interface CompositorConfiguration {
   keyboardLayoutName?: string
 }
 
-export interface CompositorConnector {
-  connectTo(url: URL, auth?: string): Promise<Client> | Client
+export interface ClientConnectionListener {
+  onClient: (client: Client) => void
+
+  close(): void
+
+  readonly type: CompositorConnector['type']
 }
 
-export function createConnector(session: CompositorSession, type: 'remote' | 'web'): CompositorConnector {
+export interface RemoteClientConnectionListener extends ClientConnectionListener {
+  readonly state: 'closed' | 'closing' | 'connecting' | 'open'
+  readonly type: 'remote'
+
+  onConnectionStateChange: (state: 'closed' | 'open') => void
+  onError: (error: Error) => void
+}
+
+export interface WebClientConnectionListener extends ClientConnectionListener {
+  readonly type: 'web'
+}
+
+export interface RemoteCompositorConnector {
+  listen(url: URL, auth?: string): RemoteClientConnectionListener
+  readonly type: 'remote'
+}
+
+export interface WebCompositorConnector {
+  listen(url: URL, auth?: string): WebClientConnectionListener
+  readonly type: 'web'
+}
+
+export type CompositorConnector = RemoteCompositorConnector | WebCompositorConnector
+
+type CompositorConnectorTypeMap = {
+  web: WebCompositorConnector
+  remote: RemoteCompositorConnector
+}
+
+export function createConnector<T extends CompositorConnector['type']>(
+  session: CompositorSession,
+  type: T,
+): CompositorConnectorTypeMap[T] {
   if (!(session instanceof Session)) {
     throw new Error('Session does not have expected implementation.')
   }
-  if (type == 'remote') {
-    return RemoteAppLauncher.create(session)
+  if (type === 'remote') {
+    // @ts-ignore
+    return RemoteConnector.create(session)
   } else if (type === 'web') {
+    // @ts-ignore
     return WebWorkerAppLauncher.create(session)
   } else {
     throw new Error(`Connector type must be 'remote' or 'web'.`)

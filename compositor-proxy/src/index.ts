@@ -3,7 +3,6 @@ import { unlink } from 'fs/promises'
 import { us_listen_socket_close } from 'uWebSockets.js'
 import { createCompositorProxySession } from './CompositorProxySession'
 import { config } from './config'
-import { closeAllWebSockets } from './ClientConnectionPool'
 import { createLogger } from './Logger'
 import { initSurfaceBufferEncoding } from './SurfaceBufferEncoding'
 import { createApp } from './App'
@@ -35,13 +34,12 @@ async function main() {
   })
   initSurfaceBufferEncoding()
 
-  const port = config.server.bindPort
-  const host = config.server.bindIP
+  const port = config.server.http.bindPort
+  const host = config.server.http.bindIP
   const listenSocket = await createApp(compositorProxySession, { host, port })
 
   process.on('SIGTERM', async () => {
     logger.info('Received SIGTERM. Closing connections.')
-    await closeAllWebSockets()
     us_listen_socket_close(listenSocket)
     compositorProxySession.nativeCompositorSession.destroy()
     logger.info('All Connections closed. Goodbye.')

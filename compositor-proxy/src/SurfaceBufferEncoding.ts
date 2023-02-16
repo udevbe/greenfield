@@ -16,25 +16,47 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { unmarshallArgs } from 'westfield-proxy'
-import { createEncoder } from './encoding/Encoder'
+import { createEncoder, Encoder } from './encoding/Encoder'
 
 import { createLogger } from './Logger'
 import wlSurfaceInterceptor from './protocol/wl_surface_interceptor'
 import { FrameFeedback } from './FrameFeedback'
 import { incrementAndGetNextBufferSerial, ProxyBuffer } from './ProxyBuffer'
+import { Channel, createFeedbackChannel, createFrameDataChannel } from './Channel'
 
 const logger = createLogger('surface-buffer-encoding')
 
 function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor): FrameFeedback {
   if (wlSurfaceInterceptor.frameFeedback === undefined) {
+    const feedbackChannel = createFeedbackChannel(
+      wlSurfaceInterceptor.userData.peerConnectionState,
+      wlSurfaceInterceptor.userData.nativeClientSession.id,
+      wlSurfaceInterceptor.id,
+    )
     const frameFeedback = new FrameFeedback(
       wlSurfaceInterceptor.wlClient,
       wlSurfaceInterceptor.userData.messageInterceptors,
+      feedbackChannel,
     )
     wlSurfaceInterceptor.frameFeedback = frameFeedback
-    wlSurfaceInterceptor.userData.nativeClientSession?.onDestroy().then(() => frameFeedback.destroy())
+    wlSurfaceInterceptor.userData.nativeClientSession.destroyListeners.push(() => {
+      frameFeedback.destroy()
+    })
   }
   return wlSurfaceInterceptor.frameFeedback
+}
+
+function ensureFrameDataChannel(wlSurfaceInterceptor: wlSurfaceInterceptor): Channel {
+  if (wlSurfaceInterceptor.frameDataChannel === undefined) {
+    wlSurfaceInterceptor.frameDataChannel = createFrameDataChannel(
+      wlSurfaceInterceptor.userData.peerConnectionState,
+      wlSurfaceInterceptor.userData.nativeClientSession.id,
+    )
+    wlSurfaceInterceptor.userData.nativeClientSession.destroyListeners.push(() => {
+      wlSurfaceInterceptor.frameDataChannel.close()
+    })
+  }
+  return wlSurfaceInterceptor.frameDataChannel
 }
 
 export function initSurfaceBufferEncoding(): void {
@@ -48,6 +70,9 @@ export function initSurfaceBufferEncoding(): void {
     consumed: number
     size: number
   }) {
+    if (this.encoder) {
+      this.encoder.destroy()
+    }
     if (this.frameFeedback) {
       if (this.surfaceState) {
         this.frameFeedback.sendBufferReleaseEvent(this.surfaceState.bufferResourceId)
@@ -142,6 +167,8 @@ export function initSurfaceBufferEncoding(): void {
     }
 
     const frameFeedback = ensureFrameFeedback(this)
+    const frameDataChannel = ensureFrameDataChannel(this)
+    const commitTimestamp = performance.now()
 
     const bufferContentSerial = incrementAndGetNextBufferSerial()
 
@@ -170,19 +197,23 @@ export function initSurfaceBufferEncoding(): void {
         this.pendingFrameCallbacksIds = []
         this.surfaceState = {
           bufferResourceId: this.pendingBufferResourceId,
-          encodingPromise: this.encodeAndSendBuffer({
+          encodingPromise: encodeAndSendBuffer({
+            frameDataChannel,
+            encoder: this.encoder,
             bufferContentSerial,
             bufferResourceId: this.pendingBufferResourceId,
             bufferCreationSerial: proxyBuffer.creationSerial,
+          }).then(() => {
+            frameFeedback.encodingDone(commitTimestamp)
           }),
         }
         this.pendingBufferResourceId = undefined
-        frameFeedback.commitNotify(this.surfaceState, frameCallbacksIds, () => this.destroyed)
+        frameFeedback.commitNotify(frameCallbacksIds, () => this.destroyed)
       }
     } else if (this.surfaceState) {
       const frameCallbacksIds = this.pendingFrameCallbacksIds ?? []
       this.pendingFrameCallbacksIds = []
-      frameFeedback.commitNotify(this.surfaceState, frameCallbacksIds, () => this.destroyed)
+      frameFeedback.commitNotify(frameCallbacksIds, () => this.destroyed)
     }
 
     // inject the buffer content serial in the commit message
@@ -201,19 +232,19 @@ export function initSurfaceBufferEncoding(): void {
   }
 }
 
-wlSurfaceInterceptor.prototype.encodeAndSendBuffer = function (args) {
-  return this.encoder
+function encodeAndSendBuffer(args: {
+  frameDataChannel: Channel
+  encoder: Encoder
+  bufferResourceId: number
+  bufferCreationSerial: number
+  bufferContentSerial: number
+}) {
+  return args.encoder
     .encodeBuffer(args)
-    .then(({ buffer }) => {
-      const bufferView = new DataView(buffer)
+    .then((nodeBuffer) => {
       // FIXME check buffer result, can have an empty size if encoding pipeline was ended
-      // 1 === 'open'
-      if (this.userData.protocolChannel.readyState === 1 && this.userData.frameDataChannel.readyState === 1) {
-        // send buffer sent started marker. opcode: 1. surfaceId + syncSerial
-        this.userData.protocolChannel.send(new Uint32Array([1, this.id, bufferView.getUint32(8, true)]))
-        // send buffer contents. opcode: 3. bufferId + chunk
-        this.userData.frameDataChannel.send(buffer)
-      }
+      // send buffer contents. bufferId + chunk
+      args.frameDataChannel.send(nodeBuffer)
     })
     .catch((e: Error) => {
       logger.error(`\tname: ${e.name} message: ${e.message}`)

@@ -33,10 +33,9 @@ import Surface from './Surface'
 import XdgPositioner from './XdgPositioner'
 
 import XdgSurface from './XdgSurface'
-import XdgToplevel from './XdgToplevel'
 
 export default class XdgWmBase implements XdgWmBaseRequests {
-  private wlSurfaceResources: WlSurfaceResource[] = []
+  private xdgSurfaces: XdgSurface[] = []
   private global?: Global
   private clientPingStates: Map<Client, { timeoutTimer: number; pingTimer: number; pingTimeoutActive: boolean }> =
     new Map()
@@ -84,7 +83,7 @@ export default class XdgWmBase implements XdgWmBaseRequests {
   }
 
   destroy(resource: XdgWmBaseResource): void {
-    if (this.wlSurfaceResources.length > 0) {
+    if (this.xdgSurfaces.filter((xdgSurface) => xdgSurface.resource.client === resource.client).length > 0) {
       resource.postError(XdgWmBaseError.defunctSurfaces, 'xdg_wm_base was destroyed before children.')
       this.session.logger.warn('[client-protocol-error] - xdg_wm_base was destroyed before children.')
       return
@@ -117,12 +116,12 @@ export default class XdgWmBase implements XdgWmBaseRequests {
     }
 
     const xdgSurfaceResource = new XdgSurfaceResource(resource.client, id, resource.version)
-    XdgSurface.create(xdgSurfaceResource, surface, this.session, this.seat)
-    this.wlSurfaceResources.push(wlSurfaceResource)
+    const xdgSurface = XdgSurface.create(xdgSurfaceResource, surface, this.session, this.seat)
+    this.xdgSurfaces.push(xdgSurface)
     wlSurfaceResource.addDestroyListener(() => {
-      const index = this.wlSurfaceResources.indexOf(wlSurfaceResource)
+      const index = this.xdgSurfaces.indexOf(xdgSurface)
       if (index > -1) {
-        this.wlSurfaceResources.splice(index, 1)
+        this.xdgSurfaces.splice(index, 1)
       }
     })
   }

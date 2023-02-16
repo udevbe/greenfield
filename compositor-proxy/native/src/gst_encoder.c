@@ -21,9 +21,8 @@
 #include <gst/gl/gstglsyncmeta.h>
 #include <gst/gl/egl/gstglmemoryegl.h>
 #include "encoder.h"
-#include "westfield-linux-dmabuf-v1.h"
-#include "westfield-drm.h"
-#include "westfield-dmabuf.h"
+#include "wlr_drm.h"
+#include "wlr_linux_dmabuf_v1.h"
 
 #define FPS 60
 #define GF_BUFFER_CONTENT_SERIAL_META "BUFFER_CONTENT_SERIAL"
@@ -106,6 +105,8 @@ struct encoder {
     GQueue *encoding_results;
     void *user_data;
     struct westfield_egl *westfield_egl;
+
+    bool terminated;
 };
 
 struct gst_encoder_pipeline {
@@ -599,22 +600,6 @@ gst_encoder_eos(struct gst_encoder *gst_encoder) {
     }
 }
 
-static inline void
-gst_encoder_destroy(struct gst_encoder *gst_encoder) {
-    if (gst_encoder->opaque_pipeline) {
-        gst_encoder_pipeline_destroy(gst_encoder->opaque_pipeline);
-        gst_encoder->opaque_pipeline = NULL;
-    }
-
-    if (gst_encoder->alpha_pipeline) {
-        gst_encoder_pipeline_destroy(gst_encoder->alpha_pipeline);
-        gst_encoder->alpha_pipeline = NULL;
-    }
-    if (gst_encoder->opaque_pipeline == NULL && gst_encoder->alpha_pipeline == NULL) {
-        free(gst_encoder);
-    }
-}
-
 static inline gboolean
 gst_encoder_destroy_if_eos(struct gst_encoder *gst_encoder) {
     if (gst_encoder->opaque_pipeline && gst_encoder->opaque_pipeline->eos) {
@@ -642,7 +627,14 @@ gst_encoder_destroy_if_eos(struct gst_encoder *gst_encoder) {
             gst_encoder->wrapped_gst_gl_context = NULL;
         }
 
+        if(gst_encoder->encoder->terminated){
+            g_queue_free_full(gst_encoder->encoder->encoding_results, (GDestroyNotify) encoding_result_free);
+            gst_encoder->encoder->encoding_results = NULL;
+            free(gst_encoder->encoder);
+        }
+
         free(gst_encoder);
+
         return FALSE;
     }
 
@@ -1095,19 +1087,19 @@ static inline void
 gst_encoder_encode(struct gst_encoder *gst_encoder, struct wl_resource *buffer_resource,
                    struct encoding_result *encoding_result) {
     struct wl_shm_buffer *shm_buffer;
-    struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer;
-    struct westfield_drm_buffer *westfield_drm_buffer;
+    struct wlr_dmabuf_v1_buffer *dmabuf_v1_buffer;
+    struct wlr_drm_buffer *westfield_drm_buffer;
     encoding_result->props.encoding_type = gst_encoder->description->encoding_type;
 
-    if (westfield_dmabuf_v1_resource_is_buffer(buffer_resource)) {
-        westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(buffer_resource);
-        gst_encoder_encode_dmabuf(gst_encoder, &westfield_dmabuf_v1_buffer->base,
-                                  &westfield_dmabuf_v1_buffer->attributes, encoding_result);
+    if (wlr_dmabuf_v1_resource_is_buffer(buffer_resource)) {
+        dmabuf_v1_buffer = wlr_dmabuf_v1_buffer_from_buffer_resource(buffer_resource);
+        gst_encoder_encode_dmabuf(gst_encoder, &dmabuf_v1_buffer->base,
+                                  &dmabuf_v1_buffer->attributes, encoding_result);
         return;
     }
 
-    if (westfield_drm_buffer_is_resource(buffer_resource)) {
-        westfield_drm_buffer = westfield_drm_buffer_from_resource(buffer_resource);
+    if (wlr_drm_buffer_is_resource(buffer_resource)) {
+        westfield_drm_buffer = wlr_drm_buffer_from_resource(buffer_resource);
         gst_encoder_encode_dmabuf(gst_encoder, &westfield_drm_buffer->base,
                                   &westfield_drm_buffer->dmabuf, encoding_result);
         return;
@@ -1135,19 +1127,19 @@ png_gst_encoder_supports_buffer(struct wl_resource *buffer_resource) {
                (shm_format == WL_SHM_FORMAT_ARGB8888 || shm_format == WL_SHM_FORMAT_XRGB8888);
     }
 
-    if (westfield_dmabuf_v1_resource_is_buffer(buffer_resource)) {
-        struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(
+    if (wlr_dmabuf_v1_resource_is_buffer(buffer_resource)) {
+        struct wlr_dmabuf_v1_buffer *dmabuf_v1_buffer = wlr_dmabuf_v1_buffer_from_buffer_resource(
                 buffer_resource);
-        width = westfield_dmabuf_v1_buffer->base.width;
-        height = westfield_dmabuf_v1_buffer->base.height;
+        width = dmabuf_v1_buffer->base.width;
+        height = dmabuf_v1_buffer->base.height;
 
         if (width * height <= 256 * 256) {
             return true;
         }
     }
 
-    if (westfield_drm_buffer_is_resource(buffer_resource)) {
-        struct westfield_drm_buffer *westfield_drm_buffer = westfield_drm_buffer_from_resource(buffer_resource);
+    if (wlr_drm_buffer_is_resource(buffer_resource)) {
+        struct wlr_drm_buffer *westfield_drm_buffer = wlr_drm_buffer_from_resource(buffer_resource);
         width = westfield_drm_buffer->base.width;
         height = westfield_drm_buffer->base.height;
 
@@ -1165,8 +1157,8 @@ encoder_description_supports_buffer(const struct encoder_description *encoder_it
                                     struct wl_resource *buffer_resource) {
     int32_t width, height;
     struct wl_shm_buffer *shm_buffer;
-    struct westfield_dmabuf_v1_buffer *westfield_dmabuf_v1_buffer;
-    struct westfield_drm_buffer *westfield_drm_buffer;
+    struct wlr_dmabuf_v1_buffer *dmabuf_v1_buffer;
+    struct wlr_drm_buffer *westfield_drm_buffer;
 
     if (strcmp(encoder_itf->name, "png") == 0) {
         return png_gst_encoder_supports_buffer(buffer_resource);
@@ -1177,10 +1169,10 @@ encoder_description_supports_buffer(const struct encoder_description *encoder_it
         return false;
     }
 
-    if (westfield_dmabuf_v1_resource_is_buffer(buffer_resource)) {
-        westfield_dmabuf_v1_buffer = westfield_dmabuf_v1_buffer_from_buffer_resource(buffer_resource);
-        width = westfield_dmabuf_v1_buffer->base.width;
-        height = westfield_dmabuf_v1_buffer->base.height;
+    if (wlr_dmabuf_v1_resource_is_buffer(buffer_resource)) {
+        dmabuf_v1_buffer = wlr_dmabuf_v1_buffer_from_buffer_resource(buffer_resource);
+        width = dmabuf_v1_buffer->base.width;
+        height = dmabuf_v1_buffer->base.height;
 
         // Too small needs the png encoder so refuse
         if (width * height <= 256 * 256) {
@@ -1190,8 +1182,8 @@ encoder_description_supports_buffer(const struct encoder_description *encoder_it
         return true;
     }
 
-    if (westfield_drm_buffer_is_resource(buffer_resource)) {
-        westfield_drm_buffer = westfield_drm_buffer_from_resource(buffer_resource);
+    if (wlr_drm_buffer_is_resource(buffer_resource)) {
+        westfield_drm_buffer = wlr_drm_buffer_from_resource(buffer_resource);
         width = westfield_drm_buffer->base.width;
         height = westfield_drm_buffer->base.height;
 
@@ -1235,14 +1227,14 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "gldownload ! "
                                        // The ueue is silent
                                        "queue silent=true ! "
-                                       "x264enc me=2 analyse=51 dct8x8=true cabac=true bframes=0 b-adapt=false rc-lookahead=0 sliced-threads=true qp-max=18 byte-stream=true tune=zerolatency psy-tune=2 pass=0 bitrate=12800 vbv-buf-capacity=1000 ! "
+                                       "x264enc me=2 analyse=51 dct8x8=true cabac=true bframes=0 b-adapt=false rc-lookahead=0 sliced-threads=true qp-max=28 byte-stream=true tune=zerolatency psy-tune=2 pass=0 bitrate=9600 vbv-buf-capacity=250 ! "
                                        "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .split_alpha = true,
-                .width_multiple = 32,
-                .height_multiple = 32,
-                .min_width = 64,
-                .min_height = 64,
+                .width_multiple = 128,
+                .height_multiple = 128,
+                .min_width = 128,
+                .min_height = 128,
         },
         {
                 .name = "nvh264",
@@ -1256,14 +1248,14 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "capsfilter name=shader_capsfilter ! "
                                        "queue silent=true ! "
                                        // TODO use cudascale/cudaconvert once gstreamer 1.22 is released
-                                       "nvh264enc qp-max=18 zerolatency=true preset=4 rc-mode=5 max-bitrate=12800 vbv-buffer-size=12800 ! "
+                                       "nvh264enc gop-size=-1 qp-max=28 qp-min=12 zerolatency=true preset=4 rc-mode=7 max-bitrate=9600 vbv-buffer-size=2400 ! "
                                        "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .split_alpha = true,
-                .width_multiple = 32,
-                .height_multiple = 32,
-                .min_width = 64,
-                .min_height = 64,
+                .width_multiple = 128,
+                .height_multiple = 128,
+                .min_width = 128,
+                .min_height = 128,
         },
         {
                 .name = "vaapih264",
@@ -1280,10 +1272,10 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink",
                 .split_alpha = true,
-                .width_multiple = 32,
-                .height_multiple = 32,
-                .min_width = 64,
-                .min_height = 64,
+                .width_multiple = 128,
+                .height_multiple = 128,
+                .min_width = 128,
+                .min_height = 128,
         },
         // always keep png last as fallback encoder
         {
@@ -1333,6 +1325,10 @@ void
 do_gst_encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource, uint32_t buffer_content_serial,
                       uint32_t buffer_creation_serial) {
     struct encoder *encoder = *encoder_pp;
+    if(encoder->terminated) {
+        g_error("BUG. Can not encode. Encoder is terminated.");
+    }
+
     struct encoding_result *encoding_result;
     const size_t nro_encoders = sizeof(encoder_descriptions) / sizeof(encoder_descriptions[0]);
 
@@ -1373,10 +1369,19 @@ do_gst_encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_re
 void
 do_gst_encoder_free(struct encoder **encoder_pp) {
     struct encoder *encoder = *encoder_pp;
-    gst_encoder_destroy(encoder->impl);
-    encoder->impl = NULL;
-    g_queue_free_full(encoder->encoding_results, (GDestroyNotify) encoding_result_free);
-    free(encoder);
+    if(encoder->terminated) {
+        g_error("BUG. Can not free encoder. Encoder is already terminated.");
+    }
+
+    encoder->terminated = true;
+    if (encoder->impl != NULL) {
+        gst_encoder_eos(encoder->impl);
+    }
+    else {
+        g_queue_free(encoder->encoding_results);
+        encoder->encoding_results = NULL;
+        free(encoder);
+    }
 }
 
 void
@@ -1388,6 +1393,9 @@ do_gst_encoded_frame_finalize(struct encoded_frame *encoded_frame) {
 void
 do_gst_request_key_unit(struct encoder **encoder_pp) {
     struct encoder *encoder = *encoder_pp;
+    if(encoder->terminated) {
+        g_error("BUG. Can not request key unit. Encoder is terminated.");
+    }
     struct gst_encoder *gst_encoder = (struct gst_encoder *) encoder->impl;
     gst_encoder_request_key_unit(gst_encoder);
 }

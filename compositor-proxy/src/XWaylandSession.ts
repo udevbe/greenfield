@@ -1,20 +1,18 @@
-import { RetransmittingWebSocket, WebSocketLike } from 'retransmitting-websocket'
 import { createLogger } from './Logger'
 import { nodeFDConnectionSetup } from 'xtsb'
 import { ClientEntry, NativeCompositorSession } from './NativeCompositorSession'
 import { equalValueExternal, setupXWayland, teardownXWayland } from 'westfield-proxy'
 import { createReadStream } from 'fs'
+import { Channel, createXWMDataChannel } from './Channel'
 
 const logger = createLogger('xwayland')
+const textEncoder = new TextEncoder()
 
 export class XWaylandSession {
   private nativeXWayland?: unknown
   private xWaylandClient?: ClientEntry
 
-  constructor(
-    private nativeCompositorSession: NativeCompositorSession,
-    private xwmWebSocket?: RetransmittingWebSocket,
-  ) {}
+  constructor(private nativeCompositorSession: NativeCompositorSession, private xwmDataChannel?: Channel) {}
 
   static create(nativeCompositorSession: NativeCompositorSession): XWaylandSession {
     return new XWaylandSession(nativeCompositorSession)
@@ -57,42 +55,46 @@ export class XWaylandSession {
         return
       }
 
-      xWaylandClient.nativeClientSession.onDestroy().then(() => this.destroy())
-      xWaylandClient.protocolChannel.send(Uint32Array.from([7, wmFd]).buffer)
+      const xwmDataChannel = createXWMDataChannel(
+        this.nativeCompositorSession.peerConnectionState,
+        xWaylandClient.clientId,
+      )
+      this.upsertXWMConnection(xwmDataChannel, wmFd).catch((e: any) => {
+        logger.error(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
+        logger.error('error object stack: ')
+        logger.error(e.stack)
+        xwmDataChannel.close()
+      })
+
+      xWaylandClient.nativeClientSession.destroyListeners.push(() => {
+        xwmDataChannel.close()
+        this.destroy()
+      })
+
       this.xWaylandClient = xWaylandClient
     })
   }
 
-  async upsertXWMConnection(xwmWebSocket: WebSocketLike, wmFD: number): Promise<void> {
+  async upsertXWMConnection(xwmDataChannel: Channel, wmFD: number): Promise<void> {
     logger.info('Handling incoming XWM connection')
-    if (this.xwmWebSocket) {
-      // reconnecting, no need to do anything
-      this.xwmWebSocket.useWebSocket(xwmWebSocket)
-      return
-    } else {
-      this.xwmWebSocket = new RetransmittingWebSocket()
-      this.xwmWebSocket.useWebSocket(xwmWebSocket)
-    }
+    this.xwmDataChannel = xwmDataChannel
     // initialize an X11 client connection, used by the compositor's X11 window manager.
     const { xConnectionSocket, setup } = await nodeFDConnectionSetup(wmFD)()
 
     const setupJSON = JSON.stringify(setup)
-    this.xwmWebSocket.send(setupJSON)
-    this.xwmWebSocket.addEventListener('message', (ev) => {
-      if (ev.data instanceof ArrayBuffer) {
-        xConnectionSocket.write(Buffer.from(ev.data))
-      }
+    xwmDataChannel.send(Buffer.from(textEncoder.encode(setupJSON).buffer))
+    this.xwmDataChannel.onMessage((ev) => {
+      xConnectionSocket.write(ev)
     })
-    this.xwmWebSocket.addEventListener('close', () => xConnectionSocket.close())
-    this.xwmWebSocket.addEventListener('error', (ev) => console.error('XConnection websocket error: ' + ev))
-
-    xConnectionSocket.onData = (data) => this.xwmWebSocket?.send(data)
+    // this.xwmDataChannel.onClosed(() => xConnectionSocket.close())
+    this.xwmDataChannel.onError((ev) => console.error('XConnection websocket error: ' + ev))
+    xConnectionSocket.onData = (data) => xwmDataChannel.send(Buffer.from(data.buffer, data.byteOffset, data.byteLength))
   }
 
   destroy(): void {
-    if (this.xwmWebSocket) {
-      this.xwmWebSocket.close()
-      this.xwmWebSocket = undefined
+    if (this.xwmDataChannel) {
+      this.xwmDataChannel.close()
+      this.xwmDataChannel = undefined
     }
 
     if (this.nativeXWayland) {
@@ -103,7 +105,6 @@ export class XWaylandSession {
     if (this.xWaylandClient) {
       this.xWaylandClient.nativeClientSession?.destroy()
       this.xWaylandClient.protocolChannel.close()
-      this.xWaylandClient.frameDataChannel.close()
       this.xWaylandClient = undefined
     }
   }
