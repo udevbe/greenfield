@@ -78,20 +78,53 @@ export interface CompositorConfiguration {
 
 export interface ClientConnectionListener {
   onClient: (client: Client) => void
+
   close(): void
+
+  readonly type: CompositorConnector['type']
 }
 
-export interface CompositorConnector {
-  listen(url: URL, auth?: string): ClientConnectionListener
+export interface RemoteClientConnectionListener extends ClientConnectionListener {
+  readonly state: 'closed' | 'closing' | 'connecting' | 'open'
+  readonly type: 'remote'
+
+  onConnectionStateChange: (state: 'closed' | 'open') => void
+  onError: (error: Error) => void
 }
 
-export function createConnector(session: CompositorSession, type: 'remote' | 'web'): CompositorConnector {
+export interface WebClientConnectionListener extends ClientConnectionListener {
+  readonly type: 'web'
+}
+
+export interface RemoteCompositorConnector {
+  listen(url: URL, auth?: string): RemoteClientConnectionListener
+  readonly type: 'remote'
+}
+
+export interface WebCompositorConnector {
+  listen(url: URL, auth?: string): WebClientConnectionListener
+  readonly type: 'web'
+}
+
+export type CompositorConnector = RemoteCompositorConnector | WebCompositorConnector
+
+type CompositorConnectorTypeMap = {
+  web: WebCompositorConnector
+  remote: RemoteCompositorConnector
+}
+
+export function createConnector<T extends CompositorConnector['type']>(
+  session: CompositorSession,
+  type: T,
+): CompositorConnectorTypeMap[T] {
   if (!(session instanceof Session)) {
     throw new Error('Session does not have expected implementation.')
   }
-  if (type == 'remote') {
+  if (type === 'remote') {
+    // @ts-ignore
     return RemoteConnector.create(session)
   } else if (type === 'web') {
+    // @ts-ignore
     return WebWorkerAppLauncher.create(session)
   } else {
     throw new Error(`Connector type must be 'remote' or 'web'.`)

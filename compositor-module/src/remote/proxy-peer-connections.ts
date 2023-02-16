@@ -1,4 +1,4 @@
-import { ClientConnectionListener } from '../index'
+import { RemoteClientConnectionListener } from '../index'
 import { Client } from 'westfield-runtime-server'
 import Session from '../Session'
 import ReconnectingWebSocket from './reconnecting-websocket'
@@ -50,7 +50,7 @@ function isSignalingMessage(messageObject: any): messageObject is SignalingMessa
 
 const proxyPeerConnections: Record<
   string,
-  { peerConnection: RTCPeerConnection; clientConnectionListener: ClientConnectionListener }
+  { peerConnection: RTCPeerConnection; clientConnectionListener: RemoteClientConnectionListener }
 > = {}
 
 const dataChannelConfig: RTCDataChannelInit = {
@@ -62,11 +62,11 @@ function createPeerConnection(
   session: Session,
   signalingWebSocket: ReconnectingWebSocket,
   signalingURL: string,
-  clientConnectionListener: ClientConnectionListener,
+  clientConnectionListener: RemoteClientConnectionListener,
   onDataChannel: (
     dataChannel: RTCDataChannel,
     desc: DataChannelDesc,
-    clientConnectionListener: ClientConnectionListener,
+    clientConnectionListener: RemoteClientConnectionListener,
   ) => void,
   remotePeerIdentity?: string,
   iceServers?: RTCIceServer[],
@@ -219,9 +219,9 @@ export function ensureProxyPeerConnection(
   onDataChannel: (
     dataChannel: RTCDataChannel,
     desc: DataChannelDesc,
-    clientConnectionListener: ClientConnectionListener,
+    clientConnectionListener: RemoteClientConnectionListener,
   ) => void,
-): ClientConnectionListener {
+): RemoteClientConnectionListener {
   const signalingPath = compositorProxyURL.pathname.endsWith('/') ? 'signaling' : '/signaling'
   const signalingURL = `${compositorProxyURL.protocol}//${compositorProxyURL.host}${compositorProxyURL.pathname}${signalingPath}?${compositorProxyURL.searchParams}`
   const peerConnectionEntry = proxyPeerConnections[signalingURL]
@@ -237,7 +237,8 @@ export function ensureProxyPeerConnection(
   })
   signalingWebSocket.binaryType = 'arraybuffer'
 
-  const clientConnectionListener: ClientConnectionListener = {
+  const clientConnectionListener: RemoteClientConnectionListener = {
+    type: 'remote',
     onClient(client: Client) {
       /*noop*/
     },
@@ -246,7 +247,37 @@ export function ensureProxyPeerConnection(
       delete proxyPeerConnections[signalingURL]
       signalingWebSocket.close(4001, 'connection closed by user')
     },
+    onConnectionStateChange(state: 'open' | 'closed') {
+      /*noop*/
+    },
+    onError(error: Error) {
+      /*noop*/
+    },
+    get state() {
+      switch (signalingWebSocket.readyState) {
+        case ReconnectingWebSocket.CONNECTING:
+          return 'connecting'
+        case ReconnectingWebSocket.OPEN:
+          return 'open'
+        case ReconnectingWebSocket.CLOSING:
+          return 'closing'
+        case ReconnectingWebSocket.CLOSED:
+          return 'closed'
+        default:
+          return 'closed'
+      }
+    },
   }
+
+  signalingWebSocket.addEventListener('open', (event) => {
+    clientConnectionListener.onConnectionStateChange('open')
+  })
+  signalingWebSocket.addEventListener('close', (event) => {
+    clientConnectionListener.onConnectionStateChange('closed')
+  })
+  signalingWebSocket.addEventListener('error', (event) => {
+    clientConnectionListener.onError(event.error)
+  })
 
   createPeerConnection(session, signalingWebSocket, signalingURL, clientConnectionListener, onDataChannel)
   return clientConnectionListener

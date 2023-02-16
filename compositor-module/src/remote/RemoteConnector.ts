@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { ClientConnectionListener, CompositorConnector } from '../index'
+import { RemoteClientConnectionListener, RemoteCompositorConnector } from '../index'
 import { RemoteConnectionHandler } from './RemoteConnectionHandler'
 import Session from '../Session'
 import { DataChannelDesc, ensureProxyPeerConnection, FeedbackDataChannelDesc } from './proxy-peer-connections'
@@ -23,7 +23,8 @@ import { ARQChannel, Channel, SimpleChannel } from './Channel'
 
 export class RemoteConnection {}
 
-export class RemoteConnector implements CompositorConnector {
+export class RemoteConnector implements RemoteCompositorConnector {
+  public readonly type = 'remote'
   private readonly session: Session
   private readonly remoteSocket: RemoteConnectionHandler
 
@@ -40,7 +41,7 @@ export class RemoteConnector implements CompositorConnector {
     compositorProxyURL: URL,
     dataChannel: RTCDataChannel,
     desc: DataChannelDesc,
-    clientConnectionListener: ClientConnectionListener,
+    clientConnectionListener: RemoteClientConnectionListener,
   ) {
     const type = desc.type
     const clientId = desc.clientId
@@ -83,7 +84,7 @@ export class RemoteConnector implements CompositorConnector {
     }
   }
 
-  listen(compositorProxyURL: URL): ClientConnectionListener {
+  listen(compositorProxyURL: URL): RemoteClientConnectionListener {
     return ensureProxyPeerConnection(
       this.session,
       compositorProxyURL,
