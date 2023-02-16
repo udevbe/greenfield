@@ -72,6 +72,8 @@ function createClientUnresponsiveElement(session: CompositorSession): HTMLDivEle
       const disconnectButton = document.createElement('button')
       disconnectButton.id = `${compositorClient.id}`
       disconnectButton.style.maxWidth = 'min-content'
+      disconnectButton.style.minWidth = '100%'
+      disconnectButton.style.display = 'block'
       disconnectButton.textContent = `Client: ${compositorClient.id} unresponsive. Disconnect?`
       disconnectButton.onclick = () => {
         session.userShell.actions.closeClient(compositorClient)
@@ -82,8 +84,9 @@ function createClientUnresponsiveElement(session: CompositorSession): HTMLDivEle
       document.getElementById(`${compositorClient.id}`)?.remove()
     }
   }
-  session.userShell.events.clientDestroyed = (compositorClient) =>
-    document.getElementById(`client-id-${compositorClient.id}`)?.remove()
+  session.userShell.events.clientDestroyed = (compositorClient) => {
+    document.getElementById(`${compositorClient.id}`)?.remove()
+  }
 
   return container
 }
