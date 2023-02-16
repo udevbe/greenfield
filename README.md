@@ -125,7 +125,7 @@ Such a hypothetical perfect pipeline would look something like this:
 Here, all heavy operations are done by the GPU. H.264 has been replaced with H.265 which supports transparency, so we can use a single encoding/decoding step. The compositor-proxy supports the Wayland DRM protocol, so it can pass OpenGL applications
 directly to the encoder without making any copies.
 
-There is however one major drawback to this solution: 
+There is however one major problem to this solution: 
 the combination of [WebCodecs API](https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API) and the H.265 codec simply does not exist in any browser.
 
 ## The current implementation:
@@ -137,7 +137,9 @@ for the H.264 WebCodecs API, which allows us to do decoding on the GPU of the re
 
 *The end result is a near ideal solution that is expected be fast enough to support gaming.*
 
-There is however one drawback and that's the use of web sockets which is ill-suited for network constrained environments. Future implementations will use WebTransport with a fallback to WebRTC.
+One drawback still remains and that's the use of to WebRTC datachannel. Although we make it operate in UDP mode and assure reliable transfers using [KCP](https://github.com/skywind3000/kcp/blob/master/README.en.md), there is still a lot of needless overhead
+because of the SCTP header that is included. This lowers the available packet size from 1400 bytes in a standard UDP connection to ~1200 bytes in an WebRTC datachannel message. WebTransport is expected to bring some
+relieve here.
 
 
 ### Copy-Paste
