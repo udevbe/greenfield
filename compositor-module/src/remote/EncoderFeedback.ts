@@ -28,10 +28,9 @@ function feedbackLoop() {
   for (const clientEncodersFeedback of clientEncodersFeedbacks) {
     clientEncodersFeedback.sendFeedback()
   }
-  setTimeout(() => {
-    feedbackLoop()
-  }, 500)
 }
+
+setInterval(feedbackLoop, 1000)
 
 updateRefreshInterval()
 feedbackLoop()
@@ -103,39 +102,24 @@ export class SurfaceEncoderFeedback {
   constructor(
     public readonly surfaceId: number,
     private readonly clientEncodersFeedback: ClientEncodersFeedback,
-    private commitSerial?: number,
     private bufferCommitTimes: Record<number, number> = {},
     public durations = [] as number[],
     public feedbackChannel?: Channel,
   ) {}
 
-  bufferCommit(commitSerial: number) {
-    this.commitSerial = commitSerial
-    if (this.commitSerial) {
-      this.bufferCommitTimes[this.commitSerial] = performance.now()
-    }
+  frameDecodingStarted(commitSerial: number) {
+    this.bufferCommitTimes[commitSerial] = performance.now()
   }
 
   destroy() {
-    this.commitSerial = undefined
     this.clientEncodersFeedback.surfaceDestroyed(this)
   }
 
-  frameProcessed(processedTime: number): void {
-    if (this.commitSerial === undefined) {
-      return
-    }
-
-    const commitSerial = this.commitSerial
-    this.commitSerial = undefined
-    if (commitSerial === undefined) {
-      return
-    }
-
-    const bufferSentStartedTime = this.bufferCommitTimes[commitSerial]
+  frameDecodingDone(commitSerial: number): void {
+    const bufferDecodingStartedTime = this.bufferCommitTimes[commitSerial]
     delete this.bufferCommitTimes[commitSerial]
 
-    const duration = bufferSentStartedTime ? processedTime - bufferSentStartedTime : 1
+    const duration = performance.now() - bufferDecodingStartedTime
     this.durations.push(duration)
     if (this.durations.length > 20) {
       this.durations.shift()

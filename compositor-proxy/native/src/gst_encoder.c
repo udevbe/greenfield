@@ -93,7 +93,8 @@ struct encoder_description {
     uint16_t min_height;
     const char *name;
     enum encoding_type encoding_type;
-    const char *pipeline_definition;
+    const char *opaque_pipeline_definition;
+    const char *alpha_pipeline_definition;
     bool split_alpha;
 };
 
@@ -347,8 +348,8 @@ encoding_result_to_encoded_frame(struct encoding_result *encoding_result, bool s
     gsize opaque_length, alpha_length, offset, encoded_frame_blob_size;
     struct encoded_frame *encoded_frame;
 
-    opaque_length = encoding_result->sample.info.size;
-    alpha_length = separate_alpha ? encoding_result->alpha_sample.info.size : 0;
+    opaque_length = gst_buffer_get_size(encoding_result->sample.buffer);
+    alpha_length = separate_alpha ? gst_buffer_get_size(encoding_result->alpha_sample.buffer) : 0;
 
     offset = 0;
     encoded_frame_blob_size =
@@ -741,7 +742,7 @@ gst_encoder_pipeline_create(struct gst_encoder *gst_encoder, const bool is_alpha
     GstAppSrc *app_src;
     GstPad *pad;
     GError *parse_error = NULL;
-    gst_encoder_pipeline->pipeline = gst_parse_launch_full(gst_encoder->description->pipeline_definition, NULL,
+    gst_encoder_pipeline->pipeline = gst_parse_launch_full(is_alpha ? gst_encoder->description->alpha_pipeline_definition : gst_encoder->description->opaque_pipeline_definition, NULL,
                                                            GST_PARSE_FLAG_FATAL_ERRORS,
                                                            &parse_error);
     if (gst_encoder_pipeline->pipeline == NULL) {
@@ -1218,7 +1219,7 @@ static const struct encoder_description encoder_descriptions[] = {
         {
                 .name = "x264",
                 .encoding_type = h264,
-                .pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
+                .opaque_pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
                                        "glupload ! "
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
@@ -1227,7 +1228,18 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "gldownload ! "
                                        // The ueue is silent
                                        "queue silent=true ! "
-                                       "x264enc me=2 analyse=51 dct8x8=true cabac=true bframes=0 b-adapt=false rc-lookahead=0 sliced-threads=true qp-max=28 byte-stream=true tune=zerolatency psy-tune=2 pass=0 bitrate=9600 vbv-buf-capacity=250 ! "
+                                       "x264enc me=2 analyse=51 dct8x8=true cabac=true bframes=0 b-adapt=false rc-lookahead=0 sliced-threads=true qp-max=28 byte-stream=true tune=zerolatency psy-tune=2 pass=0 bitrate=4200 vbv-buf-capacity=17 ! "
+                                       "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
+                                       "appsink name=sink ",
+                .alpha_pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
+                                       "glupload ! "
+                                       "glcolorconvert ! "
+                                       "glshader name=shader ! "
+                                       "capsfilter name=shader_capsfilter ! "
+                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
+                                       "gldownload ! "
+                                       "queue silent=true ! "
+                                       "x264enc me=2 analyse=51 dct8x8=true cabac=true bframes=0 b-adapt=false rc-lookahead=0 sliced-threads=true qp-max=28 byte-stream=true tune=zerolatency psy-tune=2 pass=0 bitrate=800 vbv-buf-capacity=17 ! "
                                        "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .split_alpha = true,
@@ -1241,16 +1253,26 @@ static const struct encoder_description encoder_descriptions[] = {
                 .encoding_type = h264,
                 // TODO see if we can somehow get https://en.wikipedia.org/wiki/YCoCg color conversion to work with full range colors
                 // FIXME current colors lacks gamma correction, light colors are too white and dark colors are too black.
-                .pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
+                .opaque_pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
                                        "glupload ! "
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
                                        "capsfilter name=shader_capsfilter ! "
                                        "queue silent=true ! "
                                        // TODO use cudascale/cudaconvert once gstreamer 1.22 is released
-                                       "nvh264enc gop-size=-1 qp-max=28 qp-min=12 zerolatency=true preset=4 rc-mode=7 max-bitrate=9600 vbv-buffer-size=2400 ! "
+                                       "nvh264enc gop-size=-1 zerolatency=true preset=4 rc-mode=5 bitrate=8400 vbv-buffer-size=140 spatial-aq=true aq-strength=10 ! "
                                        "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
+                .alpha_pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
+                                              "glupload ! "
+                                              "glcolorconvert ! "
+                                              "glshader name=shader ! "
+                                              "capsfilter name=shader_capsfilter ! "
+                                              "queue silent=true ! "
+                                              // TODO use cudascale/cudaconvert once gstreamer 1.22 is released
+                                              "nvh264enc gop-size=-1 zerolatency=true preset=4 rc-mode=5 bitrate=600 vbv-buffer-size=10 spatial-aq=true aq-strength=5 ! "
+                                              "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
+                                              "appsink name=sink ",
                 .split_alpha = true,
                 .width_multiple = 128,
                 .height_multiple = 128,
@@ -1260,7 +1282,18 @@ static const struct encoder_description encoder_descriptions[] = {
         {
                 .name = "vaapih264",
                 .encoding_type = h264,
-                .pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
+                .opaque_pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
+                                       "glupload ! "
+                                       "glcolorconvert ! "
+                                       "glshader name=shader ! "
+                                       "capsfilter name=shader_capsfilter ! "
+                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
+                                       "gldownload ! "
+                                       "queue silent=true ! "
+                                       "vaapih264enc aud=1 ! "
+                                       "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
+                                       "appsink name=sink",
+                .alpha_pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
                                        "glupload ! "
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
@@ -1281,7 +1314,7 @@ static const struct encoder_description encoder_descriptions[] = {
         {
                 .name = "png",
                 .encoding_type = png,
-                .pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
+                .opaque_pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
                                        "glupload ! "
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
@@ -1291,6 +1324,7 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "queue silent=true ! "
                                        "pngenc ! "
                                        "appsink name=sink",
+                .alpha_pipeline_definition = NULL,
                 .split_alpha = false,
                 .width_multiple = 16,
                 .height_multiple = 16,

@@ -256,7 +256,7 @@ export class ARQChannel implements Channel {
   private check(kcp: Kcp) {
     this.checkInterval = setInterval(() => {
       kcp.update()
-    }, 20)
+    }, 10)
   }
 
   close(): void {
@@ -280,10 +280,15 @@ export class ARQChannel implements Channel {
     const kcp = new Kcp(dataChannel.id, this)
     kcp.setMtu(MTU) // webrtc datachannel MTU
     kcp.setWndSize(SND_WINDOW_SIZE, RCV_WINDOW_SIZE)
-    kcp.setNoDelay(1, 20, 2, 1)
+    kcp.setNoDelay(1, 10, 2, 1)
     kcp.setOutput((data, len) => {
       if (dataChannel.readyState === 'open' && dataChannel.bufferedAmount <= MAX_BUFFERED_AMOUNT) {
         dataChannel.send(data.subarray(0, len))
+        setTimeout(() => {
+          if (dataChannel.readyState === 'open') {
+            kcp.update()
+          }
+        })
       }
     })
 

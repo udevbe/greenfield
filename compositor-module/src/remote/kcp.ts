@@ -99,7 +99,7 @@ class Segment {
 
   data!: Uint8Array
 
-  constructor(size?: number) {
+  constructor(size?: number, public readonly time?: number) {
     this.conv = 0
     this.cmd = 0
     this.frg = 0
@@ -345,6 +345,38 @@ export class Kcp {
     return this.user
   }
 
+  peekSizeAndRecvDuration(): { size: number; duration: number } {
+    if (this.rcv_queue.length === 0) {
+      return { size: -1, duration: 0 }
+    }
+
+    const seg = this.rcv_queue[0]
+    if (seg.frg === 0) {
+      return { size: seg.data.length, duration: 0 }
+    }
+
+    if (this.rcv_queue.length < seg.frg + 1) {
+      return { size: -1, duration: 0 }
+    }
+
+    let length = 0
+    let startRecvTime = Infinity
+    let endRecvTime = 0
+    for (const seg of this.rcv_queue) {
+      if (seg.time && seg.time < startRecvTime) {
+        startRecvTime = seg.time
+      }
+      if (seg.time && seg.time > endRecvTime) {
+        endRecvTime = seg.time
+      }
+      length += seg.data.byteLength
+      if (seg.frg === 0) {
+        break
+      }
+    }
+    return { size: length, duration: endRecvTime - startRecvTime }
+  }
+
   recv(buffer: Uint8Array): number {
     const peeksize = this.peekSize()
     if (peeksize < 0) {
@@ -471,7 +503,7 @@ export class Kcp {
         if (sn < this.rcv_nxt + this.rcv_wnd) {
           this._ack_push(sn, ts)
           if (sn >= this.rcv_nxt) {
-            const seg = new Segment()
+            const seg = new Segment(0, performance.now())
             seg.conv = conv
             seg.cmd = cmd
             seg.frg = frg

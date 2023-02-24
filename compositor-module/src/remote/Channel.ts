@@ -180,10 +180,11 @@ export class ARQChannel implements Channel {
     const kcp = new Kcp(dataChannel.id, this)
     kcp.setMtu(MTU) // webrtc datachannel MTU
     kcp.setWndSize(SND_WINDOW_SIZE, RCV_WINDOW_SIZE)
-    kcp.setNoDelay(1, 20, 2, 1)
+    kcp.setNoDelay(1, 10, 2, 1)
     kcp.setOutput((buf, len) => {
       if (dataChannel.readyState === 'open' && dataChannel.bufferedAmount <= MAX_BUFFERED_AMOUNT) {
         this.dataChannel.send(buf.subarray(0, len))
+        kcp.update()
       }
     })
 
@@ -196,7 +197,16 @@ export class ARQChannel implements Channel {
         // TODO forward error correction: https://github.com/ronomon/reed-solomon#readme & https://github.com/skywind3000/kcp/wiki/KCP-Best-Practice-EN
         kcp.input(new Uint8Array(ev.data as ArrayBuffer), true, false)
         let size = -1
-        while ((size = kcp.peekSize()) >= 0) {
+        let duration = 0
+        while (({ size, duration } = kcp.peekSizeAndRecvDuration()).size >= 0) {
+          // TODO if speed (kbs) is consistently lower than what our video codec outputs, we have to decrease fps and bitrate
+          // if (duration > 0) {
+          //   console.log(
+          //     `size: ${size}, duration: ${duration}, size/duration: ${Math.round(
+          //       (size * 8) / 1024 / (duration / 1000),
+          //     )}kbps`,
+          //   )
+          // }
           const buffer = new Uint8Array(size)
           const len = kcp.recv(buffer)
           if (len >= 0 && this.msgCb) {

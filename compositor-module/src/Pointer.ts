@@ -340,8 +340,6 @@ export class CursorRole implements SurfaceRole {
       }
       this.view.surface.state.frameCallbacks = []
       this.view.surface.session.flush()
-
-      this.view.surface.encoderFeedback?.frameProcessed(time)
     }
   }
 }

@@ -130,12 +130,10 @@ export default class Renderer {
       }
       this.updateViewStack()
       const viewStack = [...this.viewStack]
-      const processedTime = performance.now()
       for (const view of viewStack) {
         this.updateRenderStatesPixelContent(view)
         this.registerFrameCallbacks(view.surface.state.frameCallbacks)
         view.surface.state.frameCallbacks = []
-        view.surface.encoderFeedback?.frameProcessed(processedTime)
       }
 
       afterUpdatePixelContent?.()
