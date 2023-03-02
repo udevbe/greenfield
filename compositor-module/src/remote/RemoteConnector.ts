@@ -18,8 +18,9 @@
 import { RemoteClientConnectionListener, RemoteCompositorConnector } from '../index'
 import { RemoteConnectionHandler } from './RemoteConnectionHandler'
 import Session from '../Session'
-import { DataChannelDesc, ensureProxyPeerConnection, FeedbackDataChannelDesc } from './proxy-peer-connections'
 import { ARQChannel, Channel, SimpleChannel } from './Channel'
+import { ChannelDesc, ensureProxyPeerConnection, FeedbackDataChannelDesc } from './signaling-connections'
+import ReconnectingWebSocket from './reconnecting-websocket'
 
 export class RemoteConnection {}
 
@@ -37,60 +38,56 @@ export class RemoteConnector implements RemoteCompositorConnector {
     this.remoteSocket = remoteSocket
   }
 
-  private listenForDataChannels(
+  private listenForChannels(
     compositorProxyURL: URL,
-    dataChannel: RTCDataChannel,
-    desc: DataChannelDesc,
+    webSocket: ReconnectingWebSocket,
+    desc: ChannelDesc,
     clientConnectionListener: RemoteClientConnectionListener,
   ) {
     const type = desc.type
     const clientId = desc.clientId
     if (type === 'protocol' && clientId) {
       const client = this.session.display.createClient(clientId)
-      const protocolDataChannel: Channel = new ARQChannel(dataChannel)
+      const protocolDataChannel: Channel = new ARQChannel(webSocket, desc)
       client.onClose().then(() => protocolDataChannel.close())
       this.remoteSocket.onProtocolChannel(protocolDataChannel, compositorProxyURL, client)
       clientConnectionListener.onClient(client)
     } else if (type === 'frame' && clientId) {
       const client = this.session.display.clients[clientId]
       if (client) {
-        const frameDataChannel: Channel = new ARQChannel(dataChannel)
+        const frameDataChannel: Channel = new ARQChannel(webSocket, desc)
         client.onClose().then(() => frameDataChannel.close())
         this.remoteSocket.setupFrameDataChannel(client, frameDataChannel)
       } else {
-        dataChannel.close()
+        webSocket.close()
       }
     } else if (type === 'xwm' && clientId) {
       const client = this.session.display.clients[clientId]
       if (client) {
         // TODO associate with proxy connection & cleanup on disconnect?
-        const xwmDataChannel: Channel = new ARQChannel(dataChannel)
+        const xwmDataChannel: Channel = new ARQChannel(webSocket, desc)
         client.onClose().then(() => xwmDataChannel.close())
         this.remoteSocket.setupXWM(client, xwmDataChannel)
       } else {
-        dataChannel.close()
+        webSocket.close()
       }
     } else if (type === 'feedback' && clientId) {
       const feedbackDesc = desc as FeedbackDataChannelDesc
       const surfaceId = feedbackDesc.surfaceId
       const client = this.session.display.clients[clientId]
       if (client) {
-        const feedbackChannel: Channel = new SimpleChannel(dataChannel)
+        const feedbackChannel: Channel = new SimpleChannel(webSocket, desc)
         client.onClose().then(() => feedbackChannel.close())
         client.userData.clientEncodersFeedback?.addFeedbackChannel(feedbackChannel, surfaceId)
       } else {
-        dataChannel.close()
+        webSocket.close()
       }
     }
   }
 
   listen(compositorProxyURL: URL): RemoteClientConnectionListener {
-    return ensureProxyPeerConnection(
-      this.session,
-      compositorProxyURL,
-      (dataChannel, desc, clientConnectionListener) => {
-        this.listenForDataChannels(compositorProxyURL, dataChannel, desc, clientConnectionListener)
-      },
-    )
+    return ensureProxyPeerConnection(this.session, compositorProxyURL, (webSocket, desc, clientConnectionListener) => {
+      this.listenForChannels(compositorProxyURL, webSocket, desc, clientConnectionListener)
+    })
   }
 }

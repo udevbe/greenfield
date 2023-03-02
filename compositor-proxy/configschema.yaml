@@ -27,40 +27,8 @@ properties:
           - bindIP
           - bindPort
           - allowOrigin
-      webrtc:
-        description: Config related to communication over webrtc data-channels
-        type: object
-        additionalProperties: false
-        properties:
-          iceServers:
-            description: The ice servers to use with the rtc peer connection
-            type: array
-            items:
-              type: object
-              properties:
-                urls:
-                  type: array
-                  items:
-                    type: string
-                username:
-                  type: string
-                credential:
-                  type: string
-              required:
-                - urls
-          portRangeMin:
-            type: integer
-            minimum: 0
-            maximum: 65535
-            description: The minimum port for UDP RTC datachannel connections, default 0
-          portRangeMax:
-            type: integer
-            minimum: 0
-            maximum: 65535
-            description: The maximum port for UDP RTC datachannel connections, default 65535
     required:
       - http
-      - webrtc
   public:
     description: Settings for the public endpoint
     type: object

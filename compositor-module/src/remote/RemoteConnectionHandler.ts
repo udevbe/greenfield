@@ -85,20 +85,18 @@ export class RemoteConnectionHandler {
 
   onProtocolChannel(protocolChannel: Channel, compositorProxyURL: URL, client: Client): void {
     this.session.logger.info('[ProtocolChannel] - created.')
-    let wasOpen = protocolChannel.readyState === 'open'
-    protocolChannel.onClose(() => {
+    let wasOpen = protocolChannel.isOpen
+    protocolChannel.onClose = () => {
       if (!wasOpen) {
         throw new Error(`Failed to connect to application.`)
       }
-    })
+    }
     const handleOpenProtocolChannel = () => {
       wasOpen = true
       this.session.logger.info('[ProtocolChannel] - open.')
       client.onClose().then(() => {
         this.session.logger.info('[client] - closed.')
-        if (protocolChannel.readyState === 'open' || protocolChannel.readyState === 'connecting') {
-          protocolChannel.close()
-        }
+        protocolChannel.close()
       })
       client.addResourceCreatedListener((resource) => {
         if (resource.id >= 0xff000000 && client.recycledIds.length === 0) {
@@ -107,20 +105,20 @@ export class RemoteConnectionHandler {
         }
       })
 
-      protocolChannel.onClose(() => {
+      protocolChannel.onClose = () => {
         this.session.logger.info('[ProtocolChannel] - closed.')
         client.close()
-      })
-      protocolChannel.onError((event) => {
+      }
+      protocolChannel.onError = (event) => {
         this.session.logger.warn(`[ProtocolChannel] - error`, event)
-      })
+      }
 
       client.connection.onFlush = (wireMessages: SendMessage[]) => {
         this.flushWireMessages(client, protocolChannel, wireMessages)
       }
 
       const oobChannel = RemoteOutOfBandChannel.create(this.session, (sendBuffer) => {
-        if (protocolChannel.readyState === 'open') {
+        if (protocolChannel.isOpen) {
           try {
             protocolChannel.send(new Uint8Array(sendBuffer))
           } catch (e: any) {
@@ -134,7 +132,7 @@ export class RemoteConnectionHandler {
       })
       this.setupClientOutOfBandHandlers(client, oobChannel)
 
-      protocolChannel.onMessage((event) => this.handleMessageEvent(client, event.buffer, oobChannel))
+      protocolChannel.onMessage = (event) => this.handleMessageEvent(client, event.buffer, oobChannel)
 
       client.onClose().then(() => {
         this.session.userShell.events.clientDestroyed?.({
@@ -167,17 +165,17 @@ export class RemoteConnectionHandler {
     if (wasOpen) {
       handleOpenProtocolChannel()
     } else {
-      protocolChannel.onOpen(handleOpenProtocolChannel)
+      protocolChannel.onOpen = handleOpenProtocolChannel
     }
   }
 
   setupFrameDataChannel(client: Client, frameDataChannel: Channel) {
-    frameDataChannel.onMessage((message) => {
+    frameDataChannel.onMessage = (message) => {
       if (client.connection.closed) {
         return
       }
       deliverContentToBufferStream(client, message.buffer)
-    })
+    }
   }
 
   async setupXWM(client: Client, xwmDataChannel: Channel): Promise<XWindowManager> {
@@ -299,7 +297,7 @@ export class RemoteConnectionHandler {
       offset += message.length
     })
 
-    if (protocolChannel.readyState === 'open') {
+    if (protocolChannel.isOpen) {
       try {
         protocolChannel.send(sendBuffer)
       } catch (e: any) {

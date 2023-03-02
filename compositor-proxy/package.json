@@ -27,7 +27,6 @@
     "test": "jest"
   },
   "dependencies": {
-    "@koush/wrtc": "^0.5.3",
     "ajv": "^8.12.0",
     "ajv-formats": "^2.1.1",
     "js-yaml": "^4.1.0",

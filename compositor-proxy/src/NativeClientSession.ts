@@ -103,26 +103,23 @@ export function createNativeClientSession(
     protocolChannel.send(Buffer.from(msg.buffer, msg.byteOffset, msg.byteLength))
   })
 
-  protocolChannel.onError((event) => {
-    logger.info(`Wayland client protocol channel error.`, event)
-  })
-  protocolChannel.onClose(() => {
+  protocolChannel.onClose = () => {
     logger.info(`Wayland client protocol channel is closed.`)
-  })
-  protocolChannel.onMessage((event) => {
+  }
+  protocolChannel.onMessage = (event) => {
     try {
       nativeClientSession.onMessage(event)
     } catch (e) {
       logger.error('BUG? Error while processing event from compositor.', e)
       nativeClientSession.destroy()
     }
-  })
-  protocolChannel.onOpen(() => {
+  }
+  protocolChannel.onOpen = () => {
     // flush out any requests that came in while we were waiting for the data channel to open.
     logger.info(`Wayland client connection to browser is open.`)
     nativeClientSession.hasCompositorState = true
     nativeClientSession.flushOutboundMessageOnOpen()
-  })
+  }
 
   nativeClientSession.allocateBrowserServerObjectIdsBatch()
 
@@ -161,7 +158,6 @@ export class NativeClientSession {
 
     const messageInterceptors: Record<number, any> = {}
     const userData: wl_surface_interceptor['userData'] = {
-      peerConnectionState: nativeCompositorSession.peerConnectionState,
       protocolChannel: this.protocolDataChannel,
       drmContext: nativeCompositorSession.drmContext,
       messageInterceptors,
@@ -231,7 +227,7 @@ export class NativeClientSession {
     getServerObjectIdsBatch(this.wlClient, idsReply.subarray(1))
     // out-of-band w. opcode 6
     idsReply[0] = 6
-    if (this.protocolDataChannel.readyState === 'open') {
+    if (this.protocolDataChannel.isOpen) {
       this.protocolDataChannel.send(Buffer.from(idsReply.buffer, idsReply.byteOffset, idsReply.byteLength))
     } else {
       this.outboundMessages.push(Buffer.from(idsReply.buffer, idsReply.byteOffset, idsReply.byteLength))
@@ -337,7 +333,7 @@ export class NativeClientSession {
       offset += pendingWireMessage.length
     }
 
-    if (this.protocolDataChannel.readyState === 'open') {
+    if (this.protocolDataChannel.isOpen) {
       // 1 === 'open'
       logger.debug('Client message send over protocol channel.')
       this.protocolDataChannel.send(Buffer.from(sendBuffer.buffer, sendBuffer.byteOffset, sendBuffer.byteLength))

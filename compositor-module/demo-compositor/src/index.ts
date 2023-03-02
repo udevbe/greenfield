@@ -9,7 +9,7 @@ import {
 } from '../../src'
 
 const proxyHost1 = 'localhost:8081'
-const proxyHost2 = 'localhost:8082'
+const proxyHost2 = 'blacky.udev.be:8081'
 
 const wgpuAppURL = `${location.origin}/demo-webapp-wgpu/app.js`
 const demoAppURL = `${location.origin}/demo-webapp/app.js`

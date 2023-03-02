@@ -23,7 +23,6 @@ export default class wl_surface_interceptor {
   encoder: Encoder
   userData: {
     protocolChannel: Channel
-    peerConnectionState: PeerConnectionState
     drmContext: unknown
     messageInterceptors: Record<number, any>
     nativeClientSession: NativeClientSession

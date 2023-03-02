@@ -37,11 +37,11 @@ export class FrameFeedback {
     private feedbackChannel: Channel,
     private clientRefreshInterval = 16.667,
   ) {
-    feedbackChannel.onMessage((buffer) => {
+    feedbackChannel.onMessage = (buffer) => {
       const refreshInterval = buffer.readUInt16LE()
       const avgDuration = buffer.readUInt16LE(2)
       this.updateDelay(refreshInterval, avgDuration)
-    })
+    }
   }
 
   destroy() {

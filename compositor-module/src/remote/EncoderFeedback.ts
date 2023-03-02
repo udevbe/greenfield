@@ -55,10 +55,7 @@ export class ClientEncodersFeedback {
 
   sendFeedback() {
     for (const surfaceEncoderFeedback of Object.values(this.surfaceEncoderFeedbacks)) {
-      if (
-        surfaceEncoderFeedback.feedbackChannel === undefined ||
-        surfaceEncoderFeedback.feedbackChannel.readyState !== 'open'
-      ) {
+      if (surfaceEncoderFeedback.feedbackChannel === undefined || !surfaceEncoderFeedback.feedbackChannel.isOpen) {
         continue
       }
 

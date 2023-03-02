@@ -19,41 +19,11 @@ import { createLogger } from './Logger'
 
 import { createNativeCompositorSession, NativeCompositorSession } from './NativeCompositorSession'
 import { XWaylandSession } from './XWaylandSession'
-import { RTCPeerConnection } from '@koush/wrtc'
-import { config } from './config'
 
 const logger = createLogger('compositor-proxy-session')
 
-export type PeerConnectionState = {
-  peerConnection: RTCPeerConnection
-  readonly peerConnectionResetListeners: ((newPeerConnection: RTCPeerConnection) => void)[]
-  polite: false
-  makingOffer: boolean
-  ignoreOffer: boolean
-  isSettingRemoteAnswerPending: boolean
-}
-
-function createPeerConnection(): RTCPeerConnection {
-  return new RTCPeerConnection({
-    iceServers: config.server.webrtc.iceServers,
-    portRange: {
-      min: config.server.webrtc.portRangeMin ?? 0,
-      max: config.server.webrtc.portRangeMax ?? 65535,
-    },
-  })
-}
-
 export function createCompositorProxySession(compositorSessionId: string): CompositorProxySession {
-  const peerConnection = createPeerConnection()
-  const peerConnectionState: PeerConnectionState = {
-    peerConnection,
-    peerConnectionResetListeners: [],
-    polite: false,
-    makingOffer: false,
-    ignoreOffer: false,
-    isSettingRemoteAnswerPending: false,
-  }
-  const nativeCompositorSession = createNativeCompositorSession(compositorSessionId, peerConnectionState)
+  const nativeCompositorSession = createNativeCompositorSession(compositorSessionId)
   const xWaylandSession = XWaylandSession.create(nativeCompositorSession)
   xWaylandSession.createXWaylandListenerSocket()
 
@@ -61,7 +31,6 @@ export function createCompositorProxySession(compositorSessionId: string): Compo
     nativeCompositorSession,
     compositorSessionId,
     xWaylandSession,
-    peerConnectionState,
   )
   logger.info(`Session created.`)
 
@@ -73,7 +42,6 @@ export class CompositorProxySession {
     public readonly nativeCompositorSession: NativeCompositorSession,
     public readonly compositorSessionId: string,
     private readonly xWaylandSession: XWaylandSession,
-    public readonly peerConnectionState: PeerConnectionState,
   ) {}
 
   resetPeerConnectionState(killAllClients: boolean): void {
@@ -81,14 +49,6 @@ export class CompositorProxySession {
       if (client.nativeClientSession.hasCompositorState || killAllClients) {
         client.nativeClientSession.destroy()
       }
-    }
-
-    this.peerConnectionState.peerConnection.close()
-
-    const newPeerConnection = createPeerConnection()
-    this.peerConnectionState.peerConnection = newPeerConnection
-    for (const peerConnectionResetListener of this.peerConnectionState.peerConnectionResetListeners) {
-      peerConnectionResetListener(newPeerConnection)
     }
   }
 }
