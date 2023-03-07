@@ -1,5 +1,5 @@
 import { Kcp } from './kcp'
-import { ChannelDesc, FeedbackChannelDesc, sendConnectionRequest } from './SignalingController'
+import { sendChannelDisconnect, sendConnectionRequest } from './SignalingController'
 import { WebSocket } from 'uWebSockets.js'
 
 const MTU = 64000
@@ -10,6 +10,26 @@ const INTERVAL = 1000
 
 let nextChannelId = 1
 
+export const enum ChannelDescriptionType {
+  PROTOCOL,
+  FRAME,
+  XWM,
+  FEEDBACK,
+}
+
+export const enum ChannelType {
+  ARQ,
+  SIMPLE,
+}
+
+export type ChannelDesc = {
+  readonly id: string
+  readonly type: ChannelDescriptionType
+  readonly clientId: string
+  readonly channelType: ChannelType
+}
+export type FeedbackChannelDesc = ChannelDesc & { surfaceId: number }
+
 export interface Channel {
   readonly desc: ChannelDesc
   isOpen: boolean
@@ -18,22 +38,30 @@ export interface Channel {
   onMessage: (buffer: Buffer) => void
 
   send(buffer: Buffer): void
+
   close(): void
 }
 
 export interface WebSocketChannel extends Channel {
   doOpen(ws: WebSocket<any>): void
+
   doMessage(buffer: Buffer): void
+
   doClose(): void
+
+  ws?: WebSocket<any>
 }
 
 export function createXWMDataChannel(clientId: string): Channel {
   const desc: ChannelDesc = {
     id: `${nextChannelId++}`,
-    type: 'xwm',
+    type: ChannelDescriptionType.XWM,
     clientId,
+    // channelType: ChannelType.ARQ,
+    channelType: ChannelType.SIMPLE,
   }
-  const channel = new ARQChannel(desc)
+  // const channel = new ARQChannel(desc)
+  const channel = new SimpleChannel(desc)
   sendConnectionRequest(channel)
   return channel
 }
@@ -41,10 +69,13 @@ export function createXWMDataChannel(clientId: string): Channel {
 export function createFrameDataChannel(clientId: string): Channel {
   const desc: ChannelDesc = {
     id: `${nextChannelId++}`,
-    type: 'frame',
+    type: ChannelDescriptionType.FRAME,
     clientId,
+    // channelType: ChannelType.ARQ,
+    channelType: ChannelType.SIMPLE,
   }
-  const channel = new ARQChannel(desc)
+  // const channel = new ARQChannel(desc)
+  const channel = new SimpleChannel(desc)
   sendConnectionRequest(channel)
   return channel
 }
@@ -52,10 +83,13 @@ export function createFrameDataChannel(clientId: string): Channel {
 export function createProtocolChannel(clientId: string): Channel {
   const desc: ChannelDesc = {
     id: `${nextChannelId++}`,
-    type: 'protocol',
+    type: ChannelDescriptionType.PROTOCOL,
     clientId,
+    // channelType: ChannelType.ARQ,
+    channelType: ChannelType.SIMPLE,
   }
-  const channel = new ARQChannel(desc)
+  // const channel = new ARQChannel(desc)
+  const channel = new SimpleChannel(desc)
   sendConnectionRequest(channel)
   return channel
 }
@@ -63,9 +97,10 @@ export function createProtocolChannel(clientId: string): Channel {
 export function createFeedbackChannel(clientId: string, surfaceId: number): Channel {
   const desc: FeedbackChannelDesc = {
     id: `${nextChannelId++}`,
-    type: 'feedback',
+    type: ChannelDescriptionType.FEEDBACK,
     clientId,
     surfaceId,
+    channelType: ChannelType.SIMPLE,
   }
   const channel = new SimpleChannel(desc)
   sendConnectionRequest(channel)
@@ -82,7 +117,7 @@ export class SimpleChannel implements WebSocketChannel {
   onMessage = (event: Buffer) => {
     /*noop*/
   }
-  private ws?: WebSocket<any>
+  ws?: WebSocket<any>
 
   constructor(readonly desc: ChannelDesc) {}
 
@@ -90,9 +125,11 @@ export class SimpleChannel implements WebSocketChannel {
     this.ws = ws
     this.onOpen()
   }
+
   doMessage(buffer: Buffer): void {
     this.onMessage(buffer)
   }
+
   doClose(): void {
     this.ws = undefined
     this.onClose()
@@ -109,9 +146,8 @@ export class SimpleChannel implements WebSocketChannel {
   }
 
   close(): void {
-    if (this.ws) {
-      this.ws.close()
-    }
+    this.ws = undefined
+    sendChannelDisconnect(this.desc.id)
   }
 }
 
@@ -127,7 +163,7 @@ export class ARQChannel implements WebSocketChannel {
     /*noop*/
   }
   private checkInterval?: NodeJS.Timer
-  private ws?: WebSocket<any>
+  ws?: WebSocket<any>
 
   constructor(public readonly desc: ChannelDesc) {
     const kcp = new Kcp(+this.desc.id, this)
@@ -147,7 +183,7 @@ export class ARQChannel implements WebSocketChannel {
   }
 
   send(buffer: Buffer) {
-    if (this.kcp) {
+    if (this.kcp.snd_buf) {
       this.kcp.send(buffer)
       this.kcp.flush(false)
     }
@@ -160,9 +196,8 @@ export class ARQChannel implements WebSocketChannel {
   }
 
   close(): void {
-    if (this.ws) {
-      this.ws.close()
-    }
+    this.ws = undefined
+    sendChannelDisconnect(this.desc.id)
   }
 
   get isOpen() {
@@ -170,14 +205,14 @@ export class ARQChannel implements WebSocketChannel {
   }
 
   doClose(): void {
-    if (this.kcp) {
-      if (this.checkInterval) {
-        clearInterval(this.checkInterval)
-        this.checkInterval = undefined
-      }
-      this.kcp.release()
-      this.ws = undefined
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval)
+      this.checkInterval = undefined
     }
+    if (this.kcp.snd_buf) {
+      this.kcp.release()
+    }
+    this.ws = undefined
     this.onClose()
   }
 

@@ -44,6 +44,7 @@ import {
 import { incrementAndGetNextBufferSerial, ProxyBuffer } from './ProxyBuffer'
 import type { Channel } from './Channel'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
+import { sendClientConnectionsDisconnect } from './SignalingController'
 
 const logger = createLogger('native-client-session')
 
@@ -75,6 +76,9 @@ export function createNativeClientSession(
   setClientDestroyedCallback(wlClient, () => {
     for (const destroyListener of nativeClientSession.destroyListeners) {
       destroyListener()
+    }
+    if ((nativeClientSession.hasCompositorState = true)) {
+      sendClientConnectionsDisconnect(id)
     }
     nativeClientSession.destroyListeners = []
   })
@@ -248,8 +252,8 @@ export class NativeClientSession {
       const sizeOpcode = wireMessageBuffer[1]
       const messageOpcode = sizeOpcode & 0x0000ffff
       const globalOpcode = 0
-      // 4294901761 is the name/code of the first global emitted by the browser
-      if (messageOpcode === globalOpcode && wireMessageBuffer[2] === 4294901761) {
+      const firstBrowserGlobal = 4294901761
+      if (messageOpcode === globalOpcode && wireMessageBuffer[2] === firstBrowserGlobal) {
         emitGlobals(wlRegistry)
       }
     }
@@ -379,8 +383,8 @@ export class NativeClientSession {
     const deleteObjectId = new Uint32Array(payload.buffer, payload.byteOffset, 1)[0]
 
     delete this.messageInterceptor.interceptors[deleteObjectId]
-    if (deleteObjectId === 1) {
-      // 1 is the display id, which means client is being disconnected
+    const displayId = 1
+    if (deleteObjectId === displayId) {
       this.disconnecting = true
     }
 

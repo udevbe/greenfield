@@ -1260,7 +1260,7 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "capsfilter name=shader_capsfilter ! "
                                        "queue silent=true ! "
                                        // TODO use cudascale/cudaconvert once gstreamer 1.22 is released
-                                       "nvh264enc gop-size=-1 zerolatency=true preset=4 rc-mode=5 bitrate=8400 vbv-buffer-size=140 spatial-aq=true aq-strength=10 ! "
+                                       "nvh264enc gop-size=-1 zerolatency=true preset=4 rc-mode=5 bitrate=12000 vbv-buffer-size=200 ! "
                                        "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .alpha_pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
@@ -1270,7 +1270,7 @@ static const struct encoder_description encoder_descriptions[] = {
                                               "capsfilter name=shader_capsfilter ! "
                                               "queue silent=true ! "
                                               // TODO use cudascale/cudaconvert once gstreamer 1.22 is released
-                                              "nvh264enc gop-size=-1 zerolatency=true preset=4 rc-mode=5 bitrate=600 vbv-buffer-size=10 spatial-aq=true aq-strength=5 ! "
+                                              "nvh264enc gop-size=-1 zerolatency=true preset=4 rc-mode=5 bitrate=600 vbv-buffer-size=10 ! "
                                               "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                               "appsink name=sink ",
                 .split_alpha = true,

@@ -1,12 +1,31 @@
 import { Kcp } from './kcp'
 import ReconnectingWebSocket from './reconnecting-websocket'
-import { ChannelDesc } from './signaling-connections'
 
 const MTU = 64000
 const MAX_BUFFERED_AMOUNT = 2949120
 const SND_WINDOW_SIZE = 1024
 const RCV_WINDOW_SIZE = 128
 const INTERVAL = 1000
+
+export const enum ChannelDescriptionType {
+  PROTOCOL,
+  FRAME,
+  XWM,
+  FEEDBACK,
+}
+
+export const enum ChannelType {
+  ARQ,
+  SIMPLE,
+}
+
+export type ChannelDesc = {
+  readonly id: string
+  readonly type: ChannelDescriptionType
+  readonly clientId: string
+  readonly channelType: ChannelType
+}
+export type FeedbackChannelDesc = ChannelDesc & { surfaceId: number }
 
 export interface Channel {
   readonly desc: ChannelDesc
@@ -21,7 +40,13 @@ export interface Channel {
   close(): void
 }
 
-export class SimpleChannel implements Channel {
+export interface WebSocketChannel extends Channel {
+  readonly webSocket: ReconnectingWebSocket
+}
+
+export class SimpleChannel implements WebSocketChannel {
+  private closed = false
+
   onOpen = () => {
     /*noop*/
   }
@@ -35,7 +60,7 @@ export class SimpleChannel implements Channel {
     /*noop*/
   }
 
-  constructor(public readonly webSocket: ReconnectingWebSocket, public readonly desc: ChannelDesc) {
+  constructor(readonly webSocket: ReconnectingWebSocket, public readonly desc: ChannelDesc) {
     this.webSocket.binaryType = 'arraybuffer'
     if (this.webSocket.readyState === ReconnectingWebSocket.OPEN) {
       this.onOpen()
@@ -44,8 +69,14 @@ export class SimpleChannel implements Channel {
         this.onOpen()
       }
     }
-    this.webSocket.onclose = () => {
-      this.onClose()
+    this.webSocket.onclose = (event) => {
+      if (this.closed) {
+        return
+      }
+      if (event.code === 4001) {
+        this.closed = true
+        this.onClose()
+      }
     }
     this.webSocket.onerror = (err) => {
       this.onError(err.error)
@@ -69,16 +100,18 @@ export class SimpleChannel implements Channel {
   }
 
   close(): void {
-    if (
-      this.webSocket.readyState === ReconnectingWebSocket.OPEN ||
-      this.webSocket.readyState === ReconnectingWebSocket.CONNECTING
-    ) {
-      this.webSocket.close()
+    if (this.closed) {
+      return
     }
+    this.closed = true
+
+    this.webSocket.close(4001)
+    this.onClose()
   }
 }
 
-export class ARQChannel implements Channel {
+export class ARQChannel implements WebSocketChannel {
+  private closed = false
   private readonly kcp: Kcp
   onOpen = () => {
     /*noop*/
@@ -95,16 +128,16 @@ export class ARQChannel implements Channel {
 
   private checkInterval?: number
 
-  constructor(private readonly ws: ReconnectingWebSocket, public readonly desc: ChannelDesc) {
-    this.ws.binaryType = 'arraybuffer'
+  constructor(readonly webSocket: ReconnectingWebSocket, public readonly desc: ChannelDesc) {
+    this.webSocket.binaryType = 'arraybuffer'
     const kcp = new Kcp(+this.desc.id, this)
     kcp.setMtu(MTU) // webrtc datachannel MTU
     kcp.setWndSize(SND_WINDOW_SIZE, RCV_WINDOW_SIZE)
     kcp.setNoDelay(1, INTERVAL, 0, 1)
     kcp.setOutput((data, len) => {
-      if (this.ws && this.ws.bufferedAmount <= MAX_BUFFERED_AMOUNT) {
+      if (this.webSocket && this.webSocket.bufferedAmount <= MAX_BUFFERED_AMOUNT) {
         // TODO handle backpressure
-        this.ws.send(data.subarray(0, len))
+        this.webSocket.send(data.subarray(0, len))
         this.kcp.update()
       }
     })
@@ -112,24 +145,31 @@ export class ARQChannel implements Channel {
     this.check(kcp)
     this.kcp = kcp
 
-    this.ws.onopen = () => {
+    this.webSocket.onopen = () => {
       this.onOpen()
     }
 
-    this.ws.onclose = () => {
-      if (this.kcp.snd_buf !== undefined) {
-        if (this.checkInterval) {
-          clearInterval(this.checkInterval)
-          this.checkInterval = undefined
-        }
-        this.kcp.release()
+    this.webSocket.onclose = (event) => {
+      if (this.closed) {
+        return
       }
-      this.onClose()
+
+      if (event.code === 4001) {
+        this.closed = true
+        if (this.kcp.snd_buf !== undefined) {
+          if (this.checkInterval) {
+            clearInterval(this.checkInterval)
+            this.checkInterval = undefined
+          }
+          this.kcp.release()
+        }
+        this.onClose()
+      }
     }
-    this.ws.onerror = (err) => {
+    this.webSocket.onerror = (err) => {
       this.onError(err.error)
     }
-    this.ws.onmessage = (ev: MessageEvent<ArrayBuffer | string>) => {
+    this.webSocket.onmessage = (ev: MessageEvent<ArrayBuffer | string>) => {
       if (this.kcp.snd_buf === undefined) {
         return
       }
@@ -168,12 +208,15 @@ export class ARQChannel implements Channel {
   }
 
   close(): void {
-    if (this.ws.readyState === ReconnectingWebSocket.OPEN || this.ws.readyState === ReconnectingWebSocket.CONNECTING) {
-      this.ws.close()
+    if (this.closed) {
+      return
     }
+    this.closed = true
+    this.webSocket.close(4001)
+    this.onClose()
   }
 
   get isOpen(): boolean {
-    return this.ws.readyState === ReconnectingWebSocket.OPEN
+    return this.webSocket.readyState === ReconnectingWebSocket.OPEN
   }
 }

@@ -4,7 +4,7 @@ import { URLSearchParams } from 'url'
 import type { CompositorProxySession } from './CompositorProxySession'
 import { randomBytes } from 'crypto'
 import { config } from './config'
-import type { WebSocketChannel } from './Channel'
+import type { ChannelDesc, WebSocketChannel } from './Channel'
 
 const logger = createLogger('compositor-proxy-signaling')
 
@@ -13,16 +13,10 @@ type UserData = {
   compositorProxySession: CompositorProxySession
 }
 
-export type ChannelDesc = {
-  readonly id: string
-  readonly type: 'protocol' | 'frame' | 'xwm' | 'feedback'
-  readonly clientId: string
-}
-export type FeedbackChannelDesc = ChannelDesc & { surfaceId: number }
-
 const enum SignalingMessageType {
   IDENTITY,
   CONNECTION,
+  DISCONNECT,
 }
 
 type SignalingMessage =
@@ -33,6 +27,11 @@ type SignalingMessage =
   | {
       type: SignalingMessageType.CONNECTION
       data: { url: string; desc: ChannelDesc }
+      identity: string
+    }
+  | {
+      type: SignalingMessageType.DISCONNECT
+      data: string
       identity: string
     }
 
@@ -125,6 +124,8 @@ export function signalHandling(compositorProxySession: CompositorProxySession): 
             compositorPeerIdentity = messageObject.identity
           } // else re-connecting, ignore.
         }
+      } else {
+        throw new Error(`BUG. Received an unknown message: ${JSON.stringify(messageObject)}`)
       }
     },
     close(ws: WebSocket<UserData>, code: number, message: ArrayBuffer) {
@@ -193,10 +194,13 @@ export function connectionHandling(
     },
     close(ws, code: number, message: ArrayBuffer) {
       const channel = ws.getUserData().channel
-      delete channels[channel.desc.id]
-      channel.doClose()
+      if (code === 4001) {
+        // user closed connection
+        delete channels[channel.desc.id]
+        channel.doClose()
+      }
+      channel.ws = undefined
       logger.info(`Data connection closed. Code: ${code}. Message: ${textDecoder.decode(message)}`)
-      openWs = null
     },
   }
 }
@@ -205,7 +209,6 @@ const channels: Record<string, WebSocketChannel> = {}
 
 export function sendConnectionRequest(channel: WebSocketChannel) {
   const url: URL = new URL(config.public.baseURL)
-  url.searchParams.append('type', channel.desc.type)
   url.searchParams.append('id', `${channel.desc.id}`)
   const connectionRequest: SignalingMessage = {
     type: SignalingMessageType.CONNECTION,
@@ -214,4 +217,21 @@ export function sendConnectionRequest(channel: WebSocketChannel) {
   }
   channels[channel.desc.id] = channel
   cachedSend(textEncoder.encode(JSON.stringify(connectionRequest)))
+}
+
+export function sendChannelDisconnect(channelId: string) {
+  const clientDisconnect: SignalingMessage = {
+    type: SignalingMessageType.DISCONNECT,
+    identity,
+    data: channelId,
+  }
+  cachedSend(textEncoder.encode(JSON.stringify(clientDisconnect)))
+}
+
+export function sendClientConnectionsDisconnect(clientId: string) {
+  for (const [channelId, channel] of Object.entries(channels)) {
+    if (channel.desc.clientId === clientId) {
+      sendChannelDisconnect(channelId)
+    }
+  }
 }
