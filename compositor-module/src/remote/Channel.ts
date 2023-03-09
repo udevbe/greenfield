@@ -5,7 +5,7 @@ const MTU = 64000
 const MAX_BUFFERED_AMOUNT = 2949120
 const SND_WINDOW_SIZE = 1024
 const RCV_WINDOW_SIZE = 128
-const INTERVAL = 1000
+const INTERVAL = 100
 
 export const enum ChannelDescriptionType {
   PROTOCOL,
@@ -175,16 +175,17 @@ export class ARQChannel implements WebSocketChannel {
       }
       this.kcp.input(new Uint8Array(ev.data as ArrayBuffer), true, false)
       let size = -1
-      let duration = 0
-      while (({ size, duration } = this.kcp.peekSizeAndRecvDuration()).size >= 0) {
-        // TODO if speed (kbs) is consistently lower than what our video codec outputs, we have to decrease fps and bitrate
-        // if (duration > 0) {
-        //   console.log(
-        //     `size: ${size}, duration: ${duration}, size/duration: ${Math.round(
-        //       (size * 8) / 1024 / (duration / 1000),
-        //     )}kbps`,
-        //   )
-        // }
+      while ((size = this.kcp.peekSize()) >= 0) {
+        // TODO if speed (kbs) is consistently lower than what our video codec outputs, we have to decrease fps and/or bitrate
+        // let duration = 0
+        // while (({ size, duration } = this.kcp.peekSizeAndRecvDuration()).size >= 0) {
+        //   if (duration > 0) {
+        //     console.log(
+        //       `size: ${size}, duration: ${duration}, size/duration: ${Math.round(
+        //         (size * 8) / 1024 / (duration / 1000),
+        //       )}kbps`,
+        //     )
+        //   }
         const buffer = new Uint8Array(size)
         const len = this.kcp.recv(buffer)
         if (len >= 0) {

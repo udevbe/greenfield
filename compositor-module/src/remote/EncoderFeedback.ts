@@ -118,7 +118,7 @@ export class SurfaceEncoderFeedback {
 
     const duration = performance.now() - bufferDecodingStartedTime
     this.durations.push(duration)
-    if (this.durations.length > 20) {
+    if (this.durations.length > 60) {
       this.durations.shift()
     }
   }

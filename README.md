@@ -135,25 +135,28 @@ the combination of [WebCodecs API](https://developer.mozilla.org/en-US/docs/Web/
 Here we've extended the old solution with support for the Wayland DRM protocol (+ DMA_BUF protocol). This allows for a zero-copy transfer of the application pixels to the encoding pipeline. We've also added support
 for the H.264 WebCodecs API, which allows us to do decoding on the GPU of the receiving browser client if supported. If no usable GPU is available in the Compositor-Proxy, the pipeline falls back to slower software rendering.
 
-*The end result is a near ideal solution that is expected be fast enough to support gaming.*
+*The end result is a near ideal solution that is fast enough to support gaming.*
 
-One drawback still remains and that's the use of to WebRTC datachannel. Although we make it operate in UDP mode and assure reliable transfers using [KCP](https://github.com/skywind3000/kcp/blob/master/README.en.md), there is still a lot of needless overhead
-because of the SCTP header that is included. This lowers the available packet size from 1400 bytes in a standard UDP connection to ~1200 bytes in an WebRTC datachannel message. WebTransport is expected to bring some
-relieve here.
+## WebSockets - WebRTC DataChannels - WebTransport
+
+There is one drawback that currently still remains, and that's the use of WebSockets to deliver data to the browser. WebSockets operate over TPC which is ill-suited for real-time applications like Greenfield. 
+Instead, a UDP based protocol is needed. Browsers today unfortunately have no support for UDP based protocols aside from WebRTC DataChannels. However, we can not use WebRTC DataChannels as the build-in SCTP congestion algorithm is unacceptably slow. 
+A more low level UDP protocol is required and is currently in the works in the form of the WebTransport protocol. Once WebTransport becomes more widely available, we can operate in UDP mode 
+and assure fast end reliable transfers using [KCP](https://github.com/skywind3000/kcp/blob/master/README.en.md) in combination with forward-error-correction.
 
 
-### Copy-Paste
+## Copy-Paste
 
 If both clients are connected to separate compositor-proxy, copy-paste will use a direct peer to peer transfer between compositor-proxies.
 This avoids the round trip and massive overhead of transferring all content to the browser and back. How this works is illustrated in the image below:
 
 [<img src="https://docs.google.com/drawings/d/e/2PACX-1vQfr7I8GaalOzmOAwAOFYK8bzdeQna82JwxesDvD22_kj5BgSIKM16JKk-E2G-nPt5Ssgrhyi9kO9ZV/pub?w=1056&h=620" />](https://docs.google.com/drawings/d/e/2PACX-1vQfr7I8GaalOzmOAwAOFYK8bzdeQna82JwxesDvD22_kj5BgSIKM16JKk-E2G-nPt5Ssgrhyi9kO9ZV/pub?w=1056&h=620)
 
-# XWayland
+## XWayland
 
 Very much beta. Most things are implemented except for fullscreen applications. Please report any bugs or annoyances you find.
 
-# Media
+## Media
 
 Fosdem presentation + demo (2 Feb 2019):
 

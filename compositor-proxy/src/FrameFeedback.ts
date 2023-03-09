@@ -2,7 +2,9 @@ import { destroyWlResourceSilently, flush, sendEvents } from 'westfield-proxy'
 import { performance } from 'perf_hooks'
 import type { Channel } from './Channel'
 
-let tickInterval = 16.667
+// hard-lock to 30FPS for now
+const minTickInterval = 33.333
+let tickInterval = minTickInterval
 let nextTickInterval = tickInterval
 let feedbackClockTimer: NodeJS.Timer | undefined
 type Feedback = { callback: (time: number) => void; delay: number }
@@ -86,7 +88,7 @@ export class FrameFeedback {
     }
 
     this.commitDelay = Math.ceil(Math.max(this.serverProcessingDuration, this.clientProcessingDuration))
-    nextTickInterval = Math.ceil(clientRefreshInterval)
+    nextTickInterval = Math.ceil(Math.max(clientRefreshInterval, minTickInterval))
   }
 
   encodingDone(commitTimestamp: number): void {

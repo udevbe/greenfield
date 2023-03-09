@@ -6,7 +6,7 @@ const MTU = 64000
 const MAX_BUFFERED_AMOUNT = 2949120
 const SND_WINDOW_SIZE = 128
 const RCV_WINDOW_SIZE = 1024
-const INTERVAL = 1000
+const INTERVAL = 100
 
 let nextChannelId = 1
 
@@ -52,16 +52,24 @@ export interface WebSocketChannel extends Channel {
   ws?: WebSocket<any>
 }
 
+function createChannel(desc: ChannelDesc) {
+  if (desc.channelType === ChannelType.ARQ) {
+    return new ARQChannel(desc)
+  } else if (desc.channelType === ChannelType.SIMPLE) {
+    return new SimpleChannel(desc)
+  } else {
+    throw new Error(`BUG. Unknown channel type ${JSON.stringify(desc)}`)
+  }
+}
+
 export function createXWMDataChannel(clientId: string): Channel {
   const desc: ChannelDesc = {
     id: `${nextChannelId++}`,
     type: ChannelDescriptionType.XWM,
     clientId,
-    // channelType: ChannelType.ARQ,
-    channelType: ChannelType.SIMPLE,
+    channelType: ChannelType.ARQ,
   }
-  // const channel = new ARQChannel(desc)
-  const channel = new SimpleChannel(desc)
+  const channel = createChannel(desc)
   sendConnectionRequest(channel)
   return channel
 }
@@ -71,11 +79,9 @@ export function createFrameDataChannel(clientId: string): Channel {
     id: `${nextChannelId++}`,
     type: ChannelDescriptionType.FRAME,
     clientId,
-    // channelType: ChannelType.ARQ,
-    channelType: ChannelType.SIMPLE,
+    channelType: ChannelType.ARQ,
   }
-  // const channel = new ARQChannel(desc)
-  const channel = new SimpleChannel(desc)
+  const channel = createChannel(desc)
   sendConnectionRequest(channel)
   return channel
 }
@@ -85,11 +91,9 @@ export function createProtocolChannel(clientId: string): Channel {
     id: `${nextChannelId++}`,
     type: ChannelDescriptionType.PROTOCOL,
     clientId,
-    // channelType: ChannelType.ARQ,
-    channelType: ChannelType.SIMPLE,
+    channelType: ChannelType.ARQ,
   }
-  // const channel = new ARQChannel(desc)
-  const channel = new SimpleChannel(desc)
+  const channel = createChannel(desc)
   sendConnectionRequest(channel)
   return channel
 }
@@ -102,7 +106,7 @@ export function createFeedbackChannel(clientId: string, surfaceId: number): Chan
     surfaceId,
     channelType: ChannelType.SIMPLE,
   }
-  const channel = new SimpleChannel(desc)
+  const channel = createChannel(desc)
   sendConnectionRequest(channel)
   return channel
 }

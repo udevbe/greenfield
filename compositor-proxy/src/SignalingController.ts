@@ -17,22 +17,34 @@ const enum SignalingMessageType {
   IDENTITY,
   CONNECTION,
   DISCONNECT,
+  PING,
+  PONG,
 }
 
 type SignalingMessage =
   | {
-      type: SignalingMessageType.IDENTITY
-      identity: string
+      readonly type: SignalingMessageType.IDENTITY
+      readonly identity: string
     }
   | {
-      type: SignalingMessageType.CONNECTION
-      data: { url: string; desc: ChannelDesc }
-      identity: string
+      readonly type: SignalingMessageType.CONNECTION
+      readonly data: { url: string; desc: ChannelDesc }
+      readonly identity: string
     }
   | {
-      type: SignalingMessageType.DISCONNECT
-      data: string
-      identity: string
+      readonly type: SignalingMessageType.DISCONNECT
+      readonly data: string
+      readonly identity: string
+    }
+  | {
+      readonly type: SignalingMessageType.PING
+      readonly data: number
+      readonly identity: string
+    }
+  | {
+      readonly type: SignalingMessageType.PONG
+      readonly data: number
+      readonly identity: string
     }
 
 const textDecoder = new TextDecoder()
@@ -110,19 +122,30 @@ export function signalHandling(compositorProxySession: CompositorProxySession): 
       const messageObject = JSON.parse(messageData)
 
       if (isSignalingMessage(messageObject)) {
-        if (messageObject.type === SignalingMessageType.IDENTITY) {
-          logger.info(`Received compositor signaling identity: ${messageObject.identity}.`)
-          if (compositorPeerIdentity && messageObject.identity !== compositorPeerIdentity) {
-            logger.info(
-              `Compositor signaling identity has changed. Old: ${compositorPeerIdentity}. New: ${messageObject.identity}. Creating new peer connection.`,
-            )
-            // Remote compositor has restarted. Shutdown the old peer connection before handling any signaling.
-            compositorPeerIdentity = messageObject.identity
-            resetPeerConnection(false)
-          } else if (compositorPeerIdentity === undefined) {
-            // Connecting to remote proxy for the first time
-            compositorPeerIdentity = messageObject.identity
-          } // else re-connecting, ignore.
+        switch (messageObject.type) {
+          case SignalingMessageType.IDENTITY: {
+            logger.info(`Received compositor signaling identity: ${messageObject.identity}.`)
+            if (compositorPeerIdentity && messageObject.identity !== compositorPeerIdentity) {
+              logger.info(
+                `Compositor signaling identity has changed. Old: ${compositorPeerIdentity}. New: ${messageObject.identity}. Creating new peer connection.`,
+              )
+              // Remote compositor has restarted. Shutdown the old peer connection before handling any signaling.
+              compositorPeerIdentity = messageObject.identity
+              resetPeerConnection(false)
+            } else if (compositorPeerIdentity === undefined) {
+              // Connecting to remote proxy for the first time
+              compositorPeerIdentity = messageObject.identity
+            } // else re-connecting, ignore.
+            break
+          }
+          case SignalingMessageType.PING: {
+            const pongMessage: SignalingMessage = {
+              type: SignalingMessageType.PONG,
+              data: messageObject.data,
+              identity,
+            }
+            cachedSend(textEncoder.encode(JSON.stringify(pongMessage)))
+          }
         }
       } else {
         throw new Error(`BUG. Received an unknown message: ${JSON.stringify(messageObject)}`)
@@ -144,7 +167,7 @@ function isSignalingMessage(messageObject: any): messageObject is SignalingMessa
   if (messageObject === null) {
     return false
   }
-  return messageObject.type === SignalingMessageType.IDENTITY
+  return messageObject.type === SignalingMessageType.IDENTITY || messageObject.type === SignalingMessageType.PING
 }
 
 type ConnectionUserData = {
