@@ -24,6 +24,17 @@ do_gst_encoded_frame_finalize(struct encoded_frame *encoded_frame);
 extern void
 do_gst_frame_encoder_request_key_unit(struct frame_encoder **frame_encoder_pp);
 
+extern void
+do_gst_audio_encoder_create(audio_callback_func audio_ready_callback, void *user_data,
+                            struct audio_encoder **audio_encoder_pp);
+
+extern void
+do_gst_audio_encoder_free(struct audio_encoder **frame_encoder_pp);
+
+void
+do_gst_encoded_audio_finalize(struct encoded_audio *encoded_audio);
+
+
 struct gf_gst_main_loop {
     GMainLoop *main;
     struct SyncSource *src;
@@ -36,6 +47,9 @@ enum gf_message_type {
     frame_encoder_free_type,
     encoded_frame_finalize_type,
     frame_encoder_request_key_unit_type,
+    audio_encoder_create_type,
+    audio_encoder_free_type,
+    encoded_audio_finalize_type,
 };
 
 struct gf_message {
@@ -63,6 +77,17 @@ struct gf_message {
         struct {
             struct frame_encoder **frame_encoder_pp;
         } frame_encoder_request_key_unit;
+        struct {
+            audio_callback_func audio_ready_callback;
+            void *user_data;
+            struct audio_encoder **audio_encoder_pp;
+        } audio_encoder_create;
+        struct {
+            struct audio_encoder **audio_encoder_pp;
+        } audio_encoder_free;
+        struct {
+            struct encoded_audio *encoded_audio;
+        } encoded_audio_finalize;
     } body;
 };
 
@@ -175,6 +200,18 @@ main_loop_handle_message(struct gf_message *message) {
         case frame_encoder_request_key_unit_type:
             do_gst_frame_encoder_request_key_unit(message->body.frame_encoder_request_key_unit.frame_encoder_pp);
             break;
+        case audio_encoder_create_type:
+            do_gst_audio_encoder_create(message->body.audio_encoder_create.audio_ready_callback,
+                                        message->body.audio_encoder_create.user_data,
+                                        message->body.audio_encoder_create.audio_encoder_pp
+            );
+            break;
+        case audio_encoder_free_type:
+            do_gst_audio_encoder_free(message->body.audio_encoder_free.audio_encoder_pp);
+            break;
+        case encoded_audio_finalize_type:
+            do_gst_encoded_audio_finalize(message->body.encoded_audio_finalize.encoded_audio);
+            break;
     }
     return G_SOURCE_CONTINUE;
 }
@@ -269,6 +306,39 @@ frame_encoder_request_key_unit(struct frame_encoder **frame_encoder_pp) {
 
     message->type = frame_encoder_request_key_unit_type;
     message->body.frame_encoder_request_key_unit.frame_encoder_pp = frame_encoder_pp;
+
+    return send_message(message);
+}
+
+int
+audio_encoder_create(audio_callback_func audio_ready_callback, void *user_data,
+                     struct audio_encoder **audio_encoder_pp) {
+    struct gf_message *message = g_new0(struct gf_message, 1);
+
+    message->type = audio_encoder_create_type;
+    message->body.audio_encoder_create.audio_ready_callback = audio_ready_callback;
+    message->body.audio_encoder_create.user_data = user_data;
+    message->body.audio_encoder_create.audio_encoder_pp = audio_encoder_pp;
+
+    return send_message(message);
+}
+
+int
+audio_encoder_destroy(struct audio_encoder **audio_encoder_pp) {
+    struct gf_message *message = g_new0(struct gf_message, 1);
+
+    message->type = audio_encoder_free_type;
+    message->body.audio_encoder_free.audio_encoder_pp = audio_encoder_pp;
+
+    return send_message(message);
+}
+
+int
+encoded_audio_finalize(struct encoded_audio *encoded_audio) {
+    struct gf_message *message = g_new0(struct gf_message, 1);
+
+    message->type = encoded_audio_finalize_type;
+    message->body.encoded_audio_finalize.encoded_audio = encoded_audio;
 
     return send_message(message);
 }

@@ -34,6 +34,12 @@ struct node_frame_encoder {
     napi_threadsafe_function js_cb_ref;
 };
 
+struct node_audio_encoder {
+    struct audio_encoder *encoder;
+    pid_t client_pid;
+    napi_threadsafe_function js_cb_ref;
+};
+
 static void
 node_frame_encoder_opaque_sample_ready_callback(void *user_data, struct encoded_frame *encoded_frame) {
     struct node_frame_encoder *node_frame_encoder = user_data;
@@ -57,6 +63,37 @@ encoded_frame_to_node_buffer_cb(napi_env env, napi_value js_callback, void *cont
     } else {
         NAPI_CALL(env, napi_create_external_buffer(env, encoded_frame->size, encoded_frame->encoded_data,
                                                    node_frame_encoder_finalize_encoded_frame, encoded_frame,
+                                                   &buffer_value))
+    }
+
+    napi_value args[] = {buffer_value};
+    NAPI_CALL(env, napi_get_global(env, &global))
+    NAPI_CALL(env, napi_call_function(env, global, js_callback, sizeof(args) / sizeof(args[0]), args, &cb_result))
+}
+
+static void
+node_audio_encoder_sample_ready_callback(void *user_data, struct encoded_audio *encoded_audio) {
+    struct node_audio_encoder *node_audio_encoder = user_data;
+    napi_call_threadsafe_function(node_audio_encoder->js_cb_ref, encoded_audio, napi_tsfn_blocking);
+}
+
+static void
+node_audio_encoder_finalize_encoded_audio(napi_env env, void *finalize_data, void *finalize_hint) {
+    encoded_audio_finalize((struct encoded_audio *) finalize_hint);
+}
+
+static void
+encoded_audio_to_node_buffer_cb(napi_env env, napi_value js_callback, void *context, void *data) {
+    assert(env != NULL);
+
+    napi_value buffer_value, global, cb_result;
+    struct encoded_audio *encoded_audio = data;
+
+    if (encoded_audio == NULL) {
+        NAPI_CALL(env, napi_get_undefined(env, &buffer_value))
+    } else {
+        NAPI_CALL(env, napi_create_external_buffer(env, encoded_audio->size, encoded_audio->encoded_data,
+                                                   node_audio_encoder_finalize_encoded_audio, encoded_audio,
                                                    &buffer_value))
     }
 
@@ -206,6 +243,85 @@ requestKeyUnit(napi_env env, napi_callback_info info) {
     return return_value;
 }
 
+/**
+ *  expected nodejs arguments in order:
+ *  - object wl_client - argv[0]
+ *  - function callback - argv[1]
+ * return:
+ *  - object encoderContext
+ * @param env
+ * @param info
+ * @return
+ */
+napi_value
+createAudioEncoder(napi_env env, napi_callback_info info) {
+    static size_t argc = 2;
+    napi_value return_value, argv[argc], cb_name;
+    struct wl_client *client;
+    struct node_audio_encoder *node_audio_encoder;
+    pid_t client_pid;
+
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
+    NAPI_CALL(env, napi_get_value_external(env, argv[1], (void **) &client))
+
+    node_audio_encoder = calloc(1, sizeof(struct node_audio_encoder));
+    wl_client_get_credentials(client, &node_audio_encoder->client_pid, NULL, NULL);
+
+    if (audio_encoder_create( node_audio_encoder_sample_ready_callback, &node_audio_encoder->client_pid,
+                             &node_audio_encoder->encoder) == -1) {
+        free(node_audio_encoder);
+        NAPI_CALL(env, napi_throw_error((env), NULL, "Can't create audio encoder."))
+        NAPI_CALL(env, napi_get_undefined(env, &return_value))
+        return return_value;
+    }
+
+    napi_create_string_utf8(env, "audio_sample_callback", NAPI_AUTO_LENGTH, &cb_name);
+    NAPI_CALL(env, napi_create_threadsafe_function(
+            env,
+            argv[3],
+            NULL,
+            cb_name,
+            0,
+            2,
+            NULL,
+            NULL,
+            node_audio_encoder,
+            encoded_audio_to_node_buffer_cb,
+            &node_audio_encoder->js_cb_ref))
+
+    NAPI_CALL(env, napi_create_external(env, (void *) node_audio_encoder, NULL, NULL, &return_value))
+    return return_value;
+}
+
+/**
+ *  expected nodejs arguments in order:
+ *  - unknown encoder - argv[0]
+ * return:
+ *  - object encoderContext
+ * @param env
+ * @param info
+ * @return
+ */
+static napi_value
+destroyAudioEncoder(napi_env env, napi_callback_info info) {
+    static size_t argc = 1;
+    napi_value return_value, argv[argc];
+    struct node_audio_encoder *node_audio_encoder;
+
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
+    NAPI_CALL(env, napi_get_value_external(env, argv[0], (void **) &node_audio_encoder))
+
+    // TODO close encoder first, wait for eos callback, then destroy rest of resources
+    audio_encoder_destroy(&node_audio_encoder->encoder);
+//
+//    NAPI_CALL(env, napi_unref_threadsafe_function(env, node_encoder->js_cb_ref))
+//    napi_release_threadsafe_function(node_encoder->js_cb_ref, napi_tsfn_release);
+//
+//    free(node_encoder);
+    NAPI_CALL(env, napi_get_undefined(env, &return_value))
+    return return_value;
+}
+
 static napi_value
 init(napi_env env, napi_value exports) {
     napi_property_descriptor desc[] = {
@@ -213,6 +329,8 @@ init(napi_env env, napi_value exports) {
             DECLARE_NAPI_METHOD("destroyFrameEncoder", destroyFrameEncoder),
             DECLARE_NAPI_METHOD("encodeFrame", encodeFrame),
             DECLARE_NAPI_METHOD("requestKeyUnit", requestKeyUnit),
+            DECLARE_NAPI_METHOD("createAudioEncoder", createAudioEncoder),
+            DECLARE_NAPI_METHOD("destroyAudioEncoder", destroyAudioEncoder),
     };
 
     NAPI_CALL(env, napi_define_properties(env, exports, sizeof(desc) / sizeof(napi_property_descriptor), desc))

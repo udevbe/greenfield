@@ -45,6 +45,7 @@ import { ProxyBuffer } from './ProxyBuffer'
 import type { Channel } from './Channel'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 import { sendClientConnectionsDisconnect } from './SignalingController'
+import { createAudioEncoder, destroyAudioEncoder } from './encoding/proxy-encoding-addon'
 
 const logger = createLogger('native-client-session')
 
@@ -71,7 +72,13 @@ export function createNativeClientSession(
   protocolChannel: Channel,
   id: string,
 ): NativeClientSession {
+  const audioEncoder = createAudioEncoder(wlClient, (sample) => {
+    // TODO send sample to browser to be played
+  })
   const nativeClientSession = new NativeClientSession(wlClient, nativeCompositorSession, protocolChannel, id)
+  nativeClientSession.destroyListeners.push(() => {
+    destroyAudioEncoder(audioEncoder)
+  })
 
   setClientDestroyedCallback(wlClient, () => {
     for (const destroyListener of nativeClientSession.destroyListeners) {
