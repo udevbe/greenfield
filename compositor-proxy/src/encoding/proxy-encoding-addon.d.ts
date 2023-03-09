@@ -1,5 +1,6 @@
 declare namespace nativeEncoder {
   export type FrameEncoder = unknown
+  export type AudioEncoder = unknown
 
   export function createFrameEncoder(
     encoderType: 'nvh264' | 'x264' | 'vaapih264',
@@ -18,6 +19,10 @@ declare namespace nativeEncoder {
   ): void
 
   export function requestKeyUnit(encoder: FrameEncoder): void
+
+  export function createAudioEncoder(wlClient: unknown, audioEncoded: (sample: Buffer) => void): AudioEncoder
+
+  export function destroyAudioEncoder(encoder: AudioEncoder): void
 }
 
 export = nativeEncoder

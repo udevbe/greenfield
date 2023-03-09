@@ -28,6 +28,7 @@ get_filename_component(WESTFIELD ${CMAKE_CURRENT_SOURCE_DIR}/node_modules/westfi
 add_library(proxy-encoding SHARED
         ${CMAKE_CURRENT_SOURCE_DIR}/native/src/encoder.h
         ${CMAKE_CURRENT_SOURCE_DIR}/native/src/gst_frame_encoder.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/src/gst_audio_encoder.c
         ${CMAKE_CURRENT_SOURCE_DIR}/native/src/gst_main_loop.c
 )
 target_include_directories(proxy-encoding PRIVATE
