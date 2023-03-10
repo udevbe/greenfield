@@ -24,7 +24,7 @@
 #include "wlr_drm.h"
 #include "wlr_linux_dmabuf_v1.h"
 
-#define FPS 60
+#define FPS 30
 #define GF_BUFFER_CONTENT_SERIAL_META "BUFFER_CONTENT_SERIAL"
 const GstMetaInfo *gfBufferContentSerialMetaInfo = NULL;
 
@@ -1228,7 +1228,7 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "gldownload ! "
                                        // The ueue is silent
                                        "queue silent=true ! "
-                                       "x264enc me=2 analyse=51 dct8x8=true cabac=true bframes=0 b-adapt=false rc-lookahead=0 sliced-threads=true qp-max=28 byte-stream=true tune=zerolatency psy-tune=2 pass=0 bitrate=4200 vbv-buf-capacity=17 ! "
+                                       "x264enc me=2 analyse=51 dct8x8=true cabac=true bframes=0 b-adapt=false rc-lookahead=0 sliced-threads=true byte-stream=true tune=zerolatency psy-tune=2 bitrate=9000 vbv-buf-capacity=33 ! "
                                        "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .alpha_pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
@@ -1239,7 +1239,7 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
                                        "gldownload ! "
                                        "queue silent=true ! "
-                                       "x264enc me=2 analyse=51 dct8x8=true cabac=true bframes=0 b-adapt=false rc-lookahead=0 sliced-threads=true qp-max=28 byte-stream=true tune=zerolatency psy-tune=2 pass=0 bitrate=800 vbv-buf-capacity=17 ! "
+                                       "x264enc me=2 analyse=51 dct8x8=true cabac=true bframes=0 b-adapt=false rc-lookahead=0 sliced-threads=true byte-stream=true tune=zerolatency psy-tune=2 bitrate=900 vbv-buf-capacity=33 ! "
                                        "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .split_alpha = true,
@@ -1260,7 +1260,7 @@ static const struct encoder_description encoder_descriptions[] = {
                                        "capsfilter name=shader_capsfilter ! "
                                        "queue silent=true ! "
                                        // TODO use cudascale/cudaconvert once gstreamer 1.22 is released
-                                       "nvh264enc gop-size=-1 zerolatency=true preset=4 rc-mode=5 bitrate=8400 vbv-buffer-size=140 spatial-aq=true aq-strength=10 ! "
+                                       "nvh264enc gop-size=-1 zerolatency=true preset=4 rc-mode=7 max-bitrate=12000 vbv-buffer-size=400 ! "
                                        "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .alpha_pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
@@ -1270,7 +1270,7 @@ static const struct encoder_description encoder_descriptions[] = {
                                               "capsfilter name=shader_capsfilter ! "
                                               "queue silent=true ! "
                                               // TODO use cudascale/cudaconvert once gstreamer 1.22 is released
-                                              "nvh264enc gop-size=-1 zerolatency=true preset=4 rc-mode=5 bitrate=600 vbv-buffer-size=10 spatial-aq=true aq-strength=5 ! "
+                                              "nvh264enc gop-size=-1 zerolatency=true preset=4 rc-mode=5 bitrate=900 vbv-buffer-size=20 ! "
                                               "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                               "appsink name=sink ",
                 .split_alpha = true,

@@ -1,253 +1,193 @@
 import { Kcp } from './kcp'
-import { DataChannelDesc, FeedbackDataChannelDesc } from './SignalingController'
-import { PeerConnectionState } from './CompositorProxySession'
-import { RTCDataChannel, RTCDataChannelInit, RTCDataChannelState, RTCErrorEvent, RTCPeerConnection } from '@koush/wrtc'
+import { sendChannelDisconnect, sendConnectionRequest } from './SignalingController'
+import { WebSocket } from 'uWebSockets.js'
 
-const MAX_BUFFERED_AMOUNT = 1048576
-const MTU = 1200 // webrtc datachannel MTU
-const SND_WINDOW_SIZE = 1024
-const RCV_WINDOW_SIZE = 128
+const MTU = 64000
+const MAX_BUFFERED_AMOUNT = 2949120
+const SND_WINDOW_SIZE = 128
+const RCV_WINDOW_SIZE = 1024
+const INTERVAL = 100
 
-const dataChannelConfig: RTCDataChannelInit = {
-  ordered: false,
-  maxRetransmits: 0,
+let nextChannelId = 1
+
+export const enum ChannelDescriptionType {
+  PROTOCOL,
+  FRAME,
+  XWM,
+  FEEDBACK,
 }
 
-function createDataChannel(peerConnection: RTCPeerConnection, desc: DataChannelDesc): RTCDataChannel {
-  return peerConnection.createDataChannel(JSON.stringify(desc), dataChannelConfig)
+export const enum ChannelType {
+  ARQ,
+  SIMPLE,
 }
+
+export type ChannelDesc = {
+  readonly id: string
+  readonly type: ChannelDescriptionType
+  readonly clientId: string
+  readonly channelType: ChannelType
+}
+export type FeedbackChannelDesc = ChannelDesc & { surfaceId: number }
 
 export interface Channel {
-  send(buffer: ArrayBufferView): void
+  readonly desc: ChannelDesc
+  isOpen: boolean
+  onOpen: () => void
+  onClose: () => void
+  onMessage: (buffer: Buffer) => void
+
+  send(buffer: Buffer): void
 
   close(): void
-
-  readyState: RTCDataChannelState
-
-  onOpen(cb: () => void): void
-
-  onClose(cb: () => void): void
-
-  onError(cb: (err: RTCErrorEvent) => void): void
-
-  onMessage(cb: (msg: Buffer) => void): void
 }
 
-function createARQChannel(
-  peerConnectionState: PeerConnectionState,
-  type: DataChannelDesc['type'],
-  clientId: string,
-  desc: DataChannelDesc = {
-    type,
+export interface WebSocketChannel extends Channel {
+  doOpen(ws: WebSocket<any>): void
+
+  doMessage(buffer: Buffer): void
+
+  doClose(): void
+
+  ws?: WebSocket<any>
+}
+
+function createChannel(desc: ChannelDesc) {
+  if (desc.channelType === ChannelType.ARQ) {
+    return new ARQChannel(desc)
+  } else if (desc.channelType === ChannelType.SIMPLE) {
+    return new SimpleChannel(desc)
+  } else {
+    throw new Error(`BUG. Unknown channel type ${JSON.stringify(desc)}`)
+  }
+}
+
+export function createXWMDataChannel(clientId: string): Channel {
+  const desc: ChannelDesc = {
+    id: `${nextChannelId++}`,
+    type: ChannelDescriptionType.XWM,
     clientId,
-  },
-): ARQChannel {
-  const dataChannel = createDataChannel(peerConnectionState.peerConnection, desc)
-  const arqDataChannel = new ARQChannel(peerConnectionState, dataChannel, desc)
-  peerConnectionState.peerConnectionResetListeners.push(arqDataChannel.resetListener)
-  return arqDataChannel
+    channelType: ChannelType.ARQ,
+  }
+  const channel = createChannel(desc)
+  sendConnectionRequest(channel)
+  return channel
 }
 
-function createSimpleChannel(
-  peerConnectionState: PeerConnectionState,
-  type: DataChannelDesc['type'],
-  clientId: string,
-  desc: DataChannelDesc = {
-    type,
+export function createFrameDataChannel(clientId: string): Channel {
+  const desc: ChannelDesc = {
+    id: `${nextChannelId++}`,
+    type: ChannelDescriptionType.FRAME,
     clientId,
-  },
-): SimpleChannel {
-  const dataChannel = createDataChannel(peerConnectionState.peerConnection, desc)
-  const simpleChannel = new SimpleChannel(peerConnectionState, dataChannel, desc)
-  peerConnectionState.peerConnectionResetListeners.push(simpleChannel.resetListener)
-  return simpleChannel
+    channelType: ChannelType.ARQ,
+  }
+  const channel = createChannel(desc)
+  sendConnectionRequest(channel)
+  return channel
 }
 
-export function createXWMDataChannel(peerConnectionState: PeerConnectionState, clientId: string): Channel {
-  return createARQChannel(peerConnectionState, 'xwm', clientId)
+export function createProtocolChannel(clientId: string): Channel {
+  const desc: ChannelDesc = {
+    id: `${nextChannelId++}`,
+    type: ChannelDescriptionType.PROTOCOL,
+    clientId,
+    channelType: ChannelType.ARQ,
+  }
+  const channel = createChannel(desc)
+  sendConnectionRequest(channel)
+  return channel
 }
 
-export function createFrameDataChannel(peerConnectionState: PeerConnectionState, clientId: string): Channel {
-  return createARQChannel(peerConnectionState, 'frame', clientId)
-}
-
-export function createProtocolChannel(peerConnectionState: PeerConnectionState, clientId: string): Channel {
-  return createARQChannel(peerConnectionState, 'protocol', clientId)
-}
-
-export function createFeedbackChannel(
-  peerConnectionState: PeerConnectionState,
-  clientId: string,
-  surfaceId: number,
-): Channel {
-  const feedbackDataChannelDesc: FeedbackDataChannelDesc = {
-    type: 'feedback',
+export function createFeedbackChannel(clientId: string, surfaceId: number): Channel {
+  const desc: FeedbackChannelDesc = {
+    id: `${nextChannelId++}`,
+    type: ChannelDescriptionType.FEEDBACK,
     clientId,
     surfaceId,
+    channelType: ChannelType.SIMPLE,
   }
-  return createSimpleChannel(peerConnectionState, 'feedback', clientId, feedbackDataChannelDesc)
+  const channel = createChannel(desc)
+  sendConnectionRequest(channel)
+  return channel
 }
 
-export class SimpleChannel implements Channel {
-  private openCb?: () => void
-  private msgCb?: (msg: Buffer) => void
-  private closeCb?: () => void
-  private errorCb?: (err: RTCErrorEvent) => void
-  public readonly resetListener = (newPeerConnection: RTCPeerConnection) => {
-    this.resetDataChannel(newPeerConnection)
+export class SimpleChannel implements WebSocketChannel {
+  onOpen = () => {
+    /*noop*/
+  }
+  onClose = () => {
+    /*noop*/
+  }
+  onMessage = (event: Buffer) => {
+    /*noop*/
+  }
+  ws?: WebSocket<any>
+
+  constructor(readonly desc: ChannelDesc) {}
+
+  doOpen(ws: WebSocket<any>): void {
+    this.ws = ws
+    this.onOpen()
   }
 
-  constructor(
-    private readonly peerConnectionState: PeerConnectionState,
-    private dataChannel: RTCDataChannel,
-    private readonly desc: DataChannelDesc,
-  ) {
-    this.addDataChannelListeners(dataChannel)
+  doMessage(buffer: Buffer): void {
+    this.onMessage(buffer)
   }
 
-  private addDataChannelListeners(dataChannel: RTCDataChannel) {
-    dataChannel.binaryType = 'arraybuffer'
-    if (dataChannel.readyState === 'open') {
-      this.openCb?.()
-    } else {
-      dataChannel.addEventListener(
-        'open',
-        () => {
-          this.openCb?.()
-        },
-        { passive: true, once: true },
-      )
-    }
-    dataChannel.addEventListener(
-      'close',
-      () => {
-        this.closeCb?.()
-      },
-      { passive: true, once: true },
-    )
-    dataChannel.addEventListener(
-      'error',
-      // @ts-ignore
-      (err: RTCErrorEvent) => {
-        this.errorCb?.(err)
-      },
-      { passive: true },
-    )
-    dataChannel.addEventListener(
-      'message',
-      (ev) => {
-        if (this.msgCb) {
-          this.msgCb(Buffer.from(ev.data as ArrayBuffer))
-        }
-      },
-      { passive: true },
-    )
+  doClose(): void {
+    this.ws = undefined
+    this.onClose()
   }
 
-  get readyState(): RTCDataChannelState {
-    return this.dataChannel.readyState
+  get isOpen() {
+    return this.ws !== undefined
   }
 
-  send(buffer: ArrayBufferView): void {
-    if (this.dataChannel.readyState === 'open' && this.dataChannel.bufferedAmount <= MAX_BUFFERED_AMOUNT) {
-      this.dataChannel.send(buffer)
+  send(buffer: Buffer): void {
+    if (this.ws && this.ws.getBufferedAmount() <= MAX_BUFFERED_AMOUNT) {
+      this.ws.send(buffer, true)
     }
   }
 
   close(): void {
-    if (this.dataChannel.readyState === 'open' || this.dataChannel.readyState === 'connecting') {
-      this.dataChannel.close()
-    }
-  }
-
-  onOpen(cb: () => void): void {
-    this.openCb = cb
-  }
-
-  onClose(cb: () => void): void {
-    this.closeCb = cb
-  }
-
-  onError(cb: (err: RTCErrorEvent) => void): void {
-    this.errorCb = cb
-  }
-
-  onMessage(cb: (msg: Buffer) => void): void {
-    this.msgCb = cb
-  }
-
-  resetDataChannel(newPeerConnection: RTCPeerConnection) {
-    if (this.dataChannel.readyState === 'open' || this.dataChannel.readyState === 'connecting') {
-      this.dataChannel.close()
-    }
-    const dataChannel = createDataChannel(newPeerConnection, this.desc)
-    this.dataChannel = dataChannel
-    this.addDataChannelListeners(dataChannel)
+    this.ws = undefined
+    sendChannelDisconnect(this.desc.id)
   }
 }
 
-export class ARQChannel implements Channel {
-  private kcp?: Kcp
-  private openCb?: () => void
-  private closeCb?: () => void
-  private errorCb?: (err: RTCErrorEvent) => void
-  private msgCb?: (event: Buffer) => void
-  public readonly resetListener = (newPeerConnection: RTCPeerConnection) => {
-    this.resetDataChannel(newPeerConnection)
+export class ARQChannel implements WebSocketChannel {
+  private readonly kcp: Kcp
+  onOpen = () => {
+    /*noop*/
+  }
+  onClose = () => {
+    /*noop*/
+  }
+  onMessage = (event: Buffer) => {
+    /*noop*/
   }
   private checkInterval?: NodeJS.Timer
+  ws?: WebSocket<any>
 
-  constructor(
-    private readonly peerConnectionState: PeerConnectionState,
-    private dataChannel: RTCDataChannel,
-    private readonly desc: DataChannelDesc,
-  ) {
-    this.addDataChannelListeners(dataChannel)
-  }
+  constructor(public readonly desc: ChannelDesc) {
+    const kcp = new Kcp(+this.desc.id, this)
+    kcp.setMtu(MTU) // webrtc datachannel MTU
+    kcp.setWndSize(SND_WINDOW_SIZE, RCV_WINDOW_SIZE)
+    kcp.setNoDelay(1, INTERVAL, 0, 1)
+    kcp.setOutput((data, len) => {
+      if (this.ws && this.ws.getBufferedAmount() <= MAX_BUFFERED_AMOUNT) {
+        // TODO handle backpressure
+        this.ws.send(data.subarray(0, len), true)
+        this.kcp.update()
+      }
+    })
 
-  private addDataChannelListeners(dataChannel: RTCDataChannel) {
-    dataChannel.binaryType = 'arraybuffer'
-    if (dataChannel.readyState === 'open') {
-      this.initKcp(dataChannel)
-      this.openCb?.()
-    } else {
-      dataChannel.addEventListener(
-        'open',
-        () => {
-          this.initKcp(dataChannel)
-          this.openCb?.()
-        },
-        { passive: true, once: true },
-      )
-    }
-    dataChannel.addEventListener(
-      'close',
-      () => {
-        if (this.kcp) {
-          if (this.checkInterval) {
-            clearInterval(this.checkInterval)
-            this.checkInterval = undefined
-          }
-          this.kcp.release()
-          this.kcp = undefined
-        }
-        this.closeCb?.()
-      },
-      { passive: true, once: true },
-    )
-    dataChannel.addEventListener(
-      'error',
-      // @ts-ignore
-      (err: RTCErrorEvent) => {
-        this.errorCb?.(err)
-      },
-      { passive: true },
-    )
+    this.check(kcp)
+    this.kcp = kcp
   }
 
   send(buffer: Buffer) {
-    // TODO forward error correction: https://github.com/ronomon/reed-solomon#readme & https://github.com/skywind3000/kcp/wiki/KCP-Best-Practice-EN
-    if (this.kcp) {
+    if (this.kcp.snd_buf) {
       this.kcp.send(buffer)
       this.kcp.flush(false)
     }
@@ -256,84 +196,47 @@ export class ARQChannel implements Channel {
   private check(kcp: Kcp) {
     this.checkInterval = setInterval(() => {
       kcp.update()
-    }, 10)
+    }, INTERVAL)
   }
 
   close(): void {
-    if (this.dataChannel.readyState === 'open' || this.dataChannel.readyState === 'connecting') {
-      this.dataChannel.close()
-    }
-    const index = this.peerConnectionState.peerConnectionResetListeners.indexOf(this.resetListener)
-    if (index > -1) {
-      this.peerConnectionState.peerConnectionResetListeners.splice(index, 1)
-    }
+    this.ws = undefined
+    sendChannelDisconnect(this.desc.id)
   }
 
-  get readyState(): RTCDataChannelState {
-    return this.dataChannel.readyState
+  get isOpen() {
+    return this.ws !== undefined
   }
 
-  private initKcp(dataChannel: RTCDataChannel) {
-    if (dataChannel.id === null) {
-      throw new Error('BUG. Datachannel does not have an id.')
+  doClose(): void {
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval)
+      this.checkInterval = undefined
     }
-    const kcp = new Kcp(dataChannel.id, this)
-    kcp.setMtu(MTU) // webrtc datachannel MTU
-    kcp.setWndSize(SND_WINDOW_SIZE, RCV_WINDOW_SIZE)
-    kcp.setNoDelay(1, 10, 2, 1)
-    kcp.setOutput((data, len) => {
-      if (dataChannel.readyState === 'open' && dataChannel.bufferedAmount <= MAX_BUFFERED_AMOUNT) {
-        dataChannel.send(data.subarray(0, len))
-        setTimeout(() => {
-          if (dataChannel.readyState === 'open') {
-            kcp.update()
-          }
-        })
+    if (this.kcp.snd_buf) {
+      this.kcp.release()
+    }
+    this.ws = undefined
+    this.onClose()
+  }
+
+  doMessage(buffer: Buffer): void {
+    if (this.kcp.snd_buf === undefined) {
+      return
+    }
+    this.kcp.input(buffer, true, false)
+    let size = -1
+    while ((size = this.kcp.peekSize()) >= 0) {
+      const buffer = Buffer.alloc(size)
+      const len = this.kcp.recv(buffer)
+      if (len >= 0) {
+        this.onMessage(buffer.subarray(0, size))
       }
-    })
-
-    dataChannel.addEventListener('message', (message) => {
-      if (kcp.snd_buf === undefined) {
-        return
-      }
-      // TODO forward error correction: https://github.com/ronomon/reed-solomon#readme & https://github.com/skywind3000/kcp/wiki/KCP-Best-Practice-EN
-      kcp.input(Buffer.from(message.data as ArrayBuffer), true, false)
-      let size = -1
-      while ((size = kcp.peekSize()) >= 0) {
-        const buffer = Buffer.alloc(size)
-        const len = kcp.recv(buffer)
-        if (len >= 0 && this.msgCb) {
-          this.msgCb(buffer.subarray(0, size))
-        }
-      }
-    })
-
-    this.check(kcp)
-    this.kcp = kcp
-  }
-
-  onOpen(cb: () => void): void {
-    this.openCb = cb
-  }
-
-  onClose(cb: () => void): void {
-    this.closeCb = cb
-  }
-
-  onError(cb: (err: RTCErrorEvent) => void): void {
-    this.errorCb = cb
-  }
-
-  onMessage(cb: (msg: Buffer) => void): void {
-    this.msgCb = cb
-  }
-
-  resetDataChannel(newPeerConnection: RTCPeerConnection) {
-    if (this.dataChannel.readyState === 'open' || this.dataChannel.readyState === 'connecting') {
-      this.dataChannel.close()
     }
-    const dataChannel = createDataChannel(newPeerConnection, this.desc)
-    this.dataChannel = dataChannel
-    this.addDataChannelListeners(dataChannel)
+  }
+
+  doOpen(ws: WebSocket<any>): void {
+    this.ws = ws
+    this.onOpen()
   }
 }

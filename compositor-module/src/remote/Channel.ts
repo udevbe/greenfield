@@ -1,156 +1,201 @@
 import { Kcp } from './kcp'
+import ReconnectingWebSocket from './reconnecting-websocket'
 
-const MAX_BUFFERED_AMOUNT = 1048576
-const MTU = 1200 // webrtc datachannel MTU
-const SND_WINDOW_SIZE = 128
-const RCV_WINDOW_SIZE = 1024
+const MTU = 64000
+const MAX_BUFFERED_AMOUNT = 2949120
+const SND_WINDOW_SIZE = 1024
+const RCV_WINDOW_SIZE = 128
+const INTERVAL = 100
 
-export interface Channel {
-  send(buffer: ArrayBufferView): void
-  close(): void
-  readyState: RTCDataChannelState
-  onOpen(cb: () => void): void
-  onClose(cb: () => void): void
-  onError(cb: (err: RTCErrorEvent) => void): void
-  onMessage(cb: (msg: Uint8Array) => void): void
+export const enum ChannelDescriptionType {
+  PROTOCOL,
+  FRAME,
+  XWM,
+  FEEDBACK,
 }
 
-export class SimpleChannel implements Channel {
-  private openCb?: () => void
-  private msgCb?: (msg: Uint8Array) => void
-  private closeCb?: () => void
-  private errorCb?: (err: RTCErrorEvent) => void
+export const enum ChannelType {
+  ARQ,
+  SIMPLE,
+}
 
-  constructor(public readonly dataChannel: RTCDataChannel) {
-    this.addDataChannelListeners(dataChannel)
+export type ChannelDesc = {
+  readonly id: string
+  readonly type: ChannelDescriptionType
+  readonly clientId: string
+  readonly channelType: ChannelType
+}
+export type FeedbackChannelDesc = ChannelDesc & { surfaceId: number }
+
+export interface Channel {
+  readonly desc: ChannelDesc
+  readonly isOpen: boolean
+  onOpen: () => void
+  onClose: () => void
+  onMessage: (msg: Uint8Array) => void
+  onError: (err: Error) => void
+
+  send(buffer: ArrayBufferView): void
+
+  close(): void
+}
+
+export interface WebSocketChannel extends Channel {
+  readonly webSocket: ReconnectingWebSocket
+}
+
+export class SimpleChannel implements WebSocketChannel {
+  private closed = false
+
+  onOpen = () => {
+    /*noop*/
+  }
+  onMessage = (msg: Uint8Array) => {
+    /*noop*/
+  }
+  onClose = () => {
+    /*noop*/
+  }
+  onError = (err: Error) => {
+    /*noop*/
   }
 
-  private addDataChannelListeners(dataChannel: RTCDataChannel) {
-    dataChannel.binaryType = 'arraybuffer'
-    if (dataChannel.readyState === 'open') {
-      this.openCb?.()
+  constructor(readonly webSocket: ReconnectingWebSocket, public readonly desc: ChannelDesc) {
+    this.webSocket.binaryType = 'arraybuffer'
+    if (this.webSocket.readyState === ReconnectingWebSocket.OPEN) {
+      this.onOpen()
     } else {
-      dataChannel.addEventListener(
-        'open',
-        () => {
-          this.openCb?.()
-        },
-        { passive: true, once: true },
-      )
+      this.webSocket.onopen = () => {
+        this.onOpen()
+      }
     }
-    dataChannel.addEventListener(
-      'close',
-      () => {
-        this.closeCb?.()
-      },
-      { passive: true, once: true },
-    )
-    dataChannel.addEventListener(
-      'error',
-      // @ts-ignore
-      (err: RTCErrorEvent) => {
-        this.errorCb?.(err)
-      },
-      { passive: true },
-    )
-    dataChannel.addEventListener(
-      'message',
-      (ev: MessageEvent<ArrayBuffer | string>) => {
-        if (this.msgCb) {
-          this.msgCb(new Uint8Array(ev.data as ArrayBuffer))
-        }
-      },
-      { passive: true },
-    )
+    this.webSocket.onclose = (event) => {
+      if (this.closed) {
+        return
+      }
+      if (event.code === 4001) {
+        this.closed = true
+        this.onClose()
+      }
+    }
+    this.webSocket.onerror = (err) => {
+      this.onError(err.error)
+    }
+    this.webSocket.onmessage = (ev: MessageEvent<ArrayBuffer | string>) => {
+      this.onMessage(new Uint8Array(ev.data as ArrayBuffer))
+    }
   }
 
-  get readyState(): RTCDataChannelState {
-    return this.dataChannel.readyState
+  get isOpen(): boolean {
+    return this.webSocket.readyState === ReconnectingWebSocket.OPEN
   }
 
   send(buffer: ArrayBufferView): void {
-    if (this.dataChannel.readyState === 'open' && this.dataChannel.bufferedAmount <= MAX_BUFFERED_AMOUNT) {
-      this.dataChannel.send(buffer)
+    if (
+      this.webSocket.readyState === ReconnectingWebSocket.OPEN &&
+      this.webSocket.bufferedAmount <= MAX_BUFFERED_AMOUNT
+    ) {
+      this.webSocket.send(buffer)
     }
   }
 
   close(): void {
-    if (this.dataChannel.readyState === 'open' || this.dataChannel.readyState === 'connecting') {
-      this.dataChannel.close()
+    if (this.closed) {
+      return
     }
-  }
+    this.closed = true
 
-  onOpen(cb: () => void): void {
-    this.openCb = cb
-  }
-
-  onClose(cb: () => void): void {
-    this.closeCb = cb
-  }
-
-  onError(cb: (err: RTCErrorEvent) => void): void {
-    this.errorCb = cb
-  }
-
-  onMessage(cb: (msg: Uint8Array) => void): void {
-    this.msgCb = cb
+    this.webSocket.close(4001)
+    this.onClose()
   }
 }
 
-export class ARQChannel implements Channel {
-  private kcp?: Kcp
-  private openCb?: () => void
-  private msgCb?: (msg: Uint8Array) => void
-  private closeCb?: () => void
-  private errorCb?: (err: RTCErrorEvent) => void
-  private checkInterval?: number
-
-  constructor(public readonly dataChannel: RTCDataChannel) {
-    this.addDataChannelListeners(dataChannel)
+export class ARQChannel implements WebSocketChannel {
+  private closed = false
+  private readonly kcp: Kcp
+  onOpen = () => {
+    /*noop*/
+  }
+  onMessage = (msg: Uint8Array) => {
+    /*noop*/
+  }
+  onClose = () => {
+    /*noop*/
+  }
+  onError = (err: Error) => {
+    /*noop*/
   }
 
-  private addDataChannelListeners(dataChannel: RTCDataChannel) {
-    dataChannel.binaryType = 'arraybuffer'
-    if (dataChannel.readyState === 'open') {
-      this.initKcp(dataChannel)
-      this.openCb?.()
-    } else {
-      dataChannel.addEventListener(
-        'open',
-        () => {
-          this.initKcp(dataChannel)
-          this.openCb?.()
-        },
-        { passive: true, once: true },
-      )
+  private checkInterval?: number
+
+  constructor(readonly webSocket: ReconnectingWebSocket, public readonly desc: ChannelDesc) {
+    this.webSocket.binaryType = 'arraybuffer'
+    const kcp = new Kcp(+this.desc.id, this)
+    kcp.setMtu(MTU) // webrtc datachannel MTU
+    kcp.setWndSize(SND_WINDOW_SIZE, RCV_WINDOW_SIZE)
+    kcp.setNoDelay(1, INTERVAL, 0, 1)
+    kcp.setOutput((data, len) => {
+      if (this.webSocket && this.webSocket.bufferedAmount <= MAX_BUFFERED_AMOUNT) {
+        // TODO handle backpressure
+        this.webSocket.send(data.subarray(0, len))
+        this.kcp.update()
+      }
+    })
+
+    this.check(kcp)
+    this.kcp = kcp
+
+    this.webSocket.onopen = () => {
+      this.onOpen()
     }
-    dataChannel.addEventListener(
-      'close',
-      () => {
-        if (this.kcp) {
+
+    this.webSocket.onclose = (event) => {
+      if (this.closed) {
+        return
+      }
+
+      if (event.code === 4001) {
+        this.closed = true
+        if (this.kcp.snd_buf !== undefined) {
           if (this.checkInterval) {
             clearInterval(this.checkInterval)
             this.checkInterval = undefined
           }
           this.kcp.release()
-          this.kcp = undefined
         }
-        this.closeCb?.()
-      },
-      { passive: true, once: true },
-    )
-    dataChannel.addEventListener(
-      'error',
-      // @ts-ignore
-      (err: RTCErrorEvent) => {
-        this.errorCb?.(err)
-      },
-      { passive: true },
-    )
+        this.onClose()
+      }
+    }
+    this.webSocket.onerror = (err) => {
+      this.onError(err.error)
+    }
+    this.webSocket.onmessage = (ev: MessageEvent<ArrayBuffer | string>) => {
+      if (this.kcp.snd_buf === undefined) {
+        return
+      }
+      this.kcp.input(new Uint8Array(ev.data as ArrayBuffer), true, false)
+      let size = -1
+      while ((size = this.kcp.peekSize()) >= 0) {
+        // TODO if speed (kbs) is consistently lower than what our video codec outputs, we have to decrease fps and/or bitrate
+        // let duration = 0
+        // while (({ size, duration } = this.kcp.peekSizeAndRecvDuration()).size >= 0) {
+        //   if (duration > 0) {
+        //     console.log(
+        //       `size: ${size}, duration: ${duration}, size/duration: ${Math.round(
+        //         (size * 8) / 1024 / (duration / 1000),
+        //       )}kbps`,
+        //     )
+        //   }
+        const buffer = new Uint8Array(size)
+        const len = this.kcp.recv(buffer)
+        if (len >= 0) {
+          this.onMessage(buffer.subarray(0, len))
+        }
+      }
+    }
   }
 
   send(buffer: ArrayBufferView): void {
-    // TODO forward error correction: https://github.com/ronomon/reed-solomon#readme & https://github.com/skywind3000/kcp/wiki/KCP-Best-Practice-EN
     if (this.kcp) {
       this.kcp.send(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength))
       this.kcp.flush(false)
@@ -160,80 +205,19 @@ export class ARQChannel implements Channel {
   private check(kcp: Kcp) {
     this.checkInterval = window.setInterval(() => {
       kcp.update()
-    }, 20)
+    }, INTERVAL)
   }
 
   close(): void {
-    if (this.dataChannel.readyState === 'open' || this.dataChannel.readyState === 'connecting') {
-      this.dataChannel.close()
+    if (this.closed) {
+      return
     }
+    this.closed = true
+    this.webSocket.close(4001)
+    this.onClose()
   }
 
-  get readyState(): RTCDataChannelState {
-    return this.dataChannel.readyState
-  }
-
-  private initKcp(dataChannel: RTCDataChannel) {
-    if (dataChannel.id === null) {
-      throw new Error('BUG. Datachannel does not have an id.')
-    }
-    const kcp = new Kcp(dataChannel.id, this)
-    kcp.setMtu(MTU) // webrtc datachannel MTU
-    kcp.setWndSize(SND_WINDOW_SIZE, RCV_WINDOW_SIZE)
-    kcp.setNoDelay(1, 10, 2, 1)
-    kcp.setOutput((buf, len) => {
-      if (dataChannel.readyState === 'open' && dataChannel.bufferedAmount <= MAX_BUFFERED_AMOUNT) {
-        this.dataChannel.send(buf.subarray(0, len))
-        kcp.update()
-      }
-    })
-
-    dataChannel.addEventListener(
-      'message',
-      (ev: MessageEvent<ArrayBuffer | string>) => {
-        if (kcp.snd_buf === undefined) {
-          return
-        }
-        // TODO forward error correction: https://github.com/ronomon/reed-solomon#readme & https://github.com/skywind3000/kcp/wiki/KCP-Best-Practice-EN
-        kcp.input(new Uint8Array(ev.data as ArrayBuffer), true, false)
-        let size = -1
-        let duration = 0
-        while (({ size, duration } = kcp.peekSizeAndRecvDuration()).size >= 0) {
-          // TODO if speed (kbs) is consistently lower than what our video codec outputs, we have to decrease fps and bitrate
-          // if (duration > 0) {
-          //   console.log(
-          //     `size: ${size}, duration: ${duration}, size/duration: ${Math.round(
-          //       (size * 8) / 1024 / (duration / 1000),
-          //     )}kbps`,
-          //   )
-          // }
-          const buffer = new Uint8Array(size)
-          const len = kcp.recv(buffer)
-          if (len >= 0 && this.msgCb) {
-            this.msgCb(buffer.subarray(0, len))
-          }
-        }
-      },
-      { passive: true },
-    )
-
-    this.check(kcp)
-    this.kcp = kcp
-  }
-
-  onOpen(cb: () => void): void {
-    this.openCb = cb
-  }
-
-  onClose(cb: () => void): void {
-    this.closeCb = cb
-  }
-
-  onError(cb: (err: RTCErrorEvent) => void): void {
-    this.errorCb = cb
-  }
-
-  onMessage(cb: (msg: Uint8Array) => void): void {
-    this.msgCb = cb
+  get isOpen(): boolean {
+    return this.webSocket.readyState === ReconnectingWebSocket.OPEN
   }
 }

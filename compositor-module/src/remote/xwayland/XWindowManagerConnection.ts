@@ -1,26 +1,25 @@
 import { connect, webConnectionSetup, XConnection } from 'xtsb'
 import Session from '../../Session'
-import { ARQChannel, Channel } from '../Channel'
+import { Channel } from '../Channel'
 
 export class XWindowManagerConnection {
   static create(session: Session, xwmDataChannel: Channel): Promise<XWindowManagerConnection> {
     return new Promise<XWindowManagerConnection>((resolve, reject) => {
       let wasOpen = false
-      xwmDataChannel.onOpen(() => {
+      xwmDataChannel.onOpen = () => {
         wasOpen = true
-        xwmDataChannel.onError((ev) => session.logger.error(`XWM connection error: ${ev}`))
+        xwmDataChannel.onError = (ev) => session.logger.error(`XWM connection error: ${ev}`)
         const xwm = new XWindowManagerConnection(xwmDataChannel)
-        xwmDataChannel.onClose(() => xwm.destroy())
+        xwmDataChannel.onClose = () => xwm.destroy()
         resolve(xwm)
-      })
-      xwmDataChannel.onError((ev) => {
+      }
+      xwmDataChannel.onError = (err) => {
         if (wasOpen) {
           return
         }
-        if (xwmDataChannel.readyState === 'connecting') {
-          reject(new Error(`XWM connection failed: ${ev}`))
-        }
-      })
+
+        reject(new Error(`XWM connection failed: ${err}`))
+      }
     })
   }
 
@@ -49,7 +48,30 @@ export class XWindowManagerConnection {
   setup(): Promise<XConnection> {
     if (this.setupPromise === undefined) {
       this.setupPromise = new Promise<XConnection>(async (resolve) => {
-        this.xConnection = await connect(webConnectionSetup(this.xwmDataChannel))
+        this.xConnection = await connect(
+          webConnectionSetup({
+            close: () => {
+              this.xwmDataChannel.close()
+            },
+            onError: (cb: (ev: Event) => void): void => {
+              this.xwmDataChannel.onError = (err) => {
+                cb(
+                  new window.ErrorEvent(err.message, {
+                    error: err,
+                  }),
+                )
+              }
+            },
+            onMessage: (cb: (ev: Uint8Array) => void): void => {
+              this.xwmDataChannel.onMessage = (message) => {
+                cb(message)
+              }
+            },
+            send: (data: Uint8Array): void => {
+              this.xwmDataChannel.send(data)
+            },
+          }),
+        )
         resolve(this.xConnection)
       })
     }

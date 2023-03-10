@@ -44,6 +44,7 @@ import {
 import { incrementAndGetNextBufferSerial, ProxyBuffer } from './ProxyBuffer'
 import type { Channel } from './Channel'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
+import { sendClientConnectionsDisconnect } from './SignalingController'
 
 const logger = createLogger('native-client-session')
 
@@ -76,6 +77,9 @@ export function createNativeClientSession(
     for (const destroyListener of nativeClientSession.destroyListeners) {
       destroyListener()
     }
+    if ((nativeClientSession.hasCompositorState = true)) {
+      sendClientConnectionsDisconnect(id)
+    }
     nativeClientSession.destroyListeners = []
   })
   setRegistryCreatedCallback(wlClient, (wlRegistry: unknown, registryId: number) => {
@@ -103,26 +107,23 @@ export function createNativeClientSession(
     protocolChannel.send(Buffer.from(msg.buffer, msg.byteOffset, msg.byteLength))
   })
 
-  protocolChannel.onError((event) => {
-    logger.info(`Wayland client protocol channel error.`, event)
-  })
-  protocolChannel.onClose(() => {
+  protocolChannel.onClose = () => {
     logger.info(`Wayland client protocol channel is closed.`)
-  })
-  protocolChannel.onMessage((event) => {
+  }
+  protocolChannel.onMessage = (event) => {
     try {
       nativeClientSession.onMessage(event)
     } catch (e) {
       logger.error('BUG? Error while processing event from compositor.', e)
       nativeClientSession.destroy()
     }
-  })
-  protocolChannel.onOpen(() => {
+  }
+  protocolChannel.onOpen = () => {
     // flush out any requests that came in while we were waiting for the data channel to open.
     logger.info(`Wayland client connection to browser is open.`)
     nativeClientSession.hasCompositorState = true
     nativeClientSession.flushOutboundMessageOnOpen()
-  })
+  }
 
   nativeClientSession.allocateBrowserServerObjectIdsBatch()
 
@@ -161,7 +162,6 @@ export class NativeClientSession {
 
     const messageInterceptors: Record<number, any> = {}
     const userData: wl_surface_interceptor['userData'] = {
-      peerConnectionState: nativeCompositorSession.peerConnectionState,
       protocolChannel: this.protocolDataChannel,
       drmContext: nativeCompositorSession.drmContext,
       messageInterceptors,
@@ -231,7 +231,7 @@ export class NativeClientSession {
     getServerObjectIdsBatch(this.wlClient, idsReply.subarray(1))
     // out-of-band w. opcode 6
     idsReply[0] = 6
-    if (this.protocolDataChannel.readyState === 'open') {
+    if (this.protocolDataChannel.isOpen) {
       this.protocolDataChannel.send(Buffer.from(idsReply.buffer, idsReply.byteOffset, idsReply.byteLength))
     } else {
       this.outboundMessages.push(Buffer.from(idsReply.buffer, idsReply.byteOffset, idsReply.byteLength))
@@ -252,8 +252,8 @@ export class NativeClientSession {
       const sizeOpcode = wireMessageBuffer[1]
       const messageOpcode = sizeOpcode & 0x0000ffff
       const globalOpcode = 0
-      // 4294901761 is the name/code of the first global emitted by the browser
-      if (messageOpcode === globalOpcode && wireMessageBuffer[2] === 4294901761) {
+      const firstBrowserGlobal = 4294901761
+      if (messageOpcode === globalOpcode && wireMessageBuffer[2] === firstBrowserGlobal) {
         emitGlobals(wlRegistry)
       }
     }
@@ -337,7 +337,7 @@ export class NativeClientSession {
       offset += pendingWireMessage.length
     }
 
-    if (this.protocolDataChannel.readyState === 'open') {
+    if (this.protocolDataChannel.isOpen) {
       // 1 === 'open'
       logger.debug('Client message send over protocol channel.')
       this.protocolDataChannel.send(Buffer.from(sendBuffer.buffer, sendBuffer.byteOffset, sendBuffer.byteLength))
@@ -383,8 +383,8 @@ export class NativeClientSession {
     const deleteObjectId = new Uint32Array(payload.buffer, payload.byteOffset, 1)[0]
 
     delete this.messageInterceptor.interceptors[deleteObjectId]
-    if (deleteObjectId === 1) {
-      // 1 is the display id, which means client is being disconnected
+    const displayId = 1
+    if (deleteObjectId === displayId) {
       this.disconnecting = true
     }
 

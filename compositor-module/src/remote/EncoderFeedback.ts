@@ -55,10 +55,7 @@ export class ClientEncodersFeedback {
 
   sendFeedback() {
     for (const surfaceEncoderFeedback of Object.values(this.surfaceEncoderFeedbacks)) {
-      if (
-        surfaceEncoderFeedback.feedbackChannel === undefined ||
-        surfaceEncoderFeedback.feedbackChannel.readyState !== 'open'
-      ) {
+      if (surfaceEncoderFeedback.feedbackChannel === undefined || !surfaceEncoderFeedback.feedbackChannel.isOpen) {
         continue
       }
 
@@ -121,7 +118,7 @@ export class SurfaceEncoderFeedback {
 
     const duration = performance.now() - bufferDecodingStartedTime
     this.durations.push(duration)
-    if (this.durations.length > 20) {
+    if (this.durations.length > 60) {
       this.durations.shift()
     }
   }

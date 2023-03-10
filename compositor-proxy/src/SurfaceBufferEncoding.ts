@@ -29,7 +29,6 @@ const logger = createLogger('surface-buffer-encoding')
 function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor): FrameFeedback {
   if (wlSurfaceInterceptor.frameFeedback === undefined) {
     const feedbackChannel = createFeedbackChannel(
-      wlSurfaceInterceptor.userData.peerConnectionState,
       wlSurfaceInterceptor.userData.nativeClientSession.id,
       wlSurfaceInterceptor.id,
     )
@@ -48,10 +47,7 @@ function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor): FrameF
 
 function ensureFrameDataChannel(wlSurfaceInterceptor: wlSurfaceInterceptor): Channel {
   if (wlSurfaceInterceptor.frameDataChannel === undefined) {
-    wlSurfaceInterceptor.frameDataChannel = createFrameDataChannel(
-      wlSurfaceInterceptor.userData.peerConnectionState,
-      wlSurfaceInterceptor.userData.nativeClientSession.id,
-    )
+    wlSurfaceInterceptor.frameDataChannel = createFrameDataChannel(wlSurfaceInterceptor.userData.nativeClientSession.id)
     wlSurfaceInterceptor.userData.nativeClientSession.destroyListeners.push(() => {
       wlSurfaceInterceptor.frameDataChannel.close()
     })
@@ -81,7 +77,6 @@ export function initSurfaceBufferEncoding(): void {
       this.frameFeedback.destroy()
       this.frameFeedback = undefined
     }
-    this.destroyed = true
     return {
       native: false,
       browser: true,
@@ -208,12 +203,12 @@ export function initSurfaceBufferEncoding(): void {
           }),
         }
         this.pendingBufferResourceId = undefined
-        frameFeedback.commitNotify(frameCallbacksIds, () => this.destroyed)
+        frameFeedback.commitNotify(frameCallbacksIds)
       }
     } else if (this.surfaceState) {
       const frameCallbacksIds = this.pendingFrameCallbacksIds ?? []
       this.pendingFrameCallbacksIds = []
-      frameFeedback.commitNotify(frameCallbacksIds, () => this.destroyed)
+      frameFeedback.commitNotify(frameCallbacksIds)
     }
 
     // inject the buffer content serial in the commit message

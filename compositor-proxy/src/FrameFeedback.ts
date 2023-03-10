@@ -2,94 +2,101 @@ import { destroyWlResourceSilently, flush, sendEvents } from 'westfield-proxy'
 import { performance } from 'perf_hooks'
 import type { Channel } from './Channel'
 
-let activeFeedbackClockInterval = 16.667
+// hard-lock to 30FPS for now
+const minTickInterval = 33.333
+let tickInterval = minTickInterval
+let nextTickInterval = tickInterval
 let feedbackClockTimer: NodeJS.Timer | undefined
-let feedbackClockQueue: ((time: number) => void)[] = []
+type Feedback = { callback: (time: number) => void; delay: number }
+let feedbackClockQueue: Feedback[] = []
 
-function configureFrameFeedbackClock(interval: number) {
+function configureFramePipelineTicks(interval: number) {
   if (feedbackClockTimer) {
-    clearInterval(feedbackClockTimer)
-    feedbackClockTimer = undefined
+    return
   }
-  activeFeedbackClockInterval = Math.ceil(interval)
+
+  tickInterval = interval
   feedbackClockTimer = setInterval(() => {
     if (feedbackClockQueue.length) {
       const time = performance.now()
-      for (const virtualVSyncListener of feedbackClockQueue) {
-        virtualVSyncListener(time)
+      for (const feedback of feedbackClockQueue) {
+        feedback.delay -= tickInterval
+        if (feedback.delay <= 0) {
+          feedback.callback(time)
+        }
       }
-      feedbackClockQueue = []
+      feedbackClockQueue = feedbackClockQueue.filter((feedback) => feedback.delay > 0)
     }
-  }, activeFeedbackClockInterval)
+
+    if (tickInterval !== nextTickInterval) {
+      if (feedbackClockTimer) {
+        clearInterval(feedbackClockTimer)
+        feedbackClockTimer = undefined
+      }
+      configureFramePipelineTicks(nextTickInterval)
+    }
+  }, tickInterval)
 }
 
-configureFrameFeedbackClock(activeFeedbackClockInterval)
+configureFramePipelineTicks(nextTickInterval)
 
 export class FrameFeedback {
   private serverProcessingDuration = 0
   private clientProcessingDuration = 0
   private clientFeedbackTimestamp = 0
-  private parkedFeedbackClockQueue: ((time: number) => void)[] = []
+  private parkedFeedbackClockQueue: Feedback[] = []
+  private commitDelay = 0
+  private destroyed = false
 
   constructor(
     private wlClient: unknown,
     private messageInterceptors: Record<number, any>,
     private feedbackChannel: Channel,
-    private clientRefreshInterval = 16.667,
   ) {
-    feedbackChannel.onMessage((buffer) => {
-      const refreshInterval = buffer.readUInt16LE()
-      const avgDuration = buffer.readUInt16LE(2)
+    feedbackChannel.onMessage = (buffer) => {
+      const data = Buffer.from(buffer, buffer.byteOffset, buffer.byteLength)
+      const refreshInterval = data.readUInt16LE(0)
+      const avgDuration = data.readUInt16LE(2)
       this.updateDelay(refreshInterval, avgDuration)
-    })
+    }
   }
 
   destroy() {
+    this.destroyed = true
+    this.parkedFeedbackClockQueue = []
     this.feedbackChannel.close()
   }
 
-  commitNotify(frameCallbacksIds: number[], isDestroyed: () => boolean): void {
+  commitNotify(frameCallbacksIds: number[]): void {
     const clockQueue =
       performance.now() - this.clientFeedbackTimestamp > 1500 ? this.parkedFeedbackClockQueue : feedbackClockQueue
-    clockQueue.push((time) => {
-      if (isDestroyed()) {
-        return
-      }
-      this.sendFrameDoneEventsWithCallbacks(time, frameCallbacksIds)
+    clockQueue.push({
+      callback: (time) => {
+        if (this.destroyed) {
+          return
+        }
+        this.sendFrameDoneEventsWithCallbacks(time, frameCallbacksIds)
+      },
+      // TODO we could take the surface client rendering time into account to schedule the next frame a bit earlier
+      delay: this.commitDelay,
     })
-  }
-
-  private tuneFrameRedrawInterval() {
-    const slowestClockInterval = Math.max(
-      this.serverProcessingDuration,
-      this.clientProcessingDuration,
-      this.clientRefreshInterval,
-    )
-
-    if (
-      (slowestClockInterval < 17 && Math.abs(slowestClockInterval - activeFeedbackClockInterval) > 1) ||
-      (slowestClockInterval < 33 && Math.abs(slowestClockInterval - activeFeedbackClockInterval) > 5) ||
-      Math.abs(slowestClockInterval - activeFeedbackClockInterval) > 10
-    ) {
-      configureFrameFeedbackClock(slowestClockInterval)
-    }
   }
 
   private updateDelay(clientRefreshInterval: number, clientProcessingDuration: number) {
     this.clientFeedbackTimestamp = performance.now()
     this.clientProcessingDuration = clientProcessingDuration
-    this.clientRefreshInterval = clientRefreshInterval
     if (this.parkedFeedbackClockQueue.length) {
       feedbackClockQueue.push(...this.parkedFeedbackClockQueue)
       this.parkedFeedbackClockQueue = []
     }
 
-    this.tuneFrameRedrawInterval()
+    this.commitDelay = Math.ceil(Math.max(this.serverProcessingDuration, this.clientProcessingDuration))
+    nextTickInterval = Math.ceil(Math.max(clientRefreshInterval, minTickInterval))
   }
 
   encodingDone(commitTimestamp: number): void {
     this.serverProcessingDuration = performance.now() - commitTimestamp
-    this.tuneFrameRedrawInterval()
+    this.commitDelay = Math.ceil(Math.max(this.serverProcessingDuration, this.clientProcessingDuration))
   }
 
   sendFrameDoneEventsWithCallbacks(frameDoneTimestamp: number, frameCallbackIds: number[]) {

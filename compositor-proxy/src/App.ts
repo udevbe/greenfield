@@ -10,7 +10,7 @@ import {
   POSTMkstempMmap,
   PUTWebFDStream,
 } from './AppController'
-import { webRTCSignaling } from './SignalingController'
+import { connectionHandling, signalHandling } from './SignalingController'
 
 function withParams(
   paramCount: number,
@@ -72,7 +72,8 @@ export function createApp(
         withAuth(compositorProxySession, withParams(2, POSTEncoderKeyframe)),
       )
 
-      .ws('/signaling', webRTCSignaling(compositorProxySession))
+      .ws('/signaling', signalHandling(compositorProxySession))
+      .ws('/', connectionHandling(compositorProxySession))
 
       .listen(host, port, (listenSocket) => {
         if (listenSocket) {
