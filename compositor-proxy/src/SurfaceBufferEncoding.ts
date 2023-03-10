@@ -77,7 +77,6 @@ export function initSurfaceBufferEncoding(): void {
       this.frameFeedback.destroy()
       this.frameFeedback = undefined
     }
-    this.destroyed = true
     return {
       native: false,
       browser: true,
@@ -204,12 +203,12 @@ export function initSurfaceBufferEncoding(): void {
           }),
         }
         this.pendingBufferResourceId = undefined
-        frameFeedback.commitNotify(frameCallbacksIds, () => this.destroyed)
+        frameFeedback.commitNotify(frameCallbacksIds)
       }
     } else if (this.surfaceState) {
       const frameCallbacksIds = this.pendingFrameCallbacksIds ?? []
       this.pendingFrameCallbacksIds = []
-      frameFeedback.commitNotify(frameCallbacksIds, () => this.destroyed)
+      frameFeedback.commitNotify(frameCallbacksIds)
     }
 
     // inject the buffer content serial in the commit message

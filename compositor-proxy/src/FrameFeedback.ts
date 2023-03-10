@@ -46,6 +46,7 @@ export class FrameFeedback {
   private clientFeedbackTimestamp = 0
   private parkedFeedbackClockQueue: Feedback[] = []
   private commitDelay = 0
+  private destroyed = false
 
   constructor(
     private wlClient: unknown,
@@ -61,15 +62,17 @@ export class FrameFeedback {
   }
 
   destroy() {
+    this.destroyed = true
+    this.parkedFeedbackClockQueue = []
     this.feedbackChannel.close()
   }
 
-  commitNotify(frameCallbacksIds: number[], isDestroyed: () => boolean): void {
+  commitNotify(frameCallbacksIds: number[]): void {
     const clockQueue =
       performance.now() - this.clientFeedbackTimestamp > 1500 ? this.parkedFeedbackClockQueue : feedbackClockQueue
     clockQueue.push({
       callback: (time) => {
-        if (isDestroyed()) {
+        if (this.destroyed) {
           return
         }
         this.sendFrameDoneEventsWithCallbacks(time, frameCallbacksIds)
