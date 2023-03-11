@@ -35,25 +35,30 @@ export class Encoder {
   }[] = []
 
   constructor(private readonly encoderType: typeof config.encoder.h264Encoder, wlClient: unknown, drmContext: unknown) {
-    this.nativeEncoder = appEndpointNative.createEncoder(this.encoderType, wlClient, drmContext, (buffer: Buffer) => {
-      const encodingTask = this.encodingQueue.shift()
-      if (encodingTask) {
-        if (buffer) {
-          // console.debug(`Resolve encoding ${encodingTask.bufferContentSerial} with success`)
-          encodingTask.resolve(buffer)
+    this.nativeEncoder = appEndpointNative.createFrameEncoder(
+      this.encoderType,
+      wlClient,
+      drmContext,
+      (buffer: Buffer) => {
+        const encodingTask = this.encodingQueue.shift()
+        if (encodingTask) {
+          if (buffer) {
+            // console.debug(`Resolve encoding ${encodingTask.bufferContentSerial} with success`)
+            encodingTask.resolve(buffer)
+          } else {
+            const e = new Error('Buffer encoding failed.')
+            console.error(`\tname: ${e.name} message: ${e.message}`)
+            console.error('error object stack: ')
+            console.error(e.stack ?? '')
+            console.debug(`Resolve encoding ${encodingTask.bufferContentSerial} with error`)
+            encodingTask.reject(e)
+          }
         } else {
-          const e = new Error('Buffer encoding failed.')
-          console.error(`\tname: ${e.name} message: ${e.message}`)
-          console.error('error object stack: ')
-          console.error(e.stack ?? '')
-          console.debug(`Resolve encoding ${encodingTask.bufferContentSerial} with error`)
-          encodingTask.reject(e)
+          console.error('BUG? No buffer callback')
+          // TODO log better error
         }
-      } else {
-        console.error('BUG? No buffer callback')
-        // TODO log better error
-      }
-    })
+      },
+    )
   }
 
   encodeBuffer({
@@ -68,7 +73,7 @@ export class Encoder {
     // console.debug(`Start encoding: ${bufferContentSerial}`)
     return new Promise<Buffer>((resolve, reject) => {
       this.encodingQueue.push({ resolve, reject, bufferResourceId, bufferContentSerial })
-      appEndpointNative.encodeBuffer(this.nativeEncoder, bufferResourceId, bufferContentSerial, bufferCreationSerial)
+      appEndpointNative.encodeFrame(this.nativeEncoder, bufferResourceId, bufferContentSerial, bufferCreationSerial)
     })
   }
 
@@ -77,6 +82,6 @@ export class Encoder {
   }
 
   destroy() {
-    appEndpointNative.destroyEncoder(this.nativeEncoder)
+    appEndpointNative.destroyFrameEncoder(this.nativeEncoder)
   }
 }

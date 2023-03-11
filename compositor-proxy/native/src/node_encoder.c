@@ -28,20 +28,20 @@
     }                                                                    \
 }
 
-struct node_encoder {
-    struct encoder *encoder;
+struct node_frame_encoder {
+    struct frame_encoder *encoder;
     struct wl_client *client;
     napi_threadsafe_function js_cb_ref;
 };
 
 static void
-encoder_opaque_sample_ready_callback(void *user_data, struct encoded_frame *encoded_frame) {
-    struct node_encoder *node_encoder = user_data;
-    napi_call_threadsafe_function(node_encoder->js_cb_ref, encoded_frame, napi_tsfn_blocking);
+node_frame_encoder_opaque_sample_ready_callback(void *user_data, struct encoded_frame *encoded_frame) {
+    struct node_frame_encoder *node_frame_encoder = user_data;
+    napi_call_threadsafe_function(node_frame_encoder->js_cb_ref, encoded_frame, napi_tsfn_blocking);
 }
 
 static void
-node_encoder_finalize_encoded_frame(napi_env env, void *finalize_data, void *finalize_hint) {
+node_frame_encoder_finalize_encoded_frame(napi_env env, void *finalize_data, void *finalize_hint) {
     encoded_frame_finalize((struct encoded_frame *) finalize_hint);
 }
 
@@ -56,7 +56,8 @@ encoded_frame_to_node_buffer_cb(napi_env env, napi_value js_callback, void *cont
         NAPI_CALL(env, napi_get_undefined(env, &buffer_value))
     } else {
         NAPI_CALL(env, napi_create_external_buffer(env, encoded_frame->size, encoded_frame->encoded_data,
-                                                   node_encoder_finalize_encoded_frame, encoded_frame, &buffer_value))
+                                                   node_frame_encoder_finalize_encoded_frame, encoded_frame,
+                                                   &buffer_value))
     }
 
     napi_value args[] = {buffer_value};
@@ -76,14 +77,14 @@ encoded_frame_to_node_buffer_cb(napi_env env, napi_value js_callback, void *cont
  * @param info
  * @return
  */
-static napi_value
-createEncoder(napi_env env, napi_callback_info info) {
+napi_value
+createFrameEncoder(napi_env env, napi_callback_info info) {
     static size_t argc = 4;
     napi_value return_value, argv[argc], cb_name;
     size_t encoder_type_length;
     struct wl_client *client;
     struct westfield_egl *westfield_egl;
-    struct node_encoder *node_encoder;
+    struct node_frame_encoder *node_frame_encoder;
     char preferred_encoder[16];
 
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
@@ -92,18 +93,19 @@ createEncoder(napi_env env, napi_callback_info info) {
     NAPI_CALL(env, napi_get_value_external(env, argv[1], (void **) &client))
     NAPI_CALL(env, napi_get_value_external(env, argv[2], (void **) &westfield_egl))
 
-    node_encoder = calloc(1, sizeof(struct node_encoder));
-    node_encoder->client = client;
+    node_frame_encoder = calloc(1, sizeof(struct node_frame_encoder));
+    node_frame_encoder->client = client;
 
-    if (encoder_create(preferred_encoder, encoder_opaque_sample_ready_callback, node_encoder, &node_encoder->encoder,
-                       westfield_egl) == -1) {
-        free(node_encoder);
-        NAPI_CALL(env, napi_throw_error((env), NULL, "Can't create encoder."))
+    if (frame_encoder_create(preferred_encoder, node_frame_encoder_opaque_sample_ready_callback, node_frame_encoder,
+                             &node_frame_encoder->encoder,
+                             westfield_egl) == -1) {
+        free(node_frame_encoder);
+        NAPI_CALL(env, napi_throw_error((env), NULL, "Can't create frame encoder."))
         NAPI_CALL(env, napi_get_undefined(env, &return_value))
         return return_value;
     }
 
-    napi_create_string_utf8(env, "sample_callback", NAPI_AUTO_LENGTH, &cb_name);
+    napi_create_string_utf8(env, "frame_sample_callback", NAPI_AUTO_LENGTH, &cb_name);
     NAPI_CALL(env, napi_create_threadsafe_function(
             env,
             argv[3],
@@ -113,11 +115,11 @@ createEncoder(napi_env env, napi_callback_info info) {
             2,
             NULL,
             NULL,
-            node_encoder,
+            node_frame_encoder,
             encoded_frame_to_node_buffer_cb,
-            &node_encoder->js_cb_ref))
+            &node_frame_encoder->js_cb_ref))
 
-    NAPI_CALL(env, napi_create_external(env, (void *) node_encoder, NULL, NULL, &return_value))
+    NAPI_CALL(env, napi_create_external(env, (void *) node_frame_encoder, NULL, NULL, &return_value))
     return return_value;
 }
 
@@ -131,16 +133,16 @@ createEncoder(napi_env env, napi_callback_info info) {
  * @return
  */
 static napi_value
-destroyEncoder(napi_env env, napi_callback_info info) {
+destroyFrameEncoder(napi_env env, napi_callback_info info) {
     static size_t argc = 1;
     napi_value return_value, argv[argc];
-    struct node_encoder *node_encoder;
+    struct node_frame_encoder *node_frame_encoder;
 
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
-    NAPI_CALL(env, napi_get_value_external(env, argv[0], (void **) &node_encoder))
+    NAPI_CALL(env, napi_get_value_external(env, argv[0], (void **) &node_frame_encoder))
 
     // TODO close encoder first, wait for eos callback, then destroy rest of resources
-    encoder_destroy(&node_encoder->encoder);
+    frame_encoder_destroy(&node_frame_encoder->encoder);
 //
 //    NAPI_CALL(env, napi_unref_threadsafe_function(env, node_encoder->js_cb_ref))
 //    napi_release_threadsafe_function(node_encoder->js_cb_ref, napi_tsfn_release);
@@ -159,24 +161,24 @@ destroyEncoder(napi_env env, napi_callback_info info) {
 // return:
 // - undefined
 static napi_value
-encodeBuffer(napi_env env, napi_callback_info info) {
+encodeFrame(napi_env env, napi_callback_info info) {
     static size_t argc = 4;
     napi_value argv[argc], return_value;
 
-    struct node_encoder *node_encoder;
+    struct node_frame_encoder *node_frame_encoder;
     uint32_t buffer_id, buffer_content_serial, buffer_creation_serial;
     struct wl_resource *buffer_resource;
 
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
-    NAPI_CALL(env, napi_get_value_external(env, argv[0], (void **) &node_encoder))
+    NAPI_CALL(env, napi_get_value_external(env, argv[0], (void **) &node_frame_encoder))
     NAPI_CALL(env, napi_get_value_uint32(env, argv[1], &buffer_id))
     NAPI_CALL(env, napi_get_value_uint32(env, argv[2], &buffer_content_serial))
     NAPI_CALL(env, napi_get_value_uint32(env, argv[3], &buffer_creation_serial))
 
-    buffer_resource = wl_client_get_object(node_encoder->client, buffer_id);
+    buffer_resource = wl_client_get_object(node_frame_encoder->client, buffer_id);
 
-    if (encoder_encode(&node_encoder->encoder, buffer_resource, buffer_content_serial, buffer_creation_serial) == -1) {
-        NAPI_CALL(env, napi_throw_error((env), NULL, "Can't encode buffer."))
+    if (frame_encoder_encode(&node_frame_encoder->encoder, buffer_resource, buffer_content_serial, buffer_creation_serial) == -1) {
+        NAPI_CALL(env, napi_throw_error((env), NULL, "Can't encode frame buffer."))
         NAPI_CALL(env, napi_get_undefined(env, &return_value))
         return return_value;
     }
@@ -193,12 +195,12 @@ static napi_value
 requestKeyUnit(napi_env env, napi_callback_info info) {
     static size_t argc = 1;
     napi_value argv[argc], return_value;
-    struct node_encoder *node_encoder;
+    struct node_frame_encoder *node_frame_encoder;
 
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
-    NAPI_CALL(env, napi_get_value_external(env, argv[0], (void **) &node_encoder))
+    NAPI_CALL(env, napi_get_value_external(env, argv[0], (void **) &node_frame_encoder))
 
-    encoder_request_key_unit(&node_encoder->encoder);
+    frame_encoder_request_key_unit(&node_frame_encoder->encoder);
 
     NAPI_CALL(env, napi_get_undefined(env, &return_value))
     return return_value;
@@ -207,9 +209,9 @@ requestKeyUnit(napi_env env, napi_callback_info info) {
 static napi_value
 init(napi_env env, napi_value exports) {
     napi_property_descriptor desc[] = {
-            DECLARE_NAPI_METHOD("createEncoder", createEncoder),
-            DECLARE_NAPI_METHOD("destroyEncoder", destroyEncoder),
-            DECLARE_NAPI_METHOD("encodeBuffer", encodeBuffer),
+            DECLARE_NAPI_METHOD("createFrameEncoder", createFrameEncoder),
+            DECLARE_NAPI_METHOD("destroyFrameEncoder", destroyFrameEncoder),
+            DECLARE_NAPI_METHOD("encodeFrame", encodeFrame),
             DECLARE_NAPI_METHOD("requestKeyUnit", requestKeyUnit),
     };
 

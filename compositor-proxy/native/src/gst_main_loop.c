@@ -8,21 +8,21 @@ extern void
 do_gst_init();
 
 extern void
-do_gst_encoder_create(char preferred_encoder[16], frame_callback_func frame_ready_callback, void *user_data,
-                      struct encoder **encoder_pp, struct westfield_egl *westfield_egl);
+do_gst_frame_encoder_create(char preferred_frame_encoder[16], frame_callback_func frame_ready_callback, void *user_data,
+                            struct frame_encoder **frame_encoder_pp, struct westfield_egl *westfield_egl);
 
 extern void
-do_gst_encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource, uint32_t buffer_content_serial,
-                      uint32_t buffer_creation_serial);
+do_gst_frame_encoder_encode(struct frame_encoder **frame_encoder_pp, struct wl_resource *buffer_resource, uint32_t buffer_content_serial,
+                            uint32_t buffer_creation_serial);
 
 extern void
-do_gst_encoder_free(struct encoder **encoder_pp);
+do_gst_frame_encoder_free(struct frame_encoder **frame_encoder_pp);
 
 extern void
 do_gst_encoded_frame_finalize(struct encoded_frame *encoded_frame);
 
 extern void
-do_gst_request_key_unit(struct encoder **encoder_pp);
+do_gst_frame_encoder_request_key_unit(struct frame_encoder **frame_encoder_pp);
 
 struct gf_gst_main_loop {
     GMainLoop *main;
@@ -31,38 +31,38 @@ struct gf_gst_main_loop {
 static struct gf_gst_main_loop *main_loop;
 
 enum gf_message_type {
-    encoder_create_type,
-    encoder_encode_type,
-    encoder_free_type,
+    frame_encoder_create_type,
+    frame_encoder_encode_type,
+    frame_encoder_free_type,
     encoded_frame_finalize_type,
-    encoder_request_key_unit_type
+    frame_encoder_request_key_unit_type,
 };
 
 struct gf_message {
     enum gf_message_type type;
     union {
         struct {
-            char preferred_encoder[16];
+            char preferred_frame_encoder[16];
             frame_callback_func frame_ready_callback;
             void *user_data;
-            struct encoder **encoder_pp;
+            struct frame_encoder **frame_encoder_pp;
             struct westfield_egl *westfield_egl;
-        } encoder_create;
+        } frame_encoder_create;
         struct {
-            struct encoder **encoder_pp;
+            struct frame_encoder **frame_encoder_pp;
             struct wl_resource *buffer_resource;
             uint32_t buffer_content_serial;
             uint32_t buffer_creation_serial;
-        } encoder_encode;
+        } frame_encoder_encode;
         struct {
-            struct encoder **encoder_pp;
-        } encoder_free;
+            struct frame_encoder **frame_encoder_pp;
+        } frame_encoder_free;
         struct {
             struct encoded_frame *encoded_frame;
         } encoded_frame_finalize;
         struct {
-            struct encoder **encoder_pp;
-        } encoder_request_key_unit;
+            struct frame_encoder **frame_encoder_pp;
+        } frame_encoder_request_key_unit;
     } body;
 };
 
@@ -151,29 +151,29 @@ sync_source_create() {
 static gboolean
 main_loop_handle_message(struct gf_message *message) {
     switch (message->type) {
-        case encoder_create_type:
-            do_gst_encoder_create(message->body.encoder_create.preferred_encoder,
-                                  message->body.encoder_create.frame_ready_callback,
-                                  message->body.encoder_create.user_data,
-                                  message->body.encoder_create.encoder_pp,
-                                  message->body.encoder_create.westfield_egl
+        case frame_encoder_create_type:
+            do_gst_frame_encoder_create(message->body.frame_encoder_create.preferred_frame_encoder,
+                                        message->body.frame_encoder_create.frame_ready_callback,
+                                        message->body.frame_encoder_create.user_data,
+                                        message->body.frame_encoder_create.frame_encoder_pp,
+                                        message->body.frame_encoder_create.westfield_egl
             );
             break;
-        case encoder_encode_type:
-            do_gst_encoder_encode(message->body.encoder_encode.encoder_pp,
-                                  message->body.encoder_encode.buffer_resource,
-                                  message->body.encoder_encode.buffer_content_serial,
-                                  message->body.encoder_encode.buffer_creation_serial
+        case frame_encoder_encode_type:
+            do_gst_frame_encoder_encode(message->body.frame_encoder_encode.frame_encoder_pp,
+                                        message->body.frame_encoder_encode.buffer_resource,
+                                        message->body.frame_encoder_encode.buffer_content_serial,
+                                        message->body.frame_encoder_encode.buffer_creation_serial
             );
             break;
-        case encoder_free_type:
-            do_gst_encoder_free(message->body.encoder_free.encoder_pp);
+        case frame_encoder_free_type:
+            do_gst_frame_encoder_free(message->body.frame_encoder_free.frame_encoder_pp);
             break;
         case encoded_frame_finalize_type:
             do_gst_encoded_frame_finalize(message->body.encoded_frame_finalize.encoded_frame);
             break;
-        case encoder_request_key_unit_type:
-            do_gst_request_key_unit(message->body.encoder_request_key_unit.encoder_pp);
+        case frame_encoder_request_key_unit_type:
+            do_gst_frame_encoder_request_key_unit(message->body.frame_encoder_request_key_unit.frame_encoder_pp);
             break;
     }
     return G_SOURCE_CONTINUE;
@@ -212,43 +212,43 @@ send_message(struct gf_message *message) {
 }
 
 int
-encoder_create(char preferred_encoder[16],
-               frame_callback_func frame_ready_callback,
-               void *user_data,
-               struct encoder **encoder_pp,
-               struct westfield_egl *westfield_egl) {
+frame_encoder_create(char preferred_frame_encoder[16],
+                     frame_callback_func frame_ready_callback,
+                     void *user_data,
+                     struct frame_encoder **frame_encoder_pp,
+                     struct westfield_egl *westfield_egl) {
     struct gf_message *message = g_new0(struct gf_message, 1);
 
-    message->type = encoder_create_type;
-    sprintf(message->body.encoder_create.preferred_encoder, "%s", preferred_encoder);
-    message->body.encoder_create.frame_ready_callback = frame_ready_callback;
-    message->body.encoder_create.user_data = user_data;
-    message->body.encoder_create.encoder_pp = encoder_pp;
-    message->body.encoder_create.westfield_egl = westfield_egl;
+    message->type = frame_encoder_create_type;
+    sprintf(message->body.frame_encoder_create.preferred_frame_encoder, "%s", preferred_frame_encoder);
+    message->body.frame_encoder_create.frame_ready_callback = frame_ready_callback;
+    message->body.frame_encoder_create.user_data = user_data;
+    message->body.frame_encoder_create.frame_encoder_pp = frame_encoder_pp;
+    message->body.frame_encoder_create.westfield_egl = westfield_egl;
 
     return send_message(message);
 }
 
 int
-encoder_encode(struct encoder **encoder_pp, struct wl_resource *buffer_resource, uint32_t buffer_content_serial,
-               uint32_t buffer_creation_serial) {
+frame_encoder_encode(struct frame_encoder **frame_encoder_pp, struct wl_resource *buffer_resource, uint32_t buffer_content_serial,
+                     uint32_t buffer_creation_serial) {
     struct gf_message *message = g_new0(struct gf_message, 1);
 
-    message->type = encoder_encode_type;
-    message->body.encoder_encode.encoder_pp = encoder_pp;
-    message->body.encoder_encode.buffer_resource = buffer_resource;
-    message->body.encoder_encode.buffer_content_serial = buffer_content_serial;
-    message->body.encoder_encode.buffer_creation_serial = buffer_creation_serial;
+    message->type = frame_encoder_encode_type;
+    message->body.frame_encoder_encode.frame_encoder_pp = frame_encoder_pp;
+    message->body.frame_encoder_encode.buffer_resource = buffer_resource;
+    message->body.frame_encoder_encode.buffer_content_serial = buffer_content_serial;
+    message->body.frame_encoder_encode.buffer_creation_serial = buffer_creation_serial;
 
     return send_message(message);
 }
 
 int
-encoder_destroy(struct encoder **encoder_pp) {
+frame_encoder_destroy(struct frame_encoder **frame_encoder_pp) {
     struct gf_message *message = g_new0(struct gf_message, 1);
 
-    message->type = encoder_free_type;
-    message->body.encoder_free.encoder_pp = encoder_pp;
+    message->type = frame_encoder_free_type;
+    message->body.frame_encoder_free.frame_encoder_pp = frame_encoder_pp;
 
     return send_message(message);
 }
@@ -264,11 +264,11 @@ encoded_frame_finalize(struct encoded_frame *encoded_frame) {
 }
 
 int
-encoder_request_key_unit(struct encoder **encoder_pp) {
+frame_encoder_request_key_unit(struct frame_encoder **frame_encoder_pp) {
     struct gf_message *message = g_new0(struct gf_message, 1);
 
-    message->type = encoder_request_key_unit_type;
-    message->body.encoder_request_key_unit.encoder_pp = encoder_pp;
+    message->type = frame_encoder_request_key_unit_type;
+    message->body.frame_encoder_request_key_unit.frame_encoder_pp = frame_encoder_pp;
 
     return send_message(message);
 }

@@ -1,23 +1,23 @@
 declare namespace nativeEncoder {
-  export type EncoderWrapper = unknown
+  export type FrameEncoder = unknown
 
-  export function createEncoder(
+  export function createFrameEncoder(
     encoderType: 'nvh264' | 'x264' | 'vaapih264',
     wlClient: unknown,
     drmContext: unknown,
     frameEncoded: (sample: Buffer) => void,
-  ): EncoderWrapper
+  ): FrameEncoder
 
-  export function destroyEncoder(encoder: EncoderWrapper)
+  export function destroyFrameEncoder(encoder: FrameEncoder)
 
-  export function encodeBuffer(
-    encoder: unknown,
+  export function encodeFrame(
+    frameEncoder: unknown,
     bufferId: number,
     bufferContentSerial: number,
     bufferCreationSerial: number,
   ): void
 
-  export function requestKeyUnit(encoder: unknown): void
+  export function requestKeyUnit(encoder: FrameEncoder): void
 }
 
 export = nativeEncoder
