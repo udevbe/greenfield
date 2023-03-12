@@ -139,7 +139,7 @@ for the H.264 WebCodecs API, which allows us to do decoding on the GPU of the re
 
 ## WebSockets - WebRTC DataChannels - WebTransport
 
-There is one drawback that currently still remains, and that's the use of WebSockets to deliver data to the browser. WebSockets operate over TPC which is ill-suited for real-time applications like Greenfield. 
+There is one drawback that currently still remains, and that's the use of WebSockets to deliver data to the browser. WebSockets operate over TCP which is ill-suited for real-time applications like Greenfield. 
 Instead, a UDP based protocol is needed. Browsers today unfortunately have no support for UDP based protocols aside from WebRTC DataChannels. However, we can not use WebRTC DataChannels as the build-in SCTP congestion algorithm is unacceptably slow. 
 A more low level UDP protocol is required and is currently in the works in the form of the WebTransport protocol. Once WebTransport becomes more widely available, we can operate in UDP mode 
 and assure fast end reliable transfers using [KCP](https://github.com/skywind3000/kcp/blob/master/README.en.md) in combination with forward-error-correction.
