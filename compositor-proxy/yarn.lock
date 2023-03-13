@@ -4050,7 +4050,7 @@ westfield-proxy-generator@1.0.0-alpha.4:
     uppercamelcase "^3.0.0"
     xml2js "^0.4.23"
 
-westfield-proxy@1.0.0-alpha.17:
+westfield-proxy@1.0.0-alpha.18:
   version "1.0.0-alpha.17"
   resolved "https://registry.yarnpkg.com/westfield-proxy/-/westfield-proxy-1.0.0-alpha.17.tgz#6090cfdd42acdaa50da78d4989dd6b6b7239e0e2"
   integrity sha512-LVqsv1OwCl3aYB8+z7DUQBlKRFPqtKoqiVmhu8RMfeNxtxGftOMtOCZanHKjeWjF8woL8Bt8abmQOeEnaUBjww==

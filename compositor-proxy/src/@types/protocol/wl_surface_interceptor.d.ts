@@ -3,7 +3,6 @@ import { FrameFeedback } from '../../FrameFeedback'
 import { NativeClientSession } from '../../NativeClientSession'
 import { MessageDestination } from '../../../../../westfield/server/node/proxy'
 import type { Channel } from '../../Channel'
-import type { PeerConnectionState } from '../../CompositorProxySession'
 
 export default class wl_surface_interceptor {
   frameDataChannel: Channel
@@ -30,6 +29,9 @@ export default class wl_surface_interceptor {
   wlClient: unknown
   id: number
 
+  /**
+   * destroy
+   */
   R0(message: {
     buffer: ArrayBuffer
     fds: Array<number>
@@ -38,6 +40,9 @@ export default class wl_surface_interceptor {
     size: number
   }): MessageDestination
 
+  /**
+   * attach
+   */
   R1(message: {
     buffer: ArrayBuffer
     fds: Array<number>
@@ -46,6 +51,20 @@ export default class wl_surface_interceptor {
     size: number
   }): MessageDestination
 
+  /**
+   * damage
+   */
+  R2(message: {
+    buffer: ArrayBuffer
+    fds: Array<number>
+    bufferOffset: number
+    consumed: number
+    size: number
+  }): MessageDestination
+
+  /**
+   * frame
+   */
   R3(message: {
     buffer: ArrayBuffer
     fds: Array<number>
@@ -54,7 +73,87 @@ export default class wl_surface_interceptor {
     size: number
   }): MessageDestination
 
+  /**
+   * set_opaque_region
+   */
+  R4(message: {
+    buffer: ArrayBuffer
+    fds: Array<number>
+    bufferOffset: number
+    consumed: number
+    size: number
+  }): MessageDestination
+
+  /**
+   * set_input_region
+   */
+  R5(message: {
+    buffer: ArrayBuffer
+    fds: Array<number>
+    bufferOffset: number
+    consumed: number
+    size: number
+  }): MessageDestination
+
+  /**
+   * commit
+   */
   R6(message: {
+    buffer: ArrayBuffer
+    fds: Array<number>
+    bufferOffset: number
+    consumed: number
+    size: number
+  }): MessageDestination
+
+  /**
+   * enter
+   */
+  R7(message: {
+    buffer: ArrayBuffer
+    fds: Array<number>
+    bufferOffset: number
+    consumed: number
+    size: number
+  }): MessageDestination
+
+  /**
+   * leave
+   */
+  R8(message: {
+    buffer: ArrayBuffer
+    fds: Array<number>
+    bufferOffset: number
+    consumed: number
+    size: number
+  }): MessageDestination
+
+  /**
+   * set_buffer_transform
+   */
+  R9(message: {
+    buffer: ArrayBuffer
+    fds: Array<number>
+    bufferOffset: number
+    consumed: number
+    size: number
+  }): MessageDestination
+
+  /**
+   * set_buffer_scale
+   */
+  R10(message: {
+    buffer: ArrayBuffer
+    fds: Array<number>
+    bufferOffset: number
+    consumed: number
+    size: number
+  }): MessageDestination
+
+  /**
+   * damage_buffer
+   */
+  R11(message: {
     buffer: ArrayBuffer
     fds: Array<number>
     bufferOffset: number

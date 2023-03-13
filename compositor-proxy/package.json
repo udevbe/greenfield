@@ -9,7 +9,7 @@
     "node": ">=16"
   },
   "license": "AGPL-3.0",
-  "description": "Wayland application endpoint.",
+  "description": "Wayland Compositor Proxy",
   "bin": {
     "appendpointd": "src/index.js"
   },
@@ -24,6 +24,7 @@
     "build:typescript": "tsc",
     "build": "yarn build:native && yarn build:typescript",
     "start": "COMPOSITOR_SESSION_ID=test123 node --require ts-node/register ./src/index.ts",
+    "start:debug": "COMPOSITOR_SESSION_ID=test123 node --inspect --require ts-node/register ./src/index.ts",
     "test": "jest"
   },
   "dependencies": {
@@ -58,7 +59,7 @@
     "ts-jest": "^29.0.3",
     "ts-node": "^10.9.1",
     "typescript": "^4.9.4",
-    "westfield-proxy": "1.0.0-alpha.17",
+    "westfield-proxy": "1.0.0-alpha.18",
     "westfield-proxy-generator": "1.0.0-alpha.4"
   }
 }

@@ -24,7 +24,7 @@
 #include "wlr_drm.h"
 #include "wlr_linux_dmabuf_v1.h"
 
-#define FPS 30
+#define FPS 60
 #define GF_BUFFER_CONTENT_SERIAL_META "BUFFER_CONTENT_SERIAL"
 const GstMetaInfo *gfBufferContentSerialMetaInfo = NULL;
 
@@ -1275,9 +1275,10 @@ static const struct frame_encoder_description frame_encoder_descriptions[] = {
                                        "glcolorconvert ! "
                                        "glshader name=shader ! "
                                        "capsfilter name=shader_capsfilter ! "
+                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
                                        "queue silent=true ! "
                                        // TODO use cudascale/cudaconvert once gstreamer 1.22 is released
-                                       "nvh264enc gop-size=-1 zerolatency=true preset=4 rc-mode=7 max-bitrate=12000 vbv-buffer-size=400 ! "
+                                       "nvh264enc gop-size=-1 zerolatency=true preset=4 rc-mode=7 max-bitrate=12000 vbv-buffer-size=200 spatial-aq=true ! "
                                        "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .alpha_pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
@@ -1287,7 +1288,7 @@ static const struct frame_encoder_description frame_encoder_descriptions[] = {
                                               "capsfilter name=shader_capsfilter ! "
                                               "queue silent=true ! "
                                               // TODO use cudascale/cudaconvert once gstreamer 1.22 is released
-                                              "nvh264enc gop-size=-1 zerolatency=true preset=4 rc-mode=5 bitrate=900 vbv-buffer-size=20 ! "
+                                              "nvh264enc gop-size=-1 zerolatency=true preset=4 rc-mode=7 max-bitrate=1200 vbv-buffer-size=20  spatial-aq=true ! "
                                               "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                               "appsink name=sink ",
                 .split_alpha = true,
