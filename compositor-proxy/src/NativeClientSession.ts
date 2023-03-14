@@ -130,14 +130,13 @@ export function createNativeClientSession(
   return nativeClientSession
 }
 
-// FIXME derive/update sync serial from compositor
-let syncSerial = 1
 type SyncDone = {
   nativeDone: boolean
   browserDone: boolean
   // syncDoneMessage?: Uint32Array
   serial: number
   callbackId: number
+  fastSync: boolean
 }
 
 export class NativeClientSession {
@@ -145,6 +144,7 @@ export class NativeClientSession {
   public readonly messageInterceptor: MessageInterceptor
 
   private syncDones: SyncDone[] = []
+  private lastEventSerial = 0
 
   constructor(
     public wlClient: unknown,
@@ -187,7 +187,8 @@ export class NativeClientSession {
   /**
    * Delegates messages from the browser compositor to its native counterpart.
    */
-  private onWireMessageEvents(inboundMessage: Uint32Array) {
+  private onWireMessageEvents(lastEventSerial: number, inboundMessage: Uint32Array) {
+    this.lastEventSerial = lastEventSerial
     // logger.debug(`Delegating messages from browser to client. Total size: ${receiveBuffer.byteLength}`)
 
     let readOffset = 0
@@ -290,8 +291,9 @@ export class NativeClientSession {
         this.syncDones.push({
           nativeDone: false,
           browserDone: this.fastSync,
-          serial: syncSerial++,
+          serial: this.lastEventSerial,
           callbackId,
+          fastSync: this.fastSync,
         })
         // intercept sync request and handle it through the fast sync routine avoiding a round-trip to the compositor
         destination.browser = !this.fastSync
@@ -397,8 +399,10 @@ export class NativeClientSession {
         new Uint8Array(receiveBuffer.buffer, receiveBuffer.byteOffset + Uint32Array.BYTES_PER_ELEMENT),
       )
     } else {
+      const lastEventSerial = new Uint32Array(receiveBuffer.buffer, receiveBuffer.byteOffset, 2)[1]
       this.onWireMessageEvents(
-        new Uint32Array(receiveBuffer.buffer, receiveBuffer.byteOffset + Uint32Array.BYTES_PER_ELEMENT),
+        lastEventSerial,
+        new Uint32Array(receiveBuffer.buffer, receiveBuffer.byteOffset + 2 * Uint32Array.BYTES_PER_ELEMENT),
       )
     }
   }
@@ -416,10 +420,7 @@ export class NativeClientSession {
       return
     }
 
-    if (this.syncDones.find(({ callbackId }) => callbackId === deleteObjectId)) {
-      return
-    }
-
+    // console.log(`destroyResourceSilently from compositor: ${deleteObjectId}`)
     destroyWlResourceSilently(this.wlClient, deleteObjectId)
   }
 
@@ -440,21 +441,66 @@ export class NativeClientSession {
   }
 
   private sendSyncDoneEvent(syncDone: SyncDone) {
-    // console.log(`Sending sync done: ${syncDone}`)
+    // console.log(`Sending sync done: ${JSON.stringify(syncDone)}`)
+    if (syncDone.fastSync) {
+      const doneSize = 12 // id+size+opcode+time arg
+      const deleteSize = 12 // id+size+opcode+id arg
 
-    const doneSize = 12 // id+size+opcode+time arg
+      const messagesBuffer = new ArrayBuffer(doneSize + deleteSize)
 
-    const messagesBuffer = new ArrayBuffer(doneSize)
+      // send done event to callback
+      const doneBufu32 = new Uint32Array(messagesBuffer)
+      const doneBufu16 = new Uint16Array(messagesBuffer)
+      doneBufu32[0] = syncDone.callbackId
+      doneBufu16[2] = 0 // done opcode
+      doneBufu16[3] = doneSize
+      doneBufu32[2] = syncDone.serial
 
-    // send done event to callback
-    const doneBufu32 = new Uint32Array(messagesBuffer)
-    const doneBufu16 = new Uint16Array(messagesBuffer)
-    doneBufu32[0] = syncDone.callbackId
-    doneBufu16[2] = 0 // done opcode
-    doneBufu16[3] = doneSize
-    doneBufu32[2] = syncDone.serial
+      // send delete id event to display
+      const deleteBufu32 = new Uint32Array(messagesBuffer, doneSize)
+      const deleteBufu16 = new Uint16Array(messagesBuffer, doneSize)
+      deleteBufu32[0] = 1
+      deleteBufu16[2] = 1 // delete opcode
+      deleteBufu16[3] = deleteSize
+      deleteBufu32[2] = syncDone.callbackId
 
-    sendEvents(this.wlClient, doneBufu32, new Uint32Array([]))
+      sendEvents(this.wlClient, doneBufu32, new Uint32Array([]))
+      // flush(this.wlClient)
+
+      destroyWlResourceSilently(this.wlClient, syncDone.callbackId)
+    } else {
+      const doneSize = 12 // id+size+opcode+time arg
+
+      const messagesBuffer = new ArrayBuffer(doneSize)
+
+      // send done event to callback
+      const doneBufu32 = new Uint32Array(messagesBuffer)
+      const doneBufu16 = new Uint16Array(messagesBuffer)
+      doneBufu32[0] = syncDone.callbackId
+      doneBufu16[2] = 0 // done opcode
+      doneBufu16[3] = doneSize
+      doneBufu32[2] = syncDone.serial
+
+      sendEvents(this.wlClient, doneBufu32, new Uint32Array([]))
+    }
+  }
+
+  private destroySyncDone(syncDone: SyncDone) {
+    const deleteSize = 12 // id+size+opcode+time arg
+
+    const messagesBuffer = new ArrayBuffer(deleteSize)
+
+    // send delete id event to display
+    const deleteBufu32 = new Uint32Array(messagesBuffer, deleteSize)
+    const deleteBufu16 = new Uint16Array(messagesBuffer, deleteSize)
+    deleteBufu32[0] = 1
+    deleteBufu16[2] = 1 // delete opcode
+    deleteBufu16[3] = deleteSize
+    deleteBufu32[2] = syncDone.callbackId
+
+    sendEvents(this.wlClient, deleteBufu32, new Uint32Array([]))
+
+    destroyWlResourceSilently(this.wlClient, syncDone.callbackId)
   }
 
   private sendIfSyncDone(syncDone: SyncDone): boolean {
@@ -473,8 +519,10 @@ export class NativeClientSession {
         this.syncDones.shift()
         this.sendSyncDoneEvent(sortedSyncDone)
       }
+
       return true
     }
+
     return false
   }
 }

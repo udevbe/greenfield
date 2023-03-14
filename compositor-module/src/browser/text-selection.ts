@@ -36,7 +36,7 @@ async function handleBrowserDataSourceTextUpdate(seat: Seat, text: string) {
   const isUpdated = browserTextOffer !== text
   if (isUpdated) {
     browserTextOffer = text
-    seat.setSelectionInternal(createBrowserTextDataSource(text), seat.nextSerial())
+    seat.setSelectionInternal(createBrowserTextDataSource(text), seat.session.display.nextEventSerial())
   }
 }
 

@@ -96,7 +96,7 @@ async function updateBrowserOffers(newOffers: ClipboardItems) {
 async function handleBrowserDataSourceUpdate(seat: Seat, offers: ClipboardItems) {
   const isUpdated = await updateBrowserOffers(offers)
   if (isUpdated) {
-    seat.setSelectionInternal(createBrowserDataSource(offers), seat.nextSerial())
+    seat.setSelectionInternal(createBrowserDataSource(offers), seat.session.display.nextEventSerial())
   }
 }
 

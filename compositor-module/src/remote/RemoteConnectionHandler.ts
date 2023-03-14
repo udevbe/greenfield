@@ -255,7 +255,7 @@ export class RemoteConnectionHandler {
       return
     }
 
-    let messageSize = 1 // +1 for indicator if it's an out-of-band message
+    let messageSize = 2 // +2 for indicator if it's an out-of-band message & event serial
     const serializedWireMessages = wireMessages.map((wireMessage) => {
       let size = 1 // +1 for fd length
       const serializedFds: Uint8Array[] = wireMessage.fds.map((fd: FD) => {
@@ -280,6 +280,7 @@ export class RemoteConnectionHandler {
     const sendBuffer = new Uint32Array(messageSize)
     let offset = 0
     sendBuffer[offset++] = 0 // no out-of-band opcode
+    sendBuffer[offset++] = client.display.eventSerial // last event serial
 
     serializedWireMessages.forEach((serializedWireMessage) => {
       sendBuffer[offset++] = serializedWireMessage.serializedFds.length

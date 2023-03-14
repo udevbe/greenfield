@@ -1278,7 +1278,7 @@ export class XWindowManager {
     this.xConnection.flush()
   }
 
-  private async loadCursor(cursorImage: typeof cursorImageNames[CursorType]): Promise<Cursor> {
+  private async loadCursor(cursorImage: (typeof cursorImageNames)[CursorType]): Promise<Cursor> {
     // FIXME simply use build in browser cursor here instead of loading one through X...
     const { url, yhot, xhot, height, width } = cursorImage
     const response = await fetch(url)
@@ -1416,7 +1416,7 @@ export class XWindowManager {
         /* A real X client selection went away, not our
          * proxy selection.  Clear the wayland selection. */
         const seat = this.session.globals.seat
-        const serial = seat.nextSerial()
+        const serial = seat.session.display.nextEventSerial()
         seat.setSelectionInternal(undefined, serial)
       }
 
@@ -1720,7 +1720,7 @@ export class XWindowManager {
       }
     }
 
-    this.session.globals.seat.setSelectionInternal(xDataSource, this.session.globals.seat.nextSerial())
+    this.session.globals.seat.setSelectionInternal(xDataSource, this.session.display.nextEventSerial())
   }
 
   private async getSelectionData() {

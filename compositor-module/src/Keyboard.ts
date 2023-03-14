@@ -134,7 +134,7 @@ export class Keyboard implements WlKeyboardRequests, CompositorKeyboard {
 
   setFocus(surface: Surface | undefined): void {
     if (this.focus && !this.focus.destroyed && this.focus !== surface) {
-      const serial = this.seat.nextSerial()
+      const serial = this.seat.session.display.nextEventSerial()
       const focusResource = this.focus.resource
       this.resources
         .filter((keyboardResource) => keyboardResource.client === focusResource.client)
@@ -144,7 +144,7 @@ export class Keyboard implements WlKeyboardRequests, CompositorKeyboard {
     }
 
     if (surface && this.focus !== surface) {
-      const serial = this.seat.nextSerial()
+      const serial = this.seat.session.display.nextEventSerial()
       this.resources
         .filter((keyboardResource) => keyboardResource.client === surface.resource.client)
         .forEach((keyboardResource) => {
@@ -208,7 +208,7 @@ export class Keyboard implements WlKeyboardRequests, CompositorKeyboard {
 
     this.xkb.updateMask(modsDepressed, modsLatched, modsLocked, 0, 0, group)
 
-    const serial = this.seat.nextSerial()
+    const serial = this.seat.session.display.nextEventSerial()
     this.seat.notifyModifiers(serial)
   }
 
@@ -236,7 +236,7 @@ export class Keyboard implements WlKeyboardRequests, CompositorKeyboard {
       return
     }
 
-    const serial = this.seat.nextSerial()
+    const serial = this.seat.session.display.nextEventSerial()
     this.resources
       .filter((keyboardResource) => keyboardResource.client == this.focus?.resource.client)
       .forEach((keyboardResource) => {

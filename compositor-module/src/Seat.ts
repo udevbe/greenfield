@@ -151,7 +151,6 @@ export class PopupGrab implements KeyboardGrab, PointerGrab {
 }
 
 export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequests {
-  serial = 0
   readonly pointer: Pointer
   readonly keyboard: Keyboard
   readonly touch?: Touch
@@ -237,10 +236,6 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
     }
   }
 
-  nextSerial(): number {
-    return ++this.serial
-  }
-
   getPointer(resource: WlSeatResource, id: number): void {
     const wlPointerResource = new WlPointerResource(resource.client, id, resource.version)
 
@@ -253,7 +248,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
       if (this.pointer.focus?.surface.resource.client === wlPointerResource.client) {
         const { x: sx, y: sy } = this.pointer.focus.sceneToViewSpace(this.pointer)
         wlPointerResource.enter(
-          this.pointer.fousSerial,
+          this.pointer.focusSerial,
           this.pointer.focus.surface.resource,
           Fixed.parse(sx),
           Fixed.parse(sy),
@@ -483,7 +478,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
 
     this.pointer.grab?.button(event)
     if (this.pointer.buttonCount === 1) {
-      this.pointer.grabSerial = this.serial
+      this.pointer.grabSerial = this.session.display.eventSerial
     }
   }
 
@@ -598,8 +593,9 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
       this.updateKeymap()
     }
 
-    this.updateModifierState(this.serial, event.pressed, event.keyCode.x11KeyCode)
-    this.keyboard.grabSerial = this.serial
+    const serial = this.session.display.eventSerial
+    this.updateModifierState(serial, event.pressed, event.keyCode.x11KeyCode)
+    this.keyboard.grabSerial = serial
 
     if (event.pressed) {
       this.keyboard.grabTime = event.timeStamp
@@ -624,7 +620,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
   }
 
   notifyKeyboardFocusOut(): void {
-    const serial = this.nextSerial()
+    const serial = this.session.display.nextEventSerial()
     const focus = this.keyboard.focus
 
     this.keyboard.keys.forEach((key) => {
@@ -750,14 +746,15 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
 
     this.keyboard.resources.forEach((keyboardResource) => this.keyboard.sendKeymap(keyboardResource))
 
-    this.notifyModifiers(this.nextSerial())
+    const serial = this.session.display.nextEventSerial()
+    this.notifyModifiers(serial)
     if (latchedMods === 0 && lockedMods === 0) {
       return
     }
 
     this.keyboard.resources.forEach((keyboardResource) => {
       keyboardResource.modifiers(
-        this.serial,
+        serial,
         this.keyboard.modifiers.modsDepressed,
         this.keyboard.modifiers.modsLatched,
         this.keyboard.modifiers.modsLocked,

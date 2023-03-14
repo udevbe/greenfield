@@ -23,8 +23,9 @@ export class ProxyBuffer {
     consumed: number
     size: number
   }): MessageDestination {
-    this.destroyListeners.forEach((listener) => listener())
-    this.destroyListeners = []
+    for (const listener of this.destroyListeners) {
+      listener()
+    }
     this.destroyed = true
     delete this.interceptors[this.bufferId]
     return { native: false, browser: true }
