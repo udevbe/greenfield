@@ -2,12 +2,10 @@ import { destroyWlResourceSilently, flush, sendEvents } from 'westfield-proxy'
 import { performance } from 'perf_hooks'
 import type { Channel } from './Channel'
 
-// hard-lock to 30FPS for now
-const minTickInterval = 33.333
-let tickInterval = minTickInterval
+let tickInterval = 16.667
 let nextTickInterval = tickInterval
 let feedbackClockTimer: NodeJS.Timer | undefined
-type Feedback = { callback: (time: number) => void; delay: number }
+type Feedback = { callback: (time: number) => void; frameCallbackDelay: number }
 let feedbackClockQueue: Feedback[] = []
 
 function configureFramePipelineTicks(interval: number) {
@@ -18,14 +16,14 @@ function configureFramePipelineTicks(interval: number) {
   tickInterval = interval
   feedbackClockTimer = setInterval(() => {
     if (feedbackClockQueue.length) {
-      const time = performance.now()
+      const time = performance.now() >>> 0
       for (const feedback of feedbackClockQueue) {
-        feedback.delay -= tickInterval
-        if (feedback.delay <= 0) {
+        feedback.frameCallbackDelay -= tickInterval
+        if (feedback.frameCallbackDelay <= 0) {
           feedback.callback(time)
         }
       }
-      feedbackClockQueue = feedbackClockQueue.filter((feedback) => feedback.delay > 0)
+      feedbackClockQueue = feedbackClockQueue.filter((feedback) => feedback.frameCallbackDelay > 0)
     }
 
     if (tickInterval !== nextTickInterval) {
@@ -41,12 +39,13 @@ function configureFramePipelineTicks(interval: number) {
 configureFramePipelineTicks(nextTickInterval)
 
 export class FrameFeedback {
-  private serverProcessingDuration = 0
+  private serverProcessingDurations: number[] = []
   private clientProcessingDuration = 0
   private clientFeedbackTimestamp = 0
   private parkedFeedbackClockQueue: Feedback[] = []
-  private commitDelay = 0
+  private frameCallbackDelay = 0
   private destroyed = false
+  private avgServerProcessingDuration = 0
 
   constructor(
     private wlClient: unknown,
@@ -77,8 +76,7 @@ export class FrameFeedback {
         }
         this.sendFrameDoneEventsWithCallbacks(time, frameCallbacksIds)
       },
-      // TODO we could take the surface client rendering time into account to schedule the next frame a bit earlier
-      delay: this.commitDelay,
+      frameCallbackDelay: this.frameCallbackDelay,
     })
   }
 
@@ -90,13 +88,22 @@ export class FrameFeedback {
       this.parkedFeedbackClockQueue = []
     }
 
-    this.commitDelay = Math.ceil(Math.max(this.serverProcessingDuration, this.clientProcessingDuration))
-    nextTickInterval = Math.ceil(Math.max(clientRefreshInterval, minTickInterval))
+    this.frameCallbackDelay = Math.floor(Math.max(this.avgServerProcessingDuration, this.clientProcessingDuration))
+    nextTickInterval = Math.floor(clientRefreshInterval)
   }
 
   encodingDone(commitTimestamp: number): void {
-    this.serverProcessingDuration = performance.now() - commitTimestamp
-    this.commitDelay = Math.ceil(Math.max(this.serverProcessingDuration, this.clientProcessingDuration))
+    this.serverProcessingDurations.push(performance.now() - commitTimestamp)
+    if (this.serverProcessingDurations.length > 60) {
+      this.serverProcessingDurations.shift()
+    }
+    let serverProcessingDurationSum = 0
+    for (const serverProcessingDuration of this.serverProcessingDurations) {
+      serverProcessingDurationSum += serverProcessingDuration
+    }
+    this.avgServerProcessingDuration = serverProcessingDurationSum / this.serverProcessingDurations.length
+    // console.log(this.avgServerProcessingDuration, this.clientProcessingDuration)
+    this.frameCallbackDelay = Math.floor(Math.max(this.avgServerProcessingDuration, this.clientProcessingDuration))
   }
 
   sendFrameDoneEventsWithCallbacks(frameDoneTimestamp: number, frameCallbackIds: number[]) {
@@ -120,7 +127,7 @@ export class FrameFeedback {
     doneBufu32[0] = callbackResourceId
     doneBufu16[2] = 0 // done opcode
     doneBufu16[3] = doneSize
-    doneBufu32[2] = frameDoneTimestamp << 0
+    doneBufu32[2] = frameDoneTimestamp >>> 0
 
     // send delete id event to display
     const deleteBufu32 = new Uint32Array(messagesBuffer, doneSize)
@@ -145,7 +152,6 @@ export class FrameFeedback {
     releaseBufu16[2] = 0 // release opcode
     releaseBufu16[3] = releaseSize
     sendEvents(this.wlClient, releaseBufu32, new Uint32Array([]))
-
     flush(this.wlClient)
   }
 }

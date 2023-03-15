@@ -10,7 +10,7 @@ export class ProxyBuffer {
   constructor(
     private readonly interceptors: Record<number, any>,
     public readonly bufferId: number,
-    public readonly creationSerial: number,
+    public readonly creationSerial: number = incrementAndGetNextBufferSerial(),
     public destroyed = false,
     public destroyListeners: (() => void)[] = [],
   ) {}
@@ -23,8 +23,9 @@ export class ProxyBuffer {
     consumed: number
     size: number
   }): MessageDestination {
-    this.destroyListeners.forEach((listener) => listener())
-    this.destroyListeners = []
+    for (const listener of this.destroyListeners) {
+      listener()
+    }
     this.destroyed = true
     delete this.interceptors[this.bufferId]
     return { native: false, browser: true }

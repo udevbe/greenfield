@@ -272,7 +272,7 @@ export class PointerDrag implements PointerGrab, KeyboardGrab {
       return
     }
 
-    const serial = this.pointer.seat.nextSerial()
+    const serial = this.pointer.seat.session.display.nextEventSerial()
     let offerResource: WlDataOfferResource | undefined
     if (this.dataSource) {
       this.dataSource.accepted = false
@@ -367,7 +367,7 @@ export class Pointer implements WlPointerRequests {
   readonly defaultGrab: PointerGrab = DefaultPointerGrab.create(this)
   focusListeners: (() => void)[] = []
   motionListeners: (() => void)[] = []
-  fousSerial = 0
+  focusSerial = 0
   scrollFactor = 1
   resources: WlPointerResource[] = []
   focus?: View
@@ -408,7 +408,7 @@ export class Pointer implements WlPointerRequests {
     if (this.focus.surface.resource.client !== resource.client) {
       return
     }
-    if (this.seat.serial - serial > Number.MAX_SAFE_INTEGER / 2) {
+    if (this.seat.session.display.eventSerial - serial > Number.MAX_SAFE_INTEGER / 2) {
       return
     }
 
@@ -459,7 +459,7 @@ export class Pointer implements WlPointerRequests {
 
     if (this.focus && !this.focus.surface.destroyed && refocus) {
       const surfaceResource = this.focus.surface.resource
-      const serial = this.seat.nextSerial()
+      const serial = this.seat.session.display.nextEventSerial()
       for (const pointerResource1 of this.resources.filter(
         (pointerResource) => pointerResource.client === surfaceResource.client,
       )) {
@@ -472,7 +472,7 @@ export class Pointer implements WlPointerRequests {
 
     if (view && refocus) {
       const surfaceClient = view.surface.resource.client
-      const serial = this.seat.nextSerial()
+      const serial = this.seat.session.display.nextEventSerial()
       if (this.seat.keyboard.focus !== view.surface) {
         for (const keyboardResource1 of this.seat.keyboard.resources.filter(
           (keyboardResource) => keyboardResource.client === surfaceClient,
@@ -493,7 +493,7 @@ export class Pointer implements WlPointerRequests {
           this.frame(pointerResource)
         }
       }
-      this.fousSerial = serial
+      this.focusSerial = serial
     }
     if (this.focus) {
       this.focus.surface.resource.removeDestroyListener(this.focusViewListener)
@@ -642,7 +642,7 @@ export class Pointer implements WlPointerRequests {
       return
     }
 
-    const serial = this.seat.nextSerial()
+    const serial = this.seat.session.display.nextEventSerial()
     for (const pointerResource1 of this.resources.filter(
       (pointerResource) => pointerResource.client === this.focus?.surface.resource.client,
     )) {

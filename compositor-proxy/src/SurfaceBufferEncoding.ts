@@ -84,30 +84,6 @@ export function initSurfaceBufferEncoding(): void {
   }
 
   /**
-   * frame: [R]equest w opcode [3] = R3
-   */
-  wlSurfaceInterceptor.prototype.R3 = function (message: {
-    buffer: ArrayBuffer
-    fds: Array<number>
-    bufferOffset: number
-    consumed: number
-    size: number
-  }) {
-    const [frameCallbackId] = unmarshallArgs(message, 'n')
-    if (this.pendingFrameCallbacksIds) {
-      this.pendingFrameCallbacksIds.push(frameCallbackId as number)
-    } else {
-      this.pendingFrameCallbacksIds = [frameCallbackId as number]
-    }
-    // @ts-ignore
-    this.requestHandlers.frame(frameCallbackId)
-    return {
-      native: false,
-      browser: false,
-    }
-  }
-
-  /**
    * attach: [R]equest w opcode [1] = R1
    */
   wlSurfaceInterceptor.prototype.R1 = function (message: {
@@ -132,13 +108,95 @@ export function initSurfaceBufferEncoding(): void {
     this.pendingBufferResourceId = bufferResourceId as number
 
     if (this.pendingBufferResourceId) {
-      const proxyBuffer = this.userData.messageInterceptors[this.pendingBufferResourceId] as ProxyBuffer
+      let proxyBuffer = this.userData.messageInterceptors[this.pendingBufferResourceId]
+      if (proxyBuffer === undefined) {
+        proxyBuffer = new ProxyBuffer(this.userData.messageInterceptors, this.pendingBufferResourceId)
+        this.userData.messageInterceptors[this.pendingBufferResourceId] = proxyBuffer
+      }
+
       proxyBuffer.destroyListeners.push(this.pendingBufferDestroyListener)
     }
 
     return {
       native: false,
       browser: true,
+      neverReplies: true,
+    }
+  }
+
+  /**
+   * damage: [R]equest w opcode [2] = R2
+   */
+  wlSurfaceInterceptor.prototype.R2 = function (message: {
+    buffer: ArrayBuffer
+    fds: Array<number>
+    bufferOffset: number
+    consumed: number
+    size: number
+  }) {
+    return {
+      native: false,
+      browser: false,
+      neverReplies: true,
+    }
+  }
+
+  /**
+   * frame: [R]equest w opcode [3] = R3
+   */
+  wlSurfaceInterceptor.prototype.R3 = function (message: {
+    buffer: ArrayBuffer
+    fds: Array<number>
+    bufferOffset: number
+    consumed: number
+    size: number
+  }) {
+    const [frameCallbackId] = unmarshallArgs(message, 'n')
+    if (this.pendingFrameCallbacksIds) {
+      this.pendingFrameCallbacksIds.push(frameCallbackId as number)
+    } else {
+      this.pendingFrameCallbacksIds = [frameCallbackId as number]
+    }
+    // @ts-ignore
+    this.requestHandlers.frame(frameCallbackId)
+    return {
+      native: false,
+      browser: false,
+      neverReplies: true,
+    }
+  }
+
+  /**
+   * set_opaque_region: [R]equest w opcode [4] = R4
+   */
+  wlSurfaceInterceptor.prototype.R4 = function (message: {
+    buffer: ArrayBuffer
+    fds: Array<number>
+    bufferOffset: number
+    consumed: number
+    size: number
+  }) {
+    return {
+      native: false,
+      browser: false,
+      neverReplies: true,
+    }
+  }
+
+  /**
+   * set_input_region: [R]equest w opcode [5] = R5
+   */
+  wlSurfaceInterceptor.prototype.R5 = function (message: {
+    buffer: ArrayBuffer
+    fds: Array<number>
+    bufferOffset: number
+    consumed: number
+    size: number
+  }) {
+    return {
+      native: false,
+      browser: false,
+      neverReplies: true,
     }
   }
 
@@ -183,12 +241,14 @@ export function initSurfaceBufferEncoding(): void {
 
       if (this.pendingBufferResourceId) {
         const proxyBuffer = this.userData.messageInterceptors[this.pendingBufferResourceId] as ProxyBuffer
+
         proxyBuffer.destroyListeners = proxyBuffer.destroyListeners.filter(
           (listener) => listener !== this.pendingBufferDestroyListener,
         )
         proxyBuffer.destroyListeners.push(this.bufferDestroyListener)
 
         const frameCallbacksIds = this.pendingFrameCallbacksIds ?? []
+        this.pendingFrameCallbacksIds = []
         this.pendingFrameCallbacksIds = []
         this.surfaceState = {
           bufferResourceId: this.pendingBufferResourceId,
@@ -223,6 +283,92 @@ export function initSurfaceBufferEncoding(): void {
     return {
       native: false,
       browser: true,
+      neverReplies: true,
+    }
+  }
+
+  /**
+   * enter
+   */
+  wlSurfaceInterceptor.prototype.R7 = function (message: {
+    buffer: ArrayBuffer
+    fds: Array<number>
+    bufferOffset: number
+    consumed: number
+    size: number
+  }) {
+    return {
+      native: false,
+      browser: false,
+      neverReplies: true,
+    }
+  }
+
+  /**
+   * leave
+   */
+  wlSurfaceInterceptor.prototype.R8 = function (message: {
+    buffer: ArrayBuffer
+    fds: Array<number>
+    bufferOffset: number
+    consumed: number
+    size: number
+  }) {
+    return {
+      native: false,
+      browser: false,
+      neverReplies: true,
+    }
+  }
+
+  /**
+   * set_buffer_transform
+   */
+  wlSurfaceInterceptor.prototype.R9 = function (message: {
+    buffer: ArrayBuffer
+    fds: Array<number>
+    bufferOffset: number
+    consumed: number
+    size: number
+  }) {
+    return {
+      native: false,
+      browser: false,
+      neverReplies: true,
+    }
+  }
+
+  /**
+   * set_buffer_scale
+   */
+  wlSurfaceInterceptor.prototype.R10 = function (message: {
+    buffer: ArrayBuffer
+    fds: Array<number>
+    bufferOffset: number
+    consumed: number
+    size: number
+  }) {
+    return {
+      native: false,
+      browser: false,
+      neverReplies: true,
+    }
+  }
+
+  /**
+   * damage_buffer
+   */
+  wlSurfaceInterceptor.prototype.R11 = function (message: {
+    buffer: ArrayBuffer
+    fds: Array<number>
+    bufferOffset: number
+    consumed: number
+    size: number
+  }) {
+    return {
+      native: false,
+      browser: false,
+      neverReplies: true,
     }
   }
 }
