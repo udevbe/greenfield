@@ -108,7 +108,12 @@ export function initSurfaceBufferEncoding(): void {
     this.pendingBufferResourceId = bufferResourceId as number
 
     if (this.pendingBufferResourceId) {
-      const proxyBuffer = this.userData.messageInterceptors[this.pendingBufferResourceId] as ProxyBuffer
+      let proxyBuffer = this.userData.messageInterceptors[this.pendingBufferResourceId]
+      if (proxyBuffer === undefined) {
+        proxyBuffer = new ProxyBuffer(this.userData.messageInterceptors, this.pendingBufferResourceId)
+        this.userData.messageInterceptors[this.pendingBufferResourceId] = proxyBuffer
+      }
+
       proxyBuffer.destroyListeners.push(this.pendingBufferDestroyListener)
     }
 
@@ -236,6 +241,7 @@ export function initSurfaceBufferEncoding(): void {
 
       if (this.pendingBufferResourceId) {
         const proxyBuffer = this.userData.messageInterceptors[this.pendingBufferResourceId] as ProxyBuffer
+
         proxyBuffer.destroyListeners = proxyBuffer.destroyListeners.filter(
           (listener) => listener !== this.pendingBufferDestroyListener,
         )

@@ -10,7 +10,7 @@ export class ProxyBuffer {
   constructor(
     private readonly interceptors: Record<number, any>,
     public readonly bufferId: number,
-    public readonly creationSerial: number,
+    public readonly creationSerial: number = incrementAndGetNextBufferSerial(),
     public destroyed = false,
     public destroyListeners: (() => void)[] = [],
   ) {}

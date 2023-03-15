@@ -39,12 +39,13 @@ function configureFramePipelineTicks(interval: number) {
 configureFramePipelineTicks(nextTickInterval)
 
 export class FrameFeedback {
-  private serverProcessingDuration = 0
+  private serverProcessingDurations: number[] = []
   private clientProcessingDuration = 0
   private clientFeedbackTimestamp = 0
   private parkedFeedbackClockQueue: Feedback[] = []
   private frameCallbackDelay = 0
   private destroyed = false
+  private avgServerProcessingDuration = 0
 
   constructor(
     private wlClient: unknown,
@@ -87,14 +88,22 @@ export class FrameFeedback {
       this.parkedFeedbackClockQueue = []
     }
 
-    this.frameCallbackDelay = Math.floor(Math.max(this.serverProcessingDuration, this.clientProcessingDuration))
+    this.frameCallbackDelay = Math.floor(Math.max(this.avgServerProcessingDuration, this.clientProcessingDuration))
     nextTickInterval = Math.floor(clientRefreshInterval)
   }
 
   encodingDone(commitTimestamp: number): void {
-    this.serverProcessingDuration = performance.now() - commitTimestamp
-    // console.log(this.serverProcessingDuration, this.clientProcessingDuration)
-    this.frameCallbackDelay = Math.floor(Math.max(this.serverProcessingDuration, this.clientProcessingDuration))
+    this.serverProcessingDurations.push(performance.now() - commitTimestamp)
+    if (this.serverProcessingDurations.length > 60) {
+      this.serverProcessingDurations.shift()
+    }
+    let serverProcessingDurationSum = 0
+    for (const serverProcessingDuration of this.serverProcessingDurations) {
+      serverProcessingDurationSum += serverProcessingDuration
+    }
+    this.avgServerProcessingDuration = serverProcessingDurationSum / this.serverProcessingDurations.length
+    // console.log(this.avgServerProcessingDuration, this.clientProcessingDuration)
+    this.frameCallbackDelay = Math.floor(Math.max(this.avgServerProcessingDuration, this.clientProcessingDuration))
   }
 
   sendFrameDoneEventsWithCallbacks(frameDoneTimestamp: number, frameCallbackIds: number[]) {
@@ -143,7 +152,6 @@ export class FrameFeedback {
     releaseBufu16[2] = 0 // release opcode
     releaseBufu16[3] = releaseSize
     sendEvents(this.wlClient, releaseBufu32, new Uint32Array([]))
-
     flush(this.wlClient)
   }
 }

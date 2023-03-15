@@ -41,7 +41,7 @@ import {
   setWireMessageCallback,
   setWireMessageEndCallback,
 } from 'westfield-proxy'
-import { incrementAndGetNextBufferSerial, ProxyBuffer } from './ProxyBuffer'
+import { ProxyBuffer } from './ProxyBuffer'
 import type { Channel } from './Channel'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 import { sendClientConnectionsDisconnect } from './SignalingController'
@@ -96,14 +96,13 @@ export function createNativeClientSession(
   })
 
   setBufferCreatedCallback(wlClient, (bufferId: number) => {
-    const bufferCreationSerial = incrementAndGetNextBufferSerial()
-    nativeClientSession.messageInterceptor.interceptors[bufferId] = new ProxyBuffer(
-      nativeClientSession.messageInterceptor.interceptors,
-      bufferId,
-      bufferCreationSerial,
-    )
+    let proxyBuffer: ProxyBuffer = nativeClientSession.messageInterceptor.interceptors[bufferId]
+    if (proxyBuffer === undefined) {
+      proxyBuffer = new ProxyBuffer(nativeClientSession.messageInterceptor.interceptors, bufferId)
+      nativeClientSession.messageInterceptor.interceptors[bufferId] = proxyBuffer
+    }
     // send buffer creation notification. opcode: 2
-    const msg = new Uint32Array([2, bufferId, bufferCreationSerial])
+    const msg = new Uint32Array([2, bufferId, proxyBuffer.creationSerial])
     protocolChannel.send(Buffer.from(msg.buffer, msg.byteOffset, msg.byteLength))
   })
 
@@ -288,6 +287,7 @@ export class NativeClientSession {
         // and delay its delivery until both the browser & native requests have been processed else
         // we risk sending a done event too early.
         const callbackId = receiveBuffer[2]
+
         this.syncDones.push({
           nativeDone: false,
           browserDone: this.fastSync,
@@ -465,8 +465,7 @@ export class NativeClientSession {
       deleteBufu32[2] = syncDone.callbackId
 
       sendEvents(this.wlClient, doneBufu32, new Uint32Array([]))
-      // flush(this.wlClient)
-
+      delete this.messageInterceptor.interceptors[syncDone.callbackId]
       destroyWlResourceSilently(this.wlClient, syncDone.callbackId)
     } else {
       const doneSize = 12 // id+size+opcode+time arg
@@ -512,7 +511,8 @@ export class NativeClientSession {
       this.syncDones.shift()
       this.sendSyncDoneEvent(syncDone)
       // fire all continues consecutive fast syncs
-      for (const sortedSyncDone of this.syncDones) {
+      while (this.syncDones.length) {
+        const sortedSyncDone = this.syncDones[0]
         if (!sortedSyncDone.browserDone || !sortedSyncDone.nativeDone) {
           break
         }

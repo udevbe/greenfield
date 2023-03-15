@@ -5453,10 +5453,10 @@ westfield-runtime-common@1.0.0-alpha.1:
   resolved "https://registry.yarnpkg.com/westfield-runtime-common/-/westfield-runtime-common-1.0.0-alpha.1.tgz#57d34d737bccd04792e9ae1a60e566cc9fe24d96"
   integrity sha512-F+5iC7B+7EWuZaZbxohNOwaMtauoziGSTKx+ZIXnr+bi7Wv6ngR0U2JS/2up1p2DJzZMmjftYTeJFt2NtNFgvw==
 
-westfield-runtime-server@1.0.0-alpha.4:
-  version "1.0.0-alpha.4"
-  resolved "https://registry.yarnpkg.com/westfield-runtime-server/-/westfield-runtime-server-1.0.0-alpha.4.tgz#a4dbaf7b7b4dd382a0f67e14834f2658b2f1069b"
-  integrity sha512-5dI1aHrG9+5bdtxzKF1D8el0F1tfbdaPPvTiGh0bR4U8eccQZzk4OyVGaxMt24VGxFVAEYrXFZhUPasvRK69BQ==
+westfield-runtime-server@1.0.0-alpha.5:
+  version "1.0.0-alpha.5"
+  resolved "https://registry.yarnpkg.com/westfield-runtime-server/-/westfield-runtime-server-1.0.0-alpha.5.tgz#24cd65a3ee75c317f4ae75f84d169645f0204cb0"
+  integrity sha512-Yo7sgv7pQ1VneKcjuGYRR+BoOIknpCjYFxbAWY1jHO03LGp1k4VcETORsIKZgXooUkkCoVkDEixZKuqU9TQSCg==
 
 whatwg-url@^5.0.0:
   version "5.0.0"
