@@ -1245,7 +1245,7 @@ static const struct frame_encoder_description frame_encoder_descriptions[] = {
                                        "gldownload ! "
                                        // The ueue is silent
                                        "queue silent=true ! "
-                                       "x264enc me=2 analyse=51 dct8x8=true cabac=true bframes=0 b-adapt=false rc-lookahead=0 sliced-threads=true byte-stream=true tune=zerolatency psy-tune=2 bitrate=9000 vbv-buf-capacity=33 ! "
+                                       "x264enc me=2 analyse=51 dct8x8=true cabac=true bframes=0 b-adapt=false rc-lookahead=0 sliced-threads=true byte-stream=true tune=zerolatency psy-tune=2 bitrate=9000 vbv-buf-capacity=16 ! "
                                        "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .alpha_pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
@@ -1256,7 +1256,7 @@ static const struct frame_encoder_description frame_encoder_descriptions[] = {
                                        "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
                                        "gldownload ! "
                                        "queue silent=true ! "
-                                       "x264enc me=2 analyse=51 dct8x8=true cabac=true bframes=0 b-adapt=false rc-lookahead=0 sliced-threads=true byte-stream=true tune=zerolatency psy-tune=2 bitrate=900 vbv-buf-capacity=33 ! "
+                                       "x264enc me=2 analyse=51 dct8x8=true cabac=true bframes=0 b-adapt=false rc-lookahead=0 sliced-threads=true byte-stream=true tune=zerolatency psy-tune=2 bitrate=900 vbv-buf-capacity=16 ! "
                                        "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                        "appsink name=sink ",
                 .split_alpha = true,
