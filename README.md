@@ -158,6 +158,10 @@ Very much beta. Most things are implemented except for fullscreen applications. 
 
 ## Media
 
+Greenfield running DOOM3 remotely 1920x1080@60FPS (16 Mar 2023):
+
+[![Fosdem presentation + demo](https://img.youtube.com/vi/pTn_hjOwK-Y/0.jpg)](https://www.youtube.com/watch?v=pTn_hjOwK-Y)
+
 Fosdem presentation + demo (2 Feb 2019):
 
 [![Fosdem presentation + demo](https://img.youtube.com/vi/QjJDH7QtlXk/0.jpg)](https://www.youtube.com/watch?v=QjJDH7QtlXk)
