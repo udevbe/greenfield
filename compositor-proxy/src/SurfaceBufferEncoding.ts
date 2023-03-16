@@ -80,6 +80,7 @@ export function initSurfaceBufferEncoding(): void {
     return {
       native: false,
       browser: true,
+      neverReplies: true,
     }
   }
 
@@ -136,7 +137,7 @@ export function initSurfaceBufferEncoding(): void {
   }) {
     return {
       native: false,
-      browser: false,
+      browser: true,
       neverReplies: true,
     }
   }
@@ -178,7 +179,7 @@ export function initSurfaceBufferEncoding(): void {
   }) {
     return {
       native: false,
-      browser: false,
+      browser: true,
       neverReplies: true,
     }
   }
@@ -195,7 +196,7 @@ export function initSurfaceBufferEncoding(): void {
   }) {
     return {
       native: false,
-      browser: false,
+      browser: true,
       neverReplies: true,
     }
   }
@@ -299,7 +300,7 @@ export function initSurfaceBufferEncoding(): void {
   }) {
     return {
       native: false,
-      browser: false,
+      browser: true,
       neverReplies: true,
     }
   }
@@ -316,7 +317,7 @@ export function initSurfaceBufferEncoding(): void {
   }) {
     return {
       native: false,
-      browser: false,
+      browser: true,
       neverReplies: true,
     }
   }
@@ -333,7 +334,7 @@ export function initSurfaceBufferEncoding(): void {
   }) {
     return {
       native: false,
-      browser: false,
+      browser: true,
       neverReplies: true,
     }
   }
@@ -350,7 +351,7 @@ export function initSurfaceBufferEncoding(): void {
   }) {
     return {
       native: false,
-      browser: false,
+      browser: true,
       neverReplies: true,
     }
   }
@@ -367,7 +368,7 @@ export function initSurfaceBufferEncoding(): void {
   }) {
     return {
       native: false,
-      browser: false,
+      browser: true,
       neverReplies: true,
     }
   }
