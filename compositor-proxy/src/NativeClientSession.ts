@@ -69,13 +69,17 @@ function deserializeProxyFDJSON(sourceBuf: ArrayBufferView): { proxyFD: ProxyFD;
 export function createNativeClientSession(
   wlClient: unknown,
   nativeCompositorSession: NativeCompositorSession,
+  // TODO Add an extra audio Channel to send audio data to the browser. This happens nearly identical as how the protocol channels is set up.
   protocolChannel: Channel,
   id: string,
 ): NativeClientSession {
+  // Creates the native audio encoder struct and wraps it in a javascript object. We can't use this javascript object directly, instead we pass it to other
+  // javascript functions that will call into native code that will know how to unwrap and use the struct.
   const audioEncoder = createAudioEncoder(wlClient, (sample) => {
     // TODO send sample to browser to be played
   })
   const nativeClientSession = new NativeClientSession(wlClient, nativeCompositorSession, protocolChannel, id)
+  // Cleanup the native struct and free the natively allocated memory.
   nativeClientSession.destroyListeners.push(() => {
     destroyAudioEncoder(audioEncoder)
   })
