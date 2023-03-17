@@ -310,6 +310,10 @@ frame_encoder_request_key_unit(struct frame_encoder **frame_encoder_pp) {
     return send_message(message);
 }
 
+// The following 3 functions send a message from the nodejs thread to the gstreamer thread. This effectively
+// makes these function asynchronous. That is, the audio_encoder_pp argument will most likely not immediately contain
+// the created audio encoder. Messages send to the gstreamer thread are in-order, so you can do an immediate create+delete.
+
 int
 audio_encoder_create(audio_callback_func audio_ready_callback, void *user_data,
                      struct audio_encoder **audio_encoder_pp) {

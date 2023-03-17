@@ -1,6 +1,9 @@
 #include <gst/gstelement.h>
 #include "encoder.h"
 
+// The structs below are copied and adapted from the video frame encoder implementation.
+// They can be adapted, changed, deleted... as required by the implementation.
+
 enum audio_encoding_type {
     aac,
 };
@@ -35,6 +38,10 @@ struct audio_encoding_result {
         GstBuffer *buffer;
     } sample;
 };
+
+// The gstreamer pipeline that will encode the audio. The pipeline will connect directly to the audio node of the application and will generate encoded audio samples in the appsink element.
+// Have a look at the frame encoder how to read encoded data from the appsink and pass it back to the nodejs layer. Tip: The frame encoder has to 'merge' data of 2 pipelines into a single buffer, this is not required here
+// so the implementation will be simpler.
 
 // TODO set the pipewire node id on the pipewiresrc element
 // TODO more/less/other gstreamer elements?

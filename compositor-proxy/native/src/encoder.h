@@ -16,6 +16,7 @@ struct encoded_frame {
     uint32_t size;
 };
 
+// Struct that wraps encoded audio data with an extra size member.
 struct encoded_audio {
     void *encoded_data;
     uint32_t size;
@@ -41,13 +42,18 @@ frame_encoder_destroy(struct frame_encoder **frame_encoder_pp);
 int
 encoded_frame_finalize(struct encoded_frame *encoded_frame);
 
+// Create a new audio encoder context. Accepts a user_data pointer so arbitrary data can be passed to the underlying audio encoder implementation.
+// The callback function pointer will be called when an encoded audio sample is generated.
+// The double pointer audio_encoder struct will hold the newly created audio encoder.
 int
 audio_encoder_create(audio_callback_func audio_ready_callback, void *user_data,
                      struct audio_encoder **audio_encoder_pp);
 
+// Destroy a previously created audio encoder.
 int
 audio_encoder_destroy(struct audio_encoder **frame_encoder_pp);
 
+// Free memory allocated for the encoded_audio
 int
 encoded_audio_finalize(struct encoded_audio *encoded_audio);
 

@@ -71,6 +71,8 @@ encoded_frame_to_node_buffer_cb(napi_env env, napi_value js_callback, void *cont
     NAPI_CALL(env, napi_call_function(env, global, js_callback, sizeof(args) / sizeof(args[0]), args, &cb_result))
 }
 
+// The following 3 functions implement a thread-safe way for the gstreamer audio encoder to deliver audio samples to nodejs.
+
 static void
 node_audio_encoder_sample_ready_callback(void *user_data, struct encoded_audio *encoded_audio) {
     struct node_audio_encoder *node_audio_encoder = user_data;
@@ -267,6 +269,8 @@ createAudioEncoder(napi_env env, napi_callback_info info) {
     node_audio_encoder = calloc(1, sizeof(struct node_audio_encoder));
     wl_client_get_credentials(client, &node_audio_encoder->client_pid, NULL, NULL);
 
+    // TODO we probably don't need to store the client_pid in the node_audio_encoder struct and can probably just
+    // write it directly in the void pointer argument as a value.
     if (audio_encoder_create( node_audio_encoder_sample_ready_callback, &node_audio_encoder->client_pid,
                              &node_audio_encoder->encoder) == -1) {
         free(node_audio_encoder);
@@ -313,6 +317,8 @@ destroyAudioEncoder(napi_env env, napi_callback_info info) {
 
     // TODO close encoder first, wait for eos callback, then destroy rest of resources
     audio_encoder_destroy(&node_audio_encoder->encoder);
+    // TODO make sure we don't have other memory leaks here (eg free node_audio_encoder too or pass a cleanup function to the previous napi_create_external call)
+
 //
 //    NAPI_CALL(env, napi_unref_threadsafe_function(env, node_encoder->js_cb_ref))
 //    napi_release_threadsafe_function(node_encoder->js_cb_ref, napi_tsfn_release);
