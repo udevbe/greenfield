@@ -31,6 +31,7 @@ import { ClientEncodersFeedback, createClientEncodersFeedback } from './EncoderF
 import { deliverContentToBufferStream } from './BufferStream'
 import { createRemoteInputOutput } from './RemoteInputOutput'
 import type { Channel } from './Channel'
+import { deliverContentToAudioStream } from './AudioStream'
 
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567' as const
 
@@ -175,6 +176,15 @@ export class RemoteConnectionHandler {
         return
       }
       deliverContentToBufferStream(client, message.buffer)
+    }
+  }
+
+  setupAudioChannel(client: Client, audioChannel: Channel) {
+    audioChannel.onMessage = (message) => {
+      if (client.connection.closed) {
+        return
+      }
+      deliverContentToAudioStream(client, message.buffer)
     }
   }
 

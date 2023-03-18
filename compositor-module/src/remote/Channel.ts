@@ -12,6 +12,7 @@ export const enum ChannelDescriptionType {
   FRAME,
   XWM,
   FEEDBACK,
+  AUDIO,
 }
 
 export const enum ChannelType {

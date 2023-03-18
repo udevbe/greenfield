@@ -18,7 +18,7 @@
 import { RemoteClientConnectionListener, RemoteCompositorConnector } from '../index'
 import { RemoteConnectionHandler } from './RemoteConnectionHandler'
 import Session from '../Session'
-import { Channel, ChannelDescriptionType, FeedbackChannelDesc, SimpleChannel } from './Channel'
+import { Channel, ChannelDescriptionType, FeedbackChannelDesc } from './Channel'
 import { ensureProxyConnection } from './connection-signaling'
 
 export class RemoteConnection {}
@@ -71,6 +71,14 @@ export class RemoteConnector implements RemoteCompositorConnector {
       if (client) {
         client.onClose().then(() => channel.close())
         client.userData.clientEncodersFeedback?.addFeedbackChannel(channel, surfaceId)
+      } else {
+        channel.close()
+      }
+    } else if (channel.desc.type === ChannelDescriptionType.AUDIO) {
+      const client = this.session.display.clients[channel.desc.clientId]
+      if (client) {
+        client.onClose().then(() => channel.close())
+        this.remoteSocket.setupAudioChannel(client, channel)
       } else {
         channel.close()
       }
