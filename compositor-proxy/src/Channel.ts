@@ -15,6 +15,7 @@ export const enum ChannelDescriptionType {
   FRAME,
   XWM,
   FEEDBACK,
+  AUDIO,
 }
 
 export const enum ChannelType {
@@ -92,6 +93,18 @@ export function createProtocolChannel(clientId: string): Channel {
     type: ChannelDescriptionType.PROTOCOL,
     clientId,
     channelType: ChannelType.ARQ,
+  }
+  const channel = createChannel(desc)
+  sendConnectionRequest(channel)
+  return channel
+}
+
+export function createAudioChannel(clientId: string): Channel {
+  const desc: ChannelDesc = {
+    id: `${nextChannelId++}`,
+    type: ChannelDescriptionType.AUDIO,
+    clientId,
+    channelType: ChannelType.SIMPLE,
   }
   const channel = createChannel(desc)
   sendConnectionRequest(channel)
