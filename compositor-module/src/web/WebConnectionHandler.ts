@@ -33,19 +33,19 @@ function instanceOfWebAppSocketMessage(object: any): object is WebAppSocketMessa
   )
 }
 
-export class WebWorkerConnectionHandler {
-  static create(session: Session): WebWorkerConnectionHandler {
-    return new WebWorkerConnectionHandler(session)
+export class WebConnectionHandler {
+  static create(session: Session): WebConnectionHandler {
+    return new WebConnectionHandler(session)
   }
 
   private constructor(readonly session: Session) {}
 
-  onWebAppWorker(webWorker: Worker, clientId: string): Client {
+  onWebAppWorker(webAppFrame: HTMLIFrameElement, clientId: string, messagePort: MessagePort): Client {
     // TODO How listen for webWorker terminate/close/destroy?
     // TODO close client connection when worker is terminated
     const client = this.session.display.createClient(clientId)
 
-    webWorker.onmessage = (event) => {
+    messagePort.onmessage = (event) => {
       if (!instanceOfWebAppSocketMessage(event.data)) {
         console.error('[web-worker-connection] client send an illegal message object. Expected ArrayBuffer.')
         client.close()
@@ -85,7 +85,7 @@ export class WebWorkerConnectionHandler {
           offset += message.length
         }
 
-        webWorker.postMessage(
+        messagePort.postMessage(
           {
             protocolMessage: sendBuffer.buffer,
             meta,

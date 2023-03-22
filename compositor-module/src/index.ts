@@ -20,7 +20,7 @@ import { RemoteConnector } from './remote/RemoteConnector'
 import Session, { GreenfieldLogger } from './Session'
 import { UserShellApi } from './UserShellApi'
 import { nrmlvo } from './Xkb'
-import { WebWorkerAppLauncher } from './web/WebWorkerAppLauncher'
+import { WebAppLauncher } from './web/WebAppLauncher'
 
 export { init as initWasm } from './lib'
 export * from './ButtonEvent'
@@ -102,7 +102,7 @@ export interface RemoteCompositorConnector {
 }
 
 export interface WebCompositorConnector {
-  listen(url: URL, auth?: string): WebClientConnectionListener
+  listen(url: URL, onNeedIFrameAttach: (webAppFrame: HTMLIFrameElement) => void): WebClientConnectionListener
   readonly type: 'web'
 }
 
@@ -125,7 +125,7 @@ export function createConnector<T extends CompositorConnector['type']>(
     return RemoteConnector.create(session)
   } else if (type === 'web') {
     // @ts-ignore
-    return WebWorkerAppLauncher.create(session)
+    return WebAppLauncher.create(session)
   } else {
     throw new Error(`Connector type must be 'remote' or 'web'.`)
   }

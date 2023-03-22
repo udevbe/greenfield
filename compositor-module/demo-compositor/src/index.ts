@@ -11,8 +11,8 @@ import {
 const proxyHost1 = 'localhost:8081'
 const proxyHost2 = 'blacky.udev.be:8081'
 
-const wgpuAppURL = `${location.origin}/demo-webapp-wgpu/app.js`
-const demoAppURL = `${location.origin}/demo-webapp/app.js`
+const wgpuAppURL = `http://localhost:9001`
+const demoAppURL = 'http://localhost:9000'
 
 function createProxyConnectionElement(
   session: CompositorSession,
@@ -97,10 +97,12 @@ function createWebAppElement(compositorWebConnector: WebCompositorConnector, app
   appName.style.width = 'max-content'
 
   const demoWebAppButton: HTMLButtonElement = document.createElement('button')
-  demoWebAppButton.textContent = `Launch`
+  demoWebAppButton.textContent = 'Launch'
   demoWebAppButton.onclick = () => {
     const webAppURL = new URL(appURL)
-    compositorWebConnector.listen(webAppURL)
+    compositorWebConnector.listen(webAppURL, (webAppFrame) => {
+      document.body.appendChild(webAppFrame)
+    })
   }
 
   const container: HTMLDivElement = document.createElement('div')
@@ -128,8 +130,8 @@ async function main() {
   controls.appendChild(createProxyConnectionElement(session, compositorProxyConnector, proxyHost1))
   controls.appendChild(createProxyConnectionElement(session, compositorProxyConnector, proxyHost2))
   const compositorWebConnector = createConnector(session, 'web')
-  controls.appendChild(createWebAppElement(compositorWebConnector, wgpuAppURL, 'Rust wgpu web-app.'))
-  controls.appendChild(createWebAppElement(compositorWebConnector, demoAppURL, 'JavaScript web-app.'))
+  controls.appendChild(createWebAppElement(compositorWebConnector, wgpuAppURL, wgpuAppURL))
+  controls.appendChild(createWebAppElement(compositorWebConnector, demoAppURL, demoAppURL))
   controls.appendChild(createClientUnresponsiveElement(session))
 
   // Get an HTML5 canvas for use as an output for the compositor. Multiple outputs can be used.

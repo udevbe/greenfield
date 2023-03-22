@@ -34,7 +34,6 @@ module.exports = {
   devServer: {
     static: './dist',
     proxy: {
-      '/demo-webapp/': { target: 'http://localhost:9000', pathRewrite: { '^/demo-webapp/': '/' } },
       '/demo-webapp-wgpu/': { target: 'http://localhost:9001', pathRewrite: { '^/demo-webapp-wgpu/': '/' } },
     },
   },

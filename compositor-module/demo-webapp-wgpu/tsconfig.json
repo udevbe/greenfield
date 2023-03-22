@@ -1,28 +1,16 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "lib": [
-      "ES2015",
-      "ES2016",
-      "ES2017",
-      "ES2020",
-      "WebWorker",
-      "ScriptHost"
-    ],
-    "allowJs": true,
-    "skipLibCheck": true,
+    "moduleResolution": "Node",
+    "target": "es2018",
+    "module": "esnext",
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
     "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "module": "ES6",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": false,
-    "jsx": "react"
-  },
-  "include": [
-    "src"
-  ]
+    "sourceMap": true,
+    "outDir": "dist",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext",
+    ]
+  }
 }

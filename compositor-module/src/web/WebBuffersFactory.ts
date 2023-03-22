@@ -1,7 +1,7 @@
 import {
   Client,
-  GfWebBufferFactoryRequests,
-  GfWebBufferFactoryResource,
+  WebBitmapbufFactoryRequests,
+  WebBitmapbufFactoryResource,
   Global,
   Registry,
   WlBufferResource,
@@ -10,7 +10,7 @@ import Session from '../Session'
 import { WebBuffer } from './WebBuffer'
 import { FD } from 'westfield-runtime-common'
 
-export class WebBuffersFactory implements GfWebBufferFactoryRequests {
+export class WebBuffersFactory implements WebBitmapbufFactoryRequests {
   private global?: Global
 
   static create(session: Session): WebBuffersFactory {
@@ -19,7 +19,7 @@ export class WebBuffersFactory implements GfWebBufferFactoryRequests {
 
   private constructor(private readonly session: Session) {}
 
-  createBuffer(resource: GfWebBufferFactoryResource, id: number, bitmap: FD): void {
+  createBuffer(resource: WebBitmapbufFactoryResource, id: number, bitmap: FD): void {
     const bufferResource = new WlBufferResource(resource.client, id, resource.version)
     bufferResource.implementation = WebBuffer.create(bufferResource, bitmap as ImageBitmap)
   }
@@ -28,7 +28,7 @@ export class WebBuffersFactory implements GfWebBufferFactoryRequests {
     if (this.global) {
       return
     }
-    this.global = registry.createGlobal(this, GfWebBufferFactoryResource.protocolName, 1, (client, id, version) => {
+    this.global = registry.createGlobal(this, WebBitmapbufFactoryResource.protocolName, 1, (client, id, version) => {
       this.bindClient(client, id, version)
     })
   }
@@ -42,7 +42,7 @@ export class WebBuffersFactory implements GfWebBufferFactoryRequests {
   }
 
   bindClient(client: Client, id: number, version: number): void {
-    const gfWebBufferFactoryResource = new GfWebBufferFactoryResource(client, id, version)
+    const gfWebBufferFactoryResource = new WebBitmapbufFactoryResource(client, id, version)
     gfWebBufferFactoryResource.implementation = this
   }
 }
