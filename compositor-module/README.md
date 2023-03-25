@@ -14,14 +14,11 @@ Next, simply run:
 
 ## Usage
 
-To use this library in your own implementation, you will need:
-- a worker loader that matches on `*.worker.js` imports.
-- a file (url) loader that matches on `*.asset` and `*.png`
-
-An example webpack config can be found in the [demo](https://github.com/udevbe/greenfield/tree/master/compositor-demo) implementation 
-that you can use. Inside `compositor-module` directory run.
-- `yarn install`
+Inside `compositor-module` directory run.
 - `yarn start`
 
-This will start a new demo compositor implementation with 4 buttons. The first 2 buttons will connect to a compositor-proxy instance, the last 2 buttons will launch a new (experimental)
-demo web app client that runs entirely inside your browser.
+This will start a new demo compositor implementation. 
+
+There are 2 checkboxes that will connect to the compositor-proxy instance as indicated by 
+the freely adjustable text input. The last text input can launch a (experimental) web app client that runs entirely inside your browser.
+There are 2 demo web apps available `demo-webapp` and `demo-webapp-wgpu` running on `localhost:9000` and `localhost:9001` respectively.
