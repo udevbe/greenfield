@@ -19,6 +19,7 @@ const signMaximizeIconPromise = fetchIcon(signMaximize)
 const signMinimizeIconPromise = fetchIcon(signMinimize)
 
 enum ThemeFrame {
+  THEME_FRAME_NONE = 0,
   THEME_FRAME_ACTIVE = 1,
   THEME_FRAME_MAXIMIZED = 2,
   THEME_FRAME_NO_TITLE = 4,
@@ -67,6 +68,7 @@ enum FrameButtonFlags {
 }
 
 export enum FrameFlag {
+  FRAME_FLAG_NONE = 0x0,
   FRAME_FLAG_ACTIVE = 0x1,
   FRAME_FLAG_MAXIMIZED = 0x2,
 }
@@ -100,7 +102,7 @@ class XWindowFramePointer {
       y,
       frame.width,
       frame.height,
-      frame.flags & FrameFlag.FRAME_FLAG_MAXIMIZED ? ThemeFrame.THEME_FRAME_MAXIMIZED : 0,
+      frame.flags & FrameFlag.FRAME_FLAG_MAXIMIZED ? ThemeFrame.THEME_FRAME_MAXIMIZED : ThemeFrame.THEME_FRAME_NONE,
     )
 
     if (!framePointer) {
@@ -318,7 +320,7 @@ export class XWindowFrame {
   status: FrameStatus = FrameStatus.FRAME_STATUS_REPAINT
   pointers: XWindowFramePointer[] = []
   buttons: XWindowFrameButton[] = []
-  flags: FrameFlag = 0
+  flags: FrameFlag = FrameFlag.FRAME_FLAG_NONE
   private geometryDirty = true
   private opaqueMargin = 0
   private titleRect: {

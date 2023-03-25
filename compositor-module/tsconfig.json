@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "moduleResolution": "node",
+    "moduleResolution": "Node16",
     "target": "ES2017",
     "module": "ES2020",
     "lib": [
@@ -12,10 +12,12 @@
       "dom"
     ],
     "allowJs": true,
+    "checkJs": false,
     "rootDir": "src",
     "strict": true,
-    "inlineSourceMap": true,
-    "inlineSources": true,
+    "sourceMap": false,
+    "removeComments": true,
+    "noEmitOnError": true,
     "declaration": true,
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,

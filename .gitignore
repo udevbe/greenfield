@@ -159,3 +159,6 @@ CTestTestfile.cmake
 /compositor-module/demo-webapp-wgpu/target/
 /compositor-module/demo-webapp-wgpu/dist/
 /compositor-module/demo-webapp/dist/
+/compositor-module/demo-webapp-emscripten/hello-wayland
+/compositor-module/demo-webapp-emscripten/xdg-shell-client-protocol.h
+/compositor-module/demo-webapp-emscripten/xdg-shell-protocol.c

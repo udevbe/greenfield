@@ -564,7 +564,7 @@ export class XWindowManager {
     [CursorType.XWM_CURSOR_TOP_LEFT]: Cursor.None,
     [CursorType.XWM_CURSOR_TOP_RIGHT]: Cursor.None,
   }
-  private lastCursor: CursorType = -1
+  private lastCursor?: CursorType
   private doubleClickPeriod = 250
   // c/p related state
   private readonly xFixes: XFixes.XFixes
@@ -764,7 +764,7 @@ export class XWindowManager {
         async ([name, cursorImage]) => (this.cursors[name] = await this.loadCursor(cursorImage)),
       ),
     )
-    this.lastCursor = -1
+    this.lastCursor = undefined
   }
 
   private async handleCreateSurface(surface: Surface) {

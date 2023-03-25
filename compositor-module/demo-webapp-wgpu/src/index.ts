@@ -16,9 +16,10 @@
 'use strict'
 
 import {
-  display,
-  GfWebBufferFactoryProtocolName,
-  GfWebBufferFactoryProxy,
+  connect,
+  Display,
+  WebBitmapbufFactoryProtocolName,
+  WebBitmapbufFactoryProxy,
   WlBufferEvents,
   WlBufferProxy,
   WlCompositorProtocolName,
@@ -45,8 +46,8 @@ import { Fixed } from 'westfield-runtime-common'
 import { setup_and_draw } from '../pkg'
 
 class ImageBitmapBuffer implements WlBufferEvents {
-  static create(webGL: GfWebBufferFactoryProxy, imageBitmap: ImageBitmap): ImageBitmapBuffer {
-    const proxy = webGL.createBuffer(imageBitmap)
+  static create(bitmapbufFactory: WebBitmapbufFactoryProxy, imageBitmap: ImageBitmap): ImageBitmapBuffer {
+    const proxy = bitmapbufFactory.createBuffer(imageBitmap)
     const glBuffer = new ImageBitmapBuffer(proxy, imageBitmap)
     proxy.listener = glBuffer
     return glBuffer
@@ -61,15 +62,15 @@ class ImageBitmapBuffer implements WlBufferEvents {
 }
 
 class Window implements WlRegistryEvents, XdgWmBaseEvents, XdgToplevelEvents, WlSeatEvents, WlPointerEvents {
-  static create(width: number, height: number): Window {
+  static create(display: Display, width: number, height: number): Window {
     const registry = display.getRegistry()
-    const window = new Window(registry, width, height)
+    const window = new Window(display, registry, width, height)
     registry.listener = window
     return window
   }
 
   private readonly wlRegistryProxy: WlRegistryProxy
-  private webGlProxy?: GfWebBufferFactoryProxy
+  private bitmapbufFactoryProxy?: WebBitmapbufFactoryProxy
   private wlCompositorProxy?: WlCompositorProxy
   private xdgWmBaseProxy?: XdgWmBaseProxy
   private wlSeatProxy?: WlSeatProxy
@@ -81,7 +82,12 @@ class Window implements WlRegistryEvents, XdgWmBaseEvents, XdgToplevelEvents, Wl
   private drawingState?: unknown
   private readonly canvas: OffscreenCanvas
 
-  constructor(registry: WlRegistryProxy, public width: number, public height: number) {
+  constructor(
+    private readonly display: Display,
+    registry: WlRegistryProxy,
+    public width: number,
+    public height: number,
+  ) {
     this.wlRegistryProxy = registry
     this.canvas = new OffscreenCanvas(width, height)
   }
@@ -98,11 +104,11 @@ class Window implements WlRegistryEvents, XdgWmBaseEvents, XdgToplevelEvents, Wl
         break
       }
 
-      case GfWebBufferFactoryProtocolName: {
-        this.webGlProxy = this.wlRegistryProxy.bind(
+      case WebBitmapbufFactoryProtocolName: {
+        this.bitmapbufFactoryProxy = this.wlRegistryProxy.bind(
           name,
-          GfWebBufferFactoryProtocolName,
-          GfWebBufferFactoryProxy,
+          WebBitmapbufFactoryProtocolName,
+          WebBitmapbufFactoryProxy,
           version,
         )
         break
@@ -146,8 +152,8 @@ class Window implements WlRegistryEvents, XdgWmBaseEvents, XdgToplevelEvents, Wl
 
     this.xdgToplevelProxy.setTitle('Simple WebGL')
     this.wlSurfaceProxy.commit(0)
-    const syncPromise = display.sync()
-    display.flush()
+    const syncPromise = this.display.sync()
+    this.display.flush()
     await syncPromise
     setInterval(() => {
       console.log(`Simpl-WebGL: ${this.frameCount} fps`)
@@ -165,20 +171,20 @@ class Window implements WlRegistryEvents, XdgWmBaseEvents, XdgToplevelEvents, Wl
     if (this.drawingState === undefined) {
       throw new Error('No drawing state.')
     }
-    if (this.webGlProxy === undefined) {
+    if (this.bitmapbufFactoryProxy === undefined) {
       throw new Error('No image bitmap buffer available.')
     }
 
     await setup_and_draw(this.canvas)
 
     const imageBitmap = this.canvas.transferToImageBitmap()
-    const imageBitmapBuffer = ImageBitmapBuffer.create(this.webGlProxy, imageBitmap)
+    const imageBitmapBuffer = ImageBitmapBuffer.create(this.bitmapbufFactoryProxy, imageBitmap)
     this.wlSurfaceProxy.attach(imageBitmapBuffer.proxy, 0, 0)
     this.wlSurfaceProxy.damage(0, 0, this.canvas.width, this.canvas.height)
 
     // serial is only required if our buffer contents would take a long time to send to the compositor ie. in a network remote case
     this.wlSurfaceProxy.commit(0)
-    display.flush()
+    this.display.flush()
 
     this.frameCount++
   }
@@ -262,8 +268,9 @@ class Window implements WlRegistryEvents, XdgWmBaseEvents, XdgToplevelEvents, Wl
 }
 
 async function main() {
+  const display = await connect()
   // create a new window with some buffers
-  const window = Window.create(800, 600)
+  const window = Window.create(display, 800, 600)
   // wait for globals to come in
   const syncPromise = display.sync()
   display.flush()
