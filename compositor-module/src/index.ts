@@ -26,8 +26,8 @@ export { init as initWasm } from './lib'
 export * from './ButtonEvent'
 export * from './AxisEvent'
 export * from './KeyEvent'
-export { nrmlvo }
-export { GreenfieldLogger }
+export type { nrmlvo }
+export type { GreenfieldLogger }
 
 export function createCompositorSession(sessionId?: string, logger?: GreenfieldLogger): Promise<CompositorSession> {
   return Session.create(sessionId, logger)

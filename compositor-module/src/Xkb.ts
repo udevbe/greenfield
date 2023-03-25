@@ -38,6 +38,7 @@ const XKB_LED_NAME_NUM = 'Num Lock' as const
 const XKB_LED_NAME_SCROLL = 'Scroll Lock' as const
 
 export enum Led {
+  NONE = 0,
   LED_NUM_LOCK = 1,
   LED_CAPS_LOCK = 2,
   LED_SCROLL_LOCK = 4,

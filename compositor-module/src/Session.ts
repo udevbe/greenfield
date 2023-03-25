@@ -21,13 +21,14 @@ import { ButtonCode, CompositorSession } from './index'
 import { FrameDecoder } from './remote/buffer-decoder'
 import { createWasmFrameDecoder } from './remote/wasm-buffer-decoder'
 import {
-  webCodecFrameDecoderFactory,
   hardwareDecoderConfig,
   softwareDecoderConfig,
+  webCodecFrameDecoderFactory,
 } from './remote/webcodec-buffer-decoder'
 import Renderer from './render/Renderer'
 import { createUserShellApi, UserShellApi } from './UserShellApi'
 import { InputQueue } from './InputQueue'
+import { KeyboardModifier } from './Seat'
 
 export interface LogFn {
   /* tslint:disable:no-unnecessary-generics */
@@ -177,7 +178,7 @@ class Session implements CompositorSession {
     })
 
     session.globals.seat.buttonBindings.push({
-      modifiers: 0,
+      modifiers: KeyboardModifier.NONE,
       button: ButtonCode.SECONDARY,
       handler: (pointer, event) => {
         if (pointer.grab !== pointer.defaultGrab) {

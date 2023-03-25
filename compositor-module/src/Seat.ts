@@ -51,6 +51,7 @@ import { sendOffer, WaylandDataSource } from './WaylandDataSource'
 const { keyboard, pointer, touch } = WlSeatCapability
 
 export enum KeyboardModifier {
+  NONE = 0,
   MODIFIER_CTRL = 1,
   MODIFIER_ALT = 2,
   MODIFIER_SUPER = 4,
@@ -58,6 +59,7 @@ export enum KeyboardModifier {
 }
 
 export enum KeyboardLocks {
+  NONE = 0,
   NUM_LOCK = 1,
   CAPS_LOCK = 2,
 }
@@ -165,7 +167,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
   private global?: Global
   private readonly _seatName = 'browser-seat0' as const
   private selectionSerial = 0
-  private modifierState: KeyboardModifier = 0
+  private modifierState: KeyboardModifier = KeyboardModifier.NONE
   private readonly selectionDataSourceDestroyListener: () => void
 
   private constructor(
@@ -512,7 +514,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
     this.keyboard.modifiers.group = group
 
     const modsLookup = modsDepressed | modsLatched
-    this.modifierState = 0
+    this.modifierState = KeyboardModifier.NONE
     if (modsLookup & (1 << this.keyboard.xkb.ctrlMod)) {
       this.modifierState |= KeyboardModifier.MODIFIER_CTRL
     }
@@ -526,7 +528,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
       this.modifierState |= KeyboardModifier.MODIFIER_SHIFT
     }
 
-    let leds = 0
+    let leds = Led.NONE
     if (this.keyboard.xkb.numLedActive()) {
       leds |= Led.LED_NUM_LOCK
     }
@@ -557,7 +559,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
       // key was pressed while we didn't have input focus from the browser and is now released
       const { capsLock, numLock } = event
       const mask: KeyboardLocks = KeyboardLocks.CAPS_LOCK | KeyboardLocks.NUM_LOCK
-      let value: KeyboardLocks = 0
+      let value: KeyboardLocks = KeyboardLocks.NONE
       if (capsLock) {
         value |= KeyboardLocks.CAPS_LOCK
       }
@@ -627,7 +629,7 @@ export class Seat implements WlSeatRequests, CompositorSeat, WlDataDeviceRequest
       this.updateModifierState(serial, false, key)
     })
 
-    this.modifierState = 0
+    this.modifierState = KeyboardModifier.NONE
 
     this.keyboard.setFocus(undefined)
     this.keyboard.cancelGrab()

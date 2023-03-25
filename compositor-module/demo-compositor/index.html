@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Greenfield Demo Compositor</title>
+  <style>
+      #container {
+          display: flex;
+          height: 100%;
+      }
+
+      #controls {
+          display: flex;
+          flex-direction: column;
+          border-right: 1px solid;
+          background-color: snow;
+          padding: 5px;
+      }
+
+      #output-container {
+          width: 100%;
+          height: 100%;
+      }
+
+      #output {
+          width: 100%;
+          height: 100%;
+      }
+
+      .unresponsive-client {
+          max-width: min-content;
+          min-width: 100%;
+          display: block;
+      }
+
+      .proxy-connection-container {
+          padding-bottom: 10px;
+      }
+
+      .proxy-connection-container .input {
+          display: flex;
+      }
+
+      .proxy-connection-container .state {
+          width: max-content;
+      }
+  </style>
+  <script defer type="module" src="src/index.ts"></script>
+</head>
+<body style="margin: 0; height: calc(100vh - 4px)">
+<div id="container">
+  <div id="controls">
+    <div>
+      <p>Native Proxies</p>
+      <form class="proxy-connection-container" onSubmit="return false;">
+        <div class="input">
+          <label>
+            <input type="text" name="proxy-address" value="localhost:8081">
+          </label>
+          <label>
+            <input type="checkbox" name="proxy-connection-enabled">
+          </label>
+        </div>
+        <output class="state" name="proxy-state" for="proxy-address proxy-connection-enabled">
+          Connection closed.
+        </output>
+      </form>
+      <form class="proxy-connection-container" onSubmit="return false;">
+        <div class="input">
+          <label>
+            <input type="text" name="proxy-address" value="localhost:8082">
+          </label>
+          <label>
+            <input type="checkbox" name="proxy-connection-enabled">
+          </label>
+        </div>
+        <output class="state" name="proxy-state" for="proxy-address proxy-connection-enabled">
+          Connection closed.
+        </output>
+      </form>
+    </div>
+    <div>
+      <p>Web Application</p>
+      <form class="web-app-container" onSubmit="return false;">
+        <div class="input">
+        <label>
+          <input type="text" name="launch" value="http://localhost:9000">
+        </label>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div id="output-container">
+    <canvas id="output"></canvas>
+  </div>
+  <div id="unresponsive-clients">
+    <p>Unresponsive clients</p>
+    <template id="unresponsive-client">
+      <button class="unresponsive-client"></button>
+    </template>
+  </div>
+</div>
+</body>
+</html>
