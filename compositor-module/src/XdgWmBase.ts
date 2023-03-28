@@ -156,6 +156,6 @@ export default class XdgWmBase implements XdgWmBaseRequests {
   }
 
   private setUnresponsive(client: Client, value: boolean) {
-    this.session.userShell.events.unresponsive?.({ id: client.id }, value)
+    this.session.userShell.events.clientUnresponsiveUpdated?.({ id: client.id }, value)
   }
 }

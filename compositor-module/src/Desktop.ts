@@ -370,14 +370,14 @@ export class DesktopSurface {
   loseFocus(): void {
     if (--this.focusCount === 0) {
       this.role.configureActivated(false)
-      this.surface.session.userShell.events.active?.(this.compositorSurface, false)
+      this.surface.session.userShell.events.surfaceActivationUpdated?.(this.compositorSurface, false)
     }
   }
 
   gainFocus(): void {
     if (this.focusCount++ === 0) {
       this.role.configureActivated(true)
-      this.surface.session.userShell.events.active?.(this.compositorSurface, true)
+      this.surface.session.userShell.events.surfaceActivationUpdated?.(this.compositorSurface, true)
     }
   }
 
@@ -435,20 +435,20 @@ export class DesktopSurface {
 
   add(): void {
     this.surface.session.renderer.addTopLevelView(this.role.view)
-    this.surface.session.userShell.events.clientSurfaceCreated?.(this.compositorSurface)
+    this.surface.session.userShell.events.surfaceCreated?.(this.compositorSurface)
   }
 
   removed(): void {
     this.surface.session.renderer.removeTopLevelView(this.role.view)
-    this.surface.session.userShell.events.clientSurfaceDestroyed?.(this.compositorSurface)
+    this.surface.session.userShell.events.surfaceDestroyed?.(this.compositorSurface)
   }
 
   setTitle(title: string): void {
-    this.surface.session.userShell.events.title?.(this.compositorSurface, title)
+    this.surface.session.userShell.events.surfaceTitleUpdated?.(this.compositorSurface, title)
   }
 
   setAppId(appId: string): void {
-    this.surface.session.userShell.events.appId?.(this.compositorSurface, appId)
+    this.surface.session.userShell.events.surfaceAppIdUpdated?.(this.compositorSurface, appId)
   }
 
   private unsetFullscreen() {

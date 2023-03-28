@@ -20,7 +20,9 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "declarationDir": "types",
-    "outDir": "dist"
+    "outDir": "dist",
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact"
   },
   "include": [
     "../src/@types",

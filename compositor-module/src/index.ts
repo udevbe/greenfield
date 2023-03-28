@@ -94,6 +94,9 @@ export interface RemoteClientConnectionListener extends ClientConnectionListener
 
 export interface WebClientConnectionListener extends ClientConnectionListener {
   readonly type: 'web'
+  onClose?: () => void
+  webAppIFrame?: HTMLIFrameElement
+  onNeedIFrameAttach?: (webAppIFrame: HTMLIFrameElement) => void
 }
 
 export interface RemoteCompositorConnector {
@@ -102,7 +105,7 @@ export interface RemoteCompositorConnector {
 }
 
 export interface WebCompositorConnector {
-  listen(url: URL, onNeedIFrameAttach: (webAppFrame: HTMLIFrameElement) => void): WebClientConnectionListener
+  listen(url: URL): WebClientConnectionListener
   readonly type: 'web'
 }
 

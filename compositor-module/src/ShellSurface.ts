@@ -145,7 +145,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, DesktopSurf
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   pong(resource: WlShellSurfaceResource): void {
     if (this._pingTimeoutActive) {
-      this.session.userShell.events.unresponsive?.({ id: resource.client.id }, false)
+      this.session.userShell.events.clientUnresponsiveUpdated?.({ id: resource.client.id }, false)
       this._pingTimeoutActive = false
     }
     clearTimeout(this._timeoutTimer)
@@ -157,7 +157,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, DesktopSurf
       if (!this._pingTimeoutActive) {
         // ping timed out, make view gray
         this._pingTimeoutActive = true
-        this.session.userShell.events.unresponsive?.({ id: resource.client.id }, true)
+        this.session.userShell.events.clientUnresponsiveUpdated?.({ id: resource.client.id }, true)
       }
     }, 2000)
     // FIXME use a proper serial

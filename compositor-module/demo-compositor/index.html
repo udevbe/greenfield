@@ -9,6 +9,10 @@
           height: 100%;
       }
 
+      #controls-container {
+          display: flex;
+      }
+
       #controls {
           display: flex;
           flex-direction: column;
@@ -44,60 +48,31 @@
       .proxy-connection-container .state {
           width: max-content;
       }
+
+      ul  {
+          list-style-type: none;
+          display: grid;
+          gap: 10px;
+          padding-left: 5px;
+      }
+
+      li button {
+          border: none;
+          background: none;
+      }
+
+      .client {
+
+      }
   </style>
   <script defer type="module" src="src/index.ts"></script>
 </head>
 <body style="margin: 0; height: calc(100vh - 4px)">
 <div id="container">
-  <div id="controls">
-    <div>
-      <p>Native Proxies</p>
-      <form class="proxy-connection-container" onSubmit="return false;">
-        <div class="input">
-          <label>
-            <input type="text" name="proxy-address" value="localhost:8081">
-          </label>
-          <label>
-            <input type="checkbox" name="proxy-connection-enabled">
-          </label>
-        </div>
-        <output class="state" name="proxy-state" for="proxy-address proxy-connection-enabled">
-          Connection closed.
-        </output>
-      </form>
-      <form class="proxy-connection-container" onSubmit="return false;">
-        <div class="input">
-          <label>
-            <input type="text" name="proxy-address" value="localhost:8082">
-          </label>
-          <label>
-            <input type="checkbox" name="proxy-connection-enabled">
-          </label>
-        </div>
-        <output class="state" name="proxy-state" for="proxy-address proxy-connection-enabled">
-          Connection closed.
-        </output>
-      </form>
-    </div>
-    <div>
-      <p>Web Application</p>
-      <form class="web-app-container" onSubmit="return false;">
-        <div class="input">
-        <label>
-          <input type="text" name="launch" value="http://localhost:9000">
-        </label>
-        </div>
-      </form>
-    </div>
+  <div id="controls-container">
   </div>
   <div id="output-container">
     <canvas id="output"></canvas>
-  </div>
-  <div id="unresponsive-clients">
-    <p>Unresponsive clients</p>
-    <template id="unresponsive-client">
-      <button class="unresponsive-client"></button>
-    </template>
   </div>
 </div>
 </body>

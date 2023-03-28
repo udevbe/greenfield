@@ -47,6 +47,48 @@ function isGreenfieldMessage(message: any): message is GreenfieldMessage {
   return message.type === 'ConnectReq' || message.type === 'Terminate'
 }
 
+type WebAppEntry = {
+  webAppLauncher: WebAppLauncher
+  iframe: HTMLIFrameElement
+  clients: Client[]
+  webClientConnectionListener: WebClientConnectionListener
+}
+let webApps: WebAppEntry[] = []
+window.addEventListener('message', (ev) => {
+  // check if ev.source is a known webAppFrame, else ignore it
+  const source = ev.source as Window
+  if (source === null) {
+    return
+  }
+
+  const webAppEntry = webApps.find((value) => value.iframe.contentWindow === source)
+  if (webAppEntry === undefined) {
+    return
+  }
+
+  const message = ev.data
+  if (isGreenfieldMessage(message)) {
+    if (message.type === 'ConnectReq') {
+      const messageChannel = new MessageChannel()
+      const clientId = randomString()
+      const client = webAppEntry.webAppLauncher.webAppSocket.onWebApp(
+        webAppEntry.iframe,
+        clientId,
+        messageChannel.port1,
+      )
+      client.onClose().then(() => {
+        messageChannel.port1.close()
+        messageChannel.port2.close()
+      })
+      webAppEntry.clients.push(client)
+      webAppEntry.webClientConnectionListener.onClient(client)
+      source.postMessage({ type: 'ConnectAck' }, '*', [messageChannel.port2])
+    } else if (message.type === 'Terminate') {
+      webAppEntry.webClientConnectionListener.close()
+    }
+  }
+})
+
 export class WebAppLauncher implements WebCompositorConnector {
   readonly type = 'web' as const
 
@@ -55,62 +97,46 @@ export class WebAppLauncher implements WebCompositorConnector {
   }
 
   readonly webAppSocket: WebConnectionHandler
-  private webApps: { iframe: HTMLIFrameElement; clients: Client[] }[] = []
 
   private constructor(readonly session: Session) {
     this.webAppSocket = WebConnectionHandler.create(session)
   }
 
-  listen(url: URL, onNeedIFrameAttach: (webAppFrame: HTMLIFrameElement) => void): WebClientConnectionListener {
+  listen(url: URL): WebClientConnectionListener {
     const webAppFrame = document.createElement('iframe')
-    const webAppEntry = { iframe: webAppFrame, clients: [] as Client[] }
-    this.webApps.push(webAppEntry)
     webAppFrame.hidden = true
     webAppFrame.sandbox.add('allow-scripts')
     webAppFrame.src = url.href
 
-    const close = () => {
-      this.webApps = this.webApps.filter((value) => value.iframe !== webAppFrame)
-
-      for (const client of webAppEntry.clients) {
-        client.close()
-      }
-      webAppFrame.remove()
-    }
-
-    window.addEventListener('message', (ev) => {
-      // check if ev.source is a known webAppFrame, else ignore it
-      const source = ev.source as Window
-      if (source === null || this.webApps.find((value) => value.iframe.contentWindow === source) === undefined) {
-        return
-      }
-
-      const message = ev.data
-      if (isGreenfieldMessage(message)) {
-        if (message.type === 'ConnectReq') {
-          const messageChannel = new MessageChannel()
-          const clientId = randomString()
-          const client = this.webAppSocket.onWebAppWorker(webAppFrame, clientId, messageChannel.port1)
-          client.onClose().then(() => {
-            messageChannel.port1.close()
-            messageChannel.port2.close()
-          })
-          webAppEntry.clients.push(client)
-          source.postMessage({ type: 'ConnectAck' }, '*', [messageChannel.port2])
-        } else if (message.type === 'Terminate') {
-          close()
-        }
-      }
-    })
-
-    onNeedIFrameAttach(webAppFrame)
-
-    return {
+    const webClientConnectionListener: WebClientConnectionListener = {
       type: 'web',
       onClient(client: Client) {
         /*noop*/
       },
-      close,
+      close() {
+        webApps = webApps.filter((value) => value.iframe !== webAppFrame)
+
+        for (const client of webAppEntry.clients) {
+          client.close()
+        }
+        webAppFrame.remove()
+        this.onClose?.()
+      },
     }
+
+    const webAppEntry: WebAppEntry = {
+      webAppLauncher: this,
+      iframe: webAppFrame,
+      clients: [] as Client[],
+      webClientConnectionListener,
+    }
+    webApps.push(webAppEntry)
+
+    setTimeout(() => {
+      webClientConnectionListener.webAppIFrame = webAppFrame
+      webClientConnectionListener.onNeedIFrameAttach?.(webAppFrame)
+    })
+
+    return webClientConnectionListener
   }
 }
