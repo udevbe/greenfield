@@ -1,12 +1,19 @@
-export type ClientProps = { id: string; unresponsive: boolean; onClose: () => void; origin: string }
+import { Signal } from '@preact/signals'
+
+export type ClientProps = {
+  readonly id: string
+  unresponsive: Signal<boolean>
+  readonly onClose: () => void
+  readonly origin: string
+}
 export function Client(props: ClientProps) {
   return (
     <div class="client">
-      {props.id}
-      <br />
-      🌐 {props.origin}
-      {props.unresponsive ? <p>Not responding</p> : null}
-      <button onClick={props.onClose}>🗑️</button>
+      {props.origin}
+      <div>
+        {props.unresponsive ? 'App not responding' : null}
+        <button onClick={props.onClose}>🗑️</button>
+      </div>
     </div>
   )
 }

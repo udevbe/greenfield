@@ -28,7 +28,7 @@ function launchWebApp(
       ...clients.value,
       {
         id: client.id,
-        unresponsive: false,
+        unresponsive: new Signal(false),
         onClose: () => {
           session.userShell.actions.closeClient(client)
         },

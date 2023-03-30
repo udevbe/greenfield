@@ -12,11 +12,13 @@ import {
 } from '../../src'
 import { Client, ClientProps } from './Client'
 import { render } from 'preact'
+import { Window, WindowProps } from './Window'
 
 // load web assembly libraries
 const wasmLibs = initWasm()
 
 const clients = new Signal([] as ClientProps[])
+const windows = new Signal([] as WindowProps[])
 
 function Controls(props: {
   session: CompositorSession
@@ -33,13 +35,11 @@ function Controls(props: {
         <h4>Web</h4>
         <WebAppLauncher {...props} clients={clients} />
       </div>
-      <div id="clients">
-        <h4>Clients</h4>
+      <div id="windows">
+        <h4>Windows</h4>
         <ul>
-          {clients.value.map((client) => (
-            <li>
-              <Client key={client.id} {...client} />
-            </li>
+          {windows.value.map((window) => (
+            <Window {...window} />
           ))}
         </ul>
       </div>
@@ -69,10 +69,53 @@ export async function main() {
     clients.value = clients.value.filter((otherClient) => otherClient.id !== client.id)
   }
   session.userShell.events.clientUnresponsiveUpdated = (client: CompositorClient, unresponsive: boolean) => {
-    clients.value = clients.value.map((otherClient) => ({
-      ...otherClient,
-      unresponsive: otherClient.id === client.id ? unresponsive : otherClient.unresponsive,
-    }))
+    const clientProps = clients.value.find((otherClient) => otherClient.id === client.id)
+    if (clientProps === undefined) {
+      return
+    }
+    clientProps.unresponsive.value = unresponsive
+  }
+  session.userShell.events.surfaceCreated = (compositorSurface) => {
+    const clientProps = clients.value.find((client) => client.id === compositorSurface.client.id)
+    if (clientProps === undefined) {
+      // bug?
+      return
+    }
+    windows.value = [
+      ...windows.value,
+      {
+        title: new Signal('unknown'),
+        appId: new Signal('unknown'),
+        id: compositorSurface.id,
+        clientId: compositorSurface.client.id,
+        onClose: clientProps.onClose,
+        unresponsive: clientProps.unresponsive,
+        origin: clientProps.origin,
+      },
+    ]
+  }
+  session.userShell.events.surfaceDestroyed = (compositorSurface) => {
+    windows.value = windows.value.filter(
+      (window) => window.clientId !== compositorSurface.client.id && window.id !== compositorSurface.id,
+    )
+  }
+  session.userShell.events.surfaceTitleUpdated = (compositorSurface, title) => {
+    const window = windows.value.find(
+      (window) => compositorSurface.client.id === window.clientId && compositorSurface.id === window.id,
+    )
+    if (window === undefined) {
+      return
+    }
+    window.title.value = title
+  }
+  session.userShell.events.surfaceAppIdUpdated = (compositorSurface, appId) => {
+    const window = windows.value.find(
+      (window) => compositorSurface.client.id === window.clientId && compositorSurface.id === window.id,
+    )
+    if (window === undefined) {
+      return
+    }
+    window.appId.value = appId
   }
   session.userShell.events.notify = (variant: string, message: string) => window.alert(message)
 

@@ -34,7 +34,7 @@ export function ProxyConnection(props: ProxyConnectionProps) {
       ...props.clients.value,
       {
         id: client.id,
-        unresponsive: false,
+        unresponsive: new Signal(false),
         onClose: () => {
           props.session.userShell.actions.closeClient(client)
         },
