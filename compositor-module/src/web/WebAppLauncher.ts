@@ -38,6 +38,15 @@ export function randomString(): string {
 type GreenfieldMessage =
   | {
       type: 'ConnectReq'
+      connectionId: string
+    }
+  | {
+      type: 'ConnectAck'
+      connectionId: string
+    }
+  | {
+      type: 'Disconnect'
+      connectionId: string
     }
   | {
       type: 'Terminate'
@@ -79,10 +88,19 @@ window.addEventListener('message', (ev) => {
       client.onClose().then(() => {
         messageChannel.port1.close()
         messageChannel.port2.close()
+        const disconnect: GreenfieldMessage = {
+          type: 'Disconnect',
+          connectionId: message.connectionId,
+        }
+        source.postMessage(disconnect, '*')
       })
       webAppEntry.clients.push(client)
       webAppEntry.webClientConnectionListener.onClient(client)
-      source.postMessage({ type: 'ConnectAck' }, '*', [messageChannel.port2])
+      const connectAck: GreenfieldMessage = {
+        type: 'ConnectAck',
+        connectionId: message.connectionId,
+      }
+      source.postMessage(connectAck, '*', [messageChannel.port2])
     } else if (message.type === 'Terminate') {
       webAppEntry.webClientConnectionListener.close()
     }
