@@ -6,7 +6,7 @@
 #define APP_ENDPOINT_ENCODING_ENCODER_H
 
 #include "westfield.h"
-
+// #include <glib.h>
 // encoder data interface, we don't know its contents
 struct frame_encoder;
 struct audio_encoder;
@@ -64,6 +64,16 @@ union frame_buffer {
 typedef void (*frame_callback_func)(void *user_data, struct encoded_frame *encoded_frame);
 typedef void (*audio_callback_func)(void *user_data, struct encoded_audio *encoded_audio);
 
+struct gst_audio_encoder;
+
+// struct audio_encoder {
+//     struct gst_audio_encoder *impl;
+//     audio_callback_func audio_callback;
+//     void *user_data;
+//     GQueue *audio_encoding_results;
+//     bool terminated;
+// };
+
 int
 frame_encoder_create(char preferred_frame_encoder[16], frame_callback_func frame_ready_callback, void *user_data,
                      struct frame_encoder **frame_encoder_pp, struct westfield_egl *westfield_egl);
@@ -89,9 +99,11 @@ int
 audio_encoder_create(audio_callback_func audio_ready_callback, void *user_data,
                      struct audio_encoder **audio_encoder_pp);
 
+int
+audio_encoder_encode(struct audio_encoder **audio_encoder_pp);
 // Destroy a previously created audio encoder.
 int
-audio_encoder_destroy(struct audio_encoder **frame_encoder_pp);
+audio_encoder_destroy(struct audio_encoder **audio_encoder_pp);
 
 // Free memory allocated for the encoded_audio
 int

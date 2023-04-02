@@ -3,10 +3,10 @@ cmake_minimum_required(VERSION 3.13)
 project(app-endpoint-encoding C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED TRUE)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -pedantic")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -pedantic -lm")
 
-#set(CMAKE_BUILD_TYPE "Debug")
-set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_BUILD_TYPE "Debug")
+# set(CMAKE_BUILD_TYPE "Release")
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLIB2 REQUIRED glib-2.0 IMPORTED_TARGET)
@@ -17,6 +17,11 @@ pkg_check_modules(GSTREAMER REQUIRED
         gstreamer-video-1.0>=1.18
         gstreamer-gl-1.0>=1.18
         gstreamer-allocators-1.0>=1.18
+        libpipewire-0.3
+)
+pkg_check_modules(PIPEWIRE REQUIRED
+        IMPORTED_TARGET
+        libpipewire-0.3
 )
 pkg_check_modules(GRAPHENE REQUIRED IMPORTED_TARGET graphene-1.0)
 pkg_check_modules(EGL REQUIRED IMPORTED_TARGET egl>=1.5)
@@ -30,6 +35,7 @@ add_library(proxy-encoding SHARED
         ${CMAKE_CURRENT_SOURCE_DIR}/native/src/gst_frame_encoder.c
         ${CMAKE_CURRENT_SOURCE_DIR}/native/src/gst_audio_encoder.c
         ${CMAKE_CURRENT_SOURCE_DIR}/native/src/gst_main_loop.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/src/audio-node.c
 )
 target_include_directories(proxy-encoding PRIVATE
         ${CMAKE_SOURCE_DIR}/node_modules/westfield-proxy/dist/include
@@ -38,6 +44,7 @@ target_include_directories(proxy-encoding PRIVATE
         ${GLIB2_INCLUDE_DIRS}
         ${EGL_INCLUDE_DIRS}
         ${OPENGL_INCLUDE_DIRS}
+        ${PIPEWIRE_INCLUDE_DIRS}
 )
 target_link_libraries(proxy-encoding PRIVATE
         PkgConfig::GLIB2
@@ -45,6 +52,7 @@ target_link_libraries(proxy-encoding PRIVATE
         PkgConfig::GRAPHENE
         PkgConfig::EGL
         PkgConfig::OPENGL
+        PkgConfig::PIPEWIRE
         ${WESTFIELD}
         ${WESTFIELD_LIBWAYLAND_SERVER}
         -Wl,--no-undefined
@@ -58,6 +66,7 @@ set_target_properties(proxy-encoding
 add_library(proxy-encoding-addon SHARED
         ${CMAKE_CURRENT_SOURCE_DIR}/native/src/encoder.h
         ${CMAKE_CURRENT_SOURCE_DIR}/native/src/node_encoder.c
+        # ${CMAKE_CURRENT_SOURCE_DIR}/native/src/audio-node.c
 )
 target_include_directories(proxy-encoding-addon PRIVATE
         ${CMAKE_SOURCE_DIR}/node_modules/node-api-headers/include
@@ -67,6 +76,7 @@ set_target_properties(proxy-encoding-addon PROPERTIES PREFIX "" SUFFIX ".node")
 target_link_libraries(proxy-encoding-addon PRIVATE
         ${CMAKE_JS_LIB}
         ${WESTFIELD}
+        ${PIPEWIRE}
         proxy-encoding
 )
 set_target_properties(proxy-encoding-addon

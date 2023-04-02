@@ -30,7 +30,10 @@ do_gst_audio_encoder_create(audio_callback_func audio_ready_callback, void *user
                             struct audio_encoder **audio_encoder_pp);
 
 extern void
-do_gst_audio_encoder_free(struct audio_encoder **frame_encoder_pp);
+do_gst_audio_encoder_encode(struct audio_encoder **audio_encoder_pp);
+
+extern void
+do_gst_audio_encoder_free(struct audio_encoder **audio_encoder_pp);
 
 void
 do_gst_encoded_audio_finalize(struct encoded_audio *encoded_audio);
@@ -49,6 +52,7 @@ enum gf_message_type {
     encoded_frame_finalize_type,
     frame_encoder_request_key_unit_type,
     audio_encoder_create_type,
+    audio_encoder_encode_type,
     audio_encoder_free_type,
     encoded_audio_finalize_type,
 };
@@ -83,6 +87,9 @@ struct gf_message {
             void *user_data;
             struct audio_encoder **audio_encoder_pp;
         } audio_encoder_create;
+        struct {
+            struct audio_encoder **audio_encoder_pp;
+        } audio_encoder_encode;
         struct {
             struct audio_encoder **audio_encoder_pp;
         } audio_encoder_free;
@@ -207,6 +214,8 @@ main_loop_handle_message(struct gf_message *message) {
                                         message->body.audio_encoder_create.audio_encoder_pp
             );
             break;
+        case audio_encoder_encode_type:
+            do_gst_audio_encoder_encode(message->body.audio_encoder_encode.audio_encoder_pp);
         case audio_encoder_free_type:
             do_gst_audio_encoder_free(message->body.audio_encoder_free.audio_encoder_pp);
             break;
@@ -319,12 +328,23 @@ frame_encoder_request_key_unit(struct frame_encoder **frame_encoder_pp) {
 int
 audio_encoder_create(audio_callback_func audio_ready_callback, void *user_data,
                      struct audio_encoder **audio_encoder_pp) {
+                                // generates n structs of type
     struct gf_message *message = g_new0(struct gf_message, 1);
 
     message->type = audio_encoder_create_type;
     message->body.audio_encoder_create.audio_ready_callback = audio_ready_callback;
     message->body.audio_encoder_create.user_data = user_data;
     message->body.audio_encoder_create.audio_encoder_pp = audio_encoder_pp;
+
+    return send_message(message);
+}
+
+int
+audio_encoder_encode(struct audio_encoder **audio_encoder_pp) {
+    struct gf_message *message = g_new0(struct gf_message, 1);
+
+    message->type = audio_encoder_encode_type;
+    message->body.audio_encoder_encode.audio_encoder_pp = audio_encoder_pp;
 
     return send_message(message);
 }
@@ -338,7 +358,7 @@ audio_encoder_destroy(struct audio_encoder **audio_encoder_pp) {
 
     return send_message(message);
 }
-
+// for the generated encoded data
 int
 encoded_audio_finalize(struct encoded_audio *encoded_audio) {
     struct gf_message *message = g_new0(struct gf_message, 1);
