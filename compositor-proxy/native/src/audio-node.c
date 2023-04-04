@@ -8,9 +8,10 @@
 // #include <sndfile.h>
 #include <spa/param/audio/format-utils.h>
 #include "audio-node.h"
+#include "encoder.h"
+
 struct data
 {
-
    struct pw_main_loop *loop;
    struct pw_core *core;
    struct spa_audio_info format;
@@ -20,7 +21,6 @@ struct data
 };
 
 const struct spa_pod *params[1];
-int node_id = 0;
 static struct data data = {0};
 static struct pw_registry *registry;
 static uint32_t source_node;
@@ -30,7 +30,6 @@ static void do_quit(void *userdata, int signal_number);
 static void on_global_add(void *data, uint32_t id, uint32_t permissions, const char *type, uint32_t version, const struct spa_dict *props);
 static void on_global_remove(void *data, uint32_t id);
 
-//static const struct pw_stream_events stream_events;
 
 static const struct pw_stream_events stream_events = {
     PW_VERSION_STREAM_EVENTS,
@@ -80,24 +79,33 @@ static void on_stream_state_changed(void *_data, enum pw_stream_state old, enum 
                                     const char *error)
 {
    struct data *data = _data;
-   node_id = pw_stream_get_node_id(data->stream);
+   // inpip_node = pw_stream_get_node_id(data->stream);
  
+   pip_node_id = pw_stream_get_node_id(data->stream);
+   
    switch (state)
    {
-   case PW_STREAM_STATE_UNCONNECTED:   
-      printf("NODE --%d-- UNCONNECTED \n",  node_id);
+   case PW_STREAM_STATE_UNCONNECTED: 
+      // streaming = 0;
+      printf("NODE --%d-- UNCONNECTED \n",  pip_node_id);
       break;
    case PW_STREAM_STATE_CONNECTING:
-      printf("NODE --%d-- CONNECTING \n", node_id);
+      // streaming = 0;
+      printf("NODE --%d-- CONNECTING \n", pip_node_id);
       break;
    case PW_STREAM_STATE_PAUSED:
-      printf("NODE --%d-- PAUSED \n", node_id);
+      // streaming = 0;
+      printf("NODE --%d-- PAUSED \n", pip_node_id);
       break;
    case PW_STREAM_STATE_STREAMING:
-      printf("NODE --%d-- STREAMING\n", node_id);
+      // streaming = 1;
+      // pip_node_id = pip_node;
+      audio_encoder_recreate_pipeline(pip_node_id);
+      printf("NODE --%d-- STREAMING\n", pip_node_id);
       break;
    case PW_STREAM_STATE_ERROR:
-      printf("NODE --%d-- IN ERROR : %s\n", node_id, error);
+      // streaming = 0;
+      printf("NODE --%d-- IN ERROR : %s\n", pip_node_id, error);
       break;
    default:
       break;
@@ -110,6 +118,7 @@ static void on_global_add(void *userdata, uint32_t id, uint32_t permissions, con
    {
       return;
    }
+   
 
    const char *obj_ser_c = (props->items->value);
    const char *media_role = props->items[5].value;
@@ -118,6 +127,7 @@ static void on_global_add(void *userdata, uint32_t id, uint32_t permissions, con
    {
       return;
    }
+   // printf("Pripojeny %d, Typ: %s, NAME: %s\n", id, type, props->items[3].value);
 
    if (!strcmp(type, "PipeWire:Interface:Node")  && !strcmp(media_role, "Stream/Output/Audio") )
    {
@@ -134,7 +144,8 @@ static void on_global_add(void *userdata, uint32_t id, uint32_t permissions, con
                                        params, 1);
 
       source_node = id;
-         printf("success connect :  %d\n", success);
+      // pip_node_id = pw_stream_get_node_id(data.stream);
+         printf("success connect :  %d \n", success);
          printf("Pripojeny %s, ROLA: %s, NAME: %s\n", obj_ser_c, props->items[5].value, props->items[3].value);
 
       const struct spa_dict_item new_target = {PW_KEY_TARGET_OBJECT, obj_ser_c};
@@ -155,14 +166,18 @@ static void on_global_remove(void *userdata, uint32_t id){
    if (id == source_node){
    int successdis = pw_stream_disconnect	(	data.stream	);	
    printf("success  disconnect: %d , disconnecting to id :   %d\n", successdis, id);
+   pip_node_id = 0;
 }
 }
 
 
 //  int main(int argc, char **argv)
-int pipewire_node_start()
+// int pipewire_node_start()
+// {
+
+void *producer(void *param)
 {
-  
+//   printf("Producer: %ld%ld", (long)getpid(), (long)getppid());
    pw_init(NULL, NULL);
 
    /* Create the event loop. */
@@ -248,6 +263,7 @@ int pipewire_node_start()
                PW_STREAM_FLAG_RT_PROCESS
                ,params, 1);
 
+   
    // nemusi byt global
    registry = pw_core_get_registry(data.core, PW_VERSION_REGISTRY, 0);
   

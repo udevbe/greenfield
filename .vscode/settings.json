@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "audio-node.h": "c"
+        "audio-node.h": "c",
+        "time.h": "c"
     }
 }

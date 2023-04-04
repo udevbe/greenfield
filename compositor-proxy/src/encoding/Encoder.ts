@@ -73,6 +73,7 @@ export class Encoder {
     // console.debug(`Start encoding: ${bufferContentSerial}`)
     return new Promise<Buffer>((resolve, reject) => {
       this.encodingQueue.push({ resolve, reject, bufferResourceId, bufferContentSerial })
+      console.log("FREEEEEJM   ");
       appEndpointNative.encodeFrame(this.nativeEncoder, bufferResourceId, bufferContentSerial, bufferCreationSerial)
     })
   }
