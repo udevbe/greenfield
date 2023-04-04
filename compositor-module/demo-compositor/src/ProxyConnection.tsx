@@ -6,13 +6,13 @@ import { ClientProps } from './Client'
 function ConnectionStateIcon(props: { state: RemoteClientConnectionListener['state'] }) {
   switch (props.state) {
     case 'open':
-      return <>🟢</>
+      return <span class="app-state">🟩 </span>
     case 'connecting':
       return <>⌛</>
     case 'closing':
     case 'closed':
     default:
-      return <>🔴</>
+      return <span class="app-state">🟥 </span>
   }
 }
 
@@ -46,8 +46,10 @@ export function ProxyConnection(props: ProxyConnectionProps) {
   return (
     <div class="compositor-proxy-connection">
       <ConnectionStateIcon state={connectionState} />
-      {props.name}
-      <button onClick={props.remove}>🗑️</button>
+      <span class="app-url">{props.name}</span>
+      <button class="app-close" onClick={props.remove}>
+        🗑️
+      </button>
     </div>
   )
 }

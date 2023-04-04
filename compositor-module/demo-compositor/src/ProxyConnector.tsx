@@ -1,12 +1,13 @@
 import { Signal, signal } from '@preact/signals'
 import { ProxyConnection, ProxyConnectionProps } from './ProxyConnection'
-import { CompositorSession, RemoteCompositorConnector } from '../../src'
+import {CompositorSession, RemoteClientConnectionListener, RemoteCompositorConnector} from '../../src'
 import { ClientProps } from './Client'
 
 const connections = signal([] as ProxyConnectionProps[])
 const connectionURL = signal('localhost:8081')
 
-function removeConnection(url: URL) {
+function removeConnection(url: URL, proxyListener: RemoteClientConnectionListener) {
+  proxyListener.close()
   connections.value = connections.value.filter((connection) => connection.url.href !== url.href)
 }
 
@@ -22,15 +23,17 @@ function addConnection(
     return
   }
 
+  const proxyListener = compositorProxyConnector.listen(url)
+
   connections.value = [
     ...connections.value,
     {
       session,
       url,
       name: connectionURL.value,
-      proxyListener: compositorProxyConnector.listen(url),
+      proxyListener,
       remove: () => {
-        removeConnection(url)
+        removeConnection(url, proxyListener)
       },
       clients,
     },
@@ -57,10 +60,12 @@ export function ProxyConnector(props: ProxyConnectorProps) {
   }
 
   return (
-    <div class="compositor-proxy-connector">
-      <input type="text" name="launch" value={connectionURL} onInput={onInput} onKeyUp={onKeyUp} />
-      <div class="compositor-proxy-connections">
-        <ul class="proxy-connection">
+    <div>
+      <label class="launch-input-label">
+        🖥️ <input type="text" value={connectionURL} onInput={onInput} onKeyUp={onKeyUp} />
+      </label>
+      <div>
+        <ul>
           {connections.value.map((connection) => (
             <li>
               <ProxyConnection {...connection} />

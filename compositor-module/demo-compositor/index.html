@@ -21,6 +21,10 @@
           padding: 5px;
       }
 
+      #controls hr {
+        width: 100%;
+      }
+
       #output-container {
           width: 100%;
           height: 100%;
@@ -31,22 +35,13 @@
           height: 100%;
       }
 
-      .unresponsive-client {
-          max-width: min-content;
-          min-width: 100%;
-          display: block;
+      .launch-input-label {
+        display: flex;
       }
 
-      .proxy-connection-container {
-          padding-bottom: 10px;
-      }
-
-      .proxy-connection-container .input {
-          display: flex;
-      }
-
-      .proxy-connection-container .state {
-          width: max-content;
+      .launch-input-label input {
+        margin-left: 8px;
+        max-width: 150px;
       }
 
       ul  {
@@ -61,8 +56,46 @@
           background: none;
       }
 
-      .client {
+      .window-title {
+        font-family: sans-serif;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        vertical-align: middle;
+        max-width: 170px;
+      }
 
+      .window-origin {
+        font-family: monospace;
+        font-size: x-small;
+      }
+
+      .window-close {
+        width: 100%;
+      }
+
+      .app-state {
+        font-size: xx-small;
+        vertical-align: middle;
+      }
+
+      .app-url {
+        display: inline-block;
+        width: 130px;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        vertical-align: middle;
+        font-family: sans-serif;
+        font-size: smaller;
+      }
+
+      .app-close {
+        float: right;
+      }
+
+      .window-container {
+        margin: 2px;
       }
   </style>
   <script defer type="module" src="src/index.ts"></script>

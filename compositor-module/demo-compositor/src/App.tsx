@@ -28,15 +28,13 @@ function Controls(props: {
   return (
     <div id="controls">
       <div>
-        <h4>Remote</h4>
         <ProxyConnector {...props} clients={clients} />
       </div>
       <div>
-        <h4>Web</h4>
         <WebAppLauncher {...props} clients={clients} />
       </div>
+      <hr />
       <div id="windows">
-        <h4>Windows</h4>
         <ul>
           {windows.value.map((window) => (
             <Window {...window} />
@@ -84,8 +82,8 @@ export async function main() {
     windows.value = [
       ...windows.value,
       {
-        title: new Signal('unknown'),
-        appId: new Signal('unknown'),
+        title: new Signal('title'),
+        appId: new Signal('application id'),
         id: compositorSurface.id,
         clientId: compositorSurface.client.id,
         onClose: clientProps.onClose,
@@ -96,7 +94,7 @@ export async function main() {
   }
   session.userShell.events.surfaceDestroyed = (compositorSurface) => {
     windows.value = windows.value.filter(
-      (window) => window.clientId !== compositorSurface.client.id && window.id !== compositorSurface.id,
+      (window) => window.clientId !== compositorSurface.client.id || window.id !== compositorSurface.id,
     )
   }
   session.userShell.events.surfaceTitleUpdated = (compositorSurface, title) => {

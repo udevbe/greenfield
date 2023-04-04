@@ -13,7 +13,7 @@ function launchWebApp(
 ) {
   const url = new URL(webAppURL.value)
   const webAppListener = webConnector.listen(url)
-  const webApp: WebAppProps = { url, onClose: () => webAppListener.close() }
+  const webApp: WebAppProps = { url, onClose: () => webAppListener.close(), loaded: new Signal(false) }
   webApps.value = [...webApps.value, webApp]
   webAppListener.onClose = () => {
     webApps.value = webApps.value.filter((otherWebApp) => otherWebApp !== webApp)
@@ -24,6 +24,7 @@ function launchWebApp(
   }
 
   webAppListener.onClient = (client) => {
+    webApp.loaded.value = true
     clients.value = [
       ...clients.value,
       {
@@ -57,8 +58,10 @@ export function WebAppLauncher(props: WebAppLauncherProps) {
   }
 
   return (
-    <div class="web-app-launcher">
-      <input type="text" name="launch" value={webAppURL} onInput={onInput} onKeyUp={onKeyUp} />
+    <div>
+      <label class="launch-input-label">
+        🌐 <input type="text" name="launch" value={webAppURL} onInput={onInput} onKeyUp={onKeyUp} />
+      </label>
       <div>
         <ul>
           {webApps.value.map((webApp) => (
