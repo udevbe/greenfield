@@ -6,16 +6,18 @@ import { config } from './config'
 import { createLogger } from './Logger'
 import { initSurfaceBufferEncoding } from './SurfaceBufferEncoding'
 import { createApp } from './App'
+import { args } from './Args'
 
-const compositorSessionId = process.env.COMPOSITOR_SESSION_ID
+const compositorSessionId = args['static-session-id']
 
 const logger = createLogger('main')
 
 logger.info('Starting compositor proxy...')
-if (compositorSessionId === undefined) {
-  logger.error('env COMPOSITOR_SESSION_ID must be set.')
+if (compositorSessionId === null) {
+  logger.error('--static-session-id= must be set.')
   process.exit(1)
 }
+logger.info('Using a static session id.')
 
 const compositorProxySession = createCompositorProxySession(compositorSessionId)
 

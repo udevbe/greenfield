@@ -6,14 +6,25 @@ import path from 'path'
 import { Configschema } from './@types/config'
 
 import configschema from './configschema.json'
+import { args } from './Args'
+import Logger from 'pino'
+
+const logger = Logger({
+  name: 'config',
+})
 
 const ajv = new Ajv()
 addFormats(ajv)
 
 const validate = ajv.compile(configschema)
 
-const configLocation = process.env.CONFIG ?? path.join(__dirname, 'config.yaml')
-console.log(`Reading configuration from: ${configLocation}`)
+let configLocation = args['config-location']
+if (configLocation) {
+  logger.info(`Reading configuration from: ${configLocation}`)
+} else {
+  logger.info('Using build-in default configuration')
+  configLocation = path.join(__dirname, 'config.yaml')
+}
 
 const configFileContents = fs.readFileSync(configLocation, 'utf8')
 

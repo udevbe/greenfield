@@ -25,25 +25,21 @@ To run, you will need 2 parts to work together.
 - An implementation of the *Greenfield Compositor Module* that runs in your browser and receives the forwarded signals of potential multiple Greenfield Compositor Proxies.
 
 ### Greenfield Compositor Module
-The Greenfield Compositor Module comes with a very simple demo implementation that you can use. It's hard coded to connect to a Greenfield Compositor Proxy running on your local system [but can be easily adapted to connect to any URL of your choosing.](https://github.com/udevbe/greenfield/blob/master/compositor-module/demo-compositor/src/index.ts#L34)
+The Greenfield Compositor Module comes with a simple demo implementation.
 
-Compositor-module uses Open-API to generate client code to talk to the compositor-proxy. This requires `java` to be present on your PATH during build.
-
-Inside `compositor-module` directory run.
+In the `compositor-module` directory run
 - `yarn install`
 - `yarn generate`
 - `yarn start`
 
-Go to [http://localhost:8080]() and be greeted with a nice white compositor with 2 buttons. Each button click creates a new WebSocket connection to a Greenfield Compositor Proxy as indicated
-by the text on the button. Clicking these buttons won't do much for now as we need to run a Greenfield Compositor Proxy that will act as a bridge between the native world and the browser.
+to start the compositor demo module.
+
+*Note that the compositor-module built uses Open-API to generate client code to talk to the compositor-proxy and requires `java` to be present on your PATH during build.*
+
+Go to [http://localhost:8080]() and be greeted with a nice white compositor. It has 2 URL input fields that can be used. The first input field connects to the provided remote compositor and accepts input in the form of `host:port`. The second input field launches
+and runs Wayland applications in an iframe (experimental) and accepts input in the form of `http(s)://host:port/path`.
 
 ### Greenfield Compositor Proxy
-
-Running a Greenfield Compositor Proxy requires an environment variable to work properly.
-- `COMPOSITOR_SESSION_ID=test123` This has to match the compositor session id of the Greenfield browser compositor.
-  This is a security measure so other Greenfield browser compositors can't simply connect to your compositor-proxy. To work with the demo compositor that we started earlier, you can simply use the value stated here (`test123`)
-
-For convenience, there is a demo setup that you can use.
 
 To build you need a set of native dependencies. You can look at the [Docker image](https://github.com/udevbe/greenfield/blob/master/compositor-proxy/Dockerfile#L4) to see which ones you need to build and run respectively, or if you're running a Debian based distro you can run:
 ```
@@ -52,7 +48,7 @@ sudo apt install cmake build-essential ninja-build pkg-config libffi-dev libudev
  gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly gstreamer1.0-gl xwayland
 ```
 
-More dependencies may be required depending on your GPU.
+More dependencies may be required depending on your GPU eg. for nvidia based cards.
 
 Next, inside `compositor-proxy`, run:
 - `yarn install`
@@ -60,7 +56,7 @@ Next, inside `compositor-proxy`, run:
 - `yarn build:native`
 - `cp dist/encoding/proxy-encoding-addon.node src/encoding/proxy-encoding-addon.node`
 
-For Xwayland support a few extra steps may be needed, this is optional and only required if you don't already hava an X server running.:
+For XWayland support a few extra steps may be needed, this is optional and only required if you don't already hava an X server running.:
 
 - `export XAUTHORITY=.Xauthority`
 - `touch "$HOME/$XAUTHORITY"`
@@ -72,13 +68,45 @@ and finally
 You should now see something that says `Compositor proxy started. Listening on port 8081`. You can also adjust some things
 in `src/config.yaml`.
 
-In our browser compositor we can now click the first button to make a connection to the Greenfield Compositor Proxy. You should see a
+In our demo compositor we can now input the url `localhost:8081` to make a connection to the Greenfield Compositor Proxy. You should see a
 message appear in the log output of the compositor-proxy that we started earlier: `New websocket connected.`.
 
-That's it! You should now have a Wayland compositor running on your system, so let's start some applications. Most recent GTK3 applications (like gnome-terminal) should
+You should now have a Wayland compositor running on your system, so let's start some applications. Most recent GTK3/4 applications (like gnome-terminal) should
 auto-detect the compositor-proxy and simply connect without issues or extra setup. QT applications often require an extra `-platform wayland` parameter.
 If your application can't connect, try setting the `WAYLAND_DISPLAY` environment variable to the value that was printed by compositor-proxy. ie if you see `Listening on: WAYLAND_DISPLAY=\"wayland-0\".`
 then set the environment variable `export WAYLAND_DISPLAY=wayland-0`.
+
+Running a self-contained Greenfield Compositor Proxy is also possible. Simply run:
+- `yarn package`
+
+This creates a single binary inside the `package` directory and accepts the following arguments:
+- `--static-session-id=test123` This is a mandatory argument and has to match the compositor session id of the Greenfield browser compositor.
+  This is a security measure so other Greenfield browser compositors can't simply connect to your compositor-proxy. To work with the demo compositor that we started earlier, you can simply use the value stated here (`test123`)
+- `--config-location=some/path` This is an optional argument and points to a user supplied config file. If not provided the default config  from `src/config.yaml` will be used. The config looks like this and can be adjusted as needed.
+```yaml
+server:
+  http:
+    # Hostname argument.
+    bindIP: 0.0.0.0
+    # Port argument.
+    bindPort: 8081
+    # CORS allowed origins, used when doing cross-origin requests. Value can be * or comma seperated domains.
+    allowOrigin: '*'
+public:
+  # The base url to use when connecting to this endpoint. This is used when doing direct proxy to proxy connections.
+  baseURL: http://localhost:8081
+encoder:
+  # Path of the render device that should be used for hardware acceleration. e.g. /dev/dri/renderD128
+  renderDevice: /dev/dri/renderD128
+  # The gstreamer h264 encoder to use. 'x264' and 'nvh264' are supported ('vaapih264' is currently broken). 'x264'
+  # is a pure software encoder. While 'nvh264' is a hw accelerated encoder for Nvidia based GPUs.
+  # see https://gstreamer.freedesktop.org/documentation/x264/index.html
+  # see https://gstreamer.freedesktop.org/documentation/nvenc/nvh264enc.html
+  h264Encoder: x264
+logging:
+  # "fatal" | "error" | "warn" | "info" | "debug" | "trace"
+  level: info
+```
 
 # Docker
 
