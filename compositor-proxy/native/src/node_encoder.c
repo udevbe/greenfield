@@ -44,7 +44,7 @@ struct node_frame_encoder {
 
 struct node_audio_encoder {
     struct audio_encoder *encoder;
-    pid_t client_pid;
+    pid_t client_pid; //toto id chcem
     napi_threadsafe_function js_cb_ref;
 };
 
@@ -385,20 +385,21 @@ destroyAudioEncoder(napi_env env, napi_callback_info info) {
 
 static napi_value
 encodeAudio(napi_env env, napi_callback_info info) {
+    printf("encodeAudio pre node js\n");
     static size_t argc = 4;
     napi_value argv[argc], return_value;
 
     struct node_audio_encoder *node_audio_encoder;
-    // uint32_t buffer_id, buffer_content_serial, buffer_creation_serial;
+    uint32_t buffer_id, buffer_content_serial, buffer_creation_serial;
     struct wl_resource *buffer_resource;
 
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
     NAPI_CALL(env, napi_get_value_external(env, argv[0], (void **) &node_audio_encoder))
-    // NAPI_CALL(env, napi_get_value_uint32(env, argv[1], &buffer_id))
-    // NAPI_CALL(env, napi_get_value_uint32(env, argv[2], &buffer_content_serial))
-    // NAPI_CALL(env, napi_get_value_uint32(env, argv[3], &buffer_creation_serial))
+    NAPI_CALL(env, napi_get_value_uint32(env, argv[1], &buffer_id))
+    NAPI_CALL(env, napi_get_value_uint32(env, argv[2], &buffer_content_serial))
+    NAPI_CALL(env, napi_get_value_uint32(env, argv[3], &buffer_creation_serial))
 
-    // buffer_resource = wl_client_get_object(node_frame_encoder->client, buffer_id);
+    // buffer_resource = wl_client_get_object(node_audio_encoder->client, buffer_id);
 
     if (audio_encoder_encode(&node_audio_encoder->encoder) == -1) {
         NAPI_CALL(env, napi_throw_error((env), NULL, "Can't encode frame buffer."))

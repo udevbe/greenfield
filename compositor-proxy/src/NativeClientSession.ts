@@ -71,6 +71,7 @@ export function createNativeClientSession(
   wlClient: unknown,
   nativeCompositorSession: NativeCompositorSession,
   // TODO Add an extra audio Channel to send audio data to the browser. This happens nearly identical as how the protocol channels is set up.
+
   protocolChannel: Channel,
   id: string,
 ): NativeClientSession {

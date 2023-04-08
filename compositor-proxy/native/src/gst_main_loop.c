@@ -32,7 +32,7 @@ extern void
 do_gst_audio_encoder_create(audio_callback_func audio_ready_callback, void *user_data,
                             struct audio_encoder **audio_encoder_pp);
 extern void
-do_gst_audio_encoder_recreate_pipeline(int PW_node_id);
+do_gst_audio_encoder_recreate_pipeline(int PW_node_id, char* PID, struct audio_encoder **audio_encoder_pp);
 
 extern void
 do_gst_audio_encoder_encode(struct audio_encoder **audio_encoder_pp);
@@ -96,6 +96,8 @@ struct gf_message {
         } audio_encoder_create;
         struct {
             int PW_node_id;
+            char* PID;
+            struct audio_encoder **audio_encoder_pp;
         }audio_encoder_recreate_pipeline;
         struct {
             struct audio_encoder **audio_encoder_pp;
@@ -108,6 +110,18 @@ struct gf_message {
         } encoded_audio_finalize;
     } body;
 };
+
+struct audio_encoder_node
+{ 
+    struct audio_encoder_node *prev;
+    struct audio_encoder_node *next;
+    struct audio_encoder **audio_encoder_pp;
+    pid_t PID;
+};
+
+struct audio_encoder_node *last_encoder = NULL;
+
+
 
 typedef void (*SyncWorkerCb)(struct gf_message *message, gpointer udata);
 
@@ -232,7 +246,12 @@ main_loop_handle_message(struct gf_message *message) {
             );
             break;
         case audio_encoder_recreate_pipeline_type:
-            do_gst_audio_encoder_recreate_pipeline(message->body.audio_encoder_recreate_pipeline.PW_node_id);
+            do_gst_audio_encoder_recreate_pipeline(message->body.audio_encoder_recreate_pipeline.PW_node_id,
+                                                   message->body.audio_encoder_recreate_pipeline.PID,
+                                                   message->body.audio_encoder_recreate_pipeline.audio_encoder_pp
+
+
+            );
             break;
         case audio_encoder_encode_type:
             do_gst_audio_encoder_encode(message->body.audio_encoder_encode.audio_encoder_pp);
@@ -371,28 +390,84 @@ frame_encoder_request_key_unit(struct frame_encoder **frame_encoder_pp) {
 // the created audio encoder. Messages send to the gstreamer thread are in-order, so you can do an immediate create+delete.
 
 int
-audio_encoder_create(audio_callback_func audio_ready_callback, void *user_data,
+audio_encoder_create(audio_callback_func audio_ready_callback, void *user_data, // moj pid
                      struct audio_encoder **audio_encoder_pp) {
                                 // generates n structs of type
     struct gf_message *message = g_new0(struct gf_message, 1);
+    int *pid = (int*)user_data;
 
+    printf(" PIDKOOOO : %d\n", *pid);
     message->type = audio_encoder_create_type;
     message->body.audio_encoder_create.audio_ready_callback = audio_ready_callback;
     message->body.audio_encoder_create.user_data = user_data;
     message->body.audio_encoder_create.audio_encoder_pp = audio_encoder_pp;
 
+    if( ! last_encoder )
+    {
+        last_encoder = (struct audio_encoder_node *)malloc(sizeof(struct audio_encoder_node));
+        last_encoder->prev = NULL;
+        last_encoder->audio_encoder_pp = audio_encoder_pp;
+        last_encoder->PID = *pid;
+    }
+    else
+    {
+        struct audio_encoder_node *new_encoder = (struct audio_encoder_node *)
+                        malloc(sizeof(struct audio_encoder_node));
+        new_encoder->prev = last_encoder;
+        new_encoder->audio_encoder_pp = audio_encoder_pp;
+        last_encoder = new_encoder;
+        last_encoder->PID = *pid;
+
+    }
+
     return send_message(message);
 }
 
 void
-audio_encoder_recreate_pipeline(int PW_node_id) {
+audio_encoder_recreate_pipeline(int PW_node_id, char* PID) {
     struct gf_message *message = g_new0(struct gf_message, 1);
-     
+    
+
+    int PW_PID = atoi(PID);
     message->type = audio_encoder_recreate_pipeline_type;
     message->body.audio_encoder_recreate_pipeline.PW_node_id = PW_node_id; 
-   
+    message->body.audio_encoder_recreate_pipeline.PID = PW_PID; 
 
-    send_message(message);
+    struct audio_encoder_node *curr_node = last_encoder;
+    bool found = false;
+    if( ! last_encoder )
+    {
+        //ERROR, return
+    }
+
+    while( curr_node->prev )
+    {
+        //check na pid, found = true break;
+        printf("PID: %d  pidt: %d  bool: %d \n",PW_PID, curr_node->PID ,PW_PID == curr_node->PID);
+        if (PW_PID == curr_node->PID){
+        
+            message->body.audio_encoder_recreate_pipeline.audio_encoder_pp = curr_node->audio_encoder_pp; 
+            found = true;
+            break;
+        }
+        curr_node = curr_node->prev;
+
+    }
+    printf("PID: %d  pidt: %d  bool: %d \n",PW_PID, curr_node->PID ,PW_PID == curr_node->PID);
+        if (PW_PID == curr_node->PID){
+        
+            message->body.audio_encoder_recreate_pipeline.audio_encoder_pp = curr_node->audio_encoder_pp; 
+            found = true;
+            // break;
+        }
+        curr_node = curr_node->prev;
+   
+    if( found )
+    {
+        send_message(message);
+    }
+
+   
 }
 
 

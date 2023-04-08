@@ -22,6 +22,13 @@ declare namespace nativeEncoder {
 
   export function createAudioEncoder(wlClient: unknown, audioEncoded: (sample: Buffer) => void): AudioEncoder
 
+  export function encodeAudio(
+    audioEncoder: unknown,
+    bufferId: number,
+    bufferContentSerial: number,
+    bufferCreationSerial: number,
+  ): void
+  
   export function destroyAudioEncoder(encoder: AudioEncoder): void
 }
 

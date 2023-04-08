@@ -17,32 +17,53 @@ struct data
    struct spa_audio_info format;
    struct pw_stream *stream;
    struct pw_properties *stream_properties;
-   unsigned move:1;
+   struct spa_hook node_listener;
+   char *PID;
+   unsigned move : 1; // unused for now I think
 };
 
 const struct spa_pod *params[1];
 static struct data data = {0};
 static struct pw_registry *registry;
 static uint32_t source_node;
+
 static void on_process(void *userdata);
-static void on_stream_state_changed(void *_data, enum pw_stream_state old, enum pw_stream_state state,const char *error);
+static void on_stream_state_changed(void *_data, enum pw_stream_state old, enum pw_stream_state state, const char *error);
 static void do_quit(void *userdata, int signal_number);
 static void on_global_add(void *data, uint32_t id, uint32_t permissions, const char *type, uint32_t version, const struct spa_dict *props);
 static void on_global_remove(void *data, uint32_t id);
-
+static void node_info(void *object, const struct pw_node_info *info);
 
 static const struct pw_stream_events stream_events = {
     PW_VERSION_STREAM_EVENTS,
     .process = on_process,
-    .state_changed = on_stream_state_changed,
-   //  .io_changed = on_io_changed,
+    .state_changed = on_stream_state_changed, // whether the stream is connected and recieving data in on_process
+    //  .io_changed = on_io_changed,
 };
 
 static const struct pw_registry_events registry_events = {
     PW_VERSION_REGISTRY_EVENTS,
-     .global = on_global_add,
-     .global_remove = on_global_remove,
+    .global = on_global_add,           // new object in PW daemon
+    .global_remove = on_global_remove, // object removed from PW daemon
 };
+
+static const struct pw_node_events node_events = {
+    PW_VERSION_NODE_EVENTS,
+    .info = node_info, // geting app props, for PID
+};
+
+static void node_info(void *object, const struct pw_node_info *info)
+{
+   struct data *data = object;
+   struct spa_dict_item *item = spa_dict_lookup_item(info->props, PW_KEY_APP_PROCESS_ID);
+   printf("ITEM: %s \n", item->value);
+   data->PID = strdup(item->value);
+   printf("ITEM PID: %s \n", data->PID);
+
+   spa_hook_remove(&data->node_listener);
+}
+
+/* [registry_event_global] */
 
 static void on_process(void *audiodata)
 {
@@ -50,61 +71,47 @@ static void on_process(void *audiodata)
    struct pw_buffer *buffer;
    // struct spa_buffer *buf;
    static __uint64_t cntr = 0;
-   // static unsigned int last_node_id = 0;
- 
-   // const struct pw_properties *props = pw_stream_get_properties(data->stream);
-   // const char *object_path = pw_properties_get(props, PW_KEY_TARGET_OBJECT);
 
    while (((buffer = pw_stream_dequeue_buffer(data->stream)) != NULL))
    {
       cntr++;
-      if( !(cntr % 50) && buffer->buffer->datas->chunk->size )
+      if (!(cntr % 50) && buffer->buffer->datas->chunk->size)
       {
-         printf("chunk size: %u, first 3 floats: %f %f %f\n",buffer->buffer->datas->chunk->size,
-                 (((float *)buffer->buffer->datas->data)[0]),
-                 (((float *)buffer->buffer->datas->data)[1]),
-                 (((float *)buffer->buffer->datas->data)[2]));
+         printf("chunk size: %u, first 3 floats: %f %f %f\n", buffer->buffer->datas->chunk->size,
+                (((float *)buffer->buffer->datas->data)[0]),
+                (((float *)buffer->buffer->datas->data)[1]),
+                (((float *)buffer->buffer->datas->data)[2]));
       }
-   
+
       // uint32_t my_node_id = pw_stream_get_node_id(data->stream);
       pw_stream_queue_buffer(data->stream, buffer);
-   
-   }  
-
-   
+   }
 }
-
 
 static void on_stream_state_changed(void *_data, enum pw_stream_state old, enum pw_stream_state state,
                                     const char *error)
 {
    struct data *data = _data;
-   // inpip_node = pw_stream_get_node_id(data->stream);
- 
    pip_node_id = pw_stream_get_node_id(data->stream);
-   
+
    switch (state)
    {
-   case PW_STREAM_STATE_UNCONNECTED: 
-      // streaming = 0;
-      printf("NODE --%d-- UNCONNECTED \n",  pip_node_id);
+   case PW_STREAM_STATE_UNCONNECTED:
+      printf("NODE --%d-- UNCONNECTED \n", pip_node_id);
       break;
    case PW_STREAM_STATE_CONNECTING:
-      // streaming = 0;
       printf("NODE --%d-- CONNECTING \n", pip_node_id);
       break;
    case PW_STREAM_STATE_PAUSED:
-      // streaming = 0;
       printf("NODE --%d-- PAUSED \n", pip_node_id);
       break;
    case PW_STREAM_STATE_STREAMING:
-      // streaming = 1;
       // pip_node_id = pip_node;
-      audio_encoder_recreate_pipeline(pip_node_id);
+      printf(" PID %d PID %s \n", pip_node_id, data->PID);
+      audio_encoder_recreate_pipeline(pip_node_id, data->PID);  // message to create encoder and pipeline -- encoder.h 
       printf("NODE --%d-- STREAMING\n", pip_node_id);
       break;
    case PW_STREAM_STATE_ERROR:
-      // streaming = 0;
       printf("NODE --%d-- IN ERROR : %s\n", pip_node_id, error);
       break;
    default:
@@ -114,11 +121,10 @@ static void on_stream_state_changed(void *_data, enum pw_stream_state old, enum 
 
 static void on_global_add(void *userdata, uint32_t id, uint32_t permissions, const char *type, uint32_t version, const struct spa_dict *props)
 {
-    if (!props)
+   if (!props)
    {
       return;
    }
-   
 
    const char *obj_ser_c = (props->items->value);
    const char *media_role = props->items[5].value;
@@ -127,66 +133,73 @@ static void on_global_add(void *userdata, uint32_t id, uint32_t permissions, con
    {
       return;
    }
-   // printf("Pripojeny %d, Typ: %s, NAME: %s\n", id, type, props->items[3].value);
 
-   if (!strcmp(type, "PipeWire:Interface:Node")  && !strcmp(media_role, "Stream/Output/Audio") )
+   const char *pid_str = NULL;
+
+   // filtering Node with media role producing audio from all objects connecting to core daemon
+   if (!strcmp(type, "PipeWire:Interface:Node") && !strcmp(media_role, "Stream/Output/Audio"))
    {
-     
-      int successdis = pw_stream_disconnect	(	data.stream	);	
-      printf("success  disconnect: %d , connecting to new:   %d\n", successdis, id);
+
+      struct spa_hook node_listener;
+      
+      // binding to object node and connecting .info listener to get PID
+      struct pw_node *node = pw_registry_bind(registry, id, type, PW_VERSION_NODE, 0);
+      pw_node_add_listener(node, &data.node_listener, &node_events, &data);
+   
+      // for multiple apps playing, disconnecting current stream connection to reconnect to another   
+      int successdis = pw_stream_disconnect(data.stream);
+      printf("success  disconnect: %d , connecting to new: %d\n", successdis, id);
 
       int success = pw_stream_connect(data.stream,
-                                       PW_DIRECTION_INPUT,
-                                       id , 
-                                       PW_STREAM_FLAG_AUTOCONNECT |
-                                       PW_STREAM_FLAG_MAP_BUFFERS |
-                                       PW_STREAM_FLAG_RT_PROCESS,
-                                       params, 1);
-
+                                      PW_DIRECTION_INPUT,
+                                      id,
+                                      PW_STREAM_FLAG_AUTOCONNECT |
+                                          PW_STREAM_FLAG_MAP_BUFFERS |
+                                          PW_STREAM_FLAG_RT_PROCESS,
+                                      params, 1);
+      printf("success connect :  %d \n", success);
+      // if we want to pass app id to gstreamer, for now we are passing node id
       source_node = id;
-      // pip_node_id = pw_stream_get_node_id(data.stream);
-         printf("success connect :  %d \n", success);
-         printf("Pripojeny %s, ROLA: %s, NAME: %s\n", obj_ser_c, props->items[5].value, props->items[3].value);
 
+      //setting node as target object but has no influence on stream that is why reconnecting stream was implemented
       const struct spa_dict_item new_target = {PW_KEY_TARGET_OBJECT, obj_ser_c};
       const struct spa_dict new_props = {0, 1, &new_target};
       int success2 = pw_stream_update_properties(data.stream, &new_props);
-         printf("changed props target: %d\n", success2);
-      const struct pw_properties* check_props = pw_stream_get_properties	(	data.stream);
-      for( int i = 0; i < check_props->dict.n_items; i++ )
-      {
-         printf("Key %s: %s\n",check_props->dict.items[i].key,check_props->dict.items[i].value);
-      }
-      }
-  
+      printf("changed props target: %d\n", success2);
+
+      // props check, not necessarry
+      const struct pw_properties *check_props = pw_stream_get_properties(data.stream);
+         for (int i = 0; i < check_props->dict.n_items; i++)
+         {
+            printf("Key %s: %s\n", check_props->dict.items[i].key, check_props->dict.items[i].value);
+         }
+   }
 }
 
-static void on_global_remove(void *userdata, uint32_t id){
-   
-   if (id == source_node){
-   int successdis = pw_stream_disconnect	(	data.stream	);	
-   printf("success  disconnect: %d , disconnecting to id :   %d\n", successdis, id);
-   pip_node_id = 0;
-}
-}
+static void on_global_remove(void *userdata, uint32_t id)
+{
 
+   if (id == source_node)
+   {
+      int successdis = pw_stream_disconnect(data.stream);
+      printf("success  disconnect: %d , disconnecting to id :   %d\n", successdis, id);
+   }
+}
 
 //  int main(int argc, char **argv)
-// int pipewire_node_start()
 // {
 
 void *producer(void *param)
 {
-//   printf("Producer: %ld%ld", (long)getpid(), (long)getppid());
    pw_init(NULL, NULL);
 
-   /* Create the event loop. */
+   // Create the event loop. 
    data.loop = pw_main_loop_new(NULL);
 
    struct pw_context *context = pw_context_new(
        pw_main_loop_get_loop(data.loop),
        pw_properties_new(
-           /* Explicity ask for the realtime configuration. */
+           // Explicity ask for the realtime configuration. 
            PW_KEY_CONFIG_NAME, "client-rt.conf",
            NULL),
        0);
@@ -196,8 +209,7 @@ void *producer(void *param)
       return 1;
    }
 
-   /* Connect the context, which returns us a proxy to the core
-      object. */
+   // Connect the context, which returns us a proxy to the core object
    data.core = pw_context_connect(context, NULL, 0);
    if (data.core == NULL)
    {
@@ -205,8 +217,7 @@ void *producer(void *param)
       return 1;
    }
 
-   /* Add signal listeners to cleanly close the event loop and
-      process when requested. */
+   // Add signal listeners to cleanly close the event loop and process when requested. 
    pw_loop_add_signal(pw_main_loop_get_loop(data.loop), SIGINT,
                       do_quit, &data);
    pw_loop_add_signal(pw_main_loop_get_loop(data.loop), SIGTERM,
@@ -215,10 +226,10 @@ void *producer(void *param)
    data.stream_properties = pw_properties_new(
        PW_KEY_MEDIA_TYPE, "Audio",
        PW_KEY_MEDIA_CATEGORY, "Duplex",
-      //   PW_KEY_MEDIA_CLASS, "Audio/Sink",
-      //  Midi/Bridge
+       //   PW_KEY_MEDIA_CLASS, "Audio/Sink",
+       //  Midi/Bridge
        PW_KEY_MEDIA_ROLE, "Music",
-      // PW_KEY_NODE_EXCLUSIVE, "true",
+       // PW_KEY_NODE_EXCLUSIVE, "true",
        /* Our node name. */
        PW_KEY_NODE_NAME, "NODAAAAA",
        // PW_KEY_NODE_RATE, rate_str,
@@ -229,8 +240,6 @@ void *producer(void *param)
        data.core, /* Core proxy. */
        "example stream",
        data.stream_properties);
-
-       
 
    if (data.stream == NULL)
    {
@@ -252,21 +261,16 @@ void *producer(void *param)
                                               // .rate = data.fileinfo.samplerate
                                               ));
 
-   
    pw_stream_connect(data.stream,
-               PW_DIRECTION_INPUT,
-               PW_ID_ANY , // id            
-               // pw_proxy_get_global(proxy),
-               //   PW_STREAM_FLAG_AUTOCONNECT |
-               //   PW_STREAM_FLAG_DRIVER |
-               PW_STREAM_FLAG_MAP_BUFFERS |
-               PW_STREAM_FLAG_RT_PROCESS
-               ,params, 1);
+                     PW_DIRECTION_INPUT,
+                     PW_ID_ANY, // id
+              //when using autoconnect without specified id node connects to alsa and starts recording audio
+                     //   PW_STREAM_FLAG_AUTOCONNECT | 
+                     PW_STREAM_FLAG_MAP_BUFFERS |
+                         PW_STREAM_FLAG_RT_PROCESS,
+                     params, 1);
 
-   
-   // nemusi byt global
    registry = pw_core_get_registry(data.core, PW_VERSION_REGISTRY, 0);
-  
 
    if (registry == NULL)
    {
@@ -280,11 +284,12 @@ void *producer(void *param)
 
    pw_main_loop_run(data.loop);
 
-printf("NEVOLAJ MA");
+   printf("NEVOLAJ MA");
 
-   pw_proxy_destroy((struct pw_proxy*)registry);
+   pw_proxy_destroy((struct pw_proxy *)registry);
    pw_core_disconnect(data.core);
-   pw_stream_destroy(data.stream);
+   if (data.stream)
+      pw_stream_destroy(data.stream);
    spa_hook_remove(&event_listener);
    spa_hook_remove(&registry_listener);
    pw_context_destroy(context);
@@ -299,6 +304,3 @@ static void do_quit(void *userdata, int signal_number)
    // struct data *data = userdata;
    pw_main_loop_quit(data.loop);
 }
-
-
-

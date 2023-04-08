@@ -100,7 +100,7 @@ audio_encoder_create(audio_callback_func audio_ready_callback, void *user_data,
                      struct audio_encoder **audio_encoder_pp);
 
 void
-audio_encoder_recreate_pipeline(int PW_node_id);
+audio_encoder_recreate_pipeline(int PW_node_id, char* PID);
 
 int
 audio_encoder_encode(struct audio_encoder **audio_encoder_pp);

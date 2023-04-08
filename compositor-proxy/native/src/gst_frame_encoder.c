@@ -771,6 +771,7 @@ gst_frame_encoder_pipeline_setup_bus_listeners(struct gst_frame_encoder_pipeline
 static GstPadProbeReturn
 gst_frame_encoder_pipeline_app_src_have_data(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 {
+    printf("HAS DATA\n");
     struct gst_frame_encoder_pipeline *gst_frame_encoder_pipeline = user_data;
     GstBuffer *buffer = gst_pad_probe_info_get_buffer(info);
     GstVideoMeta *video_meta = gst_buffer_get_video_meta(buffer);
@@ -1414,7 +1415,6 @@ void do_gst_init()
 void do_gst_frame_encoder_create(char preferred_frame_encoder[16], frame_callback_func frame_ready_callback, void *user_data,
                                  struct frame_encoder **frame_encoder_pp, struct westfield_egl *westfield_egl)
 {
-    printf("NOOOOOOOOOOOOOOOOOOOOOOOOOOO");
     struct frame_encoder *frame_encoder = g_new0(struct frame_encoder, 1);
 
     strncpy(frame_encoder->preferred_frame_encoder, preferred_frame_encoder,
@@ -1479,7 +1479,7 @@ void do_gst_frame_encoder_encode(struct frame_encoder **frame_encoder_pp, const 
     encoding_result->props.buffer_content_serial = buffer_content_serial;
     encoding_result->props.buffer_creation_serial = buffer_creation_serial;
     encoding_result->props.buffer_id = frame_buffer->base.buffer_id;
-    printf("encoding Frame");
+
     gst_frame_encoder_encode(encoder->impl, frame_buffer, encoding_result);
 }
 
