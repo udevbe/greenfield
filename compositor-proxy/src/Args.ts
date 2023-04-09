@@ -13,12 +13,39 @@ function parseArgValue<T extends keyof ArgTypes>(
   return { [`${key}`]: value.replace(`--${key}=`, '') }
 }
 
+type BooleanValue = boolean | null
+type StringValue = string | null
+
 type ArgTypes = Readonly<{
-  'static-session-id': string | null
-  'config-location': string | null
+  help: BooleanValue
+  'static-session-id': StringValue
+  'config-location': StringValue
 }>
 
 export const args: ArgTypes = {
+  ...parseArgValue('help'),
   ...parseArgValue('config-location'),
   ...parseArgValue('static-session-id'),
 } as const
+
+export function printHelp() {
+  console.log(`
+\tUsage
+\t  $ compositor-proxy <options>
+
+\tOptions
+\t  --help, Print this help text.
+\t  --static-session-id=...,  Mandatory. Only use and accept this session id when communicating.
+\t  --config-location=...,  Use a custom configuration file located at this path.
+
+\tExamples
+\t  $ compositor-proxy --static-session-id=test123 --config-location=./config.yaml
+  `)
+}
+
+const help = args['help']
+// TODO look for unrecognized options and abort+print help text
+if (help) {
+  printHelp()
+  process.exit(0)
+}

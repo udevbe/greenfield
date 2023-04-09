@@ -8,13 +8,12 @@ import { initSurfaceBufferEncoding } from './SurfaceBufferEncoding'
 import { createApp } from './App'
 import { args } from './Args'
 
-const compositorSessionId = args['static-session-id']
-
 const logger = createLogger('main')
 
-logger.info('Starting compositor proxy...')
+logger.info('Starting compositor proxy.')
+const compositorSessionId = args['static-session-id']
 if (compositorSessionId === null) {
-  logger.error('--static-session-id= must be set.')
+  logger.error('--static-session-id= must be set. Run with --help for options')
   process.exit(1)
 }
 logger.info('Using a static session id.')

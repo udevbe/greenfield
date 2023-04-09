@@ -1,5 +1,7 @@
 # Usage
-run:
+
+## Development
+
 - `yarn install`
 - `yarn generate`
 - `yarn build:native`
@@ -11,6 +13,55 @@ and finally
 You should now see something that says `Compositor proxy started. Listening on port 8081`. You can also adjust some things
 in `src/config.yaml`.
 
+## Production build
+
+- `yarn package`
+
+This creates a single binary in the `package` directory.
+
 There is also a docker image available `docker.io/udevbe/compositor-proxy` that you can use as well as an example docker compose file with some applications.
 This docker compose file only runs the compositor-proxy as well as some extra containerized applications. You still need to run a compositor-module separately to connect to
 this compositor-proxy.
+
+## Options
+
+```
+        Usage
+          $ compositor-proxy <options>
+
+        Options
+          --help, Print this help text.
+          --static-session-id=...,  Mandatory. Only use and accept this session id when communicating.
+          --config-location=...,  Use a custom configuration file located at this path.
+
+        Examples
+          $ compositor-proxy --static-session-id=test123 --config-location=./config.yaml
+```
+
+## Config
+```yaml
+server:
+  http:
+    # Hostname argument.
+    bindIP: 0.0.0.0
+    # Port argument.
+    bindPort: 8081
+    # CORS allowed origins, used when doing cross-origin requests. Value can be * or comma seperated domains.
+    allowOrigin: '*'
+public:
+  # The base url to use when connecting to this endpoint. This is used when doing direct proxy to proxy connections.
+  baseURL: http://localhost:8081
+encoder:
+  # Path of the render device that should be used for hardware acceleration. e.g. /dev/dri/renderD128
+  renderDevice: /dev/dri/renderD128
+  # The gstreamer h264 encoder to use. 'x264' and 'nvh264' are supported ('vaapih264' is currently broken). 'x264'
+  # is a pure software encoder. While 'nvh264' is a hw accelerated encoder for Nvidia based GPUs.
+  # see https://gstreamer.freedesktop.org/documentation/x264/index.html
+  # see https://gstreamer.freedesktop.org/documentation/nvenc/nvh264enc.html
+  h264Encoder: x264
+logging:
+  # "fatal" | "error" | "warn" | "info" | "debug" | "trace"
+  level: info
+```
+
+

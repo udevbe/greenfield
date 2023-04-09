@@ -24,7 +24,7 @@ To run, you will need 2 parts to work together.
 - The *Greenfield Compositor Proxy* that runs remotely and forwards the native Wayland applications to the browser. You need at least one, but can run as many as you require e.g. to access different machines.
 - An implementation of the *Greenfield Compositor Module* that runs in your browser and receives the forwarded signals of potential multiple Greenfield Compositor Proxies.
 
-### Greenfield Compositor Module
+## Greenfield Compositor Module
 The Greenfield Compositor Module comes with a simple demo implementation.
 
 In the `compositor-module` directory run
@@ -39,7 +39,7 @@ to start the compositor demo module.
 Go to [http://localhost:8080]() and be greeted with a nice white compositor. It has 2 URL input fields that can be used. The first input field connects to the provided remote compositor and accepts input in the form of `host:port`. The second input field launches
 and runs Wayland applications in an iframe (experimental) and accepts input in the form of `http(s)://host:port/path`.
 
-### Greenfield Compositor Proxy
+## Greenfield Compositor Proxy
 
 To build you need a set of native dependencies. You can look at the [Docker image](https://github.com/udevbe/greenfield/blob/master/compositor-proxy/Dockerfile#L4) to see which ones you need to build and run respectively, or if you're running a Debian based distro you can run:
 ```
@@ -65,7 +65,7 @@ For XWayland support a few extra steps may be needed, this is optional and only 
 and finally
 - `yarn start`
 
-You should now see something that says `Compositor proxy started. Listening on port 8081`. You can also adjust some things
+This will start a development build+run. You should now see something that says `Compositor proxy started. Listening on port 8081`. You can also adjust some things
 in `src/config.yaml`.
 
 In our demo compositor we can now input the url `localhost:8081` to make a connection to the Greenfield Compositor Proxy. You should see a
@@ -76,13 +76,28 @@ auto-detect the compositor-proxy and simply connect without issues or extra setu
 If your application can't connect, try setting the `WAYLAND_DISPLAY` environment variable to the value that was printed by compositor-proxy. ie if you see `Listening on: WAYLAND_DISPLAY=\"wayland-0\".`
 then set the environment variable `export WAYLAND_DISPLAY=wayland-0`.
 
-Running a self-contained Greenfield Compositor Proxy is also possible. Simply run:
+### Production build
+
+It's also possible to build a self-contained single binary.
+
 - `yarn package`
 
-This creates a single binary inside the `package` directory and accepts the following arguments:
-- `--static-session-id=test123` This is a mandatory argument and has to match the compositor session id of the Greenfield browser compositor.
-  This is a security measure so other Greenfield browser compositors can't simply connect to your compositor-proxy. To work with the demo compositor that we started earlier, you can simply use the value stated here (`test123`)
-- `--config-location=some/path` This is an optional argument and points to a user supplied config file. If not provided the default config  from `src/config.yaml` will be used. The config looks like this and can be adjusted as needed.
+This creates a single binary in the `package` directory that accepts several options:
+
+```
+        Usage
+          $ compositor-proxy <options>
+
+        Options
+          --help, Print this help text.
+          --static-session-id=...,  Mandatory. Only use and accept this session id when communicating.
+          --config-location=...,  Use a custom configuration file located at this path.
+
+        Examples
+          $ compositor-proxy --static-session-id=test123 --config-location=./config.yaml
+```
+
+Below is an example config file (the default config). It can be copy-pasted and used with the `--config-location=...` option.
 ```yaml
 server:
   http:
@@ -108,7 +123,7 @@ logging:
   level: info
 ```
 
-# Docker
+### Docker
 
 Running the Greenfield Compositor Proxy can also be done using docker-compose (see `docker-compose.yml` in the `compositor-proxy` directory), but you will be limited to the applications specified in the docker-compose file. Beware that this docker compose file only provides the Greenfield Compositor Proxy, so you will still need to run a Greenfield Compositor Module implementation yourself.
 
@@ -121,7 +136,7 @@ have to include it yourself using a mount. Have a look at the docker-compose fil
 
 # High level technical
 
-### Client connection
+## Client connection
 A Greenfield browser compositor uses a native compositor-proxy to talk to native applications. 
 This proxy compositor accepts native Wayland client connections and assigns them to a WebSocket connection as soon as 
 one becomes available. A native client and it's WebSocket connection are bound to each other until either one is closed.
@@ -131,7 +146,7 @@ This is needed in case a Wayland client spawns a new Wayland client process. If 
 the compositor-proxy will wait until a new WebSocket connection is available. In other words, the first WebSocket connection
 is always initiated from the browser.
 
-### Client frame encoding, or "can it run games?"
+## Client frame encoding, or "can it run games?"
 
 Each application's content is encoded to video frames using GStreamer and send to the browser for decoding. In the browser the application is realised by a WebGL texture inside a HTML5 canvas.
 This canvas is basically what you would call an 'output' in Wayland terminology. The browser compositor is asynchronous, meaning a slow client will not block the processing of another client.
