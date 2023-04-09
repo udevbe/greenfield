@@ -4,13 +4,40 @@
 #include <glib.h>
 #include <gst/gst.h>
 #include "audio-node.h"
+
+
 // #include <gst/pipewire/gstpipewiresrc.h>
 // #include <gst/pipewire/pipewiresrc.h>
 // #include <gst/app/pipewiresrc.h>
 #include <assert.h>
 #include "encoder.h"
-#include "audio-node.h"
+
+
+
+#include <gst/gl/gstglfuncs.h>
+#include <gst/gl/gstglcontext.h>
+#include <gst/gl/gstglwindow.h>
+#include <gst/gl/gstglbasememory.h>
+#include <gst/gl/egl/gstgldisplay_egl.h>
+#include <gst/gl/egl/gstgldisplay_egl_device.h>
+#include <gst/app/gstappsrc.h>
+#include <gst/app/gstappsink.h>
+#include <graphene-1.0/graphene-gobject.h>
+
+#include <stdbool.h>
+#include <EGL/egl.h>
+#include <libdrm/drm_fourcc.h>
+#include <unistd.h>
+#include <GL/gl.h>
+#include <gst/gl/gstglmemory.h>
+#include <gst/gl/gstglutils.h>
+#include <gst/gl/gstglsyncmeta.h>
+#include <gst/gl/egl/gstglmemoryegl.h>
+#include "encoder.h"
+#include "wlr_drm.h"
+#include "wlr_linux_dmabuf_v1.h"
 // extern int node_id;
+// const GstMetaInfo *gfBufferContentSerialMetaInfo = NULL;
 
 // The structs below are copied and adapted from the video frame encoder implementation.
 // They can be adapted, changed, deleted... as required by the implementation.
@@ -37,6 +64,7 @@ struct audio_encoding_result
         GstMapInfo info;
         GstBuffer *buffer;
     } sample;
+     GMutex mutex;
 };
 
 struct audio_encoder
@@ -104,10 +132,55 @@ async_bus_call(GstBus *bus, GstMessage *msg, gpointer data)
     return TRUE;
 }
 
+struct encoded_audio *
+audio_encoding_result_to_encoded_chunk(struct audio_encoding_result *encoding_result)
+{
+    gsize  chunk_length, offset, encoded_audio_blob_size;
+    struct encoded_audio *encoded_chunk;
+
+    chunk_length = gst_buffer_get_size(encoding_result->sample.buffer);
+    // alpha_length = separate_alpha ? gst_buffer_get_size(encoding_result->alpha_sample.buffer) : 0;
+
+    offset = 0;
+    encoded_audio_blob_size =
+        sizeof(encoding_result->props) +
+        sizeof(uint32_t) +
+        chunk_length;
+    void *audio_blob = malloc(encoded_audio_blob_size);
+
+    memcpy(audio_blob + offset, &encoding_result->props, sizeof(encoding_result->props));
+    offset += sizeof(encoding_result->props);
+
+    memcpy(audio_blob + offset, &encoding_result->sample.info.size, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
+
+    memcpy(audio_blob + offset, encoding_result->sample.info.data, chunk_length);
+    offset += chunk_length;
+
+
+   
+    encoded_chunk = malloc(sizeof(struct encoded_audio));
+    encoded_chunk->encoded_data = audio_blob;
+    encoded_chunk->size = encoded_audio_blob_size;
+
+    return encoded_chunk;
+}
+
+void audio_encoding_result_free(struct audio_encoding_result *encoding_result)
+{
+    // g_mutex_clear(&encoding_result->mutex);
+    if (encoding_result->sample.buffer)
+    {
+        gst_buffer_unmap(encoding_result->sample.buffer, &encoding_result->sample.info);
+        gst_buffer_unref(encoding_result->sample.buffer);
+    }
+   
+    // free(encoding_result);
+}
 static GstFlowReturn
 gst_new_encoded_audio_sample(GstAppSink *appsink, gpointer user_data)
 {
-    printf("ZAVOLALI MA TAK SOM TU!");
+     printf("ZAVOLALI MA TAK SOM TU!");
     const struct sample_callback_data *callback_data = user_data;
     struct audio_encoding_result *encoding_result = NULL;
     GList *link;
@@ -116,14 +189,53 @@ gst_new_encoded_audio_sample(GstAppSink *appsink, gpointer user_data)
     // uint32_t buffer_content_serial = 0;
 
     GstSample *sample = gst_app_sink_pull_sample(appsink);
-
+    // link = g_queue_find (callback_data->encoder->audio_encoding_results, gconstpointer data
     if (sample == NULL)
     {
         // end of stream
+        printf("E O F \n");
         return GST_FLOW_OK;
     }
     buffer = gst_sample_get_buffer(sample);
+    gst_buffer_ref(buffer);
+    gst_sample_unref(sample);
+    encoding_result = callback_data->encoder->audio_encoding_results;
+
+        //     gst_element_set_state(gst_frame_encoder_pipeline->pipeline, GST_STATE_PLAYING);
+        // if (gst_element_get_state(gst_frame_encoder_pipeline->pipeline, NULL, NULL, 0) == GST_STATE_CHANGE_FAILURE)
+        // {
+        //     g_error("BUG? Could not set pipeline to playing state.");
+        // }
+        // gst_frame_encoder_pipeline->playing = true;
+  if (encoding_result == NULL)
+    {
+        // end of stream
+        printf("PROBLEM \n");
+        return GST_FLOW_OK;
+    }
+    encoding_result->sample.buffer = buffer;
+    gst_buffer_map(encoding_result->sample.buffer, &encoding_result->sample.info, GST_MAP_READ);
+    // GstCustomMeta *meta = gst_buffer_get_custom_meta(buffer, GF_BUFFER_CONTENT_SERIAL_META);
+    // GstStructure *s = gst_custom_meta_get_structure(meta);
+    // gst_structure_get_uint(s, "buffer_content_serial", &buffer_content_serial);
+
+    // make sure we have the right encoding result
+    // link = g_queue_find_custom(callback_data->encoder->frame_encoding_results, &buffer_content_serial,
+    //                            has_buffer_content_serial);
+    // if (link)
+    // {
+    //     encoding_result = link->data;
+    // }
+    encoded_chunk = audio_encoding_result_to_encoded_chunk(encoding_result);
   
+    // encoding_result->sample.buffer = buffer;
+    // gst_buffer_map(encoding_result->sample.buffer, &encoding_result->sample.info, GST_MAP_READ);
+    audio_encoding_result_free(encoding_result);
+    callback_data->encoder->audio_callback(callback_data->encoder->user_data, encoded_chunk);
+    // gst_buffer_unref(buffer);
+
+    // free(encoding_result);
+    return GST_FLOW_OK;
 }
 
 static GstAppSinkCallbacks encoded_audio_sample_callback = {
@@ -155,11 +267,16 @@ gst_audio_encoder_pipeline_setup_bus_listeners(struct gst_audio_encoder_pipeline
 static GstPadProbeReturn
 gst_audio_encoder_pipeline_app_src_have_data(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 {
-    printf("MAS CI NEMAS\n");
+    printf("Data for encoding\n");
+    // gst_element_set_state(gst_audio_encoder_pipeline->pipeline, GST_STATE_PLAYING);
 
     struct gst_audio_encoder_pipeline *gst_audio_encoder_pipeline = user_data;
     GstBuffer *buffer = gst_pad_probe_info_get_buffer(info);
- 
+     
+    // GstAudioMeta *audio_meta = gst_buffer_get_audio_meta(buffer);
+    // printf("CO TERAZ");
+
+    
     return GST_PAD_PROBE_OK;
 }
 
@@ -206,17 +323,26 @@ gst_audio_encoder_pipeline_create(struct gst_audio_encoder *gst_encoder, int PW_
     char *node = g_strdup_printf("%d",pip_node_id);
      
     g_object_set(app_src, "path", node, NULL);
-     
+
+    printf("PATH SET \n"); 
     pad = gst_element_get_static_pad(GST_ELEMENT(app_src), "src");
     // pad = gst_element_get_request_pad(GST_ELEMENT(app_src), "pw_src");
-    gst_element_set_state(gst_audio_encoder_pipeline->pipeline, GST_STATE_PLAYING);
 
     gst_audio_encoder_pipeline->app_src_pad_probe = gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER,
        (GstPadProbeCallback)gst_audio_encoder_pipeline_app_src_have_data,
        gst_audio_encoder_pipeline, NULL);
+
+        // gst_frame_encoder_pipeline->playing = true;
+    if (gst_audio_encoder_pipeline->app_src_pad_probe)
+    {
+        gst_element_set_state(gst_audio_encoder_pipeline->pipeline, GST_STATE_PLAYING);
+        gst_audio_encoder_pipeline->playing = true;
+
+    }
+
     gst_object_unref(pad);
     gst_object_unref(app_src);
-
+ 
     return gst_audio_encoder_pipeline;
 }
 

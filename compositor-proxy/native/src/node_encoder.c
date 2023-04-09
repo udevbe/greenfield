@@ -24,16 +24,14 @@
       napi_throw_error((env), NULL, error_message);                      \
     }
 
-#ifndef NDEBUG                                                      \
-#define NAPI_CALL(env, the_call) {                                  \
-if ((the_call) != napi_ok) {                                        \
-    GET_AND_THROW_LAST_ERROR((env));                                \
-}                                                                   \
-}                                                                   \
-#else                                                               \
-#define NAPI_CALL(env, the_call) {                                  \
-the_call                                                            \
-}                                                                   \
+#ifndef NDEBUG
+#define NAPI_CALL(env, the_call)
+if ((the_call) != napi_ok) {
+    GET_AND_THROW_LAST_ERROR((env));
+}
+#else
+#define NAPI_CALL(env, the_call)
+the_call;
 #endif
 
 struct node_frame_encoder {
@@ -383,33 +381,33 @@ destroyAudioEncoder(napi_env env, napi_callback_info info) {
     return return_value;
 }
 
-static napi_value
-encodeAudio(napi_env env, napi_callback_info info) {
-    printf("encodeAudio pre node js\n");
-    static size_t argc = 4;
-    napi_value argv[argc], return_value;
+// static napi_value
+// encodeAudio(napi_env env, napi_callback_info info) {
+//     printf("encodeAudio pre node js\n");
+//     static size_t argc = 4;
+//     napi_value argv[argc], return_value;
 
-    struct node_audio_encoder *node_audio_encoder;
-    uint32_t buffer_id, buffer_content_serial, buffer_creation_serial;
-    struct wl_resource *buffer_resource;
+//     struct node_audio_encoder *node_audio_encoder;
+//     uint32_t buffer_id, buffer_content_serial, buffer_creation_serial;
+//     struct wl_resource *buffer_resource;
 
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
-    NAPI_CALL(env, napi_get_value_external(env, argv[0], (void **) &node_audio_encoder))
-    NAPI_CALL(env, napi_get_value_uint32(env, argv[1], &buffer_id))
-    NAPI_CALL(env, napi_get_value_uint32(env, argv[2], &buffer_content_serial))
-    NAPI_CALL(env, napi_get_value_uint32(env, argv[3], &buffer_creation_serial))
+//     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
+//     NAPI_CALL(env, napi_get_value_external(env, argv[0], (void **) &node_audio_encoder))
+//     NAPI_CALL(env, napi_get_value_uint32(env, argv[1], &buffer_id))
+//     NAPI_CALL(env, napi_get_value_uint32(env, argv[2], &buffer_content_serial))
+//     NAPI_CALL(env, napi_get_value_uint32(env, argv[3], &buffer_creation_serial))
 
-    // buffer_resource = wl_client_get_object(node_audio_encoder->client, buffer_id);
+//     // buffer_resource = wl_client_get_object(node_audio_encoder->client, buffer_id);
 
-    if (audio_encoder_encode(&node_audio_encoder->encoder) == -1) {
-        NAPI_CALL(env, napi_throw_error((env), NULL, "Can't encode frame buffer."))
-        NAPI_CALL(env, napi_get_undefined(env, &return_value))
-        return return_value;
-    }
+//     if (audio_encoder_encode(&node_audio_encoder->encoder) == -1) {
+//         NAPI_CALL(env, napi_throw_error((env), NULL, "Can't encode frame buffer."))
+//         NAPI_CALL(env, napi_get_undefined(env, &return_value))
+//         return return_value;
+//     }
 
-    NAPI_CALL(env, napi_get_undefined(env, &return_value))
-    return return_value;
-}
+//     NAPI_CALL(env, napi_get_undefined(env, &return_value))
+//     return return_value;
+// }
 
 static napi_value
 init(napi_env env, napi_value exports) {
@@ -433,7 +431,6 @@ init(napi_env env, napi_value exports) {
             DECLARE_NAPI_METHOD("destroyFrameEncoder", destroyFrameEncoder),
             DECLARE_NAPI_METHOD("encodeFrame", encodeFrame),
             DECLARE_NAPI_METHOD("requestKeyUnit", requestKeyUnit),
-            DECLARE_NAPI_METHOD("encodeAudio", encodeAudio),
             DECLARE_NAPI_METHOD("createAudioEncoder", createAudioEncoder),
             DECLARE_NAPI_METHOD("destroyAudioEncoder", destroyAudioEncoder),
     };

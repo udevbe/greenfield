@@ -36,7 +36,7 @@ static void node_info(void *object, const struct pw_node_info *info);
 
 static const struct pw_stream_events stream_events = {
     PW_VERSION_STREAM_EVENTS,
-    .process = on_process,
+   //  .process = on_process,
     .state_changed = on_stream_state_changed, // whether the stream is connected and recieving data in on_process
     //  .io_changed = on_io_changed,
 };
@@ -59,8 +59,14 @@ static void node_info(void *object, const struct pw_node_info *info)
    printf("ITEM: %s \n", item->value);
    data->PID = strdup(item->value);
    printf("ITEM PID: %s \n", data->PID);
-
+   // pw_stream_disconnect(data->stream);
    spa_hook_remove(&data->node_listener);
+   printf("SPA HOOK REMOVED");
+   audio_encoder_recreate_pipeline(pip_node_id, data->PID);  // message to create encoder and pipeline -- encoder.h 
+
+   
+
+
 }
 
 /* [registry_event_global] */
@@ -92,7 +98,7 @@ static void on_stream_state_changed(void *_data, enum pw_stream_state old, enum 
                                     const char *error)
 {
    struct data *data = _data;
-   pip_node_id = pw_stream_get_node_id(data->stream);
+   // pip_node_id = pw_stream_get_node_id(data->stream);
 
    switch (state)
    {
@@ -108,7 +114,6 @@ static void on_stream_state_changed(void *_data, enum pw_stream_state old, enum 
    case PW_STREAM_STATE_STREAMING:
       // pip_node_id = pip_node;
       printf(" PID %d PID %s \n", pip_node_id, data->PID);
-      audio_encoder_recreate_pipeline(pip_node_id, data->PID);  // message to create encoder and pipeline -- encoder.h 
       printf("NODE --%d-- STREAMING\n", pip_node_id);
       break;
    case PW_STREAM_STATE_ERROR:
@@ -135,11 +140,16 @@ static void on_global_add(void *userdata, uint32_t id, uint32_t permissions, con
    }
 
    const char *pid_str = NULL;
+      printf("TU ASI BUDE PROBLEM %d,,      %d   %d \n", id, pip_node_id, pip_node_id!=id  );
 
    // filtering Node with media role producing audio from all objects connecting to core daemon
-   if (!strcmp(type, "PipeWire:Interface:Node") && !strcmp(media_role, "Stream/Output/Audio"))
+   if (!strcmp(type, "PipeWire:Interface:Node") && !strcmp(media_role, "Stream/Output/Audio"   ) && id !=0 && id != pip_node_id)
    {
 
+      pip_node_id = (int*)id;
+      // printf("TU ASI BUDE PROBLEM");
+ 
+  
       struct spa_hook node_listener;
       
       // binding to object node and connecting .info listener to get PID
@@ -148,31 +158,31 @@ static void on_global_add(void *userdata, uint32_t id, uint32_t permissions, con
    
       // for multiple apps playing, disconnecting current stream connection to reconnect to another   
       int successdis = pw_stream_disconnect(data.stream);
-      printf("success  disconnect: %d , connecting to new: %d\n", successdis, id);
+      // printf("success  disconnect: %d , connecting to new: %d\n", successdis, id);
 
-      int success = pw_stream_connect(data.stream,
-                                      PW_DIRECTION_INPUT,
-                                      id,
-                                      PW_STREAM_FLAG_AUTOCONNECT |
-                                          PW_STREAM_FLAG_MAP_BUFFERS |
-                                          PW_STREAM_FLAG_RT_PROCESS,
-                                      params, 1);
-      printf("success connect :  %d \n", success);
+      // int success = pw_stream_connect(data.stream,
+      //                                 PW_DIRECTION_INPUT,
+      //                                 id,
+      //                                 PW_STREAM_FLAG_AUTOCONNECT |
+      //                                     PW_STREAM_FLAG_MAP_BUFFERS |
+      //                                     PW_STREAM_FLAG_RT_PROCESS,
+      //                                 params, 1);
+      // printf("success connect :  %d \n", success);
       // if we want to pass app id to gstreamer, for now we are passing node id
       source_node = id;
 
       //setting node as target object but has no influence on stream that is why reconnecting stream was implemented
-      const struct spa_dict_item new_target = {PW_KEY_TARGET_OBJECT, obj_ser_c};
-      const struct spa_dict new_props = {0, 1, &new_target};
-      int success2 = pw_stream_update_properties(data.stream, &new_props);
-      printf("changed props target: %d\n", success2);
+      // const struct spa_dict_item new_target = {PW_KEY_TARGET_OBJECT, obj_ser_c};
+      // const struct spa_dict new_props = {0, 1, &new_target};
+      // int success2 = pw_stream_update_properties(data.stream, &new_props);
+      // printf("changed props target: %d\n", success2);
 
       // props check, not necessarry
-      const struct pw_properties *check_props = pw_stream_get_properties(data.stream);
-         for (int i = 0; i < check_props->dict.n_items; i++)
-         {
-            printf("Key %s: %s\n", check_props->dict.items[i].key, check_props->dict.items[i].value);
-         }
+      // const struct pw_properties *check_props = pw_stream_get_properties(data.stream);
+         // for (int i = 0; i < check_props->dict.n_items; i++)
+         // {
+         //    printf("Key %s: %s\n", check_props->dict.items[i].key, check_props->dict.items[i].value);
+         // }
    }
 }
 

@@ -345,7 +345,6 @@ frame_encoder_encode(struct frame_encoder **frame_encoder_pp, const union frame_
                      uint32_t buffer_content_serial,
                      uint32_t buffer_creation_serial) {
     struct gf_message *message = g_new0(struct gf_message, 1);
-printf("\n \n FREAME ENC \n\n");
     message->type = frame_encoder_encode_type;
     message->body.frame_encoder_encode.frame_encoder_pp = frame_encoder_pp;
     message->body.frame_encoder_encode.frame_buffer = frame_buffer;
@@ -460,10 +459,11 @@ audio_encoder_recreate_pipeline(int PW_node_id, char* PID) {
             found = true;
             // break;
         }
-        curr_node = curr_node->prev;
+        // curr_node = curr_node->prev;
    
     if( found )
     {
+        printf("MESSAGE CREATE PIP");
         send_message(message);
     }
 

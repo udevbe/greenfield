@@ -180,10 +180,16 @@ export class RemoteConnectionHandler {
   }
 
   setupAudioChannel(client: Client, audioChannel: Channel) {
+    audioChannel.onOpen = () => {
+      this.session.logger.info("[Dataaaaaaaaaaaaaaa]"); 
+    }
     audioChannel.onMessage = (message) => {
       if (client.connection.closed) {
+        this.session.logger.info("[CLOSIIING]", message, client);
+
         return
       }
+      this.session.logger.info("[Ta zavola sa dokelu daco?]", message, client);
       deliverContentToAudioStream(client, message.buffer)
     }
   }
