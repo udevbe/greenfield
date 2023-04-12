@@ -174,7 +174,7 @@ static GstAppSinkCallbacks encoded_audio_sample_callback = {
 
 // TODO set the pipewire node id on the pipewiresrc element
 // TODO more/less/other gstreamer elements?
-static const char *audio_pipeline = "pipewiresrc path=%i ! "
+static const char *audio_pipeline = "pipewiresrc name=pw_src ! "
                                     "rawaudioparse format=pcm pcm-format=f32le sample-rate=48000 num-channels=2 ! "
                                     "audioresample ! "
                                     "audioconvert ! "
@@ -280,11 +280,11 @@ do_gst_audio_encoder_set_pipewire_node_id_by_pid(uint32_t PW_node_id, pid_t pid)
     if(found) {
         struct audio_encoder *audio_encoder = found->data;
         if(audio_encoder->impl == NULL) {
-            g_info("creating audio pipeline for pid {}", pid);
+            g_info("creating audio pipeline for pid %i", pid);
             gst_audio_encoder_create(audio_encoder, audio_pipeline, PW_node_id);
         }
     } else {
-        // no audio encoder exists for this pid, ignore it.
+        g_info("no audio encoder exists for pid %i, ignoring", pid);
     }
 }
 
@@ -304,7 +304,6 @@ do_gst_audio_encoder_create(audio_callback_func audio_ready_callback, pid_t pid,
 void do_gst_audio_encoder_free(struct audio_encoder **audio_encoder_pp)
 {
     struct audio_encoder *encoder = *audio_encoder_pp;
-    printf("Audio %p", encoder->impl);
     if (encoder->terminated)
     {
         g_error("BUG. Can not free encoder. Encoder is already terminated.");
