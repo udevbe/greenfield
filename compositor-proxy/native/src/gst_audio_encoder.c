@@ -197,9 +197,7 @@ gst_audio_encoder_pipeline_create(struct gst_audio_encoder *gst_encoder, const c
     struct gst_audio_encoder_pipeline *gst_audio_encoder_pipeline = g_new0(struct gst_audio_encoder_pipeline, 1);
     struct sample_callback_data *callback_data;
     GstAppSink *app_sink;
-    // for GstAppSrc: GLib-GObject-WARNING **: 19:35:39.265: invalid cast from 'GstPipeWireSrc' to 'GstAppSrc'
     GstElement *app_src;
-    GstPad *pad;
     GError *parse_error = NULL;
 
     gst_audio_encoder_pipeline->pipeline = gst_parse_launch_full(
@@ -223,25 +221,21 @@ gst_audio_encoder_pipeline_create(struct gst_audio_encoder *gst_encoder, const c
     gst_object_unref(app_sink);
 
     gst_audio_encoder_pipeline_setup_bus_listeners(gst_audio_encoder_pipeline);
-    // toto by malo prejst
-    
-    app_src = GST_ELEMENT(gst_bin_get_by_name(GST_BIN(gst_audio_encoder_pipeline->pipeline), "pw_src"));
 
-    char *node = g_strdup_printf("%d", PW_node_id);
-     
+    app_src = GST_ELEMENT(gst_bin_get_by_name(GST_BIN(gst_audio_encoder_pipeline->pipeline), "pw_src"));
+    char *node = g_strdup_printf("%i", PW_node_id);
     g_object_set(app_src, "path", node, NULL);
 
-    pad = gst_element_get_static_pad(GST_ELEMENT(app_src), "src");
+// FIXME make audio-node.c listen for state where we can actually connect to the node and set the pipeline to playing state instead of sleep(1).
+    sleep(1);
 
-        // gst_frame_encoder_pipeline->playing = true;
-    if (gst_audio_encoder_pipeline->app_src_pad_probe)
+    gst_element_set_state(gst_audio_encoder_pipeline->pipeline, GST_STATE_PLAYING);
+    if (gst_element_get_state(gst_audio_encoder_pipeline->pipeline, NULL, NULL, 0) == GST_STATE_CHANGE_FAILURE)
     {
-        gst_element_set_state(gst_audio_encoder_pipeline->pipeline, GST_STATE_PLAYING);
-        gst_audio_encoder_pipeline->playing = true;
-
+        g_error("BUG? Could not set pipeline to playing state.");
     }
+    gst_audio_encoder_pipeline->playing = true;
 
-    gst_object_unref(pad);
     gst_object_unref(app_src);
  
     return gst_audio_encoder_pipeline;
