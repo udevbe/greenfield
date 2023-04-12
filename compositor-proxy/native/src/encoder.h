@@ -96,14 +96,12 @@ encoded_frame_finalize(struct encoded_frame *encoded_frame);
 // The callback function pointer will be called when an encoded audio sample is generated.
 // The double pointer audio_encoder struct will hold the newly created audio encoder.
 int
-audio_encoder_create(audio_callback_func audio_ready_callback, void *user_data,
+audio_encoder_create(audio_callback_func audio_ready_callback, pid_t pid, void *user_data,
                      struct audio_encoder **audio_encoder_pp);
 
 void
-audio_encoder_recreate_pipeline(int PW_node_id, char* PID);
+audio_encoder_set_pipewire_node_id_by_pid(uint32_t PW_node_id, pid_t pid);
 
-int
-audio_encoder_encode(struct audio_encoder **audio_encoder_pp);
 // Destroy a previously created audio encoder.
 int
 audio_encoder_destroy(struct audio_encoder **audio_encoder_pp);

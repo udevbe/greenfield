@@ -1,11 +1,8 @@
 #include <errno.h>
-#include <math.h>
 #include <signal.h>
 #include <stdio.h>
 #include <sys/time.h>
-// #include <pipewire/registry.h>
 #include <pipewire/pipewire.h>
-// #include <sndfile.h>
 #include <spa/param/audio/format-utils.h>
 #include "audio-node.h"
 #include "encoder.h"
@@ -26,6 +23,7 @@ const struct spa_pod *params[1];
 static struct data data = {0};
 static struct pw_registry *registry;
 static uint32_t source_node;
+uint32_t pip_node_id;
 
 static void on_process(void *userdata);
 static void on_stream_state_changed(void *_data, enum pw_stream_state old, enum pw_stream_state state, const char *error);
@@ -62,11 +60,9 @@ static void node_info(void *object, const struct pw_node_info *info)
    // pw_stream_disconnect(data->stream);
    spa_hook_remove(&data->node_listener);
    printf("SPA HOOK REMOVED");
-   audio_encoder_recreate_pipeline(pip_node_id, data->PID);  // message to create encoder and pipeline -- encoder.h 
-
-   
-
-
+   char *rest;
+   pid_t pid = (int) strtol(data->PID, &rest, 10);
+   audio_encoder_set_pipewire_node_id_by_pid(pip_node_id, pid);  // message to create encoder and pipeline -- encoder.h
 }
 
 /* [registry_event_global] */
@@ -146,7 +142,7 @@ static void on_global_add(void *userdata, uint32_t id, uint32_t permissions, con
    if (!strcmp(type, "PipeWire:Interface:Node") && !strcmp(media_role, "Stream/Output/Audio"   ) && id !=0 && id != pip_node_id)
    {
 
-      pip_node_id = (int*)id;
+      pip_node_id = id;
       // printf("TU ASI BUDE PROBLEM");
  
   
@@ -216,7 +212,7 @@ void *producer(void *param)
    if (context == NULL)
    {
       perror("pw_context_new() failed");
-      return 1;
+      return NULL;
    }
 
    // Connect the context, which returns us a proxy to the core object
@@ -224,7 +220,7 @@ void *producer(void *param)
    if (data.core == NULL)
    {
       perror("pw_context_connect() failed");
-      return 1;
+      return NULL;
    }
 
    // Add signal listeners to cleanly close the event loop and process when requested. 
@@ -285,7 +281,7 @@ void *producer(void *param)
    if (registry == NULL)
    {
       printf("Failed to get registry \n");
-      return 1;
+      return NULL;
    }
 
    struct spa_hook registry_listener;

@@ -1,46 +1,11 @@
 #include <gst/gstelement.h>
 #include <gst/app/gstappsink.h>
-#include <gst/app/gstappsrc.h>
 #include <glib.h>
 #include <gst/gst.h>
-#include "audio-node.h"
-
-
-// #include <gst/pipewire/gstpipewiresrc.h>
-// #include <gst/pipewire/pipewiresrc.h>
-// #include <gst/app/pipewiresrc.h>
-#include <assert.h>
 #include "encoder.h"
-
-
-
-#include <gst/gl/gstglfuncs.h>
-#include <gst/gl/gstglcontext.h>
-#include <gst/gl/gstglwindow.h>
-#include <gst/gl/gstglbasememory.h>
-#include <gst/gl/egl/gstgldisplay_egl.h>
-#include <gst/gl/egl/gstgldisplay_egl_device.h>
-#include <gst/app/gstappsrc.h>
-#include <gst/app/gstappsink.h>
-#include <graphene-1.0/graphene-gobject.h>
 
 #include <stdbool.h>
-#include <EGL/egl.h>
-#include <libdrm/drm_fourcc.h>
 #include <unistd.h>
-#include <GL/gl.h>
-#include <gst/gl/gstglmemory.h>
-#include <gst/gl/gstglutils.h>
-#include <gst/gl/gstglsyncmeta.h>
-#include <gst/gl/egl/gstglmemoryegl.h>
-#include "encoder.h"
-#include "wlr_drm.h"
-#include "wlr_linux_dmabuf_v1.h"
-// extern int node_id;
-// const GstMetaInfo *gfBufferContentSerialMetaInfo = NULL;
-
-// The structs below are copied and adapted from the video frame encoder implementation.
-// They can be adapted, changed, deleted... as required by the implementation.
 
 enum audio_encoding_type
 {
@@ -64,16 +29,15 @@ struct audio_encoding_result
         GstMapInfo info;
         GstBuffer *buffer;
     } sample;
-     GMutex mutex;
 };
 
 struct audio_encoder
 {
     struct gst_audio_encoder *impl;
     audio_callback_func audio_callback;
-    void *user_data;
-    GQueue *audio_encoding_results;
+    void* user_data;
     bool terminated;
+    pid_t pid;
 };
 
 struct gst_audio_encoder_pipeline
@@ -88,10 +52,11 @@ struct gst_audio_encoder_pipeline
 struct gst_audio_encoder
 {
     struct audio_encoder *audio_encoder;
-    const char *pipeline_definition;
+//    const char *pipeline_definition;
     struct gst_audio_encoder_pipeline *pipeline;
 };
 
+GList *audio_encoders;
 
 static GstBusSyncReply
 sync_bus_call(__attribute__((unused)) GstBus *bus, GstMessage *msg, gpointer data)
@@ -139,14 +104,13 @@ audio_encoding_result_to_encoded_chunk(struct audio_encoding_result *encoding_re
     struct encoded_audio *encoded_chunk;
 
     chunk_length = gst_buffer_get_size(encoding_result->sample.buffer);
-    // alpha_length = separate_alpha ? gst_buffer_get_size(encoding_result->alpha_sample.buffer) : 0;
 
     offset = 0;
     encoded_audio_blob_size =
         sizeof(encoding_result->props) +
         sizeof(uint32_t) +
         chunk_length;
-    void *audio_blob = malloc(encoded_audio_blob_size);
+    void *audio_blob = calloc(1, encoded_audio_blob_size);
 
     memcpy(audio_blob + offset, &encoding_result->props, sizeof(encoding_result->props));
     offset += sizeof(encoding_result->props);
@@ -155,86 +119,48 @@ audio_encoding_result_to_encoded_chunk(struct audio_encoding_result *encoding_re
     offset += sizeof(uint32_t);
 
     memcpy(audio_blob + offset, encoding_result->sample.info.data, chunk_length);
-    offset += chunk_length;
-
-
    
-    encoded_chunk = malloc(sizeof(struct encoded_audio));
+    encoded_chunk = calloc(1, sizeof(struct encoded_audio));
     encoded_chunk->encoded_data = audio_blob;
     encoded_chunk->size = encoded_audio_blob_size;
 
     return encoded_chunk;
 }
 
-void audio_encoding_result_free(struct audio_encoding_result *encoding_result)
-{
-    // g_mutex_clear(&encoding_result->mutex);
-    if (encoding_result->sample.buffer)
-    {
-        gst_buffer_unmap(encoding_result->sample.buffer, &encoding_result->sample.info);
-        gst_buffer_unref(encoding_result->sample.buffer);
-    }
-   
-    // free(encoding_result);
-}
 static GstFlowReturn
 gst_new_encoded_audio_sample(GstAppSink *appsink, gpointer user_data)
 {
-     printf("ZAVOLALI MA TAK SOM TU!");
     const struct sample_callback_data *callback_data = user_data;
-    struct audio_encoding_result *encoding_result = NULL;
-    GList *link;
+    struct audio_encoding_result *encoding_result = g_new0(struct audio_encoding_result, 1);
     struct encoded_audio *encoded_chunk;
     GstBuffer *buffer;
     // uint32_t buffer_content_serial = 0;
+    g_printerr("new_encoded_audio_sample");
 
     GstSample *sample = gst_app_sink_pull_sample(appsink);
     // link = g_queue_find (callback_data->encoder->audio_encoding_results, gconstpointer data
     if (sample == NULL)
     {
         // end of stream
-        printf("E O F \n");
         return GST_FLOW_OK;
     }
     buffer = gst_sample_get_buffer(sample);
     gst_buffer_ref(buffer);
     gst_sample_unref(sample);
-    encoding_result = callback_data->encoder->audio_encoding_results;
 
-        //     gst_element_set_state(gst_frame_encoder_pipeline->pipeline, GST_STATE_PLAYING);
-        // if (gst_element_get_state(gst_frame_encoder_pipeline->pipeline, NULL, NULL, 0) == GST_STATE_CHANGE_FAILURE)
-        // {
-        //     g_error("BUG? Could not set pipeline to playing state.");
-        // }
-        // gst_frame_encoder_pipeline->playing = true;
-  if (encoding_result == NULL)
-    {
-        // end of stream
-        printf("PROBLEM \n");
-        return GST_FLOW_OK;
-    }
     encoding_result->sample.buffer = buffer;
     gst_buffer_map(encoding_result->sample.buffer, &encoding_result->sample.info, GST_MAP_READ);
-    // GstCustomMeta *meta = gst_buffer_get_custom_meta(buffer, GF_BUFFER_CONTENT_SERIAL_META);
-    // GstStructure *s = gst_custom_meta_get_structure(meta);
-    // gst_structure_get_uint(s, "buffer_content_serial", &buffer_content_serial);
 
-    // make sure we have the right encoding result
-    // link = g_queue_find_custom(callback_data->encoder->frame_encoding_results, &buffer_content_serial,
-    //                            has_buffer_content_serial);
-    // if (link)
-    // {
-    //     encoding_result = link->data;
-    // }
     encoded_chunk = audio_encoding_result_to_encoded_chunk(encoding_result);
-  
-    // encoding_result->sample.buffer = buffer;
-    // gst_buffer_map(encoding_result->sample.buffer, &encoding_result->sample.info, GST_MAP_READ);
-    audio_encoding_result_free(encoding_result);
-    callback_data->encoder->audio_callback(callback_data->encoder->user_data, encoded_chunk);
-    // gst_buffer_unref(buffer);
 
-    // free(encoding_result);
+    if (encoding_result->sample.buffer)
+    {
+        gst_buffer_unmap(encoding_result->sample.buffer, &encoding_result->sample.info);
+        gst_buffer_unref(encoding_result->sample.buffer);
+    }
+    free(encoding_result);
+    callback_data->encoder->audio_callback(callback_data->encoder->user_data, encoded_chunk);
+
     return GST_FLOW_OK;
 }
 
@@ -248,7 +174,7 @@ static GstAppSinkCallbacks encoded_audio_sample_callback = {
 
 // TODO set the pipewire node id on the pipewiresrc element
 // TODO more/less/other gstreamer elements?
-static const char *audio_pipeline = "pipewiresrc name=pw_src ! "
+static const char *audio_pipeline = "pipewiresrc path=%i ! "
                                     "rawaudioparse format=pcm pcm-format=f32le sample-rate=48000 num-channels=2 ! "
                                     "audioresample ! "
                                     "audioconvert ! "
@@ -264,28 +190,10 @@ gst_audio_encoder_pipeline_setup_bus_listeners(struct gst_audio_encoder_pipeline
     gst_object_unref(bus);
 }
 
-static GstPadProbeReturn
-gst_audio_encoder_pipeline_app_src_have_data(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
-{
-    printf("Data for encoding\n");
-    // gst_element_set_state(gst_audio_encoder_pipeline->pipeline, GST_STATE_PLAYING);
-
-    struct gst_audio_encoder_pipeline *gst_audio_encoder_pipeline = user_data;
-    GstBuffer *buffer = gst_pad_probe_info_get_buffer(info);
-     
-    // GstAudioMeta *audio_meta = gst_buffer_get_audio_meta(buffer);
-    // printf("CO TERAZ");
-
-    
-    return GST_PAD_PROBE_OK;
-}
-
 
 static inline struct gst_audio_encoder_pipeline *
-gst_audio_encoder_pipeline_create(struct gst_audio_encoder *gst_encoder, int PW_node_id)
+gst_audio_encoder_pipeline_create(struct gst_audio_encoder *gst_encoder, const char *pipeline_definition, uint32_t PW_node_id)
 {
-
-
     struct gst_audio_encoder_pipeline *gst_audio_encoder_pipeline = g_new0(struct gst_audio_encoder_pipeline, 1);
     struct sample_callback_data *callback_data;
     GstAppSink *app_sink;
@@ -295,7 +203,7 @@ gst_audio_encoder_pipeline_create(struct gst_audio_encoder *gst_encoder, int PW_
     GError *parse_error = NULL;
 
     gst_audio_encoder_pipeline->pipeline = gst_parse_launch_full(
-        gst_encoder->pipeline_definition,
+        pipeline_definition,
         NULL,
         GST_PARSE_FLAG_FATAL_ERRORS,
         &parse_error);
@@ -319,18 +227,11 @@ gst_audio_encoder_pipeline_create(struct gst_audio_encoder *gst_encoder, int PW_
     
     app_src = GST_ELEMENT(gst_bin_get_by_name(GST_BIN(gst_audio_encoder_pipeline->pipeline), "pw_src"));
 
-    // if (PW_node_id){
-    char *node = g_strdup_printf("%d",pip_node_id);
+    char *node = g_strdup_printf("%d", PW_node_id);
      
     g_object_set(app_src, "path", node, NULL);
 
-    printf("PATH SET \n"); 
     pad = gst_element_get_static_pad(GST_ELEMENT(app_src), "src");
-    // pad = gst_element_get_request_pad(GST_ELEMENT(app_src), "pw_src");
-
-    gst_audio_encoder_pipeline->app_src_pad_probe = gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER,
-       (GstPadProbeCallback)gst_audio_encoder_pipeline_app_src_have_data,
-       gst_audio_encoder_pipeline, NULL);
 
         // gst_frame_encoder_pipeline->playing = true;
     if (gst_audio_encoder_pipeline->app_src_pad_probe)
@@ -347,14 +248,12 @@ gst_audio_encoder_pipeline_create(struct gst_audio_encoder *gst_encoder, int PW_
 }
 
 static inline void
-gst_audio_encoder_create(struct audio_encoder *encoder, const char *audio_pipeline)
+gst_audio_encoder_create(struct audio_encoder *encoder, const char *pipeline_definition, uint32_t PW_node_id)
 {
-
     struct gst_audio_encoder *gst_audio_encoder = g_new0(struct gst_audio_encoder, 1);
     gst_audio_encoder->audio_encoder = encoder;
-    gst_audio_encoder->pipeline_definition = audio_pipeline;
 
-    gst_audio_encoder->pipeline = (struct gst_audio_encoder_pipeline *)gst_audio_encoder_pipeline_create(gst_audio_encoder, NULL);
+    gst_audio_encoder->pipeline = (struct gst_audio_encoder_pipeline *)gst_audio_encoder_pipeline_create(gst_audio_encoder, pipeline_definition, PW_node_id);
     if (gst_audio_encoder->pipeline == NULL)
     {
         g_error("BUG? Failed to create audio pipeline.");
@@ -362,56 +261,43 @@ gst_audio_encoder_create(struct audio_encoder *encoder, const char *audio_pipeli
     gst_audio_encoder->pipeline->gst_audio_encoder = gst_audio_encoder;
 
     encoder->impl = gst_audio_encoder;
-
 }
 
-//finally not actually recreating, just creating when pipewire calls message with id
-void do_gst_audio_encoder_recreate_pipeline(int PW_node_id, char*PID, struct audio_encoder **audio_encoder_pp )
-{
-    printf("CREATING PIPELINE\n");
-
-    struct audio_encoder *encoder = g_new0(struct audio_encoder, 1);
-    encoder = *audio_encoder_pp;
-    gst_audio_encoder_create(encoder, audio_pipeline);
-
-  
-}
-
-void do_gst_audio_encoder_encode(struct audio_encoder **audio_encoder_pp)
-{
-
-    struct audio_encoder *encoder = *audio_encoder_pp;
-    if (encoder->terminated)
-    {
-        g_error("BUG. Can not encode. Encoder is terminated.");
+gint
+audio_encoder_by_pid(gconstpointer a, gconstpointer b) {
+    struct audio_encoder *audio_encoder = a;
+    if(a == NULL) {
+        return 1;
     }
-
-    struct audio_encoding_result *encoding_result;
-    if (encoder->impl == NULL)
-    {
-        gst_audio_encoder_create(encoder, audio_pipeline);
-        assert(encoder->impl != NULL && "Found matching encoder and have implementation.");
-            
-    }
-    encoding_result = g_new0(struct audio_encoding_result, 1);
-    printf("ENCODING STARTED");
- 
+    pid_t target_pid = (pid_t) b;
+    return audio_encoder->pid != target_pid;
 }
 
-void do_gst_audio_encoder_create(audio_callback_func audio_ready_callback, void *user_data,
-                                 struct audio_encoder **audio_encoder_pp)
+void
+do_gst_audio_encoder_set_pipewire_node_id_by_pid(uint32_t PW_node_id, pid_t pid)
 {
-    // pid_t *client_pid = user_data;
-    printf("ENCODER CREATED");
+    GList *found = g_list_find_custom(audio_encoders, (gconstpointer) pid, audio_encoder_by_pid);
+    if(found) {
+        struct audio_encoder *audio_encoder = found->data;
+        if(audio_encoder->impl == NULL) {
+            g_info("creating audio pipeline for pid {}", pid);
+            gst_audio_encoder_create(audio_encoder, audio_pipeline, PW_node_id);
+        }
+    } else {
+        // no audio encoder exists for this pid, ignore it.
+    }
+}
 
+void
+do_gst_audio_encoder_create(audio_callback_func audio_ready_callback, pid_t pid, void *user_data,
+                                 struct audio_encoder **audio_encoder_pp) {
     struct audio_encoder *audio_encoder = g_new0(struct audio_encoder, 1);
     audio_encoder->audio_callback = audio_ready_callback;
+    audio_encoder->pid = pid;
     audio_encoder->user_data = user_data;
-    audio_encoder->audio_encoding_results = g_queue_new();
-    *audio_encoder_pp = audio_encoder;
 
-    // TODO
-    // gst_audio_encoder_create(audio_encoder, audio_pipeline);
+    *audio_encoder_pp = audio_encoder;
+    audio_encoders = g_list_prepend(audio_encoders, audio_encoder);
 }
 
 
@@ -441,4 +327,8 @@ void do_gst_encoded_audio_finalize(struct encoded_audio *encoded_audio)
 {
     free(encoded_audio->encoded_data);
     free(encoded_audio);
+}
+
+void do_gst_audio_encoder_init() {
+    audio_encoders = g_list_alloc();
 }

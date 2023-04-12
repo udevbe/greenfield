@@ -1404,11 +1404,8 @@ static const struct frame_encoder_description frame_encoder_descriptions[] = {
         .min_height = 32,
     }};
 
-void do_gst_init()
+void do_gst_frame_encoder_init()
 {
-    sleep(10);
-
-    gst_init(NULL, NULL);
     static const gchar *tags[] = {NULL};
     gfBufferContentSerialMetaInfo = gst_meta_register_custom(GF_BUFFER_CONTENT_SERIAL_META, tags, NULL, NULL, NULL);
 }
