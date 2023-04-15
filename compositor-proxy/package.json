@@ -23,7 +23,8 @@
     "build": "rm -rf dist && yarn build:native && yarn build:typescript",
     "start": "node --require ts-node/register ./src/index.ts --static-session-id=test123",
     "test": "jest",
-    "package": "yarn install && yarn generate && yarn build && cp src/config.yaml dist && pkg --compress Brotli package.json"
+    "package:copy-libs": "cp 'node_modules/westfield-proxy/dist/libwayland-server.so.0' 'node_modules/westfield-proxy/dist/libwestfield.so' 'dist/encoding/libproxy-encoding.so' -t package",
+    "package": "cp src/config.yaml dist && pkg --compress Brotli --no-native-build package.json && yarn package:copy-libs"
   },
   "dependencies": {
     "ajv": "^8.12.0",
@@ -52,7 +53,7 @@
     "json-schema-to-typescript": "^12.0.0",
     "node-api-headers": "^0.0.5",
     "openapi-typescript": "^6.2.1",
-    "pkg": "^5.8.1",
+    "pkg": "5.8.1",
     "prettier": "^2.8.7",
     "supertest": "^6.3.3",
     "ts-jest": "^29.1.0",
@@ -66,7 +67,10 @@
     "assets": [
       "dist/config.yaml",
       "dist/**/*.json",
-      "dist/**/*.so"
+      "dist/**/*.so",
+      "node_modules/uWebSockets.js/uws_linux_x64_108.node",
+      "node_modules/epoll/build/Release/epoll.node",
+      "node_modules/westfield-proxy/dist/westfield-addon.node"
     ],
     "targets": [
       "node18-linux-x64"

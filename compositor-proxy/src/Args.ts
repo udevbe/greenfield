@@ -19,12 +19,12 @@ type StringValue = string | null
 type ArgTypes = Readonly<{
   help: BooleanValue
   'static-session-id': StringValue
-  'config-location': StringValue
+  'config-path': StringValue
 }>
 
 export const args: ArgTypes = {
   ...parseArgValue('help'),
-  ...parseArgValue('config-location'),
+  ...parseArgValue('config-path'),
   ...parseArgValue('static-session-id'),
 } as const
 
@@ -36,10 +36,10 @@ export function printHelp() {
 \tOptions
 \t  --help, Print this help text.
 \t  --static-session-id=...,  Mandatory. Only use and accept this session id when communicating.
-\t  --config-location=...,  Use a custom configuration file located at this path.
+\t  --config-path=...,  Use a custom configuration file located at this path.
 
 \tExamples
-\t  $ compositor-proxy --static-session-id=test123 --config-location=./config.yaml
+\t  $ compositor-proxy --static-session-id=test123 --config-path=./config.yaml
   `)
 }
 

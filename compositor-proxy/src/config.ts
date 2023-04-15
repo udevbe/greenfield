@@ -18,15 +18,15 @@ addFormats(ajv)
 
 const validate = ajv.compile(configschema)
 
-let configLocation = args['config-location']
-if (configLocation) {
-  logger.info(`Reading configuration from: ${configLocation}`)
+let configPath = args['config-path']
+if (configPath) {
+  logger.info(`Reading configuration from: ${configPath}`)
 } else {
   logger.info('Using build-in default configuration')
-  configLocation = path.join(__dirname, 'config.yaml')
+  configPath = path.join(__dirname, 'config.yaml')
 }
 
-const configFileContents = fs.readFileSync(configLocation, 'utf8')
+const configFileContents = fs.readFileSync(configPath, 'utf8')
 
 const rawConfig = yaml.load(configFileContents)
 const isValid = validate(rawConfig)

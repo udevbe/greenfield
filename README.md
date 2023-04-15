@@ -91,10 +91,10 @@ This creates a single binary in the `package` directory that accepts several opt
         Options
           --help, Print this help text.
           --static-session-id=...,  Mandatory. Only use and accept this session id when communicating.
-          --config-location=...,  Use a custom configuration file located at this path.
+          --config-path=...,  Use a custom configuration file located at this path.
 
         Examples
-          $ compositor-proxy --static-session-id=test123 --config-location=./config.yaml
+          $ compositor-proxy --static-session-id=test123 --config-path=./config.yaml
 ```
 
 Below is an example config file (the default config). It can be copy-pasted and used with the `--config-location=...` option.
