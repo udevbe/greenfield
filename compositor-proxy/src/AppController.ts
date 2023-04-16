@@ -1,6 +1,6 @@
 import type { CompositorProxySession } from './CompositorProxySession'
 import type { HttpRequest, HttpResponse } from 'uWebSockets.js'
-import fs from 'fs'
+import { read, close, createReadStream, createWriteStream } from 'fs'
 import { TRANSFER_CHUNK_SIZE } from './io/ProxyInputOutput'
 import { Readable, Writable } from 'stream'
 import { createLogger } from './Logger'
@@ -113,7 +113,7 @@ export function GETWebFD(
   })
 
   const readBuffer = new Uint8Array(count)
-  fs.read(fd, readBuffer, 0, count, 0, (err, bytesRead, chunk) => {
+  read(fd, readBuffer, 0, count, 0, (err, bytesRead, chunk) => {
     httpResponse.cork(() => {
       if (err) {
         if (err.code === 'EBADF') {
@@ -195,7 +195,7 @@ export function DELWebFD(
     logger.info('DEL /webfd aborted. Ignoring.')
   })
 
-  fs.close(fd, (err) => {
+  close(fd, (err) => {
     httpResponse.cork(() => {
       // TODO log error
       if (err) {
@@ -303,7 +303,7 @@ export function GETWebFDStream(
     return
   }
 
-  pipeReadableToHttpResponse(res, fs.createReadStream('ignored', { fd, highWaterMark: chunkSize }))
+  pipeReadableToHttpResponse(res, createReadStream('ignored', { fd, highWaterMark: chunkSize }))
 }
 
 function pipeHttpRequestToWritable(httpResponse: HttpResponse, writable: Writable) {
@@ -379,7 +379,7 @@ export function PUTWebFDStream(
 
   pipeHttpRequestToWritable(
     res,
-    fs.createWriteStream('ignored', { fd, autoClose: true, highWaterMark: TRANSFER_CHUNK_SIZE }),
+    createWriteStream('ignored', { fd, autoClose: true, highWaterMark: TRANSFER_CHUNK_SIZE }),
   )
 }
 

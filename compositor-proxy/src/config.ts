@@ -1,8 +1,8 @@
 import Ajv from 'ajv'
 import addFormats from 'ajv-formats'
-import yaml from 'js-yaml'
-import fs from 'fs'
-import path from 'path'
+import { load } from 'js-yaml'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { Configschema } from './@types/config'
 
 import configschema from './configschema.json'
@@ -23,12 +23,12 @@ if (configPath) {
   logger.info(`Reading configuration from: ${configPath}`)
 } else {
   logger.info('Using build-in default configuration')
-  configPath = path.join(__dirname, 'config.yaml')
+  configPath = join(__dirname, 'config.yaml')
 }
 
-const configFileContents = fs.readFileSync(configPath, 'utf8')
+const configFileContents = readFileSync(configPath, 'utf8')
 
-const rawConfig = yaml.load(configFileContents)
+const rawConfig = load(configFileContents)
 const isValid = validate(rawConfig)
 if (!isValid) {
   throw new Error(`Error validating configuration: ${JSON.stringify(validate.errors)}`)
