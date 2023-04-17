@@ -101,6 +101,7 @@ This creates a set of files in the `package` directory. The `run.sh` script acce
 ```
 
 Below is an example config file (the default config). It can be copy-pasted and used with the `--config-path=...` option.
+You will at least need to set the `public.baseURL` when not running locally.
 ```yaml
 server:
   http:
