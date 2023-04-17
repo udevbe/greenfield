@@ -44,6 +44,7 @@ The `run.sh` script accepts several arguments:
 
 ## Config
 The compositor-proxy can be configured by supplying it a configuration file path using `--config-location=`.
+You will at least need to set the `public.baseURL` when not running locally.
 
 ```yaml
 server:
@@ -55,7 +56,7 @@ server:
     # CORS allowed origins, used when doing cross-origin requests. Value can be * or comma seperated domains.
     allowOrigin: '*'
 public:
-  # The base url to use when connecting to this endpoint. This is used when doing direct proxy to proxy connections.
+  # The base url to use when connecting to this endpoint. This is the publicly reachable address of the compositor proxy.
   baseURL: http://localhost:8081
 encoder:
   # Path of the render device that should be used for hardware acceleration. e.g. /dev/dri/renderD128
