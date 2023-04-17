@@ -15,15 +15,19 @@ in `src/config.yaml`.
 
 ## Production build
 
+- `yarn install`
+- `yarn generate`
+- `yarn build`
 - `yarn package`
 
-This creates a single binary in the `package` directory.
+This creates a set of files in the `package` directory, to start simply run the `run.sh` script inside.
 
 There is also a docker image available `docker.io/udevbe/compositor-proxy` that you can use as well as an example docker compose file with some applications.
 This docker compose file only runs the compositor-proxy as well as some extra containerized applications. You still need to run a compositor-module separately to connect to
 this compositor-proxy.
 
 ## Options
+The `run.sh` script accepts several arguments: 
 
 ```
         Usage
@@ -39,6 +43,8 @@ this compositor-proxy.
 ```
 
 ## Config
+The compositor-proxy can be configured by supplying it a configuration file path using `--config-location=`.
+
 ```yaml
 server:
   http:

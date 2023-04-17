@@ -41,7 +41,7 @@ and runs Wayland applications in an iframe (experimental) and accepts input in t
 
 ## Greenfield Compositor Proxy
 
-To build you need a set of native dependencies. You can look at the [Docker image](https://github.com/udevbe/greenfield/blob/master/compositor-proxy/Dockerfile#L4) to see which ones you need to build and run respectively, or if you're running a Debian based distro you can run:
+To build, you need a set of native dependencies. You can look at the [Docker image](https://github.com/udevbe/greenfield/blob/master/compositor-proxy/Dockerfile#L4) to see which ones you need to build and run respectively, or if you're running a Debian based distro you can run:
 ```
 sudo apt install cmake build-essential ninja-build pkg-config libffi-dev libudev-dev libgbm-dev libdrm-dev libegl-dev \ 
  libwayland-dev libglib2.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgraphene-1.0-dev gstreamer1.0-plugins-base \ 
@@ -76,13 +76,16 @@ auto-detect the compositor-proxy and simply connect without issues or extra setu
 If your application can't connect, try setting the `WAYLAND_DISPLAY` environment variable to the value that was printed by compositor-proxy. ie if you see `Listening on: WAYLAND_DISPLAY=\"wayland-0\".`
 then set the environment variable `export WAYLAND_DISPLAY=wayland-0`.
 
-### Production build
+### Packaged build
 
-It's also possible to build a self-contained single binary.
+It's also possible to build a distributable release.
 
+- `yarn install`
+- `yarn generate`
+- `yarn build`
 - `yarn package`
 
-This creates a single binary in the `package` directory that accepts several options:
+This creates a set of files in the `package` directory. The `run.sh` script accepts several options:
 
 ```
         Usage
@@ -97,7 +100,7 @@ This creates a single binary in the `package` directory that accepts several opt
           $ compositor-proxy --static-session-id=test123 --config-path=./config.yaml
 ```
 
-Below is an example config file (the default config). It can be copy-pasted and used with the `--config-location=...` option.
+Below is an example config file (the default config). It can be copy-pasted and used with the `--config-path=...` option.
 ```yaml
 server:
   http:
@@ -121,6 +124,36 @@ encoder:
 logging:
   # "fatal" | "error" | "warn" | "info" | "debug" | "trace"
   level: info
+```
+
+The packaged binary expects the following set of dependencies to be available for mesa & nvidia support, if you're running a Debian based distro you can run:
+```
+apt-get install \
+    libffi8 \
+    libudev1 \
+    libgbm1 \
+    libgraphene-1.0-0 \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-ugly \
+    gstreamer1.0-gl \
+    libosmesa6 \
+    libdrm2 \
+    libdrm-intel1 \
+    libopengl0 \
+    libglvnd0 \
+    libglx0 \
+    libglapi-mesa \
+    libegl1-mesa \
+    libglx-mesa0 \
+    libnvidia-egl-wayland1 \
+    libnvidia-egl-gbm1 \
+    xwayland \
+    xauth \
+    xxd \
+    inotify-tools \
+    libnode108
 ```
 
 ### Docker
