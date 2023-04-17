@@ -40,7 +40,7 @@ export class WebConnectionHandler {
 
   private constructor(readonly session: Session) {}
 
-  onWebAppWorker(webAppFrame: HTMLIFrameElement, clientId: string, messagePort: MessagePort): Client {
+  onWebApp(webAppFrame: HTMLIFrameElement, clientId: string, messagePort: MessagePort): Client {
     // TODO How listen for webWorker terminate/close/destroy?
     // TODO close client connection when worker is terminated
     const client = this.session.display.createClient(clientId)

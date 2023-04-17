@@ -73,7 +73,7 @@ export class Scene {
     viewStack.forEach((view) => this.renderView(view))
     this.sceneShader.release()
 
-    this.session.userShell.events.sceneRefresh?.(this.id)
+    this.session.userShell.events.sceneRefreshed?.(this.id)
   }
 
   destroy(): void {

@@ -25,23 +25,22 @@ import Surface from './Surface'
 export interface UserShellApiEvents {
   clientCreated?: (applicationClient: CompositorClient) => void
   clientDestroyed?: (applicationClient: CompositorClient) => void
-  unresponsive?: (applicationClient: CompositorClient, unresponse: boolean) => void
+  clientUnresponsiveUpdated?: (applicationClient: CompositorClient, unresponse: boolean) => void
+
+  surfaceCreated?: (compositorSurface: CompositorSurface) => void
+  surfaceDestroyed?: (compositorSurface: CompositorSurface) => void
+  surfaceTitleUpdated?: (compositorSurface: CompositorSurface, title: string) => void
+  surfaceAppIdUpdated?: (compositorSurface: CompositorSurface, appId: string) => void
+  surfaceActivationUpdated?: (compositorSurface: CompositorSurface, active: boolean) => void
+
   notify?: (variant: 'warn' | 'info' | 'error', message: string) => void
 
-  sceneRefresh?: (sceneId: string) => void
-  clientSurfaceCreated?: (compositorSurface: CompositorSurface) => void
-
-  clientSurfaceDestroyed?: (compositorSurface: CompositorSurface) => void
-  title?: (compositorSurface: CompositorSurface, title: string) => void
-  appId?: (compositorSurface: CompositorSurface, appId: string) => void
-  active?: (compositorSurface: CompositorSurface, active: boolean) => void
+  sceneRefreshed?: (sceneId: string) => void
 }
 
 export interface UserShellApiActions {
   initScene(sceneId: string, canvas: HTMLCanvasElement): void
-
-  refresh(): void
-
+  refreshScene(): void
   destroyScene(sceneId: string): void
 
   setUserConfiguration(userConfiguration: Partial<CompositorConfiguration>): void
@@ -76,7 +75,7 @@ export function createUserShellApi(session: Session): UserShellApi {
         surface.role?.desktopSurface?.activate()
       },
       initScene: (sceneId, canvas) => addInputOutput(session, canvas, sceneId),
-      refresh: () => {
+      refreshScene: () => {
         session.renderer.render()
       },
       destroyScene: (sceneId) => session.renderer.scenes[sceneId].destroy(),

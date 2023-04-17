@@ -10,7 +10,6 @@ const logger = createLogger('compositor-proxy-signaling')
 
 type UserData = {
   searchParams: URLSearchParams
-  compositorProxySession: CompositorProxySession
 }
 
 const enum SignalingMessageType {
@@ -89,7 +88,6 @@ export function signalHandling(compositorProxySession: CompositorProxySession): 
       res.upgrade(
         {
           searchParams: new URLSearchParams(req.getQuery()),
-          compositorProxySession,
         },
         /* Spell these correctly */
         req.getHeader('sec-websocket-key'),
@@ -131,7 +129,7 @@ export function signalHandling(compositorProxySession: CompositorProxySession): 
               )
               // Remote compositor has restarted. Shutdown the old peer connection before handling any signaling.
               compositorPeerIdentity = messageObject.identity
-              resetPeerConnection(false)
+              compositorProxySession.resetPeerConnectionState(false)
             } else if (compositorPeerIdentity === undefined) {
               // Connecting to remote proxy for the first time
               compositorPeerIdentity = messageObject.identity
@@ -157,7 +155,7 @@ export function signalHandling(compositorProxySession: CompositorProxySession): 
       if (code === 4001) {
         // user closed connection
         compositorPeerIdentity = undefined
-        resetPeerConnection(true)
+        compositorProxySession.resetPeerConnectionState(true)
       }
     },
   }

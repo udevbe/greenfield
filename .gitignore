@@ -162,3 +162,9 @@ CTestTestfile.cmake
 /compositor-module/demo-webapp-emscripten/hello-wayland
 /compositor-module/demo-webapp-emscripten/xdg-shell-client-protocol.h
 /compositor-module/demo-webapp-emscripten/xdg-shell-protocol.c
+/compositor-proxy/package/compositor-proxy
+/compositor-proxy/package/libproxy-encoding.so
+/compositor-proxy/package/libwayland-server.so.0
+/compositor-proxy/package/libwestfield.so
+/compositor-proxy/.yarn
+/compositor-module/demo-webapp-wgpu/.yarn

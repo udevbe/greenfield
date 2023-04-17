@@ -1,30 +1,30 @@
 {
-  "name": "greenfield-app-endpoint-server",
+  "name": "compositor-proxy",
   "version": "0.0.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/udevbe/greenfield.git"
   },
+  "bin": "dist/index.js",
   "engines": {
     "node": ">=16"
   },
   "license": "AGPL-3.0",
   "description": "Wayland Compositor Proxy",
-  "bin": {
-    "appendpointd": "src/index.js"
-  },
   "scripts": {
     "generate:api": "openapi-typescript ./api.yaml --output ./src/@types/api.d.ts",
     "generate:config-types": "js-yaml ./configschema.yaml > ./src/configschema.json && json2ts -i ./src/configschema.json -o ./src/@types/config.d.ts --style.singleQuote --no-style.semi",
     "generate:xdgshell": "westfield-proxy-generator protocol/xdg-shell.xml -o src/protocol",
     "generate:wayland-drm": "westfield-proxy-generator protocol/wayland-drm.xml -o src/protocol",
     "generate:wayland": "westfield-proxy-generator protocol/wayland.xml -o src/protocol",
-    "generate": "yarn generate:api && yarn generate:config-types && mkdir -p src/protocol && yarn generate:wayland && yarn generate:wayland-drm && yarn generate:xdgshell",
+    "generate": "rm -rf src/protocol && yarn generate:api && yarn generate:config-types && mkdir -p src/protocol && yarn generate:wayland && yarn generate:wayland-drm && yarn generate:xdgshell",
     "build:native": "mkdir -p build && cmake -G Ninja -B./build -S./ && ninja -C ./build",
     "build:typescript": "tsc",
-    "build": "yarn build:native && yarn build:typescript",
-    "start": "COMPOSITOR_SESSION_ID=test123 node --require ts-node/register ./src/index.ts",
-    "test": "jest"
+    "build": "rm -rf dist && yarn build:native && yarn build:typescript",
+    "start": "node --require ts-node/register ./src/index.ts --static-session-id=test123",
+    "test": "jest",
+    "package:copy-libs": "cp 'node_modules/westfield-proxy/dist/libwayland-server.so.0' 'node_modules/westfield-proxy/dist/libwestfield.so' 'dist/encoding/libproxy-encoding.so' -t package",
+    "package": "cp src/config.yaml dist && pkg --compress Brotli --no-native-build package.json && yarn package:copy-libs"
   },
   "dependencies": {
     "ajv": "^8.12.0",
@@ -32,33 +32,48 @@
     "js-yaml": "^4.1.0",
     "pino": "^8.8.0",
     "pino-pretty": "^9.1.1",
-    "uWebSockets.js": "uNetworking/uWebSockets.js#v20.19.0",
+    "uWebSockets.js": "uNetworking/uWebSockets.js#v20.20.0",
     "xtsb": "1.0.0-alpha.0"
   },
   "devDependencies": {
-    "@tsconfig/node16": "^1.0.3",
-    "@types/jest": "^29.2.4",
+    "@tsconfig/node18": "^1.0.1",
+    "@types/jest": "^29.5.0",
     "@types/js-yaml": "^4.0.5",
-    "@types/jsonwebtoken": "^8.5.9",
-    "@types/node": "^18.11.15",
+    "@types/jsonwebtoken": "^9.0.1",
+    "@types/node": "^18.15.11",
     "@types/supertest": "^2.0.12",
-    "@typescript-eslint/eslint-plugin": "^5.46.1",
-    "@typescript-eslint/parser": "^5.46.1",
+    "@typescript-eslint/eslint-plugin": "^5.57.1",
+    "@typescript-eslint/parser": "^5.57.1",
     "epoll": "^4.0.1",
-    "eslint": "8.29.0",
-    "eslint-config-prettier": "^8.5.0",
+    "eslint": "^8.37.0",
+    "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-prettier": "^4.2.1",
-    "jest": "^29.3.1",
+    "jest": "^29.5.0",
     "jest-openapi": "^0.14.2",
-    "json-schema-to-typescript": "^11.0.2",
-    "node-api-headers": "^0.0.1",
-    "openapi-typescript": "^6.1.0",
-    "prettier": "^2.8.1",
+    "json-schema-to-typescript": "^12.0.0",
+    "node-api-headers": "^0.0.5",
+    "openapi-typescript": "^6.2.1",
+    "pkg": "5.8.1",
+    "prettier": "^2.8.7",
     "supertest": "^6.3.3",
-    "ts-jest": "^29.0.3",
+    "ts-jest": "^29.1.0",
     "ts-node": "^10.9.1",
-    "typescript": "^4.9.4",
+    "typescript": "^5.0.3",
     "westfield-proxy": "1.0.0-alpha.18",
     "westfield-proxy-generator": "1.0.0-alpha.4"
+  },
+  "pkg": {
+    "scripts": "dist/**/*.js",
+    "assets": [
+      "dist/config.yaml",
+      "dist/**/*.json",
+      "dist/**/*.so",
+      "node_modules/uWebSockets.js/uws_linux_x64_108.node",
+      "node_modules/epoll/build/Release/epoll.node"
+    ],
+    "targets": [
+      "node18-linux-x64"
+    ],
+    "outputPath": "package"
   }
 }

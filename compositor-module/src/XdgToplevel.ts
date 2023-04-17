@@ -22,10 +22,8 @@ import {
   XdgToplevelRequests,
   XdgToplevelResource,
   XdgToplevelState,
-  XdgWmBaseError,
 } from 'westfield-runtime-server'
 import { DesktopSurface } from './Desktop'
-import { minusPoint, ORIGIN } from './math/Point'
 import { RectWithInfo } from './math/Rect'
 import { Size, ZERO_SIZE } from './math/Size'
 import Session from './Session'
@@ -90,6 +88,14 @@ export default class XdgToplevel implements XdgToplevelRequests, DesktopSurfaceR
     public readonly view: View,
   ) {
     this.desktopSurface = DesktopSurface.create(view.surface, this)
+    this.resource.addDestroyListener(() => {
+      this.xdgSurface.surface.unmap()
+      this.xdgSurface.configureIdle?.()
+      this.xdgSurface.configureList = []
+      if (this.added) {
+        this.desktopSurface.removed()
+      }
+    })
   }
 
   static create(xdgToplevelResource: XdgToplevelResource, xdgSurface: XdgSurface, session: Session): XdgToplevel {
@@ -165,12 +171,6 @@ export default class XdgToplevel implements XdgToplevelRequests, DesktopSurfaceR
   }
 
   destroy(resource: XdgToplevelResource): void {
-    this.xdgSurface.surface.unmap()
-    this.xdgSurface.configureIdle?.()
-    this.xdgSurface.configureList = []
-    if (this.added) {
-      this.desktopSurface.removed()
-    }
     resource.destroy()
   }
 

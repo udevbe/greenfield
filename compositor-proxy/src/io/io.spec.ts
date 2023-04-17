@@ -3,10 +3,10 @@ import { us_listen_socket, us_listen_socket_close } from 'uWebSockets.js'
 import { createApp } from '../App'
 import { CompositorProxySession, createCompositorProxySession } from '../CompositorProxySession'
 import jestOpenAPI from 'jest-openapi'
-import path from 'path'
+import { resolve } from 'path'
 import { ProxyFD } from './types'
-import fs from 'fs'
-import http from 'http'
+import { writeFile, close, readFile } from 'fs'
+import { request as httpRequest } from 'http'
 import { createProxyInputOutput } from './ProxyInputOutput'
 import { createMemoryMappedFile, makePipe } from 'westfield-proxy'
 
@@ -39,9 +39,6 @@ describe('compositor-proxy webfs', () => {
 
     ownCompositorProxySession.nativeCompositorSession.destroy()
     otherCompositorProxySession.nativeCompositorSession.destroy()
-
-    await ownCompositorProxySession.onDestroy()
-    await otherCompositorProxySession.onDestroy()
   })
 
   it('creates a new local pipe pair when receiving a remote write-pipe webfd', (done) => {
@@ -50,7 +47,9 @@ describe('compositor-proxy webfs', () => {
     const otherPipeFDs = new Uint32Array(2)
     makePipe(otherPipeFDs)
 
-    const [otherReadPipeHandle, otherWritePipeHandle] = otherPipeFDs
+    const otherReadPipeHandle = otherPipeFDs[0]
+    const otherWritePipeHandle = otherPipeFDs[1]
+
     const otherProxyFD: ProxyFD = {
       handle: otherWritePipeHandle,
       type: 'pipe-write',
@@ -61,28 +60,28 @@ describe('compositor-proxy webfs', () => {
 
     const sendBuffer = Buffer.from([1, 2, 3, 4])
     // When
-    fs.writeFile(ownWritePipeHandle, sendBuffer, (err) => {
+    writeFile(ownWritePipeHandle, sendBuffer, (err) => {
       if (err) {
         done(err)
       }
-      fs.close(ownWritePipeHandle)
+      close(ownWritePipeHandle)
     })
 
     // Then
-    fs.readFile(otherReadPipeHandle, (err, data) => {
+    readFile(otherReadPipeHandle, (err, data) => {
       if (err) {
         done(err)
         return
       }
       expect(data).toEqual(sendBuffer)
       done()
-      fs.close(otherReadPipeHandle)
+      close(otherReadPipeHandle)
     })
   })
 })
 
 describe('compositor-proxy io rest api', () => {
-  jestOpenAPI(path.resolve('./api.yaml'))
+  jestOpenAPI(resolve('./api.yaml'))
 
   const port = 8888
   const hostName = '0.0.0.0'
@@ -99,7 +98,6 @@ describe('compositor-proxy io rest api', () => {
   afterEach(async () => {
     us_listen_socket_close(app)
     compositorProxySession.nativeCompositorSession.destroy()
-    await compositorProxySession.onDestroy()
   })
 
   it('creates a native pipe', (done) => {
@@ -179,7 +177,7 @@ describe('compositor-proxy io rest api', () => {
       .expect(200)
       .expect((res) => expect(res).toSatisfyApiSpec())
       .end((err, res) => {
-        fs.close(handle)
+        close(handle)
         done(err, res)
       })
   })
@@ -239,7 +237,7 @@ describe('compositor-proxy io rest api', () => {
       //.expect((res) => expect(res).toSatisfyApiSpec())
       .expect(Buffer.from([1, 2]))
       .end((err, res) => {
-        fs.close(handle)
+        close(handle)
         done(err, res)
       })
   })
@@ -301,7 +299,8 @@ describe('compositor-proxy io rest api', () => {
     // Given
     const pipefds = new Uint32Array(2)
     makePipe(pipefds)
-    const [readPipeHandle, writePipeHandle] = pipefds
+    const readPipeHandle = pipefds[0]
+    const writePipeHandle = pipefds[1]
     const sendBuffer = Buffer.from([1, 2, 3])
     // When
     request(host)
@@ -313,11 +312,11 @@ describe('compositor-proxy io rest api', () => {
       .expect(200)
       .expect((res) => expect(res).toSatisfyApiSpec())
       .end((err, res) => {
-        fs.close(pipefds[0])
-        fs.close(pipefds[1])
+        close(pipefds[0])
+        close(pipefds[1])
       })
 
-    fs.readFile(readPipeHandle, (err, data) => {
+    readFile(readPipeHandle, (err, data) => {
       if (err) {
         done(err)
         return
@@ -331,7 +330,8 @@ describe('compositor-proxy io rest api', () => {
     // Given
     const pipefds = new Uint32Array(2)
     makePipe(pipefds)
-    const [readPipeHandle, writePipeHandle] = pipefds
+    const readPipeHandle = pipefds[0]
+    const writePipeHandle = pipefds[1]
     // send 8MB of data
     const buffer = Buffer.allocUnsafe(8 * 1024 * 1024).fill('ABC')
     // When
@@ -344,11 +344,11 @@ describe('compositor-proxy io rest api', () => {
       .expect(200)
       .expect((res) => expect(res).toSatisfyApiSpec())
       .end((err, res) => {
-        fs.close(pipefds[0])
-        fs.close(pipefds[1])
+        close(pipefds[0])
+        close(pipefds[1])
       })
 
-    fs.readFile(readPipeHandle, (err, data) => {
+    readFile(readPipeHandle, (err, data) => {
       if (err) {
         done(err)
         return
@@ -403,13 +403,14 @@ describe('compositor-proxy io rest api', () => {
     // Given
     const pipefds = new Uint32Array(2)
     makePipe(pipefds)
-    const [readPipeHandle, writePipeHandle] = pipefds
+    const readPipeHandle = pipefds[0]
+    const writePipeHandle = pipefds[1]
     const buffer = Buffer.from([1, 2, 3])
 
     // When
-    fs.writeFile(writePipeHandle, buffer, null, (err) => {
+    writeFile(writePipeHandle, buffer, null, (err) => {
       if (err) done(err)
-      fs.close(writePipeHandle)
+      close(writePipeHandle)
     })
 
     request(host)
@@ -428,13 +429,14 @@ describe('compositor-proxy io rest api', () => {
     // Given
     const pipeFDs = new Uint32Array(2)
     makePipe(pipeFDs)
-    const [readPipeHandle, writePipeHandle] = pipeFDs
+    const readPipeHandle = pipeFDs[0]
+    const writePipeHandle = pipeFDs[1]
     const buffer = Buffer.from([1, 2, 3])
 
     // When
-    fs.writeFile(writePipeHandle, buffer, null, (err) => {
+    writeFile(writePipeHandle, buffer, null, (err) => {
       if (err) done(err)
-      fs.close(writePipeHandle)
+      close(writePipeHandle)
     })
 
     const chunks: any[] = []
@@ -471,47 +473,46 @@ describe('compositor-proxy io rest api', () => {
     // Given
     const pipefds = new Uint32Array(2)
     makePipe(pipefds)
-    const [readPipeHandle, writePipeHandle] = pipefds
+    const readPipeHandle = pipefds[0]
+    const writePipeHandle = pipefds[1]
     // send 8MB of data
     const buffer = Buffer.allocUnsafe(8 * 1024 * 1024).fill('ABC')
 
     // When
-    fs.writeFile(writePipeHandle, buffer, null, (err) => {
+    writeFile(writePipeHandle, buffer, null, (err) => {
       if (err) {
         done(err)
       }
-      fs.close(writePipeHandle)
+      close(writePipeHandle)
     })
-    http
-      .request(
-        {
-          hostname: 'localhost',
-          port: 8888,
-          path: `/fd/${readPipeHandle}/stream`,
-          method: 'GET',
-          headers: {
-            ['X-Compositor-Session-Id']: compositorSessionId,
-          },
+    httpRequest(
+      {
+        hostname: 'localhost',
+        port: 8888,
+        path: `/fd/${readPipeHandle}/stream`,
+        method: 'GET',
+        headers: {
+          ['X-Compositor-Session-Id']: compositorSessionId,
         },
-        (res) => {
-          res.pause()
-          const receiveChunks: Buffer[] = []
-          const intervalId = setInterval(() => {
-            // slowly read 1MB chunks to trigger backpressure
-            const result: Buffer = res.read(1024 * 1024)
-            if (result) {
-              receiveChunks.push(result)
-            }
-          }, 250)
-          res.on('close', () => {
-            clearInterval(intervalId)
-            const chunksLength = Buffer.concat(receiveChunks).byteLength
-            expect(chunksLength).toBe(buffer.byteLength)
-            done()
-          })
-        },
-      )
-      .end()
+      },
+      (res) => {
+        res.pause()
+        const receiveChunks: Buffer[] = []
+        const intervalId = setInterval(() => {
+          // slowly read 1MB chunks to trigger backpressure
+          const result: Buffer = res.read(1024 * 1024)
+          if (result) {
+            receiveChunks.push(result)
+          }
+        }, 250)
+        res.on('close', () => {
+          clearInterval(intervalId)
+          const chunksLength = Buffer.concat(receiveChunks).byteLength
+          expect(chunksLength).toBe(buffer.byteLength)
+          done()
+        })
+      },
+    ).end()
   })
 
   it('checks authorization when streaming data from a webfd', (done) => {

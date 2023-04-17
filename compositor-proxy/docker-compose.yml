@@ -8,6 +8,8 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
+    command:
+      - --static-session-id=test123
     privileged: false
     user: "1000:1000"
     ipc: host
@@ -23,7 +25,6 @@ services:
       - /dev/dri/card0:/dev/dri/card0
     ports:
       - "8081:8081/tcp"
-      - "4222:4222/udp"
     environment:
       COMPOSITOR_SESSION_ID: test123
       XDG_RUNTIME_DIR: /xdg-runtime-dir

@@ -10,15 +10,18 @@ Next, simply run:
 
 - `yarn install`
 - `yarn generate`
-- `yarn build`
 
 ## Usage
 
 Inside `compositor-module` directory run.
 - `yarn start`
 
-This will start a new demo compositor implementation. 
+This will start a new example compositor implementation. 
 
-There are 2 checkboxes that will connect to the compositor-proxy instance as indicated by 
-the freely adjustable text input. The last text input can launch a (experimental) web app client that runs entirely inside your browser.
-There are 2 demo web apps available `demo-webapp` and `demo-webapp-wgpu` running on `localhost:9000` and `localhost:9001` respectively.
+There are 2 inputs available to launch applications. 
+
+The first one  will connect to a compositor-proxy instance as indicated by 
+the freely adjustable text input in the form of `domain:port`.
+
+The last text input can launch (experimental) web app clients that runs entirely inside your browser.
+There are also 2 demo web apps available `demo-webapp` and `demo-webapp-wgpu` that you can run by going into the respective directory running on `http://localhost:9000` and `http://localhost:9001` respectively.

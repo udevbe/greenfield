@@ -1,23 +1,34 @@
 import Ajv from 'ajv'
 import addFormats from 'ajv-formats'
-import yaml from 'js-yaml'
-import fs from 'fs'
-import path from 'path'
+import { load } from 'js-yaml'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { Configschema } from './@types/config'
 
 import configschema from './configschema.json'
+import { args } from './Args'
+import Logger from 'pino'
+
+const logger = Logger({
+  name: 'config',
+})
 
 const ajv = new Ajv()
 addFormats(ajv)
 
 const validate = ajv.compile(configschema)
 
-const configLocation = process.env.CONFIG ?? path.join(__dirname, 'config.yaml')
-console.log(`Reading configuration from: ${configLocation}`)
+let configPath = args['config-path']
+if (configPath) {
+  logger.info(`Reading configuration from: ${configPath}`)
+} else {
+  logger.info('Using build-in default configuration')
+  configPath = join(__dirname, 'config.yaml')
+}
 
-const configFileContents = fs.readFileSync(configLocation, 'utf8')
+const configFileContents = readFileSync(configPath, 'utf8')
 
-const rawConfig = yaml.load(configFileContents)
+const rawConfig = load(configFileContents)
 const isValid = validate(rawConfig)
 if (!isValid) {
   throw new Error(`Error validating configuration: ${JSON.stringify(validate.errors)}`)
