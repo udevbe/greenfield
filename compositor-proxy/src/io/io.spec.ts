@@ -2,7 +2,7 @@
 import request from 'supertest'
 import { us_listen_socket, us_listen_socket_close } from 'uWebSockets.js'
 import { createApp } from '../App'
-import { CompositorProxySession, createCompositorProxySession } from '../CompositorProxySession'
+import { ProxySession, createProxySession } from '../ProxySession'
 import jestOpenAPI from 'jest-openapi'
 import { resolve } from 'path'
 import { ProxyFD } from './types'
@@ -18,19 +18,19 @@ describe('compositor-proxy i/o', () => {
   const ownHostName = '0.0.0.0'
   const ownBasePath = `http://localhost:${ownPort}`
   let ownApp: us_listen_socket
-  let ownCompositorProxySession: CompositorProxySession
+  let ownCompositorProxySession: ProxySession
 
   const otherPort = 8889
   const otherHostName = '0.0.0.0'
   const otherBasePath = `http://localhost:${otherPort}`
   let otherApp: us_listen_socket
-  let otherCompositorProxySession: CompositorProxySession
+  let otherCompositorProxySession: ProxySession
 
   beforeEach(async () => {
-    ownCompositorProxySession = createCompositorProxySession(compositorSessionId)
+    ownCompositorProxySession = createProxySession(compositorSessionId)
     ownApp = await createApp(ownCompositorProxySession, { host: ownHostName, port: ownPort })
 
-    otherCompositorProxySession = createCompositorProxySession(compositorSessionId)
+    otherCompositorProxySession = createProxySession(compositorSessionId)
     otherApp = await createApp(otherCompositorProxySession, { host: otherHostName, port: otherPort })
   })
 
@@ -88,10 +88,10 @@ describe('compositor-proxy io rest api', () => {
   const host = `${hostName}:${port}`
   const compositorSessionId = 'test_compositor_session_id'
   let app: us_listen_socket
-  let compositorProxySession: CompositorProxySession
+  let compositorProxySession: ProxySession
 
   beforeEach(async () => {
-    compositorProxySession = createCompositorProxySession(compositorSessionId)
+    compositorProxySession = createProxySession(compositorSessionId)
     app = await createApp(compositorProxySession, { host: hostName, port })
   })
 

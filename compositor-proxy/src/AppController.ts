@@ -1,4 +1,4 @@
-import type { CompositorProxySession } from './CompositorProxySession'
+import type { ProxySession } from './ProxySession'
 import type { HttpRequest, HttpResponse } from 'uWebSockets.js'
 import { read, close, createReadStream, createWriteStream } from 'fs'
 import { TRANSFER_CHUNK_SIZE } from './io/ProxyInputOutput'
@@ -35,8 +35,8 @@ export function OPTIONSPreflightRequest(allowMethods: string) {
   }
 }
 
-export function POSTMkFifo(compositorProxySession: CompositorProxySession, res: HttpResponse) {
-  const jsonPipe = JSON.stringify(compositorProxySession.nativeCompositorSession.webFS.mkpipe())
+export function POSTMkFifo(proxySession: ProxySession, res: HttpResponse) {
+  const jsonPipe = JSON.stringify(proxySession.nativeCompositorSession.webFS.mkpipe())
   res
     .writeStatus('201 Created')
     .writeHeader('Access-Control-Allow-Origin', allowOrigin)
@@ -44,7 +44,7 @@ export function POSTMkFifo(compositorProxySession: CompositorProxySession, res: 
     .end(jsonPipe)
 }
 
-export function POSTMkstempMmap(compositorProxySession: CompositorProxySession, res: HttpResponse) {
+export function POSTMkstempMmap(proxySession: ProxySession, res: HttpResponse) {
   const bufferChunks: Uint8Array[] = []
 
   res.onAborted(() => logger.info('POST /mkstemp-mmap aborted. Ignoring.'))
@@ -62,7 +62,7 @@ export function POSTMkstempMmap(compositorProxySession: CompositorProxySession, 
             .end('Data in HTTP request body can not be empty.')
           return
         }
-        const jsonShmWebFD = JSON.stringify(compositorProxySession.nativeCompositorSession.webFS.mkstempMmap(buffer))
+        const jsonShmWebFD = JSON.stringify(proxySession.nativeCompositorSession.webFS.mkstempMmap(buffer))
         res
           .writeStatus('201 Created')
           .writeHeader('Access-Control-Allow-Origin', allowOrigin)
@@ -87,7 +87,7 @@ function asNumber(stringParam: string | null | undefined): number | undefined {
 }
 
 export function GETWebFD(
-  compositorProxySession: CompositorProxySession,
+  proxySession: ProxySession,
   httpResponse: HttpResponse,
   httpRequest: HttpRequest,
   [fdParam]: string[],
@@ -174,7 +174,7 @@ export function GETWebFD(
 }
 
 export function DELWebFD(
-  compositorProxySession: CompositorProxySession,
+  proxySession: ProxySession,
   httpResponse: HttpResponse,
   httpRequest: HttpRequest,
   [fdParam]: string[],
@@ -285,12 +285,7 @@ function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readab
     })
 }
 
-export function GETWebFDStream(
-  compositorProxySession: CompositorProxySession,
-  res: HttpResponse,
-  req: HttpRequest,
-  [fdParam]: string[],
-) {
+export function GETWebFDStream(proxySession: ProxySession, res: HttpResponse, req: HttpRequest, [fdParam]: string[]) {
   const fd = asNumber(fdParam)
   const chunkSize = asNumber(new URLSearchParams(req.getQuery()).get('chunkSize')) ?? TRANSFER_CHUNK_SIZE
   if (fd === undefined) {
@@ -360,12 +355,7 @@ function pipeHttpRequestToWritable(httpResponse: HttpResponse, writable: Writabl
     })
 }
 
-export function PUTWebFDStream(
-  compositorProxySession: CompositorProxySession,
-  res: HttpResponse,
-  req: HttpRequest,
-  [fdParam]: string[],
-) {
+export function PUTWebFDStream(proxySession: ProxySession, res: HttpResponse, req: HttpRequest, [fdParam]: string[]) {
   const fd = asNumber(fdParam)
   if (fd === undefined) {
     // TODO log error
@@ -402,7 +392,7 @@ function readJson<T>(res: HttpResponse) {
 }
 
 export async function POSTEncoderKeyframe(
-  compositorProxySession: CompositorProxySession,
+  proxySession: ProxySession,
   httpResponse: HttpResponse,
   httpRequest: HttpRequest,
   [clientIdParam, surfaceIdParam]: string[],
@@ -423,7 +413,7 @@ export async function POSTEncoderKeyframe(
   )
   // TODO validate keyframeRequest
 
-  const clientEntry = compositorProxySession.nativeCompositorSession.clients.find(
+  const clientEntry = proxySession.nativeCompositorSession.clients.find(
     (clientEntry) => clientEntry.clientId === clientId,
   )
 

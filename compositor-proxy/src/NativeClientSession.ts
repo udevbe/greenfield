@@ -78,7 +78,7 @@ export function createNativeClientSession(
       destroyListener()
     }
     if ((nativeClientSession.hasCompositorState = true)) {
-      sendClientConnectionsDisconnect(id)
+      sendClientConnectionsDisconnect(id, nativeCompositorSession.compositorSessionId)
     }
     nativeClientSession.destroyListeners = []
     nativeClientSession.wlClient = undefined
@@ -148,7 +148,7 @@ export class NativeClientSession {
 
   constructor(
     public wlClient: unknown,
-    private readonly nativeCompositorSession: NativeCompositorSession,
+    public readonly nativeCompositorSession: NativeCompositorSession,
     private readonly protocolDataChannel: Channel,
     public readonly id: string,
     private pendingWireMessages: Uint32Array[] = [],

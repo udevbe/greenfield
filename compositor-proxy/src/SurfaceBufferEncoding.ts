@@ -31,6 +31,7 @@ function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor): FrameF
     const feedbackChannel = createFeedbackChannel(
       wlSurfaceInterceptor.userData.nativeClientSession.id,
       wlSurfaceInterceptor.id,
+      wlSurfaceInterceptor.userData.nativeClientSession.nativeCompositorSession.compositorSessionId,
     )
     const frameFeedback = new FrameFeedback(
       wlSurfaceInterceptor.wlClient,
@@ -47,7 +48,10 @@ function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor): FrameF
 
 function ensureFrameDataChannel(wlSurfaceInterceptor: wlSurfaceInterceptor): Channel {
   if (wlSurfaceInterceptor.frameDataChannel === undefined) {
-    wlSurfaceInterceptor.frameDataChannel = createFrameDataChannel(wlSurfaceInterceptor.userData.nativeClientSession.id)
+    wlSurfaceInterceptor.frameDataChannel = createFrameDataChannel(
+      wlSurfaceInterceptor.userData.nativeClientSession.id,
+      wlSurfaceInterceptor.userData.nativeClientSession.nativeCompositorSession.compositorSessionId,
+    )
     wlSurfaceInterceptor.userData.nativeClientSession.destroyListeners.push(() => {
       wlSurfaceInterceptor.frameDataChannel.close()
     })

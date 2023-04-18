@@ -21,7 +21,7 @@ export class XWaylandSession {
   /**
    * Don't await as this function will block until an XClient is connecting!
    */
-  async createXWaylandListenerSocket(): Promise<void> {
+  async createXWaylandListenerSocket(compositorSessionId: string): Promise<void> {
     // Will only continue once an XWayland server is launching which is triggered by an X client trying to connect.
     const { onXWaylandStarting, onDestroyed } = this.listenXWayland()
 
@@ -55,7 +55,7 @@ export class XWaylandSession {
         return
       }
 
-      const xwmDataChannel = createXWMDataChannel(xWaylandClient.clientId)
+      const xwmDataChannel = createXWMDataChannel(xWaylandClient.clientId, compositorSessionId)
       this.upsertXWMConnection(xwmDataChannel, wmFd).catch((e: any) => {
         logger.error(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
         logger.error('error object stack: ')
