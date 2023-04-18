@@ -28,10 +28,10 @@ describe('compositor-proxy i/o', () => {
 
   beforeEach(async () => {
     ownCompositorProxySession = createProxySession(compositorSessionId)
-    ownApp = await createApp(ownCompositorProxySession, { host: ownHostName, port: ownPort })
+    ownApp = await createApp({ host: ownHostName, port: ownPort })
 
     otherCompositorProxySession = createProxySession(compositorSessionId)
-    otherApp = await createApp(otherCompositorProxySession, { host: otherHostName, port: otherPort })
+    otherApp = await createApp({ host: otherHostName, port: otherPort })
   })
 
   afterEach(async () => {
@@ -92,7 +92,7 @@ describe('compositor-proxy io rest api', () => {
 
   beforeEach(async () => {
     compositorProxySession = createProxySession(compositorSessionId)
-    app = await createApp(compositorProxySession, { host: hostName, port })
+    app = await createApp({ host: hostName, port })
   })
 
   afterEach(async () => {

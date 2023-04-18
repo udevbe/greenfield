@@ -33,20 +33,20 @@ this compositor-proxy.
 The `run.sh` script accepts several arguments: 
 
 ```
-        Usage
-          $ compositor-proxy <options>
+	Usage
+	  $ compositor-proxy <options>
 
-        Options
-          --help, Print this help text.
-          --static-session-id=...,  Mandatory. Only use and accept this session id when communicating.
-          --config-location=...,  Use a custom configuration file located at this path.
+	Options
+	  --help, Print this help text.
+	  --static-session-id=..., Use and accept this and only this session id when communicating.
+	  --config-path=...,  Use a configuration file located at this file path.
 
-        Examples
-          $ compositor-proxy --static-session-id=test123 --config-location=./config.yaml
+	Examples
+	  $ compositor-proxy --static-session-id=test123 --config-path=./config.yaml
 ```
 
 ## Config
-The compositor-proxy can be configured by supplying it a configuration file path using `--config-location=`.
+The compositor-proxy can be configured by supplying it a configuration file path using `--config-path=`.
 You will at least need to set the `public.baseURL` when not running locally.
 
 ```yaml
