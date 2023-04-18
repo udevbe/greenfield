@@ -10,7 +10,7 @@ import {
   RemoteCompositorConnector,
   WebCompositorConnector,
 } from '../../src'
-import { Client, ClientProps } from './Client'
+import { ClientProps } from './Client'
 import { render } from 'preact'
 import { Window, WindowProps } from './Window'
 
@@ -58,8 +58,11 @@ export async function main() {
   await wasmLibs
 
   // create new compositor context
-  const compositorSessionId = 'test123'
-  const session = await createCompositorSession(compositorSessionId)
+  const arr = new Uint8Array(8)
+  window.crypto.getRandomValues(arr)
+  const id = Array.from(arr, (v) => v.toString(16).padStart(2, '0')).join('')
+
+  const session = await createCompositorSession(id)
   const proxyConnector = createConnector(session, 'remote')
   const webConnector = createConnector(session, 'web')
 

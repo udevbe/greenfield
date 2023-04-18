@@ -131,7 +131,7 @@ export class NativeCompositorSession {
     logger.info(`New Wayland client.`)
 
     const clientId = newClientId()
-    const protocolChannel = createProtocolChannel(clientId)
+    const protocolChannel = createProtocolChannel(clientId, this.compositorSessionId)
     const nativeClientSession = createNativeClientSession(wlClient, this, protocolChannel, clientId)
     const clientEntry = {
       nativeClientSession,

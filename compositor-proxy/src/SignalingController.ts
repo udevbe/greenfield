@@ -1,16 +1,12 @@
 import { createLogger } from './Logger'
 import type { WebSocket, WebSocketBehavior } from 'uWebSockets.js'
 import { URLSearchParams } from 'url'
-import type { CompositorProxySession } from './CompositorProxySession'
 import { randomBytes } from 'crypto'
 import { config } from './config'
 import type { ChannelDesc, WebSocketChannel } from './Channel'
+import { createProxySession, findProxySessionById, SignalingUserData } from './ProxySession'
 
 const logger = createLogger('compositor-proxy-signaling')
-
-type UserData = {
-  searchParams: URLSearchParams
-}
 
 const enum SignalingMessageType {
   IDENTITY,
@@ -49,46 +45,46 @@ type SignalingMessage =
 const textDecoder = new TextDecoder()
 const textEncoder = new TextEncoder()
 
-let openWs: WebSocket<UserData> | null = null
 const identity = randomBytes(8).toString('hex')
 const peerIdentity: SignalingMessage = {
   type: SignalingMessageType.IDENTITY,
   identity,
 }
 const peerIdentityMessage = textEncoder.encode(JSON.stringify(peerIdentity))
-let compositorPeerIdentity: string | undefined
 
-let sendBuffer: Uint8Array[] = []
-
-function cachedSend(message: Uint8Array) {
-  openWs?.send(message, true) ?? sendBuffer.push(message)
-}
-
-function flushCachedSends(openWs: WebSocket<UserData>) {
-  if (sendBuffer.length === 0) {
-    return
-  }
-  for (const message of sendBuffer) {
-    openWs.send(message, true)
-  }
-  sendBuffer = []
-}
-
-export function signalHandling(compositorProxySession: CompositorProxySession): WebSocketBehavior<UserData> {
+export function signalHandling(): WebSocketBehavior<SignalingUserData> {
   logger.info(`Listening for signaling connections using identity: ${peerIdentity.identity}`)
-
-  const resetPeerConnection = (killAllClients: boolean) => {
-    compositorProxySession.resetPeerConnectionState(killAllClients)
-  }
 
   return {
     sendPingsAutomatically: true,
     upgrade(res, req, context) {
       /* This immediately calls open handler, you must not use res after this call */
+      const searchParams = new URLSearchParams(req.getQuery())
+      const compositorSessionId = searchParams.get('compositorSessionId')
+      if (compositorSessionId === null) {
+        const message = '403 Missing compositorSessionId query parameter.'
+        res.end(message, true)
+        return
+      }
+
+      let proxySession = findProxySessionById(compositorSessionId)
+      if (proxySession === undefined) {
+        // TODO we probably want to check if the remote end is allowed to create a new proxy session
+        proxySession = createProxySession(compositorSessionId)
+      }
+
+      if (proxySession.signalingWebSocket !== undefined) {
+        const message = `403 Already have a signaling connection.`
+        res.end(message, true)
+        return
+      }
+
+      const userData: SignalingUserData = {
+        proxySession,
+      }
+
       res.upgrade(
-        {
-          searchParams: new URLSearchParams(req.getQuery()),
-        },
+        userData,
         /* Spell these correctly */
         req.getHeader('sec-websocket-key'),
         req.getHeader('sec-websocket-protocol'),
@@ -96,43 +92,35 @@ export function signalHandling(compositorProxySession: CompositorProxySession): 
         context,
       )
     },
-    open(ws: WebSocket<UserData>) {
-      if (openWs !== null) {
-        ws.close()
-        return
-      }
-
-      const { searchParams } = ws.getUserData()
-      if (searchParams.get('compositorSessionId') !== compositorProxySession.compositorSessionId) {
-        const message = 'Bad or missing compositorSessionId query parameter.'
-        ws.end(4403, message)
-        return
-      }
+    open(ws: WebSocket<SignalingUserData>) {
+      const { proxySession } = ws.getUserData()
 
       logger.info(`New signaling connection from ${textDecoder.decode(ws.getRemoteAddressAsText())}.`)
 
       ws.send(peerIdentityMessage, true)
-      openWs = ws
-      flushCachedSends(ws)
+      proxySession.signalingWebSocket = ws
+      proxySession.flushCachedSignalingSends()
     },
-    message(ws: WebSocket<UserData>, message: ArrayBuffer) {
+    message(ws: WebSocket<SignalingUserData>, message: ArrayBuffer) {
       const messageData = textDecoder.decode(message)
       const messageObject = JSON.parse(messageData)
+      const { proxySession } = ws.getUserData()
 
       if (isSignalingMessage(messageObject)) {
         switch (messageObject.type) {
           case SignalingMessageType.IDENTITY: {
-            logger.info(`Received compositor signaling identity: ${messageObject.identity}.`)
-            if (compositorPeerIdentity && messageObject.identity !== compositorPeerIdentity) {
+            logger.info(`Received compositor identity: ${messageObject.identity}.`)
+
+            if (proxySession.compositorPeerIdentity && messageObject.identity !== proxySession.compositorPeerIdentity) {
               logger.info(
-                `Compositor signaling identity has changed. Old: ${compositorPeerIdentity}. New: ${messageObject.identity}. Creating new peer connection.`,
+                `Compositor signaling identity has changed. Old: ${proxySession.compositorPeerIdentity}. New: ${messageObject.identity}. Creating new peer connection.`,
               )
               // Remote compositor has restarted. Shutdown the old peer connection before handling any signaling.
-              compositorPeerIdentity = messageObject.identity
-              compositorProxySession.resetPeerConnectionState(false)
-            } else if (compositorPeerIdentity === undefined) {
+              proxySession.compositorPeerIdentity = messageObject.identity
+              proxySession.resetPeerConnectionState(false)
+            } else if (proxySession.compositorPeerIdentity === undefined) {
               // Connecting to remote proxy for the first time
-              compositorPeerIdentity = messageObject.identity
+              proxySession.compositorPeerIdentity = messageObject.identity
             } // else re-connecting, ignore.
             break
           }
@@ -142,20 +130,20 @@ export function signalHandling(compositorProxySession: CompositorProxySession): 
               data: messageObject.data,
               identity,
             }
-            cachedSend(textEncoder.encode(JSON.stringify(pongMessage)))
+            proxySession.signalingSend(textEncoder.encode(JSON.stringify(pongMessage)))
           }
         }
       } else {
         throw new Error(`BUG. Received an unknown message: ${JSON.stringify(messageObject)}`)
       }
     },
-    close(ws: WebSocket<UserData>, code: number, message: ArrayBuffer) {
+    close(ws: WebSocket<SignalingUserData>, code: number, message: ArrayBuffer) {
       logger.info(`Signaling connection closed. Code: ${code}. Message: ${textDecoder.decode(message)}`)
-      openWs = null
+      const { proxySession } = ws.getUserData()
+      proxySession.signalingWebSocket = undefined
       if (code === 4001) {
         // user closed connection
-        compositorPeerIdentity = undefined
-        compositorProxySession.resetPeerConnectionState(true)
+        proxySession.close()
       }
     },
   }
@@ -172,16 +160,15 @@ type ConnectionUserData = {
   channel: WebSocketChannel
 }
 
-export function connectionHandling(
-  compositorProxySession: CompositorProxySession,
-): WebSocketBehavior<ConnectionUserData> {
+export function connectionHandling(): WebSocketBehavior<ConnectionUserData> {
   return {
     sendPingsAutomatically: true,
     maxPayloadLength: 256 * 1450,
     upgrade(res, req, context) {
       const searchParams = new URLSearchParams(req.getQuery())
 
-      if (searchParams.get('compositorSessionId') !== compositorProxySession.compositorSessionId) {
+      const compositorSessionId = searchParams.get('compositorSessionId')
+      if (compositorSessionId && findProxySessionById(compositorSessionId) === undefined) {
         const message = 'Bad or missing compositorSessionId query parameter.'
         res.end(message, true)
         return
@@ -237,22 +224,24 @@ export function sendConnectionRequest(channel: WebSocketChannel) {
     data: { url: url.href, desc: channel.desc },
   }
   channels[channel.desc.id] = channel
-  cachedSend(textEncoder.encode(JSON.stringify(connectionRequest)))
+  findProxySessionById(channel.compositorSessionId)?.signalingSend(
+    textEncoder.encode(JSON.stringify(connectionRequest)),
+  )
 }
 
-export function sendChannelDisconnect(channelId: string) {
+export function sendChannelDisconnect(channelId: string, compositorSessionId: string) {
   const clientDisconnect: SignalingMessage = {
     type: SignalingMessageType.DISCONNECT,
     identity,
     data: channelId,
   }
-  cachedSend(textEncoder.encode(JSON.stringify(clientDisconnect)))
+  findProxySessionById(compositorSessionId)?.signalingSend(textEncoder.encode(JSON.stringify(clientDisconnect)))
 }
 
-export function sendClientConnectionsDisconnect(clientId: string) {
+export function sendClientConnectionsDisconnect(clientId: string, compositorSessionId: string) {
   for (const [channelId, channel] of Object.entries(channels)) {
     if (channel.desc.clientId === clientId) {
-      sendChannelDisconnect(channelId)
+      sendChannelDisconnect(channelId, compositorSessionId)
     }
   }
 }

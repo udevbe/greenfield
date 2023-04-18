@@ -50,55 +50,57 @@ export interface WebSocketChannel extends Channel {
   doClose(): void
 
   ws?: WebSocket<any>
+
+  readonly compositorSessionId: string
 }
 
-function createChannel(desc: ChannelDesc) {
+function createChannel(desc: ChannelDesc, compositorSessionId: string) {
   if (desc.channelType === ChannelType.ARQ) {
-    return new ARQChannel(desc)
+    return new ARQChannel(desc, compositorSessionId)
   } else if (desc.channelType === ChannelType.SIMPLE) {
-    return new SimpleChannel(desc)
+    return new SimpleChannel(desc, compositorSessionId)
   } else {
     throw new Error(`BUG. Unknown channel type ${JSON.stringify(desc)}`)
   }
 }
 
-export function createXWMDataChannel(clientId: string): Channel {
+export function createXWMDataChannel(clientId: string, compositorSessionId: string): Channel {
   const desc: ChannelDesc = {
     id: `${nextChannelId++}`,
     type: ChannelDescriptionType.XWM,
     clientId,
     channelType: ChannelType.ARQ,
   }
-  const channel = createChannel(desc)
+  const channel = createChannel(desc, compositorSessionId)
   sendConnectionRequest(channel)
   return channel
 }
 
-export function createFrameDataChannel(clientId: string): Channel {
+export function createFrameDataChannel(clientId: string, compositorSessionId: string): Channel {
   const desc: ChannelDesc = {
     id: `${nextChannelId++}`,
     type: ChannelDescriptionType.FRAME,
     clientId,
     channelType: ChannelType.ARQ,
   }
-  const channel = createChannel(desc)
+  const channel = createChannel(desc, compositorSessionId)
   sendConnectionRequest(channel)
   return channel
 }
 
-export function createProtocolChannel(clientId: string): Channel {
+export function createProtocolChannel(clientId: string, compositorSessionId: string): Channel {
   const desc: ChannelDesc = {
     id: `${nextChannelId++}`,
     type: ChannelDescriptionType.PROTOCOL,
     clientId,
     channelType: ChannelType.ARQ,
   }
-  const channel = createChannel(desc)
+  const channel = createChannel(desc, compositorSessionId)
   sendConnectionRequest(channel)
   return channel
 }
 
-export function createFeedbackChannel(clientId: string, surfaceId: number): Channel {
+export function createFeedbackChannel(clientId: string, surfaceId: number, compositorSessionId: string): Channel {
   const desc: FeedbackChannelDesc = {
     id: `${nextChannelId++}`,
     type: ChannelDescriptionType.FEEDBACK,
@@ -106,7 +108,7 @@ export function createFeedbackChannel(clientId: string, surfaceId: number): Chan
     surfaceId,
     channelType: ChannelType.SIMPLE,
   }
-  const channel = createChannel(desc)
+  const channel = createChannel(desc, compositorSessionId)
   sendConnectionRequest(channel)
   return channel
 }
@@ -123,7 +125,7 @@ export class SimpleChannel implements WebSocketChannel {
   }
   ws?: WebSocket<any>
 
-  constructor(readonly desc: ChannelDesc) {}
+  constructor(readonly desc: ChannelDesc, readonly compositorSessionId: string) {}
 
   doOpen(ws: WebSocket<any>): void {
     this.ws = ws
@@ -151,7 +153,7 @@ export class SimpleChannel implements WebSocketChannel {
 
   close(): void {
     this.ws = undefined
-    sendChannelDisconnect(this.desc.id)
+    sendChannelDisconnect(this.desc.id, this.compositorSessionId)
   }
 }
 
@@ -169,7 +171,7 @@ export class ARQChannel implements WebSocketChannel {
   private checkInterval?: NodeJS.Timer
   ws?: WebSocket<any>
 
-  constructor(public readonly desc: ChannelDesc) {
+  constructor(public readonly desc: ChannelDesc, readonly compositorSessionId: string) {
     const kcp = new Kcp(+this.desc.id, this)
     kcp.setMtu(MTU) // webrtc datachannel MTU
     kcp.setWndSize(SND_WINDOW_SIZE, RCV_WINDOW_SIZE)
@@ -201,7 +203,7 @@ export class ARQChannel implements WebSocketChannel {
 
   close(): void {
     this.ws = undefined
-    sendChannelDisconnect(this.desc.id)
+    sendChannelDisconnect(this.desc.id, this.compositorSessionId)
   }
 
   get isOpen() {

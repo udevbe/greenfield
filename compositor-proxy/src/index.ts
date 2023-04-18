@@ -1,24 +1,15 @@
 import { unlink } from 'fs/promises'
 
 import { us_listen_socket_close } from 'uWebSockets.js'
-import { createCompositorProxySession } from './CompositorProxySession'
 import { config } from './config'
 import { createLogger } from './Logger'
 import { initSurfaceBufferEncoding } from './SurfaceBufferEncoding'
 import { createApp } from './App'
-import { args } from './Args'
+import { closeAllProxySessions } from './ProxySession'
 
 const logger = createLogger('main')
 
 logger.info('Starting compositor proxy.')
-const compositorSessionId = args['static-session-id']
-if (compositorSessionId === null) {
-  logger.error('--static-session-id= must be set. Run with --help for options')
-  process.exit(1)
-}
-logger.info('Using a static session id.')
-
-const compositorProxySession = createCompositorProxySession(compositorSessionId)
 
 function deleteStartingFile() {
   unlink('/var/run/compositor-proxy/starting').catch(() => {
@@ -37,12 +28,12 @@ async function main() {
 
   const port = config.server.http.bindPort
   const host = config.server.http.bindIP
-  const listenSocket = await createApp(compositorProxySession, { host, port })
+  const listenSocket = await createApp({ host, port })
 
   process.on('SIGTERM', async () => {
     logger.info('Received SIGTERM. Closing connections.')
     us_listen_socket_close(listenSocket)
-    compositorProxySession.nativeCompositorSession.destroy()
+    closeAllProxySessions()
     logger.info('All Connections closed. Goodbye.')
     process.exit()
   })
