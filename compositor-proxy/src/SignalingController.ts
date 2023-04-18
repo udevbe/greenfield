@@ -5,6 +5,7 @@ import { randomBytes } from 'crypto'
 import { config } from './config'
 import type { ChannelDesc, WebSocketChannel } from './Channel'
 import { createProxySession, findProxySessionById, SignalingUserData } from './ProxySession'
+import { args } from './Args'
 
 const logger = createLogger('compositor-proxy-signaling')
 
@@ -63,6 +64,12 @@ export function signalHandling(): WebSocketBehavior<SignalingUserData> {
       const compositorSessionId = searchParams.get('compositorSessionId')
       if (compositorSessionId === null) {
         const message = '403 Missing compositorSessionId query parameter.'
+        res.end(message, true)
+        return
+      }
+
+      if (args['static-session-id'] && args['static-session-id'] !== compositorSessionId) {
+        const message = '403 Bad compositorSessionId query parameter.'
         res.end(message, true)
         return
       }

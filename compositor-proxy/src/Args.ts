@@ -1,16 +1,34 @@
+const argv = [...process.argv.slice(2)]
+
+function consumeArg(arg: string) {
+  const i = argv.indexOf(arg)
+  if (i >= 0) {
+    argv.splice(i, 1)
+  }
+}
+
 function parseArgValue<T extends keyof ArgTypes>(
   key: T,
   defaultValue: ArgTypes[T] = null,
 ): { [key in T]: ArgTypes[T] } {
   // Return true if the key exists and a value is defined
-  // @ts-ignore
-  if (process.argv.includes(`--${key}`)) return { [`${key}`]: true }
-  const value = process.argv.find((element) => element.startsWith(`--${key}=`))
+  const booleanArg = `--${key}`
+  if (argv.includes(booleanArg)) {
+    consumeArg(booleanArg)
+    // @ts-ignore
+    return { [`${key}`]: true }
+  }
+
+  const valueArg = argv.find((element) => element.startsWith(`--${key}=`))
   // Return null if the key does not exist and a value is not defined
+  if (valueArg === undefined) {
+    // @ts-ignore
+    return { [`${key}`]: defaultValue }
+  }
+
+  consumeArg(valueArg)
   // @ts-ignore
-  if (value === undefined) return { [`${key}`]: defaultValue }
-  // @ts-ignore
-  return { [`${key}`]: value.replace(`--${key}=`, '') }
+  return { [`${key}`]: valueArg.replace(`--${key}=`, '') }
 }
 
 type BooleanValue = boolean | null
@@ -18,12 +36,14 @@ type StringValue = string | null
 
 type ArgTypes = Readonly<{
   help: BooleanValue
+  'static-session-id': StringValue
   'config-path': StringValue
 }>
 
 export const args: ArgTypes = {
   ...parseArgValue('help'),
   ...parseArgValue('config-path'),
+  ...parseArgValue('static-session-id'),
 } as const
 
 export function printHelp() {
@@ -33,11 +53,18 @@ export function printHelp() {
 
 \tOptions
 \t  --help, Print this help text.
-\t  --config-path=...,  Use a custom configuration file located at this path.
+\t  --static-session-id=..., Use and accept this and only this session id when communicating.
+\t  --config-path=...,  Use a configuration file located at this file path.
 
 \tExamples
 \t  $ compositor-proxy --static-session-id=test123 --config-path=./config.yaml
   `)
+}
+
+if (argv.length > 0) {
+  console.log(`Unrecognized option: ${argv.toString()}`)
+  printHelp()
+  process.exit(0)
 }
 
 const help = args['help']

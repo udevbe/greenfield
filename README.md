@@ -95,16 +95,16 @@ It's also possible to build a distributable release.
 This creates a set of files in the `package` directory. The `run.sh` script accepts several options:
 
 ```
-        Usage
-          $ compositor-proxy <options>
+	Usage
+	  $ compositor-proxy <options>
 
-        Options
-          --help, Print this help text.
-          --static-session-id=...,  Mandatory. Only use and accept this session id when communicating.
-          --config-path=...,  Use a custom configuration file located at this path.
+	Options
+	  --help, Print this help text.
+	  --static-session-id=..., Use and accept this and only this session id when communicating.
+	  --config-path=...,  Use a configuration file located at this file path.
 
-        Examples
-          $ compositor-proxy --static-session-id=test123 --config-path=./config.yaml
+	Examples
+	  $ compositor-proxy --static-session-id=test123 --config-path=./config.yaml
 ```
 
 Below is an example config file (the default config). It can be copy-pasted and used with the `--config-path=...` option.
