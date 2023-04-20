@@ -50,23 +50,24 @@ export class AACPlayer {
     )
   }
 
-  private playData(audioData: AudioData) {
+  private playData() {
     this.audioWriter.ready
-      .then(() => this.audioWriter.write(audioData))
       .then(() => {
-        const nextAudioData = this.decodedAudioQueue.shift()
-        if (nextAudioData) {
-          this.playData(nextAudioData)
+        const audioData = this.decodedAudioQueue[0]
+        this.audioWriter.write(audioData)
+      })
+      .then(() => {
+        this.decodedAudioQueue.shift()
+        if (this.decodedAudioQueue.length) {
+          this.playData()
         }
       })
   }
 
   private tryPlayData(audioData: AudioData) {
-    if (this.decodedAudioQueue.length) {
-      this.decodedAudioQueue.push(audioData)
-      return
+    this.decodedAudioQueue.push(audioData)
+    if (this.decodedAudioQueue.length === 1) {
+      this.playData()
     }
-
-    this.playData(audioData)
   }
 }
