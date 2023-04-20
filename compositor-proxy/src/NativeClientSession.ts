@@ -79,7 +79,6 @@ export function createNativeClientSession(
   // javascript functions that will call into native code that will know how to unwrap and use the struct.
   const audioChannel = createAudioChannel(id)
   const audioEncoder = createAudioEncoder(wlClient, (sample) => {
-    console.log('got an audio sample')
     audioChannel.send(sample)
   })
   const nativeClientSession = new NativeClientSession(wlClient, nativeCompositorSession, protocolChannel, id)

@@ -134,8 +134,6 @@ gst_new_encoded_audio_sample(GstAppSink *appsink, gpointer user_data)
     struct audio_encoding_result *encoding_result = g_new0(struct audio_encoding_result, 1);
     struct encoded_audio *encoded_chunk;
     GstBuffer *buffer;
-    // uint32_t buffer_content_serial = 0;
-    g_printerr("new_encoded_audio_sample");
 
     GstSample *sample = gst_app_sink_pull_sample(appsink);
     // link = g_queue_find (callback_data->encoder->audio_encoding_results, gconstpointer data
@@ -175,10 +173,13 @@ static GstAppSinkCallbacks encoded_audio_sample_callback = {
 // TODO set the pipewire node id on the pipewiresrc element
 // TODO more/less/other gstreamer elements?
 static const char *audio_pipeline = "pipewiresrc name=pw_src ! "
+                                    "audio/x-raw,format=F32LE,channels=2,rate=48000 ! "
                                     "rawaudioparse format=pcm pcm-format=f32le sample-rate=48000 num-channels=2 ! "
                                     "audioresample ! "
                                     "audioconvert ! "
-                                    "voaacenc ! "
+                                    "audio/x-raw,format=S16LE,layout=interleaved,rate=48000,channels=2 ! "
+                                    "voaacenc hard-resync=true ! "
+                                    "audio/mpeg,rate=48000,channels=2,stream-format=adts,base-profile=lc ! "
                                     "appsink name=sink ";
 
 static inline void
@@ -227,7 +228,7 @@ gst_audio_encoder_pipeline_create(struct gst_audio_encoder *gst_encoder, const c
     g_object_set(app_src, "path", node, NULL);
 
 // FIXME make audio-node.c listen for state where we can actually connect to the node and set the pipeline to playing state instead of sleep(1).
-    sleep(1);
+    sleep(2);
 
     gst_element_set_state(gst_audio_encoder_pipeline->pipeline, GST_STATE_PLAYING);
     if (gst_element_get_state(gst_audio_encoder_pipeline->pipeline, NULL, NULL, 0) == GST_STATE_CHANGE_FAILURE)
