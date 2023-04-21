@@ -1,5 +1,5 @@
 import { App, HttpRequest, HttpResponse, us_listen_socket } from 'uWebSockets.js'
-import { findProxySessionById, ProxySession } from './ProxySession'
+import {findProxySessionByIdentity, findProxySessionsByCompositorSessionId, ProxySession} from './ProxySession'
 import {
   DELWebFD,
   GETWebFD,
@@ -27,8 +27,8 @@ function withParams(
 
 function withAuth(authorizedAction: (proxySession: ProxySession, res: HttpResponse, req: HttpRequest) => void) {
   return (res: HttpResponse, req: HttpRequest) => {
-    const proxySession = findProxySessionById(req.getHeader('x-compositor-session-id'))
-    if (proxySession !== undefined) {
+    const proxySession = findProxySessionByIdentity(req.getHeader('x-proxy-identity-id'))
+    if (proxySession) {
       authorizedAction(proxySession, res, req)
     } else {
       res

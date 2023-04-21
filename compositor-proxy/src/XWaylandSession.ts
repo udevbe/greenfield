@@ -55,7 +55,7 @@ export class XWaylandSession {
         return
       }
 
-      const xwmDataChannel = createXWMDataChannel(xWaylandClient.clientId, compositorSessionId)
+      const xwmDataChannel = createXWMDataChannel(xWaylandClient.clientId, this.nativeCompositorSession.proxySession)
       this.upsertXWMConnection(xwmDataChannel, wmFd).catch((e: any) => {
         logger.error(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
         logger.error('error object stack: ')

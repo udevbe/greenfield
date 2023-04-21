@@ -32,6 +32,7 @@ import {
 } from 'westfield-proxy'
 import { Channel, createProtocolChannel } from './Channel'
 import { webcrypto } from 'crypto'
+import {ProxySession} from "./ProxySession";
 
 const logger = createLogger('native-compositor-session')
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567' as const
@@ -83,8 +84,8 @@ function onGlobalDestroyed(globalName: number): void {
   }
 }
 
-export function createNativeCompositorSession(compositorSessionId: string): NativeCompositorSession {
-  return new NativeCompositorSession(compositorSessionId)
+export function createNativeCompositorSession(proxySession: ProxySession): NativeCompositorSession {
+  return new NativeCompositorSession(proxySession)
 }
 
 export class NativeCompositorSession {
@@ -94,8 +95,8 @@ export class NativeCompositorSession {
   private readonly wlDisplayFdWatcher: PollHandle
 
   constructor(
-    public readonly compositorSessionId: string,
-    public readonly webFS = createProxyInputOutput(compositorSessionId, config.public.baseURL),
+    public readonly proxySession: ProxySession,
+    public readonly webFS = createProxyInputOutput(proxySession, config.public.baseURL),
     public readonly clients: ClientEntry[] = [],
   ) {
     this.wlDisplay = createDisplay(
@@ -131,7 +132,7 @@ export class NativeCompositorSession {
     logger.info(`New Wayland client.`)
 
     const clientId = newClientId()
-    const protocolChannel = createProtocolChannel(clientId, this.compositorSessionId)
+    const protocolChannel = createProtocolChannel(clientId, this.proxySession)
     const nativeClientSession = createNativeClientSession(wlClient, this, protocolChannel, clientId)
     const clientEntry = {
       nativeClientSession,

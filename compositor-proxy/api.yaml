@@ -12,7 +12,7 @@ components:
     ApiKeyAuth:
       type: apiKey
       in: header
-      name: X-Compositor-Session-Id
+      name: X-Proxy-Identity-Id
   responses:
     UnauthorizedError:
       description: Authentication information is missing or invalid
@@ -30,6 +30,7 @@ components:
         - handle
         - type
         - host
+        - identity
       properties:
         handle:
           description: The native FD
@@ -55,6 +56,10 @@ components:
           type: string
           format: uri
           pattern: '^(https?)://'
+          readOnly: true
+        identity:
+          description: id of the proxy this ProxyFD originated from
+          type: string
           readOnly: true
 
 paths:

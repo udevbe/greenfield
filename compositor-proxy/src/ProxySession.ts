@@ -20,17 +20,14 @@ import { createLogger } from './Logger'
 import { createNativeCompositorSession, NativeCompositorSession } from './NativeCompositorSession'
 import { XWaylandSession } from './XWaylandSession'
 import { WebSocket } from 'uWebSockets.js'
+import {randomBytes} from "crypto";
 
 const logger = createLogger('compositor-proxy-session')
 
 let proxySessions: ProxySession[] = []
 
 export function createProxySession(compositorSessionId: string): ProxySession {
-  const nativeCompositorSession = createNativeCompositorSession(compositorSessionId)
-  const xWaylandSession = XWaylandSession.create(nativeCompositorSession)
-  xWaylandSession.createXWaylandListenerSocket(compositorSessionId)
-
-  const proxySession = new ProxySession(nativeCompositorSession, compositorSessionId, xWaylandSession)
+  const proxySession = new ProxySession(compositorSessionId)
   logger.info(`Session created.`)
 
   proxySessions.push(proxySession)
@@ -38,8 +35,12 @@ export function createProxySession(compositorSessionId: string): ProxySession {
   return proxySession
 }
 
-export function findProxySessionById(compositorSessionId: string): ProxySession | undefined {
-  return proxySessions.find((proxySession) => proxySession.compositorSessionId === compositorSessionId)
+export function findProxySessionsByCompositorSessionId(compositorSessionId: string): ProxySession[] {
+  return proxySessions.filter((proxySession) => proxySession.compositorSessionId === compositorSessionId)
+}
+
+export function findProxySessionByIdentity(proxyIdentity: string): ProxySession | undefined {
+  return proxySessions.find((proxySession)=>proxySession.identity===proxyIdentity)
 }
 
 export type SignalingUserData = {
@@ -49,15 +50,20 @@ export type SignalingUserData = {
 export class ProxySession {
   private signalingSendBuffer: Uint8Array[] = []
   public signalingWebSocket?: WebSocket<SignalingUserData>
-  public closeListeners: (() => void)[] = []
 
   public compositorPeerIdentity?: string
+  public readonly identity = randomBytes(8).toString('hex')
+
+  public readonly nativeCompositorSession: NativeCompositorSession
+  private readonly xWaylandSession: XWaylandSession
 
   constructor(
-    public readonly nativeCompositorSession: NativeCompositorSession,
     public readonly compositorSessionId: string,
-    private readonly xWaylandSession: XWaylandSession,
-  ) {}
+  ) {
+    this.nativeCompositorSession = createNativeCompositorSession(this)
+    this.xWaylandSession = XWaylandSession.create(this.nativeCompositorSession)
+    this.xWaylandSession.createXWaylandListenerSocket(compositorSessionId)
+  }
 
   resetPeerConnectionState(killAllClients: boolean): void {
     for (const client of this.nativeCompositorSession.clients) {
