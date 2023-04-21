@@ -19,10 +19,6 @@ function addConnection(
   const url = new URL(`ws://${connectionURL.value}`)
   url.searchParams.append('compositorSessionId', session.compositorSessionId)
 
-  if (connections.value.find((connection) => connection.url.href === url.href)) {
-    return
-  }
-
   const proxyListener = compositorProxyConnector.listen(url)
 
   connections.value = [

@@ -78,7 +78,7 @@ export function createNativeClientSession(
       destroyListener()
     }
     if ((nativeClientSession.hasCompositorState = true)) {
-      sendClientConnectionsDisconnect(id, nativeCompositorSession.compositorSessionId)
+      sendClientConnectionsDisconnect(id, nativeCompositorSession.proxySession)
     }
     nativeClientSession.destroyListeners = []
     nativeClientSession.wlClient = undefined

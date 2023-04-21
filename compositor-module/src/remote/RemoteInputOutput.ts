@@ -10,12 +10,12 @@ export function createRemoteInputOutput(basePath: string, compositorSessionId: s
 class RemoteInputOutput implements InputOutput {
   readonly api: IoApi
 
-  constructor(public readonly basePath: string, compositorSessionId: string) {
+  constructor(public readonly basePath: string, proxyIdentityId: string) {
     this.api = new IoApi(
       new Configuration({
         basePath,
         headers: {
-          ['X-Compositor-Session-Id']: compositorSessionId,
+          ['x-proxy-identity-id']: proxyIdentityId,
         },
       }),
     )

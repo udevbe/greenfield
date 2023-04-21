@@ -83,7 +83,7 @@ export class RemoteConnectionHandler {
     return new RemoteConnectionHandler(session)
   }
 
-  onProtocolChannel(protocolChannel: Channel, compositorProxyURL: URL, client: Client): void {
+  onProtocolChannel(protocolChannel: Channel, compositorProxyURL: URL, client: Client, proxyIdentityId: string): void {
     this.session.logger.info('[ProtocolChannel] - created.')
     let wasOpen = protocolChannel.isOpen
     protocolChannel.onClose = () => {
@@ -151,14 +151,14 @@ export class RemoteConnectionHandler {
         new Configuration({
           basePath,
           headers: {
-            ['X-Compositor-Session-Id']: this.session.compositorSessionId,
+            ['x-proxy-identity-id']: proxyIdentityId,
           },
         }),
       )
       client.userData = {
         encoderApi,
         clientEncodersFeedback: createClientEncodersFeedback(client.id, encoderApi),
-        inputOutput: createRemoteInputOutput(basePath, this.session.compositorSessionId),
+        inputOutput: createRemoteInputOutput(basePath, proxyIdentityId),
       }
     }
 

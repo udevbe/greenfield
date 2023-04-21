@@ -4,7 +4,7 @@ import { URLSearchParams } from 'url'
 import { randomBytes } from 'crypto'
 import { config } from './config'
 import type { ChannelDesc, WebSocketChannel } from './Channel'
-import { createProxySession, findProxySessionById, SignalingUserData } from './ProxySession'
+import { createProxySession, findProxySessionsByCompositorSessionId, ProxySession, SignalingUserData } from './ProxySession'
 import { args } from './Args'
 
 const logger = createLogger('compositor-proxy-signaling')
@@ -46,15 +46,8 @@ type SignalingMessage =
 const textDecoder = new TextDecoder()
 const textEncoder = new TextEncoder()
 
-const identity = randomBytes(8).toString('hex')
-const peerIdentity: SignalingMessage = {
-  type: SignalingMessageType.IDENTITY,
-  identity,
-}
-const peerIdentityMessage = textEncoder.encode(JSON.stringify(peerIdentity))
-
 export function signalHandling(): WebSocketBehavior<SignalingUserData> {
-  logger.info(`Listening for signaling connections using identity: ${peerIdentity.identity}`)
+  logger.info(`Listening for connections.`)
 
   return {
     sendPingsAutomatically: true,
@@ -74,16 +67,16 @@ export function signalHandling(): WebSocketBehavior<SignalingUserData> {
         return
       }
 
-      let proxySession = findProxySessionById(compositorSessionId)
-      if (proxySession === undefined) {
+      const proxySessions = findProxySessionsByCompositorSessionId(compositorSessionId)
+      let proxySession: ProxySession
+      if (proxySessions.length) {
+        const candidateProxySession = proxySessions.find(
+          (candidateProxySession) => candidateProxySession.signalingWebSocket === undefined,
+        )
+        proxySession = candidateProxySession ?? createProxySession(compositorSessionId)
+      } else {
         // TODO we probably want to check if the remote end is allowed to create a new proxy session
         proxySession = createProxySession(compositorSessionId)
-      }
-
-      if (proxySession.signalingWebSocket !== undefined) {
-        const message = `403 Already have a signaling connection.`
-        res.end(message, true)
-        return
       }
 
       const userData: SignalingUserData = {
@@ -104,6 +97,11 @@ export function signalHandling(): WebSocketBehavior<SignalingUserData> {
 
       logger.info(`New signaling connection from ${textDecoder.decode(ws.getRemoteAddressAsText())}.`)
 
+      const peerIdentity: SignalingMessage = {
+        type: SignalingMessageType.IDENTITY,
+        identity: proxySession.identity,
+      }
+      const peerIdentityMessage = textEncoder.encode(JSON.stringify(peerIdentity))
       ws.send(peerIdentityMessage, true)
       proxySession.signalingWebSocket = ws
       proxySession.flushCachedSignalingSends()
@@ -132,10 +130,12 @@ export function signalHandling(): WebSocketBehavior<SignalingUserData> {
             break
           }
           case SignalingMessageType.PING: {
+
+
             const pongMessage: SignalingMessage = {
               type: SignalingMessageType.PONG,
               data: messageObject.data,
-              identity,
+              identity: proxySession.identity,
             }
             proxySession.signalingSend(textEncoder.encode(JSON.stringify(pongMessage)))
           }
@@ -175,7 +175,7 @@ export function connectionHandling(): WebSocketBehavior<ConnectionUserData> {
       const searchParams = new URLSearchParams(req.getQuery())
 
       const compositorSessionId = searchParams.get('compositorSessionId')
-      if (compositorSessionId && findProxySessionById(compositorSessionId) === undefined) {
+      if (compositorSessionId && findProxySessionsByCompositorSessionId(compositorSessionId).length === 0) {
         const message = 'Bad or missing compositorSessionId query parameter.'
         res.end(message, true)
         return
@@ -227,28 +227,28 @@ export function sendConnectionRequest(channel: WebSocketChannel) {
   url.searchParams.append('id', `${channel.desc.id}`)
   const connectionRequest: SignalingMessage = {
     type: SignalingMessageType.CONNECTION,
-    identity,
+    identity: channel.proxySession.identity,
     data: { url: url.href, desc: channel.desc },
   }
   channels[channel.desc.id] = channel
-  findProxySessionById(channel.compositorSessionId)?.signalingSend(
+  channel.proxySession.signalingSend(
     textEncoder.encode(JSON.stringify(connectionRequest)),
   )
 }
 
-export function sendChannelDisconnect(channelId: string, compositorSessionId: string) {
+export function sendChannelDisconnect(channelId: string, proxySession: ProxySession) {
   const clientDisconnect: SignalingMessage = {
     type: SignalingMessageType.DISCONNECT,
-    identity,
+    identity: proxySession.identity,
     data: channelId,
   }
-  findProxySessionById(compositorSessionId)?.signalingSend(textEncoder.encode(JSON.stringify(clientDisconnect)))
+  proxySession.signalingSend(textEncoder.encode(JSON.stringify(clientDisconnect)))
 }
 
-export function sendClientConnectionsDisconnect(clientId: string, compositorSessionId: string) {
+export function sendClientConnectionsDisconnect(clientId: string, proxySession: ProxySession) {
   for (const [channelId, channel] of Object.entries(channels)) {
     if (channel.desc.clientId === clientId) {
-      sendChannelDisconnect(channelId, compositorSessionId)
+      sendChannelDisconnect(channelId, proxySession)
     }
   }
 }

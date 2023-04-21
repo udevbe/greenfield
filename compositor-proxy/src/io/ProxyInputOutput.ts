@@ -4,18 +4,19 @@ import { request as httpsRequest } from 'https'
 import { ProxyFD } from './types'
 import { createLogger } from '../Logger'
 import { createMemoryMappedFile, makePipe } from 'westfield-proxy'
+import { ProxySession } from "../ProxySession";
 
 const logger = createLogger('webfs')
 
 // 64*1024=64kb
 export const TRANSFER_CHUNK_SIZE = 65792 as const
 
-export function createProxyInputOutput(compositorSessionId: string, baseURL: string): ProxyInputOutput {
-  return new ProxyInputOutput(compositorSessionId, baseURL)
+export function createProxyInputOutput(proxySession: ProxySession, baseURL: string): ProxyInputOutput {
+  return new ProxyInputOutput(proxySession, baseURL)
 }
 
 export class ProxyInputOutput {
-  constructor(private readonly compositorSessionId: string, readonly baseURL: string) {}
+  constructor(private readonly proxySession: ProxySession, readonly baseURL: string) {}
 
   /**
    * Creates a native fd that matches the content & behavior of the foreign proxyFD
@@ -59,7 +60,7 @@ export class ProxyInputOutput {
       const options: RequestOptions = {
         method: 'PUT',
         headers: {
-          ['X-Compositor-Session-Id']: this.compositorSessionId,
+          ['X-Proxy-Identity-Id']: proxyFD.identity,
           ['Content-Type']: 'application/octet-stream',
           ['Content-Length']: buffer.byteLength,
         },
@@ -116,11 +117,13 @@ export class ProxyInputOutput {
         handle: pipeFds[0],
         type: 'pipe-read',
         host: this.baseURL,
+        identity: this.proxySession.identity
       },
       {
         handle: pipeFds[1],
         type: 'pipe-write',
         host: this.baseURL,
+        identity: this.proxySession.identity
       },
     ]
   }
@@ -131,6 +134,7 @@ export class ProxyInputOutput {
       handle: fd,
       type: 'shm',
       host: this.baseURL,
+      identity: this.proxySession.identity
     }
   }
 }

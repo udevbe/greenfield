@@ -63,62 +63,21 @@ type Connections = {
   clientConnections: WebSocketChannel[]
   pongSerial: number
 }
-const connectionsByProxyURL: Record<string, Connections> = {}
 
-let lastPingSerial = 0
-// setInterval(() => {
-//   for (const { signalingConnection } of Object.values(connectionsByProxyURL)) {
-//     const pingMessage: SignalingMessage = {
-//       type: SignalingMessageType.PING,
-//       data: ++lastPingSerial,
-//       identity,
-//     }
-//     if (signalingConnection.readyState === ReconnectingWebSocket.OPEN) {
-//       signalingConnection.send(textEncoder.encode(JSON.stringify(pingMessage)))
-//     }
-//   }
-// }, 3000)
-// setInterval(() => {
-//   for (const { signalingConnection, clientConnections, pongSerial } of Object.values(connectionsByProxyURL)) {
-//     const pingMessage: SignalingMessage = {
-//       type: SignalingMessageType.PING,
-//       data: lastPingSerial,
-//       identity,
-//     }
-//     const encodedPingMessage = textEncoder.encode(JSON.stringify(pingMessage))
-//     signalingConnection.send(encodedPingMessage)
-//
-//     if (lastPingSerial - pongSerial > 3) {
-//       for (const clientConnection of clientConnections) {
-//         if (clientConnection.webSocket.readyState === ReconnectingWebSocket.OPEN) {
-//           clientConnection.webSocket.reconnect(4002, 'ping timeout')
-//         }
-//       }
-//       if (signalingConnection.readyState === ReconnectingWebSocket.OPEN) {
-//         signalingConnection.reconnect(4002, 'ping timeout')
-//         signalingConnection.send(encodedPingMessage)
-//       }
-//     }
-//   }
-// }, 1000)
-
-function closeClientConnections(session: Session, signalingURL: string) {
-  const proxyConnection = connectionsByProxyURL[signalingURL]
-  if (proxyConnection) {
-    for (const clientId of new Set(
-      proxyConnection.clientConnections.map((clientConnection) => {
-        clientConnection.close()
-        return clientConnection.desc.clientId
-      }),
-    )) {
-      const client = session.display.clients[clientId]
-      if (client) {
-        client.close()
-      }
+function closeClientConnections(session: Session, clientConnections: Connections) {
+  for (const clientId of new Set(
+    clientConnections.clientConnections.map((clientConnection) => {
+      clientConnection.close()
+      return clientConnection.desc.clientId
+    }),
+  )) {
+    const client = session.display.clients[clientId]
+    if (client) {
+      client.close()
     }
-
-    proxyConnection.clientConnections = []
   }
+
+  clientConnections.clientConnections = []
 }
 
 function isSignalingMessage(messageObject: any): messageObject is SignalingMessage {
@@ -135,22 +94,14 @@ function isSignalingMessage(messageObject: any): messageObject is SignalingMessa
 }
 
 function createProxyConnection(
+  connections: Connections,
   session: Session,
-  signalingWebSocket: ReconnectingWebSocket,
   proxyURL: string,
   clientConnectionListener: RemoteClientConnectionListener,
-  onChannel: (channel: Channel, clientConnectionListener: RemoteClientConnectionListener) => void,
+  onChannel: (channel: Channel, clientConnectionListener: RemoteClientConnectionListener, proxyIdentity: string) => void,
   remotePeerIdentity?: string,
 ) {
-  const connections: Connections = {
-    signalingConnection: signalingWebSocket,
-    clientConnectionListener,
-    clientConnections: [] as WebSocketChannel[],
-    pongSerial: lastPingSerial + 1,
-  }
-  connectionsByProxyURL[proxyURL] = connections
-
-  signalingWebSocket.onmessage = async (event) => {
+  connections.signalingConnection.onmessage = async (event) => {
     const messageObject = JSON.parse(textDecoder.decode(event.data as ArrayBuffer))
     if (isSignalingMessage(messageObject)) {
       switch (messageObject.type) {
@@ -162,7 +113,7 @@ function createProxyConnection(
             )
             // Remote proxy has restarted. Shutdown old connections before handling any signaling.
             remotePeerIdentity = messageObject.identity
-            closeClientConnections(session, proxyURL)
+            closeClientConnections(session, connections)
           } else if (remotePeerIdentity === undefined) {
             // Connecting to remote proxy for the first time
             remotePeerIdentity = messageObject.identity
@@ -186,7 +137,7 @@ function createProxyConnection(
             throw new Error(`BUG. Unknown channel description: ${JSON.stringify(desc)}`)
           }
           connections.clientConnections.push(channel)
-          onChannel(channel, clientConnectionListener)
+          onChannel(channel, clientConnectionListener, proxyIdentity)
           break
         }
         case SignalingMessageType.DISCONNECT: {
@@ -209,7 +160,7 @@ function createProxyConnection(
     }
   }
 
-  signalingWebSocket.onopen = (event, queue) => {
+  connections.signalingConnection.onopen = (event, queue) => {
     queue.unshift(encodedCompositorIdentityMessage)
   }
 }
@@ -217,14 +168,10 @@ function createProxyConnection(
 export function ensureProxyConnection(
   session: Session,
   compositorProxyURL: URL,
-  onChannel: (channel: Channel, clientConnectionListener: RemoteClientConnectionListener) => void,
+  onChannel: (channel: Channel, clientConnectionListener: RemoteClientConnectionListener, proxyIdentityId: string) => void,
 ): RemoteClientConnectionListener {
   const signalingPath = compositorProxyURL.pathname.endsWith('/') ? 'signaling' : '/signaling'
   const signalingURL = `${compositorProxyURL.protocol}//${compositorProxyURL.host}${compositorProxyURL.pathname}${signalingPath}?${compositorProxyURL.searchParams}`
-  const peerConnectionEntry = connectionsByProxyURL[signalingURL]
-  if (peerConnectionEntry) {
-    return peerConnectionEntry.clientConnectionListener
-  }
 
   session.logger.info(`Trying to connect using compositor proxy signaling URL: ${signalingURL}`)
   const signalingWebSocket = new ReconnectingWebSocket(signalingURL, undefined, webSocketReconnectOptions)
@@ -236,8 +183,7 @@ export function ensureProxyConnection(
       /*noop*/
     },
     close() {
-      closeClientConnections(session, signalingURL)
-      delete connectionsByProxyURL[signalingURL]
+      closeClientConnections(session, connections)
       signalingWebSocket.close(4001, 'connection closed by user')
     },
     onConnectionStateChange(state: 'open' | 'closed') {
@@ -272,6 +218,13 @@ export function ensureProxyConnection(
     clientConnectionListener.onError(event.error)
   })
 
-  createProxyConnection(session, signalingWebSocket, signalingURL, clientConnectionListener, onChannel)
+  const connections: Connections = {
+    signalingConnection: signalingWebSocket,
+    clientConnectionListener,
+    clientConnections: [] as WebSocketChannel[],
+    pongSerial: 1,
+  }
+
+  createProxyConnection(connections, session, signalingURL, clientConnectionListener, onChannel)
   return clientConnectionListener
 }
