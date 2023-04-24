@@ -337,6 +337,7 @@ export class NativeClientSession {
           handle: fd,
           type: 'unknown',
           host: this.nativeCompositorSession.webFS.baseURL,
+          identity: this.nativeCompositorSession.proxySession.identity,
         }
         const encodedProxyFDJSON = textEncoder.encode(JSON.stringify(proxyFD))
         serializedFDs[i] = encodedProxyFDJSON
