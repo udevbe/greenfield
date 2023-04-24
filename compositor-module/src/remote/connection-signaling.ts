@@ -137,7 +137,7 @@ function createProxyConnection(
             throw new Error(`BUG. Unknown channel description: ${JSON.stringify(desc)}`)
           }
           connections.clientConnections.push(channel)
-          onChannel(channel, clientConnectionListener, proxyIdentity)
+          onChannel(channel, clientConnectionListener, messageObject.identity)
           break
         }
         case SignalingMessageType.DISCONNECT: {
