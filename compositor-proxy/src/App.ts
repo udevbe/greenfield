@@ -34,7 +34,7 @@ function withAuth(authorizedAction: (proxySession: ProxySession, res: HttpRespon
       res
         .writeStatus('401 Unauthorized')
         .writeHeader('Content-Type', 'text/plain')
-        .end('No or invalid x-compositor-session-id header.')
+        .end('No or invalid x-proxy-identity-id header.')
     }
   }
 }
