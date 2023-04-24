@@ -43,7 +43,7 @@ describe('compositor-proxy i/o', () => {
 
   it('creates a new local pipe pair when receiving a remote write-pipe webfd', (done) => {
     // Given
-    const ownProxyIO = createProxyInputOutput(compositorSessionId, ownBasePath)
+    const ownProxyIO = createProxyInputOutput(ownCompositorProxySession, ownBasePath)
     const otherPipeFDs = new Uint32Array(2)
     makePipe(otherPipeFDs)
 
@@ -54,6 +54,7 @@ describe('compositor-proxy i/o', () => {
       handle: otherWritePipeHandle,
       type: 'pipe-write',
       host: otherBasePath,
+      identity: otherCompositorProxySession.identity
     }
 
     const ownWritePipeHandle = ownProxyIO.proxyFDtoNativeFD(otherProxyFD)
@@ -105,7 +106,7 @@ describe('compositor-proxy io rest api', () => {
     // When
     request(host)
       .post('/mkfifo')
-      .set('X-Compositor-Session-Id', compositorSessionId)
+      .set('X-Proxy-Identity-Id', compositorSessionId)
       // Then
       .expect(201)
       .expect('Content-Type', 'application/json')
@@ -130,7 +131,7 @@ describe('compositor-proxy io rest api', () => {
     // When
     request(host)
       .post('/mkstemp-mmap')
-      .set('X-Compositor-Session-Id', compositorSessionId)
+      .set('X-Proxy-Identity-Id', compositorSessionId)
       .set('Content-Type', 'application/octet-stream')
       .send(Buffer.from([1, 2, 3]))
       // Then
@@ -145,7 +146,7 @@ describe('compositor-proxy io rest api', () => {
     // When
     request(host)
       .post('/mkstemp-mmap')
-      .set('X-Compositor-Session-Id', compositorSessionId)
+      .set('X-Proxy-Identity-Id', compositorSessionId)
       // Then
       .expect(400)
       .expect('Content-Type', 'text/plain')
@@ -168,11 +169,11 @@ describe('compositor-proxy io rest api', () => {
   it('closes a ProxyFD', (done) => {
     // Given
     const handle = createMemoryMappedFile(Buffer.from([1, 2, 3]))
-    const proxyFD: ProxyFD = { handle, type: 'shm', host }
+    const proxyFD: ProxyFD = { handle, type: 'shm', host, identity: compositorProxySession.identity }
     // When
     request(host)
       .del(`/fd/${proxyFD.handle}`)
-      .set('X-Compositor-Session-Id', compositorSessionId)
+      .set('X-Proxy-Identity-Id', compositorSessionId)
       // Then
       .expect(200)
       .expect((res) => expect(res).toSatisfyApiSpec())
@@ -199,7 +200,7 @@ describe('compositor-proxy io rest api', () => {
     // When
     request(host)
       .del(`/fd/abc`)
-      .set('X-Compositor-Session-Id', compositorSessionId)
+      .set('X-Proxy-Identity-Id', compositorSessionId)
       // Then
       .expect(400)
       .expect('Content-Type', 'text/plain')
@@ -212,7 +213,7 @@ describe('compositor-proxy io rest api', () => {
     // When
     request(host)
       .del(`/fd/123`)
-      .set('X-Compositor-Session-Id', compositorSessionId)
+      .set('X-Proxy-Identity-Id', compositorSessionId)
       // Then
       .expect(404)
       .expect('Content-Type', 'text/plain')
@@ -224,11 +225,11 @@ describe('compositor-proxy io rest api', () => {
     // Given
     const sendBuffer = Buffer.from([1, 2, 3])
     const handle = createMemoryMappedFile(sendBuffer)
-    const proxyFD: ProxyFD = { handle, type: 'shm', host }
+    const proxyFD: ProxyFD = { handle, type: 'shm', host, identity: compositorProxySession.identity }
     // When
     request(host)
       .get(`/fd/${proxyFD.handle}`)
-      .set('X-Compositor-Session-Id', compositorSessionId)
+      .set('X-Proxy-Identity-Id', compositorSessionId)
       .query({ count: 2 })
       // Then
       .expect(200)
@@ -259,7 +260,7 @@ describe('compositor-proxy io rest api', () => {
     // When
     request(host)
       .get(`/fd/abc`)
-      .set('X-Compositor-Session-Id', compositorSessionId)
+      .set('X-Proxy-Identity-Id', compositorSessionId)
       // Then
       .expect(400)
       .expect('Content-Type', 'text/plain')
@@ -272,7 +273,7 @@ describe('compositor-proxy io rest api', () => {
     // When
     request(host)
       .get(`/fd/123456`)
-      .set('X-Compositor-Session-Id', compositorSessionId)
+      .set('X-Proxy-Identity-Id', compositorSessionId)
       .query({ count: 'abc' })
       // Then
       .expect(400)
@@ -286,7 +287,7 @@ describe('compositor-proxy io rest api', () => {
     // When
     request(host)
       .get(`/fd/123456`)
-      .set('X-Compositor-Session-Id', compositorSessionId)
+      .set('X-Proxy-Identity-Id', compositorSessionId)
       .query({ count: 123 })
       // Then
       .expect(404)
@@ -305,7 +306,7 @@ describe('compositor-proxy io rest api', () => {
     // When
     request(host)
       .put(`/fd/${writePipeHandle}/stream`)
-      .set('X-Compositor-Session-Id', compositorSessionId)
+      .set('X-Proxy-Identity-Id', compositorSessionId)
       .set('Content-Type', 'application/octet-stream')
       .send(sendBuffer)
       // Then
@@ -337,7 +338,7 @@ describe('compositor-proxy io rest api', () => {
     // When
     request(host)
       .put(`/fd/${writePipeHandle}/stream`)
-      .set('X-Compositor-Session-Id', compositorSessionId)
+      .set('X-Proxy-Identity-Id', compositorSessionId)
       .set('Content-Type', 'application/octet-stream')
       .send(buffer)
       // Then
@@ -376,7 +377,7 @@ describe('compositor-proxy io rest api', () => {
     // When
     request(host)
       .put(`/fd/abc/stream`)
-      .set('X-Compositor-Session-Id', compositorSessionId)
+      .set('X-Proxy-Identity-Id', compositorSessionId)
       .set('Content-Type', 'application/octet-stream')
       // Then
       .expect(400)
@@ -390,7 +391,7 @@ describe('compositor-proxy io rest api', () => {
     // When
     request(host)
       .put(`/fd/123456/stream`)
-      .set('X-Compositor-Session-Id', compositorSessionId)
+      .set('X-Proxy-Identity-Id', compositorSessionId)
       .set('Content-Type', 'application/octet-stream')
       // Then
       .expect(404)
@@ -415,7 +416,7 @@ describe('compositor-proxy io rest api', () => {
 
     request(host)
       .get(`/fd/${readPipeHandle}/stream`)
-      .set('X-Compositor-Session-Id', compositorSessionId)
+      .set('X-Proxy-Identity-Id', compositorSessionId)
       // Then
       .expect(200)
       .expect('Content-Type', 'application/octet-stream')
@@ -443,7 +444,7 @@ describe('compositor-proxy io rest api', () => {
     request(host)
       .get(`/fd/${readPipeHandle}/stream`)
       .query({ chunkSize: 1 })
-      .set('X-Compositor-Session-Id', compositorSessionId)
+      .set('X-Proxy-Identity-Id', compositorSessionId)
       // Then
       .expect(200)
       .expect('Content-Type', 'application/octet-stream')
@@ -492,7 +493,7 @@ describe('compositor-proxy io rest api', () => {
         path: `/fd/${readPipeHandle}/stream`,
         method: 'GET',
         headers: {
-          ['X-Compositor-Session-Id']: compositorSessionId,
+          ['X-Proxy-Identity-Id']: compositorSessionId,
         },
       },
       (res) => {
@@ -532,7 +533,7 @@ describe('compositor-proxy io rest api', () => {
     // When
     request(host)
       .get(`/fd/abc/stream`)
-      .set('X-Compositor-Session-Id', compositorSessionId)
+      .set('X-Proxy-Identity-Id', compositorSessionId)
       // Then
       .expect(400)
       .expect('Content-Type', 'text/plain')
@@ -545,7 +546,7 @@ describe('compositor-proxy io rest api', () => {
     // When
     request(host)
       .get(`/fd/123456/stream`)
-      .set('X-Compositor-Session-Id', compositorSessionId)
+      .set('X-Proxy-Identity-Id', compositorSessionId)
       // Then
       .expect(404)
       .expect('Content-Type', 'text/plain')

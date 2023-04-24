@@ -12,7 +12,7 @@ import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 const logger = createLogger('app')
 
 const allowOrigin = config.server.http.allowOrigin
-const allowHeaders = 'Content-Type, X-Compositor-Session-Id'
+const allowHeaders = 'Content-Type, X-Proxy-Identity-Id'
 const maxAge = '36000'
 
 export function OPTIONSPreflightRequest(allowMethods: string) {
