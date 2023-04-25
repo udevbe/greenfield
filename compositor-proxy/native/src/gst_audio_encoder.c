@@ -172,14 +172,13 @@ static GstAppSinkCallbacks encoded_audio_sample_callback = {
 
 // TODO set the pipewire node id on the pipewiresrc element
 // TODO more/less/other gstreamer elements?
-static const char *audio_pipeline = "pipewiresrc name=pw_src ! "
+static const char *audio_pipeline = "pipewiresrc name=pw_src stream-properties=a-struct,stream.latency.max=10,stream.latency.min=0,stream.is-live=true ! "
                                     "audio/x-raw,format=F32LE,channels=2,rate=48000 ! "
                                     "rawaudioparse format=pcm pcm-format=f32le sample-rate=48000 num-channels=2 ! "
                                     "audioresample ! "
                                     "audioconvert ! "
                                     "audio/x-raw,format=S16LE,layout=interleaved,rate=48000,channels=2 ! "
-                                    "voaacenc hard-resync=true ! "
-                                    "audio/mpeg,rate=48000,channels=2,stream-format=adts,base-profile=lc ! "
+                                    "opusenc audio-type=generic bitrate=64000 bitrate-type=vbr bandwidth=fullband complexity=10 frame-size=10 max-payload-size=2000 dtx=true ! "
                                     "appsink name=sink ";
 
 static inline void

@@ -1,6 +1,6 @@
-const aacPlayers: Record<number, AACPlayer> = {}
+const aacPlayers: Record<number, AudioPlayer> = {}
 
-export async function getOrCreateAACPlayer(id: number): Promise<AACPlayer> {
+export async function getOrCreateAACPlayer(id: number): Promise<AudioPlayer> {
   let aacPlayer = aacPlayers[id]
   if (aacPlayer === undefined) {
     const audioElement = document.createElement('audio')
@@ -13,13 +13,13 @@ export async function getOrCreateAACPlayer(id: number): Promise<AACPlayer> {
     const writable: WritableStream = generator.writable
     const audioWriter = writable.getWriter()
     audioElement.srcObject = new MediaStream([generator])
-    aacPlayer = new AACPlayer(audioWriter)
+    aacPlayer = new AudioPlayer(audioWriter)
     aacPlayers[id] = aacPlayer
   }
   return aacPlayer
 }
 
-export class AACPlayer {
+export class AudioPlayer {
   private decodedAudioQueue: AudioData[] = []
 
   private audioDecoder: AudioDecoder
@@ -34,9 +34,17 @@ export class AACPlayer {
       },
     })
     this.audioDecoder.configure({
-      codec: 'mp4a.40.5',
+      codec: 'opus',
       sampleRate: 48000,
       numberOfChannels: 2,
+      // @ts-ignore
+      opus: {
+        frameDuration: 10000,
+        complexity: 10,
+        packetlossperc: 0,
+        useinbandfec: false,
+        usedtx: true,
+      }
     })
   }
 
