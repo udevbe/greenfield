@@ -19,7 +19,7 @@ import { RemoteClientConnectionListener, RemoteCompositorConnector } from '../in
 import { RemoteConnectionHandler } from './RemoteConnectionHandler'
 import Session from '../Session'
 import { Channel, ChannelDescriptionType, FeedbackChannelDesc } from './Channel'
-import { ensureProxyConnection } from './connection-signaling'
+import { createRemoteClientConnectionListener } from './connection-signaling'
 
 export class RemoteConnector implements RemoteCompositorConnector {
   public readonly type = 'remote'
@@ -39,7 +39,7 @@ export class RemoteConnector implements RemoteCompositorConnector {
     compositorProxyURL: URL,
     channel: Channel,
     clientConnectionListener: RemoteClientConnectionListener,
-    proxyIdentityId: string
+    proxyIdentityId: string,
   ) {
     if (channel.desc.type === ChannelDescriptionType.PROTOCOL) {
       const client = this.session.display.createClient(channel.desc.clientId)
@@ -77,8 +77,13 @@ export class RemoteConnector implements RemoteCompositorConnector {
   }
 
   listen(compositorProxyURL: URL): RemoteClientConnectionListener {
-    return ensureProxyConnection(this.session, compositorProxyURL, (channel, clientConnectionListener, proxyIdentityId) => {
+    const onChannel = (
+      channel: Channel,
+      clientConnectionListener: RemoteClientConnectionListener,
+      proxyIdentityId: string,
+    ) => {
       this.listenForChannels(compositorProxyURL, channel, clientConnectionListener, proxyIdentityId)
-    })
+    }
+    return createRemoteClientConnectionListener(this.session, compositorProxyURL, onChannel)
   }
 }

@@ -1,14 +1,14 @@
 import { Signal, signal } from '@preact/signals'
 import { ProxyConnection, ProxyConnectionProps } from './ProxyConnection'
-import {CompositorSession, RemoteClientConnectionListener, RemoteCompositorConnector} from '../../src'
+import { CompositorSession, RemoteClientConnectionListener, RemoteCompositorConnector } from '../../src'
 import { ClientProps } from './Client'
 
 const connections = signal([] as ProxyConnectionProps[])
 const connectionURL = signal('localhost:8081')
 
-function removeConnection(url: URL, proxyListener: RemoteClientConnectionListener) {
+function removeConnection(removedConnectionProps: ProxyConnectionProps, proxyListener: RemoteClientConnectionListener) {
   proxyListener.close()
-  connections.value = connections.value.filter((connection) => connection.url.href !== url.href)
+  connections.value = connections.value.filter((connection) => connection !== removedConnectionProps)
 }
 
 function addConnection(
@@ -20,20 +20,24 @@ function addConnection(
   url.searchParams.append('compositorSessionId', session.compositorSessionId)
 
   const proxyListener = compositorProxyConnector.listen(url)
-
-  connections.value = [
-    ...connections.value,
-    {
-      session,
-      url,
-      name: connectionURL.value,
-      proxyListener,
-      remove: () => {
-        removeConnection(url, proxyListener)
-      },
-      clients,
+  const proxyConnectionProps: ProxyConnectionProps = {
+    session,
+    url,
+    name: connectionURL.value,
+    proxyListener,
+    remove: () => {
+      removeConnection(proxyConnectionProps, proxyListener)
     },
-  ]
+    clients,
+    identity: proxyListener.remoteIdentity ?? '',
+  }
+
+  connections.value = [...connections.value, proxyConnectionProps]
+
+  proxyListener.remoteIdentityChanged = (remoteIdentity) => {
+    proxyConnectionProps.identity = remoteIdentity
+    connections.value = [...connections.value]
+  }
 }
 
 function onInput(event: Event) {
@@ -64,7 +68,7 @@ export function ProxyConnector(props: ProxyConnectorProps) {
         <ul>
           {connections.value.map((connection) => (
             <li>
-              <ProxyConnection {...connection} />
+              <ProxyConnection key={connection.identity} {...connection} />
             </li>
           ))}
         </ul>

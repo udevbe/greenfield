@@ -87,7 +87,9 @@ export interface ClientConnectionListener {
 export interface RemoteClientConnectionListener extends ClientConnectionListener {
   readonly state: 'closed' | 'closing' | 'connecting' | 'open'
   readonly type: 'remote'
+  readonly remoteIdentity?: string
 
+  remoteIdentityChanged: (remoteIdentity: string) => void
   onConnectionStateChange: (state: 'closed' | 'open') => void
   onError: (error: Error) => void
 }
