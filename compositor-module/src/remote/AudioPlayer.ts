@@ -1,8 +1,8 @@
-const aacPlayers: Record<number, AudioPlayer> = {}
+const audioPlayers: Record<number, AudioPlayer> = {}
 
-export async function getOrCreateAACPlayer(id: number): Promise<AudioPlayer> {
-  let aacPlayer = aacPlayers[id]
-  if (aacPlayer === undefined) {
+export function getOrCreateAudioPlayer(id: number): AudioPlayer {
+  let audioPlayer = audioPlayers[id]
+  if (audioPlayer === undefined) {
     const audioElement = document.createElement('audio')
     // audioElement.controls = true
     audioElement.autoplay = true
@@ -13,10 +13,10 @@ export async function getOrCreateAACPlayer(id: number): Promise<AudioPlayer> {
     const writable: WritableStream = generator.writable
     const audioWriter = writable.getWriter()
     audioElement.srcObject = new MediaStream([generator])
-    aacPlayer = new AudioPlayer(audioWriter)
-    aacPlayers[id] = aacPlayer
+    audioPlayer = new AudioPlayer(audioWriter)
+    audioPlayers[id] = audioPlayer
   }
-  return aacPlayer
+  return audioPlayer
 }
 
 export class AudioPlayer {
