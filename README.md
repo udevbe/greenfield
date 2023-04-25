@@ -8,6 +8,10 @@ Greenfield is a [Wayland compositor](https://en.wikipedia.org/wiki/Wayland_%28di
 entirely in TypeScript while utilizing WebAssembly and WebGL for the performance critical parts. It can run native
 Wayland applications remotely and display them directly in your browser.
 
+Greenfield running DOOM3 remotely 1920x1080@60FPS (16 Mar 2023):
+
+[![Fosdem presentation + demo](https://img.youtube.com/vi/pTn_hjOwK-Y/0.jpg)](https://www.youtube.com/watch?v=pTn_hjOwK-Y)
+
 For more information, visit the [website](https://greenfield.app), or have [a look on how it all began]( https://twitter.com/FriedChicken/status/1420671685485867014)
 
 ### Modular Compositor
@@ -234,10 +238,6 @@ This avoids the round trip and massive overhead of transferring all content to t
 Very much beta. Most things are implemented except for fullscreen applications. Please report any bugs or annoyances you find.
 
 ## Media
-
-Greenfield running DOOM3 remotely 1920x1080@60FPS (16 Mar 2023):
-
-[![Fosdem presentation + demo](https://img.youtube.com/vi/pTn_hjOwK-Y/0.jpg)](https://www.youtube.com/watch?v=pTn_hjOwK-Y)
 
 Fosdem presentation + demo (2 Feb 2019):
 
