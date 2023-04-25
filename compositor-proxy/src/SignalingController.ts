@@ -1,7 +1,6 @@
 import { createLogger } from './Logger'
 import type { WebSocket, WebSocketBehavior } from 'uWebSockets.js'
 import { URLSearchParams } from 'url'
-import { randomBytes } from 'crypto'
 import { config } from './config'
 import type { ChannelDesc, WebSocketChannel } from './Channel'
 import { createProxySession, findProxySessionsByCompositorSessionId, ProxySession, SignalingUserData } from './ProxySession'
@@ -130,8 +129,6 @@ export function signalHandling(): WebSocketBehavior<SignalingUserData> {
             break
           }
           case SignalingMessageType.PING: {
-
-
             const pongMessage: SignalingMessage = {
               type: SignalingMessageType.PONG,
               data: messageObject.data,

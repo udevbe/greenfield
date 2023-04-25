@@ -5,6 +5,10 @@ import ReconnectingWebSocket, { Options } from './reconnecting-websocket'
 import type { Channel, ChannelDesc, WebSocketChannel } from './Channel'
 import { ARQChannel, ChannelType, SimpleChannel } from './Channel'
 
+type Mutable<T> = {
+  -readonly [P in keyof T]: T[P]
+}
+
 const enum SignalingMessageType {
   IDENTITY,
   CONNECTION,
@@ -52,9 +56,9 @@ const compositorIdentityMessage: SignalingMessage = {
 const encodedCompositorIdentityMessage = textEncoder.encode(JSON.stringify(compositorIdentityMessage))
 
 const webSocketReconnectOptions = {
-  minReconnectionDelay: 2000,
-  maxReconnectionDelay: 4000,
-  reconnectionDelayGrowFactor: 500,
+  minReconnectionDelay: 3000,
+  maxReconnectionDelay: 6000,
+  reconnectionDelayGrowFactor: 1000,
 }
 
 type Connections = {
@@ -96,10 +100,12 @@ function isSignalingMessage(messageObject: any): messageObject is SignalingMessa
 function createProxyConnection(
   connections: Connections,
   session: Session,
-  proxyURL: string,
-  clientConnectionListener: RemoteClientConnectionListener,
-  onChannel: (channel: Channel, clientConnectionListener: RemoteClientConnectionListener, proxyIdentity: string) => void,
-  remotePeerIdentity?: string,
+  clientConnectionListener: Mutable<RemoteClientConnectionListener>,
+  onChannel: (
+    channel: Channel,
+    clientConnectionListener: RemoteClientConnectionListener,
+    proxyIdentity: string,
+  ) => void,
 ) {
   connections.signalingConnection.onmessage = async (event) => {
     const messageObject = JSON.parse(textDecoder.decode(event.data as ArrayBuffer))
@@ -107,16 +113,21 @@ function createProxyConnection(
       switch (messageObject.type) {
         case SignalingMessageType.IDENTITY: {
           session.logger.info(`Received remote signaling identity: ${messageObject.identity}.`)
-          if (remotePeerIdentity && messageObject.identity !== remotePeerIdentity) {
+          if (
+            clientConnectionListener.remoteIdentity &&
+            messageObject.identity !== clientConnectionListener.remoteIdentity
+          ) {
             session.logger.info(
-              `Remote signaling identity has changed. Old: ${remotePeerIdentity}. New: ${messageObject.identity}. Creating new peer connection.`,
+              `Remote signaling identity has changed. Old: ${clientConnectionListener.remoteIdentity}. New: ${messageObject.identity}. Creating new peer connection.`,
             )
             // Remote proxy has restarted. Shutdown old connections before handling any signaling.
-            remotePeerIdentity = messageObject.identity
+            clientConnectionListener.remoteIdentity = messageObject.identity
+            clientConnectionListener.remoteIdentityChanged(clientConnectionListener.remoteIdentity)
             closeClientConnections(session, connections)
-          } else if (remotePeerIdentity === undefined) {
+          } else if (clientConnectionListener.remoteIdentity === undefined) {
             // Connecting to remote proxy for the first time
-            remotePeerIdentity = messageObject.identity
+            clientConnectionListener.remoteIdentity = messageObject.identity
+            clientConnectionListener.remoteIdentityChanged(clientConnectionListener.remoteIdentity)
           } // else re-connecting, ignore.
           break
         }
@@ -165,10 +176,14 @@ function createProxyConnection(
   }
 }
 
-export function ensureProxyConnection(
+export function createRemoteClientConnectionListener(
   session: Session,
   compositorProxyURL: URL,
-  onChannel: (channel: Channel, clientConnectionListener: RemoteClientConnectionListener, proxyIdentityId: string) => void,
+  onChannel: (
+    channel: Channel,
+    clientConnectionListener: RemoteClientConnectionListener,
+    proxyIdentityId: string,
+  ) => void,
 ): RemoteClientConnectionListener {
   const signalingPath = compositorProxyURL.pathname.endsWith('/') ? 'signaling' : '/signaling'
   const signalingURL = `${compositorProxyURL.protocol}//${compositorProxyURL.host}${compositorProxyURL.pathname}${signalingPath}?${compositorProxyURL.searchParams}`
@@ -206,6 +221,9 @@ export function ensureProxyConnection(
           return 'closed'
       }
     },
+    remoteIdentityChanged: (remoteIdentity) => {
+      /*noop*/
+    },
   }
 
   signalingWebSocket.addEventListener('open', (event) => {
@@ -225,6 +243,6 @@ export function ensureProxyConnection(
     pongSerial: 1,
   }
 
-  createProxyConnection(connections, session, signalingURL, clientConnectionListener, onChannel)
+  createProxyConnection(connections, session, clientConnectionListener, onChannel)
   return clientConnectionListener
 }
