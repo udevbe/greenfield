@@ -44,7 +44,7 @@ import {
 import { ProxyBuffer } from './ProxyBuffer'
 import type { Channel } from './Channel'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
-import { sendClientConnectionsDisconnect } from './SignalingController'
+import { sendClientConnectionsDisconnect } from './AppWebSocketsController'
 
 const logger = createLogger('native-client-session')
 
@@ -337,7 +337,7 @@ export class NativeClientSession {
           handle: fd,
           type: 'unknown',
           host: this.nativeCompositorSession.webFS.baseURL,
-          identity: this.nativeCompositorSession.proxySession.identity,
+          proxySessionKey: this.nativeCompositorSession.proxySession.sessionKey,
         }
         const encodedProxyFDJSON = textEncoder.encode(JSON.stringify(proxyFD))
         serializedFDs[i] = encodedProxyFDJSON

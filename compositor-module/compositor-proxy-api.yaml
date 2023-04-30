@@ -12,7 +12,7 @@ components:
     ApiKeyAuth:
       type: apiKey
       in: header
-      name: X-Proxy-Identity-Id
+      name: X-Greenfield-Proxy-Session-Key
   responses:
     UnauthorizedError:
       description: Authentication information is missing or invalid
@@ -30,7 +30,7 @@ components:
         - handle
         - type
         - host
-        - identity
+        - proxySessionKey
       properties:
         handle:
           description: The native FD
@@ -57,13 +57,34 @@ components:
           format: uri
           pattern: '^(https?)://'
           readOnly: true
-        identity:
-          description: id of the proxy this ProxyFD originated from
+        proxySessionKey:
+          description: key of the proxy session this ProxyFD originated from
           type: string
           readOnly: true
 
 paths:
-  /{clientId}/{surfaceId}/encoder/keyframe:
+  /session:
+    post:
+      tags:
+        - proxy
+      summary: Create a new proxy session
+      operationId: session
+      responses:
+        201:
+          description: Session was successfully created.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - sessionKey
+                properties:
+                  sessionKey:
+                    description: The proxy session id
+                    type: string
+                    readOnly: true
+
+  /client/{clientId}/surface/{surfaceId}/encoder/keyframe:
     post:
       tags:
         - encoder

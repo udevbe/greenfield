@@ -23,7 +23,7 @@ export type ProxyConnectionProps = {
   proxyListener: RemoteClientConnectionListener
   clients: Signal<ClientProps[]>
   remove: () => void
-  identity: string
+  proxySessionKey: string
 }
 export function ProxyConnection(props: ProxyConnectionProps) {
   const [connectionState, setConnectionState] = useState(props.proxyListener.state)

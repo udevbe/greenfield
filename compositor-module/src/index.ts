@@ -87,7 +87,7 @@ export interface ClientConnectionListener {
 export interface RemoteClientConnectionListener extends ClientConnectionListener {
   readonly state: 'closed' | 'closing' | 'connecting' | 'open'
   readonly type: 'remote'
-  readonly remoteIdentity?: string
+  readonly proxySessionKey?: string
 
   remoteIdentityChanged: (remoteIdentity: string) => void
   onConnectionStateChange: (state: 'closed' | 'open') => void
@@ -102,12 +102,12 @@ export interface WebClientConnectionListener extends ClientConnectionListener {
 }
 
 export interface RemoteCompositorConnector {
-  listen(url: URL, auth?: string): RemoteClientConnectionListener
+  launch(url: URL, auth?: string): RemoteClientConnectionListener
   readonly type: 'remote'
 }
 
 export interface WebCompositorConnector {
-  listen(url: URL): WebClientConnectionListener
+  launch(url: URL): WebClientConnectionListener
   readonly type: 'web'
 }
 
