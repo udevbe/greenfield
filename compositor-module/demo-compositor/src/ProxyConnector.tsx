@@ -16,10 +16,10 @@ function addConnection(
   compositorProxyConnector: RemoteCompositorConnector,
   clients: Signal<ClientProps[]>,
 ) {
-  const url = new URL(`ws://${connectionURL.value}`)
+  const url = new URL(connectionURL.value)
   url.searchParams.append('compositorSessionId', session.compositorSessionId)
 
-  const proxyListener = compositorProxyConnector.listen(url)
+  const proxyListener = compositorProxyConnector.launch(url)
   const proxyConnectionProps: ProxyConnectionProps = {
     session,
     url,
@@ -29,13 +29,13 @@ function addConnection(
       removeConnection(proxyConnectionProps, proxyListener)
     },
     clients,
-    identity: proxyListener.remoteIdentity ?? '',
+    proxySessionKey: proxyListener.proxySessionKey ?? '',
   }
 
   connections.value = [...connections.value, proxyConnectionProps]
 
   proxyListener.remoteIdentityChanged = (remoteIdentity) => {
-    proxyConnectionProps.identity = remoteIdentity
+    proxyConnectionProps.proxySessionKey = remoteIdentity
     connections.value = [...connections.value]
   }
 }
@@ -68,7 +68,7 @@ export function ProxyConnector(props: ProxyConnectorProps) {
         <ul>
           {connections.value.map((connection) => (
             <li>
-              <ProxyConnection key={connection.identity} {...connection} />
+              <ProxyConnection key={connection.proxySessionKey} {...connection} />
             </li>
           ))}
         </ul>

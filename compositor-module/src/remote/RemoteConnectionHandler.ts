@@ -27,47 +27,10 @@ import XWaylandShell from './xwayland/XWaylandShell'
 import { XWindowManager } from './xwayland/XWindowManager'
 import { XWindowManagerConnection } from './xwayland/XWindowManagerConnection'
 import { Configuration, EncoderApi, ProxyFD } from '../api'
-import { ClientEncodersFeedback, createClientEncodersFeedback } from './EncoderFeedback'
+import { createClientEncodersFeedback } from './EncoderFeedback'
 import { deliverContentToBufferStream } from './BufferStream'
 import { createRemoteInputOutput } from './RemoteInputOutput'
 import type { Channel } from './Channel'
-
-const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567' as const
-
-export type RemoteClientContext = {
-  clientEncoderFeedback: ClientEncodersFeedback
-  encoderApi: EncoderApi
-}
-
-function base32Encode(data: Uint8Array) {
-  const view = new DataView(data.buffer, data.byteOffset, data.byteLength)
-
-  let bits = 0
-  let value = 0
-  let output = ''
-
-  for (let i = 0; i < view.byteLength; i++) {
-    value = (value << 8) | view.getUint8(i)
-    bits += 8
-
-    while (bits >= 5) {
-      output += alphabet[(value >>> (bits - 5)) & 31]
-      bits -= 5
-    }
-  }
-
-  if (bits > 0) {
-    output += alphabet[(value << (5 - bits)) & 31]
-  }
-
-  return output
-}
-
-export function randomString(): string {
-  const randomBytes = new Uint8Array(16)
-  window.crypto.getRandomValues(randomBytes)
-  return `ra${base32Encode(randomBytes).toLowerCase()}`
-}
 
 export function isProxyFD(fd: any): fd is ProxyFD {
   return typeof fd?.handle === 'number' && typeof fd?.host === 'string' && typeof fd?.type === 'string'
@@ -83,7 +46,16 @@ export class RemoteConnectionHandler {
     return new RemoteConnectionHandler(session)
   }
 
-  onProtocolChannel(protocolChannel: Channel, compositorProxyURL: URL, client: Client, proxyIdentityId: string): void {
+  onProtocolChannel(
+    protocolChannel: Channel,
+    proxySessionProps: {
+      proxySessionKey: string
+      baseURL: string
+      proxySessionSignalURL: string
+    },
+    client: Client,
+    proxySessionKey: string,
+  ): void {
     this.session.logger.info('[ProtocolChannel] - created.')
     let wasOpen = protocolChannel.isOpen
     protocolChannel.onClose = () => {
@@ -144,21 +116,18 @@ export class RemoteConnectionHandler {
         id: client.id,
       })
 
-      const protocol = compositorProxyURL.protocol === 'wss:' ? 'https:' : 'http:'
-      const pathname = compositorProxyURL.pathname === '/' ? '' : compositorProxyURL.pathname
-      const basePath = `${protocol}//${compositorProxyURL.host}${pathname}`
       const encoderApi = new EncoderApi(
         new Configuration({
-          basePath,
+          basePath: proxySessionProps.baseURL,
           headers: {
-            ['x-proxy-identity-id']: proxyIdentityId,
+            ['x-greenfield-proxy-session-key']: proxySessionKey,
           },
         }),
       )
       client.userData = {
         encoderApi,
         clientEncodersFeedback: createClientEncodersFeedback(client.id, encoderApi),
-        inputOutput: createRemoteInputOutput(basePath, proxyIdentityId),
+        inputOutput: createRemoteInputOutput(proxySessionProps.baseURL, proxySessionKey),
       }
     }
 

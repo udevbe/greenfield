@@ -9,6 +9,10 @@ server:
 public:
   # The base url to use when connecting to this endpoint. This is used when doing direct proxy to proxy connections.
   baseURL: http://localhost:8081
+  applications:
+    gtk4-demo:
+      executable: /usr/bin/gtk4-demo
+      path: /gtk4-demo
 encoder:
   # Path of the render device that should be used for hardware acceleration. e.g. /dev/dri/renderD128
   renderDevice: /dev/dri/renderD128

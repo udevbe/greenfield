@@ -12,7 +12,7 @@ function launchWebApp(
   clients: Signal<ClientProps[]>,
 ) {
   const url = new URL(webAppURL.value)
-  const webAppListener = webConnector.listen(url)
+  const webAppListener = webConnector.launch(url)
   const webApp: WebAppProps = { url, onClose: () => webAppListener.close(), loaded: new Signal(false) }
   webApps.value = [...webApps.value, webApp]
   webAppListener.onClose = () => {

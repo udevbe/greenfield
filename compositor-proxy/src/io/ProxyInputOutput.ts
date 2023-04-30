@@ -4,7 +4,7 @@ import { request as httpsRequest } from 'https'
 import { ProxyFD } from './types'
 import { createLogger } from '../Logger'
 import { createMemoryMappedFile, makePipe } from 'westfield-proxy'
-import { ProxySession } from "../ProxySession";
+import { ProxySession } from '../ProxySession'
 
 const logger = createLogger('webfs')
 
@@ -60,7 +60,7 @@ export class ProxyInputOutput {
       const options: RequestOptions = {
         method: 'PUT',
         headers: {
-          ['X-Proxy-Identity-Id']: proxyFD.identity,
+          ['X-Greenfield-Proxy-Session-Key']: proxyFD.proxySessionKey,
           ['Content-Type']: 'application/octet-stream',
           ['Content-Length']: buffer.byteLength,
         },
@@ -117,13 +117,13 @@ export class ProxyInputOutput {
         handle: pipeFds[0],
         type: 'pipe-read',
         host: this.baseURL,
-        identity: this.proxySession.identity
+        proxySessionKey: this.proxySession.sessionKey,
       },
       {
         handle: pipeFds[1],
         type: 'pipe-write',
         host: this.baseURL,
-        identity: this.proxySession.identity
+        proxySessionKey: this.proxySession.sessionKey,
       },
     ]
   }
@@ -134,7 +134,7 @@ export class ProxyInputOutput {
       handle: fd,
       type: 'shm',
       host: this.baseURL,
-      identity: this.proxySession.identity
+      proxySessionKey: this.proxySession.sessionKey,
     }
   }
 }

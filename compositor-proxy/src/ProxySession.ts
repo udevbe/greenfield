@@ -20,16 +20,47 @@ import { createLogger } from './Logger'
 import { createNativeCompositorSession, NativeCompositorSession } from './NativeCompositorSession'
 import { XWaylandSession } from './XWaylandSession'
 import { WebSocket } from 'uWebSockets.js'
-import {randomBytes} from "crypto";
+import { randomBytes } from 'crypto'
+import { execFile } from 'child_process'
 
+// TODO create logger per proxy session instance
 const logger = createLogger('compositor-proxy-session')
 
 let proxySessions: ProxySession[] = []
 
+export function launchApplication(applicationExecutable: string, proxySession: ProxySession) {
+  // TODO create child logger from proxy session logger
+  const appLogger = createLogger(applicationExecutable)
+  const childProcess = execFile(
+    applicationExecutable,
+    // TODO support executable arguments
+    [],
+    {
+      env: {
+        ...process.env,
+        WAYLAND_DISPLAY: proxySession.nativeCompositorSession.waylandDisplay,
+      },
+    },
+    (error, stdout, stderr) => {
+      if (error) {
+        appLogger.error(`child process error: ${error.message}. signal: ${error.signal}`)
+        return
+      }
+      appLogger.info(stdout)
+    },
+  )
+  childProcess.once('spawn', () => {
+    appLogger.info(`child process started: ${applicationExecutable}`)
+  })
+  // FIXME instead fo closing proxySession, close proxy session automatically after all clients have been disconnected
+  childProcess.once('exit', () => {
+    proxySession.close()
+  })
+}
+
 export function createProxySession(compositorSessionId: string): ProxySession {
   const proxySession = new ProxySession(compositorSessionId)
   logger.info(`Session created.`)
-
   proxySessions.push(proxySession)
 
   return proxySession
@@ -39,8 +70,8 @@ export function findProxySessionsByCompositorSessionId(compositorSessionId: stri
   return proxySessions.filter((proxySession) => proxySession.compositorSessionId === compositorSessionId)
 }
 
-export function findProxySessionByIdentity(proxyIdentity: string): ProxySession | undefined {
-  return proxySessions.find((proxySession)=>proxySession.identity===proxyIdentity)
+export function findProxySessionByKey(proxyIdentity: string): ProxySession | undefined {
+  return proxySessions.find((proxySession) => proxySession.sessionKey === proxyIdentity)
 }
 
 export type SignalingUserData = {
@@ -52,14 +83,12 @@ export class ProxySession {
   public signalingWebSocket?: WebSocket<SignalingUserData>
 
   public compositorPeerIdentity?: string
-  public readonly identity = randomBytes(8).toString('hex')
+  public readonly sessionKey = randomBytes(8).toString('hex')
 
   public readonly nativeCompositorSession: NativeCompositorSession
   private readonly xWaylandSession: XWaylandSession
 
-  constructor(
-    public readonly compositorSessionId: string,
-  ) {
+  constructor(public readonly compositorSessionId: string) {
     this.nativeCompositorSession = createNativeCompositorSession(this)
     this.xWaylandSession = XWaylandSession.create(this.nativeCompositorSession)
     this.xWaylandSession.createXWaylandListenerSocket(compositorSessionId)

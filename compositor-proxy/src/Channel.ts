@@ -1,7 +1,7 @@
 import { Kcp } from './kcp'
-import { sendChannelDisconnect, sendConnectionRequest } from './SignalingController'
+import { sendChannelDisconnect, sendConnectionRequest } from './AppWebSocketsController'
 import { WebSocket } from 'uWebSockets.js'
-import {ProxySession} from "./ProxySession";
+import { ProxySession } from './ProxySession'
 
 const MTU = 64000
 const MAX_BUFFERED_AMOUNT = 2949120

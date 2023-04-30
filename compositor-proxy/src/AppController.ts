@@ -1,6 +1,7 @@
 import type { ProxySession } from './ProxySession'
+import { createProxySession, launchApplication } from './ProxySession'
 import type { HttpRequest, HttpResponse } from 'uWebSockets.js'
-import { read, close, createReadStream, createWriteStream } from 'fs'
+import { close, createReadStream, createWriteStream, read } from 'fs'
 import { TRANSFER_CHUNK_SIZE } from './io/ProxyInputOutput'
 import { Readable, Writable } from 'stream'
 import { createLogger } from './Logger'
@@ -8,12 +9,15 @@ import { URLSearchParams } from 'url'
 import { config } from './config'
 import { operations } from './@types/api'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
+import { args } from './Args'
 
 const logger = createLogger('app')
 
 const allowOrigin = config.server.http.allowOrigin
-const allowHeaders = 'Content-Type, X-Proxy-Identity-Id'
+const allowHeaders = 'Content-Type, X-Greenfield-Proxy-Session-Key'
 const maxAge = '36000'
+
+// FIXME add authorization
 
 export function OPTIONSPreflightRequest(allowMethods: string) {
   return (res: HttpResponse, req: HttpRequest) => {
@@ -460,4 +464,42 @@ export async function POSTEncoderKeyframe(
   // })
 
   httpResponse.writeStatus('202 Accepted').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
+}
+
+export function GETApplication(httpResponse: HttpResponse, req: HttpRequest): void {
+  const compositorSessionId = req.getHeader('x-compositor-session-id')
+  if (args['static-session-id'] && args['static-session-id'] !== compositorSessionId) {
+    const message = '403 Bad compositorSessionId query parameter.'
+    httpResponse.end(message, true)
+    return
+  }
+
+  const requestPath = req.getUrl()
+  const applicationEntry = Object.entries(config.public.applications).find(([, { path }]) => path === requestPath)
+  if (applicationEntry === undefined) {
+    httpResponse
+      .writeStatus('404 Not Found')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+      .writeHeader('Content-Type', 'text/plain')
+      .end('Application not found.')
+    return
+  }
+  const [, { executable }] = applicationEntry
+
+  const proxySession = createProxySession(compositorSessionId)
+
+  launchApplication(executable, proxySession)
+
+  const proxyURL = new URL(config.public.baseURL.replace('http', 'ws'))
+  proxyURL.pathname += proxyURL.pathname.endsWith('/') ? 'signal' : '/signal'
+  proxyURL.searchParams.set('compositorSessionId', compositorSessionId)
+  proxyURL.searchParams.set('proxySessionKey', proxySession.sessionKey)
+
+  const reply: { proxySessionKey: string; baseURL: string; proxySessionSignalURL: string } = {
+    proxySessionKey: proxySession.sessionKey,
+    baseURL: config.public.baseURL,
+    proxySessionSignalURL: proxyURL.href,
+  }
+
+  httpResponse.writeStatus('200 OK').writeHeader('Access-Control-Allow-Origin', allowOrigin).end(JSON.stringify(reply))
 }
