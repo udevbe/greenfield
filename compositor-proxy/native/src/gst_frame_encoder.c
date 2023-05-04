@@ -1346,8 +1346,8 @@ static const struct frame_encoder_description frame_encoder_descriptions[] = {
                 .split_alpha = false,
                 .width_multiple = 16,
                 .height_multiple = 16,
-                .min_width = 16,
-                .min_height = 16,
+                .min_width = 32,
+                .min_height = 32,
         }
 };
 
