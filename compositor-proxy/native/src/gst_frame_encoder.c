@@ -764,6 +764,7 @@ gst_frame_encoder_pipeline_create(struct gst_frame_encoder *gst_encoder, const b
         g_object_set(glshader, "fragment", opaque_fragment_shader, NULL);
     }
     g_object_set(glshader, "vertex", vertex_shader, NULL);
+    gst_object_unref(glshader);
 
     app_sink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(gst_frame_encoder_pipeline->pipeline), "sink"));
     gst_app_sink_set_wait_on_eos(app_sink, true);

@@ -113,4 +113,6 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
       session.inputQueue.queueKey(keyEvent)
     }
   })
+
+  window.onbeforeunload = () => true
 }
