@@ -93,10 +93,11 @@ export type GreenfieldLogger = {
 }
 async function webVideoDecoderConfig(): Promise<VideoDecoderConfig | undefined> {
   if ('VideoDecoder' in window) {
-    const hardwareDecoderSupport = await VideoDecoder.isConfigSupported(hardwareDecoderConfig)
-    if (hardwareDecoderSupport.supported) {
-      return hardwareDecoderConfig
-    }
+    // FIXME hardware decoding frame offset is wrong
+    // const hardwareDecoderSupport = await VideoDecoder.isConfigSupported(hardwareDecoderConfig)
+    // if (hardwareDecoderSupport.supported) {
+    //   return hardwareDecoderConfig
+    // }
 
     const softwareDecoderSupport = await VideoDecoder.isConfigSupported(softwareDecoderConfig)
     if (softwareDecoderSupport) {
