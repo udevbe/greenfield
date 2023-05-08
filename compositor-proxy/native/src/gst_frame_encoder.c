@@ -1427,8 +1427,8 @@ void do_gst_frame_encoder_create(char preferred_frame_encoder[16], frame_callbac
 }
 
 void do_gst_frame_encoder_encode(struct frame_encoder **frame_encoder_pp, const union frame_buffer *frame_buffer,
-                                 constuint32_t buffer_content_serial,
-                                 constuint32_t buffer_creation_serial)
+                                 const uint32_t buffer_content_serial,
+                                 const uint32_t buffer_creation_serial)
 {
     struct frame_encoder *encoder = *frame_encoder_pp;
     if (encoder->terminated)

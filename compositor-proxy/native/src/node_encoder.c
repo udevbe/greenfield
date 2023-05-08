@@ -25,12 +25,12 @@
     }
 
 #ifndef NDEBUG
-#define NAPI_CALL(env, the_call)
-if ((the_call) != napi_ok) {
-    GET_AND_THROW_LAST_ERROR((env));
+#define NAPI_CALL(env, the_call) \
+if((the_call) != napi_ok) { \
+    GET_AND_THROW_LAST_ERROR((env)); \
 }
 #else
-#define NAPI_CALL(env, the_call)
+#define NAPI_CALL(env, the_call) \
 the_call;
 #endif
 
