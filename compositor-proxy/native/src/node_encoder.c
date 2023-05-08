@@ -5,6 +5,8 @@
 #include "encoder.h"
 #include "westfield.h"
 #include "node_api.h"
+#include "wlr_linux_dmabuf_v1.h"
+#include "wlr_drm.h"
 
 #define DECLARE_NAPI_METHOD(name, func)                          \
   { name, 0, func, 0, 0, 0, napi_default, 0 }
@@ -33,6 +35,22 @@ struct node_frame_encoder {
     struct wl_client *client;
     napi_threadsafe_function js_cb_ref;
 };
+
+napi_threadsafe_function discard_frame_buffer_js_cb_ref;
+
+static void
+discard_frame_buffer_cb_node(napi_env env, napi_value js_callback, void *context, void *data) {
+    const union frame_buffer *frame_buffer = data;
+    if(frame_buffer->base.type == SHM) {
+        wl_shm_pool_unref(frame_buffer->shm.pool);
+    }
+    free((void*)frame_buffer);
+}
+
+static void
+discard_frame_buffer_cb(const union frame_buffer *frame_buffer) {
+    napi_call_threadsafe_function(discard_frame_buffer_js_cb_ref, (void*)frame_buffer, napi_tsfn_blocking);
+}
 
 static void
 node_frame_encoder_opaque_sample_ready_callback(void *user_data, struct encoded_frame *encoded_frame) {
@@ -167,6 +185,7 @@ encodeFrame(napi_env env, napi_callback_info info) {
 
     struct node_frame_encoder *node_frame_encoder;
     uint32_t buffer_id, buffer_content_serial, buffer_creation_serial;
+
     struct wl_resource *buffer_resource;
 
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
@@ -176,8 +195,35 @@ encodeFrame(napi_env env, napi_callback_info info) {
     NAPI_CALL(env, napi_get_value_uint32(env, argv[3], &buffer_creation_serial))
 
     buffer_resource = wl_client_get_object(node_frame_encoder->client, buffer_id);
+    union frame_buffer *frame_buffer = calloc(1, sizeof(*frame_buffer));
+    frame_buffer->base.buffer_id = wl_resource_get_id(buffer_resource);
+    frame_buffer->base.discard_cb = discard_frame_buffer_cb;
 
-    if (frame_encoder_encode(&node_frame_encoder->encoder, buffer_resource, buffer_content_serial, buffer_creation_serial) == -1) {
+    if (wlr_dmabuf_v1_resource_is_buffer(buffer_resource)) {
+        struct wlr_dmabuf_v1_buffer *dmabuf_v1_buffer = wlr_dmabuf_v1_buffer_from_buffer_resource(buffer_resource);
+        frame_buffer->base.type = DMA;
+        frame_buffer->dma.width = dmabuf_v1_buffer->base.width;
+        frame_buffer->dma.height = dmabuf_v1_buffer->base.height;
+        frame_buffer->dma.attributes = &dmabuf_v1_buffer->attributes;
+    } else if(wlr_drm_buffer_is_resource(buffer_resource)) {
+        struct wlr_drm_buffer *westfield_drm_buffer = wlr_drm_buffer_from_resource(buffer_resource);
+        frame_buffer->base.type = DMA;
+        frame_buffer->dma.width = westfield_drm_buffer->base.width;
+        frame_buffer->dma.height = westfield_drm_buffer->base.height;
+        frame_buffer->dma.attributes = &westfield_drm_buffer->dmabuf;
+    } else if(wl_shm_buffer_get(buffer_resource) != NULL) {
+        struct wl_shm_buffer *shm_buffer = wl_shm_buffer_get(buffer_resource);
+        frame_buffer->base.type = SHM;
+        frame_buffer->shm.width = wl_shm_buffer_get_width(shm_buffer);
+        frame_buffer->shm.height = wl_shm_buffer_get_height(shm_buffer);
+
+        frame_buffer->shm.buffer_format = wl_shm_buffer_get_format(shm_buffer);
+        frame_buffer->shm.buffer_data = wl_shm_buffer_get_data(shm_buffer);
+        frame_buffer->shm.buffer_stride = wl_shm_buffer_get_stride(shm_buffer);
+        frame_buffer->shm.pool = wl_shm_buffer_ref_pool(shm_buffer);
+    }
+
+    if (frame_encoder_encode(&node_frame_encoder->encoder, frame_buffer, buffer_content_serial, buffer_creation_serial) == -1) {
         NAPI_CALL(env, napi_throw_error((env), NULL, "Can't encode frame buffer."))
         NAPI_CALL(env, napi_get_undefined(env, &return_value))
         return return_value;
@@ -208,6 +254,21 @@ requestKeyUnit(napi_env env, napi_callback_info info) {
 
 static napi_value
 init(napi_env env, napi_value exports) {
+    napi_value discard_frame_buffer_cb_name;
+    napi_create_string_utf8(env, "discard_frame_buffer_callback", NAPI_AUTO_LENGTH, &discard_frame_buffer_cb_name);
+    NAPI_CALL(env, napi_create_threadsafe_function(
+            env,
+            NULL,
+            NULL,
+            discard_frame_buffer_cb_name,
+            0,
+            2,
+            NULL,
+            NULL,
+            NULL,
+            discard_frame_buffer_cb_node,
+            &discard_frame_buffer_js_cb_ref))
+
     napi_property_descriptor desc[] = {
             DECLARE_NAPI_METHOD("createFrameEncoder", createFrameEncoder),
             DECLARE_NAPI_METHOD("destroyFrameEncoder", destroyFrameEncoder),

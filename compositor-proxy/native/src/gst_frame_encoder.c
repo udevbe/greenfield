@@ -21,8 +21,6 @@
 #include <gst/gl/gstglsyncmeta.h>
 #include <gst/gl/egl/gstglmemoryegl.h>
 #include "encoder.h"
-#include "wlr_drm.h"
-#include "wlr_linux_dmabuf_v1.h"
 
 #define FPS 60
 #define GF_BUFFER_CONTENT_SERIAL_META "BUFFER_CONTENT_SERIAL"
@@ -470,22 +468,20 @@ static GstAppSinkCallbacks encoded_frame_sample_callback = {
 };
 
 static inline GstSample *
-wl_shm_buffer_to_new_gst_frame_sample(struct wl_shm_buffer *shm_buffer, const uint32_t width, const uint32_t height,
-                                      const struct shmbuf_support_format *shmbuf_support_format, GstCaps *caps) {
-    void *buffer_data = wl_shm_buffer_get_data(shm_buffer);
-    struct wl_shm_pool *shm_pool = wl_shm_buffer_ref_pool(shm_buffer);
-    const uint32_t buffer_stride = wl_shm_buffer_get_stride(shm_buffer);
-    const gsize buffer_size = buffer_stride * height;
+shm_frame_buffer_to_new_gst_frame_sample(const union frame_buffer *frame_buffer,
+                                         const struct shmbuf_support_format *shmbuf_support_format, GstCaps *caps) {
+    const gsize buffer_size = frame_buffer->shm.buffer_stride * frame_buffer->shm.height;
     GstSample *sample;
 
     gsize offset[] = {0, 0, 0, 0};
-    gint stride[] = {(gint) buffer_stride, 0, 0, 0};
+    gint stride[] = {(gint) frame_buffer->shm.buffer_stride, 0, 0, 0};
     GstBuffer *buffer = gst_buffer_new_wrapped_full(GST_MEMORY_FLAG_READONLY | GST_MEMORY_FLAG_PHYSICALLY_CONTIGUOUS,
-                                                    (gpointer) buffer_data, buffer_size, 0, buffer_size, shm_pool,
-                                                    (GDestroyNotify) wl_shm_pool_unref);
+                                                    (gpointer) frame_buffer->shm.buffer_data, buffer_size, 0,
+                                                    buffer_size, (void *) frame_buffer,
+                                                    (GDestroyNotify) frame_buffer->base.discard_cb);
 
     gst_buffer_add_video_meta_full(buffer, GST_VIDEO_FRAME_FLAG_NONE, shmbuf_support_format->gst_video_format,
-                                   width, height, 1, offset, stride);
+                                   frame_buffer->shm.width, frame_buffer->shm.height, 1, offset, stride);
 
     sample = gst_sample_new(buffer, caps, NULL, NULL);
     gst_buffer_unref(buffer);
@@ -905,35 +901,34 @@ shmbuf_support_format_from_wl_shm_format(const enum wl_shm_format buffer_format)
 }
 
 static inline void
-gst_frame_encoder_encode_shm(struct gst_frame_encoder *gst_frame_encoder, struct wl_shm_buffer *shm_buffer,
+gst_frame_encoder_encode_shm(struct gst_frame_encoder *gst_frame_encoder, const union frame_buffer *frame_buffer,
                              struct frame_encoding_result *frame_encoding_result) {
     GstCaps *sample_caps;
     GstSample *opaque_sample, *alpha_sample;
     uint32_t coded_width, coded_height;
-    const uint32_t width = wl_shm_buffer_get_width(shm_buffer);
-    const uint32_t height = wl_shm_buffer_get_height(shm_buffer);
-    const enum wl_shm_format buffer_format = wl_shm_buffer_get_format(shm_buffer);
 
-    const struct shmbuf_support_format *shmbuf_support_format = shmbuf_support_format_from_wl_shm_format(buffer_format);
+    const struct shmbuf_support_format *shmbuf_support_format = shmbuf_support_format_from_wl_shm_format(
+            frame_buffer->shm.buffer_format);
     if (shmbuf_support_format == NULL) {
-        g_error("Failed to interpret shm format: %d", buffer_format);
+        g_error("Failed to interpret shm format: %d", frame_buffer->shm.buffer_format);
     }
 
     sample_caps = gst_caps_new_simple("video/x-raw",
                                       "framerate", GST_TYPE_FRACTION, FPS, 1,
                                       "format", G_TYPE_STRING, shmbuf_support_format->gst_format_string,
-                                      "width", G_TYPE_INT, width,
-                                      "height", G_TYPE_INT, height,
+                                      "width", G_TYPE_INT, frame_buffer->shm.width,
+                                      "height", G_TYPE_INT, frame_buffer->shm.height,
                                       NULL);
-    gst_frame_encoder_pipeline_coded_size(gst_frame_encoder->description, width, height, &coded_width, &coded_height);
+    gst_frame_encoder_pipeline_coded_size(gst_frame_encoder->description, frame_buffer->shm.width,
+                                          frame_buffer->shm.height,
+                                          &coded_width, &coded_height);
 
-    frame_encoding_result->props.width = width;
-    frame_encoding_result->props.height = height;
+    frame_encoding_result->props.width = frame_buffer->shm.width;
+    frame_encoding_result->props.height = frame_buffer->shm.height;
     frame_encoding_result->props.coded_width = coded_width;
     frame_encoding_result->props.coded_height = coded_height;
     g_queue_push_tail(gst_frame_encoder->frame_encoder->frame_encoding_results, frame_encoding_result);
-    opaque_sample = wl_shm_buffer_to_new_gst_frame_sample(shm_buffer, width, height, shmbuf_support_format,
-                                                          sample_caps);
+    opaque_sample = shm_frame_buffer_to_new_gst_frame_sample(frame_buffer, shmbuf_support_format, sample_caps);
 
     gst_frame_encoder_pipeline_encode(gst_frame_encoder->opaque_pipeline, opaque_sample,
                                       frame_encoding_result->props.buffer_content_serial);
@@ -942,8 +937,8 @@ gst_frame_encoder_encode_shm(struct gst_frame_encoder *gst_frame_encoder, struct
     if (shmbuf_support_format->has_alpha && gst_frame_encoder->description->split_alpha) {
         frame_encoding_result->has_split_alpha = true;
 
-        alpha_sample = wl_shm_buffer_to_new_gst_frame_sample(shm_buffer, width, height, shmbuf_support_format,
-                                                             sample_caps);
+        alpha_sample = shm_frame_buffer_to_new_gst_frame_sample(frame_buffer, shmbuf_support_format,
+                                                                sample_caps);
 
         gst_frame_encoder_pipeline_encode(gst_frame_encoder->alpha_pipeline, alpha_sample,
                                           frame_encoding_result->props.buffer_content_serial);
@@ -1050,36 +1045,38 @@ gst_frame_encoder_pipeline_dmabuf_attributes_to_new_gst_sample(
 
 static inline void
 gst_frame_encoder_encode_dmabuf(struct gst_frame_encoder *gst_frame_encoder,
-                                struct westfield_buffer *base,
-                                struct dmabuf_attributes *attributes,
+                                const union frame_buffer *frame_buffer,
                                 struct frame_encoding_result *frame_encoding_result) {
     GstCaps *sample_caps;
     GstSample *opaque_sample, *alpha_sample;
     uint32_t coded_width, coded_height;
 
-    const struct dmabuf_support_format *dmabuf_support_format = dmabuf_support_format_from_fourcc(attributes->format);
+    const struct dmabuf_support_format *dmabuf_support_format = dmabuf_support_format_from_fourcc(
+            frame_buffer->dma.attributes->format);
     if (dmabuf_support_format == NULL) {
         g_error("Can't encode buffer. Unsupported buffer. Failed to interpret buffer's fourcc format: %c%c%c%c",
-                GST_FOURCC_ARGS(attributes->format));
+                GST_FOURCC_ARGS(frame_buffer->dma.attributes->format));
     }
 
     sample_caps = gst_caps_new_simple("video/x-raw",
                                       "framerate", GST_TYPE_FRACTION, FPS, 1,
                                       "format", G_TYPE_STRING, "RGBA",
-                                      "width", G_TYPE_INT, base->width,
-                                      "height", G_TYPE_INT, base->height,
+                                      "width", G_TYPE_INT, frame_buffer->dma.width,
+                                      "height", G_TYPE_INT, frame_buffer->dma.height,
                                       NULL);
-    gst_frame_encoder_pipeline_coded_size(gst_frame_encoder->description, base->width, base->height, &coded_width,
+    gst_frame_encoder_pipeline_coded_size(gst_frame_encoder->description, frame_buffer->dma.width,
+                                          frame_buffer->dma.height,
+                                          &coded_width,
                                           &coded_height);
 
-    frame_encoding_result->props.width = base->width;
-    frame_encoding_result->props.height = base->height;
+    frame_encoding_result->props.width = frame_buffer->dma.width;
+    frame_encoding_result->props.height = frame_buffer->dma.height;
     frame_encoding_result->props.coded_width = coded_width;
     frame_encoding_result->props.coded_height = coded_height;
     g_queue_push_tail(gst_frame_encoder->frame_encoder->frame_encoding_results, frame_encoding_result);
 
     opaque_sample = gst_frame_encoder_pipeline_dmabuf_attributes_to_new_gst_sample(gst_frame_encoder->opaque_pipeline,
-                                                                                   attributes,
+                                                                                   frame_buffer->dma.attributes,
                                                                                    sample_caps);
     gst_frame_encoder_pipeline_encode(gst_frame_encoder->opaque_pipeline, opaque_sample,
                                       frame_encoding_result->props.buffer_content_serial);
@@ -1088,7 +1085,7 @@ gst_frame_encoder_encode_dmabuf(struct gst_frame_encoder *gst_frame_encoder,
     if (dmabuf_support_format->has_alpha && gst_frame_encoder->description->split_alpha) {
         frame_encoding_result->has_split_alpha = true;
         alpha_sample = gst_frame_encoder_pipeline_dmabuf_attributes_to_new_gst_sample(gst_frame_encoder->alpha_pipeline,
-                                                                                      attributes,
+                                                                                      frame_buffer->dma.attributes,
                                                                                       sample_caps);
         gst_frame_encoder_pipeline_encode(gst_frame_encoder->alpha_pipeline, alpha_sample,
                                           frame_encoding_result->props.buffer_content_serial);
@@ -1102,67 +1099,31 @@ gst_frame_encoder_encode_dmabuf(struct gst_frame_encoder *gst_frame_encoder,
 }
 
 static inline void
-gst_frame_encoder_encode(struct gst_frame_encoder *gst_encoder, struct wl_resource *buffer_resource,
+gst_frame_encoder_encode(struct gst_frame_encoder *gst_encoder, const union frame_buffer *frame_buffer,
                          struct frame_encoding_result *encoding_result) {
-    struct wl_shm_buffer *shm_buffer;
-    struct wlr_dmabuf_v1_buffer *dmabuf_v1_buffer;
-    struct wlr_drm_buffer *westfield_drm_buffer;
     encoding_result->props.frame_encoding_type = gst_encoder->description->frame_encoding_type;
 
-    if (wlr_dmabuf_v1_resource_is_buffer(buffer_resource)) {
-        dmabuf_v1_buffer = wlr_dmabuf_v1_buffer_from_buffer_resource(buffer_resource);
-        gst_frame_encoder_encode_dmabuf(gst_encoder, &dmabuf_v1_buffer->base,
-                                        &dmabuf_v1_buffer->attributes, encoding_result);
+    if (frame_buffer->base.type == DMA) {
+        gst_frame_encoder_encode_dmabuf(gst_encoder, frame_buffer, encoding_result);
         return;
     }
 
-    if (wlr_drm_buffer_is_resource(buffer_resource)) {
-        westfield_drm_buffer = wlr_drm_buffer_from_resource(buffer_resource);
-        gst_frame_encoder_encode_dmabuf(gst_encoder, &westfield_drm_buffer->base,
-                                        &westfield_drm_buffer->dmabuf, encoding_result);
-        return;
-    }
-
-    shm_buffer = wl_shm_buffer_get(buffer_resource);
-    if (shm_buffer) {
-        gst_frame_encoder_encode_shm(gst_encoder, shm_buffer, encoding_result);
+    if (frame_buffer->base.type == SHM) {
+        gst_frame_encoder_encode_shm(gst_encoder, frame_buffer, encoding_result);
         return;
     }
 }
 
 static inline bool
-png_gst_frame_encoder_supports_buffer(struct wl_resource *buffer_resource) {
-    int32_t width, height;
-
-    struct wl_shm_buffer *shm_buffer = wl_shm_buffer_get(buffer_resource);
-    if (shm_buffer) {
-        uint32_t shm_format = wl_shm_buffer_get_format(shm_buffer);
-        width = wl_shm_buffer_get_width(shm_buffer);
-        height = wl_shm_buffer_get_height(shm_buffer);
-
-
-        return (width * height) <= (256 * 256) &&
-               (shm_format == WL_SHM_FORMAT_ARGB8888 || shm_format == WL_SHM_FORMAT_XRGB8888);
+png_gst_frame_encoder_supports_buffer(const union frame_buffer *frame_buffer) {
+    if (frame_buffer->base.type == SHM) {
+        return (frame_buffer->shm.width * frame_buffer->shm.height) <= (256 * 256) &&
+               (frame_buffer->shm.buffer_format == WL_SHM_FORMAT_ARGB8888 ||
+                frame_buffer->shm.buffer_format == WL_SHM_FORMAT_XRGB8888);
     }
 
-    if (wlr_dmabuf_v1_resource_is_buffer(buffer_resource)) {
-        struct wlr_dmabuf_v1_buffer *dmabuf_v1_buffer = wlr_dmabuf_v1_buffer_from_buffer_resource(
-                buffer_resource);
-        width = dmabuf_v1_buffer->base.width;
-        height = dmabuf_v1_buffer->base.height;
-
-        if (width * height <= 256 * 256) {
-            return true;
-        }
-    }
-
-    if (wlr_drm_buffer_is_resource(buffer_resource)) {
-        struct wlr_drm_buffer *westfield_drm_buffer = wlr_drm_buffer_from_resource(buffer_resource);
-        width = westfield_drm_buffer->base.width;
-        height = westfield_drm_buffer->base.height;
-
-        // Too small needs the png encoder so refuse
-        if (width * height <= 256 * 256) {
+    if (frame_buffer->base.type == DMA) {
+        if ((frame_buffer->dma.width * frame_buffer->dma.height) <= (256 * 256)) {
             return true;
         }
     }
@@ -1173,14 +1134,9 @@ png_gst_frame_encoder_supports_buffer(struct wl_resource *buffer_resource) {
 static inline bool
 frame_encoder_description_supports_buffer(const struct frame_encoder_description *frame_encoder_description,
                                           const char *preferred_frame_encoder,
-                                          struct wl_resource *buffer_resource) {
-    int32_t width, height;
-    struct wl_shm_buffer *shm_buffer;
-    struct wlr_dmabuf_v1_buffer *dmabuf_v1_buffer;
-    struct wlr_drm_buffer *westfield_drm_buffer;
-
+                                          const union frame_buffer *frame_buffer) {
     if (strcmp(frame_encoder_description->name, "png") == 0) {
-        return png_gst_frame_encoder_supports_buffer(buffer_resource);
+        return png_gst_frame_encoder_supports_buffer(frame_buffer);
     }
 
     // different encoder preferred so not for this interface
@@ -1188,44 +1144,22 @@ frame_encoder_description_supports_buffer(const struct frame_encoder_description
         return false;
     }
 
-    if (wlr_dmabuf_v1_resource_is_buffer(buffer_resource)) {
-        dmabuf_v1_buffer = wlr_dmabuf_v1_buffer_from_buffer_resource(buffer_resource);
-        width = dmabuf_v1_buffer->base.width;
-        height = dmabuf_v1_buffer->base.height;
-
+    if (frame_buffer->base.type == DMA) {
         // Too small needs the png encoder so refuse
-        if (width * height <= 256 * 256) {
+        if ((frame_buffer->dma.width * frame_buffer->dma.height) <= (256 * 256)) {
             return false;
         }
-
         return true;
     }
 
-    if (wlr_drm_buffer_is_resource(buffer_resource)) {
-        westfield_drm_buffer = wlr_drm_buffer_from_resource(buffer_resource);
-        width = westfield_drm_buffer->base.width;
-        height = westfield_drm_buffer->base.height;
-
+    if (frame_buffer->base.type == SHM) {
         // Too small needs the png encoder so refuse
-        if (width * height <= 256 * 256) {
+        if ((frame_buffer->shm.width * frame_buffer->shm.height) <= (256 * 256)) {
             return false;
         }
 
-        return true;
-    }
-
-    shm_buffer = wl_shm_buffer_get(buffer_resource);
-    if (shm_buffer != NULL) {
-        const uint32_t shm_format = wl_shm_buffer_get_format(shm_buffer);
-        width = wl_shm_buffer_get_width(shm_buffer);
-        height = wl_shm_buffer_get_height(shm_buffer);
-
-        // Too small needs the png encoder so refuse
-        if (width * height <= 256 * 256) {
-            return false;
-        }
-
-        if (shm_format == WL_SHM_FORMAT_ARGB8888 || shm_format == WL_SHM_FORMAT_XRGB8888) {
+        if (frame_buffer->shm.buffer_format == WL_SHM_FORMAT_ARGB8888 ||
+            frame_buffer->shm.buffer_format == WL_SHM_FORMAT_XRGB8888) {
             return true;
         }
     }
@@ -1238,28 +1172,28 @@ static const struct frame_encoder_description frame_encoder_descriptions[] = {
                 .name = "x264",
                 .frame_encoding_type = h264,
                 .opaque_pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
-                                       "glupload ! "
-                                       "glcolorconvert ! "
-                                       "glshader name=shader ! "
-                                       "capsfilter name=shader_capsfilter ! "
-                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
-                                       "gldownload ! "
-                                       // The ueue is silent
-                                       "queue silent=true ! "
-                                       "x264enc me=2 analyse=51 dct8x8=true cabac=true bframes=0 b-adapt=false rc-lookahead=0 sliced-threads=true byte-stream=true tune=zerolatency psy-tune=2 bitrate=12000 vbv-buf-capacity=160 ! "
-                                       "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
-                                       "appsink name=sink ",
+                                              "glupload ! "
+                                              "glcolorconvert ! "
+                                              "glshader name=shader ! "
+                                              "capsfilter name=shader_capsfilter ! "
+                                              "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
+                                              "gldownload ! "
+                                              // The ueue is silent
+                                              "queue silent=true ! "
+                                              "x264enc me=2 analyse=51 dct8x8=true cabac=true bframes=0 b-adapt=false rc-lookahead=0 sliced-threads=true byte-stream=true tune=zerolatency psy-tune=2 bitrate=12000 vbv-buf-capacity=160 ! "
+                                              "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
+                                              "appsink name=sink ",
                 .alpha_pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
-                                       "glupload ! "
-                                       "glcolorconvert ! "
-                                       "glshader name=shader ! "
-                                       "capsfilter name=shader_capsfilter ! "
-                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
-                                       "gldownload ! "
-                                       "queue silent=true ! "
-                                       "x264enc me=2 analyse=51 dct8x8=true cabac=true bframes=0 b-adapt=false rc-lookahead=0 sliced-threads=true byte-stream=true tune=zerolatency psy-tune=2 bitrate=1200 vbv-buf-capacity=160 ! "
-                                       "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
-                                       "appsink name=sink ",
+                                             "glupload ! "
+                                             "glcolorconvert ! "
+                                             "glshader name=shader ! "
+                                             "capsfilter name=shader_capsfilter ! "
+                                             "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
+                                             "gldownload ! "
+                                             "queue silent=true ! "
+                                             "x264enc me=2 analyse=51 dct8x8=true cabac=true bframes=0 b-adapt=false rc-lookahead=0 sliced-threads=true byte-stream=true tune=zerolatency psy-tune=2 bitrate=1200 vbv-buf-capacity=160 ! "
+                                             "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
+                                             "appsink name=sink ",
                 .split_alpha = true,
                 .width_multiple = 128,
                 .height_multiple = 128,
@@ -1272,26 +1206,26 @@ static const struct frame_encoder_description frame_encoder_descriptions[] = {
                 // TODO see if we can somehow get https://en.wikipedia.org/wiki/YCoCg color conversion to work with full range colors
                 // FIXME current colors lacks gamma correction, light colors are too white and dark colors are too black.
                 .opaque_pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
-                                       "glupload ! "
-                                       "glcolorconvert ! "
-                                       "glshader name=shader ! "
-                                       "capsfilter name=shader_capsfilter ! "
-                                       "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
-                                       "queue silent=true ! "
-                                       // TODO use cudascale/cudaconvert once gstreamer 1.22 is released
-                                       "nvh264enc gop-size=-1 zerolatency=true preset=4 rc-mode=7 max-bitrate=12000 vbv-buffer-size=200 spatial-aq=true ! "
-                                       "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
-                                       "appsink name=sink ",
-                .alpha_pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
                                               "glupload ! "
                                               "glcolorconvert ! "
                                               "glshader name=shader ! "
                                               "capsfilter name=shader_capsfilter ! "
+                                              "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! "
                                               "queue silent=true ! "
                                               // TODO use cudascale/cudaconvert once gstreamer 1.22 is released
-                                              "nvh264enc gop-size=-1 zerolatency=true preset=4 rc-mode=7 max-bitrate=1200 vbv-buffer-size=20  spatial-aq=true ! "
+                                              "nvh264enc gop-size=-1 zerolatency=true preset=4 rc-mode=7 max-bitrate=12000 vbv-buffer-size=200 spatial-aq=true ! "
                                               "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
                                               "appsink name=sink ",
+                .alpha_pipeline_definition = "appsrc name=src format=3 stream-type=0 ! "
+                                             "glupload ! "
+                                             "glcolorconvert ! "
+                                             "glshader name=shader ! "
+                                             "capsfilter name=shader_capsfilter ! "
+                                             "queue silent=true ! "
+                                             // TODO use cudascale/cudaconvert once gstreamer 1.22 is released
+                                             "nvh264enc gop-size=-1 zerolatency=true preset=4 rc-mode=7 max-bitrate=1200 vbv-buffer-size=20  spatial-aq=true ! "
+                                             "video/x-h264,profile=high,stream-format=byte-stream,alignment=au ! "
+                                             "appsink name=sink ",
                 .split_alpha = true,
                 .width_multiple = 128,
                 .height_multiple = 128,
@@ -1376,9 +1310,9 @@ do_gst_frame_encoder_create(char preferred_frame_encoder[16], frame_callback_fun
 }
 
 void
-do_gst_frame_encoder_encode(struct frame_encoder **frame_encoder_pp, struct wl_resource *buffer_resource,
-                            uint32_t buffer_content_serial,
-                            uint32_t buffer_creation_serial) {
+do_gst_frame_encoder_encode(struct frame_encoder **frame_encoder_pp, const union frame_buffer *frame_buffer,
+                            const uint32_t buffer_content_serial,
+                            const uint32_t buffer_creation_serial) {
     struct frame_encoder *encoder = *frame_encoder_pp;
     if (encoder->terminated) {
         g_error("BUG. Can not encode. Encoder is terminated.");
@@ -1389,7 +1323,7 @@ do_gst_frame_encoder_encode(struct frame_encoder **frame_encoder_pp, struct wl_r
 
     if (encoder->impl != NULL) {
         if (!frame_encoder_description_supports_buffer(encoder->impl->description, encoder->preferred_frame_encoder,
-                                                       buffer_resource)) {
+                                                       frame_buffer)) {
             gst_frame_encoder_eos(encoder->impl);
             encoder->impl = NULL;
         }
@@ -1397,8 +1331,9 @@ do_gst_frame_encoder_encode(struct frame_encoder **frame_encoder_pp, struct wl_r
 
     if (encoder->impl == NULL) {
         for (int i = 0; i < nro_encoders; i++) {
-            if (frame_encoder_description_supports_buffer(&frame_encoder_descriptions[i], encoder->preferred_frame_encoder,
-                                                          buffer_resource)) {
+            if (frame_encoder_description_supports_buffer(&frame_encoder_descriptions[i],
+                                                          encoder->preferred_frame_encoder,
+                                                          frame_buffer)) {
                 gst_frame_encoder_create(encoder, &frame_encoder_descriptions[i]);
                 assert(encoder->impl != NULL && "Found matching encoder and have implementation.");
                 break;
@@ -1417,8 +1352,8 @@ do_gst_frame_encoder_encode(struct frame_encoder **frame_encoder_pp, struct wl_r
     g_mutex_init(&encoding_result->mutex);
     encoding_result->props.buffer_content_serial = buffer_content_serial;
     encoding_result->props.buffer_creation_serial = buffer_creation_serial;
-    encoding_result->props.buffer_id = wl_resource_get_id(buffer_resource);
-    gst_frame_encoder_encode(encoder->impl, buffer_resource, encoding_result);
+    encoding_result->props.buffer_id = frame_buffer->base.buffer_id;
+    gst_frame_encoder_encode(encoder->impl, frame_buffer, encoding_result);
 }
 
 void
