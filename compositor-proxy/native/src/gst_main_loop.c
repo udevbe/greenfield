@@ -12,7 +12,8 @@ do_gst_frame_encoder_create(char preferred_frame_encoder[16], frame_callback_fun
                             struct frame_encoder **frame_encoder_pp, struct westfield_egl *westfield_egl);
 
 extern void
-do_gst_frame_encoder_encode(struct frame_encoder **frame_encoder_pp, struct wl_resource *buffer_resource, uint32_t buffer_content_serial,
+do_gst_frame_encoder_encode(struct frame_encoder **frame_encoder_pp, const union frame_buffer *frame_buffer,
+                            uint32_t buffer_content_serial,
                             uint32_t buffer_creation_serial);
 
 extern void
@@ -50,7 +51,7 @@ struct gf_message {
         } frame_encoder_create;
         struct {
             struct frame_encoder **frame_encoder_pp;
-            struct wl_resource *buffer_resource;
+            const union frame_buffer *frame_buffer;
             uint32_t buffer_content_serial;
             uint32_t buffer_creation_serial;
         } frame_encoder_encode;
@@ -161,7 +162,7 @@ main_loop_handle_message(struct gf_message *message) {
             break;
         case frame_encoder_encode_type:
             do_gst_frame_encoder_encode(message->body.frame_encoder_encode.frame_encoder_pp,
-                                        message->body.frame_encoder_encode.buffer_resource,
+                                        message->body.frame_encoder_encode.frame_buffer,
                                         message->body.frame_encoder_encode.buffer_content_serial,
                                         message->body.frame_encoder_encode.buffer_creation_serial
             );
@@ -230,13 +231,14 @@ frame_encoder_create(char preferred_frame_encoder[16],
 }
 
 int
-frame_encoder_encode(struct frame_encoder **frame_encoder_pp, struct wl_resource *buffer_resource, uint32_t buffer_content_serial,
+frame_encoder_encode(struct frame_encoder **frame_encoder_pp, const union frame_buffer *frame_buffer,
+                     uint32_t buffer_content_serial,
                      uint32_t buffer_creation_serial) {
     struct gf_message *message = g_new0(struct gf_message, 1);
 
     message->type = frame_encoder_encode_type;
     message->body.frame_encoder_encode.frame_encoder_pp = frame_encoder_pp;
-    message->body.frame_encoder_encode.buffer_resource = buffer_resource;
+    message->body.frame_encoder_encode.frame_buffer = frame_buffer;
     message->body.frame_encoder_encode.buffer_content_serial = buffer_content_serial;
     message->body.frame_encoder_encode.buffer_creation_serial = buffer_creation_serial;
 
