@@ -24,11 +24,15 @@
       napi_throw_error((env), NULL, error_message);                      \
     }
 
-#define NAPI_CALL(env, the_call) {                                       \
-    if ((the_call) != napi_ok) {                                         \
-        GET_AND_THROW_LAST_ERROR((env));                                 \
-    }                                                                    \
+#ifndef NDEBUG
+#define NAPI_CALL(env, the_call) \
+if((the_call) != napi_ok) { \
+    GET_AND_THROW_LAST_ERROR((env)); \
 }
+#else
+#define NAPI_CALL(env, the_call) \
+the_call;
+#endif
 
 struct node_frame_encoder {
     struct frame_encoder *encoder;
