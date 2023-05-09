@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { Epoll } from 'epoll'
+import { startPoll, stopPoll, PollHandle } from './proxy-poll-addon'
 import { createProxyInputOutput } from './io/ProxyInputOutput'
 import { createLogger } from './Logger'
 import { createNativeClientSession, NativeClientSession } from './NativeClientSession'
@@ -91,7 +91,7 @@ export class NativeCompositorSession {
   readonly wlDisplay: unknown
   readonly waylandDisplay: string
   readonly drmContext: unknown
-  private readonly wlDisplayFdWatcher: Epoll
+  private readonly wlDisplayFdWatcher: PollHandle
 
   constructor(
     public readonly compositorSessionId: string,
@@ -108,22 +108,19 @@ export class NativeCompositorSession {
     initShm(this.wlDisplay)
     this.drmContext = initDrm(this.wlDisplay, config.encoder.renderDevice)
 
-    // TODO handle err
-    // TODO write our own native epoll
-    this.wlDisplayFdWatcher = new Epoll((err: unknown) => {
-      if (err) {
-        console.error('epoll error: ', err)
+    this.wlDisplayFdWatcher = startPoll(getFd(this.wlDisplay), (status) => {
+      if (status < 0) {
+        console.error('epoll error: ', status)
         process.exit(1)
       }
       dispatchRequests(this.wlDisplay)
     })
-    this.wlDisplayFdWatcher.add(getFd(this.wlDisplay), Epoll.EPOLLPRI | Epoll.EPOLLIN | Epoll.EPOLLERR)
 
     logger.info(`Listening on: WAYLAND_DISPLAY="${this.waylandDisplay}".`)
   }
 
   destroy(): void {
-    this.wlDisplayFdWatcher.close()
+    stopPoll(this.wlDisplayFdWatcher)
     for (const client of this.clients) {
       client.nativeClientSession.destroy()
     }

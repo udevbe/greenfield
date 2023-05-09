@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM debian:bookworm-20230411-slim as BUILD
+FROM debian:bookworm-20230502-slim as BUILD
 
 RUN apt-get update && apt-get install  -y --no-install-recommends  \
     nodejs \
@@ -63,7 +63,7 @@ RUN yarn generate
 RUN yarn build
 RUN yarn package
 
-FROM debian:bookworm-20230411-slim
+FROM debian:bookworm-20230502-slim
 RUN sed -i'' -e 's/main$/main contrib non-free/g' /etc/apt/sources.list.d/debian.sources
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi8 \
@@ -90,7 +90,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xauth \
     xxd \
     inotify-tools \
-    libnode108 \
     && apt-get autoremove -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*

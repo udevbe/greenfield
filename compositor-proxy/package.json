@@ -44,7 +44,6 @@
     "@types/supertest": "^2.0.12",
     "@typescript-eslint/eslint-plugin": "^5.57.1",
     "@typescript-eslint/parser": "^5.57.1",
-    "epoll": "^4.0.1",
     "eslint": "^8.37.0",
     "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-prettier": "^4.2.1",
@@ -68,8 +67,7 @@
       "dist/config.yaml",
       "dist/**/*.json",
       "dist/**/*.so",
-      "node_modules/uWebSockets.js/uws_linux_x64_108.node",
-      "node_modules/epoll/build/Release/epoll.node"
+      "node_modules/uWebSockets.js/uws_linux_x64_108.node"
     ],
     "targets": [
       "node18-linux-x64"
