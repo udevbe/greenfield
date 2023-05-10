@@ -96,8 +96,6 @@ poll_handle_close(struct uv_handle_s* handle) {
 
 static napi_value
 stop_poll(napi_env env, napi_callback_info info) {
-    napi_handle_scope scope;
-
     static size_t argc = 1;
     napi_value argv[argc], return_value;
     struct uv_poll_s *poll_handle;
@@ -113,8 +111,6 @@ stop_poll(napi_env env, napi_callback_info info) {
 
 static napi_value
 init(napi_env env, napi_value exports) {
-    napi_handle_scope scope;
-
     napi_property_descriptor desc[] = {
             DECLARE_NAPI_METHOD("startPoll", start_poll),
             DECLARE_NAPI_METHOD("stopPoll", stop_poll),
