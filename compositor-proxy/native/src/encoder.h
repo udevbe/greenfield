@@ -1,7 +1,3 @@
-//
-// Created by erik on 9/15/19.
-//
-
 #ifndef APP_ENDPOINT_ENCODING_ENCODER_H
 #define APP_ENDPOINT_ENCODING_ENCODER_H
 
@@ -20,38 +16,27 @@ enum frame_buffer_type {
     DMA,
 };
 
-union frame_buffer {
-    struct {
-        enum frame_buffer_type type;
-        uint32_t buffer_id;
+struct frame_buffer {
+    enum frame_buffer_type type;
+    uint32_t buffer_id;
+    uint32_t width;
+    uint32_t height;
 
-        void (*discard_cb)(const union frame_buffer *frame_buffer);
-    } base;
+    void (*discard_cb)(const struct frame_buffer *frame_buffer);
+    void *user_data;
 
-    struct {
-        enum frame_buffer_type type;
-        uint32_t buffer_id;
+    union {
+        struct {
+            enum wl_shm_format buffer_format;
+            void *buffer_data;
+            uint32_t buffer_stride;
+            struct wl_shm_pool *pool;
+        } shm;
 
-        void (*discard_cb)(const union frame_buffer *frame_buffer);
-
-        uint32_t width;
-        uint32_t height;
-        enum wl_shm_format buffer_format;
-        void *buffer_data;
-        uint32_t buffer_stride;
-        struct wl_shm_pool *pool;
-    } shm;
-
-    struct {
-        enum frame_buffer_type type;
-        uint32_t buffer_id;
-
-        void (*discard_cb)(const union frame_buffer *frame_buffer);
-
-        uint32_t width;
-        uint32_t height;
-        struct dmabuf_attributes *attributes;
-    } dma;
+        struct {
+            struct dmabuf_attributes *attributes;
+        } dma;
+    } impl;
 };
 
 typedef void (*frame_callback_func)(void *user_data, struct encoded_frame *encoded_frame);
@@ -63,7 +48,7 @@ frame_encoder_create(char preferred_frame_encoder[16], frame_callback_func frame
                      struct frame_encoder **frame_encoder_pp, struct westfield_egl *westfield_egl);
 
 int
-frame_encoder_encode(struct frame_encoder **frame_encoder_pp, const union frame_buffer *frame_buffer,
+frame_encoder_encode(struct frame_encoder **frame_encoder_pp, const struct frame_buffer *frame_buffer,
                      uint32_t buffer_content_serial,
                      uint32_t buffer_creation_serial);
 

@@ -44,15 +44,15 @@ napi_threadsafe_function discard_frame_buffer_js_cb_ref;
 
 static void
 discard_frame_buffer_cb_node(napi_env env, napi_value js_callback, void *context, void *data) {
-    const union frame_buffer *frame_buffer = data;
-    if(frame_buffer->base.type == SHM) {
-        wl_shm_pool_unref(frame_buffer->shm.pool);
+    struct frame_buffer *frame_buffer = data;
+    if(frame_buffer->type == SHM) {
+        wl_shm_pool_unref(frame_buffer->impl.shm.pool);
     }
-    free((void*)frame_buffer);
+    free(frame_buffer);
 }
 
 static void
-discard_frame_buffer_cb(const union frame_buffer *frame_buffer) {
+discard_frame_buffer_cb(const struct frame_buffer *frame_buffer) {
     napi_call_threadsafe_function(discard_frame_buffer_js_cb_ref, (void*)frame_buffer, napi_tsfn_blocking);
 }
 
@@ -165,11 +165,11 @@ destroyFrameEncoder(napi_env env, napi_callback_info info) {
 
     // TODO close encoder first, wait for eos callback, then destroy rest of resources
     frame_encoder_destroy(&node_frame_encoder->encoder);
+
+//    NAPI_CALL(env, napi_unref_threadsafe_function(env, node_frame_encoder->js_cb_ref))
+//    napi_release_threadsafe_function(node_frame_encoder->js_cb_ref, napi_tsfn_release);
 //
-//    NAPI_CALL(env, napi_unref_threadsafe_function(env, node_encoder->js_cb_ref))
-//    napi_release_threadsafe_function(node_encoder->js_cb_ref, napi_tsfn_release);
-//
-//    free(node_encoder);
+//    free(node_frame_encoder);
     NAPI_CALL(env, napi_get_undefined(env, &return_value))
     return return_value;
 }
@@ -199,32 +199,34 @@ encodeFrame(napi_env env, napi_callback_info info) {
     NAPI_CALL(env, napi_get_value_uint32(env, argv[3], &buffer_creation_serial))
 
     buffer_resource = wl_client_get_object(node_frame_encoder->client, buffer_id);
-    union frame_buffer *frame_buffer = calloc(1, sizeof(*frame_buffer));
-    frame_buffer->base.buffer_id = wl_resource_get_id(buffer_resource);
-    frame_buffer->base.discard_cb = discard_frame_buffer_cb;
+    struct frame_buffer *frame_buffer = calloc(1, sizeof(*frame_buffer));
+    frame_buffer->buffer_id = wl_resource_get_id(buffer_resource);
+    frame_buffer->discard_cb = discard_frame_buffer_cb;
 
     if (wlr_dmabuf_v1_resource_is_buffer(buffer_resource)) {
         struct wlr_dmabuf_v1_buffer *dmabuf_v1_buffer = wlr_dmabuf_v1_buffer_from_buffer_resource(buffer_resource);
-        frame_buffer->base.type = DMA;
-        frame_buffer->dma.width = dmabuf_v1_buffer->base.width;
-        frame_buffer->dma.height = dmabuf_v1_buffer->base.height;
-        frame_buffer->dma.attributes = &dmabuf_v1_buffer->attributes;
+        frame_buffer->type = DMA;
+        frame_buffer->width = dmabuf_v1_buffer->base.width;
+        frame_buffer->height = dmabuf_v1_buffer->base.height;
+
+        frame_buffer->impl.dma.attributes = &dmabuf_v1_buffer->attributes;
     } else if(wlr_drm_buffer_is_resource(buffer_resource)) {
         struct wlr_drm_buffer *westfield_drm_buffer = wlr_drm_buffer_from_resource(buffer_resource);
-        frame_buffer->base.type = DMA;
-        frame_buffer->dma.width = westfield_drm_buffer->base.width;
-        frame_buffer->dma.height = westfield_drm_buffer->base.height;
-        frame_buffer->dma.attributes = &westfield_drm_buffer->dmabuf;
+        frame_buffer->type = DMA;
+        frame_buffer->width = westfield_drm_buffer->base.width;
+        frame_buffer->height = westfield_drm_buffer->base.height;
+
+        frame_buffer->impl.dma.attributes = &westfield_drm_buffer->dmabuf;
     } else if(wl_shm_buffer_get(buffer_resource) != NULL) {
         struct wl_shm_buffer *shm_buffer = wl_shm_buffer_get(buffer_resource);
-        frame_buffer->base.type = SHM;
-        frame_buffer->shm.width = wl_shm_buffer_get_width(shm_buffer);
-        frame_buffer->shm.height = wl_shm_buffer_get_height(shm_buffer);
+        frame_buffer->type = SHM;
+        frame_buffer->width = wl_shm_buffer_get_width(shm_buffer);
+        frame_buffer->height = wl_shm_buffer_get_height(shm_buffer);
 
-        frame_buffer->shm.buffer_format = wl_shm_buffer_get_format(shm_buffer);
-        frame_buffer->shm.buffer_data = wl_shm_buffer_get_data(shm_buffer);
-        frame_buffer->shm.buffer_stride = wl_shm_buffer_get_stride(shm_buffer);
-        frame_buffer->shm.pool = wl_shm_buffer_ref_pool(shm_buffer);
+        frame_buffer->impl.shm.buffer_format = wl_shm_buffer_get_format(shm_buffer);
+        frame_buffer->impl.shm.buffer_data = wl_shm_buffer_get_data(shm_buffer);
+        frame_buffer->impl.shm.buffer_stride = wl_shm_buffer_get_stride(shm_buffer);
+        frame_buffer->impl.shm.pool = wl_shm_buffer_ref_pool(shm_buffer);
     }
 
     if (frame_encoder_encode(&node_frame_encoder->encoder, frame_buffer, buffer_content_serial, buffer_creation_serial) == -1) {
@@ -266,7 +268,7 @@ init(napi_env env, napi_value exports) {
             NULL,
             discard_frame_buffer_cb_name,
             0,
-            2,
+            3,
             NULL,
             NULL,
             NULL,

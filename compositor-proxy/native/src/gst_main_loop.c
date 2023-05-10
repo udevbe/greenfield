@@ -12,7 +12,7 @@ do_gst_frame_encoder_create(char preferred_frame_encoder[16], frame_callback_fun
                             struct frame_encoder **frame_encoder_pp, struct westfield_egl *westfield_egl);
 
 extern void
-do_gst_frame_encoder_encode(struct frame_encoder **frame_encoder_pp, const union frame_buffer *frame_buffer,
+do_gst_frame_encoder_encode(struct frame_encoder **frame_encoder_pp, const struct frame_buffer *frame_buffer,
                             uint32_t buffer_content_serial,
                             uint32_t buffer_creation_serial);
 
@@ -51,7 +51,7 @@ struct gf_message {
         } frame_encoder_create;
         struct {
             struct frame_encoder **frame_encoder_pp;
-            const union frame_buffer *frame_buffer;
+            const struct frame_buffer *frame_buffer;
             uint32_t buffer_content_serial;
             uint32_t buffer_creation_serial;
         } frame_encoder_encode;
@@ -231,7 +231,7 @@ frame_encoder_create(char preferred_frame_encoder[16],
 }
 
 int
-frame_encoder_encode(struct frame_encoder **frame_encoder_pp, const union frame_buffer *frame_buffer,
+frame_encoder_encode(struct frame_encoder **frame_encoder_pp, const struct frame_buffer *frame_buffer,
                      uint32_t buffer_content_serial,
                      uint32_t buffer_creation_serial) {
     struct gf_message *message = g_new0(struct gf_message, 1);
