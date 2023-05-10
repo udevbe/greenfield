@@ -70,6 +70,8 @@ For XWayland support a few extra steps may be needed, this is optional and only 
 and finally
 - `yarn start`
 
+> **_NOTE:_**  Firefox needs to be at least at version 113 and `dom.workers.modules.enabled` preference needs to be set to true. To change preferences in Firefox, visit `about:config`.
+
 This will start a development build+run. You should now see something that says `Compositor proxy started. Listening on port 8081`. You can also adjust some things
 in `src/config.yaml`.
 
