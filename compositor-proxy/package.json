@@ -32,7 +32,7 @@
     "js-yaml": "^4.1.0",
     "pino": "^8.8.0",
     "pino-pretty": "^9.1.1",
-    "uWebSockets.js": "uNetworking/uWebSockets.js#v20.20.0",
+    "uWebSockets.js": "uNetworking/uWebSockets.js#v20.24.0",
     "xtsb": "1.0.0-alpha.0"
   },
   "devDependencies": {
@@ -59,7 +59,7 @@
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.1",
     "typescript": "^5.0.3",
-    "westfield-proxy": "1.0.0-alpha.18",
+    "westfield-proxy": "1.0.0-alpha.19",
     "westfield-proxy-generator": "1.0.0-alpha.4"
   },
   "pkg": {
