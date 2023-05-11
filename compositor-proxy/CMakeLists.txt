@@ -21,12 +21,14 @@ pkg_check_modules(GSTREAMER REQUIRED
 pkg_check_modules(GRAPHENE REQUIRED IMPORTED_TARGET graphene-1.0)
 pkg_check_modules(EGL REQUIRED IMPORTED_TARGET egl>=1.5)
 pkg_check_modules(OPENGL REQUIRED IMPORTED_TARGET opengl>=3.3)
+pkg_check_modules(UV REQUIRED IMPORTED_TARGET libuv>=1.38.0)
 
 get_filename_component(WESTFIELD_LIBWAYLAND_SERVER ${CMAKE_CURRENT_SOURCE_DIR}/node_modules/westfield-proxy/dist/libwayland-server.so.0 ABSOLUTE)
 get_filename_component(WESTFIELD ${CMAKE_CURRENT_SOURCE_DIR}/node_modules/westfield-proxy/dist/libwestfield.so ABSOLUTE)
 
 add_library(proxy-encoding SHARED
         ${CMAKE_CURRENT_SOURCE_DIR}/native/src/encoder.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/src/gst_frame_encoder_drm_formats.h
         ${CMAKE_CURRENT_SOURCE_DIR}/native/src/gst_frame_encoder.c
         ${CMAKE_CURRENT_SOURCE_DIR}/native/src/gst_main_loop.c
 )
@@ -53,6 +55,21 @@ set_target_properties(proxy-encoding
         LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/encoding
 )
 
+add_library(proxy-poll-addon SHARED
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/src/poll.c
+)
+target_include_directories(proxy-poll-addon PRIVATE
+        ${CMAKE_SOURCE_DIR}/node_modules/node-api-headers/include
+        ${UV_INCLUDE_DIRS}
+)
+set_target_properties(proxy-poll-addon PROPERTIES PREFIX "" SUFFIX ".node")
+target_link_libraries(proxy-poll-addon PRIVATE
+        ${CMAKE_JS_LIB}
+)
+set_target_properties(proxy-poll-addon
+        PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist
+)
 
 add_library(proxy-encoding-addon SHARED
         ${CMAKE_CURRENT_SOURCE_DIR}/native/src/encoder.h
@@ -70,5 +87,5 @@ target_link_libraries(proxy-encoding-addon PRIVATE
 )
 set_target_properties(proxy-encoding-addon
     PROPERTIES
-        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/encoding
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/encoding
 )

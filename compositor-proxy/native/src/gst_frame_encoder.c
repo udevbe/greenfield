@@ -13,7 +13,6 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <EGL/egl.h>
-#include <libdrm/drm_fourcc.h>
 #include <unistd.h>
 #include <GL/gl.h>
 #include <gst/gl/gstglmemory.h>
@@ -21,6 +20,7 @@
 #include <gst/gl/gstglsyncmeta.h>
 #include <gst/gl/egl/gstglmemoryegl.h>
 #include "encoder.h"
+#include "gst_frame_encoder_drm_formats.h"
 
 #define FPS 60
 #define GF_BUFFER_CONTENT_SERIAL_META "BUFFER_CONTENT_SERIAL"
@@ -179,106 +179,6 @@ static const struct shmbuf_support_format shmbuf_supported_formats[] = {
         },
 };
 
-struct dmabuf_support_format {
-    const bool has_alpha;
-    const uint32_t drm_format;
-};
-
-static const struct dmabuf_support_format dmabuf_supported_formats[] = {
-        {
-                .has_alpha = true,
-                .drm_format = DRM_FORMAT_ARGB8888,
-        },
-        {
-                .has_alpha = true,
-                .drm_format = DRM_FORMAT_RGBA8888,
-        },
-        {
-                .has_alpha = true,
-                .drm_format = DRM_FORMAT_BGRA8888,
-        },
-        {
-                .has_alpha = false,
-                .drm_format =DRM_FORMAT_RGBX8888,
-        },
-        {
-                .has_alpha = false,
-                .drm_format =DRM_FORMAT_BGRX8888,
-        },
-        {
-                .has_alpha = false,
-                .drm_format =DRM_FORMAT_RGB888,
-        },
-        {
-                .has_alpha = true,
-                .drm_format = DRM_FORMAT_ABGR8888,
-        },
-        {
-                .has_alpha = false,
-                .drm_format = DRM_FORMAT_BGR888,
-        },
-        {
-                .has_alpha = false,
-                .drm_format = DRM_FORMAT_XBGR8888,
-        },
-        {
-                .has_alpha = false,
-                .drm_format = DRM_FORMAT_XRGB8888,
-        },
-        {
-                .has_alpha = false,
-                .drm_format = DRM_FORMAT_RGB565,
-        },
-        {
-                .has_alpha = false,
-                .drm_format = DRM_FORMAT_YUV444,
-        },
-        {
-                .has_alpha = false,
-                .drm_format = DRM_FORMAT_YUV420,
-        },
-        {
-                .has_alpha = false,
-                .drm_format = DRM_FORMAT_NV12,
-        },
-        {
-                .has_alpha = false,
-                .drm_format = DRM_FORMAT_NV21,
-        }
-        // TODO more
-//        return "GBRA";
-//        return "GBR";
-//        return "RGBP";
-//        return "BGRP";
-//        return "YV12";
-//        return "Y42B";
-//        return "Y41B";
-//        return "NV16";
-//        return "NV61";
-//        return "YUY2";
-//        return "UYVY";
-//        return "Y210";
-//        return "AYUV";
-//        return "VUYA";
-//        return "Y410";
-//        return "GRAY8";
-//        return "GRAY16_LE";
-//        return "GRAY16_BE";
-//        return "BGR16";
-//        return "ARGB64";
-//        return "A420";
-//        return "AV12";
-//        return "NV12_16L32S";
-//        return "NV12_4L4";
-//        return "BGR10A2_LE";
-//        return "RGB10A2_LE";
-//        return "P010_10LE";
-//        return "P012_LE";
-//        return "P016_LE";
-//        return "Y212_LE";
-//        return "Y412_LE";
-};
-
 static inline void
 frame_buffer_ref_count_init(struct frame_buffer *frame_buffer) {
     frame_buffer->user_data = malloc(sizeof(gatomicrefcount));
@@ -287,7 +187,7 @@ frame_buffer_ref_count_init(struct frame_buffer *frame_buffer) {
 
 static void
 frame_buffer_ref_count_dec(const struct frame_buffer *frame_buffer) {
-    if(g_atomic_ref_count_dec(frame_buffer->user_data)){
+    if (g_atomic_ref_count_dec(frame_buffer->user_data)) {
         free(frame_buffer->user_data);
         frame_buffer->discard_cb(frame_buffer);
     }
@@ -970,18 +870,6 @@ gst_frame_encoder_encode_shm(struct gst_frame_encoder *gst_frame_encoder, const 
     gst_caps_unref(sample_caps);
 }
 
-static inline const struct dmabuf_support_format *
-dmabuf_support_format_from_fourcc(const uint32_t fourcc) {
-    static const size_t dmabuf_supported_formats_size =
-            sizeof(dmabuf_supported_formats) / sizeof(dmabuf_supported_formats[0]);
-    for (int i = 0; i < dmabuf_supported_formats_size; ++i) {
-        if (dmabuf_supported_formats[i].drm_format == fourcc) {
-            return &dmabuf_supported_formats[i];
-        }
-    }
-    return NULL;
-}
-
 static void
 destroy_gst_egl_image(GstEGLImage *image, gpointer user_data) {
     struct gst_frame_encoder_pipeline *gst_encoder_pipeline = user_data;
@@ -1072,12 +960,7 @@ gst_frame_encoder_encode_dmabuf(struct gst_frame_encoder *gst_frame_encoder,
     GstSample *opaque_sample, *alpha_sample;
     uint32_t coded_width, coded_height;
 
-    const struct dmabuf_support_format *dmabuf_support_format = dmabuf_support_format_from_fourcc(
-            frame_buffer->impl.dma.attributes->format);
-    if (dmabuf_support_format == NULL) {
-        g_error("Can't encode buffer. Unsupported buffer. Failed to interpret buffer's fourcc format: %c%c%c%c",
-                GST_FOURCC_ARGS(frame_buffer->impl.dma.attributes->format));
-    }
+    const bool dmabuf_has_alpha = dmabuf_format_has_alpha(frame_buffer->impl.dma.attributes->format);
 
     sample_caps = gst_caps_new_simple("video/x-raw",
                                       "framerate", GST_TYPE_FRACTION, FPS, 1,
@@ -1103,7 +986,7 @@ gst_frame_encoder_encode_dmabuf(struct gst_frame_encoder *gst_frame_encoder,
                                       frame_encoding_result->props.buffer_content_serial);
     gst_sample_unref(opaque_sample);
 
-    if (dmabuf_support_format->has_alpha && gst_frame_encoder->description->split_alpha) {
+    if (dmabuf_has_alpha && gst_frame_encoder->description->split_alpha) {
         frame_encoding_result->has_split_alpha = true;
         alpha_sample = gst_frame_encoder_pipeline_dmabuf_attributes_to_new_gst_sample(gst_frame_encoder->alpha_pipeline,
                                                                                       frame_buffer,
@@ -1334,7 +1217,7 @@ do_gst_frame_encoder_encode(struct frame_encoder **frame_encoder_pp, const struc
                             const uint32_t buffer_content_serial,
                             const uint32_t buffer_creation_serial) {
     struct frame_encoder *encoder = *frame_encoder_pp;
-    frame_buffer_ref_count_init((struct frame_buffer *)frame_buffer);
+    frame_buffer_ref_count_init((struct frame_buffer *) frame_buffer);
 
     if (encoder->terminated) {
         g_error("BUG. Can not encode. Encoder is terminated.");

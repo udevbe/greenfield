@@ -127,7 +127,6 @@ export default class XdgSurface implements XdgSurfaceRequests {
   hasNextGeometry = false
   configured = false
   configureIdle?: () => void
-  configureSerial = 0
 
   constructor(
     public readonly resource: XdgSurfaceResource,

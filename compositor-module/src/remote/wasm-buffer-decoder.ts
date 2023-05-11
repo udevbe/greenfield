@@ -56,7 +56,7 @@ type FrameState = {
 const decoders: { [key: string]: WasmH264DecoderContext } = {}
 
 const opaqueWorker = new Promise<Worker>((resolve, reject) => {
-  const h264NALDecoderWorker: Worker = new Worker(new URL('./H264NALDecoder.worker', import.meta.url), {
+  const h264NALDecoderWorker: Worker = new Worker(new URL('./H264NALDecoder.worker.ts', import.meta.url), {
     name: 'h264NALDecoderOpaque',
     type: 'module',
   })
@@ -83,7 +83,7 @@ const opaqueWorker = new Promise<Worker>((resolve, reject) => {
 })
 
 const alphaWorker = new Promise<Worker>((resolve, reject) => {
-  const h264NALDecoderWorker: Worker = new Worker(new URL('./H264NALDecoder.worker', import.meta.url), {
+  const h264NALDecoderWorker: Worker = new Worker(new URL('./H264NALDecoder.worker.ts', import.meta.url), {
     name: 'h264NALDecoderAlpha',
     type: 'module',
   })

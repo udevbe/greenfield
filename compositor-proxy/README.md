@@ -6,12 +6,15 @@
 - `yarn generate`
 - `yarn build:native`
 - `cp dist/encoding/proxy-encoding-addon.node src/encoding/proxy-encoding-addon.node`
+- `cp dist/proxy-poll-addon.node src/proxy-poll-addon.node`
 
 and finally
 - `yarn start`
 
 You should now see something that says `Compositor proxy started. Listening on port 8081`. You can also adjust some things
 in `src/config.yaml`.
+
+> **_NOTE:_**  Firefox needs to be at least at version 113 and `dom.workers.modules.enabled` preference needs to be set to true. To change preferences in Firefox, visit `about:config`.
 
 ## Production build
 

@@ -85,14 +85,6 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole, DesktopS
   destroy(resource: XdgPopupResource): void {
     const seat = this.session.globals.seat
     if (seat.popupGrab !== undefined) {
-      const topmost = seat.popupGrab.getTopmostDesktopSurface()
-      if (topmost && topmost !== this.desktopSurface) {
-        resource.postError(
-          XdgWmBaseError.notTheTopmostPopup,
-          'Client protocol error. XdgPopup was destroyed while it was not the topmost popup.',
-        )
-      }
-
       seat.popupGrab.removeSurface(this.desktopSurface)
     }
     this.xdgSurface.configureIdle?.()
@@ -177,7 +169,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole, DesktopS
       this.geometry.size.height,
     )
     return {
-      serial: this.xdgSurface.configureSerial++,
+      serial: this.xdgSurface.resource.client.display.nextEventSerial(),
     }
   }
 }
