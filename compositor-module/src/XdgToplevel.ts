@@ -350,7 +350,7 @@ export default class XdgToplevel implements XdgToplevelRequests, DesktopSurfaceR
     const configure: ToplevelXdgConfigure = {
       state: this.pending.state,
       size: this.pending.size,
-      serial: this.xdgSurface.configureSerial++,
+      serial: this.xdgSurface.resource.client.display.nextEventSerial(),
     }
 
     const states: XdgToplevelState[] = []

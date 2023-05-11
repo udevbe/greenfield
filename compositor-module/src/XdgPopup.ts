@@ -177,7 +177,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole, DesktopS
       this.geometry.size.height,
     )
     return {
-      serial: this.xdgSurface.configureSerial++,
+      serial: this.xdgSurface.resource.client.display.nextEventSerial(),
     }
   }
 }
