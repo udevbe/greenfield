@@ -81,6 +81,7 @@ export function createNativeClientSession(
       sendClientConnectionsDisconnect(id)
     }
     nativeClientSession.destroyListeners = []
+    nativeClientSession.wlClient = undefined
   })
   setRegistryCreatedCallback(wlClient, (wlRegistry: unknown, registryId: number) => {
     nativeClientSession.onRegistryCreated(wlRegistry, registryId)
@@ -408,6 +409,10 @@ export class NativeClientSession {
   }
 
   private destroyResourceSilently(payload: Uint8Array) {
+    if (this.wlClient === undefined) {
+      return
+    }
+
     const deleteObjectId = new Uint32Array(payload.buffer, payload.byteOffset, 1)[0]
 
     delete this.messageInterceptor.interceptors[deleteObjectId]
