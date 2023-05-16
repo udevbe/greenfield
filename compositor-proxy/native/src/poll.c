@@ -88,6 +88,7 @@ start_poll(napi_env env, napi_callback_info info) {
 void
 poll_handle_close(struct uv_handle_s* handle) {
     struct node_cb *node_cb = handle->data;
+
     NAPI_CALL(node_cb->env, napi_delete_reference(node_cb->env, node_cb->js_cb_ref))
 
     free(node_cb);
@@ -100,6 +101,7 @@ stop_poll(napi_env env, napi_callback_info info) {
     napi_value argv[argc], return_value;
     struct uv_poll_s *poll_handle;
 
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL))
     NAPI_CALL(env, napi_get_value_external(env, argv[0], (void **) &poll_handle))
     NAPI_CALL(env, napi_get_undefined(env, &return_value))
 
