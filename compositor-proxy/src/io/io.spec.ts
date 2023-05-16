@@ -1,3 +1,4 @@
+// @ts-ignore
 import request from 'supertest'
 import { us_listen_socket, us_listen_socket_close } from 'uWebSockets.js'
 import { createApp } from '../App'
@@ -10,7 +11,7 @@ import { request as httpRequest } from 'http'
 import { createProxyInputOutput } from './ProxyInputOutput'
 import { createMemoryMappedFile, makePipe } from 'westfield-proxy'
 
-describe('compositor-proxy webfs', () => {
+describe('compositor-proxy i/o', () => {
   const compositorSessionId = 'test_compositor_session_id'
 
   const ownPort = 8888
@@ -34,11 +35,10 @@ describe('compositor-proxy webfs', () => {
   })
 
   afterEach(async () => {
-    us_listen_socket_close(ownApp)
-    us_listen_socket_close(otherApp)
-
     ownCompositorProxySession.nativeCompositorSession.destroy()
     otherCompositorProxySession.nativeCompositorSession.destroy()
+    us_listen_socket_close(ownApp)
+    us_listen_socket_close(otherApp)
   })
 
   it('creates a new local pipe pair when receiving a remote write-pipe webfd', (done) => {
@@ -246,7 +246,7 @@ describe('compositor-proxy io rest api', () => {
     // Given
     // When
     request(host)
-      .get(`/webfd/123`)
+      .get(`/fd/123`)
       // Then
       .expect(401)
       .expect('Content-Type', 'text/plain')
@@ -258,7 +258,7 @@ describe('compositor-proxy io rest api', () => {
     // Given
     // When
     request(host)
-      .get(`/webfd/abc`)
+      .get(`/fd/abc`)
       .set('X-Compositor-Session-Id', compositorSessionId)
       // Then
       .expect(400)
@@ -271,7 +271,7 @@ describe('compositor-proxy io rest api', () => {
     // Given
     // When
     request(host)
-      .get(`/webfd/123456`)
+      .get(`/fd/123456`)
       .set('X-Compositor-Session-Id', compositorSessionId)
       .query({ count: 'abc' })
       // Then
