@@ -1,5 +1,5 @@
 import type { ProxySession } from './ProxySession'
-import { createProxySession, launchApplication } from './ProxySession'
+import { createProxySession, findProxySessionByCompositorSessionId } from './ProxySession'
 import type { HttpRequest, HttpResponse } from 'uWebSockets.js'
 import { close, createReadStream, createWriteStream, read } from 'fs'
 import { TRANSFER_CHUNK_SIZE } from './io/ProxyInputOutput'
@@ -10,11 +10,12 @@ import { config } from './config'
 import { operations } from './@types/api'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 import { args } from './Args'
+import { launchApplication } from './ClientSignaling'
 
 const logger = createLogger('app')
 
 const allowOrigin = config.server.http.allowOrigin
-const allowHeaders = 'Content-Type, X-Greenfield-Proxy-Session-Key'
+const allowHeaders = 'Content-Type, X-Compositor-Session-Id'
 const maxAge = '36000'
 
 // FIXME add authorization
@@ -466,8 +467,14 @@ export async function POSTEncoderKeyframe(
   httpResponse.writeStatus('202 Accepted').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
 }
 
-export function GETApplication(httpResponse: HttpResponse, req: HttpRequest): void {
+export async function POSTApplication(httpResponse: HttpResponse, req: HttpRequest) {
   const compositorSessionId = req.getHeader('x-compositor-session-id')
+  if (compositorSessionId.length === 0) {
+    const message = '403 Bad compositorSessionId query parameter.'
+    httpResponse.end(message, true)
+    return
+  }
+
   if (args['static-session-id'] && args['static-session-id'] !== compositorSessionId) {
     const message = '403 Bad compositorSessionId query parameter.'
     httpResponse.end(message, true)
@@ -486,20 +493,27 @@ export function GETApplication(httpResponse: HttpResponse, req: HttpRequest): vo
   }
   const [, { executable }] = applicationEntry
 
-  const proxySession = createProxySession(compositorSessionId)
+  const proxySession =
+    findProxySessionByCompositorSessionId(compositorSessionId) ?? createProxySession(compositorSessionId)
 
-  launchApplication(executable, proxySession)
+  // FIXME check if application launched
+  const clientSignaling = await launchApplication(executable, proxySession)
 
   const proxyURL = new URL(config.public.baseURL.replace('http', 'ws'))
   proxyURL.pathname += proxyURL.pathname.endsWith('/') ? 'signal' : '/signal'
   proxyURL.searchParams.set('compositorSessionId', compositorSessionId)
-  proxyURL.searchParams.set('proxySessionKey', proxySession.sessionKey)
+  proxyURL.searchParams.set('key', clientSignaling.key)
 
-  const reply: { proxySessionKey: string; baseURL: string; proxySessionSignalURL: string } = {
-    proxySessionKey: proxySession.sessionKey,
+  const reply: { baseURL: string; signalURL: string; key: string } = {
     baseURL: config.public.baseURL,
-    proxySessionSignalURL: proxyURL.href,
+    signalURL: proxyURL.href,
+    key: clientSignaling.key,
   }
 
-  httpResponse.writeStatus('200 OK').writeHeader('Access-Control-Allow-Origin', allowOrigin).end(JSON.stringify(reply))
+  httpResponse.cork(() => {
+    httpResponse
+      .writeStatus('201 Created')
+      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+      .end(JSON.stringify(reply))
+  })
 }

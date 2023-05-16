@@ -49,12 +49,12 @@ export class RemoteConnectionHandler {
   onProtocolChannel(
     protocolChannel: Channel,
     proxySessionProps: {
-      proxySessionKey: string
       baseURL: string
-      proxySessionSignalURL: string
+      signalURL: string
+      key: string
     },
     client: Client,
-    proxySessionKey: string,
+    compositorSessionId: string,
   ): void {
     this.session.logger.info('[ProtocolChannel] - created.')
     let wasOpen = protocolChannel.isOpen
@@ -120,14 +120,14 @@ export class RemoteConnectionHandler {
         new Configuration({
           basePath: proxySessionProps.baseURL,
           headers: {
-            ['x-greenfield-proxy-session-key']: proxySessionKey,
+            ['x-compositor-session-id']: compositorSessionId,
           },
         }),
       )
       client.userData = {
         encoderApi,
         clientEncodersFeedback: createClientEncodersFeedback(client.id, encoderApi),
-        inputOutput: createRemoteInputOutput(proxySessionProps.baseURL, proxySessionKey),
+        inputOutput: createRemoteInputOutput(proxySessionProps.baseURL, compositorSessionId),
       }
     }
 

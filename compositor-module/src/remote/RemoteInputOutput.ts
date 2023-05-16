@@ -10,12 +10,12 @@ export function createRemoteInputOutput(basePath: string, compositorSessionId: s
 class RemoteInputOutput implements InputOutput {
   readonly api: IoApi
 
-  constructor(public readonly basePath: string, proxySessionKey: string) {
+  constructor(public readonly basePath: string, compositorSessionId: string) {
     this.api = new IoApi(
       new Configuration({
         basePath,
         headers: {
-          ['x-greenfield-proxy-session-key']: proxySessionKey,
+          ['x-compositor-session-id']: compositorSessionId,
         },
       }),
     )

@@ -1,11 +1,11 @@
 import { App, HttpRequest, HttpResponse, us_listen_socket } from 'uWebSockets.js'
-import { findProxySessionByKey, ProxySession } from './ProxySession'
+import { findProxySessionByCompositorSessionId, ProxySession } from './ProxySession'
 import {
   DELWebFD,
-  GETApplication,
   GETWebFD,
   GETWebFDStream,
   OPTIONSPreflightRequest,
+  POSTApplication,
   POSTEncoderKeyframe,
   POSTMkFifo,
   POSTMkstempMmap,
@@ -29,14 +29,14 @@ function withParams(
 
 function withAuth(authorizedAction: (proxySession: ProxySession, res: HttpResponse, req: HttpRequest) => void) {
   return (res: HttpResponse, req: HttpRequest) => {
-    const proxySession = findProxySessionByKey(req.getHeader('x-greenfield-proxy-session-key'))
+    const proxySession = findProxySessionByCompositorSessionId(req.getHeader('x-compositor-session-id'))
     if (proxySession) {
       authorizedAction(proxySession, res, req)
     } else {
       res
         .writeStatus('401 Unauthorized')
         .writeHeader('Content-Type', 'text/plain')
-        .end('No or invalid x-greenfield-proxy-session-key header.')
+        .end('No or invalid x-compositor-session-id header.')
     }
   }
 }
@@ -66,7 +66,10 @@ export function createApp({ host, port }: { host: string; port: number }): Promi
 
     for (const { path } of Object.values(config.public.applications)) {
       // TODO check if path starts with a reserved path
-      templatedApp.get(path, GETApplication)
+      if (path.startsWith('/mkfifo') || path.startsWith('/mkstemp-mmap') || path.startsWith('/client')) {
+        throw new Error(`Config error. Public application path can not start with ${path}. Path is reserved.`)
+      }
+      templatedApp.options(path, OPTIONSPreflightRequest('POST')).post(path, POSTApplication)
     }
 
     templatedApp.listen(host, port, (listenSocket) => {
