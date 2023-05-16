@@ -32,39 +32,35 @@ import ReconnectingWebSocket from './reconnecting-websocket'
 
 const textDecoder = new TextDecoder()
 
-const webSocketReconnectOptions = {
-  minReconnectionDelay: 3000,
-  maxReconnectionDelay: 6000,
-  reconnectionDelayGrowFactor: 1000,
-}
-
 const enum SignalingMessageType {
   CONNECTION,
   DISCONNECT,
   PING,
   PONG,
+  NEW_CLIENT,
+  // TODO APP_TERMINATED
 }
 
 type SignalingMessage =
   | {
       readonly type: SignalingMessageType.CONNECTION
       readonly data: { url: string; desc: ChannelDesc }
-      readonly sessionKey: string
     }
   | {
       readonly type: SignalingMessageType.DISCONNECT
       readonly data: string
-      readonly sessionKey: string
     }
   | {
       readonly type: SignalingMessageType.PING
       readonly data: number
-      readonly sessionKey: string
     }
   | {
       readonly type: SignalingMessageType.PONG
       readonly data: number
-      readonly sessionKey: string
+    }
+  | {
+      readonly type: SignalingMessageType.NEW_CLIENT
+      readonly data: { baseURL: string; signalURL: string; key: string }
     }
 
 function isSignalingMessage(messageObject: any): messageObject is SignalingMessage {
@@ -75,7 +71,8 @@ function isSignalingMessage(messageObject: any): messageObject is SignalingMessa
   return (
     messageObject.type === SignalingMessageType.CONNECTION ||
     messageObject.type === SignalingMessageType.DISCONNECT ||
-    messageObject.type === SignalingMessageType.PONG
+    messageObject.type === SignalingMessageType.PONG ||
+    messageObject.type === SignalingMessageType.NEW_CLIENT
   )
 }
 
@@ -92,7 +89,7 @@ class RemoteProxyConnectionListener implements RemoteClientConnectionListener {
     /*noop*/
   }
 
-  proxySessionKey?: string
+  key?: string
 
   remoteIdentityChanged = (remoteIdentity: string): void => {
     /*noop*/
@@ -103,7 +100,7 @@ class RemoteProxyConnectionListener implements RemoteClientConnectionListener {
   private signalingWebSocket?: ReconnectingWebSocket
   private clientConnections: WebSocketChannel[] = []
   private pongSerial = 1
-  private proxySessionProps?: { proxySessionKey: string; baseURL: string; proxySessionSignalURL: string }
+  private proxySessionProps?: { baseURL: string; signalURL: string }
 
   constructor(private readonly session: Session, private readonly remoteSocket: RemoteConnectionHandler) {}
 
@@ -141,9 +138,9 @@ class RemoteProxyConnectionListener implements RemoteClientConnectionListener {
     }
   }
 
-  listen(proxySessionProps: { proxySessionKey: string; baseURL: string; proxySessionSignalURL: string }) {
+  listen(proxySessionProps: { baseURL: string; signalURL: string; key: string }) {
     this.proxySessionProps = proxySessionProps
-    this.signalingWebSocket = new ReconnectingWebSocket(proxySessionProps.proxySessionSignalURL)
+    this.signalingWebSocket = new ReconnectingWebSocket(proxySessionProps.signalURL)
     this.signalingWebSocket.binaryType = 'arraybuffer'
 
     this.signalingWebSocket.addEventListener('open', (event) => {
@@ -157,15 +154,15 @@ class RemoteProxyConnectionListener implements RemoteClientConnectionListener {
     })
 
     this.handleProxySessionMessages(this.signalingWebSocket, proxySessionProps)
-    this.remoteIdentityChanged(proxySessionProps.proxySessionKey)
+    this.remoteIdentityChanged(proxySessionProps.key)
   }
 
   private handleProxySessionMessages(
     signalingConnection: ReconnectingWebSocket,
     proxySessionProps: {
-      proxySessionKey: string
       baseURL: string
-      proxySessionSignalURL: string
+      signalURL: string
+      key: string
     },
   ) {
     signalingConnection.onmessage = async (event) => {
@@ -174,7 +171,7 @@ class RemoteProxyConnectionListener implements RemoteClientConnectionListener {
         switch (messageObject.type) {
           case SignalingMessageType.CONNECTION: {
             // TODO define a connection timeout
-            const webSocket = new ReconnectingWebSocket(messageObject.data.url, undefined, webSocketReconnectOptions)
+            const webSocket = new ReconnectingWebSocket(messageObject.data.url)
             const desc = messageObject.data.desc
             let channel: WebSocketChannel
             if (desc.channelType === ChannelType.ARQ) {
@@ -185,7 +182,7 @@ class RemoteProxyConnectionListener implements RemoteClientConnectionListener {
               throw new Error(`BUG. Unknown channel description: ${JSON.stringify(desc)}`)
             }
             this.clientConnections.push(channel)
-            this.onChannel(channel, messageObject.sessionKey, proxySessionProps)
+            this.onChannel(channel, this.session.compositorSessionId, proxySessionProps)
             break
           }
           case SignalingMessageType.DISCONNECT: {
@@ -202,6 +199,10 @@ class RemoteProxyConnectionListener implements RemoteClientConnectionListener {
             this.pongSerial = messageObject.data
             break
           }
+          case SignalingMessageType.NEW_CLIENT: {
+            this.listen(messageObject.data)
+            break
+          }
         }
       } else {
         throw new Error(`BUG. Received an unknown message: ${JSON.stringify(messageObject)}`)
@@ -211,17 +212,17 @@ class RemoteProxyConnectionListener implements RemoteClientConnectionListener {
 
   private onChannel(
     channel: WebSocketChannel,
-    proxySessionKey: string,
+    compositorSessionId: string,
     proxySessionProps: {
-      proxySessionKey: string
       baseURL: string
-      proxySessionSignalURL: string
+      signalURL: string
+      key: string
     },
   ) {
     if (channel.desc.type === ChannelDescriptionType.PROTOCOL) {
       const client = this.session.display.createClient(channel.desc.clientId)
       client.onClose().then(() => channel.close())
-      this.remoteSocket.onProtocolChannel(channel, proxySessionProps, client, proxySessionKey)
+      this.remoteSocket.onProtocolChannel(channel, proxySessionProps, client, compositorSessionId)
       this.onClient(client)
     } else if (channel.desc.type === ChannelDescriptionType.FRAME) {
       const client = this.session.display.clients[channel.desc.clientId]
@@ -270,13 +271,16 @@ export class RemoteConnector implements RemoteCompositorConnector {
 
   launch(proxyAppURL: URL): RemoteClientConnectionListener {
     const remoteProxyConnectionListener = new RemoteProxyConnectionListener(this.session, this.remoteSocket)
-    fetch(proxyAppURL).then((response) => {
+    fetch(proxyAppURL, {
+      method: 'POST',
+      headers: {
+        'x-compositor-session-id': this.session.compositorSessionId,
+      },
+    }).then((response) => {
       if (response.ok) {
-        return response
-          .json()
-          .then((proxySessionProps: { proxySessionKey: string; baseURL: string; proxySessionSignalURL: string }) => {
-            remoteProxyConnectionListener.listen(proxySessionProps)
-          })
+        return response.json().then((proxySessionProps: { baseURL: string; signalURL: string; key: string }) => {
+          remoteProxyConnectionListener.listen(proxySessionProps)
+        })
       } else {
         // TODO log error(s)
         remoteProxyConnectionListener.close()

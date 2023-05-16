@@ -19,44 +19,12 @@ import { createLogger } from './Logger'
 
 import { createNativeCompositorSession, NativeCompositorSession } from './NativeCompositorSession'
 import { XWaylandSession } from './XWaylandSession'
-import { WebSocket } from 'uWebSockets.js'
-import { randomBytes } from 'crypto'
-import { execFile } from 'child_process'
+import { ClientSignaling } from './ClientSignaling'
 
 // TODO create logger per proxy session instance
 const logger = createLogger('compositor-proxy-session')
 
 let proxySessions: ProxySession[] = []
-
-export function launchApplication(applicationExecutable: string, proxySession: ProxySession) {
-  // TODO create child logger from proxy session logger
-  const appLogger = createLogger(applicationExecutable)
-  const childProcess = execFile(
-    applicationExecutable,
-    // TODO support executable arguments
-    [],
-    {
-      env: {
-        ...process.env,
-        WAYLAND_DISPLAY: proxySession.nativeCompositorSession.waylandDisplay,
-      },
-    },
-    (error, stdout, stderr) => {
-      if (error) {
-        appLogger.error(`child process error: ${error.message}. signal: ${error.signal}`)
-        return
-      }
-      appLogger.info(stdout)
-    },
-  )
-  childProcess.once('spawn', () => {
-    appLogger.info(`child process started: ${applicationExecutable}`)
-  })
-  // FIXME instead fo closing proxySession, close proxy session automatically after all clients have been disconnected
-  childProcess.once('exit', () => {
-    proxySession.close()
-  })
-}
 
 export function createProxySession(compositorSessionId: string): ProxySession {
   const proxySession = new ProxySession(compositorSessionId)
@@ -66,70 +34,60 @@ export function createProxySession(compositorSessionId: string): ProxySession {
   return proxySession
 }
 
-export function findProxySessionsByCompositorSessionId(compositorSessionId: string): ProxySession[] {
-  return proxySessions.filter((proxySession) => proxySession.compositorSessionId === compositorSessionId)
-}
-
-export function findProxySessionByKey(proxyIdentity: string): ProxySession | undefined {
-  return proxySessions.find((proxySession) => proxySession.sessionKey === proxyIdentity)
-}
-
-export type SignalingUserData = {
-  proxySession: ProxySession
+export function findProxySessionByCompositorSessionId(compositorSessionId: string): ProxySession | undefined {
+  return proxySessions.find((proxySession) => proxySession.compositorSessionId === compositorSessionId)
 }
 
 export class ProxySession {
-  private signalingSendBuffer: Uint8Array[] = []
-  public signalingWebSocket?: WebSocket<SignalingUserData>
-
   public compositorPeerIdentity?: string
-  public readonly sessionKey = randomBytes(8).toString('hex')
 
   public readonly nativeCompositorSession: NativeCompositorSession
   private readonly xWaylandSession: XWaylandSession
+  private clientSignalings: ClientSignaling[] = []
 
   constructor(public readonly compositorSessionId: string) {
     this.nativeCompositorSession = createNativeCompositorSession(this)
     this.xWaylandSession = XWaylandSession.create(this.nativeCompositorSession)
-    this.xWaylandSession.createXWaylandListenerSocket(compositorSessionId)
+    this.xWaylandSession.createXWaylandListenerSocket()
   }
 
-  resetPeerConnectionState(killAllClients: boolean): void {
+  private resetPeerConnectionState(): void {
     for (const client of this.nativeCompositorSession.clients) {
-      if (client.nativeClientSession.hasCompositorState || killAllClients) {
-        client.nativeClientSession.destroy()
-      }
+      client.nativeClientSession.destroy()
     }
-  }
-
-  signalingSend(message: Uint8Array) {
-    if (this.signalingWebSocket) {
-      this.signalingWebSocket.send(message, true)
-    } else {
-      this.signalingSendBuffer.push(message)
-    }
-  }
-
-  flushCachedSignalingSends() {
-    if (this.signalingWebSocket === undefined) {
-      return
-    }
-    if (this.signalingSendBuffer.length === 0) {
-      return
-    }
-    for (const message of this.signalingSendBuffer) {
-      this.signalingWebSocket.send(message, true)
-    }
-    this.signalingSendBuffer = []
   }
 
   close() {
     this.compositorPeerIdentity = undefined
-    this.resetPeerConnectionState(true)
+    this.resetPeerConnectionState()
     this.nativeCompositorSession.destroy()
     proxySessions = proxySessions.filter(
       (proxySession) => proxySession.compositorSessionId !== this.compositorSessionId,
     )
+  }
+
+  createClientSignaling() {
+    const clientSignaling = new ClientSignaling(this)
+    this.clientSignalings.push(clientSignaling)
+    clientSignaling.destroyListeners.push(() => {
+      this.clientSignalings = this.clientSignalings.filter(
+        (otherClientSignaling) => otherClientSignaling !== clientSignaling,
+      )
+    })
+
+    return clientSignaling
+  }
+
+  getFirstClientSignaling(): ClientSignaling | undefined {
+    return this.clientSignalings[0]
+  }
+
+  findClientSignalingByKey(key: string): ClientSignaling | undefined {
+    return this.clientSignalings.find((clientSignaling) => clientSignaling.key === key)
+  }
+
+  findEmptyClientSignaling(): ClientSignaling | undefined {
+    return this.clientSignalings.find((clientSignaling) => clientSignaling.nativeClientSession === undefined)
   }
 }
 

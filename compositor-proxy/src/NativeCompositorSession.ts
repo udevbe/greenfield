@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { startPoll, stopPoll, PollHandle } from './proxy-poll-addon'
+import { PollHandle, startPoll, stopPoll } from './proxy-poll-addon'
 import { createProxyInputOutput } from './io/ProxyInputOutput'
 import { createLogger } from './Logger'
 import { createNativeClientSession, NativeClientSession } from './NativeClientSession'
@@ -32,7 +32,7 @@ import {
 } from 'westfield-proxy'
 import { Channel, createProtocolChannel } from './Channel'
 import { webcrypto } from 'crypto'
-import {ProxySession} from "./ProxySession";
+import { ProxySession } from './ProxySession'
 
 const logger = createLogger('native-compositor-session')
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567' as const
@@ -131,9 +131,20 @@ export class NativeCompositorSession {
   private clientForSocket(wlClient: unknown) {
     logger.info(`New Wayland client.`)
 
+    let clientSignaling = this.proxySession.findEmptyClientSignaling()
+    if (clientSignaling === undefined) {
+      const firstClientSignaling = this.proxySession.getFirstClientSignaling()
+      if (firstClientSignaling === undefined) {
+        // FIXME terminate client, wayland client was not started as an action from the user?
+        return
+      }
+      clientSignaling = this.proxySession.createClientSignaling()
+      firstClientSignaling.sendNewClientNotify(clientSignaling.key)
+    }
+
     const clientId = newClientId()
-    const protocolChannel = createProtocolChannel(clientId, this.proxySession)
-    const nativeClientSession = createNativeClientSession(wlClient, this, protocolChannel, clientId)
+    const protocolChannel = createProtocolChannel(clientId, clientSignaling)
+    const nativeClientSession = createNativeClientSession(wlClient, this, protocolChannel, clientId, clientSignaling)
     const clientEntry = {
       nativeClientSession,
       protocolChannel,

@@ -44,7 +44,7 @@ import {
 import { ProxyBuffer } from './ProxyBuffer'
 import type { Channel } from './Channel'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
-import { sendClientConnectionsDisconnect } from './AppWebSocketsController'
+import { ClientSignaling } from './ClientSignaling'
 
 const logger = createLogger('native-client-session')
 
@@ -70,16 +70,21 @@ export function createNativeClientSession(
   nativeCompositorSession: NativeCompositorSession,
   protocolChannel: Channel,
   id: string,
+  clientSignaling: ClientSignaling,
 ): NativeClientSession {
-  const nativeClientSession = new NativeClientSession(wlClient, nativeCompositorSession, protocolChannel, id)
+  const nativeClientSession = new NativeClientSession(
+    clientSignaling,
+    wlClient,
+    nativeCompositorSession,
+    protocolChannel,
+    id,
+  )
 
   setClientDestroyedCallback(wlClient, () => {
     for (const destroyListener of nativeClientSession.destroyListeners) {
       destroyListener()
     }
-    if ((nativeClientSession.hasCompositorState = true)) {
-      sendClientConnectionsDisconnect(id, nativeCompositorSession.proxySession)
-    }
+    clientSignaling.sendClientConnectionsDisconnect()
     nativeClientSession.destroyListeners = []
     nativeClientSession.wlClient = undefined
   })
@@ -107,9 +112,6 @@ export function createNativeClientSession(
     protocolChannel.send(Buffer.from(msg.buffer, msg.byteOffset, msg.byteLength))
   })
 
-  protocolChannel.onClose = () => {
-    logger.info(`Wayland client protocol channel is closed.`)
-  }
   protocolChannel.onMessage = (event) => {
     try {
       nativeClientSession.onMessage(event)
@@ -121,7 +123,6 @@ export function createNativeClientSession(
   protocolChannel.onOpen = () => {
     // flush out any requests that came in while we were waiting for the data channel to open.
     logger.info(`Wayland client connection to browser is open.`)
-    nativeClientSession.hasCompositorState = true
     nativeClientSession.flushOutboundMessageOnOpen()
   }
 
@@ -147,6 +148,7 @@ export class NativeClientSession {
   private lastEventSerial = 0
 
   constructor(
+    clientSignaling: ClientSignaling,
     public wlClient: unknown,
     public readonly nativeCompositorSession: NativeCompositorSession,
     private readonly protocolDataChannel: Channel,
@@ -157,9 +159,9 @@ export class NativeClientSession {
     private readonly wlRegistries: Record<number, unknown> = {},
     private disconnecting = false,
     public destroyListeners: (() => void)[] = [],
-    public hasCompositorState = false,
     private fastSync = true,
   ) {
+    clientSignaling.nativeClientSession = this
     this.browserChannelOutOfBandHandlers = {
       // listen for out-of-band resource destroy. opcode: 1
       1: (payload) => this.destroyResourceSilently(payload),
@@ -173,7 +175,7 @@ export class NativeClientSession {
       protocolChannel: this.protocolDataChannel,
       drmContext: nativeCompositorSession.drmContext,
       messageInterceptors,
-      nativeClientSession: this,
+      clientSignaling,
     }
     this.messageInterceptor = MessageInterceptor.create(
       wlClient,
@@ -337,7 +339,6 @@ export class NativeClientSession {
           handle: fd,
           type: 'unknown',
           host: this.nativeCompositorSession.webFS.baseURL,
-          proxySessionKey: this.nativeCompositorSession.proxySession.sessionKey,
         }
         const encodedProxyFDJSON = textEncoder.encode(JSON.stringify(proxyFD))
         serializedFDs[i] = encodedProxyFDJSON
@@ -488,24 +489,6 @@ export class NativeClientSession {
 
       sendEvents(this.wlClient, doneBufu32, new Uint32Array([]))
     }
-  }
-
-  private destroySyncDone(syncDone: SyncDone) {
-    const deleteSize = 12 // id+size+opcode+time arg
-
-    const messagesBuffer = new ArrayBuffer(deleteSize)
-
-    // send delete id event to display
-    const deleteBufu32 = new Uint32Array(messagesBuffer, deleteSize)
-    const deleteBufu16 = new Uint16Array(messagesBuffer, deleteSize)
-    deleteBufu32[0] = 1
-    deleteBufu16[2] = 1 // delete opcode
-    deleteBufu16[3] = deleteSize
-    deleteBufu32[2] = syncDone.callbackId
-
-    sendEvents(this.wlClient, deleteBufu32, new Uint32Array([]))
-
-    destroyWlResourceSilently(this.wlClient, syncDone.callbackId)
   }
 
   private sendIfSyncDone(syncDone: SyncDone): boolean {

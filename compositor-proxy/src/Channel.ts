@@ -1,7 +1,6 @@
 import { Kcp } from './kcp'
-import { sendChannelDisconnect, sendConnectionRequest } from './AppWebSocketsController'
 import { WebSocket } from 'uWebSockets.js'
-import { ProxySession } from './ProxySession'
+import { ClientSignaling } from './ClientSignaling'
 
 const MTU = 64000
 const MAX_BUFFERED_AMOUNT = 2949120
@@ -41,6 +40,8 @@ export interface Channel {
   send(buffer: Buffer): void
 
   close(): void
+
+  readonly clientSignaling: ClientSignaling
 }
 
 export interface WebSocketChannel extends Channel {
@@ -51,57 +52,55 @@ export interface WebSocketChannel extends Channel {
   doClose(): void
 
   ws?: WebSocket<any>
-
-  readonly proxySession: ProxySession
 }
 
-function createChannel(desc: ChannelDesc, proxySession: ProxySession) {
+function createChannel(desc: ChannelDesc, clientSignaling: ClientSignaling) {
   if (desc.channelType === ChannelType.ARQ) {
-    return new ARQChannel(desc, proxySession)
+    return new ARQChannel(desc, clientSignaling)
   } else if (desc.channelType === ChannelType.SIMPLE) {
-    return new SimpleChannel(desc, proxySession)
+    return new SimpleChannel(desc, clientSignaling)
   } else {
     throw new Error(`BUG. Unknown channel type ${JSON.stringify(desc)}`)
   }
 }
 
-export function createXWMDataChannel(clientId: string, proxySession: ProxySession): Channel {
+export function createXWMDataChannel(clientId: string, clientSignaling: ClientSignaling): Channel {
   const desc: ChannelDesc = {
     id: `${nextChannelId++}`,
     type: ChannelDescriptionType.XWM,
     clientId,
     channelType: ChannelType.ARQ,
   }
-  const channel = createChannel(desc, proxySession)
-  sendConnectionRequest(channel)
+  const channel = createChannel(desc, clientSignaling)
+  clientSignaling.sendConnectionRequest(channel)
   return channel
 }
 
-export function createFrameDataChannel(clientId: string, proxySession: ProxySession): Channel {
+export function createFrameDataChannel(clientId: string, clientSignaling: ClientSignaling): Channel {
   const desc: ChannelDesc = {
     id: `${nextChannelId++}`,
     type: ChannelDescriptionType.FRAME,
     clientId,
     channelType: ChannelType.ARQ,
   }
-  const channel = createChannel(desc, proxySession)
-  sendConnectionRequest(channel)
+  const channel = createChannel(desc, clientSignaling)
+  clientSignaling.sendConnectionRequest(channel)
   return channel
 }
 
-export function createProtocolChannel(clientId: string, proxySession: ProxySession): Channel {
+export function createProtocolChannel(clientId: string, clientSignaling: ClientSignaling): Channel {
   const desc: ChannelDesc = {
     id: `${nextChannelId++}`,
     type: ChannelDescriptionType.PROTOCOL,
     clientId,
     channelType: ChannelType.ARQ,
   }
-  const channel = createChannel(desc, proxySession)
-  sendConnectionRequest(channel)
+  const channel = createChannel(desc, clientSignaling)
+  clientSignaling.sendConnectionRequest(channel)
   return channel
 }
 
-export function createFeedbackChannel(clientId: string, surfaceId: number, proxySession: ProxySession): Channel {
+export function createFeedbackChannel(clientId: string, surfaceId: number, clientSignaling: ClientSignaling): Channel {
   const desc: FeedbackChannelDesc = {
     id: `${nextChannelId++}`,
     type: ChannelDescriptionType.FEEDBACK,
@@ -109,8 +108,8 @@ export function createFeedbackChannel(clientId: string, surfaceId: number, proxy
     surfaceId,
     channelType: ChannelType.SIMPLE,
   }
-  const channel = createChannel(desc, proxySession)
-  sendConnectionRequest(channel)
+  const channel = createChannel(desc, clientSignaling)
+  clientSignaling.sendConnectionRequest(channel)
   return channel
 }
 
@@ -126,7 +125,7 @@ export class SimpleChannel implements WebSocketChannel {
   }
   ws?: WebSocket<any>
 
-  constructor(readonly desc: ChannelDesc, readonly proxySession: ProxySession) {}
+  constructor(readonly desc: ChannelDesc, readonly clientSignaling: ClientSignaling) {}
 
   doOpen(ws: WebSocket<any>): void {
     this.ws = ws
@@ -154,7 +153,7 @@ export class SimpleChannel implements WebSocketChannel {
 
   close(): void {
     this.ws = undefined
-    sendChannelDisconnect(this.desc.id, this.proxySession)
+    this.clientSignaling.sendChannelDisconnect(this)
   }
 }
 
@@ -172,7 +171,7 @@ export class ARQChannel implements WebSocketChannel {
   private checkInterval?: NodeJS.Timer
   ws?: WebSocket<any>
 
-  constructor(public readonly desc: ChannelDesc, readonly proxySession: ProxySession) {
+  constructor(public readonly desc: ChannelDesc, readonly clientSignaling: ClientSignaling) {
     const kcp = new Kcp(+this.desc.id, this)
     kcp.setMtu(MTU) // webrtc datachannel MTU
     kcp.setWndSize(SND_WINDOW_SIZE, RCV_WINDOW_SIZE)
@@ -204,7 +203,7 @@ export class ARQChannel implements WebSocketChannel {
 
   close(): void {
     this.ws = undefined
-    sendChannelDisconnect(this.desc.id, this.proxySession)
+    this.clientSignaling.sendChannelDisconnect(this)
   }
 
   get isOpen() {

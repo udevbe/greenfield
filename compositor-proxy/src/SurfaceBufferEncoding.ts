@@ -27,11 +27,17 @@ import { Channel, createFeedbackChannel, createFrameDataChannel } from './Channe
 const logger = createLogger('surface-buffer-encoding')
 
 function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor): FrameFeedback {
+  const clientSignaling = wlSurfaceInterceptor.userData.clientSignaling
+  const nativeClientSession = clientSignaling.nativeClientSession
+  if (nativeClientSession === undefined) {
+    throw new Error('BUG. Created a wlSurfaceInterceptor without a nativeClientSession')
+  }
+
   if (wlSurfaceInterceptor.frameFeedback === undefined) {
     const feedbackChannel = createFeedbackChannel(
-      wlSurfaceInterceptor.userData.nativeClientSession.id,
+      nativeClientSession.id,
       wlSurfaceInterceptor.id,
-      wlSurfaceInterceptor.userData.nativeClientSession.nativeCompositorSession.proxySession,
+      wlSurfaceInterceptor.userData.clientSignaling,
     )
     const frameFeedback = new FrameFeedback(
       wlSurfaceInterceptor.wlClient,
@@ -39,7 +45,7 @@ function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor): FrameF
       feedbackChannel,
     )
     wlSurfaceInterceptor.frameFeedback = frameFeedback
-    wlSurfaceInterceptor.userData.nativeClientSession.destroyListeners.push(() => {
+    nativeClientSession.destroyListeners.push(() => {
       frameFeedback.destroy()
     })
   }
@@ -47,12 +53,15 @@ function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor): FrameF
 }
 
 function ensureFrameDataChannel(wlSurfaceInterceptor: wlSurfaceInterceptor): Channel {
+  const clientSignaling = wlSurfaceInterceptor.userData.clientSignaling
+  const nativeClientSession = clientSignaling.nativeClientSession
+  if (nativeClientSession === undefined) {
+    throw new Error('BUG. Created a wlSurfaceInterceptor without a nativeClientSession')
+  }
+
   if (wlSurfaceInterceptor.frameDataChannel === undefined) {
-    wlSurfaceInterceptor.frameDataChannel = createFrameDataChannel(
-      wlSurfaceInterceptor.userData.nativeClientSession.id,
-      wlSurfaceInterceptor.userData.nativeClientSession.nativeCompositorSession.proxySession,
-    )
-    wlSurfaceInterceptor.userData.nativeClientSession.destroyListeners.push(() => {
+    wlSurfaceInterceptor.frameDataChannel = createFrameDataChannel(nativeClientSession.id, clientSignaling)
+    nativeClientSession.destroyListeners.push(() => {
       wlSurfaceInterceptor.frameDataChannel.close()
     })
   }

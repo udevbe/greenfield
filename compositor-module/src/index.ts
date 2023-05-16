@@ -87,7 +87,7 @@ export interface ClientConnectionListener {
 export interface RemoteClientConnectionListener extends ClientConnectionListener {
   readonly state: 'closed' | 'closing' | 'connecting' | 'open'
   readonly type: 'remote'
-  readonly proxySessionKey?: string
+  readonly key?: string
 
   remoteIdentityChanged: (remoteIdentity: string) => void
   onConnectionStateChange: (state: 'closed' | 'open') => void

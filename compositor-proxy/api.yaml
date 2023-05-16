@@ -12,7 +12,7 @@ components:
     ApiKeyAuth:
       type: apiKey
       in: header
-      name: X-Greenfield-Proxy-Session-Key
+      name: X-Compositor-Session-Id
   responses:
     UnauthorizedError:
       description: Authentication information is missing or invalid
@@ -30,7 +30,6 @@ components:
         - handle
         - type
         - host
-        - proxySessionKey
       properties:
         handle:
           description: The native FD
@@ -56,10 +55,6 @@ components:
           type: string
           format: uri
           pattern: '^(https?)://'
-          readOnly: true
-        proxySessionKey:
-          description: key of the proxy session where ProxyFD originated from
-          type: string
           readOnly: true
 
 paths:

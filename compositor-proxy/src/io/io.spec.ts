@@ -54,7 +54,6 @@ describe('compositor-proxy i/o', () => {
       handle: otherWritePipeHandle,
       type: 'pipe-write',
       host: otherBasePath,
-      proxySessionKey: otherCompositorProxySession.sessionKey,
     }
 
     const ownWritePipeHandle = ownProxyIO.proxyFDtoNativeFD(otherProxyFD)
@@ -169,7 +168,7 @@ describe('compositor-proxy io rest api', () => {
   it('closes a ProxyFD', (done) => {
     // Given
     const handle = createMemoryMappedFile(Buffer.from([1, 2, 3]))
-    const proxyFD: ProxyFD = { handle, type: 'shm', host, proxySessionKey: compositorProxySession.sessionKey }
+    const proxyFD: ProxyFD = { handle, type: 'shm', host }
     // When
     request(host)
       .del(`/fd/${proxyFD.handle}`)
@@ -225,7 +224,7 @@ describe('compositor-proxy io rest api', () => {
     // Given
     const sendBuffer = Buffer.from([1, 2, 3])
     const handle = createMemoryMappedFile(sendBuffer)
-    const proxyFD: ProxyFD = { handle, type: 'shm', host, proxySessionKey: compositorProxySession.sessionKey }
+    const proxyFD: ProxyFD = { handle, type: 'shm', host }
     // When
     request(host)
       .get(`/fd/${proxyFD.handle}`)

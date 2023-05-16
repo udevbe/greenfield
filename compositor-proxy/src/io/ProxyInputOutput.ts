@@ -60,7 +60,7 @@ export class ProxyInputOutput {
       const options: RequestOptions = {
         method: 'PUT',
         headers: {
-          ['X-Greenfield-Proxy-Session-Key']: proxyFD.proxySessionKey,
+          ['X-Compositor-Session-Id']: this.proxySession.compositorSessionId,
           ['Content-Type']: 'application/octet-stream',
           ['Content-Length']: buffer.byteLength,
         },
@@ -117,13 +117,11 @@ export class ProxyInputOutput {
         handle: pipeFds[0],
         type: 'pipe-read',
         host: this.baseURL,
-        proxySessionKey: this.proxySession.sessionKey,
       },
       {
         handle: pipeFds[1],
         type: 'pipe-write',
         host: this.baseURL,
-        proxySessionKey: this.proxySession.sessionKey,
       },
     ]
   }
@@ -134,7 +132,6 @@ export class ProxyInputOutput {
       handle: fd,
       type: 'shm',
       host: this.baseURL,
-      proxySessionKey: this.proxySession.sessionKey,
     }
   }
 }
