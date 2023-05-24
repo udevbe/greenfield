@@ -23,16 +23,23 @@ import { config } from './config'
 import {
   addSocketAuto,
   createDisplay,
+  destroyClient,
   destroyDisplay,
   dispatchRequests,
+  EglHandle,
+  getCredentials,
   getFd,
   initDrm,
   initShm,
   nativeGlobalNames,
+  WlClient,
+  WlDisplay,
 } from 'westfield-proxy'
 import { Channel, createProtocolChannel } from './Channel'
 import { webcrypto } from 'crypto'
 import { ProxySession } from './ProxySession'
+import { readFileSync } from 'fs'
+import { ClientSignaling } from './ClientSignaling'
 
 const logger = createLogger('native-compositor-session')
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567' as const
@@ -89,9 +96,9 @@ export function createNativeCompositorSession(proxySession: ProxySession): Nativ
 }
 
 export class NativeCompositorSession {
-  readonly wlDisplay: unknown
+  readonly wlDisplay: WlDisplay
   readonly waylandDisplay: string
-  readonly drmContext: unknown
+  readonly drmContext: EglHandle
   private readonly wlDisplayFdWatcher: PollHandle
 
   constructor(
@@ -100,7 +107,7 @@ export class NativeCompositorSession {
     public readonly clients: ClientEntry[] = [],
   ) {
     this.wlDisplay = createDisplay(
-      (wlClient: unknown) => this.clientForSocket(wlClient),
+      (wlClient: WlClient) => this.clientForSocket(wlClient),
       (globalName: number) => onGlobalCreated(globalName),
       (globalName: number) => onGlobalDestroyed(globalName),
     )
@@ -128,17 +135,42 @@ export class NativeCompositorSession {
     destroyDisplay(this.wlDisplay)
   }
 
-  private clientForSocket(wlClient: unknown) {
+  private findMatchingClientSignaling(pid: number): ClientSignaling | undefined {
+    const clientSignaling = this.proxySession.findClientSignalingByPid(pid)
+    if (clientSignaling) {
+      return clientSignaling
+    }
+
+    for (const line of readFileSync(`/proc/${pid}/status`, 'ascii').split('\n')) {
+      if (line.startsWith('PPid')) {
+        const ppid = Number.parseInt(line.split(':')[1].trim())
+        if (ppid === 0) {
+          // no matches available
+          return undefined
+        } else {
+          return this.findMatchingClientSignaling(ppid)
+        }
+      }
+    }
+  }
+
+  private clientForSocket(wlClient: WlClient) {
     logger.info(`New Wayland client.`)
 
-    let clientSignaling = this.proxySession.findEmptyClientSignaling()
+    const pidUidGid = new Uint32Array(3)
+    getCredentials(wlClient, pidUidGid)
+    const clientPid = pidUidGid[0]
+    let clientSignaling = this.findMatchingClientSignaling(clientPid)
+
     if (clientSignaling === undefined) {
       const firstClientSignaling = this.proxySession.getFirstClientSignaling()
       if (firstClientSignaling === undefined) {
-        // FIXME terminate client, wayland client was not started as an action from the user?
+        // terminate client, wayland client was not started as an action from the user
+        destroyClient(wlClient)
         return
       }
-      clientSignaling = this.proxySession.createClientSignaling()
+      // get pid from wlClient
+      clientSignaling = this.proxySession.createClientSignaling(clientPid)
       firstClientSignaling.sendNewClientNotify(clientSignaling.key)
     }
 

@@ -4294,9 +4294,9 @@ typescript@^5.0.4:
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.0.4.tgz#b217fd20119bd61a94d4011274e0ab369058da3b"
   integrity sha512-cW9T5W9xY37cc+jfEnaUvX91foxtHkza3Nw3wkoF4sSlKn0MONdkdEndig/qPBWXNkmplh3NzayQzCiHM4/hqw==
 
-uWebSockets.js@uNetworking/uWebSockets.js#v20.24.0:
-  version "20.24.0"
-  resolved "https://codeload.github.com/uNetworking/uWebSockets.js/tar.gz/6545da07696855e77de1480d5b55bb661746ddd3"
+uWebSockets.js@uNetworking/uWebSockets.js#v20.25.0:
+  version "20.25.0"
+  resolved "https://codeload.github.com/uNetworking/uWebSockets.js/tar.gz/e6ecc2102d68d99dc35969b0898fbd201e0f252b"
 
 undici@^5.22.0:
   version "5.22.1"
@@ -4381,10 +4381,10 @@ westfield-proxy-generator@1.0.0-alpha.4:
     uppercamelcase "^3.0.0"
     xml2js "^0.4.23"
 
-westfield-proxy@1.0.0-alpha.20:
-  version "1.0.0-alpha.20"
-  resolved "https://registry.yarnpkg.com/westfield-proxy/-/westfield-proxy-1.0.0-alpha.20.tgz#c7f2d10306e3e72b08f5d93480e3c8308be2d275"
-  integrity sha512-ycdk0V3raCXsBTJSKp74T2bKsHS1YTz+ylKqznbBNkZHfNdj6o0NLTQV7sIechklZyXRc1Zge+nvTBggVYyluw==
+westfield-proxy@1.0.0-alpha.19:
+  version "1.0.0-alpha.19"
+  resolved "https://registry.yarnpkg.com/westfield-proxy/-/westfield-proxy-1.0.0-alpha.19.tgz#d008eef10b4360f8f7d5b0df8e6069489f0fa13a"
+  integrity sha512-hPRb7K/NKvasNNRkXubUgACrBxKS5DFkcy0xtIaqMpvxezEtO9XPJk0M1AY5jFWib2mud8/CLNLnh1lQSmOmFA==
 
 whatwg-url@^5.0.0:
   version "5.0.0"

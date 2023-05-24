@@ -1,7 +1,10 @@
 import { Configuration, IoApi, ProxyFD, ProxyFDTypeEnum } from '../api'
 import { InputOutput, InputOutputFD } from '../InputOutput'
 import { FD } from 'westfield-runtime-common'
-import { isProxyFD } from './RemoteConnectionHandler'
+
+export function isProxyFD(fd: any): fd is ProxyFD {
+  return typeof fd?.handle === 'number' && typeof fd?.host === 'string' && typeof fd?.type === 'string'
+}
 
 export function createRemoteInputOutput(basePath: string, compositorSessionId: string): InputOutput {
   return new RemoteInputOutput(basePath, compositorSessionId)

@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { Client } from 'westfield-runtime-server'
-import { RemoteConnector } from './remote/RemoteConnector'
+import { RemoteAppLauncher } from './remote/RemoteAppLauncher'
 import Session, { GreenfieldLogger } from './Session'
 import { UserShellApi } from './UserShellApi'
 import { nrmlvo } from './Xkb'
@@ -84,14 +84,19 @@ export interface ClientConnectionListener {
   readonly type: CompositorConnector['type']
 }
 
-export interface RemoteClientConnectionListener extends ClientConnectionListener {
-  readonly state: 'closed' | 'closing' | 'connecting' | 'open'
+export interface AppContext extends ClientConnectionListener {
+  readonly state: 'closed' | 'open' | 'connecting' | 'terminated' | 'error'
   readonly type: 'remote'
   readonly key?: string
 
-  remoteIdentityChanged: (remoteIdentity: string) => void
-  onConnectionStateChange: (state: 'closed' | 'open') => void
+  onKeyChanged: (key: string) => void
+  onStateChange: (state: Exclude<AppContext['state'], 'connecting'>) => void
   onError: (error: Error) => void
+}
+
+export interface AppLauncher {
+  launch(url: URL, onChildAppContext: (childAppContext: AppContext) => void): AppContext
+  readonly type: 'remote'
 }
 
 export interface WebClientConnectionListener extends ClientConnectionListener {
@@ -101,24 +106,19 @@ export interface WebClientConnectionListener extends ClientConnectionListener {
   onNeedIFrameAttach?: (webAppIFrame: HTMLIFrameElement) => void
 }
 
-export interface RemoteCompositorConnector {
-  launch(url: URL, auth?: string): RemoteClientConnectionListener
-  readonly type: 'remote'
-}
-
 export interface WebCompositorConnector {
   launch(url: URL): WebClientConnectionListener
   readonly type: 'web'
 }
 
-export type CompositorConnector = RemoteCompositorConnector | WebCompositorConnector
+export type CompositorConnector = AppLauncher | WebCompositorConnector
 
 type CompositorConnectorTypeMap = {
   web: WebCompositorConnector
-  remote: RemoteCompositorConnector
+  remote: AppLauncher
 }
 
-export function createConnector<T extends CompositorConnector['type']>(
+export function createAppLauncher<T extends CompositorConnector['type']>(
   session: CompositorSession,
   type: T,
 ): CompositorConnectorTypeMap[T] {
@@ -127,7 +127,7 @@ export function createConnector<T extends CompositorConnector['type']>(
   }
   if (type === 'remote') {
     // @ts-ignore
-    return RemoteConnector.create(session)
+    return RemoteAppLauncher.create(session)
   } else if (type === 'web') {
     // @ts-ignore
     return WebAppLauncher.create(session)

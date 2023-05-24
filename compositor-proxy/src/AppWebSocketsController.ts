@@ -22,7 +22,7 @@ export function signalHandling(): WebSocketBehavior<SignalingUserData> {
       /* This immediately calls open handler, you must not use res after this call */
       const searchParams = new URLSearchParams(req.getQuery())
 
-      // FIXME move these errors to the ws open function so we can cleanly close the websocket connection.
+      // FIXME move these errors to the ws open function, so we can cleanly close the websocket connection.
 
       const compositorSessionId = searchParams.get('compositorSessionId')
       if (compositorSessionId === null) {
@@ -76,8 +76,7 @@ export function signalHandling(): WebSocketBehavior<SignalingUserData> {
 
       logger.info(`New signaling connection from ${textDecoder.decode(ws.getRemoteAddressAsText())}.`)
 
-      clientSignaling.signalingWebSocket = ws
-      clientSignaling.flushCachedSignalingSends()
+      clientSignaling.onConnect(ws)
     },
     message(ws: WebSocket<SignalingUserData>, message: ArrayBuffer) {
       const messageData = textDecoder.decode(message)
@@ -86,8 +85,9 @@ export function signalHandling(): WebSocketBehavior<SignalingUserData> {
 
       if (isSignalingMessage(messageObject)) {
         switch (messageObject.type) {
-          case SignalingMessageType.PING: {
-            clientSignaling.sendPong(messageObject.data)
+          case SignalingMessageType.KILL_APP: {
+            clientSignaling.kill(messageObject.data.signal)
+            break
           }
         }
       } else {
@@ -97,11 +97,7 @@ export function signalHandling(): WebSocketBehavior<SignalingUserData> {
     close(ws: WebSocket<SignalingUserData>, code: number, message: ArrayBuffer) {
       logger.info(`Signaling connection closed. Code: ${code}. Message: ${textDecoder.decode(message)}`)
       const { clientSignaling } = ws.getUserData()
-      clientSignaling.signalingWebSocket = undefined
-      if (code === 4001) {
-        // user closed connection
-        clientSignaling.close()
-      }
+      clientSignaling.onDisconnect()
     },
   }
 }

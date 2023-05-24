@@ -1,69 +1,92 @@
 import { Signal, signal } from '@preact/signals'
 import { ProxyConnection, ProxyConnectionProps } from './ProxyConnection'
-import { CompositorSession, RemoteClientConnectionListener, RemoteCompositorConnector } from '../../src'
+import { AppContext, AppLauncher, CompositorSession } from '../../src'
 import { ClientProps } from './Client'
+import { useCallback } from 'preact/compat'
 
 const connections = signal([] as ProxyConnectionProps[])
-const connectionURL = signal('localhost:8081')
 
-function removeConnection(removedConnectionProps: ProxyConnectionProps, proxyListener: RemoteClientConnectionListener) {
+function removeConnection(removedConnectionProps: ProxyConnectionProps, proxyListener: AppContext) {
   proxyListener.close()
   connections.value = connections.value.filter((connection) => connection !== removedConnectionProps)
 }
 
-function addConnection(
+function handleNewAppContext(
+  appContext: AppContext,
   session: CompositorSession,
-  compositorProxyConnector: RemoteCompositorConnector,
+  url: URL,
   clients: Signal<ClientProps[]>,
 ) {
-  const url = new URL(connectionURL.value)
-  url.searchParams.append('compositorSessionId', session.compositorSessionId)
-
-  const proxyListener = compositorProxyConnector.launch(url)
   const proxyConnectionProps: ProxyConnectionProps = {
     session,
     url,
-    name: connectionURL.value,
-    proxyListener,
+    name: url.href,
+    appContext,
     remove: () => {
-      removeConnection(proxyConnectionProps, proxyListener)
+      removeConnection(proxyConnectionProps, appContext)
     },
     clients,
-    proxySessionKey: proxyListener.proxySessionKey ?? '',
+    proxySessionKey: appContext.key ?? '',
   }
 
   connections.value = [...connections.value, proxyConnectionProps]
 
-  proxyListener.remoteIdentityChanged = (remoteIdentity) => {
-    proxyConnectionProps.proxySessionKey = remoteIdentity
+  appContext.onKeyChanged = (key) => {
+    proxyConnectionProps.proxySessionKey = key
     connections.value = [...connections.value]
   }
 }
 
-function onInput(event: Event) {
-  if (event.target && event.target instanceof HTMLInputElement) {
-    connectionURL.value = event.target.value
-  }
+function addConnection(
+  session: CompositorSession,
+  compositorProxyConnector: AppLauncher,
+  clients: Signal<ClientProps[]>,
+  connectionURL: string,
+) {
+  const url = new URL(
+    connectionURL.startsWith('http://') || connectionURL.startsWith('https://')
+      ? connectionURL
+      : `http://${connectionURL}`,
+  )
+
+  const appContext = compositorProxyConnector.launch(url, (childAppContext) => {
+    handleNewAppContext(childAppContext, session, url, clients)
+  })
+
+  handleNewAppContext(appContext, session, url, clients)
 }
 
 export type ProxyConnectorProps = {
   session: CompositorSession
-  proxyConnector: RemoteCompositorConnector
+  appLauncher: AppLauncher
   clients: Signal<ClientProps[]>
 }
 
 export function ProxyConnector(props: ProxyConnectorProps) {
-  const onKeyUp = (event: KeyboardEvent) => {
-    if (event.key === 'Enter') {
-      addConnection(props.session, props.proxyConnector, props.clients)
-    }
-  }
+  const onKeyPress = useCallback(
+    (event: KeyboardEvent) => {
+      if (
+        event.key === 'Enter' &&
+        event.target &&
+        event.target instanceof HTMLInputElement &&
+        event.target.value.trim() !== ''
+      ) {
+        addConnection(props.session, props.appLauncher, props.clients, event.target.value)
+        event.target.value = ''
+      }
+    },
+    [addConnection, props],
+  )
 
   return (
     <div>
-      <label class="launch-input-label">
-        🖥️ <input type="text" value={connectionURL} onInput={onInput} onKeyUp={onKeyUp} />
-      </label>
+      <form
+        onSubmit={(ev) => {
+          ev.preventDefault()
+        }}
+      >
+        <input type="text" onKeyPress={onKeyPress} placeholder="🖥️ type a URL" name="remote" />
+      </form>
       <div>
         <ul>
           {connections.value.map((connection) => (

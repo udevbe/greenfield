@@ -66,8 +66,8 @@ export class ProxySession {
     )
   }
 
-  createClientSignaling() {
-    const clientSignaling = new ClientSignaling(this)
+  createClientSignaling(pid: number) {
+    const clientSignaling = new ClientSignaling(this, pid)
     this.clientSignalings.push(clientSignaling)
     clientSignaling.destroyListeners.push(() => {
       this.clientSignalings = this.clientSignalings.filter(
@@ -86,8 +86,8 @@ export class ProxySession {
     return this.clientSignalings.find((clientSignaling) => clientSignaling.key === key)
   }
 
-  findEmptyClientSignaling(): ClientSignaling | undefined {
-    return this.clientSignalings.find((clientSignaling) => clientSignaling.nativeClientSession === undefined)
+  findClientSignalingByPid(pid: number) {
+    return this.clientSignalings.find((clientSignaling) => clientSignaling.pid === pid)
   }
 }
 

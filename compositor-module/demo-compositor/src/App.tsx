@@ -5,9 +5,9 @@ import {
   CompositorClient,
   CompositorSession,
   createCompositorSession,
-  createConnector,
+  createAppLauncher,
   initWasm,
-  RemoteCompositorConnector,
+  AppLauncher,
   WebCompositorConnector,
 } from '../../src'
 import { ClientProps } from './Client'
@@ -22,7 +22,7 @@ const windows = new Signal([] as WindowProps[])
 
 function Controls(props: {
   session: CompositorSession
-  proxyConnector: RemoteCompositorConnector
+  appLauncher: AppLauncher
   webConnector: WebCompositorConnector
 }) {
   return (
@@ -63,8 +63,8 @@ export async function main() {
   const id = Array.from(arr, (v) => v.toString(16).padStart(2, '0')).join('')
 
   const session = await createCompositorSession(id)
-  const proxyConnector = createConnector(session, 'remote')
-  const webConnector = createConnector(session, 'web')
+  const appLauncher = createAppLauncher(session, 'remote')
+  const webConnector = createAppLauncher(session, 'web')
 
   session.userShell.events.clientDestroyed = (client: CompositorClient) => {
     clients.value = clients.value.filter((otherClient) => otherClient.id !== client.id)
@@ -128,7 +128,7 @@ export async function main() {
   session.globals.register()
 
   render(
-    <Controls session={session} proxyConnector={proxyConnector} webConnector={webConnector} />,
+    <Controls session={session} appLauncher={appLauncher} webConnector={webConnector} />,
     elementById('controls-container'),
   )
 }

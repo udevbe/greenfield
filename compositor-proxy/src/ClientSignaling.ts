@@ -7,35 +7,36 @@ import { config } from './config'
 import { createLogger } from './Logger'
 import { execFile } from 'child_process'
 import { ProxySession } from './ProxySession'
+import { setTimeout } from 'timers'
 
 export const enum SignalingMessageType {
-  CONNECTION,
-  DISCONNECT,
-  PING,
-  PONG,
-  NEW_CLIENT,
+  CONNECT_CHANNEL,
+  DISCONNECT_CHANNEL,
+  CREATE_NEW_CLIENT,
+  APP_TERMINATED,
+  KILL_APP,
 }
 
 type SignalingMessage =
   | {
-      readonly type: SignalingMessageType.CONNECTION
+      readonly type: SignalingMessageType.CONNECT_CHANNEL
       readonly data: { url: string; desc: ChannelDesc }
     }
   | {
-      readonly type: SignalingMessageType.DISCONNECT
-      readonly data: string
+      readonly type: SignalingMessageType.DISCONNECT_CHANNEL
+      readonly data: { channelId: string }
     }
   | {
-      readonly type: SignalingMessageType.PING
-      readonly data: number
-    }
-  | {
-      readonly type: SignalingMessageType.PONG
-      readonly data: number
-    }
-  | {
-      readonly type: SignalingMessageType.NEW_CLIENT
+      readonly type: SignalingMessageType.CREATE_NEW_CLIENT
       readonly data: { baseURL: string; signalURL: string; key: string }
+    }
+  | {
+      readonly type: SignalingMessageType.APP_TERMINATED
+      readonly data: { exitCode: number } | { signal: string }
+    }
+  | {
+      readonly type: SignalingMessageType.KILL_APP
+      readonly data: { signal: 'SIGTERM' }
     }
 
 const textEncoder = new TextEncoder()
@@ -49,8 +50,10 @@ export class ClientSignaling {
 
   private signalingSendBuffer: Uint8Array[] = []
   private channels: Record<string, WebSocketChannel> = {}
+  private sigKillTimer?: NodeJS.Timeout
+  private sigHupTimer?: NodeJS.Timeout
 
-  constructor(public readonly proxySession: ProxySession) {}
+  constructor(public readonly proxySession: ProxySession, readonly pid: number) {}
 
   signalingSend(message: Uint8Array) {
     if (this.signalingWebSocket) {
@@ -60,11 +63,8 @@ export class ClientSignaling {
     }
   }
 
-  flushCachedSignalingSends() {
-    if (this.signalingWebSocket === undefined) {
-      return
-    }
-    if (this.signalingSendBuffer.length === 0) {
+  private flushCachedSignalingSends() {
+    if (this.signalingWebSocket === undefined || this.signalingSendBuffer.length === 0) {
       return
     }
     for (const message of this.signalingSendBuffer) {
@@ -73,15 +73,59 @@ export class ClientSignaling {
     this.signalingSendBuffer = []
   }
 
-  close() {
-    if (this.nativeClientSession) {
-      this.nativeClientSession.destroy()
+  onExit(args: { exitCode: number } | { signal: string }) {
+    if (this.sigKillTimer) {
+      clearTimeout(this.sigKillTimer)
+      this.sigKillTimer = undefined
     }
-
+    if (this.sigHupTimer) {
+      clearTimeout(this.sigHupTimer)
+      this.sigHupTimer = undefined
+    }
     for (const destroyListener of this.destroyListeners) {
       destroyListener()
     }
-    // TODO more?
+    this.destroyListeners = []
+    this.sendExit(args)
+  }
+
+  kill(signal: 'SIGTERM' | 'SIGHUP') {
+    if (this.sigKillTimer === undefined) {
+      this.sigKillTimer = setTimeout(() => {
+        this.sigKillTimer = undefined
+        try {
+          process.kill(this.pid, 0)
+          process.kill(this.pid, 'SIGKILL')
+        } catch (e: any) {
+          if (e.code === 'ESRCH') {
+            // PID already destroyed, we can safely ignore this error.
+          } else {
+            throw e
+          }
+        }
+      }, 10000)
+    }
+    process.kill(this.pid, signal)
+  }
+
+  onConnect(signalingWebSocket: WebSocket<SignalingUserData>) {
+    this.signalingWebSocket = signalingWebSocket
+    if (this.sigHupTimer) {
+      clearTimeout(this.sigHupTimer)
+      this.sigHupTimer = undefined
+    }
+    this.flushCachedSignalingSends()
+  }
+
+  onDisconnect() {
+    this.signalingWebSocket = undefined
+
+    if (this.sigKillTimer === undefined && this.sigHupTimer === undefined) {
+      this.sigHupTimer = setTimeout(() => {
+        this.sigHupTimer = undefined
+        this.kill('SIGHUP')
+      }, 600 * 1000)
+    }
   }
 
   sendConnectionRequest(channel: WebSocketChannel) {
@@ -91,7 +135,7 @@ export class ClientSignaling {
     url.searchParams.append('compositorSessionId', `${channel.clientSignaling.proxySession.compositorSessionId}`)
     url.pathname = url.pathname.endsWith('/') ? `${url.pathname}channel` : `${url.pathname}/channel`
     const connectionRequest: SignalingMessage = {
-      type: SignalingMessageType.CONNECTION,
+      type: SignalingMessageType.CONNECT_CHANNEL,
       data: { url: url.href, desc: channel.desc },
     }
     this.channels[channel.desc.id] = channel
@@ -103,8 +147,8 @@ export class ClientSignaling {
 
   sendChannelDisconnect(channel: WebSocketChannel) {
     const clientDisconnect: SignalingMessage = {
-      type: SignalingMessageType.DISCONNECT,
-      data: channel.desc.id,
+      type: SignalingMessageType.DISCONNECT_CHANNEL,
+      data: { channelId: channel.desc.id },
     }
     this.signalingSend(textEncoder.encode(JSON.stringify(clientDisconnect)))
   }
@@ -113,14 +157,6 @@ export class ClientSignaling {
     for (const channel of Object.values(this.channels)) {
       this.sendChannelDisconnect(channel)
     }
-  }
-
-  sendPong(data: number) {
-    const pongMessage: SignalingMessage = {
-      type: SignalingMessageType.PONG,
-      data,
-    }
-    this.signalingSend(textEncoder.encode(JSON.stringify(pongMessage)))
   }
 
   findChannelById(channelId: string): WebSocketChannel | undefined {
@@ -140,10 +176,18 @@ export class ClientSignaling {
     }
 
     const newClientNotify: SignalingMessage = {
-      type: SignalingMessageType.NEW_CLIENT,
+      type: SignalingMessageType.CREATE_NEW_CLIENT,
       data,
     }
     this.signalingSend(textEncoder.encode(JSON.stringify(newClientNotify)))
+  }
+
+  sendExit(args: { exitCode: number } | { signal: string }) {
+    const exitMessage: SignalingMessage = {
+      type: SignalingMessageType.APP_TERMINATED,
+      data: args,
+    }
+    this.signalingSend(textEncoder.encode(JSON.stringify(exitMessage)))
   }
 }
 
@@ -151,7 +195,7 @@ export function isSignalingMessage(messageObject: any): messageObject is Signali
   if (messageObject === null) {
     return false
   }
-  return messageObject.type === SignalingMessageType.PING
+  return messageObject.type === SignalingMessageType.KILL_APP
 }
 
 export function launchApplication(applicationExecutable: string, proxySession: ProxySession): Promise<ClientSignaling> {
@@ -179,12 +223,18 @@ export function launchApplication(applicationExecutable: string, proxySession: P
     )
     childProcess.once('spawn', () => {
       appLogger.info(`child process started: ${applicationExecutable}`)
-      const clientSignaling = proxySession.createClientSignaling()
-      clientSignaling.destroyListeners.push(() => {
-        childProcess.kill()
-      })
-      childProcess.once('exit', () => {
-        clientSignaling.close()
+      if (childProcess.pid === undefined) {
+        throw new Error('BUG? Tried to create client signaling for child process without an id.')
+      }
+
+      const clientSignaling = proxySession.createClientSignaling(childProcess.pid)
+      childProcess.once('exit', (exitCode, signal) => {
+        if (exitCode !== null) {
+          clientSignaling.onExit({ exitCode })
+        }
+        if (signal !== null) {
+          clientSignaling.onExit({ signal })
+        }
       })
       resolve(clientSignaling)
     })
