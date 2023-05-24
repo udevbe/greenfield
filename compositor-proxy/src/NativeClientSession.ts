@@ -45,6 +45,7 @@ import { ProxyBuffer } from './ProxyBuffer'
 import type { Channel } from './Channel'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 import { ClientSignaling } from './ClientSignaling'
+import { WlClient } from '../../../westfield/server/node/proxy/src/@types/westfield-addon'
 
 const logger = createLogger('native-client-session')
 
@@ -66,7 +67,7 @@ function deserializeProxyFDJSON(sourceBuf: ArrayBufferView): { proxyFD: ProxyFD;
 }
 
 export function createNativeClientSession(
-  wlClient: unknown,
+  wlClient: WlClient,
   nativeCompositorSession: NativeCompositorSession,
   protocolChannel: Channel,
   id: string,
@@ -149,7 +150,7 @@ export class NativeClientSession {
 
   constructor(
     clientSignaling: ClientSignaling,
-    public wlClient: unknown,
+    public wlClient: WlClient | undefined,
     public readonly nativeCompositorSession: NativeCompositorSession,
     private readonly protocolDataChannel: Channel,
     public readonly id: string,

@@ -2,16 +2,21 @@ import { Signal } from '@preact/signals'
 import { CompositorSession, WebCompositorConnector } from '../../src'
 import { WebApp, WebAppProps } from './WebApp'
 import { ClientProps } from './Client'
+import { useCallback } from 'preact/compat'
 
-const webAppURL = new Signal('http://localhost:9000')
 const webApps = new Signal([] as WebAppProps[])
 
 function launchWebApp(
   session: CompositorSession,
   webConnector: WebCompositorConnector,
   clients: Signal<ClientProps[]>,
+  connectionURL: string,
 ) {
-  const url = new URL(webAppURL.value)
+  const url = new URL(
+    connectionURL.startsWith('http://') || connectionURL.startsWith('https://')
+      ? connectionURL
+      : `http://${connectionURL}`,
+  )
   const webAppListener = webConnector.launch(url)
   const webApp: WebAppProps = { url, onClose: () => webAppListener.close(), loaded: new Signal(false) }
   webApps.value = [...webApps.value, webApp]
@@ -39,29 +44,36 @@ function launchWebApp(
   }
 }
 
-function onInput(event: Event) {
-  if (event.target && event.target instanceof HTMLInputElement) {
-    webAppURL.value = event.target.value
-  }
-}
-
 export type WebAppLauncherProps = {
   session: CompositorSession
   webConnector: WebCompositorConnector
   clients: Signal<ClientProps[]>
 }
 export function WebAppLauncher(props: WebAppLauncherProps) {
-  const onKeyUp = (event: KeyboardEvent) => {
-    if (event.key === 'Enter') {
-      launchWebApp(props.session, props.webConnector, props.clients)
-    }
-  }
+  const onKeyPress = useCallback(
+    (event: KeyboardEvent) => {
+      if (
+        event.key === 'Enter' &&
+        event.target &&
+        event.target instanceof HTMLInputElement &&
+        event.target.value.trim() !== ''
+      ) {
+        launchWebApp(props.session, props.webConnector, props.clients, event.target.value)
+        event.target.value = ''
+      }
+    },
+    [launchWebApp, props],
+  )
 
   return (
     <div>
-      <label class="launch-input-label">
-        🌐 <input type="text" name="launch" value={webAppURL} onInput={onInput} onKeyUp={onKeyUp} />
-      </label>
+      <form
+        onSubmit={(ev) => {
+          ev.preventDefault()
+        }}
+      >
+        <input type="text" name="launch" onKeyPress={onKeyPress} placeholder="🌐 type a URL" />
+      </form>
       <div>
         <ul>
           {webApps.value.map((webApp) => (

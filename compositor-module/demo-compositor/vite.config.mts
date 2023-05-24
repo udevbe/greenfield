@@ -7,6 +7,7 @@ export default defineConfig({
   root: './demo-compositor',
   server: {
     port: 8080,
-    strictPort: true
+    strictPort: true,
   },
 })
+

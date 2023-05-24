@@ -120,7 +120,7 @@ export class WebAppLauncher implements WebCompositorConnector {
     this.webAppSocket = WebConnectionHandler.create(session)
   }
 
-  listen(url: URL): WebClientConnectionListener {
+  launch(url: URL): WebClientConnectionListener {
     const webAppFrame = document.createElement('iframe')
     webAppFrame.hidden = true
     webAppFrame.sandbox.add('allow-scripts')
