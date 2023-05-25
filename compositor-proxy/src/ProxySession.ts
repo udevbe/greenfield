@@ -19,7 +19,7 @@ import { createLogger } from './Logger'
 
 import { createNativeCompositorSession, NativeCompositorSession } from './NativeCompositorSession'
 import { XWaylandSession } from './XWaylandSession'
-import { ClientSignaling } from './ClientSignaling'
+import { NativeAppContext } from './NativeAppContext'
 
 // TODO create logger per proxy session instance
 const logger = createLogger('compositor-proxy-session')
@@ -43,7 +43,7 @@ export class ProxySession {
 
   public readonly nativeCompositorSession: NativeCompositorSession
   private readonly xWaylandSession: XWaylandSession
-  private clientSignalings: ClientSignaling[] = []
+  private nativeAppContexts: NativeAppContext[] = []
 
   constructor(public readonly compositorSessionId: string) {
     this.nativeCompositorSession = createNativeCompositorSession(this)
@@ -66,28 +66,28 @@ export class ProxySession {
     )
   }
 
-  createClientSignaling(pid: number) {
-    const clientSignaling = new ClientSignaling(this, pid)
-    this.clientSignalings.push(clientSignaling)
-    clientSignaling.destroyListeners.push(() => {
-      this.clientSignalings = this.clientSignalings.filter(
-        (otherClientSignaling) => otherClientSignaling !== clientSignaling,
+  createNativeAppContext(pid: number) {
+    const nativeAppContext = new NativeAppContext(this, pid)
+    this.nativeAppContexts.push(nativeAppContext)
+    nativeAppContext.destroyListeners.push(() => {
+      this.nativeAppContexts = this.nativeAppContexts.filter(
+        (otherNativeAppContext) => otherNativeAppContext !== nativeAppContext,
       )
     })
 
-    return clientSignaling
+    return nativeAppContext
   }
 
-  getFirstClientSignaling(): ClientSignaling | undefined {
-    return this.clientSignalings[0]
+  getFirstNativeAppContext(): NativeAppContext | undefined {
+    return this.nativeAppContexts[0]
   }
 
-  findClientSignalingByKey(key: string): ClientSignaling | undefined {
-    return this.clientSignalings.find((clientSignaling) => clientSignaling.key === key)
+  findNativeAppContextByKey(key: string): NativeAppContext | undefined {
+    return this.nativeAppContexts.find((nativeAppContext) => nativeAppContext.key === key)
   }
 
-  findClientSignalingByPid(pid: number) {
-    return this.clientSignalings.find((clientSignaling) => clientSignaling.pid === pid)
+  findNativeAppContextByPid(pid: number) {
+    return this.nativeAppContexts.find((nativeAppContext) => nativeAppContext.pid === pid)
   }
 }
 

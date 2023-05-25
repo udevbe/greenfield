@@ -5,7 +5,7 @@ import type { SignalingUserData } from './AppWebSocketsController'
 import { ChannelDesc, WebSocketChannel } from './Channel'
 import { config } from './config'
 import { createLogger } from './Logger'
-import { execFile } from 'child_process'
+import { spawn } from 'child_process'
 import { ProxySession } from './ProxySession'
 import { setTimeout } from 'timers'
 
@@ -41,19 +41,19 @@ type SignalingMessage =
 
 const textEncoder = new TextEncoder()
 
-export class ClientSignaling {
+export class NativeAppContext {
   public readonly key = randomBytes(8).toString('hex')
 
   public nativeClientSession: NativeClientSession | undefined
   public signalingWebSocket: WebSocket<SignalingUserData> | undefined
-  public destroyListeners: (() => void)[] = []
+  public readonly destroyListeners: (() => void)[] = []
 
-  private signalingSendBuffer: Uint8Array[] = []
-  private channels: Record<string, WebSocketChannel> = {}
+  private readonly signalingSendBuffer: Uint8Array[] = []
+  private readonly channels: Record<string, WebSocketChannel> = {}
   private sigKillTimer?: NodeJS.Timeout
   private sigHupTimer?: NodeJS.Timeout
 
-  constructor(public readonly proxySession: ProxySession, readonly pid: number) {}
+  constructor(readonly proxySession: ProxySession, readonly pid: number) {}
 
   signalingSend(message: Uint8Array) {
     if (this.signalingWebSocket) {
@@ -70,7 +70,7 @@ export class ClientSignaling {
     for (const message of this.signalingSendBuffer) {
       this.signalingWebSocket.send(message, true)
     }
-    this.signalingSendBuffer = []
+    this.signalingSendBuffer.splice(0, this.signalingSendBuffer.length)
   }
 
   onExit(args: { exitCode: number } | { signal: string }) {
@@ -85,27 +85,34 @@ export class ClientSignaling {
     for (const destroyListener of this.destroyListeners) {
       destroyListener()
     }
-    this.destroyListeners = []
+    this.destroyListeners.splice(0, this.destroyListeners.length)
     this.sendExit(args)
   }
 
   kill(signal: 'SIGTERM' | 'SIGHUP') {
-    if (this.sigKillTimer === undefined) {
-      this.sigKillTimer = setTimeout(() => {
-        this.sigKillTimer = undefined
-        try {
-          process.kill(this.pid, 0)
-          process.kill(this.pid, 'SIGKILL')
-        } catch (e: any) {
-          if (e.code === 'ESRCH') {
-            // PID already destroyed, we can safely ignore this error.
-          } else {
-            throw e
+    try {
+      process.kill(this.pid, signal)
+      if (this.sigKillTimer === undefined) {
+        this.sigKillTimer = setTimeout(() => {
+          this.sigKillTimer = undefined
+          try {
+            process.kill(this.pid, 'SIGKILL')
+          } catch (e: any) {
+            if (e.code === 'ESRCH') {
+              // PID already destroyed, we can safely ignore this error.
+            } else {
+              throw e
+            }
           }
-        }
-      }, 10000)
+        }, 10000)
+      }
+    } catch (e: any) {
+      if (e.code === 'ESRCH') {
+        // PID already destroyed, we can safely ignore this error.
+      } else {
+        throw e
+      }
     }
-    process.kill(this.pid, signal)
   }
 
   onConnect(signalingWebSocket: WebSocket<SignalingUserData>) {
@@ -131,8 +138,8 @@ export class ClientSignaling {
   sendConnectionRequest(channel: WebSocketChannel) {
     const url: URL = new URL(config.public.baseURL.replace('http', 'ws'))
     url.searchParams.append('id', `${channel.desc.id}`)
-    url.searchParams.append('key', `${channel.clientSignaling.key}`)
-    url.searchParams.append('compositorSessionId', `${channel.clientSignaling.proxySession.compositorSessionId}`)
+    url.searchParams.append('key', `${channel.nativeAppContext.key}`)
+    url.searchParams.append('compositorSessionId', `${channel.nativeAppContext.proxySession.compositorSessionId}`)
     url.pathname = url.pathname.endsWith('/') ? `${url.pathname}channel` : `${url.pathname}/channel`
     const connectionRequest: SignalingMessage = {
       type: SignalingMessageType.CONNECT_CHANNEL,
@@ -198,11 +205,15 @@ export function isSignalingMessage(messageObject: any): messageObject is Signali
   return messageObject.type === SignalingMessageType.KILL_APP
 }
 
-export function launchApplication(applicationExecutable: string, proxySession: ProxySession): Promise<ClientSignaling> {
+export function launchApplication(
+  applicationExecutable: string,
+  proxySession: ProxySession,
+): Promise<NativeAppContext> {
   // TODO create child logger from proxy session logger
-  return new Promise<ClientSignaling>((resolve, reject) => {
+  return new Promise<NativeAppContext>((resolve, reject) => {
     const appLogger = createLogger(applicationExecutable)
-    const childProcess = execFile(
+
+    const childProcess = spawn(
       applicationExecutable,
       // TODO support executable arguments
       [],
@@ -212,27 +223,41 @@ export function launchApplication(applicationExecutable: string, proxySession: P
           WAYLAND_DISPLAY: proxySession.nativeCompositorSession.waylandDisplay,
         },
       },
-      (error, stdout, stderr) => {
-        if (error) {
-          appLogger.error(`child process error: ${error.message}. signal: ${error.signal}`)
-          reject(error)
-          return
-        }
-        appLogger.info(stdout)
-      },
     )
+
+    childProcess.stdout.on('data', (data) => {
+      appLogger.info(data)
+    })
+
+    childProcess.stderr.on('data', (data) => {
+      appLogger.error(data)
+    })
+
+    const spawnErrorHandler = (error: Error) => {
+      appLogger.error(`child process error: ${error.message}.`)
+      reject(error)
+    }
+    childProcess.once('error', spawnErrorHandler)
+
     childProcess.once('spawn', () => {
-      appLogger.info(`child process started: ${applicationExecutable}`)
+      appLogger.info(`Child process started.`)
+      childProcess.removeListener('error', spawnErrorHandler)
+      childProcess.addListener('error', (error) => {
+        appLogger.error(`child process error: ${error.message}.`)
+      })
+
       if (childProcess.pid === undefined) {
         throw new Error('BUG? Tried to create client signaling for child process without an id.')
       }
 
-      const clientSignaling = proxySession.createClientSignaling(childProcess.pid)
+      const clientSignaling = proxySession.createNativeAppContext(childProcess.pid)
       childProcess.once('exit', (exitCode, signal) => {
         if (exitCode !== null) {
+          appLogger.info(`Child process terminated with exit code: ${exitCode}.`)
           clientSignaling.onExit({ exitCode })
         }
         if (signal !== null) {
+          appLogger.info(`Child process terminated with signal: ${signal}.`)
           clientSignaling.onExit({ signal })
         }
       })

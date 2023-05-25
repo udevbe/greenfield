@@ -164,7 +164,7 @@ class RemoteAppContext implements AppContext {
 
   close(): void {
     this.sendKillApp()
-    if (this.signalingWebSocket?.readyState !== ReconnectingWebSocket.OPEN) {
+    if (this.signalingWebSocket?.readyState !== ReconnectingWebSocket.OPEN && !this.terminated) {
       this.error(new Error('Force closing application.'))
     } else {
       this.sendKillAppTimer = setTimeout(() => {

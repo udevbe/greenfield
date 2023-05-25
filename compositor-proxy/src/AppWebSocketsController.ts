@@ -3,14 +3,14 @@ import type { WebSocket, WebSocketBehavior } from 'uWebSockets.js'
 import { URLSearchParams } from 'url'
 import type { WebSocketChannel } from './Channel'
 import { findProxySessionByCompositorSessionId } from './ProxySession'
-import { ClientSignaling, isSignalingMessage, SignalingMessageType } from './ClientSignaling'
+import { NativeAppContext, isSignalingMessage, SignalingMessageType } from './NativeAppContext'
 
 const logger = createLogger('compositor-proxy-signaling')
 
 const textDecoder = new TextDecoder()
 
 export type SignalingUserData = {
-  clientSignaling: ClientSignaling
+  clientSignaling: NativeAppContext
 }
 
 export function signalHandling(): WebSocketBehavior<SignalingUserData> {
@@ -45,7 +45,7 @@ export function signalHandling(): WebSocketBehavior<SignalingUserData> {
         return
       }
 
-      const clientSignaling = proxySession.findClientSignalingByKey(signalingKey)
+      const clientSignaling = proxySession.findNativeAppContextByKey(signalingKey)
       if (clientSignaling === undefined) {
         const message = '403 Bad key query parameter.'
         res.end(message, true)
@@ -134,7 +134,7 @@ export function channelHandling(): WebSocketBehavior<ConnectionUserData> {
         return
       }
 
-      const clientSignaling = proxySession.findClientSignalingByKey(key)
+      const clientSignaling = proxySession.findNativeAppContextByKey(key)
       if (clientSignaling === undefined) {
         const message = '403 Bad key query parameter.'
         res.end(message, true)

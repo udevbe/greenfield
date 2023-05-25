@@ -26,7 +26,7 @@ import {
   destroyClient,
   destroyDisplay,
   dispatchRequests,
-  EglHandle,
+  DRMHandle,
   getCredentials,
   getFd,
   initDrm,
@@ -39,7 +39,7 @@ import { Channel, createProtocolChannel } from './Channel'
 import { webcrypto } from 'crypto'
 import { ProxySession } from './ProxySession'
 import { readFileSync } from 'fs'
-import { ClientSignaling } from './ClientSignaling'
+import { NativeAppContext } from './NativeAppContext'
 
 const logger = createLogger('native-compositor-session')
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567' as const
@@ -98,7 +98,7 @@ export function createNativeCompositorSession(proxySession: ProxySession): Nativ
 export class NativeCompositorSession {
   readonly wlDisplay: WlDisplay
   readonly waylandDisplay: string
-  readonly drmContext: EglHandle
+  readonly drmContext: DRMHandle
   private readonly wlDisplayFdWatcher: PollHandle
 
   constructor(
@@ -107,7 +107,7 @@ export class NativeCompositorSession {
     public readonly clients: ClientEntry[] = [],
   ) {
     this.wlDisplay = createDisplay(
-      (wlClient: WlClient) => this.clientForSocket(wlClient),
+      (wlClient: WlClient) => this.clientForNativeAppContext(wlClient),
       (globalName: number) => onGlobalCreated(globalName),
       (globalName: number) => onGlobalDestroyed(globalName),
     )
@@ -135,10 +135,10 @@ export class NativeCompositorSession {
     destroyDisplay(this.wlDisplay)
   }
 
-  private findMatchingClientSignaling(pid: number): ClientSignaling | undefined {
-    const clientSignaling = this.proxySession.findClientSignalingByPid(pid)
-    if (clientSignaling) {
-      return clientSignaling
+  private findMatchingNativeAppContext(pid: number): NativeAppContext | undefined {
+    const nativeAppContext = this.proxySession.findNativeAppContextByPid(pid)
+    if (nativeAppContext) {
+      return nativeAppContext
     }
 
     for (const line of readFileSync(`/proc/${pid}/status`, 'ascii').split('\n')) {
@@ -148,35 +148,35 @@ export class NativeCompositorSession {
           // no matches available
           return undefined
         } else {
-          return this.findMatchingClientSignaling(ppid)
+          return this.findMatchingNativeAppContext(ppid)
         }
       }
     }
   }
 
-  private clientForSocket(wlClient: WlClient) {
+  private clientForNativeAppContext(wlClient: WlClient) {
     logger.info(`New Wayland client.`)
 
     const pidUidGid = new Uint32Array(3)
     getCredentials(wlClient, pidUidGid)
     const clientPid = pidUidGid[0]
-    let clientSignaling = this.findMatchingClientSignaling(clientPid)
+    let nativeAppContext = this.findMatchingNativeAppContext(clientPid)
 
-    if (clientSignaling === undefined) {
-      const firstClientSignaling = this.proxySession.getFirstClientSignaling()
-      if (firstClientSignaling === undefined) {
+    if (nativeAppContext === undefined) {
+      const firstNativeAppContext = this.proxySession.getFirstNativeAppContext()
+      if (firstNativeAppContext === undefined) {
         // terminate client, wayland client was not started as an action from the user
         destroyClient(wlClient)
         return
       }
       // get pid from wlClient
-      clientSignaling = this.proxySession.createClientSignaling(clientPid)
-      firstClientSignaling.sendNewClientNotify(clientSignaling.key)
+      nativeAppContext = this.proxySession.createNativeAppContext(clientPid)
+      firstNativeAppContext.sendNewClientNotify(nativeAppContext.key)
     }
 
     const clientId = newClientId()
-    const protocolChannel = createProtocolChannel(clientId, clientSignaling)
-    const nativeClientSession = createNativeClientSession(wlClient, this, protocolChannel, clientId, clientSignaling)
+    const protocolChannel = createProtocolChannel(clientId, nativeAppContext)
+    const nativeClientSession = createNativeClientSession(wlClient, this, protocolChannel, clientId, nativeAppContext)
     const clientEntry = {
       nativeClientSession,
       protocolChannel,

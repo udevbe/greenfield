@@ -10,7 +10,7 @@ import { config } from './config'
 import { operations } from './@types/api'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 import { args } from './Args'
-import { launchApplication } from './ClientSignaling'
+import { launchApplication } from './NativeAppContext'
 
 const logger = createLogger('app')
 
@@ -497,17 +497,17 @@ export async function POSTApplication(httpResponse: HttpResponse, req: HttpReque
     findProxySessionByCompositorSessionId(compositorSessionId) ?? createProxySession(compositorSessionId)
 
   // FIXME check if application launched
-  const clientSignaling = await launchApplication(executable, proxySession)
+  const appContext = await launchApplication(executable, proxySession)
 
   const proxyURL = new URL(config.public.baseURL.replace('http', 'ws'))
   proxyURL.pathname += proxyURL.pathname.endsWith('/') ? 'signal' : '/signal'
   proxyURL.searchParams.set('compositorSessionId', compositorSessionId)
-  proxyURL.searchParams.set('key', clientSignaling.key)
+  proxyURL.searchParams.set('key', appContext.key)
 
   const reply: { baseURL: string; signalURL: string; key: string } = {
     baseURL: config.public.baseURL,
     signalURL: proxyURL.href,
-    key: clientSignaling.key,
+    key: appContext.key,
   }
 
   httpResponse.cork(() => {
