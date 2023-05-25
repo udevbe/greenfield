@@ -44,7 +44,7 @@ import {
 import { ProxyBuffer } from './ProxyBuffer'
 import type { Channel } from './Channel'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
-import { ClientSignaling } from './ClientSignaling'
+import { NativeAppContext } from './NativeAppContext'
 import { WlClient } from '../../../westfield/server/node/proxy/src/@types/westfield-addon'
 
 const logger = createLogger('native-client-session')
@@ -71,10 +71,10 @@ export function createNativeClientSession(
   nativeCompositorSession: NativeCompositorSession,
   protocolChannel: Channel,
   id: string,
-  clientSignaling: ClientSignaling,
+  nativeAppContext: NativeAppContext,
 ): NativeClientSession {
   const nativeClientSession = new NativeClientSession(
-    clientSignaling,
+    nativeAppContext,
     wlClient,
     nativeCompositorSession,
     protocolChannel,
@@ -85,7 +85,7 @@ export function createNativeClientSession(
     for (const destroyListener of nativeClientSession.destroyListeners) {
       destroyListener()
     }
-    clientSignaling.sendClientConnectionsDisconnect()
+    nativeAppContext.sendClientConnectionsDisconnect()
     nativeClientSession.destroyListeners = []
     nativeClientSession.wlClient = undefined
   })
@@ -149,7 +149,7 @@ export class NativeClientSession {
   private lastEventSerial = 0
 
   constructor(
-    clientSignaling: ClientSignaling,
+    nativeAppContext: NativeAppContext,
     public wlClient: WlClient | undefined,
     public readonly nativeCompositorSession: NativeCompositorSession,
     private readonly protocolDataChannel: Channel,
@@ -162,7 +162,7 @@ export class NativeClientSession {
     public destroyListeners: (() => void)[] = [],
     private fastSync = true,
   ) {
-    clientSignaling.nativeClientSession = this
+    nativeAppContext.nativeClientSession = this
     this.browserChannelOutOfBandHandlers = {
       // listen for out-of-band resource destroy. opcode: 1
       1: (payload) => this.destroyResourceSilently(payload),
@@ -176,7 +176,7 @@ export class NativeClientSession {
       protocolChannel: this.protocolDataChannel,
       drmContext: nativeCompositorSession.drmContext,
       messageInterceptors,
-      clientSignaling,
+      nativeAppContext,
     }
     this.messageInterceptor = MessageInterceptor.create(
       wlClient,

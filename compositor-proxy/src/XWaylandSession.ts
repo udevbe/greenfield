@@ -57,7 +57,7 @@ export class XWaylandSession {
 
       const xwmDataChannel = createXWMDataChannel(
         xWaylandClient.clientId,
-        xWaylandClient.protocolChannel.clientSignaling,
+        xWaylandClient.protocolChannel.nativeAppContext,
       )
       this.upsertXWMConnection(xwmDataChannel, wmFd).catch((e: any) => {
         logger.error(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
