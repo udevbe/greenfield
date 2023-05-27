@@ -1,7 +1,7 @@
 import { NativeClientSession } from './NativeClientSession'
 import { WebSocket } from 'uWebSockets.js'
 import { randomBytes } from 'crypto'
-import type { SignalingUserData } from './AppWebSocketsController'
+import type { AppSignalingUserData } from './AppWebSocketsController'
 import { ChannelDesc, WebSocketChannel } from './Channel'
 import { config } from './config'
 import { createLogger } from './Logger'
@@ -12,7 +12,7 @@ import { setTimeout } from 'timers'
 export const enum SignalingMessageType {
   CONNECT_CHANNEL,
   DISCONNECT_CHANNEL,
-  CREATE_NEW_CLIENT,
+  CREATE_CHILD_APP_CONTEXT,
   APP_TERMINATED,
   KILL_APP,
 }
@@ -27,8 +27,8 @@ type SignalingMessage =
       readonly data: { channelId: string }
     }
   | {
-      readonly type: SignalingMessageType.CREATE_NEW_CLIENT
-      readonly data: { baseURL: string; signalURL: string; key: string }
+      readonly type: SignalingMessageType.CREATE_CHILD_APP_CONTEXT
+      readonly data: { baseURL: string; signalURL: string; key: string; name: string }
     }
   | {
       readonly type: SignalingMessageType.APP_TERMINATED
@@ -45,7 +45,7 @@ export class NativeAppContext {
   public readonly key = randomBytes(8).toString('hex')
 
   public nativeClientSession: NativeClientSession | undefined
-  public signalingWebSocket: WebSocket<SignalingUserData> | undefined
+  public signalingWebSocket: WebSocket<AppSignalingUserData> | undefined
   public readonly destroyListeners: (() => void)[] = []
 
   private readonly signalingSendBuffer: Uint8Array[] = []
@@ -53,7 +53,7 @@ export class NativeAppContext {
   private sigKillTimer?: NodeJS.Timeout
   private sigHupTimer?: NodeJS.Timeout
 
-  constructor(readonly proxySession: ProxySession, readonly pid: number) {}
+  constructor(readonly proxySession: ProxySession, readonly pid: number, readonly name: string) {}
 
   signalingSend(message: Uint8Array) {
     if (this.signalingWebSocket) {
@@ -115,7 +115,7 @@ export class NativeAppContext {
     }
   }
 
-  onConnect(signalingWebSocket: WebSocket<SignalingUserData>) {
+  onConnect(signalingWebSocket: WebSocket<AppSignalingUserData>) {
     this.signalingWebSocket = signalingWebSocket
     if (this.sigHupTimer) {
       clearTimeout(this.sigHupTimer)
@@ -170,20 +170,21 @@ export class NativeAppContext {
     return this.channels[channelId]
   }
 
-  sendNewClientNotify(key: string) {
+  sendCreateChildAppContext(nativeAppContext: NativeAppContext) {
     const proxyURL = new URL(config.public.baseURL.replace('http', 'ws'))
     proxyURL.pathname += proxyURL.pathname.endsWith('/') ? 'signal' : '/signal'
     proxyURL.searchParams.set('compositorSessionId', this.proxySession.compositorSessionId)
-    proxyURL.searchParams.set('key', key)
+    proxyURL.searchParams.set('key', nativeAppContext.key)
 
-    const data: { baseURL: string; signalURL: string; key: string } = {
+    const data: { baseURL: string; signalURL: string; key: string; name: string } = {
       baseURL: config.public.baseURL,
       signalURL: proxyURL.href,
-      key: key,
+      key: nativeAppContext.key,
+      name: nativeAppContext.name,
     }
 
     const newClientNotify: SignalingMessage = {
-      type: SignalingMessageType.CREATE_NEW_CLIENT,
+      type: SignalingMessageType.CREATE_CHILD_APP_CONTEXT,
       data,
     }
     this.signalingSend(textEncoder.encode(JSON.stringify(newClientNotify)))
@@ -208,6 +209,7 @@ export function isSignalingMessage(messageObject: any): messageObject is Signali
 export function launchApplication(
   applicationExecutable: string,
   proxySession: ProxySession,
+  name: string,
 ): Promise<NativeAppContext> {
   // TODO create child logger from proxy session logger
   return new Promise<NativeAppContext>((resolve, reject) => {
@@ -250,18 +252,18 @@ export function launchApplication(
         throw new Error('BUG? Tried to create client signaling for child process without an id.')
       }
 
-      const clientSignaling = proxySession.createNativeAppContext(childProcess.pid)
+      const nativeAppContext = proxySession.createNativeAppContext(childProcess.pid, name)
       childProcess.once('exit', (exitCode, signal) => {
         if (exitCode !== null) {
           appLogger.info(`Child process terminated with exit code: ${exitCode}.`)
-          clientSignaling.onExit({ exitCode })
+          nativeAppContext.onExit({ exitCode })
         }
         if (signal !== null) {
           appLogger.info(`Child process terminated with signal: ${signal}.`)
-          clientSignaling.onExit({ signal })
+          nativeAppContext.onExit({ signal })
         }
       })
-      resolve(clientSignaling)
+      resolve(nativeAppContext)
     })
   })
 }

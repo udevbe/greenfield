@@ -1,4 +1,4 @@
-import { CompositorSession, AppContext } from '../../src'
+import { AppContext, CompositorSession } from '../../src'
 import { useState } from 'preact/compat'
 import { Signal } from '@preact/signals'
 import { ClientProps } from './Client'
@@ -23,17 +23,16 @@ export type ProxyConnectionProps = {
   name: string
   appContext: AppContext
   clients: Signal<ClientProps[]>
-  remove: () => void
+  close: () => void
   proxySessionKey: string
+  onStateChange: (state: AppContext['state']) => void
 }
 
-export function ProxyConnection(props: ProxyConnectionProps) {
+export function ProxyApplication(props: ProxyConnectionProps) {
   const [connectionState, setConnectionState] = useState(props.appContext.state)
   props.appContext.onStateChange = (state) => {
     setConnectionState(state)
-    if (state === 'terminated') {
-      props.remove()
-    }
+    props.onStateChange(state)
   }
   props.appContext.onClient = (client) => {
     props.clients.value = [
@@ -41,7 +40,7 @@ export function ProxyConnection(props: ProxyConnectionProps) {
       {
         id: client.id,
         unresponsive: new Signal(false),
-        onClose: props.remove,
+        onClose: props.close,
         origin: props.name,
       },
     ]
@@ -51,7 +50,7 @@ export function ProxyConnection(props: ProxyConnectionProps) {
     <div class="compositor-proxy-connection">
       <ConnectionStateIcon state={connectionState} />
       <span class="app-url">{props.name}</span>
-      <button class="app-close" onClick={props.remove}>
+      <button class="app-close" onClick={props.close}>
         ✖
       </button>
     </div>

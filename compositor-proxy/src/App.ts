@@ -1,18 +1,16 @@
-import { App, HttpRequest, HttpResponse, us_listen_socket } from 'uWebSockets.js'
+import { App, HttpRequest, HttpResponse, TemplatedApp } from 'uWebSockets.js'
 import { findProxySessionByCompositorSessionId, ProxySession } from './ProxySession'
 import {
   DELWebFD,
   GETWebFD,
   GETWebFDStream,
   OPTIONSPreflightRequest,
-  POSTApplication,
   POSTEncoderKeyframe,
   POSTMkFifo,
   POSTMkstempMmap,
   PUTWebFDStream,
 } from './AppController'
 import { channelHandling, signalHandling } from './AppWebSocketsController'
-import { config } from './config'
 
 function withParams(
   paramCount: number,
@@ -41,43 +39,25 @@ function withAuth(authorizedAction: (proxySession: ProxySession, res: HttpRespon
   }
 }
 
-export function createApp({ host, port }: { host: string; port: number }): Promise<us_listen_socket> {
-  return new Promise<us_listen_socket>((resolve, reject) => {
-    const templatedApp = App()
-      .options('/mkfifo', OPTIONSPreflightRequest('POST'))
-      .post('/mkfifo', withAuth(POSTMkFifo))
+export function createApp(): TemplatedApp {
+  return App()
+    .options('/mkfifo', OPTIONSPreflightRequest('POST'))
+    .post('/mkfifo', withAuth(POSTMkFifo))
 
-      .options('/mkstemp-mmap', OPTIONSPreflightRequest('POST'))
-      .post('/mkstemp-mmap', withAuth(POSTMkstempMmap))
+    .options('/mkstemp-mmap', OPTIONSPreflightRequest('POST'))
+    .post('/mkstemp-mmap', withAuth(POSTMkstempMmap))
 
-      .options('/fd/:fd', OPTIONSPreflightRequest('GET, DEL'))
-      .get('/fd/:fd', withAuth(withParams(1, GETWebFD)))
-      .del('/fd/:fd', withAuth(withParams(1, DELWebFD)))
+    .options('/fd/:fd', OPTIONSPreflightRequest('GET, DEL'))
+    .get('/fd/:fd', withAuth(withParams(1, GETWebFD)))
+    .del('/fd/:fd', withAuth(withParams(1, DELWebFD)))
 
-      .options('/fd/:fd/stream', OPTIONSPreflightRequest('GET, PUT'))
-      .get('/fd/:fd/stream', withAuth(withParams(1, GETWebFDStream)))
-      .put('/fd/:fd/stream', withAuth(withParams(1, PUTWebFDStream)))
+    .options('/fd/:fd/stream', OPTIONSPreflightRequest('GET, PUT'))
+    .get('/fd/:fd/stream', withAuth(withParams(1, GETWebFDStream)))
+    .put('/fd/:fd/stream', withAuth(withParams(1, PUTWebFDStream)))
 
-      .options('/client/:clientId/surface/:surfaceId/encoder/keyframe', OPTIONSPreflightRequest('POST'))
-      .post('/client/:clientId/surface/:surfaceId/encoder/keyframe', withAuth(withParams(2, POSTEncoderKeyframe)))
+    .options('/client/:clientId/surface/:surfaceId/encoder/keyframe', OPTIONSPreflightRequest('POST'))
+    .post('/client/:clientId/surface/:surfaceId/encoder/keyframe', withAuth(withParams(2, POSTEncoderKeyframe)))
 
-      .ws('/signal', signalHandling())
-      .ws('/channel', channelHandling())
-
-    for (const { path } of Object.values(config.public.applications)) {
-      // TODO check if path starts with a reserved path
-      if (path.startsWith('/mkfifo') || path.startsWith('/mkstemp-mmap') || path.startsWith('/client')) {
-        throw new Error(`Config error. Public application path can not start with ${path}. Path is reserved.`)
-      }
-      templatedApp.options(path, OPTIONSPreflightRequest('POST')).post(path, POSTApplication)
-    }
-
-    templatedApp.listen(host, port, (listenSocket) => {
-      if (listenSocket) {
-        resolve(listenSocket)
-      } else {
-        reject(new Error(`Failed to start compositor proxy on host: ${host} with port ${port}`))
-      }
-    })
-  })
+    .ws('/signal', signalHandling())
+    .ws('/channel', channelHandling())
 }

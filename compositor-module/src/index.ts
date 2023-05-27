@@ -88,8 +88,10 @@ export interface AppContext extends ClientConnectionListener {
   readonly state: 'closed' | 'open' | 'connecting' | 'terminated' | 'error'
   readonly type: 'remote'
   readonly key?: string
+  readonly name?: string
 
   onKeyChanged: (key: string) => void
+  onNameChanged: (name: string) => void
   onStateChange: (state: Exclude<AppContext['state'], 'connecting'>) => void
   onError: (error: Error) => void
 }
