@@ -154,6 +154,14 @@ export class NativeCompositorSession {
     }
   }
 
+  private getNameFromPid(pid: number) {
+    for (const line of readFileSync(`/proc/${pid}/status`, 'ascii').split('\n')) {
+      if (line.startsWith('Name')) {
+        return line.split(':')[1].trim()
+      }
+    }
+  }
+
   private clientForNativeAppContext(wlClient: WlClient) {
     logger.info(`New Wayland client.`)
 
@@ -169,9 +177,9 @@ export class NativeCompositorSession {
         destroyClient(wlClient)
         return
       }
-      // get pid from wlClient
-      nativeAppContext = this.proxySession.createNativeAppContext(clientPid)
-      firstNativeAppContext.sendNewClientNotify(nativeAppContext.key)
+      const name = this.getNameFromPid(clientPid) ?? 'unknown_app'
+      nativeAppContext = this.proxySession.createNativeAppContext(clientPid, name)
+      firstNativeAppContext.sendCreateChildAppContext(nativeAppContext)
     }
 
     const clientId = newClientId()

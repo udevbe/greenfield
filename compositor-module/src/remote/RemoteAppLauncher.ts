@@ -49,7 +49,7 @@ const textEncoder = new TextEncoder()
 const enum SignalingMessageType {
   CONNECT_CHANNEL,
   DISCONNECT_CHANNEL,
-  CREATE_NEW_CLIENT,
+  CREATE_CHILD_APP_CONTEXT,
   APP_TERMINATED,
   KILL_APP,
 }
@@ -64,8 +64,8 @@ type SignalingMessage =
       readonly data: { channelId: string }
     }
   | {
-      readonly type: SignalingMessageType.CREATE_NEW_CLIENT
-      readonly data: { baseURL: string; signalURL: string; key: string }
+      readonly type: SignalingMessageType.CREATE_CHILD_APP_CONTEXT
+      readonly data: { baseURL: string; signalURL: string; key: string; name: string }
     }
   | {
       readonly type: SignalingMessageType.APP_TERMINATED
@@ -84,7 +84,7 @@ function isSignalingMessage(messageObject: any): messageObject is SignalingMessa
   return (
     messageObject.type === SignalingMessageType.CONNECT_CHANNEL ||
     messageObject.type === SignalingMessageType.DISCONNECT_CHANNEL ||
-    messageObject.type === SignalingMessageType.CREATE_NEW_CLIENT ||
+    messageObject.type === SignalingMessageType.CREATE_CHILD_APP_CONTEXT ||
     messageObject.type === SignalingMessageType.APP_TERMINATED
   )
 }
@@ -111,7 +111,7 @@ export class RemoteAppLauncher implements AppLauncher {
         if (response.ok) {
           return response
             .json()
-            .then((proxySessionProps: { baseURL: string; signalURL: string; key: string }) => {
+            .then((proxySessionProps: { baseURL: string; signalURL: string; key: string; name: string }) => {
               remoteAppContext.listen(proxySessionProps)
             })
             .catch((e) => {
@@ -144,7 +144,11 @@ class RemoteAppContext implements AppContext {
 
   key?: string
 
-  onKeyChanged = (remoteIdentity: string): void => {
+  onKeyChanged = (key: string): void => {
+    /*noop*/
+  }
+
+  onNameChanged = (name: string): void => {
     /*noop*/
   }
 
@@ -163,6 +167,10 @@ class RemoteAppContext implements AppContext {
   ) {}
 
   close(): void {
+    if (this.terminated) {
+      return
+    }
+
     this.sendKillApp()
     if (this.signalingWebSocket?.readyState !== ReconnectingWebSocket.OPEN && !this.terminated) {
       this.error(new Error('Force closing application.'))
@@ -250,7 +258,7 @@ class RemoteAppContext implements AppContext {
     this.signalingSendBuffer = []
   }
 
-  listen(proxySessionProps: { baseURL: string; signalURL: string; key: string }) {
+  listen(proxySessionProps: { baseURL: string; signalURL: string; key: string; name: string }) {
     this.proxySessionProps = proxySessionProps
     this.signalingWebSocket = new ReconnectingWebSocket(proxySessionProps.signalURL)
     this.signalingWebSocket.binaryType = 'arraybuffer'
@@ -309,7 +317,7 @@ class RemoteAppContext implements AppContext {
             })
             break
           }
-          case SignalingMessageType.CREATE_NEW_CLIENT: {
+          case SignalingMessageType.CREATE_CHILD_APP_CONTEXT: {
             const remoteAppContext = new RemoteAppContext(this.session, this.onChildAppContext)
             this.onChildAppContext(remoteAppContext)
             remoteAppContext.listen(messageObject.data)

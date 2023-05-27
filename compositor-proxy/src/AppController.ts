@@ -1,5 +1,4 @@
 import type { ProxySession } from './ProxySession'
-import { createProxySession, findProxySessionByCompositorSessionId } from './ProxySession'
 import type { HttpRequest, HttpResponse } from 'uWebSockets.js'
 import { close, createReadStream, createWriteStream, read } from 'fs'
 import { TRANSFER_CHUNK_SIZE } from './io/ProxyInputOutput'
@@ -9,8 +8,6 @@ import { URLSearchParams } from 'url'
 import { config } from './config'
 import { operations } from './@types/api'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
-import { args } from './Args'
-import { launchApplication } from './NativeAppContext'
 
 const logger = createLogger('app')
 
@@ -18,10 +15,8 @@ const allowOrigin = config.server.http.allowOrigin
 const allowHeaders = 'Content-Type, X-Compositor-Session-Id'
 const maxAge = '36000'
 
-// FIXME add authorization
-
 export function OPTIONSPreflightRequest(allowMethods: string) {
-  return (res: HttpResponse, req: HttpRequest) => {
+  return function (res: HttpResponse, req: HttpRequest) {
     const origin = req.getHeader('origin')
     const accessControlRequestMethod = req.getHeader('access-control-request-method')
     if (origin === '' || accessControlRequestMethod === '') {
@@ -465,55 +460,4 @@ export async function POSTEncoderKeyframe(
   // })
 
   httpResponse.writeStatus('202 Accepted').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
-}
-
-export async function POSTApplication(httpResponse: HttpResponse, req: HttpRequest) {
-  const compositorSessionId = req.getHeader('x-compositor-session-id')
-  if (compositorSessionId.length === 0) {
-    const message = '403 Bad compositorSessionId query parameter.'
-    httpResponse.end(message, true)
-    return
-  }
-
-  if (args['static-session-id'] && args['static-session-id'] !== compositorSessionId) {
-    const message = '403 Bad compositorSessionId query parameter.'
-    httpResponse.end(message, true)
-    return
-  }
-
-  const requestPath = req.getUrl()
-  const applicationEntry = Object.entries(config.public.applications).find(([, { path }]) => path === requestPath)
-  if (applicationEntry === undefined) {
-    httpResponse
-      .writeStatus('404 Not Found')
-      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
-      .writeHeader('Content-Type', 'text/plain')
-      .end('Application not found.')
-    return
-  }
-  const [, { executable }] = applicationEntry
-
-  const proxySession =
-    findProxySessionByCompositorSessionId(compositorSessionId) ?? createProxySession(compositorSessionId)
-
-  // FIXME check if application launched
-  const appContext = await launchApplication(executable, proxySession)
-
-  const proxyURL = new URL(config.public.baseURL.replace('http', 'ws'))
-  proxyURL.pathname += proxyURL.pathname.endsWith('/') ? 'signal' : '/signal'
-  proxyURL.searchParams.set('compositorSessionId', compositorSessionId)
-  proxyURL.searchParams.set('key', appContext.key)
-
-  const reply: { baseURL: string; signalURL: string; key: string } = {
-    baseURL: config.public.baseURL,
-    signalURL: proxyURL.href,
-    key: appContext.key,
-  }
-
-  httpResponse.cork(() => {
-    httpResponse
-      .writeStatus('201 Created')
-      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
-      .end(JSON.stringify(reply))
-  })
 }

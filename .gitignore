@@ -169,3 +169,4 @@ CTestTestfile.cmake
 /compositor-proxy/.yarn
 /compositor-module/demo-webapp-wgpu/.yarn
 /compositor-proxy/src/proxy-poll-addon.node
+/compositor-module/.yarn/

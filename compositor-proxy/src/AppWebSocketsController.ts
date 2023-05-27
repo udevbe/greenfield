@@ -9,11 +9,11 @@ const logger = createLogger('compositor-proxy-signaling')
 
 const textDecoder = new TextDecoder()
 
-export type SignalingUserData = {
-  clientSignaling: NativeAppContext
+export type AppSignalingUserData = {
+  nativeAppContext: NativeAppContext
 }
 
-export function signalHandling(): WebSocketBehavior<SignalingUserData> {
+export function signalHandling(): WebSocketBehavior<AppSignalingUserData> {
   logger.info(`Listening for connections.`)
 
   return {
@@ -45,21 +45,21 @@ export function signalHandling(): WebSocketBehavior<SignalingUserData> {
         return
       }
 
-      const clientSignaling = proxySession.findNativeAppContextByKey(signalingKey)
-      if (clientSignaling === undefined) {
+      const nativeAppContext = proxySession.findNativeAppContextByKey(signalingKey)
+      if (nativeAppContext === undefined) {
         const message = '403 Bad key query parameter.'
         res.end(message, true)
         return
       }
 
-      if (clientSignaling.signalingWebSocket !== undefined) {
+      if (nativeAppContext.signalingWebSocket !== undefined) {
         const message = '403 client signaling connection already established.'
         res.end(message, true)
         return
       }
 
-      const userData: SignalingUserData = {
-        clientSignaling,
+      const userData: AppSignalingUserData = {
+        nativeAppContext: nativeAppContext,
       }
 
       res.upgrade(
@@ -71,22 +71,22 @@ export function signalHandling(): WebSocketBehavior<SignalingUserData> {
         context,
       )
     },
-    open(ws: WebSocket<SignalingUserData>) {
-      const { clientSignaling } = ws.getUserData()
+    open(ws: WebSocket<AppSignalingUserData>) {
+      const { nativeAppContext } = ws.getUserData()
 
       logger.info(`New signaling connection from ${textDecoder.decode(ws.getRemoteAddressAsText())}.`)
 
-      clientSignaling.onConnect(ws)
+      nativeAppContext.onConnect(ws)
     },
-    message(ws: WebSocket<SignalingUserData>, message: ArrayBuffer) {
+    message(ws: WebSocket<AppSignalingUserData>, message: ArrayBuffer) {
       const messageData = textDecoder.decode(message)
       const messageObject = JSON.parse(messageData)
-      const { clientSignaling } = ws.getUserData()
+      const { nativeAppContext } = ws.getUserData()
 
       if (isSignalingMessage(messageObject)) {
         switch (messageObject.type) {
           case SignalingMessageType.KILL_APP: {
-            clientSignaling.kill(messageObject.data.signal)
+            nativeAppContext.kill(messageObject.data.signal)
             break
           }
         }
@@ -94,10 +94,10 @@ export function signalHandling(): WebSocketBehavior<SignalingUserData> {
         throw new Error(`BUG. Received an unknown message: ${JSON.stringify(messageObject)}`)
       }
     },
-    close(ws: WebSocket<SignalingUserData>, code: number, message: ArrayBuffer) {
+    close(ws: WebSocket<AppSignalingUserData>, code: number, message: ArrayBuffer) {
       logger.info(`Signaling connection closed. Code: ${code}. Message: ${textDecoder.decode(message)}`)
-      const { clientSignaling } = ws.getUserData()
-      clientSignaling.onDisconnect()
+      const { nativeAppContext } = ws.getUserData()
+      nativeAppContext.onDisconnect()
     },
   }
 }
@@ -134,8 +134,8 @@ export function channelHandling(): WebSocketBehavior<ConnectionUserData> {
         return
       }
 
-      const clientSignaling = proxySession.findNativeAppContextByKey(key)
-      if (clientSignaling === undefined) {
+      const nativeAppContext = proxySession.findNativeAppContextByKey(key)
+      if (nativeAppContext === undefined) {
         const message = '403 Bad key query parameter.'
         res.end(message, true)
         return
@@ -148,7 +148,7 @@ export function channelHandling(): WebSocketBehavior<ConnectionUserData> {
         return
       }
 
-      const channel = clientSignaling.findChannelById(channelId)
+      const channel = nativeAppContext.findChannelById(channelId)
       if (channel === undefined) {
         const message = 'Bad channel id query parameter.'
         res.end(message, true)

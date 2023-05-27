@@ -1,15 +1,10 @@
 import { Signal, signal } from '@preact/signals'
-import { ProxyConnection, ProxyConnectionProps } from './ProxyConnection'
+import { ProxyApplication, ProxyConnectionProps } from './ProxyApplication'
 import { AppContext, AppLauncher, CompositorSession } from '../../src'
 import { ClientProps } from './Client'
 import { useCallback } from 'preact/compat'
 
 const connections = signal([] as ProxyConnectionProps[])
-
-function removeConnection(removedConnectionProps: ProxyConnectionProps, proxyListener: AppContext) {
-  proxyListener.close()
-  connections.value = connections.value.filter((connection) => connection !== removedConnectionProps)
-}
 
 function handleNewAppContext(
   appContext: AppContext,
@@ -22,11 +17,16 @@ function handleNewAppContext(
     url,
     name: url.href,
     appContext,
-    remove: () => {
-      removeConnection(proxyConnectionProps, appContext)
+    close: () => {
+      appContext.close()
     },
     clients,
     proxySessionKey: appContext.key ?? '',
+    onStateChange: (state) => {
+      if (state === 'terminated' || state === 'error') {
+        connections.value = connections.value.filter((connection) => connection !== proxyConnectionProps)
+      }
+    },
   }
 
   connections.value = [...connections.value, proxyConnectionProps]
@@ -91,7 +91,7 @@ export function ProxyConnector(props: ProxyConnectorProps) {
         <ul>
           {connections.value.map((connection) => (
             <li>
-              <ProxyConnection key={connection.proxySessionKey} {...connection} />
+              <ProxyApplication key={connection.proxySessionKey} {...connection} />
             </li>
           ))}
         </ul>
