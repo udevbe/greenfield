@@ -5,7 +5,7 @@
     "type": "git",
     "url": "git+https://github.com/udevbe/greenfield.git"
   },
-  "bin": "dist/standalone.js",
+  "bin": "dist/cli.js",
   "module": "dist/index.js",
   "engines": {
     "node": ">=16"
@@ -22,7 +22,7 @@
     "build:native": "mkdir -p build && cmake -G Ninja -B./build -S./ && ninja -C ./build",
     "build:typescript": "tsc",
     "build": "rm -rf dist && yarn build:native && yarn build:typescript",
-    "start": "node --require ts-node/register ./src/standalone.ts",
+    "start": "ALIEN_UWS=1 node --require ts-node/register src/cli.ts",
     "test": "jest",
     "package:copy-libs": "cp 'node_modules/westfield-proxy/dist/libwayland-server.so.0' 'node_modules/westfield-proxy/dist/libwestfield.so' 'dist/encoding/libproxy-encoding.so' -t package",
     "package": "cp src/config.yaml dist && pkg --compress Brotli --no-native-build package.json && yarn package:copy-libs"
