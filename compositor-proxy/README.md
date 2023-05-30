@@ -38,7 +38,7 @@ The `run.sh` script accepts several arguments:
 
 	Options
 	  --help, Print this help text.
-	  --static-session-id=..., Use and accept this and only this session id when communicating.
+      --static-session-id=...,  Mandatory. Only use and accept this session id when communicating.
 	  --config-path=...,  Use a configuration file located at this file path.
 
 	Examples

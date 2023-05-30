@@ -31,7 +31,7 @@ export function OPTIONSPreflightRequest(allowMethods: string) {
       .writeHeader('Access-Control-Allow-Methods', allowMethods)
       .writeHeader('Access-Control-Allow-Headers', allowHeaders)
       .writeHeader('Access-Control-Max-Age', maxAge)
-      .end()
+      .endWithoutBody(0, true)
   }
 }
 
@@ -397,6 +397,11 @@ export async function POSTEncoderKeyframe(
   httpRequest: HttpRequest,
   [clientIdParam, surfaceIdParam]: string[],
 ) {
+  let aborted = false
+  httpResponse.onAborted(() => {
+    aborted = true
+  })
+
   const clientId = clientIdParam
   const surfaceId = asNumber(surfaceIdParam)
   if (clientId === undefined || surfaceId === undefined) {
@@ -411,6 +416,9 @@ export async function POSTEncoderKeyframe(
   const keyframeRequest = await readJson<operations['keyframe']['requestBody']['content']['application/json']>(
     httpResponse,
   )
+  if (aborted) {
+    return
+  }
   // TODO validate keyframeRequest
 
   const clientEntry = proxySession.nativeCompositorSession.clients.find(
@@ -418,6 +426,7 @@ export async function POSTEncoderKeyframe(
   )
 
   if (clientEntry === undefined) {
+    // TODO cork
     httpResponse
       .writeStatus('404 Not Found')
       .writeHeader('Access-Control-Allow-Origin', allowOrigin)
@@ -433,6 +442,7 @@ export async function POSTEncoderKeyframe(
     logger.error(
       'Received a key frame unit request but no surface found that matches the request. Surface already destroyed?',
     )
+    // TODO cork
     httpResponse
       .writeStatus('404 Not Found')
       .writeHeader('Access-Control-Allow-Origin', allowOrigin)
@@ -459,5 +469,6 @@ export async function POSTEncoderKeyframe(
   //   bufferContentSerial: keyframeRequest.bufferContentSerial,
   // })
 
+  // TODO cork
   httpResponse.writeStatus('202 Accepted').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
 }
