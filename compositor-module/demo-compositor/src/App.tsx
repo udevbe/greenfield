@@ -58,10 +58,7 @@ export async function main() {
   await wasmLibs
 
   // create new compositor context
-  const arr = new Uint8Array(8)
-  window.crypto.getRandomValues(arr)
-  const id = Array.from(arr, (v) => v.toString(16).padStart(2, '0')).join('')
-
+  const id = 'test123'
   const session = await createCompositorSession(id)
   const appLauncher = createAppLauncher(session, 'remote')
   const webConnector = createAppLauncher(session, 'web')

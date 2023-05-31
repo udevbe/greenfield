@@ -100,38 +100,10 @@ This creates a set of files in the `package` directory. The `run.sh` script acce
 
 	Options
 	  --help, Print this help text.
-      --static-session-id=...,  Mandatory. Only use and accept this session id when communicating.
-	  --config-path=...,  Use a configuration file located at this file path.
+      --session-id=...,  Mandatory. Only use and accept this session id when communicating.
 
 	Examples
-	  $ compositor-proxy --static-session-id=test123 --config-path=./config.yaml
-```
-
-Below is an example config file (the default config). It can be copy-pasted and used with the `--config-path=...` option.
-You will at least need to set the `public.baseURL` when not running locally.
-```yaml
-server:
-  http:
-    # Hostname argument.
-    bindIP: 0.0.0.0
-    # Port argument.
-    bindPort: 8081
-    # CORS allowed origins, used when doing cross-origin requests. Value can be * or comma seperated domains.
-    allowOrigin: '*'
-public:
-  # The base url to use when connecting to this endpoint. This is the publicly reachable address of the compositor proxy.
-  baseURL: http://localhost:8081
-encoder:
-  # Path of the render device that should be used for hardware acceleration. e.g. /dev/dri/renderD128
-  renderDevice: /dev/dri/renderD128
-  # The gstreamer h264 encoder to use. 'x264' and 'nvh264' are supported ('vaapih264' is currently broken). 'x264'
-  # is a pure software encoder. While 'nvh264' is a hw accelerated encoder for Nvidia based GPUs.
-  # see https://gstreamer.freedesktop.org/documentation/x264/index.html
-  # see https://gstreamer.freedesktop.org/documentation/nvenc/nvh264enc.html
-  h264Encoder: x264
-logging:
-  # "fatal" | "error" | "warn" | "info" | "debug" | "trace"
-  level: info
+	  $ compositor-proxy --static-session-id=test123
 ```
 
 The packaged binary expects the following set of dependencies to be available for mesa & nvidia support, if you're running a Debian based distro you can run:

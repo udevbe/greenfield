@@ -3,7 +3,6 @@ import { WebSocket } from 'uWebSockets.js'
 import { randomBytes } from 'crypto'
 import type { AppSignalingUserData } from './AppWebSocketsController'
 import { ChannelDesc, WebSocketChannel } from './Channel'
-import { config } from './config'
 import { createLogger } from './Logger'
 import { spawn } from 'child_process'
 import { ProxySession } from './ProxySession'
@@ -136,7 +135,7 @@ export class NativeAppContext {
   }
 
   sendConnectionRequest(channel: WebSocketChannel) {
-    const url: URL = new URL(config.public.baseURL.replace('http', 'ws'))
+    const url: URL = new URL(this.proxySession.config.public.baseURL.replace('http', 'ws'))
     url.searchParams.append('id', `${channel.desc.id}`)
     url.searchParams.append('key', `${channel.nativeAppContext.key}`)
     url.searchParams.append('compositorSessionId', `${channel.nativeAppContext.proxySession.compositorSessionId}`)
@@ -171,13 +170,13 @@ export class NativeAppContext {
   }
 
   sendCreateChildAppContext(nativeAppContext: NativeAppContext) {
-    const proxyURL = new URL(config.public.baseURL.replace('http', 'ws'))
+    const proxyURL = new URL(this.proxySession.config.public.baseURL.replace('http', 'ws'))
     proxyURL.pathname += proxyURL.pathname.endsWith('/') ? 'signal' : '/signal'
     proxyURL.searchParams.set('compositorSessionId', this.proxySession.compositorSessionId)
     proxyURL.searchParams.set('key', nativeAppContext.key)
 
     const data: { baseURL: string; signalURL: string; key: string; name: string } = {
-      baseURL: config.public.baseURL,
+      baseURL: this.proxySession.config.public.baseURL,
       signalURL: proxyURL.href,
       key: nativeAppContext.key,
       name: nativeAppContext.name,

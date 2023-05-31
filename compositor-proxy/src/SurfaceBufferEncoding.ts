@@ -230,7 +230,7 @@ export function initSurfaceBufferEncoding(): void {
       }
     }
     if (!this.encoder) {
-      this.encoder = createEncoder(this.wlClient, this.userData.drmContext)
+      this.encoder = createEncoder(this.userData.nativeAppContext.proxySession, this.wlClient, this.userData.drmContext)
     }
 
     const frameFeedback = ensureFrameFeedback(this)

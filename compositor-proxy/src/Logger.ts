@@ -1,8 +1,7 @@
 import Logger, { LoggerOptions } from 'pino'
-import { config } from './config'
 
 const loggerConfig: LoggerOptions = {
-  level: config.logging.level,
+  level: process.env.LOG_LEVEL || 'info',
   enabled: true,
 } as const
 

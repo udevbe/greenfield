@@ -8,7 +8,7 @@
   "bin": "dist/cli.js",
   "module": "dist/index.js",
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "license": "AGPL-3.0",
   "description": "Wayland Compositor Proxy",
