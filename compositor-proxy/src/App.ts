@@ -39,23 +39,23 @@ function withAuth(authorizedAction: (proxySession: ProxySession, res: HttpRespon
   }
 }
 
-export function createApp(): TemplatedApp {
+export function createApp(proxySession: ProxySession): TemplatedApp {
   return App()
-    .options('/mkfifo', OPTIONSPreflightRequest('POST'))
+    .options('/mkfifo', OPTIONSPreflightRequest(proxySession, 'POST'))
     .post('/mkfifo', withAuth(POSTMkFifo))
 
-    .options('/mkstemp-mmap', OPTIONSPreflightRequest('POST'))
+    .options('/mkstemp-mmap', OPTIONSPreflightRequest(proxySession, 'POST'))
     .post('/mkstemp-mmap', withAuth(POSTMkstempMmap))
 
-    .options('/fd/:fd', OPTIONSPreflightRequest('GET, DEL'))
+    .options('/fd/:fd', OPTIONSPreflightRequest(proxySession, 'GET, DEL'))
     .get('/fd/:fd', withAuth(withParams(1, GETWebFD)))
     .del('/fd/:fd', withAuth(withParams(1, DELWebFD)))
 
-    .options('/fd/:fd/stream', OPTIONSPreflightRequest('GET, PUT'))
+    .options('/fd/:fd/stream', OPTIONSPreflightRequest(proxySession, 'GET, PUT'))
     .get('/fd/:fd/stream', withAuth(withParams(1, GETWebFDStream)))
     .put('/fd/:fd/stream', withAuth(withParams(1, PUTWebFDStream)))
 
-    .options('/client/:clientId/surface/:surfaceId/encoder/keyframe', OPTIONSPreflightRequest('POST'))
+    .options('/client/:clientId/surface/:surfaceId/encoder/keyframe', OPTIONSPreflightRequest(proxySession, 'POST'))
     .post('/client/:clientId/surface/:surfaceId/encoder/keyframe', withAuth(withParams(2, POSTEncoderKeyframe)))
 
     .ws('/signal', signalHandling())

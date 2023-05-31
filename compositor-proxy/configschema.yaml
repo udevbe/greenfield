@@ -78,23 +78,6 @@ properties:
     required:
       - renderDevice
       - h264Encoder
-  logging:
-    description: Logging options
-    type: object
-    additionalProperties: false
-    properties:
-      level:
-        type: string
-        description: Log Level
-        enum:
-          - fatal
-          - error
-          - warn
-          - info
-          - debug
-          - trace
-    required:
-      - level
 required:
   - server
   - public

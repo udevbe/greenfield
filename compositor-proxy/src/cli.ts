@@ -1,17 +1,17 @@
 import { createLogger } from './Logger'
 import { unlink } from 'fs/promises'
 import { initSurfaceBufferEncoding } from './SurfaceBufferEncoding'
-import { config } from './config'
 import { createApp } from './App'
 import { OPTIONSPreflightRequest } from './AppController'
 import { HttpRequest, HttpResponse, us_listen_socket_close } from 'uWebSockets.js'
 import { closeAllProxySessions, createProxySession, findProxySessionByCompositorSessionId } from './ProxySession'
 import { args } from './Args'
 import { launchApplication, NativeAppContext } from './NativeAppContext'
+import { Configschema } from './@types/config'
 
 const logger = createLogger('main')
 
-const allowOrigin = config.server.http.allowOrigin
+const allowOrigin = args['allow-origin']
 
 async function POSTApplication(httpResponse: HttpResponse, req: HttpRequest) {
   let aborted = false
@@ -40,7 +40,9 @@ async function POSTApplication(httpResponse: HttpResponse, req: HttpRequest) {
   }
 
   const requestPath = req.getUrl()
-  const applicationEntry = Object.entries(config.public.applications).find(([, { path }]) => path === requestPath)
+  const applicationEntry = Object.entries(proxySession.config.public.applications).find(
+    ([, { path }]) => path === requestPath,
+  )
   if (applicationEntry === undefined) {
     httpResponse
       .writeStatus('404 Not Found')
@@ -73,13 +75,13 @@ async function POSTApplication(httpResponse: HttpResponse, req: HttpRequest) {
   // start a timer to terminate the app if no connection is made
   appContext.onDisconnect()
 
-  const proxyURL = new URL(config.public.baseURL.replace('http', 'ws'))
+  const proxyURL = new URL(proxySession.config.public.baseURL.replace('http', 'ws'))
   proxyURL.pathname += proxyURL.pathname.endsWith('/') ? 'signal' : '/signal'
   proxyURL.searchParams.set('compositorSessionId', compositorSessionId)
   proxyURL.searchParams.set('key', appContext.key)
 
   const reply: { baseURL: string; signalURL: string; key: string; name: string } = {
-    baseURL: config.public.baseURL,
+    baseURL: proxySession.config.public.baseURL,
     signalURL: proxyURL.href,
     key: appContext.key,
     name: appContext.name,
@@ -103,14 +105,31 @@ function deleteStartingFile() {
 
 export function run() {
   logger.info('Starting compositor proxy.')
-  const compositorSessionId = args['static-session-id']
-  if (compositorSessionId === null) {
+  const compositorSessionId = args['session-id']
+  if (compositorSessionId === undefined) {
     logger.error('--static-session-id= must be set. Run with --help for options')
     process.exit(1)
   }
-  logger.info('Using a static session id.')
 
-  createProxySession(compositorSessionId)
+  const config: Configschema = {
+    server: {
+      http: {
+        allowOrigin: args['allow-origin'],
+        bindIP: args['bind-ip'],
+        bindPort: +args['bind-port'],
+      },
+    },
+    public: {
+      baseURL: args['base-url'],
+      applications: args['application'],
+    },
+    encoder: {
+      h264Encoder: args['encoder'],
+      renderDevice: args['render-device'],
+    },
+  }
+
+  const proxySession = createProxySession(compositorSessionId, config)
 
   process.on('uncaughtException', (e) => {
     logger.error('\tname: ' + e.name + ' message: ' + e.message)
@@ -121,12 +140,12 @@ export function run() {
 
   const port = config.server.http.bindPort
   const host = config.server.http.bindIP
-  const templatedApp = createApp()
+  const templatedApp = createApp(proxySession)
   for (const { path } of Object.values(config.public.applications)) {
     if (path.startsWith('/mkfifo') || path.startsWith('/mkstemp-mmap') || path.startsWith('/client')) {
       throw new Error(`Config error. Public application path can not start with ${path}. Path is reserved.`)
     }
-    templatedApp.options(path, OPTIONSPreflightRequest('POST')).post(path, POSTApplication)
+    templatedApp.options(path, OPTIONSPreflightRequest(proxySession, 'POST')).post(path, POSTApplication)
     logger.info(`Registered application with path ${path}.`)
   }
 

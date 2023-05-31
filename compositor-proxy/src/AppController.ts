@@ -5,17 +5,17 @@ import { TRANSFER_CHUNK_SIZE } from './io/ProxyInputOutput'
 import { Readable, Writable } from 'stream'
 import { createLogger } from './Logger'
 import { URLSearchParams } from 'url'
-import { config } from './config'
+// import { config } from './config'
 import { operations } from './@types/api'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 
 const logger = createLogger('app')
 
-const allowOrigin = config.server.http.allowOrigin
+// const allowOrigin = config.server.http.allowOrigin
 const allowHeaders = 'Content-Type, X-Compositor-Session-Id'
 const maxAge = '36000'
 
-export function OPTIONSPreflightRequest(allowMethods: string) {
+export function OPTIONSPreflightRequest(proxySession: ProxySession, allowMethods: string) {
   return function (res: HttpResponse, req: HttpRequest) {
     const origin = req.getHeader('origin')
     const accessControlRequestMethod = req.getHeader('access-control-request-method')
@@ -27,7 +27,7 @@ export function OPTIONSPreflightRequest(allowMethods: string) {
 
     res
       .writeStatus('204 No Content')
-      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+      .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
       .writeHeader('Access-Control-Allow-Methods', allowMethods)
       .writeHeader('Access-Control-Allow-Headers', allowHeaders)
       .writeHeader('Access-Control-Max-Age', maxAge)
@@ -39,7 +39,7 @@ export function POSTMkFifo(proxySession: ProxySession, res: HttpResponse) {
   const jsonPipe = JSON.stringify(proxySession.nativeCompositorSession.webFS.mkpipe())
   res
     .writeStatus('201 Created')
-    .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+    .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
     .writeHeader('Content-Type', 'application/json')
     .end(jsonPipe)
 }
@@ -57,7 +57,7 @@ export function POSTMkstempMmap(proxySession: ProxySession, res: HttpResponse) {
           logger.error('POST /mkstemp-mmap received empty body from client.')
           res
             .writeStatus('400 Bad Request')
-            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+            .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end('Data in HTTP request body can not be empty.')
           return
@@ -65,7 +65,7 @@ export function POSTMkstempMmap(proxySession: ProxySession, res: HttpResponse) {
         const jsonShmWebFD = JSON.stringify(proxySession.nativeCompositorSession.webFS.mkstempMmap(buffer))
         res
           .writeStatus('201 Created')
-          .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+          .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
           .writeHeader('Content-Type', 'application/json')
           .end(jsonShmWebFD)
       }
@@ -99,7 +99,7 @@ export function GETWebFD(
     logger.error('GET /webfd received empty arguments from client.')
     httpResponse
       .writeStatus('400 Bad Request')
-      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+      .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
       .writeHeader('Content-Type', 'text/plain')
       .end(`File descriptor and count argument must be a positive integer. Got fd: ${fdParam}, count: ${count}`)
     return
@@ -120,14 +120,14 @@ export function GETWebFD(
           logger.error('GET /webfd received unknown fd from client.')
           httpResponse
             .writeStatus('404 Not Found')
-            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+            .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end('File descriptor not found.')
         } else {
           logger.error(`GET /webfd could not read fd received from client: ${err.name}: ${err.message}`)
           httpResponse
             .writeStatus('500 Internal Server Error')
-            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+            .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end(`Unexpected error: ${err.name}: ${err.message}`)
         }
@@ -135,7 +135,7 @@ export function GETWebFD(
       }
       httpResponse
         .writeStatus('200 OK')
-        .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+        .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
         .writeHeader('Content-Type', 'application/octet-stream')
       if (bytesRead === 0) {
         httpResponse.end(new ArrayBuffer(0))
@@ -184,9 +184,9 @@ export function DELWebFD(
     logger.error('DEL /webfd received empty fd argument from client.')
     httpResponse
       .writeStatus('400 Bad Request')
-      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+      .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
       .writeHeader('Content-Type', 'text/plain')
-      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+      .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
       .end(`File descriptor argument must be a positive integer. Got: ${fdParam}`)
     return
   }
@@ -203,25 +203,28 @@ export function DELWebFD(
           logger.error('DEL /webfd received unknown fd from client.')
           httpResponse
             .writeStatus('404 Not Found')
-            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+            .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end('File descriptor not found.')
         } else {
           logger.error(`DEL /webfd could not close fd received from client: ${err.name}: ${err.message}`)
           httpResponse
             .writeStatus('500 Internal Server Error')
-            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+            .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end(`Unexpected error: ${err.name}: ${err.message}`)
         }
         return
       }
-      httpResponse.writeStatus('200 OK').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
+      httpResponse
+        .writeStatus('200 OK')
+        .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
+        .end()
     })
   })
 }
 
-function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readable) {
+function pipeReadableToHttpResponse(proxySession: ProxySession, httpResponse: HttpResponse, readable: Readable) {
   httpResponse
     .onAborted(() => readable.destroy())
     .onWritable(() => {
@@ -239,14 +242,14 @@ function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readab
           logger.error(`Bad FD. Could not pipe readable stream: ${error.name}: ${error.message}`)
           httpResponse
             .writeStatus('404 Not Found')
-            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+            .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end('File descriptor not found.')
         } else {
           logger.error(`Could not pipe readable stream: ${error.name}: ${error.message}`)
           httpResponse
             .writeStatus('500 Internal Server Error')
-            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+            .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end(`Unexpected error: ${error.name}: ${error.message}`)
         }
@@ -257,7 +260,7 @@ function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readab
         if (!headersWritten) {
           httpResponse
             .writeStatus('200 OK')
-            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+            .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
             .writeHeader('Content-Type', 'application/octet-stream')
         }
         httpResponse.end()
@@ -267,7 +270,7 @@ function pipeReadableToHttpResponse(httpResponse: HttpResponse, readable: Readab
       httpResponse.cork(() => {
         httpResponse
           .writeStatus('200 OK')
-          .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+          .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
           .writeHeader('Content-Type', 'application/octet-stream')
         headersWritten = true
         if (!httpResponse.write(chunk)) {
@@ -292,16 +295,16 @@ export function GETWebFDStream(proxySession: ProxySession, res: HttpResponse, re
     // TODO log error
     res
       .writeStatus('400 Bad Request')
-      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+      .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
       .writeHeader('Content-Type', 'text/plain')
       .end(`File descriptor argument must be a positive integer. Got: ${fdParam}`)
     return
   }
 
-  pipeReadableToHttpResponse(res, createReadStream('ignored', { fd, highWaterMark: chunkSize }))
+  pipeReadableToHttpResponse(proxySession, res, createReadStream('ignored', { fd, highWaterMark: chunkSize }))
 }
 
-function pipeHttpRequestToWritable(httpResponse: HttpResponse, writable: Writable) {
+function pipeHttpRequestToWritable(proxySession: ProxySession, httpResponse: HttpResponse, writable: Writable) {
   let inError = false
   writable
     .on('drain', () => httpResponse.resume())
@@ -314,14 +317,14 @@ function pipeHttpRequestToWritable(httpResponse: HttpResponse, writable: Writabl
           logger.error('Attempted to stream data to a non-existing FD.', error)
           httpResponse
             .writeStatus('404 Not Found')
-            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+            .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end('File descriptor not found.')
         } else {
           logger.error('Unexpected error when trying to stream data to an FD.', error)
           httpResponse
             .writeStatus('500 Internal Server Error')
-            .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+            .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
             .writeHeader('Content-Type', 'text/plain')
             .end(`${error.name}: ${error.message}`)
         }
@@ -332,7 +335,10 @@ function pipeHttpRequestToWritable(httpResponse: HttpResponse, writable: Writabl
         return
       }
       httpResponse.cork(() => {
-        httpResponse.writeStatus('200 OK').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
+        httpResponse
+          .writeStatus('200 OK')
+          .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
+          .end()
       })
     })
 
@@ -361,13 +367,14 @@ export function PUTWebFDStream(proxySession: ProxySession, res: HttpResponse, re
     // TODO log error
     res
       .writeStatus('400 Bad Request')
-      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+      .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
       .writeHeader('Content-Type', 'text/plain')
       .end(`FD argument must be an unsigned integer. Got: ${fdParam}`)
     return
   }
 
   pipeHttpRequestToWritable(
+    proxySession,
     res,
     createWriteStream('ignored', { fd, autoClose: true, highWaterMark: TRANSFER_CHUNK_SIZE }),
   )
@@ -407,7 +414,7 @@ export async function POSTEncoderKeyframe(
   if (clientId === undefined || surfaceId === undefined) {
     httpResponse
       .writeStatus('400 Bad Request')
-      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+      .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
       .writeHeader('Content-Type', 'text/plain')
       .end(`Surface id argument must be a positive integer. Got client id: ${clientId}, surface id: ${surfaceId}`)
     return
@@ -429,7 +436,7 @@ export async function POSTEncoderKeyframe(
     // TODO cork
     httpResponse
       .writeStatus('404 Not Found')
-      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+      .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
       .writeHeader('Content-Type', 'text/plain')
       .end('Client not found.')
     return
@@ -445,7 +452,7 @@ export async function POSTEncoderKeyframe(
     // TODO cork
     httpResponse
       .writeStatus('404 Not Found')
-      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
+      .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
       .writeHeader('Content-Type', 'text/plain')
       .end('Surface not found.')
     return
@@ -470,5 +477,8 @@ export async function POSTEncoderKeyframe(
   // })
 
   // TODO cork
-  httpResponse.writeStatus('202 Accepted').writeHeader('Access-Control-Allow-Origin', allowOrigin).end()
+  httpResponse
+    .writeStatus('202 Accepted')
+    .writeHeader('Access-Control-Allow-Origin', proxySession.config.server.http.allowOrigin)
+    .end()
 }

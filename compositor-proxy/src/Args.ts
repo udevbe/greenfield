@@ -1,74 +1,148 @@
-const argv = [...process.argv.slice(2)]
+import { parseArgs, ParseArgsConfig } from 'util'
 
-function consumeArg(arg: string) {
-  const i = argv.indexOf(arg)
-  if (i >= 0) {
-    argv.splice(i, 1)
+type ArgValues = {
+  help: boolean
+  'session-id': string | undefined
+  'bind-ip': string
+  'bind-port': string
+  'allow-origin': string
+  'base-url': string
+  'render-device': string
+  encoder: 'x264' | 'nvh264' | 'vaapih264'
+  application: Record<string, { path: string; executable: string }>
+}
+
+const options: Record<keyof ArgValues, NonNullable<ParseArgsConfig['options']>[string]> = {
+  help: {
+    type: 'boolean',
+    default: false,
+    short: 'h',
+  },
+  'session-id': {
+    type: 'string',
+  },
+  'bind-ip': {
+    type: 'string',
+    default: '0.0.0.0',
+  },
+  'bind-port': {
+    type: 'string',
+    default: '8081',
+  },
+  'allow-origin': {
+    type: 'string',
+    default: '*',
+  },
+  'base-url': {
+    type: 'string',
+    default: 'http://localhost:8081',
+  },
+  'render-device': {
+    type: 'string',
+    default: '/dev/dri/renderD128',
+  },
+  encoder: {
+    type: 'string',
+    default: 'x264',
+  },
+  application: {
+    type: 'string',
+    multiple: true,
+    default: ['gtk4-demo:/usr/bin/gtk4-demo:/gtk4-demo'],
+  },
+}
+
+const parseArgsConfig: ParseArgsConfig = {
+  strict: true,
+  allowPositionals: false,
+  options,
+}
+
+function parseApplicationArg(rawArg: string[]): ArgValues['application'] {
+  const applicationValue: ArgValues['application'] = {}
+  for (const rawEntry of rawArg) {
+    const values = rawEntry.trim().split(':')
+    if (values.length !== 3) {
+      console.error('Invalid argument for "application"')
+      printHelp()
+      process.exit(1)
+    }
+
+    const [name, executable, path] = values
+    applicationValue[name] = { executable, path }
+  }
+  return applicationValue
+}
+
+function parseEncoderArg(rawArg: string): ArgValues['encoder'] {
+  switch (rawArg) {
+    case 'x264':
+    case 'nvh264':
+    case 'vaapih264':
+      return rawArg
+    default: {
+      console.error('Invalid argument for "encoder"')
+      printHelp()
+      process.exit(1)
+    }
   }
 }
 
-function parseArgValue<T extends keyof ArgTypes>(
-  key: T,
-  defaultValue: ArgTypes[T] = null,
-): { [key in T]: ArgTypes[T] } {
-  // Return true if the key exists and a value is defined
-  const booleanArg = `--${key}`
-  if (argv.includes(booleanArg)) {
-    consumeArg(booleanArg)
-    // @ts-ignore
-    return { [`${key}`]: true }
-  }
-
-  const valueArg = argv.find((element) => element.startsWith(`--${key}=`))
-  // Return null if the key does not exist and a value is not defined
-  if (valueArg === undefined) {
-    // @ts-ignore
-    return { [`${key}`]: defaultValue }
-  }
-
-  consumeArg(valueArg)
-  // @ts-ignore
-  return { [`${key}`]: valueArg.replace(`--${key}=`, '') }
+const argMappers: Record<
+  Extract<keyof ArgValues, 'encoder' | 'application'>,
+  (rawValue: any) => ArgValues[keyof ArgValues]
+> = {
+  encoder: parseEncoderArg,
+  application: parseApplicationArg,
 }
 
-type BooleanValue = boolean | null
-type StringValue = string | null
-
-type ArgTypes = Readonly<{
-  help: BooleanValue
-  'static-session-id': StringValue
-  'config-path': StringValue
-}>
-
-export const args: ArgTypes = {
-  ...parseArgValue('help'),
-  ...parseArgValue('config-path'),
-  ...parseArgValue('static-session-id'),
-} as const
+export const args = Object.fromEntries(
+  Object.entries(parseArgs(parseArgsConfig).values).map(([key, value]) => {
+    switch (key) {
+      case 'encoder':
+      case 'application':
+        return [key, argMappers[key](value)]
+      default:
+        return [key, value]
+    }
+  }),
+) as ArgValues
 
 export function printHelp() {
   console.log(`
 \tUsage
-\t  $ compositor-proxy <options>
+\t  $ compositor-proxy --session-id=SESSION-ID <options>
 
 \tOptions
-\t  --help, Print this help text.
-\t  --static-session-id=..., Use and accept this and only this session id when communicating.
-\t  --config-path=...,  Use a configuration file located at this file path.
-
+\t  --session-id=SESSION-ID                         Use and accept this and only this session id when communicating.
+\t                                                      Mandatory.
+\t  --bind-ip=IP                                    The ip or hostname to listen on.
+\t                                                      Optional. Default: "0.0.0.0".c
+\t  --bind-port=PORT                                The port to listen on. 
+\t                                                      Optional. Default "8081".
+\t  --allow-origin=ORIGIN                           CORS allowed origins, used when doing cross-origin requests. Value can be * or comma seperated domains. 
+\t                                                      Optional. Default "*".
+\t  --base-url=URL                                  The public base url to use when other services connect to this endpoint. 
+\t                                                      Optional. Default "http://localhost:8081".
+\t  --render-device=PATH                            Path of the render device that should be used for hardware acceleration. 
+\t                                                      Optional. Default "/dev/dri/renderD128".
+\t  --encoder=ENCODER                               The h264 encoder to use. "x264", "nvh264" and "vaapih264" are supported. 
+\t                                                      "x264" is a pure software encoder. "nvh264" is a hw accelerated encoder for Nvidia based GPUs. 
+\t                                                      "vaapih264" is an experimental encoder for intel GPUs.
+\t                                                      Optional. Default "x264".
+\t  --application=NAME:EXECUTABLE_PATH:HTTP_PATH    Maps an application with NAME and EXECUTABLE_PATH to an HTTP_PATH. This option can be repeated 
+\t                                                      with different values to map multiple applications.
+\t                                                      Optional. Default: "gtk4-demo:/gtk4-demo:/usr/bin/gtk4-demo".
+\t  --help, -h                                      Print this help text.
+\t
+\t The environment variable "LOG_LEVEL" is used to set the logging level. Accepted values are: "fatal", "error", "warn", "info", "debug", "trace"
+\t
 \tExamples
-\t  $ compositor-proxy --static-session-id=test123 --config-path=./config.yaml
+\t  $ compositor-proxy --session-id=test123 --application=gtk4-demo:/gtk4-demo:/usr/bin/gtk4-demo
   `)
 }
 
-if (argv.length > 0) {
-  console.log(`Unrecognized option: ${argv.toString()}`)
-  printHelp()
-  process.exit(0)
-}
-
 const help = args['help']
-// TODO look for unrecognized options and abort+print help text
 if (help) {
   printHelp()
   process.exit(0)

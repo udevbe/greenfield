@@ -20,14 +20,15 @@ import { createLogger } from './Logger'
 import { createNativeCompositorSession, NativeCompositorSession } from './NativeCompositorSession'
 import { XWaylandSession } from './XWaylandSession'
 import { NativeAppContext } from './NativeAppContext'
+import { Configschema } from './@types/config'
 
 // TODO create logger per proxy session instance
 const logger = createLogger('compositor-proxy-session')
 
 let proxySessions: ProxySession[] = []
 
-export function createProxySession(compositorSessionId: string): ProxySession {
-  const proxySession = new ProxySession(compositorSessionId)
+export function createProxySession(compositorSessionId: string, config: Configschema): ProxySession {
+  const proxySession = new ProxySession(compositorSessionId, config)
   logger.info(`Session created.`)
   proxySessions.push(proxySession)
 
@@ -45,7 +46,7 @@ export class ProxySession {
   private readonly xWaylandSession: XWaylandSession
   private nativeAppContexts: NativeAppContext[] = []
 
-  constructor(public readonly compositorSessionId: string) {
+  constructor(readonly compositorSessionId: string, readonly config: Configschema) {
     this.nativeCompositorSession = createNativeCompositorSession(this)
     this.xWaylandSession = XWaylandSession.create(this.nativeCompositorSession)
     this.xWaylandSession.createXWaylandListenerSocket()

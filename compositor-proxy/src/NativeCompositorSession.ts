@@ -19,7 +19,6 @@ import { PollHandle, startPoll, stopPoll } from './proxy-poll-addon'
 import { createProxyInputOutput } from './io/ProxyInputOutput'
 import { createLogger } from './Logger'
 import { createNativeClientSession, NativeClientSession } from './NativeClientSession'
-import { config } from './config'
 import {
   addSocketAuto,
   createDisplay,
@@ -103,7 +102,7 @@ export class NativeCompositorSession {
 
   constructor(
     public readonly proxySession: ProxySession,
-    public readonly webFS = createProxyInputOutput(proxySession, config.public.baseURL),
+    public readonly webFS = createProxyInputOutput(proxySession, proxySession.config.public.baseURL),
     public readonly clients: ClientEntry[] = [],
   ) {
     this.wlDisplay = createDisplay(
@@ -114,7 +113,7 @@ export class NativeCompositorSession {
 
     this.waylandDisplay = addSocketAuto(this.wlDisplay)
     initShm(this.wlDisplay)
-    this.drmContext = initDrm(this.wlDisplay, config.encoder.renderDevice)
+    this.drmContext = initDrm(this.wlDisplay, this.proxySession.config.encoder.renderDevice)
 
     this.wlDisplayFdWatcher = startPoll(getFd(this.wlDisplay), (status) => {
       if (status < 0) {
