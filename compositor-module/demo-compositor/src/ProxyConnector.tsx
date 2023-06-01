@@ -80,21 +80,17 @@ export function ProxyConnector(props: ProxyConnectorProps) {
 
   return (
     <div>
-      <form
-        onSubmit={(ev) => {
-          ev.preventDefault()
-        }}
-      >
-        <input type="text" onKeyPress={onKeyPress} placeholder="🖥️ type a URL" name="remote" />
-      </form>
-      <div>
-        <ul>
-          {connections.value.map((connection) => (
-            <li>
-              <ProxyApplication key={connection.proxySessionKey} {...connection} />
-            </li>
-          ))}
-        </ul>
+      <input
+        class="w-full rounded-full border-2 border-gray-500 bg-gray-50 p-1 pl-3 text-sm outline-cyan-500"
+        type="text"
+        onKeyPress={onKeyPress}
+        placeholder="🖥️ type a URL"
+        name="remote"
+      />
+      <div class="flex list-none flex-col">
+        {connections.value.map((connection) => (
+          <ProxyApplication key={connection.proxySessionKey} {...connection} />
+        ))}
       </div>
     </div>
   )

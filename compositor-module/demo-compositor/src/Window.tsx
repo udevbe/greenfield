@@ -12,14 +12,10 @@ export type WindowProps = {
 
 export function Window(props: WindowProps) {
   return (
-    <div class="window-container">
-      <div class="window-title">{props.title}</div>
-      <div class="window-origin">{props.origin}</div>
-      {props.unresponsive.value ? (
-        <button class="window-close" onClick={props.onClose}>
-          not responding 🗑️
-        </button>
-      ) : null}
+    <div>
+      <div class="font-medium">{props.title}</div>
+      <div class="text-xs font-thin">{props.origin}</div>
+      {props.unresponsive.value ? <button onClick={props.onClose}>not responding 🗑️</button> : null}
     </div>
   )
 }
