@@ -1,4 +1,4 @@
-import { WebAppLauncher } from './WebAppLauncher'
+import './index.css'
 import { Signal } from '@preact/signals'
 import { ProxyConnector } from './ProxyConnector'
 import {
@@ -8,7 +8,6 @@ import {
   createAppLauncher,
   initWasm,
   AppLauncher,
-  WebCompositorConnector,
 } from '../../src'
 import { ClientProps } from './Client'
 import { render } from 'preact'
@@ -20,20 +19,12 @@ const wasmLibs = initWasm()
 const clients = new Signal([] as ClientProps[])
 const windows = new Signal([] as WindowProps[])
 
-function Controls(props: {
-  session: CompositorSession
-  appLauncher: AppLauncher
-  webConnector: WebCompositorConnector
-}) {
+function Controls(props: { session: CompositorSession; appLauncher: AppLauncher }) {
   return (
-    <div id="controls">
+    <div class="flex flex-col space-y-4">
       <div>
         <ProxyConnector {...props} clients={clients} />
       </div>
-      <div>
-        <WebAppLauncher {...props} clients={clients} />
-      </div>
-      <hr />
       <div id="windows">
         <ul>
           {windows.value.map((window) => (
@@ -61,7 +52,6 @@ export async function main() {
   const id = 'test123'
   const session = await createCompositorSession(id)
   const appLauncher = createAppLauncher(session, 'remote')
-  const webConnector = createAppLauncher(session, 'web')
 
   session.userShell.events.clientDestroyed = (client: CompositorClient) => {
     clients.value = clients.value.filter((otherClient) => otherClient.id !== client.id)
@@ -124,10 +114,7 @@ export async function main() {
   // make compositor global protocol objects available to client
   session.globals.register()
 
-  render(
-    <Controls session={session} appLauncher={appLauncher} webConnector={webConnector} />,
-    elementById('controls-container'),
-  )
+  render(<Controls session={session} appLauncher={appLauncher} />, elementById('controls-container'))
 }
 
 window.onload = () => main()
