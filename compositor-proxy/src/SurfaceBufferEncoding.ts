@@ -27,8 +27,7 @@ import { Channel, createFeedbackChannel, createFrameDataChannel } from './Channe
 const logger = createLogger('surface-buffer-encoding')
 
 function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor): FrameFeedback {
-  const nativeAppContext = wlSurfaceInterceptor.userData.nativeAppContext
-  const nativeClientSession = nativeAppContext.nativeClientSession
+  const nativeClientSession = wlSurfaceInterceptor.userData.nativeClientSession
   if (nativeClientSession === undefined) {
     throw new Error('BUG. Created a wlSurfaceInterceptor without a nativeClientSession')
   }
@@ -37,7 +36,7 @@ function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor): FrameF
     const feedbackChannel = createFeedbackChannel(
       nativeClientSession.id,
       wlSurfaceInterceptor.id,
-      wlSurfaceInterceptor.userData.nativeAppContext,
+      wlSurfaceInterceptor.userData.nativeClientSession.nativeAppContext,
     )
     const frameFeedback = new FrameFeedback(
       wlSurfaceInterceptor.wlClient,
@@ -53,14 +52,16 @@ function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor): FrameF
 }
 
 function ensureFrameDataChannel(wlSurfaceInterceptor: wlSurfaceInterceptor): Channel {
-  const nativeAppContext = wlSurfaceInterceptor.userData.nativeAppContext
-  const nativeClientSession = nativeAppContext.nativeClientSession
+  const nativeClientSession = wlSurfaceInterceptor.userData.nativeClientSession
   if (nativeClientSession === undefined) {
     throw new Error('BUG. Created a wlSurfaceInterceptor without a nativeClientSession')
   }
 
   if (wlSurfaceInterceptor.frameDataChannel === undefined) {
-    wlSurfaceInterceptor.frameDataChannel = createFrameDataChannel(nativeClientSession.id, nativeAppContext)
+    wlSurfaceInterceptor.frameDataChannel = createFrameDataChannel(
+      wlSurfaceInterceptor.userData.nativeClientSession.id,
+      wlSurfaceInterceptor.userData.nativeClientSession.nativeAppContext,
+    )
     nativeClientSession.destroyListeners.push(() => {
       wlSurfaceInterceptor.frameDataChannel.close()
     })
@@ -230,7 +231,11 @@ export function initSurfaceBufferEncoding(): void {
       }
     }
     if (!this.encoder) {
-      this.encoder = createEncoder(this.userData.nativeAppContext.proxySession, this.wlClient, this.userData.drmContext)
+      this.encoder = createEncoder(
+        this.userData.nativeClientSession.nativeAppContext.proxySession,
+        this.wlClient,
+        this.userData.drmContext,
+      )
     }
 
     const frameFeedback = ensureFrameFeedback(this)

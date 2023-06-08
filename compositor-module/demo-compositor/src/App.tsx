@@ -48,13 +48,13 @@ export async function main() {
 
   session.userShell.events.surfaceCreated = (compositorSurface) => {
     appEntryPropsAction(compositorSurface.client.id, (appEntryProps) => {
-      appEntryProps.windows.value = [...appEntryProps.windows.value, { ...compositorSurface, title: new Signal('') }]
+      appEntryProps.windows.value = [...appEntryProps.windows.value, { ...compositorSurface, title: new Signal() }]
     })
   }
 
   session.userShell.events.surfaceDestroyed = (compositorSurface) => {
     appEntryPropsAction(compositorSurface.client.id, (appEntryProps) => {
-      appEntryProps.windows.value = appEntryProps.windows.value.filter((value) => value !== compositorSurface)
+      appEntryProps.windows.value = appEntryProps.windows.value.filter((value) => value.id !== compositorSurface.id)
     })
   }
 
