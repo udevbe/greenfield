@@ -79,8 +79,8 @@ export class ProxySession {
     return nativeAppContext
   }
 
-  getFirstNativeAppContext(): NativeAppContext | undefined {
-    return this.nativeAppContexts[0]
+  getFirstConnectedNativeAppContext(): NativeAppContext | undefined {
+    return this.nativeAppContexts.find((nativeAppContext) => nativeAppContext.signalingWebSocket !== undefined)
   }
 
   findNativeAppContextByKey(key: string): NativeAppContext | undefined {

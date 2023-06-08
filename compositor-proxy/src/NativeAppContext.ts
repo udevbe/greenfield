@@ -27,7 +27,7 @@ type SignalingMessage =
     }
   | {
       readonly type: SignalingMessageType.CREATE_CHILD_APP_CONTEXT
-      readonly data: { baseURL: string; signalURL: string; key: string; name: string }
+      readonly data: { baseURL: string; signalURL: string; name: string }
     }
   | {
       readonly type: SignalingMessageType.APP_TERMINATED
@@ -175,10 +175,9 @@ export class NativeAppContext {
     proxyURL.searchParams.set('compositorSessionId', this.proxySession.compositorSessionId)
     proxyURL.searchParams.set('key', nativeAppContext.key)
 
-    const data: { baseURL: string; signalURL: string; key: string; name: string } = {
+    const data: { baseURL: string; signalURL: string; name: string } = {
       baseURL: this.proxySession.config.public.baseURL,
       signalURL: proxyURL.href,
-      key: nativeAppContext.key,
       name: nativeAppContext.name,
     }
 
@@ -227,11 +226,11 @@ export function launchApplication(
     )
 
     childProcess.stdout.on('data', (data) => {
-      appLogger.info(data)
+      appLogger.info(data.toString())
     })
 
     childProcess.stderr.on('data', (data) => {
-      appLogger.error(data)
+      appLogger.error(data.toString())
     })
 
     const spawnErrorHandler = (error: Error) => {

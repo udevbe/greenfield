@@ -1,40 +1,13 @@
 import './index.css'
 import { Signal } from '@preact/signals'
-import { ProxyConnector } from './ProxyConnector'
-import {
-  CompositorClient,
-  CompositorSession,
-  createCompositorSession,
-  createAppLauncher,
-  initWasm,
-  AppLauncher,
-} from '../../src'
-import { ClientProps } from './Client'
+import { CompositorClient, createAppLauncher, createCompositorSession, initWasm } from '../../src'
 import { render } from 'preact'
-import { Window, WindowProps } from './Window'
+import { AppBar, AppEntryProps } from './AppBar'
 
 // load web assembly libraries
 const wasmLibs = initWasm()
 
-const clients = new Signal([] as ClientProps[])
-const windows = new Signal([] as WindowProps[])
-
-function Controls(props: { session: CompositorSession; appLauncher: AppLauncher }) {
-  return (
-    <div class="flex flex-col space-y-4">
-      <div>
-        <ProxyConnector {...props} clients={clients} />
-      </div>
-      <div id="windows">
-        <ul>
-          {windows.value.map((window) => (
-            <Window {...window} />
-          ))}
-        </ul>
-      </div>
-    </div>
-  )
-}
+const appEntries = new Signal([] as AppEntryProps[])
 
 function elementById(id: string) {
   const element = document.getElementById(id)
@@ -42,6 +15,20 @@ function elementById(id: string) {
     throw new Error(`BUG. No element with id "${id}"`)
   }
   return element
+}
+
+function appEntryPropsAction(clientId: string, action: (appEntryProps: AppEntryProps) => void): void {
+  for (const appEntryProp of appEntries.value) {
+    const clients = appEntryProp.clients.value
+
+    const matchingClient = clients.find((otherClient) => otherClient.id === clientId)
+    if (matchingClient === undefined) {
+      continue
+    }
+
+    action(appEntryProp)
+    return
+  }
 }
 
 export async function main() {
@@ -53,58 +40,45 @@ export async function main() {
   const session = await createCompositorSession(id)
   const appLauncher = createAppLauncher(session, 'remote')
 
-  session.userShell.events.clientDestroyed = (client: CompositorClient) => {
-    clients.value = clients.value.filter((otherClient) => otherClient.id !== client.id)
-  }
   session.userShell.events.clientUnresponsiveUpdated = (client: CompositorClient, unresponsive: boolean) => {
-    const clientProps = clients.value.find((otherClient) => otherClient.id === client.id)
-    if (clientProps === undefined) {
-      return
-    }
-    clientProps.unresponsive.value = unresponsive
+    appEntryPropsAction(client.id, (appEntryProps) => {
+      appEntryProps.unresponsive.value = unresponsive
+    })
   }
+
   session.userShell.events.surfaceCreated = (compositorSurface) => {
-    const clientProps = clients.value.find((client) => client.id === compositorSurface.client.id)
-    if (clientProps === undefined) {
-      // bug?
-      return
-    }
-    windows.value = [
-      ...windows.value,
-      {
-        title: new Signal('title'),
-        appId: new Signal('application id'),
-        id: compositorSurface.id,
-        clientId: compositorSurface.client.id,
-        onClose: clientProps.onClose,
-        unresponsive: clientProps.unresponsive,
-        origin: clientProps.origin,
-      },
-    ]
+    appEntryPropsAction(compositorSurface.client.id, (appEntryProps) => {
+      appEntryProps.windows.value = [...appEntryProps.windows.value, { ...compositorSurface, title: new Signal('') }]
+    })
   }
+
   session.userShell.events.surfaceDestroyed = (compositorSurface) => {
-    windows.value = windows.value.filter(
-      (window) => window.clientId !== compositorSurface.client.id || window.id !== compositorSurface.id,
-    )
+    appEntryPropsAction(compositorSurface.client.id, (appEntryProps) => {
+      appEntryProps.windows.value = appEntryProps.windows.value.filter((value) => value !== compositorSurface)
+    })
   }
+
+  session.userShell.events.surfaceActivationUpdated = (compositorSurface, active) => {
+    appEntryPropsAction(compositorSurface.client.id, (appEntryProps) => {
+      if (active) {
+        appEntryProps.lastActiveWindow.value = appEntryProps.windows.value.find(
+          (window) => window.id === compositorSurface.id,
+        )
+      }
+    })
+  }
+
   session.userShell.events.surfaceTitleUpdated = (compositorSurface, title) => {
-    const window = windows.value.find(
-      (window) => compositorSurface.client.id === window.clientId && compositorSurface.id === window.id,
-    )
-    if (window === undefined) {
-      return
-    }
-    window.title.value = title
+    appEntryPropsAction(compositorSurface.client.id, (appEntryProps) => {
+      const window = appEntryProps.windows.value.find(
+        (otherCompositorSurface) => otherCompositorSurface.id === compositorSurface.id,
+      )
+      if (window) {
+        window.title.value = title
+      }
+    })
   }
-  session.userShell.events.surfaceAppIdUpdated = (compositorSurface, appId) => {
-    const window = windows.value.find(
-      (window) => compositorSurface.client.id === window.clientId && compositorSurface.id === window.id,
-    )
-    if (window === undefined) {
-      return
-    }
-    window.appId.value = appId
-  }
+
   session.userShell.events.notify = (variant: string, message: string) => window.alert(message)
 
   // Get an HTML5 canvas for use as an output for the compositor. Multiple outputs can be used.
@@ -114,7 +88,7 @@ export async function main() {
   // make compositor global protocol objects available to client
   session.globals.register()
 
-  render(<Controls session={session} appLauncher={appLauncher} />, elementById('controls-container'))
+  render(<AppBar appLauncher={appLauncher} appEntries={appEntries} />, elementById('controls-container'))
 }
 
 window.onload = () => main()

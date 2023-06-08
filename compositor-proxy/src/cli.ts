@@ -107,7 +107,7 @@ export function run() {
   logger.info('Starting compositor proxy.')
   const compositorSessionId = args['session-id']
   if (compositorSessionId === undefined) {
-    logger.error('--static-session-id= must be set. Run with --help for options')
+    logger.error('--session-id= must be set. Run with --help for options')
     process.exit(1)
   }
 

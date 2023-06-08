@@ -19,7 +19,7 @@ export function addInputOutput(session: Session, canvas: HTMLCanvasElement, outp
   canvas.tabIndex = 1
   const dnd = createDnd(canvas, seat, outputId)
 
-  canvas.addEventListener('pointerover', () => canvas.focus(), { passive: true })
+  // canvas.addEventListener('pointerover', () => canvas.focus(), { passive: true })
 
   const pointerleaveHandler = () => {
     seat.notifyKeyboardFocusOut()
