@@ -9,7 +9,7 @@ services:
       context: .
       dockerfile: ./Dockerfile
     command:
-      - --static-session-id=test123
+      - --session-id=test123
     privileged: false
     user: "1000:1000"
     ipc: host

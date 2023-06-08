@@ -38,11 +38,11 @@ The `run.sh` script accepts several arguments:
 
 	Options
 	  --help, Print this help text.
-      --static-session-id=...,  Mandatory. Only use and accept this session id when communicating.
+      --session-id=...,  Mandatory. Only use and accept this session id when communicating.
 	  --config-path=...,  Use a configuration file located at this file path.
 
 	Examples
-	  $ compositor-proxy --static-session-id=test123 --config-path=./config.yaml
+	  $ compositor-proxy --session-id=test123 --config-path=./config.yaml
 ```
 
 ## Config

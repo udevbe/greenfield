@@ -103,7 +103,7 @@ This creates a set of files in the `package` directory. The `run.sh` script acce
       --session-id=...,  Mandatory. Only use and accept this session id when communicating.
 
 	Examples
-	  $ compositor-proxy --static-session-id=test123
+	  $ compositor-proxy --session-id=test123
 ```
 
 The packaged binary expects the following set of dependencies to be available for mesa & nvidia support, if you're running a Debian based distro you can run:

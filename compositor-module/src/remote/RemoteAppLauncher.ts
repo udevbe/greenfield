@@ -65,7 +65,7 @@ type SignalingMessage =
     }
   | {
       readonly type: SignalingMessageType.CREATE_CHILD_APP_CONTEXT
-      readonly data: { baseURL: string; signalURL: string; key: string; name: string }
+      readonly data: { baseURL: string; signalURL: string; name: string }
     }
   | {
       readonly type: SignalingMessageType.APP_TERMINATED
@@ -101,13 +101,13 @@ export class RemoteAppLauncher implements AppLauncher {
   launch(appURL: URL, onChildAppContext: (childAppContext: AppContext) => void): AppContext {
     const remoteAppContext = new RemoteAppContext(this.session, onChildAppContext)
 
-    try {
-      fetch(appURL, {
-        method: 'POST',
-        headers: {
-          'x-compositor-session-id': this.session.compositorSessionId,
-        },
-      }).then((response) => {
+    fetch(appURL, {
+      method: 'POST',
+      headers: {
+        'x-compositor-session-id': this.session.compositorSessionId,
+      },
+    })
+      .then((response) => {
         if (response.ok) {
           return response
             .json()
@@ -121,9 +121,9 @@ export class RemoteAppLauncher implements AppLauncher {
           remoteAppContext.error(new Error(response.statusText))
         }
       })
-    } catch (e) {
-      remoteAppContext.error(e)
-    }
+      .catch((e) => {
+        remoteAppContext.error(e)
+      })
 
     return remoteAppContext
   }
@@ -258,7 +258,7 @@ class RemoteAppContext implements AppContext {
     this.signalingSendBuffer = []
   }
 
-  listen(proxySessionProps: { baseURL: string; signalURL: string; key: string; name: string }) {
+  listen(proxySessionProps: { baseURL: string; signalURL: string; name: string }) {
     this.proxySessionProps = proxySessionProps
     this.signalingWebSocket = new ReconnectingWebSocket(proxySessionProps.signalURL)
     this.signalingWebSocket.binaryType = 'arraybuffer'
@@ -274,7 +274,7 @@ class RemoteAppContext implements AppContext {
     })
 
     this.handleProxySessionMessages(this.signalingWebSocket, proxySessionProps)
-    this.onKeyChanged(proxySessionProps.key)
+    this.onNameChanged(proxySessionProps.name)
 
     this.flushCachedSignalingSends()
   }
@@ -284,7 +284,6 @@ class RemoteAppContext implements AppContext {
     proxySessionProps: {
       baseURL: string
       signalURL: string
-      key: string
     },
   ) {
     signalingConnection.onmessage = async (event) => {
@@ -310,7 +309,7 @@ class RemoteAppContext implements AppContext {
           case SignalingMessageType.DISCONNECT_CHANNEL: {
             this.clientConnections = this.clientConnections.filter((clientConnection) => {
               if (clientConnection.desc.id === messageObject.data.channelId) {
-                clientConnection.webSocket.close(4001)
+                clientConnection.close()
                 return false
               }
               return true
@@ -340,7 +339,6 @@ class RemoteAppContext implements AppContext {
     proxySessionProps: {
       baseURL: string
       signalURL: string
-      key: string
     },
   ) {
     if (channel.desc.type === ChannelDescriptionType.PROTOCOL) {
@@ -400,7 +398,6 @@ function onProtocolChannel(
   proxySessionProps: {
     baseURL: string
     signalURL: string
-    key: string
   },
   client: Client,
   compositorSessionId: string,

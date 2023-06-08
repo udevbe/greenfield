@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <title>Greenfield</title>
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
   <script defer type="module" src="src/index.ts"></script>
 </head>
 <body class="h-screen">
-<div class="flex h-full">
-  <div id="controls-container" class="min-w-[20rem] max-w-xs flex flex-col shadow-2xl z-10 p-3">
-  </div>
-  <div id="output-container" class="h-full w-full z-0 bg-gray-100" >
-    <canvas id="output" class="h-full w-full focus:outline-none"></canvas>
+<div class="flex flex-col h-full">
+  <div id="controls-container" class="flex z-10 p-1 bg-gray-700 shadow-xl shadow-neutral-500"></div>
+  <div id="output-container" class="z-0 bg-gray-100 grow">
+    <canvas id="output" class="h-full w-full fixed"></canvas>
   </div>
 </div>
 </body>
