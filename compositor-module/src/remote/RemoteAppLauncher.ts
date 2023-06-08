@@ -260,7 +260,7 @@ class RemoteAppContext implements AppContext {
 
   listen(proxySessionProps: { baseURL: string; signalURL: string; name: string }) {
     this.proxySessionProps = proxySessionProps
-    this.signalingWebSocket = new ReconnectingWebSocket(proxySessionProps.signalURL)
+    this.signalingWebSocket = new ReconnectingWebSocket(proxySessionProps.signalURL, undefined)
     this.signalingWebSocket.binaryType = 'arraybuffer'
 
     this.signalingWebSocket.addEventListener('open', (event) => {
@@ -268,6 +268,9 @@ class RemoteAppContext implements AppContext {
     })
     this.signalingWebSocket.addEventListener('close', (event) => {
       this.onStateChange('closed')
+      if (event.code === 4001) {
+        this.signalingWebSocket?.close(event.code, event.reason)
+      }
     })
     this.signalingWebSocket.addEventListener('error', (event) => {
       this.onError(event.error)
