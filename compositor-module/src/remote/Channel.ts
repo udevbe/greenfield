@@ -76,6 +76,7 @@ export class SimpleChannel implements WebSocketChannel {
       if (event.code === 4001) {
         this.closed = true
         this.onClose()
+        this.webSocket.close(event.code, event.reason)
       }
     }
     this.webSocket.onerror = (err) => {
@@ -164,6 +165,7 @@ export class ARQChannel implements WebSocketChannel {
           this.kcp.release()
         }
         this.onClose()
+        this.webSocket.close(event.code, event.reason)
       }
     }
     this.webSocket.onerror = (err) => {
