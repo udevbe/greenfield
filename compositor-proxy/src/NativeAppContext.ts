@@ -43,7 +43,7 @@ const textEncoder = new TextEncoder()
 export class NativeAppContext {
   public readonly key = randomBytes(8).toString('hex')
 
-  public nativeClientSession: NativeClientSession | undefined
+  private nativeClientSessions: NativeClientSession[] = []
   public signalingWebSocket: WebSocket<AppSignalingUserData> | undefined
   public readonly destroyListeners: (() => void)[] = []
 
@@ -52,7 +52,25 @@ export class NativeAppContext {
   private sigKillTimer?: NodeJS.Timeout
   private sigHupTimer?: NodeJS.Timeout
 
-  constructor(readonly proxySession: ProxySession, readonly pid: number, readonly name: string) {}
+  constructor(
+    readonly proxySession: ProxySession,
+    readonly pid: number,
+    readonly name: string,
+    private readonly external: boolean,
+  ) {}
+
+  addNativeClientSession(nativeClientSession: NativeClientSession) {
+    this.nativeClientSessions.push(nativeClientSession)
+  }
+
+  removeNativeClientSession(nativeClientSession: NativeClientSession) {
+    this.nativeClientSessions = this.nativeClientSessions.filter(
+      (otherNativeClientSession) => otherNativeClientSession !== nativeClientSession,
+    )
+    if (this.external && this.nativeClientSessions.length === 0) {
+      this.onExit({ exitCode: 0 })
+    }
+  }
 
   signalingSend(message: Uint8Array) {
     if (this.signalingWebSocket) {
@@ -250,7 +268,7 @@ export function launchApplication(
         throw new Error('BUG? Tried to create client signaling for child process without an id.')
       }
 
-      const nativeAppContext = proxySession.createNativeAppContext(childProcess.pid, name)
+      const nativeAppContext = proxySession.createNativeAppContext(childProcess.pid, name, false)
       childProcess.once('exit', (exitCode, signal) => {
         if (exitCode !== null) {
           appLogger.info(`Child process terminated with exit code: ${exitCode}.`)

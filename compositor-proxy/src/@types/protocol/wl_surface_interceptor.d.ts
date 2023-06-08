@@ -3,6 +3,7 @@ import { FrameFeedback } from '../../FrameFeedback'
 import { MessageDestination } from '../../../../../westfield/server/node/proxy'
 import type { Channel } from '../../Channel'
 import { NativeAppContext } from '../../NativeAppContext'
+import { NativeClientSession } from '../../NativeClientSession'
 
 export default class wl_surface_interceptor {
   frameDataChannel: Channel
@@ -24,7 +25,7 @@ export default class wl_surface_interceptor {
     protocolChannel: Channel
     drmContext: unknown
     messageInterceptors: Record<number, any>
-    nativeAppContext: NativeAppContext
+    nativeClientSession: NativeClientSession
   }
   wlClient: unknown
   id: number

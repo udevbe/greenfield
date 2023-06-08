@@ -67,8 +67,8 @@ export class ProxySession {
     )
   }
 
-  createNativeAppContext(pid: number, name: string) {
-    const nativeAppContext = new NativeAppContext(this, pid, name)
+  createNativeAppContext(pid: number, name: string, external: boolean) {
+    const nativeAppContext = new NativeAppContext(this, pid, name, external)
     this.nativeAppContexts.push(nativeAppContext)
     nativeAppContext.destroyListeners.push(() => {
       this.nativeAppContexts = this.nativeAppContexts.filter(

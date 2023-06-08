@@ -149,7 +149,7 @@ export class NativeClientSession {
   private lastEventSerial = 0
 
   constructor(
-    nativeAppContext: NativeAppContext,
+    public readonly nativeAppContext: NativeAppContext,
     public wlClient: WlClient | undefined,
     public readonly nativeCompositorSession: NativeCompositorSession,
     private readonly protocolDataChannel: Channel,
@@ -162,12 +162,13 @@ export class NativeClientSession {
     public destroyListeners: (() => void)[] = [],
     private fastSync = true,
   ) {
-    nativeAppContext.nativeClientSession = this
+    nativeAppContext.addNativeClientSession(this)
     this.browserChannelOutOfBandHandlers = {
       // listen for out-of-band resource destroy. opcode: 1
       1: (payload) => this.destroyResourceSilently(payload),
     }
     this.destroyListeners.push(() => {
+      nativeAppContext.removeNativeClientSession(this)
       this.protocolDataChannel.close()
     })
 
@@ -176,7 +177,7 @@ export class NativeClientSession {
       protocolChannel: this.protocolDataChannel,
       drmContext: nativeCompositorSession.drmContext,
       messageInterceptors,
-      nativeAppContext,
+      nativeClientSession: this,
     }
     this.messageInterceptor = MessageInterceptor.create(
       wlClient,

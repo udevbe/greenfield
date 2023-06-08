@@ -177,8 +177,7 @@ export class NativeCompositorSession {
         return
       }
       const name = this.getNameFromPid(clientPid) ?? 'unknown_app'
-      // TODO destroy native app context object if there are no more wlclient connections
-      nativeAppContext = this.proxySession.createNativeAppContext(clientPid, name)
+      nativeAppContext = this.proxySession.createNativeAppContext(clientPid, name, true)
       firstNativeAppContext.sendCreateChildAppContext(nativeAppContext)
     }
 
