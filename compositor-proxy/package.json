@@ -73,5 +73,6 @@
       "node18-linux-x64"
     ],
     "outputPath": "package"
-  }
+  },
+  "packageManager": "yarn@3.6.0"
 }
