@@ -22,7 +22,7 @@
     "build:native": "mkdir -p build && cmake -G Ninja -B./build -S./ && ninja -C ./build",
     "build:typescript": "tsc",
     "build": "rm -rf dist && yarn build:native && yarn build:typescript",
-    "start": "ALIEN_UWS=1 node --require ts-node/register src/cli.ts",
+    "start": "ALIEN_UWS=1 node --require ts-node/register src/cli.ts --session-id=test123",
     "test": "jest",
     "package:copy-libs": "cp 'node_modules/westfield-proxy/dist/libwayland-server.so.0' 'node_modules/westfield-proxy/dist/libwestfield.so' 'dist/encoding/libproxy-encoding.so' -t package",
     "package": "cp src/config.yaml dist && pkg --compress Brotli --no-native-build package.json && yarn package:copy-libs"
@@ -33,7 +33,7 @@
     "js-yaml": "^4.1.0",
     "pino": "^8.14.1",
     "pino-pretty": "^10.0.0",
-    "uWebSockets.js": "uNetworking/uWebSockets.js#v20.25.0",
+    "uWebSockets.js": "uNetworking/uWebSockets.js#v20.29.0",
     "westfield-proxy": "1.0.0-alpha.21",
     "xtsb": "1.0.0-alpha.0"
   },
