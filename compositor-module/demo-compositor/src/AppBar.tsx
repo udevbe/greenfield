@@ -165,12 +165,12 @@ function AppEntry(props: AppEntryProps) {
       </div>
       <button class="flex min-w-[14rem] shrink grow items-stretch p-1">
         <div class="flex min-w-[7rem] shrink grow flex-col justify-center pr-1">
-          <span class="truncate text-left">
+          <span class="truncate text-left font-semibold">
             {props.lastActiveWindow.value?.title.value ?? props.name.value ?? props.appLaunchURL}
           </span>
         </div>
         <div class="flex min-w-[7rem] shrink grow flex-col justify-center">
-          <span class="truncate text-right text-xs leading-none">{props.appLaunchURL}</span>
+          <span class="truncate text-right text-xs font-light leading-none">{props.appLaunchURL}</span>
         </div>
       </button>
       <div class="grid min-w-[1.5rem] place-content-center">
