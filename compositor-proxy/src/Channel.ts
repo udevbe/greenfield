@@ -1,6 +1,6 @@
 import { Kcp } from './kcp'
-import { WebSocket } from 'uWebSockets.js'
 import { NativeAppContext } from './NativeAppContext'
+import { WebSocket } from 'ws'
 
 const MTU = 64000
 const MAX_BUFFERED_AMOUNT = 2949120
@@ -45,13 +45,13 @@ export interface Channel {
 }
 
 export interface WebSocketChannel extends Channel {
-  doOpen(ws: WebSocket<any>): void
+  doOpen(ws: WebSocket): void
 
   doMessage(buffer: Buffer): void
 
   doClose(): void
 
-  ws?: WebSocket<any>
+  ws?: WebSocket
 }
 
 function createChannel(desc: ChannelDesc, nativeAppContext: NativeAppContext) {
@@ -127,11 +127,11 @@ export class SimpleChannel implements WebSocketChannel {
   onMessage = (event: Buffer) => {
     /*noop*/
   }
-  ws?: WebSocket<any>
+  ws?: WebSocket
 
   constructor(readonly desc: ChannelDesc, readonly nativeAppContext: NativeAppContext) {}
 
-  doOpen(ws: WebSocket<any>): void {
+  doOpen(ws: WebSocket): void {
     this.ws = ws
     this.onOpen()
   }
@@ -150,8 +150,8 @@ export class SimpleChannel implements WebSocketChannel {
   }
 
   send(buffer: Buffer): void {
-    if (this.ws && this.ws.getBufferedAmount() <= MAX_BUFFERED_AMOUNT) {
-      this.ws.send(buffer, true)
+    if (this.ws && this.ws.bufferedAmount <= MAX_BUFFERED_AMOUNT) {
+      this.ws.send(buffer, { binary: true })
     }
   }
 
@@ -173,7 +173,7 @@ export class ARQChannel implements WebSocketChannel {
     /*noop*/
   }
   private checkInterval?: NodeJS.Timer
-  ws?: WebSocket<any>
+  ws?: WebSocket
 
   constructor(public readonly desc: ChannelDesc, readonly nativeAppContext: NativeAppContext) {
     const kcp = new Kcp(+this.desc.id, this)
@@ -181,9 +181,9 @@ export class ARQChannel implements WebSocketChannel {
     kcp.setWndSize(SND_WINDOW_SIZE, RCV_WINDOW_SIZE)
     kcp.setNoDelay(1, INTERVAL, 0, 1)
     kcp.setOutput((data, len) => {
-      if (this.ws && this.ws.getBufferedAmount() <= MAX_BUFFERED_AMOUNT) {
+      if (this.ws && this.ws.bufferedAmount <= MAX_BUFFERED_AMOUNT) {
         // TODO handle backpressure
-        this.ws.send(data.subarray(0, len), true)
+        this.ws.send(data.subarray(0, len), { binary: true })
         this.kcp.update()
       }
     })
@@ -241,7 +241,7 @@ export class ARQChannel implements WebSocketChannel {
     }
   }
 
-  doOpen(ws: WebSocket<any>): void {
+  doOpen(ws: WebSocket): void {
     this.ws = ws
     this.onOpen()
   }

@@ -151,7 +151,6 @@ CTestTestfile.cmake
 /compositor-proxy/src/configschema.json
 /compositor-proxy/cmake-build-debug/
 /compositor-module/src/api/
-/compositor-proxy/src/@types/api.d.ts
 /compositor-proxy/src/api/
 /compositor-proxy/src/encoding/libproxy-encoding.so
 /compositor-proxy/src/encoding/proxy-encoding-addon.node
