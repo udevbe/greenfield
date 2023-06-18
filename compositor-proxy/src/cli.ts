@@ -2,56 +2,65 @@ import { createLogger } from './Logger'
 import { unlink } from 'fs/promises'
 import { initSurfaceBufferEncoding } from './SurfaceBufferEncoding'
 import { createApp } from './App'
-import { OPTIONSPreflightRequest } from './AppController'
-import { HttpRequest, HttpResponse, us_listen_socket_close } from 'uWebSockets.js'
-import { closeAllProxySessions, createProxySession, findProxySessionByCompositorSessionId } from './ProxySession'
+import { closeAllProxySessions, createProxySession, ProxySession } from './ProxySession'
 import { args } from './Args'
 import { launchApplication, NativeAppContext } from './NativeAppContext'
 import { Configschema } from './@types/config'
+import { IncomingMessage, ServerResponse } from 'http'
 
 const logger = createLogger('main')
 
-const allowOrigin = args['allow-origin']
+const allowHeaders = 'Content-Type, X-Compositor-Session-Id'
+const maxAge = '36000'
 
-async function POSTApplication(httpResponse: HttpResponse, req: HttpRequest) {
-  let aborted = false
-  httpResponse.onAborted(() => {
-    aborted = true
+function deleteStartingFile() {
+  unlink('/var/run/compositor-proxy/starting').catch(() => {
+    // not being able to delete the starting file is not fatal
+    // TODO log this?
   })
+}
 
-  const compositorSessionId = req.getHeader('x-compositor-session-id')
-  if (compositorSessionId.length === 0) {
-    httpResponse
-      .writeStatus('403 Forbidden')
-      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
-      .writeHeader('Content-Type', 'text/plain')
-      .endWithoutBody()
+function handleOptions(proxySession: ProxySession, request: IncomingMessage, response: ServerResponse, url: URL) {
+  const origin = request.headers['origin']
+  const accessControlRequestMethod = request.headers['access-control-request-method']
+  if (origin === '' || accessControlRequestMethod === '') {
+    // not a preflight check, abort
+    response.writeHead(200, 'OK').end()
     return
   }
 
-  const proxySession = findProxySessionByCompositorSessionId(compositorSessionId)
-  if (proxySession === undefined) {
-    httpResponse
-      .writeStatus('403 Forbidden')
-      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
-      .writeHeader('Content-Type', 'text/plain')
-      .endWithoutBody()
-    return
+  response
+    .writeHead(204, 'No Content', {
+      'Access-Control-Allow-Origin': proxySession.config.server.http.allowOrigin,
+      'Access-Control-Allow-Methods': 'POST',
+      'Access-Control-Allow-Headers': allowHeaders,
+      'Access-Control-Max-Age': maxAge,
+    })
+    .end()
+}
+
+async function handlePost(proxySession: ProxySession, request: IncomingMessage, response: ServerResponse, url: URL) {
+  let name: string | undefined
+  let executable: string | undefined
+  for (const [appName, { path, executable: appExecutable }] of Object.entries(
+    proxySession.config.public.applications,
+  )) {
+    if (url.pathname === path) {
+      name = appName
+      executable = appExecutable
+      break
+    }
   }
 
-  const requestPath = req.getUrl()
-  const applicationEntry = Object.entries(proxySession.config.public.applications).find(
-    ([, { path }]) => path === requestPath,
-  )
-  if (applicationEntry === undefined) {
-    httpResponse
-      .writeStatus('404 Not Found')
-      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
-      .writeHeader('Content-Type', 'text/plain')
-      .end('Application not found.', true)
+  if (name === undefined || executable === undefined) {
+    response
+      .writeHead(404, 'Not Found', {
+        'Access-Control-Allow-Origin': proxySession.config.server.http.allowOrigin,
+        'Content-Type': 'text/plain',
+      })
+      .end('Application not found.')
     return
   }
-  const [name, { executable }] = applicationEntry
 
   let appContext: NativeAppContext
   try {
@@ -59,15 +68,16 @@ async function POSTApplication(httpResponse: HttpResponse, req: HttpRequest) {
     appContext = await launchApplication(executable, proxySession, name)
   } catch (e) {
     logger.error(e)
-    httpResponse
-      .writeStatus('500 Internal Server Error')
-      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
-      .writeHeader('Content-Type', 'text/plain')
-      .end('Application could not be started.', true)
+    response
+      .writeHead(500, 'Internal Server Error', {
+        'Access-Control-Allow-Origin': proxySession.config.server.http.allowOrigin,
+        'Content-Type': 'text/plain',
+      })
+      .end('Application could not be started.')
     return
   }
 
-  if (aborted) {
+  if (request.destroyed) {
     appContext.kill('SIGHUP')
     return
   }
@@ -77,7 +87,7 @@ async function POSTApplication(httpResponse: HttpResponse, req: HttpRequest) {
 
   const proxyURL = new URL(proxySession.config.public.baseURL.replace('http', 'ws'))
   proxyURL.pathname += proxyURL.pathname.endsWith('/') ? 'signal' : '/signal'
-  proxyURL.searchParams.set('compositorSessionId', compositorSessionId)
+  proxyURL.searchParams.set('compositorSessionId', proxySession.compositorSessionId)
   proxyURL.searchParams.set('key', appContext.key)
 
   const reply: { baseURL: string; signalURL: string; key: string; name: string } = {
@@ -87,23 +97,15 @@ async function POSTApplication(httpResponse: HttpResponse, req: HttpRequest) {
     name: appContext.name,
   }
 
-  httpResponse.cork(() => {
-    httpResponse
-      .writeStatus('201 Created')
-      .writeHeader('Access-Control-Allow-Origin', allowOrigin)
-      .writeHeader('Content-Type', 'application/json')
-      .end(JSON.stringify(reply), true)
-  })
+  response
+    .writeHead(201, 'Created', {
+      'Access-Control-Allow-Origin': proxySession.config.server.http.allowOrigin,
+      'Content-Type': 'application/json',
+    })
+    .end(JSON.stringify(reply))
 }
 
-function deleteStartingFile() {
-  unlink('/var/run/compositor-proxy/starting').catch(() => {
-    // not being able to delete the starting file is not fatal
-    // TODO log this?
-  })
-}
-
-export function run() {
+function run() {
   logger.info('Starting compositor proxy.')
   const compositorSessionId = args['session-id']
   if (compositorSessionId === undefined) {
@@ -138,33 +140,37 @@ export function run() {
   })
   initSurfaceBufferEncoding()
 
-  const port = config.server.http.bindPort
-  const host = config.server.http.bindIP
-  const templatedApp = createApp(proxySession)
-  for (const { path } of Object.values(config.public.applications)) {
-    if (path.startsWith('/mkfifo') || path.startsWith('/mkstemp-mmap') || path.startsWith('/client')) {
-      throw new Error(`Config error. Public application path can not start with ${path}. Path is reserved.`)
+  const server = createApp(proxySession)
+  server.on('request', (request, response) => {
+    const url = new URL(request.url ?? '', `http://${request.headers.host}`)
+    if (request.method === 'POST') {
+      handlePost(proxySession, request, response, url)
+      return
     }
-    templatedApp.options(path, OPTIONSPreflightRequest(proxySession, 'POST')).post(path, POSTApplication)
-    logger.info(`Registered application with path ${path}.`)
-  }
-
-  templatedApp.listen(host, port, (listenSocket) => {
-    if (listenSocket) {
-      process.on('SIGTERM', () => {
-        logger.info('Received SIGTERM. Closing connections.')
-        us_listen_socket_close(listenSocket)
-        closeAllProxySessions()
-        logger.info('All Connections closed. Goodbye.')
-        process.exit()
-      })
-
-      logger.info(`Compositor proxy started. Listening on ${host}:${port}`)
-      deleteStartingFile()
-    } else {
-      throw new Error(`Failed to start compositor proxy on host: ${host} with port ${port}`)
+    if (request.method === 'OPTIONS') {
+      handleOptions(proxySession, request, response, url)
     }
   })
+
+  const port = config.server.http.bindPort
+  const host = config.server.http.bindIP
+
+  server.on('listening', () => {
+    process.on('SIGTERM', () => {
+      logger.info('Received SIGTERM. Closing connections.')
+      server.closeAllConnections()
+      closeAllProxySessions()
+      logger.info('All Connections closed. Goodbye.')
+      process.exit()
+    })
+
+    logger.info(`Compositor proxy started. Listening on ${host}:${port}`)
+    deleteStartingFile()
+  })
+  server.on('error', (err) => {
+    logger.error(err.message)
+  })
+  server.listen(port, host)
 }
 
 run()

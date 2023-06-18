@@ -1,12 +1,11 @@
 import { NativeClientSession } from './NativeClientSession'
-import { WebSocket } from 'uWebSockets.js'
 import { randomBytes } from 'crypto'
-import type { AppSignalingUserData } from './AppWebSocketsController'
 import { ChannelDesc, WebSocketChannel } from './Channel'
 import { createLogger } from './Logger'
 import { spawn } from 'child_process'
 import { ProxySession } from './ProxySession'
 import { setTimeout } from 'timers'
+import { WebSocket } from 'ws'
 
 export const enum SignalingMessageType {
   CONNECT_CHANNEL,
@@ -44,7 +43,7 @@ export class NativeAppContext {
   public readonly key = randomBytes(8).toString('hex')
 
   private nativeClientSessions: NativeClientSession[] = []
-  public signalingWebSocket: WebSocket<AppSignalingUserData> | undefined
+  public signalingWebSocket: WebSocket | undefined
   public readonly destroyListeners: (() => void)[] = []
 
   private readonly signalingSendBuffer: Uint8Array[] = []
@@ -74,7 +73,7 @@ export class NativeAppContext {
 
   signalingSend(message: Uint8Array) {
     if (this.signalingWebSocket) {
-      this.signalingWebSocket.send(message, true)
+      this.signalingWebSocket.send(message, { binary: true })
     } else {
       this.signalingSendBuffer.push(message)
     }
@@ -85,7 +84,7 @@ export class NativeAppContext {
       return
     }
     for (const message of this.signalingSendBuffer) {
-      this.signalingWebSocket.send(message, true)
+      this.signalingWebSocket.send(message, { binary: true })
     }
     this.signalingSendBuffer.splice(0, this.signalingSendBuffer.length)
   }
@@ -132,7 +131,7 @@ export class NativeAppContext {
     }
   }
 
-  onConnect(signalingWebSocket: WebSocket<AppSignalingUserData>) {
+  onConnect(signalingWebSocket: WebSocket) {
     this.signalingWebSocket = signalingWebSocket
     if (this.sigHupTimer) {
       clearTimeout(this.sigHupTimer)
