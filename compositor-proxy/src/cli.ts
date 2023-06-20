@@ -1,10 +1,15 @@
-import { createLogger } from './Logger'
+import {
+  closeAllProxySessions,
+  Configschema,
+  createApp,
+  createLogger,
+  createProxySession,
+  initSurfaceBufferEncoding,
+  launchApplication,
+  NativeAppContext,
+  ProxySession,
+} from '.'
 import { unlink } from 'fs/promises'
-import { initSurfaceBufferEncoding } from './SurfaceBufferEncoding'
-import { createApp } from './App'
-import { closeAllProxySessions, createProxySession, ProxySession } from './ProxySession'
-import { launchApplication, NativeAppContext } from './NativeAppContext'
-import { Configschema } from './@types/config'
 import { createServer, IncomingMessage, ServerResponse } from 'http'
 import { parseArgs, ParseArgsConfig } from 'util'
 
@@ -12,98 +17,6 @@ const logger = createLogger('main')
 
 const allowHeaders = 'Content-Type, X-Compositor-Session-Id'
 const maxAge = '36000'
-
-function deleteStartingFile() {
-  unlink('/var/run/compositor-proxy/starting').catch(() => {
-    // not being able to delete the starting file is not fatal
-    // TODO log this?
-  })
-}
-
-function handleOptions(proxySession: ProxySession, request: IncomingMessage, response: ServerResponse, url: URL) {
-  const origin = request.headers['origin']
-  const accessControlRequestMethod = request.headers['access-control-request-method']
-  if (origin === '' || accessControlRequestMethod === '') {
-    // not a preflight check, abort
-    response.writeHead(200, 'OK').end()
-    return
-  }
-
-  response
-    .writeHead(204, 'No Content', {
-      'Access-Control-Allow-Origin': proxySession.config.server.http.allowOrigin,
-      'Access-Control-Allow-Methods': 'POST',
-      'Access-Control-Allow-Headers': allowHeaders,
-      'Access-Control-Max-Age': maxAge,
-    })
-    .end()
-}
-
-async function handlePost(proxySession: ProxySession, request: IncomingMessage, response: ServerResponse, url: URL) {
-  let name: string | undefined
-  let executable: string | undefined
-  for (const [appName, { path, executable: appExecutable }] of Object.entries(
-    proxySession.config.public.applications,
-  )) {
-    if (url.pathname === path) {
-      name = appName
-      executable = appExecutable
-      break
-    }
-  }
-
-  if (name === undefined || executable === undefined) {
-    response
-      .writeHead(404, 'Not Found', {
-        'Access-Control-Allow-Origin': proxySession.config.server.http.allowOrigin,
-        'Content-Type': 'text/plain',
-      })
-      .end('Application not found.')
-    return
-  }
-
-  let appContext: NativeAppContext
-  try {
-    logger.info(`Launching application ${name}`)
-    appContext = await launchApplication(executable, proxySession, name)
-  } catch (e) {
-    logger.error(e)
-    response
-      .writeHead(500, 'Internal Server Error', {
-        'Access-Control-Allow-Origin': proxySession.config.server.http.allowOrigin,
-        'Content-Type': 'text/plain',
-      })
-      .end('Application could not be started.')
-    return
-  }
-
-  if (request.destroyed) {
-    appContext.kill('SIGHUP')
-    return
-  }
-
-  // start a timer to terminate the app if no connection is made
-  appContext.onDisconnect()
-
-  const proxyURL = new URL(proxySession.config.public.baseURL)
-  proxyURL.pathname += proxyURL.pathname.endsWith('/') ? 'signal' : '/signal'
-  proxyURL.searchParams.set('compositorSessionId', proxySession.compositorSessionId)
-  proxyURL.searchParams.set('key', appContext.key)
-
-  const reply: { baseURL: string; signalURL: string; key: string; name: string } = {
-    baseURL: proxySession.config.public.baseURL,
-    signalURL: proxyURL.href,
-    key: appContext.key,
-    name: appContext.name,
-  }
-
-  response
-    .writeHead(201, 'Created', {
-      'Access-Control-Allow-Origin': proxySession.config.server.http.allowOrigin,
-      'Content-Type': 'application/json',
-    })
-    .end(JSON.stringify(reply))
-}
 
 type ArgValues = {
   help: boolean
@@ -251,6 +164,98 @@ const help = args['help']
 if (help) {
   printHelp()
   process.exit(0)
+}
+
+function deleteStartingFile() {
+  unlink('/var/run/compositor-proxy/starting').catch(() => {
+    // not being able to delete the starting file is not fatal
+    // TODO log this?
+  })
+}
+
+function handleOptions(proxySession: ProxySession, request: IncomingMessage, response: ServerResponse, url: URL) {
+  const origin = request.headers['origin']
+  const accessControlRequestMethod = request.headers['access-control-request-method']
+  if (origin === '' || accessControlRequestMethod === '') {
+    // not a preflight check, abort
+    response.writeHead(200, 'OK').end()
+    return
+  }
+
+  response
+    .writeHead(204, 'No Content', {
+      'Access-Control-Allow-Origin': proxySession.config.server.http.allowOrigin,
+      'Access-Control-Allow-Methods': 'POST',
+      'Access-Control-Allow-Headers': allowHeaders,
+      'Access-Control-Max-Age': maxAge,
+    })
+    .end()
+}
+
+async function handlePost(proxySession: ProxySession, request: IncomingMessage, response: ServerResponse, url: URL) {
+  let name: string | undefined
+  let executable: string | undefined
+  for (const [appName, { path, executable: appExecutable }] of Object.entries(
+    proxySession.config.public.applications,
+  )) {
+    if (url.pathname === path) {
+      name = appName
+      executable = appExecutable
+      break
+    }
+  }
+
+  if (name === undefined || executable === undefined) {
+    response
+      .writeHead(404, 'Not Found', {
+        'Access-Control-Allow-Origin': proxySession.config.server.http.allowOrigin,
+        'Content-Type': 'text/plain',
+      })
+      .end('Application not found.')
+    return
+  }
+
+  let appContext: NativeAppContext
+  try {
+    logger.info(`Launching application ${name}`)
+    appContext = await launchApplication(executable, proxySession, name)
+  } catch (e) {
+    logger.error(e)
+    response
+      .writeHead(500, 'Internal Server Error', {
+        'Access-Control-Allow-Origin': proxySession.config.server.http.allowOrigin,
+        'Content-Type': 'text/plain',
+      })
+      .end('Application could not be started.')
+    return
+  }
+
+  if (request.destroyed) {
+    appContext.kill('SIGHUP')
+    return
+  }
+
+  // start a timer to terminate the app if no connection is made
+  appContext.onDisconnect()
+
+  const proxyURL = new URL(proxySession.config.public.baseURL)
+  proxyURL.pathname += proxyURL.pathname.endsWith('/') ? 'signal' : '/signal'
+  proxyURL.searchParams.set('compositorSessionId', proxySession.compositorSessionId)
+  proxyURL.searchParams.set('key', appContext.key)
+
+  const reply: { baseURL: string; signalURL: string; key: string; name: string } = {
+    baseURL: proxySession.config.public.baseURL,
+    signalURL: proxyURL.href,
+    key: appContext.key,
+    name: appContext.name,
+  }
+
+  response
+    .writeHead(201, 'Created', {
+      'Access-Control-Allow-Origin': proxySession.config.server.http.allowOrigin,
+      'Content-Type': 'application/json',
+    })
+    .end(JSON.stringify(reply))
 }
 
 function run() {
