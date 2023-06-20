@@ -14,7 +14,7 @@ const logger = createLogger('app')
 function mkfifo(proxySession: ProxySession, request: IncomingMessage, ws: WebSocket) {
   const jsonPipe = JSON.stringify(proxySession.nativeCompositorSession.webFS.mkpipe())
   ws.send(jsonPipe, { binary: false })
-  ws.close(4201)
+  ws.close(4201, 'Created')
 }
 
 function mkstempMmap(proxySession: ProxySession, request: IncomingMessage, ws: WebSocket) {
@@ -26,7 +26,7 @@ function mkstempMmap(proxySession: ProxySession, request: IncomingMessage, ws: W
       const buffer = Buffer.concat(bufferChunks)
       const jsonShmWebFD = JSON.stringify(proxySession.nativeCompositorSession.webFS.mkstempMmap(buffer))
       ws.send(jsonShmWebFD, { binary: false })
-      ws.close(4201)
+      ws.close(4201, 'Created')
     }
   }
 }
@@ -82,10 +82,10 @@ function readFd(proxySession: ProxySession, request: IncomingMessage, ws: WebSoc
   }
 
   ws.send(readBuffer, { binary: true })
-  ws.close(4200)
+  ws.close(4200, 'OK')
 }
 
-function unlinkFd(proxySession: ProxySession, request: IncomingMessage, ws: WebSocket, url: URL) {
+function closeFd(proxySession: ProxySession, request: IncomingMessage, ws: WebSocket, url: URL) {
   const fdParam = url.searchParams.get('fd')
   const fd = asNumber(fdParam)
   if (fd === undefined) {
@@ -97,16 +97,16 @@ function unlinkFd(proxySession: ProxySession, request: IncomingMessage, ws: WebS
   close(fd, (err) => {
     if (err) {
       if (err.code === 'EBADF') {
-        logger.error('unlink-fd received unknown fd from client.')
+        logger.error('close-fd received unknown fd from client.')
         ws.close(4404, 'File descriptor not found.')
       } else {
         ws.close(4500, `Unexpected error: ${err.name}: ${err.message}`)
-        logger.error(`DEL /webfd could not close fd received from client: ${err.name}: ${err.message}`)
+        logger.error(`could not close fd received from client: ${err.name}: ${err.message}`)
       }
       return
     }
 
-    ws.close(4200)
+    ws.close(4200, 'OK')
   })
 }
 
@@ -141,7 +141,7 @@ function writeFdAsStream(proxySession: ProxySession, request: IncomingMessage, w
   }
 
   const fdWriteStream = createWriteStream('ignored', { fd, autoClose: true, highWaterMark: TRANSFER_CHUNK_SIZE })
-  const wsStream = createWebSocketStream(ws, { highWaterMark: TRANSFER_CHUNK_SIZE, autoDestroy: true })
+  const wsStream = createWebSocketStream(ws, { highWaterMark: TRANSFER_CHUNK_SIZE })
 
   wsStream.pipe(fdWriteStream)
 }
@@ -278,15 +278,15 @@ const wssPathActions: Record<
   string,
   (proxySession: ProxySession, request: IncomingMessage, ws: WebSocket, url: URL) => void
 > = {
-  mkfifo,
-  'mkstemp-mmap': mkstempMmap,
-  'read-fd': readFd,
-  'unlink-fd': unlinkFd,
-  'read-fd-as-stream': readFdAsStream,
-  'write-fd-as-stream': writeFdAsStream,
-  'request-keyframe': requestKeyFrame,
-  signal,
-  channel,
+  '/mkfifo': mkfifo,
+  '/mkstemp-mmap': mkstempMmap,
+  '/read-fd': readFd,
+  '/close-fd': closeFd,
+  '/read-fd-as-stream': readFdAsStream,
+  '/write-fd-as-stream': writeFdAsStream,
+  '/request-keyframe': requestKeyFrame,
+  '/signal': signal,
+  '/channel': channel,
 }
 
 function handleWebSocketUpgrade(proxySession: ProxySession, request: IncomingMessage, ws: WebSocket) {
@@ -295,11 +295,11 @@ function handleWebSocketUpgrade(proxySession: ProxySession, request: IncomingMes
 }
 
 export function createApp(proxySession: ProxySession): Server {
-  const server = createServer({ noDelay: true })
-  const wss = new WebSocketServer({ server, perMessageDeflate: false })
+  const server = createServer({ noDelay: true, keepAlive: true })
+  const wss = new WebSocketServer({ perMessageDeflate: false, noServer: true })
 
-  server.on('upgrade', (request, socket) => {
-    wss.handleUpgrade(request, socket, undefined as unknown as Buffer, (ws) => {
+  server.on('upgrade', (request, socket, head) => {
+    wss.handleUpgrade(request, socket, head, (ws) => {
       ws.binaryType = 'nodebuffer'
       handleWebSocketUpgrade(proxySession, request, ws)
     })

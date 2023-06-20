@@ -152,7 +152,7 @@ export class NativeAppContext {
   }
 
   sendConnectionRequest(channel: WebSocketChannel) {
-    const url: URL = new URL(this.proxySession.config.public.baseURL.replace('http', 'ws'))
+    const url: URL = new URL(this.proxySession.config.public.baseURL)
     url.searchParams.append('id', `${channel.desc.id}`)
     url.searchParams.append('key', `${channel.nativeAppContext.key}`)
     url.searchParams.append('compositorSessionId', `${channel.nativeAppContext.proxySession.compositorSessionId}`)
@@ -187,7 +187,7 @@ export class NativeAppContext {
   }
 
   sendCreateChildAppContext(nativeAppContext: NativeAppContext) {
-    const proxyURL = new URL(this.proxySession.config.public.baseURL.replace('http', 'ws'))
+    const proxyURL = new URL(this.proxySession.config.public.baseURL)
     proxyURL.pathname += proxyURL.pathname.endsWith('/') ? 'signal' : '/signal'
     proxyURL.searchParams.set('compositorSessionId', this.proxySession.compositorSessionId)
     proxyURL.searchParams.set('key', nativeAppContext.key)

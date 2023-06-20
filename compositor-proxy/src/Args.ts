@@ -35,7 +35,7 @@ const options: Record<keyof ArgValues, NonNullable<ParseArgsConfig['options']>[s
   },
   'base-url': {
     type: 'string',
-    default: 'http://localhost:8081',
+    default: 'ws://localhost:8081',
   },
   'render-device': {
     type: 'string',

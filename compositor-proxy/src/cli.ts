@@ -85,7 +85,7 @@ async function handlePost(proxySession: ProxySession, request: IncomingMessage, 
   // start a timer to terminate the app if no connection is made
   appContext.onDisconnect()
 
-  const proxyURL = new URL(proxySession.config.public.baseURL.replace('http', 'ws'))
+  const proxyURL = new URL(proxySession.config.public.baseURL)
   proxyURL.pathname += proxyURL.pathname.endsWith('/') ? 'signal' : '/signal'
   proxyURL.searchParams.set('compositorSessionId', proxySession.compositorSessionId)
   proxyURL.searchParams.set('key', appContext.key)
