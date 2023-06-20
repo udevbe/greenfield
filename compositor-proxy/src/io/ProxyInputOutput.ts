@@ -44,7 +44,7 @@ export class ProxyInputOutput {
 
     const url = new URL(`${proxyFD.host}/write-fd-as-stream`)
     url.searchParams.set('fd', `${proxyFD.handle}`)
-    url.searchParams.set('compositor-session-id', this.proxySession.compositorSessionId)
+    url.searchParams.set('compositorSessionId', this.proxySession.compositorSessionId)
     url.searchParams.set('chunkSize', `${TRANSFER_CHUNK_SIZE}`)
 
     const ws = new WebSocket(url)

@@ -48,6 +48,7 @@ class RemoteWebSocketAPI implements RemoteAPI {
     return new Promise((resolve, reject) => {
       const url = new URL(`${this.baseURL}/close-fd`)
       url.searchParams.set('fd', `${param.fd}`)
+      url.searchParams.set('compositorSessionId', this.compositorSessionId)
       const ws = new WebSocket(url)
       ws.binaryType = 'blob'
       ws.onerror = (ev) => {
@@ -65,7 +66,9 @@ class RemoteWebSocketAPI implements RemoteAPI {
 
   mkfifo(): Promise<ProxyFD[]> {
     return new Promise((resolve, reject) => {
-      const ws = new WebSocket(`${this.baseURL}/mkfifo`)
+      const url = new URL(`${this.baseURL}/mkfifo`)
+      url.searchParams.set('compositorSessionId', this.compositorSessionId)
+      const ws = new WebSocket(url)
       ws.binaryType = 'blob'
       ws.onerror = (ev) => {
         reject(new Error('websocket error'))
@@ -84,7 +87,9 @@ class RemoteWebSocketAPI implements RemoteAPI {
 
   mkstempMmap(param: { body: Blob }): Promise<ProxyFD> {
     return new Promise((resolve, reject) => {
-      const ws = new WebSocket(`${this.baseURL}/mkstemp-mmap`)
+      const url = new URL(`${this.baseURL}/mkstemp-mmap`)
+      url.searchParams.set('compositorSessionId', this.compositorSessionId)
+      const ws = new WebSocket(url)
       ws.binaryType = 'blob'
       ws.onerror = (ev) => {
         reject(new Error('websocket error'))
@@ -110,6 +115,7 @@ class RemoteWebSocketAPI implements RemoteAPI {
       const url = new URL(`${this.baseURL}/read-fd`)
       url.searchParams.set('fd', `${param.fd}`)
       url.searchParams.set('count', `${param.count}`)
+      url.searchParams.set('compositorSessionId', this.compositorSessionId)
       const ws = new WebSocket(url)
       ws.binaryType = 'blob'
       ws.onerror = (ev) => {
@@ -136,6 +142,7 @@ class RemoteWebSocketAPI implements RemoteAPI {
       if (param.chunkSize) {
         url.searchParams.set('chunkSize', `${param.chunkSize}`)
       }
+      url.searchParams.set('compositorSessionId', this.compositorSessionId)
       const ws = new WebSocket(url)
       ws.binaryType = 'blob'
       ws.onerror = (ev) => {
@@ -159,6 +166,7 @@ class RemoteWebSocketAPI implements RemoteAPI {
     return new Promise((resolve, reject) => {
       const url = new URL(`${this.baseURL}/write-fd-as-stream`)
       url.searchParams.set('fd', `${param.fd}`)
+      url.searchParams.set('compositorSessionId', this.compositorSessionId)
       const ws = new WebSocket(url)
       ws.binaryType = 'blob'
       ws.onerror = (ev) => {

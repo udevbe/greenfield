@@ -1,10 +1,12 @@
 import { createWebSocketStream, WebSocket, WebSocketServer } from 'ws'
 import { ProxySession } from './ProxySession'
-import { createServer, IncomingMessage, Server } from 'http'
+import { IncomingMessage } from 'http'
 import { close, createReadStream, createWriteStream, read } from 'fs'
 import { createLogger } from './Logger'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 import { isSignalingMessage, SignalingMessageType } from './NativeAppContext'
+import { Socket } from 'net'
+import { Duplex } from 'stream'
 
 // 64*1024=64kb
 const TRANSFER_CHUNK_SIZE = 65792 as const
@@ -289,23 +291,24 @@ const wssPathActions: Record<
   '/channel': channel,
 }
 
-function handleWebSocketUpgrade(proxySession: ProxySession, request: IncomingMessage, ws: WebSocket) {
-  const url = new URL(request.url ?? '', `http://${request.headers.host}`)
-  wssPathActions[url.pathname](proxySession, request, ws, url)
-}
-
-export function createApp(proxySession: ProxySession): Server {
-  const server = createServer({ noDelay: true, keepAlive: true })
+export function createApp(proxySession: ProxySession): {
+  onWsUpgrade(request: IncomingMessage, socket: Duplex, head: Buffer): void
+} {
   const wss = new WebSocketServer({ perMessageDeflate: false, noServer: true })
 
-  server.on('upgrade', (request, socket, head) => {
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      ws.binaryType = 'nodebuffer'
-      handleWebSocketUpgrade(proxySession, request, ws)
-    })
-  })
+  return {
+    onWsUpgrade(request: IncomingMessage, socket: Duplex, head: Buffer) {
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        ws.binaryType = 'nodebuffer'
+        const url = new URL(request.url ?? '', `http://${request.headers.host}`)
+        const compositorSessionId = url.searchParams.get('compositorSessionId')
+        if (compositorSessionId !== proxySession.compositorSessionId) {
+          ws.close(4403)
+          return
+        }
 
-  logger.info(`Listening for connections.`)
-
-  return server
+        wssPathActions[url.pathname](proxySession, request, ws, url)
+      })
+    },
+  }
 }
