@@ -79,15 +79,16 @@ export class StreamingBuffer implements BufferImplementation<Promise<DecodedFram
         )
         console.log(`${JSON.stringify(encodedFrame)}`)
         surface.session.logger.warn('Get error during decode, resetting decoder.')
-        surface.resource.client.userData.encoderApi?.keyframe({
-          clientId: surface.resource.client.id,
-          surfaceId: surface.resource.id,
-          inlineObject: {
-            bufferId: this.resource.id,
-            bufferContentSerial,
-            bufferCreationSerial: this.bufferStream.creationSerial,
-          },
-        })
+        // TODO
+        // surface.resource.client.userData.encoderApi?.keyframe({
+        //   clientId: surface.resource.client.id,
+        //   surfaceId: surface.resource.id,
+        //   inlineObject: {
+        //     bufferId: this.resource.id,
+        //     bufferContentSerial,
+        //     bufferCreationSerial: this.bufferStream.creationSerial,
+        //   },
+        // })
       }
 
       return this.decodedFrame

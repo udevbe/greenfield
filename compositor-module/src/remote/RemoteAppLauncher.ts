@@ -41,7 +41,6 @@ import { XWindowManager } from './xwayland/XWindowManager'
 import { XWindowManagerConnection } from './xwayland/XWindowManagerConnection'
 import XWaylandShell from './xwayland/XWaylandShell'
 import { StreamingBuffer } from './StreamingBuffer'
-import { Configuration, EncoderApi } from '../api'
 
 const textDecoder = new TextDecoder()
 const textEncoder = new TextEncoder()
@@ -465,17 +464,9 @@ function onProtocolChannel(
       id: client.id,
     })
 
-    const encoderApi = new EncoderApi(
-      new Configuration({
-        basePath: proxySessionProps.baseURL,
-        headers: {
-          ['x-compositor-session-id']: compositorSessionId,
-        },
-      }),
-    )
     client.userData = {
-      encoderApi,
-      clientEncodersFeedback: createClientEncodersFeedback(client.id, encoderApi),
+      baseURL: proxySessionProps.baseURL,
+      clientEncodersFeedback: createClientEncodersFeedback(client.id),
       inputOutput: createRemoteInputOutput(proxySessionProps.baseURL, compositorSessionId),
     }
   }

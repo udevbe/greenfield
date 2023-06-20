@@ -1,4 +1,3 @@
-import { EncoderApi } from '../api'
 import type { Channel } from './Channel'
 
 let refreshInterval = 0
@@ -35,8 +34,8 @@ setInterval(feedbackLoop, 1000)
 updateRefreshInterval()
 feedbackLoop()
 
-export function createClientEncodersFeedback(clientId: string, encoderApi: EncoderApi) {
-  const clientEncoderFeedback = new ClientEncodersFeedback(clientId, encoderApi)
+export function createClientEncodersFeedback(clientId: string) {
+  const clientEncoderFeedback = new ClientEncodersFeedback(clientId)
   clientEncodersFeedbacks = [...clientEncodersFeedbacks, clientEncoderFeedback]
   clientEncoderFeedback.sendFeedback()
   return clientEncoderFeedback
@@ -45,7 +44,6 @@ export function createClientEncodersFeedback(clientId: string, encoderApi: Encod
 export class ClientEncodersFeedback {
   constructor(
     private readonly clientId: string,
-    private readonly encoderApi: EncoderApi,
     private surfaceEncoderFeedbacks: Record<number, SurfaceEncoderFeedback> = {},
   ) {}
 

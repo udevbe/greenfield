@@ -1,6 +1,6 @@
-import { Configuration, IoApi, ProxyFD, ProxyFDTypeEnum } from '../api'
 import { InputOutput, InputOutputFD } from '../InputOutput'
 import { FD } from 'westfield-runtime-common'
+import { createRemoteAPI, ProxyFD, RemoteAPI } from './api'
 
 export function isProxyFD(fd: any): fd is ProxyFD {
   return typeof fd?.handle === 'number' && typeof fd?.host === 'string' && typeof fd?.type === 'string'
@@ -11,17 +11,10 @@ export function createRemoteInputOutput(basePath: string, compositorSessionId: s
 }
 
 class RemoteInputOutput implements InputOutput {
-  readonly api: IoApi
+  readonly api: RemoteAPI
 
-  constructor(public readonly basePath: string, compositorSessionId: string) {
-    this.api = new IoApi(
-      new Configuration({
-        basePath,
-        headers: {
-          ['x-compositor-session-id']: compositorSessionId,
-        },
-      }),
-    )
+  constructor(public readonly baseURL: string, compositorSessionId: string) {
+    this.api = createRemoteAPI(baseURL, compositorSessionId)
   }
 
   async mkstempMmap(data: Blob): Promise<InputOutputFD> {
@@ -34,7 +27,7 @@ class RemoteInputOutput implements InputOutput {
     return [new RemoteInputOutputFD(this.api, pipe[0]), new RemoteInputOutputFD(this.api, pipe[1])]
   }
 
-  wrapFD(fd: FD, type: ProxyFDTypeEnum.PipeRead | ProxyFDTypeEnum.PipeWrite | ProxyFDTypeEnum.Shm): InputOutputFD {
+  wrapFD(fd: FD, type: ProxyFD['type']): InputOutputFD {
     if (isProxyFD(fd)) {
       fd.type = type
       return new RemoteInputOutputFD(this.api, fd)
@@ -45,27 +38,27 @@ class RemoteInputOutput implements InputOutput {
 }
 
 class RemoteInputOutputFD implements InputOutputFD {
-  constructor(private readonly api: IoApi, readonly fd: ProxyFD) {}
+  constructor(private readonly api: RemoteAPI, readonly fd: ProxyFD) {}
 
   write(data: Blob): Promise<void> {
-    if (this.fd.type === ProxyFDTypeEnum.PipeRead) {
+    if (this.fd.type === 'pipe-read') {
       throw new Error(`BUG. Can't write to a pipe-read fd.`)
     }
-    return this.api.writeStream({
+    return this.api.writeFdAsStream({
       fd: this.fd.handle,
       body: data,
     })
   }
 
   read(count: number): Promise<Blob> {
-    if (this.fd.type === ProxyFDTypeEnum.PipeWrite) {
+    if (this.fd.type === 'pipe-write') {
       throw new Error(`BUG. Can't read from a pipe-write fd.`)
     }
-    return this.api.read({ fd: this.fd.handle, count })
+    return this.api.readFd({ fd: this.fd.handle, count })
   }
 
   async readStream(chunkSize: number): Promise<ReadableStream<Uint8Array>> {
-    if (this.fd.type === ProxyFDTypeEnum.PipeWrite) {
+    if (this.fd.type === 'pipe-write') {
       throw new Error(`BUG. Can't read from a pipe-write fd.`)
     }
     const rawResponse = await this.api.readStreamRaw({ fd: this.fd.handle, chunkSize })
@@ -78,7 +71,7 @@ class RemoteInputOutputFD implements InputOutputFD {
   }
 
   async readBlob(): Promise<Blob> {
-    if (this.fd.type === ProxyFDTypeEnum.PipeWrite) {
+    if (this.fd.type === 'pipe-write') {
       throw new Error(`BUG. Can't read from a pipe-write fd.`)
     }
     const rawResponse = await this.api.readStreamRaw({ fd: this.fd.handle })
@@ -91,6 +84,6 @@ class RemoteInputOutputFD implements InputOutputFD {
   }
 
   close(): Promise<void> {
-    return this.api.close({ fd: this.fd.handle })
+    return this.api.closeFd({ fd: this.fd.handle })
   }
 }
