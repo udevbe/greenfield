@@ -33,15 +33,16 @@ The Greenfield Compositor Module comes with a simple demo implementation.
 
 In the `compositor-module` directory run
 - `yarn install`
-- `yarn generate`
 - `yarn start`
 
 to start the compositor demo module.
 
-*Note that the compositor-module built uses Open-API to generate client code to talk to the compositor-proxy and requires `java` to be present on your PATH during build.*
+> **_NOTE:_**  _Firefox needs to be at least at version 113 and `dom.workers.modules.enabled` preference needs to be set to true. To change preferences in Firefox, visit `about:config`._
 
-Go to [http://localhost:8080]() and be greeted with a nice white compositor. It has 2 URL input fields that can be used. The first input field connects to the provided remote compositor and accepts input in the form of `host:port`. The second input field launches
-and runs Wayland applications in an iframe (experimental) and accepts input in the form of `http(s)://host:port/path`.
+Go to [http://localhost:8080]() and be greeted with a nice compositor running entirely in your browser! It has a URL input 
+field that can be used in the same way as you would with a browser. Simply type the url of a proxy endpoint and press enter. 
+
+However before we can connect to a compositor proxy, we need to build and run one.
 
 ## Greenfield Compositor Proxy
 
@@ -70,14 +71,14 @@ For XWayland support a few extra steps may be needed, this is optional and only 
 and finally
 - `yarn start`
 
-> **_NOTE:_**  Firefox needs to be at least at version 113 and `dom.workers.modules.enabled` preference needs to be set to true. To change preferences in Firefox, visit `about:config`.
-
 This will start a development build+run. You should now see something that says `Compositor proxy started. Listening on port 8081`.
 
-In our demo compositor we can now input the url `localhost:8081/gtk4-demo` to launch the application in the Greenfield Compositor Proxy. You should see a
+In our demo compositor we can now input the proxy url `localhost:8081/gtk4-demo` to launch the application in the Greenfield Compositor Proxy. You should see a
  bunch of message appear in the log output of the compositor-proxy that we started earlier. 
 
-Ofcourse we can also change the application that is started. Typing `yarn start --help` reveals the set of commands that we can use to configure the compositor proxy:
+Of course, we can also change or configure additional applications that can be started, or secure the proxy with a username and password. 
+
+Typing `yarn start --help` reveals the set of commands that we can use to configure the compositor proxy:
 
 ```
 Usage
@@ -110,11 +111,10 @@ Options
 Examples
   $ compositor-proxy --basic-auth=myuser:supersecret --application=gtk4-demo:/gtk4-demo:/usr/bin/gtk4-demo
 ```
----
-_Please note that QT applications often require an extra `-platform wayland` parameter else they will try to use the X server.
+> **_NOTE:_** _QT applications often require an extra `-platform wayland` parameter else they will try to use the X server.
 If your application can't connect, try setting the `WAYLAND_DISPLAY` environment variable to the value that was printed by compositor-proxy. ie if you see `Listening on: WAYLAND_DISPLAY=\"wayland-0\".`
 then set the environment variable `export WAYLAND_DISPLAY=wayland-0`._
----
+
 ### Packaged build
 
 It's also possible to build a distributable release.
@@ -124,9 +124,10 @@ It's also possible to build a distributable release.
 - `yarn build`
 - `yarn package`
 
-This creates a set of files in the `package` directory. Execute the `run.sh` script to start the compositor proxy. 
+This creates a set of files in the `package` directory. These files are expected to be kept next to each other on the target machine.
+Simply, execute the `run.sh` script to start the compositor proxy. 
 
-The packaged binary expects the following set of dependencies to be available for mesa & nvidia support, if you're running a Debian based distro you can run:
+The packaged binary expects the following set of dependencies to be available on the target machine for mesa & nvidia support, if you're running a Debian based distro you can run:
 ```
 apt-get install \
     libffi8 \

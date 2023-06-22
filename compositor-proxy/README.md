@@ -11,10 +11,7 @@
 and finally
 - `yarn start`
 
-You should now see something that says `Compositor proxy started. Listening on port 8081`. You can also adjust some things
-in `src/config.yaml`.
-
-> **_NOTE:_**  Firefox needs to be at least at version 113 and `dom.workers.modules.enabled` preference needs to be set to true. To change preferences in Firefox, visit `about:config`.
+You should now see something that says `Compositor proxy started. Listening on port 8081`.
 
 ## Production build
 
@@ -43,8 +40,8 @@ Options
                                                       Optional. Default: "0.0.0.0".
   --bind-port=PORT                                The port to listen on. 
                                                       Optional. Default "8081".
-  --allow-origin=ORIGIN                           CORS allowed client origins, used when doing cross-origin requests. Value can be comma seperated domains. 
-                                                      Optional. Default "http://localhost:8080".
+  --allow-origin=ORIGIN                           CORS allowed origins, used when doing cross-origin requests. Value can be comma seperated domains. 
+                                                      Optional. Default "localhost:8080".
   --base-url=URL                                  The public base url to use when other services connect to this endpoint. 
                                                       Optional. Default "ws://localhost:8081".
   --render-device=PATH                            Path of the render device that should be used for hardware acceleration. 
@@ -59,7 +56,4 @@ Options
   --help, -h                                      Print this help text.
 
  The environment variable "LOG_LEVEL" is used to set the logging level. Accepted values are: "fatal", "error", "warn", "info", "debug", "trace"
-
-Examples
-  $ compositor-proxy --basic-auth=myuser:supersecret --application=gtk4-demo:/gtk4-demo:/usr/bin/gtk4-demo
 ```
