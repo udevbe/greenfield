@@ -25,21 +25,11 @@ import { Configschema } from './@types/config'
 // TODO create logger per proxy session instance
 const logger = createLogger('compositor-proxy-session')
 
-let proxySessions: ProxySession[] = []
-
-export function createProxySession(compositorSessionId: string, config: Configschema): ProxySession {
-  const proxySession = new ProxySession(compositorSessionId, config)
-  logger.info(`Session created.`)
-  proxySessions.push(proxySession)
-
-  return proxySession
+export function createSession(compositorSessionId: string, config: Configschema): Session {
+  return new Session(compositorSessionId, config)
 }
 
-export function findProxySessionByCompositorSessionId(compositorSessionId: string): ProxySession | undefined {
-  return proxySessions.find((proxySession) => proxySession.compositorSessionId === compositorSessionId)
-}
-
-export class ProxySession {
+export class Session {
   public compositorPeerIdentity?: string
 
   public readonly nativeCompositorSession: NativeCompositorSession
@@ -50,9 +40,10 @@ export class ProxySession {
     this.nativeCompositorSession = createNativeCompositorSession(this)
     this.xWaylandSession = XWaylandSession.create(this.nativeCompositorSession)
     this.xWaylandSession.createXWaylandListenerSocket()
+    logger.info(`Session created.`)
   }
 
-  private resetPeerConnectionState(): void {
+  private destroyClients(): void {
     for (const client of this.nativeCompositorSession.clients) {
       client.nativeClientSession.destroy()
     }
@@ -60,11 +51,8 @@ export class ProxySession {
 
   close() {
     this.compositorPeerIdentity = undefined
-    this.resetPeerConnectionState()
+    this.destroyClients()
     this.nativeCompositorSession.destroy()
-    proxySessions = proxySessions.filter(
-      (proxySession) => proxySession.compositorSessionId !== this.compositorSessionId,
-    )
   }
 
   createNativeAppContext(pid: number, name: string, external: boolean) {
@@ -89,11 +77,5 @@ export class ProxySession {
 
   findNativeAppContextByPid(pid: number) {
     return this.nativeAppContexts.find((nativeAppContext) => nativeAppContext.pid === pid)
-  }
-}
-
-export function closeAllProxySessions() {
-  for (const proxySession of proxySessions) {
-    proxySession.close()
   }
 }

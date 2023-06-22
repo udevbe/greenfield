@@ -88,6 +88,11 @@ function isSignalingMessage(messageObject: any): messageObject is SignalingMessa
   )
 }
 
+function bytesToBase64(bytes: Uint8Array): string {
+  const binString = Array.from(bytes, (x) => String.fromCodePoint(x)).join('')
+  return btoa(binString)
+}
+
 export class RemoteAppLauncher implements AppLauncher {
   public readonly type = 'remote'
 
@@ -99,12 +104,22 @@ export class RemoteAppLauncher implements AppLauncher {
 
   launch(appURL: URL, onChildAppContext: (childAppContext: AppContext) => void): AppContext {
     const remoteAppContext = new RemoteAppContext(this.session, onChildAppContext)
+    const headers: HeadersInit = {
+      'x-compositor-session-id': this.session.compositorSessionId,
+    }
+
+    const user = appURL.username
+    const password = appURL.password
+    if (user && password) {
+      headers['Authorization'] = `Basic ${bytesToBase64(new TextEncoder().encode(`${user}:${password}`))}`
+      appURL.username = ''
+      appURL.password = ''
+    }
 
     fetch(appURL, {
-      method: 'POST',
-      headers: {
-        'x-compositor-session-id': this.session.compositorSessionId,
-      },
+      method: 'GET',
+      headers,
+      credentials: 'include',
     })
       .then((response) => {
         if (response.ok) {

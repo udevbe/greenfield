@@ -1,32 +1,36 @@
 import { createWebSocketStream, WebSocket, WebSocketServer } from 'ws'
-import { ProxySession } from './ProxySession'
+import { Session } from './Session'
 import { IncomingMessage } from 'http'
 import { close, createReadStream, createWriteStream, read } from 'fs'
 import { createLogger } from './Logger'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 import { isSignalingMessage, SignalingMessageType } from './NativeAppContext'
 import { Socket } from 'net'
-import { Duplex } from 'stream'
 
 // 64*1024=64kb
 const TRANSFER_CHUNK_SIZE = 65792 as const
 
 const logger = createLogger('app')
 
-function mkfifo(proxySession: ProxySession, request: IncomingMessage, ws: WebSocket) {
-  const jsonPipe = JSON.stringify(proxySession.nativeCompositorSession.webFS.mkpipe())
+type AppRequest = {
+  headers: IncomingMessage['headers']
+  url: IncomingMessage['url']
+}
+
+function mkfifo(session: Session, request: AppRequest, ws: WebSocket) {
+  const jsonPipe = JSON.stringify(session.nativeCompositorSession.webFS.mkpipe())
   ws.send(jsonPipe, { binary: false })
   ws.close(4201, 'Created')
 }
 
-function mkstempMmap(proxySession: ProxySession, request: IncomingMessage, ws: WebSocket) {
+function mkstempMmap(session: Session, request: AppRequest, ws: WebSocket) {
   const bufferChunks: Buffer[] = []
   ws.onmessage = (event) => {
     const chunk = event.data as Buffer
     bufferChunks.push(chunk)
     if (chunk.byteLength === 0) {
       const buffer = Buffer.concat(bufferChunks)
-      const jsonShmWebFD = JSON.stringify(proxySession.nativeCompositorSession.webFS.mkstempMmap(buffer))
+      const jsonShmWebFD = JSON.stringify(session.nativeCompositorSession.webFS.mkstempMmap(buffer))
       ws.send(jsonShmWebFD, { binary: false })
       ws.close(4201, 'Created')
     }
@@ -46,7 +50,7 @@ function asNumber(stringParam: string | null | undefined): number | undefined {
   return numberValue
 }
 
-function readFd(proxySession: ProxySession, request: IncomingMessage, ws: WebSocket, url: URL) {
+function readFd(session: Session, request: AppRequest, ws: WebSocket, url: URL) {
   const fdParam = url.searchParams.get('fd')
   const countParam = url.searchParams.get('count')
 
@@ -87,7 +91,7 @@ function readFd(proxySession: ProxySession, request: IncomingMessage, ws: WebSoc
   ws.close(4200, 'OK')
 }
 
-function closeFd(proxySession: ProxySession, request: IncomingMessage, ws: WebSocket, url: URL) {
+function closeFd(session: Session, request: AppRequest, ws: WebSocket, url: URL) {
   const fdParam = url.searchParams.get('fd')
   const fd = asNumber(fdParam)
   if (fd === undefined) {
@@ -112,7 +116,7 @@ function closeFd(proxySession: ProxySession, request: IncomingMessage, ws: WebSo
   })
 }
 
-function readFdAsStream(proxySession: ProxySession, request: IncomingMessage, ws: WebSocket, url: URL) {
+function readFdAsStream(session: Session, request: AppRequest, ws: WebSocket, url: URL) {
   const fdParam = url.searchParams.get('fd')
   const chunkSizeParam = url.searchParams.get('chunkSize')
 
@@ -131,7 +135,7 @@ function readFdAsStream(proxySession: ProxySession, request: IncomingMessage, ws
   fdReadStream.pipe(wsStream)
 }
 
-function writeFdAsStream(proxySession: ProxySession, request: IncomingMessage, ws: WebSocket, url: URL) {
+function writeFdAsStream(session: Session, request: AppRequest, ws: WebSocket, url: URL) {
   const fdParam = url.searchParams.get('fd')
 
   const fd = asNumber(fdParam)
@@ -148,7 +152,7 @@ function writeFdAsStream(proxySession: ProxySession, request: IncomingMessage, w
   wsStream.pipe(fdWriteStream)
 }
 
-function requestKeyFrame(proxySession: ProxySession, request: IncomingMessage, ws: WebSocket, url: URL) {
+function requestKeyFrame(session: Session, request: AppRequest, ws: WebSocket, url: URL) {
   const clientIdParam = url.searchParams.get('clientId')
   const surfaceIdParam = url.searchParams.get('surfaceId')
 
@@ -163,9 +167,7 @@ function requestKeyFrame(proxySession: ProxySession, request: IncomingMessage, w
     return
   }
 
-  const clientEntry = proxySession.nativeCompositorSession.clients.find(
-    (clientEntry) => clientEntry.clientId === clientId,
-  )
+  const clientEntry = session.nativeCompositorSession.clients.find((clientEntry) => clientEntry.clientId === clientId)
 
   if (clientEntry === undefined) {
     ws.close(4404, 'Client not found.')
@@ -190,14 +192,14 @@ function requestKeyFrame(proxySession: ProxySession, request: IncomingMessage, w
   // FIXME implement case for immediate keyframe refresh
 }
 
-function signal(proxySession: ProxySession, request: IncomingMessage, ws: WebSocket, url: URL) {
+function signal(session: Session, request: AppRequest, ws: WebSocket, url: URL) {
   const signalingKey = url.searchParams.get('key')
   if (signalingKey === null) {
     ws.close(4403, 'Missing key query parameter.')
     return
   }
 
-  const nativeAppContext = proxySession.findNativeAppContextByKey(signalingKey)
+  const nativeAppContext = session.findNativeAppContextByKey(signalingKey)
   if (nativeAppContext === undefined) {
     ws.close(4403, 'Missing key query parameter.')
     return
@@ -236,7 +238,7 @@ function signal(proxySession: ProxySession, request: IncomingMessage, ws: WebSoc
   }
 }
 
-function channel(proxySession: ProxySession, request: IncomingMessage, ws: WebSocket, url: URL) {
+function channel(session: Session, request: AppRequest, ws: WebSocket, url: URL) {
   const signalingKey = url.searchParams.get('key')
   const channelId = url.searchParams.get('id')
 
@@ -245,7 +247,7 @@ function channel(proxySession: ProxySession, request: IncomingMessage, ws: WebSo
     return
   }
 
-  const nativeAppContext = proxySession.findNativeAppContextByKey(signalingKey)
+  const nativeAppContext = session.findNativeAppContextByKey(signalingKey)
   if (nativeAppContext === undefined) {
     ws.close(4403, 'Missing key query parameter.')
     return
@@ -278,7 +280,12 @@ function channel(proxySession: ProxySession, request: IncomingMessage, ws: WebSo
 
 const wssPathActions: Record<
   string,
-  (proxySession: ProxySession, request: IncomingMessage, ws: WebSocket, url: URL) => void
+  (
+    session: Session,
+    request: { headers: IncomingMessage['headers']; method: IncomingMessage['method']; url: IncomingMessage['url'] },
+    ws: WebSocket,
+    url: URL,
+  ) => void
 > = {
   '/mkfifo': mkfifo,
   '/mkstemp-mmap': mkstempMmap,
@@ -291,23 +298,28 @@ const wssPathActions: Record<
   '/channel': channel,
 }
 
-export function createApp(proxySession: ProxySession): {
-  onWsUpgrade(request: IncomingMessage, socket: Duplex, head: Buffer): void
-} {
+export type SessionController = {
+  onWsUpgrade(
+    request: { headers: IncomingMessage['headers']; method: IncomingMessage['method']; url: IncomingMessage['url'] },
+    socket: Socket,
+  ): void
+}
+
+export function createSessionController(session: Session): SessionController {
   const wss = new WebSocketServer({ perMessageDeflate: false, noServer: true })
 
   return {
-    onWsUpgrade(request: IncomingMessage, socket: Duplex, head: Buffer) {
-      wss.handleUpgrade(request, socket, head, (ws) => {
+    onWsUpgrade(request, socket) {
+      wss.handleUpgrade(request as IncomingMessage, socket, Buffer.from([]), (ws) => {
         ws.binaryType = 'nodebuffer'
         const url = new URL(request.url ?? '', `http://${request.headers.host}`)
         const compositorSessionId = url.searchParams.get('compositorSessionId')
-        if (compositorSessionId !== proxySession.compositorSessionId) {
+        if (compositorSessionId !== session.compositorSessionId) {
           ws.close(4403)
           return
         }
 
-        wssPathActions[url.pathname](proxySession, request, ws, url)
+        wssPathActions[url.pathname](session, request, ws, url)
       })
     },
   }

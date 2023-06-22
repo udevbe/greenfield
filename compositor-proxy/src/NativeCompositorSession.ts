@@ -36,7 +36,7 @@ import {
 } from 'westfield-proxy'
 import { Channel, createProtocolChannel } from './Channel'
 import { webcrypto } from 'crypto'
-import { ProxySession } from './ProxySession'
+import { Session } from './Session'
 import { readFileSync } from 'fs'
 import { NativeAppContext } from './NativeAppContext'
 
@@ -90,8 +90,8 @@ function onGlobalDestroyed(globalName: number): void {
   }
 }
 
-export function createNativeCompositorSession(proxySession: ProxySession): NativeCompositorSession {
-  return new NativeCompositorSession(proxySession)
+export function createNativeCompositorSession(session: Session): NativeCompositorSession {
+  return new NativeCompositorSession(session)
 }
 
 export class NativeCompositorSession {
@@ -101,8 +101,8 @@ export class NativeCompositorSession {
   private readonly wlDisplayFdWatcher: PollHandle
 
   constructor(
-    public readonly proxySession: ProxySession,
-    public readonly webFS = createProxyInputOutput(proxySession, proxySession.config.public.baseURL),
+    public readonly session: Session,
+    public readonly webFS = createProxyInputOutput(session, session.config.public.baseURL),
     public readonly clients: ClientEntry[] = [],
   ) {
     this.wlDisplay = createDisplay(
@@ -113,7 +113,7 @@ export class NativeCompositorSession {
 
     this.waylandDisplay = addSocketAuto(this.wlDisplay)
     initShm(this.wlDisplay)
-    this.drmContext = initDrm(this.wlDisplay, this.proxySession.config.encoder.renderDevice)
+    this.drmContext = initDrm(this.wlDisplay, this.session.config.encoder.renderDevice)
 
     this.wlDisplayFdWatcher = startPoll(getFd(this.wlDisplay), (status) => {
       if (status < 0) {
@@ -135,7 +135,7 @@ export class NativeCompositorSession {
   }
 
   private findMatchingNativeAppContext(pid: number): NativeAppContext | undefined {
-    const nativeAppContext = this.proxySession.findNativeAppContextByPid(pid)
+    const nativeAppContext = this.session.findNativeAppContextByPid(pid)
     if (nativeAppContext) {
       return nativeAppContext
     }
@@ -170,14 +170,14 @@ export class NativeCompositorSession {
     let nativeAppContext = this.findMatchingNativeAppContext(clientPid)
 
     if (nativeAppContext === undefined) {
-      const firstNativeAppContext = this.proxySession.getFirstConnectedNativeAppContext()
+      const firstNativeAppContext = this.session.getFirstConnectedNativeAppContext()
       if (firstNativeAppContext === undefined) {
         // terminate client, wayland client was not started as an action from the user
         destroyClient(wlClient)
         return
       }
       const name = this.getNameFromPid(clientPid) ?? 'unknown_app'
-      nativeAppContext = this.proxySession.createNativeAppContext(clientPid, name, true)
+      nativeAppContext = this.session.createNativeAppContext(clientPid, name, true)
       firstNativeAppContext.sendCreateChildAppContext(nativeAppContext)
     }
 

@@ -36,8 +36,7 @@ export async function main() {
   await wasmLibs
 
   // create new compositor context
-  const id = 'test123'
-  const session = await createCompositorSession(id)
+  const session = await createCompositorSession()
   const appLauncher = createAppLauncher(session, 'remote')
 
   session.userShell.events.clientUnresponsiveUpdated = (client: CompositorClient, unresponsive: boolean) => {
