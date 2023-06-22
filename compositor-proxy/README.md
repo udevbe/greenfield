@@ -33,45 +33,33 @@ this compositor-proxy.
 The `run.sh` script accepts several arguments: 
 
 ```
-	Usage
-	  $ compositor-proxy <options>
+Usage
+  $ compositor-proxy <options>
 
-	Options
-	  --help, Print this help text.
-      --session-id=...,  Mandatory. Only use and accept this session id when communicating.
-	  --config-path=...,  Use a configuration file located at this file path.
+Options
+  --basic-auth=USER:PASSWORD                      Basic auth credentials to use when securing this proxy.
+                                                      Optional.
+  --bind-ip=IP                                    The ip or hostname to listen on.
+                                                      Optional. Default: "0.0.0.0".
+  --bind-port=PORT                                The port to listen on. 
+                                                      Optional. Default "8081".
+  --allow-origin=ORIGIN                           CORS allowed client origins, used when doing cross-origin requests. Value can be comma seperated domains. 
+                                                      Optional. Default "http://localhost:8080".
+  --base-url=URL                                  The public base url to use when other services connect to this endpoint. 
+                                                      Optional. Default "ws://localhost:8081".
+  --render-device=PATH                            Path of the render device that should be used for hardware acceleration. 
+                                                      Optional. Default "/dev/dri/renderD128".
+  --encoder=ENCODER                               The h264 encoder to use. "x264", "nvh264" and "vaapih264" are supported. 
+                                                      "x264" is a pure software encoder. "nvh264" is a hw accelerated encoder for Nvidia based GPUs. 
+                                                      "vaapih264" is an experimental encoder for intel GPUs.
+                                                      Optional. Default "x264".
+  --application=NAME:EXECUTABLE_PATH:HTTP_PATH    Maps an application with NAME and EXECUTABLE_PATH to an HTTP_PATH. This option can be repeated 
+                                                      with different values to map multiple applications.
+                                                      Optional. Default: "gtk4-demo:/gtk4-demo:/usr/bin/gtk4-demo".
+  --help, -h                                      Print this help text.
 
-	Examples
-	  $ compositor-proxy --session-id=test123 --config-path=./config.yaml
+ The environment variable "LOG_LEVEL" is used to set the logging level. Accepted values are: "fatal", "error", "warn", "info", "debug", "trace"
+
+Examples
+  $ compositor-proxy --basic-auth=myuser:supersecret --application=gtk4-demo:/gtk4-demo:/usr/bin/gtk4-demo
 ```
-
-## Config
-The compositor-proxy can be configured by supplying it a configuration file path using `--config-path=`.
-You will at least need to set the `public.baseURL` when not running locally.
-
-```yaml
-server:
-  http:
-    # Hostname argument.
-    bindIP: 0.0.0.0
-    # Port argument.
-    bindPort: 8081
-    # CORS allowed origins, used when doing cross-origin requests. Value can be * or comma seperated domains.
-    allowOrigin: '*'
-public:
-  # The base url to use when connecting to this endpoint. This is the publicly reachable address of the compositor proxy.
-  baseURL: http://localhost:8081
-encoder:
-  # Path of the render device that should be used for hardware acceleration. e.g. /dev/dri/renderD128
-  renderDevice: /dev/dri/renderD128
-  # The gstreamer h264 encoder to use. 'x264' and 'nvh264' are supported ('vaapih264' is currently broken). 'x264'
-  # is a pure software encoder. While 'nvh264' is a hw accelerated encoder for Nvidia based GPUs.
-  # see https://gstreamer.freedesktop.org/documentation/x264/index.html
-  # see https://gstreamer.freedesktop.org/documentation/nvenc/nvh264enc.html
-  h264Encoder: x264
-logging:
-  # "fatal" | "error" | "warn" | "info" | "debug" | "trace"
-  level: info
-```
-
-

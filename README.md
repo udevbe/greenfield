@@ -72,17 +72,49 @@ and finally
 
 > **_NOTE:_**  Firefox needs to be at least at version 113 and `dom.workers.modules.enabled` preference needs to be set to true. To change preferences in Firefox, visit `about:config`.
 
-This will start a development build+run. You should now see something that says `Compositor proxy started. Listening on port 8081`. You can also adjust some things
-in `src/config.yaml`.
+This will start a development build+run. You should now see something that says `Compositor proxy started. Listening on port 8081`.
 
-In our demo compositor we can now input the url `localhost:8081` to make a connection to the Greenfield Compositor Proxy. You should see a
-message appear in the log output of the compositor-proxy that we started earlier: `New websocket connected.`.
+In our demo compositor we can now input the url `localhost:8081/gtk4-demo` to launch the application in the Greenfield Compositor Proxy. You should see a
+ bunch of message appear in the log output of the compositor-proxy that we started earlier. 
 
-You should now have a Wayland compositor running on your system, so let's start some applications. Most recent GTK3/4 applications (like gnome-terminal) should
-auto-detect the compositor-proxy and simply connect without issues or extra setup. QT applications often require an extra `-platform wayland` parameter.
+Ofcourse we can also change the application that is started. Typing `yarn start --help` reveals the set of commands that we can use to configure the compositor proxy:
+
+```
+Usage
+  $ compositor-proxy <options>
+
+Options
+  --basic-auth=USER:PASSWORD                      Basic auth credentials to use when securing this proxy.
+                                                      Optional.
+  --bind-ip=IP                                    The ip or hostname to listen on.
+                                                      Optional. Default: "0.0.0.0".
+  --bind-port=PORT                                The port to listen on. 
+                                                      Optional. Default "8081".
+  --allow-origin=ORIGIN                           CORS allowed origins, used when doing cross-origin requests. Value can be comma seperated domains. 
+                                                      Optional. Default "localhost:8080".
+  --base-url=URL                                  The public base url to use when other services connect to this endpoint. 
+                                                      Optional. Default "ws://localhost:8081".
+  --render-device=PATH                            Path of the render device that should be used for hardware acceleration. 
+                                                      Optional. Default "/dev/dri/renderD128".
+  --encoder=ENCODER                               The h264 encoder to use. "x264", "nvh264" and "vaapih264" are supported. 
+                                                      "x264" is a pure software encoder. "nvh264" is a hw accelerated encoder for Nvidia based GPUs. 
+                                                      "vaapih264" is an experimental encoder for intel GPUs.
+                                                      Optional. Default "x264".
+  --application=NAME:EXECUTABLE_PATH:HTTP_PATH    Maps an application with NAME and EXECUTABLE_PATH to an HTTP_PATH. This option can be repeated 
+                                                      with different values to map multiple applications.
+                                                      Optional. Default: "gtk4-demo:/gtk4-demo:/usr/bin/gtk4-demo".
+  --help, -h                                      Print this help text.
+
+ The environment variable "LOG_LEVEL" is used to set the logging level. Accepted values are: "fatal", "error", "warn", "info", "debug", "trace"
+
+Examples
+  $ compositor-proxy --basic-auth=myuser:supersecret --application=gtk4-demo:/gtk4-demo:/usr/bin/gtk4-demo
+```
+---
+_Please note that QT applications often require an extra `-platform wayland` parameter else they will try to use the X server.
 If your application can't connect, try setting the `WAYLAND_DISPLAY` environment variable to the value that was printed by compositor-proxy. ie if you see `Listening on: WAYLAND_DISPLAY=\"wayland-0\".`
-then set the environment variable `export WAYLAND_DISPLAY=wayland-0`.
-
+then set the environment variable `export WAYLAND_DISPLAY=wayland-0`._
+---
 ### Packaged build
 
 It's also possible to build a distributable release.
@@ -92,19 +124,7 @@ It's also possible to build a distributable release.
 - `yarn build`
 - `yarn package`
 
-This creates a set of files in the `package` directory. The `run.sh` script accepts several options:
-
-```
-	Usage
-	  $ compositor-proxy <options>
-
-	Options
-	  --help, Print this help text.
-      --session-id=...,  Mandatory. Only use and accept this session id when communicating.
-
-	Examples
-	  $ compositor-proxy --session-id=test123
-```
+This creates a set of files in the `package` directory. Execute the `run.sh` script to start the compositor proxy. 
 
 The packaged binary expects the following set of dependencies to be available for mesa & nvidia support, if you're running a Debian based distro you can run:
 ```
