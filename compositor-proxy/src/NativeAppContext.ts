@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto'
 import { ChannelDesc, WebSocketChannel } from './Channel'
 import { createLogger } from './Logger'
 import { spawn } from 'child_process'
-import { ProxySession } from './ProxySession'
+import { Session } from './Session'
 import { setTimeout } from 'timers'
 import { WebSocket } from 'ws'
 
@@ -52,7 +52,7 @@ export class NativeAppContext {
   private sigHupTimer?: NodeJS.Timeout
 
   constructor(
-    readonly proxySession: ProxySession,
+    readonly session: Session,
     readonly pid: number,
     readonly name: string,
     private readonly external: boolean,
@@ -152,10 +152,10 @@ export class NativeAppContext {
   }
 
   sendConnectionRequest(channel: WebSocketChannel) {
-    const url: URL = new URL(this.proxySession.config.public.baseURL)
+    const url: URL = new URL(this.session.config.public.baseURL)
     url.searchParams.append('id', `${channel.desc.id}`)
     url.searchParams.append('key', `${channel.nativeAppContext.key}`)
-    url.searchParams.append('compositorSessionId', `${channel.nativeAppContext.proxySession.compositorSessionId}`)
+    url.searchParams.append('compositorSessionId', `${channel.nativeAppContext.session.compositorSessionId}`)
     url.pathname = url.pathname.endsWith('/') ? `${url.pathname}channel` : `${url.pathname}/channel`
     const connectionRequest: SignalingMessage = {
       type: SignalingMessageType.CONNECT_CHANNEL,
@@ -187,13 +187,13 @@ export class NativeAppContext {
   }
 
   sendCreateChildAppContext(nativeAppContext: NativeAppContext) {
-    const proxyURL = new URL(this.proxySession.config.public.baseURL)
+    const proxyURL = new URL(this.session.config.public.baseURL)
     proxyURL.pathname += proxyURL.pathname.endsWith('/') ? 'signal' : '/signal'
-    proxyURL.searchParams.set('compositorSessionId', this.proxySession.compositorSessionId)
+    proxyURL.searchParams.set('compositorSessionId', this.session.compositorSessionId)
     proxyURL.searchParams.set('key', nativeAppContext.key)
 
     const data: { baseURL: string; signalURL: string; name: string } = {
-      baseURL: this.proxySession.config.public.baseURL,
+      baseURL: this.session.config.public.baseURL,
       signalURL: proxyURL.href,
       name: nativeAppContext.name,
     }
@@ -223,7 +223,7 @@ export function isSignalingMessage(messageObject: any): messageObject is Signali
 
 export function launchApplication(
   applicationExecutable: string,
-  proxySession: ProxySession,
+  session: Session,
   name: string,
 ): Promise<NativeAppContext> {
   // TODO create child logger from proxy session logger
@@ -237,7 +237,7 @@ export function launchApplication(
       {
         env: {
           ...process.env,
-          WAYLAND_DISPLAY: proxySession.nativeCompositorSession.waylandDisplay,
+          WAYLAND_DISPLAY: session.nativeCompositorSession.waylandDisplay,
         },
       },
     )
@@ -267,7 +267,7 @@ export function launchApplication(
         throw new Error('BUG? Tried to create client signaling for child process without an id.')
       }
 
-      const nativeAppContext = proxySession.createNativeAppContext(childProcess.pid, name, false)
+      const nativeAppContext = session.createNativeAppContext(childProcess.pid, name, false)
       childProcess.once('exit', (exitCode, signal) => {
         if (exitCode !== null) {
           appLogger.info(`Child process terminated with exit code: ${exitCode}.`)

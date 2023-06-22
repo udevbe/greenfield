@@ -232,7 +232,7 @@ export function initSurfaceBufferEncoding(): void {
     }
     if (!this.encoder) {
       this.encoder = createEncoder(
-        this.userData.nativeClientSession.nativeAppContext.proxySession,
+        this.userData.nativeClientSession.nativeAppContext.session,
         this.wlClient,
         this.userData.drmContext,
       )

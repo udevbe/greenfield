@@ -16,12 +16,12 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import appEndpointNative from './proxy-encoding-addon'
-import { ProxySession } from '../ProxySession'
+import { Session } from '../Session'
 
-export function createEncoder(proxySession: ProxySession, wlClient: unknown, drmContext: unknown): Encoder {
+export function createEncoder(session: Session, wlClient: unknown, drmContext: unknown): Encoder {
   // TODO we could probably use a pool here?
   // TODO implement encoder destruction
-  return new Encoder(proxySession, wlClient, drmContext)
+  return new Encoder(session, wlClient, drmContext)
 }
 
 export class Encoder {
@@ -34,9 +34,9 @@ export class Encoder {
     bufferContentSerial: number
   }[] = []
 
-  constructor(proxySession: ProxySession, wlClient: unknown, drmContext: unknown) {
+  constructor(session: Session, wlClient: unknown, drmContext: unknown) {
     this.nativeEncoder = appEndpointNative.createFrameEncoder(
-      proxySession.config.encoder.h264Encoder,
+      session.config.encoder.h264Encoder,
       wlClient,
       drmContext,
       (buffer: Buffer) => {

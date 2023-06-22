@@ -54,7 +54,15 @@ function createEmptyAppEntry(
 }
 
 function launchNewApp(appLauncher: AppLauncher, url: URL, appEntries: Signal<AppEntryProps[]>) {
-  const targetAppEntryProps = createEmptyAppEntry(appLauncher, appEntries, false, url.href.replace(/^https?:\/\//, ''))
+  const appURL = new URL(url)
+  appURL.username = ''
+  appURL.password = ''
+  const targetAppEntryProps = createEmptyAppEntry(
+    appLauncher,
+    appEntries,
+    false,
+    appURL.href.replace(/^https?:\/\//, ''),
+  )
   appEntries.value = [targetAppEntryProps, ...appEntries.value]
 
   targetAppEntryProps.connectionState.value = 'connecting'

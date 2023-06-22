@@ -3,19 +3,19 @@ import { ProxyFD } from './types'
 import { createLogger } from '../Logger'
 import { createMemoryMappedFile, makePipe } from 'westfield-proxy'
 import { createWebSocketStream, WebSocket } from 'ws'
-import { ProxySession } from '../ProxySession'
+import { Session } from '../Session'
 
 const logger = createLogger('webfs')
 
 // 64*1024=64kb
 export const TRANSFER_CHUNK_SIZE = 65792 as const
 
-export function createProxyInputOutput(proxySession: ProxySession, baseURL: string): ProxyInputOutput {
-  return new ProxyInputOutput(proxySession, baseURL)
+export function createProxyInputOutput(session: Session, baseURL: string): ProxyInputOutput {
+  return new ProxyInputOutput(session, baseURL)
 }
 
 export class ProxyInputOutput {
-  constructor(private readonly proxySession: ProxySession, readonly baseURL: string) {}
+  constructor(private readonly session: Session, readonly baseURL: string) {}
 
   /**
    * Creates a native fd that matches the content & behavior of the foreign proxyFD
@@ -44,7 +44,7 @@ export class ProxyInputOutput {
 
     const url = new URL(`${proxyFD.host}/write-fd-as-stream`)
     url.searchParams.set('fd', `${proxyFD.handle}`)
-    url.searchParams.set('compositorSessionId', this.proxySession.compositorSessionId)
+    url.searchParams.set('compositorSessionId', this.session.compositorSessionId)
     url.searchParams.set('chunkSize', `${TRANSFER_CHUNK_SIZE}`)
 
     const ws = new WebSocket(url)
