@@ -110,36 +110,36 @@ export const args = Object.fromEntries(
 
 export function printHelp() {
   console.log(`
-\tUsage
-\t  $ compositor-proxy <options>
+Usage
+  $ compositor-proxy <options>
 
-\tOptions
-\t  --basic-auth=USER:PASSWORD                      Basic auth credentials to use when securing this proxy.
-\t                                                      Optional.
-\t  --bind-ip=IP                                    The ip or hostname to listen on.
-\t                                                      Optional. Default: "0.0.0.0".
-\t  --bind-port=PORT                                The port to listen on. 
-\t                                                      Optional. Default "8081".
-\t  --allow-origin=ORIGIN                           CORS allowed origins, used when doing cross-origin requests. Value can be comma seperated domains. 
-\t                                                      Optional. Default "localhost:8080".
-\t  --base-url=URL                                  The public base url to use when other services connect to this endpoint. 
-\t                                                      Optional. Default "ws://localhost:8081".
-\t  --render-device=PATH                            Path of the render device that should be used for hardware acceleration. 
-\t                                                      Optional. Default "/dev/dri/renderD128".
-\t  --encoder=ENCODER                               The h264 encoder to use. "x264", "nvh264" and "vaapih264" are supported. 
-\t                                                      "x264" is a pure software encoder. "nvh264" is a hw accelerated encoder for Nvidia based GPUs. 
-\t                                                      "vaapih264" is an experimental encoder for intel GPUs.
-\t                                                      Optional. Default "x264".
-\t  --application=NAME:EXECUTABLE_PATH:HTTP_PATH    Maps an application with NAME and EXECUTABLE_PATH to an HTTP_PATH. This option can be repeated 
-\t                                                      with different values to map multiple applications.
-\t                                                      Optional. Default: "gtk4-demo:/gtk4-demo:/usr/bin/gtk4-demo".
-\t  --help, -h                                      Print this help text.
-\t
-\t The environment variable "LOG_LEVEL" is used to set the logging level. Accepted values are: "fatal", "error", "warn", "info", "debug", "trace"
-\t
-\tExamples
-\t  $ compositor-proxy --basic-auth=myuser:supersecret --application=gtk4-demo:/gtk4-demo:/usr/bin/gtk4-demo
-  `)
+Options
+  --basic-auth=USER:PASSWORD                      Basic auth credentials to use when securing this proxy.
+                                                      Optional.
+  --bind-ip=IP                                    The ip or hostname to listen on.
+                                                      Optional. Default: "0.0.0.0".
+  --bind-port=PORT                                The port to listen on. 
+                                                      Optional. Default "8081".
+  --allow-origin=ORIGIN                           CORS allowed origins, used when doing cross-origin requests. Value can be comma seperated domains. 
+                                                      Optional. Default "localhost:8080".
+  --base-url=URL                                  The public base url to use when other services connect to this endpoint. 
+                                                      Optional. Default "ws://localhost:8081".
+  --render-device=PATH                            Path of the render device that should be used for hardware acceleration. 
+                                                      Optional. Default "/dev/dri/renderD128".
+  --encoder=ENCODER                               The h264 encoder to use. "x264", "nvh264" and "vaapih264" are supported. 
+                                                      "x264" is a pure software encoder. "nvh264" is a hw accelerated encoder for Nvidia based GPUs. 
+                                                      "vaapih264" is an experimental encoder for intel GPUs.
+                                                      Optional. Default "x264".
+  --application=NAME:EXECUTABLE_PATH:HTTP_PATH    Maps an application with NAME and EXECUTABLE_PATH to an HTTP_PATH. This option can be repeated 
+                                                      with different values to map multiple applications.
+                                                      Optional. Default: "gtk4-demo:/gtk4-demo:/usr/bin/gtk4-demo".
+  --help, -h                                      Print this help text.
+
+ The environment variable "LOG_LEVEL" is used to set the logging level. Accepted values are: "fatal", "error", "warn", "info", "debug", "trace"
+
+Examples
+  $ compositor-proxy --basic-auth=myuser:supersecret --application=gtk4-demo:/gtk4-demo:/usr/bin/gtk4-demo
+`)
 }
 
 const help = args['help']
