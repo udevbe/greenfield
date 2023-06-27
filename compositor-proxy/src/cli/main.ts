@@ -30,7 +30,6 @@ function main() {
     },
     public: {
       baseURL: args['base-url'],
-      applications: args['application'],
     },
     encoder: {
       h264Encoder: args['encoder'],
@@ -102,7 +101,7 @@ function main() {
         childProcess.send(start)
       }
 
-      handleGET(childProcess, compositorSessionId, config, request, response, url)
+      handleGET(childProcess, compositorSessionId, config, request, response, url, args['applications'])
       return
     }
 

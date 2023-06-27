@@ -1,0 +1,23 @@
+{
+  "/gtk4-demo": {
+    "name": "GTK Demo",
+    "executable": "gtk4-demo",
+    "args": [],
+    "env": {}
+  },
+  "/kwrite": {
+    "name": "KWrite",
+    "executable": "kwrite",
+    "args": [
+      "-platform",
+      "wayland"
+    ],
+    "env": {}
+  },
+  "/xterm": {
+    "name": "XTerm",
+    "executable": "xterm",
+    "args": [],
+    "env": {}
+  }
+}

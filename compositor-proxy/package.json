@@ -13,18 +13,18 @@
   "license": "AGPL-3.0",
   "description": "Wayland Compositor Proxy",
   "scripts": {
-    "generate:config-types": "js-yaml ./configschema.yaml > ./src/configschema.json && json2ts -i ./src/configschema.json -o ./src/@types/config.d.ts --style.singleQuote --no-style.semi",
+    "generate:config-types": "json2ts -i src/cli/app-config-schema.json -o src/cli/app-config.d.ts --style.singleQuote --no-style.semi",
     "generate:xdgshell": "westfield-proxy-generator protocol/xdg-shell.xml -o src/protocol",
     "generate:wayland-drm": "westfield-proxy-generator protocol/wayland-drm.xml -o src/protocol",
     "generate:wayland": "westfield-proxy-generator protocol/wayland.xml -o src/protocol",
-    "generate": "rm -rf src/protocol && yarn generate:config-types && mkdir -p src/protocol && yarn generate:wayland && yarn generate:wayland-drm && yarn generate:xdgshell",
+    "generate": "rm -rf src/protocol && mkdir -p src/protocol && yarn generate:config-types && yarn generate:wayland && yarn generate:wayland-drm && yarn generate:xdgshell",
     "build:native": "mkdir -p build && cmake -G Ninja -B./build -S./ && ninja -C ./build",
     "build:typescript": "tsc",
     "build": "rm -rf dist && yarn build:native && yarn build:typescript",
-    "start": "node --require ts-node/register src/cli/main.ts",
+    "start": "node --require ts-node/register src/cli/main.ts --applications=./example-applications.json",
     "test": "jest",
     "package:copy-libs": "cp 'node_modules/westfield-proxy/dist/libwayland-server.so.0' 'node_modules/westfield-proxy/dist/libwestfield.so' 'dist/encoding/libproxy-encoding.so' -t package",
-    "package": "cp src/config.yaml dist && pkg --compress Brotli --no-native-build package.json && yarn package:copy-libs"
+    "package": "pkg --compress Brotli --no-native-build package.json && yarn package:copy-libs"
   },
   "dependencies": {
     "ajv": "^8.12.0",
