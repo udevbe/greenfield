@@ -43,9 +43,8 @@ function setupCanvasGLContext(canvas: HTMLCanvasElement): WebGLRenderingContext 
     premultipliedAlpha: false,
     preserveDrawingBuffer: false,
     desynchronized: true,
-    powerPreference: 'high-performance',
   })
-  if (!gl) {
+  if (gl === null) {
     throw new Error("This browser doesn't support WebGL!")
   }
   return gl

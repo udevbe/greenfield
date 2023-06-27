@@ -40,7 +40,7 @@ Options
                                                       Optional. Default: "0.0.0.0".
   --bind-port=PORT                                The port to listen on. 
                                                       Optional. Default "8081".
-  --allow-origin=ORIGIN                           CORS allowed origins, used when doing cross-origin requests. Value can be comma seperated domains. 
+  --allow-origin=ORIGIN                           CORS allowed client origins, used when doing cross-origin requests. Value can be comma seperated domains. 
                                                       Optional. Default "localhost:8080".
   --base-url=URL                                  The public base url to use when other services connect to this endpoint. 
                                                       Optional. Default "ws://localhost:8081".
