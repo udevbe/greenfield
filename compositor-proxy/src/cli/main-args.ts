@@ -1,4 +1,13 @@
 import { parseArgs, ParseArgsConfig } from 'util'
+import { AppConfigSchema } from './app-config'
+import { readFileSync } from 'fs'
+import Ajv from 'ajv'
+import addFormats from 'ajv-formats'
+import applicationSchema from './app-config-schema.json'
+
+const ajv = new Ajv()
+addFormats(ajv)
+const validate = ajv.compile(applicationSchema)
 
 type ArgValues = {
   help: boolean
@@ -9,7 +18,7 @@ type ArgValues = {
   'base-url': string
   'render-device': string
   encoder: 'x264' | 'nvh264' | 'vaapih264'
-  application: Record<string, { path: string; executable: string }>
+  applications: AppConfigSchema
 }
 
 const options: Record<keyof ArgValues, NonNullable<ParseArgsConfig['options']>[string]> = {
@@ -45,10 +54,9 @@ const options: Record<keyof ArgValues, NonNullable<ParseArgsConfig['options']>[s
     type: 'string',
     default: 'x264',
   },
-  application: {
+  applications: {
     type: 'string',
-    multiple: true,
-    default: ['gtk4-demo:/usr/bin/gtk4-demo:/gtk4-demo'],
+    default: '',
   },
 }
 
@@ -56,22 +64,6 @@ const parseArgsConfig: ParseArgsConfig = {
   strict: true,
   allowPositionals: false,
   options,
-}
-
-function parseApplicationArg(rawArg: string[]): ArgValues['application'] {
-  const applicationValue: ArgValues['application'] = {}
-  for (const rawEntry of rawArg) {
-    const values = rawEntry.trim().split(':')
-    if (values.length !== 3) {
-      console.error('Invalid argument for "application"')
-      printHelp()
-      process.exit(1)
-    }
-
-    const [name, executable, path] = values
-    applicationValue[name] = { executable, path }
-  }
-  return applicationValue
 }
 
 function parseEncoderArg(rawArg: string): ArgValues['encoder'] {
@@ -88,19 +80,41 @@ function parseEncoderArg(rawArg: string): ArgValues['encoder'] {
   }
 }
 
+function parseApplicationsArg(rawArg: string): ArgValues['applications'] {
+  if (rawArg === '') {
+    return {
+      '/gtk4-demo': {
+        name: 'GTK Demo',
+        executable: 'gtk4-demo',
+        args: [],
+        env: {},
+      },
+    }
+  }
+
+  const applicationMappingFileContents = readFileSync(rawArg, 'utf8')
+  const apps = JSON.parse(applicationMappingFileContents)
+  const isValid = validate(apps)
+  if (!isValid) {
+    throw new Error(`Error validating --applications file: ${JSON.stringify(validate.errors)}`)
+  }
+
+  return apps as unknown as AppConfigSchema
+}
+
 const argMappers: Record<
-  Extract<keyof ArgValues, 'encoder' | 'application'>,
+  Extract<keyof ArgValues, 'encoder' | 'applications'>,
   (rawValue: any) => ArgValues[keyof ArgValues]
 > = {
   encoder: parseEncoderArg,
-  application: parseApplicationArg,
+  applications: parseApplicationsArg,
 }
 
 export const args = Object.fromEntries(
   Object.entries(parseArgs(parseArgsConfig).values).map(([key, value]) => {
     switch (key) {
       case 'encoder':
-      case 'application':
+      case 'applications':
         return [key, argMappers[key](value)]
       default:
         return [key, value]

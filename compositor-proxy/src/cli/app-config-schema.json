@@ -1,0 +1,37 @@
+{
+  "description": "The application mapping config file",
+  "type": "object",
+  "patternProperties": {
+    "^\\/((?:[\\w-]+\\/)*[\\w-]+)?$": {
+      "description": "An application mapping entry whose key is an http path",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "human-readable application name",
+          "type": "string"
+        },
+        "executable": {
+          "type": "string"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "env": {
+          "type": "object",
+          "required": [],
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "name", "executable", "args", "env"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

@@ -222,25 +222,23 @@ export function isSignalingMessage(messageObject: any): messageObject is Signali
 }
 
 export function launchApplication(
-  applicationExecutable: string,
-  session: Session,
   name: string,
+  applicationExecutable: string,
+  args: string[],
+  env: Record<string, string>,
+  session: Session,
 ): Promise<NativeAppContext> {
   // TODO create child logger from proxy session logger
   return new Promise<NativeAppContext>((resolve, reject) => {
     const appLogger = createLogger(applicationExecutable)
 
-    const childProcess = spawn(
-      applicationExecutable,
-      // TODO support executable arguments
-      [],
-      {
-        env: {
-          ...process.env,
-          WAYLAND_DISPLAY: session.nativeCompositorSession.waylandDisplay,
-        },
+    const childProcess = spawn(applicationExecutable, args, {
+      env: {
+        ...process.env,
+        ...env,
+        WAYLAND_DISPLAY: session.nativeCompositorSession.waylandDisplay,
       },
-    )
+    })
 
     childProcess.stdout.on('data', (data) => {
       appLogger.info(data.toString())

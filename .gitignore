@@ -147,8 +147,6 @@ CTestTestfile.cmake
 /compositor-proxy/build/
 /compositor-proxy/src/protocol/
 /compositor-proxy/src/encoding/app-endpoint-encoding.node
-/compositor-proxy/src/@types/config.d.ts
-/compositor-proxy/src/configschema.json
 /compositor-proxy/cmake-build-debug/
 /compositor-module/src/api/
 /compositor-proxy/src/api/
@@ -181,3 +179,4 @@ CTestTestfile.cmake
 /compositor-module/.yarn/releases
 /compositor-module/.yarn/sdks
 /compositor-module/.yarn/versions
+/compositor-proxy/src/cli/app-config.d.ts

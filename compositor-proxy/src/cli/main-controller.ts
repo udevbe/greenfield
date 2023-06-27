@@ -1,9 +1,9 @@
 import { ToMainProcessMessage, ToSessionProcessMessage } from './SessionProcess'
 import { ChildProcess } from 'child_process'
-import { Configschema } from '../@types/config'
+import { Configschema, createLogger } from '..'
 import { IncomingMessage, ServerResponse } from 'http'
-import { createLogger } from '..'
 import { args } from './main-args'
+import { AppConfigSchema } from './app-config'
 
 const allowHeaders = 'Content-Type, X-Compositor-Session-Id, Authorization, WWW-Authenticate'
 const maxAge = '36000'
@@ -109,18 +109,23 @@ export async function handleGET(
   request: IncomingMessage,
   response: ServerResponse,
   url: URL,
+  applications: AppConfigSchema,
 ) {
-  let name: string | undefined
-  let executable: string | undefined
-  for (const [appName, { path, executable: appExecutable }] of Object.entries(config.public.applications)) {
+  let appName: string | undefined
+  let appExecutable: string | undefined
+  let appArgs: string[] | undefined
+  let appEnv: Record<string, string> | undefined
+  for (const [path, { name, executable, args, env }] of Object.entries(applications)) {
     if (url.pathname === path) {
-      name = appName
-      executable = appExecutable
+      appName = name
+      appExecutable = executable
+      appArgs = args
+      appEnv = env
       break
     }
   }
 
-  if (name === undefined || executable === undefined) {
+  if (appName === undefined || appExecutable === undefined || appArgs === undefined || appEnv === undefined) {
     response
       .writeHead(404, 'Not Found', {
         'Access-Control-Allow-Origin': config.server.http.allowOrigin,
@@ -134,7 +139,7 @@ export async function handleGET(
   try {
     const launchApp: ToSessionProcessMessage = {
       type: 'launchApp',
-      payload: { name, executable, serial: messageSerial++ },
+      payload: { name: appName, executable: appExecutable, args: appArgs, env: appEnv, serial: messageSerial++ },
     }
     const messageReply = await sendMessageWithReply(childProcess, launchApp)
     if (messageReply.type === 'launchAppFailed') {
@@ -157,7 +162,7 @@ export async function handleGET(
       baseURL: config.public.baseURL,
       signalURL: proxyURL.href,
       key: messageReply.payload.key,
-      name: name,
+      name: appName,
     }
 
     response

@@ -1,7 +1,5 @@
-import { Configschema } from '../@types/config'
-import { IncomingMessage } from 'http'
-import { Socket } from 'net'
 import {
+  Configschema,
   createLogger,
   createSession,
   createSessionController,
@@ -10,6 +8,8 @@ import {
   Session,
   SessionController,
 } from '..'
+import { IncomingMessage } from 'http'
+import { Socket } from 'net'
 
 process.on('uncaughtException', (e) => {
   logger.error('\tname: ' + e.name + ' message: ' + e.message)
@@ -32,6 +32,8 @@ export type ToSessionProcessMessage =
       payload: {
         name: string
         executable: string
+        args: string[]
+        env: Record<string, string>
         serial: number
       }
       reply?: Extract<ToMainProcessMessage, { type: 'launchAppSuccess' } | { type: 'launchAppFailed' }>
@@ -103,6 +105,8 @@ async function launchApp({
   serial,
   name,
   executable,
+  args,
+  env,
 }: Extract<
   ToSessionProcessMessage,
   {
@@ -115,7 +119,7 @@ async function launchApp({
 
   try {
     logger.info(`Launching application ${name}`)
-    const nativeAppContext = await launchApplication(executable, context.session, name)
+    const nativeAppContext = await launchApplication(name, executable, args, env, context.session)
     // start a timer to terminate the app if no connection is made
     nativeAppContext.onDisconnect()
     const launchAppSuccess: ToMainProcessMessage = {
