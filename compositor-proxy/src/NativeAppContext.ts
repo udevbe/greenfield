@@ -1,4 +1,4 @@
-import { NativeClientSession } from './NativeClientSession'
+import { NativeWaylandClientSession } from './NativeWaylandClientSession'
 import { randomBytes } from 'crypto'
 import { ChannelDesc, WebSocketChannel } from './Channel'
 import { createLogger } from './Logger'
@@ -42,7 +42,7 @@ const textEncoder = new TextEncoder()
 export class NativeAppContext {
   public readonly key = randomBytes(8).toString('hex')
 
-  private nativeClientSessions: NativeClientSession[] = []
+  private nativeClientSessions: NativeWaylandClientSession[] = []
   public signalingWebSocket: WebSocket | undefined
   public readonly destroyListeners: (() => void)[] = []
 
@@ -58,11 +58,11 @@ export class NativeAppContext {
     private readonly external: boolean,
   ) {}
 
-  addNativeClientSession(nativeClientSession: NativeClientSession) {
+  addNativeWaylandClientSession(nativeClientSession: NativeWaylandClientSession) {
     this.nativeClientSessions.push(nativeClientSession)
   }
 
-  removeNativeClientSession(nativeClientSession: NativeClientSession) {
+  removeNativeWaylandClientSession(nativeClientSession: NativeWaylandClientSession) {
     this.nativeClientSessions = this.nativeClientSessions.filter(
       (otherNativeClientSession) => otherNativeClientSession !== nativeClientSession,
     )
@@ -236,7 +236,7 @@ export function launchApplication(
       env: {
         ...process.env,
         ...env,
-        WAYLAND_DISPLAY: session.nativeCompositorSession.waylandDisplay,
+        WAYLAND_DISPLAY: session.nativeWaylandCompositorSession.waylandDisplay,
       },
     })
 

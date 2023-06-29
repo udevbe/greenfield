@@ -18,7 +18,7 @@
 import { PollHandle, startPoll, stopPoll } from './proxy-poll-addon'
 import { createProxyInputOutput } from './io/ProxyInputOutput'
 import { createLogger } from './Logger'
-import { createNativeClientSession, NativeClientSession } from './NativeClientSession'
+import { createNativeClientSession, NativeWaylandClientSession } from './NativeWaylandClientSession'
 import {
   addSocketAuto,
   createDisplay,
@@ -45,7 +45,7 @@ const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567' as const
 
 export type ClientEntry = {
   protocolChannel: Channel
-  nativeClientSession: NativeClientSession
+  nativeClientSession: NativeWaylandClientSession
   clientId: string
 }
 
@@ -90,11 +90,11 @@ function onGlobalDestroyed(globalName: number): void {
   }
 }
 
-export function createNativeCompositorSession(session: Session): NativeCompositorSession {
-  return new NativeCompositorSession(session)
+export function createNativeCompositorSession(session: Session): NativeWaylandCompositorSession {
+  return new NativeWaylandCompositorSession(session)
 }
 
-export class NativeCompositorSession {
+export class NativeWaylandCompositorSession {
   readonly wlDisplay: WlDisplay
   readonly waylandDisplay: string
   readonly drmContext: DRMHandle
@@ -170,12 +170,13 @@ export class NativeCompositorSession {
     let nativeAppContext = this.findMatchingNativeAppContext(clientPid)
 
     if (nativeAppContext === undefined) {
-      const firstNativeAppContext = this.session.getFirstConnectedNativeAppContext()
+      const firstNativeAppContext = this.session.getFirstNativeAppContext()
       if (firstNativeAppContext === undefined) {
         // terminate client, wayland client was not started as an action from the user
         destroyClient(wlClient)
         return
       }
+
       const name = this.getNameFromPid(clientPid) ?? 'unknown_app'
       nativeAppContext = this.session.createNativeAppContext(clientPid, name, true)
       firstNativeAppContext.sendCreateChildAppContext(nativeAppContext)
@@ -194,6 +195,16 @@ export class NativeCompositorSession {
       const index = this.clients.indexOf(clientEntry)
       if (index > -1) {
         this.clients.splice(index, 1)
+      }
+
+      // close session if all clients have disconnected
+      if (this.clients.length === 0) {
+        // give it some time to tear down
+        setTimeout(() => {
+          if (this.clients.length === 0) {
+            this.session.close()
+          }
+        }, 1000)
       }
     })
   }

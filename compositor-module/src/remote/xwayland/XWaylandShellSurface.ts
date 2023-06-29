@@ -204,7 +204,6 @@ export default class XWaylandShellSurface implements DesktopSurfaceRole {
     this.desktopSurface.setMaximized(true)
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
   setPid(pid: number): void {
     this.pid = pid
   }

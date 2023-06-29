@@ -1,5 +1,5 @@
 import { RetransmittingWebSocket } from 'retransmitting-websocket'
-import { NativeClientSession } from '../../NativeClientSession'
+import { NativeWaylandClientSession } from '../../NativeWaylandClientSession'
 import { MessageDestination } from '../../../../../westfield/server/node/proxy'
 
 export default class wl_subcompositor_interceptor {
@@ -7,7 +7,7 @@ export default class wl_subcompositor_interceptor {
     protocolChannel: RetransmittingWebSocket
     drmContext: unknown
     messageInterceptors: Record<number, any>
-    nativeClientSession?: NativeClientSession
+    nativeClientSession?: NativeWaylandClientSession
   }
 
   R1(message: {

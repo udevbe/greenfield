@@ -17,10 +17,10 @@
 
 import { createLogger } from './Logger'
 
-import { createNativeCompositorSession, NativeCompositorSession } from './NativeCompositorSession'
-import { XWaylandSession } from './XWaylandSession'
+import { createNativeCompositorSession, NativeWaylandCompositorSession } from './NativeWaylandCompositorSession'
+import { createXWaylandSession, XWaylandSession } from './XWaylandSession'
 import { NativeAppContext } from './NativeAppContext'
-import { Configschema } from './@types/config'
+import { Configschema } from './config'
 
 // TODO create logger per proxy session instance
 const logger = createLogger('compositor-proxy-session')
@@ -32,27 +32,24 @@ export function createSession(compositorSessionId: string, config: Configschema)
 export class Session {
   public compositorPeerIdentity?: string
 
-  public readonly nativeCompositorSession: NativeCompositorSession
-  private readonly xWaylandSession: XWaylandSession
+  public readonly nativeWaylandCompositorSession: NativeWaylandCompositorSession
+  public readonly xWaylandSession: XWaylandSession
   private nativeAppContexts: NativeAppContext[] = []
+  public closeListeners: (() => void)[] = []
 
   constructor(readonly compositorSessionId: string, readonly config: Configschema) {
-    this.nativeCompositorSession = createNativeCompositorSession(this)
-    this.xWaylandSession = XWaylandSession.create(this.nativeCompositorSession)
+    this.nativeWaylandCompositorSession = createNativeCompositorSession(this)
+    this.xWaylandSession = createXWaylandSession(this.nativeWaylandCompositorSession)
     this.xWaylandSession.createXWaylandListenerSocket()
     logger.info(`Session created.`)
   }
 
-  private destroyClients(): void {
-    for (const client of this.nativeCompositorSession.clients) {
-      client.nativeClientSession.destroy()
-    }
-  }
-
   close() {
     this.compositorPeerIdentity = undefined
-    this.destroyClients()
-    this.nativeCompositorSession.destroy()
+    this.nativeWaylandCompositorSession.destroy()
+    for (const closeListener of this.closeListeners) {
+      closeListener()
+    }
   }
 
   createNativeAppContext(pid: number, name: string, external: boolean) {
@@ -67,8 +64,11 @@ export class Session {
     return nativeAppContext
   }
 
-  getFirstConnectedNativeAppContext(): NativeAppContext | undefined {
-    return this.nativeAppContexts.find((nativeAppContext) => nativeAppContext.signalingWebSocket !== undefined)
+  getFirstNativeAppContext(): NativeAppContext | undefined {
+    return (
+      this.nativeAppContexts.find((nativeAppContext) => nativeAppContext.signalingWebSocket !== undefined) ??
+      this.nativeAppContexts[0]
+    )
   }
 
   findNativeAppContextByKey(key: string): NativeAppContext | undefined {
