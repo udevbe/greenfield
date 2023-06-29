@@ -90,6 +90,14 @@ export class FrameFeedback {
 
     this.frameCallbackDelay = Math.floor(Math.max(this.avgServerProcessingDuration, this.clientProcessingDuration))
     nextTickInterval = Math.floor(clientRefreshInterval)
+
+    if (Math.abs(tickInterval - nextTickInterval) > 500) {
+      if (feedbackClockTimer) {
+        clearInterval(feedbackClockTimer)
+        feedbackClockTimer = undefined
+      }
+      configureFramePipelineTicks(nextTickInterval)
+    }
   }
 
   encodingDone(commitTimestamp: number): void {
