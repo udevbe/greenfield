@@ -18,13 +18,13 @@ type FrameState = {
   result: Partial<DualPlaneRGBAVideoFrame>
 }
 export const softwareDecoderConfig: VideoDecoderConfig = {
-  codec: 'avc1.42001e', // h264 Baseline Level 3
+  codec: 'avc1.64001f', // h264 High Level 3.1
   optimizeForLatency: true,
   hardwareAcceleration: 'prefer-software',
 } as const
 
 export const hardwareDecoderConfig: VideoDecoderConfig = {
-  codec: 'avc1.42001e', // h264 Baseline Level 3
+  codec: 'avc1.64001f', // h264 High Level 3.1
   optimizeForLatency: true,
   hardwareAcceleration: 'prefer-hardware',
 } as const
