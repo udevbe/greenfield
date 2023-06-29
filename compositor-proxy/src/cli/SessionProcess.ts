@@ -99,6 +99,10 @@ function start({ config, compositorSessionId }: Extract<ToSessionProcessMessage,
     session,
     sessionController,
   }
+  session.closeListeners.push(() => {
+    process.exit()
+  })
+  logger.info(`Session started.`)
 }
 
 async function launchApp({

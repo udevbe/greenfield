@@ -18,7 +18,7 @@ type AppRequest = {
 }
 
 function mkfifo(session: Session, request: AppRequest, ws: WebSocket) {
-  const jsonPipe = JSON.stringify(session.nativeCompositorSession.webFS.mkpipe())
+  const jsonPipe = JSON.stringify(session.nativeWaylandCompositorSession.webFS.mkpipe())
   ws.send(jsonPipe, { binary: false })
   ws.close(4201, 'Created')
 }
@@ -30,7 +30,7 @@ function mkstempMmap(session: Session, request: AppRequest, ws: WebSocket) {
     bufferChunks.push(chunk)
     if (chunk.byteLength === 0) {
       const buffer = Buffer.concat(bufferChunks)
-      const jsonShmWebFD = JSON.stringify(session.nativeCompositorSession.webFS.mkstempMmap(buffer))
+      const jsonShmWebFD = JSON.stringify(session.nativeWaylandCompositorSession.webFS.mkstempMmap(buffer))
       ws.send(jsonShmWebFD, { binary: false })
       ws.close(4201, 'Created')
     }
@@ -167,7 +167,9 @@ function requestKeyFrame(session: Session, request: AppRequest, ws: WebSocket, u
     return
   }
 
-  const clientEntry = session.nativeCompositorSession.clients.find((clientEntry) => clientEntry.clientId === clientId)
+  const clientEntry = session.nativeWaylandCompositorSession.clients.find(
+    (clientEntry) => clientEntry.clientId === clientId,
+  )
 
   if (clientEntry === undefined) {
     ws.close(4404, 'Client not found.')
@@ -234,6 +236,14 @@ function signal(session: Session, request: AppRequest, ws: WebSocket, url: URL) 
 
   ws.onclose = (event) => {
     logger.info(`Signaling connection closed. Code: ${event.code}. Message: ${event.reason}`)
+    if (event.code === 1001) {
+      nativeAppContext.kill('SIGHUP')
+      return
+    }
+    if (event.code === 4001) {
+      nativeAppContext.kill('SIGTERM')
+      return
+    }
     nativeAppContext.onDisconnect()
   }
 }
@@ -267,8 +277,8 @@ function channel(session: Session, request: AppRequest, ws: WebSocket, url: URL)
   }
 
   ws.onclose = (event) => {
-    if (event.code === 4001) {
-      // user closed connection
+    if (event.code === 4001 || event.code === 1001) {
+      // user closed connection or user navigated away
       channel.doClose()
     }
     if (channel) {

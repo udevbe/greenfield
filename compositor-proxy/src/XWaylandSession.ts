@@ -1,22 +1,22 @@
 import { createLogger } from './Logger'
 import { nodeFDConnectionSetup } from 'xtsb'
-import { ClientEntry, NativeCompositorSession } from './NativeCompositorSession'
-import { equalValueExternal, setupXWayland, teardownXWayland } from 'westfield-proxy'
+import { ClientEntry, NativeWaylandCompositorSession } from './NativeWaylandCompositorSession'
+import { equalValueExternal, setupXWayland, teardownXWayland, XWaylandHandle } from 'westfield-proxy'
 import { createReadStream } from 'fs'
 import { Channel, createXWMDataChannel } from './Channel'
 
 const logger = createLogger('xwayland')
 const textEncoder = new TextEncoder()
 
+export function createXWaylandSession(nativeCompositorSession: NativeWaylandCompositorSession): XWaylandSession {
+  return new XWaylandSession(nativeCompositorSession)
+}
+
 export class XWaylandSession {
-  private nativeXWayland?: unknown
+  private nativeXWayland?: XWaylandHandle
   private xWaylandClient?: ClientEntry
 
-  constructor(private nativeCompositorSession: NativeCompositorSession, private xwmDataChannel?: Channel) {}
-
-  static create(nativeCompositorSession: NativeCompositorSession): XWaylandSession {
-    return new XWaylandSession(nativeCompositorSession)
-  }
+  constructor(private nativeCompositorSession: NativeWaylandCompositorSession, private xwmDataChannel?: Channel) {}
 
   /**
    * Don't await as this function will block until an XClient is connecting!

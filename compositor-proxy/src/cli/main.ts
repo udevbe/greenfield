@@ -4,7 +4,7 @@ import * as child_process from 'child_process'
 import { ChildProcess } from 'child_process'
 import { ToSessionProcessMessage } from './SessionProcess'
 import { Socket } from 'net'
-import { authRequest, handleOptions, handleGET } from './main-controller'
+import { authRequest, handleGET, handleOptions } from './main-controller'
 import { args } from './main-args'
 
 process.on('uncaughtException', (e) => {
@@ -90,18 +90,26 @@ function main() {
           logger.info(`Proxy session exited: ${signal || code}`)
           delete sessionProcesses[compositorSessionId]
         })
+        childProcess.once('error', (err) => {
+          logger.error(`Proxy session error: ${err.message}`)
+          delete sessionProcesses[compositorSessionId]
+        })
         sessionProcesses[compositorSessionId] = childProcess
-        const start: ToSessionProcessMessage = {
-          type: 'start',
-          payload: {
-            compositorSessionId,
-            config,
-          },
-        }
-        childProcess.send(start)
+        childProcess.once('spawn', () => {
+          const start: ToSessionProcessMessage = {
+            type: 'start',
+            payload: {
+              compositorSessionId,
+              config,
+            },
+          }
+          childProcess.send(start)
+          handleGET(childProcess, compositorSessionId, config, request, response, url, args['applications'])
+        })
+      } else {
+        handleGET(childProcess, compositorSessionId, config, request, response, url, args['applications'])
       }
 
-      handleGET(childProcess, compositorSessionId, config, request, response, url, args['applications'])
       return
     }
 

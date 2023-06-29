@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { createLogger } from './Logger'
-import { NativeCompositorSession } from './NativeCompositorSession'
+import { NativeWaylandCompositorSession } from './NativeWaylandCompositorSession'
 
 // eslint-disable-next-line camelcase,@typescript-eslint/ban-ts-comment
 // @ts-ignore
@@ -68,12 +68,12 @@ function deserializeProxyFDJSON(sourceBuf: ArrayBufferView): { proxyFD: ProxyFD;
 
 export function createNativeClientSession(
   wlClient: WlClient,
-  nativeCompositorSession: NativeCompositorSession,
+  nativeCompositorSession: NativeWaylandCompositorSession,
   protocolChannel: Channel,
   id: string,
   nativeAppContext: NativeAppContext,
-): NativeClientSession {
-  const nativeClientSession = new NativeClientSession(
+): NativeWaylandClientSession {
+  const nativeClientSession = new NativeWaylandClientSession(
     nativeAppContext,
     wlClient,
     nativeCompositorSession,
@@ -141,7 +141,7 @@ type SyncDone = {
   fastSync: boolean
 }
 
-export class NativeClientSession {
+export class NativeWaylandClientSession {
   private readonly browserChannelOutOfBandHandlers: Record<number, (payload: Uint8Array) => void>
   public readonly messageInterceptor: MessageInterceptor
 
@@ -151,7 +151,7 @@ export class NativeClientSession {
   constructor(
     public readonly nativeAppContext: NativeAppContext,
     public wlClient: WlClient | undefined,
-    public readonly nativeCompositorSession: NativeCompositorSession,
+    public readonly nativeCompositorSession: NativeWaylandCompositorSession,
     private readonly protocolDataChannel: Channel,
     public readonly id: string,
     private pendingWireMessages: Uint32Array[] = [],
@@ -162,13 +162,13 @@ export class NativeClientSession {
     public destroyListeners: (() => void)[] = [],
     private fastSync = true,
   ) {
-    nativeAppContext.addNativeClientSession(this)
+    nativeAppContext.addNativeWaylandClientSession(this)
     this.browserChannelOutOfBandHandlers = {
       // listen for out-of-band resource destroy. opcode: 1
       1: (payload) => this.destroyResourceSilently(payload),
     }
     this.destroyListeners.push(() => {
-      nativeAppContext.removeNativeClientSession(this)
+      nativeAppContext.removeNativeWaylandClientSession(this)
       this.protocolDataChannel.close()
     })
 
