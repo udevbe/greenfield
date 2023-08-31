@@ -37,23 +37,19 @@ export function randomString(): string {
 
 type GreenfieldMessage =
   | {
-      type: 'ConnectReq'
-      connectionId: string
-    }
-  | {
-      type: 'ConnectAck'
-      connectionId: string
+      type: 'Connect'
+      messagePort: MessagePort
     }
   | {
       type: 'Disconnect'
-      connectionId: string
+      messagePort: MessagePort
     }
   | {
       type: 'Terminate'
     }
 
 function isGreenfieldMessage(message: any): message is GreenfieldMessage {
-  return message.type === 'ConnectReq' || message.type === 'Terminate'
+  return message.type === 'Connect' || message.type === 'Terminate'
 }
 
 type WebAppEntry = {
@@ -77,30 +73,20 @@ window.addEventListener('message', (ev) => {
 
   const message = ev.data
   if (isGreenfieldMessage(message)) {
-    if (message.type === 'ConnectReq') {
-      const messageChannel = new MessageChannel()
+    if (message.type === 'Connect') {
       const clientId = randomString()
-      const client = webAppEntry.webAppLauncher.webAppSocket.onWebApp(
-        webAppEntry.iframe,
-        clientId,
-        messageChannel.port1,
-      )
+      const messagePort = message.messagePort
+      const client = webAppEntry.webAppLauncher.webAppSocket.onWebApp(webAppEntry.iframe, clientId, messagePort)
       client.onClose().then(() => {
-        messageChannel.port1.close()
-        messageChannel.port2.close()
+        message.messagePort
         const disconnect: GreenfieldMessage = {
           type: 'Disconnect',
-          connectionId: message.connectionId,
+          messagePort,
         }
-        source.postMessage(disconnect, '*')
+        source.postMessage(disconnect, '*', [messagePort])
       })
       webAppEntry.clients.push(client)
       webAppEntry.webClientConnectionListener.onClient(client)
-      const connectAck: GreenfieldMessage = {
-        type: 'ConnectAck',
-        connectionId: message.connectionId,
-      }
-      source.postMessage(connectAck, '*', [messageChannel.port2])
     } else if (message.type === 'Terminate') {
       webAppEntry.webClientConnectionListener.close()
     }
@@ -123,7 +109,8 @@ export class WebAppLauncher implements WebCompositorConnector {
   launch(url: URL): WebClientConnectionListener {
     const webAppFrame = document.createElement('iframe')
     webAppFrame.hidden = true
-    webAppFrame.sandbox.add('allow-scripts')
+    webAppFrame.setAttribute('credentialless', 'true')
+    webAppFrame.allow = 'cross-origin-isolated'
     webAppFrame.src = url.href
 
     const webClientConnectionListener: WebClientConnectionListener = {

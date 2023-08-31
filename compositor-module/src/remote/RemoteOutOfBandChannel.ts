@@ -20,6 +20,7 @@ import Session from '../Session'
 export const enum RemoteOutOfBandListenOpcode {
   BufferCreation = 2,
   RecycledResourceIds = 6,
+  CommitSerial = 7,
 }
 
 export const enum RemoteOutOfBandSendOpcode {

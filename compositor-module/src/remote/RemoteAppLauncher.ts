@@ -27,7 +27,7 @@ import {
   SimpleChannel,
   WebSocketChannel,
 } from './Channel'
-import { Client, WlBufferResource } from 'westfield-runtime-server'
+import { Client, WlBufferResource, WlSurfaceResource } from 'westfield-runtime-server'
 import ReconnectingWebSocket from './reconnecting-websocket'
 import { FD, SendMessage } from 'westfield-runtime-common'
 import RemoteOutOfBandChannel, {
@@ -41,6 +41,7 @@ import { XWindowManager } from './xwayland/XWindowManager'
 import { XWindowManagerConnection } from './xwayland/XWindowManagerConnection'
 import XWaylandShell from './xwayland/XWaylandShell'
 import { StreamingBuffer } from './StreamingBuffer'
+import Surface from '../Surface'
 
 const textDecoder = new TextDecoder()
 const textEncoder = new TextEncoder()
@@ -535,6 +536,20 @@ function setupClientOutOfBandHandlers(client: Client, outOfBandChannel: RemoteOu
 
     const ids = new Uint32Array(outOfBandMessage.buffer, outOfBandMessage.byteOffset)
     client.recycledIds = Array.from(ids)
+  })
+
+  // listen for commit serial
+  outOfBandChannel.setListener(RemoteOutOfBandListenOpcode.CommitSerial, (message) => {
+    if (client.connection.closed) {
+      return
+    }
+    const payload = new Uint32Array(message.buffer, message.byteOffset)
+    const resourceId = payload[0]
+    const commitSerial = payload[1]
+
+    const wlSurface = client.connection.wlObjects[resourceId] as WlSurfaceResource
+    const surface = wlSurface.implementation as Surface
+    surface.commitSerials.push(commitSerial)
   })
 }
 

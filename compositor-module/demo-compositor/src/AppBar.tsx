@@ -1,4 +1,4 @@
-import { AppContext, AppLauncher, CompositorClient, CompositorSurface } from '../../src'
+import { AppContext, AppLauncher, CompositorClient, CompositorSurface, WebCompositorConnector } from '../../src'
 import { Signal } from '@preact/signals'
 import { useCallback } from 'preact/compat'
 import { JSX } from 'preact'
@@ -30,7 +30,6 @@ function handleNewApp(appContext: AppContext, appEntryProps: AppEntryProps, appE
 }
 
 function createEmptyAppEntry(
-  appLauncher: AppLauncher,
   appEntries: Signal<AppEntryProps[]>,
   isChild: boolean,
   appLaunchURL: string,
@@ -53,22 +52,38 @@ function createEmptyAppEntry(
   return appEntryProps
 }
 
-function launchNewApp(appLauncher: AppLauncher, url: URL, appEntries: Signal<AppEntryProps[]>) {
-  const appURL = new URL(url)
+function launchNewWebApp(appLauncher: WebCompositorConnector, url: URL, appEntries: Signal<AppEntryProps[]>) {
+  const appURL = new URL(url.href.replace('web', 'http'))
+  const appEntryProps = createEmptyAppEntry(appEntries, false, appURL.href.replace(/^https?:\/\//, ''))
+  appEntries.value = [appEntryProps, ...appEntries.value]
+
+  appEntryProps.connectionState.value = 'connecting'
+  const connectionListener = appLauncher.launch(appURL)
+
+  connectionListener.onNeedIFrameAttach = (webAppIFrame) => {
+    connectionListener.onClose = () => {
+      webAppIFrame.remove()
+      appEntryProps.connectionState.value = 'terminated'
+      handleCloseEntry(appEntryProps, appEntries)
+    }
+    document.body.appendChild(webAppIFrame)
+  }
+  connectionListener.onClient = (client) => {
+    appEntryProps.connectionState.value = 'open'
+  }
+}
+
+function launchNewRemoteApp(appLauncher: AppLauncher, url: URL, appEntries: Signal<AppEntryProps[]>) {
+  const appURL = new URL(url.href.replace('rem', 'http'))
   appURL.username = ''
   appURL.password = ''
-  const targetAppEntryProps = createEmptyAppEntry(
-    appLauncher,
-    appEntries,
-    false,
-    appURL.href.replace(/^https?:\/\//, ''),
-  )
+  const targetAppEntryProps = createEmptyAppEntry(appEntries, false, appURL.href.replace(/^https?:\/\//, ''))
   appEntries.value = [targetAppEntryProps, ...appEntries.value]
 
   targetAppEntryProps.connectionState.value = 'connecting'
 
-  const appContext = appLauncher.launch(url, (childAppContext) => {
-    const emptyChildAppEntry = createEmptyAppEntry(appLauncher, appEntries, true, `${url.host}`)
+  const appContext = appLauncher.launch(new URL(url.href.replace('rem', 'http')), (childAppContext) => {
+    const emptyChildAppEntry = createEmptyAppEntry(appEntries, true, `${url.host}`)
     // TODO put the child next to the parent?
     appEntries.value = [emptyChildAppEntry, ...appEntries.value]
     handleNewApp(childAppContext, emptyChildAppEntry, appEntries)
@@ -79,7 +94,8 @@ function launchNewApp(appLauncher: AppLauncher, url: URL, appEntries: Signal<App
 }
 
 export type AppBarProps = Readonly<{
-  appLauncher: AppLauncher
+  remoteAppLauncher: AppLauncher
+  webAppLauncher: WebCompositorConnector
   appEntries: Signal<AppEntryProps[]>
 }>
 
@@ -89,7 +105,13 @@ export function AppBar(props: AppBarProps) {
       <div class="flex w-full flex-wrap space-x-1 p-1">
         <AppLaunchInput
           onLaunchNew={(url) => {
-            launchNewApp(props.appLauncher, url, props.appEntries)
+            if (url.protocol === 'rem:' || url.protocol === 'rems:') {
+              launchNewRemoteApp(props.remoteAppLauncher, url, props.appEntries)
+            } else if (url.protocol === 'web:' || url.protocol === 'webs:') {
+              launchNewWebApp(props.webAppLauncher, url, props.appEntries)
+            } else {
+              // TODO error with unsupported URL
+            }
           }}
         />
       </div>
@@ -115,11 +137,7 @@ function AppLaunchInput(props: AppInputProps) {
       event.target.value.trim() !== ''
     ) {
       const connectionURL = event.target.value
-      const url = new URL(
-        connectionURL.startsWith('http://') || connectionURL.startsWith('https://')
-          ? connectionURL
-          : `${location.protocol}//${connectionURL}`,
-      )
+      const url = new URL(connectionURL)
       event.target.value = ''
       props.onLaunchNew(url)
     }

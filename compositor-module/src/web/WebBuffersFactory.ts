@@ -7,7 +7,7 @@ import {
   WlBufferResource,
 } from 'westfield-runtime-server'
 import Session from '../Session'
-import { WebBuffer } from './WebBuffer'
+import { ImageBitmapBuffer } from '../ImageBitmapBuffer'
 import { FD } from 'westfield-runtime-common'
 
 export class WebBuffersFactory implements WebBitmapbufFactoryRequests {
@@ -21,7 +21,7 @@ export class WebBuffersFactory implements WebBitmapbufFactoryRequests {
 
   createBuffer(resource: WebBitmapbufFactoryResource, id: number, bitmap: FD): void {
     const bufferResource = new WlBufferResource(resource.client, id, resource.version)
-    bufferResource.implementation = WebBuffer.create(bufferResource, bitmap as ImageBitmap)
+    bufferResource.implementation = ImageBitmapBuffer.create(bufferResource, bitmap as ImageBitmap)
   }
 
   registerGlobal(registry: Registry): void {

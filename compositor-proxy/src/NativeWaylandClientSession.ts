@@ -231,6 +231,10 @@ export class NativeWaylandClientSession {
         syncDoneState.browserDone = true
         this.sendIfSyncDone(syncDoneState)
       } else {
+        // we don't want to expose the wl_shm global from the browser as the proxy will provide its own implementation
+        if (this.isGlobal(messageBuffer, 'wl_shm')) {
+          continue
+        }
         sendEvents(this.wlClient, messageBuffer, fdsBuffer)
       }
     }
@@ -270,6 +274,26 @@ export class NativeWaylandClientSession {
         emitGlobals(wlRegistry)
       }
     }
+  }
+
+  private isGlobal(wireMessageBuffer: Uint32Array, globalInterfaceName: string): boolean {
+    const id = wireMessageBuffer[0]
+    const wlRegistry = this.wlRegistries[id]
+    if (wlRegistry) {
+      const sizeOpcode = wireMessageBuffer[1]
+      const messageOpcode = sizeOpcode & 0x0000ffff
+      const globalOpcode = 0
+      const firstBrowserGlobal = 4294901761
+
+      if (messageOpcode === globalOpcode && wireMessageBuffer[2] >= firstBrowserGlobal) {
+        const stringSize = wireMessageBuffer[3]
+        const interface_ = textDecoder.decode(
+          new Uint8Array(wireMessageBuffer.buffer, wireMessageBuffer.byteOffset + 4 * 4, stringSize - 1),
+        )
+        return interface_ === globalInterfaceName
+      }
+    }
+    return false
   }
 
   onWireMessageRequest(wlClient: unknown, message: ArrayBuffer, objectId: number, opcode: number): number {

@@ -26,7 +26,7 @@ import RenderState from './RenderState'
 import { RGBXandA2RGBA } from './RGBXandAToRGBA'
 import SceneShader from './SceneShader'
 import { YUVA2RGBA } from './YUVA2RGBA'
-import { WebBufferContents } from '../web/WebBuffer'
+import { ImageBitmapBufferContents } from '../web/ImageBitmapBuffer'
 
 export class Scene {
   public region = createPixmanRegion()
@@ -84,7 +84,7 @@ export class Scene {
     return this._destroyPromise
   }
 
-  ['image/bitmap'](webBufferContents: WebBufferContents, renderState: RenderState) {
+  ['image/bitmap'](webBufferContents: ImageBitmapBufferContents, renderState: RenderState) {
     const { width, height } = webBufferContents.size
     renderState.size = { width, height }
     renderState.texture.setContent(webBufferContents.pixelContent, renderState.size)

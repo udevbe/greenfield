@@ -15,22 +15,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { SendMessage } from 'westfield-runtime-common'
 import { Client } from 'westfield-runtime-server'
 import Session from '../Session'
+import { webInputOutput } from './WebInputOutput'
 
-interface WebAppSocketMessage {
-  protocolMessage: ArrayBuffer
-  meta: Transferable[]
-}
+type WebAppMessage = [DataView, ...(ArrayBufferView | ImageBitmap | MessagePort)[]]
 
-function instanceOfWebAppSocketMessage(object: any): object is WebAppSocketMessage {
-  return (
-    'protocolMessage' in object &&
-    'meta' in object &&
-    object.protocolMessage instanceof ArrayBuffer &&
-    Array.isArray(object.meta)
-  )
+function instanceOfWebAppMessage(object: any): object is WebAppMessage {
+  return Array.isArray(object)
 }
 
 export class WebConnectionHandler {
@@ -41,59 +33,57 @@ export class WebConnectionHandler {
   private constructor(readonly session: Session) {}
 
   onWebApp(webAppFrame: HTMLIFrameElement, clientId: string, messagePort: MessagePort): Client {
-    // TODO How listen for webWorker terminate/close/destroy?
-    // TODO close client connection when worker is terminated
     const client = this.session.display.createClient(clientId)
+    client.userData = { inputOutput: webInputOutput }
 
+    messagePort.onmessageerror = (event) => {
+      console.log(event)
+    }
     messagePort.onmessage = (event) => {
-      if (!instanceOfWebAppSocketMessage(event.data)) {
-        console.error('[web-worker-connection] client send an illegal message object. Expected ArrayBuffer.')
+      const webAppMessage = event.data
+      try {
+        if (instanceOfWebAppMessage(webAppMessage)) {
+          const [view, ...fds] = webAppMessage
+          client.connection.message({ buffer: new Uint32Array(view.buffer), fds })
+        }
+      } catch (e: any) {
+        console.error(`[web-worker-connection] client send an illegal message object. ${e.message}`)
         client.close()
       }
-
-      const webAppSocketMessage = event.data as WebAppSocketMessage
-      const buffer = new Uint32Array(webAppSocketMessage.protocolMessage)
-      client.connection.message({ buffer, fds: webAppSocketMessage.meta })
     }
 
-    const flushQueue: SendMessage[][] = []
-    client.connection.onFlush = async (wireMessages) => {
-      flushQueue.push(wireMessages)
+    client.connection.onFlush = (wireMessages) => {
+      // convert to as single arrayBuffer so it can be send over a data channel using zero copy semantics.
+      const messagesSize = wireMessages.reduce(
+        (previousValue, currentValue) => previousValue + currentValue.buffer.byteLength,
+        0,
+      )
 
-      if (flushQueue.length > 1) {
-        return
-      }
+      const protocolBuffer = new Uint32Array(new ArrayBuffer(messagesSize))
+      const sendBuffer: [Uint32Array, ...(ArrayBufferView | ImageBitmap | MessagePort)[]] = [protocolBuffer]
+      const transferables: Transferable[] = [protocolBuffer.buffer]
 
-      while (flushQueue.length) {
-        const sendWireMessages = flushQueue[0]
-
-        // convert to as single arrayBuffer so it can be send over a data channel using zero copy semantics.
-        const messagesSize = sendWireMessages.reduce(
-          (previousValue, currentValue) => previousValue + currentValue.buffer.byteLength,
-          0,
-        )
-
-        const sendBuffer = new Uint32Array(new ArrayBuffer(messagesSize))
-        let offset = 0
-        const meta: Transferable[] = []
-        for (const wireMessage of sendWireMessages) {
-          for (const fd of wireMessage.fds) {
-            meta.push(fd as Transferable)
+      let offset = 0
+      for (const wireMessage of wireMessages) {
+        for (const fd of wireMessage.fds) {
+          if (ArrayBuffer.isView(fd) && !transferables.includes(fd.buffer)) {
+            if (fd.buffer instanceof ArrayBuffer) {
+              transferables.push(fd.buffer)
+            } /* else it's an instance of SharedArrayBuffer which should not be transferred */
+          } else if (fd instanceof ImageBitmap || fd instanceof MessagePort) {
+            transferables.push(fd)
+          } else {
+            throw new Error(`BUG. Unsupported FD`)
           }
-          const message = new Uint32Array(wireMessage.buffer)
-          sendBuffer.set(message, offset)
-          offset += message.length
+          sendBuffer.push(fd)
         }
 
-        messagePort.postMessage(
-          {
-            protocolMessage: sendBuffer.buffer,
-            meta,
-          },
-          [sendBuffer.buffer, ...meta],
-        )
-        flushQueue.shift()
+        const message = new Uint32Array(wireMessage.buffer)
+        protocolBuffer.set(message, offset)
+        offset += message.length
       }
+
+      messagePort.postMessage(sendBuffer, transferables)
     }
 
     client.onClose().then(() => {

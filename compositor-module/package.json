@@ -95,5 +95,8 @@
       "src/*.{js,ts}"
     ]
   },
-  "packageManager": "yarn@3.6.0"
+  "packageManager": "yarn@3.6.0",
+  "resolutions": {
+    "westfield-runtime-server": "portal:/home/erik/git/westfield/server/web/runtime"
+  }
 }

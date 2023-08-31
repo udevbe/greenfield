@@ -243,6 +243,8 @@ export function initSurfaceBufferEncoding(): void {
     const commitTimestamp = performance.now()
 
     const bufferContentSerial = incrementAndGetNextBufferSerial()
+    const msg = new Uint32Array([7, new Uint32Array(message.buffer)[0], bufferContentSerial])
+    this.userData.protocolChannel.send(Buffer.from(msg.buffer, msg.byteOffset, msg.byteLength))
 
     if (this.pendingBufferResourceId !== undefined) {
       if (this.surfaceState && this.surfaceState.bufferResourceId !== this.pendingBufferResourceId) {
@@ -289,15 +291,6 @@ export function initSurfaceBufferEncoding(): void {
       this.pendingFrameCallbacksIds = []
       frameFeedback.commitNotify(frameCallbacksIds)
     }
-
-    // inject the buffer content serial in the commit message
-    const origMessageBuffer = message.buffer
-    message.size += Uint32Array.BYTES_PER_ELEMENT
-    message.buffer = new ArrayBuffer(message.size)
-    new Uint8Array(message.buffer).set(new Uint8Array(origMessageBuffer))
-    const uint32Array = new Uint32Array(message.buffer)
-    uint32Array[1] = (message.size << 16) | 6 // size + opcode
-    uint32Array[2] = bufferContentSerial
 
     return {
       native: false,

@@ -1,6 +1,37 @@
 import { InputOutput, InputOutputFD } from '../InputOutput'
 import { FD } from 'westfield-runtime-common'
 
+class WebShmFD implements InputOutputFD {
+  private readonly blob: Blob
+  private readOffset = 0
+
+  constructor(public readonly fd: Uint8Array, private readonly type: 'shm') {
+    this.blob = new Blob([fd])
+  }
+
+  async close(): Promise<void> {
+    /* NOOP */
+  }
+
+  async read(count: number): Promise<Blob> {
+    const blob = this.blob.slice(this.readOffset)
+    this.readOffset += count
+    return blob
+  }
+
+  async readBlob(): Promise<Blob> {
+    return this.blob
+  }
+
+  async readStream(chunkSize: number): Promise<ReadableStream<Uint8Array>> {
+    return this.blob.stream()
+  }
+
+  async write(data: Blob): Promise<void> {
+    this.fd.set(new Uint8Array(await data.arrayBuffer()))
+  }
+}
+
 class WebPipeInputOutputFD implements InputOutputFD {
   private readBuffer?: Blob
 
@@ -132,17 +163,21 @@ class WebInputOutput implements InputOutput {
     ]
   }
 
-  mkstempMmap(data: Blob): Promise<InputOutputFD> {
-    // TODO mkstempMmap for webIO
-    throw new Error('TODO. Not yet implemented.')
+  async mkstempMmap(data: Blob): Promise<InputOutputFD> {
+    return new WebShmFD(new Uint8Array(await data.arrayBuffer()), 'shm')
   }
 
   wrapFD(fd: FD, type: 'pipe-read' | 'pipe-write' | 'shm'): InputOutputFD {
     if ((type === 'pipe-write' || type === 'pipe-read') && fd instanceof MessagePort) {
       return new WebPipeInputOutputFD(fd, type)
+    } else if (type === 'shm') {
+      if (fd instanceof ArrayBuffer || fd instanceof SharedArrayBuffer) {
+        return new WebShmFD(new Uint8Array(fd), 'shm')
+      } else if (fd instanceof Uint8Array) {
+        return new WebShmFD(fd, 'shm')
+      }
     }
-    // TODO wrap InputOutputFD for webIO shm
-    throw new Error('TODO. Not yet implemented.')
+    throw new Error('FD type mismatch.')
   }
 }
 

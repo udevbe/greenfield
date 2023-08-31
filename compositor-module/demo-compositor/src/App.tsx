@@ -37,7 +37,8 @@ export async function main() {
 
   // create new compositor context
   const session = await createCompositorSession()
-  const appLauncher = createAppLauncher(session, 'remote')
+  const remoteAppLauncher = createAppLauncher(session, 'remote')
+  const webAppLauncher = createAppLauncher(session, 'web')
 
   session.userShell.events.clientUnresponsiveUpdated = (client: CompositorClient, unresponsive: boolean) => {
     appEntryPropsAction(client.id, (appEntryProps) => {
@@ -87,7 +88,10 @@ export async function main() {
   // make compositor global protocol objects available to client
   session.globals.register()
 
-  render(<AppBar appLauncher={appLauncher} appEntries={appEntries} />, elementById('controls-container'))
+  render(
+    <AppBar remoteAppLauncher={remoteAppLauncher} webAppLauncher={webAppLauncher} appEntries={appEntries} />,
+    elementById('controls-container'),
+  )
 }
 
 window.onload = () => main()

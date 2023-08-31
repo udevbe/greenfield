@@ -1,7 +1,7 @@
 {
-  "name": "simple-web-gl",
+  "name": "demo-webapp-shm",
   "version": "1.0.0-alpha.0",
-  "description": "HTML5 Wayland Demo Web Client Simple Web GL",
+  "description": "HTML5 Wayland Demo Web Client Simple Shm",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/udevbe/greenfield.git"
@@ -20,16 +20,21 @@
   },
   "homepage": "https://github.com/udevbe/greenfield#readme",
   "scripts": {
-    "start": "vite dev"
+    "start": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "gl-matrix": "^3.4.3",
-    "westfield-runtime-client": "1.0.0-alpha.3",
-    "westfield-runtime-common": "1.0.0-alpha.1"
+    "westfield-runtime-client": "1.0.0-alpha.4",
+    "westfield-runtime-common": "1.0.0-alpha.2"
   },
   "devDependencies": {
     "typescript": "^5.0.2",
     "vite": "^4.2.1",
     "vite-plugin-glsl": "^1.1.2"
+  },
+  "resolutions": {
+    "westfield-runtime-client": "portal:/home/erik/git/westfield/client/web/runtime",
+    "westfield-runtime-common": "portal:/home/erik/git/westfield/common"
   }
 }

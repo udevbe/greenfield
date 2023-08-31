@@ -159,6 +159,9 @@ class Surface implements WlSurfaceRequests {
   private _surfaceChildren: SurfaceChild[] = []
   mapped = false
 
+  // set by a remote out of band message, used by remote streaming buffers
+  readonly commitSerials: number[] = []
+
   private constructor(
     public readonly resource: WlSurfaceResource,
     public readonly renderer: Renderer,
@@ -299,10 +302,11 @@ class Surface implements WlSurfaceRequests {
     return timesPoint(this.inverseBufferTransformation, bufferPoint)
   }
 
-  async commit(resource: WlSurfaceResource, serial?: number): Promise<void> {
+  async commit(resource: WlSurfaceResource): Promise<void> {
     const bufferImplementation = this.pendingState.buffer?.implementation as
       | BufferImplementation<BufferContents<unknown> | Promise<BufferContents<unknown>>>
       | undefined
+    const serial = this.commitSerials.shift()
     if (bufferImplementation && this.pendingState.bufferContents === undefined) {
       try {
         // console.log(`|- Awaiting buffer contents with serial: ${serial ?? 'NO SERIAL'}`)

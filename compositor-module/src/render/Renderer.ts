@@ -27,7 +27,7 @@ import Session from '../Session'
 import Surface from '../Surface'
 import View from '../View'
 import { Scene } from './Scene'
-import { isWebBufferContent } from '../web/WebBuffer'
+import { isImageBitmapBufferContent } from '../ImageBitmapBuffer'
 
 export function createRenderFrame(): Promise<number> {
   return new Promise<number>((resolve) => {
@@ -253,7 +253,7 @@ export default class Renderer {
           bufferImplementation.release()
         }
       }
-    } else if (isWebBufferContent(bufferContents)) {
+    } else if (isImageBitmapBufferContent(bufferContents)) {
       for (const renderState of Object.values(view.renderStates)) {
         renderState.scene[bufferContents.mimeType](bufferContents, renderState)
       }

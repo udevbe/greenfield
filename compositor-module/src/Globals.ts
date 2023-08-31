@@ -8,9 +8,11 @@ import Shell from './Shell'
 import Subcompositor from './Subcompositor'
 import XdgWmBase from './XdgWmBase'
 import { WebBuffersFactory } from './web/WebBuffersFactory'
+import { Shm } from './Shm'
 
 class Globals implements CompositorGlobals {
   static create(session: Session): Globals {
+    const shm = Shm.create(session)
     const seat = Seat.create(session)
 
     const compositor = Compositor.create(session)
@@ -22,11 +24,22 @@ class Globals implements CompositorGlobals {
 
     const webBuffersFactory = WebBuffersFactory.create(session)
 
-    return new Globals(session, seat, compositor, dataDeviceManager, subcompositor, shell, xdgWmBase, webBuffersFactory)
+    return new Globals(
+      session,
+      shm,
+      seat,
+      compositor,
+      dataDeviceManager,
+      subcompositor,
+      shell,
+      xdgWmBase,
+      webBuffersFactory,
+    )
   }
 
   private constructor(
     public readonly session: Session,
+    public readonly shm: Shm,
     public readonly seat: Seat,
     public readonly compositor: Compositor,
     public readonly dataDeviceManager: DataDeviceManager,
@@ -48,6 +61,7 @@ class Globals implements CompositorGlobals {
   }
 
   register(): void {
+    this.shm.registerGlobal(this.session.display.registry)
     this.compositor.registerGlobal(this.session.display.registry)
     this.dataDeviceManager.registerGlobal(this.session.display.registry)
     this.seat.registerGlobal(this.session.display.registry)
@@ -58,6 +72,7 @@ class Globals implements CompositorGlobals {
   }
 
   unregister(): void {
+    this.shm.unregisterGlobal()
     this.compositor.unregisterGlobal()
     this.dataDeviceManager.unregisterGlobal()
     this.seat.unregisterGlobal()

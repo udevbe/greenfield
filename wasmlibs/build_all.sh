@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -e
 
-# Pixman build fails using higher versions
-# EMSDK_VERSION="1.38.37"
 EMSDK_VERSION="latest"
 
 #######################################

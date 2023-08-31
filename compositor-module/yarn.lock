@@ -5794,14 +5794,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"westfield-runtime-server@npm:1.0.0-alpha.7":
-  version: 1.0.0-alpha.7
-  resolution: "westfield-runtime-server@npm:1.0.0-alpha.7"
+"westfield-runtime-server@portal:/home/erik/git/westfield/server/web/runtime::locator=greenfield-compositor%40workspace%3A.":
+  version: 0.0.0-use.local
+  resolution: "westfield-runtime-server@portal:/home/erik/git/westfield/server/web/runtime::locator=greenfield-compositor%40workspace%3A."
   peerDependencies:
     westfield-runtime-common: 1.0.0-alpha.1
-  checksum: f46b34b2f03c1496d120c5cedc0380da0227a0bc22124324dffff1c8b3c15bc82acc444b630d7413ac15aab38847fd4af4c90637973edd07719d8af5a4ae93c5
   languageName: node
-  linkType: hard
+  linkType: soft
 
 "which@npm:^2.0.1, which@npm:^2.0.2":
   version: 2.0.2

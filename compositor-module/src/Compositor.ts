@@ -39,7 +39,7 @@ export default class Compositor implements WlCompositorRequests {
 
   private constructor(private readonly session: Session) {}
 
-  registerGlobal(registry: Registry): void {
+  registerGlobal(registry: Registry, remoteOnly = true): void {
     if (this.global) {
       return
     }

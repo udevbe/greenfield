@@ -285,7 +285,7 @@ class Window implements WlRegistryEvents, XdgWmBaseEvents, XdgToplevelEvents, Wl
 }
 
 async function main() {
-  const display = await connect()
+  const display = connect()
   // create a new window with some buffers
   const window = Window.create(display, 800, 600)
   // wait for globals to come in
