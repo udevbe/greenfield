@@ -1,6 +1,7 @@
 src/protocol
 src/encoding/proxy-encoding-addon.node
-src/encoding/proxy-poll-addon.node
+src/encoding/libproxy-encoding.so
+src/proxy-poll-addon.node
 src/cli/app-config.d.ts
 package/compositor-proxy
 package/libproxy-encoding.so
