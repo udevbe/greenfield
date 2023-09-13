@@ -1,7 +1,7 @@
 import { createReadStream } from 'fs'
 import { ProxyFD } from './types'
 import { createLogger } from '../Logger'
-import { createMemoryMappedFile, makePipe } from 'westfield-proxy'
+import { createMemoryMappedFile, makePipe } from '@gfld/proxy-runtime'
 import { createWebSocketStream, WebSocket } from 'ws'
 import { Session } from '../Session'
 
@@ -15,7 +15,10 @@ export function createProxyInputOutput(session: Session, baseURL: string): Proxy
 }
 
 export class ProxyInputOutput {
-  constructor(private readonly session: Session, readonly baseURL: string) {}
+  constructor(
+    private readonly session: Session,
+    readonly baseURL: string,
+  ) {}
 
   /**
    * Creates a native fd that matches the content & behavior of the foreign proxyFD

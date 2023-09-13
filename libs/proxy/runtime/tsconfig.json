@@ -1,6 +1,7 @@
 {
   "extends": "@tsconfig/node18/tsconfig.json",
   "compilerOptions": {
+    "esModuleInterop": true,
     "outDir": "./dist",
     "declarationDir": "types",
     "resolveJsonModule": true,
@@ -9,7 +10,6 @@
       "src",
       "src/@types"
     ],
-    "moduleResolution": "Node",
     "inlineSourceMap": true,
     "inlineSources": true,
     "declaration": true
@@ -20,8 +20,5 @@
     "node_modules",
     ".eslintrc.js",
     ".prettierrc.js"
-  ],
-  "ts-node": {
-    "files": true
-  }
+  ]
 }

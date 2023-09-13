@@ -33,7 +33,7 @@ import {
   nativeGlobalNames,
   WlClient,
   WlDisplay,
-} from 'westfield-proxy'
+} from '@gfld/proxy-runtime'
 import { Channel, createProtocolChannel } from './Channel'
 import { webcrypto } from 'crypto'
 import { Session } from './Session'

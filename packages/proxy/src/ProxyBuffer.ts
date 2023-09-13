@@ -1,4 +1,4 @@
-import { MessageDestination } from 'westfield-proxy'
+import { MessageDestination } from '@gfld/proxy-runtime'
 
 let bufferSerial = 0
 

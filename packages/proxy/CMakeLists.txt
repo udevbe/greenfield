@@ -23,8 +23,8 @@ pkg_check_modules(EGL REQUIRED IMPORTED_TARGET egl>=1.5)
 pkg_check_modules(OPENGL REQUIRED IMPORTED_TARGET opengl>=3.3)
 pkg_check_modules(UV REQUIRED IMPORTED_TARGET libuv>=1.38.0)
 
-get_filename_component(WESTFIELD_LIBWAYLAND_SERVER ${CMAKE_CURRENT_SOURCE_DIR}/node_modules/westfield-proxy/dist/libwayland-server.so.0 ABSOLUTE)
-get_filename_component(WESTFIELD ${CMAKE_CURRENT_SOURCE_DIR}/node_modules/westfield-proxy/dist/libwestfield.so ABSOLUTE)
+get_filename_component(WESTFIELD_LIBWAYLAND_SERVER ${CMAKE_CURRENT_SOURCE_DIR}/node_modules/@gfld/proxy-runtime/dist/libwayland-server.so.0 ABSOLUTE)
+get_filename_component(WESTFIELD ${CMAKE_CURRENT_SOURCE_DIR}/node_modules/@gfld/proxy-runtime/dist/libwestfield.so ABSOLUTE)
 
 add_library(proxy-encoding SHARED
         ${CMAKE_CURRENT_SOURCE_DIR}/native/src/encoder.h
@@ -33,7 +33,7 @@ add_library(proxy-encoding SHARED
         ${CMAKE_CURRENT_SOURCE_DIR}/native/src/gst_main_loop.c
 )
 target_include_directories(proxy-encoding PRIVATE
-        ${CMAKE_SOURCE_DIR}/node_modules/westfield-proxy/dist/include
+        ${CMAKE_SOURCE_DIR}/node_modules/@gfld/proxy-runtime/dist/include
         ${GSTREAMER_INCLUDE_DIRS}
         ${GRAPHENE_INCLUDE_DIRS}
         ${GLIB2_INCLUDE_DIRS}
@@ -77,7 +77,7 @@ add_library(proxy-encoding-addon SHARED
 )
 target_include_directories(proxy-encoding-addon PRIVATE
         ${CMAKE_SOURCE_DIR}/node_modules/node-api-headers/include
-        ${CMAKE_SOURCE_DIR}/node_modules/westfield-proxy/dist/include
+        ${CMAKE_SOURCE_DIR}/node_modules/@gfld/proxy-runtime/dist/include
 )
 set_target_properties(proxy-encoding-addon PROPERTIES PREFIX "" SUFFIX ".node")
 target_link_libraries(proxy-encoding-addon PRIVATE

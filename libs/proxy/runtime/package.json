@@ -34,7 +34,7 @@
   "packageManager": "yarn@3.6.0",
   "scripts": {
     "build:native": "mkdir -p build && cmake -G Ninja -B./build -S./ && ninja -C ./build",
-    "postinstall": "yarn build:native",
+    "postinstall": "mkdir -p build && cmake -G Ninja -B./build -S./ && ninja -C ./build",
     "build": "tsc && yarn build:native",
     "clean": "rm -rf build/ dist/ types/"
   },
@@ -49,5 +49,8 @@
     "prettier": "^3.0.3",
     "ts-node": "^10.9.1",
     "typescript": "^5.2.2"
+  },
+  "installConfig": {
+    "hoistingLimits": "workspaces"
   }
 }

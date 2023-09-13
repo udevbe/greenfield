@@ -146,7 +146,7 @@ function writeFdAsStream(session: Session, request: AppRequest, ws: WebSocket, u
     return
   }
 
-  const fdWriteStream = createWriteStream('ignored', { fd, autoClose: true, highWaterMark: TRANSFER_CHUNK_SIZE })
+  const fdWriteStream = createWriteStream('ignored', { fd, autoClose: true })
   const wsStream = createWebSocketStream(ws, { highWaterMark: TRANSFER_CHUNK_SIZE })
 
   wsStream.pipe(fdWriteStream)

@@ -1,4 +1,4 @@
-import { destroyWlResourceSilently, flush, sendEvents } from 'westfield-proxy'
+import { destroyWlResourceSilently, flush, sendEvents } from '@gfld/proxy-runtime'
 import { performance } from 'perf_hooks'
 import type { Channel } from './Channel'
 

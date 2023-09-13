@@ -21,9 +21,6 @@ import { NativeWaylandCompositorSession } from './NativeWaylandCompositorSession
 // eslint-disable-next-line camelcase,@typescript-eslint/ban-ts-comment
 // @ts-ignore
 import wl_display_interceptor from './protocol/wl_display_interceptor'
-// eslint-disable-next-line camelcase,@typescript-eslint/ban-ts-comment
-// @ts-ignore
-import wl_buffer_interceptor from './protocol/wl_buffer_interceptor'
 import { ProxyFD } from './io/types'
 import { TextDecoder, TextEncoder } from 'util'
 import {
@@ -40,12 +37,12 @@ import {
   setSyncDoneCallback,
   setWireMessageCallback,
   setWireMessageEndCallback,
-} from 'westfield-proxy'
+} from '@gfld/proxy-runtime'
 import { ProxyBuffer } from './ProxyBuffer'
 import type { Channel } from './Channel'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 import { NativeAppContext } from './NativeAppContext'
-import { WlClient } from '../../../westfield/server/node/proxy/src/@types/westfield-addon'
+import { WlClient } from '@gfld/proxy-runtime'
 
 const logger = createLogger('native-client-session')
 
