@@ -1,0 +1,15 @@
+{
+  "private": true,
+  "workspaces": [
+    "libs/web/common",
+    "libs/web/client/generator",
+    "libs/web/client/protocol",
+    "libs/web/compositor/generator",
+    "libs/web/compositor/protocol",
+    "libs/proxy/generator",
+    "libs/proxy/runtime",
+    "packages/compositor",
+    "packages/proxy",
+    "packages/shell"
+  ]
+}

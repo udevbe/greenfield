@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/@openapitools/openapi-generator-cli/config.schema.json",
+  "spaces": 2,
+  "generator-cli": {
+    "version": "5.4.0",
+    "generators": {
+      "webfs": {
+        "additionalProperties": {
+          "typescriptThreePlus": true,
+          "supportsES6": true,
+          "npmVersion": "16.0.0"
+        },
+        "glob": "./compositor-proxy-api.yaml",
+        "output": "src/api",
+        "generatorName": "typescript-fetch"
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "extends": "@tsconfig/node18/tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "rootDirs": ["src", "src/@types"],
+    "moduleResolution": "Node",
+    "pretty": true,
+  },
+  "exclude": ["node_modules", ".eslintrc.js", ".prettierrc.js", "jest.config.js", "**/*.spec.ts"],
+  "ts-node": {
+    "files": true
+  }
+}

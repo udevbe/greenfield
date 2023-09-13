@@ -1,0 +1,29 @@
+{
+  "name": "@gfld/client-generator",
+  "version": "1.0.0-alpha.0",
+  "description": "Wayland HTML5 protocol generator for the browser",
+  "bin": "westfield-scanner-client.js",
+  "keywords": [
+    "wayland",
+    "html5",
+    "weboscket",
+    "compositor",
+    "browser",
+    "javascript",
+    "ipc"
+  ],
+  "author": "Erik De Rijcke",
+  "homepage": "https://www.greenfield.app",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/udevbe/greenfield/tree/master/libs/web/client/generator"
+  },
+  "packageManager": "yarn@3.6.0",
+  "dependencies": {
+    "camelcase": "^8.0.0",
+    "meow": "^12.1.1",
+    "uppercamelcase": "^3.0.0",
+    "xml2js": "^0.6.2"
+  }
+}

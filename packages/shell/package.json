@@ -1,0 +1,52 @@
+{
+  "name": "@gfld/shell",
+  "version": "1.0.0-alpha.0",
+  "description": "A Wayland HTML5 Compositor Shell.",
+  "keywords": [
+    "linux",
+    "wayland",
+    "javascript",
+    "typescript",
+    "compositor",
+    "html5",
+    "browser",
+    "canvas",
+    "webgl",
+    "websocket",
+    "remote",
+    "web"
+  ],
+  "scripts": {
+    "start": "vite dev --config ./demo-compositor/vite.config.mts"
+  },
+  "dependencies": {
+    "@gfld/compositor": "workspace:^"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.21.8",
+    "@preact/preset-vite": "^2.5.0",
+    "@preact/signals": "^1.1.3",
+    "@typescript-eslint/eslint-plugin": "^5.59.5",
+    "@typescript-eslint/parser": "^5.59.5",
+    "@vitejs/plugin-basic-ssl": "^1.0.1",
+    "autoprefixer": "^10.4.14",
+    "eslint": "^8.40.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "postcss": "^8.4.24",
+    "preact": "^10.13.2",
+    "prettier": "^2.8.8",
+    "prettier-plugin-tailwindcss": "^0.3.0",
+    "tailwindcss": "^3.3.2",
+    "typescript": "^5.0.4",
+    "vite": "^4.3.5"
+  },
+  "author": "Erik De Rijcke",
+  "homepage": "https://www.greenfield.app",
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/udevbe/greenfield/tree/master/packages/shell"
+  },
+  "packageManager": "yarn@3.6.0"
+}

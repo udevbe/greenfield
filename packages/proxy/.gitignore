@@ -1,0 +1,8 @@
+src/protocol
+src/encoding/proxy-encoding-addon.node
+src/encoding/proxy-poll-addon.node
+src/cli/app-config.d.ts
+package/compositor-proxy
+package/libproxy-encoding.so
+package/libwayland-server.so.0
+package/libwestfield.so

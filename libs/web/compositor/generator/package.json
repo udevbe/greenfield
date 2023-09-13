@@ -1,0 +1,33 @@
+{
+  "name": "@gfld/compositor-generator",
+  "version": "1.0.0-alpha.0",
+  "type": "commonjs",
+  "description": "Wayland HTML5 protocol generator for Node.js",
+  "bin": "westfield-scanner-server.js",
+  "keywords": [
+    "wayland",
+    "html5",
+    "weboscket",
+    "compositor",
+    "browser",
+    "javascript",
+    "ipc"
+  ],
+  "author": "Erik De Rijcke",
+  "homepage": "https://www.greenfield.app",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/udevbe/greenfield/tree/master/libs/web/compositor/generator"
+  },
+  "packageManager": "yarn@3.6.0",
+  "dependencies": {
+    "camelcase": "8.0.0",
+    "meow": "^12.1.1",
+    "uppercamelcase": "3.0.0",
+    "xml2js": "0.6.2"
+  },
+  "devDependencies": {
+    "standard": "17.1.0"
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "name": "@gfld/proxy",
+  "version": "1.0.0-alpha.0",
+  "bin": "dist/cli.js",
+  "module": "dist/index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "description": "Wayland Compositor Proxy",
+  "scripts": {
+    "generate:config-types": "json2ts -i src/cli/app-config-schema.json -o src/cli/app-config.d.ts --style.singleQuote --no-style.semi",
+    "generate:xdgshell": "westfield-proxy-generator protocol/xdg-shell.xml -o src/protocol",
+    "generate:wayland-drm": "westfield-proxy-generator protocol/wayland-drm.xml -o src/protocol",
+    "generate:wayland": "westfield-proxy-generator protocol/wayland.xml -o src/protocol",
+    "generate": "rm -rf src/protocol && mkdir -p src/protocol && yarn generate:config-types && yarn generate:wayland && yarn generate:wayland-drm && yarn generate:xdgshell",
+    "build:native": "mkdir -p build && cmake -G Ninja -B./build -S./ && ninja -C ./build",
+    "build:typescript": "tsc",
+    "build": "rm -rf dist && yarn build:native && yarn build:typescript",
+    "start": "node --require ts-node/register src/cli/main.ts --applications=./example-applications.json",
+    "test": "jest",
+    "package:copy-libs": "cp 'node_modules/westfield-proxy/dist/libwayland-server.so.0' 'node_modules/westfield-proxy/dist/libwestfield.so' 'dist/encoding/libproxy-encoding.so' -t package",
+    "package": "pkg --compress Brotli --no-native-build package.json && yarn package:copy-libs"
+  },
+  "dependencies": {
+    "@gfld/proxy-runtime": "workspace:^",
+    "ajv": "^8.12.0",
+    "ajv-formats": "^2.1.1",
+    "pino": "^8.14.1",
+    "pino-pretty": "^10.0.0",
+    "ws": "^8.13.0",
+    "xtsb": "1.0.0-alpha.0"
+  },
+  "devDependencies": {
+    "@gfld/proxy-generator": "workspace:^",
+    "@tsconfig/node18": "^18.2.2",
+    "@types/jest": "^29.5.4",
+    "@types/js-yaml": "^4.0.5",
+    "@types/jsonwebtoken": "^9.0.2",
+    "@types/node": "^18.15.3",
+    "@types/ws": "^8.5.5",
+    "@typescript-eslint/eslint-plugin": "^6.7.0",
+    "@typescript-eslint/parser": "^6.7.0",
+    "eslint": "^8.49.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "jest": "^29.7.0",
+    "json-schema-to-typescript": "^13.1.1",
+    "node-api-headers": "^1.1.0",
+    "pkg": "^5.8.1",
+    "prettier": "^3.0.3",
+    "ts-jest": "^29.1.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
+  },
+  "pkg": {
+    "scripts": "dist/**/*.js",
+    "assets": [
+      "dist/config.yaml",
+      "dist/**/*.json",
+      "node_modules/uWebSockets.js/uws_linux_x64_108.node"
+    ],
+    "targets": [
+      "node18-linux-x64"
+    ],
+    "outputPath": "package"
+  },
+  "author": "Erik De Rijcke",
+  "homepage": "https://www.greenfield.app",
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/udevbe/greenfield/tree/master/packages/proxy"
+  },
+  "packageManager": "yarn@3.6.0"
+}
