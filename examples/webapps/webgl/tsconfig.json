@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "Node16",
+    "target": "es2018",
+    "module": "esnext",
+    "esModuleInterop": true,
+    "strict": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext",
+    ]
+  }
+}
