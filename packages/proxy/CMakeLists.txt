@@ -1,13 +1,15 @@
 cmake_minimum_required(VERSION 3.13)
 
-project(app-endpoint-encoding C)
+project(greenfield-proxy C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -pedantic")
+set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 #set(CMAKE_BUILD_TYPE "Debug")
 set(CMAKE_BUILD_TYPE "Release")
 
+find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLIB2 REQUIRED glib-2.0 IMPORTED_TARGET)
 pkg_check_modules(GSTREAMER REQUIRED
@@ -22,15 +24,19 @@ pkg_check_modules(GRAPHENE REQUIRED IMPORTED_TARGET graphene-1.0)
 pkg_check_modules(EGL REQUIRED IMPORTED_TARGET egl>=1.5)
 pkg_check_modules(OPENGL REQUIRED IMPORTED_TARGET opengl>=3.3)
 pkg_check_modules(UV REQUIRED IMPORTED_TARGET libuv>=1.38.0)
+pkg_check_modules(LibFFI REQUIRED libffi IMPORTED_TARGET)
+pkg_check_modules(LIBUDEV REQUIRED libudev IMPORTED_TARGET)
+pkg_check_modules(GBM REQUIRED gbm IMPORTED_TARGET)
+pkg_check_modules(LIBDRM REQUIRED libdrm IMPORTED_TARGET)
 
 get_filename_component(WESTFIELD_LIBWAYLAND_SERVER ${CMAKE_CURRENT_SOURCE_DIR}/node_modules/@gfld/proxy-runtime/dist/libwayland-server.so.0 ABSOLUTE)
 get_filename_component(WESTFIELD ${CMAKE_CURRENT_SOURCE_DIR}/node_modules/@gfld/proxy-runtime/dist/libwestfield.so ABSOLUTE)
 
 add_library(proxy-encoding SHARED
-        ${CMAKE_CURRENT_SOURCE_DIR}/native/src/encoder.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/native/src/gst_frame_encoder_drm_formats.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/native/src/gst_frame_encoder.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/native/src/gst_main_loop.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/encoding/src/encoder.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/encoding/src/gst_frame_encoder_drm_formats.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/encoding/src/gst_frame_encoder.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/encoding/src/gst_main_loop.c
 )
 target_include_directories(proxy-encoding PRIVATE
         ${CMAKE_SOURCE_DIR}/node_modules/@gfld/proxy-runtime/dist/include
@@ -56,7 +62,7 @@ set_target_properties(proxy-encoding
 )
 
 add_library(proxy-poll-addon SHARED
-        ${CMAKE_CURRENT_SOURCE_DIR}/native/src/poll.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/poll/src/poll.c
 )
 target_include_directories(proxy-poll-addon PRIVATE
         ${CMAKE_SOURCE_DIR}/node_modules/node-api-headers/include
@@ -72,8 +78,8 @@ set_target_properties(proxy-poll-addon
 )
 
 add_library(proxy-encoding-addon SHARED
-        ${CMAKE_CURRENT_SOURCE_DIR}/native/src/encoder.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/native/src/node_encoder.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/encoding/encoder.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/encoding/node_encoder.c
 )
 target_include_directories(proxy-encoding-addon PRIVATE
         ${CMAKE_SOURCE_DIR}/node_modules/node-api-headers/include
@@ -88,4 +94,129 @@ target_link_libraries(proxy-encoding-addon PRIVATE
 set_target_properties(proxy-encoding-addon
     PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/encoding
+)
+
+add_library(wayland-server SHARED
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-server-protocol.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-protocol.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/westfield-wayland-server-extra.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/connection.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/event-loop.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-os.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-os.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-server-protocol.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-private.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-server.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-server.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-server-private.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-server-core.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-shm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-util.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-util.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/westfield-wayland-server.h
+)
+target_include_directories(wayland-server PRIVATE
+        ${LibFFI_INCLUDE_DIRS}
+)
+target_link_libraries(wayland-server PRIVATE
+        PkgConfig::LibFFI
+        Threads::Threads
+        -Wl,--no-undefined
+)
+set_target_properties(wayland-server
+        PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist
+        SOVERSION 0
+)
+file(GLOB WESTFIELD_WAYLAND_SERVER_PUBLIC_HEADERS
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-server-protocol.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-server.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-server-core.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-util.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-version.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/westfield-wayland-server-extra.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/westfield-wayland-server.h
+)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/include/wayland-server)
+file(COPY ${WESTFIELD_WAYLAND_SERVER_PUBLIC_HEADERS} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/dist/include/wayland-server)
+
+
+add_library(westfield SHARED
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/westfield-fdutils.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/westfield-fdutils.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/westfield-xwayland.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/westfield-xwayland.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/westfield-egl.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/westfield-egl.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/westfield.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/westfield-surface.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/addon.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/addon.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/westfield-buffer.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/westfield-buffer.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/westfield-dmabuf.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/westfield-dmabuf.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/linux-dmabuf-unstable-v1-protocol.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/linux-dmabuf-unstable-v1-protocol.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/westfield-util.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/drm-protocol.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/drm-protocol.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/drm_format_set.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/drm_format_set.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wlr_linux_dmabuf_v1.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wlr_linux_dmabuf_v1.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wlr_drm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wlr_drm.h
+        )
+target_include_directories(westfield PRIVATE
+        ${CMAKE_SOURCE_DIR}/native/wayland/src
+        ${CMAKE_SOURCE_DIR}/native/wayland/src/wayland-server
+        ${CMAKE_SOURCE_DIR}/native/wayland/src/wayland-server/protocol
+        ${LIBUDEV_INCLUDE_DIRS}
+        ${GBM_INCLUDE_DIRS}
+        ${EGL_INCLUDE_DIRS}
+        ${LIBDRM_INCLUDE_DIRS}
+)
+target_link_libraries(westfield PRIVATE
+        wayland-server
+        ${CMAKE_JS_LIB}
+        PkgConfig::LIBUDEV
+        PkgConfig::GBM
+        PkgConfig::EGL
+        PkgConfig::LIBDRM
+        Threads::Threads
+        rt
+        -Wl,--no-undefined
+)
+set_target_properties(westfield
+        PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist
+)
+file(GLOB WESTFIELD_PUBLIC_HEADERS
+        ${CMAKE_SOURCE_DIR}/native/wayland/src/*.h
+)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/include)
+file(COPY ${WESTFIELD_PUBLIC_HEADERS} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/dist/include)
+
+
+add_library(westfield-addon SHARED
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/node-addon/westfield-addon.c
+)
+target_include_directories(westfield-addon PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src
+)
+set_target_properties(westfield-addon
+        PROPERTIES PREFIX "" SUFFIX ".node"
+)
+target_link_libraries(westfield-addon PRIVATE
+            ${CMAKE_JS_LIB}
+            wayland-server
+            westfield
+            Threads::Threads
+            rt
+)
+set_target_properties(westfield-addon
+        PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist
 )

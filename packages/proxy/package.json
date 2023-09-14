@@ -70,8 +70,5 @@
     "type": "git",
     "url": "https://github.com/udevbe/greenfield/tree/master/packages/proxy"
   },
-  "packageManager": "yarn@3.6.0",
-  "installConfig": {
-    "hoistingLimits": "workspaces"
-  }
+  "packageManager": "yarn@3.6.0"
 }
