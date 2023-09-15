@@ -15,7 +15,7 @@ ensure_repo() {
 }
 
 build() {
-    git -C repo pull || ensure_repo
+    [ -e repo ] || ensure_repo
     pushd repo
     	pipx run meson setup build/ --cross-file "${_SDK_DIR}/emscripten-build.ini" --cross-file "${_SDK_DIR}/emscripten-toolchain.ini" \
     	  -Dgtk=disabled -Dlibpng=disabled -Dtests=disabled

@@ -1,0 +1,112 @@
+diff --git a/Makefile.am b/Makefile.am
+index dd2e4a3..c5d42d2 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -1,14 +1,10 @@
+-
+ nobase_include_HEADERS = sys/epoll.h
+ 
+-noinst_PROGRAMS = echo
+-echo_SOURCES = echo.c
+-echo_LDADD = libepoll.la
+-
+ lib_LTLIBRARIES = libepoll.la
+ libepoll_la_SOURCES = epoll.c
+ libepoll_la_LIBADD = $(UPOLL_LIBS)
+-libepoll_la_LDFLAGS = -no-undefined
++libepoll_la_LDFLAGS = -no-undefined $(UPOLL_LDFLAGS)
++libepoll_la_CFLAGS = $(UPOLL_CFLAGS)
+ 
+ pkgconfigdir = $(libdir)/pkgconfig
+-pkgconfig_DATA = epoll.pc
++pkgconfig_DATA = epoll.pc
+\ No newline at end of file
+diff --git a/configure.ac b/configure.ac
+index 349c2e0..7e9097c 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -2,7 +2,7 @@
+ # Process this file with autoconf to produce a configure script.
+ 
+ AC_PREREQ([2.69])
+-AC_INIT([cygepoll], [0.0.1])
++AC_INIT([cygepoll],[0.0.1])
+ AC_CONFIG_SRCDIR([epoll.c])
+ AC_CONFIG_HEADERS([config.h])
+ AM_INIT_AUTOMAKE([foreign])
+@@ -24,4 +24,4 @@ AC_TYPE_UINT64_T
+ # Checks for library functions.
+ 
+ AC_CONFIG_FILES([Makefile epoll.pc])
+-AC_OUTPUT
++AC_OUTPUT
+\ No newline at end of file
+diff --git a/epoll.c b/epoll.c
+index d4cd243..c754ba5 100644
+--- a/epoll.c
++++ b/epoll.c
+@@ -15,23 +15,23 @@
+  License along with this library.*/
+ 
+ #include <errno.h>
+-#include <limits.h>
+ #include <up.h>
+ 
+ #include <sys/epoll.h>
+ 
++#define OPEN_MAX 256
+ static upoll_t* ups[OPEN_MAX];
+-static int index = 1;
++static int _epoll_index = 1;
+ 
+ int
+ epoll_create(int size)
+ {
+-        if (index >= OPEN_MAX) {
++        if (_epoll_index >= OPEN_MAX) {
+                 errno = ENFILE;
+                 return -1;
+         }
+-        ups[index++] = upoll_create(size);
+-        return index - 1;
++        ups[_epoll_index++] = upoll_create(size);
++        return _epoll_index - 1;
+ }
+ 
+ int
+diff --git a/epoll.pc.in b/epoll.pc.in
+index 318b406..9062f37 100644
+--- a/epoll.pc.in
++++ b/epoll.pc.in
+@@ -1,7 +1,7 @@
+-prefix=/usr
+-exec_prefix=/usr
+-libdir=/usr/lib
+-includedir=${prefix}/include
++prefix=@prefix@
++exec_prefix=@exec_prefix@
++libdir=@libdir@
++includedir=@includedir@
+ 
+ Name: cygepoll
+ Description: Cygwin epoll
+diff --git a/sys/epoll.h b/sys/epoll.h
+index 5071210..7f45d49 100644
+--- a/sys/epoll.h
++++ b/sys/epoll.h
+@@ -48,8 +48,6 @@ struct epoll_event
+   epoll_data_t data; /* User data variable */
+ };
+ 
+-__BEGIN_DECLS
+-
+ int
+ epoll_create (int size);
+ 
+@@ -59,6 +57,4 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event);
+ int
+ epoll_wait (int epfd, struct epoll_event *events, int maxevents, int timeout);
+ 
+-__END_DECLS
+-
+ #endif /* sys/epoll.h */

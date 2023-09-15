@@ -1,0 +1,4 @@
+#!/bin/bash
+
+_SDK_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.."
+"$_SDK_DIR"/emsdk/upstream/emscripten/emar "$@"

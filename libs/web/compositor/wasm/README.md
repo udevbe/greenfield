@@ -1,11 +1,5 @@
 # Usage
-`build_all.sh` is a script that builds all required WebAssembly libraries used by the Greenfield compositor. Simply
-run `build_all.sh` and the WASM libraries should appear here.
+- `yarn install`
+- `yarn build`
 
-The following files should appear after build:
-
-- libpixman.js
-- libpixman.wasm
-- libxkbcommon.data
-- libxkbcommon.js
-- libxkbcommon.wasm
+To build on Mac you'll need `bison` >=3.8

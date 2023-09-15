@@ -1,0 +1,4 @@
+/build
+/src/glue.js
+/src/xdg-shell-client-protocol.c
+/src/xdg-shell-client-protocol.h

@@ -1,0 +1,43 @@
+# This option is not implemented:
+#  --with-cairo=[image|gl|glesv2] Which Cairo renderer to use for the clients
+# It is hardcoded to cairo-image for now.
+
+option(
+	'image-jpeg',
+	type: 'boolean',
+	value: true,
+	description: 'JPEG loading support'
+)
+option(
+	'image-webp',
+	type: 'boolean',
+	value: true,
+	description: 'WebP loading support'
+)
+
+option(
+	'tools',
+	type: 'array',
+	choices: [ 'calibrator', 'debug', 'info', 'terminal', 'touch-calibrator' ],
+	description: 'List of accessory clients to build and install'
+)
+option(
+	'demo-clients',
+	type: 'boolean',
+	value: true,
+	description: 'Sample clients: toytoolkit demo programs'
+)
+option(
+	'simple-clients',
+	type: 'array',
+	choices: [ 'all', 'damage', 'im', 'egl', 'shm', 'touch', 'dmabuf-feedback', 'dmabuf-v4l', 'dmabuf-egl' ],
+	value: [ 'all' ],
+	description: 'Sample clients: simple test programs'
+)
+
+option(
+	'resize-pool',
+	type: 'boolean',
+	value: true,
+	description: 'Sample clients: optimize window resize performance'
+)
