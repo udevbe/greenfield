@@ -705,9 +705,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@gfld/client-generator@workspace:^, @gfld/client-generator@workspace:libs/web/client/generator":
+"@gfld/client-generator@workspace:^, @gfld/client-generator@workspace:libs/client-generator":
   version: 0.0.0-use.local
-  resolution: "@gfld/client-generator@workspace:libs/web/client/generator"
+  resolution: "@gfld/client-generator@workspace:libs/client-generator"
   dependencies:
     camelcase: ^8.0.0
     meow: ^12.1.1
@@ -718,9 +718,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@gfld/client-protocol@workspace:libs/web/client/protocol":
+"@gfld/client-protocol@workspace:libs/client-protocol":
   version: 0.0.0-use.local
-  resolution: "@gfld/client-protocol@workspace:libs/web/client/protocol"
+  resolution: "@gfld/client-protocol@workspace:libs/client-protocol"
   dependencies:
     "@gfld/client-generator": "workspace:^"
     "@gfld/common": "workspace:^"
@@ -735,9 +735,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@gfld/common@workspace:^, @gfld/common@workspace:libs/web/common":
+"@gfld/common@workspace:^, @gfld/common@workspace:libs/common":
   version: 0.0.0-use.local
-  resolution: "@gfld/common@workspace:libs/web/common"
+  resolution: "@gfld/common@workspace:libs/common"
   dependencies:
     "@typescript-eslint/eslint-plugin": ^6.7.0
     "@typescript-eslint/parser": ^6.7.0
@@ -750,9 +750,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@gfld/compositor-generator@workspace:^, @gfld/compositor-generator@workspace:libs/web/compositor/generator":
+"@gfld/compositor-generator@workspace:^, @gfld/compositor-generator@workspace:libs/compositor-generator":
   version: 0.0.0-use.local
-  resolution: "@gfld/compositor-generator@workspace:libs/web/compositor/generator"
+  resolution: "@gfld/compositor-generator@workspace:libs/compositor-generator"
   dependencies:
     camelcase: 8.0.0
     meow: ^12.1.1
@@ -764,9 +764,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@gfld/compositor-protocol@workspace:^, @gfld/compositor-protocol@workspace:libs/web/compositor/protocol":
+"@gfld/compositor-protocol@workspace:^, @gfld/compositor-protocol@workspace:libs/compositor-protocol":
   version: 0.0.0-use.local
-  resolution: "@gfld/compositor-protocol@workspace:libs/web/compositor/protocol"
+  resolution: "@gfld/compositor-protocol@workspace:libs/compositor-protocol"
   dependencies:
     "@gfld/common": "workspace:^"
     "@gfld/compositor-generator": "workspace:^"
@@ -782,9 +782,59 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@gfld/compositor-wasm@workspace:libs/web/compositor/wasm":
+"@gfld/compositor-proxy-generator@workspace:^, @gfld/compositor-proxy-generator@workspace:libs/compositor-proxy-generator":
   version: 0.0.0-use.local
-  resolution: "@gfld/compositor-wasm@workspace:libs/web/compositor/wasm"
+  resolution: "@gfld/compositor-proxy-generator@workspace:libs/compositor-proxy-generator"
+  dependencies:
+    camelcase: ^8.0.0
+    meow: ^12.1.1
+    standard: ^17.1.0
+    uppercamelcase: ^3.0.0
+    xml2js: ^0.6.2
+  bin:
+    compositor-proxy-generator: src/index.mjs
+  languageName: unknown
+  linkType: soft
+
+"@gfld/compositor-proxy@workspace:packages/compositor-proxy":
+  version: 0.0.0-use.local
+  resolution: "@gfld/compositor-proxy@workspace:packages/compositor-proxy"
+  dependencies:
+    "@gfld/compositor-proxy-generator": "workspace:^"
+    "@types/jest": ^29.5.4
+    "@types/js-yaml": ^4.0.5
+    "@types/jsonwebtoken": ^9.0.2
+    "@types/node": ^18.15.3
+    "@types/ws": ^8.5.5
+    "@typescript-eslint/eslint-plugin": ^6.7.0
+    "@typescript-eslint/parser": ^6.7.0
+    ajv: ^8.12.0
+    ajv-formats: ^2.1.1
+    cpy-cli: ^5.0.0
+    eslint: ^8.49.0
+    eslint-config-prettier: ^9.0.0
+    eslint-plugin-prettier: ^5.0.0
+    jest: ^29.7.0
+    json-schema-to-typescript: ^13.1.1
+    mkdirp: ^3.0.1
+    pino: ^8.14.1
+    pino-pretty: ^10.0.0
+    pkg: ^5.8.1
+    prettier: ^3.0.3
+    rimraf: ^5.0.1
+    ts-jest: ^29.1.1
+    ts-node: ^10.9.1
+    typescript: ^5.2.2
+    ws: ^8.13.0
+    xtsb: 1.0.0-alpha.0
+  bin:
+    compositor-proxy: dist/cli.js
+  languageName: unknown
+  linkType: soft
+
+"@gfld/compositor-wasm@workspace:libs/compositor-wasm":
+  version: 0.0.0-use.local
+  resolution: "@gfld/compositor-wasm@workspace:libs/compositor-wasm"
   dependencies:
     "@typescript-eslint/eslint-plugin": ^6.7.0
     "@typescript-eslint/parser": ^6.7.0
@@ -818,56 +868,6 @@ __metadata:
     ts-node: ^10.9.1
     typescript: ^5.2.2
     xtsb: 1.0.0-alpha.1
-  languageName: unknown
-  linkType: soft
-
-"@gfld/proxy-generator@workspace:^, @gfld/proxy-generator@workspace:libs/proxy/generator":
-  version: 0.0.0-use.local
-  resolution: "@gfld/proxy-generator@workspace:libs/proxy/generator"
-  dependencies:
-    camelcase: ^8.0.0
-    meow: ^12.1.1
-    standard: ^17.1.0
-    uppercamelcase: ^3.0.0
-    xml2js: ^0.6.2
-  bin:
-    proxy-generator: src/index.mjs
-  languageName: unknown
-  linkType: soft
-
-"@gfld/proxy@workspace:packages/proxy":
-  version: 0.0.0-use.local
-  resolution: "@gfld/proxy@workspace:packages/proxy"
-  dependencies:
-    "@gfld/proxy-generator": "workspace:^"
-    "@types/jest": ^29.5.4
-    "@types/js-yaml": ^4.0.5
-    "@types/jsonwebtoken": ^9.0.2
-    "@types/node": ^18.15.3
-    "@types/ws": ^8.5.5
-    "@typescript-eslint/eslint-plugin": ^6.7.0
-    "@typescript-eslint/parser": ^6.7.0
-    ajv: ^8.12.0
-    ajv-formats: ^2.1.1
-    cpy-cli: ^5.0.0
-    eslint: ^8.49.0
-    eslint-config-prettier: ^9.0.0
-    eslint-plugin-prettier: ^5.0.0
-    jest: ^29.7.0
-    json-schema-to-typescript: ^13.1.1
-    mkdirp: ^3.0.1
-    pino: ^8.14.1
-    pino-pretty: ^10.0.0
-    pkg: ^5.8.1
-    prettier: ^3.0.3
-    rimraf: ^5.0.1
-    ts-jest: ^29.1.1
-    ts-node: ^10.9.1
-    typescript: ^5.2.2
-    ws: ^8.13.0
-    xtsb: 1.0.0-alpha.0
-  bin:
-    proxy: dist/cli.js
   languageName: unknown
   linkType: soft
 

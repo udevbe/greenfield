@@ -1,1 +1,0 @@
-Examples are to be run with https://github.com/udevbe/greenfield

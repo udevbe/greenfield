@@ -1,5 +1,5 @@
 {
-  "name": "@gfld/proxy",
+  "name": "@gfld/compositor-proxy",
   "version": "1.0.0-alpha.0",
   "bin": "dist/cli.js",
   "module": "dist/index.js",
@@ -33,7 +33,7 @@
     "xtsb": "1.0.0-alpha.0"
   },
   "devDependencies": {
-    "@gfld/proxy-generator": "workspace:^",
+    "@gfld/compositor-proxy-generator": "workspace:^",
     "@types/jest": "^29.5.4",
     "@types/js-yaml": "^4.0.5",
     "@types/jsonwebtoken": "^9.0.2",

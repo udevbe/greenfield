@@ -1,5 +1,5 @@
 {
-  "name": "@gfld/proxy-generator",
+  "name": "@gfld/compositor-proxy-generator",
   "version": "1.0.0-alpha.4",
   "bin": "src/index.mjs",
   "type": "module",

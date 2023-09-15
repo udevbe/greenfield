@@ -1,5 +1,4 @@
 .idea
-node_modules
 .pnp.*
 .yarn/*
 !.yarn/patches
