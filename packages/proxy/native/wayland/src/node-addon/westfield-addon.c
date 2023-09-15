@@ -1,4 +1,4 @@
-#include "include/node_api.h"
+#include "node_api.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>

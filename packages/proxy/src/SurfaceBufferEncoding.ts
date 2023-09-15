@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { unmarshallArgs } from '@gfld/proxy-runtime'
+import { unmarshallArgs } from './wayland-proxy-server'
 import { createEncoder, Encoder } from './encoding/Encoder'
 
 import { createLogger } from './Logger'

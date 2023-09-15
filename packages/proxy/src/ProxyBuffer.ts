@@ -1,4 +1,4 @@
-import { MessageDestination } from '@gfld/proxy-runtime'
+import { MessageDestination } from './wayland-proxy-server'
 
 let bufferSerial = 0
 

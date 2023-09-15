@@ -23,9 +23,8 @@
     "types"
   ],
   "scripts": {
-    "prebuild": "rm -rf dist types",
-    "build": "tsc && cpy './src/assets/**' './dist/assets/'",
-    "start": "vite dev --config ./demo-compositor/vite.config.mts"
+    "prebuild": "yarn run rimraf dist types",
+    "build": "yarn run tsc && yarn run cpy './src/assets/**' './dist/assets/'"
   },
   "dependencies": {
     "@gfld/common": "workspace:^",
@@ -44,6 +43,7 @@
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
     "prettier": "^3.0.3",
+    "rimraf": "^5.0.1",
     "ts-node": "^10.9.1",
     "typescript": "^5.2.2"
   },

@@ -1,4 +1,4 @@
-import { destroyWlResourceSilently, flush, sendEvents } from '@gfld/proxy-runtime'
+import { destroyWlResourceSilently, flush, sendEvents, WlClient } from './westfield-addon'
 import { performance } from 'perf_hooks'
 import type { Channel } from './Channel'
 
@@ -48,7 +48,7 @@ export class FrameFeedback {
   private avgServerProcessingDuration = 0
 
   constructor(
-    private wlClient: unknown,
+    private wlClient: WlClient,
     private messageInterceptors: Record<number, any>,
     private feedbackChannel: Channel,
   ) {

@@ -33,7 +33,7 @@ import {
   nativeGlobalNames,
   WlClient,
   WlDisplay,
-} from '@gfld/proxy-runtime'
+} from './wayland-proxy-server'
 import { Channel, createProtocolChannel } from './Channel'
 import { webcrypto } from 'crypto'
 import { Session } from './Session'

@@ -9,12 +9,12 @@
     "types"
   ],
   "scripts": {
-    "generate:webbuffer": "westfield-scanner-client ../../../../protocol/web-bitmapbuf-unstable-v1.xml -o src/protocol",
-    "generate:xdgshell": "westfield-scanner-client ../../../../protocol/xdg-shell.xml -o src/protocol",
-    "generate:wayland": "westfield-scanner-client ../../../../protocol/wayland.xml -o src/protocol",
+    "generate:webbuffer": "yarn run westfield-scanner-client ../../../../protocol/web-bitmapbuf-unstable-v1.xml -o src/protocol",
+    "generate:xdgshell": "yarn run westfield-scanner-client ../../../../protocol/xdg-shell.xml -o src/protocol",
+    "generate:wayland": "yarn run westfield-scanner-client ../../../../protocol/wayland.xml -o src/protocol",
     "generate": "yarn generate:wayland && yarn generate:xdgshell && yarn generate:webbuffer",
-    "prebuild": "rm -rf dist types && yarn generate",
-    "build": "tsc"
+    "prebuild": "yarn run rimraf dist types && yarn generate",
+    "build": "yarn run tsc"
   },
   "keywords": [
     "wayland",
@@ -41,6 +41,7 @@
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
     "prettier": "^3.0.3",
+    "rimraf": "^5.0.1",
     "typescript": "^5.2.2"
   }
 }

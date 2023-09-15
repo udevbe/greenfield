@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-    "moduleResolution": "node",
+    "moduleResolution": "Node16",
     "target": "ES2017",
-    "module": "commonjs",
+    "module": "Node16",
     "lib": [
       "es2015",
       "es2016",
@@ -12,19 +12,27 @@
       "dom"
     ],
     "allowJs": true,
-    "rootDir": ".",
+    "checkJs": false,
+    "rootDir": "src",
     "strict": true,
-    "inlineSourceMap": true,
-    "inlineSources": true,
+    "sourceMap": false,
+    "removeComments": true,
+    "noEmitOnError": true,
     "declaration": true,
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "outDir": "dist",
-    "esModuleInterop": true
+    "declarationDir": "types",
+    "outDir": "dist"
   },
   "include": [
-    "src",
-    "test"
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    ".eslintrc.js",
+    ".prettierrc.js",
+    "jest.config.js",
+    "**/*.spec.ts"
   ]
 }

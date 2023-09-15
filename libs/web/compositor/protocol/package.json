@@ -26,12 +26,12 @@
   },
   "packageManager": "yarn@3.6.0",
   "scripts": {
-    "generate:webbuffer": "westfield-scanner-server ../../../protocol/web-bitmapbuf-unstable-v1.xml -o src/protocol",
-    "generate:xdgshell": "westfield-scanner-server ../../../protocol/xdg-shell.xml -o src/protocol",
-    "generate:wayland": "westfield-scanner-server ../../../protocol/wayland.xml -o src/protocol",
-    "generate": "mkdir -p src/protocol/ && yarn generate:wayland && yarn generate:xdgshell && yarn generate:webbuffer",
-    "prebuild": "rm -rf dist types && yarn generate",
-    "build": "tsc"
+    "generate:webbuffer": "yarn run westfield-scanner-server ../../../protocol/web-bitmapbuf-unstable-v1.xml -o src/protocol",
+    "generate:xdgshell": "yarn run westfield-scanner-server ../../../protocol/xdg-shell.xml -o src/protocol",
+    "generate:wayland": "yarn run westfield-scanner-server ../../../protocol/wayland.xml -o src/protocol",
+    "generate": "yarn run mkdirp src/protocol/ && yarn generate:wayland && yarn generate:xdgshell && yarn generate:webbuffer",
+    "prebuild": "yarn run rimraf dist types && yarn generate",
+    "build": "yarn run tsc"
   },
   "devDependencies": {
     "@gfld/common": "workspace:^",
@@ -41,7 +41,9 @@
     "eslint": "^8.49.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
+    "mkdirp": "^3.0.1",
     "prettier": "^3.0.3",
+    "rimraf": "^5.0.1",
     "typescript": "^5.2.2"
   }
 }

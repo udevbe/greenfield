@@ -1,7 +1,7 @@
 import { createLogger } from './Logger'
 import { nodeFDConnectionSetup } from 'xtsb'
 import { ClientEntry, NativeWaylandCompositorSession } from './NativeWaylandCompositorSession'
-import { equalValueExternal, setupXWayland, teardownXWayland, XWaylandHandle } from '@gfld/proxy-runtime'
+import { equalValueExternal, setupXWayland, teardownXWayland, WlClient, XWaylandHandle } from './wayland-proxy-server'
 import { createReadStream } from 'fs'
 import { Channel, createXWMDataChannel } from './Channel'
 
@@ -111,7 +111,7 @@ export class XWaylandSession {
   }
 
   private listenXWayland(): {
-    onXWaylandStarting: Promise<{ wmFd: number; wlClient: unknown; displayFd: number }>
+    onXWaylandStarting: Promise<{ wmFd: number; wlClient: WlClient; displayFd: number }>
     onDestroyed: Promise<void>
   } {
     let destroyResolve: () => void
@@ -119,14 +119,14 @@ export class XWaylandSession {
 
     const onXWaylandStarting = new Promise<{
       wmFd: number
-      wlClient: unknown
+      wlClient: WlClient
       display: unknown
       displayFd: number
     }>((resolve) => {
       let display: unknown
       this.nativeXWayland = setupXWayland(
         this.nativeCompositorSession.wlDisplay,
-        (wmFd: number, wlClient: unknown, displayFd: number) => resolve({ wmFd, wlClient, display, displayFd }),
+        (wmFd: number, wlClient: WlClient, displayFd: number) => resolve({ wmFd, wlClient, display, displayFd }),
         () => destroyResolve(),
       )
     })

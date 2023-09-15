@@ -1,7 +1,7 @@
 {
-  "name": "@gfld/common",
-  "version": "1.0.0-alpha.2",
-  "description": "Wayland HTML5 common client-server runtime",
+  "name": "@gfld/compositor-wasm",
+  "version": "1.0.0-alpha.0",
+  "description": "Wayland HTML5 compositor wasm libs",
   "module": "dist/index.js",
   "typings": "types/index.d.ts",
   "files": [
@@ -26,17 +26,16 @@
   },
   "packageManager": "yarn@3.6.0",
   "scripts": {
-    "prebuild": "yarn run rimraf dist types",
-    "build": "yarn run tsc"
+    "build": "./build_wasm.sh && yarn run tsc"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^6.7.0",
     "@typescript-eslint/parser": "^6.7.0",
+    "acorn": "^8.10.0",
     "eslint": "^8.49.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
     "prettier": "^3.0.3",
-    "rimraf": "^5.0.1",
     "typescript": "^5.2.2"
   }
 }

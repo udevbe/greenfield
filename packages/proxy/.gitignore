@@ -1,4 +1,6 @@
 src/protocol
+build
+dist
 !src/protocol/*.d.ts
 src/encoding/proxy-encoding-addon.node
 src/encoding/libproxy-encoding.so

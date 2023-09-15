@@ -6,9 +6,11 @@
     "libs/web/client/protocol",
     "libs/web/compositor/generator",
     "libs/web/compositor/protocol",
+    "libs/web/compositor/wasm",
     "libs/proxy/generator",
     "packages/compositor",
     "packages/proxy",
     "packages/shell"
-  ]
+  ],
+  "packageManager": "yarn@3.6.3"
 }

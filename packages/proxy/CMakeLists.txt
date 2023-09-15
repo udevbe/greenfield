@@ -29,9 +29,6 @@ pkg_check_modules(LIBUDEV REQUIRED libudev IMPORTED_TARGET)
 pkg_check_modules(GBM REQUIRED gbm IMPORTED_TARGET)
 pkg_check_modules(LIBDRM REQUIRED libdrm IMPORTED_TARGET)
 
-get_filename_component(WESTFIELD_LIBWAYLAND_SERVER ${CMAKE_CURRENT_SOURCE_DIR}/node_modules/@gfld/proxy-runtime/dist/libwayland-server.so.0 ABSOLUTE)
-get_filename_component(WESTFIELD ${CMAKE_CURRENT_SOURCE_DIR}/node_modules/@gfld/proxy-runtime/dist/libwestfield.so ABSOLUTE)
-
 add_library(proxy-encoding SHARED
         ${CMAKE_CURRENT_SOURCE_DIR}/native/encoding/src/encoder.h
         ${CMAKE_CURRENT_SOURCE_DIR}/native/encoding/src/gst_frame_encoder_drm_formats.h
@@ -39,7 +36,8 @@ add_library(proxy-encoding SHARED
         ${CMAKE_CURRENT_SOURCE_DIR}/native/encoding/src/gst_main_loop.c
 )
 target_include_directories(proxy-encoding PRIVATE
-        ${CMAKE_SOURCE_DIR}/node_modules/@gfld/proxy-runtime/dist/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src
         ${GSTREAMER_INCLUDE_DIRS}
         ${GRAPHENE_INCLUDE_DIRS}
         ${GLIB2_INCLUDE_DIRS}
@@ -52,8 +50,8 @@ target_link_libraries(proxy-encoding PRIVATE
         PkgConfig::GRAPHENE
         PkgConfig::EGL
         PkgConfig::OPENGL
-        ${WESTFIELD}
-        ${WESTFIELD_LIBWAYLAND_SERVER}
+        westfield
+        wayland-server
         -Wl,--no-undefined
 )
 set_target_properties(proxy-encoding
@@ -65,7 +63,7 @@ add_library(proxy-poll-addon SHARED
         ${CMAKE_CURRENT_SOURCE_DIR}/native/poll/src/poll.c
 )
 target_include_directories(proxy-poll-addon PRIVATE
-        ${CMAKE_SOURCE_DIR}/node_modules/node-api-headers/include
+        ${CMAKE_SOURCE_DIR}/native/include
         ${UV_INCLUDE_DIRS}
 )
 set_target_properties(proxy-poll-addon PROPERTIES PREFIX "" SUFFIX ".node")
@@ -78,17 +76,18 @@ set_target_properties(proxy-poll-addon
 )
 
 add_library(proxy-encoding-addon SHARED
-        ${CMAKE_CURRENT_SOURCE_DIR}/native/encoding/encoder.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/native/encoding/node_encoder.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/encoding/src/encoder.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/encoding/src/node_encoder.c
 )
 target_include_directories(proxy-encoding-addon PRIVATE
-        ${CMAKE_SOURCE_DIR}/node_modules/node-api-headers/include
-        ${CMAKE_SOURCE_DIR}/node_modules/@gfld/proxy-runtime/dist/include
+        ${CMAKE_SOURCE_DIR}/native/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src
 )
 set_target_properties(proxy-encoding-addon PROPERTIES PREFIX "" SUFFIX ".node")
 target_link_libraries(proxy-encoding-addon PRIVATE
         ${CMAKE_JS_LIB}
-        ${WESTFIELD}
+        westfield
         proxy-encoding
 )
 set_target_properties(proxy-encoding-addon
@@ -205,6 +204,7 @@ add_library(westfield-addon SHARED
 target_include_directories(westfield-addon PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server
         ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/include
 )
 set_target_properties(westfield-addon
         PROPERTIES PREFIX "" SUFFIX ".node"

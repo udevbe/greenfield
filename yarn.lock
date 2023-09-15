@@ -730,6 +730,7 @@ __metadata:
     eslint-config-prettier: ^9.0.0
     eslint-plugin-prettier: ^5.0.0
     prettier: ^3.0.3
+    rimraf: ^5.0.1
     typescript: ^5.2.2
   languageName: unknown
   linkType: soft
@@ -744,6 +745,7 @@ __metadata:
     eslint-config-prettier: ^9.0.0
     eslint-plugin-prettier: ^5.0.0
     prettier: ^3.0.3
+    rimraf: ^5.0.1
     typescript: ^5.2.2
   languageName: unknown
   linkType: soft
@@ -773,6 +775,23 @@ __metadata:
     eslint: ^8.49.0
     eslint-config-prettier: ^9.0.0
     eslint-plugin-prettier: ^5.0.0
+    mkdirp: ^3.0.1
+    prettier: ^3.0.3
+    rimraf: ^5.0.1
+    typescript: ^5.2.2
+  languageName: unknown
+  linkType: soft
+
+"@gfld/compositor-wasm@workspace:libs/web/compositor/wasm":
+  version: 0.0.0-use.local
+  resolution: "@gfld/compositor-wasm@workspace:libs/web/compositor/wasm"
+  dependencies:
+    "@typescript-eslint/eslint-plugin": ^6.7.0
+    "@typescript-eslint/parser": ^6.7.0
+    acorn: ^8.10.0
+    eslint: ^8.49.0
+    eslint-config-prettier: ^9.0.0
+    eslint-plugin-prettier: ^5.0.0
     prettier: ^3.0.3
     typescript: ^5.2.2
   languageName: unknown
@@ -795,6 +814,7 @@ __metadata:
     eslint-plugin-prettier: ^5.0.0
     ffmpegh264: 1.0.0-alpha.1
     prettier: ^3.0.3
+    rimraf: ^5.0.1
     ts-node: ^10.9.1
     typescript: ^5.2.2
     xtsb: 1.0.0-alpha.1
@@ -815,30 +835,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@gfld/proxy-runtime@workspace:^, @gfld/proxy-runtime@workspace:libs/proxy/runtime":
-  version: 0.0.0-use.local
-  resolution: "@gfld/proxy-runtime@workspace:libs/proxy/runtime"
-  dependencies:
-    "@tsconfig/node18": ^18.2.2
-    "@types/node": ^18.15.3
-    "@typescript-eslint/eslint-plugin": ^6.7.0
-    "@typescript-eslint/parser": ^6.7.0
-    eslint: ^8.49.0
-    eslint-config-prettier: ^9.0.0
-    eslint-plugin-prettier: ^5.0.0
-    prettier: ^3.0.3
-    ts-node: ^10.9.1
-    typescript: ^5.2.2
-  languageName: unknown
-  linkType: soft
-
 "@gfld/proxy@workspace:packages/proxy":
   version: 0.0.0-use.local
   resolution: "@gfld/proxy@workspace:packages/proxy"
   dependencies:
     "@gfld/proxy-generator": "workspace:^"
-    "@gfld/proxy-runtime": "workspace:^"
-    "@tsconfig/node18": ^18.2.2
     "@types/jest": ^29.5.4
     "@types/js-yaml": ^4.0.5
     "@types/jsonwebtoken": ^9.0.2
@@ -848,16 +849,18 @@ __metadata:
     "@typescript-eslint/parser": ^6.7.0
     ajv: ^8.12.0
     ajv-formats: ^2.1.1
+    cpy-cli: ^5.0.0
     eslint: ^8.49.0
     eslint-config-prettier: ^9.0.0
     eslint-plugin-prettier: ^5.0.0
     jest: ^29.7.0
     json-schema-to-typescript: ^13.1.1
-    node-api-headers: 1.1.0
+    mkdirp: ^3.0.1
     pino: ^8.14.1
     pino-pretty: ^10.0.0
     pkg: ^5.8.1
     prettier: ^3.0.3
+    rimraf: ^5.0.1
     ts-jest: ^29.1.1
     ts-node: ^10.9.1
     typescript: ^5.2.2
@@ -1444,13 +1447,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsconfig/node18@npm:^18.2.2":
-  version: 18.2.2
-  resolution: "@tsconfig/node18@npm:18.2.2"
-  checksum: 1c4b04b570e33de14bf518492e077079db2dcfba738c8d40c6ff916d94c9410246f4cb56f0802d9771423862140bf714c35d4a5f6cec2446d851cf61d3f8f9df
-  languageName: node
-  linkType: hard
-
 "@types/babel__core@npm:^7.1.14":
   version: 7.20.1
   resolution: "@types/babel__core@npm:7.20.1"
@@ -1941,7 +1937,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"acorn@npm:^8.4.1, acorn@npm:^8.9.0":
+"acorn@npm:^8.10.0, acorn@npm:^8.4.1, acorn@npm:^8.9.0":
   version: 8.10.0
   resolution: "acorn@npm:8.10.0"
   bin:
@@ -4340,7 +4336,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"glob@npm:^10.2.2":
+"glob@npm:^10.2.2, glob@npm:^10.2.5":
   version: 10.3.4
   resolution: "glob@npm:10.3.4"
   dependencies:
@@ -6172,6 +6168,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"mkdirp@npm:^3.0.1":
+  version: 3.0.1
+  resolution: "mkdirp@npm:3.0.1"
+  bin:
+    mkdirp: dist/cjs/src/bin.js
+  checksum: 972deb188e8fb55547f1e58d66bd6b4a3623bf0c7137802582602d73e6480c1c2268dcbafbfb1be466e00cc7e56ac514d7fd9334b7cf33e3e2ab547c16f83a8d
+  languageName: node
+  linkType: hard
+
 "ms@npm:2.1.2":
   version: 2.1.2
   resolution: "ms@npm:2.1.2"
@@ -6264,13 +6269,6 @@ __metadata:
   dependencies:
     semver: ^7.3.5
   checksum: ff8498dcd4a805ebf0af27162023bb17e56cb973c955d6c411ebce0938b0827e34323ede846b635daff516d5cd2ea8d64f9d99f2d63f61d1d7469415323fa9a6
-  languageName: node
-  linkType: hard
-
-"node-api-headers@npm:1.1.0":
-  version: 1.1.0
-  resolution: "node-api-headers@npm:1.1.0"
-  checksum: abd258c1a6bf0fc85814ec69c546460ed149765fa9088831d86cc65aafbab7fda466037f4edfe786edc09e6bc86b5202b4e92ff4db07ac92f3b44d51e12d131a
   languageName: node
   linkType: hard
 
@@ -7447,6 +7445,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"rimraf@npm:^5.0.1":
+  version: 5.0.1
+  resolution: "rimraf@npm:5.0.1"
+  dependencies:
+    glob: ^10.2.5
+  bin:
+    rimraf: dist/cjs/src/bin.js
+  checksum: bafce85391349a2d960847980bf9b5caa2a8887f481af630f1ea27e08288217293cec72d75e9a2ba35495c212789f66a7f3d23366ba6197026ab71c535126857
+  languageName: node
+  linkType: hard
+
 "rollup@npm:^3.27.1":
   version: 3.29.1
   resolution: "rollup@npm:3.29.1"
@@ -8430,11 +8439,11 @@ __metadata:
 
 "typescript@patch:typescript@^5.0.4#~builtin<compat/typescript>, typescript@patch:typescript@^5.2.2#~builtin<compat/typescript>":
   version: 5.2.2
-  resolution: "typescript@patch:typescript@npm%3A5.2.2#~builtin<compat/typescript>::version=5.2.2&hash=14eedb"
+  resolution: "typescript@patch:typescript@npm%3A5.2.2#~builtin<compat/typescript>::version=5.2.2&hash=f3b441"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: 07106822b4305de3f22835cbba949a2b35451cad50888759b6818421290ff95d522b38ef7919e70fb381c5fe9c1c643d7dea22c8b31652a717ddbd57b7f4d554
+  checksum: 0f4da2f15e6f1245e49db15801dbee52f2bbfb267e1c39225afdab5afee1a72839cd86000e65ee9d7e4dfaff12239d28beaf5ee431357fcced15fb08583d72ca
   languageName: node
   linkType: hard
 

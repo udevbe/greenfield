@@ -37,12 +37,13 @@ import {
   setSyncDoneCallback,
   setWireMessageCallback,
   setWireMessageEndCallback,
-} from '@gfld/proxy-runtime'
+  WlRegistry,
+} from './wayland-proxy-server'
 import { ProxyBuffer } from './ProxyBuffer'
 import type { Channel } from './Channel'
 import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
 import { NativeAppContext } from './NativeAppContext'
-import { WlClient } from '@gfld/proxy-runtime'
+import type { WlClient } from './westfield-addon'
 
 const logger = createLogger('native-client-session')
 
@@ -84,18 +85,18 @@ export function createNativeClientSession(
     }
     nativeAppContext.sendClientConnectionsDisconnect()
     nativeClientSession.destroyListeners = []
-    nativeClientSession.wlClient = undefined
+    nativeClientSession.destroyed = true
   })
-  setRegistryCreatedCallback(wlClient, (wlRegistry: unknown, registryId: number) => {
+  setRegistryCreatedCallback(wlClient, (wlRegistry: WlRegistry, registryId: number) => {
     nativeClientSession.onRegistryCreated(wlRegistry, registryId)
   })
   setSyncDoneCallback(wlClient, (callbackId: number) => {
     nativeClientSession.onNativeSyncDone(callbackId)
   })
-  setWireMessageCallback(wlClient, (wlClient: unknown, message: ArrayBuffer, objectId: number, opcode: number) => {
+  setWireMessageCallback(wlClient, (wlClient: WlClient, message: ArrayBuffer, objectId: number, opcode: number) => {
     return nativeClientSession.onWireMessageRequest(wlClient, message, objectId, opcode)
   })
-  setWireMessageEndCallback(wlClient, (wlClient: unknown, fdsIn: ArrayBuffer) => {
+  setWireMessageEndCallback(wlClient, (wlClient: WlClient, fdsIn: ArrayBuffer) => {
     nativeClientSession.onWireMessageEnd(wlClient, fdsIn)
   })
 
@@ -144,17 +145,18 @@ export class NativeWaylandClientSession {
 
   private syncDones: SyncDone[] = []
   private lastEventSerial = 0
+  public destroyed = false
 
   constructor(
     public readonly nativeAppContext: NativeAppContext,
-    public wlClient: WlClient | undefined,
+    public readonly wlClient: WlClient,
     public readonly nativeCompositorSession: NativeWaylandCompositorSession,
     private readonly protocolDataChannel: Channel,
     public readonly id: string,
     private pendingWireMessages: Uint32Array[] = [],
     private pendingMessageBufferSize = 0,
     private outboundMessages: Buffer[] = [],
-    private readonly wlRegistries: Record<number, unknown> = {},
+    private readonly wlRegistries: Record<number, WlRegistry> = {},
     private disconnecting = false,
     public destroyListeners: (() => void)[] = [],
     private fastSync = true,
@@ -403,18 +405,18 @@ export class NativeWaylandClientSession {
   }
 
   destroy(): void {
-    if (!this.wlClient) {
+    if (this.destroyed) {
       return
     }
 
     const wlClient = this.wlClient
-    this.wlClient = undefined
+    this.destroyed = true
     this.syncDones = []
     destroyClient(wlClient)
   }
 
   onMessage(receiveBuffer: Uint8Array): void {
-    if (!this.wlClient) {
+    if (this.destroyed) {
       return
     }
 
@@ -434,7 +436,7 @@ export class NativeWaylandClientSession {
   }
 
   private destroyResourceSilently(payload: Uint8Array) {
-    if (this.wlClient === undefined) {
+    if (this.destroyed) {
       return
     }
 
@@ -454,7 +456,7 @@ export class NativeWaylandClientSession {
     destroyWlResourceSilently(this.wlClient, deleteObjectId)
   }
 
-  onRegistryCreated(wlRegistry: unknown, registryId: number): void {
+  onRegistryCreated(wlRegistry: WlRegistry, registryId: number): void {
     this.wlRegistries[registryId] = wlRegistry
   }
 
