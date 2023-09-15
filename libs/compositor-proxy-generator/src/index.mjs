@@ -46,15 +46,15 @@ const cli = meow(
     importMeta: import.meta,
     flags: {
       out: {
-        alias: "o",
+        shortFlag: "o",
         type: "string",
       },
       help: {
-        alias: "h",
+        shortFlag: "h",
         type: "boolean",
       },
       version: {
-        alias: "v",
+        shortFlag: "v",
         type: "boolean",
       },
     },

@@ -24,7 +24,7 @@ import {
   WlOutputMode,
   WlOutputSubpixel,
   WlOutputTransform,
-} from 'westfield-runtime-server'
+} from '@gfld/compositor-protocol'
 
 import { capabilities } from './browser/capabilities'
 
@@ -36,7 +36,11 @@ export default class Output implements WlOutputRequests {
     return new Output(canvas)
   }
 
-  private constructor(public readonly canvas: HTMLCanvasElement, private _x = 0, private _y = 0) {}
+  private constructor(
+    public readonly canvas: HTMLCanvasElement,
+    private _x = 0,
+    private _y = 0,
+  ) {}
 
   get x(): number {
     return this._x

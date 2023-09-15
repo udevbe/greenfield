@@ -9,9 +9,9 @@ import {
   WlShmPoolResource,
   WlShmRequests,
   WlShmResource,
-} from 'westfield-runtime-server'
+} from '@gfld/compositor-protocol'
 import Session from './Session'
-import { FD } from 'westfield-runtime-common'
+import { FD } from '@gfld/common'
 import { LazyImageBitmapBuffer } from './ImageBitmapBuffer'
 
 const FORMATS = [WlShmFormat.argb8888, WlShmFormat.xrgb8888]
@@ -65,7 +65,10 @@ export class ShmPool implements WlShmPoolRequests {
   externalRefCount = 0
   newSize = 0
 
-  constructor(private readonly resource: WlShmPoolResource, public data: Uint8Array) {}
+  constructor(
+    private readonly resource: WlShmPoolResource,
+    public data: Uint8Array,
+  ) {}
 
   private growMapping() {
     if (this.newSize < this.data.byteLength) {

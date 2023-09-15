@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { createEncodedFrame, EncodedFrame } from './EncodedFrame'
-import { Client, WlBufferResource } from 'westfield-runtime-server'
+import { Client, WlBufferResource } from '@gfld/compositor-protocol'
 import { StreamingBuffer } from './StreamingBuffer'
 
 type BufferState = {

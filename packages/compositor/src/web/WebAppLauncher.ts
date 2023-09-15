@@ -1,5 +1,5 @@
 import { WebClientConnectionListener, WebCompositorConnector } from '../index'
-import { Client } from 'westfield-runtime-server'
+import { Client } from '@gfld/compositor-protocol'
 import { WebConnectionHandler } from './WebConnectionHandler'
 import Session from '../Session'
 

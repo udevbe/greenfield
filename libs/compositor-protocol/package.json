@@ -26,15 +26,16 @@
   },
   "packageManager": "yarn@3.6.0",
   "scripts": {
-    "generate:webbuffer": "yarn run westfield-scanner-server ../../../protocol/web-bitmapbuf-unstable-v1.xml -o src/protocol",
-    "generate:xdgshell": "yarn run westfield-scanner-server ../../../protocol/xdg-shell.xml -o src/protocol",
-    "generate:wayland": "yarn run westfield-scanner-server ../../../protocol/wayland.xml -o src/protocol",
-    "generate": "yarn run mkdirp src/protocol/ && yarn generate:wayland && yarn generate:xdgshell && yarn generate:webbuffer",
-    "prebuild": "yarn run rimraf dist types && yarn generate",
+    "generate:webbuffer": "yarn run compositor-generator ../../protocol/web-bitmapbuf-unstable-v1.xml -o src/protocol",
+    "generate:xdgshell": "yarn run compositor-generator ../../protocol/xdg-shell.xml -o src/protocol",
+    "generate:wayland": "yarn run compositor-generator ../../protocol/wayland.xml -o src/protocol",
+    "generate": "yarn run rimraf dist types && yarn run mkdirp src/protocol/ && yarn generate:wayland && yarn generate:xdgshell && yarn generate:webbuffer",
     "build": "yarn run tsc"
   },
+  "dependencies": {
+    "@gfld/common": "workspace:^"
+  },
   "devDependencies": {
-    "@gfld/common": "workspace:^",
     "@gfld/compositor-generator": "workspace:^",
     "@typescript-eslint/eslint-plugin": "^6.7.0",
     "@typescript-eslint/parser": "^6.7.0",

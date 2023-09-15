@@ -15,14 +15,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { Client } from 'westfield-runtime-server'
+import { Client } from '@gfld/compositor-protocol'
 import { RemoteAppLauncher } from './remote/RemoteAppLauncher'
 import Session, { GreenfieldLogger } from './Session'
 import { UserShellApi } from './UserShellApi'
 import { nrmlvo } from './Xkb'
 import { WebAppLauncher } from './web/WebAppLauncher'
 
-export { init as initWasm } from './lib'
+export { init as initWasm } from '@gfld/compositor-wasm'
 export * from './ButtonEvent'
 export * from './AxisEvent'
 export * from './KeyEvent'

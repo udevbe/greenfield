@@ -12,11 +12,11 @@
   "description": "Wayland Compositor Proxy",
   "scripts": {
     "generate:config-types": "yarn run json2ts -i src/cli/app-config-schema.json -o src/cli/app-config.d.ts --style.singleQuote --no-style.semi",
-    "generate:xdgshell": "yarn run westfield-proxy-generator protocol/xdg-shell.xml -o src/protocol",
-    "generate:wayland-drm": "yarn run westfield-proxy-generator protocol/wayland-drm.xml -o src/protocol",
-    "generate:wayland": "yarn run westfield-proxy-generator protocol/wayland.xml -o src/protocol",
+    "generate:xdgshell": "yarn run compositor-proxy-generator ../../protocol/xdg-shell.xml -o src/protocol",
+    "generate:wayland-drm": "yarn run compositor-proxy-generator ../../protocol/wayland-drm.xml -o src/protocol",
+    "generate:wayland": "yarn run compositor-proxy-generator ../../protocol/wayland.xml -o src/protocol",
     "generate": "yarn run rimraf src/protocol && yarn run mkdirp src/protocol && yarn generate:config-types && yarn generate:wayland && yarn generate:wayland-drm && yarn generate:xdgshell",
-    "build:native": "yarn run mkdirp build && yarn run cmake -G Ninja -B./build -S./ && ninja -C ./build",
+    "build:native": "yarn run mkdirp build && cmake -G Ninja -B./build -S./ && ninja -C ./build",
     "build:typescript": "yarn run tsc",
     "build": "yarn run rimraf dist && yarn build:native && yarn build:typescript",
     "start": "yarn node --require ts-node/register src/cli/main.ts --applications=./example-applications.json",
@@ -25,15 +25,16 @@
     "package": "yarn run pkg --compress Brotli --no-native-build package.json && yarn package:copy-libs"
   },
   "dependencies": {
+    "@gfld/xtsb": "workspace:^",
     "ajv": "^8.12.0",
     "ajv-formats": "^2.1.1",
     "pino": "^8.14.1",
     "pino-pretty": "^10.0.0",
-    "ws": "^8.13.0",
-    "xtsb": "1.0.0-alpha.0"
+    "ws": "^8.13.0"
   },
   "devDependencies": {
     "@gfld/compositor-proxy-generator": "workspace:^",
+    "@tsconfig/node18": "^18.2.2",
     "@types/jest": "^29.5.4",
     "@types/js-yaml": "^4.0.5",
     "@types/jsonwebtoken": "^9.0.2",

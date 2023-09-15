@@ -24,7 +24,7 @@ import {
   WlShellError,
   WlShellSurfaceResource,
   WlSurfaceResource,
-} from 'westfield-runtime-server'
+} from '@gfld/compositor-protocol'
 import Session from './Session'
 
 import ShellSurface from './ShellSurface'

@@ -1,8 +1,8 @@
 import { DataSource } from '../../DataSource'
 import DataOffer from '../../DataOffer'
-import { WlDataDeviceManagerDndAction } from 'westfield-runtime-server'
+import { WlDataDeviceManagerDndAction } from '@gfld/compositor-protocol'
 import { XWindowManager } from './XWindowManager'
-import { Time } from 'xtsb'
+import { Time } from '@gfld/xtsb'
 import { InputOutputFD } from '../../InputOutput'
 
 export function createXDataSource(xWindowManager: XWindowManager): XDataSource {

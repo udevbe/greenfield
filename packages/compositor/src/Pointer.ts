@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { Fixed } from 'westfield-runtime-common'
+import { Fixed } from '@gfld/common'
 import {
   Client,
   WlDataDeviceManagerDndAction,
@@ -28,7 +28,7 @@ import {
   WlPointerRequests,
   WlPointerResource,
   WlSurfaceResource,
-} from 'westfield-runtime-server'
+} from '@gfld/compositor-protocol'
 import { AxisEvent } from './AxisEvent'
 import { ButtonEvent } from './ButtonEvent'
 import { DataSource } from './DataSource'
@@ -302,7 +302,10 @@ export class PointerDrag implements PointerGrab, KeyboardGrab {
 }
 
 export class DragIconRole implements SurfaceRole {
-  private constructor(public readonly view: View, public readonly pointer: Pointer) {}
+  private constructor(
+    public readonly view: View,
+    public readonly pointer: Pointer,
+  ) {}
 
   public static create(icon: Surface, pointer: Pointer): DragIconRole {
     const view = View.create(icon)
@@ -317,7 +320,11 @@ export class DragIconRole implements SurfaceRole {
 }
 
 export class CursorRole implements SurfaceRole {
-  private constructor(public readonly pointer: Pointer, public readonly view: View, public hotspot: Point) {}
+  private constructor(
+    public readonly pointer: Pointer,
+    public readonly view: View,
+    public hotspot: Point,
+  ) {}
 
   public static create(pointer: Pointer, cursor: Surface, hotspot: Point): CursorRole {
     const view = View.create(cursor)

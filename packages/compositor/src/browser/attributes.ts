@@ -2,10 +2,9 @@ export const hasTouch = 'ontouchstart' in document.documentElement
 export const userAgent = window.navigator.userAgent
 
 export const orientation = () => {
-  const { angle, lock, type, unlock } = window.screen.orientation
+  const { angle, type, unlock } = window.screen.orientation
   return {
     angle,
-    lock,
     type,
     unlock,
   }

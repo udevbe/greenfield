@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { Client } from 'westfield-runtime-server'
+import { Client } from '@gfld/compositor-protocol'
 import Session from '../Session'
 import { webInputOutput } from './WebInputOutput'
 

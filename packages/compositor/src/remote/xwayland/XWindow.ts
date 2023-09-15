@@ -1,5 +1,5 @@
-import { WlObject } from 'westfield-runtime-common'
-import { WlSurfaceResource } from 'westfield-runtime-server'
+import { WlObject } from '@gfld/common'
+import { WlSurfaceResource } from '@gfld/compositor-protocol'
 import {
   ATOM,
   Atom,
@@ -14,7 +14,7 @@ import {
   TIMESTAMP,
   Window,
   WindowClass,
-} from 'xtsb'
+} from '@gfld/xtsb'
 import { queueCancellableMicrotask } from '../../Loop'
 import { Point } from '../../math/Point'
 import { createRect } from '../../math/Rect'

@@ -25,8 +25,9 @@ SOFTWARE.
 */
 'use strict'
 
-const meow = require('meow')
-const ProtocolParser = require('./ProtocolParser')
+import meow from 'meow'
+
+import ProtocolParser from './ProtocolParser.mjs'
 
 const cli = meow(`Usage:
         westfield-scanner.js FILE... [options]
@@ -41,6 +42,7 @@ const cli = meow(`Usage:
         -v, --version      show version info and exit
         
 `, {
+  importMeta: import.meta,
   alias: {
     o: 'out'
   }

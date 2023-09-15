@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { WlDataDeviceManagerDndAction } from 'westfield-runtime-server'
+import { WlDataDeviceManagerDndAction } from '@gfld/compositor-protocol'
 import DataOffer from './DataOffer'
 import { InputOutputFD, InputOutput } from './InputOutput'
 

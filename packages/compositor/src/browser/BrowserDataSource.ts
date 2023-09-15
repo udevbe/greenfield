@@ -1,5 +1,5 @@
 import { DataSource } from '../DataSource'
-import { WlDataDeviceManagerDndAction } from 'westfield-runtime-server'
+import { WlDataDeviceManagerDndAction } from '@gfld/compositor-protocol'
 import DataOffer from '../DataOffer'
 import { InputOutputFD } from '../InputOutput'
 import { webInputOutput } from '../web/WebInputOutput'
@@ -27,7 +27,10 @@ export class BrowserDataSource implements DataSource {
   private destroyResolve: (value: void | PromiseLike<void>) => void
   private destroyPromise = new Promise<void>((resolve) => (this.destroyResolve = resolve))
 
-  constructor(private readonly offers: ClipboardItems, public mimeTypes: string[]) {
+  constructor(
+    private readonly offers: ClipboardItems,
+    public mimeTypes: string[],
+  ) {
     this.destroyPromise.then(() => this.destroyListeners.forEach((listener) => listener()))
   }
 

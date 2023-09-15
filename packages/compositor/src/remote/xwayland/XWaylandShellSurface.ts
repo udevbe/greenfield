@@ -1,4 +1,4 @@
-import { Time } from 'xtsb'
+import { Time } from '@gfld/xtsb'
 import { DesktopSurface } from '../../Desktop'
 import { ORIGIN, Point } from '../../math/Point'
 import { createRect, RectWithInfo } from '../../math/Rect'

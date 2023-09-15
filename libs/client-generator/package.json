@@ -2,7 +2,7 @@
   "name": "@gfld/client-generator",
   "version": "1.0.0-alpha.0",
   "description": "Wayland HTML5 protocol generator for the browser",
-  "bin": "westfield-scanner-client.js",
+  "bin": "westfield-scanner-client.mjs",
   "keywords": [
     "wayland",
     "html5",

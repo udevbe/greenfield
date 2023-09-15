@@ -22,7 +22,7 @@ import {
   WlShellSurfaceResource,
   WlShellSurfaceTransient,
   WlSurfaceResource,
-} from 'westfield-runtime-server'
+} from '@gfld/compositor-protocol'
 import { DesktopSurface } from './Desktop'
 import { ORIGIN, Point } from './math/Point'
 import { RectWithInfo } from './math/Rect'

@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { Client, WlCallbackResource } from 'westfield-runtime-server'
+import { Client, WlCallbackResource } from '@gfld/compositor-protocol'
 
 export interface Callback {
   done(time: number): void

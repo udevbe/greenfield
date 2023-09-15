@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { XdgPositionerRequests, XdgPositionerResource, XdgPositionerError } from 'westfield-runtime-server'
+import { XdgPositionerRequests, XdgPositionerResource, XdgPositionerError } from '@gfld/compositor-protocol'
 import { minusPoint, plusPoint, Point } from './math/Point'
 
 import { createRect, RectWithInfo } from './math/Rect'
@@ -204,7 +204,10 @@ export default class XdgPositioner implements XdgPositionerRequests {
     return xdgPositioner
   }
 
-  constructor(private session: Session, public readonly xdgPositionerResource: XdgPositionerResource) {}
+  constructor(
+    private session: Session,
+    public readonly xdgPositionerResource: XdgPositionerResource,
+  ) {}
 
   destroy(resource: XdgPositionerResource): void {
     resource.destroy()

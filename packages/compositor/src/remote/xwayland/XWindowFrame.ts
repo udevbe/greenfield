@@ -1,4 +1,4 @@
-import { WlPointerButtonState } from 'westfield-runtime-server'
+import { WlPointerButtonState } from '@gfld/compositor-protocol'
 import signClose from '../../assets/sign_close.png'
 import signMaximize from '../../assets/sign_maximize.png'
 import signMinimize from '../../assets/sign_minimize.png'
@@ -137,7 +137,11 @@ class XWindowFramePointerButton {
   private destroyResolve: (value?: void | PromiseLike<void>) => void
   private destroyPromise = new Promise((resolve) => (this.destroyResolve = resolve))
 
-  constructor(public button: number, public pressLocation: ThemeLocation, private frameButton?: XWindowFrameButton) {}
+  constructor(
+    public button: number,
+    public pressLocation: ThemeLocation,
+    private frameButton?: XWindowFrameButton,
+  ) {}
 
   press(frame: XWindowFrame, pointer: XWindowFramePointer) {
     if (this.button === BTN_RIGHT) {

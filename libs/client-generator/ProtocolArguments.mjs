@@ -136,4 +136,4 @@ class ProtocolArguments {
   }
 }
 
-module.exports = ProtocolArguments;
+export default ProtocolArguments;

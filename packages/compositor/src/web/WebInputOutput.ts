@@ -1,11 +1,14 @@
 import { InputOutput, InputOutputFD } from '../InputOutput'
-import { FD } from 'westfield-runtime-common'
+import { FD } from '@gfld/common'
 
 class WebShmFD implements InputOutputFD {
   private readonly blob: Blob
   private readOffset = 0
 
-  constructor(public readonly fd: Uint8Array, private readonly type: 'shm') {
+  constructor(
+    public readonly fd: Uint8Array,
+    private readonly type: 'shm',
+  ) {
     this.blob = new Blob([fd])
   }
 
@@ -35,7 +38,10 @@ class WebShmFD implements InputOutputFD {
 class WebPipeInputOutputFD implements InputOutputFD {
   private readBuffer?: Blob
 
-  constructor(public readonly fd: MessagePort, private readonly type: 'pipe-read' | 'pipe-write') {}
+  constructor(
+    public readonly fd: MessagePort,
+    private readonly type: 'pipe-read' | 'pipe-write',
+  ) {}
 
   async close(): Promise<void> {
     await this.write(new Blob([new ArrayBuffer(0)]))

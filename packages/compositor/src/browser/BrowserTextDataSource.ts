@@ -1,5 +1,5 @@
 import { DataSource } from '../DataSource'
-import { WlDataDeviceManagerDndAction } from 'westfield-runtime-server'
+import { WlDataDeviceManagerDndAction } from '@gfld/compositor-protocol'
 import DataOffer from '../DataOffer'
 import { InputOutputFD } from '../InputOutput'
 import { webInputOutput } from '../web/WebInputOutput'

@@ -22,51 +22,46 @@
  *        ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  *        CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  *        SOFTWARE.
- *    
+ *
  */
 
-import { WlMessage, fileDescriptor, uint, int, 
-	fixed, object, objectOptional, newObject, string, stringOptional, 
-	array, arrayOptional, u, i, f, oOptional, o, n, sOptional, s, aOptional, a, h,	FD, Fixed } from 'westfield-runtime-common'
+import { WlMessage, n, h, FD } from '@gfld/common'
 import * as Westfield from '..'
-
 
 /**
  *
  *            A singleton global object that provides support for web buffers.
  *
  *            Clients can create wl_buffer objects using the create_buffer request.
- *        
+ *
  */
 export class WebBitmapbufFactoryResource extends Westfield.Resource {
-	static readonly protocolName = 'web_bitmapbuf_factory'
+  static readonly protocolName = 'web_bitmapbuf_factory'
 
-	//@ts-ignore Should always be set when resource is created.
-	implementation: WebBitmapbufFactoryRequests
+  //@ts-ignore Should always be set when resource is created.
+  implementation: WebBitmapbufFactoryRequests
 
-	constructor (client: Westfield.Client, id: number, version: number) {
-		super(client, id, version)
-	}
+  constructor(client: Westfield.Client, id: number, version: number) {
+    super(client, id, version)
+  }
 
-	[0] (message: WlMessage) {
-		return this.implementation.createBuffer(this, n(message), h(message))
-	}
+  [0](message: WlMessage) {
+    return this.implementation.createBuffer(this, n(message), h(message))
+  }
 }
 
 export interface WebBitmapbufFactoryRequests {
-
-	/**
-	 *
-	 *                Create a wl_buffer object by wrapping an HTML bitmap, so it can be used with a surface.
-	 *            
-	 *
-	 * @param resource The protocol resource of this implementation.
-	 * @param id The buffer to create. 
-	 * @param bitmap The bitmap contents 
-	 *
-	 * @since 1
-	 *
-	 */
-	createBuffer(resource: WebBitmapbufFactoryResource, id: number, bitmap: FD): void
+  /**
+   *
+   *                Create a wl_buffer object by wrapping an HTML bitmap, so it can be used with a surface.
+   *
+   *
+   * @param resource The protocol resource of this implementation.
+   * @param id The buffer to create.
+   * @param bitmap The bitmap contents
+   *
+   * @since 1
+   *
+   */
+  createBuffer(resource: WebBitmapbufFactoryResource, id: number, bitmap: FD): void
 }
-

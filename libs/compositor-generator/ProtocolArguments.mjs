@@ -22,8 +22,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 SOFTWARE.
 */
 
-"use strict";
-
 class ProtocolArguments {
   /**
    * @param {string}argName
@@ -134,4 +132,4 @@ class ProtocolArguments {
   }
 }
 
-module.exports = ProtocolArguments;
+export default ProtocolArguments;

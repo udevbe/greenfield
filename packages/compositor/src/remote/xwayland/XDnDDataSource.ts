@@ -1,7 +1,7 @@
 import { DataSource } from '../../DataSource'
-import { WlDataDeviceManagerDndAction } from 'westfield-runtime-server'
+import { WlDataDeviceManagerDndAction } from '@gfld/compositor-protocol'
 import DataOffer from '../../DataOffer'
-import { ClientMessageEvent, EventMask, marshallClientMessageEvent, SendEventDest, Time, Window } from 'xtsb'
+import { ClientMessageEvent, EventMask, marshallClientMessageEvent, SendEventDest, Time, Window } from '@gfld/xtsb'
 import { InputOutputFD } from '../../InputOutput'
 import { XWindowManager } from './XWindowManager'
 

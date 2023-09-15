@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { WlSurfaceResource } from 'westfield-runtime-server'
+import { WlSurfaceResource } from '@gfld/compositor-protocol'
 import { addInputOutput } from './browser/input'
 import { DesktopSurface } from './Desktop'
 import { CompositorClient, CompositorConfiguration, CompositorSurface } from './index'

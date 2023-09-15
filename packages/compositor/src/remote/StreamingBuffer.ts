@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { WlBufferResource } from 'westfield-runtime-server'
+import { WlBufferResource } from '@gfld/compositor-protocol'
 import BufferImplementation from '../BufferImplementation'
 import Surface from '../Surface'
 import { BufferStream } from './BufferStream'

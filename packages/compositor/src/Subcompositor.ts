@@ -24,7 +24,7 @@ import {
   WlSubcompositorResource,
   WlSubsurfaceResource,
   WlSurfaceResource,
-} from 'westfield-runtime-server'
+} from '@gfld/compositor-protocol'
 import Session from './Session'
 
 import Subsurface from './Subsurface'

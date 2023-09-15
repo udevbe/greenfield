@@ -1,4 +1,4 @@
-import { WlBufferRequests, WlBufferResource } from 'westfield-runtime-server'
+import { WlBufferRequests, WlBufferResource } from '@gfld/compositor-protocol'
 import BufferImplementation from './BufferImplementation'
 import BufferContents from './BufferContents'
 import Surface from './Surface'
@@ -26,7 +26,10 @@ export class LazyImageBitmapBuffer
   released = false
   private imageBitmap?: ImageBitmap
 
-  constructor(readonly resource: WlBufferResource, private readonly lazyImageBitmap: () => Promise<ImageBitmap>) {}
+  constructor(
+    readonly resource: WlBufferResource,
+    private readonly lazyImageBitmap: () => Promise<ImageBitmap>,
+  ) {}
 
   destroy(resource: WlBufferResource): void {
     this.imageBitmap?.close()
@@ -62,7 +65,10 @@ export class ImageBitmapBuffer implements WlBufferRequests, BufferImplementation
   private readonly contents: ImageBitmapBufferContents
   released = false
 
-  constructor(readonly resource: WlBufferResource, readonly imageBitmap: ImageBitmap) {
+  constructor(
+    readonly resource: WlBufferResource,
+    readonly imageBitmap: ImageBitmap,
+  ) {
     this.contents = {
       contentSerial: 0,
       mimeType: 'image/bitmap',

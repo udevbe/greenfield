@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { Display } from 'westfield-runtime-server'
+import { Display } from '@gfld/compositor-protocol'
 import Globals from './Globals'
 import { ButtonCode, CompositorSession } from './index'
 import { FrameDecoder } from './remote/buffer-decoder'

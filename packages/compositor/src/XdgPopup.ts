@@ -21,7 +21,7 @@ import {
   XdgPopupRequests,
   XdgPopupResource,
   XdgWmBaseError,
-} from 'westfield-runtime-server'
+} from '@gfld/compositor-protocol'
 import { DesktopSurface } from './Desktop'
 
 import { RectWithInfo } from './math/Rect'

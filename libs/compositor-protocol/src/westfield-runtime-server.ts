@@ -1,15 +1,4 @@
-import {
-  Connection,
-  MessageMarshallingContext,
-  n,
-  object,
-  s,
-  string,
-  u,
-  uint,
-  WlMessage,
-  WlObject,
-} from 'westfield-runtime-common'
+import { Connection, MessageMarshallingContext, n, object, s, string, u, uint, WlMessage, WlObject } from '@gfld/common'
 
 const SERVER_OBJECT_ID_BASE = 0xff000000
 
@@ -35,7 +24,10 @@ export class Client implements DisplayRequests {
    */
   private _nextId: number = SERVER_OBJECT_ID_BASE
 
-  constructor(readonly display: Display, readonly id: string) {
+  constructor(
+    readonly display: Display,
+    readonly id: string,
+  ) {
     this.connection = new Connection()
     this.displayResource = new DisplayResource(this, 1, 0)
     this.displayResource.implementation = this

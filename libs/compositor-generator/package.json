@@ -1,9 +1,9 @@
 {
   "name": "@gfld/compositor-generator",
   "version": "1.0.0-alpha.0",
-  "type": "commonjs",
+  "type": "module",
   "description": "Wayland HTML5 protocol generator for Node.js",
-  "bin": "westfield-scanner-server.js",
+  "bin": "index.mjs",
   "keywords": [
     "wayland",
     "html5",

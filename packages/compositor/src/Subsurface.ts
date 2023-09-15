@@ -20,7 +20,7 @@ import {
   WlSubsurfaceRequests,
   WlSubsurfaceResource,
   WlSurfaceResource,
-} from 'westfield-runtime-server'
+} from '@gfld/compositor-protocol'
 import BufferImplementation from './BufferImplementation'
 
 import { Point } from './math/Point'

@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { WlRegionRequests, WlRegionResource } from 'westfield-runtime-server'
+import { WlRegionRequests, WlRegionResource } from '@gfld/compositor-protocol'
 import { lib } from './lib'
 import { Point } from './math/Point'
 import { Rect } from './math/Rect'

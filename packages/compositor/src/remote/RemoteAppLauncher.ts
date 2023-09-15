@@ -27,9 +27,9 @@ import {
   SimpleChannel,
   WebSocketChannel,
 } from './Channel'
-import { Client, WlBufferResource, WlSurfaceResource } from 'westfield-runtime-server'
+import { Client, WlBufferResource, WlSurfaceResource } from '@gfld/compositor-protocol'
 import ReconnectingWebSocket from './reconnecting-websocket'
-import { FD, SendMessage } from 'westfield-runtime-common'
+import { FD, SendMessage } from '@gfld/common'
 import RemoteOutOfBandChannel, {
   RemoteOutOfBandListenOpcode,
   RemoteOutOfBandSendOpcode,

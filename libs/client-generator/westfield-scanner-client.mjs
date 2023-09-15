@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 "use strict";
 
-const meow = require("meow");
-const ProtocolParser = require("./ProtocolParser");
+import meow from 'meow'
+import ProtocolParser from './ProtocolParser.mjs'
 
 const cli = meow(
   `Usage:

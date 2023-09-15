@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "bundler",
+    "target": "ES2020",
+    "module": "ES2020",
+    "lib": [
+      "ES2020",
+      "DOM"
+    ],
+    "allowJs": true,
+    "checkJs": false,
+    "rootDir": "src",
+    "strict": true,
+    "sourceMap": false,
+    "removeComments": true,
+    "noEmitOnError": true,
+    "declaration": true,
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "declarationDir": "dist/types",
+    "outDir": "dist/module"
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    ".eslintrc.js",
+    ".prettierrc.js",
+    "jest.config.js",
+    "**/*.spec.ts",
+    "src/nodeConnection.ts"
+  ]
+}

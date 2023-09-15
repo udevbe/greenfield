@@ -23,7 +23,7 @@ import {
   WlCompositorResource,
   WlRegionResource,
   WlSurfaceResource,
-} from 'westfield-runtime-server'
+} from '@gfld/compositor-protocol'
 import Region from './Region'
 import Session from './Session'
 

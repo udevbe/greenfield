@@ -1,4 +1,4 @@
-import { Client, WlPointerButtonState } from 'westfield-runtime-server'
+import { Client, WlPointerButtonState } from '@gfld/compositor-protocol'
 import {
   ATOM,
   Atom,
@@ -66,7 +66,7 @@ import {
   WindowClass,
   XConnection,
   XFixes,
-} from 'xtsb'
+} from '@gfld/xtsb'
 import eResize from '../../assets/e-resize.png'
 import leftPtr from '../../assets/left_ptr.png'
 import nResize from '../../assets/n-resize.png'
@@ -794,7 +794,7 @@ export class XWindowManager {
   }
 
   private handleButton(event: ButtonPressEvent | ButtonReleaseEvent) {
-    // TODO we want event codes from xtsb
+    // TODO we want event codes from @gfld/xtsb
     const buttonPress = 4
     this.session.logger.debug(
       `XCB_BUTTON_${event.responseType === buttonPress ? 'PRESS' : 'RELEASE'} (detail ${event.detail})`,
@@ -1190,9 +1190,10 @@ export class XWindowManager {
 
   private async handleClientMessage(event: ClientMessageEvent) {
     this.session.logger.debug(
-      `XCB_CLIENT_MESSAGE (${await this.getAtomName(event._type)} ${event.data.data32?.[0]} ${event.data.data32?.[1]} ${
-        event.data.data32?.[2]
-      } ${event.data.data32?.[3]} ${event.data.data32?.[4]} win ${event.window})`,
+      `XCB_CLIENT_MESSAGE (${await this.getAtomName(event._type)} ${event.data.data32?.[0]} ${event.data
+        .data32?.[1]} ${event.data.data32?.[2]} ${event.data.data32?.[3]} ${event.data.data32?.[4]} win ${
+        event.window
+      })`,
     )
 
     const window = this.lookupXWindow(event.window)

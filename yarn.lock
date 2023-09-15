@@ -714,7 +714,7 @@ __metadata:
     uppercamelcase: ^3.0.0
     xml2js: ^0.6.2
   bin:
-    client-generator: westfield-scanner-client.js
+    client-generator: westfield-scanner-client.mjs
   languageName: unknown
   linkType: soft
 
@@ -760,7 +760,7 @@ __metadata:
     uppercamelcase: 3.0.0
     xml2js: 0.6.2
   bin:
-    compositor-generator: westfield-scanner-server.js
+    compositor-generator: westfield-scanner-server.mjs
   languageName: unknown
   linkType: soft
 
@@ -801,6 +801,8 @@ __metadata:
   resolution: "@gfld/compositor-proxy@workspace:packages/compositor-proxy"
   dependencies:
     "@gfld/compositor-proxy-generator": "workspace:^"
+    "@gfld/xtsb": "workspace:^"
+    "@tsconfig/node18": ^18.2.2
     "@types/jest": ^29.5.4
     "@types/js-yaml": ^4.0.5
     "@types/jsonwebtoken": ^9.0.2
@@ -826,13 +828,12 @@ __metadata:
     ts-node: ^10.9.1
     typescript: ^5.2.2
     ws: ^8.13.0
-    xtsb: 1.0.0-alpha.0
   bin:
     compositor-proxy: dist/cli.js
   languageName: unknown
   linkType: soft
 
-"@gfld/compositor-wasm@workspace:libs/compositor-wasm":
+"@gfld/compositor-wasm@workspace:^, @gfld/compositor-wasm@workspace:libs/compositor-wasm":
   version: 0.0.0-use.local
   resolution: "@gfld/compositor-wasm@workspace:libs/compositor-wasm"
   dependencies:
@@ -853,6 +854,8 @@ __metadata:
   dependencies:
     "@gfld/common": "workspace:^"
     "@gfld/compositor-protocol": "workspace:^"
+    "@gfld/compositor-wasm": "workspace:^"
+    "@gfld/xtsb": "workspace:^"
     "@types/dom-webcodecs": 0.1.8
     "@types/jest": ^29.5.4
     "@types/node": ^18.15.3
@@ -867,7 +870,6 @@ __metadata:
     rimraf: ^5.0.1
     ts-node: ^10.9.1
     typescript: ^5.2.2
-    xtsb: 1.0.0-alpha.1
   languageName: unknown
   linkType: soft
 
@@ -893,6 +895,28 @@ __metadata:
     tailwindcss: ^3.3.2
     typescript: ^5.0.4
     vite: ^4.3.5
+  languageName: unknown
+  linkType: soft
+
+"@gfld/xtsb@workspace:^, @gfld/xtsb@workspace:libs/xtsb":
+  version: 0.0.0-use.local
+  resolution: "@gfld/xtsb@workspace:libs/xtsb"
+  dependencies:
+    "@tsconfig/node18": ^18.2.2
+    "@types/jest": ^29.5.4
+    "@types/node": ^18.15.3
+    "@typescript-eslint/eslint-plugin": ^6.7.0
+    "@typescript-eslint/parser": ^6.7.0
+    eslint: ^8.49.0
+    eslint-config-prettier: ^9.0.0
+    eslint-plugin-prettier: ^5.0.0
+    jest: ^29.7.0
+    jest-config: ^29.7.0
+    prettier: ^3.0.3
+    rimraf: ^5.0.1
+    ts-jest: ^29.1.1
+    ts-node: ^10.9.1
+    typescript: ^5.2.2
   languageName: unknown
   linkType: soft
 
@@ -1444,6 +1468,13 @@ __metadata:
   version: 1.0.4
   resolution: "@tsconfig/node16@npm:1.0.4"
   checksum: 202319785901f942a6e1e476b872d421baec20cf09f4b266a1854060efbf78cde16a4d256e8bc949d31e6cd9a90f1e8ef8fb06af96a65e98338a2b6b0de0a0ff
+  languageName: node
+  linkType: hard
+
+"@tsconfig/node18@npm:^18.2.2":
+  version: 18.2.2
+  resolution: "@tsconfig/node18@npm:18.2.2"
+  checksum: 1c4b04b570e33de14bf518492e077079db2dcfba738c8d40c6ff916d94c9410246f4cb56f0802d9771423862140bf714c35d4a5f6cec2446d851cf61d3f8f9df
   languageName: node
   linkType: hard
 
@@ -8774,20 +8805,6 @@ __metadata:
   version: 11.0.1
   resolution: "xmlbuilder@npm:11.0.1"
   checksum: 7152695e16f1a9976658215abab27e55d08b1b97bca901d58b048d2b6e106b5af31efccbdecf9b07af37c8377d8e7e821b494af10b3a68b0ff4ae60331b415b0
-  languageName: node
-  linkType: hard
-
-"xtsb@npm:1.0.0-alpha.0":
-  version: 1.0.0-alpha.0
-  resolution: "xtsb@npm:1.0.0-alpha.0"
-  checksum: 70c14b0539c29f3dff8cfd63cc6d807085ec6e3b36d76d173a1791296aa5323d8d611cf0b4db019c6011309b661146fee776df1f7f8bd5eee5bad1a7c38c1c0a
-  languageName: node
-  linkType: hard
-
-"xtsb@npm:1.0.0-alpha.1":
-  version: 1.0.0-alpha.1
-  resolution: "xtsb@npm:1.0.0-alpha.1"
-  checksum: cb38820ea735a14afe4aec31923c9dc8d8cac6529368878b0b92ef004ba838173fa0db64e502bfa93f7026e307318e9327fae1e679e49da73c989a15bd79e331
   languageName: node
   linkType: hard
 

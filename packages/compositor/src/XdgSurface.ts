@@ -24,7 +24,7 @@ import {
   XdgSurfaceResource,
   XdgToplevelResource,
   XdgWmBaseError,
-} from 'westfield-runtime-server'
+} from '@gfld/compositor-protocol'
 import { clientHeight, clientWidth } from './browser/attributes'
 import { queueCancellableMicrotask } from './Loop'
 import { minusPoint } from './math/Point'

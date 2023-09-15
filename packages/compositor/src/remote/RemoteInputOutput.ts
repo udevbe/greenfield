@@ -1,5 +1,5 @@
 import { InputOutput, InputOutputFD } from '../InputOutput'
-import { FD } from 'westfield-runtime-common'
+import { FD } from '@gfld/common'
 import { createRemoteAPI, ProxyFD, RemoteAPI } from './api'
 
 export function isProxyFD(fd: any): fd is ProxyFD {
@@ -13,7 +13,10 @@ export function createRemoteInputOutput(basePath: string, compositorSessionId: s
 class RemoteInputOutput implements InputOutput {
   readonly api: RemoteAPI
 
-  constructor(public readonly baseURL: string, compositorSessionId: string) {
+  constructor(
+    public readonly baseURL: string,
+    compositorSessionId: string,
+  ) {
     this.api = createRemoteAPI(baseURL, compositorSessionId)
   }
 
@@ -38,7 +41,10 @@ class RemoteInputOutput implements InputOutput {
 }
 
 class RemoteInputOutputFD implements InputOutputFD {
-  constructor(private readonly api: RemoteAPI, readonly fd: ProxyFD) {}
+  constructor(
+    private readonly api: RemoteAPI,
+    readonly fd: ProxyFD,
+  ) {}
 
   write(data: Blob): Promise<void> {
     if (this.fd.type === 'pipe-read') {

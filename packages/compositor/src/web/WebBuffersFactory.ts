@@ -5,10 +5,10 @@ import {
   Global,
   Registry,
   WlBufferResource,
-} from 'westfield-runtime-server'
+} from '@gfld/compositor-protocol'
 import Session from '../Session'
 import { ImageBitmapBuffer } from '../ImageBitmapBuffer'
-import { FD } from 'westfield-runtime-common'
+import { FD } from '@gfld/common'
 
 export class WebBuffersFactory implements WebBitmapbufFactoryRequests {
   private global?: Global

@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { Fixed } from 'westfield-runtime-common'
+import { Fixed } from '@gfld/common'
 import {
   Client,
   Global,
@@ -33,7 +33,7 @@ import {
   WlSeatResource,
   WlSurfaceResource,
   WlTouchResource,
-} from 'westfield-runtime-server'
+} from '@gfld/compositor-protocol'
 
 import { capabilities } from './browser/capabilities'
 import { DesktopSurface } from './Desktop'

@@ -22,7 +22,7 @@ import {
   WlSurfaceError,
   WlSurfaceRequests,
   WlSurfaceResource,
-} from 'westfield-runtime-server'
+} from '@gfld/compositor-protocol'
 import { createRect, Rect, RectWithInfo, withSizeAndPosition } from './math/Rect'
 import BufferContents from './BufferContents'
 import BufferImplementation from './BufferImplementation'

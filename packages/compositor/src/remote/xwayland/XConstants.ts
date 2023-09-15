@@ -2,7 +2,7 @@
  * as local type placeholders that never touch the X11 server,
  * to make weston_wm_window_read_properties() less exceptional.
  */
-import { Atom } from 'xtsb'
+import { Atom } from '@gfld/xtsb'
 
 export const TYPE_WM_PROTOCOLS = Atom.cutBuffer0
 export const TYPE_MOTIF_WM_HINTS = Atom.cutBuffer1

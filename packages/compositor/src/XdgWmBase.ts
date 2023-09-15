@@ -25,7 +25,7 @@ import {
   XdgWmBaseError,
   XdgWmBaseRequests,
   XdgWmBaseResource,
-} from 'westfield-runtime-server'
+} from '@gfld/compositor-protocol'
 
 import { Seat } from './Seat'
 import Session from './Session'
@@ -40,7 +40,10 @@ export default class XdgWmBase implements XdgWmBaseRequests {
   private clientPingStates: Map<Client, { timeoutTimer: number; pingTimer: number; pingTimeoutActive: boolean }> =
     new Map()
 
-  private constructor(private readonly session: Session, private readonly seat: Seat) {}
+  private constructor(
+    private readonly session: Session,
+    private readonly seat: Seat,
+  ) {}
 
   static create(session: Session, seat: Seat): XdgWmBase {
     return new XdgWmBase(session, seat)

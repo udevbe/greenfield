@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { WlTouchResource } from 'westfield-runtime-server'
+import { WlTouchResource } from '@gfld/compositor-protocol'
 import { Seat } from './Seat'
 
 /**

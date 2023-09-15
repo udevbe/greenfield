@@ -15,14 +15,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { FD } from 'westfield-runtime-common'
+import { FD } from '@gfld/common'
 import {
   WlDataDeviceManagerDndAction,
   WlDataDeviceResource,
   WlDataOfferError,
   WlDataOfferRequests,
   WlDataOfferResource,
-} from 'westfield-runtime-server'
+} from '@gfld/compositor-protocol'
 import { DataSource } from './DataSource'
 import Session from './Session'
 

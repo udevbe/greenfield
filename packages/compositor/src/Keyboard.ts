@@ -20,7 +20,7 @@ import {
   WlKeyboardKeyState,
   WlKeyboardRequests,
   WlKeyboardResource,
-} from 'westfield-runtime-server'
+} from '@gfld/compositor-protocol'
 import { CompositorKeyboard, KeyCode } from './index'
 import { KeyEvent } from './KeyEvent'
 import { Seat, KeyboardLocks } from './Seat'

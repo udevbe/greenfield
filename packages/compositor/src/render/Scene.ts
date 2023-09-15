@@ -26,7 +26,7 @@ import RenderState from './RenderState'
 import { RGBXandA2RGBA } from './RGBXandAToRGBA'
 import SceneShader from './SceneShader'
 import { YUVA2RGBA } from './YUVA2RGBA'
-import { ImageBitmapBufferContents } from '../web/ImageBitmapBuffer'
+import { ImageBitmapBufferContents } from '../ImageBitmapBuffer'
 
 export class Scene {
   public region = createPixmanRegion()

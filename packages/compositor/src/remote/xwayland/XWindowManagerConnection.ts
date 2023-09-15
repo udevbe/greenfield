@@ -1,4 +1,4 @@
-import { connect, webConnectionSetup, XConnection } from 'xtsb'
+import { connect, webConnectionSetup, XConnection } from '@gfld/xtsb'
 import Session from '../../Session'
 import { Channel } from '../Channel'
 

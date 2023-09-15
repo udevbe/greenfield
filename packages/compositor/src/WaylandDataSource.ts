@@ -21,7 +21,7 @@ import {
   WlDataSourceResource,
   WlDataDeviceResource,
   WlDataSourceError,
-} from 'westfield-runtime-server'
+} from '@gfld/compositor-protocol'
 import DataOffer from './DataOffer'
 import Session from './Session'
 import { DataSource } from './DataSource'

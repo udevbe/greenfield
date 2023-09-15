@@ -24,14 +24,12 @@ SOFTWARE.
 
 "use strict";
 
-const path = require("path");
-const fs = require("fs");
-const xml2js = require("xml2js");
-
-const camelCase = require("camelcase");
-const upperCamelCase = require("uppercamelcase");
-
-const ProtocolArguments = require("./ProtocolArguments");
+import path from 'node:path'
+import fs from 'node:fs'
+import xml2js from 'xml2js'
+import camelCase from 'camelcase'
+import upperCamelCase from 'uppercamelcase'
+import ProtocolArguments from './ProtocolArguments.mjs'
 
 class ProtocolParser {
   static _generateEventArgs(out, req) {
@@ -412,7 +410,7 @@ class ProtocolParser {
       "import { WlMessage, fileDescriptor, uint, int, \n" +
         "\tfixed, object, objectOptional, newObject, string, stringOptional, \n" +
         "\tarray, arrayOptional, u, i, f, oOptional, o, n, sOptional, s, aOptional, a, h," +
-        "\tFD, Fixed } from 'westfield-runtime-common'\n"
+        "\tFD, Fixed } from '@gfld/common'\n"
     );
     out.write("import * as Westfield from '..'\n\n");
     jsonProtocol.protocol.interface.forEach((itf) => {
@@ -473,4 +471,4 @@ class ProtocolParser {
   }
 }
 
-module.exports = ProtocolParser;
+export default ProtocolParser;

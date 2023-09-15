@@ -29,8 +29,9 @@
   "dependencies": {
     "@gfld/common": "workspace:^",
     "@gfld/compositor-protocol": "workspace:^",
-    "ffmpegh264": "1.0.0-alpha.1",
-    "xtsb": "1.0.0-alpha.1"
+    "@gfld/compositor-wasm": "workspace:^",
+    "@gfld/xtsb": "workspace:^",
+    "ffmpegh264": "1.0.0-alpha.1"
   },
   "devDependencies": {
     "@types/dom-webcodecs": "0.1.8",

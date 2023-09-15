@@ -24,7 +24,7 @@ import {
   WlDataDeviceResource,
   WlDataSourceResource,
   WlSeatResource,
-} from 'westfield-runtime-server'
+} from '@gfld/compositor-protocol'
 
 import { createWaylandDataSource } from './WaylandDataSource'
 import { Seat } from './Seat'

@@ -1,4 +1,4 @@
-import { WlShellSurfaceResize } from 'westfield-runtime-server'
+import { WlShellSurfaceResize } from '@gfld/compositor-protocol'
 import { AxisEvent } from './AxisEvent'
 import { ButtonEvent } from './ButtonEvent'
 import { CompositorSurface } from './index'
@@ -126,7 +126,10 @@ class ResizeGrab implements PointerGrab {
 }
 
 class MoveGrab implements PointerGrab {
-  private constructor(readonly desktopSurface: DesktopSurface, readonly deltaPoint: Point) {}
+  private constructor(
+    readonly desktopSurface: DesktopSurface,
+    readonly deltaPoint: Point,
+  ) {}
 
   static create(desktopSurface: DesktopSurface) {
     const pointer = desktopSurface.surface.session.globals.seat.pointer
@@ -215,7 +218,10 @@ export class DesktopSurface {
   }
   public readonly compositorSurface: CompositorSurface
 
-  private constructor(public surface: Surface, readonly role: DesktopSurfaceRole) {
+  private constructor(
+    public surface: Surface,
+    readonly role: DesktopSurfaceRole,
+  ) {
     this.compositorSurface = toCompositorSurface(this)
   }
 

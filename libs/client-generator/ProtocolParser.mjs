@@ -24,14 +24,12 @@ SOFTWARE.
 
 "use strict";
 
-const path = require("path");
-const fs = require("fs");
-const xml2js = require("xml2js");
-
-const camelCase = require("camelcase");
-const upperCamelCase = require("uppercamelcase");
-
-const ProtocolArguments = require("./ProtocolArguments");
+import path from 'node:path'
+import fs from 'node:fs'
+import xml2js from 'xml2js'
+import camelCase from 'camelcase'
+import upperCamelCase from 'uppercamelcase'
+import ProtocolArguments from './ProtocolArguments.mjs'
 
 class ProtocolParser {
   static _generateRequestArgs(codeLines, req) {
@@ -531,4 +529,4 @@ class ProtocolParser {
   }
 }
 
-module.exports = ProtocolParser;
+export default ProtocolParser;

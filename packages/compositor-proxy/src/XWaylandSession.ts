@@ -1,5 +1,5 @@
 import { createLogger } from './Logger'
-import { nodeFDConnectionSetup } from 'xtsb'
+import { nodeFDConnectionSetup } from '@gfld/xtsb'
 import { ClientEntry, NativeWaylandCompositorSession } from './NativeWaylandCompositorSession'
 import { equalValueExternal, setupXWayland, teardownXWayland, WlClient, XWaylandHandle } from './wayland-proxy-server'
 import { createReadStream } from 'fs'

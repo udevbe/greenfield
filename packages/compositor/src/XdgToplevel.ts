@@ -22,7 +22,7 @@ import {
   XdgToplevelRequests,
   XdgToplevelResource,
   XdgToplevelState,
-} from 'westfield-runtime-server'
+} from '@gfld/compositor-protocol'
 import { DesktopSurface } from './Desktop'
 import { RectWithInfo } from './math/Rect'
 import { Size, ZERO_SIZE } from './math/Size'
