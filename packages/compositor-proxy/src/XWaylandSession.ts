@@ -1,7 +1,7 @@
 import { createLogger } from './Logger'
 import { nodeFDConnectionSetup } from '@gfld/xtsb'
 import { ClientEntry, NativeWaylandCompositorSession } from './NativeWaylandCompositorSession'
-import { equalValueExternal, setupXWayland, teardownXWayland, WlClient, XWaylandHandle } from './wayland-proxy-server'
+import { equalValueExternal, setupXWayland, teardownXWayland, WlClient, XWaylandHandle } from './wayland-server'
 import { createReadStream } from 'fs'
 import { Channel, createXWMDataChannel } from './Channel'
 
@@ -38,7 +38,7 @@ export class XWaylandSession {
     createReadStream('ignored', {
       fd: displayFd,
       autoClose: true,
-    }).on('data', (chunk) => {
+    }).on('data', (_chunk) => {
       logger.info('XWayland started.')
 
       const xWaylandClient = this.nativeCompositorSession.clients.find((value) => {

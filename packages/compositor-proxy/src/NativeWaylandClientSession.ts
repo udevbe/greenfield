@@ -38,12 +38,12 @@ import {
   setWireMessageCallback,
   setWireMessageEndCallback,
   WlRegistry,
-} from './wayland-proxy-server'
+  WlClient,
+} from './wayland-server'
 import { ProxyBuffer } from './ProxyBuffer'
 import type { Channel } from './Channel'
-import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
+import wl_surface_interceptor from './protocol/wl_surface_interceptor'
 import { NativeAppContext } from './NativeAppContext'
-import type { WlClient } from './westfield-addon'
 
 const logger = createLogger('native-client-session')
 

@@ -1,7 +1,7 @@
 import { createReadStream } from 'fs'
 import { ProxyFD } from './types'
 import { createLogger } from '../Logger'
-import { createMemoryMappedFile, makePipe } from '../wayland-proxy-server'
+import { createMemoryMappedFile, makePipe } from '../wayland-server'
 import { createWebSocketStream, WebSocket } from 'ws'
 import { Session } from '../Session'
 

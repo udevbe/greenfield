@@ -124,12 +124,15 @@ export class SimpleChannel implements WebSocketChannel {
   onClose = () => {
     /*noop*/
   }
-  onMessage = (event: Buffer) => {
+  onMessage = (_event: Buffer) => {
     /*noop*/
   }
   ws?: WebSocket
 
-  constructor(readonly desc: ChannelDesc, readonly nativeAppContext: NativeAppContext) {}
+  constructor(
+    readonly desc: ChannelDesc,
+    readonly nativeAppContext: NativeAppContext,
+  ) {}
 
   doOpen(ws: WebSocket): void {
     this.ws = ws
@@ -169,13 +172,16 @@ export class ARQChannel implements WebSocketChannel {
   onClose = () => {
     /*noop*/
   }
-  onMessage = (event: Buffer) => {
+  onMessage = (_event: Buffer) => {
     /*noop*/
   }
   private checkInterval?: NodeJS.Timer
   ws?: WebSocket
 
-  constructor(public readonly desc: ChannelDesc, readonly nativeAppContext: NativeAppContext) {
+  constructor(
+    public readonly desc: ChannelDesc,
+    readonly nativeAppContext: NativeAppContext,
+  ) {
     const kcp = new Kcp(+this.desc.id, this)
     kcp.setMtu(MTU) // webrtc datachannel MTU
     kcp.setWndSize(SND_WINDOW_SIZE, RCV_WINDOW_SIZE)

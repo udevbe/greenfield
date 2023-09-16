@@ -1,4 +1,4 @@
-import { MessageDestination } from './wayland-proxy-server'
+import { MessageDestination } from './wayland-server'
 
 let bufferSerial = 0
 
@@ -16,7 +16,7 @@ export class ProxyBuffer {
   ) {}
 
   // destroy
-  R0(message: {
+  R0(_message: {
     buffer: ArrayBuffer
     fds: Array<number>
     bufferOffset: number

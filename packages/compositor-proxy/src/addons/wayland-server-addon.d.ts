@@ -51,7 +51,7 @@ declare namespace westfieldAddon {
 
   function initShm(wlDisplay: WlDisplay): void
 
-  function initDrm(wlDisplay: WlDisplay): DRMHandle
+  function initDrm(wlDisplay: WlDisplay, renderDevice: string): DRMHandle
 
   function setRegistryCreatedCallback(
     wlClient: WlClient,
@@ -80,7 +80,7 @@ declare namespace westfieldAddon {
 
   function setupXWayland(
     wlDisplay: WlDisplay,
-    onXWaylandStarting: (wmFd: number, wlClient: WlClient) => void,
+    onXWaylandStarting: (wmFd: number, wlClient: WlClient, displayFd: number) => void,
     onXWaylandDestroyed: () => void,
   ): XWaylandHandle
 

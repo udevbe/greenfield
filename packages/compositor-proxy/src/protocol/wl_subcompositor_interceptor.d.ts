@@ -1,6 +1,6 @@
 import { RetransmittingWebSocket } from 'retransmitting-websocket'
 import { NativeClientSession } from '../../NativeClientSession'
-import { MessageDestination } from '../../../../../westfield/server/node/proxy'
+import type { MessageDestination } from '../wayland-server'
 
 export default class wl_subcompositor_interceptor {
   userData: {

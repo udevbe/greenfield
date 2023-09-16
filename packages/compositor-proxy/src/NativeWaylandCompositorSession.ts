@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { PollHandle, startPoll, stopPoll } from './proxy-poll-addon'
+import { PollHandle, startPoll, stopPoll } from './addons/proxy-poll-addon'
 import { createProxyInputOutput } from './io/ProxyInputOutput'
 import { createLogger } from './Logger'
 import { createNativeClientSession, NativeWaylandClientSession } from './NativeWaylandClientSession'
@@ -33,7 +33,7 @@ import {
   nativeGlobalNames,
   WlClient,
   WlDisplay,
-} from './wayland-proxy-server'
+} from './wayland-server'
 import { Channel, createProtocolChannel } from './Channel'
 import { webcrypto } from 'crypto'
 import { Session } from './Session'

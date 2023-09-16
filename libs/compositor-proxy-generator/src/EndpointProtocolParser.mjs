@@ -131,7 +131,7 @@ export default class EndpointProtocolParser {
     );
 
     interfaceOut.write(
-      `const { createWlInterface, createWlMessage, initWlInterface } = require('westfield-proxy')\n\n`
+      `const { createWlInterface, createWlMessage, initWlInterface } = require('../wayland-server')\n\n`
     );
     interfaceOut.write(`const wlInterface = createWlInterface()\n`);
     interfaceOut.write(`module.exports = wlInterface\n`);
@@ -197,7 +197,7 @@ export default class EndpointProtocolParser {
     );
 
     interceptorOut.write(
-      `const { createWlResource, unmarshallArgs } = require('westfield-proxy')\n\n`
+      `const { createWlResource, unmarshallArgs } = require('../wayland-server')\n\n`
     );
 
     // class
@@ -406,7 +406,7 @@ export default class EndpointProtocolParser {
       resourceOut.write(`) => {\n`);
       if (reqName === "bind" && protocolItf.$.name === "wl_registry") {
         resourceOut.write(
-          `\t\t\t\tif (require('westfield-proxy').nativeGlobalNames.includes(name)) {\n`
+          `\t\t\t\tif (require('../wayland-server').nativeGlobalNames.includes(name)) {\n`
         );
         resourceOut.write(`\t\t\t\t\treturn { native: true, browser: false }\n`);
         resourceOut.write(`\t\t\t\t} else {\n`);

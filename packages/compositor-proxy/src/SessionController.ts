@@ -3,7 +3,7 @@ import { Session } from './Session'
 import { IncomingMessage } from 'http'
 import { close, createReadStream, createWriteStream, read } from 'fs'
 import { createLogger } from './Logger'
-import wl_surface_interceptor from './@types/protocol/wl_surface_interceptor'
+import wl_surface_interceptor from './protocol/wl_surface_interceptor'
 import { isSignalingMessage, SignalingMessageType } from './NativeAppContext'
 import { Socket } from 'net'
 

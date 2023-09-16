@@ -20,7 +20,7 @@ if (basicAuth) {
 export function authRequest(
   request: IncomingMessage,
   response: ServerResponse,
-  url: URL,
+  _url: URL,
 ):
   | {
       compositorSessionId: string

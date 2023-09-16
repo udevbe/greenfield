@@ -1,8 +1,8 @@
 import { Encoder } from '../../encoding/Encoder'
 import { FrameFeedback } from '../../FrameFeedback'
 import { NativeClientSession } from '../../NativeClientSession'
-import { MessageDestination } from '../../../../../westfield/server/node/proxy'
 import type { Channel } from '../../Channel'
+import type { WlClient, MessageDestination } from '../wayland-server'
 
 export default class wl_surface_interceptor {
   frameDataChannel: Channel
@@ -26,7 +26,7 @@ export default class wl_surface_interceptor {
     messageInterceptors: Record<number, any>
     nativeClientSession: NativeClientSession
   }
-  wlClient: unknown
+  wlClient: WlClient
   id: number
 
   /**

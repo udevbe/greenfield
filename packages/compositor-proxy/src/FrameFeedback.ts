@@ -1,4 +1,4 @@
-import { destroyWlResourceSilently, flush, sendEvents, WlClient } from './westfield-addon'
+import { destroyWlResourceSilently, flush, sendEvents, WlClient } from './wayland-server'
 import { performance } from 'perf_hooks'
 import type { Channel } from './Channel'
 

@@ -4,10 +4,10 @@
     "outDir": "./dist",
     "resolveJsonModule": true,
     "allowJs": true,
-    "rootDirs": ["src/@types","src"],
+    "rootDirs": ["src"],
     "pretty": true,
   },
-  "exclude": [".eslintrc.js", ".prettierrc.js"],
+  "exclude": [".eslintrc.js", ".prettierrc.js", "jest.config.js"],
   "ts-node": {
     "files": true
   },

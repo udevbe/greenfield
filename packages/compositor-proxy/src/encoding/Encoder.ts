@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import appEndpointNative from './proxy-encoding-addon'
+import appEndpointNative from '../addons/proxy-encoding-addon'
 import { Session } from '../Session'
 
 export function createEncoder(session: Session, wlClient: unknown, drmContext: unknown): Encoder {

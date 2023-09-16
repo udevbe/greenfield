@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { unmarshallArgs } from './wayland-proxy-server'
+import { unmarshallArgs } from './wayland-server'
 import { createEncoder, Encoder } from './encoding/Encoder'
 
 import { createLogger } from './Logger'
@@ -73,7 +73,7 @@ export function initSurfaceBufferEncoding(): void {
   /**
    * destroy: [R]equest w opcode [0] = R0
    */
-  wlSurfaceInterceptor.prototype.R0 = function (message: {
+  wlSurfaceInterceptor.prototype.R0 = function (_message: {
     buffer: ArrayBuffer
     fds: Array<number>
     bufferOffset: number
@@ -142,7 +142,7 @@ export function initSurfaceBufferEncoding(): void {
   /**
    * damage: [R]equest w opcode [2] = R2
    */
-  wlSurfaceInterceptor.prototype.R2 = function (message: {
+  wlSurfaceInterceptor.prototype.R2 = function (_message: {
     buffer: ArrayBuffer
     fds: Array<number>
     bufferOffset: number
@@ -184,7 +184,7 @@ export function initSurfaceBufferEncoding(): void {
   /**
    * set_opaque_region: [R]equest w opcode [4] = R4
    */
-  wlSurfaceInterceptor.prototype.R4 = function (message: {
+  wlSurfaceInterceptor.prototype.R4 = function (_message: {
     buffer: ArrayBuffer
     fds: Array<number>
     bufferOffset: number
@@ -201,7 +201,7 @@ export function initSurfaceBufferEncoding(): void {
   /**
    * set_input_region: [R]equest w opcode [5] = R5
    */
-  wlSurfaceInterceptor.prototype.R5 = function (message: {
+  wlSurfaceInterceptor.prototype.R5 = function (_message: {
     buffer: ArrayBuffer
     fds: Array<number>
     bufferOffset: number
@@ -302,7 +302,7 @@ export function initSurfaceBufferEncoding(): void {
   /**
    * enter
    */
-  wlSurfaceInterceptor.prototype.R7 = function (message: {
+  wlSurfaceInterceptor.prototype.R7 = function (_message: {
     buffer: ArrayBuffer
     fds: Array<number>
     bufferOffset: number
@@ -319,7 +319,7 @@ export function initSurfaceBufferEncoding(): void {
   /**
    * leave
    */
-  wlSurfaceInterceptor.prototype.R8 = function (message: {
+  wlSurfaceInterceptor.prototype.R8 = function (_message: {
     buffer: ArrayBuffer
     fds: Array<number>
     bufferOffset: number
@@ -336,7 +336,7 @@ export function initSurfaceBufferEncoding(): void {
   /**
    * set_buffer_transform
    */
-  wlSurfaceInterceptor.prototype.R9 = function (message: {
+  wlSurfaceInterceptor.prototype.R9 = function (_message: {
     buffer: ArrayBuffer
     fds: Array<number>
     bufferOffset: number
@@ -353,7 +353,7 @@ export function initSurfaceBufferEncoding(): void {
   /**
    * set_buffer_scale
    */
-  wlSurfaceInterceptor.prototype.R10 = function (message: {
+  wlSurfaceInterceptor.prototype.R10 = function (_message: {
     buffer: ArrayBuffer
     fds: Array<number>
     bufferOffset: number
@@ -370,7 +370,7 @@ export function initSurfaceBufferEncoding(): void {
   /**
    * damage_buffer
    */
-  wlSurfaceInterceptor.prototype.R11 = function (message: {
+  wlSurfaceInterceptor.prototype.R11 = function (_message: {
     buffer: ArrayBuffer
     fds: Array<number>
     bufferOffset: number

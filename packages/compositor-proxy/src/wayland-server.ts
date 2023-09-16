@@ -1,4 +1,4 @@
-import westfieldAddon from './westfield-addon'
+import westfieldAddon from './addons/wayland-server-addon'
 
 export const {
   createDisplay,
@@ -42,8 +42,8 @@ export type {
   WlResource,
   ExternalType,
   DRMHandle,
-  XWaylandHandle
-} from './westfield-addon'
+  XWaylandHandle,
+} from './addons/wayland-server-addon'
 
 export type MessageDestination = {
   native: boolean

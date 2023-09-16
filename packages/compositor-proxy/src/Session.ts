@@ -37,7 +37,10 @@ export class Session {
   private nativeAppContexts: NativeAppContext[] = []
   public closeListeners: (() => void)[] = []
 
-  constructor(readonly compositorSessionId: string, readonly config: Configschema) {
+  constructor(
+    readonly compositorSessionId: string,
+    readonly config: Configschema,
+  ) {
     this.nativeWaylandCompositorSession = createNativeCompositorSession(this)
     this.xWaylandSession = createXWaylandSession(this.nativeWaylandCompositorSession)
     this.xWaylandSession.createXWaylandListenerSocket()

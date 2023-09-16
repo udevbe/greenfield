@@ -56,7 +56,7 @@ target_link_libraries(proxy-encoding PRIVATE
 )
 set_target_properties(proxy-encoding
         PROPERTIES
-        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/encoding
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/addons
 )
 
 add_library(proxy-poll-addon SHARED
@@ -72,7 +72,7 @@ target_link_libraries(proxy-poll-addon PRIVATE
 )
 set_target_properties(proxy-poll-addon
         PROPERTIES
-        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/addons
 )
 
 add_library(proxy-encoding-addon SHARED
@@ -92,7 +92,7 @@ target_link_libraries(proxy-encoding-addon PRIVATE
 )
 set_target_properties(proxy-encoding-addon
     PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/encoding
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/addons
 )
 
 add_library(wayland-server SHARED
@@ -124,7 +124,7 @@ target_link_libraries(wayland-server PRIVATE
 )
 set_target_properties(wayland-server
         PROPERTIES
-        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/addons
         SOVERSION 0
 )
 file(GLOB WESTFIELD_WAYLAND_SERVER_PUBLIC_HEADERS
@@ -136,9 +136,6 @@ file(GLOB WESTFIELD_WAYLAND_SERVER_PUBLIC_HEADERS
         ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/westfield-wayland-server-extra.h
         ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/westfield-wayland-server.h
 )
-file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/include/wayland-server)
-file(COPY ${WESTFIELD_WAYLAND_SERVER_PUBLIC_HEADERS} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/dist/include/wayland-server)
-
 
 add_library(westfield SHARED
         ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/westfield-fdutils.c
@@ -189,34 +186,31 @@ target_link_libraries(westfield PRIVATE
 )
 set_target_properties(westfield
         PROPERTIES
-        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/addons
 )
 file(GLOB WESTFIELD_PUBLIC_HEADERS
         ${CMAKE_SOURCE_DIR}/native/wayland/src/*.h
 )
-file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/include)
-file(COPY ${WESTFIELD_PUBLIC_HEADERS} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/dist/include)
 
-
-add_library(westfield-addon SHARED
-        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/node-addon/westfield-addon.c
+add_library(wayland-server-addon SHARED
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/node-addon/wayland-server-addon.c
 )
-target_include_directories(westfield-addon PRIVATE
+target_include_directories(wayland-server-addon PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server
         ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src
         ${CMAKE_CURRENT_SOURCE_DIR}/native/include
 )
-set_target_properties(westfield-addon
+set_target_properties(wayland-server-addon
         PROPERTIES PREFIX "" SUFFIX ".node"
 )
-target_link_libraries(westfield-addon PRIVATE
+target_link_libraries(wayland-server-addon PRIVATE
             ${CMAKE_JS_LIB}
             wayland-server
             westfield
             Threads::Threads
             rt
 )
-set_target_properties(westfield-addon
+set_target_properties(wayland-server-addon
         PROPERTIES
-        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/addons
 )
