@@ -1,4 +1,4 @@
-import { ChildProcessWithoutNullStreams } from 'child_process'
+import { ChildProcessWithoutNullStreams } from 'node:child_process'
 import {
   BadWindow,
   ColormapAlloc,
@@ -13,7 +13,7 @@ import {
   WindowClass,
   XConnection,
   XFixes,
-} from '../src'
+} from '../src/index.node'
 // @ts-ignore
 import { setupXvfb } from './setupXvfb'
 

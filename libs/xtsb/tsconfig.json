@@ -5,7 +5,8 @@
     "module": "ES2020",
     "lib": [
       "ES2020",
-      "DOM"
+      "DOM",
+      "DOM.Iterable"
     ],
     "allowJs": true,
     "checkJs": false,
@@ -29,6 +30,7 @@
     ".prettierrc.js",
     "jest.config.js",
     "**/*.spec.ts",
-    "src/nodeConnection.ts"
+    "**/nodeConnection.ts",
+    "**/index.node.ts"
   ]
 }

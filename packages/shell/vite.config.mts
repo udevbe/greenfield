@@ -3,7 +3,7 @@ import preact from "@preact/preset-vite";
 
 export default defineConfig({
   plugins: [preact()],
-  root: "./demo-compositor",
+  root: "src",
   server: {
     port: 8080,
     strictPort: true,

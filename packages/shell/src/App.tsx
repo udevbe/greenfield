@@ -1,6 +1,6 @@
 import './index.css'
 import { Signal } from '@preact/signals'
-import { CompositorClient, createAppLauncher, createCompositorSession, initWasm } from '../../src'
+import { CompositorClient, createAppLauncher, createCompositorSession, initWasm } from '@gfld/compositor'
 import { render } from 'preact'
 import { AppBar, AppEntryProps } from './AppBar'
 

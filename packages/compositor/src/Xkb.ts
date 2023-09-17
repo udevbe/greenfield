@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { lib } from './lib'
+import { lib } from '@gfld/compositor-wasm'
 
 const XKB_KEYMAP_FORMAT_TEXT_V1 = 1 as const
 const XKB_CONTEXT_NO_DEFAULT_INCLUDES = 1 as const
@@ -220,7 +220,10 @@ export class Xkb {
   readonly scrollLed: number
   readonly keymapString: string
 
-  constructor(public readonly keymap: number, public readonly state: number) {
+  constructor(
+    public readonly keymap: number,
+    public readonly state: number,
+  ) {
     const modNameShift = stringToPointer(XKB_MOD_NAME_SHIFT)
     const modNameCaps = stringToPointer(XKB_MOD_NAME_CAPS)
     const modNameCtrl = stringToPointer(XKB_MOD_NAME_CTRL)

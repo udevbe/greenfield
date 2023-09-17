@@ -6,18 +6,17 @@
     "allowJs": true,
     "declaration": true,
     "declarationDir": "dist/types",
-    "rootDirs": [
-      "src"
-    ],
     "pretty": true
   },
+  "include": ["src"],
   "exclude": [
     ".eslintrc.js",
     ".prettierrc.js",
     "jest.config.js",
     "**/*.spec.ts",
     "test",
-    "src/webConnection.ts"
+    "**/webConnection.ts",
+    "**/index.web.ts"
   ],
   "ts-node": {
     "files": true

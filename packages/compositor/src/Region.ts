@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { WlRegionRequests, WlRegionResource } from '@gfld/compositor-protocol'
-import { lib } from './lib'
+import { lib } from '@gfld/compositor-wasm'
 import { Point } from './math/Point'
 import { Rect } from './math/Rect'
 

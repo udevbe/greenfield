@@ -31,7 +31,7 @@ export class XDataSource implements DataSource {
     this.destroyPromise.then(() => this.destroyListeners.forEach((listener) => listener()))
   }
 
-  accept(mimeType: string | undefined): void {
+  accept(_mimeType: string | undefined): void {
     // noop
   }
 

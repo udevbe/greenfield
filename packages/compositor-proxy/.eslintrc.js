@@ -14,6 +14,7 @@ module.exports = {
   rules: {
     // Place to specify ESLint rules. Can be used to overwrite rules specified from the extended configs
     '@typescript-eslint/ban-ts-comment': 'warn',
+    '@typescript-eslint/no-explicit-any': 'warn',
     '@typescript-eslint/no-unused-vars': [
       'error', // or "error"
       {
