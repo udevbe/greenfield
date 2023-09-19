@@ -55,7 +55,7 @@ export type nrmlvo = {
 
 export function buildNrmlvoEntries(): nrmlvo[] {
   // @ts-ignore
-  const evdevList: string = lib.xkbcommon.FS.readFile('/usr/local/share/X11/xkb/rules/evdev.lst', { encoding: 'utf8' })
+  const evdevList: string = lib.xkbcommon.FS.readFile('/usr/share/X11/xkb/rules/evdev.lst', { encoding: 'utf8' })
   const lines = evdevList.split('\n')
 
   let entries: string[] = []

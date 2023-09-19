@@ -1,3 +1,2 @@
 dist
 coverage
-!dist/types/index.d.ts

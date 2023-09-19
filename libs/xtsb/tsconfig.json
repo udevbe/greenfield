@@ -31,6 +31,6 @@
     "jest.config.js",
     "**/*.spec.ts",
     "**/nodeConnection.ts",
-    "**/index.node.ts"
+    "**/index.node.ts",
   ]
 }

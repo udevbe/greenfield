@@ -8,7 +8,10 @@
     "declarationDir": "dist/types",
     "pretty": true
   },
-  "include": ["src"],
+  "include": [
+    "src",
+    "src/index.d.ts"
+  ],
   "exclude": [
     ".eslintrc.js",
     ".prettierrc.js",
