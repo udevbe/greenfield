@@ -3,7 +3,6 @@ import preact from "@preact/preset-vite";
 
 export default defineConfig({
   plugins: [preact()],
-  root: "src",
   server: {
     port: 8080,
     strictPort: true,
@@ -11,6 +10,6 @@ export default defineConfig({
       "Cross-Origin-Opener-Policy": "same-origin",
       "Cross-Origin-Embedder-Policy": "credentialless"
     },
-  }
+  },
 });
 

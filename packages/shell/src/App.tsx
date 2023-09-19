@@ -1,4 +1,3 @@
-import './index.css'
 import { Signal } from '@preact/signals'
 import { CompositorClient, createAppLauncher, createCompositorSession, initWasm } from '@gfld/compositor'
 import { render } from 'preact'

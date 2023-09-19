@@ -17,7 +17,7 @@
     "web"
   ],
   "scripts": {
-    "start": "yarn run vite dev --config ./vite.config.mts"
+    "start": "yarn run vite --config ./vite.config.mts"
   },
   "dependencies": {
     "@gfld/compositor": "workspace:^"
