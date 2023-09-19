@@ -1,4 +1,4 @@
-import { AppContext, AppLauncher, CompositorClient, CompositorSurface, WebCompositorConnector } from '../../src'
+import { AppContext, AppLauncher, CompositorClient, CompositorSurface, WebCompositorConnector } from '@gfld/compositor'
 import { Signal } from '@preact/signals'
 import { useCallback } from 'preact/compat'
 import { JSX } from 'preact'
@@ -68,7 +68,7 @@ function launchNewWebApp(appLauncher: WebCompositorConnector, url: URL, appEntri
     }
     document.body.appendChild(webAppIFrame)
   }
-  connectionListener.onClient = (client) => {
+  connectionListener.onClient = (_client) => {
     appEntryProps.connectionState.value = 'open'
   }
 }
@@ -185,7 +185,7 @@ function AppEntry(props: AppEntryProps) {
   }
 
   return (
-    <div class="flex min-w-[20rem] basis-4 rounded-full border-2 border-gray-200 bg-gray-200 text-sm leading-none hover:bg-gray-300">
+    <div class="flex min-w-[20rem] basis-4 rounded-full border-2 border-gray-200 bg-gray-200 text-sm leading-none hover:bg-gray-300 hover:border-gray-300">
       <div class="grid min-w-[1.5rem] place-content-center">
         <ConnectionStateIcon state={props.connectionState} unresponsive={props.unresponsive} />
       </div>
