@@ -8,6 +8,11 @@ BRANCH='R_2_5_0'
 NEED_PATCH=false
 
 ensure_repo() {
+    if [ -e repo ]
+    then
+      return 0
+    fi
+
     git clone --depth 1 --branch "$BRANCH" "$URL" repo
     if [ $NEED_PATCH = true ]; then
         git -C repo apply -v --ignore-space-change --ignore-whitespace ../changes.patch
@@ -62,7 +67,10 @@ make_install() {
 }
 
 build() {
-    git -C repo pull || ensure_repo
+    ensure_repo
+    source ../../emsdk/emsdk_env.sh
+    export PKG_CONFIG_PATH="$_SDK_DIR/sysroot/lib/pkgconfig:$_SDK_DIR/sysroot/share/pkgconfig"
+    export PKG_CONFIG_LIBDIR="$_SDK_DIR/sysroot"
     pushd repo/expat
       make_install_build_pkg
       make_install
