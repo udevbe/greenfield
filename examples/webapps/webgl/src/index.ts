@@ -41,8 +41,8 @@ import {
   XdgWmBaseEvents,
   XdgWmBaseProtocolName,
   XdgWmBaseProxy,
-} from 'westfield-runtime-client'
-import { Fixed } from 'westfield-runtime-common'
+} from '@gfld/client-protocol'
+import { Fixed } from '@gfld/common'
 
 import { drawScene, initDraw } from './webgl-demo'
 
@@ -164,8 +164,8 @@ class Window implements WlRegistryEvents, XdgWmBaseEvents, XdgToplevelEvents, Wl
     this.xdgToplevelProxy.listener = this
 
     this.xdgToplevelProxy.setTitle('Simple WebGL')
-    this.wlSurfaceProxy.commit(0)
-    const syncPromise = this.display.sync()
+    this.wlSurfaceProxy.commit()
+    const syncPromise = this.display.roundtrip()
     this.display.flush()
     await syncPromise
     setInterval(() => {
@@ -200,7 +200,7 @@ class Window implements WlRegistryEvents, XdgWmBaseEvents, XdgToplevelEvents, Wl
     this.onFrame?.().then((time) => this.draw(time))
 
     // serial is only required if our buffer contents would take a long time to send to the compositor ie. in a network remote case
-    this.wlSurfaceProxy.commit(0)
+    this.wlSurfaceProxy.commit()
     this.display.flush()
 
     this.frameCount++
@@ -289,7 +289,7 @@ async function main() {
   // create a new window with some buffers
   const window = Window.create(display, 800, 600)
   // wait for globals to come in
-  const syncPromise = display.sync()
+  const syncPromise = display.roundtrip()
   display.flush()
   await syncPromise
   // init protocol objects

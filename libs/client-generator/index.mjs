@@ -19,9 +19,10 @@ const cli = meow(
         
 `,
   {
-    alias: {
-      o: "out",
-    },
+      importMeta: import.meta,
+      alias: {
+          o: 'out'
+      }
   }
 );
 

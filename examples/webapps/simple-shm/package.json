@@ -20,21 +20,17 @@
   },
   "homepage": "https://github.com/udevbe/greenfield#readme",
   "scripts": {
-    "start": "vite dev",
-    "build": "vite build",
-    "preview": "vite preview"
+    "start": "yarn run vite dev",
+    "build": "yarn run vite build",
+    "preview": "yarn run vite preview"
   },
   "dependencies": {
-    "westfield-runtime-client": "1.0.0-alpha.4",
-    "westfield-runtime-common": "1.0.0-alpha.2"
+    "@gfld/client-protocol": "workspace:^",
+    "@gfld/common": "workspace:^"
   },
   "devDependencies": {
-    "typescript": "^5.0.2",
-    "vite": "^4.2.1",
+    "typescript": "^5.2.2",
+    "vite": "^4.4.9",
     "vite-plugin-glsl": "^1.1.2"
-  },
-  "resolutions": {
-    "westfield-runtime-client": "portal:/home/erik/git/westfield/client/web/runtime",
-    "westfield-runtime-common": "portal:/home/erik/git/westfield/common"
   }
 }

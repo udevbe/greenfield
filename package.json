@@ -2,7 +2,8 @@
   "private": true,
   "workspaces": [
     "libs/*",
-    "packages/*"
+    "packages/*",
+    "examples/webapps/*"
   ],
   "packageManager": "yarn@3.6.3"
 }

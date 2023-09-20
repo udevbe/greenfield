@@ -1,16 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Greenfield</title>
-  <script defer type="module" src="src/index.ts"></script>
+    <meta charset="utf-8"/>
+    <title>Greenfield</title>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    <script defer type="module" src="src/index.ts"></script>
 </head>
 <body class="h-screen">
-    <div class="flex flex-col h-full bg-gray-200 shadow-xl shadow-neutral-500 shadow-inner">
-      <div id="controls-container" class="flex p-1"></div>
-      <div id="output-container" class="z-0 grow bg-transparent">
+<div class="flex flex-col h-full bg-gray-300 shadow-neutral-500 shadow-inner">
+    <div id="controls-container" class="flex p-1"></div>
+    <div id="output-container" class="z-0 grow bg-transparent">
         <canvas id="output" class="h-full w-full fixed"></canvas>
-      </div>
     </div>
+</div>
 </body>
 </html>

@@ -795,11 +795,11 @@ __metadata:
     uppercamelcase: ^3.0.0
     xml2js: ^0.6.2
   bin:
-    client-generator: westfield-scanner-client.mjs
+    client-generator: index.mjs
   languageName: unknown
   linkType: soft
 
-"@gfld/client-protocol@workspace:libs/client-protocol":
+"@gfld/client-protocol@workspace:^, @gfld/client-protocol@workspace:libs/client-protocol":
   version: 0.0.0-use.local
   resolution: "@gfld/client-protocol@workspace:libs/client-protocol"
   dependencies:
@@ -1495,6 +1495,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@rollup/pluginutils@npm:^5.0.2":
+  version: 5.0.4
+  resolution: "@rollup/pluginutils@npm:5.0.4"
+  dependencies:
+    "@types/estree": ^1.0.0
+    estree-walker: ^2.0.2
+    picomatch: ^2.3.1
+  peerDependencies:
+    rollup: ^1.20.0||^2.0.0||^3.0.0
+  peerDependenciesMeta:
+    rollup:
+      optional: true
+  checksum: 893d5805ac4121fc704926963a0ae4e79e9e2bc8d736c3b28499ab69a404cce5119ca3a4e0c3d3a81d62f1beb3966f35285c36935d94b061794f26e94fed4cd1
+  languageName: node
+  linkType: hard
+
 "@sinclair/typebox@npm:^0.27.8":
   version: 0.27.8
   resolution: "@sinclair/typebox@npm:0.27.8"
@@ -1607,6 +1623,13 @@ __metadata:
   version: 0.1.8
   resolution: "@types/dom-webcodecs@npm:0.1.8"
   checksum: c9fb6e6eac305b56bfb8a9ad5a0bcae74af69d010ba80403ab6a6c16c81d56ef0d2751cf21714d620cda55edb733d6936dac84e0ed1dc52f305e350e4327267b
+  languageName: node
+  linkType: hard
+
+"@types/estree@npm:^1.0.0":
+  version: 1.0.1
+  resolution: "@types/estree@npm:1.0.1"
+  checksum: e9aa175eacb797216fafce4d41e8202c7a75555bc55232dee0f9903d7171f8f19f0ae7d5191bb1a88cb90e65468be508c0df850a9fb81b4433b293a5a749899d
   languageName: node
   linkType: hard
 
@@ -3182,6 +3205,31 @@ __metadata:
   languageName: node
   linkType: hard
 
+"demo-webapp-shm@workspace:examples/webapps/simple-shm":
+  version: 0.0.0-use.local
+  resolution: "demo-webapp-shm@workspace:examples/webapps/simple-shm"
+  dependencies:
+    "@gfld/client-protocol": "workspace:^"
+    "@gfld/common": "workspace:^"
+    typescript: ^5.2.2
+    vite: ^4.4.9
+    vite-plugin-glsl: ^1.1.2
+  languageName: unknown
+  linkType: soft
+
+"demo-webapp-webgl@workspace:examples/webapps/webgl":
+  version: 0.0.0-use.local
+  resolution: "demo-webapp-webgl@workspace:examples/webapps/webgl"
+  dependencies:
+    "@gfld/client-protocol": "workspace:^"
+    "@gfld/common": "workspace:^"
+    gl-matrix: ^3.4.3
+    typescript: ^5.2.2
+    vite: ^4.4.9
+    vite-plugin-glsl: ^1.1.2
+  languageName: unknown
+  linkType: soft
+
 "detect-libc@npm:^2.0.0":
   version: 2.0.2
   resolution: "detect-libc@npm:2.0.2"
@@ -3894,7 +3942,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"estree-walker@npm:^2.0.1":
+"estree-walker@npm:^2.0.1, estree-walker@npm:^2.0.2":
   version: 2.0.2
   resolution: "estree-walker@npm:2.0.2"
   checksum: 6151e6f9828abe2259e57f5fd3761335bb0d2ebd76dc1a01048ccee22fabcfef3c0859300f6d83ff0d1927849368775ec5a6d265dde2f6de5a1be1721cd94efc
@@ -4363,6 +4411,13 @@ __metadata:
   version: 0.0.0
   resolution: "github-from-package@npm:0.0.0"
   checksum: 14e448192a35c1e42efee94c9d01a10f42fe790375891a24b25261246ce9336ab9df5d274585aedd4568f7922246c2a78b8a8cd2571bfe99c693a9718e7dd0e3
+  languageName: node
+  linkType: hard
+
+"gl-matrix@npm:^3.4.3":
+  version: 3.4.3
+  resolution: "gl-matrix@npm:3.4.3"
+  checksum: c47830ba727f3d0fab635c48135af96aef66274079a3e0afd6f68b68c98eae9fc1bcfdc7312fe2301e4fd22dd24c5e0f1b5d025960a208e50d07101ed8d940f9
   languageName: node
   linkType: hard
 
@@ -8612,6 +8667,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"vite-plugin-glsl@npm:^1.1.2":
+  version: 1.1.2
+  resolution: "vite-plugin-glsl@npm:1.1.2"
+  dependencies:
+    "@rollup/pluginutils": ^5.0.2
+  peerDependencies:
+    vite: ^3.0.0 || ^4.0.0
+  checksum: 8b77944ce9529c52a83f39770bd4e9512e52e4db2d5ee3be270a7c0251d05ea713206a07e03e57c4cb0567bbaeee69c1845f3bc76e49fc4de01f4d2b6dc76578
+  languageName: node
+  linkType: hard
+
 "vite@npm:^4.4.9":
   version: 4.4.9
   resolution: "vite@npm:4.4.9"
@@ -8667,6 +8733,14 @@ __metadata:
   checksum: c92a0a6ab95314bde9c32e1d0a6dfac83b578f8fa5f21e675bc2706ed6981bc26b7eb7e6a1fab158e5ce4adf9caa4a0aee49a52505d4d13c7be545f15021b17c
   languageName: node
   linkType: hard
+
+"weston-eventdemo@workspace:examples/webapps/weston-eventdemo":
+  version: 0.0.0-use.local
+  resolution: "weston-eventdemo@workspace:examples/webapps/weston-eventdemo"
+  dependencies:
+    vite: ^4.4.9
+  languageName: unknown
+  linkType: soft
 
 "whatwg-url@npm:^5.0.0":
   version: 5.0.0

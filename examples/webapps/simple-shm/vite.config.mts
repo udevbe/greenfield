@@ -1,11 +1,7 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  base: "/shm",
-  build: {
-    sourcemap: "inline"
-  },
-  preview: {
+  server: {
     port: 9002,
     strictPort: true,
     headers: {

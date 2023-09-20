@@ -473,7 +473,7 @@ class ProtocolParser {
       "import { Connection, WlMessage, fileDescriptor, uint, int, \n" +
         "\tfixed, object, objectOptional, newObject, string, stringOptional, \n" +
         "\tarray, arrayOptional, u, i, f, oOptional, o, n, sOptional, s, aOptional, a, h," +
-        "\tFD, Fixed } from 'westfield-runtime-common'\n"
+        "\tFD, Fixed } from '@gfld/common'\n"
     );
     out.write("import * as Westfield from '.'\n");
     out.write(

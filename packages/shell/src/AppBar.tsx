@@ -144,12 +144,12 @@ function AppLaunchInput(props: AppInputProps) {
   }, [])
 
   return (
-    <div class="flex min-w-[12rem] max-w-[100%] shrink grow basis-4 content-center rounded-full border-2 border-gray-200 bg-gray-200 text-sm leading-none focus-within:border-2 focus-within:border-amber-600 hover:bg-gray-300">
+    <div class="flex min-w-[12rem] max-w-[100%] shrink grow basis-4 content-center rounded-full border-2 border-gray-300 bg-gray-300 text-sm leading-none focus-within:border-2 focus-within:border-amber-600 focus-within:bg-gray-200 hover:bg-gray-200">
       <div class="grid min-w-[1.5rem] place-content-center">
         <NetworkIcon />
       </div>
       <input
-        class="mr-2 w-full shrink grow truncate bg-transparent p-0.5 pl-1 leading-snug outline-0 "
+        class="mr-2 w-full shrink grow truncate bg-transparent p-0.5 pl-1 leading-snug outline-0 text-black placeholder-black"
         type="text"
         onKeyPress={onKeyPress}
         placeholder="type an app URL"
@@ -185,7 +185,7 @@ function AppEntry(props: AppEntryProps) {
   }
 
   return (
-    <div class="flex min-w-[20rem] basis-4 rounded-full border-2 border-gray-200 bg-gray-200 text-sm leading-none hover:bg-gray-300 hover:border-gray-300">
+    <div class="flex min-w-[20rem] basis-4 rounded-full border-2 border-gray-300 bg-gray-300 text-sm leading-none hover:bg-gray-200 hover:border-gray-200">
       <div class="grid min-w-[1.5rem] place-content-center">
         <ConnectionStateIcon state={props.connectionState} unresponsive={props.unresponsive} />
       </div>

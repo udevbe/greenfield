@@ -10,11 +10,15 @@ import {
   uint,
   WlMessage,
   WlObject,
-} from 'westfield-runtime-common'
+} from '@gfld/common'
 import { WlSurfaceProxy } from './protocol'
 
 export class Proxy extends WlObject {
-  constructor(readonly display: Display, readonly connection: Connection, id: number) {
+  constructor(
+    readonly display: Display,
+    readonly connection: Connection,
+    id: number,
+  ) {
     super(id)
     connection.registerWlObject(this)
   }

@@ -26,7 +26,7 @@ import {
   XdgWmBaseEvents,
   XdgWmBaseProtocolName,
   XdgWmBaseProxy,
-} from 'westfield-runtime-client'
+} from '@gfld/client-protocol'
 
 const MAX_BUFFER_ALLOC = 2 as const
 const KEY_ESC = 1 as const
@@ -117,7 +117,7 @@ class Window implements ClientWindow, XdgSurfaceEvents, WlCallbackEvents {
       this.xdgToplevel.setTitle('simple-shm')
       this.xdgToplevel.setAppId('org.freedesktop.weston.simple-shm')
 
-      this.surface.commit(0)
+      this.surface.commit()
       this.waitForConfigure = true
     }
 
@@ -205,7 +205,7 @@ class Window implements ClientWindow, XdgSurfaceEvents, WlCallbackEvents {
 
     this.callback = this.surface.frame()
     this.callback.listener = this
-    this.surface.commit(0)
+    this.surface.commit()
     buffer.busy = true
   }
 
