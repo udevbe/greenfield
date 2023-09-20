@@ -29,7 +29,7 @@ build() {
 
     pushd repo
     	pipx run meson setup --wipe build/ --cross-file "${_SDK_DIR}/emscripten-toolchain.ini" --cross-file "${_SDK_DIR}/emscripten-build.ini" \
-    	  -Denable-x11=false -Denable-docs=false -Denable-tools=false -Denable-xkbregistry=true
+    	  -Denable-x11=false -Denable-docs=false -Denable-tools=false -Denable-xkbregistry=true -Dxkb-config-root=/usr/share/X11/xkb -Dxkb-config-extra-path=/usr/share/X11/xkb
 	    ninja -C build/
 	    emcc -s MODULARIZE=1 -s EXPORT_ES6=1 -s ENVIRONMENT='web' -s SINGLE_FILE=1 -O3 -flto -msimd128 -s EVAL_CTORS=2 "${_SDK_DIR}/xkbcommon/repo/build/libxkbcommon.a" -o ../../src/libxkbcommon.js --embed-file "${_SDK_DIR}/xkbcommon/repo/share/X11@/usr/share/X11" -s EXPORTED_RUNTIME_METHODS='["lengthBytesUTF8","stringToUTF8","UTF8ToString","FS"]' -s EXPORTED_FUNCTIONS='["_malloc", "_free", "_xkb_context_new","_xkb_keymap_new_from_string","_xkb_state_new","_free","_xkb_keymap_get_as_string","_xkb_state_update_key","_xkb_state_update_key","_xkb_state_serialize_mods","_xkb_state_serialize_layout","_xkb_keymap_new_from_names","_xkb_context_include_path_append","_xkb_keymap_mod_get_index","_xkb_keymap_led_get_index","_xkb_state_update_mask","_xkb_keymap_unref","_xkb_state_led_index_is_active"]'
     popd
