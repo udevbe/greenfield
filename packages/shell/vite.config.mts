@@ -12,6 +12,12 @@ export default defineConfig({
             "Cross-Origin-Opener-Policy": "same-origin",
             "Cross-Origin-Embedder-Policy": "require-corp"
         },
-    }
+        proxy: {
+            // example webapp simple-shm
+            '/simple-shm': 'http://localhost:9002',
+            // example webapp weston-eventdemo
+            '/weston-eventdemo': 'http://localhost:9003',
+        }
+    },
 });
 

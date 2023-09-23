@@ -109,9 +109,12 @@ export class WebAppLauncher implements WebCompositorConnector {
   launch(url: URL): WebClientConnectionListener {
     const webAppFrame = document.createElement('iframe')
     webAppFrame.hidden = true
-    webAppFrame.setAttribute('credentialless', 'true')
-    webAppFrame.allow = 'cross-origin-isolated'
-    webAppFrame.src = url.href
+
+    fetch(url).then((response) => {
+      response.text().then((html) => {
+        webAppFrame.srcdoc = html.replace(/(<head[^>]*>\s*)/i, `$1<base href="${url.pathname}/" />\r`)
+      })
+    })
 
     const webClientConnectionListener: WebClientConnectionListener = {
       type: 'web',
