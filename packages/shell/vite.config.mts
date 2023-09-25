@@ -13,10 +13,21 @@ export default defineConfig({
             "Cross-Origin-Embedder-Policy": "require-corp"
         },
         proxy: {
-            // example webapp simple-shm
-            '/simple-shm': 'http://localhost:9002',
-            // example webapp weston-eventdemo
-            '/weston-eventdemo': 'http://localhost:9003',
+            // examples/webapps/simple-shm
+            '/simple-shm': {
+                target: 'http://localhost:9001',
+                rewrite: (path) => path.replace(/^\/simple-shm/, ''),
+            },
+            // examples/webapps/webgl
+            '/webgl': {
+                target: 'http://localhost:9002',
+                rewrite: (path) => path.replace(/^\/webgl/, ''),
+            },
+            // examples/webapps/weston-eventdemo
+            '/weston-eventdemo': {
+                target: 'http://localhost:9003',
+                rewrite: (path) => path.replace(/^\/weston-eventdemo/, ''),
+            },
         }
     },
 });

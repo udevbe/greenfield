@@ -10,5 +10,10 @@ var waylandConnectionTask = function() {
         });
     })
 }
-
 Module.preRun = Module.preRun ? [...Module.preRun, waylandConnectionTask] : [waylandConnectionTask]
+
+Module.onExit = function () {
+    window.parent.postMessage({
+        type: 'Terminate',
+    }, '*', [])
+}

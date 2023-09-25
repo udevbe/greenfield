@@ -7,7 +7,7 @@ export default defineConfig({
     outDir: 'dist',
   },
   server: {
-    port: 9000,
+    port: 9002,
     strictPort: true
   }
 })

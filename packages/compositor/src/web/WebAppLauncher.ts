@@ -30,7 +30,7 @@ function base32Encode(data: Uint8Array) {
 }
 
 export function randomString(): string {
-  const randomBytes = new Uint8Array(16)
+  const randomBytes = new Uint8Array(8)
   window.crypto.getRandomValues(randomBytes)
   return `wa${base32Encode(randomBytes).toLowerCase()}`
 }
