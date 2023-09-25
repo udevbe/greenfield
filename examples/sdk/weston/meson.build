@@ -112,7 +112,7 @@ dep_epoll = dependency('epoll')
 
 dep_wayland_client = dependency('wayland-client', version: '>= 1.20.0')
 dep_pixman = dependency('pixman-1', version: '>= 0.25.2')
-dep_libm = cc.find_library('m')
+dep_libm = cc.find_library('m', required: false)
 dep_threads = dependency('threads')
 
 subdir('include')

@@ -1,6 +1,0 @@
-#!/bin/bash
-
-_SDK_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.."
-export PKG_CONFIG_PATH="$_SDK_DIR/sysroot/lib/pkgconfig:$_SDK_DIR/sysroot/share/pkgconfig"
-
-pkg-config "$@"

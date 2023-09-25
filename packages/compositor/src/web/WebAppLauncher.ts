@@ -110,15 +110,9 @@ export class WebAppLauncher implements WebCompositorConnector {
     const webAppFrame = document.createElement('iframe')
     webAppFrame.hidden = true
 
-    fetch(url).then((response) => {
-      response.text().then((html) => {
-        webAppFrame.srcdoc = html.replace(/(<head[^>]*>\s*)/i, `$1<base href="${url.pathname}/" />\r`)
-      })
-    })
-
     const webClientConnectionListener: WebClientConnectionListener = {
       type: 'web',
-      onClient(client: Client) {
+      onClient(_client: Client) {
         /*noop*/
       },
       close() {
@@ -132,6 +126,18 @@ export class WebAppLauncher implements WebCompositorConnector {
       },
     }
 
+    fetch(url).then((response) => {
+      response.text().then((html) => {
+        if (url.pathname.endsWith('.html') || url.pathname.endsWith('.html')) {
+          const lastSlash = url.pathname.lastIndexOf('/')
+          url.pathname = url.pathname.substring(0, lastSlash)
+        }
+        webAppFrame.srcdoc = html.replace(/(<head[^>]*>\s*)/i, `$1<base href="${url.pathname}/" />\r`)
+        webClientConnectionListener.webAppIFrame = webAppFrame
+        webClientConnectionListener.onNeedIFrameAttach?.(webAppFrame)
+      })
+    })
+
     const webAppEntry: WebAppEntry = {
       webAppLauncher: this,
       iframe: webAppFrame,
@@ -139,11 +145,6 @@ export class WebAppLauncher implements WebCompositorConnector {
       webClientConnectionListener,
     }
     webApps.push(webAppEntry)
-
-    setTimeout(() => {
-      webClientConnectionListener.webAppIFrame = webAppFrame
-      webClientConnectionListener.onNeedIFrameAttach?.(webAppFrame)
-    })
 
     return webClientConnectionListener
   }
