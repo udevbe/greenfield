@@ -185,29 +185,27 @@ function AppEntry(props: AppEntryProps) {
   }
 
   return (
-    <div class="flex min-w-[20rem] basis-4 rounded-full border-2 border-gray-300 bg-gray-300 text-sm leading-none hover:bg-gray-200 hover:border-gray-200">
+    <div class="flex min-w-[26rem] basis-4 rounded-full border-2 border-gray-300 bg-gray-300 text-sm leading-none hover:bg-gray-200 hover:border-gray-200">
       <div class="grid min-w-[1.5rem] place-content-center">
         <ConnectionStateIcon state={props.connectionState} unresponsive={props.unresponsive} />
       </div>
-      <button class="flex min-w-[14rem] shrink grow items-stretch p-1">
-        <div class="flex min-w-[7rem] shrink grow flex-col justify-center pr-1">
+      <button class="flex min-w-[22rem] shrink grow items-stretch p-1">
+        <div class="flex min-w-[14rem] shrink grow flex-col justify-center pr-1">
           <span class="truncate text-left font-semibold">
             {props.lastActiveWindow.value?.title.value ?? props.name.value ?? props.appLaunchURL}
           </span>
         </div>
-        <div class="flex min-w-[7rem] shrink grow flex-col justify-center">
+        <div class="flex min-w-[8rem] shrink grow flex-col justify-center">
           <span class="truncate text-right text-xs font-light leading-none">{props.appLaunchURL}</span>
         </div>
       </button>
       <div class="grid min-w-[1.5rem] place-content-center">
-        {props.connectionState.value !== 'open' || props.unresponsive.value ? (
-          <button
-            class="rounded-full stroke-current transition duration-150 ease-in-out hover:bg-gray-400"
-            onClick={props.onClose}
-          >
-            <CloseIcon />
-          </button>
-        ) : null}
+        <button
+          class="rounded-full stroke-current transition duration-150 ease-in-out hover:bg-gray-400"
+          onClick={props.onClose}
+        >
+          <CloseIcon />
+        </button>
       </div>
     </div>
   )

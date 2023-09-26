@@ -8734,9 +8734,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"weston-eventdemo@workspace:examples/webapps/weston-eventdemo":
+"weston-eventdemo@workspace:examples/webapps/weston-stacking":
   version: 0.0.0-use.local
-  resolution: "weston-eventdemo@workspace:examples/webapps/weston-eventdemo"
+  resolution: "weston-eventdemo@workspace:examples/webapps/weston-stacking"
   dependencies:
     vite: ^4.4.9
   languageName: unknown

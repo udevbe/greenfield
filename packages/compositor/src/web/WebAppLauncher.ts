@@ -58,7 +58,9 @@ type WebAppEntry = {
   clients: Client[]
   webClientConnectionListener: WebClientConnectionListener
 }
+
 let webApps: WebAppEntry[] = []
+
 window.addEventListener('message', (ev) => {
   // check if ev.source is a known webAppFrame, else ignore it
   const source = ev.source as Window
