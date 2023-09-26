@@ -2,7 +2,7 @@ import Surface from '../Surface'
 import { createDecodedFrame, DecodedFrame, DecodedPixelContent, DualPlaneYUVASplitBuffer } from './DecodedFrame'
 import { EncodedFrame } from './EncodedFrame'
 import { FrameDecoder, H264DecoderContext } from './buffer-decoder'
-import type { FfmpegH264Frame } from 'ffmpegh264'
+import type { FfmpegH264Frame } from '@gfld/compositor-ffmpeg-h264'
 
 export function createWasmFrameDecoder(): FrameDecoder {
   return new WasmFrameDecoder()

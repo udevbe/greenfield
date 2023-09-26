@@ -28,23 +28,21 @@
   },
   "dependencies": {
     "@gfld/common": "workspace:^",
+    "@gfld/compositor-ffmpeg-h264": "workspace:^",
     "@gfld/compositor-protocol": "workspace:^",
     "@gfld/compositor-wasm": "workspace:^",
-    "@gfld/xtsb": "workspace:^",
-    "ffmpegh264": "1.0.0-alpha.1"
+    "@gfld/xtsb": "workspace:^"
   },
   "devDependencies": {
-    "@types/dom-webcodecs": "0.1.8",
-    "@types/jest": "^29.5.4",
-    "@types/node": "^18.15.3",
-    "@typescript-eslint/eslint-plugin": "^6.7.0",
-    "@typescript-eslint/parser": "^6.7.0",
+    "@types/dom-webcodecs": "^0.1.8",
+    "@typescript-eslint/eslint-plugin": "^6.7.3",
+    "@typescript-eslint/parser": "^6.7.3",
     "cpy-cli": "^5.0.0",
-    "eslint": "^8.49.0",
+    "eslint": "^8.50.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
     "prettier": "^3.0.3",
-    "rimraf": "^5.0.1",
+    "rimraf": "^5.0.4",
     "ts-node": "^10.9.1",
     "typescript": "^5.2.2"
   },

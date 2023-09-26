@@ -1,0 +1,30 @@
+{
+  "name": "@gfld/compositor-ffmpeg-h264",
+  "version": "1.0.0-alpha.1",
+  "description": "FFMPEG web assembly h264 decoder",
+  "main": "dist/index.js",
+  "typings": "types/index.d.ts",
+  "files": [
+    "dist",
+    "types"
+  ],
+  "scripts": {
+    "build-wasm": "./build_wasm.sh",
+    "build": "yarn run tsc"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^6.7.3",
+    "@typescript-eslint/parser": "^6.7.3",
+    "acorn": "^8.10.0",
+    "eslint": "^8.50.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "prettier": "^3.0.3",
+    "typescript": "^5.2.2"
+  },
+  "author": "Erik De Rijcke",
+  "homepage": "https://github.com/udevbe/tinyh264",
+  "license": "Apache-2.0",
+  "repository": "https://github.com/udevbe/tinyh264",
+  "packageManager": "yarn@3.6.0"
+}
