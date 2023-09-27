@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-source ../../../sdk/websdk_env.sh
+source sdk_env.sh
 
 CURRENT_SCRIPT=
 DIR="."

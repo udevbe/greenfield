@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-source ../../../sdk/websdk_env.sh
+source sdk_env.sh
 
 #generate sources
 wayland-scanner client-header < "$(pkg-config wayland-protocols --variable=pkgdatadir)/stable/xdg-shell/xdg-shell.xml" > src/xdg-shell-client-protocol.h

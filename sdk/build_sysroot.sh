@@ -22,9 +22,9 @@ printf '%s\n' "[constants]" "greenfield_sdk = '$_SDK_DIR'" > "$_SDK_DIR/toolkit/
 ./sysrootlibs/xml2/build.sh
 ./sysrootlibs/xkbcommon/build.sh
 ./sysrootlibs/icu/build.sh
-./sysrootlibs/harfbuzz/build_nofreetype_nocairo.sh
+./sysrootlibs/harfbuzz/build_nofreetype_nocairo_noglib.sh
 ./sysrootlibs/freetype/build.sh
-./sysrootlibs/harfbuzz/build_freetype_nocairo.sh
+./sysrootlibs/harfbuzz/build_freetype_nocairo_noglib.sh
 ./sysrootlibs/fontconfig/build.sh
 ./sysrootlibs/glib/build.sh
 ./sysrootlibs/cairo/build.sh
