@@ -76,17 +76,8 @@ export interface CompositorConfiguration {
   keyboardLayoutName?: string
 }
 
-export interface ClientConnectionListener {
-  onClient: (client: Client) => void
-
-  close(): void
-
-  readonly type: CompositorConnector['type']
-}
-
-export interface AppContext extends ClientConnectionListener {
+export interface AppContext {
   readonly state: 'closed' | 'open' | 'connecting' | 'terminated' | 'error'
-  readonly type: 'remote'
   readonly key?: string
   readonly name?: string
 
@@ -94,44 +85,23 @@ export interface AppContext extends ClientConnectionListener {
   onNameChanged: (name: string) => void
   onStateChange: (state: Exclude<AppContext['state'], 'connecting'>) => void
   onError: (error: Error) => void
+
+  onClient: (client: Client) => void
+
+  close(): void
 }
 
 export interface AppLauncher {
   launch(url: URL, onChildAppContext: (childAppContext: AppContext) => void): AppContext
-  readonly type: 'remote'
 }
 
-export interface WebClientConnectionListener extends ClientConnectionListener {
-  readonly type: 'web'
-  onClose?: () => void
-  webAppIFrame?: HTMLIFrameElement
-  onNeedIFrameAttach?: (webAppIFrame: HTMLIFrameElement) => void
-}
-
-export interface WebCompositorConnector {
-  launch(url: URL): WebClientConnectionListener
-  readonly type: 'web'
-}
-
-export type CompositorConnector = AppLauncher | WebCompositorConnector
-
-type CompositorConnectorTypeMap = {
-  web: WebCompositorConnector
-  remote: AppLauncher
-}
-
-export function createAppLauncher<T extends CompositorConnector['type']>(
-  session: CompositorSession,
-  type: T,
-): CompositorConnectorTypeMap[T] {
+export function createAppLauncher(session: CompositorSession, type: 'web' | 'remote'): AppLauncher {
   if (!(session instanceof Session)) {
     throw new Error('Session does not have expected implementation.')
   }
   if (type === 'remote') {
-    // @ts-ignore
     return RemoteAppLauncher.create(session)
   } else if (type === 'web') {
-    // @ts-ignore
     return WebAppLauncher.create(session)
   } else {
     throw new Error(`Connector type must be 'remote' or 'web'.`)

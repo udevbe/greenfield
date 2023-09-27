@@ -1,7 +1,7 @@
-import { WebClientConnectionListener, WebCompositorConnector } from '../index'
 import { Client } from '@gfld/compositor-protocol'
 import { WebConnectionHandler } from './WebConnectionHandler'
 import Session from '../Session'
+import { AppContext, AppLauncher } from '../index'
 
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567' as const
 
@@ -56,7 +56,7 @@ type WebAppEntry = {
   webAppLauncher: WebAppLauncher
   iframe: HTMLIFrameElement
   clients: Client[]
-  webClientConnectionListener: WebClientConnectionListener
+  webAppContext: WebAppContext
 }
 
 let webApps: WebAppEntry[] = []
@@ -88,16 +88,37 @@ window.addEventListener('message', (ev) => {
         source.postMessage(disconnect, '*', [messagePort])
       })
       webAppEntry.clients.push(client)
-      webAppEntry.webClientConnectionListener.onClient(client)
+      webAppEntry.webAppContext.onClient(client)
     } else if (message.type === 'Terminate') {
-      webAppEntry.webClientConnectionListener.close()
+      webAppEntry.webAppContext.close()
     }
   }
 })
 
-export class WebAppLauncher implements WebCompositorConnector {
-  readonly type = 'web' as const
+class WebAppContext implements AppContext {
+  public readonly key = randomString()
 
+  private _state: AppContext['state'] = 'connecting'
+  private _name: AppContext['name'] = 'Unknown Web Application'
+
+  onStateChange: AppContext['onStateChange'] = () => {}
+  onClient: AppContext['onClient'] = () => {}
+  onError: AppContext['onError'] = () => {}
+  onKeyChanged: AppContext['onKeyChanged'] = () => {}
+  onNameChanged: AppContext['onNameChanged'] = () => {}
+
+  constructor(public close: AppContext['close']) {}
+
+  get state() {
+    return this._state
+  }
+
+  set state(state: AppContext['state']) {
+    this._state = state
+  }
+}
+
+export class WebAppLauncher implements AppLauncher {
   static create(session: Session) {
     return new WebAppLauncher(session)
   }
@@ -108,46 +129,41 @@ export class WebAppLauncher implements WebCompositorConnector {
     this.webAppSocket = WebConnectionHandler.create(session)
   }
 
-  launch(url: URL): WebClientConnectionListener {
-    const webAppFrame = document.createElement('iframe')
-    webAppFrame.hidden = true
+  launch(url: URL): AppContext {
+    const webAppIFRame = document.createElement('iframe')
+    webAppIFRame.hidden = true
 
-    const webClientConnectionListener: WebClientConnectionListener = {
-      type: 'web',
-      onClient(_client: Client) {
-        /*noop*/
-      },
-      close() {
-        webApps = webApps.filter((value) => value.iframe !== webAppFrame)
+    const webAppContext = new WebAppContext(() => {
+      webApps = webApps.filter((value) => value.iframe !== webAppIFRame)
 
-        for (const client of webAppEntry.clients) {
-          client.close()
-        }
-        webAppFrame.remove()
-        this.onClose?.()
-      },
-    }
+      for (const client of webAppEntry.clients) {
+        client.close()
+      }
+      webAppIFRame.remove()
+      webAppContext.state = 'terminated'
+    })
 
     fetch(url).then((response) => {
       response.text().then((html) => {
-        if (url.pathname.endsWith('.html') || url.pathname.endsWith('.html')) {
+        if (url.pathname.endsWith('.html') || url.pathname.endsWith('.htm')) {
           const lastSlash = url.pathname.lastIndexOf('/')
           url.pathname = url.pathname.substring(0, lastSlash)
         }
-        webAppFrame.srcdoc = html.replace(/(<head[^>]*>\s*)/i, `$1<base href="${url.pathname}/" />\r`)
-        webClientConnectionListener.webAppIFrame = webAppFrame
-        webClientConnectionListener.onNeedIFrameAttach?.(webAppFrame)
+        webAppIFRame.srcdoc = html.replace(/(<head[^>]*>\s*)/i, `$1<base href="${url.pathname}/" />\r`)
+        document.body.appendChild(webAppIFRame)
+        webAppContext.state = 'open'
+        webAppContext.onStateChange('open')
       })
     })
 
     const webAppEntry: WebAppEntry = {
       webAppLauncher: this,
-      iframe: webAppFrame,
+      iframe: webAppIFRame,
       clients: [] as Client[],
-      webClientConnectionListener,
+      webAppContext,
     }
     webApps.push(webAppEntry)
 
-    return webClientConnectionListener
+    return webAppContext
   }
 }

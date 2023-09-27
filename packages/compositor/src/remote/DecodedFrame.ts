@@ -17,7 +17,7 @@
 
 import BufferContents from '../BufferContents'
 import { Size } from '../math/Size'
-import type { FfmpegH264Frame } from 'ffmpegh264'
+import type { FfmpegH264Frame } from '@gfld/compositor-ffmpeg-h264'
 
 export type DualPlaneYUVASplitBuffer = {
   type: 'DualPlaneYUVASplitBuffer'

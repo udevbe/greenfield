@@ -1,4 +1,3 @@
 #!/bin/bash
 
-source ../../websdk_env.sh
 "$_SDK_DIR"/emsdk/upstream/emscripten/tools/file_packager "$@"

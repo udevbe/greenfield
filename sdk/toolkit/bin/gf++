@@ -1,6 +1,9 @@
 #!/bin/bash
 
 _SDK_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.."
-_SDK_CFLAGS="-pthread -sENVIRONMENT=web,worker -sEXIT_RUNTIME=1 -s ASYNCIFY -s ASYNCIFY_IMPORTS=[__syscall_poll] --js-library $_SDK_DIR/sysrootlibs/jslibraries/library_unixsockfs.js --pre-js $_SDK_DIR/sysrootlibs/jslibraries/pre-main.js"
+_SDK_CFLAGS="-pthread -sENVIRONMENT=web,worker -sEXIT_RUNTIME=1 -s ASYNCIFY -s ASYNCIFY_IMPORTS=[__syscall_poll] \
+--js-library $_SDK_DIR/sysrootlibs/jslibraries/library_unixsockfs.js \
+--pre-js $_SDK_DIR/sysrootlibs/jslibraries/pre-main.js \
+--shell-file $_SDK_DIR/sysrootlibs/jslibraries/app_template.html"
 
 "$_SDK_DIR"/emsdk/upstream/emscripten/em++ $_SDK_CFLAGS "$@"

@@ -1,4 +1,4 @@
-import { AppContext, AppLauncher, CompositorClient, CompositorSurface, WebCompositorConnector } from '@gfld/compositor'
+import { AppContext, AppLauncher, CompositorClient, CompositorSurface } from '@gfld/compositor'
 import { Signal } from '@preact/signals'
 import { useCallback } from 'preact/compat'
 import { JSX } from 'preact'
@@ -52,35 +52,28 @@ function createEmptyAppEntry(
   return appEntryProps
 }
 
-function launchNewWebApp(appLauncher: WebCompositorConnector, url: URL, appEntries: Signal<AppEntryProps[]>) {
+function launchNewWebApp(appLauncher: AppLauncher, url: URL, appEntries: Signal<AppEntryProps[]>) {
   const appURL = new URL(url.href.replace('web', 'http'))
   const appEntryProps = createEmptyAppEntry(appEntries, false, appURL.href.replace(/^https?:\/\//, ''))
   appEntries.value = [appEntryProps, ...appEntries.value]
 
   appEntryProps.connectionState.value = 'connecting'
-  const connectionListener = appLauncher.launch(appURL)
 
-  connectionListener.onNeedIFrameAttach = (webAppIFrame) => {
-    connectionListener.onClose = () => {
-      webAppIFrame.remove()
-      appEntryProps.connectionState.value = 'terminated'
-      handleCloseEntry(appEntryProps, appEntries)
-    }
-    document.body.appendChild(webAppIFrame)
-  }
-  connectionListener.onClient = (_client) => {
-    appEntryProps.connectionState.value = 'open'
-  }
+  const appContext = appLauncher.launch(appURL, () => {})
+  appEntryProps.appContext.value = appContext
+
+  appEntryProps.connectionState.value = appContext.state
+  handleNewApp(appContext, appEntryProps, appEntries)
 }
 
 function launchNewRemoteApp(appLauncher: AppLauncher, url: URL, appEntries: Signal<AppEntryProps[]>) {
   const appURL = new URL(url.href.replace('rem', 'http'))
   appURL.username = ''
   appURL.password = ''
-  const targetAppEntryProps = createEmptyAppEntry(appEntries, false, appURL.href.replace(/^https?:\/\//, ''))
-  appEntries.value = [targetAppEntryProps, ...appEntries.value]
+  const appEntryProps = createEmptyAppEntry(appEntries, false, appURL.href.replace(/^https?:\/\//, ''))
+  appEntries.value = [appEntryProps, ...appEntries.value]
 
-  targetAppEntryProps.connectionState.value = 'connecting'
+  appEntryProps.connectionState.value = 'connecting'
 
   const appContext = appLauncher.launch(new URL(url.href.replace('rem', 'http')), (childAppContext) => {
     const emptyChildAppEntry = createEmptyAppEntry(appEntries, true, `${url.host}`)
@@ -89,13 +82,13 @@ function launchNewRemoteApp(appLauncher: AppLauncher, url: URL, appEntries: Sign
     handleNewApp(childAppContext, emptyChildAppEntry, appEntries)
   })
 
-  targetAppEntryProps.connectionState.value = appContext.state
-  handleNewApp(appContext, targetAppEntryProps, appEntries)
+  appEntryProps.connectionState.value = appContext.state
+  handleNewApp(appContext, appEntryProps, appEntries)
 }
 
 export type AppBarProps = Readonly<{
   remoteAppLauncher: AppLauncher
-  webAppLauncher: WebCompositorConnector
+  webAppLauncher: AppLauncher
   appEntries: Signal<AppEntryProps[]>
 }>
 
