@@ -266,7 +266,7 @@ PLATFORMS
 DEPENDENCIES
   github-pages (~> 228)
   http_parser.rb (~> 0.6.0)
-  just-the-docs
+  just-the-docs (~> 0.6.2)
   tzinfo (>= 1, < 3)
   tzinfo-data
   wdm (~> 0.1.1)
