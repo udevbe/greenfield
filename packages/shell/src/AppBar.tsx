@@ -2,7 +2,7 @@ import { AppContext, AppLauncher, CompositorClient, CompositorSurface } from '@g
 import { Signal } from '@preact/signals'
 import { useCallback } from 'preact/compat'
 import { JSX } from 'preact'
-import { ClosedIcon, CloseIcon, ErrorIcon, FrozenIcon, LoadingIcon, NetworkIcon } from './Icons'
+import { ClosedIcon, CloseIcon, ErrorIcon, FrozenIcon, LoadingIcon } from './Icons'
 
 function handleCloseEntry(closedAppEntryProps: AppEntryProps, appEntries: Signal<AppEntryProps[]>) {
   appEntries.value = appEntries.value.filter((appEntryProps) => appEntryProps !== closedAppEntryProps)
@@ -137,15 +137,13 @@ function AppLaunchInput(props: AppInputProps) {
   }, [])
 
   return (
-    <div class="flex min-w-[12rem] max-w-[100%] shrink grow basis-4 content-center rounded-full border-2 border-gray-300 bg-gray-300 text-sm leading-none focus-within:border-2 focus-within:border-amber-600 focus-within:bg-gray-200 hover:bg-gray-200">
-      <div class="grid min-w-[1.5rem] place-content-center">
-        <NetworkIcon />
-      </div>
+    <div class="flex min-w-[12rem] max-w-[100%] shrink grow basis-4 content-center rounded-full border-2 border-slate-300 bg-slate-300 text-sm leading-none focus-within:border-2 focus-within:border-sky-600 focus-within:bg-slate-100 hover:bg-slate-100">
+      <div class="grid min-w-[1.5rem] place-content-center">{/*<NetworkIcon />*/}</div>
       <input
-        class="mr-2 w-full shrink grow truncate bg-transparent p-0.5 pl-1 leading-snug outline-0 text-black placeholder-black"
+        class="mr-2 w-full shrink grow truncate bg-transparent p-0.5 pl-1 leading-snug outline-0 text-black placeholder-gray-600"
         type="text"
         onKeyPress={onKeyPress}
-        placeholder="type an app URL"
+        placeholder="Type a web:// or rem:// URL"
         name="remote"
         onfocusin={selectAllOnFocus}
       />
@@ -178,23 +176,23 @@ function AppEntry(props: AppEntryProps) {
   }
 
   return (
-    <div class="flex min-w-[26rem] basis-4 rounded-full border-2 border-gray-300 bg-gray-300 text-sm leading-none hover:bg-gray-200 hover:border-gray-200">
+    <div class="flex pointer-events-none min-w-[26rem] basis-4 rounded-full border-2 border-slate-300 transition duration-150 ease-in-out hover:border-rose-500 text-sm leading-none text-gray-900">
       <div class="grid min-w-[1.5rem] place-content-center">
         <ConnectionStateIcon state={props.connectionState} unresponsive={props.unresponsive} />
       </div>
-      <button class="flex min-w-[22rem] shrink grow items-stretch p-1">
-        <div class="flex min-w-[14rem] shrink grow flex-col justify-center pr-1">
+      <div class="flex min-w-[22rem] shrink grow items-stretch p-1">
+        <div class="flex min-w-[12rem] shrink grow flex-col justify-center pr-1">
           <span class="truncate text-left font-semibold">
             {props.lastActiveWindow.value?.title.value ?? props.name.value ?? props.appLaunchURL}
           </span>
         </div>
-        <div class="flex min-w-[8rem] shrink grow flex-col justify-center">
+        <div class="flex min-w-[10rem] shrink grow flex-col justify-center">
           <span class="truncate text-right text-xs font-light leading-none">{props.appLaunchURL}</span>
         </div>
-      </button>
-      <div class="grid min-w-[1.5rem] place-content-center">
+      </div>
+      <div class="pointer-events-none grid min-w-[1.5rem] place-content-center">
         <button
-          class="rounded-full stroke-current transition duration-150 ease-in-out hover:bg-gray-400"
+          class="pointer-events-auto rounded-full stroke-current transition duration-150 ease-in-out hover:bg-rose-500"
           onClick={props.onClose}
         >
           <CloseIcon />
