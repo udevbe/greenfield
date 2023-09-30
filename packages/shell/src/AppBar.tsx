@@ -53,6 +53,10 @@ function createEmptyAppEntry(
 }
 
 function launchNewWebApp(appLauncher: AppLauncher, url: URL, appEntries: Signal<AppEntryProps[]>) {
+  if (url.host === '') {
+    url = new URL(`${url.protocol}//${document.location.host}/${url.pathname}`)
+  }
+
   const appURL = new URL(url.href.replace('web', 'http'))
   const appEntryProps = createEmptyAppEntry(appEntries, false, appURL.href.replace(/^https?:\/\//, ''))
   appEntries.value = [appEntryProps, ...appEntries.value]
@@ -103,7 +107,8 @@ export function AppBar(props: AppBarProps) {
             } else if (url.protocol === 'web:' || url.protocol === 'webs:') {
               launchNewWebApp(props.webAppLauncher, url, props.appEntries)
             } else {
-              // TODO error with unsupported URL
+              url.protocol = document.location.protocol
+              launchNewWebApp(props.webAppLauncher, url, props.appEntries)
             }
           }}
         />
@@ -137,7 +142,7 @@ function AppLaunchInput(props: AppInputProps) {
   }, [])
 
   return (
-    <div class="flex min-w-[12rem] max-w-[100%] shrink grow basis-4 content-center rounded-full border-2 border-slate-300 bg-slate-300 text-sm leading-none focus-within:border-2 focus-within:border-sky-600 focus-within:bg-slate-100 hover:bg-slate-100">
+    <div class="flex min-w-[12rem] max-w-[100%] shrink grow basis-4 content-center rounded-full border border-slate-300 bg-slate-300 text-sm leading-none focus-within:border focus-within:border-sky-600 focus-within:bg-slate-200 hover:bg-slate-100">
       <div class="grid min-w-[1.5rem] place-content-center">{/*<NetworkIcon />*/}</div>
       <input
         class="mr-2 w-full shrink grow truncate bg-transparent p-0.5 pl-1 leading-snug outline-0 text-black placeholder-gray-600"
@@ -176,7 +181,7 @@ function AppEntry(props: AppEntryProps) {
   }
 
   return (
-    <div class="flex pointer-events-none min-w-[26rem] basis-4 rounded-full border-2 border-slate-300 transition duration-150 ease-in-out hover:border-rose-500 text-sm leading-none text-gray-900">
+    <div class="flex min-w-[26rem] basis-4 rounded-full border border-slate-300 transition duration-150 shadow shadow-black text-sm leading-none text-gray-900">
       <div class="grid min-w-[1.5rem] place-content-center">
         <ConnectionStateIcon state={props.connectionState} unresponsive={props.unresponsive} />
       </div>
@@ -190,9 +195,9 @@ function AppEntry(props: AppEntryProps) {
           <span class="truncate text-right text-xs font-light leading-none">{props.appLaunchURL}</span>
         </div>
       </div>
-      <div class="pointer-events-none grid min-w-[1.5rem] place-content-center">
+      <div class="grid min-w-[1.5rem] place-content-center">
         <button
-          class="pointer-events-auto rounded-full stroke-current transition duration-150 ease-in-out hover:bg-rose-500"
+          class="rounded-full stroke-current transition duration-150 ease-in-out hover:bg-red-500"
           onClick={props.onClose}
         >
           <CloseIcon />
