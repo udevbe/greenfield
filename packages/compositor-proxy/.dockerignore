@@ -2,10 +2,10 @@ dist
 node_modules
 npm-debug.log
 build
-package/compositor-proxy
-package/libproxy-encoding.so
-package/libwayland-server.so.0
-package/libwestfield.so
+../compositor-proxy-cli/package/compositor-proxy
+../compositor-proxy-cli/package/libproxy-encoding.so
+../compositor-proxy-cli/package/libwayland-server.so.0
+../compositor-proxy-cli/package/libwestfield.so
 example-apps
 README.md
 docker-compose.yml

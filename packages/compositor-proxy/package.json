@@ -1,8 +1,9 @@
 {
   "name": "@gfld/compositor-proxy",
   "version": "1.0.0-alpha.0",
-  "bin": "dist/cli.js",
-  "module": "dist/index.js",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "types/index.d.ts",
   "engines": {
     "node": ">=18"
   },
@@ -11,23 +12,17 @@
   ],
   "description": "Wayland Compositor Proxy",
   "scripts": {
-    "generate:config-types": "yarn run json2ts -i src/cli/app-config-schema.json -o src/cli/app-config.d.ts --style.singleQuote --no-style.semi",
     "generate:xdgshell": "yarn run compositor-proxy-generator ../../protocol/xdg-shell.xml -o src/protocol",
     "generate:wayland-drm": "yarn run compositor-proxy-generator ../../protocol/wayland-drm.xml -o src/protocol",
     "generate:wayland": "yarn run compositor-proxy-generator ../../protocol/wayland.xml -o src/protocol",
-    "generate": "yarn run rimraf src/protocol/*.js && yarn run mkdirp src/protocol && yarn generate:config-types && yarn generate:wayland && yarn generate:wayland-drm && yarn generate:xdgshell",
+    "generate": "yarn run rimraf src/protocol/*.js && yarn run mkdirp src/protocol && yarn generate:wayland && yarn generate:wayland-drm && yarn generate:xdgshell",
     "build:native": "yarn run mkdirp build && cmake -G Ninja -B./build -S./ && ninja -C ./build",
     "build:typescript": "yarn run tsc",
-    "build": "yarn run rimraf dist && yarn build:native && yarn build:typescript",
-    "start": "yarn node --require ts-node/register src/cli/main.ts --applications=./example-applications.json",
-    "test": "yarn run jest",
-    "package:copy-libs": "yarn run cpy '../../libs/proxy/runtime/dist/libwayland-server.so.0' '../../libs/proxy/runtime/dist/libwestfield.so' 'dist/encoding/libproxy-encoding.so' -t package",
-    "package": "yarn run pkg --compress Brotli --no-native-build package.json && yarn package:copy-libs"
+    "build": "yarn run rimraf dist types && yarn build:native && yarn build:typescript",
+    "test": "yarn run jest"
   },
   "dependencies": {
     "@gfld/xtsb": "workspace:^",
-    "ajv": "^8.12.0",
-    "ajv-formats": "^2.1.1",
     "pino": "^8.15.1",
     "pino-pretty": "^10.2.0",
     "ws": "^8.14.2"
@@ -49,23 +44,11 @@
     "jest": "^29.7.0",
     "json-schema-to-typescript": "^13.1.1",
     "mkdirp": "^3.0.1",
-    "pkg": "^5.8.1",
     "prettier": "^3.0.3",
     "rimraf": "^5.0.4",
     "ts-jest": "^29.1.1",
     "ts-node": "^10.9.1",
     "typescript": "^5.2.2"
-  },
-  "pkg": {
-    "scripts": "dist/**/*.js",
-    "assets": [
-      "dist/config.yaml",
-      "dist/**/*.json"
-    ],
-    "targets": [
-      "node18-linux-x64"
-    ],
-    "outputPath": "package"
   },
   "author": "Erik De Rijcke",
   "homepage": "https://www.greenfield.app",

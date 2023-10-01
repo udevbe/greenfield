@@ -1,0 +1,65 @@
+{
+  "name": "@gfld/compositor-proxy-cli",
+  "version": "1.0.0-alpha.0",
+  "type": "commonjs",
+  "bin": "dist/main.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "os": [
+    "linux"
+  ],
+  "description": "Wayland Compositor Proxy",
+  "scripts": {
+    "generate:config-types": "yarn run json2ts -i src/cli/app-config-schema.json -o src/cli/app-config.d.ts --style.singleQuote --no-style.semi",
+    "build": "yarn run rimraf dist && yarn run tsc",
+    "start": "yarn ts-node src/main.ts --applications=./example-applications.json",
+    "package:copy-libs": "cp '../compositor-proxy/dist/addons/libwayland-server.so.0' '../compositor-proxy/dist/addons/libwestfield.so' '../compositor-proxy/dist/addons/libproxy-encoding.so' -t ./package",
+    "package": "yarn run pkg --compress Brotli --no-native-build package.json && yarn package:copy-libs"
+  },
+  "dependencies": {
+    "@gfld/compositor-proxy": "workspace:^",
+    "ajv": "^8.12.0",
+    "ajv-formats": "^2.1.1"
+  },
+  "devDependencies": {
+    "@tsconfig/node18": "^18.2.2",
+    "@types/js-yaml": "^4.0.6",
+    "@types/jsonwebtoken": "^9.0.3",
+    "@types/node": "^18.15.3",
+    "@types/ws": "^8.5.6",
+    "@typescript-eslint/eslint-plugin": "^6.7.3",
+    "@typescript-eslint/parser": "^6.7.3",
+    "eslint": "^8.50.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "json-schema-to-typescript": "^13.1.1",
+    "mkdirp": "^3.0.1",
+    "pkg": "^5.8.1",
+    "prettier": "^3.0.3",
+    "rimraf": "^5.0.5",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
+  },
+  "pkg": {
+    "scripts": [
+      "dist/**/*.js",
+      "node_modules/@gfld/compositor-proxy/dist/protocol/*.js"
+    ],
+    "assets": [
+      "dist/**/*.json"
+    ],
+    "targets": [
+      "node18-linux-x64"
+    ],
+    "outputPath": "package"
+  },
+  "author": "Erik De Rijcke",
+  "homepage": "https://www.greenfield.app",
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/udevbe/greenfield/tree/master/packages/proxy"
+  },
+  "packageManager": "yarn@3.6.0"
+}

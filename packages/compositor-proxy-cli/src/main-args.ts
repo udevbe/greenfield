@@ -1,6 +1,6 @@
-import { parseArgs, ParseArgsConfig } from 'util'
+import { parseArgs, ParseArgsConfig } from 'node:util'
 import { AppConfigSchema } from './app-config'
-import { readFileSync } from 'fs'
+import { readFileSync } from 'node:fs'
 import Ajv from 'ajv'
 import addFormats from 'ajv-formats'
 import applicationSchema from './app-config-schema.json'
@@ -121,6 +121,11 @@ export const args = Object.fromEntries(
     }
   }),
 ) as ArgValues
+
+Object.entries(options).forEach(([key, value]) => {
+  // @ts-ignore
+  args[key] = args[key] ?? value.default
+})
 
 export function printHelp() {
   console.log(`

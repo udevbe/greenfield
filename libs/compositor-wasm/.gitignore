@@ -4,6 +4,7 @@ xkbcommon/repo
 xkbcommon/repo-xkeyboard-config
 dist
 types
+node_modules
 src/libpixman.js
 src/libxkbcommon.js
 emscripten-toolchain.ini

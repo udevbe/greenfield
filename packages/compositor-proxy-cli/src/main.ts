@@ -1,11 +1,12 @@
-import { Configschema, createLogger } from '..'
-import { createServer } from 'http'
-import * as child_process from 'child_process'
-import { ChildProcess } from 'child_process'
+import { Configschema, createLogger } from '@gfld/compositor-proxy'
+import { createServer } from 'node:http'
+import { ChildProcess, fork } from 'node:child_process'
 import { ToSessionProcessMessage } from './SessionProcess'
 import { Socket } from 'net'
 import { authRequest, handleGET, handleOptions } from './main-controller'
 import { args } from './main-args'
+import { inspect } from 'node:util'
+import path from 'node:path'
 
 process.on('uncaughtException', (e) => {
   logger.error('\tname: ' + e.name + ' message: ' + e.message)
@@ -18,7 +19,7 @@ const logger = createLogger('main')
 const sessionProcesses: Record<string, ChildProcess> = {}
 
 function main() {
-  logger.info('Starting compositor proxy.')
+  logger.info(`Starting compositor proxy with args: ${inspect(args)}`)
 
   const config: Configschema = {
     server: {
@@ -85,7 +86,9 @@ function main() {
       let childProcess = sessionProcesses[compositorSessionId]
       if (childProcess === undefined) {
         logger.info('No proxy session exists for this compositor, spawning a new one.')
-        childProcess = child_process.fork('./src/cli/SessionProcess')
+        const forkScript = path.join(__dirname, 'SessionProcess')
+        childProcess = fork(forkScript)
+
         childProcess.once('exit', (code, signal) => {
           logger.info(`Proxy session exited: ${signal || code}`)
           delete sessionProcesses[compositorSessionId]

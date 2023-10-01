@@ -7,9 +7,9 @@ import {
   launchApplication,
   Session,
   SessionController,
-} from '..'
-import { IncomingMessage } from 'http'
-import { Socket } from 'net'
+} from '@gfld/compositor-proxy'
+import { IncomingMessage } from 'node:http'
+import { Socket } from 'node:net'
 
 process.on('uncaughtException', (e) => {
   logger.error('\tname: ' + e.name + ' message: ' + e.message)

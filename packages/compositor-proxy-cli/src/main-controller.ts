@@ -1,6 +1,6 @@
 import { ToMainProcessMessage, ToSessionProcessMessage } from './SessionProcess'
 import { ChildProcess } from 'child_process'
-import { Configschema, createLogger } from '..'
+import { Configschema, createLogger } from '@gfld/compositor-proxy'
 import { IncomingMessage, ServerResponse } from 'http'
 import { args } from './main-args'
 import { AppConfigSchema } from './app-config'

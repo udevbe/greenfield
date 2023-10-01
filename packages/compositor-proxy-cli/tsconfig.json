@@ -1,13 +1,11 @@
 {
   "extends": "@tsconfig/node18/tsconfig.json",
   "compilerOptions": {
+    "outDir": "./dist",
     "resolveJsonModule": true,
     "allowJs": true,
     "rootDirs": ["src"],
     "pretty": true,
-    "declarationDir": "types",
-    "outDir": "dist",
-    "declaration": true
   },
   "exclude": [".eslintrc.js", ".prettierrc.js", "jest.config.js"],
   "ts-node": {
