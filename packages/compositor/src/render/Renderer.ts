@@ -67,7 +67,9 @@ export default class Renderer {
   }
 
   private createAndStoreScene(sceneId: string, canvas: HTMLCanvasElement, output: Output) {
-    const scene = Scene.create(this.session, setupCanvasGLContext(canvas), canvas, output, sceneId)
+    const scene = Scene.create(this.session, setupCanvasGLContext(canvas), canvas, output, sceneId, () => {
+      this.render()
+    })
     this.scenes = { ...this.scenes, [sceneId]: scene }
     scene.onDestroy().then(() => {
       delete this.scenes[sceneId]

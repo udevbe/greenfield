@@ -16,7 +16,6 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { createRect } from '../math/Rect'
-import { Size } from '../math/Size'
 import Output from '../Output'
 import { createPixmanRegion, initRect } from '../Region'
 import { DecodedFrame } from '../remote/DecodedFrame'
@@ -43,12 +42,12 @@ export class Scene {
     public readonly rgbaAnda2RGBA: RGBXandA2RGBA,
     public readonly output: Output,
     public readonly id: string,
-    public resolution: Size | 'auto' = 'auto',
+    needRender: () => void,
   ) {
     this._destroyPromise = new Promise<void>((resolve) => {
       this._destroyResolve = resolve
     })
-    // this.ensureResolution()
+    this.ensureResolution(needRender)
   }
 
   static create(
@@ -57,16 +56,15 @@ export class Scene {
     canvas: HTMLCanvasElement,
     output: Output,
     sceneId: string,
+    needRenderCallback: () => void,
   ): Scene {
     const sceneShader = SceneShader.create(gl)
     const yuvaToRgba = YUVA2RGBA.create(session, gl)
     const rgbaAnda2RGBA = RGBXandA2RGBA.create(session, gl)
-    return new Scene(session, canvas, gl, sceneShader, yuvaToRgba, rgbaAnda2RGBA, output, sceneId)
+    return new Scene(session, canvas, gl, sceneShader, yuvaToRgba, rgbaAnda2RGBA, output, sceneId, needRenderCallback)
   }
 
   render(viewStack: View[]): void {
-    this.ensureResolution()
-
     // render view texture
     this.sceneShader.use()
     this.sceneShader.updateSceneData(this.canvas)
@@ -114,18 +112,34 @@ export class Scene {
     bitmap.close()
   }
 
-  private ensureResolution() {
-    if (this.resolution === 'auto') {
-      if (this.canvas.width !== this.canvas.clientWidth || this.canvas.height !== this.canvas.clientHeight) {
-        this.canvas.width = this.canvas.clientWidth
-        this.canvas.height = this.canvas.clientHeight
-      }
-    } else if (this.canvas.width !== this.resolution.width || this.canvas.height !== this.resolution.height) {
-      this.canvas.width = this.resolution.width
-      this.canvas.height = this.resolution.height
+  private ensureResolution(needRender: () => void) {
+    const resizeTheCanvasToDisplaySize: ResizeObserverCallback = (_entries) => {
+      // TODO make scaling work for HiDPI devices
+      // const entry = entries[0]
+      // let width
+      // let height
+      // if (entry.devicePixelContentBoxSize) {
+      //   width = entry.devicePixelContentBoxSize[0].inlineSize
+      //   height = entry.devicePixelContentBoxSize[0].blockSize
+      //   this.canvas.width = width
+      //   this.canvas.height = height
+      // } else if (entry.contentBoxSize) {
+      //   // fallback for Safari that will not always be correct
+      //   width = Math.round(entry.contentBoxSize[0].inlineSize * devicePixelRatio)
+      //   height = Math.round(entry.contentBoxSize[0].blockSize * devicePixelRatio)
+      //   this.canvas.width = width
+      //   this.canvas.height = height
+      // }
+
+      this.canvas.width = this.canvas.clientWidth
+      this.canvas.height = this.canvas.clientHeight
+
+      initRect(this.region, createRect(this.output, this.canvas))
+      needRender()
     }
 
-    initRect(this.region, createRect(this.output, this.canvas))
+    const observer = new ResizeObserver(resizeTheCanvasToDisplaySize)
+    observer.observe(this.canvas)
   }
 
   private renderView(view: View) {
