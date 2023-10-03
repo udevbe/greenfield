@@ -147,7 +147,7 @@ function AppLaunchInput(props: AppInputProps) {
         <HelpIcon />
       </button>
       <span className="peer-hover:visible max-w-prose bg-green-800 px-1 text-sm text-gray-100 rounded-md absolute translate-y-1/3 m-4 mx-auto z-40 invisible">
-        To run an in-browser applications type eg. "web:weston-stacking". To run a remote application type eg.
+        For in-browser applications type "web:myapplication". For remote applications type
         "rem://somehost.com/myapplication".
       </span>
       <input

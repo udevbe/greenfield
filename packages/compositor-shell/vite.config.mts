@@ -23,10 +23,10 @@ export default defineConfig({
         target: 'http://localhost:9002',
         rewrite: (path) => path.replace(/^\/webgl/, ''),
       },
-      // examples/webapps/weston-stacking
-      '/weston-stacking': {
+      // examples/webapps/weston-clients
+      '/weston-clients': {
         target: 'http://localhost:9003',
-        rewrite: (path) => path.replace(/^\/weston-stacking/, ''),
+        rewrite: (path) => path.replace(/^\/weston-clients/, ''),
       },
     },
   },
