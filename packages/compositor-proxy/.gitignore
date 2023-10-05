@@ -1,9 +1,7 @@
-src/protocol
 build
 dist
 types
 node_modules
-!src/protocol/**.d.ts
 src/encoding/proxy-encoding-addon.node
 src/encoding/libproxy-encoding.so
 src/proxy-poll-addon.node

@@ -10,7 +10,8 @@
   ],
   "scripts": {
     "build-wasm": "./build_wasm.sh",
-    "build": "yarn run tsc"
+    "build-ts": "yarn run tsc",
+    "build": "yarn run build-wasm && yarn run build-ts"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^6.7.3",

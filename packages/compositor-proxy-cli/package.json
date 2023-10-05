@@ -11,7 +11,7 @@
   ],
   "description": "Wayland Compositor Proxy",
   "scripts": {
-    "generate:config-types": "yarn run json2ts -i src/cli/app-config-schema.json -o src/cli/app-config.d.ts --style.singleQuote --no-style.semi",
+    "generate:config-types": "yarn run json2ts -i src/app-config-schema.json -o src/app-config.d.ts --style.singleQuote --no-style.semi",
     "build": "yarn run rimraf dist && yarn run tsc",
     "start": "yarn ts-node src/main.ts --applications=./example-applications.json",
     "package:copy-libs": "cp '../compositor-proxy/dist/addons/libwayland-server.so.0' '../compositor-proxy/dist/addons/libwestfield.so' '../compositor-proxy/dist/addons/libproxy-encoding.so' -t ./package",
