@@ -5,15 +5,15 @@ nav_order: 1
 has_children: false
 ---
 
-# Greenfield
-[https://www.greenfield.app](https://www.greenfield.app)
-
+Greenfield
+==
 ### The in-browser wayland compositor
+[https://www.greenfield.app](https://www.greenfield.app)
 
 
 
 [Getting started](pages/getting_started/){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
-[View it on GitHub][Greenfield on GitHub]{: .btn .fs-5 .mb-4 .mb-md-0 }
+[View it on GitHub](https://github.com/udevbe/greenfield){: .btn .fs-5 .mb-4 .mb-md-0 }
 
 Greenfield is a [Wayland compositor](https://en.wikipedia.org/wiki/Wayland_%28display_server_protocol%29) written entirely in TypeScript while utilizing WebAssembly and WebGL for the performance critical parts. 
 
