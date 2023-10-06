@@ -61,7 +61,8 @@ address of this example web app. We can type this URL in the Greenfield address 
 Exit the application by pressing the `esc` key.
 
 {: .note }
-> You might have noticed that `web:simple-shm` is not a normal looking URL as the hostname is missing.
-> 
+> You might have noticed that `web:simple-shm` is not a normal looking URL as the hostname is missing. The reason for this is that
+> Greenfield web apps can only run inside same-origin iframes because of features like `SharedArrayBuffer`. Greenfield thus fills
+> in the hostname for you, so you don't having to type out the same hostname each time.
 
 ## Remote Applications
