@@ -30,7 +30,7 @@ run build
 
 {: .note }
 >The build excludes `compositor-proxy` packages as these will only build on Linux environments.
->We'll come back to this under the chapter Remote Applications.
+>We'll come back to this under the chapter [Remote Applications](#remote-applications).
 
 After all packages have been build, we can spin up the Greenfield compositor shell.
 ```shell
@@ -40,8 +40,28 @@ Open a browser and point it at [http://localhost:8080](http://localhost:8080).
 
 ![img.png](img.png)
 
-Unfortunatelya at this point we can't run any applications because there are none available. Let's fix that in the next steps.
-
-## Remote Applications
+Unfortunately at this point we can't run any applications because there are none available. Let's fix that in the next steps.
 
 ## Web Applications
+
+Web applications in Greenfield can either be native Wayland applications compiled to WebAssembly or pure JavaScript applications.
+Greenfield provides a few examples that we can use inside the `examles` directory.
+
+- `examples/sdk` shows the usage of the [Greenfield WebAssembly SDK](/pages/sdk) in porting existing native desktop applications to Greenfield.
+- `examples/webapps` has some ready-to-run examples that we can use.
+
+Well begin simple and start with `examples/webapps/simple-shm`.
+
+```shell
+yarn workspace @gfld/demo-webapp-shm install
+yarn workspace @gfld/demo-webapp-shm start
+```
+The Greenfield Compositor Shell is pre-configured and maps the URL `web:simple-shm` to `http://localhost:9001`, the 
+address of this example web app. We can type this URL in the Greenfield address bar and some psychedelic circles should appear.
+Exit the application by pressing the `esc` key.
+
+{: .note }
+> You might have noticed that `web:simple-shm` is not a normal looking URL as the hostname is missing.
+> 
+
+## Remote Applications

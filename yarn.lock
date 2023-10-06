@@ -1039,6 +1039,18 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@gfld/demo-webapp-shm@workspace:examples/webapps/simple-shm":
+  version: 0.0.0-use.local
+  resolution: "@gfld/demo-webapp-shm@workspace:examples/webapps/simple-shm"
+  dependencies:
+    "@gfld/client-protocol": "workspace:^"
+    "@gfld/common": "workspace:^"
+    typescript: ^5.2.2
+    vite: ^4.4.9
+    vite-plugin-glsl: ^1.1.2
+  languageName: unknown
+  linkType: soft
+
 "@gfld/shell@workspace:packages/compositor-shell":
   version: 0.0.0-use.local
   resolution: "@gfld/shell@workspace:packages/compositor-shell"
@@ -3189,18 +3201,6 @@ __metadata:
   checksum: a51744d9b53c164ba9c0492471a1a2ffa0b6727451bdc89e31627fdf4adda9d51277cfcbfb20f0a6f08ccb3c436f341df3e92631a3440226d93a8971724771fd
   languageName: node
   linkType: hard
-
-"demo-webapp-shm@workspace:examples/webapps/simple-shm":
-  version: 0.0.0-use.local
-  resolution: "demo-webapp-shm@workspace:examples/webapps/simple-shm"
-  dependencies:
-    "@gfld/client-protocol": "workspace:^"
-    "@gfld/common": "workspace:^"
-    typescript: ^5.2.2
-    vite: ^4.4.9
-    vite-plugin-glsl: ^1.1.2
-  languageName: unknown
-  linkType: soft
 
 "demo-webapp-webgl@workspace:examples/webapps/webgl":
   version: 0.0.0-use.local
