@@ -6,7 +6,6 @@
     "type": "git",
     "url": "git+https://github.com/udevbe/greenfield.git"
   },
-  "private": "true",
   "keywords": [
     "wayland",
     "html5",

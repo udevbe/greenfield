@@ -18,19 +18,25 @@ git clone https://github.com/udevbe/greenfield.git
 Inside the `greenfield` repository, we'll tell `yarn` to install all dependencies and build all packages.
 
 {: .important }
-> Greenfield requires [`yarn >=3.6`.](https://yarnpkg.com/getting-started/install)
+>Greenfield requires [`yarn >=3.6`.](https://yarnpkg.com/getting-started/install)
 
 ```shell
 yarn install
-yarn workspaces foreach --parallel --topological-dev run build
+yarn workspaces foreach --parallel --topological-dev \
+--exclude @gfld/compositor-proxy \
+--exclude @gfld/compositor-proxy-cli \
+run build
 ```
-This might take a while so grab a ☕ while you wait.
+
+{: .note }
+>The build excludes `compositor-proxy` packages as these will only build on Linux environments.
+>We'll come back to this under the chapter Remote Applications.
 
 After all packages have been build, we can spin up the Greenfield compositor shell.
 ```shell
 yarn workspace @gfld/shell run start
 ```
-Open a browser and point it at `http://localhost:8080`.
+Open a browser and point it at [http://localhost:8080](http://localhost:8080).
 
 ![img.png](img.png)
 

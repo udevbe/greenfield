@@ -2,35 +2,16 @@
 set -e
 
 EMSDK_VERSION="3.1.46"
+git -C emsdk pull || git clone https://github.com/emscripten-core/emsdk.git emsdk
+pushd 'emsdk'
+    ./emsdk install ${EMSDK_VERSION}
+    ./emsdk activate ${EMSDK_VERSION}
+    source ./emsdk_env.sh
+popd
+
 FFMPEG_VERSION="n5.1.2"
-
-#######################################
-# Ensures a repo is checked out.
-# Arguments:
-#   url: string
-#   name: string
-# Returns:
-#   None
-#######################################
-ensure_repo() {
-  local url name
-  local "${@}"
-
-  git -C "${name}" pull || git clone "${url}" "${name}"
-}
-
-ensure_emscripten() {
-  ensure_repo url='https://github.com/emscripten-core/emsdk.git' name='emsdk'
-  pushd 'emsdk'
-  ./emsdk update-tags
-  ./emsdk install ${EMSDK_VERSION}
-  ./emsdk activate ${EMSDK_VERSION}
-  source ./emsdk_env.sh
-  popd
-}
-
 ensure_ffmpeg() {
-  ensure_repo url='git@github.com:FFmpeg/FFmpeg.git' name='ffmpeg'
+  [ -e ffmpeg ] || git clone --depth 1 --branch "$FFMPEG_VERSION" "git@github.com:FFmpeg/FFmpeg.git" ffmpeg
 }
 
 build() {
@@ -68,7 +49,6 @@ build() {
 }
 
 main() {
-  ensure_emscripten
   build
 }
 

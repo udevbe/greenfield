@@ -63,4 +63,25 @@ aux_links_new_tab: true
 back_to_top: true
 back_to_top_text: "Back to top"
 
-color_scheme: dark
+color_scheme: light
+callouts_level: quiet # or loud
+callouts:
+  highlight:
+    color: yellow
+  important:
+    title: Important
+    color: blue
+  new:
+    title: New
+    color: green
+  note:
+    title: Note
+    color: purple
+  warning:
+    title: Warning
+    color: red
+
+mermaid:
+  # Version of mermaid library
+  # Pick an available version from https://cdn.jsdelivr.net/npm/mermaid/
+  version: "10.5.0"
