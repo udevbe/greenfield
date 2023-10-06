@@ -2,6 +2,7 @@ emsdk
 pixman/repo
 xkbcommon/repo
 xkbcommon/repo-xkeyboard-config
+xkbcommon/repo-xml2
 dist
 types
 node_modules

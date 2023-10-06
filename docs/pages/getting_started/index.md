@@ -30,7 +30,11 @@ After all packages have been build, we can spin up the Greenfield compositor she
 ```shell
 yarn workspace @gfld/shell run start
 ```
-At this point we still can't run any applications because there are none available. Let's fix that.
+Open a browser and point it at `http://localhost:8080`.
+
+![img.png](img.png)
+
+Unfortunatelya at this point we can't run any applications because there are none available. Let's fix that in the next steps.
 
 ## Remote Applications
 
