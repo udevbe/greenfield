@@ -1,5 +1,5 @@
 {
-  "name": "weston-eventdemo",
+  "name": "@gfld/weston-clients",
   "version": "1.0.0-alpha.0",
   "description": "HTML5 Wayland Demo Web Client Weston event demos",
   "repository": {
