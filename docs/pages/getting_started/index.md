@@ -140,5 +140,7 @@ rem:localhost:8081/kwrite
 rem:localhost:8081/xterm
 ```
 
+![img_3.png](img_3.png)
+
 {: .important }
 > `gtk4-demo`, `kwrite` and `xterm` need to be installed separately.
