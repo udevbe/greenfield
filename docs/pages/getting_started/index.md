@@ -6,7 +6,14 @@ has_children: false
 has_toc: false
 ---
 
+
 # Getting Started
+{: .no_toc }
+
+
+- 
+{: toc }
+
 
 ## Compositor
 
@@ -47,10 +54,10 @@ Unfortunately at this point we can't run any applications because there are none
 Web applications in Greenfield can either be native Wayland applications compiled to WebAssembly or pure JavaScript applications.
 Greenfield provides a few examples that we can use.
 
-- `examples/sdk` shows the usage of the [Greenfield WebAssembly SDK](/greenfield/pages/sdk) in porting existing native desktop applications to Greenfield.
+- `examples/sdk` shows the usage of the [Greenfield WebAssembly SDK](/greenfield/pages/sdk) in porting existing native desktop applications to Greenfield (experimental).
 - `examples/webapps` has some ready-to-run examples.
 
-We'll begin simple and start with `examples/webapps/simple-shm`.
+We'll begin simple with `examples/webapps/simple-shm`.
 
 ```shell
 yarn workspace @gfld/demo-webapp-simple-shm start
@@ -84,7 +91,7 @@ If all went well, a new `build/clients` directory has appeared with a bunch of `
 yarn workspace @gfld/weston-clients preview
 ```
 
-This makes the following URLs available. Enter any of these in the URL bar to see a WebAssembly desktop application.
+Enter any of these in the URL bar to see a WebAssembly desktop application.
 
 ```shell
 web:weston-clients/weston-eventdemo.html
@@ -98,3 +105,36 @@ web:weston-clients/weston-transformed.html
 ```
 
 ## Remote Applications
+
+{: .important }
+> Only Linux applications are supported.
+
+Greenfield can also run Linux applications remotely, both Wayland and X11. To do so, the remote machine must run
+a compositor proxy process that forwards all communication to the browser. We start by building the Compositor Proxy in
+a Linux environment.
+
+```shell
+yarn workspace @gfld/compositor-proxy build
+```
+
+{: .note }
+> Building the native code requires CMake and Ninja. The build system will tell you what other packages might be missing.
+
+The Compositor Proxy only provides a library to forward applications. We will also need an actual implementation that
+can manage application lifecycles, provide some form of auth etc. A basic implementation is provided by Compositor Proxy CLI.
+
+```shell
+yarn workspace @gfld/compositor-proxy-cli start
+```
+
+This will start the Compositor Proxy CLI locally on your machine with several applications pre-configured. The following
+URLs are available.
+
+```shell
+rem:localhost:8081/gtk4-demo
+rem:localhost:8081/kwrite
+rem:localhost:8081/xterm
+```
+
+{: .important }
+> `gtk4-demo`, `kwrite` and `xterm` need to be installed separately.

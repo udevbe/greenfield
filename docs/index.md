@@ -10,17 +10,10 @@ Greenfield
 ### The in-browser wayland compositor
 [https://www.greenfield.app](https://www.greenfield.app)
 
-
+Greenfield is a [Wayland server](https://en.wikipedia.org/wiki/Wayland_%28display_server_protocol%29) running entirely in your browser.  It can run native Linux applications remotely, 
+or run WebAssembly applications directly in your browser. All at the same time.
 
 [Getting started](pages/getting_started/){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
 [View it on GitHub](https://github.com/udevbe/greenfield){: .btn .fs-5 .mb-4 .mb-md-0 }
-
-Greenfield is a [Wayland compositor](https://en.wikipedia.org/wiki/Wayland_%28display_server_protocol%29) written entirely in TypeScript while utilizing WebAssembly and WebGL for the performance critical parts. 
-
-It can run native Wayland or X11 applications remotely or download WebAssembly compiled applications and run them sandboxed in your browser (experimental).
-
-<sub>Greenfield running DOOM3 remotely 1920x1080@60FPS (16 Mar 2023)</sub>
-[![Fosdem presentation + demo](https://img.youtube.com/vi/pTn_hjOwK-Y/0.jpg)](https://www.youtube.com/watch?v=pTn_hjOwK-Y)
-
 
 For more information, visit the [website](https://greenfield.app), or have [a look on how it all began](https://wayouttheresoftware.blogspot.com/2023/07/some-history-about-greenfield.html)
