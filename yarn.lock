@@ -1039,9 +1039,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@gfld/demo-webapp-shm@workspace:examples/webapps/simple-shm":
+"@gfld/demo-webapp-simple-shm@workspace:examples/webapps/simple-shm":
   version: 0.0.0-use.local
-  resolution: "@gfld/demo-webapp-shm@workspace:examples/webapps/simple-shm"
+  resolution: "@gfld/demo-webapp-simple-shm@workspace:examples/webapps/simple-shm"
   dependencies:
     "@gfld/client-protocol": "workspace:^"
     "@gfld/common": "workspace:^"
@@ -1076,6 +1076,14 @@ __metadata:
     prettier-plugin-tailwindcss: ^0.5.4
     tailwindcss: ^3.3.3
     typescript: ^5.2.2
+    vite: ^4.4.9
+  languageName: unknown
+  linkType: soft
+
+"@gfld/weston-clients@workspace:examples/webapps/weston-clients":
+  version: 0.0.0-use.local
+  resolution: "@gfld/weston-clients@workspace:examples/webapps/weston-clients"
+  dependencies:
     vite: ^4.4.9
   languageName: unknown
   linkType: soft
@@ -8821,14 +8829,6 @@ __metadata:
   checksum: c92a0a6ab95314bde9c32e1d0a6dfac83b578f8fa5f21e675bc2706ed6981bc26b7eb7e6a1fab158e5ce4adf9caa4a0aee49a52505d4d13c7be545f15021b17c
   languageName: node
   linkType: hard
-
-"weston-eventdemo@workspace:examples/webapps/weston-clients":
-  version: 0.0.0-use.local
-  resolution: "weston-eventdemo@workspace:examples/webapps/weston-clients"
-  dependencies:
-    vite: ^4.4.9
-  languageName: unknown
-  linkType: soft
 
 "whatwg-url@npm:^5.0.0":
   version: 5.0.0

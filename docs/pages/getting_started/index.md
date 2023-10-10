@@ -67,6 +67,8 @@ The Greenfield Compositor Shell maps the URL `web:simple-shm` to `http://localho
 address of this example web app. Type this URL in the Greenfield address bar and some psychedelic circles should appear.
 To exit the application, press the `esc` key.
 
+![img_1.png](img_1.png)
+
 {: .note }
 > The Compositor Shell uses a reverse proxy config to map `web:simple-shm` to `http://localhost:9001`.
 
@@ -103,6 +105,8 @@ web:weston-clients/weston-smoke.html
 web:weston-clients/weston-stacking.html
 web:weston-clients/weston-transformed.html
 ```
+
+![img_2.png](img_2.png)
 
 ## Remote Applications
 
