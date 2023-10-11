@@ -7,23 +7,26 @@ has_toc: true
 ---
 
 ```mermaid
-graph TD;
-subgraph packages
+graph LR
+subgraph Compositor Packages
     Compositor
     CoS(Compositor Shell)
-    CoPr(Compositor Proxy)
     CoPrCli(Compositor Proxy CLI)
+    CoPr(Compositor Proxy)
 end
-subgraph libraries
+subgraph Libraries
     ClP(Client Protocol)
-    ClG(Client Generator)
     Common
     CoP(Compositor Protocol)
+    ClG(Client Generator)
     CoG(Compositor Generator)
+    Xtsb
     CoPrG(Compositor Proxy Generator)
     CoWasm(Compositor WASM)
-    ffmpeg(FFmpeg H.264)
-    Xtsb
+    ffmpeg(FFmpeg H.264 WASM)
+end
+subgraph Web App 
+    JsApp(JavaScript App)-->ClP(Client Protocol)
 end
 
     ClP(Client Protocol)-->ClG(Client Generator);
@@ -31,7 +34,7 @@ end
     Compositor-->Common;
     Compositor-->CoP(Compositor Protocol);
     Compositor-->CoWasm(Compositor WASM);
-    Compositor-->ffmpeg(FFmpeg H.264);
+    Compositor-->ffmpeg(FFmpeg H.264 WASM);
     Compositor-->Xtsb;
     CoS(Compositor Shell)-->Compositor;
     CoP(Compositor Protocol)-->CoG(Compositor Generator);
