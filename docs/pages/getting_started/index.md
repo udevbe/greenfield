@@ -17,7 +17,7 @@ has_toc: false
 
 ## Compositor
 
-Clone the repository.
+Clone the repository if you haven't already.
 ```shell
 git clone https://github.com/udevbe/greenfield.git
 ```
