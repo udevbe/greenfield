@@ -8,7 +8,7 @@ has_toc: true
 
 ```mermaid
 graph LR
-subgraph Compositor Packages
+subgraph Packages
     Compositor
     CoS(Compositor Shell)
     CoPrCli(Compositor Proxy CLI)
