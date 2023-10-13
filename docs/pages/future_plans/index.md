@@ -5,22 +5,29 @@ nav_order: 6
 has_children: false
 ---
 
-# Linux Web Kernel
+# Web Kernel
 
 ```mermaid
-graph LR
+graph
 
-subgraph Web Page
+subgraph Page: http://foo.com
     subgraph WASM Shared Memory
-        Linux_Kernel_Library_WASM
+        subgraph Linux Kernel Library
+            LklW(Linux Kernel Library WASM Module)-->|implements|LklWVIO(Linux Kernel Library VirtIO Web Drivers)
+        end
     end
 
-    subgraph WebWorker A
-        WASM_App_A-->|Linked With|Linux_Kernel_Library_WASM
+    subgraph Worker: http://foo.com/app_a
+        AppA(WASM App A)-->|Links With|LklW
     end
 
-    subgraph WebWorker B
-        WASM_App_B-->|Linked With|Linux_Kernel_Library_WASM
+    subgraph Worker: http://foo.com/app_b
+        AppB(WASM App B)-->|Links With|LklW
     end
+
+    WebAPI(Web API)<-->|interacts with|LklWVIO
 end
 ```
+
+# Web File System
+
