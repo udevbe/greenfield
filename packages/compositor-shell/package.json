@@ -1,5 +1,5 @@
 {
-  "name": "@gfld/shell",
+  "name": "@gfld/compositor-shell",
   "version": "1.0.0-alpha.0",
   "description": "A Wayland HTML5 Compositor Shell.",
   "keywords": [
@@ -22,7 +22,8 @@
     "preview": "yarn vite preview"
   },
   "dependencies": {
-    "@gfld/compositor": "workspace:^"
+    "@gfld/compositor": "workspace:^",
+    "preact": "^10.17.1"
   },
   "devDependencies": {
     "@babel/core": "^7.23.0",
@@ -40,7 +41,6 @@
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
     "postcss": "^8.4.30",
-    "preact": "^10.17.1",
     "prettier": "^3.0.3",
     "prettier-plugin-tailwindcss": "^0.5.4",
     "tailwindcss": "^3.3.3",

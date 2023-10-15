@@ -144,3 +144,5 @@ rem:localhost:8081/xterm
 
 {: .important }
 > `gtk4-demo`, `kwrite` and `xterm` need to be installed separately.
+
+Further reading about the individual components configuration and inner workings can be found on the [design](/greenfield/pages/design) page.

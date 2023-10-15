@@ -1002,6 +1002,35 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@gfld/compositor-shell@workspace:packages/compositor-shell":
+  version: 0.0.0-use.local
+  resolution: "@gfld/compositor-shell@workspace:packages/compositor-shell"
+  dependencies:
+    "@babel/core": ^7.23.0
+    "@babel/plugin-transform-react-jsx": ^7.22.15
+    "@babel/plugin-transform-react-jsx-development": ^7.22.5
+    "@gfld/compositor": "workspace:^"
+    "@preact/preset-vite": ^2.5.0
+    "@preact/signals": ^1.2.1
+    "@tailwindcss/typography": ^0.5.10
+    "@typescript-eslint/eslint-plugin": ^6.7.3
+    "@typescript-eslint/parser": ^6.7.3
+    "@vitejs/plugin-basic-ssl": ^1.0.1
+    autoprefixer: ^10.4.16
+    babel-plugin-transform-hook-names: ^1.0.2
+    eslint: ^8.50.0
+    eslint-config-prettier: ^9.0.0
+    eslint-plugin-prettier: ^5.0.0
+    postcss: ^8.4.30
+    preact: ^10.17.1
+    prettier: ^3.0.3
+    prettier-plugin-tailwindcss: ^0.5.4
+    tailwindcss: ^3.3.3
+    typescript: ^5.2.2
+    vite: ^4.4.9
+  languageName: unknown
+  linkType: soft
+
 "@gfld/compositor-wasm@workspace:^, @gfld/compositor-wasm@workspace:libs/compositor-wasm":
   version: 0.0.0-use.local
   resolution: "@gfld/compositor-wasm@workspace:libs/compositor-wasm"
@@ -1048,35 +1077,6 @@ __metadata:
     typescript: ^5.2.2
     vite: ^4.4.9
     vite-plugin-glsl: ^1.1.2
-  languageName: unknown
-  linkType: soft
-
-"@gfld/shell@workspace:packages/compositor-shell":
-  version: 0.0.0-use.local
-  resolution: "@gfld/shell@workspace:packages/compositor-shell"
-  dependencies:
-    "@babel/core": ^7.23.0
-    "@babel/plugin-transform-react-jsx": ^7.22.15
-    "@babel/plugin-transform-react-jsx-development": ^7.22.5
-    "@gfld/compositor": "workspace:^"
-    "@preact/preset-vite": ^2.5.0
-    "@preact/signals": ^1.2.1
-    "@tailwindcss/typography": ^0.5.10
-    "@typescript-eslint/eslint-plugin": ^6.7.3
-    "@typescript-eslint/parser": ^6.7.3
-    "@vitejs/plugin-basic-ssl": ^1.0.1
-    autoprefixer: ^10.4.16
-    babel-plugin-transform-hook-names: ^1.0.2
-    eslint: ^8.50.0
-    eslint-config-prettier: ^9.0.0
-    eslint-plugin-prettier: ^5.0.0
-    postcss: ^8.4.30
-    preact: ^10.17.1
-    prettier: ^3.0.3
-    prettier-plugin-tailwindcss: ^0.5.4
-    tailwindcss: ^3.3.3
-    typescript: ^5.2.2
-    vite: ^4.4.9
   languageName: unknown
   linkType: soft
 

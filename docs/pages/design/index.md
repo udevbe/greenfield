@@ -10,7 +10,8 @@ has_toc: false
 # Design
 {: .no_toc }
 
-Greenfield consists of many separate [components](/greenfield/pages/components). We'll go over the most relevant ones in detail.
+Greenfield consists of many separate [components](/greenfield/pages/components). We'll go over the most relevant ones in detail. Make sure to go
+over the [getting started](/greenfield/pages/getting_started) page first to have a minimal working setup.
 
 - 
 {:toc}
@@ -18,17 +19,39 @@ Greenfield consists of many separate [components](/greenfield/pages/components).
 # Compositor
 
 The Compositor package is at the center of everything. It's responsible for drawing application pixels on the screen and handling all
-user input for these applications.
+user input for these applications. It's a [Wayland compositor](https://en.wikipedia.org/wiki/Wayland_(protocol)#Wayland_compositors) library
+that is 100% compatible with existing native Wayland protocol. It implements the Wayland protocols `core` and `xdg-shell`.
+
+The Compositor package has no 3rd party runtime dependencies, building is straightforward.
+
+```shell
+yarn workspace @gfld/compositor build
+```
+
+The build result is inside the `dist` folder.
+
+The Compositor package is a library, so it doesn't do much without an actual implementation. This is where the Compositor Shell comes into play.
 
 # Compositor Shell
 
 The Compositor Shell provides an implementation on top of the Compositor. It provides auxiliary controls like application 
 management, keyboard configuration etc. and works closely together with the [Compositor Proxy CLI](#compositor-proxy-cli).
-The version included in the repository implements the basics, while still trying to be somewhat esthetically pleasing.
+
+The Compositor Shell version included in the repository implements a bare minimum shell, while still trying to be somewhat esthetically pleasing.
+It's implemented using [Preact](https://preactjs.com/) and [Tailwind CSS](https://tailwindcss.com/) and has no runtime dependencies besides
+Preact and the Compositor library. The Compositor Shell is implemented as a single page application.
+
+Building is straightforward
+
+```shell
+yarn workspace @gfld/compositor-shell build
+```
+
+The build result is inside the `dist` folder.
 
 # Compositor Proxy
 
-The Compositor Proxy acts is a real native Wayland compositor and deals with all communication between a native Wayland application
+The Compositor Proxy acts as a real native Wayland compositor and deals with all communication between a native Wayland application
 and the Compositor running in the browser.
 
 To build, you need a set of native dependencies. You can look at the [Docker image](https://github.com/udevbe/greenfield/blob/master/compositor-proxy/Dockerfile#L4) to see which ones you need to build and run respectively, or if you're running a Debian based distro you can run:
