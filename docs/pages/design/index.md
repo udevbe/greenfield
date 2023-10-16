@@ -18,9 +18,12 @@ over the [getting started](/greenfield/pages/getting_started) page first to have
 
 # Compositor
 
-The Compositor package is at the center of everything. It's responsible for drawing application pixels on the screen and handling all
+The Compositor is at the center of everything. It's responsible for drawing application pixels on the screen and handling all
 user input for these applications. It's a [Wayland compositor](https://en.wikipedia.org/wiki/Wayland_(protocol)#Wayland_compositors) library
-that is 100% compatible with existing native Wayland protocol. It implements the Wayland protocols `core` and `xdg-shell`.
+that is 100% compatible with existing native Wayland protocol. It implements the Wayland protocols `core` and `xdg-shell`. 
+In the browser, all applications are drawn using a WebGL texture inside a HTML5 canvas. 
+The HTML5 canvas corresponds to an 'output' in the Wayland protocol. 
+The browser compositor is asynchronous, meaning a slow client will not block the processing of another client.
 
 The Compositor package has no 3rd party runtime dependencies, building is straightforward.
 
@@ -37,8 +40,8 @@ The Compositor package is a library, so it doesn't do much without an actual imp
 The Compositor Shell provides an implementation on top of the Compositor. It provides auxiliary controls like application 
 management, keyboard configuration etc. and works closely together with the [Compositor Proxy CLI](#compositor-proxy-cli).
 
-The Compositor Shell version included in the repository implements a bare minimum shell, while still trying to be somewhat esthetically pleasing.
-It's implemented using [Preact](https://preactjs.com/) and [Tailwind CSS](https://tailwindcss.com/) and has no runtime dependencies besides
+The Compositor Shell included in the repository implements the bare minimum, while still trying to be somewhat esthetically pleasing.
+It uses [Preact](https://preactjs.com/) and [Tailwind CSS](https://tailwindcss.com/) and has no runtime dependencies besides
 Preact and the Compositor library. The Compositor Shell is implemented as a single page application.
 
 Building is straightforward
@@ -47,11 +50,11 @@ Building is straightforward
 yarn workspace @gfld/compositor-shell build
 ```
 
-The build result is inside the `dist` folder.
+The build result is inside the `dist` folder and consists of static assets.
 
 # Compositor Proxy
 
-The Compositor Proxy acts as a real native Wayland compositor and deals with all communication between a native Wayland application
+The Compositor Proxy is a library that acts as a real native Wayland compositor and deals with all communication between a native Wayland application
 and the Compositor running in the browser.
 
 To build, you need a set of native dependencies. You can look at the [Docker image](https://github.com/udevbe/greenfield/blob/master/compositor-proxy/Dockerfile#L4) to see which ones you need to build and run respectively, or if you're running a Debian based distro you can run:
@@ -63,64 +66,44 @@ sudo apt install cmake build-essential ninja-build pkg-config libffi-dev libudev
 
 More dependencies may be required depending on your GPU eg. for nvidia based cards, you might need additional drivers and libraries.
 
-Next, inside `compositor-proxy`, run:
-- `yarn install`
-- `yarn generate`
-- `yarn build:native`
-- `cp dist/encoding/proxy-encoding-addon.node src/encoding/proxy-encoding-addon.node`
-- `cp dist/proxy-poll-addon.node src/proxy-poll-addon.node`
+Building is straightforward.
+
+```shell
+yarn workspace @gfld/compositor-proxy build
+```
+
+The build output can be found inside the `dist` folder. 
+
+The Compositor Proxy requires an implementation in order to run, a basic one is provided by the [Compositor Proxy CLI](#compositor-proxy-cli).
 
 ## High level technical
 
-A Greenfield browser compositor uses a native compositor-proxy to talk to native applications.
-This proxy compositor accepts native Wayland client connections and assigns them to a WebSocket connection as soon as
-one becomes available. A native client and it's WebSocket connection are bound to each other until either one is closed.
-
-A compositor-proxy proxy can request additional WebSocket connections from an already connected Greenfield browser compositor.
-This is needed in case a Wayland client spawns a new Wayland client process. If no WebSocket connections already exists,
-the compositor-proxy will wait until a new WebSocket connection is available. In other words, the first WebSocket connection
-is always initiated from the browser.
-
-Each application's content is encoded to video frames using GStreamer and send to the browser for decoding. In the browser the application is realised by a WebGL texture inside a HTML5 canvas.
-This canvas is basically what you would call an 'output' in Wayland terminology. The browser compositor is asynchronous, meaning a slow client will not block the processing of another client.
-
-To make this performant, all image processing should be done on the GPU and an image codec that supports alpha (transparency) should be used.
-
-Such a hypothetical perfect pipeline would look something like this:
-
-[<img src="https://docs.google.com/drawings/d/e/2PACX-1vQ0BpqicB4wNwYKotSK6Hm1lECZ9k5eQYKekFFjXcx4b2yWEhDIim9Hi0Y1Iq1NoFVaZl-kqA6lJdxh/pub?w=1985&h=561" />](https://docs.google.com/drawings/d/e/2PACX-1vQ0BpqicB4wNwYKotSK6Hm1lECZ9k5eQYKekFFjXcx4b2yWEhDIim9Hi0Y1Iq1NoFVaZl-kqA6lJdxh/pub?w=1985&h=561)
-
-Here, all heavy operations are done by the GPU. H.264 has been replaced with H.265 which supports transparency, so we can use a single encoding/decoding step. The compositor-proxy supports the Wayland DRM protocol, so it can pass OpenGL applications
-directly to the encoder without making any copies.
-
-There is however one major problem to this solution:
-the combination of [WebCodecs API](https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API) and the H.265 codec simply does not exist in any browser.
-
-### The current implementation
+The Compositor Proxy implementation listens to native Wayland applications and talks to the remote Compositor that runs in the browser.
+Each remote application's content is encoded to video frames using GStreamer and send to the browser for decoding.
 
 [<img src="https://docs.google.com/drawings/d/e/2PACX-1vRIPsXAvlTFj-bERKWLeoo5RFWUQHfLyQOymNZ8c-kVEhpsh8GGXYAkudanvpNzycTC3G9xuCPxHX6x/pub?w=1985&h=561" />](https://docs.google.com/drawings/d/e/2PACX-1vRIPsXAvlTFj-bERKWLeoo5RFWUQHfLyQOymNZ8c-kVEhpsh8GGXYAkudanvpNzycTC3G9xuCPxHX6x/pub?w=1985&h=561)
 
-Here we've extended the old solution with support for the Wayland DRM protocol (+ DMA_BUF protocol). This allows for a zero-copy transfer of the application pixels to the encoding pipeline. We've also added support
-for the H.264 WebCodecs API, which allows us to do decoding on the GPU of the receiving browser client if supported. If no usable GPU is available in the Compositor-Proxy, the pipeline falls back to slower software rendering.
-
 {: .note }
-> *The end result is [fast enough to support gaming.](https://www.youtube.com/watch?v=pTn_hjOwK-Y)*
+> This pipeline [fast enough to support gaming.](https://www.youtube.com/watch?v=pTn_hjOwK-Y)
+
+Image processing is done on the GPU if available, if not, slower CPU software encoding is used. The Compositor Proxy implements the Wayland `wl-drm` & `dmabuf-v1` protocol. This allows for a zero-copy transfer of the application pixels to the encoding pipeline. The Compositor in the browser also supports
+the H.264 WebCodecs API, which can use the GPU of the receiving browser client to decode frames.
 
 ### WebSockets - WebRTC DataChannels - WebTransport
 
-There is one drawback that currently still remains, and that's the use of WebSockets to deliver data to the browser. WebSockets operate over TCP which is ill-suited for real-time applications like Greenfield.
+The current implementation of Compositor Proxy uses WebSockets to deliver data to the browser. WebSockets operate over TCP which is ill-suited for real-time applications.
 Instead, a UDP based protocol is needed. Browsers today unfortunately have no support for UDP based protocols aside from WebRTC DataChannels. However, we can not use WebRTC DataChannels as the build-in SCTP congestion algorithm is unacceptably slow.
 A more low level UDP protocol is required and is currently in the works in the form of the WebTransport protocol. Once WebTransport becomes more widely available, we can operate in UDP mode
 and assure fast end reliable transfers using [KCP](https://github.com/skywind3000/kcp/blob/master/README.en.md) in combination with forward-error-correction.
 
 ### Copy-Paste
 
-If both clients are connected to a separate compositor-proxy, copy-paste will use a direct peer to peer transfer between compositor-proxies.
-This avoids the round trip and massive overhead of transferring all content to the browser and back.
+If both native applications are connected to separate Compositor Proxy instances, the Compositor Proxy will use a direct peer-to-peer connection to transfer copy-paste 
+data to other remote Compositor Proxy instance. This avoids the round trip and overhead of transferring all content to the browser and back.
 
 # Compositor Proxy CLI
 
-The Compositor Proxy CLI provides an implementation on top of the Compositor Proxy and works together with the
+The Compositor Proxy CLI provides an implementation on top of the [Compositor Proxy](#compositor-proxy) and works together with the
 Compositor Shell.
 
 For XWayland support a few extra steps may be needed, this is optional and only required if you don't already hava an X server running eg. when running on a server:
@@ -194,32 +177,10 @@ logging:
 ```
 The packaged binary expects the following set of dependencies to be available for mesa & nvidia support, if you're running a Debian based distro you can run:
 ```
-apt-get install \
-    libffi8 \
-    libudev1 \
-    libgbm1 \
-    libgraphene-1.0-0 \
-    gstreamer1.0-plugins-base \
-    gstreamer1.0-plugins-good \
-    gstreamer1.0-plugins-bad \
-    gstreamer1.0-plugins-ugly \
-    gstreamer1.0-gl \
-    libosmesa6 \
-    libdrm2 \
-    libdrm-intel1 \
-    libopengl0 \
-    libglvnd0 \
-    libglx0 \
-    libglapi-mesa \
-    libegl1-mesa \
-    libglx-mesa0 \
-    libnvidia-egl-wayland1 \
-    libnvidia-egl-gbm1 \
-    xwayland \
-    xauth \
-    xxd \
-    inotify-tools \
-    libnode108
+apt-get install libffi8 libudev1 libgbm1 libgraphene-1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-gl libosmesa6 libdrm2 libdrm-intel1 \
+    libopengl0 libglvnd0 libglx0 libglapi-mesa libegl1-mesa libglx-mesa0 libnvidia-egl-wayland1 libnvidia-egl-gbm1 \
+    xwayland xauth xxd inotify-tools libnode108
 ```
 
 ## Docker
