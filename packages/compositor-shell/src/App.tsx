@@ -45,38 +45,27 @@ export async function main() {
     })
   }
 
-  session.userShell.events.surfaceCreated = (compositorSurface) => {
-    appEntryPropsAction(compositorSurface.client.id, (appEntryProps) => {
-      appEntryProps.windows.value = [...appEntryProps.windows.value, { ...compositorSurface, title: new Signal() }]
-    })
-  }
-
-  session.userShell.events.surfaceDestroyed = (compositorSurface) => {
-    appEntryPropsAction(compositorSurface.client.id, (appEntryProps) => {
-      appEntryProps.windows.value = appEntryProps.windows.value.filter((value) => value.id !== compositorSurface.id)
-    })
-  }
-
-  session.userShell.events.surfaceActivationUpdated = (compositorSurface, active) => {
-    appEntryPropsAction(compositorSurface.client.id, (appEntryProps) => {
-      if (active) {
-        appEntryProps.lastActiveWindow.value = appEntryProps.windows.value.find(
-          (window) => window.id === compositorSurface.id,
-        )
-      }
-    })
-  }
-
-  session.userShell.events.surfaceTitleUpdated = (compositorSurface, title) => {
-    appEntryPropsAction(compositorSurface.client.id, (appEntryProps) => {
-      const window = appEntryProps.windows.value.find(
-        (otherCompositorSurface) => otherCompositorSurface.id === compositorSurface.id,
-      )
-      if (window) {
-        window.title.value = title
-      }
-    })
-  }
+  // TODO update browser title window
+  // session.userShell.events.surfaceActivationUpdated = (compositorSurface, active) => {
+  //   appEntryPropsAction(compositorSurface.client.id, (appEntryProps) => {
+  //     if (active) {
+  //       appEntryProps.lastActiveWindow.value = appEntryProps.windows.value.find(
+  //         (window) => window.id === compositorSurface.id,
+  //       )
+  //     }
+  //   })
+  // }
+  // TODO update browser title window
+  // session.userShell.events.surfaceTitleUpdated = (compositorSurface, title) => {
+  //   appEntryPropsAction(compositorSurface.client.id, (appEntryProps) => {
+  //     const window = appEntryProps.windows.value.find(
+  //       (otherCompositorSurface) => otherCompositorSurface.id === compositorSurface.id,
+  //     )
+  //     if (window) {
+  //       window.title.value = title
+  //     }
+  //   })
+  // }
 
   session.userShell.events.notify = (variant: string, message: string) => window.alert(message)
 

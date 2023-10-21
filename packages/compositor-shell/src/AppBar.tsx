@@ -45,8 +45,8 @@ function createEmptyAppEntry(
     clients: new Signal([]),
     unresponsive: new Signal(false),
     appLaunchURL,
-    windows: new Signal([]),
-    lastActiveWindow: new Signal(),
+    // windows: new Signal([]),
+    // lastActiveWindow: new Signal(),
     isChild,
   }
   return appEntryProps
@@ -176,29 +176,20 @@ export type AppEntryProps = Readonly<{
   clients: Signal<CompositorClient[]>
   unresponsive: Signal<boolean>
   appLaunchURL: string
-  windows: Signal<Window[]>
-  lastActiveWindow: Signal<Window | undefined>
+  // windows: Signal<Window[]>
+  // lastActiveWindow: Signal<Window | undefined>
   isChild: boolean
 }>
 
 function AppEntry(props: AppEntryProps) {
-  if (props.isChild && props.windows.value.length === 0) {
-    return null
-  }
-
   return (
-    <div class="flex min-w-[26rem] basis-4 rounded-full border border-slate-400 transition duration-150 text-sm leading-none text-gray-900">
+    <div class="flex min-w-[12rem] basis-4 rounded-full border border-slate-400 transition duration-150 text-sm leading-none text-gray-900">
       <div class="grid min-w-[1.375rem] place-content-center">
         <ConnectionStateIcon state={props.connectionState} unresponsive={props.unresponsive} />
       </div>
-      <div class="flex min-w-[22rem] shrink grow items-stretch p-1">
-        <div class="flex min-w-[11rem] shrink grow flex-col justify-center pr-1">
-          <span class="truncate text-left font-semibold">
-            {props.lastActiveWindow.value?.title.value ?? props.name.value ?? props.appLaunchURL}
-          </span>
-        </div>
-        <div class="flex min-w-[11rem] shrink grow flex-col justify-center">
-          <span class="truncate text-right text-xs font-light leading-none">{props.appLaunchURL}</span>
+      <div class="flex min-w-[8rem] shrink grow items-stretch p-1">
+        <div class="flex min-w-[8rem] shrink grow flex-col justify-center pr-1">
+          <span class="truncate text-left font-semibold">{props.name.value ?? props.appLaunchURL}</span>
         </div>
       </div>
       <div class="grid min-w-[1.375rem] place-content-center">
