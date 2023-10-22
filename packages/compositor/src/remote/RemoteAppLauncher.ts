@@ -65,7 +65,7 @@ type SignalingMessage =
     }
   | {
       readonly type: SignalingMessageType.CREATE_CHILD_APP_CONTEXT
-      readonly data: { baseURL: string; signalURL: string; name: string }
+      readonly data: { baseURL: string; signalURL: string; name: string; internal: boolean }
     }
   | {
       readonly type: SignalingMessageType.APP_TERMINATED
@@ -126,9 +126,17 @@ export class RemoteAppLauncher implements AppLauncher {
         if (response.ok) {
           return response
             .json()
-            .then((proxySessionProps: { baseURL: string; signalURL: string; key: string; name: string }) => {
-              remoteAppContext.listen(proxySessionProps)
-            })
+            .then(
+              (proxySessionProps: {
+                baseURL: string
+                signalURL: string
+                key: string
+                name: string
+                internal: boolean
+              }) => {
+                remoteAppContext.listen(proxySessionProps)
+              },
+            )
             .catch((e) => {
               remoteAppContext.error(e)
             })
@@ -145,25 +153,25 @@ export class RemoteAppLauncher implements AppLauncher {
 }
 
 class RemoteAppContext implements AppContext {
-  onClient = (client: Client): void => {
+  onClient = (_client: Client): void => {
     /*noop*/
   }
 
-  onStateChange = (state: AppContext['state']): void => {
+  onStateChange = (_state: AppContext['state']): void => {
     /*noop*/
   }
 
-  onError = (error: Error): void => {
+  onError = (_error: Error): void => {
     /*noop*/
   }
 
   key?: string
 
-  onKeyChanged = (key: string): void => {
+  onKeyChanged = (_key: string): void => {
     /*noop*/
   }
 
-  onNameChanged = (name: string): void => {
+  onNameChanged = (_name: string): void => {
     /*noop*/
   }
 
@@ -197,7 +205,7 @@ class RemoteAppContext implements AppContext {
     }
   }
 
-  error(error: any): void {
+  error(_error: any): void {
     if (this.terminated) {
       throw new Error("BUG. Can't error close, already terminated.")
     }
@@ -221,7 +229,7 @@ class RemoteAppContext implements AppContext {
     this.onStateChange('error')
   }
 
-  private onAppTerminated(exitState: { exitCode: number } | { signal: string }) {
+  private onAppTerminated(_exitState: { exitCode: number } | { signal: string }) {
     if (this.terminated) {
       throw new Error("BUG. Can't close, already terminated.")
     }
@@ -273,12 +281,12 @@ class RemoteAppContext implements AppContext {
     this.signalingSendBuffer = []
   }
 
-  listen(proxySessionProps: { baseURL: string; signalURL: string; name: string }) {
+  listen(proxySessionProps: { baseURL: string; signalURL: string; name: string; internal: boolean }) {
     this.proxySessionProps = proxySessionProps
     this.signalingWebSocket = new ReconnectingWebSocket(proxySessionProps.signalURL, undefined)
     this.signalingWebSocket.binaryType = 'arraybuffer'
 
-    this.signalingWebSocket.addEventListener('open', (event) => {
+    this.signalingWebSocket.addEventListener('open', (_event) => {
       this.onStateChange('open')
     })
     this.signalingWebSocket.addEventListener('close', (event) => {
@@ -302,6 +310,7 @@ class RemoteAppContext implements AppContext {
     proxySessionProps: {
       baseURL: string
       signalURL: string
+      internal: boolean
     },
   ) {
     signalingConnection.onmessage = async (event) => {
@@ -336,7 +345,9 @@ class RemoteAppContext implements AppContext {
           }
           case SignalingMessageType.CREATE_CHILD_APP_CONTEXT: {
             const remoteAppContext = new RemoteAppContext(this.session, this.onChildAppContext)
-            this.onChildAppContext(remoteAppContext)
+            if (!messageObject.data.internal) {
+              this.onChildAppContext(remoteAppContext)
+            }
             remoteAppContext.listen(messageObject.data)
             break
           }
@@ -357,6 +368,7 @@ class RemoteAppContext implements AppContext {
     proxySessionProps: {
       baseURL: string
       signalURL: string
+      internal: boolean
     },
   ) {
     if (channel.desc.type === ChannelDescriptionType.PROTOCOL) {
@@ -416,6 +428,7 @@ function onProtocolChannel(
   proxySessionProps: {
     baseURL: string
     signalURL: string
+    internal: boolean
   },
   client: Client,
   compositorSessionId: string,

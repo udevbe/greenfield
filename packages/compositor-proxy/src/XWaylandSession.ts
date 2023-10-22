@@ -14,7 +14,7 @@ export function createXWaylandSession(nativeCompositorSession: NativeWaylandComp
 
 export class XWaylandSession {
   private nativeXWayland?: XWaylandHandle
-  private xWaylandClient?: ClientEntry
+  private xWaylandClientEntry?: ClientEntry
 
   constructor(
     private nativeCompositorSession: NativeWaylandCompositorSession,
@@ -29,7 +29,7 @@ export class XWaylandSession {
     const { onXWaylandStarting, onDestroyed } = this.listenXWayland()
 
     onDestroyed.then(() => {
-      this.xWaylandClient = undefined
+      this.xWaylandClientEntry = undefined
       this.destroy()
     })
 
@@ -41,26 +41,26 @@ export class XWaylandSession {
     }).on('data', (_chunk) => {
       logger.info('XWayland started.')
 
-      const xWaylandClient = this.nativeCompositorSession.clients.find((value) => {
+      const xWaylandClientEntry = this.nativeCompositorSession.clients.find((value) => {
         if (value.nativeClientSession === undefined) {
           return false
         }
         return equalValueExternal(value.nativeClientSession.wlClient, wlClient)
       })
 
-      if (xWaylandClient === undefined) {
+      if (xWaylandClientEntry === undefined) {
         logger.error('BUG? Could not find a XWayland wayland client entry after XWayland startup.')
         return
       }
 
-      if (xWaylandClient.nativeClientSession === undefined) {
+      if (xWaylandClientEntry.nativeClientSession === undefined) {
         logger.error('BUG? Found XWaylandClient entry but it did not have a native wayland client session associated.')
         return
       }
 
       const xwmDataChannel = createXWMDataChannel(
-        xWaylandClient.clientId,
-        xWaylandClient.protocolChannel.nativeAppContext,
+        xWaylandClientEntry.clientId,
+        xWaylandClientEntry.protocolChannel.nativeAppContext,
       )
       this.upsertXWMConnection(xwmDataChannel, wmFd).catch((e: any) => {
         logger.error(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
@@ -69,12 +69,12 @@ export class XWaylandSession {
         xwmDataChannel.close()
       })
 
-      xWaylandClient.nativeClientSession.destroyListeners.push(() => {
+      xWaylandClientEntry.nativeClientSession.destroyListeners.push(() => {
         xwmDataChannel.close()
         this.destroy()
       })
 
-      this.xWaylandClient = xWaylandClient
+      this.xWaylandClientEntry = xWaylandClientEntry
     })
   }
 
@@ -103,10 +103,10 @@ export class XWaylandSession {
       this.nativeXWayland = undefined
     }
 
-    if (this.xWaylandClient) {
-      this.xWaylandClient.nativeClientSession?.destroy()
-      this.xWaylandClient.protocolChannel.close()
-      this.xWaylandClient = undefined
+    if (this.xWaylandClientEntry) {
+      this.xWaylandClientEntry.nativeClientSession?.destroy()
+      this.xWaylandClientEntry.protocolChannel.close()
+      this.xWaylandClientEntry = undefined
     }
   }
 

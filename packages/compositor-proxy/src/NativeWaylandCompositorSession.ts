@@ -39,6 +39,7 @@ import { webcrypto } from 'crypto'
 import { Session } from './Session'
 import { readFileSync } from 'fs'
 import { NativeAppContext } from './NativeAppContext'
+import { pid } from 'node:process'
 
 const logger = createLogger('native-compositor-session')
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567' as const
@@ -179,7 +180,7 @@ export class NativeWaylandCompositorSession {
 
       const name = this.getNameFromPid(clientPid) ?? 'unknown_app'
       nativeAppContext = this.session.createNativeAppContext(clientPid, name, true)
-      firstNativeAppContext.sendCreateChildAppContext(nativeAppContext)
+      firstNativeAppContext.sendCreateChildAppContext(nativeAppContext, clientPid === pid)
     }
 
     const clientId = newClientId()

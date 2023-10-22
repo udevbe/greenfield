@@ -158,11 +158,12 @@ export async function handleGET(
     proxyURL.searchParams.set('compositorSessionId', compositorSessionId)
     proxyURL.searchParams.set('key', messageReply.payload.key)
 
-    const reply: { baseURL: string; signalURL: string; key: string; name: string } = {
+    const reply: { baseURL: string; signalURL: string; key: string; name: string; internal: boolean } = {
       baseURL: config.public.baseURL,
       signalURL: proxyURL.href,
       key: messageReply.payload.key,
       name: appName,
+      internal: false,
     }
 
     response

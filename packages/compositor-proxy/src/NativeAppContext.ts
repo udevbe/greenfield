@@ -26,7 +26,7 @@ type SignalingMessage =
     }
   | {
       readonly type: SignalingMessageType.CREATE_CHILD_APP_CONTEXT
-      readonly data: { baseURL: string; signalURL: string; name: string }
+      readonly data: { baseURL: string; signalURL: string; name: string; internal: boolean }
     }
   | {
       readonly type: SignalingMessageType.APP_TERMINATED
@@ -186,16 +186,17 @@ export class NativeAppContext {
     return this.channels[channelId]
   }
 
-  sendCreateChildAppContext(nativeAppContext: NativeAppContext) {
+  sendCreateChildAppContext(nativeAppContext: NativeAppContext, internal: boolean) {
     const proxyURL = new URL(this.session.config.public.baseURL)
     proxyURL.pathname += proxyURL.pathname.endsWith('/') ? 'signal' : '/signal'
     proxyURL.searchParams.set('compositorSessionId', this.session.compositorSessionId)
     proxyURL.searchParams.set('key', nativeAppContext.key)
 
-    const data: { baseURL: string; signalURL: string; name: string } = {
+    const data: { baseURL: string; signalURL: string; name: string; internal: boolean } = {
       baseURL: this.session.config.public.baseURL,
       signalURL: proxyURL.href,
       name: nativeAppContext.name,
+      internal,
     }
 
     const newClientNotify: SignalingMessage = {
