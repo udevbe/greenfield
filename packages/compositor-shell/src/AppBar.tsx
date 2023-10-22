@@ -176,8 +176,6 @@ export type AppEntryProps = Readonly<{
   clients: Signal<CompositorClient[]>
   unresponsive: Signal<boolean>
   appLaunchURL: string
-  // windows: Signal<Window[]>
-  // lastActiveWindow: Signal<Window | undefined>
   isChild: boolean
 }>
 
