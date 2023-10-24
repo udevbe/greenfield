@@ -18,7 +18,7 @@ over the [getting started](/greenfield/pages/getting_started) page first to have
 
 # Compositor
 
-The Compositor is at the center of everything. It's responsible for drawing application pixels on the screen and handling all
+The Compositor package sits at the center. It's responsible for drawing application pixels on the screen and handling all
 user input for these applications. It's a [Wayland compositor](https://en.wikipedia.org/wiki/Wayland_(protocol)#Wayland_compositors) library
 that is 100% compatible with existing native Wayland protocol. It implements the Wayland protocols `core` and `xdg-shell`. 
 In the browser, all applications are drawn using a WebGL texture inside a HTML5 canvas. 
@@ -74,7 +74,9 @@ yarn workspace @gfld/compositor-proxy build
 
 The build output can be found inside the `dist` folder. 
 
-The Compositor Proxy requires an implementation in order to run, a basic one is provided by the [Compositor Proxy CLI](#compositor-proxy-cli).
+## Usage
+
+The Compositor Proxy is just a library requires an implementation in order to run, a basic one is provided by the [Compositor Proxy CLI](#compositor-proxy-cli).
 
 ## High level technical
 
@@ -103,8 +105,52 @@ data to other remote Compositor Proxy instance. This avoids the round trip and o
 
 # Compositor Proxy CLI
 
-The Compositor Proxy CLI provides an implementation on top of the [Compositor Proxy](#compositor-proxy) and works together with the
-Compositor Shell.
+The Compositor Proxy CLI provides an implementation on top of the [Compositor Proxy](#compositor-proxy) and works closely together with the
+Compositor Shell to among other things start, stop, or force quite applications.
+
+## Usage
+
+The Compositor Proxy CLI accepts the arguments listed below.
+
+| Flag              | Default                 | Explanation                                                                                                                                                    |
+|-------------------|-------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--help`/`-h`     |                         | Show a help text.                                                                                                                                              |
+| `--basic-auth`    |                         | Basic auth to use when launching a new application.                                                                                                            |
+| `--bind-ip`       | `0.0.0.0`               | The ip address to bind to for websocket and http connections.                                                                                                  |
+| `--bind-port`     | `8081`                  | The port to bind to for websocket and http connections.                                                                                                        |
+| `--allow-origin`  | `http://localhost:8080` | The allowed origins during CORS checks.                                                                                                                        |
+| `--base-url`      | `ws://localhost:8081`   | The base ws(s) url to use when connecting to this endpoint.  This is also required to inform other endpoints when doing direct endpoint to endpoint transfers. |
+| `--render-device` | `/dev/dri/renderD128`   | Path of the render device that should be used for hardware acceleration. e.g. /dev/dri/renderD128                                                              |
+| `--encoder`       | `x264`                  | The gstreamer h264 encoder to use. 'x264' is a pure software encoder while 'nvh264' is a hw  accelerated encoder for Nvidia based GPUs.                        |
+| `--applications`  |                         | The path of the applications JSON file.                                                                                                                        |
+
+An additional config file with applications is also required. This example applications JSON file maps the
+paths `/gtk4-demo`, `/kwrite` and `/xterm` to an executable with additional context.
+```json
+{
+  "/gtk4-demo": {
+    "name": "GTK Demo",
+    "executable": "gtk4-demo",
+    "args": [],
+    "env": {}
+  },
+  "/kwrite": {
+    "name": "KWrite",
+    "executable": "kwrite",
+    "args": [
+      "-platform",
+      "wayland"
+    ],
+    "env": {}
+  },
+  "/xterm": {
+    "name": "XTerm",
+    "executable": "xterm",
+    "args": [],
+    "env": {}
+  }
+}
+```
 
 For XWayland support a few extra steps may be needed, this is optional and only required if you don't already hava an X server running eg. when running on a server:
 
@@ -112,16 +158,13 @@ For XWayland support a few extra steps may be needed, this is optional and only 
 - `touch "$HOME/$XAUTHORITY"`
 - `xauth add "${HOST}":1 . "$(xxd -l 16 -p /dev/urandom)"`
 
-This will start a development build+run. You should now see something that says `Compositor proxy started. Listening on port 8081`. You can also adjust some things
-in `src/config.yaml`.
-
-{: .note }
-> Firefox needs to be at least at version 113 and `dom.workers.modules.enabled` preference needs to be set to true. To change preferences in Firefox, visit `about:config`.
-
 You should now have a Wayland compositor running on your system, so let's start some applications. Most recent GTK3/4 applications (like gnome-terminal) should
 auto-detect the compositor-proxy and simply connect without issues or extra setup. QT applications often require an extra `-platform wayland` parameter.
 If your application can't connect, try setting the `WAYLAND_DISPLAY` environment variable to the value that was printed by compositor-proxy. ie if you see `Listening on: WAYLAND_DISPLAY=\"wayland-0\".`
 then set the environment variable `export WAYLAND_DISPLAY=wayland-0`.
+
+{: .note }
+> Firefox needs to be at least at version 113 and `dom.workers.modules.enabled` preference needs to be set to true. To change preferences in Firefox, visit `about:config`.
 
 After starting an application, you should see a message appear in the log output of the compositor-proxy that we started earlier: `New websocket connected.`.
 
