@@ -52,6 +52,9 @@ yarn workspace @gfld/compositor-shell build
 
 The build result is inside the `dist` folder and consists of static assets.
 
+{: .important }
+> Firefox needs to be at least at version 113 and `dom.workers.modules.enabled` preference needs to be set to true. To change preferences in Firefox, visit `about:config`.
+
 # Compositor Proxy
 
 The Compositor Proxy is a library that acts as a real native Wayland compositor and deals with all communication between a native Wayland application
@@ -152,19 +155,19 @@ paths `/gtk4-demo`, `/kwrite` and `/xterm` to an executable with additional cont
 }
 ```
 
-For XWayland support a few extra steps may be needed, this is optional and only required if you don't already hava an X server running eg. when running on a server:
-
-- `export XAUTHORITY=.Xauthority`
-- `touch "$HOME/$XAUTHORITY"`
-- `xauth add "${HOST}":1 . "$(xxd -l 16 -p /dev/urandom)"`
-
-You should now have a Wayland compositor running on your system, so let's start some applications. Most recent GTK3/4 applications (like gnome-terminal) should
-auto-detect the compositor-proxy and simply connect without issues or extra setup. QT applications often require an extra `-platform wayland` parameter.
-If your application can't connect, try setting the `WAYLAND_DISPLAY` environment variable to the value that was printed by compositor-proxy. ie if you see `Listening on: WAYLAND_DISPLAY=\"wayland-0\".`
-then set the environment variable `export WAYLAND_DISPLAY=wayland-0`.
-
 {: .note }
-> Firefox needs to be at least at version 113 and `dom.workers.modules.enabled` preference needs to be set to true. To change preferences in Firefox, visit `about:config`.
+> Most recent GTK3/4 applications should  auto-detect the compositor-proxy and simply connect without issues or extra 
+> setup. QT applications often require an extra `-platform wayland` parameter.
+
+For XWayland support a few extra steps may be needed, this is optional and only required if you don't already 
+hava an X server running eg. when running on a server. These commands should be executed before starting the 
+Compositor Proxy CLI.
+
+```shell
+export XAUTHORITY=.Xauthority
+touch "$HOME/$XAUTHORITY"`
+xauth add "${HOST}":1 . "$(xxd -l 16 -p /dev/urandom)"
+````
 
 After starting an application, you should see a message appear in the log output of the compositor-proxy that we started earlier: `New websocket connected.`.
 
