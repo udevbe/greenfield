@@ -50,6 +50,7 @@ export type ToMainProcessMessage =
       type: 'launchAppSuccess'
       payload: {
         replySerial: number
+        pid: string
         key: string
       }
     }
@@ -128,7 +129,7 @@ async function launchApp({
     nativeAppContext.onDisconnect()
     const launchAppSuccess: ToMainProcessMessage = {
       type: 'launchAppSuccess',
-      payload: { replySerial: serial, key: nativeAppContext.key },
+      payload: { replySerial: serial, pid: `${nativeAppContext.pid}`, key: nativeAppContext.key },
     }
     process.send!(launchAppSuccess)
   } catch (e: any) {

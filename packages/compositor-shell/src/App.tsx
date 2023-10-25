@@ -2,8 +2,7 @@ import { Signal } from '@preact/signals'
 import { CompositorClient, createAppLauncher, createCompositorSession, initWasm } from '@gfld/compositor'
 import { render } from 'preact'
 import { AppBar, AppEntryProps } from './AppBar'
-import { act } from 'preact/test-utils'
-import { CompositorSurface } from '@gfld/compositor/dist'
+import { CompositorSurface } from '@gfld/compositor'
 
 // load web assembly libraries
 const wasmLibs = initWasm()

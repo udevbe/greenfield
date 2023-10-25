@@ -5,6 +5,15 @@ import { IncomingMessage, ServerResponse } from 'http'
 import { args } from './main-args'
 import { AppConfigSchema } from './app-config'
 
+type RemoteAppContextAttributes = Readonly<{
+  baseURL: string
+  signalURL: string
+  key: string
+  pid: string
+  name: string
+  internal: boolean
+}>
+
 const allowHeaders = 'Content-Type, X-Compositor-Session-Id, Authorization, WWW-Authenticate'
 const maxAge = '36000'
 let messageSerial = 0
@@ -158,10 +167,11 @@ export async function handleGET(
     proxyURL.searchParams.set('compositorSessionId', compositorSessionId)
     proxyURL.searchParams.set('key', messageReply.payload.key)
 
-    const reply: { baseURL: string; signalURL: string; key: string; name: string; internal: boolean } = {
+    const reply: RemoteAppContextAttributes = {
       baseURL: config.public.baseURL,
       signalURL: proxyURL.href,
       key: messageReply.payload.key,
+      pid: messageReply.payload.pid,
       name: appName,
       internal: false,
     }

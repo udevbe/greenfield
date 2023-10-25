@@ -7,6 +7,15 @@ import { Session } from './Session'
 import { setTimeout } from 'timers'
 import { WebSocket } from 'ws'
 
+export type RemoteAppContextAttributes = Readonly<{
+  baseURL: string
+  signalURL: string
+  pid: string
+  key: string
+  name: string
+  internal: boolean
+}>
+
 export const enum SignalingMessageType {
   CONNECT_CHANNEL,
   DISCONNECT_CHANNEL,
@@ -55,7 +64,7 @@ export class NativeAppContext {
     readonly session: Session,
     readonly pid: number,
     readonly name: string,
-    private readonly external: boolean,
+    readonly external: boolean,
   ) {}
 
   addNativeWaylandClientSession(nativeClientSession: NativeWaylandClientSession) {
@@ -192,10 +201,12 @@ export class NativeAppContext {
     proxyURL.searchParams.set('compositorSessionId', this.session.compositorSessionId)
     proxyURL.searchParams.set('key', nativeAppContext.key)
 
-    const data: { baseURL: string; signalURL: string; name: string; internal: boolean } = {
+    const data: RemoteAppContextAttributes = {
       baseURL: this.session.config.public.baseURL,
       signalURL: proxyURL.href,
       name: nativeAppContext.name,
+      pid: `${nativeAppContext.pid}`,
+      key: nativeAppContext.key,
       internal,
     }
 
