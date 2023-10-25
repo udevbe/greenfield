@@ -560,6 +560,9 @@ function setupClientOutOfBandHandlers(client: Client, outOfBandChannel: RemoteOu
     const commitSerial = payload[1]
 
     const wlSurface = client.connection.wlObjects[resourceId] as WlSurfaceResource
+    if (wlSurface === undefined) {
+      return
+    }
     const surface = wlSurface.implementation as Surface
     surface.commitSerials.push(commitSerial)
   })
