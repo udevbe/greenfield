@@ -169,59 +169,19 @@ touch "$HOME/$XAUTHORITY"`
 xauth add "${HOST}":1 . "$(xxd -l 16 -p /dev/urandom)"
 ````
 
-After starting an application, you should see a message appear in the log output of the compositor-proxy that we started earlier: `New websocket connected.`.
+After starting an application, you should see a message appear in the log output of the Compositor Proxy CLI that we started earlier: `New websocket connected.`.
 
 ## Packaged build
 
 It's also possible to build a distributable release.
 
 ```shell
-yarn package
+yarn workspace @gfld/compositor-proxy-cli package
 ````
 
-This creates a set of files in the `package` directory. The `run.sh` script accepts several options:
+This creates a set of files in the `package` directory. The `run.sh` script accepts the same parameters as the Compositor Proxy CLI.
+The following set of dependencies need to be available for mesa & nvidia support, if you're running a Debian based distro you can run:
 
-```shell
-Usage
-  $ compositor-proxy <options>
-
-Options
-  --help, Print this help text.
-  --static-session-id=...,  Mandatory. Only use and accept this session id when communicating.
-  --config-path=...,  Use a custom configuration file located at this path.
-
-Examples
-  $ compositor-proxy --static-session-id=test123 --config-path=./config.yaml
-```
-
-Below is an example config file (the default config). It can be copy-pasted and used with the `--config-path=...` option.
-You will at least need to set the `public.baseURL` when not running locally.
-```yaml
-server:
-  http:
-    # Hostname argument.
-    bindIP: 0.0.0.0
-    # Port argument.
-    bindPort: 8081
-    # CORS allowed origins, used when doing cross-origin requests. Value can be * or comma seperated domains.
-    allowOrigin: '*'
-public:
-  # The base url to use when connecting to this endpoint. 
-  # This is the publicly reachable address of the compositor proxy.
-  baseURL: http://localhost:8081
-encoder:
-  # Path of the render device that should be used for hardware acceleration. e.g. /dev/dri/renderD128
-  renderDevice: /dev/dri/renderD128
-  # The gstreamer h264 encoder to use. 'x264' and 'nvh264' are supported ('vaapih264' is currently broken). 'x264'
-  # is a pure software encoder. While 'nvh264' is a hw accelerated encoder for Nvidia based GPUs.
-  # see https://gstreamer.freedesktop.org/documentation/x264/index.html
-  # see https://gstreamer.freedesktop.org/documentation/nvenc/nvh264enc.html
-  h264Encoder: x264
-logging:
-  # "fatal" | "error" | "warn" | "info" | "debug" | "trace"
-  level: info
-```
-The packaged binary expects the following set of dependencies to be available for mesa & nvidia support, if you're running a Debian based distro you can run:
 ```
 apt-get install libffi8 libudev1 libgbm1 libgraphene-1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
     gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-gl libosmesa6 libdrm2 libdrm-intel1 \
@@ -231,10 +191,9 @@ apt-get install libffi8 libudev1 libgbm1 libgraphene-1.0-0 gstreamer1.0-plugins-
 
 ## Docker
 
-Running the Greenfield Compositor Proxy can also be done using docker-compose (see `docker-compose.yml` in the 
+Running the Compositor Proxy CLI can also be done using docker-compose (see `docker-compose.yml` in the 
 `compositor-proxy` directory), but you will be limited to the applications specified in the docker-compose file. Beware 
-that this docker compose file only provides the Greenfield Compositor Proxy, so you will still need to run a Greenfield 
-Compositor Module implementation yourself.
+that this docker compose file only provides the Compositor Proxy CLI, so you will still need to run the Compositor Shell yourself.
 
-The compositor-proxy is also available as a public docker image `docker.io/udevbe/compositor-proxy` but does not include 
-any `config.yaml`. This means you'll have to include it yourself using a mount. Have a look at the docker-compose file for inspiration.
+The Compositor Proxy CLI is also available as a public docker image `docker.io/udevbe/compositor-proxy-cli` but does not include 
+any `applications.json`. This means you'll have to include it yourself using a mount.

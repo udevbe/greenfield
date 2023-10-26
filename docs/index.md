@@ -19,3 +19,5 @@ or WebAssembly applications directly in your browser.
 <sub>
 or have a [look on how it all began](https://wayouttheresoftware.blogspot.com/2023/07/some-history-about-greenfield.html) 
 </sub>
+
+![img_3.png](pages/getting_started/img_3.png)
