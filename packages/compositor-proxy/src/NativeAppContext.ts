@@ -1,10 +1,10 @@
-import { NativeWaylandClientSession } from './NativeWaylandClientSession'
-import { randomBytes } from 'crypto'
-import { ChannelDesc, WebSocketChannel } from './Channel'
-import { createLogger } from './Logger'
-import { spawn } from 'child_process'
-import { Session } from './Session'
-import { setTimeout } from 'timers'
+import { NativeWaylandClientSession } from './NativeWaylandClientSession.js'
+import { randomBytes } from 'node:crypto'
+import { ChannelDesc, WebSocketChannel } from './Channel.js'
+import { createLogger } from './Logger.js'
+import { spawn } from 'node:child_process'
+import { Session } from './Session.js'
+import { setTimeout } from 'node:timers'
 import { WebSocket } from 'ws'
 
 export type RemoteAppContextAttributes = Readonly<{

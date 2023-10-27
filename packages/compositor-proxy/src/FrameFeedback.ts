@@ -1,6 +1,6 @@
-import { destroyWlResourceSilently, flush, sendEvents, WlClient } from './wayland-server'
-import { performance } from 'perf_hooks'
-import type { Channel } from './Channel'
+import { destroyWlResourceSilently, flush, sendEvents, WlClient } from './wayland-server.js'
+import { performance } from 'node:perf_hooks'
+import type { Channel } from './Channel.js'
 
 let tickInterval = 16.667
 let nextTickInterval = tickInterval

@@ -23,8 +23,6 @@
   },
   "dependencies": {
     "@gfld/xtsb": "workspace:^",
-    "pino": "^8.15.1",
-    "pino-pretty": "^10.2.0",
     "ws": "^8.14.2"
   },
   "devDependencies": {

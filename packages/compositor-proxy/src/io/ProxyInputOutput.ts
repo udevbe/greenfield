@@ -1,9 +1,9 @@
-import { createReadStream } from 'fs'
-import { ProxyFD } from './types'
-import { createLogger } from '../Logger'
-import { createMemoryMappedFile, makePipe } from '../wayland-server'
+import { createReadStream } from 'node:fs'
+import { ProxyFD } from './types.js'
+import { createLogger } from '../Logger.js'
+import { createMemoryMappedFile, makePipe } from '../wayland-server.js'
 import { createWebSocketStream, WebSocket } from 'ws'
-import { Session } from '../Session'
+import { Session } from '../Session.js'
 
 const logger = createLogger('webfs')
 

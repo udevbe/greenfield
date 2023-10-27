@@ -1,9 +1,9 @@
-import { createLogger } from './Logger'
+import { createLogger } from './Logger.js'
 import { nodeFDConnectionSetup } from '@gfld/xtsb'
-import { ClientEntry, NativeWaylandCompositorSession } from './NativeWaylandCompositorSession'
-import { equalValueExternal, setupXWayland, teardownXWayland, WlClient, XWaylandHandle } from './wayland-server'
-import { createReadStream } from 'fs'
-import { Channel, createXWMDataChannel } from './Channel'
+import { ClientEntry, NativeWaylandCompositorSession } from './NativeWaylandCompositorSession.js'
+import { equalValueExternal, setupXWayland, teardownXWayland, WlClient, XWaylandHandle } from './wayland-server.js'
+import { createReadStream } from 'node:fs'
+import { Channel, createXWMDataChannel } from './Channel.js'
 
 const logger = createLogger('xwayland')
 const textEncoder = new TextEncoder()

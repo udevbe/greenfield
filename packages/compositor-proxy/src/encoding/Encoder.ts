@@ -16,7 +16,7 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import appEndpointNative from '../addons/proxy-encoding-addon'
-import { Session } from '../Session'
+import { Session } from '../Session.js'
 
 export function createEncoder(session: Session, wlClient: unknown, drmContext: unknown): Encoder {
   // TODO we could probably use a pool here?

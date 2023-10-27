@@ -1,11 +1,11 @@
 import { createWebSocketStream, WebSocket, WebSocketServer } from 'ws'
-import { Session } from './Session'
-import { IncomingMessage } from 'http'
-import { close, createReadStream, createWriteStream, read } from 'fs'
-import { createLogger } from './Logger'
-import wl_surface_interceptor from './protocol/wl_surface_interceptor'
-import { isSignalingMessage, SignalingMessageType } from './NativeAppContext'
-import { Socket } from 'net'
+import { Session } from './Session.js'
+import { IncomingMessage } from 'node:http'
+import { close, createReadStream, createWriteStream, read } from 'node:fs'
+import { createLogger } from './Logger.js'
+import wl_surface_interceptor from './protocol/wl_surface_interceptor.js'
+import { isSignalingMessage, SignalingMessageType } from './NativeAppContext.js'
+import { Socket } from 'node:net'
 
 // 64*1024=64kb
 const TRANSFER_CHUNK_SIZE = 65792 as const

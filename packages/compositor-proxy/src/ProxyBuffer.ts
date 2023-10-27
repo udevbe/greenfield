@@ -1,4 +1,4 @@
-import { MessageDestination } from './wayland-server'
+import { MessageDestination } from './wayland-server.js'
 
 let bufferSerial = 0
 

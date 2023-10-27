@@ -16,9 +16,9 @@
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
 import { PollHandle, startPoll, stopPoll } from './addons/proxy-poll-addon'
-import { createProxyInputOutput } from './io/ProxyInputOutput'
-import { createLogger } from './Logger'
-import { createNativeClientSession, NativeWaylandClientSession } from './NativeWaylandClientSession'
+import { createProxyInputOutput } from './io/ProxyInputOutput.js'
+import { createLogger } from './Logger.js'
+import { createNativeClientSession, NativeWaylandClientSession } from './NativeWaylandClientSession.js'
 import {
   addSocketAuto,
   createDisplay,
@@ -33,12 +33,12 @@ import {
   nativeGlobalNames,
   WlClient,
   WlDisplay,
-} from './wayland-server'
-import { Channel, createProtocolChannel } from './Channel'
-import { webcrypto } from 'crypto'
-import { Session } from './Session'
-import { readFileSync } from 'fs'
-import { NativeAppContext } from './NativeAppContext'
+} from './wayland-server.js'
+import { Channel, createProtocolChannel } from './Channel.js'
+import { webcrypto } from 'node:crypto'
+import { Session } from './Session.js'
+import { readFileSync } from 'node:fs'
+import { NativeAppContext } from './NativeAppContext.js'
 import { pid } from 'node:process'
 
 const logger = createLogger('native-compositor-session')

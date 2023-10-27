@@ -15,14 +15,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { unmarshallArgs } from './wayland-server'
-import { createEncoder, Encoder } from './encoding/Encoder'
+import { unmarshallArgs } from './wayland-server.js'
+import { createEncoder, Encoder } from './encoding/Encoder.js'
 
-import { createLogger } from './Logger'
-import wlSurfaceInterceptor from './protocol/wl_surface_interceptor'
-import { FrameFeedback } from './FrameFeedback'
-import { incrementAndGetNextBufferSerial, ProxyBuffer } from './ProxyBuffer'
-import { Channel, createFeedbackChannel, createFrameDataChannel } from './Channel'
+import { createLogger } from './Logger.js'
+import wlSurfaceInterceptor from './protocol/wl_surface_interceptor.js'
+import { FrameFeedback } from './FrameFeedback.js'
+import { incrementAndGetNextBufferSerial, ProxyBuffer } from './ProxyBuffer.js'
+import { Channel, createFeedbackChannel, createFrameDataChannel } from './Channel.js'
 
 const logger = createLogger('surface-buffer-encoding')
 

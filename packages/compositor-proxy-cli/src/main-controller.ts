@@ -1,9 +1,9 @@
-import { ToMainProcessMessage, ToSessionProcessMessage } from './SessionProcess'
-import { ChildProcess } from 'child_process'
+import { ToMainProcessMessage, ToSessionProcessMessage } from './SessionProcess.js'
+import { ChildProcess } from 'node:child_process'
 import { Configschema, createLogger } from '@gfld/compositor-proxy'
-import { IncomingMessage, ServerResponse } from 'http'
-import { args } from './main-args'
-import { AppConfigSchema } from './app-config'
+import { IncomingMessage, ServerResponse } from 'node:http'
+import { args } from './main-args.js'
+import { AppConfigSchema } from './app-config.js'
 
 type RemoteAppContextAttributes = Readonly<{
   baseURL: string
@@ -91,7 +91,7 @@ function sendMessageWithReply<T extends Extract<ToSessionProcessMessage, { type:
   })
 }
 
-export function handleOptions(config: Configschema, request: IncomingMessage, response: ServerResponse, url: URL) {
+export function handleOptions(config: Configschema, request: IncomingMessage, response: ServerResponse, _url: URL) {
   const origin = request.headers['origin']
   const accessControlRequestMethod = request.headers['access-control-request-method']
   if (origin === '' || accessControlRequestMethod === '') {
@@ -183,7 +183,7 @@ export async function handleGET(
         'Content-Type': 'application/json',
       })
       .end(JSON.stringify(reply))
-  } catch (e) {
+  } catch (e: any) {
     logger.error(e)
     response
       .writeHead(500, 'Internal Server Error', {

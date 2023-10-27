@@ -1,5 +1,5 @@
-import { Kcp } from './kcp'
-import { NativeAppContext } from './NativeAppContext'
+import { Kcp } from './kcp.js'
+import { NativeAppContext } from './NativeAppContext.js'
 import { WebSocket } from 'ws'
 
 const MTU = 64000

@@ -1,5 +1,5 @@
 import { parseArgs, ParseArgsConfig } from 'node:util'
-import { AppConfigSchema } from './app-config'
+import { AppConfigSchema } from './app-config.js'
 import { readFileSync } from 'node:fs'
 import Ajv from 'ajv'
 import addFormats from 'ajv-formats'

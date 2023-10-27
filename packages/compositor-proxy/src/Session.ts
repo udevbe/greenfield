@@ -15,12 +15,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { createLogger } from './Logger'
+import { createLogger } from './Logger.js'
 
-import { createNativeCompositorSession, NativeWaylandCompositorSession } from './NativeWaylandCompositorSession'
-import { createXWaylandSession, XWaylandSession } from './XWaylandSession'
-import { NativeAppContext } from './NativeAppContext'
-import { Configschema } from './config'
+import { createNativeCompositorSession, NativeWaylandCompositorSession } from './NativeWaylandCompositorSession.js'
+import { createXWaylandSession, XWaylandSession } from './XWaylandSession.js'
+import { NativeAppContext } from './NativeAppContext.js'
+import { Configschema } from './config.js'
 
 // TODO create logger per proxy session instance
 const logger = createLogger('compositor-proxy-session')

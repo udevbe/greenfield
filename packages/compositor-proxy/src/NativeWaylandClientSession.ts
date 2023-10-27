@@ -15,14 +15,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Greenfield.  If not, see <https://www.gnu.org/licenses/>.
 
-import { createLogger } from './Logger'
-import { NativeWaylandCompositorSession } from './NativeWaylandCompositorSession'
-
-// eslint-disable-next-line camelcase,@typescript-eslint/ban-ts-comment
-// @ts-ignore
-import wl_display_interceptor from './protocol/wl_display_interceptor'
+import { createLogger } from './Logger.js'
+import { NativeWaylandCompositorSession } from './NativeWaylandCompositorSession.js'
+import wl_display_interceptor from './protocol/wl_display_interceptor.js'
 import { ProxyFD } from './io/types'
-import { TextDecoder, TextEncoder } from 'util'
+import { TextDecoder, TextEncoder } from 'node:util'
 import {
   destroyClient,
   destroyWlResourceSilently,
@@ -39,11 +36,11 @@ import {
   setWireMessageEndCallback,
   WlRegistry,
   WlClient,
-} from './wayland-server'
-import { ProxyBuffer } from './ProxyBuffer'
-import type { Channel } from './Channel'
-import wl_surface_interceptor from './protocol/wl_surface_interceptor'
-import { NativeAppContext } from './NativeAppContext'
+} from './wayland-server.js'
+import { ProxyBuffer } from './ProxyBuffer.js'
+import type { Channel } from './Channel.js'
+import wl_surface_interceptor from './protocol/wl_surface_interceptor.js'
+import { NativeAppContext } from './NativeAppContext.js'
 
 const logger = createLogger('native-client-session')
 
@@ -114,8 +111,11 @@ export function createNativeClientSession(
   protocolChannel.onMessage = (event) => {
     try {
       nativeClientSession.onMessage(event)
-    } catch (e) {
-      logger.error('BUG? Error while processing event from compositor.', e)
+    } catch (e: any) {
+      logger.error('BUG? Error while processing event from compositor.')
+      logger.error(`\tname: ${e.name} message: ${e.message} text: ${e.text}`)
+      logger.error('error object stack: ')
+      logger.error(e.stack)
       nativeClientSession.destroy()
     }
   }
