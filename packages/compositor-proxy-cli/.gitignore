@@ -1,7 +1,7 @@
 dist
 node_modules
 src/app-config.d.ts
-package/compositor-proxy-cli
+package/main
 package/libproxy-encoding.so
 package/libwayland-server.so.0
 package/libwestfield.so

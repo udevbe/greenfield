@@ -939,6 +939,7 @@ __metadata:
     "@types/ws": ^8.5.6
     "@typescript-eslint/eslint-plugin": ^6.7.3
     "@typescript-eslint/parser": ^6.7.3
+    "@vercel/ncc": ^0.38.1
     ajv: ^8.12.0
     ajv-formats: ^2.1.1
     eslint: ^8.50.0
@@ -2029,6 +2030,17 @@ __metadata:
     "@typescript-eslint/types": 6.7.3
     eslint-visitor-keys: ^3.4.1
   checksum: cef64173a919107f420703e204d97d0afef0d9bd7a67570df5bdb39ac9464211c5a7b3af735d8f41e8004b443ab83e88b1d6fb951886aed4d3fe9d4778667199
+  languageName: node
+  linkType: hard
+
+"@vercel/ncc@npm:^0.38.1":
+  version: 0.38.1
+  resolution: "@vercel/ncc@npm:0.38.1"
+  dependencies:
+    node-gyp: latest
+  bin:
+    ncc: dist/ncc/cli.js
+  checksum: a522bb44c25a65db89941b08ca5817794b6920052f09a9cbd202cc987b81c13dd48cad9aa3b06793fc47ef70ae87fa0b85caf5b6a73e95de8091818049ed6194
   languageName: node
   linkType: hard
 

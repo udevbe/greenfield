@@ -1,0 +1,16 @@
+{
+  "scripts": [
+    "dist/**/*.js",
+    "node_modules/@gfld/compositor-proxy/dist/protocol/*.js"
+  ],
+  "assets": [
+    "dist/**/*.json",
+    "dist/**/*.so",
+    "dist/**/*.node",
+    "dist/**/*.so.0"
+  ],
+  "targets": [
+    "node18-linux-x64"
+  ],
+  "outputPath": "package"
+}

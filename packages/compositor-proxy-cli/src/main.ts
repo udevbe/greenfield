@@ -86,8 +86,7 @@ function main() {
       let childProcess = sessionProcesses[compositorSessionId]
       if (childProcess === undefined) {
         logger.info('No proxy session exists for this compositor, spawning a new one.')
-        const forkScript = path.join(__dirname, 'SessionProcess')
-        childProcess = fork(forkScript)
+        childProcess = fork(path.join(__dirname, './SessionProcess'))
 
         childProcess.once('exit', (code, signal) => {
           logger.info(`Proxy session exited: ${signal || code}`)
