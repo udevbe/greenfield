@@ -60,7 +60,7 @@ The build result is inside the `dist` folder and consists of static assets.
 The Compositor Proxy is a library that acts as a real native Wayland compositor and deals with all communication between a native Wayland application
 and the Compositor running in the browser.
 
-To build, you need a set of native dependencies. You can look at the [Docker image](https://github.com/udevbe/greenfield/blob/master/compositor-proxy/Dockerfile#L4) to see which ones you need to build and run respectively, or if you're running a Debian based distro you can run:
+To build, a set of build dependencies is required. Look at the [Docker image](https://github.com/udevbe/greenfield/blob/master/compositor-proxy/Dockerfile#L4) to see which ones you need to build and run respectively, or if you're running a Debian based distro you can run:
 ```
 sudo apt install cmake build-essential ninja-build pkg-config libffi-dev libudev-dev libgbm-dev libdrm-dev libegl-dev \ 
  libwayland-dev libglib2.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgraphene-1.0-dev gstreamer1.0-plugins-base \ 
@@ -69,7 +69,7 @@ sudo apt install cmake build-essential ninja-build pkg-config libffi-dev libudev
 
 More dependencies may be required depending on your GPU eg. for nvidia based cards, you might need additional drivers and libraries.
 
-Building is straightforward.
+Building the Compositor Proxy is straightforward.
 
 ```shell
 yarn workspace @gfld/compositor-proxy build
@@ -79,7 +79,7 @@ The build output can be found inside the `dist` folder.
 
 ## Usage
 
-The Compositor Proxy is just a library requires an implementation in order to run, a basic one is provided by the [Compositor Proxy CLI](#compositor-proxy-cli).
+The Compositor Proxy is just a library and requires an implementation in order to run. A basic implementation is provided by the [Compositor Proxy CLI](#compositor-proxy-cli).
 
 ## Encoding Pipeline
 
@@ -109,7 +109,24 @@ data to other remote Compositor Proxy instance. This avoids the round trip and o
 # Compositor Proxy CLI
 
 The Compositor Proxy CLI provides an implementation on top of the [Compositor Proxy](#compositor-proxy) and works closely together with the
-Compositor Shell to among other things start, stop, or force quite applications.
+Compositor Shell to start, stop, or force quit applications. The Compositor Proxy CLI can be built into a single distributable binary.
+
+```shell
+yarn workspace @gfld/compositor-proxy-cli build
+yarn workspace @gfld/compositor-proxy-cli package
+````
+
+This creates a single binary `compositor-proxy-cli` in the `/packages/compositor-proxy-cli/package` directory.
+The Compositor Proxy CLI expects a set of dependencies to be available at runtime for [Mesa](https://www.mesa3d.org/) & Nvidia GPU support. 
+
+On a Debian based distro run the following command.
+
+```shell
+apt-get install libffi8 libudev1 libgbm1 libgraphene-1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-gl libosmesa6 libdrm2 libdrm-intel1 \
+    libopengl0 libglvnd0 libglx0 libglapi-mesa libegl1-mesa libglx-mesa0 libnvidia-egl-wayland1 libnvidia-egl-gbm1 \
+    xwayland xauth xxd inotify-tools
+```
 
 ## Usage
 
@@ -127,7 +144,7 @@ The Compositor Proxy CLI accepts the arguments listed below.
 | `--encoder`       | `x264`                  | The gstreamer h264 encoder to use. 'x264' is a pure software encoder while 'nvh264' is a hw  accelerated encoder for Nvidia based GPUs.                        |
 | `--applications`  |                         | The path of the applications JSON file.                                                                                                                        |
 
-An additional config file with applications is also required. This example applications JSON file maps the
+An additional `--applications` config file is also required. This example applications JSON file maps the
 paths `/gtk4-demo`, `/kwrite` and `/xterm` to an executable with additional context.
 ```json
 {
@@ -170,24 +187,6 @@ xauth add "${HOST}":1 . "$(xxd -l 16 -p /dev/urandom)"
 ````
 
 After starting an application, you should see a message appear in the log output of the Compositor Proxy CLI that we started earlier: `New websocket connected.`.
-
-## Packaged build
-
-It's also possible to build a distributable single binary.
-
-```shell
-yarn workspace @gfld/compositor-proxy-cli package
-````
-
-This creates a single binary `compositor-proxy-cli` in the `package` directory.
-The following set of dependencies need to be available for mesa & nvidia support. If you're running a Debian based distro you can run:
-
-```
-apt-get install libffi8 libudev1 libgbm1 libgraphene-1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
-    gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-gl libosmesa6 libdrm2 libdrm-intel1 \
-    libopengl0 libglvnd0 libglx0 libglapi-mesa libegl1-mesa libglx-mesa0 libnvidia-egl-wayland1 libnvidia-egl-gbm1 \
-    xwayland xauth xxd inotify-tools
-```
 
 ## Docker
 

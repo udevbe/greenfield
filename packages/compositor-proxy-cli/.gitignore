@@ -1,4 +1,3 @@
 dist
 node_modules
-src/app-config.d.ts
 package/compositor-proxy-cli
