@@ -16,8 +16,8 @@ or WebAssembly applications directly in your browser.
 [Getting started](pages/getting_started/){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
 [View it on GitHub](https://github.com/udevbe/greenfield){: .btn .fs-5 .mb-4 .mb-md-0 }
 
-<sub>
-or have a [look on how it all began](https://wayouttheresoftware.blogspot.com/2023/07/some-history-about-greenfield.html) 
-</sub>
+![hello.png](hello.png)
 
-![img_3.png](pages/getting_started/img_3.png)
+<sub>
+or take a [look on how it all began](https://wayouttheresoftware.blogspot.com/2023/07/some-history-about-greenfield.html) 
+</sub>

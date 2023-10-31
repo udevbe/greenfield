@@ -8,4 +8,4 @@ or WebAssembly applications directly in your browser.
 
 Visit the [documentation](http://udev.be/greenfield), or have [a look on how it all began](https://wayouttheresoftware.blogspot.com/2023/07/some-history-about-greenfield.html)
 
-![img_3.png](docs/pages/getting_started/img_3.png)
+![img_3.png](docs/hello.png)

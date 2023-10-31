@@ -173,20 +173,20 @@ After starting an application, you should see a message appear in the log output
 
 ## Packaged build
 
-It's also possible to build a distributable release.
+It's also possible to build a distributable single binary.
 
 ```shell
 yarn workspace @gfld/compositor-proxy-cli package
 ````
 
-This creates a set of files in the `package` directory. The `run.sh` script accepts the same parameters as the Compositor Proxy CLI.
-The following set of dependencies need to be available for mesa & nvidia support, if you're running a Debian based distro you can run:
+This creates a single binary `compositor-proxy-cli` in the `package` directory.
+The following set of dependencies need to be available for mesa & nvidia support. If you're running a Debian based distro you can run:
 
 ```
 apt-get install libffi8 libudev1 libgbm1 libgraphene-1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
     gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-gl libosmesa6 libdrm2 libdrm-intel1 \
     libopengl0 libglvnd0 libglx0 libglapi-mesa libegl1-mesa libglx-mesa0 libnvidia-egl-wayland1 libnvidia-egl-gbm1 \
-    xwayland xauth xxd inotify-tools libnode108
+    xwayland xauth xxd inotify-tools
 ```
 
 ## Docker
