@@ -1,0 +1,89 @@
+diff --git a/.idea/workspace.xml b/.idea/workspace.xml
+index 14fec61e2926a601fb3961397b8137f95dd961f1..846c3b0f759e0543752b887cc1fa9b973c763881 100644
+--- a/.idea/workspace.xml
++++ b/.idea/workspace.xml
+@@ -21,20 +21,20 @@
+     <option name="hideEmptyMiddlePackages" value="true" />
+     <option name="showLibraryContents" value="true" />
+   </component>
+-  <component name="PropertiesComponent"><![CDATA[{
+-  "keyToString": {
+-    "RunOnceActivity.OpenProjectViewOnStart": "true",
+-    "RunOnceActivity.ShowReadmeOnStart": "true",
+-    "WebServerToolWindowFactoryState": "false",
+-    "last_opened_file_path": "/tmp/xfs-e0e76921/user",
+-    "node.js.detected.package.eslint": "true",
+-    "node.js.detected.package.tslint": "true",
+-    "node.js.selected.package.eslint": "(autodetect)",
+-    "node.js.selected.package.tslint": "(autodetect)",
+-    "nodejs_package_manager_path": "npm",
+-    "vue.rearranger.settings.migration": "true"
++  <component name="PropertiesComponent">{
++  &quot;keyToString&quot;: {
++    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
++    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
++    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
++    &quot;last_opened_file_path&quot;: &quot;/tmp/xfs-22a43d99/user&quot;,
++    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
++    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
++    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
++    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
++    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
++    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+   }
+-}]]></component>
++}</component>
+   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+   <component name="TaskManager">
+     <task active="true" id="Default" summary="Default task">
+@@ -45,6 +45,8 @@
+       <updated>1698606954911</updated>
+       <workItem from="1698606955938" duration="1458000" />
+       <workItem from="1698738793292" duration="216000" />
++      <workItem from="1698743331338" duration="344000" />
++      <workItem from="1698743876263" duration="181000" />
+     </task>
+     <servers />
+   </component>
+diff --git a/prelude/bootstrap.js b/prelude/bootstrap.js
+index d94467a2bb4444a8972a6d960af638bffc385920..d81c9a076cf53e1f51793763818656a07b1c2262 100644
+--- a/prelude/bootstrap.js
++++ b/prelude/bootstrap.js
+@@ -2185,6 +2185,12 @@ function payloadFileSync(pointer) {
+ // PATCH PROCESS ///////////////////////////////////////////////////
+ // /////////////////////////////////////////////////////////////////
+ (() => {
++  copyNativeDeps([
++    '/snapshot/greenfield/packages/compositor-proxy/dist/addons/libproxy-encoding.so',
++    '/snapshot/greenfield/packages/compositor-proxy/dist/addons/libwayland-server.so.0',
++    '/snapshot/greenfield/packages/compositor-proxy/dist/addons/libwestfield.so',
++  ])
++
+   const ancestor = {
+     dlopen: process.dlopen,
+   };
+@@ -2194,7 +2200,9 @@ function payloadFileSync(pointer) {
+     return f;
+   }
+ 
+-  function copyNativeDeps(modulePaths, tmpFolder) {
++  function copyNativeDeps(modulePaths) {
++    const tmpFolder = path.join(tmpdir(), 'pkg', 'shared');
++    createDirRecursively(tmpFolder);
+     for(const modulePath of modulePaths) {
+       const moduleBaseName = path.basename(modulePath);
+       const tmpModulePath = path.join(tmpFolder, `${moduleBaseName}`);
+@@ -2255,13 +2263,6 @@ function payloadFileSync(pointer) {
+ 
+       // replace the path with the new module path
+       args[1] = newPath;
+-
+-      process.env['LD_LIBRARY_PATH'] = tmpFolder
+-      copyNativeDeps([
+-        '/snapshot/greenfield/packages/compositor-proxy/dist/addons/libproxy-encoding.so',
+-        '/snapshot/greenfield/packages/compositor-proxy/dist/addons/libwayland-server.so.0',
+-        '/snapshot/greenfield/packages/compositor-proxy/dist/addons/libwestfield.so',
+-      ], tmpFolder)
+     }
+ 
+     return ancestor.dlopen.apply(process, args);

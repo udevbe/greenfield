@@ -5,5 +5,8 @@
     "packages/*",
     "examples/webapps/*"
   ],
-  "packageManager": "yarn@3.6.3"
+  "packageManager": "yarn@3.6.3",
+  "resolutions": {
+    "pkg@^5.8.1": "patch:pkg@patch%3Apkg@patch%253Apkg@npm%25253A5.8.1%2523./.yarn/patches/pkg-npm-5.8.1-db9700609f.patch%253A%253Aversion=5.8.1&hash=488bc0&locator=root-workspace-0b6124%252540workspace%25253A.%23./.yarn/patches/pkg-patch-944cc2c21c.patch%3A%3Aversion=5.8.1&hash=6d706d&locator=root-workspace-0b6124%2540workspace%253A.#./.yarn/patches/pkg-patch-44bcef291a.patch"
+  }
 }

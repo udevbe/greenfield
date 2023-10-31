@@ -1,0 +1,275 @@
+diff --git a/.idea/.gitignore b/.idea/.gitignore
+new file mode 100644
+index 0000000000000000000000000000000000000000..13566b81b018ad684f3a35fee301741b2734c8f4
+--- /dev/null
++++ b/.idea/.gitignore
+@@ -0,0 +1,8 @@
++# Default ignored files
++/shelf/
++/workspace.xml
++# Editor-based HTTP Client requests
++/httpRequests/
++# Datasource local storage ignored files
++/dataSources/
++/dataSources.local.xml
+diff --git a/.idea/codeStyles/Project.xml b/.idea/codeStyles/Project.xml
+new file mode 100644
+index 0000000000000000000000000000000000000000..e85854a0093768f0451aae2f252a7643cb6af4e5
+--- /dev/null
++++ b/.idea/codeStyles/Project.xml
+@@ -0,0 +1,61 @@
++<component name="ProjectCodeStyleConfiguration">
++  <code_scheme name="Project" version="173">
++    <HTMLCodeStyleSettings>
++      <option name="HTML_SPACE_INSIDE_EMPTY_TAG" value="true" />
++      <option name="HTML_QUOTE_STYLE" value="Single" />
++      <option name="HTML_ENFORCE_QUOTES" value="true" />
++    </HTMLCodeStyleSettings>
++    <JSCodeStyleSettings version="0">
++      <option name="FORCE_SEMICOLON_STYLE" value="true" />
++      <option name="SPACE_BEFORE_FUNCTION_LEFT_PARENTH" value="false" />
++      <option name="USE_DOUBLE_QUOTES" value="false" />
++      <option name="FORCE_QUOTE_STYlE" value="true" />
++      <option name="ENFORCE_TRAILING_COMMA" value="Remove" />
++      <option name="SPACES_WITHIN_OBJECT_LITERAL_BRACES" value="true" />
++      <option name="SPACES_WITHIN_IMPORTS" value="true" />
++    </JSCodeStyleSettings>
++    <TypeScriptCodeStyleSettings version="0">
++      <option name="FORCE_SEMICOLON_STYLE" value="true" />
++      <option name="SPACE_BEFORE_FUNCTION_LEFT_PARENTH" value="false" />
++      <option name="USE_DOUBLE_QUOTES" value="false" />
++      <option name="FORCE_QUOTE_STYlE" value="true" />
++      <option name="ENFORCE_TRAILING_COMMA" value="Remove" />
++      <option name="SPACES_WITHIN_OBJECT_LITERAL_BRACES" value="true" />
++      <option name="SPACES_WITHIN_IMPORTS" value="true" />
++    </TypeScriptCodeStyleSettings>
++    <VueCodeStyleSettings>
++      <option name="INTERPOLATION_NEW_LINE_AFTER_START_DELIMITER" value="false" />
++      <option name="INTERPOLATION_NEW_LINE_BEFORE_END_DELIMITER" value="false" />
++    </VueCodeStyleSettings>
++    <codeStyleSettings language="HTML">
++      <option name="SOFT_MARGINS" value="80" />
++      <indentOptions>
++        <option name="INDENT_SIZE" value="2" />
++        <option name="CONTINUATION_INDENT_SIZE" value="2" />
++        <option name="TAB_SIZE" value="2" />
++      </indentOptions>
++    </codeStyleSettings>
++    <codeStyleSettings language="JavaScript">
++      <option name="SOFT_MARGINS" value="80" />
++      <indentOptions>
++        <option name="INDENT_SIZE" value="2" />
++        <option name="CONTINUATION_INDENT_SIZE" value="2" />
++        <option name="TAB_SIZE" value="2" />
++      </indentOptions>
++    </codeStyleSettings>
++    <codeStyleSettings language="TypeScript">
++      <option name="SOFT_MARGINS" value="80" />
++      <indentOptions>
++        <option name="INDENT_SIZE" value="2" />
++        <option name="CONTINUATION_INDENT_SIZE" value="2" />
++        <option name="TAB_SIZE" value="2" />
++      </indentOptions>
++    </codeStyleSettings>
++    <codeStyleSettings language="Vue">
++      <option name="SOFT_MARGINS" value="80" />
++      <indentOptions>
++        <option name="CONTINUATION_INDENT_SIZE" value="2" />
++      </indentOptions>
++    </codeStyleSettings>
++  </code_scheme>
++</component>
+\ No newline at end of file
+diff --git a/.idea/codeStyles/codeStyleConfig.xml b/.idea/codeStyles/codeStyleConfig.xml
+new file mode 100644
+index 0000000000000000000000000000000000000000..79ee123c2b23e069e35ed634d687e17f731cc702
+--- /dev/null
++++ b/.idea/codeStyles/codeStyleConfig.xml
+@@ -0,0 +1,5 @@
++<component name="ProjectCodeStyleConfiguration">
++  <state>
++    <option name="USE_PER_PROJECT_SETTINGS" value="true" />
++  </state>
++</component>
+\ No newline at end of file
+diff --git a/.idea/inspectionProfiles/Project_Default.xml b/.idea/inspectionProfiles/Project_Default.xml
+new file mode 100644
+index 0000000000000000000000000000000000000000..03d9549ea8e4ada36fb3ecbc30fef08175b7d728
+--- /dev/null
++++ b/.idea/inspectionProfiles/Project_Default.xml
+@@ -0,0 +1,6 @@
++<component name="InspectionProjectProfileManager">
++  <profile version="1.0">
++    <option name="myName" value="Project Default" />
++    <inspection_tool class="Eslint" enabled="true" level="WARNING" enabled_by_default="true" />
++  </profile>
++</component>
+\ No newline at end of file
+diff --git a/.idea/misc.xml b/.idea/misc.xml
+new file mode 100644
+index 0000000000000000000000000000000000000000..639900d13c6182e452e33a3bd638e70a0146c785
+--- /dev/null
++++ b/.idea/misc.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="ProjectRootManager">
++    <output url="file://$PROJECT_DIR$/out" />
++  </component>
++</project>
+\ No newline at end of file
+diff --git a/.idea/modules.xml b/.idea/modules.xml
+new file mode 100644
+index 0000000000000000000000000000000000000000..d9fb14e4d06a030cba3cd105982c4f196e0718a0
+--- /dev/null
++++ b/.idea/modules.xml
+@@ -0,0 +1,8 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="ProjectModuleManager">
++    <modules>
++      <module fileurl="file://$PROJECT_DIR$/.idea/user.iml" filepath="$PROJECT_DIR$/.idea/user.iml" />
++    </modules>
++  </component>
++</project>
+\ No newline at end of file
+diff --git a/.idea/user.iml b/.idea/user.iml
+new file mode 100644
+index 0000000000000000000000000000000000000000..d6ebd4805981b8400db3e3291c74a743fef9a824
+--- /dev/null
++++ b/.idea/user.iml
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<module type="JAVA_MODULE" version="4">
++  <component name="NewModuleRootManager" inherit-compiler-output="true">
++    <exclude-output />
++    <content url="file://$MODULE_DIR$" />
++    <orderEntry type="inheritedJdk" />
++    <orderEntry type="sourceFolder" forTests="false" />
++  </component>
++</module>
+\ No newline at end of file
+diff --git a/.idea/workspace.xml b/.idea/workspace.xml
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69cc5b4e0c5760fe8526d17d3ec75650ac27800
+--- /dev/null
++++ b/.idea/workspace.xml
+@@ -0,0 +1,53 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="AutoImportSettings">
++    <option name="autoReloadType" value="SELECTIVE" />
++  </component>
++  <component name="ChangeListManager">
++    <list default="true" id="8e94e413-609a-4e67-954a-bf56d2351eb8" name="Changes" comment="" />
++    <option name="SHOW_DIALOG" value="false" />
++    <option name="HIGHLIGHT_CONFLICTS" value="true" />
++    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
++    <option name="LAST_RESOLUTION" value="IGNORE" />
++  </component>
++  <component name="MarkdownSettingsMigration">
++    <option name="stateVersion" value="1" />
++  </component>
++  <component name="ProjectColorInfo"><![CDATA[{
++  "associatedIndex": 2
++}]]></component>
++  <component name="ProjectId" id="2XS013BME5hBQmCM7UYOKZR8vJ4" />
++  <component name="ProjectViewState">
++    <option name="hideEmptyMiddlePackages" value="true" />
++    <option name="showLibraryContents" value="true" />
++  </component>
++  <component name="PropertiesComponent"><![CDATA[{
++  "keyToString": {
++    "RunOnceActivity.OpenProjectViewOnStart": "true",
++    "RunOnceActivity.ShowReadmeOnStart": "true",
++    "WebServerToolWindowFactoryState": "false",
++    "last_opened_file_path": "/tmp/xfs-80c0aef3/user",
++    "node.js.detected.package.eslint": "true",
++    "node.js.detected.package.tslint": "true",
++    "node.js.selected.package.eslint": "(autodetect)",
++    "node.js.selected.package.tslint": "(autodetect)",
++    "nodejs_package_manager_path": "npm",
++    "vue.rearranger.settings.migration": "true"
++  }
++}]]></component>
++  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
++  <component name="TaskManager">
++    <task active="true" id="Default" summary="Default task">
++      <changelist id="8e94e413-609a-4e67-954a-bf56d2351eb8" name="Changes" comment="" />
++      <created>1698606954911</created>
++      <option name="number" value="Default" />
++      <option name="presentableId" value="Default" />
++      <updated>1698606954911</updated>
++      <workItem from="1698606955938" duration="1458000" />
++    </task>
++    <servers />
++  </component>
++  <component name="TypeScriptGeneratedFilesManager">
++    <option name="version" value="3" />
++  </component>
++</project>
+\ No newline at end of file
+diff --git a/prelude/bootstrap.js b/prelude/bootstrap.js
+index 034bd153d92d9db9e7a37b9dc63ddf4277f1a9ee..78f22244132eaad384d80428e6f94c01ddcf3b03 100644
+--- a/prelude/bootstrap.js
++++ b/prelude/bootstrap.js
+@@ -2179,6 +2179,8 @@ function payloadFileSync(pointer) {
+   });
+ })();
+ 
++
++
+ // /////////////////////////////////////////////////////////////////
+ // PATCH PROCESS ///////////////////////////////////////////////////
+ // /////////////////////////////////////////////////////////////////
+@@ -2192,6 +2194,14 @@ function payloadFileSync(pointer) {
+     return f;
+   }
+ 
++  function copyNativeDeps(modulePaths, tmpFolder) {
++    for(const modulePath of modulePaths) {
++      const moduleBaseName = path.basename(modulePath);
++      const tmpModulePath = path.join(tmpFolder, `${moduleBaseName}`);
++      fs.copyFileSync(modulePath, tmpModulePath);
++    }
++  }
++
+   process.dlopen = function dlopen() {
+     const args = cloneArgs(arguments);
+     const modulePath = revertMakingLong(args[1]);
+@@ -2207,7 +2217,7 @@ function payloadFileSync(pointer) {
+       const hash = createHash('sha256').update(moduleContent).digest('hex');
+ 
+       // Example: /tmp/pkg/<hash>
+-      const tmpFolder = path.join(tmpdir(), 'pkg', hash);
++      const tmpFolder = path.join(tmpdir(), 'pkg');
+ 
+       createDirRecursively(tmpFolder);
+ 
+@@ -2230,10 +2240,10 @@ function payloadFileSync(pointer) {
+         // linked using relative paths (Fix #1075)
+         copyFolderRecursiveSync(modulePkgFolder, tmpFolder);
+ 
+-        // Example: /tmp/pkg/<hash>/sharp/build/Release/sharp.node
+-        newPath = path.join(tmpFolder, modulePackagePath, moduleBaseName);
++        // Example: /tmp/pkg/sharp/build/Release/sharp.node.<hash>
++        newPath = path.join(tmpFolder, modulePackagePath, `${moduleBaseName}.${hash}`);
+       } else {
+-        const tmpModulePath = path.join(tmpFolder, moduleBaseName);
++        const tmpModulePath = path.join(tmpFolder, `${moduleBaseName}.${hash}`);
+ 
+         if (!fs.existsSync(tmpModulePath)) {
+           fs.copyFileSync(modulePath, tmpModulePath);
+@@ -2245,6 +2255,12 @@ function payloadFileSync(pointer) {
+ 
+       // replace the path with the new module path
+       args[1] = newPath;
++
++      copyNativeDeps([
++        '/snapshot/greenfield/packages/compositor-proxy/dist/addons/libproxy-encoding.so',
++        '/snapshot/greenfield/packages/compositor-proxy/dist/addons/libwayland-server.so.0',
++        '/snapshot/greenfield/packages/compositor-proxy/dist/addons/libwestfield.so',
++      ], tmpFolder)
+     }
+ 
+     return ancestor.dlopen.apply(process, args);

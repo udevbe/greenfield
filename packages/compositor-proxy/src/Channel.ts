@@ -175,7 +175,7 @@ export class ARQChannel implements WebSocketChannel {
   onMessage = (_event: Buffer) => {
     /*noop*/
   }
-  private checkInterval?: NodeJS.Timer
+  private checkInterval?: NodeJS.Timeout
   ws?: WebSocket
 
   constructor(

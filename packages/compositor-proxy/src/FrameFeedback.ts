@@ -4,7 +4,7 @@ import type { Channel } from './Channel.js'
 
 let tickInterval = 16.667
 let nextTickInterval = tickInterval
-let feedbackClockTimer: NodeJS.Timer | undefined
+let feedbackClockTimer: NodeJS.Timeout | undefined
 type Feedback = { callback: (time: number) => void; frameCallbackDelay: number }
 let feedbackClockQueue: Feedback[] = []
 

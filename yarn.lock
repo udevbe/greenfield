@@ -935,7 +935,7 @@ __metadata:
     "@tsconfig/node18": ^18.2.2
     "@types/js-yaml": ^4.0.6
     "@types/jsonwebtoken": ^9.0.3
-    "@types/node": ^18.15.3
+    "@types/node": ^18.18.7
     "@types/ws": ^8.5.6
     "@typescript-eslint/eslint-plugin": ^6.7.3
     "@typescript-eslint/parser": ^6.7.3
@@ -982,7 +982,7 @@ __metadata:
     "@types/jest": ^29.5.5
     "@types/js-yaml": ^4.0.6
     "@types/jsonwebtoken": ^9.0.3
-    "@types/node": ^18.15.3
+    "@types/node": ^18.18.7
     "@types/ws": ^8.5.6
     "@typescript-eslint/eslint-plugin": ^6.7.3
     "@typescript-eslint/parser": ^6.7.3
@@ -1862,6 +1862,15 @@ __metadata:
   version: 18.17.15
   resolution: "@types/node@npm:18.17.15"
   checksum: eed11d4398ccdb999a4c65658ee75de621a4ad57aece48ed2fb8803b1e2711fadf58d8aefbdb0a447d69cf3cba602ca32fe0fc92077575950a796e1dc13baa0f
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:^18.18.7":
+  version: 18.18.7
+  resolution: "@types/node@npm:18.18.7"
+  dependencies:
+    undici-types: ~5.26.4
+  checksum: 972f8b214f961b6c8d99f84aab8bfadc656bb71fc7ad4a543ad3405286c95f27385ee0c3844f88d612f3cf225cd4d49ce8a7d9aea05a2aba9b2524ac525040aa
   languageName: node
   linkType: hard
 
@@ -6897,7 +6906,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pkg@npm:^5.8.1":
+"pkg@npm:5.8.1":
   version: 5.8.1
   resolution: "pkg@npm:5.8.1"
   dependencies:
@@ -6923,6 +6932,93 @@ __metadata:
   bin:
     pkg: lib-es5/bin.js
   checksum: 5e750e716c3426706ea1fbd26832faf6a3ab8376b99f20aeb9c40fd48ad48e7b51375cd077b77669f3bfbefee69cc8111f49e0ca39e353fd0fc2dff95a57f822
+  languageName: node
+  linkType: hard
+
+"pkg@patch:pkg@npm%3A5.8.1#./.yarn/patches/pkg-npm-5.8.1-db9700609f.patch::version=5.8.1&hash=488bc0&locator=root-workspace-0b6124%40workspace%3A.":
+  version: 5.8.1
+  resolution: "pkg@patch:pkg@npm%3A5.8.1#./.yarn/patches/pkg-npm-5.8.1-db9700609f.patch::version=5.8.1&hash=488bc0&locator=root-workspace-0b6124%40workspace%3A."
+  dependencies:
+    "@babel/generator": 7.18.2
+    "@babel/parser": 7.18.4
+    "@babel/types": 7.19.0
+    chalk: ^4.1.2
+    fs-extra: ^9.1.0
+    globby: ^11.1.0
+    into-stream: ^6.0.0
+    is-core-module: 2.9.0
+    minimist: ^1.2.6
+    multistream: ^4.1.0
+    pkg-fetch: 3.4.2
+    prebuild-install: 7.1.1
+    resolve: ^1.22.0
+    stream-meter: ^1.0.4
+  peerDependencies:
+    node-notifier: ">=9.0.1"
+  peerDependenciesMeta:
+    node-notifier:
+      optional: true
+  bin:
+    pkg: lib-es5/bin.js
+  checksum: ae1cd074d48ead95ed0ae377442d0c19609925a82d30285a10e03d6fb3f8e370c89d3be7234bd56bb64974d6f0e3ba9cc4ad9a4c4cdeefa5cc93e61aaef5646c
+  languageName: node
+  linkType: hard
+
+"pkg@patch:pkg@patch%3Apkg@npm%253A5.8.1%23./.yarn/patches/pkg-npm-5.8.1-db9700609f.patch%3A%3Aversion=5.8.1&hash=488bc0&locator=root-workspace-0b6124%2540workspace%253A.#./.yarn/patches/pkg-patch-944cc2c21c.patch::version=5.8.1&hash=6d706d&locator=root-workspace-0b6124%40workspace%3A.":
+  version: 5.8.1
+  resolution: "pkg@patch:pkg@patch%3Apkg@npm%253A5.8.1%23./.yarn/patches/pkg-npm-5.8.1-db9700609f.patch%3A%3Aversion=5.8.1&hash=488bc0&locator=root-workspace-0b6124%2540workspace%253A.#./.yarn/patches/pkg-patch-944cc2c21c.patch::version=5.8.1&hash=6d706d&locator=root-workspace-0b6124%40workspace%3A."
+  dependencies:
+    "@babel/generator": 7.18.2
+    "@babel/parser": 7.18.4
+    "@babel/types": 7.19.0
+    chalk: ^4.1.2
+    fs-extra: ^9.1.0
+    globby: ^11.1.0
+    into-stream: ^6.0.0
+    is-core-module: 2.9.0
+    minimist: ^1.2.6
+    multistream: ^4.1.0
+    pkg-fetch: 3.4.2
+    prebuild-install: 7.1.1
+    resolve: ^1.22.0
+    stream-meter: ^1.0.4
+  peerDependencies:
+    node-notifier: ">=9.0.1"
+  peerDependenciesMeta:
+    node-notifier:
+      optional: true
+  bin:
+    pkg: lib-es5/bin.js
+  checksum: f3273243f043a0c209c55c057ca67c6d9bfb43954d122842e5328868620a55fdf5a16aaefe59017f6e227ed30bce4116b2206192153ce872066a207d1eb789ab
+  languageName: node
+  linkType: hard
+
+"pkg@patch:pkg@patch%3Apkg@patch%253Apkg@npm%25253A5.8.1%2523./.yarn/patches/pkg-npm-5.8.1-db9700609f.patch%253A%253Aversion=5.8.1&hash=488bc0&locator=root-workspace-0b6124%252540workspace%25253A.%23./.yarn/patches/pkg-patch-944cc2c21c.patch%3A%3Aversion=5.8.1&hash=6d706d&locator=root-workspace-0b6124%2540workspace%253A.#./.yarn/patches/pkg-patch-44bcef291a.patch::locator=root-workspace-0b6124%40workspace%3A.":
+  version: 5.8.1
+  resolution: "pkg@patch:pkg@patch%3Apkg@patch%253Apkg@npm%25253A5.8.1%2523./.yarn/patches/pkg-npm-5.8.1-db9700609f.patch%253A%253Aversion=5.8.1&hash=488bc0&locator=root-workspace-0b6124%252540workspace%25253A.%23./.yarn/patches/pkg-patch-944cc2c21c.patch%3A%3Aversion=5.8.1&hash=6d706d&locator=root-workspace-0b6124%2540workspace%253A.#./.yarn/patches/pkg-patch-44bcef291a.patch::version=5.8.1&hash=8be093&locator=root-workspace-0b6124%40workspace%3A."
+  dependencies:
+    "@babel/generator": 7.18.2
+    "@babel/parser": 7.18.4
+    "@babel/types": 7.19.0
+    chalk: ^4.1.2
+    fs-extra: ^9.1.0
+    globby: ^11.1.0
+    into-stream: ^6.0.0
+    is-core-module: 2.9.0
+    minimist: ^1.2.6
+    multistream: ^4.1.0
+    pkg-fetch: 3.4.2
+    prebuild-install: 7.1.1
+    resolve: ^1.22.0
+    stream-meter: ^1.0.4
+  peerDependencies:
+    node-notifier: ">=9.0.1"
+  peerDependenciesMeta:
+    node-notifier:
+      optional: true
+  bin:
+    pkg: lib-es5/bin.js
+  checksum: e33f5f93f707cd7494228ab4785a9673530e4cf193ecdad5d6097ea0c3a1faa05df12e4eedf2df40cbf6c262a46d276abf2c34c071b5d7080e86ced09a4ff312
   languageName: node
   linkType: hard
 
@@ -8455,6 +8551,13 @@ __metadata:
     has-symbols: ^1.0.3
     which-boxed-primitive: ^1.0.2
   checksum: b7a1cf5862b5e4b5deb091672ffa579aa274f648410009c81cca63fed3b62b610c4f3b773f912ce545bb4e31edc3138975b5bc777fc6e4817dca51affb6380e9
+  languageName: node
+  linkType: hard
+
+"undici-types@npm:~5.26.4":
+  version: 5.26.5
+  resolution: "undici-types@npm:5.26.5"
+  checksum: 3192ef6f3fd5df652f2dc1cd782b49d6ff14dc98e5dced492aa8a8c65425227da5da6aafe22523c67f035a272c599bb89cfe803c1db6311e44bed3042fc25487
   languageName: node
   linkType: hard
 
