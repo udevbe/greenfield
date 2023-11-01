@@ -35,7 +35,7 @@ services:
 #    runtime: nvidia
     pid: 'service:compositor-proxy'
     build:
-      context: packages/compositor-proxy-cli/example-apps/gtk3-demo
+      context: examples/docker-apps/gtk3-demo
       dockerfile: packages/compositor-proxy-cli/example-apps/gtk3-demo/Dockerfile
     privileged: false
     user: "1000:1000"
@@ -53,7 +53,7 @@ services:
 #    runtime: nvidia
     pid: 'service:compositor-proxy'
     build:
-      context: packages/compositor-proxy-cli/example-apps/gtk4-demo
+      context: examples/docker-apps/gtk4-demo
       dockerfile: packages/compositor-proxy-cli/example-apps/gtk4-demo/Dockerfile
     privileged: false
     user: "1000:1000"
@@ -71,7 +71,7 @@ services:
 #    runtime: nvidia
     pid: 'service:compositor-proxy'
     build:
-      context: packages/compositor-proxy-cli/example-apps/alacritty
+      context: examples/docker-apps/alacritty
       dockerfile: packages/compositor-proxy-cli/example-apps/alacritty/Dockerfile
     privileged: false
     user: "1000:1000"
@@ -90,7 +90,7 @@ services:
 #    runtime: nvidia
     pid: 'service:compositor-proxy'
     build:
-      context: packages/compositor-proxy-cli/example-apps/xterm
+      context: examples/docker-apps/xterm
       dockerfile: packages/compositor-proxy-cli/example-apps/xterm/Dockerfile
     privileged: false
     user: "1000:1000"
@@ -111,7 +111,7 @@ services:
 #    runtime: nvidia
     pid: 'service:compositor-proxy'
     build:
-      context: packages/compositor-proxy-cli/example-apps/glxgears
+      context: examples/docker-apps/glxgears
       dockerfile: packages/compositor-proxy-cli/example-apps/glxgears/Dockerfile
     ipc: host
     privileged: false

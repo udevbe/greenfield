@@ -1,7 +1,7 @@
-FROM debian:bookworm-slim
+FROM debian:bookworm-20231030-slim
 
 RUN apt-get update && apt-get install -y \
-    xterm \
+    gtk-3-examples \
     && rm -rf /var/lib/apt/lists/*
 
 ENV USER=user
@@ -11,4 +11,5 @@ USER "$USER"
 ENV HOME="/home/$USER"
 WORKDIR "$HOME"
 
-ENTRYPOINT ["xterm"]
+ENV WAYLAND_DISPLAY="wayland-0"
+ENTRYPOINT ["gtk3-demo"]
