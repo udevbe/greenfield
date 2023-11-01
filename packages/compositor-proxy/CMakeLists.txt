@@ -23,9 +23,7 @@ pkg_check_modules(GSTREAMER REQUIRED
 pkg_check_modules(GRAPHENE REQUIRED IMPORTED_TARGET graphene-1.0)
 pkg_check_modules(EGL REQUIRED IMPORTED_TARGET egl>=1.5)
 pkg_check_modules(OPENGL REQUIRED IMPORTED_TARGET opengl>=3.3)
-pkg_check_modules(UV REQUIRED IMPORTED_TARGET libuv>=1.38.0)
 pkg_check_modules(LibFFI REQUIRED libffi IMPORTED_TARGET)
-pkg_check_modules(LIBUDEV REQUIRED libudev IMPORTED_TARGET)
 pkg_check_modules(GBM REQUIRED gbm IMPORTED_TARGET)
 pkg_check_modules(LIBDRM REQUIRED libdrm IMPORTED_TARGET)
 
@@ -70,8 +68,7 @@ set_property(
     $ORIGIN/shared
 )
 target_include_directories(proxy-poll-addon PRIVATE
-        ${CMAKE_SOURCE_DIR}/native/include
-        ${UV_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/node-api
 )
 set_target_properties(proxy-poll-addon PROPERTIES PREFIX "" SUFFIX ".node")
 
@@ -86,13 +83,14 @@ set_property(
     $ORIGIN/shared
 )
 target_include_directories(proxy-encoding-addon PRIVATE
-        ${CMAKE_SOURCE_DIR}/native/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/node-api
         ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server
         ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src
 )
 set_target_properties(proxy-encoding-addon PROPERTIES PREFIX "" SUFFIX ".node")
 target_link_libraries(proxy-encoding-addon PRIVATE
         westfield
+        wayland-server
         proxy-encoding
 )
 
@@ -178,14 +176,12 @@ target_include_directories(westfield PRIVATE
         ${CMAKE_SOURCE_DIR}/native/wayland/src
         ${CMAKE_SOURCE_DIR}/native/wayland/src/wayland-server
         ${CMAKE_SOURCE_DIR}/native/wayland/src/wayland-server/protocol
-        ${LIBUDEV_INCLUDE_DIRS}
         ${GBM_INCLUDE_DIRS}
         ${EGL_INCLUDE_DIRS}
         ${LIBDRM_INCLUDE_DIRS}
 )
 target_link_libraries(westfield PRIVATE
         wayland-server
-        PkgConfig::LIBUDEV
         PkgConfig::GBM
         PkgConfig::EGL
         PkgConfig::LIBDRM
@@ -209,7 +205,7 @@ set_property(
 target_include_directories(wayland-server-addon PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server
         ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/native/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/native/node-api
 )
 set_target_properties(wayland-server-addon
         PROPERTIES PREFIX "" SUFFIX ".node"

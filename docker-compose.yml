@@ -6,8 +6,8 @@ services:
   compositor-proxy:
 #    runtime: nvidia
     build:
-      context: .
-      dockerfile: ./Dockerfile
+      context: packages/compositor-proxy-cli
+      dockerfile: Dockerfile
     command:
       - --session-id=test123
     privileged: false
@@ -35,8 +35,8 @@ services:
 #    runtime: nvidia
     pid: 'service:compositor-proxy'
     build:
-      context: example-apps/gtk3-demo
-      dockerfile: Dockerfile
+      context: packages/compositor-proxy-cli/example-apps/gtk3-demo
+      dockerfile: packages/compositor-proxy-cli/example-apps/gtk3-demo/Dockerfile
     privileged: false
     user: "1000:1000"
     volumes:
@@ -53,8 +53,8 @@ services:
 #    runtime: nvidia
     pid: 'service:compositor-proxy'
     build:
-      context: example-apps/gtk4-demo
-      dockerfile: Dockerfile
+      context: packages/compositor-proxy-cli/example-apps/gtk4-demo
+      dockerfile: packages/compositor-proxy-cli/example-apps/gtk4-demo/Dockerfile
     privileged: false
     user: "1000:1000"
     volumes:
@@ -71,8 +71,8 @@ services:
 #    runtime: nvidia
     pid: 'service:compositor-proxy'
     build:
-      context: example-apps/alacritty
-      dockerfile: Dockerfile
+      context: packages/compositor-proxy-cli/example-apps/alacritty
+      dockerfile: packages/compositor-proxy-cli/example-apps/alacritty/Dockerfile
     privileged: false
     user: "1000:1000"
     volumes:
@@ -90,8 +90,8 @@ services:
 #    runtime: nvidia
     pid: 'service:compositor-proxy'
     build:
-      context: example-apps/xterm
-      dockerfile: Dockerfile
+      context: packages/compositor-proxy-cli/example-apps/xterm
+      dockerfile: packages/compositor-proxy-cli/example-apps/xterm/Dockerfile
     privileged: false
     user: "1000:1000"
     volumes:
@@ -111,8 +111,8 @@ services:
 #    runtime: nvidia
     pid: 'service:compositor-proxy'
     build:
-      context: example-apps/glxgears
-      dockerfile: Dockerfile
+      context: packages/compositor-proxy-cli/example-apps/glxgears
+      dockerfile: packages/compositor-proxy-cli/example-apps/glxgears/Dockerfile
     ipc: host
     privileged: false
     user: "1000:1000"

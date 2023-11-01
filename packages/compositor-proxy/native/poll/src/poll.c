@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include "node_api.h"
+// avoid depending on libuv
 #include "uv.h"
+
 
 #define DECLARE_NAPI_METHOD(name, func)                          \
   { name, 0, func, 0, 0, 0, napi_default, 0 }
