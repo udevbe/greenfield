@@ -8,18 +8,19 @@ WORKDIR /app
 
 COPY ["package.json", "yarn.lock", ".yarnrc.yml", "./"]
 COPY [".yarn/", "./.yarn/"]
-COPY ["libs/xtsb/package.json", "./libs/xtsb/package.json"]
-COPY ["libs/compositor-proxy-generator/package.json", "./libs/compositor-proxy-generator/package.json"]
-COPY ["packages/compositor-proxy/package.json", "./packages/compositor-proxy/package.json"]
-COPY ["packages/compositor-proxy-cli/package.json", "./packages/compositor-proxy-cli/package.json"]
 
+COPY ["libs/compositor-proxy-generator/package.json", "./libs/compositor-proxy-generator/package.json"]
+
+COPY ["libs/xtsb/package.json", "./libs/xtsb/package.json"]
 COPY ["libs/xtsb/tsconfig.json", "libs/xtsb/tsconfig.node.json", "./libs/xtsb/"]
 COPY ["libs/xtsb/src/", "./libs/xtsb/src/"]
 
+COPY ["packages/compositor-proxy/package.json", "./packages/compositor-proxy/package.json"]
 COPY ["packages/compositor-proxy/tsconfig.json", "packages/compositor-proxy/CMakeLists.txt", "./packages/compositor-proxy/"]
 COPY ["packages/compositor-proxy/native/", "./packages/compositor-proxy/native/"]
 COPY ["packages/compositor-proxy/src/", "./packages/compositor-proxy/src/"]
 
+COPY ["packages/compositor-proxy-cli/package.json", "./packages/compositor-proxy-cli/package.json"]
 COPY ["packages/compositor-proxy-cli/tsconfig.json", "./packages/compositor-proxy-cli/"]
 COPY ["packages/compositor-proxy-cli/src/", "./packages/compositor-proxy-cli/src/"]
 

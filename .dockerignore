@@ -26,6 +26,7 @@ packages/compositor-proxy/.eslintrc.js
 packages/compositor-proxy/.prettierrc.js
 packages/compositor-proxy/jest.config.js
 packages/compositor-proxy-cli/dist/
+packages/compositor-proxy-cli/package/
 packages/compositor-proxy-cli/node_modules/
 packages/compositor-proxy-cli/.eslintrc.js
 packages/compositor-proxy-cli/.prettierrc.js
