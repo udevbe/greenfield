@@ -151,17 +151,17 @@ index 0000000000000000000000000000000000000000..d6ebd4805981b8400db3e3291c74a743
 \ No newline at end of file
 diff --git a/.idea/workspace.xml b/.idea/workspace.xml
 new file mode 100644
-index 0000000000000000000000000000000000000000..e69cc5b4e0c5760fe8526d17d3ec75650ac27800
+index 0000000000000000000000000000000000000000..616cb44eb700f24a344e3e38bf6ca5f2a8fe69c9
 --- /dev/null
 +++ b/.idea/workspace.xml
-@@ -0,0 +1,53 @@
+@@ -0,0 +1,59 @@
 +<?xml version="1.0" encoding="UTF-8"?>
 +<project version="4">
 +  <component name="AutoImportSettings">
 +    <option name="autoReloadType" value="SELECTIVE" />
 +  </component>
 +  <component name="ChangeListManager">
-+    <list default="true" id="8e94e413-609a-4e67-954a-bf56d2351eb8" name="Changes" comment="" />
++    <list default="true" id="09f26813-623a-4c6e-ba64-d0cea7b5debc" name="Changes" comment="" />
 +    <option name="SHOW_DIALOG" value="false" />
 +    <option name="HIGHLIGHT_CONFLICTS" value="true" />
 +    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -171,9 +171,9 @@ index 0000000000000000000000000000000000000000..e69cc5b4e0c5760fe8526d17d3ec7565
 +    <option name="stateVersion" value="1" />
 +  </component>
 +  <component name="ProjectColorInfo"><![CDATA[{
-+  "associatedIndex": 2
++  "associatedIndex": 3
 +}]]></component>
-+  <component name="ProjectId" id="2XS013BME5hBQmCM7UYOKZR8vJ4" />
++  <component name="ProjectId" id="2Xdjxcx0jQKz74CY3l9l4hSJr4P" />
 +  <component name="ProjectViewState">
 +    <option name="hideEmptyMiddlePackages" value="true" />
 +    <option name="showLibraryContents" value="true" />
@@ -183,50 +183,61 @@ index 0000000000000000000000000000000000000000..e69cc5b4e0c5760fe8526d17d3ec7565
 +    "RunOnceActivity.OpenProjectViewOnStart": "true",
 +    "RunOnceActivity.ShowReadmeOnStart": "true",
 +    "WebServerToolWindowFactoryState": "false",
-+    "last_opened_file_path": "/tmp/xfs-80c0aef3/user",
++    "last_opened_file_path": "/tmp/xfs-a73552ef/user",
 +    "node.js.detected.package.eslint": "true",
 +    "node.js.detected.package.tslint": "true",
 +    "node.js.selected.package.eslint": "(autodetect)",
 +    "node.js.selected.package.tslint": "(autodetect)",
-+    "nodejs_package_manager_path": "npm",
++    "nodejs_interpreter_path": "/home/erik/.nvm/versions/node/v18.15.0/bin/node",
++    "nodejs_package_manager_path": "yarn",
++    "settings.editor.selected.configurable": "settings.nodejs",
 +    "vue.rearranger.settings.migration": "true"
 +  }
 +}]]></component>
 +  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
 +  <component name="TaskManager">
 +    <task active="true" id="Default" summary="Default task">
-+      <changelist id="8e94e413-609a-4e67-954a-bf56d2351eb8" name="Changes" comment="" />
-+      <created>1698606954911</created>
++      <changelist id="09f26813-623a-4c6e-ba64-d0cea7b5debc" name="Changes" comment="" />
++      <created>1698966098559</created>
 +      <option name="number" value="Default" />
 +      <option name="presentableId" value="Default" />
-+      <updated>1698606954911</updated>
-+      <workItem from="1698606955938" duration="1458000" />
++      <updated>1698966098559</updated>
++      <workItem from="1698966169724" duration="1677000" />
 +    </task>
 +    <servers />
 +  </component>
 +  <component name="TypeScriptGeneratedFilesManager">
 +    <option name="version" value="3" />
 +  </component>
++  <component name="XSLT-Support.FileAssociations.UIState">
++    <expand />
++    <select />
++  </component>
 +</project>
 \ No newline at end of file
 diff --git a/prelude/bootstrap.js b/prelude/bootstrap.js
-index 034bd153d92d9db9e7a37b9dc63ddf4277f1a9ee..78f22244132eaad384d80428e6f94c01ddcf3b03 100644
+index 034bd153d92d9db9e7a37b9dc63ddf4277f1a9ee..76e766524fec4a2789bb775c738f61df1fbe81bc 100644
 --- a/prelude/bootstrap.js
 +++ b/prelude/bootstrap.js
-@@ -2179,6 +2179,8 @@ function payloadFileSync(pointer) {
+@@ -2179,9 +2179,11 @@ function payloadFileSync(pointer) {
    });
  })();
  
 +
-+
  // /////////////////////////////////////////////////////////////////
  // PATCH PROCESS ///////////////////////////////////////////////////
  // /////////////////////////////////////////////////////////////////
-@@ -2192,6 +2194,14 @@ function payloadFileSync(pointer) {
++let nativeDepsCopied = false;
+ (() => {
+   const ancestor = {
+     dlopen: process.dlopen,
+@@ -2192,12 +2194,31 @@ function payloadFileSync(pointer) {
      return f;
    }
  
-+  function copyNativeDeps(modulePaths, tmpFolder) {
++  function copyNativeDeps(modulePaths) {
++        const tmpFolder = path.join(tmpdir(), 'pkg', 'shared');
++        createDirRecursively(tmpFolder);
 +    for(const modulePath of modulePaths) {
 +      const moduleBaseName = path.basename(modulePath);
 +      const tmpModulePath = path.join(tmpFolder, `${moduleBaseName}`);
@@ -237,7 +248,22 @@ index 034bd153d92d9db9e7a37b9dc63ddf4277f1a9ee..78f22244132eaad384d80428e6f94c01
    process.dlopen = function dlopen() {
      const args = cloneArgs(arguments);
      const modulePath = revertMakingLong(args[1]);
-@@ -2207,7 +2217,7 @@ function payloadFileSync(pointer) {
+     const moduleBaseName = path.basename(modulePath);
+     const moduleFolder = path.dirname(modulePath);
+ 
++    if(!nativeDepsCopied) {
++      nativeDepsCopied = true
++      copyNativeDeps([
++        `${moduleFolder}/libproxy-encoding.so`,
++        `${moduleFolder}/libwayland-server.so.0`,
++        `${moduleFolder}/libwestfield.so`,
++      ])
++    }
++
+     if (insideSnapshot(modulePath)) {
+       const moduleContent = fs.readFileSync(modulePath);
+ 
+@@ -2207,7 +2228,7 @@ function payloadFileSync(pointer) {
        const hash = createHash('sha256').update(moduleContent).digest('hex');
  
        // Example: /tmp/pkg/<hash>
@@ -246,13 +272,11 @@ index 034bd153d92d9db9e7a37b9dc63ddf4277f1a9ee..78f22244132eaad384d80428e6f94c01
  
        createDirRecursively(tmpFolder);
  
-@@ -2230,10 +2240,10 @@ function payloadFileSync(pointer) {
-         // linked using relative paths (Fix #1075)
+@@ -2231,9 +2252,9 @@ function payloadFileSync(pointer) {
          copyFolderRecursiveSync(modulePkgFolder, tmpFolder);
  
--        // Example: /tmp/pkg/<hash>/sharp/build/Release/sharp.node
+         // Example: /tmp/pkg/<hash>/sharp/build/Release/sharp.node
 -        newPath = path.join(tmpFolder, modulePackagePath, moduleBaseName);
-+        // Example: /tmp/pkg/sharp/build/Release/sharp.node.<hash>
 +        newPath = path.join(tmpFolder, modulePackagePath, `${moduleBaseName}.${hash}`);
        } else {
 -        const tmpModulePath = path.join(tmpFolder, moduleBaseName);
@@ -260,16 +284,3 @@ index 034bd153d92d9db9e7a37b9dc63ddf4277f1a9ee..78f22244132eaad384d80428e6f94c01
  
          if (!fs.existsSync(tmpModulePath)) {
            fs.copyFileSync(modulePath, tmpModulePath);
-@@ -2245,6 +2255,12 @@ function payloadFileSync(pointer) {
- 
-       // replace the path with the new module path
-       args[1] = newPath;
-+
-+      copyNativeDeps([
-+        '/snapshot/greenfield/packages/compositor-proxy/dist/addons/libproxy-encoding.so',
-+        '/snapshot/greenfield/packages/compositor-proxy/dist/addons/libwayland-server.so.0',
-+        '/snapshot/greenfield/packages/compositor-proxy/dist/addons/libwestfield.so',
-+      ], tmpFolder)
-     }
- 
-     return ancestor.dlopen.apply(process, args);

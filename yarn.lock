@@ -6935,9 +6935,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pkg@patch:pkg@npm%3A5.8.1#./.yarn/patches/pkg-npm-5.8.1-db9700609f.patch::version=5.8.1&hash=488bc0&locator=root-workspace-0b6124%40workspace%3A.":
+"pkg@patch:pkg@npm%3A5.8.1#./.yarn/patches/pkg-npm-5.8.1-db9700609f.patch::locator=root-workspace-0b6124%40workspace%3A.":
   version: 5.8.1
-  resolution: "pkg@patch:pkg@npm%3A5.8.1#./.yarn/patches/pkg-npm-5.8.1-db9700609f.patch::version=5.8.1&hash=488bc0&locator=root-workspace-0b6124%40workspace%3A."
+  resolution: "pkg@patch:pkg@npm%3A5.8.1#./.yarn/patches/pkg-npm-5.8.1-db9700609f.patch::version=5.8.1&hash=942722&locator=root-workspace-0b6124%40workspace%3A."
   dependencies:
     "@babel/generator": 7.18.2
     "@babel/parser": 7.18.4
@@ -6960,65 +6960,7 @@ __metadata:
       optional: true
   bin:
     pkg: lib-es5/bin.js
-  checksum: ae1cd074d48ead95ed0ae377442d0c19609925a82d30285a10e03d6fb3f8e370c89d3be7234bd56bb64974d6f0e3ba9cc4ad9a4c4cdeefa5cc93e61aaef5646c
-  languageName: node
-  linkType: hard
-
-"pkg@patch:pkg@patch%3Apkg@npm%253A5.8.1%23./.yarn/patches/pkg-npm-5.8.1-db9700609f.patch%3A%3Aversion=5.8.1&hash=488bc0&locator=root-workspace-0b6124%2540workspace%253A.#./.yarn/patches/pkg-patch-944cc2c21c.patch::version=5.8.1&hash=6d706d&locator=root-workspace-0b6124%40workspace%3A.":
-  version: 5.8.1
-  resolution: "pkg@patch:pkg@patch%3Apkg@npm%253A5.8.1%23./.yarn/patches/pkg-npm-5.8.1-db9700609f.patch%3A%3Aversion=5.8.1&hash=488bc0&locator=root-workspace-0b6124%2540workspace%253A.#./.yarn/patches/pkg-patch-944cc2c21c.patch::version=5.8.1&hash=6d706d&locator=root-workspace-0b6124%40workspace%3A."
-  dependencies:
-    "@babel/generator": 7.18.2
-    "@babel/parser": 7.18.4
-    "@babel/types": 7.19.0
-    chalk: ^4.1.2
-    fs-extra: ^9.1.0
-    globby: ^11.1.0
-    into-stream: ^6.0.0
-    is-core-module: 2.9.0
-    minimist: ^1.2.6
-    multistream: ^4.1.0
-    pkg-fetch: 3.4.2
-    prebuild-install: 7.1.1
-    resolve: ^1.22.0
-    stream-meter: ^1.0.4
-  peerDependencies:
-    node-notifier: ">=9.0.1"
-  peerDependenciesMeta:
-    node-notifier:
-      optional: true
-  bin:
-    pkg: lib-es5/bin.js
-  checksum: f3273243f043a0c209c55c057ca67c6d9bfb43954d122842e5328868620a55fdf5a16aaefe59017f6e227ed30bce4116b2206192153ce872066a207d1eb789ab
-  languageName: node
-  linkType: hard
-
-"pkg@patch:pkg@patch%3Apkg@patch%253Apkg@npm%25253A5.8.1%2523./.yarn/patches/pkg-npm-5.8.1-db9700609f.patch%253A%253Aversion=5.8.1&hash=488bc0&locator=root-workspace-0b6124%252540workspace%25253A.%23./.yarn/patches/pkg-patch-944cc2c21c.patch%3A%3Aversion=5.8.1&hash=6d706d&locator=root-workspace-0b6124%2540workspace%253A.#./.yarn/patches/pkg-patch-44bcef291a.patch::locator=root-workspace-0b6124%40workspace%3A.":
-  version: 5.8.1
-  resolution: "pkg@patch:pkg@patch%3Apkg@patch%253Apkg@npm%25253A5.8.1%2523./.yarn/patches/pkg-npm-5.8.1-db9700609f.patch%253A%253Aversion=5.8.1&hash=488bc0&locator=root-workspace-0b6124%252540workspace%25253A.%23./.yarn/patches/pkg-patch-944cc2c21c.patch%3A%3Aversion=5.8.1&hash=6d706d&locator=root-workspace-0b6124%2540workspace%253A.#./.yarn/patches/pkg-patch-44bcef291a.patch::version=5.8.1&hash=8be093&locator=root-workspace-0b6124%40workspace%3A."
-  dependencies:
-    "@babel/generator": 7.18.2
-    "@babel/parser": 7.18.4
-    "@babel/types": 7.19.0
-    chalk: ^4.1.2
-    fs-extra: ^9.1.0
-    globby: ^11.1.0
-    into-stream: ^6.0.0
-    is-core-module: 2.9.0
-    minimist: ^1.2.6
-    multistream: ^4.1.0
-    pkg-fetch: 3.4.2
-    prebuild-install: 7.1.1
-    resolve: ^1.22.0
-    stream-meter: ^1.0.4
-  peerDependencies:
-    node-notifier: ">=9.0.1"
-  peerDependenciesMeta:
-    node-notifier:
-      optional: true
-  bin:
-    pkg: lib-es5/bin.js
-  checksum: e33f5f93f707cd7494228ab4785a9673530e4cf193ecdad5d6097ea0c3a1faa05df12e4eedf2df40cbf6c262a46d276abf2c34c071b5d7080e86ced09a4ff312
+  checksum: ba781b091b0ddd90bc56dd3ecc68c8bd6ce67ee28a5dabdff3e5ee24cd6de686a19e3dd95720eb9d9ac24d74412961828c970306a541e7e6d01923eda8afd41f
   languageName: node
   linkType: hard
 
