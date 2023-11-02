@@ -1,15 +1,16 @@
 #Uncomment nvidia related comments below if you want hw acceleration with an nvidia GPU to work inside the containers (requires nvidia container runtime).
 #Also make sure to configure "/dev/dri/renderD12x" and "/dev/dri/cardx" entries in this file to point to the correct GPU if you have a multi GPU setup.
-#The config.yaml file inside the src directory also needs to be adjusted to point to the correct GPU.
-#Note that nvidia driver support on Wayland is still very much incomplete.
+#The compositor-proxy-cli command also needs to point to the correct GPU.
 services:
-  compositor-proxy:
+  compositor-proxy-cli:
 #    runtime: nvidia
     build:
-      context: ../packages/compositor-proxy-cli
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: docker/Dockerfile
     command:
-      - --session-id=test123
+#      - --encoder=nvh264
+      - --applications=applications.json
+      - --render-device=/dev/dri/renderD128
     privileged: false
     user: "1000:1000"
     ipc: host
@@ -17,7 +18,7 @@ services:
     volumes:
       - xdg-runtime-dir:/xdg-runtime-dir
       - x11-unix:/tmp/.X11-unix
-      - ${PWD}/src/config.yaml:/app/dist/config.yaml
+      - ${PWD}/docker-compose-applications.json:/app/docker-compose-applications.json
       - /dev/dri/renderD128:/dev/dri/renderD128:rw
       - /dev/dri/card0:/dev/dri/card0:rw
     devices:
@@ -26,17 +27,16 @@ services:
     ports:
       - "8081:8081/tcp"
     environment:
-      COMPOSITOR_SESSION_ID: test123
       XDG_RUNTIME_DIR: /xdg-runtime-dir
       XAUTHORITY: /tmp/.X11-unix/Xauthority
 #      NVIDIA_VISIBLE_DEVICES: all
 #      NVIDIA_DRIVER_CAPABILITIES: all
   gtk3-demo:
 #    runtime: nvidia
-    pid: 'service:compositor-proxy'
+    pid: 'service:compositor-proxy-cli'
     build:
-      context: ../examples/docker-apps/gtk3-demo
-      dockerfile: packages/compositor-proxy-cli/example-apps/gtk3-demo/Dockerfile
+      context: gtk3-demo
+      dockerfile: Dockerfile
     privileged: false
     user: "1000:1000"
     volumes:
@@ -51,10 +51,10 @@ services:
     restart: always
   gtk4-demo:
 #    runtime: nvidia
-    pid: 'service:compositor-proxy'
+    pid: 'service:compositor-proxy-cli'
     build:
-      context: ../examples/docker-apps/gtk4-demo
-      dockerfile: packages/compositor-proxy-cli/example-apps/gtk4-demo/Dockerfile
+      context: gtk4-demo
+      dockerfile: Dockerfile
     privileged: false
     user: "1000:1000"
     volumes:
@@ -69,10 +69,10 @@ services:
     restart: always
   alacritty:
 #    runtime: nvidia
-    pid: 'service:compositor-proxy'
+    pid: 'service:compositor-proxy-cli'
     build:
-      context: ../examples/docker-apps/alacritty
-      dockerfile: packages/compositor-proxy-cli/example-apps/alacritty/Dockerfile
+      context: alacritty
+      dockerfile: Dockerfile
     privileged: false
     user: "1000:1000"
     volumes:
@@ -88,10 +88,10 @@ services:
     restart: always
   xterm:
 #    runtime: nvidia
-    pid: 'service:compositor-proxy'
+    pid: 'service:compositor-proxy-cli'
     build:
-      context: ../examples/docker-apps/xterm
-      dockerfile: packages/compositor-proxy-cli/example-apps/xterm/Dockerfile
+      context: xterm
+      dockerfile: Dockerfile
     privileged: false
     user: "1000:1000"
     volumes:
@@ -109,10 +109,10 @@ services:
     restart: always
   glxgears:
 #    runtime: nvidia
-    pid: 'service:compositor-proxy'
+    pid: 'service:compositor-proxy-cli'
     build:
-      context: ../examples/docker-apps/glxgears
-      dockerfile: packages/compositor-proxy-cli/example-apps/glxgears/Dockerfile
+      context: glxgears
+      dockerfile: Dockerfile
     ipc: host
     privileged: false
     user: "1000:1000"

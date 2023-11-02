@@ -1,0 +1,20 @@
+{
+  "/gtk4-demo": {
+    "name": "GTK4 Demo",
+    "executable": "gtk4-demo",
+    "args": [],
+    "env": {}
+  },
+  "/gtk3-demo": {
+    "name": "GTK3 Demo",
+    "executable": "gtk3-demo",
+    "args": [],
+    "env": {}
+  },
+  "/xterm": {
+    "name": "XTerm",
+    "executable": "xterm",
+    "args": [],
+    "env": {}
+  }
+}
