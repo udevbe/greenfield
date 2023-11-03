@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 FROM debian:bookworm-20231030-slim as BUILD
-
+ARG TARGETARCH
 ENV NODE_VERSION="v20.9.0"
-ENV NODE_DISTRO="linux-x64"
+ENV NODE_DISTRO="linux-${TARGETARCH}"
 
 WORKDIR /app
 
@@ -76,15 +76,15 @@ RUN curl https://nodejs.org/dist/$NODE_VERSION/node-$NODE_VERSION-$NODE_DISTRO.t
     && tar xvf node-$NODE_VERSION-$NODE_DISTRO.tar.xz
 ENV PATH="/app/node-$NODE_VERSION-$NODE_DISTRO/bin:$PATH"
 RUN corepack enable \
-    && yarn install \
-    && yarn workspace @gfld/xtsb build \
-    && yarn workspace @gfld/compositor-proxy build \
-    && yarn workspace @gfld/compositor-proxy-cli build \
-    && yarn workspace @gfld/compositor-proxy-cli package
+    && yarn install
+RUN yarn workspace @gfld/xtsb build
+RUN yarn workspace @gfld/compositor-proxy build
+RUN yarn workspace @gfld/compositor-proxy-cli build
+RUN yarn workspace @gfld/compositor-proxy-cli package
 
 FROM debian:bookworm-20231030-slim
 
-COPY --from=BUILD /app/gstreamer/build/subprojects/gst-plugins-bad/sys/nvcodec/libgstnvcodec.so /usr/lib/x86_64-linux-gnu/gstreamer-1.0/libgstnvcodec.so
+COPY --from=BUILD /app/gstreamer/build/subprojects/gst-plugins-bad/sys/nvcodec/libgstnvcodec.so /usr/lib/${TARGETARCH}-linux-gnu/gstreamer-1.0/libgstnvcodec.so
 COPY docker/10_nvidia.json /usr/share/glvnd/egl_vendor.d/10_nvidia.json
 WORKDIR /app
 COPY --from=BUILD /app/packages/compositor-proxy-cli/package/* .
@@ -104,7 +104,6 @@ RUN sed -i'' -e 's/main$/main contrib non-free/g' /etc/apt/sources.list.d/debian
         gstreamer1.0-gl \
         libosmesa6 \
         libdrm2 \
-        libdrm-intel1 \
         libopengl0 \
         libglvnd0 \
         libglx0 \

@@ -55,7 +55,7 @@
       "node_modules/@gfld/compositor-proxy/dist/addons/libwestfield.so"
     ],
     "targets": [
-      "node18-linux-x64"
+      "node18-linux"
     ],
     "outputPath": "package"
   },
