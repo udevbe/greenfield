@@ -1,140 +1,131 @@
 #Uncomment nvidia related comments below if you want hw acceleration with an nvidia GPU to work inside the containers (requires nvidia container runtime).
 #Also make sure to configure "/dev/dri/renderD12x" and "/dev/dri/cardx" entries in this file to point to the correct GPU if you have a multi GPU setup.
-#The compositor-proxy-cli command also needs to point to the correct GPU.
 services:
-  compositor-proxy-cli:
-#    runtime: nvidia
-    build:
-      context: ../..
-      dockerfile: docker/Dockerfile
-    command:
-#      - --encoder=nvh264
-      - --applications=applications.json
-      - --render-device=/dev/dri/renderD128
-    privileged: false
-    user: "1000:1000"
-    ipc: host
-    read_only: false
-    volumes:
-      - xdg-runtime-dir:/xdg-runtime-dir
-      - x11-unix:/tmp/.X11-unix
-      - ${PWD}/docker-compose-applications.json:/app/docker-compose-applications.json
-      - /dev/dri/renderD128:/dev/dri/renderD128:rw
-      - /dev/dri/card0:/dev/dri/card0:rw
-    devices:
-      - /dev/dri/renderD128:/dev/dri/renderD128
-      - /dev/dri/card0:/dev/dri/card0
-    ports:
-      - "8081:8081/tcp"
-    environment:
-      XDG_RUNTIME_DIR: /xdg-runtime-dir
-      XAUTHORITY: /tmp/.X11-unix/Xauthority
-#      NVIDIA_VISIBLE_DEVICES: all
-#      NVIDIA_DRIVER_CAPABILITIES: all
   gtk3-demo:
 #    runtime: nvidia
-    pid: 'service:compositor-proxy-cli'
     build:
       context: gtk3-demo
       dockerfile: Dockerfile
+    command:
+      - --applications=/app/applications.json
+      - --bind-port=8081
+      - --base-url=ws://localhost:8081
+#      - --encoder=nvh264
+#      - --render-device=/dev/dri/renderD128
     privileged: false
     user: "1000:1000"
     volumes:
-      - xdg-runtime-dir:/xdg-runtime-dir
-      - /dev/dri/renderD128:/dev/dri/renderD128:rw
-    devices:
-      - /dev/dri/renderD128:/dev/dri/renderD128
+      - $PWD/gtk3-demo/applications.json:/app/applications.json:ro
+      - type: tmpfs
+        target: /tmp/.X11-unix/
+      - type: tmpfs
+        target: /xdg-runtime-dir
+#      - /dev/dri/renderD128:/dev/dri/renderD128:rw
+#      - /dev/dri/card0:/dev/dri/card0:rw
+#    devices: []
+#      - /dev/dri/renderD128:/dev/dri/renderD128
+#      - /dev/dri/card0:/dev/dri/card0
     environment:
+      XAUTHORITY: /tmp/.X11-unix/Xauthority
       XDG_RUNTIME_DIR: /xdg-runtime-dir
 #      NVIDIA_VISIBLE_DEVICES: all
 #      NVIDIA_DRIVER_CAPABILITIES: all
     restart: always
+    ports:
+      - "8081:8081/tcp"
   gtk4-demo:
 #    runtime: nvidia
-    pid: 'service:compositor-proxy-cli'
     build:
       context: gtk4-demo
       dockerfile: Dockerfile
+    command:
+      - --applications=/app/applications.json
+      - --bind-port=8081
+      - --base-url=ws://localhost:8082
+#      - --encoder=nvh264
+#      - --render-device=/dev/dri/renderD128
     privileged: false
     user: "1000:1000"
     volumes:
-      - xdg-runtime-dir:/xdg-runtime-dir
-      - /dev/dri/renderD128:/dev/dri/renderD128:rw
-    devices:
-      - /dev/dri/renderD128:/dev/dri/renderD128
+      - $PWD/gtk4-demo/applications.json:/app/applications.json:ro
+      - type: tmpfs
+        target: /tmp/.X11-unix/
+      - type: tmpfs
+        target: /xdg-runtime-dir
+#      - /dev/dri/renderD128:/dev/dri/renderD128:rw
+#      - /dev/dri/card0:/dev/dri/card0:rw
+#    devices: []
+#      - /dev/dri/renderD128:/dev/dri/renderD128
+#      - /dev/dri/card0:/dev/dri/card0
     environment:
+      XAUTHORITY: /tmp/.X11-unix/Xauthority
       XDG_RUNTIME_DIR: /xdg-runtime-dir
 #      NVIDIA_VISIBLE_DEVICES: all
 #      NVIDIA_DRIVER_CAPABILITIES: all
     restart: always
-  alacritty:
-#    runtime: nvidia
-    pid: 'service:compositor-proxy-cli'
-    build:
-      context: alacritty
-      dockerfile: Dockerfile
-    privileged: false
-    user: "1000:1000"
-    volumes:
-      - xdg-runtime-dir:/xdg-runtime-dir
-      - /dev/dri/renderD128:/dev/dri/renderD128:rw
-    devices:
-      - /dev/dri/renderD128:/dev/dri/renderD128
-    environment:
-      WAYLAND_DISPLAY: wayland-0
-      XDG_RUNTIME_DIR: /xdg-runtime-dir
-#      NVIDIA_VISIBLE_DEVICES: all
-#      NVIDIA_DRIVER_CAPABILITIES: all
-    restart: always
+    ports:
+      - "8082:8081/tcp"
   xterm:
 #    runtime: nvidia
-    pid: 'service:compositor-proxy-cli'
     build:
       context: xterm
       dockerfile: Dockerfile
+    command:
+      - --applications=/app/applications.json
+      - --bind-port=8081
+      - --base-url=ws://localhost:8083
+    #      - --encoder=nvh264
+    #      - --render-device=/dev/dri/renderD128
     privileged: false
     user: "1000:1000"
     volumes:
-      - xdg-runtime-dir:/xdg-runtime-dir
-      - x11-unix:/tmp/.X11-unix
-      - /dev/dri/renderD128:/dev/dri/renderD128:rw
-    devices:
-      - /dev/dri/renderD128:/dev/dri/renderD128
+      - $PWD/xterm/applications.json:/app/applications.json:ro
+      - type: tmpfs
+        target: /tmp/.X11-unix/
+      - type: tmpfs
+        target: /xdg-runtime-dir
+#      - /dev/dri/renderD128:/dev/dri/renderD128:rw
+#      - /dev/dri/card0:/dev/dri/card0:rw
+#    devices: []
+#      - /dev/dri/renderD128:/dev/dri/renderD128
+#      - /dev/dri/card0:/dev/dri/card0
     environment:
       XAUTHORITY: /tmp/.X11-unix/Xauthority
       XDG_RUNTIME_DIR: /xdg-runtime-dir
-      DISPLAY: ':1'
 #      NVIDIA_VISIBLE_DEVICES: all
 #      NVIDIA_DRIVER_CAPABILITIES: all
     restart: always
+    ports:
+      - "8083:8081/tcp"
   glxgears:
 #    runtime: nvidia
-    pid: 'service:compositor-proxy-cli'
     build:
       context: glxgears
       dockerfile: Dockerfile
-    ipc: host
+    command:
+      - --applications=/app/applications.json
+      - --bind-port=8081
+      - --base-url=ws://localhost:8084
+#      - --encoder=nvh264
+#      - --render-device=/dev/dri/renderD128
     privileged: false
     user: "1000:1000"
     volumes:
-      - xdg-runtime-dir:/xdg-runtime-dir
-      - x11-unix:/tmp/.X11-unix
-      - /dev/dri/renderD128:/dev/dri/renderD128:rw
-    devices:
-      - /dev/dri/renderD128:/dev/dri/renderD128
+      - $PWD/glxgears/applications.json:/app/applications.json:ro
+      - type: tmpfs
+        target: /tmp/.X11-unix/
+      - type: tmpfs
+        target: /xdg-runtime-dir
+#      - /dev/dri/renderD128:/dev/dri/renderD128:rw
+#      - /dev/dri/card0:/dev/dri/card0:rw
+#    devices: []
+#      - /dev/dri/renderD128:/dev/dri/renderD128
+#      - /dev/dri/card0:/dev/dri/card0
     environment:
       XAUTHORITY: /tmp/.X11-unix/Xauthority
       XDG_RUNTIME_DIR: /xdg-runtime-dir
-      DISPLAY: ':1'
 #      NVIDIA_VISIBLE_DEVICES: all
 #      NVIDIA_DRIVER_CAPABILITIES: all
     restart: always
-volumes:
-  xdg-runtime-dir:
-    driver_opts:
-      type: tmpfs
-      device: tmpfs
-  x11-unix:
-    driver_opts:
-      type: tmpfs
-      device: tmpfs
+    ports:
+      - "8084:8081/tcp"

@@ -1,0 +1,8 @@
+{
+  "/": {
+    "name": "GLX Gears",
+    "executable": "glxgears",
+    "args": [],
+    "env": {}
+  }
+}
