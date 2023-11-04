@@ -190,9 +190,16 @@ After starting an application, you should see a message appear in the log output
 
 ## Docker
 
-Running the Compositor Proxy CLI can also be done using docker-compose (see `docker-compose.yml` in the 
-`compositor-proxy` directory), but you will be limited to the applications specified in the docker-compose file. Beware 
-that this docker compose file only provides the Compositor Proxy CLI, so you will still need to run the Compositor Shell yourself.
+The Compositor Proxy CLI is also available as a public docker image. 
 
-The Compositor Proxy CLI is also available as a public docker image `docker.io/udevbe/compositor-proxy-cli` but does not include 
-any `applications.json`. This means you'll have to include it yourself using a mount.
+```shell
+docker.io/udevbe/compositor-proxy-cli:<date>
+```
+
+This image serves as a base image and can be extended with the desired applications. 
+This image includes a full build of the Compositor Proxy CLI suitable for use on environment with an Nvidia GPU.
+
+Example usage can be found in `examples/docker-compose`.
+
+{: .important }
+>The Docker image only provides the Compositor Proxy CLI. You still need to run the Compositor Shell yourself.

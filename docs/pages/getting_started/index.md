@@ -45,7 +45,7 @@ yarn workspace @gfld/shell run start
 ```
 Open a browser and point it at [http://localhost:8080](http://localhost:8080).
 
-![img.png](img.png)
+[![](img_small.jpg)](img.png){:target="_blank"}
 
 Unfortunately at this point we can't run any applications because there are none available. Let's fix that in the next steps.
 
@@ -67,7 +67,7 @@ The Greenfield Compositor Shell maps the URL `web:simple-shm` to `http://localho
 address of this example web app. Type this URL in the Greenfield address bar and some psychedelic circles should appear.
 To exit the application, press the `esc` key.
 
-![img_1.png](img_1.png)
+[![](img_1_small.jpg)](img_1.png){:target="_blank"}
 
 {: .note }
 > The Compositor Shell uses a reverse proxy config to map `web:simple-shm` to `http://localhost:9001`.
@@ -106,12 +106,13 @@ web:weston-clients/weston-stacking.html
 web:weston-clients/weston-transformed.html
 ```
 
-![img_2.png](img_2.png)
+[![](img_2_small.jpg)](img_2.png){:target="_blank"}
 
 ## Remote Applications
 
 {: .important }
-> Only Linux applications are supported.
+> Only Linux remote applications are supported. If you don't have a Linux machine, you can still run remote applications
+> using a [Docker image](http://127.0.0.1:4000/greenfield/pages/design/#docker).
 
 Greenfield can also run Linux applications remotely, both Wayland and X11. To do so, the remote machine must run
 a compositor proxy process that forwards all communication to the browser. We start by building the Compositor Proxy in
@@ -140,7 +141,7 @@ rem:localhost:8081/kwrite
 rem:localhost:8081/xterm
 ```
 
-![img_3.png](img_3.png)
+[![](img_3_small.jpg)](img_3.png){:target="_blank"}
 
 {: .important }
 > `gtk4-demo`, `kwrite` and `xterm` need to be installed separately.

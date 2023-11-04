@@ -1,5 +1,5 @@
 #Uncomment nvidia related comments below if you want hw acceleration with an nvidia GPU to work inside the containers (requires nvidia container runtime).
-#Also make sure to configure "/dev/dri/renderD12x" and "/dev/dri/cardx" entries in this file to point to the correct GPU if you have a multi GPU setup.
+#Also make sure to configure "/dev/dri/renderD12x" and "/dev/dri/cardx" entries in this file to point to the correct GPU, especially if you have a multi GPU setup.
 services:
   gtk3-demo:
 #    runtime: nvidia
