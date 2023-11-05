@@ -58,3 +58,10 @@ There are also two [Meson](https://mesonbuild.com/) `--cross-file` available. Th
 ```
 
 More examples are available in `examples/sdk`.
+
+# Limitations
+
+The SDK is simply an extension of the Emscripten SDK and as such is also subject to its limitations. Emscripten
+tries to be POSIX compatible as much as possible, but makes no attempt to be Linux compatible. This can be problematic as Wayland
+applications are by definition Linux applications. These Linux applications can depend on much more functionality than what is provided by Emscripten.
+One possible solution is to [compile the Linux kernel to WASM](/pages/future_plans/#web-kernel) and run it directly in the browser.

@@ -31,3 +31,25 @@ end
 
 # Web File System
 
+```mermaid
+graph LR
+
+subgraph JuiceFS Server
+    ds(Object Storage - PostgreSQL)
+    Mds(Metadata Engine - ElectricSQL)
+end
+
+subgraph Web App
+    AppA(WASM App)<-->|local 0ms|MdsC(Metadata Engine Cache - ElectricSQL)
+    AppA(WASM App)<-->|remote 50ms|ds
+
+    MdsC<-->|sync 50ms|Mds
+end
+
+subgraph Remote App
+    AppB(Remote App)<-->|local 0ms|MdsCA(Metadata Engine Cache - ElectricSQL)
+    AppB(Remote App)<-->|remote 50ms|ds
+
+    MdsCA<-->|sync 50ms|Mds
+end
+```

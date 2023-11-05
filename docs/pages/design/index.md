@@ -177,7 +177,7 @@ paths `/gtk4-demo`, `/kwrite` and `/xterm` to an executable with additional cont
 > setup. QT applications often require an extra `-platform wayland` parameter.
 
 For XWayland support a few extra steps may be needed, this is optional and only required if you don't already 
-hava an X server running eg. when running on a server. These commands should be executed before starting the 
+hava an X server running e.g. when running on a server. These commands should be executed before starting the 
 Compositor Proxy CLI.
 
 ```shell
@@ -196,10 +196,10 @@ The Compositor Proxy CLI is also available as a public docker image.
 docker.io/udevbe/compositor-proxy-cli:<date>
 ```
 
-This image serves as a base image and can be extended with the desired applications. 
+This image serves as a base image and can be extended with the desired applications.
 This image includes a full build of the Compositor Proxy CLI suitable for use on environment with an Nvidia GPU.
 
 Example usage can be found in `examples/docker-compose`.
 
 {: .important }
->The Docker image only provides the Compositor Proxy CLI. You still need to run the Compositor Shell yourself.
+>The Docker image only provides a build of the Compositor Proxy CLI. You still need to run the Compositor Shell yourself.
