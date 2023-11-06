@@ -112,7 +112,7 @@ web:weston-clients/weston-transformed.html
 
 {: .important }
 > Only Linux remote applications are supported. If you don't have a Linux machine, you can still run remote applications
-> using a [Docker image](http://127.0.0.1:4000/greenfield/pages/design/#docker).
+> using a [Docker image](/greenfield/pages/design/#docker).
 
 Greenfield can also run Linux applications remotely, both Wayland and X11. To do so, the remote machine must run
 a compositor proxy process that forwards all communication to the browser. We start by building the Compositor Proxy in
