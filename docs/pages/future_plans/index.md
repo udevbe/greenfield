@@ -40,16 +40,20 @@ subgraph JuiceFS Server
 end
 
 subgraph Web App
-    AppA(WASM App)<-->|local 0ms|MdsC(Metadata Engine Cache - ElectricSQL)
-    AppA(WASM App)<-->|remote 50ms|ds
+    AppA(WASM App)<-->jfswasm(JuiceFS WASM client)
 
-    MdsC<-->|sync 50ms|Mds
+    jfswasm<-->|local|MdsC(Metadata Engine Cache - ElectricSQL)
+    jfswasm<-->ds
+
+    MdsC<-->Mds
 end
 
 subgraph Remote App
-    AppB(Remote App)<-->|local 0ms|MdsCA(Metadata Engine Cache - ElectricSQL)
-    AppB(Remote App)<-->|remote 50ms|ds
+    AppB(Remote App)<-->jfsnative(JuiceFS Native client)
 
-    MdsCA<-->|sync 50ms|Mds
+    jfsnative<-->|local|MdsCA(Metadata Engine Cache - ElectricSQL)
+    jfsnative<-->ds
+
+    MdsCA<-->Mds
 end
 ```
