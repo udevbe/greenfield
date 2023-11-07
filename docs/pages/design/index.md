@@ -18,12 +18,11 @@ over the [getting started](/greenfield/pages/getting_started) page first to have
 
 # Compositor
 
-The Compositor package sits at the center. It's responsible for drawing application pixels on the screen and handling all
-user input for these applications. It's a [Wayland compositor](https://en.wikipedia.org/wiki/Wayland_(protocol)#Wayland_compositors) library
+The Compositor sits at the center. It is responsible for drawing applications and handling the application user input. It is a [Wayland compositor](https://en.wikipedia.org/wiki/Wayland_(protocol)#Wayland_compositors) library
 that is 100% compatible with existing native Wayland protocol. It implements the Wayland protocols `core` and `xdg-shell`. 
-In the browser, all applications are drawn using a WebGL texture inside a HTML5 canvas. 
-The HTML5 canvas corresponds to an 'output' in the Wayland protocol. 
-The browser compositor is asynchronous, meaning a slow client will not block the processing of another client.
+Applications are drawn using a WebGL texture inside a HTML5 canvas, this canvas corresponds to an 'output' in the Wayland protocol. 
+The browser compositor is asynchronous, meaning a slow client will not block the processing of another client, a requirement when processing
+remote video encoded applications.
 
 The Compositor package has no 3rd party runtime dependencies, building is straightforward.
 
@@ -40,7 +39,7 @@ The Compositor package is a library, so it doesn't do much without an actual imp
 The Compositor Shell provides an implementation on top of the Compositor. It provides auxiliary controls like application 
 management, keyboard configuration etc. and works closely together with the [Compositor Proxy CLI](#compositor-proxy-cli).
 
-The Compositor Shell included in the repository implements the bare minimum, while still trying to be somewhat esthetically pleasing.
+The Compositor Shell included in the repository implements the minimum, while still trying to be somewhat esthetically pleasing.
 It uses [Preact](https://preactjs.com/) and [Tailwind CSS](https://tailwindcss.com/) and has no runtime dependencies besides
 Preact and the Compositor library. The Compositor Shell is implemented as a single page application.
 
@@ -186,20 +185,20 @@ touch "$HOME/$XAUTHORITY"`
 xauth add "${HOST}":1 . "$(xxd -l 16 -p /dev/urandom)"
 ````
 
-After starting an application, you should see a message appear in the log output of the Compositor Proxy CLI that we started earlier: `New websocket connected.`.
+After starting an application, a message appears in the log output of the Compositor Proxy CLI that we started earlier: `New websocket connected.`.
 
 ## Docker
 
-The Compositor Proxy CLI is also available as a public docker image. 
+The Compositor Proxy CLI is also available as a [public docker image](https://hub.docker.com/r/udevbe/compositor-proxy-cli/tags).
 
 ```shell
 docker.io/udevbe/compositor-proxy-cli:<date>
 ```
 
-This image serves as a base image and can be extended with the desired applications.
-This image includes a full build of the Compositor Proxy CLI suitable for use on environment with an Nvidia GPU.
+This image serves as a base image and can be extended with desired applications.
+This image includes a full build of the Compositor Proxy CLI and is suitable for use in environments with an Nvidia GPU.
 
 Example usage can be found in `examples/docker-compose`.
 
 {: .important }
->The Docker image only provides a build of the Compositor Proxy CLI. You still need to run the Compositor Shell yourself.
+>The Docker image only provides a build of the Compositor Proxy CLI. You still need to run the Compositor Shell separately.
