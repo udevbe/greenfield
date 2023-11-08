@@ -1,8 +1,0 @@
-{
-  "/": {
-    "name": "GTK3 Demo",
-    "executable": "gtk3-demo",
-    "args": [],
-    "env": {}
-  }
-}

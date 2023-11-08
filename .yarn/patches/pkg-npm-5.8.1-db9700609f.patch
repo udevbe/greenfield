@@ -254,9 +254,9 @@ index 034bd153d92d9db9e7a37b9dc63ddf4277f1a9ee..76e766524fec4a2789bb775c738f61df
 +    if(!nativeDepsCopied) {
 +      nativeDepsCopied = true
 +      copyNativeDeps([
-+        `${moduleFolder}/libproxy-encoding.so`,
-+        `${moduleFolder}/libwayland-server.so.0`,
-+        `${moduleFolder}/libwestfield.so`,
++        `${moduleFolder}/shared/libproxy-encoding.so`,
++        `${moduleFolder}/shared/libwayland-server.so.0`,
++        `${moduleFolder}/shared/libwestfield.so`,
 +      ])
 +    }
 +

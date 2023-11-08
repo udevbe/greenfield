@@ -6937,7 +6937,7 @@ __metadata:
 
 "pkg@patch:pkg@npm%3A5.8.1#./.yarn/patches/pkg-npm-5.8.1-db9700609f.patch::locator=root-workspace-0b6124%40workspace%3A.":
   version: 5.8.1
-  resolution: "pkg@patch:pkg@npm%3A5.8.1#./.yarn/patches/pkg-npm-5.8.1-db9700609f.patch::version=5.8.1&hash=942722&locator=root-workspace-0b6124%40workspace%3A."
+  resolution: "pkg@patch:pkg@npm%3A5.8.1#./.yarn/patches/pkg-npm-5.8.1-db9700609f.patch::version=5.8.1&hash=84f863&locator=root-workspace-0b6124%40workspace%3A."
   dependencies:
     "@babel/generator": 7.18.2
     "@babel/parser": 7.18.4
@@ -6960,7 +6960,7 @@ __metadata:
       optional: true
   bin:
     pkg: lib-es5/bin.js
-  checksum: ba781b091b0ddd90bc56dd3ecc68c8bd6ce67ee28a5dabdff3e5ee24cd6de686a19e3dd95720eb9d9ac24d74412961828c970306a541e7e6d01923eda8afd41f
+  checksum: 1ecd108a4b3ae205863f254eb30feb07557c638b67578d0a3405b144c98f471d6adf9146fe8550fe6695da3443c8518b9f911bad932d89a95cb9f11c182afac3
   languageName: node
   linkType: hard
 

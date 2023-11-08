@@ -1,8 +1,0 @@
-{
-  "/": {
-    "name": "XTerm",
-    "executable": "xterm",
-    "args": [],
-    "env": {}
-  }
-}

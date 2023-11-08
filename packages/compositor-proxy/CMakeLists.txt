@@ -218,12 +218,16 @@ target_link_libraries(wayland-server-addon PRIVATE
 )
 
 install(TARGETS
-        proxy-encoding
-        wayland-server
-        westfield
         proxy-encoding-addon
         wayland-server-addon
         proxy-poll-addon
         DESTINATION
         ${CMAKE_CURRENT_SOURCE_DIR}/dist/addons
+)
+install(TARGETS
+        proxy-encoding
+        wayland-server
+        westfield
+        DESTINATION
+        ${CMAKE_CURRENT_SOURCE_DIR}/dist/addons/shared
 )

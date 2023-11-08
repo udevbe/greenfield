@@ -1,0 +1,26 @@
+{
+  "/glxgears": {
+    "name": "GLX Gears",
+    "executable": "glxgears",
+    "args": [],
+    "env": {}
+  },
+  "/gtk3demo": {
+    "name": "GTK3 Demo",
+    "executable": "gtk3-demo",
+    "args": [],
+    "env": {}
+  },
+  "/gtk4demo": {
+    "name": "GTK4 Demo",
+    "executable": "gtk4-demo",
+    "args": [],
+    "env": {}
+  },
+  "/xterm": {
+    "name": "XTerm",
+    "executable": "xterm",
+    "args": [],
+    "env": {}
+  }
+}

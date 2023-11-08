@@ -1,10 +1,10 @@
 #Uncomment nvidia related comments below if you want hw acceleration with an nvidia GPU to work inside the containers (requires nvidia container runtime).
 #Also make sure to configure "/dev/dri/renderD12x" and "/dev/dri/cardx" entries in this file to point to the correct GPU, especially if you have a multi GPU setup.
 services:
-  gtk3-demo:
+  apps:
 #    runtime: nvidia
     build:
-      context: gtk3-demo
+      context: .
       dockerfile: Dockerfile
     command:
       - --applications=/app/applications.json
@@ -15,7 +15,7 @@ services:
     privileged: false
     user: "1000:1000"
     volumes:
-      - $PWD/gtk3-demo/applications.json:/app/applications.json:ro
+      - $PWD/applications.json:/app/applications.json:ro
       - type: tmpfs
         target: /tmp/.X11-unix/
       - type: tmpfs
@@ -33,99 +33,3 @@ services:
     restart: always
     ports:
       - "8081:8081/tcp"
-  gtk4-demo:
-#    runtime: nvidia
-    build:
-      context: gtk4-demo
-      dockerfile: Dockerfile
-    command:
-      - --applications=/app/applications.json
-      - --bind-port=8081
-      - --base-url=ws://localhost:8082
-#      - --encoder=nvh264
-#      - --render-device=/dev/dri/renderD128
-    privileged: false
-    user: "1000:1000"
-    volumes:
-      - $PWD/gtk4-demo/applications.json:/app/applications.json:ro
-      - type: tmpfs
-        target: /tmp/.X11-unix/
-      - type: tmpfs
-        target: /xdg-runtime-dir
-#      - /dev/dri/renderD128:/dev/dri/renderD128:rw
-#      - /dev/dri/card0:/dev/dri/card0:rw
-#    devices: []
-#      - /dev/dri/renderD128:/dev/dri/renderD128
-#      - /dev/dri/card0:/dev/dri/card0
-    environment:
-      XAUTHORITY: /tmp/.X11-unix/Xauthority
-      XDG_RUNTIME_DIR: /xdg-runtime-dir
-#      NVIDIA_VISIBLE_DEVICES: all
-#      NVIDIA_DRIVER_CAPABILITIES: all
-    restart: always
-    ports:
-      - "8082:8081/tcp"
-  xterm:
-#    runtime: nvidia
-    build:
-      context: xterm
-      dockerfile: Dockerfile
-    command:
-      - --applications=/app/applications.json
-      - --bind-port=8081
-      - --base-url=ws://localhost:8083
-    #      - --encoder=nvh264
-    #      - --render-device=/dev/dri/renderD128
-    privileged: false
-    user: "1000:1000"
-    volumes:
-      - $PWD/xterm/applications.json:/app/applications.json:ro
-      - type: tmpfs
-        target: /tmp/.X11-unix/
-      - type: tmpfs
-        target: /xdg-runtime-dir
-#      - /dev/dri/renderD128:/dev/dri/renderD128:rw
-#      - /dev/dri/card0:/dev/dri/card0:rw
-#    devices: []
-#      - /dev/dri/renderD128:/dev/dri/renderD128
-#      - /dev/dri/card0:/dev/dri/card0
-    environment:
-      XAUTHORITY: /tmp/.X11-unix/Xauthority
-      XDG_RUNTIME_DIR: /xdg-runtime-dir
-#      NVIDIA_VISIBLE_DEVICES: all
-#      NVIDIA_DRIVER_CAPABILITIES: all
-    restart: always
-    ports:
-      - "8083:8081/tcp"
-  glxgears:
-#    runtime: nvidia
-    build:
-      context: glxgears
-      dockerfile: Dockerfile
-    command:
-      - --applications=/app/applications.json
-      - --bind-port=8081
-      - --base-url=ws://localhost:8084
-#      - --encoder=nvh264
-#      - --render-device=/dev/dri/renderD128
-    privileged: false
-    user: "1000:1000"
-    volumes:
-      - $PWD/glxgears/applications.json:/app/applications.json:ro
-      - type: tmpfs
-        target: /tmp/.X11-unix/
-      - type: tmpfs
-        target: /xdg-runtime-dir
-#      - /dev/dri/renderD128:/dev/dri/renderD128:rw
-#      - /dev/dri/card0:/dev/dri/card0:rw
-#    devices: []
-#      - /dev/dri/renderD128:/dev/dri/renderD128
-#      - /dev/dri/card0:/dev/dri/card0
-    environment:
-      XAUTHORITY: /tmp/.X11-unix/Xauthority
-      XDG_RUNTIME_DIR: /xdg-runtime-dir
-#      NVIDIA_VISIBLE_DEVICES: all
-#      NVIDIA_DRIVER_CAPABILITIES: all
-    restart: always
-    ports:
-      - "8084:8081/tcp"
