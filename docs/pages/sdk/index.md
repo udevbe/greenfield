@@ -67,10 +67,10 @@ The Greenfield SDK is an extension of the Emscripten SDK. Emscripten
 is a web POSIX compatibility layer, but is not Linux compatibility layer. This can be problematic as Wayland
 applications are by definition Linux applications. These Linux applications can depend on much more functionality than what is provided by Emscripten.
 
-A possible solution is to [compile the Linux kernel to WASM](/greenfield/pages/future_plans/#web-kernel) and run it directly in the browser. This allows for
+A possible solution is to [compile the Linux kernel to WASM](/pages/future_plans/#web-kernel) and run it directly in the browser. This allows for
 a userland stack that is completely compatible with Linux system calls which greatly improves the compatibility of LinuxWayland WASM applications.
 
 ## File System
 
 File system support is currently limited to what is supported by Emscripten until a 
-[shared file system](/greenfield/pages/future_plans/#web-file-system) is implemented.
+[shared file system](/pages/future_plans/#web-file-system) is implemented.

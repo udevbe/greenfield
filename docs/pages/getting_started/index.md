@@ -54,7 +54,7 @@ Unfortunately at this point we can't run any applications because there are none
 Web applications in Greenfield can either be native Wayland applications compiled to WebAssembly or pure JavaScript applications.
 Greenfield provides a few examples that we can use.
 
-- `examples/sdk` shows the usage of the [Greenfield WebAssembly SDK](/greenfield/pages/sdk) in porting existing native desktop applications to Greenfield (experimental).
+- `examples/sdk` shows the usage of the [Greenfield WebAssembly SDK](/pages/sdk) in porting existing native desktop applications to Greenfield (experimental).
 - `examples/webapps` has some ready-to-run examples.
 
 We'll begin simple with `examples/webapps/simple-shm`.
@@ -85,7 +85,7 @@ Inside `examples/sdk/weston`
 ```
 
 {: .important }
-> Building the WebAssembly examples require a working SDK. Head over to the SDK [documentation](/greenfield/pages/sdk) to set it up.
+> Building the WebAssembly examples require a working SDK. Head over to the SDK [documentation](/pages/sdk) to set it up.
 
 If all went well, a new `build/clients` directory has appeared with a bunch of `.html`, `.js` and `.wasm`. Spin up a web server so these can be served.
 
@@ -112,7 +112,7 @@ web:weston-clients/weston-transformed.html
 
 {: .important }
 > Only Linux remote applications are supported. If you don't have a Linux machine, you can still run remote applications
-> using a [Docker image](/greenfield/pages/design/#docker).
+> using a [Docker image](/pages/design/#docker).
 
 Greenfield can also run Linux applications remotely, both Wayland and X11. To do so, the remote machine must run
 a compositor proxy process that forwards all communication to the browser. We start by building the Compositor Proxy in
@@ -146,4 +146,4 @@ rem:localhost:8081/xterm
 {: .important }
 > `gtk4-demo`, `kwrite` and `xterm` need to be installed separately.
 
-Further reading about the individual components configuration and inner workings can be found on the [design](/greenfield/pages/design) page.
+Further reading about the individual components configuration and inner workings can be found on the [design](/pages/design) page.

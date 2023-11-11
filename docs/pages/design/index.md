@@ -10,8 +10,8 @@ has_toc: false
 # Design
 {: .no_toc }
 
-Greenfield consists of many separate [components](/greenfield/pages/components). We'll go over the most relevant ones in detail. Make sure to go
-over the [getting started](/greenfield/pages/getting_started) page first to have a minimal working setup.
+Greenfield consists of many separate [components](/pages/components). We'll go over the most relevant ones in detail. Make sure to go
+over the [getting started](/pages/getting_started) page first to have a minimal working setup.
 
 - 
 {:toc}

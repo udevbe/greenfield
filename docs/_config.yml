@@ -22,7 +22,7 @@ title: Greenfield
 email: derijcke.erik@gmail.com
 description: >- # this means to ignore newlines until "baseurl:"
   Greenfield user and developer documentation.
-baseurl: "/greenfield" # the subpath of your site, e.g. /blog
+baseurl: "/" # the subpath of your site, e.g. /blog
 url: "http://udev.be" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username: FriedChicken
 github_username:  Zubnix
