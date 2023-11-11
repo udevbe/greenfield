@@ -1,0 +1,50 @@
+{
+  "name": "@gfld/compositor-protocol",
+  "version": "1.0.0-alpha.7",
+  "description": "Wayland HTML5 runtime for Node.js",
+  "module": "dist/index.js",
+  "typings": "types/index.d.ts",
+  "files": [
+    "dist",
+    "types"
+  ],
+  "keywords": [
+    "wayland",
+    "html5",
+    "weboscket",
+    "compositor",
+    "browser",
+    "javascript",
+    "ipc"
+  ],
+  "author": "Erik De Rijcke",
+  "homepage": "https://www.greenfield.app",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/udevbe/greenfield/tree/master/libs/web/compositor/protocol"
+  },
+  "packageManager": "yarn@3.6.0",
+  "scripts": {
+    "generate:webbuffer": "yarn run compositor-generator ../../protocol/web-bitmapbuf-unstable-v1.xml -o src/protocol",
+    "generate:xdgshell": "yarn run compositor-generator ../../protocol/xdg-shell.xml -o src/protocol",
+    "generate:wayland": "yarn run compositor-generator ../../protocol/wayland.xml -o src/protocol",
+    "generate": "yarn run rimraf dist types && yarn run mkdirp src/protocol/ && yarn generate:wayland && yarn generate:xdgshell && yarn generate:webbuffer",
+    "build": "yarn run tsc"
+  },
+  "dependencies": {
+    "@gfld/common": "workspace:^"
+  },
+  "devDependencies": {
+    "@gfld/compositor-generator": "workspace:^",
+    "@typescript-eslint/eslint-plugin": "^6.7.3",
+    "@typescript-eslint/parser": "^6.7.3",
+    "eslint": "^8.50.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "mkdirp": "^3.0.1",
+    "prettier": "^3.0.3",
+    "rimraf": "^5.0.4",
+    "typescript": "^5.2.2"
+  }
+}

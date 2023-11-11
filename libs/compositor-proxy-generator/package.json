@@ -1,0 +1,36 @@
+{
+  "name": "@gfld/compositor-proxy-generator",
+  "version": "1.0.0-alpha.4",
+  "bin": "src/index.mjs",
+  "type": "module",
+  "author": "Erik De Rijcke",
+  "homepage": "https://www.greenfield.app",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/udevbe/greenfield/tree/master/libs/proxy/generator"
+  },
+  "packageManager": "yarn@3.6.0",
+  "keywords": [
+    "wayland",
+    "html5",
+    "weboscket",
+    "compositor",
+    "browser",
+    "javascript",
+    "ipc"
+  ],
+  "bugs": {
+    "url": "https://github.com/udevbe/westfield/issues"
+  },
+  "contributors": [],
+  "dependencies": {
+    "camelcase": "^8.0.0",
+    "meow": "^12.1.1",
+    "uppercamelcase": "^3.0.0",
+    "xml2js": "^0.6.2"
+  },
+  "devDependencies": {
+    "standard": "^17.1.0"
+  }
+}

@@ -1,0 +1,35 @@
+#Uncomment nvidia related comments below if you want hw acceleration with an nvidia GPU to work inside the containers (requires nvidia container runtime).
+#Also make sure to configure "/dev/dri/renderD12x" and "/dev/dri/cardx" entries in this file to point to the correct GPU, especially if you have a multi GPU setup.
+services:
+  apps:
+#    runtime: nvidia
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      - --applications=/app/applications.json
+      - --bind-port=8081
+      - --base-url=ws://localhost:8081
+#      - --encoder=nvh264
+#      - --render-device=/dev/dri/renderD128
+    privileged: false
+    user: "1000:1000"
+    volumes:
+      - $PWD/applications.json:/app/applications.json:ro
+      - type: tmpfs
+        target: /tmp/.X11-unix/
+      - type: tmpfs
+        target: /xdg-runtime-dir
+#      - /dev/dri/renderD128:/dev/dri/renderD128:rw
+#      - /dev/dri/card0:/dev/dri/card0:rw
+#    devices: []
+#      - /dev/dri/renderD128:/dev/dri/renderD128
+#      - /dev/dri/card0:/dev/dri/card0
+    environment:
+      XAUTHORITY: /tmp/.X11-unix/Xauthority
+      XDG_RUNTIME_DIR: /xdg-runtime-dir
+#      NVIDIA_VISIBLE_DEVICES: all
+#      NVIDIA_DRIVER_CAPABILITIES: all
+    restart: always
+    ports:
+      - "8081:8081/tcp"

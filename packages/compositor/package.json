@@ -1,0 +1,56 @@
+{
+  "name": "@gfld/compositor",
+  "version": "1.0.0-alpha.0",
+  "description": "A Wayland HTML5 Compositor.",
+  "keywords": [
+    "linux",
+    "wayland",
+    "javascript",
+    "typescript",
+    "compositor",
+    "html5",
+    "browser",
+    "canvas",
+    "webgl",
+    "websocket",
+    "remote",
+    "web"
+  ],
+  "main": "dist/index.js",
+  "typings": "types/index.d.ts",
+  "files": [
+    "dist",
+    "types"
+  ],
+  "scripts": {
+    "prebuild": "yarn run rimraf dist types",
+    "build": "yarn run tsc && yarn run cpy './src/assets/**' './dist/assets/'"
+  },
+  "dependencies": {
+    "@gfld/common": "workspace:^",
+    "@gfld/compositor-ffmpeg-h264": "workspace:^",
+    "@gfld/compositor-protocol": "workspace:^",
+    "@gfld/compositor-wasm": "workspace:^",
+    "@gfld/xtsb": "workspace:^"
+  },
+  "devDependencies": {
+    "@types/dom-webcodecs": "^0.1.8",
+    "@typescript-eslint/eslint-plugin": "^6.7.3",
+    "@typescript-eslint/parser": "^6.7.3",
+    "cpy-cli": "^5.0.0",
+    "eslint": "^8.50.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "prettier": "^3.0.3",
+    "rimraf": "^5.0.4",
+    "typescript": "^5.2.2"
+  },
+  "author": "Erik De Rijcke",
+  "homepage": "https://www.greenfield.app",
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/udevbe/greenfield/tree/master/packages/compositor"
+  },
+  "packageManager": "yarn@3.6.0"
+}

@@ -1,0 +1,12 @@
+diff --git a/src/cairo-ft.h b/src/cairo-ft.h
+index a23e032..921a96e 100644
+--- a/src/cairo-ft.h
++++ b/src/cairo-ft.h
+@@ -45,6 +45,7 @@
+ 
+ #include <ft2build.h>
+ #include FT_FREETYPE_H
++#include FT_COLOR_H
+ 
+ #if CAIRO_HAS_FC_FONT
+ #include <fontconfig/fontconfig.h>

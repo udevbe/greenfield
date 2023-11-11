@@ -1,0 +1,12 @@
+diff --git a/meson.build b/meson.build
+index ed878ef..6643e31 100644
+--- a/meson.build
++++ b/meson.build
+@@ -577,7 +577,6 @@ pango_inc = include_directories('pango')
+ subdir('pango')
+ subdir('utils')
+ subdir('examples')
+-subdir('tests')
+ subdir('tools')
+ 
+ if get_option('gtk_doc')

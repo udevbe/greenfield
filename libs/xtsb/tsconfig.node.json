@@ -1,0 +1,27 @@
+{
+  "extends": "@tsconfig/node18/tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist/main",
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "declaration": true,
+    "declarationDir": "dist/types",
+    "pretty": true
+  },
+  "include": [
+    "src",
+    "src/index.d.ts"
+  ],
+  "exclude": [
+    ".eslintrc.js",
+    ".prettierrc.js",
+    "jest.config.js",
+    "**/*.spec.ts",
+    "test",
+    "**/webConnection.ts",
+    "**/index.web.ts"
+  ],
+  "ts-node": {
+    "files": true
+  }
+}

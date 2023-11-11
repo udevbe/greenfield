@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "workspaces": [
+    "libs/*",
+    "packages/*",
+    "examples/webapps/*"
+  ],
+  "packageManager": "yarn@3.6.3",
+  "resolutions": {
+    "pkg@^5.8.1": "patch:pkg@npm%3A5.8.1#./.yarn/patches/pkg-npm-5.8.1-db9700609f.patch"
+  }
+}

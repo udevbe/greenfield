@@ -1,0 +1,35 @@
+{
+  "name": "demo-webapp-webgl",
+  "version": "1.0.0-alpha.0",
+  "description": "HTML5 Wayland Demo Web Client Simple Web GL",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/udevbe/greenfield.git"
+  },
+  "keywords": [
+    "wayland",
+    "html5",
+    "client",
+    "demo",
+    "web"
+  ],
+  "author": "Erik De Rijcke <derijcke.erik@gmail.com> (http://www.udev.be)",
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/udevbe/greenfield/issues"
+  },
+  "homepage": "https://github.com/udevbe/greenfield#readme",
+  "scripts": {
+    "start": "yarn run vite dev"
+  },
+  "dependencies": {
+    "@gfld/client-protocol": "workspace:^",
+    "@gfld/common": "workspace:^",
+    "gl-matrix": "^3.4.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "vite": "^4.4.9",
+    "vite-plugin-glsl": "^1.1.2"
+  }
+}

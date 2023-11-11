@@ -1,0 +1,12 @@
+build
+dist
+types
+node_modules
+src/encoding/proxy-encoding-addon.node
+src/encoding/libproxy-encoding.so
+src/proxy-poll-addon.node
+src/cli/app-config.d.ts
+../compositor-proxy-cli/package/compositor-proxy
+../compositor-proxy-cli/package/libproxy-encoding.so
+../compositor-proxy-cli/package/libwayland-server.so.0
+../compositor-proxy-cli/package/libwestfield.so

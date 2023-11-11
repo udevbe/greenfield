@@ -1,0 +1,47 @@
+{
+  "name": "@gfld/client-protocol",
+  "version": "1.0.0-alpha.4",
+  "description": "Wayland HTML5 core client protocol",
+  "module": "dist/index.js",
+  "typings": "types/index.d.ts",
+  "files": [
+    "dist",
+    "types"
+  ],
+  "scripts": {
+    "generate:webbuffer": "yarn run client-generator ../../protocol/web-bitmapbuf-unstable-v1.xml -o src/protocol",
+    "generate:xdgshell": "yarn run client-generator ../../protocol/xdg-shell.xml -o src/protocol",
+    "generate:wayland": "yarn run client-generator ../../protocol/wayland.xml -o src/protocol",
+    "generate": "yarn generate:wayland && yarn generate:xdgshell && yarn generate:webbuffer",
+    "prebuild": "yarn run rimraf dist types && yarn generate",
+    "build": "yarn run tsc"
+  },
+  "keywords": [
+    "wayland",
+    "client",
+    "html5",
+    "compositor",
+    "browser",
+    "javascript"
+  ],
+  "author": "Erik De Rijcke",
+  "homepage": "https://www.greenfield.app",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/udevbe/greenfield/tree/master/libs/web/client/protocol"
+  },
+  "packageManager": "yarn@3.6.0",
+  "devDependencies": {
+    "@gfld/client-generator": "workspace:^",
+    "@gfld/common": "workspace:^",
+    "@typescript-eslint/eslint-plugin": "^6.7.3",
+    "@typescript-eslint/parser": "^6.7.3",
+    "eslint": "^8.50.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "prettier": "^3.0.3",
+    "rimraf": "^5.0.4",
+    "typescript": "^5.2.2"
+  }
+}

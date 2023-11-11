@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "bundler",
+    "target": "ES2020",
+    "module": "ES2020",
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "allowJs": true,
+    "checkJs": false,
+    "rootDir": "src",
+    "strict": true,
+    "sourceMap": false,
+    "removeComments": true,
+    "noEmitOnError": true,
+    "declaration": true,
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "declarationDir": "types",
+    "outDir": "dist"
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    ".eslintrc.js",
+    ".prettierrc.js",
+    "jest.config.js",
+    "**/*.spec.ts"
+  ]
+}

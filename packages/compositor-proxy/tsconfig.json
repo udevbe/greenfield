@@ -1,0 +1,16 @@
+{
+  "extends": "@tsconfig/node18/tsconfig.json",
+  "compilerOptions": {
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "rootDirs": ["src"],
+    "pretty": true,
+    "declarationDir": "types",
+    "outDir": "dist",
+    "declaration": true
+  },
+  "exclude": [".eslintrc.js", ".prettierrc.js", "jest.config.js"],
+  "ts-node": {
+    "files": true
+  },
+}

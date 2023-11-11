@@ -1,0 +1,3 @@
+#!/bin/bash
+
+"$_SDK_DIR"/emsdk/upstream/emscripten/tools/file_packager "$@"
