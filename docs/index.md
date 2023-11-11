@@ -17,5 +17,5 @@ or WebAssembly applications directly in your browser.
 [View it on GitHub](https://github.com/udevbe/greenfield){: .btn .fs-5 .mb-4 .mb-md-0 }
 
 <sub>
-or [look how it all began](https://wayouttheresoftware.blogspot.com/2023/07/some-history-about-greenfield.html) 
+or have a [look on how it all began](https://wayouttheresoftware.blogspot.com/2023/07/some-history-about-greenfield.html) 
 </sub>

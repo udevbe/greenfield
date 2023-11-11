@@ -81,7 +81,7 @@ The build output can be found inside the `dist` folder.
 
 The Compositor Proxy is just a library requires an implementation in order to run, a basic one is provided by the [Compositor Proxy CLI](#compositor-proxy-cli).
 
-## High level technical
+## Encoding Pipeline
 
 The Compositor Proxy implementation listens to native Wayland applications and talks to the remote Compositor that runs in the browser.
 Each remote application's content is encoded to video frames using GStreamer and send to the browser for decoding.
@@ -89,19 +89,19 @@ Each remote application's content is encoded to video frames using GStreamer and
 [<img src="https://docs.google.com/drawings/d/e/2PACX-1vRIPsXAvlTFj-bERKWLeoo5RFWUQHfLyQOymNZ8c-kVEhpsh8GGXYAkudanvpNzycTC3G9xuCPxHX6x/pub?w=1985&h=561" />](https://docs.google.com/drawings/d/e/2PACX-1vRIPsXAvlTFj-bERKWLeoo5RFWUQHfLyQOymNZ8c-kVEhpsh8GGXYAkudanvpNzycTC3G9xuCPxHX6x/pub?w=1985&h=561)
 
 {: .note }
-> This pipeline [fast enough to support gaming.](https://www.youtube.com/watch?v=pTn_hjOwK-Y)
+> This pipeline is [fast enough to support gaming.](https://www.youtube.com/watch?v=pTn_hjOwK-Y)
 
-Image processing is done on the GPU if available, if not, slower CPU software encoding is used. The Compositor Proxy implements the Wayland `wl-drm` & `dmabuf-v1` protocol. This allows for a zero-copy transfer of the application pixels to the encoding pipeline. The Compositor in the browser also supports
-the H.264 WebCodecs API, which can use the GPU of the receiving browser client to decode frames.
+Image processing is done on the GPU if configured and available, if not, slower CPU software encoding is used. The Compositor Proxy implements the Wayland `wl-drm` & `dmabuf-v1` protocol. This allows for a zero-copy transfer of the application pixels to the encoding pipeline. The Compositor in the browser also supports
+the H.264 WebCodecs API, which can either use the GPU of the receiving browser client, or a native CPU based decoder. In case the browser does not support the WebCodecs API, the Compositor falls back to a WebAssembly decoder.
 
-### WebSockets - WebRTC DataChannels - WebTransport
+## Browser Connection
 
 The current implementation of Compositor Proxy uses WebSockets to deliver data to the browser. WebSockets operate over TCP which is ill-suited for real-time applications.
 Instead, a UDP based protocol is needed. Browsers today unfortunately have no support for UDP based protocols aside from WebRTC DataChannels. However, we can not use WebRTC DataChannels as the build-in SCTP congestion algorithm is unacceptably slow.
 A more low level UDP protocol is required and is currently in the works in the form of the WebTransport protocol. Once WebTransport becomes more widely available, we can operate in UDP mode
 and assure fast end reliable transfers using [KCP](https://github.com/skywind3000/kcp/blob/master/README.en.md) in combination with forward-error-correction.
 
-### Copy-Paste
+## Copy-Paste
 
 If both native applications are connected to separate Compositor Proxy instances, the Compositor Proxy will use a direct peer-to-peer connection to transfer copy-paste 
 data to other remote Compositor Proxy instance. This avoids the round trip and overhead of transferring all content to the browser and back.
