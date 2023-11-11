@@ -12,7 +12,7 @@ Greenfield running DOOM3 remotely 1920x1080@60FPS (16 Mar 2023):
 
 [![Fosdem presentation + demo](https://img.youtube.com/vi/pTn_hjOwK-Y/0.jpg)](https://www.youtube.com/watch?v=pTn_hjOwK-Y)
 
-For more information, visit the [website](https://greenfield.app), or have [a look on how it all began]( https://twitter.com/FriedChicken/status/1420671685485867014)
+For more information, visit the [website](https://greenfield.app), or have [a look on how it all began](https://wayouttheresoftware.blogspot.com/2023/07/some-history-about-greenfield.html)
 
 ### Modular Compositor
 
