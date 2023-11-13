@@ -19,7 +19,6 @@ build() {
 
   ensure_ffmpeg
   pushd ffmpeg
-  git checkout "$FFMPEG_VERSION"
 
   echo "Building ffmpeg..."
 
@@ -36,7 +35,6 @@ build() {
     --disable-autodetect --pkg-config-flags="--static" --nm=emnm --ranlib=emranlib --cxx=em++ --dep-cc=emcc
   emmake make
   emmake make install
-  git checkout master
 
   popd
   echo "Running Emscripten..."
