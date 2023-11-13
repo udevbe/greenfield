@@ -123,7 +123,6 @@ async function launchApp({
   }
 
   try {
-    logger.info(`Launching application ${name}`)
     const nativeAppContext = await launchApplication(name, executable, args, env, context.session)
     // start a timer to terminate the app if no connection is made
     nativeAppContext.onDisconnect()

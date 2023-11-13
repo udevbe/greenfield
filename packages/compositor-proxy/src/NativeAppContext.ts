@@ -244,12 +244,18 @@ export function launchApplication(
   return new Promise<NativeAppContext>((resolve, reject) => {
     const appLogger = createLogger(applicationExecutable)
 
+    const appEnv = {
+      ...process.env,
+      ...env,
+      WAYLAND_DISPLAY: session.nativeWaylandCompositorSession.waylandDisplay,
+    }
+    appLogger.info(
+      `Launching application ${applicationExecutable} with args ${JSON.stringify(
+        args,
+      )} and environment ${JSON.stringify(appEnv)}`,
+    )
     const childProcess = spawn(applicationExecutable, args, {
-      env: {
-        ...process.env,
-        ...env,
-        WAYLAND_DISPLAY: session.nativeWaylandCompositorSession.waylandDisplay,
-      },
+      env: appEnv,
     })
 
     childProcess.stdout.on('data', (data) => {
