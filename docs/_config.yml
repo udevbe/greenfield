@@ -63,8 +63,8 @@ aux_links_new_tab: true
 back_to_top: true
 back_to_top_text: "Back to top"
 
-color_scheme: light
-callouts_level: quiet # or loud
+color_scheme: dark
+callouts_level: loud #quiet
 callouts:
   highlight:
     color: yellow
