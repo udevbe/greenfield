@@ -68,6 +68,10 @@ export function authRequest(
   response.writeHead(403, 'Forbidden').end()
 }
 
+function isToMainProcessMessage(message: any): message is ToMainProcessMessage {
+  return message.type === 'launchAppSuccess' || message.type === 'launchAppFailed'
+}
+
 function sendMessageWithReply<T extends Extract<ToSessionProcessMessage, { type: 'launchApp' }>>(
   childProcess: ChildProcess,
   message: T,
@@ -78,12 +82,13 @@ function sendMessageWithReply<T extends Extract<ToSessionProcessMessage, { type:
     const timeoutHandle = setTimeout(() => {
       reject(new Error(`Sending message: ${JSON.stringify(message)} timed out with no reply after ${timeout}ms.`))
     }, timeout)
-    const replyListener = (messsage: any) => {
-      const mainProcessMessage = messsage as ToMainProcessMessage
-      if (mainProcessMessage.payload.replySerial === sendSerial) {
-        clearTimeout(timeoutHandle)
-        childProcess.removeListener('message', replyListener)
-        resolve(mainProcessMessage)
+    const replyListener = (message: any) => {
+      if (isToMainProcessMessage(message)) {
+        if (message.payload.replySerial === sendSerial) {
+          clearTimeout(timeoutHandle)
+          childProcess.removeListener('message', replyListener)
+          resolve(message)
+        }
       }
     }
     childProcess.on('message', replyListener)
