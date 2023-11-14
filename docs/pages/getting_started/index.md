@@ -41,7 +41,7 @@ run build
 
 After all packages have been build, we can spin up the Greenfield compositor shell.
 ```shell
-yarn workspace @gfld/shell run start
+yarn workspace @gfld/compositor-shell run start
 ```
 Open a browser and point it at [http://localhost:8080](http://localhost:8080).
 
