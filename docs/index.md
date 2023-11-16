@@ -8,9 +8,8 @@ has_children: false
 Greenfield
 ==
 ### The in-browser wayland compositor
-[https://www.greenfield.app](https://www.greenfield.app)
 
-Greenfield is a [Wayland server](https://en.wikipedia.org/wiki/Wayland_%28display_server_protocol%29) entirely in your browser. It runs native Linux applications remotely, 
+Greenfield is the [Wayland compositor](https://en.wikipedia.org/wiki/Wayland_%28display_server_protocol%29) for the web. It runs native Linux applications remotely,
 or WebAssembly applications directly in your browser.
 
 [Getting started](pages/getting_started/){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
