@@ -1,6 +1,6 @@
 {
   "name": "@gfld/xtsb",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-rc1",
   "description": "",
   "keywords": [],
   "main": "dist/main/index.node.js",

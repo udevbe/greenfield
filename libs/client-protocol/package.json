@@ -1,6 +1,6 @@
 {
   "name": "@gfld/client-protocol",
-  "version": "1.0.0-alpha.4",
+  "version": "1.0.0-rc1",
   "description": "Wayland HTML5 core client protocol",
   "module": "dist/index.js",
   "typings": "types/index.d.ts",
@@ -32,9 +32,11 @@
     "url": "https://github.com/udevbe/greenfield/tree/master/libs/web/client/protocol"
   },
   "packageManager": "yarn@3.6.0",
+  "dependencies": {
+    "@gfld/common": "workspace:^"
+  },
   "devDependencies": {
     "@gfld/client-generator": "workspace:^",
-    "@gfld/common": "workspace:^",
     "@typescript-eslint/eslint-plugin": "^6.7.3",
     "@typescript-eslint/parser": "^6.7.3",
     "eslint": "^8.50.0",

@@ -1,6 +1,6 @@
 {
   "name": "@gfld/compositor-proxy-generator",
-  "version": "1.0.0-alpha.4",
+  "version": "1.0.0-rc1",
   "bin": "src/index.mjs",
   "type": "module",
   "author": "Erik De Rijcke",

@@ -1,6 +1,6 @@
 {
   "name": "@gfld/common",
-  "version": "1.0.0-alpha.2",
+  "version": "1.0.0-rc1",
   "description": "Wayland HTML5 common client-server runtime",
   "module": "dist/index.js",
   "typings": "types/index.d.ts",

@@ -1,6 +1,6 @@
 {
   "name": "@gfld/compositor-protocol",
-  "version": "1.0.0-alpha.7",
+  "version": "1.0.0-rc1",
   "description": "Wayland HTML5 runtime for Node.js",
   "module": "dist/index.js",
   "typings": "types/index.d.ts",

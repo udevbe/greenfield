@@ -1,6 +1,6 @@
 {
   "name": "@gfld/compositor-wasm",
-  "version": "1.0.0-alpha.0",
+  "version": "1.0.0-rc1",
   "description": "Wayland HTML5 compositor wasm libs",
   "module": "dist/index.js",
   "typings": "types/index.d.ts",

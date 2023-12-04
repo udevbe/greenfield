@@ -1,6 +1,6 @@
 {
   "name": "@gfld/compositor-generator",
-  "version": "1.0.0-alpha.0",
+  "version": "1.0.0-rc1",
   "type": "module",
   "description": "Wayland HTML5 protocol generator for Node.js",
   "bin": "index.mjs",

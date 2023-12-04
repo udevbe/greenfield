@@ -1,6 +1,6 @@
 {
   "name": "@gfld/compositor-ffmpeg-h264",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-rc1",
   "description": "FFMPEG web assembly h264 decoder",
   "main": "dist/index.js",
   "typings": "types/index.d.ts",
