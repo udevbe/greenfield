@@ -11,7 +11,7 @@ popd
 
 FFMPEG_VERSION="n5.1.2"
 ensure_ffmpeg() {
-  [ -e ffmpeg ] || git clone --depth 1 --branch "$FFMPEG_VERSION" "git@github.com:FFmpeg/FFmpeg.git" ffmpeg
+  [ -e ffmpeg ] || git clone --depth 1 --branch "$FFMPEG_VERSION" "https://github.com/FFmpeg/FFmpeg.git" ffmpeg
 }
 
 build() {
