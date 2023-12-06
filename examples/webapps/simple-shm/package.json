@@ -1,6 +1,6 @@
 {
-  "name": "@gfld/demo-webapp-simple-shm",
-  "version": "1.0.0-alpha.0",
+  "name": "@gfld/example-webapp-simple-shm",
+  "version": "1.0.0-rc1",
   "description": "HTML5 Wayland Demo Web Client Simple Shm",
   "repository": {
     "type": "git",

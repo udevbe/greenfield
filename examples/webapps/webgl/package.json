@@ -1,6 +1,6 @@
 {
-  "name": "demo-webapp-webgl",
-  "version": "1.0.0-alpha.0",
+  "name": "@gfld/example-webapp-webgl",
+  "version": "1.0.0-rc1",
   "description": "HTML5 Wayland Demo Web Client Simple Web GL",
   "repository": {
     "type": "git",
@@ -20,7 +20,9 @@
   },
   "homepage": "https://github.com/udevbe/greenfield#readme",
   "scripts": {
-    "start": "yarn run vite dev"
+    "start": "yarn run vite dev",
+    "build": "yarn run vite build",
+    "preview": "yarn run vite preview"
   },
   "dependencies": {
     "@gfld/client-protocol": "workspace:^",

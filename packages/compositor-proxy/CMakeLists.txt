@@ -113,11 +113,12 @@ add_library(wayland-server SHARED
         ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-util.c
         ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/westfield-wayland-server.h
 )
-set_property(
-    TARGET wayland-server
-    PROPERTY INSTALL_RPATH
-    $ORIGIN
+
+set_target_properties(wayland-server PROPERTIES
+    SUFFIX ".so.0"
+    INSTALL_RPATH $ORIGIN
 )
+
 target_include_directories(wayland-server PRIVATE
         ${LibFFI_INCLUDE_DIRS}
 )
@@ -126,10 +127,7 @@ target_link_libraries(wayland-server PRIVATE
         Threads::Threads
         -Wl,--no-undefined
 )
-set_target_properties(wayland-server
-        PROPERTIES
-        SOVERSION 0
-)
+
 file(GLOB WESTFIELD_WAYLAND_SERVER_PUBLIC_HEADERS
         ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-server-protocol.h
         ${CMAKE_CURRENT_SOURCE_DIR}/native/wayland/src/wayland-server/wayland-server.h

@@ -10,6 +10,10 @@
   "os": [
     "linux"
   ],
+  "files": [
+    "dist",
+    "types"
+  ],
   "description": "Wayland Compositor Proxy",
   "scripts": {
     "generate:xdgshell": "yarn run compositor-proxy-generator ../../protocol/xdg-shell.xml -o src/protocol",

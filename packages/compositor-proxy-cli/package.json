@@ -9,6 +9,9 @@
   "os": [
     "linux"
   ],
+  "files": [
+    "dist"
+  ],
   "description": "Wayland Compositor Proxy",
   "scripts": {
     "generate": "yarn run json2ts -i src/app-config-schema.json -o src/app-config.d.ts --style.singleQuote --no-style.semi",

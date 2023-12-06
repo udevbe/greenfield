@@ -19,7 +19,7 @@ ensure_repo_xkeyboard-config() {
 }
 
 ensure_repo_xml2() {
-      git clone --depth 1 --branch "v2.11.5" "https://gitlab.gnome.org/GNOME/libxml2.git" repo-xml2
+      git clone --depth 1 --branch "v2.11.5" "https://github.com/GNOME/libxml2.git" repo-xml2
 }
 
 build() {
