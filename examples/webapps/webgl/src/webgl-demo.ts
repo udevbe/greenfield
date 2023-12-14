@@ -187,7 +187,7 @@ function initShaderProgram(gl: WebGLRenderingContext, vsSource: string, fsSource
   }
   const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource)
   if (fragmentShader === null) {
-    throw new Error('Could not crate fragment shader.')
+    throw new Error('Could not create fragment shader.')
   }
 
   // Create the shader program

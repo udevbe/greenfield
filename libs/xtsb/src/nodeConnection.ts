@@ -85,7 +85,7 @@ function parseXauth(buf: Uint8Array): Cookie[] {
       offset += 2
       if (cookie.type === 0 && property === 'address') {
         // Internet
-        // 4 bytes of ip addess, convert to w.x.y.z string
+        // 4 bytes of ip address, convert to w.x.y.z string
         cookie.address = [buf[offset], buf[offset + 1], buf[offset + 2], buf[offset + 3]]
           .map((octet) => octet.toString(10))
           .join('.')

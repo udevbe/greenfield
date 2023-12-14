@@ -385,7 +385,7 @@
     '$FS',
     // The dependency of FS on `mmapAlloc` and `mmapAlloc` on
     // `emscripten_builtin_memalign` are not encoding as hard dependencies,
-    // so we need to explictly depend on them here to ensure a working
+    // so we need to explicitly depend on them here to ensure a working
     // `FS.mmap`.
     // `emscripten_builtin_memalign`).
     '$mmapAlloc',
