@@ -96,7 +96,7 @@ the H.264 WebCodecs API, which can either use the GPU of the receiving browser c
 ## Browser Connection
 
 The current implementation of Compositor Proxy uses WebSockets to deliver data to the browser. WebSockets operate over TCP which is ill-suited for real-time applications.
-Instead, a UDP based protocol is needed. Browsers today unfortunately have no support for UDP based protocols aside from WebRTC DataChannels. However, we can not use WebRTC DataChannels as the build-in SCTP congestion algorithm is unacceptably slow.
+Instead, a UDP based protocol is needed. Browsers today unfortunately have no support for UDP based protocols aside from WebRTC DataChannels. However, we can not use WebRTC DataChannels as the built-in SCTP congestion algorithm is unacceptably slow.
 A more low level UDP protocol is required and is currently in the works in the form of the WebTransport protocol. Once WebTransport becomes more widely available, we can operate in UDP mode
 and assure fast end reliable transfers using [KCP](https://github.com/skywind3000/kcp/blob/master/README.en.md) in combination with forward-error-correction.
 
@@ -176,7 +176,7 @@ paths `/gtk4-demo`, `/kwrite` and `/xterm` to an executable with additional cont
 > setup. QT applications often require an extra `-platform wayland` parameter.
 
 For XWayland support a few extra steps may be needed, this is optional and only required if you don't already 
-hava an X server running e.g. when running on a server. These commands should be executed before starting the 
+have an X server running e.g. when running on a server. These commands should be executed before starting the 
 Compositor Proxy CLI.
 
 ```shell

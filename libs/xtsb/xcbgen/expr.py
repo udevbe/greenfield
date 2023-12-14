@@ -164,7 +164,7 @@ class Expression(object):
                 fields = dict([(f.field_name, f) for f in p.fields])
                 if self.lenfield_name in fields.keys():
                     if p.is_case_or_bitcase:
-                        # switch is the anchestor 
+                        # switch is the ancestor 
                         self.lenfield_parent = p.parents[-1]
                     else:
                         self.lenfield_parent = p

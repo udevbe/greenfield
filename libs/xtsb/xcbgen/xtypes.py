@@ -141,7 +141,7 @@ class Type(object):
 
     def unchecked_get_alignment_after(self, start_align, callstack, log):
         '''
-        Abstract method for geting the alignment after this type
+        Abstract method for getting the alignment after this type
         when the alignment at the start is given, and when this type
         has variable size.
         '''
@@ -788,7 +788,7 @@ class SwitchType(ComplexType):
                 else:
                     field_type = self.name + (field_name,)
 
-                # use self.parent to indicate anchestor, 
+                # use self.parent to indicate ancestor, 
                 # as switch does not contain named fields itself
                 if child.tag == 'bitcase':
                     type = BitcaseType(index, field_type, child, *parents)
@@ -850,7 +850,7 @@ class SwitchType(ComplexType):
     def calc_size(self):
         pass
 
-    # note: switch is _always_ of variable size, but we indicate here wether 
+    # note: switch is _always_ of variable size, but we indicate here whether 
     # it contains elements that are variable-sized themselves
     def fixed_size(self):
         return False
@@ -944,7 +944,7 @@ class SwitchType(ComplexType):
                 if log is not None:
                     if after_field_align is None:
                         log.fail(total_align, field.field_name, field.type, my_callstack,
-                            "invalid aligment for this case branch")
+                            "invalid alignment for this case branch")
                     else:
                         log.ok(total_align, field.field_name, field.type, my_callstack,
                             after_field_align)
@@ -957,7 +957,7 @@ class SwitchType(ComplexType):
                 if after_field_align is None:
                     if log is not None:
                         log.fail(total_align, field.field_name, field.type, my_callstack,
-                            "invalid aligment for this bitcase branch")
+                            "invalid alignment for this bitcase branch")
                     total_align = None
                 else:
                     if log is not None:

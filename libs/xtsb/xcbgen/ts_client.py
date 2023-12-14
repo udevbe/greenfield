@@ -6,7 +6,7 @@ import re
 
 # Jump to the bottom of this file for the main routine
 
-# Some hacks to make the API more readable, and to keep backwards compability
+# Some hacks to make the API more readable, and to keep backwards compatibility
 import sys
 
 _tsname_re = re.compile('^\d')
