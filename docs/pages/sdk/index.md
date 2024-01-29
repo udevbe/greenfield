@@ -17,7 +17,10 @@ Clone the repository if you haven't already.
 git clone https://github.com/udevbe/greenfield.git
 ```
 
-The SDK is located inside directory `sdk`. To use the SDK, we first need to build it. 
+The SDK is located inside directory `sdk`. To use the SDK, we first need to build it.
+
+{: .important }
+> Make sure all required Greenfield packages are installed. These are listed in [Greenfield Getting Started](/pages/getting_started)  
 
 ```shell
 ./build_sysroot.sh

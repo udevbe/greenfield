@@ -25,7 +25,13 @@ git clone https://github.com/udevbe/greenfield.git
 Inside the `greenfield` repository, we'll use `yarn` to install all dependencies and build all packages.
 
 {: .important }
->Greenfield requires [`yarn >=3.6`.](https://yarnpkg.com/getting-started/install)
+> Greenfield works best with node.js 20 or greater. You can easily install it using [nvm](https://github.com/nvm-sh/nvm).
+
+{: .important }
+> Greenfield expects [yarn 3 or greater.](https://yarnpkg.com/getting-started/install)
+
+{: .important }
+> Greenfield requires the following packages to be installed on your build system: `autoconf libtool automake pipx ninja-build bison cmake build-essential gperf`.
 
 ```shell
 yarn install
@@ -60,7 +66,7 @@ Greenfield provides a few examples that we can use.
 We'll begin simple with `examples/webapps/simple-shm`.
 
 ```shell
-yarn workspace @gfld/demo-webapp-simple-shm start
+yarn workspace @gfld/example-webapp-simple-shm start
 ```
 
 The Greenfield Compositor Shell maps the URL `web:simple-shm` to `http://localhost:9001`, which is the 
@@ -90,7 +96,7 @@ Inside `examples/sdk/weston`
 If all went well, a new `build/clients` directory has appeared with a bunch of `.html`, `.js` and `.wasm`. Spin up a web server so these can be served.
 
 ```shell
-yarn workspace @gfld/weston-clients preview
+yarn workspace @gfld/example-weston-clients preview
 ```
 
 Enter any of these in the URL bar to see a WebAssembly desktop application.
@@ -123,7 +129,11 @@ yarn workspace @gfld/compositor-proxy build
 ```
 
 {: .note }
-> Building the native code requires CMake and Ninja. The build system will tell you what other packages might be missing.
+> Building the native code requires the following dependencies :
+> `libffi-dev libudev-dev libgbm-dev libdrm-dev libegl-dev libopengl-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev libgraphene-1.0-dev`.
+
+{: .note }
+> There's also a [Docker build script](https://github.com/udevbe/greenfield/blob/master/docker/compositor-proxy-cli-build.sh#L15) if you're unsure what dependencies you need.
 
 The Compositor Proxy only provides a library to forward applications. We will also need an actual implementation that
 can manage application lifecycles, provide some form of auth etc. A basic implementation is provided by Compositor Proxy CLI.
@@ -131,6 +141,8 @@ can manage application lifecycles, provide some form of auth etc. A basic implem
 ```shell
 yarn workspace @gfld/compositor-proxy-cli start
 ```
+{: .important }
+> The Compositor Proxy works best with node.js 20 or greater. You can easily install it using [nvm](https://github.com/nvm-sh/nvm).
 
 This will start the Compositor Proxy CLI locally on your machine with several applications pre-configured. The following
 URLs are available.
