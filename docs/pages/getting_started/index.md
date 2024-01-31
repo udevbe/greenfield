@@ -24,10 +24,10 @@ git clone https://github.com/udevbe/greenfield.git
 
 Inside the `greenfield` repository, we'll use `yarn` to install all dependencies and build all packages.
 
-{: .important }
+{: .note }
 > Greenfield works best with node.js 20 or greater. You can easily install it using [nvm](https://github.com/nvm-sh/nvm).
 
-{: .important }
+{: .note }
 > Greenfield expects [yarn 3 or greater.](https://yarnpkg.com/getting-started/install)
 
 {: .important }
@@ -128,7 +128,7 @@ a Linux environment.
 yarn workspace @gfld/compositor-proxy build
 ```
 
-{: .note }
+{: .important }
 > Building the native code requires the following dependencies :
 > `libffi-dev libudev-dev libgbm-dev libdrm-dev libegl-dev libopengl-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev libgraphene-1.0-dev`.
 
@@ -141,7 +141,7 @@ can manage application lifecycles, provide some form of auth etc. A basic implem
 ```shell
 yarn workspace @gfld/compositor-proxy-cli start
 ```
-{: .important }
+{: .note }
 > The Compositor Proxy works best with node.js 20 or greater. You can easily install it using [nvm](https://github.com/nvm-sh/nvm).
 
 This will start the Compositor Proxy CLI locally on your machine with several applications pre-configured. The following
