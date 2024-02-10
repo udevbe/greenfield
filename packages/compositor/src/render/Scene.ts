@@ -130,6 +130,9 @@ export class Scene {
       //   this.canvas.width = width
       //   this.canvas.height = height
       // }
+      if (this.canvas.width === this.canvas.clientWidth && this.canvas.height === this.canvas.clientHeight) {
+        return
+      }
 
       this.canvas.width = this.canvas.clientWidth
       this.canvas.height = this.canvas.clientHeight
