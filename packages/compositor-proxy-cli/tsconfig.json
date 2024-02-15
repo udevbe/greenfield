@@ -6,9 +6,7 @@
     "allowJs": true,
     "rootDirs": ["src"],
     "pretty": true,
+    "sourceMap": true
   },
-  "exclude": [".eslintrc.js", ".prettierrc.js", "jest.config.js"],
-  "ts-node": {
-    "files": true
-  },
+  "exclude": [".eslintrc.js", ".prettierrc.js"]
 }

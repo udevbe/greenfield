@@ -295,7 +295,7 @@ class RemoteAppContext implements AppContext {
     })
     this.signalingWebSocket.addEventListener('close', (event) => {
       this.onStateChange('closed')
-      if (event.code === 4001) {
+      if (event.code % 4000 < 1000) {
         this.signalingWebSocket?.close(event.code, event.reason)
       }
     })

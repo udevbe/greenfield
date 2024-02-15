@@ -73,7 +73,7 @@ export class SimpleChannel implements WebSocketChannel {
       if (this.closed) {
         return
       }
-      if (event.code === 4001) {
+      if (event.code % 4000 < 1000) {
         this.closed = true
         this.onClose()
         this.webSocket.close(event.code, event.reason)
@@ -155,7 +155,7 @@ export class ARQChannel implements WebSocketChannel {
         return
       }
 
-      if (event.code === 4001) {
+      if (event.code % 4000 < 1000) {
         this.closed = true
         if (this.kcp.snd_buf !== undefined) {
           if (this.checkInterval) {

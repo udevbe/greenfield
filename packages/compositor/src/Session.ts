@@ -148,9 +148,9 @@ class Session implements CompositorSession {
     const compositorSessionId =
       sessionId ??
       ((): string => {
-        const randomBytes = new Uint8Array(128)
+        const randomBytes = new Uint8Array(8)
         crypto.getRandomValues(randomBytes)
-        return `sid:${[...randomBytes].map((b) => b.toString(16).padStart(2, '0')).join('')}`
+        return `sid${[...randomBytes].map((b) => b.toString(16).padStart(2, '0')).join('')}`
       })()
 
     let decoderFactory: FrameDecoderFactory
