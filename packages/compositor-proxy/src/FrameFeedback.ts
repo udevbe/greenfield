@@ -116,7 +116,6 @@ export class FrameFeedback {
 
   sendFrameDoneEventsWithCallbacks(frameDoneTimestamp: number, frameCallbackIds: number[]) {
     for (const frameCallbackId of frameCallbackIds) {
-      console.log(`sending frame done: ${frameCallbackId}`)
       this.sendFrameDoneEvent(frameDoneTimestamp, frameCallbackId)
       delete this.messageInterceptors[frameCallbackId]
     }
