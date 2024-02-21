@@ -89,6 +89,8 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole, DesktopS
     }
     this.xdgSurface.configureIdle?.()
     this.xdgSurface.configureList = []
+    this.xdgSurface.surface.role = undefined
+    this.parent.surface.removeChild(this.xdgSurface.surface.surfaceChildSelf)
     resource.destroy()
   }
 

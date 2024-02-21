@@ -721,6 +721,10 @@ export class Kcp {
   }
 
   send(buffer: Uint8Array): number {
+    if (this.snd_queue == undefined) {
+      return -1
+    }
+
     let count = 0
     if (buffer.byteLength === 0) {
       return -1
@@ -794,6 +798,10 @@ export class Kcp {
   // ikcp_check when to call it again (without ikcp_input/_send calling).
   // 'current' - current timestamp in millisec.
   update(): void {
+    if (this.snd_queue === undefined) {
+      return
+    }
+
     let slap = 0 // int32
 
     const current = currentMs()
@@ -876,6 +884,10 @@ export class Kcp {
 
   // flush pending data
   flush(ackOnly: boolean): number {
+    if (this.snd_queue === undefined) {
+      return this.interval
+    }
+
     const seg = new Segment()
     seg.conv = this.conv
     seg.cmd = IKCP_CMD_ACK

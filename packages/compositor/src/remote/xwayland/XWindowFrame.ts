@@ -1117,10 +1117,10 @@ export async function frameCreate(
   const signMaximizeIconData = await signMaximizeIconPromise
   const signCloseIconData = await signCloseIconPromise
 
-  const frameRenderContext = document.createElement('canvas').getContext('2d', { desynchronized: true })
-  const closeIcon = document.createElement('canvas').getContext('2d', { desynchronized: true })
-  const maximizeIcon = document.createElement('canvas').getContext('2d', { desynchronized: true })
-  const minimizeIcon = document.createElement('canvas').getContext('2d', { desynchronized: true })
+  const frameRenderContext = document.createElement('canvas').getContext('2d', { desynchronized: true, willReadFrequently: true })
+  const closeIcon = document.createElement('canvas').getContext('2d', { desynchronized: true, willReadFrequently: true })
+  const maximizeIcon = document.createElement('canvas').getContext('2d', { desynchronized: true, willReadFrequently: true })
+  const minimizeIcon = document.createElement('canvas').getContext('2d', { desynchronized: true, willReadFrequently: true })
 
   if (frameRenderContext === null || closeIcon === null || maximizeIcon === null || minimizeIcon === null) {
     throw new Error('Could not get 2d rendering context from canvas.')

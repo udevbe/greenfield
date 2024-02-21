@@ -552,6 +552,7 @@ export class XWindowManager {
   private readonly imageDecodingContext: CanvasRenderingContext2D = this.imageDecodingCanvas.getContext('2d', {
     alpha: true,
     desynchronized: true,
+    willReadFrequently: true
   })!
   private cursors: { [key in CursorType]: Cursor } = {
     [CursorType.XWM_CURSOR_BOTTOM]: Cursor.None,

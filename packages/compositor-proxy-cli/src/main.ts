@@ -1,5 +1,5 @@
 import { Configschema, createLogger } from '@gfld/compositor-proxy'
-import { createServer } from 'node:http'
+import { createServer, IncomingMessage } from 'node:http'
 import { ChildProcess, fork } from 'node:child_process'
 import { ToSessionProcessMessage } from './SessionProcess.js'
 import { Socket } from 'node:net'
@@ -7,6 +7,7 @@ import { authRequest, handleGET, handleOptions } from './main-controller.js'
 import { args } from './main-args.js'
 import { inspect } from 'node:util'
 import path from 'node:path'
+import { WebSocketServer } from 'ws'
 
 process.on('uncaughtException', (e) => {
   logger.error('\tname: ' + e.name + ' message: ' + e.message)
@@ -44,13 +45,27 @@ function main() {
     const url = new URL(request.url ?? '', `http://${request.headers.host}`)
     const compositorSessionId = url.searchParams.get('compositorSessionId')
     if (compositorSessionId === null) {
-      socket.end()
+      new WebSocketServer({ perMessageDeflate: false, noServer: true }).handleUpgrade(
+        request as IncomingMessage,
+        socket,
+        Buffer.from([]),
+        (ws) => {
+          ws.close(4403)
+        },
+      )
       return
     }
 
     const childProcess = sessionProcesses[compositorSessionId]
     if (childProcess === undefined) {
-      socket.end()
+      new WebSocketServer({ perMessageDeflate: false, noServer: true }).handleUpgrade(
+        request as IncomingMessage,
+        socket,
+        Buffer.from([]),
+        (ws) => {
+          ws.close(4403)
+        },
+      )
       return
     }
 

@@ -56,7 +56,7 @@ export class XWindowManagerConnection {
             onError: (cb: (ev: Event) => void): void => {
               this.xwmDataChannel.onError = (err) => {
                 cb(
-                  new window.ErrorEvent(err.message, {
+                  new window.ErrorEvent(err?.message ?? 'no error message', {
                     error: err,
                   }),
                 )

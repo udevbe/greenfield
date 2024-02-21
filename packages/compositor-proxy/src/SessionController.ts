@@ -270,7 +270,7 @@ function channel(session: Session, request: AppRequest, ws: WebSocket, url: URL)
   }
 
   channel.doOpen(ws)
-  logger.info(`channel (re)connection from ${url.href})}`)
+  logger.info(`Opened connection from ${url.href})}`)
 
   ws.onmessage = (event) => {
     channel.doMessage(event.data as Buffer)
@@ -284,7 +284,7 @@ function channel(session: Session, request: AppRequest, ws: WebSocket, url: URL)
     if (channel) {
       channel.ws = undefined
     }
-    logger.info(`Data connection closed. Code: ${event.code}. Message: ${event.reason}`)
+    logger.info(`Closed connection from ${url.href}). Code: ${event.code}. Message: ${event.reason}`)
   }
 }
 

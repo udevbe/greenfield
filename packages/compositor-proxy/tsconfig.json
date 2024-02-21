@@ -7,10 +7,8 @@
     "pretty": true,
     "declarationDir": "types",
     "outDir": "dist",
-    "declaration": true
+    "declaration": true,
+    "sourceMap": true,
   },
-  "exclude": [".eslintrc.js", ".prettierrc.js", "jest.config.js"],
-  "ts-node": {
-    "files": true
-  },
+  "exclude": [".eslintrc.js", ".prettierrc.js"]
 }

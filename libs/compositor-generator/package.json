@@ -23,7 +23,7 @@
   "packageManager": "yarn@3.6.0",
   "dependencies": {
     "camelcase": "^8.0.0",
-    "meow": "^12.1.1",
+    "meow": "^13.2.0",
     "uppercamelcase": "^3.0.0",
     "xml2js": "^0.6.2"
   },

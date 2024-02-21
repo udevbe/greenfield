@@ -295,7 +295,7 @@ class RemoteAppContext implements AppContext {
     })
     this.signalingWebSocket.addEventListener('close', (event) => {
       this.onStateChange('closed')
-      if (event.code === 4001) {
+      if (event.code % 4000 < 1000) {
         this.signalingWebSocket?.close(event.code, event.reason)
       }
     })
@@ -599,7 +599,7 @@ function handleMessageEvent(
         session.logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
         session.logger.error('error object stack: ')
         // @ts-ignore
-        this.session.logger.error(e.stack)
+        session.logger.error(e.stack)
       })
     }
   } catch (e: any) {

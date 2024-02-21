@@ -41,7 +41,7 @@ configureFramePipelineTicks(nextTickInterval)
 export class FrameFeedback {
   private serverProcessingDurations: number[] = []
   private clientProcessingDuration = 0
-  private clientFeedbackTimestamp = 0
+  private clientFeedbackTimestamp = performance.now()
   private parkedFeedbackClockQueue: Feedback[] = []
   private frameCallbackDelay = 0
   private destroyed = false
@@ -67,8 +67,8 @@ export class FrameFeedback {
   }
 
   commitNotify(frameCallbacksIds: number[]): void {
-    const clockQueue =
-      performance.now() - this.clientFeedbackTimestamp > 1500 ? this.parkedFeedbackClockQueue : feedbackClockQueue
+    const assumeStalledCompositor = performance.now() - this.clientFeedbackTimestamp > 1500
+    const clockQueue = assumeStalledCompositor ? this.parkedFeedbackClockQueue : feedbackClockQueue
     clockQueue.push({
       callback: (time) => {
         if (this.destroyed) {
