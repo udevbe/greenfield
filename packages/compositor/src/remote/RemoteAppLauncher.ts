@@ -599,7 +599,7 @@ function handleMessageEvent(
         session.logger.error('\tname: ' + e.name + ' message: ' + e.message + ' text: ' + e.text)
         session.logger.error('error object stack: ')
         // @ts-ignore
-        this.session.logger.error(e.stack)
+        session.logger.error(e.stack)
       })
     }
   } catch (e: any) {
