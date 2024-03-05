@@ -1,5 +1,5 @@
 import { Time } from '@gfld/xtsb'
-import { DesktopSurface } from '../../Desktop'
+import {createDesktopSurface, DesktopSurface, DesktopSurfaceRole} from '../../desktop/Desktop'
 import { ORIGIN, Point } from '../../math/Point'
 import { createRect, RectWithInfo } from '../../math/Rect'
 import { Size, ZERO_SIZE } from '../../math/Size'
@@ -7,7 +7,6 @@ import Output from '../../Output'
 import { Pointer } from '../../Pointer'
 import Session from '../../Session'
 import Surface from '../../Surface'
-import { DesktopSurfaceRole } from '../../SurfaceRole'
 import View from '../../View'
 import { XWindow } from './XWindow'
 
@@ -47,7 +46,7 @@ export default class XWaylandShellSurface implements DesktopSurfaceRole {
     readonly surface: Surface,
     public readonly view: View,
   ) {
-    this.desktopSurface = DesktopSurface.create(this.surface, this)
+    this.desktopSurface = createDesktopSurface(this.surface, this)
   }
 
   static create(session: Session, window: XWindow, surface: Surface): XWaylandShellSurface {
@@ -108,11 +107,11 @@ export default class XWaylandShellSurface implements DesktopSurfaceRole {
       : { width: Number.MAX_SAFE_INTEGER, height: Number.MAX_SAFE_INTEGER }
   }
 
-  configureMaximized(maximized: boolean): void {
+  configureMaximized(_maximized: boolean): void {
     // no op
   }
 
-  configureFullscreen(fullscreen: boolean): void {
+  configureFullscreen(_fullscreen: boolean): void {
     // no op
   }
 
@@ -120,11 +119,11 @@ export default class XWaylandShellSurface implements DesktopSurfaceRole {
     this.sendConfigure?.(size)
   }
 
-  configureActivated(activated: boolean): void {
+  configureActivated(_activated: boolean): void {
     // no op
   }
 
-  configureResizing(resizing: boolean): void {
+  configureResizing(_resizing: boolean): void {
     // no op
   }
 
@@ -168,7 +167,7 @@ export default class XWaylandShellSurface implements DesktopSurfaceRole {
     this.changeState(SurfaceState.TRANSIENT, parent.role.desktopSurface, { x, y })
   }
 
-  setFullscreen(output?: Output): void {
+  setFullscreen(_output?: Output): void {
     this.changeState(SurfaceState.FULLSCREEN, undefined, ORIGIN)
     this.desktopSurface.setFullscreen(true)
   }

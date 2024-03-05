@@ -17,7 +17,7 @@
 
 import { WlSurfaceResource } from '@gfld/compositor-protocol'
 import { addInputOutput } from './browser/input'
-import { DesktopSurface } from './Desktop'
+import { DesktopSurface } from './desktop/Desktop'
 import { CompositorClient, CompositorConfiguration, CompositorSurface } from './index'
 import Session from './Session'
 import Surface from './Surface'

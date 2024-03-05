@@ -23,14 +23,13 @@ import {
   WlShellSurfaceTransient,
   WlSurfaceResource,
 } from '@gfld/compositor-protocol'
-import { DesktopSurface } from './Desktop'
+import {createDesktopSurface, DesktopSurface, DesktopSurfaceRole} from './desktop/Desktop'
 import { ORIGIN, Point } from './math/Point'
 import { RectWithInfo } from './math/Rect'
 import { Size, ZERO_SIZE } from './math/Size'
 
 import Session from './Session'
 import Surface from './Surface'
-import { DesktopSurfaceRole } from './SurfaceRole'
 import View from './View'
 
 const { none } = WlShellSurfaceResize
@@ -57,7 +56,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, DesktopSurf
     public readonly session: Session,
     public readonly view: View,
   ) {
-    this.desktopSurface = DesktopSurface.create(this.surface, this)
+    this.desktopSurface = createDesktopSurface(this.surface, this)
   }
 
   static create(
@@ -255,7 +254,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, DesktopSurf
     }
 
     if (parent !== undefined) {
-      this.desktopSurface.surface.surfaceChildSelf.position = position
+      this.surface.surfaceChildSelf.position = position
       this.desktopSurface.setParent(parent)
     }
   }
