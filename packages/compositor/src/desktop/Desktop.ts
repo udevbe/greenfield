@@ -1,5 +1,6 @@
 import { Point } from '../math/Point'
 import Surface from '../Surface'
+import { FloatingDesktopSurface } from './FloatingDesktopSurface'
 import { RectWithInfo } from '../math/Rect'
 import { Size } from '../math/Size'
 import SurfaceRole from '../SurfaceRole'

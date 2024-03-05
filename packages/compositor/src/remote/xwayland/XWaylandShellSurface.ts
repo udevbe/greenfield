@@ -120,7 +120,7 @@ export default class XWaylandShellSurface implements DesktopSurfaceRole {
     // no op
   }
 
-  configureFullscreen(fullscreen: boolean): void {
+  configureFullscreen(_fullscreen: boolean): void {
     const stateIsFullScreen = this.queryFullscreen()
     if ((stateIsFullScreen && fullscreen) || (!stateIsFullScreen && !fullscreen)) {
       return
