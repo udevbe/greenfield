@@ -19,5 +19,16 @@
     "executable": "xterm",
     "args": [],
     "env": {}
+  },
+  "/java": {
+    "name": "Java",
+    "executable": "java",
+    "args": [
+      "-splash:/home/erik/.config/JetBrains/IntelliJIdea2023.3/scratches/img.png",
+      "-classpath",
+      "/home/erik/.cache/JetBrains/IntelliJIdea2023.3/compile-server/greenfield_67ca8ec9/scratches/out",
+      "Scratch"
+    ],
+    "env": {}
   }
 }

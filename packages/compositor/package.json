@@ -24,7 +24,8 @@
   ],
   "scripts": {
     "prebuild": "yarn run rimraf dist types",
-    "build": "yarn run tsc && yarn run cpy './src/assets/**' './dist/assets/'"
+    "build": "yarn run tsc && yarn run cpy './src/assets/**' './dist/assets/'",
+    "watch": "yarn run build && yarn run tsc -w"
   },
   "dependencies": {
     "@gfld/common": "workspace:^",

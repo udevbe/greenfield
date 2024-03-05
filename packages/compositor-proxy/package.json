@@ -22,7 +22,8 @@
     "generate": "yarn run rimraf src/protocol/*.js && yarn run mkdirp src/protocol && yarn generate:wayland && yarn generate:wayland-drm && yarn generate:xdgshell",
     "build:native": "yarn run mkdirp build && cmake -G Ninja -B./build -S./ && ninja -C ./build install",
     "build:typescript": "yarn run tsc",
-    "build": "yarn run rimraf dist types && yarn build:native && yarn build:typescript"
+    "build": "yarn run rimraf dist types && yarn build:native && yarn build:typescript",
+    "watch": "yarn run build && yarn run tsc -w"
   },
   "dependencies": {
     "@gfld/xtsb": "workspace:^",

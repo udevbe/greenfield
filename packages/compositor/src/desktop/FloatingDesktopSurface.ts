@@ -1,24 +1,24 @@
 import { WlShellSurfaceResize } from '@gfld/compositor-protocol'
-import { AxisEvent } from './AxisEvent'
-import { ButtonEvent } from './ButtonEvent'
-import { CompositorSurface } from './index'
-import { minusPoint, ORIGIN, plusPoint, Point } from './math/Point'
-import { RectWithInfo } from './math/Rect'
-import { Size } from './math/Size'
-import { PointerGrab } from './Pointer'
-import Surface from './Surface'
-import { DesktopSurfaceRole } from './SurfaceRole'
-import { toCompositorSurface } from './UserShellApi'
-import { setCursor } from './browser/pointer'
+import { AxisEvent } from '../AxisEvent'
+import { ButtonEvent } from '../ButtonEvent'
+import { CompositorSurface } from '../index'
+import { minusPoint, ORIGIN, plusPoint, Point } from '../math/Point'
+import { RectWithInfo } from '../math/Rect'
+import { Size } from '../math/Size'
+import { PointerGrab } from '../Pointer'
+import Surface from '../Surface'
+import { toCompositorSurface } from '../UserShellApi'
+import { setCursor } from '../browser/pointer'
+import { DesktopSurface, DesktopSurfaceRole } from './Desktop'
 
 class ResizeGrab implements PointerGrab {
   private constructor(
-    public readonly desktopSurface: DesktopSurface,
+    public readonly desktopSurface: FloatingDesktopSurface,
     public readonly edges: number,
     public readonly geometry: RectWithInfo,
   ) {}
 
-  static create(desktopSurface: DesktopSurface, edges: number, geometry: RectWithInfo) {
+  static create(desktopSurface: FloatingDesktopSurface, edges: number, geometry: RectWithInfo) {
     return new ResizeGrab(desktopSurface, edges, geometry)
   }
 
@@ -127,11 +127,11 @@ class ResizeGrab implements PointerGrab {
 
 class MoveGrab implements PointerGrab {
   private constructor(
-    readonly desktopSurface: DesktopSurface,
+    readonly desktopSurface: FloatingDesktopSurface,
     readonly deltaPoint: Point,
   ) {}
 
-  static create(desktopSurface: DesktopSurface) {
+  static create(desktopSurface: FloatingDesktopSurface) {
     const pointer = desktopSurface.surface.session.globals.seat.pointer
     if (pointer.grabPoint === undefined) {
       pointer.seat.session.logger.error('BUG. Move grab. Pointer does not have grab point.')
@@ -204,7 +204,7 @@ type XWayland = {
   position: Point
 }
 
-export class DesktopSurface {
+export class FloatingDesktopSurface implements DesktopSurface {
   resizeEdges: WlShellSurfaceResize = WlShellSurfaceResize.none
   grabbed = false
   fullscreen = false
@@ -218,15 +218,11 @@ export class DesktopSurface {
   }
   public readonly compositorSurface: CompositorSurface
 
-  private constructor(
+  constructor(
     public surface: Surface,
     readonly role: DesktopSurfaceRole,
   ) {
     this.compositorSurface = toCompositorSurface(this)
-  }
-
-  static create(surface: Surface, desktopSurfaceRole: DesktopSurfaceRole): DesktopSurface {
-    return new DesktopSurface(surface, desktopSurfaceRole)
   }
 
   move(grabSerial: number): void {
@@ -234,7 +230,7 @@ export class DesktopSurface {
       return
     }
 
-    if (this.grabbed) {
+    if (this.grabbed || this.role.queryFullscreen() || this.role.queryMaximized()) {
       return
     }
 
@@ -292,13 +288,11 @@ export class DesktopSurface {
 
   setFullscreen(fullscreen: boolean): void {
     if (fullscreen) {
-      const output = this.role.view.relevantScene
-      let outputSize: Size = { width: 0, height: 0 }
-      if (output?.canvas) {
-        outputSize = { width: output.canvas.width, height: output.canvas.height }
-      }
+      // FIXME views should have their relevant scene set explicitly based on their location instead of re-calculated each time.
+      const fullScreenScene = this.role.view.relevantScene ?? Object.values(this.surface.session.renderer.scenes)[0]
+      const { width, height } = fullScreenScene.canvas
       this.role.configureFullscreen(fullscreen)
-      this.role.configureSize(outputSize)
+      this.role.configureSize({ width, height })
     } else {
       this.role.configureFullscreen(fullscreen)
     }

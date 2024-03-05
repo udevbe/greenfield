@@ -36,7 +36,7 @@ import {
 } from '@gfld/compositor-protocol'
 
 import { capabilities } from './browser/capabilities'
-import { DesktopSurface } from './Desktop'
+import { DesktopSurface } from './desktop/Desktop'
 import { AxisEvent, ButtonEvent, CompositorSeat, KeyEvent, nrmlvo } from './index'
 import { Keyboard, KeyboardGrab } from './Keyboard'
 
