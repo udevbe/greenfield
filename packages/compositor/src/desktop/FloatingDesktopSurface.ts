@@ -292,7 +292,7 @@ export class FloatingDesktopSurface implements DesktopSurface {
 
   setFullscreen(fullscreen: boolean): void {
     // FIXME views should have their relevant scene set explicitly based on their location instead of re-calculated each time.
-    if (fullscreen) {
+    if(fullscreen) {
       const fullScreenScene = this.role.view.relevantScene ?? Object.values(this.surface.session.renderer.scenes)[0]
       const { width, height } = fullScreenScene.canvas
       this.role.configureSize({ width, height })
