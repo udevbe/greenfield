@@ -49,6 +49,8 @@ export interface DesktopSurface {
   setXWaylandPosition(position: Point): void
   popupGrab(serial: number): void
 
+  init(): void
+
   surface: Surface
   role: DesktopSurfaceRole
 }

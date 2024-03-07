@@ -703,7 +703,7 @@ export class XWindow {
      */
     await this.readProperties()
 
-    /* A weston_wm_window may have many different surfaces assigned
+    /* An xwindow may have many different surfaces assigned
      * throughout its life, so we must make sure to remove the listener
      * from the old surface signal list. */
     if (this.surface && this.surfaceDestroyListener) {
@@ -719,10 +719,11 @@ export class XWindow {
       this.surface = undefined
     }
     this.surface.resource.addDestroyListener(this.surfaceDestroyListener)
-
-    this.shsurf = this.wm.xWaylandShell.createSurface(this, surface)
-    this.shsurf.sendConfigure = (size: Size) => this.sendConfigure(size)
-    this.shsurf.sendPosition = (position: Point) => this.sendPosition(position)
+    this.shsurf = this.wm.xWaylandShell.createSurface(
+        this, surface,
+        (size: Size) => this.sendConfigure(size),
+        (position: Point) => this.sendPosition(position)
+    )
 
     this.session.logger.debug(
       `XWindow: map shell surface, win ${this.id}, greenfield surface ${this.surface.resource.id}`,
@@ -1063,6 +1064,10 @@ export class XWindow {
   }
 
   private sendConfigure({ width, height }: Size) {
+    if(width === 0 && height === 0) {
+      return
+    }
+
     let newWidth, newHeight
     let vborder, hborder
 

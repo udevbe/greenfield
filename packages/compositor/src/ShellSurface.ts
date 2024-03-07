@@ -57,6 +57,7 @@ export default class ShellSurface implements WlShellSurfaceRequests, DesktopSurf
     public readonly view: View,
   ) {
     this.desktopSurface = createDesktopSurface(this.surface, this)
+    this.desktopSurface.init()
   }
 
   static create(
