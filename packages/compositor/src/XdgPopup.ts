@@ -49,6 +49,7 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole, DesktopS
     public readonly geometry: RectWithInfo,
   ) {
     this.desktopSurface = createDesktopSurface(view.surface, this)
+    this.desktopSurface.init()
   }
 
   static create(

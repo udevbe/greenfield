@@ -26,12 +26,12 @@ export class AlwaysFullscreenDesktopSurface implements DesktopSurface {
     readonly role: DesktopSurfaceRole,
   ) {
     this.compositorSurface = toCompositorSurface(this)
+  }
+
+  init() {
     if (!this.role.queryFullscreen()) {
       this.prepareFullscreen()
-      const fullScreenScene = this.role.view.relevantScene ?? Object.values(this.surface.session.renderer.scenes)[0]
-      const { width, height } = fullScreenScene.canvas
-      this.role.configureFullscreen(true)
-      this.role.configureSize({ width, height })
+      this.setFullscreen(true)
     }
   }
 
@@ -50,6 +50,11 @@ export class AlwaysFullscreenDesktopSurface implements DesktopSurface {
   setFullscreen(fullscreen: boolean): void {
     if (this.floatingDesktopSurface !== undefined) {
       this.floatingDesktopSurface.setFullscreen(fullscreen)
+    } else {
+      const fullScreenScene = this.role.view.relevantScene ?? Object.values(this.surface.session.renderer.scenes)[0]
+      const { width, height } = fullScreenScene.canvas
+      this.role.configureFullscreen(true)
+      this.role.configureSize({ width, height })
     }
   }
 
@@ -102,6 +107,7 @@ export class AlwaysFullscreenDesktopSurface implements DesktopSurface {
   setParent(parent: DesktopSurface | undefined): void {
     if (parent !== undefined && this.floatingDesktopSurface === undefined) {
       this.floatingDesktopSurface = new FloatingDesktopSurface(this.surface, this.role)
+      this.floatingDesktopSurface.init()
       this.floatingDesktopSurface.focusCount = this.focusCount
       this.floatingDesktopSurface.xWayland = { ...this.xWayland }
       this.floatingDesktopSurface.fullscreen = true

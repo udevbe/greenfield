@@ -95,6 +95,7 @@ export default class XdgToplevel implements XdgToplevelRequests, DesktopSurfaceR
         this.desktopSurface.removed()
       }
     })
+    this.desktopSurface.init()
   }
 
   static create(xdgToplevelResource: XdgToplevelResource, xdgSurface: XdgSurface, session: Session): XdgToplevel {

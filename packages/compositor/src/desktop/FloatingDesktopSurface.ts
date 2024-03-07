@@ -225,6 +225,10 @@ export class FloatingDesktopSurface implements DesktopSurface {
     this.compositorSurface = toCompositorSurface(this)
   }
 
+  init() {
+    // noop
+  }
+
   move(grabSerial: number): void {
     if (this.surface.destroyed) {
       return
@@ -288,10 +292,15 @@ export class FloatingDesktopSurface implements DesktopSurface {
 
   setFullscreen(fullscreen: boolean): void {
     // FIXME views should have their relevant scene set explicitly based on their location instead of re-calculated each time.
-    const fullScreenScene = this.role.view.relevantScene ?? Object.values(this.surface.session.renderer.scenes)[0]
-    const { width, height } = fullScreenScene.canvas
+    if(fullscreen) {
+      const fullScreenScene = this.role.view.relevantScene ?? Object.values(this.surface.session.renderer.scenes)[0]
+      const { width, height } = fullScreenScene.canvas
+      this.role.configureSize({ width, height })
+    } else {
+      this.role.configureSize({ width: 0, height: 0 })
+    }
+
     this.role.configureFullscreen(fullscreen)
-    this.role.configureSize({ width, height })
   }
 
   setMaximized(maximized: boolean): void {

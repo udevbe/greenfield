@@ -1,5 +1,5 @@
 import { Time } from '@gfld/xtsb'
-import {createDesktopSurface, DesktopSurface, DesktopSurfaceRole} from '../../desktop/Desktop'
+import { createDesktopSurface, DesktopSurface, DesktopSurfaceRole } from '../../desktop/Desktop'
 import { ORIGIN, Point } from '../../math/Point'
 import { createRect, RectWithInfo } from '../../math/Rect'
 import { Size, ZERO_SIZE } from '../../math/Size'
@@ -9,6 +9,7 @@ import Session from '../../Session'
 import Surface from '../../Surface'
 import View from '../../View'
 import { XWindow } from './XWindow'
+import {MWM_DECOR_EVERYTHING} from "./XConstants";
 
 export enum SurfaceState {
   NONE,
@@ -23,8 +24,7 @@ export default class XWaylandShellSurface implements DesktopSurfaceRole {
   added = false
   pid = 0
   state = SurfaceState.NONE
-  sendConfigure?: (size: Size) => void
-  sendPosition?: (position: Point) => void
+
   frameDecoration?: {
     top: ImageData
     bottom: ImageData
@@ -45,19 +45,28 @@ export default class XWaylandShellSurface implements DesktopSurfaceRole {
     readonly window: XWindow,
     readonly surface: Surface,
     public readonly view: View,
+    private readonly sendConfigure: (size: Size) => void,
+    private readonly sendPosition: (position: Point) => void,
   ) {
     this.desktopSurface = createDesktopSurface(this.surface, this)
+    this.desktopSurface.init()
   }
 
-  static create(session: Session, window: XWindow, surface: Surface): XWaylandShellSurface {
+  static create(
+    session: Session,
+    window: XWindow,
+    surface: Surface,
+    sendConfigure: (size: Size) => void,
+    sendPosition: (position: Point) => void,
+  ): XWaylandShellSurface {
     const view = View.create(surface)
-    const xWaylandShellSurface = new XWaylandShellSurface(session, window, surface, view)
+    const xWaylandShellSurface = new XWaylandShellSurface(session, window, surface, view, sendConfigure, sendPosition)
     surface.role = xWaylandShellSurface
 
     view.transformationUpdatedListeners = [
       ...view.transformationUpdatedListeners,
       () => {
-        xWaylandShellSurface.sendPosition?.(view.positionOffset)
+        xWaylandShellSurface.sendPosition(view.positionOffset)
       },
     ]
     view.prepareRender = (renderState) => {
@@ -111,12 +120,34 @@ export default class XWaylandShellSurface implements DesktopSurfaceRole {
     // no op
   }
 
-  configureFullscreen(_fullscreen: boolean): void {
-    // no op
+  configureFullscreen(fullscreen: boolean): void {
+    const stateIsFullScreen = this.queryFullscreen();
+    if ((stateIsFullScreen && fullscreen) || (!stateIsFullScreen && !fullscreen)) {
+      return
+    }
+
+    if (fullscreen) {
+      this.changeState(SurfaceState.FULLSCREEN, undefined, ORIGIN)
+      this.window.overrideRedirect = true
+      this.window.decorate = 0
+      this.window.x = 0
+      this.window.y = 0
+      this.window.wm.xConnection.changeWindowAttributes(this.window.id, {
+        overrideRedirect: 1
+      } )
+    } else {
+      this.changeState(SurfaceState.TOP_LEVEL, undefined, ORIGIN)
+      this.window.overrideRedirect = false
+      this.window.decorate = MWM_DECOR_EVERYTHING
+      this.window.wm.xConnection.changeWindowAttributes(this.window.id, {
+        overrideRedirect: 0
+      } )
+    }
+    this.window.fullscreen = fullscreen
   }
 
   configureSize(size: Size): void {
-    this.sendConfigure?.(size)
+    this.sendConfigure(size)
   }
 
   configureActivated(_activated: boolean): void {
@@ -267,7 +298,7 @@ export default class XWaylandShellSurface implements DesktopSurfaceRole {
       }
 
       if (toAdd) {
-        this.desktopSurface?.setParent(undefined)
+        this.desktopSurface.setParent(undefined)
         this.desktopSurface.add()
         this.added = true
         if (this.state === SurfaceState.NONE && this.committed) {
