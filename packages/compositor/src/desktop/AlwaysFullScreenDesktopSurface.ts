@@ -50,8 +50,12 @@ export class AlwaysFullscreenDesktopSurface implements DesktopSurface {
   setFullscreen(fullscreen: boolean): void {
     if (this.floatingDesktopSurface !== undefined) {
       this.floatingDesktopSurface.setFullscreen(fullscreen)
-    } else {
+    } else if (fullscreen) {
       const fullScreenScene = this.role.view.relevantScene ?? Object.values(this.surface.session.renderer.scenes)[0]
+      fullScreenScene.sizeListeners.push(() => {
+        const { width, height } = fullScreenScene.canvas
+        this.role.configureSize({ width, height })
+      })
       const { width, height } = fullScreenScene.canvas
       this.role.configureFullscreen(true)
       this.role.configureSize({ width, height })

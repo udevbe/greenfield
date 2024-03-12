@@ -1,6 +1,5 @@
 import { Point } from '../math/Point'
 import Surface from '../Surface'
-import { FloatingDesktopSurface } from './FloatingDesktopSurface'
 import { RectWithInfo } from '../math/Rect'
 import { Size } from '../math/Size'
 import SurfaceRole from '../SurfaceRole'
@@ -56,7 +55,7 @@ export interface DesktopSurface {
 }
 
 export function createDesktopSurface(surface: Surface, desktopSurfaceRole: DesktopSurfaceRole): DesktopSurface {
-  // TODO from config
+  // TODO from session config
   // return new FloatingDesktopSurface(surface, desktopSurfaceRole)
   return new AlwaysFullscreenDesktopSurface(surface, desktopSurfaceRole)
 }

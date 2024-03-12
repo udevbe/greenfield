@@ -98,7 +98,7 @@ export async function main() {
   // Get an HTML5 canvas for use as an output for the compositor. Multiple outputs can be used.
   const canvas = elementById('output') as HTMLCanvasElement
   // hook up the canvas to our compositor
-  session.userShell.actions.initScene('myOutputId', canvas)
+  session.userShell.actions.initScene(() => ({ canvas, id: canvas.id }))
   // make compositor global protocol objects available to client
   session.globals.register()
 
