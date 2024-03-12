@@ -32,6 +32,7 @@ export class Scene {
   // @ts-ignore
   private _destroyResolve: (value?: void | PromiseLike<void>) => void
   private readonly _destroyPromise: Promise<void>
+  public sizeListeners: (() => void)[] = []
 
   private constructor(
     public readonly session: Session,
@@ -139,6 +140,10 @@ export class Scene {
 
       initRect(this.region, createRect(this.output, this.canvas))
       needRender()
+
+      for (const listener of this.sizeListeners) {
+        listener()
+      }
     }
 
     const observer = new ResizeObserver(resizeTheCanvasToDisplaySize)

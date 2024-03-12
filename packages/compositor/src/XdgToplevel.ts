@@ -23,7 +23,7 @@ import {
   XdgToplevelResource,
   XdgToplevelState,
 } from '@gfld/compositor-protocol'
-import { createDesktopSurface, DesktopSurface, DesktopSurfaceRole} from './desktop/Desktop'
+import { createDesktopSurface, DesktopSurface, DesktopSurfaceRole } from './desktop/Desktop'
 import { RectWithInfo } from './math/Rect'
 import { Size, ZERO_SIZE } from './math/Size'
 import Session from './Session'

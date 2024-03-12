@@ -39,7 +39,7 @@ export interface UserShellApiEvents {
 }
 
 export interface UserShellApiActions {
-  initScene(sceneId: string, canvas: HTMLCanvasElement): void
+  initScene(canvasCreator: () => { canvas: HTMLCanvasElement; id: string }): void
   refreshScene(): void
   destroyScene(sceneId: string): void
 
@@ -74,7 +74,8 @@ export function createUserShellApi(session: Session): UserShellApi {
         const surface = lookupSurface(session, compositorSurface)
         surface.role?.desktopSurface?.activate()
       },
-      initScene: (sceneId, canvas) => addInputOutput(session, canvas, sceneId),
+      initScene: (canvasCreator: () => { canvas: HTMLCanvasElement; id: string }) =>
+        addInputOutput(session, canvasCreator),
       refreshScene: () => {
         session.renderer.render()
       },
