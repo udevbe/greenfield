@@ -29,7 +29,7 @@ import { ImageBitmapBufferContents } from '../ImageBitmapBuffer'
 
 export class Scene {
   public region = createPixmanRegion()
-  // @ts-ignore
+  // @ts-expect-error will be set in a promise callback in the constructor
   private _destroyResolve: (value?: void | PromiseLike<void>) => void
   private readonly _destroyPromise: Promise<void>
   public sizeListeners: (() => void)[] = []

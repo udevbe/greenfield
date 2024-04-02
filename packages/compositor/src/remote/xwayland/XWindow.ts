@@ -295,7 +295,7 @@ export class XWindow {
       [
         this.wm.atoms.WM_PROTOCOLS,
         TYPE_WM_PROTOCOLS,
-        ({ value, valueLen }) => {
+        ({ value }) => {
           const atoms = new Uint32Array(value.buffer, value.byteOffset)
           atoms.includes(this.wm.atoms.WM_DELETE_WINDOW)
           if (atoms.includes(this.wm.atoms.WM_DELETE_WINDOW)) {
@@ -720,9 +720,10 @@ export class XWindow {
     }
     this.surface.resource.addDestroyListener(this.surfaceDestroyListener)
     this.shsurf = this.wm.xWaylandShell.createSurface(
-        this, surface,
-        (size: Size) => this.sendConfigure(size),
-        (position: Point) => this.sendPosition(position)
+      this,
+      surface,
+      (size: Size) => this.sendConfigure(size),
+      (position: Point) => this.sendPosition(position),
     )
 
     this.session.logger.debug(
@@ -1064,7 +1065,7 @@ export class XWindow {
   }
 
   private sendConfigure({ width, height }: Size) {
-    if(width === 0 && height === 0) {
+    if (width === 0 && height === 0) {
       return
     }
 

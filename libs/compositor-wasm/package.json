@@ -24,18 +24,17 @@
     "type": "git",
     "url": "https://github.com/udevbe/greenfield/tree/master/libs/web/common"
   },
-  "packageManager": "yarn@3.6.0",
   "scripts": {
     "build": "./build_wasm.sh && yarn run tsc"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^7.0.1",
-    "@typescript-eslint/parser": "^7.0.1",
+    "@typescript-eslint/eslint-plugin": "^7.5.0",
+    "@typescript-eslint/parser": "^7.5.0",
     "acorn": "^8.11.3",
-    "eslint": "^8.56.0",
+    "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.1.3",
     "prettier": "^3.2.5",
-    "typescript": "^5.3.3"
+    "typescript": "^5.4.3"
   }
 }

@@ -9,7 +9,7 @@ import Session from '../../Session'
 import Surface from '../../Surface'
 import View from '../../View'
 import { XWindow } from './XWindow'
-import {MWM_DECOR_EVERYTHING} from "./XConstants";
+import { MWM_DECOR_EVERYTHING } from './XConstants'
 
 export enum SurfaceState {
   NONE,
@@ -121,7 +121,7 @@ export default class XWaylandShellSurface implements DesktopSurfaceRole {
   }
 
   configureFullscreen(fullscreen: boolean): void {
-    const stateIsFullScreen = this.queryFullscreen();
+    const stateIsFullScreen = this.queryFullscreen()
     if ((stateIsFullScreen && fullscreen) || (!stateIsFullScreen && !fullscreen)) {
       return
     }
@@ -133,15 +133,15 @@ export default class XWaylandShellSurface implements DesktopSurfaceRole {
       this.window.x = 0
       this.window.y = 0
       this.window.wm.xConnection.changeWindowAttributes(this.window.id, {
-        overrideRedirect: 1
-      } )
+        overrideRedirect: 1,
+      })
     } else {
       this.changeState(SurfaceState.TOP_LEVEL, undefined, ORIGIN)
       this.window.overrideRedirect = false
       this.window.decorate = MWM_DECOR_EVERYTHING
       this.window.wm.xConnection.changeWindowAttributes(this.window.id, {
-        overrideRedirect: 0
-      } )
+        overrideRedirect: 0,
+      })
     }
     this.window.fullscreen = fullscreen
   }

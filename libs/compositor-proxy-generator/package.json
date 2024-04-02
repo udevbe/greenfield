@@ -10,7 +10,6 @@
     "type": "git",
     "url": "https://github.com/udevbe/greenfield/tree/master/libs/proxy/generator"
   },
-  "packageManager": "yarn@3.6.0",
   "keywords": [
     "wayland",
     "html5",
