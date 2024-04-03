@@ -47,7 +47,7 @@ export async function main() {
   await wasmLibs
 
   // create new compositor context
-  const session = await createCompositorSession()
+  const session = await createCompositorSession({ mode: 'floating' })
   const remoteAppLauncher = createAppLauncher(session, 'remote')
   const webAppLauncher = createAppLauncher(session, 'web')
 

@@ -17,18 +17,15 @@
 
 import { Display } from '@gfld/compositor-protocol'
 import Globals from './Globals'
-import { ButtonCode, CompositorSession } from './index'
+import { ButtonCode, CompositorSession, SessionConfig } from './index'
 import { FrameDecoder } from './remote/buffer-decoder'
 import { createWasmFrameDecoder } from './remote/wasm-buffer-decoder'
-import {
-  hardwareDecoderConfig,
-  softwareDecoderConfig,
-  webCodecFrameDecoderFactory,
-} from './remote/webcodec-buffer-decoder'
+import { softwareDecoderConfig, webCodecFrameDecoderFactory } from './remote/webcodec-buffer-decoder'
 import Renderer from './render/Renderer'
 import { createUserShellApi, UserShellApi } from './UserShellApi'
 import { InputQueue } from './InputQueue'
 import { KeyboardModifier } from './Seat'
+import { s } from '@gfld/common/dist'
 
 export interface LogFn {
   /* tslint:disable:no-unnecessary-generics */
@@ -119,7 +116,7 @@ class Session implements CompositorSession {
 
   private constructor(
     public readonly display: Display,
-    public readonly compositorSessionId: string,
+    public readonly config: Required<SessionConfig>,
     public readonly logger: GreenfieldLogger,
     frameDecoderFactory: FrameDecoderFactory,
   ) {
@@ -131,7 +128,7 @@ class Session implements CompositorSession {
   }
 
   static async create(
-    sessionId?: string,
+    sessionConfig: SessionConfig,
     logger: GreenfieldLogger = {
       error: console.error,
       warn: console.warn,
@@ -145,8 +142,8 @@ class Session implements CompositorSession {
     },
   ): Promise<Session> {
     const display = new Display()
-    const compositorSessionId =
-      sessionId ??
+    const id =
+      sessionConfig.id ??
       ((): string => {
         const randomBytes = new Uint8Array(8)
         crypto.getRandomValues(randomBytes)
@@ -163,11 +160,11 @@ class Session implements CompositorSession {
       decoderFactory = createWasmFrameDecoder
     }
 
-    const session = new Session(display, compositorSessionId, logger, decoderFactory)
+    const session = new Session(display, { ...sessionConfig, id }, logger, decoderFactory)
     session.globals.seat.buttonBindings.push({
       modifiers: 0,
       button: ButtonCode.MAIN,
-      handler: (pointer, event) => {
+      handler: (pointer, _event) => {
         if (pointer.grab !== pointer.defaultGrab) {
           return
         }
@@ -181,7 +178,7 @@ class Session implements CompositorSession {
     session.globals.seat.buttonBindings.push({
       modifiers: KeyboardModifier.NONE,
       button: ButtonCode.SECONDARY,
-      handler: (pointer, event) => {
+      handler: (pointer, _event) => {
         if (pointer.grab !== pointer.defaultGrab) {
           return
         }
