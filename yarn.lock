@@ -1456,7 +1456,7 @@ __metadata:
     "@babel/plugin-transform-react-jsx": "npm:^7.23.4"
     "@babel/plugin-transform-react-jsx-development": "npm:^7.22.5"
     "@gfld/compositor": "workspace:^"
-    "@preact/preset-vite": "npm:^2.8.2"
+    "@preact/preset-vite": "npm:2.8.1"
     "@preact/signals": "npm:^1.2.3"
     "@tailwindcss/typography": "npm:^0.5.12"
     "@typescript-eslint/eslint-plugin": "npm:^7.5.0"
@@ -2013,9 +2013,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@preact/preset-vite@npm:^2.8.2":
-  version: 2.8.2
-  resolution: "@preact/preset-vite@npm:2.8.2"
+"@preact/preset-vite@npm:2.8.1":
+  version: 2.8.1
+  resolution: "@preact/preset-vite@npm:2.8.1"
   dependencies:
     "@babel/plugin-transform-react-jsx": "npm:^7.22.15"
     "@babel/plugin-transform-react-jsx-development": "npm:^7.22.5"
@@ -2027,12 +2027,10 @@ __metadata:
     magic-string: "npm:0.30.5"
     node-html-parser: "npm:^6.1.10"
     resolve: "npm:^1.22.8"
-    source-map: "npm:^0.7.4"
-    stack-trace: "npm:^1.0.0-pre2"
   peerDependencies:
     "@babel/core": 7.x
     vite: 2.x || 3.x || 4.x || 5.x
-  checksum: 10/a54b14afbd3a6a09836ec1469bc7924e128778a092cca875c3434989974023bf6f21f09d5c090d12c23fdb81ce9e6499bdf52a2f35c81141e9f2687158c56460
+  checksum: 10/ac91fc701e078d2910b386b9e793f5429f9db04e3c56ea0f41f5f777fb21f5610acd9091def7bb2da9aaadbb9e687e1c276ff0d636fe3427ebd452dce5f98838
   languageName: node
   linkType: hard
 
@@ -8616,13 +8614,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"source-map@npm:^0.7.4":
-  version: 0.7.4
-  resolution: "source-map@npm:0.7.4"
-  checksum: 10/a0f7c9b797eda93139842fd28648e868a9a03ea0ad0d9fa6602a0c1f17b7fb6a7dcca00c144476cccaeaae5042e99a285723b1a201e844ad67221bf5d428f1dc
-  languageName: node
-  linkType: hard
-
 "sprintf-js@npm:~1.0.2":
   version: 1.0.3
   resolution: "sprintf-js@npm:1.0.3"
@@ -8636,13 +8627,6 @@ __metadata:
   dependencies:
     minipass: "npm:^7.0.3"
   checksum: 10/453f9a1c241c13f5dfceca2ab7b4687bcff354c3ccbc932f35452687b9ef0ccf8983fd13b8a3baa5844c1a4882d6e3ddff48b0e7fd21d743809ef33b80616d79
-  languageName: node
-  linkType: hard
-
-"stack-trace@npm:^1.0.0-pre2":
-  version: 1.0.0-pre2
-  resolution: "stack-trace@npm:1.0.0-pre2"
-  checksum: 10/a64099f86acc01980b0a7fbc662f3233bf8626daf95c53e31c835b2252ae11fc3dbfe8f3e77a7f8310132dd488af2795057cd7db599de0c41a6fa99b16068273
   languageName: node
   linkType: hard
 

@@ -32,7 +32,7 @@
     "@babel/core": "^7.24.3",
     "@babel/plugin-transform-react-jsx": "^7.23.4",
     "@babel/plugin-transform-react-jsx-development": "^7.22.5",
-    "@preact/preset-vite": "^2.8.2",
+    "@preact/preset-vite": "2.8.1",
     "@preact/signals": "^1.2.3",
     "@tailwindcss/typography": "^0.5.12",
     "@typescript-eslint/eslint-plugin": "^7.5.0",
