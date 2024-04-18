@@ -1,0 +1,17 @@
+diff --git a/gdk-pixbuf/meson.build b/gdk-pixbuf/meson.build
+index 8c944ba..f88168f 100644
+--- a/gdk-pixbuf/meson.build
++++ b/gdk-pixbuf/meson.build
+@@ -289,9 +289,9 @@ if native_windows_loaders
+ endif
+ 
+ gdkpixbuf_bin = [
+-  [ 'gdk-pixbuf-csource' ],
+-  [ 'gdk-pixbuf-pixdata' ],
+-  [ 'gdk-pixbuf-query-loaders', [ 'queryloaders.c' ] ],
++#  [ 'gdk-pixbuf-csource' ],
++#  [ 'gdk-pixbuf-pixdata' ],
++#  [ 'gdk-pixbuf-query-loaders', [ 'queryloaders.c' ] ],
+ ]
+ 
+ foreach bin: gdkpixbuf_bin
