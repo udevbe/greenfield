@@ -27,12 +27,14 @@ printf '%s\n' "[constants]" "greenfield_sdk = '$_SDK_DIR'" > "$_SDK_DIR/toolkit/
 #./sysrootlibs/harfbuzz/build_freetype_nocairo_noglib.sh
 #./sysrootlibs/fontconfig/build.sh
 #./sysrootlibs/glib/build.sh
+#./sysrootlibs/jpeg/build.sh
 #./sysrootlibs/cairo/build.sh
 #./sysrootlibs/harfbuzz/build.sh
 #./sysrootlibs/upoll/build.sh
 #./sysrootlibs/cygepoll/build.sh
 #./sysrootlibs/fribidi/build.sh
-#./sysrootlibs/pango/build.sh
+#./sysrootlibs/tiff4/build.sh
+./sysrootlibs/pango/build.sh
 ./sysrootlibs/gdk-pixbuf/build.sh
 ./sysrootlibs/gtk4/build.sh
 
