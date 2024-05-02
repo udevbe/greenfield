@@ -1,0 +1,108 @@
+diff --git a/gdk/meson.build b/gdk/meson.build
+index 3f97ac1..858cfaa 100644
+--- a/gdk/meson.build
++++ b/gdk/meson.build
+@@ -273,6 +273,7 @@ libgdk = static_library('gdk',
+   include_directories: [confinc, gdkx11_inc, wlinc],
+   c_args: libgdk_c_args + common_cflags,
+   link_whole: gdk_backends,
++  pic: true
+ )
+ 
+ # We don't have link_with: to internal static libs here on purpose, just
+diff --git a/gsk/meson.build b/gsk/meson.build
+index bd50524..e8842bb 100644
+--- a/gsk/meson.build
++++ b/gsk/meson.build
+@@ -205,7 +205,8 @@ libgsk = static_library('gsk',
+     '-DG_LOG_DOMAIN="Gsk"',
+     '-DG_LOG_STRUCTURED=1',
+   ] + common_cflags,
+-  link_with: [ libgdk, libgsk_f16c]
++  link_with: [ libgdk, libgsk_f16c],
++  pic: true
+ )
+ 
+ # We don't have link_with: to internal static libs here on purpose, just
+diff --git a/gtk/css/meson.build b/gtk/css/meson.build
+index bf083f6..659bf00 100644
+--- a/gtk/css/meson.build
++++ b/gtk/css/meson.build
+@@ -48,6 +48,7 @@ libgtk_css = static_library('gtk_css',
+     '-DGTK_COMPILATION',
+     '-DG_LOG_DOMAIN="Gtk"',
+   ] + common_cflags,
++  pic: true
+ )
+ 
+ # We don't have link_with: to internal static libs here on purpose, just
+diff --git a/gtk/gtkexpression.c b/gtk/gtkexpression.c
+index 8750782..d8a9505 100644
+--- a/gtk/gtkexpression.c
++++ b/gtk/gtkexpression.c
+@@ -453,7 +453,7 @@ gtk_value_dup_expression (const GValue *value)
+ }
+ 
+ static void
+-param_expression_init (GParamSpec *pspec)
++param_expression_init (GParamSpec *pspec, gpointer data)
+ {
+ }
+ 
+diff --git a/gtk/meson.build b/gtk/meson.build
+index a8e1088..76972c5 100644
+--- a/gtk/meson.build
++++ b/gtk/meson.build
+@@ -1157,9 +1157,10 @@ libgtk_static = static_library('gtk',
+   include_directories: [confinc, gdkinc, gskinc, gtkinc],
+   dependencies: gtk_deps + [libgtk_css_dep, libgdk_dep, libgsk_dep],
+   link_with: [libgtk_css, libgdk, libgsk ],
++  pic: true
+ )
+ 
+-libgtk = shared_library('gtk-4',
++libgtk = library('gtk-4',
+   c_args: gtk_cargs + common_cflags,
+   include_directories: [confinc, gdkinc, gskinc, gtkinc],
+   dependencies: gtk_deps + [libgtk_css_dep, libgdk_dep, libgsk_dep],
+diff --git a/meson.build b/meson.build
+index 948dc01..24f9860 100644
+--- a/meson.build
++++ b/meson.build
+@@ -757,7 +757,7 @@ subdir('modules')
+ if get_option('demos')
+   subdir('demos')
+ endif
+-subdir('tools')
++
+ if get_option('build-tests')
+   subdir('tests')
+ endif
+diff --git a/modules/printbackends/meson.build b/modules/printbackends/meson.build
+index 1b02d1b..0e2aa6d 100644
+--- a/modules/printbackends/meson.build
++++ b/modules/printbackends/meson.build
+@@ -45,14 +45,14 @@ elif cups_dep.found()
+ endif
+ 
+ # The 'file' print backend cannot be disabled
+-print_backends += 'file'
+-shared_module('printbackend-file',
+-  sources: 'gtkprintbackendfile.c',
+-  c_args: printbackends_args,
+-  dependencies: libgtk_dep,
+-  name_suffix: module_suffix,
+-  install_dir: printbackends_install_dir,
+-  install: true,
+-)
++#print_backends += 'file'
++#shared_module('printbackend-file',
++#  sources: 'gtkprintbackendfile.c',
++#  c_args: printbackends_args,
++#  dependencies: libgtk_dep,
++#  name_suffix: module_suffix,
++#  install_dir: printbackends_install_dir,
++#  install: true,
++#)
+ 
+ cdata.set_quoted('GTK_PRINT_BACKENDS', ','.join(print_backends))

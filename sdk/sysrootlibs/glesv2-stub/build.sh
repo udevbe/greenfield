@@ -3,7 +3,7 @@ set -e
 cd "$(dirname "$(realpath -- "$0")")";
 
 _SDK_DIR=${_SDK_DIR:-$(dirname "$(readlink -f "$PWD/../../build_sysroot.sh")")}
-URL='https://github.com/udevbe/libglesv2-stub.git'
+URL='https://github.com/udevbe/uapi-stub.git'
 BRANCH='main'
 NEED_PATCH=false
 
@@ -24,7 +24,7 @@ build() {
     export PKG_CONFIG_PATH="$_SDK_DIR/sysroot/lib/pkgconfig:$_SDK_DIR/sysroot/share/pkgconfig"
     export PKG_CONFIG_LIBDIR="$_SDK_DIR/sysroot"
     pushd repo
-    	pipx run meson setup --wipe build/ --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-toolchain.ini" --cross-file "${_SDK_DIR}/sysrootlibs/pango/emscripten-build.ini" -Dprefix="${_SDK_DIR}/sysroot" --pkg-config-path="${_SDK_DIR}/sysroot/lib/pkgconfig"
+    	meson setup --wipe build/ --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-toolchain.ini" --cross-file "${_SDK_DIR}/sysrootlibs/pango/emscripten-build.ini" -Dprefix="${_SDK_DIR}/sysroot" --pkg-config-path="${_SDK_DIR}/sysroot/lib/pkgconfig:${_SDK_DIR}/sysroot/share/pkgconfig"
 	    ninja -C build/ install
     popd
 }
