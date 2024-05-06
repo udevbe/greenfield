@@ -73,6 +73,7 @@ demos = files([
   'password_entry.c',
   'peg_solitaire.c',
   'pickers.c',
+  'printing.c',
   'read_more.c',
   'revealer.c',
   'rotated_text.c',
@@ -134,6 +135,10 @@ extra_demo_sources = files([
   'suggestionentry.c',
   'language-names.c',
 ])
+
+if os_unix
+  demos += files('pagesetup.c')
+endif
 
 librsvg_dep = dependency('librsvg-2.0', version: '>= 2.52.0', required: false)
 
