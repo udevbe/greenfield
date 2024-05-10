@@ -28,6 +28,11 @@ export default defineConfig({
         target: 'http://localhost:9003',
         rewrite: (path) => path.replace(/^\/weston-clients/, ''),
       },
+      // examples/webapps/gtk4-clients
+      '/gtk4-clients': {
+        target: 'http://localhost:9004',
+        rewrite: (path) => path.replace(/^\/gtk4-clients/, ''),
+      },
     },
   },
 })

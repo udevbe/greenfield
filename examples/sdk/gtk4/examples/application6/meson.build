@@ -12,4 +12,5 @@ executable('exampleapp6',
   app6_resources,
   app6_schemas,
   dependencies: libgtk_dep,
-  c_args: common_cflags)
+  c_args: common_cflags,
+  name_suffix: 'html')

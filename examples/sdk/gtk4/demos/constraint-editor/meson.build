@@ -20,4 +20,5 @@ executable('gtk4-constraint-editor',
   win_subsystem: 'windows',
   link_args: extra_demo_ldflags,
   install: false,
+  name_suffix: 'html'
 )

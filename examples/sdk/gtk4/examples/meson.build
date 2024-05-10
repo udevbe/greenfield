@@ -17,7 +17,8 @@ foreach ex : examples
                '-DGTK_DISABLE_DEPRECATED',
                '-DGTK_SRCDIR="@0@"'.format(meson.current_source_dir()),
              ] + common_cflags,
-             dependencies: libgtk_dep)
+             dependencies: libgtk_dep,
+             name_suffix: 'html')
 endforeach
 
 subdir('bp')

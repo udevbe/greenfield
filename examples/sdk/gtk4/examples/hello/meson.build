@@ -6,5 +6,6 @@ project('hello', 'c',
 executable('hello',
   [ 'hello-world.c' ],
   dependencies: [ dependency('gtk4') ],
-  install: false
+  install: false,
+  name_suffix: 'html'
 )

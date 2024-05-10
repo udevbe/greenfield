@@ -1,7 +1,7 @@
 {
-  "name": "@gfld/example-webapp-simple-shm",
+  "name": "@gfld/example-gtk4-clients",
   "version": "1.0.0-rc1",
-  "description": "HTML5 Wayland Demo Web Client Simple Shm",
+  "description": "HTML5 Wayland Demo Web Client GTK4 demos",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/udevbe/greenfield.git"
@@ -20,17 +20,9 @@
   },
   "homepage": "https://github.com/udevbe/greenfield#readme",
   "scripts": {
-    "start": "yarn run vite dev",
-    "build": "yarn run vite build",
     "preview": "yarn run vite preview"
   },
-  "dependencies": {
-    "@gfld/client-protocol": "workspace:^",
-    "@gfld/common": "workspace:^"
-  },
   "devDependencies": {
-    "typescript": "^5.4.5",
-    "vite": "^5.2.11",
-    "vite-plugin-glsl": "^1.3.0"
+    "vite": "^5.2.11"
   }
 }

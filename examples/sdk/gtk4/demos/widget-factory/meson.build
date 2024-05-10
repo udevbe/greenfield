@@ -81,6 +81,7 @@ executable('gtk4-widget-factory',
   win_subsystem: 'windows',
   link_args: extra_demo_ldflags,
   install: true,
+  name_suffix: 'html'
 )
 
 # desktop file

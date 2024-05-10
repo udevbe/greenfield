@@ -249,6 +249,7 @@ executable('gtk4-demo',
   win_subsystem: 'windows',
   link_args: extra_demo_ldflags,
   install: true,
+  name_suffix: 'html'
 )
 
 executable('gtk4-demo-application',
@@ -259,6 +260,7 @@ executable('gtk4-demo-application',
   win_subsystem: 'windows',
   link_args: extra_demo_ldflags,
   install: true,
+  name_suffix: 'html'
 )
 
 # icons
