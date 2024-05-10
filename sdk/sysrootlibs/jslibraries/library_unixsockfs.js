@@ -380,6 +380,7 @@
          }
      },
 
+     _mmap_js__i53abi: true,
      _mmap_js__deps: ['$SYSCALLS',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
@@ -391,8 +392,8 @@
     '$mmapAlloc',
     'emscripten_builtin_memalign',
 #endif
-    ].concat(i53ConversionDeps),
-    _mmap_js: function(len, prot, flags, fd, offset, allocated, addr) {
+    ],
+    _mmap_js: (len, prot, flags, fd, offset, allocated, addr) => {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
         var stream = SYSCALLS.getStreamFromFD(fd);
         var res = FS.mmap(stream, len, offset, prot, flags);
@@ -408,24 +409,17 @@
         return -{{{ cDefs.ENOSYS }}};
 #endif
     },
-
-     _munmap_js__deps: ['$SYSCALLS',
-#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-     '$FS',
-#endif
-    ].concat(i53ConversionDeps),
-    _munmap_js: function(addr, len, prot, flags, fd, offset) {
+    _munmap_js__i53abi: true,
+    _munmap_js: (addr, len, prot, flags, fd, offset) => {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
         var stream = SYSCALLS.getStreamFromFD(fd);
         if (prot & {{{ cDefs.PROT_WRITE }}}) {
             SYSCALLS.doMsync(addr, stream, len, flags, offset);
         }
-        FS.munmap(stream);
         if(stream.mmap.closed) {
             FS.close(stream);
         }
         delete stream.mmap
-        // implicitly return 0
 #endif
     },
     fd_close: (fd) => {
