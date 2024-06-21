@@ -1620,6 +1620,7 @@ __metadata:
     "@preact/preset-vite": "npm:2.8.1"
     "@preact/signals": "npm:^1.2.3"
     "@tailwindcss/typography": "npm:^0.5.12"
+    "@types/node": "npm:^20.14.5"
     "@typescript-eslint/eslint-plugin": "npm:^7.5.0"
     "@typescript-eslint/parser": "npm:^7.5.0"
     "@vitejs/plugin-basic-ssl": "npm:^1.1.0"
@@ -1633,6 +1634,7 @@ __metadata:
     prettier: "npm:^3.2.5"
     prettier-plugin-tailwindcss: "npm:^0.5.13"
     tailwindcss: "npm:^3.4.3"
+    ts-node: "npm:^10.9.2"
     typescript: "npm:^5.4.3"
     vite: "npm:^5.2.7"
   languageName: unknown
@@ -2664,6 +2666,15 @@ __metadata:
   dependencies:
     undici-types: "npm:~5.26.4"
   checksum: 10/ee2320c51e00d620fde75c54c70ffd218c104fa3203fc143c9db67e9a26c88b6b28d226b5daa511c77fbaeb2a32bd88c70cabcd07e1fe2fbfda68225ecb06d9b
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:^20.14.5":
+  version: 20.14.5
+  resolution: "@types/node@npm:20.14.5"
+  dependencies:
+    undici-types: "npm:~5.26.4"
+  checksum: 10/74c7974a8c75280f9397f22ce34d10d5575668e3c357a165f385c9365c39b3ccda3aa2e7237e7e907fc72e515afb93cc0be1f3e2074cc1889c1ffeb01d2843cc
   languageName: node
   linkType: hard
 

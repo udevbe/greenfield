@@ -1,6 +1,7 @@
 {
   "name": "@gfld/example-gtk4-clients",
   "version": "1.0.0-rc1",
+  "type": "module",
   "description": "HTML5 Wayland Demo Web Client GTK4 demos",
   "repository": {
     "type": "git",

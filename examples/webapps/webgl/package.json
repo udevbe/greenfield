@@ -1,6 +1,7 @@
 {
   "name": "@gfld/example-webapp-webgl",
   "version": "1.0.0-rc1",
+  "type": "module",
   "description": "HTML5 Wayland Demo Web Client Simple Web GL",
   "repository": {
     "type": "git",

@@ -1,10 +1,14 @@
 #!/bin/bash
+
 _SDK_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.."
-_SDK_CFLAGS="-sENVIRONMENT=web,worker -sEXIT_RUNTIME=1 -sPTHREAD_POOL_SIZE=1 -sPROXY_TO_PTHREAD -sUSE_PTHREADS=1 -sASYNCIFY -sASYNCIFY_IMPORTS=[__syscall_poll,_emscripten_receive_on_main_thread_js] \
+_SDK_CFLAGS="-sENVIRONMENT=web,worker \
+-sEXIT_RUNTIME=1 \
+-sPTHREAD_POOL_SIZE=1 -sPROXY_TO_PTHREAD -sUSE_PTHREADS=1 \
+-sASYNCIFY -sASYNCIFY_IMPORTS=[__syscall_poll,_emscripten_receive_on_main_thread_js] \
+-sSTACK_SIZE=4MB \
 --js-library $_SDK_DIR/sysrootlibs/jslibraries/library_unixsockfs.js \
 --pre-js $_SDK_DIR/sysrootlibs/jslibraries/pre-main.js \
 --shell-file $_SDK_DIR/sysrootlibs/jslibraries/app_template.html"
-
 
 echo "---compiling with args $@---"
 "$_SDK_DIR"/emsdk/upstream/emscripten/emcc $_SDK_CFLAGS "$@"

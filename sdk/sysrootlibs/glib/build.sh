@@ -4,7 +4,7 @@ cd "$(dirname "$(realpath -- "$0")")";
 
 _SDK_DIR=${_SDK_DIR:-$(dirname "$(readlink -f "$PWD/../../build_sysroot.sh")")}
 URL='https://github.com/udevbe/glib-emscripten.git'
-BRANCH='2.80.0-emscripten'
+BRANCH='2.80.2-emscripten'
 NEED_PATCH=false
 
 ensure_repo() {

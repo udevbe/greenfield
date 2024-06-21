@@ -66,10 +66,22 @@ index a8e1088..76972c5 100644
    include_directories: [confinc, gdkinc, gskinc, gtkinc],
    dependencies: gtk_deps + [libgtk_css_dep, libgdk_dep, libgsk_dep],
 diff --git a/meson.build b/meson.build
-index 948dc01..24f9860 100644
+index 948dc01..3346f12 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -757,7 +757,7 @@ subdir('modules')
+@@ -200,6 +200,11 @@ check_functions = [
+ ]
+ 
+ foreach func : check_functions
++  # emscripten falsely reports support at compile time but fails at runtime
++  if func == 'getresuid'
++    continue
++  endif
++
+   if cc.has_function(func,
+                      args: '-D_GNU_SOURCE',
+                      prefix:
+@@ -757,7 +762,7 @@ subdir('modules')
  if get_option('demos')
    subdir('demos')
  endif

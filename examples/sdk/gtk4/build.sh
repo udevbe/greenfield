@@ -16,10 +16,11 @@ fi
 DIR=$(dirname "$(readlink -f "$CURRENT_SCRIPT")")
 
 
-EXTRA_LDFLAGS="-g -s TOTAL_MEMORY=256MB -s USE_PTHREADS=1 -s ASYNCIFY \
---preload-file $DIR/fonts/inter@/usr/share/fonts/opentype/inter"
+EXTRA_LDFLAGS="-g -sTOTAL_MEMORY=256MB --preload-file $DIR/fonts/inter@/usr/share/fonts/opentype/inter"
 
 meson setup --wipe build/ --cross-file "$_SDK_DIR/toolkit/meson-gf-cross.ini" --cross-file "$_SDK_DIR/toolkit/meson-gf-toolchain.ini" -Dprefix="$_SDK_DIR/sysroot" \
 -Dbuild-examples=true -Ddemos=false -Dc_link_args="$EXTRA_LDFLAGS"
-ninja -C build/
+ninja -C build/ -j10
+
+
 

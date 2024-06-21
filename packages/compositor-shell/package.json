@@ -2,6 +2,7 @@
   "name": "@gfld/compositor-shell",
   "version": "1.0.0-rc1",
   "description": "A Wayland HTML5 Compositor Shell.",
+  "type": "module",
   "files": [
     "dist"
   ],
@@ -20,7 +21,7 @@
     "web"
   ],
   "scripts": {
-    "start": "yarn vite --config ./vite.config.mts",
+    "start": "yarn vite --config ./vite.config.ts",
     "build": "yarn vite build",
     "preview": "yarn vite preview"
   },
@@ -35,6 +36,7 @@
     "@preact/preset-vite": "2.8.1",
     "@preact/signals": "^1.2.3",
     "@tailwindcss/typography": "^0.5.12",
+    "@types/node": "^20.14.5",
     "@typescript-eslint/eslint-plugin": "^7.5.0",
     "@typescript-eslint/parser": "^7.5.0",
     "@vitejs/plugin-basic-ssl": "^1.1.0",

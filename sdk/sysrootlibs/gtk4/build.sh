@@ -25,7 +25,7 @@ build() {
     export PKG_CONFIG_LIBDIR="$_SDK_DIR/sysroot"
     export PATH=$PATH:$_SDK_DIR/build-sysroot/bin
     pushd repo
-    	meson setup --wipe build/ --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-toolchain.ini" --cross-file "${_SDK_DIR}/sysrootlibs/pango/emscripten-build.ini" -Dprefix="${_SDK_DIR}/sysroot" --pkg-config-path="${_SDK_DIR}/sysroot/lib/pkgconfig:${_SDK_DIR}/sysroot/share/pkgconfig" \
+    	meson setup --wipe build/ --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-toolchain.ini" --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-build.ini" -Dprefix="${_SDK_DIR}/sysroot" --pkg-config-path="${_SDK_DIR}/sysroot/lib/pkgconfig:${_SDK_DIR}/sysroot/share/pkgconfig" \
     	  -Dx11-backend=false -Dwayland-backend=true -Dbroadway-backend=false -Dwin32-backend=false -Dmacos-backend=false -Dmedia-gstreamer=disabled -Dprint-cups=disabled -Dvulkan=disabled \
     	  -Dcloudproviders=disabled -Df16c=disabled -Dintrospection=disabled -Dbuild-testsuite=false -Dbuild-tests=false -Ddemos=false -Dbuild-examples=false -Dc_args="-I${_SDK_DIR}/sysroot/include"
 	    ninja -C build/ install

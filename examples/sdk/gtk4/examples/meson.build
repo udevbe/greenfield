@@ -1,11 +1,11 @@
 examples = [
-  'builder',
-  'drawing',
-  'grid-packing',
-  'plugman',
-  'search-bar',
-  'sunny',
-  'window-default',
+#  'builder',
+#  'drawing',
+#  'grid-packing',
+#  'plugman',
+#  'search-bar',
+#  'sunny',
+#  'window-default',
 ]
 
 foreach ex : examples
@@ -21,13 +21,13 @@ foreach ex : examples
              name_suffix: 'html')
 endforeach
 
-subdir('bp')
+#subdir('bp')
 subdir('application1')
-subdir('application2')
-subdir('application3')
-subdir('application4')
-subdir('application5')
-subdir('application6')
-subdir('application7')
-subdir('application8')
-subdir('application9')
+#subdir('application2')
+#subdir('application3')
+#subdir('application4')
+#subdir('application5')
+#subdir('application6')
+#subdir('application7')
+#subdir('application8')
+#subdir('application9')
