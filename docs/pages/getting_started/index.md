@@ -99,14 +99,14 @@ If all went well, a new `build/clients` directory has appeared with a bunch of `
 Enter any of these in the URL bar to see a WebAssembly desktop application.
 
 ```shell
-web:weston-clients/weston-eventdemo.html
-web:weston-clients/weston-flower.html
-web:weston-clients/weston-fullscreen.html
-web:weston-clients/weston-resizor.html
-web:weston-clients/weston-scaler.html
-web:weston-clients/weston-smoke.html
-web:weston-clients/weston-stacking.html
-web:weston-clients/weston-transformed.html
+web:weston/weston-eventdemo.html
+web:weston/weston-flower.html
+web:weston/weston-fullscreen.html
+web:weston/weston-resizor.html
+web:weston/weston-scaler.html
+web:weston/weston-smoke.html
+web:weston/weston-stacking.html
+web:weston/weston-transformed.html
 ```
 
 [![](img_2_small.jpg)](img_2.png){:target="_blank"}
