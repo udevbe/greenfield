@@ -1634,7 +1634,6 @@ __metadata:
     prettier: "npm:^3.2.5"
     prettier-plugin-tailwindcss: "npm:^0.5.13"
     tailwindcss: "npm:^3.4.3"
-    ts-node: "npm:^10.9.2"
     typescript: "npm:^5.4.3"
     vite: "npm:^5.2.7"
   languageName: unknown
