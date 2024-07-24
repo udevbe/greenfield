@@ -2,7 +2,8 @@
   "workspaces": [
     "libs/*",
     "packages/*",
-    "examples/webapps/*"
+    "examples/webapps/*",
+    "examples/compositor/*"
   ],
   "packageManager": "yarn@4.1.1",
   "resolutions": {
