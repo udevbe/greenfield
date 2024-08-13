@@ -1,9 +1,16 @@
-JavaScript port of Weston's demo client "simple-shm".
+About
+=
+
+Example of a compositor running a single remote GTK4 demo application. The GTK4 demo application is expected to be
+provided externally by e.g. `packages/compositor-proxy-cli` in this repo.
+
+Running
+=
 
 - `yarn install`
 - `yarn start`
+- Go to `http://localhost:8080`
 
-The demo-compositor will now be able to launch this demo webapp.
-
-Type `web://localhost:9002` in the compositor URL bar and press enter to launch it
+The remote application can be installed as a [Progressive Web App](https://en.wikipedia.org/wiki/Progressive_web_app) by browsers that support it.
+When installed as a PWA the application will still be running remotely but will be integrated as a local application.
 

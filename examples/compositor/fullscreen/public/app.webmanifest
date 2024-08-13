@@ -1,0 +1,11 @@
+{
+   "name": "gtk4-demo",
+   "display": "standalone",
+   "start_url": ".",
+   "icons": [
+     {
+       "src": "GTK_logo.svg",
+       "sizes": "any"
+     }
+   ]
+}
