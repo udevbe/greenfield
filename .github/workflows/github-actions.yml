@@ -1,0 +1,33 @@
+name: CI
+on: [push]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install --no-install-recommends autoconf libtool automake pipx ninja-build bison cmake build-essential gperf
+
+      - name: Install compositor-proxy build dependencies
+        run: |
+          sudo apt-get remove libunwind-*
+          sudo apt-get -y install --no-install-recommends libudev-dev libdrm-dev libegl-dev libopengl-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev libgraphene-1.0-dev
+
+      - name: Run install
+        run: yarn install # will run `yarn install` command
+
+      - name: Build production bundle
+        run: yarn workspaces foreach --parallel --topological-dev run build
