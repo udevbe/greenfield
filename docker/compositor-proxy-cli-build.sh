@@ -42,7 +42,7 @@ apt-get clean
 rm -rf /var/lib/apt/lists/*
 git clone --depth 1 --branch 1.20 https://gitlab.freedesktop.org/gstreamer/gstreamer.git
 cd gstreamer
-pipx run meson build \
+meson build \
         --buildtype=release \
         --strip \
         -Dgpl=enabled \
