@@ -16,18 +16,23 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install build tools
+      - name: Build tools
         run: |
           sudo apt-get update
           sudo apt-get -y install --no-install-recommends autoconf libtool automake pipx ninja-build bison cmake build-essential gperf
 
-      - name: Install compositor-proxy build dependencies
+      - name: Compositor Proxy build dependencies
         run: |
           sudo apt-get remove libunwind-*
           sudo apt-get -y install --no-install-recommends libudev-dev libdrm-dev libegl-dev libopengl-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev libgraphene-1.0-dev
 
-      - name: Run install
+      - name: Install
         run: yarn install # will run `yarn install` command
 
-      - name: Build production bundle
+      - name: Build
         run: yarn workspaces foreach --parallel --topological-dev run build
+
+      - name: Deploy Compositor Shell
+        uses: cloudflare/wrangler-action@v3
+        with:
+          command: pages deploy packages/compositor-shell/dist --project-name=greenfield
