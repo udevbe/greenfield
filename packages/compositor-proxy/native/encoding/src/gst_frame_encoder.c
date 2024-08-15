@@ -27,7 +27,8 @@
 const GstMetaInfo *gfBufferContentSerialMetaInfo = NULL;
 
 static const char *opaque_fragment_shader =
-        "#version 330\n"
+        "#version 300 es\n"
+        "precision mediump float;\n"
         "in vec2 v_texcoord;\n"
         "out vec4 color;\n"
         "uniform sampler2D tex;\n"
@@ -36,7 +37,8 @@ static const char *opaque_fragment_shader =
         "}";
 
 static const char *alpha_fragment_shader =
-        "#version 330\n"
+        "#version 300 es\n"
+        "precision mediump float;\n"
         "in vec2 v_texcoord;\n"
         "out vec4 color;\n"
         "uniform sampler2D tex;\n"
@@ -46,7 +48,8 @@ static const char *alpha_fragment_shader =
         "}";
 
 static const char *vertex_shader =
-        "#version 330\n"
+        "#version 300 es\n"
+        "precision mediump float;\n"
         "in vec4 a_position;\n"
         "in vec2 a_texcoord;\n"
         "out vec2 v_texcoord;\n"
