@@ -32,7 +32,7 @@ async function main() {
   appContext.onNameChanged = (name) => {
     window.document.title = name
   }
-  window.document.title = appContext.name
+  window.document.title = appContext.name ?? ""
 }
 
 window.onload = () => {
