@@ -291,10 +291,17 @@ export class DesktopSurface {
   }
 
   setFullscreen(fullscreen: boolean): void {
-    const output = this.role.view.relevantScene
-    const outputSize: Size = output?.canvas ?? { width: 0, height: 0 }
-    this.role.configureFullscreen(fullscreen)
-    this.role.configureSize(outputSize)
+    if (fullscreen) {
+      const output = this.role.view.relevantScene
+      let outputSize: Size = { width: 0, height: 0 }
+      if (output?.canvas) {
+        outputSize = { width: output.canvas.width, height: output.canvas.height }
+      }
+      this.role.configureFullscreen(fullscreen)
+      this.role.configureSize(outputSize)
+    } else {
+      this.role.configureFullscreen(fullscreen)
+    }
   }
 
   setMaximized(maximized: boolean): void {
