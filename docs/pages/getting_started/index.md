@@ -51,9 +51,13 @@ yarn workspace @gfld/compositor-shell run start
 ```
 Open a browser and point it at [http://localhost:8080](http://localhost:8080).
 
+{: .note The compositor-shell is also hosted at https://desktop.greenfield.app }
+
 [![](img_small.jpg)](img.png){:target="_blank"}
 
 Unfortunately at this point we can't run any applications because there are none available. Let's fix that in the next steps.
+
+{: .note There is also an experimental kiosk mode available in case you only need to access a single application. An implementation of this can be found under `/examples/compositor/experimental-fullscreen`}
 
 ## Web Applications
 
