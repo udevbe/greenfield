@@ -6,7 +6,7 @@ async function main() {
   await wasmLibs
 
   // create new compositor context
-  const session = await createCompositorSession({ mode: 'fullscreen' })
+  const session = await createCompositorSession({ mode: 'experimental-fullscreen' })
   // notify user of errors
   session.userShell.events.notify = (variant: string, message: string) => window.alert(message)
 
