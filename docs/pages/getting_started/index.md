@@ -28,7 +28,7 @@ Inside the `greenfield` repository, we'll use `yarn` to install all dependencies
 > Greenfield works best with node.js 20 or greater. You can easily install it using [nvm](https://github.com/nvm-sh/nvm).
 
 {: .note }
-> Greenfield expects [yarn 4 or greater.](https://yarnpkg.com/getting-started/install)
+> Greenfield uses [yarn 4 or greater.](https://yarnpkg.com/getting-started/install)
 
 {: .important }
 > Greenfield requires the following packages to be installed on your build system: `autoconf libtool automake pipx ninja-build bison cmake build-essential gperf`.

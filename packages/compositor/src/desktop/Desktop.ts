@@ -57,7 +57,7 @@ export interface DesktopSurface {
 
 export function createDesktopSurface(surface: Surface, desktopSurfaceRole: DesktopSurfaceRole): DesktopSurface {
   switch (surface.session.config.mode) {
-    case 'fullscreen':
+    case 'experimental-fullscreen':
       return new AlwaysFullscreenDesktopSurface(surface, desktopSurfaceRole)
     case 'floating':
     default:

@@ -113,5 +113,5 @@ export function createAppLauncher(session: CompositorSession, type: 'web' | 'rem
 
 export interface SessionConfig {
   id?: string
-  mode: 'floating' | 'fullscreen'
+  mode: 'floating' | 'experimental-fullscreen'
 }
