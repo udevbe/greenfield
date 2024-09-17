@@ -94,7 +94,7 @@ Inside `examples/sdk/weston`
 {: .important }
 > Building the WebAssembly examples require a working SDK. Head over to the SDK [documentation](/pages/sdk) to set it up.
 
-If all went well, a new `build/clients` directory has appeared with a bunch of `.html`, `.js` and `.wasm`. Spin up a web server so these can be served.
+If all went well, a new `build/clients` directory has appeared with a bunch of `.html`, `.js` and `.wasm`.
 
 Enter any of these in the URL bar to see a WebAssembly desktop application.
 
