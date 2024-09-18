@@ -38,6 +38,7 @@ yarn install
 yarn workspaces foreach --all --parallel --topological-dev \
 --exclude @gfld/compositor-proxy \
 --exclude @gfld/compositor-proxy-cli \
+--exclude @gfld/compositor-shell \
 run build
 ```
 
