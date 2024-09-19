@@ -36,7 +36,7 @@ apt-get install  -y --no-install-recommends  \
     flex \
     bison \
     liborc-0.4-dev-bin \
-    pipx
+    meson
 apt-get autoremove -y
 apt-get clean
 rm -rf /var/lib/apt/lists/*
