@@ -23,7 +23,7 @@ build() {
     source ../../emsdk/emsdk_env.sh
     export PKG_CONFIG_PATH="$_SDK_DIR/sysroot/lib/pkgconfig:$_SDK_DIR/sysroot/share/pkgconfig"
     pushd repo
-    	pipx run meson setup --wipe build/ --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-toolchain.ini" --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-build.ini" -Dprefix="${_SDK_DIR}/sysroot" --pkg-config-path="${_SDK_DIR}/sysroot/lib/pkgconfig" \
+    	meson setup --wipe build/ --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-toolchain.ini" --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-build.ini" -Dprefix="${_SDK_DIR}/sysroot" --pkg-config-path="${_SDK_DIR}/sysroot/lib/pkgconfig" \
     	  -Dfreetype=enabled -Dtests=disabled -Dicu=enabled -Dcairo=disabled -Dintrospection=disabled -Ddocs=disabled -Dutilities=disabled -Dglib=disabled
 	    ninja -C build/ install
     popd

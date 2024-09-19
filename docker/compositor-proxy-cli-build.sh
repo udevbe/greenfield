@@ -36,13 +36,13 @@ apt-get install  -y --no-install-recommends  \
     flex \
     bison \
     liborc-0.4-dev-bin \
-    pipx
+    meson
 apt-get autoremove -y
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 git clone --depth 1 --branch 1.20 https://gitlab.freedesktop.org/gstreamer/gstreamer.git
 cd gstreamer
-pipx run meson build \
+meson build \
         --buildtype=release \
         --strip \
         -Dgpl=enabled \

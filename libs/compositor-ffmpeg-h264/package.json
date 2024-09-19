@@ -14,18 +14,17 @@
     "build": "yarn run build-wasm && yarn run build-ts"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^7.0.1",
-    "@typescript-eslint/parser": "^7.0.1",
-    "acorn": "^8.11.3",
-    "eslint": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^7.14.1",
+    "@typescript-eslint/parser": "^7.14.1",
+    "acorn": "^8.12.0",
+    "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.1.3",
-    "prettier": "^3.2.5",
-    "typescript": "^5.3.3"
+    "prettier": "^3.3.2",
+    "typescript": "^5.5.2"
   },
   "author": "Erik De Rijcke",
   "homepage": "https://github.com/udevbe/tinyh264",
   "license": "Apache-2.0",
-  "repository": "https://github.com/udevbe/tinyh264",
-  "packageManager": "yarn@3.6.0"
+  "repository": "https://github.com/udevbe/tinyh264"
 }

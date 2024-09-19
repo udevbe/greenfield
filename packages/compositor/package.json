@@ -24,7 +24,8 @@
   ],
   "scripts": {
     "prebuild": "yarn run rimraf dist types",
-    "build": "yarn run tsc && yarn run cpy './src/assets/**' './dist/assets/'"
+    "build": "yarn run tsc && yarn run cpy './src/assets/**' './dist/assets/'",
+    "watch": "yarn run build && yarn run tsc -w"
   },
   "dependencies": {
     "@gfld/common": "workspace:^",
@@ -35,15 +36,15 @@
   },
   "devDependencies": {
     "@types/dom-webcodecs": "^0.1.11",
-    "@typescript-eslint/eslint-plugin": "^7.0.1",
-    "@typescript-eslint/parser": "^7.0.1",
+    "@typescript-eslint/eslint-plugin": "^7.14.1",
+    "@typescript-eslint/parser": "^7.14.1",
     "cpy-cli": "^5.0.0",
-    "eslint": "^8.56.0",
+    "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.1.3",
-    "prettier": "^3.2.5",
-    "rimraf": "^5.0.5",
-    "typescript": "^5.3.3"
+    "prettier": "^3.3.2",
+    "rimraf": "^5.0.7",
+    "typescript": "^5.5.2"
   },
   "author": "Erik De Rijcke",
   "homepage": "https://www.greenfield.app",
@@ -51,6 +52,5 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/udevbe/greenfield/tree/master/packages/compositor"
-  },
-  "packageManager": "yarn@3.6.0"
+  }
 }

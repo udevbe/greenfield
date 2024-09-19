@@ -12,5 +12,6 @@
       "dom.iterable",
       "esnext",
     ]
-  }
+  },
+  "include": ["src"]
 }

@@ -156,7 +156,7 @@ function AppLaunchInput(props: AppInputProps) {
         onKeyPress={onKeyPress}
         placeholder="Type a web: or rem:// URL"
         name="remote"
-        onfocusin={selectAllOnFocus}
+        onFocusIn={selectAllOnFocus}
       />
     </div>
   )

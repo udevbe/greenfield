@@ -1,10 +1,13 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const path = require('path')
+import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
-module.exports = {
+export default {
   plugins: {
     tailwindcss: {
-      config: path.join(__dirname, 'tailwind.config.js'),
+      config: join(__dirname, 'tailwind.config.js'),
     },
     autoprefixer: {},
   },

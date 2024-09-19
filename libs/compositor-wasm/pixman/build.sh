@@ -17,7 +17,7 @@ ensure_repo() {
 build() {
     [ -e repo ] || ensure_repo
     pushd repo
-    	pipx run meson setup --wipe build/ --cross-file "${_SDK_DIR}/emscripten-build.ini" --cross-file "${_SDK_DIR}/emscripten-toolchain.ini" \
+    	meson setup --wipe build/ --cross-file "${_SDK_DIR}/emscripten-build.ini" --cross-file "${_SDK_DIR}/emscripten-toolchain.ini" \
     	  -Dgtk=disabled -Dlibpng=disabled -Dtests=disabled
 	    ninja -C build/
 	    emcc -s MODULARIZE=1 -s EXPORT_ES6=1 -s ENVIRONMENT='web' -s SINGLE_FILE=1 -O3 -flto -msimd128 -msse -msse2 -msse3 -msse4.1 -includexmmintrin.h -s EVAL_CTORS=2 ./build/pixman/libpixman-1.a -o ${_SDK_DIR}/src/libpixman.js -s EXPORTED_FUNCTIONS='["_malloc","_free","_pixman_region32_init","_pixman_region32_fini","_pixman_region32_init_rect","_pixman_region32_union","_pixman_region32_intersect","_pixman_region32_union_rect","_pixman_region32_rectangles","_pixman_region32_subtract","_pixman_region32_contains_point","_pixman_region32_copy","_pixman_region32_not_empty","_pixman_region32_contains_rectangle","_pixman_region32_equal","_pixman_region32_clear"]'

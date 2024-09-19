@@ -22,14 +22,14 @@ import {
   XdgPopupResource,
   XdgWmBaseError,
 } from '@gfld/compositor-protocol'
-import { DesktopSurface } from './Desktop'
+import { createDesktopSurface, DesktopSurface, DesktopSurfaceRole } from './desktop/Desktop'
 
 import { RectWithInfo } from './math/Rect'
 import { Size, ZERO_SIZE } from './math/Size'
 import { Seat } from './Seat'
 import Session from './Session'
 import Surface from './Surface'
-import SurfaceRole, { DesktopSurfaceRole } from './SurfaceRole'
+import SurfaceRole from './SurfaceRole'
 import View from './View'
 import { XdgPositionerState } from './XdgPositioner'
 import XdgSurface from './XdgSurface'
@@ -48,7 +48,8 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole, DesktopS
     public readonly view: View,
     public readonly geometry: RectWithInfo,
   ) {
-    this.desktopSurface = DesktopSurface.create(view.surface, this)
+    this.desktopSurface = createDesktopSurface(view.surface, this)
+    this.desktopSurface.init()
   }
 
   static create(
@@ -127,23 +128,23 @@ export default class XdgPopup implements XdgPopupRequests, SurfaceRole, DesktopS
     return this.xdgSurface.surface.geometry
   }
 
-  configureSize(size: Size): void {
+  configureSize(_size: Size): void {
     // no op
   }
 
-  configureActivated(activated: boolean): void {
+  configureActivated(_activated: boolean): void {
     // no op
   }
 
-  configureFullscreen(fullscreen: boolean): void {
+  configureFullscreen(_fullscreen: boolean): void {
     // no op
   }
 
-  configureMaximized(maximized: boolean): void {
+  configureMaximized(_maximized: boolean): void {
     // no op
   }
 
-  configureResizing(resizing: boolean): void {
+  configureResizing(_resizing: boolean): void {
     // no op
   }
 

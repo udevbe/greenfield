@@ -75,22 +75,26 @@ export default class Renderer {
       delete this.scenes[sceneId]
       this.session.globals.unregisterOutput(output)
     })
+    return scene
   }
 
-  initScene(sceneId: string, canvas: HTMLCanvasElement): void {
-    if (this.scenes[sceneId] === undefined) {
+  initScene(canvasProvider: () => { canvas: HTMLCanvasElement; id: string }): Scene {
+    const { canvas, id } = canvasProvider()
+    let scene = this.scenes[id]
+    if (scene === undefined) {
       const output = Output.create(canvas)
       this.session.globals.registerOutput(output)
 
       // TODO make sure this works well
       canvas.addEventListener('webglcontextlost', (event) => event.preventDefault(), false)
-      canvas.addEventListener('webglcontextrestored', () => this.createAndStoreScene(sceneId, canvas, output), false)
+      canvas.addEventListener('webglcontextrestored', () => this.createAndStoreScene(id, canvas, output), false)
 
       // TODO sync output properties with scene
       // TODO notify client on which output their surfaces are being displayed
-      this.createAndStoreScene(sceneId, canvas, output)
+      scene = this.createAndStoreScene(id, canvas, output)
     }
     this.render()
+    return scene
   }
 
   updateCursor(view: View, hotspot: Point): void {

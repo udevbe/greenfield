@@ -115,7 +115,7 @@ export class RemoteAppLauncher implements AppLauncher {
   launch(appURL: URL, onChildAppContext: (childAppContext: AppContext) => void): AppContext {
     const remoteAppContext = new RemoteAppContext(this.session, onChildAppContext)
     const headers: HeadersInit = {
-      'x-compositor-session-id': this.session.compositorSessionId,
+      'x-compositor-session-id': this.session.config.id,
     }
 
     const user = appURL.username
@@ -331,7 +331,7 @@ class RemoteAppContext implements AppContext {
               throw new Error(`BUG. Unknown channel description: ${JSON.stringify(desc)}`)
             }
             this.clientConnections.push(channel)
-            this.onChannel(channel, this.session.compositorSessionId, proxySessionProps)
+            this.onChannel(channel, this.session.config.id, proxySessionProps)
             break
           }
           case SignalingMessageType.DISCONNECT_CHANNEL: {

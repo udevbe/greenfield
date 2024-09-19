@@ -23,7 +23,7 @@ The SDK is located inside directory `sdk`. To use the SDK, we first need to buil
 > Make sure all required Greenfield packages are installed. These are listed in [Greenfield Getting Started](/pages/getting_started)  
 
 ```shell
-./build_sysroot.sh
+./build.sh
 ```
 
 This will build a sysroot with number of commonly used graphics libraries. 

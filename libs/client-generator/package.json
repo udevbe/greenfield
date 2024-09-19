@@ -19,7 +19,6 @@
     "type": "git",
     "url": "https://github.com/udevbe/greenfield/tree/master/libs/web/client/generator"
   },
-  "packageManager": "yarn@3.6.0",
   "dependencies": {
     "camelcase": "^8.0.0",
     "meow": "^13.2.0",

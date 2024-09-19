@@ -90,6 +90,7 @@ window.addEventListener('message', (ev) => {
       webAppEntry.clients.push(client)
       webAppEntry.webAppContext.onClient(client)
     } else if (message.type === 'Terminate') {
+      // FIXME check why entries are not cleaned up in the shell
       webAppEntry.webAppContext.close()
     }
   }

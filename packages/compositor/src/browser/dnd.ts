@@ -30,9 +30,9 @@ export function createDnd(canvas: HTMLCanvasElement, seat: Seat, outputId: strin
     throw new Error('Browser does not support 2d canvas.')
   }
   cursorCanvas.style.background = '#00000000'
-  cursorCanvas.style.position = 'absolute'
-  cursorCanvas.style.left = `-${maxCursorWidth}px`
-  cursorCanvas.style.top = `-${maxCursorHeight}px`
+  cursorCanvas.style.position = 'fixed'
+  cursorCanvas.style.left = `-65000px`
+  cursorCanvas.style.top = `-65000px`
   document.body.appendChild(cursorCanvas)
 
   dnd = new BrowserDnD(cursorCanvas, cursorCanvasContext, seat, canvas, outputId)

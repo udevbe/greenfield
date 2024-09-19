@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM debian:bookworm-20231030-slim as BUILD
+FROM debian:bookworm-20240904-slim AS build
 ARG TARGETARCH
 
 WORKDIR /app
@@ -25,12 +25,12 @@ COPY ["packages/compositor-proxy-cli/src/", "./packages/compositor-proxy-cli/src
 COPY ["docker/compositor-proxy-cli-build.sh", "./compositor-proxy-cli-build.sh"]
 RUN ./compositor-proxy-cli-build.sh
 
-FROM debian:bookworm-20231030-slim
+FROM debian:bookworm-20240904-slim
 
 WORKDIR /app
 
-COPY --from=BUILD ["/app/gstreamer/build/subprojects/gst-plugins-bad/sys/nvcodec/libgstnvcodec.so", "./libgstnvcodec.so"]
-COPY --from=BUILD ["/app/packages/compositor-proxy-cli/package/*", "./"]
+COPY --from=build ["/app/gstreamer/build/subprojects/gst-plugins-bad/sys/nvcodec/libgstnvcodec.so", "./libgstnvcodec.so"]
+COPY --from=build ["/app/packages/compositor-proxy-cli/package/*", "./"]
 COPY ["docker/docker-entrypoint.sh", "./docker-entrypoint.sh"]
 COPY ["packages/compositor-proxy-cli/wait-until-ready.sh", "./wait-until-ready.sh"]
 COPY ["docker/10_nvidia.json", "./10_nvidia.json"]

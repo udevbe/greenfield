@@ -2,6 +2,7 @@
   "name": "@gfld/compositor-shell",
   "version": "1.0.0-rc1",
   "description": "A Wayland HTML5 Compositor Shell.",
+  "type": "module",
   "files": [
     "dist"
   ],
@@ -20,35 +21,36 @@
     "web"
   ],
   "scripts": {
-    "start": "yarn vite --config ./vite.config.mts",
+    "start": "yarn vite --config ./vite.config.ts",
     "build": "yarn vite build",
     "preview": "yarn vite preview"
   },
   "dependencies": {
     "@gfld/compositor": "workspace:^",
-    "preact": "^10.17.1"
+    "preact": "^10.22.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.23.0",
-    "@babel/plugin-transform-react-jsx": "^7.22.15",
-    "@babel/plugin-transform-react-jsx-development": "^7.22.5",
-    "@preact/preset-vite": "^2.5.0",
-    "@preact/signals": "^1.2.1",
-    "@tailwindcss/typography": "^0.5.10",
-    "@typescript-eslint/eslint-plugin": "^6.7.3",
-    "@typescript-eslint/parser": "^6.7.3",
-    "@vitejs/plugin-basic-ssl": "^1.0.1",
-    "autoprefixer": "^10.4.16",
+    "@babel/core": "^7.24.7",
+    "@babel/plugin-transform-react-jsx": "^7.24.7",
+    "@babel/plugin-transform-react-jsx-development": "^7.24.7",
+    "@preact/preset-vite": "2.8.3",
+    "@preact/signals": "^1.2.3",
+    "@tailwindcss/typography": "^0.5.13",
+    "@types/node": "^20.14.8",
+    "@typescript-eslint/eslint-plugin": "^7.14.1",
+    "@typescript-eslint/parser": "^7.14.1",
+    "@vitejs/plugin-basic-ssl": "^1.1.0",
+    "autoprefixer": "^10.4.19",
     "babel-plugin-transform-hook-names": "^1.0.2",
-    "eslint": "^8.50.0",
-    "eslint-config-prettier": "^9.0.0",
-    "eslint-plugin-prettier": "^5.0.0",
-    "postcss": "^8.4.30",
-    "prettier": "^3.0.3",
-    "prettier-plugin-tailwindcss": "^0.5.4",
-    "tailwindcss": "^3.3.3",
-    "typescript": "^5.2.2",
-    "vite": "^4.4.9"
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "postcss": "^8.4.38",
+    "prettier": "^3.3.2",
+    "prettier-plugin-tailwindcss": "^0.5.14",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.5.2",
+    "vite": "^5.3.1"
   },
   "author": "Erik De Rijcke",
   "homepage": "https://www.greenfield.app",
@@ -56,6 +58,5 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/udevbe/greenfield/tree/master/packages/shell"
-  },
-  "packageManager": "yarn@3.6.0"
+  }
 }

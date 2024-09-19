@@ -28,16 +28,17 @@ Inside the `greenfield` repository, we'll use `yarn` to install all dependencies
 > Greenfield works best with node.js 20 or greater. You can easily install it using [nvm](https://github.com/nvm-sh/nvm).
 
 {: .note }
-> Greenfield expects [yarn 3 or greater.](https://yarnpkg.com/getting-started/install)
+> Greenfield uses [yarn 4 or greater.](https://yarnpkg.com/getting-started/install)
 
 {: .important }
-> Greenfield requires the following packages to be installed on your build system: `autoconf libtool automake pipx ninja-build bison cmake build-essential gperf`.
+> Greenfield requires the following packages to be installed on your build system: `autoconf libtool automake meson ninja-build bison cmake build-essential gperf`.
 
 ```shell
 yarn install
-yarn workspaces foreach --parallel --topological-dev \
+yarn workspaces foreach --all --parallel --topological-dev \
 --exclude @gfld/compositor-proxy \
 --exclude @gfld/compositor-proxy-cli \
+--exclude @gfld/compositor-shell \
 run build
 ```
 
@@ -53,7 +54,12 @@ Open a browser and point it at [http://localhost:8080](http://localhost:8080).
 
 [![](img_small.jpg)](img.png){:target="_blank"}
 
-Unfortunately at this point we can't run any applications because there are none available. Let's fix that in the next steps.
+{: .note }
+> The compositor-shell is also hosted at [desktop.greenfield.app](https://desktop.greenfield.app)
+
+{: .note }
+>  There is also an experimental kiosk mode available in case you only need to access a single application. An implementation of this can be found under `/examples/compositor/experimental-fullscreen`
+
 
 ## Web Applications
 
@@ -63,23 +69,19 @@ Greenfield provides a few examples that we can use.
 - `examples/sdk` shows the usage of the [Greenfield WebAssembly SDK](/pages/sdk) in porting existing native desktop applications to Greenfield (experimental).
 - `examples/webapps` has some ready-to-run examples.
 
-We'll begin simple with `examples/webapps/simple-shm`.
+We'll begin simple and start the app from `examples/webapps/simple-shm`.
 
 ```shell
-yarn workspace @gfld/example-webapp-simple-shm start
+web:simple-shm-web/app.html
 ```
 
-The Greenfield Compositor Shell maps the URL `web:simple-shm` to `http://localhost:9001`, which is the 
-address of this example web app. Type this URL in the Greenfield address bar and some psychedelic circles should appear.
-To exit the application, press the `esc` key.
+Type this URL in the Greenfield address bar and some psychedelic circles should appear.
+Press the `esc` key to exit the application.
 
 [![](img_1_small.jpg)](img_1.png){:target="_blank"}
 
 {: .note }
-> The Compositor Shell uses a reverse proxy config to map `web:simple-shm` to `http://localhost:9001`.
-
-{: .note }
-> You might have noticed that `web:simple-shm` is not a normal looking URL as the hostname is missing. The reason for this is that
+> You might have noticed that `web:simple-shm-web/app.html` is not a normal looking URL as the hostname is missing. The reason for this is that
 > Greenfield web apps can only run inside same-origin iframes because of features like `SharedArrayBuffer`. Greenfield thus fills
 > in the hostname for you, so you don't having to type out the same hostname each time.
 
@@ -93,23 +95,19 @@ Inside `examples/sdk/weston`
 {: .important }
 > Building the WebAssembly examples require a working SDK. Head over to the SDK [documentation](/pages/sdk) to set it up.
 
-If all went well, a new `build/clients` directory has appeared with a bunch of `.html`, `.js` and `.wasm`. Spin up a web server so these can be served.
-
-```shell
-yarn workspace @gfld/example-weston-clients preview
-```
+If all went well, a new `build/clients` directory has appeared with a bunch of `.html`, `.js` and `.wasm`.
 
 Enter any of these in the URL bar to see a WebAssembly desktop application.
 
 ```shell
-web:weston-clients/weston-eventdemo.html
-web:weston-clients/weston-flower.html
-web:weston-clients/weston-fullscreen.html
-web:weston-clients/weston-resizor.html
-web:weston-clients/weston-scaler.html
-web:weston-clients/weston-smoke.html
-web:weston-clients/weston-stacking.html
-web:weston-clients/weston-transformed.html
+web:weston/weston-eventdemo.html
+web:weston/weston-flower.html
+web:weston/weston-fullscreen.html
+web:weston/weston-resizor.html
+web:weston/weston-scaler.html
+web:weston/weston-smoke.html
+web:weston/weston-stacking.html
+web:weston/weston-transformed.html
 ```
 
 [![](img_2_small.jpg)](img_2.png){:target="_blank"}

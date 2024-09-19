@@ -23,12 +23,11 @@ import {
   XdgToplevelResource,
   XdgToplevelState,
 } from '@gfld/compositor-protocol'
-import { DesktopSurface } from './Desktop'
+import { createDesktopSurface, DesktopSurface, DesktopSurfaceRole } from './desktop/Desktop'
 import { RectWithInfo } from './math/Rect'
 import { Size, ZERO_SIZE } from './math/Size'
 import Session from './Session'
 import Surface from './Surface'
-import { DesktopSurfaceRole } from './SurfaceRole'
 import View from './View'
 import XdgSurface, { XdgConfigure } from './XdgSurface'
 
@@ -87,7 +86,7 @@ export default class XdgToplevel implements XdgToplevelRequests, DesktopSurfaceR
     private readonly session: Session,
     public readonly view: View,
   ) {
-    this.desktopSurface = DesktopSurface.create(view.surface, this)
+    this.desktopSurface = createDesktopSurface(view.surface, this)
     this.resource.addDestroyListener(() => {
       this.xdgSurface.surface.unmap()
       this.xdgSurface.configureIdle?.()
@@ -96,6 +95,7 @@ export default class XdgToplevel implements XdgToplevelRequests, DesktopSurfaceR
         this.desktopSurface.removed()
       }
     })
+    this.desktopSurface.init()
   }
 
   static create(xdgToplevelResource: XdgToplevelResource, xdgSurface: XdgSurface, session: Session): XdgToplevel {
@@ -191,10 +191,10 @@ export default class XdgToplevel implements XdgToplevelRequests, DesktopSurfaceR
 
   showWindowMenu(
     resource: XdgToplevelResource,
-    wlSeatResource: WlSeatResource,
-    serial: number,
-    x: number,
-    y: number,
+    _wlSeatResource: WlSeatResource,
+    _serial: number,
+    _x: number,
+    _y: number,
   ): void {
     if (!this.xdgSurface.configured) {
       this.session.logger.warn('Client protocol error. Surface has not been configured yet.')

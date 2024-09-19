@@ -23,6 +23,6 @@
     "preview": "yarn run vite preview"
   },
   "devDependencies": {
-    "vite": "^4.4.9"
+    "vite": "^5.3.1"
   }
 }

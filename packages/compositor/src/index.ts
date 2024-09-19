@@ -29,8 +29,11 @@ export * from './KeyEvent'
 export type { nrmlvo }
 export type { GreenfieldLogger }
 
-export function createCompositorSession(sessionId?: string, logger?: GreenfieldLogger): Promise<CompositorSession> {
-  return Session.create(sessionId, logger)
+export function createCompositorSession(
+  sessionConfig: SessionConfig,
+  logger?: GreenfieldLogger,
+): Promise<CompositorSession> {
+  return Session.create(sessionConfig, logger)
 }
 
 export interface CompositorPointer {
@@ -51,7 +54,7 @@ export interface CompositorSeat {
 export interface CompositorSession {
   userShell: UserShellApi
   globals: CompositorGlobals
-  compositorSessionId: string
+  config: SessionConfig
 }
 
 export interface CompositorGlobals {
@@ -106,4 +109,9 @@ export function createAppLauncher(session: CompositorSession, type: 'web' | 'rem
   } else {
     throw new Error(`Connector type must be 'remote' or 'web'.`)
   }
+}
+
+export interface SessionConfig {
+  id?: string
+  mode: 'floating' | 'experimental-fullscreen'
 }
