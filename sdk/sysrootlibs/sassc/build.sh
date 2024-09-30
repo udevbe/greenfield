@@ -33,7 +33,7 @@ make_install_build_pkg() {
     export PKG_CONFIG_PATH="$TARGET/lib/pkgconfig"
 
     autoreconf -fiv
-    ./configure --prefix="$TARGET" --enable-static --disable-shared -disable-tests --with-libsass=/home/erik/git/greenfield/sdk/build-sysroot
+    ./configure --prefix="$TARGET" --enable-static --disable-shared -disable-tests --with-libsass="$TARGET"
     make install
 }
 
