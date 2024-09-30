@@ -9,6 +9,7 @@ pushd 'emsdk'
 popd
 
 _SDK_DIR=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
+export _SDK_DIR
 
 cat > "$_SDK_DIR/sysrootlibs/emscripten-toolchain.ini" <<- EOF
 [constants]
