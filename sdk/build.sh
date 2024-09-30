@@ -9,6 +9,7 @@ pushd 'emsdk'
 popd
 
 _SDK_DIR=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
+export _SDK_DIR
 
 printf '%s\n' "[constants]" "toolchain = '$_SDK_DIR/emsdk/upstream/emscripten'" > "$_SDK_DIR/sysrootlibs/emscripten-toolchain.ini"
 printf '%s\n' "[constants]" "greenfield_sdk = '$_SDK_DIR'" > "$_SDK_DIR/toolkit/meson-gf-toolchain.ini"
