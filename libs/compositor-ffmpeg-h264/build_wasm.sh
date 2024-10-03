@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-EMSDK_VERSION="3.1.46"
+EMSDK_VERSION="3.1.68"
 git -C emsdk pull || git clone https://github.com/emscripten-core/emsdk.git emsdk
 pushd 'emsdk'
     ./emsdk install ${EMSDK_VERSION}
@@ -41,7 +41,7 @@ build() {
   emcc native/decoder.c -I./ffmpeg-build/include -O3 -flto -msimd128 -Wno-deprecated-declarations -Wno-pointer-sign -Wno-implicit-int-float-conversion -Wno-switch -Wno-parentheses -Qunused-arguments -c -o ffmpeg-build/decoder.bc
   EXPORTED_FUNCTIONS='["_malloc","_free","_create_codec_context","_destroy_codec_context","_decode","_close_frame"]'
   EXPORTED_RUNTIME_METHODS='["getValue"]'
-  emcc ffmpeg-build/decoder.bc ffmpeg-build/lib/libavcodec.a ffmpeg-build/lib/libavutil.a -O3 -flto -msimd128 -Wno-deprecated-declarations -Wno-pointer-sign -Wno-implicit-int-float-conversion -Wno-switch -Wno-parentheses -Qunused-arguments -L"$(pwd)"/dist/lib -s INITIAL_MEMORY=32MB -s MAXIMUM_MEMORY=128MB -s EVAL_CTORS=2 -fno-rtti -fno-exceptions --memory-init-file 0 -s ENVIRONMENT='worker' -s NO_EXIT_RUNTIME=1 -s NO_FILESYSTEM=1 -s INVOKE_RUN=0 -s DOUBLE_MODE=0 -s ALLOW_MEMORY_GROWTH=1 -s MODULARIZE=1 -s EXPORT_ES6=1 -s SINGLE_FILE=1 -o ./src/libav-h264.js -s EXPORTED_FUNCTIONS="$EXPORTED_FUNCTIONS" -s EXPORTED_RUNTIME_METHODS="$EXPORTED_RUNTIME_METHODS"
+  emcc ffmpeg-build/decoder.bc ffmpeg-build/lib/libavcodec.a ffmpeg-build/lib/libavutil.a -O3 -flto -msimd128 -Wno-deprecated-declarations -Wno-pointer-sign -Wno-implicit-int-float-conversion -Wno-switch -Wno-parentheses -Qunused-arguments -L"$(pwd)"/dist/lib -s INITIAL_MEMORY=32MB -s MAXIMUM_MEMORY=128MB -s EVAL_CTORS=2 -fno-rtti -fno-exceptions -s ENVIRONMENT='worker' -s NO_EXIT_RUNTIME=1 -s NO_FILESYSTEM=1 -s INVOKE_RUN=0 -s DOUBLE_MODE=0 -s ALLOW_MEMORY_GROWTH=1 -s MODULARIZE=1 -s EXPORT_ES6=1 -s SINGLE_FILE=1 -o ./src/libav-h264.js -s EXPORTED_FUNCTIONS="$EXPORTED_FUNCTIONS" -s EXPORTED_RUNTIME_METHODS="$EXPORTED_RUNTIME_METHODS"
 
   echo "Finished Build"
 }

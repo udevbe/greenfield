@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-EMSDK_VERSION="3.1.60"
+EMSDK_VERSION="3.1.68"
 git -C emsdk pull || git clone https://github.com/emscripten-core/emsdk.git emsdk
 pushd 'emsdk'
     ./emsdk install ${EMSDK_VERSION}
@@ -47,5 +47,5 @@ printf '%s\n' "[constants]" "greenfield_sdk = '$_SDK_DIR'" > "$_SDK_DIR/toolkit/
 ./sysrootlibs/uapi-stub/build.sh
 
 # broken for now
-#./sysrootlibs/gtk4/build.sh
+./sysrootlibs/gtk4/build.sh
 

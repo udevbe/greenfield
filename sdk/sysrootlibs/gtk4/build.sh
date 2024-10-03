@@ -3,9 +3,9 @@ set -e
 cd "$(dirname "$(realpath -- "$0")")";
 
 _SDK_DIR=${_SDK_DIR:-$(dirname "$(readlink -f "$PWD/../../build_sysroot.sh")")}
-URL='https://gitlab.gnome.org/GNOME/gtk.git'
-BRANCH='4.10.5'
-NEED_PATCH=true
+URL='https://github.com/udevbe/gtk-emscripten.git'
+BRANCH='4.10.5-emscripten'
+NEED_PATCH=false
 
 ensure_repo() {
     if [ -e repo ]
