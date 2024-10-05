@@ -21,6 +21,7 @@ printf '%s\n' "[constants]" "greenfield_sdk = '$_SDK_DIR'" > "$_SDK_DIR/toolkit/
 ./sysrootlibs/zlib/build.sh
 ./sysrootlibs/png/build.sh
 ./sysrootlibs/xml2/build.sh
+./sysrootlibs/xkeyboard-config/build.sh
 ./sysrootlibs/xkbcommon/build.sh
 ./sysrootlibs/icu/build.sh
 ./sysrootlibs/harfbuzz/build_nofreetype_nocairo_noglib.sh
@@ -45,7 +46,5 @@ printf '%s\n' "[constants]" "greenfield_sdk = '$_SDK_DIR'" > "$_SDK_DIR/toolkit/
 ./sysrootlibs/sass/build.sh
 ./sysrootlibs/sassc/build.sh
 ./sysrootlibs/uapi-stub/build.sh
-
-# broken for now
 ./sysrootlibs/gtk4/build.sh
 
