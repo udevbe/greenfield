@@ -16,7 +16,7 @@ fi
 DIR=$(dirname "$(readlink -f "$CURRENT_SCRIPT")")
 
 
-EXTRA_LDFLAGS="-g -sINITIAL_MEMORY=256MB -sSTACK_SIZE=64MB -fsantize=address -sALLOW_MEMORY_GROWTH=1 -sSTACK_OVERFLOW_CHECK=2 -sSAFE_HEAP=1 -sASSERTIONS \
+EXTRA_LDFLAGS="-g -sINITIAL_MEMORY=384MB \
 --preload-file $DIR/fonts/inter@/usr/share/fonts/opentype/inter --preload-file $_SDK_DIR/sysroot/share/X11/xkb@/home/web_user/.config/xkb \
 --preload-file $_SDK_DIR/sysroot/share/fontconfig@/usr/share/fontconfig --preload-file $_SDK_DIR/sysroot/etc/fonts@/etc/fonts --pre-js $DIR/set_env.js"
 
