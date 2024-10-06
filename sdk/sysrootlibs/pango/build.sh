@@ -3,9 +3,9 @@ set -e
 cd "$(dirname "$(realpath -- "$0")")";
 
 _SDK_DIR=${_SDK_DIR:-$(dirname "$(readlink -f "$PWD/../../build_sysroot.sh")")}
-URL='https://gitlab.gnome.org/GNOME/pango.git'
-BRANCH='1.51.1'
-NEED_PATCH=true
+URL='https://github.com/udevbe/pango-emscripten.git'
+BRANCH='1.51.2-emscripten'
+NEED_PATCH=false
 
 ensure_repo() {
     if [ -e repo ]
