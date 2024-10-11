@@ -13,8 +13,12 @@ _SDK_DIR=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
 cat > "$_SDK_DIR/sysrootlibs/emscripten-toolchain.ini" <<- EOF
 [constants]
 toolchain = '$_SDK_DIR/emsdk/upstream/emscripten'
+
+[properties]
 sys_root = '$_SDK_DIR/sysroot'
 pkg_config_libdir = '$_SDK_DIR/sysroot'
+
+[built-in options]
 pkg_config_path = '$_SDK_DIR/sysroot/lib/pkgconfig:$_SDK_DIR/sysroot/share/pkgconfig'
 EOF
 
@@ -39,7 +43,7 @@ EOF
 #./sysrootlibs/harfbuzz/build_freetype_nocairo_noglib.sh
 #./sysrootlibs/fontconfig/build.sh
 #./sysrootlibs/pcre2/build.sh
-#./sysrootlibs/glib/build.sh
+./sysrootlibs/glib/build.sh
 #./sysrootlibs/jpeg/build.sh
 #./sysrootlibs/cairo/build.sh
 #./sysrootlibs/harfbuzz/build.sh
@@ -51,9 +55,9 @@ EOF
 #./sysrootlibs/gdk-pixbuf/build.sh
 #./sysrootlibs/egl-stub/build.sh
 #./sysrootlibs/glesv2-stub/build.sh
-./sysrootlibs/epoxy-emscripten/build.sh
-./sysrootlibs/graphene/build.sh
-./sysrootlibs/sass/build.sh
-./sysrootlibs/sassc/build.sh
-./sysrootlibs/uapi-stub/build.sh
-./sysrootlibs/gtk4/build.sh
+#./sysrootlibs/epoxy-emscripten/build.sh
+#./sysrootlibs/graphene/build.sh
+#./sysrootlibs/sass/build.sh
+#./sysrootlibs/sassc/build.sh
+#./sysrootlibs/uapi-stub/build.sh
+#./sysrootlibs/gtk4/build.sh

@@ -262,31 +262,10 @@ index 245e7b1..ecabecd 100644
  
  # Documentation.
 diff --git a/src/utils.h b/src/utils.h
-index c263635..58c5330 100644
+index c263635..0774c00 100644
 --- a/src/utils.h
 +++ b/src/utils.h
-@@ -48,6 +48,20 @@
- # endif
- #endif
- 
-+#ifdef __EMSCRIPTEN__
-+#include <stdlib.h>
-+
-+static inline
-+char *strdup(const char *s) {
-+    size_t size = strlen(s) + 1;
-+    char *p = malloc(size);
-+    if (p) {
-+        memcpy(p, s, size);
-+    }
-+    return p;
-+}
-+#endif
-+
- #include "darray.h"
- 
- #define STATIC_ASSERT(expr, message) do { \
-@@ -232,14 +246,6 @@ unmap_file(char *string, size_t size);
+@@ -232,14 +232,6 @@ unmap_file(char *string, size_t size);
  static inline bool
  check_eaccess(const char *path, int mode)
  {
