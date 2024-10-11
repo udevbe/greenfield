@@ -22,7 +22,7 @@ build() {
     ensure_repo
     source ../../emsdk/emsdk_env.sh
     pushd repo
-    	meson setup --wipe build/ --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-toolchain.ini" --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-build.ini" -Dprefix="${_SDK_DIR}/sysroot" --pkg-config-path="${_SDK_DIR}/sysroot/lib/pkgconfig:${_SDK_DIR}/sysroot/share/pkgconfig" \
+    	meson setup --wipe build/ --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-toolchain.ini" --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-build.ini" \
     	  -Ddwrite=disabled -Dpng=enabled -Dquartz=disabled -Dtee=disabled -Dxcb=disabled -Dxlib=disabled -Dxlib-xcb=disabled -Dzlib=enabled \
     	  -Dtests=disabled -Dgtk2-utils=disabled -Dglib=enabled -Dspectre=disabled -Dsymbol-lookup=disabled -Dgtk_doc=false
 	    ninja -C build/ install
