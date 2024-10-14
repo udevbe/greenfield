@@ -19,37 +19,21 @@ ensure_repo() {
 }
 
 make_install() {
-      #!/usr/bin/env bash
-      command -v emcc >/dev/null 2>&1 || {
-        echo >&2 "emsdk could not be found.  Aborting."
-        exit 1
-      }
-
-      # Working directories
-      TARGET="$_SDK_DIR/sysroot"
-      mkdir -p "${TARGET}"
+      mkdir -p "${SYSROOT}"
 
       # Common compiler flags
       export CFLAGS="-O3 -fPIC -pthread -flto -msimd128 -msse -include xmmintrin.h"
       export CXXFLAGS="$CFLAGS"
+      export CPATH="${SYSROOT}/include"
 
-      # Build paths
-      export CPATH="${TARGET}/include"
-      export PKG_CONFIG_PATH="${TARGET}/lib/pkgconfig"
-      export EM_PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
-
-      # Specific variables for cross-compilation
-      export CHOST="wasm32-unknown-linux" # wasm32-unknown-emscripten
-
-      emcmake cmake . --install-prefix="$TARGET" -DPNG_SHARED=OFF -DPNG_STATIC=ON -DPNG_EXECUTABLES=OFF -DPNG_TESTS=OFF -DPNG_BUILD_ZLIB=ON
+      emcmake cmake . --install-prefix="$SYSROOT" -DPNG_SHARED=OFF -DPNG_STATIC=ON -DPNG_EXECUTABLES=OFF -DPNG_TESTS=OFF -DPNG_BUILD_ZLIB=ON
       emmake make install
 }
 
 build() {
     ensure_repo
     source ../../emsdk/emsdk_env.sh
-    export PKG_CONFIG_PATH="$_SDK_DIR/sysroot/lib/pkgconfig:$_SDK_DIR/sysroot/share/pkgconfig"
-    export PKG_CONFIG_LIBDIR="$_SDK_DIR/sysroot"
+    source "$_SDK_DIR/sysrootlibs/sysroot-env.sh"
     pushd repo
       make_install
     popd

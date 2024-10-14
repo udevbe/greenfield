@@ -22,13 +22,12 @@ build() {
     ensure_repo
     pushd repo
       #scanner
-      rm -rf build
-      meson setup --wipe build/ -Dprefix="$_SDK_DIR/build-sysroot" --pkg-config-path="$_SDK_DIR/build-sysroot/lib/pkgconfig" --libdir=lib \
+      meson setup --wipe build-scanner/ -Dprefix="$_SDK_DIR/build-sysroot" --pkg-config-path="$_SDK_DIR/build-sysroot/lib/pkgconfig" --libdir=lib \
         -Dlibraries=false -Dscanner=true -Dtests=false -Ddocumentation=false -Ddtd_validation=false
-      ninja -C build/ install
+      ninja -C build-scanner/ install
       #lib
       source ../../../emsdk/emsdk_env.sh
-    	meson setup --wipe build/ -Dprefix="$_SDK_DIR/sysroot" --pkg-config-path="$_SDK_DIR/sysroot/lib/pkgconfig:" --build.pkg-config-path="$_SDK_DIR/build-sysroot/lib/pkgconfig" --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-toolchain.ini" --cross-file "$_SDK_DIR/sysrootlibs/emscripten-build.ini" \
+    	meson setup --wipe build/ --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-toolchain.ini" --cross-file "$_SDK_DIR/sysrootlibs/emscripten-build.ini" --build.pkg-config-path="$_SDK_DIR/build-sysroot/lib/pkgconfig" \
     	  -Dlibraries=true -Dscanner=false -Dtests=false -Ddocumentation=false -Ddtd_validation=false
 	    ninja -C build/ install
     popd

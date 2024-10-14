@@ -20,28 +20,20 @@ ensure_repo() {
 }
 
 make_install_build_pkg() {
-    # Working directories
-    TARGET=$_SDK_DIR/build-sysroot
-    mkdir -p "$TARGET"
+    mkdir -p "$BUILD_SYSROOT"
 
-    # Common compiler flags
     export CFLAGS="-O3 -fPIC -pthread"
     export CXXFLAGS="$CFLAGS"
 
-    # Build paths
-    export CPATH="$TARGET/include"
-    export PKG_CONFIG_PATH="$TARGET/lib/pkgconfig"
-
     autoreconf -fiv
-    ./configure --prefix="$TARGET" --enable-static --disable-shared -disable-tests --with-libsass="$TARGET"
+    ./configure --prefix="$BUILD_SYSROOT" --enable-static --disable-shared -disable-tests --with-libsass="$BUILD_SYSROOT"
     make install
 }
 
 build() {
     ensure_repo
     source ../../emsdk/emsdk_env.sh
-    export PKG_CONFIG_PATH="$_SDK_DIR/sysroot/lib/pkgconfig:$_SDK_DIR/sysroot/share/pkgconfig"
-    export PKG_CONFIG_LIBDIR="$_SDK_DIR/sysroot"
+    source "$_SDK_DIR/sysrootlibs/build-sysroot-env.sh"
     pushd repo
       make_install_build_pkg
     popd
