@@ -14,14 +14,14 @@ export _SDK_DIR
 cat > "$_SDK_DIR/sysrootlibs/emscripten-toolchain.ini" <<- EOF
 [constants]
 toolchain = '$_SDK_DIR/emsdk/upstream/emscripten'
+sysroot = '$_SDK_DIR/sysroot'
 
 [properties]
-sys_root = '$_SDK_DIR/sysroot'
-pkg_config_libdir = '$_SDK_DIR/sysroot'
+pkg_config_libdir = sysroot + '/lib/pkgconfig:' + sysroot + '/share/pkgconfig'
 
 [built-in options]
-pkg_config_path = '$_SDK_DIR/sysroot/lib/pkgconfig:$_SDK_DIR/sysroot/share/pkgconfig'
-prefix = '$_SDK_DIR/sysroot'
+pkg_config_path = ''
+prefix = sysroot
 EOF
 
 cat > "$_SDK_DIR/toolkit/meson-gf-toolchain.ini" <<- EOF
