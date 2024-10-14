@@ -17,9 +17,13 @@ DIR=$(dirname "$(readlink -f "$CURRENT_SCRIPT")")
 
 
 EXTRA_LDFLAGS="-g -sINITIAL_MEMORY=384MB \
---preload-file $DIR/fonts/inter@/usr/share/fonts/opentype/inter --preload-file $_SDK_DIR/sysroot/share/X11/xkb@/home/web_user/.config/xkb \
---preload-file $_SDK_DIR/sysroot/share/fontconfig@/usr/share/fontconfig --preload-file $_SDK_DIR/sysroot/etc/fonts@/etc/fonts --pre-js $DIR/set_env.js"
+--preload-file $DIR/fonts/inter@/usr/share/fonts/opentype/inter \
+--preload-file $DIR/build/examples/application9/gschemas.compiled@/usr/share/glib-2.0/schemas/ \
+--preload-file $_SDK_DIR/sysroot/share/X11/xkb@/home/web_user/.config/xkb \
+--preload-file $_SDK_DIR/sysroot/share/fontconfig@/usr/share/fontconfig \
+--preload-file $_SDK_DIR/sysroot/etc/fonts@/etc/fonts \
+--pre-js $DIR/set_env.js"
 
-meson setup --wipe build/ --cross-file "$_SDK_DIR/toolkit/meson-gf-cross.ini" --cross-file "$_SDK_DIR/toolkit/meson-gf-toolchain.ini" -Dprefix="$_SDK_DIR/sysroot" \
+meson setup --wipe build/ --cross-file "$_SDK_DIR/toolkit/meson-gf-cross.ini" --cross-file "$_SDK_DIR/toolkit/meson-gf-toolchain.ini" \
 -Dbuild-examples=true -Ddemos=false -Dc_link_args="$EXTRA_LDFLAGS"
 ninja -C build/ -j10
