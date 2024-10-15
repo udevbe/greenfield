@@ -261,6 +261,39 @@ index 245e7b1..ecabecd 100644
  
  
  # Documentation.
+diff --git a/src/darray.h b/src/darray.h
+index de659cc..22a8323 100644
+--- a/src/darray.h
++++ b/src/darray.h
+@@ -190,23 +190,23 @@ darray_next_alloc(unsigned alloc, unsigned need, unsigned itemSize)
+ /*** Traversal ***/
+ 
+ #define darray_foreach(i, arr) \
+-    for ((i) = &(arr).item[0]; (i) < &(arr).item[(arr).size]; (i)++)
++    for ((i) = ((arr).size > 0 ? &(arr).item[0] : 0); (arr).size > 0 && (i) < &(arr).item[(arr).size]; (i)++)
+ 
+ #define darray_foreach_from(i, arr, from) \
+-    for ((i) = &(arr).item[from]; (i) < &(arr).item[(arr).size]; (i)++)
++    for ((i) = ((arr).size > 0 ? &(arr).item[from] : 0); (arr).size > 0 && (i) < &(arr).item[(arr).size]; (i)++)
+ 
+ /* Iterate on index and value at the same time, like Python's enumerate. */
+ #define darray_enumerate(idx, val, arr) \
+-    for ((idx) = 0, (val) = &(arr).item[0]; \
++    for ((idx) = 0, (val) = ((arr).size > 0 ? &(arr).item[0] : 0); \
+          (idx) < (arr).size; \
+          (idx)++, (val)++)
+ 
+ #define darray_enumerate_from(idx, val, arr, from) \
+-    for ((idx) = (from), (val) = &(arr).item[0]; \
++    for ((idx) = (from), (val) = ((arr).size > 0 ? &(arr).item[0] : 0); \
+          (idx) < (arr).size; \
+          (idx)++, (val)++)
+ 
+ #define darray_foreach_reverse(i, arr) \
+-    for ((i) = &(arr).item[(arr).size - 1]; (arr).size > 0 && (i) >= &(arr).item[0]; (i)--)
++    for ((i) = ((arr).size > 0 ? &(arr).item[(arr).size - 1] : 0); (arr).size > 0 && (i) >= &(arr).item[0]; (i)--)
+ 
+ #endif /* CCAN_DARRAY_H */
 diff --git a/src/utils.h b/src/utils.h
 index c263635..0774c00 100644
 --- a/src/utils.h
