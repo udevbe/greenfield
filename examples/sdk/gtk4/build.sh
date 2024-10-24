@@ -16,7 +16,7 @@ fi
 DIR=$(dirname "$(readlink -f "$CURRENT_SCRIPT")")
 
 
-EXTRA_LDFLAGS="-g -sINITIAL_MEMORY=384MB \
+EXTRA_LDFLAGS="-g -sINITIAL_MEMORY=512MB  '-fsanitize=undefined' \
 --preload-file $DIR/fonts/inter@/usr/share/fonts/opentype/inter \
 --preload-file $DIR/build/examples/application9/gschemas.compiled@/usr/share/glib-2.0/schemas/ \
 --preload-file $_SDK_DIR/sysroot/share/X11/xkb@/home/web_user/.config/xkb \

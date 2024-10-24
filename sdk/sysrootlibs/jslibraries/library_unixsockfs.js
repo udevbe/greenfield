@@ -2,7 +2,7 @@
     $UNIXSOCKFS__postset: function() {
         addAtInit('UNIXSOCKFS.root = FS.mount(UNIXSOCKFS, {}, null);');
     },
-    $UNIXSOCKFS__deps: ['$FS', '$SOCKFS', '$Asyncify', '$MEMFS', '$PIPEFS'],
+    $UNIXSOCKFS__deps: ['$FS', '$SOCKFS', '$MEMFS', '$PIPEFS'],
     $UNIXSOCKFS: {
         mount: function(mount) {
             // If Module['messageport'] has already been defined use that, if not initialise it to a new object.
