@@ -556,7 +556,7 @@
          }
      },
      __syscall_poll: function(fds, nfds, timeout) {
-        return Asyncify.handleAsync(async () => {
+        return (async () => {
              var nonzero = 0;
              for (var i = 0; i < nfds; i++) {
                  var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
@@ -575,7 +575,7 @@
                  {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'mask', 'i16') }}};
              }
              return nonzero;
-         })
+         })()
      },
 }
 
