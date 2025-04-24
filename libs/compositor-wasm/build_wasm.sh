@@ -4,7 +4,7 @@ set -e
 PACKAGE_DIR=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
 export PACKAGE_DIR
 
-EMSDK_VERSION="3.1.68"
+EMSDK_VERSION="4.0.7"
 git -C emsdk pull || git clone https://github.com/emscripten-core/emsdk.git emsdk
 pushd 'emsdk'
     ./emsdk install ${EMSDK_VERSION}

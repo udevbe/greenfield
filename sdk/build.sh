@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-EMSDK_VERSION="4.0.6"
+EMSDK_VERSION="4.0.7"
 git -C emsdk pull || git clone https://github.com/emscripten-core/emsdk.git emsdk
 pushd 'emsdk'
     ./emsdk install ${EMSDK_VERSION}
