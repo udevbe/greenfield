@@ -4,7 +4,7 @@ cd "$(dirname "$(realpath -- "$0")")";
 
 PACKAGE_DIR=${PACKAGE_DIR:-$(dirname "$(readlink -f "$PWD/../../build_wasm.sh")")}
 URL='https://github.com/xkbcommon/libxkbcommon.git'
-BRANCH='xkbcommon-1.5.0'
+BRANCH='xkbcommon-1.8.1'
 NEED_PATCH=true
 
 ensure_repo() {
@@ -15,11 +15,11 @@ ensure_repo() {
 }
 
 ensure_repo_xkeyboard-config() {
-      git clone --depth 1 --branch "master" "https://gitlab.freedesktop.org/xkeyboard-config/xkeyboard-config.git" repo-xkeyboard-config
+      git clone --depth 1 --branch "xkeyboard-config-2.44" "https://gitlab.freedesktop.org/xkeyboard-config/xkeyboard-config.git" repo-xkeyboard-config
 }
 
 ensure_repo_xml2() {
-      git clone --depth 1 --branch "v2.11.5" "https://github.com/GNOME/libxml2.git" repo-xml2
+      git clone --depth 1 --branch "v2.14.2" "https://github.com/GNOME/libxml2.git" repo-xml2
 }
 
 build() {
@@ -36,7 +36,7 @@ build() {
 
       # Common compiler flags
       # we need extra linker flags here: https://github.com/emscripten-core/emscripten/issues/16836
-      export CFLAGS="-O3 -fPIC -pthread -flto -msimd128 -msse -include xmmintrin.h -Wl,-u,ntohs -Wl,-u,htons -Wl,-u,htonl"
+      export CFLAGS="-O3 -fPIC -pthread -flto"
       export CXXFLAGS="$CFLAGS"
 
       # Build paths

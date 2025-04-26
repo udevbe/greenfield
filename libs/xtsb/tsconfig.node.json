@@ -1,12 +1,15 @@
 {
-  "extends": "@tsconfig/node18/tsconfig.json",
+  "extends": "@tsconfig/node20/tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist/main",
     "resolveJsonModule": true,
     "allowJs": true,
     "declaration": true,
     "declarationDir": "dist/types",
-    "pretty": true
+    "pretty": true,
+    "sourceMap": true,
+    "strictNullChecks": true,
+    "removeComments": true
   },
   "include": [
     "src",

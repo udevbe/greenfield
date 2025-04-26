@@ -17,7 +17,9 @@
     "declarationDir": "types",
     "outDir": "dist",
     "jsx": "react-jsx",
-    "jsxImportSource": "preact"
+    "jsxImportSource": "preact",
+    "strictNullChecks": true,
+    "removeComments": true
   },
   "include": ["src"],
   "exclude": ["vite.config.ts"]

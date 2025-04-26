@@ -1,5 +1,5 @@
 {
-  "extends": "@tsconfig/node18/tsconfig.json",
+  "extends": "@tsconfig/node20/tsconfig.json",
   "compilerOptions": {
     "resolveJsonModule": true,
     "allowJs": true,
@@ -9,6 +9,8 @@
     "outDir": "dist",
     "declaration": true,
     "sourceMap": true,
+    "strictNullChecks": true,
+    "removeComments": true
   },
   "exclude": [".eslintrc.js", ".prettierrc.js"]
 }

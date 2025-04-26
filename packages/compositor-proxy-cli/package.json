@@ -27,7 +27,7 @@
     "ws": "^8.18.1"
   },
   "devDependencies": {
-    "@tsconfig/node18": "^18.2.4",
+    "@tsconfig/node20": "^20.1.5",
     "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^22.14.0",

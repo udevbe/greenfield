@@ -59,7 +59,7 @@
     ]
   },
   "devDependencies": {
-    "@tsconfig/node18": "^18.2.4",
+    "@tsconfig/node20": "^20.1.5",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.14.0",
     "@typescript-eslint/eslint-plugin": "^8.29.0",

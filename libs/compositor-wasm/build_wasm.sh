@@ -15,4 +15,4 @@ popd
 printf '%s\n' "[constants]" "toolchain = '$PACKAGE_DIR/emsdk/upstream/emscripten'" > "$PACKAGE_DIR/emscripten-toolchain.ini"
 
 ./xkbcommon/build.sh
-./pixman/build.sh
+#./pixman/build.sh

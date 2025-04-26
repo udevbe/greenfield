@@ -64,7 +64,10 @@ function isKeyFrame(accessUnit: Uint8Array) {
 }
 
 class WebCodecFrameDecoder implements FrameDecoder {
-  constructor(private readonly session: Session, private readonly videoDecoderConfig: VideoDecoderConfig) {}
+  constructor(
+    private readonly session: Session,
+    private readonly videoDecoderConfig: VideoDecoderConfig,
+  ) {}
 
   async decode(surface: Surface, encodedFrame: EncodedFrame): Promise<DecodedFrame> {
     // console.log(`Decoding encoded frame: ${encodedFrame.contentSerial} using WebCodecs buffer decoder`)

@@ -9,7 +9,7 @@ pushd 'emsdk'
     source ./emsdk_env.sh
 popd
 
-FFMPEG_VERSION="n5.1.2"
+FFMPEG_VERSION="n7.0.2"
 ensure_ffmpeg() {
   [ -e ffmpeg ] || git clone --depth 1 --branch "$FFMPEG_VERSION" "https://github.com/FFmpeg/FFmpeg.git" ffmpeg
 }
