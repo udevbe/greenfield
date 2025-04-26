@@ -17,6 +17,7 @@
 
 import appEndpointNative from '../addons/proxy-encoding-addon'
 import { Session } from '../Session.js'
+import assert from 'node:assert'
 
 export function createEncoder(session: Session, wlClient: unknown, drmContext: unknown): Encoder {
   // TODO we could probably use a pool here?
@@ -41,21 +42,17 @@ export class Encoder {
       drmContext,
       (buffer: Buffer) => {
         const encodingTask = this.encodingQueue.shift()
-        if (encodingTask) {
-          if (buffer) {
-            // console.debug(`Resolve encoding ${encodingTask.bufferContentSerial} with success`)
-            encodingTask.resolve(buffer)
-          } else {
-            const e = new Error('Buffer encoding failed.')
-            console.error(`\tname: ${e.name} message: ${e.message}`)
-            console.error('error object stack: ')
-            console.error(e.stack ?? '')
-            console.debug(`Resolve encoding ${encodingTask.bufferContentSerial} with error`)
-            encodingTask.reject(e)
-          }
+        assert(encodingTask, 'No buffer callback')
+        if (buffer) {
+          // console.debug(`Resolve encoding ${encodingTask.bufferContentSerial} with success`)
+          encodingTask.resolve(buffer)
         } else {
-          console.error('BUG? No buffer callback')
-          // TODO log better error
+          const e = new Error('Buffer encoding failed.')
+          console.error(`\tname: ${e.name} message: ${e.message}`)
+          console.error('error object stack: ')
+          console.error(e.stack ?? '')
+          console.debug(`Resolve encoding ${encodingTask.bufferContentSerial} with error`)
+          encodingTask.reject(e)
         }
       },
     )

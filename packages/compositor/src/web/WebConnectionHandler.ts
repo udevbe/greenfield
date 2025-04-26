@@ -69,7 +69,7 @@ export class WebConnectionHandler {
           if (ArrayBuffer.isView(fd) && !transferables.includes(fd.buffer)) {
             if (fd.buffer instanceof ArrayBuffer) {
               transferables.push(fd.buffer)
-            } /* else it's an instance of SharedArrayBuffer which should not be transferred */
+            } /* else it's an instance of SharedArrayBuffer that should not be transferred */
           } else if (fd instanceof ImageBitmap || fd instanceof MessagePort) {
             transferables.push(fd)
           } else {

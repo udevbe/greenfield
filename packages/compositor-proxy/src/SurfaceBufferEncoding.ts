@@ -23,14 +23,13 @@ import wlSurfaceInterceptor from './protocol/wl_surface_interceptor.js'
 import { FrameFeedback } from './FrameFeedback.js'
 import { incrementAndGetNextBufferSerial, ProxyBuffer } from './ProxyBuffer.js'
 import { Channel, createFeedbackChannel, createFrameDataChannel } from './Channel.js'
+import assert from 'node:assert'
 
 const logger = createLogger('surface-buffer-encoding')
 
 function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor): FrameFeedback {
   const nativeClientSession = wlSurfaceInterceptor.userData.nativeClientSession
-  if (nativeClientSession === undefined) {
-    throw new Error('BUG. Created a wlSurfaceInterceptor without a nativeClientSession')
-  }
+  assert(nativeClientSession, 'Created a wlSurfaceInterceptor without a nativeClientSession')
 
   if (wlSurfaceInterceptor.frameFeedback === undefined) {
     const feedbackChannel = createFeedbackChannel(
@@ -53,9 +52,7 @@ function ensureFrameFeedback(wlSurfaceInterceptor: wlSurfaceInterceptor): FrameF
 
 function ensureFrameDataChannel(wlSurfaceInterceptor: wlSurfaceInterceptor): Channel {
   const nativeClientSession = wlSurfaceInterceptor.userData.nativeClientSession
-  if (nativeClientSession === undefined) {
-    throw new Error('BUG. Created a wlSurfaceInterceptor without a nativeClientSession')
-  }
+  assert(nativeClientSession, 'Created a wlSurfaceInterceptor without a nativeClientSession')
 
   if (wlSurfaceInterceptor.frameDataChannel === undefined) {
     wlSurfaceInterceptor.frameDataChannel = createFrameDataChannel(

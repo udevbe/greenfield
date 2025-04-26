@@ -4,6 +4,7 @@ import { ClientEntry, NativeWaylandCompositorSession } from './NativeWaylandComp
 import { equalValueExternal, setupXWayland, teardownXWayland, WlClient, XWaylandHandle } from './wayland-server.js'
 import { createReadStream } from 'node:fs'
 import { Channel, createXWMDataChannel } from './Channel.js'
+import assert from 'node:assert'
 
 const logger = createLogger('xwayland')
 const textEncoder = new TextEncoder()
@@ -48,15 +49,11 @@ export class XWaylandSession {
         return equalValueExternal(value.nativeClientSession.wlClient, wlClient)
       })
 
-      if (xWaylandClientEntry === undefined) {
-        logger.error('BUG? Could not find a XWayland wayland client entry after XWayland startup.')
-        return
-      }
-
-      if (xWaylandClientEntry.nativeClientSession === undefined) {
-        logger.error('BUG? Found XWaylandClient entry but it did not have a native wayland client session associated.')
-        return
-      }
+      assert(xWaylandClientEntry, 'Could not find a XWayland wayland client entry after XWayland startup.')
+      assert(
+        xWaylandClientEntry.nativeClientSession,
+        'Found XWaylandClient entry but it did not have a native wayland client session associated.',
+      )
 
       const xwmDataChannel = createXWMDataChannel(
         xWaylandClientEntry.clientId,

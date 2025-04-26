@@ -260,7 +260,7 @@ export class DisplayImpl implements Display {
           if (ArrayBuffer.isView(fd) && !transferables.includes(fd.buffer)) {
             if (!(fd.buffer instanceof SharedArrayBuffer)) {
               transferables.push(fd.buffer)
-            } /* else it's a SharedArrayBuffer which is not transferable */
+            } /* else it's a SharedArrayBuffer that is not transferable */
           } else if (fd instanceof ImageBitmap || fd instanceof MessagePort) {
             transferables.push(fd)
           } else {

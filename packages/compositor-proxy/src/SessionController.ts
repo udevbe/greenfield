@@ -6,6 +6,7 @@ import { createLogger } from './Logger.js'
 import wl_surface_interceptor from './protocol/wl_surface_interceptor.js'
 import { isSignalingMessage, SignalingMessageType } from './NativeAppContext.js'
 import { Socket } from 'node:net'
+import assert from 'node:assert'
 
 // 64*1024=64kb
 const TRANSFER_CHUNK_SIZE = 65792 as const
@@ -218,19 +219,13 @@ function signal(session: Session, request: AppRequest, ws: WebSocket, url: URL) 
   ws.onmessage = (event) => {
     const messageData = event.data as string
     const messageObject = JSON.parse(messageData)
-    if (nativeAppContext === undefined) {
-      throw new Error('BUG. Got a websocket message without a native app context.')
-    }
+    assert(isSignalingMessage(messageObject), `Received an unknown message: ${JSON.stringify(messageObject)}`)
 
-    if (isSignalingMessage(messageObject)) {
-      switch (messageObject.type) {
-        case SignalingMessageType.KILL_APP: {
-          nativeAppContext.kill(messageObject.data.signal)
-          break
-        }
+    switch (messageObject.type) {
+      case SignalingMessageType.KILL_APP: {
+        nativeAppContext.kill(messageObject.data.signal)
+        break
       }
-    } else {
-      throw new Error(`BUG. Received an unknown message: ${JSON.stringify(messageObject)}`)
     }
   }
 
