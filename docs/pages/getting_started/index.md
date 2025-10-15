@@ -31,7 +31,7 @@ Inside the `greenfield` repository, we'll use `yarn` to install all dependencies
 > Greenfield uses [yarn 4 or greater.](https://yarnpkg.com/getting-started/install)
 
 {: .important }
-> Greenfield requires the following packages to be installed on your build system: `autoconf libtool automake meson ninja-build bison cmake build-essential gperf`.
+> Greenfield requires the following packages to be installed on your build system: `autoconf libtool automake pkg-config meson ninja-build bison cmake build-essential gperf`.
 
 ```shell
 yarn install
