@@ -19,60 +19,23 @@ ensure_repo() {
     fi
 }
 
-make_install_build_pkg() {
-    # Working directories
-    TARGET=$_SDK_DIR/build-sysroot
-    mkdir -p "$TARGET"
-
-    # Common compiler flags
-    export CFLAGS="-O3 -fPIC -pthread"
-    export CXXFLAGS="$CFLAGS"
-
-    # Build paths
-    export CPATH="$TARGET/include"
-    export PKG_CONFIG_PATH="$TARGET/lib/pkgconfig"
-
-    ./buildconf.sh
-    autoreconf -fiv
-    ./configure --prefix="$TARGET" --enable-static --disable-shared --without-docbook --without-xmlwf --without-examples --without-tests
-    make install
-}
-
 make_install() {
-    command -v emcc >/dev/null 2>&1 || {
-      echo >&2 "emsdk could not be found.  Aborting."
-      exit 1
-    }
+    mkdir -p "$SYSROOT"
 
-    # Working directories
-    TARGET=$_SDK_DIR/sysroot
-    mkdir -p "$TARGET"
-
-    # Common compiler flags
     export CFLAGS="-O3 -fPIC -pthread -flto -msimd128 -msse -include xmmintrin.h"
     export CXXFLAGS="$CFLAGS"
 
-    # Build paths
-    export CPATH="$TARGET/include"
-    export PKG_CONFIG_PATH="$TARGET/lib/pkgconfig"
-    export EM_PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
-
-    # Specific variables for cross-compilation
-    export CHOST="wasm32-unknown-linux" # wasm32-unknown-emscripten
-
     ./buildconf.sh
     autoreconf -fiv
-    emconfigure ./configure --host=$CHOST --prefix="$TARGET" --enable-static --disable-shared --without-docbook --without-xmlwf --without-examples --without-tests
+    emconfigure ./configure --host="$CHOST" --prefix="$SYSROOT" --enable-static --disable-shared --without-docbook --without-xmlwf --without-examples --without-tests
     make install
 }
 
 build() {
     ensure_repo
     source ../../emsdk/emsdk_env.sh
-    export PKG_CONFIG_PATH="$_SDK_DIR/sysroot/lib/pkgconfig:$_SDK_DIR/sysroot/share/pkgconfig"
-    export PKG_CONFIG_LIBDIR="$_SDK_DIR/sysroot"
+    source "$_SDK_DIR/sysrootlibs/sysroot-env.sh"
     pushd repo/expat
-      make_install_build_pkg
       make_install
     popd
 }

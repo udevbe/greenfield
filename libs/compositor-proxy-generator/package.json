@@ -30,6 +30,6 @@
     "xml2js": "^0.6.2"
   },
   "devDependencies": {
-    "standard": "^17.1.0"
+    "standard": "^17.1.2"
   }
 }
