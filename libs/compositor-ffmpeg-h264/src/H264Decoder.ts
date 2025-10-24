@@ -20,7 +20,7 @@
 //  IN THE SOFTWARE.
 //
 
-import { libavh264 } from './H264Worker'
+import { LibavH264Itf } from './H264Worker'
 import { FfmpegH264Frame } from './index'
 
 export class H264Decoder {
@@ -38,7 +38,7 @@ export class H264Decoder {
   private readonly heightOut: number
 
   constructor(
-    private readonly libavH264Module: libavh264,
+    private readonly libavH264Module: LibavH264Itf,
     private readonly onPictureReady: (output: FfmpegH264Frame, width: number, height: number) => void,
   ) {
     this.codecContext = this.libavH264Module._create_codec_context()

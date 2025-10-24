@@ -1,7 +1,7 @@
 import pixman from './libpixman'
 import xkbcommon from './libxkbcommon'
 
-type libpixman = {
+type libpixmanItf = {
   HEAPU8: Uint8Array
   _malloc(bytes: number): number
   _pixman_region32_init(pixmanRegion: number): void
@@ -22,7 +22,7 @@ type libpixman = {
   _pixman_region32_clear(region: number): void
 }
 
-type libxkbcommon = {
+type libxkbcommonItf = {
   HEAP8: Uint8Array
   _xkb_keymap_mod_get_index(keymap: number, name: number): number
   _xkb_keymap_led_get_index(keymap: number, led: number): number
@@ -60,13 +60,13 @@ function isWasmSupported() {
         return new WebAssembly.Instance(module) instanceof WebAssembly.Instance
       }
     }
-  } catch (e) {}
+  } catch (_) {}
   return false
 }
 
 const lib: {
-  pixman: libpixman
-  xkbcommon: libxkbcommon
+  pixman: libpixmanItf
+  xkbcommon: libxkbcommonItf
 } = {
   // @ts-ignore
   pixman: undefined,
@@ -76,8 +76,9 @@ const lib: {
 
 async function init(): Promise<void> {
   if (isWasmSupported()) {
-    const libpixman: Promise<libpixman> = pixman()
-    const libxkbcommon: Promise<libxkbcommon> = xkbcommon()
+    // FIXME this casting is all very hacky. Create a proper type definition file instead.
+    const libpixman = pixman() as unknown as Promise<libpixmanItf>
+    const libxkbcommon = xkbcommon() as unknown as Promise<libxkbcommonItf>
 
     lib.pixman = await libpixman
     lib.xkbcommon = await libxkbcommon

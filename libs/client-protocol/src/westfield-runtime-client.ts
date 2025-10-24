@@ -32,7 +32,7 @@ export class Proxy extends WlObject {
     id: number,
     opcode: number,
     proxyClass: { new (display: Display, connection: Connection, id: number): T },
-    argsArray: MessageMarshallingContext<any, any, any>[],
+    argsArray: MessageMarshallingContext<any, any>[],
   ): T {
     // construct new object
     const proxy = new proxyClass(this.display, this.connection, this.display.generateNextId())
@@ -51,7 +51,7 @@ export class Proxy extends WlObject {
     return proxy
   }
 
-  marshall(id: number, opcode: number, argsArray: MessageMarshallingContext<any, any, any>[]) {
+  marshall(id: number, opcode: number, argsArray: MessageMarshallingContext<any, any>[]) {
     // determine required wire message length
     let size = 4 + 2 + 2 // id+size+opcode
     argsArray.forEach((arg) => (size += arg.size))

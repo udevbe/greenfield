@@ -82,7 +82,6 @@ export type FD = unknown
 export interface MessageMarshallingContext<
   V extends number | FD | Fixed | WlObject | 0 | string | ArrayBufferView | undefined,
   T extends 'u' | 'h' | 'i' | 'f' | 'o' | 'n' | 's' | 'a',
-  S extends 0 | 4 | number,
 > {
   value: V
   readonly type: T
@@ -105,7 +104,7 @@ export interface SendMessage {
   fds: Array<FD>
 }
 
-export function uint(arg: number): MessageMarshallingContext<number, 'u', 4> {
+export function uint(arg: number): MessageMarshallingContext<number, 'u'> {
   return {
     value: arg,
     type: 'u',
@@ -126,7 +125,7 @@ export function fileDescriptor(
   marshallArg: (wireMsg: { buffer: ArrayBuffer; fds: Array<FD>; bufferOffset: number }) => void = function (wireMsg) {
     wireMsg.fds.push(arg)
   },
-): MessageMarshallingContext<FD, 'h', 0> {
+): MessageMarshallingContext<FD, 'h'> {
   return {
     value: arg,
     type: 'h',
@@ -139,7 +138,7 @@ export function fileDescriptor(
   }
 }
 
-export function int(arg: number): MessageMarshallingContext<number, 'i', 4> {
+export function int(arg: number): MessageMarshallingContext<number, 'i'> {
   return {
     value: arg,
     type: 'i',
@@ -155,7 +154,7 @@ export function int(arg: number): MessageMarshallingContext<number, 'i', 4> {
   }
 }
 
-export function fixed(arg: Fixed): MessageMarshallingContext<Fixed, 'f', 4> {
+export function fixed(arg: Fixed): MessageMarshallingContext<Fixed, 'f'> {
   return {
     value: arg,
     type: 'f',
@@ -171,7 +170,7 @@ export function fixed(arg: Fixed): MessageMarshallingContext<Fixed, 'f', 4> {
   }
 }
 
-export function object(arg: WlObject): MessageMarshallingContext<WlObject, 'o', 4> {
+export function object(arg: WlObject): MessageMarshallingContext<WlObject, 'o'> {
   return {
     value: arg,
     type: 'o',
@@ -187,7 +186,7 @@ export function object(arg: WlObject): MessageMarshallingContext<WlObject, 'o', 
   }
 }
 
-export function objectOptional(arg?: WlObject): MessageMarshallingContext<WlObject | undefined, 'o', 4> {
+export function objectOptional(arg?: WlObject): MessageMarshallingContext<WlObject | undefined, 'o'> {
   return {
     value: arg,
     type: 'o',
@@ -203,7 +202,7 @@ export function objectOptional(arg?: WlObject): MessageMarshallingContext<WlObje
   }
 }
 
-export function newObject(): MessageMarshallingContext<0, 'n', 4> {
+export function newObject(): MessageMarshallingContext<0, 'n'> {
   return {
     value: 0, // id filled in by marshallConstructor
     type: 'n',
@@ -219,7 +218,7 @@ export function newObject(): MessageMarshallingContext<0, 'n', 4> {
   }
 }
 
-export function string(arg: string): MessageMarshallingContext<string, 's', number> {
+export function string(arg: string): MessageMarshallingContext<string, 's'> {
   return {
     value: `${arg}\0`,
     type: 's',
@@ -247,7 +246,7 @@ export function string(arg: string): MessageMarshallingContext<string, 's', numb
   }
 }
 
-export function stringOptional(arg?: string): MessageMarshallingContext<string | undefined, 's', number> {
+export function stringOptional(arg?: string): MessageMarshallingContext<string | undefined, 's'> {
   return {
     value: arg ? `${arg}\0` : undefined,
     type: 's',
@@ -283,7 +282,7 @@ export function stringOptional(arg?: string): MessageMarshallingContext<string |
   }
 }
 
-export function array(arg: ArrayBufferView): MessageMarshallingContext<ArrayBufferView, 'a', number> {
+export function array(arg: ArrayBufferView): MessageMarshallingContext<ArrayBufferView, 'a'> {
   return {
     value: arg,
     type: 'a',
@@ -310,9 +309,7 @@ export function array(arg: ArrayBufferView): MessageMarshallingContext<ArrayBuff
   }
 }
 
-export function arrayOptional(
-  arg?: ArrayBufferView,
-): MessageMarshallingContext<ArrayBufferView | undefined, 'a', number> {
+export function arrayOptional(arg?: ArrayBufferView): MessageMarshallingContext<ArrayBufferView | undefined, 'a'> {
   return {
     value: arg,
     type: 'a',
@@ -452,7 +449,7 @@ export function s(message: WlMessage): string {
   return textDecoder.decode(byteArray)
 }
 
-export function aOptional(message: WlMessage, optional: boolean): ArrayBuffer | undefined {
+export function aOptional(message: WlMessage, _: boolean): ArrayBuffer | undefined {
   checkMessageSize(message, 4)
   const arraySize = message.buffer[message.bufferOffset++]
   if (arraySize === 0) {
@@ -507,7 +504,7 @@ export class Connection {
   private onCloseResolve: (value: PromiseLike<void> | void) => void
   readonly onClose = new Promise<void>((resolve) => (this.onCloseResolve = resolve))
 
-  marshallMsg(id: number, opcode: number, size: number, argsArray: MessageMarshallingContext<any, any, any>[]) {
+  marshallMsg(id: number, opcode: number, size: number, argsArray: MessageMarshallingContext<any, any>[]) {
     const wireMsg = {
       buffer: new ArrayBuffer(size),
       fds: [],

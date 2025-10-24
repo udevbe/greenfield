@@ -59,20 +59,20 @@
     ]
   },
   "devDependencies": {
-    "@tsconfig/node20": "^20.1.5",
-    "@types/jest": "^29.5.14",
-    "@types/node": "^22.14.0",
-    "@typescript-eslint/eslint-plugin": "^8.29.0",
-    "@typescript-eslint/parser": "^8.29.0",
-    "eslint": "^9.23.0",
-    "eslint-config-prettier": "^10.1.1",
-    "eslint-plugin-prettier": "^5.2.6",
-    "jest": "^29.7.0",
-    "jest-config": "^29.7.0",
-    "prettier": "^3.5.3",
-    "rimraf": "6.0.0",
-    "ts-jest": "^29.3.1",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.8.2"
+    "@tsconfig/node20": "20.x",
+    "@types/jest": "29.x",
+    "@types/node": "20.x",
+    "@typescript-eslint/eslint-plugin": "8.x",
+    "@typescript-eslint/parser": "8.x",
+    "eslint": "9.x",
+    "eslint-config-prettier": "10.x",
+    "eslint-plugin-prettier": "5.x",
+    "jest": "29.x",
+    "jest-config": "29.x",
+    "prettier": "3.x",
+    "rimraf": "6.x",
+    "ts-jest": "29.x",
+    "ts-node": "10.x",
+    "typescript": "5.6.x"
   }
 }
