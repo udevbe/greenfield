@@ -21,6 +21,7 @@ ensure_repo() {
 build() {
     ensure_repo
     source ../../emsdk/emsdk_env.sh
+    source "$_SDK_DIR/sysrootlibs/sysroot-env.sh"
     pushd repo
     	meson setup --wipe build/ --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-toolchain.ini" --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-build.ini" \
     	  -Ddwrite=disabled -Dpng=enabled -Dquartz=disabled -Dtee=disabled -Dxcb=disabled -Dxlib=disabled -Dxlib-xcb=disabled -Dzlib=enabled \
