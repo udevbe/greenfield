@@ -10,6 +10,7 @@ import {
 } from '@gfld/compositor-proxy'
 import { IncomingMessage } from 'node:http'
 import { Socket } from 'node:net'
+import assert from 'node:assert'
 
 process.on('uncaughtException', (e) => {
   logger.error('\tname: ' + e.name + ' message: ' + e.message)
@@ -69,29 +70,26 @@ function isIpcMessage(message: any): message is ToSessionProcessMessage {
 }
 
 process.on('message', (message, sendHandle) => {
-  if (isIpcMessage(message)) {
-    switch (message.type) {
-      case 'start':
-        start(message.payload)
-        break
-      case 'launchApp':
-        launchApp(message.payload)
-        break
-      case 'wsUpgrade':
-        wsUpgrade(message.payload, sendHandle as Socket)
-        break
-    }
-  } else {
-    throw new Error(`BUG. received message is not an IPC message. Got: ${JSON.stringify(message)})`)
+  assert(isIpcMessage(message), `Received message is not an IPC message. Got: ${JSON.stringify(message)})`)
+
+  switch (message.type) {
+    case 'start':
+      start(message.payload)
+      break
+    case 'launchApp':
+      launchApp(message.payload)
+      break
+    case 'wsUpgrade':
+      wsUpgrade(message.payload, sendHandle as Socket)
+      break
   }
 })
 
 let context: { session: Session; sessionController: SessionController } | undefined = undefined
 
 function start({ config, compositorSessionId }: Extract<ToSessionProcessMessage, { type: 'start' }>['payload']) {
-  if (context !== undefined) {
-    throw new Error('BUG. Already started')
-  }
+  assert(context === undefined, 'Already started.')
+
   initSurfaceBufferEncoding()
 
   const session = createSession(compositorSessionId, config)
@@ -118,9 +116,7 @@ async function launchApp({
     type: 'launchApp'
   }
 >['payload']) {
-  if (context === undefined) {
-    throw new Error('BUG. Not yet started')
-  }
+  assert(context !== undefined, 'Not yet started.')
 
   try {
     const nativeAppContext = await launchApplication(name, executable, args, env, context.session)
@@ -141,9 +137,7 @@ async function launchApp({
 }
 
 function wsUpgrade({ request }: Extract<ToSessionProcessMessage, { type: 'wsUpgrade' }>['payload'], socket: Socket) {
-  if (context === undefined) {
-    throw new Error('BUG. Not yet started')
-  }
+  assert(context !== undefined, 'Not yet started.')
 
   socket.resume()
   context.sessionController.onWsUpgrade(request, socket)

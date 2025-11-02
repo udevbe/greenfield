@@ -41,6 +41,7 @@ import { ProxyBuffer } from './ProxyBuffer.js'
 import type { Channel } from './Channel.js'
 import wl_surface_interceptor from './protocol/wl_surface_interceptor.js'
 import { NativeAppContext } from './NativeAppContext.js'
+import assert from 'node:assert'
 
 const logger = createLogger('native-client-session')
 
@@ -462,13 +463,11 @@ export class NativeWaylandClientSession {
 
   onNativeSyncDone(doneCallbackId: number) {
     const syncDone = this.syncDones.find(({ callbackId }) => callbackId === doneCallbackId)
-    if (syncDone) {
-      syncDone.nativeDone = true
-      if (this.sendIfSyncDone(syncDone)) {
-        flush(this.wlClient)
-      }
-    } else {
-      throw new Error('BUG. No sync done entry for native sync done signal.')
+    assert(syncDone, 'No sync done entry for native sync done signal.')
+
+    syncDone.nativeDone = true
+    if (this.sendIfSyncDone(syncDone)) {
+      flush(this.wlClient)
     }
   }
 

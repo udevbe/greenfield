@@ -21,12 +21,12 @@
     "url": "https://github.com/udevbe/greenfield/tree/master/libs/web/compositor/generator"
   },
   "dependencies": {
-    "camelcase": "^8.0.0",
-    "meow": "^13.2.0",
-    "uppercamelcase": "^3.0.0",
-    "xml2js": "^0.6.2"
+    "camelcase": "8.x",
+    "meow": "14.x",
+    "uppercamelcase": "3.x",
+    "xml2js": "0.x"
   },
   "devDependencies": {
-    "standard": "17.1.0"
+    "standard": "17.x"
   }
 }

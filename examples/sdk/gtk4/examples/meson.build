@@ -22,7 +22,7 @@ foreach ex : examples
 endforeach
 
 #subdir('bp')
-subdir('application1')
+#subdir('application1')
 #subdir('application2')
 #subdir('application3')
 #subdir('application4')
@@ -30,4 +30,4 @@ subdir('application1')
 #subdir('application6')
 #subdir('application7')
 #subdir('application8')
-#subdir('application9')
+subdir('application9')

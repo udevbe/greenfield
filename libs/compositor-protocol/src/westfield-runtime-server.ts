@@ -91,7 +91,7 @@ export class Client implements DisplayRequests {
     }
   }
 
-  marshallConstructor(id: number, opcode: number, argsArray: MessageMarshallingContext<any, any, any>[]): number {
+  marshallConstructor(id: number, opcode: number, argsArray: MessageMarshallingContext<any, any>[]): number {
     // determine required wire message length
     let size = 4 + 2 + 2 // id+size+opcode
     const serverSideId = this.getNextId()
@@ -106,7 +106,7 @@ export class Client implements DisplayRequests {
     return serverSideId
   }
 
-  marshall(id: number, opcode: number, argsArray: MessageMarshallingContext<any, any, any>[]) {
+  marshall(id: number, opcode: number, argsArray: MessageMarshallingContext<any, any>[]) {
     // determine required wire message length
     let size = 4 + 2 + 2 // id+size+opcode
     argsArray.forEach((arg) => (size += arg.size))

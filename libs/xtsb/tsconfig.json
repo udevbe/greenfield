@@ -20,7 +20,8 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "declarationDir": "dist/types",
-    "outDir": "dist/module"
+    "outDir": "dist/module",
+    "strictNullChecks": true
   },
   "include": [
     "src"

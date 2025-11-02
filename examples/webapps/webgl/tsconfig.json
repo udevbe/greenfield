@@ -11,6 +11,8 @@
       "dom",
       "dom.iterable",
       "esnext",
-    ]
+    ],
+    "strictNullChecks": true,
+    "removeComments": true
   }
 }

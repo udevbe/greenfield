@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process'
 import { Session } from './Session.js'
 import { setTimeout } from 'node:timers'
 import { WebSocket } from 'ws'
+import assert from 'node:assert'
 
 export type RemoteAppContextAttributes = Readonly<{
   baseURL: string
@@ -279,9 +280,7 @@ export function launchApplication(
         appLogger.error(`child process error: ${error.message}.`)
       })
 
-      if (childProcess.pid === undefined) {
-        throw new Error('BUG? Tried to create client signaling for child process without an id.')
-      }
+      assert(childProcess.pid, 'Tried to create client signaling for child process without an id.')
 
       const nativeAppContext = session.createNativeAppContext(childProcess.pid, name, false)
       childProcess.once('exit', (exitCode, signal) => {

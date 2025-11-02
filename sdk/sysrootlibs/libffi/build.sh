@@ -19,40 +19,23 @@ ensure_repo() {
 }
 
 make_install() {
-  command -v emcc >/dev/null 2>&1 || {
-    echo >&2 "emsdk could not be found.  Aborting."
-    exit 1
-  }
+    mkdir -p "$SYSROOT"
 
-  # Working directories
-  TARGET="$_SDK_DIR/sysroot"
-  mkdir -p "$TARGET"
+    export CFLAGS="-O3 -fPIC -pthread -flto -msimd128 -msse -include xmmintrin.h"
+    export CXXFLAGS="$CFLAGS"
 
-  # Common compiler flags
-  export CFLAGS="-O3 -fPIC -pthread -flto -msimd128 -msse -include xmmintrin.h"
-  export CXXFLAGS="$CFLAGS"
-
-  # Build paths
-  export CPATH="$TARGET/include"
-  export PKG_CONFIG_PATH="$TARGET/lib/pkgconfig"
-  export EM_PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
-
-  # Specific variables for cross-compilation
-  export CHOST="wasm32-unknown-linux" # wasm32-unknown-emscripten
-
-  autoreconf -fiv
-  emconfigure ./configure --host=$CHOST --prefix="$TARGET" --enable-static --disable-shared --disable-dependency-tracking \
-    --disable-builddir --disable-multi-os-directory --disable-raw-api --disable-docs
-  emmake make install
-  cp fficonfig.h "$TARGET/include/"
-  cp include/ffi_common.h "$TARGET/include/"
+    autoreconf -fiv
+    emconfigure ./configure --host="$CHOST" --prefix="$SYSROOT" --enable-static --disable-shared --disable-dependency-tracking \
+      --disable-builddir --disable-multi-os-directory --disable-raw-api --disable-docs
+    emmake make install
+    cp fficonfig.h "$SYSROOT/include/"
+    cp include/ffi_common.h "$SYSROOT/include/"
 }
 
 build() {
     ensure_repo
     source ../../emsdk/emsdk_env.sh
-    export PKG_CONFIG_PATH="$_SDK_DIR/sysroot/lib/pkgconfig:$_SDK_DIR/sysroot/share/pkgconfig"
-    export PKG_CONFIG_LIBDIR="$_SDK_DIR/sysroot"
+    source "$_SDK_DIR/sysrootlibs/sysroot-env.sh"
     pushd repo
       make_install
     popd

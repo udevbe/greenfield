@@ -87,7 +87,7 @@ import { FrameFlag, FrameStatus, themeCreate, ThemeLocation, XWindowTheme } from
 import { XWindowManagerConnection } from './XWindowManagerConnection'
 import { createXDataSource, XDataSource } from './XDataSource'
 import { InputOutputFD } from '../../InputOutput'
-import { createXDnDDataSource, XDnDDataSource } from './XDnDDataSource'
+import { createXDnDDataSource } from './XDnDDataSource'
 
 type ConfigureValueList = Parameters<XConnection['configureWindow']>[1]
 
@@ -552,7 +552,7 @@ export class XWindowManager {
   private readonly imageDecodingContext: CanvasRenderingContext2D = this.imageDecodingCanvas.getContext('2d', {
     alpha: true,
     desynchronized: true,
-    willReadFrequently: true
+    willReadFrequently: true,
   })!
   private cursors: { [key in CursorType]: Cursor } = {
     [CursorType.XWM_CURSOR_BOTTOM]: Cursor.None,
@@ -1191,10 +1191,9 @@ export class XWindowManager {
 
   private async handleClientMessage(event: ClientMessageEvent) {
     this.session.logger.debug(
-      `XCB_CLIENT_MESSAGE (${await this.getAtomName(event._type)} ${event.data.data32?.[0]} ${event.data
-        .data32?.[1]} ${event.data.data32?.[2]} ${event.data.data32?.[3]} ${event.data.data32?.[4]} win ${
-        event.window
-      })`,
+      `XCB_CLIENT_MESSAGE (${await this.getAtomName(event._type)} ${event.data.data32?.[0]} ${
+        event.data.data32?.[1]
+      } ${event.data.data32?.[2]} ${event.data.data32?.[3]} ${event.data.data32?.[4]} win ${event.window})`,
     )
 
     const window = this.lookupXWindow(event.window)
@@ -1254,7 +1253,7 @@ export class XWindowManager {
           alpha_mask, but checking depth is simpler and works in all known cases */
       window.hasAlpha = geometryReply.depth === 32
       this.windowHash[id] = window
-    } catch (e) {
+    } catch (_) {
       // ignore, window was most likely destroyed
     }
   }

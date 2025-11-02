@@ -20,7 +20,8 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "declarationDir": "types",
-    "outDir": "dist"
+    "outDir": "dist",
+    "strictNullChecks": true
   },
   "include": [
     "src"

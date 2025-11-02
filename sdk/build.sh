@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-EMSDK_VERSION="3.1.60"
+EMSDK_VERSION="4.0.10"
 git -C emsdk pull || git clone https://github.com/emscripten-core/emsdk.git emsdk
 pushd 'emsdk'
     ./emsdk install ${EMSDK_VERSION}
@@ -11,8 +11,24 @@ popd
 _SDK_DIR=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
 export _SDK_DIR
 
-printf '%s\n' "[constants]" "toolchain = '$_SDK_DIR/emsdk/upstream/emscripten'" > "$_SDK_DIR/sysrootlibs/emscripten-toolchain.ini"
-printf '%s\n' "[constants]" "greenfield_sdk = '$_SDK_DIR'" > "$_SDK_DIR/toolkit/meson-gf-toolchain.ini"
+cat > "$_SDK_DIR/sysrootlibs/emscripten-toolchain.ini" <<- EOF
+[constants]
+toolchain = '$_SDK_DIR/emsdk/upstream/emscripten'
+sysroot = '$_SDK_DIR/sysroot'
+
+[properties]
+pkg_config_libdir = sysroot + '/lib/pkgconfig:' + sysroot + '/share/pkgconfig'
+sys_root = sysroot
+
+[built-in options]
+pkg_config_path = ''
+prefix = sysroot
+EOF
+
+cat > "$_SDK_DIR/toolkit/meson-gf-toolchain.ini" <<- EOF
+[constants]
+greenfield_sdk = '$_SDK_DIR'
+EOF
 
 ./sysrootlibs/expat/build.sh
 ./sysrootlibs/libffi/build.sh
@@ -22,6 +38,7 @@ printf '%s\n' "[constants]" "greenfield_sdk = '$_SDK_DIR'" > "$_SDK_DIR/toolkit/
 ./sysrootlibs/zlib/build.sh
 ./sysrootlibs/png/build.sh
 ./sysrootlibs/xml2/build.sh
+./sysrootlibs/xkeyboard-config/build.sh
 ./sysrootlibs/xkbcommon/build.sh
 ./sysrootlibs/icu/build.sh
 ./sysrootlibs/harfbuzz/build_nofreetype_nocairo_noglib.sh
@@ -46,7 +63,4 @@ printf '%s\n' "[constants]" "greenfield_sdk = '$_SDK_DIR'" > "$_SDK_DIR/toolkit/
 ./sysrootlibs/sass/build.sh
 ./sysrootlibs/sassc/build.sh
 ./sysrootlibs/uapi-stub/build.sh
-
-# broken for now
-#./sysrootlibs/gtk4/build.sh
-
+./sysrootlibs/gtk4/build.sh

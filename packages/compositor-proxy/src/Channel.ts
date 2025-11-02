@@ -55,12 +55,11 @@ export interface WebSocketChannel extends Channel {
 }
 
 function createChannel(desc: ChannelDesc, nativeAppContext: NativeAppContext) {
-  if (desc.channelType === ChannelType.ARQ) {
-    return new ARQChannel(desc, nativeAppContext)
-  } else if (desc.channelType === ChannelType.SIMPLE) {
-    return new SimpleChannel(desc, nativeAppContext)
-  } else {
-    throw new Error(`BUG. Unknown channel type ${JSON.stringify(desc)}`)
+  switch (desc.channelType) {
+    case ChannelType.ARQ:
+      return new ARQChannel(desc, nativeAppContext)
+    case ChannelType.SIMPLE:
+      return new SimpleChannel(desc, nativeAppContext)
   }
 }
 

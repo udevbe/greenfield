@@ -21,10 +21,9 @@ ensure_repo() {
 build() {
     ensure_repo
     source ../../emsdk/emsdk_env.sh
-    export PKG_CONFIG_PATH="$_SDK_DIR/sysroot/lib/pkgconfig:$_SDK_DIR/sysroot/share/pkgconfig"
-    export PKG_CONFIG_LIBDIR="$_SDK_DIR/sysroot"
+    source "$_SDK_DIR/sysrootlibs/sysroot-env.sh"
     pushd repo
-    	meson setup --wipe build/ --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-toolchain.ini" --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-build.ini" -Dprefix="${_SDK_DIR}/sysroot" --pkg-config-path="${_SDK_DIR}/sysroot/lib/pkgconfig:${_SDK_DIR}/sysroot/share/pkgconfig" \
+    	meson setup --wipe build/ --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-toolchain.ini" --cross-file "${_SDK_DIR}/sysrootlibs/emscripten-build.ini" \
     	  -Dfreetype=enabled -Dtests=disabled -Dicu=enabled -Dcairo=enabled -Dintrospection=disabled -Ddocs=disabled -Dutilities=disabled -Dglib=enabled
 	    ninja -C build/ install
     popd
