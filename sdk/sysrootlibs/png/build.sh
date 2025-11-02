@@ -26,7 +26,7 @@ make_install() {
       export CXXFLAGS="$CFLAGS"
       export CPATH="${SYSROOT}/include"
 
-      emcmake cmake . --install-prefix="$SYSROOT" -DPNG_SHARED=OFF -DPNG_STATIC=ON -DPNG_EXECUTABLES=OFF -DPNG_TESTS=OFF -DPNG_BUILD_ZLIB=ON
+      emcmake cmake . --install-prefix="$SYSROOT" -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DPNG_SHARED=OFF -DPNG_STATIC=ON -DPNG_EXECUTABLES=OFF -DPNG_TESTS=OFF -DPNG_BUILD_ZLIB=ON
       emmake make install
 }
 

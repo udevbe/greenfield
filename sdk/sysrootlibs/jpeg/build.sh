@@ -26,7 +26,7 @@ make_install() {
     export CFLAGS="-O3 -fPIC -pthread -flto -msimd128 -msse -include xmmintrin.h"
     export CXXFLAGS="$CFLAGS"
 
-    emcmake cmake . --install-prefix="$SYSROOT" -DENABLE_SHARED=0
+    emcmake cmake . --install-prefix="$SYSROOT" -DENABLE_SHARED=0 -DCMAKE_POLICY_VERSION_MINIMUM=3.5
     emmake make install
 }
 
