@@ -34,19 +34,13 @@ export class BrowserDataSource implements DataSource {
     this.destroyPromise.then(() => this.destroyListeners.forEach((listener) => listener()))
   }
 
-  send(mimeType: string, ioFD: InputOutputFD) {
+  send(mimeType: string, ioFD: InputOutputFD): void {
     mimeType = mimeType === 'text/plain;charset=utf-8' ? 'text/plain' : mimeType
     const matchingOffer = this.offers.find((offer) => offer.types.includes(mimeType))
-    if (matchingOffer) {
-      matchingOffer
-        .getType(mimeType)
-        .then((offerData) => {
-          if (offerData) {
-            return ioFD.write(offerData)
-          }
-        })
-        .then(() => ioFD.close())
-    }
+    const transfer = matchingOffer
+      ? matchingOffer.getType(mimeType).then((offerData) => ioFD.write(offerData))
+      : Promise.resolve()
+    transfer.finally(() => ioFD.close()).catch((error) => console.warn('Browser clipboard transfer failed.', error))
   }
 
   accept(mimeType: string | undefined): void {

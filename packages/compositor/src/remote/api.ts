@@ -173,8 +173,11 @@ class RemoteWebSocketAPI implements RemoteAPI {
         reject(new Error('websocket error'))
       }
       ws.onopen = (ev) => {
-        ws.send(param.body)
-        ws.close(4200)
+        if (param.body.size > 0) {
+          ws.send(param.body)
+        }
+        // The proxy acknowledges EOF only after all writes have completed.
+        ws.send(new Blob([]))
       }
       ws.onclose = (ev) => {
         if (ev.code === 4200) {

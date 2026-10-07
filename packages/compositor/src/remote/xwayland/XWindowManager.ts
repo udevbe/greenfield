@@ -1662,22 +1662,36 @@ export class XWindowManager {
     if (reply.value.length > 0) {
       await this.writeProperty(reply)
     } else {
-      // transfer complete
-      // TODO close data_source_fd ?
+      this.incr = false
+      await this.closeDataSourceFd()
     }
   }
 
+  private async closeDataSourceFd(fd = this.dataSourceFd) {
+    if (this.dataSourceFd === fd) {
+      this.dataSourceFd = undefined
+    }
+    await fd?.close()
+  }
+
   private async writeProperty(reply: GetPropertyReply) {
-    if (this.dataSourceFd === undefined) {
+    const fd = this.dataSourceFd
+    if (fd === undefined) {
       return
     }
 
-    await this.dataSourceFd.write(new Blob([reply.value]))
+    try {
+      await fd.write(new Blob([reply.value]))
+    } catch (error) {
+      this.incr = false
+      await this.closeDataSourceFd(fd)
+      throw error
+    }
 
     if (this.incr) {
       this.xConnection.deleteProperty(this.selectionWindow, this.atoms._WL_SELECTION)
     } else {
-      // TODO close dataSourceFD ?
+      await this.closeDataSourceFd(fd)
     }
   }
 

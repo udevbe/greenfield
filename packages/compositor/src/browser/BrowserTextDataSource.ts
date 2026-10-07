@@ -30,11 +30,10 @@ export class BrowserTextDataSource implements DataSource {
     this.destroyPromise.then(() => this.destroyListeners.forEach((listener) => listener()))
   }
 
-  send(mimeType: string, ioFD: InputOutputFD) {
+  send(mimeType: string, ioFD: InputOutputFD): void {
     const matchingOffer = this.mimeTypes.includes(mimeType)
-    if (matchingOffer) {
-      ioFD.write(new Blob([textEncoder.encode(this.offer)])).then(() => ioFD.close())
-    }
+    const transfer = matchingOffer ? ioFD.write(new Blob([textEncoder.encode(this.offer)])) : Promise.resolve()
+    transfer.finally(() => ioFD.close()).catch((error) => console.warn('Browser clipboard transfer failed.', error))
   }
 
   accept(mimeType: string | undefined): void {

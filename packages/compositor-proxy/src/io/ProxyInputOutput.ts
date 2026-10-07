@@ -4,6 +4,7 @@ import { createLogger } from '../Logger.js'
 import { createMemoryMappedFile, makePipe } from '../wayland-server.js'
 import { createWebSocketStream, WebSocket } from 'ws'
 import { Session } from '../Session.js'
+import { pipeline } from 'node:stream/promises'
 
 const logger = createLogger('webfs')
 
@@ -53,10 +54,29 @@ export class ProxyInputOutput {
     const ws = new WebSocket(url)
     const wsStream = createWebSocketStream(ws, { highWaterMark: TRANSFER_CHUNK_SIZE })
     ws.binaryType = 'nodebuffer'
-    ws.onopen = () => {
-      fileReadStream.pipe(wsStream)
-    }
-    fileReadStream.on('end', () => ws.close())
+    pipeline(fileReadStream, wsStream, { end: false })
+      .then(() => {
+        wsStream.write(Buffer.alloc(0))
+      })
+      .catch((error) => logger.error(`Foreign pipe transfer failed: ${error.message}`))
+    ws.once('close', (code, reason) => {
+      if (code !== 4200) {
+        logger.error(`Foreign pipe transfer failed: ${code}: ${reason}`)
+      }
+      fileReadStream.destroy()
+      wsStream.destroy()
+      // The remote descriptor remains owned by close-fd until the transfer is acknowledged.
+      const closeURL = new URL(`${proxyFD.host}/close-fd`)
+      closeURL.searchParams.set('fd', `${proxyFD.handle}`)
+      closeURL.searchParams.set('compositorSessionId', this.session.compositorSessionId)
+      const closeSocket = new WebSocket(closeURL)
+      closeSocket.on('error', (error) => logger.error(`Could not close foreign pipe: ${error.message}`))
+      closeSocket.once('close', (closeCode, closeReason) => {
+        if (closeCode !== 4200) {
+          logger.error(`Could not close foreign pipe: ${closeCode}: ${closeReason}`)
+        }
+      })
+    })
 
     return pipeFds[1]
   }
