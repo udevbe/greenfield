@@ -30,14 +30,11 @@ const FRAGMENT_RGB_AND_A_TO_RGBA = {
 
   uniform sampler2D rgbTexture;
   uniform sampler2D alphaTexture;
+  uniform bool hasAlpha;
 
   void main(void) {
     vec4 rgba = texture2D(rgbTexture, v_texCoord);
-    rgba.a = texture2D(alphaTexture, v_texCoord).g;
-    // rgba.r = 1.;
-    // rgba.g = 1.;
-    // rgba.b = 1.;
-    // rgba.a = 1.;
+    rgba.a = hasAlpha ? texture2D(alphaTexture, v_texCoord).g : 1.;
     gl_FragColor=rgba;
   }
 `,
@@ -46,6 +43,7 @@ const FRAGMENT_RGB_AND_A_TO_RGBA = {
 type ShaderArgs = {
   rgbTexture: WebGLUniformLocation
   alphaTexture: WebGLUniformLocation
+  hasAlpha: WebGLUniformLocation
   a_position: GLint
   a_texCoord: GLint
 }
@@ -70,6 +68,10 @@ function initShaderArgs(gl: WebGLRenderingContext, program: Program): ShaderArgs
   if (alphaTexture === null) {
     throw new Error('alphaTexture not found in shader')
   }
+  const hasAlpha = program.getUniformLocation('hasAlpha')
+  if (hasAlpha === null) {
+    throw new Error('hasAlpha not found in shader')
+  }
 
   const a_position = program.getAttributeLocation('a_position')
   gl.enableVertexAttribArray(a_position)
@@ -79,6 +81,7 @@ function initShaderArgs(gl: WebGLRenderingContext, program: Program): ShaderArgs
   return {
     rgbTexture,
     alphaTexture,
+    hasAlpha,
     a_position,
     a_texCoord,
   }
@@ -109,15 +112,16 @@ export class RGBandA2RGBAShader {
     public readonly program: Program,
   ) {}
 
-  setTexture(textureRGB: Texture, textureAlpha: Texture): void {
+  setTexture(textureRGB: Texture, textureAlpha?: Texture): void {
     this.gl.uniform1i(this.shaderArgs.rgbTexture, 0)
     this.gl.uniform1i(this.shaderArgs.alphaTexture, 1)
+    this.gl.uniform1i(this.shaderArgs.hasAlpha, textureAlpha ? 1 : 0)
 
     this.gl.activeTexture(this.gl.TEXTURE0)
     this.gl.bindTexture(this.gl.TEXTURE_2D, textureRGB.texture)
 
     this.gl.activeTexture(this.gl.TEXTURE1)
-    this.gl.bindTexture(this.gl.TEXTURE_2D, textureAlpha.texture)
+    this.gl.bindTexture(this.gl.TEXTURE_2D, textureAlpha?.texture ?? textureRGB.texture)
   }
 
   use(): void {
@@ -128,7 +132,7 @@ export class RGBandA2RGBAShader {
     this.gl.useProgram(null)
   }
 
-  updateShaderData(encodedFrameSize: Size, maxXTexCoord: number, maxYTexCoord: number): void {
+  updateShaderData(encodedFrameSize: Size, minXTexCoord: number, minYTexCoord: number): void {
     const { width, height } = encodedFrameSize
     this.gl.viewport(0, 0, width, height)
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
@@ -138,19 +142,19 @@ export class RGBandA2RGBAShader {
       new Float32Array([
         // First triangle
         // top left:
-        -1, 1, 0, maxYTexCoord,
+        -1, 1, minXTexCoord, 1,
         // top right:
-        1, 1, maxXTexCoord, maxYTexCoord,
+        1, 1, 1, 1,
         // bottom right:
-        1, -1, maxXTexCoord, 0,
+        1, -1, 1, minYTexCoord,
 
         // Second triangle
         // bottom right:
-        1, -1,  maxXTexCoord, 0,
+        1, -1, 1, minYTexCoord,
         // bottom left:
-        -1, -1, 0, 0,
+        -1, -1, minXTexCoord, minYTexCoord,
         // top left:
-        -1, 1, 0, maxYTexCoord,
+        -1, 1, minXTexCoord, 1,
       ]),
       this.gl.DYNAMIC_DRAW,
     )
