@@ -195,14 +195,21 @@ class WebCodecH264DecoderContext implements H264DecoderContext {
     const alphaVideoFrame = decodeResult.alpha?.buffer
 
     if (opaqueVideoFrame.format === 'I420') {
-      const opaqueBuffer = new ArrayBuffer(opaqueVideoFrame.allocationSize())
-      const opaquePromise: Promise<PlaneLayout[]> = opaqueVideoFrame.copyTo(opaqueBuffer)
+      // Texture uploads use coded dimensions, the default copy crops to visibleRect.
+      const opaqueCopyOptions = {
+        rect: { x: 0, y: 0, width: opaqueVideoFrame.codedWidth, height: opaqueVideoFrame.codedHeight },
+      }
+      const opaqueBuffer = new ArrayBuffer(opaqueVideoFrame.allocationSize(opaqueCopyOptions))
+      const opaquePromise: Promise<PlaneLayout[]> = opaqueVideoFrame.copyTo(opaqueBuffer, opaqueCopyOptions)
 
       let alphaBuffer: ArrayBuffer | undefined
       let alphaPromise: Promise<PlaneLayout[]> | undefined
       if (alphaVideoFrame) {
-        alphaBuffer = new ArrayBuffer(alphaVideoFrame.allocationSize())
-        alphaPromise = alphaVideoFrame.copyTo(alphaBuffer)
+        const alphaCopyOptions = {
+          rect: { x: 0, y: 0, width: alphaVideoFrame.codedWidth, height: alphaVideoFrame.codedHeight },
+        }
+        alphaBuffer = new ArrayBuffer(alphaVideoFrame.allocationSize(alphaCopyOptions))
+        alphaPromise = alphaVideoFrame.copyTo(alphaBuffer, alphaCopyOptions)
       }
 
       const dualPlaneYUVABuffer: DualPlaneYUVAArrayBuffer = {
