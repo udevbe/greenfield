@@ -52,12 +52,10 @@ export function addInputOutput(session: Session, canvasCreator: () => { canvas: 
     'pointermove',
     (event: PointerEvent) => {
       for (const coalescedEvent of event.getCoalescedEvents()) {
-        const buttonEvent = createButtonEventFromMouseEvent(coalescedEvent, false, sceneId, canvas.width, canvas.height)
+        const buttonEvent = createButtonEventFromMouseEvent(coalescedEvent, false, sceneId, canvas)
         session.inputQueue.queueMotion(buttonEvent)
       }
-      session.inputQueue.queueMotion(
-        createButtonEventFromMouseEvent(event, false, sceneId, canvas.width, canvas.height),
-      )
+      session.inputQueue.queueMotion(createButtonEventFromMouseEvent(event, false, sceneId, canvas))
     },
     { passive: true },
   )
@@ -67,9 +65,7 @@ export function addInputOutput(session: Session, canvasCreator: () => { canvas: 
     (event: PointerEvent) => {
       dnd.handlePointerDown(event)
       canvas.setPointerCapture(event.pointerId)
-      session.inputQueue.queueButton(
-        createButtonEventFromMouseEvent(event, false, sceneId, canvas.width, canvas.height),
-      )
+      session.inputQueue.queueButton(createButtonEventFromMouseEvent(event, false, sceneId, canvas))
     },
     { passive: true },
   )
@@ -78,7 +74,7 @@ export function addInputOutput(session: Session, canvasCreator: () => { canvas: 
     'pointerup',
     (event: PointerEvent) => {
       canvas.releasePointerCapture(event.pointerId)
-      session.inputQueue.queueButton(createButtonEventFromMouseEvent(event, true, sceneId, canvas.width, canvas.height))
+      session.inputQueue.queueButton(createButtonEventFromMouseEvent(event, true, sceneId, canvas))
       dnd.handlePointerUp(event)
     },
     { passive: true },
