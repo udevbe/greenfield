@@ -146,9 +146,26 @@ function writeFdAsStream(session: Session, request: AppRequest, ws: WebSocket, u
     return
   }
 
-  const fdWriteStream = createWriteStream('ignored', { fd, autoClose: true })
+  // close-fd owns the descriptor, completing a transfer must not close it twice.
+  const fdWriteStream = createWriteStream('ignored', { fd, autoClose: false })
   const wsStream = createWebSocketStream(ws, { highWaterMark: TRANSFER_CHUNK_SIZE })
 
+  ws.on('message', (chunk: Buffer) => {
+    if (chunk.byteLength === 0) {
+      wsStream.push(null)
+    }
+  })
+  fdWriteStream.once('finish', () => ws.close(4200, 'OK'))
+  fdWriteStream.once('error', (error: NodeJS.ErrnoException) => {
+    logger.error(`write-fd-as-stream failed: ${error.message}`)
+    wsStream.unpipe(fdWriteStream)
+    wsStream.resume()
+    ws.close(error.code === 'EBADF' ? 4404 : 4500, 'File descriptor write failed.')
+  })
+  wsStream.once('error', (error) => {
+    logger.error(`write-fd-as-stream failed: ${error.message}`)
+    fdWriteStream.end()
+  })
   wsStream.pipe(fdWriteStream)
 }
 
