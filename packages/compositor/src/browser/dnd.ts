@@ -135,7 +135,7 @@ class BrowserDnD implements DnD {
       }
       event.preventDefault()
       this.seat.session.inputQueue.queueMotion(
-        createButtonEventFromMouseEvent(event, false, this.outputId, this.canvas.width, this.canvas.height),
+        createButtonEventFromMouseEvent(event, false, this.outputId, this.canvas),
       )
     })
     dragHelper.addEventListener(
@@ -146,9 +146,7 @@ class BrowserDnD implements DnD {
           this.dragHelper = undefined
         }
         this.canvas.removeEventListener('mousemove', this.mouseMoveListener)
-        this.seat.session.inputQueue.queueButton(
-          createButtonEventFromMouseEvent(ev, true, this.outputId, this.canvas.width, this.canvas.height),
-        )
+        this.seat.session.inputQueue.queueButton(createButtonEventFromMouseEvent(ev, true, this.outputId, this.canvas))
         this.onDnDEnded?.()
       },
       { passive: true },
