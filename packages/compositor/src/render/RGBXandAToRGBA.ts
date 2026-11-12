@@ -53,41 +53,30 @@ export class RGBXandA2RGBA {
     frameSize: Size,
     renderState: RenderState,
   ): void {
-    if (!sizeEquals(renderState.size, frameSize)) {
-      renderState.size = frameSize
+    renderState.size = frameSize
+    if (!sizeEquals(renderState.texture.size, frameSize)) {
       renderState.texture.setContentBuffer(null, frameSize)
     }
 
-    // the width & height returned are actually padded, so we have to use the frame size to get the real image dimension
-    // when uploading to texture
-    const opaqueStride = rgba.opaque.codedSize.width // stride
-    const opaqueHeight = rgba.opaque.codedSize.height // padded with filler rows
-    if (rgba.alpha) {
-      const maxXTexCoord = frameSize.width / opaqueStride
-      const maxYTexCoord = frameSize.height / opaqueHeight
-
-      if (rgba.type === 'DualPlaneRGBAVideoFrame') {
-        this.rgbTexture.setContent(rgba.opaque.buffer, rgba.opaque.codedSize)
+    if (rgba.type === 'DualPlaneRGBAVideoFrame' || rgba.type === 'DualPlaneRGBAImageBitmap') {
+      this.rgbTexture.setContent(rgba.opaque.buffer, rgba.opaque.codedSize)
+      if (rgba.alpha) {
         this.alphaTexture.setContent(rgba.alpha.buffer, rgba.alpha.codedSize)
-      } else if (rgba.type === 'DualPlaneRGBAImageBitmap') {
-        this.rgbTexture.setContent(rgba.opaque.buffer, rgba.opaque.codedSize)
-        this.alphaTexture.setContent(rgba.alpha.buffer, rgba.alpha.codedSize)
-      } else {
-        this.rgbTexture.setContentBuffer(rgba.opaque.buffer, rgba.opaque.codedSize)
+      }
+    } else {
+      this.rgbTexture.setContentBuffer(rgba.opaque.buffer, rgba.opaque.codedSize)
+      if (rgba.alpha) {
         this.alphaTexture.setContentBuffer(rgba.alpha.buffer, rgba.alpha.codedSize)
       }
-
-      this.rgbxAnda2rgba(renderState, maxXTexCoord, maxYTexCoord)
-    } else {
-      if (rgba.type === 'DualPlaneRGBAImageBitmap' || rgba.type === 'DualPlaneRGBAVideoFrame') {
-        this.rgbTexture.setContent(rgba.opaque.buffer, rgba.opaque.codedSize)
-      } else {
-        renderState.texture.setContentBuffer(rgba.opaque.buffer, rgba.opaque.codedSize)
-      }
     }
+
+    // Match the YUV path: the encoder places the image at the end of the padded frame.
+    const minXTexCoord = 1 - frameSize.width / rgba.opaque.codedSize.width
+    const minYTexCoord = 1 - frameSize.height / rgba.opaque.codedSize.height
+    this.rgbxAnda2rgba(renderState, minXTexCoord, minYTexCoord, rgba.alpha !== undefined)
   }
 
-  private rgbxAnda2rgba(renderState: RenderState, maxXTexCoord: number, maxYTexCoord: number) {
+  private rgbxAnda2rgba(renderState: RenderState, minXTexCoord: number, minYTexCoord: number, hasAlpha: boolean) {
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer)
     this.gl.framebufferTexture2D(
       this.gl.FRAMEBUFFER,
@@ -98,8 +87,8 @@ export class RGBXandA2RGBA {
     )
 
     this.rgbaSurfaceShader.use()
-    this.rgbaSurfaceShader.setTexture(this.rgbTexture, this.alphaTexture)
-    this.rgbaSurfaceShader.updateShaderData(renderState.size, maxXTexCoord, maxYTexCoord)
+    this.rgbaSurfaceShader.setTexture(this.rgbTexture, hasAlpha ? this.alphaTexture : undefined)
+    this.rgbaSurfaceShader.updateShaderData(renderState.size, minXTexCoord, minYTexCoord)
     this.rgbaSurfaceShader.draw()
     this.rgbaSurfaceShader.release()
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null)
